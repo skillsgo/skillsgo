@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery, auditable Skill artifacts, local targets, CLI, Registry settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, Agent inspection, local targets, CLI, Registry settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -36,7 +36,7 @@ enum SkillTrustLevel {
 
 enum SkillRiskAssessment { unknown, low, medium, high, critical }
 
-enum SkillInstallationScope { user, project }
+enum InstallationScope { user, project }
 
 enum SkillMetricKind { allTimeInstalls, installs24h, hotVelocity }
 
@@ -179,9 +179,42 @@ class SkillInstallationTarget {
   });
 
   final String agent;
-  final SkillInstallationScope scope;
+  final InstallationScope scope;
   final String path;
   final String version;
+}
+
+class AgentUserTarget {
+  const AgentUserTarget({required this.path, required this.exists});
+
+  final String path;
+  final bool exists;
+}
+
+class AgentStatus {
+  const AgentStatus({
+    required this.id,
+    required this.displayName,
+    required this.installed,
+    required this.supportedScopes,
+    this.userTarget,
+  });
+
+  final String id;
+  final String displayName;
+  final bool installed;
+  final List<InstallationScope> supportedScopes;
+  final AgentUserTarget? userTarget;
+}
+
+class AgentCatalog {
+  const AgentCatalog({required this.schemaVersion, required this.agents});
+
+  final int schemaVersion;
+  final List<AgentStatus> agents;
+
+  List<AgentStatus> get installed =>
+      agents.where((agent) => agent.installed).toList(growable: false);
 }
 
 class SkillDetail {
@@ -330,6 +363,7 @@ abstract interface class SkillsGateway {
     int limit = 20,
   });
   Future<SkillDetail> loadRemoteDetail(SkillSummary skill);
+  Future<AgentCatalog> inspectAgents();
   Future<List<InstalledSkill>> listInstalled();
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill);
   Future<CommandResult> install(SkillSummary skill);

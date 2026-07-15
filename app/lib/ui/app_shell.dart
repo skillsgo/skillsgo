@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsGo brand tokens.
- * [OUTPUT]: Provides the desktop shell plus persistent four-collection Discover, Library, detail, operation, and operational Settings journeys.
+ * [OUTPUT]: Provides the desktop shell plus persistent Discover, Agent-aware Library/detail, operation, and operational Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -791,6 +791,7 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
   bool showingManifest = false;
   String? selectedFilePath;
   CliStatus? cliStatus;
+  AgentCatalog? agentCatalog;
   bool get operating => widget.operation.operating;
   CommandResult? get result => widget.operation.result;
 
@@ -823,6 +824,13 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
       ]);
       detail = values[0] as SkillDetail;
       cliStatus = values[1] as CliStatus;
+      if (cliStatus!.isReady) {
+        try {
+          agentCatalog = await widget.gateway.inspectAgents();
+        } on Object {
+          agentCatalog = null;
+        }
+      }
     } catch (caught) {
       error = caught;
     }
@@ -919,7 +927,9 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
               label: widget.skill.isInstalled
                   ? context.l10n.installToMoreTargets
                   : context.l10n.installForCodex,
-              onPressed: widget.skill.isInstalled
+              onPressed: agentCatalog != null && agentCatalog!.installed.isEmpty
+                  ? null
+                  : widget.skill.isInstalled
                   ? () => Navigator.pop(context, true)
                   : install,
               busy: operating,
@@ -993,9 +1003,8 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
                         (target) => StatusChip(
                           label: context.l10n.targetSummary(
                             switch (target.scope) {
-                              SkillInstallationScope.user =>
-                                context.l10n.userScope,
-                              SkillInstallationScope.project =>
+                              InstallationScope.user => context.l10n.userScope,
+                              InstallationScope.project =>
                                 context.l10n.projectScope,
                             },
                             target.agent,
@@ -1008,6 +1017,14 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
                 ),
               ),
             ],
+          ),
+        ],
+        if (agentCatalog != null && agentCatalog!.installed.isEmpty) ...[
+          const SizedBox(height: 12),
+          ShadCard(
+            width: double.infinity,
+            title: Text(context.l10n.noInstalledAgentsTitle),
+            description: Text(context.l10n.noInstalledAgentsMessage),
           ),
         ],
         const SizedBox(height: 14),
@@ -1269,6 +1286,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   static const _userRoute = 'user';
   static const _addProjectRoute = 'add-project';
   List<InstalledSkill>? skills;
+  AgentCatalog? agentCatalog;
   Object? error;
   bool loading = true;
   bool checking = false;
@@ -1302,7 +1320,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
       error = null;
     });
     try {
-      skills = await widget.gateway.listInstalled();
+      final values = await Future.wait([
+        widget.gateway.listInstalled(),
+        widget.gateway.inspectAgents(),
+      ]);
+      skills = values[0] as List<InstalledSkill>;
+      agentCatalog = values[1] as AgentCatalog;
       if (selectedRoute.startsWith('agent:')) {
         final selectedAgent = selectedRoute.substring('agent:'.length);
         if (!_agents.contains(selectedAgent)) selectedRoute = _allRoute;
@@ -1370,19 +1393,27 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   List<String> get _agents {
     final values =
-        (skills ?? const <InstalledSkill>[])
-            .expand((skill) => skill.agents)
-            .toSet()
-            .toList()
-          ..sort();
+        <String>{
+          ...?agentCatalog?.installed.map((agent) => agent.id),
+          ...(skills ?? const <InstalledSkill>[]).expand(
+            (skill) => skill.agents,
+          ),
+        }.toList()..sort(
+          (left, right) => _agentLabel(left).compareTo(_agentLabel(right)),
+        );
     return values;
   }
 
-  String _agentLabel(String agent) => agent
-      .split(RegExp(r'[-_]'))
-      .where((part) => part.isNotEmpty)
-      .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
-      .join(' ');
+  String _agentLabel(String agent) {
+    for (final status in agentCatalog?.agents ?? const <AgentStatus>[]) {
+      if (status.id == agent) return status.displayName;
+    }
+    return agent
+        .split(RegExp(r'[-_]'))
+        .where((part) => part.isNotEmpty)
+        .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+        .join(' ');
+  }
 
   List<SkillsRailItem<String>> _railItems(BuildContext context) => [
     SkillsRailItem(value: _allRoute, label: context.l10n.all),
@@ -1737,6 +1768,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
   bool loadingSettings = true;
   bool testingRegistry = false;
   String? notice;
+  AgentCatalog? agentCatalog;
+  Object? agentInspectionError;
 
   @override
   void initState() {
@@ -1773,9 +1806,20 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final detected = await widget.gateway.detectCli(
       customPath: controller.text,
     );
+    AgentCatalog? inspected;
+    Object? inspectionError;
+    if (detected.isReady) {
+      try {
+        inspected = await widget.gateway.inspectAgents();
+      } on Object catch (caught) {
+        inspectionError = caught;
+      }
+    }
     if (!mounted) return;
     setState(() {
       status = detected;
+      agentCatalog = inspected;
+      agentInspectionError = inspectionError;
       detecting = false;
     });
   }
@@ -1958,72 +2002,122 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ),
   );
 
-  Widget _agentSettings() => ShadCard(
-    width: double.infinity,
-    title: Row(
-      children: [
-        Expanded(child: Text(context.l10n.agentsSettingsTitle)),
-        if (detecting)
-          const SizedBox.square(
-            dimension: 18,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
-        else
-          StatusChip(
-            label: status?.isReady == true
-                ? context.l10n.ready
-                : _cliAvailabilityLabel(context, status?.availability),
-            color: status?.isReady == true
-                ? SkillsTokens.green
-                : SkillsTokens.amber,
-          ),
-      ],
-    ),
-    description: Text(
-      status?.isReady == true
-          ? '${status!.path} · v${status!.version}'
-          : status == null
-          ? context.l10n.detecting
-          : _cliStatusMessage(context, status!),
-    ),
-    child: !kReleaseMode
-        ? Padding(
-            padding: const EdgeInsets.only(top: 16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+  Widget _agentSettings() {
+    final cliCard = ShadCard(
+      width: double.infinity,
+      title: Row(
+        children: [
+          Expanded(child: Text(context.l10n.agentsSettingsTitle)),
+          if (detecting)
+            const SizedBox.square(
+              dimension: 18,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          else
+            StatusChip(
+              label: status?.isReady == true
+                  ? context.l10n.ready
+                  : _cliAvailabilityLabel(context, status?.availability),
+              color: status?.isReady == true
+                  ? SkillsTokens.green
+                  : SkillsTokens.amber,
+            ),
+        ],
+      ),
+      description: Text(
+        status?.isReady == true
+            ? '${status!.path} · v${status!.version}'
+            : status == null
+            ? context.l10n.detecting
+            : _cliStatusMessage(context, status!),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            if (!kReleaseMode) ...[
+              ShadInput(
+                key: const Key('cli-path'),
+                controller: controller,
+                placeholder: const Text('/path/to/development/skillsgo'),
+              ),
+              const SizedBox(height: 12),
+            ],
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
               children: [
-                ShadInput(
-                  key: const Key('cli-path'),
-                  controller: controller,
-                  placeholder: const Text('/path/to/development/skillsgo'),
+                if (!kReleaseMode)
+                  ShadButton(
+                    enabled: !detecting,
+                    onPressed: save,
+                    child: Text(context.l10n.saveAndDetect),
+                  ),
+                ShadButton.outline(
+                  enabled: !detecting,
+                  onPressed: detect,
+                  child: Text(context.l10n.detectAgain),
                 ),
-                const SizedBox(height: 12),
-                Wrap(
-                  spacing: 10,
-                  runSpacing: 10,
-                  children: [
-                    ShadButton(
-                      enabled: !detecting,
-                      onPressed: save,
-                      child: Text(context.l10n.saveAndDetect),
-                    ),
-                    ShadButton.outline(
-                      enabled: !detecting,
-                      onPressed: detect,
-                      child: Text(context.l10n.detectAgain),
-                    ),
-                    ShadButton.outline(
-                      enabled: !detecting,
-                      onPressed: clear,
-                      child: Text(context.l10n.clearCustomPath),
-                    ),
-                  ],
-                ),
+                if (!kReleaseMode)
+                  ShadButton.outline(
+                    enabled: !detecting,
+                    onPressed: clear,
+                    child: Text(context.l10n.clearCustomPath),
+                  ),
               ],
             ),
-          )
-        : null,
-  );
+          ],
+        ),
+      ),
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        cliCard,
+        if (agentInspectionError != null) ...[
+          const SizedBox(height: 14),
+          ShadCard(
+            width: double.infinity,
+            description: Text(context.l10n.agentInspectionFailed),
+          ),
+        ],
+        if (agentCatalog != null) ...[
+          const SizedBox(height: 14),
+          _agentCatalogCard(agentCatalog!),
+        ],
+      ],
+    );
+  }
+
+  Widget _agentCatalogCard(AgentCatalog catalog) {
+    final agents = [...catalog.agents]
+      ..sort((left, right) {
+        if (left.installed != right.installed) return left.installed ? -1 : 1;
+        return left.displayName.compareTo(right.displayName);
+      });
+    return ShadCard(
+      width: double.infinity,
+      title: Text(
+        context.l10n.agentCatalogSummary(
+          catalog.installed.length,
+          catalog.agents.length,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 12),
+        child: Column(
+          children: [
+            for (var index = 0; index < agents.length; index++) ...[
+              _AgentStatusRow(status: agents[index]),
+              if (index != agents.length - 1)
+                const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 
   Widget _registrySettings() => ShadCard(
     width: double.infinity,
@@ -2183,6 +2277,77 @@ class _SettingsScreenState extends State<SettingsScreen> {
         style: const TextStyle(fontFamily: SkillsTokens.monoFamily),
       ),
     ],
+  );
+}
+
+class _AgentStatusRow extends StatelessWidget {
+  const _AgentStatusRow({required this.status});
+
+  final AgentStatus status;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 12),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                status.displayName,
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+            ),
+            StatusChip(
+              label: status.installed
+                  ? context.l10n.agentInstalled
+                  : context.l10n.agentSupported,
+              color: status.installed
+                  ? SkillsTokens.green
+                  : SkillsTokens.textTertiary,
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: status.supportedScopes
+              .map(
+                (scope) => StatusChip(
+                  label: switch (scope) {
+                    InstallationScope.user => context.l10n.userScope,
+                    InstallationScope.project => context.l10n.projectScope,
+                  },
+                  color: SkillsTokens.blue,
+                ),
+              )
+              .toList(growable: false),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          status.installed
+              ? context.l10n.agentDetectedDescription
+              : context.l10n.agentSupportedDescription,
+          style: const TextStyle(
+            color: SkillsTokens.textSecondary,
+            height: 1.4,
+          ),
+        ),
+        if (status.userTarget != null) ...[
+          const SizedBox(height: 5),
+          SelectableText(
+            context.l10n.agentUserTarget(status.userTarget!.path),
+            style: const TextStyle(
+              fontFamily: SkillsTokens.monoFamily,
+              fontSize: 11,
+              color: SkillsTokens.textTertiary,
+            ),
+          ),
+        ],
+      ],
+    ),
   );
 }
 

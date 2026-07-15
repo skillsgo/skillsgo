@@ -564,6 +564,41 @@ class AppLocalizationsEn extends AppLocalizations {
   String get detectAgain => 'Detect again';
 
   @override
+  String get agentInstalled => 'Installed';
+
+  @override
+  String get agentSupported => 'Supported';
+
+  @override
+  String agentCatalogSummary(int installed, int supported) {
+    return '$installed installed · $supported supported';
+  }
+
+  @override
+  String get agentDetectedDescription =>
+      'Agent installation detected. Skills can target its supported scopes.';
+
+  @override
+  String get agentSupportedDescription =>
+      'Supported, but no installation signal was found. Install the Agent or use a project target.';
+
+  @override
+  String agentUserTarget(String path) {
+    return 'User target: $path';
+  }
+
+  @override
+  String get agentInspectionFailed =>
+      'Agent detection data is unavailable. Run detection again.';
+
+  @override
+  String get noInstalledAgentsTitle => 'No installed Agents detected';
+
+  @override
+  String get noInstalledAgentsMessage =>
+      'You can keep browsing this Skill, but there is no installation target yet. Install a supported Agent, then run detection again.';
+
+  @override
   String get clearCustomPath => 'Clear custom path';
 
   @override

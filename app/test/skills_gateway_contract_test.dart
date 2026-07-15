@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings persistence, discovery, auditable detail identity/file/risk parsing, local targets, typed failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings, discovery/detail parsing, strict Agent machine contracts, local targets, typed failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -537,6 +537,69 @@ void main() {
     );
 
     await expectLater(gateway.listInstalled(), throwsA(isA<SkillsException>()));
+  });
+
+  test(
+    'inspectAgents parses complete versioned JSON and preserves a hostile CLI path',
+    () async {
+      final runner = _FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              r'{"schemaVersion":1,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["project","user"],"userTarget":{"path":"/Users/test/.codex/skills;$(touch nope)","exists":true}},{"id":"eve","displayName":"Eve","installed":false,"supportedScopes":["project"],"userTarget":null}]}',
+          stderr: '',
+        );
+      const executable = r'/tmp/skillsgo bin;$(touch should-not-run)';
+      final gateway = RealSkillsGateway(
+        httpClient: MockClient((_) async => http.Response('{}', 200)),
+        processRunner: runner,
+        initialCliPath: executable,
+      );
+
+      final report = await gateway.inspectAgents();
+
+      expect(report.schemaVersion, 1);
+      expect(report.agents, hasLength(2));
+      expect(report.installed.single.id, 'codex');
+      expect(report.agents.first.displayName, 'Codex');
+      expect(report.agents.first.supportedScopes, [
+        InstallationScope.project,
+        InstallationScope.user,
+      ]);
+      expect(
+        report.agents.first.userTarget?.path,
+        r'/Users/test/.codex/skills;$(touch nope)',
+      );
+      expect(runner.calls.single.executable, executable);
+      expect(runner.calls.single.arguments, ['agents', '--output', 'json']);
+    },
+  );
+
+  test('inspectAgents rejects malformed machine schemas', () async {
+    for (final body in [
+      '{"schemaVersion":2,"agents":[]}',
+      '{"schemaVersion":1,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["machine"],"userTarget":null}]}',
+      '{"schemaVersion":1,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["user"],"userTarget":null}]}',
+      '{"schemaVersion":1,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["project"],"userTarget":{"path":"/tmp","exists":true}}]}',
+      '{"schemaVersion":1,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["project"],"userTarget":null},{"id":"codex","displayName":"Duplicate","installed":false,"supportedScopes":["project"],"userTarget":null}]}',
+    ]) {
+      final gateway = RealSkillsGateway(
+        processRunner: _FakeProcessRunner()
+          ..result = ProcessOutput(exitCode: 0, stdout: body, stderr: ''),
+        initialCliPath: '/usr/local/bin/skillsgo',
+      );
+
+      await expectLater(
+        gateway.inspectAgents(),
+        throwsA(
+          isA<SkillsException>().having(
+            (error) => error.kind,
+            'kind',
+            SkillsFailureKind.invalidResponse,
+          ),
+        ),
+      );
+    }
   });
 
   test('search rejects non-2xx, invalid JSON and missing fields', () async {

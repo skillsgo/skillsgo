@@ -535,6 +535,39 @@ class AppLocalizationsZh extends AppLocalizations {
   String get detectAgain => '重新检测';
 
   @override
+  String get agentInstalled => '已安装';
+
+  @override
+  String get agentSupported => '已支持';
+
+  @override
+  String agentCatalogSummary(int installed, int supported) {
+    return '已安装 $installed 个 · 支持 $supported 个';
+  }
+
+  @override
+  String get agentDetectedDescription => '已检测到 Agent，可在其支持的范围内安装技能。';
+
+  @override
+  String get agentSupportedDescription =>
+      'SkillsGo 已支持，但尚未检测到安装。请先安装该 Agent，或使用项目级目标。';
+
+  @override
+  String agentUserTarget(String path) {
+    return '用户级目标：$path';
+  }
+
+  @override
+  String get agentInspectionFailed => 'Agent 检测数据不可用，请重新检测。';
+
+  @override
+  String get noInstalledAgentsTitle => '未检测到已安装的 Agent';
+
+  @override
+  String get noInstalledAgentsMessage =>
+      '你仍可继续浏览该技能，但当前没有可用安装目标。请先安装一个受支持的 Agent，然后重新检测。';
+
+  @override
   String get clearCustomPath => '清除自定义路径';
 
   @override
