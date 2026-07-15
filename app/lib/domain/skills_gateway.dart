@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, unified Library entries/targets, explicit Installation and Update Plans/progress/results, project references, Agent inspection, CLI, Registry settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, unified Library entries/targets, explicit Installation, Update, and Target Management Plans/progress/results, project references, Agent inspection, CLI, Registry settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -51,6 +51,10 @@ enum InstallationProgressState { started, finished }
 enum UpdatePlanAction { update, current, pinned, failed }
 
 enum UpdateTargetOutcome { succeeded, skipped, failed }
+
+enum TargetManagementAction { remove, repair, stopManaging }
+
+enum TargetManagementOutcome { succeeded, failed }
 
 enum ReceiptState { present, missing, invalid }
 
@@ -607,6 +611,163 @@ class UpdateTargetProgress {
   final UpdateTargetResult? result;
 }
 
+class TargetManagementPlanItem {
+  const TargetManagementPlanItem({
+    required this.target,
+    required this.name,
+    required this.coordinate,
+    required this.version,
+    required this.health,
+    required this.receiptState,
+    required this.allowedActions,
+    required this.stateToken,
+    required this.workspaceMetadataChange,
+    this.action,
+    this.diagnostic = '',
+    this.affectedBindings = const [],
+  });
+
+  final InstallationPlanTarget target;
+  final String name;
+  final String coordinate;
+  final String version;
+  final InstallationHealth health;
+  final ReceiptState receiptState;
+  final List<TargetManagementAction> allowedActions;
+  final TargetManagementAction? action;
+  final String stateToken;
+  final bool workspaceMetadataChange;
+  final String diagnostic;
+  final List<InstallationPlanTarget> affectedBindings;
+
+  TargetManagementPlanItem select(TargetManagementAction selectedAction) =>
+      TargetManagementPlanItem(
+        target: target,
+        name: name,
+        coordinate: coordinate,
+        version: version,
+        health: health,
+        receiptState: receiptState,
+        allowedActions: allowedActions,
+        action: selectedAction,
+        stateToken: stateToken,
+        workspaceMetadataChange: workspaceMetadataChange,
+        diagnostic: diagnostic,
+        affectedBindings: affectedBindings,
+      );
+}
+
+class TargetManagementPlanSummary {
+  const TargetManagementPlanSummary({
+    required this.removable,
+    required this.repairable,
+    required this.stoppable,
+  });
+
+  final int removable;
+  final int repairable;
+  final int stoppable;
+}
+
+class TargetManagementPlan {
+  const TargetManagementPlan({required this.targets, required this.summary});
+
+  final List<TargetManagementPlanItem> targets;
+  final TargetManagementPlanSummary summary;
+
+  TargetManagementPlan selectActions(
+    Map<String, TargetManagementAction> actions,
+  ) {
+    final selected = <TargetManagementPlanItem>[];
+    for (final item in targets) {
+      final action = actions[updateTargetKey(item.target)];
+      if (action == null) continue;
+      if (!item.allowedActions.contains(action)) {
+        throw ArgumentError.value(action, 'actions', 'Action is not allowed.');
+      }
+      selected.add(item.select(action));
+    }
+    return TargetManagementPlan(
+      targets: List.unmodifiable(selected),
+      summary: TargetManagementPlanSummary(
+        removable: selected
+            .where((item) => item.action == TargetManagementAction.remove)
+            .length,
+        repairable: selected
+            .where((item) => item.action == TargetManagementAction.repair)
+            .length,
+        stoppable: selected
+            .where((item) => item.action == TargetManagementAction.stopManaging)
+            .length,
+      ),
+    );
+  }
+}
+
+class TargetManagementResult {
+  const TargetManagementResult({
+    required this.target,
+    required this.name,
+    required this.coordinate,
+    required this.version,
+    required this.action,
+    required this.outcome,
+    this.errorCode = '',
+    this.diagnostic = '',
+  });
+
+  final InstallationPlanTarget target;
+  final String name;
+  final String coordinate;
+  final String version;
+  final TargetManagementAction action;
+  final TargetManagementOutcome outcome;
+  final String errorCode;
+  final String diagnostic;
+}
+
+class TargetManagementExecutionSummary {
+  const TargetManagementExecutionSummary({
+    required this.succeeded,
+    required this.failed,
+  });
+
+  final int succeeded;
+  final int failed;
+}
+
+class TargetManagementExecution {
+  const TargetManagementExecution({
+    required this.results,
+    required this.summary,
+  });
+
+  final List<TargetManagementResult> results;
+  final TargetManagementExecutionSummary summary;
+}
+
+class TargetManagementProgress {
+  const TargetManagementProgress({
+    required this.sequence,
+    required this.target,
+    required this.name,
+    required this.coordinate,
+    required this.version,
+    required this.action,
+    required this.state,
+    this.result,
+  });
+
+  final int sequence;
+  final InstallationPlanTarget target;
+  final String name;
+  final String coordinate;
+  final String version;
+  final TargetManagementAction action;
+  final InstallationProgressState state;
+  final TargetManagementResult? result;
+}
+
 class AgentUserTarget {
   const AgentUserTarget({required this.path, required this.exists});
 
@@ -884,7 +1045,14 @@ abstract interface class SkillsGateway {
     void Function(InstallationTargetProgress progress)? onProgress,
   });
   Future<CommandResult> install(SkillSummary skill);
-  Future<CommandResult> remove(InstalledSkill skill);
+  Future<TargetManagementPlan> preflightTargetManagement(
+    InstalledSkill skill,
+    List<SkillInstallationTarget> targets,
+  );
+  Future<TargetManagementExecution> executeTargetManagement(
+    TargetManagementPlan plan, {
+    void Function(TargetManagementProgress progress)? onProgress,
+  });
   Future<UpdatePlan> preflightUpdate(
     InstalledSkill skill,
     List<SkillInstallationTarget> targets,

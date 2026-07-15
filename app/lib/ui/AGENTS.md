@@ -3,7 +3,7 @@
 
 ## Members
 
-- `app_shell.dart`: renders the desktop shell and stateful Discover collections, explicit shadcn_ui Installation and Update Plans with target selection/progress/failed-only retry, searchable managed/external multi-target Library/detail, project and Agent views, operations, and Settings journeys.
+- `app_shell.dart`: renders the desktop shell and stateful Discover collections, explicit shadcn_ui Installation, Update, and Target Management Plans with exact-target selection, progress, recovery actions, and results; searchable managed/external multi-target Library/detail; project and Agent views; operations; and Settings journeys.
 - `brand.dart`: composes shadcn_ui primitives with reusable SkillsGo tokens, discovery cards, trust/risk indicators, fields, status elements, and empty states.
 - `nested_navigation.dart`: renders the shared accessible side rail, selected capsule motion, and desktop rail/content layout.
 

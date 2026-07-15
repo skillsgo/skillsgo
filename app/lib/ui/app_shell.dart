@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsGo brand tokens.
- * [OUTPUT]: Provides the desktop shell plus persistent Discover, shadcn_ui Installation/Update Plan target selection, preflight, live progress, state-refreshed partial-result retry, managed/external Library/detail, project and Agent views, operations, and Settings journeys.
+ * [OUTPUT]: Provides the desktop shell plus persistent Discover, shadcn_ui Installation/Update/Target Management Plan selection, preflight, live progress, recovery actions, state-refreshed partial-result retry, managed/external Library/detail, project and Agent views, operations, and Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -2654,6 +2654,376 @@ String _shortIdentity(String value) {
   return normalized.length <= 12 ? normalized : normalized.substring(0, 12);
 }
 
+class _TargetManagementDialog extends StatefulWidget {
+  const _TargetManagementDialog({required this.gateway, required this.plan});
+
+  final SkillsGateway gateway;
+  final TargetManagementPlan plan;
+
+  @override
+  State<_TargetManagementDialog> createState() =>
+      _TargetManagementDialogState();
+}
+
+class _TargetManagementDialogState extends State<_TargetManagementDialog> {
+  final selectedActions = <String, TargetManagementAction>{};
+  final progress = <String, TargetManagementProgress>{};
+  TargetManagementExecution? execution;
+  Object? error;
+  bool operating = false;
+
+  TargetManagementPlan get selectedPlan =>
+      widget.plan.selectActions(selectedActions);
+
+  int get finishedCount => progress.values
+      .where((event) => event.state == InstallationProgressState.finished)
+      .length;
+
+  void _selectAction(
+    TargetManagementPlanItem item,
+    TargetManagementAction action,
+  ) {
+    setState(() {
+      final key = updateTargetKey(item.target);
+      if (selectedActions[key] == action) {
+        selectedActions.remove(key);
+        if (action == TargetManagementAction.repair) {
+          for (final binding in item.affectedBindings) {
+            selectedActions.remove(updateTargetKey(binding));
+          }
+        }
+        return;
+      }
+      final bindings = action == TargetManagementAction.repair
+          ? item.affectedBindings
+          : const <InstallationPlanTarget>[];
+      if (bindings.isEmpty) {
+        selectedActions[key] = action;
+      } else {
+        for (final binding in bindings) {
+          selectedActions[updateTargetKey(binding)] = action;
+        }
+      }
+    });
+  }
+
+  Future<void> _execute() async {
+    final plan = selectedPlan;
+    if (plan.targets.isEmpty || operating) return;
+    setState(() {
+      operating = true;
+      error = null;
+      progress.clear();
+    });
+    try {
+      final next = await widget.gateway.executeTargetManagement(
+        plan,
+        onProgress: (event) {
+          if (!mounted) return;
+          setState(() => progress[updateTargetKey(event.target)] = event);
+        },
+      );
+      if (mounted) setState(() => execution = next);
+    } catch (caught) {
+      if (mounted) setState(() => error = caught);
+    } finally {
+      if (mounted) setState(() => operating = false);
+    }
+  }
+
+  Widget _applyButton(BuildContext context) {
+    final enabled = !operating && selectedActions.isNotEmpty;
+    final child = Text(context.l10n.applyTargetActions);
+    final destructive = selectedActions.values.any(
+      (action) => action != TargetManagementAction.repair,
+    );
+    if (destructive) {
+      return ShadButton.destructive(
+        enabled: enabled,
+        onPressed: _execute,
+        child: child,
+      );
+    }
+    return ShadButton(enabled: enabled, onPressed: _execute, child: child);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final result = execution;
+    return ShadDialog(
+      constraints: const BoxConstraints(maxWidth: 860, maxHeight: 740),
+      title: Text(
+        operating
+            ? context.l10n.managementProgressTitle
+            : result == null
+            ? context.l10n.manageTargetsTitle
+            : context.l10n.managementResultsTitle,
+      ),
+      description: Text(
+        result == null
+            ? context.l10n.manageTargetsDescription
+            : context.l10n.managementResultSummary(
+                result.summary.succeeded,
+                result.summary.failed,
+              ),
+      ),
+      actions: [
+        if (result == null) ...[
+          ShadButton.outline(
+            enabled: !operating,
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.cancel),
+          ),
+          _applyButton(context),
+        ] else
+          ShadButton(
+            onPressed: () => Navigator.pop(context, result),
+            child: Text(context.l10n.closeUpdatePlan),
+          ),
+      ],
+      child: SizedBox(
+        height: 530,
+        child: result == null ? _selection() : _results(result),
+      ),
+    );
+  }
+
+  Widget _selection() {
+    final plan = selectedPlan;
+    final changesWorkspace = plan.targets.any(
+      (item) =>
+          item.workspaceMetadataChange &&
+          item.action != TargetManagementAction.repair,
+    );
+    final preservesContent = plan.targets.any(
+      (item) => item.action == TargetManagementAction.stopManaging,
+    );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ShadCard(
+          width: double.infinity,
+          title: Text(
+            context.l10n.targetActionsSelected(
+              selectedActions.length,
+              widget.plan.targets.length,
+            ),
+          ),
+          description: Text(context.l10n.manageTargetsDescription),
+          footer: operating
+              ? ShadProgress(
+                  value: plan.targets.isEmpty
+                      ? 0
+                      : finishedCount / plan.targets.length,
+                  semanticsLabel: context.l10n.managementProgressTitle,
+                )
+              : null,
+        ),
+        if (error != null) ...[
+          const SizedBox(height: 10),
+          Text(
+            _failureCopy(context, error!).message,
+            style: const TextStyle(color: SkillsTokens.red),
+          ),
+        ],
+        const SizedBox(height: 12),
+        Expanded(
+          child: GlassCard(
+            child: ListView.separated(
+              itemCount: widget.plan.targets.length,
+              separatorBuilder: (_, _) =>
+                  const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+              itemBuilder: (context, index) {
+                final item = widget.plan.targets[index];
+                final key = updateTargetKey(item.target);
+                final selected = selectedActions[key];
+                final removable =
+                    item.allowedActions.length == 1 &&
+                    item.allowedActions.single == TargetManagementAction.remove;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _targetLabel(context, item.target),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              item.target.path,
+                              style: const TextStyle(
+                                color: SkillsTokens.textSecondary,
+                                fontFamily: SkillsTokens.monoFamily,
+                                fontSize: 11,
+                              ),
+                            ),
+                            if (item.diagnostic.isNotEmpty) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                item.diagnostic,
+                                style: const TextStyle(
+                                  color: SkillsTokens.amber,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                            if (item.allowedActions.contains(
+                              TargetManagementAction.stopManaging,
+                            )) ...[
+                              const SizedBox(height: 3),
+                              Text(
+                                context.l10n.stopManagingDescription,
+                                style: const TextStyle(
+                                  color: SkillsTokens.textSecondary,
+                                  fontSize: 11,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      _installationHealthChip(context, item.health),
+                      const SizedBox(width: 10),
+                      if (removable)
+                        ShadCheckbox(
+                          value: selected == TargetManagementAction.remove,
+                          enabled: !operating,
+                          onChanged: (_) => _selectAction(
+                            item,
+                            TargetManagementAction.remove,
+                          ),
+                          label: Text(context.l10n.remove),
+                        )
+                      else
+                        Wrap(
+                          spacing: 7,
+                          children: [
+                            if (item.allowedActions.contains(
+                              TargetManagementAction.repair,
+                            ))
+                              ShadButton.outline(
+                                size: ShadButtonSize.sm,
+                                enabled: !operating,
+                                backgroundColor:
+                                    selected == TargetManagementAction.repair
+                                    ? SkillsTokens.cardHover
+                                    : null,
+                                onPressed: () => _selectAction(
+                                  item,
+                                  TargetManagementAction.repair,
+                                ),
+                                child: Text(context.l10n.repairTarget),
+                              ),
+                            if (item.allowedActions.contains(
+                              TargetManagementAction.stopManaging,
+                            ))
+                              ShadButton.outline(
+                                size: ShadButtonSize.sm,
+                                enabled: !operating,
+                                backgroundColor:
+                                    selected ==
+                                        TargetManagementAction.stopManaging
+                                    ? SkillsTokens.cardHover
+                                    : null,
+                                onPressed: () => _selectAction(
+                                  item,
+                                  TargetManagementAction.stopManaging,
+                                ),
+                                child: Text(context.l10n.stopManaging),
+                              ),
+                          ],
+                        ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        if (changesWorkspace) ...[
+          const SizedBox(height: 10),
+          Text(
+            context.l10n.workspaceOwnershipChanges,
+            style: const TextStyle(
+              color: SkillsTokens.textSecondary,
+              fontSize: 12,
+            ),
+          ),
+        ],
+        if (preservesContent) ...[
+          const SizedBox(height: 6),
+          Text(
+            context.l10n.targetContentPreserved,
+            style: const TextStyle(color: SkillsTokens.teal, fontSize: 12),
+          ),
+        ],
+      ],
+    );
+  }
+
+  Widget _results(TargetManagementExecution execution) => GlassCard(
+    child: ListView.separated(
+      itemCount: execution.results.length,
+      separatorBuilder: (_, _) =>
+          const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+      itemBuilder: (context, index) {
+        final result = execution.results[index];
+        final failed = result.outcome == TargetManagementOutcome.failed;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          child: Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _targetLabel(context, result.target),
+                      style: const TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      _managementActionLabel(context, result.action),
+                      style: const TextStyle(color: SkillsTokens.textSecondary),
+                    ),
+                    if (result.diagnostic.isNotEmpty)
+                      Text(
+                        result.diagnostic,
+                        style: const TextStyle(color: SkillsTokens.red),
+                      ),
+                  ],
+                ),
+              ),
+              StatusChip(
+                label: failed
+                    ? context.l10n.targetFailed
+                    : context.l10n.targetSucceeded,
+                color: failed ? SkillsTokens.red : SkillsTokens.green,
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
+}
+
+String _managementActionLabel(
+  BuildContext context,
+  TargetManagementAction action,
+) => switch (action) {
+  TargetManagementAction.remove => context.l10n.remove,
+  TargetManagementAction.repair => context.l10n.repairTarget,
+  TargetManagementAction.stopManaging => context.l10n.stopManaging,
+};
+
 class _UpdatePlanDialog extends StatefulWidget {
   const _UpdatePlanDialog({
     required this.gateway,
@@ -3394,28 +3764,29 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (mounted) setState(() => operatingSkills.remove(skill.name));
   }
 
-  Future<void> remove(InstalledSkill skill) async {
+  Future<void> manage(InstalledSkill skill) async {
     if (operatingSkills.contains(skill.name)) return;
-    final confirmed = await _confirmCommand(
-      context,
-      title: context.l10n.removeTitle(skill.name),
-      description: context.l10n.removeDescription,
-      facts: [
-        context.l10n.skillFact(skill.name),
-        context.l10n.scopeGlobal,
-        context.l10n.agentImpactCodex,
-      ],
-      confirmLabel: context.l10n.removeSkill,
-      destructive: true,
-    );
-    if (!confirmed || !mounted) return;
     setState(() => operatingSkills.add(skill.name));
+    setState(() => result = null);
     try {
-      result = await widget.gateway.remove(skill);
+      final plan = await widget.gateway.preflightTargetManagement(
+        skill,
+        skill.targets,
+      );
+      if (!mounted) return;
+      final execution = await showShadDialog<TargetManagementExecution>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) =>
+            _TargetManagementDialog(gateway: widget.gateway, plan: plan),
+      );
+      if (execution != null && execution.summary.succeeded > 0) {
+        await load();
+        await checkUpdates();
+      }
     } catch (caught) {
       result = _exceptionResult(caught);
     }
-    if (result!.succeeded) await load();
     if (mounted) setState(() => operatingSkills.remove(skill.name));
   }
 
@@ -3793,12 +4164,23 @@ class _LibraryScreenState extends State<LibraryScreen> {
               ],
               if (skill.provenance != LibraryProvenance.external) ...[
                 const SizedBox(width: 8),
-                IconButton(
-                  tooltip: context.l10n.removeNamed(skill.name),
-                  onPressed: operating ? null : () => remove(skill),
-                  icon: const Icon(
-                    Icons.delete_outline,
-                    color: SkillsTokens.textSecondary,
+                Tooltip(
+                  message: context.l10n.manageTargets,
+                  child: Semantics(
+                    label: context.l10n.manageTargets,
+                    button: true,
+                    child: ShadButton.ghost(
+                      width: 38,
+                      height: 38,
+                      padding: EdgeInsets.zero,
+                      enabled: !operating,
+                      onPressed: () => manage(skill),
+                      child: const Icon(
+                        Icons.tune,
+                        size: 18,
+                        color: SkillsTokens.textSecondary,
+                      ),
+                    ),
                   ),
                 ),
               ],
@@ -3827,7 +4209,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
   SkillDetail? detail;
   Object? error;
   String? selectedFilePath;
-  bool removing = false;
+  bool managing = false;
   bool updating = false;
   CommandResult? result;
   @override
@@ -3850,29 +4232,42 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
     if (mounted) setState(() {});
   }
 
-  Future<void> remove() async {
-    final confirmed = await _confirmCommand(
-      context,
-      title: context.l10n.removeTitle(skill.name),
-      description: context.l10n.removeDescription,
-      facts: [
-        context.l10n.skillFact(skill.name),
-        context.l10n.scopeGlobal,
-        context.l10n.agentImpactCodex,
-      ],
-      confirmLabel: context.l10n.removeSkill,
-      destructive: true,
-    );
-    if (!confirmed || !mounted) return;
-    setState(() => removing = true);
+  Future<void> manage() async {
+    if (managing || skill.provenance == LibraryProvenance.external) return;
+    setState(() {
+      managing = true;
+      result = null;
+    });
     try {
-      result = await widget.gateway.remove(skill);
+      final plan = await widget.gateway.preflightTargetManagement(
+        skill,
+        skill.targets,
+      );
+      if (!mounted) return;
+      final execution = await showShadDialog<TargetManagementExecution>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) =>
+            _TargetManagementDialog(gateway: widget.gateway, plan: plan),
+      );
+      if (execution != null && execution.summary.succeeded > 0) {
+        final projects = await widget.gateway.loadAddedProjects();
+        final entries = await widget.gateway.listInstalled(projects: projects);
+        final refreshed = entries.where(
+          (entry) => entry.identity == skill.identity,
+        );
+        if (!mounted) return;
+        if (refreshed.isEmpty) {
+          Navigator.pop(context, true);
+          return;
+        }
+        skill = refreshed.first;
+        await load();
+      }
     } catch (caught) {
       result = _exceptionResult(caught);
     }
-    if (!mounted) return;
-    setState(() => removing = false);
-    if (result!.succeeded) Navigator.pop(context, true);
+    if (mounted) setState(() => managing = false);
   }
 
   Future<void> update() async {
@@ -3965,14 +4360,14 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
                     SecondaryCapsuleButton(
                       label: context.l10n.update,
                       icon: Icons.sync,
-                      onPressed: updating || removing ? null : update,
+                      onPressed: updating || managing ? null : update,
                     ),
                     const SizedBox(width: 8),
                   ],
                   SecondaryCapsuleButton(
-                    label: context.l10n.remove,
-                    icon: Icons.delete_outline,
-                    onPressed: removing || updating ? null : remove,
+                    label: context.l10n.manageTargets,
+                    icon: Icons.tune,
+                    onPressed: managing || updating ? null : manage,
                   ),
                 ],
               ],

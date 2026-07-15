@@ -1,0 +1,537 @@
+/*
+ * [INPUT]: Depends on explicit target identities, unified inventory health, managed receipts, immutable Store entries, Agent adapters, and Workspace metadata.
+ * [OUTPUT]: Provides strict Target Management Plan preflight, state-bound Remove/Repair/Stop Managing execution, and structured per-target progress/results.
+ * [POS]: Serves as the cleanup and recovery orchestration domain between the public manage command and install/project boundaries.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+package managementplan
+
+import (
+	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
+	"encoding/json"
+	"errors"
+	"fmt"
+	"io"
+	"os"
+	"path/filepath"
+
+	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	"github.com/skillsgo/skillsgo/cli/internal/install"
+	"github.com/skillsgo/skillsgo/cli/internal/inventory"
+	"github.com/skillsgo/skillsgo/cli/internal/project"
+	"github.com/skillsgo/skillsgo/cli/internal/source"
+	"github.com/skillsgo/skillsgo/cli/internal/store"
+)
+
+const SchemaVersion = 1
+
+type Action string
+type Outcome string
+type ProgressState string
+
+const (
+	ActionRemove       Action = "remove"
+	ActionRepair       Action = "repair"
+	ActionStopManaging Action = "stop-managing"
+
+	OutcomeSucceeded Outcome = "succeeded"
+	OutcomeFailed    Outcome = "failed"
+
+	ProgressStarted  ProgressState = "started"
+	ProgressFinished ProgressState = "finished"
+)
+
+type TargetRequest struct {
+	Scope       install.Scope `json:"scope"`
+	ProjectRoot string        `json:"projectRoot,omitempty"`
+	Agent       string        `json:"agent"`
+	Mode        install.Mode  `json:"mode"`
+	Path        string        `json:"path"`
+	Coordinate  string        `json:"coordinate"`
+	Version     string        `json:"version"`
+	Action      Action        `json:"action,omitempty"`
+	StateToken  string        `json:"stateToken,omitempty"`
+}
+
+type Target struct {
+	Scope       install.Scope `json:"scope"`
+	ProjectRoot string        `json:"projectRoot,omitempty"`
+	Agent       string        `json:"agent"`
+	Mode        install.Mode  `json:"mode"`
+	Path        string        `json:"path"`
+}
+
+type Item struct {
+	Target                  Target                 `json:"target"`
+	Name                    string                 `json:"name"`
+	Coordinate              string                 `json:"coordinate"`
+	Version                 string                 `json:"version"`
+	Health                  inventory.Health       `json:"health"`
+	ReceiptState            inventory.ReceiptState `json:"receiptState"`
+	AllowedActions          []Action               `json:"allowedActions"`
+	Action                  Action                 `json:"action,omitempty"`
+	StateToken              string                 `json:"stateToken"`
+	WorkspaceMetadataChange bool                   `json:"workspaceMetadataChange"`
+	Diagnostic              string                 `json:"diagnostic,omitempty"`
+	AffectedBindings        []Target               `json:"affectedBindings,omitempty"`
+	installation            *install.Installation
+}
+
+type Summary struct {
+	Removable  int `json:"removable"`
+	Repairable int `json:"repairable"`
+	Stoppable  int `json:"stoppable"`
+}
+
+type Preflight struct {
+	SchemaVersion int     `json:"schemaVersion"`
+	Phase         string  `json:"phase"`
+	Targets       []Item  `json:"targets"`
+	Summary       Summary `json:"summary"`
+}
+
+type Result struct {
+	Target     Target  `json:"target"`
+	Name       string  `json:"name"`
+	Coordinate string  `json:"coordinate"`
+	Version    string  `json:"version"`
+	Action     Action  `json:"action"`
+	Outcome    Outcome `json:"outcome"`
+	ErrorCode  string  `json:"errorCode,omitempty"`
+	Diagnostic string  `json:"diagnostic,omitempty"`
+}
+
+type ResultSummary struct {
+	Succeeded int `json:"succeeded"`
+	Failed    int `json:"failed"`
+}
+
+type Execution struct {
+	SchemaVersion int           `json:"schemaVersion"`
+	Phase         string        `json:"phase"`
+	Results       []Result      `json:"results"`
+	Summary       ResultSummary `json:"summary"`
+}
+
+type Progress struct {
+	SchemaVersion int           `json:"schemaVersion"`
+	Phase         string        `json:"phase"`
+	Sequence      int           `json:"sequence"`
+	Target        Target        `json:"target"`
+	Name          string        `json:"name"`
+	Coordinate    string        `json:"coordinate"`
+	Version       string        `json:"version"`
+	Action        Action        `json:"action"`
+	State         ProgressState `json:"state"`
+	Result        *Result       `json:"result,omitempty"`
+}
+
+func DecodeTargets(values []string) ([]TargetRequest, error) {
+	requests := make([]TargetRequest, 0, len(values))
+	for index, value := range values {
+		decoder := json.NewDecoder(bytes.NewBufferString(value))
+		decoder.DisallowUnknownFields()
+		var request TargetRequest
+		if err := decoder.Decode(&request); err != nil {
+			return nil, fmt.Errorf("invalid management target %d: %w", index+1, err)
+		}
+		if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("invalid management target %d: expected one JSON object", index+1)
+		}
+		if err := validateRequest(request); err != nil {
+			return nil, fmt.Errorf("invalid management target %d: %w", index+1, err)
+		}
+		requests = append(requests, request)
+	}
+	if len(requests) == 0 {
+		return nil, fmt.Errorf("a Target Management Plan requires at least one explicit target")
+	}
+	return requests, nil
+}
+
+func validateRequest(request TargetRequest) error {
+	if request.Scope != install.ScopeUser && request.Scope != install.ScopeProject {
+		return fmt.Errorf("unsupported scope %q", request.Scope)
+	}
+	if request.Scope == install.ScopeProject && request.ProjectRoot == "" {
+		return fmt.Errorf("projectRoot is required for project scope")
+	}
+	if request.Scope == install.ScopeUser && request.ProjectRoot != "" {
+		return fmt.Errorf("projectRoot is not valid for user scope")
+	}
+	if request.Agent == "" || request.Path == "" {
+		return fmt.Errorf("agent and path are required")
+	}
+	if request.Mode != install.ModeCopy && request.Mode != install.ModeSymlink {
+		return fmt.Errorf("unsupported mode %q", request.Mode)
+	}
+	if err := source.ValidateCoordinate(request.Coordinate); err != nil {
+		return err
+	}
+	if err := source.ValidateVersion(request.Version); err != nil {
+		return err
+	}
+	if request.Action != "" && request.Action != ActionRemove && request.Action != ActionRepair && request.Action != ActionStopManaging {
+		return fmt.Errorf("unsupported action %q", request.Action)
+	}
+	if request.Action != "" && request.StateToken == "" {
+		return fmt.Errorf("stateToken is required with action")
+	}
+	if request.Action == "" && request.StateToken != "" {
+		return fmt.Errorf("stateToken requires action")
+	}
+	return nil
+}
+
+func Build(catalog *agent.Catalog, storage store.Store, requests []TargetRequest) (Preflight, error) {
+	projects := make([]string, 0)
+	seenProjects := map[string]bool{}
+	for _, request := range requests {
+		if request.Scope == install.ScopeProject {
+			root := filepath.Clean(request.ProjectRoot)
+			if !seenProjects[root] {
+				seenProjects[root] = true
+				projects = append(projects, root)
+			}
+		}
+	}
+	report, err := inventory.Build(inventory.Options{IncludeUser: true, Projects: projects, Catalog: catalog})
+	if err != nil {
+		return Preflight{}, err
+	}
+	installations, err := install.ListInstallations(storage.Root, install.InventoryFilter{})
+	if err != nil {
+		return Preflight{}, err
+	}
+	preflight := Preflight{SchemaVersion: SchemaVersion, Phase: "management-preflight", Targets: make([]Item, 0, len(requests))}
+	seen := map[string]bool{}
+	for _, request := range requests {
+		key := targetKey(request.Scope, request.ProjectRoot, request.Agent, request.Mode, request.Path)
+		if seen[key] {
+			return Preflight{}, fmt.Errorf("duplicate Target Management target for %s", request.Agent)
+		}
+		seen[key] = true
+		entry, target, err := findInventoryTarget(report, request)
+		if err != nil {
+			return Preflight{}, err
+		}
+		if entry.Provenance == inventory.ProvenanceExternal {
+			return Preflight{}, fmt.Errorf("External Installations must be adopted before management")
+		}
+		item := Item{
+			Target: Target{Scope: request.Scope, ProjectRoot: request.ProjectRoot, Agent: request.Agent, Mode: request.Mode, Path: request.Path},
+			Name:   entry.Name, Coordinate: entry.Coordinate, Version: target.Version,
+			Health: target.Health, ReceiptState: target.ReceiptState,
+			WorkspaceMetadataChange: request.Scope == install.ScopeProject,
+		}
+		if target.ReceiptState == inventory.ReceiptPresent {
+			installation, found := findInstallation(installations, request)
+			if !found {
+				return Preflight{}, fmt.Errorf("managed Installation receipt not found for %s", request.Path)
+			}
+			item.installation = &installation
+		}
+		item.AllowedActions, item.Diagnostic = allowedActions(storage, item)
+		item.StateToken, err = managementStateToken(item)
+		if err != nil {
+			return Preflight{}, err
+		}
+		if request.Action != "" {
+			if !containsAction(item.AllowedActions, request.Action) {
+				return Preflight{}, fmt.Errorf("action %s is not allowed for target health %s", request.Action, item.Health)
+			}
+			if request.StateToken != item.StateToken {
+				return Preflight{}, fmt.Errorf("Target Management Plan state changed for %s", request.Path)
+			}
+			item.Action = request.Action
+		}
+		for _, action := range item.AllowedActions {
+			switch action {
+			case ActionRemove:
+				preflight.Summary.Removable++
+			case ActionRepair:
+				preflight.Summary.Repairable++
+			case ActionStopManaging:
+				preflight.Summary.Stoppable++
+			}
+		}
+		preflight.Targets = append(preflight.Targets, item)
+	}
+	attachAffectedBindings(preflight.Targets, report)
+	if err := validateSelectedRepairBindings(preflight.Targets); err != nil {
+		return Preflight{}, err
+	}
+	return preflight, nil
+}
+
+func findInventoryTarget(report inventory.Report, request TargetRequest) (inventory.Entry, inventory.Target, error) {
+	for _, entry := range report.Entries {
+		if entry.Coordinate != request.Coordinate {
+			continue
+		}
+		for _, target := range entry.Targets {
+			if target.Scope == request.Scope && target.Agent == request.Agent &&
+				install.Mode(target.Mode) == request.Mode && samePath(target.Path, request.Path) &&
+				target.Version == request.Version &&
+				(request.Scope != install.ScopeProject || samePath(target.ProjectRoot, request.ProjectRoot)) {
+				return entry, target, nil
+			}
+		}
+	}
+	return inventory.Entry{}, inventory.Target{}, fmt.Errorf("managed Installation Target not found: %s", request.Path)
+}
+
+func findInstallation(installations []install.Installation, request TargetRequest) (install.Installation, bool) {
+	for _, installation := range installations {
+		if installation.Coordinate == request.Coordinate && installation.Version == request.Version &&
+			installation.Target.Scope == request.Scope && installation.Target.Agent == request.Agent &&
+			installation.Target.Mode == request.Mode && samePath(installation.Target.Path, request.Path) {
+			return installation, true
+		}
+	}
+	return install.Installation{}, false
+}
+
+func allowedActions(storage store.Store, item Item) ([]Action, string) {
+	if item.Health == inventory.HealthHealthy && item.ReceiptState == inventory.ReceiptPresent {
+		return []Action{ActionRemove}, ""
+	}
+	actions := []Action{ActionStopManaging}
+	switch item.Health {
+	case inventory.HealthMissing, inventory.HealthReplaced, inventory.HealthLocalModification, inventory.HealthReceiptMissing:
+		if _, err := storage.Get(item.Coordinate, item.Version); err == nil {
+			actions = append([]Action{ActionRepair}, actions...)
+		} else {
+			return actions, "immutable Store artifact is unavailable; Stop Managing preserves the target content"
+		}
+	}
+	return actions, ""
+}
+
+func managementStateToken(item Item) (string, error) {
+	filesystem, err := install.TargetStateDigest(item.Target.Path)
+	if err != nil {
+		filesystem = "unreadable:" + err.Error()
+	}
+	receiptState := "missing"
+	if item.installation != nil {
+		receiptState, err = fileStateDigest(item.installation.ReceiptPath)
+		if err != nil {
+			return "", err
+		}
+	}
+	manifestState, lockState := "", ""
+	if item.Target.Scope == install.ScopeProject {
+		manifestState, err = fileStateDigest(filepath.Join(item.Target.ProjectRoot, "skillsgo.yaml"))
+		if err != nil {
+			return "", err
+		}
+		lockState, err = fileStateDigest(filepath.Join(item.Target.ProjectRoot, "skillsgo-lock.yaml"))
+		if err != nil {
+			return "", err
+		}
+	}
+	payload, err := json.Marshal(struct {
+		Version      int                    `json:"version"`
+		Name         string                 `json:"name"`
+		Coordinate   string                 `json:"coordinate"`
+		SkillVersion string                 `json:"skillVersion"`
+		Health       inventory.Health       `json:"health"`
+		Receipt      inventory.ReceiptState `json:"receiptState"`
+		Target       Target                 `json:"target"`
+		Filesystem   string                 `json:"filesystem"`
+		ReceiptFile  string                 `json:"receiptFile"`
+		Manifest     string                 `json:"manifest"`
+		Lock         string                 `json:"lock"`
+	}{1, item.Name, item.Coordinate, item.Version, item.Health, item.ReceiptState, item.Target, filesystem, receiptState, manifestState, lockState})
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(payload)
+	return "sha256:" + hex.EncodeToString(digest[:]), nil
+}
+
+func fileStateDigest(path string) (string, error) {
+	data, err := os.ReadFile(path)
+	if os.IsNotExist(err) {
+		return "missing", nil
+	}
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(data)
+	return "sha256:" + hex.EncodeToString(digest[:]), nil
+}
+
+func attachAffectedBindings(items []Item, report inventory.Report) {
+	for index := range items {
+		if !containsAction(items[index].AllowedActions, ActionRepair) {
+			continue
+		}
+		bindings := make([]Target, 0)
+		for _, entry := range report.Entries {
+			if entry.Coordinate != items[index].Coordinate {
+				continue
+			}
+			for _, candidate := range entry.Targets {
+				if candidate.Version == items[index].Version && samePath(candidate.Path, items[index].Target.Path) && candidate.Mode != inventory.TargetModeExternal {
+					bindings = append(bindings, Target{
+						Scope: candidate.Scope, ProjectRoot: candidate.ProjectRoot, Agent: candidate.Agent,
+						Mode: install.Mode(candidate.Mode), Path: candidate.Path,
+					})
+				}
+			}
+		}
+		if len(bindings) > 1 {
+			items[index].AffectedBindings = bindings
+		}
+	}
+}
+
+func validateSelectedRepairBindings(items []Item) error {
+	selected := map[string]Action{}
+	for _, item := range items {
+		selected[targetKey(item.Target.Scope, item.Target.ProjectRoot, item.Target.Agent, item.Target.Mode, item.Target.Path)] = item.Action
+	}
+	for _, item := range items {
+		if item.Action != ActionRepair || len(item.AffectedBindings) == 0 {
+			continue
+		}
+		for _, binding := range item.AffectedBindings {
+			if selected[targetKey(binding.Scope, binding.ProjectRoot, binding.Agent, binding.Mode, binding.Path)] != ActionRepair {
+				return fmt.Errorf("Repair for shared target %s requires every affected Agent binding", item.Target.Path)
+			}
+		}
+	}
+	return nil
+}
+
+func Execute(storage store.Store, preflight Preflight, report func(Progress)) Execution {
+	execution := Execution{SchemaVersion: SchemaVersion, Phase: "management-execution", Results: make([]Result, len(preflight.Targets))}
+	sequence := 0
+	emit := func(index int, state ProgressState) {
+		if report == nil {
+			return
+		}
+		sequence++
+		item := preflight.Targets[index]
+		event := Progress{SchemaVersion: SchemaVersion, Phase: "management-progress", Sequence: sequence, Target: item.Target, Name: item.Name, Coordinate: item.Coordinate, Version: item.Version, Action: item.Action, State: state}
+		if state == ProgressFinished {
+			result := execution.Results[index]
+			event.Result = &result
+		}
+		report(event)
+	}
+	repairGroups := map[string][]int{}
+	repairOrder := make([]string, 0)
+	for index, item := range preflight.Targets {
+		execution.Results[index] = Result{Target: item.Target, Name: item.Name, Coordinate: item.Coordinate, Version: item.Version, Action: item.Action}
+		if item.Action == ActionRepair {
+			key := filepath.Clean(item.Target.Path) + "\x00" + item.Coordinate + "\x00" + item.Version
+			if repairGroups[key] == nil {
+				repairOrder = append(repairOrder, key)
+			}
+			repairGroups[key] = append(repairGroups[key], index)
+			continue
+		}
+		emit(index, ProgressStarted)
+		err := executeMetadataAction(storage, item)
+		finishResult(&execution, index, err)
+		emit(index, ProgressFinished)
+	}
+	for _, key := range repairOrder {
+		indexes := repairGroups[key]
+		for _, index := range indexes {
+			emit(index, ProgressStarted)
+		}
+		first := preflight.Targets[indexes[0]]
+		entry, err := storage.Get(first.Coordinate, first.Version)
+		if err == nil {
+			previous := make([]install.Installation, 0, len(indexes))
+			targets := make([]install.Target, 0, len(indexes))
+			for _, index := range indexes {
+				item := preflight.Targets[index]
+				if item.installation != nil {
+					previous = append(previous, *item.installation)
+				}
+				targets = append(targets, install.Target{Agent: item.Target.Agent, Scope: item.Target.Scope, Mode: item.Target.Mode, Path: item.Target.Path})
+			}
+			err = install.ReplaceExplicit(entry, previous, targets)
+		}
+		for _, index := range indexes {
+			finishResult(&execution, index, err)
+			emit(index, ProgressFinished)
+		}
+	}
+	for _, result := range execution.Results {
+		if result.Outcome == OutcomeSucceeded {
+			execution.Summary.Succeeded++
+		} else {
+			execution.Summary.Failed++
+		}
+	}
+	return execution
+}
+
+func executeMetadataAction(storage store.Store, item Item) error {
+	switch item.Action {
+	case ActionRemove:
+		if item.installation == nil {
+			return fmt.Errorf("managed Installation receipt is missing")
+		}
+		if err := install.RemoveInstallations(storage.Root, []install.Installation{*item.installation}); err != nil {
+			return err
+		}
+		if item.Target.Scope == install.ScopeProject {
+			return project.RemoveBindings(item.Target.ProjectRoot, []install.Installation{*item.installation})
+		}
+		return nil
+	case ActionStopManaging:
+		binding := install.Installation{Name: item.Name, Coordinate: item.Coordinate, Version: item.Version, Target: install.Target{Agent: item.Target.Agent, Scope: item.Target.Scope, Mode: item.Target.Mode, Path: item.Target.Path}}
+		if item.Target.Scope == install.ScopeProject {
+			if err := project.RemoveBindings(item.Target.ProjectRoot, []install.Installation{binding}); err != nil {
+				return err
+			}
+		}
+		if item.installation != nil {
+			return install.ForgetInstallations([]install.Installation{*item.installation})
+		}
+		return nil
+	default:
+		return fmt.Errorf("unsupported management action %q", item.Action)
+	}
+}
+
+func finishResult(execution *Execution, index int, err error) {
+	if err == nil {
+		execution.Results[index].Outcome = OutcomeSucceeded
+		return
+	}
+	execution.Results[index].Outcome = OutcomeFailed
+	execution.Results[index].ErrorCode = "management-failed"
+	execution.Results[index].Diagnostic = err.Error()
+}
+
+func containsAction(values []Action, expected Action) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
+}
+
+func targetKey(scope install.Scope, projectRoot, agentID string, mode install.Mode, path string) string {
+	return string(scope) + "\x00" + filepath.Clean(projectRoot) + "\x00" + agentID + "\x00" + string(mode) + "\x00" + filepath.Clean(path)
+}
+
+func samePath(left, right string) bool {
+	leftAbsolute, leftErr := filepath.Abs(left)
+	rightAbsolute, rightErr := filepath.Abs(right)
+	if leftErr != nil || rightErr != nil {
+		return filepath.Clean(left) == filepath.Clean(right)
+	}
+	return filepath.Clean(leftAbsolute) == filepath.Clean(rightAbsolute)
+}

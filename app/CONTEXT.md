@@ -56,6 +56,18 @@ _Avoid_: parsed terminal line, global spinner, inferred completion
 A reviewed set of exact managed Installation Targets, each resolved from its own stored source reference to an immutable destination version. Pinned targets are non-updateable, selected Workspace Lock changes are explicit, and results remain target-specific for failed-only retry.
 _Avoid_: update every copy, latest-version overwrite, Skill-name-only update
 
+**Target Management Plan**:
+A reviewed set of exact managed Installation Targets with an explicit Remove, Repair, or Stop Managing action per selected target. Unselected targets do not change, and every selected action has target-specific progress and results.
+_Avoid_: delete Skill, remove every target, name-only mutation
+
+**Repair**:
+An explicit action offered for recoverable unhealthy managed targets. It restores the reviewed target from its immutable Store artifact and may require every Agent binding that shares the physical path.
+_Avoid_: automatic repair, silent overwrite
+
+**Stop Managing**:
+An explicit content-preserving action for an unhealthy target. It removes SkillsGo ownership metadata, including selected Workspace Manifest and Lock bindings, while leaving current target content in place.
+_Avoid_: remove, delete, uninstall
+
 **External Installation**:
 A Skill found in an Installed Agent's directory without a SkillsGo installation receipt. The Library can inspect it but cannot update or remove it until the user explicitly brings it under management.
 _Avoid_: broken Skill, unknown Skill, managed installation

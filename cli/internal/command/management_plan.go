@@ -1,0 +1,91 @@
+/*
+ * [INPUT]: Depends on explicit management target JSON, the Agent catalog, Store state, and the Target Management Plan domain.
+ * [OUTPUT]: Adapts App-driven management preflight JSON and execution NDJSON at the public command boundary.
+ * [POS]: Serves as the executable adapter between Cobra flags and exact-target Remove/Repair/Stop Managing orchestration.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+package command
+
+import (
+	"encoding/json"
+	"fmt"
+	"os"
+
+	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	"github.com/skillsgo/skillsgo/cli/internal/managementplan"
+	"github.com/skillsgo/skillsgo/cli/internal/store"
+	"github.com/spf13/cobra"
+)
+
+func newManageCommand(catalog *agent.Catalog) *cobra.Command {
+	var output string
+	var preflightOnly bool
+	var rawTargets []string
+	cmd := &cobra.Command{
+		Use:   "manage",
+		Short: "Review and manage exact Installation Targets",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runManagementPlan(cmd, catalog, output, preflightOnly, rawTargets)
+		},
+	}
+	cmd.Flags().StringArrayVar(&rawTargets, "target", nil, "explicit management Target JSON; repeatable")
+	cmd.Flags().BoolVar(&preflightOnly, "preflight", false, "review safe target actions without changing files")
+	cmd.Flags().StringVar(&output, "output", "human", "output format: json or ndjson")
+	return cmd
+}
+
+func runManagementPlan(
+	cmd *cobra.Command,
+	catalog *agent.Catalog,
+	output string,
+	preflightOnly bool,
+	rawTargets []string,
+) error {
+	if preflightOnly && output != "json" {
+		return fmt.Errorf("Target Management Plan preflight requires --output json")
+	}
+	if !preflightOnly && output != "json" && output != "ndjson" {
+		return fmt.Errorf("Target Management Plan execution requires --output json or ndjson")
+	}
+	requests, err := managementplan.DecodeTargets(rawTargets)
+	if err != nil {
+		return err
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	storage := store.Store{Root: store.DefaultRoot(home)}
+	preflight, err := managementplan.Build(catalog, storage, requests)
+	if err != nil {
+		return err
+	}
+	if preflightOnly {
+		encoder := json.NewEncoder(cmd.OutOrStdout())
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(preflight)
+	}
+	for _, request := range requests {
+		if request.Action == "" || request.StateToken == "" {
+			return fmt.Errorf("Target Management Plan execution requires reviewed action and stateToken values")
+		}
+	}
+	if output == "ndjson" {
+		encoder := json.NewEncoder(cmd.OutOrStdout())
+		var streamErr error
+		execution := managementplan.Execute(storage, preflight, func(event managementplan.Progress) {
+			if streamErr == nil {
+				streamErr = encoder.Encode(event)
+			}
+		})
+		if streamErr != nil {
+			return streamErr
+		}
+		return encoder.Encode(execution)
+	}
+	execution := managementplan.Execute(storage, preflight, nil)
+	encoder := json.NewEncoder(cmd.OutOrStdout())
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(execution)
+}

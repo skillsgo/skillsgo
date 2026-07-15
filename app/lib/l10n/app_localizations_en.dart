@@ -312,29 +312,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'This snapshot contains scripts or executable content. Review the files before installing; SkillsGo does not audit them.';
 
   @override
-  String removeTitle(String name) {
-    return 'Remove $name?';
-  }
-
-  @override
-  String get removeDescription =>
-      'SkillsGo will remove this user-level Skill. Codex will no longer see it.';
-
-  @override
-  String skillFact(String name) {
-    return 'Skill: $name';
-  }
-
-  @override
-  String get scopeGlobal => 'Scope: global';
-
-  @override
-  String get agentImpactCodex => 'Agent impact: Codex';
-
-  @override
-  String get removeSkill => 'Remove Skill';
-
-  @override
   String get globalCodex => 'Global · Codex';
 
   @override
@@ -519,15 +496,57 @@ class AppLocalizationsEn extends AppLocalizations {
   String get update => 'Update';
 
   @override
-  String removeNamed(String name) {
-    return 'Remove $name';
-  }
-
-  @override
   String get backToLibrary => 'Back to Library';
 
   @override
   String get remove => 'Remove';
+
+  @override
+  String get manageTargets => 'Manage targets';
+
+  @override
+  String get manageTargetsTitle => 'Manage installation targets';
+
+  @override
+  String get manageTargetsDescription =>
+      'Choose an exact action for each target. Unselected targets will not change.';
+
+  @override
+  String targetActionsSelected(int selected, int total) {
+    return '$selected of $total targets selected';
+  }
+
+  @override
+  String get repairTarget => 'Repair';
+
+  @override
+  String get stopManaging => 'Stop Managing';
+
+  @override
+  String get stopManagingDescription =>
+      'Removes SkillsGo ownership metadata and preserves the current target content.';
+
+  @override
+  String get applyTargetActions => 'Apply selected actions';
+
+  @override
+  String get managementProgressTitle => 'Applying target actions';
+
+  @override
+  String get managementResultsTitle => 'Target action results';
+
+  @override
+  String managementResultSummary(int succeeded, int failed) {
+    return '$succeeded succeeded, $failed failed';
+  }
+
+  @override
+  String get workspaceOwnershipChanges =>
+      'Selected project actions will update skillsgo.yaml and skillsgo-lock.yaml.';
+
+  @override
+  String get targetContentPreserved =>
+      'Current target content will be preserved.';
 
   @override
   String get localReadFailed => 'Can’t read this Skill';

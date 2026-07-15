@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Cobra and the Agent, Registry, Store, project, installation, Installation Plan, Update Plan, source, and i18n modules.
- * [OUTPUT]: Provides command.Execute and the complete CLI graph, including stable Agent, Library inventory, and explicit Installation/Update Plan contracts, for terminal and App callers.
+ * [INPUT]: Depends on Cobra and the Agent, Registry, Store, project, installation, Installation Plan, Update Plan, Target Management Plan, source, and i18n modules.
+ * [OUTPUT]: Provides command.Execute and the complete CLI graph, including stable Agent, Library inventory, and explicit Installation/Update/Target Management Plan contracts, for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -64,7 +64,7 @@ func newRootCommand(stdout, stderr io.Writer) (*cobra.Command, error) {
 	root.Version = version
 	var languageOverride string
 	root.PersistentFlags().StringVar(&languageOverride, "lang", strings.TrimSpace(os.Getenv("SKILLSGO_LANG")), appi18n.T("flag.lang"))
-	root.AddCommand(newVersionCommand(), newDiagnosticsCommand(), newAgentsCommand(catalog), newInventoryCommand(catalog), newAddCommand(catalog), newInstallCommand(catalog), placeholder("use", "use <package>@<skill>"), newRemoveCommand(catalog), newListCommand(catalog), placeholder("find", "find [query]"), newUpdateCommand(catalog), placeholder("init", "init [name]"))
+	root.AddCommand(newVersionCommand(), newDiagnosticsCommand(), newAgentsCommand(catalog), newInventoryCommand(catalog), newAddCommand(catalog), newInstallCommand(catalog), placeholder("use", "use <package>@<skill>"), newRemoveCommand(catalog), newManageCommand(catalog), newListCommand(catalog), placeholder("find", "find [query]"), newUpdateCommand(catalog), placeholder("init", "init [name]"))
 	return root, nil
 }
 
