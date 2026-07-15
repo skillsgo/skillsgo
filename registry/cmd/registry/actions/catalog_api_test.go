@@ -7,8 +7,12 @@
 package actions
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"path/filepath"
@@ -19,6 +23,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/skillsgo/skillsgo/registry/pkg/catalog"
 	"github.com/skillsgo/skillsgo/registry/pkg/config"
+	"github.com/skillsgo/skillsgo/registry/pkg/storage"
 	"github.com/stretchr/testify/require"
 )
 
@@ -30,8 +35,69 @@ func testCatalogAPI(t *testing.T) (*mux.Router, *catalog.Catalog) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	r := mux.NewRouter()
-	registerCatalogAPIRoutes(r, c)
+	registerCatalogAPIRoutes(r, c, &catalogArtifactStub{})
 	return r, c
+}
+
+type catalogArtifactStub struct {
+	info        []byte
+	manifest    []byte
+	archive     []byte
+	infoErr     error
+	manifestErr error
+	archiveErr  error
+}
+
+func (s *catalogArtifactStub) Info(context.Context, string, string) ([]byte, error) {
+	if s.infoErr != nil {
+		return nil, s.infoErr
+	}
+	if s.info != nil {
+		return s.info, nil
+	}
+	return []byte(`{"Version":"v0.0.0-test","Origin":{"Ref":"refs/heads/main","CommitSHA":"commit-abc","TreeSHA":"tree-def"}}`), nil
+}
+
+func (s *catalogArtifactStub) Manifest(context.Context, string, string) ([]byte, error) {
+	if s.manifestErr != nil {
+		return nil, s.manifestErr
+	}
+	if s.manifest != nil {
+		return s.manifest, nil
+	}
+	return []byte("name: ask-matt\ndescription: Engineering skill router\n"), nil
+}
+
+func (s *catalogArtifactStub) Zip(_ context.Context, coordinate, version string) (storage.SizeReadCloser, error) {
+	if s.archiveErr != nil {
+		return nil, s.archiveErr
+	}
+	data := s.archive
+	if data == nil {
+		data = catalogArtifactZIP(coordinate+"@"+version+"/", map[string][]byte{
+			"SKILL.md":       []byte("---\nname: ask-matt\ndescription: Engineering skill router\n---\n# Ask Matt\n"),
+			"scripts/run.sh": []byte("#!/bin/sh\necho demo\n"),
+		})
+	}
+	return storage.NewSizer(io.NopCloser(bytes.NewReader(data)), int64(len(data))), nil
+}
+
+func catalogArtifactZIP(prefix string, files map[string][]byte) []byte {
+	var buffer bytes.Buffer
+	writer := zip.NewWriter(&buffer)
+	for name, content := range files {
+		entry, err := writer.Create(prefix + name)
+		if err != nil {
+			panic(err)
+		}
+		if _, err := entry.Write(content); err != nil {
+			panic(err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		panic(err)
+	}
+	return buffer.Bytes()
 }
 
 func TestCatalogAPIListSearchAndDetail(t *testing.T) {
@@ -53,15 +119,21 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	detail := httptest.NewRecorder()
 	r.ServeHTTP(detail, httptest.NewRequest(http.MethodGet, "/v1/skills/github.com/mattpocock/skills/-/skills/engineering/ask-matt", nil))
 	require.Equal(t, http.StatusOK, detail.Code)
-	require.JSONEq(t, `{
-		"coordinate":"github.com/mattpocock/skills/-/skills/engineering/ask-matt",
-		"name":"ask-matt",
-		"description":"Engineering skill router",
-		"source":"github.com/mattpocock/skills",
-		"skillPath":"skills/engineering/ask-matt",
-		"latestVersion":"main",
-		"trustLevel":"unverified"
-	}`, detail.Body.String())
+	var detailBody skillDetailResponse
+	require.NoError(t, json.NewDecoder(detail.Body).Decode(&detailBody))
+	require.Equal(t, skill.Coordinate, detailBody.Coordinate)
+	require.Equal(t, "main", detailBody.RequestedVersion)
+	require.Equal(t, "v0.0.0-test", detailBody.ImmutableVersion)
+	require.Equal(t, "commit-abc", detailBody.CommitSHA)
+	require.Equal(t, "tree-def", detailBody.TreeSHA)
+	require.Equal(t, "refs/heads/main", detailBody.SourceRef)
+	require.Contains(t, detailBody.ContentDigest, "sha256:")
+	require.Contains(t, detailBody.Manifest, "name: ask-matt")
+	require.Contains(t, detailBody.Instructions, "# Ask Matt")
+	require.Equal(t, "unverified", detailBody.TrustLevel)
+	require.Equal(t, "medium", detailBody.RiskAssessment.Level)
+	require.Equal(t, []string{"scripts/run.sh"}, detailBody.ExecutableFiles)
+	require.Len(t, detailBody.Files, 2)
 
 	recorder := httptest.NewRecorder()
 	r.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/v1/search?q=engineering", nil))
@@ -75,6 +147,37 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, "unverified", response.Skills[0].TrustLevel)
 	require.Equal(t, "unknown", response.Skills[0].RiskAssessment)
 	require.Equal(t, "all_time_installs", response.Skills[0].Metric.Kind)
+}
+
+func TestCatalogAPIDetailReturnsStableArtifactFailures(t *testing.T) {
+	ctx := context.Background()
+	for name, testCase := range map[string]struct {
+		stub   *catalogArtifactStub
+		status int
+		code   string
+	}{
+		"malformed info":       {stub: &catalogArtifactStub{info: []byte(`{"Version":"main"}`)}, status: http.StatusBadGateway, code: "artifact_invalid"},
+		"malformed archive":    {stub: &catalogArtifactStub{archive: []byte("not-a-zip")}, status: http.StatusBadGateway, code: "artifact_invalid"},
+		"unavailable artifact": {stub: &catalogArtifactStub{infoErr: errors.New("upstream unavailable")}, status: http.StatusServiceUnavailable, code: "artifact_unavailable"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			metadata, err := catalog.Open(ctx, config.DatabaseConfig{
+				Type: "sqlite", DSN: filepath.Join(t.TempDir(), "registry.db"), MaxOpenConns: 1, MaxIdleConns: 1,
+			})
+			require.NoError(t, err)
+			t.Cleanup(func() { require.NoError(t, metadata.Close()) })
+			skill := &catalog.Skill{Coordinate: "github.com/acme/skills/-/demo", Name: "demo", Description: "Demo", LatestVersion: "main"}
+			require.NoError(t, metadata.UpsertSkill(ctx, skill))
+			router := mux.NewRouter()
+			registerCatalogAPIRoutes(router, metadata, testCase.stub)
+			recorder := httptest.NewRecorder()
+			router.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/v1/skills/"+skill.Coordinate, nil))
+			require.Equal(t, testCase.status, recorder.Code)
+			var body errorResponse
+			require.NoError(t, json.NewDecoder(recorder.Body).Decode(&body))
+			require.Equal(t, testCase.code, body.Code)
+		})
+	}
 }
 
 func TestCatalogAPICollectionsReturnEmptyArrays(t *testing.T) {

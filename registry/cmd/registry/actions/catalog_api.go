@@ -1,15 +1,17 @@
 /*
- * [INPUT]: Depends on the Catalog metadata boundary, Gorilla Mux, HTTP request validation, and UTC ranking windows.
- * [OUTPUT]: Provides stable public search, ranked collection, detail, and idempotent install-event JSON endpoints.
+ * [INPUT]: Depends on the Catalog, immutable artifact protocol, ZIP audit boundary, Gorilla Mux, HTTP validation, and UTC ranking windows.
+ * [OUTPUT]: Provides stable public search, ranked collection, auditable artifact detail, and idempotent install-event JSON endpoints.
  * [POS]: Serves as the Registry HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -17,7 +19,10 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/skillsgo/skillsgo/registry/pkg/audit"
 	"github.com/skillsgo/skillsgo/registry/pkg/catalog"
+	skillerrors "github.com/skillsgo/skillsgo/registry/pkg/errors"
+	"github.com/skillsgo/skillsgo/registry/pkg/storage"
 )
 
 type skillsResponse struct {
@@ -51,13 +56,29 @@ type discoveryMetric struct {
 }
 
 type skillDetailResponse struct {
-	Coordinate    string `json:"coordinate"`
-	Name          string `json:"name"`
-	Description   string `json:"description"`
-	Source        string `json:"source"`
-	SkillPath     string `json:"skillPath"`
-	LatestVersion string `json:"latestVersion"`
-	TrustLevel    string `json:"trustLevel"`
+	Coordinate           string               `json:"coordinate"`
+	Name                 string               `json:"name"`
+	Description          string               `json:"description"`
+	Source               string               `json:"source"`
+	RequestedVersion     string               `json:"requestedVersion"`
+	ImmutableVersion     string               `json:"immutableVersion"`
+	CommitSHA            string               `json:"commitSHA"`
+	TreeSHA              string               `json:"treeSHA"`
+	SourceRef            string               `json:"sourceRef"`
+	ContentDigest        string               `json:"contentDigest"`
+	Manifest             string               `json:"manifest"`
+	Instructions         string               `json:"instructions"`
+	TrustLevel           string               `json:"trustLevel"`
+	RiskAssessment       audit.RiskAssessment `json:"riskAssessment"`
+	Files                []audit.File         `json:"files"`
+	HasExecutableContent bool                 `json:"hasExecutableContent"`
+	ExecutableFiles      []string             `json:"executableFiles"`
+}
+
+type artifactReader interface {
+	Info(context.Context, string, string) ([]byte, error)
+	Manifest(context.Context, string, string) ([]byte, error)
+	Zip(context.Context, string, string) (storage.SizeReadCloser, error)
 }
 
 type errorResponse struct {
@@ -65,10 +86,10 @@ type errorResponse struct {
 	Code  string `json:"code"`
 }
 
-func registerCatalogAPIRoutes(r *mux.Router, metadata *catalog.Catalog) {
+func registerCatalogAPIRoutes(r *mux.Router, metadata *catalog.Catalog, artifacts artifactReader) {
 	r.HandleFunc("/v1/search", searchSkillsHandler(metadata)).Methods(http.MethodGet)
 	r.HandleFunc("/v1/skills", listSkillsHandler(metadata)).Methods(http.MethodGet)
-	r.HandleFunc("/v1/skills/{coordinate:.+}", skillDetailHandler(metadata)).Methods(http.MethodGet)
+	r.HandleFunc("/v1/skills/{coordinate:.+}", skillDetailHandler(metadata, artifacts)).Methods(http.MethodGet)
 	r.HandleFunc("/v1/events/install", installEventHandler(metadata)).Methods(http.MethodPost)
 }
 
@@ -200,7 +221,7 @@ func discoveryResponse(collection, metricKind string, ranked []catalog.RankedSki
 	}
 }
 
-func skillDetailHandler(metadata *catalog.Catalog) http.HandlerFunc {
+func skillDetailHandler(metadata *catalog.Catalog, artifacts artifactReader) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		skill, err := metadata.Skill(r.Context(), mux.Vars(r)["coordinate"])
 		if errors.Is(err, sql.ErrNoRows) {
@@ -211,16 +232,95 @@ func skillDetailHandler(metadata *catalog.Catalog) http.HandlerFunc {
 			writeAPIError(w, http.StatusInternalServerError, "detail failed")
 			return
 		}
+		if artifacts == nil {
+			writeAPIErrorCode(w, http.StatusServiceUnavailable, "artifact_unavailable", "artifact service unavailable")
+			return
+		}
+		infoBytes, err := artifacts.Info(r.Context(), skill.Coordinate, skill.LatestVersion)
+		if err != nil {
+			writeArtifactReadError(w, err)
+			return
+		}
+		var info storage.RevInfo
+		if json.Unmarshal(infoBytes, &info) != nil || info.Version == "" || info.Origin == nil || info.Origin.CommitSHA == "" || info.Origin.TreeSHA == "" {
+			writeAPIErrorCode(w, http.StatusBadGateway, "artifact_invalid", "artifact info is invalid")
+			return
+		}
+		manifest, err := artifacts.Manifest(r.Context(), skill.Coordinate, info.Version)
+		if err != nil {
+			writeArtifactReadError(w, err)
+			return
+		}
+		if len(strings.TrimSpace(string(manifest))) == 0 {
+			writeAPIErrorCode(w, http.StatusBadGateway, "artifact_invalid", "artifact manifest is invalid")
+			return
+		}
+		archive, err := artifacts.Zip(r.Context(), skill.Coordinate, info.Version)
+		if err != nil {
+			writeArtifactReadError(w, err)
+			return
+		}
+		archiveBytes, err := readAuditArchive(archive)
+		if err != nil {
+			writeAPIErrorCode(w, http.StatusBadGateway, "artifact_invalid", "artifact archive is invalid")
+			return
+		}
+		analysis, err := audit.AnalyzeArtifact(archiveBytes, skill.Coordinate, info.Version)
+		if err != nil {
+			writeAPIErrorCode(w, http.StatusBadGateway, "artifact_invalid", "artifact archive is invalid")
+			return
+		}
+		version, err := metadata.RecordSkillVersion(r.Context(), skill.Coordinate, catalog.SkillVersion{
+			Version: info.Version, CommitSHA: info.Origin.CommitSHA, TreeSHA: info.Origin.TreeSHA, ContentDigest: analysis.ContentDigest,
+		})
+		if err != nil {
+			writeAPIError(w, http.StatusInternalServerError, "artifact metadata failed")
+			return
+		}
+		evidence, _ := json.Marshal(analysis.Risk.Evidence)
+		if _, err := metadata.AppendRiskAssessment(r.Context(), version.ID, catalog.RiskAssessment{
+			Level: analysis.Risk.Level, ScannerVersion: analysis.Risk.ScannerVersion, Evidence: string(evidence),
+		}); err != nil {
+			writeAPIError(w, http.StatusInternalServerError, "risk assessment failed")
+			return
+		}
 		trustLevel := "unverified"
 		if skill.Verified {
 			trustLevel = "community_verified"
 		}
 		writeJSON(w, http.StatusOK, skillDetailResponse{
 			Coordinate: skill.Coordinate, Name: skill.Name, Description: skill.Description,
-			Source: skill.SourceHost + "/" + skill.Repository, SkillPath: skill.SkillPath,
-			LatestVersion: skill.LatestVersion, TrustLevel: trustLevel,
+			Source: skill.SourceHost + "/" + skill.Repository, RequestedVersion: skill.LatestVersion,
+			ImmutableVersion: info.Version, CommitSHA: info.Origin.CommitSHA, TreeSHA: info.Origin.TreeSHA,
+			SourceRef: info.Origin.Ref, ContentDigest: analysis.ContentDigest, Manifest: string(manifest),
+			Instructions: analysis.Instructions, TrustLevel: trustLevel, RiskAssessment: analysis.Risk,
+			Files: analysis.Files, HasExecutableContent: analysis.HasExecutableContent,
+			ExecutableFiles: analysis.ExecutableFiles,
 		})
 	}
+}
+
+func readAuditArchive(archive storage.SizeReadCloser) ([]byte, error) {
+	defer archive.Close()
+	if archive.Size() <= 0 || archive.Size() > audit.MaxArchiveBytes {
+		return nil, fmt.Errorf("artifact archive size is invalid")
+	}
+	data, err := io.ReadAll(io.LimitReader(archive, audit.MaxArchiveBytes+1))
+	if err != nil {
+		return nil, fmt.Errorf("read artifact archive: %w", err)
+	}
+	if len(data) == 0 || len(data) > audit.MaxArchiveBytes {
+		return nil, fmt.Errorf("artifact archive body size is invalid")
+	}
+	return data, nil
+}
+
+func writeArtifactReadError(w http.ResponseWriter, err error) {
+	if skillerrors.Kind(err) == http.StatusNotFound {
+		writeAPIErrorCode(w, http.StatusNotFound, "artifact_unavailable", "artifact not found")
+		return
+	}
+	writeAPIErrorCode(w, http.StatusServiceUnavailable, "artifact_unavailable", "artifact unavailable")
 }
 
 func apiPagination(w http.ResponseWriter, r *http.Request) (int, int, bool) {
@@ -252,6 +352,10 @@ func writeAPIError(w http.ResponseWriter, status int, message string) {
 	} else if status == http.StatusNotFound {
 		code = "not_found"
 	}
+	writeAPIErrorCode(w, status, code, message)
+}
+
+func writeAPIErrorCode(w http.ResponseWriter, status int, code, message string) {
 	writeJSON(w, status, errorResponse{Error: message, Code: code})
 }
 

@@ -4,10 +4,10 @@
 ## Members
 
 - `app.go`, `app_test.go`: assemble the Registry HTTP application and cover top-level wiring.
-- `app_proxy.go`, `app_proxy_test.go`: wire the inherited artifact proxy surface and its integration behavior.
+- `app_proxy.go`, `app_proxy_test.go`: compose source, storage, Catalog, discovery/detail, and immutable artifact protocol routes and integration behavior.
 - `auth.go`, `basicauth.go`, `basicauth_test.go`: configure access-control middleware and Basic Auth behavior.
 - `catalog.go`: wires Catalog lifecycle and dependencies into the service.
-- `catalog_api.go`, `catalog_api_test.go`: define and specify the stable public discovery, detail, pagination, ranking, and install-event JSON contract against SQLite.
+- `catalog_api.go`, `catalog_api_test.go`: define and specify the stable public discovery, auditable artifact detail, pagination, ranking, and install-event JSON contract against SQLite.
 - `catalog_postgres_integration_test.go`: verifies pagination and empty discovery response parity through the same HTTP router against PostgreSQL.
 - `catalog_protocol.go`, `catalog_protocol_test.go`: index immutable artifact metadata after successful protocol resolution.
 - `health.go`, `readiness.go`: expose service health and readiness probes.

@@ -22,6 +22,44 @@ extension on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
 }
 
+({String title, String message}) _failureCopy(
+  BuildContext context,
+  Object error, {
+  bool detail = false,
+}) {
+  final kind = error is SkillsException ? error.kind : SkillsFailureKind.server;
+  return switch (kind) {
+    SkillsFailureKind.validation => (
+      title: context.l10n.validationTitle,
+      message: context.l10n.validationMessage,
+    ),
+    SkillsFailureKind.server => (
+      title: context.l10n.serverTitle,
+      message: context.l10n.serverMessage,
+    ),
+    SkillsFailureKind.timeout => (
+      title: context.l10n.timeoutTitle,
+      message: context.l10n.timeoutMessage,
+    ),
+    SkillsFailureKind.offline => (
+      title: context.l10n.offlineTitle,
+      message: context.l10n.offlineMessage,
+    ),
+    SkillsFailureKind.invalidResponse when detail => (
+      title: context.l10n.detailInvalidTitle,
+      message: context.l10n.detailInvalidMessage,
+    ),
+    SkillsFailureKind.invalidResponse => (
+      title: context.l10n.invalidResponseTitle,
+      message: context.l10n.invalidResponseMessage,
+    ),
+    SkillsFailureKind.artifactUnavailable => (
+      title: context.l10n.artifactUnavailableTitle,
+      message: context.l10n.artifactUnavailableMessage,
+    ),
+  };
+}
+
 String _cliStatusMessage(BuildContext context, CliStatus status) =>
     switch (status.issue) {
       CliIssue.missing => context.l10n.cliMissingBundled,
@@ -559,7 +597,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       return const Center(child: CircularProgressIndicator());
     }
     if (state.error != null && state.results == null) {
-      final copy = _discoveryErrorCopy(state.error!);
+      final copy = _failureCopy(context, state.error!);
       return EmptyState(
         title: copy.title,
         message: copy.message,
@@ -605,7 +643,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       itemBuilder: (context, index) {
         if (index == state.results!.length) {
           if (state.error != null) {
-            final copy = _discoveryErrorCopy(state.error!);
+            final copy = _failureCopy(context, state.error!);
             return Padding(
               padding: const EdgeInsets.symmetric(vertical: 12),
               child: Column(
@@ -638,40 +676,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           );
         }
         final skill = state.results![index];
-        return SkillCard(skill: skill, onTap: () => _openDetail(skill));
+        final cardFocus = state.focusNodeFor(skill.id);
+        return SkillCard(
+          skill: skill,
+          focusNode: cardFocus,
+          onTap: () => _openDetail(skill, cardFocus),
+        );
       },
     );
   }
 
-  ({String title, String message}) _discoveryErrorCopy(Object error) {
-    final kind = error is SkillsException
-        ? error.kind
-        : SkillsFailureKind.server;
-    return switch (kind) {
-      SkillsFailureKind.validation => (
-        title: context.l10n.validationTitle,
-        message: context.l10n.validationMessage,
-      ),
-      SkillsFailureKind.server => (
-        title: context.l10n.serverTitle,
-        message: context.l10n.serverMessage,
-      ),
-      SkillsFailureKind.timeout => (
-        title: context.l10n.timeoutTitle,
-        message: context.l10n.timeoutMessage,
-      ),
-      SkillsFailureKind.offline => (
-        title: context.l10n.offlineTitle,
-        message: context.l10n.offlineMessage,
-      ),
-      SkillsFailureKind.invalidResponse => (
-        title: context.l10n.invalidResponseTitle,
-        message: context.l10n.invalidResponseMessage,
-      ),
-    };
-  }
-
-  Future<void> _openDetail(SkillSummary skill) async {
+  Future<void> _openDetail(SkillSummary skill, FocusNode cardFocus) async {
     final operation = installOperations.putIfAbsent(
       skill.id,
       _InstallOperation.new,
@@ -685,12 +700,17 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         ),
       ),
     );
-    if (installed == true) widget.onInstalled();
+    if (installed == true) {
+      widget.onInstalled();
+    } else if (mounted) {
+      cardFocus.requestFocus();
+    }
   }
 }
 
 class _DiscoveryRouteState {
   final scrollController = ScrollController();
+  final focusNodes = <String, FocusNode>{};
   List<SkillSummary>? results;
   Object? error;
   int? nextOffset;
@@ -698,7 +718,17 @@ class _DiscoveryRouteState {
   bool loading = false;
   bool loadingMore = false;
 
-  void dispose() => scrollController.dispose();
+  FocusNode focusNodeFor(String skillId) => focusNodes.putIfAbsent(
+    skillId,
+    () => FocusNode(debugLabel: 'skill-card-$skillId'),
+  );
+
+  void dispose() {
+    scrollController.dispose();
+    for (final node in focusNodes.values) {
+      node.dispose();
+    }
+  }
 }
 
 DiscoveryCollection _collectionForRoute(_DiscoverRoute route) =>
@@ -758,6 +788,8 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
   SkillDetail? detail;
   Object? error;
   bool loading = true;
+  bool showingManifest = false;
+  String? selectedFilePath;
   CliStatus? cliStatus;
   bool get operating => widget.operation.operating;
   CommandResult? get result => widget.operation.result;
@@ -805,23 +837,39 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: SkillsTokens.nearBlack,
     body: SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: loading
-            ? const Center(child: CircularProgressIndicator())
-            : error != null
-            ? EmptyState(
-                title: context.l10n.detailFailedTitle,
-                message: error.toString(),
-                action: PrimaryCapsuleButton(
-                  label: context.l10n.retry,
-                  onPressed: load,
-                ),
-              )
-            : _detailBody(),
-      ),
+      child: Padding(padding: const EdgeInsets.all(28), child: _content()),
     ),
   );
+
+  Widget _content() {
+    if (loading) {
+      return Center(
+        child: Semantics(
+          label: context.l10n.detailLoading,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const CircularProgressIndicator(),
+              const SizedBox(height: 14),
+              Text(
+                context.l10n.detailLoading,
+                style: const TextStyle(color: SkillsTokens.textSecondary),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+    if (error != null) {
+      final copy = _failureCopy(context, error!, detail: true);
+      return EmptyState(
+        title: copy.title,
+        message: copy.message,
+        action: ShadButton(onPressed: load, child: Text(context.l10n.retry)),
+      );
+    }
+    return _detailBody();
+  }
 
   Widget _detailBody() {
     final value = detail!;
@@ -830,11 +878,20 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
       children: [
         Row(
           children: [
-            IconButton(
-              tooltip: context.l10n.backToSearch,
-              onPressed: () =>
-                  Navigator.pop(context, result?.succeeded == true),
-              icon: const Icon(Icons.arrow_back),
+            ShadTooltip(
+              builder: (_) => Text(context.l10n.backToSearch),
+              child: Semantics(
+                label: context.l10n.backToSearch,
+                button: true,
+                child: ShadButton.ghost(
+                  width: 36,
+                  height: 36,
+                  padding: EdgeInsets.zero,
+                  onPressed: () =>
+                      Navigator.pop(context, result?.succeeded == true),
+                  child: const Icon(Icons.arrow_back),
+                ),
+              ),
             ),
             const SizedBox(width: 8),
             SkillGlyph(name: value.name),
@@ -869,9 +926,89 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
             ),
           ],
         ),
-        if (value.hasExecutableContent) ...[
-          const SizedBox(height: 18),
-          const _RiskNotice(),
+        const SizedBox(height: 14),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            SkillTrustChip(trust: value.trustLevel),
+            SkillRiskChip(risk: value.riskAssessment),
+            StatusChip(
+              label: context.l10n.immutableVersionLabel(value.immutableVersion),
+              color: SkillsTokens.blue,
+            ),
+            StatusChip(
+              label: context.l10n.commitIdentity(
+                _shortIdentity(value.commitSHA),
+              ),
+              color: SkillsTokens.textSecondary,
+            ),
+            StatusChip(
+              label: context.l10n.treeIdentity(_shortIdentity(value.treeSHA)),
+              color: SkillsTokens.textSecondary,
+            ),
+            StatusChip(
+              label: context.l10n.contentIdentity(
+                _shortIdentity(value.contentDigest),
+              ),
+              color: SkillsTokens.textTertiary,
+            ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Text(
+          context.l10n.trustDoesNotProveSafety,
+          style: const TextStyle(
+            color: SkillsTokens.textSecondary,
+            fontSize: 12,
+            height: 1.4,
+          ),
+        ),
+        if (value.hasExecutableContent || value.riskEvidence.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          _RiskNotice(detail: value),
+        ],
+        if (value.installationTargets.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Padding(
+                padding: const EdgeInsets.only(top: 5),
+                child: Text(
+                  context.l10n.knownInstallationTargets,
+                  style: const TextStyle(
+                    color: SkillsTokens.textSecondary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: value.installationTargets
+                      .map(
+                        (target) => StatusChip(
+                          label: context.l10n.targetSummary(
+                            switch (target.scope) {
+                              SkillInstallationScope.user =>
+                                context.l10n.userScope,
+                              SkillInstallationScope.project =>
+                                context.l10n.projectScope,
+                            },
+                            target.agent,
+                            target.version,
+                          ),
+                          color: SkillsTokens.green,
+                        ),
+                      )
+                      .toList(growable: false),
+                ),
+              ),
+            ],
+          ),
         ],
         const SizedBox(height: 14),
         _CommandPreview(
@@ -897,10 +1034,20 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
               Expanded(
                 flex: 3,
                 child: GlassCard(
-                  child: Markdown(
-                    data: value.markdown,
-                    selectable: true,
-                    shrinkWrap: false,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _documentTitle(value),
+                        key: const Key('detail-document-title'),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w700,
+                          color: SkillsTokens.textPrimary,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      Expanded(child: _document(value)),
+                    ],
                   ),
                 ),
               ),
@@ -912,19 +1059,71 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       SectionEyebrow(context.l10n.snapshotFiles),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 10),
+                      ShadButton.ghost(
+                        width: double.infinity,
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        backgroundColor:
+                            !showingManifest && selectedFilePath == null
+                            ? SkillsTokens.cardHover
+                            : null,
+                        onPressed: () => setState(() {
+                          showingManifest = false;
+                          selectedFilePath = null;
+                        }),
+                        child: Text(context.l10n.instructionsTab),
+                      ),
+                      ShadButton.ghost(
+                        width: double.infinity,
+                        mainAxisAlignment: MainAxisAlignment.start,
+                        backgroundColor: showingManifest
+                            ? SkillsTokens.cardHover
+                            : null,
+                        onPressed: () => setState(() {
+                          showingManifest = true;
+                          selectedFilePath = null;
+                        }),
+                        child: Text(context.l10n.manifestTab),
+                      ),
+                      const Divider(color: SkillsTokens.hairline),
                       Expanded(
                         child: ListView(
                           children: value.files
                               .map(
                                 (file) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 10),
-                                  child: SelectableText(
-                                    file.path,
-                                    style: const TextStyle(
-                                      fontFamily: SkillsTokens.monoFamily,
-                                      fontSize: 12,
-                                      color: SkillsTokens.textSecondary,
+                                  padding: const EdgeInsets.only(bottom: 4),
+                                  child: ShadButton.ghost(
+                                    width: double.infinity,
+                                    mainAxisAlignment: MainAxisAlignment.start,
+                                    backgroundColor:
+                                        selectedFilePath == file.path
+                                        ? SkillsTokens.cardHover
+                                        : null,
+                                    onPressed: () => setState(() {
+                                      showingManifest = false;
+                                      selectedFilePath = file.path;
+                                    }),
+                                    leading: Icon(
+                                      file.executable
+                                          ? Icons.terminal
+                                          : file.binary
+                                          ? Icons.data_object
+                                          : Icons.description_outlined,
+                                      size: 15,
+                                      color: file.executable
+                                          ? SkillsTokens.amber
+                                          : SkillsTokens.textTertiary,
+                                    ),
+                                    child: Flexible(
+                                      child: Text(
+                                        file.path,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontFamily: SkillsTokens.monoFamily,
+                                          fontSize: 11,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -942,10 +1141,67 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
       ],
     );
   }
+
+  String _documentTitle(SkillDetail value) {
+    if (showingManifest) return context.l10n.manifestTab;
+    return selectedFilePath ?? context.l10n.instructionsTab;
+  }
+
+  Widget _document(SkillDetail value) {
+    if (showingManifest) {
+      return SingleChildScrollView(
+        child: SelectableText(
+          value.manifest,
+          key: const Key('detail-manifest'),
+          style: const TextStyle(fontFamily: SkillsTokens.monoFamily),
+        ),
+      );
+    }
+    if (selectedFilePath == null) {
+      return Markdown(
+        key: const Key('detail-instructions'),
+        data: value.markdown,
+        selectable: true,
+      );
+    }
+    final file = value.files.firstWhere(
+      (candidate) => candidate.path == selectedFilePath,
+    );
+    if (file.binary || file.contents.isEmpty) {
+      return Center(
+        child: Text(
+          context.l10n.fileContentUnavailable,
+          style: const TextStyle(color: SkillsTokens.textSecondary),
+        ),
+      );
+    }
+    final preview = file.path.toLowerCase().endsWith('.md')
+        ? Markdown(data: file.contents, selectable: true)
+        : SingleChildScrollView(
+            child: SelectableText(
+              file.contents,
+              key: ValueKey('detail-file-${file.path}'),
+              style: const TextStyle(fontFamily: SkillsTokens.monoFamily),
+            ),
+          );
+    if (!file.truncated) return preview;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.fileContentTruncated,
+          style: const TextStyle(color: SkillsTokens.amber),
+        ),
+        const SizedBox(height: 8),
+        Expanded(child: preview),
+      ],
+    );
+  }
 }
 
 class _RiskNotice extends StatelessWidget {
-  const _RiskNotice();
+  const _RiskNotice({required this.detail});
+  final SkillDetail detail;
   @override
   Widget build(BuildContext context) => Container(
     padding: const EdgeInsets.all(14),
@@ -959,14 +1215,41 @@ class _RiskNotice extends StatelessWidget {
         const Icon(Icons.warning_amber_rounded, color: SkillsTokens.amber),
         const SizedBox(width: 10),
         Expanded(
-          child: Text(
-            context.l10n.executableRisk,
-            style: const TextStyle(color: SkillsTokens.amber),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n.executableRisk,
+                style: const TextStyle(color: SkillsTokens.amber),
+              ),
+              if (detail.riskEvidence.isNotEmpty) ...[
+                const SizedBox(height: 4),
+                Text(
+                  context.l10n.riskEvidence(
+                    detail.riskEvidence
+                        .map((evidence) => evidence.path)
+                        .join(', '),
+                  ),
+                  style: const TextStyle(
+                    color: SkillsTokens.textSecondary,
+                    fontFamily: SkillsTokens.monoFamily,
+                    fontSize: 11,
+                  ),
+                ),
+              ],
+            ],
           ),
         ),
       ],
     ),
   );
+}
+
+String _shortIdentity(String value) {
+  final normalized = value.startsWith('sha256:')
+      ? value.substring('sha256:'.length)
+      : value;
+  return normalized.length <= 12 ? normalized : normalized.substring(0, 12);
 }
 
 class LibraryScreen extends StatefulWidget {

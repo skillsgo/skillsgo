@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery collections, Skills, CLI, Registry settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery, auditable Skill artifacts, local targets, CLI, Registry settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,7 +14,14 @@ enum UpdateState { unknown, checking, upToDate, available, unsupported, failed }
 
 enum HealthState { ready, notInitialized, unreachable, invalid }
 
-enum SkillsFailureKind { validation, server, timeout, offline, invalidResponse }
+enum SkillsFailureKind {
+  validation,
+  server,
+  timeout,
+  offline,
+  invalidResponse,
+  artifactUnavailable,
+}
 
 enum DiscoveryCollection { search, ranking, trending, hot }
 
@@ -28,6 +35,8 @@ enum SkillTrustLevel {
 }
 
 enum SkillRiskAssessment { unknown, low, medium, high, critical }
+
+enum SkillInstallationScope { user, project }
 
 enum SkillMetricKind { allTimeInstalls, installs24h, hotVelocity }
 
@@ -135,10 +144,44 @@ class DiscoveryPage {
 }
 
 class SkillFile {
-  const SkillFile({required this.path, required this.contents});
+  const SkillFile({
+    required this.path,
+    required this.contents,
+    this.size = 0,
+    this.kind = 'text',
+    this.executable = false,
+    this.binary = false,
+    this.truncated = false,
+  });
 
   final String path;
   final String contents;
+  final int size;
+  final String kind;
+  final bool executable;
+  final bool binary;
+  final bool truncated;
+}
+
+class SkillRiskEvidence {
+  const SkillRiskEvidence({required this.code, required this.path});
+
+  final String code;
+  final String path;
+}
+
+class SkillInstallationTarget {
+  const SkillInstallationTarget({
+    required this.agent,
+    required this.scope,
+    required this.path,
+    required this.version,
+  });
+
+  final String agent;
+  final SkillInstallationScope scope;
+  final String path;
+  final String version;
 }
 
 class SkillDetail {
@@ -148,6 +191,20 @@ class SkillDetail {
     required this.markdown,
     required this.files,
     this.installs = 0,
+    this.description = '',
+    this.requestedVersion = '',
+    this.immutableVersion = '',
+    this.commitSHA = '',
+    this.treeSHA = '',
+    this.sourceRef = '',
+    this.contentDigest = '',
+    this.manifest = '',
+    this.trustLevel = SkillTrustLevel.unverified,
+    this.riskAssessment = SkillRiskAssessment.unknown,
+    this.riskScannerVersion = '',
+    this.riskEvidence = const [],
+    this.installationTargets = const [],
+    this.registryExecutableSignal = false,
   });
 
   final String name;
@@ -155,25 +212,42 @@ class SkillDetail {
   final String markdown;
   final List<SkillFile> files;
   final int installs;
+  final String description;
+  final String requestedVersion;
+  final String immutableVersion;
+  final String commitSHA;
+  final String treeSHA;
+  final String sourceRef;
+  final String contentDigest;
+  final String manifest;
+  final SkillTrustLevel trustLevel;
+  final SkillRiskAssessment riskAssessment;
+  final String riskScannerVersion;
+  final List<SkillRiskEvidence> riskEvidence;
+  final List<SkillInstallationTarget> installationTargets;
+  final bool registryExecutableSignal;
 
-  bool get hasExecutableContent => files.any((file) {
-    final lower = file.path.toLowerCase();
-    const extensions = [
-      '.sh',
-      '.bash',
-      '.zsh',
-      '.fish',
-      '.ps1',
-      '.bat',
-      '.cmd',
-      '.exe',
-      '.js',
-      '.mjs',
-      '.py',
-      '.rb',
-    ];
-    return extensions.any(lower.endsWith) || lower.contains('/scripts/');
-  });
+  bool get hasExecutableContent =>
+      registryExecutableSignal ||
+      files.any((file) {
+        if (file.executable) return true;
+        final lower = file.path.toLowerCase();
+        const extensions = [
+          '.sh',
+          '.bash',
+          '.zsh',
+          '.fish',
+          '.ps1',
+          '.bat',
+          '.cmd',
+          '.exe',
+          '.js',
+          '.mjs',
+          '.py',
+          '.rb',
+        ];
+        return extensions.any(lower.endsWith) || lower.contains('/scripts/');
+      });
 }
 
 class InstalledSkill {
@@ -183,6 +257,7 @@ class InstalledSkill {
     required this.agents,
     required this.targetCount,
     this.coordinate = '',
+    this.targets = const [],
   });
 
   final String name;
@@ -190,6 +265,7 @@ class InstalledSkill {
   final List<String> agents;
   final int targetCount;
   final String coordinate;
+  final List<SkillInstallationTarget> targets;
 
   bool get isLinkedToCodex =>
       agents.any((agent) => agent.toLowerCase() == 'codex');

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings persistence, paginated Registry discovery and typed failures, storage health, parsing, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings persistence, discovery, auditable detail identity/file/risk parsing, local targets, typed failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -408,7 +408,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '[{"name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","target":{"path":"/tmp/one","scope":"user","agent":"codex","mode":"copy"}},{"name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","target":{"path":"/tmp/two","scope":"project","agent":"codex","mode":"copy"}}]',
+            '[{"name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","version":"v1.2.3","target":{"path":"/tmp/one","scope":"user","agent":"codex","mode":"copy"}},{"name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","version":"v1.2.3","target":{"path":"/tmp/two","scope":"project","agent":"codex","mode":"copy"}}]',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -504,7 +504,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '[{"name":"testing","coordinate":"github.com/a/b","target":{"path":"/tmp/testing","scope":"user","agent":"codex","mode":"copy"}}]',
+            '[{"name":"testing","coordinate":"github.com/a/b","version":"v1.0.0","target":{"path":"/tmp/testing","scope":"user","agent":"codex","mode":"copy"}}]',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -520,6 +520,23 @@ void main() {
     expect(skills.single.isLinkedToCodex, isTrue);
     expect(skills.single.targetCount, 1);
     expect(runner.lastArguments, ['list', '--global', '--json']);
+  });
+
+  test('listInstalled rejects an unknown installation scope', () async {
+    final runner = _FakeProcessRunner()
+      ..result = const ProcessOutput(
+        exitCode: 0,
+        stdout:
+            '[{"name":"testing","coordinate":"github.com/a/b","version":"v1.0.0","target":{"path":"/tmp/testing","scope":"workspace","agent":"codex","mode":"copy"}}]',
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      httpClient: MockClient((_) async => http.Response('{}', 200)),
+      processRunner: runner,
+      initialCliPath: '/usr/local/bin/skillsgo',
+    );
+
+    await expectLater(gateway.listInstalled(), throwsA(isA<SkillsException>()));
   });
 
   test('search rejects non-2xx, invalid JSON and missing fields', () async {
@@ -598,38 +615,163 @@ void main() {
     );
   });
 
-  test('remote detail reads Registry info then immutable manifest', () async {
-    final gateway = RealSkillsGateway(
-      httpClient: MockClient((request) async {
-        if (request.url.path.endsWith('.info')) {
+  test(
+    'remote detail reads one auditable Registry contract and local targets',
+    () async {
+      final runner = _FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '[{"name":"Test","coordinate":"github.com/a/b/-/test","version":"v0.0.0-test","target":{"path":"/tmp/test","scope":"user","agent":"codex","mode":"copy"}}]',
+          stderr: '',
+        );
+      final gateway = RealSkillsGateway(
+        httpClient: MockClient((request) async {
+          expect(request.url.path, '/v1/skills/github.com/a/b/-/test');
           return http.Response(
             jsonEncode({
-              'Version': 'v0.0.0-test',
-              'Origin': {'TreeSHA': 'abc'},
+              'coordinate': 'github.com/a/b/-/test',
+              'name': 'Test',
+              'description': 'Test Skill',
+              'source': 'github.com/a/b',
+              'requestedVersion': 'main',
+              'immutableVersion': 'v0.0.0-test',
+              'commitSHA': 'commit-abc',
+              'treeSHA': 'tree-def',
+              'sourceRef': 'refs/heads/main',
+              'contentDigest': 'sha256:digest',
+              'manifest': 'name: test\ndescription: Test Skill',
+              'instructions': '# Real instructions',
+              'trustLevel': 'publisher_verified',
+              'riskAssessment': {
+                'level': 'medium',
+                'scannerVersion': 'file-signals/v1',
+                'evidence': [
+                  {'code': 'script_file', 'path': 'scripts/run.sh'},
+                ],
+              },
+              'files': [
+                {
+                  'path': 'SKILL.md',
+                  'size': 30,
+                  'kind': 'instructions',
+                  'executable': false,
+                  'binary': false,
+                  'content': '# Real instructions',
+                  'truncated': false,
+                },
+                {
+                  'path': 'scripts/run.sh',
+                  'size': 12,
+                  'kind': 'script',
+                  'executable': true,
+                  'binary': false,
+                  'content': 'echo test',
+                  'truncated': false,
+                },
+              ],
+              'hasExecutableContent': true,
+              'executableFiles': ['scripts/run.sh'],
             }),
             200,
           );
-        }
-        expect(request.url.path, endsWith('/@v/v0.0.0-test.manifest'));
-        return http.Response('name: test\ndescription: Test Skill', 200);
-      }),
-      processRunner: _FakeProcessRunner(),
-    );
-    const skill = SkillSummary(
-      id: 'github.com/a/b/-/test',
-      skillId: 'test',
-      name: 'Test',
-      source: 'github.com/a/b/-/test',
-      installs: 2,
-    );
+        }),
+        processRunner: runner,
+        initialCliPath: '/bin/skillsgo',
+      );
+      const skill = SkillSummary(
+        id: 'github.com/a/b/-/test',
+        skillId: 'test',
+        name: 'Test',
+        source: 'github.com/a/b/-/test',
+        installs: 2,
+      );
 
-    final detail = await gateway.loadRemoteDetail(skill);
-    expect(
-      detail.files.map((file) => file.path),
-      containsAll(['v0.0.0-test.info', 'v0.0.0-test.manifest']),
-    );
-    expect(detail.markdown, contains('description: Test Skill'));
-  });
+      final detail = await gateway.loadRemoteDetail(skill);
+      expect(detail.markdown, '# Real instructions');
+      expect(detail.immutableVersion, 'v0.0.0-test');
+      expect(detail.commitSHA, 'commit-abc');
+      expect(detail.treeSHA, 'tree-def');
+      expect(detail.contentDigest, 'sha256:digest');
+      expect(detail.trustLevel, SkillTrustLevel.publisherVerified);
+      expect(detail.riskAssessment, SkillRiskAssessment.medium);
+      expect(detail.riskEvidence.single.path, 'scripts/run.sh');
+      expect(detail.files.last.contents, 'echo test');
+      expect(detail.hasExecutableContent, isTrue);
+      expect(detail.installationTargets.single.agent, 'codex');
+      expect(detail.installationTargets.single.version, 'v0.0.0-test');
+    },
+  );
+
+  test(
+    'remote detail classifies malformed, unavailable, offline and timeout states',
+    () async {
+      for (final testCase in [
+        (
+          response: http.Response(
+            '{"code":"artifact_invalid","error":"invalid"}',
+            502,
+          ),
+          error: null,
+          timeout: const Duration(seconds: 1),
+          kind: SkillsFailureKind.invalidResponse,
+        ),
+        (
+          response: http.Response(
+            '{"code":"artifact_unavailable","error":"missing"}',
+            503,
+          ),
+          error: null,
+          timeout: const Duration(seconds: 1),
+          kind: SkillsFailureKind.artifactUnavailable,
+        ),
+        (
+          response: null,
+          error: const SocketException('offline'),
+          timeout: const Duration(seconds: 1),
+          kind: SkillsFailureKind.offline,
+        ),
+        (
+          response: null,
+          error: null,
+          timeout: const Duration(milliseconds: 1),
+          kind: SkillsFailureKind.timeout,
+        ),
+      ]) {
+        final gateway = RealSkillsGateway(
+          httpClient: MockClient((_) async {
+            if (testCase.error != null) throw testCase.error!;
+            if (testCase.response != null) return testCase.response!;
+            return Future.delayed(
+              const Duration(milliseconds: 20),
+              () => http.Response('{}', 200),
+            );
+          }),
+          processRunner: _FakeProcessRunner(),
+          detailTimeout: testCase.timeout,
+        );
+
+        await expectLater(
+          gateway.loadRemoteDetail(
+            const SkillSummary(
+              id: 'github.com/a/b/-/test',
+              skillId: 'test',
+              name: 'Test',
+              source: 'github.com/a/b',
+              installs: 0,
+            ),
+          ),
+          throwsA(
+            isA<SkillsException>().having(
+              (error) => error.kind,
+              'kind',
+              testCase.kind,
+            ),
+          ),
+        );
+      }
+    },
+  );
 
   test('hostile write inputs remain exact arguments without a shell', () async {
     final runner = _FakeProcessRunner();

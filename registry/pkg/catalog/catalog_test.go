@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Catalog with temporary SQLite databases and deterministic install-event timestamps.
- * [OUTPUT]: Specifies canonical Skill persistence, searchable fields, pagination, and distinct ranking semantics.
+ * [OUTPUT]: Specifies canonical Skill/version persistence, append-only risk assessments, searchable fields, pagination, and distinct ranking semantics.
  * [POS]: Serves as SQLite contract coverage for the Registry discovery metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -119,4 +119,56 @@ func TestUpsertSkillRequiresFullHostCoordinate(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	err = c.UpsertSkill(context.Background(), &Skill{Coordinate: "github/acme/skills", Name: "acme", LatestVersion: "main"})
 	require.ErrorContains(t, err, "full host name")
+}
+
+func TestArtifactVersionsAreImmutableAndRiskAssessmentsAreAppendOnly(t *testing.T) {
+	ctx := context.Background()
+	c, err := Open(ctx, config.DatabaseConfig{
+		Type: "sqlite", DSN: filepath.Join(t.TempDir(), "registry.db"),
+		MaxOpenConns: 1, MaxIdleConns: 1,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, c.Close()) })
+	skill := &Skill{
+		Coordinate: "github.com/acme/skills/-/demo", Name: "demo",
+		Description: "Demo", LatestVersion: "v1.0.0",
+	}
+	require.NoError(t, c.UpsertSkill(ctx, skill))
+
+	version, err := c.RecordSkillVersion(ctx, skill.Coordinate, SkillVersion{
+		Version: "v1.0.0", CommitSHA: "commit-a", TreeSHA: "tree-a", ContentDigest: "sha256:artifact-a",
+	})
+	require.NoError(t, err)
+	require.NotZero(t, version.ID)
+	same, err := c.RecordSkillVersion(ctx, skill.Coordinate, *version)
+	require.NoError(t, err)
+	require.Equal(t, version.ID, same.ID)
+
+	_, err = c.RecordSkillVersion(ctx, skill.Coordinate, SkillVersion{
+		Version: "v1.0.0", CommitSHA: "commit-b", TreeSHA: "tree-a", ContentDigest: "sha256:artifact-a",
+	})
+	require.ErrorContains(t, err, "immutable Skill version conflict")
+
+	first, err := c.AppendRiskAssessment(ctx, version.ID, RiskAssessment{
+		Level: "medium", ScannerVersion: "file-signals/v1", Evidence: `[{"code":"script_file","path":"scripts/run.sh"}]`,
+	})
+	require.NoError(t, err)
+	repeated, err := c.AppendRiskAssessment(ctx, version.ID, *first)
+	require.NoError(t, err)
+	require.NotEqual(t, first.ID, repeated.ID)
+	second, err := c.AppendRiskAssessment(ctx, version.ID, RiskAssessment{
+		Level: "high", ScannerVersion: "file-signals/v2", Evidence: `[{"code":"binary_executable","path":"bin/tool"}]`,
+	})
+	require.NoError(t, err)
+	require.NotEqual(t, first.ID, second.ID)
+
+	assessments, err := c.RiskAssessments(ctx, version.ID)
+	require.NoError(t, err)
+	require.Len(t, assessments, 3)
+	require.Equal(t, []string{"file-signals/v1", "file-signals/v1", "file-signals/v2"}, []string{assessments[0].ScannerVersion, assessments[1].ScannerVersion, assessments[2].ScannerVersion})
+
+	_, err = c.AppendRiskAssessment(ctx, version.ID, RiskAssessment{
+		Level: "medium", ScannerVersion: "file-signals/v1", Evidence: `not-json`,
+	})
+	require.ErrorContains(t, err, "valid JSON")
 }

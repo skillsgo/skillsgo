@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Registry HTTP, the local filesystem, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides production Registry settings, paginated discovery collections with typed failures, policy/storage diagnostics, bundled CLI verification, and Skill operations.
+ * [OUTPUT]: Provides production Registry settings, paginated discovery, auditable artifact detail with local targets and typed failures, diagnostics, bundled CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -68,6 +68,12 @@ SkillRiskAssessment _riskAssessment(Object? value) => switch (value) {
   ),
 };
 
+SkillInstallationScope _installationScope(Object? value) => switch (value) {
+  'user' => SkillInstallationScope.user,
+  'project' => SkillInstallationScope.project,
+  _ => throw const FormatException('Unknown installation scope.'),
+};
+
 SkillMetricKind _metricKind(String value) => switch (value) {
   'all_time_installs' => SkillMetricKind.allTimeInstalls,
   'installs_24h' => SkillMetricKind.installs24h,
@@ -89,6 +95,7 @@ class RealSkillsGateway implements SkillsGateway {
     String registryBaseUrl = 'http://localhost:3000',
     String? appVersion,
     this.discoveryTimeout = const Duration(seconds: 15),
+    this.detailTimeout = const Duration(seconds: 20),
   }) : _http = httpClient ?? http.Client(),
        _runner = processRunner ?? const IoProcessRunner(),
        _cliPath = initialCliPath,
@@ -113,6 +120,7 @@ class RealSkillsGateway implements SkillsGateway {
   final String _expectedCliOS;
   final String? _injectedAppVersion;
   final Duration discoveryTimeout;
+  final Duration detailTimeout;
   String? _cliPath;
   bool _registryOriginLoaded = false;
 
@@ -561,56 +569,175 @@ class RealSkillsGateway implements SkillsGateway {
   @override
   Future<SkillDetail> loadRemoteDetail(SkillSummary skill) async {
     await _ensureRegistryOrigin();
-    final infoUri = _registryBase.resolve(
-      '${skill.id}/@v/${skill.latestVersion}.info',
-    );
+    final uri = _registryBase.resolve('v1/skills/${skill.id}');
     try {
-      final infoResponse = await _http
-          .get(infoUri)
-          .timeout(const Duration(seconds: 20));
-      if (infoResponse.statusCode < 200 || infoResponse.statusCode >= 300) {
+      final response = await _http.get(uri).timeout(detailTimeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        var code = '';
+        try {
+          final error = jsonDecode(response.body);
+          if (error is Map<String, dynamic> && error['code'] is String) {
+            code = error['code'] as String;
+          }
+        } on FormatException {
+          // Status remains authoritative when an error body is not JSON.
+        }
         throw SkillsException(
-          'Skill info returned ${infoResponse.statusCode}.',
+          'Skill detail returned ${response.statusCode}.',
+          kind: switch (code) {
+            'artifact_invalid' => SkillsFailureKind.invalidResponse,
+            'artifact_unavailable' => SkillsFailureKind.artifactUnavailable,
+            _ when response.statusCode >= 400 && response.statusCode < 500 =>
+              SkillsFailureKind.validation,
+            _ => SkillsFailureKind.server,
+          },
         );
       }
-      final info = jsonDecode(infoResponse.body);
-      if (info is! Map<String, dynamic> || info['Version'] is! String) {
-        throw const SkillsException('Skill info is invalid.');
-      }
-      final version = info['Version'] as String;
-      final manifestUri = _registryBase.resolve(
-        '${skill.id}/@v/$version.manifest',
-      );
-      final manifestResponse = await _http
-          .get(manifestUri)
-          .timeout(const Duration(seconds: 20));
-      if (manifestResponse.statusCode < 200 ||
-          manifestResponse.statusCode >= 300) {
-        throw SkillsException(
-          'Skill manifest returned ${manifestResponse.statusCode}.',
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic>) {
+        throw const SkillsException(
+          'Skill detail is invalid.',
+          kind: SkillsFailureKind.invalidResponse,
         );
       }
-      final manifest = manifestResponse.body;
-      if (manifest.trim().isEmpty) {
-        throw const SkillsException('Skill manifest is empty.');
+      const requiredStrings = [
+        'coordinate',
+        'name',
+        'description',
+        'source',
+        'requestedVersion',
+        'immutableVersion',
+        'commitSHA',
+        'treeSHA',
+        'sourceRef',
+        'contentDigest',
+        'manifest',
+        'instructions',
+        'trustLevel',
+      ];
+      if (requiredStrings.any((field) => decoded[field] is! String) ||
+          decoded['coordinate'] != skill.id ||
+          decoded['riskAssessment'] is! Map<String, dynamic> ||
+          decoded['files'] is! List ||
+          decoded['hasExecutableContent'] is! bool ||
+          decoded['executableFiles'] is! List) {
+        throw const SkillsException(
+          'Skill detail is missing required fields.',
+          kind: SkillsFailureKind.invalidResponse,
+        );
       }
-      final infoText = const JsonEncoder.withIndent('  ').convert(info);
+      final risk = decoded['riskAssessment'] as Map<String, dynamic>;
+      if (risk['level'] is! String ||
+          risk['scannerVersion'] is! String ||
+          risk['evidence'] is! List) {
+        throw const SkillsException(
+          'Skill Risk Assessment is invalid.',
+          kind: SkillsFailureKind.invalidResponse,
+        );
+      }
+      final evidence = (risk['evidence'] as List)
+          .map((raw) {
+            if (raw is! Map<String, dynamic> ||
+                raw['code'] is! String ||
+                raw['path'] is! String) {
+              throw const SkillsException(
+                'Skill risk evidence is invalid.',
+                kind: SkillsFailureKind.invalidResponse,
+              );
+            }
+            return SkillRiskEvidence(
+              code: raw['code'] as String,
+              path: raw['path'] as String,
+            );
+          })
+          .toList(growable: false);
+      final files = (decoded['files'] as List)
+          .map((raw) {
+            if (raw is! Map<String, dynamic> ||
+                raw['path'] is! String ||
+                raw['size'] is! num ||
+                raw['kind'] is! String ||
+                raw['executable'] is! bool ||
+                raw['binary'] is! bool ||
+                raw['truncated'] is! bool ||
+                (raw['content'] != null && raw['content'] is! String)) {
+              throw const SkillsException(
+                'Skill file inventory is invalid.',
+                kind: SkillsFailureKind.invalidResponse,
+              );
+            }
+            return SkillFile(
+              path: raw['path'] as String,
+              contents: raw['content'] as String? ?? '',
+              size: (raw['size'] as num).toInt(),
+              kind: raw['kind'] as String,
+              executable: raw['executable'] as bool,
+              binary: raw['binary'] as bool,
+              truncated: raw['truncated'] as bool,
+            );
+          })
+          .toList(growable: false);
+      if ((decoded['executableFiles'] as List).any((path) => path is! String)) {
+        throw const SkillsException(
+          'Executable file signals are invalid.',
+          kind: SkillsFailureKind.invalidResponse,
+        );
+      }
+      var installationTargets = <SkillInstallationTarget>[];
+      try {
+        final installed = await listInstalled();
+        installationTargets = installed
+            .where((entry) => entry.coordinate == skill.id)
+            .expand((entry) => entry.targets)
+            .toList(growable: false);
+      } on Object {
+        // Remote artifact inspection stays available without local CLI state.
+      }
       return SkillDetail(
-        name: skill.name,
-        source: skill.source,
-        markdown: '```yaml\n$manifest\n```',
-        files: [
-          SkillFile(path: '$version.info', contents: infoText),
-          SkillFile(path: '$version.manifest', contents: manifest),
-        ],
+        name: decoded['name'] as String,
+        source: decoded['source'] as String,
+        markdown: decoded['instructions'] as String,
+        files: files,
         installs: skill.installs,
+        description: decoded['description'] as String,
+        requestedVersion: decoded['requestedVersion'] as String,
+        immutableVersion: decoded['immutableVersion'] as String,
+        commitSHA: decoded['commitSHA'] as String,
+        treeSHA: decoded['treeSHA'] as String,
+        sourceRef: decoded['sourceRef'] as String,
+        contentDigest: decoded['contentDigest'] as String,
+        manifest: decoded['manifest'] as String,
+        trustLevel: _trustLevel(decoded['trustLevel']),
+        riskAssessment: _riskAssessment(risk['level']),
+        riskScannerVersion: risk['scannerVersion'] as String,
+        riskEvidence: evidence,
+        installationTargets: installationTargets,
+        registryExecutableSignal: decoded['hasExecutableContent'] as bool,
       );
+    } on SkillsException {
+      rethrow;
     } on SocketException {
-      throw const SkillsException('You appear to be offline.', isOffline: true);
+      throw const SkillsException(
+        'You appear to be offline.',
+        kind: SkillsFailureKind.offline,
+        isOffline: true,
+      );
+    } on http.ClientException {
+      throw const SkillsException(
+        'The Registry connection failed.',
+        kind: SkillsFailureKind.offline,
+        isOffline: true,
+      );
     } on TimeoutException {
-      throw const SkillsException('Skill metadata timed out.', isOffline: true);
+      throw const SkillsException(
+        'Skill detail timed out.',
+        kind: SkillsFailureKind.timeout,
+      );
     } on FormatException {
-      throw const SkillsException('Skill info returned invalid JSON.');
+      throw const SkillsException(
+        'Skill detail returned invalid JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
     }
   }
 
@@ -654,16 +781,20 @@ class RealSkillsGateway implements SkillsGateway {
               String path,
               Set<String> agents,
               int targetCount,
+              List<SkillInstallationTarget> targets,
             })
           >{};
       for (final raw in decoded) {
         if (raw is! Map<String, dynamic> ||
             raw['name'] is! String ||
+            raw['version'] is! String ||
             raw['target'] is! Map<String, dynamic>) {
           throw const FormatException();
         }
         final target = raw['target'] as Map<String, dynamic>;
-        if (target['path'] is! String || target['agent'] is! String) {
+        if (target['path'] is! String ||
+            target['agent'] is! String ||
+            target['scope'] is! String) {
           throw const FormatException();
         }
         final key = '${raw['coordinate'] ?? ''}\u0000${raw['name']}';
@@ -677,6 +808,15 @@ class RealSkillsGateway implements SkillsGateway {
           agents: (current?.agents ?? <String>{})
             ..add(target['agent'] as String),
           targetCount: (current?.targetCount ?? 0) + 1,
+          targets: [
+            ...?current?.targets,
+            SkillInstallationTarget(
+              agent: target['agent'] as String,
+              scope: _installationScope(target['scope']),
+              path: target['path'] as String,
+              version: raw['version'] as String,
+            ),
+          ],
         );
       }
       return grouped.values
@@ -687,6 +827,7 @@ class RealSkillsGateway implements SkillsGateway {
               agents: value.agents.toList(growable: false),
               targetCount: value.targetCount,
               coordinate: value.coordinate,
+              targets: value.targets,
             ),
           )
           .toList(growable: false);

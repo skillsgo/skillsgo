@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the shared Catalog contract against an opt-in Testcontainers PostgreSQL service.
- * [OUTPUT]: Specifies PostgreSQL parity for discovery search, pagination, install aggregation, and rankings.
+ * [OUTPUT]: Specifies PostgreSQL parity for discovery, immutable versions, append-only risk evidence, install aggregation, and rankings.
  * [POS]: Serves as real-PostgreSQL integration coverage for the Registry discovery metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -51,6 +51,18 @@ func TestPostgresCatalog(t *testing.T) {
 	} {
 		require.NoError(t, c.UpsertSkill(ctx, item))
 	}
+	version, err := c.RecordSkillVersion(ctx, skill.Coordinate, SkillVersion{
+		Version: "v1.0.0", CommitSHA: "commit-a", TreeSHA: "tree-a", ContentDigest: "sha256:artifact-a",
+	})
+	require.NoError(t, err)
+	assessment, err := c.AppendRiskAssessment(ctx, version.ID, RiskAssessment{
+		Level: "medium", ScannerVersion: "file-signals/v1", Evidence: `[{"code":"script_file","path":"scripts/run.sh"}]`,
+	})
+	require.NoError(t, err)
+	require.NotZero(t, assessment.ID)
+	assessments, err := c.RiskAssessments(ctx, version.ID)
+	require.NoError(t, err)
+	require.Len(t, assessments, 1)
 	results, err := c.Search(ctx, "presentation", 2, 0)
 	require.NoError(t, err)
 	require.Len(t, results, 2)

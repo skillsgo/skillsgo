@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Bun, SQLite/PostgreSQL dialects, Registry database configuration, and canonical Skill coordinates.
- * [OUTPUT]: Provides persistent searchable Skill metadata, install aggregation, pagination, and distinct rankings.
+ * [OUTPUT]: Provides persistent searchable Skill metadata, immutable versions, append-only risk assessments, install aggregation, pagination, and distinct rankings.
  * [POS]: Serves as the Registry discovery data boundary while artifact bytes remain owned by storage packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,7 +9,9 @@
 package catalog
 
 import (
+	"bytes"
 	"context"
+	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -97,6 +99,17 @@ type SkillVersion struct {
 	TreeSHA       string    `bun:",notnull" json:"treeSHA"`
 	ContentDigest string    `bun:",notnull" json:"contentDigest"`
 	CreatedAt     time.Time `bun:",notnull,default:current_timestamp" json:"createdAt"`
+}
+
+type RiskAssessment struct {
+	bun.BaseModel  `bun:"table:risk_assessments,alias:ra"`
+	ID             int64     `bun:",pk,autoincrement" json:"id"`
+	SkillVersionID int64     `bun:",notnull" json:"skillVersionId"`
+	Level          string    `bun:",notnull" json:"level"`
+	ScannerVersion string    `bun:",notnull" json:"scannerVersion"`
+	Evidence       string    `bun:",notnull" json:"evidence"`
+	Fingerprint    string    `bun:",notnull" json:"fingerprint"`
+	CreatedAt      time.Time `bun:",notnull,default:current_timestamp" json:"createdAt"`
 }
 
 type InstallEvent struct {
@@ -241,6 +254,65 @@ func (c *Catalog) Skill(ctx context.Context, coordinate string) (*Skill, error) 
 	return skill, err
 }
 
+func (c *Catalog) RecordSkillVersion(ctx context.Context, coordinate string, candidate SkillVersion) (*SkillVersion, error) {
+	if candidate.Version == "" || candidate.CommitSHA == "" || candidate.TreeSHA == "" || candidate.ContentDigest == "" {
+		return nil, fmt.Errorf("version, commit SHA, tree SHA, and content digest are required")
+	}
+	var skillID int64
+	if err := c.db.NewSelect().Table("skills").Column("id").Where("coordinate = ?", coordinate).Scan(ctx, &skillID); err != nil {
+		return nil, err
+	}
+	candidate.ID = 0
+	candidate.SkillID = skillID
+	if candidate.CreatedAt.IsZero() {
+		candidate.CreatedAt = time.Now().UTC()
+	}
+	_, err := c.db.NewInsert().Model(&candidate).On("CONFLICT (skill_id, version) DO NOTHING").Exec(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stored := new(SkillVersion)
+	if err := c.db.NewSelect().Model(stored).
+		Where("skill_id = ? AND version = ?", skillID, candidate.Version).Scan(ctx); err != nil {
+		return nil, err
+	}
+	if stored.CommitSHA != candidate.CommitSHA || stored.TreeSHA != candidate.TreeSHA || stored.ContentDigest != candidate.ContentDigest {
+		return nil, fmt.Errorf("immutable Skill version conflict for %s@%s", coordinate, candidate.Version)
+	}
+	return stored, nil
+}
+
+func (c *Catalog) AppendRiskAssessment(ctx context.Context, skillVersionID int64, candidate RiskAssessment) (*RiskAssessment, error) {
+	if skillVersionID == 0 || candidate.Level == "" || candidate.ScannerVersion == "" || candidate.Evidence == "" {
+		return nil, fmt.Errorf("Skill version, level, scanner version, and evidence are required")
+	}
+	if !json.Valid([]byte(candidate.Evidence)) {
+		return nil, fmt.Errorf("risk evidence must be valid JSON")
+	}
+	var normalized bytes.Buffer
+	if err := json.Compact(&normalized, []byte(candidate.Evidence)); err != nil {
+		return nil, fmt.Errorf("normalize risk evidence: %w", err)
+	}
+	candidate.Evidence = normalized.String()
+	candidate.ID = 0
+	candidate.SkillVersionID = skillVersionID
+	candidate.Fingerprint = fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(candidate.Level+"\x00"+candidate.ScannerVersion+"\x00"+candidate.Evidence)))
+	if candidate.CreatedAt.IsZero() {
+		candidate.CreatedAt = time.Now().UTC()
+	}
+	if _, err := c.db.NewInsert().Model(&candidate).Exec(ctx); err != nil {
+		return nil, err
+	}
+	return &candidate, nil
+}
+
+func (c *Catalog) RiskAssessments(ctx context.Context, skillVersionID int64) ([]RiskAssessment, error) {
+	assessments := make([]RiskAssessment, 0)
+	err := c.db.NewSelect().Model(&assessments).Where("skill_version_id = ?", skillVersionID).
+		OrderExpr("created_at ASC, id ASC").Scan(ctx)
+	return assessments, err
+}
+
 func (c *Catalog) Skills(ctx context.Context, limit, offset int) ([]Skill, error) {
 	if limit <= 0 || limit > 100 {
 		limit = 20
@@ -306,6 +378,10 @@ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NO
 id INTEGER PRIMARY KEY AUTOINCREMENT, skill_id INTEGER NOT NULL REFERENCES skills(id) ON DELETE CASCADE,
 version TEXT NOT NULL, commit_sha TEXT NOT NULL, tree_sha TEXT NOT NULL, content_digest TEXT NOT NULL,
 created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(skill_id, version))`,
+	`CREATE TABLE IF NOT EXISTS risk_assessments (
+id INTEGER PRIMARY KEY AUTOINCREMENT, skill_version_id INTEGER NOT NULL REFERENCES skill_versions(id) ON DELETE CASCADE,
+level TEXT NOT NULL, scanner_version TEXT NOT NULL, evidence TEXT NOT NULL, fingerprint TEXT NOT NULL,
+created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
 	`CREATE TABLE IF NOT EXISTS install_events (
 event_id TEXT PRIMARY KEY, skill_id INTEGER NOT NULL REFERENCES skills(id) ON DELETE CASCADE, version TEXT NOT NULL,
 agents TEXT NOT NULL, scope TEXT NOT NULL, cli_version TEXT NOT NULL, occurred_at TIMESTAMP NOT NULL,
@@ -329,6 +405,10 @@ updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
 id BIGSERIAL PRIMARY KEY, skill_id BIGINT NOT NULL REFERENCES skills(id) ON DELETE CASCADE, version TEXT NOT NULL,
 commit_sha TEXT NOT NULL, tree_sha TEXT NOT NULL, content_digest TEXT NOT NULL,
 created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP, UNIQUE(skill_id, version))`,
+	`CREATE TABLE IF NOT EXISTS risk_assessments (
+id BIGSERIAL PRIMARY KEY, skill_version_id BIGINT NOT NULL REFERENCES skill_versions(id) ON DELETE CASCADE,
+level TEXT NOT NULL, scanner_version TEXT NOT NULL, evidence JSONB NOT NULL, fingerprint TEXT NOT NULL,
+created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
 	`CREATE TABLE IF NOT EXISTS install_events (
 event_id TEXT PRIMARY KEY, skill_id BIGINT NOT NULL REFERENCES skills(id) ON DELETE CASCADE, version TEXT NOT NULL,
 agents JSONB NOT NULL, scope TEXT NOT NULL, cli_version TEXT NOT NULL, occurred_at TIMESTAMPTZ NOT NULL,
