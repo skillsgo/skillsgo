@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on Cobra, localized human copy, the Agent Catalog, and the inventory domain report builder.
- * [OUTPUT]: Provides `skillsgo inventory` with stable JSON serialization and localized human summaries for explicit Library locations.
- * [POS]: Serves as the thin executable adapter for managed Library inventory without owning reconciliation mechanics.
+ * [OUTPUT]: Provides `skillsgo inventory` with stable managed/external JSON serialization and localized human summaries for explicit Library locations.
+ * [POS]: Serves as the thin executable adapter for unified Library inventory without owning reconciliation mechanics.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
