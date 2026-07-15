@@ -5,6 +5,7 @@
 
 - `app_shell.dart`: renders the desktop shell and current Discover, Library, detail, operation, and Settings journeys.
 - `brand.dart`: defines reusable SkillsPlay visual tokens, backgrounds, cards, buttons, fields, status elements, and empty states.
+- `nested_navigation.dart`: renders the shared accessible side rail, selected capsule motion, and desktop rail/content layout.
 
 ## Architectural Boundary
 

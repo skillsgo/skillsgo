@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on SkillsGateway domain contracts, localized copy, Flutter navigation, and SkillsPlay brand tokens.
- * [OUTPUT]: Provides the desktop shell and visible Discover, Library, detail, operation, and Settings journeys.
+ * [INPUT]: Depends on SkillsGateway contracts, localized copy, stateful nested navigation, and SkillsPlay brand tokens.
+ * [OUTPUT]: Provides the desktop shell and persistent Discover, Library, detail, operation, and Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,6 +15,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import '../domain/skills_gateway.dart';
 import '../l10n/app_localizations.dart';
 import 'brand.dart';
+import 'nested_navigation.dart';
 
 extension on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
@@ -89,25 +90,28 @@ class _AppShellState extends State<AppShell> {
                 ),
               ),
             Expanded(
-              child: AnimatedSwitcher(
-                duration: MediaQuery.disableAnimationsOf(context)
-                    ? Duration.zero
-                    : const Duration(milliseconds: 160),
-                child: switch (destination) {
-                  _Destination.discover => DiscoverScreen(
-                    key: const ValueKey('discover'),
-                    gateway: widget.gateway,
-                    onInstalled: _showLibrary,
+              child: IndexedStack(
+                index: destination.index,
+                children: [
+                  TickerMode(
+                    enabled: destination == _Destination.discover,
+                    child: DiscoverScreen(
+                      gateway: widget.gateway,
+                      onInstalled: _showLibrary,
+                    ),
                   ),
-                  _Destination.library => LibraryScreen(
-                    key: ValueKey('library-$libraryRevision'),
-                    gateway: widget.gateway,
+                  TickerMode(
+                    enabled: destination == _Destination.library,
+                    child: LibraryScreen(
+                      gateway: widget.gateway,
+                      revision: libraryRevision,
+                    ),
                   ),
-                  _Destination.settings => SettingsScreen(
-                    key: const ValueKey('settings'),
-                    gateway: widget.gateway,
+                  TickerMode(
+                    enabled: destination == _Destination.settings,
+                    child: SettingsScreen(gateway: widget.gateway),
                   ),
-                },
+                ],
               ),
             ),
           ],
@@ -321,6 +325,8 @@ class _NavButton extends StatelessWidget {
   );
 }
 
+enum _DiscoverRoute { search, ranking, trending, hot }
+
 class DiscoverScreen extends StatefulWidget {
   const DiscoverScreen({
     super.key,
@@ -337,6 +343,9 @@ class DiscoverScreen extends StatefulWidget {
 class _DiscoverScreenState extends State<DiscoverScreen> {
   final controller = TextEditingController();
   final focusNode = FocusNode();
+  final scrollController = ScrollController();
+  final installOperations = <String, _InstallOperation>{};
+  _DiscoverRoute selectedRoute = _DiscoverRoute.search;
   List<SkillSummary>? results;
   Object? error;
   bool loading = false;
@@ -383,48 +392,101 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   void dispose() {
     controller.dispose();
     focusNode.dispose();
+    scrollController.dispose();
+    for (final operation in installOperations.values) {
+      operation.dispose();
+    }
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(28, 36, 28, 24),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SectionEyebrow(context.l10n.officialIndex, color: SkillsTokens.teal),
-        const SizedBox(height: 10),
-        Text(
-          context.l10n.discoverTitle,
-          style: TextStyle(
-            fontFamily: SkillsTokens.serifFamily,
-            fontSize: 38,
-            fontWeight: FontWeight.w600,
-          ),
+  Widget build(BuildContext context) => SkillsDestinationLayout(
+    rail: SkillsSideRail<_DiscoverRoute>(
+      semanticLabel: context.l10n.discoverNavigation,
+      selected: selectedRoute,
+      onSelected: (route) => setState(() => selectedRoute = route),
+      items: [
+        SkillsRailItem(
+          value: _DiscoverRoute.search,
+          label: context.l10n.search,
         ),
-        const SizedBox(height: 22),
-        Shortcuts(
-          shortcuts: const {
-            SingleActivator(LogicalKeyboardKey.keyF, meta: true):
-                ActivateIntent(),
-          },
-          child: Actions(
-            actions: {
-              ActivateIntent: CallbackAction<ActivateIntent>(
-                onInvoke: (_) => focusNode.requestFocus(),
-              ),
-            },
-            child: SkillSearchField(
-              controller: controller,
-              focusNode: focusNode,
-              onSubmitted: search,
-            ),
-          ),
+        SkillsRailItem(
+          value: _DiscoverRoute.ranking,
+          label: context.l10n.ranking,
         ),
-        const SizedBox(height: 22),
-        Expanded(child: _body()),
+        SkillsRailItem(
+          value: _DiscoverRoute.trending,
+          label: context.l10n.trending,
+        ),
+        SkillsRailItem(value: _DiscoverRoute.hot, label: context.l10n.hot),
       ],
     ),
+    child: switch (selectedRoute) {
+      _DiscoverRoute.search => _searchPage(),
+      _DiscoverRoute.ranking => _collectionPage(context.l10n.allTimeRanking),
+      _DiscoverRoute.trending => _collectionPage(context.l10n.trendingNow),
+      _DiscoverRoute.hot => _collectionPage(context.l10n.hotNow),
+    },
+  );
+
+  Widget _searchPage() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SectionEyebrow(context.l10n.officialIndex, color: SkillsTokens.teal),
+      const SizedBox(height: 10),
+      Text(
+        context.l10n.discoverTitle,
+        style: TextStyle(
+          fontFamily: SkillsTokens.serifFamily,
+          fontSize: 38,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 22),
+      Shortcuts(
+        shortcuts: const {
+          SingleActivator(LogicalKeyboardKey.keyF, meta: true):
+              ActivateIntent(),
+        },
+        child: Actions(
+          actions: {
+            ActivateIntent: CallbackAction<ActivateIntent>(
+              onInvoke: (_) => focusNode.requestFocus(),
+            ),
+          },
+          child: SkillSearchField(
+            controller: controller,
+            focusNode: focusNode,
+            onSubmitted: search,
+          ),
+        ),
+      ),
+      const SizedBox(height: 22),
+      Expanded(child: _body()),
+    ],
+  );
+
+  Widget _collectionPage(String title) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      SectionEyebrow(context.l10n.officialIndex, color: SkillsTokens.teal),
+      const SizedBox(height: 10),
+      Text(
+        title,
+        style: const TextStyle(
+          fontFamily: SkillsTokens.serifFamily,
+          fontSize: 38,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 22),
+      Expanded(
+        child: EmptyState(
+          title: title,
+          message: context.l10n.collectionComingSoon,
+        ),
+      ),
+    ],
   );
 
   Widget _body() {
@@ -458,6 +520,8 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       );
     }
     return ListView.separated(
+      key: const ValueKey('discover-results'),
+      controller: scrollController,
       itemCount: results!.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
@@ -468,41 +532,91 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   }
 
   Future<void> _openDetail(SkillSummary skill) async {
+    final operation = installOperations.putIfAbsent(
+      skill.id,
+      _InstallOperation.new,
+    );
     final installed = await Navigator.of(context).push<bool>(
       MaterialPageRoute(
-        builder: (_) =>
-            RemoteDetailScreen(gateway: widget.gateway, skill: skill),
+        builder: (_) => _RemoteDetailScreen(
+          gateway: widget.gateway,
+          skill: skill,
+          operation: operation,
+        ),
       ),
     );
     if (installed == true) widget.onInstalled();
   }
 }
 
-class RemoteDetailScreen extends StatefulWidget {
-  const RemoteDetailScreen({
-    super.key,
+class _InstallOperation extends ChangeNotifier {
+  bool operating = false;
+  CommandResult? result;
+  bool _disposed = false;
+
+  Future<void> execute(SkillsGateway gateway, SkillSummary skill) async {
+    if (operating) return;
+    operating = true;
+    result = null;
+    _notify();
+    try {
+      result = await gateway.install(skill);
+    } catch (caught) {
+      result = _exceptionResult(caught);
+    } finally {
+      operating = false;
+      _notify();
+    }
+  }
+
+  void _notify() {
+    if (!_disposed) notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _disposed = true;
+    super.dispose();
+  }
+}
+
+class _RemoteDetailScreen extends StatefulWidget {
+  const _RemoteDetailScreen({
     required this.gateway,
     required this.skill,
+    required this.operation,
   });
   final SkillsGateway gateway;
   final SkillSummary skill;
+  final _InstallOperation operation;
 
   @override
-  State<RemoteDetailScreen> createState() => _RemoteDetailScreenState();
+  State<_RemoteDetailScreen> createState() => _RemoteDetailScreenState();
 }
 
-class _RemoteDetailScreenState extends State<RemoteDetailScreen> {
+class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
   SkillDetail? detail;
   Object? error;
   bool loading = true;
-  bool operating = false;
-  CommandResult? result;
   CliStatus? cliStatus;
+  bool get operating => widget.operation.operating;
+  CommandResult? get result => widget.operation.result;
 
   @override
   void initState() {
     super.initState();
+    widget.operation.addListener(_operationChanged);
     unawaited(load());
+  }
+
+  void _operationChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    widget.operation.removeListener(_operationChanged);
+    super.dispose();
   }
 
   Future<void> load() async {
@@ -524,16 +638,7 @@ class _RemoteDetailScreenState extends State<RemoteDetailScreen> {
   }
 
   Future<void> install() async {
-    setState(() {
-      operating = true;
-      result = null;
-    });
-    try {
-      result = await widget.gateway.install(widget.skill);
-    } catch (caught) {
-      result = _exceptionResult(caught);
-    }
-    if (mounted) setState(() => operating = false);
+    await widget.operation.execute(widget.gateway, widget.skill);
   }
 
   @override
@@ -701,13 +806,21 @@ class _RiskNotice extends StatelessWidget {
 }
 
 class LibraryScreen extends StatefulWidget {
-  const LibraryScreen({super.key, required this.gateway});
+  const LibraryScreen({
+    super.key,
+    required this.gateway,
+    required this.revision,
+  });
   final SkillsGateway gateway;
+  final int revision;
   @override
   State<LibraryScreen> createState() => _LibraryScreenState();
 }
 
 class _LibraryScreenState extends State<LibraryScreen> {
+  static const _allRoute = 'all';
+  static const _userRoute = 'user';
+  static const _addProjectRoute = 'add-project';
   List<InstalledSkill>? skills;
   Object? error;
   bool loading = true;
@@ -715,11 +828,25 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Map<String, UpdateState> updates = const {};
   CommandResult? result;
   final operatingSkills = <String>{};
+  final scrollController = ScrollController();
+  String selectedRoute = _allRoute;
 
   @override
   void initState() {
     super.initState();
     unawaited(load());
+  }
+
+  @override
+  void didUpdateWidget(covariant LibraryScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.revision != widget.revision) unawaited(load());
+  }
+
+  @override
+  void dispose() {
+    scrollController.dispose();
+    super.dispose();
   }
 
   Future<void> load() async {
@@ -729,6 +856,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
     });
     try {
       skills = await widget.gateway.listInstalled();
+      if (selectedRoute.startsWith('agent:')) {
+        final selectedAgent = selectedRoute.substring('agent:'.length);
+        if (!_agents.contains(selectedAgent)) selectedRoute = _allRoute;
+      }
     } catch (caught) {
       error = caught;
     }
@@ -790,9 +921,56 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (mounted) setState(() => operatingSkills.remove(skill.name));
   }
 
+  List<String> get _agents {
+    final values =
+        (skills ?? const <InstalledSkill>[])
+            .expand((skill) => skill.agents)
+            .toSet()
+            .toList()
+          ..sort();
+    return values;
+  }
+
+  String _agentLabel(String agent) => agent
+      .split(RegExp(r'[-_]'))
+      .where((part) => part.isNotEmpty)
+      .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+      .join(' ');
+
+  List<SkillsRailItem<String>> _railItems(BuildContext context) => [
+    SkillsRailItem(value: _allRoute, label: context.l10n.all),
+    SkillsRailItem(value: _userRoute, label: context.l10n.userScope),
+    SkillsRailItem(value: _addProjectRoute, label: context.l10n.addProject),
+    for (var index = 0; index < _agents.length; index++)
+      SkillsRailItem(
+        value: 'agent:${_agents[index]}',
+        label: _agentLabel(_agents[index]),
+        dividerBefore: index == 0,
+      ),
+  ];
+
+  String _routeTitle(BuildContext context) {
+    if (selectedRoute == _allRoute) return context.l10n.all;
+    if (selectedRoute == _userRoute) return context.l10n.userScope;
+    if (selectedRoute == _addProjectRoute) return context.l10n.addProject;
+    return _agentLabel(selectedRoute.substring('agent:'.length));
+  }
+
+  List<InstalledSkill> get _visibleSkills {
+    final current = skills ?? const <InstalledSkill>[];
+    if (!selectedRoute.startsWith('agent:')) return current;
+    final agent = selectedRoute.substring('agent:'.length);
+    return current.where((skill) => skill.agents.contains(agent)).toList();
+  }
+
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(28, 36, 28, 24),
+  Widget build(BuildContext context) => SkillsDestinationLayout(
+    rail: SkillsSideRail<String>(
+      semanticLabel: context.l10n.libraryNavigation,
+      selected: selectedRoute,
+      onSelected: (route) => setState(() => selectedRoute = route),
+      items: _railItems(context),
+    ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -802,7 +980,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 SectionEyebrow(
-                  context.l10n.globalCodex,
+                  _routeTitle(context),
                   color: SkillsTokens.violet,
                 ),
                 const SizedBox(height: 8),
@@ -854,17 +1032,19 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ),
       );
     }
-    if (skills!.isEmpty) {
+    if (_visibleSkills.isEmpty) {
       return EmptyState(
         title: context.l10n.libraryEmpty,
         message: context.l10n.libraryEmptyMessage,
       );
     }
     return ListView.separated(
-      itemCount: skills!.length,
+      key: const ValueKey('library-results'),
+      controller: scrollController,
+      itemCount: _visibleSkills.length,
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
-        final skill = skills![index];
+        final skill = _visibleSkills[index];
         final state = updates[skill.name] ?? UpdateState.unknown;
         final operating = operatingSkills.contains(skill.name);
         return GlassCard(
@@ -1080,6 +1260,15 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
   );
 }
 
+enum _SettingsRoute {
+  general,
+  agents,
+  registry,
+  installationPolicy,
+  storage,
+  about,
+}
+
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key, required this.gateway});
   final SkillsGateway gateway;
@@ -1089,6 +1278,8 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final controller = TextEditingController();
+  final scrollController = ScrollController();
+  _SettingsRoute selectedRoute = _SettingsRoute.general;
   CliStatus? status;
   bool detecting = true;
   @override
@@ -1122,120 +1313,157 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   void dispose() {
     controller.dispose();
+    scrollController.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => ListView(
-    padding: const EdgeInsets.fromLTRB(28, 36, 28, 24),
-    children: [
-      SectionEyebrow(context.l10n.localConfiguration, color: SkillsTokens.gold),
-      const SizedBox(height: 8),
-      Text(
-        context.l10n.settings,
-        style: const TextStyle(
-          fontFamily: SkillsTokens.serifFamily,
-          fontSize: 36,
-          fontWeight: FontWeight.w600,
+  Widget build(BuildContext context) => SkillsDestinationLayout(
+    rail: SkillsSideRail<_SettingsRoute>(
+      semanticLabel: context.l10n.settingsNavigation,
+      selected: selectedRoute,
+      onSelected: (route) => setState(() => selectedRoute = route),
+      items: [
+        SkillsRailItem(
+          value: _SettingsRoute.general,
+          label: context.l10n.general,
         ),
-      ),
-      const SizedBox(height: 22),
-      GlassCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Text(
-                  context.l10n.officialCli,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const Spacer(),
-                if (detecting)
-                  const SizedBox.square(
-                    dimension: 18,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                else
-                  StatusChip(
-                    label: status?.isReady == true
-                        ? context.l10n.ready
-                        : _cliAvailabilityLabel(context, status?.availability),
-                    color: status?.isReady == true
-                        ? SkillsTokens.green
-                        : SkillsTokens.amber,
-                  ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              status?.isReady == true
-                  ? '${status!.path} · v${status!.version}'
-                  : status == null
-                  ? context.l10n.detecting
-                  : _cliStatusMessage(context, status!),
-              style: const TextStyle(color: SkillsTokens.textSecondary),
-            ),
-            if (!kReleaseMode) ...[
-              const SizedBox(height: 18),
-              TextField(
-                key: const Key('cli-path'),
-                controller: controller,
-                decoration: InputDecoration(
-                  labelText: context.l10n.customCliPath,
-                  hintText: '/path/to/development/skillsgo',
-                  border: const OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 12),
+        SkillsRailItem(
+          value: _SettingsRoute.agents,
+          label: context.l10n.agents,
+        ),
+        SkillsRailItem(
+          value: _SettingsRoute.registry,
+          label: context.l10n.registry,
+        ),
+        SkillsRailItem(
+          value: _SettingsRoute.installationPolicy,
+          label: context.l10n.installationPolicy,
+        ),
+        SkillsRailItem(
+          value: _SettingsRoute.storage,
+          label: context.l10n.storage,
+        ),
+        SkillsRailItem(value: _SettingsRoute.about, label: context.l10n.about),
+      ],
+    ),
+    child: ListView(
+      controller: scrollController,
+      children: [
+        SectionEyebrow(
+          context.l10n.localConfiguration,
+          color: SkillsTokens.gold,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          context.l10n.settings,
+          style: const TextStyle(
+            fontFamily: SkillsTokens.serifFamily,
+            fontSize: 36,
+            fontWeight: FontWeight.w600,
+          ),
+        ),
+        const SizedBox(height: 22),
+        GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
               Row(
                 children: [
-                  PrimaryCapsuleButton(
-                    label: context.l10n.saveAndDetect,
-                    onPressed: detecting ? null : save,
+                  Text(
+                    context.l10n.officialCli,
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  const SizedBox(width: 10),
-                  SecondaryCapsuleButton(
-                    label: context.l10n.detectAgain,
-                    onPressed: detecting ? null : detect,
-                  ),
-                  const SizedBox(width: 10),
-                  SecondaryCapsuleButton(
-                    label: context.l10n.clearCustomPath,
-                    onPressed: detecting ? null : clear,
-                  ),
+                  const Spacer(),
+                  if (detecting)
+                    const SizedBox.square(
+                      dimension: 18,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  else
+                    StatusChip(
+                      label: status?.isReady == true
+                          ? context.l10n.ready
+                          : _cliAvailabilityLabel(
+                              context,
+                              status?.availability,
+                            ),
+                      color: status?.isReady == true
+                          ? SkillsTokens.green
+                          : SkillsTokens.amber,
+                    ),
                 ],
               ),
-            ],
-          ],
-        ),
-      ),
-      const SizedBox(height: 14),
-      GlassCard(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SectionEyebrow(context.l10n.privacyProvenance),
-            const SizedBox(height: 10),
-            Text(
-              context.l10n.privacySummary,
-              style: const TextStyle(height: 1.5),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              context.l10n.privacyAffiliation,
-              style: const TextStyle(
-                color: SkillsTokens.textSecondary,
-                height: 1.5,
+              const SizedBox(height: 8),
+              Text(
+                status?.isReady == true
+                    ? '${status!.path} · v${status!.version}'
+                    : status == null
+                    ? context.l10n.detecting
+                    : _cliStatusMessage(context, status!),
+                style: const TextStyle(color: SkillsTokens.textSecondary),
               ),
-            ),
-          ],
+              if (!kReleaseMode) ...[
+                const SizedBox(height: 18),
+                TextField(
+                  key: const Key('cli-path'),
+                  controller: controller,
+                  decoration: InputDecoration(
+                    labelText: context.l10n.customCliPath,
+                    hintText: '/path/to/development/skillsgo',
+                    border: const OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Row(
+                  children: [
+                    PrimaryCapsuleButton(
+                      label: context.l10n.saveAndDetect,
+                      onPressed: detecting ? null : save,
+                    ),
+                    const SizedBox(width: 10),
+                    SecondaryCapsuleButton(
+                      label: context.l10n.detectAgain,
+                      onPressed: detecting ? null : detect,
+                    ),
+                    const SizedBox(width: 10),
+                    SecondaryCapsuleButton(
+                      label: context.l10n.clearCustomPath,
+                      onPressed: detecting ? null : clear,
+                    ),
+                  ],
+                ),
+              ],
+            ],
+          ),
         ),
-      ),
-    ],
+        const SizedBox(height: 14),
+        GlassCard(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SectionEyebrow(context.l10n.privacyProvenance),
+              const SizedBox(height: 10),
+              Text(
+                context.l10n.privacySummary,
+                style: const TextStyle(height: 1.5),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                context.l10n.privacyAffiliation,
+                style: const TextStyle(
+                  color: SkillsTokens.textSecondary,
+                  height: 1.5,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
   );
 }
 

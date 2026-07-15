@@ -45,6 +45,13 @@ flutter build macos --release
 - Do not construct shell command strings from user input; pass arguments as a structured list.
 - Keep UI state and visual decisions out of CLI and Registry packages.
 
+## UI Component Policy
+
+- Prefer `shadcn_ui` primitives for common controls, overlays, forms, feedback, and accessibility behavior.
+- Apply the Burrow-inspired visual language through SkillsPlay Design Tokens and thin brand components that compose or theme those primitives.
+- Build custom widgets only for product-specific interactions, such as the stateful destination rail or installation matrix, or when `shadcn_ui` has no suitable primitive.
+- Use raw Material controls as low-level Flutter infrastructure only when a `shadcn_ui` equivalent would reduce capability, platform behavior, or accessibility; keep that exception behind a reusable brand component when it recurs.
+
 ## Documentation Routing
 
 - Read `CONTEXT.md` for App vocabulary, boundaries, public contracts, and current risks.
