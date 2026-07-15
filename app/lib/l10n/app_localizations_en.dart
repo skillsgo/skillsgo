@@ -234,6 +234,130 @@ class AppLocalizationsEn extends AppLocalizations {
   String get about => 'About';
 
   @override
+  String get generalSettingsTitle => 'Desktop preferences';
+
+  @override
+  String get generalSettingsDescription =>
+      'SkillsPlay follows the system language and accessibility preferences, including reduced motion.';
+
+  @override
+  String get agentsSettingsTitle => 'Agent runtime';
+
+  @override
+  String get registrySettingsTitle => 'Registry Origin';
+
+  @override
+  String get registrySettingsDescription =>
+      'Use the official Registry or an HTTP(S) self-hosted origin that implements the same SkillsGo protocol.';
+
+  @override
+  String get testConnection => 'Test connection';
+
+  @override
+  String get saveOrigin => 'Save Origin';
+
+  @override
+  String get resetDefault => 'Reset to default';
+
+  @override
+  String get connectionReady => 'Connection ready';
+
+  @override
+  String get connectionFailed => 'Connection failed';
+
+  @override
+  String get registryInvalidOrigin =>
+      'Enter a valid HTTP(S) Origin without credentials, a query, or a fragment.';
+
+  @override
+  String registryHttpFailure(int status) {
+    return 'Registry returned HTTP $status. Check the Origin and server configuration.';
+  }
+
+  @override
+  String get registryInvalidProtocol =>
+      'The server did not return the SkillsGo Registry search protocol.';
+
+  @override
+  String get registryInvalidJson => 'The Registry returned invalid JSON.';
+
+  @override
+  String get registryConnectionFailure =>
+      'Could not reach the Registry. Check the Origin, network, proxy, and TLS configuration.';
+
+  @override
+  String get registryConnectionTimeout =>
+      'The Registry connection timed out. Check the network or try again.';
+
+  @override
+  String get riskPolicyTitle => 'Personal risk policy';
+
+  @override
+  String get confirmHighRisk => 'Require confirmation for High risk';
+
+  @override
+  String get confirmHighRiskDescription =>
+      'High-risk artifacts always require an additional confirmation before installation.';
+
+  @override
+  String get allowCriticalOverride =>
+      'Allow an explicit Critical-risk override';
+
+  @override
+  String get allowCriticalOverrideDescription =>
+      'Critical-risk artifacts remain blocked by default. Enable this only to expose a separate manual override.';
+
+  @override
+  String get storageSettingsTitle => 'Content-addressed Store';
+
+  @override
+  String get storageHealthy => 'Readable';
+
+  @override
+  String get storageNotInitialized => 'Not initialized';
+
+  @override
+  String get storageUnavailable => 'Unavailable';
+
+  @override
+  String get storagePathUnavailable =>
+      'Store path unavailable until CLI diagnostics are ready.';
+
+  @override
+  String get storageHealthyDescription =>
+      'The CLI can read the Store without changing its contents.';
+
+  @override
+  String get storageNotInitializedDescription =>
+      'The Store does not exist yet and was not created by this check.';
+
+  @override
+  String get storageUnavailableDescription =>
+      'The CLI cannot read the Store. Check its permissions and parent directory.';
+
+  @override
+  String get storageInvalidResponse =>
+      'The bundled CLI returned an unsupported diagnostics response.';
+
+  @override
+  String get aboutSettingsTitle => 'Product compatibility';
+
+  @override
+  String get appVersion => 'App version';
+
+  @override
+  String get cliVersion => 'Bundled CLI version';
+
+  @override
+  String get compatible => 'Compatible';
+
+  @override
+  String get registryOriginSaved => 'Registry Origin saved and applied.';
+
+  @override
+  String get policySaved => 'Installation policy saved.';
+
+  @override
   String get officialCli => 'SkillsGo CLI';
 
   @override

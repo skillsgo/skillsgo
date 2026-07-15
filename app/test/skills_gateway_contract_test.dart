@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses SkillsGateway with controlled HTTP, process, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies Registry parsing, local inspection, CLI argument safety, and bundled CLI handshake behavior.
+ * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
+ * [OUTPUT]: Specifies settings persistence, Registry/storage health, parsing, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,8 +12,125 @@ import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:skillsplay/domain/skills_gateway.dart';
 import 'package:skillsplay/infrastructure/real_skills_gateway.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  test('registry settings persist and validate the search protocol', () async {
+    SharedPreferences.setMockInitialValues({});
+    final requests = <Uri>[];
+    final client = MockClient((request) async {
+      requests.add(request.url);
+      return http.Response('{"skills":[]}', 200);
+    });
+    final gateway = RealSkillsGateway(
+      httpClient: client,
+      registryBaseUrl: 'https://official.example',
+      appVersion: '1.2.3',
+    );
+
+    expect(await gateway.loadRegistryOrigin(), 'https://official.example');
+    final status = await gateway.testRegistryOrigin(
+      'https://self-hosted.example/base',
+    );
+    expect(status.isReady, isTrue);
+    expect(requests.single.path, '/base/v1/search');
+
+    await gateway.saveRegistryOrigin('https://self-hosted.example/base/');
+    expect(
+      await gateway.loadRegistryOrigin(),
+      'https://self-hosted.example/base',
+    );
+    await gateway.search('flutter');
+    expect(requests.last.host, 'self-hosted.example');
+    expect(requests.last.path, '/base/v1/search');
+    final restored = RealSkillsGateway(
+      httpClient: client,
+      registryBaseUrl: 'https://official.example',
+      appVersion: '1.2.3',
+    );
+    expect(
+      await restored.loadRegistryOrigin(),
+      'https://self-hosted.example/base',
+    );
+
+    await restored.resetRegistryOrigin();
+    expect(await restored.loadRegistryOrigin(), 'https://official.example');
+  });
+
+  test('registry settings reject unsafe or malformed origins', () async {
+    SharedPreferences.setMockInitialValues({});
+    final gateway = RealSkillsGateway(
+      httpClient: MockClient((_) async => http.Response('{}', 200)),
+      registryBaseUrl: 'https://official.example',
+      appVersion: '1.2.3',
+    );
+
+    final status = await gateway.testRegistryOrigin(
+      'https://user:password@example.com?secret=yes',
+    );
+    expect(status.state, HealthState.invalid);
+    await expectLater(
+      gateway.saveRegistryOrigin('file:///tmp/registry'),
+      throwsA(isA<FormatException>()),
+    );
+  });
+
+  test(
+    'registry settings turn transport failures into structured health',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final gateway = RealSkillsGateway(
+        httpClient: MockClient(
+          (request) async =>
+              throw http.ClientException('TLS handshake failed', request.url),
+        ),
+        registryBaseUrl: 'https://official.example',
+        appVersion: '1.2.3',
+      );
+
+      final status = await gateway.testRegistryOrigin(
+        'https://self-hosted.example',
+      );
+
+      expect(status.state, HealthState.unreachable);
+      expect(status.issue, RegistryIssue.connectionFailure);
+    },
+  );
+
+  test('Personal risk policy and product diagnostics are stable', () async {
+    SharedPreferences.setMockInitialValues({});
+    final runner = _FakeProcessRunner()
+      ..result = const ProcessOutput(
+        exitCode: 0,
+        stdout:
+            '{"schemaVersion":1,"store":{"path":"/Users/test/.skillsgo/store","state":"not_initialized"}}',
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/Applications/SkillsPlay.app/skillsgo',
+      registryBaseUrl: 'https://official.example',
+      appVersion: '3.2.1',
+    );
+
+    expect((await gateway.loadRiskPolicy()).confirmHighRisk, isTrue);
+    expect((await gateway.loadRiskPolicy()).allowCriticalOverride, isFalse);
+    await gateway.saveRiskPolicy(
+      const PersonalRiskPolicy(allowCriticalOverride: true),
+    );
+    expect((await gateway.loadRiskPolicy()).allowCriticalOverride, isTrue);
+    expect((await gateway.inspectStorage()).state, HealthState.notInitialized);
+    expect(runner.lastArguments, ['diagnostics', '--output', 'json']);
+    runner.result = const ProcessOutput(
+      exitCode: 0,
+      stdout:
+          '{"schemaVersion":1,"store":{"path":"/Users/test/.skillsgo/store","state":"ready"}}',
+      stderr: '',
+    );
+    expect((await gateway.inspectStorage()).state, HealthState.ready);
+    expect(await gateway.loadAppVersion(), '3.2.1');
+  });
+
   test(
     'detectCli verifies the bundled executable without searching PATH',
     () async {
@@ -424,6 +541,8 @@ void main() {
       r'Test ; $(touch nope)',
       '--global',
       '--yes',
+      '--registry',
+      'http://localhost:3000',
     ]);
     await gateway.remove(installed);
     expect(runner.lastArguments, [

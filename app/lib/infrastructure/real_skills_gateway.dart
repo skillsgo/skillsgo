@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Registry HTTP, the local filesystem, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides the production SkillsGateway implementation, including bundled CLI verification and Skill operations.
+ * [OUTPUT]: Provides production Registry settings, policy/storage diagnostics, bundled CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,6 +11,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/skills_gateway.dart';
@@ -51,26 +52,64 @@ class RealSkillsGateway implements SkillsGateway {
     this.allowDeveloperCliOverride = !kReleaseMode,
     String? expectedCliOS,
     String registryBaseUrl = 'http://localhost:3000',
+    String? appVersion,
   }) : _http = httpClient ?? http.Client(),
        _runner = processRunner ?? const IoProcessRunner(),
        _cliPath = initialCliPath,
        _bundledCliPath =
            bundledCliPath ?? _bundledPathFor(Platform.resolvedExecutable),
        _expectedCliOS = expectedCliOS ?? _goOperatingSystem,
-       _registryBase = Uri.parse(
-         registryBaseUrl.endsWith('/') ? registryBaseUrl : '$registryBaseUrl/',
-       );
+       _defaultRegistryBase = _originUri(registryBaseUrl),
+       _registryBase = _originUri(registryBaseUrl),
+       _injectedAppVersion = appVersion;
 
   static const _customCliKey = 'custom_cli_path';
+  static const _registryOriginKey = 'registry_origin';
+  static const _allowCriticalOverrideKey = 'allow_critical_risk_override';
   static const _startupHandshakeSchemaVersion = 1;
   static const _appProtocolVersion = 1;
   final http.Client _http;
   final ProcessRunner _runner;
-  final Uri _registryBase;
+  final Uri _defaultRegistryBase;
+  Uri _registryBase;
   final String _bundledCliPath;
   final bool allowDeveloperCliOverride;
   final String _expectedCliOS;
+  final String? _injectedAppVersion;
   String? _cliPath;
+  bool _registryOriginLoaded = false;
+
+  static Uri _originUri(String origin) {
+    final value = origin.trim();
+    final parsed = Uri.tryParse(value);
+    if (parsed == null ||
+        !parsed.hasScheme ||
+        (parsed.scheme != 'http' && parsed.scheme != 'https') ||
+        parsed.host.isEmpty ||
+        parsed.userInfo.isNotEmpty ||
+        parsed.hasQuery ||
+        parsed.hasFragment) {
+      throw const FormatException('Registry Origin must be an HTTP(S) URL.');
+    }
+    return Uri.parse(value.endsWith('/') ? value : '$value/');
+  }
+
+  String get _registryOrigin =>
+      _registryBase.toString().replaceFirst(RegExp(r'/$'), '');
+
+  Future<void> _ensureRegistryOrigin() async {
+    if (_registryOriginLoaded) return;
+    final preferences = await SharedPreferences.getInstance();
+    final saved = preferences.getString(_registryOriginKey);
+    if (saved != null) {
+      try {
+        _registryBase = _originUri(saved);
+      } on FormatException {
+        await preferences.remove(_registryOriginKey);
+      }
+    }
+    _registryOriginLoaded = true;
+  }
 
   static String _bundledPathFor(String executable) => p.normalize(
     p.join(p.dirname(executable), '..', 'Resources', 'bin', 'skillsgo'),
@@ -176,8 +215,162 @@ class RealSkillsGateway implements SkillsGateway {
   }
 
   @override
+  Future<String> loadRegistryOrigin() async {
+    await _ensureRegistryOrigin();
+    return _registryOrigin;
+  }
+
+  @override
+  Future<void> saveRegistryOrigin(String origin) async {
+    final parsed = _originUri(origin);
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setString(
+      _registryOriginKey,
+      parsed.toString().replaceFirst(RegExp(r'/$'), ''),
+    );
+    _registryBase = parsed;
+    _registryOriginLoaded = true;
+  }
+
+  @override
+  Future<void> resetRegistryOrigin() async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.remove(_registryOriginKey);
+    _registryBase = _defaultRegistryBase;
+    _registryOriginLoaded = true;
+  }
+
+  @override
+  Future<RegistryStatus> testRegistryOrigin(String origin) async {
+    final Uri base;
+    try {
+      base = _originUri(origin);
+    } on FormatException catch (error) {
+      return RegistryStatus(
+        origin: origin.trim(),
+        state: HealthState.invalid,
+        issue: RegistryIssue.invalidOrigin,
+        diagnostic: error.message,
+      );
+    }
+    final normalized = base.toString().replaceFirst(RegExp(r'/$'), '');
+    final uri = base
+        .resolve('v1/search')
+        .replace(
+          queryParameters: const {'q': 'skillsgo-settings-probe', 'limit': '1'},
+        );
+    try {
+      final response = await _http
+          .get(uri)
+          .timeout(const Duration(seconds: 10));
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        return RegistryStatus(
+          origin: normalized,
+          state: HealthState.unreachable,
+          issue: RegistryIssue.httpFailure,
+          httpStatus: response.statusCode,
+        );
+      }
+      final decoded = jsonDecode(response.body);
+      if (decoded is! Map<String, dynamic> || decoded['skills'] is! List) {
+        return RegistryStatus(
+          origin: normalized,
+          state: HealthState.invalid,
+          issue: RegistryIssue.invalidProtocol,
+        );
+      }
+      return RegistryStatus(origin: normalized, state: HealthState.ready);
+    } on SocketException catch (error) {
+      return RegistryStatus(
+        origin: normalized,
+        state: HealthState.unreachable,
+        issue: RegistryIssue.connectionFailure,
+        diagnostic: error.message,
+      );
+    } on TimeoutException {
+      return RegistryStatus(
+        origin: normalized,
+        state: HealthState.unreachable,
+        issue: RegistryIssue.timeout,
+      );
+    } on FormatException {
+      return RegistryStatus(
+        origin: normalized,
+        state: HealthState.invalid,
+        issue: RegistryIssue.invalidJson,
+      );
+    } on http.ClientException catch (error) {
+      return RegistryStatus(
+        origin: normalized,
+        state: HealthState.unreachable,
+        issue: RegistryIssue.connectionFailure,
+        diagnostic: error.message,
+      );
+    } on Object catch (error) {
+      return RegistryStatus(
+        origin: normalized,
+        state: HealthState.unreachable,
+        issue: RegistryIssue.connectionFailure,
+        diagnostic: error.toString(),
+      );
+    }
+  }
+
+  @override
+  Future<PersonalRiskPolicy> loadRiskPolicy() async {
+    final preferences = await SharedPreferences.getInstance();
+    return PersonalRiskPolicy(
+      allowCriticalOverride:
+          preferences.getBool(_allowCriticalOverrideKey) ?? false,
+    );
+  }
+
+  @override
+  Future<void> saveRiskPolicy(PersonalRiskPolicy policy) async {
+    final preferences = await SharedPreferences.getInstance();
+    await preferences.setBool(
+      _allowCriticalOverrideKey,
+      policy.allowCriticalOverride,
+    );
+  }
+
+  @override
+  Future<StorageStatus> inspectStorage() async {
+    try {
+      final result = await _runCli(const ['diagnostics', '--output', 'json']);
+      if (!result.succeeded) {
+        return const StorageStatus(path: '', state: HealthState.unreachable);
+      }
+      final decoded = jsonDecode(result.output.stdout);
+      if (decoded is! Map<String, dynamic> ||
+          decoded['schemaVersion'] != 1 ||
+          decoded['store'] is! Map<String, dynamic>) {
+        return const StorageStatus(path: '', state: HealthState.invalid);
+      }
+      final store = decoded['store'] as Map<String, dynamic>;
+      if (store['path'] is! String || store['state'] is! String) {
+        return const StorageStatus(path: '', state: HealthState.invalid);
+      }
+      final state = switch (store['state']) {
+        'ready' => HealthState.ready,
+        'not_initialized' => HealthState.notInitialized,
+        'unreadable' => HealthState.unreachable,
+        _ => HealthState.invalid,
+      };
+      return StorageStatus(path: store['path'] as String, state: state);
+    } on Object {
+      return const StorageStatus(path: '', state: HealthState.unreachable);
+    }
+  }
+
+  @override
+  Future<String> loadAppVersion() async =>
+      _injectedAppVersion ?? (await PackageInfo.fromPlatform()).version;
+
+  @override
   Future<List<SkillSummary>> search(String query) async {
     if (query.trim().isEmpty) return const [];
+    await _ensureRegistryOrigin();
     final uri = _registryBase
         .resolve('v1/search')
         .replace(queryParameters: {'q': query.trim(), 'limit': '20'});
@@ -245,6 +438,7 @@ class RealSkillsGateway implements SkillsGateway {
 
   @override
   Future<SkillDetail> loadRemoteDetail(SkillSummary skill) async {
+    await _ensureRegistryOrigin();
     final infoUri = _registryBase.resolve(
       '${skill.id}/@v/${skill.latestVersion}.info',
     );
@@ -396,34 +590,47 @@ class RealSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<CommandResult> install(SkillSummary skill) => _runCli([
-    'add',
-    skill.id,
-    '--skill',
-    skill.skillId,
-    '--global',
-    '--agent',
-    'codex',
-    '--yes',
-    '--output',
-    'json',
-    '--registry',
-    _registryBase.toString().replaceFirst(RegExp(r'/$'), ''),
-  ]);
+  Future<CommandResult> install(SkillSummary skill) async {
+    await _ensureRegistryOrigin();
+    return _runCli([
+      'add',
+      skill.id,
+      '--skill',
+      skill.skillId,
+      '--global',
+      '--agent',
+      'codex',
+      '--yes',
+      '--output',
+      'json',
+      '--registry',
+      _registryOrigin,
+    ]);
+  }
 
   @override
   Future<CommandResult> remove(InstalledSkill skill) =>
       _runCli(['remove', skill.name, '--global', '--yes']);
 
   @override
-  Future<CommandResult> update(InstalledSkill skill) =>
-      _runCli(['update', skill.name, '--global', '--yes']);
+  Future<CommandResult> update(InstalledSkill skill) async {
+    await _ensureRegistryOrigin();
+    return _runCli([
+      'update',
+      skill.name,
+      '--global',
+      '--yes',
+      '--registry',
+      _registryOrigin,
+    ]);
+  }
 
   @override
   Future<Map<String, UpdateState>> checkUpdates(
     List<InstalledSkill> skills,
   ) async {
     if (skills.isEmpty) return const {};
+    await _ensureRegistryOrigin();
     final arguments = <String>[
       'update',
       ...skills.map((skill) => skill.name),
@@ -432,7 +639,7 @@ class RealSkillsGateway implements SkillsGateway {
       '--output',
       'json',
       '--registry',
-      _registryBase.toString().replaceFirst(RegExp(r'/$'), ''),
+      _registryOrigin,
     ];
     final result = await _runCli(arguments);
     if (!result.succeeded) {

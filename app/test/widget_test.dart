@@ -97,7 +97,7 @@ void main() {
 
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
-    expect(find.text('General'), findsOneWidget);
+    expect(find.text('General'), findsWidgets);
     expect(find.text('Agents'), findsOneWidget);
     expect(find.text('Registry'), findsOneWidget);
     expect(find.text('Installation Policy'), findsOneWidget);
@@ -409,14 +409,153 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
+    await tester.tap(find.text('Agents'));
+    await tester.pumpAndSettle();
 
     expect(find.text('MISSING'), findsOneWidget);
-    await tester.enterText(find.byKey(const Key('cli-path')), '/custom/skills');
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const Key('cli-path')),
+        matching: find.byType(EditableText),
+      ),
+      '/custom/skills',
+    );
     await tester.tap(find.text('Save & detect'));
     await tester.pumpAndSettle();
 
     expect(gateway.savedPath, '/custom/skills');
   });
+
+  testWidgets('Settings routes expose distinct operational content', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(SkillsPlayApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Desktop preferences'), findsOneWidget);
+    await tester.tap(find.text('Registry'));
+    await tester.pumpAndSettle();
+    expect(find.text('Registry Origin'), findsOneWidget);
+    expect(find.text('Desktop preferences'), findsNothing);
+
+    await tester.tap(find.text('Storage'));
+    await tester.pumpAndSettle();
+    expect(find.text('/Users/test/.skillsgo/store'), findsOneWidget);
+    expect(find.text('Readable'), findsOneWidget);
+
+    await tester.tap(find.text('About'));
+    await tester.pumpAndSettle();
+    expect(find.text('App version'), findsOneWidget);
+    expect(find.text('1.0.0'), findsOneWidget);
+    expect(find.text('Bundled CLI version'), findsOneWidget);
+    expect(find.text('Compatible'), findsOneWidget);
+  });
+
+  testWidgets('About distinguishes a missing CLI from incompatibility', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(
+      SkillsPlayApp(gateway: FakeSkillsGateway(cliReady: false)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('About'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('MISSING'), findsOneWidget);
+    expect(find.text('INCOMPATIBLE'), findsNothing);
+    expect(
+      find.textContaining('bundled SkillsGo CLI is missing'),
+      findsWidgets,
+    );
+  });
+
+  testWidgets('Registry Origin can be tested, saved, and reset immediately', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway();
+    await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Registry'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const Key('registry-origin')),
+        matching: find.byType(EditableText),
+      ),
+      'https://self-hosted.example',
+    );
+    await tester.tap(find.text('Test connection'));
+    await tester.pumpAndSettle();
+    expect(find.text('Connection ready'), findsOneWidget);
+
+    await tester.tap(find.text('Save Origin'));
+    await tester.pumpAndSettle();
+    expect(gateway.registryOrigin, 'https://self-hosted.example');
+
+    await tester.tap(find.text('Reset to default'));
+    await tester.pumpAndSettle();
+    expect(gateway.registryOrigin, 'https://registry.skillsgo.dev');
+  });
+
+  testWidgets('a Registry Origin is not saved when its protocol test fails', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway(registryTestState: HealthState.invalid);
+    await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Registry'));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(
+      find.descendant(
+        of: find.byKey(const Key('registry-origin')),
+        matching: find.byType(EditableText),
+      ),
+      'https://incompatible.example',
+    );
+    await tester.tap(find.text('Save Origin'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.textContaining('did not return the SkillsGo Registry'),
+      findsOneWidget,
+    );
+    expect(gateway.registryOrigin, 'https://registry.skillsgo.dev');
+  });
+
+  testWidgets(
+    'Critical-risk override persists while High confirmation stays required',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      final gateway = FakeSkillsGateway();
+      await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Settings'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Installation Policy'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Require confirmation for High risk'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('critical-risk-override')));
+      await tester.pumpAndSettle();
+
+      expect(gateway.riskPolicy.confirmHighRisk, isTrue);
+      expect(gateway.riskPolicy.allowCriticalOverride, isTrue);
+    },
+  );
 
   testWidgets('Library exposes update state after an explicit check', (
     tester,
@@ -476,11 +615,23 @@ class FakeSkillsGateway implements SkillsGateway {
     this.installCompleter,
     List<SkillSummary>? searchResults,
     this.agentNames = const ['codex'],
+    this.registryOrigin = 'https://registry.skillsgo.dev',
+    this.registryTestState = HealthState.ready,
+    this.storageStatus = const StorageStatus(
+      path: '/Users/test/.skillsgo/store',
+      state: HealthState.ready,
+    ),
+    this.appVersion = '1.0.0',
   }) : searchResults = searchResults ?? _defaultSearchResults;
   final bool cliReady;
   final Completer<List<SkillSummary>>? searchCompleter;
   final Completer<CommandResult>? installCompleter;
   final List<String> agentNames;
+  String registryOrigin;
+  final HealthState registryTestState;
+  PersonalRiskPolicy riskPolicy = const PersonalRiskPolicy();
+  final StorageStatus storageStatus;
+  final String appVersion;
   bool installed;
   final queries = <String>[];
   String? savedPath;
@@ -514,6 +665,39 @@ class FakeSkillsGateway implements SkillsGateway {
   Future<String?> loadCustomCliPath() async => savedPath;
   @override
   Future<void> saveCustomCliPath(String? path) async => savedPath = path;
+  @override
+  Future<String> loadRegistryOrigin() async => registryOrigin;
+  @override
+  Future<void> saveRegistryOrigin(String origin) async {
+    registryOrigin = origin;
+  }
+
+  @override
+  Future<void> resetRegistryOrigin() async {
+    registryOrigin = 'https://registry.skillsgo.dev';
+  }
+
+  @override
+  Future<RegistryStatus> testRegistryOrigin(String origin) async =>
+      RegistryStatus(
+        origin: origin,
+        state: registryTestState,
+        issue: registryTestState == HealthState.ready
+            ? null
+            : RegistryIssue.invalidProtocol,
+      );
+
+  @override
+  Future<PersonalRiskPolicy> loadRiskPolicy() async => riskPolicy;
+  @override
+  Future<void> saveRiskPolicy(PersonalRiskPolicy policy) async {
+    riskPolicy = policy;
+  }
+
+  @override
+  Future<StorageStatus> inspectStorage() async => storageStatus;
+  @override
+  Future<String> loadAppVersion() async => appVersion;
   @override
   Future<List<SkillSummary>> search(String query) async {
     queries.add(query);
