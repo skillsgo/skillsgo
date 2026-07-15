@@ -131,19 +131,19 @@ abstract class AppLocalizations {
   /// No description provided for @cliMissingBundled.
   ///
   /// In en, this message translates to:
-  /// **'The bundled SkillsGo CLI is missing or cannot run. Reinstall SkillsPlay.'**
+  /// **'The bundled SkillsGo CLI is missing or cannot run. Reinstall SkillsGo.'**
   String get cliMissingBundled;
 
   /// No description provided for @cliDamagedBundled.
   ///
   /// In en, this message translates to:
-  /// **'The bundled SkillsGo CLI returned an invalid startup response. Reinstall SkillsPlay.'**
+  /// **'The bundled SkillsGo CLI returned an invalid startup response. Reinstall SkillsGo.'**
   String get cliDamagedBundled;
 
   /// No description provided for @cliIncompatibleBundled.
   ///
   /// In en, this message translates to:
-  /// **'The bundled SkillsGo CLI is incompatible with this version of SkillsPlay. Update or reinstall the app.'**
+  /// **'The bundled SkillsGo CLI is incompatible with this version of SkillsGo. Update or reinstall the app.'**
   String get cliIncompatibleBundled;
 
   /// No description provided for @officialIndex.
@@ -212,11 +212,23 @@ abstract class AppLocalizations {
   /// **'Hot right now'**
   String get hotNow;
 
-  /// No description provided for @collectionComingSoon.
+  /// No description provided for @allTimeDescription.
   ///
   /// In en, this message translates to:
-  /// **'This collection is ready for Registry integration.'**
-  String get collectionComingSoon;
+  /// **'Public Skills ordered by accepted installs across all time.'**
+  String get allTimeDescription;
+
+  /// No description provided for @trendingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Public Skills ordered by accepted installs during the latest 24-hour window.'**
+  String get trendingDescription;
+
+  /// No description provided for @hotDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Public Skills ordered by short-term installation velocity and change.'**
+  String get hotDescription;
 
   /// No description provided for @offlineTitle.
   ///
@@ -224,11 +236,65 @@ abstract class AppLocalizations {
   /// **'You’re offline'**
   String get offlineTitle;
 
+  /// No description provided for @offlineMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo could not reach the Registry. Check your network, proxy, or Registry Origin.'**
+  String get offlineMessage;
+
   /// No description provided for @searchFailedTitle.
   ///
   /// In en, this message translates to:
   /// **'Search stumbled'**
   String get searchFailedTitle;
+
+  /// No description provided for @validationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Check this request'**
+  String get validationTitle;
+
+  /// No description provided for @validationMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The Registry rejected the request. Review the query and try again.'**
+  String get validationMessage;
+
+  /// No description provided for @serverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Registry unavailable'**
+  String get serverTitle;
+
+  /// No description provided for @serverMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The Registry could not complete this request. Try again in a moment.'**
+  String get serverMessage;
+
+  /// No description provided for @timeoutTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Registry timed out'**
+  String get timeoutTitle;
+
+  /// No description provided for @timeoutMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The Registry took too long to respond. Check the connection or try again.'**
+  String get timeoutMessage;
+
+  /// No description provided for @invalidResponseTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Registry response unsupported'**
+  String get invalidResponseTitle;
+
+  /// No description provided for @invalidResponseMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This Registry returned a response SkillsGo cannot read. Check its version and protocol compatibility.'**
+  String get invalidResponseMessage;
 
   /// No description provided for @tryAgain.
   ///
@@ -245,7 +311,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchEmptyMessage.
   ///
   /// In en, this message translates to:
-  /// **'SkillsPlay has no feed or ranking. Enter a capability you need.'**
+  /// **'Enter a capability, source, or task to search the public Registry.'**
   String get searchEmptyMessage;
 
   /// No description provided for @noSkillsTitle.
@@ -265,6 +331,126 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Focus search'**
   String get focusSearch;
+
+  /// No description provided for @collectionEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No Skills in this collection'**
+  String get collectionEmptyTitle;
+
+  /// No description provided for @collectionEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The Registry returned an empty collection. Try again after new install activity is recorded.'**
+  String get collectionEmptyMessage;
+
+  /// No description provided for @loadMore.
+  ///
+  /// In en, this message translates to:
+  /// **'Load more'**
+  String get loadMore;
+
+  /// No description provided for @install.
+  ///
+  /// In en, this message translates to:
+  /// **'Install'**
+  String get install;
+
+  /// No description provided for @installToMoreTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Install to More Targets'**
+  String get installToMoreTargets;
+
+  /// No description provided for @localTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} local targets'**
+  String localTargets(int count);
+
+  /// No description provided for @allTimeMetric.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} all-time installs'**
+  String allTimeMetric(String count);
+
+  /// No description provided for @trendingMetric.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} installs / 24h'**
+  String trendingMetric(String count);
+
+  /// No description provided for @hotMetric.
+  ///
+  /// In en, this message translates to:
+  /// **'{value} this hour · {change}'**
+  String hotMetric(String value, String change);
+
+  /// No description provided for @trustUnverified.
+  ///
+  /// In en, this message translates to:
+  /// **'Unverified'**
+  String get trustUnverified;
+
+  /// No description provided for @trustCommunityVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Community verified'**
+  String get trustCommunityVerified;
+
+  /// No description provided for @trustPublisherVerified.
+  ///
+  /// In en, this message translates to:
+  /// **'Publisher verified'**
+  String get trustPublisherVerified;
+
+  /// No description provided for @trustOfficial.
+  ///
+  /// In en, this message translates to:
+  /// **'Official'**
+  String get trustOfficial;
+
+  /// No description provided for @trustWarned.
+  ///
+  /// In en, this message translates to:
+  /// **'Warned'**
+  String get trustWarned;
+
+  /// No description provided for @trustDelisted.
+  ///
+  /// In en, this message translates to:
+  /// **'Delisted'**
+  String get trustDelisted;
+
+  /// No description provided for @riskUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Risk unknown'**
+  String get riskUnknown;
+
+  /// No description provided for @riskLow.
+  ///
+  /// In en, this message translates to:
+  /// **'Low risk'**
+  String get riskLow;
+
+  /// No description provided for @riskMedium.
+  ///
+  /// In en, this message translates to:
+  /// **'Medium risk'**
+  String get riskMedium;
+
+  /// No description provided for @riskHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'High risk'**
+  String get riskHigh;
+
+  /// No description provided for @riskCritical.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical risk'**
+  String get riskCritical;
 
   /// No description provided for @openSkill.
   ///
@@ -317,7 +503,7 @@ abstract class AppLocalizations {
   /// No description provided for @executableRisk.
   ///
   /// In en, this message translates to:
-  /// **'This snapshot contains scripts or executable content. Review the files before installing; SkillsPlay does not audit them.'**
+  /// **'This snapshot contains scripts or executable content. Review the files before installing; SkillsGo does not audit them.'**
   String get executableRisk;
 
   /// No description provided for @removeTitle.
@@ -521,7 +707,7 @@ abstract class AppLocalizations {
   /// No description provided for @generalSettingsDescription.
   ///
   /// In en, this message translates to:
-  /// **'SkillsPlay follows the system language and accessibility preferences, including reduced motion.'**
+  /// **'SkillsGo follows the system language and accessibility preferences, including reduced motion.'**
   String get generalSettingsDescription;
 
   /// No description provided for @agentsSettingsTitle.
@@ -797,13 +983,13 @@ abstract class AppLocalizations {
   /// No description provided for @privacySummary.
   ///
   /// In en, this message translates to:
-  /// **'SkillsPlay does not store searches or persist command logs. Its bundled CLI remains inside the App and is never installed into your system PATH.'**
+  /// **'SkillsGo does not store searches or persist command logs. Its bundled CLI remains inside the App and is never installed into your system PATH.'**
   String get privacySummary;
 
   /// No description provided for @privacyAffiliation.
   ///
   /// In en, this message translates to:
-  /// **'Anonymous installation telemetry is controlled by SkillsGo settings. SkillsPlay is not affiliated with OpenAI or Codex.'**
+  /// **'Anonymous installation telemetry is controlled by SkillsGo settings. SkillsGo is not affiliated with OpenAI or Codex.'**
   String get privacyAffiliation;
 
   /// No description provided for @commandCompleted.

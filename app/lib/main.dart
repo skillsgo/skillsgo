@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on Flutter desktop bindings, macOS window integration, Marionette debug instrumentation, and the real SkillsGateway.
+ * [OUTPUT]: Starts the SkillsGo desktop process and exposes debug-only navigation measurements.
+ * [POS]: Serves as the Flutter workspace process entry point and platform initialization boundary.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 import 'package:flutter/foundation.dart';
 import 'package:flutter/widgets.dart';
 import 'package:macos_window_utils/macos_window_utils.dart';
@@ -11,7 +17,7 @@ Future<void> main() async {
   if (kDebugMode) {
     MarionetteBinding.ensureInitialized();
     registerMarionetteExtension(
-      name: 'skillsplay.measureNavigation',
+      name: 'skillsgo.measureNavigation',
       description: 'Measure navigation indicator and label bounds.',
       callback: (_) async =>
           MarionetteExtensionResult.success({'elements': _measureNavigation()}),
@@ -37,7 +43,7 @@ Future<void> main() async {
     await windowManager.focus();
   });
 
-  runApp(SkillsPlayApp(gateway: RealSkillsGateway()));
+  runApp(SkillsGoApp(gateway: RealSkillsGateway()));
 }
 
 List<Map<String, Object>> _measureNavigation() {

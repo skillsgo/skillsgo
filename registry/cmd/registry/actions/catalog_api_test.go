@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Uses the Registry HTTP router with a temporary SQLite Catalog and deterministic public requests.
+ * [OUTPUT]: Specifies discovery collection schemas, pagination, validation, detail, and install-event behavior.
+ * [POS]: Serves as executable public HTTP contract coverage for Registry discovery clients.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package actions
 
 import (
@@ -36,7 +42,6 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	for _, path := range []string{
 		"/v1/skills?limit=10",
 		"/v1/search?q=engineering",
-		"/v1/skills/github.com/mattpocock/skills/-/skills/engineering/ask-matt",
 	} {
 		recorder := httptest.NewRecorder()
 		r.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
@@ -44,23 +49,78 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 		require.Equal(t, "application/json; charset=utf-8", recorder.Header().Get("Content-Type"))
 		require.Contains(t, recorder.Body.String(), `"coordinate":"`+skill.Coordinate+`"`)
 	}
+
+	detail := httptest.NewRecorder()
+	r.ServeHTTP(detail, httptest.NewRequest(http.MethodGet, "/v1/skills/github.com/mattpocock/skills/-/skills/engineering/ask-matt", nil))
+	require.Equal(t, http.StatusOK, detail.Code)
+	require.JSONEq(t, `{
+		"coordinate":"github.com/mattpocock/skills/-/skills/engineering/ask-matt",
+		"name":"ask-matt",
+		"description":"Engineering skill router",
+		"source":"github.com/mattpocock/skills",
+		"skillPath":"skills/engineering/ask-matt",
+		"latestVersion":"main",
+		"trustLevel":"unverified"
+	}`, detail.Body.String())
+
+	recorder := httptest.NewRecorder()
+	r.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/v1/search?q=engineering", nil))
+	var response skillsResponse
+	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&response))
+	require.Equal(t, "search", response.Collection)
+	require.Equal(t, 20, response.Page.Limit)
+	require.Equal(t, 0, response.Page.Offset)
+	require.Nil(t, response.Page.NextOffset)
+	require.Len(t, response.Skills, 1)
+	require.Equal(t, "unverified", response.Skills[0].TrustLevel)
+	require.Equal(t, "unknown", response.Skills[0].RiskAssessment)
+	require.Equal(t, "all_time_installs", response.Skills[0].Metric.Kind)
 }
 
 func TestCatalogAPICollectionsReturnEmptyArrays(t *testing.T) {
 	r, _ := testCatalogAPI(t)
-	for _, path := range []string{"/v1/search?q=missing", "/v1/skills"} {
+	for path, collection := range map[string]string{"/v1/search?q=missing": "search", "/v1/skills": "all_time"} {
 		recorder := httptest.NewRecorder()
 		r.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))
 
 		require.Equal(t, http.StatusOK, recorder.Code, path)
-		require.JSONEq(t, `{"skills":[]}`, recorder.Body.String(), path)
+		require.JSONEq(t, `{"collection":"`+collection+`","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}`, recorder.Body.String(), path)
 	}
+}
+
+func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
+	r, c := testCatalogAPI(t)
+	for _, name := range []string{"alpha", "bravo", "charlie"} {
+		require.NoError(t, c.UpsertSkill(context.Background(), &catalog.Skill{
+			Coordinate: "github.com/acme/skills/-/" + name,
+			Name:       name, Description: "Agent capability", LatestVersion: "main",
+		}))
+	}
+
+	first := httptest.NewRecorder()
+	r.ServeHTTP(first, httptest.NewRequest(http.MethodGet, "/v1/search?q=capability&limit=2", nil))
+	require.Equal(t, http.StatusOK, first.Code)
+	var firstPage skillsResponse
+	require.NoError(t, json.NewDecoder(first.Body).Decode(&firstPage))
+	require.Len(t, firstPage.Skills, 2)
+	require.NotNil(t, firstPage.Page.NextOffset)
+	require.Equal(t, 2, *firstPage.Page.NextOffset)
+
+	second := httptest.NewRecorder()
+	r.ServeHTTP(second, httptest.NewRequest(http.MethodGet, "/v1/search?q=capability&limit=2&offset=2", nil))
+	var secondPage skillsResponse
+	require.NoError(t, json.NewDecoder(second.Body).Decode(&secondPage))
+	require.Len(t, secondPage.Skills, 1)
+	require.Equal(t, 2, secondPage.Page.Offset)
+	require.Nil(t, secondPage.Page.NextOffset)
 }
 
 func TestCatalogAPIValidationAndNotFound(t *testing.T) {
 	r, _ := testCatalogAPI(t)
 	for path, status := range map[string]int{
+		"/v1/search":                         http.StatusBadRequest,
 		"/v1/search?limit=101":               http.StatusBadRequest,
+		"/v1/search?q=valid&offset=invalid":  http.StatusBadRequest,
 		"/v1/skills?offset=-1":               http.StatusBadRequest,
 		"/v1/skills?sort=popular":            http.StatusBadRequest,
 		"/v1/skills/github.com/unknown/repo": http.StatusNotFound,
@@ -88,5 +148,5 @@ func TestInstallEventAPIIsIdempotent(t *testing.T) {
 	recorder := httptest.NewRecorder()
 	r.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/v1/skills?sort=all_time", nil))
 	require.Equal(t, http.StatusOK, recorder.Code)
-	require.Contains(t, recorder.Body.String(), `"installs":1`)
+	require.Contains(t, recorder.Body.String(), `"kind":"all_time_installs","value":1`)
 }

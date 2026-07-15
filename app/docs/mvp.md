@@ -1,6 +1,6 @@
-# SkillsPlay Personal MVP
+# SkillsGo Personal MVP
 
-SkillsPlay Personal MVP is a desktop manager for Agent Skills. It discovers public Skills through an open SkillsGo Registry and uses the App-bundled SkillsGo CLI to manage user-level and project-level installations.
+SkillsGo Personal MVP is a desktop manager for Agent Skills. It discovers public Skills through an open SkillsGo Registry and uses the App-bundled SkillsGo CLI to manage user-level and project-level installations.
 
 See [User Journeys and Information Architecture](user-routes.md) for the complete experience and [`CONTEXT.md`](../CONTEXT.md) for domain language.
 

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for Skills, CLI, Registry settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery collections, Skills, CLI, Registry settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,6 +13,23 @@ enum CliIssue { missing, damaged, incompatible }
 enum UpdateState { unknown, checking, upToDate, available, unsupported, failed }
 
 enum HealthState { ready, notInitialized, unreachable, invalid }
+
+enum SkillsFailureKind { validation, server, timeout, offline, invalidResponse }
+
+enum DiscoveryCollection { search, ranking, trending, hot }
+
+enum SkillTrustLevel {
+  unverified,
+  communityVerified,
+  publisherVerified,
+  official,
+  warned,
+  delisted,
+}
+
+enum SkillRiskAssessment { unknown, low, medium, high, critical }
+
+enum SkillMetricKind { allTimeInstalls, installs24h, hotVelocity }
 
 enum RegistryIssue {
   invalidOrigin,
@@ -86,6 +103,12 @@ class SkillSummary {
     required this.source,
     required this.installs,
     this.latestVersion = 'main',
+    this.description = '',
+    this.trustLevel = SkillTrustLevel.unverified,
+    this.riskAssessment = SkillRiskAssessment.unknown,
+    this.metricKind = SkillMetricKind.allTimeInstalls,
+    this.metricChange = 0,
+    this.localTargetCount = 0,
   });
 
   final String id;
@@ -94,6 +117,21 @@ class SkillSummary {
   final String source;
   final int installs;
   final String latestVersion;
+  final String description;
+  final SkillTrustLevel trustLevel;
+  final SkillRiskAssessment riskAssessment;
+  final SkillMetricKind metricKind;
+  final int metricChange;
+  final int localTargetCount;
+
+  bool get isInstalled => localTargetCount > 0;
+}
+
+class DiscoveryPage {
+  const DiscoveryPage({required this.skills, this.nextOffset});
+
+  final List<SkillSummary> skills;
+  final int? nextOffset;
 }
 
 class SkillFile {
@@ -143,11 +181,15 @@ class InstalledSkill {
     required this.name,
     required this.path,
     required this.agents,
+    required this.targetCount,
+    this.coordinate = '',
   });
 
   final String name;
   final String path;
   final List<String> agents;
+  final int targetCount;
+  final String coordinate;
 
   bool get isLinkedToCodex =>
       agents.any((agent) => agent.toLowerCase() == 'codex');
@@ -179,9 +221,14 @@ class CommandResult {
 }
 
 class SkillsException implements Exception {
-  const SkillsException(this.message, {this.isOffline = false});
+  const SkillsException(
+    this.message, {
+    this.kind = SkillsFailureKind.server,
+    this.isOffline = false,
+  });
 
   final String message;
+  final SkillsFailureKind kind;
   final bool isOffline;
 
   @override
@@ -200,7 +247,12 @@ abstract interface class SkillsGateway {
   Future<void> saveRiskPolicy(PersonalRiskPolicy policy);
   Future<StorageStatus> inspectStorage();
   Future<String> loadAppVersion();
-  Future<List<SkillSummary>> search(String query);
+  Future<DiscoveryPage> discover(
+    DiscoveryCollection collection, {
+    String query = '',
+    int offset = 0,
+    int limit = 20,
+  });
   Future<SkillDetail> loadRemoteDetail(SkillSummary skill);
   Future<List<InstalledSkill>> listInstalled();
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill);

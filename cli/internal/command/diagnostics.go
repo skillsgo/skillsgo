@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra, the operating-system home directory, and the Store module's canonical root.
- * [OUTPUT]: Provides a read-only, versioned JSON diagnostics contract for SkillsPlay and localized human status output.
+ * [OUTPUT]: Provides a read-only, versioned JSON diagnostics contract for SkillsGo and localized human status output.
  * [POS]: Serves as the CLI-owned inspection boundary for local Store state without exposing filesystem ownership to the App.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

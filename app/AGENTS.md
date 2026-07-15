@@ -1,4 +1,4 @@
-# SkillsPlay App
+# SkillsGo App
 
 > F1 Domain Map + F2 Workspace Map | Parent: `/AGENTS.md` | Manifest: `pubspec.yaml`
 
@@ -6,7 +6,7 @@ This map governs the Flutter desktop application workspace. Read it with the roo
 
 ## Workspace Identity
 
-- Package: `skillsplay`
+- Package: `skillsgo`
 - Runtime: Flutter desktop; macOS is the currently maintained target.
 - Entry points: `lib/main.dart` and `lib/app.dart`
 - Integration seam: `SkillsGateway`
@@ -48,7 +48,7 @@ flutter build macos --release
 ## UI Component Policy
 
 - Prefer `shadcn_ui` primitives for common controls, overlays, forms, feedback, and accessibility behavior.
-- Apply the Burrow-inspired visual language through SkillsPlay Design Tokens and thin brand components that compose or theme those primitives.
+- Apply the Burrow-inspired visual language through SkillsGo Design Tokens and thin brand components that compose or theme those primitives.
 - Build custom widgets only for product-specific interactions, such as the stateful destination rail or installation matrix, or when `shadcn_ui` has no suitable primitive.
 - Use raw Material controls as low-level Flutter infrastructure only when a `shadcn_ui` equivalent would reduce capability, platform behavior, or accessibility; keep that exception behind a reusable brand component when it recurs.
 

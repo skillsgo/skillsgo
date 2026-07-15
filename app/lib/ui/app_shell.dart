@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsPlay brand tokens.
- * [OUTPUT]: Provides the desktop shell plus persistent Discover, Library, detail, operation, and operational Settings journeys.
+ * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsGo brand tokens.
+ * [OUTPUT]: Provides the desktop shell plus persistent four-collection Discover, Library, detail, operation, and operational Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -185,7 +185,7 @@ class _TopBarState extends State<_TopBar> with SingleTickerProviderStateMixin {
           const Align(
             alignment: Alignment.centerLeft,
             child: Text(
-              'SkillsPlay',
+              'SkillsGo',
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
             ),
           ),
@@ -344,13 +344,11 @@ class DiscoverScreen extends StatefulWidget {
 class _DiscoverScreenState extends State<DiscoverScreen> {
   final controller = TextEditingController();
   final focusNode = FocusNode();
-  final scrollController = ScrollController();
   final installOperations = <String, _InstallOperation>{};
+  final routeStates = <_DiscoverRoute, _DiscoveryRouteState>{
+    for (final route in _DiscoverRoute.values) route: _DiscoveryRouteState(),
+  };
   _DiscoverRoute selectedRoute = _DiscoverRoute.search;
-  List<SkillSummary>? results;
-  Object? error;
-  bool loading = false;
-  int searchGeneration = 0;
 
   @override
   void initState() {
@@ -363,28 +361,75 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   Future<void> search([String? value]) async {
     final query = (value ?? controller.text).trim();
     if (query.isEmpty) {
+      final state = routeStates[_DiscoverRoute.search]!;
       setState(() {
-        results = null;
-        error = null;
-        loading = false;
+        state.generation++;
+        state.results = null;
+        state.error = null;
+        state.loading = false;
+        state.loadingMore = false;
+        state.nextOffset = null;
       });
       return;
     }
-    final generation = ++searchGeneration;
+    await _loadRoute(_DiscoverRoute.search, reset: true, query: query);
+  }
+
+  void _selectRoute(_DiscoverRoute route) {
+    setState(() => selectedRoute = route);
+    final state = routeStates[route]!;
+    if (route != _DiscoverRoute.search &&
+        state.results == null &&
+        !state.loading) {
+      unawaited(_loadRoute(route, reset: true));
+    }
+  }
+
+  Future<void> _loadRoute(
+    _DiscoverRoute route, {
+    required bool reset,
+    String? query,
+  }) async {
+    final state = routeStates[route]!;
+    final nextOffset = reset ? 0 : state.nextOffset;
+    if (nextOffset == null) return;
+    final generation = reset ? ++state.generation : state.generation;
+    if (reset && state.scrollController.hasClients) {
+      state.scrollController.jumpTo(0);
+    }
     setState(() {
-      loading = true;
-      error = null;
+      state.error = null;
+      if (reset) {
+        state.loading = true;
+        state.loadingMore = false;
+        state.results = null;
+        state.nextOffset = null;
+      } else {
+        state.loadingMore = true;
+      }
     });
     try {
-      final found = await widget.gateway.search(query);
-      if (!mounted || generation != searchGeneration) return;
-      setState(() => results = found);
+      final page = await widget.gateway.discover(
+        _collectionForRoute(route),
+        query: query ?? controller.text.trim(),
+        offset: nextOffset,
+      );
+      if (!mounted || generation != state.generation) return;
+      setState(() {
+        state.results = reset
+            ? page.skills
+            : [...?state.results, ...page.skills];
+        state.nextOffset = page.nextOffset;
+      });
     } catch (caught) {
-      if (!mounted || generation != searchGeneration) return;
-      setState(() => error = caught);
+      if (!mounted || generation != state.generation) return;
+      setState(() => state.error = caught);
     } finally {
-      if (mounted && generation == searchGeneration) {
-        setState(() => loading = false);
+      if (mounted && generation == state.generation) {
+        setState(() {
+          state.loading = false;
+          state.loadingMore = false;
+        });
       }
     }
   }
@@ -393,7 +438,9 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
   void dispose() {
     controller.dispose();
     focusNode.dispose();
-    scrollController.dispose();
+    for (final state in routeStates.values) {
+      state.dispose();
+    }
     for (final operation in installOperations.values) {
       operation.dispose();
     }
@@ -405,7 +452,7 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     rail: SkillsSideRail<_DiscoverRoute>(
       semanticLabel: context.l10n.discoverNavigation,
       selected: selectedRoute,
-      onSelected: (route) => setState(() => selectedRoute = route),
+      onSelected: _selectRoute,
       items: [
         SkillsRailItem(
           value: _DiscoverRoute.search,
@@ -424,9 +471,21 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     ),
     child: switch (selectedRoute) {
       _DiscoverRoute.search => _searchPage(),
-      _DiscoverRoute.ranking => _collectionPage(context.l10n.allTimeRanking),
-      _DiscoverRoute.trending => _collectionPage(context.l10n.trendingNow),
-      _DiscoverRoute.hot => _collectionPage(context.l10n.hotNow),
+      _DiscoverRoute.ranking => _collectionPage(
+        _DiscoverRoute.ranking,
+        context.l10n.allTimeRanking,
+        context.l10n.allTimeDescription,
+      ),
+      _DiscoverRoute.trending => _collectionPage(
+        _DiscoverRoute.trending,
+        context.l10n.trendingNow,
+        context.l10n.trendingDescription,
+      ),
+      _DiscoverRoute.hot => _collectionPage(
+        _DiscoverRoute.hot,
+        context.l10n.hotNow,
+        context.l10n.hotDescription,
+      ),
     },
   );
 
@@ -463,11 +522,15 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
         ),
       ),
       const SizedBox(height: 22),
-      Expanded(child: _body()),
+      Expanded(child: _body(_DiscoverRoute.search)),
     ],
   );
 
-  Widget _collectionPage(String title) => Column(
+  Widget _collectionPage(
+    _DiscoverRoute route,
+    String title,
+    String description,
+  ) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       SectionEyebrow(context.l10n.officialIndex, color: SkillsTokens.teal),
@@ -480,56 +543,132 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           fontWeight: FontWeight.w600,
         ),
       ),
-      const SizedBox(height: 22),
-      Expanded(
-        child: EmptyState(
-          title: title,
-          message: context.l10n.collectionComingSoon,
-        ),
+      const SizedBox(height: 8),
+      Text(
+        description,
+        style: const TextStyle(color: SkillsTokens.textSecondary),
       ),
+      const SizedBox(height: 22),
+      Expanded(child: _body(route)),
     ],
   );
 
-  Widget _body() {
-    if (loading) return const Center(child: CircularProgressIndicator());
-    if (error != null) {
+  Widget _body(_DiscoverRoute route) {
+    final state = routeStates[route]!;
+    if (state.loading && state.results == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    if (state.error != null && state.results == null) {
+      final copy = _discoveryErrorCopy(state.error!);
       return EmptyState(
-        title: error is SkillsException && (error! as SkillsException).isOffline
-            ? context.l10n.offlineTitle
-            : context.l10n.searchFailedTitle,
-        message: error.toString(),
-        action: PrimaryCapsuleButton(
-          label: context.l10n.tryAgain,
-          onPressed: search,
+        title: copy.title,
+        message: copy.message,
+        action: ShadButton(
+          onPressed: () =>
+              _loadRoute(route, reset: true, query: controller.text.trim()),
+          child: Text(context.l10n.tryAgain),
         ),
       );
     }
-    if (results == null) {
+    if (state.results == null) {
       return EmptyState(
         title: context.l10n.searchEmptyTitle,
         message: context.l10n.searchEmptyMessage,
       );
     }
-    if (results!.isEmpty) {
+    if (state.results!.isEmpty) {
       return EmptyState(
-        title: context.l10n.noSkillsTitle,
-        message: context.l10n.noSkillsMessage,
-        action: SecondaryCapsuleButton(
-          label: context.l10n.focusSearch,
-          onPressed: focusNode.requestFocus,
-        ),
+        title: route == _DiscoverRoute.search
+            ? context.l10n.noSkillsTitle
+            : context.l10n.collectionEmptyTitle,
+        message: route == _DiscoverRoute.search
+            ? context.l10n.noSkillsMessage
+            : context.l10n.collectionEmptyMessage,
+        action: route == _DiscoverRoute.search
+            ? ShadButton.outline(
+                onPressed: focusNode.requestFocus,
+                child: Text(context.l10n.focusSearch),
+              )
+            : null,
       );
     }
+    final showMore = state.nextOffset != null || state.loadingMore;
     return ListView.separated(
-      key: const ValueKey('discover-results'),
-      controller: scrollController,
-      itemCount: results!.length,
+      key: ValueKey(
+        route == _DiscoverRoute.search
+            ? 'discover-results'
+            : 'discover-results-${route.name}',
+      ),
+      controller: state.scrollController,
+      itemCount: state.results!.length + (showMore ? 1 : 0),
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
-        final skill = results![index];
+        if (index == state.results!.length) {
+          if (state.error != null) {
+            final copy = _discoveryErrorCopy(state.error!);
+            return Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              child: Column(
+                children: [
+                  Text(
+                    copy.message,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(color: SkillsTokens.textSecondary),
+                  ),
+                  const SizedBox(height: 10),
+                  ShadButton.outline(
+                    onPressed: () => _loadRoute(route, reset: false),
+                    child: Text(context.l10n.tryAgain),
+                  ),
+                ],
+              ),
+            );
+          }
+          return Center(
+            child: ShadButton.outline(
+              enabled: !state.loadingMore,
+              onPressed: () => _loadRoute(route, reset: false),
+              child: state.loadingMore
+                  ? const SizedBox.square(
+                      dimension: 16,
+                      child: CircularProgressIndicator(strokeWidth: 2),
+                    )
+                  : Text(context.l10n.loadMore),
+            ),
+          );
+        }
+        final skill = state.results![index];
         return SkillCard(skill: skill, onTap: () => _openDetail(skill));
       },
     );
+  }
+
+  ({String title, String message}) _discoveryErrorCopy(Object error) {
+    final kind = error is SkillsException
+        ? error.kind
+        : SkillsFailureKind.server;
+    return switch (kind) {
+      SkillsFailureKind.validation => (
+        title: context.l10n.validationTitle,
+        message: context.l10n.validationMessage,
+      ),
+      SkillsFailureKind.server => (
+        title: context.l10n.serverTitle,
+        message: context.l10n.serverMessage,
+      ),
+      SkillsFailureKind.timeout => (
+        title: context.l10n.timeoutTitle,
+        message: context.l10n.timeoutMessage,
+      ),
+      SkillsFailureKind.offline => (
+        title: context.l10n.offlineTitle,
+        message: context.l10n.offlineMessage,
+      ),
+      SkillsFailureKind.invalidResponse => (
+        title: context.l10n.invalidResponseTitle,
+        message: context.l10n.invalidResponseMessage,
+      ),
+    };
   }
 
   Future<void> _openDetail(SkillSummary skill) async {
@@ -549,6 +688,26 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     if (installed == true) widget.onInstalled();
   }
 }
+
+class _DiscoveryRouteState {
+  final scrollController = ScrollController();
+  List<SkillSummary>? results;
+  Object? error;
+  int? nextOffset;
+  int generation = 0;
+  bool loading = false;
+  bool loadingMore = false;
+
+  void dispose() => scrollController.dispose();
+}
+
+DiscoveryCollection _collectionForRoute(_DiscoverRoute route) =>
+    switch (route) {
+      _DiscoverRoute.search => DiscoveryCollection.search,
+      _DiscoverRoute.ranking => DiscoveryCollection.ranking,
+      _DiscoverRoute.trending => DiscoveryCollection.trending,
+      _DiscoverRoute.hot => DiscoveryCollection.hot,
+    };
 
 class _InstallOperation extends ChangeNotifier {
   bool operating = false;
@@ -700,8 +859,12 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
               ),
             ),
             PrimaryCapsuleButton(
-              label: context.l10n.installForCodex,
-              onPressed: install,
+              label: widget.skill.isInstalled
+                  ? context.l10n.installToMoreTargets
+                  : context.l10n.installForCodex,
+              onPressed: widget.skill.isInstalled
+                  ? () => Navigator.pop(context, true)
+                  : install,
               busy: operating,
             ),
           ],

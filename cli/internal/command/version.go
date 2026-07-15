@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra for command parsing, runtime for platform identity, and CLI build version injection.
- * [OUTPUT]: Provides human version output and the versioned JSON startup handshake consumed by SkillsPlay.
+ * [OUTPUT]: Provides human version output and the versioned JSON startup handshake consumed by SkillsGo.
  * [POS]: Serves as the compatibility boundary between a bundled SkillsGo CLI and the desktop App.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

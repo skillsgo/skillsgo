@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Registry HTTP, the local filesystem, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides production Registry settings, policy/storage diagnostics, bundled CLI verification, and Skill operations.
+ * [OUTPUT]: Provides production Registry settings, paginated discovery collections with typed failures, policy/storage diagnostics, bundled CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -43,6 +43,41 @@ class IoProcessRunner implements ProcessRunner {
   }
 }
 
+SkillTrustLevel _trustLevel(Object? value) => switch (value) {
+  'unverified' => SkillTrustLevel.unverified,
+  'community_verified' => SkillTrustLevel.communityVerified,
+  'publisher_verified' => SkillTrustLevel.publisherVerified,
+  'official' => SkillTrustLevel.official,
+  'warned' => SkillTrustLevel.warned,
+  'delisted' => SkillTrustLevel.delisted,
+  _ => throw const SkillsException(
+    'Discovery Trust Level is invalid.',
+    kind: SkillsFailureKind.invalidResponse,
+  ),
+};
+
+SkillRiskAssessment _riskAssessment(Object? value) => switch (value) {
+  'unknown' => SkillRiskAssessment.unknown,
+  'low' => SkillRiskAssessment.low,
+  'medium' => SkillRiskAssessment.medium,
+  'high' => SkillRiskAssessment.high,
+  'critical' => SkillRiskAssessment.critical,
+  _ => throw const SkillsException(
+    'Discovery Risk Assessment is invalid.',
+    kind: SkillsFailureKind.invalidResponse,
+  ),
+};
+
+SkillMetricKind _metricKind(String value) => switch (value) {
+  'all_time_installs' => SkillMetricKind.allTimeInstalls,
+  'installs_24h' => SkillMetricKind.installs24h,
+  'hot_velocity' => SkillMetricKind.hotVelocity,
+  _ => throw const SkillsException(
+    'Discovery metric is invalid.',
+    kind: SkillsFailureKind.invalidResponse,
+  ),
+};
+
 class RealSkillsGateway implements SkillsGateway {
   RealSkillsGateway({
     http.Client? httpClient,
@@ -53,6 +88,7 @@ class RealSkillsGateway implements SkillsGateway {
     String? expectedCliOS,
     String registryBaseUrl = 'http://localhost:3000',
     String? appVersion,
+    this.discoveryTimeout = const Duration(seconds: 15),
   }) : _http = httpClient ?? http.Client(),
        _runner = processRunner ?? const IoProcessRunner(),
        _cliPath = initialCliPath,
@@ -76,6 +112,7 @@ class RealSkillsGateway implements SkillsGateway {
   final bool allowDeveloperCliOverride;
   final String _expectedCliOS;
   final String? _injectedAppVersion;
+  final Duration discoveryTimeout;
   String? _cliPath;
   bool _registryOriginLoaded = false;
 
@@ -368,33 +405,87 @@ class RealSkillsGateway implements SkillsGateway {
       _injectedAppVersion ?? (await PackageInfo.fromPlatform()).version;
 
   @override
-  Future<List<SkillSummary>> search(String query) async {
-    if (query.trim().isEmpty) return const [];
+  Future<DiscoveryPage> discover(
+    DiscoveryCollection collection, {
+    String query = '',
+    int offset = 0,
+    int limit = 20,
+  }) async {
+    final trimmedQuery = query.trim();
+    if (collection == DiscoveryCollection.search && trimmedQuery.isEmpty) {
+      throw const SkillsException(
+        'Search query is required.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
     await _ensureRegistryOrigin();
+    final expectedCollection = switch (collection) {
+      DiscoveryCollection.search => 'search',
+      DiscoveryCollection.ranking => 'all_time',
+      DiscoveryCollection.trending => 'trending',
+      DiscoveryCollection.hot => 'hot',
+    };
+    final parameters = <String, String>{
+      'limit': '$limit',
+      'offset': '$offset',
+      if (collection == DiscoveryCollection.search) 'q': trimmedQuery,
+      if (collection != DiscoveryCollection.search) 'sort': expectedCollection,
+    };
     final uri = _registryBase
-        .resolve('v1/search')
-        .replace(queryParameters: {'q': query.trim(), 'limit': '20'});
+        .resolve(
+          collection == DiscoveryCollection.search ? 'v1/search' : 'v1/skills',
+        )
+        .replace(queryParameters: parameters);
     try {
-      final response = await _http
-          .get(uri)
-          .timeout(const Duration(seconds: 15));
+      final response = await _http.get(uri).timeout(discoveryTimeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
         throw SkillsException(
-          'Search service returned ${response.statusCode}.',
+          'Discovery service returned ${response.statusCode}.',
+          kind: response.statusCode >= 400 && response.statusCode < 500
+              ? SkillsFailureKind.validation
+              : SkillsFailureKind.server,
         );
       }
       final decoded = jsonDecode(response.body);
-      if (decoded is! Map<String, dynamic> || decoded['skills'] is! List) {
+      if (decoded is! Map<String, dynamic> ||
+          decoded['collection'] != expectedCollection ||
+          decoded['skills'] is! List ||
+          decoded['page'] is! Map<String, dynamic>) {
         throw const SkillsException(
-          'Search service returned an invalid response.',
+          'Discovery service returned an invalid response.',
+          kind: SkillsFailureKind.invalidResponse,
         );
       }
-      return (decoded['skills'] as List)
+      final page = decoded['page'] as Map<String, dynamic>;
+      final nextRaw = page['nextOffset'];
+      if (page['limit'] is! num ||
+          page['offset'] is! num ||
+          (nextRaw != null && nextRaw is! num)) {
+        throw const SkillsException(
+          'Discovery pagination is invalid.',
+          kind: SkillsFailureKind.invalidResponse,
+        );
+      }
+      final installedCounts = <String, int>{};
+      try {
+        final installed = await listInstalled();
+        for (final skill in installed) {
+          if (skill.coordinate.isNotEmpty) {
+            installedCounts[skill.coordinate] = skill.targetCount;
+          }
+        }
+      } on Object {
+        // Discovery remains available when local CLI inventory is unavailable.
+      }
+      final skills = (decoded['skills'] as List)
           .map((raw) {
             if (raw is! Map<String, dynamic>) {
-              throw const SkillsException('Invalid skill result.');
+              throw const SkillsException(
+                'Invalid discovery result.',
+                kind: SkillsFailureKind.invalidResponse,
+              );
             }
-            final source = raw['coordinate'];
+            final source = raw['source'];
             final skillId =
                 raw['skillPath'] is String &&
                     (raw['skillPath'] as String).isNotEmpty
@@ -402,12 +493,22 @@ class RealSkillsGateway implements SkillsGateway {
                 : raw['name'];
             final id = raw['coordinate'];
             final name = raw['name'];
+            final description = raw['description'];
+            final version = raw['latestVersion'];
+            final metric = raw['metric'];
             if (source is! String ||
                 skillId is! String ||
                 id is! String ||
-                name is! String) {
+                name is! String ||
+                description is! String ||
+                version is! String ||
+                metric is! Map<String, dynamic> ||
+                metric['kind'] is! String ||
+                metric['value'] is! num ||
+                metric['change'] is! num) {
               throw const SkillsException(
-                'Search result is missing required fields.',
+                'Discovery result is missing required fields.',
+                kind: SkillsFailureKind.invalidResponse,
               );
             }
             return SkillSummary(
@@ -415,24 +516,45 @@ class RealSkillsGateway implements SkillsGateway {
               skillId: skillId,
               name: name,
               source: source,
-              installs: raw['installs'] is num
-                  ? (raw['installs'] as num).toInt()
-                  : 0,
-              latestVersion: raw['latestVersion'] is String
-                  ? raw['latestVersion'] as String
-                  : 'main',
+              description: description,
+              installs: (metric['value'] as num).toInt(),
+              latestVersion: version,
+              trustLevel: _trustLevel(raw['trustLevel']),
+              riskAssessment: _riskAssessment(raw['riskAssessment']),
+              metricKind: _metricKind(metric['kind'] as String),
+              metricChange: (metric['change'] as num).toInt(),
+              localTargetCount: installedCounts[id] ?? 0,
             );
           })
           .toList(growable: false);
+      return DiscoveryPage(
+        skills: skills,
+        nextOffset: nextRaw == null ? null : (nextRaw as num).toInt(),
+      );
+    } on SkillsException {
+      rethrow;
     } on SocketException {
-      throw const SkillsException('You appear to be offline.', isOffline: true);
-    } on TimeoutException {
       throw const SkillsException(
-        'Search timed out. Check your connection.',
+        'You appear to be offline.',
+        kind: SkillsFailureKind.offline,
         isOffline: true,
       );
+    } on http.ClientException {
+      throw const SkillsException(
+        'The Registry connection failed.',
+        kind: SkillsFailureKind.offline,
+        isOffline: true,
+      );
+    } on TimeoutException {
+      throw const SkillsException(
+        'Discovery timed out. Check your connection.',
+        kind: SkillsFailureKind.timeout,
+      );
     } on FormatException {
-      throw const SkillsException('Search service returned invalid JSON.');
+      throw const SkillsException(
+        'Discovery service returned invalid JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
     }
   }
 
@@ -524,7 +646,16 @@ class RealSkillsGateway implements SkillsGateway {
       final decoded = jsonDecode(result.output.stdout);
       if (decoded is! List) throw const FormatException();
       final grouped =
-          <String, ({String name, String path, Set<String> agents})>{};
+          <
+            String,
+            ({
+              String coordinate,
+              String name,
+              String path,
+              Set<String> agents,
+              int targetCount,
+            })
+          >{};
       for (final raw in decoded) {
         if (raw is! Map<String, dynamic> ||
             raw['name'] is! String ||
@@ -538,10 +669,14 @@ class RealSkillsGateway implements SkillsGateway {
         final key = '${raw['coordinate'] ?? ''}\u0000${raw['name']}';
         final current = grouped[key];
         grouped[key] = (
+          coordinate: raw['coordinate'] is String
+              ? raw['coordinate'] as String
+              : '',
           name: raw['name'] as String,
           path: current?.path ?? target['path'] as String,
           agents: (current?.agents ?? <String>{})
             ..add(target['agent'] as String),
+          targetCount: (current?.targetCount ?? 0) + 1,
         );
       }
       return grouped.values
@@ -550,6 +685,8 @@ class RealSkillsGateway implements SkillsGateway {
               name: value.name,
               path: value.path,
               agents: value.agents.toList(growable: false),
+              targetCount: value.targetCount,
+              coordinate: value.coordinate,
             ),
           )
           .toList(growable: false);

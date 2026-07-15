@@ -1,4 +1,4 @@
-# SkillsPlay User Journeys and Information Architecture
+# SkillsGo User Journeys and Information Architecture
 
 This document defines navigation, core journeys, page states, and interaction boundaries for the Personal desktop App. Users should be able to discover, inspect, and manage every local Agent Skill without understanding CLI arguments, Store layout, or Agent directories.
 
@@ -80,7 +80,7 @@ About
 
 ```mermaid
 flowchart LR
-    A["Launch SkillsPlay"] --> B["Check bundled CLI, Registry, and Installed Agents in parallel"]
+    A["Launch SkillsGo"] --> B["Check bundled CLI, Registry, and Installed Agents in parallel"]
     B --> C["Open Discover / Search"]
     C --> D{"Any Installed Agent?"}
     D -->|Yes| E["Installation Plans are available"]

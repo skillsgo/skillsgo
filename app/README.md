@@ -1,6 +1,6 @@
-# SkillsPlay
+# SkillsGo
 
-SkillsPlay is a desktop manager for Agent Skills. It discovers public Skills through a SkillsGo Registry and uses the bundled SkillsGo CLI to manage user-level and project-level installations.
+SkillsGo is a desktop manager for Agent Skills. It discovers public Skills through a SkillsGo Registry and uses the bundled SkillsGo CLI to manage user-level and project-level installations.
 
 ## Personal MVP
 
@@ -29,10 +29,10 @@ Build a local release application:
 
 ```sh
 flutter build macos --release
-open build/macos/Build/Products/Release/SkillsPlay.app
+open build/macos/Build/Products/Release/SkillsGo.app
 ```
 
-Debug builds expose Marionette integration for Codex-driven desktop UI verification. SkillsPlay needs access to projects explicitly selected by the user and to local Agent directories, so desktop permissions and signing must cover those paths.
+Debug builds expose Marionette integration for Codex-driven desktop UI verification. SkillsGo needs access to projects explicitly selected by the user and to local Agent directories, so desktop permissions and signing must cover those paths.
 
 ## Product Documentation
 
@@ -41,4 +41,4 @@ Debug builds expose Marionette integration for Codex-driven desktop UI verificat
 - [Domain Language](CONTEXT.md)
 - [ADR: Bundle the SkillsGo CLI in the App](../docs/adr/0001-bundle-skillsgo-cli.md)
 
-SkillsPlay is not affiliated with OpenAI, Codex, Vercel Labs, or `skills.sh`.
+SkillsGo is not affiliated with OpenAI, Codex, Vercel Labs, or `skills.sh`.

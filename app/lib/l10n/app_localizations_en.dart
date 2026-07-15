@@ -25,15 +25,15 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get cliMissingBundled =>
-      'The bundled SkillsGo CLI is missing or cannot run. Reinstall SkillsPlay.';
+      'The bundled SkillsGo CLI is missing or cannot run. Reinstall SkillsGo.';
 
   @override
   String get cliDamagedBundled =>
-      'The bundled SkillsGo CLI returned an invalid startup response. Reinstall SkillsPlay.';
+      'The bundled SkillsGo CLI returned an invalid startup response. Reinstall SkillsGo.';
 
   @override
   String get cliIncompatibleBundled =>
-      'The bundled SkillsGo CLI is incompatible with this version of SkillsPlay. Update or reinstall the app.';
+      'The bundled SkillsGo CLI is incompatible with this version of SkillsGo. Update or reinstall the app.';
 
   @override
   String get officialIndex => 'SkillsGo Registry';
@@ -69,14 +69,54 @@ class AppLocalizationsEn extends AppLocalizations {
   String get hotNow => 'Hot right now';
 
   @override
-  String get collectionComingSoon =>
-      'This collection is ready for Registry integration.';
+  String get allTimeDescription =>
+      'Public Skills ordered by accepted installs across all time.';
+
+  @override
+  String get trendingDescription =>
+      'Public Skills ordered by accepted installs during the latest 24-hour window.';
+
+  @override
+  String get hotDescription =>
+      'Public Skills ordered by short-term installation velocity and change.';
 
   @override
   String get offlineTitle => 'You’re offline';
 
   @override
+  String get offlineMessage =>
+      'SkillsGo could not reach the Registry. Check your network, proxy, or Registry Origin.';
+
+  @override
   String get searchFailedTitle => 'Search stumbled';
+
+  @override
+  String get validationTitle => 'Check this request';
+
+  @override
+  String get validationMessage =>
+      'The Registry rejected the request. Review the query and try again.';
+
+  @override
+  String get serverTitle => 'Registry unavailable';
+
+  @override
+  String get serverMessage =>
+      'The Registry could not complete this request. Try again in a moment.';
+
+  @override
+  String get timeoutTitle => 'Registry timed out';
+
+  @override
+  String get timeoutMessage =>
+      'The Registry took too long to respond. Check the connection or try again.';
+
+  @override
+  String get invalidResponseTitle => 'Registry response unsupported';
+
+  @override
+  String get invalidResponseMessage =>
+      'This Registry returned a response SkillsGo cannot read. Check its version and protocol compatibility.';
 
   @override
   String get tryAgain => 'Try again';
@@ -86,7 +126,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchEmptyMessage =>
-      'SkillsPlay has no feed or ranking. Enter a capability you need.';
+      'Enter a capability, source, or task to search the public Registry.';
 
   @override
   String get noSkillsTitle => 'No skills found';
@@ -96,6 +136,75 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get focusSearch => 'Focus search';
+
+  @override
+  String get collectionEmptyTitle => 'No Skills in this collection';
+
+  @override
+  String get collectionEmptyMessage =>
+      'The Registry returned an empty collection. Try again after new install activity is recorded.';
+
+  @override
+  String get loadMore => 'Load more';
+
+  @override
+  String get install => 'Install';
+
+  @override
+  String get installToMoreTargets => 'Install to More Targets';
+
+  @override
+  String localTargets(int count) {
+    return '$count local targets';
+  }
+
+  @override
+  String allTimeMetric(String count) {
+    return '$count all-time installs';
+  }
+
+  @override
+  String trendingMetric(String count) {
+    return '$count installs / 24h';
+  }
+
+  @override
+  String hotMetric(String value, String change) {
+    return '$value this hour · $change';
+  }
+
+  @override
+  String get trustUnverified => 'Unverified';
+
+  @override
+  String get trustCommunityVerified => 'Community verified';
+
+  @override
+  String get trustPublisherVerified => 'Publisher verified';
+
+  @override
+  String get trustOfficial => 'Official';
+
+  @override
+  String get trustWarned => 'Warned';
+
+  @override
+  String get trustDelisted => 'Delisted';
+
+  @override
+  String get riskUnknown => 'Risk unknown';
+
+  @override
+  String get riskLow => 'Low risk';
+
+  @override
+  String get riskMedium => 'Medium risk';
+
+  @override
+  String get riskHigh => 'High risk';
+
+  @override
+  String get riskCritical => 'Critical risk';
 
   @override
   String openSkill(String name) {
@@ -127,7 +236,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get executableRisk =>
-      'This snapshot contains scripts or executable content. Review the files before installing; SkillsPlay does not audit them.';
+      'This snapshot contains scripts or executable content. Review the files before installing; SkillsGo does not audit them.';
 
   @override
   String removeTitle(String name) {
@@ -238,7 +347,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get generalSettingsDescription =>
-      'SkillsPlay follows the system language and accessibility preferences, including reduced motion.';
+      'SkillsGo follows the system language and accessibility preferences, including reduced motion.';
 
   @override
   String get agentsSettingsTitle => 'Agent runtime';
@@ -392,11 +501,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'SkillsPlay does not store searches or persist command logs. Its bundled CLI remains inside the App and is never installed into your system PATH.';
+      'SkillsGo does not store searches or persist command logs. Its bundled CLI remains inside the App and is never installed into your system PATH.';
 
   @override
   String get privacyAffiliation =>
-      'Anonymous installation telemetry is controlled by SkillsGo settings. SkillsPlay is not affiliated with OpenAI or Codex.';
+      'Anonymous installation telemetry is controlled by SkillsGo settings. SkillsGo is not affiliated with OpenAI or Codex.';
 
   @override
   String get commandCompleted => 'Command completed';

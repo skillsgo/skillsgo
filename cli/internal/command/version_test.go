@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the public command.Execute seam with in-memory stdout and stderr writers.
- * [OUTPUT]: Specifies the versioned JSON startup handshake consumed by the SkillsPlay App.
+ * [OUTPUT]: Specifies the versioned JSON startup handshake consumed by the SkillsGo App.
  * [POS]: Serves as executable contract coverage for CLI identity and App protocol compatibility.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

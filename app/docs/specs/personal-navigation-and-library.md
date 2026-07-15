@@ -2,11 +2,11 @@
 status: ready-for-agent
 ---
 
-# SkillsPlay Personal Navigation and Unified Library
+# SkillsGo Personal Navigation and Unified Library
 
 ## Problem Statement
 
-SkillsPlay currently proves a narrow search-to-install loop, but it does not yet behave like a complete desktop manager for Agent Skills. Users see three top-level pages without the deeper navigation needed to browse rankings, manage multiple projects, understand which Agents use a Skill, or distinguish SkillsGo-managed targets from Skills already present on disk.
+SkillsGo currently proves a narrow search-to-install loop, but it does not yet behave like a complete desktop manager for Agent Skills. Users see three top-level pages without the deeper navigation needed to browse rankings, manage multiple projects, understand which Agents use a Skill, or distinguish SkillsGo-managed targets from Skills already present on disk.
 
 The current App assumes a user-level Codex installation, requires an externally installed CLI during development, and represents installed Skills as a mostly flat list. That model breaks down as soon as one Skill is installed for several Agents, different projects intentionally use different versions, or a user already has Skills installed by another tool. Users need one trustworthy Library that reflects the machine, preserves project intent, and makes every mutation explicit.
 
@@ -86,23 +86,23 @@ Projects are added only through explicit directory selection. External Installat
 62. As a user with a fixed commit target, I want it excluded from misleading update prompts when it has no movable reference, so that pinning remains meaningful.
 63. As a user removing a Skill, I want to choose exact targets, so that other Agents and projects remain unchanged.
 64. As a user removing the last active target, I want Store cleanup to honor remaining Workspace Lock references, so that restore remains possible.
-65. As a user with an unhealthy target, I want repair or stop-managing actions, so that SkillsPlay never deletes an unexpected filesystem object automatically.
+65. As a user with an unhealthy target, I want repair or stop-managing actions, so that SkillsGo never deletes an unexpected filesystem object automatically.
 66. As a user with an existing Skill installed by another tool, I want it shown as an External Installation, so that the Library reflects the machine rather than only SkillsGo receipts.
 67. As a user inspecting an External Installation, I want to read its instructions, files, and risk, so that unmanaged does not mean invisible.
 68. As a user with an External Installation, I want update and removal disabled until adoption, so that SkillsGo does not claim ownership silently.
-69. As a user adopting an External Installation, I want SkillsPlay to attempt an immutable Registry match, so that known content can regain source and update metadata.
+69. As a user adopting an External Installation, I want SkillsGo to attempt an immutable Registry match, so that known content can regain source and update metadata.
 70. As a user reviewing a Registry match, I want source and version confirmed before association, so that content is not replaced by assumption.
 71. As a user with custom content, I want to import an unmatched External Installation as a Local Skill, so that my own Skills can use the same management workflow.
 72. As a Local Skill user, I want to install it elsewhere, export it, or remove it, so that local content remains useful without being published.
 73. As a Local Skill author, I want import to remain local, so that adoption never publishes private content to a Registry.
 74. As a project user, I want to add a project through the operating-system directory picker, so that access is explicit.
 75. As a project user, I want a project to work without Git or existing SkillsGo files, so that local workspaces are not excluded.
-76. As a project user, I want SkillsPlay to read the Workspace Manifest, Workspace Lock, and known Agent Skill directories, so that declared and actual inventory can be reconciled.
+76. As a project user, I want SkillsGo to read the Workspace Manifest, Workspace Lock, and known Agent Skill directories, so that declared and actual inventory can be reconciled.
 77. As a project user, I want projects restored after App restart, so that navigation remains stable.
-78. As a project user, I want removing a project from SkillsPlay to leave its files untouched, so that navigation cleanup is not destructive.
+78. As a project user, I want removing a project from SkillsGo to leave its files untouched, so that navigation cleanup is not destructive.
 79. As a user with a moved project, I want a Relocate action, so that its identity and history can be recovered.
 80. As a user with an inaccessible project, I want a diagnosable state instead of silent removal, so that permission and storage problems are understandable.
-81. As a privacy-conscious user, I want SkillsPlay to avoid scanning the disk for projects, so that only explicitly selected directories are inspected.
+81. As a privacy-conscious user, I want SkillsGo to avoid scanning the disk for projects, so that only explicitly selected directories are inspected.
 82. As a user with no Installed Agent, I want discovery to remain available, so that I can evaluate Skills before configuring an Agent.
 83. As a user with no Installed Agent, I want the installation sheet to explain the empty matrix and link to Agent guidance, so that the next step is clear.
 84. As an offline user, I want Library, projects, Agent views, and local detail to remain usable, so that local management does not depend on Registry availability.
@@ -192,4 +192,4 @@ Projects are added only through explicit directory selection. External Installat
 - The existing CLI already models many Agent Adapters, User Scope, Workspace Scope, the Content-addressed Store, Installation Receipts, Workspace Manifests, and Workspace Locks. The missing work is primarily stable high-level discovery, reconciliation, and multi-target operation contracts.
 - The current App Gateway is intentionally narrow and Codex-oriented. Expanding that seam should precede the nested navigation implementation so UI code is not built on temporary parsing logic.
 - The original external `skills` CLI and `skills.sh` MVP specification is superseded. System ADR-0001 establishes the bundled SkillsGo CLI as the production architecture.
-- The Burrow reference supplies visual language and motion quality, not its exact icon-only navigation. SkillsPlay requires text because Added Projects and Installed Agents are dynamic user-owned entities.
+- The Burrow reference supplies visual language and motion quality, not its exact icon-only navigation. SkillsGo requires text because Added Projects and Installed Agents are dynamic user-owned entities.

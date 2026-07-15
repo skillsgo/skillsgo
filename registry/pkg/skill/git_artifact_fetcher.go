@@ -35,7 +35,7 @@ type artifactFiles struct {
 func NewFetcher(cacheDir string, fs afero.Fs) (Fetcher, error) {
 	if cacheDir == "" {
 		var err error
-		cacheDir, err = os.MkdirTemp("", "skillsplay-cache-")
+		cacheDir, err = os.MkdirTemp("", "skillsgo-cache-")
 		if err != nil {
 			return nil, err
 		}

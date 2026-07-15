@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses SkillsPlayApp with a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
+ * [INPUT]: Uses SkillsGoApp with a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
  * [OUTPUT]: Specifies startup, persistent nested navigation, accessibility, discovery, settings, and mutation journeys.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -10,8 +10,8 @@ import 'dart:ui' show Tristate;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:skillsplay/app.dart';
-import 'package:skillsplay/domain/skills_gateway.dart';
+import 'package:skillsgo/app.dart';
+import 'package:skillsgo/domain/skills_gateway.dart';
 
 void main() {
   testWidgets('follows the system locale and renders Simplified Chinese', (
@@ -23,12 +23,22 @@ void main() {
     ];
     addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
 
-    await tester.pumpWidget(SkillsPlayApp(gateway: FakeSkillsGateway()));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
     await tester.pumpAndSettle();
 
     expect(find.text('发现'), findsOneWidget);
     expect(find.text('技能库'), findsOneWidget);
     expect(find.text('找到下一步所需的技能。'), findsOneWidget);
+
+    for (final route in const {
+      '排行': '历史排行',
+      '趋势': '最近 24 小时趋势',
+      '热门': '当前热门',
+    }.entries) {
+      await tester.tap(find.text(route.key));
+      await tester.pumpAndSettle();
+      expect(find.text(route.value), findsOneWidget);
+    }
   });
 
   testWidgets('localizes missing bundled CLI recovery guidance', (
@@ -41,12 +51,12 @@ void main() {
     addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
 
     await tester.pumpWidget(
-      SkillsPlayApp(gateway: FakeSkillsGateway(cliReady: false)),
+      SkillsGoApp(gateway: FakeSkillsGateway(cliReady: false)),
     );
     await tester.pumpAndSettle();
 
     expect(
-      find.text('内置的 SkillsGo CLI 缺失或无法运行。请重新安装 SkillsPlay。'),
+      find.text('内置的 SkillsGo CLI 缺失或无法运行。请重新安装 SkillsGo。'),
       findsOneWidget,
     );
     expect(find.text('raw process diagnostic'), findsNothing);
@@ -57,11 +67,11 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     final gateway = FakeSkillsGateway();
-    await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
 
     expect(find.text('Find a skill for your next move.'), findsOneWidget);
-    await tester.enterText(find.byKey(const Key('skill-search')), 'flutter');
+    await tester.enterText(_searchInput(), 'flutter');
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
 
@@ -70,11 +80,247 @@ void main() {
     expect(find.text('example/skills'), findsOneWidget);
   });
 
+  testWidgets('all Discover collections show comparison metadata', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    const base = SkillSummary(
+      id: 'github.com/acme/skills/-/planner',
+      skillId: 'planner',
+      name: 'Planner',
+      description: 'Turn product goals into a concrete execution plan.',
+      source: 'github.com/acme/skills',
+      latestVersion: 'v1.2.3',
+      installs: 1200,
+      trustLevel: SkillTrustLevel.communityVerified,
+      riskAssessment: SkillRiskAssessment.low,
+      localTargetCount: 2,
+    );
+    final gateway = FakeSkillsGateway(
+      discoveryPages: const {
+        'ranking:0': DiscoveryPage(skills: [base]),
+        'trending:0': DiscoveryPage(
+          skills: [
+            SkillSummary(
+              id: 'github.com/acme/skills/-/planner',
+              skillId: 'planner',
+              name: 'Planner',
+              description: 'Turn product goals into a concrete execution plan.',
+              source: 'github.com/acme/skills',
+              latestVersion: 'v1.2.3',
+              installs: 42,
+              metricKind: SkillMetricKind.installs24h,
+            ),
+          ],
+        ),
+        'hot:0': DiscoveryPage(
+          skills: [
+            SkillSummary(
+              id: 'github.com/acme/skills/-/planner',
+              skillId: 'planner',
+              name: 'Planner',
+              description: 'Turn product goals into a concrete execution plan.',
+              source: 'github.com/acme/skills',
+              latestVersion: 'v1.2.3',
+              installs: 7,
+              metricKind: SkillMetricKind.hotVelocity,
+              metricChange: 3,
+            ),
+          ],
+        ),
+      },
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ranking'));
+    await tester.pumpAndSettle();
+    expect(
+      find.text('Turn product goals into a concrete execution plan.'),
+      findsOneWidget,
+    );
+    expect(find.text('github.com/acme/skills'), findsOneWidget);
+    expect(find.text('v1.2.3'), findsOneWidget);
+    expect(find.text('Community verified'), findsOneWidget);
+    expect(find.text('Low risk'), findsOneWidget);
+    expect(find.text('2 local targets'), findsOneWidget);
+    expect(find.text('Install to More Targets'), findsOneWidget);
+    expect(find.text('1.2K all-time installs'), findsOneWidget);
+
+    await tester.tap(find.text('Trending'));
+    await tester.pumpAndSettle();
+    expect(find.text('42 installs / 24h'), findsOneWidget);
+
+    await tester.tap(find.text('Hot'));
+    await tester.pumpAndSettle();
+    expect(find.text('7 this hour · +3'), findsOneWidget);
+    expect(
+      gateway.collections,
+      containsAll(DiscoveryCollection.values.skip(1)),
+    );
+  });
+
+  testWidgets('Discover pagination appends the next stable page', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway(
+      discoveryPages: const {
+        'ranking:0': DiscoveryPage(
+          skills: [
+            SkillSummary(
+              id: 'github.com/acme/a',
+              skillId: 'a',
+              name: 'Alpha',
+              source: 'github.com/acme/a',
+              installs: 2,
+            ),
+          ],
+          nextOffset: 20,
+        ),
+        'ranking:20': DiscoveryPage(
+          skills: [
+            SkillSummary(
+              id: 'github.com/acme/b',
+              skillId: 'b',
+              name: 'Bravo',
+              source: 'github.com/acme/b',
+              installs: 1,
+            ),
+          ],
+        ),
+      },
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ranking'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Alpha'), findsOneWidget);
+    await tester.tap(find.text('Load more'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Bravo'), findsOneWidget);
+    expect(gateway.requestedOffsets, [0, 20]);
+  });
+
+  testWidgets('Discover keeps results and localizes pagination failures', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway(
+      discoveryPages: const {
+        'ranking:0': DiscoveryPage(
+          skills: [
+            SkillSummary(
+              id: 'github.com/acme/a',
+              skillId: 'a',
+              name: 'Alpha',
+              source: 'github.com/acme/a',
+              installs: 2,
+            ),
+          ],
+          nextOffset: 20,
+        ),
+      },
+      discoveryErrors: const {
+        'ranking:20': SkillsException('raw', kind: SkillsFailureKind.timeout),
+      },
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ranking'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Load more'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Alpha'), findsOneWidget);
+    expect(find.textContaining('too long to respond'), findsOneWidget);
+    expect(find.text('Try again'), findsOneWidget);
+    expect(find.text('raw'), findsNothing);
+  });
+
+  testWidgets('installed discovery action never repeats the known target', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    const installedSkill = SkillSummary(
+      id: 'github.com/acme/skills/-/planner',
+      skillId: 'planner',
+      name: 'Planner',
+      source: 'github.com/acme/skills',
+      installs: 10,
+      localTargetCount: 1,
+    );
+    final gateway = FakeSkillsGateway(
+      discoveryPages: const {
+        'ranking:0': DiscoveryPage(skills: [installedSkill]),
+      },
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ranking'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Planner'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Install to More Targets'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.installCalls, 0);
+    expect(find.text('Your Library'), findsOneWidget);
+  });
+
+  testWidgets('an empty ranked collection has localized recovery copy', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(
+          discoveryPages: const {'ranking:0': DiscoveryPage(skills: [])},
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Ranking'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No Skills in this collection'), findsOneWidget);
+    expect(find.textContaining('empty collection'), findsOneWidget);
+  });
+
+  for (final failure in const {
+    SkillsFailureKind.validation: 'Check this request',
+    SkillsFailureKind.server: 'Registry unavailable',
+    SkillsFailureKind.timeout: 'Registry timed out',
+    SkillsFailureKind.offline: 'You’re offline',
+    SkillsFailureKind.invalidResponse: 'Registry response unsupported',
+  }.entries) {
+    testWidgets('Discover localizes ${failure.key.name} failures', (
+      tester,
+    ) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      await tester.pumpWidget(
+        SkillsGoApp(
+          gateway: FakeSkillsGateway(
+            discoveryError: SkillsException('raw', kind: failure.key),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Ranking'));
+      await tester.pumpAndSettle();
+
+      expect(find.text(failure.value), findsOneWidget);
+      expect(find.text('raw'), findsNothing);
+    });
+  }
+
   testWidgets('nested rails keep each destination subroute and input state', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
-    await tester.pumpWidget(SkillsPlayApp(gateway: FakeSkillsGateway()));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
     await tester.pumpAndSettle();
 
     expect(find.text('Search'), findsOneWidget);
@@ -82,7 +328,7 @@ void main() {
     expect(find.text('Trending'), findsOneWidget);
     expect(find.text('Hot'), findsOneWidget);
 
-    await tester.enterText(find.byKey(const Key('skill-search')), 'stateful');
+    await tester.enterText(_searchInput(), 'stateful');
     await tester.tap(find.text('Ranking'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Library'));
@@ -125,10 +371,7 @@ void main() {
     await tester.tap(find.text('Search'));
     await tester.pumpAndSettle();
     expect(
-      tester
-          .widget<TextField>(find.byKey(const Key('skill-search')))
-          .controller!
-          .text,
+      tester.widget<EditableText>(_searchInput()).controller.text,
       'stateful',
     );
   });
@@ -139,10 +382,10 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1200, 800));
       final search = Completer<List<SkillSummary>>();
       final gateway = FakeSkillsGateway(searchCompleter: search);
-      await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
       await tester.pumpAndSettle();
 
-      await tester.enterText(find.byKey(const Key('skill-search')), 'async');
+      await tester.enterText(_searchInput(), 'async');
       await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pump();
       await tester.tap(find.text('Library'));
@@ -155,10 +398,7 @@ void main() {
 
       expect(find.text('Flutter Pro'), findsOneWidget);
       expect(
-        tester
-            .widget<TextField>(find.byKey(const Key('skill-search')))
-            .controller!
-            .text,
+        tester.widget<EditableText>(_searchInput()).controller.text,
         'async',
       );
     },
@@ -173,10 +413,10 @@ void main() {
       installed: false,
       installCompleter: install,
     );
-    await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byKey(const Key('skill-search')), 'install');
+    await tester.enterText(_searchInput(), 'install');
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Flutter Pro'));
@@ -210,10 +450,10 @@ void main() {
         ),
       ),
     );
-    await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byKey(const Key('skill-search')), 'many');
+    await tester.enterText(_searchInput(), 'many');
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
     await tester.scrollUntilVisible(
@@ -240,7 +480,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     const longAgent = 'A Very Long Agent Name That Must Truncate';
     await tester.pumpWidget(
-      SkillsPlayApp(
+      SkillsGoApp(
         gateway: FakeSkillsGateway(
           agentNames: const ['a-very-long-agent-name-that-must-truncate'],
         ),
@@ -287,7 +527,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 520));
     await tester.pumpWidget(
-      SkillsPlayApp(
+      SkillsGoApp(
         gateway: FakeSkillsGateway(
           agentNames: List.generate(20, (index) => 'agent-$index'),
         ),
@@ -316,7 +556,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     final agents = <String>['codex'];
     await tester.pumpWidget(
-      SkillsPlayApp(gateway: FakeSkillsGateway(agentNames: agents)),
+      SkillsGoApp(gateway: FakeSkillsGateway(agentNames: agents)),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Library'));
@@ -337,7 +577,7 @@ void main() {
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
-    await tester.pumpWidget(SkillsPlayApp(gateway: FakeSkillsGateway()));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Ranking'));
@@ -361,7 +601,7 @@ void main() {
     tester.platformDispatcher.accessibilityFeaturesTestValue =
         const FakeAccessibilityFeatures(disableAnimations: true);
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-    await tester.pumpWidget(SkillsPlayApp(gateway: FakeSkillsGateway()));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
     await tester.pumpAndSettle();
 
     await tester.tap(find.text('Ranking'));
@@ -385,7 +625,7 @@ void main() {
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
-    await tester.pumpWidget(SkillsPlayApp(gateway: FakeSkillsGateway()));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
     await tester.pumpAndSettle();
 
     final searchButton = tester.widget<TextButton>(
@@ -405,7 +645,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     final gateway = FakeSkillsGateway(cliReady: false);
-    await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
@@ -430,7 +670,7 @@ void main() {
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
-    await tester.pumpWidget(SkillsPlayApp(gateway: FakeSkillsGateway()));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
@@ -459,7 +699,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     await tester.pumpWidget(
-      SkillsPlayApp(gateway: FakeSkillsGateway(cliReady: false)),
+      SkillsGoApp(gateway: FakeSkillsGateway(cliReady: false)),
     );
     await tester.pumpAndSettle();
     await tester.tap(find.text('Settings'));
@@ -480,7 +720,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     final gateway = FakeSkillsGateway();
-    await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
@@ -512,7 +752,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     final gateway = FakeSkillsGateway(registryTestState: HealthState.invalid);
-    await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Settings'));
     await tester.pumpAndSettle();
@@ -541,7 +781,7 @@ void main() {
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 800));
       final gateway = FakeSkillsGateway();
-      await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Settings'));
       await tester.pumpAndSettle();
@@ -562,7 +802,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     final gateway = FakeSkillsGateway();
-    await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Library'));
     await tester.pumpAndSettle();
@@ -578,10 +818,10 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     final gateway = FakeSkillsGateway(installed: false);
-    await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
 
-    await tester.enterText(find.byKey(const Key('skill-search')), 'flutter');
+    await tester.enterText(_searchInput(), 'flutter');
     await tester.testTextInput.receiveAction(TextInputAction.search);
     await tester.pumpAndSettle();
     await tester.tap(find.text('Flutter Pro'));
@@ -622,6 +862,9 @@ class FakeSkillsGateway implements SkillsGateway {
       state: HealthState.ready,
     ),
     this.appVersion = '1.0.0',
+    this.discoveryPages = const {},
+    this.discoveryError,
+    this.discoveryErrors = const {},
   }) : searchResults = searchResults ?? _defaultSearchResults;
   final bool cliReady;
   final Completer<List<SkillSummary>>? searchCompleter;
@@ -632,8 +875,14 @@ class FakeSkillsGateway implements SkillsGateway {
   PersonalRiskPolicy riskPolicy = const PersonalRiskPolicy();
   final StorageStatus storageStatus;
   final String appVersion;
+  final Map<String, DiscoveryPage> discoveryPages;
+  final SkillsException? discoveryError;
+  final Map<String, SkillsException> discoveryErrors;
   bool installed;
   final queries = <String>[];
+  final collections = <DiscoveryCollection>[];
+  final requestedOffsets = <int>[];
+  int installCalls = 0;
   String? savedPath;
   static const _defaultSearchResults = [
     SkillSummary(
@@ -642,6 +891,7 @@ class FakeSkillsGateway implements SkillsGateway {
       name: 'Flutter Pro',
       source: 'example/skills',
       installs: 1200,
+      description: 'Build Flutter products with reliable engineering flows.',
     ),
   ];
   final List<SkillSummary> searchResults;
@@ -699,9 +949,24 @@ class FakeSkillsGateway implements SkillsGateway {
   @override
   Future<String> loadAppVersion() async => appVersion;
   @override
-  Future<List<SkillSummary>> search(String query) async {
-    queries.add(query);
-    return searchCompleter?.future ?? searchResults;
+  Future<DiscoveryPage> discover(
+    DiscoveryCollection collection, {
+    String query = '',
+    int offset = 0,
+    int limit = 20,
+  }) async {
+    collections.add(collection);
+    requestedOffsets.add(offset);
+    if (discoveryError != null) throw discoveryError!;
+    final configuredError = discoveryErrors['${collection.name}:$offset'];
+    if (configuredError != null) throw configuredError;
+    final configured = discoveryPages['${collection.name}:$offset'];
+    if (configured != null) return configured;
+    if (collection == DiscoveryCollection.search) queries.add(query);
+    final skills = collection == DiscoveryCollection.search
+        ? await (searchCompleter?.future ?? Future.value(searchResults))
+        : searchResults;
+    return DiscoveryPage(skills: skills);
   }
 
   @override
@@ -719,6 +984,7 @@ class FakeSkillsGateway implements SkillsGateway {
             name: 'local-skill',
             path: '/tmp/local-skill',
             agents: agentNames,
+            targetCount: agentNames.length,
           ),
         ]
       : const [];
@@ -736,6 +1002,7 @@ class FakeSkillsGateway implements SkillsGateway {
   ) async => {'local-skill': UpdateState.available};
   @override
   Future<CommandResult> install(SkillSummary skill) async {
+    installCalls++;
     if (installCompleter != null) {
       final result = await installCompleter!.future;
       installed = result.succeeded;
@@ -759,6 +1026,11 @@ class FakeSkillsGateway implements SkillsGateway {
 CommandResult _success(List<String> command) => CommandResult(
   command: command,
   output: const ProcessOutput(exitCode: 0, stdout: 'ok', stderr: ''),
+);
+
+Finder _searchInput() => find.descendant(
+  of: find.byKey(const Key('skill-search')),
+  matching: find.byType(EditableText),
 );
 
 bool _isSemanticallySelected(WidgetTester tester, String label) {

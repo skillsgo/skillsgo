@@ -24,15 +24,14 @@ class AppLocalizationsZh extends AppLocalizations {
   String get cliNeedsAttention => 'SkillsGo CLI 需要处理后才能使用。';
 
   @override
-  String get cliMissingBundled => '内置的 SkillsGo CLI 缺失或无法运行。请重新安装 SkillsPlay。';
+  String get cliMissingBundled => '内置的 SkillsGo CLI 缺失或无法运行。请重新安装 SkillsGo。';
 
   @override
-  String get cliDamagedBundled =>
-      '内置的 SkillsGo CLI 返回了无效的启动响应。请重新安装 SkillsPlay。';
+  String get cliDamagedBundled => '内置的 SkillsGo CLI 返回了无效的启动响应。请重新安装 SkillsGo。';
 
   @override
   String get cliIncompatibleBundled =>
-      '内置的 SkillsGo CLI 与当前 SkillsPlay 版本不兼容。请更新或重新安装应用。';
+      '内置的 SkillsGo CLI 与当前 SkillsGo 版本不兼容。请更新或重新安装应用。';
 
   @override
   String get officialIndex => 'SkillsGo Registry';
@@ -68,13 +67,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hotNow => '当前热门';
 
   @override
-  String get collectionComingSoon => '此集合已准备好接入 Registry。';
+  String get allTimeDescription => '按历史累计有效安装量排列公开 Skill。';
+
+  @override
+  String get trendingDescription => '按最近 24 小时内的有效安装量排列公开 Skill。';
+
+  @override
+  String get hotDescription => '按短期安装速度及其变化排列公开 Skill。';
 
   @override
   String get offlineTitle => '当前处于离线状态';
 
   @override
+  String get offlineMessage => 'SkillsGo 无法连接 Registry。请检查网络、代理或 Registry 地址。';
+
+  @override
   String get searchFailedTitle => '搜索遇到问题';
+
+  @override
+  String get validationTitle => '请检查请求';
+
+  @override
+  String get validationMessage => 'Registry 拒绝了该请求，请检查查询内容后重试。';
+
+  @override
+  String get serverTitle => 'Registry 暂不可用';
+
+  @override
+  String get serverMessage => 'Registry 无法完成该请求，请稍后重试。';
+
+  @override
+  String get timeoutTitle => 'Registry 响应超时';
+
+  @override
+  String get timeoutMessage => 'Registry 响应时间过长，请检查连接或重试。';
+
+  @override
+  String get invalidResponseTitle => 'Registry 响应不受支持';
+
+  @override
+  String get invalidResponseMessage =>
+      '该 Registry 返回了 SkillsGo 无法读取的响应，请检查其版本与协议兼容性。';
 
   @override
   String get tryAgain => '重试';
@@ -83,7 +116,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get searchEmptyTitle => '搜索，而不是漫无目的地浏览。';
 
   @override
-  String get searchEmptyMessage => 'SkillsPlay 不提供信息流或排行榜。请输入你需要的能力。';
+  String get searchEmptyMessage => '请输入能力、来源或任务，搜索公开 Registry。';
 
   @override
   String get noSkillsTitle => '没有找到技能';
@@ -93,6 +126,74 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get focusSearch => '回到搜索框';
+
+  @override
+  String get collectionEmptyTitle => '该集合中暂无 Skill';
+
+  @override
+  String get collectionEmptyMessage => 'Registry 返回了空集合，可在产生新的安装活动后重试。';
+
+  @override
+  String get loadMore => '加载更多';
+
+  @override
+  String get install => '安装';
+
+  @override
+  String get installToMoreTargets => '安装到更多目标';
+
+  @override
+  String localTargets(int count) {
+    return '$count 个本地目标';
+  }
+
+  @override
+  String allTimeMetric(String count) {
+    return '历史安装 $count 次';
+  }
+
+  @override
+  String trendingMetric(String count) {
+    return '24 小时安装 $count 次';
+  }
+
+  @override
+  String hotMetric(String value, String change) {
+    return '本小时 $value · 变化 $change';
+  }
+
+  @override
+  String get trustUnverified => '未验证';
+
+  @override
+  String get trustCommunityVerified => '社区验证';
+
+  @override
+  String get trustPublisherVerified => '发布者验证';
+
+  @override
+  String get trustOfficial => '官方';
+
+  @override
+  String get trustWarned => '已警告';
+
+  @override
+  String get trustDelisted => '已下架';
+
+  @override
+  String get riskUnknown => '风险未知';
+
+  @override
+  String get riskLow => '低风险';
+
+  @override
+  String get riskMedium => '中风险';
+
+  @override
+  String get riskHigh => '高风险';
+
+  @override
+  String get riskCritical => '严重风险';
 
   @override
   String openSkill(String name) {
@@ -123,7 +224,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get snapshotFiles => '快照文件';
 
   @override
-  String get executableRisk => '此快照包含脚本或可执行内容。请在安装前检查文件；SkillsPlay 不会对其进行安全审计。';
+  String get executableRisk => '此快照包含脚本或可执行内容。请在安装前检查文件；SkillsGo 不会对其进行安全审计。';
 
   @override
   String removeTitle(String name) {
@@ -231,7 +332,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get generalSettingsTitle => '桌面偏好设置';
 
   @override
-  String get generalSettingsDescription => 'SkillsPlay 跟随系统语言与辅助功能偏好，包括减少动态效果。';
+  String get generalSettingsDescription => 'SkillsGo 跟随系统语言与辅助功能偏好，包括减少动态效果。';
 
   @override
   String get agentsSettingsTitle => 'Agent 运行环境';
@@ -374,11 +475,11 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'SkillsPlay 不保存搜索记录或持久化命令日志。内置 CLI 始终保留在 App 内，不会安装到系统 PATH。';
+      'SkillsGo 不保存搜索记录或持久化命令日志。内置 CLI 始终保留在 App 内，不会安装到系统 PATH。';
 
   @override
   String get privacyAffiliation =>
-      '匿名安装遥测由 SkillsGo 设置控制。SkillsPlay 与 OpenAI 或 Codex 不存在官方隶属关系。';
+      '匿名安装遥测由 SkillsGo 设置控制。SkillsGo 与 OpenAI 或 Codex 不存在官方隶属关系。';
 
   @override
   String get commandCompleted => '命令执行完成';
