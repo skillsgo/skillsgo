@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the Registry HTTP router with a temporary SQLite Catalog and deterministic public requests.
- * [OUTPUT]: Specifies discovery collection schemas, pagination, validation, detail, and install-event behavior.
+ * [OUTPUT]: Specifies discovery collection schemas, exact content matching, pagination, validation, detail, and install-event behavior.
  * [POS]: Serves as executable public HTTP contract coverage for Registry discovery clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,6 +15,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -135,6 +136,18 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, []string{"scripts/run.sh"}, detailBody.ExecutableFiles)
 	require.Len(t, detailBody.Files, 2)
 
+	matchRecorder := httptest.NewRecorder()
+	matchURL := "/v1/matches?contentDigest=" + url.QueryEscape(detailBody.ContentDigest) + "&sourceHint=" + url.QueryEscape("mattpocock/skills")
+	r.ServeHTTP(matchRecorder, httptest.NewRequest(http.MethodGet, matchURL, nil))
+	require.Equal(t, http.StatusOK, matchRecorder.Code)
+	var matchBody contentMatchesResponse
+	require.NoError(t, json.NewDecoder(matchRecorder.Body).Decode(&matchBody))
+	require.Equal(t, 1, matchBody.SchemaVersion)
+	require.Equal(t, detailBody.ContentDigest, matchBody.ContentDigest)
+	require.Len(t, matchBody.Matches, 1)
+	require.Equal(t, skill.Coordinate, matchBody.Matches[0].Coordinate)
+	require.Equal(t, detailBody.ImmutableVersion, matchBody.Matches[0].ImmutableVersion)
+
 	recorder := httptest.NewRecorder()
 	r.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, "/v1/search?q=engineering", nil))
 	var response skillsResponse
@@ -221,12 +234,13 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 func TestCatalogAPIValidationAndNotFound(t *testing.T) {
 	r, _ := testCatalogAPI(t)
 	for path, status := range map[string]int{
-		"/v1/search":                         http.StatusBadRequest,
-		"/v1/search?limit=101":               http.StatusBadRequest,
-		"/v1/search?q=valid&offset=invalid":  http.StatusBadRequest,
-		"/v1/skills?offset=-1":               http.StatusBadRequest,
-		"/v1/skills?sort=popular":            http.StatusBadRequest,
-		"/v1/skills/github.com/unknown/repo": http.StatusNotFound,
+		"/v1/search":                            http.StatusBadRequest,
+		"/v1/search?limit=101":                  http.StatusBadRequest,
+		"/v1/search?q=valid&offset=invalid":     http.StatusBadRequest,
+		"/v1/skills?offset=-1":                  http.StatusBadRequest,
+		"/v1/skills?sort=popular":               http.StatusBadRequest,
+		"/v1/matches?contentDigest=sha256:nope": http.StatusBadRequest,
+		"/v1/skills/github.com/unknown/repo":    http.StatusNotFound,
 	} {
 		recorder := httptest.NewRecorder()
 		r.ServeHTTP(recorder, httptest.NewRequest(http.MethodGet, path, nil))

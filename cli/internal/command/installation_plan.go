@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on add-command flags, the Agent Catalog, Registry and Store clients, and the Installation Plan domain module.
- * [OUTPUT]: Adapts repeated strict JSON --target arguments, refreshes cached immutable assessments, and emits stable preflight JSON or streaming NDJSON execution events at the public command boundary.
+ * [INPUT]: Depends on add-command flags, the Agent Catalog, Registry client, provenance-aware Store, and the Installation Plan domain module.
+ * [OUTPUT]: Resolves Registry or private Local artifacts, adapts repeated strict JSON --target arguments, refreshes cached immutable assessments, and emits stable preflight JSON or streaming NDJSON execution events.
  * [POS]: Serves as the executable adapter for App-driven explicit multi-location, multi-Agent installation plans.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -107,6 +107,19 @@ func writePlanExecutionStream(
 }
 
 func loadPlanEntry(cmd *cobra.Command, storage store.Store, registryURL string, reference source.Reference) (*store.Entry, error) {
+	if source.IsLocalCoordinate(reference.Coordinate) {
+		if reference.Version == "" || reference.Version == "main" {
+			return nil, fmt.Errorf("Local Skill installation requires an immutable local version")
+		}
+		entry, err := storage.Get(reference.Coordinate, reference.Version)
+		if err != nil {
+			return nil, fmt.Errorf("read private Local Skill from Store: %w", err)
+		}
+		if entry.Receipt.EffectiveProvenance() != store.ProvenanceLocal {
+			return nil, fmt.Errorf("Local Skill identity has non-local provenance")
+		}
+		return entry, nil
+	}
 	client, err := registry.New(registryURL, nil)
 	if err != nil {
 		return nil, err

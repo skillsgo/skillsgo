@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on managed Installation Receipts, explicit project roots, Workspace Manifest/Lock state, and read-only target filesystem metadata.
- * [OUTPUT]: Provides typed, versioned managed-Library reconciliation across receipts, explicit projects, Workspace state, Agent paths, target health, and copy-mode Local Modifications.
+ * [OUTPUT]: Provides typed, versioned Registry/Local managed-Library reconciliation across receipts, explicit projects, Workspace state, Agent paths, provenance, target health, and copy-mode Local Modifications.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,6 +16,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
+	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
 
@@ -31,6 +32,7 @@ type TargetMode string
 
 const (
 	ProvenanceRegistry Provenance = "registry"
+	ProvenanceLocal    Provenance = "local"
 	ProvenanceExternal Provenance = "external"
 	RiskUnknown        Risk       = "unknown"
 
@@ -124,7 +126,11 @@ func Build(options Options) (Report, error) {
 		if !included {
 			continue
 		}
-		entry := ensureEntry(entries, installation.Name, installation.Coordinate)
+		provenance := ProvenanceRegistry
+		if installation.Provenance == store.ProvenanceLocal {
+			provenance = ProvenanceLocal
+		}
+		entry := ensureEntry(entries, installation.Name, installation.Coordinate, provenance)
 		health := managedTargetHealth(
 			installation,
 			managedTargetPathExpected(options.Catalog, installation, projectRoot),
@@ -337,9 +343,19 @@ func managedTargetHealth(installation install.Installation, pathExpected bool) H
 		return HealthHealthy
 	}
 	if installation.Target.Mode == install.ModeCopy && info.IsDir() {
-		matches, digestErr := install.CopyMatchesArtifact(installation.Target.Path, installation.Artifact)
-		if digestErr != nil {
-			return HealthUnreadable
+		matches := false
+		if installation.TargetState != "" {
+			actual, digestErr := install.DirectoryDigest(installation.Target.Path)
+			if digestErr != nil {
+				return HealthUnreadable
+			}
+			matches = actual == installation.TargetState
+		} else {
+			var digestErr error
+			matches, digestErr = install.CopyMatchesArtifact(installation.Target.Path, installation.Artifact)
+			if digestErr != nil {
+				return HealthUnreadable
+			}
 		}
 		if !matches {
 			return HealthLocalModification
@@ -391,7 +407,11 @@ func addDeclaredTargetsWithoutReceipts(
 				if receiptedTargets[key] {
 					continue
 				}
-				entry := ensureEntry(entries, name, locked.Coordinate)
+				provenance := ProvenanceRegistry
+				if source.IsLocalCoordinate(locked.Coordinate) {
+					provenance = ProvenanceLocal
+				}
+				entry := ensureEntry(entries, name, locked.Coordinate, provenance)
 				entry.Targets = append(entry.Targets, Target{
 					Scope: install.ScopeProject, ProjectRoot: root, Agent: agentID,
 					Path: filepath.Clean(path), Mode: TargetMode(mode), Version: locked.Version,
@@ -407,14 +427,14 @@ func addDeclaredTargetsWithoutReceipts(
 	}
 }
 
-func ensureEntry(entries map[string]*Entry, name, coordinate string) *Entry {
-	identity := "registry:" + coordinate
+func ensureEntry(entries map[string]*Entry, name, coordinate string, provenance Provenance) *Entry {
+	identity := string(provenance) + ":" + coordinate
 	if entry := entries[identity]; entry != nil {
 		return entry
 	}
 	entry := &Entry{
 		Identity: identity, Name: name, Coordinate: coordinate,
-		Provenance: ProvenanceRegistry, Risk: RiskUnknown, Health: HealthHealthy,
+		Provenance: provenance, Risk: RiskUnknown, Health: HealthHealthy,
 		Agents: []string{}, Projects: []string{}, Versions: []string{}, Targets: []Target{},
 	}
 	entries[identity] = entry

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Catalog with temporary SQLite databases and deterministic install-event timestamps.
- * [OUTPUT]: Specifies canonical Skill/version persistence, append-only risk assessments, searchable fields, pagination, and distinct ranking semantics.
+ * [OUTPUT]: Specifies canonical Skill/version persistence, exact digest matching with source-hint ranking, append-only risk assessments, searchable fields, pagination, and distinct ranking semantics.
  * [POS]: Serves as SQLite contract coverage for the Registry discovery metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -43,6 +44,34 @@ func TestSQLiteCatalogUpsertAndSearch(t *testing.T) {
 		require.Equal(t, got.Coordinate, results[0].Coordinate)
 		require.Equal(t, int64(0), results[0].Installs)
 	}
+}
+
+func TestSQLiteCatalogMatchesExactContentAndRanksSourceHints(t *testing.T) {
+	ctx := context.Background()
+	c, err := Open(ctx, config.DatabaseConfig{
+		Type: "sqlite", DSN: filepath.Join(t.TempDir(), "registry.db"),
+		MaxOpenConns: 1, MaxIdleConns: 1,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, c.Close()) })
+	digest := "sha256:" + strings.Repeat("a", 64)
+	for _, coordinate := range []string{"github.com/alpha/skills/-/demo", "github.com/acme/skills/-/demo"} {
+		require.NoError(t, c.UpsertSkill(ctx, &Skill{
+			Coordinate: coordinate, Name: "demo", Description: "Demo", LatestVersion: "v1",
+		}))
+		_, err := c.RecordSkillVersion(ctx, coordinate, SkillVersion{
+			Version: "v1", CommitSHA: coordinate + "-commit", TreeSHA: coordinate + "-tree", ContentDigest: digest,
+		})
+		require.NoError(t, err)
+	}
+	matches, err := c.MatchContent(ctx, digest, "github.com/acme/skills", 20)
+	require.NoError(t, err)
+	require.Len(t, matches, 2)
+	require.Equal(t, "github.com/acme/skills/-/demo", matches[0].Coordinate)
+	require.Equal(t, digest, matches[0].ContentDigest)
+	missing, err := c.MatchContent(ctx, "sha256:"+strings.Repeat("b", 64), "", 20)
+	require.NoError(t, err)
+	require.Empty(t, missing)
 }
 
 func TestSQLiteCatalogRankingsHaveDistinctSemantics(t *testing.T) {

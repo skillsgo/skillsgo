@@ -3,8 +3,8 @@
 
 ## Members
 
-- `catalog.go`: owns SQLite/PostgreSQL metadata persistence, immutable Skill versions, append-only risk assessments, full-text discovery, install aggregation, pagination, and ranking queries.
-- `catalog_test.go`: specifies the SQLite behavior contract, including canonical identity, immutable audit evidence, search fields, pagination, and ranking windows.
+- `catalog.go`: owns SQLite/PostgreSQL metadata persistence, immutable Skill versions, exact Content Digest matching with source-hint ranking, append-only risk assessments, full-text discovery, install aggregation, pagination, and ranking queries.
+- `catalog_test.go`: specifies the SQLite behavior contract, including canonical identity, exact content matching, immutable audit evidence, search fields, pagination, and ranking windows.
 - `postgres_integration_test.go`: verifies discovery, immutable audit persistence, and aggregation parity against an opt-in real PostgreSQL service.
 
 ## Architectural Boundary

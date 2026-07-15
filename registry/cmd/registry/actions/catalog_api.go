@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Catalog, immutable artifact protocol, ZIP audit boundary, Gorilla Mux, HTTP validation, and UTC ranking windows.
- * [OUTPUT]: Provides stable public search, ranked collection, auditable artifact detail, and idempotent install-event JSON endpoints.
+ * [OUTPUT]: Provides stable public search, ranked collection, exact content-match, auditable artifact detail, and idempotent install-event JSON endpoints.
  * [POS]: Serves as the Registry HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,6 +9,7 @@ package actions
 import (
 	"context"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -75,6 +76,23 @@ type skillDetailResponse struct {
 	ExecutableFiles      []string             `json:"executableFiles"`
 }
 
+type contentMatchesResponse struct {
+	SchemaVersion int            `json:"schemaVersion"`
+	ContentDigest string         `json:"contentDigest"`
+	Matches       []contentMatch `json:"matches"`
+}
+
+type contentMatch struct {
+	Coordinate       string `json:"coordinate"`
+	Name             string `json:"name"`
+	Source           string `json:"source"`
+	SkillPath        string `json:"skillPath"`
+	ImmutableVersion string `json:"immutableVersion"`
+	CommitSHA        string `json:"commitSHA"`
+	TreeSHA          string `json:"treeSHA"`
+	ContentDigest    string `json:"contentDigest"`
+}
+
 type artifactReader interface {
 	Info(context.Context, string, string) ([]byte, error)
 	Manifest(context.Context, string, string) ([]byte, error)
@@ -89,8 +107,40 @@ type errorResponse struct {
 func registerCatalogAPIRoutes(r *mux.Router, metadata *catalog.Catalog, artifacts artifactReader) {
 	r.HandleFunc("/v1/search", searchSkillsHandler(metadata)).Methods(http.MethodGet)
 	r.HandleFunc("/v1/skills", listSkillsHandler(metadata)).Methods(http.MethodGet)
+	r.HandleFunc("/v1/matches", contentMatchesHandler(metadata)).Methods(http.MethodGet)
 	r.HandleFunc("/v1/skills/{coordinate:.+}", skillDetailHandler(metadata, artifacts)).Methods(http.MethodGet)
 	r.HandleFunc("/v1/events/install", installEventHandler(metadata)).Methods(http.MethodPost)
+}
+
+func contentMatchesHandler(metadata *catalog.Catalog) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		digest := strings.TrimSpace(r.URL.Query().Get("contentDigest"))
+		_, digestErr := hex.DecodeString(strings.TrimPrefix(digest, "sha256:"))
+		if len(digest) != len("sha256:")+64 || !strings.HasPrefix(digest, "sha256:") || digestErr != nil {
+			writeAPIError(w, http.StatusBadRequest, "contentDigest must be a sha256 digest")
+			return
+		}
+		hint := strings.TrimSpace(r.URL.Query().Get("sourceHint"))
+		if len([]rune(hint)) > 500 {
+			writeAPIError(w, http.StatusBadRequest, "sourceHint must contain at most 500 characters")
+			return
+		}
+		matches, err := metadata.MatchContent(r.Context(), digest, hint, 20)
+		if err != nil {
+			writeAPIError(w, http.StatusInternalServerError, "content match failed")
+			return
+		}
+		response := contentMatchesResponse{SchemaVersion: 1, ContentDigest: digest, Matches: make([]contentMatch, 0, len(matches))}
+		for _, match := range matches {
+			response.Matches = append(response.Matches, contentMatch{
+				Coordinate: match.Coordinate, Name: match.Name,
+				Source: match.SourceHost + "/" + match.Repository, SkillPath: match.SkillPath,
+				ImmutableVersion: match.Version, CommitSHA: match.CommitSHA,
+				TreeSHA: match.TreeSHA, ContentDigest: match.ContentDigest,
+			})
+		}
+		writeJSON(w, http.StatusOK, response)
+	}
 }
 
 func installEventHandler(metadata *catalog.Catalog) http.HandlerFunc {
