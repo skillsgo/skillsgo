@@ -8,6 +8,10 @@ The CLI context owns local Skill state and every filesystem mutation that makes 
 The local execution engine used by both terminal users and the SkillsGo App. The production App bundles a matching CLI version and communicates with it through stable JSON contracts.
 _Avoid_: external prerequisite CLI, App-native engine, `skills` CLI fork
 
+**Availability Exit Code**:
+A stable process result used when a Registry-dependent command cannot reach its Registry (`69`) or times out temporarily (`75`). The App classifies these codes without parsing localized stderr; all local-only commands remain independent of Registry availability.
+_Avoid_: stderr text matching, empty Library fallback, localized machine protocol
+
 **Agent Adapter**:
 The definition and detection rules that describe how one Agent discovers user-level and Workspace-level Skills.
 _Avoid_: hard-coded Agent path, generic plugin adapter

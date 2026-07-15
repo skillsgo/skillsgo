@@ -42,6 +42,7 @@ flutter build macos --release
 - The CLI owns local installation, update, removal, target detection, manifests, locks, and the shared store.
 - The Registry owns public skill metadata, search, rankings, immutable artifacts, and event ingestion.
 - Do not parse human-oriented CLI output. Prefer stable machine-readable output and typed models.
+- Registry availability failures must not replace valid local Library inventory or reset the selected Library route; local reads and safe local-only mutations remain independent.
 - Do not construct shell command strings from user input; pass arguments as a structured list.
 - Keep UI state and visual decisions out of CLI and Registry packages.
 

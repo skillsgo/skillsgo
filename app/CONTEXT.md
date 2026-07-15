@@ -8,6 +8,10 @@ The App context presents public discovery and local Skill inventory as a desktop
 The SkillsGo desktop application that discovers public Skills through a Registry and invokes the bundled SkillsGo CLI for local inspection and mutations.
 _Avoid_: app store, Skill platform
 
+**Offline Local Management**:
+The capability to inspect and manage Added Projects, Installed Agents, Registry-managed targets, External Installations, and Local Skills from local CLI and filesystem state while the Registry is unavailable. Registry detail, matching, installation, and update actions explain their restriction and can be retried without clearing the selected Library route or local inventory.
+_Avoid_: offline discovery, cached empty Library, global offline mode
+
 **Personal User**:
 A developer who discovers, inspects, and manages Skills on their own machine without an account.
 _Avoid_: consumer, free account

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsGo brand tokens.
- * [OUTPUT]: Provides the desktop shell plus persistent Discover, shadcn_ui Installation/Update/Target Management/External Adoption flows, Local install-more/export actions, managed/external Library detail, project and Agent views, operations, and Settings journeys.
+ * [OUTPUT]: Provides the desktop shell plus persistent Discover, shadcn_ui Installation/Update/Target Management/External Adoption flows, offline recovery alerts, Local install-more/export actions, outage-resilient managed/external Library detail, project and Agent views, operations, and Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -3599,6 +3599,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Object? error;
   bool loading = true;
   bool checking = false;
+  Object? updateCheckError;
   Map<String, UpdateState> updates = const {};
   CommandResult? result;
   final operatingSkills = <String>{};
@@ -3718,6 +3719,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (skills == null || checking) return;
     setState(() {
       checking = true;
+      updateCheckError = null;
       updates = {
         for (final skill in skills!)
           _libraryUpdateKey(
@@ -3729,7 +3731,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
     });
     try {
       updates = await widget.gateway.checkUpdates(skills!);
-    } catch (_) {
+    } catch (caught) {
+      updateCheckError = caught;
       updates = {
         for (final skill in skills!)
           _libraryUpdateKey(skill): UpdateState.failed,
@@ -3969,6 +3972,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
         if (result != null) ...[
           const SizedBox(height: 14),
           OperationPanel(result: result!),
+        ],
+        if (updateCheckError != null) ...[
+          const SizedBox(height: 14),
+          ShadAlert(
+            icon: const Icon(Icons.cloud_off_outlined),
+            title: Text(_failureCopy(context, updateCheckError!).title),
+            description: Text(_failureCopy(context, updateCheckError!).message),
+          ),
         ],
         const SizedBox(height: 14),
         ShadInput(
@@ -5594,39 +5605,55 @@ class OperationPanel extends StatelessWidget {
   const OperationPanel({super.key, required this.result});
   final CommandResult result;
   @override
-  Widget build(BuildContext context) => ExpansionTile(
-    collapsedBackgroundColor:
-        (result.succeeded ? SkillsTokens.green : SkillsTokens.red).withValues(
-          alpha: .1,
-        ),
-    backgroundColor: Colors.black26,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-    collapsedShape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(14),
-    ),
-    leading: Icon(
-      result.succeeded ? Icons.check_circle_outline : Icons.error_outline,
-      color: result.succeeded ? SkillsTokens.green : SkillsTokens.red,
-    ),
-    title: Text(
-      result.succeeded
-          ? context.l10n.commandCompleted
-          : context.l10n.commandFailed,
-    ),
-    subtitle: Text(context.l10n.commandExit(result.output.exitCode)),
-    children: [
-      Padding(
-        padding: const EdgeInsets.all(16),
-        child: SelectableText(
-          '\$ ${result.command.join(' ')}\n\nstdout:\n${result.output.stdout}\n\nstderr:\n${result.output.stderr}',
-          style: const TextStyle(
-            fontFamily: SkillsTokens.monoFamily,
-            fontSize: 12,
+  Widget build(BuildContext context) {
+    if (result.output.exitCode == 69) {
+      return ShadAlert(
+        icon: const Icon(Icons.cloud_off_outlined),
+        title: Text(context.l10n.offlineTitle),
+        description: Text(context.l10n.offlineMessage),
+      );
+    }
+    if (result.output.exitCode == 75) {
+      return ShadAlert(
+        icon: const Icon(Icons.timer_off_outlined),
+        title: Text(context.l10n.timeoutTitle),
+        description: Text(context.l10n.timeoutMessage),
+      );
+    }
+    return ExpansionTile(
+      collapsedBackgroundColor:
+          (result.succeeded ? SkillsTokens.green : SkillsTokens.red).withValues(
+            alpha: .1,
+          ),
+      backgroundColor: Colors.black26,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      collapsedShape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+      ),
+      leading: Icon(
+        result.succeeded ? Icons.check_circle_outline : Icons.error_outline,
+        color: result.succeeded ? SkillsTokens.green : SkillsTokens.red,
+      ),
+      title: Text(
+        result.succeeded
+            ? context.l10n.commandCompleted
+            : context.l10n.commandFailed,
+      ),
+      subtitle: Text(context.l10n.commandExit(result.output.exitCode)),
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(16),
+          child: SelectableText(
+            '\$ ${result.command.join(' ')}\n\nstdout:\n${result.output.stdout}\n\nstderr:\n${result.output.stderr}',
+            style: const TextStyle(
+              fontFamily: SkillsTokens.monoFamily,
+              fontSize: 12,
+            ),
           ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 Future<bool> _confirmCommand(
@@ -5682,10 +5709,23 @@ Future<bool> _confirmCommand(
     ) ??
     false;
 
-CommandResult _exceptionResult(Object error) => CommandResult(
-  command: const ['skills'],
-  output: ProcessOutput(exitCode: 1, stdout: '', stderr: error.toString()),
-);
+CommandResult _exceptionResult(Object error) {
+  final exitCode = error is SkillsException
+      ? switch (error.kind) {
+          SkillsFailureKind.offline => 69,
+          SkillsFailureKind.timeout => 75,
+          _ => 1,
+        }
+      : 1;
+  return CommandResult(
+    command: const ['skills'],
+    output: ProcessOutput(
+      exitCode: exitCode,
+      stdout: '',
+      stderr: error.toString(),
+    ),
+  );
+}
 
 String _updateLabel(BuildContext context, UpdateState state) => switch (state) {
   UpdateState.unknown => context.l10n.updateUnknown,

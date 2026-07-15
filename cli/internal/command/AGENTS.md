@@ -7,6 +7,7 @@
 - `args.go`: normalizes compatible multi-value flag syntax before Cobra parses arguments.
 - `diagnostics.go`: exposes versioned, read-only local Store health for App integration and terminal diagnostics.
 - `diagnostics_test.go`: specifies Store diagnostics schema, readability states, and non-mutating inspection.
+- `exit_code.go`, `exit_code_test.go`: classify wrapped Registry availability and timeout failures into stable process exit codes consumed by the App without parsing stderr.
 - `agents.go`: exposes complete supported and installed Agent discovery through versioned JSON and localized human output.
 - `agents_test.go`: specifies the stable App-facing Agent discovery machine contract.
 - `adoption.go`: adapts exact External Installation preflight and explicit Registry-association or Local-import actions into stable JSON.
@@ -28,6 +29,6 @@
 
 ## Architectural Boundary
 
-This module owns CLI command composition, argument handling, stable machine output, and orchestration at the executable boundary. It delegates Agent, Registry, Store, project, and installation mechanics to their owning packages and must not expose localized human output as an App integration contract.
+This module owns CLI command composition, argument handling, stable machine output, stable availability exit codes, and orchestration at the executable boundary. It delegates Agent, Registry, Store, project, and installation mechanics to their owning packages and must not expose localized human output as an App integration contract.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

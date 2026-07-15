@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a configured Registry origin, canonical Skill Coordinates, exact content-match responses, and assessed Info/Manifest/ZIP protocol responses.
- * [OUTPUT]: Provides validated content-identity matching plus immutable artifact fetch and resolution with Registry-bound Risk and Content Digest metadata.
+ * [OUTPUT]: Provides validated content-identity matching plus immutable artifact fetch and resolution with Registry-bound Risk, Content Digest metadata, and typed HTTP failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Registry protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -77,6 +77,15 @@ type contentMatchesResponse struct {
 type Client struct {
 	baseURL string
 	http    *http.Client
+}
+
+type HTTPError struct {
+	StatusCode int
+	Body       string
+}
+
+func (e *HTTPError) Error() string {
+	return fmt.Sprintf("Registry 返回 HTTP %d: %s", e.StatusCode, e.Body)
 }
 
 func New(baseURL string, client *http.Client) (*Client, error) {
@@ -201,7 +210,7 @@ func (c *Client) get(ctx context.Context, endpoint string) ([]byte, error) {
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, fmt.Errorf("Registry 返回 HTTP %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+		return nil, &HTTPError{StatusCode: resp.StatusCode, Body: strings.TrimSpace(string(body))}
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {

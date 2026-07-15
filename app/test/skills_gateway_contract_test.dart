@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings, discovery/detail parsing, managed/external CLI inventory including Local Modifications, read-only local inspection, explicit project persistence, strict Installation/Update/Target Management/External Adoption contracts, Local export, typed failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings, discovery/detail parsing, managed/external CLI inventory including Local Modifications, Registry-independent local inspection/project persistence, strict Installation/Update/Target Management/External Adoption contracts, Local export, stable CLI availability mapping, typed failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -196,6 +196,95 @@ void main() {
       'device unavailable',
     ]);
   });
+
+  test(
+    'local Library boundaries remain usable without any Registry request',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'skillsgo-offline-library-',
+      );
+      addTearDown(() => root.delete(recursive: true));
+      final project = Directory('${root.path}/project');
+      final skillDirectory = Directory('${root.path}/external-skill');
+      await project.create();
+      await skillDirectory.create();
+      await File(
+        '${skillDirectory.path}/SKILL.md',
+      ).writeAsString('# Offline Skill');
+      SharedPreferences.setMockInitialValues({
+        'added_projects_v1': jsonEncode([
+          {
+            'id': 'offline-project',
+            'name': 'Offline Project',
+            'path': project.path,
+          },
+        ]),
+      });
+      var registryRequests = 0;
+      final runner = _FakeProcessRunner()
+        ..responses.addAll([
+          ProcessOutput(
+            exitCode: 0,
+            stdout: jsonEncode({
+              'schemaVersion': 3,
+              'entries': [
+                {
+                  'identity': 'external:offline',
+                  'name': 'offline-skill',
+                  'coordinate': '',
+                  'provenance': 'external',
+                  'risk': 'unknown',
+                  'health': 'healthy',
+                  'agents': ['codex'],
+                  'projects': <String>[],
+                  'versions': <String>[],
+                  'versionDivergence': false,
+                  'targets': [
+                    {
+                      'scope': 'user',
+                      'agent': 'codex',
+                      'path': skillDirectory.path,
+                      'mode': 'external',
+                      'version': '',
+                      'receiptState': 'missing',
+                      'health': 'healthy',
+                    },
+                  ],
+                },
+              ],
+            }),
+            stderr: '',
+          ),
+          const ProcessOutput(
+            exitCode: 0,
+            stdout:
+                '{"schemaVersion":1,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["user"],"userTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
+            stderr: '',
+          ),
+        ]);
+      final gateway = RealSkillsGateway(
+        httpClient: MockClient((request) async {
+          registryRequests++;
+          throw const SocketException('Registry offline');
+        }),
+        processRunner: runner,
+        initialCliPath: '/bin/skillsgo',
+      );
+
+      final projects = await gateway.loadAddedProjects();
+      final inventory = await gateway.listInstalled(projects: projects);
+      final agents = await gateway.inspectAgents();
+      final detail = await gateway.loadLocalDetail(inventory.single);
+      await gateway.removeProject('offline-project');
+
+      expect(projects.single.name, 'Offline Project');
+      expect(inventory.single.provenance, LibraryProvenance.external);
+      expect(agents.installed.single.id, 'codex');
+      expect(detail.markdown, '# Offline Skill');
+      expect(await gateway.loadAddedProjects(), isEmpty);
+      expect(registryRequests, 0);
+    },
+  );
 
   test(
     'registry settings turn transport failures into structured health',
@@ -793,6 +882,60 @@ void main() {
       );
     }
   });
+
+  test(
+    'CLI exit codes distinguish availability from malformed output',
+    () async {
+      for (final testCase in [
+        (exitCode: 69, kind: SkillsFailureKind.offline, offline: true),
+        (exitCode: 75, kind: SkillsFailureKind.timeout, offline: false),
+        (exitCode: 1, kind: SkillsFailureKind.server, offline: false),
+      ]) {
+        final gateway = RealSkillsGateway(
+          processRunner: _FakeProcessRunner()
+            ..result = ProcessOutput(
+              exitCode: testCase.exitCode,
+              stdout: '',
+              stderr: 'arbitrary localized diagnostics',
+            ),
+          initialCliPath: '/usr/local/bin/skillsgo',
+        );
+
+        await expectLater(
+          gateway.inspectAgents(),
+          throwsA(
+            isA<SkillsException>()
+                .having((error) => error.kind, 'kind', testCase.kind)
+                .having(
+                  (error) => error.isOffline,
+                  'isOffline',
+                  testCase.offline,
+                ),
+          ),
+        );
+      }
+
+      final malformed = RealSkillsGateway(
+        processRunner: _FakeProcessRunner()
+          ..result = const ProcessOutput(
+            exitCode: 0,
+            stdout: 'not JSON',
+            stderr: '',
+          ),
+        initialCliPath: '/usr/local/bin/skillsgo',
+      );
+      await expectLater(
+        malformed.inspectAgents(),
+        throwsA(
+          isA<SkillsException>().having(
+            (error) => error.kind,
+            'kind',
+            SkillsFailureKind.invalidResponse,
+          ),
+        ),
+      );
+    },
+  );
 
   test('search rejects non-2xx, invalid JSON and missing fields', () async {
     for (final failure in [
