@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines the App's Skill, CLI, process, and operation contracts at the SkillsGateway seam.
+ * [OUTPUT]: Defines App contracts for Skills, CLI, Registry settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,6 +11,54 @@ enum CliAvailability { ready, missing, incompatible }
 enum CliIssue { missing, damaged, incompatible }
 
 enum UpdateState { unknown, checking, upToDate, available, unsupported, failed }
+
+enum HealthState { ready, notInitialized, unreachable, invalid }
+
+enum RegistryIssue {
+  invalidOrigin,
+  httpFailure,
+  invalidProtocol,
+  invalidJson,
+  connectionFailure,
+  timeout,
+}
+
+class RegistryStatus {
+  const RegistryStatus({
+    required this.origin,
+    required this.state,
+    this.issue,
+    this.httpStatus,
+    this.diagnostic,
+    this.version,
+  });
+
+  final String origin;
+  final HealthState state;
+  final RegistryIssue? issue;
+  final int? httpStatus;
+  final String? diagnostic;
+  final String? version;
+
+  bool get isReady => state == HealthState.ready;
+}
+
+class PersonalRiskPolicy {
+  const PersonalRiskPolicy({
+    this.confirmHighRisk = true,
+    this.allowCriticalOverride = false,
+  });
+
+  final bool confirmHighRisk;
+  final bool allowCriticalOverride;
+}
+
+class StorageStatus {
+  const StorageStatus({required this.path, required this.state});
+
+  final String path;
+  final HealthState state;
+}
 
 class CliStatus {
   const CliStatus({
@@ -144,6 +192,14 @@ abstract interface class SkillsGateway {
   Future<CliStatus> detectCli({String? customPath});
   Future<void> saveCustomCliPath(String? path);
   Future<String?> loadCustomCliPath();
+  Future<String> loadRegistryOrigin();
+  Future<void> saveRegistryOrigin(String origin);
+  Future<void> resetRegistryOrigin();
+  Future<RegistryStatus> testRegistryOrigin(String origin);
+  Future<PersonalRiskPolicy> loadRiskPolicy();
+  Future<void> saveRiskPolicy(PersonalRiskPolicy policy);
+  Future<StorageStatus> inspectStorage();
+  Future<String> loadAppVersion();
   Future<List<SkillSummary>> search(String query);
   Future<SkillDetail> loadRemoteDetail(SkillSummary skill);
   Future<List<InstalledSkill>> listInstalled();

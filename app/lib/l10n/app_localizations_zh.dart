@@ -228,6 +228,118 @@ class AppLocalizationsZh extends AppLocalizations {
   String get about => '关于';
 
   @override
+  String get generalSettingsTitle => '桌面偏好设置';
+
+  @override
+  String get generalSettingsDescription => 'SkillsPlay 跟随系统语言与辅助功能偏好，包括减少动态效果。';
+
+  @override
+  String get agentsSettingsTitle => 'Agent 运行环境';
+
+  @override
+  String get registrySettingsTitle => 'Registry 地址';
+
+  @override
+  String get registrySettingsDescription =>
+      '使用官方 Registry，或实现相同 SkillsGo 协议的 HTTP(S) 自托管地址。';
+
+  @override
+  String get testConnection => '测试连接';
+
+  @override
+  String get saveOrigin => '保存地址';
+
+  @override
+  String get resetDefault => '恢复默认';
+
+  @override
+  String get connectionReady => '连接正常';
+
+  @override
+  String get connectionFailed => '连接失败';
+
+  @override
+  String get registryInvalidOrigin => '请输入不含账号密码、查询参数或片段的有效 HTTP(S) 地址。';
+
+  @override
+  String registryHttpFailure(int status) {
+    return 'Registry 返回了 HTTP $status。请检查地址与服务端配置。';
+  }
+
+  @override
+  String get registryInvalidProtocol => '服务端没有返回 SkillsGo Registry 搜索协议。';
+
+  @override
+  String get registryInvalidJson => 'Registry 返回了无效 JSON。';
+
+  @override
+  String get registryConnectionFailure => '无法连接 Registry。请检查地址、网络、代理和 TLS 配置。';
+
+  @override
+  String get registryConnectionTimeout => 'Registry 连接超时。请检查网络或重试。';
+
+  @override
+  String get riskPolicyTitle => '个人风险策略';
+
+  @override
+  String get confirmHighRisk => '高风险必须额外确认';
+
+  @override
+  String get confirmHighRiskDescription => '安装高风险制品前始终要求一次额外确认。';
+
+  @override
+  String get allowCriticalOverride => '允许显式覆盖严重风险阻止';
+
+  @override
+  String get allowCriticalOverrideDescription =>
+      '严重风险制品默认保持阻止。启用后仅提供单独的手动覆盖入口。';
+
+  @override
+  String get storageSettingsTitle => '内容寻址 Store';
+
+  @override
+  String get storageHealthy => '可读取';
+
+  @override
+  String get storageNotInitialized => '尚未初始化';
+
+  @override
+  String get storageUnavailable => '不可用';
+
+  @override
+  String get storagePathUnavailable => 'CLI 诊断就绪后才能显示 Store 路径。';
+
+  @override
+  String get storageHealthyDescription => 'CLI 可以读取 Store，且本次检查不会修改其中内容。';
+
+  @override
+  String get storageNotInitializedDescription => 'Store 尚不存在，本次检查没有创建它。';
+
+  @override
+  String get storageUnavailableDescription => 'CLI 无法读取 Store，请检查目录权限及其父目录。';
+
+  @override
+  String get storageInvalidResponse => '内置 CLI 返回了不支持的诊断响应。';
+
+  @override
+  String get aboutSettingsTitle => '产品兼容性';
+
+  @override
+  String get appVersion => 'App 版本';
+
+  @override
+  String get cliVersion => '内置 CLI 版本';
+
+  @override
+  String get compatible => '兼容';
+
+  @override
+  String get registryOriginSaved => 'Registry 地址已保存并立即应用。';
+
+  @override
+  String get policySaved => '安装策略已保存。';
+
+  @override
   String get officialCli => 'SkillsGo CLI';
 
   @override

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on SkillsGateway contracts, localized copy, stateful nested navigation, and SkillsPlay brand tokens.
- * [OUTPUT]: Provides the desktop shell and persistent Discover, Library, detail, operation, and Settings journeys.
+ * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsPlay brand tokens.
+ * [OUTPUT]: Provides the desktop shell plus persistent Discover, Library, detail, operation, and operational Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../domain/skills_gateway.dart';
 import '../l10n/app_localizations.dart';
@@ -1278,10 +1279,19 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final controller = TextEditingController();
+  final registryController = TextEditingController();
   final scrollController = ScrollController();
   _SettingsRoute selectedRoute = _SettingsRoute.general;
   CliStatus? status;
+  RegistryStatus? registryStatus;
+  PersonalRiskPolicy? riskPolicy;
+  StorageStatus? storageStatus;
+  String? appVersion;
   bool detecting = true;
+  bool loadingSettings = true;
+  bool testingRegistry = false;
+  String? notice;
+
   @override
   void initState() {
     super.initState();
@@ -1289,14 +1299,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Future<void> _initialize() async {
-    controller.text = await widget.gateway.loadCustomCliPath() ?? '';
+    final customCliPath = await widget.gateway.loadCustomCliPath() ?? '';
+    if (!mounted) return;
+    controller.text = customCliPath;
+    final values = await Future.wait([
+      widget.gateway.loadRegistryOrigin(),
+      widget.gateway.loadRiskPolicy(),
+      widget.gateway.loadAppVersion(),
+    ]);
+    if (!mounted) return;
+    registryController.text = values[0] as String;
+    riskPolicy = values[1] as PersonalRiskPolicy;
+    appVersion = values[2] as String;
     await detect();
+    if (!mounted) return;
+    final inspectedStorage = await widget.gateway.inspectStorage();
+    if (!mounted) return;
+    setState(() {
+      storageStatus = inspectedStorage;
+      loadingSettings = false;
+    });
   }
 
   Future<void> detect() async {
+    if (!mounted) return;
     setState(() => detecting = true);
-    status = await widget.gateway.detectCli(customPath: controller.text);
-    if (mounted) setState(() => detecting = false);
+    final detected = await widget.gateway.detectCli(
+      customPath: controller.text,
+    );
+    if (!mounted) return;
+    setState(() {
+      status = detected;
+      detecting = false;
+    });
   }
 
   Future<void> save() async {
@@ -1310,9 +1345,83 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await detect();
   }
 
+  Future<RegistryStatus?> testRegistry() async {
+    if (!mounted) return null;
+    final origin = registryController.text;
+    setState(() {
+      testingRegistry = true;
+      notice = null;
+    });
+    RegistryStatus tested;
+    try {
+      tested = await widget.gateway.testRegistryOrigin(origin);
+    } on Object catch (error) {
+      tested = RegistryStatus(
+        origin: origin,
+        state: HealthState.unreachable,
+        issue: RegistryIssue.connectionFailure,
+        diagnostic: error.toString(),
+      );
+    } finally {
+      if (mounted) setState(() => testingRegistry = false);
+    }
+    if (!mounted) return null;
+    setState(() => registryStatus = tested);
+    return tested;
+  }
+
+  Future<void> saveRegistry() async {
+    try {
+      final tested = await testRegistry();
+      if (!mounted || tested?.isReady != true) return;
+      await widget.gateway.saveRegistryOrigin(registryController.text);
+      final savedOrigin = await widget.gateway.loadRegistryOrigin();
+      if (!mounted) return;
+      registryController.text = savedOrigin;
+      setState(() => notice = context.l10n.registryOriginSaved);
+    } on FormatException catch (error) {
+      if (mounted) {
+        setState(
+          () => registryStatus = RegistryStatus(
+            origin: registryController.text,
+            state: HealthState.invalid,
+            issue: RegistryIssue.invalidOrigin,
+            diagnostic: error.message,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> resetRegistry() async {
+    await widget.gateway.resetRegistryOrigin();
+    if (!mounted) return;
+    final defaultOrigin = await widget.gateway.loadRegistryOrigin();
+    if (!mounted) return;
+    registryController.text = defaultOrigin;
+    await testRegistry();
+  }
+
+  Future<void> setCriticalOverride(bool value) async {
+    final policy = PersonalRiskPolicy(allowCriticalOverride: value);
+    await widget.gateway.saveRiskPolicy(policy);
+    if (mounted) {
+      setState(() {
+        riskPolicy = policy;
+        notice = context.l10n.policySaved;
+      });
+    }
+  }
+
+  Future<void> refreshStorage() async {
+    final inspected = await widget.gateway.inspectStorage();
+    if (mounted) setState(() => storageStatus = inspected);
+  }
+
   @override
   void dispose() {
     controller.dispose();
+    registryController.dispose();
     scrollController.dispose();
     super.dispose();
   }
@@ -1347,123 +1456,287 @@ class _SettingsScreenState extends State<SettingsScreen> {
         SkillsRailItem(value: _SettingsRoute.about, label: context.l10n.about),
       ],
     ),
-    child: ListView(
-      controller: scrollController,
+    child: loadingSettings
+        ? const Center(child: CircularProgressIndicator())
+        : _settingsPage(),
+  );
+
+  Widget _settingsPage() => ListView(
+    controller: scrollController,
+    children: [
+      SectionEyebrow(context.l10n.localConfiguration, color: SkillsTokens.gold),
+      const SizedBox(height: 8),
+      Text(
+        _routeTitle(),
+        style: const TextStyle(
+          fontFamily: SkillsTokens.serifFamily,
+          fontSize: 36,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 22),
+      if (notice != null) ...[
+        Text(notice!, style: const TextStyle(color: SkillsTokens.green)),
+        const SizedBox(height: 12),
+      ],
+      switch (selectedRoute) {
+        _SettingsRoute.general => _generalSettings(),
+        _SettingsRoute.agents => _agentSettings(),
+        _SettingsRoute.registry => _registrySettings(),
+        _SettingsRoute.installationPolicy => _policySettings(),
+        _SettingsRoute.storage => _storageSettings(),
+        _SettingsRoute.about => _aboutSettings(),
+      },
+    ],
+  );
+
+  String _routeTitle() => switch (selectedRoute) {
+    _SettingsRoute.general => context.l10n.general,
+    _SettingsRoute.agents => context.l10n.agents,
+    _SettingsRoute.registry => context.l10n.registry,
+    _SettingsRoute.installationPolicy => context.l10n.installationPolicy,
+    _SettingsRoute.storage => context.l10n.storage,
+    _SettingsRoute.about => context.l10n.about,
+  };
+
+  Widget _generalSettings() => ShadCard(
+    width: double.infinity,
+    title: Text(context.l10n.generalSettingsTitle),
+    description: Text(context.l10n.generalSettingsDescription),
+    child: Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Text(
+        context.l10n.privacySummary,
+        style: const TextStyle(color: SkillsTokens.textSecondary, height: 1.5),
+      ),
+    ),
+  );
+
+  Widget _agentSettings() => ShadCard(
+    width: double.infinity,
+    title: Row(
       children: [
-        SectionEyebrow(
-          context.l10n.localConfiguration,
-          color: SkillsTokens.gold,
-        ),
-        const SizedBox(height: 8),
-        Text(
-          context.l10n.settings,
-          style: const TextStyle(
-            fontFamily: SkillsTokens.serifFamily,
-            fontSize: 36,
-            fontWeight: FontWeight.w600,
+        Expanded(child: Text(context.l10n.agentsSettingsTitle)),
+        if (detecting)
+          const SizedBox.square(
+            dimension: 18,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        else
+          StatusChip(
+            label: status?.isReady == true
+                ? context.l10n.ready
+                : _cliAvailabilityLabel(context, status?.availability),
+            color: status?.isReady == true
+                ? SkillsTokens.green
+                : SkillsTokens.amber,
           ),
-        ),
-        const SizedBox(height: 22),
-        GlassCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    context.l10n.officialCli,
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
-                    ),
-                  ),
-                  const Spacer(),
-                  if (detecting)
-                    const SizedBox.square(
-                      dimension: 18,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  else
-                    StatusChip(
-                      label: status?.isReady == true
-                          ? context.l10n.ready
-                          : _cliAvailabilityLabel(
-                              context,
-                              status?.availability,
-                            ),
-                      color: status?.isReady == true
-                          ? SkillsTokens.green
-                          : SkillsTokens.amber,
-                    ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Text(
-                status?.isReady == true
-                    ? '${status!.path} · v${status!.version}'
-                    : status == null
-                    ? context.l10n.detecting
-                    : _cliStatusMessage(context, status!),
-                style: const TextStyle(color: SkillsTokens.textSecondary),
-              ),
-              if (!kReleaseMode) ...[
-                const SizedBox(height: 18),
-                TextField(
+      ],
+    ),
+    description: Text(
+      status?.isReady == true
+          ? '${status!.path} · v${status!.version}'
+          : status == null
+          ? context.l10n.detecting
+          : _cliStatusMessage(context, status!),
+    ),
+    child: !kReleaseMode
+        ? Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                ShadInput(
                   key: const Key('cli-path'),
                   controller: controller,
-                  decoration: InputDecoration(
-                    labelText: context.l10n.customCliPath,
-                    hintText: '/path/to/development/skillsgo',
-                    border: const OutlineInputBorder(),
-                  ),
+                  placeholder: const Text('/path/to/development/skillsgo'),
                 ),
                 const SizedBox(height: 12),
-                Row(
+                Wrap(
+                  spacing: 10,
+                  runSpacing: 10,
                   children: [
-                    PrimaryCapsuleButton(
-                      label: context.l10n.saveAndDetect,
-                      onPressed: detecting ? null : save,
+                    ShadButton(
+                      enabled: !detecting,
+                      onPressed: save,
+                      child: Text(context.l10n.saveAndDetect),
                     ),
-                    const SizedBox(width: 10),
-                    SecondaryCapsuleButton(
-                      label: context.l10n.detectAgain,
-                      onPressed: detecting ? null : detect,
+                    ShadButton.outline(
+                      enabled: !detecting,
+                      onPressed: detect,
+                      child: Text(context.l10n.detectAgain),
                     ),
-                    const SizedBox(width: 10),
-                    SecondaryCapsuleButton(
-                      label: context.l10n.clearCustomPath,
-                      onPressed: detecting ? null : clear,
+                    ShadButton.outline(
+                      enabled: !detecting,
+                      onPressed: clear,
+                      child: Text(context.l10n.clearCustomPath),
                     ),
                   ],
                 ),
               ],
-            ],
+            ),
+          )
+        : null,
+  );
+
+  Widget _registrySettings() => ShadCard(
+    width: double.infinity,
+    title: Text(context.l10n.registrySettingsTitle),
+    description: Text(context.l10n.registrySettingsDescription),
+    child: Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ShadInput(
+            key: const Key('registry-origin'),
+            controller: registryController,
+            placeholder: const Text('https://registry.example.com'),
           ),
-        ),
-        const SizedBox(height: 14),
-        GlassCard(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
             children: [
-              SectionEyebrow(context.l10n.privacyProvenance),
-              const SizedBox(height: 10),
-              Text(
-                context.l10n.privacySummary,
-                style: const TextStyle(height: 1.5),
+              ShadButton(
+                enabled: !testingRegistry,
+                onPressed: saveRegistry,
+                child: Text(context.l10n.saveOrigin),
               ),
-              const SizedBox(height: 8),
-              Text(
-                context.l10n.privacyAffiliation,
-                style: const TextStyle(
-                  color: SkillsTokens.textSecondary,
-                  height: 1.5,
-                ),
+              ShadButton.outline(
+                enabled: !testingRegistry,
+                onPressed: testRegistry,
+                child: Text(context.l10n.testConnection),
+              ),
+              ShadButton.outline(
+                enabled: !testingRegistry,
+                onPressed: resetRegistry,
+                child: Text(context.l10n.resetDefault),
               ),
             ],
           ),
-        ),
-      ],
+          if (registryStatus != null) ...[
+            const SizedBox(height: 14),
+            Text(
+              registryStatus!.isReady
+                  ? context.l10n.connectionReady
+                  : '${context.l10n.connectionFailed}: ${_registryStatusMessage(context, registryStatus!)}',
+              style: TextStyle(
+                color: registryStatus!.isReady
+                    ? SkillsTokens.green
+                    : SkillsTokens.amber,
+              ),
+            ),
+          ],
+        ],
+      ),
     ),
+  );
+
+  Widget _policySettings() => ShadCard(
+    width: double.infinity,
+    title: Text(context.l10n.riskPolicyTitle),
+    child: Padding(
+      padding: const EdgeInsets.only(top: 12),
+      child: Column(
+        children: [
+          ShadSwitch(
+            value: true,
+            enabled: false,
+            label: Text(context.l10n.confirmHighRisk),
+            sublabel: Text(context.l10n.confirmHighRiskDescription),
+          ),
+          const SizedBox(height: 14),
+          ShadSwitch(
+            key: const Key('critical-risk-override'),
+            value: riskPolicy?.allowCriticalOverride ?? false,
+            onChanged: setCriticalOverride,
+            label: Text(context.l10n.allowCriticalOverride),
+            sublabel: Text(context.l10n.allowCriticalOverrideDescription),
+          ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _storageSettings() {
+    final storage = storageStatus!;
+    final label = switch (storage.state) {
+      HealthState.ready => context.l10n.storageHealthy,
+      HealthState.notInitialized => context.l10n.storageNotInitialized,
+      _ => context.l10n.storageUnavailable,
+    };
+    return ShadCard(
+      width: double.infinity,
+      title: Text(context.l10n.storageSettingsTitle),
+      description: Text(
+        storage.path.isEmpty
+            ? context.l10n.storagePathUnavailable
+            : storage.path,
+      ),
+      footer: ShadButton.outline(
+        onPressed: refreshStorage,
+        child: Text(context.l10n.refresh),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(top: 16),
+        child: Row(
+          children: [
+            StatusChip(
+              label: label,
+              color: storage.state == HealthState.ready
+                  ? SkillsTokens.green
+                  : SkillsTokens.amber,
+            ),
+            const SizedBox(width: 12),
+            Expanded(child: Text(_storageStatusMessage(context, storage))),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _aboutSettings() => ShadCard(
+    width: double.infinity,
+    title: Text(context.l10n.aboutSettingsTitle),
+    child: Padding(
+      padding: const EdgeInsets.only(top: 16),
+      child: Column(
+        children: [
+          _versionRow(context.l10n.appVersion, appVersion ?? '—'),
+          const SizedBox(height: 12),
+          _versionRow(context.l10n.cliVersion, status?.version ?? '—'),
+          const SizedBox(height: 12),
+          StatusChip(
+            label: status == null
+                ? context.l10n.detecting
+                : status!.isReady
+                ? context.l10n.compatible
+                : _cliAvailabilityLabel(context, status!.availability),
+            color: status?.isReady == true
+                ? SkillsTokens.green
+                : SkillsTokens.amber,
+          ),
+          if (status != null && !status!.isReady) ...[
+            const SizedBox(height: 12),
+            Text(
+              _cliStatusMessage(context, status!),
+              style: const TextStyle(color: SkillsTokens.textSecondary),
+            ),
+          ],
+        ],
+      ),
+    ),
+  );
+
+  Widget _versionRow(String label, String version) => Row(
+    children: [
+      Expanded(child: Text(label)),
+      SelectableText(
+        version,
+        style: const TextStyle(fontFamily: SkillsTokens.monoFamily),
+      ),
+    ],
   );
 }
 
@@ -1600,6 +1873,28 @@ String _updateLabel(BuildContext context, UpdateState state) => switch (state) {
   UpdateState.unsupported => context.l10n.updateUnavailable,
   UpdateState.failed => context.l10n.updateCheckFailed,
 };
+
+String _registryStatusMessage(BuildContext context, RegistryStatus status) =>
+    switch (status.issue) {
+      RegistryIssue.invalidOrigin => context.l10n.registryInvalidOrigin,
+      RegistryIssue.httpFailure => context.l10n.registryHttpFailure(
+        status.httpStatus ?? 0,
+      ),
+      RegistryIssue.invalidProtocol => context.l10n.registryInvalidProtocol,
+      RegistryIssue.invalidJson => context.l10n.registryInvalidJson,
+      RegistryIssue.connectionFailure => context.l10n.registryConnectionFailure,
+      RegistryIssue.timeout => context.l10n.registryConnectionTimeout,
+      null => context.l10n.registryInvalidProtocol,
+    };
+
+String _storageStatusMessage(BuildContext context, StorageStatus status) =>
+    switch (status.state) {
+      HealthState.ready => context.l10n.storageHealthyDescription,
+      HealthState.notInitialized =>
+        context.l10n.storageNotInitializedDescription,
+      HealthState.unreachable => context.l10n.storageUnavailableDescription,
+      HealthState.invalid => context.l10n.storageInvalidResponse,
+    };
 
 String _cliAvailabilityLabel(
   BuildContext context,

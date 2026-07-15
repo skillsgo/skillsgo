@@ -1,5 +1,9 @@
+# [INPUT]: Depends on the Flutter SDK and declared packages for desktop UI, localization, persistence, HTTP, and platform integration.
+# [OUTPUT]: Defines the skillsplay package identity, build version, dependency graph, and Flutter generation settings.
+# [POS]: Serves as the F2 build manifest and package boundary for the SkillsPlay desktop App workspace.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: skillsplay
-description: "SkillsPlay — 面向 Codex 的 macOS Skill 管理器。"
+description: "SkillsPlay — a desktop Skill manager for coding Agents."
 # The following line prevents the package from being accidentally published to
 # pub.dev using `flutter pub publish`. This is preferred for private packages.
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
@@ -45,6 +49,7 @@ dependencies:
   shared_preferences: ^2.5.5
   path: ^1.9.1
   marionette_flutter: ^0.6.0
+  package_info_plus: ^10.2.0
 
 dev_dependencies:
   flutter_test:

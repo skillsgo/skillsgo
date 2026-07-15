@@ -512,6 +512,222 @@ abstract class AppLocalizations {
   /// **'About'**
   String get about;
 
+  /// No description provided for @generalSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop preferences'**
+  String get generalSettingsTitle;
+
+  /// No description provided for @generalSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsPlay follows the system language and accessibility preferences, including reduced motion.'**
+  String get generalSettingsDescription;
+
+  /// No description provided for @agentsSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent runtime'**
+  String get agentsSettingsTitle;
+
+  /// No description provided for @registrySettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Registry Origin'**
+  String get registrySettingsTitle;
+
+  /// No description provided for @registrySettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the official Registry or an HTTP(S) self-hosted origin that implements the same SkillsGo protocol.'**
+  String get registrySettingsDescription;
+
+  /// No description provided for @testConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Test connection'**
+  String get testConnection;
+
+  /// No description provided for @saveOrigin.
+  ///
+  /// In en, this message translates to:
+  /// **'Save Origin'**
+  String get saveOrigin;
+
+  /// No description provided for @resetDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'Reset to default'**
+  String get resetDefault;
+
+  /// No description provided for @connectionReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection ready'**
+  String get connectionReady;
+
+  /// No description provided for @connectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed'**
+  String get connectionFailed;
+
+  /// No description provided for @registryInvalidOrigin.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a valid HTTP(S) Origin without credentials, a query, or a fragment.'**
+  String get registryInvalidOrigin;
+
+  /// No description provided for @registryHttpFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'Registry returned HTTP {status}. Check the Origin and server configuration.'**
+  String registryHttpFailure(int status);
+
+  /// No description provided for @registryInvalidProtocol.
+  ///
+  /// In en, this message translates to:
+  /// **'The server did not return the SkillsGo Registry search protocol.'**
+  String get registryInvalidProtocol;
+
+  /// No description provided for @registryInvalidJson.
+  ///
+  /// In en, this message translates to:
+  /// **'The Registry returned invalid JSON.'**
+  String get registryInvalidJson;
+
+  /// No description provided for @registryConnectionFailure.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not reach the Registry. Check the Origin, network, proxy, and TLS configuration.'**
+  String get registryConnectionFailure;
+
+  /// No description provided for @registryConnectionTimeout.
+  ///
+  /// In en, this message translates to:
+  /// **'The Registry connection timed out. Check the network or try again.'**
+  String get registryConnectionTimeout;
+
+  /// No description provided for @riskPolicyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Personal risk policy'**
+  String get riskPolicyTitle;
+
+  /// No description provided for @confirmHighRisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Require confirmation for High risk'**
+  String get confirmHighRisk;
+
+  /// No description provided for @confirmHighRiskDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'High-risk artifacts always require an additional confirmation before installation.'**
+  String get confirmHighRiskDescription;
+
+  /// No description provided for @allowCriticalOverride.
+  ///
+  /// In en, this message translates to:
+  /// **'Allow an explicit Critical-risk override'**
+  String get allowCriticalOverride;
+
+  /// No description provided for @allowCriticalOverrideDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical-risk artifacts remain blocked by default. Enable this only to expose a separate manual override.'**
+  String get allowCriticalOverrideDescription;
+
+  /// No description provided for @storageSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Content-addressed Store'**
+  String get storageSettingsTitle;
+
+  /// No description provided for @storageHealthy.
+  ///
+  /// In en, this message translates to:
+  /// **'Readable'**
+  String get storageHealthy;
+
+  /// No description provided for @storageNotInitialized.
+  ///
+  /// In en, this message translates to:
+  /// **'Not initialized'**
+  String get storageNotInitialized;
+
+  /// No description provided for @storageUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get storageUnavailable;
+
+  /// No description provided for @storagePathUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Store path unavailable until CLI diagnostics are ready.'**
+  String get storagePathUnavailable;
+
+  /// No description provided for @storageHealthyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The CLI can read the Store without changing its contents.'**
+  String get storageHealthyDescription;
+
+  /// No description provided for @storageNotInitializedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The Store does not exist yet and was not created by this check.'**
+  String get storageNotInitializedDescription;
+
+  /// No description provided for @storageUnavailableDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The CLI cannot read the Store. Check its permissions and parent directory.'**
+  String get storageUnavailableDescription;
+
+  /// No description provided for @storageInvalidResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'The bundled CLI returned an unsupported diagnostics response.'**
+  String get storageInvalidResponse;
+
+  /// No description provided for @aboutSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Product compatibility'**
+  String get aboutSettingsTitle;
+
+  /// No description provided for @appVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'App version'**
+  String get appVersion;
+
+  /// No description provided for @cliVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Bundled CLI version'**
+  String get cliVersion;
+
+  /// No description provided for @compatible.
+  ///
+  /// In en, this message translates to:
+  /// **'Compatible'**
+  String get compatible;
+
+  /// No description provided for @registryOriginSaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Registry Origin saved and applied.'**
+  String get registryOriginSaved;
+
+  /// No description provided for @policySaved.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation policy saved.'**
+  String get policySaved;
+
   /// No description provided for @officialCli.
   ///
   /// In en, this message translates to:
