@@ -350,6 +350,56 @@ class AppLocalizationsEn extends AppLocalizations {
   String get addProject => 'Add Project';
 
   @override
+  String get relocateProject => 'Relocate';
+
+  @override
+  String get removeFromList => 'Remove from List';
+
+  @override
+  String removeProjectTitle(String name) {
+    return 'Remove $name from SkillsGo?';
+  }
+
+  @override
+  String get removeProjectDescription =>
+      'Only the App reference will be removed. SkillsGo will not change or delete any files in this directory.';
+
+  @override
+  String projectRailUnavailable(String name) {
+    return '$name — unavailable';
+  }
+
+  @override
+  String emptyProjectTitle(String name) {
+    return 'No Skills found in $name';
+  }
+
+  @override
+  String get emptyProjectMessage =>
+      'This project does not need Git or SkillsGo files. Install its first Skill when you are ready.';
+
+  @override
+  String get projectMissingTitle => 'Project directory is missing';
+
+  @override
+  String get projectMissingMessage =>
+      'The directory may have moved or its volume may be offline. Relocate it or remove only its App reference.';
+
+  @override
+  String get projectPermissionTitle => 'Project permission is required';
+
+  @override
+  String get projectPermissionMessage =>
+      'SkillsGo cannot inspect this selected root. Grant access by relocating it through the directory picker.';
+
+  @override
+  String get projectInaccessibleTitle => 'Project directory is inaccessible';
+
+  @override
+  String get projectInaccessibleMessage =>
+      'SkillsGo kept this project reference. Check the path or volume, then relocate it.';
+
+  @override
   String get checking => 'Checking…';
 
   @override

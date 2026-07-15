@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings, discovery/detail parsing, strict Agent machine contracts, local targets, typed failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings, discovery/detail parsing, explicit project reference persistence, strict Agent machine contracts, local targets, typed failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -82,6 +82,116 @@ void main() {
       gateway.saveRegistryOrigin('file:///tmp/registry'),
       throwsA(isA<FormatException>()),
     );
+  });
+
+  test(
+    'Added Projects persist, relocate by stable identity, and remove only the App reference',
+    () async {
+      SharedPreferences.setMockInitialValues({});
+      final root = await Directory.systemTemp.createTemp('skillsgo-projects-');
+      addTearDown(() => root.delete(recursive: true));
+      final original = Directory('${root.path}/plain project');
+      final relocated = Directory('${root.path}/moved project');
+      final unselected = Directory('${root.path}/never selected');
+      await original.create();
+      await relocated.create();
+      await unselected.create();
+      await File('${original.path}/skillsgo.yaml').writeAsString('keep: true');
+      await File('${original.path}/skillsgo-lock.yaml').writeAsString('keep');
+      await Directory(
+        '${original.path}/.agents/skills',
+      ).create(recursive: true);
+      final selections = <String>[original.path, relocated.path];
+      final inspected = <String>[];
+      Future<({ProjectAccessState state, String? diagnostic})> inspect(
+        String path,
+      ) async {
+        inspected.add(path);
+        return (state: ProjectAccessState.accessible, diagnostic: null);
+      }
+
+      final gateway = RealSkillsGateway(
+        directoryPicker: ({initialDirectory}) async => selections.removeAt(0),
+        projectPathInspector: inspect,
+      );
+      final added = await gateway.addProject();
+      expect(added, isNotNull);
+      expect(added!.name, 'plain project');
+      expect(inspected, [original.path]);
+      expect(inspected, isNot(contains(unselected.path)));
+
+      final restarted = RealSkillsGateway(
+        directoryPicker: ({initialDirectory}) async {
+          expect(initialDirectory, original.path);
+          return selections.removeAt(0);
+        },
+        projectPathInspector: inspect,
+      );
+      final restored = await restarted.loadAddedProjects();
+      expect(restored.single.id, added.id);
+      expect(restored.single.path, original.path);
+      final moved = await restarted.relocateProject(added.id);
+      expect(moved!.id, added.id);
+      expect(moved.path, relocated.path);
+
+      await restarted.removeProject(added.id);
+      expect(await restarted.loadAddedProjects(), isEmpty);
+      expect(
+        await File('${original.path}/skillsgo.yaml').readAsString(),
+        'keep: true',
+      );
+      expect(
+        await File('${original.path}/skillsgo-lock.yaml').readAsString(),
+        'keep',
+      );
+      expect(
+        await Directory('${original.path}/.agents/skills').exists(),
+        isTrue,
+      );
+    },
+  );
+
+  test('Added Projects retain diagnosable inaccessible states', () async {
+    SharedPreferences.setMockInitialValues({});
+    final selections = <String>[
+      '/Volumes/missing',
+      '/private/denied',
+      '/mnt/offline',
+    ];
+    final states = <String, ({ProjectAccessState state, String? diagnostic})>{
+      '/Volumes/missing': (
+        state: ProjectAccessState.missing,
+        diagnostic: 'missing media',
+      ),
+      '/private/denied': (
+        state: ProjectAccessState.permissionDenied,
+        diagnostic: 'permission denied',
+      ),
+      '/mnt/offline': (
+        state: ProjectAccessState.inaccessible,
+        diagnostic: 'device unavailable',
+      ),
+    };
+    final gateway = RealSkillsGateway(
+      directoryPicker: ({initialDirectory}) async => selections.removeAt(0),
+      projectPathInspector: (path) async => states[path]!,
+    );
+
+    for (var index = 0; index < 3; index++) {
+      await gateway.addProject();
+    }
+    final projects = await gateway.loadAddedProjects();
+
+    expect(projects.map((project) => project.accessState), [
+      ProjectAccessState.missing,
+      ProjectAccessState.permissionDenied,
+      ProjectAccessState.inaccessible,
+    ]);
+    expect(projects.map((project) => project.diagnostic), [
+      'missing media',
+      'permission denied',
+      'device unavailable',
+    ]);
   });
 
   test(

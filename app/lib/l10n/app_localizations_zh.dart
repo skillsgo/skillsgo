@@ -334,6 +334,54 @@ class AppLocalizationsZh extends AppLocalizations {
   String get addProject => '添加项目';
 
   @override
+  String get relocateProject => '重新定位';
+
+  @override
+  String get removeFromList => '从列表移除';
+
+  @override
+  String removeProjectTitle(String name) {
+    return '从 SkillsGo 移除 $name？';
+  }
+
+  @override
+  String get removeProjectDescription =>
+      '只会移除 App 中的引用。SkillsGo 不会修改或删除该目录中的任何文件。';
+
+  @override
+  String projectRailUnavailable(String name) {
+    return '$name — 不可用';
+  }
+
+  @override
+  String emptyProjectTitle(String name) {
+    return '$name 中没有发现技能';
+  }
+
+  @override
+  String get emptyProjectMessage =>
+      '项目不需要是 Git 仓库，也不需要预先存在 SkillsGo 文件。准备好后可安装第一个技能。';
+
+  @override
+  String get projectMissingTitle => '项目目录不存在';
+
+  @override
+  String get projectMissingMessage => '目录可能已移动，或所在磁盘暂时离线。你可以重新定位，或仅移除 App 引用。';
+
+  @override
+  String get projectPermissionTitle => '需要项目目录权限';
+
+  @override
+  String get projectPermissionMessage =>
+      'SkillsGo 无法检查这个已选择的根目录。请通过目录选择器重新定位并授予访问权限。';
+
+  @override
+  String get projectInaccessibleTitle => '项目目录无法访问';
+
+  @override
+  String get projectInaccessibleMessage => 'SkillsGo 已保留该项目引用。请检查路径或磁盘，然后重新定位。';
+
+  @override
   String get checking => '正在检查…';
 
   @override

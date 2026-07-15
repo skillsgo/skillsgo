@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp with a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
- * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, Agent-aware Library/Settings, focus restoration, accessibility, and mutation journeys.
+ * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, explicit-project and Agent-aware Library/Settings, focus restoration, accessibility, and mutation journeys.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -752,6 +752,97 @@ void main() {
     expect(find.text('Your Library is empty'), findsOneWidget);
   });
 
+  testWidgets('Library keeps Added Projects in the agreed rail order', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      addedProjects: const [
+        AddedProject(
+          id: 'alpha',
+          name: 'Project Alpha',
+          path: '/work/alpha',
+          accessState: ProjectAccessState.accessible,
+        ),
+      ],
+      projectToAdd: const AddedProject(
+        id: 'bravo',
+        name: 'Project Bravo',
+        path: '/work/bravo',
+        accessState: ProjectAccessState.accessible,
+      ),
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Library'));
+    await tester.pumpAndSettle();
+
+    final labels = [
+      'All',
+      'User Scope',
+      'Project Alpha',
+      'Add Project',
+      'Codex',
+    ];
+    final positions = labels
+        .map((label) => tester.getCenter(find.text(label)).dy)
+        .toList();
+    expect(positions, orderedEquals([...positions]..sort()));
+
+    await tester.tap(find.text('Add Project'));
+    await tester.pumpAndSettle();
+    expect(find.text('Project Bravo'), findsWidgets);
+    expect(find.text('No Skills found in Project Bravo'), findsOneWidget);
+  });
+
+  testWidgets(
+    'inaccessible Project stays visible and supports Relocate/remove',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        addedProjects: const [
+          AddedProject(
+            id: 'stable-id',
+            name: 'Moved Project',
+            path: '/Volumes/offline/project',
+            accessState: ProjectAccessState.missing,
+            diagnostic: 'volume offline',
+          ),
+        ],
+        projectToRelocate: const AddedProject(
+          id: 'stable-id',
+          name: 'Moved Project',
+          path: '/work/project',
+          accessState: ProjectAccessState.accessible,
+        ),
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Library'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Moved Project — unavailable'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Project directory is missing'), findsOneWidget);
+      expect(find.textContaining('/Volumes/offline/project'), findsOneWidget);
+      expect(find.textContaining('volume offline'), findsNothing);
+      await tester.tap(find.text('Relocate').last);
+      await tester.pumpAndSettle();
+      expect(find.text('No Skills found in Moved Project'), findsOneWidget);
+      expect(gateway.projects.single.id, 'stable-id');
+      expect(gateway.projects.single.path, '/work/project');
+
+      await tester.tap(find.text('Remove from List').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Remove from List').last);
+      await tester.pumpAndSettle();
+      expect(gateway.projects, isEmpty);
+      expect(find.text('Moved Project'), findsNothing);
+    },
+  );
+
   testWidgets('the selected rail capsule follows spring motion', (
     tester,
   ) async {
@@ -1104,6 +1195,9 @@ class FakeSkillsGateway implements SkillsGateway {
     this.agentNames = const ['codex'],
     this.agentStatuses,
     this.agentInspectionError,
+    List<AddedProject> addedProjects = const [],
+    this.projectToAdd,
+    this.projectToRelocate,
     this.registryOrigin = 'https://registry.skillsgo.dev',
     this.registryTestState = HealthState.ready,
     this.storageStatus = const StorageStatus(
@@ -1119,7 +1213,8 @@ class FakeSkillsGateway implements SkillsGateway {
     List<SkillsException> detailErrors = const [],
   }) : searchResults = searchResults ?? _defaultSearchResults,
        remoteDetail = remoteDetail ?? defaultRemoteDetail,
-       detailErrors = List.of(detailErrors);
+       detailErrors = List.of(detailErrors),
+       projects = List.of(addedProjects);
   final bool cliReady;
   final Completer<List<SkillSummary>>? searchCompleter;
   final Completer<CommandResult>? installCompleter;
@@ -1127,6 +1222,9 @@ class FakeSkillsGateway implements SkillsGateway {
   final List<String> agentNames;
   final List<AgentStatus>? agentStatuses;
   final SkillsException? agentInspectionError;
+  final AddedProject? projectToAdd;
+  final AddedProject? projectToRelocate;
+  final List<AddedProject> projects;
   String registryOrigin;
   final HealthState registryTestState;
   PersonalRiskPolicy riskPolicy = const PersonalRiskPolicy();
@@ -1323,6 +1421,31 @@ class FakeSkillsGateway implements SkillsGateway {
               )
               .toList(growable: false),
     );
+  }
+
+  @override
+  Future<List<AddedProject>> loadAddedProjects() async => List.of(projects);
+  @override
+  Future<AddedProject?> addProject() async {
+    final project = projectToAdd;
+    if (project != null && !projects.any((item) => item.id == project.id)) {
+      projects.add(project);
+    }
+    return project;
+  }
+
+  @override
+  Future<AddedProject?> relocateProject(String id) async {
+    final project = projectToRelocate;
+    if (project == null || project.id != id) return null;
+    final index = projects.indexWhere((item) => item.id == id);
+    if (index >= 0) projects[index] = project;
+    return project;
+  }
+
+  @override
+  Future<void> removeProject(String id) async {
+    projects.removeWhere((project) => project.id == id);
   }
 
   @override

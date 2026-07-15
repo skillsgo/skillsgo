@@ -1,13 +1,15 @@
 /*
- * [INPUT]: Depends on Registry HTTP, the local filesystem, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides production Registry settings, discovery/detail, strict Agent inspection, local targets, typed failures, diagnostics, bundled CLI verification, and Skill operations.
+ * [INPUT]: Depends on Registry HTTP, the local filesystem, the platform directory picker, SharedPreferences, and executable process boundaries.
+ * [OUTPUT]: Provides production Registry settings, discovery/detail, explicit project reference persistence, strict Agent inspection, local targets, typed failures, diagnostics, bundled CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 
+import 'package:file_selector/file_selector.dart' as file_selector;
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
@@ -15,6 +17,12 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/skills_gateway.dart';
+
+typedef DirectoryPicker = Future<String?> Function({String? initialDirectory});
+typedef ProjectPathInspector =
+    Future<({ProjectAccessState state, String? diagnostic})> Function(
+      String path,
+    );
 
 class IoProcessRunner implements ProcessRunner {
   const IoProcessRunner();
@@ -96,6 +104,8 @@ class RealSkillsGateway implements SkillsGateway {
     String? appVersion,
     this.discoveryTimeout = const Duration(seconds: 15),
     this.detailTimeout = const Duration(seconds: 20),
+    DirectoryPicker? directoryPicker,
+    ProjectPathInspector? projectPathInspector,
   }) : _http = httpClient ?? http.Client(),
        _runner = processRunner ?? const IoProcessRunner(),
        _cliPath = initialCliPath,
@@ -104,11 +114,14 @@ class RealSkillsGateway implements SkillsGateway {
        _expectedCliOS = expectedCliOS ?? _goOperatingSystem,
        _defaultRegistryBase = _originUri(registryBaseUrl),
        _registryBase = _originUri(registryBaseUrl),
-       _injectedAppVersion = appVersion;
+       _injectedAppVersion = appVersion,
+       _directoryPicker = directoryPicker ?? _pickDirectory,
+       _projectPathInspector = projectPathInspector ?? _inspectProjectPath;
 
   static const _customCliKey = 'custom_cli_path';
   static const _registryOriginKey = 'registry_origin';
   static const _allowCriticalOverrideKey = 'allow_critical_risk_override';
+  static const _addedProjectsKey = 'added_projects_v1';
   static const _startupHandshakeSchemaVersion = 1;
   static const _appProtocolVersion = 1;
   final http.Client _http;
@@ -121,8 +134,37 @@ class RealSkillsGateway implements SkillsGateway {
   final String? _injectedAppVersion;
   final Duration discoveryTimeout;
   final Duration detailTimeout;
+  final DirectoryPicker _directoryPicker;
+  final ProjectPathInspector _projectPathInspector;
   String? _cliPath;
   bool _registryOriginLoaded = false;
+
+  static Future<String?> _pickDirectory({String? initialDirectory}) =>
+      file_selector.getDirectoryPath(initialDirectory: initialDirectory);
+
+  static Future<({ProjectAccessState state, String? diagnostic})>
+  _inspectProjectPath(String path) async {
+    try {
+      final type = await FileSystemEntity.type(path, followLinks: true);
+      if (type != FileSystemEntityType.directory) {
+        return (
+          state: ProjectAccessState.missing,
+          diagnostic: 'The selected directory is missing or unavailable.',
+        );
+      }
+      await Directory(path).list(followLinks: false).take(1).drain<void>();
+      return (state: ProjectAccessState.accessible, diagnostic: null);
+    } on FileSystemException catch (error) {
+      final permissionDenied =
+          error.osError?.errorCode == 1 || error.osError?.errorCode == 13;
+      return (
+        state: permissionDenied
+            ? ProjectAccessState.permissionDenied
+            : ProjectAccessState.inaccessible,
+        diagnostic: error.message,
+      );
+    }
+  }
 
   static Uri _originUri(String origin) {
     final value = origin.trim();
@@ -257,6 +299,140 @@ class RealSkillsGateway implements SkillsGateway {
     } else {
       await preferences.setString(_customCliKey, path.trim());
     }
+  }
+
+  String _newProjectID() {
+    final bytes = List<int>.generate(12, (_) => Random.secure().nextInt(256));
+    return base64UrlEncode(bytes).replaceAll('=', '');
+  }
+
+  Future<List<({String id, String name, String path})>>
+  _loadProjectReferences() async {
+    final raw = (await SharedPreferences.getInstance()).getString(
+      _addedProjectsKey,
+    );
+    if (raw == null) return const [];
+    try {
+      final decoded = jsonDecode(raw);
+      if (decoded is! List) throw const FormatException();
+      final ids = <String>{};
+      final paths = <String>{};
+      return decoded
+          .map((entry) {
+            if (entry is! Map<String, dynamic> ||
+                entry['id'] is! String ||
+                (entry['id'] as String).isEmpty ||
+                entry['name'] is! String ||
+                (entry['name'] as String).isEmpty ||
+                entry['path'] is! String ||
+                (entry['path'] as String).isEmpty ||
+                !ids.add(entry['id'] as String) ||
+                !paths.add(entry['path'] as String)) {
+              throw const FormatException();
+            }
+            return (
+              id: entry['id'] as String,
+              name: entry['name'] as String,
+              path: entry['path'] as String,
+            );
+          })
+          .toList(growable: false);
+    } on FormatException {
+      throw const SkillsException(
+        'Saved project references are invalid.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
+  }
+
+  Future<void> _saveProjectReferences(
+    List<({String id, String name, String path})> projects,
+  ) async {
+    final encoded = jsonEncode([
+      for (final project in projects)
+        {'id': project.id, 'name': project.name, 'path': project.path},
+    ]);
+    await (await SharedPreferences.getInstance()).setString(
+      _addedProjectsKey,
+      encoded,
+    );
+  }
+
+  Future<AddedProject> _resolveProject(
+    ({String id, String name, String path}) reference,
+  ) async {
+    final access = await _projectPathInspector(reference.path);
+    return AddedProject(
+      id: reference.id,
+      name: reference.name,
+      path: reference.path,
+      accessState: access.state,
+      diagnostic: access.diagnostic,
+    );
+  }
+
+  @override
+  Future<List<AddedProject>> loadAddedProjects() async {
+    final references = await _loadProjectReferences();
+    final projects = <AddedProject>[];
+    for (final reference in references) {
+      projects.add(await _resolveProject(reference));
+    }
+    return projects;
+  }
+
+  @override
+  Future<AddedProject?> addProject() async {
+    final selected = await _directoryPicker();
+    if (selected == null || selected.trim().isEmpty) return null;
+    final path = p.normalize(p.absolute(selected.trim()));
+    final references = await _loadProjectReferences();
+    for (final reference in references) {
+      if (p.equals(reference.path, path)) return _resolveProject(reference);
+    }
+    final basename = p.basename(path);
+    final reference = (
+      id: _newProjectID(),
+      name: basename.isEmpty ? path : basename,
+      path: path,
+    );
+    await _saveProjectReferences([...references, reference]);
+    return _resolveProject(reference);
+  }
+
+  @override
+  Future<AddedProject?> relocateProject(String id) async {
+    final references = await _loadProjectReferences();
+    final index = references.indexWhere((project) => project.id == id);
+    if (index < 0) return null;
+    final selected = await _directoryPicker(
+      initialDirectory: references[index].path,
+    );
+    if (selected == null || selected.trim().isEmpty) {
+      return _resolveProject(references[index]);
+    }
+    final path = p.normalize(p.absolute(selected.trim()));
+    if (references.any(
+      (project) => project.id != id && p.equals(project.path, path),
+    )) {
+      throw const SkillsException('That project is already added.');
+    }
+    final relocated = (
+      id: references[index].id,
+      name: references[index].name,
+      path: path,
+    );
+    final updated = [...references]..[index] = relocated;
+    await _saveProjectReferences(updated);
+    return _resolveProject(relocated);
+  }
+
+  @override
+  Future<void> removeProject(String id) async {
+    final references = await _loadProjectReferences();
+    await _saveProjectReferences(
+      references.where((project) => project.id != id).toList(growable: false),
+    );
   }
 
   @override
