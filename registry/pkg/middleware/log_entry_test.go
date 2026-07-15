@@ -1,0 +1,37 @@
+package middleware
+
+import (
+	"bytes"
+	"fmt"
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"strings"
+	"testing"
+
+	"github.com/gorilla/mux"
+	"github.com/skillsgo/skillsgo/registry/pkg/log"
+	"github.com/stretchr/testify/assert"
+)
+
+func TestLogContext(t *testing.T) {
+	h := func(w http.ResponseWriter, r *http.Request) {
+		e := log.EntryFromContext(r.Context())
+		e.Infof("test")
+	}
+
+	r := mux.NewRouter()
+	r.HandleFunc("/test", h)
+
+	var buf bytes.Buffer
+	lggr := log.NewWithOutput(&buf, "", slog.LevelDebug, "json")
+
+	r.Use(LogEntryMiddleware(lggr))
+
+	w := httptest.NewRecorder()
+	req, _ := http.NewRequest("GET", "/test", nil)
+	r.ServeHTTP(w, req)
+
+	expected := `"http-method":"GET","http-path":"/test","request-id":""`
+	assert.True(t, strings.Contains(buf.String(), expected), fmt.Sprintf("%s should contain: %s", buf.String(), expected))
+}

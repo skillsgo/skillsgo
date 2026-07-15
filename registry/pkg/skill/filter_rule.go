@@ -1,0 +1,7 @@
+package skill
+
+type ruleNode struct {
+	next       map[string]ruleNode
+	rule       FilterRule
+	qualifiers []string
+}
