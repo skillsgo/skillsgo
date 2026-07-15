@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra and the Agent, Registry, Store, project, installation, source, and i18n modules.
- * [OUTPUT]: Provides command.Execute and the complete SkillsGo CLI command graph, including stable Agent and Library inventory contracts, for terminal and App callers.
+ * [OUTPUT]: Provides command.Execute and the complete CLI graph, including stable Agent, Library inventory, and explicit Installation Plan contracts, for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -495,9 +495,9 @@ func placeholder(name, use string, aliases ...string) *cobra.Command {
 }
 
 type addOptions struct {
-	global, copy, yes, list, all, fullDepth, replace bool
-	agents, skills, subagents                        []string
-	metadata, output, registryURL                    string
+	global, copy, yes, list, all, fullDepth, replace, preflight bool
+	agents, skills, subagents, targets                          []string
+	metadata, output, registryURL, artifactVersion              string
 }
 
 func newAddCommand(catalog *agent.Catalog) *cobra.Command {
@@ -512,6 +512,12 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 			}
 			if len(options.skills) == 0 {
 				return fmt.Errorf("%s", appi18n.T("error.skill_required"))
+			}
+			if len(options.targets) > 0 {
+				return runExplicitInstallationPlan(cmd, catalog, args[0], options)
+			}
+			if options.preflight || options.artifactVersion != "" {
+				return fmt.Errorf("--preflight and --version require at least one --target")
 			}
 			agentIDs := options.agents
 			if len(agentIDs) == 0 {
@@ -640,6 +646,9 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 	flags.BoolVarP(&options.yes, "yes", "y", false, appi18n.T("flag.yes"))
 	flags.BoolVar(&options.copy, "copy", false, appi18n.T("flag.copy"))
 	flags.BoolVar(&options.replace, "replace", false, appi18n.T("flag.replace"))
+	flags.StringArrayVar(&options.targets, "target", nil, appi18n.T("flag.target"))
+	flags.BoolVar(&options.preflight, "preflight", false, appi18n.T("flag.preflight"))
+	flags.StringVar(&options.artifactVersion, "version", "", appi18n.T("flag.artifact_version"))
 	flags.StringVar(&options.metadata, "metadata", "", appi18n.T("flag.metadata"))
 	flags.StringArrayVar(&options.subagents, "subagent", nil, appi18n.T("flag.subagent"))
 	flags.BoolVar(&options.all, "all", false, appi18n.T("flag.all"))

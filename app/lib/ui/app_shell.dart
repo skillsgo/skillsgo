@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsGo brand tokens.
- * [OUTPUT]: Provides the desktop shell plus persistent Discover, searchable managed/external multi-target Library/detail, read-only External inspection, explicit-project and Agent views, operations, and operational Settings journeys.
+ * [OUTPUT]: Provides the desktop shell plus persistent Discover, shadcn_ui Installation Plan matrix/preflight/results, managed/external Library/detail, project and Agent views, operations, and Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,6 +11,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:path/path.dart' as p;
 import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../domain/skills_gateway.dart';
@@ -681,27 +682,42 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
           skill: skill,
           focusNode: cardFocus,
           onTap: () => _openDetail(skill, cardFocus),
+          onInstall: () => _openDetail(skill, cardFocus, openPlan: true),
         );
       },
     );
   }
 
-  Future<void> _openDetail(SkillSummary skill, FocusNode cardFocus) async {
+  Future<void> _openDetail(
+    SkillSummary skill,
+    FocusNode cardFocus, {
+    bool openPlan = false,
+  }) async {
     final operation = installOperations.putIfAbsent(
       skill.id,
       _InstallOperation.new,
     );
-    final installed = await Navigator.of(context).push<bool>(
+    final outcome = await Navigator.of(context).push<_RemoteDetailOutcome>(
       MaterialPageRoute(
         builder: (_) => _RemoteDetailScreen(
           gateway: widget.gateway,
           skill: skill,
           operation: operation,
+          openPlanOnLoad: openPlan,
         ),
       ),
     );
-    if (installed == true) {
+    if (outcome == _RemoteDetailOutcome.viewLibrary) {
       widget.onInstalled();
+    } else if (outcome == _RemoteDetailOutcome.installed && mounted) {
+      await _loadRoute(
+        selectedRoute,
+        reset: true,
+        query: selectedRoute == _DiscoverRoute.search
+            ? controller.text.trim()
+            : null,
+      );
+      if (mounted) cardFocus.requestFocus();
     } else if (mounted) {
       cardFocus.requestFocus();
     }
@@ -741,22 +757,60 @@ DiscoveryCollection _collectionForRoute(_DiscoverRoute route) =>
 
 class _InstallOperation extends ChangeNotifier {
   bool operating = false;
-  CommandResult? result;
+  InstallationPlan? plan;
+  InstallationExecution? execution;
+  Object? error;
   bool _disposed = false;
 
-  Future<void> execute(SkillsGateway gateway, SkillSummary skill) async {
-    if (operating) return;
+  Future<InstallationPlan?> preflight(
+    SkillsGateway gateway,
+    SkillSummary skill,
+    String immutableVersion,
+    List<InstallationTargetSelection> selections,
+  ) async {
+    if (operating) return plan;
     operating = true;
-    result = null;
+    plan = null;
+    execution = null;
+    error = null;
     _notify();
     try {
-      result = await gateway.install(skill);
+      plan = await gateway.preflightInstall(
+        skill,
+        immutableVersion,
+        selections,
+      );
     } catch (caught) {
-      result = _exceptionResult(caught);
+      error = caught;
     } finally {
       operating = false;
       _notify();
     }
+    return plan;
+  }
+
+  Future<InstallationExecution?> execute(SkillsGateway gateway) async {
+    if (operating || plan == null) return execution;
+    operating = true;
+    execution = null;
+    error = null;
+    _notify();
+    try {
+      execution = await gateway.executeInstall(plan!);
+    } catch (caught) {
+      error = caught;
+    } finally {
+      operating = false;
+      _notify();
+    }
+    return execution;
+  }
+
+  void editTargets() {
+    plan = null;
+    execution = null;
+    error = null;
+    _notify();
   }
 
   void _notify() {
@@ -770,15 +824,880 @@ class _InstallOperation extends ChangeNotifier {
   }
 }
 
+enum _InstallationPlanOutcome { viewLibrary }
+
+enum _RemoteDetailOutcome { installed, viewLibrary }
+
+class _InstallationPlanDialog extends StatefulWidget {
+  const _InstallationPlanDialog({
+    required this.gateway,
+    required this.skill,
+    required this.detail,
+    required this.catalog,
+    required this.initialProjects,
+    required this.operation,
+    required this.onProjectAdded,
+  });
+
+  final SkillsGateway gateway;
+  final SkillSummary skill;
+  final SkillDetail detail;
+  final AgentCatalog catalog;
+  final List<AddedProject> initialProjects;
+  final _InstallOperation operation;
+  final ValueChanged<AddedProject> onProjectAdded;
+
+  @override
+  State<_InstallationPlanDialog> createState() =>
+      _InstallationPlanDialogState();
+}
+
+class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
+  late List<AddedProject> projects;
+  final selected = <String, InstallationTargetSelection>{};
+
+  @override
+  void initState() {
+    super.initState();
+    projects = List.of(widget.initialProjects);
+    for (final selection in widget.operation.plan?.selections ?? const []) {
+      selected[_selectionKey(selection)] = selection;
+    }
+  }
+
+  List<
+    ({
+      String key,
+      String label,
+      InstallationScope scope,
+      String projectRoot,
+      bool enabled,
+    })
+  >
+  get rows => [
+    (
+      key: 'user',
+      label: context.l10n.userScope,
+      scope: InstallationScope.user,
+      projectRoot: '',
+      enabled: true,
+    ),
+    ...projects.map(
+      (project) => (
+        key: 'project:${project.id}',
+        label: project.name,
+        scope: InstallationScope.project,
+        projectRoot: project.path,
+        enabled: project.isAccessible,
+      ),
+    ),
+  ];
+
+  List<AgentStatus> get agents => widget.catalog.installed;
+
+  String _selectionKey(InstallationTargetSelection selection) =>
+      '${selection.scope.name}\u0000${selection.projectRoot}\u0000${selection.agent}';
+
+  InstallationTargetSelection _selectionFor(
+    ({
+      String key,
+      String label,
+      InstallationScope scope,
+      String projectRoot,
+      bool enabled,
+    })
+    row,
+    AgentStatus agent,
+  ) => InstallationTargetSelection(
+    scope: row.scope,
+    projectRoot: row.projectRoot,
+    agent: agent.id,
+  );
+
+  bool _isInstalled(
+    ({
+      String key,
+      String label,
+      InstallationScope scope,
+      String projectRoot,
+      bool enabled,
+    })
+    row,
+    AgentStatus agent,
+  ) => widget.detail.installationTargets.any(
+    (target) =>
+        target.scope == row.scope &&
+        target.projectRoot == row.projectRoot &&
+        target.agent == agent.id &&
+        target.version == widget.detail.immutableVersion,
+  );
+
+  bool _isEligible(
+    ({
+      String key,
+      String label,
+      InstallationScope scope,
+      String projectRoot,
+      bool enabled,
+    })
+    row,
+    AgentStatus agent,
+  ) =>
+      row.enabled &&
+      agent.supportedScopes.contains(row.scope) &&
+      !_isInstalled(row, agent);
+
+  List<InstallationTargetSelection> get selectedInMatrixOrder => [
+    for (final row in rows)
+      for (final agent in agents)
+        if (selected.containsKey(_selectionKey(_selectionFor(row, agent))))
+          _selectionFor(row, agent),
+  ];
+
+  void _toggleCell(
+    ({
+      String key,
+      String label,
+      InstallationScope scope,
+      String projectRoot,
+      bool enabled,
+    })
+    row,
+    AgentStatus agent,
+    bool value,
+  ) {
+    final selection = _selectionFor(row, agent);
+    setState(() {
+      if (value) {
+        selected[_selectionKey(selection)] = selection;
+      } else {
+        selected.remove(_selectionKey(selection));
+      }
+    });
+  }
+
+  void _toggleRow(
+    ({
+      String key,
+      String label,
+      InstallationScope scope,
+      String projectRoot,
+      bool enabled,
+    })
+    row,
+    bool value,
+  ) {
+    setState(() {
+      for (final agent in agents.where((agent) => _isEligible(row, agent))) {
+        final selection = _selectionFor(row, agent);
+        if (value) {
+          selected[_selectionKey(selection)] = selection;
+        } else {
+          selected.remove(_selectionKey(selection));
+        }
+      }
+    });
+  }
+
+  void _toggleAgent(AgentStatus agent, bool value) {
+    setState(() {
+      for (final row in rows.where((row) => _isEligible(row, agent))) {
+        final selection = _selectionFor(row, agent);
+        if (value) {
+          selected[_selectionKey(selection)] = selection;
+        } else {
+          selected.remove(_selectionKey(selection));
+        }
+      }
+    });
+  }
+
+  Future<void> _addProject() async {
+    final project = await widget.gateway.addProject();
+    if (project == null || !mounted) return;
+    setState(() {
+      final index = projects.indexWhere((item) => item.id == project.id);
+      if (index < 0) {
+        projects = [...projects, project];
+      } else {
+        projects[index] = project;
+      }
+    });
+    widget.onProjectAdded(project);
+  }
+
+  Future<void> _preflight() async {
+    await widget.operation.preflight(
+      widget.gateway,
+      widget.skill,
+      widget.detail.immutableVersion,
+      selectedInMatrixOrder,
+    );
+    if (mounted) setState(() {});
+  }
+
+  Future<void> _execute() async {
+    await widget.operation.execute(widget.gateway);
+    if (mounted) setState(() {});
+  }
+
+  void _editTargets() {
+    widget.operation.editTargets();
+    setState(() {});
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final execution = widget.operation.execution;
+    final plan = widget.operation.plan;
+    return ShadDialog(
+      constraints: const BoxConstraints(maxWidth: 1040, maxHeight: 760),
+      closeIcon: Semantics(
+        label: context.l10n.closeInstallationPlan,
+        button: true,
+        child: ShadButton.ghost(
+          width: 28,
+          height: 28,
+          padding: EdgeInsets.zero,
+          onPressed: () => Navigator.pop(context),
+          child: const Icon(Icons.close, size: 16),
+        ),
+      ),
+      title: Text(
+        execution != null
+            ? context.l10n.installationResults
+            : plan != null
+            ? context.l10n.reviewInstallationPlan
+            : context.l10n.installationPlanTitle,
+      ),
+      description: Text(
+        execution != null
+            ? context.l10n.installationResultsDescription
+            : plan != null
+            ? context.l10n.reviewInstallationPlanDescription
+            : context.l10n.installationPlanDescription,
+      ),
+      actions: _actions(plan, execution),
+      child: SizedBox(
+        width: 940,
+        height: 540,
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          child: execution != null
+              ? _result(execution)
+              : plan != null
+              ? _preflightReview(plan)
+              : _matrix(),
+        ),
+      ),
+    );
+  }
+
+  List<Widget> _actions(
+    InstallationPlan? plan,
+    InstallationExecution? execution,
+  ) {
+    if (execution != null) {
+      return [
+        ShadButton.outline(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.stayHere),
+        ),
+        ShadButton(
+          enabled: execution.hasSuccess,
+          onPressed: () =>
+              Navigator.pop(context, _InstallationPlanOutcome.viewLibrary),
+          child: Text(context.l10n.viewInLibrary),
+        ),
+      ];
+    }
+    if (plan != null) {
+      return [
+        ShadButton.outline(
+          enabled: !widget.operation.operating,
+          onPressed: _editTargets,
+          child: Text(context.l10n.backToTargets),
+        ),
+        ShadButton(
+          enabled: !widget.operation.operating,
+          onPressed: _execute,
+          child: widget.operation.operating
+              ? SizedBox(
+                  width: 32,
+                  child: ShadProgress(
+                    minHeight: 4,
+                    semanticsLabel: context.l10n.installationInProgress,
+                  ),
+                )
+              : Text(context.l10n.installSelectedTargets(plan.targets.length)),
+        ),
+      ];
+    }
+    return [
+      ShadButton.outline(
+        enabled: !widget.operation.operating,
+        onPressed: _addProject,
+        child: Text(context.l10n.addProject),
+      ),
+      ShadButton.outline(
+        enabled: !widget.operation.operating,
+        onPressed: () => Navigator.pop(context),
+        child: Text(context.l10n.cancel),
+      ),
+      ShadButton(
+        enabled: selected.isNotEmpty && !widget.operation.operating,
+        onPressed: _preflight,
+        child: widget.operation.operating
+            ? SizedBox(
+                width: 32,
+                child: ShadProgress(
+                  minHeight: 4,
+                  semanticsLabel: context.l10n.installationInProgress,
+                ),
+              )
+            : Text(context.l10n.reviewTargets(selected.length)),
+      ),
+    ];
+  }
+
+  Widget _matrix() {
+    final width = 210.0 + agents.length * 176.0;
+    return Column(
+      key: const ValueKey('installation-matrix'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            SectionEyebrow(context.l10n.locationAgentMatrix),
+            const Spacer(),
+            Text(
+              context.l10n.targetsSelected(selected.length),
+              style: const TextStyle(color: SkillsTokens.textSecondary),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Expanded(
+          child: SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: width,
+              child: Column(
+                children: [
+                  _matrixHeader(),
+                  const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: rows.length,
+                      separatorBuilder: (_, _) =>
+                          const ShadSeparator.horizontal(
+                            color: SkillsTokens.hairline,
+                          ),
+                      itemBuilder: (context, index) => _matrixRow(rows[index]),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+        if (widget.operation.error != null) ...[
+          const SizedBox(height: 10),
+          _PlanError(error: widget.operation.error!),
+        ],
+      ],
+    );
+  }
+
+  Widget _matrixHeader() => SizedBox(
+    height: 76,
+    child: Row(
+      children: [
+        SizedBox(
+          width: 210,
+          child: Text(
+            context.l10n.location,
+            style: const TextStyle(
+              color: SkillsTokens.textSecondary,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+        ...agents.map((agent) {
+          final eligible = rows.where((row) => _isEligible(row, agent));
+          final allSelected =
+              eligible.isNotEmpty &&
+              eligible.every(
+                (row) => selected.containsKey(
+                  _selectionKey(_selectionFor(row, agent)),
+                ),
+              );
+          return SizedBox(
+            width: 176,
+            child: Semantics(
+              label: context.l10n.selectAgentTargets(agent.displayName),
+              checked: allSelected,
+              enabled: eligible.isNotEmpty,
+              onTap: eligible.isEmpty
+                  ? null
+                  : () => _toggleAgent(agent, !allSelected),
+              excludeSemantics: true,
+              child: ShadCheckbox(
+                value: allSelected,
+                enabled: eligible.isNotEmpty,
+                onChanged: (value) => _toggleAgent(agent, value),
+                label: SizedBox(
+                  width: 132,
+                  child: Text(
+                    agent.displayName,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ),
+              ),
+            ),
+          );
+        }),
+      ],
+    ),
+  );
+
+  Widget _matrixRow(
+    ({
+      String key,
+      String label,
+      InstallationScope scope,
+      String projectRoot,
+      bool enabled,
+    })
+    row,
+  ) {
+    final eligible = agents.where((agent) => _isEligible(row, agent));
+    final allSelected =
+        eligible.isNotEmpty &&
+        eligible.every(
+          (agent) =>
+              selected.containsKey(_selectionKey(_selectionFor(row, agent))),
+        );
+    return SizedBox(
+      height: 76,
+      child: Row(
+        children: [
+          SizedBox(
+            width: 210,
+            child: Semantics(
+              label: context.l10n.selectLocationTargets(row.label),
+              checked: allSelected,
+              enabled: eligible.isNotEmpty,
+              onTap: eligible.isEmpty
+                  ? null
+                  : () => _toggleRow(row, !allSelected),
+              excludeSemantics: true,
+              child: ShadCheckbox(
+                value: allSelected,
+                enabled: eligible.isNotEmpty,
+                onChanged: (value) => _toggleRow(row, value),
+                label: SizedBox(
+                  width: 164,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        row.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      if (!row.enabled)
+                        Text(
+                          context.l10n.projectUnavailable,
+                          style: const TextStyle(
+                            color: SkillsTokens.amber,
+                            fontSize: 11,
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          ...agents.map((agent) => _matrixCell(row, agent)),
+        ],
+      ),
+    );
+  }
+
+  Widget _matrixCell(
+    ({
+      String key,
+      String label,
+      InstallationScope scope,
+      String projectRoot,
+      bool enabled,
+    })
+    row,
+    AgentStatus agent,
+  ) {
+    final selection = _selectionFor(row, agent);
+    final key = _selectionKey(selection);
+    final installed = _isInstalled(row, agent);
+    final eligible = _isEligible(row, agent);
+    return SizedBox(
+      width: 176,
+      child: Center(
+        child: installed
+            ? StatusChip(
+                label: context.l10n.installedCell,
+                color: SkillsTokens.green,
+              )
+            : eligible
+            ? Semantics(
+                label: context.l10n.selectTarget(row.label, agent.displayName),
+                checked: selected.containsKey(key),
+                enabled: true,
+                onTap: () =>
+                    _toggleCell(row, agent, !selected.containsKey(key)),
+                excludeSemantics: true,
+                child: ShadCheckbox(
+                  value: selected.containsKey(key),
+                  onChanged: (value) => _toggleCell(row, agent, value),
+                  label: Text(context.l10n.select),
+                ),
+              )
+            : StatusChip(
+                label: context.l10n.unsupportedCell,
+                color: SkillsTokens.textTertiary,
+              ),
+      ),
+    );
+  }
+
+  Widget _preflightReview(InstallationPlan plan) => Column(
+    key: const ValueKey('installation-preflight'),
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        children: [
+          StatusChip(
+            label: context.l10n.planCreateCount(plan.summary.create),
+            color: SkillsTokens.green,
+          ),
+          StatusChip(
+            label: context.l10n.planSkipCount(plan.summary.skip),
+            color: SkillsTokens.blue,
+          ),
+          StatusChip(
+            label: context.l10n.planConflictCount(plan.summary.conflict),
+            color: plan.summary.conflict > 0
+                ? SkillsTokens.amber
+                : SkillsTokens.textTertiary,
+          ),
+          StatusChip(label: plan.version, color: SkillsTokens.teal),
+        ],
+      ),
+      const SizedBox(height: 14),
+      SelectableText(
+        plan.coordinate,
+        style: const TextStyle(
+          fontFamily: SkillsTokens.monoFamily,
+          color: SkillsTokens.textSecondary,
+        ),
+      ),
+      const SizedBox(height: 14),
+      Expanded(
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Expanded(
+              flex: 3,
+              child: GlassCard(
+                child: ListView.separated(
+                  itemCount: plan.targets.length,
+                  separatorBuilder: (_, _) => const ShadSeparator.horizontal(
+                    color: SkillsTokens.hairline,
+                  ),
+                  itemBuilder: (context, index) =>
+                      _plannedTarget(plan.targets[index]),
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              flex: 2,
+              child: GlassCard(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SectionEyebrow(context.l10n.workspaceLockChanges),
+                    const SizedBox(height: 10),
+                    Expanded(
+                      child: plan.workspaceLockChanges.isEmpty
+                          ? Text(
+                              context.l10n.noWorkspaceLockChanges,
+                              style: const TextStyle(
+                                color: SkillsTokens.textSecondary,
+                              ),
+                            )
+                          : ListView.separated(
+                              itemCount: plan.workspaceLockChanges.length,
+                              separatorBuilder: (_, _) =>
+                                  const SizedBox(height: 10),
+                              itemBuilder: (context, index) {
+                                final change = plan.workspaceLockChanges[index];
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      change.projectRoot,
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    Text(
+                                      context.l10n.lockVersionChange(
+                                        change.fromVersion.isEmpty
+                                            ? context.l10n.notPresent
+                                            : change.fromVersion,
+                                        change.toVersion,
+                                      ),
+                                      style: const TextStyle(
+                                        color: SkillsTokens.textSecondary,
+                                        fontFamily: SkillsTokens.monoFamily,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                );
+                              },
+                            ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+      if (widget.operation.error != null) ...[
+        const SizedBox(height: 10),
+        _PlanError(error: widget.operation.error!),
+      ],
+    ],
+  );
+
+  Widget _plannedTarget(InstallationPlanItem item) => Padding(
+    padding: const EdgeInsets.symmetric(vertical: 10),
+    child: Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _targetLabel(context, item.target),
+                style: const TextStyle(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 3),
+              Text(
+                item.target.path,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  color: SkillsTokens.textTertiary,
+                  fontFamily: SkillsTokens.monoFamily,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(width: 10),
+        StatusChip(
+          label: _planActionLabel(context, item.action),
+          color: switch (item.action) {
+            InstallationPlanAction.create => SkillsTokens.green,
+            InstallationPlanAction.skip => SkillsTokens.blue,
+            InstallationPlanAction.replace => SkillsTokens.amber,
+            InstallationPlanAction.conflict ||
+            InstallationPlanAction.blockedByRisk => SkillsTokens.red,
+          },
+        ),
+      ],
+    ),
+  );
+
+  Widget _result(InstallationExecution execution) => Column(
+    key: const ValueKey('installation-result'),
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        context.l10n.installationResultSummary(
+          execution.summary.succeeded,
+          execution.summary.failed,
+        ),
+        style: const TextStyle(
+          fontFamily: SkillsTokens.serifFamily,
+          fontSize: 26,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        execution.coordinate,
+        style: const TextStyle(
+          color: SkillsTokens.textSecondary,
+          fontFamily: SkillsTokens.monoFamily,
+        ),
+      ),
+      const SizedBox(height: 16),
+      Expanded(
+        child: GlassCard(
+          child: ListView.separated(
+            itemCount: execution.results.length,
+            separatorBuilder: (_, _) =>
+                const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+            itemBuilder: (context, index) {
+              final result = execution.results[index];
+              final success =
+                  result.outcome == InstallationTargetOutcome.succeeded ||
+                  result.outcome == InstallationTargetOutcome.skipped;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(
+                      success ? Icons.check_circle : Icons.error,
+                      color: success ? SkillsTokens.green : SkillsTokens.red,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _targetLabel(context, result.target),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          if (result.errorCode.isNotEmpty)
+                            Text(
+                              _installationErrorLabel(
+                                context,
+                                result.errorCode,
+                              ),
+                              style: const TextStyle(
+                                color: SkillsTokens.textSecondary,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                    StatusChip(
+                      label: _targetOutcomeLabel(context, result.outcome),
+                      color: success ? SkillsTokens.green : SkillsTokens.red,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+      if (widget.operation.error != null) ...[
+        const SizedBox(height: 10),
+        _PlanError(error: widget.operation.error!),
+      ],
+    ],
+  );
+}
+
+class _PlanError extends StatelessWidget {
+  const _PlanError({required this.error});
+  final Object error;
+
+  @override
+  Widget build(BuildContext context) {
+    final copy = _failureCopy(context, error);
+    return ShadAlert.destructive(
+      icon: const Icon(Icons.error_outline),
+      title: Text(context.l10n.installationPlanFailed),
+      description: Text(copy.message),
+    );
+  }
+}
+
+class _InstallationCompletionBanner extends StatelessWidget {
+  const _InstallationCompletionBanner({required this.execution});
+  final InstallationExecution execution;
+
+  @override
+  Widget build(BuildContext context) => ShadCard(
+    width: double.infinity,
+    title: Text(context.l10n.installationResults),
+    description: Text(
+      context.l10n.installationResultSummary(
+        execution.summary.succeeded,
+        execution.summary.failed,
+      ),
+    ),
+  );
+}
+
+String _targetLabel(BuildContext context, InstallationPlanTarget target) {
+  final location = target.scope == InstallationScope.user
+      ? context.l10n.userScope
+      : p.basename(target.projectRoot);
+  return '$location / ${target.agent}';
+}
+
+String _planActionLabel(BuildContext context, InstallationPlanAction action) =>
+    switch (action) {
+      InstallationPlanAction.create => context.l10n.planActionCreate,
+      InstallationPlanAction.replace => context.l10n.planActionReplace,
+      InstallationPlanAction.skip => context.l10n.planActionSkip,
+      InstallationPlanAction.conflict => context.l10n.planActionConflict,
+      InstallationPlanAction.blockedByRisk =>
+        context.l10n.planActionBlockedByRisk,
+    };
+
+String _targetOutcomeLabel(
+  BuildContext context,
+  InstallationTargetOutcome outcome,
+) => switch (outcome) {
+  InstallationTargetOutcome.succeeded => context.l10n.targetSucceeded,
+  InstallationTargetOutcome.skipped => context.l10n.targetSkipped,
+  InstallationTargetOutcome.conflict => context.l10n.targetConflict,
+  InstallationTargetOutcome.failed => context.l10n.targetFailed,
+};
+
+String _installationErrorLabel(BuildContext context, String code) =>
+    switch (code) {
+      'target-path-exists' => context.l10n.targetPathExists,
+      'blocked-by-risk' => context.l10n.targetBlockedByRisk,
+      'install-failed' => context.l10n.targetInstallFailed,
+      'workspace-update-failed' => context.l10n.targetWorkspaceUpdateFailed,
+      _ => context.l10n.installationPlanFailed,
+    };
+
 class _RemoteDetailScreen extends StatefulWidget {
   const _RemoteDetailScreen({
     required this.gateway,
     required this.skill,
     required this.operation,
+    this.openPlanOnLoad = false,
   });
   final SkillsGateway gateway;
   final SkillSummary skill;
   final _InstallOperation operation;
+  final bool openPlanOnLoad;
 
   @override
   State<_RemoteDetailScreen> createState() => _RemoteDetailScreenState();
@@ -792,8 +1711,10 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
   String? selectedFilePath;
   CliStatus? cliStatus;
   AgentCatalog? agentCatalog;
+  List<AddedProject> addedProjects = const [];
+  bool didOpenInitialPlan = false;
   bool get operating => widget.operation.operating;
-  CommandResult? get result => widget.operation.result;
+  InstallationExecution? get execution => widget.operation.execution;
 
   @override
   void initState() {
@@ -821,9 +1742,11 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
       final values = await Future.wait([
         widget.gateway.loadRemoteDetail(widget.skill),
         widget.gateway.detectCli(),
+        widget.gateway.loadAddedProjects(),
       ]);
       detail = values[0] as SkillDetail;
       cliStatus = values[1] as CliStatus;
+      addedProjects = values[2] as List<AddedProject>;
       if (cliStatus!.isReady) {
         try {
           agentCatalog = await widget.gateway.inspectAgents();
@@ -834,11 +1757,49 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
     } catch (caught) {
       error = caught;
     }
-    if (mounted) setState(() => loading = false);
+    if (!mounted) return;
+    setState(() => loading = false);
+    if (widget.openPlanOnLoad &&
+        !didOpenInitialPlan &&
+        detail != null &&
+        agentCatalog != null &&
+        agentCatalog!.installed.isNotEmpty) {
+      didOpenInitialPlan = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(install());
+      });
+    }
   }
 
   Future<void> install() async {
-    await widget.operation.execute(widget.gateway, widget.skill);
+    if (agentCatalog == null || detail == null) return;
+    final outcome = await showShadDialog<_InstallationPlanOutcome>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _InstallationPlanDialog(
+        gateway: widget.gateway,
+        skill: widget.skill,
+        detail: detail!,
+        catalog: agentCatalog!,
+        initialProjects: addedProjects,
+        operation: widget.operation,
+        onProjectAdded: (project) {
+          final index = addedProjects.indexWhere(
+            (item) => item.id == project.id,
+          );
+          if (index < 0) {
+            addedProjects = [...addedProjects, project];
+          } else {
+            addedProjects = [...addedProjects]..[index] = project;
+          }
+        },
+      ),
+    );
+    if (outcome == _InstallationPlanOutcome.viewLibrary && mounted) {
+      Navigator.pop(context, _RemoteDetailOutcome.viewLibrary);
+    } else if (mounted) {
+      setState(() {});
+    }
   }
 
   @override
@@ -895,8 +1856,12 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
                   width: 36,
                   height: 36,
                   padding: EdgeInsets.zero,
-                  onPressed: () =>
-                      Navigator.pop(context, result?.succeeded == true),
+                  onPressed: () => Navigator.pop(
+                    context,
+                    execution?.hasSuccess == true
+                        ? _RemoteDetailOutcome.installed
+                        : null,
+                  ),
                   child: const Icon(Icons.arrow_back),
                 ),
               ),
@@ -926,11 +1891,9 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
             PrimaryCapsuleButton(
               label: widget.skill.isInstalled
                   ? context.l10n.installToMoreTargets
-                  : context.l10n.installForCodex,
+                  : context.l10n.installSkill,
               onPressed: agentCatalog != null && agentCatalog!.installed.isEmpty
                   ? null
-                  : widget.skill.isInstalled
-                  ? () => Navigator.pop(context, true)
                   : install,
               busy: operating,
             ),
@@ -1027,21 +1990,9 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
             description: Text(context.l10n.noInstalledAgentsMessage),
           ),
         ],
-        const SizedBox(height: 14),
-        _CommandPreview(
-          executable: cliStatus?.path ?? context.l10n.cliNotDetected,
-          arguments: [
-            'add',
-            '${widget.skill.source}@${widget.skill.skillId}',
-            '--global',
-            '--agent',
-            'codex',
-            '--yes',
-          ],
-        ),
-        if (result != null) ...[
+        if (execution != null) ...[
           const SizedBox(height: 14),
-          OperationPanel(result: result!),
+          _InstallationCompletionBanner(execution: execution!),
         ],
         const SizedBox(height: 20),
         Expanded(
@@ -2883,34 +3834,6 @@ class OperationPanel extends StatelessWidget {
         ),
       ),
     ],
-  );
-}
-
-class _CommandPreview extends StatelessWidget {
-  const _CommandPreview({required this.executable, required this.arguments});
-  final String executable;
-  final List<String> arguments;
-
-  @override
-  Widget build(BuildContext context) => GlassCard(
-    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-    child: Row(
-      children: [
-        SectionEyebrow(context.l10n.command),
-        const SizedBox(width: 12),
-        Expanded(
-          child: SelectableText(
-            [executable, ...arguments].join(' '),
-            maxLines: 2,
-            style: const TextStyle(
-              fontFamily: SkillsTokens.monoFamily,
-              fontSize: 11,
-              color: SkillsTokens.textSecondary,
-            ),
-          ),
-        ),
-      ],
-    ),
   );
 }
 

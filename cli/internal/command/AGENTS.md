@@ -11,6 +11,8 @@
 - `agents_test.go`: specifies the stable App-facing Agent discovery machine contract.
 - `inventory.go`: adapts the managed/external inventory domain report into stable JSON and localized human CLI output.
 - `inventory_test.go`: specifies aggregation, External identity separation, read-only inspection, target health, Workspace reconciliation, and the explicit-project privacy boundary.
+- `installation_plan.go`: adapts strict repeated target JSON into stable preflight and execution machine responses.
+- `installation_plan_test.go`: specifies explicit multi-location/Agent plans, skip behavior, Workspace Lock previews, and per-target results through `Execute`.
 - `version.go`: serves the human version output and versioned App startup handshake.
 - `args_test.go`: covers public argument normalization and environment-gated test Agent behavior.
 - `i18n_test.go`: covers localized public command help.

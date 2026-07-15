@@ -791,4 +791,171 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get updateCheckFailed => 'CHECK FAILED';
+
+  @override
+  String get installSkill => 'Install Skill';
+
+  @override
+  String get installationPlanTitle => 'Choose installation targets';
+
+  @override
+  String get closeInstallationPlan => 'Close installation plan';
+
+  @override
+  String get installationPlanDescription =>
+      'Select exact location-and-Agent cells. Row and column controls are shortcuts for those explicit cells.';
+
+  @override
+  String get reviewInstallationPlan => 'Review installation plan';
+
+  @override
+  String get reviewInstallationPlanDescription =>
+      'Review every target action and Workspace Lock change before files are changed.';
+
+  @override
+  String get installationResults => 'Installation results';
+
+  @override
+  String get installationResultsDescription =>
+      'Each target completed independently. You can stay here or view the installed Skill in Library.';
+
+  @override
+  String get installationInProgress => 'Installation in progress';
+
+  @override
+  String get locationAgentMatrix => 'Location × Agent';
+
+  @override
+  String targetsSelected(int count) {
+    return '$count targets selected';
+  }
+
+  @override
+  String get location => 'Location';
+
+  @override
+  String get select => 'Select';
+
+  @override
+  String selectTarget(String location, String agent) {
+    return 'Select $location for $agent';
+  }
+
+  @override
+  String selectLocationTargets(String location) {
+    return 'Select all available targets in $location';
+  }
+
+  @override
+  String selectAgentTargets(String agent) {
+    return 'Select all available targets for $agent';
+  }
+
+  @override
+  String get projectUnavailable => 'Project unavailable';
+
+  @override
+  String get installedCell => 'Installed';
+
+  @override
+  String get unsupportedCell => 'Unavailable';
+
+  @override
+  String reviewTargets(int count) {
+    return 'Review $count Targets';
+  }
+
+  @override
+  String installSelectedTargets(int count) {
+    return 'Install $count Targets';
+  }
+
+  @override
+  String get backToTargets => 'Back to Targets';
+
+  @override
+  String get stayHere => 'Stay Here';
+
+  @override
+  String get viewInLibrary => 'View in Library';
+
+  @override
+  String planCreateCount(int count) {
+    return '$count create';
+  }
+
+  @override
+  String planSkipCount(int count) {
+    return '$count skip';
+  }
+
+  @override
+  String planConflictCount(int count) {
+    return '$count conflict';
+  }
+
+  @override
+  String get workspaceLockChanges => 'Workspace Lock changes';
+
+  @override
+  String get noWorkspaceLockChanges => 'No Workspace Lock files will change.';
+
+  @override
+  String lockVersionChange(String from, String to) {
+    return '$from → $to';
+  }
+
+  @override
+  String get notPresent => 'not present';
+
+  @override
+  String get planActionCreate => 'Create';
+
+  @override
+  String get planActionReplace => 'Replace';
+
+  @override
+  String get planActionSkip => 'Skip';
+
+  @override
+  String get planActionConflict => 'Conflict';
+
+  @override
+  String get planActionBlockedByRisk => 'Blocked by risk';
+
+  @override
+  String installationResultSummary(int succeeded, int failed) {
+    return '$succeeded targets installed, $failed failed';
+  }
+
+  @override
+  String get targetSucceeded => 'Installed';
+
+  @override
+  String get targetSkipped => 'Skipped';
+
+  @override
+  String get targetConflict => 'Conflict';
+
+  @override
+  String get targetFailed => 'Failed';
+
+  @override
+  String get targetPathExists =>
+      'Another item already exists at this target path.';
+
+  @override
+  String get targetBlockedByRisk =>
+      'This target was blocked by the current risk policy.';
+
+  @override
+  String get targetInstallFailed =>
+      'The Skill could not be written to this target.';
+
+  @override
+  String get targetWorkspaceUpdateFailed =>
+      'The Skill was written, but its Workspace files could not be updated.';
+
+  @override
+  String get installationPlanFailed => 'Installation plan could not continue';
 }

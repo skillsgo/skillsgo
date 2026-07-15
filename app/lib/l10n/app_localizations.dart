@@ -1471,6 +1471,282 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'CHECK FAILED'**
   String get updateCheckFailed;
+
+  /// No description provided for @installSkill.
+  ///
+  /// In en, this message translates to:
+  /// **'Install Skill'**
+  String get installSkill;
+
+  /// No description provided for @installationPlanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose installation targets'**
+  String get installationPlanTitle;
+
+  /// No description provided for @closeInstallationPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Close installation plan'**
+  String get closeInstallationPlan;
+
+  /// No description provided for @installationPlanDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Select exact location-and-Agent cells. Row and column controls are shortcuts for those explicit cells.'**
+  String get installationPlanDescription;
+
+  /// No description provided for @reviewInstallationPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Review installation plan'**
+  String get reviewInstallationPlan;
+
+  /// No description provided for @reviewInstallationPlanDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Review every target action and Workspace Lock change before files are changed.'**
+  String get reviewInstallationPlanDescription;
+
+  /// No description provided for @installationResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation results'**
+  String get installationResults;
+
+  /// No description provided for @installationResultsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Each target completed independently. You can stay here or view the installed Skill in Library.'**
+  String get installationResultsDescription;
+
+  /// No description provided for @installationInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation in progress'**
+  String get installationInProgress;
+
+  /// No description provided for @locationAgentMatrix.
+  ///
+  /// In en, this message translates to:
+  /// **'Location × Agent'**
+  String get locationAgentMatrix;
+
+  /// No description provided for @targetsSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} targets selected'**
+  String targetsSelected(int count);
+
+  /// No description provided for @location.
+  ///
+  /// In en, this message translates to:
+  /// **'Location'**
+  String get location;
+
+  /// No description provided for @select.
+  ///
+  /// In en, this message translates to:
+  /// **'Select'**
+  String get select;
+
+  /// No description provided for @selectTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Select {location} for {agent}'**
+  String selectTarget(String location, String agent);
+
+  /// No description provided for @selectLocationTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all available targets in {location}'**
+  String selectLocationTargets(String location);
+
+  /// No description provided for @selectAgentTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Select all available targets for {agent}'**
+  String selectAgentTargets(String agent);
+
+  /// No description provided for @projectUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Project unavailable'**
+  String get projectUnavailable;
+
+  /// No description provided for @installedCell.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get installedCell;
+
+  /// No description provided for @unsupportedCell.
+  ///
+  /// In en, this message translates to:
+  /// **'Unavailable'**
+  String get unsupportedCell;
+
+  /// No description provided for @reviewTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Review {count} Targets'**
+  String reviewTargets(int count);
+
+  /// No description provided for @installSelectedTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Install {count} Targets'**
+  String installSelectedTargets(int count);
+
+  /// No description provided for @backToTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Back to Targets'**
+  String get backToTargets;
+
+  /// No description provided for @stayHere.
+  ///
+  /// In en, this message translates to:
+  /// **'Stay Here'**
+  String get stayHere;
+
+  /// No description provided for @viewInLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'View in Library'**
+  String get viewInLibrary;
+
+  /// No description provided for @planCreateCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} create'**
+  String planCreateCount(int count);
+
+  /// No description provided for @planSkipCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} skip'**
+  String planSkipCount(int count);
+
+  /// No description provided for @planConflictCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} conflict'**
+  String planConflictCount(int count);
+
+  /// No description provided for @workspaceLockChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace Lock changes'**
+  String get workspaceLockChanges;
+
+  /// No description provided for @noWorkspaceLockChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'No Workspace Lock files will change.'**
+  String get noWorkspaceLockChanges;
+
+  /// No description provided for @lockVersionChange.
+  ///
+  /// In en, this message translates to:
+  /// **'{from} → {to}'**
+  String lockVersionChange(String from, String to);
+
+  /// No description provided for @notPresent.
+  ///
+  /// In en, this message translates to:
+  /// **'not present'**
+  String get notPresent;
+
+  /// No description provided for @planActionCreate.
+  ///
+  /// In en, this message translates to:
+  /// **'Create'**
+  String get planActionCreate;
+
+  /// No description provided for @planActionReplace.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace'**
+  String get planActionReplace;
+
+  /// No description provided for @planActionSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Skip'**
+  String get planActionSkip;
+
+  /// No description provided for @planActionConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Conflict'**
+  String get planActionConflict;
+
+  /// No description provided for @planActionBlockedByRisk.
+  ///
+  /// In en, this message translates to:
+  /// **'Blocked by risk'**
+  String get planActionBlockedByRisk;
+
+  /// No description provided for @installationResultSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{succeeded} targets installed, {failed} failed'**
+  String installationResultSummary(int succeeded, int failed);
+
+  /// No description provided for @targetSucceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get targetSucceeded;
+
+  /// No description provided for @targetSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get targetSkipped;
+
+  /// No description provided for @targetConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Conflict'**
+  String get targetConflict;
+
+  /// No description provided for @targetFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed'**
+  String get targetFailed;
+
+  /// No description provided for @targetPathExists.
+  ///
+  /// In en, this message translates to:
+  /// **'Another item already exists at this target path.'**
+  String get targetPathExists;
+
+  /// No description provided for @targetBlockedByRisk.
+  ///
+  /// In en, this message translates to:
+  /// **'This target was blocked by the current risk policy.'**
+  String get targetBlockedByRisk;
+
+  /// No description provided for @targetInstallFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The Skill could not be written to this target.'**
+  String get targetInstallFailed;
+
+  /// No description provided for @targetWorkspaceUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The Skill was written, but its Workspace files could not be updated.'**
+  String get targetWorkspaceUpdateFailed;
+
+  /// No description provided for @installationPlanFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation plan could not continue'**
+  String get installationPlanFailed;
 }
 
 class _AppLocalizationsDelegate

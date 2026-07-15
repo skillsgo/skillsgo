@@ -757,4 +757,167 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get updateCheckFailed => '检查失败';
+
+  @override
+  String get installSkill => '安装技能';
+
+  @override
+  String get installationPlanTitle => '选择安装目标';
+
+  @override
+  String get closeInstallationPlan => '关闭安装计划';
+
+  @override
+  String get installationPlanDescription =>
+      '请选择明确的位置与 Agent 单元格；行列控件只是批量选择这些明确目标的快捷方式。';
+
+  @override
+  String get reviewInstallationPlan => '检查安装计划';
+
+  @override
+  String get reviewInstallationPlanDescription =>
+      '在修改文件前，检查每个目标操作和 Workspace Lock 变更。';
+
+  @override
+  String get installationResults => '安装结果';
+
+  @override
+  String get installationResultsDescription =>
+      '每个目标独立完成。你可以留在这里，或前往技能库查看已安装技能。';
+
+  @override
+  String get installationInProgress => '正在安装';
+
+  @override
+  String get locationAgentMatrix => '位置 × Agent';
+
+  @override
+  String targetsSelected(int count) {
+    return '已选择 $count 个目标';
+  }
+
+  @override
+  String get location => '位置';
+
+  @override
+  String get select => '选择';
+
+  @override
+  String selectTarget(String location, String agent) {
+    return '为 $agent 选择 $location';
+  }
+
+  @override
+  String selectLocationTargets(String location) {
+    return '选择 $location 中所有可用目标';
+  }
+
+  @override
+  String selectAgentTargets(String agent) {
+    return '选择 $agent 的所有可用目标';
+  }
+
+  @override
+  String get projectUnavailable => '项目不可用';
+
+  @override
+  String get installedCell => '已安装';
+
+  @override
+  String get unsupportedCell => '不可用';
+
+  @override
+  String reviewTargets(int count) {
+    return '检查 $count 个目标';
+  }
+
+  @override
+  String installSelectedTargets(int count) {
+    return '安装 $count 个目标';
+  }
+
+  @override
+  String get backToTargets => '返回目标选择';
+
+  @override
+  String get stayHere => '留在这里';
+
+  @override
+  String get viewInLibrary => '在技能库中查看';
+
+  @override
+  String planCreateCount(int count) {
+    return '创建 $count 个';
+  }
+
+  @override
+  String planSkipCount(int count) {
+    return '跳过 $count 个';
+  }
+
+  @override
+  String planConflictCount(int count) {
+    return '冲突 $count 个';
+  }
+
+  @override
+  String get workspaceLockChanges => 'Workspace Lock 变更';
+
+  @override
+  String get noWorkspaceLockChanges => '不会修改 Workspace Lock 文件。';
+
+  @override
+  String lockVersionChange(String from, String to) {
+    return '$from → $to';
+  }
+
+  @override
+  String get notPresent => '尚不存在';
+
+  @override
+  String get planActionCreate => '创建';
+
+  @override
+  String get planActionReplace => '替换';
+
+  @override
+  String get planActionSkip => '跳过';
+
+  @override
+  String get planActionConflict => '冲突';
+
+  @override
+  String get planActionBlockedByRisk => '因风险阻止';
+
+  @override
+  String installationResultSummary(int succeeded, int failed) {
+    return '已安装 $succeeded 个目标，$failed 个失败';
+  }
+
+  @override
+  String get targetSucceeded => '已安装';
+
+  @override
+  String get targetSkipped => '已跳过';
+
+  @override
+  String get targetConflict => '冲突';
+
+  @override
+  String get targetFailed => '失败';
+
+  @override
+  String get targetPathExists => '目标路径已有其他内容。';
+
+  @override
+  String get targetBlockedByRisk => '当前风险策略已阻止这个目标。';
+
+  @override
+  String get targetInstallFailed => '无法将技能写入这个目标。';
+
+  @override
+  String get targetWorkspaceUpdateFailed => '技能已写入，但无法更新对应的 Workspace 文件。';
+
+  @override
+  String get installationPlanFailed => '安装计划无法继续';
 }
