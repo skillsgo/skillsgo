@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses temporary Agent, Store-entry, target, and Workspace fixtures at the public Installation Plan domain seam.
- * [OUTPUT]: Specifies strict target JSON, explicit-cell preservation, shared-path and state-bound conflict resolution, trusted-risk gates, zero-mutation unresolved plans, Workspace Lock previews, Local Modification protection, receipts, and target-specific results.
+ * [OUTPUT]: Specifies strict target JSON, explicit-cell preservation, shared-path and state-bound conflict resolution, trusted-risk gates, zero-mutation unresolved plans, Workspace Lock previews, Local Modification protection, resilient per-target progress/results, and receipts.
  * [POS]: Serves as deterministic domain coverage beneath the public CLI command-flow contract.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -103,6 +103,62 @@ func TestBuildAndExecuteExplicitTargetsThenSkipIdenticalTargets(t *testing.T) {
 	require.Zero(t, secondExecution.Summary.Succeeded)
 }
 
+func TestRetryReconcilesProjectManifestAfterArtifactWasAlreadyInstalled(t *testing.T) {
+	root := t.TempDir()
+	projectRoot := filepath.Join(root, "project")
+	storeRoot := filepath.Join(root, "store")
+	require.NoError(t, os.MkdirAll(projectRoot, 0o700))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "agent-a"), 0o700))
+	require.NoError(t, os.MkdirAll(filepath.Join(root, "agent-b"), 0o700))
+	entry := testEntry(t, storeRoot)
+	catalog := agent.NewCatalog(
+		agent.Paths{Home: root, ConfigHome: filepath.Join(root, "config"), CWD: root},
+		agent.WithDefinition(agent.Definition{
+			ID: "agent-a", Display: "Agent A", ProjectDir: ".agent-a/skills",
+			UserDir: filepath.Join(root, "agent-a", "skills"),
+		}),
+		agent.WithDefinition(agent.Definition{
+			ID: "agent-b", Display: "Agent B", ProjectDir: ".agent-b/skills",
+			UserDir: filepath.Join(root, "agent-b", "skills"),
+		}),
+	)
+	requestA := Request{
+		Source: entry.Receipt.Coordinate, RequestedRef: "main", Name: "demo",
+		Targets: []TargetRequest{{
+			Scope: install.ScopeProject, ProjectRoot: projectRoot,
+			Agent: "agent-a", Mode: install.ModeCopy,
+		}},
+	}
+	preflightA, err := Build(catalog, entry, storeRoot, requestA)
+	require.NoError(t, err)
+	_, err = Execute(entry, storeRoot, requestA, preflightA)
+	require.NoError(t, err)
+
+	requestB := Request{
+		Source: entry.Receipt.Coordinate, RequestedRef: "main", Name: "demo",
+		Targets: []TargetRequest{{
+			Scope: install.ScopeProject, ProjectRoot: projectRoot,
+			Agent: "agent-b", Mode: install.ModeCopy,
+		}},
+	}
+	preflightB, err := Build(catalog, entry, storeRoot, requestB)
+	require.NoError(t, err)
+	require.Equal(t, ActionCreate, preflightB.Targets[0].Action)
+	require.NoError(t, install.Install(entry, []install.Target{installTarget(preflightB.Targets[0].Target)}))
+
+	retry, err := Build(catalog, entry, storeRoot, requestB)
+	require.NoError(t, err)
+	require.Equal(t, ActionSkip, retry.Targets[0].Action)
+	require.True(t, retry.Targets[0].WorkspaceLockChange)
+	execution, err := Execute(entry, storeRoot, requestB, retry)
+	require.NoError(t, err)
+	require.Equal(t, OutcomeSkipped, execution.Results[0].Outcome)
+
+	manifest, _, err := project.Load(projectRoot)
+	require.NoError(t, err)
+	require.ElementsMatch(t, []string{"agent-a", "agent-b"}, manifest.Skills["demo"].Agents)
+}
+
 func TestExecuteRecordsEveryAgentWhenTargetsShareOnePhysicalCopy(t *testing.T) {
 	root := t.TempDir()
 	agentHome := filepath.Join(root, "shared-agent-home")
@@ -141,6 +197,53 @@ func TestExecuteRecordsEveryAgentWhenTargetsShareOnePhysicalCopy(t *testing.T) {
 		installations[0].Target.Agent,
 		installations[1].Target.Agent,
 	})
+}
+
+func TestExecuteWithProgressRetainsSuccessfulTargetsAfterUnrelatedFailure(t *testing.T) {
+	root := t.TempDir()
+	goodHome := filepath.Join(root, "good-agent")
+	badHome := filepath.Join(root, "bad-agent")
+	storeRoot := filepath.Join(root, "store")
+	require.NoError(t, os.MkdirAll(goodHome, 0o700))
+	require.NoError(t, os.MkdirAll(badHome, 0o700))
+	entry := testEntry(t, storeRoot)
+	catalog := agent.NewCatalog(
+		agent.Paths{Home: root, ConfigHome: filepath.Join(root, "config"), CWD: root},
+		agent.WithDefinition(agent.Definition{ID: "good", Display: "Good", UserDir: filepath.Join(goodHome, "skills")}),
+		agent.WithDefinition(agent.Definition{ID: "bad", Display: "Bad", UserDir: filepath.Join(badHome, "skills")}),
+	)
+	request := Request{
+		Source: entry.Receipt.Coordinate, RequestedRef: "main", Name: "demo",
+		Targets: []TargetRequest{
+			{Scope: install.ScopeUser, Agent: "good", Mode: install.ModeCopy},
+			{Scope: install.ScopeUser, Agent: "bad", Mode: install.ModeCopy},
+		},
+	}
+	preflight, err := Build(catalog, entry, storeRoot, request)
+	require.NoError(t, err)
+	require.NoError(t, os.RemoveAll(badHome))
+	require.NoError(t, os.WriteFile(badHome, []byte("blocks directory creation"), 0o600))
+	progress := make([]Progress, 0)
+
+	execution, err := ExecuteWithProgress(entry, storeRoot, request, preflight, func(event Progress) {
+		progress = append(progress, event)
+	})
+	require.NoError(t, err)
+	require.Equal(t, 1, execution.Summary.Succeeded)
+	require.Equal(t, 1, execution.Summary.Failed)
+	require.Equal(t, OutcomeSucceeded, execution.Results[0].Outcome)
+	require.Equal(t, OutcomeFailed, execution.Results[1].Outcome)
+	require.FileExists(t, filepath.Join(preflight.Targets[0].Target.Path, "SKILL.md"))
+	require.Len(t, progress, 4)
+	require.Equal(t, []ProgressState{ProgressStarted, ProgressFinished, ProgressStarted, ProgressFinished}, []ProgressState{
+		progress[0].State, progress[1].State, progress[2].State, progress[3].State,
+	})
+	require.Equal(t, OutcomeSucceeded, progress[1].Result.Outcome)
+	require.Equal(t, OutcomeFailed, progress[3].Result.Outcome)
+	for index, event := range progress {
+		require.Equal(t, index+1, event.Sequence)
+		require.Equal(t, preflight.Artifact, event.Artifact)
+	}
 }
 
 func TestSharedPhysicalCreateRequiresEveryInstalledAgentCell(t *testing.T) {

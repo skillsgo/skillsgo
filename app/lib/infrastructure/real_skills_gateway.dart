@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Registry HTTP, the local filesystem, the platform directory picker, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides production Registry settings, discovery/detail, managed/external inventory parsing, trusted-risk and state-bound Installation Plan/result parsing, local file inspection, project persistence, Agent inspection, typed failures, diagnostics, CLI verification, and Skill operations.
+ * [OUTPUT]: Provides production Registry settings, discovery/detail, managed/external inventory parsing, strict Installation Plan NDJSON progress/result parsing, local file inspection, project persistence, Agent inspection, typed failures, diagnostics, CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -28,8 +28,47 @@ class IoProcessRunner implements ProcessRunner {
   const IoProcessRunner();
 
   @override
-  Future<ProcessOutput> run(String executable, List<String> arguments) async {
+  Future<ProcessOutput> run(
+    String executable,
+    List<String> arguments, {
+    void Function(String line)? onStdoutLine,
+  }) async {
     try {
+      if (onStdoutLine != null) {
+        final process = await Process.start(executable, arguments);
+        final stdout = StringBuffer();
+        final stdoutDone = Completer<void>();
+        process.stdout
+            .transform(utf8.decoder)
+            .transform(const LineSplitter())
+            .listen(
+              (line) {
+                if (stdout.isNotEmpty) stdout.writeln();
+                stdout.write(line);
+                onStdoutLine(line);
+              },
+              onError: stdoutDone.completeError,
+              onDone: stdoutDone.complete,
+              cancelOnError: true,
+            );
+        final stderrFuture = process.stderr.transform(utf8.decoder).join();
+        var timedOut = false;
+        late int exitCode;
+        try {
+          exitCode = await process.exitCode.timeout(const Duration(minutes: 2));
+        } on TimeoutException {
+          timedOut = true;
+          process.kill();
+          exitCode = await process.exitCode;
+        }
+        await stdoutDone.future;
+        final stderr = await stderrFuture;
+        return ProcessOutput(
+          exitCode: timedOut ? 124 : exitCode,
+          stdout: stdout.toString(),
+          stderr: timedOut ? 'Command timed out.' : stderr,
+        );
+      }
       final result = await Process.run(
         executable,
         arguments,
@@ -322,6 +361,98 @@ bool _samePlanTarget(
     left.mode == right.mode &&
     left.path == right.path;
 
+String _installationTargetKey(InstallationPlanTarget target) =>
+    '${target.scope.name}\u0000${target.projectRoot}\u0000${target.agent}\u0000${target.mode.name}\u0000${target.path}';
+
+void _validateInstallationArtifact(Object? raw, InstallationPlan plan) {
+  if (raw is! Map<String, dynamic> ||
+      raw['source'] != plan.source ||
+      raw['coordinate'] != plan.coordinate ||
+      raw['version'] != plan.version ||
+      raw['name'] != plan.name) {
+    throw const FormatException();
+  }
+}
+
+InstallationTargetResult _installationTargetResult(
+  Object? raw,
+  InstallationPlanItem expected,
+) {
+  if (raw is! Map<String, dynamic> ||
+      (raw['errorCode'] != null && raw['errorCode'] is! String) ||
+      (raw['diagnostic'] != null && raw['diagnostic'] is! String)) {
+    throw const FormatException();
+  }
+  final target = _installationPlanTarget(raw['target']);
+  final action = _installationPlanAction(raw['action']);
+  if (!_samePlanTarget(target, expected.target) || action != expected.action) {
+    throw const FormatException();
+  }
+  final outcome = _installationTargetOutcome(raw['outcome']);
+  final errorCode = _installationErrorCode(raw['errorCode']);
+  if ((outcome == InstallationTargetOutcome.succeeded ||
+          outcome == InstallationTargetOutcome.skipped) &&
+      errorCode.isNotEmpty) {
+    throw const FormatException();
+  }
+  if ((outcome == InstallationTargetOutcome.conflict ||
+          outcome == InstallationTargetOutcome.failed) &&
+      errorCode.isEmpty) {
+    throw const FormatException();
+  }
+  return InstallationTargetResult(
+    target: target,
+    action: action,
+    outcome: outcome,
+    errorCode: errorCode,
+    diagnostic: raw['diagnostic'] as String? ?? '',
+  );
+}
+
+InstallationExecution _installationExecution(
+  Object? raw,
+  InstallationPlan plan,
+) {
+  if (raw is! Map<String, dynamic> ||
+      raw['schemaVersion'] != _installationPlanSchemaVersion ||
+      raw['phase'] != 'execution' ||
+      raw['results'] is! List ||
+      raw['summary'] is! Map<String, dynamic>) {
+    throw const FormatException();
+  }
+  _validateInstallationArtifact(raw['artifact'], plan);
+  final rawResults = raw['results'] as List;
+  if (rawResults.length != plan.targets.length) throw const FormatException();
+  final results = <InstallationTargetResult>[
+    for (var index = 0; index < rawResults.length; index++)
+      _installationTargetResult(rawResults[index], plan.targets[index]),
+  ];
+  final rawSummary = raw['summary'] as Map<String, dynamic>;
+  final summary = InstallationExecutionSummary(
+    succeeded: _strictNonNegativeInt(rawSummary['succeeded']),
+    skipped: _strictNonNegativeInt(rawSummary['skipped']),
+    conflict: _strictNonNegativeInt(rawSummary['conflict']),
+    failed: _strictNonNegativeInt(rawSummary['failed']),
+  );
+  final outcomeCounts = {
+    for (final outcome in InstallationTargetOutcome.values)
+      outcome: results.where((result) => result.outcome == outcome).length,
+  };
+  if (summary.succeeded != outcomeCounts[InstallationTargetOutcome.succeeded] ||
+      summary.skipped != outcomeCounts[InstallationTargetOutcome.skipped] ||
+      summary.conflict != outcomeCounts[InstallationTargetOutcome.conflict] ||
+      summary.failed != outcomeCounts[InstallationTargetOutcome.failed]) {
+    throw const FormatException();
+  }
+  return InstallationExecution(
+    coordinate: plan.coordinate,
+    version: plan.version,
+    name: plan.name,
+    results: List.unmodifiable(results),
+    summary: summary,
+  );
+}
+
 String _scopeValue(InstallationScope scope) => switch (scope) {
   InstallationScope.user => 'user',
   InstallationScope.project => 'project',
@@ -389,7 +520,7 @@ class RealSkillsGateway implements SkillsGateway {
   static const _allowCriticalOverrideKey = 'allow_critical_risk_override';
   static const _addedProjectsKey = 'added_projects_v1';
   static const _startupHandshakeSchemaVersion = 1;
-  static const _appProtocolVersion = 4;
+  static const _appProtocolVersion = 5;
   final http.Client _http;
   final ProcessRunner _runner;
   final Uri _defaultRegistryBase;
@@ -1197,7 +1328,10 @@ class RealSkillsGateway implements SkillsGateway {
     return path;
   }
 
-  Future<CommandResult> _runCli(List<String> arguments) async {
+  Future<CommandResult> _runCli(
+    List<String> arguments, {
+    void Function(String line)? onStdoutLine,
+  }) async {
     if (_cliPath == null) {
       final status = await detectCli();
       if (!status.isReady) {
@@ -1207,7 +1341,11 @@ class RealSkillsGateway implements SkillsGateway {
       }
     }
     final executable = _requiredCli;
-    final output = await _runner.run(executable, arguments);
+    final output = await _runner.run(
+      executable,
+      arguments,
+      onStdoutLine: onStdoutLine,
+    );
     return CommandResult(command: [executable, ...arguments], output: output);
   }
 
@@ -1679,7 +1817,10 @@ class RealSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<InstallationExecution> executeInstall(InstallationPlan plan) async {
+  Future<InstallationExecution> executeInstall(
+    InstallationPlan plan, {
+    void Function(InstallationTargetProgress progress)? onProgress,
+  }) async {
     await _ensureRegistryOrigin();
     final arguments = <String>['add', plan.source, '--skill', plan.name];
     for (final selection in plan.selections) {
@@ -1692,95 +1833,116 @@ class RealSkillsGateway implements SkillsGateway {
       if (plan.allowCritical) '--allow-critical',
       '--yes',
       '--output',
-      'json',
+      'ndjson',
       '--registry',
       _registryOrigin,
     ]);
-    final command = await _runCli(arguments);
+    final expectedTargets = {
+      for (final item in plan.targets)
+        _installationTargetKey(item.target): item,
+    };
+    if (expectedTargets.length != plan.targets.length) {
+      throw const SkillsException(
+        'The Installation Plan contains duplicate targets.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    final states = <String, InstallationProgressState>{};
+    final terminalResults = <String, InstallationTargetResult>{};
+    Map<String, dynamic>? finalPayload;
+    Object? streamFailure;
+    var expectedSequence = 1;
+    var sawLine = false;
+    void consumeLine(String line) {
+      sawLine = true;
+      if (streamFailure != null) return;
+      try {
+        final decoded = jsonDecode(line);
+        if (decoded is! Map<String, dynamic> ||
+            decoded['schemaVersion'] != _installationPlanSchemaVersion) {
+          throw const FormatException();
+        }
+        switch (decoded['phase']) {
+          case 'execution-progress':
+            _validateInstallationArtifact(decoded['artifact'], plan);
+            if (decoded['sequence'] != expectedSequence++) {
+              throw const FormatException();
+            }
+            final target = _installationPlanTarget(decoded['target']);
+            final key = _installationTargetKey(target);
+            final expected = expectedTargets[key];
+            final action = _installationPlanAction(decoded['action']);
+            if (expected == null || action != expected.action) {
+              throw const FormatException();
+            }
+            final state = switch (decoded['state']) {
+              'started' => InstallationProgressState.started,
+              'finished' => InstallationProgressState.finished,
+              _ => throw const FormatException(),
+            };
+            InstallationTargetResult? result;
+            if (state == InstallationProgressState.started) {
+              if (states.containsKey(key) || decoded.containsKey('result')) {
+                throw const FormatException();
+              }
+            } else {
+              if (states[key] != InstallationProgressState.started ||
+                  decoded['result'] == null) {
+                throw const FormatException();
+              }
+              result = _installationTargetResult(decoded['result'], expected);
+              terminalResults[key] = result;
+            }
+            states[key] = state;
+            onProgress?.call(
+              InstallationTargetProgress(
+                sequence: decoded['sequence'] as int,
+                target: target,
+                action: action,
+                state: state,
+                result: result,
+              ),
+            );
+          case 'execution':
+            if (finalPayload != null ||
+                states.length != expectedTargets.length ||
+                states.values.any(
+                  (state) => state != InstallationProgressState.finished,
+                )) {
+              throw const FormatException();
+            }
+            finalPayload = decoded;
+          default:
+            throw const FormatException();
+        }
+      } catch (error) {
+        streamFailure = error;
+      }
+    }
+
+    final command = await _runCli(arguments, onStdoutLine: consumeLine);
+    if (!sawLine) {
+      for (final line in const LineSplitter().convert(command.output.stdout)) {
+        consumeLine(line);
+      }
+    }
     if (!command.succeeded) throw SkillsException(_commandError(command));
     try {
-      final decoded = jsonDecode(command.output.stdout);
-      if (decoded is! Map<String, dynamic> ||
-          decoded['schemaVersion'] != _installationPlanSchemaVersion ||
-          decoded['phase'] != 'execution' ||
-          decoded['artifact'] is! Map<String, dynamic> ||
-          decoded['results'] is! List ||
-          decoded['summary'] is! Map<String, dynamic>) {
+      if (streamFailure != null || finalPayload == null) {
         throw const FormatException();
       }
-      final artifact = decoded['artifact'] as Map<String, dynamic>;
-      if (artifact['source'] != plan.source ||
-          artifact['coordinate'] != plan.coordinate ||
-          artifact['version'] != plan.version ||
-          artifact['name'] != plan.name) {
-        throw const FormatException();
-      }
-      final rawResults = decoded['results'] as List;
-      if (rawResults.length != plan.targets.length) {
-        throw const FormatException();
-      }
-      final results = <InstallationTargetResult>[];
-      for (var index = 0; index < rawResults.length; index++) {
-        final raw = rawResults[index];
-        if (raw is! Map<String, dynamic> ||
-            (raw['errorCode'] != null && raw['errorCode'] is! String) ||
-            (raw['diagnostic'] != null && raw['diagnostic'] is! String)) {
+      final execution = _installationExecution(finalPayload, plan);
+      for (final result in execution.results) {
+        final streamed = terminalResults[_installationTargetKey(result.target)];
+        if (streamed == null ||
+            streamed.action != result.action ||
+            streamed.outcome != result.outcome ||
+            streamed.errorCode != result.errorCode ||
+            streamed.diagnostic != result.diagnostic) {
           throw const FormatException();
         }
-        final target = _installationPlanTarget(raw['target']);
-        final action = _installationPlanAction(raw['action']);
-        if (!_samePlanTarget(target, plan.targets[index].target) ||
-            action != plan.targets[index].action) {
-          throw const FormatException();
-        }
-        final outcome = _installationTargetOutcome(raw['outcome']);
-        final errorCode = _installationErrorCode(raw['errorCode']);
-        if ((outcome == InstallationTargetOutcome.succeeded ||
-                outcome == InstallationTargetOutcome.skipped) &&
-            errorCode.isNotEmpty) {
-          throw const FormatException();
-        }
-        if ((outcome == InstallationTargetOutcome.conflict ||
-                outcome == InstallationTargetOutcome.failed) &&
-            errorCode.isEmpty) {
-          throw const FormatException();
-        }
-        results.add(
-          InstallationTargetResult(
-            target: target,
-            action: action,
-            outcome: outcome,
-            errorCode: errorCode,
-            diagnostic: raw['diagnostic'] as String? ?? '',
-          ),
-        );
       }
-      final rawSummary = decoded['summary'] as Map<String, dynamic>;
-      final summary = InstallationExecutionSummary(
-        succeeded: _strictNonNegativeInt(rawSummary['succeeded']),
-        skipped: _strictNonNegativeInt(rawSummary['skipped']),
-        conflict: _strictNonNegativeInt(rawSummary['conflict']),
-        failed: _strictNonNegativeInt(rawSummary['failed']),
-      );
-      final outcomeCounts = {
-        for (final outcome in InstallationTargetOutcome.values)
-          outcome: results.where((result) => result.outcome == outcome).length,
-      };
-      if (summary.succeeded !=
-              outcomeCounts[InstallationTargetOutcome.succeeded] ||
-          summary.skipped != outcomeCounts[InstallationTargetOutcome.skipped] ||
-          summary.conflict !=
-              outcomeCounts[InstallationTargetOutcome.conflict] ||
-          summary.failed != outcomeCounts[InstallationTargetOutcome.failed]) {
-        throw const FormatException();
-      }
-      return InstallationExecution(
-        coordinate: plan.coordinate,
-        version: plan.version,
-        name: plan.name,
-        results: List.unmodifiable(results),
-        summary: summary,
-      );
+      return execution;
     } on FormatException {
       throw const SkillsException(
         'The SkillsGo CLI returned invalid Installation Result JSON.',

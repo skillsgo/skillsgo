@@ -53,7 +53,7 @@ var messages = map[string][2]string{
 	"install.short":                         {"Restore project Skills from skillsgo-lock.yaml", "按照 skillsgo-lock.yaml 恢复项目 Skill"},
 	"update.short":                          {"Update project Skills and atomically switch targets", "更新项目 Skill 并原子切换安装目标"},
 	"flag.registry":                         {"Registry service URL", "Registry 服务地址"},
-	"flag.output":                           {"Output format: human or json", "输出格式：human 或 json"},
+	"flag.output":                           {"Output format: human, json, or execution ndjson", "输出格式：human、json 或执行阶段 ndjson"},
 	"flag.lang":                             {"Interface language (for example: en or zh-CN)", "界面语言（例如 en 或 zh-CN）"},
 	"flag.global.add":                       {"Install in the user-level directory", "安装到用户级目录"},
 	"flag.agent.add":                        {"Target Agent (repeatable; '*' means all)", "目标 Agent（可指定多个，'*' 表示全部）"},

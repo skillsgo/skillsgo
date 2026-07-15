@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, unified Library entries/targets, explicit Installation Plans/results, project references, Agent inspection, CLI, Registry settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, unified Library entries/targets, explicit Installation Plans/progress/results, project references, Agent inspection, CLI, Registry settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -45,6 +45,8 @@ enum InstallationPlanAction { create, replace, skip, conflict, blockedByRisk }
 enum InstallationTargetResolution { none, replace }
 
 enum InstallationTargetOutcome { succeeded, skipped, conflict, failed }
+
+enum InstallationProgressState { started, finished }
 
 enum ReceiptState { present, missing, invalid }
 
@@ -409,6 +411,22 @@ class InstallationExecution {
   bool get hasSuccess => summary.succeeded > 0 || summary.skipped > 0;
 }
 
+class InstallationTargetProgress {
+  const InstallationTargetProgress({
+    required this.sequence,
+    required this.target,
+    required this.action,
+    required this.state,
+    this.result,
+  });
+
+  final int sequence;
+  final InstallationPlanTarget target;
+  final InstallationPlanAction action;
+  final InstallationProgressState state;
+  final InstallationTargetResult? result;
+}
+
 class AgentUserTarget {
   const AgentUserTarget({required this.path, required this.exists});
 
@@ -615,7 +633,11 @@ class ProcessOutput {
 }
 
 abstract interface class ProcessRunner {
-  Future<ProcessOutput> run(String executable, List<String> arguments);
+  Future<ProcessOutput> run(
+    String executable,
+    List<String> arguments, {
+    void Function(String line)? onStdoutLine,
+  });
 }
 
 class CommandResult {
@@ -677,7 +699,10 @@ abstract interface class SkillsGateway {
     bool riskConfirmed = false,
     bool allowCritical = false,
   });
-  Future<InstallationExecution> executeInstall(InstallationPlan plan);
+  Future<InstallationExecution> executeInstall(
+    InstallationPlan plan, {
+    void Function(InstallationTargetProgress progress)? onProgress,
+  });
   Future<CommandResult> install(SkillSummary skill);
   Future<CommandResult> remove(InstalledSkill skill);
   Future<CommandResult> update(InstalledSkill skill);

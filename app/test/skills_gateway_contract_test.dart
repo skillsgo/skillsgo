@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings, discovery/detail parsing, managed/external CLI inventory including Local Modifications, read-only local inspection, explicit project reference persistence, strict state-bound Installation Plan and trusted-risk machine contracts, typed failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings, discovery/detail parsing, managed/external CLI inventory including Local Modifications, read-only local inspection, explicit project persistence, strict Installation Plan NDJSON progress/result contracts, typed failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -263,7 +263,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 4,
+            'appProtocolVersion': 5,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -370,7 +370,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '0.1.0',
-          'appProtocolVersion': 4,
+          'appProtocolVersion': 5,
           'os': 'linux',
           'architecture': 'arm64',
         }),
@@ -398,7 +398,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '7.4.2',
-            'appProtocolVersion': 4,
+            'appProtocolVersion': 5,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -426,7 +426,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': 'dev',
-          'appProtocolVersion': 4,
+          'appProtocolVersion': 5,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -455,7 +455,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '1.0.0',
-          'appProtocolVersion': 4,
+          'appProtocolVersion': 5,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -482,7 +482,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 4,
+            'appProtocolVersion': 5,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -1157,25 +1157,77 @@ void main() {
           ),
           ProcessOutput(
             exitCode: 0,
-            stdout: jsonEncode({
-              'schemaVersion': 2,
-              'phase': 'execution',
-              'artifact': artifact,
-              'results': [
-                {'target': userTarget, 'action': 'skip', 'outcome': 'skipped'},
-                {
+            stdout: [
+              {
+                'schemaVersion': 2,
+                'phase': 'execution-progress',
+                'sequence': 1,
+                'artifact': artifact,
+                'target': userTarget,
+                'action': 'skip',
+                'state': 'started',
+              },
+              {
+                'schemaVersion': 2,
+                'phase': 'execution-progress',
+                'sequence': 2,
+                'artifact': artifact,
+                'target': userTarget,
+                'action': 'skip',
+                'state': 'finished',
+                'result': {
+                  'target': userTarget,
+                  'action': 'skip',
+                  'outcome': 'skipped',
+                },
+              },
+              {
+                'schemaVersion': 2,
+                'phase': 'execution-progress',
+                'sequence': 3,
+                'artifact': artifact,
+                'target': projectTarget,
+                'action': 'replace',
+                'state': 'started',
+              },
+              {
+                'schemaVersion': 2,
+                'phase': 'execution-progress',
+                'sequence': 4,
+                'artifact': artifact,
+                'target': projectTarget,
+                'action': 'replace',
+                'state': 'finished',
+                'result': {
                   'target': projectTarget,
                   'action': 'replace',
                   'outcome': 'succeeded',
                 },
-              ],
-              'summary': {
-                'succeeded': 1,
-                'skipped': 1,
-                'conflict': 0,
-                'failed': 0,
               },
-            }),
+              {
+                'schemaVersion': 2,
+                'phase': 'execution',
+                'artifact': artifact,
+                'results': [
+                  {
+                    'target': userTarget,
+                    'action': 'skip',
+                    'outcome': 'skipped',
+                  },
+                  {
+                    'target': projectTarget,
+                    'action': 'replace',
+                    'outcome': 'succeeded',
+                  },
+                ],
+                'summary': {
+                  'succeeded': 1,
+                  'skipped': 1,
+                  'conflict': 0,
+                  'failed': 0,
+                },
+              },
+            ].map(jsonEncode).join('\n'),
             stderr: '',
           ),
         ]);
@@ -1259,11 +1311,21 @@ void main() {
         },
       ]);
 
-      final execution = await gateway.executeInstall(plan);
+      final progress = <InstallationTargetProgress>[];
+      final execution = await gateway.executeInstall(
+        plan,
+        onProgress: progress.add,
+      );
 
       expect(execution.summary.succeeded, 1);
       expect(execution.summary.skipped, 1);
+      expect(progress.map((event) => event.sequence), [1, 2, 3, 4]);
+      expect(
+        progress.last.result?.outcome,
+        InstallationTargetOutcome.succeeded,
+      );
       expect(runner.lastArguments, containsAllInOrder(['--version', 'v1']));
+      expect(runner.lastArguments, containsAllInOrder(['--output', 'ndjson']));
       expect(
         runner.calls.map((call) => call.executable),
         everyElement(r'/Applications/Skills Go/$(echo never)/skillsgo'),
@@ -1274,6 +1336,67 @@ void main() {
       );
     },
   );
+
+  test('Installation execution never parses human-readable output', () async {
+	final runner = _FakeProcessRunner()
+	  ..result = const ProcessOutput(
+		exitCode: 0,
+		stdout: '已安装 1 个目标。',
+		stderr: '',
+	  );
+	final gateway = RealSkillsGateway(
+	  processRunner: runner,
+	  initialCliPath: '/Applications/SkillsGo.app/skillsgo',
+	);
+	const target = InstallationPlanTarget(
+	  scope: InstallationScope.user,
+	  agent: 'codex',
+	  mode: InstallationMode.symlink,
+	  path: '/Users/test/.codex/skills/test',
+	);
+	const plan = InstallationPlan(
+	  source: 'github.com/a/b/-/test',
+	  coordinate: 'github.com/a/b/-/test',
+	  version: 'v1',
+	  name: 'test',
+	  selections: [
+		InstallationTargetSelection(
+		  scope: InstallationScope.user,
+		  agent: 'codex',
+		),
+	  ],
+	  targets: [
+		InstallationPlanItem(
+		  target: target,
+		  action: InstallationPlanAction.create,
+		  workspaceLockChange: false,
+		),
+	  ],
+	  summary: InstallationPlanSummary(
+		create: 1,
+		replace: 0,
+		skip: 0,
+		conflict: 0,
+		blockedByRisk: 0,
+	  ),
+	  workspaceLockChanges: [],
+	  riskAssessment: SkillRiskAssessment.low,
+	  riskConfirmed: false,
+	  allowCritical: false,
+	);
+
+	await expectLater(
+	  gateway.executeInstall(plan),
+	  throwsA(
+		isA<SkillsException>().having(
+		  (error) => error.kind,
+		  'kind',
+		  SkillsFailureKind.invalidResponse,
+		),
+	  ),
+	);
+	expect(runner.lastArguments, containsAllInOrder(['--output', 'ndjson']));
+  });
 
   test('Installation Plan rejects malformed machine contracts', () async {
     const coordinate = 'github.com/a/b/-/test';
@@ -1682,11 +1805,20 @@ class _FakeProcessRunner implements ProcessRunner {
   final responses = <ProcessOutput>[];
 
   @override
-  Future<ProcessOutput> run(String executable, List<String> arguments) async {
+  Future<ProcessOutput> run(
+    String executable,
+    List<String> arguments, {
+    void Function(String line)? onStdoutLine,
+  }) async {
     lastExecutable = executable;
     lastArguments = arguments;
     calls.add((executable: executable, arguments: List.of(arguments)));
-    if (responses.isNotEmpty) return responses.removeAt(0);
-    return result;
+    final response = responses.isNotEmpty ? responses.removeAt(0) : result;
+    if (onStdoutLine != null) {
+      for (final line in const LineSplitter().convert(response.stdout)) {
+        onStdoutLine(line);
+      }
+    }
+    return response;
   }
 }
