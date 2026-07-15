@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on one immutable Store entry, an installed Agent Catalog, explicit location-and-Agent requests, Installation Receipts, and Workspace state.
- * [OUTPUT]: Provides strict target decoding, shared immutable-risk authorization, collision/Local Modification preflight actions, Workspace Lock previews, zero-mutation unresolved-plan rejection, and target-specific execution results.
+ * [OUTPUT]: Provides strict target decoding, shared immutable-risk authorization, collision/Local Modification preflight actions, Workspace Lock previews, zero-mutation unresolved-plan rejection, and resilient target-specific progress/results.
  * [POS]: Serves as the domain orchestration layer between the add command and lower-level install/project mutation modules.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -29,6 +29,7 @@ type Action string
 type Outcome string
 type Resolution string
 type Risk string
+type ProgressState string
 
 const (
 	ActionCreate   Action = "create"
@@ -49,6 +50,9 @@ const (
 	RiskMedium   Risk = "medium"
 	RiskHigh     Risk = "high"
 	RiskCritical Risk = "critical"
+
+	ProgressStarted  ProgressState = "started"
+	ProgressFinished ProgressState = "finished"
 )
 
 type TargetRequest struct {
@@ -150,6 +154,17 @@ type Execution struct {
 	Summary       ResultSummary `json:"summary"`
 }
 
+type Progress struct {
+	SchemaVersion int           `json:"schemaVersion"`
+	Phase         string        `json:"phase"`
+	Sequence      int           `json:"sequence"`
+	Artifact      Artifact      `json:"artifact"`
+	Target        Target        `json:"target"`
+	Action        Action        `json:"action"`
+	State         ProgressState `json:"state"`
+	Result        *Result       `json:"result,omitempty"`
+}
+
 func DecodeTargets(values []string) ([]TargetRequest, error) {
 	requests := make([]TargetRequest, 0, len(values))
 	for index, value := range values {
@@ -226,7 +241,12 @@ func Build(catalog *agent.Catalog, entry *store.Entry, storeRoot string, request
 		}
 		item = applyRisk(item, risk, request)
 		if item.Target.Scope == install.ScopeProject {
-			changed, fromVersion, err := lockWillChange(item.Target.ProjectRoot, request.Name, entry.Receipt)
+			changed, fromVersion, err := lockWillChange(
+				item.Target.ProjectRoot,
+				request.Name,
+				entry.Receipt,
+				workspaceRequirement(request, item.Target),
+			)
 			if err != nil {
 				return Preflight{}, err
 			}
@@ -585,7 +605,12 @@ func replacementStateToken(target Target, reason string, installations []install
 	return fmt.Sprintf("sha256:%x", digest[:]), nil
 }
 
-func lockWillChange(root, name string, receipt store.Receipt) (bool, string, error) {
+func lockWillChange(
+	root,
+	name string,
+	receipt store.Receipt,
+	expected project.SkillRequirement,
+) (bool, string, error) {
 	manifestPath := filepath.Join(root, "skillsgo.yaml")
 	lockPath := filepath.Join(root, "skillsgo-lock.yaml")
 	_, manifestErr := os.Stat(manifestPath)
@@ -596,7 +621,7 @@ func lockWillChange(root, name string, receipt store.Receipt) (bool, string, err
 	if manifestErr != nil || lockErr != nil {
 		return false, "", fmt.Errorf("project %q has incomplete Workspace state", root)
 	}
-	_, lockfile, err := project.Load(root)
+	manifest, lockfile, err := project.Load(root)
 	if err != nil {
 		return false, "", err
 	}
@@ -604,11 +629,29 @@ func lockWillChange(root, name string, receipt store.Receipt) (bool, string, err
 	if !ok {
 		return true, "", nil
 	}
-	changed := locked.Coordinate != receipt.Coordinate || locked.Version != receipt.Version || locked.SHA256 != receipt.SHA256
+	requirement, requirementExists := manifest.Skills[name]
+	changed := locked.Coordinate != receipt.Coordinate ||
+		locked.Version != receipt.Version ||
+		locked.SHA256 != receipt.SHA256 ||
+		!requirementExists ||
+		requirement.Source != receipt.Coordinate ||
+		requirement.Ref != expected.Ref ||
+		normalizedMode(requirement.Mode) != normalizedMode(expected.Mode) ||
+		!containsString(requirement.Agents, expected.Agents[0])
 	return changed, locked.Version, nil
 }
 
 func Execute(entry *store.Entry, storeRoot string, request Request, preflight Preflight) (Execution, error) {
+	return ExecuteWithProgress(entry, storeRoot, request, preflight, nil)
+}
+
+func ExecuteWithProgress(
+	entry *store.Entry,
+	storeRoot string,
+	request Request,
+	preflight Preflight,
+	report func(Progress),
+) (Execution, error) {
 	execution := Execution{
 		SchemaVersion: SchemaVersion,
 		Phase:         "execution",
@@ -617,6 +660,23 @@ func Execute(entry *store.Entry, storeRoot string, request Request, preflight Pr
 	}
 	if preflight.Summary.Conflict > 0 || preflight.Summary.BlockedByRisk > 0 {
 		return execution, fmt.Errorf("Installation Plan has unresolved targets")
+	}
+	sequence := 0
+	emit := func(index int, state ProgressState) {
+		if report == nil {
+			return
+		}
+		sequence++
+		item := preflight.Targets[index]
+		event := Progress{
+			SchemaVersion: SchemaVersion, Phase: "execution-progress", Sequence: sequence,
+			Artifact: preflight.Artifact, Target: item.Target, Action: item.Action, State: state,
+		}
+		if state == ProgressFinished {
+			result := execution.Results[index]
+			event.Result = &result
+		}
+		report(event)
 	}
 	currentInstallations, err := install.ListInstallations(storeRoot, install.InventoryFilter{})
 	if err != nil {
@@ -641,15 +701,18 @@ func Execute(entry *store.Entry, storeRoot string, request Request, preflight Pr
 		execution.Results[index] = Result{Target: item.Target, Action: item.Action}
 		switch item.Action {
 		case ActionSkip:
+			emit(index, ProgressStarted)
 			if item.WorkspaceLockChange {
 				if err := updateWorkspace(entry, request, item.Target, item.ReasonCode, identityReplaced); err != nil {
 					execution.Results[index].Outcome = OutcomeFailed
 					execution.Results[index].ErrorCode = "workspace-update-failed"
 					execution.Results[index].Diagnostic = err.Error()
+					emit(index, ProgressFinished)
 					continue
 				}
 			}
 			execution.Results[index].Outcome = OutcomeSkipped
+			emit(index, ProgressFinished)
 		case ActionConflict, ActionRisk:
 			return execution, fmt.Errorf("Installation Plan has unresolved target %s", item.Target.Path)
 		case ActionCreate, ActionReplace:
@@ -662,6 +725,9 @@ func Execute(entry *store.Entry, storeRoot string, request Request, preflight Pr
 	}
 	for _, key := range groupOrder {
 		indexes := groups[key]
+		for _, index := range indexes {
+			emit(index, ProgressStarted)
+		}
 		targets := make([]install.Target, 0, len(indexes))
 		for _, index := range indexes {
 			targets = append(targets, installTarget(preflight.Targets[index].Target))
@@ -670,9 +736,10 @@ func Execute(entry *store.Entry, storeRoot string, request Request, preflight Pr
 		if preflight.Targets[indexes[0]].Action == ActionReplace {
 			previous, err := installationsAtPaths(storeRoot, preflight, indexes)
 			if err != nil {
-				return execution, err
+				mutationErr = err
+			} else {
+				mutationErr = install.ReplaceExplicit(entry, previous, targets)
 			}
-			mutationErr = install.ReplaceExplicit(entry, previous, targets)
 		} else {
 			mutationErr = install.Install(entry, targets)
 		}
@@ -681,6 +748,7 @@ func Execute(entry *store.Entry, storeRoot string, request Request, preflight Pr
 				execution.Results[index].Outcome = OutcomeFailed
 				execution.Results[index].ErrorCode = "install-failed"
 				execution.Results[index].Diagnostic = mutationErr.Error()
+				emit(index, ProgressFinished)
 			}
 			continue
 		}
@@ -690,9 +758,11 @@ func Execute(entry *store.Entry, storeRoot string, request Request, preflight Pr
 				execution.Results[index].Outcome = OutcomeFailed
 				execution.Results[index].ErrorCode = "workspace-update-failed"
 				execution.Results[index].Diagnostic = err.Error()
+				emit(index, ProgressFinished)
 				continue
 			}
 			execution.Results[index].Outcome = OutcomeSucceeded
+			emit(index, ProgressFinished)
 		}
 	}
 	for _, result := range execution.Results {
@@ -738,10 +808,7 @@ func updateWorkspace(
 	if target.Scope != install.ScopeProject {
 		return nil
 	}
-	requirement := project.SkillRequirement{
-		Source: request.Source, Ref: request.RequestedRef,
-		Agents: []string{target.Agent}, Mode: target.Mode,
-	}
+	requirement := workspaceRequirement(request, target)
 	if reasonCode == "identity-collision" && !identityReplaced[target.ProjectRoot] {
 		if err := project.Replace(target.ProjectRoot, request.Name, requirement, entry.Receipt); err != nil {
 			return err
@@ -750,6 +817,31 @@ func updateWorkspace(
 		return nil
 	}
 	return project.Upsert(target.ProjectRoot, request.Name, requirement, entry.Receipt)
+}
+
+func workspaceRequirement(request Request, target Target) project.SkillRequirement {
+	return project.SkillRequirement{
+		Source: request.Source,
+		Ref:    request.RequestedRef,
+		Agents: []string{target.Agent},
+		Mode:   target.Mode,
+	}
+}
+
+func normalizedMode(mode install.Mode) install.Mode {
+	if mode == "" {
+		return install.ModeSymlink
+	}
+	return mode
+}
+
+func containsString(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
 }
 
 func installTarget(target Target) install.Target {

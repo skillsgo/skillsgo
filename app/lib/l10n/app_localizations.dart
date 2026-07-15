@@ -1784,6 +1784,36 @@ abstract class AppLocalizations {
   /// **'{succeeded} targets installed, {failed} failed'**
   String installationResultSummary(int succeeded, int failed);
 
+  /// No description provided for @installationProgressTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation in progress'**
+  String get installationProgressTitle;
+
+  /// No description provided for @installationProgressSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{finished} of {total} targets finished'**
+  String installationProgressSummary(int finished, int total);
+
+  /// No description provided for @targetWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting'**
+  String get targetWaiting;
+
+  /// No description provided for @targetRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing'**
+  String get targetRunning;
+
+  /// No description provided for @retryFailedTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Retry 1 Failed Target} other{Retry {count} Failed Targets}}'**
+  String retryFailedTargets(int count);
+
   /// No description provided for @targetSucceeded.
   ///
   /// In en, this message translates to:

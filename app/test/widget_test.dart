@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp with a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
- * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, managed/external multi-target Library views, read-only External inspection, explicit projects, Agents, Settings, state-bound and shared-target conflict/risk resolution, focus restoration, accessibility, and mutation journeys.
+ * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, managed/external multi-target Library views, explicit projects, Agents, Settings, conflict/risk resolution, persistent install progress, failed-only retry, focus restoration, accessibility, and mutation journeys.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -906,6 +906,93 @@ void main() {
     expect(find.text('Installation results'), findsOneWidget);
   });
 
+  testWidgets(
+    'live target progress survives navigation and restores on return',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      final install = Completer<CommandResult>();
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        installCompleter: install,
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(_searchInput(), 'progress');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flutter Pro'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Install Skill'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Select'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Review 1 Targets'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Install 1 Targets'));
+      await tester.pump();
+      await tester.tap(find.bySemanticsLabel('Close installation plan'));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.tap(find.bySemanticsLabel('Back to search'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flutter Pro'));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+
+      expect(find.text('Installation in progress'), findsOneWidget);
+      expect(find.text('0 of 1 targets finished'), findsOneWidget);
+
+      install.complete(_success(['skillsgo', 'add']));
+      await tester.pumpAndSettle();
+      expect(find.text('Installation results'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'retry executes only failed targets and retains prior successes',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 850));
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        agentNames: const ['codex', 'claude-code'],
+        installFailures: const [
+          {'claude-code'},
+          <String>{},
+        ],
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.enterText(_searchInput(), 'retry');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flutter Pro'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Install Skill'));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.bySemanticsLabel('Select all available targets in User Scope'),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Review 2 Targets'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Install 2 Targets'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 targets installed, 1 failed'), findsOneWidget);
+      expect(find.text('Retry 1 Failed Target'), findsOneWidget);
+      await tester.tap(find.text('Retry 1 Failed Target'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('2 targets installed, 0 failed'), findsOneWidget);
+      expect(gateway.installCalls, 2);
+      expect(gateway.executionSelectionHistory, hasLength(2));
+      expect(
+        gateway.executionSelectionHistory[1].map((target) => target.agent),
+        ['claude-code'],
+      );
+    },
+  );
+
   testWidgets('Discover restores its collection scroll position', (
     tester,
   ) async {
@@ -1767,6 +1854,7 @@ class FakeSkillsGateway implements SkillsGateway {
     List<SkillsException> detailErrors = const [],
     this.planConflictReason = '',
     this.riskPolicy = const PersonalRiskPolicy(),
+    this.installFailures = const [],
   }) : searchResults = searchResults ?? _defaultSearchResults,
        remoteDetail =
            remoteDetail ??
@@ -1799,12 +1887,14 @@ class FakeSkillsGateway implements SkillsGateway {
   final Map<String, SkillsException> discoveryErrors;
   final SkillDetail remoteDetail;
   final List<SkillsException> detailErrors;
+  final List<Set<String>> installFailures;
   bool installed;
   final queries = <String>[];
   final collections = <DiscoveryCollection>[];
   final requestedOffsets = <int>[];
   int installCalls = 0;
   List<InstallationTargetSelection> lastPlanSelections = const [];
+  final executionSelectionHistory = <List<InstallationTargetSelection>>[];
   int detailLoads = 0;
   int agentInspections = 0;
   String? savedPath;
@@ -2165,55 +2255,74 @@ class FakeSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<InstallationExecution> executeInstall(InstallationPlan plan) async {
+  Future<InstallationExecution> executeInstall(
+    InstallationPlan plan, {
+    void Function(InstallationTargetProgress progress)? onProgress,
+  }) async {
     installCalls++;
+    executionSelectionHistory.add(List.unmodifiable(plan.selections));
+    var sequence = 0;
+    for (final item in plan.targets) {
+      onProgress?.call(
+        InstallationTargetProgress(
+          sequence: ++sequence,
+          target: item.target,
+          action: item.action,
+          state: InstallationProgressState.started,
+        ),
+      );
+    }
+    var forceAllFailed = false;
+    var failureDiagnostic = '';
     if (installCompleter != null) {
       final result = await installCompleter!.future;
-      installed = result.succeeded;
-      if (!result.succeeded) {
-        return InstallationExecution(
-          coordinate: plan.coordinate,
-          version: plan.version,
-          name: plan.name,
-          results: plan.targets
-              .map(
-                (item) => InstallationTargetResult(
-                  target: item.target,
-                  action: item.action,
-                  outcome: InstallationTargetOutcome.failed,
-                  errorCode: 'install-failed',
-                  diagnostic: result.output.stderr,
-                ),
-              )
-              .toList(growable: false),
-          summary: InstallationExecutionSummary(
-            succeeded: 0,
-            skipped: 0,
-            conflict: 0,
-            failed: plan.targets.length,
-          ),
-        );
-      }
+      forceAllFailed = !result.succeeded;
+      failureDiagnostic = result.output.stderr;
     }
-    installed = true;
+    final configuredFailures = installCalls <= installFailures.length
+        ? installFailures[installCalls - 1]
+        : const <String>{};
+    final results = <InstallationTargetResult>[];
+    for (final item in plan.targets) {
+      final failed =
+          forceAllFailed || configuredFailures.contains(item.target.agent);
+      final result = InstallationTargetResult(
+        target: item.target,
+        action: item.action,
+        outcome: failed
+            ? InstallationTargetOutcome.failed
+            : InstallationTargetOutcome.succeeded,
+        errorCode: failed ? 'install-failed' : '',
+        diagnostic: failed ? failureDiagnostic : '',
+      );
+      results.add(result);
+      onProgress?.call(
+        InstallationTargetProgress(
+          sequence: ++sequence,
+          target: item.target,
+          action: item.action,
+          state: InstallationProgressState.finished,
+          result: result,
+        ),
+      );
+    }
+    final succeeded = results
+        .where(
+          (result) => result.outcome == InstallationTargetOutcome.succeeded,
+        )
+        .length;
+    final failed = results.length - succeeded;
+    installed = succeeded > 0;
     return InstallationExecution(
       coordinate: plan.coordinate,
       version: plan.version,
       name: plan.name,
-      results: plan.targets
-          .map(
-            (item) => InstallationTargetResult(
-              target: item.target,
-              action: item.action,
-              outcome: InstallationTargetOutcome.succeeded,
-            ),
-          )
-          .toList(growable: false),
+      results: results,
       summary: InstallationExecutionSummary(
-        succeeded: plan.targets.length,
+        succeeded: succeeded,
         skipped: 0,
         conflict: 0,
-        failed: 0,
+        failed: failed,
       ),
     );
   }

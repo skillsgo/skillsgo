@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsGo brand tokens.
- * [OUTPUT]: Provides the desktop shell plus persistent Discover, shadcn_ui Installation Plan matrix/state-bound conflict-risk preflight/results, managed/external Library/detail, project and Agent views, operations, and Settings journeys.
+ * [OUTPUT]: Provides the desktop shell plus persistent Discover, shadcn_ui Installation Plan matrix/preflight/live progress/partial-result retry, managed/external Library/detail, project and Agent views, operations, and Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -755,12 +755,29 @@ DiscoveryCollection _collectionForRoute(_DiscoverRoute route) =>
       _DiscoverRoute.hot => DiscoveryCollection.hot,
     };
 
+String _operationTargetKey(InstallationPlanTarget target) =>
+    '${target.scope.name}\u0000${target.projectRoot}\u0000${target.agent}\u0000${target.mode.name}\u0000${target.path}';
+
 class _InstallOperation extends ChangeNotifier {
   bool operating = false;
   InstallationPlan? plan;
   InstallationExecution? execution;
   Object? error;
+  final _progressByTarget = <String, InstallationTargetProgress>{};
   bool _disposed = false;
+
+  List<InstallationTargetProgress> get progress {
+    final currentPlan = plan;
+    if (currentPlan == null) return const [];
+    return [
+      for (final item in currentPlan.targets)
+        ?_progressByTarget[_operationTargetKey(item.target)],
+    ];
+  }
+
+  int get finishedTargetCount => _progressByTarget.values
+      .where((event) => event.state == InstallationProgressState.finished)
+      .length;
 
   Future<InstallationPlan?> preflight(
     SkillsGateway gateway,
@@ -775,6 +792,7 @@ class _InstallOperation extends ChangeNotifier {
     plan = null;
     execution = null;
     error = null;
+    _progressByTarget.clear();
     _notify();
     try {
       plan = await gateway.preflightInstall(
@@ -798,9 +816,13 @@ class _InstallOperation extends ChangeNotifier {
     operating = true;
     execution = null;
     error = null;
+    _progressByTarget.clear();
     _notify();
     try {
-      execution = await gateway.executeInstall(plan!);
+      execution = await gateway.executeInstall(
+        plan!,
+        onProgress: _recordProgress,
+      );
     } catch (caught) {
       error = caught;
     } finally {
@@ -810,10 +832,82 @@ class _InstallOperation extends ChangeNotifier {
     return execution;
   }
 
+  Future<InstallationExecution?> retryFailed(
+    SkillsGateway gateway,
+    SkillSummary skill,
+  ) async {
+    final originalPlan = plan;
+    final previous = execution;
+    if (operating || originalPlan == null || previous == null) return previous;
+    final failedKeys = previous.results
+        .where((result) => result.outcome == InstallationTargetOutcome.failed)
+        .map((result) => _operationTargetKey(result.target))
+        .toSet();
+    if (failedKeys.isEmpty) return previous;
+    final retrySelections = <InstallationTargetSelection>[];
+    final expectedTargets = <InstallationPlanTarget>[];
+    for (var index = 0; index < originalPlan.targets.length; index++) {
+      final target = originalPlan.targets[index].target;
+      if (failedKeys.contains(_operationTargetKey(target))) {
+        retrySelections.add(originalPlan.selections[index]);
+        expectedTargets.add(target);
+        _progressByTarget.remove(_operationTargetKey(target));
+      }
+    }
+    operating = true;
+    error = null;
+    _notify();
+    try {
+      final retryPlan = await gateway.preflightInstall(
+        skill,
+        originalPlan.version,
+        retrySelections,
+        riskConfirmed: originalPlan.riskConfirmed,
+        allowCritical: originalPlan.allowCritical,
+      );
+      if (retryPlan.source != originalPlan.source ||
+          retryPlan.coordinate != originalPlan.coordinate ||
+          retryPlan.version != originalPlan.version ||
+          retryPlan.name != originalPlan.name ||
+          retryPlan.targets.length != expectedTargets.length) {
+        throw const SkillsException(
+          'Retry changed the immutable artifact or target identities.',
+          kind: SkillsFailureKind.invalidResponse,
+        );
+      }
+      for (var index = 0; index < expectedTargets.length; index++) {
+        if (_operationTargetKey(retryPlan.targets[index].target) !=
+            _operationTargetKey(expectedTargets[index])) {
+          throw const SkillsException(
+            'Retry changed the immutable artifact or target identities.',
+            kind: SkillsFailureKind.invalidResponse,
+          );
+        }
+      }
+      final retried = await gateway.executeInstall(
+        retryPlan,
+        onProgress: _recordProgress,
+      );
+      execution = _mergeRetryExecution(previous, retried);
+    } catch (caught) {
+      error = caught;
+    } finally {
+      operating = false;
+      _notify();
+    }
+    return execution;
+  }
+
+  void _recordProgress(InstallationTargetProgress progress) {
+    _progressByTarget[_operationTargetKey(progress.target)] = progress;
+    _notify();
+  }
+
   void editTargets() {
     plan = null;
     execution = null;
     error = null;
+    _progressByTarget.clear();
     _notify();
   }
 
@@ -826,6 +920,53 @@ class _InstallOperation extends ChangeNotifier {
     _disposed = true;
     super.dispose();
   }
+}
+
+InstallationExecution _mergeRetryExecution(
+  InstallationExecution previous,
+  InstallationExecution retried,
+) {
+  if (previous.coordinate != retried.coordinate ||
+      previous.version != retried.version ||
+      previous.name != retried.name) {
+    throw const SkillsException(
+      'Retry changed the immutable artifact identity.',
+      kind: SkillsFailureKind.invalidResponse,
+    );
+  }
+  final retriedByTarget = {
+    for (final result in retried.results)
+      _operationTargetKey(result.target): result,
+  };
+  final results = [
+    for (final result in previous.results)
+      retriedByTarget[_operationTargetKey(result.target)] ?? result,
+  ];
+  if (retriedByTarget.length != retried.results.length ||
+      !retriedByTarget.keys.every(
+        (key) => previous.results.any(
+          (result) => _operationTargetKey(result.target) == key,
+        ),
+      )) {
+    throw const SkillsException(
+      'Retry returned an unknown Installation Target.',
+      kind: SkillsFailureKind.invalidResponse,
+    );
+  }
+  int count(InstallationTargetOutcome outcome) =>
+      results.where((result) => result.outcome == outcome).length;
+  return InstallationExecution(
+    coordinate: previous.coordinate,
+    version: previous.version,
+    name: previous.name,
+    results: List.unmodifiable(results),
+    summary: InstallationExecutionSummary(
+      succeeded: count(InstallationTargetOutcome.succeeded),
+      skipped: count(InstallationTargetOutcome.skipped),
+      conflict: count(InstallationTargetOutcome.conflict),
+      failed: count(InstallationTargetOutcome.failed),
+    ),
+  );
 }
 
 enum _InstallationPlanOutcome { viewLibrary }
@@ -1051,6 +1192,11 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
     if (mounted) setState(() {});
   }
 
+  Future<void> _retryFailed() async {
+    await widget.operation.retryFailed(widget.gateway, widget.skill);
+    if (mounted) setState(() {});
+  }
+
   void _editTargets() {
     widget.operation.editTargets();
     setState(() {});
@@ -1060,6 +1206,10 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
   Widget build(BuildContext context) {
     final execution = widget.operation.execution;
     final plan = widget.operation.plan;
+    final showingProgress =
+        widget.operation.operating &&
+        widget.operation.progress.isNotEmpty &&
+        execution == null;
     return ShadDialog(
       constraints: const BoxConstraints(maxWidth: 1040, maxHeight: 760),
       closeIcon: Semantics(
@@ -1074,14 +1224,21 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
         ),
       ),
       title: Text(
-        execution != null
+        showingProgress
+            ? context.l10n.installationProgressTitle
+            : execution != null
             ? context.l10n.installationResults
             : plan != null
             ? context.l10n.reviewInstallationPlan
             : context.l10n.installationPlanTitle,
       ),
       description: Text(
-        execution != null
+        showingProgress
+            ? context.l10n.installationProgressSummary(
+                widget.operation.finishedTargetCount,
+                plan?.targets.length ?? 0,
+              )
+            : execution != null
             ? context.l10n.installationResultsDescription
             : plan != null
             ? context.l10n.reviewInstallationPlanDescription
@@ -1093,7 +1250,9 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
         height: 540,
         child: AnimatedSwitcher(
           duration: const Duration(milliseconds: 180),
-          child: execution != null
+          child: showingProgress && plan != null
+              ? _progress(plan)
+              : execution != null
               ? _result(execution)
               : plan != null
               ? _preflightReview(plan)
@@ -1118,6 +1277,30 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
           onPressed: () =>
               Navigator.pop(context, _InstallationPlanOutcome.viewLibrary),
           child: Text(context.l10n.viewInLibrary),
+        ),
+        if (execution.summary.failed > 0)
+          ShadButton.outline(
+            enabled: !widget.operation.operating,
+            onPressed: _retryFailed,
+            child: widget.operation.operating
+                ? SizedBox(
+                    width: 32,
+                    child: ShadProgress(
+                      minHeight: 4,
+                      semanticsLabel: context.l10n.installationInProgress,
+                    ),
+                  )
+                : Text(
+                    context.l10n.retryFailedTargets(execution.summary.failed),
+                  ),
+          ),
+      ];
+    }
+    if (widget.operation.operating && widget.operation.progress.isNotEmpty) {
+      return [
+        ShadButton.outline(
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.stayHere),
         ),
       ];
     }
@@ -1667,6 +1850,90 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
     );
   }
 
+  Widget _progress(InstallationPlan plan) {
+    final progress = {
+      for (final event in widget.operation.progress)
+        _operationTargetKey(event.target): event,
+    };
+    return Column(
+      key: const ValueKey('installation-progress'),
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ShadCard(
+          width: double.infinity,
+          title: Text(context.l10n.installationProgressTitle),
+          description: Text(
+            context.l10n.installationProgressSummary(
+              widget.operation.finishedTargetCount,
+              plan.targets.length,
+            ),
+          ),
+          footer: ShadProgress(
+            value: plan.targets.isEmpty
+                ? 0
+                : widget.operation.finishedTargetCount / plan.targets.length,
+            minHeight: 5,
+            semanticsLabel: context.l10n.installationInProgress,
+          ),
+        ),
+        const SizedBox(height: 14),
+        Expanded(
+          child: GlassCard(
+            child: ListView.separated(
+              itemCount: plan.targets.length,
+              separatorBuilder: (_, _) =>
+                  const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+              itemBuilder: (context, index) {
+                final item = plan.targets[index];
+                final event = progress[_operationTargetKey(item.target)];
+                final finished =
+                    event?.state == InstallationProgressState.finished;
+                final failed =
+                    event?.result?.outcome == InstallationTargetOutcome.failed;
+                final label = event == null
+                    ? context.l10n.targetWaiting
+                    : finished
+                    ? _targetOutcomeLabel(context, event.result!.outcome)
+                    : context.l10n.targetRunning;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 11),
+                  child: Row(
+                    children: [
+                      Icon(
+                        finished
+                            ? failed
+                                  ? Icons.error
+                                  : Icons.check_circle
+                            : Icons.pending_outlined,
+                        color: finished
+                            ? failed
+                                  ? SkillsTokens.red
+                                  : SkillsTokens.green
+                            : SkillsTokens.blue,
+                        size: 18,
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Text(
+                          _targetLabel(context, item.target),
+                          style: const TextStyle(fontWeight: FontWeight.w700),
+                        ),
+                      ),
+                      StatusChip(
+                        label: label,
+                        color: failed ? SkillsTokens.red : SkillsTokens.blue,
+                      ),
+                    ],
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _result(InstallationExecution execution) => Column(
     key: const ValueKey('installation-result'),
     crossAxisAlignment: CrossAxisAlignment.start,
@@ -2134,6 +2401,25 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
             width: double.infinity,
             title: Text(context.l10n.noInstalledAgentsTitle),
             description: Text(context.l10n.noInstalledAgentsMessage),
+          ),
+        ],
+        if (operating &&
+            widget.operation.progress.isNotEmpty &&
+            execution == null) ...[
+          const SizedBox(height: 14),
+          ShadCard(
+            width: double.infinity,
+            title: Text(context.l10n.installationProgressTitle),
+            description: Text(
+              context.l10n.installationProgressSummary(
+                widget.operation.finishedTargetCount,
+                widget.operation.plan?.targets.length ?? 0,
+              ),
+            ),
+            footer: ShadProgress(
+              minHeight: 5,
+              semanticsLabel: context.l10n.installationInProgress,
+            ),
           ),
         ],
         if (execution != null) ...[

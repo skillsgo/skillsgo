@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on add-command flags, the Agent Catalog, Registry and Store clients, and the Installation Plan domain module.
- * [OUTPUT]: Adapts repeated strict JSON --target arguments, refreshes cached immutable assessments, and emits stable preflight or execution JSON at the public command boundary.
+ * [OUTPUT]: Adapts repeated strict JSON --target arguments, refreshes cached immutable assessments, and emits stable preflight JSON or streaming NDJSON execution events at the public command boundary.
  * [POS]: Serves as the executable adapter for App-driven explicit multi-location, multi-Agent installation plans.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -22,8 +22,11 @@ import (
 )
 
 func runExplicitInstallationPlan(cmd *cobra.Command, catalog *agent.Catalog, rawSource string, options addOptions) error {
-	if options.output != "human" && options.output != "json" {
+	if options.output != "human" && options.output != "json" && options.output != "ndjson" {
 		return fmt.Errorf("unsupported output format %q", options.output)
+	}
+	if options.preflight && options.output == "ndjson" {
+		return fmt.Errorf("ndjson output is available only during Installation Plan execution")
 	}
 	if len(options.skills) != 1 {
 		return fmt.Errorf("an explicit Installation Plan requires exactly one --skill")
@@ -67,6 +70,9 @@ func runExplicitInstallationPlan(cmd *cobra.Command, catalog *agent.Catalog, raw
 			len(preflight.Targets), preflight.Summary.Create, preflight.Summary.Skip,
 		))
 	}
+	if options.output == "ndjson" {
+		return writePlanExecutionStream(cmd, entry, storage.Root, request, preflight)
+	}
 	execution, err := plan.Execute(entry, storage.Root, request, preflight)
 	if err != nil {
 		return err
@@ -75,6 +81,29 @@ func runExplicitInstallationPlan(cmd *cobra.Command, catalog *agent.Catalog, raw
 		"plan.execution.success",
 		execution.Summary.Succeeded, execution.Summary.Skipped, execution.Summary.Failed,
 	))
+}
+
+func writePlanExecutionStream(
+	cmd *cobra.Command,
+	entry *store.Entry,
+	storeRoot string,
+	request plan.Request,
+	preflight plan.Preflight,
+) error {
+	encoder := json.NewEncoder(cmd.OutOrStdout())
+	var streamErr error
+	execution, err := plan.ExecuteWithProgress(entry, storeRoot, request, preflight, func(event plan.Progress) {
+		if streamErr == nil {
+			streamErr = encoder.Encode(event)
+		}
+	})
+	if err != nil {
+		return err
+	}
+	if streamErr != nil {
+		return streamErr
+	}
+	return encoder.Encode(execution)
 }
 
 func loadPlanEntry(cmd *cobra.Command, storage store.Store, registryURL string, reference source.Reference) (*store.Entry, error) {

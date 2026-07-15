@@ -48,6 +48,10 @@ _Avoid_: default install everywhere, automatic Cartesian product
 The success, skipped, conflict, or failure outcome for one target in a multi-target operation. Successful targets remain installed when another target fails, and failed targets can be retried independently.
 _Avoid_: global transaction result, all-or-nothing install
 
+**Target Progress**:
+A schema-versioned started or finished machine event for exactly one Installation Target. The App retains these events outside transient dialogs, restores them after navigation, and never derives them from localized CLI text.
+_Avoid_: parsed terminal line, global spinner, inferred completion
+
 **External Installation**:
 A Skill found in an Installed Agent's directory without a SkillsGo installation receipt. The Library can inspect it but cannot update or remove it until the user explicitly brings it under management.
 _Avoid_: broken Skill, unknown Skill, managed installation

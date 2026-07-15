@@ -946,6 +946,25 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get installationProgressTitle => '正在安装';
+
+  @override
+  String installationProgressSummary(int finished, int total) {
+    return '已完成 $finished/$total 个目标';
+  }
+
+  @override
+  String get targetWaiting => '等待中';
+
+  @override
+  String get targetRunning => '正在安装';
+
+  @override
+  String retryFailedTargets(int count) {
+    return '重试 $count 个失败目标';
+  }
+
+  @override
   String get targetSucceeded => '已安装';
 
   @override

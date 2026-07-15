@@ -987,6 +987,31 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get installationProgressTitle => 'Installation in progress';
+
+  @override
+  String installationProgressSummary(int finished, int total) {
+    return '$finished of $total targets finished';
+  }
+
+  @override
+  String get targetWaiting => 'Waiting';
+
+  @override
+  String get targetRunning => 'Installing';
+
+  @override
+  String retryFailedTargets(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Retry $count Failed Targets',
+      one: 'Retry 1 Failed Target',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get targetSucceeded => 'Installed';
 
   @override
