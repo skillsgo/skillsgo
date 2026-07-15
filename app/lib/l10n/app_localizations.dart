@@ -470,6 +470,120 @@ abstract class AppLocalizations {
   /// **'Couldn’t load this Skill'**
   String get detailFailedTitle;
 
+  /// No description provided for @detailLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading auditable Skill detail'**
+  String get detailLoading;
+
+  /// No description provided for @artifactUnavailableTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Artifact unavailable'**
+  String get artifactUnavailableTitle;
+
+  /// No description provided for @artifactUnavailableMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The Registry could not provide this immutable artifact. Retry now or inspect another version.'**
+  String get artifactUnavailableMessage;
+
+  /// No description provided for @detailInvalidTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Artifact metadata unsupported'**
+  String get detailInvalidTitle;
+
+  /// No description provided for @detailInvalidMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The Registry returned incomplete or malformed audit metadata. Retry after checking Registry compatibility.'**
+  String get detailInvalidMessage;
+
+  /// No description provided for @instructionsTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Instructions'**
+  String get instructionsTab;
+
+  /// No description provided for @manifestTab.
+  ///
+  /// In en, this message translates to:
+  /// **'Manifest'**
+  String get manifestTab;
+
+  /// No description provided for @immutableVersionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Immutable {version}'**
+  String immutableVersionLabel(String version);
+
+  /// No description provided for @commitIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'Commit {sha}'**
+  String commitIdentity(String sha);
+
+  /// No description provided for @treeIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'Tree {sha}'**
+  String treeIdentity(String sha);
+
+  /// No description provided for @contentIdentity.
+  ///
+  /// In en, this message translates to:
+  /// **'Content {digest}'**
+  String contentIdentity(String digest);
+
+  /// No description provided for @trustDoesNotProveSafety.
+  ///
+  /// In en, this message translates to:
+  /// **'Publisher trust verifies ownership or maintenance; it does not certify artifact safety. Risk is assessed separately for this immutable version.'**
+  String get trustDoesNotProveSafety;
+
+  /// No description provided for @knownInstallationTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Known installation targets'**
+  String get knownInstallationTargets;
+
+  /// No description provided for @targetSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{scope} / {agent} · {version}'**
+  String targetSummary(String scope, String agent, String version);
+
+  /// No description provided for @userScope.
+  ///
+  /// In en, this message translates to:
+  /// **'User Scope'**
+  String get userScope;
+
+  /// No description provided for @projectScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get projectScope;
+
+  /// No description provided for @fileContentUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Binary or unavailable preview'**
+  String get fileContentUnavailable;
+
+  /// No description provided for @fileContentTruncated.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview truncated by the Registry safety limit.'**
+  String get fileContentTruncated;
+
+  /// No description provided for @riskEvidence.
+  ///
+  /// In en, this message translates to:
+  /// **'Executable evidence: {paths}'**
+  String riskEvidence(String paths);
+
   /// No description provided for @retry.
   ///
   /// In en, this message translates to:
@@ -565,12 +679,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'All'**
   String get all;
-
-  /// No description provided for @userScope.
-  ///
-  /// In en, this message translates to:
-  /// **'User Scope'**
-  String get userScope;
 
   /// No description provided for @addProject.
   ///

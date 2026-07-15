@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on Registry configuration, storage, Catalog, source fetchers, protocol pools, and HTTP routing.
+ * [OUTPUT]: Assembles health, index, discovery/detail, and immutable artifact protocol routes with shared middleware layers.
+ * [POS]: Serves as the Registry service-composition boundary joining source resolution, storage, metadata, and public HTTP handlers.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package actions
 
 import (
@@ -109,7 +115,7 @@ func addProxyRoutesWithCatalog(
 	dp := download.New(dpOpts, addons.WithPool(c.ProtocolWorkers))
 	if metadata != nil {
 		dp = withCatalog(dp, metadata)
-		registerCatalogAPIRoutes(r, metadata)
+		registerCatalogAPIRoutes(r, metadata, dp)
 	}
 
 	handlerOpts := &download.HandlerOpts{Protocol: dp, Logger: l, DownloadFile: df}

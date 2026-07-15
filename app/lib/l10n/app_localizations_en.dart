@@ -220,6 +220,79 @@ class AppLocalizationsEn extends AppLocalizations {
   String get detailFailedTitle => 'Couldn’t load this Skill';
 
   @override
+  String get detailLoading => 'Loading auditable Skill detail';
+
+  @override
+  String get artifactUnavailableTitle => 'Artifact unavailable';
+
+  @override
+  String get artifactUnavailableMessage =>
+      'The Registry could not provide this immutable artifact. Retry now or inspect another version.';
+
+  @override
+  String get detailInvalidTitle => 'Artifact metadata unsupported';
+
+  @override
+  String get detailInvalidMessage =>
+      'The Registry returned incomplete or malformed audit metadata. Retry after checking Registry compatibility.';
+
+  @override
+  String get instructionsTab => 'Instructions';
+
+  @override
+  String get manifestTab => 'Manifest';
+
+  @override
+  String immutableVersionLabel(String version) {
+    return 'Immutable $version';
+  }
+
+  @override
+  String commitIdentity(String sha) {
+    return 'Commit $sha';
+  }
+
+  @override
+  String treeIdentity(String sha) {
+    return 'Tree $sha';
+  }
+
+  @override
+  String contentIdentity(String digest) {
+    return 'Content $digest';
+  }
+
+  @override
+  String get trustDoesNotProveSafety =>
+      'Publisher trust verifies ownership or maintenance; it does not certify artifact safety. Risk is assessed separately for this immutable version.';
+
+  @override
+  String get knownInstallationTargets => 'Known installation targets';
+
+  @override
+  String targetSummary(String scope, String agent, String version) {
+    return '$scope / $agent · $version';
+  }
+
+  @override
+  String get userScope => 'User Scope';
+
+  @override
+  String get projectScope => 'Project';
+
+  @override
+  String get fileContentUnavailable => 'Binary or unavailable preview';
+
+  @override
+  String get fileContentTruncated =>
+      'Preview truncated by the Registry safety limit.';
+
+  @override
+  String riskEvidence(String paths) {
+    return 'Executable evidence: $paths';
+  }
+
+  @override
   String get retry => 'Retry';
 
   @override
@@ -272,9 +345,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get all => 'All';
-
-  @override
-  String get userScope => 'User Scope';
 
   @override
   String get addProject => 'Add Project';

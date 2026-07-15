@@ -209,6 +209,76 @@ class AppLocalizationsZh extends AppLocalizations {
   String get detailFailedTitle => '无法加载此技能';
 
   @override
+  String get detailLoading => '正在加载可审计的技能详情';
+
+  @override
+  String get artifactUnavailableTitle => '制品暂不可用';
+
+  @override
+  String get artifactUnavailableMessage => 'Registry 无法提供该不可变制品。你可以重试，或检查其他版本。';
+
+  @override
+  String get detailInvalidTitle => '不支持该制品元数据';
+
+  @override
+  String get detailInvalidMessage => 'Registry 返回的审计元数据不完整或格式错误。请检查兼容性后重试。';
+
+  @override
+  String get instructionsTab => '技能指令';
+
+  @override
+  String get manifestTab => 'Manifest';
+
+  @override
+  String immutableVersionLabel(String version) {
+    return '不可变版本 $version';
+  }
+
+  @override
+  String commitIdentity(String sha) {
+    return 'Commit $sha';
+  }
+
+  @override
+  String treeIdentity(String sha) {
+    return '目录树 $sha';
+  }
+
+  @override
+  String contentIdentity(String digest) {
+    return '内容 $digest';
+  }
+
+  @override
+  String get trustDoesNotProveSafety =>
+      '发布者可信度只验证所有权或维护关系，并不证明制品安全。风险会针对该不可变版本单独评估。';
+
+  @override
+  String get knownInstallationTargets => '已知安装目标';
+
+  @override
+  String targetSummary(String scope, String agent, String version) {
+    return '$scope / $agent · $version';
+  }
+
+  @override
+  String get userScope => '用户范围';
+
+  @override
+  String get projectScope => '项目';
+
+  @override
+  String get fileContentUnavailable => '二进制文件或无法预览';
+
+  @override
+  String get fileContentTruncated => 'Registry 已按安全大小限制截断预览。';
+
+  @override
+  String riskEvidence(String paths) {
+    return '可执行内容证据：$paths';
+  }
+
+  @override
   String get retry => '重试';
 
   @override
@@ -259,9 +329,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get all => '所有';
-
-  @override
-  String get userScope => '用户范围';
 
   @override
   String get addProject => '添加项目';

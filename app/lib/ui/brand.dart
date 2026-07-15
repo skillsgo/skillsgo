@@ -137,6 +137,24 @@ class StatusChip extends StatelessWidget {
   );
 }
 
+class SkillTrustChip extends StatelessWidget {
+  const SkillTrustChip({super.key, required this.trust});
+  final SkillTrustLevel trust;
+
+  @override
+  Widget build(BuildContext context) =>
+      StatusChip(label: _trustLabel(context, trust), color: _trustColor(trust));
+}
+
+class SkillRiskChip extends StatelessWidget {
+  const SkillRiskChip({super.key, required this.risk});
+  final SkillRiskAssessment risk;
+
+  @override
+  Widget build(BuildContext context) =>
+      StatusChip(label: _riskLabel(context, risk), color: _riskColor(risk));
+}
+
 class PrimaryCapsuleButton extends StatelessWidget {
   const PrimaryCapsuleButton({
     super.key,
@@ -243,9 +261,15 @@ class SkillSearchField extends StatelessWidget {
 }
 
 class SkillCard extends StatefulWidget {
-  const SkillCard({super.key, required this.skill, required this.onTap});
+  const SkillCard({
+    super.key,
+    required this.skill,
+    required this.onTap,
+    this.focusNode,
+  });
   final SkillSummary skill;
   final VoidCallback onTap;
+  final FocusNode? focusNode;
 
   @override
   State<SkillCard> createState() => _SkillCardState();
@@ -262,6 +286,7 @@ class _SkillCardState extends State<SkillCard> {
       button: true,
       label: AppLocalizations.of(context).openSkill(widget.skill.name),
       child: InkWell(
+        focusNode: widget.focusNode,
         onTap: widget.onTap,
         borderRadius: BorderRadius.circular(18),
         child: AnimatedContainer(
@@ -318,17 +343,8 @@ class _SkillCardState extends State<SkillCard> {
                       spacing: 7,
                       runSpacing: 7,
                       children: [
-                        StatusChip(
-                          label: _trustLabel(context, widget.skill.trustLevel),
-                          color: _trustColor(widget.skill.trustLevel),
-                        ),
-                        StatusChip(
-                          label: _riskLabel(
-                            context,
-                            widget.skill.riskAssessment,
-                          ),
-                          color: _riskColor(widget.skill.riskAssessment),
-                        ),
+                        SkillTrustChip(trust: widget.skill.trustLevel),
+                        SkillRiskChip(risk: widget.skill.riskAssessment),
                         StatusChip(
                           label: AppLocalizations.of(
                             context,

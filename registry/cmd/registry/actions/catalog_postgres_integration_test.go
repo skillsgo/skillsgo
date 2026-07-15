@@ -45,7 +45,7 @@ func TestCatalogAPIPostgresProtocol(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
 	router := mux.NewRouter()
-	registerCatalogAPIRoutes(router, metadata)
+	registerCatalogAPIRoutes(router, metadata, nil)
 
 	for _, name := range []string{"alpha", "bravo", "charlie"} {
 		require.NoError(t, metadata.UpsertSkill(ctx, &catalog.Skill{

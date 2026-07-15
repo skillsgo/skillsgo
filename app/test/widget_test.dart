@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp with a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
- * [OUTPUT]: Specifies startup, persistent nested navigation, accessibility, discovery, settings, and mutation journeys.
+ * [OUTPUT]: Specifies startup, nested navigation, discovery, auditable detail/recovery, focus restoration, settings, accessibility, and mutation journeys.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -270,6 +270,142 @@ void main() {
     expect(find.text('Your Library'), findsOneWidget);
   });
 
+  testWidgets('auditable detail exposes immutable evidence and files', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    final gateway = FakeSkillsGateway(installed: false);
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.enterText(_searchInput(), 'flutter');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Flutter Pro'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Real instructions'), findsOneWidget);
+    expect(find.text('Immutable v1.2.3'), findsOneWidget);
+    expect(find.text('Commit commit-abc'), findsOneWidget);
+    expect(find.text('Tree tree-def'), findsOneWidget);
+    expect(find.text('Publisher verified'), findsOneWidget);
+    expect(find.text('Medium risk'), findsOneWidget);
+    expect(
+      find.textContaining('does not certify artifact safety'),
+      findsOneWidget,
+    );
+    expect(find.text('User Scope / codex · v1.2.3'), findsOneWidget);
+
+    await tester.tap(find.text('references/guide.md'));
+    await tester.pumpAndSettle();
+    expect(find.text('Supporting guide'), findsOneWidget);
+    await tester.tap(find.text('Manifest'));
+    await tester.pumpAndSettle();
+    expect(find.textContaining('name: flutter-pro'), findsOneWidget);
+  });
+
+  testWidgets('artifact detail failure is localized and retryable', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      detailErrors: const [
+        SkillsException(
+          'raw artifact diagnostic',
+          kind: SkillsFailureKind.artifactUnavailable,
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.enterText(_searchInput(), 'flutter');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Flutter Pro'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Artifact unavailable'), findsOneWidget);
+    expect(find.text('raw artifact diagnostic'), findsNothing);
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(find.text('Real instructions'), findsOneWidget);
+    expect(gateway.detailLoads, 2);
+  });
+
+  testWidgets('detail exposes a localized loading state', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final detail = Completer<SkillDetail>();
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      detailCompleter: detail,
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.enterText(_searchInput(), 'flutter');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Flutter Pro'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(find.text('Loading auditable Skill detail'), findsOneWidget);
+    detail.complete(FakeSkillsGateway.defaultRemoteDetail);
+    await tester.pumpAndSettle();
+    expect(find.text('Real instructions'), findsOneWidget);
+  });
+
+  testWidgets('detail Back restores query, scroll position and card focus', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      searchResults: List.generate(
+        30,
+        (index) => SkillSummary(
+          id: 'example/skills/skill-$index',
+          skillId: 'skill-$index',
+          name: 'Skill $index',
+          source: 'example/skills',
+          installs: index,
+        ),
+      ),
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.enterText(_searchInput(), 'preserve me');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    final scrollable = find.descendant(
+      of: find.byKey(const Key('discover-results')),
+      matching: find.byType(Scrollable),
+    );
+    await tester.scrollUntilVisible(
+      find.text('Skill 20'),
+      350,
+      scrollable: scrollable,
+    );
+    final before = tester.state<ScrollableState>(scrollable).position.pixels;
+    await tester.tap(find.text('Skill 20'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel('Back to search'));
+    await tester.pumpAndSettle();
+
+    expect(
+      tester.widget<EditableText>(_searchInput()).controller.text,
+      'preserve me',
+    );
+    expect(
+      tester.state<ScrollableState>(scrollable).position.pixels,
+      closeTo(before, 0.1),
+    );
+    expect(find.text('Skill 20'), findsOneWidget);
+    expect(
+      FocusManager.instance.primaryFocus?.debugLabel,
+      'skill-card-example/skills/skill-20',
+    );
+  });
+
   testWidgets('an empty ranked collection has localized recovery copy', (
     tester,
   ) async {
@@ -423,7 +559,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Install for Codex'));
     await tester.pump();
-    await tester.tap(find.byTooltip('Back to search'));
+    await tester.tap(find.bySemanticsLabel('Back to search'));
     await tester.pumpAndSettle();
 
     install.complete(_success(['skillsgo', 'add']));
@@ -831,7 +967,7 @@ void main() {
     await tester.tap(find.text('Install for Codex'));
     await tester.pumpAndSettle();
     expect(find.text('Command completed'), findsOneWidget);
-    await tester.tap(find.byTooltip('Back to search'));
+    await tester.tap(find.bySemanticsLabel('Back to search'));
     await tester.pumpAndSettle();
     expect(find.text('local-skill'), findsOneWidget);
 
@@ -865,10 +1001,16 @@ class FakeSkillsGateway implements SkillsGateway {
     this.discoveryPages = const {},
     this.discoveryError,
     this.discoveryErrors = const {},
-  }) : searchResults = searchResults ?? _defaultSearchResults;
+    this.detailCompleter,
+    SkillDetail? remoteDetail,
+    List<SkillsException> detailErrors = const [],
+  }) : searchResults = searchResults ?? _defaultSearchResults,
+       remoteDetail = remoteDetail ?? defaultRemoteDetail,
+       detailErrors = List.of(detailErrors);
   final bool cliReady;
   final Completer<List<SkillSummary>>? searchCompleter;
   final Completer<CommandResult>? installCompleter;
+  final Completer<SkillDetail>? detailCompleter;
   final List<String> agentNames;
   String registryOrigin;
   final HealthState registryTestState;
@@ -878,11 +1020,14 @@ class FakeSkillsGateway implements SkillsGateway {
   final Map<String, DiscoveryPage> discoveryPages;
   final SkillsException? discoveryError;
   final Map<String, SkillsException> discoveryErrors;
+  final SkillDetail remoteDetail;
+  final List<SkillsException> detailErrors;
   bool installed;
   final queries = <String>[];
   final collections = <DiscoveryCollection>[];
   final requestedOffsets = <int>[];
   int installCalls = 0;
+  int detailLoads = 0;
   String? savedPath;
   static const _defaultSearchResults = [
     SkillSummary(
@@ -894,6 +1039,48 @@ class FakeSkillsGateway implements SkillsGateway {
       description: 'Build Flutter products with reliable engineering flows.',
     ),
   ];
+  static const defaultRemoteDetail = SkillDetail(
+    name: 'Flutter Pro',
+    source: 'example/skills',
+    description: 'Build reliable Flutter products.',
+    markdown: '# Real instructions',
+    manifest:
+        'name: flutter-pro\ndescription: Build reliable Flutter products.',
+    requestedVersion: 'main',
+    immutableVersion: 'v1.2.3',
+    commitSHA: 'commit-abc',
+    treeSHA: 'tree-def',
+    contentDigest: 'sha256:content-digest',
+    trustLevel: SkillTrustLevel.publisherVerified,
+    riskAssessment: SkillRiskAssessment.medium,
+    riskScannerVersion: 'file-signals/v1',
+    riskEvidence: [
+      SkillRiskEvidence(code: 'script_file', path: 'scripts/run.sh'),
+    ],
+    registryExecutableSignal: true,
+    files: [
+      SkillFile(
+        path: 'SKILL.md',
+        contents: '# Real instructions',
+        kind: 'instructions',
+      ),
+      SkillFile(path: 'references/guide.md', contents: '# Supporting guide'),
+      SkillFile(
+        path: 'scripts/run.sh',
+        contents: 'echo test',
+        kind: 'script',
+        executable: true,
+      ),
+    ],
+    installationTargets: [
+      SkillInstallationTarget(
+        agent: 'codex',
+        scope: SkillInstallationScope.user,
+        path: '/tmp/flutter-pro',
+        version: 'v1.2.3',
+      ),
+    ],
+  );
   final List<SkillSummary> searchResults;
 
   @override
@@ -970,13 +1157,12 @@ class FakeSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<SkillDetail> loadRemoteDetail(SkillSummary skill) async =>
-      const SkillDetail(
-        name: 'Flutter Pro',
-        source: 'example/skills',
-        markdown: '# Flutter Pro',
-        files: [SkillFile(path: 'SKILL.md', contents: '# Flutter Pro')],
-      );
+  Future<SkillDetail> loadRemoteDetail(SkillSummary skill) async {
+    detailLoads++;
+    if (detailErrors.isNotEmpty) throw detailErrors.removeAt(0);
+    return detailCompleter?.future ?? remoteDetail;
+  }
+
   @override
   Future<List<InstalledSkill>> listInstalled() async => installed
       ? [
