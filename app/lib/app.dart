@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on Flutter, shadcn_ui, SkillsGateway, localization delegates, the App shell, and brand tokens.
+ * [OUTPUT]: Provides SkillsGoApp, the localized desktop application root.
+ * [POS]: Serves as the App composition boundary between platform startup and product UI.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 import 'package:flutter/material.dart';
 import 'package:shadcn_ui/shadcn_ui.dart';
 
@@ -6,8 +12,8 @@ import 'l10n/app_localizations.dart';
 import 'ui/app_shell.dart';
 import 'ui/brand.dart';
 
-class SkillsPlayApp extends StatelessWidget {
-  const SkillsPlayApp({super.key, required this.gateway});
+class SkillsGoApp extends StatelessWidget {
+  const SkillsGoApp({super.key, required this.gateway});
 
   final SkillsGateway gateway;
 
@@ -15,7 +21,7 @@ class SkillsPlayApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return ShadApp(
       debugShowCheckedModeBanner: false,
-      title: 'SkillsPlay',
+      title: 'SkillsGo',
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       themeMode: ThemeMode.dark,

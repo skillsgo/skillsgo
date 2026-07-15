@@ -1,3 +1,8 @@
+// [INPUT]: Depends on Flutter's macOS Runner build settings and the SkillsGo product identity.
+// [OUTPUT]: Defines the macOS product name, bundle identifier, and copyright metadata.
+// [POS]: Serves as the semantic application identity configuration for the macOS Runner target.
+// [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+
 // Application-level settings for the Runner target.
 //
 // This may be replaced with something auto-generated from metadata (e.g., pubspec.yaml) in the
@@ -5,10 +10,10 @@
 // 'flutter create' template.
 
 // The application's name. By default this is also the title of the Flutter window.
-PRODUCT_NAME = SkillsPlay
+PRODUCT_NAME = SkillsGo
 
 // The application's bundle identifier
-PRODUCT_BUNDLE_IDENTIFIER = app.skillsplay.skillsplay
+PRODUCT_BUNDLE_IDENTIFIER = app.skillsgo.skillsgo
 
 // The copyright displayed in application information
-PRODUCT_COPYRIGHT = Copyright © 2026 SkillsPlay. All rights reserved.
+PRODUCT_COPYRIGHT = Copyright © 2026 SkillsGo. All rights reserved.

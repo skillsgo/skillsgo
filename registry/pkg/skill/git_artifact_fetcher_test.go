@@ -101,9 +101,9 @@ func (s *SkillSuite) TestFetchErrorsUseSkillVocabulary() {
 	}{
 		{
 			name:      "repository not found",
-			skillPath: "github.com/skillsplay-test/repository-that-does-not-exist",
+			skillPath: "github.com/skillsgo-test/repository-that-does-not-exist",
 			revision:  "v1.0.0",
-			want:      `Skill repository "github.com/skillsplay-test/repository-that-does-not-exist" not found`,
+			want:      `Skill repository "github.com/skillsgo-test/repository-that-does-not-exist" not found`,
 		},
 		{
 			name:      "revision not found",

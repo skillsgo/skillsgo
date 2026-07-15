@@ -1,4 +1,11 @@
+/*
+ * [INPUT]: Depends on SkillsGateway discovery models, localized copy, shadcn_ui primitives, and Flutter rendering.
+ * [OUTPUT]: Provides SkillsGo tokens and reusable branded backgrounds, controls, discovery cards, status elements, and empty states.
+ * [POS]: Serves as the thin Burrow-inspired presentation layer composed around shared shadcn_ui behavior.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 import 'package:flutter/material.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../domain/skills_gateway.dart';
 import '../l10n/app_localizations.dart';
@@ -142,25 +149,25 @@ class PrimaryCapsuleButton extends StatelessWidget {
   final bool busy;
 
   @override
-  Widget build(BuildContext context) => Semantics(
-    button: true,
-    label: label,
-    child: FilledButton(
-      onPressed: busy ? null : onPressed,
-      style: FilledButton.styleFrom(
-        foregroundColor: Colors.black,
-        backgroundColor: Colors.white,
-        disabledBackgroundColor: Colors.white24,
-        shape: const StadiumBorder(),
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-      ),
-      child: busy
-          ? const SizedBox.square(
-              dimension: 16,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          : Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
+  Widget build(BuildContext context) => ShadButton(
+    enabled: !busy && onPressed != null,
+    onPressed: onPressed,
+    backgroundColor: Colors.white,
+    hoverBackgroundColor: const Color(0xFFF1F1EF),
+    pressedBackgroundColor: const Color(0xFFE5E5E2),
+    foregroundColor: Colors.black,
+    height: 44,
+    padding: const EdgeInsets.symmetric(horizontal: 20),
+    decoration: const ShadDecoration(
+      shape: BoxShape.rectangle,
+      border: ShadBorder(radius: BorderRadius.all(Radius.circular(999))),
     ),
+    child: busy
+        ? const SizedBox.square(
+            dimension: 16,
+            child: CircularProgressIndicator(strokeWidth: 2),
+          )
+        : Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
   );
 }
 
@@ -176,16 +183,21 @@ class SecondaryCapsuleButton extends StatelessWidget {
   final IconData? icon;
 
   @override
-  Widget build(BuildContext context) => OutlinedButton.icon(
+  Widget build(BuildContext context) => ShadButton.outline(
+    enabled: onPressed != null,
     onPressed: onPressed,
-    icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 16),
-    label: Text(label),
-    style: OutlinedButton.styleFrom(
-      foregroundColor: SkillsTokens.textPrimary,
-      side: const BorderSide(color: SkillsTokens.hairline),
-      shape: const StadiumBorder(),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 13),
+    leading: icon == null ? null : Icon(icon, size: 16),
+    foregroundColor: SkillsTokens.textPrimary,
+    height: 42,
+    padding: const EdgeInsets.symmetric(horizontal: 16),
+    decoration: ShadDecoration(
+      shape: BoxShape.rectangle,
+      border: ShadBorder.all(
+        color: SkillsTokens.hairline,
+        radius: const BorderRadius.all(Radius.circular(999)),
+      ),
     ),
+    child: Text(label),
   );
 }
 
@@ -203,38 +215,27 @@ class SkillSearchField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return TextField(
+    return ShadInput(
       key: const Key('skill-search'),
       controller: controller,
       focusNode: focusNode,
       onSubmitted: onSubmitted,
       textInputAction: TextInputAction.search,
       style: const TextStyle(color: SkillsTokens.textPrimary, fontSize: 17),
-      decoration: InputDecoration(
-        hintText: l10n.searchSkills,
-        hintStyle: const TextStyle(color: SkillsTokens.textTertiary),
-        prefixIcon: const Icon(Icons.search, color: SkillsTokens.textSecondary),
-        suffixIcon: IconButton(
-          tooltip: l10n.search,
+      placeholder: Text(l10n.searchSkills),
+      placeholderStyle: const TextStyle(color: SkillsTokens.textTertiary),
+      leading: const Icon(Icons.search, color: SkillsTokens.textSecondary),
+      trailing: ShadTooltip(
+        builder: (_) => Text(l10n.search),
+        child: ShadButton.ghost(
+          width: 36,
+          height: 36,
+          padding: EdgeInsets.zero,
           onPressed: () => onSubmitted(controller.text),
-          icon: const Icon(
+          child: const Icon(
             Icons.arrow_forward,
             color: SkillsTokens.textPrimary,
           ),
-        ),
-        filled: true,
-        fillColor: Colors.black.withValues(alpha: .24),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: BorderSide.none,
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: SkillsTokens.hairline),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: SkillsTokens.cream, width: 1.5),
         ),
       ),
     );
@@ -276,6 +277,7 @@ class _SkillCardState extends State<SkillCard> {
             ),
           ),
           child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SkillGlyph(name: widget.skill.name),
               const SizedBox(width: 14),
@@ -290,19 +292,93 @@ class _SkillCardState extends State<SkillCard> {
                         fontWeight: FontWeight.w700,
                       ),
                     ),
-                    const SizedBox(height: 5),
+                    const SizedBox(height: 4),
+                    Text(
+                      widget.skill.description,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: SkillsTokens.textSecondary,
+                        height: 1.35,
+                      ),
+                    ),
+                    const SizedBox(height: 7),
                     Text(
                       widget.skill.source,
-                      style: const TextStyle(color: SkillsTokens.textSecondary),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: SkillsTokens.textTertiary,
+                        fontFamily: SkillsTokens.monoFamily,
+                        fontSize: 11,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 7,
+                      runSpacing: 7,
+                      children: [
+                        StatusChip(
+                          label: _trustLabel(context, widget.skill.trustLevel),
+                          color: _trustColor(widget.skill.trustLevel),
+                        ),
+                        StatusChip(
+                          label: _riskLabel(
+                            context,
+                            widget.skill.riskAssessment,
+                          ),
+                          color: _riskColor(widget.skill.riskAssessment),
+                        ),
+                        StatusChip(
+                          label: AppLocalizations.of(
+                            context,
+                          ).localTargets(widget.skill.localTargetCount),
+                          color: widget.skill.isInstalled
+                              ? SkillsTokens.green
+                              : SkillsTokens.textTertiary,
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
-              Text(
-                _formatInstalls(context, widget.skill.installs),
-                style: const TextStyle(
-                  fontFamily: SkillsTokens.monoFamily,
-                  color: SkillsTokens.textTertiary,
+              const SizedBox(width: 18),
+              SizedBox(
+                width: 170,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      widget.skill.latestVersion,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontFamily: SkillsTokens.monoFamily,
+                        fontSize: 11,
+                        color: SkillsTokens.textTertiary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      _metricLabel(context, widget.skill),
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontFamily: SkillsTokens.monoFamily,
+                        color: SkillsTokens.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      widget.skill.isInstalled
+                          ? AppLocalizations.of(context).installToMoreTargets
+                          : AppLocalizations.of(context).install,
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        color: SkillsTokens.cream,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 12),
@@ -382,13 +458,63 @@ class EmptyState extends StatelessWidget {
   );
 }
 
-String _formatInstalls(BuildContext context, int installs) {
+String _metricLabel(BuildContext context, SkillSummary skill) {
   final l10n = AppLocalizations.of(context);
-  if (installs >= 1000000) {
-    return l10n.installs('${(installs / 1000000).toStringAsFixed(1)}M');
-  }
-  if (installs >= 1000) {
-    return l10n.installs('${(installs / 1000).toStringAsFixed(1)}K');
-  }
-  return l10n.installs('$installs');
+  final value = _compactCount(skill.installs);
+  return switch (skill.metricKind) {
+    SkillMetricKind.allTimeInstalls => l10n.allTimeMetric(value),
+    SkillMetricKind.installs24h => l10n.trendingMetric(value),
+    SkillMetricKind.hotVelocity => l10n.hotMetric(
+      value,
+      skill.metricChange >= 0
+          ? '+${skill.metricChange}'
+          : '${skill.metricChange}',
+    ),
+  };
 }
+
+String _compactCount(int value) {
+  if (value >= 1000000) return '${(value / 1000000).toStringAsFixed(1)}M';
+  if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
+  return '$value';
+}
+
+String _trustLabel(BuildContext context, SkillTrustLevel trust) {
+  final l10n = AppLocalizations.of(context);
+  return switch (trust) {
+    SkillTrustLevel.unverified => l10n.trustUnverified,
+    SkillTrustLevel.communityVerified => l10n.trustCommunityVerified,
+    SkillTrustLevel.publisherVerified => l10n.trustPublisherVerified,
+    SkillTrustLevel.official => l10n.trustOfficial,
+    SkillTrustLevel.warned => l10n.trustWarned,
+    SkillTrustLevel.delisted => l10n.trustDelisted,
+  };
+}
+
+Color _trustColor(SkillTrustLevel trust) => switch (trust) {
+  SkillTrustLevel.unverified => SkillsTokens.textSecondary,
+  SkillTrustLevel.communityVerified => SkillsTokens.blue,
+  SkillTrustLevel.publisherVerified => SkillsTokens.teal,
+  SkillTrustLevel.official => SkillsTokens.green,
+  SkillTrustLevel.warned => SkillsTokens.amber,
+  SkillTrustLevel.delisted => SkillsTokens.red,
+};
+
+String _riskLabel(BuildContext context, SkillRiskAssessment risk) {
+  final l10n = AppLocalizations.of(context);
+  return switch (risk) {
+    SkillRiskAssessment.unknown => l10n.riskUnknown,
+    SkillRiskAssessment.low => l10n.riskLow,
+    SkillRiskAssessment.medium => l10n.riskMedium,
+    SkillRiskAssessment.high => l10n.riskHigh,
+    SkillRiskAssessment.critical => l10n.riskCritical,
+  };
+}
+
+Color _riskColor(SkillRiskAssessment risk) => switch (risk) {
+  SkillRiskAssessment.unknown => SkillsTokens.textSecondary,
+  SkillRiskAssessment.low => SkillsTokens.green,
+  SkillRiskAssessment.medium => SkillsTokens.amber,
+  SkillRiskAssessment.high => SkillsTokens.orange,
+  SkillRiskAssessment.critical => SkillsTokens.red,
+};

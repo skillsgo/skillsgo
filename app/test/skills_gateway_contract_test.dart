@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings persistence, Registry/storage health, parsing, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings persistence, paginated Registry discovery and typed failures, storage health, parsing, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,8 +10,8 @@ import 'dart:io';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
-import 'package:skillsplay/domain/skills_gateway.dart';
-import 'package:skillsplay/infrastructure/real_skills_gateway.dart';
+import 'package:skillsgo/domain/skills_gateway.dart';
+import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
@@ -20,10 +20,19 @@ void main() {
     final requests = <Uri>[];
     final client = MockClient((request) async {
       requests.add(request.url);
-      return http.Response('{"skills":[]}', 200);
+      if (request.url.queryParameters['q'] == 'skillsgo-settings-probe') {
+        return http.Response('{"skills":[]}', 200);
+      }
+      return http.Response(
+        '{"collection":"search","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}',
+        200,
+      );
     });
     final gateway = RealSkillsGateway(
       httpClient: client,
+      processRunner: _FakeProcessRunner()
+        ..result = const ProcessOutput(exitCode: 0, stdout: '[]', stderr: ''),
+      initialCliPath: '/usr/local/bin/skillsgo',
       registryBaseUrl: 'https://official.example',
       appVersion: '1.2.3',
     );
@@ -40,7 +49,7 @@ void main() {
       await gateway.loadRegistryOrigin(),
       'https://self-hosted.example/base',
     );
-    await gateway.search('flutter');
+    await gateway.discover(DiscoveryCollection.search, query: 'flutter');
     expect(requests.last.host, 'self-hosted.example');
     expect(requests.last.path, '/base/v1/search');
     final restored = RealSkillsGateway(
@@ -108,7 +117,7 @@ void main() {
       );
     final gateway = RealSkillsGateway(
       processRunner: runner,
-      initialCliPath: '/Applications/SkillsPlay.app/skillsgo',
+      initialCliPath: '/Applications/SkillsGo.app/skillsgo',
       registryBaseUrl: 'https://official.example',
       appVersion: '3.2.1',
     );
@@ -150,7 +159,7 @@ void main() {
       final gateway = RealSkillsGateway(
         processRunner: runner,
         bundledCliPath:
-            '/Applications/SkillsPlay.app/Contents/Resources/bin/skillsgo',
+            '/Applications/SkillsGo.app/Contents/Resources/bin/skillsgo',
         allowDeveloperCliOverride: false,
         expectedCliOS: 'darwin',
       );
@@ -161,12 +170,12 @@ void main() {
       expect(status.version, '0.1.0');
       expect(
         status.path,
-        '/Applications/SkillsPlay.app/Contents/Resources/bin/skillsgo',
+        '/Applications/SkillsGo.app/Contents/Resources/bin/skillsgo',
       );
       expect(runner.calls, hasLength(1));
       expect(
         runner.calls.single.executable,
-        '/Applications/SkillsPlay.app/Contents/Resources/bin/skillsgo',
+        '/Applications/SkillsGo.app/Contents/Resources/bin/skillsgo',
       );
       expect(runner.calls.single.arguments, ['version', '--output', 'json']);
     },
@@ -395,36 +404,100 @@ void main() {
   });
 
   test('search returns domain summaries from the official response', () async {
+    final runner = _FakeProcessRunner()
+      ..result = const ProcessOutput(
+        exitCode: 0,
+        stdout:
+            '[{"name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","target":{"path":"/tmp/one","scope":"user","agent":"codex","mode":"copy"}},{"name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","target":{"path":"/tmp/two","scope":"project","agent":"codex","mode":"copy"}}]',
+        stderr: '',
+      );
     final gateway = RealSkillsGateway(
       httpClient: MockClient((request) async {
         expect(request.url.path, '/v1/search');
+        expect(request.url.queryParameters['offset'], '0');
         return http.Response(
           jsonEncode({
+            'collection': 'search',
             'skills': [
               {
                 'coordinate': 'github.com/flutter/skills/-/responsive-layout',
+                'source': 'github.com/flutter/skills',
                 'skillPath': 'responsive-layout',
                 'name': 'Responsive Layout',
-                'installs': 1200,
+                'description': 'Build adaptive Flutter layouts.',
+                'latestVersion': 'v1.2.3',
+                'trustLevel': 'community_verified',
+                'riskAssessment': 'low',
+                'metric': {
+                  'kind': 'all_time_installs',
+                  'value': 1200,
+                  'change': 0,
+                },
               },
             ],
+            'page': {'limit': 20, 'offset': 0, 'nextOffset': 20},
           }),
           200,
         );
       }),
-      processRunner: _FakeProcessRunner(),
+      processRunner: runner,
+      initialCliPath: '/usr/local/bin/skillsgo',
     );
 
-    final results = await gateway.search('responsive');
+    final page = await gateway.discover(
+      DiscoveryCollection.search,
+      query: 'responsive',
+    );
+    final results = page.skills;
 
     expect(results, hasLength(1));
-    expect(
-      results.single.source,
-      'github.com/flutter/skills/-/responsive-layout',
-    );
+    expect(results.single.source, 'github.com/flutter/skills');
     expect(results.single.skillId, 'responsive-layout');
     expect(results.single.installs, 1200);
+    expect(results.single.description, 'Build adaptive Flutter layouts.');
+    expect(results.single.trustLevel, SkillTrustLevel.communityVerified);
+    expect(results.single.riskAssessment, SkillRiskAssessment.low);
+    expect(results.single.localTargetCount, 2);
+    expect(page.nextOffset, 20);
+
+    final installed = await gateway.listInstalled();
+    expect(installed.single.agents, ['codex']);
+    expect(installed.single.targetCount, 2);
   });
+
+  test(
+    'ranked discovery routes use distinct Registry collection parameters',
+    () async {
+      final requests = <Uri>[];
+      final gateway = RealSkillsGateway(
+        httpClient: MockClient((request) async {
+          requests.add(request.url);
+          final collection = request.url.queryParameters['sort']!;
+          return http.Response(
+            '{"collection":"$collection","skills":[],"page":{"limit":10,"offset":30,"nextOffset":null}}',
+            200,
+          );
+        }),
+        processRunner: _FakeProcessRunner()
+          ..result = const ProcessOutput(exitCode: 0, stdout: '[]', stderr: ''),
+        initialCliPath: '/usr/local/bin/skillsgo',
+      );
+
+      for (final collection in const [
+        DiscoveryCollection.ranking,
+        DiscoveryCollection.trending,
+        DiscoveryCollection.hot,
+      ]) {
+        await gateway.discover(collection, limit: 10, offset: 30);
+      }
+
+      expect(requests.map((request) => request.queryParameters['sort']), [
+        'all_time',
+        'trending',
+        'hot',
+      ]);
+    },
+  );
 
   test('listInstalled parses the CLI global JSON contract', () async {
     final runner = _FakeProcessRunner()
@@ -443,25 +516,86 @@ void main() {
     final skills = await gateway.listInstalled();
 
     expect(skills.single.name, 'testing');
+    expect(skills.single.coordinate, 'github.com/a/b');
     expect(skills.single.isLinkedToCodex, isTrue);
+    expect(skills.single.targetCount, 1);
     expect(runner.lastArguments, ['list', '--global', '--json']);
   });
 
   test('search rejects non-2xx, invalid JSON and missing fields', () async {
-    for (final response in [
-      http.Response('nope', 503),
-      http.Response('{', 200),
-      http.Response('{"skills":[{"name":"missing"}]}', 200),
+    for (final failure in [
+      (
+        response: http.Response('nope', 400),
+        kind: SkillsFailureKind.validation,
+      ),
+      (response: http.Response('nope', 503), kind: SkillsFailureKind.server),
+      (
+        response: http.Response('{', 200),
+        kind: SkillsFailureKind.invalidResponse,
+      ),
+      (
+        response: http.Response(
+          '{"collection":"search","skills":[{"name":"missing"}],"page":{"limit":20,"offset":0,"nextOffset":null}}',
+          200,
+        ),
+        kind: SkillsFailureKind.invalidResponse,
+      ),
     ]) {
       final gateway = RealSkillsGateway(
-        httpClient: MockClient((_) async => response),
+        httpClient: MockClient((_) async => failure.response),
         processRunner: _FakeProcessRunner(),
       );
       await expectLater(
-        gateway.search('test'),
-        throwsA(isA<SkillsException>()),
+        gateway.discover(DiscoveryCollection.search, query: 'test'),
+        throwsA(
+          isA<SkillsException>().having(
+            (error) => error.kind,
+            'kind',
+            failure.kind,
+          ),
+        ),
       );
     }
+  });
+
+  test('search distinguishes offline and timeout transport failures', () async {
+    final offline = RealSkillsGateway(
+      httpClient: MockClient(
+        (_) async => throw const SocketException('offline'),
+      ),
+      processRunner: _FakeProcessRunner(),
+    );
+    await expectLater(
+      offline.discover(DiscoveryCollection.search, query: 'test'),
+      throwsA(
+        isA<SkillsException>().having(
+          (error) => error.kind,
+          'kind',
+          SkillsFailureKind.offline,
+        ),
+      ),
+    );
+
+    final timeout = RealSkillsGateway(
+      httpClient: MockClient(
+        (_) => Future.delayed(
+          const Duration(milliseconds: 20),
+          () => http.Response('{}', 200),
+        ),
+      ),
+      processRunner: _FakeProcessRunner(),
+      discoveryTimeout: const Duration(milliseconds: 1),
+    );
+    await expectLater(
+      timeout.discover(DiscoveryCollection.search, query: 'test'),
+      throwsA(
+        isA<SkillsException>().having(
+          (error) => error.kind,
+          'kind',
+          SkillsFailureKind.timeout,
+        ),
+      ),
+    );
   });
 
   test('remote detail reads Registry info then immutable manifest', () async {
@@ -514,6 +648,7 @@ void main() {
       name: r'Test ; $(touch nope)',
       path: r'/tmp/Test ; $(touch nope)',
       agents: ['codex'],
+      targetCount: 1,
     );
 
     await gateway.install(summary);
@@ -558,7 +693,7 @@ void main() {
   });
 
   test('local detail reads canonical SKILL.md without writing files', () async {
-    final directory = await Directory.systemTemp.createTemp('skillsplay-test-');
+    final directory = await Directory.systemTemp.createTemp('skillsgo-test-');
     addTearDown(() => directory.delete(recursive: true));
     final file = File('${directory.path}/SKILL.md');
     await file.writeAsString('# Local');
@@ -570,6 +705,7 @@ void main() {
         name: 'Local',
         path: directory.path,
         agents: const ['codex'],
+        targetCount: 1,
       ),
     );
 
@@ -590,7 +726,12 @@ void main() {
     );
 
     final states = await gateway.checkUpdates(const [
-      InstalledSkill(name: 'Test', path: '/tmp/Test', agents: ['codex']),
+      InstalledSkill(
+        name: 'Test',
+        path: '/tmp/Test',
+        agents: ['codex'],
+        targetCount: 1,
+      ),
     ]);
 
     expect(states['Test'], UpdateState.available);

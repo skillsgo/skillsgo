@@ -29,12 +29,12 @@ func newLocalRepositoryFixture(t *testing.T) *localRepositoryFixture {
 		origin:     filepath.Join(root, "origin.git"),
 		work:       filepath.Join(root, "work"),
 		cache:      filepath.Join(root, "cache"),
-		coordinate: "github.com/skillsplay-test/repo",
+		coordinate: "github.com/skillsgo-test/repo",
 	}
 	runGit(t, "", "init", "--bare", "--initial-branch=main", f.origin)
 	runGit(t, "", "clone", f.origin, f.work)
-	runGit(t, f.work, "config", "user.name", "SkillsPlay Test")
-	runGit(t, f.work, "config", "user.email", "skillsplay@example.com")
+	runGit(t, f.work, "config", "user.name", "SkillsGo Test")
+	runGit(t, f.work, "config", "user.email", "skillsgo@example.com")
 	f.writeSkill(t, ".", "repo", "initial")
 	f.writeSkill(t, "skills/child", "child", "nested")
 	f.commit(t, "initial")
@@ -111,7 +111,7 @@ func TestRepositoryCacheIsSharedBySkillsInOneRepository(t *testing.T) {
 	repositoryDir, err := f.fetcher.repositoryDir(f.coordinate)
 	require.NoError(t, err)
 	require.True(t, isGitRepository(repositoryDir))
-	entries, err := os.ReadDir(filepath.Join(f.cache, "repositories", "github.com", "skillsplay-test"))
+	entries, err := os.ReadDir(filepath.Join(f.cache, "repositories", "github.com", "skillsgo-test"))
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
 }

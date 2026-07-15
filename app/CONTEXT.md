@@ -1,11 +1,11 @@
-# SkillsPlay App
+# SkillsGo App
 
 The App context presents public discovery and local Skill inventory as a desktop product without exposing package-manager mechanics as the primary user experience.
 
 ## Language
 
 **Local Manager**:
-The SkillsPlay desktop application that discovers public Skills through a Registry and invokes the bundled SkillsGo CLI for local inspection and mutations.
+The SkillsGo desktop application that discovers public Skills through a Registry and invokes the bundled SkillsGo CLI for local inspection and mutations.
 _Avoid_: app store, Skill platform
 
 **Personal User**:
@@ -33,7 +33,7 @@ An Agent environment detected on the current machine. The Library shows every In
 _Avoid_: Agent with Skills, active Agent
 
 **Added Project**:
-A local directory that a Personal User explicitly adds to the Library. SkillsPlay never scans the disk to guess projects, and removing an Added Project only stops managing that directory.
+A local directory that a Personal User explicitly adds to the Library. SkillsGo never scans the disk to guess projects, and removing an Added Project only stops managing that directory.
 _Avoid_: automatically discovered repository, recent repository
 
 **Library Entry**:
@@ -68,10 +68,10 @@ _Avoid_: safety score toggle, automatic deletion
 The adoption model in which Personal works without registration and team creation, trial, invitation, and seat purchase are self-service.
 _Avoid_: sales-led adoption
 
-**skillsplay-app**:
+**skillsgo-app**:
 The open-source desktop client repository containing Personal and Team interactions, local orchestration, Agent presentation, and Registry access.
 _Avoid_: Personal client, Team client, open-source shell
 
-**skillsplay-cloud**:
+**skillsgo-cloud**:
 The closed-source team control plane for accounts, organizations, seats, policy, approval, audit, and private-source metadata. The public Registry does not depend on it.
 _Avoid_: official Registry, Team client
