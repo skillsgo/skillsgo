@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on Bun, SQLite/PostgreSQL dialects, Registry database configuration, and canonical Skill coordinates.
+ * [OUTPUT]: Provides persistent searchable Skill metadata, install aggregation, pagination, and distinct rankings.
+ * [POS]: Serves as the Registry discovery data boundary while artifact bytes remain owned by storage packages.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 // Package catalog stores searchable Skill metadata. Artifact bytes are owned by
 // the Registry storage package and deliberately do not live here.
 package catalog
@@ -110,23 +116,22 @@ type RankedSkill struct {
 }
 
 func (c *Catalog) RankedSkills(ctx context.Context, sort string, limit, offset int, now time.Time) ([]RankedSkill, error) {
-	if limit <= 0 || limit > 100 {
-		limit = 20
-	}
+	limit = normalizeQueryLimit(limit)
 	if offset < 0 {
 		offset = 0
 	}
-	var installs, change string
+	var installs, change, order string
 	var args []any
 	switch sort {
 	case "", "all_time":
-		installs, change = "COALESCE(st.total_installs, 0)", "0"
+		installs, change, order = "COALESCE(st.total_installs, 0)", "0", "installs DESC, s.name ASC"
 	case "trending":
-		installs, change = "COALESCE(SUM(CASE WHEN hs.bucket >= ? THEN hs.installs ELSE 0 END), 0)", "0"
+		installs, change, order = "COALESCE(SUM(CASE WHEN hs.bucket > ? THEN hs.installs ELSE 0 END), 0)", "0", "installs DESC, s.name ASC"
 		args = append(args, now.UTC().Add(-24*time.Hour).Truncate(time.Hour))
 	case "hot":
 		installs = "COALESCE(SUM(CASE WHEN hs.bucket = ? THEN hs.installs ELSE 0 END), 0)"
 		change = installs + " - COALESCE(SUM(CASE WHEN hs.bucket = ? THEN hs.installs ELSE 0 END), 0)"
+		order = "change DESC, installs DESC, s.name ASC"
 		args = append(args, now.UTC().Truncate(time.Hour), now.UTC().Truncate(time.Hour), now.UTC().Add(-24*time.Hour).Truncate(time.Hour))
 	default:
 		return nil, fmt.Errorf("unsupported ranking %q", sort)
@@ -134,7 +139,7 @@ func (c *Catalog) RankedSkills(ctx context.Context, sort string, limit, offset i
 	query := `SELECT s.*, ` + installs + ` AS installs, ` + change + ` AS change
 FROM skills AS s LEFT JOIN skill_stats AS st ON st.skill_id = s.id
 LEFT JOIN skill_hourly_stats AS hs ON hs.skill_id = s.id
-GROUP BY s.id, st.total_installs ORDER BY installs DESC, s.name ASC LIMIT ? OFFSET ?`
+GROUP BY s.id, st.total_installs ORDER BY ` + order + ` LIMIT ? OFFSET ?`
 	args = append(args, limit, offset)
 	var skills []RankedSkill
 	err := c.db.NewRaw(query, args...).Scan(ctx, &skills)
@@ -249,27 +254,46 @@ func (c *Catalog) Skills(ctx context.Context, limit, offset int) ([]Skill, error
 	return skills, err
 }
 
-func (c *Catalog) Search(ctx context.Context, query string, limit int) ([]Skill, error) {
-	if limit <= 0 || limit > 100 {
-		limit = 20
+func (c *Catalog) Search(ctx context.Context, query string, limit, offset int) ([]RankedSkill, error) {
+	limit = normalizeQueryLimit(limit)
+	if offset < 0 {
+		offset = 0
 	}
 	query = strings.TrimSpace(query)
-	var skills []Skill
-	q := c.db.NewSelect().Model(&skills)
+	var skills []RankedSkill
+	statement := `SELECT s.*, COALESCE(st.total_installs, 0) AS installs, 0 AS change
+FROM skills AS s LEFT JOIN skill_stats AS st ON st.skill_id = s.id`
+	args := make([]any, 0, 5)
+	order := "s.verified DESC, s.name ASC"
 	if query != "" {
 		if c.dialect == SQLite && len([]rune(query)) >= 3 {
 			match := `"` + strings.ReplaceAll(query, `"`, `""`) + `"`
-			q = q.Join("JOIN skills_fts AS f ON f.rowid = s.id").Where("skills_fts MATCH ?", match).OrderExpr("bm25(skills_fts)")
+			statement += " JOIN skills_fts AS f ON f.rowid = s.id WHERE skills_fts MATCH ?"
+			args = append(args, match)
+			order = "bm25(skills_fts), s.verified DESC, s.name ASC"
 		} else if c.dialect == Postgres {
-			text := "name || ' ' || description || ' ' || coordinate"
-			q = q.Where("("+text+") ILIKE ?", "%"+query+"%").OrderExpr("similarity("+text+", ?) DESC", query)
+			text := "s.name || ' ' || s.description || ' ' || s.coordinate"
+			statement += " WHERE (" + text + ") ILIKE ?"
+			args = append(args, "%"+query+"%")
+			order = "similarity(" + text + ", ?) DESC, s.verified DESC, s.name ASC"
+			args = append(args, query)
 		} else {
 			like := "%" + strings.ToLower(query) + "%"
-			q = q.Where("lower(name) LIKE ? OR lower(description) LIKE ? OR lower(coordinate) LIKE ?", like, like, like)
+			statement += " WHERE lower(name) LIKE ? OR lower(description) LIKE ? OR lower(coordinate) LIKE ?"
+			args = append(args, like, like, like)
 		}
 	}
-	err := q.OrderExpr("s.verified DESC, s.name ASC").Limit(limit).Scan(ctx)
+	statement += " ORDER BY " + order + " LIMIT ? OFFSET ?"
+	args = append(args, limit, offset)
+	err := c.db.NewRaw(statement, args...).Scan(ctx, &skills)
 	return skills, err
+}
+
+func normalizeQueryLimit(limit int) int {
+	if limit <= 0 || limit > 101 {
+		return 20
+	}
+	return limit
 }
 
 var sqliteMigrations = []string{

@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Uses the cataloging Protocol decorator with fixed immutable artifact metadata and temporary Catalog storage.
+ * [OUTPUT]: Specifies that successful artifact resolution makes Skills discoverable through Catalog search.
+ * [POS]: Serves as integration coverage between artifact protocol reads and Registry discovery indexing.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package actions
 
 import (
@@ -57,7 +63,7 @@ func TestCatalogProtocolIndexesSuccessfulArtifactResolution(t *testing.T) {
 			protocol := withCatalog(underlying, metadata)
 
 			invoke(t, protocol)
-			results, err := metadata.Search(t.Context(), "find", 20)
+			results, err := metadata.Search(t.Context(), "find", 20, 0)
 			require.NoError(t, err)
 			require.Len(t, results, 1)
 			require.Equal(t, coordinate, results[0].Coordinate)

@@ -5,7 +5,7 @@ The CLI context owns local Skill state and every filesystem mutation that makes 
 ## Language
 
 **SkillsGo CLI**:
-The local execution engine used by both terminal users and the SkillsPlay App. The production App bundles a matching CLI version and communicates with it through stable JSON contracts.
+The local execution engine used by both terminal users and the SkillsGo App. The production App bundles a matching CLI version and communicates with it through stable JSON contracts.
 _Avoid_: external prerequisite CLI, App-native engine, `skills` CLI fork
 
 **Agent Adapter**:
@@ -38,7 +38,7 @@ _Avoid_: lock file, installation receipt
 
 **Workspace Lock**:
 The deterministic, committable `skillsgo-lock.yaml` file that records exact Skill identities, immutable versions, content digests, Registry origins, and Agent targets required to restore a Workspace.
-_Avoid_: `skillsplay-lock.yaml`, local database, arbitrary download list
+_Avoid_: alternate lock filenames, local database, arbitrary download list
 
 **Installation Receipt**:
 The local record that connects a Store artifact to one installation target and records the source, version, mode, path, and installation time.

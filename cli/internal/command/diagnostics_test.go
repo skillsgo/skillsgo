@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the public command.Execute seam and temporary Store directories.
- * [OUTPUT]: Specifies the versioned, read-only Store diagnostics contract consumed by SkillsPlay.
+ * [OUTPUT]: Specifies the versioned, read-only Store diagnostics contract consumed by SkillsGo.
  * [POS]: Serves as executable contract coverage for CLI-owned local Store inspection.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

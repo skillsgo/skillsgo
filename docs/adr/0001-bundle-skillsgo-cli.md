@@ -4,7 +4,7 @@ status: accepted
 
 # Bundle the SkillsGo CLI in the App
 
-Production SkillsPlay releases bundle and invoke a matching SkillsGo CLI instead of requiring users to install an executable or configure `PATH`. The App and terminal client share one local execution model and stable JSON contracts. A standalone CLI remains available for terminal users, while a custom CLI path is a developer-only option.
+Production SkillsGo releases bundle and invoke a matching SkillsGo CLI instead of requiring users to install an executable or configure `PATH`. The App and terminal client share one local execution model and stable JSON contracts. A standalone CLI remains available for terminal users, while a custom CLI path is a developer-only option.
 
 This decision preserves the principle that the CLI is the only Skill mutation engine while superseding the App-context decisions that depended on the external `skills` CLI and `skills.sh` APIs.
 
