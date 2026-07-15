@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on validated Skill Coordinates, immutable Registry artifacts, ZIP archives, and filesystem containment rules.
- * [OUTPUT]: Provides confined immutable Store put/get operations, safe extraction, immutable-content checks, refreshable assessment metadata, and receipts.
+ * [INPUT]: Depends on validated Skill Coordinates, immutable Registry or Local Skill artifacts, ZIP archives, and filesystem containment rules.
+ * [OUTPUT]: Provides confined immutable Store put/get operations, safe extraction, immutable-content checks, provenance-aware receipts, and refreshable assessment metadata.
  * [POS]: Serves as the local Content-addressed Store boundary beneath installation and inventory flows.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -28,10 +28,26 @@ var ErrNotFound = fmt.Errorf("Store 条目不存在")
 type Receipt struct {
 	Coordinate    string          `yaml:"coordinate"`
 	Version       string          `yaml:"version"`
+	Name          string          `yaml:"name,omitempty"`
+	Provenance    Provenance      `yaml:"provenance,omitempty"`
 	SHA256        string          `yaml:"sha256"`
 	ContentDigest string          `yaml:"contentDigest"`
 	Risk          registry.Risk   `yaml:"risk"`
 	Origin        registry.Origin `yaml:"origin"`
+}
+
+type Provenance string
+
+const (
+	ProvenanceRegistry Provenance = "registry"
+	ProvenanceLocal    Provenance = "local"
+)
+
+func (receipt Receipt) EffectiveProvenance() Provenance {
+	if receipt.Provenance == "" {
+		return ProvenanceRegistry
+	}
+	return receipt.Provenance
 }
 
 type Entry struct {
@@ -105,7 +121,8 @@ func (s Store) Put(artifact *registry.Artifact) (*Entry, error) {
 	}
 	receipt := Receipt{
 		Coordinate: artifact.Coordinate, Version: artifact.Info.Version,
-		ContentDigest: artifact.Info.ContentDigest, Risk: artifact.Info.Risk, Origin: artifact.Info.Origin,
+		Provenance: ProvenanceRegistry, ContentDigest: artifact.Info.ContentDigest,
+		Risk: artifact.Info.Risk, Origin: artifact.Info.Origin,
 	}
 	hash := sha256.Sum256(artifact.ZIP)
 	receipt.SHA256 = hex.EncodeToString(hash[:])

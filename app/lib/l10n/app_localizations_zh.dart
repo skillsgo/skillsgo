@@ -1065,4 +1065,64 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get installationPlanFailed => '安装计划无法继续';
+
+  @override
+  String get bringUnderManagement => '纳入管理';
+
+  @override
+  String get adoptExternalTitle => '将此外部安装纳入管理';
+
+  @override
+  String get adoptExternalDescription => 'SkillsGo 已按内容匹配该安装。继续前请核对准确来源和不可变版本。';
+
+  @override
+  String get adoptionContentDigest => '内容标识';
+
+  @override
+  String get registryContentMatches => 'Registry 匹配结果';
+
+  @override
+  String registryMatchSource(String source) {
+    return '来源：$source';
+  }
+
+  @override
+  String registryMatchVersion(String version) {
+    return '不可变版本：$version';
+  }
+
+  @override
+  String get associateRegistry => '关联 Registry';
+
+  @override
+  String get importAsLocal => '导入为本地技能';
+
+  @override
+  String get importAsLocalDescription =>
+      '未找到完全一致的 Registry 记录。此操作会创建一个私有本地技能，不包含发布者或更新源。';
+
+  @override
+  String get adoptionPreservesContent =>
+      '当前安装内容不会被替换。只有在你确认后，SkillsGo 才会记录管理关系。';
+
+  @override
+  String get chooseRegistryMatch => '请选择一个准确的 Registry 匹配项后继续。';
+
+  @override
+  String get confirmAdoption => '确认关联';
+
+  @override
+  String get confirmLocalImport => '确认本地导入';
+
+  @override
+  String get adoptionFailed => 'SkillsGo 无法将此外部安装纳入管理。';
+
+  @override
+  String get installMoreTargets => '安装到更多目标';
+
+  @override
+  String get exportLocalSkill => '导出';
+
+  @override
+  String get exportLocalSkillDescription => '将这个本地技能导出为可移植的 ZIP 归档。';
 }

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Exercises Store put/get with immutable Registry artifacts, conflicting archives, and hostile identities.
- * [OUTPUT]: Specifies idempotent storage, risk-only assessment refresh, local-tamper/content/archive digest conflicts, ZIP-slip defense, root containment, and exact retrieval.
+ * [INPUT]: Exercises Store put/get with immutable Registry and Local Skill artifacts, conflicting archives, explicit exports, and hostile identities.
+ * [OUTPUT]: Specifies idempotent Registry/local storage, private export, risk-only assessment refresh, local-tamper/content/archive digest conflicts, ZIP-slip defense, root containment, and exact retrieval.
  * [POS]: Serves as behavior coverage for the Content-addressed Store boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/skillsgo/skillsgo/cli/internal/registry"
 )
@@ -41,6 +42,70 @@ func TestPutExtractsArtifactAndIsIdempotent(t *testing.T) {
 	if !bytes.HasPrefix(info, []byte("{")) {
 		t.Fatalf("info.json is not JSON: %q", info)
 	}
+}
+
+func TestImportAndExportLocalSkillPreservesPrivateContent(t *testing.T) {
+	root := t.TempDir()
+	sourceRoot := filepath.Join(root, "source")
+	if err := os.MkdirAll(filepath.Join(sourceRoot, "references"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceRoot, "SKILL.md"), []byte("---\nname: private-demo\ndescription: Private\n---\n# Private\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(sourceRoot, "references", "notes.md"), []byte("secret"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	before, err := registry.ContentDirectoryDigest(sourceRoot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	storage := Store{Root: filepath.Join(root, "store")}
+	entry, err := storage.ImportLocal(sourceRoot, "private-demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entry.Receipt.EffectiveProvenance() != ProvenanceLocal || entry.Receipt.Name != "private-demo" {
+		t.Fatalf("unexpected Local receipt: %#v", entry.Receipt)
+	}
+	if !strings.HasPrefix(entry.Receipt.Coordinate, "local.skillsgo/") || !strings.HasPrefix(entry.Receipt.Version, "local-") {
+		t.Fatalf("unexpected Local identity: %#v", entry.Receipt)
+	}
+	if err := os.Chtimes(filepath.Join(sourceRoot, "SKILL.md"), time.Now().Add(-time.Hour), time.Now().Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := storage.ImportLocal(sourceRoot, "private-demo"); err != nil {
+		t.Fatalf("content-identical Local import must be idempotent across file timestamps: %v", err)
+	}
+	after, err := registry.ContentDirectoryDigest(sourceRoot)
+	if err != nil || after != before {
+		t.Fatalf("source content changed during import: %s != %s (%v)", after, before, err)
+	}
+	destination := filepath.Join(root, "private-demo.zip")
+	if err := storage.ExportLocal(entry.Receipt.Coordinate, entry.Receipt.Version, destination); err != nil {
+		t.Fatal(err)
+	}
+	archive, err := zip.OpenReader(destination)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer archive.Close()
+	names := make([]string, 0, len(archive.File))
+	for _, file := range archive.File {
+		names = append(names, file.Name)
+	}
+	if !containsString(names, "private-demo/SKILL.md") || !containsString(names, "private-demo/references/notes.md") {
+		t.Fatalf("unexpected export entries: %v", names)
+	}
+}
+
+func containsString(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
 }
 
 func TestPutRejectsDigestConflict(t *testing.T) {

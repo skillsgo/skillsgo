@@ -10,7 +10,7 @@ This map governs the Flutter desktop application workspace. Read it with the roo
 - Runtime: Flutter desktop; macOS is the currently maintained target.
 - Entry points: `lib/main.dart` and `lib/app.dart`
 - Integration seam: `SkillsGateway`
-- Product responsibility: present discovery and library workflows, collect user intent, and delegate registry reads or local mutations to the correct boundary.
+- Product responsibility: present discovery and Library workflows, collect installation/adoption/export intent, and delegate Registry reads or local mutations to the correct boundary.
 
 ## Commands
 

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings, discovery/detail parsing, managed/external CLI inventory including Local Modifications, read-only local inspection, explicit project persistence, strict Installation/Update/Target Management Plan JSON and NDJSON contracts, typed failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings, discovery/detail parsing, managed/external CLI inventory including Local Modifications, read-only local inspection, explicit project persistence, strict Installation/Update/Target Management/External Adoption contracts, Local export, typed failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -263,7 +263,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 7,
+            'appProtocolVersion': 8,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -370,7 +370,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '0.1.0',
-          'appProtocolVersion': 7,
+          'appProtocolVersion': 8,
           'os': 'linux',
           'architecture': 'arm64',
         }),
@@ -398,7 +398,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '7.4.2',
-            'appProtocolVersion': 7,
+            'appProtocolVersion': 8,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -426,7 +426,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': 'dev',
-          'appProtocolVersion': 7,
+          'appProtocolVersion': 8,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -455,7 +455,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '1.0.0',
-          'appProtocolVersion': 7,
+          'appProtocolVersion': 8,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -482,7 +482,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 7,
+            'appProtocolVersion': 8,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -1717,6 +1717,8 @@ void main() {
       );
 
       expect(detail.markdown, '# Healthy target');
+      expect(detail.immutableVersion, 'v1');
+      expect(detail.installationTargets, hasLength(2));
     },
   );
 
@@ -1799,6 +1801,236 @@ void main() {
       for (final file in [skillFile, script, notes, large]) {
         expect(await file.readAsBytes(), before[file.path]);
       }
+    },
+  );
+
+  test(
+    'External adoption preserves exact target arguments and reviewed Registry identity',
+    () async {
+      const path = '/tmp/external demo';
+      const installed = InstalledSkill(
+        identity: 'external:abc',
+        name: 'External Demo',
+        path: path,
+        agents: ['codex'],
+        targetCount: 1,
+        provenance: LibraryProvenance.external,
+        targets: [
+          SkillInstallationTarget(
+            agent: 'codex',
+            scope: InstallationScope.user,
+            path: path,
+            version: '',
+            mode: InstallationMode.external,
+            receiptState: ReceiptState.missing,
+          ),
+        ],
+      );
+      final runner = _FakeProcessRunner()
+        ..responses.addAll(const [
+          ProcessOutput(
+            exitCode: 0,
+            stdout:
+                '{"schemaVersion":1,"phase":"adoption-preflight","identity":"external:abc","name":"External Demo","target":{"scope":"user","agent":"codex","path":"/tmp/external demo"},"contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sourceHint":"github.com/acme/skills","stateToken":"sha256:state","matches":[{"coordinate":"github.com/acme/skills/-/demo","name":"Demo","source":"github.com/acme/skills","skillPath":"demo","immutableVersion":"sha256:version","commitSHA":"commit","treeSHA":"tree","contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}],"canImportLocal":true}',
+            stderr: '',
+          ),
+          ProcessOutput(
+            exitCode: 0,
+            stdout:
+                '{"schemaVersion":1,"phase":"adoption-execution","action":"associate-registry","name":"External Demo","coordinate":"github.com/acme/skills/-/demo","version":"sha256:version","provenance":"registry","contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","target":{"scope":"user","agent":"codex","path":"/tmp/external demo"}}',
+            stderr: '',
+          ),
+        ]);
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/bin/skillsgo',
+        registryBaseUrl: 'https://registry.example/base',
+      );
+
+      final preflight = await gateway.preflightExternalAdoption(installed);
+      expect(preflight.matches.single.source, 'github.com/acme/skills');
+      expect(preflight.matches.single.immutableVersion, 'sha256:version');
+      expect(runner.lastArguments, [
+        'adopt',
+        '--target',
+        jsonEncode({
+          'identity': 'external:abc',
+          'name': 'External Demo',
+          'scope': 'user',
+          'agent': 'codex',
+          'path': path,
+        }),
+        '--preflight',
+        '--output',
+        'json',
+        '--registry',
+        'https://registry.example/base',
+      ]);
+
+      final result = await gateway.executeExternalAdoption(
+        preflight.selectRegistryMatch(preflight.matches.single),
+      );
+
+      expect(result.provenance, LibraryProvenance.registry);
+      expect(result.coordinate, 'github.com/acme/skills/-/demo');
+      expect(jsonDecode(runner.lastArguments![2]), {
+        'identity': 'external:abc',
+        'name': 'External Demo',
+        'scope': 'user',
+        'agent': 'codex',
+        'path': path,
+        'action': 'associate-registry',
+        'matchCoordinate': 'github.com/acme/skills/-/demo',
+        'matchVersion': 'sha256:version',
+        'stateToken': 'sha256:state',
+      });
+      expect(runner.lastArguments, contains('https://registry.example/base'));
+    },
+  );
+
+  test(
+    'Local import execution has no Registry argument and rejects human output',
+    () async {
+      const target = InstallationPlanTarget(
+        scope: InstallationScope.user,
+        agent: 'codex',
+        mode: InstallationMode.copy,
+        path: '/tmp/private',
+      );
+      const plan = ExternalAdoptionPlan(
+        identity: 'external:private',
+        name: 'Private',
+        target: target,
+        contentDigest:
+            'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+        stateToken: 'sha256:state',
+        matches: [],
+        canImportLocal: true,
+      );
+      final runner = _FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":1,"phase":"adoption-execution","action":"import-local","name":"Private","coordinate":"local.skillsgo/abc/Private","version":"local-abc","provenance":"local","contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","target":{"scope":"user","agent":"codex","path":"/tmp/private"}}',
+          stderr: '',
+        );
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/bin/skillsgo',
+        registryBaseUrl: 'https://must-not-be-used.example',
+      );
+
+      final result = await gateway.executeExternalAdoption(
+        plan.selectLocalImport(),
+      );
+
+      expect(result.provenance, LibraryProvenance.local);
+      expect(runner.lastArguments, isNot(contains('--registry')));
+      expect(jsonDecode(runner.lastArguments![2]), {
+        'identity': 'external:private',
+        'name': 'Private',
+        'scope': 'user',
+        'agent': 'codex',
+        'path': '/tmp/private',
+        'action': 'import-local',
+        'stateToken': 'sha256:state',
+      });
+
+      runner.result = const ProcessOutput(
+        exitCode: 0,
+        stdout: 'Imported successfully.',
+        stderr: '',
+      );
+      await expectLater(
+        gateway.executeExternalAdoption(plan.selectLocalImport()),
+        throwsA(
+          isA<SkillsException>().having(
+            (error) => error.kind,
+            'kind',
+            SkillsFailureKind.invalidResponse,
+          ),
+        ),
+      );
+    },
+  );
+
+  test(
+    'Local export honors cancellation and exact destination arguments',
+    () async {
+      const local = InstalledSkill(
+        identity: 'local:abc',
+        name: 'Private Demo',
+        path: '/tmp/private',
+        agents: ['codex'],
+        targetCount: 1,
+        coordinate: 'local.skillsgo/abc/Private-Demo',
+        provenance: LibraryProvenance.local,
+        versions: ['local-abc'],
+        targets: [
+          SkillInstallationTarget(
+            agent: 'codex',
+            scope: InstallationScope.user,
+            path: '/tmp/private',
+            version: 'local-abc',
+            mode: InstallationMode.copy,
+          ),
+        ],
+      );
+      final cancelledRunner = _FakeProcessRunner();
+      final cancelled = RealSkillsGateway(
+        processRunner: cancelledRunner,
+        initialCliPath: '/bin/skillsgo',
+        savePathPicker: (_) async => null,
+      );
+      expect(await cancelled.exportLocalSkill(local), isNull);
+      expect(cancelledRunner.calls, isEmpty);
+
+      final runner = _FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":1,"phase":"local-export","coordinate":"local.skillsgo/abc/Private-Demo","version":"local-abc","destination":"/tmp/export destination.zip"}',
+          stderr: '',
+        );
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/bin/skillsgo',
+        savePathPicker: (name) async {
+          expect(name, 'Private Demo.zip');
+          return '/tmp/export destination.zip';
+        },
+      );
+
+      final result = await gateway.exportLocalSkill(local);
+
+      expect(result?.succeeded, isTrue);
+      expect(runner.lastArguments, [
+        'export',
+        '--coordinate',
+        'local.skillsgo/abc/Private-Demo',
+        '--version',
+        'local-abc',
+        '--destination',
+        '/tmp/export destination.zip',
+        '--output',
+        'json',
+      ]);
+
+      runner.result = const ProcessOutput(
+        exitCode: 0,
+        stdout: 'Exported successfully.',
+        stderr: '',
+      );
+      await expectLater(
+        gateway.exportLocalSkill(local),
+        throwsA(
+          isA<SkillsException>().having(
+            (error) => error.kind,
+            'kind',
+            SkillsFailureKind.invalidResponse,
+          ),
+        ),
+      );
     },
   );
 

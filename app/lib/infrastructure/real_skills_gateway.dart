@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Registry HTTP, the local filesystem, the platform directory picker, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides production Registry settings, discovery/detail, managed/external inventory parsing, strict Installation/Update/Target Management Plan JSON and NDJSON parsing, local file inspection, project persistence, Agent inspection, typed failures, diagnostics, CLI verification, and Skill operations.
+ * [OUTPUT]: Provides production Registry settings, discovery/detail, managed/external inventory parsing, strict Installation/Update/Target Management/External Adoption machine contracts, Local export, local file inspection, project persistence, Agent inspection, typed failures, diagnostics, CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -19,6 +19,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../domain/skills_gateway.dart';
 
 typedef DirectoryPicker = Future<String?> Function({String? initialDirectory});
+typedef SavePathPicker = Future<String?> Function(String suggestedName);
 typedef ProjectPathInspector =
     Future<({ProjectAccessState state, String? diagnostic})> Function(
       String path,
@@ -522,6 +523,22 @@ String _targetManagementActionValue(TargetManagementAction action) =>
       TargetManagementAction.stopManaging => 'stop-managing',
     };
 
+ExternalAdoptionAction _externalAdoptionAction(Object? value) =>
+    switch (value) {
+      'associate-registry' => ExternalAdoptionAction.associateRegistry,
+      'import-local' => ExternalAdoptionAction.importLocal,
+      _ => throw const FormatException(),
+    };
+
+String _externalAdoptionActionValue(ExternalAdoptionAction action) =>
+    switch (action) {
+      ExternalAdoptionAction.associateRegistry => 'associate-registry',
+      ExternalAdoptionAction.importLocal => 'import-local',
+    };
+
+bool _isSha256Digest(Object? value) =>
+    value is String && RegExp(r'^sha256:[0-9a-f]{64}$').hasMatch(value);
+
 TargetManagementResult _targetManagementResult(
   Object? raw,
   TargetManagementPlanItem expected,
@@ -609,6 +626,7 @@ class RealSkillsGateway implements SkillsGateway {
     this.discoveryTimeout = const Duration(seconds: 15),
     this.detailTimeout = const Duration(seconds: 20),
     DirectoryPicker? directoryPicker,
+    SavePathPicker? savePathPicker,
     ProjectPathInspector? projectPathInspector,
   }) : _http = httpClient ?? http.Client(),
        _runner = processRunner ?? const IoProcessRunner(),
@@ -620,6 +638,7 @@ class RealSkillsGateway implements SkillsGateway {
        _registryBase = _originUri(registryBaseUrl),
        _injectedAppVersion = appVersion,
        _directoryPicker = directoryPicker ?? _pickDirectory,
+       _savePathPicker = savePathPicker ?? _pickSavePath,
        _projectPathInspector = projectPathInspector ?? _inspectProjectPath;
 
   static const _customCliKey = 'custom_cli_path';
@@ -627,7 +646,7 @@ class RealSkillsGateway implements SkillsGateway {
   static const _allowCriticalOverrideKey = 'allow_critical_risk_override';
   static const _addedProjectsKey = 'added_projects_v1';
   static const _startupHandshakeSchemaVersion = 1;
-  static const _appProtocolVersion = 7;
+  static const _appProtocolVersion = 8;
   final http.Client _http;
   final ProcessRunner _runner;
   final Uri _defaultRegistryBase;
@@ -639,12 +658,21 @@ class RealSkillsGateway implements SkillsGateway {
   final Duration discoveryTimeout;
   final Duration detailTimeout;
   final DirectoryPicker _directoryPicker;
+  final SavePathPicker _savePathPicker;
   final ProjectPathInspector _projectPathInspector;
   String? _cliPath;
   bool _registryOriginLoaded = false;
 
   static Future<String?> _pickDirectory({String? initialDirectory}) =>
       file_selector.getDirectoryPath(initialDirectory: initialDirectory);
+
+  static Future<String?> _pickSavePath(String suggestedName) async =>
+      (await file_selector.getSaveLocation(
+        suggestedName: suggestedName,
+        acceptedTypeGroups: const [
+          file_selector.XTypeGroup(label: 'ZIP archive', extensions: ['zip']),
+        ],
+      ))?.path;
 
   static Future<({ProjectAccessState state, String? diagnostic})>
   _inspectProjectPath(String path) async {
@@ -1663,6 +1691,12 @@ class RealSkillsGateway implements SkillsGateway {
 
   @override
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill) async {
+    final immutableVersions = {
+      ...skill.versions.where((version) => version.isNotEmpty),
+      ...skill.targets
+          .map((target) => target.version)
+          .where((version) => version.isNotEmpty),
+    };
     final targetPaths = skill.targets.isEmpty
         ? [skill.path]
         : ([...skill.targets]..sort(
@@ -1698,8 +1732,12 @@ class RealSkillsGateway implements SkillsGateway {
           },
           markdown: markdown,
           files: files,
+          immutableVersion: immutableVersions.length == 1
+              ? immutableVersions.single
+              : '',
           riskAssessment: skill.riskAssessment,
           riskEvidence: executableFiles,
+          installationTargets: skill.targets,
         );
       } on FileSystemException catch (error) {
         lastFileError = error;
@@ -2075,6 +2113,301 @@ class RealSkillsGateway implements SkillsGateway {
       '--registry',
       _registryOrigin,
     ]);
+  }
+
+  Map<String, dynamic> _externalAdoptionTarget(
+    InstalledSkill skill,
+    SkillInstallationTarget target, {
+    ExternalAdoptionAction? action,
+    RegistryContentMatch? match,
+    String? stateToken,
+  }) => {
+    'identity': skill.identity,
+    'name': skill.name,
+    'scope': target.scope.name,
+    if (target.scope == InstallationScope.project)
+      'projectRoot': target.projectRoot,
+    'agent': target.agent,
+    'path': target.path,
+    if (action != null) 'action': _externalAdoptionActionValue(action),
+    if (match != null) 'matchCoordinate': match.coordinate,
+    if (match != null) 'matchVersion': match.immutableVersion,
+    'stateToken': ?stateToken,
+  };
+
+  @override
+  Future<ExternalAdoptionPlan> preflightExternalAdoption(
+    InstalledSkill skill,
+  ) async {
+    if (skill.provenance != LibraryProvenance.external ||
+        skill.targets.length != 1 ||
+        skill.targets.single.mode != InstallationMode.external) {
+      throw const SkillsException(
+        'Adoption requires one exact External Installation.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    await _ensureRegistryOrigin();
+    final sourceTarget = skill.targets.single;
+    final command = await _runCli([
+      'adopt',
+      '--target',
+      jsonEncode(_externalAdoptionTarget(skill, sourceTarget)),
+      '--preflight',
+      '--output',
+      'json',
+      '--registry',
+      _registryOrigin,
+    ]);
+    if (!command.succeeded) throw SkillsException(_commandError(command));
+    try {
+      final raw = jsonDecode(command.output.stdout);
+      if (raw is! Map<String, dynamic> ||
+          raw['schemaVersion'] != 1 ||
+          raw['phase'] != 'adoption-preflight' ||
+          raw['identity'] != skill.identity ||
+          raw['name'] != skill.name ||
+          !_isSha256Digest(raw['contentDigest']) ||
+          raw['stateToken'] is! String ||
+          (raw['stateToken'] as String).isEmpty ||
+          raw['matches'] is! List ||
+          raw['canImportLocal'] is! bool ||
+          (raw['sourceHint'] != null && raw['sourceHint'] is! String)) {
+        throw const FormatException();
+      }
+      final targetRaw = raw['target'];
+      if (targetRaw is! Map<String, dynamic> ||
+          targetRaw['scope'] != sourceTarget.scope.name ||
+          (targetRaw['projectRoot'] ?? '') != sourceTarget.projectRoot ||
+          targetRaw['agent'] != sourceTarget.agent ||
+          targetRaw['path'] != sourceTarget.path) {
+        throw const FormatException();
+      }
+      final matches = <RegistryContentMatch>[];
+      final seen = <String>{};
+      for (final candidate in raw['matches'] as List) {
+        if (candidate is! Map<String, dynamic> ||
+            candidate['coordinate'] is! String ||
+            (candidate['coordinate'] as String).isEmpty ||
+            candidate['name'] is! String ||
+            (candidate['name'] as String).isEmpty ||
+            candidate['source'] is! String ||
+            (candidate['source'] as String).isEmpty ||
+            candidate['skillPath'] is! String ||
+            candidate['immutableVersion'] is! String ||
+            (candidate['immutableVersion'] as String).isEmpty ||
+            candidate['commitSHA'] is! String ||
+            (candidate['commitSHA'] as String).isEmpty ||
+            candidate['treeSHA'] is! String ||
+            (candidate['treeSHA'] as String).isEmpty ||
+            candidate['contentDigest'] != raw['contentDigest']) {
+          throw const FormatException();
+        }
+        final key =
+            '${candidate['coordinate']}\u0000${candidate['immutableVersion']}';
+        if (!seen.add(key)) throw const FormatException();
+        matches.add(
+          RegistryContentMatch(
+            coordinate: candidate['coordinate'] as String,
+            name: candidate['name'] as String,
+            source: candidate['source'] as String,
+            skillPath: candidate['skillPath'] as String,
+            immutableVersion: candidate['immutableVersion'] as String,
+            commitSHA: candidate['commitSHA'] as String,
+            treeSHA: candidate['treeSHA'] as String,
+            contentDigest: candidate['contentDigest'] as String,
+          ),
+        );
+      }
+      return ExternalAdoptionPlan(
+        identity: skill.identity,
+        name: skill.name,
+        target: InstallationPlanTarget(
+          scope: sourceTarget.scope,
+          projectRoot: sourceTarget.projectRoot,
+          agent: sourceTarget.agent,
+          mode: InstallationMode.copy,
+          path: sourceTarget.path,
+        ),
+        contentDigest: raw['contentDigest'] as String,
+        sourceHint: raw['sourceHint'] as String? ?? '',
+        stateToken: raw['stateToken'] as String,
+        matches: List.unmodifiable(matches),
+        canImportLocal: raw['canImportLocal'] as bool,
+      );
+    } on FormatException {
+      throw const SkillsException(
+        'The SkillsGo CLI returned invalid External Adoption Plan JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
+  }
+
+  @override
+  Future<ExternalAdoptionResult> executeExternalAdoption(
+    ExternalAdoptionPlan plan,
+  ) async {
+    final action = plan.action;
+    final selected = plan.selectedMatch;
+    final reviewedMatch =
+        selected != null &&
+        plan.matches.any(
+          (candidate) =>
+              candidate.coordinate == selected.coordinate &&
+              candidate.immutableVersion == selected.immutableVersion &&
+              candidate.contentDigest == plan.contentDigest,
+        );
+    if (action == null ||
+        (action == ExternalAdoptionAction.associateRegistry &&
+            !reviewedMatch) ||
+        (action == ExternalAdoptionAction.importLocal &&
+            !plan.canImportLocal)) {
+      throw const SkillsException(
+        'Adoption execution requires an explicitly reviewed action.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    final sourceTarget = SkillInstallationTarget(
+      agent: plan.target.agent,
+      scope: plan.target.scope,
+      projectRoot: plan.target.projectRoot,
+      path: plan.target.path,
+      version: '',
+      mode: InstallationMode.external,
+      receiptState: ReceiptState.missing,
+    );
+    final skill = InstalledSkill(
+      identity: plan.identity,
+      name: plan.name,
+      path: plan.target.path,
+      agents: [plan.target.agent],
+      targetCount: 1,
+      provenance: LibraryProvenance.external,
+      targets: [sourceTarget],
+    );
+    final arguments = <String>[
+      'adopt',
+      '--target',
+      jsonEncode(
+        _externalAdoptionTarget(
+          skill,
+          sourceTarget,
+          action: action,
+          match: plan.selectedMatch,
+          stateToken: plan.stateToken,
+        ),
+      ),
+      '--output',
+      'json',
+    ];
+    if (action == ExternalAdoptionAction.associateRegistry) {
+      await _ensureRegistryOrigin();
+      arguments.addAll(['--registry', _registryOrigin]);
+    }
+    final command = await _runCli(arguments);
+    if (!command.succeeded) throw SkillsException(_commandError(command));
+    try {
+      final raw = jsonDecode(command.output.stdout);
+      if (raw is! Map<String, dynamic> ||
+          raw['schemaVersion'] != 1 ||
+          raw['phase'] != 'adoption-execution' ||
+          raw['action'] != _externalAdoptionActionValue(action) ||
+          raw['name'] != plan.name ||
+          raw['coordinate'] is! String ||
+          (raw['coordinate'] as String).isEmpty ||
+          raw['version'] is! String ||
+          (raw['version'] as String).isEmpty ||
+          raw['contentDigest'] != plan.contentDigest ||
+          raw['provenance'] is! String ||
+          raw['target'] is! Map<String, dynamic>) {
+        throw const FormatException();
+      }
+      final provenance = _libraryProvenance(raw['provenance']);
+      final expectedProvenance = action == ExternalAdoptionAction.importLocal
+          ? LibraryProvenance.local
+          : LibraryProvenance.registry;
+      if (provenance != expectedProvenance) throw const FormatException();
+      if (action == ExternalAdoptionAction.associateRegistry &&
+          (raw['coordinate'] != selected!.coordinate ||
+              raw['version'] != selected.immutableVersion)) {
+        throw const FormatException();
+      }
+      if (action == ExternalAdoptionAction.importLocal &&
+          (!(raw['coordinate'] as String).startsWith('local.skillsgo/') ||
+              !(raw['version'] as String).startsWith('local-'))) {
+        throw const FormatException();
+      }
+      final target = _installationPlanTarget({
+        ...raw['target'] as Map<String, dynamic>,
+        'mode': 'copy',
+      });
+      if (!_samePlanTarget(target, plan.target)) throw const FormatException();
+      return ExternalAdoptionResult(
+        action: _externalAdoptionAction(raw['action']),
+        name: plan.name,
+        coordinate: raw['coordinate'] as String,
+        version: raw['version'] as String,
+        provenance: provenance,
+        contentDigest: plan.contentDigest,
+        target: target,
+      );
+    } on FormatException {
+      throw const SkillsException(
+        'The SkillsGo CLI returned invalid External Adoption Result JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
+  }
+
+  @override
+  Future<CommandResult?> exportLocalSkill(InstalledSkill skill) async {
+    if (skill.provenance != LibraryProvenance.local || skill.targets.isEmpty) {
+      throw const SkillsException(
+        'Only managed private Local Skills can be exported.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    final versions = skill.targets
+        .map((target) => target.version)
+        .where((version) => version.isNotEmpty)
+        .toSet();
+    if (skill.coordinate.isEmpty || versions.length != 1) {
+      throw const SkillsException(
+        'Local Skill export requires one immutable version.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    final destination = await _savePathPicker('${skill.name}.zip');
+    if (destination == null) return null;
+    final result = await _runCli([
+      'export',
+      '--coordinate',
+      skill.coordinate,
+      '--version',
+      versions.single,
+      '--destination',
+      destination,
+      '--output',
+      'json',
+    ]);
+    if (!result.succeeded) return result;
+    try {
+      final raw = jsonDecode(result.output.stdout);
+      if (raw is! Map<String, dynamic> ||
+          raw['schemaVersion'] != 1 ||
+          raw['phase'] != 'local-export' ||
+          raw['coordinate'] != skill.coordinate ||
+          raw['version'] != versions.single ||
+          raw['destination'] != destination) {
+        throw const FormatException();
+      }
+    } on FormatException {
+      throw const SkillsException(
+        'The SkillsGo CLI returned invalid Local Skill export JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
+    return result;
   }
 
   String _managementTargetArgument(

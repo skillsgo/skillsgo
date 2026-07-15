@@ -1999,6 +1999,114 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Installation plan could not continue'**
   String get installationPlanFailed;
+
+  /// No description provided for @bringUnderManagement.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring under management'**
+  String get bringUnderManagement;
+
+  /// No description provided for @adoptExternalTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bring this installation under management'**
+  String get adoptExternalTitle;
+
+  /// No description provided for @adoptExternalDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo matched the installation by content. Review the exact source and immutable version before continuing.'**
+  String get adoptExternalDescription;
+
+  /// No description provided for @adoptionContentDigest.
+  ///
+  /// In en, this message translates to:
+  /// **'Content identity'**
+  String get adoptionContentDigest;
+
+  /// No description provided for @registryContentMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'Registry matches'**
+  String get registryContentMatches;
+
+  /// No description provided for @registryMatchSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Source: {source}'**
+  String registryMatchSource(String source);
+
+  /// No description provided for @registryMatchVersion.
+  ///
+  /// In en, this message translates to:
+  /// **'Immutable version: {version}'**
+  String registryMatchVersion(String version);
+
+  /// No description provided for @associateRegistry.
+  ///
+  /// In en, this message translates to:
+  /// **'Associate with Registry'**
+  String get associateRegistry;
+
+  /// No description provided for @importAsLocal.
+  ///
+  /// In en, this message translates to:
+  /// **'Import as Local Skill'**
+  String get importAsLocal;
+
+  /// No description provided for @importAsLocalDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'No exact Registry match was found. This creates a private Local Skill with no publisher or update source.'**
+  String get importAsLocalDescription;
+
+  /// No description provided for @adoptionPreservesContent.
+  ///
+  /// In en, this message translates to:
+  /// **'The current installation content will not be replaced. SkillsGo only records ownership after your confirmation.'**
+  String get adoptionPreservesContent;
+
+  /// No description provided for @chooseRegistryMatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Select an exact Registry match to continue.'**
+  String get chooseRegistryMatch;
+
+  /// No description provided for @confirmAdoption.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm association'**
+  String get confirmAdoption;
+
+  /// No description provided for @confirmLocalImport.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Local import'**
+  String get confirmLocalImport;
+
+  /// No description provided for @adoptionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo could not bring this installation under management.'**
+  String get adoptionFailed;
+
+  /// No description provided for @installMoreTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Install more'**
+  String get installMoreTargets;
+
+  /// No description provided for @exportLocalSkill.
+  ///
+  /// In en, this message translates to:
+  /// **'Export'**
+  String get exportLocalSkill;
+
+  /// No description provided for @exportLocalSkillDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Export this Local Skill as a portable ZIP archive.'**
+  String get exportLocalSkillDescription;
 }
 
 class _AppLocalizationsDelegate

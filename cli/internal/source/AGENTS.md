@@ -3,8 +3,8 @@
 
 ## Members
 
-- `source.go`: parses supported GitHub references and validates canonical, path-safe Skill Coordinates and version segments.
-- `source_test.go`: specifies coordinate normalization plus hostile coordinate/version segment rejection through the public parser and validators.
+- `source.go`: parses supported GitHub references and private Local Skill identities, then validates canonical, path-safe Skill Coordinates and version segments.
+- `source_test.go`: specifies Registry/local coordinate normalization plus hostile coordinate/version segment rejection through the public parser and validators.
 
 ## Architectural Boundary
 

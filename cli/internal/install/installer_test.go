@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses temporary immutable artifacts, resolved targets, filesystem modes, and adversarial directory layouts.
- * [OUTPUT]: Specifies shared-path receipts, collision refusal, copy fidelity, and unambiguous Local Modification digests.
+ * [INPUT]: Uses temporary immutable artifacts, existing external directories, resolved targets, filesystem modes, and adversarial directory layouts.
+ * [OUTPUT]: Specifies shared-path receipts, content-preserving adoption, collision refusal, copy fidelity, and unambiguous Local Modification digests.
  * [POS]: Serves as behavior coverage for the installation materialization boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,6 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
 
@@ -57,6 +58,47 @@ func TestInstallDoesNotOverwriteExistingTarget(t *testing.T) {
 	err := Install(&store.Entry{Root: root, Artifact: artifact}, []Target{{Agent: "codex", Scope: ScopeProject, Mode: ModeSymlink, Path: target}})
 	if err == nil {
 		t.Fatal("expected target conflict")
+	}
+}
+
+func TestAdoptExistingRecordsBaselineWithoutReplacingContent(t *testing.T) {
+	root := t.TempDir()
+	artifact := filepath.Join(root, "store", "artifact")
+	target := filepath.Join(root, "external", "demo")
+	if err := os.MkdirAll(artifact, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(target, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	for _, directory := range []string{artifact, target} {
+		if err := os.WriteFile(filepath.Join(directory, "SKILL.md"), []byte("private"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	contentDigest, err := registry.ContentDirectoryDigest(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	before, err := DirectoryDigest(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	entry := &store.Entry{
+		Root: filepath.Dir(artifact), Artifact: artifact,
+		Receipt: store.Receipt{ContentDigest: contentDigest},
+	}
+	adopted := Target{Agent: "codex", Scope: ScopeUser, Mode: ModeCopy, Path: target}
+	if err := AdoptExisting(entry, adopted); err != nil {
+		t.Fatal(err)
+	}
+	after, err := DirectoryDigest(target)
+	if err != nil || after != before {
+		t.Fatalf("adoption changed target content: %s != %s (%v)", after, before, err)
+	}
+	receipts, err := filepath.Glob(filepath.Join(entry.Root, "targets", "*.yaml"))
+	if err != nil || len(receipts) != 1 {
+		t.Fatalf("expected one adoption receipt, got %v (%v)", receipts, err)
 	}
 }
 

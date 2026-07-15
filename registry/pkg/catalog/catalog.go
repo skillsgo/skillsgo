@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Bun, SQLite/PostgreSQL dialects, Registry database configuration, and canonical Skill coordinates.
- * [OUTPUT]: Provides persistent searchable Skill metadata, immutable versions, append-only risk assessments, install aggregation, pagination, and distinct rankings.
+ * [OUTPUT]: Provides persistent searchable Skill metadata, immutable versions, exact content-identity matching with source-hint ranking, append-only risk assessments, install aggregation, pagination, and distinct rankings.
  * [POS]: Serves as the Registry discovery data boundary while artifact bytes remain owned by storage packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -126,6 +126,41 @@ type RankedSkill struct {
 	Skill
 	Installs int64 `json:"installs"`
 	Change   int64 `json:"change,omitempty"`
+}
+
+type ContentMatch struct {
+	Coordinate    string    `json:"coordinate"`
+	Name          string    `json:"name"`
+	SourceHost    string    `json:"sourceHost"`
+	Repository    string    `json:"repository"`
+	SkillPath     string    `json:"skillPath"`
+	Version       string    `json:"version"`
+	CommitSHA     string    `json:"commitSHA"`
+	TreeSHA       string    `json:"treeSHA"`
+	ContentDigest string    `json:"contentDigest"`
+	CreatedAt     time.Time `json:"createdAt"`
+}
+
+func (c *Catalog) MatchContent(ctx context.Context, contentDigest, sourceHint string, limit int) ([]ContentMatch, error) {
+	if !strings.HasPrefix(contentDigest, "sha256:") {
+		return nil, fmt.Errorf("content digest must use sha256")
+	}
+	if limit <= 0 || limit > 20 {
+		limit = 20
+	}
+	hint := strings.ToLower(strings.TrimSpace(sourceHint))
+	pattern := "%" + hint + "%"
+	statement := `SELECT s.coordinate, s.name, s.source_host, s.repository, s.skill_path,
+sv.version, sv.commit_sha, sv.tree_sha, sv.content_digest, sv.created_at
+FROM skill_versions AS sv JOIN skills AS s ON s.id = sv.skill_id
+WHERE sv.content_digest = ?
+ORDER BY CASE WHEN ? = '' THEN 0
+WHEN lower(s.coordinate) LIKE ? OR lower(s.source_host || '/' || s.repository) LIKE ? THEN 0 ELSE 1 END,
+CASE WHEN sv.version = s.latest_version THEN 0 ELSE 1 END, sv.created_at DESC, s.coordinate ASC
+LIMIT ?`
+	matches := make([]ContentMatch, 0)
+	err := c.db.NewRaw(statement, contentDigest, hint, pattern, pattern, limit).Scan(ctx, &matches)
+	return matches, err
 }
 
 func (c *Catalog) RankedSkills(ctx context.Context, sort string, limit, offset int, now time.Time) ([]RankedSkill, error) {
