@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Uses temporary filesystem layouts and explicit Catalog path/definition fixtures.
+ * [OUTPUT]: Specifies complete catalog parity, special detection, universal visibility, and stable Agent status records.
+ * [POS]: Serves as the Agent Adapter behavior contract below CLI serialization.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package agent
 
 import (
@@ -61,4 +67,32 @@ func TestCatalogAcceptsIsolatedTestAgent(t *testing.T) {
 	_, ok = official.Get("test-agent")
 	require.False(t, ok)
 	require.Len(t, official.All(), 73)
+}
+
+func TestStatusesExposeCanonicalScopesAndResolvedHostileUserPath(t *testing.T) {
+	home := t.TempDir()
+	base := filepath.Join(home, `agent home;$(touch nope)`)
+	require.NoError(t, os.MkdirAll(base, 0o755))
+	definition := Definition{
+		ID: "hostile-agent", Display: "Hostile Agent", ProjectDir: ".hostile/skills",
+		UserDir: filepath.Join(base, "skills"),
+	}
+	catalog := NewCatalog(
+		Paths{Home: home, ConfigHome: filepath.Join(home, ".config")},
+		WithDefinition(definition),
+	)
+
+	var status Status
+	for _, candidate := range catalog.Statuses() {
+		if candidate.ID == definition.ID {
+			status = candidate
+			break
+		}
+	}
+	require.Equal(t, "hostile-agent", status.ID)
+	require.Equal(t, "Hostile Agent", status.DisplayName)
+	require.True(t, status.Installed)
+	require.Equal(t, []Scope{ScopeProject, ScopeUser}, status.SupportedScopes)
+	require.Equal(t, definition.UserDir, status.UserTarget.Path)
+	require.False(t, status.UserTarget.Exists)
 }
