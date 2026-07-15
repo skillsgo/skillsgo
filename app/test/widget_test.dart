@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp with a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
- * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, unified multi-target Library views, explicit projects, Agents, Settings, focus restoration, accessibility, and mutation journeys.
+ * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, managed/external multi-target Library views, read-only External inspection, explicit projects, Agents, Settings, focus restoration, accessibility, and mutation journeys.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -999,6 +999,80 @@ void main() {
     },
   );
 
+  testWidgets(
+    'External Installation stays visible and read-only after inspection',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      const path = '/Users/test/.codex/skills/external-demo';
+      const entry = InstalledSkill(
+        identity: 'external:abc',
+        name: 'external-demo',
+        path: path,
+        agents: ['codex'],
+        targetCount: 1,
+        provenance: LibraryProvenance.external,
+        versions: [],
+        targets: [
+          SkillInstallationTarget(
+            agent: 'codex',
+            scope: InstallationScope.user,
+            path: path,
+            version: '',
+            mode: InstallationMode.external,
+            receiptState: ReceiptState.missing,
+          ),
+        ],
+      );
+      const detail = SkillDetail(
+        name: 'external-demo',
+        source: 'External',
+        markdown: '# External instructions',
+        riskAssessment: SkillRiskAssessment.unknown,
+        files: [
+          SkillFile(path: 'SKILL.md', contents: '# External instructions'),
+          SkillFile(
+            path: 'scripts/run.sh',
+            contents: '#!/bin/sh',
+            executable: true,
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        SkillsGoApp(
+          gateway: FakeSkillsGateway(
+            installed: false,
+            libraryEntries: const [entry],
+            localDetail: detail,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Library'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('External installation'), findsOneWidget);
+      expect(find.text('Read only'), findsOneWidget);
+      expect(find.byTooltip('Remove external-demo'), findsNothing);
+      await tester.tap(find.text('external-demo').first);
+      await tester.pumpAndSettle();
+      expect(find.text(path), findsWidgets);
+      expect(find.text('scripts/run.sh'), findsOneWidget);
+      expect(find.text('Risk unknown'), findsOneWidget);
+      expect(
+        find.textContaining('scripts or executable content'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('scripts/run.sh'));
+      await tester.pumpAndSettle();
+      expect(find.text('#!/bin/sh'), findsOneWidget);
+
+      await tester.tap(find.byTooltip('Back to Library'));
+      await tester.pumpAndSettle();
+      expect(find.text('external-demo'), findsWidgets);
+      expect(find.text('External installation'), findsOneWidget);
+    },
+  );
+
   testWidgets('the selected rail capsule follows spring motion', (
     tester,
   ) async {
@@ -1356,6 +1430,7 @@ class FakeSkillsGateway implements SkillsGateway {
     this.projectToRelocate,
     this.libraryEntries,
     this.localDetailError,
+    this.localDetail,
     this.registryOrigin = 'https://registry.skillsgo.dev',
     this.registryTestState = HealthState.ready,
     this.storageStatus = const StorageStatus(
@@ -1384,6 +1459,7 @@ class FakeSkillsGateway implements SkillsGateway {
   final AddedProject? projectToRelocate;
   final List<InstalledSkill>? libraryEntries;
   final SkillsException? localDetailError;
+  final SkillDetail? localDetail;
   final List<AddedProject> projects;
   String registryOrigin;
   final HealthState registryTestState;
@@ -1627,12 +1703,13 @@ class FakeSkillsGateway implements SkillsGateway {
   @override
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill) async {
     if (localDetailError != null) throw localDetailError!;
-    return const SkillDetail(
-      name: 'local-skill',
-      source: 'Local',
-      markdown: '# Local',
-      files: [SkillFile(path: 'SKILL.md', contents: '# Local')],
-    );
+    return localDetail ??
+        const SkillDetail(
+          name: 'local-skill',
+          source: 'Local',
+          markdown: '# Local',
+          files: [SkillFile(path: 'SKILL.md', contents: '# Local')],
+        );
   }
 
   @override

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings, discovery/detail parsing, unified CLI inventory, explicit project reference persistence, strict Agent machine contracts, typed failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings, discovery/detail parsing, managed/external CLI inventory, read-only local inspection, explicit project reference persistence, strict Agent machine contracts, typed failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -263,7 +263,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 1,
+            'appProtocolVersion': 2,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -343,7 +343,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '9.0.0',
-          'appProtocolVersion': 2,
+          'appProtocolVersion': 1,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -370,7 +370,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '0.1.0',
-          'appProtocolVersion': 1,
+          'appProtocolVersion': 2,
           'os': 'linux',
           'architecture': 'arm64',
         }),
@@ -398,7 +398,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '7.4.2',
-            'appProtocolVersion': 1,
+            'appProtocolVersion': 2,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -426,7 +426,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': 'dev',
-          'appProtocolVersion': 1,
+          'appProtocolVersion': 2,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -455,7 +455,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '1.0.0',
-          'appProtocolVersion': 1,
+          'appProtocolVersion': 2,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -482,7 +482,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 1,
+            'appProtocolVersion': 2,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -521,7 +521,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":1,"entries":[{"identity":"registry:github.com/flutter/skills/-/responsive-layout","name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"}]}]}',
+            '{"schemaVersion":2,"entries":[{"identity":"registry:github.com/flutter/skills/-/responsive-layout","name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -617,7 +617,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            r'{"schemaVersion":1,"entries":[{"identity":"registry:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"registry","risk":"unknown","health":"receipt-missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"targets":[{"scope":"user","projectRoot":"","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"healthy"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","mode":"symlink","version":"v2.0.0","receiptState":"missing","health":"receipt-missing"}]}]}',
+            r'{"schemaVersion":2,"entries":[{"identity":"registry:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"registry","risk":"unknown","health":"receipt-missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"targets":[{"scope":"user","projectRoot":"","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"healthy"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","mode":"symlink","version":"v2.0.0","receiptState":"missing","health":"receipt-missing"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -673,7 +673,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":1,"entries":[{"identity":"registry:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"healthy"}]}]}',
+            '{"schemaVersion":2,"entries":[{"identity":"registry:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -683,6 +683,48 @@ void main() {
     );
 
     await expectLater(gateway.listInstalled(), throwsA(isA<SkillsException>()));
+  });
+
+  test('listInstalled rejects the obsolete inventory schema', () async {
+    final gateway = RealSkillsGateway(
+      processRunner: _FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 0,
+          stdout: '{"schemaVersion":1,"entries":[]}',
+          stderr: '',
+        ),
+      initialCliPath: '/usr/local/bin/skillsgo',
+    );
+
+    await expectLater(gateway.listInstalled(), throwsA(isA<SkillsException>()));
+  });
+
+  test('listInstalled keeps same-name External Installations distinct', () async {
+    final runner = _FakeProcessRunner()
+      ..result = const ProcessOutput(
+        exitCode: 0,
+        stdout:
+            '{"schemaVersion":2,"entries":[{"identity":"external:abc","name":"testing","coordinate":"","provenance":"external","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/external/testing","mode":"external","version":"","receiptState":"missing","health":"healthy"}]},{"identity":"registry:github.com/a/b/-/testing","name":"testing","coordinate":"github.com/a/b/-/testing","provenance":"registry","risk":"low","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/managed/testing","mode":"copy","version":"v1","receiptState":"present","health":"healthy"}]}]}',
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/usr/local/bin/skillsgo',
+    );
+
+    final skills = await gateway.listInstalled();
+
+    expect(skills, hasLength(2));
+    expect(skills.map((skill) => skill.name).toSet(), {'testing'});
+    final external = skills.singleWhere(
+      (skill) => skill.provenance == LibraryProvenance.external,
+    );
+    expect(external.identity, 'external:abc');
+    expect(external.coordinate, isEmpty);
+    expect(external.versions, isEmpty);
+    expect(external.targets.single.mode, InstallationMode.external);
+    expect(external.targets.single.version, isEmpty);
+    expect(external.targets.single.receiptState, ReceiptState.missing);
   });
 
   test(
@@ -831,7 +873,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":1,"entries":[{"identity":"registry:github.com/a/b/-/test","name":"Test","coordinate":"github.com/a/b/-/test","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v0.0.0-test"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/test","mode":"copy","version":"v0.0.0-test","receiptState":"present","health":"healthy"}]}]}',
+              '{"schemaVersion":2,"entries":[{"identity":"registry:github.com/a/b/-/test","name":"Test","coordinate":"github.com/a/b/-/test","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v0.0.0-test"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/test","mode":"copy","version":"v0.0.0-test","receiptState":"present","health":"healthy"}]}]}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -1101,6 +1143,88 @@ void main() {
       );
 
       expect(detail.markdown, '# Healthy target');
+    },
+  );
+
+  test(
+    'External detail inspection is read-only and exposes supporting files',
+    () async {
+      final directory = await Directory.systemTemp.createTemp(
+        'skillsgo-external-',
+      );
+      addTearDown(() => directory.delete(recursive: true));
+      await Directory('${directory.path}/scripts').create();
+      final skillFile = File('${directory.path}/SKILL.md');
+      final script = File('${directory.path}/scripts/run.sh');
+      final notes = File('${directory.path}/notes.md');
+      final large = File('${directory.path}/large.txt');
+      await skillFile.writeAsString('# External instructions');
+      await script.writeAsString('#!/bin/sh\necho external\n');
+      await notes.writeAsString('# Notes');
+      await large.writeAsString(
+        'preview-${List.filled(256 * 1024, 'x').join()}',
+      );
+      final before = {
+        for (final file in [skillFile, script, notes, large])
+          file.path: await file.readAsBytes(),
+      };
+      final runner = _FakeProcessRunner();
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/bin/skillsgo',
+      );
+      final external = InstalledSkill(
+        identity: 'external:abc',
+        name: 'external',
+        path: directory.path,
+        agents: const ['codex'],
+        targetCount: 1,
+        provenance: LibraryProvenance.external,
+        versions: const [],
+        targets: [
+          SkillInstallationTarget(
+            agent: 'codex',
+            scope: InstallationScope.user,
+            path: directory.path,
+            version: '',
+            mode: InstallationMode.external,
+            receiptState: ReceiptState.missing,
+          ),
+        ],
+      );
+
+      final detail = await gateway.loadLocalDetail(external);
+
+      expect(detail.source, 'External');
+      expect(detail.markdown, '# External instructions');
+      expect(detail.riskAssessment, SkillRiskAssessment.unknown);
+      expect(
+        detail.files.map((file) => file.path),
+        containsAll(['SKILL.md', 'notes.md', 'scripts/run.sh']),
+      );
+      expect(detail.hasExecutableContent, isTrue);
+      expect(
+        detail.files.singleWhere((file) => file.path == 'notes.md').contents,
+        '# Notes',
+      );
+      final largePreview = detail.files.singleWhere(
+        (file) => file.path == 'large.txt',
+      );
+      expect(largePreview.truncated, isTrue);
+      expect(largePreview.contents, startsWith('preview-'));
+      expect(largePreview.contents, isNotEmpty);
+      await expectLater(
+        gateway.update(external),
+        throwsA(isA<SkillsException>()),
+      );
+      await expectLater(
+        gateway.remove(external),
+        throwsA(isA<SkillsException>()),
+      );
+      expect(runner.calls, isEmpty);
+      for (final file in [skillFile, script, notes, large]) {
+        expect(await file.readAsBytes(), before[file.path]);
+      }
     },
   );
 

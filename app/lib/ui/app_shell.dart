@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsGo brand tokens.
- * [OUTPUT]: Provides the desktop shell plus persistent Discover, searchable unified multi-target Library/detail, explicit-project and Agent views, operations, and operational Settings journeys.
+ * [OUTPUT]: Provides the desktop shell plus persistent Discover, searchable managed/external multi-target Library/detail, read-only External inspection, explicit-project and Agent views, operations, and operational Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -1412,7 +1412,12 @@ class _LibraryScreenState extends State<LibraryScreen> {
     if (skills == null || checking) return;
     setState(() {
       checking = true;
-      updates = {for (final skill in skills!) skill.name: UpdateState.checking};
+      updates = {
+        for (final skill in skills!)
+          skill.name: skill.provenance == LibraryProvenance.registry
+              ? UpdateState.checking
+              : UpdateState.unsupported,
+      };
     });
     try {
       updates = await widget.gateway.checkUpdates(skills!);
@@ -1475,6 +1480,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
         );
     return values;
   }
+
+  bool get _hasUpdateableSkills => (skills ?? const <InstalledSkill>[]).any(
+    (skill) => skill.provenance == LibraryProvenance.registry,
+  );
 
   String _agentLabel(String agent) {
     for (final status in agentCatalog?.agents ?? const <AgentStatus>[]) {
@@ -1621,7 +1630,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         ? context.l10n.checking
                         : context.l10n.checkUpdates,
                     icon: Icons.sync,
-                    onPressed: checking ? null : checkUpdates,
+                    onPressed: checking || !_hasUpdateableSkills
+                        ? null
+                        : checkUpdates,
                   ),
                   SecondaryCapsuleButton(
                     label: context.l10n.refresh,
@@ -1753,7 +1764,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       ),
                       const SizedBox(height: 4),
                       SelectableText(
-                        skill.coordinate,
+                        skill.coordinate.isEmpty
+                            ? skill.path
+                            : skill.coordinate,
                         style: const TextStyle(
                           fontFamily: SkillsTokens.monoFamily,
                           fontSize: 11,
@@ -1771,6 +1784,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   runSpacing: 7,
                   children: [
                     _libraryProvenanceChip(context, skill.provenance),
+                    if (skill.provenance == LibraryProvenance.external)
+                      StatusChip(
+                        label: context.l10n.readOnly,
+                        color: SkillsTokens.textSecondary,
+                      ),
                     StatusChip(
                       label: context.l10n.localTargets(skill.targetCount),
                       color: SkillsTokens.green,
@@ -1786,14 +1804,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         ),
                         color: SkillsTokens.violet,
                       ),
-                    StatusChip(
-                      label: context.l10n.versionsSummary(
-                        skill.versions.length,
+                    if (skill.versions.isNotEmpty)
+                      StatusChip(
+                        label: context.l10n.versionsSummary(
+                          skill.versions.length,
+                        ),
+                        color: skill.versionDivergence
+                            ? SkillsTokens.orange
+                            : SkillsTokens.textSecondary,
                       ),
-                      color: skill.versionDivergence
-                          ? SkillsTokens.orange
-                          : SkillsTokens.textSecondary,
-                    ),
                     if (skill.versionDivergence)
                       StatusChip(
                         label: context.l10n.versionDivergence,
@@ -1805,29 +1824,33 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              if (state != UpdateState.unknown)
+              if (skill.provenance == LibraryProvenance.registry &&
+                  state != UpdateState.unknown)
                 StatusChip(
                   label: _updateLabel(context, state),
                   color: state == UpdateState.available
                       ? SkillsTokens.orange
                       : SkillsTokens.textSecondary,
                 ),
-              if (state == UpdateState.available) ...[
+              if (skill.provenance == LibraryProvenance.registry &&
+                  state == UpdateState.available) ...[
                 const SizedBox(width: 8),
                 SecondaryCapsuleButton(
                   label: context.l10n.update,
                   onPressed: operating ? null : () => update(skill),
                 ),
               ],
-              const SizedBox(width: 8),
-              IconButton(
-                tooltip: context.l10n.removeNamed(skill.name),
-                onPressed: operating ? null : () => remove(skill),
-                icon: const Icon(
-                  Icons.delete_outline,
-                  color: SkillsTokens.textSecondary,
+              if (skill.provenance != LibraryProvenance.external) ...[
+                const SizedBox(width: 8),
+                IconButton(
+                  tooltip: context.l10n.removeNamed(skill.name),
+                  onPressed: operating ? null : () => remove(skill),
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: SkillsTokens.textSecondary,
+                  ),
                 ),
-              ),
+              ],
             ],
           ),
         );
@@ -1851,6 +1874,7 @@ class LocalDetailScreen extends StatefulWidget {
 class _LocalDetailScreenState extends State<LocalDetailScreen> {
   SkillDetail? detail;
   Object? error;
+  String? selectedFilePath;
   bool removing = false;
   CommandResult? result;
   @override
@@ -1860,7 +1884,10 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
   }
 
   Future<void> load() async {
-    setState(() => error = null);
+    setState(() {
+      error = null;
+      selectedFilePath = null;
+    });
     try {
       detail = await widget.gateway.loadLocalDetail(widget.skill);
     } catch (caught) {
@@ -1935,11 +1962,21 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
                     ],
                   ),
                 ),
-                SecondaryCapsuleButton(
-                  label: context.l10n.remove,
-                  icon: Icons.delete_outline,
-                  onPressed: removing ? null : remove,
-                ),
+                _libraryProvenanceChip(context, widget.skill.provenance),
+                const SizedBox(width: 8),
+                SkillRiskChip(risk: widget.skill.riskAssessment),
+                const SizedBox(width: 8),
+                if (widget.skill.provenance == LibraryProvenance.external)
+                  StatusChip(
+                    label: context.l10n.readOnly,
+                    color: SkillsTokens.textSecondary,
+                  )
+                else
+                  SecondaryCapsuleButton(
+                    label: context.l10n.remove,
+                    icon: Icons.delete_outline,
+                    onPressed: removing ? null : remove,
+                  ),
               ],
             ),
             const SizedBox(height: 20),
@@ -1952,6 +1989,10 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
                 children: [
                   _InstallationTargetsPanel(skill: widget.skill),
                   const SizedBox(height: 14),
+                  if (detail?.hasExecutableContent ?? false) ...[
+                    _RiskNotice(detail: detail!),
+                    const SizedBox(height: 14),
+                  ],
                   Expanded(
                     child: error != null
                         ? EmptyState(
@@ -1964,11 +2005,11 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
                           )
                         : detail == null
                         ? const Center(child: CircularProgressIndicator())
-                        : GlassCard(
-                            child: Markdown(
-                              data: detail!.markdown,
-                              selectable: true,
-                            ),
+                        : _LocalSkillDocuments(
+                            detail: detail!,
+                            selectedFilePath: selectedFilePath,
+                            onSelected: (path) =>
+                                setState(() => selectedFilePath = path),
                           ),
                   ),
                 ],
@@ -2012,7 +2053,9 @@ class _InstallationTargetsPanel extends StatelessWidget {
                             ? context.l10n.userScope
                             : context.l10n.projectScope,
                         _agentDisplayLabel(target.agent),
-                        target.version,
+                        target.version.isEmpty
+                            ? context.l10n.unversioned
+                            : target.version,
                       ),
                       style: const TextStyle(fontWeight: FontWeight.w600),
                     ),
@@ -2048,6 +2091,147 @@ class _InstallationTargetsPanel extends StatelessWidget {
       ],
     ),
   );
+}
+
+class _LocalSkillDocuments extends StatelessWidget {
+  const _LocalSkillDocuments({
+    required this.detail,
+    required this.selectedFilePath,
+    required this.onSelected,
+  });
+
+  final SkillDetail detail;
+  final String? selectedFilePath;
+  final ValueChanged<String?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final supportingFiles = detail.files
+        .where((file) => file.kind != 'instructions' && file.path != 'SKILL.md')
+        .toList(growable: false);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Expanded(
+          flex: 3,
+          child: GlassCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  selectedFilePath ?? context.l10n.instructionsTab,
+                  style: const TextStyle(fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                Expanded(child: _document(context)),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(width: 14),
+        SizedBox(
+          width: 260,
+          child: GlassCard(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SectionEyebrow(context.l10n.supportingFiles),
+                const SizedBox(height: 10),
+                ShadButton.ghost(
+                  width: double.infinity,
+                  mainAxisAlignment: MainAxisAlignment.start,
+                  backgroundColor: selectedFilePath == null
+                      ? SkillsTokens.cardHover
+                      : null,
+                  onPressed: () => onSelected(null),
+                  child: Text(context.l10n.instructionsTab),
+                ),
+                const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+                Expanded(
+                  child: ListView(
+                    children: supportingFiles
+                        .map(
+                          (file) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: ShadButton.ghost(
+                              width: double.infinity,
+                              mainAxisAlignment: MainAxisAlignment.start,
+                              backgroundColor: selectedFilePath == file.path
+                                  ? SkillsTokens.cardHover
+                                  : null,
+                              onPressed: () => onSelected(file.path),
+                              leading: Icon(
+                                file.executable
+                                    ? Icons.terminal
+                                    : file.binary
+                                    ? Icons.data_object
+                                    : Icons.description_outlined,
+                                size: 15,
+                                color: file.executable
+                                    ? SkillsTokens.amber
+                                    : SkillsTokens.textTertiary,
+                              ),
+                              child: Flexible(
+                                child: Text(
+                                  file.path,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontFamily: SkillsTokens.monoFamily,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _document(BuildContext context) {
+    if (selectedFilePath == null) {
+      return Markdown(data: detail.markdown, selectable: true);
+    }
+    final file = detail.files.firstWhere(
+      (candidate) => candidate.path == selectedFilePath,
+    );
+    if (file.binary || file.contents.isEmpty) {
+      return Center(
+        child: Text(
+          context.l10n.fileContentUnavailable,
+          style: const TextStyle(color: SkillsTokens.textSecondary),
+        ),
+      );
+    }
+    final content = file.path.toLowerCase().endsWith('.md')
+        ? Markdown(data: file.contents, selectable: true)
+        : SingleChildScrollView(
+            child: SelectableText(
+              file.contents,
+              style: const TextStyle(fontFamily: SkillsTokens.monoFamily),
+            ),
+          );
+    if (!file.truncated) return content;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.fileContentTruncated,
+          style: const TextStyle(color: SkillsTokens.amber),
+        ),
+        const SizedBox(height: 8),
+        Expanded(child: content),
+      ],
+    );
+  }
 }
 
 enum _SettingsRoute {
@@ -2807,6 +2991,7 @@ String _installationModeLabel(BuildContext context, InstallationMode mode) =>
     switch (mode) {
       InstallationMode.symlink => context.l10n.modeSymlink,
       InstallationMode.copy => context.l10n.modeCopy,
+      InstallationMode.external => context.l10n.modeExternal,
     };
 
 String _receiptStateLabel(BuildContext context, ReceiptState state) =>

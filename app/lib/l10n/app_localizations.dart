@@ -854,6 +854,24 @@ abstract class AppLocalizations {
   /// **'External installation'**
   String get externalInstallation;
 
+  /// No description provided for @readOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Read only'**
+  String get readOnly;
+
+  /// No description provided for @unversioned.
+  ///
+  /// In en, this message translates to:
+  /// **'Unversioned'**
+  String get unversioned;
+
+  /// No description provided for @supportingFiles.
+  ///
+  /// In en, this message translates to:
+  /// **'Supporting files'**
+  String get supportingFiles;
+
   /// No description provided for @versionDivergence.
   ///
   /// In en, this message translates to:
@@ -925,6 +943,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy'**
   String get modeCopy;
+
+  /// No description provided for @modeExternal.
+  ///
+  /// In en, this message translates to:
+  /// **'External'**
+  String get modeExternal;
 
   /// No description provided for @receiptPresent.
   ///

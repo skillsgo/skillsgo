@@ -433,6 +433,15 @@ class AppLocalizationsZh extends AppLocalizations {
   String get externalInstallation => '外部安装';
 
   @override
+  String get readOnly => '只读';
+
+  @override
+  String get unversioned => '无版本信息';
+
+  @override
+  String get supportingFiles => '支持文件';
+
+  @override
   String get versionDivergence => '多版本并存';
 
   @override
@@ -467,6 +476,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modeCopy => '复制';
+
+  @override
+  String get modeExternal => '外部';
 
   @override
   String get receiptPresent => '回执存在';

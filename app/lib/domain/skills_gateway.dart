@@ -38,7 +38,7 @@ enum SkillRiskAssessment { unknown, low, medium, high, critical }
 
 enum InstallationScope { user, project }
 
-enum InstallationMode { symlink, copy }
+enum InstallationMode { symlink, copy, external }
 
 enum ReceiptState { present, missing, invalid }
 
@@ -380,7 +380,7 @@ class InstalledSkill {
       if (target.projectRoot.isNotEmpty) {
         selectedProjects.add(target.projectRoot);
       }
-      selectedVersions.add(target.version);
+      if (target.version.isNotEmpty) selectedVersions.add(target.version);
       if (selectedHealth == InstallationHealth.healthy &&
           target.health != InstallationHealth.healthy) {
         selectedHealth = target.health;

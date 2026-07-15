@@ -453,6 +453,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get externalInstallation => 'External installation';
 
   @override
+  String get readOnly => 'Read only';
+
+  @override
+  String get unversioned => 'Unversioned';
+
+  @override
+  String get supportingFiles => 'Supporting files';
+
+  @override
   String get versionDivergence => 'Version divergence';
 
   @override
@@ -487,6 +496,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modeCopy => 'Copy';
+
+  @override
+  String get modeExternal => 'External';
 
   @override
   String get receiptPresent => 'Receipt present';
