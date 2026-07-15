@@ -3,7 +3,7 @@
 
 ## Members
 
-- `inventory.go`: reconciles managed receipts, explicit Workspace declarations, known Agent target paths, target health, and copy-mode Local Modifications into the stable Library report.
+- `inventory.go`: reconciles Registry/Local managed receipts, explicit Workspace declarations, known Agent target paths, target health, and copy-mode Local Modifications into the stable Library report.
 - `external.go`: discovers path-identified External Installations through read-only scans of installed Agents' known directories and explicit project roots.
 
 ## Architectural Boundary

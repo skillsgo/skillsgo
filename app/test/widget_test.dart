@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp with a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
- * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, managed/external multi-target Library views, explicit projects, Agents, Settings, conflict/risk resolution, Installation/Update/Target Management Plan progress and recovery, exact-target and failed-only retry, Version Divergence refresh, focus restoration, accessibility, and mutation journeys.
+ * [OUTPUT]: Specifies startup, navigation, discovery/detail recovery, Registry/Local/External Library views, projects, Agents, Settings, Installation/Update/Target Management/External Adoption journeys, Local install-more/export, exact-target recovery, focus, accessibility, and mutations.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -1649,6 +1649,222 @@ void main() {
     },
   );
 
+  testWidgets(
+    'External adoption reviews an exact Registry source and requires confirmation',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 900));
+      const path = '/Users/test/.codex/skills/external-demo';
+      const entry = InstalledSkill(
+        identity: 'external:abc',
+        name: 'external-demo',
+        path: path,
+        agents: ['codex'],
+        targetCount: 1,
+        provenance: LibraryProvenance.external,
+        targets: [
+          SkillInstallationTarget(
+            agent: 'codex',
+            scope: InstallationScope.user,
+            path: path,
+            version: '',
+            mode: InstallationMode.external,
+            receiptState: ReceiptState.missing,
+          ),
+        ],
+      );
+      const match = RegistryContentMatch(
+        coordinate: 'github.com/acme/skills/-/external-demo',
+        name: 'Registry Demo',
+        source: 'github.com/acme/skills',
+        immutableVersion: 'sha256:immutable-version',
+        commitSHA: 'commit',
+        treeSHA: 'tree',
+        contentDigest: 'sha256:external-content',
+      );
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        libraryEntries: const [entry],
+        adoptionMatches: const [match],
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Library'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('external-demo').first);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Bring under management'));
+      await tester.pumpAndSettle();
+      expect(find.text('Source: github.com/acme/skills'), findsOneWidget);
+      expect(
+        find.text('Immutable version: sha256:immutable-version'),
+        findsOneWidget,
+      );
+      expect(
+        find.textContaining(
+          'current installation content will not be replaced',
+        ),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(gateway.adoptionHistory, isEmpty);
+
+      await tester.tap(find.text('Bring under management'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Registry Demo'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Confirm association'));
+      await tester.pumpAndSettle();
+
+      expect(gateway.adoptionHistory, [
+        ExternalAdoptionAction.associateRegistry,
+      ]);
+      expect(find.text('Registry managed'), findsOneWidget);
+      expect(find.text('Bring under management'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'Unmatched External installation imports as Local and can be exported',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 900));
+      const path = '/Users/test/.codex/skills/private-demo';
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        libraryEntries: const [
+          InstalledSkill(
+            identity: 'external:private',
+            name: 'private-demo',
+            path: path,
+            agents: ['codex'],
+            targetCount: 1,
+            provenance: LibraryProvenance.external,
+            targets: [
+              SkillInstallationTarget(
+                agent: 'codex',
+                scope: InstallationScope.user,
+                path: path,
+                version: '',
+                mode: InstallationMode.external,
+                receiptState: ReceiptState.missing,
+              ),
+            ],
+          ),
+        ],
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Library'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('private-demo').first);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Bring under management'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Import as Local Skill'), findsWidgets);
+      expect(
+        find.textContaining('no publisher or update source'),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Confirm Local import'));
+      await tester.pumpAndSettle();
+
+      expect(gateway.adoptionHistory, [ExternalAdoptionAction.importLocal]);
+      expect(find.text('Local managed'), findsOneWidget);
+      expect(find.text('Update'), findsNothing);
+      expect(find.text('Install more'), findsOneWidget);
+      await tester.tap(find.text('Export'));
+      await tester.pumpAndSettle();
+      expect(gateway.exportCalls, 1);
+      expect(find.text('Command completed'), findsOneWidget);
+    },
+  );
+
+  testWidgets('Local Skill installs to one more exact Agent target', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    const coordinate = 'local.skillsgo/abc/private-demo';
+    const path = '/Users/test/.codex/skills/private-demo';
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      libraryEntries: const [
+        InstalledSkill(
+          identity: 'local:$coordinate',
+          name: 'private-demo',
+          path: path,
+          agents: ['codex'],
+          targetCount: 1,
+          coordinate: coordinate,
+          provenance: LibraryProvenance.local,
+          versions: ['local-abc'],
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.user,
+              path: path,
+              version: 'local-abc',
+              mode: InstallationMode.copy,
+            ),
+          ],
+        ),
+      ],
+      localDetail: const SkillDetail(
+        name: 'private-demo',
+        source: 'Local',
+        markdown: '# Private',
+        immutableVersion: 'local-abc',
+        files: [SkillFile(path: 'SKILL.md', contents: '# Private')],
+        installationTargets: [
+          SkillInstallationTarget(
+            agent: 'codex',
+            scope: InstallationScope.user,
+            path: path,
+            version: 'local-abc',
+            mode: InstallationMode.copy,
+          ),
+        ],
+      ),
+      agentStatuses: const [
+        AgentStatus(
+          id: 'codex',
+          displayName: 'Codex',
+          installed: true,
+          supportedScopes: [InstallationScope.user],
+        ),
+        AgentStatus(
+          id: 'cursor',
+          displayName: 'Cursor',
+          installed: true,
+          supportedScopes: [InstallationScope.user],
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Library'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('private-demo').first);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Install more'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Installed'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Select User Scope for Cursor'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Review 1 Targets'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Install 1 Targets'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Stay Here'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.executionSelectionHistory.single.single.agent, 'cursor');
+    expect(gateway.libraryEntries!.single.agents, ['codex', 'cursor']);
+    expect(find.text('User Scope / Cursor · local-abc'), findsOneWidget);
+  });
+
   testWidgets('the selected rail capsule follows spring motion', (
     tester,
   ) async {
@@ -2187,7 +2403,7 @@ class FakeSkillsGateway implements SkillsGateway {
     List<AddedProject> addedProjects = const [],
     this.projectToAdd,
     this.projectToRelocate,
-    this.libraryEntries,
+    List<InstalledSkill>? libraryEntries,
     this.localDetailError,
     this.localDetail,
     this.registryOrigin = 'https://registry.skillsgo.dev',
@@ -2207,6 +2423,7 @@ class FakeSkillsGateway implements SkillsGateway {
     this.riskPolicy = const PersonalRiskPolicy(),
     this.installFailures = const [],
     this.updateFailures = const [],
+    this.adoptionMatches = const [],
   }) : searchResults = searchResults ?? _defaultSearchResults,
        remoteDetail =
            remoteDetail ??
@@ -2214,6 +2431,7 @@ class FakeSkillsGateway implements SkillsGateway {
                ? defaultRemoteDetail
                : _withoutInstallationTargets(defaultRemoteDetail)),
        detailErrors = List.of(detailErrors),
+       libraryEntries = libraryEntries == null ? null : List.of(libraryEntries),
        projects = List.of(addedProjects);
   final bool cliReady;
   final Completer<List<SkillSummary>>? searchCompleter;
@@ -2241,6 +2459,7 @@ class FakeSkillsGateway implements SkillsGateway {
   final List<SkillsException> detailErrors;
   final List<Set<String>> installFailures;
   final List<Set<String>> updateFailures;
+  final List<RegistryContentMatch> adoptionMatches;
   bool installed;
   final queries = <String>[];
   final collections = <DiscoveryCollection>[];
@@ -2251,6 +2470,8 @@ class FakeSkillsGateway implements SkillsGateway {
   final executionSelectionHistory = <List<InstallationTargetSelection>>[];
   final updateTargetHistory = <List<String>>[];
   final managementTargetHistory = <Map<String, TargetManagementAction>>[];
+  final adoptionHistory = <ExternalAdoptionAction>[];
+  int exportCalls = 0;
   int detailLoads = 0;
   int agentInspections = 0;
   String? savedPath;
@@ -2479,11 +2700,15 @@ class FakeSkillsGateway implements SkillsGateway {
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill) async {
     if (localDetailError != null) throw localDetailError!;
     return localDetail ??
-        const SkillDetail(
+        SkillDetail(
           name: 'local-skill',
           source: 'Local',
           markdown: '# Local',
-          files: [SkillFile(path: 'SKILL.md', contents: '# Local')],
+          immutableVersion: skill.versions.length == 1
+              ? skill.versions.single
+              : '',
+          files: const [SkillFile(path: 'SKILL.md', contents: '# Local')],
+          installationTargets: skill.targets,
         );
   }
 
@@ -2673,6 +2898,39 @@ class FakeSkillsGateway implements SkillsGateway {
         .length;
     final failed = results.length - succeeded;
     installed = succeeded > 0;
+    final entries = libraryEntries;
+    if (entries != null && succeeded > 0) {
+      final index = entries.indexWhere(
+        (entry) => entry.coordinate == plan.coordinate,
+      );
+      if (index >= 0) {
+        final existing = entries[index];
+        final targets = List<SkillInstallationTarget>.of(existing.targets);
+        for (final result in results.where(
+          (item) => item.outcome == InstallationTargetOutcome.succeeded,
+        )) {
+          if (targets.any(
+            (target) =>
+                target.scope == result.target.scope &&
+                target.projectRoot == result.target.projectRoot &&
+                target.agent == result.target.agent,
+          )) {
+            continue;
+          }
+          targets.add(
+            SkillInstallationTarget(
+              agent: result.target.agent,
+              scope: result.target.scope,
+              projectRoot: result.target.projectRoot,
+              path: result.target.path,
+              version: plan.version,
+              mode: result.target.mode,
+            ),
+          );
+        }
+        entries[index] = existing.withTargets(targets);
+      }
+    }
     return InstallationExecution(
       coordinate: plan.coordinate,
       version: plan.version,
@@ -2697,6 +2955,81 @@ class FakeSkillsGateway implements SkillsGateway {
     }
     installed = true;
     return _success(['skills', 'add']);
+  }
+
+  @override
+  Future<ExternalAdoptionPlan> preflightExternalAdoption(
+    InstalledSkill skill,
+  ) async {
+    final target = skill.targets.single;
+    return ExternalAdoptionPlan(
+      identity: skill.identity,
+      name: skill.name,
+      target: InstallationPlanTarget(
+        scope: target.scope,
+        projectRoot: target.projectRoot,
+        agent: target.agent,
+        mode: InstallationMode.copy,
+        path: target.path,
+      ),
+      contentDigest: 'sha256:external-content',
+      sourceHint: '',
+      stateToken: 'sha256:external-state',
+      matches: adoptionMatches,
+      canImportLocal: true,
+    );
+  }
+
+  @override
+  Future<ExternalAdoptionResult> executeExternalAdoption(
+    ExternalAdoptionPlan plan,
+  ) async {
+    final action = plan.action!;
+    adoptionHistory.add(action);
+    final match = plan.selectedMatch;
+    final provenance = action == ExternalAdoptionAction.importLocal
+        ? LibraryProvenance.local
+        : LibraryProvenance.registry;
+    final coordinate =
+        match?.coordinate ?? 'local.skillsgo/content/${plan.name}';
+    final version = match?.immutableVersion ?? 'local-content';
+    final managedTarget = SkillInstallationTarget(
+      agent: plan.target.agent,
+      scope: plan.target.scope,
+      projectRoot: plan.target.projectRoot,
+      path: plan.target.path,
+      version: version,
+      mode: InstallationMode.copy,
+      receiptState: ReceiptState.present,
+    );
+    libraryEntries = [
+      InstalledSkill(
+        identity: '${provenance.name}:$coordinate',
+        name: plan.name,
+        path: plan.target.path,
+        agents: [plan.target.agent],
+        targetCount: 1,
+        coordinate: coordinate,
+        provenance: provenance,
+        versions: [version],
+        targets: [managedTarget],
+      ),
+    ];
+    return ExternalAdoptionResult(
+      action: action,
+      name: plan.name,
+      coordinate: coordinate,
+      version: version,
+      provenance: provenance,
+      contentDigest: plan.contentDigest,
+      target: plan.target,
+    );
+  }
+
+  @override
+  Future<CommandResult?> exportLocalSkill(InstalledSkill skill) async {
+    exportCalls++;
+    return _success(['skillsgo', 'export']);
   }
 
   @override

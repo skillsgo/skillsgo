@@ -1126,4 +1126,68 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get installationPlanFailed => 'Installation plan could not continue';
+
+  @override
+  String get bringUnderManagement => 'Bring under management';
+
+  @override
+  String get adoptExternalTitle => 'Bring this installation under management';
+
+  @override
+  String get adoptExternalDescription =>
+      'SkillsGo matched the installation by content. Review the exact source and immutable version before continuing.';
+
+  @override
+  String get adoptionContentDigest => 'Content identity';
+
+  @override
+  String get registryContentMatches => 'Registry matches';
+
+  @override
+  String registryMatchSource(String source) {
+    return 'Source: $source';
+  }
+
+  @override
+  String registryMatchVersion(String version) {
+    return 'Immutable version: $version';
+  }
+
+  @override
+  String get associateRegistry => 'Associate with Registry';
+
+  @override
+  String get importAsLocal => 'Import as Local Skill';
+
+  @override
+  String get importAsLocalDescription =>
+      'No exact Registry match was found. This creates a private Local Skill with no publisher or update source.';
+
+  @override
+  String get adoptionPreservesContent =>
+      'The current installation content will not be replaced. SkillsGo only records ownership after your confirmation.';
+
+  @override
+  String get chooseRegistryMatch =>
+      'Select an exact Registry match to continue.';
+
+  @override
+  String get confirmAdoption => 'Confirm association';
+
+  @override
+  String get confirmLocalImport => 'Confirm Local import';
+
+  @override
+  String get adoptionFailed =>
+      'SkillsGo could not bring this installation under management.';
+
+  @override
+  String get installMoreTargets => 'Install more';
+
+  @override
+  String get exportLocalSkill => 'Export';
+
+  @override
+  String get exportLocalSkillDescription =>
+      'Export this Local Skill as a portable ZIP archive.';
 }

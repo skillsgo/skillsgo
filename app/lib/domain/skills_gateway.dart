@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, unified Library entries/targets, explicit Installation, Update, and Target Management Plans/progress/results, project references, Agent inspection, CLI, Registry settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, unified Registry/Local/External Library entries and targets, explicit Installation/Update/Target Management/External Adoption flows, Local export, project references, Agent inspection, CLI, Registry settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -55,6 +55,8 @@ enum UpdateTargetOutcome { succeeded, skipped, failed }
 enum TargetManagementAction { remove, repair, stopManaging }
 
 enum TargetManagementOutcome { succeeded, failed }
+
+enum ExternalAdoptionAction { associateRegistry, importLocal }
 
 enum ReceiptState { present, missing, invalid }
 
@@ -768,6 +770,100 @@ class TargetManagementProgress {
   final TargetManagementResult? result;
 }
 
+class RegistryContentMatch {
+  const RegistryContentMatch({
+    required this.coordinate,
+    required this.name,
+    required this.source,
+    required this.immutableVersion,
+    required this.commitSHA,
+    required this.treeSHA,
+    required this.contentDigest,
+    this.skillPath = '',
+  });
+
+  final String coordinate;
+  final String name;
+  final String source;
+  final String skillPath;
+  final String immutableVersion;
+  final String commitSHA;
+  final String treeSHA;
+  final String contentDigest;
+}
+
+class ExternalAdoptionPlan {
+  const ExternalAdoptionPlan({
+    required this.identity,
+    required this.name,
+    required this.target,
+    required this.contentDigest,
+    required this.stateToken,
+    required this.matches,
+    required this.canImportLocal,
+    this.sourceHint = '',
+    this.action,
+    this.selectedMatch,
+  });
+
+  final String identity;
+  final String name;
+  final InstallationPlanTarget target;
+  final String contentDigest;
+  final String sourceHint;
+  final String stateToken;
+  final List<RegistryContentMatch> matches;
+  final bool canImportLocal;
+  final ExternalAdoptionAction? action;
+  final RegistryContentMatch? selectedMatch;
+
+  ExternalAdoptionPlan selectRegistryMatch(RegistryContentMatch match) =>
+      ExternalAdoptionPlan(
+        identity: identity,
+        name: name,
+        target: target,
+        contentDigest: contentDigest,
+        sourceHint: sourceHint,
+        stateToken: stateToken,
+        matches: matches,
+        canImportLocal: canImportLocal,
+        action: ExternalAdoptionAction.associateRegistry,
+        selectedMatch: match,
+      );
+
+  ExternalAdoptionPlan selectLocalImport() => ExternalAdoptionPlan(
+    identity: identity,
+    name: name,
+    target: target,
+    contentDigest: contentDigest,
+    sourceHint: sourceHint,
+    stateToken: stateToken,
+    matches: matches,
+    canImportLocal: canImportLocal,
+    action: ExternalAdoptionAction.importLocal,
+  );
+}
+
+class ExternalAdoptionResult {
+  const ExternalAdoptionResult({
+    required this.action,
+    required this.name,
+    required this.coordinate,
+    required this.version,
+    required this.provenance,
+    required this.contentDigest,
+    required this.target,
+  });
+
+  final ExternalAdoptionAction action;
+  final String name;
+  final String coordinate;
+  final String version;
+  final LibraryProvenance provenance;
+  final String contentDigest;
+  final InstallationPlanTarget target;
+}
+
 class AgentUserTarget {
   const AgentUserTarget({required this.path, required this.exists});
 
@@ -1053,6 +1149,11 @@ abstract interface class SkillsGateway {
     TargetManagementPlan plan, {
     void Function(TargetManagementProgress progress)? onProgress,
   });
+  Future<ExternalAdoptionPlan> preflightExternalAdoption(InstalledSkill skill);
+  Future<ExternalAdoptionResult> executeExternalAdoption(
+    ExternalAdoptionPlan plan,
+  );
+  Future<CommandResult?> exportLocalSkill(InstalledSkill skill);
   Future<UpdatePlan> preflightUpdate(
     InstalledSkill skill,
     List<SkillInstallationTarget> targets,

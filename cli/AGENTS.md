@@ -29,6 +29,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | --- | --- |
 | `cmd/skillsgo/` | Process entry point and executable wiring. |
 | `internal/agent/` | Supported Agent definitions, detection, and installation locations. |
+| `internal/adoption/` | State-bound transition from exact External Installations to Registry-managed or private Local Skills. |
 | `internal/command/` | CLI command graph, argument handling, and orchestration. |
 | `internal/i18n/` | Locale detection and user-facing CLI messages. |
 | `internal/install/` | Add, update, remove, copy-digest, explicit replacement, and materialization behavior. |
@@ -38,7 +39,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/project/` | `skillsgo.yaml` and `skillsgo-lock.yaml` project state. |
 | `internal/registry/` | Client for the public SkillsGo Registry protocol and normalized artifact-integrity verification. |
 | `internal/source/` | Skill-coordinate parsing and source identity. |
-| `internal/store/` | User-level shared artifact cache and installation state. |
+| `internal/store/` | User-level shared Registry/Local artifact cache, private Local import/export, and installation state. |
 | `internal/updateplan/` | Exact-target update checks, pinned-reference classification, Workspace Lock previews, and partial update execution. |
 
 ## Boundaries

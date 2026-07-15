@@ -72,6 +72,10 @@ _Avoid_: remove, delete, uninstall
 A Skill found in an Installed Agent's directory without a SkillsGo installation receipt. The Library can inspect it but cannot update or remove it until the user explicitly brings it under management.
 _Avoid_: broken Skill, unknown Skill, managed installation
 
+**External Adoption Plan**:
+A reviewed, state-bound transition for one exact External Installation. SkillsGo first matches by Content Digest and optional source hints, then requires the user to confirm either one immutable Registry artifact or an unmatched Local import; it never replaces the current content during adoption.
+_Avoid_: name-based claim, automatic import, reinstall
+
 **Local Skill**:
 A managed Skill created by importing an External Installation that does not match a Registry artifact. It can be installed elsewhere, exported, or removed, but has no online update source and is not published by importing it.
 _Avoid_: published Skill, Registry artifact, unmanaged installation

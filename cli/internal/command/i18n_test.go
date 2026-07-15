@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Uses command.Execute with explicit locale overrides and public help requests.
+ * [OUTPUT]: Specifies localized root, External Adoption, and Local export help at the executable boundary.
+ * [POS]: Serves as public CLI localization coverage independent of machine-readable contracts.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package command
 
 import (
@@ -17,5 +23,16 @@ func TestHelpLanguageOverride(t *testing.T) {
 			require.NoError(t, Execute([]string{"--lang", test.lang, "--help"}, &stdout, &stderr))
 			require.Contains(t, stdout.String(), test.want)
 		})
+	}
+}
+
+func TestAdoptionAndExportHelpLanguageOverride(t *testing.T) {
+	for _, test := range []struct{ command, want string }{
+		{"adopt", "将一个精确的外部安装纳入管理"},
+		{"export", "导出一个私有本地 Skill"},
+	} {
+		var stdout, stderr bytes.Buffer
+		require.NoError(t, Execute([]string{"--lang", "zh-CN", test.command, "--help"}, &stdout, &stderr))
+		require.Contains(t, stdout.String(), test.want)
 	}
 }

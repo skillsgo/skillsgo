@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Store receipts, target receipts, filesystem bindings, and read-only inventory filters.
- * [OUTPUT]: Provides managed Installation records, filtering, prevalidated safe target removal, and content-preserving receipt cleanup.
+ * [OUTPUT]: Provides provenance-aware managed Installation records, filtering, baseline-validated safe copy removal, and content-preserving receipt cleanup.
  * [POS]: Serves as the managed Installation inventory boundary shared by plans, Library reconciliation, and mutations.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -20,16 +20,18 @@ import (
 )
 
 type Installation struct {
-	Name          string `json:"name"`
-	Coordinate    string `json:"coordinate"`
-	Version       string `json:"version"`
-	StoreRoot     string `json:"storeRoot"`
-	Artifact      string `json:"artifact"`
-	ReceiptPath   string `json:"-"`
-	Target        Target `json:"target"`
-	InstalledAt   string `json:"installedAt"`
-	SHA256        string `json:"-"`
-	ContentDigest string `json:"-"`
+	Name          string           `json:"name"`
+	Coordinate    string           `json:"coordinate"`
+	Version       string           `json:"version"`
+	StoreRoot     string           `json:"storeRoot"`
+	Artifact      string           `json:"artifact"`
+	ReceiptPath   string           `json:"-"`
+	Target        Target           `json:"target"`
+	InstalledAt   string           `json:"installedAt"`
+	SHA256        string           `json:"-"`
+	ContentDigest string           `json:"-"`
+	TargetState   string           `json:"-"`
+	Provenance    store.Provenance `json:"-"`
 }
 
 type InventoryFilter struct {
@@ -68,7 +70,10 @@ func ListInstallations(storeRoot string, filter InventoryFilter) ([]Installation
 		if err != nil {
 			return fmt.Errorf("读取 Store 回执 %s: %w", entryRoot, err)
 		}
-		name := filepath.Base(target.Path)
+		name := receipt.Name
+		if name == "" {
+			name = filepath.Base(target.Path)
+		}
 		if len(filter.Names) > 0 && !filter.Names[strings.ToLower(name)] {
 			return nil
 		}
@@ -77,6 +82,7 @@ func ListInstallations(storeRoot string, filter InventoryFilter) ([]Installation
 			StoreRoot: entryRoot, Artifact: filepath.Join(entryRoot, "artifact"), ReceiptPath: path,
 			Target: target, InstalledAt: targetReceipt.InstalledAt.Format("2006-01-02T15:04:05Z"),
 			SHA256: receipt.SHA256, ContentDigest: receipt.ContentDigest,
+			TargetState: targetReceipt.StateDigest, Provenance: receipt.EffectiveProvenance(),
 		})
 		return nil
 	})
@@ -201,9 +207,19 @@ func validateTargetRemoval(installation Installation) error {
 	if !info.IsDir() {
 		return fmt.Errorf("refusing to remove non-directory copy target %s", installation.Target.Path)
 	}
-	matches, err := CopyMatchesArtifact(installation.Target.Path, installation.Artifact)
-	if err != nil {
-		return err
+	matches := false
+	if installation.TargetState != "" {
+		actual, err := DirectoryDigest(installation.Target.Path)
+		if err != nil {
+			return err
+		}
+		matches = actual == installation.TargetState
+	} else {
+		var err error
+		matches, err = CopyMatchesArtifact(installation.Target.Path, installation.Artifact)
+		if err != nil {
+			return err
+		}
 	}
 	if !matches {
 		return fmt.Errorf("refusing to remove Local Modification at %s", installation.Target.Path)

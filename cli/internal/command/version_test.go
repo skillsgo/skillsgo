@@ -34,7 +34,7 @@ func TestVersionJSONProvidesAppStartupHandshake(t *testing.T) {
 	require.Equal(t, 1, handshake.SchemaVersion)
 	require.Equal(t, "skillsgo", handshake.Product)
 	require.Equal(t, "dev", handshake.Version)
-	require.Equal(t, 7, handshake.AppProtocolVersion)
+	require.Equal(t, 8, handshake.AppProtocolVersion)
 	require.NotEmpty(t, handshake.OS)
 	require.NotEmpty(t, handshake.Architecture)
 }

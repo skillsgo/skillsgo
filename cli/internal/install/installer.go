@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable Store entries, resolved Agent targets, filesystem metadata, and YAML target receipts.
- * [OUTPUT]: Provides atomic symlink/copy installation, unambiguous directory and exact target-state digests, artifact-copy comparison, and per-target receipt creation.
+ * [OUTPUT]: Provides atomic symlink/copy installation, content-preserving existing-target adoption, unambiguous directory and exact target-state digests, artifact-copy comparison, and per-target receipt creation.
  * [POS]: Serves as the low-level materialization boundary used by Installation Plans and legacy CLI flows.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -17,6 +17,7 @@ import (
 	"path/filepath"
 	"time"
 
+	registryclient "github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"gopkg.in/yaml.v3"
 )
@@ -27,6 +28,7 @@ type TargetReceipt struct {
 	Mode        Mode      `yaml:"mode"`
 	Path        string    `yaml:"path"`
 	InstalledAt time.Time `yaml:"installedAt"`
+	StateDigest string    `yaml:"stateDigest,omitempty"`
 }
 
 func Install(entry *store.Entry, targets []Target) error {
@@ -48,6 +50,25 @@ func Install(entry *store.Entry, targets []Target) error {
 		}
 	}
 	return nil
+}
+
+// AdoptExisting records an exact external directory as a managed copy without
+// replacing, rewriting, or relinking its current content.
+func AdoptExisting(entry *store.Entry, target Target) error {
+	if target.Mode != ModeCopy {
+		return fmt.Errorf("existing targets can be adopted only in copy mode")
+	}
+	info, err := os.Lstat(target.Path)
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() {
+		return fmt.Errorf("existing target must be a real directory")
+	}
+	if err := registryclient.VerifyContentDirectory(target.Path, entry.Receipt.ContentDigest); err != nil {
+		return fmt.Errorf("existing target content does not match reviewed artifact: %w", err)
+	}
+	return writeTargetReceipt(entry.Root, target)
 }
 
 func installTarget(artifact, target string, mode Mode) error {
@@ -273,6 +294,13 @@ func TargetStateDigest(path string) (string, error) {
 
 func writeTargetReceipt(entryRoot string, target Target) error {
 	receipt := TargetReceipt{Agent: target.Agent, Scope: target.Scope, Mode: target.Mode, Path: filepath.Clean(target.Path), InstalledAt: time.Now().UTC()}
+	if target.Mode == ModeCopy {
+		stateDigest, err := DirectoryDigest(target.Path)
+		if err != nil {
+			return err
+		}
+		receipt.StateDigest = stateDigest
+	}
 	data, err := yaml.Marshal(receipt)
 	if err != nil {
 		return err

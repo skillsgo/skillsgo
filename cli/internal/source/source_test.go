@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Exercises public source parsing plus coordinate/version validation with canonical and hostile GitHub inputs.
- * [OUTPUT]: Specifies normalization compatibility and rejection of traversal-capable identity and version segments.
+ * [INPUT]: Exercises public source parsing plus coordinate/version validation with canonical GitHub, private local, and hostile inputs.
+ * [OUTPUT]: Specifies normalization compatibility, private Local Skill identity, and rejection of traversal-capable identity and version segments.
  * [POS]: Serves as behavior coverage for the CLI source-identity boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,6 +18,19 @@ func TestParseCoordinate(t *testing.T) {
 	}
 	if reference.Coordinate != "github.com/mattpocock/skills/-/skills/engineering/ask-matt" || reference.Version != "main" {
 		t.Fatalf("unexpected reference: %#v", reference)
+	}
+}
+
+func TestParseLocalCoordinateWithoutRewritingItAsGitHub(t *testing.T) {
+	reference, err := Parse("local.skillsgo/0123456789abcdef/demo")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reference.Coordinate != "local.skillsgo/0123456789abcdef/demo" || reference.Version != "main" {
+		t.Fatalf("unexpected local reference: %#v", reference)
+	}
+	if !IsLocalCoordinate(reference.Coordinate) || IsLocalCoordinate("github.com/example/repo") {
+		t.Fatal("local coordinate classification failed")
 	}
 }
 

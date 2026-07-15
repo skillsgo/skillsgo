@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsGo brand tokens.
- * [OUTPUT]: Provides the desktop shell plus persistent Discover, shadcn_ui Installation/Update/Target Management Plan selection, preflight, live progress, recovery actions, state-refreshed partial-result retry, managed/external Library/detail, project and Agent views, operations, and Settings journeys.
+ * [OUTPUT]: Provides the desktop shell plus persistent Discover, shadcn_ui Installation/Update/Target Management/External Adoption flows, Local install-more/export actions, managed/external Library detail, project and Agent views, operations, and Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -4192,6 +4192,203 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 }
 
+class _ExternalAdoptionDialog extends StatefulWidget {
+  const _ExternalAdoptionDialog({required this.gateway, required this.plan});
+
+  final SkillsGateway gateway;
+  final ExternalAdoptionPlan plan;
+
+  @override
+  State<_ExternalAdoptionDialog> createState() =>
+      _ExternalAdoptionDialogState();
+}
+
+class _ExternalAdoptionDialogState extends State<_ExternalAdoptionDialog> {
+  RegistryContentMatch? selectedMatch;
+  bool operating = false;
+  Object? error;
+
+  ExternalAdoptionPlan? get selectedPlan {
+    final match = selectedMatch;
+    if (match != null) return widget.plan.selectRegistryMatch(match);
+    if (widget.plan.matches.isEmpty && widget.plan.canImportLocal) {
+      return widget.plan.selectLocalImport();
+    }
+    return null;
+  }
+
+  Future<void> execute() async {
+    final plan = selectedPlan;
+    if (operating || plan == null) return;
+    setState(() {
+      operating = true;
+      error = null;
+    });
+    try {
+      final result = await widget.gateway.executeExternalAdoption(plan);
+      if (mounted) Navigator.pop(context, result);
+    } catch (caught) {
+      if (mounted) {
+        setState(() {
+          operating = false;
+          error = caught;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasMatches = widget.plan.matches.isNotEmpty;
+    return ShadDialog(
+      constraints: const BoxConstraints(maxWidth: 760, maxHeight: 700),
+      title: Text(context.l10n.adoptExternalTitle),
+      description: Text(context.l10n.adoptExternalDescription),
+      actions: [
+        ShadButton.outline(
+          enabled: !operating,
+          onPressed: () => Navigator.pop(context),
+          child: Text(context.l10n.cancel),
+        ),
+        ShadButton(
+          enabled: !operating && selectedPlan != null,
+          onPressed: execute,
+          child: operating
+              ? const SizedBox(width: 42, child: ShadProgress(minHeight: 4))
+              : Text(
+                  hasMatches
+                      ? context.l10n.confirmAdoption
+                      : context.l10n.confirmLocalImport,
+                ),
+        ),
+      ],
+      child: SizedBox(
+        width: 680,
+        height: 470,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ShadCard(
+              width: double.infinity,
+              title: Text(context.l10n.adoptionContentDigest),
+              description: SelectableText(
+                widget.plan.contentDigest,
+                style: const TextStyle(
+                  fontFamily: SkillsTokens.monoFamily,
+                  fontSize: 12,
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            ShadAlert(
+              icon: const Icon(Icons.lock_outline),
+              description: Text(context.l10n.adoptionPreservesContent),
+            ),
+            if (error != null) ...[
+              const SizedBox(height: 10),
+              ShadAlert.destructive(
+                icon: const Icon(Icons.error_outline),
+                title: Text(context.l10n.adoptionFailed),
+                description: Text(_failureCopy(context, error!).message),
+              ),
+            ],
+            const SizedBox(height: 14),
+            Text(
+              hasMatches
+                  ? context.l10n.registryContentMatches
+                  : context.l10n.importAsLocal,
+              style: const TextStyle(fontWeight: FontWeight.w700),
+            ),
+            const SizedBox(height: 8),
+            Expanded(
+              child: hasMatches
+                  ? ListView.separated(
+                      itemCount: widget.plan.matches.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final match = widget.plan.matches[index];
+                        final selected = identical(selectedMatch, match);
+                        return ShadButton.outline(
+                          width: double.infinity,
+                          height: 86,
+                          onPressed: operating
+                              ? null
+                              : () => setState(() => selectedMatch = match),
+                          child: Row(
+                            children: [
+                              Icon(
+                                selected
+                                    ? Icons.radio_button_checked
+                                    : Icons.radio_button_off,
+                                color: selected
+                                    ? SkillsTokens.teal
+                                    : SkillsTokens.textSecondary,
+                              ),
+                              const SizedBox(width: 12),
+                              SizedBox(
+                                width: 560,
+                                child: Column(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      match.name,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.w700,
+                                      ),
+                                    ),
+                                    Text(
+                                      context.l10n.registryMatchSource(
+                                        match.source,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    Text(
+                                      context.l10n.registryMatchVersion(
+                                        match.immutableVersion,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontFamily: SkillsTokens.monoFamily,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    )
+                  : ShadCard(
+                      width: double.infinity,
+                      title: Text(context.l10n.importAsLocal),
+                      description: Text(context.l10n.importAsLocalDescription),
+                      footer: Text(
+                        context.l10n.exportLocalSkillDescription,
+                        style: const TextStyle(
+                          color: SkillsTokens.textSecondary,
+                        ),
+                      ),
+                    ),
+            ),
+            if (hasMatches && selectedMatch == null)
+              Text(
+                context.l10n.chooseRegistryMatch,
+                style: const TextStyle(color: SkillsTokens.textSecondary),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class LocalDetailScreen extends StatefulWidget {
   const LocalDetailScreen({
     super.key,
@@ -4211,6 +4408,9 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
   String? selectedFilePath;
   bool managing = false;
   bool updating = false;
+  bool adopting = false;
+  bool installingMore = false;
+  bool exporting = false;
   CommandResult? result;
   @override
   void initState() {
@@ -4305,6 +4505,122 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
     if (mounted) setState(() => updating = false);
   }
 
+  Future<void> adopt() async {
+    if (adopting || skill.provenance != LibraryProvenance.external) return;
+    setState(() {
+      adopting = true;
+      result = null;
+    });
+    try {
+      final plan = await widget.gateway.preflightExternalAdoption(skill);
+      if (!mounted) return;
+      final adopted = await showShadDialog<ExternalAdoptionResult>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) =>
+            _ExternalAdoptionDialog(gateway: widget.gateway, plan: plan),
+      );
+      if (adopted != null) {
+        await _refreshManagedSkill(
+          coordinate: adopted.coordinate,
+          targetPath: adopted.target.path,
+        );
+      }
+    } catch (caught) {
+      result = _exceptionResult(caught);
+    }
+    if (mounted) setState(() => adopting = false);
+  }
+
+  Future<void> installMore() async {
+    final currentDetail = detail;
+    if (installingMore ||
+        skill.provenance == LibraryProvenance.external ||
+        currentDetail == null) {
+      return;
+    }
+    setState(() {
+      installingMore = true;
+      result = null;
+    });
+    final operation = _InstallOperation();
+    try {
+      final values = await Future.wait([
+        widget.gateway.inspectAgents(),
+        widget.gateway.loadAddedProjects(),
+        widget.gateway.loadRiskPolicy(),
+      ]);
+      if (!mounted) return;
+      var projects = values[1] as List<AddedProject>;
+      await showShadDialog<_InstallationPlanOutcome>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _InstallationPlanDialog(
+          gateway: widget.gateway,
+          skill: SkillSummary(
+            id: skill.coordinate,
+            skillId: skill.coordinate,
+            name: skill.name,
+            source: currentDetail.source,
+            installs: 0,
+            latestVersion: currentDetail.immutableVersion,
+            description: currentDetail.description,
+            riskAssessment: skill.riskAssessment,
+            localTargetCount: skill.targetCount,
+          ),
+          detail: currentDetail,
+          catalog: values[0] as AgentCatalog,
+          initialProjects: projects,
+          operation: operation,
+          onProjectAdded: (project) {
+            projects = [...projects, project];
+          },
+          riskPolicy: values[2] as PersonalRiskPolicy,
+        ),
+      );
+      if (operation.execution?.hasSuccess ?? false) {
+        await _refreshManagedSkill(coordinate: skill.coordinate);
+      }
+    } catch (caught) {
+      result = _exceptionResult(caught);
+    } finally {
+      operation.dispose();
+    }
+    if (mounted) setState(() => installingMore = false);
+  }
+
+  Future<void> exportLocal() async {
+    if (exporting || skill.provenance != LibraryProvenance.local) return;
+    setState(() {
+      exporting = true;
+      result = null;
+    });
+    try {
+      final exported = await widget.gateway.exportLocalSkill(skill);
+      if (exported != null) result = exported;
+    } catch (caught) {
+      result = _exceptionResult(caught);
+    }
+    if (mounted) setState(() => exporting = false);
+  }
+
+  Future<void> _refreshManagedSkill({
+    required String coordinate,
+    String? targetPath,
+  }) async {
+    final projects = await widget.gateway.loadAddedProjects();
+    final entries = await widget.gateway.listInstalled(projects: projects);
+    final refreshed = entries.where(
+      (entry) =>
+          entry.coordinate == coordinate &&
+          (targetPath == null ||
+              entry.targets.any((target) => target.path == targetPath)),
+    );
+    if (!mounted || refreshed.isEmpty) return;
+    skill = refreshed.first;
+    await load();
+  }
+
   @override
   Widget build(BuildContext context) => Scaffold(
     backgroundColor: SkillsTokens.nearBlack,
@@ -4350,12 +4666,18 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
                 const SizedBox(width: 8),
                 SkillRiskChip(risk: skill.riskAssessment),
                 const SizedBox(width: 8),
-                if (skill.provenance == LibraryProvenance.external)
+                if (skill.provenance == LibraryProvenance.external) ...[
                   StatusChip(
                     label: context.l10n.readOnly,
                     color: SkillsTokens.textSecondary,
-                  )
-                else ...[
+                  ),
+                  const SizedBox(width: 8),
+                  SecondaryCapsuleButton(
+                    label: context.l10n.bringUnderManagement,
+                    icon: Icons.add_link,
+                    onPressed: adopting ? null : adopt,
+                  ),
+                ] else ...[
                   if (skill.provenance == LibraryProvenance.registry) ...[
                     SecondaryCapsuleButton(
                       label: context.l10n.update,
@@ -4364,11 +4686,39 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
                     ),
                     const SizedBox(width: 8),
                   ],
-                  SecondaryCapsuleButton(
-                    label: context.l10n.manageTargets,
-                    icon: Icons.tune,
-                    onPressed: managing || updating ? null : manage,
+                  Tooltip(
+                    message: context.l10n.manageTargets,
+                    child: Semantics(
+                      label: context.l10n.manageTargets,
+                      button: true,
+                      child: ShadButton.ghost(
+                        width: 38,
+                        height: 38,
+                        padding: EdgeInsets.zero,
+                        enabled: !managing && !installingMore && !updating,
+                        onPressed: manage,
+                        child: const Icon(Icons.tune, size: 18),
+                      ),
+                    ),
                   ),
+                  if (detail?.immutableVersion.isNotEmpty ?? false) ...[
+                    const SizedBox(width: 8),
+                    SecondaryCapsuleButton(
+                      label: context.l10n.installMoreTargets,
+                      icon: Icons.add_to_photos_outlined,
+                      onPressed: installingMore || managing || updating
+                          ? null
+                          : installMore,
+                    ),
+                  ],
+                  if (skill.provenance == LibraryProvenance.local) ...[
+                    const SizedBox(width: 8),
+                    SecondaryCapsuleButton(
+                      label: context.l10n.exportLocalSkill,
+                      icon: Icons.ios_share_outlined,
+                      onPressed: exporting ? null : exportLocal,
+                    ),
+                  ],
                 ],
               ],
             ),

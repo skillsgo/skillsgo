@@ -36,6 +36,10 @@ _Avoid_: live repository directory, mutable cache entry
 The deterministic SHA-256 identity of a normalized Skill artifact. Archive compression has its own digest and must not change the content identity.
 _Avoid_: archive hash, Git tree SHA
 
+**Content Match**:
+An exact lookup of immutable Registry artifacts by Content Digest, optionally ranked by a source hint. It supports reviewed association of existing content and never treats a matching name as evidence of identity.
+_Avoid_: fuzzy name match, mutable branch lookup, automatic ownership claim
+
 **Registry Origin**:
 The trusted Registry base used to resolve metadata and download an artifact. Clients may use the official service or a self-hosted Origin and still verify content digests.
 _Avoid_: Registry account, mirror name

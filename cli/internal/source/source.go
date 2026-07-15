@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on supported GitHub URL/shorthand syntax and canonical Skill Coordinate rules.
- * [OUTPUT]: Provides normalized source references plus reusable path-safe coordinate and single-segment version validation.
+ * [INPUT]: Depends on supported GitHub URL/shorthand syntax, private Local Skill identities, and canonical Skill Coordinate rules.
+ * [OUTPUT]: Provides normalized Registry/local references plus reusable path-safe coordinate and single-segment version validation.
  * [POS]: Serves as the CLI source-identity boundary used before Registry and Store access.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -19,6 +19,9 @@ type Reference struct {
 
 func Parse(raw string) (Reference, error) {
 	raw = strings.TrimSpace(raw)
+	if strings.HasPrefix(raw, "local.skillsgo/") {
+		return checkedReference(raw, "main")
+	}
 	if strings.HasPrefix(raw, "https://github.com/") || strings.HasPrefix(raw, "http://github.com/") {
 		parsed, err := url.Parse(raw)
 		if err != nil {
@@ -65,7 +68,7 @@ func ValidateCoordinate(coordinate string) error {
 		return fmt.Errorf("invalid Skill Coordinate %q", coordinate)
 	}
 	parts := strings.Split(coordinate, "/")
-	if len(parts) < 3 || parts[0] != "github.com" {
+	if len(parts) < 3 || (parts[0] != "github.com" && parts[0] != "local.skillsgo") {
 		return fmt.Errorf("invalid Skill Coordinate %q", coordinate)
 	}
 	for _, part := range parts {
@@ -77,6 +80,10 @@ func ValidateCoordinate(coordinate string) error {
 		return fmt.Errorf("invalid Skill Coordinate separator in %q", coordinate)
 	}
 	return nil
+}
+
+func IsLocalCoordinate(coordinate string) bool {
+	return strings.HasPrefix(coordinate, "local.skillsgo/") && ValidateCoordinate(coordinate) == nil
 }
 
 func checkedReference(coordinate, version string) (Reference, error) {

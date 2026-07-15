@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on a configured Registry origin, canonical Skill Coordinates, and exact assessed Info/Manifest/ZIP protocol responses.
- * [OUTPUT]: Provides validated immutable artifact fetch and resolution with Registry-bound Risk and Content Digest metadata.
+ * [INPUT]: Depends on a configured Registry origin, canonical Skill Coordinates, exact content-match responses, and assessed Info/Manifest/ZIP protocol responses.
+ * [OUTPUT]: Provides validated content-identity matching plus immutable artifact fetch and resolution with Registry-bound Risk and Content Digest metadata.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Registry protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -57,6 +57,23 @@ type Artifact struct {
 	ZIP        []byte
 }
 
+type ContentMatch struct {
+	Coordinate       string `json:"coordinate"`
+	Name             string `json:"name"`
+	Source           string `json:"source"`
+	SkillPath        string `json:"skillPath"`
+	ImmutableVersion string `json:"immutableVersion"`
+	CommitSHA        string `json:"commitSHA"`
+	TreeSHA          string `json:"treeSHA"`
+	ContentDigest    string `json:"contentDigest"`
+}
+
+type contentMatchesResponse struct {
+	SchemaVersion int            `json:"schemaVersion"`
+	ContentDigest string         `json:"contentDigest"`
+	Matches       []ContentMatch `json:"matches"`
+}
+
 type Client struct {
 	baseURL string
 	http    *http.Client
@@ -110,6 +127,32 @@ func (c *Client) Resolve(ctx context.Context, coordinate, requestedVersion strin
 		return Info{}, err
 	}
 	return info, nil
+}
+
+func (c *Client) MatchContent(ctx context.Context, contentDigest, sourceHint string) ([]ContentMatch, error) {
+	query := url.Values{"contentDigest": []string{contentDigest}}
+	if strings.TrimSpace(sourceHint) != "" {
+		query.Set("sourceHint", strings.TrimSpace(sourceHint))
+	}
+	var response contentMatchesResponse
+	if err := c.getJSON(ctx, c.baseURL+"/v1/matches?"+query.Encode(), &response); err != nil {
+		return nil, err
+	}
+	if response.SchemaVersion != 1 || response.ContentDigest != contentDigest || response.Matches == nil {
+		return nil, fmt.Errorf("Registry returned an invalid content-match response")
+	}
+	seen := map[string]bool{}
+	for _, match := range response.Matches {
+		key := match.Coordinate + "\x00" + match.ImmutableVersion
+		if source.ValidateCoordinate(match.Coordinate) != nil ||
+			source.ValidateVersion(match.ImmutableVersion) != nil ||
+			match.Name == "" || match.Source == "" || match.CommitSHA == "" || match.TreeSHA == "" ||
+			match.ContentDigest != contentDigest || seen[key] {
+			return nil, fmt.Errorf("Registry returned an invalid content match")
+		}
+		seen[key] = true
+	}
+	return response.Matches, nil
 }
 
 func validateAssessedInfo(coordinate, requestedVersion string, info Info) error {

@@ -44,6 +44,14 @@ _Avoid_: alternate lock filenames, local database, arbitrary download list
 The local record that connects a Store artifact to one installation target and records the source, version, mode, path, and installation time.
 _Avoid_: Workspace Lock, Registry metadata
 
+**External Adoption**:
+The explicit, state-bound transition of one exact External Installation into managed ownership. An exact Content Digest match may associate it with a reviewed immutable Registry artifact; otherwise it may be imported as a private Local Skill without contacting a publication endpoint or replacing current target content.
+_Avoid_: name-only association, implicit takeover, reinstall
+
+**Local Skill Artifact**:
+An immutable private Store artifact imported from unmatched local content. It has a `local.skillsgo` coordinate and immutable local version, can be projected to more Installation Targets or exported, and has no Registry update or publication source.
+_Avoid_: Registry artifact, temporary target copy, published Skill
+
 **Active Skill Binding**:
 The rule that one physical target path can expose only one Skill artifact at a time, even when multiple Agent Adapters reference that path. A same-name collision requires every affected binding plus an explicit, state-bound replacement decision and is never resolved by silently adding a suffix.
 _Avoid_: automatic rename, same-path coexistence

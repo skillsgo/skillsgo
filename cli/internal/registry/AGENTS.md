@@ -3,9 +3,10 @@
 
 ## Members
 
-- `client.go`: resolves assessed Info and downloads Manifest/ZIP responses from a configured SkillsGo Registry.
+- `client.go`: resolves exact content matches and assessed Info, then downloads Manifest/ZIP responses from a configured SkillsGo Registry.
 - `artifact_digest.go`: recomputes the Registry-compatible normalized Content Digest from ZIP or extracted directories and binds Info to exact artifact files.
 - `artifact_digest_test.go`: specifies golden deterministic digest acceptance and mismatch rejection.
+- `client_test.go`: specifies source-hint request encoding and strict content-match response validation.
 
 ## Architectural Boundary
 
