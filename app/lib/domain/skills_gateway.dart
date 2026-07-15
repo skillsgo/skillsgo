@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, Agent inspection, local targets, CLI, Registry settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, explicit project references, Agent inspection, local targets, CLI, Registry settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -37,6 +37,8 @@ enum SkillTrustLevel {
 enum SkillRiskAssessment { unknown, low, medium, high, critical }
 
 enum InstallationScope { user, project }
+
+enum ProjectAccessState { accessible, missing, permissionDenied, inaccessible }
 
 enum SkillMetricKind { allTimeInstalls, installs24h, hotVelocity }
 
@@ -217,6 +219,24 @@ class AgentCatalog {
       agents.where((agent) => agent.installed).toList(growable: false);
 }
 
+class AddedProject {
+  const AddedProject({
+    required this.id,
+    required this.name,
+    required this.path,
+    required this.accessState,
+    this.diagnostic,
+  });
+
+  final String id;
+  final String name;
+  final String path;
+  final ProjectAccessState accessState;
+  final String? diagnostic;
+
+  bool get isAccessible => accessState == ProjectAccessState.accessible;
+}
+
 class SkillDetail {
   const SkillDetail({
     required this.name,
@@ -364,6 +384,10 @@ abstract interface class SkillsGateway {
   });
   Future<SkillDetail> loadRemoteDetail(SkillSummary skill);
   Future<AgentCatalog> inspectAgents();
+  Future<List<AddedProject>> loadAddedProjects();
+  Future<AddedProject?> addProject();
+  Future<AddedProject?> relocateProject(String id);
+  Future<void> removeProject(String id);
   Future<List<InstalledSkill>> listInstalled();
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill);
   Future<CommandResult> install(SkillSummary skill);

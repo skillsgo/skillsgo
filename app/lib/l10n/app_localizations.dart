@@ -686,6 +686,84 @@ abstract class AppLocalizations {
   /// **'Add Project'**
   String get addProject;
 
+  /// No description provided for @relocateProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Relocate'**
+  String get relocateProject;
+
+  /// No description provided for @removeFromList.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove from List'**
+  String get removeFromList;
+
+  /// No description provided for @removeProjectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name} from SkillsGo?'**
+  String removeProjectTitle(String name);
+
+  /// No description provided for @removeProjectDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Only the App reference will be removed. SkillsGo will not change or delete any files in this directory.'**
+  String get removeProjectDescription;
+
+  /// No description provided for @projectRailUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} — unavailable'**
+  String projectRailUnavailable(String name);
+
+  /// No description provided for @emptyProjectTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No Skills found in {name}'**
+  String emptyProjectTitle(String name);
+
+  /// No description provided for @emptyProjectMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This project does not need Git or SkillsGo files. Install its first Skill when you are ready.'**
+  String get emptyProjectMessage;
+
+  /// No description provided for @projectMissingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Project directory is missing'**
+  String get projectMissingTitle;
+
+  /// No description provided for @projectMissingMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The directory may have moved or its volume may be offline. Relocate it or remove only its App reference.'**
+  String get projectMissingMessage;
+
+  /// No description provided for @projectPermissionTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Project permission is required'**
+  String get projectPermissionTitle;
+
+  /// No description provided for @projectPermissionMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo cannot inspect this selected root. Grant access by relocating it through the directory picker.'**
+  String get projectPermissionMessage;
+
+  /// No description provided for @projectInaccessibleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Project directory is inaccessible'**
+  String get projectInaccessibleTitle;
+
+  /// No description provided for @projectInaccessibleMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo kept this project reference. Check the path or volume, then relocate it.'**
+  String get projectInaccessibleMessage;
+
   /// No description provided for @checking.
   ///
   /// In en, this message translates to:

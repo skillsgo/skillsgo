@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsGo brand tokens.
- * [OUTPUT]: Provides the desktop shell plus persistent Discover, Agent-aware Library/detail, operation, and operational Settings journeys.
+ * [OUTPUT]: Provides the desktop shell plus persistent Discover, explicit-project and Agent-aware Library/detail, operation, and operational Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -1287,6 +1287,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   static const _addProjectRoute = 'add-project';
   List<InstalledSkill>? skills;
   AgentCatalog? agentCatalog;
+  List<AddedProject> projects = const [];
   Object? error;
   bool loading = true;
   bool checking = false;
@@ -1323,17 +1324,77 @@ class _LibraryScreenState extends State<LibraryScreen> {
       final values = await Future.wait([
         widget.gateway.listInstalled(),
         widget.gateway.inspectAgents(),
+        widget.gateway.loadAddedProjects(),
       ]);
       skills = values[0] as List<InstalledSkill>;
       agentCatalog = values[1] as AgentCatalog;
+      projects = values[2] as List<AddedProject>;
       if (selectedRoute.startsWith('agent:')) {
         final selectedAgent = selectedRoute.substring('agent:'.length);
         if (!_agents.contains(selectedAgent)) selectedRoute = _allRoute;
+      }
+      if (selectedRoute.startsWith('project:') && _selectedProject == null) {
+        selectedRoute = _allRoute;
       }
     } catch (caught) {
       error = caught;
     }
     if (mounted) setState(() => loading = false);
+  }
+
+  AddedProject? get _selectedProject {
+    if (!selectedRoute.startsWith('project:')) return null;
+    final id = selectedRoute.substring('project:'.length);
+    for (final project in projects) {
+      if (project.id == id) return project;
+    }
+    return null;
+  }
+
+  Future<void> _addProject() async {
+    try {
+      final project = await widget.gateway.addProject();
+      if (project == null || !mounted) return;
+      final restored = await widget.gateway.loadAddedProjects();
+      if (!mounted) return;
+      setState(() {
+        projects = restored;
+        selectedRoute = 'project:${project.id}';
+      });
+    } on Object catch (caught) {
+      if (mounted) setState(() => error = caught);
+    }
+  }
+
+  Future<void> _relocateProject(AddedProject project) async {
+    try {
+      final relocated = await widget.gateway.relocateProject(project.id);
+      if (relocated == null || !mounted) return;
+      final restored = await widget.gateway.loadAddedProjects();
+      if (mounted) setState(() => projects = restored);
+    } on Object catch (caught) {
+      if (mounted) setState(() => error = caught);
+    }
+  }
+
+  Future<void> _removeProject(AddedProject project) async {
+    final confirmed = await _confirmCommand(
+      context,
+      title: context.l10n.removeProjectTitle(project.name),
+      description: context.l10n.removeProjectDescription,
+      facts: [project.path],
+      confirmLabel: context.l10n.removeFromList,
+    );
+    if (!confirmed || !mounted) return;
+    await widget.gateway.removeProject(project.id);
+    if (!mounted) return;
+    final restored = await widget.gateway.loadAddedProjects();
+    if (mounted) {
+      setState(() {
+        projects = restored;
+        selectedRoute = _allRoute;
+      });
+    }
   }
 
   Future<void> checkUpdates() async {
@@ -1418,6 +1479,13 @@ class _LibraryScreenState extends State<LibraryScreen> {
   List<SkillsRailItem<String>> _railItems(BuildContext context) => [
     SkillsRailItem(value: _allRoute, label: context.l10n.all),
     SkillsRailItem(value: _userRoute, label: context.l10n.userScope),
+    for (final project in projects)
+      SkillsRailItem(
+        value: 'project:${project.id}',
+        label: project.isAccessible
+            ? project.name
+            : context.l10n.projectRailUnavailable(project.name),
+      ),
     SkillsRailItem(value: _addProjectRoute, label: context.l10n.addProject),
     for (var index = 0; index < _agents.length; index++)
       SkillsRailItem(
@@ -1430,7 +1498,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   String _routeTitle(BuildContext context) {
     if (selectedRoute == _allRoute) return context.l10n.all;
     if (selectedRoute == _userRoute) return context.l10n.userScope;
-    if (selectedRoute == _addProjectRoute) return context.l10n.addProject;
+    if (_selectedProject != null) return _selectedProject!.name;
     return _agentLabel(selectedRoute.substring('agent:'.length));
   }
 
@@ -1446,45 +1514,74 @@ class _LibraryScreenState extends State<LibraryScreen> {
     rail: SkillsSideRail<String>(
       semanticLabel: context.l10n.libraryNavigation,
       selected: selectedRoute,
-      onSelected: (route) => setState(() => selectedRoute = route),
+      onSelected: (route) {
+        if (route == _addProjectRoute) {
+          unawaited(_addProject());
+          return;
+        }
+        setState(() => selectedRoute = route);
+      },
       items: _railItems(context),
     ),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                SectionEyebrow(
-                  _routeTitle(context),
-                  color: SkillsTokens.violet,
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  context.l10n.yourLibrary,
-                  style: const TextStyle(
-                    fontFamily: SkillsTokens.serifFamily,
-                    fontSize: 36,
-                    fontWeight: FontWeight.w600,
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  SectionEyebrow(
+                    _routeTitle(context),
+                    color: SkillsTokens.violet,
                   ),
-                ),
-              ],
+                  const SizedBox(height: 8),
+                  Text(
+                    context.l10n.yourLibrary,
+                    style: const TextStyle(
+                      fontFamily: SkillsTokens.serifFamily,
+                      fontSize: 36,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
             ),
-            const Spacer(),
-            SecondaryCapsuleButton(
-              label: checking
-                  ? context.l10n.checking
-                  : context.l10n.checkUpdates,
-              icon: Icons.sync,
-              onPressed: checking ? null : checkUpdates,
-            ),
-            const SizedBox(width: 10),
-            SecondaryCapsuleButton(
-              label: context.l10n.refresh,
-              icon: Icons.refresh,
-              onPressed: loading ? null : load,
+            const SizedBox(width: 16),
+            Flexible(
+              child: Wrap(
+                alignment: WrapAlignment.end,
+                spacing: 10,
+                runSpacing: 8,
+                children: [
+                  if (_selectedProject != null) ...[
+                    SecondaryCapsuleButton(
+                      label: context.l10n.relocateProject,
+                      icon: Icons.drive_file_move_outline,
+                      onPressed: () => _relocateProject(_selectedProject!),
+                    ),
+                    SecondaryCapsuleButton(
+                      label: context.l10n.removeFromList,
+                      icon: Icons.remove_circle_outline,
+                      onPressed: () => _removeProject(_selectedProject!),
+                    ),
+                  ],
+                  SecondaryCapsuleButton(
+                    label: checking
+                        ? context.l10n.checking
+                        : context.l10n.checkUpdates,
+                    icon: Icons.sync,
+                    onPressed: checking ? null : checkUpdates,
+                  ),
+                  SecondaryCapsuleButton(
+                    label: context.l10n.refresh,
+                    icon: Icons.refresh,
+                    onPressed: loading ? null : load,
+                  ),
+                ],
+              ),
             ),
           ],
         ),
@@ -1501,13 +1598,48 @@ class _LibraryScreenState extends State<LibraryScreen> {
   Widget _body() {
     if (loading) return const Center(child: CircularProgressIndicator());
     if (error != null) {
+      final copy = _failureCopy(context, error!);
       return EmptyState(
-        title: context.l10n.libraryUnavailable,
-        message: error.toString(),
+        title: copy.title,
+        message: copy.message,
         action: PrimaryCapsuleButton(
           label: context.l10n.retry,
           onPressed: load,
         ),
+      );
+    }
+    final project = _selectedProject;
+    if (project != null) {
+      if (!project.isAccessible) {
+        final copy = switch (project.accessState) {
+          ProjectAccessState.missing => (
+            title: context.l10n.projectMissingTitle,
+            message: context.l10n.projectMissingMessage,
+          ),
+          ProjectAccessState.permissionDenied => (
+            title: context.l10n.projectPermissionTitle,
+            message: context.l10n.projectPermissionMessage,
+          ),
+          ProjectAccessState.inaccessible => (
+            title: context.l10n.projectInaccessibleTitle,
+            message: context.l10n.projectInaccessibleMessage,
+          ),
+          ProjectAccessState.accessible => throw StateError(
+            'Accessible project reached inaccessible state.',
+          ),
+        };
+        return EmptyState(
+          title: copy.title,
+          message: '${copy.message}\n${project.path}',
+          action: PrimaryCapsuleButton(
+            label: context.l10n.relocateProject,
+            onPressed: () => _relocateProject(project),
+          ),
+        );
+      }
+      return EmptyState(
+        title: context.l10n.emptyProjectTitle(project.name),
+        message: context.l10n.emptyProjectMessage,
       );
     }
     if (_visibleSkills.isEmpty) {
