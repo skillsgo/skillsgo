@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, unified Library entries/targets, explicit project references, Agent inspection, CLI, Registry settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, unified Library entries/targets, explicit Installation Plans/results, project references, Agent inspection, CLI, Registry settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -39,6 +39,10 @@ enum SkillRiskAssessment { unknown, low, medium, high, critical }
 enum InstallationScope { user, project }
 
 enum InstallationMode { symlink, copy, external }
+
+enum InstallationPlanAction { create, replace, skip, conflict, blockedByRisk }
+
+enum InstallationTargetOutcome { succeeded, skipped, conflict, failed }
 
 enum ReceiptState { present, missing, invalid }
 
@@ -210,6 +214,152 @@ class SkillInstallationTarget {
   final InstallationMode mode;
   final ReceiptState receiptState;
   final InstallationHealth health;
+}
+
+class InstallationTargetSelection {
+  const InstallationTargetSelection({
+    required this.scope,
+    required this.agent,
+    this.projectRoot = '',
+    this.mode = InstallationMode.symlink,
+  });
+
+  final InstallationScope scope;
+  final String projectRoot;
+  final String agent;
+  final InstallationMode mode;
+}
+
+class InstallationPlanTarget {
+  const InstallationPlanTarget({
+    required this.scope,
+    required this.agent,
+    required this.mode,
+    required this.path,
+    this.projectRoot = '',
+  });
+
+  final InstallationScope scope;
+  final String projectRoot;
+  final String agent;
+  final InstallationMode mode;
+  final String path;
+}
+
+class InstallationPlanItem {
+  const InstallationPlanItem({
+    required this.target,
+    required this.action,
+    required this.workspaceLockChange,
+    this.reasonCode = '',
+  });
+
+  final InstallationPlanTarget target;
+  final InstallationPlanAction action;
+  final bool workspaceLockChange;
+  final String reasonCode;
+}
+
+class InstallationPlanSummary {
+  const InstallationPlanSummary({
+    required this.create,
+    required this.replace,
+    required this.skip,
+    required this.conflict,
+    required this.blockedByRisk,
+  });
+
+  final int create;
+  final int replace;
+  final int skip;
+  final int conflict;
+  final int blockedByRisk;
+}
+
+class WorkspaceLockChange {
+  const WorkspaceLockChange({
+    required this.projectRoot,
+    required this.path,
+    required this.skill,
+    required this.toVersion,
+    this.fromVersion = '',
+  });
+
+  final String projectRoot;
+  final String path;
+  final String skill;
+  final String fromVersion;
+  final String toVersion;
+}
+
+class InstallationPlan {
+  const InstallationPlan({
+    required this.source,
+    required this.coordinate,
+    required this.version,
+    required this.name,
+    required this.selections,
+    required this.targets,
+    required this.summary,
+    required this.workspaceLockChanges,
+  });
+
+  final String source;
+  final String coordinate;
+  final String version;
+  final String name;
+  final List<InstallationTargetSelection> selections;
+  final List<InstallationPlanItem> targets;
+  final InstallationPlanSummary summary;
+  final List<WorkspaceLockChange> workspaceLockChanges;
+}
+
+class InstallationTargetResult {
+  const InstallationTargetResult({
+    required this.target,
+    required this.action,
+    required this.outcome,
+    this.errorCode = '',
+    this.diagnostic = '',
+  });
+
+  final InstallationPlanTarget target;
+  final InstallationPlanAction action;
+  final InstallationTargetOutcome outcome;
+  final String errorCode;
+  final String diagnostic;
+}
+
+class InstallationExecutionSummary {
+  const InstallationExecutionSummary({
+    required this.succeeded,
+    required this.skipped,
+    required this.conflict,
+    required this.failed,
+  });
+
+  final int succeeded;
+  final int skipped;
+  final int conflict;
+  final int failed;
+}
+
+class InstallationExecution {
+  const InstallationExecution({
+    required this.coordinate,
+    required this.version,
+    required this.name,
+    required this.results,
+    required this.summary,
+  });
+
+  final String coordinate;
+  final String version;
+  final String name;
+  final List<InstallationTargetResult> results;
+  final InstallationExecutionSummary summary;
+
+  bool get hasSuccess => summary.succeeded > 0 || summary.skipped > 0;
 }
 
 class AgentUserTarget {
@@ -473,6 +623,12 @@ abstract interface class SkillsGateway {
     List<AddedProject> projects = const [],
   });
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill);
+  Future<InstallationPlan> preflightInstall(
+    SkillSummary skill,
+    String immutableVersion,
+    List<InstallationTargetSelection> selections,
+  );
+  Future<InstallationExecution> executeInstall(InstallationPlan plan);
   Future<CommandResult> install(SkillSummary skill);
   Future<CommandResult> remove(InstalledSkill skill);
   Future<CommandResult> update(InstalledSkill skill);

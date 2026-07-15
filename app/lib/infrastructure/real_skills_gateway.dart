@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Registry HTTP, the local filesystem, the platform directory picker, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides production Registry settings, discovery/detail, unified managed/external CLI inventory parsing, read-only local file inspection, explicit project reference persistence, strict Agent inspection, typed failures, diagnostics, bundled CLI verification, and Skill operations.
+ * [OUTPUT]: Provides production Registry settings, discovery/detail, managed/external inventory parsing, explicit Installation Plan/result parsing, local file inspection, project persistence, Agent inspection, typed failures, diagnostics, CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -89,6 +89,42 @@ InstallationMode _installationMode(Object? value) => switch (value) {
   _ => throw const FormatException('Unknown installation mode.'),
 };
 
+InstallationPlanAction _installationPlanAction(Object? value) =>
+    switch (value) {
+      'create' => InstallationPlanAction.create,
+      'replace' => InstallationPlanAction.replace,
+      'skip' => InstallationPlanAction.skip,
+      'conflict' => InstallationPlanAction.conflict,
+      'blocked-by-risk' => InstallationPlanAction.blockedByRisk,
+      _ => throw const FormatException('Unknown Installation Plan action.'),
+    };
+
+InstallationTargetOutcome _installationTargetOutcome(Object? value) =>
+    switch (value) {
+      'succeeded' => InstallationTargetOutcome.succeeded,
+      'skipped' => InstallationTargetOutcome.skipped,
+      'conflict' => InstallationTargetOutcome.conflict,
+      'failed' => InstallationTargetOutcome.failed,
+      _ => throw const FormatException('Unknown Installation Target outcome.'),
+    };
+
+String _installationPlanReasonCode(Object? value) => switch (value) {
+  null => '',
+  'identical-target' => 'identical-target',
+  'target-path-exists' => 'target-path-exists',
+  'blocked-by-risk' => 'blocked-by-risk',
+  _ => throw const FormatException('Unknown Installation Plan reason code.'),
+};
+
+String _installationErrorCode(Object? value) => switch (value) {
+  null => '',
+  'target-path-exists' => 'target-path-exists',
+  'blocked-by-risk' => 'blocked-by-risk',
+  'install-failed' => 'install-failed',
+  'workspace-update-failed' => 'workspace-update-failed',
+  _ => throw const FormatException('Unknown Installation Target error code.'),
+};
+
 ReceiptState _receiptState(Object? value) => switch (value) {
   'present' => ReceiptState.present,
   'missing' => ReceiptState.missing,
@@ -124,6 +160,7 @@ int _localTargetReadRank(SkillInstallationTarget target) {
 
 const _localFilePreviewLimit = 256 * 1024;
 const _inventorySchemaVersion = 2;
+const _installationPlanSchemaVersion = 1;
 
 bool _looksExecutablePath(String path) {
   final lower = path.toLowerCase();
@@ -203,6 +240,67 @@ bool _sameStringSet(List<String> left, Iterable<String> right) {
   return left.length == rightSet.length && left.every(rightSet.contains);
 }
 
+int _strictNonNegativeInt(Object? value) {
+  if (value is! int || value < 0) throw const FormatException();
+  return value;
+}
+
+InstallationPlanTarget _installationPlanTarget(Object? raw) {
+  if (raw is! Map<String, dynamic> ||
+      raw['agent'] is! String ||
+      (raw['agent'] as String).isEmpty ||
+      raw['path'] is! String ||
+      (raw['path'] as String).isEmpty ||
+      (raw['projectRoot'] != null && raw['projectRoot'] is! String)) {
+    throw const FormatException();
+  }
+  final scope = _installationScope(raw['scope']);
+  final mode = _installationMode(raw['mode']);
+  final projectRoot = raw['projectRoot'] as String? ?? '';
+  if (mode == InstallationMode.external ||
+      (scope == InstallationScope.user && projectRoot.isNotEmpty) ||
+      (scope == InstallationScope.project && projectRoot.isEmpty)) {
+    throw const FormatException();
+  }
+  return InstallationPlanTarget(
+    scope: scope,
+    projectRoot: projectRoot,
+    agent: raw['agent'] as String,
+    mode: mode,
+    path: raw['path'] as String,
+  );
+}
+
+bool _samePlanTarget(
+  InstallationPlanTarget left,
+  InstallationPlanTarget right,
+) =>
+    left.scope == right.scope &&
+    left.projectRoot == right.projectRoot &&
+    left.agent == right.agent &&
+    left.mode == right.mode &&
+    left.path == right.path;
+
+String _scopeValue(InstallationScope scope) => switch (scope) {
+  InstallationScope.user => 'user',
+  InstallationScope.project => 'project',
+};
+
+String _modeValue(InstallationMode mode) => switch (mode) {
+  InstallationMode.symlink => 'symlink',
+  InstallationMode.copy => 'copy',
+  InstallationMode.external => throw const FormatException(
+    'External mode cannot enter an Installation Plan.',
+  ),
+};
+
+String _targetArgument(InstallationTargetSelection selection) => jsonEncode({
+  'scope': _scopeValue(selection.scope),
+  if (selection.projectRoot.isNotEmpty) 'projectRoot': selection.projectRoot,
+  'agent': selection.agent,
+  'mode': _modeValue(selection.mode),
+});
+
 SkillMetricKind _metricKind(String value) => switch (value) {
   'all_time_installs' => SkillMetricKind.allTimeInstalls,
   'installs_24h' => SkillMetricKind.installs24h,
@@ -244,7 +342,7 @@ class RealSkillsGateway implements SkillsGateway {
   static const _allowCriticalOverrideKey = 'allow_critical_risk_override';
   static const _addedProjectsKey = 'added_projects_v1';
   static const _startupHandshakeSchemaVersion = 1;
-  static const _appProtocolVersion = 2;
+  static const _appProtocolVersion = 3;
   final http.Client _http;
   final ProcessRunner _runner;
   final Uri _defaultRegistryBase;
@@ -1320,6 +1418,275 @@ class RealSkillsGateway implements SkillsGateway {
           ? 'The local SKILL.md is empty.'
           : 'Cannot read local Skill: ${lastFileError.message}',
     );
+  }
+
+  @override
+  Future<InstallationPlan> preflightInstall(
+    SkillSummary skill,
+    String immutableVersion,
+    List<InstallationTargetSelection> selections,
+  ) async {
+    if (immutableVersion.isEmpty || selections.isEmpty) {
+      throw const SkillsException(
+        'Select at least one Installation Target.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    final cells = <String>{};
+    for (final selection in selections) {
+      final key =
+          '${_scopeValue(selection.scope)}\u0000${selection.projectRoot}\u0000${selection.agent}';
+      if (!cells.add(key) ||
+          selection.agent.isEmpty ||
+          (selection.scope == InstallationScope.user &&
+              selection.projectRoot.isNotEmpty) ||
+          (selection.scope == InstallationScope.project &&
+              selection.projectRoot.isEmpty) ||
+          selection.mode == InstallationMode.external) {
+        throw const SkillsException(
+          'The Installation Target selection is invalid.',
+          kind: SkillsFailureKind.validation,
+        );
+      }
+    }
+    await _ensureRegistryOrigin();
+    final arguments = <String>['add', skill.id, '--skill', skill.skillId];
+    for (final selection in selections) {
+      arguments.addAll(['--target', _targetArgument(selection)]);
+    }
+    arguments.addAll([
+      '--version',
+      immutableVersion,
+      '--preflight',
+      '--output',
+      'json',
+      '--registry',
+      _registryOrigin,
+    ]);
+    final result = await _runCli(arguments);
+    if (!result.succeeded) throw SkillsException(_commandError(result));
+    try {
+      final decoded = jsonDecode(result.output.stdout);
+      if (decoded is! Map<String, dynamic> ||
+          decoded['schemaVersion'] != _installationPlanSchemaVersion ||
+          decoded['phase'] != 'preflight' ||
+          decoded['artifact'] is! Map<String, dynamic> ||
+          decoded['targets'] is! List ||
+          decoded['summary'] is! Map<String, dynamic> ||
+          decoded['workspaceLockChanges'] is! List) {
+        throw const FormatException();
+      }
+      final artifact = decoded['artifact'] as Map<String, dynamic>;
+      if (artifact['source'] is! String ||
+          artifact['coordinate'] != skill.id ||
+          artifact['version'] != immutableVersion ||
+          artifact['name'] != skill.skillId ||
+          artifact['source'] != skill.id) {
+        throw const FormatException();
+      }
+      final rawTargets = decoded['targets'] as List;
+      if (rawTargets.length != selections.length) throw const FormatException();
+      final targets = <InstallationPlanItem>[];
+      for (var index = 0; index < rawTargets.length; index++) {
+        final raw = rawTargets[index];
+        if (raw is! Map<String, dynamic> ||
+            raw['workspaceLockChange'] is! bool ||
+            (raw['reasonCode'] != null && raw['reasonCode'] is! String)) {
+          throw const FormatException();
+        }
+        final target = _installationPlanTarget(raw['target']);
+        final selection = selections[index];
+        if (target.scope != selection.scope ||
+            target.projectRoot != selection.projectRoot ||
+            target.agent != selection.agent ||
+            target.mode != selection.mode) {
+          throw const FormatException();
+        }
+        targets.add(
+          InstallationPlanItem(
+            target: target,
+            action: _installationPlanAction(raw['action']),
+            workspaceLockChange: raw['workspaceLockChange'] as bool,
+            reasonCode: _installationPlanReasonCode(raw['reasonCode']),
+          ),
+        );
+      }
+      final rawSummary = decoded['summary'] as Map<String, dynamic>;
+      final summary = InstallationPlanSummary(
+        create: _strictNonNegativeInt(rawSummary['create']),
+        replace: _strictNonNegativeInt(rawSummary['replace']),
+        skip: _strictNonNegativeInt(rawSummary['skip']),
+        conflict: _strictNonNegativeInt(rawSummary['conflict']),
+        blockedByRisk: _strictNonNegativeInt(rawSummary['blockedByRisk']),
+      );
+      final actionCounts = {
+        for (final action in InstallationPlanAction.values)
+          action: targets.where((item) => item.action == action).length,
+      };
+      if (summary.create != actionCounts[InstallationPlanAction.create] ||
+          summary.replace != actionCounts[InstallationPlanAction.replace] ||
+          summary.skip != actionCounts[InstallationPlanAction.skip] ||
+          summary.conflict != actionCounts[InstallationPlanAction.conflict] ||
+          summary.blockedByRisk !=
+              actionCounts[InstallationPlanAction.blockedByRisk]) {
+        throw const FormatException();
+      }
+      final lockRoots = <String>{};
+      final lockChanges = (decoded['workspaceLockChanges'] as List)
+          .map((raw) {
+            if (raw is! Map<String, dynamic> ||
+                raw['projectRoot'] is! String ||
+                (raw['projectRoot'] as String).isEmpty ||
+                raw['path'] is! String ||
+                (raw['path'] as String).isEmpty ||
+                raw['skill'] != skill.skillId ||
+                raw['toVersion'] != artifact['version'] ||
+                (raw['fromVersion'] != null && raw['fromVersion'] is! String) ||
+                !lockRoots.add(raw['projectRoot'] as String)) {
+              throw const FormatException();
+            }
+            return WorkspaceLockChange(
+              projectRoot: raw['projectRoot'] as String,
+              path: raw['path'] as String,
+              skill: raw['skill'] as String,
+              fromVersion: raw['fromVersion'] as String? ?? '',
+              toVersion: raw['toVersion'] as String,
+            );
+          })
+          .toList(growable: false);
+      final expectedLockRoots = targets
+          .where((item) => item.workspaceLockChange)
+          .map((item) => item.target.projectRoot)
+          .toSet();
+      if (expectedLockRoots.length != lockRoots.length ||
+          !expectedLockRoots.every(lockRoots.contains)) {
+        throw const FormatException();
+      }
+      return InstallationPlan(
+        source: artifact['source'] as String,
+        coordinate: artifact['coordinate'] as String,
+        version: artifact['version'] as String,
+        name: artifact['name'] as String,
+        selections: List.unmodifiable(selections),
+        targets: List.unmodifiable(targets),
+        summary: summary,
+        workspaceLockChanges: lockChanges,
+      );
+    } on FormatException {
+      throw const SkillsException(
+        'The SkillsGo CLI returned invalid Installation Plan JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
+  }
+
+  @override
+  Future<InstallationExecution> executeInstall(InstallationPlan plan) async {
+    await _ensureRegistryOrigin();
+    final arguments = <String>['add', plan.source, '--skill', plan.name];
+    for (final selection in plan.selections) {
+      arguments.addAll(['--target', _targetArgument(selection)]);
+    }
+    arguments.addAll([
+      '--version',
+      plan.version,
+      '--yes',
+      '--output',
+      'json',
+      '--registry',
+      _registryOrigin,
+    ]);
+    final command = await _runCli(arguments);
+    if (!command.succeeded) throw SkillsException(_commandError(command));
+    try {
+      final decoded = jsonDecode(command.output.stdout);
+      if (decoded is! Map<String, dynamic> ||
+          decoded['schemaVersion'] != _installationPlanSchemaVersion ||
+          decoded['phase'] != 'execution' ||
+          decoded['artifact'] is! Map<String, dynamic> ||
+          decoded['results'] is! List ||
+          decoded['summary'] is! Map<String, dynamic>) {
+        throw const FormatException();
+      }
+      final artifact = decoded['artifact'] as Map<String, dynamic>;
+      if (artifact['source'] != plan.source ||
+          artifact['coordinate'] != plan.coordinate ||
+          artifact['version'] != plan.version ||
+          artifact['name'] != plan.name) {
+        throw const FormatException();
+      }
+      final rawResults = decoded['results'] as List;
+      if (rawResults.length != plan.targets.length) {
+        throw const FormatException();
+      }
+      final results = <InstallationTargetResult>[];
+      for (var index = 0; index < rawResults.length; index++) {
+        final raw = rawResults[index];
+        if (raw is! Map<String, dynamic> ||
+            (raw['errorCode'] != null && raw['errorCode'] is! String) ||
+            (raw['diagnostic'] != null && raw['diagnostic'] is! String)) {
+          throw const FormatException();
+        }
+        final target = _installationPlanTarget(raw['target']);
+        final action = _installationPlanAction(raw['action']);
+        if (!_samePlanTarget(target, plan.targets[index].target) ||
+            action != plan.targets[index].action) {
+          throw const FormatException();
+        }
+        final outcome = _installationTargetOutcome(raw['outcome']);
+        final errorCode = _installationErrorCode(raw['errorCode']);
+        if ((outcome == InstallationTargetOutcome.succeeded ||
+                outcome == InstallationTargetOutcome.skipped) &&
+            errorCode.isNotEmpty) {
+          throw const FormatException();
+        }
+        if ((outcome == InstallationTargetOutcome.conflict ||
+                outcome == InstallationTargetOutcome.failed) &&
+            errorCode.isEmpty) {
+          throw const FormatException();
+        }
+        results.add(
+          InstallationTargetResult(
+            target: target,
+            action: action,
+            outcome: outcome,
+            errorCode: errorCode,
+            diagnostic: raw['diagnostic'] as String? ?? '',
+          ),
+        );
+      }
+      final rawSummary = decoded['summary'] as Map<String, dynamic>;
+      final summary = InstallationExecutionSummary(
+        succeeded: _strictNonNegativeInt(rawSummary['succeeded']),
+        skipped: _strictNonNegativeInt(rawSummary['skipped']),
+        conflict: _strictNonNegativeInt(rawSummary['conflict']),
+        failed: _strictNonNegativeInt(rawSummary['failed']),
+      );
+      final outcomeCounts = {
+        for (final outcome in InstallationTargetOutcome.values)
+          outcome: results.where((result) => result.outcome == outcome).length,
+      };
+      if (summary.succeeded !=
+              outcomeCounts[InstallationTargetOutcome.succeeded] ||
+          summary.skipped != outcomeCounts[InstallationTargetOutcome.skipped] ||
+          summary.conflict !=
+              outcomeCounts[InstallationTargetOutcome.conflict] ||
+          summary.failed != outcomeCounts[InstallationTargetOutcome.failed]) {
+        throw const FormatException();
+      }
+      return InstallationExecution(
+        coordinate: plan.coordinate,
+        version: plan.version,
+        name: plan.name,
+        results: List.unmodifiable(results),
+        summary: summary,
+      );
+    } on FormatException {
+      throw const SkillsException(
+        'The SkillsGo CLI returned invalid Installation Result JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
   }
 
   @override

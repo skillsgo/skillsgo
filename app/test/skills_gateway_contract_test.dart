@@ -263,7 +263,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 2,
+            'appProtocolVersion': 3,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -370,7 +370,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '0.1.0',
-          'appProtocolVersion': 2,
+          'appProtocolVersion': 3,
           'os': 'linux',
           'architecture': 'arm64',
         }),
@@ -398,7 +398,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '7.4.2',
-            'appProtocolVersion': 2,
+            'appProtocolVersion': 3,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -426,7 +426,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': 'dev',
-          'appProtocolVersion': 2,
+          'appProtocolVersion': 3,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -455,7 +455,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '1.0.0',
-          'appProtocolVersion': 2,
+          'appProtocolVersion': 3,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -482,7 +482,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 2,
+            'appProtocolVersion': 3,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -1082,6 +1082,360 @@ void main() {
     expect(
       runner.calls.map((call) => call.executable),
       isNot(contains('/bin/sh')),
+    );
+  });
+
+  test(
+    'explicit Installation Plans preserve cells and parse target results',
+    () async {
+      const coordinate = 'github.com/a/b/-/test';
+      const projectRoot = r'/work/Project ;$(touch never)';
+      final userTarget = {
+        'scope': 'user',
+        'agent': 'codex',
+        'mode': 'symlink',
+        'path': '/Users/test/.codex/skills/test',
+      };
+      final projectTarget = {
+        'scope': 'project',
+        'projectRoot': projectRoot,
+        'agent': 'claude-code',
+        'mode': 'copy',
+        'path': '$projectRoot/.claude/skills/test',
+      };
+      final artifact = {
+        'source': coordinate,
+        'coordinate': coordinate,
+        'version': 'v1',
+        'name': 'test',
+      };
+      final runner = _FakeProcessRunner()
+        ..responses.addAll([
+          ProcessOutput(
+            exitCode: 0,
+            stdout: jsonEncode({
+              'schemaVersion': 1,
+              'phase': 'preflight',
+              'artifact': artifact,
+              'targets': [
+                {
+                  'target': userTarget,
+                  'action': 'skip',
+                  'reasonCode': 'identical-target',
+                  'workspaceLockChange': false,
+                },
+                {
+                  'target': projectTarget,
+                  'action': 'create',
+                  'workspaceLockChange': true,
+                },
+              ],
+              'summary': {
+                'create': 1,
+                'replace': 0,
+                'skip': 1,
+                'conflict': 0,
+                'blockedByRisk': 0,
+              },
+              'workspaceLockChanges': [
+                {
+                  'projectRoot': projectRoot,
+                  'path': '$projectRoot/skillsgo-lock.yaml',
+                  'skill': 'test',
+                  'toVersion': 'v1',
+                },
+              ],
+            }),
+            stderr: '',
+          ),
+          ProcessOutput(
+            exitCode: 0,
+            stdout: jsonEncode({
+              'schemaVersion': 1,
+              'phase': 'execution',
+              'artifact': artifact,
+              'results': [
+                {'target': userTarget, 'action': 'skip', 'outcome': 'skipped'},
+                {
+                  'target': projectTarget,
+                  'action': 'create',
+                  'outcome': 'succeeded',
+                },
+              ],
+              'summary': {
+                'succeeded': 1,
+                'skipped': 1,
+                'conflict': 0,
+                'failed': 0,
+              },
+            }),
+            stderr: '',
+          ),
+        ]);
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: r'/Applications/Skills Go/$(echo never)/skillsgo',
+      );
+      const skill = SkillSummary(
+        id: coordinate,
+        skillId: 'test',
+        name: 'Test',
+        source: 'github.com/a/b',
+        installs: 0,
+        latestVersion: 'v1',
+      );
+      const selections = [
+        InstallationTargetSelection(
+          scope: InstallationScope.user,
+          agent: 'codex',
+        ),
+        InstallationTargetSelection(
+          scope: InstallationScope.project,
+          projectRoot: projectRoot,
+          agent: 'claude-code',
+          mode: InstallationMode.copy,
+        ),
+      ];
+
+      final plan = await gateway.preflightInstall(skill, 'v1', selections);
+
+      expect(plan.version, 'v1');
+      expect(plan.targets.map((target) => target.action), [
+        InstallationPlanAction.skip,
+        InstallationPlanAction.create,
+      ]);
+      expect(plan.workspaceLockChanges.single.projectRoot, projectRoot);
+      expect(runner.lastArguments!.take(4), [
+        'add',
+        coordinate,
+        '--skill',
+        'test',
+      ]);
+      expect(
+        runner.lastArguments,
+        containsAllInOrder(['--version', 'v1', '--preflight']),
+      );
+      final targetArguments = <Map<String, dynamic>>[];
+      for (var index = 0; index < runner.lastArguments!.length; index++) {
+        if (runner.lastArguments![index] == '--target') {
+          targetArguments.add(
+            jsonDecode(runner.lastArguments![index + 1])
+                as Map<String, dynamic>,
+          );
+        }
+      }
+      expect(targetArguments, [
+        {'scope': 'user', 'agent': 'codex', 'mode': 'symlink'},
+        {
+          'scope': 'project',
+          'projectRoot': projectRoot,
+          'agent': 'claude-code',
+          'mode': 'copy',
+        },
+      ]);
+
+      final execution = await gateway.executeInstall(plan);
+
+      expect(execution.summary.succeeded, 1);
+      expect(execution.summary.skipped, 1);
+      expect(runner.lastArguments, containsAllInOrder(['--version', 'v1']));
+      expect(
+        runner.calls.map((call) => call.executable),
+        everyElement(r'/Applications/Skills Go/$(echo never)/skillsgo'),
+      );
+      expect(
+        runner.calls.expand((call) => call.arguments),
+        isNot(contains('/bin/sh')),
+      );
+    },
+  );
+
+  test('Installation Plan rejects malformed machine contracts', () async {
+    const coordinate = 'github.com/a/b/-/test';
+    const projectRoot = '/work/project';
+    const skill = SkillSummary(
+      id: coordinate,
+      skillId: 'test',
+      name: 'Test',
+      source: 'github.com/a/b',
+      installs: 0,
+      latestVersion: 'v1',
+    );
+    const selections = [
+      InstallationTargetSelection(
+        scope: InstallationScope.user,
+        agent: 'codex',
+      ),
+      InstallationTargetSelection(
+        scope: InstallationScope.project,
+        projectRoot: projectRoot,
+        agent: 'claude-code',
+        mode: InstallationMode.copy,
+      ),
+    ];
+
+    Map<String, dynamic> validPreflight() => {
+      'schemaVersion': 1,
+      'phase': 'preflight',
+      'artifact': {
+        'source': coordinate,
+        'coordinate': coordinate,
+        'version': 'v1',
+        'name': 'test',
+      },
+      'targets': [
+        {
+          'target': {
+            'scope': 'user',
+            'agent': 'codex',
+            'mode': 'symlink',
+            'path': '/Users/test/.codex/skills/test',
+          },
+          'action': 'skip',
+          'reasonCode': 'identical-target',
+          'workspaceLockChange': false,
+        },
+        {
+          'target': {
+            'scope': 'project',
+            'projectRoot': projectRoot,
+            'agent': 'claude-code',
+            'mode': 'copy',
+            'path': '$projectRoot/.claude/skills/test',
+          },
+          'action': 'create',
+          'workspaceLockChange': true,
+        },
+      ],
+      'summary': {
+        'create': 1,
+        'replace': 0,
+        'skip': 1,
+        'conflict': 0,
+        'blockedByRisk': 0,
+      },
+      'workspaceLockChanges': <Map<String, dynamic>>[
+        {
+          'projectRoot': projectRoot,
+          'path': '$projectRoot/skillsgo-lock.yaml',
+          'skill': 'test',
+          'toVersion': 'v1',
+        },
+      ],
+    };
+
+    final malformedPreflights = <Map<String, dynamic> Function()>[
+      () => validPreflight()..['schemaVersion'] = 2,
+      () => validPreflight()..['phase'] = 'execution',
+      () {
+        final value = validPreflight();
+        ((value['targets'] as List).first as Map<String, dynamic>)['action'] =
+            'unknown';
+        return value;
+      },
+      () {
+        final value = validPreflight();
+        ((value['artifact'] as Map<String, dynamic>))['coordinate'] =
+            'github.com/attacker/repo/-/test';
+        return value;
+      },
+      () {
+        final value = validPreflight();
+        final targets = value['targets'] as List;
+        value['targets'] = targets.reversed.toList();
+        return value;
+      },
+      () {
+        final value = validPreflight();
+        ((value['summary'] as Map<String, dynamic>))['create'] = 2;
+        return value;
+      },
+      () {
+        final value = validPreflight();
+        final locks = value['workspaceLockChanges'] as List;
+        locks.add(Map<String, dynamic>.from(locks.single as Map));
+        return value;
+      },
+    ];
+
+    for (final malformed in malformedPreflights) {
+      final runner = _FakeProcessRunner()
+        ..responses.add(
+          ProcessOutput(
+            exitCode: 0,
+            stdout: jsonEncode(malformed()),
+            stderr: '',
+          ),
+        );
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/Applications/SkillsGo.app/skillsgo',
+      );
+      await expectLater(
+        gateway.preflightInstall(skill, 'v1', selections),
+        throwsA(
+          isA<SkillsException>().having(
+            (error) => error.kind,
+            'kind',
+            SkillsFailureKind.invalidResponse,
+          ),
+        ),
+      );
+    }
+
+    final runner = _FakeProcessRunner()
+      ..responses.addAll([
+        ProcessOutput(
+          exitCode: 0,
+          stdout: jsonEncode(validPreflight()),
+          stderr: '',
+        ),
+        ProcessOutput(
+          exitCode: 0,
+          stdout: jsonEncode({
+            'schemaVersion': 1,
+            'phase': 'execution',
+            'artifact': validPreflight()['artifact'],
+            'results': [
+              {
+                'target':
+                    ((validPreflight()['targets'] as List).first
+                        as Map<String, dynamic>)['target'],
+                'action': 'skip',
+                'outcome': 'unknown',
+              },
+              {
+                'target':
+                    ((validPreflight()['targets'] as List).last
+                        as Map<String, dynamic>)['target'],
+                'action': 'create',
+                'outcome': 'succeeded',
+              },
+            ],
+            'summary': {
+              'succeeded': 1,
+              'skipped': 1,
+              'conflict': 0,
+              'failed': 0,
+            },
+          }),
+          stderr: '',
+        ),
+      ]);
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/Applications/SkillsGo.app/skillsgo',
+    );
+    final plan = await gateway.preflightInstall(skill, 'v1', selections);
+    await expectLater(
+      gateway.executeInstall(plan),
+      throwsA(
+        isA<SkillsException>().having(
+          (error) => error.kind,
+          'kind',
+          SkillsFailureKind.invalidResponse,
+        ),
+      ),
     );
   });
 

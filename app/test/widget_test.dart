@@ -5,7 +5,7 @@
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
-import 'dart:ui' show Tristate;
+import 'dart:ui' show CheckedState, SemanticsAction, Tristate;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -261,20 +261,22 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Ranking'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Planner'));
-    await tester.pumpAndSettle();
     await tester.tap(find.text('Install to More Targets'));
     await tester.pumpAndSettle();
 
     expect(gateway.installCalls, 0);
-    expect(find.text('Your Library'), findsOneWidget);
+    expect(find.text('Choose installation targets'), findsOneWidget);
+    expect(find.text('Installed'), findsOneWidget);
+    expect(find.text('0 targets selected'), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel('Close installation plan'));
+    await tester.pumpAndSettle();
   });
 
   testWidgets('auditable detail exposes immutable evidence and files', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
-    final gateway = FakeSkillsGateway(installed: false);
+    final gateway = FakeSkillsGateway();
     await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
     await tester.enterText(_searchInput(), 'flutter');
@@ -302,6 +304,85 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.textContaining('name: flutter-pro'), findsOneWidget);
   });
+
+  testWidgets(
+    'Installation Plan keeps explicit cells across row, column, and Add Project shortcuts',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 900));
+      const projectA = AddedProject(
+        id: 'project-a',
+        name: 'Project A',
+        path: '/work/project-a',
+        accessState: ProjectAccessState.accessible,
+      );
+      const projectB = AddedProject(
+        id: 'project-b',
+        name: 'Project B',
+        path: '/work/project-b',
+        accessState: ProjectAccessState.accessible,
+      );
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        agentNames: const ['codex', 'claude-code'],
+        addedProjects: const [projectA],
+        projectToAdd: projectB,
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.enterText(_searchInput(), 'matrix');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flutter Pro'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Install Skill'));
+      await tester.pumpAndSettle();
+
+      final codexShortcut = find.bySemanticsLabel(
+        'Select all available targets for Codex',
+      );
+      var shortcutSemantics = tester.getSemantics(codexShortcut);
+      expect(shortcutSemantics.flagsCollection.isChecked, CheckedState.isFalse);
+      expect(
+        shortcutSemantics.getSemanticsData().hasAction(SemanticsAction.tap),
+        isTrue,
+      );
+      await tester.tap(codexShortcut);
+      await tester.pumpAndSettle();
+      expect(find.text('2 targets selected'), findsOneWidget);
+      shortcutSemantics = tester.getSemantics(codexShortcut);
+      expect(shortcutSemantics.flagsCollection.isChecked, CheckedState.isTrue);
+
+      await tester.tap(find.text('Add Project'));
+      await tester.pumpAndSettle();
+      expect(find.text('Project B'), findsOneWidget);
+      expect(find.text('2 targets selected'), findsOneWidget);
+
+      await tester.tap(find.text('Project B'));
+      await tester.pumpAndSettle();
+      expect(find.text('4 targets selected'), findsOneWidget);
+      await tester.tap(find.text('Review 4 Targets'));
+      await tester.pumpAndSettle();
+
+      expect(
+        gateway.lastPlanSelections
+            .map(
+              (selection) =>
+                  '${selection.scope.name}:${selection.projectRoot}:${selection.agent}',
+            )
+            .toList(),
+        [
+          'user::codex',
+          'project:/work/project-a:codex',
+          'project:/work/project-b:codex',
+          'project:/work/project-b:claude-code',
+        ],
+      );
+      expect(find.text('4 create'), findsOneWidget);
+      expect(find.text('/work/project-b'), findsWidgets);
+      await tester.tap(find.bySemanticsLabel('Close installation plan'));
+      await tester.pumpAndSettle();
+    },
+  );
 
   testWidgets('artifact detail failure is localized and retryable', (
     tester,
@@ -578,8 +659,16 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Flutter Pro'));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Install for Codex'));
+    await tester.tap(find.text('Install Skill'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Select'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Review 1 Targets'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Install 1 Targets'));
     await tester.pump();
+    await tester.tap(find.bySemanticsLabel('Close installation plan'));
+    await tester.pump(const Duration(milliseconds: 500));
     await tester.tap(find.bySemanticsLabel('Back to search'));
     await tester.pumpAndSettle();
 
@@ -588,7 +677,7 @@ void main() {
     await tester.tap(find.text('Flutter Pro'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Command completed'), findsOneWidget);
+    expect(find.text('Installation results'), findsOneWidget);
   });
 
   testWidgets('Discover restores its collection scroll position', (
@@ -1394,12 +1483,18 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Flutter Pro'));
     await tester.pumpAndSettle();
-    expect(find.textContaining('--agent codex --yes'), findsOneWidget);
-
-    await tester.tap(find.text('Install for Codex'));
+    await tester.tap(find.text('Install Skill'));
     await tester.pumpAndSettle();
-    expect(find.text('Command completed'), findsOneWidget);
-    await tester.tap(find.bySemanticsLabel('Back to search'));
+    expect(find.text('LOCATION × AGENT'), findsOneWidget);
+    await tester.tap(find.text('Select'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Review 1 Targets'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 create'), findsOneWidget);
+    await tester.tap(find.text('Install 1 Targets'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 targets installed, 0 failed'), findsOneWidget);
+    await tester.tap(find.text('View in Library'));
     await tester.pumpAndSettle();
     expect(find.text('local-skill'), findsOneWidget);
 
@@ -1445,7 +1540,11 @@ class FakeSkillsGateway implements SkillsGateway {
     SkillDetail? remoteDetail,
     List<SkillsException> detailErrors = const [],
   }) : searchResults = searchResults ?? _defaultSearchResults,
-       remoteDetail = remoteDetail ?? defaultRemoteDetail,
+       remoteDetail =
+           remoteDetail ??
+           (installed
+               ? defaultRemoteDetail
+               : _withoutInstallationTargets(defaultRemoteDetail)),
        detailErrors = List.of(detailErrors),
        projects = List.of(addedProjects);
   final bool cliReady;
@@ -1476,6 +1575,7 @@ class FakeSkillsGateway implements SkillsGateway {
   final collections = <DiscoveryCollection>[];
   final requestedOffsets = <int>[];
   int installCalls = 0;
+  List<InstallationTargetSelection> lastPlanSelections = const [];
   int detailLoads = 0;
   int agentInspections = 0;
   String? savedPath;
@@ -1716,6 +1816,113 @@ class FakeSkillsGateway implements SkillsGateway {
   Future<Map<String, UpdateState>> checkUpdates(
     List<InstalledSkill> skills,
   ) async => {'local-skill': UpdateState.available};
+
+  @override
+  Future<InstallationPlan> preflightInstall(
+    SkillSummary skill,
+    String immutableVersion,
+    List<InstallationTargetSelection> selections,
+  ) async {
+    lastPlanSelections = List.unmodifiable(selections);
+    final targets = selections
+        .map(
+          (selection) => InstallationPlanItem(
+            target: InstallationPlanTarget(
+              scope: selection.scope,
+              projectRoot: selection.projectRoot,
+              agent: selection.agent,
+              mode: selection.mode,
+              path: selection.scope == InstallationScope.user
+                  ? '/Users/test/.${selection.agent}/skills/${skill.skillId}'
+                  : '${selection.projectRoot}/.agents/skills/${skill.skillId}',
+            ),
+            action: InstallationPlanAction.create,
+            workspaceLockChange: selection.scope == InstallationScope.project,
+          ),
+        )
+        .toList(growable: false);
+    return InstallationPlan(
+      source: skill.id,
+      coordinate: skill.id,
+      version: immutableVersion,
+      name: skill.skillId,
+      selections: List.unmodifiable(selections),
+      targets: targets,
+      summary: InstallationPlanSummary(
+        create: targets.length,
+        replace: 0,
+        skip: 0,
+        conflict: 0,
+        blockedByRisk: 0,
+      ),
+      workspaceLockChanges: selections
+          .where((selection) => selection.scope == InstallationScope.project)
+          .map(
+            (selection) => WorkspaceLockChange(
+              projectRoot: selection.projectRoot,
+              path: '${selection.projectRoot}/skillsgo-lock.yaml',
+              skill: skill.skillId,
+              toVersion: immutableVersion,
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+
+  @override
+  Future<InstallationExecution> executeInstall(InstallationPlan plan) async {
+    installCalls++;
+    if (installCompleter != null) {
+      final result = await installCompleter!.future;
+      installed = result.succeeded;
+      if (!result.succeeded) {
+        return InstallationExecution(
+          coordinate: plan.coordinate,
+          version: plan.version,
+          name: plan.name,
+          results: plan.targets
+              .map(
+                (item) => InstallationTargetResult(
+                  target: item.target,
+                  action: item.action,
+                  outcome: InstallationTargetOutcome.failed,
+                  errorCode: 'install-failed',
+                  diagnostic: result.output.stderr,
+                ),
+              )
+              .toList(growable: false),
+          summary: InstallationExecutionSummary(
+            succeeded: 0,
+            skipped: 0,
+            conflict: 0,
+            failed: plan.targets.length,
+          ),
+        );
+      }
+    }
+    installed = true;
+    return InstallationExecution(
+      coordinate: plan.coordinate,
+      version: plan.version,
+      name: plan.name,
+      results: plan.targets
+          .map(
+            (item) => InstallationTargetResult(
+              target: item.target,
+              action: item.action,
+              outcome: InstallationTargetOutcome.succeeded,
+            ),
+          )
+          .toList(growable: false),
+      summary: InstallationExecutionSummary(
+        succeeded: plan.targets.length,
+        skipped: 0,
+        conflict: 0,
+        failed: 0,
+      ),
+    );
+  }
+
   @override
   Future<CommandResult> install(SkillSummary skill) async {
     installCalls++;
@@ -1738,6 +1945,27 @@ class FakeSkillsGateway implements SkillsGateway {
   Future<CommandResult> update(InstalledSkill skill) async =>
       _success(['skills', 'update']);
 }
+
+SkillDetail _withoutInstallationTargets(SkillDetail detail) => SkillDetail(
+  name: detail.name,
+  source: detail.source,
+  markdown: detail.markdown,
+  files: detail.files,
+  installs: detail.installs,
+  description: detail.description,
+  requestedVersion: detail.requestedVersion,
+  immutableVersion: detail.immutableVersion,
+  commitSHA: detail.commitSHA,
+  treeSHA: detail.treeSHA,
+  sourceRef: detail.sourceRef,
+  contentDigest: detail.contentDigest,
+  manifest: detail.manifest,
+  trustLevel: detail.trustLevel,
+  riskAssessment: detail.riskAssessment,
+  riskScannerVersion: detail.riskScannerVersion,
+  riskEvidence: detail.riskEvidence,
+  registryExecutableSignal: detail.registryExecutableSignal,
+);
 
 CommandResult _success(List<String> command) => CommandResult(
   command: command,

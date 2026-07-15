@@ -265,10 +265,12 @@ class SkillCard extends StatefulWidget {
     super.key,
     required this.skill,
     required this.onTap,
+    required this.onInstall,
     this.focusNode,
   });
   final SkillSummary skill;
   final VoidCallback onTap;
+  final VoidCallback onInstall;
   final FocusNode? focusNode;
 
   @override
@@ -384,14 +386,25 @@ class _SkillCardState extends State<SkillCard> {
                       ),
                     ),
                     const SizedBox(height: 12),
-                    Text(
-                      widget.skill.isInstalled
-                          ? AppLocalizations.of(context).installToMoreTargets
-                          : AppLocalizations.of(context).install,
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        color: SkillsTokens.cream,
-                        fontWeight: FontWeight.w700,
+                    ShadButton.ghost(
+                      width: 170,
+                      height: 32,
+                      padding: EdgeInsets.zero,
+                      onPressed: widget.onInstall,
+                      child: SizedBox(
+                        width: 170,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerRight,
+                          child: Text(
+                            widget.skill.isInstalled
+                                ? AppLocalizations.of(
+                                    context,
+                                  ).installToMoreTargets
+                                : AppLocalizations.of(context).install,
+                            textAlign: TextAlign.right,
+                          ),
+                        ),
                       ),
                     ),
                   ],
