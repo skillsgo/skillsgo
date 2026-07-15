@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp with a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
- * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, explicit-project and Agent-aware Library/Settings, focus restoration, accessibility, and mutation journeys.
+ * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, unified multi-target Library views, explicit projects, Agents, Settings, focus restoration, accessibility, and mutation journeys.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -843,6 +843,162 @@ void main() {
     },
   );
 
+  testWidgets(
+    'unified Library summarizes and filters multi-location multi-Agent targets',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      const alpha = AddedProject(
+        id: 'alpha',
+        name: 'Project Alpha',
+        path: '/work/alpha',
+        accessState: ProjectAccessState.accessible,
+      );
+      const beta = AddedProject(
+        id: 'beta',
+        name: 'Project Beta',
+        path: '/work/beta',
+        accessState: ProjectAccessState.accessible,
+      );
+      const entry = InstalledSkill(
+        identity: 'registry:github.com/example/skills/-/demo',
+        name: 'demo',
+        coordinate: 'github.com/example/skills/-/demo',
+        path: '/Users/test/.codex/skills/demo',
+        agents: ['claude-code', 'codex'],
+        targetCount: 3,
+        projects: ['/work/alpha', '/work/beta'],
+        versions: ['v1', 'v2'],
+        versionDivergence: true,
+        targets: [
+          SkillInstallationTarget(
+            agent: 'codex',
+            scope: InstallationScope.user,
+            path: '/Users/test/.codex/skills/demo',
+            version: 'v1',
+          ),
+          SkillInstallationTarget(
+            agent: 'claude-code',
+            scope: InstallationScope.project,
+            projectRoot: '/work/alpha',
+            path: '/work/alpha/.claude/skills/demo',
+            version: 'v2',
+          ),
+          SkillInstallationTarget(
+            agent: 'codex',
+            scope: InstallationScope.project,
+            projectRoot: '/work/beta',
+            path: '/work/beta/.agents/skills/demo',
+            version: 'v2',
+          ),
+        ],
+      );
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        addedProjects: const [alpha, beta],
+        libraryEntries: const [entry],
+        agentStatuses: const [
+          AgentStatus(
+            id: 'codex',
+            displayName: 'Codex',
+            installed: true,
+            supportedScopes: [
+              InstallationScope.user,
+              InstallationScope.project,
+            ],
+          ),
+          AgentStatus(
+            id: 'claude-code',
+            displayName: 'Claude Code',
+            installed: true,
+            supportedScopes: [
+              InstallationScope.user,
+              InstallationScope.project,
+            ],
+          ),
+          AgentStatus(
+            id: 'cursor',
+            displayName: 'Cursor',
+            installed: true,
+            supportedScopes: [InstallationScope.project],
+          ),
+        ],
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Library'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('3 local targets'), findsOneWidget);
+      expect(find.text('2 Agents'), findsOneWidget);
+      expect(find.text('2 projects'), findsOneWidget);
+      expect(find.text('2 versions'), findsOneWidget);
+      expect(find.text('Version divergence'), findsOneWidget);
+      expect(find.text('Cursor'), findsOneWidget);
+
+      await tester.tap(find.text('Project Alpha'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 local targets'), findsOneWidget);
+      await tester.tap(find.text('demo').first);
+      await tester.pumpAndSettle();
+      expect(find.text('/work/alpha/.claude/skills/demo'), findsWidgets);
+      expect(find.text('/Users/test/.codex/skills/demo'), findsNothing);
+      await tester.tap(find.byTooltip('Back to Library'));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(_librarySearchInput(), 'not-present');
+      await tester.pumpAndSettle();
+      expect(find.text('No matching Skills'), findsOneWidget);
+      await tester.enterText(_librarySearchInput(), 'demo');
+      await tester.pumpAndSettle();
+      expect(find.text('demo'), findsWidgets);
+    },
+  );
+
+  testWidgets(
+    'local detail keeps target diagnostics visible when reading fails',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      const path = '/missing/.codex/skills/demo';
+      const entry = InstalledSkill(
+        identity: 'registry:github.com/example/skills/-/demo',
+        name: 'demo',
+        coordinate: 'github.com/example/skills/-/demo',
+        path: path,
+        agents: ['codex'],
+        targetCount: 1,
+        versions: ['v1'],
+        health: InstallationHealth.missing,
+        targets: [
+          SkillInstallationTarget(
+            agent: 'codex',
+            scope: InstallationScope.user,
+            path: path,
+            version: 'v1',
+            health: InstallationHealth.missing,
+          ),
+        ],
+      );
+      await tester.pumpWidget(
+        SkillsGoApp(
+          gateway: FakeSkillsGateway(
+            installed: false,
+            libraryEntries: const [entry],
+            localDetailError: const SkillsException('cannot read'),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Library'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('demo').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text(path), findsWidgets);
+      expect(find.text('Target missing'), findsWidgets);
+      expect(find.text('Can’t read this Skill'), findsOneWidget);
+    },
+  );
+
   testWidgets('the selected rail capsule follows spring motion', (
     tester,
   ) async {
@@ -1198,6 +1354,8 @@ class FakeSkillsGateway implements SkillsGateway {
     List<AddedProject> addedProjects = const [],
     this.projectToAdd,
     this.projectToRelocate,
+    this.libraryEntries,
+    this.localDetailError,
     this.registryOrigin = 'https://registry.skillsgo.dev',
     this.registryTestState = HealthState.ready,
     this.storageStatus = const StorageStatus(
@@ -1224,6 +1382,8 @@ class FakeSkillsGateway implements SkillsGateway {
   final SkillsException? agentInspectionError;
   final AddedProject? projectToAdd;
   final AddedProject? projectToRelocate;
+  final List<InstalledSkill>? libraryEntries;
+  final SkillsException? localDetailError;
   final List<AddedProject> projects;
   String registryOrigin;
   final HealthState registryTestState;
@@ -1378,16 +1538,32 @@ class FakeSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<List<InstalledSkill>> listInstalled() async => installed
-      ? [
-          InstalledSkill(
-            name: 'local-skill',
-            path: '/tmp/local-skill',
-            agents: agentNames,
-            targetCount: agentNames.length,
-          ),
-        ]
-      : const [];
+  Future<List<InstalledSkill>> listInstalled({
+    List<AddedProject> projects = const [],
+  }) async =>
+      libraryEntries ??
+      (installed
+          ? [
+              InstalledSkill(
+                identity: 'registry:github.com/test/skills/-/local-skill',
+                name: 'local-skill',
+                path: '/tmp/local-skill',
+                agents: agentNames,
+                targetCount: agentNames.length,
+                coordinate: 'github.com/test/skills/-/local-skill',
+                versions: const ['v1'],
+                targets: [
+                  for (final agent in agentNames)
+                    SkillInstallationTarget(
+                      agent: agent,
+                      scope: InstallationScope.user,
+                      path: '/tmp/local-skill',
+                      version: 'v1',
+                    ),
+                ],
+              ),
+            ]
+          : const []);
   @override
   Future<AgentCatalog> inspectAgents() async {
     agentInspections++;
@@ -1449,13 +1625,16 @@ class FakeSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<SkillDetail> loadLocalDetail(InstalledSkill skill) async =>
-      const SkillDetail(
-        name: 'local-skill',
-        source: 'Local',
-        markdown: '# Local',
-        files: [SkillFile(path: 'SKILL.md', contents: '# Local')],
-      );
+  Future<SkillDetail> loadLocalDetail(InstalledSkill skill) async {
+    if (localDetailError != null) throw localDetailError!;
+    return const SkillDetail(
+      name: 'local-skill',
+      source: 'Local',
+      markdown: '# Local',
+      files: [SkillFile(path: 'SKILL.md', contents: '# Local')],
+    );
+  }
+
   @override
   Future<Map<String, UpdateState>> checkUpdates(
     List<InstalledSkill> skills,
@@ -1490,6 +1669,11 @@ CommandResult _success(List<String> command) => CommandResult(
 
 Finder _searchInput() => find.descendant(
   of: find.byKey(const Key('skill-search')),
+  matching: find.byType(EditableText),
+);
+
+Finder _librarySearchInput() => find.descendant(
+  of: find.byKey(const Key('library-search')),
   matching: find.byType(EditableText),
 );
 

@@ -419,6 +419,85 @@ class AppLocalizationsEn extends AppLocalizations {
       'Install a Skill from Discover and it will appear here.';
 
   @override
+  String get searchLibrary => 'Search this Library view';
+
+  @override
+  String get libraryNoMatches => 'No matching Skills';
+
+  @override
+  String get libraryNoMatchesMessage =>
+      'Try a different name, source, Agent, project, or version.';
+
+  @override
+  String agentsSummary(int count) {
+    return '$count Agents';
+  }
+
+  @override
+  String projectsSummary(int count) {
+    return '$count projects';
+  }
+
+  @override
+  String versionsSummary(int count) {
+    return '$count versions';
+  }
+
+  @override
+  String get registryManaged => 'Registry managed';
+
+  @override
+  String get localManaged => 'Local managed';
+
+  @override
+  String get externalInstallation => 'External installation';
+
+  @override
+  String get versionDivergence => 'Version divergence';
+
+  @override
+  String get healthHealthy => 'Healthy';
+
+  @override
+  String get healthMissing => 'Target missing';
+
+  @override
+  String get healthReplaced => 'Target replaced';
+
+  @override
+  String get healthUnreadable => 'Target unreadable';
+
+  @override
+  String get healthUndeclared => 'Not declared';
+
+  @override
+  String get healthWorkspaceUnreadable => 'Workspace state unreadable';
+
+  @override
+  String get healthLockMismatch => 'Lock mismatch';
+
+  @override
+  String get healthUnexpectedPath => 'Unexpected target path';
+
+  @override
+  String get healthReceiptMissing => 'Receipt missing';
+
+  @override
+  String get modeSymlink => 'Symlink';
+
+  @override
+  String get modeCopy => 'Copy';
+
+  @override
+  String get receiptPresent => 'Receipt present';
+
+  @override
+  String get receiptMissing => 'Receipt missing';
+
+  @override
+  String get receiptInvalid => 'Receipt invalid';
+
+  @override
   String get notLinked => 'NOT LINKED';
 
   @override
@@ -437,6 +516,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localReadFailed => 'Can’t read this Skill';
+
+  @override
+  String get localReadFailedMessage =>
+      'SkillsGo could not read this local installation. Check the target health and filesystem access, then retry.';
 
   @override
   String get localConfiguration => 'Local configuration';

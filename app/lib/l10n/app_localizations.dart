@@ -800,6 +800,150 @@ abstract class AppLocalizations {
   /// **'Install a Skill from Discover and it will appear here.'**
   String get libraryEmptyMessage;
 
+  /// No description provided for @searchLibrary.
+  ///
+  /// In en, this message translates to:
+  /// **'Search this Library view'**
+  String get searchLibrary;
+
+  /// No description provided for @libraryNoMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching Skills'**
+  String get libraryNoMatches;
+
+  /// No description provided for @libraryNoMatchesMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Try a different name, source, Agent, project, or version.'**
+  String get libraryNoMatchesMessage;
+
+  /// No description provided for @agentsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} Agents'**
+  String agentsSummary(int count);
+
+  /// No description provided for @projectsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} projects'**
+  String projectsSummary(int count);
+
+  /// No description provided for @versionsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} versions'**
+  String versionsSummary(int count);
+
+  /// No description provided for @registryManaged.
+  ///
+  /// In en, this message translates to:
+  /// **'Registry managed'**
+  String get registryManaged;
+
+  /// No description provided for @localManaged.
+  ///
+  /// In en, this message translates to:
+  /// **'Local managed'**
+  String get localManaged;
+
+  /// No description provided for @externalInstallation.
+  ///
+  /// In en, this message translates to:
+  /// **'External installation'**
+  String get externalInstallation;
+
+  /// No description provided for @versionDivergence.
+  ///
+  /// In en, this message translates to:
+  /// **'Version divergence'**
+  String get versionDivergence;
+
+  /// No description provided for @healthHealthy.
+  ///
+  /// In en, this message translates to:
+  /// **'Healthy'**
+  String get healthHealthy;
+
+  /// No description provided for @healthMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Target missing'**
+  String get healthMissing;
+
+  /// No description provided for @healthReplaced.
+  ///
+  /// In en, this message translates to:
+  /// **'Target replaced'**
+  String get healthReplaced;
+
+  /// No description provided for @healthUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'Target unreadable'**
+  String get healthUnreadable;
+
+  /// No description provided for @healthUndeclared.
+  ///
+  /// In en, this message translates to:
+  /// **'Not declared'**
+  String get healthUndeclared;
+
+  /// No description provided for @healthWorkspaceUnreadable.
+  ///
+  /// In en, this message translates to:
+  /// **'Workspace state unreadable'**
+  String get healthWorkspaceUnreadable;
+
+  /// No description provided for @healthLockMismatch.
+  ///
+  /// In en, this message translates to:
+  /// **'Lock mismatch'**
+  String get healthLockMismatch;
+
+  /// No description provided for @healthUnexpectedPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Unexpected target path'**
+  String get healthUnexpectedPath;
+
+  /// No description provided for @healthReceiptMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt missing'**
+  String get healthReceiptMissing;
+
+  /// No description provided for @modeSymlink.
+  ///
+  /// In en, this message translates to:
+  /// **'Symlink'**
+  String get modeSymlink;
+
+  /// No description provided for @modeCopy.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy'**
+  String get modeCopy;
+
+  /// No description provided for @receiptPresent.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt present'**
+  String get receiptPresent;
+
+  /// No description provided for @receiptMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt missing'**
+  String get receiptMissing;
+
+  /// No description provided for @receiptInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Receipt invalid'**
+  String get receiptInvalid;
+
   /// No description provided for @notLinked.
   ///
   /// In en, this message translates to:
@@ -835,6 +979,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Can’t read this Skill'**
   String get localReadFailed;
+
+  /// No description provided for @localReadFailedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo could not read this local installation. Check the target health and filesystem access, then retry.'**
+  String get localReadFailedMessage;
 
   /// No description provided for @localConfiguration.
   ///

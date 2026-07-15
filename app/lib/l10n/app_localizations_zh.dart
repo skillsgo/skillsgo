@@ -400,6 +400,84 @@ class AppLocalizationsZh extends AppLocalizations {
   String get libraryEmptyMessage => '从“发现”安装技能后，它会显示在这里。';
 
   @override
+  String get searchLibrary => '搜索当前技能库视图';
+
+  @override
+  String get libraryNoMatches => '没有匹配的技能';
+
+  @override
+  String get libraryNoMatchesMessage => '尝试其他名称、来源、Agent、项目或版本。';
+
+  @override
+  String agentsSummary(int count) {
+    return '$count 个 Agent';
+  }
+
+  @override
+  String projectsSummary(int count) {
+    return '$count 个项目';
+  }
+
+  @override
+  String versionsSummary(int count) {
+    return '$count 个版本';
+  }
+
+  @override
+  String get registryManaged => 'Registry 托管';
+
+  @override
+  String get localManaged => '本地托管';
+
+  @override
+  String get externalInstallation => '外部安装';
+
+  @override
+  String get versionDivergence => '多版本并存';
+
+  @override
+  String get healthHealthy => '状态正常';
+
+  @override
+  String get healthMissing => '目标已缺失';
+
+  @override
+  String get healthReplaced => '目标已被替换';
+
+  @override
+  String get healthUnreadable => '目标不可读取';
+
+  @override
+  String get healthUndeclared => '未在项目中声明';
+
+  @override
+  String get healthWorkspaceUnreadable => '项目声明不可读取';
+
+  @override
+  String get healthLockMismatch => '锁文件不匹配';
+
+  @override
+  String get healthUnexpectedPath => '目标路径异常';
+
+  @override
+  String get healthReceiptMissing => '安装回执缺失';
+
+  @override
+  String get modeSymlink => '软链接';
+
+  @override
+  String get modeCopy => '复制';
+
+  @override
+  String get receiptPresent => '回执存在';
+
+  @override
+  String get receiptMissing => '回执缺失';
+
+  @override
+  String get receiptInvalid => '回执无效';
+
+  @override
   String get notLinked => '未连接';
 
   @override
@@ -418,6 +496,10 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get localReadFailed => '无法读取此技能';
+
+  @override
+  String get localReadFailedMessage =>
+      'SkillsGo 无法读取这个本地安装。请检查目标健康状态和文件访问权限后重试。';
 
   @override
   String get localConfiguration => '本地配置';

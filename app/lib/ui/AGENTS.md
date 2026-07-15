@@ -3,7 +3,7 @@
 
 ## Members
 
-- `app_shell.dart`: renders the desktop shell and stateful Search, Ranking, Trending, Hot, explicit-project and Agent-aware Library/auditable detail, operation, and Settings journeys.
+- `app_shell.dart`: renders the desktop shell and stateful Search, Ranking, Trending, Hot, searchable unified multi-target Library/auditable detail, explicit-project and Agent views, operation, and Settings journeys.
 - `brand.dart`: composes shadcn_ui primitives with reusable SkillsGo tokens, discovery cards, trust/risk indicators, fields, status elements, and empty states.
 - `nested_navigation.dart`: renders the shared accessible side rail, selected capsule motion, and desktop rail/content layout.
 

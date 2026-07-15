@@ -32,6 +32,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/command/` | CLI command graph, argument handling, and orchestration. |
 | `internal/i18n/` | Locale detection and user-facing CLI messages. |
 | `internal/install/` | Add, update, remove, collision, and materialization behavior. |
+| `internal/inventory/` | Read-only managed Library reconciliation across receipts, explicit projects, Workspace declarations, and known Agent paths. |
 | `internal/project/` | `skillsgo.yaml` and `skillsgo-lock.yaml` project state. |
 | `internal/registry/` | Client for the public SkillsGo Registry protocol. |
 | `internal/source/` | Skill-coordinate parsing and source identity. |
