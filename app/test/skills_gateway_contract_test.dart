@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings, discovery/detail parsing, explicit project reference persistence, strict Agent machine contracts, local targets, typed failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings, discovery/detail parsing, unified CLI inventory, explicit project reference persistence, strict Agent machine contracts, typed failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,6 +15,9 @@ import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUp(() => SharedPreferences.setMockInitialValues({}));
+
   test('registry settings persist and validate the search protocol', () async {
     SharedPreferences.setMockInitialValues({});
     final requests = <Uri>[];
@@ -518,7 +521,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '[{"name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","version":"v1.2.3","target":{"path":"/tmp/one","scope":"user","agent":"codex","mode":"copy"}},{"name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","version":"v1.2.3","target":{"path":"/tmp/two","scope":"project","agent":"codex","mode":"copy"}}]',
+            '{"schemaVersion":1,"entries":[{"identity":"registry:github.com/flutter/skills/-/responsive-layout","name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -609,12 +612,12 @@ void main() {
     },
   );
 
-  test('listInstalled parses the CLI global JSON contract', () async {
+  test('listInstalled parses unified inventory for explicit locations', () async {
     final runner = _FakeProcessRunner()
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '[{"name":"testing","coordinate":"github.com/a/b","version":"v1.0.0","target":{"path":"/tmp/testing","scope":"user","agent":"codex","mode":"copy"}}]',
+            r'{"schemaVersion":1,"entries":[{"identity":"registry:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"registry","risk":"unknown","health":"receipt-missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"targets":[{"scope":"user","projectRoot":"","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"healthy"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","mode":"symlink","version":"v2.0.0","receiptState":"missing","health":"receipt-missing"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -623,13 +626,46 @@ void main() {
       initialCliPath: '/usr/local/bin/skillsgo',
     );
 
-    final skills = await gateway.listInstalled();
+    final skills = await gateway.listInstalled(
+      projects: const [
+        AddedProject(
+          id: 'project-id',
+          name: 'Project',
+          path: r'/work/project;$(touch nope)',
+          accessState: ProjectAccessState.accessible,
+        ),
+        AddedProject(
+          id: 'missing',
+          name: 'Missing',
+          path: '/work/missing',
+          accessState: ProjectAccessState.missing,
+        ),
+      ],
+    );
 
     expect(skills.single.name, 'testing');
+    expect(skills.single.identity, 'registry:github.com/a/b');
     expect(skills.single.coordinate, 'github.com/a/b');
     expect(skills.single.isLinkedToCodex, isTrue);
-    expect(skills.single.targetCount, 1);
-    expect(runner.lastArguments, ['list', '--global', '--json']);
+    expect(skills.single.targetCount, 2);
+    expect(skills.single.versionDivergence, isTrue);
+    expect(skills.single.versions, ['v1.0.0', 'v2.0.0']);
+    expect(skills.single.projects, [r'/work/project;$(touch nope)']);
+    expect(skills.single.targets.last.mode, InstallationMode.symlink);
+    expect(skills.single.health, InstallationHealth.receiptMissing);
+    expect(skills.single.targets.last.receiptState, ReceiptState.missing);
+    expect(
+      skills.single.targets.last.health,
+      InstallationHealth.receiptMissing,
+    );
+    expect(runner.lastArguments, [
+      'inventory',
+      '--user',
+      '--project',
+      r'/work/project;$(touch nope)',
+      '--output',
+      'json',
+    ]);
   });
 
   test('listInstalled rejects an unknown installation scope', () async {
@@ -637,7 +673,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '[{"name":"testing","coordinate":"github.com/a/b","version":"v1.0.0","target":{"path":"/tmp/testing","scope":"workspace","agent":"codex","mode":"copy"}}]',
+            '{"schemaVersion":1,"entries":[{"identity":"registry:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -795,7 +831,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '[{"name":"Test","coordinate":"github.com/a/b/-/test","version":"v0.0.0-test","target":{"path":"/tmp/test","scope":"user","agent":"codex","mode":"copy"}}]',
+              '{"schemaVersion":1,"entries":[{"identity":"registry:github.com/a/b/-/test","name":"Test","coordinate":"github.com/a/b/-/test","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v0.0.0-test"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/test","mode":"copy","version":"v0.0.0-test","receiptState":"present","health":"healthy"}]}]}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -1027,6 +1063,46 @@ void main() {
     expect(detail.markdown, '# Local');
     expect(await file.lastModified(), before);
   });
+
+  test(
+    'local detail prefers a healthy target over an unhealthy first target',
+    () async {
+      final root = await Directory.systemTemp.createTemp('skillsgo-targets-');
+      addTearDown(() => root.delete(recursive: true));
+      final missing = Directory('${root.path}/missing');
+      final healthy = Directory('${root.path}/healthy');
+      await healthy.create();
+      await File('${healthy.path}/SKILL.md').writeAsString('# Healthy target');
+      final gateway = RealSkillsGateway(processRunner: _FakeProcessRunner());
+
+      final detail = await gateway.loadLocalDetail(
+        InstalledSkill(
+          name: 'Local',
+          path: missing.path,
+          agents: const ['codex'],
+          targetCount: 2,
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.user,
+              path: missing.path,
+              version: 'v1',
+              health: InstallationHealth.missing,
+            ),
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.project,
+              projectRoot: root.path,
+              path: healthy.path,
+              version: 'v1',
+            ),
+          ],
+        ),
+      );
+
+      expect(detail.markdown, '# Healthy target');
+    },
+  );
 
   test('update check delegates to SkillsGo JSON contract', () async {
     final runner = _FakeProcessRunner()

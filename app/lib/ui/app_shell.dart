@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsGo brand tokens.
- * [OUTPUT]: Provides the desktop shell plus persistent Discover, explicit-project and Agent-aware Library/detail, operation, and operational Settings journeys.
+ * [OUTPUT]: Provides the desktop shell plus persistent Discover, searchable unified multi-target Library/detail, explicit-project and Agent views, operations, and operational Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -1102,7 +1102,9 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
                         }),
                         child: Text(context.l10n.manifestTab),
                       ),
-                      const Divider(color: SkillsTokens.hairline),
+                      const ShadSeparator.horizontal(
+                        color: SkillsTokens.hairline,
+                      ),
                       Expanded(
                         child: ListView(
                           children: value.files
@@ -1295,6 +1297,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   CommandResult? result;
   final operatingSkills = <String>{};
   final scrollController = ScrollController();
+  final librarySearchController = TextEditingController();
+  final librarySearchFocusNode = FocusNode();
   String selectedRoute = _allRoute;
 
   @override
@@ -1312,6 +1316,8 @@ class _LibraryScreenState extends State<LibraryScreen> {
   @override
   void dispose() {
     scrollController.dispose();
+    librarySearchController.dispose();
+    librarySearchFocusNode.dispose();
     super.dispose();
   }
 
@@ -1321,14 +1327,14 @@ class _LibraryScreenState extends State<LibraryScreen> {
       error = null;
     });
     try {
+      final restoredProjects = await widget.gateway.loadAddedProjects();
       final values = await Future.wait([
-        widget.gateway.listInstalled(),
+        widget.gateway.listInstalled(projects: restoredProjects),
         widget.gateway.inspectAgents(),
-        widget.gateway.loadAddedProjects(),
       ]);
       skills = values[0] as List<InstalledSkill>;
       agentCatalog = values[1] as AgentCatalog;
-      projects = values[2] as List<AddedProject>;
+      projects = restoredProjects;
       if (selectedRoute.startsWith('agent:')) {
         final selectedAgent = selectedRoute.substring('agent:'.length);
         if (!_agents.contains(selectedAgent)) selectedRoute = _allRoute;
@@ -1361,6 +1367,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         projects = restored;
         selectedRoute = 'project:${project.id}';
       });
+      await load();
     } on Object catch (caught) {
       if (mounted) setState(() => error = caught);
     }
@@ -1371,7 +1378,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
       final relocated = await widget.gateway.relocateProject(project.id);
       if (relocated == null || !mounted) return;
       final restored = await widget.gateway.loadAddedProjects();
-      if (mounted) setState(() => projects = restored);
+      if (mounted) {
+        setState(() => projects = restored);
+        await load();
+      }
     } on Object catch (caught) {
       if (mounted) setState(() => error = caught);
     }
@@ -1394,6 +1404,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         projects = restored;
         selectedRoute = _allRoute;
       });
+      await load();
     }
   }
 
@@ -1504,9 +1515,46 @@ class _LibraryScreenState extends State<LibraryScreen> {
 
   List<InstalledSkill> get _visibleSkills {
     final current = skills ?? const <InstalledSkill>[];
-    if (!selectedRoute.startsWith('agent:')) return current;
-    final agent = selectedRoute.substring('agent:'.length);
-    return current.where((skill) => skill.agents.contains(agent)).toList();
+    final visible = <InstalledSkill>[];
+    for (final skill in current) {
+      final targets = switch (selectedRoute) {
+        _userRoute =>
+          skill.targets
+              .where((target) => target.scope == InstallationScope.user)
+              .toList(growable: false),
+        _
+            when selectedRoute.startsWith('project:') &&
+                _selectedProject != null =>
+          skill.targets
+              .where((target) => target.projectRoot == _selectedProject!.path)
+              .toList(growable: false),
+        _ when selectedRoute.startsWith('agent:') =>
+          skill.targets
+              .where(
+                (target) =>
+                    target.agent == selectedRoute.substring('agent:'.length),
+              )
+              .toList(growable: false),
+        _ => skill.targets,
+      };
+      if (targets.isEmpty) continue;
+      final scoped = targets.length == skill.targets.length
+          ? skill
+          : skill.withTargets(targets);
+      final query = librarySearchController.text.trim().toLowerCase();
+      if (query.isNotEmpty) {
+        final searchable = [
+          scoped.name,
+          scoped.coordinate,
+          ...scoped.agents,
+          ...scoped.projects,
+          ...scoped.versions,
+        ].join('\n').toLowerCase();
+        if (!searchable.contains(query)) continue;
+      }
+      visible.add(scoped);
+    }
+    return visible;
   }
 
   @override
@@ -1589,6 +1637,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
           const SizedBox(height: 14),
           OperationPanel(result: result!),
         ],
+        const SizedBox(height: 14),
+        ShadInput(
+          key: const Key('library-search'),
+          controller: librarySearchController,
+          focusNode: librarySearchFocusNode,
+          onChanged: (_) => setState(() {}),
+          leading: const Icon(Icons.search, color: SkillsTokens.textSecondary),
+          placeholder: Text(context.l10n.searchLibrary),
+          placeholderStyle: const TextStyle(color: SkillsTokens.textTertiary),
+        ),
         const SizedBox(height: 20),
         Expanded(child: _body()),
       ],
@@ -1637,12 +1695,20 @@ class _LibraryScreenState extends State<LibraryScreen> {
           ),
         );
       }
-      return EmptyState(
-        title: context.l10n.emptyProjectTitle(project.name),
-        message: context.l10n.emptyProjectMessage,
-      );
     }
     if (_visibleSkills.isEmpty) {
+      if (librarySearchController.text.trim().isNotEmpty) {
+        return EmptyState(
+          title: context.l10n.libraryNoMatches,
+          message: context.l10n.libraryNoMatchesMessage,
+        );
+      }
+      if (project != null) {
+        return EmptyState(
+          title: context.l10n.emptyProjectTitle(project.name),
+          message: context.l10n.emptyProjectMessage,
+        );
+      }
       return EmptyState(
         title: context.l10n.libraryEmpty,
         message: context.l10n.libraryEmptyMessage,
@@ -1687,7 +1753,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                       ),
                       const SizedBox(height: 4),
                       SelectableText(
-                        skill.path,
+                        skill.coordinate,
                         style: const TextStyle(
                           fontFamily: SkillsTokens.monoFamily,
                           fontSize: 11,
@@ -1698,11 +1764,45 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   ),
                 ),
               ),
-              StatusChip(
-                label: skill.isLinkedToCodex ? 'CODEX' : context.l10n.notLinked,
-                color: skill.isLinkedToCodex
-                    ? SkillsTokens.green
-                    : SkillsTokens.amber,
+              Flexible(
+                child: Wrap(
+                  alignment: WrapAlignment.end,
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: [
+                    _libraryProvenanceChip(context, skill.provenance),
+                    StatusChip(
+                      label: context.l10n.localTargets(skill.targetCount),
+                      color: SkillsTokens.green,
+                    ),
+                    StatusChip(
+                      label: context.l10n.agentsSummary(skill.agents.length),
+                      color: SkillsTokens.blue,
+                    ),
+                    if (skill.projects.isNotEmpty)
+                      StatusChip(
+                        label: context.l10n.projectsSummary(
+                          skill.projects.length,
+                        ),
+                        color: SkillsTokens.violet,
+                      ),
+                    StatusChip(
+                      label: context.l10n.versionsSummary(
+                        skill.versions.length,
+                      ),
+                      color: skill.versionDivergence
+                          ? SkillsTokens.orange
+                          : SkillsTokens.textSecondary,
+                    ),
+                    if (skill.versionDivergence)
+                      StatusChip(
+                        label: context.l10n.versionDivergence,
+                        color: SkillsTokens.orange,
+                      ),
+                    _installationHealthChip(context, skill.health),
+                    SkillRiskChip(risk: skill.riskAssessment),
+                  ],
+                ),
               ),
               const SizedBox(width: 8),
               if (state != UpdateState.unknown)
@@ -1848,24 +1948,104 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
               const SizedBox(height: 14),
             ],
             Expanded(
-              child: error != null
-                  ? EmptyState(
-                      title: context.l10n.localReadFailed,
-                      message: error.toString(),
-                      action: PrimaryCapsuleButton(
-                        label: context.l10n.retry,
-                        onPressed: load,
-                      ),
-                    )
-                  : detail == null
-                  ? const Center(child: CircularProgressIndicator())
-                  : GlassCard(
-                      child: Markdown(data: detail!.markdown, selectable: true),
-                    ),
+              child: Column(
+                children: [
+                  _InstallationTargetsPanel(skill: widget.skill),
+                  const SizedBox(height: 14),
+                  Expanded(
+                    child: error != null
+                        ? EmptyState(
+                            title: context.l10n.localReadFailed,
+                            message: context.l10n.localReadFailedMessage,
+                            action: PrimaryCapsuleButton(
+                              label: context.l10n.retry,
+                              onPressed: load,
+                            ),
+                          )
+                        : detail == null
+                        ? const Center(child: CircularProgressIndicator())
+                        : GlassCard(
+                            child: Markdown(
+                              data: detail!.markdown,
+                              selectable: true,
+                            ),
+                          ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
       ),
+    ),
+  );
+}
+
+class _InstallationTargetsPanel extends StatelessWidget {
+  const _InstallationTargetsPanel({required this.skill});
+
+  final InstalledSkill skill;
+
+  @override
+  Widget build(BuildContext context) => GlassCard(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          context.l10n.knownInstallationTargets,
+          style: const TextStyle(fontWeight: FontWeight.w700),
+        ),
+        const SizedBox(height: 12),
+        for (final (index, target) in skill.targets.indexed) ...[
+          if (index > 0)
+            const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      context.l10n.targetSummary(
+                        target.scope == InstallationScope.user
+                            ? context.l10n.userScope
+                            : context.l10n.projectScope,
+                        _agentDisplayLabel(target.agent),
+                        target.version,
+                      ),
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 4),
+                    SelectableText(
+                      target.path,
+                      style: const TextStyle(
+                        fontFamily: SkillsTokens.monoFamily,
+                        fontSize: 11,
+                        color: SkillsTokens.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              StatusChip(
+                label: _installationModeLabel(context, target.mode),
+                color: SkillsTokens.textSecondary,
+              ),
+              const SizedBox(width: 7),
+              StatusChip(
+                label: _receiptStateLabel(context, target.receiptState),
+                color: target.receiptState == ReceiptState.present
+                    ? SkillsTokens.teal
+                    : SkillsTokens.amber,
+              ),
+              const SizedBox(width: 7),
+              _installationHealthChip(context, target.health),
+            ],
+          ),
+        ],
+      ],
     ),
   );
 }
@@ -2616,6 +2796,91 @@ String _updateLabel(BuildContext context, UpdateState state) => switch (state) {
   UpdateState.unsupported => context.l10n.updateUnavailable,
   UpdateState.failed => context.l10n.updateCheckFailed,
 };
+
+String _agentDisplayLabel(String agent) => agent
+    .split(RegExp(r'[-_]'))
+    .where((part) => part.isNotEmpty)
+    .map((part) => '${part[0].toUpperCase()}${part.substring(1)}')
+    .join(' ');
+
+String _installationModeLabel(BuildContext context, InstallationMode mode) =>
+    switch (mode) {
+      InstallationMode.symlink => context.l10n.modeSymlink,
+      InstallationMode.copy => context.l10n.modeCopy,
+    };
+
+String _receiptStateLabel(BuildContext context, ReceiptState state) =>
+    switch (state) {
+      ReceiptState.present => context.l10n.receiptPresent,
+      ReceiptState.missing => context.l10n.receiptMissing,
+      ReceiptState.invalid => context.l10n.receiptInvalid,
+    };
+
+Widget _libraryProvenanceChip(
+  BuildContext context,
+  LibraryProvenance provenance,
+) {
+  final presentation = switch (provenance) {
+    LibraryProvenance.registry => (
+      label: context.l10n.registryManaged,
+      color: SkillsTokens.teal,
+    ),
+    LibraryProvenance.local => (
+      label: context.l10n.localManaged,
+      color: SkillsTokens.violet,
+    ),
+    LibraryProvenance.external => (
+      label: context.l10n.externalInstallation,
+      color: SkillsTokens.amber,
+    ),
+  };
+  return StatusChip(label: presentation.label, color: presentation.color);
+}
+
+Widget _installationHealthChip(
+  BuildContext context,
+  InstallationHealth health,
+) {
+  final presentation = switch (health) {
+    InstallationHealth.healthy => (
+      label: context.l10n.healthHealthy,
+      color: SkillsTokens.green,
+    ),
+    InstallationHealth.undeclared => (
+      label: context.l10n.healthUndeclared,
+      color: SkillsTokens.amber,
+    ),
+    InstallationHealth.workspaceUnreadable => (
+      label: context.l10n.healthWorkspaceUnreadable,
+      color: SkillsTokens.orange,
+    ),
+    InstallationHealth.lockMismatch => (
+      label: context.l10n.healthLockMismatch,
+      color: SkillsTokens.orange,
+    ),
+    InstallationHealth.missing => (
+      label: context.l10n.healthMissing,
+      color: SkillsTokens.red,
+    ),
+    InstallationHealth.replaced => (
+      label: context.l10n.healthReplaced,
+      color: SkillsTokens.red,
+    ),
+    InstallationHealth.unreadable => (
+      label: context.l10n.healthUnreadable,
+      color: SkillsTokens.red,
+    ),
+    InstallationHealth.unexpectedPath => (
+      label: context.l10n.healthUnexpectedPath,
+      color: SkillsTokens.red,
+    ),
+    InstallationHealth.receiptMissing => (
+      label: context.l10n.healthReceiptMissing,
+      color: SkillsTokens.red,
+    ),
+  };
+  return StatusChip(label: presentation.label, color: presentation.color);
+}
 
 String _registryStatusMessage(BuildContext context, RegistryStatus status) =>
     switch (status.issue) {

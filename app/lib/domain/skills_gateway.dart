@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, explicit project references, Agent inspection, local targets, CLI, Registry settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, unified Library entries/targets, explicit project references, Agent inspection, CLI, Registry settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -37,6 +37,24 @@ enum SkillTrustLevel {
 enum SkillRiskAssessment { unknown, low, medium, high, critical }
 
 enum InstallationScope { user, project }
+
+enum InstallationMode { symlink, copy }
+
+enum ReceiptState { present, missing, invalid }
+
+enum InstallationHealth {
+  healthy,
+  missing,
+  replaced,
+  unreadable,
+  undeclared,
+  workspaceUnreadable,
+  lockMismatch,
+  unexpectedPath,
+  receiptMissing,
+}
+
+enum LibraryProvenance { registry, local, external }
 
 enum ProjectAccessState { accessible, missing, permissionDenied, inaccessible }
 
@@ -178,12 +196,20 @@ class SkillInstallationTarget {
     required this.scope,
     required this.path,
     required this.version,
+    this.projectRoot = '',
+    this.mode = InstallationMode.symlink,
+    this.receiptState = ReceiptState.present,
+    this.health = InstallationHealth.healthy,
   });
 
   final String agent;
   final InstallationScope scope;
   final String path;
   final String version;
+  final String projectRoot;
+  final InstallationMode mode;
+  final ReceiptState receiptState;
+  final InstallationHealth health;
 }
 
 class AgentUserTarget {
@@ -309,19 +335,74 @@ class InstalledSkill {
     required this.path,
     required this.agents,
     required this.targetCount,
+    this.identity = '',
     this.coordinate = '',
     this.targets = const [],
+    this.provenance = LibraryProvenance.registry,
+    this.riskAssessment = SkillRiskAssessment.unknown,
+    this.health = InstallationHealth.healthy,
+    this.projects = const [],
+    this.versions = const [],
+    this.versionDivergence = false,
   });
 
   final String name;
   final String path;
   final List<String> agents;
   final int targetCount;
+  final String identity;
   final String coordinate;
   final List<SkillInstallationTarget> targets;
+  final LibraryProvenance provenance;
+  final SkillRiskAssessment riskAssessment;
+  final InstallationHealth health;
+  final List<String> projects;
+  final List<String> versions;
+  final bool versionDivergence;
 
   bool get isLinkedToCodex =>
       agents.any((agent) => agent.toLowerCase() == 'codex');
+
+  InstalledSkill withTargets(List<SkillInstallationTarget> selectedTargets) {
+    if (selectedTargets.isEmpty) {
+      throw ArgumentError.value(
+        selectedTargets,
+        'selectedTargets',
+        'A Library Entry must retain at least one target.',
+      );
+    }
+    final selectedAgents = <String>{};
+    final selectedProjects = <String>{};
+    final selectedVersions = <String>{};
+    var selectedHealth = InstallationHealth.healthy;
+    for (final target in selectedTargets) {
+      selectedAgents.add(target.agent);
+      if (target.projectRoot.isNotEmpty) {
+        selectedProjects.add(target.projectRoot);
+      }
+      selectedVersions.add(target.version);
+      if (selectedHealth == InstallationHealth.healthy &&
+          target.health != InstallationHealth.healthy) {
+        selectedHealth = target.health;
+      }
+    }
+    final versionList = selectedVersions.toList()..sort();
+    return InstalledSkill(
+      identity: identity,
+      name: name,
+      path: selectedTargets.first.path,
+      agents: (selectedAgents.toList()..sort()),
+      targetCount: selectedTargets.length,
+      coordinate: coordinate,
+      targets: List.unmodifiable(selectedTargets),
+      provenance: provenance,
+      riskAssessment: riskAssessment,
+      health: selectedHealth,
+      projects: (selectedProjects.toList()..sort()),
+      versions: versionList,
+      versionDivergence: versionList.length > 1,
+    );
+  }
 }
 
 class ProcessOutput {
@@ -388,7 +469,9 @@ abstract interface class SkillsGateway {
   Future<AddedProject?> addProject();
   Future<AddedProject?> relocateProject(String id);
   Future<void> removeProject(String id);
-  Future<List<InstalledSkill>> listInstalled();
+  Future<List<InstalledSkill>> listInstalled({
+    List<AddedProject> projects = const [],
+  });
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill);
   Future<CommandResult> install(SkillSummary skill);
   Future<CommandResult> remove(InstalledSkill skill);

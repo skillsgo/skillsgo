@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Registry HTTP, the local filesystem, the platform directory picker, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides production Registry settings, discovery/detail, explicit project reference persistence, strict Agent inspection, local targets, typed failures, diagnostics, bundled CLI verification, and Skill operations.
+ * [OUTPUT]: Provides production Registry settings, discovery/detail, unified CLI inventory parsing, explicit project reference persistence, strict Agent inspection, typed failures, diagnostics, bundled CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -81,6 +81,61 @@ InstallationScope _installationScope(Object? value) => switch (value) {
   'project' => InstallationScope.project,
   _ => throw const FormatException('Unknown installation scope.'),
 };
+
+InstallationMode _installationMode(Object? value) => switch (value) {
+  'symlink' => InstallationMode.symlink,
+  'copy' => InstallationMode.copy,
+  _ => throw const FormatException('Unknown installation mode.'),
+};
+
+ReceiptState _receiptState(Object? value) => switch (value) {
+  'present' => ReceiptState.present,
+  'missing' => ReceiptState.missing,
+  'invalid' => ReceiptState.invalid,
+  _ => throw const FormatException('Unknown receipt state.'),
+};
+
+InstallationHealth _installationHealth(Object? value) => switch (value) {
+  'healthy' => InstallationHealth.healthy,
+  'missing' => InstallationHealth.missing,
+  'replaced' => InstallationHealth.replaced,
+  'unreadable' => InstallationHealth.unreadable,
+  'undeclared' => InstallationHealth.undeclared,
+  'workspace-unreadable' => InstallationHealth.workspaceUnreadable,
+  'lock-mismatch' => InstallationHealth.lockMismatch,
+  'unexpected-path' => InstallationHealth.unexpectedPath,
+  'receipt-missing' => InstallationHealth.receiptMissing,
+  _ => throw const FormatException('Unknown installation health.'),
+};
+
+LibraryProvenance _libraryProvenance(Object? value) => switch (value) {
+  'registry' => LibraryProvenance.registry,
+  'local' => LibraryProvenance.local,
+  'external' => LibraryProvenance.external,
+  _ => throw const FormatException('Unknown Library provenance.'),
+};
+
+int _localTargetReadRank(SkillInstallationTarget target) {
+  if (target.health == InstallationHealth.healthy) return 0;
+  if (target.receiptState == ReceiptState.present) return 1;
+  return 2;
+}
+
+List<String> _strictStringList(Object? value) {
+  if (value is! List || value.any((item) => item is! String || item.isEmpty)) {
+    throw const FormatException('Expected a string list.');
+  }
+  final result = value.cast<String>().toList(growable: false);
+  if (result.toSet().length != result.length) {
+    throw const FormatException('String lists must not contain duplicates.');
+  }
+  return result;
+}
+
+bool _sameStringSet(List<String> left, Iterable<String> right) {
+  final rightSet = right.toSet();
+  return left.length == rightSet.length && left.every(rightSet.contains);
+}
 
 SkillMetricKind _metricKind(String value) => switch (value) {
   'all_time_installs' => SkillMetricKind.allTimeInstalls,
@@ -652,7 +707,9 @@ class RealSkillsGateway implements SkillsGateway {
       }
       final installedCounts = <String, int>{};
       try {
-        final installed = await listInstalled();
+        final installed = await listInstalled(
+          projects: await loadAddedProjects(),
+        );
         for (final skill in installed) {
           if (skill.coordinate.isNotEmpty) {
             installedCounts[skill.coordinate] = skill.targetCount;
@@ -861,7 +918,9 @@ class RealSkillsGateway implements SkillsGateway {
       }
       var installationTargets = <SkillInstallationTarget>[];
       try {
-        final installed = await listInstalled();
+        final installed = await listInstalled(
+          projects: await loadAddedProjects(),
+        );
         installationTargets = installed
             .where((entry) => entry.coordinate == skill.id)
             .expand((entry) => entry.targets)
@@ -1007,105 +1066,169 @@ class RealSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<List<InstalledSkill>> listInstalled() async {
-    final result = await _runCli(const ['list', '--global', '--json']);
+  Future<List<InstalledSkill>> listInstalled({
+    List<AddedProject> projects = const [],
+  }) async {
+    final arguments = <String>['inventory', '--user'];
+    for (final project in projects.where(
+      (project) => project.accessState == ProjectAccessState.accessible,
+    )) {
+      arguments.addAll(['--project', project.path]);
+    }
+    arguments.addAll(['--output', 'json']);
+    final result = await _runCli(arguments);
     if (!result.succeeded) throw SkillsException(_commandError(result));
     try {
       final decoded = jsonDecode(result.output.stdout);
-      if (decoded is! List) throw const FormatException();
-      final grouped =
-          <
-            String,
-            ({
-              String coordinate,
-              String name,
-              String path,
-              Set<String> agents,
-              int targetCount,
-              List<SkillInstallationTarget> targets,
-            })
-          >{};
-      for (final raw in decoded) {
-        if (raw is! Map<String, dynamic> ||
-            raw['name'] is! String ||
-            raw['version'] is! String ||
-            raw['target'] is! Map<String, dynamic>) {
-          throw const FormatException();
-        }
-        final target = raw['target'] as Map<String, dynamic>;
-        if (target['path'] is! String ||
-            target['agent'] is! String ||
-            target['scope'] is! String) {
-          throw const FormatException();
-        }
-        final key = '${raw['coordinate'] ?? ''}\u0000${raw['name']}';
-        final current = grouped[key];
-        grouped[key] = (
-          coordinate: raw['coordinate'] is String
-              ? raw['coordinate'] as String
-              : '',
-          name: raw['name'] as String,
-          path: current?.path ?? target['path'] as String,
-          agents: (current?.agents ?? <String>{})
-            ..add(target['agent'] as String),
-          targetCount: (current?.targetCount ?? 0) + 1,
-          targets: [
-            ...?current?.targets,
-            SkillInstallationTarget(
-              agent: target['agent'] as String,
-              scope: _installationScope(target['scope']),
-              path: target['path'] as String,
-              version: raw['version'] as String,
-            ),
-          ],
-        );
+      if (decoded is! Map<String, dynamic> ||
+          decoded['schemaVersion'] != 1 ||
+          decoded['entries'] is! List) {
+        throw const FormatException();
       }
-      return grouped.values
-          .map(
-            (value) => InstalledSkill(
-              name: value.name,
-              path: value.path,
-              agents: value.agents.toList(growable: false),
-              targetCount: value.targetCount,
-              coordinate: value.coordinate,
-              targets: value.targets,
-            ),
-          )
+      return (decoded['entries'] as List)
+          .map((raw) {
+            if (raw is! Map<String, dynamic> ||
+                raw['identity'] is! String ||
+                (raw['identity'] as String).isEmpty ||
+                raw['name'] is! String ||
+                (raw['name'] as String).isEmpty ||
+                raw['coordinate'] is! String ||
+                raw['versionDivergence'] is! bool ||
+                raw['targets'] is! List) {
+              throw const FormatException();
+            }
+            final targetKeys = <String>{};
+            final targets = (raw['targets'] as List)
+                .map((target) {
+                  if (target is! Map<String, dynamic> ||
+                      target['agent'] is! String ||
+                      (target['agent'] as String).isEmpty ||
+                      target['path'] is! String ||
+                      (target['path'] as String).isEmpty ||
+                      target['version'] is! String ||
+                      (target['version'] as String).isEmpty ||
+                      (target['projectRoot'] != null &&
+                          target['projectRoot'] is! String)) {
+                    throw const FormatException();
+                  }
+                  final scope = _installationScope(target['scope']);
+                  final projectRoot = target['projectRoot'] as String? ?? '';
+                  if ((scope == InstallationScope.project &&
+                          projectRoot.isEmpty) ||
+                      (scope == InstallationScope.user &&
+                          projectRoot.isNotEmpty) ||
+                      !targetKeys.add(
+                        '${target['agent']}\u0000${target['scope']}\u0000${target['path']}',
+                      )) {
+                    throw const FormatException();
+                  }
+                  return SkillInstallationTarget(
+                    agent: target['agent'] as String,
+                    scope: scope,
+                    path: target['path'] as String,
+                    version: target['version'] as String,
+                    projectRoot: projectRoot,
+                    mode: _installationMode(target['mode']),
+                    receiptState: _receiptState(target['receiptState']),
+                    health: _installationHealth(target['health']),
+                  );
+                })
+                .toList(growable: false);
+            if (targets.isEmpty) throw const FormatException();
+            final agents = _strictStringList(raw['agents']);
+            final projectRoots = _strictStringList(raw['projects']);
+            final versions = _strictStringList(raw['versions']);
+            if (versions.isEmpty ||
+                !_sameStringSet(
+                  agents,
+                  targets.map((target) => target.agent),
+                ) ||
+                !_sameStringSet(
+                  projectRoots,
+                  targets
+                      .map((target) => target.projectRoot)
+                      .where((root) => root.isNotEmpty),
+                ) ||
+                !_sameStringSet(
+                  versions,
+                  targets.map((target) => target.version),
+                ) ||
+                (raw['versionDivergence'] as bool) != (versions.length > 1)) {
+              throw const FormatException();
+            }
+            final provenance = _libraryProvenance(raw['provenance']);
+            if (provenance == LibraryProvenance.registry &&
+                raw['identity'] != 'registry:${raw['coordinate']}') {
+              throw const FormatException();
+            }
+            return InstalledSkill(
+              identity: raw['identity'] as String,
+              name: raw['name'] as String,
+              path: targets.first.path,
+              agents: agents,
+              targetCount: targets.length,
+              coordinate: raw['coordinate'] as String,
+              targets: targets,
+              provenance: provenance,
+              riskAssessment: _riskAssessment(raw['risk']),
+              health: _installationHealth(raw['health']),
+              projects: projectRoots,
+              versions: versions,
+              versionDivergence: raw['versionDivergence'] as bool,
+            );
+          })
           .toList(growable: false);
     } on FormatException {
       throw const SkillsException(
-        'The SkillsGo CLI returned invalid list JSON.',
+        'The SkillsGo CLI returned invalid inventory JSON.',
+        kind: SkillsFailureKind.invalidResponse,
       );
     }
   }
 
   @override
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill) async {
-    final file = File(p.join(skill.path, 'SKILL.md'));
-    try {
-      final markdown = await file.readAsString();
-      if (markdown.trim().isEmpty) {
-        throw const SkillsException('The local SKILL.md is empty.');
+    final targetPaths = skill.targets.isEmpty
+        ? [skill.path]
+        : ([...skill.targets]..sort(
+                (left, right) => _localTargetReadRank(
+                  left,
+                ).compareTo(_localTargetReadRank(right)),
+              ))
+              .map((target) => target.path)
+              .toList(growable: false);
+    FileSystemException? lastFileError;
+    for (final targetPath in targetPaths) {
+      try {
+        final markdown = await File(
+          p.join(targetPath, 'SKILL.md'),
+        ).readAsString();
+        if (markdown.trim().isEmpty) continue;
+        final files = await Directory(targetPath)
+            .list(recursive: true, followLinks: false)
+            .where((entity) => entity is File)
+            .map(
+              (entity) => SkillFile(
+                path: p.relative(entity.path, from: targetPath),
+                contents: '',
+              ),
+            )
+            .toList();
+        return SkillDetail(
+          name: skill.name,
+          source: 'Local',
+          markdown: markdown,
+          files: files,
+        );
+      } on FileSystemException catch (error) {
+        lastFileError = error;
       }
-      final files = await Directory(skill.path)
-          .list(recursive: true, followLinks: false)
-          .where((entity) => entity is File)
-          .map(
-            (entity) => SkillFile(
-              path: p.relative(entity.path, from: skill.path),
-              contents: '',
-            ),
-          )
-          .toList();
-      return SkillDetail(
-        name: skill.name,
-        source: 'Local',
-        markdown: markdown,
-        files: files,
-      );
-    } on FileSystemException catch (error) {
-      throw SkillsException('Cannot read local Skill: ${error.message}');
     }
+    throw SkillsException(
+      lastFileError == null
+          ? 'The local SKILL.md is empty.'
+          : 'Cannot read local Skill: ${lastFileError.message}',
+    );
   }
 
   @override
