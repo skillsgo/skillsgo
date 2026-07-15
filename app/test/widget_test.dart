@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp with a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
- * [OUTPUT]: Specifies startup, nested navigation, discovery, auditable detail/recovery, focus restoration, settings, accessibility, and mutation journeys.
+ * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, Agent-aware Library/Settings, focus restoration, accessibility, and mutation journeys.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -353,6 +353,27 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text('Real instructions'), findsOneWidget);
   });
+
+  testWidgets(
+    'Discover stays usable and explains an empty Agent target matrix',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      final gateway = FakeSkillsGateway(installed: false, agentNames: const []);
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.enterText(_searchInput(), 'flutter');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flutter Pro'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('No installed Agents detected'), findsOneWidget);
+      expect(
+        find.textContaining('there is no installation target yet'),
+        findsOneWidget,
+      );
+    },
+  );
 
   testWidgets('detail Back restores query, scroll position and card focus', (
     tester,
@@ -709,6 +730,28 @@ void main() {
     expect(_isSemanticallySelected(tester, 'All'), isTrue);
   });
 
+  testWidgets('Library lists a detected Agent with zero installed Skills', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(
+          installed: false,
+          agentNames: const ['codex'],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Library'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Codex'), findsOneWidget);
+    await tester.tap(find.text('Codex'));
+    await tester.pumpAndSettle();
+    expect(find.text('Your Library is empty'), findsOneWidget);
+  });
+
   testWidgets('the selected rail capsule follows spring motion', (
     tester,
   ) async {
@@ -828,6 +871,74 @@ void main() {
     expect(find.text('1.0.0'), findsOneWidget);
     expect(find.text('Bundled CLI version'), findsOneWidget);
     expect(find.text('Compatible'), findsOneWidget);
+  });
+
+  testWidgets('Agents settings separates detected and supported Agents', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    final gateway = FakeSkillsGateway(
+      agentStatuses: const [
+        AgentStatus(
+          id: 'codex',
+          displayName: 'Codex',
+          installed: true,
+          supportedScopes: [InstallationScope.project, InstallationScope.user],
+          userTarget: AgentUserTarget(
+            path: '/Users/test/.codex/skills',
+            exists: true,
+          ),
+        ),
+        AgentStatus(
+          id: 'cursor',
+          displayName: 'Cursor',
+          installed: false,
+          supportedScopes: [InstallationScope.project, InstallationScope.user],
+          userTarget: AgentUserTarget(
+            path: '/Users/test/.cursor/skills',
+            exists: false,
+          ),
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agents'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 installed · 2 supported'), findsOneWidget);
+    expect(find.text('Codex'), findsOneWidget);
+    expect(find.text('Cursor'), findsOneWidget);
+    expect(find.text('Installed'), findsOneWidget);
+    expect(find.text('Supported'), findsOneWidget);
+    expect(find.textContaining('/Users/test/.codex/skills'), findsOneWidget);
+  });
+
+  testWidgets('Agent inspection failure keeps detection retry actionable', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway(
+      agentInspectionError: const SkillsException('malformed agents'),
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Agents'));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text('Agent detection data is unavailable. Run detection again.'),
+      findsOneWidget,
+    );
+    expect(find.text('Detect again'), findsOneWidget);
+    final inspectionsBeforeRetry = gateway.agentInspections;
+    await tester.tap(find.text('Detect again'));
+    await tester.pumpAndSettle();
+    expect(gateway.agentInspections, inspectionsBeforeRetry + 1);
   });
 
   testWidgets('About distinguishes a missing CLI from incompatibility', (
@@ -991,6 +1102,8 @@ class FakeSkillsGateway implements SkillsGateway {
     this.installCompleter,
     List<SkillSummary>? searchResults,
     this.agentNames = const ['codex'],
+    this.agentStatuses,
+    this.agentInspectionError,
     this.registryOrigin = 'https://registry.skillsgo.dev',
     this.registryTestState = HealthState.ready,
     this.storageStatus = const StorageStatus(
@@ -1012,6 +1125,8 @@ class FakeSkillsGateway implements SkillsGateway {
   final Completer<CommandResult>? installCompleter;
   final Completer<SkillDetail>? detailCompleter;
   final List<String> agentNames;
+  final List<AgentStatus>? agentStatuses;
+  final SkillsException? agentInspectionError;
   String registryOrigin;
   final HealthState registryTestState;
   PersonalRiskPolicy riskPolicy = const PersonalRiskPolicy();
@@ -1028,6 +1143,7 @@ class FakeSkillsGateway implements SkillsGateway {
   final requestedOffsets = <int>[];
   int installCalls = 0;
   int detailLoads = 0;
+  int agentInspections = 0;
   String? savedPath;
   static const _defaultSearchResults = [
     SkillSummary(
@@ -1075,7 +1191,7 @@ class FakeSkillsGateway implements SkillsGateway {
     installationTargets: [
       SkillInstallationTarget(
         agent: 'codex',
-        scope: SkillInstallationScope.user,
+        scope: InstallationScope.user,
         path: '/tmp/flutter-pro',
         version: 'v1.2.3',
       ),
@@ -1174,6 +1290,41 @@ class FakeSkillsGateway implements SkillsGateway {
           ),
         ]
       : const [];
+  @override
+  Future<AgentCatalog> inspectAgents() async {
+    agentInspections++;
+    if (agentInspectionError != null) throw agentInspectionError!;
+    return AgentCatalog(
+      schemaVersion: 1,
+      agents:
+          agentStatuses ??
+          agentNames
+              .map(
+                (agent) => AgentStatus(
+                  id: agent,
+                  displayName: agent
+                      .split(RegExp(r'[-_]'))
+                      .where((part) => part.isNotEmpty)
+                      .map(
+                        (part) =>
+                            '${part[0].toUpperCase()}${part.substring(1)}',
+                      )
+                      .join(' '),
+                  installed: true,
+                  supportedScopes: const [
+                    InstallationScope.project,
+                    InstallationScope.user,
+                  ],
+                  userTarget: AgentUserTarget(
+                    path: '/Users/test/.$agent/skills',
+                    exists: true,
+                  ),
+                ),
+              )
+              .toList(growable: false),
+    );
+  }
+
   @override
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill) async =>
       const SkillDetail(

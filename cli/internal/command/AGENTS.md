@@ -7,6 +7,8 @@
 - `args.go`: normalizes compatible multi-value flag syntax before Cobra parses arguments.
 - `diagnostics.go`: exposes versioned, read-only local Store health for App integration and terminal diagnostics.
 - `diagnostics_test.go`: specifies Store diagnostics schema, readability states, and non-mutating inspection.
+- `agents.go`: exposes complete supported and installed Agent discovery through versioned JSON and localized human output.
+- `agents_test.go`: specifies the stable App-facing Agent discovery machine contract.
 - `version.go`: serves the human version output and versioned App startup handshake.
 - `args_test.go`: covers public argument normalization and environment-gated test Agent behavior.
 - `i18n_test.go`: covers localized public command help.

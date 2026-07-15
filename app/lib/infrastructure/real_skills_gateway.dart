@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Registry HTTP, the local filesystem, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides production Registry settings, paginated discovery, auditable artifact detail with local targets and typed failures, diagnostics, bundled CLI verification, and Skill operations.
+ * [OUTPUT]: Provides production Registry settings, discovery/detail, strict Agent inspection, local targets, typed failures, diagnostics, bundled CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -68,9 +68,9 @@ SkillRiskAssessment _riskAssessment(Object? value) => switch (value) {
   ),
 };
 
-SkillInstallationScope _installationScope(Object? value) => switch (value) {
-  'user' => SkillInstallationScope.user,
-  'project' => SkillInstallationScope.project,
+InstallationScope _installationScope(Object? value) => switch (value) {
+  'user' => InstallationScope.user,
+  'project' => InstallationScope.project,
   _ => throw const FormatException('Unknown installation scope.'),
 };
 
@@ -763,6 +763,71 @@ class RealSkillsGateway implements SkillsGateway {
     final executable = _requiredCli;
     final output = await _runner.run(executable, arguments);
     return CommandResult(command: [executable, ...arguments], output: output);
+  }
+
+  @override
+  Future<AgentCatalog> inspectAgents() async {
+    final result = await _runCli(const ['agents', '--output', 'json']);
+    if (!result.succeeded) throw SkillsException(_commandError(result));
+    try {
+      final decoded = jsonDecode(result.output.stdout);
+      if (decoded is! Map<String, dynamic> ||
+          decoded['schemaVersion'] != 1 ||
+          decoded['agents'] is! List) {
+        throw const FormatException();
+      }
+      final seen = <String>{};
+      final agents = (decoded['agents'] as List)
+          .map((raw) {
+            if (raw is! Map<String, dynamic> ||
+                raw['id'] is! String ||
+                (raw['id'] as String).isEmpty ||
+                raw['displayName'] is! String ||
+                (raw['displayName'] as String).isEmpty ||
+                raw['installed'] is! bool ||
+                raw['supportedScopes'] is! List ||
+                !seen.add(raw['id'] as String)) {
+              throw const FormatException();
+            }
+            final scopes = (raw['supportedScopes'] as List)
+                .map(_installationScope)
+                .toList(growable: false);
+            if (scopes.isEmpty || scopes.toSet().length != scopes.length) {
+              throw const FormatException();
+            }
+            final rawTarget = raw['userTarget'];
+            AgentUserTarget? target;
+            if (rawTarget != null) {
+              if (rawTarget is! Map<String, dynamic> ||
+                  rawTarget['path'] is! String ||
+                  (rawTarget['path'] as String).isEmpty ||
+                  rawTarget['exists'] is! bool) {
+                throw const FormatException();
+              }
+              target = AgentUserTarget(
+                path: rawTarget['path'] as String,
+                exists: rawTarget['exists'] as bool,
+              );
+            }
+            if (scopes.contains(InstallationScope.user) != (target != null)) {
+              throw const FormatException();
+            }
+            return AgentStatus(
+              id: raw['id'] as String,
+              displayName: raw['displayName'] as String,
+              installed: raw['installed'] as bool,
+              supportedScopes: scopes,
+              userTarget: target,
+            );
+          })
+          .toList(growable: false);
+      return AgentCatalog(schemaVersion: 1, agents: agents);
+    } on FormatException {
+      throw const SkillsException(
+        'The SkillsGo CLI returned invalid Agent JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
   }
 
   @override

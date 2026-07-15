@@ -1076,6 +1076,60 @@ abstract class AppLocalizations {
   /// **'Detect again'**
   String get detectAgain;
 
+  /// No description provided for @agentInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed'**
+  String get agentInstalled;
+
+  /// No description provided for @agentSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Supported'**
+  String get agentSupported;
+
+  /// No description provided for @agentCatalogSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{installed} installed · {supported} supported'**
+  String agentCatalogSummary(int installed, int supported);
+
+  /// No description provided for @agentDetectedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent installation detected. Skills can target its supported scopes.'**
+  String get agentDetectedDescription;
+
+  /// No description provided for @agentSupportedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Supported, but no installation signal was found. Install the Agent or use a project target.'**
+  String get agentSupportedDescription;
+
+  /// No description provided for @agentUserTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'User target: {path}'**
+  String agentUserTarget(String path);
+
+  /// No description provided for @agentInspectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Agent detection data is unavailable. Run detection again.'**
+  String get agentInspectionFailed;
+
+  /// No description provided for @noInstalledAgentsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'No installed Agents detected'**
+  String get noInstalledAgentsTitle;
+
+  /// No description provided for @noInstalledAgentsMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'You can keep browsing this Skill, but there is no installation target yet. Install a supported Agent, then run detection again.'**
+  String get noInstalledAgentsMessage;
+
   /// No description provided for @clearCustomPath.
   ///
   /// In en, this message translates to:

@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on the resolved Agent Catalog and read-only filesystem/package signals.
+ * [OUTPUT]: Provides installed-Agent detection plus stable status records with supported scopes and user-target diagnostics.
+ * [POS]: Serves as the read-only Agent environment inspection boundary consumed by CLI machine contracts.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package agent
 
 import (
@@ -7,6 +13,26 @@ import (
 	"sort"
 	"strings"
 )
+
+type Scope string
+
+const (
+	ScopeUser    Scope = "user"
+	ScopeProject Scope = "project"
+)
+
+type UserTarget struct {
+	Path   string `json:"path"`
+	Exists bool   `json:"exists"`
+}
+
+type Status struct {
+	ID              string      `json:"id"`
+	DisplayName     string      `json:"displayName"`
+	Installed       bool        `json:"installed"`
+	SupportedScopes []Scope     `json:"supportedScopes"`
+	UserTarget      *UserTarget `json:"userTarget"`
+}
 
 func exists(path string) bool {
 	_, err := os.Stat(path)
@@ -99,6 +125,27 @@ func (c *Catalog) Installed() []Definition {
 		}
 	}
 	return result
+}
+
+func (c *Catalog) Statuses() []Status {
+	definitions := c.All()
+	statuses := make([]Status, 0, len(definitions))
+	for _, definition := range definitions {
+		scopes := make([]Scope, 0, 2)
+		if definition.ProjectDir != "" {
+			scopes = append(scopes, ScopeProject)
+		}
+		var target *UserTarget
+		if definition.UserDir != "" {
+			scopes = append(scopes, ScopeUser)
+			target = &UserTarget{Path: definition.UserDir, Exists: exists(definition.UserDir)}
+		}
+		statuses = append(statuses, Status{
+			ID: definition.ID, DisplayName: definition.Display,
+			Installed: c.DetectInstalled(definition.ID), SupportedScopes: scopes, UserTarget: target,
+		})
+	}
+	return statuses
 }
 
 func (c *Catalog) Universal(visibleOnly bool) []Definition {

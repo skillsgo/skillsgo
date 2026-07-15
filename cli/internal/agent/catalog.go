@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on operating-system home/config paths, Agent-specific environment overrides, and the official supported Agent table.
+ * [OUTPUT]: Provides canonical Agent definitions, resolved user targets, complete catalog enumeration, and test-only catalog extension.
+ * [POS]: Serves as the source of truth for every Agent Adapter supported by the SkillsGo CLI.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package agent
 
 import (
