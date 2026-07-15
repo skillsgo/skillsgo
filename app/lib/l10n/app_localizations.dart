@@ -896,6 +896,12 @@ abstract class AppLocalizations {
   /// **'Target replaced'**
   String get healthReplaced;
 
+  /// No description provided for @healthLocalModification.
+  ///
+  /// In en, this message translates to:
+  /// **'Local Modification'**
+  String get healthLocalModification;
+
   /// No description provided for @healthUnreadable.
   ///
   /// In en, this message translates to:
@@ -1628,11 +1634,95 @@ abstract class AppLocalizations {
   /// **'{count} skip'**
   String planSkipCount(int count);
 
+  /// No description provided for @planReplaceCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} replace'**
+  String planReplaceCount(int count);
+
   /// No description provided for @planConflictCount.
   ///
   /// In en, this message translates to:
   /// **'{count} conflict'**
   String planConflictCount(int count);
+
+  /// No description provided for @planRiskCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} risk blocked'**
+  String planRiskCount(int count);
+
+  /// No description provided for @refreshInstallationPlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply Resolutions'**
+  String get refreshInstallationPlan;
+
+  /// No description provided for @replaceVersionConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace the installed version at this target'**
+  String get replaceVersionConflict;
+
+  /// No description provided for @replaceIdentityCollision.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace the different Skill identity at this target'**
+  String get replaceIdentityCollision;
+
+  /// No description provided for @replaceLocalModification.
+  ///
+  /// In en, this message translates to:
+  /// **'Discard Local Modifications and replace this target'**
+  String get replaceLocalModification;
+
+  /// No description provided for @sharedTargetConflict.
+  ///
+  /// In en, this message translates to:
+  /// **'This path is shared by other Agent targets'**
+  String get sharedTargetConflict;
+
+  /// No description provided for @sharedTargetConflictDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Return to the target matrix and select every affected Agent before replacing: {agents}'**
+  String sharedTargetConflictDescription(String agents);
+
+  /// No description provided for @replaceConflictingTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Replace the conflicting target'**
+  String get replaceConflictingTarget;
+
+  /// No description provided for @confirmHighRiskArtifact.
+  ///
+  /// In en, this message translates to:
+  /// **'High-risk artifact confirmation'**
+  String get confirmHighRiskArtifact;
+
+  /// No description provided for @confirmCriticalRiskArtifact.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical-risk override confirmation'**
+  String get confirmCriticalRiskArtifact;
+
+  /// No description provided for @confirmRiskForSelectedTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'I reviewed the artifact files and accept this risk for the selected targets'**
+  String get confirmRiskForSelectedTargets;
+
+  /// No description provided for @criticalRiskBlocked.
+  ///
+  /// In en, this message translates to:
+  /// **'Critical-risk installation is blocked'**
+  String get criticalRiskBlocked;
+
+  /// No description provided for @criticalRiskOverrideDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable the explicit Critical-risk override in Settings before this plan can continue.'**
+  String get criticalRiskOverrideDisabled;
 
   /// No description provided for @workspaceLockChanges.
   ///

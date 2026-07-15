@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp with a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
- * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, managed/external multi-target Library views, read-only External inspection, explicit projects, Agents, Settings, focus restoration, accessibility, and mutation journeys.
+ * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, managed/external multi-target Library views, read-only External inspection, explicit projects, Agents, Settings, state-bound and shared-target conflict/risk resolution, focus restoration, accessibility, and mutation journeys.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,6 +10,7 @@ import 'dart:ui' show CheckedState, SemanticsAction, Tristate;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shadcn_ui/shadcn_ui.dart';
 import 'package:skillsgo/app.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
 
@@ -381,6 +382,231 @@ void main() {
       expect(find.text('/work/project-b'), findsWidgets);
       await tester.tap(find.bySemanticsLabel('Close installation plan'));
       await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'Installation Plan requires an explicit Local Modification replacement',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 850));
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        planConflictReason: 'local-modification',
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.enterText(_searchInput(), 'modified');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flutter Pro'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Install Skill'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Select'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Review 1 Targets'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('1 conflict'), findsOneWidget);
+      expect(
+        find.text('Discard Local Modifications and replace this target'),
+        findsOneWidget,
+      );
+      expect(gateway.installCalls, 0);
+
+      await tester.tap(
+        find.text('Discard Local Modifications and replace this target'),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Apply Resolutions'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 replace'), findsOneWidget);
+      expect(
+        gateway.lastPlanSelections.single.resolution,
+        InstallationTargetResolution.replace,
+      );
+      expect(
+        gateway.lastPlanSelections.single.expectedReason,
+        'local-modification',
+      );
+      expect(
+        gateway.lastPlanSelections.single.expectedState,
+        'sha256:user-codex-local-modification',
+      );
+      await tester.tap(find.text('Install 1 Targets'));
+      await tester.pumpAndSettle();
+      expect(gateway.installCalls, 1);
+    },
+  );
+
+  testWidgets(
+    'shared target conflicts require every affected Agent in the matrix',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 850));
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        planConflictReason: 'shared-target-conflict',
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.enterText(_searchInput(), 'shared');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flutter Pro'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Install Skill'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Select'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Review 1 Targets'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('This path is shared by other Agent targets'),
+        findsOneWidget,
+      );
+      expect(
+        find.text(
+          'Return to the target matrix and select every affected Agent before replacing: codex, claude-code',
+        ),
+        findsOneWidget,
+      );
+      expect(find.textContaining('Discard Local Modifications'), findsNothing);
+      final applyButton = find.ancestor(
+        of: find.text('Apply Resolutions'),
+        matching: find.byType(ShadButton),
+      );
+      expect(tester.widget<ShadButton>(applyButton).enabled, isFalse);
+      expect(
+        gateway.lastPlanSelections.single.resolution,
+        InstallationTargetResolution.none,
+      );
+      expect(gateway.installCalls, 0);
+    },
+  );
+
+  testWidgets('High risk requires a separate plan confirmation', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 850));
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      remoteDetail: _withoutInstallationTargets(
+        FakeSkillsGateway.defaultRemoteDetail,
+        riskAssessment: SkillRiskAssessment.high,
+      ),
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.enterText(_searchInput(), 'risky');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Flutter Pro'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Install Skill'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Select'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Review 1 Targets'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 risk blocked'), findsOneWidget);
+    expect(find.text('High-risk artifact confirmation'), findsOneWidget);
+    expect(gateway.installCalls, 0);
+    await tester.tap(
+      find.text(
+        'I reviewed the artifact files and accept this risk for the selected targets',
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apply Resolutions'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 create'), findsOneWidget);
+    await tester.tap(find.text('Install 1 Targets'));
+    await tester.pumpAndSettle();
+    expect(gateway.installCalls, 1);
+  });
+
+  testWidgets('Critical risk stays blocked when its Settings override is off', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 850));
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      remoteDetail: _withoutInstallationTargets(
+        FakeSkillsGateway.defaultRemoteDetail,
+        riskAssessment: SkillRiskAssessment.critical,
+      ),
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.enterText(_searchInput(), 'critical');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Flutter Pro'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Install Skill'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Select'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Review 1 Targets'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Critical-risk installation is blocked'), findsOneWidget);
+    expect(
+      find.textContaining('Enable the explicit Critical-risk override'),
+      findsOneWidget,
+    );
+    expect(
+      find.text(
+        'I reviewed the artifact files and accept this risk for the selected targets',
+      ),
+      findsNothing,
+    );
+    expect(gateway.installCalls, 0);
+  });
+
+  testWidgets(
+    'Critical risk requires per-install confirmation after Settings override',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 850));
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        riskPolicy: const PersonalRiskPolicy(allowCriticalOverride: true),
+        remoteDetail: _withoutInstallationTargets(
+          FakeSkillsGateway.defaultRemoteDetail,
+          riskAssessment: SkillRiskAssessment.critical,
+        ),
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.enterText(_searchInput(), 'critical');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flutter Pro'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Install Skill'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Select'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Review 1 Targets'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Critical-risk override confirmation'), findsOneWidget);
+      expect(gateway.installCalls, 0);
+      await tester.tap(
+        find.text(
+          'I reviewed the artifact files and accept this risk for the selected targets',
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Apply Resolutions'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 create'), findsOneWidget);
+      await tester.tap(find.text('Install 1 Targets'));
+      await tester.pumpAndSettle();
+      expect(gateway.installCalls, 1);
+      expect(gateway.lastPlanSelections, hasLength(1));
     },
   );
 
@@ -1539,6 +1765,8 @@ class FakeSkillsGateway implements SkillsGateway {
     this.detailCompleter,
     SkillDetail? remoteDetail,
     List<SkillsException> detailErrors = const [],
+    this.planConflictReason = '',
+    this.riskPolicy = const PersonalRiskPolicy(),
   }) : searchResults = searchResults ?? _defaultSearchResults,
        remoteDetail =
            remoteDetail ??
@@ -1562,7 +1790,8 @@ class FakeSkillsGateway implements SkillsGateway {
   final List<AddedProject> projects;
   String registryOrigin;
   final HealthState registryTestState;
-  PersonalRiskPolicy riskPolicy = const PersonalRiskPolicy();
+  PersonalRiskPolicy riskPolicy;
+  final String planConflictReason;
   final StorageStatus storageStatus;
   final String appVersion;
   final Map<String, DiscoveryPage> discoveryPages;
@@ -1821,12 +2050,35 @@ class FakeSkillsGateway implements SkillsGateway {
   Future<InstallationPlan> preflightInstall(
     SkillSummary skill,
     String immutableVersion,
-    List<InstallationTargetSelection> selections,
-  ) async {
+    List<InstallationTargetSelection> selections, {
+    bool riskConfirmed = false,
+    bool allowCritical = false,
+  }) async {
     lastPlanSelections = List.unmodifiable(selections);
+    final riskAssessment = remoteDetail.riskAssessment;
+    final riskBlocked =
+        (riskAssessment == SkillRiskAssessment.high && !riskConfirmed) ||
+        (riskAssessment == SkillRiskAssessment.critical &&
+            (!riskConfirmed || !allowCritical));
     final targets = selections
-        .map(
-          (selection) => InstallationPlanItem(
+        .map((selection) {
+          final stateToken = planConflictReason.isEmpty
+              ? ''
+              : 'sha256:${selection.scope.name}-${selection.agent}-$planConflictReason';
+          final reviewedConflict =
+              selection.resolution == InstallationTargetResolution.replace &&
+              selection.expectedReason == planConflictReason &&
+              selection.expectedState == stateToken;
+          final unresolvedConflict =
+              planConflictReason.isNotEmpty && !reviewedConflict;
+          final action = unresolvedConflict
+              ? InstallationPlanAction.conflict
+              : riskBlocked
+              ? InstallationPlanAction.blockedByRisk
+              : reviewedConflict
+              ? InstallationPlanAction.replace
+              : InstallationPlanAction.create;
+          return InstallationPlanItem(
             target: InstallationPlanTarget(
               scope: selection.scope,
               projectRoot: selection.projectRoot,
@@ -1836,10 +2088,40 @@ class FakeSkillsGateway implements SkillsGateway {
                   ? '/Users/test/.${selection.agent}/skills/${skill.skillId}'
                   : '${selection.projectRoot}/.agents/skills/${skill.skillId}',
             ),
-            action: InstallationPlanAction.create,
+            action: action,
             workspaceLockChange: selection.scope == InstallationScope.project,
-          ),
-        )
+            reasonCode: unresolvedConflict
+                ? planConflictReason
+                : riskBlocked
+                ? riskAssessment == SkillRiskAssessment.critical
+                      ? 'critical-risk'
+                      : 'high-risk'
+                : reviewedConflict
+                ? planConflictReason
+                : '',
+            stateToken: stateToken,
+            affectedBindings: planConflictReason == 'shared-target-conflict'
+                ? [
+                    InstallationAffectedBinding(
+                      agent: selection.agent,
+                      scope: selection.scope,
+                      mode: selection.mode,
+                      path: selection.scope == InstallationScope.user
+                          ? '/Users/test/.${selection.agent}/skills/${skill.skillId}'
+                          : '${selection.projectRoot}/.agents/skills/${skill.skillId}',
+                    ),
+                    InstallationAffectedBinding(
+                      agent: 'claude-code',
+                      scope: selection.scope,
+                      mode: selection.mode,
+                      path: selection.scope == InstallationScope.user
+                          ? '/Users/test/.${selection.agent}/skills/${skill.skillId}'
+                          : '${selection.projectRoot}/.agents/skills/${skill.skillId}',
+                    ),
+                  ]
+                : const [],
+          );
+        })
         .toList(growable: false);
     return InstallationPlan(
       source: skill.id,
@@ -1849,11 +2131,21 @@ class FakeSkillsGateway implements SkillsGateway {
       selections: List.unmodifiable(selections),
       targets: targets,
       summary: InstallationPlanSummary(
-        create: targets.length,
-        replace: 0,
+        create: targets
+            .where((item) => item.action == InstallationPlanAction.create)
+            .length,
+        replace: targets
+            .where((item) => item.action == InstallationPlanAction.replace)
+            .length,
         skip: 0,
-        conflict: 0,
-        blockedByRisk: 0,
+        conflict: targets
+            .where((item) => item.action == InstallationPlanAction.conflict)
+            .length,
+        blockedByRisk: targets
+            .where(
+              (item) => item.action == InstallationPlanAction.blockedByRisk,
+            )
+            .length,
       ),
       workspaceLockChanges: selections
           .where((selection) => selection.scope == InstallationScope.project)
@@ -1866,6 +2158,9 @@ class FakeSkillsGateway implements SkillsGateway {
             ),
           )
           .toList(growable: false),
+      riskAssessment: riskAssessment,
+      riskConfirmed: riskConfirmed,
+      allowCritical: allowCritical,
     );
   }
 
@@ -1946,7 +2241,10 @@ class FakeSkillsGateway implements SkillsGateway {
       _success(['skills', 'update']);
 }
 
-SkillDetail _withoutInstallationTargets(SkillDetail detail) => SkillDetail(
+SkillDetail _withoutInstallationTargets(
+  SkillDetail detail, {
+  SkillRiskAssessment? riskAssessment,
+}) => SkillDetail(
   name: detail.name,
   source: detail.source,
   markdown: detail.markdown,
@@ -1961,7 +2259,7 @@ SkillDetail _withoutInstallationTargets(SkillDetail detail) => SkillDetail(
   contentDigest: detail.contentDigest,
   manifest: detail.manifest,
   trustLevel: detail.trustLevel,
-  riskAssessment: detail.riskAssessment,
+  riskAssessment: riskAssessment ?? detail.riskAssessment,
   riskScannerVersion: detail.riskScannerVersion,
   riskEvidence: detail.riskEvidence,
   registryExecutableSignal: detail.registryExecutableSignal,

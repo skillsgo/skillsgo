@@ -454,6 +454,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get healthReplaced => '目标已被替换';
 
   @override
+  String get healthLocalModification => '存在本地修改';
+
+  @override
   String get healthUnreadable => '目标不可读取';
 
   @override
@@ -856,9 +859,57 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String planReplaceCount(int count) {
+    return '替换 $count 个';
+  }
+
+  @override
   String planConflictCount(int count) {
     return '冲突 $count 个';
   }
+
+  @override
+  String planRiskCount(int count) {
+    return '风险阻止 $count 个';
+  }
+
+  @override
+  String get refreshInstallationPlan => '应用解决方案';
+
+  @override
+  String get replaceVersionConflict => '替换这个目标中已安装的版本';
+
+  @override
+  String get replaceIdentityCollision => '替换这个目标中的不同技能身份';
+
+  @override
+  String get replaceLocalModification => '放弃本地修改并替换这个目标';
+
+  @override
+  String get sharedTargetConflict => '此路径由其他 Agent 目标共享';
+
+  @override
+  String sharedTargetConflictDescription(String agents) {
+    return '返回目标矩阵并选择所有受影响的 Agent 后再替换：$agents';
+  }
+
+  @override
+  String get replaceConflictingTarget => '替换冲突目标';
+
+  @override
+  String get confirmHighRiskArtifact => '确认高风险制品';
+
+  @override
+  String get confirmCriticalRiskArtifact => '确认覆盖严重风险';
+
+  @override
+  String get confirmRiskForSelectedTargets => '我已检查制品文件，并接受在所选目标中安装此风险制品';
+
+  @override
+  String get criticalRiskBlocked => '严重风险安装已被阻止';
+
+  @override
+  String get criticalRiskOverrideDisabled => '请先在设置中启用显式的严重风险覆盖策略，才能继续此计划。';
 
   @override
   String get workspaceLockChanges => 'Workspace Lock 变更';

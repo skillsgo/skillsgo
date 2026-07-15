@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Registry HTTP, the local filesystem, the platform directory picker, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides production Registry settings, discovery/detail, managed/external inventory parsing, explicit Installation Plan/result parsing, local file inspection, project persistence, Agent inspection, typed failures, diagnostics, CLI verification, and Skill operations.
+ * [OUTPUT]: Provides production Registry settings, discovery/detail, managed/external inventory parsing, trusted-risk and state-bound Installation Plan/result parsing, local file inspection, project persistence, Agent inspection, typed failures, diagnostics, CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -111,10 +111,32 @@ InstallationTargetOutcome _installationTargetOutcome(Object? value) =>
 String _installationPlanReasonCode(Object? value) => switch (value) {
   null => '',
   'identical-target' => 'identical-target',
-  'target-path-exists' => 'target-path-exists',
+  'version-conflict' => 'version-conflict',
+  'identity-collision' => 'identity-collision',
+  'local-modification' => 'local-modification',
+  'shared-target-conflict' => 'shared-target-conflict',
+  'high-risk' => 'high-risk',
+  'critical-risk' => 'critical-risk',
   'blocked-by-risk' => 'blocked-by-risk',
   _ => throw const FormatException('Unknown Installation Plan reason code.'),
 };
+
+bool _validPlanReason(InstallationPlanAction action, String reasonCode) =>
+    switch (action) {
+      InstallationPlanAction.create => reasonCode.isEmpty,
+      InstallationPlanAction.skip => reasonCode == 'identical-target',
+      InstallationPlanAction.replace =>
+        reasonCode == 'version-conflict' ||
+            reasonCode == 'identity-collision' ||
+            reasonCode == 'local-modification',
+      InstallationPlanAction.conflict =>
+        reasonCode == 'version-conflict' ||
+            reasonCode == 'identity-collision' ||
+            reasonCode == 'local-modification' ||
+            reasonCode == 'shared-target-conflict',
+      InstallationPlanAction.blockedByRisk =>
+        reasonCode == 'high-risk' || reasonCode == 'critical-risk',
+    };
 
 String _installationErrorCode(Object? value) => switch (value) {
   null => '',
@@ -136,6 +158,7 @@ InstallationHealth _installationHealth(Object? value) => switch (value) {
   'healthy' => InstallationHealth.healthy,
   'missing' => InstallationHealth.missing,
   'replaced' => InstallationHealth.replaced,
+  'local-modification' => InstallationHealth.localModification,
   'unreadable' => InstallationHealth.unreadable,
   'undeclared' => InstallationHealth.undeclared,
   'workspace-unreadable' => InstallationHealth.workspaceUnreadable,
@@ -159,8 +182,8 @@ int _localTargetReadRank(SkillInstallationTarget target) {
 }
 
 const _localFilePreviewLimit = 256 * 1024;
-const _inventorySchemaVersion = 2;
-const _installationPlanSchemaVersion = 1;
+const _inventorySchemaVersion = 3;
+const _installationPlanSchemaVersion = 2;
 
 bool _looksExecutablePath(String path) {
   final lower = path.toLowerCase();
@@ -271,6 +294,24 @@ InstallationPlanTarget _installationPlanTarget(Object? raw) {
   );
 }
 
+InstallationAffectedBinding _installationAffectedBinding(Object? raw) {
+  if (raw is! Map<String, dynamic> ||
+      raw['agent'] is! String ||
+      (raw['agent'] as String).isEmpty ||
+      raw['path'] is! String ||
+      (raw['path'] as String).isEmpty) {
+    throw const FormatException();
+  }
+  final mode = _installationMode(raw['mode']);
+  if (mode == InstallationMode.external) throw const FormatException();
+  return InstallationAffectedBinding(
+    agent: raw['agent'] as String,
+    scope: _installationScope(raw['scope']),
+    mode: mode,
+    path: raw['path'] as String,
+  );
+}
+
 bool _samePlanTarget(
   InstallationPlanTarget left,
   InstallationPlanTarget right,
@@ -299,6 +340,12 @@ String _targetArgument(InstallationTargetSelection selection) => jsonEncode({
   if (selection.projectRoot.isNotEmpty) 'projectRoot': selection.projectRoot,
   'agent': selection.agent,
   'mode': _modeValue(selection.mode),
+  if (selection.resolution == InstallationTargetResolution.replace)
+    'resolution': 'replace',
+  if (selection.resolution == InstallationTargetResolution.replace)
+    'expectedReason': selection.expectedReason,
+  if (selection.resolution == InstallationTargetResolution.replace)
+    'expectedState': selection.expectedState,
 });
 
 SkillMetricKind _metricKind(String value) => switch (value) {
@@ -342,7 +389,7 @@ class RealSkillsGateway implements SkillsGateway {
   static const _allowCriticalOverrideKey = 'allow_critical_risk_override';
   static const _addedProjectsKey = 'added_projects_v1';
   static const _startupHandshakeSchemaVersion = 1;
-  static const _appProtocolVersion = 3;
+  static const _appProtocolVersion = 4;
   final http.Client _http;
   final ProcessRunner _runner;
   final Uri _defaultRegistryBase;
@@ -1424,8 +1471,10 @@ class RealSkillsGateway implements SkillsGateway {
   Future<InstallationPlan> preflightInstall(
     SkillSummary skill,
     String immutableVersion,
-    List<InstallationTargetSelection> selections,
-  ) async {
+    List<InstallationTargetSelection> selections, {
+    bool riskConfirmed = false,
+    bool allowCritical = false,
+  }) async {
     if (immutableVersion.isEmpty || selections.isEmpty) {
       throw const SkillsException(
         'Select at least one Installation Target.',
@@ -1442,6 +1491,12 @@ class RealSkillsGateway implements SkillsGateway {
               selection.projectRoot.isNotEmpty) ||
           (selection.scope == InstallationScope.project &&
               selection.projectRoot.isEmpty) ||
+          (selection.resolution == InstallationTargetResolution.replace &&
+              (selection.expectedReason.isEmpty ||
+                  selection.expectedState.isEmpty)) ||
+          (selection.resolution == InstallationTargetResolution.none &&
+              (selection.expectedReason.isNotEmpty ||
+                  selection.expectedState.isNotEmpty)) ||
           selection.mode == InstallationMode.external) {
         throw const SkillsException(
           'The Installation Target selection is invalid.',
@@ -1457,6 +1512,8 @@ class RealSkillsGateway implements SkillsGateway {
     arguments.addAll([
       '--version',
       immutableVersion,
+      if (riskConfirmed) '--confirm-risk',
+      if (allowCritical) '--allow-critical',
       '--preflight',
       '--output',
       'json',
@@ -1481,9 +1538,11 @@ class RealSkillsGateway implements SkillsGateway {
           artifact['coordinate'] != skill.id ||
           artifact['version'] != immutableVersion ||
           artifact['name'] != skill.skillId ||
-          artifact['source'] != skill.id) {
+          artifact['source'] != skill.id ||
+          artifact['risk'] is! String) {
         throw const FormatException();
       }
+      final trustedRiskAssessment = _riskAssessment(artifact['risk']);
       final rawTargets = decoded['targets'] as List;
       if (rawTargets.length != selections.length) throw const FormatException();
       final targets = <InstallationPlanItem>[];
@@ -1491,7 +1550,10 @@ class RealSkillsGateway implements SkillsGateway {
         final raw = rawTargets[index];
         if (raw is! Map<String, dynamic> ||
             raw['workspaceLockChange'] is! bool ||
-            (raw['reasonCode'] != null && raw['reasonCode'] is! String)) {
+            (raw['reasonCode'] != null && raw['reasonCode'] is! String) ||
+            (raw['stateToken'] != null && raw['stateToken'] is! String) ||
+            (raw['affectedBindings'] != null &&
+                raw['affectedBindings'] is! List)) {
           throw const FormatException();
         }
         final target = _installationPlanTarget(raw['target']);
@@ -1502,12 +1564,45 @@ class RealSkillsGateway implements SkillsGateway {
             target.mode != selection.mode) {
           throw const FormatException();
         }
+        final action = _installationPlanAction(raw['action']);
+        final reasonCode = _installationPlanReasonCode(raw['reasonCode']);
+        if (!_validPlanReason(action, reasonCode)) {
+          throw const FormatException();
+        }
+        final stateToken = raw['stateToken'] as String? ?? '';
+        if ((action == InstallationPlanAction.conflict ||
+                action == InstallationPlanAction.replace) &&
+            stateToken.isEmpty) {
+          throw const FormatException();
+        }
+        final affectedBindings =
+            ((raw['affectedBindings'] as List?) ?? const [])
+                .map(_installationAffectedBinding)
+                .toList(growable: false);
+        if (reasonCode == 'shared-target-conflict') {
+          final bindingKeys = <String>{};
+          var includesTargetBinding = false;
+          for (final binding in affectedBindings) {
+            final key = '${binding.scope.name}\u0000${binding.agent}';
+            if (binding.path != target.path ||
+                binding.scope != target.scope ||
+                !bindingKeys.add(key)) {
+              throw const FormatException();
+            }
+            if (binding.agent == target.agent) includesTargetBinding = true;
+          }
+          if (affectedBindings.length < 2 || !includesTargetBinding) {
+            throw const FormatException();
+          }
+        }
         targets.add(
           InstallationPlanItem(
             target: target,
-            action: _installationPlanAction(raw['action']),
+            action: action,
             workspaceLockChange: raw['workspaceLockChange'] as bool,
-            reasonCode: _installationPlanReasonCode(raw['reasonCode']),
+            reasonCode: reasonCode,
+            stateToken: stateToken,
+            affectedBindings: affectedBindings,
           ),
         );
       }
@@ -1571,6 +1666,9 @@ class RealSkillsGateway implements SkillsGateway {
         targets: List.unmodifiable(targets),
         summary: summary,
         workspaceLockChanges: lockChanges,
+        riskAssessment: trustedRiskAssessment,
+        riskConfirmed: riskConfirmed,
+        allowCritical: allowCritical,
       );
     } on FormatException {
       throw const SkillsException(
@@ -1590,6 +1688,8 @@ class RealSkillsGateway implements SkillsGateway {
     arguments.addAll([
       '--version',
       plan.version,
+      if (plan.riskConfirmed) '--confirm-risk',
+      if (plan.allowCritical) '--allow-critical',
       '--yes',
       '--output',
       'json',

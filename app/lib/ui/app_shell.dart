@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsGo brand tokens.
- * [OUTPUT]: Provides the desktop shell plus persistent Discover, shadcn_ui Installation Plan matrix/preflight/results, managed/external Library/detail, project and Agent views, operations, and Settings journeys.
+ * [OUTPUT]: Provides the desktop shell plus persistent Discover, shadcn_ui Installation Plan matrix/state-bound conflict-risk preflight/results, managed/external Library/detail, project and Agent views, operations, and Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -766,8 +766,10 @@ class _InstallOperation extends ChangeNotifier {
     SkillsGateway gateway,
     SkillSummary skill,
     String immutableVersion,
-    List<InstallationTargetSelection> selections,
-  ) async {
+    List<InstallationTargetSelection> selections, {
+    bool riskConfirmed = false,
+    bool allowCritical = false,
+  }) async {
     if (operating) return plan;
     operating = true;
     plan = null;
@@ -779,6 +781,8 @@ class _InstallOperation extends ChangeNotifier {
         skill,
         immutableVersion,
         selections,
+        riskConfirmed: riskConfirmed,
+        allowCritical: allowCritical,
       );
     } catch (caught) {
       error = caught;
@@ -837,6 +841,7 @@ class _InstallationPlanDialog extends StatefulWidget {
     required this.initialProjects,
     required this.operation,
     required this.onProjectAdded,
+    required this.riskPolicy,
   });
 
   final SkillsGateway gateway;
@@ -846,6 +851,7 @@ class _InstallationPlanDialog extends StatefulWidget {
   final List<AddedProject> initialProjects;
   final _InstallOperation operation;
   final ValueChanged<AddedProject> onProjectAdded;
+  final PersonalRiskPolicy riskPolicy;
 
   @override
   State<_InstallationPlanDialog> createState() =>
@@ -855,6 +861,7 @@ class _InstallationPlanDialog extends StatefulWidget {
 class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
   late List<AddedProject> projects;
   final selected = <String, InstallationTargetSelection>{};
+  bool riskConfirmed = false;
 
   @override
   void initState() {
@@ -929,7 +936,8 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
         target.scope == row.scope &&
         target.projectRoot == row.projectRoot &&
         target.agent == agent.id &&
-        target.version == widget.detail.immutableVersion,
+        target.version == widget.detail.immutableVersion &&
+        target.health == InstallationHealth.healthy,
   );
 
   bool _isEligible(
@@ -951,7 +959,7 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
     for (final row in rows)
       for (final agent in agents)
         if (selected.containsKey(_selectionKey(_selectionFor(row, agent))))
-          _selectionFor(row, agent),
+          selected[_selectionKey(_selectionFor(row, agent))]!,
   ];
 
   void _toggleCell(
@@ -1032,6 +1040,8 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
       widget.skill,
       widget.detail.immutableVersion,
       selectedInMatrixOrder,
+      riskConfirmed: riskConfirmed,
+      allowCritical: widget.riskPolicy.allowCriticalOverride,
     );
     if (mounted) setState(() {});
   }
@@ -1112,6 +1122,8 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
       ];
     }
     if (plan != null) {
+      final unresolved =
+          plan.summary.conflict > 0 || plan.summary.blockedByRisk > 0;
       return [
         ShadButton.outline(
           enabled: !widget.operation.operating,
@@ -1119,8 +1131,9 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
           child: Text(context.l10n.backToTargets),
         ),
         ShadButton(
-          enabled: !widget.operation.operating,
-          onPressed: _execute,
+          enabled:
+              !widget.operation.operating && (!unresolved || _canRefresh(plan)),
+          onPressed: unresolved ? _preflight : _execute,
           child: widget.operation.operating
               ? SizedBox(
                   width: 32,
@@ -1129,7 +1142,13 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
                     semanticsLabel: context.l10n.installationInProgress,
                   ),
                 )
-              : Text(context.l10n.installSelectedTargets(plan.targets.length)),
+              : Text(
+                  unresolved
+                      ? context.l10n.refreshInstallationPlan
+                      : context.l10n.installSelectedTargets(
+                          plan.targets.length,
+                        ),
+                ),
         ),
       ];
     }
@@ -1392,9 +1411,19 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
             color: SkillsTokens.blue,
           ),
           StatusChip(
+            label: context.l10n.planReplaceCount(plan.summary.replace),
+            color: SkillsTokens.amber,
+          ),
+          StatusChip(
             label: context.l10n.planConflictCount(plan.summary.conflict),
             color: plan.summary.conflict > 0
                 ? SkillsTokens.amber
+                : SkillsTokens.textTertiary,
+          ),
+          StatusChip(
+            label: context.l10n.planRiskCount(plan.summary.blockedByRisk),
+            color: plan.summary.blockedByRisk > 0
+                ? SkillsTokens.red
                 : SkillsTokens.textTertiary,
           ),
           StatusChip(label: plan.version, color: SkillsTokens.teal),
@@ -1409,6 +1438,10 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
         ),
       ),
       const SizedBox(height: 14),
+      if (plan.summary.blockedByRisk > 0) ...[
+        _riskResolution(plan),
+        const SizedBox(height: 12),
+      ],
       Expanded(
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1494,44 +1527,145 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
 
   Widget _plannedTarget(InstallationPlanItem item) => Padding(
     padding: const EdgeInsets.symmetric(vertical: 10),
-    child: Row(
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                _targetLabel(context, item.target),
-                style: const TextStyle(fontWeight: FontWeight.w700),
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    _targetLabel(context, item.target),
+                    style: const TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                  const SizedBox(height: 3),
+                  Text(
+                    item.target.path,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: SkillsTokens.textTertiary,
+                      fontFamily: SkillsTokens.monoFamily,
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 3),
-              Text(
-                item.target.path,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  color: SkillsTokens.textTertiary,
-                  fontFamily: SkillsTokens.monoFamily,
-                  fontSize: 11,
+            ),
+            const SizedBox(width: 10),
+            StatusChip(
+              label: _planActionLabel(context, item.action),
+              color: switch (item.action) {
+                InstallationPlanAction.create => SkillsTokens.green,
+                InstallationPlanAction.skip => SkillsTokens.blue,
+                InstallationPlanAction.replace => SkillsTokens.amber,
+                InstallationPlanAction.conflict ||
+                InstallationPlanAction.blockedByRisk => SkillsTokens.red,
+              },
+            ),
+          ],
+        ),
+        if (item.action == InstallationPlanAction.conflict) ...[
+          const SizedBox(height: 8),
+          if (item.reasonCode == 'shared-target-conflict')
+            ShadAlert.destructive(
+              icon: const Icon(Icons.hub_outlined),
+              title: Text(context.l10n.sharedTargetConflict),
+              description: Text(
+                context.l10n.sharedTargetConflictDescription(
+                  item.affectedBindings
+                      .map((binding) => binding.agent)
+                      .toSet()
+                      .join(', '),
                 ),
               ),
-            ],
-          ),
-        ),
-        const SizedBox(width: 10),
-        StatusChip(
-          label: _planActionLabel(context, item.action),
-          color: switch (item.action) {
-            InstallationPlanAction.create => SkillsTokens.green,
-            InstallationPlanAction.skip => SkillsTokens.blue,
-            InstallationPlanAction.replace => SkillsTokens.amber,
-            InstallationPlanAction.conflict ||
-            InstallationPlanAction.blockedByRisk => SkillsTokens.red,
-          },
-        ),
+            )
+          else
+            ShadCheckbox(
+              value: _selectionMatchesReview(item),
+              onChanged: (value) => _setResolution(item, value),
+              label: Text(_conflictResolutionLabel(context, item.reasonCode)),
+            ),
+        ],
       ],
     ),
   );
+
+  InstallationTargetSelection _selectionForTarget(
+    InstallationPlanTarget target,
+  ) {
+    final fallback = InstallationTargetSelection(
+      scope: target.scope,
+      projectRoot: target.projectRoot,
+      agent: target.agent,
+      mode: target.mode,
+    );
+    return selected[_selectionKey(fallback)] ?? fallback;
+  }
+
+  bool _selectionMatchesReview(InstallationPlanItem item) {
+    final selection = _selectionForTarget(item.target);
+    return selection.resolution == InstallationTargetResolution.replace &&
+        selection.expectedReason == item.reasonCode &&
+        selection.expectedState == item.stateToken;
+  }
+
+  void _setResolution(InstallationPlanItem item, bool replace) {
+    final current = _selectionForTarget(item.target);
+    setState(() {
+      selected[_selectionKey(current)] = current.copyWith(
+        resolution: replace
+            ? InstallationTargetResolution.replace
+            : InstallationTargetResolution.none,
+        expectedReason: replace ? item.reasonCode : '',
+        expectedState: replace ? item.stateToken : '',
+      );
+    });
+  }
+
+  bool _canRefresh(InstallationPlan plan) {
+    final conflictsResolved = plan.targets
+        .where((item) => item.action == InstallationPlanAction.conflict)
+        .every(_selectionMatchesReview);
+    if (!conflictsResolved) return false;
+    final blocked = plan.targets.where(
+      (item) => item.action == InstallationPlanAction.blockedByRisk,
+    );
+    if (blocked.isEmpty) return true;
+    final critical = blocked.any((item) => item.reasonCode == 'critical-risk');
+    return riskConfirmed &&
+        (!critical || widget.riskPolicy.allowCriticalOverride);
+  }
+
+  Widget _riskResolution(InstallationPlan plan) {
+    final critical = plan.targets.any(
+      (item) =>
+          item.action == InstallationPlanAction.blockedByRisk &&
+          item.reasonCode == 'critical-risk',
+    );
+    if (critical && !widget.riskPolicy.allowCriticalOverride) {
+      return ShadAlert.destructive(
+        icon: const Icon(Icons.shield_outlined),
+        title: Text(context.l10n.criticalRiskBlocked),
+        description: Text(context.l10n.criticalRiskOverrideDisabled),
+      );
+    }
+    return ShadAlert(
+      icon: const Icon(Icons.warning_amber_rounded),
+      title: Text(
+        critical
+            ? context.l10n.confirmCriticalRiskArtifact
+            : context.l10n.confirmHighRiskArtifact,
+      ),
+      description: ShadCheckbox(
+        value: riskConfirmed,
+        onChanged: (value) => setState(() => riskConfirmed = value),
+        label: Text(context.l10n.confirmRiskForSelectedTargets),
+      ),
+    );
+  }
 
   Widget _result(InstallationExecution execution) => Column(
     key: const ValueKey('installation-result'),
@@ -1687,6 +1821,14 @@ String _installationErrorLabel(BuildContext context, String code) =>
       _ => context.l10n.installationPlanFailed,
     };
 
+String _conflictResolutionLabel(BuildContext context, String code) =>
+    switch (code) {
+      'version-conflict' => context.l10n.replaceVersionConflict,
+      'identity-collision' => context.l10n.replaceIdentityCollision,
+      'local-modification' => context.l10n.replaceLocalModification,
+      _ => context.l10n.replaceConflictingTarget,
+    };
+
 class _RemoteDetailScreen extends StatefulWidget {
   const _RemoteDetailScreen({
     required this.gateway,
@@ -1712,6 +1854,7 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
   CliStatus? cliStatus;
   AgentCatalog? agentCatalog;
   List<AddedProject> addedProjects = const [];
+  PersonalRiskPolicy riskPolicy = const PersonalRiskPolicy();
   bool didOpenInitialPlan = false;
   bool get operating => widget.operation.operating;
   InstallationExecution? get execution => widget.operation.execution;
@@ -1743,10 +1886,12 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
         widget.gateway.loadRemoteDetail(widget.skill),
         widget.gateway.detectCli(),
         widget.gateway.loadAddedProjects(),
+        widget.gateway.loadRiskPolicy(),
       ]);
       detail = values[0] as SkillDetail;
       cliStatus = values[1] as CliStatus;
       addedProjects = values[2] as List<AddedProject>;
+      riskPolicy = values[3] as PersonalRiskPolicy;
       if (cliStatus!.isReady) {
         try {
           agentCatalog = await widget.gateway.inspectAgents();
@@ -1783,6 +1928,7 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
         catalog: agentCatalog!,
         initialProjects: addedProjects,
         operation: widget.operation,
+        riskPolicy: riskPolicy,
         onProjectAdded: (project) {
           final index = addedProjects.indexWhere(
             (item) => item.id == project.id,
@@ -3973,6 +4119,10 @@ Widget _installationHealthChip(
     InstallationHealth.replaced => (
       label: context.l10n.healthReplaced,
       color: SkillsTokens.red,
+    ),
+    InstallationHealth.localModification => (
+      label: context.l10n.healthLocalModification,
+      color: SkillsTokens.amber,
     ),
     InstallationHealth.unreadable => (
       label: context.l10n.healthUnreadable,

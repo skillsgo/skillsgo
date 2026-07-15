@@ -25,7 +25,7 @@ The normalized metadata extracted from the `SKILL.md` frontmatter, including at 
 _Avoid_: complete Skill archive, rendered Markdown body
 
 **Info**:
-The immutable resolution metadata for one Skill version, including the resolved version, source commit, directory tree SHA, and origin data needed to audit the artifact.
+The immutable resolution metadata for one Skill version, including the resolved version, source commit, directory tree SHA, origin, audited Risk Assessment, and Content Digest for the exact artifact bytes served by the Registry.
 _Avoid_: Manifest, mutable branch response
 
 **Immutable Skill Artifact**:

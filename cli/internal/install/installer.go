@@ -1,7 +1,14 @@
+/*
+ * [INPUT]: Depends on immutable Store entries, resolved Agent targets, filesystem metadata, and YAML target receipts.
+ * [OUTPUT]: Provides atomic symlink/copy installation, unambiguous directory and exact target-state digests, artifact-copy comparison, and per-target receipt creation.
+ * [POS]: Serves as the low-level materialization boundary used by Installation Plans and legacy CLI flows.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package install
 
 import (
 	"crypto/sha256"
+	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -127,6 +134,141 @@ func copyDirectory(source, destination string) error {
 		}
 		return closeErr
 	})
+}
+
+// DirectoryDigest returns a stable digest of directory entries, relative
+// paths, permission bits, and regular-file contents. It is used to detect
+// copy-mode Local Modifications without trusting mutable receipts.
+func DirectoryDigest(root string) (string, error) {
+	hash := sha256.New()
+	_, _ = hash.Write([]byte("skillsgo-directory-digest-v1\x00"))
+	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if path == root {
+			return nil
+		}
+		relative, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		kind := byte('f')
+		if entry.IsDir() {
+			kind = 'd'
+		} else if !info.Mode().IsRegular() {
+			return fmt.Errorf("unsupported target file type %q", path)
+		}
+		relativeBytes := []byte(filepath.ToSlash(relative))
+		_, _ = hash.Write([]byte{kind})
+		if err := binary.Write(hash, binary.BigEndian, uint64(len(relativeBytes))); err != nil {
+			return err
+		}
+		_, _ = hash.Write(relativeBytes)
+		if err := binary.Write(hash, binary.BigEndian, uint32(info.Mode().Perm())); err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		if err := binary.Write(hash, binary.BigEndian, uint64(info.Size())); err != nil {
+			return err
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			return err
+		}
+		_, copyErr := io.Copy(hash, file)
+		closeErr := file.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+		if closeErr != nil {
+			return closeErr
+		}
+		return nil
+	})
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+// CopyMatchesArtifact compares a copy-mode target with its immutable Store artifact.
+func CopyMatchesArtifact(target, artifact string) (bool, error) {
+	targetDigest, err := DirectoryDigest(target)
+	if err != nil {
+		return false, err
+	}
+	artifactDigest, err := DirectoryDigest(artifact)
+	if err != nil {
+		return false, err
+	}
+	return targetDigest == artifactDigest, nil
+}
+
+// TargetStateDigest returns a framed digest for the exact filesystem object
+// currently occupying an Installation Target path.
+func TargetStateDigest(path string) (string, error) {
+	hash := sha256.New()
+	_, _ = hash.Write([]byte("skillsgo-target-state-v1\x00"))
+	info, err := os.Lstat(path)
+	if os.IsNotExist(err) {
+		_, _ = hash.Write([]byte("missing"))
+		return hex.EncodeToString(hash.Sum(nil)), nil
+	}
+	if err != nil {
+		return "", err
+	}
+	switch {
+	case info.Mode()&os.ModeSymlink != 0:
+		link, err := os.Readlink(path)
+		if err != nil {
+			return "", err
+		}
+		_, _ = hash.Write([]byte("symlink"))
+		if err := binary.Write(hash, binary.BigEndian, uint64(len(link))); err != nil {
+			return "", err
+		}
+		_, _ = io.WriteString(hash, link)
+	case info.IsDir():
+		digest, err := DirectoryDigest(path)
+		if err != nil {
+			return "", err
+		}
+		_, _ = hash.Write([]byte("directory"))
+		if err := binary.Write(hash, binary.BigEndian, uint32(info.Mode().Perm())); err != nil {
+			return "", err
+		}
+		_, _ = io.WriteString(hash, digest)
+	case info.Mode().IsRegular():
+		_, _ = hash.Write([]byte("file"))
+		if err := binary.Write(hash, binary.BigEndian, uint32(info.Mode().Perm())); err != nil {
+			return "", err
+		}
+		if err := binary.Write(hash, binary.BigEndian, uint64(info.Size())); err != nil {
+			return "", err
+		}
+		file, err := os.Open(path)
+		if err != nil {
+			return "", err
+		}
+		_, copyErr := io.Copy(hash, file)
+		closeErr := file.Close()
+		if copyErr != nil {
+			return "", copyErr
+		}
+		if closeErr != nil {
+			return "", closeErr
+		}
+	default:
+		return "", fmt.Errorf("unsupported target file type %q", path)
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
 func writeTargetReceipt(entryRoot string, target Target) error {

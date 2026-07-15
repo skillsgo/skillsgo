@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on Store receipts, target receipts, filesystem bindings, and read-only inventory filters.
+ * [OUTPUT]: Provides managed Installation records, filtering, safe target removal, and receipt cleanup.
+ * [POS]: Serves as the managed Installation inventory boundary shared by plans, Library reconciliation, and mutations.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package install
 
 import (
@@ -14,14 +20,16 @@ import (
 )
 
 type Installation struct {
-	Name        string `json:"name"`
-	Coordinate  string `json:"coordinate"`
-	Version     string `json:"version"`
-	StoreRoot   string `json:"storeRoot"`
-	Artifact    string `json:"artifact"`
-	ReceiptPath string `json:"-"`
-	Target      Target `json:"target"`
-	InstalledAt string `json:"installedAt"`
+	Name          string `json:"name"`
+	Coordinate    string `json:"coordinate"`
+	Version       string `json:"version"`
+	StoreRoot     string `json:"storeRoot"`
+	Artifact      string `json:"artifact"`
+	ReceiptPath   string `json:"-"`
+	Target        Target `json:"target"`
+	InstalledAt   string `json:"installedAt"`
+	SHA256        string `json:"-"`
+	ContentDigest string `json:"-"`
 }
 
 type InventoryFilter struct {
@@ -68,6 +76,7 @@ func ListInstallations(storeRoot string, filter InventoryFilter) ([]Installation
 			Name: name, Coordinate: receipt.Coordinate, Version: receipt.Version,
 			StoreRoot: entryRoot, Artifact: filepath.Join(entryRoot, "artifact"), ReceiptPath: path,
 			Target: target, InstalledAt: targetReceipt.InstalledAt.Format("2006-01-02T15:04:05Z"),
+			SHA256: receipt.SHA256, ContentDigest: receipt.ContentDigest,
 		})
 		return nil
 	})

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on add-command flags, the Agent Catalog, Registry and Store clients, and the Installation Plan domain module.
- * [OUTPUT]: Adapts repeated strict JSON --target arguments into stable preflight or execution JSON at the public command boundary.
+ * [OUTPUT]: Adapts repeated strict JSON --target arguments, refreshes cached immutable assessments, and emits stable preflight or execution JSON at the public command boundary.
  * [POS]: Serves as the executable adapter for App-driven explicit multi-location, multi-Agent installation plans.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -55,6 +55,7 @@ func runExplicitInstallationPlan(cmd *cobra.Command, catalog *agent.Catalog, raw
 	request := plan.Request{
 		Source: rawSource, RequestedRef: requestedRef,
 		Name: options.skills[0], Targets: targets,
+		RiskConfirmed: options.riskConfirmed, AllowCritical: options.allowCritical,
 	}
 	preflight, err := plan.Build(catalog, entry, storage.Root, request)
 	if err != nil {
@@ -66,7 +67,10 @@ func runExplicitInstallationPlan(cmd *cobra.Command, catalog *agent.Catalog, raw
 			len(preflight.Targets), preflight.Summary.Create, preflight.Summary.Skip,
 		))
 	}
-	execution := plan.Execute(entry, request, preflight)
+	execution, err := plan.Execute(entry, storage.Root, request, preflight)
+	if err != nil {
+		return err
+	}
 	return writePlanOutput(cmd, options.output, execution, appi18n.F(
 		"plan.execution.success",
 		execution.Summary.Succeeded, execution.Summary.Skipped, execution.Summary.Failed,
@@ -74,18 +78,22 @@ func runExplicitInstallationPlan(cmd *cobra.Command, catalog *agent.Catalog, raw
 }
 
 func loadPlanEntry(cmd *cobra.Command, storage store.Store, registryURL string, reference source.Reference) (*store.Entry, error) {
+	client, err := registry.New(registryURL, nil)
+	if err != nil {
+		return nil, err
+	}
 	if reference.Version != "" && reference.Version != "main" {
-		entry, err := storage.Get(reference.Coordinate, reference.Version)
+		_, err := storage.Get(reference.Coordinate, reference.Version)
 		if err == nil {
-			return entry, nil
+			info, resolveErr := client.Resolve(cmd.Context(), reference.Coordinate, reference.Version)
+			if resolveErr != nil {
+				return nil, resolveErr
+			}
+			return storage.RefreshAssessment(reference.Coordinate, reference.Version, info)
 		}
 		if !errors.Is(err, store.ErrNotFound) {
 			return nil, err
 		}
-	}
-	client, err := registry.New(registryURL, nil)
-	if err != nil {
-		return nil, err
 	}
 	artifact, err := client.Fetch(cmd.Context(), reference.Coordinate, reference.Version)
 	if err != nil {

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable ZIP bytes, canonical Skill coordinates, and resolved artifact versions.
- * [OUTPUT]: Provides bounded artifact inspection with compression-independent content identity, real instructions, file metadata/content, executable signals, and deterministic risk evidence.
+ * [OUTPUT]: Provides bounded duplicate-safe artifact inspection with compression-independent content identity, real instructions, file metadata/content, executable signals, and deterministic risk evidence.
  * [POS]: Serves as the artifact-analysis boundary between Registry storage bytes and public audit metadata.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -105,6 +105,7 @@ func AnalyzeArtifact(data []byte, coordinate, version string) (*Result, error) {
 	}
 	textBudget := maxTotalTextBytes
 	contentHash := sha256.New()
+	seenPaths := make(map[string]bool, len(entries))
 	for _, entry := range entries {
 		if entry.FileInfo().IsDir() {
 			continue
@@ -113,9 +114,10 @@ func AnalyzeArtifact(data []byte, coordinate, version string) (*Result, error) {
 			return nil, fmt.Errorf("artifact file %q is outside expected prefix %q", entry.Name, prefix)
 		}
 		relative := strings.TrimPrefix(entry.Name, prefix)
-		if !validRelativePath(relative) {
-			return nil, fmt.Errorf("artifact file has invalid path %q", relative)
+		if !validRelativePath(relative) || seenPaths[relative] {
+			return nil, fmt.Errorf("artifact file has invalid or duplicate path %q", relative)
 		}
+		seenPaths[relative] = true
 		contents, err := readEntry(entry)
 		if err != nil {
 			return nil, fmt.Errorf("read artifact file %q: %w", relative, err)

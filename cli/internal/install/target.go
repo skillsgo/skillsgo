@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on the Agent Catalog, explicit scope/mode/Agent selections, project roots, and path-safe Skill names.
+ * [OUTPUT]: Provides shared Skill-name validation and deterministic Agent Installation Target resolution, including Eve subagents.
+ * [POS]: Serves as the logical-to-physical target mapping boundary beneath all CLI installation flows.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package install
 
 import (
@@ -75,6 +81,9 @@ func ResolveTargetsWithSubagents(catalog *agent.Catalog, ids, eveSubagents []str
 }
 
 func ResolveTargets(catalog *agent.Catalog, ids []string, scope Scope, mode Mode, projectRoot, skillName string) ([]Target, error) {
+	if err := ValidateSkillName(skillName); err != nil {
+		return nil, err
+	}
 	seen := map[string]bool{}
 	var targets []Target
 	for _, id := range ids {
@@ -100,4 +109,12 @@ func ResolveTargets(catalog *agent.Catalog, ids []string, scope Scope, mode Mode
 		targets = append(targets, Target{Agent: id, Scope: scope, Mode: mode, Path: path})
 	}
 	return targets, nil
+}
+
+func ValidateSkillName(name string) error {
+	if name == "" || name == "." || name == ".." ||
+		name != filepath.Base(name) || strings.ContainsAny(name, `/\\\x00`) {
+		return fmt.Errorf("invalid Skill name %q", name)
+	}
+	return nil
 }

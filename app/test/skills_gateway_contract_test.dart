@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings, discovery/detail parsing, managed/external CLI inventory, read-only local inspection, explicit project reference persistence, strict Agent machine contracts, typed failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings, discovery/detail parsing, managed/external CLI inventory including Local Modifications, read-only local inspection, explicit project reference persistence, strict state-bound Installation Plan and trusted-risk machine contracts, typed failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -263,7 +263,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 3,
+            'appProtocolVersion': 4,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -370,7 +370,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '0.1.0',
-          'appProtocolVersion': 3,
+          'appProtocolVersion': 4,
           'os': 'linux',
           'architecture': 'arm64',
         }),
@@ -398,7 +398,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '7.4.2',
-            'appProtocolVersion': 3,
+            'appProtocolVersion': 4,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -426,7 +426,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': 'dev',
-          'appProtocolVersion': 3,
+          'appProtocolVersion': 4,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -455,7 +455,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '1.0.0',
-          'appProtocolVersion': 3,
+          'appProtocolVersion': 4,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -482,7 +482,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 3,
+            'appProtocolVersion': 4,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -521,7 +521,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":2,"entries":[{"identity":"registry:github.com/flutter/skills/-/responsive-layout","name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"}]}]}',
+            '{"schemaVersion":3,"entries":[{"identity":"registry:github.com/flutter/skills/-/responsive-layout","name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -617,7 +617,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            r'{"schemaVersion":2,"entries":[{"identity":"registry:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"registry","risk":"unknown","health":"receipt-missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"targets":[{"scope":"user","projectRoot":"","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"healthy"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","mode":"symlink","version":"v2.0.0","receiptState":"missing","health":"receipt-missing"}]}]}',
+            r'{"schemaVersion":3,"entries":[{"identity":"registry:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"registry","risk":"unknown","health":"receipt-missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"targets":[{"scope":"user","projectRoot":"","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","mode":"symlink","version":"v2.0.0","receiptState":"missing","health":"receipt-missing"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -653,6 +653,10 @@ void main() {
     expect(skills.single.projects, [r'/work/project;$(touch nope)']);
     expect(skills.single.targets.last.mode, InstallationMode.symlink);
     expect(skills.single.health, InstallationHealth.receiptMissing);
+    expect(
+      skills.single.targets.first.health,
+      InstallationHealth.localModification,
+    );
     expect(skills.single.targets.last.receiptState, ReceiptState.missing);
     expect(
       skills.single.targets.last.health,
@@ -673,7 +677,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":2,"entries":[{"identity":"registry:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"healthy"}]}]}',
+            '{"schemaVersion":3,"entries":[{"identity":"registry:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -690,7 +694,7 @@ void main() {
       processRunner: _FakeProcessRunner()
         ..result = const ProcessOutput(
           exitCode: 0,
-          stdout: '{"schemaVersion":1,"entries":[]}',
+          stdout: '{"schemaVersion":2,"entries":[]}',
           stderr: '',
         ),
       initialCliPath: '/usr/local/bin/skillsgo',
@@ -704,7 +708,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":2,"entries":[{"identity":"external:abc","name":"testing","coordinate":"","provenance":"external","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/external/testing","mode":"external","version":"","receiptState":"missing","health":"healthy"}]},{"identity":"registry:github.com/a/b/-/testing","name":"testing","coordinate":"github.com/a/b/-/testing","provenance":"registry","risk":"low","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/managed/testing","mode":"copy","version":"v1","receiptState":"present","health":"healthy"}]}]}',
+            '{"schemaVersion":3,"entries":[{"identity":"external:abc","name":"testing","coordinate":"","provenance":"external","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/external/testing","mode":"external","version":"","receiptState":"missing","health":"healthy"}]},{"identity":"registry:github.com/a/b/-/testing","name":"testing","coordinate":"github.com/a/b/-/testing","provenance":"registry","risk":"low","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/managed/testing","mode":"copy","version":"v1","receiptState":"present","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -873,7 +877,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":2,"entries":[{"identity":"registry:github.com/a/b/-/test","name":"Test","coordinate":"github.com/a/b/-/test","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v0.0.0-test"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/test","mode":"copy","version":"v0.0.0-test","receiptState":"present","health":"healthy"}]}]}',
+              '{"schemaVersion":3,"entries":[{"identity":"registry:github.com/a/b/-/test","name":"Test","coordinate":"github.com/a/b/-/test","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v0.0.0-test"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/test","mode":"copy","version":"v0.0.0-test","receiptState":"present","health":"healthy"}]}]}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -1108,13 +1112,14 @@ void main() {
         'coordinate': coordinate,
         'version': 'v1',
         'name': 'test',
+        'risk': 'high',
       };
       final runner = _FakeProcessRunner()
         ..responses.addAll([
           ProcessOutput(
             exitCode: 0,
             stdout: jsonEncode({
-              'schemaVersion': 1,
+              'schemaVersion': 2,
               'phase': 'preflight',
               'artifact': artifact,
               'targets': [
@@ -1126,13 +1131,15 @@ void main() {
                 },
                 {
                   'target': projectTarget,
-                  'action': 'create',
+                  'action': 'replace',
+                  'reasonCode': 'identity-collision',
+                  'stateToken': 'sha256:reviewed-project',
                   'workspaceLockChange': true,
                 },
               ],
               'summary': {
-                'create': 1,
-                'replace': 0,
+                'create': 0,
+                'replace': 1,
                 'skip': 1,
                 'conflict': 0,
                 'blockedByRisk': 0,
@@ -1151,14 +1158,14 @@ void main() {
           ProcessOutput(
             exitCode: 0,
             stdout: jsonEncode({
-              'schemaVersion': 1,
+              'schemaVersion': 2,
               'phase': 'execution',
               'artifact': artifact,
               'results': [
                 {'target': userTarget, 'action': 'skip', 'outcome': 'skipped'},
                 {
                   'target': projectTarget,
-                  'action': 'create',
+                  'action': 'replace',
                   'outcome': 'succeeded',
                 },
               ],
@@ -1194,15 +1201,24 @@ void main() {
           projectRoot: projectRoot,
           agent: 'claude-code',
           mode: InstallationMode.copy,
+          resolution: InstallationTargetResolution.replace,
+          expectedReason: 'identity-collision',
+          expectedState: 'sha256:reviewed-project',
         ),
       ];
 
-      final plan = await gateway.preflightInstall(skill, 'v1', selections);
+      final plan = await gateway.preflightInstall(
+        skill,
+        'v1',
+        selections,
+        riskConfirmed: true,
+      );
 
       expect(plan.version, 'v1');
+      expect(plan.riskAssessment, SkillRiskAssessment.high);
       expect(plan.targets.map((target) => target.action), [
         InstallationPlanAction.skip,
-        InstallationPlanAction.create,
+        InstallationPlanAction.replace,
       ]);
       expect(plan.workspaceLockChanges.single.projectRoot, projectRoot);
       expect(runner.lastArguments!.take(4), [
@@ -1213,8 +1229,14 @@ void main() {
       ]);
       expect(
         runner.lastArguments,
-        containsAllInOrder(['--version', 'v1', '--preflight']),
+        containsAllInOrder([
+          '--version',
+          'v1',
+          '--confirm-risk',
+          '--preflight',
+        ]),
       );
+      expect(runner.lastArguments, isNot(contains('--risk')));
       final targetArguments = <Map<String, dynamic>>[];
       for (var index = 0; index < runner.lastArguments!.length; index++) {
         if (runner.lastArguments![index] == '--target') {
@@ -1231,6 +1253,9 @@ void main() {
           'projectRoot': projectRoot,
           'agent': 'claude-code',
           'mode': 'copy',
+          'resolution': 'replace',
+          'expectedReason': 'identity-collision',
+          'expectedState': 'sha256:reviewed-project',
         },
       ]);
 
@@ -1275,13 +1300,14 @@ void main() {
     ];
 
     Map<String, dynamic> validPreflight() => {
-      'schemaVersion': 1,
+      'schemaVersion': 2,
       'phase': 'preflight',
       'artifact': {
         'source': coordinate,
         'coordinate': coordinate,
         'version': 'v1',
         'name': 'test',
+        'risk': 'low',
       },
       'targets': [
         {
@@ -1325,7 +1351,7 @@ void main() {
     };
 
     final malformedPreflights = <Map<String, dynamic> Function()>[
-      () => validPreflight()..['schemaVersion'] = 2,
+      () => validPreflight()..['schemaVersion'] = 1,
       () => validPreflight()..['phase'] = 'execution',
       () {
         final value = validPreflight();
@@ -1354,6 +1380,33 @@ void main() {
         final value = validPreflight();
         final locks = value['workspaceLockChanges'] as List;
         locks.add(Map<String, dynamic>.from(locks.single as Map));
+        return value;
+      },
+      () {
+        final value = validPreflight();
+        final target = (value['targets'] as List).first as Map<String, dynamic>;
+        target
+          ..['action'] = 'conflict'
+          ..['reasonCode'] = 'shared-target-conflict'
+          ..['stateToken'] = 'sha256:shared'
+          ..['affectedBindings'] = [
+            {
+              'agent': 'codex',
+              'scope': 'user',
+              'mode': 'symlink',
+              'path': '/Users/test/.codex/skills/test',
+            },
+            {
+              'agent': 'claude-code',
+              'scope': 'user',
+              'mode': 'symlink',
+              'path': '/tmp/not-the-shared-target',
+            },
+          ];
+        final summary = value['summary'] as Map<String, dynamic>;
+        summary
+          ..['skip'] = 0
+          ..['conflict'] = 1;
         return value;
       },
     ];
@@ -1393,7 +1446,7 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout: jsonEncode({
-            'schemaVersion': 1,
+            'schemaVersion': 2,
             'phase': 'execution',
             'artifact': validPreflight()['artifact'],
             'results': [

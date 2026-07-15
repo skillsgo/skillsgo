@@ -1,15 +1,17 @@
 /*
  * [INPUT]: Uses the cataloging Protocol decorator with fixed immutable artifact metadata and temporary Catalog storage.
- * [OUTPUT]: Specifies that successful artifact resolution makes Skills discoverable through Catalog search.
+ * [OUTPUT]: Specifies that only successfully assessed artifact resolution makes Skills discoverable and exact Info responses carry immutable Risk and Content Digest.
  * [POS]: Serves as integration coverage between artifact protocol reads and Registry discovery indexing.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
+	"encoding/json"
 	"io"
-	"strings"
 	"testing"
 
 	"github.com/skillsgo/skillsgo/registry/pkg/download"
@@ -21,6 +23,7 @@ type fixedArtifactProtocol struct {
 	download.Protocol
 	info     []byte
 	manifest []byte
+	zip      []byte
 }
 
 func (p *fixedArtifactProtocol) Info(context.Context, string, string) ([]byte, error) {
@@ -32,15 +35,22 @@ func (p *fixedArtifactProtocol) Manifest(context.Context, string, string) ([]byt
 }
 
 func (p *fixedArtifactProtocol) Zip(context.Context, string, string) (storage.SizeReadCloser, error) {
-	return storage.NewSizer(io.NopCloser(strings.NewReader("zip")), 3), nil
+	return storage.NewSizer(io.NopCloser(bytes.NewReader(p.zip)), int64(len(p.zip))), nil
 }
 
 func TestCatalogProtocolIndexesSuccessfulArtifactResolution(t *testing.T) {
 	coordinate := "github.com/vercel-labs/skills/-/skills/find-skills"
 	entryPoints := map[string]func(t *testing.T, protocol download.Protocol){
 		"info": func(t *testing.T, protocol download.Protocol) {
-			_, err := protocol.Info(t.Context(), coordinate, "main")
+			data, err := protocol.Info(t.Context(), coordinate, "main")
 			require.NoError(t, err)
+			var assessed struct {
+				Risk          string `json:"Risk"`
+				ContentDigest string `json:"ContentDigest"`
+			}
+			require.NoError(t, json.Unmarshal(data, &assessed))
+			require.Equal(t, "unknown", assessed.Risk)
+			require.NotEmpty(t, assessed.ContentDigest)
 		},
 		"manifest": func(t *testing.T, protocol download.Protocol) {
 			_, err := protocol.Manifest(t.Context(), coordinate, "main")
@@ -59,6 +69,7 @@ func TestCatalogProtocolIndexesSuccessfulArtifactResolution(t *testing.T) {
 			underlying := &fixedArtifactProtocol{
 				info:     []byte(`{"Version":"v0.0.0-test","Time":"2026-07-15T00:00:00Z","Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/skills","Subdir":"skills/find-skills","Ref":"refs/heads/main","CommitSHA":"abc","TreeSHA":"def"}}`),
 				manifest: []byte("name: find-skills\ndescription: Finds useful Agent Skills.\n"),
+				zip:      catalogProtocolTestZIP(t, coordinate, "v0.0.0-test"),
 			}
 			protocol := withCatalog(underlying, metadata)
 
@@ -70,4 +81,50 @@ func TestCatalogProtocolIndexesSuccessfulArtifactResolution(t *testing.T) {
 			require.Equal(t, "v0.0.0-test", results[0].LatestVersion)
 		})
 	}
+}
+
+func TestCatalogProtocolDoesNotIndexWhenAssessmentFails(t *testing.T) {
+	coordinate := "github.com/vercel-labs/skills/-/skills/find-skills"
+	entryPoints := map[string]func(t *testing.T, protocol download.Protocol){
+		"info": func(t *testing.T, protocol download.Protocol) {
+			_, err := protocol.Info(t.Context(), coordinate, "main")
+			require.Error(t, err)
+		},
+		"manifest": func(t *testing.T, protocol download.Protocol) {
+			_, err := protocol.Manifest(t.Context(), coordinate, "main")
+			require.Error(t, err)
+		},
+		"zip": func(t *testing.T, protocol download.Protocol) {
+			_, err := protocol.Zip(t.Context(), coordinate, "main")
+			require.Error(t, err)
+		},
+	}
+
+	for name, invoke := range entryPoints {
+		t.Run(name, func(t *testing.T) {
+			_, metadata := testCatalogAPI(t)
+			protocol := withCatalog(&fixedArtifactProtocol{
+				info:     []byte(`{"Version":"v0.0.0-test"}`),
+				manifest: []byte("name: find-skills\ndescription: Finds useful Agent Skills.\n"),
+				zip:      []byte("not a ZIP archive"),
+			}, metadata)
+
+			invoke(t, protocol)
+			results, searchErr := metadata.Search(t.Context(), "find", 20, 0)
+			require.NoError(t, searchErr)
+			require.Empty(t, results)
+		})
+	}
+}
+
+func catalogProtocolTestZIP(t *testing.T, coordinate, version string) []byte {
+	t.Helper()
+	var buffer bytes.Buffer
+	writer := zip.NewWriter(&buffer)
+	entry, err := writer.Create(coordinate + "@" + version + "/SKILL.md")
+	require.NoError(t, err)
+	_, err = entry.Write([]byte("---\nname: find-skills\ndescription: Finds useful Agent Skills.\n---\nUse this Skill.\n"))
+	require.NoError(t, err)
+	require.NoError(t, writer.Close())
+	return buffer.Bytes()
 }

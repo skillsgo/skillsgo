@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on validated Skill Coordinates, immutable Registry artifacts, ZIP archives, and filesystem containment rules.
+ * [OUTPUT]: Provides confined immutable Store put/get operations, safe extraction, immutable-content checks, refreshable assessment metadata, and receipts.
+ * [POS]: Serves as the local Content-addressed Store boundary beneath installation and inventory flows.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package store
 
 import (
@@ -13,16 +19,19 @@ import (
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/registry"
+	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"gopkg.in/yaml.v3"
 )
 
 var ErrNotFound = fmt.Errorf("Store 条目不存在")
 
 type Receipt struct {
-	Coordinate string          `yaml:"coordinate"`
-	Version    string          `yaml:"version"`
-	SHA256     string          `yaml:"sha256"`
-	Origin     registry.Origin `yaml:"origin"`
+	Coordinate    string          `yaml:"coordinate"`
+	Version       string          `yaml:"version"`
+	SHA256        string          `yaml:"sha256"`
+	ContentDigest string          `yaml:"contentDigest"`
+	Risk          registry.Risk   `yaml:"risk"`
+	Origin        registry.Origin `yaml:"origin"`
 }
 
 type Entry struct {
@@ -36,7 +45,10 @@ type Store struct{ Root string }
 func DefaultRoot(home string) string { return filepath.Join(home, ".skillsgo", "store") }
 
 func (s Store) Get(coordinate, version string) (*Entry, error) {
-	root := s.entryRoot(coordinate, version)
+	root, err := s.entryRoot(coordinate, version)
+	if err != nil {
+		return nil, err
+	}
 	receipt, err := readReceipt(filepath.Join(root, "receipt.yaml"))
 	if os.IsNotExist(err) {
 		return nil, ErrNotFound
@@ -47,6 +59,9 @@ func (s Store) Get(coordinate, version string) (*Entry, error) {
 	if receipt.Coordinate != coordinate || receipt.Version != version {
 		return nil, fmt.Errorf("Store 条目身份不匹配：期望 %s@%s，得到 %s@%s", coordinate, version, receipt.Coordinate, receipt.Version)
 	}
+	if !receipt.Risk.Valid() || !strings.HasPrefix(receipt.ContentDigest, "sha256:") {
+		return nil, fmt.Errorf("Store entry is missing immutable assessment metadata")
+	}
 	artifact := filepath.Join(root, "artifact")
 	if info, err := os.Stat(filepath.Join(artifact, "SKILL.md")); err != nil || !info.Mode().IsRegular() {
 		if err == nil {
@@ -54,21 +69,53 @@ func (s Store) Get(coordinate, version string) (*Entry, error) {
 		}
 		return nil, fmt.Errorf("Store 条目缺少有效 SKILL.md: %w", err)
 	}
+	if err := registry.VerifyContentDirectory(artifact, receipt.ContentDigest); err != nil {
+		return nil, fmt.Errorf("Store artifact integrity check failed: %w", err)
+	}
 	return &Entry{Root: root, Artifact: artifact, Receipt: receipt}, nil
 }
 
-func (s Store) entryRoot(coordinate, version string) string {
-	return filepath.Join(s.Root, filepath.FromSlash(coordinate+"@"+version))
+func (s Store) entryRoot(coordinate, version string) (string, error) {
+	if err := source.ValidateCoordinate(coordinate); err != nil {
+		return "", err
+	}
+	if err := source.ValidateVersion(version); err != nil {
+		return "", fmt.Errorf("invalid immutable Skill version %q: %w", version, err)
+	}
+	root, err := filepath.Abs(s.Root)
+	if err != nil {
+		return "", err
+	}
+	candidate := filepath.Join(root, filepath.FromSlash(coordinate+"@"+version))
+	relative, err := filepath.Rel(root, candidate)
+	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
+		return "", fmt.Errorf("Store entry escapes configured root")
+	}
+	return candidate, nil
 }
 
 func (s Store) Put(artifact *registry.Artifact) (*Entry, error) {
-	receipt := Receipt{Coordinate: artifact.Coordinate, Version: artifact.Info.Version, Origin: artifact.Info.Origin}
+	if !artifact.Info.Risk.Valid() || !strings.HasPrefix(artifact.Info.ContentDigest, "sha256:") {
+		return nil, fmt.Errorf("Registry artifact is missing immutable assessment metadata")
+	}
+	if err := registry.VerifyContentDigest(
+		artifact.ZIP, artifact.Coordinate, artifact.Info.Version, artifact.Info.ContentDigest,
+	); err != nil {
+		return nil, err
+	}
+	receipt := Receipt{
+		Coordinate: artifact.Coordinate, Version: artifact.Info.Version,
+		ContentDigest: artifact.Info.ContentDigest, Risk: artifact.Info.Risk, Origin: artifact.Info.Origin,
+	}
 	hash := sha256.Sum256(artifact.ZIP)
 	receipt.SHA256 = hex.EncodeToString(hash[:])
-	root := s.entryRoot(artifact.Coordinate, artifact.Info.Version)
+	root, err := s.entryRoot(artifact.Coordinate, artifact.Info.Version)
+	if err != nil {
+		return nil, err
+	}
 	artifactRoot := filepath.Join(root, "artifact")
 	if existing, err := readReceipt(filepath.Join(root, "receipt.yaml")); err == nil && existing.SHA256 == receipt.SHA256 {
-		return &Entry{Root: root, Artifact: artifactRoot, Receipt: existing}, nil
+		return s.RefreshAssessment(artifact.Coordinate, artifact.Info.Version, artifact.Info)
 	}
 	if _, err := os.Stat(root); err == nil {
 		return nil, fmt.Errorf("Store 条目 %q 已存在，但制品摘要不同", root)
@@ -104,6 +151,64 @@ func (s Store) Put(artifact *registry.Artifact) (*Entry, error) {
 		return nil, err
 	}
 	return &Entry{Root: root, Artifact: artifactRoot, Receipt: receipt}, nil
+}
+
+// RefreshAssessment updates risk metadata for an already cached immutable
+// artifact without changing its content, provenance, or files.
+func (s Store) RefreshAssessment(coordinate, version string, info registry.Info) (*Entry, error) {
+	if info.Version != version || !info.Risk.Valid() || !strings.HasPrefix(info.ContentDigest, "sha256:") {
+		return nil, fmt.Errorf("Registry returned incomplete assessed Info for %s@%s", coordinate, version)
+	}
+	entry, err := s.Get(coordinate, version)
+	if err != nil {
+		return nil, err
+	}
+	if entry.Receipt.ContentDigest != info.ContentDigest {
+		return nil, fmt.Errorf(
+			"immutable Content Digest changed for %s@%s: %s != %s",
+			coordinate, version, entry.Receipt.ContentDigest, info.ContentDigest,
+		)
+	}
+	if entry.Receipt.Origin != info.Origin {
+		return nil, fmt.Errorf("immutable Origin changed for %s@%s", coordinate, version)
+	}
+	updated := entry.Receipt
+	updated.Risk = info.Risk
+	receiptBytes, err := yaml.Marshal(updated)
+	if err != nil {
+		return nil, err
+	}
+	// Persist the enforcement receipt first so an interrupted refresh cannot
+	// leave a newly elevated risk only in the informational metadata file.
+	if err := writeFileAtomic(filepath.Join(entry.Root, "receipt.yaml"), receiptBytes, 0o600); err != nil {
+		return nil, err
+	}
+	if err := writeFileAtomic(filepath.Join(entry.Root, "info.json"), mustJSON(info), 0o600); err != nil {
+		return nil, err
+	}
+	entry.Receipt = updated
+	return entry, nil
+}
+
+func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".skillsgo-metadata-")
+	if err != nil {
+		return err
+	}
+	temporaryPath := temporary.Name()
+	defer os.Remove(temporaryPath)
+	if err := temporary.Chmod(mode); err != nil {
+		_ = temporary.Close()
+		return err
+	}
+	if _, err := temporary.Write(data); err != nil {
+		_ = temporary.Close()
+		return err
+	}
+	if err := temporary.Close(); err != nil {
+		return err
+	}
+	return os.Rename(temporaryPath, path)
 }
 
 func extract(data []byte, prefix, destination string) error {
