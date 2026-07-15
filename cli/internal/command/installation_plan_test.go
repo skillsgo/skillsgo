@@ -165,3 +165,70 @@ func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
 	require.Equal(t, "critical-risk", refreshed.Targets[0].ReasonCode)
 	require.NoFileExists(t, refreshed.Targets[0].Target.Path)
 }
+
+func TestExplicitInstallationNDJSONReportsEveryTargetAndRetainsSuccess(t *testing.T) {
+	root := t.TempDir()
+	home := filepath.Join(root, "home")
+	agentHome := filepath.Join(root, "agent-home")
+	projectRoot := filepath.Join(root, "project")
+	require.NoError(t, os.MkdirAll(agentHome, 0o700))
+	require.NoError(t, os.MkdirAll(projectRoot, 0o700))
+	t.Setenv("HOME", home)
+	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
+	coordinate, version := "github.com/example/skills/-/demo", "v1"
+	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{
+		"SKILL.md": "---\nname: demo\ndescription: partial execution\n---\n",
+	})
+	contentDigest, err := registry.ContentDigest(zipData, coordinate, version)
+	require.NoError(t, err)
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch {
+		case strings.HasSuffix(request.URL.Path, ".info"):
+			fmt.Fprintf(writer, `{"Version":%q,"Risk":"low","ContentDigest":%q,"Origin":{"VCS":"git","URL":"https://github.com/example/skills","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, version, contentDigest)
+		case strings.HasSuffix(request.URL.Path, "/"+version+".manifest"):
+			fmt.Fprint(writer, "name: demo\ndescription: partial execution\n")
+		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
+			_, _ = writer.Write(zipData)
+		default:
+			http.NotFound(writer, request)
+		}
+	}))
+	defer server.Close()
+	arguments := []string{
+		"add", coordinate, "--skill", "demo",
+		"--target", `{"scope":"user","agent":"test-agent","mode":"copy"}`,
+		"--target", fmt.Sprintf(`{"scope":"project","projectRoot":%q,"agent":"test-agent","mode":"copy"}`, projectRoot),
+		"--version", version, "--yes", "--output", "ndjson", "--registry", server.URL,
+	}
+	output := &triggeringBuffer{trigger: func() {
+		require.NoError(t, os.WriteFile(filepath.Join(projectRoot, ".test-agent"), []byte("blocks target parent"), 0o600))
+	}}
+	require.NoError(t, Execute(arguments, output, output), output.String())
+	lines := strings.Split(strings.TrimSpace(output.String()), "\n")
+	require.Len(t, lines, 5)
+	for index, line := range lines[:4] {
+		var event plan.Progress
+		require.NoError(t, json.Unmarshal([]byte(line), &event))
+		require.Equal(t, "execution-progress", event.Phase)
+		require.Equal(t, index+1, event.Sequence)
+	}
+	var execution plan.Execution
+	require.NoError(t, json.Unmarshal([]byte(lines[4]), &execution))
+	require.Equal(t, 1, execution.Summary.Succeeded)
+	require.Equal(t, 1, execution.Summary.Failed)
+	require.FileExists(t, filepath.Join(agentHome, "skills", "demo", "SKILL.md"))
+}
+
+type triggeringBuffer struct {
+	bytes.Buffer
+	triggered bool
+	trigger   func()
+}
+
+func (buffer *triggeringBuffer) Write(data []byte) (int, error) {
+	if !buffer.triggered {
+		buffer.triggered = true
+		buffer.trigger()
+	}
+	return buffer.Buffer.Write(data)
+}
