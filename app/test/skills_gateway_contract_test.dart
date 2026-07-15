@@ -1,0 +1,510 @@
+/*
+ * [INPUT]: Uses SkillsGateway with controlled HTTP, process, and temporary-filesystem boundaries.
+ * [OUTPUT]: Specifies Registry parsing, local inspection, CLI argument safety, and bundled CLI handshake behavior.
+ * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+import 'dart:convert';
+import 'dart:io';
+
+import 'package:flutter_test/flutter_test.dart';
+import 'package:http/http.dart' as http;
+import 'package:http/testing.dart';
+import 'package:skillsplay/domain/skills_gateway.dart';
+import 'package:skillsplay/infrastructure/real_skills_gateway.dart';
+
+void main() {
+  test(
+    'detectCli verifies the bundled executable without searching PATH',
+    () async {
+      final runner = _FakeProcessRunner()
+        ..result = ProcessOutput(
+          exitCode: 0,
+          stdout: jsonEncode({
+            'schemaVersion': 1,
+            'product': 'skillsgo',
+            'version': '0.1.0',
+            'appProtocolVersion': 1,
+            'os': 'darwin',
+            'architecture': 'arm64',
+          }),
+          stderr: '',
+        );
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        bundledCliPath:
+            '/Applications/SkillsPlay.app/Contents/Resources/bin/skillsgo',
+        allowDeveloperCliOverride: false,
+        expectedCliOS: 'darwin',
+      );
+
+      final status = await gateway.detectCli();
+
+      expect(status.availability, CliAvailability.ready);
+      expect(status.version, '0.1.0');
+      expect(
+        status.path,
+        '/Applications/SkillsPlay.app/Contents/Resources/bin/skillsgo',
+      );
+      expect(runner.calls, hasLength(1));
+      expect(
+        runner.calls.single.executable,
+        '/Applications/SkillsPlay.app/Contents/Resources/bin/skillsgo',
+      );
+      expect(runner.calls.single.arguments, ['version', '--output', 'json']);
+    },
+  );
+
+  test('detectCli reports a damaged bundled executable response', () async {
+    final runner = _FakeProcessRunner()
+      ..result = const ProcessOutput(
+        exitCode: 0,
+        stdout: '{"product":"not-skillsgo"}',
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      bundledCliPath: '/bundle/skillsgo',
+      allowDeveloperCliOverride: false,
+      expectedCliOS: 'darwin',
+    );
+
+    final status = await gateway.detectCli();
+
+    expect(status.availability, CliAvailability.incompatible);
+    expect(status.issue, CliIssue.damaged);
+    expect(status.path, '/bundle/skillsgo');
+  });
+
+  test('detectCli reports a missing or non-runnable bundled CLI', () async {
+    final runner = _FakeProcessRunner()
+      ..result = const ProcessOutput(
+        exitCode: 127,
+        stdout: '',
+        stderr: 'No such file',
+      );
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      bundledCliPath: '/bundle/skillsgo',
+      allowDeveloperCliOverride: false,
+    );
+
+    final status = await gateway.detectCli();
+
+    expect(status.availability, CliAvailability.missing);
+    expect(status.issue, CliIssue.missing);
+    expect(runner.calls, hasLength(1));
+  });
+
+  test('detectCli rejects an incompatible App protocol', () async {
+    final runner = _FakeProcessRunner()
+      ..result = ProcessOutput(
+        exitCode: 0,
+        stdout: jsonEncode({
+          'schemaVersion': 1,
+          'product': 'skillsgo',
+          'version': '9.0.0',
+          'appProtocolVersion': 2,
+          'os': 'darwin',
+          'architecture': 'arm64',
+        }),
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      bundledCliPath: '/bundle/skillsgo',
+      allowDeveloperCliOverride: false,
+    );
+
+    final status = await gateway.detectCli();
+
+    expect(status.availability, CliAvailability.incompatible);
+    expect(status.issue, CliIssue.incompatible);
+    expect(status.version, '9.0.0');
+  });
+
+  test('detectCli rejects a CLI built for another operating system', () async {
+    final runner = _FakeProcessRunner()
+      ..result = ProcessOutput(
+        exitCode: 0,
+        stdout: jsonEncode({
+          'schemaVersion': 1,
+          'product': 'skillsgo',
+          'version': '0.1.0',
+          'appProtocolVersion': 1,
+          'os': 'linux',
+          'architecture': 'arm64',
+        }),
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      bundledCliPath: '/bundle/skillsgo',
+      allowDeveloperCliOverride: false,
+    );
+
+    final status = await gateway.detectCli();
+
+    expect(status.availability, CliAvailability.incompatible);
+    expect(status.issue, CliIssue.incompatible);
+  });
+
+  test(
+    'detectCli accepts a different version with a compatible protocol',
+    () async {
+      final runner = _FakeProcessRunner()
+        ..result = ProcessOutput(
+          exitCode: 0,
+          stdout: jsonEncode({
+            'schemaVersion': 1,
+            'product': 'skillsgo',
+            'version': '7.4.2',
+            'appProtocolVersion': 1,
+            'os': 'darwin',
+            'architecture': 'arm64',
+          }),
+          stderr: '',
+        );
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        bundledCliPath: '/bundle/skillsgo',
+        allowDeveloperCliOverride: false,
+        expectedCliOS: 'darwin',
+      );
+
+      final status = await gateway.detectCli();
+
+      expect(status.availability, CliAvailability.ready);
+      expect(status.version, '7.4.2');
+    },
+  );
+
+  test('detectCli permits an explicit development override', () async {
+    final runner = _FakeProcessRunner()
+      ..result = ProcessOutput(
+        exitCode: 0,
+        stdout: jsonEncode({
+          'schemaVersion': 1,
+          'product': 'skillsgo',
+          'version': 'dev',
+          'appProtocolVersion': 1,
+          'os': 'darwin',
+          'architecture': 'arm64',
+        }),
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      bundledCliPath: '/bundle/skillsgo',
+      allowDeveloperCliOverride: true,
+      expectedCliOS: 'darwin',
+    );
+
+    final status = await gateway.detectCli(customPath: '/dev bin/skillsgo');
+
+    expect(status.availability, CliAvailability.ready);
+    expect(status.path, '/dev bin/skillsgo');
+    expect(runner.calls.single.executable, '/dev bin/skillsgo');
+    expect(runner.calls.single.arguments, ['version', '--output', 'json']);
+  });
+
+  test('detectCli ignores development overrides in production mode', () async {
+    final runner = _FakeProcessRunner()
+      ..result = ProcessOutput(
+        exitCode: 0,
+        stdout: jsonEncode({
+          'schemaVersion': 1,
+          'product': 'skillsgo',
+          'version': '1.0.0',
+          'appProtocolVersion': 1,
+          'os': 'darwin',
+          'architecture': 'arm64',
+        }),
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      bundledCliPath: '/bundle/skillsgo',
+      allowDeveloperCliOverride: false,
+      expectedCliOS: 'darwin',
+    );
+
+    await gateway.detectCli(customPath: '/untrusted/skillsgo');
+
+    expect(runner.calls.single.executable, '/bundle/skillsgo');
+  });
+
+  test('failed revalidation prevents later CLI operations', () async {
+    final runner = _FakeProcessRunner()
+      ..responses.addAll([
+        ProcessOutput(
+          exitCode: 0,
+          stdout: jsonEncode({
+            'schemaVersion': 1,
+            'product': 'skillsgo',
+            'version': '0.1.0',
+            'appProtocolVersion': 1,
+            'os': 'darwin',
+            'architecture': 'arm64',
+          }),
+          stderr: '',
+        ),
+        const ProcessOutput(
+          exitCode: 0,
+          stdout: '{"product":"damaged"}',
+          stderr: '',
+        ),
+        const ProcessOutput(
+          exitCode: 0,
+          stdout: '{"product":"still-damaged"}',
+          stderr: '',
+        ),
+      ]);
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      bundledCliPath: '/bundle/skillsgo',
+      allowDeveloperCliOverride: false,
+      expectedCliOS: 'darwin',
+    );
+
+    expect((await gateway.detectCli()).isReady, isTrue);
+    expect(
+      (await gateway.detectCli()).availability,
+      CliAvailability.incompatible,
+    );
+
+    await expectLater(gateway.listInstalled(), throwsA(isA<SkillsException>()));
+    expect(runner.lastArguments, ['version', '--output', 'json']);
+  });
+
+  test('search returns domain summaries from the official response', () async {
+    final gateway = RealSkillsGateway(
+      httpClient: MockClient((request) async {
+        expect(request.url.path, '/v1/search');
+        return http.Response(
+          jsonEncode({
+            'skills': [
+              {
+                'coordinate': 'github.com/flutter/skills/-/responsive-layout',
+                'skillPath': 'responsive-layout',
+                'name': 'Responsive Layout',
+                'installs': 1200,
+              },
+            ],
+          }),
+          200,
+        );
+      }),
+      processRunner: _FakeProcessRunner(),
+    );
+
+    final results = await gateway.search('responsive');
+
+    expect(results, hasLength(1));
+    expect(
+      results.single.source,
+      'github.com/flutter/skills/-/responsive-layout',
+    );
+    expect(results.single.skillId, 'responsive-layout');
+    expect(results.single.installs, 1200);
+  });
+
+  test('listInstalled parses the CLI global JSON contract', () async {
+    final runner = _FakeProcessRunner()
+      ..result = const ProcessOutput(
+        exitCode: 0,
+        stdout:
+            '[{"name":"testing","coordinate":"github.com/a/b","target":{"path":"/tmp/testing","scope":"user","agent":"codex","mode":"copy"}}]',
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      httpClient: MockClient((_) async => http.Response('{}', 200)),
+      processRunner: runner,
+      initialCliPath: '/usr/local/bin/skillsgo',
+    );
+
+    final skills = await gateway.listInstalled();
+
+    expect(skills.single.name, 'testing');
+    expect(skills.single.isLinkedToCodex, isTrue);
+    expect(runner.lastArguments, ['list', '--global', '--json']);
+  });
+
+  test('search rejects non-2xx, invalid JSON and missing fields', () async {
+    for (final response in [
+      http.Response('nope', 503),
+      http.Response('{', 200),
+      http.Response('{"skills":[{"name":"missing"}]}', 200),
+    ]) {
+      final gateway = RealSkillsGateway(
+        httpClient: MockClient((_) async => response),
+        processRunner: _FakeProcessRunner(),
+      );
+      await expectLater(
+        gateway.search('test'),
+        throwsA(isA<SkillsException>()),
+      );
+    }
+  });
+
+  test('remote detail reads Registry info then immutable manifest', () async {
+    final gateway = RealSkillsGateway(
+      httpClient: MockClient((request) async {
+        if (request.url.path.endsWith('.info')) {
+          return http.Response(
+            jsonEncode({
+              'Version': 'v0.0.0-test',
+              'Origin': {'TreeSHA': 'abc'},
+            }),
+            200,
+          );
+        }
+        expect(request.url.path, endsWith('/@v/v0.0.0-test.manifest'));
+        return http.Response('name: test\ndescription: Test Skill', 200);
+      }),
+      processRunner: _FakeProcessRunner(),
+    );
+    const skill = SkillSummary(
+      id: 'github.com/a/b/-/test',
+      skillId: 'test',
+      name: 'Test',
+      source: 'github.com/a/b/-/test',
+      installs: 2,
+    );
+
+    final detail = await gateway.loadRemoteDetail(skill);
+    expect(
+      detail.files.map((file) => file.path),
+      containsAll(['v0.0.0-test.info', 'v0.0.0-test.manifest']),
+    );
+    expect(detail.markdown, contains('description: Test Skill'));
+  });
+
+  test('hostile write inputs remain exact arguments without a shell', () async {
+    final runner = _FakeProcessRunner();
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: r'/Applications/Skills Play/$(echo nope)/skillsgo',
+    );
+    const summary = SkillSummary(
+      id: r'github.com/a/b/-/test;$(touch nope)',
+      skillId: r"test name';$(touch nope)",
+      name: 'Test',
+      source: r'github.com/a/b/-/test;$(touch nope)',
+      installs: 0,
+    );
+    const installed = InstalledSkill(
+      name: r'Test ; $(touch nope)',
+      path: r'/tmp/Test ; $(touch nope)',
+      agents: ['codex'],
+    );
+
+    await gateway.install(summary);
+    expect(
+      runner.lastExecutable,
+      r'/Applications/Skills Play/$(echo nope)/skillsgo',
+    );
+    expect(runner.lastArguments, [
+      'add',
+      r'github.com/a/b/-/test;$(touch nope)',
+      '--skill',
+      r"test name';$(touch nope)",
+      '--global',
+      '--agent',
+      'codex',
+      '--yes',
+      '--output',
+      'json',
+      '--registry',
+      'http://localhost:3000',
+    ]);
+    await gateway.update(installed);
+    expect(runner.lastArguments, [
+      'update',
+      r'Test ; $(touch nope)',
+      '--global',
+      '--yes',
+    ]);
+    await gateway.remove(installed);
+    expect(runner.lastArguments, [
+      'remove',
+      r'Test ; $(touch nope)',
+      '--global',
+      '--yes',
+    ]);
+    expect(
+      runner.calls.map((call) => call.executable),
+      isNot(contains('/bin/sh')),
+    );
+  });
+
+  test('local detail reads canonical SKILL.md without writing files', () async {
+    final directory = await Directory.systemTemp.createTemp('skillsplay-test-');
+    addTearDown(() => directory.delete(recursive: true));
+    final file = File('${directory.path}/SKILL.md');
+    await file.writeAsString('# Local');
+    final before = await file.lastModified();
+    final gateway = RealSkillsGateway(processRunner: _FakeProcessRunner());
+
+    final detail = await gateway.loadLocalDetail(
+      InstalledSkill(
+        name: 'Local',
+        path: directory.path,
+        agents: const ['codex'],
+      ),
+    );
+
+    expect(detail.markdown, '# Local');
+    expect(await file.lastModified(), before);
+  });
+
+  test('update check delegates to SkillsGo JSON contract', () async {
+    final runner = _FakeProcessRunner()
+      ..result = const ProcessOutput(
+        exitCode: 0,
+        stdout: '[{"name":"Test","available":true}]',
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/bin/skillsgo',
+    );
+
+    final states = await gateway.checkUpdates(const [
+      InstalledSkill(name: 'Test', path: '/tmp/Test', agents: ['codex']),
+    ]);
+
+    expect(states['Test'], UpdateState.available);
+    expect(runner.lastArguments, [
+      'update',
+      'Test',
+      '--global',
+      '--check',
+      '--output',
+      'json',
+      '--registry',
+      'http://localhost:3000',
+    ]);
+  });
+}
+
+class _FakeProcessRunner implements ProcessRunner {
+  ProcessOutput result = const ProcessOutput(
+    exitCode: 0,
+    stdout: '',
+    stderr: '',
+  );
+  List<String>? lastArguments;
+  String? lastExecutable;
+  final calls = <({String executable, List<String> arguments})>[];
+  final responses = <ProcessOutput>[];
+
+  @override
+  Future<ProcessOutput> run(String executable, List<String> arguments) async {
+    lastExecutable = executable;
+    lastArguments = arguments;
+    calls.add((executable: executable, arguments: List.of(arguments)));
+    if (responses.isNotEmpty) return responses.removeAt(0);
+    return result;
+  }
+}

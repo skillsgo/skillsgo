@@ -1,0 +1,210 @@
+package stash
+
+import (
+	"context"
+	goerrors "errors"
+	"strings"
+	"time"
+
+	"github.com/bsm/redislock"
+	"github.com/redis/go-redis/v9"
+	"github.com/skillsgo/skillsgo/registry/pkg/config"
+	"github.com/skillsgo/skillsgo/registry/pkg/errors"
+	"github.com/skillsgo/skillsgo/registry/pkg/observ"
+	"github.com/skillsgo/skillsgo/registry/pkg/storage"
+)
+
+// RedisLogger mirrors github.com/go-redis/redis/v9/internal.Logging.
+type RedisLogger interface {
+	Printf(ctx context.Context, format string, v ...any)
+}
+
+var errPasswordsDoNotMatch = goerrors.New("a redis url was parsed that contained a password but the configuration also defined a specific redis password, please ensure these values match or use only one of them")
+
+// getRedisClientOptions takes an endpoint and password and returns *redis.Options to use
+// with the redis client. endpoint may be a redis url or host:port combination. If a redis
+// url is used and a password is also used this function checks to make sure the parsed redis
+// url has produced the same password. Preferably, one should use EITHER a redis url or a host:port
+// combination w/password but not both. More information on the redis url structure can be found
+// here: https://github.com/redis/redis-specifications/blob/master/uri/redis.txt
+func getRedisClientOptions(endpoint, password string) (*redis.Options, error) {
+	// Try parsing the endpoint as a redis url first. The redis library does not define
+	// a specific error when parsing the url so we fall back on the old config here
+	// which passed in arguments.
+	options, err := redis.ParseURL(endpoint)
+	if err != nil {
+		return &redis.Options{ //nolint:nilerr // We are specifically falling back here and ignoring the error on purpose.
+			Network:  "tcp",
+			Addr:     endpoint,
+			Password: password,
+		}, nil
+	}
+
+	// Ensure the passwords are consistent:
+	// - If the URL contains a password and a separate password is also provided,
+	//   they must match to avoid silent misconfigurations.
+	// - If the URL contains no password (e.g. rediss://host:6379) but a separate
+	//   password is provided, apply it to the options so it is used for AUTH.
+	//   This supports TLS endpoints (rediss://) with separately-configured passwords.
+	if options.Password != "" && password != "" && options.Password != password {
+		return nil, errPasswordsDoNotMatch
+	}
+	if options.Password == "" && password != "" {
+		options.Password = password
+	}
+
+	return options, nil
+}
+
+// getRedisClusterClientOptions takes a (possibly comma-separated) endpoint and
+// a password and returns *redis.ClusterOptions suitable for redis.NewClusterClient.
+// Each comma-separated entry is treated as a host:port pair or a redis[s]:// URL.
+// URL-embedded passwords are validated against the explicit password the same
+// way getRedisClientOptions does.
+func getRedisClusterClientOptions(endpoint, password string) (*redis.ClusterOptions, error) {
+	rawAddrs := strings.Split(endpoint, ",")
+	addrs := make([]string, 0, len(rawAddrs))
+	clusterOpts := &redis.ClusterOptions{
+		Password: password,
+	}
+	var (
+		username string
+		urlPwd   string
+	)
+
+	for _, raw := range rawAddrs {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		// Try parsing as a redis[s]:// URL so TLS and credentials are honored.
+		// Fall back to host:port if it doesn't parse as a URL.
+		opts, err := redis.ParseURL(raw)
+		if err != nil {
+			addrs = append(addrs, raw)
+			continue
+		}
+		addrs = append(addrs, opts.Addr)
+		// First URL contributes TLS/username/embedded-password; subsequent URLs
+		// are expected to be homogeneous (same auth/TLS), which is the normal
+		// AWS ElastiCache / Redis Cluster setup.
+		if clusterOpts.TLSConfig == nil {
+			clusterOpts.TLSConfig = opts.TLSConfig
+		}
+		if username == "" {
+			username = opts.Username
+		}
+		if urlPwd == "" {
+			urlPwd = opts.Password
+		}
+	}
+
+	if username != "" {
+		clusterOpts.Username = username
+	}
+	// Apply the same password-consistency rule as the single-node path.
+	if urlPwd != "" && password != "" && urlPwd != password {
+		return nil, errPasswordsDoNotMatch
+	}
+	if urlPwd != "" && password == "" {
+		clusterOpts.Password = urlPwd
+	}
+
+	clusterOpts.Addrs = addrs
+	return clusterOpts, nil
+}
+
+// WithRedisLock returns a distributed singleflight
+// using a redis cluster. If it cannot connect, it will return an error.
+func WithRedisLock(l RedisLogger, endpoint, password string, cluster bool, checker storage.Checker, lockConfig *config.RedisLockConfig) (Wrapper, error) {
+	redis.SetLogger(l)
+
+	const op errors.Op = "stash.WithRedisLock"
+
+	var client redis.UniversalClient
+	if cluster {
+		clusterOpts, err := getRedisClusterClientOptions(endpoint, password)
+		if err != nil {
+			return nil, errors.E(op, err)
+		}
+		client = redis.NewClusterClient(clusterOpts)
+	} else {
+		options, err := getRedisClientOptions(endpoint, password)
+		if err != nil {
+			return nil, errors.E(op, err)
+		}
+		client = redis.NewClient(options)
+	}
+	if _, err := client.Ping(context.Background()).Result(); err != nil {
+		return nil, errors.E(op, err)
+	}
+
+	lockOptions, err := lockOptionsFromConfig(lockConfig)
+	if err != nil {
+		return nil, errors.E(op, err)
+	}
+
+	return func(s Stasher) Stasher {
+		return &redisLock{client, s, checker, lockOptions}
+	}, nil
+}
+
+func lockOptionsFromConfig(lockConfig *config.RedisLockConfig) (redisLockOptions, error) {
+	if lockConfig.TTL <= 0 || lockConfig.Timeout <= 0 || lockConfig.MaxRetries <= 0 {
+		return redisLockOptions{}, goerrors.New("invalid lock options")
+	}
+	return redisLockOptions{
+		ttl:        time.Duration(lockConfig.TTL) * time.Second,
+		timeout:    time.Duration(lockConfig.Timeout) * time.Second,
+		maxRetries: lockConfig.MaxRetries,
+	}, nil
+}
+
+type redisLockOptions struct {
+	ttl        time.Duration
+	timeout    time.Duration
+	maxRetries int
+}
+
+type redisLock struct {
+	client  redis.UniversalClient
+	stasher Stasher
+	checker storage.Checker
+	options redisLockOptions
+}
+
+func (s *redisLock) Stash(ctx context.Context, mod, ver string) (newVer string, err error) {
+	const op errors.Op = "redis.Stash"
+	ctx, span := observ.StartSpan(ctx, op.String())
+	defer span.End()
+	mv := config.FmtSkillVersion(mod, ver)
+	lockCtx, cancel := context.WithTimeout(ctx, s.options.timeout)
+	defer cancel()
+
+	// Obtain a new lock using lock options
+	lock, err := redislock.Obtain(lockCtx, s.client, mv, s.options.ttl, &redislock.Options{
+		RetryStrategy: redislock.LimitRetry(redislock.LinearBackoff(time.Second), s.options.maxRetries),
+	})
+	if err != nil {
+		return ver, errors.E(op, err)
+	}
+	defer func() {
+		const op errors.Op = "redis.Release"
+		lockErr := lock.Release(ctx)
+		if err == nil && lockErr != nil {
+			err = errors.E(op, lockErr)
+		}
+	}()
+	ok, err := s.checker.Exists(ctx, mod, ver)
+	if err != nil {
+		return ver, errors.E(op, err)
+	}
+	if ok {
+		return ver, nil
+	}
+	newVer, err = s.stasher.Stash(ctx, mod, ver)
+	if err != nil {
+		return ver, errors.E(op, err)
+	}
+	return newVer, nil
+}

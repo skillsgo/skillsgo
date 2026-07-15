@@ -1,37 +1,16 @@
-# Binaries for programs and plugins
-*.exe
-*.dll
-*.so
-*.dylib
-
-# Test binary, build with `go test -c`
-*.test
-!Dockerfile.test
-
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
-
-# Project-local glide cache, RE: https://github.com/Masterminds/glide/issues/736
-.glide/
-node_modules
-public
-tmp/*
-vgp
-bin/*
-.envrc
-athens
-cmd/proxy/proxy
-cmd/proxy/bin
-test-keys.json
-tmp
-.vs
-.idea
+# Monorepo-local files
 .DS_Store
-.vscode
+.idea/
+.vscode/
+*.iml
 
+# Local environment
+.env
+.env.*
+!.env.example
 
-# prod config file
-config.toml
-
-# goreleaser output directory
+# Shared build and coverage output
+coverage/
 dist/
+tmp/
+app/.scratch/
