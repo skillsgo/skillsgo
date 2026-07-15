@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp with a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
- * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, managed/external multi-target Library views, explicit projects, Agents, Settings, conflict/risk resolution, Installation/Update Plan progress, exact-target and failed-only retry, Version Divergence refresh, focus restoration, accessibility, and mutation journeys.
+ * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, managed/external multi-target Library views, explicit projects, Agents, Settings, conflict/risk resolution, Installation/Update/Target Management Plan progress and recovery, exact-target and failed-only retry, Version Divergence refresh, focus restoration, accessibility, and mutation journeys.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -1401,6 +1401,180 @@ void main() {
     },
   );
 
+  testWidgets('Target Management removes only the selected healthy target', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    final gateway = FakeSkillsGateway(
+      libraryEntries: const [
+        InstalledSkill(
+          identity: 'registry:github.com/example/skills/-/demo',
+          name: 'demo',
+          coordinate: 'github.com/example/skills/-/demo',
+          path: '/Users/test/.codex/skills/demo',
+          agents: ['codex', 'claude-code'],
+          targetCount: 2,
+          versions: ['v1'],
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.user,
+              path: '/Users/test/.codex/skills/demo',
+              version: 'v1',
+            ),
+            SkillInstallationTarget(
+              agent: 'claude-code',
+              scope: InstallationScope.project,
+              projectRoot: '/work/demo',
+              path: '/work/demo/.claude/skills/demo',
+              version: 'v1',
+            ),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Library'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Manage targets'));
+    await tester.pumpAndSettle();
+    expect(find.byType(ShadDialog), findsOneWidget);
+    expect(find.text('0 of 2 targets selected'), findsOneWidget);
+    await tester.tap(find.byType(ShadCheckbox).first);
+    await tester.pumpAndSettle();
+    expect(find.text('1 of 2 targets selected'), findsOneWidget);
+    await tester.tap(find.text('Apply selected actions'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 succeeded, 0 failed'), findsOneWidget);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('1 local targets'), findsOneWidget);
+    expect(gateway.managementTargetHistory, hasLength(1));
+    expect(gateway.managementTargetHistory.single, hasLength(1));
+    expect(
+      gateway.managementTargetHistory.single.values.single,
+      TargetManagementAction.remove,
+    );
+    expect(gateway.libraryEntries!.single.targets.single.agent, 'claude-code');
+  });
+
+  testWidgets(
+    'unhealthy targets offer Repair or Stop Managing without Remove',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 900));
+      final gateway = FakeSkillsGateway(
+        libraryEntries: const [
+          InstalledSkill(
+            identity: 'registry:github.com/example/skills/-/demo',
+            name: 'demo',
+            coordinate: 'github.com/example/skills/-/demo',
+            path: '/Users/test/.codex/skills/demo',
+            agents: ['codex', 'claude-code'],
+            targetCount: 2,
+            versions: ['v1'],
+            health: InstallationHealth.localModification,
+            targets: [
+              SkillInstallationTarget(
+                agent: 'codex',
+                scope: InstallationScope.user,
+                path: '/Users/test/.codex/skills/demo',
+                version: 'v1',
+              ),
+              SkillInstallationTarget(
+                agent: 'claude-code',
+                scope: InstallationScope.project,
+                projectRoot: '/work/demo',
+                path: '/work/demo/.claude/skills/demo',
+                version: 'v1',
+                mode: InstallationMode.copy,
+                health: InstallationHealth.localModification,
+              ),
+            ],
+          ),
+        ],
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Library'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byTooltip('Manage targets'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Repair'), findsOneWidget);
+      expect(find.text('Stop Managing'), findsOneWidget);
+      expect(find.byType(ShadCheckbox), findsOneWidget);
+      await tester.tap(find.text('Stop Managing'));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Current target content will be preserved.'),
+        findsOneWidget,
+      );
+      expect(find.textContaining('skillsgo.yaml'), findsOneWidget);
+      await tester.tap(find.text('Apply selected actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+
+      expect(
+        gateway.managementTargetHistory.single.values.single,
+        TargetManagementAction.stopManaging,
+      );
+      expect(gateway.libraryEntries!.single.targets.single.agent, 'codex');
+    },
+  );
+
+  testWidgets('Repair restores an unhealthy managed target', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    final gateway = FakeSkillsGateway(
+      libraryEntries: const [
+        InstalledSkill(
+          identity: 'registry:github.com/example/skills/-/demo',
+          name: 'demo',
+          coordinate: 'github.com/example/skills/-/demo',
+          path: '/Users/test/.codex/skills/demo',
+          agents: ['codex'],
+          targetCount: 1,
+          versions: ['v1'],
+          health: InstallationHealth.localModification,
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.user,
+              path: '/Users/test/.codex/skills/demo',
+              version: 'v1',
+              mode: InstallationMode.copy,
+              health: InstallationHealth.localModification,
+            ),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Library'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip('Manage targets'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Repair'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Apply selected actions'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    expect(
+      gateway.managementTargetHistory.single.values.single,
+      TargetManagementAction.repair,
+    );
+    expect(
+      gateway.libraryEntries!.single.targets.single.health,
+      InstallationHealth.healthy,
+    );
+  });
+
   testWidgets(
     'External Installation stays visible and read-only after inspection',
     (tester) async {
@@ -1454,7 +1628,7 @@ void main() {
 
       expect(find.text('External installation'), findsOneWidget);
       expect(find.text('Read only'), findsOneWidget);
-      expect(find.byTooltip('Remove external-demo'), findsNothing);
+      expect(find.byTooltip('Manage targets'), findsNothing);
       await tester.tap(find.text('external-demo').first);
       await tester.pumpAndSettle();
       expect(find.text(path), findsWidgets);
@@ -1954,44 +2128,50 @@ void main() {
     expect(find.text('User Scope / Codex · v2'), findsOneWidget);
   });
 
-  testWidgets('core flow searches, installs, checks updates and removes', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 800));
-    final gateway = FakeSkillsGateway(installed: false);
-    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
-    await tester.pumpAndSettle();
+  testWidgets(
+    'core flow searches, installs, checks updates and removes a target',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      final gateway = FakeSkillsGateway(installed: false);
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
 
-    await tester.enterText(_searchInput(), 'flutter');
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Flutter Pro'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Install Skill'));
-    await tester.pumpAndSettle();
-    expect(find.text('LOCATION × AGENT'), findsOneWidget);
-    await tester.tap(find.text('Select'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Review 1 Targets'));
-    await tester.pumpAndSettle();
-    expect(find.text('1 create'), findsOneWidget);
-    await tester.tap(find.text('Install 1 Targets'));
-    await tester.pumpAndSettle();
-    expect(find.text('1 targets installed, 0 failed'), findsOneWidget);
-    await tester.tap(find.text('View in Library'));
-    await tester.pumpAndSettle();
-    expect(find.text('local-skill'), findsOneWidget);
+      await tester.enterText(_searchInput(), 'flutter');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flutter Pro'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Install Skill'));
+      await tester.pumpAndSettle();
+      expect(find.text('LOCATION × AGENT'), findsOneWidget);
+      await tester.tap(find.text('Select'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Review 1 Targets'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 create'), findsOneWidget);
+      await tester.tap(find.text('Install 1 Targets'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 targets installed, 0 failed'), findsOneWidget);
+      await tester.tap(find.text('View in Library'));
+      await tester.pumpAndSettle();
+      expect(find.text('local-skill'), findsOneWidget);
 
-    await tester.tap(find.text('Check updates'));
-    await tester.pumpAndSettle();
-    expect(find.text('UPDATE'), findsOneWidget);
-    await tester.tap(find.byTooltip('Remove local-skill'));
-    await tester.pumpAndSettle();
-    expect(find.text('Remove local-skill?'), findsOneWidget);
-    await tester.tap(find.text('Remove Skill'));
-    await tester.pumpAndSettle();
-    expect(find.text('Your Library is empty'), findsOneWidget);
-  });
+      await tester.tap(find.text('Check updates'));
+      await tester.pumpAndSettle();
+      expect(find.text('UPDATE'), findsOneWidget);
+      await tester.tap(find.byTooltip('Manage targets'));
+      await tester.pumpAndSettle();
+      expect(find.text('Manage installation targets'), findsOneWidget);
+      expect(find.byType(ShadCheckbox), findsOneWidget);
+      await tester.tap(find.byType(ShadCheckbox));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Apply selected actions'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+      expect(find.text('Your Library is empty'), findsOneWidget);
+    },
+  );
 }
 
 class FakeSkillsGateway implements SkillsGateway {
@@ -2070,6 +2250,7 @@ class FakeSkillsGateway implements SkillsGateway {
   List<InstallationTargetSelection> lastPlanSelections = const [];
   final executionSelectionHistory = <List<InstallationTargetSelection>>[];
   final updateTargetHistory = <List<String>>[];
+  final managementTargetHistory = <Map<String, TargetManagementAction>>[];
   int detailLoads = 0;
   int agentInspections = 0;
   String? savedPath;
@@ -2519,9 +2700,149 @@ class FakeSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<CommandResult> remove(InstalledSkill skill) async {
-    installed = false;
-    return _success(['skills', 'remove']);
+  Future<TargetManagementPlan> preflightTargetManagement(
+    InstalledSkill skill,
+    List<SkillInstallationTarget> targets,
+  ) async {
+    final items = [
+      for (final target in targets)
+        TargetManagementPlanItem(
+          target: InstallationPlanTarget(
+            scope: target.scope,
+            projectRoot: target.projectRoot,
+            agent: target.agent,
+            mode: target.mode,
+            path: target.path,
+          ),
+          name: skill.name,
+          coordinate: skill.coordinate,
+          version: target.version,
+          health: target.health,
+          receiptState: target.receiptState,
+          allowedActions: target.health == InstallationHealth.healthy
+              ? const [TargetManagementAction.remove]
+              : const [
+                  TargetManagementAction.repair,
+                  TargetManagementAction.stopManaging,
+                ],
+          stateToken: 'manage-${target.agent}-${target.path}',
+          workspaceMetadataChange: target.scope == InstallationScope.project,
+        ),
+    ];
+    return TargetManagementPlan(
+      targets: items,
+      summary: TargetManagementPlanSummary(
+        removable: items
+            .where(
+              (item) =>
+                  item.allowedActions.contains(TargetManagementAction.remove),
+            )
+            .length,
+        repairable: items
+            .where(
+              (item) =>
+                  item.allowedActions.contains(TargetManagementAction.repair),
+            )
+            .length,
+        stoppable: items
+            .where(
+              (item) => item.allowedActions.contains(
+                TargetManagementAction.stopManaging,
+              ),
+            )
+            .length,
+      ),
+    );
+  }
+
+  @override
+  Future<TargetManagementExecution> executeTargetManagement(
+    TargetManagementPlan plan, {
+    void Function(TargetManagementProgress progress)? onProgress,
+  }) async {
+    managementTargetHistory.add({
+      for (final item in plan.targets)
+        updateTargetKey(item.target): item.action!,
+    });
+    var sequence = 0;
+    final results = <TargetManagementResult>[];
+    for (final item in plan.targets) {
+      onProgress?.call(
+        TargetManagementProgress(
+          sequence: ++sequence,
+          target: item.target,
+          name: item.name,
+          coordinate: item.coordinate,
+          version: item.version,
+          action: item.action!,
+          state: InstallationProgressState.started,
+        ),
+      );
+      final result = TargetManagementResult(
+        target: item.target,
+        name: item.name,
+        coordinate: item.coordinate,
+        version: item.version,
+        action: item.action!,
+        outcome: TargetManagementOutcome.succeeded,
+      );
+      results.add(result);
+      onProgress?.call(
+        TargetManagementProgress(
+          sequence: ++sequence,
+          target: item.target,
+          name: item.name,
+          coordinate: item.coordinate,
+          version: item.version,
+          action: item.action!,
+          state: InstallationProgressState.finished,
+          result: result,
+        ),
+      );
+    }
+    final actions = {
+      for (final item in plan.targets)
+        updateTargetKey(item.target): item.action!,
+    };
+    libraryEntries = libraryEntries
+        ?.map((skill) {
+          final remaining = <SkillInstallationTarget>[];
+          for (final target in skill.targets) {
+            final key = installedUpdateTargetKey(target);
+            final action = actions[key];
+            if (action == TargetManagementAction.remove ||
+                action == TargetManagementAction.stopManaging) {
+              continue;
+            }
+            if (action == TargetManagementAction.repair) {
+              remaining.add(
+                SkillInstallationTarget(
+                  agent: target.agent,
+                  scope: target.scope,
+                  path: target.path,
+                  version: target.version,
+                  projectRoot: target.projectRoot,
+                  mode: target.mode,
+                  receiptState: ReceiptState.present,
+                  health: InstallationHealth.healthy,
+                ),
+              );
+            } else {
+              remaining.add(target);
+            }
+          }
+          return remaining.isEmpty ? null : skill.withTargets(remaining);
+        })
+        .whereType<InstalledSkill>()
+        .toList(growable: false);
+    if (libraryEntries == null || libraryEntries!.isEmpty) installed = false;
+    return TargetManagementExecution(
+      results: results,
+      summary: TargetManagementExecutionSummary(
+        succeeded: results.length,
+        failed: 0,
+      ),
+    );
   }
 
   @override
@@ -2671,7 +2992,6 @@ class FakeSkillsGateway implements SkillsGateway {
       ),
     );
   }
-
 }
 
 SkillDetail _withoutInstallationTargets(

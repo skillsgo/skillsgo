@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Registry HTTP, the local filesystem, the platform directory picker, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides production Registry settings, discovery/detail, managed/external inventory parsing, strict Installation/Update Plan JSON and NDJSON parsing, local file inspection, project persistence, Agent inspection, typed failures, diagnostics, CLI verification, and Skill operations.
+ * [OUTPUT]: Provides production Registry settings, discovery/detail, managed/external inventory parsing, strict Installation/Update/Target Management Plan JSON and NDJSON parsing, local file inspection, project persistence, Agent inspection, typed failures, diagnostics, CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -500,6 +500,63 @@ UpdateTargetResult _updateTargetResult(Object? raw, UpdatePlanItem expected) {
   );
 }
 
+TargetManagementAction _targetManagementAction(Object? value) =>
+    switch (value) {
+      'remove' => TargetManagementAction.remove,
+      'repair' => TargetManagementAction.repair,
+      'stop-managing' => TargetManagementAction.stopManaging,
+      _ => throw const FormatException(),
+    };
+
+TargetManagementOutcome _targetManagementOutcome(Object? value) =>
+    switch (value) {
+      'succeeded' => TargetManagementOutcome.succeeded,
+      'failed' => TargetManagementOutcome.failed,
+      _ => throw const FormatException(),
+    };
+
+String _targetManagementActionValue(TargetManagementAction action) =>
+    switch (action) {
+      TargetManagementAction.remove => 'remove',
+      TargetManagementAction.repair => 'repair',
+      TargetManagementAction.stopManaging => 'stop-managing',
+    };
+
+TargetManagementResult _targetManagementResult(
+  Object? raw,
+  TargetManagementPlanItem expected,
+) {
+  if (raw is! Map<String, dynamic> ||
+      raw['name'] != expected.name ||
+      raw['coordinate'] != expected.coordinate ||
+      raw['version'] != expected.version ||
+      raw['action'] != _targetManagementActionValue(expected.action!) ||
+      (raw['errorCode'] != null && raw['errorCode'] is! String) ||
+      (raw['diagnostic'] != null && raw['diagnostic'] is! String)) {
+    throw const FormatException();
+  }
+  final target = _installationPlanTarget(raw['target']);
+  if (!_samePlanTarget(target, expected.target)) throw const FormatException();
+  final outcome = _targetManagementOutcome(raw['outcome']);
+  final errorCode = raw['errorCode'] as String? ?? '';
+  if (outcome == TargetManagementOutcome.failed && errorCode.isEmpty) {
+    throw const FormatException();
+  }
+  if (outcome == TargetManagementOutcome.succeeded && errorCode.isNotEmpty) {
+    throw const FormatException();
+  }
+  return TargetManagementResult(
+    target: target,
+    name: expected.name,
+    coordinate: expected.coordinate,
+    version: expected.version,
+    action: expected.action!,
+    outcome: outcome,
+    errorCode: errorCode,
+    diagnostic: raw['diagnostic'] as String? ?? '',
+  );
+}
+
 String _installedSkillUpdateKey(InstalledSkill skill) =>
     skill.identity.isEmpty ? skill.name : skill.identity;
 
@@ -570,7 +627,7 @@ class RealSkillsGateway implements SkillsGateway {
   static const _allowCriticalOverrideKey = 'allow_critical_risk_override';
   static const _addedProjectsKey = 'added_projects_v1';
   static const _startupHandshakeSchemaVersion = 1;
-  static const _appProtocolVersion = 6;
+  static const _appProtocolVersion = 7;
   final http.Client _http;
   final ProcessRunner _runner;
   final Uri _defaultRegistryBase;
@@ -2020,15 +2077,351 @@ class RealSkillsGateway implements SkillsGateway {
     ]);
   }
 
+  String _managementTargetArgument(
+    String coordinate,
+    SkillInstallationTarget target, {
+    TargetManagementAction? action,
+    String? stateToken,
+  }) => jsonEncode({
+    'scope': target.scope.name,
+    if (target.scope == InstallationScope.project)
+      'projectRoot': target.projectRoot,
+    'agent': target.agent,
+    'mode': target.mode.name,
+    'path': target.path,
+    'coordinate': coordinate,
+    'version': target.version,
+    if (action != null) 'action': _targetManagementActionValue(action),
+    'stateToken': ?stateToken,
+  });
+
   @override
-  Future<CommandResult> remove(InstalledSkill skill) async {
-    if (skill.provenance == LibraryProvenance.external) {
+  Future<TargetManagementPlan> preflightTargetManagement(
+    InstalledSkill skill,
+    List<SkillInstallationTarget> targets,
+  ) async {
+    if (skill.provenance == LibraryProvenance.external ||
+        skill.coordinate.isEmpty ||
+        targets.isEmpty ||
+        targets.any(
+          (target) =>
+              target.mode == InstallationMode.external ||
+              target.version.isEmpty ||
+              (target.scope == InstallationScope.project &&
+                  target.projectRoot.isEmpty),
+        )) {
       throw const SkillsException(
-        'External Installations are read-only until adoption.',
+        'Only exact managed targets can enter a Target Management Plan.',
         kind: SkillsFailureKind.validation,
       );
     }
-    return _runCli(['remove', skill.name, '--global', '--yes']);
+    final arguments = <String>['manage'];
+    for (final target in targets) {
+      arguments.addAll([
+        '--target',
+        _managementTargetArgument(skill.coordinate, target),
+      ]);
+    }
+    arguments.addAll(['--preflight', '--output', 'json']);
+    final command = await _runCli(arguments);
+    if (!command.succeeded) throw SkillsException(_commandError(command));
+    try {
+      final decoded = jsonDecode(command.output.stdout);
+      if (decoded is! Map<String, dynamic> ||
+          decoded['schemaVersion'] != 1 ||
+          decoded['phase'] != 'management-preflight' ||
+          decoded['targets'] is! List ||
+          decoded['summary'] is! Map<String, dynamic>) {
+        throw const FormatException();
+      }
+      final rawTargets = decoded['targets'] as List;
+      if (rawTargets.length != targets.length) throw const FormatException();
+      final items = <TargetManagementPlanItem>[];
+      for (var index = 0; index < rawTargets.length; index++) {
+        final raw = rawTargets[index];
+        if (raw is! Map<String, dynamic> ||
+            raw['name'] is! String ||
+            raw['coordinate'] != skill.coordinate ||
+            raw['version'] != targets[index].version ||
+            raw['allowedActions'] is! List ||
+            raw['stateToken'] is! String ||
+            (raw['stateToken'] as String).isEmpty ||
+            raw['workspaceMetadataChange'] is! bool ||
+            raw['action'] != null ||
+            (raw['diagnostic'] != null && raw['diagnostic'] is! String) ||
+            (raw['affectedBindings'] != null &&
+                raw['affectedBindings'] is! List)) {
+          throw const FormatException();
+        }
+        final target = _installationPlanTarget(raw['target']);
+        final expected = targets[index];
+        if (target.scope != expected.scope ||
+            target.projectRoot != expected.projectRoot ||
+            target.agent != expected.agent ||
+            target.mode != expected.mode ||
+            target.path != expected.path ||
+            (raw['workspaceMetadataChange'] as bool) !=
+                (target.scope == InstallationScope.project)) {
+          throw const FormatException();
+        }
+        final health = _installationHealth(raw['health']);
+        final receiptState = _receiptState(raw['receiptState']);
+        final actionValues = raw['allowedActions'] as List;
+        final allowedActions = actionValues
+            .map(_targetManagementAction)
+            .toList(growable: false);
+        if (allowedActions.isEmpty ||
+            allowedActions.toSet().length != allowedActions.length ||
+            (health == InstallationHealth.healthy &&
+                (allowedActions.length != 1 ||
+                    allowedActions.single != TargetManagementAction.remove)) ||
+            (health != InstallationHealth.healthy &&
+                (allowedActions.contains(TargetManagementAction.remove) ||
+                    !allowedActions.contains(
+                      TargetManagementAction.stopManaging,
+                    )))) {
+          throw const FormatException();
+        }
+        items.add(
+          TargetManagementPlanItem(
+            target: target,
+            name: raw['name'] as String,
+            coordinate: skill.coordinate,
+            version: expected.version,
+            health: health,
+            receiptState: receiptState,
+            allowedActions: List.unmodifiable(allowedActions),
+            stateToken: raw['stateToken'] as String,
+            workspaceMetadataChange: raw['workspaceMetadataChange'] as bool,
+            diagnostic: raw['diagnostic'] as String? ?? '',
+            affectedBindings: List.unmodifiable([
+              for (final binding
+                  in raw['affectedBindings'] as List? ?? const [])
+                _installationPlanTarget(binding),
+            ]),
+          ),
+        );
+      }
+      final targetKeys = items
+          .map((item) => updateTargetKey(item.target))
+          .toSet();
+      for (final item in items) {
+        if (item.affectedBindings.isNotEmpty &&
+            (!item.affectedBindings.any(
+                  (binding) =>
+                      updateTargetKey(binding) == updateTargetKey(item.target),
+                ) ||
+                item.affectedBindings.any(
+                  (binding) => !targetKeys.contains(updateTargetKey(binding)),
+                ))) {
+          throw const FormatException();
+        }
+      }
+      final rawSummary = decoded['summary'] as Map<String, dynamic>;
+      final summary = TargetManagementPlanSummary(
+        removable: _strictNonNegativeInt(rawSummary['removable']),
+        repairable: _strictNonNegativeInt(rawSummary['repairable']),
+        stoppable: _strictNonNegativeInt(rawSummary['stoppable']),
+      );
+      int count(TargetManagementAction action) =>
+          items.where((item) => item.allowedActions.contains(action)).length;
+      if (summary.removable != count(TargetManagementAction.remove) ||
+          summary.repairable != count(TargetManagementAction.repair) ||
+          summary.stoppable != count(TargetManagementAction.stopManaging)) {
+        throw const FormatException();
+      }
+      return TargetManagementPlan(
+        targets: List.unmodifiable(items),
+        summary: summary,
+      );
+    } on FormatException {
+      throw const SkillsException(
+        'The SkillsGo CLI returned invalid Target Management Plan JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
+  }
+
+  @override
+  Future<TargetManagementExecution> executeTargetManagement(
+    TargetManagementPlan plan, {
+    void Function(TargetManagementProgress progress)? onProgress,
+  }) async {
+    if (plan.targets.isEmpty ||
+        plan.targets.any(
+          (item) =>
+              item.action == null || !item.allowedActions.contains(item.action),
+        )) {
+      throw const SkillsException(
+        'Target Management execution requires explicit reviewed actions.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    final arguments = <String>['manage'];
+    for (final item in plan.targets) {
+      arguments.addAll([
+        '--target',
+        jsonEncode({
+          'scope': item.target.scope.name,
+          if (item.target.scope == InstallationScope.project)
+            'projectRoot': item.target.projectRoot,
+          'agent': item.target.agent,
+          'mode': item.target.mode.name,
+          'path': item.target.path,
+          'coordinate': item.coordinate,
+          'version': item.version,
+          'action': _targetManagementActionValue(item.action!),
+          'stateToken': item.stateToken,
+        }),
+      ]);
+    }
+    arguments.addAll(['--output', 'ndjson']);
+    final expected = {
+      for (final item in plan.targets) updateTargetKey(item.target): item,
+    };
+    final states = <String, InstallationProgressState>{};
+    final terminal = <String, TargetManagementResult>{};
+    Map<String, dynamic>? finalPayload;
+    Object? streamFailure;
+    var sequence = 1;
+    var sawLine = false;
+    void consume(String line) {
+      sawLine = true;
+      if (streamFailure != null) return;
+      try {
+        final raw = jsonDecode(line);
+        if (raw is! Map<String, dynamic> || raw['schemaVersion'] != 1) {
+          throw const FormatException();
+        }
+        if (raw['phase'] == 'management-progress') {
+          if (raw['sequence'] != sequence++ ||
+              raw['name'] is! String ||
+              raw['coordinate'] is! String ||
+              raw['version'] is! String ||
+              raw['action'] is! String) {
+            throw const FormatException();
+          }
+          final target = _installationPlanTarget(raw['target']);
+          final key = updateTargetKey(target);
+          final item = expected[key];
+          if (item == null ||
+              raw['name'] != item.name ||
+              raw['coordinate'] != item.coordinate ||
+              raw['version'] != item.version ||
+              raw['action'] != _targetManagementActionValue(item.action!)) {
+            throw const FormatException();
+          }
+          final state = switch (raw['state']) {
+            'started' => InstallationProgressState.started,
+            'finished' => InstallationProgressState.finished,
+            _ => throw const FormatException(),
+          };
+          TargetManagementResult? result;
+          if (state == InstallationProgressState.started) {
+            if (states.containsKey(key) || raw.containsKey('result')) {
+              throw const FormatException();
+            }
+          } else {
+            if (states[key] != InstallationProgressState.started ||
+                raw['result'] == null) {
+              throw const FormatException();
+            }
+            result = _targetManagementResult(raw['result'], item);
+            terminal[key] = result;
+          }
+          states[key] = state;
+          onProgress?.call(
+            TargetManagementProgress(
+              sequence: raw['sequence'] as int,
+              target: target,
+              name: item.name,
+              coordinate: item.coordinate,
+              version: item.version,
+              action: item.action!,
+              state: state,
+              result: result,
+            ),
+          );
+        } else if (raw['phase'] == 'management-execution') {
+          if (finalPayload != null ||
+              states.length != expected.length ||
+              states.values.any(
+                (state) => state != InstallationProgressState.finished,
+              )) {
+            throw const FormatException();
+          }
+          finalPayload = raw;
+        } else {
+          throw const FormatException();
+        }
+      } catch (error) {
+        streamFailure = error;
+      }
+    }
+
+    final command = await _runCli(arguments, onStdoutLine: consume);
+    if (!sawLine) {
+      for (final line in const LineSplitter().convert(command.output.stdout)) {
+        consume(line);
+      }
+    }
+    if (!command.succeeded) throw SkillsException(_commandError(command));
+    try {
+      final raw = finalPayload;
+      if (streamFailure != null ||
+          raw == null ||
+          raw['results'] is! List ||
+          raw['summary'] is! Map<String, dynamic>) {
+        throw const FormatException();
+      }
+      final rawResults = raw['results'] as List;
+      if (rawResults.length != plan.targets.length) {
+        throw const FormatException();
+      }
+      final results = <TargetManagementResult>[
+        for (var index = 0; index < rawResults.length; index++)
+          _targetManagementResult(rawResults[index], plan.targets[index]),
+      ];
+      for (final result in results) {
+        final streamed = terminal[updateTargetKey(result.target)];
+        if (streamed == null ||
+            streamed.outcome != result.outcome ||
+            streamed.errorCode != result.errorCode ||
+            streamed.diagnostic != result.diagnostic) {
+          throw const FormatException();
+        }
+      }
+      final rawSummary = raw['summary'] as Map<String, dynamic>;
+      final summary = TargetManagementExecutionSummary(
+        succeeded: _strictNonNegativeInt(rawSummary['succeeded']),
+        failed: _strictNonNegativeInt(rawSummary['failed']),
+      );
+      if (summary.succeeded !=
+              results
+                  .where(
+                    (result) =>
+                        result.outcome == TargetManagementOutcome.succeeded,
+                  )
+                  .length ||
+          summary.failed !=
+              results
+                  .where(
+                    (result) =>
+                        result.outcome == TargetManagementOutcome.failed,
+                  )
+                  .length) {
+        throw const FormatException();
+      }
+      return TargetManagementExecution(
+        results: List.unmodifiable(results),
+        summary: summary,
+      );
+    } on FormatException {
+      throw const SkillsException(
+        'The SkillsGo CLI returned invalid Target Management Result NDJSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
   }
 
   String _updateTargetArgument(

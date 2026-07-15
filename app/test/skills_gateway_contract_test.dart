@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings, discovery/detail parsing, managed/external CLI inventory including Local Modifications, read-only local inspection, explicit project persistence, strict Installation/Update Plan JSON and NDJSON contracts, typed failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings, discovery/detail parsing, managed/external CLI inventory including Local Modifications, read-only local inspection, explicit project persistence, strict Installation/Update/Target Management Plan JSON and NDJSON contracts, typed failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -263,7 +263,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 6,
+            'appProtocolVersion': 7,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -370,7 +370,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '0.1.0',
-          'appProtocolVersion': 6,
+          'appProtocolVersion': 7,
           'os': 'linux',
           'architecture': 'arm64',
         }),
@@ -398,7 +398,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '7.4.2',
-            'appProtocolVersion': 6,
+            'appProtocolVersion': 7,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -426,7 +426,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': 'dev',
-          'appProtocolVersion': 6,
+          'appProtocolVersion': 7,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -455,7 +455,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '1.0.0',
-          'appProtocolVersion': 6,
+          'appProtocolVersion': 7,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -482,7 +482,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 6,
+            'appProtocolVersion': 7,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -1105,13 +1105,28 @@ void main() {
         'http://localhost:3000',
       ]),
     );
-    await gateway.remove(installed);
-    expect(runner.lastArguments, [
-      'remove',
-      r'Test ; $(touch nope)',
-      '--global',
-      '--yes',
-    ]);
+    runner.result = const ProcessOutput(
+      exitCode: 0,
+      stdout: r'''
+{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","coordinate":"github.com/a/b/-/Test ; $(touch nope)","version":"v1","health":"healthy","receiptState":"present","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1,"repairable":0,"stoppable":0}}
+''',
+      stderr: '',
+    );
+    await gateway.preflightTargetManagement(installed, installed.targets);
+    expect(runner.lastArguments!.first, 'manage');
+    expect(runner.lastArguments![1], '--target');
+    expect(jsonDecode(runner.lastArguments![2]), {
+      'scope': 'user',
+      'agent': 'codex',
+      'mode': 'symlink',
+      'path': r'/tmp/Test ; $(touch nope)',
+      'coordinate': r'github.com/a/b/-/Test ; $(touch nope)',
+      'version': 'v1',
+    });
+    expect(
+      runner.lastArguments,
+      containsAllInOrder(['--preflight', '--output', 'json']),
+    );
     expect(
       runner.calls.map((call) => call.executable),
       isNot(contains('/bin/sh')),
@@ -1777,13 +1792,108 @@ void main() {
         throwsA(isA<SkillsException>()),
       );
       await expectLater(
-        gateway.remove(external),
+        gateway.preflightTargetManagement(external, external.targets),
         throwsA(isA<SkillsException>()),
       );
       expect(runner.calls, isEmpty);
       for (final file in [skillFile, script, notes, large]) {
         expect(await file.readAsBytes(), before[file.path]);
       }
+    },
+  );
+
+  test(
+    'Target Management Plans preserve exact targets and parse versioned NDJSON',
+    () async {
+      const coordinate = 'github.com/example/skills/-/test';
+      const installed = InstalledSkill(
+        identity: 'registry:$coordinate',
+        name: 'Test',
+        path: '/tmp/Test',
+        agents: ['codex'],
+        targetCount: 1,
+        coordinate: coordinate,
+        targets: [
+          SkillInstallationTarget(
+            agent: 'codex',
+            scope: InstallationScope.user,
+            path: '/tmp/Test',
+            version: 'v1',
+          ),
+        ],
+      );
+      final runner = _FakeProcessRunner()
+        ..responses.addAll(const [
+          ProcessOutput(
+            exitCode: 0,
+            stdout: '''
+{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","version":"v1","health":"healthy","receiptState":"present","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1,"repairable":0,"stoppable":0}}
+''',
+            stderr: '',
+          ),
+          ProcessOutput(
+            exitCode: 0,
+            stdout: '''
+{"schemaVersion":1,"phase":"management-progress","sequence":1,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","version":"v1","action":"remove","state":"started"}
+{"schemaVersion":1,"phase":"management-progress","sequence":2,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","version":"v1","action":"remove","state":"finished","result":{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","version":"v1","action":"remove","outcome":"succeeded"}}
+{"schemaVersion":1,"phase":"management-execution","results":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","version":"v1","action":"remove","outcome":"succeeded"}],"summary":{"succeeded":1,"failed":0}}
+''',
+            stderr: '',
+          ),
+        ]);
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/bin/skillsgo',
+      );
+
+      final preflight = await gateway.preflightTargetManagement(
+        installed,
+        installed.targets,
+      );
+      final targetKey = updateTargetKey(preflight.targets.single.target);
+      final plan = preflight.selectActions({
+        targetKey: TargetManagementAction.remove,
+      });
+      final progress = <TargetManagementProgress>[];
+      final execution = await gateway.executeTargetManagement(
+        plan,
+        onProgress: progress.add,
+      );
+
+      expect(preflight.targets.single.allowedActions, [
+        TargetManagementAction.remove,
+      ]);
+      expect(progress.map((event) => event.sequence), [1, 2]);
+      expect(execution.summary.succeeded, 1);
+      expect(execution.results.single.action, TargetManagementAction.remove);
+      expect(runner.lastArguments!.first, 'manage');
+      expect(jsonDecode(runner.lastArguments![2]), {
+        'scope': 'user',
+        'agent': 'codex',
+        'mode': 'symlink',
+        'path': '/tmp/Test',
+        'coordinate': coordinate,
+        'version': 'v1',
+        'action': 'remove',
+        'stateToken': 'sha256:state',
+      });
+      expect(runner.lastArguments, containsAll(['--output', 'ndjson']));
+
+      runner.result = const ProcessOutput(
+        exitCode: 0,
+        stdout: 'Removed one target.',
+        stderr: '',
+      );
+      await expectLater(
+        gateway.executeTargetManagement(plan),
+        throwsA(
+          isA<SkillsException>().having(
+            (error) => error.kind,
+            'kind',
+            SkillsFailureKind.invalidResponse,
+          ),
+        ),
+      );
     },
   );
 

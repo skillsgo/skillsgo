@@ -55,3 +55,15 @@ _Avoid_: Registry version, automatically merged change
 **Update Plan**:
 A state-bound operation over exact managed Installation Targets. Every target resolves its own stored movable reference; tags and fixed commits are pinned; Workspace Lock changes are previewed; and each target produces independent progress and a final result.
 _Avoid_: name-only global update, implicit project mutation, localized-output parsing
+
+**Target Management Plan**:
+A state-bound operation that assigns an explicit Remove, Repair, or Stop Managing action to exact managed Installation Targets. Unselected targets remain unchanged, unsafe destructive removal is rejected, and every selected target produces its own result.
+_Avoid_: name-only removal, whole-Skill deletion, implicit cleanup
+
+**Repair**:
+An explicit recovery action that restores an unhealthy managed Installation Target from its immutable Store artifact. Repair replaces Local Modifications only after review and includes every Agent binding that shares the physical target.
+_Avoid_: automatic healing, background overwrite
+
+**Stop Managing**:
+A content-preserving action that removes SkillsGo ownership receipts and Workspace declarations for an unhealthy Installation Target without deleting the filesystem object at the target path.
+_Avoid_: remove, uninstall, delete target

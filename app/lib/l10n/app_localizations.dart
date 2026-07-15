@@ -620,42 +620,6 @@ abstract class AppLocalizations {
   /// **'This snapshot contains scripts or executable content. Review the files before installing; SkillsGo does not audit them.'**
   String get executableRisk;
 
-  /// No description provided for @removeTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Remove {name}?'**
-  String removeTitle(String name);
-
-  /// No description provided for @removeDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'SkillsGo will remove this user-level Skill. Codex will no longer see it.'**
-  String get removeDescription;
-
-  /// No description provided for @skillFact.
-  ///
-  /// In en, this message translates to:
-  /// **'Skill: {name}'**
-  String skillFact(String name);
-
-  /// No description provided for @scopeGlobal.
-  ///
-  /// In en, this message translates to:
-  /// **'Scope: global'**
-  String get scopeGlobal;
-
-  /// No description provided for @agentImpactCodex.
-  ///
-  /// In en, this message translates to:
-  /// **'Agent impact: Codex'**
-  String get agentImpactCodex;
-
-  /// No description provided for @removeSkill.
-  ///
-  /// In en, this message translates to:
-  /// **'Remove Skill'**
-  String get removeSkill;
-
   /// No description provided for @globalCodex.
   ///
   /// In en, this message translates to:
@@ -986,12 +950,6 @@ abstract class AppLocalizations {
   /// **'Update'**
   String get update;
 
-  /// No description provided for @removeNamed.
-  ///
-  /// In en, this message translates to:
-  /// **'Remove {name}'**
-  String removeNamed(String name);
-
   /// No description provided for @backToLibrary.
   ///
   /// In en, this message translates to:
@@ -1003,6 +961,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Remove'**
   String get remove;
+
+  /// No description provided for @manageTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage targets'**
+  String get manageTargets;
+
+  /// No description provided for @manageTargetsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage installation targets'**
+  String get manageTargetsTitle;
+
+  /// No description provided for @manageTargetsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose an exact action for each target. Unselected targets will not change.'**
+  String get manageTargetsDescription;
+
+  /// No description provided for @targetActionsSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{selected} of {total} targets selected'**
+  String targetActionsSelected(int selected, int total);
+
+  /// No description provided for @repairTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair'**
+  String get repairTarget;
+
+  /// No description provided for @stopManaging.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop Managing'**
+  String get stopManaging;
+
+  /// No description provided for @stopManagingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Removes SkillsGo ownership metadata and preserves the current target content.'**
+  String get stopManagingDescription;
+
+  /// No description provided for @applyTargetActions.
+  ///
+  /// In en, this message translates to:
+  /// **'Apply selected actions'**
+  String get applyTargetActions;
+
+  /// No description provided for @managementProgressTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying target actions'**
+  String get managementProgressTitle;
+
+  /// No description provided for @managementResultsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Target action results'**
+  String get managementResultsTitle;
+
+  /// No description provided for @managementResultSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{succeeded} succeeded, {failed} failed'**
+  String managementResultSummary(int succeeded, int failed);
+
+  /// No description provided for @workspaceOwnershipChanges.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected project actions will update skillsgo.yaml and skillsgo-lock.yaml.'**
+  String get workspaceOwnershipChanges;
+
+  /// No description provided for @targetContentPreserved.
+  ///
+  /// In en, this message translates to:
+  /// **'Current target content will be preserved.'**
+  String get targetContentPreserved;
 
   /// No description provided for @localReadFailed.
   ///

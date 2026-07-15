@@ -13,6 +13,8 @@
 - `inventory_test.go`: specifies aggregation, External identity separation, read-only inspection, target health, Workspace reconciliation, and the explicit-project privacy boundary.
 - `installation_plan.go`: adapts strict repeated target/state-bound resolution JSON, refreshes cached immutable assessments, and turns risk confirmation flags into stable preflight JSON plus execution-progress NDJSON.
 - `installation_plan_test.go`: specifies explicit multi-location/Agent plans, refreshed trusted-risk gates, state-bound resolutions, skip behavior, hostile structured inputs, Workspace Lock previews, partial failure retention, and per-target NDJSON through `Execute`.
+- `management_plan.go`: adapts strict repeated exact-target JSON into Target Management Plan preflight JSON and Remove/Repair/Stop Managing progress/result NDJSON.
+- `management_plan_test.go`: specifies exact-target removal, unsafe-remove blocking, Repair, content-preserving Stop Managing, Workspace ownership cleanup, Store retention, and machine output through `Execute`.
 - `update_plan.go`: adapts explicit target Update Plan preflight JSON and progress/result NDJSON at the command boundary.
 - `update_plan_test.go`: specifies per-target source resolution, pinned-commit exclusion, exact-target updates, Workspace Lock ordering, partial success, and failed-only retries through `Execute`.
 - `version.go`: serves the human version output and versioned App startup handshake.

@@ -297,28 +297,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get executableRisk => '此快照包含脚本或可执行内容。请在安装前检查文件；SkillsGo 不会对其进行安全审计。';
 
   @override
-  String removeTitle(String name) {
-    return '移除 $name？';
-  }
-
-  @override
-  String get removeDescription => 'SkillsGo 将移除此用户级 Skill，Codex 将无法再使用它。';
-
-  @override
-  String skillFact(String name) {
-    return '技能：$name';
-  }
-
-  @override
-  String get scopeGlobal => '范围：全局';
-
-  @override
-  String get agentImpactCodex => '影响的 Agent：Codex';
-
-  @override
-  String get removeSkill => '移除技能';
-
-  @override
   String get globalCodex => '全局 · Codex';
 
   @override
@@ -499,15 +477,54 @@ class AppLocalizationsZh extends AppLocalizations {
   String get update => '更新';
 
   @override
-  String removeNamed(String name) {
-    return '移除 $name';
-  }
-
-  @override
   String get backToLibrary => '返回技能库';
 
   @override
   String get remove => '移除';
+
+  @override
+  String get manageTargets => '管理目标';
+
+  @override
+  String get manageTargetsTitle => '管理安装目标';
+
+  @override
+  String get manageTargetsDescription => '为每个目标选择精确操作；未选择的目标不会改变。';
+
+  @override
+  String targetActionsSelected(int selected, int total) {
+    return '已选择 $selected/$total 个目标';
+  }
+
+  @override
+  String get repairTarget => '修复';
+
+  @override
+  String get stopManaging => '停止管理';
+
+  @override
+  String get stopManagingDescription => '移除 SkillsGo 所有权元数据，并保留目标当前内容。';
+
+  @override
+  String get applyTargetActions => '执行所选操作';
+
+  @override
+  String get managementProgressTitle => '正在执行目标操作';
+
+  @override
+  String get managementResultsTitle => '目标操作结果';
+
+  @override
+  String managementResultSummary(int succeeded, int failed) {
+    return '$succeeded 个成功，$failed 个失败';
+  }
+
+  @override
+  String get workspaceOwnershipChanges =>
+      '所选项目操作将更新 skillsgo.yaml 和 skillsgo-lock.yaml。';
+
+  @override
+  String get targetContentPreserved => '目标当前内容会被保留。';
 
   @override
   String get localReadFailed => '无法读取此技能';

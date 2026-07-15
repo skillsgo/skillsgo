@@ -33,6 +33,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/i18n/` | Locale detection and user-facing CLI messages. |
 | `internal/install/` | Add, update, remove, copy-digest, explicit replacement, and materialization behavior. |
 | `internal/inventory/` | Read-only managed and External Library reconciliation across receipts, explicit projects, Workspace declarations, known Agent paths, and Local Modifications. |
+| `internal/managementplan/` | Exact-target Remove, Repair, and Stop Managing preflight, reviewed-state binding, and target-specific execution. |
 | `internal/plan/` | Explicit Installation Plan conflict/risk preflight, Workspace Lock preview, resolution validation, and target-specific execution. |
 | `internal/project/` | `skillsgo.yaml` and `skillsgo-lock.yaml` project state. |
 | `internal/registry/` | Client for the public SkillsGo Registry protocol and normalized artifact-integrity verification. |
