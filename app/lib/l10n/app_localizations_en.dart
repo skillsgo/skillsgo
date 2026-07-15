@@ -48,6 +48,31 @@ class AppLocalizationsEn extends AppLocalizations {
   String get search => 'Search';
 
   @override
+  String get ranking => 'Ranking';
+
+  @override
+  String get trending => 'Trending';
+
+  @override
+  String get hot => 'Hot';
+
+  @override
+  String get discoverNavigation => 'Discover navigation';
+
+  @override
+  String get allTimeRanking => 'All-time ranking';
+
+  @override
+  String get trendingNow => 'Trending in the last 24 hours';
+
+  @override
+  String get hotNow => 'Hot right now';
+
+  @override
+  String get collectionComingSoon =>
+      'This collection is ready for Registry integration.';
+
+  @override
   String get offlineTitle => 'You’re offline';
 
   @override
@@ -134,6 +159,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get yourLibrary => 'Your Library';
 
   @override
+  String get libraryNavigation => 'Library navigation';
+
+  @override
+  String get all => 'All';
+
+  @override
+  String get userScope => 'User Scope';
+
+  @override
+  String get addProject => 'Add Project';
+
+  @override
   String get checking => 'Checking…';
 
   @override
@@ -174,6 +211,27 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localConfiguration => 'Local configuration';
+
+  @override
+  String get settingsNavigation => 'Settings navigation';
+
+  @override
+  String get general => 'General';
+
+  @override
+  String get agents => 'Agents';
+
+  @override
+  String get registry => 'Registry';
+
+  @override
+  String get installationPolicy => 'Installation Policy';
+
+  @override
+  String get storage => 'Storage';
+
+  @override
+  String get about => 'About';
 
   @override
   String get officialCli => 'SkillsGo CLI';

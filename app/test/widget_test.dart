@@ -1,10 +1,14 @@
 /*
- * [INPUT]: Uses SkillsPlayApp with a controllable SkillsGateway fake and Flutter platform locale settings.
- * [OUTPUT]: Specifies visible Personal User journeys for startup, discovery, settings, and local mutations.
+ * [INPUT]: Uses SkillsPlayApp with a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
+ * [OUTPUT]: Specifies startup, persistent nested navigation, accessibility, discovery, settings, and mutation journeys.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
+import 'dart:async';
+import 'dart:ui' show Tristate;
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsplay/app.dart';
 import 'package:skillsplay/domain/skills_gateway.dart';
@@ -64,6 +68,336 @@ void main() {
     expect(gateway.queries, ['flutter']);
     expect(find.text('Flutter Pro'), findsOneWidget);
     expect(find.text('example/skills'), findsOneWidget);
+  });
+
+  testWidgets('nested rails keep each destination subroute and input state', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(SkillsPlayApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Search'), findsOneWidget);
+    expect(find.text('Ranking'), findsOneWidget);
+    expect(find.text('Trending'), findsOneWidget);
+    expect(find.text('Hot'), findsOneWidget);
+
+    await tester.enterText(find.byKey(const Key('skill-search')), 'stateful');
+    await tester.tap(find.text('Ranking'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Library'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('All'), findsOneWidget);
+    expect(find.text('User Scope'), findsOneWidget);
+    expect(find.text('Add Project'), findsOneWidget);
+    expect(find.text('Codex'), findsOneWidget);
+    await tester.tap(find.text('Codex'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    expect(find.text('General'), findsOneWidget);
+    expect(find.text('Agents'), findsOneWidget);
+    expect(find.text('Registry'), findsOneWidget);
+    expect(find.text('Installation Policy'), findsOneWidget);
+    expect(find.text('Storage'), findsOneWidget);
+    expect(find.text('About'), findsOneWidget);
+    await tester.tap(find.text('Registry'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Discover'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ranking'), findsOneWidget);
+    expect(find.text('All-time ranking'), findsWidgets);
+    expect(_isSemanticallySelected(tester, 'Ranking'), isTrue);
+
+    await tester.tap(find.text('Library'));
+    await tester.pumpAndSettle();
+    expect(_isSemanticallySelected(tester, 'Codex'), isTrue);
+
+    await tester.tap(find.text('Settings'));
+    await tester.pumpAndSettle();
+    expect(_isSemanticallySelected(tester, 'Registry'), isTrue);
+
+    await tester.tap(find.text('Discover'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Search'));
+    await tester.pumpAndSettle();
+    expect(
+      tester
+          .widget<TextField>(find.byKey(const Key('skill-search')))
+          .controller!
+          .text,
+      'stateful',
+    );
+  });
+
+  testWidgets(
+    'a Discover request completes while another destination is open',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      final search = Completer<List<SkillSummary>>();
+      final gateway = FakeSkillsGateway(searchCompleter: search);
+      await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+      await tester.pumpAndSettle();
+
+      await tester.enterText(find.byKey(const Key('skill-search')), 'async');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pump();
+      await tester.tap(find.text('Library'));
+      await tester.pumpAndSettle();
+
+      search.complete(gateway.searchResults);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Discover'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Flutter Pro'), findsOneWidget);
+      expect(
+        tester
+            .widget<TextField>(find.byKey(const Key('skill-search')))
+            .controller!
+            .text,
+        'async',
+      );
+    },
+  );
+
+  testWidgets('an install result survives leaving and reopening Skill detail', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final install = Completer<CommandResult>();
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      installCompleter: install,
+    );
+    await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('skill-search')), 'install');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Flutter Pro'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Install for Codex'));
+    await tester.pump();
+    await tester.tap(find.byTooltip('Back to search'));
+    await tester.pumpAndSettle();
+
+    install.complete(_success(['skillsgo', 'add']));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Flutter Pro'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Command completed'), findsOneWidget);
+  });
+
+  testWidgets('Discover restores its collection scroll position', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway(
+      searchResults: List.generate(
+        30,
+        (index) => SkillSummary(
+          id: 'example/skills/skill-$index',
+          skillId: 'skill-$index',
+          name: 'Skill $index',
+          source: 'example/skills',
+          installs: index,
+        ),
+      ),
+    );
+    await tester.pumpWidget(SkillsPlayApp(gateway: gateway));
+    await tester.pumpAndSettle();
+
+    await tester.enterText(find.byKey(const Key('skill-search')), 'many');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    await tester.scrollUntilVisible(
+      find.text('Skill 20'),
+      350,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('discover-results')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+    expect(find.text('Skill 20'), findsOneWidget);
+
+    await tester.tap(find.text('Library'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Discover'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Skill 20'), findsOneWidget);
+  });
+
+  testWidgets('rails expose selected semantics and full dynamic labels', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    const longAgent = 'A Very Long Agent Name That Must Truncate';
+    await tester.pumpWidget(
+      SkillsPlayApp(
+        gateway: FakeSkillsGateway(
+          agentNames: const ['a-very-long-agent-name-that-must-truncate'],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final searchSemantics = find.bySemanticsLabel('Search');
+    final searchNodes = List.generate(
+      searchSemantics.evaluate().length,
+      (index) => tester.getSemantics(searchSemantics.at(index)),
+    );
+    expect(searchNodes.any((node) => node.flagsCollection.isButton), isTrue);
+    expect(
+      searchNodes.any(
+        (node) => node.flagsCollection.isSelected == Tristate.isTrue,
+      ),
+      isTrue,
+    );
+
+    await tester.tap(find.text('Library'));
+    await tester.pumpAndSettle();
+    expect(find.byTooltip(longAgent), findsOneWidget);
+
+    final indicator = tester.widget<Positioned>(
+      find.byKey(const Key('rail-indicator')),
+    );
+    final decoration =
+        tester
+                .widget<DecoratedBox>(
+                  find.descendant(
+                    of: find.byKey(const Key('rail-indicator')),
+                    matching: find.byType(DecoratedBox),
+                  ),
+                )
+                .decoration
+            as BoxDecoration;
+    expect(indicator.top, 2);
+    expect(decoration.color, Colors.white);
+  });
+
+  testWidgets('an overflowing Agent rail scrolls independently', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 520));
+    await tester.pumpWidget(
+      SkillsPlayApp(
+        gateway: FakeSkillsGateway(
+          agentNames: List.generate(20, (index) => 'agent-$index'),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Library'));
+    await tester.pumpAndSettle();
+
+    await tester.scrollUntilVisible(
+      find.text('Agent 19'),
+      300,
+      scrollable: find.descendant(
+        of: find.byKey(const Key('side-rail-scroll')),
+        matching: find.byType(Scrollable),
+      ),
+    );
+
+    expect(find.text('Agent 19').hitTestable(), findsOneWidget);
+    expect(find.text('Your Library').hitTestable(), findsOneWidget);
+  });
+
+  testWidgets('Library falls back to All when its selected Agent disappears', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final agents = <String>['codex'];
+    await tester.pumpWidget(
+      SkillsPlayApp(gateway: FakeSkillsGateway(agentNames: agents)),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Library'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Codex'));
+    await tester.pumpAndSettle();
+    expect(_isSemanticallySelected(tester, 'Codex'), isTrue);
+
+    agents.clear();
+    await tester.tap(find.text('Refresh'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Codex'), findsNothing);
+    expect(_isSemanticallySelected(tester, 'All'), isTrue);
+  });
+
+  testWidgets('the selected rail capsule follows spring motion', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(SkillsPlayApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ranking'));
+    await tester.pump(const Duration(milliseconds: 16));
+    final moving = tester.widget<Positioned>(
+      find.byKey(const Key('rail-indicator')),
+    );
+    expect(moving.top, isNot(46));
+
+    await tester.pumpAndSettle();
+    final settled = tester.widget<Positioned>(
+      find.byKey(const Key('rail-indicator')),
+    );
+    expect(settled.top, closeTo(46, .01));
+  });
+
+  testWidgets('reduced motion moves the selected rail capsule immediately', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await tester.pumpWidget(SkillsPlayApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ranking'));
+    await tester.pump();
+
+    final indicator = tester.widget<Positioned>(
+      find.byKey(const Key('rail-indicator')),
+    );
+    expect(indicator.top, 46);
+    final rankingSemantics = find.bySemanticsLabel('Ranking');
+    expect(
+      List.generate(
+        rankingSemantics.evaluate().length,
+        (index) => tester.getSemantics(rankingSemantics.at(index)),
+      ).any((node) => node.flagsCollection.isSelected == Tristate.isTrue),
+      isTrue,
+    );
+  });
+
+  testWidgets('keyboard focus can activate the next rail destination', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(SkillsPlayApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+
+    final searchButton = tester.widget<TextButton>(
+      find.widgetWithText(TextButton, 'Search'),
+    );
+    searchButton.focusNode!.requestFocus();
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.tab);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+
+    expect(find.text('All-time ranking'), findsWidgets);
   });
 
   testWidgets('Settings shows a missing CLI and accepts a custom path', (
@@ -135,11 +469,31 @@ void main() {
 }
 
 class FakeSkillsGateway implements SkillsGateway {
-  FakeSkillsGateway({this.cliReady = true, this.installed = true});
+  FakeSkillsGateway({
+    this.cliReady = true,
+    this.installed = true,
+    this.searchCompleter,
+    this.installCompleter,
+    List<SkillSummary>? searchResults,
+    this.agentNames = const ['codex'],
+  }) : searchResults = searchResults ?? _defaultSearchResults;
   final bool cliReady;
+  final Completer<List<SkillSummary>>? searchCompleter;
+  final Completer<CommandResult>? installCompleter;
+  final List<String> agentNames;
   bool installed;
   final queries = <String>[];
   String? savedPath;
+  static const _defaultSearchResults = [
+    SkillSummary(
+      id: 'example/skills/flutter-pro',
+      skillId: 'flutter-pro',
+      name: 'Flutter Pro',
+      source: 'example/skills',
+      installs: 1200,
+    ),
+  ];
+  final List<SkillSummary> searchResults;
 
   @override
   Future<CliStatus> detectCli({String? customPath}) async => cliReady
@@ -163,15 +517,7 @@ class FakeSkillsGateway implements SkillsGateway {
   @override
   Future<List<SkillSummary>> search(String query) async {
     queries.add(query);
-    return const [
-      SkillSummary(
-        id: 'example/skills/flutter-pro',
-        skillId: 'flutter-pro',
-        name: 'Flutter Pro',
-        source: 'example/skills',
-        installs: 1200,
-      ),
-    ];
+    return searchCompleter?.future ?? searchResults;
   }
 
   @override
@@ -184,11 +530,11 @@ class FakeSkillsGateway implements SkillsGateway {
       );
   @override
   Future<List<InstalledSkill>> listInstalled() async => installed
-      ? const [
+      ? [
           InstalledSkill(
             name: 'local-skill',
             path: '/tmp/local-skill',
-            agents: ['codex'],
+            agents: agentNames,
           ),
         ]
       : const [];
@@ -206,6 +552,11 @@ class FakeSkillsGateway implements SkillsGateway {
   ) async => {'local-skill': UpdateState.available};
   @override
   Future<CommandResult> install(SkillSummary skill) async {
+    if (installCompleter != null) {
+      final result = await installCompleter!.future;
+      installed = result.succeeded;
+      return result;
+    }
     installed = true;
     return _success(['skills', 'add']);
   }
@@ -225,3 +576,11 @@ CommandResult _success(List<String> command) => CommandResult(
   command: command,
   output: const ProcessOutput(exitCode: 0, stdout: 'ok', stderr: ''),
 );
+
+bool _isSemanticallySelected(WidgetTester tester, String label) {
+  final finder = find.bySemanticsLabel(label);
+  return List.generate(
+    finder.evaluate().length,
+    (index) => tester.getSemantics(finder.at(index)),
+  ).any((node) => node.flagsCollection.isSelected == Tristate.isTrue);
+}

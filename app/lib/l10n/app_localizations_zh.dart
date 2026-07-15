@@ -47,6 +47,30 @@ class AppLocalizationsZh extends AppLocalizations {
   String get search => '搜索';
 
   @override
+  String get ranking => '排行';
+
+  @override
+  String get trending => '趋势';
+
+  @override
+  String get hot => '热门';
+
+  @override
+  String get discoverNavigation => '发现导航';
+
+  @override
+  String get allTimeRanking => '历史排行';
+
+  @override
+  String get trendingNow => '最近 24 小时趋势';
+
+  @override
+  String get hotNow => '当前热门';
+
+  @override
+  String get collectionComingSoon => '此集合已准备好接入 Registry。';
+
+  @override
   String get offlineTitle => '当前处于离线状态';
 
   @override
@@ -130,6 +154,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get yourLibrary => '你的技能库';
 
   @override
+  String get libraryNavigation => '技能库导航';
+
+  @override
+  String get all => '所有';
+
+  @override
+  String get userScope => '用户范围';
+
+  @override
+  String get addProject => '添加项目';
+
+  @override
   String get checking => '正在检查…';
 
   @override
@@ -169,6 +205,27 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get localConfiguration => '本地配置';
+
+  @override
+  String get settingsNavigation => '设置导航';
+
+  @override
+  String get general => '通用';
+
+  @override
+  String get agents => 'Agents';
+
+  @override
+  String get registry => 'Registry';
+
+  @override
+  String get installationPolicy => '安装策略';
+
+  @override
+  String get storage => '存储';
+
+  @override
+  String get about => '关于';
 
   @override
   String get officialCli => 'SkillsGo CLI';

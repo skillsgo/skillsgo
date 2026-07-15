@@ -170,6 +170,54 @@ abstract class AppLocalizations {
   /// **'Search'**
   String get search;
 
+  /// No description provided for @ranking.
+  ///
+  /// In en, this message translates to:
+  /// **'Ranking'**
+  String get ranking;
+
+  /// No description provided for @trending.
+  ///
+  /// In en, this message translates to:
+  /// **'Trending'**
+  String get trending;
+
+  /// No description provided for @hot.
+  ///
+  /// In en, this message translates to:
+  /// **'Hot'**
+  String get hot;
+
+  /// No description provided for @discoverNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover navigation'**
+  String get discoverNavigation;
+
+  /// No description provided for @allTimeRanking.
+  ///
+  /// In en, this message translates to:
+  /// **'All-time ranking'**
+  String get allTimeRanking;
+
+  /// No description provided for @trendingNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Trending in the last 24 hours'**
+  String get trendingNow;
+
+  /// No description provided for @hotNow.
+  ///
+  /// In en, this message translates to:
+  /// **'Hot right now'**
+  String get hotNow;
+
+  /// No description provided for @collectionComingSoon.
+  ///
+  /// In en, this message translates to:
+  /// **'This collection is ready for Registry integration.'**
+  String get collectionComingSoon;
+
   /// No description provided for @offlineTitle.
   ///
   /// In en, this message translates to:
@@ -320,6 +368,30 @@ abstract class AppLocalizations {
   /// **'Your Library'**
   String get yourLibrary;
 
+  /// No description provided for @libraryNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Library navigation'**
+  String get libraryNavigation;
+
+  /// No description provided for @all.
+  ///
+  /// In en, this message translates to:
+  /// **'All'**
+  String get all;
+
+  /// No description provided for @userScope.
+  ///
+  /// In en, this message translates to:
+  /// **'User Scope'**
+  String get userScope;
+
+  /// No description provided for @addProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Add Project'**
+  String get addProject;
+
   /// No description provided for @checking.
   ///
   /// In en, this message translates to:
@@ -397,6 +469,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Local configuration'**
   String get localConfiguration;
+
+  /// No description provided for @settingsNavigation.
+  ///
+  /// In en, this message translates to:
+  /// **'Settings navigation'**
+  String get settingsNavigation;
+
+  /// No description provided for @general.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get general;
+
+  /// No description provided for @agents.
+  ///
+  /// In en, this message translates to:
+  /// **'Agents'**
+  String get agents;
+
+  /// No description provided for @registry.
+  ///
+  /// In en, this message translates to:
+  /// **'Registry'**
+  String get registry;
+
+  /// No description provided for @installationPolicy.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation Policy'**
+  String get installationPolicy;
+
+  /// No description provided for @storage.
+  ///
+  /// In en, this message translates to:
+  /// **'Storage'**
+  String get storage;
+
+  /// No description provided for @about.
+  ///
+  /// In en, this message translates to:
+  /// **'About'**
+  String get about;
 
   /// No description provided for @officialCli.
   ///
