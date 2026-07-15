@@ -13,10 +13,12 @@
 - `inventory_test.go`: specifies aggregation, External identity separation, read-only inspection, target health, Workspace reconciliation, and the explicit-project privacy boundary.
 - `installation_plan.go`: adapts strict repeated target/state-bound resolution JSON, refreshes cached immutable assessments, and turns risk confirmation flags into stable preflight JSON plus execution-progress NDJSON.
 - `installation_plan_test.go`: specifies explicit multi-location/Agent plans, refreshed trusted-risk gates, state-bound resolutions, skip behavior, hostile structured inputs, Workspace Lock previews, partial failure retention, and per-target NDJSON through `Execute`.
+- `update_plan.go`: adapts explicit target Update Plan preflight JSON and progress/result NDJSON at the command boundary.
+- `update_plan_test.go`: specifies per-target source resolution, pinned-commit exclusion, exact-target updates, Workspace Lock ordering, partial success, and failed-only retries through `Execute`.
 - `version.go`: serves the human version output and versioned App startup handshake.
 - `args_test.go`: covers public argument normalization and environment-gated test Agent behavior.
 - `i18n_test.go`: covers localized public command help.
-- `install_flow_test.go`: exercises installation and restoration through `Execute`.
+- `install_flow_test.go`: exercises legacy installation, update, and restoration through `Execute`.
 - `version_test.go`: specifies CLI identity and App protocol compatibility through `Execute`.
 
 ## Architectural Boundary

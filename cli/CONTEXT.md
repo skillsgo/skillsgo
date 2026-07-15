@@ -51,3 +51,7 @@ _Avoid_: automatic rename, same-path coexistence
 **Local Modification**:
 A difference between a copy-mode installation target and its source artifact. Modified targets require explicit review before update, replacement, or removal, and replacement authority expires when the reviewed filesystem or receipt state changes.
 _Avoid_: Registry version, automatically merged change
+
+**Update Plan**:
+A state-bound operation over exact managed Installation Targets. Every target resolves its own stored movable reference; tags and fixed commits are pinned; Workspace Lock changes are previewed; and each target produces independent progress and a final result.
+_Avoid_: name-only global update, implicit project mutation, localized-output parsing
