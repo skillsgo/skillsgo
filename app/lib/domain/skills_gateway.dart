@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, unified Library entries/targets, explicit Installation Plans/progress/results, project references, Agent inspection, CLI, Registry settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, unified Library entries/targets, explicit Installation and Update Plans/progress/results, project references, Agent inspection, CLI, Registry settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -47,6 +47,10 @@ enum InstallationTargetResolution { none, replace }
 enum InstallationTargetOutcome { succeeded, skipped, conflict, failed }
 
 enum InstallationProgressState { started, finished }
+
+enum UpdatePlanAction { update, current, pinned, failed }
+
+enum UpdateTargetOutcome { succeeded, skipped, failed }
 
 enum ReceiptState { present, missing, invalid }
 
@@ -427,6 +431,182 @@ class InstallationTargetProgress {
   final InstallationTargetResult? result;
 }
 
+class UpdatePlanItem {
+  const UpdatePlanItem({
+    required this.target,
+    required this.name,
+    required this.coordinate,
+    required this.sourceRef,
+    required this.fromVersion,
+    required this.toVersion,
+    required this.action,
+    required this.stateToken,
+    required this.workspaceLockChange,
+    this.reasonCode = '',
+    this.diagnostic = '',
+    this.affectedBindings = const [],
+  });
+
+  final InstallationPlanTarget target;
+  final String name;
+  final String coordinate;
+  final String sourceRef;
+  final String fromVersion;
+  final String toVersion;
+  final UpdatePlanAction action;
+  final String reasonCode;
+  final String diagnostic;
+  final String stateToken;
+  final bool workspaceLockChange;
+  final List<InstallationPlanTarget> affectedBindings;
+}
+
+class UpdatePlanSummary {
+  const UpdatePlanSummary({
+    required this.update,
+    required this.current,
+    required this.pinned,
+    required this.failed,
+  });
+
+  final int update;
+  final int current;
+  final int pinned;
+  final int failed;
+}
+
+class UpdatePlan {
+  const UpdatePlan({
+    required this.targets,
+    required this.workspaceLockChanges,
+    required this.summary,
+  });
+
+  final List<UpdatePlanItem> targets;
+  final List<WorkspaceLockChange> workspaceLockChanges;
+  final UpdatePlanSummary summary;
+
+  UpdatePlan selectTargets(Iterable<UpdatePlanItem> selected) {
+    final values = List<UpdatePlanItem>.unmodifiable(selected);
+    return UpdatePlan(
+      targets: values,
+      workspaceLockChanges: List.unmodifiable(
+        workspaceLockChanges.where(
+          (change) => values.any(
+            (item) =>
+                item.workspaceLockChange &&
+                item.target.projectRoot == change.projectRoot &&
+                item.name == change.skill &&
+                item.toVersion == change.toVersion,
+          ),
+        ),
+      ),
+      summary: UpdatePlanSummary(
+        update: values
+            .where((item) => item.action == UpdatePlanAction.update)
+            .length,
+        current: values
+            .where((item) => item.action == UpdatePlanAction.current)
+            .length,
+        pinned: values
+            .where((item) => item.action == UpdatePlanAction.pinned)
+            .length,
+        failed: values
+            .where((item) => item.action == UpdatePlanAction.failed)
+            .length,
+      ),
+    );
+  }
+}
+
+String updateTargetKey(InstallationPlanTarget target) => _updateTargetKey(
+  target.scope,
+  target.projectRoot,
+  target.agent,
+  target.mode,
+  target.path,
+);
+
+String installedUpdateTargetKey(SkillInstallationTarget target) =>
+    _updateTargetKey(
+      target.scope,
+      target.projectRoot,
+      target.agent,
+      target.mode,
+      target.path,
+    );
+
+String _updateTargetKey(
+  InstallationScope scope,
+  String projectRoot,
+  String agent,
+  InstallationMode mode,
+  String path,
+) => '${scope.name}\u0000$projectRoot\u0000$agent\u0000${mode.name}\u0000$path';
+
+class UpdateTargetResult {
+  const UpdateTargetResult({
+    required this.target,
+    required this.name,
+    required this.coordinate,
+    required this.fromVersion,
+    required this.toVersion,
+    required this.outcome,
+    this.errorCode = '',
+    this.diagnostic = '',
+  });
+
+  final InstallationPlanTarget target;
+  final String name;
+  final String coordinate;
+  final String fromVersion;
+  final String toVersion;
+  final UpdateTargetOutcome outcome;
+  final String errorCode;
+  final String diagnostic;
+}
+
+class UpdateExecutionSummary {
+  const UpdateExecutionSummary({
+    required this.succeeded,
+    required this.skipped,
+    required this.failed,
+  });
+
+  final int succeeded;
+  final int skipped;
+  final int failed;
+}
+
+class UpdateExecution {
+  const UpdateExecution({required this.results, required this.summary});
+
+  final List<UpdateTargetResult> results;
+  final UpdateExecutionSummary summary;
+}
+
+class UpdateTargetProgress {
+  const UpdateTargetProgress({
+    required this.sequence,
+    required this.target,
+    required this.name,
+    required this.coordinate,
+    required this.fromVersion,
+    required this.toVersion,
+    required this.state,
+    this.result,
+  });
+
+  final int sequence;
+  final InstallationPlanTarget target;
+  final String name;
+  final String coordinate;
+  final String fromVersion;
+  final String toVersion;
+  final InstallationProgressState state;
+  final UpdateTargetResult? result;
+}
+
 class AgentUserTarget {
   const AgentUserTarget({required this.path, required this.exists});
 
@@ -705,6 +885,13 @@ abstract interface class SkillsGateway {
   });
   Future<CommandResult> install(SkillSummary skill);
   Future<CommandResult> remove(InstalledSkill skill);
-  Future<CommandResult> update(InstalledSkill skill);
+  Future<UpdatePlan> preflightUpdate(
+    InstalledSkill skill,
+    List<SkillInstallationTarget> targets,
+  );
+  Future<UpdateExecution> executeUpdate(
+    UpdatePlan plan, {
+    void Function(UpdateTargetProgress progress)? onProgress,
+  });
   Future<Map<String, UpdateState>> checkUpdates(List<InstalledSkill> skills);
 }

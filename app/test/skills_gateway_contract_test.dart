@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings, discovery/detail parsing, managed/external CLI inventory including Local Modifications, read-only local inspection, explicit project persistence, strict Installation Plan NDJSON progress/result contracts, typed failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings, discovery/detail parsing, managed/external CLI inventory including Local Modifications, read-only local inspection, explicit project persistence, strict Installation/Update Plan JSON and NDJSON contracts, typed failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -263,7 +263,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 5,
+            'appProtocolVersion': 6,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -370,7 +370,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '0.1.0',
-          'appProtocolVersion': 5,
+          'appProtocolVersion': 6,
           'os': 'linux',
           'architecture': 'arm64',
         }),
@@ -398,7 +398,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '7.4.2',
-            'appProtocolVersion': 5,
+            'appProtocolVersion': 6,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -426,7 +426,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': 'dev',
-          'appProtocolVersion': 5,
+          'appProtocolVersion': 6,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -455,7 +455,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '1.0.0',
-          'appProtocolVersion': 5,
+          'appProtocolVersion': 6,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -482,7 +482,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 5,
+            'appProtocolVersion': 6,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -1042,10 +1042,20 @@ void main() {
       installs: 0,
     );
     const installed = InstalledSkill(
+      identity: r'registry:github.com/a/b/-/Test ; $(touch nope)',
       name: r'Test ; $(touch nope)',
       path: r'/tmp/Test ; $(touch nope)',
       agents: ['codex'],
       targetCount: 1,
+      coordinate: r'github.com/a/b/-/Test ; $(touch nope)',
+      targets: [
+        SkillInstallationTarget(
+          agent: 'codex',
+          scope: InstallationScope.user,
+          path: r'/tmp/Test ; $(touch nope)',
+          version: 'v1',
+        ),
+      ],
     );
 
     await gateway.install(summary);
@@ -1067,15 +1077,34 @@ void main() {
       '--registry',
       'http://localhost:3000',
     ]);
-    await gateway.update(installed);
-    expect(runner.lastArguments, [
-      'update',
-      r'Test ; $(touch nope)',
-      '--global',
-      '--yes',
-      '--registry',
-      'http://localhost:3000',
-    ]);
+    runner.result = const ProcessOutput(
+      exitCode: 0,
+      stdout: r'''
+{"schemaVersion":1,"phase":"update-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","coordinate":"github.com/a/b/-/Test ; $(touch nope)","sourceRef":"main","fromVersion":"v1","toVersion":"v2","action":"update","stateToken":"sha256:state","workspaceLockChange":false}],"workspaceLockChanges":[],"summary":{"update":1,"current":0,"pinned":0,"failed":0}}
+''',
+      stderr: '',
+    );
+    await gateway.preflightUpdate(installed, installed.targets);
+    expect(runner.lastArguments!.first, 'update');
+    expect(runner.lastArguments![1], '--target');
+    expect(jsonDecode(runner.lastArguments![2]), {
+      'scope': 'user',
+      'agent': 'codex',
+      'mode': 'symlink',
+      'path': r'/tmp/Test ; $(touch nope)',
+      'coordinate': r'github.com/a/b/-/Test ; $(touch nope)',
+      'version': 'v1',
+    });
+    expect(
+      runner.lastArguments,
+      containsAllInOrder([
+        '--preflight',
+        '--output',
+        'json',
+        '--registry',
+        'http://localhost:3000',
+      ]),
+    );
     await gateway.remove(installed);
     expect(runner.lastArguments, [
       'remove',
@@ -1338,64 +1367,64 @@ void main() {
   );
 
   test('Installation execution never parses human-readable output', () async {
-	final runner = _FakeProcessRunner()
-	  ..result = const ProcessOutput(
-		exitCode: 0,
-		stdout: '已安装 1 个目标。',
-		stderr: '',
-	  );
-	final gateway = RealSkillsGateway(
-	  processRunner: runner,
-	  initialCliPath: '/Applications/SkillsGo.app/skillsgo',
-	);
-	const target = InstallationPlanTarget(
-	  scope: InstallationScope.user,
-	  agent: 'codex',
-	  mode: InstallationMode.symlink,
-	  path: '/Users/test/.codex/skills/test',
-	);
-	const plan = InstallationPlan(
-	  source: 'github.com/a/b/-/test',
-	  coordinate: 'github.com/a/b/-/test',
-	  version: 'v1',
-	  name: 'test',
-	  selections: [
-		InstallationTargetSelection(
-		  scope: InstallationScope.user,
-		  agent: 'codex',
-		),
-	  ],
-	  targets: [
-		InstallationPlanItem(
-		  target: target,
-		  action: InstallationPlanAction.create,
-		  workspaceLockChange: false,
-		),
-	  ],
-	  summary: InstallationPlanSummary(
-		create: 1,
-		replace: 0,
-		skip: 0,
-		conflict: 0,
-		blockedByRisk: 0,
-	  ),
-	  workspaceLockChanges: [],
-	  riskAssessment: SkillRiskAssessment.low,
-	  riskConfirmed: false,
-	  allowCritical: false,
-	);
+    final runner = _FakeProcessRunner()
+      ..result = const ProcessOutput(
+        exitCode: 0,
+        stdout: '已安装 1 个目标。',
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/Applications/SkillsGo.app/skillsgo',
+    );
+    const target = InstallationPlanTarget(
+      scope: InstallationScope.user,
+      agent: 'codex',
+      mode: InstallationMode.symlink,
+      path: '/Users/test/.codex/skills/test',
+    );
+    const plan = InstallationPlan(
+      source: 'github.com/a/b/-/test',
+      coordinate: 'github.com/a/b/-/test',
+      version: 'v1',
+      name: 'test',
+      selections: [
+        InstallationTargetSelection(
+          scope: InstallationScope.user,
+          agent: 'codex',
+        ),
+      ],
+      targets: [
+        InstallationPlanItem(
+          target: target,
+          action: InstallationPlanAction.create,
+          workspaceLockChange: false,
+        ),
+      ],
+      summary: InstallationPlanSummary(
+        create: 1,
+        replace: 0,
+        skip: 0,
+        conflict: 0,
+        blockedByRisk: 0,
+      ),
+      workspaceLockChanges: [],
+      riskAssessment: SkillRiskAssessment.low,
+      riskConfirmed: false,
+      allowCritical: false,
+    );
 
-	await expectLater(
-	  gateway.executeInstall(plan),
-	  throwsA(
-		isA<SkillsException>().having(
-		  (error) => error.kind,
-		  'kind',
-		  SkillsFailureKind.invalidResponse,
-		),
-	  ),
-	);
-	expect(runner.lastArguments, containsAllInOrder(['--output', 'ndjson']));
+    await expectLater(
+      gateway.executeInstall(plan),
+      throwsA(
+        isA<SkillsException>().having(
+          (error) => error.kind,
+          'kind',
+          SkillsFailureKind.invalidResponse,
+        ),
+      ),
+    );
+    expect(runner.lastArguments, containsAllInOrder(['--output', 'ndjson']));
   });
 
   test('Installation Plan rejects malformed machine contracts', () async {
@@ -1744,7 +1773,7 @@ void main() {
       expect(largePreview.contents, startsWith('preview-'));
       expect(largePreview.contents, isNotEmpty);
       await expectLater(
-        gateway.update(external),
+        gateway.preflightUpdate(external, external.targets),
         throwsA(isA<SkillsException>()),
       );
       await expectLater(
@@ -1758,11 +1787,13 @@ void main() {
     },
   );
 
-  test('update check delegates to SkillsGo JSON contract', () async {
+  test('update check uses explicit target Update Plan JSON', () async {
     final runner = _FakeProcessRunner()
       ..result = const ProcessOutput(
         exitCode: 0,
-        stdout: '[{"name":"Test","available":true}]',
+        stdout: '''
+{"schemaVersion":1,"phase":"update-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","sourceRef":"main","fromVersion":"v1","toVersion":"v2","action":"update","stateToken":"sha256:state","workspaceLockChange":false}],"workspaceLockChanges":[],"summary":{"update":1,"current":0,"pinned":0,"failed":0}}
+''',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -1772,24 +1803,109 @@ void main() {
 
     final states = await gateway.checkUpdates(const [
       InstalledSkill(
+        identity: 'registry:github.com/example/skills/-/test',
         name: 'Test',
         path: '/tmp/Test',
         agents: ['codex'],
         targetCount: 1,
+        coordinate: 'github.com/example/skills/-/test',
+        targets: [
+          SkillInstallationTarget(
+            agent: 'codex',
+            scope: InstallationScope.user,
+            path: '/tmp/Test',
+            version: 'v1',
+          ),
+        ],
       ),
     ]);
 
-    expect(states['Test'], UpdateState.available);
-    expect(runner.lastArguments, [
-      'update',
-      'Test',
-      '--global',
-      '--check',
-      '--output',
-      'json',
-      '--registry',
-      'http://localhost:3000',
-    ]);
+    expect(
+      states['registry:github.com/example/skills/-/test'],
+      UpdateState.available,
+    );
+    expect(runner.lastArguments!.first, 'update');
+    expect(
+      runner.lastArguments,
+      containsAllInOrder(['--target', isA<String>()]),
+    );
+    final target = jsonDecode(runner.lastArguments![2]) as Map<String, dynamic>;
+    expect(target, {
+      'scope': 'user',
+      'agent': 'codex',
+      'mode': 'symlink',
+      'path': '/tmp/Test',
+      'coordinate': 'github.com/example/skills/-/test',
+      'version': 'v1',
+    });
+    expect(runner.lastArguments, containsAll(['--preflight', 'json']));
+  });
+
+  test('update execution parses only versioned target NDJSON', () async {
+    final runner = _FakeProcessRunner()
+      ..result = const ProcessOutput(
+        exitCode: 0,
+        stdout: '''
+{"schemaVersion":1,"phase":"update-progress","sequence":1,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","state":"started"}
+{"schemaVersion":1,"phase":"update-progress","sequence":2,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","state":"finished","result":{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","outcome":"succeeded"}}
+{"schemaVersion":1,"phase":"update-execution","results":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","outcome":"succeeded"}],"summary":{"succeeded":1,"skipped":0,"failed":0}}
+''',
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/bin/skillsgo',
+    );
+    const target = InstallationPlanTarget(
+      scope: InstallationScope.user,
+      agent: 'codex',
+      mode: InstallationMode.symlink,
+      path: '/tmp/Test',
+    );
+    const plan = UpdatePlan(
+      targets: [
+        UpdatePlanItem(
+          target: target,
+          name: 'Test',
+          coordinate: 'github.com/example/skills/-/test',
+          sourceRef: 'main',
+          fromVersion: 'v1',
+          toVersion: 'v2',
+          action: UpdatePlanAction.update,
+          stateToken: 'sha256:state',
+          workspaceLockChange: false,
+        ),
+      ],
+      workspaceLockChanges: [],
+      summary: UpdatePlanSummary(update: 1, current: 0, pinned: 0, failed: 0),
+    );
+    final progress = <UpdateTargetProgress>[];
+
+    final execution = await gateway.executeUpdate(
+      plan,
+      onProgress: progress.add,
+    );
+
+    expect(progress, hasLength(2));
+    expect(execution.summary.succeeded, 1);
+    expect(execution.results.single.toVersion, 'v2');
+    expect(runner.lastArguments, containsAll(['--output', 'ndjson']));
+
+    runner.result = const ProcessOutput(
+      exitCode: 0,
+      stdout: '正在更新目标……',
+      stderr: '',
+    );
+    await expectLater(
+      gateway.executeUpdate(plan),
+      throwsA(
+        isA<SkillsException>().having(
+          (error) => error.kind,
+          'kind',
+          SkillsFailureKind.invalidResponse,
+        ),
+      ),
+    );
   });
 }
 

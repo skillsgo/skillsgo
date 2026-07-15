@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Cobra and the Agent, Registry, Store, project, installation, Installation Plan, source, and i18n modules.
- * [OUTPUT]: Provides command.Execute and the complete CLI graph, including stable Agent, Library inventory, and explicit Installation Plan contracts, for terminal and App callers.
+ * [INPUT]: Depends on Cobra and the Agent, Registry, Store, project, installation, Installation Plan, Update Plan, source, and i18n modules.
+ * [OUTPUT]: Provides command.Execute and the complete CLI graph, including stable Agent, Library inventory, and explicit Installation/Update Plan contracts, for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -166,11 +166,22 @@ func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
 func newUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 	var registryURL, output string
 	var global, check, yes bool
+	var preflight bool
+	var explicitTargets []string
 	cmd := &cobra.Command{
 		Use:     "update [skills...]",
 		Aliases: []string{"upgrade"},
 		Short:   appi18n.T("update.short"),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if len(explicitTargets) > 0 {
+				if len(args) > 0 || global || check {
+					return fmt.Errorf("explicit Update Plans cannot be combined with names, --global, or --check")
+				}
+				return runExplicitUpdatePlan(cmd, registryURL, output, preflight, explicitTargets)
+			}
+			if preflight {
+				return fmt.Errorf("--preflight requires at least one --target")
+			}
 			if global {
 				return runGlobalUpdate(cmd, args, registryURL, output, check)
 			}
@@ -279,6 +290,8 @@ func newUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 	cmd.Flags().BoolVarP(&global, "global", "g", false, "更新用户级 Skill")
 	cmd.Flags().BoolVar(&check, "check", false, "只检查更新，不修改安装")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "跳过确认")
+	cmd.Flags().BoolVar(&preflight, "preflight", false, "只生成显式 Update Plan，不修改目标")
+	cmd.Flags().StringArrayVar(&explicitTargets, "target", nil, "显式 Update Target JSON；可重复")
 	_ = yes
 	return cmd
 }

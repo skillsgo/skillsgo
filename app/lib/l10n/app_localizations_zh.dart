@@ -965,6 +965,64 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get updatePlanTitle => '选择要更新的目标';
+
+  @override
+  String get updatePlanDescription => '请选择明确的安装目标；未选择的 Agent 和项目不会改变。';
+
+  @override
+  String updateTargetsSelected(int selected, int available) {
+    return '已选择 $selected/$available 个可更新目标';
+  }
+
+  @override
+  String updateVersionChange(String fromVersion, String toVersion) {
+    return '$fromVersion → $toVersion';
+  }
+
+  @override
+  String sourceReference(String reference) {
+    return '来源引用：$reference';
+  }
+
+  @override
+  String get fixedVersionTarget => '已固定——没有可移动引用';
+
+  @override
+  String get currentVersionTarget => '已是最新版本';
+
+  @override
+  String get updateCheckTargetFailed => '更新检查失败';
+
+  @override
+  String get reconcileWorkspaceLockTarget => '修复工作区锁文件';
+
+  @override
+  String get updateSelectedTargets => '更新所选目标';
+
+  @override
+  String get updateProgressTitle => '正在更新目标';
+
+  @override
+  String get updateResultsTitle => '更新结果';
+
+  @override
+  String updateProgressSummary(int finished, int total) {
+    return '已完成 $finished/$total 个目标';
+  }
+
+  @override
+  String retryFailedUpdates(int count) {
+    return '重试 $count 个失败更新';
+  }
+
+  @override
+  String get noUpdateableTargets => '所选目标没有可用更新。';
+
+  @override
+  String get closeUpdatePlan => '关闭';
+
+  @override
   String get targetSucceeded => '已安装';
 
   @override

@@ -52,6 +52,10 @@ _Avoid_: global transaction result, all-or-nothing install
 A schema-versioned started or finished machine event for exactly one Installation Target. The App retains these events outside transient dialogs, restores them after navigation, and never derives them from localized CLI text.
 _Avoid_: parsed terminal line, global spinner, inferred completion
 
+**Update Plan**:
+A reviewed set of exact managed Installation Targets, each resolved from its own stored source reference to an immutable destination version. Pinned targets are non-updateable, selected Workspace Lock changes are explicit, and results remain target-specific for failed-only retry.
+_Avoid_: update every copy, latest-version overwrite, Skill-name-only update
+
 **External Installation**:
 A Skill found in an Installed Agent's directory without a SkillsGo installation receipt. The Library can inspect it but cannot update or remove it until the user explicitly brings it under management.
 _Avoid_: broken Skill, unknown Skill, managed installation

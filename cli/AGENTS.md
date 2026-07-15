@@ -38,6 +38,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/registry/` | Client for the public SkillsGo Registry protocol and normalized artifact-integrity verification. |
 | `internal/source/` | Skill-coordinate parsing and source identity. |
 | `internal/store/` | User-level shared artifact cache and installation state. |
+| `internal/updateplan/` | Exact-target update checks, pinned-reference classification, Workspace Lock previews, and partial update execution. |
 
 ## Boundaries
 

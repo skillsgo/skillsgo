@@ -1814,6 +1814,102 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{Retry 1 Failed Target} other{Retry {count} Failed Targets}}'**
   String retryFailedTargets(int count);
 
+  /// No description provided for @updatePlanTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Select targets to update'**
+  String get updatePlanTitle;
+
+  /// No description provided for @updatePlanDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose exact Installation Targets. Unselected Agents and projects remain unchanged.'**
+  String get updatePlanDescription;
+
+  /// No description provided for @updateTargetsSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{selected} of {available} updateable targets selected'**
+  String updateTargetsSelected(int selected, int available);
+
+  /// No description provided for @updateVersionChange.
+  ///
+  /// In en, this message translates to:
+  /// **'{fromVersion} → {toVersion}'**
+  String updateVersionChange(String fromVersion, String toVersion);
+
+  /// No description provided for @sourceReference.
+  ///
+  /// In en, this message translates to:
+  /// **'Source reference: {reference}'**
+  String sourceReference(String reference);
+
+  /// No description provided for @fixedVersionTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Pinned — no movable reference'**
+  String get fixedVersionTarget;
+
+  /// No description provided for @currentVersionTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Up to date'**
+  String get currentVersionTarget;
+
+  /// No description provided for @updateCheckTargetFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Update check failed'**
+  String get updateCheckTargetFailed;
+
+  /// No description provided for @reconcileWorkspaceLockTarget.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair workspace lock'**
+  String get reconcileWorkspaceLockTarget;
+
+  /// No description provided for @updateSelectedTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'Update selected targets'**
+  String get updateSelectedTargets;
+
+  /// No description provided for @updateProgressTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating targets'**
+  String get updateProgressTitle;
+
+  /// No description provided for @updateResultsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update results'**
+  String get updateResultsTitle;
+
+  /// No description provided for @updateProgressSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{finished} of {total} targets finished'**
+  String updateProgressSummary(int finished, int total);
+
+  /// No description provided for @retryFailedUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Retry 1 Failed Update} other{Retry {count} Failed Updates}}'**
+  String retryFailedUpdates(int count);
+
+  /// No description provided for @noUpdateableTargets.
+  ///
+  /// In en, this message translates to:
+  /// **'No selected target has an available update.'**
+  String get noUpdateableTargets;
+
+  /// No description provided for @closeUpdatePlan.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get closeUpdatePlan;
+
   /// No description provided for @targetSucceeded.
   ///
   /// In en, this message translates to:

@@ -1012,6 +1012,72 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get updatePlanTitle => 'Select targets to update';
+
+  @override
+  String get updatePlanDescription =>
+      'Choose exact Installation Targets. Unselected Agents and projects remain unchanged.';
+
+  @override
+  String updateTargetsSelected(int selected, int available) {
+    return '$selected of $available updateable targets selected';
+  }
+
+  @override
+  String updateVersionChange(String fromVersion, String toVersion) {
+    return '$fromVersion → $toVersion';
+  }
+
+  @override
+  String sourceReference(String reference) {
+    return 'Source reference: $reference';
+  }
+
+  @override
+  String get fixedVersionTarget => 'Pinned — no movable reference';
+
+  @override
+  String get currentVersionTarget => 'Up to date';
+
+  @override
+  String get updateCheckTargetFailed => 'Update check failed';
+
+  @override
+  String get reconcileWorkspaceLockTarget => 'Repair workspace lock';
+
+  @override
+  String get updateSelectedTargets => 'Update selected targets';
+
+  @override
+  String get updateProgressTitle => 'Updating targets';
+
+  @override
+  String get updateResultsTitle => 'Update results';
+
+  @override
+  String updateProgressSummary(int finished, int total) {
+    return '$finished of $total targets finished';
+  }
+
+  @override
+  String retryFailedUpdates(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Retry $count Failed Updates',
+      one: 'Retry 1 Failed Update',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get noUpdateableTargets =>
+      'No selected target has an available update.';
+
+  @override
+  String get closeUpdatePlan => 'Close';
+
+  @override
   String get targetSucceeded => 'Installed';
 
   @override

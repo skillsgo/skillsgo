@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsGo brand tokens.
- * [OUTPUT]: Provides the desktop shell plus persistent Discover, shadcn_ui Installation Plan matrix/preflight/live progress/partial-result retry, managed/external Library/detail, project and Agent views, operations, and Settings journeys.
+ * [OUTPUT]: Provides the desktop shell plus persistent Discover, shadcn_ui Installation/Update Plan target selection, preflight, live progress, state-refreshed partial-result retry, managed/external Library/detail, project and Agent views, operations, and Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -2654,6 +2654,559 @@ String _shortIdentity(String value) {
   return normalized.length <= 12 ? normalized : normalized.substring(0, 12);
 }
 
+class _UpdatePlanDialog extends StatefulWidget {
+  const _UpdatePlanDialog({
+    required this.gateway,
+    required this.skill,
+    required this.plan,
+  });
+
+  final SkillsGateway gateway;
+  final InstalledSkill skill;
+  final UpdatePlan plan;
+
+  @override
+  State<_UpdatePlanDialog> createState() => _UpdatePlanDialogState();
+}
+
+class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
+  late final Set<String> selected = {
+    for (final item in widget.plan.targets)
+      if (item.action == UpdatePlanAction.update) updateTargetKey(item.target),
+  };
+  final progress = <String, UpdateTargetProgress>{};
+  final activeTargetKeys = <String>{};
+  UpdateExecution? execution;
+  Object? error;
+  bool operating = false;
+
+  List<UpdatePlanItem> get selectedItems => widget.plan.targets
+      .where((item) => selected.contains(updateTargetKey(item.target)))
+      .toList(growable: false);
+
+  int get availableCount => widget.plan.targets
+      .where((item) => item.action == UpdatePlanAction.update)
+      .length;
+
+  int get finishedCount => progress.values
+      .where(
+        (event) =>
+            activeTargetKeys.contains(updateTargetKey(event.target)) &&
+            event.state == InstallationProgressState.finished,
+      )
+      .length;
+
+  Future<void> _execute({UpdatePlan? retryPlan}) async {
+    final plan = retryPlan ?? widget.plan.selectTargets(selectedItems);
+    if (plan.targets.isEmpty || operating) return;
+    setState(() {
+      operating = true;
+      error = null;
+      activeTargetKeys
+        ..clear()
+        ..addAll(plan.targets.map((item) => updateTargetKey(item.target)));
+      for (final item in plan.targets) {
+        progress.remove(updateTargetKey(item.target));
+      }
+    });
+    try {
+      final next = await widget.gateway.executeUpdate(
+        plan,
+        onProgress: (event) {
+          if (!mounted) return;
+          setState(() => progress[updateTargetKey(event.target)] = event);
+        },
+      );
+      if (!mounted) return;
+      setState(() {
+        execution = execution == null
+            ? next
+            : _mergeUpdateExecutions(execution!, next);
+      });
+    } catch (caught) {
+      if (mounted) setState(() => error = caught);
+    } finally {
+      if (mounted) setState(() => operating = false);
+    }
+  }
+
+  Future<void> _retryFailed() async {
+    final current = execution;
+    if (current == null || operating) return;
+    final failed = current.results
+        .where((result) => result.outcome == UpdateTargetOutcome.failed)
+        .map((result) => updateTargetKey(result.target))
+        .toSet();
+    setState(() {
+      operating = true;
+      error = null;
+    });
+    try {
+      final projects = await widget.gateway.loadAddedProjects();
+      final entries = await widget.gateway.listInstalled(projects: projects);
+      final refreshed = entries.where(
+        (entry) => entry.identity == widget.skill.identity,
+      );
+      if (refreshed.isEmpty) {
+        throw const SkillsException(
+          'The failed Update Targets are no longer installed.',
+          kind: SkillsFailureKind.validation,
+        );
+      }
+      final refreshedSkill = refreshed.first;
+      final failedTargets = refreshedSkill.targets
+          .where((target) => failed.contains(installedUpdateTargetKey(target)))
+          .toList(growable: false);
+      if (failedTargets.length != failed.length) {
+        throw const SkillsException(
+          'The failed Update Targets changed before retry.',
+          kind: SkillsFailureKind.validation,
+        );
+      }
+      final retryPlan = await widget.gateway.preflightUpdate(
+        refreshedSkill,
+        failedTargets,
+      );
+      if (!mounted) return;
+      final passiveResults = [
+        for (final item in retryPlan.targets)
+          if (item.action != UpdatePlanAction.update)
+            UpdateTargetResult(
+              target: item.target,
+              name: item.name,
+              coordinate: item.coordinate,
+              fromVersion: item.fromVersion,
+              toVersion: item.toVersion,
+              outcome: item.action == UpdatePlanAction.failed
+                  ? UpdateTargetOutcome.failed
+                  : UpdateTargetOutcome.skipped,
+              errorCode: item.reasonCode,
+              diagnostic: item.diagnostic,
+            ),
+      ];
+      final updateItems = retryPlan.targets
+          .where((item) => item.action == UpdatePlanAction.update)
+          .toList(growable: false);
+      setState(() {
+        operating = false;
+        if (passiveResults.isNotEmpty) {
+          final passive = UpdateExecution(
+            results: passiveResults,
+            summary: UpdateExecutionSummary(
+              succeeded: 0,
+              skipped: passiveResults
+                  .where(
+                    (result) => result.outcome == UpdateTargetOutcome.skipped,
+                  )
+                  .length,
+              failed: passiveResults
+                  .where(
+                    (result) => result.outcome == UpdateTargetOutcome.failed,
+                  )
+                  .length,
+            ),
+          );
+          execution = _mergeUpdateExecutions(current, passive);
+        }
+      });
+      if (updateItems.isNotEmpty) {
+        await _execute(retryPlan: retryPlan.selectTargets(updateItems));
+      }
+    } catch (caught) {
+      if (mounted) {
+        setState(() {
+          operating = false;
+          error = caught;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final currentExecution = execution;
+    final title = operating
+        ? context.l10n.updateProgressTitle
+        : currentExecution != null
+        ? context.l10n.updateResultsTitle
+        : context.l10n.updatePlanTitle;
+    return ShadDialog(
+      constraints: const BoxConstraints(maxWidth: 820, maxHeight: 720),
+      title: Text(title),
+      description: Text(
+        operating
+            ? context.l10n.updateProgressSummary(
+                finishedCount,
+                (currentExecution == null
+                    ? selectedItems.length
+                    : currentExecution.results
+                          .where(
+                            (result) =>
+                                result.outcome == UpdateTargetOutcome.failed,
+                          )
+                          .length),
+              )
+            : currentExecution != null
+            ? context.l10n.installationResultSummary(
+                currentExecution.summary.succeeded,
+                currentExecution.summary.failed,
+              )
+            : context.l10n.updatePlanDescription,
+      ),
+      actions: [
+        if (currentExecution == null) ...[
+          ShadButton.outline(
+            enabled: !operating,
+            onPressed: () => Navigator.pop(context),
+            child: Text(context.l10n.cancel),
+          ),
+          ShadButton(
+            enabled: !operating && selectedItems.isNotEmpty,
+            onPressed: _execute,
+            child: Text(context.l10n.updateSelectedTargets),
+          ),
+        ] else ...[
+          if (currentExecution.summary.failed > 0)
+            ShadButton.outline(
+              enabled: !operating,
+              onPressed: _retryFailed,
+              child: Text(
+                context.l10n.retryFailedUpdates(
+                  currentExecution.summary.failed,
+                ),
+              ),
+            ),
+          ShadButton(
+            enabled: !operating,
+            onPressed: () => Navigator.pop(context, currentExecution),
+            child: Text(context.l10n.closeUpdatePlan),
+          ),
+        ],
+      ],
+      child: SizedBox(
+        height: 500,
+        child: operating && currentExecution == null
+            ? _liveProgress(selectedItems)
+            : currentExecution != null
+            ? _results(currentExecution)
+            : _selection(),
+      ),
+    );
+  }
+
+  Widget _selection() {
+    final selectedPlan = widget.plan.selectTargets(selectedItems);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        ShadCard(
+          width: double.infinity,
+          title: Text(
+            context.l10n.updateTargetsSelected(
+              selectedItems.length,
+              availableCount,
+            ),
+          ),
+          description: Text(context.l10n.updatePlanDescription),
+        ),
+        if (error != null) ...[
+          const SizedBox(height: 10),
+          Text(
+            _failureCopy(context, error!).message,
+            style: const TextStyle(color: SkillsTokens.red),
+          ),
+        ],
+        const SizedBox(height: 12),
+        Expanded(
+          child: GlassCard(
+            child: ListView.separated(
+              itemCount: widget.plan.targets.length,
+              separatorBuilder: (_, _) =>
+                  const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+              itemBuilder: (context, index) {
+                final item = widget.plan.targets[index];
+                final key = updateTargetKey(item.target);
+                final enabled = item.action == UpdatePlanAction.update;
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  child: ShadCheckbox(
+                    value: selected.contains(key),
+                    enabled: enabled && !operating,
+                    onChanged: (value) => setState(() {
+                      final bindings = item.affectedBindings.isEmpty
+                          ? [item.target]
+                          : item.affectedBindings;
+                      for (final binding in bindings) {
+                        final bindingKey = updateTargetKey(binding);
+                        if (value) {
+                          selected.add(bindingKey);
+                        } else {
+                          selected.remove(bindingKey);
+                        }
+                      }
+                    }),
+                    label: SizedBox(
+                      width: 690,
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _targetLabel(context, item.target),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                const SizedBox(height: 3),
+                                Text(
+                                  context.l10n.sourceReference(item.sourceRef),
+                                  style: const TextStyle(
+                                    color: SkillsTokens.textSecondary,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                                if (item.affectedBindings.isNotEmpty)
+                                  Text(
+                                    context.l10n.agentsSummary(
+                                      item.affectedBindings.length,
+                                    ),
+                                    style: const TextStyle(
+                                      color: SkillsTokens.textTertiary,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          StatusChip(
+                            label: _updatePlanItemLabel(context, item),
+                            color: enabled
+                                ? SkillsTokens.orange
+                                : SkillsTokens.textSecondary,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+        if (selectedPlan.workspaceLockChanges.isNotEmpty) ...[
+          const SizedBox(height: 12),
+          Text(
+            context.l10n.workspaceLockChanges,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 6),
+          for (final change in selectedPlan.workspaceLockChanges)
+            Text(
+              '${change.path}: ${change.fromVersion} → ${change.toVersion}',
+              style: const TextStyle(
+                fontFamily: SkillsTokens.monoFamily,
+                fontSize: 11,
+                color: SkillsTokens.textSecondary,
+              ),
+            ),
+        ],
+      ],
+    );
+  }
+
+  Widget _liveProgress(List<UpdatePlanItem> items) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      ShadCard(
+        width: double.infinity,
+        title: Text(context.l10n.updateProgressTitle),
+        description: Text(
+          context.l10n.updateProgressSummary(finishedCount, items.length),
+        ),
+        footer: ShadProgress(
+          value: items.isEmpty ? 0 : finishedCount / items.length,
+          minHeight: 5,
+          semanticsLabel: context.l10n.updateProgressTitle,
+        ),
+      ),
+      const SizedBox(height: 12),
+      Expanded(
+        child: GlassCard(
+          child: ListView.separated(
+            itemCount: items.length,
+            separatorBuilder: (_, _) =>
+                const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+            itemBuilder: (context, index) {
+              final item = items[index];
+              final event = progress[updateTargetKey(item.target)];
+              final finished =
+                  event?.state == InstallationProgressState.finished;
+              final failed =
+                  event?.result?.outcome == UpdateTargetOutcome.failed;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                child: Row(
+                  children: [
+                    Icon(
+                      finished
+                          ? failed
+                                ? Icons.error
+                                : Icons.check_circle
+                          : Icons.pending_outlined,
+                      color: finished
+                          ? failed
+                                ? SkillsTokens.red
+                                : SkillsTokens.green
+                          : SkillsTokens.blue,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        _targetLabel(context, item.target),
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                    ),
+                    StatusChip(
+                      label: event == null
+                          ? context.l10n.targetWaiting
+                          : finished
+                          ? failed
+                                ? context.l10n.targetFailed
+                                : context.l10n.update
+                          : context.l10n.updateProgressTitle,
+                      color: failed ? SkillsTokens.red : SkillsTokens.blue,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    ],
+  );
+
+  Widget _results(UpdateExecution current) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      if (operating)
+        ShadProgress(
+          value: current.results.isEmpty
+              ? null
+              : finishedCount / current.results.length,
+          minHeight: 5,
+          semanticsLabel: context.l10n.updateProgressTitle,
+        ),
+      if (error != null) ...[
+        const SizedBox(height: 10),
+        Text(
+          _failureCopy(context, error!).message,
+          style: const TextStyle(color: SkillsTokens.red),
+        ),
+      ],
+      const SizedBox(height: 12),
+      Expanded(
+        child: GlassCard(
+          child: ListView.separated(
+            itemCount: current.results.length,
+            separatorBuilder: (_, _) =>
+                const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+            itemBuilder: (context, index) {
+              final result = current.results[index];
+              final failed = result.outcome == UpdateTargetOutcome.failed;
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 11),
+                child: Row(
+                  children: [
+                    Icon(
+                      failed ? Icons.error : Icons.check_circle,
+                      color: failed ? SkillsTokens.red : SkillsTokens.green,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            _targetLabel(context, result.target),
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          Text(
+                            context.l10n.updateVersionChange(
+                              result.fromVersion,
+                              result.toVersion,
+                            ),
+                            style: const TextStyle(
+                              color: SkillsTokens.textSecondary,
+                            ),
+                          ),
+                          if (result.diagnostic.isNotEmpty)
+                            Text(
+                              result.diagnostic,
+                              style: const TextStyle(color: SkillsTokens.red),
+                            ),
+                        ],
+                      ),
+                    ),
+                    StatusChip(
+                      label: failed
+                          ? context.l10n.targetFailed
+                          : context.l10n.update,
+                      color: failed ? SkillsTokens.red : SkillsTokens.green,
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    ],
+  );
+}
+
+UpdateExecution _mergeUpdateExecutions(
+  UpdateExecution previous,
+  UpdateExecution retried,
+) {
+  final retryByTarget = {
+    for (final result in retried.results)
+      updateTargetKey(result.target): result,
+  };
+  final results = [
+    for (final result in previous.results)
+      retryByTarget[updateTargetKey(result.target)] ?? result,
+  ];
+  int count(UpdateTargetOutcome outcome) =>
+      results.where((result) => result.outcome == outcome).length;
+  return UpdateExecution(
+    results: List.unmodifiable(results),
+    summary: UpdateExecutionSummary(
+      succeeded: count(UpdateTargetOutcome.succeeded),
+      skipped: count(UpdateTargetOutcome.skipped),
+      failed: count(UpdateTargetOutcome.failed),
+    ),
+  );
+}
+
+String _updatePlanItemLabel(BuildContext context, UpdatePlanItem item) =>
+    item.reasonCode == 'workspace-lock-reconcile'
+    ? context.l10n.reconcileWorkspaceLockTarget
+    : switch (item.action) {
+        UpdatePlanAction.update => context.l10n.updateVersionChange(
+          item.fromVersion,
+          item.toVersion,
+        ),
+        UpdatePlanAction.current => context.l10n.currentVersionTarget,
+        UpdatePlanAction.pinned => context.l10n.fixedVersionTarget,
+        UpdatePlanAction.failed => context.l10n.updateCheckTargetFailed,
+      };
+
 class LibraryScreen extends StatefulWidget {
   const LibraryScreen({
     super.key,
@@ -2797,7 +3350,9 @@ class _LibraryScreenState extends State<LibraryScreen> {
       checking = true;
       updates = {
         for (final skill in skills!)
-          skill.name: skill.provenance == LibraryProvenance.registry
+          _libraryUpdateKey(
+            skill,
+          ): skill.provenance == LibraryProvenance.registry
               ? UpdateState.checking
               : UpdateState.unsupported,
       };
@@ -2805,7 +3360,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
     try {
       updates = await widget.gateway.checkUpdates(skills!);
     } catch (_) {
-      updates = {for (final skill in skills!) skill.name: UpdateState.failed};
+      updates = {
+        for (final skill in skills!)
+          _libraryUpdateKey(skill): UpdateState.failed,
+      };
     }
     if (mounted) setState(() => checking = false);
   }
@@ -2815,13 +3373,23 @@ class _LibraryScreenState extends State<LibraryScreen> {
     setState(() => operatingSkills.add(skill.name));
     setState(() => result = null);
     try {
-      result = await widget.gateway.update(skill);
+      final plan = await widget.gateway.preflightUpdate(skill, skill.targets);
+      if (!mounted) return;
+      final execution = await showShadDialog<UpdateExecution>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _UpdatePlanDialog(
+          gateway: widget.gateway,
+          skill: skill,
+          plan: plan,
+        ),
+      );
+      if (execution != null && execution.summary.succeeded > 0) {
+        await load();
+        await checkUpdates();
+      }
     } catch (caught) {
       result = _exceptionResult(caught);
-    }
-    if (result!.succeeded) {
-      await load();
-      await checkUpdates();
     }
     if (mounted) setState(() => operatingSkills.remove(skill.name));
   }
@@ -3115,7 +3683,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       separatorBuilder: (_, _) => const SizedBox(height: 10),
       itemBuilder: (context, index) {
         final skill = _visibleSkills[index];
-        final state = updates[skill.name] ?? UpdateState.unknown;
+        final state = updates[_libraryUpdateKey(skill)] ?? UpdateState.unknown;
         final operating = operatingSkills.contains(skill.name);
         return GlassCard(
           child: Row(
@@ -3255,14 +3823,17 @@ class LocalDetailScreen extends StatefulWidget {
 }
 
 class _LocalDetailScreenState extends State<LocalDetailScreen> {
+  late InstalledSkill skill;
   SkillDetail? detail;
   Object? error;
   String? selectedFilePath;
   bool removing = false;
+  bool updating = false;
   CommandResult? result;
   @override
   void initState() {
     super.initState();
+    skill = widget.skill;
     unawaited(load());
   }
 
@@ -3272,7 +3843,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
       selectedFilePath = null;
     });
     try {
-      detail = await widget.gateway.loadLocalDetail(widget.skill);
+      detail = await widget.gateway.loadLocalDetail(skill);
     } catch (caught) {
       error = caught;
     }
@@ -3282,10 +3853,10 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
   Future<void> remove() async {
     final confirmed = await _confirmCommand(
       context,
-      title: context.l10n.removeTitle(widget.skill.name),
+      title: context.l10n.removeTitle(skill.name),
       description: context.l10n.removeDescription,
       facts: [
-        context.l10n.skillFact(widget.skill.name),
+        context.l10n.skillFact(skill.name),
         context.l10n.scopeGlobal,
         context.l10n.agentImpactCodex,
       ],
@@ -3295,13 +3866,48 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
     if (!confirmed || !mounted) return;
     setState(() => removing = true);
     try {
-      result = await widget.gateway.remove(widget.skill);
+      result = await widget.gateway.remove(skill);
     } catch (caught) {
       result = _exceptionResult(caught);
     }
     if (!mounted) return;
     setState(() => removing = false);
     if (result!.succeeded) Navigator.pop(context, true);
+  }
+
+  Future<void> update() async {
+    if (updating || skill.provenance != LibraryProvenance.registry) return;
+    setState(() {
+      updating = true;
+      result = null;
+    });
+    try {
+      final plan = await widget.gateway.preflightUpdate(skill, skill.targets);
+      if (!mounted) return;
+      final execution = await showShadDialog<UpdateExecution>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _UpdatePlanDialog(
+          gateway: widget.gateway,
+          skill: skill,
+          plan: plan,
+        ),
+      );
+      if (execution != null && execution.summary.succeeded > 0) {
+        final projects = await widget.gateway.loadAddedProjects();
+        final entries = await widget.gateway.listInstalled(projects: projects);
+        final refreshed = entries.where(
+          (entry) => entry.identity == skill.identity,
+        );
+        if (refreshed.isNotEmpty) {
+          skill = refreshed.first;
+          await load();
+        }
+      }
+    } catch (caught) {
+      result = _exceptionResult(caught);
+    }
+    if (mounted) setState(() => updating = false);
   }
 
   @override
@@ -3321,14 +3927,14 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
                   icon: const Icon(Icons.arrow_back),
                 ),
                 const SizedBox(width: 8),
-                SkillGlyph(name: widget.skill.name),
+                SkillGlyph(name: skill.name),
                 const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        widget.skill.name,
+                        skill.name,
                         style: const TextStyle(
                           fontFamily: SkillsTokens.serifFamily,
                           fontSize: 30,
@@ -3336,7 +3942,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
                         ),
                       ),
                       SelectableText(
-                        widget.skill.path,
+                        skill.path,
                         style: const TextStyle(
                           fontFamily: SkillsTokens.monoFamily,
                           color: SkillsTokens.textSecondary,
@@ -3345,21 +3951,30 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
                     ],
                   ),
                 ),
-                _libraryProvenanceChip(context, widget.skill.provenance),
+                _libraryProvenanceChip(context, skill.provenance),
                 const SizedBox(width: 8),
-                SkillRiskChip(risk: widget.skill.riskAssessment),
+                SkillRiskChip(risk: skill.riskAssessment),
                 const SizedBox(width: 8),
-                if (widget.skill.provenance == LibraryProvenance.external)
+                if (skill.provenance == LibraryProvenance.external)
                   StatusChip(
                     label: context.l10n.readOnly,
                     color: SkillsTokens.textSecondary,
                   )
-                else
+                else ...[
+                  if (skill.provenance == LibraryProvenance.registry) ...[
+                    SecondaryCapsuleButton(
+                      label: context.l10n.update,
+                      icon: Icons.sync,
+                      onPressed: updating || removing ? null : update,
+                    ),
+                    const SizedBox(width: 8),
+                  ],
                   SecondaryCapsuleButton(
                     label: context.l10n.remove,
                     icon: Icons.delete_outline,
-                    onPressed: removing ? null : remove,
+                    onPressed: removing || updating ? null : remove,
                   ),
+                ],
               ],
             ),
             const SizedBox(height: 20),
@@ -3370,7 +3985,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
             Expanded(
               child: Column(
                 children: [
-                  _InstallationTargetsPanel(skill: widget.skill),
+                  _InstallationTargetsPanel(skill: skill),
                   const SizedBox(height: 14),
                   if (detail?.hasExecutableContent ?? false) ...[
                     _RiskNotice(detail: detail!),
@@ -4335,6 +4950,9 @@ String _updateLabel(BuildContext context, UpdateState state) => switch (state) {
   UpdateState.unsupported => context.l10n.updateUnavailable,
   UpdateState.failed => context.l10n.updateCheckFailed,
 };
+
+String _libraryUpdateKey(InstalledSkill skill) =>
+    skill.identity.isEmpty ? skill.name : skill.identity;
 
 String _agentDisplayLabel(String agent) => agent
     .split(RegExp(r'[-_]'))
