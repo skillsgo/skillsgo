@@ -19,7 +19,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
 
-const SchemaVersion = 1
+const SchemaVersion = 2
 
 var ErrEmptyProjectRoot = errors.New("project root must not be empty")
 
@@ -27,9 +27,11 @@ type Provenance string
 type Risk string
 type Health string
 type ReceiptState string
+type TargetMode string
 
 const (
 	ProvenanceRegistry Provenance = "registry"
+	ProvenanceExternal Provenance = "external"
 	RiskUnknown        Risk       = "unknown"
 
 	HealthHealthy             Health = "healthy"
@@ -44,6 +46,10 @@ const (
 
 	ReceiptPresent ReceiptState = "present"
 	ReceiptMissing ReceiptState = "missing"
+
+	TargetModeSymlink  TargetMode = "symlink"
+	TargetModeCopy     TargetMode = "copy"
+	TargetModeExternal TargetMode = "external"
 )
 
 type Report struct {
@@ -70,7 +76,7 @@ type Target struct {
 	ProjectRoot  string        `json:"projectRoot,omitempty"`
 	Agent        string        `json:"agent"`
 	Path         string        `json:"path"`
-	Mode         install.Mode  `json:"mode"`
+	Mode         TargetMode    `json:"mode"`
 	Version      string        `json:"version"`
 	ReceiptState ReceiptState  `json:"receiptState"`
 	Health       Health        `json:"health"`
@@ -128,7 +134,7 @@ func Build(options Options) (Report, error) {
 		entry.Targets = append(entry.Targets, Target{
 			Scope: installation.Target.Scope, ProjectRoot: projectRoot,
 			Agent: installation.Target.Agent, Path: filepath.Clean(installation.Target.Path),
-			Mode: installation.Target.Mode, Version: installation.Version,
+			Mode: TargetMode(installation.Target.Mode), Version: installation.Version,
 			ReceiptState: ReceiptPresent, Health: health,
 		})
 		receiptedTargets[targetKey(installation.Target.Agent, installation.Target.Scope, installation.Target.Path)] = true
@@ -142,6 +148,13 @@ func Build(options Options) (Report, error) {
 		}
 	}
 	addDeclaredTargetsWithoutReceipts(entries, receiptedTargets, workspaces, options.Catalog)
+	addExternalInstallations(
+		entries,
+		receiptedTargets,
+		projectRoots,
+		options.IncludeUser,
+		options.Catalog,
+	)
 
 	report := Report{SchemaVersion: SchemaVersion, Entries: make([]Entry, 0, len(entries))}
 	for _, entry := range entries {
@@ -373,7 +386,7 @@ func addDeclaredTargetsWithoutReceipts(
 				entry := ensureEntry(entries, name, locked.Coordinate)
 				entry.Targets = append(entry.Targets, Target{
 					Scope: install.ScopeProject, ProjectRoot: root, Agent: agentID,
-					Path: filepath.Clean(path), Mode: mode, Version: locked.Version,
+					Path: filepath.Clean(path), Mode: TargetMode(mode), Version: locked.Version,
 					ReceiptState: ReceiptMissing, Health: HealthReceiptMissing,
 				})
 				receiptedTargets[key] = true

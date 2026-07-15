@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Registry HTTP, the local filesystem, the platform directory picker, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides production Registry settings, discovery/detail, unified CLI inventory parsing, explicit project reference persistence, strict Agent inspection, typed failures, diagnostics, bundled CLI verification, and Skill operations.
+ * [OUTPUT]: Provides production Registry settings, discovery/detail, unified managed/external CLI inventory parsing, read-only local file inspection, explicit project reference persistence, strict Agent inspection, typed failures, diagnostics, bundled CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -85,6 +85,7 @@ InstallationScope _installationScope(Object? value) => switch (value) {
 InstallationMode _installationMode(Object? value) => switch (value) {
   'symlink' => InstallationMode.symlink,
   'copy' => InstallationMode.copy,
+  'external' => InstallationMode.external,
   _ => throw const FormatException('Unknown installation mode.'),
 };
 
@@ -119,6 +120,71 @@ int _localTargetReadRank(SkillInstallationTarget target) {
   if (target.health == InstallationHealth.healthy) return 0;
   if (target.receiptState == ReceiptState.present) return 1;
   return 2;
+}
+
+const _localFilePreviewLimit = 256 * 1024;
+const _inventorySchemaVersion = 2;
+
+bool _looksExecutablePath(String path) {
+  final lower = path.toLowerCase();
+  const extensions = [
+    '.sh',
+    '.bash',
+    '.zsh',
+    '.fish',
+    '.ps1',
+    '.bat',
+    '.cmd',
+    '.exe',
+    '.js',
+    '.mjs',
+    '.py',
+    '.rb',
+  ];
+  return lower.contains('/scripts/') || extensions.any(lower.endsWith);
+}
+
+Future<List<SkillFile>> _inspectLocalFiles(String root) async {
+  final files = await Directory(root)
+      .list(recursive: true, followLinks: false)
+      .where((entity) => entity is File)
+      .cast<File>()
+      .toList();
+  files.sort((left, right) => left.path.compareTo(right.path));
+  final result = <SkillFile>[];
+  for (final file in files) {
+    final relative = p.relative(file.path, from: root);
+    final stat = await file.stat();
+    var contents = '';
+    var binary = false;
+    final truncated = stat.size > _localFilePreviewLimit;
+    final bytes = await file
+        .openRead(0, min(stat.size, _localFilePreviewLimit))
+        .fold<List<int>>(<int>[], (buffer, chunk) => buffer..addAll(chunk));
+    if (bytes.contains(0)) {
+      binary = true;
+    } else {
+      try {
+        contents = utf8.decode(bytes, allowMalformed: truncated);
+      } on FormatException {
+        binary = true;
+      }
+    }
+    result.add(
+      SkillFile(
+        path: relative,
+        contents: contents,
+        size: stat.size,
+        kind: relative == 'SKILL.md' ? 'instructions' : 'supporting',
+        executable:
+            _looksExecutablePath(relative) ||
+            (!Platform.isWindows && stat.mode & 0x49 != 0),
+        binary: binary,
+        truncated: truncated,
+      ),
+    );
+  }
+  return List.unmodifiable(result);
 }
 
 List<String> _strictStringList(Object? value) {
@@ -178,7 +244,7 @@ class RealSkillsGateway implements SkillsGateway {
   static const _allowCriticalOverrideKey = 'allow_critical_risk_override';
   static const _addedProjectsKey = 'added_projects_v1';
   static const _startupHandshakeSchemaVersion = 1;
-  static const _appProtocolVersion = 1;
+  static const _appProtocolVersion = 2;
   final http.Client _http;
   final ProcessRunner _runner;
   final Uri _defaultRegistryBase;
@@ -1081,7 +1147,7 @@ class RealSkillsGateway implements SkillsGateway {
     try {
       final decoded = jsonDecode(result.output.stdout);
       if (decoded is! Map<String, dynamic> ||
-          decoded['schemaVersion'] != 1 ||
+          decoded['schemaVersion'] != _inventorySchemaVersion ||
           decoded['entries'] is! List) {
         throw const FormatException();
       }
@@ -1097,6 +1163,7 @@ class RealSkillsGateway implements SkillsGateway {
                 raw['targets'] is! List) {
               throw const FormatException();
             }
+            final provenance = _libraryProvenance(raw['provenance']);
             final targetKeys = <String>{};
             final targets = (raw['targets'] as List)
                 .map((target) {
@@ -1106,17 +1173,26 @@ class RealSkillsGateway implements SkillsGateway {
                       target['path'] is! String ||
                       (target['path'] as String).isEmpty ||
                       target['version'] is! String ||
-                      (target['version'] as String).isEmpty ||
                       (target['projectRoot'] != null &&
                           target['projectRoot'] is! String)) {
                     throw const FormatException();
                   }
                   final scope = _installationScope(target['scope']);
                   final projectRoot = target['projectRoot'] as String? ?? '';
+                  final version = target['version'] as String;
+                  final mode = _installationMode(target['mode']);
+                  final receiptState = _receiptState(target['receiptState']);
                   if ((scope == InstallationScope.project &&
                           projectRoot.isEmpty) ||
                       (scope == InstallationScope.user &&
                           projectRoot.isNotEmpty) ||
+                      (provenance == LibraryProvenance.external &&
+                          (version.isNotEmpty ||
+                              mode != InstallationMode.external ||
+                              receiptState != ReceiptState.missing)) ||
+                      (provenance != LibraryProvenance.external &&
+                          (version.isEmpty ||
+                              mode == InstallationMode.external)) ||
                       !targetKeys.add(
                         '${target['agent']}\u0000${target['scope']}\u0000${target['path']}',
                       )) {
@@ -1126,10 +1202,10 @@ class RealSkillsGateway implements SkillsGateway {
                     agent: target['agent'] as String,
                     scope: scope,
                     path: target['path'] as String,
-                    version: target['version'] as String,
+                    version: version,
                     projectRoot: projectRoot,
-                    mode: _installationMode(target['mode']),
-                    receiptState: _receiptState(target['receiptState']),
+                    mode: mode,
+                    receiptState: receiptState,
                     health: _installationHealth(target['health']),
                   );
                 })
@@ -1138,7 +1214,8 @@ class RealSkillsGateway implements SkillsGateway {
             final agents = _strictStringList(raw['agents']);
             final projectRoots = _strictStringList(raw['projects']);
             final versions = _strictStringList(raw['versions']);
-            if (versions.isEmpty ||
+            if ((provenance != LibraryProvenance.external &&
+                    versions.isEmpty) ||
                 !_sameStringSet(
                   agents,
                   targets.map((target) => target.agent),
@@ -1151,14 +1228,22 @@ class RealSkillsGateway implements SkillsGateway {
                 ) ||
                 !_sameStringSet(
                   versions,
-                  targets.map((target) => target.version),
+                  targets
+                      .map((target) => target.version)
+                      .where((version) => version.isNotEmpty),
                 ) ||
                 (raw['versionDivergence'] as bool) != (versions.length > 1)) {
               throw const FormatException();
             }
-            final provenance = _libraryProvenance(raw['provenance']);
             if (provenance == LibraryProvenance.registry &&
-                raw['identity'] != 'registry:${raw['coordinate']}') {
+                ((raw['coordinate'] as String).isEmpty ||
+                    raw['identity'] != 'registry:${raw['coordinate']}')) {
+              throw const FormatException();
+            }
+            if (provenance == LibraryProvenance.external &&
+                ((raw['coordinate'] as String).isNotEmpty ||
+                    versions.isNotEmpty ||
+                    !(raw['identity'] as String).startsWith('external:'))) {
               throw const FormatException();
             }
             return InstalledSkill(
@@ -1204,21 +1289,27 @@ class RealSkillsGateway implements SkillsGateway {
           p.join(targetPath, 'SKILL.md'),
         ).readAsString();
         if (markdown.trim().isEmpty) continue;
-        final files = await Directory(targetPath)
-            .list(recursive: true, followLinks: false)
-            .where((entity) => entity is File)
+        final files = await _inspectLocalFiles(targetPath);
+        final executableFiles = files
+            .where((file) => file.executable)
             .map(
-              (entity) => SkillFile(
-                path: p.relative(entity.path, from: targetPath),
-                contents: '',
+              (file) => SkillRiskEvidence(
+                code: 'executable-content',
+                path: file.path,
               ),
             )
-            .toList();
+            .toList(growable: false);
         return SkillDetail(
           name: skill.name,
-          source: 'Local',
+          source: switch (skill.provenance) {
+            LibraryProvenance.registry => 'Registry',
+            LibraryProvenance.local => 'Local',
+            LibraryProvenance.external => 'External',
+          },
           markdown: markdown,
           files: files,
+          riskAssessment: skill.riskAssessment,
+          riskEvidence: executableFiles,
         );
       } on FileSystemException catch (error) {
         lastFileError = error;
@@ -1251,11 +1342,24 @@ class RealSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<CommandResult> remove(InstalledSkill skill) =>
-      _runCli(['remove', skill.name, '--global', '--yes']);
+  Future<CommandResult> remove(InstalledSkill skill) async {
+    if (skill.provenance == LibraryProvenance.external) {
+      throw const SkillsException(
+        'External Installations are read-only until adoption.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    return _runCli(['remove', skill.name, '--global', '--yes']);
+  }
 
   @override
   Future<CommandResult> update(InstalledSkill skill) async {
+    if (skill.provenance == LibraryProvenance.external) {
+      throw const SkillsException(
+        'External Installations are read-only until adoption.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
     await _ensureRegistryOrigin();
     return _runCli([
       'update',
@@ -1271,11 +1375,19 @@ class RealSkillsGateway implements SkillsGateway {
   Future<Map<String, UpdateState>> checkUpdates(
     List<InstalledSkill> skills,
   ) async {
-    if (skills.isEmpty) return const {};
+    final states = {
+      for (final skill in skills)
+        if (skill.provenance == LibraryProvenance.external)
+          skill.name: UpdateState.unsupported,
+    };
+    final managed = skills
+        .where((skill) => skill.provenance == LibraryProvenance.registry)
+        .toList(growable: false);
+    if (managed.isEmpty) return states;
     await _ensureRegistryOrigin();
     final arguments = <String>[
       'update',
-      ...skills.map((skill) => skill.name),
+      ...managed.map((skill) => skill.name),
       '--global',
       '--check',
       '--output',
@@ -1285,14 +1397,17 @@ class RealSkillsGateway implements SkillsGateway {
     ];
     final result = await _runCli(arguments);
     if (!result.succeeded) {
-      return {for (final skill in skills) skill.name: UpdateState.failed};
+      states.addAll({
+        for (final skill in managed) skill.name: UpdateState.failed,
+      });
+      return states;
     }
     try {
       final decoded = jsonDecode(result.output.stdout);
       if (decoded is! List) throw const FormatException();
-      final states = {
-        for (final skill in skills) skill.name: UpdateState.unsupported,
-      };
+      states.addAll({
+        for (final skill in managed) skill.name: UpdateState.unsupported,
+      });
       for (final raw in decoded) {
         if (raw is! Map<String, dynamic> ||
             raw['name'] is! String ||
@@ -1305,7 +1420,10 @@ class RealSkillsGateway implements SkillsGateway {
       }
       return states;
     } catch (_) {
-      return {for (final skill in skills) skill.name: UpdateState.failed};
+      states.addAll({
+        for (final skill in managed) skill.name: UpdateState.failed,
+      });
+      return states;
     }
   }
 
