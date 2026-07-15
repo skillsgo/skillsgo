@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Registry HTTP, the local filesystem, the platform directory picker, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides production Registry settings, discovery/detail, managed/external inventory parsing, strict Installation/Update/Target Management/External Adoption machine contracts, Local export, local file inspection, project persistence, Agent inspection, typed failures, diagnostics, CLI verification, and Skill operations.
+ * [OUTPUT]: Provides production Registry settings, discovery/detail, managed/external inventory parsing, strict Installation/Update/Target Management/External Adoption machine contracts, Local export, local file inspection, project persistence, Agent inspection, stable CLI availability mapping, typed failures, diagnostics, CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -1487,7 +1487,7 @@ class RealSkillsGateway implements SkillsGateway {
   @override
   Future<AgentCatalog> inspectAgents() async {
     final result = await _runCli(const ['agents', '--output', 'json']);
-    if (!result.succeeded) throw SkillsException(_commandError(result));
+    if (!result.succeeded) throw _commandFailure(result);
     try {
       final decoded = jsonDecode(result.output.stdout);
       if (decoded is! Map<String, dynamic> ||
@@ -1561,7 +1561,7 @@ class RealSkillsGateway implements SkillsGateway {
     }
     arguments.addAll(['--output', 'json']);
     final result = await _runCli(arguments);
-    if (!result.succeeded) throw SkillsException(_commandError(result));
+    if (!result.succeeded) throw _commandFailure(result);
     try {
       final decoded = jsonDecode(result.output.stdout);
       if (decoded is! Map<String, dynamic> ||
@@ -1804,7 +1804,7 @@ class RealSkillsGateway implements SkillsGateway {
       _registryOrigin,
     ]);
     final result = await _runCli(arguments);
-    if (!result.succeeded) throw SkillsException(_commandError(result));
+    if (!result.succeeded) throw _commandFailure(result);
     try {
       final decoded = jsonDecode(result.output.stdout);
       if (decoded is! Map<String, dynamic> ||
@@ -2071,7 +2071,7 @@ class RealSkillsGateway implements SkillsGateway {
         consumeLine(line);
       }
     }
-    if (!command.succeeded) throw SkillsException(_commandError(command));
+    if (!command.succeeded) throw _commandFailure(command);
     try {
       if (streamFailure != null || finalPayload == null) {
         throw const FormatException();
@@ -2159,7 +2159,7 @@ class RealSkillsGateway implements SkillsGateway {
       '--registry',
       _registryOrigin,
     ]);
-    if (!command.succeeded) throw SkillsException(_commandError(command));
+    if (!command.succeeded) throw _commandFailure(command);
     try {
       final raw = jsonDecode(command.output.stdout);
       if (raw is! Map<String, dynamic> ||
@@ -2305,7 +2305,7 @@ class RealSkillsGateway implements SkillsGateway {
       arguments.addAll(['--registry', _registryOrigin]);
     }
     final command = await _runCli(arguments);
-    if (!command.succeeded) throw SkillsException(_commandError(command));
+    if (!command.succeeded) throw _commandFailure(command);
     try {
       final raw = jsonDecode(command.output.stdout);
       if (raw is! Map<String, dynamic> ||
@@ -2457,7 +2457,7 @@ class RealSkillsGateway implements SkillsGateway {
     }
     arguments.addAll(['--preflight', '--output', 'json']);
     final command = await _runCli(arguments);
-    if (!command.succeeded) throw SkillsException(_commandError(command));
+    if (!command.succeeded) throw _commandFailure(command);
     try {
       final decoded = jsonDecode(command.output.stdout);
       if (decoded is! Map<String, dynamic> ||
@@ -2698,7 +2698,7 @@ class RealSkillsGateway implements SkillsGateway {
         consume(line);
       }
     }
-    if (!command.succeeded) throw SkillsException(_commandError(command));
+    if (!command.succeeded) throw _commandFailure(command);
     try {
       final raw = finalPayload;
       if (streamFailure != null ||
@@ -2811,7 +2811,7 @@ class RealSkillsGateway implements SkillsGateway {
       _registryOrigin,
     ]);
     final command = await _runCli(arguments);
-    if (!command.succeeded) throw SkillsException(_commandError(command));
+    if (!command.succeeded) throw _commandFailure(command);
     try {
       final decoded = jsonDecode(command.output.stdout);
       if (decoded is! Map<String, dynamic> ||
@@ -3115,7 +3115,7 @@ class RealSkillsGateway implements SkillsGateway {
         consume(line);
       }
     }
-    if (!command.succeeded) throw SkillsException(_commandError(command));
+    if (!command.succeeded) throw _commandFailure(command);
     try {
       final raw = finalPayload;
       if (streamFailure != null ||
@@ -3184,6 +3184,7 @@ class RealSkillsGateway implements SkillsGateway {
     List<InstalledSkill> skills,
   ) async {
     final states = <String, UpdateState>{};
+    Object? failure;
     await Future.wait([
       for (final skill in skills)
         () async {
@@ -3203,18 +3204,29 @@ class RealSkillsGateway implements SkillsGateway {
             } else {
               states[key] = UpdateState.unsupported;
             }
-          } catch (_) {
+          } catch (caught) {
             states[key] = UpdateState.failed;
+            failure ??= caught;
           }
         }(),
     ]);
+    if (failure != null) throw failure!;
     return states;
   }
 
-  String _commandError(CommandResult result) {
+  SkillsException _commandFailure(CommandResult result) {
     final stderr = result.output.stderr.trim();
-    return stderr.isEmpty
+    final message = stderr.isEmpty
         ? 'SkillsGo CLI exited with code ${result.output.exitCode}.'
         : stderr;
+    return switch (result.output.exitCode) {
+      69 => SkillsException(
+        message,
+        kind: SkillsFailureKind.offline,
+        isOffline: true,
+      ),
+      75 => SkillsException(message, kind: SkillsFailureKind.timeout),
+      _ => SkillsException(message),
+    };
   }
 }

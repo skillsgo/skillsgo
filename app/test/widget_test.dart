@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp with a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
- * [OUTPUT]: Specifies startup, navigation, discovery/detail recovery, Registry/Local/External Library views, projects, Agents, Settings, Installation/Update/Target Management/External Adoption journeys, Local install-more/export, exact-target recovery, focus, accessibility, and mutations.
+ * [OUTPUT]: Specifies startup, navigation, discovery/detail recovery, outage-resilient Registry/Local/External Library views, projects, Agents, Settings, Installation/Update/Target Management/External Adoption journeys, offline retry, Local install-more/export, exact-target recovery, focus, accessibility, and mutations.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -382,6 +382,50 @@ void main() {
       expect(find.text('/work/project-b'), findsWidgets);
       await tester.tap(find.bySemanticsLabel('Close installation plan'));
       await tester.pumpAndSettle();
+    },
+  );
+
+  testWidgets(
+    'Registry installation stays retryable and explains an offline preflight',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 850));
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        installPlanErrors: const [
+          SkillsException(
+            'do not parse this diagnostic',
+            kind: SkillsFailureKind.offline,
+            isOffline: true,
+          ),
+        ],
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.enterText(_searchInput(), 'offline install');
+      await tester.testTextInput.receiveAction(TextInputAction.search);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Flutter Pro'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Install Skill'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Select'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Review 1 Targets'));
+      await tester.pumpAndSettle();
+      expect(find.text('Installation plan could not continue'), findsOneWidget);
+      expect(
+        find.text(
+          'SkillsGo could not reach the Registry. Check your network, proxy, or Registry Origin.',
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('1 targets selected'), findsOneWidget);
+
+      await tester.tap(find.text('Review 1 Targets'));
+      await tester.pumpAndSettle();
+      expect(find.text('1 create'), findsOneWidget);
+      expect(find.text('Install 1 Targets'), findsOneWidget);
     },
   );
 
@@ -1246,6 +1290,93 @@ void main() {
   );
 
   testWidgets(
+    'Registry outage never empties the selected Project or local Agent views',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      const project = AddedProject(
+        id: 'alpha',
+        name: 'Project Alpha',
+        path: '/work/alpha',
+        accessState: ProjectAccessState.accessible,
+      );
+      const registryEntry = InstalledSkill(
+        identity: 'registry:github.com/acme/skills/-/registry-demo',
+        name: 'registry-demo',
+        path: '/work/alpha/.agents/skills/registry-demo',
+        agents: ['codex'],
+        targetCount: 1,
+        coordinate: 'github.com/acme/skills/-/registry-demo',
+        projects: ['/work/alpha'],
+        versions: ['v1'],
+        targets: [
+          SkillInstallationTarget(
+            agent: 'codex',
+            scope: InstallationScope.project,
+            projectRoot: '/work/alpha',
+            path: '/work/alpha/.agents/skills/registry-demo',
+            version: 'v1',
+          ),
+        ],
+      );
+      const localEntry = InstalledSkill(
+        identity: 'local:private',
+        name: 'private-local',
+        path: '/Users/test/.codex/skills/private-local',
+        agents: ['codex'],
+        targetCount: 1,
+        coordinate: 'local.skillsgo/abc/private-local',
+        provenance: LibraryProvenance.local,
+        versions: ['local-abc'],
+        targets: [
+          SkillInstallationTarget(
+            agent: 'codex',
+            scope: InstallationScope.user,
+            path: '/Users/test/.codex/skills/private-local',
+            version: 'local-abc',
+            mode: InstallationMode.copy,
+          ),
+        ],
+      );
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        addedProjects: const [project],
+        libraryEntries: const [registryEntry, localEntry],
+        updateCheckErrors: const [
+          SkillsException(
+            'network unavailable',
+            kind: SkillsFailureKind.offline,
+            isOffline: true,
+          ),
+        ],
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Library'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Project Alpha'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Check updates'));
+      await tester.pumpAndSettle();
+      expect(find.text('You’re offline'), findsOneWidget);
+      expect(find.text('registry-demo'), findsOneWidget);
+      expect(find.text('Remove from List'), findsOneWidget);
+
+      await tester.tap(find.text('Check updates'));
+      await tester.pumpAndSettle();
+      expect(find.text('You’re offline'), findsNothing);
+      expect(find.text('UPDATE'), findsOneWidget);
+      expect(find.text('Remove from List'), findsOneWidget);
+
+      await tester.tap(find.text('Codex'));
+      await tester.pumpAndSettle();
+      expect(find.text('registry-demo'), findsOneWidget);
+      expect(find.text('private-local'), findsOneWidget);
+      expect(find.text('Local managed'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
     'unified Library summarizes and filters multi-location multi-Agent targets',
     (tester) async {
       await tester.binding.setSurfaceSize(const Size(1200, 800));
@@ -1722,6 +1853,74 @@ void main() {
       ]);
       expect(find.text('Registry managed'), findsOneWidget);
       expect(find.text('Bring under management'), findsNothing);
+    },
+  );
+
+  testWidgets(
+    'External adoption keeps local detail open while Registry matching is offline',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 900));
+      const path = '/Users/test/.codex/skills/offline-external';
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        libraryEntries: const [
+          InstalledSkill(
+            identity: 'external:offline',
+            name: 'offline-external',
+            path: path,
+            agents: ['codex'],
+            targetCount: 1,
+            provenance: LibraryProvenance.external,
+            targets: [
+              SkillInstallationTarget(
+                agent: 'codex',
+                scope: InstallationScope.user,
+                path: path,
+                version: '',
+                mode: InstallationMode.external,
+                receiptState: ReceiptState.missing,
+              ),
+            ],
+          ),
+        ],
+        localDetail: const SkillDetail(
+          name: 'offline-external',
+          source: 'External',
+          markdown: '# Still available offline',
+          files: [
+            SkillFile(path: 'SKILL.md', contents: '# Still available offline'),
+          ],
+        ),
+        adoptionErrors: const [
+          SkillsException(
+            'localized stderr is not a machine contract',
+            kind: SkillsFailureKind.offline,
+            isOffline: true,
+          ),
+        ],
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Library'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('offline-external').first);
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Bring under management'));
+      await tester.pumpAndSettle();
+      expect(find.text('You’re offline'), findsOneWidget);
+      expect(find.text(path), findsWidgets);
+      expect(find.text('External installation'), findsOneWidget);
+      expect(find.text('Bring under management'), findsOneWidget);
+
+      await tester.tap(find.text('Bring under management'));
+      await tester.pumpAndSettle();
+      expect(find.text('Import as Local Skill'), findsWidgets);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(find.text(path), findsWidgets);
+      expect(find.text('External installation'), findsOneWidget);
+      expect(find.text('Bring under management'), findsOneWidget);
     },
   );
 
@@ -2422,8 +2621,11 @@ class FakeSkillsGateway implements SkillsGateway {
     this.planConflictReason = '',
     this.riskPolicy = const PersonalRiskPolicy(),
     this.installFailures = const [],
+    List<SkillsException> installPlanErrors = const [],
     this.updateFailures = const [],
     this.adoptionMatches = const [],
+    List<SkillsException> updateCheckErrors = const [],
+    List<SkillsException> adoptionErrors = const [],
   }) : searchResults = searchResults ?? _defaultSearchResults,
        remoteDetail =
            remoteDetail ??
@@ -2431,6 +2633,9 @@ class FakeSkillsGateway implements SkillsGateway {
                ? defaultRemoteDetail
                : _withoutInstallationTargets(defaultRemoteDetail)),
        detailErrors = List.of(detailErrors),
+       installPlanErrors = List.of(installPlanErrors),
+       updateCheckErrors = List.of(updateCheckErrors),
+       adoptionErrors = List.of(adoptionErrors),
        libraryEntries = libraryEntries == null ? null : List.of(libraryEntries),
        projects = List.of(addedProjects);
   final bool cliReady;
@@ -2458,8 +2663,11 @@ class FakeSkillsGateway implements SkillsGateway {
   final SkillDetail remoteDetail;
   final List<SkillsException> detailErrors;
   final List<Set<String>> installFailures;
+  final List<SkillsException> installPlanErrors;
   final List<Set<String>> updateFailures;
   final List<RegistryContentMatch> adoptionMatches;
+  final List<SkillsException> updateCheckErrors;
+  final List<SkillsException> adoptionErrors;
   bool installed;
   final queries = <String>[];
   final collections = <DiscoveryCollection>[];
@@ -2715,11 +2923,14 @@ class FakeSkillsGateway implements SkillsGateway {
   @override
   Future<Map<String, UpdateState>> checkUpdates(
     List<InstalledSkill> skills,
-  ) async => {
-    for (final skill in skills)
-      (skill.identity.isEmpty ? skill.name : skill.identity):
-          UpdateState.available,
-  };
+  ) async {
+    if (updateCheckErrors.isNotEmpty) throw updateCheckErrors.removeAt(0);
+    return {
+      for (final skill in skills)
+        (skill.identity.isEmpty ? skill.name : skill.identity):
+            UpdateState.available,
+    };
+  }
 
   @override
   Future<InstallationPlan> preflightInstall(
@@ -2729,6 +2940,7 @@ class FakeSkillsGateway implements SkillsGateway {
     bool riskConfirmed = false,
     bool allowCritical = false,
   }) async {
+    if (installPlanErrors.isNotEmpty) throw installPlanErrors.removeAt(0);
     lastPlanSelections = List.unmodifiable(selections);
     final riskAssessment = remoteDetail.riskAssessment;
     final riskBlocked =
@@ -2961,6 +3173,7 @@ class FakeSkillsGateway implements SkillsGateway {
   Future<ExternalAdoptionPlan> preflightExternalAdoption(
     InstalledSkill skill,
   ) async {
+    if (adoptionErrors.isNotEmpty) throw adoptionErrors.removeAt(0);
     final target = skill.targets.single;
     return ExternalAdoptionPlan(
       identity: skill.identity,
