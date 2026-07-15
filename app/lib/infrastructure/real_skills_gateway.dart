@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Registry HTTP, the local filesystem, the platform directory picker, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides production Registry settings, discovery/detail, managed/external inventory parsing, strict Installation Plan NDJSON progress/result parsing, local file inspection, project persistence, Agent inspection, typed failures, diagnostics, CLI verification, and Skill operations.
+ * [OUTPUT]: Provides production Registry settings, discovery/detail, managed/external inventory parsing, strict Installation/Update Plan JSON and NDJSON parsing, local file inspection, project persistence, Agent inspection, typed failures, diagnostics, CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -453,6 +453,56 @@ InstallationExecution _installationExecution(
   );
 }
 
+UpdatePlanAction _updatePlanAction(Object? value) => switch (value) {
+  'update' => UpdatePlanAction.update,
+  'current' => UpdatePlanAction.current,
+  'pinned' => UpdatePlanAction.pinned,
+  'failed' => UpdatePlanAction.failed,
+  _ => throw const FormatException(),
+};
+
+UpdateTargetOutcome _updateTargetOutcome(Object? value) => switch (value) {
+  'succeeded' => UpdateTargetOutcome.succeeded,
+  'skipped' => UpdateTargetOutcome.skipped,
+  'failed' => UpdateTargetOutcome.failed,
+  _ => throw const FormatException(),
+};
+
+UpdateTargetResult _updateTargetResult(Object? raw, UpdatePlanItem expected) {
+  if (raw is! Map<String, dynamic> ||
+      raw['name'] != expected.name ||
+      raw['coordinate'] != expected.coordinate ||
+      raw['fromVersion'] != expected.fromVersion ||
+      raw['toVersion'] != expected.toVersion ||
+      (raw['errorCode'] != null && raw['errorCode'] is! String) ||
+      (raw['diagnostic'] != null && raw['diagnostic'] is! String)) {
+    throw const FormatException();
+  }
+  final target = _installationPlanTarget(raw['target']);
+  if (!_samePlanTarget(target, expected.target)) throw const FormatException();
+  final outcome = _updateTargetOutcome(raw['outcome']);
+  final errorCode = raw['errorCode'] as String? ?? '';
+  if (outcome == UpdateTargetOutcome.failed && errorCode.isEmpty) {
+    throw const FormatException();
+  }
+  if (outcome != UpdateTargetOutcome.failed && errorCode.isNotEmpty) {
+    throw const FormatException();
+  }
+  return UpdateTargetResult(
+    target: target,
+    name: expected.name,
+    coordinate: expected.coordinate,
+    fromVersion: expected.fromVersion,
+    toVersion: expected.toVersion,
+    outcome: outcome,
+    errorCode: errorCode,
+    diagnostic: raw['diagnostic'] as String? ?? '',
+  );
+}
+
+String _installedSkillUpdateKey(InstalledSkill skill) =>
+    skill.identity.isEmpty ? skill.name : skill.identity;
+
 String _scopeValue(InstallationScope scope) => switch (scope) {
   InstallationScope.user => 'user',
   InstallationScope.project => 'project',
@@ -520,7 +570,7 @@ class RealSkillsGateway implements SkillsGateway {
   static const _allowCriticalOverrideKey = 'allow_critical_risk_override';
   static const _addedProjectsKey = 'added_projects_v1';
   static const _startupHandshakeSchemaVersion = 1;
-  static const _appProtocolVersion = 5;
+  static const _appProtocolVersion = 6;
   final http.Client _http;
   final ProcessRunner _runner;
   final Uri _defaultRegistryBase;
@@ -1981,79 +2031,458 @@ class RealSkillsGateway implements SkillsGateway {
     return _runCli(['remove', skill.name, '--global', '--yes']);
   }
 
+  String _updateTargetArgument(
+    String coordinate,
+    SkillInstallationTarget target, {
+    String? toVersion,
+    String? stateToken,
+  }) => jsonEncode({
+    'scope': target.scope.name,
+    if (target.scope == InstallationScope.project)
+      'projectRoot': target.projectRoot,
+    'agent': target.agent,
+    'mode': target.mode.name,
+    'path': target.path,
+    'coordinate': coordinate,
+    'version': target.version,
+    'toVersion': ?toVersion,
+    'stateToken': ?stateToken,
+  });
+
   @override
-  Future<CommandResult> update(InstalledSkill skill) async {
-    if (skill.provenance == LibraryProvenance.external) {
+  Future<UpdatePlan> preflightUpdate(
+    InstalledSkill skill,
+    List<SkillInstallationTarget> targets,
+  ) async {
+    if (skill.provenance != LibraryProvenance.registry ||
+        skill.coordinate.isEmpty ||
+        targets.isEmpty ||
+        targets.any(
+          (target) =>
+              target.mode == InstallationMode.external ||
+              target.version.isEmpty ||
+              (target.scope == InstallationScope.project &&
+                  target.projectRoot.isEmpty),
+        )) {
       throw const SkillsException(
-        'External Installations are read-only until adoption.',
+        'Only explicit managed Registry targets can be checked for updates.',
         kind: SkillsFailureKind.validation,
       );
     }
     await _ensureRegistryOrigin();
-    return _runCli([
-      'update',
-      skill.name,
-      '--global',
-      '--yes',
+    final arguments = <String>['update'];
+    for (final target in targets) {
+      arguments.addAll([
+        '--target',
+        _updateTargetArgument(skill.coordinate, target),
+      ]);
+    }
+    arguments.addAll([
+      '--preflight',
+      '--output',
+      'json',
       '--registry',
       _registryOrigin,
     ]);
+    final command = await _runCli(arguments);
+    if (!command.succeeded) throw SkillsException(_commandError(command));
+    try {
+      final decoded = jsonDecode(command.output.stdout);
+      if (decoded is! Map<String, dynamic> ||
+          decoded['schemaVersion'] != 1 ||
+          decoded['phase'] != 'update-preflight' ||
+          decoded['targets'] is! List ||
+          decoded['workspaceLockChanges'] is! List ||
+          decoded['summary'] is! Map<String, dynamic>) {
+        throw const FormatException();
+      }
+      final rawTargets = decoded['targets'] as List;
+      if (rawTargets.length != targets.length) throw const FormatException();
+      final items = <UpdatePlanItem>[];
+      for (var index = 0; index < rawTargets.length; index++) {
+        final raw = rawTargets[index];
+        if (raw is! Map<String, dynamic> ||
+            raw['name'] is! String ||
+            raw['coordinate'] != skill.coordinate ||
+            raw['sourceRef'] is! String ||
+            raw['fromVersion'] != targets[index].version ||
+            raw['toVersion'] is! String ||
+            raw['stateToken'] is! String ||
+            raw['workspaceLockChange'] is! bool ||
+            (raw['affectedBindings'] != null &&
+                raw['affectedBindings'] is! List) ||
+            (raw['reasonCode'] != null && raw['reasonCode'] is! String) ||
+            (raw['diagnostic'] != null && raw['diagnostic'] is! String)) {
+          throw const FormatException();
+        }
+        final target = _installationPlanTarget(raw['target']);
+        final expected = targets[index];
+        final action = _updatePlanAction(raw['action']);
+        final reasonCode = raw['reasonCode'] as String? ?? '';
+        final fromVersion = expected.version;
+        final toVersion = raw['toVersion'] as String;
+        final stateToken = raw['stateToken'] as String;
+        final workspaceLockChange = raw['workspaceLockChange'] as bool;
+        if (target.scope != expected.scope ||
+            target.projectRoot != expected.projectRoot ||
+            target.agent != expected.agent ||
+            target.mode != expected.mode ||
+            target.path != expected.path ||
+            stateToken.isEmpty ||
+            (workspaceLockChange &&
+                target.scope != InstallationScope.project) ||
+            (action == UpdatePlanAction.update &&
+                fromVersion == toVersion &&
+                reasonCode != 'workspace-lock-reconcile') ||
+            (reasonCode == 'workspace-lock-reconcile' &&
+                (action != UpdatePlanAction.update ||
+                    !workspaceLockChange ||
+                    fromVersion != toVersion))) {
+          throw const FormatException();
+        }
+        items.add(
+          UpdatePlanItem(
+            target: target,
+            name: raw['name'] as String,
+            coordinate: skill.coordinate,
+            sourceRef: raw['sourceRef'] as String,
+            fromVersion: fromVersion,
+            toVersion: toVersion,
+            action: action,
+            reasonCode: reasonCode,
+            diagnostic: raw['diagnostic'] as String? ?? '',
+            stateToken: stateToken,
+            workspaceLockChange: workspaceLockChange,
+            affectedBindings: List.unmodifiable([
+              for (final binding
+                  in raw['affectedBindings'] as List? ?? const [])
+                _installationPlanTarget(binding),
+            ]),
+          ),
+        );
+      }
+      final targetKeys = items
+          .map((item) => updateTargetKey(item.target))
+          .toSet();
+      for (final item in items) {
+        if (item.affectedBindings.isNotEmpty &&
+            (!item.affectedBindings.any(
+                  (binding) =>
+                      updateTargetKey(binding) == updateTargetKey(item.target),
+                ) ||
+                item.affectedBindings.any(
+                  (binding) => !targetKeys.contains(updateTargetKey(binding)),
+                ))) {
+          throw const FormatException();
+        }
+      }
+      final changes = <WorkspaceLockChange>[];
+      final changeKeys = <String>{};
+      for (final raw in decoded['workspaceLockChanges'] as List) {
+        if (raw is! Map<String, dynamic> ||
+            raw['projectRoot'] is! String ||
+            raw['path'] is! String ||
+            raw['skill'] is! String ||
+            raw['fromVersion'] is! String ||
+            raw['toVersion'] is! String) {
+          throw const FormatException();
+        }
+        final projectRoot = raw['projectRoot'] as String;
+        final path = raw['path'] as String;
+        final skillName = raw['skill'] as String;
+        final fromVersion = raw['fromVersion'] as String;
+        final toVersion = raw['toVersion'] as String;
+        final key = '$projectRoot\u0000$skillName\u0000$toVersion';
+        final matchesItem = items.any(
+          (item) =>
+              item.workspaceLockChange &&
+              item.target.scope == InstallationScope.project &&
+              item.target.projectRoot == projectRoot &&
+              item.name == skillName &&
+              item.toVersion == toVersion,
+        );
+        if (projectRoot.isEmpty ||
+            skillName.isEmpty ||
+            fromVersion.isEmpty ||
+            toVersion.isEmpty ||
+            p.normalize(path) !=
+                p.normalize(p.join(projectRoot, 'skillsgo-lock.yaml')) ||
+            !matchesItem ||
+            !changeKeys.add(key)) {
+          throw const FormatException();
+        }
+        changes.add(
+          WorkspaceLockChange(
+            projectRoot: projectRoot,
+            path: path,
+            skill: skillName,
+            fromVersion: fromVersion,
+            toVersion: toVersion,
+          ),
+        );
+      }
+      final expectedChangeKeys = {
+        for (final item in items)
+          if (item.workspaceLockChange)
+            '${item.target.projectRoot}\u0000${item.name}\u0000${item.toVersion}',
+      };
+      if (changeKeys.length != expectedChangeKeys.length ||
+          !changeKeys.containsAll(expectedChangeKeys)) {
+        throw const FormatException();
+      }
+      final rawSummary = decoded['summary'] as Map<String, dynamic>;
+      final summary = UpdatePlanSummary(
+        update: _strictNonNegativeInt(rawSummary['update']),
+        current: _strictNonNegativeInt(rawSummary['current']),
+        pinned: _strictNonNegativeInt(rawSummary['pinned']),
+        failed: _strictNonNegativeInt(rawSummary['failed']),
+      );
+      if (summary.update !=
+              items
+                  .where((item) => item.action == UpdatePlanAction.update)
+                  .length ||
+          summary.current !=
+              items
+                  .where((item) => item.action == UpdatePlanAction.current)
+                  .length ||
+          summary.pinned !=
+              items
+                  .where((item) => item.action == UpdatePlanAction.pinned)
+                  .length ||
+          summary.failed !=
+              items
+                  .where((item) => item.action == UpdatePlanAction.failed)
+                  .length) {
+        throw const FormatException();
+      }
+      return UpdatePlan(
+        targets: List.unmodifiable(items),
+        workspaceLockChanges: List.unmodifiable(changes),
+        summary: summary,
+      );
+    } on FormatException {
+      throw const SkillsException(
+        'The SkillsGo CLI returned invalid Update Plan JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
+  }
+
+  @override
+  Future<UpdateExecution> executeUpdate(
+    UpdatePlan plan, {
+    void Function(UpdateTargetProgress progress)? onProgress,
+  }) async {
+    if (plan.targets.isEmpty ||
+        plan.targets.any((item) => item.action != UpdatePlanAction.update)) {
+      throw const SkillsException(
+        'Update execution requires explicit updateable targets.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    await _ensureRegistryOrigin();
+    final arguments = <String>['update'];
+    for (final item in plan.targets) {
+      arguments.addAll([
+        '--target',
+        jsonEncode({
+          'scope': item.target.scope.name,
+          if (item.target.scope == InstallationScope.project)
+            'projectRoot': item.target.projectRoot,
+          'agent': item.target.agent,
+          'mode': item.target.mode.name,
+          'path': item.target.path,
+          'coordinate': item.coordinate,
+          'version': item.fromVersion,
+          'toVersion': item.toVersion,
+          'stateToken': item.stateToken,
+        }),
+      ]);
+    }
+    arguments.addAll(['--output', 'ndjson', '--registry', _registryOrigin]);
+    final expected = {
+      for (final item in plan.targets) updateTargetKey(item.target): item,
+    };
+    final states = <String, InstallationProgressState>{};
+    final terminal = <String, UpdateTargetResult>{};
+    Map<String, dynamic>? finalPayload;
+    Object? streamFailure;
+    var sequence = 1;
+    var sawLine = false;
+    void consume(String line) {
+      sawLine = true;
+      if (streamFailure != null) return;
+      try {
+        final raw = jsonDecode(line);
+        if (raw is! Map<String, dynamic> || raw['schemaVersion'] != 1) {
+          throw const FormatException();
+        }
+        if (raw['phase'] == 'update-progress') {
+          if (raw['sequence'] != sequence++ ||
+              raw['name'] is! String ||
+              raw['coordinate'] is! String ||
+              raw['fromVersion'] is! String ||
+              raw['toVersion'] is! String) {
+            throw const FormatException();
+          }
+          final target = _installationPlanTarget(raw['target']);
+          final key = updateTargetKey(target);
+          final item = expected[key];
+          if (item == null ||
+              raw['name'] != item.name ||
+              raw['coordinate'] != item.coordinate ||
+              raw['fromVersion'] != item.fromVersion ||
+              raw['toVersion'] != item.toVersion) {
+            throw const FormatException();
+          }
+          final state = switch (raw['state']) {
+            'started' => InstallationProgressState.started,
+            'finished' => InstallationProgressState.finished,
+            _ => throw const FormatException(),
+          };
+          UpdateTargetResult? result;
+          if (state == InstallationProgressState.started) {
+            if (states.containsKey(key) || raw.containsKey('result')) {
+              throw const FormatException();
+            }
+          } else {
+            if (states[key] != InstallationProgressState.started ||
+                raw['result'] == null) {
+              throw const FormatException();
+            }
+            result = _updateTargetResult(raw['result'], item);
+            terminal[key] = result;
+          }
+          states[key] = state;
+          onProgress?.call(
+            UpdateTargetProgress(
+              sequence: raw['sequence'] as int,
+              target: target,
+              name: item.name,
+              coordinate: item.coordinate,
+              fromVersion: item.fromVersion,
+              toVersion: item.toVersion,
+              state: state,
+              result: result,
+            ),
+          );
+        } else if (raw['phase'] == 'update-execution') {
+          if (finalPayload != null ||
+              states.length != expected.length ||
+              states.values.any(
+                (state) => state != InstallationProgressState.finished,
+              )) {
+            throw const FormatException();
+          }
+          finalPayload = raw;
+        } else {
+          throw const FormatException();
+        }
+      } catch (error) {
+        streamFailure = error;
+      }
+    }
+
+    final command = await _runCli(arguments, onStdoutLine: consume);
+    if (!sawLine) {
+      for (final line in const LineSplitter().convert(command.output.stdout)) {
+        consume(line);
+      }
+    }
+    if (!command.succeeded) throw SkillsException(_commandError(command));
+    try {
+      final raw = finalPayload;
+      if (streamFailure != null ||
+          raw == null ||
+          raw['results'] is! List ||
+          raw['summary'] is! Map<String, dynamic>) {
+        throw const FormatException();
+      }
+      final rawResults = raw['results'] as List;
+      if (rawResults.length != plan.targets.length) {
+        throw const FormatException();
+      }
+      final results = <UpdateTargetResult>[
+        for (var index = 0; index < rawResults.length; index++)
+          _updateTargetResult(rawResults[index], plan.targets[index]),
+      ];
+      for (final result in results) {
+        final streamed = terminal[updateTargetKey(result.target)];
+        if (streamed == null ||
+            streamed.outcome != result.outcome ||
+            streamed.errorCode != result.errorCode ||
+            streamed.diagnostic != result.diagnostic) {
+          throw const FormatException();
+        }
+      }
+      final rawSummary = raw['summary'] as Map<String, dynamic>;
+      final summary = UpdateExecutionSummary(
+        succeeded: _strictNonNegativeInt(rawSummary['succeeded']),
+        skipped: _strictNonNegativeInt(rawSummary['skipped']),
+        failed: _strictNonNegativeInt(rawSummary['failed']),
+      );
+      if (summary.succeeded !=
+              results
+                  .where(
+                    (result) => result.outcome == UpdateTargetOutcome.succeeded,
+                  )
+                  .length ||
+          summary.skipped !=
+              results
+                  .where(
+                    (result) => result.outcome == UpdateTargetOutcome.skipped,
+                  )
+                  .length ||
+          summary.failed !=
+              results
+                  .where(
+                    (result) => result.outcome == UpdateTargetOutcome.failed,
+                  )
+                  .length) {
+        throw const FormatException();
+      }
+      return UpdateExecution(
+        results: List.unmodifiable(results),
+        summary: summary,
+      );
+    } on FormatException {
+      throw const SkillsException(
+        'The SkillsGo CLI returned invalid Update Result NDJSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
   }
 
   @override
   Future<Map<String, UpdateState>> checkUpdates(
     List<InstalledSkill> skills,
   ) async {
-    final states = {
+    final states = <String, UpdateState>{};
+    await Future.wait([
       for (final skill in skills)
-        if (skill.provenance == LibraryProvenance.external)
-          skill.name: UpdateState.unsupported,
-    };
-    final managed = skills
-        .where((skill) => skill.provenance == LibraryProvenance.registry)
-        .toList(growable: false);
-    if (managed.isEmpty) return states;
-    await _ensureRegistryOrigin();
-    final arguments = <String>[
-      'update',
-      ...managed.map((skill) => skill.name),
-      '--global',
-      '--check',
-      '--output',
-      'json',
-      '--registry',
-      _registryOrigin,
-    ];
-    final result = await _runCli(arguments);
-    if (!result.succeeded) {
-      states.addAll({
-        for (final skill in managed) skill.name: UpdateState.failed,
-      });
-      return states;
-    }
-    try {
-      final decoded = jsonDecode(result.output.stdout);
-      if (decoded is! List) throw const FormatException();
-      states.addAll({
-        for (final skill in managed) skill.name: UpdateState.unsupported,
-      });
-      for (final raw in decoded) {
-        if (raw is! Map<String, dynamic> ||
-            raw['name'] is! String ||
-            raw['available'] is! bool) {
-          throw const FormatException();
-        }
-        states[raw['name'] as String] = raw['available'] as bool
-            ? UpdateState.available
-            : UpdateState.upToDate;
-      }
-      return states;
-    } catch (_) {
-      states.addAll({
-        for (final skill in managed) skill.name: UpdateState.failed,
-      });
-      return states;
-    }
+        () async {
+          final key = _installedSkillUpdateKey(skill);
+          if (skill.provenance != LibraryProvenance.registry) {
+            states[key] = UpdateState.unsupported;
+            return;
+          }
+          try {
+            final plan = await preflightUpdate(skill, skill.targets);
+            if (plan.summary.update > 0) {
+              states[key] = UpdateState.available;
+            } else if (plan.summary.failed > 0) {
+              states[key] = UpdateState.failed;
+            } else if (plan.summary.current > 0) {
+              states[key] = UpdateState.upToDate;
+            } else {
+              states[key] = UpdateState.unsupported;
+            }
+          } catch (_) {
+            states[key] = UpdateState.failed;
+          }
+        }(),
+    ]);
+    return states;
   }
 
   String _commandError(CommandResult result) {

@@ -119,7 +119,10 @@ func validateAssessedInfo(coordinate, requestedVersion string, info Info) error 
 	if err := source.ValidateVersion(info.Version); err != nil {
 		return fmt.Errorf("Registry returned an invalid immutable version for %s: %w", coordinate, err)
 	}
-	if requestedVersion != "" && requestedVersion != "main" && info.Version != requestedVersion {
+	if requestedVersion != "" &&
+		requestedVersion != "main" &&
+		info.Version != requestedVersion &&
+		info.Origin.Ref != "refs/heads/"+requestedVersion {
 		return fmt.Errorf(
 			"Registry resolved %s@%s as unexpected immutable version %s",
 			coordinate, requestedVersion, info.Version,

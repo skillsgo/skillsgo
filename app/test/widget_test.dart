@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp with a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
- * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, managed/external multi-target Library views, explicit projects, Agents, Settings, conflict/risk resolution, persistent install progress, failed-only retry, focus restoration, accessibility, and mutation journeys.
+ * [OUTPUT]: Specifies startup, nested navigation, discovery/detail recovery, managed/external multi-target Library views, explicit projects, Agents, Settings, conflict/risk resolution, Installation/Update Plan progress, exact-target and failed-only retry, Version Divergence refresh, focus restoration, accessibility, and mutation journeys.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -1783,6 +1783,177 @@ void main() {
     expect(find.text('UPDATE'), findsOneWidget);
   });
 
+  testWidgets('Update Plan changes only explicitly selected targets', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    final gateway = FakeSkillsGateway(
+      libraryEntries: const [
+        InstalledSkill(
+          identity: 'registry:github.com/test/skills/-/local-skill',
+          name: 'local-skill',
+          path: '/tmp/user/local-skill',
+          agents: ['codex', 'claude-code'],
+          targetCount: 2,
+          coordinate: 'github.com/test/skills/-/local-skill',
+          versions: ['v1'],
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.user,
+              path: '/tmp/user/local-skill',
+              version: 'v1',
+            ),
+            SkillInstallationTarget(
+              agent: 'claude-code',
+              scope: InstallationScope.project,
+              projectRoot: '/tmp/project',
+              path: '/tmp/project/.claude/skills/local-skill',
+              version: 'v1',
+            ),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Library'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Check updates'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Update'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Select targets to update'), findsOneWidget);
+    expect(find.text('2 of 2 updateable targets selected'), findsOneWidget);
+    expect(
+      find.textContaining('/tmp/project/skillsgo-lock.yaml'),
+      findsOneWidget,
+    );
+    await tester.tap(find.byType(ShadCheckbox).at(1));
+    await tester.pumpAndSettle();
+    expect(find.text('1 of 2 updateable targets selected'), findsOneWidget);
+    expect(
+      find.textContaining('/tmp/project/skillsgo-lock.yaml'),
+      findsNothing,
+    );
+    await tester.tap(find.text('Update selected targets'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.updateTargetHistory, hasLength(1));
+    expect(gateway.updateTargetHistory.single, hasLength(1));
+    expect(gateway.updateTargetHistory.single.single, contains('codex'));
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    expect(find.text('2 versions'), findsOneWidget);
+    expect(find.text('Version divergence'), findsOneWidget);
+  });
+
+  testWidgets('Update Plan retries only failed targets and retains success', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    final gateway = FakeSkillsGateway(
+      updateFailures: const [
+        {'claude-code'},
+        <String>{},
+      ],
+      libraryEntries: const [
+        InstalledSkill(
+          identity: 'registry:github.com/test/skills/-/local-skill',
+          name: 'local-skill',
+          path: '/tmp/user/local-skill',
+          agents: ['codex', 'claude-code'],
+          targetCount: 2,
+          coordinate: 'github.com/test/skills/-/local-skill',
+          versions: ['v1'],
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.user,
+              path: '/tmp/user/local-skill',
+              version: 'v1',
+            ),
+            SkillInstallationTarget(
+              agent: 'claude-code',
+              scope: InstallationScope.project,
+              projectRoot: '/tmp/project',
+              path: '/tmp/project/.claude/skills/local-skill',
+              version: 'v1',
+            ),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Library'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Check updates'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Update'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Update selected targets'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Retry 1 Failed Update'), findsOneWidget);
+    expect(gateway.updateTargetHistory.first, hasLength(2));
+    await tester.tap(find.text('Retry 1 Failed Update'));
+    await tester.pumpAndSettle();
+
+    expect(gateway.updateTargetHistory, hasLength(2));
+    expect(gateway.updateTargetHistory.last, hasLength(1));
+    expect(gateway.updateTargetHistory.last.single, contains('claude-code'));
+    expect(find.text('Retry 1 Failed Update'), findsNothing);
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+    expect(find.text('1 versions'), findsOneWidget);
+    expect(find.text('Version divergence'), findsNothing);
+  });
+
+  testWidgets('installed detail refreshes target versions after update', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    final gateway = FakeSkillsGateway(
+      libraryEntries: const [
+        InstalledSkill(
+          identity: 'registry:github.com/test/skills/-/local-skill',
+          name: 'local-skill',
+          path: '/tmp/local-skill',
+          agents: ['codex'],
+          targetCount: 1,
+          coordinate: 'github.com/test/skills/-/local-skill',
+          versions: ['v1'],
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.user,
+              path: '/tmp/local-skill',
+              version: 'v1',
+            ),
+          ],
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Library'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('local-skill'));
+    await tester.pumpAndSettle();
+    expect(find.text('User Scope / Codex · v1'), findsOneWidget);
+
+    await tester.tap(find.text('Update'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Update selected targets'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Close'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('User Scope / Codex · v2'), findsOneWidget);
+  });
+
   testWidgets('core flow searches, installs, checks updates and removes', (
     tester,
   ) async {
@@ -1855,6 +2026,7 @@ class FakeSkillsGateway implements SkillsGateway {
     this.planConflictReason = '',
     this.riskPolicy = const PersonalRiskPolicy(),
     this.installFailures = const [],
+    this.updateFailures = const [],
   }) : searchResults = searchResults ?? _defaultSearchResults,
        remoteDetail =
            remoteDetail ??
@@ -1872,7 +2044,7 @@ class FakeSkillsGateway implements SkillsGateway {
   final SkillsException? agentInspectionError;
   final AddedProject? projectToAdd;
   final AddedProject? projectToRelocate;
-  final List<InstalledSkill>? libraryEntries;
+  List<InstalledSkill>? libraryEntries;
   final SkillsException? localDetailError;
   final SkillDetail? localDetail;
   final List<AddedProject> projects;
@@ -1888,13 +2060,16 @@ class FakeSkillsGateway implements SkillsGateway {
   final SkillDetail remoteDetail;
   final List<SkillsException> detailErrors;
   final List<Set<String>> installFailures;
+  final List<Set<String>> updateFailures;
   bool installed;
   final queries = <String>[];
   final collections = <DiscoveryCollection>[];
   final requestedOffsets = <int>[];
   int installCalls = 0;
+  int updateCalls = 0;
   List<InstallationTargetSelection> lastPlanSelections = const [];
   final executionSelectionHistory = <List<InstallationTargetSelection>>[];
+  final updateTargetHistory = <List<String>>[];
   int detailLoads = 0;
   int agentInspections = 0;
   String? savedPath;
@@ -2134,7 +2309,11 @@ class FakeSkillsGateway implements SkillsGateway {
   @override
   Future<Map<String, UpdateState>> checkUpdates(
     List<InstalledSkill> skills,
-  ) async => {'local-skill': UpdateState.available};
+  ) async => {
+    for (final skill in skills)
+      (skill.identity.isEmpty ? skill.name : skill.identity):
+          UpdateState.available,
+  };
 
   @override
   Future<InstallationPlan> preflightInstall(
@@ -2346,8 +2525,153 @@ class FakeSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<CommandResult> update(InstalledSkill skill) async =>
-      _success(['skills', 'update']);
+  Future<UpdatePlan> preflightUpdate(
+    InstalledSkill skill,
+    List<SkillInstallationTarget> targets,
+  ) async {
+    final items = [
+      for (final target in targets)
+        UpdatePlanItem(
+          target: InstallationPlanTarget(
+            scope: target.scope,
+            projectRoot: target.projectRoot,
+            agent: target.agent,
+            mode: target.mode,
+            path: target.path,
+          ),
+          name: skill.name,
+          coordinate: skill.coordinate,
+          sourceRef: 'main',
+          fromVersion: target.version,
+          toVersion: 'v2',
+          action: UpdatePlanAction.update,
+          stateToken: 'state-${target.agent}-${target.path}',
+          workspaceLockChange: target.scope == InstallationScope.project,
+        ),
+    ];
+    return UpdatePlan(
+      targets: items,
+      workspaceLockChanges: [
+        for (final item in items)
+          if (item.workspaceLockChange)
+            WorkspaceLockChange(
+              projectRoot: item.target.projectRoot,
+              path: '${item.target.projectRoot}/skillsgo-lock.yaml',
+              skill: item.name,
+              fromVersion: item.fromVersion,
+              toVersion: item.toVersion,
+            ),
+      ],
+      summary: UpdatePlanSummary(
+        update: items.length,
+        current: 0,
+        pinned: 0,
+        failed: 0,
+      ),
+    );
+  }
+
+  @override
+  Future<UpdateExecution> executeUpdate(
+    UpdatePlan plan, {
+    void Function(UpdateTargetProgress progress)? onProgress,
+  }) async {
+    updateCalls++;
+    updateTargetHistory.add(
+      plan.targets.map((item) => updateTargetKey(item.target)).toList(),
+    );
+    final configuredFailures = updateCalls <= updateFailures.length
+        ? updateFailures[updateCalls - 1]
+        : const <String>{};
+    var sequence = 0;
+    final results = <UpdateTargetResult>[];
+    for (final item in plan.targets) {
+      onProgress?.call(
+        UpdateTargetProgress(
+          sequence: ++sequence,
+          target: item.target,
+          name: item.name,
+          coordinate: item.coordinate,
+          fromVersion: item.fromVersion,
+          toVersion: item.toVersion,
+          state: InstallationProgressState.started,
+        ),
+      );
+      final failed = configuredFailures.contains(item.target.agent);
+      final result = UpdateTargetResult(
+        target: item.target,
+        name: item.name,
+        coordinate: item.coordinate,
+        fromVersion: item.fromVersion,
+        toVersion: item.toVersion,
+        outcome: failed
+            ? UpdateTargetOutcome.failed
+            : UpdateTargetOutcome.succeeded,
+        errorCode: failed ? 'update-failed' : '',
+        diagnostic: failed ? 'Target is not writable.' : '',
+      );
+      results.add(result);
+      onProgress?.call(
+        UpdateTargetProgress(
+          sequence: ++sequence,
+          target: item.target,
+          name: item.name,
+          coordinate: item.coordinate,
+          fromVersion: item.fromVersion,
+          toVersion: item.toVersion,
+          state: InstallationProgressState.finished,
+          result: result,
+        ),
+      );
+    }
+    final succeededKeys = results
+        .where((result) => result.outcome == UpdateTargetOutcome.succeeded)
+        .map((result) => updateTargetKey(result.target))
+        .toSet();
+    libraryEntries = libraryEntries
+        ?.map(
+          (skill) => skill.withTargets([
+            for (final target in skill.targets)
+              if (succeededKeys.contains(
+                updateTargetKey(
+                  InstallationPlanTarget(
+                    scope: target.scope,
+                    projectRoot: target.projectRoot,
+                    agent: target.agent,
+                    mode: target.mode,
+                    path: target.path,
+                  ),
+                ),
+              ))
+                SkillInstallationTarget(
+                  agent: target.agent,
+                  scope: target.scope,
+                  path: target.path,
+                  version: 'v2',
+                  projectRoot: target.projectRoot,
+                  mode: target.mode,
+                  receiptState: target.receiptState,
+                  health: target.health,
+                )
+              else
+                target,
+          ]),
+        )
+        .toList(growable: false);
+    final succeeded = results
+        .where((result) => result.outcome == UpdateTargetOutcome.succeeded)
+        .length;
+    final failed = results.length - succeeded;
+    return UpdateExecution(
+      results: results,
+      summary: UpdateExecutionSummary(
+        succeeded: succeeded,
+        skipped: 0,
+        failed: failed,
+      ),
+    );
+  }
+
 }
 
 SkillDetail _withoutInstallationTargets(
