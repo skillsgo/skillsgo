@@ -41,7 +41,7 @@ The aggregate Library representation of one logical Skill. Targets across multip
 _Avoid_: installation row, Skill copy
 
 **Installation Plan**:
-A user-selected matrix of location-and-Agent installation targets. A plan may contain multiple locations and multiple Agents, but only explicitly selected cells become targets.
+A user-selected matrix of location-and-Agent installation targets. A plan may contain multiple locations and multiple Agents, but only explicitly selected cells become targets. Conflict replacement is bound to the reviewed reason and target state; a physical path shared by Agent bindings requires every affected Agent cell before replacement.
 _Avoid_: default install everywhere, automatic Cartesian product
 
 **Target Result**:

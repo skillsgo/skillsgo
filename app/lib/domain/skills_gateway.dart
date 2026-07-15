@@ -42,6 +42,8 @@ enum InstallationMode { symlink, copy, external }
 
 enum InstallationPlanAction { create, replace, skip, conflict, blockedByRisk }
 
+enum InstallationTargetResolution { none, replace }
+
 enum InstallationTargetOutcome { succeeded, skipped, conflict, failed }
 
 enum ReceiptState { present, missing, invalid }
@@ -50,6 +52,7 @@ enum InstallationHealth {
   healthy,
   missing,
   replaced,
+  localModification,
   unreadable,
   undeclared,
   workspaceUnreadable,
@@ -222,12 +225,32 @@ class InstallationTargetSelection {
     required this.agent,
     this.projectRoot = '',
     this.mode = InstallationMode.symlink,
+    this.resolution = InstallationTargetResolution.none,
+    this.expectedReason = '',
+    this.expectedState = '',
   });
 
   final InstallationScope scope;
   final String projectRoot;
   final String agent;
   final InstallationMode mode;
+  final InstallationTargetResolution resolution;
+  final String expectedReason;
+  final String expectedState;
+
+  InstallationTargetSelection copyWith({
+    InstallationTargetResolution? resolution,
+    String? expectedReason,
+    String? expectedState,
+  }) => InstallationTargetSelection(
+    scope: scope,
+    projectRoot: projectRoot,
+    agent: agent,
+    mode: mode,
+    resolution: resolution ?? this.resolution,
+    expectedReason: expectedReason ?? this.expectedReason,
+    expectedState: expectedState ?? this.expectedState,
+  );
 }
 
 class InstallationPlanTarget {
@@ -252,12 +275,30 @@ class InstallationPlanItem {
     required this.action,
     required this.workspaceLockChange,
     this.reasonCode = '',
+    this.stateToken = '',
+    this.affectedBindings = const [],
   });
 
   final InstallationPlanTarget target;
   final InstallationPlanAction action;
   final bool workspaceLockChange;
   final String reasonCode;
+  final String stateToken;
+  final List<InstallationAffectedBinding> affectedBindings;
+}
+
+class InstallationAffectedBinding {
+  const InstallationAffectedBinding({
+    required this.agent,
+    required this.scope,
+    required this.mode,
+    required this.path,
+  });
+
+  final String agent;
+  final InstallationScope scope;
+  final InstallationMode mode;
+  final String path;
 }
 
 class InstallationPlanSummary {
@@ -302,6 +343,9 @@ class InstallationPlan {
     required this.targets,
     required this.summary,
     required this.workspaceLockChanges,
+    required this.riskAssessment,
+    required this.riskConfirmed,
+    required this.allowCritical,
   });
 
   final String source;
@@ -312,6 +356,9 @@ class InstallationPlan {
   final List<InstallationPlanItem> targets;
   final InstallationPlanSummary summary;
   final List<WorkspaceLockChange> workspaceLockChanges;
+  final SkillRiskAssessment riskAssessment;
+  final bool riskConfirmed;
+  final bool allowCritical;
 }
 
 class InstallationTargetResult {
@@ -626,8 +673,10 @@ abstract interface class SkillsGateway {
   Future<InstallationPlan> preflightInstall(
     SkillSummary skill,
     String immutableVersion,
-    List<InstallationTargetSelection> selections,
-  );
+    List<InstallationTargetSelection> selections, {
+    bool riskConfirmed = false,
+    bool allowCritical = false,
+  });
   Future<InstallationExecution> executeInstall(InstallationPlan plan);
   Future<CommandResult> install(SkillSummary skill);
   Future<CommandResult> remove(InstalledSkill skill);

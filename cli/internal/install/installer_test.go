@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Uses temporary immutable artifacts, resolved targets, filesystem modes, and adversarial directory layouts.
+ * [OUTPUT]: Specifies shared-path receipts, collision refusal, copy fidelity, and unambiguous Local Modification digests.
+ * [POS]: Serves as behavior coverage for the installation materialization boundary.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package install
 
 import (
@@ -54,7 +60,42 @@ func TestInstallDoesNotOverwriteExistingTarget(t *testing.T) {
 	}
 }
 
-// 对齐 skills-sh tests/installer-copy.test.ts：复制安装必须保留点文件和可执行位。
+func TestDirectoryDigestFramesFileBoundariesUnambiguously(t *testing.T) {
+	root := t.TempDir()
+	oneFile := filepath.Join(root, "one-file")
+	twoFiles := filepath.Join(root, "two-files")
+	if err := os.MkdirAll(oneFile, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(twoFiles, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	forgedSecondHeader := []byte{'f', 0, 'b', 0, '6', '0', '0', 0}
+	combined := append([]byte("left\x00"), forgedSecondHeader...)
+	combined = append(combined, []byte("right")...)
+	if err := os.WriteFile(filepath.Join(oneFile, "a"), combined, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(twoFiles, "a"), []byte("left"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(twoFiles, "b"), []byte("right"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	oneDigest, err := DirectoryDigest(oneFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	twoDigest, err := DirectoryDigest(twoFiles)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if oneDigest == twoDigest {
+		t.Fatal("different directory structures must not share a framed digest")
+	}
+}
+
+// Mirrors skills-sh tests/installer-copy.test.ts: copy mode preserves dotfiles and executable bits.
 func TestSkillsSHCompatibilityCopyPreservesDotfilesAndExecutableMode(t *testing.T) {
 	root := t.TempDir()
 	artifact := filepath.Join(root, "store", "artifact")

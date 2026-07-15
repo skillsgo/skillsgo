@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Cobra and the Agent, Registry, Store, project, installation, source, and i18n modules.
+ * [INPUT]: Depends on Cobra and the Agent, Registry, Store, project, installation, Installation Plan, source, and i18n modules.
  * [OUTPUT]: Provides command.Execute and the complete CLI graph, including stable Agent, Library inventory, and explicit Installation Plan contracts, for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -20,6 +20,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
+	"github.com/skillsgo/skillsgo/cli/internal/plan"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
@@ -496,6 +497,7 @@ func placeholder(name, use string, aliases ...string) *cobra.Command {
 
 type addOptions struct {
 	global, copy, yes, list, all, fullDepth, replace, preflight bool
+	riskConfirmed, allowCritical                                bool
 	agents, skills, subagents, targets                          []string
 	metadata, output, registryURL, artifactVersion              string
 }
@@ -594,6 +596,9 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if err := plan.AuthorizeRisk(plan.Risk(artifact.Info.Risk), options.riskConfirmed, options.allowCritical); err != nil {
+				return err
+			}
 			entry, err := (store.Store{Root: store.DefaultRoot(home)}).Put(artifact)
 			if err != nil {
 				return err
@@ -649,6 +654,8 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 	flags.StringArrayVar(&options.targets, "target", nil, appi18n.T("flag.target"))
 	flags.BoolVar(&options.preflight, "preflight", false, appi18n.T("flag.preflight"))
 	flags.StringVar(&options.artifactVersion, "version", "", appi18n.T("flag.artifact_version"))
+	flags.BoolVar(&options.riskConfirmed, "confirm-risk", false, appi18n.T("flag.confirm_risk"))
+	flags.BoolVar(&options.allowCritical, "allow-critical", false, appi18n.T("flag.allow_critical"))
 	flags.StringVar(&options.metadata, "metadata", "", appi18n.T("flag.metadata"))
 	flags.StringArrayVar(&options.subagents, "subagent", nil, appi18n.T("flag.subagent"))
 	flags.BoolVar(&options.all, "all", false, appi18n.T("flag.all"))

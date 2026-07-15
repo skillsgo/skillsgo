@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with temporary Store receipts, explicit project roots, Workspace files, and the test Agent.
- * [OUTPUT]: Specifies the versioned managed/external inventory JSON contract, target reconciliation, identity separation, read-only inspection, and explicit-root privacy boundary.
+ * [OUTPUT]: Specifies the versioned managed/external inventory JSON contract, target reconciliation, Local Modification health, identity separation, read-only inspection, and explicit-root privacy boundary.
  * [POS]: Serves as executable contract coverage for the App-facing unified Library inventory.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -68,7 +68,7 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 
 	var report inventoryReport
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &report))
-	require.Equal(t, inventorySchemaVersion, report.SchemaVersion)
+	require.Equal(t, 3, report.SchemaVersion)
 	require.Len(t, report.Entries, 1)
 	entry := report.Entries[0]
 	require.Equal(t, "registry:"+coordinate, entry.Identity)
@@ -90,6 +90,26 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	require.Equal(t, "v2", entry.Targets[1].Version)
 	require.NotContains(t, stdout.String(), unselectedProject)
 	require.NotContains(t, stdout.String(), "secret")
+
+	require.NoError(t, os.WriteFile(
+		filepath.Join(selectedTarget.Path, "SKILL.md"),
+		[]byte("# locally modified\n"),
+		0o600,
+	))
+	stdout.Reset()
+	stderr.Reset()
+	require.NoError(t, Execute(
+		[]string{"inventory", "--user", "--project", selectedProject, "--output", "json"},
+		&stdout,
+		&stderr,
+	))
+	report = inventoryReport{}
+	require.NoError(t, json.Unmarshal(stdout.Bytes(), &report))
+	require.Equal(t, "local-modification", string(report.Entries[0].Health))
+	require.Equal(t, "local-modification", string(report.Entries[0].Targets[1].Health))
+	original, err := os.ReadFile(filepath.Join(projectEntry.Artifact, "SKILL.md"))
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(selectedTarget.Path, "SKILL.md"), original, 0o600))
 
 	lockPath := filepath.Join(selectedProject, "skillsgo-lock.yaml")
 	lockBytes, err := os.ReadFile(lockPath)
@@ -293,13 +313,17 @@ func TestInventoryJSONReportsExternalInstallationsWithoutClaimingOrChangingThem(
 
 func commandTestStoreEntry(t *testing.T, storage store.Store, coordinate, version string) *store.Entry {
 	t.Helper()
+	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{
+		"SKILL.md": "---\nname: demo\ndescription: inventory fixture\n---\n",
+	})
 	entry, err := storage.Put(&registry.Artifact{
 		Coordinate: coordinate,
-		Info:       registry.Info{Version: version},
-		Manifest:   []byte("name: demo\ndescription: inventory fixture\n"),
-		ZIP: commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{
-			"SKILL.md": "---\nname: demo\ndescription: inventory fixture\n---\n",
-		}),
+		Info: registry.Info{
+			Version: version, Risk: registry.RiskLow,
+			ContentDigest: commandTestContentDigest(t, zipData, coordinate, version),
+		},
+		Manifest: []byte("name: demo\ndescription: inventory fixture\n"),
+		ZIP:      zipData,
 	})
 	require.NoError(t, err)
 	return entry

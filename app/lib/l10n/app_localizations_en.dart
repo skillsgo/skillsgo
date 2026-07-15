@@ -474,6 +474,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get healthReplaced => 'Target replaced';
 
   @override
+  String get healthLocalModification => 'Local Modification';
+
+  @override
   String get healthUnreadable => 'Target unreadable';
 
   @override
@@ -890,9 +893,64 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String planReplaceCount(int count) {
+    return '$count replace';
+  }
+
+  @override
   String planConflictCount(int count) {
     return '$count conflict';
   }
+
+  @override
+  String planRiskCount(int count) {
+    return '$count risk blocked';
+  }
+
+  @override
+  String get refreshInstallationPlan => 'Apply Resolutions';
+
+  @override
+  String get replaceVersionConflict =>
+      'Replace the installed version at this target';
+
+  @override
+  String get replaceIdentityCollision =>
+      'Replace the different Skill identity at this target';
+
+  @override
+  String get replaceLocalModification =>
+      'Discard Local Modifications and replace this target';
+
+  @override
+  String get sharedTargetConflict =>
+      'This path is shared by other Agent targets';
+
+  @override
+  String sharedTargetConflictDescription(String agents) {
+    return 'Return to the target matrix and select every affected Agent before replacing: $agents';
+  }
+
+  @override
+  String get replaceConflictingTarget => 'Replace the conflicting target';
+
+  @override
+  String get confirmHighRiskArtifact => 'High-risk artifact confirmation';
+
+  @override
+  String get confirmCriticalRiskArtifact =>
+      'Critical-risk override confirmation';
+
+  @override
+  String get confirmRiskForSelectedTargets =>
+      'I reviewed the artifact files and accept this risk for the selected targets';
+
+  @override
+  String get criticalRiskBlocked => 'Critical-risk installation is blocked';
+
+  @override
+  String get criticalRiskOverrideDisabled =>
+      'Enable the explicit Critical-risk override in Settings before this plan can continue.';
 
   @override
   String get workspaceLockChanges => 'Workspace Lock changes';
