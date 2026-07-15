@@ -31,11 +31,11 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/agent/` | Supported Agent definitions, detection, and installation locations. |
 | `internal/command/` | CLI command graph, argument handling, and orchestration. |
 | `internal/i18n/` | Locale detection and user-facing CLI messages. |
-| `internal/install/` | Add, update, remove, collision, and materialization behavior. |
-| `internal/inventory/` | Read-only managed and External Library reconciliation across receipts, explicit projects, Workspace declarations, and known Agent paths. |
-| `internal/plan/` | Explicit Installation Plan preflight, Workspace Lock preview, and target-specific execution. |
+| `internal/install/` | Add, update, remove, copy-digest, explicit replacement, and materialization behavior. |
+| `internal/inventory/` | Read-only managed and External Library reconciliation across receipts, explicit projects, Workspace declarations, known Agent paths, and Local Modifications. |
+| `internal/plan/` | Explicit Installation Plan conflict/risk preflight, Workspace Lock preview, resolution validation, and target-specific execution. |
 | `internal/project/` | `skillsgo.yaml` and `skillsgo-lock.yaml` project state. |
-| `internal/registry/` | Client for the public SkillsGo Registry protocol. |
+| `internal/registry/` | Client for the public SkillsGo Registry protocol and normalized artifact-integrity verification. |
 | `internal/source/` | Skill-coordinate parsing and source identity. |
 | `internal/store/` | User-level shared artifact cache and installation state. |
 

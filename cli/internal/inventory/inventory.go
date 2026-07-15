@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on managed Installation Receipts, explicit project roots, Workspace Manifest/Lock state, and read-only target filesystem metadata.
- * [OUTPUT]: Provides typed, versioned managed-Library reconciliation across receipts, explicit projects, Workspace state, Agent paths, and target health.
+ * [OUTPUT]: Provides typed, versioned managed-Library reconciliation across receipts, explicit projects, Workspace state, Agent paths, target health, and copy-mode Local Modifications.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -19,7 +19,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
 
-const SchemaVersion = 2
+const SchemaVersion = 3
 
 var ErrEmptyProjectRoot = errors.New("project root must not be empty")
 
@@ -37,6 +37,7 @@ const (
 	HealthHealthy             Health = "healthy"
 	HealthMissing             Health = "missing"
 	HealthReplaced            Health = "replaced"
+	HealthLocalModification   Health = "local-modification"
 	HealthUnreadable          Health = "unreadable"
 	HealthUndeclared          Health = "undeclared"
 	HealthWorkspaceUnreadable Health = "workspace-unreadable"
@@ -336,6 +337,13 @@ func managedTargetHealth(installation install.Installation, pathExpected bool) H
 		return HealthHealthy
 	}
 	if installation.Target.Mode == install.ModeCopy && info.IsDir() {
+		matches, digestErr := install.CopyMatchesArtifact(installation.Target.Path, installation.Artifact)
+		if digestErr != nil {
+			return HealthUnreadable
+		}
+		if !matches {
+			return HealthLocalModification
+		}
 		return HealthHealthy
 	}
 	return HealthReplaced

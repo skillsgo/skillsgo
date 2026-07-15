@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Exercises Store put/get with immutable Registry artifacts, conflicting archives, and hostile identities.
+ * [OUTPUT]: Specifies idempotent storage, risk-only assessment refresh, local-tamper/content/archive digest conflicts, ZIP-slip defense, root containment, and exact retrieval.
+ * [POS]: Serves as behavior coverage for the Content-addressed Store boundary.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package store
 
 import (
@@ -48,8 +54,45 @@ func TestPutRejectsDigestConflict(t *testing.T) {
 	}
 }
 
+func TestPutRefreshesRiskButRejectsChangedContentIdentity(t *testing.T) {
+	storage := Store{Root: t.TempDir()}
+	artifact := testArtifact(t, map[string]string{"SKILL.md": "demo"})
+	first, err := storage.Put(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Receipt.Risk != registry.RiskLow {
+		t.Fatalf("unexpected initial risk: %s", first.Receipt.Risk)
+	}
+
+	artifact.Info.Risk = registry.RiskCritical
+	refreshed, err := storage.Put(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if refreshed.Receipt.Risk != registry.RiskCritical {
+		t.Fatalf("cached assessment was not refreshed: %s", refreshed.Receipt.Risk)
+	}
+	loaded, err := storage.Get(artifact.Coordinate, artifact.Info.Version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Receipt.Risk != registry.RiskCritical {
+		t.Fatalf("refreshed assessment was not persisted: %s", loaded.Receipt.Risk)
+	}
+
+	artifact.Info.ContentDigest = "sha256:different-content"
+	if _, err := storage.Put(artifact); err == nil {
+		t.Fatal("expected immutable Content Digest mismatch rejection")
+	}
+}
+
 func TestPutRejectsZipSlip(t *testing.T) {
-	artifact := testArtifact(t, map[string]string{"../escape": "bad", "SKILL.md": "ok"})
+	artifact := testArtifact(t, map[string]string{"SKILL.md": "ok"})
+	artifact.ZIP = testArchive(t, artifact.Coordinate, artifact.Info.Version, map[string]string{
+		"../escape": "bad",
+		"SKILL.md":  "ok",
+	})
 	_, err := (Store{Root: t.TempDir()}).Put(artifact)
 	if err == nil {
 		t.Fatal("expected unsafe path error")
@@ -75,9 +118,85 @@ func TestGetReturnsExistingImmutableEntry(t *testing.T) {
 	}
 }
 
+func TestGetRejectsLocallyModifiedStoreArtifact(t *testing.T) {
+	storage := Store{Root: t.TempDir()}
+	artifact := testArtifact(t, map[string]string{"SKILL.md": "demo"})
+	entry, err := storage.Put(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(entry.Artifact, "SKILL.md"), []byte("tampered"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := storage.Get(artifact.Coordinate, artifact.Info.Version); err == nil {
+		t.Fatal("expected modified Store artifact rejection")
+	}
+}
+
+func TestRefreshAssessmentRejectsChangedImmutableOrigin(t *testing.T) {
+	storage := Store{Root: t.TempDir()}
+	artifact := testArtifact(t, map[string]string{"SKILL.md": "demo"})
+	artifact.Info.Origin = registry.Origin{VCS: "git", URL: "https://github.com/example/repo", CommitSHA: "one", TreeSHA: "tree-one"}
+	if _, err := storage.Put(artifact); err != nil {
+		t.Fatal(err)
+	}
+	changed := artifact.Info
+	changed.Risk = registry.RiskHigh
+	changed.Origin.CommitSHA = "two"
+	if _, err := storage.RefreshAssessment(artifact.Coordinate, artifact.Info.Version, changed); err == nil {
+		t.Fatal("expected immutable Origin change rejection")
+	}
+	loaded, err := storage.Get(artifact.Coordinate, artifact.Info.Version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if loaded.Receipt.Risk != registry.RiskLow || loaded.Receipt.Origin.CommitSHA != "one" {
+		t.Fatalf("immutable receipt changed after rejected refresh: %#v", loaded.Receipt)
+	}
+}
+
+func TestStoreRejectsCoordinateAndVersionTraversal(t *testing.T) {
+	root := t.TempDir()
+	storage := Store{Root: filepath.Join(root, "store")}
+	for name, mutate := range map[string]func(*registry.Artifact){
+		"coordinate": func(artifact *registry.Artifact) { artifact.Coordinate = "github.com/owner/repo/-/../escape" },
+		"version":    func(artifact *registry.Artifact) { artifact.Info.Version = "../../escape" },
+	} {
+		t.Run(name, func(t *testing.T) {
+			artifact := testArtifact(t, map[string]string{"SKILL.md": "demo"})
+			mutate(artifact)
+			if _, err := storage.Put(artifact); err == nil {
+				t.Fatal("expected Store identity traversal rejection")
+			}
+			if _, err := os.Stat(filepath.Join(root, "escape")); !os.IsNotExist(err) {
+				t.Fatalf("Store identity escaped configured root: %v", err)
+			}
+		})
+	}
+	if _, err := storage.Get("github.com/owner/repo/-/../../escape", "v1"); err == nil {
+		t.Fatal("expected hostile Get coordinate rejection")
+	}
+}
+
 func testArtifact(t *testing.T, files map[string]string) *registry.Artifact {
 	t.Helper()
 	coordinate, version := "github.com/example/repo/-/skills/demo", "v0.0.0-test"
+	archive := testArchive(t, coordinate, version, files)
+	contentDigest, err := registry.ContentDigest(archive, coordinate, version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return &registry.Artifact{
+		Coordinate: coordinate,
+		Info: registry.Info{
+			Version: version, Risk: registry.RiskLow, ContentDigest: contentDigest,
+		},
+		Manifest: []byte("name: demo\n"), ZIP: archive,
+	}
+}
+
+func testArchive(t *testing.T, coordinate, version string, files map[string]string) []byte {
+	t.Helper()
 	var buffer bytes.Buffer
 	writer := zip.NewWriter(&buffer)
 	for name, content := range files {
@@ -92,5 +211,5 @@ func testArtifact(t *testing.T, files map[string]string) *registry.Artifact {
 	if err := writer.Close(); err != nil {
 		t.Fatal(err)
 	}
-	return &registry.Artifact{Coordinate: coordinate, Info: registry.Info{Version: version}, Manifest: []byte("name: demo\n"), ZIP: buffer.Bytes()}
+	return buffer.Bytes()
 }

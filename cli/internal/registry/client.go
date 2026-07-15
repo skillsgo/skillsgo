@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on a configured Registry origin, canonical Skill Coordinates, and exact assessed Info/Manifest/ZIP protocol responses.
+ * [OUTPUT]: Provides validated immutable artifact fetch and resolution with Registry-bound Risk and Content Digest metadata.
+ * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Registry protocol.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package registry
 
 import (
@@ -9,6 +15,8 @@ import (
 	"net/url"
 	"strings"
 	"time"
+
+	"github.com/skillsgo/skillsgo/cli/internal/source"
 )
 
 type Origin struct {
@@ -21,9 +29,25 @@ type Origin struct {
 }
 
 type Info struct {
-	Version string    `json:"Version" yaml:"version"`
-	Time    time.Time `json:"Time" yaml:"time"`
-	Origin  Origin    `json:"Origin" yaml:"origin"`
+	Version       string    `json:"Version" yaml:"version"`
+	Time          time.Time `json:"Time" yaml:"time"`
+	Origin        Origin    `json:"Origin" yaml:"origin"`
+	Risk          Risk      `json:"Risk" yaml:"risk"`
+	ContentDigest string    `json:"ContentDigest" yaml:"contentDigest"`
+}
+
+type Risk string
+
+const (
+	RiskUnknown  Risk = "unknown"
+	RiskLow      Risk = "low"
+	RiskMedium   Risk = "medium"
+	RiskHigh     Risk = "high"
+	RiskCritical Risk = "critical"
+)
+
+func (r Risk) Valid() bool {
+	return r == RiskUnknown || r == RiskLow || r == RiskMedium || r == RiskHigh || r == RiskCritical
 }
 
 type Artifact struct {
@@ -57,12 +81,18 @@ func (c *Client) Fetch(ctx context.Context, coordinate, requestedVersion string)
 	if err := c.getJSON(ctx, c.endpoint(coordinate, requestedVersion+".info"), &info); err != nil {
 		return nil, err
 	}
+	if err := validateAssessedInfo(coordinate, requestedVersion, info); err != nil {
+		return nil, err
+	}
 	manifest, err := c.get(ctx, c.endpoint(coordinate, info.Version+".manifest"))
 	if err != nil {
 		return nil, err
 	}
 	zipBytes, err := c.get(ctx, c.endpoint(coordinate, info.Version+".zip"))
 	if err != nil {
+		return nil, err
+	}
+	if err := VerifyContentDigest(zipBytes, coordinate, info.Version, info.ContentDigest); err != nil {
 		return nil, err
 	}
 	return &Artifact{Coordinate: coordinate, Info: info, Manifest: manifest, ZIP: zipBytes}, nil
@@ -73,8 +103,29 @@ func (c *Client) Resolve(ctx context.Context, coordinate, requestedVersion strin
 		requestedVersion = "main"
 	}
 	var info Info
-	err := c.getJSON(ctx, c.endpoint(coordinate, requestedVersion+".info"), &info)
-	return info, err
+	if err := c.getJSON(ctx, c.endpoint(coordinate, requestedVersion+".info"), &info); err != nil {
+		return Info{}, err
+	}
+	if err := validateAssessedInfo(coordinate, requestedVersion, info); err != nil {
+		return Info{}, err
+	}
+	return info, nil
+}
+
+func validateAssessedInfo(coordinate, requestedVersion string, info Info) error {
+	if info.Version == "" || !info.Risk.Valid() || !strings.HasPrefix(info.ContentDigest, "sha256:") {
+		return fmt.Errorf("Registry returned incomplete assessed Info for %s", coordinate)
+	}
+	if err := source.ValidateVersion(info.Version); err != nil {
+		return fmt.Errorf("Registry returned an invalid immutable version for %s: %w", coordinate, err)
+	}
+	if requestedVersion != "" && requestedVersion != "main" && info.Version != requestedVersion {
+		return fmt.Errorf(
+			"Registry resolved %s@%s as unexpected immutable version %s",
+			coordinate, requestedVersion, info.Version,
+		)
+	}
+	return nil
 }
 
 func (c *Client) endpoint(coordinate, file string) string {

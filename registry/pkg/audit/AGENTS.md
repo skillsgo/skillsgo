@@ -3,8 +3,8 @@
 
 ## Members
 
-- `artifact.go`: converts one immutable Skill ZIP into a bounded file inventory, inspectable text content, executable signals, and a deterministic risk assessment.
-- `artifact_test.go`: specifies archive validation, real instruction extraction, file classification, truncation, and risk evidence.
+- `artifact.go`: converts one immutable Skill ZIP into a bounded duplicate-safe file inventory, normalized Content Digest, inspectable text content, executable signals, and a deterministic risk assessment.
+- `artifact_test.go`: specifies archive validation, duplicate rejection, golden Content Digests, real instruction extraction, file classification, truncation, and risk evidence.
 
 ## Architectural Boundary
 

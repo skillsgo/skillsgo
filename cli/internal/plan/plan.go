@@ -1,18 +1,20 @@
 /*
  * [INPUT]: Depends on one immutable Store entry, an installed Agent Catalog, explicit location-and-Agent requests, Installation Receipts, and Workspace state.
- * [OUTPUT]: Provides strict target decoding, stable target-specific preflight actions, Workspace Lock previews, and independent execution results.
+ * [OUTPUT]: Provides strict target decoding, shared immutable-risk authorization, collision/Local Modification preflight actions, Workspace Lock previews, zero-mutation unresolved-plan rejection, and target-specific execution results.
  * [POS]: Serves as the domain orchestration layer between the add command and lower-level install/project mutation modules.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package plan
 
 import (
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
@@ -21,10 +23,12 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
 
-const SchemaVersion = 1
+const SchemaVersion = 2
 
 type Action string
 type Outcome string
+type Resolution string
+type Risk string
 
 const (
 	ActionCreate   Action = "create"
@@ -37,20 +41,33 @@ const (
 	OutcomeSkipped   Outcome = "skipped"
 	OutcomeConflict  Outcome = "conflict"
 	OutcomeFailed    Outcome = "failed"
+
+	ResolutionReplace Resolution = "replace"
+
+	RiskUnknown  Risk = "unknown"
+	RiskLow      Risk = "low"
+	RiskMedium   Risk = "medium"
+	RiskHigh     Risk = "high"
+	RiskCritical Risk = "critical"
 )
 
 type TargetRequest struct {
-	Scope       install.Scope `json:"scope"`
-	ProjectRoot string        `json:"projectRoot,omitempty"`
-	Agent       string        `json:"agent"`
-	Mode        install.Mode  `json:"mode"`
+	Scope          install.Scope `json:"scope"`
+	ProjectRoot    string        `json:"projectRoot,omitempty"`
+	Agent          string        `json:"agent"`
+	Mode           install.Mode  `json:"mode"`
+	Resolution     Resolution    `json:"resolution,omitempty"`
+	ExpectedReason string        `json:"expectedReason,omitempty"`
+	ExpectedState  string        `json:"expectedState,omitempty"`
 }
 
 type Request struct {
-	Source       string
-	RequestedRef string
-	Name         string
-	Targets      []TargetRequest
+	Source        string
+	RequestedRef  string
+	Name          string
+	Targets       []TargetRequest
+	RiskConfirmed bool
+	AllowCritical bool
 }
 
 type Artifact struct {
@@ -58,6 +75,7 @@ type Artifact struct {
 	Coordinate string `json:"coordinate"`
 	Version    string `json:"version"`
 	Name       string `json:"name"`
+	Risk       Risk   `json:"risk"`
 }
 
 type Target struct {
@@ -69,10 +87,19 @@ type Target struct {
 }
 
 type Item struct {
-	Target              Target `json:"target"`
-	Action              Action `json:"action"`
-	ReasonCode          string `json:"reasonCode,omitempty"`
-	WorkspaceLockChange bool   `json:"workspaceLockChange"`
+	Target              Target            `json:"target"`
+	Action              Action            `json:"action"`
+	ReasonCode          string            `json:"reasonCode,omitempty"`
+	StateToken          string            `json:"stateToken,omitempty"`
+	AffectedBindings    []AffectedBinding `json:"affectedBindings,omitempty"`
+	WorkspaceLockChange bool              `json:"workspaceLockChange"`
+}
+
+type AffectedBinding struct {
+	Agent string        `json:"agent"`
+	Scope install.Scope `json:"scope"`
+	Mode  install.Mode  `json:"mode"`
+	Path  string        `json:"path"`
 }
 
 type Summary struct {
@@ -141,11 +168,15 @@ func DecodeTargets(values []string) ([]TargetRequest, error) {
 }
 
 func Build(catalog *agent.Catalog, entry *store.Entry, storeRoot string, request Request) (Preflight, error) {
-	if request.Name == "" || request.Name != filepath.Base(request.Name) || strings.ContainsAny(request.Name, `/\\`) {
-		return Preflight{}, fmt.Errorf("invalid Skill name %q", request.Name)
+	if err := install.ValidateSkillName(request.Name); err != nil {
+		return Preflight{}, err
 	}
 	if len(request.Targets) == 0 {
 		return Preflight{}, fmt.Errorf("an Installation Plan requires at least one explicit target")
+	}
+	risk := Risk(entry.Receipt.Risk)
+	if risk != RiskUnknown && risk != RiskLow && risk != RiskMedium && risk != RiskHigh && risk != RiskCritical {
+		return Preflight{}, fmt.Errorf("unsupported immutable artifact risk assessment %q", risk)
 	}
 	installed := map[string]bool{}
 	for _, definition := range catalog.Installed() {
@@ -157,7 +188,7 @@ func Build(catalog *agent.Catalog, entry *store.Entry, storeRoot string, request
 	}
 	artifact := Artifact{
 		Source: request.Source, Coordinate: entry.Receipt.Coordinate,
-		Version: entry.Receipt.Version, Name: request.Name,
+		Version: entry.Receipt.Version, Name: request.Name, Risk: risk,
 	}
 	preflight := Preflight{
 		SchemaVersion:        SchemaVersion,
@@ -167,7 +198,8 @@ func Build(catalog *agent.Catalog, entry *store.Entry, storeRoot string, request
 		WorkspaceLockChanges: []WorkspaceLockChange{},
 	}
 	seenCells := map[string]bool{}
-	seenLocks := map[string]bool{}
+	pathModes := map[string]install.Mode{}
+	resolvedItems := make([]Item, 0, len(request.Targets))
 	for _, requested := range request.Targets {
 		item, err := resolveItem(catalog, entry, installations, installed, request.Name, requested)
 		if err != nil {
@@ -178,7 +210,22 @@ func Build(catalog *agent.Catalog, entry *store.Entry, storeRoot string, request
 			return Preflight{}, fmt.Errorf("duplicate Installation Target for %s", item.Target.Agent)
 		}
 		seenCells[cellKey] = true
-		if item.Target.Scope == install.ScopeProject && item.Action != ActionConflict {
+		pathKey := filepath.Clean(item.Target.Path)
+		if existingMode, ok := pathModes[pathKey]; ok && existingMode != item.Target.Mode {
+			return Preflight{}, fmt.Errorf("shared Installation Target %s requires one installation mode", pathKey)
+		}
+		pathModes[pathKey] = item.Target.Mode
+		resolvedItems = append(resolvedItems, item)
+	}
+
+	seenLocks := map[string]bool{}
+	for _, resolved := range resolvedItems {
+		item, err := exposeSharedBindings(catalog, installed, request.Name, resolved, resolvedItems, installations)
+		if err != nil {
+			return Preflight{}, err
+		}
+		item = applyRisk(item, risk, request)
+		if item.Target.Scope == install.ScopeProject {
 			changed, fromVersion, err := lockWillChange(item.Target.ProjectRoot, request.Name, entry.Receipt)
 			if err != nil {
 				return Preflight{}, err
@@ -201,6 +248,152 @@ func Build(catalog *agent.Catalog, entry *store.Entry, storeRoot string, request
 	return preflight, nil
 }
 
+func exposeSharedBindings(
+	catalog *agent.Catalog,
+	installed map[string]bool,
+	name string,
+	item Item,
+	selected []Item,
+	installations []install.Installation,
+) (Item, error) {
+	bindings, err := affectedBindings(catalog, installed, name, item.Target, installations)
+	if err != nil {
+		return Item{}, err
+	}
+	if len(bindings) > 1 {
+		item.AffectedBindings = bindings
+	}
+	if item.Action == ActionSkip {
+		return item, nil
+	}
+	for _, binding := range bindings {
+		selectedBinding := false
+		for _, candidate := range selected {
+			if candidate.Target.Agent == binding.Agent &&
+				candidate.Target.Scope == binding.Scope &&
+				sameLocation(candidate.Target.Path, binding.Path) {
+				selectedBinding = true
+				break
+			}
+		}
+		if selectedBinding {
+			continue
+		}
+		stateToken, err := replacementStateToken(item.Target, "shared-target-conflict", installations)
+		if err != nil {
+			return Item{}, err
+		}
+		item.Action = ActionConflict
+		item.ReasonCode = "shared-target-conflict"
+		item.StateToken = stateToken
+		item.AffectedBindings = bindings
+		return item, nil
+	}
+	return item, nil
+}
+
+func affectedBindings(
+	catalog *agent.Catalog,
+	installed map[string]bool,
+	name string,
+	target Target,
+	installations []install.Installation,
+) ([]AffectedBinding, error) {
+	bindings := make([]AffectedBinding, 0)
+	seen := map[string]bool{}
+	for _, installation := range installations {
+		if !sameLocation(installation.Target.Path, target.Path) {
+			continue
+		}
+		key := installation.Target.Agent + "\x00" + string(installation.Target.Scope)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		bindings = append(bindings, AffectedBinding{
+			Agent: installation.Target.Agent, Scope: installation.Target.Scope,
+			Mode: installation.Target.Mode, Path: filepath.Clean(installation.Target.Path),
+		})
+	}
+	for _, definition := range catalog.All() {
+		if !installed[definition.ID] {
+			continue
+		}
+		if target.Scope == install.ScopeUser && definition.UserDir == "" {
+			continue
+		}
+		if target.Scope == install.ScopeProject && definition.ProjectDir == "" {
+			continue
+		}
+		resolved, err := install.ResolveTargets(
+			catalog, []string{definition.ID}, target.Scope, target.Mode,
+			target.ProjectRoot, name,
+		)
+		if err != nil {
+			return nil, err
+		}
+		if len(resolved) != 1 || !sameLocation(resolved[0].Path, target.Path) {
+			continue
+		}
+		key := definition.ID + "\x00" + string(target.Scope)
+		if seen[key] {
+			continue
+		}
+		seen[key] = true
+		bindings = append(bindings, AffectedBinding{
+			Agent: definition.ID, Scope: target.Scope,
+			Mode: target.Mode, Path: filepath.Clean(target.Path),
+		})
+	}
+	sort.Slice(bindings, func(i, j int) bool {
+		if bindings[i].Agent != bindings[j].Agent {
+			return bindings[i].Agent < bindings[j].Agent
+		}
+		if bindings[i].Scope != bindings[j].Scope {
+			return bindings[i].Scope < bindings[j].Scope
+		}
+		return bindings[i].Mode < bindings[j].Mode
+	})
+	return bindings, nil
+}
+
+func applyRisk(item Item, risk Risk, request Request) Item {
+	if item.Action != ActionCreate && item.Action != ActionReplace {
+		return item
+	}
+	if reason := riskBlockReason(risk, request.RiskConfirmed, request.AllowCritical); reason != "" {
+		item.Action = ActionRisk
+		item.ReasonCode = reason
+	}
+	return item
+}
+
+// AuthorizeRisk applies the installation policy to immutable Registry risk metadata.
+func AuthorizeRisk(risk Risk, confirmed, allowCritical bool) error {
+	switch reason := riskBlockReason(risk, confirmed, allowCritical); reason {
+	case "high-risk":
+		return fmt.Errorf("High-risk Skill installation requires --confirm-risk")
+	case "critical-risk":
+		return fmt.Errorf("Critical-risk Skill installation requires --confirm-risk and --allow-critical")
+	default:
+		return nil
+	}
+}
+
+func riskBlockReason(risk Risk, confirmed, allowCritical bool) string {
+	switch risk {
+	case RiskHigh:
+		if !confirmed {
+			return "high-risk"
+		}
+	case RiskCritical:
+		if !confirmed || !allowCritical {
+			return "critical-risk"
+		}
+	}
+	return ""
+}
+
 func resolveItem(
 	catalog *agent.Catalog,
 	entry *store.Entry,
@@ -218,6 +411,15 @@ func resolveItem(
 	}
 	if requested.Mode != install.ModeSymlink && requested.Mode != install.ModeCopy {
 		return Item{}, fmt.Errorf("unsupported installation mode %q", requested.Mode)
+	}
+	if requested.Resolution != "" && requested.Resolution != ResolutionReplace {
+		return Item{}, fmt.Errorf("unsupported target resolution %q", requested.Resolution)
+	}
+	if requested.Resolution == "" && (requested.ExpectedReason != "" || requested.ExpectedState != "") {
+		return Item{}, fmt.Errorf("replacement expectations require an explicit resolution")
+	}
+	if requested.Resolution == ResolutionReplace && (requested.ExpectedReason == "" || requested.ExpectedState == "") {
+		return Item{}, fmt.Errorf("explicit replacement requires the reviewed reason and state")
 	}
 	projectRoot := ""
 	switch requested.Scope {
@@ -257,34 +459,130 @@ func resolveItem(
 		for _, installation := range installations {
 			if installation.Target.Agent == target.Agent &&
 				installation.Target.Scope == target.Scope &&
-				installation.Target.Mode == target.Mode &&
-				sameLocation(installation.Target.Path, target.Path) &&
-				installation.Coordinate == entry.Receipt.Coordinate &&
-				installation.Version == entry.Receipt.Version &&
-				currentTargetMatches(info, installation, entry) {
-				return Item{Target: target, Action: ActionSkip, ReasonCode: "identical-target"}, nil
+				sameLocation(installation.Target.Path, target.Path) {
+				matchesReceipt, err := installationTargetMatches(info, installation)
+				if err != nil {
+					return Item{}, err
+				}
+				if installation.Coordinate == entry.Receipt.Coordinate &&
+					installation.Version == entry.Receipt.Version &&
+					installation.Target.Mode == target.Mode &&
+					matchesReceipt {
+					return Item{Target: target, Action: ActionSkip, ReasonCode: "identical-target"}, nil
+				}
+				reason := "local-modification"
+				if matchesReceipt && installation.Coordinate != entry.Receipt.Coordinate {
+					reason = "identity-collision"
+				} else if matchesReceipt && installation.Version != entry.Receipt.Version {
+					reason = "version-conflict"
+				}
+				return replacementItem(target, reason, requested, installations)
 			}
 		}
-		return Item{Target: target, Action: ActionConflict, ReasonCode: "target-path-exists"}, nil
+		return replacementItem(target, "identity-collision", requested, installations)
 	}
 	return Item{Target: target, Action: ActionCreate}, nil
 }
 
-func currentTargetMatches(info os.FileInfo, installation install.Installation, entry *store.Entry) bool {
+func installationTargetMatches(info os.FileInfo, installation install.Installation) (bool, error) {
 	if installation.Target.Mode == install.ModeCopy {
-		return info.IsDir()
+		if !info.IsDir() {
+			return false, nil
+		}
+		return install.CopyMatchesArtifact(installation.Target.Path, installation.Artifact)
 	}
 	if info.Mode()&os.ModeSymlink == 0 {
-		return false
+		return false, nil
 	}
 	link, err := os.Readlink(installation.Target.Path)
 	if err != nil {
-		return false
+		return false, err
 	}
 	if !filepath.IsAbs(link) {
 		link = filepath.Join(filepath.Dir(installation.Target.Path), link)
 	}
-	return samePath(link, entry.Artifact)
+	return samePath(link, installation.Artifact), nil
+}
+
+func replacementItem(
+	target Target,
+	reason string,
+	requested TargetRequest,
+	installations []install.Installation,
+) (Item, error) {
+	stateToken, err := replacementStateToken(target, reason, installations)
+	if err != nil {
+		return Item{}, err
+	}
+	action := ActionConflict
+	if requested.Resolution == ResolutionReplace &&
+		requested.ExpectedReason == reason && requested.ExpectedState == stateToken {
+		action = ActionReplace
+	}
+	return Item{Target: target, Action: action, ReasonCode: reason, StateToken: stateToken}, nil
+}
+
+type replacementBindingState struct {
+	Agent         string        `json:"agent"`
+	Scope         install.Scope `json:"scope"`
+	Mode          install.Mode  `json:"mode"`
+	Coordinate    string        `json:"coordinate"`
+	Version       string        `json:"version"`
+	SHA256        string        `json:"sha256"`
+	ContentDigest string        `json:"contentDigest"`
+}
+
+func replacementStateToken(target Target, reason string, installations []install.Installation) (string, error) {
+	filesystem, err := install.TargetStateDigest(target.Path)
+	if err != nil {
+		return "", err
+	}
+	bindings := make([]replacementBindingState, 0)
+	for _, installation := range installations {
+		if !sameLocation(installation.Target.Path, target.Path) {
+			continue
+		}
+		bindings = append(bindings, replacementBindingState{
+			Agent: installation.Target.Agent, Scope: installation.Target.Scope,
+			Mode: installation.Target.Mode, Coordinate: installation.Coordinate,
+			Version: installation.Version, SHA256: installation.SHA256,
+			ContentDigest: installation.ContentDigest,
+		})
+	}
+	sort.Slice(bindings, func(i, j int) bool {
+		left, right := bindings[i], bindings[j]
+		if left.Agent != right.Agent {
+			return left.Agent < right.Agent
+		}
+		if left.Scope != right.Scope {
+			return left.Scope < right.Scope
+		}
+		if left.Mode != right.Mode {
+			return left.Mode < right.Mode
+		}
+		if left.Coordinate != right.Coordinate {
+			return left.Coordinate < right.Coordinate
+		}
+		if left.Version != right.Version {
+			return left.Version < right.Version
+		}
+		if left.SHA256 != right.SHA256 {
+			return left.SHA256 < right.SHA256
+		}
+		return left.ContentDigest < right.ContentDigest
+	})
+	payload, err := json.Marshal(struct {
+		Version    int                       `json:"version"`
+		Reason     string                    `json:"reason"`
+		Path       string                    `json:"path"`
+		Filesystem string                    `json:"filesystem"`
+		Bindings   []replacementBindingState `json:"bindings"`
+	}{1, reason, filepath.Clean(target.Path), filesystem, bindings})
+	if err != nil {
+		return "", err
+	}
+	digest := sha256.Sum256(payload)
+	return fmt.Sprintf("sha256:%x", digest[:]), nil
 }
 
 func lockWillChange(root, name string, receipt store.Receipt) (bool, string, error) {
@@ -310,21 +608,41 @@ func lockWillChange(root, name string, receipt store.Receipt) (bool, string, err
 	return changed, locked.Version, nil
 }
 
-func Execute(entry *store.Entry, request Request, preflight Preflight) Execution {
+func Execute(entry *store.Entry, storeRoot string, request Request, preflight Preflight) (Execution, error) {
 	execution := Execution{
 		SchemaVersion: SchemaVersion,
 		Phase:         "execution",
 		Artifact:      preflight.Artifact,
 		Results:       make([]Result, len(preflight.Targets)),
 	}
+	if preflight.Summary.Conflict > 0 || preflight.Summary.BlockedByRisk > 0 {
+		return execution, fmt.Errorf("Installation Plan has unresolved targets")
+	}
+	currentInstallations, err := install.ListInstallations(storeRoot, install.InventoryFilter{})
+	if err != nil {
+		return execution, err
+	}
+	for _, item := range preflight.Targets {
+		if item.Action != ActionReplace {
+			continue
+		}
+		currentState, err := replacementStateToken(item.Target, item.ReasonCode, currentInstallations)
+		if err != nil {
+			return execution, err
+		}
+		if item.StateToken == "" || item.StateToken != currentState {
+			return execution, fmt.Errorf("Installation Target changed after replacement review: %s", item.Target.Path)
+		}
+	}
 	groups := map[string][]int{}
 	groupOrder := make([]string, 0)
+	identityReplaced := map[string]bool{}
 	for index, item := range preflight.Targets {
 		execution.Results[index] = Result{Target: item.Target, Action: item.Action}
 		switch item.Action {
 		case ActionSkip:
 			if item.WorkspaceLockChange {
-				if err := updateWorkspace(entry, request, item.Target); err != nil {
+				if err := updateWorkspace(entry, request, item.Target, item.ReasonCode, identityReplaced); err != nil {
 					execution.Results[index].Outcome = OutcomeFailed
 					execution.Results[index].ErrorCode = "workspace-update-failed"
 					execution.Results[index].Diagnostic = err.Error()
@@ -333,13 +651,9 @@ func Execute(entry *store.Entry, request Request, preflight Preflight) Execution
 			}
 			execution.Results[index].Outcome = OutcomeSkipped
 		case ActionConflict, ActionRisk:
-			execution.Results[index].Outcome = OutcomeConflict
-			execution.Results[index].ErrorCode = item.ReasonCode
-			if execution.Results[index].ErrorCode == "" {
-				execution.Results[index].ErrorCode = "blocked-by-risk"
-			}
+			return execution, fmt.Errorf("Installation Plan has unresolved target %s", item.Target.Path)
 		case ActionCreate, ActionReplace:
-			key := filepath.Clean(item.Target.Path) + "\x00" + string(item.Target.Mode)
+			key := filepath.Clean(item.Target.Path) + "\x00" + string(item.Target.Mode) + "\x00" + string(item.Action)
 			if groups[key] == nil {
 				groupOrder = append(groupOrder, key)
 			}
@@ -352,17 +666,27 @@ func Execute(entry *store.Entry, request Request, preflight Preflight) Execution
 		for _, index := range indexes {
 			targets = append(targets, installTarget(preflight.Targets[index].Target))
 		}
-		if err := install.Install(entry, targets); err != nil {
+		var mutationErr error
+		if preflight.Targets[indexes[0]].Action == ActionReplace {
+			previous, err := installationsAtPaths(storeRoot, preflight, indexes)
+			if err != nil {
+				return execution, err
+			}
+			mutationErr = install.ReplaceExplicit(entry, previous, targets)
+		} else {
+			mutationErr = install.Install(entry, targets)
+		}
+		if mutationErr != nil {
 			for _, index := range indexes {
 				execution.Results[index].Outcome = OutcomeFailed
 				execution.Results[index].ErrorCode = "install-failed"
-				execution.Results[index].Diagnostic = err.Error()
+				execution.Results[index].Diagnostic = mutationErr.Error()
 			}
 			continue
 		}
 		for _, index := range indexes {
 			item := preflight.Targets[index]
-			if err := updateWorkspace(entry, request, item.Target); err != nil {
+			if err := updateWorkspace(entry, request, item.Target, item.ReasonCode, identityReplaced); err != nil {
 				execution.Results[index].Outcome = OutcomeFailed
 				execution.Results[index].ErrorCode = "workspace-update-failed"
 				execution.Results[index].Diagnostic = err.Error()
@@ -383,17 +707,49 @@ func Execute(entry *store.Entry, request Request, preflight Preflight) Execution
 			execution.Summary.Failed++
 		}
 	}
-	return execution
+	return execution, nil
 }
 
-func updateWorkspace(entry *store.Entry, request Request, target Target) error {
+func installationsAtPaths(storeRoot string, preflight Preflight, indexes []int) ([]install.Installation, error) {
+	all, err := install.ListInstallations(storeRoot, install.InventoryFilter{})
+	if err != nil {
+		return nil, err
+	}
+	paths := map[string]bool{}
+	for _, index := range indexes {
+		paths[filepath.Clean(preflight.Targets[index].Target.Path)] = true
+	}
+	previous := make([]install.Installation, 0)
+	for _, installation := range all {
+		if paths[filepath.Clean(installation.Target.Path)] {
+			previous = append(previous, installation)
+		}
+	}
+	return previous, nil
+}
+
+func updateWorkspace(
+	entry *store.Entry,
+	request Request,
+	target Target,
+	reasonCode string,
+	identityReplaced map[string]bool,
+) error {
 	if target.Scope != install.ScopeProject {
 		return nil
 	}
-	return project.Upsert(target.ProjectRoot, request.Name, project.SkillRequirement{
+	requirement := project.SkillRequirement{
 		Source: request.Source, Ref: request.RequestedRef,
 		Agents: []string{target.Agent}, Mode: target.Mode,
-	}, entry.Receipt)
+	}
+	if reasonCode == "identity-collision" && !identityReplaced[target.ProjectRoot] {
+		if err := project.Replace(target.ProjectRoot, request.Name, requirement, entry.Receipt); err != nil {
+			return err
+		}
+		identityReplaced[target.ProjectRoot] = true
+		return nil
+	}
+	return project.Upsert(target.ProjectRoot, request.Name, requirement, entry.Receipt)
 }
 
 func installTarget(target Target) install.Target {

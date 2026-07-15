@@ -45,9 +45,9 @@ The local record that connects a Store artifact to one installation target and r
 _Avoid_: Workspace Lock, Registry metadata
 
 **Active Skill Binding**:
-The rule that one Agent target path can expose only one Skill artifact at a time. A same-name collision requires explicit replacement and is never resolved by silently adding a suffix.
+The rule that one physical target path can expose only one Skill artifact at a time, even when multiple Agent Adapters reference that path. A same-name collision requires every affected binding plus an explicit, state-bound replacement decision and is never resolved by silently adding a suffix.
 _Avoid_: automatic rename, same-path coexistence
 
 **Local Modification**:
-A difference between a copy-mode installation target and its source artifact. Modified targets require explicit review before update, replacement, or removal.
+A difference between a copy-mode installation target and its source artifact. Modified targets require explicit review before update, replacement, or removal, and replacement authority expires when the reviewed filesystem or receipt state changes.
 _Avoid_: Registry version, automatically merged change

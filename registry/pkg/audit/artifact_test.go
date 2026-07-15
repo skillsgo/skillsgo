@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses in-memory ZIP fixtures representing immutable Registry Skill artifacts.
- * [OUTPUT]: Specifies bounded file inspection, instruction extraction, executable evidence, and deterministic risk levels.
+ * [OUTPUT]: Specifies bounded duplicate-safe file inspection, golden Content Digests, instruction extraction, executable evidence, and deterministic risk levels.
  * [POS]: Serves as the behavior contract for the Registry artifact audit boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -114,6 +114,31 @@ func TestAnalyzeArtifactContentDigestIgnoresArchiveCompressionAndEntryOrder(t *t
 	require.NotEqual(t, stored, deflated)
 	require.Equal(t, storedResult.ContentDigest, deflatedResult.ContentDigest)
 	require.Contains(t, storedResult.ContentDigest, "sha256:")
+}
+
+func TestAnalyzeArtifactRejectsDuplicatePaths(t *testing.T) {
+	coordinate, version := "github.com/acme/skills/-/demo", "v1.0.0"
+	data := auditZIPEntries(t, coordinate+"@"+version+"/", zip.Store, []struct {
+		name     string
+		contents []byte
+	}{
+		{name: "SKILL.md", contents: []byte("first")},
+		{name: "SKILL.md", contents: []byte("second")},
+	})
+
+	_, err := AnalyzeArtifact(data, coordinate, version)
+	require.ErrorContains(t, err, "duplicate")
+}
+
+func TestAnalyzeArtifactContentDigestGoldenVector(t *testing.T) {
+	coordinate, version := "github.com/example/skills/-/demo", "v1"
+	data := auditZIP(t, coordinate+"@"+version+"/", map[string][]byte{
+		"SKILL.md": []byte("# Demo\n"),
+	})
+
+	result, err := AnalyzeArtifact(data, coordinate, version)
+	require.NoError(t, err)
+	require.Equal(t, "sha256:bf005aa0d71df7bbcdc3bbd01138efd6274f8cef648cf74a2a17528bfaa54399", result.ContentDigest)
 }
 
 func auditZIP(t *testing.T, prefix string, files map[string][]byte) []byte {
