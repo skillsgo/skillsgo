@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Store receipts, target receipts, filesystem bindings, and read-only inventory filters.
- * [OUTPUT]: Provides managed Installation records, filtering, safe target removal, and receipt cleanup.
+ * [OUTPUT]: Provides managed Installation records, filtering, prevalidated safe target removal, and content-preserving receipt cleanup.
  * [POS]: Serves as the managed Installation inventory boundary shared by plans, Library reconciliation, and mutations.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -127,22 +127,34 @@ func RemoveInstallations(storeRoot string, installations []Installation) error {
 	for _, installation := range installations {
 		selected[installation.ReceiptPath] = true
 	}
+	all, err := ListInstallations(storeRoot, InventoryFilter{})
+	if err != nil {
+		return err
+	}
+	destructivePaths := map[string]bool{}
 	for _, installation := range installations {
-		all, err := ListInstallations(storeRoot, InventoryFilter{})
-		if err != nil {
-			return err
-		}
+		path := filepath.Clean(installation.Target.Path)
 		usedByOtherReceipt := false
 		for _, candidate := range all {
-			if filepath.Clean(candidate.Target.Path) == filepath.Clean(installation.Target.Path) && !selected[candidate.ReceiptPath] {
+			if filepath.Clean(candidate.Target.Path) == path && !selected[candidate.ReceiptPath] {
 				usedByOtherReceipt = true
 				break
 			}
 		}
-		if !usedByOtherReceipt {
+		if !usedByOtherReceipt && !destructivePaths[path] {
+			if err := validateTargetRemoval(installation); err != nil {
+				return err
+			}
+			destructivePaths[path] = true
+		}
+	}
+	for _, installation := range installations {
+		path := filepath.Clean(installation.Target.Path)
+		if destructivePaths[path] {
 			if err := removeTargetSafely(installation); err != nil {
 				return err
 			}
+			delete(destructivePaths, path)
 		}
 		if err := os.Remove(installation.ReceiptPath); err != nil && !os.IsNotExist(err) {
 			return err
@@ -151,7 +163,18 @@ func RemoveInstallations(storeRoot string, installations []Installation) error {
 	return nil
 }
 
-func removeTargetSafely(installation Installation) error {
+// ForgetInstallations removes only SkillsGo ownership receipts. It never
+// changes the filesystem objects currently occupying target paths.
+func ForgetInstallations(installations []Installation) error {
+	for _, installation := range installations {
+		if err := os.Remove(installation.ReceiptPath); err != nil && !os.IsNotExist(err) {
+			return err
+		}
+	}
+	return nil
+}
+
+func validateTargetRemoval(installation Installation) error {
 	info, err := os.Lstat(installation.Target.Path)
 	if os.IsNotExist(err) {
 		return nil
@@ -161,7 +184,7 @@ func removeTargetSafely(installation Installation) error {
 	}
 	if installation.Target.Mode == ModeSymlink {
 		if info.Mode()&os.ModeSymlink == 0 {
-			return fmt.Errorf("拒绝移除已被替换的目标 %s", installation.Target.Path)
+			return fmt.Errorf("refusing to remove replaced target %s", installation.Target.Path)
 		}
 		link, err := os.Readlink(installation.Target.Path)
 		if err != nil {
@@ -171,12 +194,37 @@ func removeTargetSafely(installation Installation) error {
 			link = filepath.Join(filepath.Dir(installation.Target.Path), link)
 		}
 		if !samePath(link, installation.Artifact) {
-			return fmt.Errorf("拒绝移除指向其他位置的软链 %s", installation.Target.Path)
+			return fmt.Errorf("refusing to remove redirected symlink %s", installation.Target.Path)
 		}
-		return os.Remove(installation.Target.Path)
+		return nil
 	}
 	if !info.IsDir() {
-		return fmt.Errorf("拒绝移除不是目录的复制目标 %s", installation.Target.Path)
+		return fmt.Errorf("refusing to remove non-directory copy target %s", installation.Target.Path)
 	}
+	matches, err := CopyMatchesArtifact(installation.Target.Path, installation.Artifact)
+	if err != nil {
+		return err
+	}
+	if !matches {
+		return fmt.Errorf("refusing to remove Local Modification at %s", installation.Target.Path)
+	}
+	return nil
+}
+
+func removeTargetSafely(installation Installation) error {
+	if err := validateTargetRemoval(installation); err != nil {
+		return err
+	}
+	info, err := os.Lstat(installation.Target.Path)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	if installation.Target.Mode == ModeSymlink {
+		return os.Remove(installation.Target.Path)
+	}
+	_ = info
 	return os.RemoveAll(installation.Target.Path)
 }

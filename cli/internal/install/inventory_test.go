@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Uses temporary Store receipts and symlink/copy Installation Targets with controlled filesystem drift.
+ * [OUTPUT]: Specifies inventory filtering, shared-target removal, Local Modification and redirected-symlink blocking, and content-preserving receipt removal.
+ * [POS]: Serves as filesystem safety coverage for managed Installation cleanup primitives.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package install
 
 import (
@@ -84,5 +90,157 @@ func TestListInstallationsRestrictsProjectScopeToCurrentProject(t *testing.T) {
 	}
 	if len(installations) != 0 {
 		t.Fatalf("expected other project installation to be hidden, got %d", len(installations))
+	}
+}
+
+func TestRemoveCopyBlocksLocalModificationsAndKeepsReceipt(t *testing.T) {
+	root := t.TempDir()
+	storeRoot := filepath.Join(root, "store")
+	entryRoot := filepath.Join(storeRoot, "github.com", "example", "repo", "-", "demo@v1")
+	artifact := filepath.Join(entryRoot, "artifact")
+	if err := os.MkdirAll(artifact, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(artifact, "SKILL.md"), []byte("original"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	receiptData, err := yaml.Marshal(store.Receipt{
+		Coordinate: "github.com/example/repo/-/demo",
+		Version:    "v1",
+		SHA256:     "test",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(entryRoot, "receipt.yaml"), receiptData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	target := Target{
+		Agent: "codex", Scope: ScopeUser, Mode: ModeCopy,
+		Path: filepath.Join(root, "user", "demo"),
+	}
+	entry := &store.Entry{Root: entryRoot, Artifact: artifact}
+	if err := Install(entry, []Target{target}); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(target.Path, "SKILL.md"), []byte("locally changed"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	installations, err := ListInstallations(storeRoot, InventoryFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := RemoveInstallations(storeRoot, installations); err == nil {
+		t.Fatal("expected Local Modification to block destructive removal")
+	}
+	if _, err := os.Stat(filepath.Join(target.Path, "SKILL.md")); err != nil {
+		t.Fatalf("modified target should remain: %v", err)
+	}
+	if _, err := os.Stat(installations[0].ReceiptPath); err != nil {
+		t.Fatalf("receipt should remain after blocked removal: %v", err)
+	}
+}
+
+func TestRemoveSymlinkBlocksRedirectedTargetAndKeepsReceipt(t *testing.T) {
+	root := t.TempDir()
+	storeRoot := filepath.Join(root, "store")
+	entryRoot := filepath.Join(storeRoot, "github.com", "example", "repo", "-", "demo@v1")
+	artifact := filepath.Join(entryRoot, "artifact")
+	if err := os.MkdirAll(artifact, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(artifact, "SKILL.md"), []byte("original"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	receiptData, err := yaml.Marshal(store.Receipt{
+		Coordinate: "github.com/example/repo/-/demo",
+		Version:    "v1",
+		SHA256:     "test",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(entryRoot, "receipt.yaml"), receiptData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	target := Target{
+		Agent: "codex", Scope: ScopeUser, Mode: ModeSymlink,
+		Path: filepath.Join(root, "user", "demo"),
+	}
+	entry := &store.Entry{Root: entryRoot, Artifact: artifact}
+	if err := Install(entry, []Target{target}); err != nil {
+		t.Fatal(err)
+	}
+	redirected := filepath.Join(root, "redirected")
+	if err := os.MkdirAll(redirected, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(target.Path); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(redirected, target.Path); err != nil {
+		t.Fatal(err)
+	}
+	installations, err := ListInstallations(storeRoot, InventoryFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := RemoveInstallations(storeRoot, installations); err == nil {
+		t.Fatal("expected redirected symlink to block destructive removal")
+	}
+	link, err := os.Readlink(target.Path)
+	if err != nil {
+		t.Fatalf("redirected target should remain: %v", err)
+	}
+	if link != redirected {
+		t.Fatalf("redirected target changed: got %s", link)
+	}
+	if _, err := os.Stat(installations[0].ReceiptPath); err != nil {
+		t.Fatalf("receipt should remain after blocked removal: %v", err)
+	}
+}
+
+func TestForgetInstallationsPreservesTargetContent(t *testing.T) {
+	root := t.TempDir()
+	storeRoot := filepath.Join(root, "store")
+	entryRoot := filepath.Join(storeRoot, "github.com", "example", "repo", "-", "demo@v1")
+	artifact := filepath.Join(entryRoot, "artifact")
+	if err := os.MkdirAll(artifact, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(artifact, "SKILL.md"), []byte("demo"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	receiptData, err := yaml.Marshal(store.Receipt{
+		Coordinate: "github.com/example/repo/-/demo",
+		Version:    "v1",
+		SHA256:     "test",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(entryRoot, "receipt.yaml"), receiptData, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	target := Target{
+		Agent: "codex", Scope: ScopeUser, Mode: ModeSymlink,
+		Path: filepath.Join(root, "user", "demo"),
+	}
+	entry := &store.Entry{Root: entryRoot, Artifact: artifact}
+	if err := Install(entry, []Target{target}); err != nil {
+		t.Fatal(err)
+	}
+	installations, err := ListInstallations(storeRoot, InventoryFilter{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ForgetInstallations(installations); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(target.Path); err != nil {
+		t.Fatalf("Stop Managing must preserve target content: %v", err)
+	}
+	if _, err := os.Stat(installations[0].ReceiptPath); !os.IsNotExist(err) {
+		t.Fatalf("receipt should be removed, got %v", err)
 	}
 }
