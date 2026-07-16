@@ -1,0 +1,605 @@
+# [INPUT]: Depends on the build, deployment, or runtime values declared in config.dev.toml.\n# [OUTPUT]: Provides the SkillsGo Hub or monorepo configuration defined by config.dev.toml.\n# [POS]: Serves as maintained configuration in the renamed SkillsGo Hub workspace or its repository integration.\n# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md\n# This is an example configuration with all supported properties explicitly set
+# Most properties can be overridden with environment variables specified in this file
+# Most properties also have defaults (mentioned in this file) if they are not set in either the config file or the corresponding environment variable
+
+# If you put this file where you start Athens from as "athens.toml", athens will use it when starting.
+# You can also start athens with -config_file as command line argument to point out a config file.
+
+# Environment specifies the type of environment to run.
+# Supported values are: 'development' and 'production'. Defaults to "development"
+# Env override: SKILLSGO_HUB_ENVIRONMENT
+Environment = "development"
+
+# SkillFetchWorkers controls how many Skill repositories may be fetched concurrently.
+# Env override: SKILLSGO_HUB_SKILL_FETCH_WORKERS
+SkillFetchWorkers = 10
+
+# SkillCacheDir stores persistent Git repository mirrors and temporary Skill artifacts.
+# If empty, Hub uses ~/.skillsgo/hub/cache.
+# Override priority:
+# 1. SKILLSGO_HUB_CACHE_DIR
+# 2. this value
+# 3. SKILLSGO_HUB_HOME/cache
+# 4. SKILLSGO_HOME/hub/cache
+# 5. ~/.skillsgo/hub/cache
+SkillCacheDir = ""
+
+# ProtocolWorkers specifies how many concurrent
+# requests can you handle at a time for all
+# download protocol paths. This is different from SkillFetchWorkers:
+# 30 requests to the Download Protocol but only 5
+# at a time can stash a module from Upstream to Storage.
+# Env override: SKILLSGO_HUB_PROTOCOL_WORKERS
+ProtocolWorkers = 30
+
+# LogLevel returns the system's exposure to internal logs. Defaults to debug.
+# Supports all logrus log levels (https://github.com/Sirupsen/logrus#level-logging)
+# Env override: SKILLSGO_HUB_LOG_LEVEL
+LogLevel = "debug"
+
+# LogFormat determines the format that logs are output in. Defaults to json.
+# It is only used when CloudRuntime is set to none. Values can be "plain" or "json".
+# Env override: SKILLSGO_HUB_LOG_FORMAT
+LogFormat = "plain"
+
+# CloudRuntime is the Cloud Provider on which the Proxy/Hub is running.
+# Currently available options are "GCP", or "none". Defaults to "none"
+# Env override: SKILLSGO_HUB_CLOUD_RUNTIME
+CloudRuntime = "none"
+
+# EnablePprof specifies if the pprof endpoints should be exposed.
+# Note that this option is not meant to be activated forever on a server
+# and should be desactivated once not needed.
+EnablePprof = false
+
+# PprofPort specifies the port on which pprof will be exposed if activated.
+PprofPort = ":3001"
+
+# The filename for the include exclude filter.
+# Env override: SKILLSGO_HUB_FILTER_FILE
+#
+# To point Athens to an upstream proxy to fetch modules,
+# set GlobalEndpoint to "https://<url_to_upstream>"
+# and also ensure that FilterFile is  set to a fully qualified file name
+# that contains the letter `D` (for "Direct Access") in the first line.
+FilterFile = ""
+
+# The filename for the robots.txt.
+# ENV override: SKILLSGO_HUB_ROBOTS_FILE
+#
+# To provide /robots.txt for net crawler.
+# Default disallow all crawler.
+# Content details to see https://support.google.com/webmasters/answer/6062608
+RobotsFile = "robots.txt"
+
+# Timeout is the timeout for external network calls in seconds
+# This value is used as the default for storage backends if they don't specify timeouts
+# Defaults to 300
+# Env override: SKILLSGO_HUB_TIMEOUT
+Timeout = 300
+
+# StashTimeout is the timeout for the Stash operation in seconds.
+# The Stash operation fetches a module from upstream (e.g. VCS) and stores it
+# into the storage backend. Large modules may require a higher timeout.
+# Defaults to 600 (10 minutes)
+# Env override: SKILLSGO_HUB_STASH_TIMEOUT
+# StashTimeout = 600 # Check that defaults are loaded.
+
+# StorageType sets the type of storage backend the proxy will use.
+# Possible values are memory, disk, mongo, gcp, minio, s3, azureblob, external
+# Defaults to disk at ~/.skillsgo/hub/storage/artifacts when no config file is supplied
+# Env override: SKILLSGO_HUB_STORAGE_TYPE
+StorageType = "memory"
+
+# Certificate and key to make athens serve using https instead of plain text http.
+# Set both to enable.
+# Env override: SKILLSGO_HUB_TLSCERT_FILE, SKILLSGO_HUB_TLSKEY_FILE
+#TLSCertFile = "server.cer"
+#TLSKeyFile = "server.key"
+
+# Port sets the port the proxy listens on
+# Env override: SKILLSGO_HUB_PORT
+# The value must be a number or a number prefixed by ":"
+Port = ":3000"
+
+# UnixSocket sets a Unix domain socket path that the proxy listens on.
+# This option, when specified, takes precedence over TCP port configuration.
+# Defaults to empty (i.e. listen on a TCP port only)
+# Env override: SKILLSGO_HUB_UNIX_SOCKET
+UnixSocket = ""
+
+# The endpoint for an upstream package registry in case of a proxy cache miss
+# NOTE: Currently no registries have been implemented
+# Env override: SKILLSGO_HUB_GLOBAL_ENDPOINT
+#
+# To point Athens to an upstream proxy to fetch modules,
+# set GlobalEndpoint to "https://<url_to_upstream>"
+# and also ensure that FilterFile is set to a fully qualified file name
+# that contains the letter `D` (for "Direct Access") in the first line.
+GlobalEndpoint = "http://localhost:3001"
+
+# BASIC AUTH OPTIONS
+# ==================
+# PLASE NOTE THAT THIS IS A BAD HACK AROUND
+# THE FACT THAT GO DOES NOT SUPPORT PROPER AUTHENTICATION
+# YET! YOUR BASIC AUTH CREDENTIALS CAN EASILY LEAK
+# IN ATHENS LOGS AS WELL AS GO COMMAND LOGS.
+# THIS WILL BE ADDRESSED IN 1.13.
+# SEE https://github.com/golang/go/issues/30610
+
+# Username for basic auth
+# Env override: SKILLSGO_HUB_BASIC_AUTH_USER
+BasicAuthUser = ""
+
+# Password for basic auth
+# Env override: SKILLSGO_HUB_BASIC_AUTH_PASS
+BasicAuthPass = ""
+
+# A path on disk to a Go HTML template to be used on the homepage
+# Env override: SKILLSGO_HUB_HOME_TEMPLATE_PATH
+HomeTemplatePath = "/var/lib/athens/home.html"
+
+# Set to true to force an SSL redirect
+# Env override: SKILLSGO_HUB_FORCE_SSL
+ForceSSL = false
+
+# ValidatorHook specifies the endpoint to validate modules against
+# Not used if left blank or not specified
+# Env override: SKILLSGO_HUB_PROXY_VALIDATOR
+ValidatorHook = ""
+
+# PathPrefix specifies whether the Proxy
+# should have a basepath. Certain proxies and services
+# are distinguished based on subdomain, while others are based
+# on path prefixes.
+# Env override: SKILLSGO_HUB_PATH_PREFIX
+PathPrefix = ""
+
+# NETRCPath tells you where the .netrc path initially resides.
+# This is so that you can mount the .netrc file to a secret location
+# in the fs system and then move it ~/.netrc. In certain deployments
+# like Kubernetes, we can't mount directly to ~ because it would then
+# clean out whatever is already there as part of the image (such as
+# .cache directory in the Go image).
+# Env override: SKILLSGO_HUB_NETRC_PATH
+NETRCPath = ""
+
+# GithubToken can be used instead of a NETRCPath to authenticate
+# the proxy to your own private repos on github. This makes it
+# easier for users and for platforms like GAE to only be provided
+# a Github token instead of a .netrc file. Internally, the proxy
+# just create a .netrc file for you.
+# Env override: SKILLSGO_HUB_GITHUB_TOKEN
+GithubToken = ""
+
+# HGRCPath tells you where the .hgrc path initially resides.
+# This is so that you can mount the .hgrc file to a secret location
+# in the fs system and then move it ~/.hgrc. In certain deployments
+# like Kubernetes, we can't mount directly to ~ because it would then
+# clean out whatever is already there as part of the image (such as
+# .cache directory in the Go image).
+# Env override: SKILLSGO_HUB_HGRC_PATH
+HGRCPath = ""
+
+# Tracing is not a requirement for Athens. If the infrastructure is not set up,
+# Athens will keep on running and traces won't be exported.
+# TraceExporter selects how Athens exports OpenTelemetry traces.
+# The only supported value is "otlp"; an empty value disables tracing.
+# Env override: SKILLSGO_HUB_TRACE_EXPORTER
+TraceExporter = ""
+
+# TraceExporterURL is the OTLP collector endpoint Athens exports traces to.
+# When empty, the standard OTEL_EXPORTER_OTLP_ENDPOINT / OTEL_EXPORTER_OTLP_TRACES_ENDPOINT
+# environment variables are honored (defaulting to localhost:4317).
+# Env override: SKILLSGO_HUB_TRACE_EXPORTER_URL
+TraceExporterURL = "http://localhost:4317"
+
+# TraceSamplingFraction is the fraction of root traces to sample, from 0.0 (none) to
+# 1.0 (all). It only applies outside of development; in development every trace is
+# sampled. Child spans always follow their parent's sampling decision.
+# Env override: SKILLSGO_HUB_TRACE_SAMPLING_FRACTION
+TraceSamplingFraction = 1.0
+
+# Stats is not a requirement for Athens. If the value is not set,
+# Athens will keep on running and stats won't be collected.
+# Possible values are: prometheus.
+# Env override: SKILLSGO_HUB_STATS_EXPORTER
+StatsExporter = "prometheus"
+
+# DownloadMode defines how Athens behaves when a module@version
+# is not found in storage. There are 4 options:
+# 1. "sync" (default): download the module synchronously and
+# return the results to the client.
+# 2. "async": return 404, but asynchronously store the module
+# in the storage backend.
+# 3. "redirect": return a 301 redirect status to the client
+# with the base URL as the DownloadRedirectURL from below.
+# 4. "async_redirect": same as option number 3 but it will
+# asynchronously store the module to the backend.
+# 5. "none": return 404 if a module is not found and do nothing.
+# 6. "file:<path>": will point to an HCL file that specifies
+# any of the 5 options above based on different import paths.
+# 7. "custom:<base64-encoded-hcl>" is the same as option 6
+# but the file is fully encoded in the option. This is
+# useful for using an environment variable in serverless
+# deployments.
+# Env override: SKILLSGO_HUB_DOWNLOAD_MODE
+DownloadMode = "sync"
+
+# NetworkMode configures how Athens will return the results
+# of the /list endpoint as it can be assembled from both its own
+# storage and the upstream VCS.
+# 
+# Note, that for better error messaging, this would also affect how other
+# endpoints behave.
+# 
+# Modes:
+# 1. strict: merge VCS versions with storage versions, but fail if either of them fails.
+# 2. offline: only get storage versions, never reach out to VCS.
+# 3. fallback: only return storage versions, if VCS fails. Note this means that you may
+# see inconsistent results since fallback mode does a best effort of giving you what's
+# available at the time of requesting versions.
+NetworkMode = "strict"
+
+# DownloadURL is the URL that will be used if
+# DownloadMode is set to "redirect"
+# Env override: SKILLSGO_HUB_DOWNLOAD_URL
+DownloadURL = ""
+
+# SingleFlightType determines what mechanism Athens uses
+# to manage concurrency flowing into the Athens Backend.
+# This is important for the following scenario: if two concurrent requests
+# were made to Athens that wanted to store the same module at the same time,
+# we want to make sure only the first request gets to store the module,
+# and the second request will wait for the first one to finish so that
+# it doesn't override the storage.
+
+# Options are ["memory", "etcd", "redis", "redis-sentinel", "gcp", "azureblob"]
+
+# The default option is "memory" which means that only one instance of Athens
+# should be used.
+# The "gcp" single flight will assume that you have a "gcp" StorageType
+# and therefore it will use its strong-consistency features to ensure
+# that only one module is ever written even when concurrent saves happen
+# at the same time.
+# The "azureblob" single flight will assume that you have a "azureblob" StorageType
+# and therefore it will use its strong-consistency features to ensure
+# that only one module is ever written even when concurrent saves happen
+# at the same time.
+# The "redis" single flight will use a single redis instance as a locking mechanism
+# for updating the underlying storage
+# The "redis-sentinel" single flight works similarly to "redis" but obtains a redis connection
+# via a redis-sentinel
+# Env override: SKILLSGO_HUB_SINGLE_FLIGHT_TYPE
+SingleFlightType = "memory"
+
+# IndexType sets the type of an index backend Athens will use.
+# Possible values are none, memory, mysql, postgres
+# Defaults to none
+# Env override: SKILLSGO_HUB_INDEX_TYPE
+IndexType = "none"
+
+# Database stores searchable Skill metadata. Artifact archives remain in Storage.
+# SQLite uses ~/.skillsgo/hub/metadata/hub.db when DSN is empty.
+[Database]
+    Type = "sqlite"
+    DSN = ""
+    MaxOpenConns = 1
+    MaxIdleConns = 1
+    ConnMaxLifetime = 0
+
+# ShutdownTimeout sets the timeout (in seconds) for open connections when shutting down
+# (via SIGINT or SIGTERM). Connections still open after the timeout will be dropped.
+# Defaults to 60
+# Env override: SKILLSGO_HUB_SHUTDOWN_TIMEOUT
+ShutdownTimeout = 60
+
+[SingleFlight]
+    [SingleFlight.Etcd]
+        # Endpoints are comma separated URLs that determine all distributed etcd servers.
+        # It defaults to what we have in our docker-compose file. It is by default ignored
+        # as the SingleFlightType field above determines whether Etcd is used or not.
+        # Env override: SKILLSGO_HUB_ETCD_ENDPOINTS
+        Endpoints = "localhost:2379,localhost:22379,localhost:32379"
+    [SingleFlight.Redis]
+        # Endpoint is the redis endpoint for a SingleFlight lock. Should be either a host:port
+        # pair or redis url such as:
+        #    redis[s]://user:password@127.0.0.1:6379/0?protocol=3
+        # When Cluster = true below, Endpoint may also be a comma-separated list of
+        # host:port (or redis[s]://) seeds
+        # Env override: SKILLSGO_HUB_REDIS_ENDPOINT
+        Endpoint = "127.0.0.1:6379"
+        # Password is the password for a redis SingleFlight lock.
+        # Env override: SKILLSGO_HUB_REDIS_PASSWORD
+        Password = ""
+        # Cluster selects a Redis Cluster Mode client (redis.NewClusterClient)
+        # instead of the default single-node client. Set this to true when Endpoint
+        # points at a Cluster Mode Enabled Redis 
+        # Env override: SKILLSGO_HUB_REDIS_CLUSTER
+        Cluster = false
+
+        [SingleFlight.Redis.LockConfig]
+            # TTL for the lock in seconds. Defaults to 900 seconds (15 minutes).
+            # Env override: SKILLSGO_HUB_REDIS_LOCK_TTL
+            TTL = 900
+            # Timeout for acquiring the lock in seconds. Defaults to 15 seconds.
+            # Env override: SKILLSGO_HUB_REDIS_LOCK_TIMEOUT
+            Timeout = 15
+            # Max retries while acquiring the lock. Defaults to 10.
+            # Env override: SKILLSGO_HUB_REDIS_LOCK_MAX_RETRIES
+            MaxRetries = 10
+
+    [SingleFlight.RedisSentinel]
+        # Endpoints is the redis sentinel endpoints to discover a redis 
+        # master for a SingleFlight lock.
+        # Env override: SKILLSGO_HUB_REDIS_SENTINEL_ENDPOINTS
+        Endpoints = ["127.0.0.1:26379"]
+        # MasterName is the redis sentinel master name to use to discover
+        # the master for a SingleFlight lock
+        # Env override: SKILLSGO_HUB_REDIS_SENTINEL_MASTER_NAME
+        MasterName = "redis-1"
+        # SentinelPassword is an optional password for authenticating with
+        # redis sentinel
+        # Env override: SKILLSGO_HUB_REDIS_SENTINEL_PASSWORD
+        SentinelPassword = "sekret"
+
+        # DB is the redis database number to connect to
+        # Env override: SKILLSGO_HUB_REDIS_SENTINEL_DB
+        DB = 0
+
+        # The Redis master authorization parameters
+        # Env override: SKILLSGO_HUB_REDIS_USERNAME
+        RedisUsername = ""
+        # Env override: SKILLSGO_HUB_REDIS_PASSWORD
+        RedisPassword = ""
+
+        [SingleFlight.RedisSentinel.LockConfig]
+            # TTL for the lock in seconds. Defaults to 900 seconds (15 minutes).
+            # Env override: SKILLSGO_HUB_REDIS_LOCK_TTL
+            TTL = 900
+            # Timeout for acquiring the lock in seconds. Defaults to 15 seconds.
+            # Env override: SKILLSGO_HUB_REDIS_LOCK_TIMEOUT
+            Timeout = 15
+            # Max retries while acquiring the lock. Defaults to 10.
+            # Env override: SKILLSGO_HUB_REDIS_LOCK_MAX_RETRIES
+            MaxRetries = 10
+    [SingleFlight.GCP]
+        # Threshold for how long to wait in seconds for an in-progress GCP upload to
+        # be considered to have failed to unlock.
+        StaleThreshold = 120
+[Storage]
+    # Only storage backends that are specified in Proxy.StorageType are required here
+    [Storage.CDN]
+        # Endpoint for CDN storage
+        # Env override: CDN_ENDPOINT
+        Endpoint = "cdn.example.com"
+
+    [Storage.Disk]
+        # RootPath is the Athens Disk Root folder
+        # Env override: SKILLSGO_HUB_DISK_STORAGE_ROOT
+        RootPath = "/path/on/disk"
+
+    [Storage.GCP]
+        # Required IAM Roles (https://cloud.google.com/storage/docs/access-control/iam-roles):
+        # - roles/storage.objectCreator
+        # - roles/storage.objectViewer
+        # - roles/storage.legacyBucketReader
+
+        # ProjectID to use for GCP Storage
+        # Env override: GOOGLE_CLOUD_PROJECT
+        ProjectID = "MY_GCP_PROJECT_ID"
+
+        # Bucket to use for GCP Storage
+        # Env override: SKILLSGO_HUB_STORAGE_GCP_BUCKET
+        Bucket = "MY_GCP_BUCKET"
+
+        # JSONKey is a base64 encoded service account 
+        # key that allows Athens to be run outside of GCP
+        # but still be able to access GCS. This is not needed
+        # when relying on default GCP authentication with 
+        # GOOGLE_APPLICATION_CREDENTIALS variable set up. 
+        # See https://cloud.google.com/docs/authentication/getting-started.
+        #
+        # Env override: SKILLSGO_HUB_STORAGE_GCP_JSON_KEY
+        JSONKey = ""
+
+    [Storage.Minio]
+        # Endpoint for Minio storage
+        # Env override: SKILLSGO_HUB_MINIO_ENDPOINT
+        Endpoint = "127.0.0.1:9001"
+
+        # Access Key for Minio storage
+        # Env override: SKILLSGO_HUB_MINIO_ACCESS_KEY_ID
+        Key = "minio"
+
+        # Secret Key for Minio storage
+        # Env override: SKILLSGO_HUB_MINIO_SECRET_ACCESS_KEY
+        Secret = "minio123"
+
+        # Enable SSL for Minio connections
+        # Defaults to true
+        # Env override: SKILLSGO_HUB_MINIO_USE_SSL
+        EnableSSL = false
+
+        # Minio Bucket to use for storage
+        # Defaults to gomods
+        # Env override: SKILLSGO_HUB_MINIO_BUCKET_NAME
+        Bucket = "gomods"
+
+        # Region for Minio storage
+        # Env override: SKILLSGO_HUB_MINIO_REGION
+        Region = ""
+
+    [Storage.Mongo]
+        # Full connection string for mongo storage
+        # Env override: SKILLSGO_HUB_MONGO_STORAGE_URL
+        URL = "mongodb://127.0.0.1:27017"
+
+        # Sets default database name for mongo storage if not set by URL
+        # Env override: SKILLSGO_HUB_MONGO_DEFAULT_DATABASE
+        DefaultDBName = "athens"
+
+        # Path to certificate to use for the mongo connection
+        # Env override: SKILLSGO_HUB_MONGO_CERT_PATH
+        CertPath = ""
+
+        # Allows for insecure SSL / http connections to mongo storage
+        # Should be used for testing or development only
+        # Env override: SKILLSGO_HUB_MONGO_INSECURE
+        Insecure = false
+
+    [Storage.S3]
+        ### The authentication model is as below for S3 in the following order
+        ### If AWS_CREDENTIALS_ENDPOINT is specified and it returns valid results, then it is used
+        ### If config variables are specified and they are valid, then they return valid results, then it is used
+        ### Otherwise, it will default to default configurations which is as follows
+        # attempt to find credentials in the environment, in the shared
+        # configuration (~/.aws/credentials) and from ec2 instance role
+        # credentials. See
+        # https://godoc.org/github.com/aws/aws-sdk-go#hdr-Configuring_Credentials
+        # and
+        # https://godoc.org/github.com/aws/aws-sdk-go/aws/session#hdr-Environment_Variables
+        # for environment variables that will affect the aws configuration.
+        # Setting UseDefaultConfiguration would only use default configuration. It will be deprecated in future releases
+        # and is recommended not to use it.
+
+        # Region for S3 storage
+        # Env override: AWS_REGION
+        Region = "MY_AWS_REGION"
+
+        # Access Key for S3 storage
+        # Env override: AWS_ACCESS_KEY_ID
+        Key = "MY_AWS_ACCESS_KEY_ID"
+
+        # Secret Key for S3 storage
+        # Env override: AWS_SECRET_ACCESS_KEY
+        Secret = "MY_AWS_SECRET_ACCESS_KEY"
+
+        # Session Token for S3 storage
+        # Env override: AWS_SESSION_TOKEN
+        Token = ""
+
+        # S3 Bucket to use for storage
+        # Env override: SKILLSGO_HUB_S3_BUCKET_NAME
+        Bucket = "MY_S3_BUCKET_NAME"
+
+        # If true then path style url for s3 endpoint will be used
+        # Env override: AWS_FORCE_PATH_STYLE
+        ForcePathStyle = false
+
+        # If true then the default aws configuration will be used. This will
+        # attempt to find credentials in the environment, in the shared
+        # configuration (~/.aws/credentials) and from ec2 instance role
+        # credentials. See
+        # https://godoc.org/github.com/aws/aws-sdk-go#hdr-Configuring_Credentials
+        # and
+        # https://godoc.org/github.com/aws/aws-sdk-go/aws/session#hdr-Environment_Variables
+        # for environment variables that will affect the aws configuration.
+        UseDefaultConfiguration = false
+
+        # https://docs.aws.amazon.com/sdk-for-go/api/aws/credentials/endpointcreds/
+        CredentialsEndpoint = ""
+
+        # conainer relative url (used by fargate) /v2/....
+        # If this is present, it will concatenate to CredentialsEndpoint
+        # If you are planning to use AWS Fargate, please use http://169.254.170.2 for CredentialsEndpoint
+        # Ref: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/task-metadata-endpoint-v2.html
+        AwsContainerCredentialsRelativeURI = ""
+
+        # An optional endpoint URL (hostname only or fully qualified URI)
+        # that overrides the default generated endpoint for S3 storage client.
+        #
+        # You must still provide a `Region` value when specifying an endpoint.
+        # Env override: AWS_ENDPOINT
+        Endpoint = ""
+
+   [Storage.AzureBlob]
+        # Storage Account name for Azure Blob
+        # Env override: SKILLSGO_HUB_AZURE_ACCOUNT_NAME
+        AccountName = "MY_AZURE_BLOB_ACCOUNT_NAME"
+
+        # Account Key to use with the storage account
+        # Env override: SKILLSGO_HUB_AZURE_ACCOUNT_KEY
+        AccountKey = ""
+
+        # Managed Identity Resource Id to use with the storage account
+        # Env override: SKILLSGO_HUB_AZURE_MANAGED_IDENTITY_RESOURCE_ID
+        ManagedIdentityResourceId = ""
+
+        # Storage Resource to use with the storage account
+        # Env override: SKILLSGO_HUB_AZURE_CREDENTIAL_SCOPE
+        CredentialScope = ""
+
+        # Name of container in the blob storage
+        # Env override: SKILLSGO_HUB_AZURE_CONTAINER_NAME
+        ContainerName = "MY_AZURE_BLOB_CONTAINER_NAME"
+
+   [Storage.External]
+        # URL is the external storage URL that Athens 
+        # will use to interact with the backend storage layer.
+        # See https://docs.gomods.io/configuration/storage for implementation 
+        # details.
+        # Env override: SKILLSGO_HUB_EXTERNAL_STORAGE_URL
+        URL = ""
+
+[Index]
+    [Index.MySQL]
+        # MySQL protocol
+        # Env override: SKILLSGO_HUB_INDEX_MYSQL_PROTOCOL
+        Protocol = "tcp"
+
+        # MySQL user name
+        # Env override: SKILLSGO_HUB_INDEX_MYSQL_HOST
+        Host = "localhost"
+
+        # MySQL user name
+        # Env override: SKILLSGO_HUB_INDEX_MYSQL_PORT
+        Port = 3306
+
+        # MySQL user name
+        # Env override: SKILLSGO_HUB_INDEX_MYSQL_USER
+        User = "root"
+
+        # MySQL user name
+        # Env override: SKILLSGO_HUB_INDEX_MYSQL_PASSWORD
+        Password = ""
+
+        # MySQL database
+        # Env override: SKILLSGO_HUB_INDEX_MYSQL_DATABASE
+        Database = "athens"
+
+        # MySQL query parameters
+        # Environment overrides must be in the following format:
+        # SKILLSGO_HUB_INDEX_MYSQL_PARAMS="parseTime:true,timeout=90s"
+        # Env override: SKILLSGO_HUB_INDEX_MYSQL_PARAMS
+        [Index.MySQL.Params]
+            parseTime = "true"
+            timeout = "30s"
+    [Index.Postgres]
+        # Postgres user name
+        # Env override: SKILLSGO_HUB_INDEX_POSTGRES_HOST
+        Host = "localhost"
+
+        # Postgres user name
+        # Env override: SKILLSGO_HUB_INDEX_POSTGRES_PORT
+        Port = 5432
+
+        # Postgres user name
+        # Env override: SKILLSGO_HUB_INDEX_POSTGRES_USER
+        User = "postgres"
+
+        # Postgres user name
+        # Env override: SKILLSGO_HUB_INDEX_POSTGRES_PASSWORD
+        Password = ""
+
+        # Postgres database
+        # Env override: SKILLSGO_HUB_INDEX_POSTGRES_DATABASE
+        Database = "athens"
+
+        # Postgres query parameters
+        # Environment overrides must be in the following format:
+        # SKILLSGO_HUB_INDEX_POSTGRES_PARAMS="connect_timeout:30s,sslmode=disable"
+        # Env override: SKILLSGO_HUB_INDEX_POSTGRES_PARAMS
+        [Index.Postgres.Params]
+            connect_timeout = "30s"
+            sslmode = "disable"
