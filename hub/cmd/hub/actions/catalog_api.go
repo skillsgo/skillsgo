@@ -333,7 +333,7 @@ func skillDetailHandler(
 			return writeAPIError(c, fiber.StatusInternalServerError, "artifact metadata failed")
 		}
 		evidence, _ := json.Marshal(analysis.Risk.Evidence)
-		if _, err := metadata.AppendRiskAssessment(c.Context(), version.ID, catalog.RiskAssessment{
+		if _, err := metadata.AppendRiskAssessment(c.Context(), version.RowID, catalog.RiskAssessment{
 			Level: analysis.Risk.Level, ScannerVersion: analysis.Risk.ScannerVersion, Evidence: string(evidence),
 		}); err != nil {
 			return writeAPIError(c, fiber.StatusInternalServerError, "risk assessment failed")
