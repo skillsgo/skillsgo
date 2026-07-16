@@ -1,12 +1,11 @@
 /*
- * [INPUT]: Uses SkillsGoApp, the vendored named-preset Bloom color picker, and a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
+ * [INPUT]: Uses SkillsGoApp, shared navigation primitives, the vendored named-preset Bloom color picker, and a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
  * [OUTPUT]: Specifies startup, persistent primary folder navigation, opaque directional discovery/detail transitions, detail product metadata, discovery/detail recovery, outage-resilient Hub/Local/External Library views, projects, Agents, Settings, anchored installation-location selection, Installation/Update/Target Management/External Adoption journeys, offline retry, Local install-more/export, exact-target recovery, focus, accessibility, and mutations.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
-import 'dart:ui'
-    show CheckedState, PointerDeviceKind, SemanticsAction, Tristate;
+import 'dart:ui' show PointerDeviceKind, Tristate;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
@@ -19,6 +18,7 @@ import 'package:skillsgo/app.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/ui/brand_theme_presets.dart';
 import 'package:skillsgo/ui/native_components.dart';
+import 'package:skillsgo/ui/nested_navigation.dart';
 import 'package:skillsgo/ui/primary_folder_shell.dart';
 
 void main() {
@@ -47,6 +47,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text(route.value), findsOneWidget);
     }
+
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    final localizedPresets = tester
+        .widget<BloomColorPicker>(find.byType(BloomColorPicker))
+        .presets
+        .map((preset) => preset.name)
+        .toSet();
+    expect(localizedPresets, containsAll(['网易云音乐', '中国东方航空', '英伟达', '淘宝']));
+    expect(localizedPresets, containsAll(['GitHub', 'levels.fyi', 'Figma']));
   });
 
   testWidgets('localizes missing bundled CLI recovery guidance', (
@@ -109,7 +119,10 @@ void main() {
       find.byType(BloomColorPicker),
     );
     expect(picker.presets, hasLength(18));
-    expect(picker.presets, same(brandThemePresets));
+    expect(
+      picker.presets.map((preset) => preset.color),
+      brandThemePresets.map((preset) => preset.color),
+    );
     expect(picker.presets.first.name, 'GitHub');
     expect(picker.presets.first.color, const Color(0xFF181717));
     expect(picker.presets.last.name, 'Figma');
@@ -176,6 +189,44 @@ void main() {
     expect(_shellBrightness(tester), Brightness.light);
   });
 
+  testWidgets('General settings changes and persists the celestial wallpaper', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1000));
+    final gateway = FakeSkillsGateway();
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('wallpaper-picker')), findsOneWidget);
+
+    final indicator = find.byKey(const Key('wallpaper-selection-indicator'));
+    final earth = find.byKey(const ValueKey('wallpaper-earth'));
+    await tester.ensureVisible(earth);
+    final initialPosition = tester.getTopLeft(indicator);
+    final targetPosition = tester.getTopLeft(earth);
+    await tester.tap(earth);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 50));
+    final movingPosition = tester.getTopLeft(indicator);
+    expect(movingPosition.dx, greaterThan(initialPosition.dx));
+    expect(movingPosition.dx, lessThan(targetPosition.dx));
+    await tester.pumpAndSettle();
+    final settledPosition = tester.getTopLeft(indicator);
+    expect(settledPosition.dx, closeTo(targetPosition.dx, .01));
+    expect(settledPosition.dy, closeTo(targetPosition.dy, .01));
+
+    expect(gateway.wallpaper, AppWallpaper.earth);
+    final background = tester.widget<Image>(
+      find.byKey(const Key('app-wallpaper')),
+    );
+    expect(
+      (background.image as AssetImage).assetName,
+      'assets/backgrounds/earth-starfield.png',
+    );
+  });
+
   testWidgets('Bloom presets reveal their brand name on hover', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
@@ -184,6 +235,8 @@ void main() {
     await tester.tap(find.byKey(const Key('primary-destination-settings')));
     await tester.pumpAndSettle();
     final picker = find.byType(BloomColorPicker);
+    await tester.ensureVisible(picker);
+    await tester.pumpAndSettle();
     await tester.tap(
       find.descendant(of: picker, matching: find.byType(GestureDetector)).first,
     );
@@ -207,6 +260,8 @@ void main() {
     await tester.tap(find.byKey(const Key('primary-destination-settings')));
     await tester.pumpAndSettle();
     final picker = find.byType(BloomColorPicker);
+    await tester.ensureVisible(picker);
+    await tester.pumpAndSettle();
     await tester.tap(
       find.descendant(of: picker, matching: find.byType(GestureDetector)).first,
     );
@@ -358,14 +413,17 @@ void main() {
             as BoxDecoration;
 
     final scheme = Theme.of(tester.element(_searchInput())).colorScheme;
-    expect(field().decoration?.fillColor, scheme.primaryContainer);
+    final components = Theme.of(
+      tester.element(_searchInput()),
+    ).extension<SkillsComponentTokens>()!;
+    expect(field().decoration?.fillColor, components.searchActive);
     expect(field().style?.color, scheme.onPrimaryContainer);
     expect(surface().boxShadow, isNotEmpty);
 
     await tester.enterText(_searchInput(), 'flutter ui');
     await tester.pumpAndSettle();
 
-    expect(field().decoration?.fillColor, scheme.surfaceContainerHigh);
+    expect(field().decoration?.fillColor, components.searchRest);
     expect(field().style?.color, scheme.onSurface);
     expect(surface().boxShadow, isEmpty);
   });
@@ -608,8 +666,6 @@ void main() {
     expect(gateway.installCalls, 0);
     expect(find.text('Set installation location'), findsNothing);
     expect(find.text('Installed'), findsOneWidget);
-    final installAction = find.widgetWithText(SkillsButton, 'Install');
-    expect(tester.widget<SkillsButton>(installAction).enabled, isFalse);
     await tester.tapAt(const Offset(8, 8));
     await tester.pumpAndSettle();
   });
@@ -662,6 +718,33 @@ void main() {
       expect(find.text('Available to 2 Agents at user level'), findsOneWidget);
     },
   );
+
+  testWidgets('card installation opens a skeleton before detail resolves', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 850));
+    final detail = Completer<SkillDetail>();
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      detailCompleter: detail,
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+
+    final card = find.byType(SkillCard).first;
+    await tester.tap(find.descendant(of: card, matching: find.text('Install')));
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey('install-location-skeleton')),
+      findsOneWidget,
+    );
+    expect(find.text('Install Flutter Pro to'), findsOneWidget);
+    detail.complete(FakeSkillsGateway.defaultRemoteDetail);
+    await tester.pumpAndSettle();
+    expect(find.text('All projects'), findsOneWidget);
+  });
 
   testWidgets('auditable detail exposes immutable evidence and files', (
     tester,
@@ -828,84 +911,72 @@ void main() {
     },
   );
 
-  testWidgets(
-    'Installation Plan keeps explicit cells across row, column, and Add Project shortcuts',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1400, 900));
-      const projectA = AddedProject(
-        id: 'project-a',
-        name: 'Project A',
-        path: '/work/project-a',
-        accessState: ProjectAccessState.accessible,
-      );
-      const projectB = AddedProject(
-        id: 'project-b',
-        name: 'Project B',
-        path: '/work/project-b',
-        accessState: ProjectAccessState.accessible,
-      );
-      final gateway = FakeSkillsGateway(
-        installed: false,
-        agentNames: const ['codex', 'claude-code'],
-        addedProjects: const [projectA],
-        projectToAdd: projectB,
-      );
-      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
-      await tester.pumpAndSettle();
-      await tester.enterText(_searchInput(), 'matrix');
-      await tester.testTextInput.receiveAction(TextInputAction.search);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Flutter Pro'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Install'));
-      await tester.pumpAndSettle();
+  testWidgets('installation selector keeps explicit project and Agent targets', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    const projectA = AddedProject(
+      id: 'project-a',
+      name: 'Project A',
+      path: '/work/project-a',
+      accessState: ProjectAccessState.accessible,
+    );
+    const projectB = AddedProject(
+      id: 'project-b',
+      name: 'Project B',
+      path: '/work/project-b',
+      accessState: ProjectAccessState.accessible,
+    );
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      agentNames: const ['codex', 'claude-code'],
+      addedProjects: const [projectA],
+      projectToAdd: projectB,
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.enterText(_searchInput(), 'matrix');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Flutter Pro'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Install'));
+    await tester.pumpAndSettle();
 
-      final codexShortcut = find.bySemanticsLabel(
-        'Select all available targets for Codex',
-      );
-      var shortcutSemantics = tester.getSemantics(codexShortcut);
-      expect(shortcutSemantics.flagsCollection.isChecked, CheckedState.isFalse);
-      expect(
-        shortcutSemantics.getSemanticsData().hasAction(SemanticsAction.tap),
-        isTrue,
-      );
-      await tester.tap(codexShortcut);
-      await tester.pumpAndSettle();
-      expect(find.text('2 targets selected'), findsOneWidget);
-      shortcutSemantics = tester.getSemantics(codexShortcut);
-      expect(shortcutSemantics.flagsCollection.isChecked, CheckedState.isTrue);
+    await tester.tap(find.byType(Radio<InstallationScope>).at(1));
+    await tester.pumpAndSettle();
+    expect(find.text('0 projects · 2 Agents'), findsOneWidget);
 
-      await tester.tap(find.text('Add Project'));
-      await tester.pumpAndSettle();
-      expect(find.text('Project B'), findsOneWidget);
-      expect(find.text('2 targets selected'), findsOneWidget);
+    await tester.tap(find.text('Add Project'));
+    await tester.pumpAndSettle();
+    expect(find.text('Project B'), findsOneWidget);
 
-      await tester.tap(find.text('Project B'));
-      await tester.pumpAndSettle();
-      expect(find.text('4 targets selected'), findsOneWidget);
-      await tester.tap(find.text('Review 4 Targets'));
-      await tester.pumpAndSettle();
+    await tester.tap(
+      find.ancestor(of: find.text('Project A'), matching: find.byType(InkWell)),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('2 projects · 2 Agents'), findsOneWidget);
+    await tester.tap(
+      find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
+    );
+    await tester.pumpAndSettle();
 
-      expect(
-        gateway.lastPlanSelections
-            .map(
-              (selection) =>
-                  '${selection.scope.name}:${selection.projectRoot}:${selection.agent}',
-            )
-            .toList(),
-        [
-          'user::codex',
-          'project:/work/project-a:codex',
-          'project:/work/project-b:codex',
-          'project:/work/project-b:claude-code',
-        ],
-      );
-      expect(find.text('4 create'), findsOneWidget);
-      expect(find.text('/work/project-b'), findsWidgets);
-      await tester.tap(find.bySemanticsLabel('Close installation plan'));
-      await tester.pumpAndSettle();
-    },
-  );
+    expect(
+      gateway.lastPlanSelections
+          .map(
+            (selection) =>
+                '${selection.scope.name}:${selection.projectRoot}:${selection.agent}',
+          )
+          .toList(),
+      [
+        'project:/work/project-a:codex',
+        'project:/work/project-a:claude-code',
+        'project:/work/project-b:codex',
+        'project:/work/project-b:claude-code',
+      ],
+    );
+    expect(gateway.installCalls, 1);
+  });
 
   testWidgets(
     'Hub installation stays retryable and explains an offline preflight',
@@ -935,8 +1006,6 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Review 1 Targets'));
-      await tester.pumpAndSettle();
       expect(find.text('Installation plan could not continue'), findsOneWidget);
       expect(
         find.text(
@@ -974,9 +1043,6 @@ void main() {
         find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Review 1 Targets'));
-      await tester.pumpAndSettle();
-
       expect(find.text('1 conflict'), findsOneWidget);
       expect(
         find.text('Discard Local Modifications and replace this target'),
@@ -1030,9 +1096,6 @@ void main() {
         find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Review 1 Targets'));
-      await tester.pumpAndSettle();
-
       expect(
         find.text('This path is shared by other Agent targets'),
         findsOneWidget,
@@ -1081,9 +1144,6 @@ void main() {
       find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Review 1 Targets'));
-    await tester.pumpAndSettle();
-
     expect(find.text('1 risk blocked'), findsOneWidget);
     expect(find.text('High-risk artifact confirmation'), findsOneWidget);
     expect(gateway.installCalls, 0);
@@ -1125,9 +1185,6 @@ void main() {
       find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
     );
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Review 1 Targets'));
-    await tester.pumpAndSettle();
-
     expect(find.text('Critical-risk installation is blocked'), findsOneWidget);
     expect(
       find.textContaining('Enable the explicit Critical-risk override'),
@@ -1167,9 +1224,6 @@ void main() {
         find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Review 1 Targets'));
-      await tester.pumpAndSettle();
-
       expect(find.text('Critical-risk override confirmation'), findsOneWidget);
       expect(gateway.installCalls, 0);
       await tester.tap(
@@ -1266,7 +1320,12 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
 
-    expect(find.text('Loading auditable Skill detail'), findsOneWidget);
+    expect(find.byKey(const ValueKey('detail-skeleton')), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(RegExp('Loading auditable Skill detail')),
+      findsOneWidget,
+    );
+    expect(find.text('Flutter Pro'), findsOneWidget);
     detail.complete(FakeSkillsGateway.defaultRemoteDetail);
     await tester.pumpAndSettle();
     expect(find.text('Real instructions'), findsOneWidget);
@@ -1464,6 +1523,8 @@ void main() {
       await tester.enterText(_searchInput(), 'async');
       await tester.testTextInput.receiveAction(TextInputAction.search);
       await tester.pump();
+      expect(find.byKey(const ValueKey('discover-skeleton')), findsOneWidget);
+      expect(find.bySemanticsLabel('Loading…'), findsOneWidget);
       await tester.tap(find.byKey(const Key('primary-destination-library')));
       await tester.pumpAndSettle();
 
@@ -1502,15 +1563,9 @@ void main() {
     await tester.tap(
       find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
     );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Review 1 Targets'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Install 1 Targets'));
     await tester.pump();
-    await tester.tap(find.bySemanticsLabel('Close installation plan'));
-    await tester.pump(const Duration(milliseconds: 500));
     await tester.tap(find.byKey(const Key('detail-back')));
-    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 500));
 
     install.complete(_success(['skillsgo', 'add']));
     await tester.pumpAndSettle();
@@ -1542,15 +1597,9 @@ void main() {
       await tester.tap(
         find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
       );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Review 1 Targets'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Install 1 Targets'));
       await tester.pump();
-      await tester.tap(find.bySemanticsLabel('Close installation plan'));
-      await tester.pump(const Duration(milliseconds: 500));
       await tester.tap(find.byKey(const Key('detail-back')));
-      await tester.pumpAndSettle();
+      await tester.pump(const Duration(milliseconds: 500));
       await tester.tap(find.text('Flutter Pro'));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 500));
@@ -1586,12 +1635,8 @@ void main() {
       await tester.tap(find.text('Install'));
       await tester.pumpAndSettle();
       await tester.tap(
-        find.bySemanticsLabel('Select all available targets in User Scope'),
+        find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
       );
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Review 2 Targets'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Install 2 Targets'));
       await tester.pumpAndSettle();
 
       expect(find.text('1 targets installed, 1 failed'), findsOneWidget);
@@ -1695,10 +1740,10 @@ void main() {
                 .decoration
             as BoxDecoration;
     expect(indicator.top, 2);
-    final scheme = Theme.of(
+    final components = Theme.of(
       tester.element(find.byKey(const Key('rail-indicator'))),
-    ).colorScheme;
-    expect(decoration.color, scheme.primaryContainer);
+    ).extension<SkillsComponentTokens>()!;
+    expect(decoration.color, components.navigationSelected);
   });
 
   testWidgets('an overflowing Agent rail scrolls independently', (
@@ -1727,6 +1772,50 @@ void main() {
 
     expect(find.text('Agent 19').hitTestable(), findsOneWidget);
     expect(find.text('Installed Skills').hitTestable(), findsOneWidget);
+  });
+
+  testWidgets('Library renders a cold-load skeleton before CLI inspection', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final library = Completer<List<InstalledSkill>>();
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(installed: false, libraryCompleter: library),
+      ),
+    );
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pump();
+
+    expect(find.byKey(const ValueKey('library-skeleton')), findsOneWidget);
+    expect(find.bySemanticsLabel('Loading…'), findsOneWidget);
+    library.complete(const []);
+    await tester.pumpAndSettle();
+    expect(find.text('No skills installed yet'), findsOneWidget);
+  });
+
+  testWidgets('Library refresh retains the last valid inventory', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway();
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    expect(find.text('local-skill'), findsOneWidget);
+
+    final refresh = Completer<List<InstalledSkill>>();
+    gateway.libraryCompleter = refresh;
+    await tester.tap(find.text('Refresh'));
+    await tester.pump();
+
+    expect(find.text('local-skill'), findsOneWidget);
+    expect(find.byKey(const ValueKey('library-skeleton')), findsNothing);
+    refresh.completeError(const SkillsException('refresh failed'));
+    await tester.pumpAndSettle();
+    expect(find.text('local-skill'), findsOneWidget);
   });
 
   testWidgets('Library falls back to All when its selected Agent disappears', (
@@ -2740,11 +2829,19 @@ void main() {
     await tester.tap(find.byKey(const Key('primary-destination-settings')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Make SkillsGo yours'), findsOneWidget);
+    expect(find.text('Theme'), findsOneWidget);
+    final settingsRail = find.byWidgetPredicate(
+      (widget) => widget is SkillsSideRail,
+      description: 'settings side rail',
+    );
+    expect(
+      find.descendant(of: settingsRail, matching: find.byType(HugeIcon)),
+      findsNWidgets(7),
+    );
     await tester.tap(find.text('Hub'));
     await tester.pumpAndSettle();
     expect(find.text('Hub Origin'), findsOneWidget);
-    expect(find.text('Make SkillsGo yours'), findsNothing);
+    expect(find.text('Theme'), findsNothing);
 
     await tester.tap(find.text('Storage'));
     await tester.pumpAndSettle();
@@ -3145,13 +3242,10 @@ void main() {
         find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
       );
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Review 1 Targets'));
-      await tester.pumpAndSettle();
-      expect(find.text('1 create'), findsOneWidget);
-      await tester.tap(find.text('Install 1 Targets'));
-      await tester.pumpAndSettle();
-      expect(find.text('1 targets installed, 0 failed'), findsOneWidget);
-      await tester.tap(find.text('View in Library'));
+      expect(gateway.installCalls, 1);
+      await tester.tap(
+        find.byKey(const ValueKey('primary-destination-library')),
+      );
       await tester.pumpAndSettle();
       expect(find.text('local-skill'), findsOneWidget);
 
@@ -3179,6 +3273,7 @@ class FakeSkillsGateway implements SkillsGateway {
     this.installed = true,
     this.searchCompleter,
     this.installCompleter,
+    this.libraryCompleter,
     List<SkillSummary>? searchResults,
     this.agentNames = const ['codex'],
     this.agentStatuses,
@@ -3192,6 +3287,7 @@ class FakeSkillsGateway implements SkillsGateway {
     this.hubOrigin = 'https://hub.skillsgo.ai',
     this.folderTheme = 'manila',
     this.themeMode = AppThemeMode.system,
+    this.wallpaper = AppWallpaper.sun,
     this.hubTestState = HealthState.ready,
     this.storageStatus = const StorageStatus(
       path: '/Users/test/.skillsgo/store',
@@ -3227,6 +3323,7 @@ class FakeSkillsGateway implements SkillsGateway {
   final bool cliReady;
   final Completer<List<SkillSummary>>? searchCompleter;
   final Completer<CommandResult>? installCompleter;
+  Completer<List<InstalledSkill>>? libraryCompleter;
   final Completer<SkillDetail>? detailCompleter;
   final List<String> agentNames;
   final List<AgentStatus>? agentStatuses;
@@ -3240,6 +3337,7 @@ class FakeSkillsGateway implements SkillsGateway {
   String hubOrigin;
   String folderTheme;
   AppThemeMode themeMode;
+  AppWallpaper wallpaper;
   final HealthState hubTestState;
   PersonalRiskPolicy riskPolicy;
   final String planConflictReason;
@@ -3355,6 +3453,12 @@ class FakeSkillsGateway implements SkillsGateway {
   Future<void> saveFolderTheme(String theme) async => folderTheme = theme;
 
   @override
+  Future<AppWallpaper> loadWallpaper() async => wallpaper;
+
+  @override
+  Future<void> saveWallpaper(AppWallpaper value) async => wallpaper = value;
+
+  @override
   Future<AppThemeMode> loadThemeMode() async => themeMode;
 
   @override
@@ -3421,6 +3525,7 @@ class FakeSkillsGateway implements SkillsGateway {
   Future<List<InstalledSkill>> listInstalled({
     List<AddedProject> projects = const [],
   }) async =>
+      await libraryCompleter?.future ??
       libraryEntries ??
       (installed
           ? [

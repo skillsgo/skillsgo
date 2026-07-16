@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery metadata including repository product signals and Hub image URLs, auditable artifacts, unified Hub/Local/External Library entries and targets, explicit Installation/Update/Target Management/External Adoption flows, Local export, project references, Agent inspection, CLI, Hub and appearance settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery metadata including repository product signals and Hub image URLs, auditable artifacts, unified Hub/Local/External Library entries and targets, explicit Installation/Update/Target Management/External Adoption flows, Local export, project references, Agent inspection, CLI, Hub and typed appearance/wallpaper settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -1091,6 +1091,20 @@ abstract interface class ProcessRunner {
 
 enum AppThemeMode { system, light, dark }
 
+enum AppWallpaper {
+  sun,
+  mercury,
+  venus,
+  earth,
+  mars,
+  jupiter,
+  saturn,
+  uranus,
+  neptune,
+  pluto,
+  moon,
+}
+
 class CommandResult {
   const CommandResult({required this.command, required this.output});
 
@@ -1124,6 +1138,8 @@ abstract interface class SkillsGateway {
   Future<void> resetHubOrigin();
   Future<String> loadFolderTheme();
   Future<void> saveFolderTheme(String theme);
+  Future<AppWallpaper> loadWallpaper();
+  Future<void> saveWallpaper(AppWallpaper wallpaper);
   Future<AppThemeMode> loadThemeMode();
   Future<void> saveThemeMode(AppThemeMode mode);
   Future<HubStatus> testHubOrigin(String origin);

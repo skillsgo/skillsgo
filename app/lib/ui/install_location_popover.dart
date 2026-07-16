@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGateway Agent and Added Project models, localized copy, Flutter Material MenuAnchor, HugeIcons project glyphs, and vendored Agent SVGs.
- * [OUTPUT]: Provides an edge-aware anchored installation menu that asks where a Skill should be available, then returns explicit location-and-Agent selections.
+ * [OUTPUT]: Provides an edge-aware anchored installation menu that opens immediately, resolves its data behind geometry-preserving skeletons, asks where a Skill should be available, and returns explicit location-and-Agent selections.
  * [POS]: Serves as the shared first step of installation from discovery cards and remote Skill detail.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,7 @@ import 'package:hugeicons/hugeicons.dart';
 import '../domain/skills_gateway.dart';
 import '../l10n/app_localizations.dart';
 import 'agent_logo.dart';
+import 'design_system/skills_component_tokens.dart';
 import 'install_location_island/install_location_island.dart';
 import 'native_components.dart';
 
@@ -23,14 +24,32 @@ class InstallLocationMenuRequest {
     required this.projects,
     required this.onProjectAdded,
     this.repositorySkills = const [],
-  });
+    this.repositorySkillsFuture,
+  }) : summary = null,
+       loader = null;
 
-  final SkillsGateway gateway;
-  final AgentCatalog catalog;
-  final SkillDetail detail;
-  final List<AddedProject> projects;
-  final ValueChanged<AddedProject> onProjectAdded;
-  final List<SkillSummary> repositorySkills;
+  const InstallLocationMenuRequest.loading({
+    required this.summary,
+    required this.loader,
+  }) : gateway = null,
+       catalog = null,
+       detail = null,
+       projects = null,
+       onProjectAdded = null,
+       repositorySkills = null,
+       repositorySkillsFuture = null;
+
+  final SkillsGateway? gateway;
+  final AgentCatalog? catalog;
+  final SkillDetail? detail;
+  final List<AddedProject>? projects;
+  final ValueChanged<AddedProject>? onProjectAdded;
+  final List<SkillSummary>? repositorySkills;
+  final Future<List<SkillSummary>>? repositorySkillsFuture;
+  final SkillSummary? summary;
+  final Future<InstallLocationMenuRequest> Function()? loader;
+
+  bool get isLoading => loader != null;
 }
 
 enum InstallLocationAction { currentSkill, repositorySkills }
@@ -118,15 +137,23 @@ class _InstallLocationMenuAnchorState extends State<InstallLocationMenuAnchor> {
           : [
               SizedBox(
                 width: 400,
-                child: _InstallLocationCard(
-                  gateway: current.gateway,
-                  catalog: current.catalog,
-                  detail: current.detail,
-                  repositorySkills: current.repositorySkills,
-                  initialProjects: current.projects,
-                  onProjectAdded: current.onProjectAdded,
-                  onSubmit: _complete,
-                ),
+                child: current.isLoading
+                    ? _AsyncInstallLocationCard(
+                        key: ObjectKey(current),
+                        summary: current.summary!,
+                        loader: current.loader!,
+                        onSubmit: _complete,
+                      )
+                    : _InstallLocationCard(
+                        gateway: current.gateway!,
+                        catalog: current.catalog!,
+                        detail: current.detail!,
+                        repositorySkills: current.repositorySkills!,
+                        repositorySkillsFuture: current.repositorySkillsFuture,
+                        initialProjects: current.projects!,
+                        onProjectAdded: current.onProjectAdded!,
+                        onSubmit: _complete,
+                      ),
               ),
             ],
       builder: (context, menuController, child) =>
@@ -135,12 +162,99 @@ class _InstallLocationMenuAnchorState extends State<InstallLocationMenuAnchor> {
   }
 }
 
+class _AsyncInstallLocationCard extends StatefulWidget {
+  const _AsyncInstallLocationCard({
+    super.key,
+    required this.summary,
+    required this.loader,
+    required this.onSubmit,
+  });
+
+  final SkillSummary summary;
+  final Future<InstallLocationMenuRequest> Function() loader;
+  final ValueChanged<InstallLocationChoice> onSubmit;
+
+  @override
+  State<_AsyncInstallLocationCard> createState() =>
+      _AsyncInstallLocationCardState();
+}
+
+class _AsyncInstallLocationCardState extends State<_AsyncInstallLocationCard> {
+  late Future<InstallLocationMenuRequest> request;
+
+  @override
+  void initState() {
+    super.initState();
+    request = widget.loader();
+  }
+
+  void retry() => setState(() => request = widget.loader());
+
+  @override
+  Widget build(BuildContext context) =>
+      FutureBuilder<InstallLocationMenuRequest>(
+        future: request,
+        builder: (context, snapshot) {
+          final l10n = AppLocalizations.of(context);
+          final ready = snapshot.data;
+          if (ready != null) {
+            return _InstallLocationCard(
+              gateway: ready.gateway!,
+              catalog: ready.catalog!,
+              detail: ready.detail!,
+              repositorySkills: ready.repositorySkills!,
+              repositorySkillsFuture: ready.repositorySkillsFuture,
+              initialProjects: ready.projects!,
+              onProjectAdded: ready.onProjectAdded!,
+              onSubmit: widget.onSubmit,
+            );
+          }
+          if (snapshot.hasError) {
+            return SkillsCard(
+              title: Text(l10n.installSkillTo(widget.summary.name)),
+              description: Text(l10n.installationPlanFailed),
+              child: Padding(
+                padding: const EdgeInsets.only(top: 16),
+                child: SkillsButton(onPressed: retry, child: Text(l10n.retry)),
+              ),
+            );
+          }
+          return Semantics(
+            liveRegion: true,
+            label: l10n.loading,
+            child: SkillsCard(
+              key: const ValueKey('install-location-skeleton'),
+              title: Text(l10n.installSkillTo(widget.summary.name)),
+              child: const Padding(
+                padding: EdgeInsets.only(top: 18),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    SkillsSkeletonBox(height: 18, width: 150),
+                    SizedBox(height: 18),
+                    SkillsSkeletonBox(height: 44, borderRadius: 12),
+                    SizedBox(height: 14),
+                    SkillsSkeletonBox(height: 18, width: 112),
+                    SizedBox(height: 12),
+                    SkillsSkeletonBox(height: 36),
+                    SizedBox(height: 10),
+                    SkillsSkeletonBox(height: 36),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      );
+}
+
 class _InstallLocationCard extends StatefulWidget {
   const _InstallLocationCard({
     required this.gateway,
     required this.catalog,
     required this.detail,
     required this.repositorySkills,
+    this.repositorySkillsFuture,
     required this.initialProjects,
     required this.onProjectAdded,
     required this.onSubmit,
@@ -150,6 +264,7 @@ class _InstallLocationCard extends StatefulWidget {
   final AgentCatalog catalog;
   final SkillDetail detail;
   final List<SkillSummary> repositorySkills;
+  final Future<List<SkillSummary>>? repositorySkillsFuture;
   final List<AddedProject> initialProjects;
   final ValueChanged<AddedProject> onProjectAdded;
   final ValueChanged<InstallLocationChoice> onSubmit;
@@ -165,6 +280,8 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
   final selectedUserAgents = <String>{};
   final selectedProjectAgents = <String>{};
   bool addingProject = false;
+  late List<SkillSummary> repositorySkills;
+  bool repositorySkillsLoading = false;
 
   List<AgentStatus> get agents => widget.catalog.installed;
 
@@ -172,6 +289,18 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
   void initState() {
     super.initState();
     projects = List.of(widget.initialProjects);
+    repositorySkills = widget.repositorySkills;
+    final repositoryFuture = widget.repositorySkillsFuture;
+    if (repositoryFuture != null) {
+      repositorySkillsLoading = true;
+      repositoryFuture.then((skills) {
+        if (!mounted) return;
+        setState(() {
+          repositorySkills = skills;
+          repositorySkillsLoading = false;
+        });
+      });
+    }
     selectedUserAgents.addAll(
       agents
           .where(
@@ -262,6 +391,7 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
+    final components = context.skillsComponents;
     final repositoryName = _repositoryName(widget.detail.repository);
     final island = InstallLocationIsland(
       header: _InstallScopeSelector(
@@ -287,13 +417,14 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
       onItemChanged: _itemChanged,
       contentKey: ValueKey('install-island-scroll-${scope.name}'),
       style: InstallLocationIslandStyle(
-        outerBackgroundColor: scheme.surfaceContainerHigh,
-        cardBackgroundColor: scheme.surfaceContainer,
+        outerBackgroundColor: components.overlay,
+        cardBackgroundColor: components.overlay,
         tabTrackColor: scheme.surfaceContainerHighest,
         tabIndicatorColor: scheme.primaryContainer,
         tabIndicatorTextColor: scheme.onPrimaryContainer,
         selectedColor: scheme.primary,
-        checkboxBorderColor: scheme.outlineVariant,
+        selectedForegroundColor: scheme.onPrimary,
+        checkboxBorderColor: components.controlBorder,
         textColor: scheme.onSurface,
         secondaryTextColor: scheme.onSurfaceVariant,
         shadowColor: scheme.shadow,
@@ -319,7 +450,12 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
           const SizedBox(height: 7),
           Row(
             children: [
-              if (widget.repositorySkills.length > 1) ...[
+              if (repositorySkillsLoading) ...[
+                const Expanded(
+                  child: SkillsSkeletonBox(height: 36, borderRadius: 999),
+                ),
+                const SizedBox(width: 10),
+              ] else if (repositorySkills.length > 1) ...[
                 Expanded(
                   child: FilledButton(
                     onPressed: canInstall
@@ -357,7 +493,7 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
                             _repositoryButtonLabel(
                               l10n: l10n,
                               repositoryName: repositoryName,
-                              count: widget.repositorySkills.length,
+                              count: repositorySkills.length,
                               maxWidth: constraints.maxWidth,
                               style: style,
                             ),

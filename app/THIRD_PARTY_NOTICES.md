@@ -1,5 +1,49 @@
 # Third-Party Notices
 
+## Radix Colors
+
+`lib/ui/design_system/radix_palette.dart` reproduces the exact sRGB values of
+the Sand light and dark scales and steps 3, 11, and 12 of the Blue, Green,
+Amber, Orange, and Red light and dark scales from `@radix-ui/colors` version
+3.0.0.
+
+Official package:
+https://www.npmjs.com/package/@radix-ui/colors/v/3.0.0
+
+Package integrity:
+`sha512-FUOsGBkHrYJwCSEtWRCIfQbZG7q1e6DgxCIOe1SUQzDe/7rXXeA47s8yCn6fuTNQAj1Zq4oTFi9Yjp3wzElcxg==`
+
+MIT License
+
+Copyright (c) 2021-2022 Modulz
+
+Copyright (c) 2022-Present WorkOS
+
+## Primer Primitives
+
+`lib/ui/design_system/skills_color_tokens.dart` and
+`lib/ui/design_system/skills_theme.dart` adapt the functional token vocabulary
+documented by `@primer/primitives` version 11.9.0, including
+`bgColor-default`, `bgColor-muted`, `bgColor-inset`, `fgColor-default`,
+`fgColor-muted`, `borderColor-default`, and `borderColor-muted`. SkillsGo does
+not copy GitHub's theme values; it maps these semantic roles onto its Radix
+Sand spatial foundation and adds Folder-specific roles.
+
+The component-state mapping in `skills_component_tokens.dart` is grounded in
+the package's `component/button.json5`, `functional/color/control.json5`,
+`component/card.json5`, `component/overlay.json5`,
+`component/sideNav.json5`, and `component/focus.json5` token sources.
+
+Official package:
+https://www.npmjs.com/package/@primer/primitives/v/11.9.0
+
+Package integrity:
+`sha512-yESOalhd7s7S3unV1V32v3Z0RszXiiz6pzy6hVI9xpdTh1q1Gt8vyDFxRlqIvuwc5ZaO1+gYQTDbjxb4nWBzMw==`
+
+MIT License
+
+Copyright (c) 2018 GitHub Inc.
+
 ## Lobe Icons
 
 The Agent logo assets in `assets/agent-logos/` are adapted from Lobe Icons,

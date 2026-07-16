@@ -1,11 +1,12 @@
 /*
- * [INPUT]: Depends on Flutter Material colors and the vendored Bloom preset contract.
- * [OUTPUT]: Provides the curated, source-traceable Simple Icons brand theme presets used by SkillsGo.
+ * [INPUT]: Depends on Flutter Material colors, App localization copy, and the vendored Bloom preset contract.
+ * [OUTPUT]: Provides the curated, source-traceable Simple Icons brand theme presets and localized display names used by SkillsGo.
  * [POS]: Serves as the static theme-preset catalog in the App UI module, separate from picker rendering and Settings state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
 
+import '../l10n/app_localizations.dart';
 import 'bloom_color_picker/bloom_color_picker.dart';
 
 const simpleIconsRevision = '0f9fa549da00e9aa6e3ef8d3d2171f481360e638';
@@ -141,3 +142,23 @@ const brandThemePresets = <BrandThemePreset>[
     source: 'https://www.figma.com/using-the-figma-brand/',
   ),
 ];
+
+List<BrandThemePreset> localizedBrandThemePresets(AppLocalizations l10n) =>
+    brandThemePresets
+        .map(
+          (preset) => BrandThemePreset(
+            id: preset.id,
+            name: switch (preset.id) {
+              'netease-cloud-music' => l10n.brandNameNeteaseCloudMusic,
+              'raspberry-pi' => l10n.brandNameRaspberryPi,
+              'china-eastern-airlines' => l10n.brandNameChinaEasternAirlines,
+              'nvidia' => l10n.brandNameNvidia,
+              'taobao' => l10n.brandNameTaobao,
+              'bitcoin' => l10n.brandNameBitcoin,
+              _ => preset.name,
+            },
+            color: preset.color,
+            source: preset.source,
+          ),
+        )
+        .toList(growable: false);

@@ -6,6 +6,7 @@
  */
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:skillsgo/ui/brand.dart';
 import 'package:skillsgo/ui/brand_theme_presets.dart';
 
 void main() {
@@ -28,11 +29,9 @@ void main() {
   for (final brightness in Brightness.values) {
     test('all $brightness presets generate readable Material roles', () {
       for (final preset in brandThemePresets) {
-        final scheme = ColorScheme.fromSeed(
-          seedColor: preset.color,
-          brightness: brightness,
-          dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
-        );
+        final theme = buildSkillsTheme(preset.color, brightness: brightness);
+        final scheme = theme.colorScheme;
+        final components = theme.extension<SkillsComponentTokens>()!;
         expect(
           _contrastRatio(scheme.primary, scheme.onPrimary),
           greaterThanOrEqualTo(4.5),
@@ -42,6 +41,16 @@ void main() {
           _contrastRatio(scheme.surface, scheme.onSurface),
           greaterThanOrEqualTo(4.5),
           reason: '${preset.name} surface on $brightness',
+        );
+        expect(
+          _contrastRatio(components.primaryRest, components.primaryForeground),
+          greaterThanOrEqualTo(4.5),
+          reason: '${preset.name} primary rest on $brightness',
+        );
+        expect(
+          _contrastRatio(components.primaryHover, components.primaryForeground),
+          greaterThanOrEqualTo(4.5),
+          reason: '${preset.name} primary hover on $brightness',
         );
       }
     });

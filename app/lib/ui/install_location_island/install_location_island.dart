@@ -62,6 +62,7 @@ class InstallLocationIslandStyle {
     required this.tabIndicatorColor,
     required this.tabIndicatorTextColor,
     required this.selectedColor,
+    required this.selectedForegroundColor,
     required this.checkboxBorderColor,
     required this.textColor,
     required this.secondaryTextColor,
@@ -78,6 +79,7 @@ class InstallLocationIslandStyle {
   final Color tabIndicatorColor;
   final Color tabIndicatorTextColor;
   final Color selectedColor;
+  final Color selectedForegroundColor;
   final Color checkboxBorderColor;
   final Color textColor;
   final Color secondaryTextColor;
@@ -352,13 +354,7 @@ class _IslandItem extends StatelessWidget {
                       ? Icon(
                           Icons.check_rounded,
                           size: 12,
-                          color:
-                              ThemeData.estimateBrightnessForColor(
-                                    style.selectedColor,
-                                  ) ==
-                                  Brightness.dark
-                              ? Colors.white
-                              : Colors.black,
+                          color: style.selectedForegroundColor,
                         )
                       : null,
                 ),

@@ -555,13 +555,20 @@ class AppLocalizationsZh extends AppLocalizations {
   String get storage => '存储';
 
   @override
-  String get colorScheme => 'Color Scheme';
+  String get colorScheme => '颜色预览';
 
   @override
   String get about => '关于';
 
   @override
   String get colorSchemeInspectorTitle => 'Material 生成色彩角色';
+
+  @override
+  String get skillsColorTokensTitle => 'SkillsGo 语义颜色';
+
+  @override
+  String get skillsColorTokensDescription =>
+      '由 Radix Sand 色阶构建、采用 Primer 语义组织的产品颜色；Folder 是独立的空间层级。';
 
   @override
   String get colorSchemeInspectorDescription =>
@@ -912,13 +919,34 @@ class AppLocalizationsZh extends AppLocalizations {
   String get privacySummary => '你的搜索记录不会被保存，SkillsGo 也不会保留命令日志。';
 
   @override
-  String get folderColorTheme => '选择主题色';
+  String get personalizationTheme => '主题';
+
+  @override
+  String get folderColorTheme => '主题色';
 
   @override
   String get folderColorThemeDescription => '挑一个喜欢的颜色，SkillsGo 会自动生成协调的界面配色。';
 
   @override
-  String get appearanceMode => '外观模式';
+  String get brandNameNeteaseCloudMusic => '网易云音乐';
+
+  @override
+  String get brandNameRaspberryPi => '树莓派';
+
+  @override
+  String get brandNameChinaEasternAirlines => '中国东方航空';
+
+  @override
+  String get brandNameNvidia => '英伟达';
+
+  @override
+  String get brandNameTaobao => '淘宝';
+
+  @override
+  String get brandNameBitcoin => '比特币';
+
+  @override
+  String get appearanceMode => '模式';
 
   @override
   String get appearanceModeDescription => '跟随系统外观，或始终使用浅色或深色主题。';
@@ -931,6 +959,45 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get darkMode => '深色';
+
+  @override
+  String get wallpaper => '壁纸';
+
+  @override
+  String get wallpaperDescription => '选择一张天体背景，设置后会立即显示在 Folder 后方。';
+
+  @override
+  String get wallpaperSun => '太阳';
+
+  @override
+  String get wallpaperMercury => '水星';
+
+  @override
+  String get wallpaperVenus => '金星';
+
+  @override
+  String get wallpaperEarth => '地球';
+
+  @override
+  String get wallpaperMars => '火星';
+
+  @override
+  String get wallpaperJupiter => '木星';
+
+  @override
+  String get wallpaperSaturn => '土星';
+
+  @override
+  String get wallpaperUranus => '天王星';
+
+  @override
+  String get wallpaperNeptune => '海王星';
+
+  @override
+  String get wallpaperPluto => '冥王星';
+
+  @override
+  String get wallpaperMoon => '月球';
 
   @override
   String folderThemeChoice(String theme) {

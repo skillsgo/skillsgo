@@ -1,10 +1,36 @@
 /*
- * [INPUT]: Depends on Flutter Material primitives and SkillsGo brand colors.
- * [OUTPUT]: Provides reusable native desktop buttons including the primary capsule action, cards, dialogs, fields, alerts, progress, toggles, dividers, and tooltips.
+ * [INPUT]: Depends on Flutter Material primitives and SkillsGo semantic component tokens.
+ * [OUTPUT]: Provides reusable native desktop buttons including the primary capsule action, cards, dialogs, fields, alerts, skeleton placeholders, progress, toggles, dividers, and tooltips.
  * [POS]: Serves as the Material-only component layer between product screens and Flutter widgets.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
+
+import 'design_system/skills_component_tokens.dart';
+
+class SkillsSkeletonBox extends StatelessWidget {
+  const SkillsSkeletonBox({
+    super.key,
+    required this.height,
+    this.width,
+    this.borderRadius = 8,
+  });
+
+  final double height;
+  final double? width;
+  final double borderRadius;
+
+  @override
+  Widget build(BuildContext context) => ExcludeSemantics(
+    child: DecoratedBox(
+      decoration: BoxDecoration(
+        color: context.skillsComponents.cardHover,
+        borderRadius: BorderRadius.circular(borderRadius),
+      ),
+      child: SizedBox(width: width, height: height),
+    ),
+  );
+}
 
 enum SkillsButtonSize { sm, regular }
 
@@ -30,15 +56,30 @@ class PrimaryCapsuleButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
+    final components = context.skillsComponents;
     return FilledButton(
       onPressed: busy ? null : onPressed,
-      style: FilledButton.styleFrom(
-        minimumSize: Size(0, height),
-        padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-        backgroundColor: scheme.primary,
-        foregroundColor: scheme.onPrimary,
-        shape: const StadiumBorder(),
+      style: ButtonStyle(
+        minimumSize: WidgetStatePropertyAll(Size(0, height)),
+        padding: WidgetStatePropertyAll(
+          EdgeInsets.symmetric(horizontal: horizontalPadding),
+        ),
+        backgroundColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.disabled)) {
+            return components.controlDisabled;
+          }
+          if (states.contains(WidgetState.hovered) ||
+              states.contains(WidgetState.pressed)) {
+            return components.primaryHover;
+          }
+          return components.primaryRest;
+        }),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.disabled)
+              ? components.controlForegroundDisabled
+              : components.primaryForeground,
+        ),
+        shape: const WidgetStatePropertyAll(StadiumBorder()),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
       child: busy
@@ -125,6 +166,7 @@ class SkillsButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final components = context.skillsComponents;
     final callback = enabled ? onPressed : null;
     final compact = size == SkillsButtonSize.sm;
     final style = ButtonStyle(
@@ -139,6 +181,40 @@ class SkillsButton extends StatelessWidget {
       shape: WidgetStatePropertyAll(
         RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
       ),
+      foregroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return components.controlForegroundDisabled;
+        }
+        return _variant == _SkillsButtonVariant.primary
+            ? components.primaryForeground
+            : components.controlForeground;
+      }),
+      backgroundColor: WidgetStateProperty.resolveWith((states) {
+        if (states.contains(WidgetState.disabled)) {
+          return components.controlDisabled;
+        }
+        if (backgroundColor != null) return backgroundColor;
+        if (_variant == _SkillsButtonVariant.primary) {
+          return states.contains(WidgetState.hovered) ||
+                  states.contains(WidgetState.pressed)
+              ? components.primaryHover
+              : components.primaryRest;
+        }
+        if (_variant == _SkillsButtonVariant.outline ||
+            _variant == _SkillsButtonVariant.ghost) {
+          if (states.contains(WidgetState.pressed)) {
+            return components.controlActive;
+          }
+          if (states.contains(WidgetState.hovered)) {
+            return components.controlHover;
+          }
+          return Colors.transparent;
+        }
+        return null;
+      }),
+      side: _variant == _SkillsButtonVariant.outline
+          ? WidgetStatePropertyAll(BorderSide(color: components.controlBorder))
+          : null,
     );
     final rawContent = child ?? const SizedBox.shrink();
     final content = leading == null
@@ -172,11 +248,15 @@ class SkillsButton extends StatelessWidget {
       _SkillsButtonVariant.destructive => FilledButton(
         onPressed: callback,
         style: style.copyWith(
-          backgroundColor: WidgetStatePropertyAll(
-            Theme.of(context).colorScheme.error,
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.disabled)
+                ? components.controlDisabled
+                : components.statusDangerSolid,
           ),
-          foregroundColor: WidgetStatePropertyAll(
-            Theme.of(context).colorScheme.onError,
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.disabled)
+                ? components.controlForegroundDisabled
+                : components.statusDangerForeground,
           ),
         ),
         child: content,
@@ -216,10 +296,12 @@ class SkillsCard extends StatelessWidget {
     child: Card(
       margin: EdgeInsets.zero,
       elevation: 0,
-      color:
-          backgroundColor ?? Theme.of(context).colorScheme.surfaceContainerHigh,
+      color: backgroundColor ?? context.skillsComponents.cardRest,
       surfaceTintColor: Colors.transparent,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: context.skillsComponents.cardBorder),
+      ),
       child: Padding(
         padding: padding ?? const EdgeInsets.all(20),
         child: Row(
@@ -311,6 +393,18 @@ class SkillsCheckbox extends StatelessWidget {
           : null,
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+      fillColor: WidgetStateProperty.resolveWith((states) {
+        final components = context.skillsComponents;
+        if (states.contains(WidgetState.disabled)) {
+          return components.controlDisabled;
+        }
+        if (states.contains(WidgetState.selected)) {
+          return components.primaryRest;
+        }
+        return components.controlRest;
+      }),
+      checkColor: context.skillsComponents.primaryForeground,
+      side: BorderSide(color: context.skillsComponents.controlBorder),
     );
     if (label == null && sublabel == null) {
       return SizedBox.square(dimension: 24, child: Center(child: checkbox));
@@ -369,10 +463,14 @@ class SkillsAlert extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final destructive = _variant == _SkillsAlertVariant.destructive;
-    final scheme = Theme.of(context).colorScheme;
-    final accent = destructive ? scheme.error : scheme.primary;
+    final foreground = destructive
+        ? context.skillsComponents.statusDanger
+        : context.skillsComponents.statusAccent;
+    final container = destructive
+        ? context.skillsComponents.statusDangerContainer
+        : context.skillsComponents.statusAccentContainer;
     return Material(
-      color: accent.withValues(alpha: .1),
+      color: container,
       borderRadius: BorderRadius.circular(12),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -381,7 +479,7 @@ class SkillsAlert extends StatelessWidget {
           children: [
             if (icon != null) ...[
               IconTheme(
-                data: IconThemeData(color: accent),
+                data: IconThemeData(color: foreground),
                 child: icon!,
               ),
               const SizedBox(width: 10),
@@ -393,7 +491,7 @@ class SkillsAlert extends StatelessWidget {
                   if (title != null)
                     DefaultTextStyle.merge(
                       style: TextStyle(
-                        color: accent,
+                        color: foreground,
                         fontWeight: FontWeight.w600,
                       ),
                       child: title!,
@@ -448,7 +546,23 @@ class SkillsInput extends StatelessWidget {
       hintStyle: placeholderStyle,
       prefixIcon: leading,
       isDense: true,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+      filled: true,
+      fillColor: context.skillsComponents.controlRest,
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: context.skillsComponents.controlBorder),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(
+          color: context.skillsComponents.focusRing,
+          width: context.skillsComponents.focusRingWidth,
+        ),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: context.skillsComponents.controlDisabled),
+      ),
     ),
   );
 }
@@ -491,7 +605,15 @@ class SkillsSwitch extends StatelessWidget {
             ],
           ),
         ),
-        Switch(value: value, onChanged: enabled ? onChanged : null),
+        Switch(
+          value: value,
+          onChanged: enabled ? onChanged : null,
+          activeTrackColor: context.skillsComponents.primaryRest,
+          inactiveTrackColor: context.skillsComponents.controlRest,
+          trackOutlineColor: WidgetStatePropertyAll(
+            context.skillsComponents.controlBorder,
+          ),
+        ),
       ],
     ),
   );
@@ -519,6 +641,7 @@ Future<T?> showSkillsDialog<T>({
 }) => showDialog<T>(
   context: context,
   barrierDismissible: barrierDismissible,
+  barrierColor: context.skillsComponents.overlayBackdrop,
   builder: builder,
 );
 
@@ -541,9 +664,12 @@ class SkillsDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Dialog(
-    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHigh,
+    backgroundColor: context.skillsComponents.overlay,
     surfaceTintColor: Colors.transparent,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(16),
+      side: BorderSide(color: context.skillsComponents.overlayBorder),
+    ),
     child: ConstrainedBox(
       constraints: constraints ?? const BoxConstraints(maxWidth: 720),
       child: Padding(

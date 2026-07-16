@@ -1,67 +1,55 @@
 /*
- * [INPUT]: Depends on SkillsGateway discovery models, localized copy, Flutter Material rendering, native components, and the shared installation MenuAnchor.
- * [OUTPUT]: Provides SkillsGo tokens and reusable branded backgrounds, controls, Hub-image-backed discovery cards, anchored installation actions, status elements, and viewport-safe empty states.
- * [POS]: Serves as the thin Burrow-inspired presentation layer composed from native Flutter Material behavior.
+ * [INPUT]: Depends on SkillsGateway discovery models, localized copy, the SkillsGo design-system interface, Flutter Material rendering, the bundled solar-starfield background asset, native components, and the shared installation MenuAnchor.
+ * [OUTPUT]: Exports SkillsGo theme and semantic color interfaces and provides the full-window photographic background behind Folder, typography/status tokens, controls, Hub-image-backed discovery cards, anchored installation actions, status elements, and viewport-safe empty states.
+ * [POS]: Serves as the thin branded presentation layer over the SkillsGo design system and native Flutter Material behavior.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
 
 import '../domain/skills_gateway.dart';
 import '../l10n/app_localizations.dart';
+import 'design_system/skills_color_tokens.dart';
+import 'design_system/skills_component_tokens.dart';
 import 'install_location_popover.dart';
 import 'native_components.dart';
 
-ThemeData buildSkillsTheme(
-  Color seed, {
-  Brightness brightness = Brightness.dark,
-}) {
-  final scheme = ColorScheme.fromSeed(
-    seedColor: seed,
-    brightness: brightness,
-    dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
-  );
-  return ThemeData.from(colorScheme: scheme, useMaterial3: true).copyWith(
-    textTheme: ThemeData(brightness: brightness).textTheme.apply(
-      fontFamily: SkillsTokens.sansFamily,
-      bodyColor: scheme.onSurface,
-      displayColor: scheme.onSurface,
-    ),
-    scaffoldBackgroundColor: scheme.surface,
-    dividerColor: scheme.outlineVariant,
-  );
-}
+export 'design_system/skills_color_tokens.dart';
+export 'design_system/skills_component_tokens.dart';
+export 'design_system/skills_theme.dart';
 
 abstract final class SkillsTokens {
-  static const nearBlack = Color(0xFF0B0B0D);
-  static const warmBlack = Color(0xFF17130F);
-  static const cream = Color(0xFFF3ECDD);
-  static const espresso = Color(0xFF241B12);
-  static const green = Color(0xFF57D58E);
-  static const teal = Color(0xFF35C2A5);
-  static const violet = Color(0xFF8E84F0);
-  static const gold = Color(0xFFE6A93C);
-  static const amber = Color(0xFFF0B24A);
-  static const orange = Color(0xFFF2894E);
-  static const blue = Color(0xFF5AA8F0);
-  static const red = Color(0xFFF0604E);
-  static const textPrimary = Colors.white;
-  static const textSecondary = Color(0x9EFFFFFF);
-  static const textTertiary = Color(0x66FFFFFF);
-  static const hairline = Color(0x16FFFFFF);
-  static const card = Color(0x0EFFFFFF);
-  static const cardHover = Color(0x1AFFFFFF);
   static const sansFamily = '.AppleSystemUIFont';
   static const monoFamily = 'SF Mono';
   static const serifFamily = 'New York';
 }
 
 class SkillsBackground extends StatelessWidget {
-  const SkillsBackground({super.key, required this.child});
+  const SkillsBackground({
+    super.key,
+    required this.wallpaper,
+    required this.child,
+  });
+  final AppWallpaper wallpaper;
   final Widget child;
 
   @override
-  Widget build(BuildContext context) =>
-      ColoredBox(color: Theme.of(context).colorScheme.surface, child: child);
+  Widget build(BuildContext context) => Stack(
+    fit: StackFit.expand,
+    children: [
+      Image.asset(
+        key: const Key('app-wallpaper'),
+        wallpaper.assetPath,
+        fit: BoxFit.fill,
+        excludeFromSemantics: true,
+      ),
+      child,
+    ],
+  );
+}
+
+extension AppWallpaperAsset on AppWallpaper {
+  String get assetPath =>
+      'assets/backgrounds/${this == AppWallpaper.sun ? 'solar' : name}-starfield.png';
 }
 
 extension SkillsColorRoles on ColorScheme {
@@ -124,10 +112,24 @@ class StatusChip extends StatelessWidget {
   Widget build(BuildContext context) {
     final resolvedColor =
         color ?? Theme.of(context).colorScheme.onSurfaceVariant;
+    final components = context.skillsComponents;
+    final containerColor = switch (resolvedColor) {
+      final value when value == components.statusAccent =>
+        components.statusAccentContainer,
+      final value when value == components.statusSuccess =>
+        components.statusSuccessContainer,
+      final value when value == components.statusAttention =>
+        components.statusAttentionContainer,
+      final value when value == components.statusSevere =>
+        components.statusSevereContainer,
+      final value when value == components.statusDanger =>
+        components.statusDangerContainer,
+      _ => resolvedColor.withValues(alpha: .14),
+    };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
       decoration: BoxDecoration(
-        color: resolvedColor.withValues(alpha: .14),
+        color: containerColor,
         borderRadius: BorderRadius.circular(999),
       ),
       child: Text(
@@ -147,8 +149,10 @@ class SkillTrustChip extends StatelessWidget {
   final SkillTrustLevel trust;
 
   @override
-  Widget build(BuildContext context) =>
-      StatusChip(label: _trustLabel(context, trust), color: _trustColor(trust));
+  Widget build(BuildContext context) => StatusChip(
+    label: _trustLabel(context, trust),
+    color: _trustColor(context, trust),
+  );
 }
 
 class SkillRiskChip extends StatelessWidget {
@@ -156,8 +160,10 @@ class SkillRiskChip extends StatelessWidget {
   final SkillRiskAssessment risk;
 
   @override
-  Widget build(BuildContext context) =>
-      StatusChip(label: _riskLabel(context, risk), color: _riskColor(risk));
+  Widget build(BuildContext context) => StatusChip(
+    label: _riskLabel(context, risk),
+    color: _riskColor(context, risk),
+  );
 }
 
 class SecondaryCapsuleButton extends StatelessWidget {
@@ -224,6 +230,7 @@ class SkillSearchField extends StatelessWidget {
           animation: Listenable.merge([controller, focusNode]),
           builder: (context, _) {
             final scheme = Theme.of(context).colorScheme;
+            final components = context.skillsComponents;
             final value = controller.value;
             final foreground = active
                 ? scheme.onPrimaryContainer
@@ -235,7 +242,7 @@ class SkillSearchField extends StatelessWidget {
             final border = OutlineInputBorder(
               borderRadius: radius,
               borderSide: BorderSide(
-                color: active ? Colors.transparent : scheme.outlineVariant,
+                color: active ? Colors.transparent : components.controlBorder,
               ),
             );
             return AnimatedContainer(
@@ -271,8 +278,8 @@ class SkillSearchField extends StatelessWidget {
                   isDense: true,
                   filled: true,
                   fillColor: active
-                      ? scheme.primaryContainer
-                      : scheme.surfaceContainerHigh,
+                      ? components.searchActive
+                      : components.searchRest,
                   hintText: l10n.searchSkills,
                   hintStyle: TextStyle(
                     color: scheme.textTertiary,
@@ -315,7 +322,9 @@ class SkillSearchField extends StatelessWidget {
                   focusedBorder: OutlineInputBorder(
                     borderRadius: radius,
                     borderSide: BorderSide(
-                      color: active ? scheme.primary : scheme.outline,
+                      color: active
+                          ? components.focusRing
+                          : components.controlBorder,
                     ),
                   ),
                 ),
@@ -363,12 +372,16 @@ class _SkillCardState extends State<SkillCard> {
         duration: duration,
         builder: (context, progress, _) {
           final scheme = Theme.of(context).colorScheme;
+          final components = context.skillsComponents;
           return Card(
             margin: EdgeInsets.zero,
-            elevation: 4 * progress,
-            shadowColor: Colors.black.withValues(alpha: .34),
+            elevation: 0,
             surfaceTintColor: Colors.transparent,
-            color: Color.lerp(scheme.card, scheme.cardHover, progress),
+            color: Color.lerp(
+              components.cardRest,
+              components.cardHover,
+              progress,
+            ),
             clipBehavior: Clip.antiAlias,
             shape: RoundedRectangleBorder(borderRadius: radius),
             child: Semantics(
@@ -455,10 +468,10 @@ class _SkillCardState extends State<SkillCard> {
                               label: l10n.install,
                               height: 28,
                               horizontalPadding: 9,
-                                  labelStyle: const TextStyle(
-                                    fontSize: 12,
-                                    fontWeight: FontWeight.w400,
-                                  ),
+                              labelStyle: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w400,
+                              ),
                               onPressed: () => widget.onInstall(present),
                             ),
                           ),
@@ -583,13 +596,13 @@ class SkillGlyph extends StatelessWidget {
     height: 42,
     alignment: Alignment.center,
     decoration: BoxDecoration(
-      color: SkillsTokens.green.withValues(alpha: .14),
+      color: context.skillsComponents.statusSuccessContainer,
       borderRadius: BorderRadius.circular(13),
     ),
     child: Text(
       name.isEmpty ? '?' : name.characters.first.toUpperCase(),
-      style: const TextStyle(
-        color: SkillsTokens.green,
+      style: TextStyle(
+        color: context.skillsComponents.statusSuccess,
         fontWeight: FontWeight.w800,
         fontSize: 17,
       ),
@@ -676,13 +689,16 @@ String _trustLabel(BuildContext context, SkillTrustLevel trust) {
   };
 }
 
-Color _trustColor(SkillTrustLevel trust) => switch (trust) {
-  SkillTrustLevel.unverified => SkillsTokens.textSecondary,
-  SkillTrustLevel.communityVerified => SkillsTokens.blue,
-  SkillTrustLevel.publisherVerified => SkillsTokens.teal,
-  SkillTrustLevel.official => SkillsTokens.green,
-  SkillTrustLevel.warned => SkillsTokens.amber,
-  SkillTrustLevel.delisted => SkillsTokens.red,
+Color _trustColor(
+  BuildContext context,
+  SkillTrustLevel trust,
+) => switch (trust) {
+  SkillTrustLevel.unverified => context.skillsColors.foregroundMuted,
+  SkillTrustLevel.communityVerified => context.skillsComponents.statusAccent,
+  SkillTrustLevel.publisherVerified => context.skillsComponents.statusAccent,
+  SkillTrustLevel.official => context.skillsComponents.statusSuccess,
+  SkillTrustLevel.warned => context.skillsComponents.statusAttention,
+  SkillTrustLevel.delisted => context.skillsComponents.statusDanger,
 };
 
 String _riskLabel(BuildContext context, SkillRiskAssessment risk) {
@@ -696,10 +712,11 @@ String _riskLabel(BuildContext context, SkillRiskAssessment risk) {
   };
 }
 
-Color _riskColor(SkillRiskAssessment risk) => switch (risk) {
-  SkillRiskAssessment.unknown => SkillsTokens.textSecondary,
-  SkillRiskAssessment.low => SkillsTokens.green,
-  SkillRiskAssessment.medium => SkillsTokens.amber,
-  SkillRiskAssessment.high => SkillsTokens.orange,
-  SkillRiskAssessment.critical => SkillsTokens.red,
-};
+Color _riskColor(BuildContext context, SkillRiskAssessment risk) =>
+    switch (risk) {
+      SkillRiskAssessment.unknown => context.skillsColors.foregroundMuted,
+      SkillRiskAssessment.low => context.skillsComponents.statusSuccess,
+      SkillRiskAssessment.medium => context.skillsComponents.statusAttention,
+      SkillRiskAssessment.high => context.skillsComponents.statusSevere,
+      SkillRiskAssessment.critical => context.skillsComponents.statusDanger,
+    };

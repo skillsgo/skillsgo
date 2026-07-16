@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Hub HTTP, the local filesystem, the platform directory picker, SharedPreferences-backed product preferences, and executable process boundaries.
- * [OUTPUT]: Provides production Hub and appearance settings, discovery/detail metadata parsing including installs, repository Stars, source update time, ZIP size and image URLs, managed/external inventory parsing, strict Installation/Update/Target Management/External Adoption machine contracts, Local export, local file inspection, project persistence, Agent inspection, stable CLI availability mapping, typed failures, diagnostics, CLI verification, and Skill operations.
+ * [OUTPUT]: Provides production Hub and typed appearance/wallpaper settings, discovery/detail metadata parsing including installs, repository Stars, source update time, ZIP size and image URLs, managed/external inventory parsing, strict Installation/Update/Target Management/External Adoption machine contracts, Local export, local file inspection, project persistence, Agent inspection, stable CLI availability mapping, typed failures, diagnostics, CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Hub, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -644,6 +644,7 @@ class RealSkillsGateway implements SkillsGateway {
   static const _customCliKey = 'custom_cli_path';
   static const _hubOriginKey = 'hub_origin';
   static const _folderThemeKey = 'folder_theme';
+  static const _wallpaperKey = 'wallpaper';
   static const _themeModeKey = 'theme_mode';
   static const _allowCriticalOverrideKey = 'allow_critical_risk_override';
   static const _addedProjectsKey = 'added_projects_v1';
@@ -855,6 +856,25 @@ class RealSkillsGateway implements SkillsGateway {
     await (await SharedPreferences.getInstance()).setString(
       _folderThemeKey,
       valid ? normalized : '#514532',
+    );
+  }
+
+  @override
+  Future<AppWallpaper> loadWallpaper() async {
+    final saved = (await SharedPreferences.getInstance()).getString(
+      _wallpaperKey,
+    );
+    return AppWallpaper.values.firstWhere(
+      (wallpaper) => wallpaper.name == saved,
+      orElse: () => AppWallpaper.sun,
+    );
+  }
+
+  @override
+  Future<void> saveWallpaper(AppWallpaper wallpaper) async {
+    await (await SharedPreferences.getInstance()).setString(
+      _wallpaperKey,
+      wallpaper.name,
     );
   }
 

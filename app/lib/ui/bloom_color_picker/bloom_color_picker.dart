@@ -497,13 +497,6 @@ class _BloomColorPickerState extends State<BloomColorPicker>
                 shape: BoxShape.circle,
                 color: _currentColor,
                 border: Border.all(color: Colors.white, width: 3.0),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.08),
-                    blurRadius: 8,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
               ),
             ),
           ),
@@ -571,18 +564,6 @@ class _BloomColorPickerState extends State<BloomColorPicker>
             decoration: BoxDecoration(
               color: widget.style.pillBackgroundColor,
               borderRadius: BorderRadius.circular(closedSize / 2),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.08),
-                  blurRadius: 12,
-                  offset: const Offset(0, 4),
-                ),
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.04),
-                  blurRadius: 2,
-                  offset: const Offset(0, 1),
-                ),
-              ],
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
@@ -683,15 +664,11 @@ class _BloomColorPickerState extends State<BloomColorPicker>
       ),
     );
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children:
-            widget.style.alignment == BloomColorPickerAlignment.circleRight
-            ? [pillWidget, circleWidget]
-            : [circleWidget, pillWidget],
-      ),
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: widget.style.alignment == BloomColorPickerAlignment.circleRight
+          ? [pillWidget, circleWidget]
+          : [circleWidget, pillWidget],
     );
   }
 

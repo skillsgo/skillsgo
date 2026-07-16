@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Receives localized rail items, selected values, destination content, the active Material color scheme, and reduced-motion preferences.
+ * [INPUT]: Receives localized rail items, selected values, destination content, SkillsGo component tokens, and reduced-motion preferences.
  * [OUTPUT]: Renders the shared theme-tinted glass desktop side rail with accessible, stateful selection motion.
  * [POS]: Defines the reusable nested-navigation surface shared by Discover, Library, and Settings.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -151,6 +151,7 @@ class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
+    final components = context.skillsComponents;
     final contentHeight = widget.items.fold<double>(
       0,
       (height, item) =>
@@ -177,7 +178,7 @@ class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
             filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
             child: DecoratedBox(
               decoration: BoxDecoration(
-                color: scheme.surfaceContainerHigh.withValues(alpha: .82),
+                color: components.navigationRest.withValues(alpha: .88),
                 borderRadius: BorderRadius.circular(24),
               ),
               child: Padding(
@@ -211,7 +212,7 @@ class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
                                       height: _itemExtent - 4,
                                       child: DecoratedBox(
                                         decoration: BoxDecoration(
-                                          color: scheme.inverseSurface,
+                                          color: components.navigationSelected,
                                           borderRadius: BorderRadius.all(
                                             Radius.circular(999),
                                           ),
@@ -320,7 +321,7 @@ class _RailButton<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final foreground = selected
-        ? scheme.onInverseSurface
+        ? context.skillsComponents.navigationSelectedForeground
         : scheme.onSurfaceVariant;
     return Semantics(
       selected: selected,
