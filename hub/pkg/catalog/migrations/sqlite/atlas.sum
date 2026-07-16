@@ -1,4 +1,5 @@
-h1:TABrsuthsRFdtK4s2mU3nK6j0ODjDm8q/BQmO2ndiag=
-202607160001_initial.sql h1:ukSWGQpwrpG/Ii1tHtPbIws0Uzn8dLT+02DJvKk/J2o=
-202607160002_search_triggers.sql h1:Bmn9TpDf3npKNP01wAUQIb+0DFy9GR74cF7QEYyd5Dg=
-202607160003_product_metadata.sql h1:rml64C3dFYotzAvdZt1gZn/6NrHBRPkDQqjPj7539F8=
+h1:lnF02hIwnlFDAHkLGQlFw5dX12V3iJ0py0NilPBxufI=
+202607160001_initial.sql h1:mr4VHQZ8tple0qp/nRJoYo6GZX0/rG638JnIGQcT8Fk=
+202607160002_search_triggers.sql h1:bRGTjHGs5sDObXWY0VX3nRovBGe1ZTrjrTZT6VJfQnY=
+202607160003_product_metadata.sql h1:1u5ZDb0deuUXih4mhvwLmvHV42QZfhgPVWnxq8brj7s=
+202607170001_rename_coordinate_to_skill_id.sql h1:bPcAy5mQInJNBhMlZNRhhuLucUZeb2NmxmEdJne2mQk=
