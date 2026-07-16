@@ -12,9 +12,9 @@ import (
 	"testing"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
@@ -509,7 +509,7 @@ func TestRiskPolicyBlocksMutationUntilExplicitConfirmation(t *testing.T) {
 		}),
 	)
 	entry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/danger", "v1", "danger")
-	entry.Receipt.Risk = registry.RiskHigh
+	entry.Receipt.Risk = hub.RiskHigh
 	request := Request{
 		Source: entry.Receipt.Coordinate, RequestedRef: "main", Name: "danger",
 		Targets: []TargetRequest{{Scope: install.ScopeUser, Agent: "test-agent", Mode: install.ModeSymlink}},
@@ -528,7 +528,7 @@ func TestRiskPolicyBlocksMutationUntilExplicitConfirmation(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ActionCreate, confirmed.Targets[0].Action)
 
-	entry.Receipt.Risk = registry.RiskCritical
+	entry.Receipt.Risk = hub.RiskCritical
 	critical, err := Build(catalog, entry, storeRoot, request)
 	require.NoError(t, err)
 	require.Equal(t, ActionRisk, critical.Targets[0].Action)
@@ -574,7 +574,7 @@ func testEntryVersion(t *testing.T, root, coordinate, version, content string) *
 		Root: entryRoot, Artifact: artifact,
 		Receipt: store.Receipt{
 			Coordinate: coordinate, Version: version, SHA256: "sha256-" + version,
-			ContentDigest: "sha256:content-" + version, Risk: registry.RiskLow,
+			ContentDigest: "sha256:content-" + version, Risk: hub.RiskLow,
 		},
 	}
 	receipt, err := yaml.Marshal(entry.Receipt)

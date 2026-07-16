@@ -44,7 +44,7 @@ func TestParseGitHubTreeURL(t *testing.T) {
 	}
 }
 
-// This covers the first Registry input subset aligned with skills-sh source-parser tests.
+// This covers the first Hub input subset aligned with skills-sh source-parser tests.
 func TestSkillsSHCompatibilityGitHubDotGitURL(t *testing.T) {
 	reference, err := Parse("https://github.com/owner/repo.git")
 	if err != nil {

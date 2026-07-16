@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on validated Skill Coordinates, immutable Registry or Local Skill artifacts, ZIP archives, and filesystem containment rules.
+ * [INPUT]: Depends on validated Skill Coordinates, immutable Hub or Local Skill artifacts, ZIP archives, and filesystem containment rules.
  * [OUTPUT]: Provides confined immutable Store put/get operations, safe extraction, immutable-content checks, provenance-aware receipts, and refreshable assessment metadata.
  * [POS]: Serves as the local Content-addressed Store boundary beneath installation and inventory flows.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -18,7 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"gopkg.in/yaml.v3"
 )
@@ -26,26 +26,26 @@ import (
 var ErrNotFound = fmt.Errorf("Store 条目不存在")
 
 type Receipt struct {
-	Coordinate    string          `yaml:"coordinate"`
-	Version       string          `yaml:"version"`
-	Name          string          `yaml:"name,omitempty"`
-	Provenance    Provenance      `yaml:"provenance,omitempty"`
-	SHA256        string          `yaml:"sha256"`
-	ContentDigest string          `yaml:"contentDigest"`
-	Risk          registry.Risk   `yaml:"risk"`
-	Origin        registry.Origin `yaml:"origin"`
+	Coordinate    string     `yaml:"coordinate"`
+	Version       string     `yaml:"version"`
+	Name          string     `yaml:"name,omitempty"`
+	Provenance    Provenance `yaml:"provenance,omitempty"`
+	SHA256        string     `yaml:"sha256"`
+	ContentDigest string     `yaml:"contentDigest"`
+	Risk          hub.Risk   `yaml:"risk"`
+	Origin        hub.Origin `yaml:"origin"`
 }
 
 type Provenance string
 
 const (
-	ProvenanceRegistry Provenance = "registry"
-	ProvenanceLocal    Provenance = "local"
+	ProvenanceHub   Provenance = "hub"
+	ProvenanceLocal Provenance = "local"
 )
 
 func (receipt Receipt) EffectiveProvenance() Provenance {
 	if receipt.Provenance == "" {
-		return ProvenanceRegistry
+		return ProvenanceHub
 	}
 	return receipt.Provenance
 }
@@ -85,7 +85,7 @@ func (s Store) Get(coordinate, version string) (*Entry, error) {
 		}
 		return nil, fmt.Errorf("Store 条目缺少有效 SKILL.md: %w", err)
 	}
-	if err := registry.VerifyContentDirectory(artifact, receipt.ContentDigest); err != nil {
+	if err := hub.VerifyContentDirectory(artifact, receipt.ContentDigest); err != nil {
 		return nil, fmt.Errorf("Store artifact integrity check failed: %w", err)
 	}
 	return &Entry{Root: root, Artifact: artifact, Receipt: receipt}, nil
@@ -110,18 +110,18 @@ func (s Store) entryRoot(coordinate, version string) (string, error) {
 	return candidate, nil
 }
 
-func (s Store) Put(artifact *registry.Artifact) (*Entry, error) {
+func (s Store) Put(artifact *hub.Artifact) (*Entry, error) {
 	if !artifact.Info.Risk.Valid() || !strings.HasPrefix(artifact.Info.ContentDigest, "sha256:") {
-		return nil, fmt.Errorf("Registry artifact is missing immutable assessment metadata")
+		return nil, fmt.Errorf("Hub artifact is missing immutable assessment metadata")
 	}
-	if err := registry.VerifyContentDigest(
+	if err := hub.VerifyContentDigest(
 		artifact.ZIP, artifact.Coordinate, artifact.Info.Version, artifact.Info.ContentDigest,
 	); err != nil {
 		return nil, err
 	}
 	receipt := Receipt{
 		Coordinate: artifact.Coordinate, Version: artifact.Info.Version,
-		Provenance: ProvenanceRegistry, ContentDigest: artifact.Info.ContentDigest,
+		Provenance: ProvenanceHub, ContentDigest: artifact.Info.ContentDigest,
 		Risk: artifact.Info.Risk, Origin: artifact.Info.Origin,
 	}
 	hash := sha256.Sum256(artifact.ZIP)
@@ -172,9 +172,9 @@ func (s Store) Put(artifact *registry.Artifact) (*Entry, error) {
 
 // RefreshAssessment updates risk metadata for an already cached immutable
 // artifact without changing its content, provenance, or files.
-func (s Store) RefreshAssessment(coordinate, version string, info registry.Info) (*Entry, error) {
+func (s Store) RefreshAssessment(coordinate, version string, info hub.Info) (*Entry, error) {
 	if info.Version != version || !info.Risk.Valid() || !strings.HasPrefix(info.ContentDigest, "sha256:") {
-		return nil, fmt.Errorf("Registry returned incomplete assessed Info for %s@%s", coordinate, version)
+		return nil, fmt.Errorf("Hub returned incomplete assessed Info for %s@%s", coordinate, version)
 	}
 	entry, err := s.Get(coordinate, version)
 	if err != nil {

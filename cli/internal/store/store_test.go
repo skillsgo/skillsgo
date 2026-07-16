@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Exercises Store put/get with immutable Registry and Local Skill artifacts, conflicting archives, explicit exports, and hostile identities.
- * [OUTPUT]: Specifies idempotent Registry/local storage, private export, risk-only assessment refresh, local-tamper/content/archive digest conflicts, ZIP-slip defense, root containment, and exact retrieval.
+ * [INPUT]: Exercises Store put/get with immutable Hub and Local Skill artifacts, conflicting archives, explicit exports, and hostile identities.
+ * [OUTPUT]: Specifies idempotent Hub/local storage, private export, risk-only assessment refresh, local-tamper/content/archive digest conflicts, ZIP-slip defense, root containment, and exact retrieval.
  * [POS]: Serves as behavior coverage for the Content-addressed Store boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,7 +15,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 )
 
 func TestPutExtractsArtifactAndIsIdempotent(t *testing.T) {
@@ -56,7 +56,7 @@ func TestImportAndExportLocalSkillPreservesPrivateContent(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(sourceRoot, "references", "notes.md"), []byte("secret"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	before, err := registry.ContentDirectoryDigest(sourceRoot)
+	before, err := hub.ContentDirectoryDigest(sourceRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestImportAndExportLocalSkillPreservesPrivateContent(t *testing.T) {
 	if _, err := storage.ImportLocal(sourceRoot, "private-demo"); err != nil {
 		t.Fatalf("content-identical Local import must be idempotent across file timestamps: %v", err)
 	}
-	after, err := registry.ContentDirectoryDigest(sourceRoot)
+	after, err := hub.ContentDirectoryDigest(sourceRoot)
 	if err != nil || after != before {
 		t.Fatalf("source content changed during import: %s != %s (%v)", after, before, err)
 	}
@@ -126,23 +126,23 @@ func TestPutRefreshesRiskButRejectsChangedContentIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first.Receipt.Risk != registry.RiskLow {
+	if first.Receipt.Risk != hub.RiskLow {
 		t.Fatalf("unexpected initial risk: %s", first.Receipt.Risk)
 	}
 
-	artifact.Info.Risk = registry.RiskCritical
+	artifact.Info.Risk = hub.RiskCritical
 	refreshed, err := storage.Put(artifact)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if refreshed.Receipt.Risk != registry.RiskCritical {
+	if refreshed.Receipt.Risk != hub.RiskCritical {
 		t.Fatalf("cached assessment was not refreshed: %s", refreshed.Receipt.Risk)
 	}
 	loaded, err := storage.Get(artifact.Coordinate, artifact.Info.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if loaded.Receipt.Risk != registry.RiskCritical {
+	if loaded.Receipt.Risk != hub.RiskCritical {
 		t.Fatalf("refreshed assessment was not persisted: %s", loaded.Receipt.Risk)
 	}
 
@@ -201,12 +201,12 @@ func TestGetRejectsLocallyModifiedStoreArtifact(t *testing.T) {
 func TestRefreshAssessmentRejectsChangedImmutableOrigin(t *testing.T) {
 	storage := Store{Root: t.TempDir()}
 	artifact := testArtifact(t, map[string]string{"SKILL.md": "demo"})
-	artifact.Info.Origin = registry.Origin{VCS: "git", URL: "https://github.com/example/repo", CommitSHA: "one", TreeSHA: "tree-one"}
+	artifact.Info.Origin = hub.Origin{VCS: "git", URL: "https://github.com/example/repo", CommitSHA: "one", TreeSHA: "tree-one"}
 	if _, err := storage.Put(artifact); err != nil {
 		t.Fatal(err)
 	}
 	changed := artifact.Info
-	changed.Risk = registry.RiskHigh
+	changed.Risk = hub.RiskHigh
 	changed.Origin.CommitSHA = "two"
 	if _, err := storage.RefreshAssessment(artifact.Coordinate, artifact.Info.Version, changed); err == nil {
 		t.Fatal("expected immutable Origin change rejection")
@@ -215,7 +215,7 @@ func TestRefreshAssessmentRejectsChangedImmutableOrigin(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if loaded.Receipt.Risk != registry.RiskLow || loaded.Receipt.Origin.CommitSHA != "one" {
+	if loaded.Receipt.Risk != hub.RiskLow || loaded.Receipt.Origin.CommitSHA != "one" {
 		t.Fatalf("immutable receipt changed after rejected refresh: %#v", loaded.Receipt)
 	}
 }
@@ -223,9 +223,9 @@ func TestRefreshAssessmentRejectsChangedImmutableOrigin(t *testing.T) {
 func TestStoreRejectsCoordinateAndVersionTraversal(t *testing.T) {
 	root := t.TempDir()
 	storage := Store{Root: filepath.Join(root, "store")}
-	for name, mutate := range map[string]func(*registry.Artifact){
-		"coordinate": func(artifact *registry.Artifact) { artifact.Coordinate = "github.com/owner/repo/-/../escape" },
-		"version":    func(artifact *registry.Artifact) { artifact.Info.Version = "../../escape" },
+	for name, mutate := range map[string]func(*hub.Artifact){
+		"coordinate": func(artifact *hub.Artifact) { artifact.Coordinate = "github.com/owner/repo/-/../escape" },
+		"version":    func(artifact *hub.Artifact) { artifact.Info.Version = "../../escape" },
 	} {
 		t.Run(name, func(t *testing.T) {
 			artifact := testArtifact(t, map[string]string{"SKILL.md": "demo"})
@@ -243,18 +243,18 @@ func TestStoreRejectsCoordinateAndVersionTraversal(t *testing.T) {
 	}
 }
 
-func testArtifact(t *testing.T, files map[string]string) *registry.Artifact {
+func testArtifact(t *testing.T, files map[string]string) *hub.Artifact {
 	t.Helper()
 	coordinate, version := "github.com/example/repo/-/skills/demo", "v0.0.0-test"
 	archive := testArchive(t, coordinate, version, files)
-	contentDigest, err := registry.ContentDigest(archive, coordinate, version)
+	contentDigest, err := hub.ContentDigest(archive, coordinate, version)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return &registry.Artifact{
+	return &hub.Artifact{
 		Coordinate: coordinate,
-		Info: registry.Info{
-			Version: version, Risk: registry.RiskLow, ContentDigest: contentDigest,
+		Info: hub.Info{
+			Version: version, Risk: hub.RiskLow, ContentDigest: contentDigest,
 		},
 		Manifest: []byte("name: demo\n"), ZIP: archive,
 	}

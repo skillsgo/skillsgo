@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses command.Execute with exact External Installations, a read-only match Registry, temporary Store state, and hostile filesystem paths.
+ * [INPUT]: Uses command.Execute with exact External Installations, a read-only match Hub, temporary Store state, and hostile filesystem paths.
  * [OUTPUT]: Specifies adoption preflight, confirmed offline Local import, content preservation, provenance, and no publication requests.
  * [POS]: Serves as the public CLI contract coverage for Bring Under Management.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -58,7 +58,7 @@ func TestAdoptImportsUnmatchedExternalAsPrivateLocalWithoutPublishing(t *testing
 	require.NoError(t, err)
 	var output bytes.Buffer
 	require.NoError(t, Execute([]string{
-		"adopt", "--target", string(raw), "--preflight", "--output", "json", "--registry", server.URL,
+		"adopt", "--target", string(raw), "--preflight", "--output", "json", "--hub", server.URL,
 	}, &output, &output))
 	var preflight struct {
 		Phase          string `json:"phase"`
@@ -80,9 +80,9 @@ func TestAdoptImportsUnmatchedExternalAsPrivateLocalWithoutPublishing(t *testing
 	require.NoError(t, err)
 	output.Reset()
 	require.NoError(t, Execute([]string{
-		"adopt", "--target", string(raw), "--output", "json", "--registry", server.URL,
+		"adopt", "--target", string(raw), "--output", "json", "--hub", server.URL,
 	}, &output, &output))
-	require.Equal(t, 1, requestCount, "Local import execution must not contact Registry or publication endpoints")
+	require.Equal(t, 1, requestCount, "Local import execution must not contact Hub or publication endpoints")
 	require.Equal(t, contents, mustReadFile(t, filepath.Join(targetPath, "SKILL.md")))
 	var result struct {
 		Provenance string `json:"provenance"`
@@ -99,7 +99,7 @@ func TestAdoptImportsUnmatchedExternalAsPrivateLocalWithoutPublishing(t *testing
 		"--destination", exportPath, "--output", "json",
 	}, &output, &output))
 	require.FileExists(t, exportPath)
-	require.Equal(t, 1, requestCount, "Local Skill export must not contact Registry")
+	require.Equal(t, 1, requestCount, "Local Skill export must not contact Hub")
 	projectRoot := filepath.Join(root, "project")
 	require.NoError(t, os.MkdirAll(projectRoot, 0o700))
 	additionalTarget, err := json.Marshal(map[string]any{
@@ -110,7 +110,7 @@ func TestAdoptImportsUnmatchedExternalAsPrivateLocalWithoutPublishing(t *testing
 	output.Reset()
 	require.NoError(t, Execute([]string{
 		"add", result.Coordinate, "--skill", "private-demo", "--version", result.Version,
-		"--target", string(additionalTarget), "--preflight", "--output", "json", "--registry", server.URL,
+		"--target", string(additionalTarget), "--preflight", "--output", "json", "--hub", server.URL,
 	}, &output, &output))
 	var installPlan struct {
 		Targets []struct {
@@ -122,9 +122,9 @@ func TestAdoptImportsUnmatchedExternalAsPrivateLocalWithoutPublishing(t *testing
 	output.Reset()
 	require.NoError(t, Execute([]string{
 		"add", result.Coordinate, "--skill", "private-demo", "--version", result.Version,
-		"--target", string(additionalTarget), "--output", "json", "--registry", server.URL,
+		"--target", string(additionalTarget), "--output", "json", "--hub", server.URL,
 	}, &output, &output))
-	require.Equal(t, 1, requestCount, "Local Skill installation must reuse Store without Registry access")
+	require.Equal(t, 1, requestCount, "Local Skill installation must reuse Store without Hub access")
 	require.Equal(t, contents, mustReadFile(t, filepath.Join(projectRoot, ".test-agent", "skills", "private-demo", "SKILL.md")))
 	installations, err := install.ListInstallations(store.DefaultRoot(home), install.InventoryFilter{})
 	require.NoError(t, err)
@@ -167,7 +167,7 @@ func TestAdoptImportsUnmatchedExternalAsPrivateLocalWithoutPublishing(t *testing
 	require.Equal(t, store.ProvenanceLocal, installations[0].Provenance)
 }
 
-func TestAdoptAssociatesOnlyTheReviewedImmutableRegistryMatchWithoutReplacingContent(t *testing.T) {
+func TestAdoptAssociatesOnlyTheReviewedImmutableHubMatchWithoutReplacingContent(t *testing.T) {
 	root := t.TempDir()
 	home := filepath.Join(root, "home")
 	agentHome := filepath.Join(root, "test-agent")
@@ -210,7 +210,7 @@ func TestAdoptAssociatesOnlyTheReviewedImmutableRegistryMatchWithoutReplacingCon
 	raw, err := json.Marshal(target)
 	require.NoError(t, err)
 	var output bytes.Buffer
-	require.NoError(t, Execute([]string{"adopt", "--target", string(raw), "--preflight", "--output", "json", "--registry", server.URL}, &output, &output))
+	require.NoError(t, Execute([]string{"adopt", "--target", string(raw), "--preflight", "--output", "json", "--hub", server.URL}, &output, &output))
 	var preflight struct {
 		StateToken string `json:"stateToken"`
 		Matches    []struct {
@@ -221,17 +221,17 @@ func TestAdoptAssociatesOnlyTheReviewedImmutableRegistryMatchWithoutReplacingCon
 	require.NoError(t, json.Unmarshal(output.Bytes(), &preflight))
 	require.Len(t, preflight.Matches, 1)
 	require.Equal(t, coordinate, preflight.Matches[0].Coordinate)
-	target["action"], target["stateToken"] = "associate-registry", preflight.StateToken
+	target["action"], target["stateToken"] = "associate-hub", preflight.StateToken
 	target["matchCoordinate"], target["matchVersion"] = coordinate, version
 	raw, err = json.Marshal(target)
 	require.NoError(t, err)
 	output.Reset()
-	require.NoError(t, Execute([]string{"adopt", "--target", string(raw), "--output", "json", "--registry", server.URL}, &output, &output))
+	require.NoError(t, Execute([]string{"adopt", "--target", string(raw), "--output", "json", "--hub", server.URL}, &output, &output))
 	require.Equal(t, contents, mustReadFile(t, filepath.Join(targetPath, "SKILL.md")))
 	installations, err := install.ListInstallations(store.DefaultRoot(home), install.InventoryFilter{})
 	require.NoError(t, err)
 	require.Len(t, installations, 1)
-	require.Equal(t, store.ProvenanceRegistry, installations[0].Provenance)
+	require.Equal(t, store.ProvenanceHub, installations[0].Provenance)
 	require.Equal(t, coordinate, installations[0].Coordinate)
 }
 

@@ -9,8 +9,8 @@ package updateplan
 import (
 	"testing"
 
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/stretchr/testify/require"
 )
@@ -32,7 +32,7 @@ func TestDecodeTargetsIsStrictAndPreservesHostilePaths(t *testing.T) {
 
 func TestFixedReferenceRecognizesNonSemverTags(t *testing.T) {
 	receipt := store.Receipt{
-		Origin: registry.Origin{
+		Origin: hub.Origin{
 			Ref:       "refs/tags/release",
 			CommitSHA: "0123456789abcdef",
 		},
@@ -42,7 +42,7 @@ func TestFixedReferenceRecognizesNonSemverTags(t *testing.T) {
 
 func TestFixedReferenceKeepsSemverNamedBranchesMovable(t *testing.T) {
 	receipt := store.Receipt{
-		Origin: registry.Origin{
+		Origin: hub.Origin{
 			Ref:       "refs/heads/v1.2.3",
 			CommitSHA: "0123456789abcdef",
 		},
@@ -52,7 +52,7 @@ func TestFixedReferenceKeepsSemverNamedBranchesMovable(t *testing.T) {
 
 func TestFixedReferenceLetsProjectMoveToADifferentSemverTag(t *testing.T) {
 	receipt := store.Receipt{
-		Origin: registry.Origin{
+		Origin: hub.Origin{
 			Ref:       "refs/tags/v1.2.3",
 			CommitSHA: "0123456789abcdef",
 		},

@@ -11,6 +11,6 @@
 
 ## Architectural Boundary
 
-This module owns physical Installation Target mutation and receipt state. It accepts already resolved target paths and explicit replacement authority; it must not infer user intent, fetch Registry artifacts, localize machine output, or make App policy decisions.
+This module owns physical Installation Target mutation and receipt state. It accepts already resolved target paths and explicit replacement authority; it must not infer user intent, fetch Hub artifacts, localize machine output, or make App policy decisions.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on supported GitHub URL/shorthand syntax, private Local Skill identities, and canonical Skill Coordinate rules.
- * [OUTPUT]: Provides normalized Registry/local references plus reusable path-safe coordinate and single-segment version validation.
- * [POS]: Serves as the CLI source-identity boundary used before Registry and Store access.
+ * [OUTPUT]: Provides normalized Hub/local references plus reusable path-safe coordinate and single-segment version validation.
+ * [POS]: Serves as the CLI source-identity boundary used before Hub and Store access.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package source

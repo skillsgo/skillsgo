@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on add-command flags, the Agent Catalog, Registry client, provenance-aware Store, and the Installation Plan domain module.
- * [OUTPUT]: Resolves Registry or private Local artifacts, adapts repeated strict JSON --target arguments, refreshes cached immutable assessments, and emits stable preflight JSON or streaming NDJSON execution events.
+ * [INPUT]: Depends on add-command flags, the Agent Catalog, Hub client, provenance-aware Store, and the Installation Plan domain module.
+ * [OUTPUT]: Resolves Hub or private Local artifacts, adapts repeated strict JSON --target arguments, refreshes cached immutable assessments, and emits stable preflight JSON or streaming NDJSON execution events.
  * [POS]: Serves as the executable adapter for App-driven explicit multi-location, multi-Agent installation plans.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,9 +13,9 @@ import (
 	"os"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/plan"
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/spf13/cobra"
@@ -51,7 +51,7 @@ func runExplicitInstallationPlan(cmd *cobra.Command, catalog *agent.Catalog, raw
 		return err
 	}
 	storage := store.Store{Root: store.DefaultRoot(home)}
-	entry, err := loadPlanEntry(cmd, storage, options.registryURL, reference)
+	entry, err := loadPlanEntry(cmd, storage, options.hubURL, reference)
 	if err != nil {
 		return err
 	}
@@ -106,7 +106,7 @@ func writePlanExecutionStream(
 	return encoder.Encode(execution)
 }
 
-func loadPlanEntry(cmd *cobra.Command, storage store.Store, registryURL string, reference source.Reference) (*store.Entry, error) {
+func loadPlanEntry(cmd *cobra.Command, storage store.Store, hubURL string, reference source.Reference) (*store.Entry, error) {
 	if source.IsLocalCoordinate(reference.Coordinate) {
 		if reference.Version == "" || reference.Version == "main" {
 			return nil, fmt.Errorf("Local Skill installation requires an immutable local version")
@@ -120,7 +120,7 @@ func loadPlanEntry(cmd *cobra.Command, storage store.Store, registryURL string, 
 		}
 		return entry, nil
 	}
-	client, err := registry.New(registryURL, nil)
+	client, err := hub.New(hubURL, nil)
 	if err != nil {
 		return nil, err
 	}

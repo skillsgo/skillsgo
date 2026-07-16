@@ -17,7 +17,7 @@ import (
 	"path/filepath"
 	"time"
 
-	registryclient "github.com/skillsgo/skillsgo/cli/internal/registry"
+	hubclient "github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"gopkg.in/yaml.v3"
 )
@@ -65,7 +65,7 @@ func AdoptExisting(entry *store.Entry, target Target) error {
 	if !info.IsDir() {
 		return fmt.Errorf("existing target must be a real directory")
 	}
-	if err := registryclient.VerifyContentDirectory(target.Path, entry.Receipt.ContentDigest); err != nil {
+	if err := hubclient.VerifyContentDirectory(target.Path, entry.Receipt.ContentDigest); err != nil {
 		return fmt.Errorf("existing target content does not match reviewed artifact: %w", err)
 	}
 	return writeTargetReceipt(entry.Root, target)

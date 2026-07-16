@@ -1,10 +1,10 @@
 /*
- * [INPUT]: Depends on a configured Registry origin, canonical Skill Coordinates, exact content-match responses, and assessed Info/Manifest/ZIP protocol responses.
- * [OUTPUT]: Provides validated content-identity matching plus immutable artifact fetch and resolution with Registry-bound Risk, Content Digest metadata, and typed HTTP failures.
- * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Registry protocol.
+ * [INPUT]: Depends on a configured Hub origin, canonical Skill Coordinates, exact content-match responses, and assessed Info/Manifest/ZIP protocol responses.
+ * [OUTPUT]: Provides validated content-identity matching plus immutable artifact fetch and resolution with Hub-bound Risk, Content Digest metadata, and typed HTTP failures.
+ * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-package registry
+package hub
 
 import (
 	"context"
@@ -85,13 +85,13 @@ type HTTPError struct {
 }
 
 func (e *HTTPError) Error() string {
-	return fmt.Sprintf("Registry 返回 HTTP %d: %s", e.StatusCode, e.Body)
+	return fmt.Sprintf("Hub 返回 HTTP %d: %s", e.StatusCode, e.Body)
 }
 
 func New(baseURL string, client *http.Client) (*Client, error) {
 	parsed, err := url.Parse(strings.TrimRight(baseURL, "/"))
 	if err != nil || parsed.Scheme == "" || parsed.Host == "" {
-		return nil, fmt.Errorf("无效 Registry URL %q", baseURL)
+		return nil, fmt.Errorf("无效 Hub URL %q", baseURL)
 	}
 	if client == nil {
 		client = &http.Client{Timeout: 5 * time.Minute}
@@ -148,7 +148,7 @@ func (c *Client) MatchContent(ctx context.Context, contentDigest, sourceHint str
 		return nil, err
 	}
 	if response.SchemaVersion != 1 || response.ContentDigest != contentDigest || response.Matches == nil {
-		return nil, fmt.Errorf("Registry returned an invalid content-match response")
+		return nil, fmt.Errorf("Hub returned an invalid content-match response")
 	}
 	seen := map[string]bool{}
 	for _, match := range response.Matches {
@@ -157,7 +157,7 @@ func (c *Client) MatchContent(ctx context.Context, contentDigest, sourceHint str
 			source.ValidateVersion(match.ImmutableVersion) != nil ||
 			match.Name == "" || match.Source == "" || match.CommitSHA == "" || match.TreeSHA == "" ||
 			match.ContentDigest != contentDigest || seen[key] {
-			return nil, fmt.Errorf("Registry returned an invalid content match")
+			return nil, fmt.Errorf("Hub returned an invalid content match")
 		}
 		seen[key] = true
 	}
@@ -166,17 +166,17 @@ func (c *Client) MatchContent(ctx context.Context, contentDigest, sourceHint str
 
 func validateAssessedInfo(coordinate, requestedVersion string, info Info) error {
 	if info.Version == "" || !info.Risk.Valid() || !strings.HasPrefix(info.ContentDigest, "sha256:") {
-		return fmt.Errorf("Registry returned incomplete assessed Info for %s", coordinate)
+		return fmt.Errorf("Hub returned incomplete assessed Info for %s", coordinate)
 	}
 	if err := source.ValidateVersion(info.Version); err != nil {
-		return fmt.Errorf("Registry returned an invalid immutable version for %s: %w", coordinate, err)
+		return fmt.Errorf("Hub returned an invalid immutable version for %s: %w", coordinate, err)
 	}
 	if requestedVersion != "" &&
 		requestedVersion != "main" &&
 		info.Version != requestedVersion &&
 		info.Origin.Ref != "refs/heads/"+requestedVersion {
 		return fmt.Errorf(
-			"Registry resolved %s@%s as unexpected immutable version %s",
+			"Hub resolved %s@%s as unexpected immutable version %s",
 			coordinate, requestedVersion, info.Version,
 		)
 	}
@@ -193,7 +193,7 @@ func (c *Client) getJSON(ctx context.Context, endpoint string, target any) error
 		return err
 	}
 	if err := json.Unmarshal(body, target); err != nil {
-		return fmt.Errorf("解析 Registry 响应: %w", err)
+		return fmt.Errorf("解析 Hub 响应: %w", err)
 	}
 	return nil
 }
@@ -205,7 +205,7 @@ func (c *Client) get(ctx context.Context, endpoint string) ([]byte, error) {
 	}
 	resp, err := c.http.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("请求 Registry: %w", err)
+		return nil, fmt.Errorf("请求 Hub: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {

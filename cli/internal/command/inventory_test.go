@@ -14,9 +14,9 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/stretchr/testify/require"
 )
@@ -71,10 +71,10 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	require.Equal(t, 3, report.SchemaVersion)
 	require.Len(t, report.Entries, 1)
 	entry := report.Entries[0]
-	require.Equal(t, "registry:"+coordinate, entry.Identity)
+	require.Equal(t, "hub:"+coordinate, entry.Identity)
 	require.Equal(t, coordinate, entry.Coordinate)
 	require.Equal(t, "demo", entry.Name)
-	require.Equal(t, "registry", string(entry.Provenance))
+	require.Equal(t, "hub", string(entry.Provenance))
 	require.Equal(t, "unknown", string(entry.Risk))
 	require.Equal(t, []string{"test-agent"}, entry.Agents)
 	require.Equal(t, []string{selectedProject}, entry.Projects)
@@ -197,7 +197,7 @@ func TestInventoryJSONReportsDeclaredTargetWithoutReceipt(t *testing.T) {
 	var report inventoryReport
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &report))
 	require.Len(t, report.Entries, 1)
-	require.Equal(t, "registry:"+coordinate, report.Entries[0].Identity)
+	require.Equal(t, "hub:"+coordinate, report.Entries[0].Identity)
 	require.Equal(t, "receipt-missing", string(report.Entries[0].Health))
 	require.Equal(t, []string{"v3"}, report.Entries[0].Versions)
 	require.Len(t, report.Entries[0].Targets, 1)
@@ -273,7 +273,7 @@ func TestInventoryJSONReportsExternalInstallationsWithoutClaimingOrChangingThem(
 	for index := range report.Entries {
 		entry := &report.Entries[index]
 		switch {
-		case entry.Identity == "registry:"+managedEntry.Receipt.Coordinate:
+		case entry.Identity == "hub:"+managedEntry.Receipt.Coordinate:
 			managedIndex = index
 		case entry.Name == "demo" && entry.Provenance == "external":
 			externalIndex = index
@@ -316,10 +316,10 @@ func commandTestStoreEntry(t *testing.T, storage store.Store, coordinate, versio
 	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{
 		"SKILL.md": "---\nname: demo\ndescription: inventory fixture\n---\n",
 	})
-	entry, err := storage.Put(&registry.Artifact{
+	entry, err := storage.Put(&hub.Artifact{
 		Coordinate: coordinate,
-		Info: registry.Info{
-			Version: version, Risk: registry.RiskLow,
+		Info: hub.Info{
+			Version: version, Risk: hub.RiskLow,
 			ContentDigest: commandTestContentDigest(t, zipData, coordinate, version),
 		},
 		Manifest: []byte("name: demo\ndescription: inventory fixture\n"),

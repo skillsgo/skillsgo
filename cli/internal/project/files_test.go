@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on the project package imports and contracts declared in this file.
+ * [OUTPUT]: Specifies the project package behavior covered by files_test.go.
+ * [POS]: Serves as test coverage for the project package in its renamed SkillsGo Hub or CLI workspace.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package project
 
 import (
@@ -6,8 +12,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
 
@@ -17,7 +23,7 @@ func TestUpsertCreatesAndUpdatesManifestAndLockfile(t *testing.T) {
 		Coordinate: "github.com/example/skills/-/skills/demo",
 		Version:    "v1",
 		SHA256:     "abc",
-		Origin:     registry.Origin{VCS: "git", CommitSHA: "commit", TreeSHA: "tree"},
+		Origin:     hub.Origin{VCS: "git", CommitSHA: "commit", TreeSHA: "tree"},
 	}
 	if err := Upsert(root, "demo", SkillRequirement{Source: "example/skills/skills/demo", Agents: []string{"codex", "claude-code"}, Mode: install.ModeSymlink}, receipt); err != nil {
 		t.Fatal(err)

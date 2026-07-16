@@ -1,10 +1,10 @@
 /*
- * [INPUT]: Uses an HTTP test Registry with exact content-match JSON and hostile contract variants.
+ * [INPUT]: Uses an HTTP test Hub with exact content-match JSON and hostile contract variants.
  * [OUTPUT]: Specifies source-hint request encoding and strict immutable content-match response validation.
- * [POS]: Serves as public Registry content-match client contract coverage.
+ * [POS]: Serves as public Hub content-match client contract coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-package registry
+package hub
 
 import (
 	"net/http"

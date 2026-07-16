@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on wrapped network, context timeout, and Registry HTTP errors returned by command execution.
- * [OUTPUT]: Provides stable process exit codes for unavailable Registry and temporary timeout failures.
+ * [INPUT]: Depends on wrapped network, context timeout, and Hub HTTP errors returned by command execution.
+ * [OUTPUT]: Provides stable process exit codes for unavailable Hub and temporary timeout failures.
  * [POS]: Serves as the machine-readable failure classification seam consumed by the desktop App without parsing localized stderr.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,7 +12,7 @@ import (
 	"net"
 	"net/http"
 
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 )
 
 const (
@@ -35,7 +35,7 @@ func ExitCode(err error) int {
 		}
 		return ExitUnavailable
 	}
-	var responseError *registry.HTTPError
+	var responseError *hub.HTTPError
 	if errors.As(err, &responseError) {
 		switch responseError.StatusCode {
 		case http.StatusRequestTimeout, http.StatusTooManyRequests:

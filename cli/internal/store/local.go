@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on a reviewed external Skill directory, content framing, safe ZIP construction, and an explicit export destination.
  * [OUTPUT]: Imports immutable private Local Skill artifacts into the Store and exports only provenance-confirmed Local Skills without network access.
- * [POS]: Serves as the private Local Skill persistence boundary beside Registry-backed Store ingestion.
+ * [POS]: Serves as the private Local Skill persistence boundary beside Hub-backed Store ingestion.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package store
@@ -18,7 +18,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"gopkg.in/yaml.v3"
 )
@@ -34,7 +34,7 @@ func (s Store) ImportLocal(root, name string) (*Entry, error) {
 	if !info.IsDir() {
 		return nil, fmt.Errorf("Local Skill import requires a real directory")
 	}
-	digest, err := registry.ContentDirectoryDigest(root)
+	digest, err := hub.ContentDirectoryDigest(root)
 	if err != nil {
 		return nil, err
 	}
@@ -52,11 +52,11 @@ func (s Store) ImportLocal(root, name string) (*Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	entry, err := s.Put(&registry.Artifact{
+	entry, err := s.Put(&hub.Artifact{
 		Coordinate: coordinate,
-		Info: registry.Info{
-			Version: version, Risk: registry.RiskUnknown, ContentDigest: digest,
-			Origin: registry.Origin{VCS: "local", Ref: version},
+		Info: hub.Info{
+			Version: version, Risk: hub.RiskUnknown, ContentDigest: digest,
+			Origin: hub.Origin{VCS: "local", Ref: version},
 		},
 		Manifest: manifest,
 		ZIP:      archive,

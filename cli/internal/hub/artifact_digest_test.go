@@ -1,10 +1,10 @@
 /*
- * [INPUT]: Uses in-memory immutable Skill ZIP archives and declared Registry Content Digests.
- * [OUTPUT]: Specifies golden, compression-independent digest computation and mismatch rejection at the CLI Registry boundary.
+ * [INPUT]: Uses in-memory immutable Skill ZIP archives and declared Hub Content Digests.
+ * [OUTPUT]: Specifies golden, compression-independent digest computation and mismatch rejection at the CLI Hub boundary.
  * [POS]: Serves as executable integrity coverage for artifacts before Store persistence or installation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-package registry
+package hub
 
 import (
 	"archive/zip"
@@ -32,7 +32,7 @@ func TestVerifyContentDigestBindsInfoToExactArtifactFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 	if digest != "sha256:bf005aa0d71df7bbcdc3bbd01138efd6274f8cef648cf74a2a17528bfaa54399" {
-		t.Fatalf("Registry digest framing changed: %s", digest)
+		t.Fatalf("Hub digest framing changed: %s", digest)
 	}
 	if err := VerifyContentDigest(buffer.Bytes(), coordinate, version, digest); err != nil {
 		t.Fatalf("expected matching digest: %v", err)
@@ -48,6 +48,6 @@ func TestValidateAssessedInfoRejectsHostileResolvedVersion(t *testing.T) {
 		ContentDigest: "sha256:bf005aa0d71df7bbcdc3bbd01138efd6274f8cef648cf74a2a17528bfaa54399",
 	}
 	if err := validateAssessedInfo("github.com/example/skills/-/demo", "main", info); err == nil {
-		t.Fatal("expected hostile Registry version rejection")
+		t.Fatal("expected hostile Hub version rejection")
 	}
 }
