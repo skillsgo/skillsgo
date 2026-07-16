@@ -5,11 +5,11 @@ The App context presents public discovery and local Skill inventory as a desktop
 ## Language
 
 **Local Manager**:
-The SkillsGo desktop application that discovers public Skills through a Registry and invokes the bundled SkillsGo CLI for local inspection and mutations.
+The SkillsGo desktop application that discovers public Skills through a Hub and invokes the bundled SkillsGo CLI for local inspection and mutations.
 _Avoid_: app store, Skill platform
 
 **Offline Local Management**:
-The capability to inspect and manage Added Projects, Installed Agents, Registry-managed targets, External Installations, and Local Skills from local CLI and filesystem state while the Registry is unavailable. Registry detail, matching, installation, and update actions explain their restriction and can be retried without clearing the selected Library route or local inventory.
+The capability to inspect and manage Added Projects, Installed Agents, Hub-managed targets, External Installations, and Local Skills from local CLI and filesystem state while the Hub is unavailable. Hub detail, matching, installation, and update actions explain their restriction and can be retried without clearing the selected Library route or local inventory.
 _Avoid_: offline discovery, cached empty Library, global offline mode
 
 **Personal User**:
@@ -29,7 +29,7 @@ A team of developers using Coding Agents that needs consistent Skill distributio
 _Avoid_: ordinary user, generic enterprise
 
 **Active Member Seat**:
-A member authorized to use Team Skills during a billing period. Team pricing does not vary with Skill count, install count, Agent invocation count, or Registry traffic.
+A member authorized to use Team Skills during a billing period. Team pricing does not vary with Skill count, install count, Agent invocation count, or Hub traffic.
 _Avoid_: usage unit, installation license
 
 **Installed Agent**:
@@ -77,12 +77,12 @@ A Skill found in an Installed Agent's directory without a SkillsGo installation 
 _Avoid_: broken Skill, unknown Skill, managed installation
 
 **External Adoption Plan**:
-A reviewed, state-bound transition for one exact External Installation. SkillsGo first matches by Content Digest and optional source hints, then requires the user to confirm either one immutable Registry artifact or an unmatched Local import; it never replaces the current content during adoption.
+A reviewed, state-bound transition for one exact External Installation. SkillsGo first matches by Content Digest and optional source hints, then requires the user to confirm either one immutable Hub artifact or an unmatched Local import; it never replaces the current content during adoption.
 _Avoid_: name-based claim, automatic import, reinstall
 
 **Local Skill**:
-A managed Skill created by importing an External Installation that does not match a Registry artifact. It can be installed elsewhere, exported, or removed, but has no online update source and is not published by importing it.
-_Avoid_: published Skill, Registry artifact, unmanaged installation
+A managed Skill created by importing an External Installation that does not match a Hub artifact. It can be installed elsewhere, exported, or removed, but has no online update source and is not published by importing it.
+_Avoid_: published Skill, Hub artifact, unmanaged installation
 
 **Version Divergence**:
 The valid state in which targets for one Skill intentionally use different immutable versions. The Library displays the versions and never silently rewrites project Locks to make them uniform.
@@ -97,9 +97,9 @@ The adoption model in which Personal works without registration and team creatio
 _Avoid_: sales-led adoption
 
 **skillsgo-app**:
-The open-source desktop client repository containing Personal and Team interactions, local orchestration, Agent presentation, and Registry access.
+The open-source desktop client repository containing Personal and Team interactions, local orchestration, Agent presentation, and Hub access.
 _Avoid_: Personal client, Team client, open-source shell
 
 **skillsgo-cloud**:
-The closed-source team control plane for accounts, organizations, seats, policy, approval, audit, and private-source metadata. The public Registry does not depend on it.
-_Avoid_: official Registry, Team client
+The closed-source team control plane for accounts, organizations, seats, policy, approval, audit, and private-source metadata. The public Hub does not depend on it.
+_Avoid_: official Hub, Team client

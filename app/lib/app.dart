@@ -1,11 +1,10 @@
 /*
- * [INPUT]: Depends on Flutter, shadcn_ui, SkillsGateway, localization delegates, the App shell, and brand tokens.
+ * [INPUT]: Depends on Flutter Material, SkillsGateway, localization delegates, the App shell, and brand tokens.
  * [OUTPUT]: Provides SkillsGoApp, the localized desktop application root.
  * [POS]: Serves as the App composition boundary between platform startup and product UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 
 import 'domain/skills_gateway.dart';
 import 'l10n/app_localizations.dart';
@@ -19,22 +18,17 @@ class SkillsGoApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ShadApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'SkillsGo',
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      themeMode: ThemeMode.dark,
-      theme: ShadThemeData(
-        brightness: Brightness.dark,
-        colorScheme: const ShadZincColorScheme.dark(),
-        textTheme: ShadTextTheme(family: SkillsTokens.sansFamily),
+      themeMode: ThemeMode.system,
+      theme: buildSkillsTheme(
+        const Color(0xFF514532),
+        brightness: Brightness.light,
       ),
-      darkTheme: ShadThemeData(
-        brightness: Brightness.dark,
-        colorScheme: const ShadZincColorScheme.dark(),
-        textTheme: ShadTextTheme(family: SkillsTokens.sansFamily),
-      ),
+      darkTheme: buildSkillsTheme(const Color(0xFF514532)),
       home: AppShell(gateway: gateway),
     );
   }

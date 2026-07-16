@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery, auditable artifacts, unified Registry/Local/External Library entries and targets, explicit Installation/Update/Target Management/External Adoption flows, Local export, project references, Agent inspection, CLI, Registry settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery metadata including repository product signals and Hub image URLs, auditable artifacts, unified Hub/Local/External Library entries and targets, explicit Installation/Update/Target Management/External Adoption flows, Local export, project references, Agent inspection, CLI, Hub and appearance settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -56,7 +56,7 @@ enum TargetManagementAction { remove, repair, stopManaging }
 
 enum TargetManagementOutcome { succeeded, failed }
 
-enum ExternalAdoptionAction { associateRegistry, importLocal }
+enum ExternalAdoptionAction { associateHub, importLocal }
 
 enum ReceiptState { present, missing, invalid }
 
@@ -73,13 +73,13 @@ enum InstallationHealth {
   receiptMissing,
 }
 
-enum LibraryProvenance { registry, local, external }
+enum LibraryProvenance { hub, local, external }
 
 enum ProjectAccessState { accessible, missing, permissionDenied, inaccessible }
 
 enum SkillMetricKind { allTimeInstalls, installs24h, hotVelocity }
 
-enum RegistryIssue {
+enum HubIssue {
   invalidOrigin,
   httpFailure,
   invalidProtocol,
@@ -88,8 +88,8 @@ enum RegistryIssue {
   timeout,
 }
 
-class RegistryStatus {
-  const RegistryStatus({
+class HubStatus {
+  const HubStatus({
     required this.origin,
     required this.state,
     this.issue,
@@ -100,7 +100,7 @@ class RegistryStatus {
 
   final String origin;
   final HealthState state;
-  final RegistryIssue? issue;
+  final HubIssue? issue;
   final int? httpStatus;
   final String? diagnostic;
   final String? version;
@@ -150,6 +150,7 @@ class SkillSummary {
     required this.name,
     required this.source,
     required this.installs,
+    this.imageUrl,
     this.latestVersion = 'main',
     this.description = '',
     this.trustLevel = SkillTrustLevel.unverified,
@@ -163,6 +164,7 @@ class SkillSummary {
   final String skillId;
   final String name;
   final String source;
+  final String? imageUrl;
   final int installs;
   final String latestVersion;
   final String description;
@@ -770,8 +772,8 @@ class TargetManagementProgress {
   final TargetManagementResult? result;
 }
 
-class RegistryContentMatch {
-  const RegistryContentMatch({
+class HubContentMatch {
+  const HubContentMatch({
     required this.coordinate,
     required this.name,
     required this.source,
@@ -812,12 +814,12 @@ class ExternalAdoptionPlan {
   final String contentDigest;
   final String sourceHint;
   final String stateToken;
-  final List<RegistryContentMatch> matches;
+  final List<HubContentMatch> matches;
   final bool canImportLocal;
   final ExternalAdoptionAction? action;
-  final RegistryContentMatch? selectedMatch;
+  final HubContentMatch? selectedMatch;
 
-  ExternalAdoptionPlan selectRegistryMatch(RegistryContentMatch match) =>
+  ExternalAdoptionPlan selectHubMatch(HubContentMatch match) =>
       ExternalAdoptionPlan(
         identity: identity,
         name: name,
@@ -827,7 +829,7 @@ class ExternalAdoptionPlan {
         stateToken: stateToken,
         matches: matches,
         canImportLocal: canImportLocal,
-        action: ExternalAdoptionAction.associateRegistry,
+        action: ExternalAdoptionAction.associateHub,
         selectedMatch: match,
       );
 
@@ -921,7 +923,12 @@ class SkillDetail {
     required this.source,
     required this.markdown,
     required this.files,
+    this.imageUrl,
     this.installs = 0,
+    this.repository = '',
+    this.githubStars = 0,
+    this.sourceUpdatedAt,
+    this.archiveSize = 0,
     this.description = '',
     this.requestedVersion = '',
     this.immutableVersion = '',
@@ -935,14 +942,19 @@ class SkillDetail {
     this.riskScannerVersion = '',
     this.riskEvidence = const [],
     this.installationTargets = const [],
-    this.registryExecutableSignal = false,
+    this.hubExecutableSignal = false,
   });
 
   final String name;
   final String source;
   final String markdown;
   final List<SkillFile> files;
+  final String? imageUrl;
   final int installs;
+  final String repository;
+  final int githubStars;
+  final DateTime? sourceUpdatedAt;
+  final int archiveSize;
   final String description;
   final String requestedVersion;
   final String immutableVersion;
@@ -956,10 +968,10 @@ class SkillDetail {
   final String riskScannerVersion;
   final List<SkillRiskEvidence> riskEvidence;
   final List<SkillInstallationTarget> installationTargets;
-  final bool registryExecutableSignal;
+  final bool hubExecutableSignal;
 
   bool get hasExecutableContent =>
-      registryExecutableSignal ||
+      hubExecutableSignal ||
       files.any((file) {
         if (file.executable) return true;
         final lower = file.path.toLowerCase();
@@ -990,7 +1002,7 @@ class InstalledSkill {
     this.identity = '',
     this.coordinate = '',
     this.targets = const [],
-    this.provenance = LibraryProvenance.registry,
+    this.provenance = LibraryProvenance.hub,
     this.riskAssessment = SkillRiskAssessment.unknown,
     this.health = InstallationHealth.healthy,
     this.projects = const [],
@@ -1077,6 +1089,8 @@ abstract interface class ProcessRunner {
   });
 }
 
+enum AppThemeMode { system, light, dark }
+
 class CommandResult {
   const CommandResult({required this.command, required this.output});
 
@@ -1105,10 +1119,14 @@ abstract interface class SkillsGateway {
   Future<CliStatus> detectCli({String? customPath});
   Future<void> saveCustomCliPath(String? path);
   Future<String?> loadCustomCliPath();
-  Future<String> loadRegistryOrigin();
-  Future<void> saveRegistryOrigin(String origin);
-  Future<void> resetRegistryOrigin();
-  Future<RegistryStatus> testRegistryOrigin(String origin);
+  Future<String> loadHubOrigin();
+  Future<void> saveHubOrigin(String origin);
+  Future<void> resetHubOrigin();
+  Future<String> loadFolderTheme();
+  Future<void> saveFolderTheme(String theme);
+  Future<AppThemeMode> loadThemeMode();
+  Future<void> saveThemeMode(AppThemeMode mode);
+  Future<HubStatus> testHubOrigin(String origin);
   Future<PersonalRiskPolicy> loadRiskPolicy();
   Future<void> saveRiskPolicy(PersonalRiskPolicy policy);
   Future<StorageStatus> inspectStorage();

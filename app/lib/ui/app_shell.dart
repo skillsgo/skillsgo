@@ -1,23 +1,31 @@
 /*
- * [INPUT]: Depends on SkillsGateway contracts, localized copy, shadcn_ui primitives, stateful nested navigation, and SkillsGo brand tokens.
- * [OUTPUT]: Provides the desktop shell plus persistent Discover, shadcn_ui Installation/Update/Target Management/External Adoption flows, offline recovery alerts, Local install-more/export actions, outage-resilient managed/external Library detail, project and Agent views, operations, and Settings journeys.
+ * [INPUT]: Depends on SkillsGateway contracts, localized copy, the vendored named-preset Bloom color picker, native Material components, the accessible themeable primary folder, stateful nested navigation, and SkillsGo brand tokens.
+ * [OUTPUT]: Provides the desktop shell with persistent themeable folder-tab navigation plus Installation/Update/Target Management/External Adoption flows, offline recovery alerts, Local install-more/export actions, opaque directional Skill detail transitions and glassy scroll-aware detail chrome, outage-resilient managed/external Library detail, project and Agent views, operations, and Settings journeys.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/physics.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:path/path.dart' as p;
-import 'package:shadcn_ui/shadcn_ui.dart';
+import 'bloom_color_picker/bloom_color_picker.dart';
+import 'discrete_tabs/discrete_tabs.dart';
+import 'native_components.dart';
 
 import '../domain/skills_gateway.dart';
 import '../l10n/app_localizations.dart';
+import 'agent_logo.dart';
 import 'brand.dart';
+import 'brand_theme_presets.dart';
+import 'color_scheme_inspector.dart';
+import 'install_location_popover.dart';
 import 'nested_navigation.dart';
+import 'primary_folder_shell.dart';
+import 'skill_markdown_view.dart';
 
 extension on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
@@ -81,14 +89,19 @@ class AppShell extends StatefulWidget {
 }
 
 class _AppShellState extends State<AppShell> {
+  final discoverKey = GlobalKey<_DiscoverScreenState>();
   _Destination destination = _Destination.discover;
   int libraryRevision = 0;
   CliStatus? cliStatus;
+  String folderTheme = '#514532';
+  AppThemeMode themeMode = AppThemeMode.system;
 
   @override
   void initState() {
     super.initState();
     unawaited(_detectCli());
+    unawaited(_loadFolderTheme());
+    unawaited(_loadThemeMode());
   }
 
   Future<void> _detectCli() async {
@@ -96,11 +109,57 @@ class _AppShellState extends State<AppShell> {
     if (mounted) setState(() => cliStatus = detected);
   }
 
-  Color get _tint => switch (destination) {
-    _Destination.discover => const Color(0xFF0E2A27),
-    _Destination.library => const Color(0xFF1A1730),
-    _Destination.settings => const Color(0xFF241D11),
+  static const _legacyFolderThemes = <String, Color>{
+    'manila': Color(0xFF514532),
+    'blue': Color(0xFF294556),
+    'sage': Color(0xFF3D5141),
+    'charcoal': Color(0xFF292A2B),
   };
+
+  Color get _folderColor => _folderThemeColor(folderTheme);
+
+  Future<void> _loadFolderTheme() async {
+    final saved = await widget.gateway.loadFolderTheme();
+    if (mounted) {
+      setState(() => folderTheme = _folderThemeHex(_folderThemeColor(saved)));
+    }
+  }
+
+  Future<void> _setFolderTheme(Color value) async {
+    final theme = _folderThemeHex(value);
+    setState(() => folderTheme = theme);
+    await widget.gateway.saveFolderTheme(theme);
+  }
+
+  Future<void> _loadThemeMode() async {
+    final saved = await widget.gateway.loadThemeMode();
+    if (mounted) setState(() => themeMode = saved);
+  }
+
+  Future<void> _setThemeMode(AppThemeMode value) async {
+    setState(() => themeMode = value);
+    await widget.gateway.saveThemeMode(value);
+  }
+
+  Brightness _effectiveBrightness(BuildContext context) => switch (themeMode) {
+    AppThemeMode.system => MediaQuery.platformBrightnessOf(context),
+    AppThemeMode.light => Brightness.light,
+    AppThemeMode.dark => Brightness.dark,
+  };
+
+  static Color _folderThemeColor(String value) {
+    final legacy = _legacyFolderThemes[value];
+    if (legacy != null) return legacy;
+    final normalized = value.replaceFirst('#', '');
+    final parsed = int.tryParse(normalized, radix: 16);
+    if (parsed == null || normalized.length != 6) {
+      return _legacyFolderThemes['manila']!;
+    }
+    return Color(0xFF000000 | parsed);
+  }
+
+  static String _folderThemeHex(Color color) =>
+      '#${(color.toARGB32() & 0xFFFFFF).toRadixString(16).padLeft(6, '0').toUpperCase()}';
 
   void _showLibrary() => setState(() {
     destination = _Destination.library;
@@ -108,184 +167,117 @@ class _AppShellState extends State<AppShell> {
   });
 
   @override
-  Widget build(BuildContext context) => SkillsBackground(
-    tint: _tint,
-    child: Material(
-      color: Colors.transparent,
-      child: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 12),
-            _TopBar(
-              selected: destination,
-              onSelected: (value) => setState(() => destination = value),
-            ),
-            if (cliStatus != null && !cliStatus!.isReady)
-              Padding(
-                padding: const EdgeInsets.fromLTRB(28, 10, 28, 0),
-                child: _CliBanner(
-                  status: cliStatus!,
-                  onOpenSettings: () =>
-                      setState(() => destination = _Destination.settings),
-                ),
-              ),
-            Expanded(
-              child: IndexedStack(
-                index: destination.index,
-                children: [
-                  TickerMode(
-                    enabled: destination == _Destination.discover,
-                    child: DiscoverScreen(
-                      gateway: widget.gateway,
-                      onInstalled: _showLibrary,
-                    ),
-                  ),
-                  TickerMode(
-                    enabled: destination == _Destination.library,
-                    child: LibraryScreen(
-                      gateway: widget.gateway,
-                      revision: libraryRevision,
-                    ),
-                  ),
-                  TickerMode(
-                    enabled: destination == _Destination.settings,
-                    child: SettingsScreen(gateway: widget.gateway),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    ),
-  );
-}
-
-class _TopBar extends StatefulWidget {
-  const _TopBar({required this.selected, required this.onSelected});
-  final _Destination selected;
-  final ValueChanged<_Destination> onSelected;
-
-  @override
-  State<_TopBar> createState() => _TopBarState();
-}
-
-class _TopBarState extends State<_TopBar> with SingleTickerProviderStateMixin {
-  static const _itemWidth = 84.0;
-  late final AnimationController _position;
-
-  @override
-  void initState() {
-    super.initState();
-    _position = AnimationController.unbounded(
-      vsync: this,
-      value: widget.selected.index.toDouble(),
-    )..addListener(_rebuild);
-  }
-
-  @override
-  void didUpdateWidget(covariant _TopBar oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.selected == widget.selected) return;
-    if (MediaQuery.disableAnimationsOf(context)) {
-      _position.value = widget.selected.index.toDouble();
-      return;
-    }
-    _position.animateWith(
-      SpringSimulation(
-        const SpringDescription(mass: 1, stiffness: 420, damping: 32),
-        _position.value,
-        widget.selected.index.toDouble(),
-        _position.velocity,
-      ),
+  Widget build(BuildContext context) {
+    final theme = buildSkillsTheme(
+      _folderColor,
+      brightness: _effectiveBrightness(context),
     );
-  }
-
-  void _rebuild() {
-    if (mounted) setState(() {});
-  }
-
-  @override
-  void dispose() {
-    _position
-      ..removeListener(_rebuild)
-      ..dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 24),
-    child: SizedBox(
-      height: 38,
-      child: Stack(
-        alignment: Alignment.center,
-        children: [
-          const Align(
-            alignment: Alignment.centerLeft,
-            child: Text(
-              'SkillsGo',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-            ),
-          ),
-          Align(
-            child: Container(
-              padding: const EdgeInsets.all(4),
-              decoration: BoxDecoration(
-                color: Colors.black26,
-                borderRadius: BorderRadius.circular(999),
-                border: Border.all(color: SkillsTokens.hairline),
-              ),
-              child: SizedBox(
-                width: _itemWidth * _Destination.values.length,
-                height: 30,
-                child: Stack(
+    return Theme(
+      data: theme,
+      child: Builder(
+        builder: (context) {
+          final scheme = Theme.of(context).colorScheme;
+          return SkillsBackground(
+            child: Material(
+              color: Colors.transparent,
+              child: SafeArea(
+                child: Column(
                   children: [
-                    Positioned(
-                      left: _position.value * _itemWidth,
-                      top: 0,
-                      bottom: 0,
-                      width: _itemWidth,
-                      child: const DecoratedBox(
-                        key: ValueKey('nav-indicator'),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.all(Radius.circular(999)),
+                    if (cliStatus != null && !cliStatus!.isReady)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(28, 10, 28, 0),
+                        child: _CliBanner(
+                          status: cliStatus!,
+                          onOpenSettings: () => setState(
+                            () => destination = _Destination.settings,
+                          ),
                         ),
                       ),
-                    ),
-                    Row(
-                      children: _Destination.values
-                          .map(
-                            (item) => SizedBox(
-                              width: _itemWidth,
-                              child: Center(
-                                child: _NavButton(
-                                  label: switch (item) {
-                                    _Destination.discover =>
-                                      context.l10n.discover,
-                                    _Destination.library =>
-                                      context.l10n.library,
-                                    _Destination.settings =>
-                                      context.l10n.settings,
-                                  },
-                                  selected: widget.selected == item,
-                                  onPressed: () => widget.onSelected(item),
+                    Expanded(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(20, 44, 20, 16),
+                        child: SkillsPrimaryFolder<_Destination>(
+                          tabs: [
+                            SkillsFolderTab(
+                              id: 'discover',
+                              value: _Destination.discover,
+                              label: context.l10n.discover,
+                            ),
+                            SkillsFolderTab(
+                              id: 'library',
+                              value: _Destination.library,
+                              label: context.l10n.library,
+                            ),
+                            SkillsFolderTab(
+                              id: 'settings',
+                              value: _Destination.settings,
+                              label: context.l10n.settings,
+                            ),
+                          ],
+                          selected: destination,
+                          onSelected: (value) {
+                            if (value != _Destination.discover) {
+                              discoverKey.currentState?.dismissDetail();
+                            }
+                            setState(() => destination = value);
+                          },
+                          style: SkillsPrimaryFolderStyle(
+                            folderColor: scheme.surfaceContainerHighest,
+                            activeTabColor: scheme.surfaceContainerHighest,
+                            inactiveTabColor: scheme.surfaceContainer,
+                            activeLabelStyle: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                              color: scheme.onSurface,
+                            ),
+                            inactiveLabelStyle: TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w300,
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                          child: IndexedStack(
+                            index: destination.index,
+                            children: [
+                              TickerMode(
+                                enabled: destination == _Destination.discover,
+                                child: DiscoverScreen(
+                                  key: discoverKey,
+                                  gateway: widget.gateway,
+                                  onInstalled: _showLibrary,
                                 ),
                               ),
-                            ),
-                          )
-                          .toList(),
+                              TickerMode(
+                                enabled: destination == _Destination.library,
+                                child: LibraryScreen(
+                                  gateway: widget.gateway,
+                                  revision: libraryRevision,
+                                ),
+                              ),
+                              TickerMode(
+                                enabled: destination == _Destination.settings,
+                                child: SettingsScreen(
+                                  gateway: widget.gateway,
+                                  folderTheme: folderTheme,
+                                  onFolderThemeChanged: _setFolderTheme,
+                                  themeMode: themeMode,
+                                  onThemeModeChanged: _setThemeMode,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
               ),
             ),
-          ),
-        ],
+          );
+        },
       ),
-    ),
-  );
+    );
+  }
 }
 
 class _CliBanner extends StatelessWidget {
@@ -320,51 +312,6 @@ class _CliBanner extends StatelessWidget {
   );
 }
 
-class _NavButton extends StatelessWidget {
-  const _NavButton({
-    required this.label,
-    required this.selected,
-    required this.onPressed,
-  });
-  final String label;
-  final bool selected;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) => Semantics(
-    selected: selected,
-    button: true,
-    child: TextButton(
-      onPressed: onPressed,
-      style: TextButton.styleFrom(
-        foregroundColor: selected ? Colors.black : SkillsTokens.textSecondary,
-        backgroundColor: Colors.transparent,
-        shape: const StadiumBorder(),
-        padding: EdgeInsets.zero,
-        fixedSize: const Size(80, 26),
-        minimumSize: const Size(80, 26),
-        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-        alignment: Alignment.center,
-        textStyle: TextStyle(
-          fontFamily: SkillsTokens.sansFamily,
-          fontSize: 14,
-          height: 1,
-          fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
-        ),
-      ),
-      child: Transform.translate(
-        offset: const Offset(0, 1.5),
-        child: Text(
-          label,
-          key: const ValueKey('nav-label'),
-          maxLines: 1,
-          softWrap: false,
-        ),
-      ),
-    ),
-  );
-}
-
 enum _DiscoverRoute { search, ranking, trending, hot }
 
 class DiscoverScreen extends StatefulWidget {
@@ -380,21 +327,35 @@ class DiscoverScreen extends StatefulWidget {
   State<DiscoverScreen> createState() => _DiscoverScreenState();
 }
 
-class _DiscoverScreenState extends State<DiscoverScreen> {
+class _DiscoverScreenState extends State<DiscoverScreen>
+    with SingleTickerProviderStateMixin {
   final controller = TextEditingController();
   final focusNode = FocusNode();
   final installOperations = <String, _InstallOperation>{};
   final routeStates = <_DiscoverRoute, _DiscoveryRouteState>{
     for (final route in _DiscoverRoute.values) route: _DiscoveryRouteState(),
   };
-  _DiscoverRoute selectedRoute = _DiscoverRoute.search;
+  _DiscoverRoute selectedRoute = _DiscoverRoute.hot;
+  _DiscoverRoute lastCollectionRoute = _DiscoverRoute.hot;
+  String? submittedQuery;
+  SkillSummary? selectedSkill;
+  FocusNode? selectedSkillFocus;
+  double selectedSkillScrollOffset = 0;
+  bool openPlanOnDetailLoad = false;
+  bool detailTransitioning = false;
+  late final AnimationController detailTransition;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback(
-      (_) => focusNode.requestFocus(),
+    detailTransition = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 230),
+      reverseDuration: const Duration(milliseconds: 200),
     );
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) unawaited(_loadRoute(_DiscoverRoute.hot, reset: true));
+    });
   }
 
   Future<void> search([String? value]) async {
@@ -402,6 +363,10 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     if (query.isEmpty) {
       final state = routeStates[_DiscoverRoute.search]!;
       setState(() {
+        selectedSkill = null;
+        selectedSkillFocus = null;
+        selectedRoute = lastCollectionRoute;
+        submittedQuery = null;
         state.generation++;
         state.results = null;
         state.error = null;
@@ -411,17 +376,45 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
       });
       return;
     }
+    setState(() {
+      selectedSkill = null;
+      selectedSkillFocus = null;
+      selectedRoute = _DiscoverRoute.search;
+      submittedQuery = query;
+    });
     await _loadRoute(_DiscoverRoute.search, reset: true, query: query);
   }
 
   void _selectRoute(_DiscoverRoute route) {
-    setState(() => selectedRoute = route);
+    setState(() {
+      selectedSkill = null;
+      selectedSkillFocus = null;
+      selectedRoute = route;
+      if (route != _DiscoverRoute.search) lastCollectionRoute = route;
+    });
     final state = routeStates[route]!;
     if (route != _DiscoverRoute.search &&
         state.results == null &&
         !state.loading) {
       unawaited(_loadRoute(route, reset: true));
     }
+  }
+
+  void dismissDetail() {
+    if (selectedSkill == null) return;
+    detailTransition.value = 0;
+    setState(() {
+      selectedSkill = null;
+      selectedSkillFocus = null;
+      selectedSkillScrollOffset = 0;
+      openPlanOnDetailLoad = false;
+      detailTransitioning = false;
+    });
+  }
+
+  void _viewLibrary() {
+    dismissDetail();
+    widget.onInstalled();
   }
 
   Future<void> _loadRoute(
@@ -473,6 +466,124 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     }
   }
 
+  Future<void> _installFromCard(
+    InstallLocationMenuPresenter present,
+    SkillSummary skill,
+  ) async {
+    final operation = installOperations.putIfAbsent(
+      skill.id,
+      _InstallOperation.new,
+    );
+    if (operation.operating) return;
+    try {
+      final detail = await widget.gateway.loadRemoteDetail(skill);
+      final values = await Future.wait([
+        widget.gateway.inspectAgents(),
+        widget.gateway.loadAddedProjects(),
+        widget.gateway.loadRiskPolicy(),
+        _loadRepositorySkills(widget.gateway, skill, detail),
+      ]);
+      if (!mounted) return;
+      final catalog = values[0] as AgentCatalog;
+      var projects = values[1] as List<AddedProject>;
+      final riskPolicy = values[2] as PersonalRiskPolicy;
+      final repositorySkills = values[3] as List<SkillSummary>;
+      if (catalog.installed.isEmpty) return;
+      final selections = await present(
+        InstallLocationMenuRequest(
+          gateway: widget.gateway,
+          catalog: catalog,
+          detail: detail,
+          projects: projects,
+          repositorySkills: repositorySkills,
+          onProjectAdded: (project) {
+            final index = projects.indexWhere((item) => item.id == project.id);
+            projects = index < 0
+                ? [...projects, project]
+                : ([...projects]..[index] = project);
+          },
+        ),
+      );
+      if (!mounted || selections == null || selections.selections.isEmpty) {
+        return;
+      }
+      if (selections.action == InstallLocationAction.repositorySkills) {
+        await _installRepositorySkills(
+          widget.gateway,
+          repositorySkills,
+          selections.selections,
+          riskPolicy,
+        );
+        if (mounted) {
+          await _loadRoute(
+            selectedRoute,
+            reset: true,
+            query: selectedRoute == _DiscoverRoute.search
+                ? controller.text.trim()
+                : null,
+          );
+        }
+        return;
+      }
+      operation.editTargets();
+      final plan = await operation.preflight(
+        widget.gateway,
+        skill,
+        detail.immutableVersion,
+        selections.selections,
+        allowCritical: riskPolicy.allowCriticalOverride,
+      );
+      if (!mounted) return;
+      final requiresReview =
+          plan == null ||
+          plan.summary.conflict > 0 ||
+          plan.summary.blockedByRisk > 0;
+      if (!requiresReview) {
+        final execution = await operation.execute(widget.gateway);
+        if (!mounted) return;
+        if (execution != null &&
+            execution.summary.failed == 0 &&
+            execution.summary.conflict == 0) {
+          await _loadRoute(
+            selectedRoute,
+            reset: true,
+            query: selectedRoute == _DiscoverRoute.search
+                ? controller.text.trim()
+                : null,
+          );
+          return;
+        }
+      }
+      await showSkillsDialog<_InstallationPlanOutcome>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => _InstallationPlanDialog(
+          gateway: widget.gateway,
+          skill: skill,
+          detail: detail,
+          catalog: catalog,
+          initialProjects: projects,
+          operation: operation,
+          riskPolicy: riskPolicy,
+          onProjectAdded: (_) {},
+        ),
+      );
+      if (mounted && operation.execution?.hasSuccess == true) {
+        await _loadRoute(
+          selectedRoute,
+          reset: true,
+          query: selectedRoute == _DiscoverRoute.search
+              ? controller.text.trim()
+              : null,
+        );
+      }
+    } on Object {
+      if (mounted) {
+        _openDetail(skill, routeStates[selectedRoute]!.focusNodeFor(skill.id));
+      }
+    }
+  }
+
   @override
   void dispose() {
     controller.dispose();
@@ -483,233 +594,355 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
     for (final operation in installOperations.values) {
       operation.dispose();
     }
+    detailTransition.dispose();
     super.dispose();
   }
 
   @override
-  Widget build(BuildContext context) => SkillsDestinationLayout(
-    rail: SkillsSideRail<_DiscoverRoute>(
-      semanticLabel: context.l10n.discoverNavigation,
-      selected: selectedRoute,
-      onSelected: _selectRoute,
-      items: [
-        SkillsRailItem(
-          value: _DiscoverRoute.search,
-          label: context.l10n.search,
+  Widget build(BuildContext context) {
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    return Shortcuts(
+      shortcuts: const {
+        SingleActivator(LogicalKeyboardKey.keyF, meta: true): ActivateIntent(),
+      },
+      child: Actions(
+        actions: {
+          ActivateIntent: CallbackAction<ActivateIntent>(
+            onInvoke: (_) {
+              focusNode.requestFocus();
+              return null;
+            },
+          ),
+        },
+        child: SkillsDestinationLayout(
+          rail: SkillsSideRail<_DiscoverRoute>(
+            semanticLabel: context.l10n.discoverNavigation,
+            selected: selectedRoute,
+            onSelected: _selectRoute,
+            header: SkillSearchField(
+              controller: controller,
+              focusNode: focusNode,
+              onSubmitted: search,
+              onCleared: search,
+              onChanged: (_) => setState(() {}),
+              active:
+                  submittedQuery != null &&
+                  controller.text.trim() == submittedQuery,
+              loading: routeStates[_DiscoverRoute.search]!.loading,
+              compact: true,
+            ),
+            items: [
+              SkillsRailItem(
+                value: _DiscoverRoute.hot,
+                label: context.l10n.hot,
+                icon: HugeIcons.strokeRoundedFire,
+              ),
+              SkillsRailItem(
+                value: _DiscoverRoute.ranking,
+                label: context.l10n.ranking,
+                icon: HugeIcons.strokeRoundedChampion,
+              ),
+              SkillsRailItem(
+                value: _DiscoverRoute.trending,
+                label: context.l10n.trending,
+                icon: HugeIcons.strokeRoundedChartLineData01,
+              ),
+            ],
+          ),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              Offstage(
+                offstage: selectedSkill != null && !detailTransitioning,
+                child: IgnorePointer(
+                  ignoring: selectedSkill != null,
+                  child: ExcludeFocus(
+                    excluding: selectedSkill != null,
+                    child: KeyedSubtree(
+                      key: const ValueKey('discover-list-motion'),
+                      child: _discoverPage(),
+                    ),
+                  ),
+                ),
+              ),
+              if (selectedSkill != null)
+                KeyedSubtree(
+                  key: const ValueKey('discover-detail-motion'),
+                  child: SlideTransition(
+                    position: disableAnimations
+                        ? const AlwaysStoppedAnimation(Offset.zero)
+                        : Tween<Offset>(
+                            begin: const Offset(1, 0),
+                            end: Offset.zero,
+                          ).animate(
+                            CurvedAnimation(
+                              parent: detailTransition,
+                              curve: Curves.easeOutCubic,
+                              reverseCurve: Curves.easeOutCubic,
+                            ),
+                          ),
+                    child: ColoredBox(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      child: _RemoteDetailScreen(
+                        key: ValueKey('discover-detail-${selectedSkill!.id}'),
+                        gateway: widget.gateway,
+                        skill: selectedSkill!,
+                        operation: installOperations.putIfAbsent(
+                          selectedSkill!.id,
+                          _InstallOperation.new,
+                        ),
+                        openPlanOnLoad: openPlanOnDetailLoad,
+                        onBack: _closeDetail,
+                        onViewLibrary: _viewLibrary,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
-        SkillsRailItem(
-          value: _DiscoverRoute.ranking,
-          label: context.l10n.ranking,
-        ),
-        SkillsRailItem(
-          value: _DiscoverRoute.trending,
-          label: context.l10n.trending,
-        ),
-        SkillsRailItem(value: _DiscoverRoute.hot, label: context.l10n.hot),
-      ],
-    ),
+      ),
+    );
+  }
+
+  Widget _discoverPage() => KeyedSubtree(
+    key: const ValueKey('discover-list'),
     child: switch (selectedRoute) {
       _DiscoverRoute.search => _searchPage(),
       _DiscoverRoute.ranking => _collectionPage(
         _DiscoverRoute.ranking,
         context.l10n.allTimeRanking,
-        context.l10n.allTimeDescription,
       ),
       _DiscoverRoute.trending => _collectionPage(
         _DiscoverRoute.trending,
         context.l10n.trendingNow,
-        context.l10n.trendingDescription,
       ),
       _DiscoverRoute.hot => _collectionPage(
         _DiscoverRoute.hot,
         context.l10n.hotNow,
-        context.l10n.hotDescription,
       ),
     },
   );
 
-  Widget _searchPage() => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      SectionEyebrow(context.l10n.officialIndex, color: SkillsTokens.teal),
-      const SizedBox(height: 10),
-      Text(
-        context.l10n.discoverTitle,
-        style: TextStyle(
-          fontFamily: SkillsTokens.serifFamily,
-          fontSize: 38,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      const SizedBox(height: 22),
-      Shortcuts(
-        shortcuts: const {
-          SingleActivator(LogicalKeyboardKey.keyF, meta: true):
-              ActivateIntent(),
-        },
-        child: Actions(
-          actions: {
-            ActivateIntent: CallbackAction<ActivateIntent>(
-              onInvoke: (_) => focusNode.requestFocus(),
-            ),
-          },
-          child: SkillSearchField(
-            controller: controller,
-            focusNode: focusNode,
-            onSubmitted: search,
-          ),
-        ),
-      ),
-      const SizedBox(height: 22),
-      Expanded(child: _body(_DiscoverRoute.search)),
-    ],
-  );
+  Widget _searchPage() =>
+      _body(_DiscoverRoute.search, title: context.l10n.discoverTitle);
 
-  Widget _collectionPage(
-    _DiscoverRoute route,
-    String title,
-    String description,
-  ) => Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      SectionEyebrow(context.l10n.officialIndex, color: SkillsTokens.teal),
-      const SizedBox(height: 10),
-      Text(
-        title,
-        style: const TextStyle(
-          fontFamily: SkillsTokens.serifFamily,
-          fontSize: 38,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      const SizedBox(height: 8),
-      Text(
-        description,
-        style: const TextStyle(color: SkillsTokens.textSecondary),
-      ),
-      const SizedBox(height: 22),
-      Expanded(child: _body(route)),
-    ],
-  );
+  Widget _collectionPage(_DiscoverRoute route, String title) =>
+      _body(route, title: title);
 
-  Widget _body(_DiscoverRoute route) {
+  Widget _body(_DiscoverRoute route, {required String title}) {
     final state = routeStates[route]!;
     if (state.loading && state.results == null) {
-      return const Center(child: CircularProgressIndicator());
+      return _discoverStateScroll(
+        state,
+        title,
+        const Center(child: CircularProgressIndicator()),
+      );
     }
     if (state.error != null && state.results == null) {
       final copy = _failureCopy(context, state.error!);
-      return EmptyState(
-        title: copy.title,
-        message: copy.message,
-        action: ShadButton(
-          onPressed: () =>
-              _loadRoute(route, reset: true, query: controller.text.trim()),
-          child: Text(context.l10n.tryAgain),
+      return _discoverStateScroll(
+        state,
+        title,
+        EmptyState(
+          title: copy.title,
+          message: copy.message,
+          action: SkillsButton(
+            onPressed: () =>
+                _loadRoute(route, reset: true, query: controller.text.trim()),
+            child: Text(context.l10n.tryAgain),
+          ),
         ),
       );
     }
     if (state.results == null) {
-      return EmptyState(
-        title: context.l10n.searchEmptyTitle,
-        message: context.l10n.searchEmptyMessage,
+      return _discoverStateScroll(
+        state,
+        title,
+        EmptyState(
+          title: context.l10n.searchEmptyTitle,
+          message: context.l10n.searchEmptyMessage,
+        ),
       );
     }
     if (state.results!.isEmpty) {
-      return EmptyState(
-        title: route == _DiscoverRoute.search
-            ? context.l10n.noSkillsTitle
-            : context.l10n.collectionEmptyTitle,
-        message: route == _DiscoverRoute.search
-            ? context.l10n.noSkillsMessage
-            : context.l10n.collectionEmptyMessage,
-        action: route == _DiscoverRoute.search
-            ? ShadButton.outline(
-                onPressed: focusNode.requestFocus,
-                child: Text(context.l10n.focusSearch),
-              )
-            : null,
+      return _discoverStateScroll(
+        state,
+        title,
+        EmptyState(
+          title: route == _DiscoverRoute.search
+              ? context.l10n.noSkillsTitle
+              : context.l10n.collectionEmptyTitle,
+          message: route == _DiscoverRoute.search
+              ? context.l10n.noSkillsMessage
+              : context.l10n.collectionEmptyMessage,
+          action: route == _DiscoverRoute.search
+              ? SkillsButton.outline(
+                  onPressed: focusNode.requestFocus,
+                  child: Text(context.l10n.focusSearch),
+                )
+              : null,
+        ),
       );
     }
     final showMore = state.nextOffset != null || state.loadingMore;
-    return ListView.separated(
-      key: ValueKey(
-        route == _DiscoverRoute.search
-            ? 'discover-results'
-            : 'discover-results-${route.name}',
-      ),
-      controller: state.scrollController,
-      itemCount: state.results!.length + (showMore ? 1 : 0),
-      separatorBuilder: (_, _) => const SizedBox(height: 10),
-      itemBuilder: (context, index) {
-        if (index == state.results!.length) {
-          if (state.error != null) {
-            final copy = _failureCopy(context, state.error!);
-            return Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Column(
-                children: [
-                  Text(
-                    copy.message,
-                    textAlign: TextAlign.center,
-                    style: const TextStyle(color: SkillsTokens.textSecondary),
-                  ),
-                  const SizedBox(height: 10),
-                  ShadButton.outline(
-                    onPressed: () => _loadRoute(route, reset: false),
-                    child: Text(context.l10n.tryAgain),
-                  ),
-                ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final columns = constraints.maxWidth >= 1080
+            ? 3
+            : constraints.maxWidth >= 680
+            ? 2
+            : 1;
+        return CustomScrollView(
+          key: ValueKey(
+            route == _DiscoverRoute.search
+                ? 'discover-results'
+                : 'discover-results-${route.name}',
+          ),
+          controller: state.scrollController,
+          slivers: [
+            _discoverTitleSliver(title),
+            SliverGrid(
+              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: columns,
+                mainAxisExtent: 170,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
               ),
-            );
-          }
-          return Center(
-            child: ShadButton.outline(
-              enabled: !state.loadingMore,
-              onPressed: () => _loadRoute(route, reset: false),
-              child: state.loadingMore
-                  ? const SizedBox.square(
-                      dimension: 16,
-                      child: CircularProgressIndicator(strokeWidth: 2),
-                    )
-                  : Text(context.l10n.loadMore),
+              delegate: SliverChildBuilderDelegate((context, index) {
+                final skill = state.results![index];
+                final cardFocus = state.focusNodeFor(skill.id);
+                return SkillCard(
+                  skill: skill,
+                  focusNode: cardFocus,
+                  onTap: () => _openDetail(skill, cardFocus),
+                  onInstall: (present) =>
+                      unawaited(_installFromCard(present, skill)),
+                );
+              }, childCount: state.results!.length),
             ),
-          );
-        }
-        final skill = state.results![index];
-        final cardFocus = state.focusNodeFor(skill.id);
-        return SkillCard(
-          skill: skill,
-          focusNode: cardFocus,
-          onTap: () => _openDetail(skill, cardFocus),
-          onInstall: () => _openDetail(skill, cardFocus, openPlan: true),
+            if (showMore)
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 18, bottom: 4),
+                  child: state.error != null
+                      ? Column(
+                          children: [
+                            Text(
+                              _failureCopy(context, state.error!).message,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
+                              ),
+                            ),
+                            const SizedBox(height: 10),
+                            SkillsButton.outline(
+                              onPressed: () => _loadRoute(route, reset: false),
+                              child: Text(context.l10n.tryAgain),
+                            ),
+                          ],
+                        )
+                      : Center(
+                          child: SkillsButton.outline(
+                            enabled: !state.loadingMore,
+                            onPressed: () => _loadRoute(route, reset: false),
+                            child: state.loadingMore
+                                ? const SizedBox.square(
+                                    dimension: 16,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                    ),
+                                  )
+                                : Text(context.l10n.loadMore),
+                          ),
+                        ),
+                ),
+              ),
+          ],
         );
       },
     );
   }
 
-  Future<void> _openDetail(
+  Widget _discoverStateScroll(
+    _DiscoveryRouteState state,
+    String title,
+    Widget child,
+  ) => CustomScrollView(
+    controller: state.scrollController,
+    slivers: [
+      _discoverTitleSliver(title),
+      SliverFillRemaining(hasScrollBody: false, child: child),
+    ],
+  );
+
+  Widget _discoverTitleSliver(String title) => SliverToBoxAdapter(
+    child: Padding(
+      padding: const EdgeInsets.only(bottom: 22),
+      child: Text(
+        title,
+        style: const TextStyle(
+          fontFamily: SkillsTokens.serifFamily,
+          fontSize: 38,
+          fontWeight: FontWeight.w200,
+        ),
+      ),
+    ),
+  );
+
+  void _openDetail(
     SkillSummary skill,
     FocusNode cardFocus, {
     bool openPlan = false,
-  }) async {
-    final operation = installOperations.putIfAbsent(
-      skill.id,
-      _InstallOperation.new,
-    );
-    final outcome = await Navigator.of(context).push<_RemoteDetailOutcome>(
-      MaterialPageRoute(
-        builder: (_) => _RemoteDetailScreen(
-          gateway: widget.gateway,
-          skill: skill,
-          operation: operation,
-          openPlanOnLoad: openPlan,
-        ),
-      ),
-    );
-    if (outcome == _RemoteDetailOutcome.viewLibrary) {
-      widget.onInstalled();
-    } else if (outcome == _RemoteDetailOutcome.installed && mounted) {
+  }) {
+    setState(() {
+      selectedSkill = skill;
+      selectedSkillFocus = cardFocus;
+      final routeState = routeStates[selectedRoute]!;
+      selectedSkillScrollOffset = routeState.scrollController.hasClients
+          ? routeState.scrollController.offset
+          : 0;
+      openPlanOnDetailLoad = openPlan;
+      detailTransitioning = true;
+    });
+    if (MediaQuery.disableAnimationsOf(context)) {
+      detailTransition.value = 1;
+      if (mounted) setState(() => detailTransitioning = false);
+    } else {
+      unawaited(_animateDetailOpen(skill));
+    }
+  }
+
+  Future<void> _animateDetailOpen(SkillSummary skill) async {
+    await detailTransition.forward(from: 0);
+    if (!mounted || selectedSkill?.id != skill.id) return;
+    setState(() => detailTransitioning = false);
+  }
+
+  Future<void> _closeDetail({required bool installed}) async {
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    final cardFocus = selectedSkillFocus;
+    final routeState = routeStates[selectedRoute]!;
+    final scrollOffset = selectedSkillScrollOffset;
+    setState(() => detailTransitioning = true);
+    if (disableAnimations) {
+      detailTransition.value = 0;
+    } else {
+      await detailTransition.reverse();
+    }
+    if (!mounted) return;
+    setState(() {
+      selectedSkill = null;
+      selectedSkillFocus = null;
+      selectedSkillScrollOffset = 0;
+      openPlanOnDetailLoad = false;
+      detailTransitioning = false;
+    });
+    if (installed) {
       await _loadRoute(
         selectedRoute,
         reset: true,
@@ -717,9 +950,31 @@ class _DiscoverScreenState extends State<DiscoverScreen> {
             ? controller.text.trim()
             : null,
       );
-      if (mounted) cardFocus.requestFocus();
-    } else if (mounted) {
-      cardFocus.requestFocus();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !routeState.scrollController.hasClients) return;
+        routeState.scrollController.jumpTo(
+          scrollOffset.clamp(
+            0,
+            routeState.scrollController.position.maxScrollExtent,
+          ),
+        );
+      });
+    }
+    if (!installed) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || !routeState.scrollController.hasClients) return;
+        routeState.scrollController.jumpTo(
+          scrollOffset.clamp(
+            0,
+            routeState.scrollController.position.maxScrollExtent,
+          ),
+        );
+      });
+    }
+    if (cardFocus != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) cardFocus.requestFocus();
+      });
     }
   }
 }
@@ -754,6 +1009,66 @@ DiscoveryCollection _collectionForRoute(_DiscoverRoute route) =>
       _DiscoverRoute.trending => DiscoveryCollection.trending,
       _DiscoverRoute.hot => DiscoveryCollection.hot,
     };
+
+Future<List<SkillSummary>> _loadRepositorySkills(
+  SkillsGateway gateway,
+  SkillSummary current,
+  SkillDetail detail,
+) async {
+  final repository = detail.repository.trim();
+  if (repository.isEmpty) return [current];
+  try {
+    final skills = <String, SkillSummary>{};
+    var offset = 0;
+    while (true) {
+      final page = await gateway.discover(
+        DiscoveryCollection.search,
+        query: repository,
+        offset: offset,
+        limit: 100,
+      );
+      for (final skill in page.skills) {
+        if (skill.id == repository || skill.id.startsWith('$repository/-/')) {
+          skills[skill.id] = skill;
+        }
+      }
+      final next = page.nextOffset;
+      if (next == null || next <= offset) break;
+      offset = next;
+    }
+    skills[current.id] = current;
+    final values = skills.values.toList()
+      ..sort((left, right) => left.name.compareTo(right.name));
+    return values;
+  } on Object {
+    return [current];
+  }
+}
+
+Future<void> _installRepositorySkills(
+  SkillsGateway gateway,
+  List<SkillSummary> skills,
+  List<InstallationTargetSelection> selections,
+  PersonalRiskPolicy riskPolicy,
+) async {
+  for (final skill in skills) {
+    final detail = await gateway.loadRemoteDetail(skill);
+    final operation = _InstallOperation();
+    final plan = await operation.preflight(
+      gateway,
+      skill,
+      detail.immutableVersion,
+      selections,
+      allowCritical: riskPolicy.allowCriticalOverride,
+    );
+    if (plan == null ||
+        plan.summary.conflict > 0 ||
+        plan.summary.blockedByRisk > 0) {
+      continue;
+    }
+    await operation.execute(gateway);
+  }
+}
 
 String _operationTargetKey(InstallationPlanTarget target) =>
     '${target.scope.name}\u0000${target.projectRoot}\u0000${target.agent}\u0000${target.mode.name}\u0000${target.path}';
@@ -970,8 +1285,6 @@ InstallationExecution _mergeRetryExecution(
 }
 
 enum _InstallationPlanOutcome { viewLibrary }
-
-enum _RemoteDetailOutcome { installed, viewLibrary }
 
 class _InstallationPlanDialog extends StatefulWidget {
   const _InstallationPlanDialog({
@@ -1210,17 +1523,18 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
         widget.operation.operating &&
         widget.operation.progress.isNotEmpty &&
         execution == null;
-    return ShadDialog(
+    return SkillsDialog(
       constraints: const BoxConstraints(maxWidth: 1040, maxHeight: 760),
       closeIcon: Semantics(
+        container: true,
         label: context.l10n.closeInstallationPlan,
         button: true,
-        child: ShadButton.ghost(
-          width: 28,
-          height: 28,
-          padding: EdgeInsets.zero,
-          onPressed: () => Navigator.pop(context),
-          child: const Icon(Icons.close, size: 16),
+        child: ExcludeSemantics(
+          child: IconButton(
+            visualDensity: VisualDensity.compact,
+            onPressed: () => Navigator.pop(context),
+            icon: const Icon(Icons.close, size: 16),
+          ),
         ),
       ),
       title: Text(
@@ -1268,24 +1582,24 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
   ) {
     if (execution != null) {
       return [
-        ShadButton.outline(
+        SkillsButton.outline(
           onPressed: () => Navigator.pop(context),
           child: Text(context.l10n.stayHere),
         ),
-        ShadButton(
+        SkillsButton(
           enabled: execution.hasSuccess,
           onPressed: () =>
               Navigator.pop(context, _InstallationPlanOutcome.viewLibrary),
           child: Text(context.l10n.viewInLibrary),
         ),
         if (execution.summary.failed > 0)
-          ShadButton.outline(
+          SkillsButton.outline(
             enabled: !widget.operation.operating,
             onPressed: _retryFailed,
             child: widget.operation.operating
                 ? SizedBox(
                     width: 32,
-                    child: ShadProgress(
+                    child: SkillsProgress(
                       minHeight: 4,
                       semanticsLabel: context.l10n.installationInProgress,
                     ),
@@ -1298,7 +1612,7 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
     }
     if (widget.operation.operating && widget.operation.progress.isNotEmpty) {
       return [
-        ShadButton.outline(
+        SkillsButton.outline(
           onPressed: () => Navigator.pop(context),
           child: Text(context.l10n.stayHere),
         ),
@@ -1308,19 +1622,19 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
       final unresolved =
           plan.summary.conflict > 0 || plan.summary.blockedByRisk > 0;
       return [
-        ShadButton.outline(
+        SkillsButton.outline(
           enabled: !widget.operation.operating,
           onPressed: _editTargets,
           child: Text(context.l10n.backToTargets),
         ),
-        ShadButton(
+        SkillsButton(
           enabled:
               !widget.operation.operating && (!unresolved || _canRefresh(plan)),
           onPressed: unresolved ? _preflight : _execute,
           child: widget.operation.operating
               ? SizedBox(
                   width: 32,
-                  child: ShadProgress(
+                  child: SkillsProgress(
                     minHeight: 4,
                     semanticsLabel: context.l10n.installationInProgress,
                   ),
@@ -1336,23 +1650,23 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
       ];
     }
     return [
-      ShadButton.outline(
+      SkillsButton.outline(
         enabled: !widget.operation.operating,
         onPressed: _addProject,
         child: Text(context.l10n.addProject),
       ),
-      ShadButton.outline(
+      SkillsButton.outline(
         enabled: !widget.operation.operating,
         onPressed: () => Navigator.pop(context),
         child: Text(context.l10n.cancel),
       ),
-      ShadButton(
+      SkillsButton(
         enabled: selected.isNotEmpty && !widget.operation.operating,
         onPressed: _preflight,
         child: widget.operation.operating
             ? SizedBox(
                 width: 32,
-                child: ShadProgress(
+                child: SkillsProgress(
                   minHeight: 4,
                   semanticsLabel: context.l10n.installationInProgress,
                 ),
@@ -1374,7 +1688,9 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
             const Spacer(),
             Text(
               context.l10n.targetsSelected(selected.length),
-              style: const TextStyle(color: SkillsTokens.textSecondary),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -1387,14 +1703,15 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
               child: Column(
                 children: [
                   _matrixHeader(),
-                  const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+                  SkillsSeparator.horizontal(
+                    color: Theme.of(context).colorScheme.outlineVariant,
+                  ),
                   Expanded(
                     child: ListView.separated(
                       itemCount: rows.length,
-                      separatorBuilder: (_, _) =>
-                          const ShadSeparator.horizontal(
-                            color: SkillsTokens.hairline,
-                          ),
+                      separatorBuilder: (_, _) => SkillsSeparator.horizontal(
+                        color: Theme.of(context).colorScheme.outlineVariant,
+                      ),
                       itemBuilder: (context, index) => _matrixRow(rows[index]),
                     ),
                   ),
@@ -1419,8 +1736,8 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
           width: 210,
           child: Text(
             context.l10n.location,
-            style: const TextStyle(
-              color: SkillsTokens.textSecondary,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontWeight: FontWeight.w700,
             ),
           ),
@@ -1444,7 +1761,7 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
                   ? null
                   : () => _toggleAgent(agent, !allSelected),
               excludeSemantics: true,
-              child: ShadCheckbox(
+              child: SkillsCheckbox(
                 value: allSelected,
                 enabled: eligible.isNotEmpty,
                 onChanged: (value) => _toggleAgent(agent, value),
@@ -1496,7 +1813,7 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
                   ? null
                   : () => _toggleRow(row, !allSelected),
               excludeSemantics: true,
-              child: ShadCheckbox(
+              child: SkillsCheckbox(
                 value: allSelected,
                 enabled: eligible.isNotEmpty,
                 onChanged: (value) => _toggleRow(row, value),
@@ -1563,7 +1880,7 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
                 onTap: () =>
                     _toggleCell(row, agent, !selected.containsKey(key)),
                 excludeSemantics: true,
-                child: ShadCheckbox(
+                child: SkillsCheckbox(
                   value: selected.containsKey(key),
                   onChanged: (value) => _toggleCell(row, agent, value),
                   label: Text(context.l10n.select),
@@ -1571,7 +1888,9 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
               )
             : StatusChip(
                 label: context.l10n.unsupportedCell,
-                color: SkillsTokens.textTertiary,
+                color: Theme.of(
+                  context,
+                ).colorScheme.onSurfaceVariant.withValues(alpha: .72),
               ),
       ),
     );
@@ -1601,13 +1920,17 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
             label: context.l10n.planConflictCount(plan.summary.conflict),
             color: plan.summary.conflict > 0
                 ? SkillsTokens.amber
-                : SkillsTokens.textTertiary,
+                : Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant.withValues(alpha: .72),
           ),
           StatusChip(
             label: context.l10n.planRiskCount(plan.summary.blockedByRisk),
             color: plan.summary.blockedByRisk > 0
                 ? SkillsTokens.red
-                : SkillsTokens.textTertiary,
+                : Theme.of(
+                    context,
+                  ).colorScheme.onSurfaceVariant.withValues(alpha: .72),
           ),
           StatusChip(label: plan.version, color: SkillsTokens.teal),
         ],
@@ -1615,9 +1938,9 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
       const SizedBox(height: 14),
       SelectableText(
         plan.coordinate,
-        style: const TextStyle(
+        style: TextStyle(
           fontFamily: SkillsTokens.monoFamily,
-          color: SkillsTokens.textSecondary,
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
         ),
       ),
       const SizedBox(height: 14),
@@ -1634,8 +1957,8 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
               child: GlassCard(
                 child: ListView.separated(
                   itemCount: plan.targets.length,
-                  separatorBuilder: (_, _) => const ShadSeparator.horizontal(
-                    color: SkillsTokens.hairline,
+                  separatorBuilder: (_, _) => SkillsSeparator.horizontal(
+                    color: Theme.of(context).colorScheme.outlineVariant,
                   ),
                   itemBuilder: (context, index) =>
                       _plannedTarget(plan.targets[index]),
@@ -1655,8 +1978,10 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
                       child: plan.workspaceLockChanges.isEmpty
                           ? Text(
                               context.l10n.noWorkspaceLockChanges,
-                              style: const TextStyle(
-                                color: SkillsTokens.textSecondary,
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                             )
                           : ListView.separated(
@@ -1683,8 +2008,10 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
                                             : change.fromVersion,
                                         change.toVersion,
                                       ),
-                                      style: const TextStyle(
-                                        color: SkillsTokens.textSecondary,
+                                      style: TextStyle(
+                                        color: Theme.of(
+                                          context,
+                                        ).colorScheme.onSurfaceVariant,
                                         fontFamily: SkillsTokens.monoFamily,
                                         fontSize: 11,
                                       ),
@@ -1728,8 +2055,10 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
                     item.target.path,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      color: SkillsTokens.textTertiary,
+                    style: TextStyle(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.onSurfaceVariant.withValues(alpha: .72),
                       fontFamily: SkillsTokens.monoFamily,
                       fontSize: 11,
                     ),
@@ -1753,7 +2082,7 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
         if (item.action == InstallationPlanAction.conflict) ...[
           const SizedBox(height: 8),
           if (item.reasonCode == 'shared-target-conflict')
-            ShadAlert.destructive(
+            SkillsAlert.destructive(
               icon: const Icon(Icons.hub_outlined),
               title: Text(context.l10n.sharedTargetConflict),
               description: Text(
@@ -1766,7 +2095,7 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
               ),
             )
           else
-            ShadCheckbox(
+            SkillsCheckbox(
               value: _selectionMatchesReview(item),
               onChanged: (value) => _setResolution(item, value),
               label: Text(_conflictResolutionLabel(context, item.reasonCode)),
@@ -1829,20 +2158,20 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
           item.reasonCode == 'critical-risk',
     );
     if (critical && !widget.riskPolicy.allowCriticalOverride) {
-      return ShadAlert.destructive(
+      return SkillsAlert.destructive(
         icon: const Icon(Icons.shield_outlined),
         title: Text(context.l10n.criticalRiskBlocked),
         description: Text(context.l10n.criticalRiskOverrideDisabled),
       );
     }
-    return ShadAlert(
+    return SkillsAlert(
       icon: const Icon(Icons.warning_amber_rounded),
       title: Text(
         critical
             ? context.l10n.confirmCriticalRiskArtifact
             : context.l10n.confirmHighRiskArtifact,
       ),
-      description: ShadCheckbox(
+      description: SkillsCheckbox(
         value: riskConfirmed,
         onChanged: (value) => setState(() => riskConfirmed = value),
         label: Text(context.l10n.confirmRiskForSelectedTargets),
@@ -1859,7 +2188,7 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
       key: const ValueKey('installation-progress'),
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ShadCard(
+        SkillsCard(
           width: double.infinity,
           title: Text(context.l10n.installationProgressTitle),
           description: Text(
@@ -1868,7 +2197,7 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
               plan.targets.length,
             ),
           ),
-          footer: ShadProgress(
+          footer: SkillsProgress(
             value: plan.targets.isEmpty
                 ? 0
                 : widget.operation.finishedTargetCount / plan.targets.length,
@@ -1881,8 +2210,9 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
           child: GlassCard(
             child: ListView.separated(
               itemCount: plan.targets.length,
-              separatorBuilder: (_, _) =>
-                  const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+              separatorBuilder: (_, _) => SkillsSeparator.horizontal(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
               itemBuilder: (context, index) {
                 final item = plan.targets[index];
                 final event = progress[_operationTargetKey(item.target)];
@@ -1952,8 +2282,8 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
       const SizedBox(height: 8),
       Text(
         execution.coordinate,
-        style: const TextStyle(
-          color: SkillsTokens.textSecondary,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
           fontFamily: SkillsTokens.monoFamily,
         ),
       ),
@@ -1962,8 +2292,9 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
         child: GlassCard(
           child: ListView.separated(
             itemCount: execution.results.length,
-            separatorBuilder: (_, _) =>
-                const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+            separatorBuilder: (_, _) => SkillsSeparator.horizontal(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
             itemBuilder: (context, index) {
               final result = execution.results[index];
               final success =
@@ -1994,8 +2325,10 @@ class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
                                 context,
                                 result.errorCode,
                               ),
-                              style: const TextStyle(
-                                color: SkillsTokens.textSecondary,
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                               ),
                             ),
                         ],
@@ -2027,7 +2360,7 @@ class _PlanError extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final copy = _failureCopy(context, error);
-    return ShadAlert.destructive(
+    return SkillsAlert.destructive(
       icon: const Icon(Icons.error_outline),
       title: Text(context.l10n.installationPlanFailed),
       description: Text(copy.message),
@@ -2040,7 +2373,7 @@ class _InstallationCompletionBanner extends StatelessWidget {
   final InstallationExecution execution;
 
   @override
-  Widget build(BuildContext context) => ShadCard(
+  Widget build(BuildContext context) => SkillsCard(
     width: double.infinity,
     title: Text(context.l10n.installationResults),
     description: Text(
@@ -2098,14 +2431,19 @@ String _conflictResolutionLabel(BuildContext context, String code) =>
 
 class _RemoteDetailScreen extends StatefulWidget {
   const _RemoteDetailScreen({
+    super.key,
     required this.gateway,
     required this.skill,
     required this.operation,
+    required this.onBack,
+    required this.onViewLibrary,
     this.openPlanOnLoad = false,
   });
   final SkillsGateway gateway;
   final SkillSummary skill;
   final _InstallOperation operation;
+  final Future<void> Function({required bool installed}) onBack;
+  final VoidCallback onViewLibrary;
   final bool openPlanOnLoad;
 
   @override
@@ -2113,16 +2451,17 @@ class _RemoteDetailScreen extends StatefulWidget {
 }
 
 class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
+  final detailScrollController = ScrollController();
   SkillDetail? detail;
   Object? error;
   bool loading = true;
-  bool showingManifest = false;
-  String? selectedFilePath;
   CliStatus? cliStatus;
   AgentCatalog? agentCatalog;
   List<AddedProject> addedProjects = const [];
+  List<SkillSummary> repositorySkills = const [];
   PersonalRiskPolicy riskPolicy = const PersonalRiskPolicy();
   bool didOpenInitialPlan = false;
+  bool installationDialogOpen = false;
   bool get operating => widget.operation.operating;
   InstallationExecution? get execution => widget.operation.execution;
 
@@ -2130,7 +2469,12 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
   void initState() {
     super.initState();
     widget.operation.addListener(_operationChanged);
+    detailScrollController.addListener(_detailScrollChanged);
     unawaited(load());
+  }
+
+  void _detailScrollChanged() {
+    if (mounted) setState(() {});
   }
 
   void _operationChanged() {
@@ -2140,6 +2484,9 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
   @override
   void dispose() {
     widget.operation.removeListener(_operationChanged);
+    detailScrollController
+      ..removeListener(_detailScrollChanged)
+      ..dispose();
     super.dispose();
   }
 
@@ -2159,6 +2506,11 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
       cliStatus = values[1] as CliStatus;
       addedProjects = values[2] as List<AddedProject>;
       riskPolicy = values[3] as PersonalRiskPolicy;
+      repositorySkills = await _loadRepositorySkills(
+        widget.gateway,
+        widget.skill,
+        detail!,
+      );
       if (cliStatus!.isReady) {
         try {
           agentCatalog = await widget.gateway.inspectAgents();
@@ -2171,31 +2523,17 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
     }
     if (!mounted) return;
     setState(() => loading = false);
-    if (widget.openPlanOnLoad &&
-        !didOpenInitialPlan &&
-        detail != null &&
-        agentCatalog != null &&
-        agentCatalog!.installed.isNotEmpty) {
-      didOpenInitialPlan = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) unawaited(install());
-      });
-    }
   }
 
-  Future<void> install() async {
+  Future<void> install(InstallLocationMenuPresenter present) async {
     if (agentCatalog == null || detail == null) return;
-    final outcome = await showShadDialog<_InstallationPlanOutcome>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => _InstallationPlanDialog(
+    final selections = await present(
+      InstallLocationMenuRequest(
         gateway: widget.gateway,
-        skill: widget.skill,
-        detail: detail!,
         catalog: agentCatalog!,
-        initialProjects: addedProjects,
-        operation: widget.operation,
-        riskPolicy: riskPolicy,
+        detail: detail!,
+        projects: addedProjects,
+        repositorySkills: repositorySkills,
         onProjectAdded: (project) {
           final index = addedProjects.indexWhere(
             (item) => item.id == project.id,
@@ -2208,20 +2546,240 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
         },
       ),
     );
+    if (!mounted || selections == null || selections.selections.isEmpty) return;
+    if (selections.action == InstallLocationAction.repositorySkills) {
+      await _installRepositorySkills(
+        widget.gateway,
+        repositorySkills,
+        selections.selections,
+        riskPolicy,
+      );
+      if (mounted) setState(() {});
+      return;
+    }
+    widget.operation.editTargets();
+    final plan = await widget.operation.preflight(
+      widget.gateway,
+      widget.skill,
+      detail!.immutableVersion,
+      selections.selections,
+      allowCritical: riskPolicy.allowCriticalOverride,
+    );
+    if (!mounted) return;
+    final requiresReview =
+        plan == null ||
+        plan.summary.conflict > 0 ||
+        plan.summary.blockedByRisk > 0;
+    if (!requiresReview) {
+      final result = await widget.operation.execute(widget.gateway);
+      if (!mounted) return;
+      if (result != null &&
+          result.summary.failed == 0 &&
+          result.summary.conflict == 0) {
+        setState(() {});
+        return;
+      }
+    }
+    setState(() => installationDialogOpen = true);
+    final outcome = await showSkillsDialog<_InstallationPlanOutcome>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => _InstallationPlanDialog(
+        gateway: widget.gateway,
+        skill: widget.skill,
+        detail: detail!,
+        catalog: agentCatalog!,
+        initialProjects: addedProjects,
+        operation: widget.operation,
+        riskPolicy: riskPolicy,
+        onProjectAdded: (project) {},
+      ),
+    );
+    if (mounted) setState(() => installationDialogOpen = false);
     if (outcome == _InstallationPlanOutcome.viewLibrary && mounted) {
-      Navigator.pop(context, _RemoteDetailOutcome.viewLibrary);
+      widget.onViewLibrary();
     } else if (mounted) {
       setState(() {});
     }
   }
 
   @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: SkillsTokens.nearBlack,
-    body: SafeArea(
-      child: Padding(padding: const EdgeInsets.all(28), child: _content()),
+  Widget build(BuildContext context) => CallbackShortcuts(
+    bindings: {
+      const SingleActivator(LogicalKeyboardKey.escape): () =>
+          widget.onBack(installed: execution?.hasSuccess == true),
+      const SingleActivator(LogicalKeyboardKey.bracketLeft, meta: true): () =>
+          widget.onBack(installed: execution?.hasSuccess == true),
+    },
+    child: Focus(
+      autofocus: true,
+      child: Padding(
+        padding: const EdgeInsets.only(left: 4, right: 4, bottom: 4),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            _content(),
+            Align(alignment: Alignment.topCenter, child: _detailToolbar()),
+          ],
+        ),
+      ),
     ),
   );
+
+  Widget _detailToolbar() {
+    final scheme = Theme.of(context).colorScheme;
+    final offset = detailScrollController.hasClients
+        ? detailScrollController.offset
+        : 0.0;
+    final materialProgress = ((offset - 12) / 52).clamp(0.0, 1.0);
+    final compactProgress = ((offset - 72) / 56).clamp(0.0, 1.0);
+    final value = detail;
+    return SizedBox(
+      key: const Key('detail-sticky-toolbar'),
+      height: 72,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  Colors.white,
+                  Colors.white,
+                  Colors.transparent,
+                ],
+                stops: [0, .04, .96, 1],
+              ).createShader(bounds),
+              child: ShaderMask(
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (bounds) => const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.white,
+                    Colors.white,
+                    Colors.transparent,
+                  ],
+                  stops: [0, .16, .68, 1],
+                ).createShader(bounds),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: 22 * materialProgress,
+                    sigmaY: 22 * materialProgress,
+                  ),
+                  child: ColoredBox(
+                    color: scheme.surface.withValues(
+                      alpha: .62 * materialProgress,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          SizedBox(
+            height: 56,
+            child: Row(
+              children: [
+                Semantics(
+                  label: context.l10n.backToSearch,
+                  button: true,
+                  child: Material(
+                    color: scheme.surfaceContainerHigh.withValues(alpha: .82),
+                    elevation: 3,
+                    shadowColor: scheme.shadow.withValues(alpha: .28),
+                    shape: const CircleBorder(),
+                    clipBehavior: Clip.antiAlias,
+                    child: IconButton(
+                      key: const Key('detail-back'),
+                      onPressed: () => widget.onBack(
+                        installed: execution?.hasSuccess == true,
+                      ),
+                      style: IconButton.styleFrom(
+                        foregroundColor: scheme.onSurface,
+                        fixedSize: const Size.square(40),
+                        minimumSize: const Size.square(40),
+                        padding: EdgeInsets.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      icon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedLessThan,
+                        size: 20,
+                        strokeWidth: 1.8,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                  ),
+                ),
+                if (value != null && compactProgress > 0) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Opacity(
+                      key: const Key('detail-compact-identity'),
+                      opacity: compactProgress,
+                      child: IgnorePointer(
+                        ignoring: compactProgress < .95,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            RepositoryAvatar(
+                              source: value.source,
+                              imageUrl: value.imageUrl,
+                              size: 26,
+                              borderRadius: 7,
+                            ),
+                            const SizedBox(width: 9),
+                            Flexible(
+                              child: Text(
+                                value.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ] else
+                  const Spacer(),
+                if (value != null && compactProgress > 0)
+                  Opacity(
+                    key: const Key('detail-compact-install'),
+                    opacity: compactProgress,
+                    child: IgnorePointer(
+                      ignoring: compactProgress < .95,
+                      child: InstallLocationMenuAnchor(
+                        builder: (context, present) => PrimaryCapsuleButton(
+                          label: context.l10n.install,
+                          height: 36,
+                          horizontalPadding: 16,
+                          labelStyle: const TextStyle(
+                            fontWeight: FontWeight.w400,
+                          ),
+                          onPressed:
+                              agentCatalog != null &&
+                                  agentCatalog!.installed.isEmpty
+                              ? null
+                              : () => install(present),
+                          busy: operating,
+                        ),
+                      ),
+                    ),
+                  ),
+                const SizedBox(width: 4),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 
   Widget _content() {
     if (loading) {
@@ -2235,7 +2793,9 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
               const SizedBox(height: 14),
               Text(
                 context.l10n.detailLoading,
-                style: const TextStyle(color: SkillsTokens.textSecondary),
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
             ],
           ),
@@ -2247,7 +2807,7 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
       return EmptyState(
         title: copy.title,
         message: copy.message,
-        action: ShadButton(onPressed: load, child: Text(context.l10n.retry)),
+        action: SkillsButton(onPressed: load, child: Text(context.l10n.retry)),
       );
     }
     return _detailBody();
@@ -2255,282 +2815,282 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
 
   Widget _detailBody() {
     final value = detail!;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            ShadTooltip(
-              builder: (_) => Text(context.l10n.backToSearch),
-              child: Semantics(
-                label: context.l10n.backToSearch,
-                button: true,
-                child: ShadButton.ghost(
-                  width: 36,
-                  height: 36,
-                  padding: EdgeInsets.zero,
-                  onPressed: () => Navigator.pop(
-                    context,
-                    execution?.hasSuccess == true
-                        ? _RemoteDetailOutcome.installed
-                        : null,
-                  ),
-                  child: const Icon(Icons.arrow_back),
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            SkillGlyph(name: value.name),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    value.name,
-                    style: const TextStyle(
-                      fontFamily: SkillsTokens.serifFamily,
-                      fontSize: 30,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  Text(
-                    '${value.source} · ${context.l10n.installs('${value.installs}')}',
-                    style: const TextStyle(color: SkillsTokens.textSecondary),
-                  ),
-                ],
-              ),
-            ),
-            PrimaryCapsuleButton(
-              label: widget.skill.isInstalled
-                  ? context.l10n.installToMoreTargets
-                  : context.l10n.installSkill,
-              onPressed: agentCatalog != null && agentCatalog!.installed.isEmpty
-                  ? null
-                  : install,
-              busy: operating,
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            SkillTrustChip(trust: value.trustLevel),
-            SkillRiskChip(risk: value.riskAssessment),
-            StatusChip(
-              label: context.l10n.immutableVersionLabel(value.immutableVersion),
-              color: SkillsTokens.blue,
-            ),
-            StatusChip(
-              label: context.l10n.commitIdentity(
-                _shortIdentity(value.commitSHA),
-              ),
-              color: SkillsTokens.textSecondary,
-            ),
-            StatusChip(
-              label: context.l10n.treeIdentity(_shortIdentity(value.treeSHA)),
-              color: SkillsTokens.textSecondary,
-            ),
-            StatusChip(
-              label: context.l10n.contentIdentity(
-                _shortIdentity(value.contentDigest),
-              ),
-              color: SkillsTokens.textTertiary,
-            ),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Text(
-          context.l10n.trustDoesNotProveSafety,
-          style: const TextStyle(
-            color: SkillsTokens.textSecondary,
-            fontSize: 12,
-            height: 1.4,
-          ),
-        ),
-        if (value.hasExecutableContent || value.riskEvidence.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          _RiskNotice(detail: value),
-        ],
-        if (value.installationTargets.isNotEmpty) ...[
-          const SizedBox(height: 12),
+    return SingleChildScrollView(
+      key: const Key('detail-scroll-view'),
+      controller: detailScrollController,
+      padding: const EdgeInsets.only(top: 76, bottom: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Padding(
-                padding: const EdgeInsets.only(top: 5),
-                child: Text(
-                  context.l10n.knownInstallationTargets,
-                  style: const TextStyle(
-                    color: SkillsTokens.textSecondary,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              RepositoryAvatar(
+                key: const Key('detail-skill-avatar'),
+                source: value.source,
+                imageUrl: value.imageUrl,
+                size: 116,
+                borderRadius: 24,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 20),
               Expanded(
-                child: Wrap(
-                  spacing: 7,
-                  runSpacing: 7,
-                  children: value.installationTargets
-                      .map(
-                        (target) => StatusChip(
-                          label: context.l10n.targetSummary(
-                            switch (target.scope) {
-                              InstallationScope.user => context.l10n.userScope,
-                              InstallationScope.project =>
-                                context.l10n.projectScope,
-                            },
-                            target.agent,
-                            target.version,
-                          ),
-                          color: SkillsTokens.green,
-                        ),
-                      )
-                      .toList(growable: false),
-                ),
-              ),
-            ],
-          ),
-        ],
-        if (agentCatalog != null && agentCatalog!.installed.isEmpty) ...[
-          const SizedBox(height: 12),
-          ShadCard(
-            width: double.infinity,
-            title: Text(context.l10n.noInstalledAgentsTitle),
-            description: Text(context.l10n.noInstalledAgentsMessage),
-          ),
-        ],
-        if (operating &&
-            widget.operation.progress.isNotEmpty &&
-            execution == null) ...[
-          const SizedBox(height: 14),
-          ShadCard(
-            width: double.infinity,
-            title: Text(context.l10n.installationProgressTitle),
-            description: Text(
-              context.l10n.installationProgressSummary(
-                widget.operation.finishedTargetCount,
-                widget.operation.plan?.targets.length ?? 0,
-              ),
-            ),
-            footer: ShadProgress(
-              minHeight: 5,
-              semanticsLabel: context.l10n.installationInProgress,
-            ),
-          ),
-        ],
-        if (execution != null) ...[
-          const SizedBox(height: 14),
-          _InstallationCompletionBanner(execution: execution!),
-        ],
-        const SizedBox(height: 20),
-        Expanded(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Expanded(
-                flex: 3,
-                child: GlassCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        _documentTitle(value),
-                        key: const Key('detail-document-title'),
-                        style: const TextStyle(
-                          fontWeight: FontWeight.w700,
-                          color: SkillsTokens.textPrimary,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      Expanded(child: _document(value)),
-                    ],
-                  ),
-                ),
-              ),
-              const SizedBox(width: 14),
-              SizedBox(
-                width: 260,
-                child: GlassCard(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      SectionEyebrow(context.l10n.snapshotFiles),
-                      const SizedBox(height: 10),
-                      ShadButton.ghost(
-                        width: double.infinity,
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        backgroundColor:
-                            !showingManifest && selectedFilePath == null
-                            ? SkillsTokens.cardHover
-                            : null,
-                        onPressed: () => setState(() {
-                          showingManifest = false;
-                          selectedFilePath = null;
-                        }),
-                        child: Text(context.l10n.instructionsTab),
-                      ),
-                      ShadButton.ghost(
-                        width: double.infinity,
-                        mainAxisAlignment: MainAxisAlignment.start,
-                        backgroundColor: showingManifest
-                            ? SkillsTokens.cardHover
-                            : null,
-                        onPressed: () => setState(() {
-                          showingManifest = true;
-                          selectedFilePath = null;
-                        }),
-                        child: Text(context.l10n.manifestTab),
-                      ),
-                      const ShadSeparator.horizontal(
-                        color: SkillsTokens.hairline,
-                      ),
-                      Expanded(
-                        child: ListView(
-                          children: value.files
-                              .map(
-                                (file) => Padding(
-                                  padding: const EdgeInsets.only(bottom: 4),
-                                  child: ShadButton.ghost(
-                                    width: double.infinity,
-                                    mainAxisAlignment: MainAxisAlignment.start,
-                                    backgroundColor:
-                                        selectedFilePath == file.path
-                                        ? SkillsTokens.cardHover
-                                        : null,
-                                    onPressed: () => setState(() {
-                                      showingManifest = false;
-                                      selectedFilePath = file.path;
-                                    }),
-                                    leading: Icon(
-                                      file.executable
-                                          ? Icons.terminal
-                                          : file.binary
-                                          ? Icons.data_object
-                                          : Icons.description_outlined,
-                                      size: 15,
-                                      color: file.executable
-                                          ? SkillsTokens.amber
-                                          : SkillsTokens.textTertiary,
-                                    ),
-                                    child: Flexible(
-                                      child: Text(
-                                        file.path,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: const TextStyle(
-                                          fontFamily: SkillsTokens.monoFamily,
-                                          fontSize: 11,
-                                        ),
-                                      ),
-                                    ),
-                                  ),
+                child: Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(minHeight: 112),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                value.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontFamily: SkillsTokens.sansFamily,
+                                  fontSize: 30,
+                                  height: 1.12,
+                                  fontWeight: FontWeight.w700,
                                 ),
-                              )
-                              .toList(),
+                              ),
+                            ),
+                            const SizedBox(width: 24),
+                            InstallLocationMenuAnchor(
+                              builder: (context, present) =>
+                                  PrimaryCapsuleButton(
+                                    key: const Key('detail-hero-install'),
+                                    label: context.l10n.install,
+                                    height: 40,
+                                    horizontalPadding: 18,
+                                    labelStyle: const TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w400,
+                                    ),
+                                    onPressed:
+                                        agentCatalog != null &&
+                                            agentCatalog!.installed.isEmpty
+                                        ? null
+                                        : () => install(present),
+                                    busy: operating,
+                                  ),
+                            ),
+                          ],
+                        ),
+                        if (value.description.trim().isNotEmpty) ...[
+                          const SizedBox(height: 8),
+                          SkillMarkdownView(
+                            key: const Key('detail-description-markdown'),
+                            data: value.description.trim(),
+                            scrollable: false,
+                            maxHeight: 68,
+                            presentation: SkillMarkdownPresentation.summary,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 24),
+          _detailProductMetadata(value),
+          if (value.hasExecutableContent || value.riskEvidence.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            _RiskNotice(detail: value),
+          ],
+          if (value.installationTargets.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.only(top: 5),
+                  child: Text(
+                    context.l10n.knownInstallationTargets,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Wrap(
+                    spacing: 7,
+                    runSpacing: 7,
+                    children: value.installationTargets
+                        .map(
+                          (target) => StatusChip(
+                            label: context.l10n.targetSummary(
+                              switch (target.scope) {
+                                InstallationScope.user =>
+                                  context.l10n.userScope,
+                                InstallationScope.project =>
+                                  context.l10n.projectScope,
+                              },
+                              target.agent,
+                              target.version,
+                            ),
+                            color: SkillsTokens.green,
+                          ),
+                        )
+                        .toList(growable: false),
+                  ),
+                ),
+              ],
+            ),
+          ],
+          if (agentCatalog != null && agentCatalog!.installed.isEmpty) ...[
+            const SizedBox(height: 12),
+            SkillsCard(
+              width: double.infinity,
+              title: Text(context.l10n.noInstalledAgentsTitle),
+              description: Text(context.l10n.noInstalledAgentsMessage),
+            ),
+          ],
+          if (operating &&
+              widget.operation.progress.isNotEmpty &&
+              execution == null) ...[
+            const SizedBox(height: 14),
+            SkillsCard(
+              width: double.infinity,
+              title: Text(context.l10n.installationProgressTitle),
+              description: Text(
+                context.l10n.installationProgressSummary(
+                  widget.operation.finishedTargetCount,
+                  widget.operation.plan?.targets.length ?? 0,
+                ),
+              ),
+              footer: SkillsProgress(
+                minHeight: 5,
+                semanticsLabel: context.l10n.installationInProgress,
+              ),
+            ),
+          ],
+          if (execution != null && !installationDialogOpen) ...[
+            const SizedBox(height: 14),
+            _InstallationCompletionBanner(execution: execution!),
+          ],
+          const SizedBox(height: 40),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 820),
+              child: SkillMarkdownView(
+                key: const Key('detail-instructions'),
+                data: value.markdown,
+                scrollable: false,
+                stripFrontMatter: true,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _detailProductMetadata(SkillDetail value) {
+    final scheme = Theme.of(context).colorScheme;
+    final items = [
+      (
+        label: context.l10n.detailInstalls,
+        value: _compactCount(value.installs),
+      ),
+      (
+        label: context.l10n.detailRepository,
+        value: _repositoryDisplayName(
+          value.repository.isEmpty ? value.source : value.repository,
+        ),
+      ),
+      (
+        label: context.l10n.detailGitHubStars,
+        value: _compactCount(value.githubStars),
+      ),
+      (
+        label: context.l10n.detailUpdated,
+        value: _shortDate(value.sourceUpdatedAt),
+      ),
+      (
+        label: context.l10n.detailArchiveSize,
+        value: _fileSize(value.archiveSize),
+      ),
+    ];
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        border: Border.symmetric(
+          horizontal: BorderSide(
+            color: scheme.outlineVariant.withValues(alpha: .55),
+          ),
+        ),
+      ),
+      child: SizedBox(
+        height: 88,
+        child: Row(
+          children: [
+            for (var index = 0; index < items.length; index++) ...[
+              if (index > 0)
+                SizedBox(
+                  height: 48,
+                  child: VerticalDivider(
+                    width: 1,
+                    thickness: 1,
+                    color: scheme.outlineVariant.withValues(alpha: .55),
+                  ),
+                ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 14),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      SizedBox(
+                        height: 18,
+                        width: double.infinity,
+                        child: Center(
+                          child: Text(
+                            items[index].label,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: scheme.onSurfaceVariant,
+                              fontSize: 12,
+                              height: 1,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 7),
+                      SizedBox(
+                        height: 24,
+                        width: double.infinity,
+                        child: Center(
+                          child: Tooltip(
+                            message: index == 1 ? items[index].value : '',
+                            child: Text(
+                              items[index].value,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: scheme.onSurfaceVariant,
+                                fontSize: switch (index) {
+                                  1 => 12,
+                                  3 => 16,
+                                  _ => 18,
+                                },
+                                height: 1,
+                                fontWeight: index == 1
+                                    ? FontWeight.w500
+                                    : FontWeight.w600,
+                              ),
+                            ),
+                          ),
                         ),
                       ),
                     ],
@@ -2538,66 +3098,46 @@ class _RemoteDetailScreenState extends State<_RemoteDetailScreen> {
                 ),
               ),
             ],
-          ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  String _documentTitle(SkillDetail value) {
-    if (showingManifest) return context.l10n.manifestTab;
-    return selectedFilePath ?? context.l10n.instructionsTab;
+  String _repositoryDisplayName(String repository) {
+    final firstSeparator = repository.indexOf('/');
+    if (firstSeparator <= 0) {
+      return repository;
+    }
+    final firstSegment = repository.substring(0, firstSeparator);
+    return firstSegment.contains('.')
+        ? repository.substring(firstSeparator + 1)
+        : repository;
   }
 
-  Widget _document(SkillDetail value) {
-    if (showingManifest) {
-      return SingleChildScrollView(
-        child: SelectableText(
-          value.manifest,
-          key: const Key('detail-manifest'),
-          style: const TextStyle(fontFamily: SkillsTokens.monoFamily),
-        ),
-      );
+  String _compactCount(int value) {
+    if (value >= 1000000) {
+      return '${(value / 1000000).toStringAsFixed(value >= 10000000 ? 0 : 1)}M';
     }
-    if (selectedFilePath == null) {
-      return Markdown(
-        key: const Key('detail-instructions'),
-        data: value.markdown,
-        selectable: true,
-      );
+    if (value >= 1000) {
+      return '${(value / 1000).toStringAsFixed(value >= 100000 ? 0 : 1)}K';
     }
-    final file = value.files.firstWhere(
-      (candidate) => candidate.path == selectedFilePath,
-    );
-    if (file.binary || file.contents.isEmpty) {
-      return Center(
-        child: Text(
-          context.l10n.fileContentUnavailable,
-          style: const TextStyle(color: SkillsTokens.textSecondary),
-        ),
-      );
+    return '$value';
+  }
+
+  String _shortDate(DateTime? value) {
+    if (value == null || value.year <= 1) return '—';
+    final month = value.month.toString().padLeft(2, '0');
+    final day = value.day.toString().padLeft(2, '0');
+    return '${value.year}-$month-$day';
+  }
+
+  String _fileSize(int bytes) {
+    if (bytes <= 0) return '—';
+    if (bytes >= 1 << 20) {
+      return '${(bytes / (1 << 20)).toStringAsFixed(1)} MB';
     }
-    final preview = file.path.toLowerCase().endsWith('.md')
-        ? Markdown(data: file.contents, selectable: true)
-        : SingleChildScrollView(
-            child: SelectableText(
-              file.contents,
-              key: ValueKey('detail-file-${file.path}'),
-              style: const TextStyle(fontFamily: SkillsTokens.monoFamily),
-            ),
-          );
-    if (!file.truncated) return preview;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          context.l10n.fileContentTruncated,
-          style: const TextStyle(color: SkillsTokens.amber),
-        ),
-        const SizedBox(height: 8),
-        Expanded(child: preview),
-      ],
-    );
+    return '${(bytes / 1024).toStringAsFixed(bytes >= 10240 ? 0 : 1)} KB';
   }
 }
 
@@ -2632,8 +3172,8 @@ class _RiskNotice extends StatelessWidget {
                         .map((evidence) => evidence.path)
                         .join(', '),
                   ),
-                  style: const TextStyle(
-                    color: SkillsTokens.textSecondary,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontFamily: SkillsTokens.monoFamily,
                     fontSize: 11,
                   ),
@@ -2645,13 +3185,6 @@ class _RiskNotice extends StatelessWidget {
       ],
     ),
   );
-}
-
-String _shortIdentity(String value) {
-  final normalized = value.startsWith('sha256:')
-      ? value.substring('sha256:'.length)
-      : value;
-  return normalized.length <= 12 ? normalized : normalized.substring(0, 12);
 }
 
 class _TargetManagementDialog extends StatefulWidget {
@@ -2738,19 +3271,19 @@ class _TargetManagementDialogState extends State<_TargetManagementDialog> {
       (action) => action != TargetManagementAction.repair,
     );
     if (destructive) {
-      return ShadButton.destructive(
+      return SkillsButton.destructive(
         enabled: enabled,
         onPressed: _execute,
         child: child,
       );
     }
-    return ShadButton(enabled: enabled, onPressed: _execute, child: child);
+    return SkillsButton(enabled: enabled, onPressed: _execute, child: child);
   }
 
   @override
   Widget build(BuildContext context) {
     final result = execution;
-    return ShadDialog(
+    return SkillsDialog(
       constraints: const BoxConstraints(maxWidth: 860, maxHeight: 740),
       title: Text(
         operating
@@ -2769,14 +3302,14 @@ class _TargetManagementDialogState extends State<_TargetManagementDialog> {
       ),
       actions: [
         if (result == null) ...[
-          ShadButton.outline(
+          SkillsButton.outline(
             enabled: !operating,
             onPressed: () => Navigator.pop(context),
             child: Text(context.l10n.cancel),
           ),
           _applyButton(context),
         ] else
-          ShadButton(
+          SkillsButton(
             onPressed: () => Navigator.pop(context, result),
             child: Text(context.l10n.closeUpdatePlan),
           ),
@@ -2801,7 +3334,7 @@ class _TargetManagementDialogState extends State<_TargetManagementDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ShadCard(
+        SkillsCard(
           width: double.infinity,
           title: Text(
             context.l10n.targetActionsSelected(
@@ -2811,7 +3344,7 @@ class _TargetManagementDialogState extends State<_TargetManagementDialog> {
           ),
           description: Text(context.l10n.manageTargetsDescription),
           footer: operating
-              ? ShadProgress(
+              ? SkillsProgress(
                   value: plan.targets.isEmpty
                       ? 0
                       : finishedCount / plan.targets.length,
@@ -2831,8 +3364,9 @@ class _TargetManagementDialogState extends State<_TargetManagementDialog> {
           child: GlassCard(
             child: ListView.separated(
               itemCount: widget.plan.targets.length,
-              separatorBuilder: (_, _) =>
-                  const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+              separatorBuilder: (_, _) => SkillsSeparator.horizontal(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
               itemBuilder: (context, index) {
                 final item = widget.plan.targets[index];
                 final key = updateTargetKey(item.target);
@@ -2858,8 +3392,10 @@ class _TargetManagementDialogState extends State<_TargetManagementDialog> {
                             const SizedBox(height: 3),
                             Text(
                               item.target.path,
-                              style: const TextStyle(
-                                color: SkillsTokens.textSecondary,
+                              style: TextStyle(
+                                color: Theme.of(
+                                  context,
+                                ).colorScheme.onSurfaceVariant,
                                 fontFamily: SkillsTokens.monoFamily,
                                 fontSize: 11,
                               ),
@@ -2880,8 +3416,10 @@ class _TargetManagementDialogState extends State<_TargetManagementDialog> {
                               const SizedBox(height: 3),
                               Text(
                                 context.l10n.stopManagingDescription,
-                                style: const TextStyle(
-                                  color: SkillsTokens.textSecondary,
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                                   fontSize: 11,
                                 ),
                               ),
@@ -2893,7 +3431,7 @@ class _TargetManagementDialogState extends State<_TargetManagementDialog> {
                       _installationHealthChip(context, item.health),
                       const SizedBox(width: 10),
                       if (removable)
-                        ShadCheckbox(
+                        SkillsCheckbox(
                           value: selected == TargetManagementAction.remove,
                           enabled: !operating,
                           onChanged: (_) => _selectAction(
@@ -2909,12 +3447,14 @@ class _TargetManagementDialogState extends State<_TargetManagementDialog> {
                             if (item.allowedActions.contains(
                               TargetManagementAction.repair,
                             ))
-                              ShadButton.outline(
-                                size: ShadButtonSize.sm,
+                              SkillsButton.outline(
+                                size: SkillsButtonSize.sm,
                                 enabled: !operating,
                                 backgroundColor:
                                     selected == TargetManagementAction.repair
-                                    ? SkillsTokens.cardHover
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.surfaceContainer
                                     : null,
                                 onPressed: () => _selectAction(
                                   item,
@@ -2925,13 +3465,15 @@ class _TargetManagementDialogState extends State<_TargetManagementDialog> {
                             if (item.allowedActions.contains(
                               TargetManagementAction.stopManaging,
                             ))
-                              ShadButton.outline(
-                                size: ShadButtonSize.sm,
+                              SkillsButton.outline(
+                                size: SkillsButtonSize.sm,
                                 enabled: !operating,
                                 backgroundColor:
                                     selected ==
                                         TargetManagementAction.stopManaging
-                                    ? SkillsTokens.cardHover
+                                    ? Theme.of(
+                                        context,
+                                      ).colorScheme.surfaceContainer
                                     : null,
                                 onPressed: () => _selectAction(
                                   item,
@@ -2952,8 +3494,8 @@ class _TargetManagementDialogState extends State<_TargetManagementDialog> {
           const SizedBox(height: 10),
           Text(
             context.l10n.workspaceOwnershipChanges,
-            style: const TextStyle(
-              color: SkillsTokens.textSecondary,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               fontSize: 12,
             ),
           ),
@@ -2972,8 +3514,9 @@ class _TargetManagementDialogState extends State<_TargetManagementDialog> {
   Widget _results(TargetManagementExecution execution) => GlassCard(
     child: ListView.separated(
       itemCount: execution.results.length,
-      separatorBuilder: (_, _) =>
-          const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+      separatorBuilder: (_, _) => SkillsSeparator.horizontal(
+        color: Theme.of(context).colorScheme.outlineVariant,
+      ),
       itemBuilder: (context, index) {
         final result = execution.results[index];
         final failed = result.outcome == TargetManagementOutcome.failed;
@@ -2991,7 +3534,9 @@ class _TargetManagementDialogState extends State<_TargetManagementDialog> {
                     ),
                     Text(
                       _managementActionLabel(context, result.action),
-                      style: const TextStyle(color: SkillsTokens.textSecondary),
+                      style: TextStyle(
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
                     ),
                     if (result.diagnostic.isNotEmpty)
                       Text(
@@ -3200,7 +3745,7 @@ class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
         : currentExecution != null
         ? context.l10n.updateResultsTitle
         : context.l10n.updatePlanTitle;
-    return ShadDialog(
+    return SkillsDialog(
       constraints: const BoxConstraints(maxWidth: 820, maxHeight: 720),
       title: Text(title),
       description: Text(
@@ -3225,19 +3770,19 @@ class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
       ),
       actions: [
         if (currentExecution == null) ...[
-          ShadButton.outline(
+          SkillsButton.outline(
             enabled: !operating,
             onPressed: () => Navigator.pop(context),
             child: Text(context.l10n.cancel),
           ),
-          ShadButton(
+          SkillsButton(
             enabled: !operating && selectedItems.isNotEmpty,
             onPressed: _execute,
             child: Text(context.l10n.updateSelectedTargets),
           ),
         ] else ...[
           if (currentExecution.summary.failed > 0)
-            ShadButton.outline(
+            SkillsButton.outline(
               enabled: !operating,
               onPressed: _retryFailed,
               child: Text(
@@ -3246,7 +3791,7 @@ class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
                 ),
               ),
             ),
-          ShadButton(
+          SkillsButton(
             enabled: !operating,
             onPressed: () => Navigator.pop(context, currentExecution),
             child: Text(context.l10n.closeUpdatePlan),
@@ -3269,7 +3814,7 @@ class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        ShadCard(
+        SkillsCard(
           width: double.infinity,
           title: Text(
             context.l10n.updateTargetsSelected(
@@ -3291,15 +3836,16 @@ class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
           child: GlassCard(
             child: ListView.separated(
               itemCount: widget.plan.targets.length,
-              separatorBuilder: (_, _) =>
-                  const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+              separatorBuilder: (_, _) => SkillsSeparator.horizontal(
+                color: Theme.of(context).colorScheme.outlineVariant,
+              ),
               itemBuilder: (context, index) {
                 final item = widget.plan.targets[index];
                 final key = updateTargetKey(item.target);
                 final enabled = item.action == UpdatePlanAction.update;
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 10),
-                  child: ShadCheckbox(
+                  child: SkillsCheckbox(
                     value: selected.contains(key),
                     enabled: enabled && !operating,
                     onChanged: (value) => setState(() {
@@ -3332,8 +3878,10 @@ class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
                                 const SizedBox(height: 3),
                                 Text(
                                   context.l10n.sourceReference(item.sourceRef),
-                                  style: const TextStyle(
-                                    color: SkillsTokens.textSecondary,
+                                  style: TextStyle(
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.onSurfaceVariant,
                                     fontSize: 12,
                                   ),
                                 ),
@@ -3342,8 +3890,11 @@ class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
                                     context.l10n.agentsSummary(
                                       item.affectedBindings.length,
                                     ),
-                                    style: const TextStyle(
-                                      color: SkillsTokens.textTertiary,
+                                    style: TextStyle(
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant
+                                          .withValues(alpha: .72),
                                       fontSize: 11,
                                     ),
                                   ),
@@ -3355,7 +3906,9 @@ class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
                             label: _updatePlanItemLabel(context, item),
                             color: enabled
                                 ? SkillsTokens.orange
-                                : SkillsTokens.textSecondary,
+                                : Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
                           ),
                         ],
                       ),
@@ -3376,10 +3929,10 @@ class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
           for (final change in selectedPlan.workspaceLockChanges)
             Text(
               '${change.path}: ${change.fromVersion} → ${change.toVersion}',
-              style: const TextStyle(
+              style: TextStyle(
                 fontFamily: SkillsTokens.monoFamily,
                 fontSize: 11,
-                color: SkillsTokens.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
             ),
         ],
@@ -3390,13 +3943,13 @@ class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
   Widget _liveProgress(List<UpdatePlanItem> items) => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
-      ShadCard(
+      SkillsCard(
         width: double.infinity,
         title: Text(context.l10n.updateProgressTitle),
         description: Text(
           context.l10n.updateProgressSummary(finishedCount, items.length),
         ),
-        footer: ShadProgress(
+        footer: SkillsProgress(
           value: items.isEmpty ? 0 : finishedCount / items.length,
           minHeight: 5,
           semanticsLabel: context.l10n.updateProgressTitle,
@@ -3407,8 +3960,9 @@ class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
         child: GlassCard(
           child: ListView.separated(
             itemCount: items.length,
-            separatorBuilder: (_, _) =>
-                const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+            separatorBuilder: (_, _) => SkillsSeparator.horizontal(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
             itemBuilder: (context, index) {
               final item = items[index];
               final event = progress[updateTargetKey(item.target)];
@@ -3464,7 +4018,7 @@ class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       if (operating)
-        ShadProgress(
+        SkillsProgress(
           value: current.results.isEmpty
               ? null
               : finishedCount / current.results.length,
@@ -3483,8 +4037,9 @@ class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
         child: GlassCard(
           child: ListView.separated(
             itemCount: current.results.length,
-            separatorBuilder: (_, _) =>
-                const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+            separatorBuilder: (_, _) => SkillsSeparator.horizontal(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
             itemBuilder: (context, index) {
               final result = current.results[index];
               final failed = result.outcome == UpdateTargetOutcome.failed;
@@ -3511,8 +4066,10 @@ class _UpdatePlanDialogState extends State<_UpdatePlanDialog> {
                               result.fromVersion,
                               result.toVersion,
                             ),
-                            style: const TextStyle(
-                              color: SkillsTokens.textSecondary,
+                            style: TextStyle(
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                           ),
                           if (result.diagnostic.isNotEmpty)
@@ -3722,9 +4279,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
       updateCheckError = null;
       updates = {
         for (final skill in skills!)
-          _libraryUpdateKey(
-            skill,
-          ): skill.provenance == LibraryProvenance.registry
+          _libraryUpdateKey(skill): skill.provenance == LibraryProvenance.hub
               ? UpdateState.checking
               : UpdateState.unsupported,
       };
@@ -3748,7 +4303,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
     try {
       final plan = await widget.gateway.preflightUpdate(skill, skill.targets);
       if (!mounted) return;
-      final execution = await showShadDialog<UpdateExecution>(
+      final execution = await showSkillsDialog<UpdateExecution>(
         context: context,
         barrierDismissible: false,
         builder: (context) => _UpdatePlanDialog(
@@ -3777,7 +4332,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
         skill.targets,
       );
       if (!mounted) return;
-      final execution = await showShadDialog<TargetManagementExecution>(
+      final execution = await showSkillsDialog<TargetManagementExecution>(
         context: context,
         barrierDismissible: false,
         builder: (context) =>
@@ -3807,7 +4362,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
   }
 
   bool get _hasUpdateableSkills => (skills ?? const <InstalledSkill>[]).any(
-    (skill) => skill.provenance == LibraryProvenance.registry,
+    (skill) => skill.provenance == LibraryProvenance.hub,
   );
 
   String _agentLabel(String agent) {
@@ -3836,6 +4391,11 @@ class _LibraryScreenState extends State<LibraryScreen> {
       SkillsRailItem(
         value: 'agent:${_agents[index]}',
         label: _agentLabel(_agents[index]),
+        leading: AgentLogo(
+          key: ValueKey('library-agent-logo-${_agents[index]}'),
+          agentId: _agents[index],
+          displayName: _agentLabel(_agents[index]),
+        ),
         dividerBefore: index == 0,
       ),
   ];
@@ -3975,21 +4535,28 @@ class _LibraryScreenState extends State<LibraryScreen> {
         ],
         if (updateCheckError != null) ...[
           const SizedBox(height: 14),
-          ShadAlert(
+          SkillsAlert(
             icon: const Icon(Icons.cloud_off_outlined),
             title: Text(_failureCopy(context, updateCheckError!).title),
             description: Text(_failureCopy(context, updateCheckError!).message),
           ),
         ],
         const SizedBox(height: 14),
-        ShadInput(
+        SkillsInput(
           key: const Key('library-search'),
           controller: librarySearchController,
           focusNode: librarySearchFocusNode,
           onChanged: (_) => setState(() {}),
-          leading: const Icon(Icons.search, color: SkillsTokens.textSecondary),
+          leading: Icon(
+            Icons.search,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
           placeholder: Text(context.l10n.searchLibrary),
-          placeholderStyle: const TextStyle(color: SkillsTokens.textTertiary),
+          placeholderStyle: TextStyle(
+            color: Theme.of(
+              context,
+            ).colorScheme.onSurfaceVariant.withValues(alpha: .72),
+          ),
         ),
         const SizedBox(height: 20),
         Expanded(child: _body()),
@@ -4075,11 +4642,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
               Expanded(
                 child: InkWell(
                   onTap: () async {
+                    final appTheme = Theme.of(context);
                     final removed = await Navigator.of(context).push<bool>(
                       MaterialPageRoute(
-                        builder: (_) => LocalDetailScreen(
-                          gateway: widget.gateway,
-                          skill: skill,
+                        builder: (_) => Theme(
+                          data: appTheme,
+                          child: LocalDetailScreen(
+                            gateway: widget.gateway,
+                            skill: skill,
+                          ),
                         ),
                       ),
                     );
@@ -4100,10 +4671,10 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         skill.coordinate.isEmpty
                             ? skill.path
                             : skill.coordinate,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: SkillsTokens.monoFamily,
                           fontSize: 11,
-                          color: SkillsTokens.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -4120,7 +4691,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                     if (skill.provenance == LibraryProvenance.external)
                       StatusChip(
                         label: context.l10n.readOnly,
-                        color: SkillsTokens.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     StatusChip(
                       label: context.l10n.localTargets(skill.targetCount),
@@ -4144,7 +4715,7 @@ class _LibraryScreenState extends State<LibraryScreen> {
                         ),
                         color: skill.versionDivergence
                             ? SkillsTokens.orange
-                            : SkillsTokens.textSecondary,
+                            : Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     if (skill.versionDivergence)
                       StatusChip(
@@ -4157,15 +4728,15 @@ class _LibraryScreenState extends State<LibraryScreen> {
                 ),
               ),
               const SizedBox(width: 8),
-              if (skill.provenance == LibraryProvenance.registry &&
+              if (skill.provenance == LibraryProvenance.hub &&
                   state != UpdateState.unknown)
                 StatusChip(
                   label: _updateLabel(context, state),
                   color: state == UpdateState.available
                       ? SkillsTokens.orange
-                      : SkillsTokens.textSecondary,
+                      : Theme.of(context).colorScheme.onSurfaceVariant,
                 ),
-              if (skill.provenance == LibraryProvenance.registry &&
+              if (skill.provenance == LibraryProvenance.hub &&
                   state == UpdateState.available) ...[
                 const SizedBox(width: 8),
                 SecondaryCapsuleButton(
@@ -4180,16 +4751,16 @@ class _LibraryScreenState extends State<LibraryScreen> {
                   child: Semantics(
                     label: context.l10n.manageTargets,
                     button: true,
-                    child: ShadButton.ghost(
+                    child: SkillsButton.ghost(
                       width: 38,
                       height: 38,
                       padding: EdgeInsets.zero,
                       enabled: !operating,
                       onPressed: () => manage(skill),
-                      child: const Icon(
+                      child: Icon(
                         Icons.tune,
                         size: 18,
-                        color: SkillsTokens.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ),
@@ -4215,13 +4786,13 @@ class _ExternalAdoptionDialog extends StatefulWidget {
 }
 
 class _ExternalAdoptionDialogState extends State<_ExternalAdoptionDialog> {
-  RegistryContentMatch? selectedMatch;
+  HubContentMatch? selectedMatch;
   bool operating = false;
   Object? error;
 
   ExternalAdoptionPlan? get selectedPlan {
     final match = selectedMatch;
-    if (match != null) return widget.plan.selectRegistryMatch(match);
+    if (match != null) return widget.plan.selectHubMatch(match);
     if (widget.plan.matches.isEmpty && widget.plan.canImportLocal) {
       return widget.plan.selectLocalImport();
     }
@@ -4251,21 +4822,21 @@ class _ExternalAdoptionDialogState extends State<_ExternalAdoptionDialog> {
   @override
   Widget build(BuildContext context) {
     final hasMatches = widget.plan.matches.isNotEmpty;
-    return ShadDialog(
+    return SkillsDialog(
       constraints: const BoxConstraints(maxWidth: 760, maxHeight: 700),
       title: Text(context.l10n.adoptExternalTitle),
       description: Text(context.l10n.adoptExternalDescription),
       actions: [
-        ShadButton.outline(
+        SkillsButton.outline(
           enabled: !operating,
           onPressed: () => Navigator.pop(context),
           child: Text(context.l10n.cancel),
         ),
-        ShadButton(
+        SkillsButton(
           enabled: !operating && selectedPlan != null,
           onPressed: execute,
           child: operating
-              ? const SizedBox(width: 42, child: ShadProgress(minHeight: 4))
+              ? const SizedBox(width: 42, child: SkillsProgress(minHeight: 4))
               : Text(
                   hasMatches
                       ? context.l10n.confirmAdoption
@@ -4279,7 +4850,7 @@ class _ExternalAdoptionDialogState extends State<_ExternalAdoptionDialog> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            ShadCard(
+            SkillsCard(
               width: double.infinity,
               title: Text(context.l10n.adoptionContentDigest),
               description: SelectableText(
@@ -4291,13 +4862,13 @@ class _ExternalAdoptionDialogState extends State<_ExternalAdoptionDialog> {
               ),
             ),
             const SizedBox(height: 12),
-            ShadAlert(
+            SkillsAlert(
               icon: const Icon(Icons.lock_outline),
               description: Text(context.l10n.adoptionPreservesContent),
             ),
             if (error != null) ...[
               const SizedBox(height: 10),
-              ShadAlert.destructive(
+              SkillsAlert.destructive(
                 icon: const Icon(Icons.error_outline),
                 title: Text(context.l10n.adoptionFailed),
                 description: Text(_failureCopy(context, error!).message),
@@ -4306,7 +4877,7 @@ class _ExternalAdoptionDialogState extends State<_ExternalAdoptionDialog> {
             const SizedBox(height: 14),
             Text(
               hasMatches
-                  ? context.l10n.registryContentMatches
+                  ? context.l10n.hubContentMatches
                   : context.l10n.importAsLocal,
               style: const TextStyle(fontWeight: FontWeight.w700),
             ),
@@ -4319,7 +4890,7 @@ class _ExternalAdoptionDialogState extends State<_ExternalAdoptionDialog> {
                       itemBuilder: (context, index) {
                         final match = widget.plan.matches[index];
                         final selected = identical(selectedMatch, match);
-                        return ShadButton.outline(
+                        return SkillsButton.outline(
                           width: double.infinity,
                           height: 86,
                           onPressed: operating
@@ -4333,7 +4904,9 @@ class _ExternalAdoptionDialogState extends State<_ExternalAdoptionDialog> {
                                     : Icons.radio_button_off,
                                 color: selected
                                     ? SkillsTokens.teal
-                                    : SkillsTokens.textSecondary,
+                                    : Theme.of(
+                                        context,
+                                      ).colorScheme.onSurfaceVariant,
                               ),
                               const SizedBox(width: 12),
                               SizedBox(
@@ -4351,14 +4924,12 @@ class _ExternalAdoptionDialogState extends State<_ExternalAdoptionDialog> {
                                       ),
                                     ),
                                     Text(
-                                      context.l10n.registryMatchSource(
-                                        match.source,
-                                      ),
+                                      context.l10n.hubMatchSource(match.source),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                     Text(
-                                      context.l10n.registryMatchVersion(
+                                      context.l10n.hubMatchVersion(
                                         match.immutableVersion,
                                       ),
                                       maxLines: 1,
@@ -4376,22 +4947,24 @@ class _ExternalAdoptionDialogState extends State<_ExternalAdoptionDialog> {
                         );
                       },
                     )
-                  : ShadCard(
+                  : SkillsCard(
                       width: double.infinity,
                       title: Text(context.l10n.importAsLocal),
                       description: Text(context.l10n.importAsLocalDescription),
                       footer: Text(
                         context.l10n.exportLocalSkillDescription,
-                        style: const TextStyle(
-                          color: SkillsTokens.textSecondary,
+                        style: TextStyle(
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ),
             ),
             if (hasMatches && selectedMatch == null)
               Text(
-                context.l10n.chooseRegistryMatch,
-                style: const TextStyle(color: SkillsTokens.textSecondary),
+                context.l10n.chooseHubMatch,
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
           ],
         ),
@@ -4455,7 +5028,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
         skill.targets,
       );
       if (!mounted) return;
-      final execution = await showShadDialog<TargetManagementExecution>(
+      final execution = await showSkillsDialog<TargetManagementExecution>(
         context: context,
         barrierDismissible: false,
         builder: (context) =>
@@ -4482,7 +5055,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
   }
 
   Future<void> update() async {
-    if (updating || skill.provenance != LibraryProvenance.registry) return;
+    if (updating || skill.provenance != LibraryProvenance.hub) return;
     setState(() {
       updating = true;
       result = null;
@@ -4490,7 +5063,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
     try {
       final plan = await widget.gateway.preflightUpdate(skill, skill.targets);
       if (!mounted) return;
-      final execution = await showShadDialog<UpdateExecution>(
+      final execution = await showSkillsDialog<UpdateExecution>(
         context: context,
         barrierDismissible: false,
         builder: (context) => _UpdatePlanDialog(
@@ -4525,7 +5098,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
     try {
       final plan = await widget.gateway.preflightExternalAdoption(skill);
       if (!mounted) return;
-      final adopted = await showShadDialog<ExternalAdoptionResult>(
+      final adopted = await showSkillsDialog<ExternalAdoptionResult>(
         context: context,
         barrierDismissible: false,
         builder: (context) =>
@@ -4563,7 +5136,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
       ]);
       if (!mounted) return;
       var projects = values[1] as List<AddedProject>;
-      await showShadDialog<_InstallationPlanOutcome>(
+      await showSkillsDialog<_InstallationPlanOutcome>(
         context: context,
         barrierDismissible: false,
         builder: (context) => _InstallationPlanDialog(
@@ -4573,6 +5146,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
             skillId: skill.coordinate,
             name: skill.name,
             source: currentDetail.source,
+            imageUrl: currentDetail.imageUrl,
             installs: 0,
             latestVersion: currentDetail.immutableVersion,
             description: currentDetail.description,
@@ -4634,7 +5208,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
 
   @override
   Widget build(BuildContext context) => Scaffold(
-    backgroundColor: SkillsTokens.nearBlack,
+    backgroundColor: Theme.of(context).colorScheme.surface,
     body: SafeArea(
       child: Padding(
         padding: const EdgeInsets.all(28),
@@ -4665,9 +5239,9 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
                       ),
                       SelectableText(
                         skill.path,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontFamily: SkillsTokens.monoFamily,
-                          color: SkillsTokens.textSecondary,
+                          color: Theme.of(context).colorScheme.onSurfaceVariant,
                         ),
                       ),
                     ],
@@ -4680,7 +5254,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
                 if (skill.provenance == LibraryProvenance.external) ...[
                   StatusChip(
                     label: context.l10n.readOnly,
-                    color: SkillsTokens.textSecondary,
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
                   ),
                   const SizedBox(width: 8),
                   SecondaryCapsuleButton(
@@ -4689,7 +5263,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
                     onPressed: adopting ? null : adopt,
                   ),
                 ] else ...[
-                  if (skill.provenance == LibraryProvenance.registry) ...[
+                  if (skill.provenance == LibraryProvenance.hub) ...[
                     SecondaryCapsuleButton(
                       label: context.l10n.update,
                       icon: Icons.sync,
@@ -4702,7 +5276,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
                     child: Semantics(
                       label: context.l10n.manageTargets,
                       button: true,
-                      child: ShadButton.ghost(
+                      child: SkillsButton.ghost(
                         width: 38,
                         height: 38,
                         padding: EdgeInsets.zero,
@@ -4793,7 +5367,9 @@ class _InstallationTargetsPanel extends StatelessWidget {
         const SizedBox(height: 12),
         for (final (index, target) in skill.targets.indexed) ...[
           if (index > 0)
-            const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+            SkillsSeparator.horizontal(
+              color: Theme.of(context).colorScheme.outlineVariant,
+            ),
           Row(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -4816,10 +5392,10 @@ class _InstallationTargetsPanel extends StatelessWidget {
                     const SizedBox(height: 4),
                     SelectableText(
                       target.path,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontFamily: SkillsTokens.monoFamily,
                         fontSize: 11,
-                        color: SkillsTokens.textSecondary,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
                   ],
@@ -4828,7 +5404,7 @@ class _InstallationTargetsPanel extends StatelessWidget {
               const SizedBox(width: 12),
               StatusChip(
                 label: _installationModeLabel(context, target.mode),
-                color: SkillsTokens.textSecondary,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
               ),
               const SizedBox(width: 7),
               StatusChip(
@@ -4891,27 +5467,31 @@ class _LocalSkillDocuments extends StatelessWidget {
               children: [
                 SectionEyebrow(context.l10n.supportingFiles),
                 const SizedBox(height: 10),
-                ShadButton.ghost(
+                SkillsButton.ghost(
                   width: double.infinity,
                   mainAxisAlignment: MainAxisAlignment.start,
                   backgroundColor: selectedFilePath == null
-                      ? SkillsTokens.cardHover
+                      ? Theme.of(context).colorScheme.surfaceContainer
                       : null,
                   onPressed: () => onSelected(null),
                   child: Text(context.l10n.instructionsTab),
                 ),
-                const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+                SkillsSeparator.horizontal(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
                 Expanded(
                   child: ListView(
                     children: supportingFiles
                         .map(
                           (file) => Padding(
                             padding: const EdgeInsets.only(bottom: 4),
-                            child: ShadButton.ghost(
+                            child: SkillsButton.ghost(
                               width: double.infinity,
                               mainAxisAlignment: MainAxisAlignment.start,
                               backgroundColor: selectedFilePath == file.path
-                                  ? SkillsTokens.cardHover
+                                  ? Theme.of(
+                                      context,
+                                    ).colorScheme.surfaceContainer
                                   : null,
                               onPressed: () => onSelected(file.path),
                               leading: Icon(
@@ -4923,7 +5503,10 @@ class _LocalSkillDocuments extends StatelessWidget {
                                 size: 15,
                                 color: file.executable
                                     ? SkillsTokens.amber
-                                    : SkillsTokens.textTertiary,
+                                    : Theme.of(context)
+                                          .colorScheme
+                                          .onSurfaceVariant
+                                          .withValues(alpha: .72),
                               ),
                               child: Flexible(
                                 child: Text(
@@ -4952,7 +5535,7 @@ class _LocalSkillDocuments extends StatelessWidget {
 
   Widget _document(BuildContext context) {
     if (selectedFilePath == null) {
-      return Markdown(data: detail.markdown, selectable: true);
+      return SkillMarkdownView(data: detail.markdown);
     }
     final file = detail.files.firstWhere(
       (candidate) => candidate.path == selectedFilePath,
@@ -4961,12 +5544,14 @@ class _LocalSkillDocuments extends StatelessWidget {
       return Center(
         child: Text(
           context.l10n.fileContentUnavailable,
-          style: const TextStyle(color: SkillsTokens.textSecondary),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       );
     }
     final content = file.path.toLowerCase().endsWith('.md')
-        ? Markdown(data: file.contents, selectable: true)
+        ? SkillMarkdownView(data: file.contents)
         : SingleChildScrollView(
             child: SelectableText(
               file.contents,
@@ -4991,32 +5576,44 @@ class _LocalSkillDocuments extends StatelessWidget {
 enum _SettingsRoute {
   general,
   agents,
-  registry,
+  hub,
   installationPolicy,
   storage,
+  colorScheme,
   about,
 }
 
 class SettingsScreen extends StatefulWidget {
-  const SettingsScreen({super.key, required this.gateway});
+  const SettingsScreen({
+    super.key,
+    required this.gateway,
+    required this.folderTheme,
+    required this.onFolderThemeChanged,
+    required this.themeMode,
+    required this.onThemeModeChanged,
+  });
   final SkillsGateway gateway;
+  final String folderTheme;
+  final ValueChanged<Color> onFolderThemeChanged;
+  final AppThemeMode themeMode;
+  final ValueChanged<AppThemeMode> onThemeModeChanged;
   @override
   State<SettingsScreen> createState() => _SettingsScreenState();
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
   final controller = TextEditingController();
-  final registryController = TextEditingController();
+  final hubController = TextEditingController();
   final scrollController = ScrollController();
   _SettingsRoute selectedRoute = _SettingsRoute.general;
   CliStatus? status;
-  RegistryStatus? registryStatus;
+  HubStatus? hubStatus;
   PersonalRiskPolicy? riskPolicy;
   StorageStatus? storageStatus;
   String? appVersion;
   bool detecting = true;
   bool loadingSettings = true;
-  bool testingRegistry = false;
+  bool testingHub = false;
   String? notice;
   AgentCatalog? agentCatalog;
   Object? agentInspectionError;
@@ -5032,12 +5629,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (!mounted) return;
     controller.text = customCliPath;
     final values = await Future.wait([
-      widget.gateway.loadRegistryOrigin(),
+      widget.gateway.loadHubOrigin(),
       widget.gateway.loadRiskPolicy(),
       widget.gateway.loadAppVersion(),
     ]);
     if (!mounted) return;
-    registryController.text = values[0] as String;
+    hubController.text = values[0] as String;
     riskPolicy = values[1] as PersonalRiskPolicy;
     appVersion = values[2] as String;
     await detect();
@@ -5085,47 +5682,47 @@ class _SettingsScreenState extends State<SettingsScreen> {
     await detect();
   }
 
-  Future<RegistryStatus?> testRegistry() async {
+  Future<HubStatus?> testHub() async {
     if (!mounted) return null;
-    final origin = registryController.text;
+    final origin = hubController.text;
     setState(() {
-      testingRegistry = true;
+      testingHub = true;
       notice = null;
     });
-    RegistryStatus tested;
+    HubStatus tested;
     try {
-      tested = await widget.gateway.testRegistryOrigin(origin);
+      tested = await widget.gateway.testHubOrigin(origin);
     } on Object catch (error) {
-      tested = RegistryStatus(
+      tested = HubStatus(
         origin: origin,
         state: HealthState.unreachable,
-        issue: RegistryIssue.connectionFailure,
+        issue: HubIssue.connectionFailure,
         diagnostic: error.toString(),
       );
     } finally {
-      if (mounted) setState(() => testingRegistry = false);
+      if (mounted) setState(() => testingHub = false);
     }
     if (!mounted) return null;
-    setState(() => registryStatus = tested);
+    setState(() => hubStatus = tested);
     return tested;
   }
 
-  Future<void> saveRegistry() async {
+  Future<void> saveHub() async {
     try {
-      final tested = await testRegistry();
+      final tested = await testHub();
       if (!mounted || tested?.isReady != true) return;
-      await widget.gateway.saveRegistryOrigin(registryController.text);
-      final savedOrigin = await widget.gateway.loadRegistryOrigin();
+      await widget.gateway.saveHubOrigin(hubController.text);
+      final savedOrigin = await widget.gateway.loadHubOrigin();
       if (!mounted) return;
-      registryController.text = savedOrigin;
-      setState(() => notice = context.l10n.registryOriginSaved);
+      hubController.text = savedOrigin;
+      setState(() => notice = context.l10n.hubOriginSaved);
     } on FormatException catch (error) {
       if (mounted) {
         setState(
-          () => registryStatus = RegistryStatus(
-            origin: registryController.text,
+          () => hubStatus = HubStatus(
+            origin: hubController.text,
             state: HealthState.invalid,
-            issue: RegistryIssue.invalidOrigin,
+            issue: HubIssue.invalidOrigin,
             diagnostic: error.message,
           ),
         );
@@ -5133,13 +5730,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  Future<void> resetRegistry() async {
-    await widget.gateway.resetRegistryOrigin();
+  Future<void> resetHub() async {
+    await widget.gateway.resetHubOrigin();
     if (!mounted) return;
-    final defaultOrigin = await widget.gateway.loadRegistryOrigin();
+    final defaultOrigin = await widget.gateway.loadHubOrigin();
     if (!mounted) return;
-    registryController.text = defaultOrigin;
-    await testRegistry();
+    hubController.text = defaultOrigin;
+    await testHub();
   }
 
   Future<void> setCriticalOverride(bool value) async {
@@ -5158,10 +5755,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
     if (mounted) setState(() => storageStatus = inspected);
   }
 
+  void _selectRoute(_SettingsRoute route) {
+    setState(() => selectedRoute = route);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (scrollController.hasClients) scrollController.jumpTo(0);
+    });
+  }
+
   @override
   void dispose() {
     controller.dispose();
-    registryController.dispose();
+    hubController.dispose();
     scrollController.dispose();
     super.dispose();
   }
@@ -5171,7 +5775,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     rail: SkillsSideRail<_SettingsRoute>(
       semanticLabel: context.l10n.settingsNavigation,
       selected: selectedRoute,
-      onSelected: (route) => setState(() => selectedRoute = route),
+      onSelected: _selectRoute,
       items: [
         SkillsRailItem(
           value: _SettingsRoute.general,
@@ -5181,10 +5785,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           value: _SettingsRoute.agents,
           label: context.l10n.agents,
         ),
-        SkillsRailItem(
-          value: _SettingsRoute.registry,
-          label: context.l10n.registry,
-        ),
+        SkillsRailItem(value: _SettingsRoute.hub, label: context.l10n.hub),
         SkillsRailItem(
           value: _SettingsRoute.installationPolicy,
           label: context.l10n.installationPolicy,
@@ -5192,6 +5793,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
         SkillsRailItem(
           value: _SettingsRoute.storage,
           label: context.l10n.storage,
+        ),
+        SkillsRailItem(
+          value: _SettingsRoute.colorScheme,
+          label: context.l10n.colorScheme,
         ),
         SkillsRailItem(value: _SettingsRoute.about, label: context.l10n.about),
       ],
@@ -5222,9 +5827,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
       switch (selectedRoute) {
         _SettingsRoute.general => _generalSettings(),
         _SettingsRoute.agents => _agentSettings(),
-        _SettingsRoute.registry => _registrySettings(),
+        _SettingsRoute.hub => _hubSettings(),
         _SettingsRoute.installationPolicy => _policySettings(),
         _SettingsRoute.storage => _storageSettings(),
+        _SettingsRoute.colorScheme => ColorSchemeInspector(
+          seed: _AppShellState._folderThemeColor(widget.folderTheme),
+        ),
         _SettingsRoute.about => _aboutSettings(),
       },
     ],
@@ -5233,27 +5841,119 @@ class _SettingsScreenState extends State<SettingsScreen> {
   String _routeTitle() => switch (selectedRoute) {
     _SettingsRoute.general => context.l10n.general,
     _SettingsRoute.agents => context.l10n.agents,
-    _SettingsRoute.registry => context.l10n.registry,
+    _SettingsRoute.hub => context.l10n.hub,
     _SettingsRoute.installationPolicy => context.l10n.installationPolicy,
     _SettingsRoute.storage => context.l10n.storage,
+    _SettingsRoute.colorScheme => context.l10n.colorScheme,
     _SettingsRoute.about => context.l10n.about,
   };
 
-  Widget _generalSettings() => ShadCard(
+  Widget _generalSettings() => SkillsCard(
     width: double.infinity,
     title: Text(context.l10n.generalSettingsTitle),
     description: Text(context.l10n.generalSettingsDescription),
     child: Padding(
       padding: const EdgeInsets.only(top: 16),
-      child: Text(
-        context.l10n.privacySummary,
-        style: const TextStyle(color: SkillsTokens.textSecondary, height: 1.5),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            context.l10n.privacySummary,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Text(
+            context.l10n.appearanceMode,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            context.l10n.appearanceModeDescription,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 14),
+          _themeModeTabs(),
+          const SizedBox(height: 20),
+          SkillsSeparator.horizontal(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+          const SizedBox(height: 18),
+          Text(
+            context.l10n.folderColorTheme,
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            context.l10n.folderColorThemeDescription,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: 14),
+          KeyedSubtree(
+            key: const Key('folder-theme-picker'),
+            child: BloomColorPicker(
+              initialColor: _AppShellState._folderThemeColor(
+                widget.folderTheme,
+              ),
+              onColorChanged: widget.onFolderThemeChanged,
+              presets: brandThemePresets,
+              style: BloomColorPickerStyle(
+                alignment: BloomColorPickerAlignment.circleLeft,
+                hapticFeedback: false,
+                pillBackgroundColor: Theme.of(
+                  context,
+                ).colorScheme.surfaceContainerHighest,
+                pillTextColor: Theme.of(context).colorScheme.onSurface,
+                iconColor: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ),
+        ],
       ),
     ),
   );
 
+  Widget _themeModeTabs() {
+    final scheme = Theme.of(context).colorScheme;
+    return DiscreteTabs(
+      key: const Key('appearance-mode-tabs'),
+      currentIndex: widget.themeMode.index,
+      onSelect: (index) =>
+          widget.onThemeModeChanged(AppThemeMode.values[index]),
+      tabs: [
+        DiscreteTab(
+          label: context.l10n.followSystem,
+          icon: Icons.brightness_auto_rounded,
+          activeColor: scheme.onPrimaryContainer,
+        ),
+        DiscreteTab(
+          label: context.l10n.lightMode,
+          icon: Icons.light_mode_rounded,
+          activeColor: scheme.onPrimaryContainer,
+        ),
+        DiscreteTab(
+          label: context.l10n.darkMode,
+          icon: Icons.dark_mode_rounded,
+          activeColor: scheme.onPrimaryContainer,
+        ),
+      ],
+      style: DiscreteTabsStyle(
+        backgroundColor: scheme.surfaceContainerHigh,
+        activeBackgroundColor: scheme.primaryContainer,
+        inactiveIconColor: scheme.onSurfaceVariant,
+        shadowColor: scheme.shadow.withValues(alpha: .22),
+      ),
+    );
+  }
+
   Widget _agentSettings() {
-    final cliCard = ShadCard(
+    final cliCard = SkillsCard(
       width: double.infinity,
       title: Row(
         children: [
@@ -5287,7 +5987,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (!kReleaseMode) ...[
-              ShadInput(
+              SkillsInput(
                 key: const Key('cli-path'),
                 controller: controller,
                 placeholder: const Text('/path/to/development/skillsgo'),
@@ -5299,18 +5999,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
               runSpacing: 10,
               children: [
                 if (!kReleaseMode)
-                  ShadButton(
+                  SkillsButton(
                     enabled: !detecting,
                     onPressed: save,
                     child: Text(context.l10n.saveAndDetect),
                   ),
-                ShadButton.outline(
+                SkillsButton.outline(
                   enabled: !detecting,
                   onPressed: detect,
                   child: Text(context.l10n.detectAgain),
                 ),
                 if (!kReleaseMode)
-                  ShadButton.outline(
+                  SkillsButton.outline(
                     enabled: !detecting,
                     onPressed: clear,
                     child: Text(context.l10n.clearCustomPath),
@@ -5327,7 +6027,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         cliCard,
         if (agentInspectionError != null) ...[
           const SizedBox(height: 14),
-          ShadCard(
+          SkillsCard(
             width: double.infinity,
             description: Text(context.l10n.agentInspectionFailed),
           ),
@@ -5346,7 +6046,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         if (left.installed != right.installed) return left.installed ? -1 : 1;
         return left.displayName.compareTo(right.displayName);
       });
-    return ShadCard(
+    return SkillsCard(
       width: double.infinity,
       title: Text(
         context.l10n.agentCatalogSummary(
@@ -5361,7 +6061,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             for (var index = 0; index < agents.length; index++) ...[
               _AgentStatusRow(status: agents[index]),
               if (index != agents.length - 1)
-                const ShadSeparator.horizontal(color: SkillsTokens.hairline),
+                SkillsSeparator.horizontal(
+                  color: Theme.of(context).colorScheme.outlineVariant,
+                ),
             ],
           ],
         ),
@@ -5369,50 +6071,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _registrySettings() => ShadCard(
+  Widget _hubSettings() => SkillsCard(
     width: double.infinity,
-    title: Text(context.l10n.registrySettingsTitle),
-    description: Text(context.l10n.registrySettingsDescription),
+    title: Text(context.l10n.hubSettingsTitle),
+    description: Text(context.l10n.hubSettingsDescription),
     child: Padding(
       padding: const EdgeInsets.only(top: 16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ShadInput(
-            key: const Key('registry-origin'),
-            controller: registryController,
-            placeholder: const Text('https://registry.example.com'),
+          SkillsInput(
+            key: const Key('hub-origin'),
+            controller: hubController,
+            placeholder: const Text('https://hub.example.com'),
           ),
           const SizedBox(height: 12),
           Wrap(
             spacing: 10,
             runSpacing: 10,
             children: [
-              ShadButton(
-                enabled: !testingRegistry,
-                onPressed: saveRegistry,
+              SkillsButton(
+                enabled: !testingHub,
+                onPressed: saveHub,
                 child: Text(context.l10n.saveOrigin),
               ),
-              ShadButton.outline(
-                enabled: !testingRegistry,
-                onPressed: testRegistry,
+              SkillsButton.outline(
+                enabled: !testingHub,
+                onPressed: testHub,
                 child: Text(context.l10n.testConnection),
               ),
-              ShadButton.outline(
-                enabled: !testingRegistry,
-                onPressed: resetRegistry,
+              SkillsButton.outline(
+                enabled: !testingHub,
+                onPressed: resetHub,
                 child: Text(context.l10n.resetDefault),
               ),
             ],
           ),
-          if (registryStatus != null) ...[
+          if (hubStatus != null) ...[
             const SizedBox(height: 14),
             Text(
-              registryStatus!.isReady
+              hubStatus!.isReady
                   ? context.l10n.connectionReady
-                  : '${context.l10n.connectionFailed}: ${_registryStatusMessage(context, registryStatus!)}',
+                  : '${context.l10n.connectionFailed}: ${_hubStatusMessage(context, hubStatus!)}',
               style: TextStyle(
-                color: registryStatus!.isReady
+                color: hubStatus!.isReady
                     ? SkillsTokens.green
                     : SkillsTokens.amber,
               ),
@@ -5423,21 +6125,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
     ),
   );
 
-  Widget _policySettings() => ShadCard(
+  Widget _policySettings() => SkillsCard(
     width: double.infinity,
     title: Text(context.l10n.riskPolicyTitle),
     child: Padding(
       padding: const EdgeInsets.only(top: 12),
       child: Column(
         children: [
-          ShadSwitch(
+          SkillsSwitch(
             value: true,
             enabled: false,
             label: Text(context.l10n.confirmHighRisk),
             sublabel: Text(context.l10n.confirmHighRiskDescription),
           ),
           const SizedBox(height: 14),
-          ShadSwitch(
+          SkillsSwitch(
             key: const Key('critical-risk-override'),
             value: riskPolicy?.allowCriticalOverride ?? false,
             onChanged: setCriticalOverride,
@@ -5456,7 +6158,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       HealthState.notInitialized => context.l10n.storageNotInitialized,
       _ => context.l10n.storageUnavailable,
     };
-    return ShadCard(
+    return SkillsCard(
       width: double.infinity,
       title: Text(context.l10n.storageSettingsTitle),
       description: Text(
@@ -5464,7 +6166,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ? context.l10n.storagePathUnavailable
             : storage.path,
       ),
-      footer: ShadButton.outline(
+      footer: SkillsButton.outline(
         onPressed: refreshStorage,
         child: Text(context.l10n.refresh),
       ),
@@ -5486,7 +6188,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _aboutSettings() => ShadCard(
+  Widget _aboutSettings() => SkillsCard(
     width: double.infinity,
     title: Text(context.l10n.aboutSettingsTitle),
     child: Padding(
@@ -5511,7 +6213,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(height: 12),
             Text(
               _cliStatusMessage(context, status!),
-              style: const TextStyle(color: SkillsTokens.textSecondary),
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ],
@@ -5555,7 +6259,9 @@ class _AgentStatusRow extends StatelessWidget {
                   : context.l10n.agentSupported,
               color: status.installed
                   ? SkillsTokens.green
-                  : SkillsTokens.textTertiary,
+                  : Theme.of(
+                      context,
+                    ).colorScheme.onSurfaceVariant.withValues(alpha: .72),
             ),
           ],
         ),
@@ -5580,8 +6286,8 @@ class _AgentStatusRow extends StatelessWidget {
           status.installed
               ? context.l10n.agentDetectedDescription
               : context.l10n.agentSupportedDescription,
-          style: const TextStyle(
-            color: SkillsTokens.textSecondary,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
             height: 1.4,
           ),
         ),
@@ -5589,10 +6295,12 @@ class _AgentStatusRow extends StatelessWidget {
           const SizedBox(height: 5),
           SelectableText(
             context.l10n.agentUserTarget(status.userTarget!.path),
-            style: const TextStyle(
+            style: TextStyle(
               fontFamily: SkillsTokens.monoFamily,
               fontSize: 11,
-              color: SkillsTokens.textTertiary,
+              color: Theme.of(
+                context,
+              ).colorScheme.onSurfaceVariant.withValues(alpha: .72),
             ),
           ),
         ],
@@ -5607,14 +6315,14 @@ class OperationPanel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (result.output.exitCode == 69) {
-      return ShadAlert(
+      return SkillsAlert(
         icon: const Icon(Icons.cloud_off_outlined),
         title: Text(context.l10n.offlineTitle),
         description: Text(context.l10n.offlineMessage),
       );
     }
     if (result.output.exitCode == 75) {
-      return ShadAlert(
+      return SkillsAlert(
         icon: const Icon(Icons.timer_off_outlined),
         title: Text(context.l10n.timeoutTitle),
         description: Text(context.l10n.timeoutMessage),
@@ -5681,9 +6389,9 @@ Future<bool> _confirmCommand(
                   padding: const EdgeInsets.only(bottom: 6),
                   child: Text(
                     fact,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontFamily: SkillsTokens.monoFamily,
-                      color: SkillsTokens.textSecondary,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                     ),
                   ),
                 ),
@@ -5764,8 +6472,8 @@ Widget _libraryProvenanceChip(
   LibraryProvenance provenance,
 ) {
   final presentation = switch (provenance) {
-    LibraryProvenance.registry => (
-      label: context.l10n.registryManaged,
+    LibraryProvenance.hub => (
+      label: context.l10n.hubManaged,
       color: SkillsTokens.teal,
     ),
     LibraryProvenance.local => (
@@ -5829,17 +6537,17 @@ Widget _installationHealthChip(
   return StatusChip(label: presentation.label, color: presentation.color);
 }
 
-String _registryStatusMessage(BuildContext context, RegistryStatus status) =>
+String _hubStatusMessage(BuildContext context, HubStatus status) =>
     switch (status.issue) {
-      RegistryIssue.invalidOrigin => context.l10n.registryInvalidOrigin,
-      RegistryIssue.httpFailure => context.l10n.registryHttpFailure(
+      HubIssue.invalidOrigin => context.l10n.hubInvalidOrigin,
+      HubIssue.httpFailure => context.l10n.hubHttpFailure(
         status.httpStatus ?? 0,
       ),
-      RegistryIssue.invalidProtocol => context.l10n.registryInvalidProtocol,
-      RegistryIssue.invalidJson => context.l10n.registryInvalidJson,
-      RegistryIssue.connectionFailure => context.l10n.registryConnectionFailure,
-      RegistryIssue.timeout => context.l10n.registryConnectionTimeout,
-      null => context.l10n.registryInvalidProtocol,
+      HubIssue.invalidProtocol => context.l10n.hubInvalidProtocol,
+      HubIssue.invalidJson => context.l10n.hubInvalidJson,
+      HubIssue.connectionFailure => context.l10n.hubConnectionFailure,
+      HubIssue.timeout => context.l10n.hubConnectionTimeout,
+      null => context.l10n.hubInvalidProtocol,
     };
 
 String _storageStatusMessage(BuildContext context, StorageStatus status) =>

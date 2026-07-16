@@ -10,7 +10,7 @@ This map governs the Flutter desktop application workspace. Read it with the roo
 - Runtime: Flutter desktop; macOS is the currently maintained target.
 - Entry points: `lib/main.dart` and `lib/app.dart`
 - Integration seam: `SkillsGateway`
-- Product responsibility: present discovery and Library workflows, collect installation/adoption/export intent, and delegate Registry reads or local mutations to the correct boundary.
+- Product responsibility: present discovery and Library workflows, collect installation/adoption/export intent, and delegate Hub reads or local mutations to the correct boundary.
 
 ## Commands
 
@@ -29,29 +29,42 @@ flutter build macos --release
 | Path | Responsibility |
 | --- | --- |
 | `lib/domain/` | Product concepts and application-facing models. |
-| `lib/infrastructure/` | Registry and CLI adapters, process execution, and persistence integration. |
+| `lib/infrastructure/` | Hub and CLI adapters, process execution, and persistence integration. |
 | `lib/ui/` | Screens, navigation, components, design tokens, and interaction state. |
 | `lib/l10n/` | Localization sources and generated localization interfaces. |
 | `test/` | Unit, widget, and adapter contract tests. |
 | `macos/` | macOS runner, desktop packaging integration, and the build-time bundled CLI bridge. |
 | `docs/` | App-specific specifications, plans, and decisions. |
+| `THIRD_PARTY_NOTICES.md` | Licenses and attribution for vendored App UI code. |
 
 ## Boundaries
 
-- The App may read public Registry APIs and invoke the SkillsGo CLI through typed adapters.
+- The App may read public Hub APIs and invoke the SkillsGo CLI through typed adapters.
 - The CLI owns local installation, update, removal, target detection, manifests, locks, and the shared store.
-- The Registry owns public skill metadata, search, rankings, immutable artifacts, and event ingestion.
+- The Hub owns public skill metadata, search, rankings, immutable artifacts, and event ingestion.
 - Do not parse human-oriented CLI output. Prefer stable machine-readable output and typed models.
-- Registry availability failures must not replace valid local Library inventory or reset the selected Library route; local reads and safe local-only mutations remain independent.
+- Hub availability failures must not replace valid local Library inventory or reset the selected Library route; local reads and safe local-only mutations remain independent.
 - Do not construct shell command strings from user input; pass arguments as a structured list.
-- Keep UI state and visual decisions out of CLI and Registry packages.
+- Keep UI state and visual decisions out of CLI and Hub packages.
 
 ## UI Component Policy
 
-- Prefer `shadcn_ui` primitives for common controls, overlays, forms, feedback, and accessibility behavior.
-- Apply the Burrow-inspired visual language through SkillsGo Design Tokens and thin brand components that compose or theme those primitives.
-- Build custom widgets only for product-specific interactions, such as the stateful destination rail or installation matrix, or when `shadcn_ui` has no suitable primitive.
-- Use raw Material controls as low-level Flutter infrastructure only when a `shadcn_ui` equivalent would reduce capability, platform behavior, or accessibility; keep that exception behind a reusable brand component when it recurs.
+- Use Flutter Material 3 primitives as the default foundation for controls, overlays, forms, feedback, semantics, and platform behavior.
+- Derive the application palette with `ColorScheme.fromSeed` and apply the Burrow-inspired visual language through SkillsGo Design Tokens and thin native brand components.
+- Keep recurring Material composition behind the reusable native component layer; build custom widgets only for product-specific interactions such as the stateful destination rail, folder shell, or installation matrix.
+- Do not introduce a second component theme system. Product-specific colors may remain explicit only when they communicate stable status or brand meaning.
+
+## Theme Policy
+
+- Generate both Light and Dark Material 3 schemes from the same user-selected seed with `ColorScheme.fromSeed` and `DynamicSchemeVariant.fidelity`.
+- Support `ThemeMode.system`, `ThemeMode.light`, and `ThemeMode.dark`; default to the system appearance. Persist the preference through `SkillsGateway`, never by reading or writing `SharedPreferences` from UI code.
+- Use semantic `ColorScheme` roles for ordinary interface color. A background role must use its matching `on*` foreground role where one exists.
+- Use `surface` and the tone-based `surfaceContainer*` roles for page backgrounds, large regions, cards, rails, and the Folder shell. Use `primary`, `primaryContainer`, secondary, and tertiary roles only for appropriately emphasized actions, focus, compact selections, and accents.
+- The active Folder body and tab are one foreground object and use `surfaceContainerHighest`; inactive Folder tabs use `surfaceContainerHigh`.
+- Do not hard-code `Colors.white`, `Colors.black`, or a fixed dark page background for ordinary interface content. Explicit colors are allowed only for stable semantic status, source brand identity, raw user color previews, or other meaning that must not change with the theme.
+- Keep discovery cards neutral. Express themed hover state through borders, actions, focus, or restrained accent treatment instead of repainting a large card with an accent container.
+- Theme controls must update immediately, preserve the selected seed, support localization and reduced motion, and remain usable with keyboard and assistive technology.
+- Any new or materially changed UI component must be validated in Light and Dark modes with both low- and high-chroma seeds. Text and icon contrast must use the generated matching semantic roles rather than manual guesses.
 
 ## Documentation Routing
 

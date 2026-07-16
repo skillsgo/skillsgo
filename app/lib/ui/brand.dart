@@ -1,14 +1,35 @@
 /*
- * [INPUT]: Depends on SkillsGateway discovery models, localized copy, shadcn_ui primitives, and Flutter rendering.
- * [OUTPUT]: Provides SkillsGo tokens and reusable branded backgrounds, controls, discovery cards, status elements, and empty states.
- * [POS]: Serves as the thin Burrow-inspired presentation layer composed around shared shadcn_ui behavior.
+ * [INPUT]: Depends on SkillsGateway discovery models, localized copy, Flutter Material rendering, native components, and the shared installation MenuAnchor.
+ * [OUTPUT]: Provides SkillsGo tokens and reusable branded backgrounds, controls, Hub-image-backed discovery cards, anchored installation actions, status elements, and viewport-safe empty states.
+ * [POS]: Serves as the thin Burrow-inspired presentation layer composed from native Flutter Material behavior.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
-import 'package:shadcn_ui/shadcn_ui.dart';
 
 import '../domain/skills_gateway.dart';
 import '../l10n/app_localizations.dart';
+import 'install_location_popover.dart';
+import 'native_components.dart';
+
+ThemeData buildSkillsTheme(
+  Color seed, {
+  Brightness brightness = Brightness.dark,
+}) {
+  final scheme = ColorScheme.fromSeed(
+    seedColor: seed,
+    brightness: brightness,
+    dynamicSchemeVariant: DynamicSchemeVariant.fidelity,
+  );
+  return ThemeData.from(colorScheme: scheme, useMaterial3: true).copyWith(
+    textTheme: ThemeData(brightness: brightness).textTheme.apply(
+      fontFamily: SkillsTokens.sansFamily,
+      bodyColor: scheme.onSurface,
+      displayColor: scheme.onSurface,
+    ),
+    scaffoldBackgroundColor: scheme.surface,
+    dividerColor: scheme.outlineVariant,
+  );
+}
 
 abstract final class SkillsTokens {
   static const nearBlack = Color(0xFF0B0B0D);
@@ -35,36 +56,21 @@ abstract final class SkillsTokens {
 }
 
 class SkillsBackground extends StatelessWidget {
-  const SkillsBackground({
-    super.key,
-    required this.child,
-    this.tint = SkillsTokens.warmBlack,
-  });
+  const SkillsBackground({super.key, required this.child});
   final Widget child;
-  final Color tint;
 
   @override
-  Widget build(BuildContext context) {
-    return Stack(
-      fit: StackFit.expand,
-      children: [
-        AnimatedContainer(
-          duration: MediaQuery.disableAnimationsOf(context)
-              ? Duration.zero
-              : const Duration(milliseconds: 260),
-          curve: Curves.easeOutCubic,
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [tint, SkillsTokens.nearBlack],
-            ),
-          ),
-        ),
-        child,
-      ],
-    );
-  }
+  Widget build(BuildContext context) =>
+      ColoredBox(color: Theme.of(context).colorScheme.surface, child: child);
+}
+
+extension SkillsColorRoles on ColorScheme {
+  Color get textPrimary => onSurface;
+  Color get textSecondary => onSurfaceVariant;
+  Color get textTertiary => onSurfaceVariant.withValues(alpha: .72);
+  Color get hairline => outlineVariant;
+  Color get card => surfaceContainerLow;
+  Color get cardHover => surfaceContainer;
 }
 
 class GlassCard extends StatelessWidget {
@@ -77,25 +83,24 @@ class GlassCard extends StatelessWidget {
   final EdgeInsets padding;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: padding,
-    decoration: BoxDecoration(
-      color: const Color(0xFF171513),
-      borderRadius: BorderRadius.circular(18),
-      border: Border.all(color: SkillsTokens.hairline),
-    ),
-    child: child,
-  );
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: padding,
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainer,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: scheme.outlineVariant),
+      ),
+      child: child,
+    );
+  }
 }
 
 class SectionEyebrow extends StatelessWidget {
-  const SectionEyebrow(
-    this.text, {
-    super.key,
-    this.color = SkillsTokens.textSecondary,
-  });
+  const SectionEyebrow(this.text, {super.key, this.color});
   final String text;
-  final Color color;
+  final Color? color;
 
   @override
   Widget build(BuildContext context) => Text(
@@ -105,36 +110,36 @@ class SectionEyebrow extends StatelessWidget {
       fontSize: 11,
       fontWeight: FontWeight.w700,
       letterSpacing: 1.1,
-      color: color,
+      color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
     ),
   );
 }
 
 class StatusChip extends StatelessWidget {
-  const StatusChip({
-    super.key,
-    required this.label,
-    this.color = SkillsTokens.textSecondary,
-  });
+  const StatusChip({super.key, required this.label, this.color});
   final String label;
-  final Color color;
+  final Color? color;
 
   @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-    decoration: BoxDecoration(
-      color: color.withValues(alpha: .14),
-      borderRadius: BorderRadius.circular(999),
-    ),
-    child: Text(
-      label,
-      style: TextStyle(
-        fontFamily: SkillsTokens.monoFamily,
-        fontSize: 10,
-        color: color,
+  Widget build(BuildContext context) {
+    final resolvedColor =
+        color ?? Theme.of(context).colorScheme.onSurfaceVariant;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      decoration: BoxDecoration(
+        color: resolvedColor.withValues(alpha: .14),
+        borderRadius: BorderRadius.circular(999),
       ),
-    ),
-  );
+      child: Text(
+        label,
+        style: TextStyle(
+          fontFamily: SkillsTokens.monoFamily,
+          fontSize: 10,
+          color: resolvedColor,
+        ),
+      ),
+    );
+  }
 }
 
 class SkillTrustChip extends StatelessWidget {
@@ -155,40 +160,6 @@ class SkillRiskChip extends StatelessWidget {
       StatusChip(label: _riskLabel(context, risk), color: _riskColor(risk));
 }
 
-class PrimaryCapsuleButton extends StatelessWidget {
-  const PrimaryCapsuleButton({
-    super.key,
-    required this.label,
-    required this.onPressed,
-    this.busy = false,
-  });
-  final String label;
-  final VoidCallback? onPressed;
-  final bool busy;
-
-  @override
-  Widget build(BuildContext context) => ShadButton(
-    enabled: !busy && onPressed != null,
-    onPressed: onPressed,
-    backgroundColor: Colors.white,
-    hoverBackgroundColor: const Color(0xFFF1F1EF),
-    pressedBackgroundColor: const Color(0xFFE5E5E2),
-    foregroundColor: Colors.black,
-    height: 44,
-    padding: const EdgeInsets.symmetric(horizontal: 20),
-    decoration: const ShadDecoration(
-      shape: BoxShape.rectangle,
-      border: ShadBorder(radius: BorderRadius.all(Radius.circular(999))),
-    ),
-    child: busy
-        ? const SizedBox.square(
-            dimension: 16,
-            child: CircularProgressIndicator(strokeWidth: 2),
-          )
-        : Text(label, style: const TextStyle(fontWeight: FontWeight.w700)),
-  );
-}
-
 class SecondaryCapsuleButton extends StatelessWidget {
   const SecondaryCapsuleButton({
     super.key,
@@ -201,22 +172,22 @@ class SecondaryCapsuleButton extends StatelessWidget {
   final IconData? icon;
 
   @override
-  Widget build(BuildContext context) => ShadButton.outline(
-    enabled: onPressed != null,
-    onPressed: onPressed,
-    leading: icon == null ? null : Icon(icon, size: 16),
-    foregroundColor: SkillsTokens.textPrimary,
-    height: 42,
-    padding: const EdgeInsets.symmetric(horizontal: 16),
-    decoration: ShadDecoration(
-      shape: BoxShape.rectangle,
-      border: ShadBorder.all(
-        color: SkillsTokens.hairline,
-        radius: const BorderRadius.all(Radius.circular(999)),
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return OutlinedButton.icon(
+      onPressed: onPressed,
+      icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 16),
+      style: OutlinedButton.styleFrom(
+        minimumSize: const Size(0, 42),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        foregroundColor: scheme.onSurface,
+        side: BorderSide(color: scheme.outlineVariant),
+        shape: const StadiumBorder(),
+        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
-    ),
-    child: Text(label),
-  );
+      label: Text(label),
+    );
+  }
 }
 
 class SkillSearchField extends StatelessWidget {
@@ -225,35 +196,132 @@ class SkillSearchField extends StatelessWidget {
     required this.controller,
     required this.focusNode,
     required this.onSubmitted,
+    this.onCleared,
+    this.onChanged,
+    this.active = false,
+    this.loading = false,
+    this.compact = false,
   });
   final TextEditingController controller;
   final FocusNode focusNode;
   final ValueChanged<String> onSubmitted;
+  final VoidCallback? onCleared;
+  final ValueChanged<String>? onChanged;
+  final bool active;
+  final bool loading;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
-    return ShadInput(
-      key: const Key('skill-search'),
-      controller: controller,
-      focusNode: focusNode,
-      onSubmitted: onSubmitted,
-      textInputAction: TextInputAction.search,
-      style: const TextStyle(color: SkillsTokens.textPrimary, fontSize: 17),
-      placeholder: Text(l10n.searchSkills),
-      placeholderStyle: const TextStyle(color: SkillsTokens.textTertiary),
-      leading: const Icon(Icons.search, color: SkillsTokens.textSecondary),
-      trailing: ShadTooltip(
-        builder: (_) => Text(l10n.search),
-        child: ShadButton.ghost(
-          width: 36,
-          height: 36,
-          padding: EdgeInsets.zero,
-          onPressed: () => onSubmitted(controller.text),
-          child: const Icon(
-            Icons.arrow_forward,
-            color: SkillsTokens.textPrimary,
-          ),
+    return Semantics(
+      label: l10n.searchSkills,
+      textField: true,
+      child: SizedBox(
+        key: const Key('skill-search'),
+        height: compact ? 44 : 52,
+        child: AnimatedBuilder(
+          animation: Listenable.merge([controller, focusNode]),
+          builder: (context, _) {
+            final scheme = Theme.of(context).colorScheme;
+            final value = controller.value;
+            final foreground = active
+                ? scheme.onPrimaryContainer
+                : scheme.onSurface;
+            final secondary = active
+                ? scheme.onPrimaryContainer.withValues(alpha: .72)
+                : scheme.onSurfaceVariant;
+            final radius = BorderRadius.circular(999);
+            final border = OutlineInputBorder(
+              borderRadius: radius,
+              borderSide: BorderSide(
+                color: active ? Colors.transparent : scheme.outlineVariant,
+              ),
+            );
+            return AnimatedContainer(
+              key: const Key('skill-search-surface'),
+              duration: MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 160),
+              decoration: BoxDecoration(
+                borderRadius: radius,
+                boxShadow: active
+                    ? const [
+                        BoxShadow(
+                          color: Color(0x29000000),
+                          blurRadius: 6,
+                          offset: Offset(0, 2),
+                        ),
+                      ]
+                    : const [],
+              ),
+              child: TextField(
+                controller: controller,
+                focusNode: focusNode,
+                onChanged: onChanged,
+                onSubmitted: onSubmitted,
+                textInputAction: TextInputAction.search,
+                cursorColor: foreground,
+                style: TextStyle(
+                  color: foreground,
+                  fontSize: compact ? 14 : 17,
+                  fontWeight: FontWeight.w300,
+                ),
+                decoration: InputDecoration(
+                  isDense: true,
+                  filled: true,
+                  fillColor: active
+                      ? scheme.primaryContainer
+                      : scheme.surfaceContainerHigh,
+                  hintText: l10n.searchSkills,
+                  hintStyle: TextStyle(
+                    color: scheme.textTertiary,
+                    fontWeight: FontWeight.w300,
+                  ),
+                  prefixIcon: Icon(Icons.search, size: 19, color: secondary),
+                  suffixIcon: loading
+                      ? Padding(
+                          padding: const EdgeInsets.all(13),
+                          child: SizedBox.square(
+                            dimension: 16,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: secondary,
+                            ),
+                          ),
+                        )
+                      : value.text.isEmpty
+                      ? null
+                      : IconButton(
+                          key: const Key('skill-search-clear'),
+                          tooltip: null,
+                          onPressed: () {
+                            controller.clear();
+                            onCleared?.call();
+                            focusNode.requestFocus();
+                          },
+                          icon: Icon(
+                            Icons.close_rounded,
+                            size: 17,
+                            color: secondary,
+                          ),
+                        ),
+                  contentPadding: EdgeInsets.symmetric(
+                    horizontal: compact ? 12 : 16,
+                    vertical: 0,
+                  ),
+                  border: border,
+                  enabledBorder: border,
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: radius,
+                    borderSide: BorderSide(
+                      color: active ? scheme.primary : scheme.outline,
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -270,7 +338,7 @@ class SkillCard extends StatefulWidget {
   });
   final SkillSummary skill;
   final VoidCallback onTap;
-  final VoidCallback onInstall;
+  final ValueChanged<InstallLocationMenuPresenter> onInstall;
   final FocusNode? focusNode;
 
   @override
@@ -281,143 +349,228 @@ class _SkillCardState extends State<SkillCard> {
   bool hovered = false;
 
   @override
-  Widget build(BuildContext context) => MouseRegion(
-    onEnter: (_) => setState(() => hovered = true),
-    onExit: (_) => setState(() => hovered = false),
-    child: Semantics(
-      button: true,
-      label: AppLocalizations.of(context).openSkill(widget.skill.name),
-      child: InkWell(
-        focusNode: widget.focusNode,
-        onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(18),
-        child: AnimatedContainer(
-          duration: MediaQuery.disableAnimationsOf(context)
-              ? Duration.zero
-              : const Duration(milliseconds: 160),
-          padding: const EdgeInsets.all(18),
-          decoration: BoxDecoration(
-            color: hovered ? SkillsTokens.cardHover : SkillsTokens.card,
-            borderRadius: BorderRadius.circular(18),
-            border: Border.all(
-              color: hovered ? Colors.white24 : SkillsTokens.hairline,
-            ),
-          ),
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              SkillGlyph(name: widget.skill.name),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.skill.name,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.w700,
+  Widget build(BuildContext context) {
+    final l10n = AppLocalizations.of(context);
+    final radius = BorderRadius.circular(14);
+    final duration = MediaQuery.disableAnimationsOf(context)
+        ? Duration.zero
+        : const Duration(milliseconds: 120);
+    return MouseRegion(
+      onEnter: (_) => setState(() => hovered = true),
+      onExit: (_) => setState(() => hovered = false),
+      child: TweenAnimationBuilder<double>(
+        tween: Tween(end: hovered ? 1 : 0),
+        duration: duration,
+        builder: (context, progress, _) {
+          final scheme = Theme.of(context).colorScheme;
+          return Card(
+            margin: EdgeInsets.zero,
+            elevation: 4 * progress,
+            shadowColor: Colors.black.withValues(alpha: .34),
+            surfaceTintColor: Colors.transparent,
+            color: Color.lerp(scheme.card, scheme.cardHover, progress),
+            clipBehavior: Clip.antiAlias,
+            shape: RoundedRectangleBorder(borderRadius: radius),
+            child: Semantics(
+              button: true,
+              label: l10n.openSkill(widget.skill.name),
+              child: InkWell(
+                focusNode: widget.focusNode,
+                onTap: widget.onTap,
+                borderRadius: radius,
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 15, 14, 12),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          RepositoryAvatar(
+                            source: widget.skill.source,
+                            imageUrl: widget.skill.imageUrl,
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  widget.skill.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: -.08,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  _repositoryLabel(widget.skill.source),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: scheme.textTertiary,
+                                    fontFamily: SkillsTokens.monoFamily,
+                                    fontSize: 11,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      widget.skill.description,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: SkillsTokens.textSecondary,
-                        height: 1.35,
-                      ),
-                    ),
-                    const SizedBox(height: 7),
-                    Text(
-                      widget.skill.source,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: SkillsTokens.textTertiary,
-                        fontFamily: SkillsTokens.monoFamily,
-                        fontSize: 11,
-                      ),
-                    ),
-                    const SizedBox(height: 10),
-                    Wrap(
-                      spacing: 7,
-                      runSpacing: 7,
-                      children: [
-                        SkillTrustChip(trust: widget.skill.trustLevel),
-                        SkillRiskChip(risk: widget.skill.riskAssessment),
-                        StatusChip(
-                          label: AppLocalizations.of(
-                            context,
-                          ).localTargets(widget.skill.localTargetCount),
-                          color: widget.skill.isInstalled
-                              ? SkillsTokens.green
-                              : SkillsTokens.textTertiary,
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 18),
-              SizedBox(
-                width: 170,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      widget.skill.latestVersion,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontFamily: SkillsTokens.monoFamily,
-                        fontSize: 11,
-                        color: SkillsTokens.textTertiary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      _metricLabel(context, widget.skill),
-                      textAlign: TextAlign.right,
-                      style: const TextStyle(
-                        fontFamily: SkillsTokens.monoFamily,
-                        color: SkillsTokens.textSecondary,
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    ShadButton.ghost(
-                      width: 170,
-                      height: 32,
-                      padding: EdgeInsets.zero,
-                      onPressed: widget.onInstall,
-                      child: SizedBox(
-                        width: 170,
-                        child: FittedBox(
-                          fit: BoxFit.scaleDown,
-                          alignment: Alignment.centerRight,
-                          child: Text(
-                            widget.skill.isInstalled
-                                ? AppLocalizations.of(
-                                    context,
-                                  ).installToMoreTargets
-                                : AppLocalizations.of(context).install,
-                            textAlign: TextAlign.right,
+                      const SizedBox(height: 11),
+                      Expanded(
+                        child: Text(
+                          widget.skill.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: scheme.textSecondary,
+                            fontSize: 13,
+                            height: 1.42,
                           ),
                         ),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              _metricLabel(context, widget.skill),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: scheme.textSecondary,
+                                fontSize: 12,
+                                fontFeatures: [FontFeature.tabularFigures()],
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          InstallLocationMenuAnchor(
+                            builder: (context, present) => PrimaryCapsuleButton(
+                              label: l10n.install,
+                              height: 28,
+                              horizontalPadding: 9,
+                                  labelStyle: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w400,
+                                  ),
+                              onPressed: () => widget.onInstall(present),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
-              const Icon(Icons.chevron_right, color: SkillsTokens.textTertiary),
-            ],
-          ),
-        ),
+            ),
+          );
+        },
       ),
+    );
+  }
+}
+
+class RepositoryAvatar extends StatefulWidget {
+  const RepositoryAvatar({
+    super.key,
+    required this.source,
+    this.imageUrl,
+    this.size = 36,
+    this.borderRadius = 8,
+  });
+  final String source;
+  final String? imageUrl;
+  final double size;
+  final double borderRadius;
+
+  @override
+  State<RepositoryAvatar> createState() => _RepositoryAvatarState();
+}
+
+class _RepositoryAvatarState extends State<RepositoryAvatar> {
+  bool imageFailed = false;
+
+  @override
+  void didUpdateWidget(covariant RepositoryAvatar oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.source != widget.source ||
+        oldWidget.imageUrl != widget.imageUrl) {
+      imageFailed = false;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final imageUrl = imageFailed ? null : widget.imageUrl;
+    return Container(
+      width: widget.size,
+      height: widget.size,
+      alignment: Alignment.center,
+      clipBehavior: Clip.antiAlias,
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(widget.borderRadius),
+      ),
+      child: imageUrl == null
+          ? _RepositoryAvatarFallback(source: widget.source, size: widget.size)
+          : Image.network(
+              imageUrl,
+              width: widget.size,
+              height: widget.size,
+              fit: BoxFit.cover,
+              errorBuilder: (_, _, _) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (mounted && !imageFailed) {
+                    setState(() => imageFailed = true);
+                  }
+                });
+                return _RepositoryAvatarFallback(
+                  source: widget.source,
+                  size: widget.size,
+                );
+              },
+            ),
+    );
+  }
+}
+
+class _RepositoryAvatarFallback extends StatelessWidget {
+  const _RepositoryAvatarFallback({required this.source, required this.size});
+  final String source;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    _repositoryOwner(
+      source,
+    ).substring(0, _repositoryOwner(source).length.clamp(0, 2)).toUpperCase(),
+    style: TextStyle(
+      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      fontWeight: FontWeight.w700,
+      fontSize: (size * .34).clamp(12, 32),
     ),
   );
+}
+
+String _repositoryLabel(String source) {
+  final parts = source.split('/').where((part) => part.isNotEmpty).toList();
+  if (parts.length > 1 && parts.first.contains('.')) {
+    return parts.skip(1).join('/');
+  }
+  return source;
+}
+
+String _repositoryOwner(String source) {
+  final parts = source.split('/').where((part) => part.isNotEmpty).toList();
+  if (parts.isEmpty) return '?';
+  if (parts.length > 1 && parts.first.contains('.')) return parts[1];
+  return parts.first;
 }
 
 class SkillGlyph extends StatelessWidget {
@@ -457,31 +610,34 @@ class EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Center(
-    child: ConstrainedBox(
-      constraints: const BoxConstraints(maxWidth: 460),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            title,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              fontFamily: SkillsTokens.serifFamily,
-              fontSize: 28,
-              fontWeight: FontWeight.w600,
+    child: SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontFamily: SkillsTokens.serifFamily,
+                fontSize: 28,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          ),
-          const SizedBox(height: 10),
-          Text(
-            message,
-            textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: SkillsTokens.textSecondary,
-              height: 1.5,
+            const SizedBox(height: 10),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                height: 1.5,
+              ),
             ),
-          ),
-          if (action != null) ...[const SizedBox(height: 20), action!],
-        ],
+            if (action != null) ...[const SizedBox(height: 20), action!],
+          ],
+        ),
       ),
     ),
   );

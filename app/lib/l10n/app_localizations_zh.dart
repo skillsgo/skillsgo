@@ -12,7 +12,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get discover => '发现';
 
   @override
-  String get library => '技能库';
+  String get library => '已安装';
 
   @override
   String get settings => '设置';
@@ -34,7 +34,7 @@ class AppLocalizationsZh extends AppLocalizations {
       '内置的 SkillsGo CLI 与当前 SkillsGo 版本不兼容。请更新或重新安装应用。';
 
   @override
-  String get officialIndex => 'SkillsGo Registry';
+  String get officialIndex => 'SkillsGo Hub';
 
   @override
   String get discoverTitle => '找到下一步所需的技能。';
@@ -79,7 +79,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get offlineTitle => '当前处于离线状态';
 
   @override
-  String get offlineMessage => 'SkillsGo 无法连接 Registry。请检查网络、代理或 Registry 地址。';
+  String get offlineMessage => 'SkillsGo 无法连接 Hub。请检查网络、代理或 Hub 地址。';
 
   @override
   String get searchFailedTitle => '搜索遇到问题';
@@ -88,26 +88,26 @@ class AppLocalizationsZh extends AppLocalizations {
   String get validationTitle => '请检查请求';
 
   @override
-  String get validationMessage => 'Registry 拒绝了该请求，请检查查询内容后重试。';
+  String get validationMessage => 'Hub 拒绝了该请求，请检查查询内容后重试。';
 
   @override
-  String get serverTitle => 'Registry 暂不可用';
+  String get serverTitle => 'Hub 暂不可用';
 
   @override
-  String get serverMessage => 'Registry 无法完成该请求，请稍后重试。';
+  String get serverMessage => 'Hub 无法完成该请求，请稍后重试。';
 
   @override
-  String get timeoutTitle => 'Registry 响应超时';
+  String get timeoutTitle => 'Hub 响应超时';
 
   @override
-  String get timeoutMessage => 'Registry 响应时间过长，请检查连接或重试。';
+  String get timeoutMessage => 'Hub 响应时间过长，请检查连接或重试。';
 
   @override
-  String get invalidResponseTitle => 'Registry 响应不受支持';
+  String get invalidResponseTitle => 'Hub 响应不受支持';
 
   @override
   String get invalidResponseMessage =>
-      '该 Registry 返回了 SkillsGo 无法读取的响应，请检查其版本与协议兼容性。';
+      '该 Hub 返回了 SkillsGo 无法读取的响应，请检查其版本与协议兼容性。';
 
   @override
   String get tryAgain => '重试';
@@ -116,7 +116,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get searchEmptyTitle => '搜索，而不是漫无目的地浏览。';
 
   @override
-  String get searchEmptyMessage => '请输入能力、来源或任务，搜索公开 Registry。';
+  String get searchEmptyMessage => '请输入能力、来源或任务，搜索公开 Hub。';
 
   @override
   String get noSkillsTitle => '没有找到技能';
@@ -131,7 +131,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get collectionEmptyTitle => '该集合中暂无 Skill';
 
   @override
-  String get collectionEmptyMessage => 'Registry 返回了空集合，可在产生新的安装活动后重试。';
+  String get collectionEmptyMessage => 'Hub 返回了空集合，可在产生新的安装活动后重试。';
 
   @override
   String get loadMore => '加载更多';
@@ -215,13 +215,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get artifactUnavailableTitle => '制品暂不可用';
 
   @override
-  String get artifactUnavailableMessage => 'Registry 无法提供该不可变制品。你可以重试，或检查其他版本。';
+  String get artifactUnavailableMessage => 'Hub 无法提供该不可变制品。你可以重试，或检查其他版本。';
 
   @override
   String get detailInvalidTitle => '不支持该制品元数据';
 
   @override
-  String get detailInvalidMessage => 'Registry 返回的审计元数据不完整或格式错误。请检查兼容性后重试。';
+  String get detailInvalidMessage => 'Hub 返回的审计元数据不完整或格式错误。请检查兼容性后重试。';
 
   @override
   String get instructionsTab => '技能指令';
@@ -271,7 +271,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fileContentUnavailable => '二进制文件或无法预览';
 
   @override
-  String get fileContentTruncated => 'Registry 已按安全大小限制截断预览。';
+  String get fileContentTruncated => 'Hub 已按安全大小限制截断预览。';
 
   @override
   String riskEvidence(String paths) {
@@ -300,10 +300,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get globalCodex => '全局 · Codex';
 
   @override
-  String get yourLibrary => '你的技能库';
+  String get yourLibrary => '已安装技能';
 
   @override
-  String get libraryNavigation => '技能库导航';
+  String get libraryNavigation => '已安装技能导航';
 
   @override
   String get all => '所有';
@@ -369,16 +369,16 @@ class AppLocalizationsZh extends AppLocalizations {
   String get refresh => '刷新';
 
   @override
-  String get libraryUnavailable => '技能库暂不可用';
+  String get libraryUnavailable => '已安装技能暂不可用';
 
   @override
-  String get libraryEmpty => '技能库为空';
+  String get libraryEmpty => '还没有安装技能';
 
   @override
   String get libraryEmptyMessage => '从“发现”安装技能后，它会显示在这里。';
 
   @override
-  String get searchLibrary => '搜索当前技能库视图';
+  String get searchLibrary => '搜索已安装技能';
 
   @override
   String get libraryNoMatches => '没有匹配的技能';
@@ -402,7 +402,7 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get registryManaged => 'Registry 托管';
+  String get hubManaged => 'Hub 托管';
 
   @override
   String get localManaged => '本地托管';
@@ -477,7 +477,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get update => '更新';
 
   @override
-  String get backToLibrary => '返回技能库';
+  String get backToLibrary => '返回已安装技能';
 
   @override
   String get remove => '移除';
@@ -534,19 +534,19 @@ class AppLocalizationsZh extends AppLocalizations {
       'SkillsGo 无法读取这个本地安装。请检查目标健康状态和文件访问权限后重试。';
 
   @override
-  String get localConfiguration => '本地配置';
+  String get localConfiguration => 'SKILLSGO 设置';
 
   @override
   String get settingsNavigation => '设置导航';
 
   @override
-  String get general => '通用';
+  String get general => '个性化';
 
   @override
   String get agents => 'Agents';
 
   @override
-  String get registry => 'Registry';
+  String get hub => 'Hub';
 
   @override
   String get installationPolicy => '安装策略';
@@ -555,23 +555,196 @@ class AppLocalizationsZh extends AppLocalizations {
   String get storage => '存储';
 
   @override
+  String get colorScheme => 'Color Scheme';
+
+  @override
   String get about => '关于';
 
   @override
-  String get generalSettingsTitle => '桌面偏好设置';
+  String get colorSchemeInspectorTitle => 'Material 生成色彩角色';
 
   @override
-  String get generalSettingsDescription => 'SkillsGo 跟随系统语言与辅助功能偏好，包括减少动态效果。';
+  String get colorSchemeInspectorDescription =>
+      '展示当前种子色生成的所有非废弃 ColorScheme Token。点击色块即可复制 HEX。';
+
+  @override
+  String get colorSchemePairPreview => '语义颜色组合';
+
+  @override
+  String get colorSchemePairPreviewDescription =>
+      '将前景色和背景色放在一起渲染，直接检查对比度与信息层级。';
+
+  @override
+  String get colorSchemeComponentPreview => '组件实景';
+
+  @override
+  String get colorSchemeComponentPreviewDescription =>
+      '使用当前预览 Scheme 渲染典型 Material 控件。';
+
+  @override
+  String get colorSchemeSampleTitle => '技能卡片标题';
+
+  @override
+  String get colorSchemeSampleBody => '辅助说明使用 onSurfaceVariant。';
+
+  @override
+  String get colorSchemeCopied => '已复制';
+
+  @override
+  String get colorSchemeSampleGlyphs => '字 Aa 123';
+
+  @override
+  String get colorSchemeGroupPrimary => '主色';
+
+  @override
+  String get colorSchemeGroupPrimaryDescription => '主要强调、容器与固定主色角色。';
+
+  @override
+  String get colorSchemeGroupSecondary => '辅色';
+
+  @override
+  String get colorSchemeGroupSecondaryDescription => '辅助强调与固定辅色角色。';
+
+  @override
+  String get colorSchemeGroupTertiary => '第三色';
+
+  @override
+  String get colorSchemeGroupTertiaryDescription => '与主色、辅色形成对比的补充强调色。';
+
+  @override
+  String get colorSchemeGroupSurface => '表面';
+
+  @override
+  String get colorSchemeGroupSurfaceDescription => '页面、容器、层级与前景内容的颜色体系。';
+
+  @override
+  String get colorSchemeGroupUtility => '轮廓与辅助';
+
+  @override
+  String get colorSchemeGroupUtilityDescription => '边界、阴影、遮罩和反色表面角色。';
+
+  @override
+  String get colorSchemeGroupError => '错误';
+
+  @override
+  String get colorSchemeGroupErrorDescription => '错误操作、消息和容器角色。';
+
+  @override
+  String get colorSchemeUsagePrimary => '主要操作、焦点和高强调装饰。';
+
+  @override
+  String get colorSchemeUsageSecondary => '辅助操作和中等强调装饰。';
+
+  @override
+  String get colorSchemeUsageTertiary => '补充主色与辅色的对比强调色。';
+
+  @override
+  String colorSchemeUsageContentOn(String token) {
+    return '显示在 $token 上的文字和图标。';
+  }
+
+  @override
+  String colorSchemeUsageContainer(String family) {
+    return '用于选中态与强调的低强调 $family 容器。';
+  }
+
+  @override
+  String colorSchemeUsageFixed(String family) {
+    return '不随明暗模式变化的固定 $family 容器。';
+  }
+
+  @override
+  String colorSchemeUsageFixedDim(String family) {
+    return '较暗的固定 $family 容器，不随明暗模式变化。';
+  }
+
+  @override
+  String colorSchemeUsageFixedContent(String family) {
+    return '固定 $family 容器上的高强调内容。';
+  }
+
+  @override
+  String colorSchemeUsageFixedVariantContent(String family) {
+    return '固定 $family 容器上的低强调内容。';
+  }
+
+  @override
+  String get colorSchemeUsageSurface => '页面和大型区域的基础表面。';
+
+  @override
+  String get colorSchemeUsageSurfaceDim => '表面色阶中较暗的基础表面。';
+
+  @override
+  String get colorSchemeUsageSurfaceBright => '表面色阶中较亮的基础表面。';
+
+  @override
+  String colorSchemeUsageSurfaceElevation(String level) {
+    return '$level 层级的表面容器。';
+  }
+
+  @override
+  String get colorSchemeElevationLowest => '最低';
+
+  @override
+  String get colorSchemeElevationLow => '较低';
+
+  @override
+  String get colorSchemeElevationDefault => '默认';
+
+  @override
+  String get colorSchemeElevationHigh => '较高';
+
+  @override
+  String get colorSchemeElevationHighest => '最高';
+
+  @override
+  String get colorSchemeUsageOnSurface => '表面上的主要文字和图标。';
+
+  @override
+  String get colorSchemeUsageOnSurfaceVariant => '表面上的次要文字、标签和弱化图标。';
+
+  @override
+  String get colorSchemeUsageSurfaceTint => '从主色生成的 Material 层级着色。';
+
+  @override
+  String get colorSchemeUsageOutline => '醒目的边界和获得焦点的组件轮廓。';
+
+  @override
+  String get colorSchemeUsageOutlineVariant => '细微边界、分隔线和低强调轮廓。';
+
+  @override
+  String get colorSchemeUsageShadow => '悬浮表面的投影颜色。';
+
+  @override
+  String get colorSchemeUsageScrim => '用于弱化背景内容的模态遮罩。';
+
+  @override
+  String get colorSchemeUsageInverseSurface => '明暗强调反转的表面。';
+
+  @override
+  String get colorSchemeUsageInversePrimary => '显示在反色表面上的主色强调。';
+
+  @override
+  String get colorSchemeUsageError => '错误操作、状态与高强调反馈。';
+
+  @override
+  String get save => '保存';
+
+  @override
+  String get generalSettingsTitle => '让 SkillsGo 更适合你';
+
+  @override
+  String get generalSettingsDescription => '界面会自动跟随系统语言、辅助功能和动态效果偏好。';
 
   @override
   String get agentsSettingsTitle => 'Agent 运行环境';
 
   @override
-  String get registrySettingsTitle => 'Registry 地址';
+  String get hubSettingsTitle => 'Hub 地址';
 
   @override
-  String get registrySettingsDescription =>
-      '使用官方 Registry，或实现相同 SkillsGo 协议的 HTTP(S) 自托管地址。';
+  String get hubSettingsDescription =>
+      '使用官方 Hub，或实现相同 SkillsGo 协议的 HTTP(S) 自托管地址。';
 
   @override
   String get testConnection => '测试连接';
@@ -589,24 +762,24 @@ class AppLocalizationsZh extends AppLocalizations {
   String get connectionFailed => '连接失败';
 
   @override
-  String get registryInvalidOrigin => '请输入不含账号密码、查询参数或片段的有效 HTTP(S) 地址。';
+  String get hubInvalidOrigin => '请输入不含账号密码、查询参数或片段的有效 HTTP(S) 地址。';
 
   @override
-  String registryHttpFailure(int status) {
-    return 'Registry 返回了 HTTP $status。请检查地址与服务端配置。';
+  String hubHttpFailure(int status) {
+    return 'Hub 返回了 HTTP $status。请检查地址与服务端配置。';
   }
 
   @override
-  String get registryInvalidProtocol => '服务端没有返回 SkillsGo Registry 搜索协议。';
+  String get hubInvalidProtocol => '服务端没有返回 SkillsGo Hub 搜索协议。';
 
   @override
-  String get registryInvalidJson => 'Registry 返回了无效 JSON。';
+  String get hubInvalidJson => 'Hub 返回了无效 JSON。';
 
   @override
-  String get registryConnectionFailure => '无法连接 Registry。请检查地址、网络、代理和 TLS 配置。';
+  String get hubConnectionFailure => '无法连接 Hub。请检查地址、网络、代理和 TLS 配置。';
 
   @override
-  String get registryConnectionTimeout => 'Registry 连接超时。请检查网络或重试。';
+  String get hubConnectionTimeout => 'Hub 连接超时。请检查网络或重试。';
 
   @override
   String get riskPolicyTitle => '个人风险策略';
@@ -664,7 +837,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get compatible => '兼容';
 
   @override
-  String get registryOriginSaved => 'Registry 地址已保存并立即应用。';
+  String get hubOriginSaved => 'Hub 地址已保存并立即应用。';
 
   @override
   String get policySaved => '安装策略已保存。';
@@ -736,8 +909,33 @@ class AppLocalizationsZh extends AppLocalizations {
   String get privacyProvenance => '隐私与来源说明';
 
   @override
-  String get privacySummary =>
-      'SkillsGo 不保存搜索记录或持久化命令日志。内置 CLI 始终保留在 App 内，不会安装到系统 PATH。';
+  String get privacySummary => '你的搜索记录不会被保存，SkillsGo 也不会保留命令日志。';
+
+  @override
+  String get folderColorTheme => '选择主题色';
+
+  @override
+  String get folderColorThemeDescription => '挑一个喜欢的颜色，SkillsGo 会自动生成协调的界面配色。';
+
+  @override
+  String get appearanceMode => '外观模式';
+
+  @override
+  String get appearanceModeDescription => '跟随系统外观，或始终使用浅色或深色主题。';
+
+  @override
+  String get followSystem => '跟随系统';
+
+  @override
+  String get lightMode => '浅色';
+
+  @override
+  String get darkMode => '深色';
+
+  @override
+  String folderThemeChoice(String theme) {
+    return '$theme Folder 主题';
+  }
 
   @override
   String get privacyAffiliation =>
@@ -782,6 +980,31 @@ class AppLocalizationsZh extends AppLocalizations {
   String get installSkill => '安装技能';
 
   @override
+  String get installLocationTitle => '设置技能安装位置';
+
+  @override
+  String get userLevel => '用户级别';
+
+  @override
+  String get projectLevel => '项目级别';
+
+  @override
+  String get projects => '项目';
+
+  @override
+  String get loading => '正在加载…';
+
+  @override
+  String userInstallSummary(int agents) {
+    return '将在用户级别供 $agents 个智能体使用';
+  }
+
+  @override
+  String projectInstallSummary(int projects, int agents) {
+    return '$projects 个项目 · $agents 个智能体';
+  }
+
+  @override
   String get installationPlanTitle => '选择安装目标';
 
   @override
@@ -802,8 +1025,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get installationResults => '安装结果';
 
   @override
-  String get installationResultsDescription =>
-      '每个目标独立完成。你可以留在这里，或前往技能库查看已安装技能。';
+  String get installationResultsDescription => '每个目标独立完成。你可以留在这里，或前往已安装页面查看技能。';
 
   @override
   String get installationInProgress => '正在安装';
@@ -857,13 +1079,40 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get confirmInstall => '确认安装';
+
+  @override
+  String installAllRepositorySkills(int count) {
+    return '安装仓库所有技能（$count）';
+  }
+
+  @override
+  String installRepositorySkills(String repository, int count) {
+    return '安装 $repository 全部技能（$count）';
+  }
+
+  @override
+  String installSkillTo(String skill) {
+    return '安装 $skill 到';
+  }
+
+  @override
+  String get availableInAllProjects => '所有项目';
+
+  @override
+  String get availableInSelectedProjects => '指定项目';
+
+  @override
+  String get usedBy => '用于 Agent';
+
+  @override
   String get backToTargets => '返回目标选择';
 
   @override
   String get stayHere => '留在这里';
 
   @override
-  String get viewInLibrary => '在技能库中查看';
+  String get viewInLibrary => '查看已安装技能';
 
   @override
   String planCreateCount(int count) {
@@ -1079,34 +1328,34 @@ class AppLocalizationsZh extends AppLocalizations {
   String get adoptionContentDigest => '内容标识';
 
   @override
-  String get registryContentMatches => 'Registry 匹配结果';
+  String get hubContentMatches => 'Hub 匹配结果';
 
   @override
-  String registryMatchSource(String source) {
+  String hubMatchSource(String source) {
     return '来源：$source';
   }
 
   @override
-  String registryMatchVersion(String version) {
+  String hubMatchVersion(String version) {
     return '不可变版本：$version';
   }
 
   @override
-  String get associateRegistry => '关联 Registry';
+  String get associateHub => '关联 Hub';
 
   @override
   String get importAsLocal => '导入为本地技能';
 
   @override
   String get importAsLocalDescription =>
-      '未找到完全一致的 Registry 记录。此操作会创建一个私有本地技能，不包含发布者或更新源。';
+      '未找到完全一致的 Hub 记录。此操作会创建一个私有本地技能，不包含发布者或更新源。';
 
   @override
   String get adoptionPreservesContent =>
       '当前安装内容不会被替换。只有在你确认后，SkillsGo 才会记录管理关系。';
 
   @override
-  String get chooseRegistryMatch => '请选择一个准确的 Registry 匹配项后继续。';
+  String get chooseHubMatch => '请选择一个准确的 Hub 匹配项后继续。';
 
   @override
   String get confirmAdoption => '确认关联';
@@ -1125,4 +1374,19 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get exportLocalSkillDescription => '将这个本地技能导出为可移植的 ZIP 归档。';
+
+  @override
+  String get detailInstalls => '安装量';
+
+  @override
+  String get detailRepository => '仓库';
+
+  @override
+  String get detailGitHubStars => 'GitHub Stars';
+
+  @override
+  String get detailUpdated => '最近更新';
+
+  @override
+  String get detailArchiveSize => 'ZIP 大小';
 }

@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on Registry HTTP, the local filesystem, the platform directory picker, SharedPreferences, and executable process boundaries.
- * [OUTPUT]: Provides production Registry settings, discovery/detail, managed/external inventory parsing, strict Installation/Update/Target Management/External Adoption machine contracts, Local export, local file inspection, project persistence, Agent inspection, stable CLI availability mapping, typed failures, diagnostics, CLI verification, and Skill operations.
- * [POS]: Serves as the App infrastructure adapter between domain journeys, the Registry, and the SkillsGo CLI.
+ * [INPUT]: Depends on Hub HTTP, the local filesystem, the platform directory picker, SharedPreferences-backed product preferences, and executable process boundaries.
+ * [OUTPUT]: Provides production Hub and appearance settings, discovery/detail metadata parsing including installs, repository Stars, source update time, ZIP size and image URLs, managed/external inventory parsing, strict Installation/Update/Target Management/External Adoption machine contracts, Local export, local file inspection, project persistence, Agent inspection, stable CLI availability mapping, typed failures, diagnostics, CLI verification, and Skill operations.
+ * [POS]: Serves as the App infrastructure adapter between domain journeys, the Hub, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
@@ -209,7 +209,7 @@ InstallationHealth _installationHealth(Object? value) => switch (value) {
 };
 
 LibraryProvenance _libraryProvenance(Object? value) => switch (value) {
-  'registry' => LibraryProvenance.registry,
+  'hub' => LibraryProvenance.hub,
   'local' => LibraryProvenance.local,
   'external' => LibraryProvenance.external,
   _ => throw const FormatException('Unknown Library provenance.'),
@@ -525,14 +525,14 @@ String _targetManagementActionValue(TargetManagementAction action) =>
 
 ExternalAdoptionAction _externalAdoptionAction(Object? value) =>
     switch (value) {
-      'associate-registry' => ExternalAdoptionAction.associateRegistry,
+      'associate-hub' => ExternalAdoptionAction.associateHub,
       'import-local' => ExternalAdoptionAction.importLocal,
       _ => throw const FormatException(),
     };
 
 String _externalAdoptionActionValue(ExternalAdoptionAction action) =>
     switch (action) {
-      ExternalAdoptionAction.associateRegistry => 'associate-registry',
+      ExternalAdoptionAction.associateHub => 'associate-hub',
       ExternalAdoptionAction.importLocal => 'import-local',
     };
 
@@ -621,7 +621,7 @@ class RealSkillsGateway implements SkillsGateway {
     String? bundledCliPath,
     this.allowDeveloperCliOverride = !kReleaseMode,
     String? expectedCliOS,
-    String registryBaseUrl = 'http://localhost:3000',
+    String hubBaseUrl = 'https://hub.skillsgo.ai',
     String? appVersion,
     this.discoveryTimeout = const Duration(seconds: 15),
     this.detailTimeout = const Duration(seconds: 20),
@@ -634,23 +634,25 @@ class RealSkillsGateway implements SkillsGateway {
        _bundledCliPath =
            bundledCliPath ?? _bundledPathFor(Platform.resolvedExecutable),
        _expectedCliOS = expectedCliOS ?? _goOperatingSystem,
-       _defaultRegistryBase = _originUri(registryBaseUrl),
-       _registryBase = _originUri(registryBaseUrl),
+       _defaultHubBase = _originUri(hubBaseUrl),
+       _hubBase = _originUri(hubBaseUrl),
        _injectedAppVersion = appVersion,
        _directoryPicker = directoryPicker ?? _pickDirectory,
        _savePathPicker = savePathPicker ?? _pickSavePath,
        _projectPathInspector = projectPathInspector ?? _inspectProjectPath;
 
   static const _customCliKey = 'custom_cli_path';
-  static const _registryOriginKey = 'registry_origin';
+  static const _hubOriginKey = 'hub_origin';
+  static const _folderThemeKey = 'folder_theme';
+  static const _themeModeKey = 'theme_mode';
   static const _allowCriticalOverrideKey = 'allow_critical_risk_override';
   static const _addedProjectsKey = 'added_projects_v1';
   static const _startupHandshakeSchemaVersion = 1;
   static const _appProtocolVersion = 8;
   final http.Client _http;
   final ProcessRunner _runner;
-  final Uri _defaultRegistryBase;
-  Uri _registryBase;
+  final Uri _defaultHubBase;
+  Uri _hubBase;
   final String _bundledCliPath;
   final bool allowDeveloperCliOverride;
   final String _expectedCliOS;
@@ -661,7 +663,7 @@ class RealSkillsGateway implements SkillsGateway {
   final SavePathPicker _savePathPicker;
   final ProjectPathInspector _projectPathInspector;
   String? _cliPath;
-  bool _registryOriginLoaded = false;
+  bool _hubOriginLoaded = false;
 
   static Future<String?> _pickDirectory({String? initialDirectory}) =>
       file_selector.getDirectoryPath(initialDirectory: initialDirectory);
@@ -708,26 +710,25 @@ class RealSkillsGateway implements SkillsGateway {
         parsed.userInfo.isNotEmpty ||
         parsed.hasQuery ||
         parsed.hasFragment) {
-      throw const FormatException('Registry Origin must be an HTTP(S) URL.');
+      throw const FormatException('Hub Origin must be an HTTP(S) URL.');
     }
     return Uri.parse(value.endsWith('/') ? value : '$value/');
   }
 
-  String get _registryOrigin =>
-      _registryBase.toString().replaceFirst(RegExp(r'/$'), '');
+  String get _hubOrigin => _hubBase.toString().replaceFirst(RegExp(r'/$'), '');
 
-  Future<void> _ensureRegistryOrigin() async {
-    if (_registryOriginLoaded) return;
+  Future<void> _ensureHubOrigin() async {
+    if (_hubOriginLoaded) return;
     final preferences = await SharedPreferences.getInstance();
-    final saved = preferences.getString(_registryOriginKey);
+    final saved = preferences.getString(_hubOriginKey);
     if (saved != null) {
       try {
-        _registryBase = _originUri(saved);
+        _hubBase = _originUri(saved);
       } on FormatException {
-        await preferences.remove(_registryOriginKey);
+        await preferences.remove(_hubOriginKey);
       }
     }
-    _registryOriginLoaded = true;
+    _hubOriginLoaded = true;
   }
 
   static String _bundledPathFor(String executable) => p.normalize(
@@ -831,6 +832,49 @@ class RealSkillsGateway implements SkillsGateway {
     } else {
       await preferences.setString(_customCliKey, path.trim());
     }
+  }
+
+  @override
+  Future<String> loadFolderTheme() async {
+    final saved =
+        (await SharedPreferences.getInstance()).getString(_folderThemeKey) ??
+        '#514532';
+    return const {
+          'manila': '#514532',
+          'blue': '#294556',
+          'sage': '#3D5141',
+          'charcoal': '#292A2B',
+        }[saved] ??
+        saved;
+  }
+
+  @override
+  Future<void> saveFolderTheme(String theme) async {
+    final normalized = theme.toUpperCase();
+    final valid = RegExp(r'^#[0-9A-F]{6}$').hasMatch(normalized);
+    await (await SharedPreferences.getInstance()).setString(
+      _folderThemeKey,
+      valid ? normalized : '#514532',
+    );
+  }
+
+  @override
+  Future<AppThemeMode> loadThemeMode() async {
+    final saved = (await SharedPreferences.getInstance()).getString(
+      _themeModeKey,
+    );
+    return AppThemeMode.values.firstWhere(
+      (mode) => mode.name == saved,
+      orElse: () => AppThemeMode.system,
+    );
+  }
+
+  @override
+  Future<void> saveThemeMode(AppThemeMode mode) async {
+    await (await SharedPreferences.getInstance()).setString(
+      _themeModeKey,
+      mode.name,
+    );
   }
 
   String _newProjectID() {
@@ -968,41 +1012,41 @@ class RealSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<String> loadRegistryOrigin() async {
-    await _ensureRegistryOrigin();
-    return _registryOrigin;
+  Future<String> loadHubOrigin() async {
+    await _ensureHubOrigin();
+    return _hubOrigin;
   }
 
   @override
-  Future<void> saveRegistryOrigin(String origin) async {
+  Future<void> saveHubOrigin(String origin) async {
     final parsed = _originUri(origin);
     final preferences = await SharedPreferences.getInstance();
     await preferences.setString(
-      _registryOriginKey,
+      _hubOriginKey,
       parsed.toString().replaceFirst(RegExp(r'/$'), ''),
     );
-    _registryBase = parsed;
-    _registryOriginLoaded = true;
+    _hubBase = parsed;
+    _hubOriginLoaded = true;
   }
 
   @override
-  Future<void> resetRegistryOrigin() async {
+  Future<void> resetHubOrigin() async {
     final preferences = await SharedPreferences.getInstance();
-    await preferences.remove(_registryOriginKey);
-    _registryBase = _defaultRegistryBase;
-    _registryOriginLoaded = true;
+    await preferences.remove(_hubOriginKey);
+    _hubBase = _defaultHubBase;
+    _hubOriginLoaded = true;
   }
 
   @override
-  Future<RegistryStatus> testRegistryOrigin(String origin) async {
+  Future<HubStatus> testHubOrigin(String origin) async {
     final Uri base;
     try {
       base = _originUri(origin);
     } on FormatException catch (error) {
-      return RegistryStatus(
+      return HubStatus(
         origin: origin.trim(),
         state: HealthState.invalid,
-        issue: RegistryIssue.invalidOrigin,
+        issue: HubIssue.invalidOrigin,
         diagnostic: error.message,
       );
     }
@@ -1017,53 +1061,53 @@ class RealSkillsGateway implements SkillsGateway {
           .get(uri)
           .timeout(const Duration(seconds: 10));
       if (response.statusCode < 200 || response.statusCode >= 300) {
-        return RegistryStatus(
+        return HubStatus(
           origin: normalized,
           state: HealthState.unreachable,
-          issue: RegistryIssue.httpFailure,
+          issue: HubIssue.httpFailure,
           httpStatus: response.statusCode,
         );
       }
       final decoded = jsonDecode(response.body);
       if (decoded is! Map<String, dynamic> || decoded['skills'] is! List) {
-        return RegistryStatus(
+        return HubStatus(
           origin: normalized,
           state: HealthState.invalid,
-          issue: RegistryIssue.invalidProtocol,
+          issue: HubIssue.invalidProtocol,
         );
       }
-      return RegistryStatus(origin: normalized, state: HealthState.ready);
+      return HubStatus(origin: normalized, state: HealthState.ready);
     } on SocketException catch (error) {
-      return RegistryStatus(
+      return HubStatus(
         origin: normalized,
         state: HealthState.unreachable,
-        issue: RegistryIssue.connectionFailure,
+        issue: HubIssue.connectionFailure,
         diagnostic: error.message,
       );
     } on TimeoutException {
-      return RegistryStatus(
+      return HubStatus(
         origin: normalized,
         state: HealthState.unreachable,
-        issue: RegistryIssue.timeout,
+        issue: HubIssue.timeout,
       );
     } on FormatException {
-      return RegistryStatus(
+      return HubStatus(
         origin: normalized,
         state: HealthState.invalid,
-        issue: RegistryIssue.invalidJson,
+        issue: HubIssue.invalidJson,
       );
     } on http.ClientException catch (error) {
-      return RegistryStatus(
+      return HubStatus(
         origin: normalized,
         state: HealthState.unreachable,
-        issue: RegistryIssue.connectionFailure,
+        issue: HubIssue.connectionFailure,
         diagnostic: error.message,
       );
     } on Object catch (error) {
-      return RegistryStatus(
+      return HubStatus(
         origin: normalized,
         state: HealthState.unreachable,
-        issue: RegistryIssue.connectionFailure,
+        issue: HubIssue.connectionFailure,
         diagnostic: error.toString(),
       );
     }
@@ -1134,7 +1178,7 @@ class RealSkillsGateway implements SkillsGateway {
         kind: SkillsFailureKind.validation,
       );
     }
-    await _ensureRegistryOrigin();
+    await _ensureHubOrigin();
     final expectedCollection = switch (collection) {
       DiscoveryCollection.search => 'search',
       DiscoveryCollection.ranking => 'all_time',
@@ -1147,7 +1191,7 @@ class RealSkillsGateway implements SkillsGateway {
       if (collection == DiscoveryCollection.search) 'q': trimmedQuery,
       if (collection != DiscoveryCollection.search) 'sort': expectedCollection,
     };
-    final uri = _registryBase
+    final uri = _hubBase
         .resolve(
           collection == DiscoveryCollection.search ? 'v1/search' : 'v1/skills',
         )
@@ -1229,11 +1273,19 @@ class RealSkillsGateway implements SkillsGateway {
                 kind: SkillsFailureKind.invalidResponse,
               );
             }
+            final imageUrl = raw['imageUrl'];
+            if (imageUrl != null && imageUrl is! String) {
+              throw const SkillsException(
+                'Discovery image URL is invalid.',
+                kind: SkillsFailureKind.invalidResponse,
+              );
+            }
             return SkillSummary(
               id: id,
               skillId: skillId,
               name: name,
               source: source,
+              imageUrl: imageUrl as String?,
               description: description,
               installs: (metric['value'] as num).toInt(),
               latestVersion: version,
@@ -1259,7 +1311,7 @@ class RealSkillsGateway implements SkillsGateway {
       );
     } on http.ClientException {
       throw const SkillsException(
-        'The Registry connection failed.',
+        'The Hub connection failed.',
         kind: SkillsFailureKind.offline,
         isOffline: true,
       );
@@ -1278,8 +1330,8 @@ class RealSkillsGateway implements SkillsGateway {
 
   @override
   Future<SkillDetail> loadRemoteDetail(SkillSummary skill) async {
-    await _ensureRegistryOrigin();
-    final uri = _registryBase.resolve('v1/skills/${skill.id}');
+    await _ensureHubOrigin();
+    final uri = _hubBase.resolve('v1/skills/${skill.id}');
     try {
       final response = await _http.get(uri).timeout(detailTimeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -1315,6 +1367,7 @@ class RealSkillsGateway implements SkillsGateway {
         'name',
         'description',
         'source',
+        'repository',
         'requestedVersion',
         'immutableVersion',
         'commitSHA',
@@ -1326,6 +1379,11 @@ class RealSkillsGateway implements SkillsGateway {
         'trustLevel',
       ];
       if (requiredStrings.any((field) => decoded[field] is! String) ||
+          (decoded['imageUrl'] != null && decoded['imageUrl'] is! String) ||
+          decoded['installs'] is! num ||
+          decoded['githubStars'] is! num ||
+          decoded['sourceUpdatedAt'] is! String ||
+          decoded['archiveSize'] is! num ||
           decoded['coordinate'] != skill.id ||
           decoded['riskAssessment'] is! Map<String, dynamic> ||
           decoded['files'] is! List ||
@@ -1410,7 +1468,14 @@ class RealSkillsGateway implements SkillsGateway {
         source: decoded['source'] as String,
         markdown: decoded['instructions'] as String,
         files: files,
-        installs: skill.installs,
+        imageUrl: decoded['imageUrl'] as String?,
+        installs: (decoded['installs'] as num).toInt(),
+        repository: decoded['repository'] as String,
+        githubStars: (decoded['githubStars'] as num).toInt(),
+        sourceUpdatedAt: DateTime.parse(
+          decoded['sourceUpdatedAt'] as String,
+        ).toLocal(),
+        archiveSize: (decoded['archiveSize'] as num).toInt(),
         description: decoded['description'] as String,
         requestedVersion: decoded['requestedVersion'] as String,
         immutableVersion: decoded['immutableVersion'] as String,
@@ -1424,7 +1489,7 @@ class RealSkillsGateway implements SkillsGateway {
         riskScannerVersion: risk['scannerVersion'] as String,
         riskEvidence: evidence,
         installationTargets: installationTargets,
-        registryExecutableSignal: decoded['hasExecutableContent'] as bool,
+        hubExecutableSignal: decoded['hasExecutableContent'] as bool,
       );
     } on SkillsException {
       rethrow;
@@ -1436,7 +1501,7 @@ class RealSkillsGateway implements SkillsGateway {
       );
     } on http.ClientException {
       throw const SkillsException(
-        'The Registry connection failed.',
+        'The Hub connection failed.',
         kind: SkillsFailureKind.offline,
         isOffline: true,
       );
@@ -1653,9 +1718,9 @@ class RealSkillsGateway implements SkillsGateway {
                 (raw['versionDivergence'] as bool) != (versions.length > 1)) {
               throw const FormatException();
             }
-            if (provenance == LibraryProvenance.registry &&
+            if (provenance == LibraryProvenance.hub &&
                 ((raw['coordinate'] as String).isEmpty ||
-                    raw['identity'] != 'registry:${raw['coordinate']}')) {
+                    raw['identity'] != 'hub:${raw['coordinate']}')) {
               throw const FormatException();
             }
             if (provenance == LibraryProvenance.external &&
@@ -1726,7 +1791,7 @@ class RealSkillsGateway implements SkillsGateway {
         return SkillDetail(
           name: skill.name,
           source: switch (skill.provenance) {
-            LibraryProvenance.registry => 'Registry',
+            LibraryProvenance.hub => 'Hub',
             LibraryProvenance.local => 'Local',
             LibraryProvenance.external => 'External',
           },
@@ -1787,7 +1852,7 @@ class RealSkillsGateway implements SkillsGateway {
         );
       }
     }
-    await _ensureRegistryOrigin();
+    await _ensureHubOrigin();
     final arguments = <String>['add', skill.id, '--skill', skill.skillId];
     for (final selection in selections) {
       arguments.addAll(['--target', _targetArgument(selection)]);
@@ -1800,8 +1865,8 @@ class RealSkillsGateway implements SkillsGateway {
       '--preflight',
       '--output',
       'json',
-      '--registry',
-      _registryOrigin,
+      '--hub',
+      _hubOrigin,
     ]);
     final result = await _runCli(arguments);
     if (!result.succeeded) throw _commandFailure(result);
@@ -1966,7 +2031,7 @@ class RealSkillsGateway implements SkillsGateway {
     InstallationPlan plan, {
     void Function(InstallationTargetProgress progress)? onProgress,
   }) async {
-    await _ensureRegistryOrigin();
+    await _ensureHubOrigin();
     final arguments = <String>['add', plan.source, '--skill', plan.name];
     for (final selection in plan.selections) {
       arguments.addAll(['--target', _targetArgument(selection)]);
@@ -1979,8 +2044,8 @@ class RealSkillsGateway implements SkillsGateway {
       '--yes',
       '--output',
       'ndjson',
-      '--registry',
-      _registryOrigin,
+      '--hub',
+      _hubOrigin,
     ]);
     final expectedTargets = {
       for (final item in plan.targets)
@@ -2098,7 +2163,7 @@ class RealSkillsGateway implements SkillsGateway {
 
   @override
   Future<CommandResult> install(SkillSummary skill) async {
-    await _ensureRegistryOrigin();
+    await _ensureHubOrigin();
     return _runCli([
       'add',
       skill.id,
@@ -2110,8 +2175,8 @@ class RealSkillsGateway implements SkillsGateway {
       '--yes',
       '--output',
       'json',
-      '--registry',
-      _registryOrigin,
+      '--hub',
+      _hubOrigin,
     ]);
   }
 
@@ -2119,7 +2184,7 @@ class RealSkillsGateway implements SkillsGateway {
     InstalledSkill skill,
     SkillInstallationTarget target, {
     ExternalAdoptionAction? action,
-    RegistryContentMatch? match,
+    HubContentMatch? match,
     String? stateToken,
   }) => {
     'identity': skill.identity,
@@ -2147,7 +2212,7 @@ class RealSkillsGateway implements SkillsGateway {
         kind: SkillsFailureKind.validation,
       );
     }
-    await _ensureRegistryOrigin();
+    await _ensureHubOrigin();
     final sourceTarget = skill.targets.single;
     final command = await _runCli([
       'adopt',
@@ -2156,8 +2221,8 @@ class RealSkillsGateway implements SkillsGateway {
       '--preflight',
       '--output',
       'json',
-      '--registry',
-      _registryOrigin,
+      '--hub',
+      _hubOrigin,
     ]);
     if (!command.succeeded) throw _commandFailure(command);
     try {
@@ -2183,7 +2248,7 @@ class RealSkillsGateway implements SkillsGateway {
           targetRaw['path'] != sourceTarget.path) {
         throw const FormatException();
       }
-      final matches = <RegistryContentMatch>[];
+      final matches = <HubContentMatch>[];
       final seen = <String>{};
       for (final candidate in raw['matches'] as List) {
         if (candidate is! Map<String, dynamic> ||
@@ -2207,7 +2272,7 @@ class RealSkillsGateway implements SkillsGateway {
             '${candidate['coordinate']}\u0000${candidate['immutableVersion']}';
         if (!seen.add(key)) throw const FormatException();
         matches.add(
-          RegistryContentMatch(
+          HubContentMatch(
             coordinate: candidate['coordinate'] as String,
             name: candidate['name'] as String,
             source: candidate['source'] as String,
@@ -2258,8 +2323,7 @@ class RealSkillsGateway implements SkillsGateway {
               candidate.contentDigest == plan.contentDigest,
         );
     if (action == null ||
-        (action == ExternalAdoptionAction.associateRegistry &&
-            !reviewedMatch) ||
+        (action == ExternalAdoptionAction.associateHub && !reviewedMatch) ||
         (action == ExternalAdoptionAction.importLocal &&
             !plan.canImportLocal)) {
       throw const SkillsException(
@@ -2300,9 +2364,9 @@ class RealSkillsGateway implements SkillsGateway {
       '--output',
       'json',
     ];
-    if (action == ExternalAdoptionAction.associateRegistry) {
-      await _ensureRegistryOrigin();
-      arguments.addAll(['--registry', _registryOrigin]);
+    if (action == ExternalAdoptionAction.associateHub) {
+      await _ensureHubOrigin();
+      arguments.addAll(['--hub', _hubOrigin]);
     }
     final command = await _runCli(arguments);
     if (!command.succeeded) throw _commandFailure(command);
@@ -2325,9 +2389,9 @@ class RealSkillsGateway implements SkillsGateway {
       final provenance = _libraryProvenance(raw['provenance']);
       final expectedProvenance = action == ExternalAdoptionAction.importLocal
           ? LibraryProvenance.local
-          : LibraryProvenance.registry;
+          : LibraryProvenance.hub;
       if (provenance != expectedProvenance) throw const FormatException();
-      if (action == ExternalAdoptionAction.associateRegistry &&
+      if (action == ExternalAdoptionAction.associateHub &&
           (raw['coordinate'] != selected!.coordinate ||
               raw['version'] != selected.immutableVersion)) {
         throw const FormatException();
@@ -2780,7 +2844,7 @@ class RealSkillsGateway implements SkillsGateway {
     InstalledSkill skill,
     List<SkillInstallationTarget> targets,
   ) async {
-    if (skill.provenance != LibraryProvenance.registry ||
+    if (skill.provenance != LibraryProvenance.hub ||
         skill.coordinate.isEmpty ||
         targets.isEmpty ||
         targets.any(
@@ -2791,11 +2855,11 @@ class RealSkillsGateway implements SkillsGateway {
                   target.projectRoot.isEmpty),
         )) {
       throw const SkillsException(
-        'Only explicit managed Registry targets can be checked for updates.',
+        'Only explicit managed Hub targets can be checked for updates.',
         kind: SkillsFailureKind.validation,
       );
     }
-    await _ensureRegistryOrigin();
+    await _ensureHubOrigin();
     final arguments = <String>['update'];
     for (final target in targets) {
       arguments.addAll([
@@ -2803,13 +2867,7 @@ class RealSkillsGateway implements SkillsGateway {
         _updateTargetArgument(skill.coordinate, target),
       ]);
     }
-    arguments.addAll([
-      '--preflight',
-      '--output',
-      'json',
-      '--registry',
-      _registryOrigin,
-    ]);
+    arguments.addAll(['--preflight', '--output', 'json', '--hub', _hubOrigin]);
     final command = await _runCli(arguments);
     if (!command.succeeded) throw _commandFailure(command);
     try {
@@ -3006,7 +3064,7 @@ class RealSkillsGateway implements SkillsGateway {
         kind: SkillsFailureKind.validation,
       );
     }
-    await _ensureRegistryOrigin();
+    await _ensureHubOrigin();
     final arguments = <String>['update'];
     for (final item in plan.targets) {
       arguments.addAll([
@@ -3025,7 +3083,7 @@ class RealSkillsGateway implements SkillsGateway {
         }),
       ]);
     }
-    arguments.addAll(['--output', 'ndjson', '--registry', _registryOrigin]);
+    arguments.addAll(['--output', 'ndjson', '--hub', _hubOrigin]);
     final expected = {
       for (final item in plan.targets) updateTargetKey(item.target): item,
     };
@@ -3189,7 +3247,7 @@ class RealSkillsGateway implements SkillsGateway {
       for (final skill in skills)
         () async {
           final key = _installedSkillUpdateKey(skill);
-          if (skill.provenance != LibraryProvenance.registry) {
+          if (skill.provenance != LibraryProvenance.hub) {
             states[key] = UpdateState.unsupported;
             return;
           }

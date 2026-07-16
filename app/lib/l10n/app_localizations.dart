@@ -149,7 +149,7 @@ abstract class AppLocalizations {
   /// No description provided for @officialIndex.
   ///
   /// In en, this message translates to:
-  /// **'SkillsGo Registry'**
+  /// **'SkillsGo Hub'**
   String get officialIndex;
 
   /// No description provided for @discoverTitle.
@@ -239,7 +239,7 @@ abstract class AppLocalizations {
   /// No description provided for @offlineMessage.
   ///
   /// In en, this message translates to:
-  /// **'SkillsGo could not reach the Registry. Check your network, proxy, or Registry Origin.'**
+  /// **'SkillsGo could not reach the Hub. Check your network, proxy, or Hub Origin.'**
   String get offlineMessage;
 
   /// No description provided for @searchFailedTitle.
@@ -257,43 +257,43 @@ abstract class AppLocalizations {
   /// No description provided for @validationMessage.
   ///
   /// In en, this message translates to:
-  /// **'The Registry rejected the request. Review the query and try again.'**
+  /// **'The Hub rejected the request. Review the query and try again.'**
   String get validationMessage;
 
   /// No description provided for @serverTitle.
   ///
   /// In en, this message translates to:
-  /// **'Registry unavailable'**
+  /// **'Hub unavailable'**
   String get serverTitle;
 
   /// No description provided for @serverMessage.
   ///
   /// In en, this message translates to:
-  /// **'The Registry could not complete this request. Try again in a moment.'**
+  /// **'The Hub could not complete this request. Try again in a moment.'**
   String get serverMessage;
 
   /// No description provided for @timeoutTitle.
   ///
   /// In en, this message translates to:
-  /// **'Registry timed out'**
+  /// **'Hub timed out'**
   String get timeoutTitle;
 
   /// No description provided for @timeoutMessage.
   ///
   /// In en, this message translates to:
-  /// **'The Registry took too long to respond. Check the connection or try again.'**
+  /// **'The Hub took too long to respond. Check the connection or try again.'**
   String get timeoutMessage;
 
   /// No description provided for @invalidResponseTitle.
   ///
   /// In en, this message translates to:
-  /// **'Registry response unsupported'**
+  /// **'Hub response unsupported'**
   String get invalidResponseTitle;
 
   /// No description provided for @invalidResponseMessage.
   ///
   /// In en, this message translates to:
-  /// **'This Registry returned a response SkillsGo cannot read. Check its version and protocol compatibility.'**
+  /// **'This Hub returned a response SkillsGo cannot read. Check its version and protocol compatibility.'**
   String get invalidResponseMessage;
 
   /// No description provided for @tryAgain.
@@ -311,7 +311,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchEmptyMessage.
   ///
   /// In en, this message translates to:
-  /// **'Enter a capability, source, or task to search the public Registry.'**
+  /// **'Enter a capability, source, or task to search the public Hub.'**
   String get searchEmptyMessage;
 
   /// No description provided for @noSkillsTitle.
@@ -341,7 +341,7 @@ abstract class AppLocalizations {
   /// No description provided for @collectionEmptyMessage.
   ///
   /// In en, this message translates to:
-  /// **'The Registry returned an empty collection. Try again after new install activity is recorded.'**
+  /// **'The Hub returned an empty collection. Try again after new install activity is recorded.'**
   String get collectionEmptyMessage;
 
   /// No description provided for @loadMore.
@@ -485,7 +485,7 @@ abstract class AppLocalizations {
   /// No description provided for @artifactUnavailableMessage.
   ///
   /// In en, this message translates to:
-  /// **'The Registry could not provide this immutable artifact. Retry now or inspect another version.'**
+  /// **'The Hub could not provide this immutable artifact. Retry now or inspect another version.'**
   String get artifactUnavailableMessage;
 
   /// No description provided for @detailInvalidTitle.
@@ -497,7 +497,7 @@ abstract class AppLocalizations {
   /// No description provided for @detailInvalidMessage.
   ///
   /// In en, this message translates to:
-  /// **'The Registry returned incomplete or malformed audit metadata. Retry after checking Registry compatibility.'**
+  /// **'The Hub returned incomplete or malformed audit metadata. Retry after checking Hub compatibility.'**
   String get detailInvalidMessage;
 
   /// No description provided for @instructionsTab.
@@ -575,7 +575,7 @@ abstract class AppLocalizations {
   /// No description provided for @fileContentTruncated.
   ///
   /// In en, this message translates to:
-  /// **'Preview truncated by the Registry safety limit.'**
+  /// **'Preview truncated by the Hub safety limit.'**
   String get fileContentTruncated;
 
   /// No description provided for @riskEvidence.
@@ -629,7 +629,7 @@ abstract class AppLocalizations {
   /// No description provided for @yourLibrary.
   ///
   /// In en, this message translates to:
-  /// **'Your Library'**
+  /// **'Installed Skills'**
   String get yourLibrary;
 
   /// No description provided for @libraryNavigation.
@@ -755,7 +755,7 @@ abstract class AppLocalizations {
   /// No description provided for @libraryEmpty.
   ///
   /// In en, this message translates to:
-  /// **'Your Library is empty'**
+  /// **'No skills installed yet'**
   String get libraryEmpty;
 
   /// No description provided for @libraryEmptyMessage.
@@ -767,7 +767,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchLibrary.
   ///
   /// In en, this message translates to:
-  /// **'Search this Library view'**
+  /// **'Search installed skills'**
   String get searchLibrary;
 
   /// No description provided for @libraryNoMatches.
@@ -800,11 +800,11 @@ abstract class AppLocalizations {
   /// **'{count} versions'**
   String versionsSummary(int count);
 
-  /// No description provided for @registryManaged.
+  /// No description provided for @hubManaged.
   ///
   /// In en, this message translates to:
-  /// **'Registry managed'**
-  String get registryManaged;
+  /// **'Hub managed'**
+  String get hubManaged;
 
   /// No description provided for @localManaged.
   ///
@@ -1055,7 +1055,7 @@ abstract class AppLocalizations {
   /// No description provided for @localConfiguration.
   ///
   /// In en, this message translates to:
-  /// **'Local configuration'**
+  /// **'SKILLSGO SETTINGS'**
   String get localConfiguration;
 
   /// No description provided for @settingsNavigation.
@@ -1067,7 +1067,7 @@ abstract class AppLocalizations {
   /// No description provided for @general.
   ///
   /// In en, this message translates to:
-  /// **'General'**
+  /// **'Personalize'**
   String get general;
 
   /// No description provided for @agents.
@@ -1076,11 +1076,11 @@ abstract class AppLocalizations {
   /// **'Agents'**
   String get agents;
 
-  /// No description provided for @registry.
+  /// No description provided for @hub.
   ///
   /// In en, this message translates to:
-  /// **'Registry'**
-  String get registry;
+  /// **'Hub'**
+  String get hub;
 
   /// No description provided for @installationPolicy.
   ///
@@ -1094,22 +1094,334 @@ abstract class AppLocalizations {
   /// **'Storage'**
   String get storage;
 
+  /// No description provided for @colorScheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Color Scheme'**
+  String get colorScheme;
+
   /// No description provided for @about.
   ///
   /// In en, this message translates to:
   /// **'About'**
   String get about;
 
+  /// No description provided for @colorSchemeInspectorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Generated Material color roles'**
+  String get colorSchemeInspectorTitle;
+
+  /// No description provided for @colorSchemeInspectorDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Preview every non-deprecated ColorScheme token generated from the current seed. Click a color to copy its HEX value.'**
+  String get colorSchemeInspectorDescription;
+
+  /// No description provided for @colorSchemePairPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Semantic pairs'**
+  String get colorSchemePairPreview;
+
+  /// No description provided for @colorSchemePairPreviewDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Foreground and background roles rendered together to expose contrast and hierarchy.'**
+  String get colorSchemePairPreviewDescription;
+
+  /// No description provided for @colorSchemeComponentPreview.
+  ///
+  /// In en, this message translates to:
+  /// **'Component preview'**
+  String get colorSchemeComponentPreview;
+
+  /// No description provided for @colorSchemeComponentPreviewDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Representative Material controls rendered with this exact preview scheme.'**
+  String get colorSchemeComponentPreviewDescription;
+
+  /// No description provided for @colorSchemeSampleTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Skill card title'**
+  String get colorSchemeSampleTitle;
+
+  /// No description provided for @colorSchemeSampleBody.
+  ///
+  /// In en, this message translates to:
+  /// **'Secondary copy uses onSurfaceVariant.'**
+  String get colorSchemeSampleBody;
+
+  /// No description provided for @colorSchemeCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Copied'**
+  String get colorSchemeCopied;
+
+  /// No description provided for @colorSchemeSampleGlyphs.
+  ///
+  /// In en, this message translates to:
+  /// **'Aa 123'**
+  String get colorSchemeSampleGlyphs;
+
+  /// No description provided for @colorSchemeGroupPrimary.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary'**
+  String get colorSchemeGroupPrimary;
+
+  /// No description provided for @colorSchemeGroupPrimaryDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary emphasis, containers, and fixed accent roles.'**
+  String get colorSchemeGroupPrimaryDescription;
+
+  /// No description provided for @colorSchemeGroupSecondary.
+  ///
+  /// In en, this message translates to:
+  /// **'Secondary'**
+  String get colorSchemeGroupSecondary;
+
+  /// No description provided for @colorSchemeGroupSecondaryDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Supporting emphasis and fixed secondary roles.'**
+  String get colorSchemeGroupSecondaryDescription;
+
+  /// No description provided for @colorSchemeGroupTertiary.
+  ///
+  /// In en, this message translates to:
+  /// **'Tertiary'**
+  String get colorSchemeGroupTertiary;
+
+  /// No description provided for @colorSchemeGroupTertiaryDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Contrasting accents and fixed tertiary roles.'**
+  String get colorSchemeGroupTertiaryDescription;
+
+  /// No description provided for @colorSchemeGroupSurface.
+  ///
+  /// In en, this message translates to:
+  /// **'Surface'**
+  String get colorSchemeGroupSurface;
+
+  /// No description provided for @colorSchemeGroupSurfaceDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Page, container, elevation, and foreground hierarchy.'**
+  String get colorSchemeGroupSurfaceDescription;
+
+  /// No description provided for @colorSchemeGroupUtility.
+  ///
+  /// In en, this message translates to:
+  /// **'Outline & Utility'**
+  String get colorSchemeGroupUtility;
+
+  /// No description provided for @colorSchemeGroupUtilityDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Boundaries, shadows, scrims, and inverse surfaces.'**
+  String get colorSchemeGroupUtilityDescription;
+
+  /// No description provided for @colorSchemeGroupError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error'**
+  String get colorSchemeGroupError;
+
+  /// No description provided for @colorSchemeGroupErrorDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Error actions, messages, and containers.'**
+  String get colorSchemeGroupErrorDescription;
+
+  /// No description provided for @colorSchemeUsagePrimary.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary actions, focus, and high-emphasis accents.'**
+  String get colorSchemeUsagePrimary;
+
+  /// No description provided for @colorSchemeUsageSecondary.
+  ///
+  /// In en, this message translates to:
+  /// **'Supporting actions and medium-emphasis accents.'**
+  String get colorSchemeUsageSecondary;
+
+  /// No description provided for @colorSchemeUsageTertiary.
+  ///
+  /// In en, this message translates to:
+  /// **'Contrasting accents that complement primary and secondary.'**
+  String get colorSchemeUsageTertiary;
+
+  /// No description provided for @colorSchemeUsageContentOn.
+  ///
+  /// In en, this message translates to:
+  /// **'Text and icons displayed on {token}.'**
+  String colorSchemeUsageContentOn(String token);
+
+  /// No description provided for @colorSchemeUsageContainer.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower-emphasis {family} container for selections and accents.'**
+  String colorSchemeUsageContainer(String family);
+
+  /// No description provided for @colorSchemeUsageFixed.
+  ///
+  /// In en, this message translates to:
+  /// **'Brightness-independent fixed {family} container.'**
+  String colorSchemeUsageFixed(String family);
+
+  /// No description provided for @colorSchemeUsageFixedDim.
+  ///
+  /// In en, this message translates to:
+  /// **'Dimmed brightness-independent fixed {family} container.'**
+  String colorSchemeUsageFixedDim(String family);
+
+  /// No description provided for @colorSchemeUsageFixedContent.
+  ///
+  /// In en, this message translates to:
+  /// **'High-emphasis content on the fixed {family} container.'**
+  String colorSchemeUsageFixedContent(String family);
+
+  /// No description provided for @colorSchemeUsageFixedVariantContent.
+  ///
+  /// In en, this message translates to:
+  /// **'Lower-emphasis content on the fixed {family} container.'**
+  String colorSchemeUsageFixedVariantContent(String family);
+
+  /// No description provided for @colorSchemeUsageSurface.
+  ///
+  /// In en, this message translates to:
+  /// **'Base page and large-region surface.'**
+  String get colorSchemeUsageSurface;
+
+  /// No description provided for @colorSchemeUsageSurfaceDim.
+  ///
+  /// In en, this message translates to:
+  /// **'Dimmed base surface used at the darkest surface tone.'**
+  String get colorSchemeUsageSurfaceDim;
+
+  /// No description provided for @colorSchemeUsageSurfaceBright.
+  ///
+  /// In en, this message translates to:
+  /// **'Bright base surface used at the lightest surface tone.'**
+  String get colorSchemeUsageSurfaceBright;
+
+  /// No description provided for @colorSchemeUsageSurfaceElevation.
+  ///
+  /// In en, this message translates to:
+  /// **'The {level} surface-container elevation.'**
+  String colorSchemeUsageSurfaceElevation(String level);
+
+  /// No description provided for @colorSchemeElevationLowest.
+  ///
+  /// In en, this message translates to:
+  /// **'lowest'**
+  String get colorSchemeElevationLowest;
+
+  /// No description provided for @colorSchemeElevationLow.
+  ///
+  /// In en, this message translates to:
+  /// **'low'**
+  String get colorSchemeElevationLow;
+
+  /// No description provided for @colorSchemeElevationDefault.
+  ///
+  /// In en, this message translates to:
+  /// **'default'**
+  String get colorSchemeElevationDefault;
+
+  /// No description provided for @colorSchemeElevationHigh.
+  ///
+  /// In en, this message translates to:
+  /// **'high'**
+  String get colorSchemeElevationHigh;
+
+  /// No description provided for @colorSchemeElevationHighest.
+  ///
+  /// In en, this message translates to:
+  /// **'highest'**
+  String get colorSchemeElevationHighest;
+
+  /// No description provided for @colorSchemeUsageOnSurface.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary text and icons displayed on surfaces.'**
+  String get colorSchemeUsageOnSurface;
+
+  /// No description provided for @colorSchemeUsageOnSurfaceVariant.
+  ///
+  /// In en, this message translates to:
+  /// **'Secondary text, labels, and subdued icons on surfaces.'**
+  String get colorSchemeUsageOnSurfaceVariant;
+
+  /// No description provided for @colorSchemeUsageSurfaceTint.
+  ///
+  /// In en, this message translates to:
+  /// **'Material elevation tint derived from primary.'**
+  String get colorSchemeUsageSurfaceTint;
+
+  /// No description provided for @colorSchemeUsageOutline.
+  ///
+  /// In en, this message translates to:
+  /// **'Prominent boundaries and focused component outlines.'**
+  String get colorSchemeUsageOutline;
+
+  /// No description provided for @colorSchemeUsageOutlineVariant.
+  ///
+  /// In en, this message translates to:
+  /// **'Subtle boundaries, separators, and low-emphasis outlines.'**
+  String get colorSchemeUsageOutlineVariant;
+
+  /// No description provided for @colorSchemeUsageShadow.
+  ///
+  /// In en, this message translates to:
+  /// **'Drop-shadow color for elevated surfaces.'**
+  String get colorSchemeUsageShadow;
+
+  /// No description provided for @colorSchemeUsageScrim.
+  ///
+  /// In en, this message translates to:
+  /// **'Modal overlay used to de-emphasize background content.'**
+  String get colorSchemeUsageScrim;
+
+  /// No description provided for @colorSchemeUsageInverseSurface.
+  ///
+  /// In en, this message translates to:
+  /// **'Surface with reversed light and dark emphasis.'**
+  String get colorSchemeUsageInverseSurface;
+
+  /// No description provided for @colorSchemeUsageInversePrimary.
+  ///
+  /// In en, this message translates to:
+  /// **'Primary accent displayed on an inverse surface.'**
+  String get colorSchemeUsageInversePrimary;
+
+  /// No description provided for @colorSchemeUsageError.
+  ///
+  /// In en, this message translates to:
+  /// **'Error actions, status, and high-emphasis feedback.'**
+  String get colorSchemeUsageError;
+
+  /// No description provided for @save.
+  ///
+  /// In en, this message translates to:
+  /// **'Save'**
+  String get save;
+
   /// No description provided for @generalSettingsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Desktop preferences'**
+  /// **'Make SkillsGo yours'**
   String get generalSettingsTitle;
 
   /// No description provided for @generalSettingsDescription.
   ///
   /// In en, this message translates to:
-  /// **'SkillsGo follows the system language and accessibility preferences, including reduced motion.'**
+  /// **'The interface follows your system language, accessibility, and motion preferences.'**
   String get generalSettingsDescription;
 
   /// No description provided for @agentsSettingsTitle.
@@ -1118,17 +1430,17 @@ abstract class AppLocalizations {
   /// **'Agent runtime'**
   String get agentsSettingsTitle;
 
-  /// No description provided for @registrySettingsTitle.
+  /// No description provided for @hubSettingsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Registry Origin'**
-  String get registrySettingsTitle;
+  /// **'Hub Origin'**
+  String get hubSettingsTitle;
 
-  /// No description provided for @registrySettingsDescription.
+  /// No description provided for @hubSettingsDescription.
   ///
   /// In en, this message translates to:
-  /// **'Use the official Registry or an HTTP(S) self-hosted origin that implements the same SkillsGo protocol.'**
-  String get registrySettingsDescription;
+  /// **'Use the official Hub or an HTTP(S) self-hosted origin that implements the same SkillsGo protocol.'**
+  String get hubSettingsDescription;
 
   /// No description provided for @testConnection.
   ///
@@ -1160,41 +1472,41 @@ abstract class AppLocalizations {
   /// **'Connection failed'**
   String get connectionFailed;
 
-  /// No description provided for @registryInvalidOrigin.
+  /// No description provided for @hubInvalidOrigin.
   ///
   /// In en, this message translates to:
   /// **'Enter a valid HTTP(S) Origin without credentials, a query, or a fragment.'**
-  String get registryInvalidOrigin;
+  String get hubInvalidOrigin;
 
-  /// No description provided for @registryHttpFailure.
+  /// No description provided for @hubHttpFailure.
   ///
   /// In en, this message translates to:
-  /// **'Registry returned HTTP {status}. Check the Origin and server configuration.'**
-  String registryHttpFailure(int status);
+  /// **'Hub returned HTTP {status}. Check the Origin and server configuration.'**
+  String hubHttpFailure(int status);
 
-  /// No description provided for @registryInvalidProtocol.
+  /// No description provided for @hubInvalidProtocol.
   ///
   /// In en, this message translates to:
-  /// **'The server did not return the SkillsGo Registry search protocol.'**
-  String get registryInvalidProtocol;
+  /// **'The server did not return the SkillsGo Hub search protocol.'**
+  String get hubInvalidProtocol;
 
-  /// No description provided for @registryInvalidJson.
+  /// No description provided for @hubInvalidJson.
   ///
   /// In en, this message translates to:
-  /// **'The Registry returned invalid JSON.'**
-  String get registryInvalidJson;
+  /// **'The Hub returned invalid JSON.'**
+  String get hubInvalidJson;
 
-  /// No description provided for @registryConnectionFailure.
+  /// No description provided for @hubConnectionFailure.
   ///
   /// In en, this message translates to:
-  /// **'Could not reach the Registry. Check the Origin, network, proxy, and TLS configuration.'**
-  String get registryConnectionFailure;
+  /// **'Could not reach the Hub. Check the Origin, network, proxy, and TLS configuration.'**
+  String get hubConnectionFailure;
 
-  /// No description provided for @registryConnectionTimeout.
+  /// No description provided for @hubConnectionTimeout.
   ///
   /// In en, this message translates to:
-  /// **'The Registry connection timed out. Check the network or try again.'**
-  String get registryConnectionTimeout;
+  /// **'The Hub connection timed out. Check the network or try again.'**
+  String get hubConnectionTimeout;
 
   /// No description provided for @riskPolicyTitle.
   ///
@@ -1304,11 +1616,11 @@ abstract class AppLocalizations {
   /// **'Compatible'**
   String get compatible;
 
-  /// No description provided for @registryOriginSaved.
+  /// No description provided for @hubOriginSaved.
   ///
   /// In en, this message translates to:
-  /// **'Registry Origin saved and applied.'**
-  String get registryOriginSaved;
+  /// **'Hub Origin saved and applied.'**
+  String get hubOriginSaved;
 
   /// No description provided for @policySaved.
   ///
@@ -1439,8 +1751,56 @@ abstract class AppLocalizations {
   /// No description provided for @privacySummary.
   ///
   /// In en, this message translates to:
-  /// **'SkillsGo does not store searches or persist command logs. Its bundled CLI remains inside the App and is never installed into your system PATH.'**
+  /// **'Your searches aren’t saved, and SkillsGo doesn’t keep command logs.'**
   String get privacySummary;
+
+  /// No description provided for @folderColorTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a theme color'**
+  String get folderColorTheme;
+
+  /// No description provided for @folderColorThemeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a color you like. SkillsGo will build a coordinated interface palette around it.'**
+  String get folderColorThemeDescription;
+
+  /// No description provided for @appearanceMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Appearance'**
+  String get appearanceMode;
+
+  /// No description provided for @appearanceModeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Follow your system appearance, or always use a light or dark theme.'**
+  String get appearanceModeDescription;
+
+  /// No description provided for @followSystem.
+  ///
+  /// In en, this message translates to:
+  /// **'System'**
+  String get followSystem;
+
+  /// No description provided for @lightMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Light'**
+  String get lightMode;
+
+  /// No description provided for @darkMode.
+  ///
+  /// In en, this message translates to:
+  /// **'Dark'**
+  String get darkMode;
+
+  /// No description provided for @folderThemeChoice.
+  ///
+  /// In en, this message translates to:
+  /// **'{theme} Folder theme'**
+  String folderThemeChoice(String theme);
 
   /// No description provided for @privacyAffiliation.
   ///
@@ -1519,6 +1879,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Install Skill'**
   String get installSkill;
+
+  /// No description provided for @installLocationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Set installation location'**
+  String get installLocationTitle;
+
+  /// No description provided for @userLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'User Level'**
+  String get userLevel;
+
+  /// No description provided for @projectLevel.
+  ///
+  /// In en, this message translates to:
+  /// **'Project Level'**
+  String get projectLevel;
+
+  /// No description provided for @projects.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get projects;
+
+  /// No description provided for @loading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading…'**
+  String get loading;
+
+  /// No description provided for @userInstallSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'Available to {agents} Agents at user level'**
+  String userInstallSummary(int agents);
+
+  /// No description provided for @projectInstallSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{projects} projects · {agents} Agents'**
+  String projectInstallSummary(int projects, int agents);
 
   /// No description provided for @installationPlanTitle.
   ///
@@ -1639,6 +2041,48 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Install {count} Targets'**
   String installSelectedTargets(int count);
+
+  /// No description provided for @confirmInstall.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm Installation'**
+  String get confirmInstall;
+
+  /// No description provided for @installAllRepositorySkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Install all repository skills ({count})'**
+  String installAllRepositorySkills(int count);
+
+  /// No description provided for @installRepositorySkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Install all {repository} skills ({count})'**
+  String installRepositorySkills(String repository, int count);
+
+  /// No description provided for @installSkillTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Install {skill} to'**
+  String installSkillTo(String skill);
+
+  /// No description provided for @availableInAllProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'All projects'**
+  String get availableInAllProjects;
+
+  /// No description provided for @availableInSelectedProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'Selected projects'**
+  String get availableInSelectedProjects;
+
+  /// No description provided for @usedBy.
+  ///
+  /// In en, this message translates to:
+  /// **'For Agents'**
+  String get usedBy;
 
   /// No description provided for @backToTargets.
   ///
@@ -2024,29 +2468,29 @@ abstract class AppLocalizations {
   /// **'Content identity'**
   String get adoptionContentDigest;
 
-  /// No description provided for @registryContentMatches.
+  /// No description provided for @hubContentMatches.
   ///
   /// In en, this message translates to:
-  /// **'Registry matches'**
-  String get registryContentMatches;
+  /// **'Hub matches'**
+  String get hubContentMatches;
 
-  /// No description provided for @registryMatchSource.
+  /// No description provided for @hubMatchSource.
   ///
   /// In en, this message translates to:
   /// **'Source: {source}'**
-  String registryMatchSource(String source);
+  String hubMatchSource(String source);
 
-  /// No description provided for @registryMatchVersion.
+  /// No description provided for @hubMatchVersion.
   ///
   /// In en, this message translates to:
   /// **'Immutable version: {version}'**
-  String registryMatchVersion(String version);
+  String hubMatchVersion(String version);
 
-  /// No description provided for @associateRegistry.
+  /// No description provided for @associateHub.
   ///
   /// In en, this message translates to:
-  /// **'Associate with Registry'**
-  String get associateRegistry;
+  /// **'Associate with Hub'**
+  String get associateHub;
 
   /// No description provided for @importAsLocal.
   ///
@@ -2057,7 +2501,7 @@ abstract class AppLocalizations {
   /// No description provided for @importAsLocalDescription.
   ///
   /// In en, this message translates to:
-  /// **'No exact Registry match was found. This creates a private Local Skill with no publisher or update source.'**
+  /// **'No exact Hub match was found. This creates a private Local Skill with no publisher or update source.'**
   String get importAsLocalDescription;
 
   /// No description provided for @adoptionPreservesContent.
@@ -2066,11 +2510,11 @@ abstract class AppLocalizations {
   /// **'The current installation content will not be replaced. SkillsGo only records ownership after your confirmation.'**
   String get adoptionPreservesContent;
 
-  /// No description provided for @chooseRegistryMatch.
+  /// No description provided for @chooseHubMatch.
   ///
   /// In en, this message translates to:
-  /// **'Select an exact Registry match to continue.'**
-  String get chooseRegistryMatch;
+  /// **'Select an exact Hub match to continue.'**
+  String get chooseHubMatch;
 
   /// No description provided for @confirmAdoption.
   ///
@@ -2107,6 +2551,36 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Export this Local Skill as a portable ZIP archive.'**
   String get exportLocalSkillDescription;
+
+  /// No description provided for @detailInstalls.
+  ///
+  /// In en, this message translates to:
+  /// **'Installs'**
+  String get detailInstalls;
+
+  /// No description provided for @detailRepository.
+  ///
+  /// In en, this message translates to:
+  /// **'Repository'**
+  String get detailRepository;
+
+  /// No description provided for @detailGitHubStars.
+  ///
+  /// In en, this message translates to:
+  /// **'GitHub Stars'**
+  String get detailGitHubStars;
+
+  /// No description provided for @detailUpdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Updated'**
+  String get detailUpdated;
+
+  /// No description provided for @detailArchiveSize.
+  ///
+  /// In en, this message translates to:
+  /// **'ZIP Size'**
+  String get detailArchiveSize;
 }
 
 class _AppLocalizationsDelegate
