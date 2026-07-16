@@ -1,0 +1,44 @@
+/*
+ * [INPUT]: Depends on the fs package imports and contracts declared in this file.
+ * [OUTPUT]: Provides the fs package behavior implemented by lister.go.
+ * [POS]: Serves as maintained source in the fs package in its renamed SkillsGo Hub or CLI workspace.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+package fs
+
+import (
+	"context"
+	"os"
+	"strings"
+
+	"github.com/skillsgo/skillsgo/hub/pkg/errors"
+	"github.com/skillsgo/skillsgo/hub/pkg/observ"
+	"github.com/spf13/afero"
+	"golang.org/x/mod/semver"
+)
+
+func (s *storageImpl) List(ctx context.Context, module string) ([]string, error) {
+	const op errors.Op = "fs.List"
+	_, span := observ.StartSpan(ctx, op.String())
+	defer span.End()
+	loc := s.moduleLocation(module)
+	fileInfos, err := afero.ReadDir(s.filesystem, loc)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return []string{}, nil
+		}
+
+		return nil, errors.E(op, errors.S(module), err, errors.KindUnexpected)
+	}
+	ret := []string{}
+	for _, fileInfo := range fileInfos {
+		if !fileInfo.IsDir() {
+			continue
+		}
+		ver := fileInfo.Name()
+		if v := semver.Canonical(ver); v != "" && strings.HasPrefix(ver, v) {
+			ret = append(ret, ver)
+		}
+	}
+	return ret, nil
+}

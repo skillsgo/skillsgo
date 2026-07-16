@@ -1,4 +1,4 @@
-name: Continuous Integration
+# [INPUT]: Depends on the build, deployment, or runtime values declared in ci.yml.\n# [OUTPUT]: Provides the SkillsGo Hub or monorepo configuration defined by ci.yml.\n# [POS]: Serves as maintained configuration in the renamed SkillsGo Hub workspace or its repository integration.\n# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md\nname: Continuous Integration
 
 on:
   push:
@@ -37,11 +37,11 @@ jobs:
       - name: Build CLI
         run: go build -o "$RUNNER_TEMP/skillsgo" ./cmd/skillsgo
 
-  registry:
+  hub:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: registry
+        working-directory: hub
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -49,8 +49,8 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version-file: registry/go.mod
-          cache-dependency-path: registry/go.sum
+          go-version-file: hub/go.mod
+          cache-dependency-path: hub/go.sum
 
       - name: Download dependencies
         run: go mod download
@@ -61,8 +61,8 @@ jobs:
       - name: Test
         run: go test -race ./...
 
-      - name: Build Registry
-        run: go build -o "$RUNNER_TEMP/skillsgo-registry" ./cmd/registry
+      - name: Build Hub
+        run: go build -o "$RUNNER_TEMP/skillsgo-hub" ./cmd/hub
 
   app:
     runs-on: macos-latest

@@ -1,4 +1,4 @@
-version: 2
+# [INPUT]: Depends on the build, deployment, or runtime values declared in dependabot.yml.\n# [OUTPUT]: Provides the SkillsGo Hub or monorepo configuration defined by dependabot.yml.\n# [POS]: Serves as maintained configuration in the renamed SkillsGo Hub workspace or its repository integration.\n# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md\nversion: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
@@ -6,7 +6,7 @@ updates:
       interval: weekly
 
   - package-ecosystem: gomod
-    directory: /registry
+    directory: /hub
     schedule:
       interval: weekly
 

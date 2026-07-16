@@ -6,7 +6,7 @@ Before changing any file under `app/**`, read `app/AGENTS.md`.
 
 Before changing any file under `cli/**`, read `cli/AGENTS.md`.
 
-Before changing any file under `registry/**`, read `registry/AGENTS.md`. When the path is inside a nested Go module, also read that module's nearest `AGENTS.md`.
+Before changing any file under `hub/**`, read `hub/AGENTS.md`. When the path is inside a nested Go module, also read that module's nearest `AGENTS.md`.
 
 Before changing reusable standards under `docs/reference/**`, read `docs/reference/AGENTS.md`.
 
@@ -26,13 +26,13 @@ Do not add non-English documentation. When modifying an existing document, leave
 skillsgo/
 ├── app/       Flutter desktop App and user experience
 ├── cli/       Go CLI and local Skill execution engine
-├── registry/  Go Registry, artifact protocol, search, and ranking
+├── hub/  Go Hub, artifact protocol, search, and ranking
 └── docs/      Cross-context decisions, agent configuration, and standards
 ```
 
-- The App reads the Registry and invokes the bundled CLI through stable machine contracts.
+- The App reads the Hub and invokes the bundled CLI through stable machine contracts.
 - The CLI owns local filesystem mutations, Agent Adapters, the Content-addressed Store, Installation Targets, Workspace Manifests, and Workspace Locks.
-- The Registry owns public Skill identity, immutable artifacts, metadata, search, ranking, and install-event aggregation.
+- The Hub owns public Skill identity, immutable artifacts, metadata, search, ranking, and install-event aggregation.
 - `CONTEXT-MAP.md` and the context glossaries define domain language. GEB maps define structural ownership. Neither substitutes for the other.
 
 ## Toolchain
@@ -40,8 +40,8 @@ skillsgo/
 - Root validation entry: `make test`.
 - App: Flutter; use `flutter analyze` and `flutter test` from `app/`.
 - CLI: Go; use `gofmt` and `go test ./...` from `cli/`.
-- Registry: Go; use `gofmt` and `go test ./...` from `registry/`.
-- Prefer the highest existing behavior seam: `SkillsGateway` for App journeys, the CLI root execution entry for CLI behavior, and the HTTP Router for Registry behavior.
+- Hub: Go; use `gofmt` and `go test ./...` from `hub/`.
+- Prefer the highest existing behavior seam: `SkillsGateway` for App journeys, the CLI root execution entry for CLI behavior, and the HTTP Router for Hub behavior.
 - Do not parse human-oriented CLI output in the App. Do not invoke local commands through shell-string interpolation.
 
 Release architecture, tags, signing, and artifact matrices are defined in `docs/release-design.md`.
@@ -58,7 +58,7 @@ This repository uses the default five-role triage vocabulary. See `docs/agents/t
 
 ### Domain Docs
 
-This repository uses a multi-context domain documentation layout for the App, CLI, and Registry. See `docs/agents/domain.md`.
+This repository uses a multi-context domain documentation layout for the App, CLI, and Hub. See `docs/agents/domain.md`.
 
 ## GEB Monorepo Fractal Documentation Protocol
 
@@ -71,7 +71,7 @@ Code is the executable representation; documentation is the semantic representat
 | Level | Name | SkillsGo anchor | Responsibility |
 | --- | --- | --- | --- |
 | F0 | Repo Constitution | `/AGENTS.md` | Repository-wide routing, architecture, toolchain, language, and protocol |
-| F1 | Domain Map | `app/AGENTS.md`, `cli/AGENTS.md`, `registry/AGENTS.md`, standards maps | Domain boundaries, workspace index, and cross-context rules |
+| F1 | Domain Map | `app/AGENTS.md`, `cli/AGENTS.md`, `hub/AGENTS.md`, standards maps | Domain boundaries, workspace index, and cross-context rules |
 | F2 | Workspace Map | Every maintained `pubspec.yaml` or `go.mod` workspace | Runtime, entry points, commands, dependencies, exports, and top-level layout |
 | F3 | Module Map | Stable multi-file source-module directories | Member inventory, local dependency direction, and invariants |
 | F4 | File Contract | Header of semantic source or configuration files | INPUT, OUTPUT, and POS contract |
@@ -80,12 +80,12 @@ F2 is determined by a build manifest, not directory depth. In this repository:
 
 - `app/pubspec.yaml` defines the Flutter workspace.
 - `cli/go.mod` defines the CLI Go module.
-- `registry/go.mod` defines the Registry Go module.
-- `registry/scripts/liveness_probe/go.mod` defines a nested utility Go module.
+- `hub/go.mod` defines the Hub Go module.
+- `hub/scripts/liveness_probe/go.mod` defines a nested utility Go module.
 
-`registry/docs/themes/hugo-theme-relearn/go.mod` belongs to a vendored upstream documentation theme. It is explicitly exempt from SkillsGo F2 mapping and F4 maintenance.
+`hub/docs/themes/hugo-theme-relearn/go.mod` belongs to a vendored upstream documentation theme. It is explicitly exempt from SkillsGo F2 mapping and F4 maintenance.
 
-Because each top-level product domain currently contains one primary workspace, `app/AGENTS.md`, `cli/AGENTS.md`, and `registry/AGENTS.md` intentionally serve as both F1 and F2 maps. Split them only when a domain gains multiple independently maintained workspaces.
+Because each top-level product domain currently contains one primary workspace, `app/AGENTS.md`, `cli/AGENTS.md`, and `hub/AGENTS.md` intentionally serve as both F1 and F2 maps. Split them only when a domain gains multiple independently maintained workspaces.
 
 ### F3 Module Map Template
 
