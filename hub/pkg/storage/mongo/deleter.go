@@ -1,0 +1,66 @@
+/*
+ * [INPUT]: Depends on the mongo package imports and contracts declared in this file.
+ * [OUTPUT]: Provides the mongo package behavior implemented by deleter.go.
+ * [POS]: Serves as maintained source in the mongo package in its renamed SkillsGo Hub or CLI workspace.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+package mongo
+
+import (
+	"context"
+
+	"github.com/skillsgo/skillsgo/hub/pkg/errors"
+	"github.com/skillsgo/skillsgo/hub/pkg/observ"
+	"go.mongodb.org/mongo-driver/v2/bson"
+	"go.mongodb.org/mongo-driver/v2/mongo"
+)
+
+// Delete removes a specific version of a module.
+func (s *SkillStore) Delete(ctx context.Context, module, version string) error {
+	const op errors.Op = "mongo.Delete"
+	ctx, span := observ.StartSpan(ctx, op.String())
+	defer span.End()
+	exists, err := s.Exists(ctx, module, version)
+	if err != nil {
+		return errors.E(op, errors.S(module), errors.V(version), errors.KindNotFound)
+	}
+	if !exists {
+		return errors.E(op, errors.S(module), errors.V(version), errors.KindNotFound)
+	}
+
+	db := s.client.Database(s.db)
+	c := db.Collection(s.coll)
+	bucket := db.GridFSBucket()
+
+	filter := bson.D{bson.E{Key: "filename", Value: s.gridFileName(module, version)}}
+
+	cursor, err := bucket.Find(ctx, filter)
+	if err != nil {
+		return errors.E(op, errors.S(module), errors.V(version), err)
+	}
+
+	var x bson.D
+	for cursor.Next(ctx) {
+		_ = cursor.Decode(&x)
+	}
+	b, err := bson.Marshal(x)
+	if err != nil {
+		return errors.E(op, errors.S(module), errors.V(version), err)
+	}
+
+	if err = bucket.Delete(ctx, bson.Raw(b).Lookup("_id").ObjectID()); err != nil {
+		kind := errors.KindUnexpected
+		if errors.IsErr(err, mongo.ErrFileNotFound) {
+			kind = errors.KindNotFound
+		}
+		return errors.E(op, err, kind, errors.S(module), errors.V(version))
+	}
+
+	tctx, cancel := context.WithTimeout(ctx, s.timeout)
+	defer cancel()
+	_, err = c.DeleteOne(tctx, bson.M{"skill": module, "version": version})
+	if err != nil {
+		return errors.E(op, err, errors.KindNotFound, errors.S(module), errors.V(version))
+	}
+	return nil
+}

@@ -1,0 +1,59 @@
+/*
+ * [INPUT]: Depends on the paths package imports and contracts declared in this file.
+ * [OUTPUT]: Provides the paths package behavior implemented by decode.go.
+ * [POS]: Serves as maintained source in the paths package in its renamed SkillsGo Hub or CLI workspace.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+package paths
+
+import (
+	"fmt"
+	"unicode/utf8"
+
+	"github.com/skillsgo/skillsgo/hub/pkg/errors"
+)
+
+// DecodePath returns the module path of the given safe encoding.
+// It fails if the encoding is invalid or encodes an invalid path.
+func DecodePath(encoding string) (path string, err error) {
+	const op errors.Op = "paths.DecodePath"
+	path, ok := decodeString(encoding)
+	if !ok {
+		return "", errors.E(op, fmt.Sprintf("invalid module path encoding %q", encoding))
+	}
+
+	return path, nil
+}
+
+// Ripped from cmd/go.
+func decodeString(encoding string) (string, bool) {
+	var buf []byte
+
+	bang := false
+	for _, r := range encoding {
+		if r >= utf8.RuneSelf {
+			return "", false
+		}
+		if bang {
+			bang = false
+			if r < 'a' || 'z' < r {
+				return "", false
+			}
+			buf = append(buf, byte(r+'A'-'a'))
+			continue
+		}
+		if r == '!' {
+			bang = true
+			continue
+		}
+		if 'A' <= r && r <= 'Z' {
+			return "", false
+		}
+		//nolint:gosec // Runes larger than a byte are rejected above, so this cast is safe.
+		buf = append(buf, byte(r))
+	}
+	if bang {
+		return "", false
+	}
+	return string(buf), true
+}

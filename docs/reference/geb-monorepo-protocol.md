@@ -12,7 +12,7 @@ A single-package repository can often use project, module, and file documentatio
 
 SkillsGo boundaries are semantic rather than depth-based:
 
-- `app/`, `cli/`, and `registry/` define product and runtime domains.
+- `app/`, `cli/`, and `hub/` define product and runtime domains.
 - `pubspec.yaml` and `go.mod` define buildable and testable workspaces.
 - stable multi-file source directories define modules.
 - source headers define individual file contracts.
@@ -35,10 +35,10 @@ F2 is always selected from the nearest build manifest, never from an assumed dir
 
 - `app/pubspec.yaml`: Flutter desktop App workspace.
 - `cli/go.mod`: standalone and bundled CLI workspace.
-- `registry/go.mod`: Registry service workspace.
-- `registry/scripts/liveness_probe/go.mod`: nested CI liveness utility workspace.
+- `hub/go.mod`: Hub service workspace.
+- `hub/scripts/liveness_probe/go.mod`: nested CI liveness utility workspace.
 
-`registry/docs/themes/hugo-theme-relearn/go.mod` is part of a vendored upstream documentation theme, not a maintained SkillsGo workspace. It is exempt from F2 and F4 maintenance unless ownership is intentionally brought into the repository.
+`hub/docs/themes/hugo-theme-relearn/go.mod` is part of a vendored upstream documentation theme, not a maintained SkillsGo workspace. It is exempt from F2 and F4 maintenance unless ownership is intentionally brought into the repository.
 
 A future nested `go.mod` or `pubspec.yaml` creates another F2 boundary even when it sits inside an existing F1 domain.
 
@@ -61,7 +61,7 @@ The current F1 domains are:
 
 - App: desktop experience and orchestration;
 - CLI: local execution and Agent integration;
-- Registry: public identity, artifact distribution, and discovery;
+- Hub: public identity, artifact distribution, and discovery;
 - Reference documentation: reusable protocol sources.
 
 An F1 map lists its workspaces, explains cross-context dependency rules, and points to deeper maps. It does not duplicate every source-file responsibility.
@@ -132,8 +132,8 @@ INPUT identifies concrete dependencies and the capability consumed. OUTPUT ident
 Default F4 targets:
 
 - App domain, infrastructure, UI, entry, and behavior-test files;
-- CLI command, Agent, install, project, Registry-client, source, Store, and behavior-test files;
-- Registry command, API, protocol, catalog, Skill, configuration, storage, and behavior-test files;
+- CLI command, Agent, install, project, Hub-client, source, Store, and behavior-test files;
+- Hub command, API, protocol, catalog, Skill, configuration, storage, and behavior-test files;
 - cross-context configuration truth sources and deployment entry points.
 
 Default exemptions:

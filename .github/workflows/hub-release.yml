@@ -1,0 +1,202 @@
+# [INPUT]: Depends on the build, deployment, or runtime values declared in hub-release.yml.\n# [OUTPUT]: Provides the SkillsGo Hub or monorepo configuration defined by hub-release.yml.\n# [POS]: Serves as maintained configuration in the renamed SkillsGo Hub workspace or its repository integration.\n# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md\nname: Hub Release
+
+on:
+  push:
+    tags:
+      - hub/v*
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Dry-run version, for example v0.1.0-rc.1
+        required: true
+        default: v0.0.0-dev
+
+concurrency:
+  group: hub-release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    name: Verify Hub
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: hub
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: hub/go.mod
+          cache-dependency-path: hub/go.sum
+
+      - name: Test
+        run: go test ./...
+
+  build:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+          - goos: linux
+            goarch: arm64
+          - goos: darwin
+            goarch: amd64
+          - goos: darwin
+            goarch: arm64
+    defaults:
+      run:
+        working-directory: hub
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: hub/go.mod
+          cache-dependency-path: hub/go.sum
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          MANUAL_VERSION: ${{ inputs.version }}
+        run: |
+          if [[ "$EVENT_NAME" == "push" ]]; then
+            version="${REF_NAME#hub/}"
+          else
+            version="$MANUAL_VERSION"
+          fi
+          if [[ ! "$version" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid Hub version: $version" >&2
+            exit 1
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "version_number=${version#v}" >> "$GITHUB_OUTPUT"
+
+      - name: Build
+        id: build
+        shell: bash
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          build_date="$(date -u '+%Y-%m-%dT%H:%M:%SZ')"
+          package="skillsgo-hub_${VERSION#v}_${GOOS}_${GOARCH}"
+          mkdir -p "dist/$package"
+          go build -trimpath \
+            -ldflags "-s -w -X github.com/skillsgo/skillsgo/hub/pkg/build.version=$VERSION -X github.com/skillsgo/skillsgo/hub/pkg/build.buildDate=$build_date" \
+            -o "dist/$package/skillsgo-hub" ./cmd/hub
+          cp LICENSE "dist/$package/LICENSE"
+          echo "package=$package" >> "$GITHUB_OUTPUT"
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0
+        with:
+          file: hub/dist/${{ steps.build.outputs.package }}/skillsgo-hub
+          format: spdx-json
+          output-file: hub/dist/${{ steps.build.outputs.package }}/sbom.spdx.json
+          upload-artifact: false
+          upload-release-assets: false
+
+      - name: Package
+        env:
+          PACKAGE: ${{ steps.build.outputs.package }}
+        run: tar -C dist -czf "dist/${PACKAGE}.tar.gz" "$PACKAGE"
+
+      - name: Attest build provenance
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: hub/dist/${{ steps.build.outputs.package }}.tar.gz
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hub-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: hub/dist/${{ steps.build.outputs.package }}.tar.gz
+          if-no-files-found: error
+          retention-days: 7
+
+  publish:
+    name: Assemble release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          fetch-depth: 0
+
+      - name: Download build artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          pattern: hub-*
+          path: release-assets
+          merge-multiple: true
+
+      - name: Create checksums
+        working-directory: release-assets
+        run: sha256sum *.tar.gz > checksums.txt
+
+      - name: Attest checksums
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-path: release-assets/checksums.txt
+
+      - name: Upload assembled artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: hub-release
+          path: release-assets/*
+          if-no-files-found: error
+          retention-days: 7
+
+  release:
+    name: Publish GitHub Release
+    if: github.event_name == 'push'
+    needs: publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download assembled artifacts
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: hub-release
+          path: release-assets
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          version="${TAG#hub/}"
+          gh release create "$TAG" release-assets/* \
+            --verify-tag \
+            --title "SkillsGo Hub $version" \
+            --generate-notes

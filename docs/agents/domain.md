@@ -17,7 +17,7 @@ If one of these files does not exist, proceed silently. Create or update glossar
 
 - `app/CONTEXT.md`: product experience, library views, projects, external installations, and installation plans.
 - `cli/CONTEXT.md`: local execution, Agent adapters, the content-addressed Store, installation targets, and Workspace Locks.
-- `registry/CONTEXT.md`: public Skill identity, immutable artifacts, indexing, ranking, and install events.
+- `hub/CONTEXT.md`: public Skill identity, immutable artifacts, indexing, ranking, and install events.
 - `docs/adr/`: decisions that cross two or more contexts.
 - `<context>/docs/adr/`: decisions owned by one context.
 

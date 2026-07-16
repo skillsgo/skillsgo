@@ -1,6 +1,6 @@
 # SkillsGo
 
-SkillsGo is an open ecosystem for discovering and managing Agent Skills. The monorepo contains a Flutter desktop App, a Go CLI, and a Go Registry.
+SkillsGo is an open ecosystem for discovering and managing Agent Skills. The monorepo contains a Flutter desktop App, a Go CLI, and a Go Hub.
 
 ## Repository Layout
 
@@ -8,15 +8,15 @@ SkillsGo is an open ecosystem for discovering and managing Agent Skills. The mon
 skillsgo/
 ├── app/       Flutter desktop client
 ├── cli/       SkillsGo command-line client and local execution engine
-└── registry/  Public Skill Registry service
+└── hub/  Public Skill Hub service
 ```
 
 ## Local Development
 
-Run Registry tests:
+Run Hub tests:
 
 ```bash
-make test-registry
+make test-hub
 ```
 
 Run App tests:
