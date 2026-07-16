@@ -1,3 +1,4 @@
-h1:rEgyjBHyj1KTBdMM9iPoH3XAczF9KuMwQH4CbTaJsVE=
-202607160001_initial.sql h1:QYghx47GLMGNCllZhgvk1G1TLhyRM0ucEE/W8yrQIWc=
-202607160002_product_metadata.sql h1:v6xh2u0hL/coMZM9UXjEk5Ga/QqxWvFQzkM3pbxKABg=
+h1:Z9Y5CYMlIF8XFY5CrU9Qm9i5KxWpaAdMnhihXndziOY=
+202607160001_initial.sql h1:DVzk1lDKRgU5mb/+089qN+5coqQGEhBlgHy2MzGOWoA=
+202607160002_product_metadata.sql h1:bZoA+FSFWE/585vhHANn7LwuDorkg2fP2cpBmvlUYOQ=
+202607170001_rename_coordinate_to_skill_id.sql h1:Zm2duTxKTQ4KY7zLQ51ykhvTDYM6okiVXK7nHv3p+5Q=

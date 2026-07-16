@@ -97,7 +97,7 @@ type Skill struct {
 }
 
 type SkillVersion struct {
-	ID            int64     `db:"id" json:"id"`
+	RowID         int64     `db:"id" json:"-"`
 	SkillRowID    int64     `db:"skill_id" json:"-"`
 	Version       string    `db:"version" json:"version"`
 	CommitSHA     string    `db:"commit_sha" json:"commitSHA"`
@@ -109,13 +109,13 @@ type SkillVersion struct {
 }
 
 type RiskAssessment struct {
-	ID             int64     `db:"id" json:"id"`
-	SkillVersionID int64     `db:"skill_version_id" json:"skillVersionId"`
-	Level          string    `db:"level" json:"level"`
-	ScannerVersion string    `db:"scanner_version" json:"scannerVersion"`
-	Evidence       string    `db:"evidence" json:"evidence"`
-	Fingerprint    string    `db:"fingerprint" json:"fingerprint"`
-	CreatedAt      time.Time `db:"created_at" json:"createdAt"`
+	RowID             int64     `db:"id" json:"-"`
+	SkillVersionRowID int64     `db:"skill_version_id" json:"-"`
+	Level             string    `db:"level" json:"level"`
+	ScannerVersion    string    `db:"scanner_version" json:"scannerVersion"`
+	Evidence          string    `db:"evidence" json:"evidence"`
+	Fingerprint       string    `db:"fingerprint" json:"fingerprint"`
+	CreatedAt         time.Time `db:"created_at" json:"createdAt"`
 }
 
 type InstallEvent struct {
@@ -317,7 +317,7 @@ func (c *Catalog) RecordSkillVersion(ctx context.Context, skillID string, candid
 		return nil, err
 	}
 	rowID := storedSkill.ID
-	candidate.ID = 0
+	candidate.RowID = 0
 	candidate.SkillRowID = rowID
 	if candidate.CreatedAt.IsZero() {
 		candidate.CreatedAt = time.Now().UTC()
@@ -358,8 +358,8 @@ func (c *Catalog) RecordSkillVersion(ctx context.Context, skillID string, candid
 	return stored, nil
 }
 
-func (c *Catalog) AppendRiskAssessment(ctx context.Context, skillVersionID int64, candidate RiskAssessment) (*RiskAssessment, error) {
-	if skillVersionID == 0 || candidate.Level == "" || candidate.ScannerVersion == "" || candidate.Evidence == "" {
+func (c *Catalog) AppendRiskAssessment(ctx context.Context, skillVersionRowID int64, candidate RiskAssessment) (*RiskAssessment, error) {
+	if skillVersionRowID == 0 || candidate.Level == "" || candidate.ScannerVersion == "" || candidate.Evidence == "" {
 		return nil, fmt.Errorf("Skill version, level, scanner version, and evidence are required")
 	}
 	if !json.Valid([]byte(candidate.Evidence)) {
@@ -370,31 +370,31 @@ func (c *Catalog) AppendRiskAssessment(ctx context.Context, skillVersionID int64
 		return nil, fmt.Errorf("normalize risk evidence: %w", err)
 	}
 	candidate.Evidence = normalized.String()
-	candidate.ID = 0
-	candidate.SkillVersionID = skillVersionID
+	candidate.RowID = 0
+	candidate.SkillVersionRowID = skillVersionRowID
 	candidate.Fingerprint = fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(candidate.Level+"\x00"+candidate.ScannerVersion+"\x00"+candidate.Evidence)))
 	if candidate.CreatedAt.IsZero() {
 		candidate.CreatedAt = time.Now().UTC()
 	}
-	entity, err := c.orm.RiskAssessment.Create().SetSkillVersionID(candidate.SkillVersionID).
+	entity, err := c.orm.RiskAssessment.Create().SetSkillVersionID(candidate.SkillVersionRowID).
 		SetLevel(candidate.Level).SetScannerVersion(candidate.ScannerVersion).SetEvidence(candidate.Evidence).
 		SetFingerprint(candidate.Fingerprint).SetCreatedAt(candidate.CreatedAt).Save(ctx)
 	if err != nil {
 		return nil, err
 	}
-	candidate.ID = entity.ID
+	candidate.RowID = entity.ID
 	return &candidate, nil
 }
 
-func (c *Catalog) RiskAssessments(ctx context.Context, skillVersionID int64) ([]RiskAssessment, error) {
-	entities, err := c.orm.RiskAssessment.Query().Where(entriskassessment.SkillVersionIDEQ(skillVersionID)).
+func (c *Catalog) RiskAssessments(ctx context.Context, skillVersionRowID int64) ([]RiskAssessment, error) {
+	entities, err := c.orm.RiskAssessment.Query().Where(entriskassessment.SkillVersionIDEQ(skillVersionRowID)).
 		Order(catalogent.Asc(entriskassessment.FieldCreatedAt), catalogent.Asc(entriskassessment.FieldID)).All(ctx)
 	if err != nil {
 		return nil, err
 	}
 	assessments := make([]RiskAssessment, 0, len(entities))
 	for _, entity := range entities {
-		assessments = append(assessments, RiskAssessment{ID: entity.ID, SkillVersionID: entity.SkillVersionID, Level: entity.Level, ScannerVersion: entity.ScannerVersion, Evidence: entity.Evidence, Fingerprint: entity.Fingerprint, CreatedAt: entity.CreatedAt})
+		assessments = append(assessments, RiskAssessment{RowID: entity.ID, SkillVersionRowID: entity.SkillVersionID, Level: entity.Level, ScannerVersion: entity.ScannerVersion, Evidence: entity.Evidence, Fingerprint: entity.Fingerprint, CreatedAt: entity.CreatedAt})
 	}
 	return assessments, nil
 }
@@ -454,7 +454,7 @@ func skillFromEnt(entity *catalogent.Skill) *Skill {
 }
 
 func skillVersionFromEnt(entity *catalogent.SkillVersion) *SkillVersion {
-	return &SkillVersion{ID: entity.ID, SkillRowID: entity.SkillID, Version: entity.Version, CommitSHA: entity.CommitSha,
+	return &SkillVersion{RowID: entity.ID, SkillRowID: entity.SkillID, Version: entity.Version, CommitSHA: entity.CommitSha,
 		TreeSHA: entity.TreeSha, ContentDigest: entity.ContentDigest, CommitTime: entity.CommitTime,
 		ArchiveSize: entity.ArchiveSize, CreatedAt: entity.CreatedAt}
 }

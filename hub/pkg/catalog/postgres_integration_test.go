@@ -55,12 +55,12 @@ func TestPostgresCatalog(t *testing.T) {
 		Version: "v1.0.0", CommitSHA: "commit-a", TreeSHA: "tree-a", ContentDigest: "sha256:artifact-a",
 	})
 	require.NoError(t, err)
-	assessment, err := c.AppendRiskAssessment(ctx, version.ID, RiskAssessment{
+	assessment, err := c.AppendRiskAssessment(ctx, version.RowID, RiskAssessment{
 		Level: "medium", ScannerVersion: "file-signals/v1", Evidence: `[{"code":"script_file","path":"scripts/run.sh"}]`,
 	})
 	require.NoError(t, err)
-	require.NotZero(t, assessment.ID)
-	assessments, err := c.RiskAssessments(ctx, version.ID)
+	require.NotZero(t, assessment.RowID)
+	assessments, err := c.RiskAssessments(ctx, version.RowID)
 	require.NoError(t, err)
 	require.Len(t, assessments, 1)
 	results, err := c.Search(ctx, "presentation", 2, 0)
