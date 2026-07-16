@@ -170,37 +170,37 @@ func TestArtifactVersionsAreImmutableAndRiskAssessmentsAreAppendOnly(t *testing.
 		CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), ArchiveSize: 4096,
 	})
 	require.NoError(t, err)
-	require.NotZero(t, version.ID)
+	require.NotZero(t, version.RowID)
 	require.Equal(t, int64(4096), version.ArchiveSize)
 	require.Equal(t, time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), version.CommitTime)
 	same, err := c.RecordSkillVersion(ctx, skill.SkillID, *version)
 	require.NoError(t, err)
-	require.Equal(t, version.ID, same.ID)
+	require.Equal(t, version.RowID, same.RowID)
 
 	_, err = c.RecordSkillVersion(ctx, skill.SkillID, SkillVersion{
 		Version: "v1.0.0", CommitSHA: "commit-b", TreeSHA: "tree-a", ContentDigest: "sha256:artifact-a",
 	})
 	require.ErrorContains(t, err, "immutable Skill version conflict")
 
-	first, err := c.AppendRiskAssessment(ctx, version.ID, RiskAssessment{
+	first, err := c.AppendRiskAssessment(ctx, version.RowID, RiskAssessment{
 		Level: "medium", ScannerVersion: "file-signals/v1", Evidence: `[{"code":"script_file","path":"scripts/run.sh"}]`,
 	})
 	require.NoError(t, err)
-	repeated, err := c.AppendRiskAssessment(ctx, version.ID, *first)
+	repeated, err := c.AppendRiskAssessment(ctx, version.RowID, *first)
 	require.NoError(t, err)
-	require.NotEqual(t, first.ID, repeated.ID)
-	second, err := c.AppendRiskAssessment(ctx, version.ID, RiskAssessment{
+	require.NotEqual(t, first.RowID, repeated.RowID)
+	second, err := c.AppendRiskAssessment(ctx, version.RowID, RiskAssessment{
 		Level: "high", ScannerVersion: "file-signals/v2", Evidence: `[{"code":"binary_executable","path":"bin/tool"}]`,
 	})
 	require.NoError(t, err)
-	require.NotEqual(t, first.ID, second.ID)
+	require.NotEqual(t, first.RowID, second.RowID)
 
-	assessments, err := c.RiskAssessments(ctx, version.ID)
+	assessments, err := c.RiskAssessments(ctx, version.RowID)
 	require.NoError(t, err)
 	require.Len(t, assessments, 3)
 	require.Equal(t, []string{"file-signals/v1", "file-signals/v1", "file-signals/v2"}, []string{assessments[0].ScannerVersion, assessments[1].ScannerVersion, assessments[2].ScannerVersion})
 
-	_, err = c.AppendRiskAssessment(ctx, version.ID, RiskAssessment{
+	_, err = c.AppendRiskAssessment(ctx, version.RowID, RiskAssessment{
 		Level: "medium", ScannerVersion: "file-signals/v1", Evidence: `not-json`,
 	})
 	require.ErrorContains(t, err, "valid JSON")
@@ -217,11 +217,11 @@ func TestSQLiteMigrationsAreVersionedAndIdempotent(t *testing.T) {
 	c := open()
 	var versions []string
 	require.NoError(t, c.db.SelectContext(ctx, &versions, "SELECT version FROM atlas_schema_revisions ORDER BY version"))
-	require.Equal(t, []string{"202607160001", "202607160002", "202607160003"}, versions)
+	require.Equal(t, []string{"202607160001", "202607160002", "202607160003", "202607170001"}, versions)
 	require.NoError(t, c.Close())
 
 	c = open()
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	require.NoError(t, c.db.SelectContext(ctx, &versions, "SELECT version FROM atlas_schema_revisions ORDER BY version"))
-	require.Equal(t, []string{"202607160001", "202607160002", "202607160003"}, versions)
+	require.Equal(t, []string{"202607160001", "202607160002", "202607160003", "202607170001"}, versions)
 }
