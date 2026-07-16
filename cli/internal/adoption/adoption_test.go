@@ -23,7 +23,7 @@ type recordingMatcher struct {
 func (matcher *recordingMatcher) MatchContent(_ context.Context, digest, hint string) ([]hub.ContentMatch, error) {
 	matcher.digest, matcher.hint = digest, hint
 	return []hub.ContentMatch{{
-		Coordinate: "github.com/acme/skills/-/demo", ImmutableVersion: "v1", ContentDigest: digest,
+		SkillID: "github.com/acme/skills/-/demo", ImmutableVersion: "v1", ContentDigest: digest,
 	}}, nil
 }
 

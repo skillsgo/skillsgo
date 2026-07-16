@@ -39,7 +39,7 @@ type collectionPage struct {
 }
 
 type discoverySkill struct {
-	Coordinate     string          `json:"coordinate"`
+	SkillID        string          `json:"id"`
 	Name           string          `json:"name"`
 	Description    string          `json:"description"`
 	Source         string          `json:"source"`
@@ -59,7 +59,7 @@ type discoveryMetric struct {
 }
 
 type skillDetailResponse struct {
-	Coordinate           string               `json:"coordinate"`
+	SkillID              string               `json:"id"`
 	Name                 string               `json:"name"`
 	Description          string               `json:"description"`
 	Source               string               `json:"source"`
@@ -91,7 +91,7 @@ type contentMatchesResponse struct {
 }
 
 type contentMatch struct {
-	Coordinate       string `json:"coordinate"`
+	SkillID          string `json:"skillId"`
 	Name             string `json:"name"`
 	Source           string `json:"source"`
 	SkillPath        string `json:"skillPath"`
@@ -147,7 +147,7 @@ func contentMatchesHandler(metadata *catalog.Catalog) fiber.Handler {
 		response := contentMatchesResponse{SchemaVersion: 1, ContentDigest: digest, Matches: make([]contentMatch, 0, len(matches))}
 		for _, match := range matches {
 			response.Matches = append(response.Matches, contentMatch{
-				Coordinate: match.Coordinate, Name: match.Name,
+				SkillID: match.SkillID, Name: match.Name,
 				Source: match.SourceHost + "/" + match.Repository, SkillPath: match.SkillPath,
 				ImmutableVersion: match.Version, CommitSHA: match.CommitSHA,
 				TreeSHA: match.TreeSHA, ContentDigest: match.ContentDigest,
@@ -189,7 +189,7 @@ func validateInstallEvent(event catalog.InstallEvent, now time.Time) string {
 	if len(event.EventID) < 16 || len(event.EventID) > 128 {
 		return "eventId must contain 16 to 128 characters"
 	}
-	if strings.TrimSpace(event.Coordinate) == "" {
+	if strings.TrimSpace(event.SkillID) == "" {
 		return "skill is required"
 	}
 	if strings.TrimSpace(event.Version) == "" {
@@ -265,7 +265,7 @@ func discoveryResponse(collection, metricKind string, ranked []catalog.RankedSki
 			trustLevel = "community_verified"
 		}
 		skills = append(skills, discoverySkill{
-			Coordinate: item.Coordinate, Name: item.Name, Description: item.Description,
+			SkillID: item.SkillID, Name: item.Name, Description: item.Description,
 			Source: item.SourceHost + "/" + item.Repository, SkillPath: item.SkillPath,
 			Repository:    item.SourceHost + "/" + item.Repository,
 			ImageURL:      skillImageURL(item.SourceHost, item.Repository),
@@ -286,8 +286,8 @@ func skillDetailHandler(
 	repositories repositoryMetadataReader,
 ) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		coordinate := c.Params("+")
-		skill, err := metadata.Skill(c.Context(), coordinate)
+		skillID := c.Params("+")
+		skill, err := metadata.Skill(c.Context(), skillID)
 		if errors.Is(err, sql.ErrNoRows) {
 			return writeAPIError(c, fiber.StatusNotFound, "skill not found")
 		}
@@ -297,7 +297,7 @@ func skillDetailHandler(
 		if artifacts == nil {
 			return writeAPIErrorCode(c, fiber.StatusServiceUnavailable, "artifact_unavailable", "artifact service unavailable")
 		}
-		infoBytes, err := artifacts.Info(c.Context(), skill.Coordinate, skill.LatestVersion)
+		infoBytes, err := artifacts.Info(c.Context(), skill.SkillID, skill.LatestVersion)
 		if err != nil {
 			return writeArtifactReadError(c, err)
 		}
@@ -305,14 +305,14 @@ func skillDetailHandler(
 		if json.Unmarshal(infoBytes, &info) != nil || info.Version == "" || info.Origin == nil || info.Origin.CommitSHA == "" || info.Origin.TreeSHA == "" {
 			return writeAPIErrorCode(c, fiber.StatusBadGateway, "artifact_invalid", "artifact info is invalid")
 		}
-		manifest, err := artifacts.Manifest(c.Context(), skill.Coordinate, info.Version)
+		manifest, err := artifacts.Manifest(c.Context(), skill.SkillID, info.Version)
 		if err != nil {
 			return writeArtifactReadError(c, err)
 		}
 		if len(strings.TrimSpace(string(manifest))) == 0 {
 			return writeAPIErrorCode(c, fiber.StatusBadGateway, "artifact_invalid", "artifact manifest is invalid")
 		}
-		archive, err := artifacts.Zip(c.Context(), skill.Coordinate, info.Version)
+		archive, err := artifacts.Zip(c.Context(), skill.SkillID, info.Version)
 		if err != nil {
 			return writeArtifactReadError(c, err)
 		}
@@ -321,11 +321,11 @@ func skillDetailHandler(
 		if err != nil {
 			return writeAPIErrorCode(c, fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid")
 		}
-		analysis, err := audit.AnalyzeArtifact(archiveBytes, skill.Coordinate, info.Version)
+		analysis, err := audit.AnalyzeArtifact(archiveBytes, skill.SkillID, info.Version)
 		if err != nil {
 			return writeAPIErrorCode(c, fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid")
 		}
-		version, err := metadata.RecordSkillVersion(c.Context(), skill.Coordinate, catalog.SkillVersion{
+		version, err := metadata.RecordSkillVersion(c.Context(), skill.SkillID, catalog.SkillVersion{
 			Version: info.Version, CommitSHA: info.Origin.CommitSHA, TreeSHA: info.Origin.TreeSHA, ContentDigest: analysis.ContentDigest,
 			CommitTime: info.Time, ArchiveSize: archiveSize,
 		})
@@ -345,17 +345,17 @@ func skillDetailHandler(
 		if repositories != nil &&
 			(skill.GitHubStars == 0 || time.Since(skill.UpdatedAt) >= 6*time.Hour) {
 			if source, sourceErr := repositories.Read(c.Context(), skill.SourceHost, skill.Repository); sourceErr == nil {
-				if updateErr := metadata.UpdateGitHubStars(c.Context(), skill.Coordinate, source.GitHubStars); updateErr == nil {
+				if updateErr := metadata.UpdateGitHubStars(c.Context(), skill.SkillID, source.GitHubStars); updateErr == nil {
 					skill.GitHubStars = source.GitHubStars
 				}
 			}
 		}
-		installs, err := metadata.TotalInstalls(c.Context(), skill.ID)
+		installs, err := metadata.TotalInstalls(c.Context(), skill.RowID)
 		if err != nil {
 			return writeAPIError(c, fiber.StatusInternalServerError, "install metadata failed")
 		}
 		return writeJSON(c, fiber.StatusOK, skillDetailResponse{
-			Coordinate: skill.Coordinate, Name: skill.Name, Description: skill.Description,
+			SkillID: skill.SkillID, Name: skill.Name, Description: skill.Description,
 			Source: skill.SourceHost + "/" + skill.Repository, Repository: skill.SourceHost + "/" + skill.Repository,
 			Installs: installs, GitHubStars: skill.GitHubStars, SourceUpdatedAt: version.CommitTime,
 			ArchiveSize: version.ArchiveSize, RequestedVersion: skill.LatestVersion,

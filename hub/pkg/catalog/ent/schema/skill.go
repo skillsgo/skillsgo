@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on Ent schema fields and indexes for public Skill metadata.
- * [OUTPUT]: Defines the skills table entity, repository popularity metadata, defaults, and unique coordinate constraint.
- * [POS]: Serves as the authoritative ORM schema for searchable Skill identity metadata.
+ * [OUTPUT]: Defines the skills table entity, repository popularity metadata, defaults, and unique public Skill ID constraint.
+ * [POS]: Serves as the authoritative ORM schema for searchable Skill metadata.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package schema
@@ -20,7 +20,7 @@ type Skill struct{ ent.Schema }
 func (Skill) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int64("id"),
-		field.String("coordinate").NotEmpty(),
+		field.String("skill_id").NotEmpty(),
 		field.String("name"),
 		field.String("description"),
 		field.String("source_host"),
@@ -43,5 +43,5 @@ func (Skill) Edges() []ent.Edge {
 }
 
 func (Skill) Indexes() []ent.Index {
-	return []ent.Index{index.Fields("coordinate").Unique()}
+	return []ent.Index{index.Fields("skill_id").Unique()}
 }

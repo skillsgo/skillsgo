@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Fiber request paths, decoded Skill coordinates, and configured filter rules.
+ * [INPUT]: Depends on Fiber request paths, decoded Skill IDs, and configured filter rules.
  * [OUTPUT]: Provides native Fiber include, exclude, and upstream-redirect filtering.
  * [POS]: Serves as the artifact access-policy middleware in the Hub request stack.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

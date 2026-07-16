@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on a configured Hub origin, canonical Skill Coordinates, exact content-match responses, and assessed Info/Manifest/ZIP protocol responses.
+ * [INPUT]: Depends on a configured Hub origin, canonical Skill IDs, exact content-match responses, and assessed Info/Manifest/ZIP protocol responses.
  * [OUTPUT]: Provides validated content-identity matching plus immutable artifact fetch and resolution with Hub-bound Risk, Content Digest metadata, and typed HTTP failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -51,14 +51,14 @@ func (r Risk) Valid() bool {
 }
 
 type Artifact struct {
-	Coordinate string
-	Info       Info
-	Manifest   []byte
-	ZIP        []byte
+	SkillID  string
+	Info     Info
+	Manifest []byte
+	ZIP      []byte
 }
 
 type ContentMatch struct {
-	Coordinate       string `json:"coordinate"`
+	SkillID          string `json:"skillId"`
 	Name             string `json:"name"`
 	Source           string `json:"source"`
 	SkillPath        string `json:"skillPath"`
@@ -99,40 +99,40 @@ func New(baseURL string, client *http.Client) (*Client, error) {
 	return &Client{baseURL: parsed.String(), http: client}, nil
 }
 
-func (c *Client) Fetch(ctx context.Context, coordinate, requestedVersion string) (*Artifact, error) {
+func (c *Client) Fetch(ctx context.Context, skillID, requestedVersion string) (*Artifact, error) {
 	if requestedVersion == "" {
 		requestedVersion = "main"
 	}
 	var info Info
-	if err := c.getJSON(ctx, c.endpoint(coordinate, requestedVersion+".info"), &info); err != nil {
+	if err := c.getJSON(ctx, c.endpoint(skillID, requestedVersion+".info"), &info); err != nil {
 		return nil, err
 	}
-	if err := validateAssessedInfo(coordinate, requestedVersion, info); err != nil {
+	if err := validateAssessedInfo(skillID, requestedVersion, info); err != nil {
 		return nil, err
 	}
-	manifest, err := c.get(ctx, c.endpoint(coordinate, info.Version+".manifest"))
+	manifest, err := c.get(ctx, c.endpoint(skillID, info.Version+".manifest"))
 	if err != nil {
 		return nil, err
 	}
-	zipBytes, err := c.get(ctx, c.endpoint(coordinate, info.Version+".zip"))
+	zipBytes, err := c.get(ctx, c.endpoint(skillID, info.Version+".zip"))
 	if err != nil {
 		return nil, err
 	}
-	if err := VerifyContentDigest(zipBytes, coordinate, info.Version, info.ContentDigest); err != nil {
+	if err := VerifyContentDigest(zipBytes, skillID, info.Version, info.ContentDigest); err != nil {
 		return nil, err
 	}
-	return &Artifact{Coordinate: coordinate, Info: info, Manifest: manifest, ZIP: zipBytes}, nil
+	return &Artifact{SkillID: skillID, Info: info, Manifest: manifest, ZIP: zipBytes}, nil
 }
 
-func (c *Client) Resolve(ctx context.Context, coordinate, requestedVersion string) (Info, error) {
+func (c *Client) Resolve(ctx context.Context, skillID, requestedVersion string) (Info, error) {
 	if requestedVersion == "" {
 		requestedVersion = "main"
 	}
 	var info Info
-	if err := c.getJSON(ctx, c.endpoint(coordinate, requestedVersion+".info"), &info); err != nil {
+	if err := c.getJSON(ctx, c.endpoint(skillID, requestedVersion+".info"), &info); err != nil {
 		return Info{}, err
 	}
-	if err := validateAssessedInfo(coordinate, requestedVersion, info); err != nil {
+	if err := validateAssessedInfo(skillID, requestedVersion, info); err != nil {
 		return Info{}, err
 	}
 	return info, nil
@@ -152,8 +152,8 @@ func (c *Client) MatchContent(ctx context.Context, contentDigest, sourceHint str
 	}
 	seen := map[string]bool{}
 	for _, match := range response.Matches {
-		key := match.Coordinate + "\x00" + match.ImmutableVersion
-		if source.ValidateCoordinate(match.Coordinate) != nil ||
+		key := match.SkillID + "\x00" + match.ImmutableVersion
+		if source.ValidateSkillID(match.SkillID) != nil ||
 			source.ValidateVersion(match.ImmutableVersion) != nil ||
 			match.Name == "" || match.Source == "" || match.CommitSHA == "" || match.TreeSHA == "" ||
 			match.ContentDigest != contentDigest || seen[key] {
@@ -164,12 +164,12 @@ func (c *Client) MatchContent(ctx context.Context, contentDigest, sourceHint str
 	return response.Matches, nil
 }
 
-func validateAssessedInfo(coordinate, requestedVersion string, info Info) error {
+func validateAssessedInfo(skillID, requestedVersion string, info Info) error {
 	if info.Version == "" || !info.Risk.Valid() || !strings.HasPrefix(info.ContentDigest, "sha256:") {
-		return fmt.Errorf("Hub returned incomplete assessed Info for %s", coordinate)
+		return fmt.Errorf("Hub returned incomplete assessed Info for %s", skillID)
 	}
 	if err := source.ValidateVersion(info.Version); err != nil {
-		return fmt.Errorf("Hub returned an invalid immutable version for %s: %w", coordinate, err)
+		return fmt.Errorf("Hub returned an invalid immutable version for %s: %w", skillID, err)
 	}
 	if requestedVersion != "" &&
 		requestedVersion != "main" &&
@@ -177,14 +177,14 @@ func validateAssessedInfo(coordinate, requestedVersion string, info Info) error 
 		info.Origin.Ref != "refs/heads/"+requestedVersion {
 		return fmt.Errorf(
 			"Hub resolved %s@%s as unexpected immutable version %s",
-			coordinate, requestedVersion, info.Version,
+			skillID, requestedVersion, info.Version,
 		)
 	}
 	return nil
 }
 
-func (c *Client) endpoint(coordinate, file string) string {
-	return c.baseURL + "/" + strings.Trim(coordinate, "/") + "/@v/" + file
+func (c *Client) endpoint(skillID, file string) string {
+	return c.baseURL + "/" + strings.Trim(skillID, "/") + "/@v/" + file
 }
 
 func (c *Client) getJSON(ctx context.Context, endpoint string, target any) error {

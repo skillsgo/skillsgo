@@ -75,11 +75,11 @@ type Request struct {
 }
 
 type Artifact struct {
-	Source     string `json:"source"`
-	Coordinate string `json:"coordinate"`
-	Version    string `json:"version"`
-	Name       string `json:"name"`
-	Risk       Risk   `json:"risk"`
+	Source  string `json:"source"`
+	SkillID string `json:"skillId"`
+	Version string `json:"version"`
+	Name    string `json:"name"`
+	Risk    Risk   `json:"risk"`
 }
 
 type Target struct {
@@ -202,7 +202,7 @@ func Build(catalog *agent.Catalog, entry *store.Entry, storeRoot string, request
 		return Preflight{}, err
 	}
 	artifact := Artifact{
-		Source: request.Source, Coordinate: entry.Receipt.Coordinate,
+		Source: request.Source, SkillID: entry.Receipt.SkillID,
 		Version: entry.Receipt.Version, Name: request.Name, Risk: risk,
 	}
 	preflight := Preflight{
@@ -484,22 +484,22 @@ func resolveItem(
 				if err != nil {
 					return Item{}, err
 				}
-				if installation.Coordinate == entry.Receipt.Coordinate &&
+				if installation.SkillID == entry.Receipt.SkillID &&
 					installation.Version == entry.Receipt.Version &&
 					installation.Target.Mode == target.Mode &&
 					matchesReceipt {
 					return Item{Target: target, Action: ActionSkip, ReasonCode: "identical-target"}, nil
 				}
 				reason := "local-modification"
-				if matchesReceipt && installation.Coordinate != entry.Receipt.Coordinate {
-					reason = "identity-collision"
+				if matchesReceipt && installation.SkillID != entry.Receipt.SkillID {
+					reason = "skill-id-collision"
 				} else if matchesReceipt && installation.Version != entry.Receipt.Version {
 					reason = "version-conflict"
 				}
 				return replacementItem(target, reason, requested, installations)
 			}
 		}
-		return replacementItem(target, "identity-collision", requested, installations)
+		return replacementItem(target, "skill-id-collision", requested, installations)
 	}
 	return Item{Target: target, Action: ActionCreate}, nil
 }
@@ -546,7 +546,7 @@ type replacementBindingState struct {
 	Agent         string        `json:"agent"`
 	Scope         install.Scope `json:"scope"`
 	Mode          install.Mode  `json:"mode"`
-	Coordinate    string        `json:"coordinate"`
+	SkillID       string        `json:"skillId"`
 	Version       string        `json:"version"`
 	SHA256        string        `json:"sha256"`
 	ContentDigest string        `json:"contentDigest"`
@@ -564,7 +564,7 @@ func replacementStateToken(target Target, reason string, installations []install
 		}
 		bindings = append(bindings, replacementBindingState{
 			Agent: installation.Target.Agent, Scope: installation.Target.Scope,
-			Mode: installation.Target.Mode, Coordinate: installation.Coordinate,
+			Mode: installation.Target.Mode, SkillID: installation.SkillID,
 			Version: installation.Version, SHA256: installation.SHA256,
 			ContentDigest: installation.ContentDigest,
 		})
@@ -580,8 +580,8 @@ func replacementStateToken(target Target, reason string, installations []install
 		if left.Mode != right.Mode {
 			return left.Mode < right.Mode
 		}
-		if left.Coordinate != right.Coordinate {
-			return left.Coordinate < right.Coordinate
+		if left.SkillID != right.SkillID {
+			return left.SkillID < right.SkillID
 		}
 		if left.Version != right.Version {
 			return left.Version < right.Version
@@ -630,11 +630,11 @@ func lockWillChange(
 		return true, "", nil
 	}
 	requirement, requirementExists := manifest.Skills[name]
-	changed := locked.Coordinate != receipt.Coordinate ||
+	changed := locked.SkillID != receipt.SkillID ||
 		locked.Version != receipt.Version ||
 		locked.SHA256 != receipt.SHA256 ||
 		!requirementExists ||
-		requirement.Source != receipt.Coordinate ||
+		requirement.Source != receipt.SkillID ||
 		requirement.Ref != expected.Ref ||
 		normalizedMode(requirement.Mode) != normalizedMode(expected.Mode) ||
 		!containsString(requirement.Agents, expected.Agents[0])
@@ -696,14 +696,14 @@ func ExecuteWithProgress(
 	}
 	groups := map[string][]int{}
 	groupOrder := make([]string, 0)
-	identityReplaced := map[string]bool{}
+	skillIDReplaced := map[string]bool{}
 	for index, item := range preflight.Targets {
 		execution.Results[index] = Result{Target: item.Target, Action: item.Action}
 		switch item.Action {
 		case ActionSkip:
 			emit(index, ProgressStarted)
 			if item.WorkspaceLockChange {
-				if err := updateWorkspace(entry, request, item.Target, item.ReasonCode, identityReplaced); err != nil {
+				if err := updateWorkspace(entry, request, item.Target, item.ReasonCode, skillIDReplaced); err != nil {
 					execution.Results[index].Outcome = OutcomeFailed
 					execution.Results[index].ErrorCode = "workspace-update-failed"
 					execution.Results[index].Diagnostic = err.Error()
@@ -754,7 +754,7 @@ func ExecuteWithProgress(
 		}
 		for _, index := range indexes {
 			item := preflight.Targets[index]
-			if err := updateWorkspace(entry, request, item.Target, item.ReasonCode, identityReplaced); err != nil {
+			if err := updateWorkspace(entry, request, item.Target, item.ReasonCode, skillIDReplaced); err != nil {
 				execution.Results[index].Outcome = OutcomeFailed
 				execution.Results[index].ErrorCode = "workspace-update-failed"
 				execution.Results[index].Diagnostic = err.Error()
@@ -803,17 +803,17 @@ func updateWorkspace(
 	request Request,
 	target Target,
 	reasonCode string,
-	identityReplaced map[string]bool,
+	skillIDReplaced map[string]bool,
 ) error {
 	if target.Scope != install.ScopeProject {
 		return nil
 	}
 	requirement := workspaceRequirement(request, target)
-	if reasonCode == "identity-collision" && !identityReplaced[target.ProjectRoot] {
+	if reasonCode == "skill-id-collision" && !skillIDReplaced[target.ProjectRoot] {
 		if err := project.Replace(target.ProjectRoot, request.Name, requirement, entry.Receipt); err != nil {
 			return err
 		}
-		identityReplaced[target.ProjectRoot] = true
+		skillIDReplaced[target.ProjectRoot] = true
 		return nil
 	}
 	return project.Upsert(target.ProjectRoot, request.Name, requirement, entry.Receipt)

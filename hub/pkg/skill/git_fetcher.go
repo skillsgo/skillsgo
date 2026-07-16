@@ -26,30 +26,30 @@ import (
 
 func (g *gitFetcher) downloadWithGit(ctx context.Context, _ string, artifactDir, skillPath, revision string, resolution *Resolution) (artifactFiles, error) {
 	const op errors.Op = "skill.downloadWithGit"
-	coordinate, err := parseGitHubSkillCoordinate(skillPath)
+	skillID, err := parseGitHubSkillID(skillPath)
 	if err != nil {
 		return artifactFiles{}, errors.E(op, err, errors.KindNotFound)
 	}
-	subdir := coordinate.repositorySubdir()
-	repositoryURL := coordinate.RepositoryURL()
-	repoDir, err := g.repositoryDir(coordinate.Repository)
+	subdir := skillID.repositorySubdir()
+	repositoryURL := skillID.RepositoryURL()
+	repoDir, err := g.repositoryDir(skillID.Repository)
 	if err != nil {
 		return artifactFiles{}, errors.E(op, err)
 	}
 	if resolution == nil {
-		if err := g.syncRepository(ctx, coordinate); err != nil {
+		if err := g.syncRepository(ctx, skillID); err != nil {
 			return artifactFiles{}, err
 		}
 	} else if !isGitRepository(repoDir) {
 		// FetchResolved normally follows Resolve. Recover gracefully when the
 		// local mirror was removed between those operations.
-		if err := g.syncRepository(ctx, coordinate); err != nil {
+		if err := g.syncRepository(ctx, skillID); err != nil {
 			return artifactFiles{}, err
 		}
 	}
 
 	if resolution == nil {
-		resolution, err = resolveGitRevision(ctx, repoDir, coordinate, revision)
+		resolution, err = resolveGitRevision(ctx, repoDir, skillID, revision)
 		if err != nil {
 			return artifactFiles{}, err
 		}
@@ -68,7 +68,7 @@ func (g *gitFetcher) downloadWithGit(ctx context.Context, _ string, artifactDir,
 	}
 	manifest, body, err := extractManifest(manifestSource)
 	if err == nil {
-		err = validateManifest(manifest, body, coordinate.SkillName())
+		err = validateManifest(manifest, body, skillID.SkillName())
 	}
 	if err != nil {
 		return artifactFiles{}, errors.E(op, err,
@@ -133,18 +133,18 @@ func (g *gitFetcher) downloadWithGit(ctx context.Context, _ string, artifactDir,
 // packaging the Skill contents.
 func (g *gitFetcher) Resolve(ctx context.Context, skillPath, revision string) (*Resolution, error) {
 	const op errors.Op = "gitFetcher.Resolve"
-	coordinate, err := parseGitHubSkillCoordinate(skillPath)
+	skillID, err := parseGitHubSkillID(skillPath)
 	if err != nil {
 		return nil, errors.E(op, err, errors.KindNotFound)
 	}
-	if err := g.syncRepository(ctx, coordinate); err != nil {
+	if err := g.syncRepository(ctx, skillID); err != nil {
 		return nil, err
 	}
-	repoDir, err := g.repositoryDir(coordinate.Repository)
+	repoDir, err := g.repositoryDir(skillID.Repository)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
-	return resolveGitRevision(ctx, repoDir, coordinate, revision)
+	return resolveGitRevision(ctx, repoDir, skillID, revision)
 }
 
 type repositoryMetadata struct {
@@ -155,10 +155,10 @@ type repositoryMetadata struct {
 
 // syncRepository creates or refreshes one persistent no-checkout repository.
 // Skills in different subdirectories of the same repository share this cache.
-func (g *gitFetcher) syncRepository(ctx context.Context, coordinate SkillCoordinate) error {
-	_, err, _ := g.syncs.Do(coordinate.Repository, func() (any, error) {
+func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error {
+	_, err, _ := g.syncs.Do(skillID.Repository, func() (any, error) {
 		const op errors.Op = "gitFetcher.syncRepository"
-		repoDir, err := g.repositoryDir(coordinate.Repository)
+		repoDir, err := g.repositoryDir(skillID.Repository)
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
@@ -171,7 +171,7 @@ func (g *gitFetcher) syncRepository(ctx context.Context, coordinate SkillCoordin
 			fetch.Dir = repoDir
 			fetch.Env = os.Environ()
 			if output, err := fetch.CombinedOutput(); err == nil {
-				return nil, g.writeRepositoryMetadata(repoDir, coordinate)
+				return nil, g.writeRepositoryMetadata(repoDir, skillID)
 			} else if ctx.Err() != nil {
 				return nil, errors.E(op, ctx.Err())
 			} else {
@@ -199,25 +199,25 @@ func (g *gitFetcher) syncRepository(ctx context.Context, coordinate SkillCoordin
 		}
 		defer os.RemoveAll(tmpDir)
 		cloneDir := filepath.Join(tmpDir, "repository")
-		clone := exec.CommandContext(ctx, "git", "clone", "--filter=blob:none", "--no-checkout", g.cloneURL(coordinate), cloneDir)
+		clone := exec.CommandContext(ctx, "git", "clone", "--filter=blob:none", "--no-checkout", g.cloneURL(skillID), cloneDir)
 		clone.Env = os.Environ()
 		if _, err := clone.CombinedOutput(); err != nil {
 			return nil, errors.E(op,
-				fmt.Sprintf("Skill repository %q not found", coordinate.Repository),
-				errors.S(coordinate.String()), errors.KindNotFound)
+				fmt.Sprintf("Skill repository %q not found", skillID.Repository),
+				errors.S(skillID.String()), errors.KindNotFound)
 		}
 		if err := os.Rename(cloneDir, repoDir); err != nil {
 			return nil, errors.E(op, err)
 		}
-		return nil, g.writeRepositoryMetadata(repoDir, coordinate)
+		return nil, g.writeRepositoryMetadata(repoDir, skillID)
 	})
 	return err
 }
 
-func (g *gitFetcher) writeRepositoryMetadata(repoDir string, coordinate SkillCoordinate) error {
+func (g *gitFetcher) writeRepositoryMetadata(repoDir string, skillID SkillID) error {
 	data, err := json.MarshalIndent(repositoryMetadata{
-		Repository: coordinate.Repository,
-		URL:        coordinate.RepositoryURL(),
+		Repository: skillID.Repository,
+		URL:        skillID.RepositoryURL(),
 		UpdatedAt:  time.Now().UTC(),
 	}, "", "  ")
 	if err != nil {
@@ -232,7 +232,7 @@ func isGitRepository(repoDir string) bool {
 	return cmd.Run() == nil
 }
 
-func resolveGitRevision(ctx context.Context, repoDir string, coordinate SkillCoordinate, revision string) (*Resolution, error) {
+func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, revision string) (*Resolution, error) {
 	const op errors.Op = "skill.resolveGitRevision"
 	resolvedRevision := revision
 	if semver.IsValid(revision) && modmodule.IsPseudoVersion(revision) {
@@ -250,8 +250,8 @@ func resolveGitRevision(ctx context.Context, repoDir string, coordinate SkillCoo
 	commitSHA, err := gitOutput(ctx, repoDir, "rev-parse", resolvedRevision+"^{commit}")
 	if err != nil {
 		return nil, errors.E(op,
-			fmt.Sprintf("revision %q not found for Skill %q", revision, coordinate.String()),
-			errors.S(coordinate.String()), errors.V(revision), errors.KindNotFound)
+			fmt.Sprintf("revision %q not found for Skill %q", revision, skillID.String()),
+			errors.S(skillID.String()), errors.V(revision), errors.KindNotFound)
 	}
 	commitTime, err := gitCommitTime(ctx, repoDir, commitSHA)
 	if err != nil {
@@ -270,14 +270,14 @@ func resolveGitRevision(ctx context.Context, repoDir string, coordinate SkillCoo
 		ref = "refs/tags/" + revision
 	}
 	treeRevision := commitSHA + "^{tree}"
-	if subdir := coordinate.repositorySubdir(); subdir != "" {
+	if subdir := skillID.repositorySubdir(); subdir != "" {
 		treeRevision = commitSHA + ":" + subdir
 	}
 	treeSHA, err := gitOutput(ctx, repoDir, "rev-parse", treeRevision)
 	if err != nil {
 		return nil, errors.E(op,
-			fmt.Sprintf("Skill path %q not found at revision %q", coordinate.SkillPath, revision),
-			errors.S(coordinate.String()), errors.V(revision), errors.KindNotFound)
+			fmt.Sprintf("Skill path %q not found at revision %q", skillID.SkillPath, revision),
+			errors.S(skillID.String()), errors.V(revision), errors.KindNotFound)
 	}
 	return &Resolution{
 		Requested:  revision,

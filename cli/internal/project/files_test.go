@@ -20,15 +20,15 @@ import (
 func TestUpsertCreatesAndUpdatesManifestAndLockfile(t *testing.T) {
 	root := t.TempDir()
 	receipt := store.Receipt{
-		Coordinate: "github.com/example/skills/-/skills/demo",
-		Version:    "v1",
-		SHA256:     "abc",
-		Origin:     hub.Origin{VCS: "git", CommitSHA: "commit", TreeSHA: "tree"},
+		SkillID: "github.com/example/skills/-/skills/demo",
+		Version: "v1",
+		SHA256:  "abc",
+		Origin:  hub.Origin{VCS: "git", CommitSHA: "commit", TreeSHA: "tree"},
 	}
 	if err := Upsert(root, "demo", SkillRequirement{Source: "example/skills/skills/demo", Agents: []string{"codex", "claude-code"}, Mode: install.ModeSymlink}, receipt); err != nil {
 		t.Fatal(err)
 	}
-	if err := Upsert(root, "other", SkillRequirement{Source: "example/skills/skills/other", Agents: []string{"codex"}, Mode: install.ModeCopy}, store.Receipt{Coordinate: "github.com/example/skills/-/skills/other", Version: "v2", SHA256: "def"}); err != nil {
+	if err := Upsert(root, "other", SkillRequirement{Source: "example/skills/skills/other", Agents: []string{"codex"}, Mode: install.ModeCopy}, store.Receipt{SkillID: "github.com/example/skills/-/skills/other", Version: "v2", SHA256: "def"}); err != nil {
 		t.Fatal(err)
 	}
 	manifest, err := os.ReadFile(filepath.Join(root, "skillsgo.yaml"))
@@ -44,7 +44,7 @@ func TestUpsertCreatesAndUpdatesManifestAndLockfile(t *testing.T) {
 			t.Fatalf("manifest missing %q:\n%s", expected, manifest)
 		}
 	}
-	for _, expected := range []string{"lockfileVersion: 1", "version: v1", "sha256: abc", "treeSHA: tree", "version: v2"} {
+	for _, expected := range []string{"lockfileVersion: 1", "id: github.com/example/skills/-/skills/demo", "version: v1", "sha256: abc", "treeSHA: tree", "version: v2"} {
 		if !strings.Contains(string(lockfile), expected) {
 			t.Fatalf("lockfile missing %q:\n%s", expected, lockfile)
 		}
@@ -62,14 +62,14 @@ func TestUpsertRejectsUnknownManifestVersion(t *testing.T) {
 	}
 }
 
-func TestCheckNameConflictRejectsDifferentCoordinate(t *testing.T) {
+func TestCheckNameConflictRejectsDifferentSkillID(t *testing.T) {
 	root := t.TempDir()
-	receipt := store.Receipt{Coordinate: "github.com/one/skills/-/pdf", Version: "v1", SHA256: "abc"}
+	receipt := store.Receipt{SkillID: "github.com/one/skills/-/pdf", Version: "v1", SHA256: "abc"}
 	if err := Upsert(root, "pdf", SkillRequirement{Source: "one/skills/pdf", Agents: []string{"codex"}}, receipt); err != nil {
 		t.Fatal(err)
 	}
-	if err := CheckNameConflict(root, "pdf", receipt.Coordinate, "main", install.ModeSymlink); err != nil {
-		t.Fatalf("same coordinate should be accepted: %v", err)
+	if err := CheckNameConflict(root, "pdf", receipt.SkillID, "main", install.ModeSymlink); err != nil {
+		t.Fatalf("same Skill ID should be accepted: %v", err)
 	}
 	err := CheckNameConflict(root, "pdf", "github.com/two/skills/-/pdf", "main", install.ModeSymlink)
 	if err == nil || !strings.Contains(err.Error(), "名称冲突") {
@@ -79,7 +79,7 @@ func TestCheckNameConflictRejectsDifferentCoordinate(t *testing.T) {
 
 func TestUpsertSameSkillMergesAgentsAndCanonicalizesSource(t *testing.T) {
 	root := t.TempDir()
-	receipt := store.Receipt{Coordinate: "github.com/example/skills/-/pdf", Version: "v1", SHA256: "abc"}
+	receipt := store.Receipt{SkillID: "github.com/example/skills/-/pdf", Version: "v1", SHA256: "abc"}
 	if err := Upsert(root, "pdf", SkillRequirement{Source: "example/skills/pdf", Agents: []string{"codex"}, Mode: install.ModeSymlink}, receipt); err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestUpsertSameSkillMergesAgentsAndCanonicalizesSource(t *testing.T) {
 		t.Fatal(err)
 	}
 	requirement := manifest.Skills["pdf"]
-	if requirement.Source != receipt.Coordinate {
+	if requirement.Source != receipt.SkillID {
 		t.Fatalf("expected canonical source, got %q", requirement.Source)
 	}
 	if len(requirement.Agents) != 2 || requirement.Agents[0] != "codex" || requirement.Agents[1] != "claude-code" {
@@ -101,7 +101,7 @@ func TestUpsertSameSkillMergesAgentsAndCanonicalizesSource(t *testing.T) {
 
 func TestRemoveBindingsKeepsRemainingAgentThenRemovesSkill(t *testing.T) {
 	root := t.TempDir()
-	receipt := store.Receipt{Coordinate: "github.com/example/skills/-/pdf", Version: "v1", SHA256: "abc"}
+	receipt := store.Receipt{SkillID: "github.com/example/skills/-/pdf", Version: "v1", SHA256: "abc"}
 	if err := Upsert(root, "pdf", SkillRequirement{Source: "example/skills/pdf", Agents: []string{"codex", "claude-code"}}, receipt); err != nil {
 		t.Fatal(err)
 	}

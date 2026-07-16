@@ -107,16 +107,16 @@ func scanExternalDirectory(
 
 func ensureExternalEntry(entries map[string]*Entry, name, path string) *Entry {
 	digest := sha256.Sum256([]byte(resolveInventoryPath(path)))
-	identity := "external:" + hex.EncodeToString(digest[:])
-	if entry := entries[identity]; entry != nil {
+	inventoryKey := "external:" + hex.EncodeToString(digest[:])
+	if entry := entries[inventoryKey]; entry != nil {
 		return entry
 	}
 	entry := &Entry{
-		Identity: identity, Name: name, Coordinate: "",
+		InventoryKey: inventoryKey, Name: name, SkillID: "",
 		Provenance: ProvenanceExternal, Risk: RiskUnknown, Health: HealthHealthy,
 		Agents: []string{}, Projects: []string{}, Versions: []string{}, Targets: []Target{},
 	}
-	entries[identity] = entry
+	entries[inventoryKey] = entry
 	return entry
 }
 

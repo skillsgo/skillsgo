@@ -5,7 +5,7 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 CREATE TABLE skills (
   id BIGSERIAL PRIMARY KEY,
-  coordinate TEXT NOT NULL UNIQUE,
+  skill_id TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
   source_host TEXT NOT NULL,
@@ -56,4 +56,4 @@ CREATE TABLE skill_hourly_stats (
   installs BIGINT NOT NULL DEFAULT 0,
   UNIQUE(skill_id, bucket)
 );
-CREATE INDEX skills_search_trgm ON skills USING gin ((name || ' ' || description || ' ' || coordinate) gin_trgm_ops);
+CREATE INDEX skills_search_trgm ON skills USING gin ((name || ' ' || description || ' ' || skill_id) gin_trgm_ops);

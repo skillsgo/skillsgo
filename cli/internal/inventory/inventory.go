@@ -61,9 +61,9 @@ type Report struct {
 }
 
 type Entry struct {
-	Identity          string     `json:"identity"`
+	InventoryKey      string     `json:"inventoryKey"`
 	Name              string     `json:"name"`
-	Coordinate        string     `json:"coordinate"`
+	SkillID           string     `json:"skillId"`
 	Provenance        Provenance `json:"provenance"`
 	Risk              Risk       `json:"risk"`
 	Health            Health     `json:"health"`
@@ -130,7 +130,7 @@ func Build(options Options) (Report, error) {
 		if installation.Provenance == store.ProvenanceLocal {
 			provenance = ProvenanceLocal
 		}
-		entry := ensureEntry(entries, installation.Name, installation.Coordinate, provenance)
+		entry := ensureEntry(entries, installation.Name, installation.SkillID, provenance)
 		health := managedTargetHealth(
 			installation,
 			managedTargetPathExpected(options.Catalog, installation, projectRoot),
@@ -188,7 +188,7 @@ func Build(options Options) (Report, error) {
 		if report.Entries[i].Name != report.Entries[j].Name {
 			return report.Entries[i].Name < report.Entries[j].Name
 		}
-		return report.Entries[i].Identity < report.Entries[j].Identity
+		return report.Entries[i].InventoryKey < report.Entries[j].InventoryKey
 	})
 	return report, nil
 }
@@ -303,8 +303,8 @@ func reconciledProjectHealth(installation install.Installation, workspace worksp
 			break
 		}
 	}
-	if requirement.Source != installation.Coordinate ||
-		locked.Coordinate != installation.Coordinate ||
+	if requirement.Source != installation.SkillID ||
+		locked.SkillID != installation.SkillID ||
 		locked.Version != installation.Version ||
 		mode != installation.Target.Mode ||
 		!agentDeclared {
@@ -389,7 +389,7 @@ func addDeclaredTargetsWithoutReceipts(
 		for _, name := range names {
 			requirement := workspace.manifest.Skills[name]
 			locked, lockedPresent := workspace.lock.Skills[name]
-			if !lockedPresent || locked.Coordinate == "" || locked.Version == "" || requirement.Source != locked.Coordinate {
+			if !lockedPresent || locked.SkillID == "" || locked.Version == "" || requirement.Source != locked.SkillID {
 				continue
 			}
 			mode := requirement.Mode
@@ -408,10 +408,10 @@ func addDeclaredTargetsWithoutReceipts(
 					continue
 				}
 				provenance := ProvenanceHub
-				if source.IsLocalCoordinate(locked.Coordinate) {
+				if source.IsLocalSkillID(locked.SkillID) {
 					provenance = ProvenanceLocal
 				}
-				entry := ensureEntry(entries, name, locked.Coordinate, provenance)
+				entry := ensureEntry(entries, name, locked.SkillID, provenance)
 				entry.Targets = append(entry.Targets, Target{
 					Scope: install.ScopeProject, ProjectRoot: root, Agent: agentID,
 					Path: filepath.Clean(path), Mode: TargetMode(mode), Version: locked.Version,
@@ -427,17 +427,17 @@ func addDeclaredTargetsWithoutReceipts(
 	}
 }
 
-func ensureEntry(entries map[string]*Entry, name, coordinate string, provenance Provenance) *Entry {
-	identity := string(provenance) + ":" + coordinate
-	if entry := entries[identity]; entry != nil {
+func ensureEntry(entries map[string]*Entry, name, skillID string, provenance Provenance) *Entry {
+	inventoryKey := string(provenance) + ":" + skillID
+	if entry := entries[inventoryKey]; entry != nil {
 		return entry
 	}
 	entry := &Entry{
-		Identity: identity, Name: name, Coordinate: coordinate,
+		InventoryKey: inventoryKey, Name: name, SkillID: skillID,
 		Provenance: provenance, Risk: RiskUnknown, Health: HealthHealthy,
 		Agents: []string{}, Projects: []string{}, Versions: []string{}, Targets: []Target{},
 	}
-	entries[identity] = entry
+	entries[inventoryKey] = entry
 	return entry
 }
 

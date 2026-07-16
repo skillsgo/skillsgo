@@ -26,7 +26,7 @@ func TestListAndRemoveSharedTarget(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(artifact, "SKILL.md"), []byte("demo"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	receiptData, err := yaml.Marshal(store.Receipt{Coordinate: "github.com/example/repo/-/skills/demo", Version: "v1", SHA256: "test"})
+	receiptData, err := yaml.Marshal(store.Receipt{SkillID: "github.com/example/repo/-/skills/demo", Version: "v1", SHA256: "test"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,9 +105,9 @@ func TestRemoveCopyBlocksLocalModificationsAndKeepsReceipt(t *testing.T) {
 		t.Fatal(err)
 	}
 	receiptData, err := yaml.Marshal(store.Receipt{
-		Coordinate: "github.com/example/repo/-/demo",
-		Version:    "v1",
-		SHA256:     "test",
+		SkillID: "github.com/example/repo/-/demo",
+		Version: "v1",
+		SHA256:  "test",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -153,9 +153,9 @@ func TestRemoveSymlinkBlocksRedirectedTargetAndKeepsReceipt(t *testing.T) {
 		t.Fatal(err)
 	}
 	receiptData, err := yaml.Marshal(store.Receipt{
-		Coordinate: "github.com/example/repo/-/demo",
-		Version:    "v1",
-		SHA256:     "test",
+		SkillID: "github.com/example/repo/-/demo",
+		Version: "v1",
+		SHA256:  "test",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -212,9 +212,9 @@ func TestForgetInstallationsPreservesTargetContent(t *testing.T) {
 		t.Fatal(err)
 	}
 	receiptData, err := yaml.Marshal(store.Receipt{
-		Coordinate: "github.com/example/repo/-/demo",
-		Version:    "v1",
-		SHA256:     "test",
+		SkillID: "github.com/example/repo/-/demo",
+		Version: "v1",
+		SHA256:  "test",
 	})
 	if err != nil {
 		t.Fatal(err)

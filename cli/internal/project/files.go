@@ -44,7 +44,7 @@ func UpdateLock(root, name string, receipt store.Receipt) error {
 	if _, ok := lockfile.Skills[name]; !ok {
 		return fmt.Errorf("skillsgo-lock.yaml 缺少 Skill %q", name)
 	}
-	lockfile.Skills[name] = LockedSkill{Coordinate: receipt.Coordinate, Version: receipt.Version, SHA256: receipt.SHA256, Origin: receipt.Origin}
+	lockfile.Skills[name] = LockedSkill{SkillID: receipt.SkillID, Version: receipt.Version, SHA256: receipt.SHA256, Origin: receipt.Origin}
 	return writeYAMLAtomic(lockPath, lockfile)
 }
 
@@ -54,13 +54,13 @@ type Lockfile struct {
 }
 
 type LockedSkill struct {
-	Coordinate string     `yaml:"coordinate"`
-	Version    string     `yaml:"version"`
-	SHA256     string     `yaml:"sha256"`
-	Origin     hub.Origin `yaml:"origin"`
+	SkillID string     `yaml:"id"`
+	Version string     `yaml:"version"`
+	SHA256  string     `yaml:"sha256"`
+	Origin  hub.Origin `yaml:"origin"`
 }
 
-func CheckNameConflict(root, name, coordinate, ref string, mode install.Mode) error {
+func CheckNameConflict(root, name, skillID, ref string, mode install.Mode) error {
 	manifestPath := filepath.Join(root, "skillsgo.yaml")
 	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
 		return nil
@@ -78,8 +78,8 @@ func CheckNameConflict(root, name, coordinate, ref string, mode install.Mode) er
 	if !exists {
 		return fmt.Errorf("项目声明包含 Skill %q，但锁文件缺少对应记录", name)
 	}
-	if locked.Coordinate != coordinate {
-		return fmt.Errorf("Skill 名称冲突：%q 已来自 %s，不能用 %s 静默覆盖", name, locked.Coordinate, coordinate)
+	if locked.SkillID != skillID {
+		return fmt.Errorf("Skill 名称冲突：%q 已来自 %s，不能用 %s 静默覆盖", name, locked.SkillID, skillID)
 	}
 	existing := manifest.Skills[name]
 	existingRef := existing.Ref
@@ -183,7 +183,7 @@ func writeRequirement(root, name string, requirement SkillRequirement, receipt s
 		}
 		requirement.Agents = merged
 	}
-	requirement.Source = receipt.Coordinate
+	requirement.Source = receipt.SkillID
 	manifest.Skills[name] = requirement
 	if err := writeYAMLAtomic(manifestPath, manifest); err != nil {
 		return err
@@ -200,7 +200,7 @@ func writeRequirement(root, name string, requirement SkillRequirement, receipt s
 	if lockfile.Skills == nil {
 		lockfile.Skills = map[string]LockedSkill{}
 	}
-	lockfile.Skills[name] = LockedSkill{Coordinate: receipt.Coordinate, Version: receipt.Version, SHA256: receipt.SHA256, Origin: receipt.Origin}
+	lockfile.Skills[name] = LockedSkill{SkillID: receipt.SkillID, Version: receipt.Version, SHA256: receipt.SHA256, Origin: receipt.Origin}
 	return writeYAMLAtomic(lockPath, lockfile)
 }
 

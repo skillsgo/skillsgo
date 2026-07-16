@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on SKILL.md frontmatter parsing and manifest validation rules.
+ * [OUTPUT]: Specifies accepted manifest fields, canonical names, instruction bodies, and invalid frontmatter rejection.
+ * [POS]: Serves as the manifest behavior contract for the Hub Skill source module.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package skill
 
 import (
@@ -123,7 +129,7 @@ func TestValidateManifestAcceptsOfficialOptionalAndUnknownFields(t *testing.T) {
 	require.NoError(t, validateManifest(manifest, []byte("# Instructions\n"), "ask-matt"))
 }
 
-func TestSkillCoordinateSkillName(t *testing.T) {
-	require.Equal(t, "guizang-ppt-skill", SkillCoordinate{Repository: "github.com/op7418/guizang-ppt-skill", SkillPath: "."}.SkillName())
-	require.Equal(t, "ask-matt", SkillCoordinate{Repository: "github.com/mattpocock/skills", SkillPath: "skills/engineering/ask-matt"}.SkillName())
+func TestSkillIDSkillName(t *testing.T) {
+	require.Equal(t, "guizang-ppt-skill", SkillID{Repository: "github.com/op7418/guizang-ppt-skill", SkillPath: "."}.SkillName())
+	require.Equal(t, "ask-matt", SkillID{Repository: "github.com/mattpocock/skills", SkillPath: "skills/engineering/ask-matt"}.SkillName())
 }

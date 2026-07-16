@@ -17,8 +17,8 @@ type Skill struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int64 `json:"id,omitempty"`
-	// Coordinate holds the value of the "coordinate" field.
-	Coordinate string `json:"coordinate,omitempty"`
+	// SkillID holds the value of the "skill_id" field.
+	SkillID string `json:"skill_id,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
 	// Description holds the value of the "description" field.
@@ -94,7 +94,7 @@ func (*Skill) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case skill.FieldID, skill.FieldGithubStars:
 			values[i] = new(sql.NullInt64)
-		case skill.FieldCoordinate, skill.FieldName, skill.FieldDescription, skill.FieldSourceHost, skill.FieldRepository, skill.FieldSkillPath, skill.FieldLatestVersion:
+		case skill.FieldSkillID, skill.FieldName, skill.FieldDescription, skill.FieldSourceHost, skill.FieldRepository, skill.FieldSkillPath, skill.FieldLatestVersion:
 			values[i] = new(sql.NullString)
 		case skill.FieldCreatedAt, skill.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -119,11 +119,11 @@ func (_m *Skill) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			_m.ID = int64(value.Int64)
-		case skill.FieldCoordinate:
+		case skill.FieldSkillID:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field coordinate", values[i])
+				return fmt.Errorf("unexpected type %T for field skill_id", values[i])
 			} else if value.Valid {
-				_m.Coordinate = value.String
+				_m.SkillID = value.String
 			}
 		case skill.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -236,8 +236,8 @@ func (_m *Skill) String() string {
 	var builder strings.Builder
 	builder.WriteString("Skill(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
-	builder.WriteString("coordinate=")
-	builder.WriteString(_m.Coordinate)
+	builder.WriteString("skill_id=")
+	builder.WriteString(_m.SkillID)
 	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(_m.Name)

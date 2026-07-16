@@ -75,7 +75,7 @@ var messages = map[string][2]string{
 	"flag.full_depth":                       {"Search all subdirectories", "搜索所有子目录"},
 	"flag.adoption_target":                  {"Exact External Installation target as JSON", "精确的外部安装目标 JSON"},
 	"flag.adoption_preflight":               {"Review content matches without changing files", "只审阅内容匹配而不修改文件"},
-	"flag.export_coordinate":                {"Private Local Skill coordinate", "私有本地 Skill 坐标"},
+	"flag.export_skill_id":                  {"Private Local Skill ID", "私有本地 Skill ID"},
 	"flag.export_version":                   {"Immutable Local Skill version", "不可变的本地 Skill 版本"},
 	"flag.export_destination":               {"Destination ZIP path", "目标 ZIP 路径"},
 	"error.skill_required":                  {"the first implementation slice requires --skill", "首个实现切片要求显式指定 --skill"},

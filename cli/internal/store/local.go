@@ -39,12 +39,12 @@ func (s Store) ImportLocal(root, name string) (*Entry, error) {
 		return nil, err
 	}
 	hexDigest := strings.TrimPrefix(digest, "sha256:")
-	coordinate := "local.skillsgo/" + hexDigest + "/" + name
+	skillID := "local.skillsgo/" + hexDigest + "/" + name
 	version := "local-" + hexDigest[:12]
-	if err := source.ValidateCoordinate(coordinate); err != nil {
+	if err := source.ValidateSkillID(skillID); err != nil {
 		return nil, err
 	}
-	archive, err := archiveDirectory(root, coordinate+"@"+version)
+	archive, err := archiveDirectory(root, skillID+"@"+version)
 	if err != nil {
 		return nil, err
 	}
@@ -53,7 +53,7 @@ func (s Store) ImportLocal(root, name string) (*Entry, error) {
 		return nil, err
 	}
 	entry, err := s.Put(&hub.Artifact{
-		Coordinate: coordinate,
+		SkillID: skillID,
 		Info: hub.Info{
 			Version: version, Risk: hub.RiskUnknown, ContentDigest: digest,
 			Origin: hub.Origin{VCS: "local", Ref: version},
@@ -78,8 +78,8 @@ func (s Store) ImportLocal(root, name string) (*Entry, error) {
 	return entry, nil
 }
 
-func (s Store) ExportLocal(coordinate, version, destination string) error {
-	entry, err := s.Get(coordinate, version)
+func (s Store) ExportLocal(skillID, version, destination string) error {
+	entry, err := s.Get(skillID, version)
 	if err != nil {
 		return err
 	}
