@@ -1,4 +1,5 @@
 # Update Plan Domain Map
+> F3 | Parent: `/cli/AGENTS.md` | Workspace: `github.com/skillsgo/skillsgo/cli`
 
 ## Members
 
@@ -20,6 +21,4 @@ This package owns Update Plan semantics. Cobra adapts its machine contract, whil
 - Workspace Locks change only after the corresponding target switches successfully.
 - A failed Workspace Lock write can be retried without replacing an already switched target.
 
-## Maintenance
-
-Update this map whenever the package contract or members change.
+[PROTOCOL]: Update this header when this file changes, then review AGENTS.md

@@ -16,15 +16,15 @@ import (
 )
 
 func TestAnalyzeArtifactExtractsInspectableFilesAndRiskEvidence(t *testing.T) {
-	coordinate, version := "github.com/acme/skills/-/demo", "v0.0.0-test"
-	data := auditZIP(t, coordinate+"@"+version+"/", map[string][]byte{
+	skillID, version := "github.com/acme/skills/-/demo", "v0.0.0-test"
+	data := auditZIP(t, skillID+"@"+version+"/", map[string][]byte{
 		"SKILL.md":            []byte("---\nname: demo\ndescription: Demo\n---\n# Real instructions\n"),
 		"references/guide.md": []byte("# Guide\n"),
 		"scripts/run.sh":      []byte("#!/bin/sh\necho demo\n"),
 		"bin/helper.exe":      {0, 1, 2, 3},
 	})
 
-	result, err := AnalyzeArtifact(data, coordinate, version)
+	result, err := AnalyzeArtifact(data, skillID, version)
 	require.NoError(t, err)
 	require.Contains(t, result.Instructions, "# Real instructions")
 	require.Equal(t, "high", result.Risk.Level)
@@ -49,12 +49,12 @@ func TestAnalyzeArtifactExtractsInspectableFilesAndRiskEvidence(t *testing.T) {
 }
 
 func TestAnalyzeArtifactUsesUnknownWhenStaticSignalsCannotEstablishSafety(t *testing.T) {
-	coordinate, version := "github.com/acme/skills/-/docs", "v1.0.0"
-	data := auditZIP(t, coordinate+"@"+version+"/", map[string][]byte{
+	skillID, version := "github.com/acme/skills/-/docs", "v1.0.0"
+	data := auditZIP(t, skillID+"@"+version+"/", map[string][]byte{
 		"SKILL.md": []byte("---\nname: docs\ndescription: Docs\n---\n# Instructions\n"),
 	})
 
-	result, err := AnalyzeArtifact(data, coordinate, version)
+	result, err := AnalyzeArtifact(data, skillID, version)
 	require.NoError(t, err)
 	require.Equal(t, "unknown", result.Risk.Level)
 	require.Empty(t, result.Risk.Evidence)
@@ -62,38 +62,38 @@ func TestAnalyzeArtifactUsesUnknownWhenStaticSignalsCannotEstablishSafety(t *tes
 }
 
 func TestAnalyzeArtifactRejectsWrongPrefixAndMissingInstructions(t *testing.T) {
-	coordinate, version := "github.com/acme/skills/-/demo", "v1.0.0"
+	skillID, version := "github.com/acme/skills/-/demo", "v1.0.0"
 	for name, data := range map[string][]byte{
 		"wrong prefix": auditZIP(t, "github.com/other/skill@v1.0.0/", map[string][]byte{
 			"SKILL.md": []byte("# Wrong"),
 		}),
-		"missing SKILL.md": auditZIP(t, coordinate+"@"+version+"/", map[string][]byte{
+		"missing SKILL.md": auditZIP(t, skillID+"@"+version+"/", map[string][]byte{
 			"README.md": []byte("# Missing"),
 		}),
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := AnalyzeArtifact(data, coordinate, version)
+			_, err := AnalyzeArtifact(data, skillID, version)
 			require.Error(t, err)
 		})
 	}
 }
 
 func TestAnalyzeArtifactTruncatesLargeSupportingText(t *testing.T) {
-	coordinate, version := "github.com/acme/skills/-/demo", "v1.0.0"
-	data := auditZIP(t, coordinate+"@"+version+"/", map[string][]byte{
+	skillID, version := "github.com/acme/skills/-/demo", "v1.0.0"
+	data := auditZIP(t, skillID+"@"+version+"/", map[string][]byte{
 		"SKILL.md":        []byte("# Instructions"),
 		"references/a.md": []byte(strings.Repeat("a", maxFileContentBytes+1)),
 	})
 
-	result, err := AnalyzeArtifact(data, coordinate, version)
+	result, err := AnalyzeArtifact(data, skillID, version)
 	require.NoError(t, err)
 	require.True(t, result.Files[1].Truncated)
 	require.Len(t, result.Files[1].Content, maxFileContentBytes)
 }
 
 func TestAnalyzeArtifactContentDigestIgnoresArchiveCompressionAndEntryOrder(t *testing.T) {
-	coordinate, version := "github.com/acme/skills/-/demo", "v1.0.0"
-	prefix := coordinate + "@" + version + "/"
+	skillID, version := "github.com/acme/skills/-/demo", "v1.0.0"
+	prefix := skillID + "@" + version + "/"
 	files := []struct {
 		name     string
 		contents []byte
@@ -107,9 +107,9 @@ func TestAnalyzeArtifactContentDigestIgnoresArchiveCompressionAndEntryOrder(t *t
 		contents []byte
 	}{files[1], files[0]})
 
-	storedResult, err := AnalyzeArtifact(stored, coordinate, version)
+	storedResult, err := AnalyzeArtifact(stored, skillID, version)
 	require.NoError(t, err)
-	deflatedResult, err := AnalyzeArtifact(deflated, coordinate, version)
+	deflatedResult, err := AnalyzeArtifact(deflated, skillID, version)
 	require.NoError(t, err)
 	require.NotEqual(t, stored, deflated)
 	require.Equal(t, storedResult.ContentDigest, deflatedResult.ContentDigest)
@@ -117,8 +117,8 @@ func TestAnalyzeArtifactContentDigestIgnoresArchiveCompressionAndEntryOrder(t *t
 }
 
 func TestAnalyzeArtifactRejectsDuplicatePaths(t *testing.T) {
-	coordinate, version := "github.com/acme/skills/-/demo", "v1.0.0"
-	data := auditZIPEntries(t, coordinate+"@"+version+"/", zip.Store, []struct {
+	skillID, version := "github.com/acme/skills/-/demo", "v1.0.0"
+	data := auditZIPEntries(t, skillID+"@"+version+"/", zip.Store, []struct {
 		name     string
 		contents []byte
 	}{
@@ -126,17 +126,17 @@ func TestAnalyzeArtifactRejectsDuplicatePaths(t *testing.T) {
 		{name: "SKILL.md", contents: []byte("second")},
 	})
 
-	_, err := AnalyzeArtifact(data, coordinate, version)
+	_, err := AnalyzeArtifact(data, skillID, version)
 	require.ErrorContains(t, err, "duplicate")
 }
 
 func TestAnalyzeArtifactContentDigestGoldenVector(t *testing.T) {
-	coordinate, version := "github.com/example/skills/-/demo", "v1"
-	data := auditZIP(t, coordinate+"@"+version+"/", map[string][]byte{
+	skillID, version := "github.com/example/skills/-/demo", "v1"
+	data := auditZIP(t, skillID+"@"+version+"/", map[string][]byte{
 		"SKILL.md": []byte("# Demo\n"),
 	})
 
-	result, err := AnalyzeArtifact(data, coordinate, version)
+	result, err := AnalyzeArtifact(data, skillID, version)
 	require.NoError(t, err)
 	require.Equal(t, "sha256:bf005aa0d71df7bbcdc3bbd01138efd6274f8cef648cf74a2a17528bfaa54399", result.ContentDigest)
 }

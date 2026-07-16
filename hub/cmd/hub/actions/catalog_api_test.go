@@ -87,13 +87,13 @@ func (s *catalogArtifactStub) Manifest(context.Context, string, string) ([]byte,
 	return []byte("name: ask-matt\ndescription: Engineering skill router\n"), nil
 }
 
-func (s *catalogArtifactStub) Zip(_ context.Context, coordinate, version string) (storage.SizeReadCloser, error) {
+func (s *catalogArtifactStub) Zip(_ context.Context, skillID, version string) (storage.SizeReadCloser, error) {
 	if s.archiveErr != nil {
 		return nil, s.archiveErr
 	}
 	data := s.archive
 	if data == nil {
-		data = catalogArtifactZIP(coordinate+"@"+version+"/", map[string][]byte{
+		data = catalogArtifactZIP(skillID+"@"+version+"/", map[string][]byte{
 			"SKILL.md":       []byte("---\nname: ask-matt\ndescription: Engineering skill router\n---\n# Ask Matt\n"),
 			"scripts/run.sh": []byte("#!/bin/sh\necho demo\n"),
 		})
@@ -121,7 +121,7 @@ func catalogArtifactZIP(prefix string, files map[string][]byte) []byte {
 
 func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	r, c := testCatalogAPI(t)
-	skill := &catalog.Skill{Coordinate: "github.com/mattpocock/skills/-/skills/engineering/ask-matt", Name: "ask-matt", Description: "Engineering skill router", SourceHost: "github.com", Repository: "mattpocock/skills", LatestVersion: "main"}
+	skill := &catalog.Skill{SkillID: "github.com/mattpocock/skills/-/skills/engineering/ask-matt", Name: "ask-matt", Description: "Engineering skill router", SourceHost: "github.com", Repository: "mattpocock/skills", LatestVersion: "main"}
 	require.NoError(t, c.UpsertSkill(context.Background(), skill))
 
 	for _, path := range []string{
@@ -132,7 +132,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, path, nil))
 		require.Equal(t, http.StatusOK, recorder.Code, path)
 		require.Equal(t, "application/json; charset=utf-8", recorder.Header().Get("Content-Type"))
-		require.Contains(t, recorder.Body.String(), `"coordinate":"`+skill.Coordinate+`"`)
+		require.Contains(t, recorder.Body.String(), `"id":"`+skill.SkillID+`"`)
 	}
 
 	detail := httptest.NewRecorder()
@@ -140,7 +140,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, http.StatusOK, detail.Code)
 	var detailBody skillDetailResponse
 	require.NoError(t, json.NewDecoder(detail.Body).Decode(&detailBody))
-	require.Equal(t, skill.Coordinate, detailBody.Coordinate)
+	require.Equal(t, skill.SkillID, detailBody.SkillID)
 	require.NotNil(t, detailBody.ImageURL)
 	require.Equal(t, "https://github.com/mattpocock.png?size=72", *detailBody.ImageURL)
 	require.Equal(t, "main", detailBody.RequestedVersion)
@@ -170,7 +170,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, 1, matchBody.SchemaVersion)
 	require.Equal(t, detailBody.ContentDigest, matchBody.ContentDigest)
 	require.Len(t, matchBody.Matches, 1)
-	require.Equal(t, skill.Coordinate, matchBody.Matches[0].Coordinate)
+	require.Equal(t, skill.SkillID, matchBody.Matches[0].SkillID)
 	require.Equal(t, detailBody.ImmutableVersion, matchBody.Matches[0].ImmutableVersion)
 
 	recorder := httptest.NewRecorder()
@@ -215,12 +215,12 @@ func TestCatalogAPIDetailReturnsStableArtifactFailures(t *testing.T) {
 			})
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, metadata.Close()) })
-			skill := &catalog.Skill{Coordinate: "github.com/acme/skills/-/demo", Name: "demo", Description: "Demo", LatestVersion: "main"}
+			skill := &catalog.Skill{SkillID: "github.com/acme/skills/-/demo", Name: "demo", Description: "Demo", LatestVersion: "main"}
 			require.NoError(t, metadata.UpsertSkill(ctx, skill))
 			router := newFiberApp()
 			registerCatalogAPIRoutes(router, metadata, testCase.stub)
 			recorder := httptest.NewRecorder()
-			serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/v1/skills/"+skill.Coordinate, nil))
+			serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/v1/skills/"+skill.SkillID, nil))
 			require.Equal(t, testCase.status, recorder.Code)
 			var body errorResponse
 			require.NoError(t, json.NewDecoder(recorder.Body).Decode(&body))
@@ -244,8 +244,8 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 	r, c := testCatalogAPI(t)
 	for _, name := range []string{"alpha", "bravo", "charlie"} {
 		require.NoError(t, c.UpsertSkill(context.Background(), &catalog.Skill{
-			Coordinate: "github.com/acme/skills/-/" + name,
-			Name:       name, Description: "Agent capability", LatestVersion: "main",
+			SkillID: "github.com/acme/skills/-/" + name,
+			Name:    name, Description: "Agent capability", LatestVersion: "main",
 		}))
 	}
 
@@ -289,9 +289,9 @@ func TestCatalogAPIValidationAndNotFound(t *testing.T) {
 
 func TestInstallEventAPIIsIdempotent(t *testing.T) {
 	r, c := testCatalogAPI(t)
-	skill := &catalog.Skill{Coordinate: "github.com/acme/skills", Name: "acme", LatestVersion: "main"}
+	skill := &catalog.Skill{SkillID: "github.com/acme/skills", Name: "acme", LatestVersion: "main"}
 	require.NoError(t, c.UpsertSkill(context.Background(), skill))
-	body := `{"eventId":"019f5e99-e1dd-77e3-b259-61e09396d599","skill":"github.com/acme/skills","version":"main","agents":["codex","claude-code"],"scope":"project","cliVersion":"0.1.0","occurredAt":"` + time.Now().UTC().Format(time.RFC3339Nano) + `"}`
+	body := `{"eventId":"019f5e99-e1dd-77e3-b259-61e09396d599","skillId":"github.com/acme/skills","version":"main","agents":["codex","claude-code"],"scope":"project","cliVersion":"0.1.0","occurredAt":"` + time.Now().UTC().Format(time.RFC3339Nano) + `"}`
 	for index, accepted := range []string{"true", "false"} {
 		recorder := httptest.NewRecorder()
 		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodPost, "/v1/events/install", strings.NewReader(body)))

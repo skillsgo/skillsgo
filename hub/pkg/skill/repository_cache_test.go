@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on temporary Git repositories, the Skill ID parser, repository caching, and Git resolution behavior.
+ * [OUTPUT]: Specifies shared repository caching, nested Skill resolution, refresh, tag listing, and concurrent access behavior.
+ * [POS]: Serves as the repository integration contract for the Hub Skill source module.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package skill
 
 import (
@@ -15,21 +21,21 @@ import (
 )
 
 type localRepositoryFixture struct {
-	origin     string
-	work       string
-	cache      string
-	coordinate string
-	fetcher    *gitFetcher
+	origin  string
+	work    string
+	cache   string
+	skillID string
+	fetcher *gitFetcher
 }
 
 func newLocalRepositoryFixture(t *testing.T) *localRepositoryFixture {
 	t.Helper()
 	root := t.TempDir()
 	f := &localRepositoryFixture{
-		origin:     filepath.Join(root, "origin.git"),
-		work:       filepath.Join(root, "work"),
-		cache:      filepath.Join(root, "cache"),
-		coordinate: "github.com/skillsgo-test/repo",
+		origin:  filepath.Join(root, "origin.git"),
+		work:    filepath.Join(root, "work"),
+		cache:   filepath.Join(root, "cache"),
+		skillID: "github.com/skillsgo-test/repo",
 	}
 	runGit(t, "", "init", "--bare", "--initial-branch=main", f.origin)
 	runGit(t, "", "clone", f.origin, f.work)
@@ -44,7 +50,7 @@ func newLocalRepositoryFixture(t *testing.T) *localRepositoryFixture {
 	fetcher, err := NewFetcher(f.cache, afero.NewOsFs())
 	require.NoError(t, err)
 	f.fetcher = fetcher.(*gitFetcher)
-	f.fetcher.cloneURL = func(SkillCoordinate) string { return f.origin }
+	f.fetcher.cloneURL = func(SkillID) string { return f.origin }
 	return f
 }
 
@@ -74,12 +80,12 @@ func runGit(t *testing.T, dir string, args ...string) string {
 
 func TestRepositoryCacheResolveAndFetchResolved(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
-	resolution, err := f.fetcher.Resolve(t.Context(), f.coordinate, "main")
+	resolution, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
 	require.NoError(t, err)
 	require.NotEmpty(t, resolution.CommitSHA)
 	require.NotEmpty(t, resolution.TreeSHA)
 
-	version, err := f.fetcher.FetchResolved(t.Context(), f.coordinate, resolution)
+	version, err := f.fetcher.FetchResolved(t.Context(), f.skillID, resolution)
 	require.NoError(t, err)
 	defer version.Zip.Close()
 	zipBytes, err := io.ReadAll(version.Zip)
@@ -89,13 +95,13 @@ func TestRepositoryCacheResolveAndFetchResolved(t *testing.T) {
 
 func TestRepositoryCacheRefreshesMutableBranch(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
-	first, err := f.fetcher.Resolve(t.Context(), f.coordinate, "main")
+	first, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
 	require.NoError(t, err)
 
 	f.writeSkill(t, ".", "repo", "changed")
 	f.commit(t, "change Skill")
 	runGit(t, f.work, "push", "origin", "HEAD")
-	second, err := f.fetcher.Resolve(t.Context(), f.coordinate, "main")
+	second, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
 	require.NoError(t, err)
 	require.NotEqual(t, first.CommitSHA, second.CommitSHA)
 	require.NotEqual(t, first.TreeSHA, second.TreeSHA)
@@ -103,12 +109,12 @@ func TestRepositoryCacheRefreshesMutableBranch(t *testing.T) {
 
 func TestRepositoryCacheIsSharedBySkillsInOneRepository(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
-	_, err := f.fetcher.Resolve(t.Context(), f.coordinate, "main")
+	_, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
 	require.NoError(t, err)
-	_, err = f.fetcher.Resolve(t.Context(), f.coordinate+"/-/skills/child", "main")
+	_, err = f.fetcher.Resolve(t.Context(), f.skillID+"/-/skills/child", "main")
 	require.NoError(t, err)
 
-	repositoryDir, err := f.fetcher.repositoryDir(f.coordinate)
+	repositoryDir, err := f.fetcher.repositoryDir(f.skillID)
 	require.NoError(t, err)
 	require.True(t, isGitRepository(repositoryDir))
 	entries, err := os.ReadDir(filepath.Join(f.cache, "repositories", "github.com", "skillsgo-test"))
@@ -128,7 +134,7 @@ func TestRepositoryCacheCoalescesConcurrentResolve(t *testing.T) {
 		go func() {
 			defer workers.Done()
 			<-start
-			resolution, err := f.fetcher.Resolve(t.Context(), f.coordinate, "main")
+			resolution, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
 			results <- resolution
 			errs <- err
 		}()
@@ -149,35 +155,35 @@ func TestRepositoryCacheCoalescesConcurrentResolve(t *testing.T) {
 		}
 		require.Equal(t, commitSHA, resolution.CommitSHA)
 	}
-	repositoryDir, err := f.fetcher.repositoryDir(f.coordinate)
+	repositoryDir, err := f.fetcher.repositoryDir(f.skillID)
 	require.NoError(t, err)
 	require.True(t, isGitRepository(repositoryDir))
 }
 
 func TestRepositoryCacheRecoversCorruptRepository(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
-	_, err := f.fetcher.Resolve(t.Context(), f.coordinate, "main")
+	_, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
 	require.NoError(t, err)
-	repositoryDir, err := f.fetcher.repositoryDir(f.coordinate)
+	repositoryDir, err := f.fetcher.repositoryDir(f.skillID)
 	require.NoError(t, err)
 	require.NoError(t, os.RemoveAll(filepath.Join(repositoryDir, ".git")))
 
-	_, err = f.fetcher.Resolve(t.Context(), f.coordinate, "main")
+	_, err = f.fetcher.Resolve(t.Context(), f.skillID, "main")
 	require.NoError(t, err)
 	require.True(t, isGitRepository(repositoryDir))
 }
 
 func TestRepositoryCacheKeepsUsableCacheWhenFetchFails(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
-	_, err := f.fetcher.Resolve(t.Context(), f.coordinate, "main")
+	_, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
 	require.NoError(t, err)
-	repositoryDir, err := f.fetcher.repositoryDir(f.coordinate)
+	repositoryDir, err := f.fetcher.repositoryDir(f.skillID)
 	require.NoError(t, err)
 	require.NoError(t, os.Rename(f.origin, f.origin+".offline"))
 
 	ctx, cancel := context.WithTimeout(t.Context(), 5*time.Second)
 	defer cancel()
-	_, err = f.fetcher.Resolve(ctx, f.coordinate, "main")
+	_, err = f.fetcher.Resolve(ctx, f.skillID, "main")
 	require.Error(t, err)
 	require.True(t, isGitRepository(repositoryDir))
 }
@@ -186,12 +192,12 @@ func TestVCSListerUsesRepositoryCache(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	lister, err := NewVCSLister(f.fetcher, 10*time.Second)
 	require.NoError(t, err)
-	revision, versions, err := lister.List(t.Context(), f.coordinate)
+	revision, versions, err := lister.List(t.Context(), f.skillID)
 	require.NoError(t, err)
 	require.Equal(t, []string{"v1.0.0"}, versions)
 	require.Equal(t, "v1.0.0", revision.Version)
 
-	repositoryDir, err := f.fetcher.repositoryDir(f.coordinate)
+	repositoryDir, err := f.fetcher.repositoryDir(f.skillID)
 	require.NoError(t, err)
 	require.True(t, isGitRepository(repositoryDir))
 }

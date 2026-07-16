@@ -47,21 +47,21 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 	defer span.End()
 
 	value, err, _ := l.repositories.syncs.Do("list:"+skillPath, func() (any, error) {
-		coordinate, err := parseGitHubSkillCoordinate(skillPath)
+		skillID, err := parseGitHubSkillID(skillPath)
 		if err != nil {
 			return nil, errors.E(op, err, errors.KindNotFound)
 		}
-		subdir := coordinate.repositorySubdir()
+		subdir := skillID.repositorySubdir()
 
 		timeoutCtx, cancel := context.WithTimeout(ctx, l.timeout)
 		defer cancel()
-		if err := l.repositories.syncRepository(timeoutCtx, coordinate); err != nil {
+		if err := l.repositories.syncRepository(timeoutCtx, skillID); err != nil {
 			if errors.IsErr(timeoutCtx.Err(), context.DeadlineExceeded) {
 				return nil, errors.E(op, err, errors.KindGatewayTimeout)
 			}
 			return nil, err
 		}
-		repoDir, err := l.repositories.repositoryDir(coordinate.Repository)
+		repoDir, err := l.repositories.repositoryDir(skillID.Repository)
 		if err != nil {
 			return nil, errors.E(op, err)
 		}

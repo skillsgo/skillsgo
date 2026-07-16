@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on validated Skill Coordinates, immutable Hub or Local Skill artifacts, ZIP archives, and filesystem containment rules.
+ * [INPUT]: Depends on validated Skill IDs, immutable Hub or Local Skill artifacts, ZIP archives, and filesystem containment rules.
  * [OUTPUT]: Provides confined immutable Store put/get operations, safe extraction, immutable-content checks, provenance-aware receipts, and refreshable assessment metadata.
  * [POS]: Serves as the local Content-addressed Store boundary beneath installation and inventory flows.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -26,7 +26,7 @@ import (
 var ErrNotFound = fmt.Errorf("Store 条目不存在")
 
 type Receipt struct {
-	Coordinate    string     `yaml:"coordinate"`
+	SkillID       string     `yaml:"skillId"`
 	Version       string     `yaml:"version"`
 	Name          string     `yaml:"name,omitempty"`
 	Provenance    Provenance `yaml:"provenance,omitempty"`
@@ -60,8 +60,8 @@ type Store struct{ Root string }
 
 func DefaultRoot(home string) string { return filepath.Join(home, ".skillsgo", "store") }
 
-func (s Store) Get(coordinate, version string) (*Entry, error) {
-	root, err := s.entryRoot(coordinate, version)
+func (s Store) Get(skillID, version string) (*Entry, error) {
+	root, err := s.entryRoot(skillID, version)
 	if err != nil {
 		return nil, err
 	}
@@ -72,8 +72,8 @@ func (s Store) Get(coordinate, version string) (*Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	if receipt.Coordinate != coordinate || receipt.Version != version {
-		return nil, fmt.Errorf("Store 条目身份不匹配：期望 %s@%s，得到 %s@%s", coordinate, version, receipt.Coordinate, receipt.Version)
+	if receipt.SkillID != skillID || receipt.Version != version {
+		return nil, fmt.Errorf("Store 条目身份不匹配：期望 %s@%s，得到 %s@%s", skillID, version, receipt.SkillID, receipt.Version)
 	}
 	if !receipt.Risk.Valid() || !strings.HasPrefix(receipt.ContentDigest, "sha256:") {
 		return nil, fmt.Errorf("Store entry is missing immutable assessment metadata")
@@ -91,8 +91,8 @@ func (s Store) Get(coordinate, version string) (*Entry, error) {
 	return &Entry{Root: root, Artifact: artifact, Receipt: receipt}, nil
 }
 
-func (s Store) entryRoot(coordinate, version string) (string, error) {
-	if err := source.ValidateCoordinate(coordinate); err != nil {
+func (s Store) entryRoot(skillID, version string) (string, error) {
+	if err := source.ValidateSkillID(skillID); err != nil {
 		return "", err
 	}
 	if err := source.ValidateVersion(version); err != nil {
@@ -102,7 +102,7 @@ func (s Store) entryRoot(coordinate, version string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	candidate := filepath.Join(root, filepath.FromSlash(coordinate+"@"+version))
+	candidate := filepath.Join(root, filepath.FromSlash(skillID+"@"+version))
 	relative, err := filepath.Rel(root, candidate)
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("Store entry escapes configured root")
@@ -115,24 +115,24 @@ func (s Store) Put(artifact *hub.Artifact) (*Entry, error) {
 		return nil, fmt.Errorf("Hub artifact is missing immutable assessment metadata")
 	}
 	if err := hub.VerifyContentDigest(
-		artifact.ZIP, artifact.Coordinate, artifact.Info.Version, artifact.Info.ContentDigest,
+		artifact.ZIP, artifact.SkillID, artifact.Info.Version, artifact.Info.ContentDigest,
 	); err != nil {
 		return nil, err
 	}
 	receipt := Receipt{
-		Coordinate: artifact.Coordinate, Version: artifact.Info.Version,
+		SkillID: artifact.SkillID, Version: artifact.Info.Version,
 		Provenance: ProvenanceHub, ContentDigest: artifact.Info.ContentDigest,
 		Risk: artifact.Info.Risk, Origin: artifact.Info.Origin,
 	}
 	hash := sha256.Sum256(artifact.ZIP)
 	receipt.SHA256 = hex.EncodeToString(hash[:])
-	root, err := s.entryRoot(artifact.Coordinate, artifact.Info.Version)
+	root, err := s.entryRoot(artifact.SkillID, artifact.Info.Version)
 	if err != nil {
 		return nil, err
 	}
 	artifactRoot := filepath.Join(root, "artifact")
 	if existing, err := readReceipt(filepath.Join(root, "receipt.yaml")); err == nil && existing.SHA256 == receipt.SHA256 {
-		return s.RefreshAssessment(artifact.Coordinate, artifact.Info.Version, artifact.Info)
+		return s.RefreshAssessment(artifact.SkillID, artifact.Info.Version, artifact.Info)
 	}
 	if _, err := os.Stat(root); err == nil {
 		return nil, fmt.Errorf("Store 条目 %q 已存在，但制品摘要不同", root)
@@ -148,7 +148,7 @@ func (s Store) Put(artifact *hub.Artifact) (*Entry, error) {
 		return nil, err
 	}
 	defer os.RemoveAll(temp)
-	if err := extract(artifact.ZIP, artifact.Coordinate+"@"+artifact.Info.Version+"/", filepath.Join(temp, "artifact")); err != nil {
+	if err := extract(artifact.ZIP, artifact.SkillID+"@"+artifact.Info.Version+"/", filepath.Join(temp, "artifact")); err != nil {
 		return nil, err
 	}
 	if err := os.WriteFile(filepath.Join(temp, "info.json"), mustJSON(artifact.Info), 0o600); err != nil {
@@ -172,22 +172,22 @@ func (s Store) Put(artifact *hub.Artifact) (*Entry, error) {
 
 // RefreshAssessment updates risk metadata for an already cached immutable
 // artifact without changing its content, provenance, or files.
-func (s Store) RefreshAssessment(coordinate, version string, info hub.Info) (*Entry, error) {
+func (s Store) RefreshAssessment(skillID, version string, info hub.Info) (*Entry, error) {
 	if info.Version != version || !info.Risk.Valid() || !strings.HasPrefix(info.ContentDigest, "sha256:") {
-		return nil, fmt.Errorf("Hub returned incomplete assessed Info for %s@%s", coordinate, version)
+		return nil, fmt.Errorf("Hub returned incomplete assessed Info for %s@%s", skillID, version)
 	}
-	entry, err := s.Get(coordinate, version)
+	entry, err := s.Get(skillID, version)
 	if err != nil {
 		return nil, err
 	}
 	if entry.Receipt.ContentDigest != info.ContentDigest {
 		return nil, fmt.Errorf(
 			"immutable Content Digest changed for %s@%s: %s != %s",
-			coordinate, version, entry.Receipt.ContentDigest, info.ContentDigest,
+			skillID, version, entry.Receipt.ContentDigest, info.ContentDigest,
 		)
 	}
 	if entry.Receipt.Origin != info.Origin {
-		return nil, fmt.Errorf("immutable Origin changed for %s@%s", coordinate, version)
+		return nil, fmt.Errorf("immutable Origin changed for %s@%s", skillID, version)
 	}
 	updated := entry.Receipt
 	updated.Risk = info.Risk

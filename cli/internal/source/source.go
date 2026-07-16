@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on supported GitHub URL/shorthand syntax, private Local Skill identities, and canonical Skill Coordinate rules.
- * [OUTPUT]: Provides normalized Hub/local references plus reusable path-safe coordinate and single-segment version validation.
- * [POS]: Serves as the CLI source-identity boundary used before Hub and Store access.
+ * [INPUT]: Depends on supported GitHub URL/shorthand syntax, private Local Skill IDs, and canonical Skill ID rules.
+ * [OUTPUT]: Provides normalized Hub/local references plus reusable path-safe skillID and single-segment version validation.
+ * [POS]: Serves as the CLI Skill ID normalization boundary used before Hub and Store access.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package source
@@ -13,8 +13,8 @@ import (
 )
 
 type Reference struct {
-	Coordinate string
-	Version    string
+	SkillID string
+	Version string
 }
 
 func Parse(raw string) (Reference, error) {
@@ -35,7 +35,7 @@ func Parse(raw string) (Reference, error) {
 		if len(parts) < 2 {
 			return Reference{}, fmt.Errorf("GitHub URL 缺少 owner/repo")
 		}
-		coordinate := "github.com/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
+		skillID := "github.com/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
 		version := "main"
 		if len(parts) > 2 {
 			if len(parts) < 4 || parts[2] != "tree" {
@@ -43,19 +43,19 @@ func Parse(raw string) (Reference, error) {
 			}
 			version = parts[3]
 			if len(parts) > 4 {
-				coordinate += "/-/" + strings.Join(parts[4:], "/")
+				skillID += "/-/" + strings.Join(parts[4:], "/")
 			}
 		}
-		return checkedReference(coordinate, version)
+		return checkedReference(skillID, version)
 	}
 
 	parts := splitPath(raw)
 	if len(parts) >= 2 && parts[0] != "github.com" {
-		coordinate := "github.com/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
+		skillID := "github.com/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
 		if len(parts) > 2 {
-			coordinate += "/-/" + strings.Join(parts[2:], "/")
+			skillID += "/-/" + strings.Join(parts[2:], "/")
 		}
-		return checkedReference(coordinate, "main")
+		return checkedReference(skillID, "main")
 	}
 	if len(parts) < 3 || parts[0] != "github.com" {
 		return Reference{}, fmt.Errorf("首版 source 必须是 github.com/owner/repo 坐标或 GitHub tree URL")
@@ -63,37 +63,37 @@ func Parse(raw string) (Reference, error) {
 	return checkedReference(strings.Join(parts, "/"), "main")
 }
 
-func ValidateCoordinate(coordinate string) error {
-	if coordinate == "" || strings.ContainsAny(coordinate, "\\\x00") {
-		return fmt.Errorf("invalid Skill Coordinate %q", coordinate)
+func ValidateSkillID(skillID string) error {
+	if skillID == "" || strings.ContainsAny(skillID, "\\\x00") {
+		return fmt.Errorf("invalid Skill ID %q", skillID)
 	}
-	parts := strings.Split(coordinate, "/")
+	parts := strings.Split(skillID, "/")
 	if len(parts) < 3 || (parts[0] != "github.com" && parts[0] != "local.skillsgo") {
-		return fmt.Errorf("invalid Skill Coordinate %q", coordinate)
+		return fmt.Errorf("invalid Skill ID %q", skillID)
 	}
 	for _, part := range parts {
-		if part == "" || part == "." || part == ".." || unsafeCoordinateSegment(part) {
-			return fmt.Errorf("invalid Skill Coordinate segment %q", part)
+		if part == "" || part == "." || part == ".." || unsafeSkillIDSegment(part) {
+			return fmt.Errorf("invalid Skill ID segment %q", part)
 		}
 	}
 	if len(parts) > 3 && (parts[3] != "-" || len(parts) < 5) {
-		return fmt.Errorf("invalid Skill Coordinate separator in %q", coordinate)
+		return fmt.Errorf("invalid Skill ID separator in %q", skillID)
 	}
 	return nil
 }
 
-func IsLocalCoordinate(coordinate string) bool {
-	return strings.HasPrefix(coordinate, "local.skillsgo/") && ValidateCoordinate(coordinate) == nil
+func IsLocalSkillID(skillID string) bool {
+	return strings.HasPrefix(skillID, "local.skillsgo/") && ValidateSkillID(skillID) == nil
 }
 
-func checkedReference(coordinate, version string) (Reference, error) {
-	if err := ValidateCoordinate(coordinate); err != nil {
+func checkedReference(skillID, version string) (Reference, error) {
+	if err := ValidateSkillID(skillID); err != nil {
 		return Reference{}, err
 	}
 	if err := ValidateVersion(version); err != nil {
 		return Reference{}, err
 	}
-	return Reference{Coordinate: coordinate, Version: version}, nil
+	return Reference{SkillID: skillID, Version: version}, nil
 }
 
 // ValidateVersion confines a source or resolved version to one URL path segment.
@@ -105,7 +105,7 @@ func ValidateVersion(version string) error {
 	return nil
 }
 
-func unsafeCoordinateSegment(segment string) bool {
+func unsafeSkillIDSegment(segment string) bool {
 	return strings.ContainsAny(segment, "%?#") || containsControl(segment)
 }
 

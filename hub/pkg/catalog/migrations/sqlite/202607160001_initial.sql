@@ -4,7 +4,7 @@
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 CREATE TABLE skills (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  coordinate TEXT NOT NULL UNIQUE,
+  skill_id TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
   source_host TEXT NOT NULL,
@@ -55,4 +55,4 @@ CREATE TABLE skill_hourly_stats (
   installs INTEGER NOT NULL DEFAULT 0,
   UNIQUE(skill_id, bucket)
 );
-CREATE VIRTUAL TABLE skills_fts USING fts5(name, description, coordinate, content='skills', content_rowid='id', tokenize='trigram');
+CREATE VIRTUAL TABLE skills_fts USING fts5(name, description, skill_id, content='skills', content_rowid='id', tokenize='trigram');

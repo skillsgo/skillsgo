@@ -38,7 +38,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/plan/` | Explicit Installation Plan conflict/risk preflight, Workspace Lock preview, resolution validation, and target-specific execution. |
 | `internal/project/` | `skillsgo.yaml` and `skillsgo-lock.yaml` project state. |
 | `internal/hub/` | Client for the public SkillsGo Hub protocol and normalized artifact-integrity verification. |
-| `internal/source/` | Skill-coordinate parsing and source identity. |
+| `internal/source/` | Skill ID parsing and source reference normalization. |
 | `internal/store/` | User-level shared Hub/Local artifact cache, private Local import/export, and installation state. |
 | `internal/updateplan/` | Exact-target update checks, pinned-reference classification, Workspace Lock previews, and partial update execution. |
 

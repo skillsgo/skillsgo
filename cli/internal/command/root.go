@@ -125,9 +125,9 @@ func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
 				if !ok {
 					return fmt.Errorf("skillsgo-lock.yaml 缺少 Skill %q", name)
 				}
-				entry, err := storage.Get(locked.Coordinate, locked.Version)
+				entry, err := storage.Get(locked.SkillID, locked.Version)
 				if errors.Is(err, store.ErrNotFound) {
-					artifact, fetchErr := client.Fetch(cmd.Context(), locked.Coordinate, locked.Version)
+					artifact, fetchErr := client.Fetch(cmd.Context(), locked.SkillID, locked.Version)
 					if fetchErr != nil {
 						return fmt.Errorf("下载 %s: %w", name, fetchErr)
 					}
@@ -237,7 +237,7 @@ func newUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 				if ref == "" {
 					ref = "main"
 				}
-				artifact, err := client.Fetch(cmd.Context(), locked.Coordinate, ref)
+				artifact, err := client.Fetch(cmd.Context(), locked.SkillID, ref)
 				if err != nil {
 					return fmt.Errorf("检查 %s 更新: %w", name, err)
 				}
@@ -316,16 +316,16 @@ func runGlobalUpdate(cmd *cobra.Command, names []string, hubURL, output string, 
 		return err
 	}
 	type result struct {
-		Name       string `json:"name"`
-		Coordinate string `json:"coordinate"`
-		From       string `json:"from"`
-		To         string `json:"to"`
-		Available  bool   `json:"available"`
-		Updated    bool   `json:"updated"`
+		Name      string `json:"name"`
+		SkillID   string `json:"skillId"`
+		From      string `json:"from"`
+		To        string `json:"to"`
+		Available bool   `json:"available"`
+		Updated   bool   `json:"updated"`
 	}
 	groups := map[string][]install.Installation{}
 	for _, item := range installed {
-		groups[item.Coordinate+"\x00"+item.Name] = append(groups[item.Coordinate+"\x00"+item.Name], item)
+		groups[item.SkillID+"\x00"+item.Name] = append(groups[item.SkillID+"\x00"+item.Name], item)
 	}
 	keys := make([]string, 0, len(groups))
 	for key := range groups {
@@ -340,13 +340,13 @@ func runGlobalUpdate(cmd *cobra.Command, names []string, hubURL, output string, 
 	for _, key := range keys {
 		previous := groups[key]
 		first := previous[0]
-		info, err := client.Resolve(cmd.Context(), first.Coordinate, "main")
+		info, err := client.Resolve(cmd.Context(), first.SkillID, "main")
 		if err != nil {
 			return fmt.Errorf("检查 %s 更新: %w", first.Name, err)
 		}
-		item := result{Name: first.Name, Coordinate: first.Coordinate, From: first.Version, To: info.Version, Available: info.Version != first.Version}
+		item := result{Name: first.Name, SkillID: first.SkillID, From: first.Version, To: info.Version, Available: info.Version != first.Version}
 		if item.Available && !check {
-			artifact, err := client.Fetch(cmd.Context(), first.Coordinate, info.Version)
+			artifact, err := client.Fetch(cmd.Context(), first.SkillID, info.Version)
 			if err != nil {
 				return err
 			}
@@ -592,13 +592,13 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 				return err
 			}
 			if scope == install.ScopeProject && !options.replace {
-				if err := project.CheckNameConflict(cwd, options.skills[0], reference.Coordinate, reference.Version, mode); err != nil {
+				if err := project.CheckNameConflict(cwd, options.skills[0], reference.SkillID, reference.Version, mode); err != nil {
 					return err
 				}
 			} else if scope == install.ScopeUser && !options.replace {
 				for _, installation := range previous {
-					if installation.Coordinate != reference.Coordinate {
-						return fmt.Errorf("Skill 名称冲突：%q 已来自 %s，不能用 %s 静默覆盖", options.skills[0], installation.Coordinate, reference.Coordinate)
+					if installation.SkillID != reference.SkillID {
+						return fmt.Errorf("Skill 名称冲突：%q 已来自 %s，不能用 %s 静默覆盖", options.skills[0], installation.SkillID, reference.SkillID)
 					}
 				}
 			}
@@ -606,7 +606,7 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			artifact, err := client.Fetch(cmd.Context(), reference.Coordinate, reference.Version)
+			artifact, err := client.Fetch(cmd.Context(), reference.SkillID, reference.Version)
 			if err != nil {
 				return err
 			}
@@ -639,18 +639,18 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 			response := struct {
 				SchemaVersion int              `json:"schemaVersion"`
 				Source        string           `json:"source"`
-				Coordinate    string           `json:"coordinate"`
+				SkillID       string           `json:"skillId"`
 				Version       string           `json:"version"`
 				Store         string           `json:"store"`
 				Scope         install.Scope    `json:"scope"`
 				Targets       []install.Target `json:"targets"`
-			}{1, args[0], reference.Coordinate, artifact.Info.Version, entry.Root, scope, targets}
+			}{1, args[0], reference.SkillID, artifact.Info.Version, entry.Root, scope, targets}
 			if options.output == "json" {
 				encoder := json.NewEncoder(cmd.OutOrStdout())
 				encoder.SetIndent("", "  ")
 				return encoder.Encode(response)
 			}
-			fmt.Fprint(cmd.OutOrStdout(), appi18n.F("add.success", reference.Coordinate, artifact.Info.Version, len(targets), scope))
+			fmt.Fprint(cmd.OutOrStdout(), appi18n.F("add.success", reference.SkillID, artifact.Info.Version, len(targets), scope))
 			for _, target := range targets {
 				fmt.Fprintf(cmd.OutOrStdout(), "- %s: %s\n", target.Agent, filepath.Clean(target.Path))
 			}

@@ -54,7 +54,7 @@ type TargetRequest struct {
 	Agent       string        `json:"agent"`
 	Mode        install.Mode  `json:"mode"`
 	Path        string        `json:"path"`
-	Coordinate  string        `json:"coordinate"`
+	SkillID     string        `json:"skillId"`
 	Version     string        `json:"version"`
 	ToVersion   string        `json:"toVersion,omitempty"`
 	StateToken  string        `json:"stateToken,omitempty"`
@@ -71,7 +71,7 @@ type Target struct {
 type Item struct {
 	Target              Target   `json:"target"`
 	Name                string   `json:"name"`
-	Coordinate          string   `json:"coordinate"`
+	SkillID             string   `json:"skillId"`
 	SourceRef           string   `json:"sourceRef"`
 	FromVersion         string   `json:"fromVersion"`
 	ToVersion           string   `json:"toVersion"`
@@ -111,7 +111,7 @@ type Preflight struct {
 type Result struct {
 	Target      Target  `json:"target"`
 	Name        string  `json:"name"`
-	Coordinate  string  `json:"coordinate"`
+	SkillID     string  `json:"skillId"`
 	FromVersion string  `json:"fromVersion"`
 	ToVersion   string  `json:"toVersion"`
 	Outcome     Outcome `json:"outcome"`
@@ -138,7 +138,7 @@ type Progress struct {
 	Sequence      int           `json:"sequence"`
 	Target        Target        `json:"target"`
 	Name          string        `json:"name"`
-	Coordinate    string        `json:"coordinate"`
+	SkillID       string        `json:"skillId"`
 	FromVersion   string        `json:"fromVersion"`
 	ToVersion     string        `json:"toVersion"`
 	State         ProgressState `json:"state"`
@@ -189,7 +189,7 @@ func validateRequest(request TargetRequest) error {
 	if request.Mode != install.ModeCopy && request.Mode != install.ModeSymlink {
 		return fmt.Errorf("unsupported mode %q", request.Mode)
 	}
-	if err := source.ValidateCoordinate(request.Coordinate); err != nil {
+	if err := source.ValidateSkillID(request.SkillID); err != nil {
 		return err
 	}
 	if err := source.ValidateVersion(request.Version); err != nil {
@@ -308,7 +308,7 @@ func buildItem(
 	request TargetRequest,
 	installation install.Installation,
 ) (Item, error) {
-	entry, err := storage.Get(installation.Coordinate, installation.Version)
+	entry, err := storage.Get(installation.SkillID, installation.Version)
 	if err != nil {
 		return Item{}, err
 	}
@@ -330,7 +330,7 @@ func buildItem(
 			Scope: request.Scope, ProjectRoot: request.ProjectRoot,
 			Agent: request.Agent, Mode: request.Mode, Path: request.Path,
 		},
-		Name: installation.Name, Coordinate: installation.Coordinate,
+		Name: installation.Name, SkillID: installation.SkillID,
 		SourceRef: reference, FromVersion: installation.Version,
 		ToVersion: installation.Version, StateToken: stateToken,
 		installation: installation, workspaceLockFrom: workspaceLockFrom,
@@ -340,7 +340,7 @@ func buildItem(
 		item.ReasonCode = "fixed-commit"
 		return item, nil
 	}
-	info, err := client.Resolve(ctx, installation.Coordinate, reference)
+	info, err := client.Resolve(ctx, installation.SkillID, reference)
 	if err != nil {
 		item.Action = ActionFailed
 		item.ReasonCode = "resolve-failed"
@@ -385,7 +385,7 @@ func sourceReference(
 			return "", false, "", fmt.Errorf("skillsgo.yaml is missing Skill %q", installation.Name)
 		}
 		locked, ok := lockfile.Skills[installation.Name]
-		if !ok || locked.Coordinate != installation.Coordinate {
+		if !ok || locked.SkillID != installation.SkillID {
 			return "", false, "", fmt.Errorf("Workspace Lock does not match target %s", request.Path)
 		}
 		if !contains(requirement.Agents, request.Agent) {
@@ -439,7 +439,7 @@ func updateStateToken(
 	payload, err := json.Marshal(struct {
 		Version       int            `json:"version"`
 		Name          string         `json:"name"`
-		Coordinate    string         `json:"coordinate"`
+		SkillID       string         `json:"skillId"`
 		FromVersion   string         `json:"fromVersion"`
 		SHA256        string         `json:"sha256"`
 		ContentDigest string         `json:"contentDigest"`
@@ -449,7 +449,7 @@ func updateStateToken(
 		Target        install.Target `json:"target"`
 		Filesystem    string         `json:"filesystem"`
 	}{
-		1, installation.Name, installation.Coordinate, installation.Version,
+		1, installation.Name, installation.SkillID, installation.Version,
 		installation.SHA256, installation.ContentDigest, sourceRef, projectRoot,
 		workspaceLockVersion,
 		installation.Target, filesystem,
@@ -482,7 +482,7 @@ func Execute(
 		item := preflight.Targets[index]
 		event := Progress{
 			SchemaVersion: SchemaVersion, Phase: "update-progress", Sequence: sequence,
-			Target: item.Target, Name: item.Name, Coordinate: item.Coordinate,
+			Target: item.Target, Name: item.Name, SkillID: item.SkillID,
 			FromVersion: item.FromVersion, ToVersion: item.ToVersion, State: state,
 		}
 		if state == ProgressFinished {
@@ -495,7 +495,7 @@ func Execute(
 	groupOrder := make([]string, 0)
 	for index, item := range preflight.Targets {
 		execution.Results[index] = Result{
-			Target: item.Target, Name: item.Name, Coordinate: item.Coordinate,
+			Target: item.Target, Name: item.Name, SkillID: item.SkillID,
 			FromVersion: item.FromVersion, ToVersion: item.ToVersion,
 		}
 		switch item.Action {
@@ -510,9 +510,9 @@ func Execute(
 			execution.Results[index].Diagnostic = item.Diagnostic
 			emit(index, ProgressFinished)
 		case ActionUpdate:
-			key := filepath.Clean(item.Target.Path) + "\x00" + item.Coordinate + "\x00" + item.ToVersion
+			key := filepath.Clean(item.Target.Path) + "\x00" + item.SkillID + "\x00" + item.ToVersion
 			if item.Target.Scope == install.ScopeProject {
-				key = "project\x00" + filepath.Clean(item.Target.ProjectRoot) + "\x00" + item.Name + "\x00" + item.Coordinate + "\x00" + item.ToVersion
+				key = "project\x00" + filepath.Clean(item.Target.ProjectRoot) + "\x00" + item.Name + "\x00" + item.SkillID + "\x00" + item.ToVersion
 			}
 			if groups[key] == nil {
 				groupOrder = append(groupOrder, key)
@@ -536,10 +536,10 @@ func Execute(
 		var entry *store.Entry
 		var mutationErr error
 		if reconcileOnly {
-			entry, mutationErr = storage.Get(first.Coordinate, first.ToVersion)
+			entry, mutationErr = storage.Get(first.SkillID, first.ToVersion)
 		} else {
 			var artifact *hub.Artifact
-			artifact, mutationErr = client.Fetch(ctx, first.Coordinate, first.ToVersion)
+			artifact, mutationErr = client.Fetch(ctx, first.SkillID, first.ToVersion)
 			if mutationErr == nil && artifact.Info.Version != first.ToVersion {
 				mutationErr = fmt.Errorf("Hub returned unexpected update version %s", artifact.Info.Version)
 			}
@@ -605,7 +605,7 @@ func Execute(
 
 func findInstallation(installations []install.Installation, request TargetRequest) (install.Installation, error) {
 	for _, installation := range installations {
-		if installation.Coordinate == request.Coordinate &&
+		if installation.SkillID == request.SkillID &&
 			installation.Version == request.Version &&
 			installation.Target.Scope == request.Scope &&
 			installation.Target.Agent == request.Agent &&
@@ -636,7 +636,7 @@ func validateCompletePhysicalBindings(
 					chosen.Target.Path,
 				)
 			}
-			if binding.Coordinate != chosen.Coordinate || binding.Version != chosen.Version {
+			if binding.SkillID != chosen.SkillID || binding.Version != chosen.Version {
 				return fmt.Errorf("shared Update Target %s has inconsistent receipts", chosen.Target.Path)
 			}
 		}
@@ -681,7 +681,7 @@ func validateCompleteWorkspaceBindings(
 					samePath(candidateRequest.ProjectRoot, request.ProjectRoot) &&
 					candidate.Target.Agent == agentID &&
 					candidate.Name == chosen.Name &&
-					candidate.Coordinate == chosen.Coordinate {
+					candidate.SkillID == chosen.SkillID {
 					found = true
 					break
 				}
@@ -710,18 +710,18 @@ func pathWithin(path, root string) bool {
 
 func validateResolvedPhysicalBindings(items []Item) error {
 	type resolution struct {
-		coordinate string
-		toVersion  string
-		action     Action
+		skillID   string
+		toVersion string
+		action    Action
 	}
 	byPath := map[string]resolution{}
 	byWorkspaceSkill := map[string]resolution{}
 	for _, item := range items {
 		path := filepath.Clean(item.Target.Path)
 		current := resolution{
-			coordinate: item.Coordinate,
-			toVersion:  item.ToVersion,
-			action:     item.Action,
+			skillID:   item.SkillID,
+			toVersion: item.ToVersion,
+			action:    item.Action,
 		}
 		if previous, ok := byPath[path]; ok && previous != current {
 			return fmt.Errorf(

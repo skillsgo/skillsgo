@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Exercises Store put/get with immutable Hub and Local Skill artifacts, conflicting archives, explicit exports, and hostile identities.
+ * [INPUT]: Exercises Store put/get with immutable Hub and Local Skill artifacts, conflicting archives, explicit exports, and hostile Skill IDs.
  * [OUTPUT]: Specifies idempotent Hub/local storage, private export, risk-only assessment refresh, local-tamper/content/archive digest conflicts, ZIP-slip defense, root containment, and exact retrieval.
  * [POS]: Serves as behavior coverage for the Content-addressed Store boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -68,8 +68,8 @@ func TestImportAndExportLocalSkillPreservesPrivateContent(t *testing.T) {
 	if entry.Receipt.EffectiveProvenance() != ProvenanceLocal || entry.Receipt.Name != "private-demo" {
 		t.Fatalf("unexpected Local receipt: %#v", entry.Receipt)
 	}
-	if !strings.HasPrefix(entry.Receipt.Coordinate, "local.skillsgo/") || !strings.HasPrefix(entry.Receipt.Version, "local-") {
-		t.Fatalf("unexpected Local identity: %#v", entry.Receipt)
+	if !strings.HasPrefix(entry.Receipt.SkillID, "local.skillsgo/") || !strings.HasPrefix(entry.Receipt.Version, "local-") {
+		t.Fatalf("unexpected Local Skill ID: %#v", entry.Receipt)
 	}
 	if err := os.Chtimes(filepath.Join(sourceRoot, "SKILL.md"), time.Now().Add(-time.Hour), time.Now().Add(time.Hour)); err != nil {
 		t.Fatal(err)
@@ -82,7 +82,7 @@ func TestImportAndExportLocalSkillPreservesPrivateContent(t *testing.T) {
 		t.Fatalf("source content changed during import: %s != %s (%v)", after, before, err)
 	}
 	destination := filepath.Join(root, "private-demo.zip")
-	if err := storage.ExportLocal(entry.Receipt.Coordinate, entry.Receipt.Version, destination); err != nil {
+	if err := storage.ExportLocal(entry.Receipt.SkillID, entry.Receipt.Version, destination); err != nil {
 		t.Fatal(err)
 	}
 	archive, err := zip.OpenReader(destination)
@@ -138,7 +138,7 @@ func TestPutRefreshesRiskButRejectsChangedContentIdentity(t *testing.T) {
 	if refreshed.Receipt.Risk != hub.RiskCritical {
 		t.Fatalf("cached assessment was not refreshed: %s", refreshed.Receipt.Risk)
 	}
-	loaded, err := storage.Get(artifact.Coordinate, artifact.Info.Version)
+	loaded, err := storage.Get(artifact.SkillID, artifact.Info.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +154,7 @@ func TestPutRefreshesRiskButRejectsChangedContentIdentity(t *testing.T) {
 
 func TestPutRejectsZipSlip(t *testing.T) {
 	artifact := testArtifact(t, map[string]string{"SKILL.md": "ok"})
-	artifact.ZIP = testArchive(t, artifact.Coordinate, artifact.Info.Version, map[string]string{
+	artifact.ZIP = testArchive(t, artifact.SkillID, artifact.Info.Version, map[string]string{
 		"../escape": "bad",
 		"SKILL.md":  "ok",
 	})
@@ -171,14 +171,14 @@ func TestGetReturnsExistingImmutableEntry(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := storage.Get(artifact.Coordinate, artifact.Info.Version)
+	got, err := storage.Get(artifact.SkillID, artifact.Info.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got.Root != put.Root || got.Receipt.SHA256 != put.Receipt.SHA256 {
 		t.Fatalf("unexpected entry: %#v", got)
 	}
-	if _, err := storage.Get(artifact.Coordinate, "missing"); err != ErrNotFound {
+	if _, err := storage.Get(artifact.SkillID, "missing"); err != ErrNotFound {
 		t.Fatalf("expected ErrNotFound, got %v", err)
 	}
 }
@@ -193,7 +193,7 @@ func TestGetRejectsLocallyModifiedStoreArtifact(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(entry.Artifact, "SKILL.md"), []byte("tampered"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := storage.Get(artifact.Coordinate, artifact.Info.Version); err == nil {
+	if _, err := storage.Get(artifact.SkillID, artifact.Info.Version); err == nil {
 		t.Fatal("expected modified Store artifact rejection")
 	}
 }
@@ -208,10 +208,10 @@ func TestRefreshAssessmentRejectsChangedImmutableOrigin(t *testing.T) {
 	changed := artifact.Info
 	changed.Risk = hub.RiskHigh
 	changed.Origin.CommitSHA = "two"
-	if _, err := storage.RefreshAssessment(artifact.Coordinate, artifact.Info.Version, changed); err == nil {
+	if _, err := storage.RefreshAssessment(artifact.SkillID, artifact.Info.Version, changed); err == nil {
 		t.Fatal("expected immutable Origin change rejection")
 	}
-	loaded, err := storage.Get(artifact.Coordinate, artifact.Info.Version)
+	loaded, err := storage.Get(artifact.SkillID, artifact.Info.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,39 +220,39 @@ func TestRefreshAssessmentRejectsChangedImmutableOrigin(t *testing.T) {
 	}
 }
 
-func TestStoreRejectsCoordinateAndVersionTraversal(t *testing.T) {
+func TestStoreRejectsSkillIDAndVersionTraversal(t *testing.T) {
 	root := t.TempDir()
 	storage := Store{Root: filepath.Join(root, "store")}
 	for name, mutate := range map[string]func(*hub.Artifact){
-		"coordinate": func(artifact *hub.Artifact) { artifact.Coordinate = "github.com/owner/repo/-/../escape" },
-		"version":    func(artifact *hub.Artifact) { artifact.Info.Version = "../../escape" },
+		"skillId": func(artifact *hub.Artifact) { artifact.SkillID = "github.com/owner/repo/-/../escape" },
+		"version": func(artifact *hub.Artifact) { artifact.Info.Version = "../../escape" },
 	} {
 		t.Run(name, func(t *testing.T) {
 			artifact := testArtifact(t, map[string]string{"SKILL.md": "demo"})
 			mutate(artifact)
 			if _, err := storage.Put(artifact); err == nil {
-				t.Fatal("expected Store identity traversal rejection")
+				t.Fatal("expected Store Skill ID traversal rejection")
 			}
 			if _, err := os.Stat(filepath.Join(root, "escape")); !os.IsNotExist(err) {
-				t.Fatalf("Store identity escaped configured root: %v", err)
+				t.Fatalf("Store Skill ID escaped configured root: %v", err)
 			}
 		})
 	}
 	if _, err := storage.Get("github.com/owner/repo/-/../../escape", "v1"); err == nil {
-		t.Fatal("expected hostile Get coordinate rejection")
+		t.Fatal("expected hostile Get Skill ID rejection")
 	}
 }
 
 func testArtifact(t *testing.T, files map[string]string) *hub.Artifact {
 	t.Helper()
-	coordinate, version := "github.com/example/repo/-/skills/demo", "v0.0.0-test"
-	archive := testArchive(t, coordinate, version, files)
-	contentDigest, err := hub.ContentDigest(archive, coordinate, version)
+	skillID, version := "github.com/example/repo/-/skills/demo", "v0.0.0-test"
+	archive := testArchive(t, skillID, version, files)
+	contentDigest, err := hub.ContentDigest(archive, skillID, version)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return &hub.Artifact{
-		Coordinate: coordinate,
+		SkillID: skillID,
 		Info: hub.Info{
 			Version: version, Risk: hub.RiskLow, ContentDigest: contentDigest,
 		},
@@ -260,12 +260,12 @@ func testArtifact(t *testing.T, files map[string]string) *hub.Artifact {
 	}
 }
 
-func testArchive(t *testing.T, coordinate, version string, files map[string]string) []byte {
+func testArchive(t *testing.T, skillID, version string, files map[string]string) []byte {
 	t.Helper()
 	var buffer bytes.Buffer
 	writer := zip.NewWriter(&buffer)
 	for name, content := range files {
-		entry, err := writer.Create(coordinate + "@" + version + "/" + name)
+		entry, err := writer.Create(skillID + "@" + version + "/" + name)
 		if err != nil {
 			t.Fatal(err)
 		}

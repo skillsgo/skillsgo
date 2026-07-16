@@ -25,9 +25,9 @@ type SkillCreate struct {
 	conflict []sql.ConflictOption
 }
 
-// SetCoordinate sets the "coordinate" field.
-func (_c *SkillCreate) SetCoordinate(v string) *SkillCreate {
-	_c.mutation.SetCoordinate(v)
+// SetSkillID sets the "skill_id" field.
+func (_c *SkillCreate) SetSkillID(v string) *SkillCreate {
+	_c.mutation.SetSkillID(v)
 	return _c
 }
 
@@ -229,12 +229,12 @@ func (_c *SkillCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *SkillCreate) check() error {
-	if _, ok := _c.mutation.Coordinate(); !ok {
-		return &ValidationError{Name: "coordinate", err: errors.New(`ent: missing required field "Skill.coordinate"`)}
+	if _, ok := _c.mutation.SkillID(); !ok {
+		return &ValidationError{Name: "skill_id", err: errors.New(`ent: missing required field "Skill.skill_id"`)}
 	}
-	if v, ok := _c.mutation.Coordinate(); ok {
-		if err := skill.CoordinateValidator(v); err != nil {
-			return &ValidationError{Name: "coordinate", err: fmt.Errorf(`ent: validator failed for field "Skill.coordinate": %w`, err)}
+	if v, ok := _c.mutation.SkillID(); ok {
+		if err := skill.SkillIDValidator(v); err != nil {
+			return &ValidationError{Name: "skill_id", err: fmt.Errorf(`ent: validator failed for field "Skill.skill_id": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.Name(); !ok {
@@ -300,9 +300,9 @@ func (_c *SkillCreate) createSpec() (*Skill, *sqlgraph.CreateSpec) {
 		_node.ID = id
 		_spec.ID.Value = id
 	}
-	if value, ok := _c.mutation.Coordinate(); ok {
-		_spec.SetField(skill.FieldCoordinate, field.TypeString, value)
-		_node.Coordinate = value
+	if value, ok := _c.mutation.SkillID(); ok {
+		_spec.SetField(skill.FieldSkillID, field.TypeString, value)
+		_node.SkillID = value
 	}
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(skill.FieldName, field.TypeString, value)
@@ -399,7 +399,7 @@ func (_c *SkillCreate) createSpec() (*Skill, *sqlgraph.CreateSpec) {
 // of the `INSERT` statement. For example:
 //
 //	client.Skill.Create().
-//		SetCoordinate(v).
+//		SetSkillID(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -408,7 +408,7 @@ func (_c *SkillCreate) createSpec() (*Skill, *sqlgraph.CreateSpec) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.SkillUpsert) {
-//			SetCoordinate(v+v).
+//			SetSkillID(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *SkillCreate) OnConflict(opts ...sql.ConflictOption) *SkillUpsertOne {
@@ -444,15 +444,15 @@ type (
 	}
 )
 
-// SetCoordinate sets the "coordinate" field.
-func (u *SkillUpsert) SetCoordinate(v string) *SkillUpsert {
-	u.Set(skill.FieldCoordinate, v)
+// SetSkillID sets the "skill_id" field.
+func (u *SkillUpsert) SetSkillID(v string) *SkillUpsert {
+	u.Set(skill.FieldSkillID, v)
 	return u
 }
 
-// UpdateCoordinate sets the "coordinate" field to the value that was provided on create.
-func (u *SkillUpsert) UpdateCoordinate() *SkillUpsert {
-	u.SetExcluded(skill.FieldCoordinate)
+// UpdateSkillID sets the "skill_id" field to the value that was provided on create.
+func (u *SkillUpsert) UpdateSkillID() *SkillUpsert {
+	u.SetExcluded(skill.FieldSkillID)
 	return u
 }
 
@@ -630,17 +630,17 @@ func (u *SkillUpsertOne) Update(set func(*SkillUpsert)) *SkillUpsertOne {
 	return u
 }
 
-// SetCoordinate sets the "coordinate" field.
-func (u *SkillUpsertOne) SetCoordinate(v string) *SkillUpsertOne {
+// SetSkillID sets the "skill_id" field.
+func (u *SkillUpsertOne) SetSkillID(v string) *SkillUpsertOne {
 	return u.Update(func(s *SkillUpsert) {
-		s.SetCoordinate(v)
+		s.SetSkillID(v)
 	})
 }
 
-// UpdateCoordinate sets the "coordinate" field to the value that was provided on create.
-func (u *SkillUpsertOne) UpdateCoordinate() *SkillUpsertOne {
+// UpdateSkillID sets the "skill_id" field to the value that was provided on create.
+func (u *SkillUpsertOne) UpdateSkillID() *SkillUpsertOne {
 	return u.Update(func(s *SkillUpsert) {
-		s.UpdateCoordinate()
+		s.UpdateSkillID()
 	})
 }
 
@@ -926,7 +926,7 @@ func (_c *SkillCreateBulk) ExecX(ctx context.Context) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.SkillUpsert) {
-//			SetCoordinate(v+v).
+//			SetSkillID(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *SkillCreateBulk) OnConflict(opts ...sql.ConflictOption) *SkillUpsertBulk {
@@ -1005,17 +1005,17 @@ func (u *SkillUpsertBulk) Update(set func(*SkillUpsert)) *SkillUpsertBulk {
 	return u
 }
 
-// SetCoordinate sets the "coordinate" field.
-func (u *SkillUpsertBulk) SetCoordinate(v string) *SkillUpsertBulk {
+// SetSkillID sets the "skill_id" field.
+func (u *SkillUpsertBulk) SetSkillID(v string) *SkillUpsertBulk {
 	return u.Update(func(s *SkillUpsert) {
-		s.SetCoordinate(v)
+		s.SetSkillID(v)
 	})
 }
 
-// UpdateCoordinate sets the "coordinate" field to the value that was provided on create.
-func (u *SkillUpsertBulk) UpdateCoordinate() *SkillUpsertBulk {
+// UpdateSkillID sets the "skill_id" field to the value that was provided on create.
+func (u *SkillUpsertBulk) UpdateSkillID() *SkillUpsertBulk {
 	return u.Update(func(s *SkillUpsert) {
-		s.UpdateCoordinate()
+		s.UpdateSkillID()
 	})
 }
 

@@ -34,11 +34,11 @@ func TestExplicitInstallationPlanPreflightsExecutesAndSkipsExactTargets(t *testi
 	require.NoError(t, os.MkdirAll(projectRoot, 0o700))
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-	coordinate, version := "github.com/example/skills/-/demo", "v1"
-	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{
+	skillID, version := "github.com/example/skills/-/demo", "v1"
+	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{
 		"SKILL.md": "---\nname: demo\ndescription: exact targets\n---\n",
 	})
-	contentDigest, err := hub.ContentDigest(zipData, coordinate, version)
+	contentDigest, err := hub.ContentDigest(zipData, skillID, version)
 	require.NoError(t, err)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
@@ -58,7 +58,7 @@ func TestExplicitInstallationPlanPreflightsExecutesAndSkipsExactTargets(t *testi
 		fmt.Sprintf(`{"scope":"project","projectRoot":%q,"agent":"test-agent","mode":"symlink"}`, projectRoot),
 	}
 
-	preflightArgs := []string{"add", coordinate, "--skill", "demo"}
+	preflightArgs := []string{"add", skillID, "--skill", "demo"}
 	for _, target := range targets {
 		preflightArgs = append(preflightArgs, "--target", target)
 	}
@@ -77,7 +77,7 @@ func TestExplicitInstallationPlanPreflightsExecutesAndSkipsExactTargets(t *testi
 	require.Equal(t, projectRoot, preflight.Targets[1].Target.ProjectRoot)
 	require.NoFileExists(t, filepath.Join(projectRoot, ".test-agent", "skills", "demo", "SKILL.md"))
 
-	executeArgs := []string{"add", coordinate, "--skill", "demo"}
+	executeArgs := []string{"add", skillID, "--skill", "demo"}
 	for _, target := range targets {
 		executeArgs = append(executeArgs, "--target", target)
 	}
@@ -123,11 +123,11 @@ func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
 	require.NoError(t, os.MkdirAll(agentHome, 0o700))
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-	coordinate, version := "github.com/example/skills/-/demo", "v1"
-	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{
+	skillID, version := "github.com/example/skills/-/demo", "v1"
+	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{
 		"SKILL.md": "---\nname: demo\ndescription: assessment refresh\n---\n",
 	})
-	contentDigest, err := hub.ContentDigest(zipData, coordinate, version)
+	contentDigest, err := hub.ContentDigest(zipData, skillID, version)
 	require.NoError(t, err)
 	risk := "low"
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -146,7 +146,7 @@ func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
 	target := `{"scope":"user","agent":"test-agent","mode":"symlink"}`
 	preflight := func(extra ...string) plan.Preflight {
 		arguments := []string{
-			"add", coordinate, "--skill", "demo", "--target", target,
+			"add", skillID, "--skill", "demo", "--target", target,
 			"--preflight", "--hub", server.URL, "--output", "json",
 		}
 		arguments = append(arguments, extra...)
@@ -175,11 +175,11 @@ func TestExplicitInstallationNDJSONReportsEveryTargetAndRetainsSuccess(t *testin
 	require.NoError(t, os.MkdirAll(projectRoot, 0o700))
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-	coordinate, version := "github.com/example/skills/-/demo", "v1"
-	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{
+	skillID, version := "github.com/example/skills/-/demo", "v1"
+	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{
 		"SKILL.md": "---\nname: demo\ndescription: partial execution\n---\n",
 	})
-	contentDigest, err := hub.ContentDigest(zipData, coordinate, version)
+	contentDigest, err := hub.ContentDigest(zipData, skillID, version)
 	require.NoError(t, err)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
@@ -195,7 +195,7 @@ func TestExplicitInstallationNDJSONReportsEveryTargetAndRetainsSuccess(t *testin
 	}))
 	defer server.Close()
 	arguments := []string{
-		"add", coordinate, "--skill", "demo",
+		"add", skillID, "--skill", "demo",
 		"--target", `{"scope":"user","agent":"test-agent","mode":"copy"}`,
 		"--target", fmt.Sprintf(`{"scope":"project","projectRoot":%q,"agent":"test-agent","mode":"copy"}`, projectRoot),
 		"--version", version, "--yes", "--output", "ndjson", "--hub", server.URL,

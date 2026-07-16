@@ -24,9 +24,9 @@ import (
 )
 
 func TestAddListRemoveFlow(t *testing.T) {
-	coordinate, version := "github.com/example/skills/-/skills/demo", "v0.0.0-test"
-	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: demo\ndescription: test\n---\n"})
-	contentDigest := commandTestContentDigest(t, zipData, coordinate, version)
+	skillID, version := "github.com/example/skills/-/skills/demo", "v0.0.0-test"
+	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: demo\ndescription: test\n---\n"})
+	contentDigest := commandTestContentDigest(t, zipData, skillID, version)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
 		case strings.HasSuffix(request.URL.Path, "/main.info"):
@@ -45,7 +45,7 @@ func TestAddListRemoveFlow(t *testing.T) {
 	home := filepath.Join(t.TempDir(), "home")
 	t.Setenv("HOME", home)
 	var output bytes.Buffer
-	if err := Execute([]string{"add", coordinate, "--skill", "demo", "--agent", "codex", "--global", "--hub", server.URL, "--output", "json"}, &output, &output); err != nil {
+	if err := Execute([]string{"add", skillID, "--skill", "demo", "--agent", "codex", "--global", "--hub", server.URL, "--output", "json"}, &output, &output); err != nil {
 		t.Fatal(err)
 	}
 	target := filepath.Join(home, ".codex", "skills", "demo")
@@ -84,9 +84,9 @@ func TestAddRequiresConfirmationForHubAssessedRisk(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			coordinate, version := "github.com/example/skills/-/skills/risky", "v1"
-			zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: risky\ndescription: test\n---\n"})
-			contentDigest := commandTestContentDigest(t, zipData, coordinate, version)
+			skillID, version := "github.com/example/skills/-/skills/risky", "v1"
+			zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: risky\ndescription: test\n---\n"})
+			contentDigest := commandTestContentDigest(t, zipData, skillID, version)
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 				switch {
 				case strings.HasSuffix(request.URL.Path, "/main.info"):
@@ -103,7 +103,7 @@ func TestAddRequiresConfirmationForHubAssessedRisk(t *testing.T) {
 
 			home := filepath.Join(t.TempDir(), "home")
 			t.Setenv("HOME", home)
-			arguments := []string{"add", coordinate, "--skill", "risky", "--agent", "codex", "--global", "--hub", server.URL}
+			arguments := []string{"add", skillID, "--skill", "risky", "--agent", "codex", "--global", "--hub", server.URL}
 			arguments = append(arguments, test.flags...)
 			var output bytes.Buffer
 			err := Execute(arguments, &output, &output)
@@ -165,9 +165,9 @@ func commandTestZIP(t *testing.T, prefix string, files map[string]string) []byte
 	return buffer.Bytes()
 }
 
-func commandTestContentDigest(t *testing.T, data []byte, coordinate, version string) string {
+func commandTestContentDigest(t *testing.T, data []byte, skillID, version string) string {
 	t.Helper()
-	digest, err := hub.ContentDigest(data, coordinate, version)
+	digest, err := hub.ContentDigest(data, skillID, version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,12 +182,12 @@ func TestInstallRestoresFromStoreWithoutHub(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("HOME", home)
-	coordinate, version := "github.com/example/skills/-/skills/offline", "v0.0.0-offline"
-	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: offline\ndescription: test\n---\n"})
+	skillID, version := "github.com/example/skills/-/skills/offline", "v0.0.0-offline"
+	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: offline\ndescription: test\n---\n"})
 	artifact := &hub.Artifact{
-		Coordinate: coordinate,
+		SkillID: skillID,
 		Info: hub.Info{
-			Version: version, Risk: hub.RiskLow, ContentDigest: commandTestContentDigest(t, zipData, coordinate, version),
+			Version: version, Risk: hub.RiskLow, ContentDigest: commandTestContentDigest(t, zipData, skillID, version),
 			Origin: hub.Origin{VCS: "git", CommitSHA: "abc", TreeSHA: "def"},
 		},
 		Manifest: []byte("name: offline\ndescription: test\n"),
@@ -197,7 +197,7 @@ func TestInstallRestoresFromStoreWithoutHub(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Upsert(projectRoot, "offline", project.SkillRequirement{Source: coordinate, Agents: []string{"codex"}, Mode: install.ModeSymlink}, entry.Receipt); err != nil {
+	if err := project.Upsert(projectRoot, "offline", project.SkillRequirement{Source: skillID, Agents: []string{"codex"}, Mode: install.ModeSymlink}, entry.Receipt); err != nil {
 		t.Fatal(err)
 	}
 	oldCWD, err := os.Getwd()
@@ -224,12 +224,12 @@ func TestUpdateSwitchesTargetAndLockToNewVersion(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("HOME", home)
-	coordinate := "github.com/example/skills/-/skills/demo"
-	oldZIP := commandTestZIP(t, coordinate+"@v1/", map[string]string{"SKILL.md": "old"})
+	skillID := "github.com/example/skills/-/skills/demo"
+	oldZIP := commandTestZIP(t, skillID+"@v1/", map[string]string{"SKILL.md": "old"})
 	oldArtifact := &hub.Artifact{
-		Coordinate: coordinate,
+		SkillID: skillID,
 		Info: hub.Info{
-			Version: "v1", Risk: hub.RiskLow, ContentDigest: commandTestContentDigest(t, oldZIP, coordinate, "v1"),
+			Version: "v1", Risk: hub.RiskLow, ContentDigest: commandTestContentDigest(t, oldZIP, skillID, "v1"),
 			Origin: hub.Origin{VCS: "git", Ref: "main", CommitSHA: "old", TreeSHA: "old-tree"},
 		},
 		Manifest: []byte("name: demo\n"),
@@ -240,15 +240,15 @@ func TestUpdateSwitchesTargetAndLockToNewVersion(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Upsert(projectRoot, "demo", project.SkillRequirement{Source: coordinate, Ref: "main", Agents: []string{"codex"}, Mode: install.ModeSymlink}, oldEntry.Receipt); err != nil {
+	if err := project.Upsert(projectRoot, "demo", project.SkillRequirement{Source: skillID, Ref: "main", Agents: []string{"codex"}, Mode: install.ModeSymlink}, oldEntry.Receipt); err != nil {
 		t.Fatal(err)
 	}
 	target := install.Target{Agent: "codex", Scope: install.ScopeProject, Mode: install.ModeSymlink, Path: filepath.Join(projectRoot, ".agents", "skills", "demo")}
 	if err := install.Install(oldEntry, []install.Target{target}); err != nil {
 		t.Fatal(err)
 	}
-	newZIP := commandTestZIP(t, coordinate+"@v2/", map[string]string{"SKILL.md": "new"})
-	newDigest := commandTestContentDigest(t, newZIP, coordinate, "v2")
+	newZIP := commandTestZIP(t, skillID+"@v2/", map[string]string{"SKILL.md": "new"})
+	newDigest := commandTestContentDigest(t, newZIP, skillID, "v2")
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
 		case strings.HasSuffix(request.URL.Path, "/main.info"):
@@ -297,20 +297,20 @@ func TestAddReplaceChangesSourceAndRemovesObsoleteAgentBindings(t *testing.T) {
 		t.Fatal(err)
 	}
 	t.Setenv("HOME", home)
-	oldCoordinate := "github.com/old/skills/-/skills/demo"
-	oldZIP := commandTestZIP(t, oldCoordinate+"@v1/", map[string]string{"SKILL.md": "old"})
+	oldSkillID := "github.com/old/skills/-/skills/demo"
+	oldZIP := commandTestZIP(t, oldSkillID+"@v1/", map[string]string{"SKILL.md": "old"})
 	oldArtifact := &hub.Artifact{
-		Coordinate: oldCoordinate,
-		Info:       hub.Info{Version: "v1", Risk: hub.RiskLow, ContentDigest: commandTestContentDigest(t, oldZIP, oldCoordinate, "v1")},
-		Manifest:   []byte("name: demo\n"),
-		ZIP:        oldZIP,
+		SkillID:  oldSkillID,
+		Info:     hub.Info{Version: "v1", Risk: hub.RiskLow, ContentDigest: commandTestContentDigest(t, oldZIP, oldSkillID, "v1")},
+		Manifest: []byte("name: demo\n"),
+		ZIP:      oldZIP,
 	}
 	storage := store.Store{Root: store.DefaultRoot(home)}
 	oldEntry, err := storage.Put(oldArtifact)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := project.Upsert(projectRoot, "demo", project.SkillRequirement{Source: oldCoordinate, Ref: "main", Agents: []string{"codex", "claude-code"}, Mode: install.ModeSymlink}, oldEntry.Receipt); err != nil {
+	if err := project.Upsert(projectRoot, "demo", project.SkillRequirement{Source: oldSkillID, Ref: "main", Agents: []string{"codex", "claude-code"}, Mode: install.ModeSymlink}, oldEntry.Receipt); err != nil {
 		t.Fatal(err)
 	}
 	codexTarget := install.Target{Agent: "codex", Scope: install.ScopeProject, Mode: install.ModeSymlink, Path: filepath.Join(projectRoot, ".agents", "skills", "demo")}
@@ -318,9 +318,9 @@ func TestAddReplaceChangesSourceAndRemovesObsoleteAgentBindings(t *testing.T) {
 	if err := install.Install(oldEntry, []install.Target{codexTarget, claudeTarget}); err != nil {
 		t.Fatal(err)
 	}
-	newCoordinate := "github.com/new/skills/-/skills/demo"
-	newZIP := commandTestZIP(t, newCoordinate+"@v2/", map[string]string{"SKILL.md": "new"})
-	newDigest := commandTestContentDigest(t, newZIP, newCoordinate, "v2")
+	newSkillID := "github.com/new/skills/-/skills/demo"
+	newZIP := commandTestZIP(t, newSkillID+"@v2/", map[string]string{"SKILL.md": "new"})
+	newDigest := commandTestContentDigest(t, newZIP, newSkillID, "v2")
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
 		case strings.HasSuffix(request.URL.Path, "/main.info"):
@@ -343,7 +343,7 @@ func TestAddReplaceChangesSourceAndRemovesObsoleteAgentBindings(t *testing.T) {
 	}
 	defer os.Chdir(oldCWD)
 	var output bytes.Buffer
-	if err := Execute([]string{"add", newCoordinate, "--skill", "demo", "--agent", "codex", "--replace", "--hub", server.URL}, &output, &output); err != nil {
+	if err := Execute([]string{"add", newSkillID, "--skill", "demo", "--agent", "codex", "--replace", "--hub", server.URL}, &output, &output); err != nil {
 		t.Fatalf("replace failed: %v\n%s", err, output.String())
 	}
 	contents, err := os.ReadFile(filepath.Join(codexTarget.Path, "SKILL.md"))
@@ -358,10 +358,10 @@ func TestAddReplaceChangesSourceAndRemovesObsoleteAgentBindings(t *testing.T) {
 		t.Fatal(err)
 	}
 	requirement := manifest.Skills["demo"]
-	if requirement.Source != newCoordinate || len(requirement.Agents) != 1 || requirement.Agents[0] != "codex" {
+	if requirement.Source != newSkillID || len(requirement.Agents) != 1 || requirement.Agents[0] != "codex" {
 		t.Fatalf("manifest was not replaced: %#v", requirement)
 	}
-	if lockfile.Skills["demo"].Coordinate != newCoordinate {
+	if lockfile.Skills["demo"].SkillID != newSkillID {
 		t.Fatalf("lock source was not replaced: %#v", lockfile.Skills["demo"])
 	}
 }

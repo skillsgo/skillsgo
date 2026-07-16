@@ -19,7 +19,7 @@ func TestMatchContentUsesDigestAndSourceHint(t *testing.T) {
 		if request.URL.Path != "/v1/matches" || request.URL.Query().Get("contentDigest") != digest || request.URL.Query().Get("sourceHint") != "github.com/acme/skills" {
 			t.Fatalf("unexpected match request: %s", request.URL.String())
 		}
-		_, _ = w.Write([]byte(`{"schemaVersion":1,"contentDigest":"` + digest + `","matches":[{"coordinate":"github.com/acme/skills/-/demo","name":"demo","source":"github.com/acme/skills","skillPath":"demo","immutableVersion":"v1","commitSHA":"commit","treeSHA":"tree","contentDigest":"` + digest + `"}]}`))
+		_, _ = w.Write([]byte(`{"schemaVersion":1,"contentDigest":"` + digest + `","matches":[{"skillId":"github.com/acme/skills/-/demo","name":"demo","source":"github.com/acme/skills","skillPath":"demo","immutableVersion":"v1","commitSHA":"commit","treeSHA":"tree","contentDigest":"` + digest + `"}]}`))
 	}))
 	defer server.Close()
 	client, err := New(server.URL, server.Client())

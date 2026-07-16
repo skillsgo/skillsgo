@@ -43,15 +43,15 @@ func TestPostgresCatalog(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 
-	skill := &Skill{Coordinate: "github.com/op7418/guizang-ppt-skill", Name: "guizang-ppt", Description: "Create presentation slides", LatestVersion: "main"}
+	skill := &Skill{SkillID: "github.com/op7418/guizang-ppt-skill", Name: "guizang-ppt", Description: "Create presentation slides", LatestVersion: "main"}
 	for _, item := range []*Skill{
 		skill,
-		{Coordinate: "github.com/acme/presentation-a", Name: "presentation-a", Description: "Presentation capability", LatestVersion: "main"},
-		{Coordinate: "github.com/acme/presentation-b", Name: "presentation-b", Description: "Presentation capability", LatestVersion: "main"},
+		{SkillID: "github.com/acme/presentation-a", Name: "presentation-a", Description: "Presentation capability", LatestVersion: "main"},
+		{SkillID: "github.com/acme/presentation-b", Name: "presentation-b", Description: "Presentation capability", LatestVersion: "main"},
 	} {
 		require.NoError(t, c.UpsertSkill(ctx, item))
 	}
-	version, err := c.RecordSkillVersion(ctx, skill.Coordinate, SkillVersion{
+	version, err := c.RecordSkillVersion(ctx, skill.SkillID, SkillVersion{
 		Version: "v1.0.0", CommitSHA: "commit-a", TreeSHA: "tree-a", ContentDigest: "sha256:artifact-a",
 	})
 	require.NoError(t, err)
@@ -70,7 +70,7 @@ func TestPostgresCatalog(t *testing.T) {
 	next, err := c.Search(ctx, "presentation", 2, 2)
 	require.NoError(t, err)
 	require.Len(t, next, 1)
-	inserted, err := c.RecordInstall(ctx, InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", Coordinate: skill.Coordinate, Version: "main", Agents: []string{"codex"}, Scope: "project", CLIVersion: "0.1.0", OccurredAt: time.Now().UTC()})
+	inserted, err := c.RecordInstall(ctx, InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", SkillID: skill.SkillID, Version: "main", Agents: []string{"codex"}, Scope: "project", CLIVersion: "0.1.0", OccurredAt: time.Now().UTC()})
 	require.NoError(t, err)
 	require.True(t, inserted)
 	ranked, err := c.RankedSkills(ctx, "hot", 10, 0, time.Now().UTC())

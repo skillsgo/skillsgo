@@ -31,16 +31,16 @@ func (_u *SkillUpdate) Where(ps ...predicate.Skill) *SkillUpdate {
 	return _u
 }
 
-// SetCoordinate sets the "coordinate" field.
-func (_u *SkillUpdate) SetCoordinate(v string) *SkillUpdate {
-	_u.mutation.SetCoordinate(v)
+// SetSkillID sets the "skill_id" field.
+func (_u *SkillUpdate) SetSkillID(v string) *SkillUpdate {
+	_u.mutation.SetSkillID(v)
 	return _u
 }
 
-// SetNillableCoordinate sets the "coordinate" field if the given value is not nil.
-func (_u *SkillUpdate) SetNillableCoordinate(v *string) *SkillUpdate {
+// SetNillableSkillID sets the "skill_id" field if the given value is not nil.
+func (_u *SkillUpdate) SetNillableSkillID(v *string) *SkillUpdate {
 	if v != nil {
-		_u.SetCoordinate(*v)
+		_u.SetSkillID(*v)
 	}
 	return _u
 }
@@ -335,9 +335,9 @@ func (_u *SkillUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *SkillUpdate) check() error {
-	if v, ok := _u.mutation.Coordinate(); ok {
-		if err := skill.CoordinateValidator(v); err != nil {
-			return &ValidationError{Name: "coordinate", err: fmt.Errorf(`ent: validator failed for field "Skill.coordinate": %w`, err)}
+	if v, ok := _u.mutation.SkillID(); ok {
+		if err := skill.SkillIDValidator(v); err != nil {
+			return &ValidationError{Name: "skill_id", err: fmt.Errorf(`ent: validator failed for field "Skill.skill_id": %w`, err)}
 		}
 	}
 	return nil
@@ -355,8 +355,8 @@ func (_u *SkillUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			}
 		}
 	}
-	if value, ok := _u.mutation.Coordinate(); ok {
-		_spec.SetField(skill.FieldCoordinate, field.TypeString, value)
+	if value, ok := _u.mutation.SkillID(); ok {
+		_spec.SetField(skill.FieldSkillID, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(skill.FieldName, field.TypeString, value)
@@ -546,16 +546,16 @@ type SkillUpdateOne struct {
 	mutation *SkillMutation
 }
 
-// SetCoordinate sets the "coordinate" field.
-func (_u *SkillUpdateOne) SetCoordinate(v string) *SkillUpdateOne {
-	_u.mutation.SetCoordinate(v)
+// SetSkillID sets the "skill_id" field.
+func (_u *SkillUpdateOne) SetSkillID(v string) *SkillUpdateOne {
+	_u.mutation.SetSkillID(v)
 	return _u
 }
 
-// SetNillableCoordinate sets the "coordinate" field if the given value is not nil.
-func (_u *SkillUpdateOne) SetNillableCoordinate(v *string) *SkillUpdateOne {
+// SetNillableSkillID sets the "skill_id" field if the given value is not nil.
+func (_u *SkillUpdateOne) SetNillableSkillID(v *string) *SkillUpdateOne {
 	if v != nil {
-		_u.SetCoordinate(*v)
+		_u.SetSkillID(*v)
 	}
 	return _u
 }
@@ -863,9 +863,9 @@ func (_u *SkillUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *SkillUpdateOne) check() error {
-	if v, ok := _u.mutation.Coordinate(); ok {
-		if err := skill.CoordinateValidator(v); err != nil {
-			return &ValidationError{Name: "coordinate", err: fmt.Errorf(`ent: validator failed for field "Skill.coordinate": %w`, err)}
+	if v, ok := _u.mutation.SkillID(); ok {
+		if err := skill.SkillIDValidator(v); err != nil {
+			return &ValidationError{Name: "skill_id", err: fmt.Errorf(`ent: validator failed for field "Skill.skill_id": %w`, err)}
 		}
 	}
 	return nil
@@ -900,8 +900,8 @@ func (_u *SkillUpdateOne) sqlSave(ctx context.Context) (_node *Skill, err error)
 			}
 		}
 	}
-	if value, ok := _u.mutation.Coordinate(); ok {
-		_spec.SetField(skill.FieldCoordinate, field.TypeString, value)
+	if value, ok := _u.mutation.SkillID(); ok {
+		_spec.SetField(skill.FieldSkillID, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(skill.FieldName, field.TypeString, value)

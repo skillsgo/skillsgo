@@ -48,10 +48,10 @@ func init() {
 	riskassessment.DefaultCreatedAt = riskassessmentDescCreatedAt.Default.(func() time.Time)
 	skillFields := schema.Skill{}.Fields()
 	_ = skillFields
-	// skillDescCoordinate is the schema descriptor for coordinate field.
-	skillDescCoordinate := skillFields[1].Descriptor()
-	// skill.CoordinateValidator is a validator for the "coordinate" field. It is called by the builders before save.
-	skill.CoordinateValidator = skillDescCoordinate.Validators[0].(func(string) error)
+	// skillDescSkillID is the schema descriptor for skill_id field.
+	skillDescSkillID := skillFields[1].Descriptor()
+	// skill.SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
+	skill.SkillIDValidator = skillDescSkillID.Validators[0].(func(string) error)
 	// skillDescGithubStars is the schema descriptor for github_stars field.
 	skillDescGithubStars := skillFields[8].Descriptor()
 	// skill.DefaultGithubStars holds the default value on creation for the github_stars field.

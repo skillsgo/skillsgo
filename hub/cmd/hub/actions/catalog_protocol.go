@@ -38,28 +38,28 @@ type catalogManifest struct {
 	Description string `yaml:"description"`
 }
 
-func (p *catalogProtocol) Info(ctx context.Context, coordinate, version string) ([]byte, error) {
-	info, err := p.Protocol.Info(ctx, coordinate, version)
+func (p *catalogProtocol) Info(ctx context.Context, skillID, version string) ([]byte, error) {
+	info, err := p.Protocol.Info(ctx, skillID, version)
 	if err != nil {
 		return nil, err
 	}
-	assessed, err := p.bindAssessment(ctx, coordinate, info, nil)
+	assessed, err := p.bindAssessment(ctx, skillID, info, nil)
 	if err != nil {
 		return nil, err
 	}
-	if err := p.index(ctx, coordinate, assessed, nil); err != nil {
+	if err := p.index(ctx, skillID, assessed, nil); err != nil {
 		return nil, err
 	}
 	return assessed, nil
 }
 
-func (p *catalogProtocol) bindAssessment(ctx context.Context, coordinate string, infoBytes, archiveBytes []byte) ([]byte, error) {
+func (p *catalogProtocol) bindAssessment(ctx context.Context, skillID string, infoBytes, archiveBytes []byte) ([]byte, error) {
 	var info catalogArtifactInfo
 	if err := json.Unmarshal(infoBytes, &info); err != nil || info.Version == "" {
 		return nil, fmt.Errorf("decode Skill info for assessment: Version is required")
 	}
 	if archiveBytes == nil {
-		archive, err := p.Protocol.Zip(ctx, coordinate, info.Version)
+		archive, err := p.Protocol.Zip(ctx, skillID, info.Version)
 		if err != nil {
 			return nil, fmt.Errorf("read Skill archive for assessment: %w", err)
 		}
@@ -68,7 +68,7 @@ func (p *catalogProtocol) bindAssessment(ctx context.Context, coordinate string,
 			return nil, err
 		}
 	}
-	analysis, err := audit.AnalyzeArtifact(archiveBytes, coordinate, info.Version)
+	analysis, err := audit.AnalyzeArtifact(archiveBytes, skillID, info.Version)
 	if err != nil {
 		return nil, fmt.Errorf("assess Skill archive: %w", err)
 	}
@@ -85,27 +85,27 @@ func (p *catalogProtocol) bindAssessment(ctx context.Context, coordinate string,
 	return encoded, nil
 }
 
-func (p *catalogProtocol) Manifest(ctx context.Context, coordinate, version string) ([]byte, error) {
-	manifest, err := p.Protocol.Manifest(ctx, coordinate, version)
+func (p *catalogProtocol) Manifest(ctx context.Context, skillID, version string) ([]byte, error) {
+	manifest, err := p.Protocol.Manifest(ctx, skillID, version)
 	if err != nil {
 		return nil, err
 	}
-	info, err := p.Protocol.Info(ctx, coordinate, version)
+	info, err := p.Protocol.Info(ctx, skillID, version)
 	if err != nil {
 		return nil, err
 	}
-	assessed, err := p.bindAssessment(ctx, coordinate, info, nil)
+	assessed, err := p.bindAssessment(ctx, skillID, info, nil)
 	if err != nil {
 		return nil, err
 	}
-	if err := p.index(ctx, coordinate, assessed, manifest); err != nil {
+	if err := p.index(ctx, skillID, assessed, manifest); err != nil {
 		return nil, err
 	}
 	return manifest, nil
 }
 
-func (p *catalogProtocol) Zip(ctx context.Context, coordinate, version string) (storage.SizeReadCloser, error) {
-	archive, err := p.Protocol.Zip(ctx, coordinate, version)
+func (p *catalogProtocol) Zip(ctx context.Context, skillID, version string) (storage.SizeReadCloser, error) {
+	archive, err := p.Protocol.Zip(ctx, skillID, version)
 	if err != nil {
 		return nil, err
 	}
@@ -113,21 +113,21 @@ func (p *catalogProtocol) Zip(ctx context.Context, coordinate, version string) (
 	if err != nil {
 		return nil, err
 	}
-	info, err := p.Protocol.Info(ctx, coordinate, version)
+	info, err := p.Protocol.Info(ctx, skillID, version)
 	if err != nil {
 		return nil, err
 	}
-	assessed, err := p.bindAssessment(ctx, coordinate, info, archiveBytes)
+	assessed, err := p.bindAssessment(ctx, skillID, info, archiveBytes)
 	if err != nil {
 		return nil, err
 	}
-	if err := p.index(ctx, coordinate, assessed, nil); err != nil {
+	if err := p.index(ctx, skillID, assessed, nil); err != nil {
 		return nil, err
 	}
 	return storage.NewSizer(io.NopCloser(bytes.NewReader(archiveBytes)), int64(len(archiveBytes))), nil
 }
 
-func (p *catalogProtocol) index(ctx context.Context, coordinate string, infoBytes, manifestBytes []byte) error {
+func (p *catalogProtocol) index(ctx context.Context, skillID string, infoBytes, manifestBytes []byte) error {
 	var info catalogArtifactInfo
 	if err := json.Unmarshal(infoBytes, &info); err != nil {
 		return fmt.Errorf("decode Skill info for catalog: %w", err)
@@ -137,7 +137,7 @@ func (p *catalogProtocol) index(ctx context.Context, coordinate string, infoByte
 	}
 	if manifestBytes == nil {
 		var err error
-		manifestBytes, err = p.Protocol.Manifest(ctx, coordinate, info.Version)
+		manifestBytes, err = p.Protocol.Manifest(ctx, skillID, info.Version)
 		if err != nil {
 			return fmt.Errorf("read Skill manifest for catalog: %w", err)
 		}
@@ -150,7 +150,7 @@ func (p *catalogProtocol) index(ctx context.Context, coordinate string, infoByte
 		return fmt.Errorf("decode Skill manifest for catalog: name and description are required")
 	}
 	if err := p.metadata.UpsertSkill(ctx, &catalog.Skill{
-		Coordinate:    coordinate,
+		SkillID:       skillID,
 		Name:          manifest.Name,
 		Description:   manifest.Description,
 		LatestVersion: info.Version,

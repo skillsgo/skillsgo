@@ -1415,7 +1415,7 @@ type SkillMutation struct {
 	op                    Op
 	typ                   string
 	id                    *int64
-	coordinate            *string
+	skill_id              *string
 	name                  *string
 	description           *string
 	source_host           *string
@@ -1546,40 +1546,40 @@ func (m *SkillMutation) IDs(ctx context.Context) ([]int64, error) {
 	}
 }
 
-// SetCoordinate sets the "coordinate" field.
-func (m *SkillMutation) SetCoordinate(s string) {
-	m.coordinate = &s
+// SetSkillID sets the "skill_id" field.
+func (m *SkillMutation) SetSkillID(s string) {
+	m.skill_id = &s
 }
 
-// Coordinate returns the value of the "coordinate" field in the mutation.
-func (m *SkillMutation) Coordinate() (r string, exists bool) {
-	v := m.coordinate
+// SkillID returns the value of the "skill_id" field in the mutation.
+func (m *SkillMutation) SkillID() (r string, exists bool) {
+	v := m.skill_id
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldCoordinate returns the old "coordinate" field's value of the Skill entity.
+// OldSkillID returns the old "skill_id" field's value of the Skill entity.
 // If the Skill object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillMutation) OldCoordinate(ctx context.Context) (v string, err error) {
+func (m *SkillMutation) OldSkillID(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldCoordinate is only allowed on UpdateOne operations")
+		return v, errors.New("OldSkillID is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldCoordinate requires an ID field in the mutation")
+		return v, errors.New("OldSkillID requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldCoordinate: %w", err)
+		return v, fmt.Errorf("querying old value for OldSkillID: %w", err)
 	}
-	return oldValue.Coordinate, nil
+	return oldValue.SkillID, nil
 }
 
-// ResetCoordinate resets all changes to the "coordinate" field.
-func (m *SkillMutation) ResetCoordinate() {
-	m.coordinate = nil
+// ResetSkillID resets all changes to the "skill_id" field.
+func (m *SkillMutation) ResetSkillID() {
+	m.skill_id = nil
 }
 
 // SetName sets the "name" field.
@@ -2159,8 +2159,8 @@ func (m *SkillMutation) Type() string {
 // AddedFields().
 func (m *SkillMutation) Fields() []string {
 	fields := make([]string, 0, 11)
-	if m.coordinate != nil {
-		fields = append(fields, skill.FieldCoordinate)
+	if m.skill_id != nil {
+		fields = append(fields, skill.FieldSkillID)
 	}
 	if m.name != nil {
 		fields = append(fields, skill.FieldName)
@@ -2200,8 +2200,8 @@ func (m *SkillMutation) Fields() []string {
 // schema.
 func (m *SkillMutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case skill.FieldCoordinate:
-		return m.Coordinate()
+	case skill.FieldSkillID:
+		return m.SkillID()
 	case skill.FieldName:
 		return m.Name()
 	case skill.FieldDescription:
@@ -2231,8 +2231,8 @@ func (m *SkillMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *SkillMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
-	case skill.FieldCoordinate:
-		return m.OldCoordinate(ctx)
+	case skill.FieldSkillID:
+		return m.OldSkillID(ctx)
 	case skill.FieldName:
 		return m.OldName(ctx)
 	case skill.FieldDescription:
@@ -2262,12 +2262,12 @@ func (m *SkillMutation) OldField(ctx context.Context, name string) (ent.Value, e
 // type.
 func (m *SkillMutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case skill.FieldCoordinate:
+	case skill.FieldSkillID:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetCoordinate(v)
+		m.SetSkillID(v)
 		return nil
 	case skill.FieldName:
 		v, ok := value.(string)
@@ -2403,8 +2403,8 @@ func (m *SkillMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *SkillMutation) ResetField(name string) error {
 	switch name {
-	case skill.FieldCoordinate:
-		m.ResetCoordinate()
+	case skill.FieldSkillID:
+		m.ResetSkillID()
 		return nil
 	case skill.FieldName:
 		m.ResetName()

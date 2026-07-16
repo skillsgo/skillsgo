@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with temporary Store receipts, explicit project roots, Workspace files, and the test Agent.
- * [OUTPUT]: Specifies the versioned managed/external inventory JSON contract, target reconciliation, Local Modification health, identity separation, read-only inspection, and explicit-root privacy boundary.
+ * [OUTPUT]: Specifies the versioned managed/external inventory JSON contract, target reconciliation, Local Modification health, inventory-key separation, read-only inspection, and explicit-root privacy boundary.
  * [POS]: Serves as executable contract coverage for the App-facing unified Library inventory.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -30,15 +30,15 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", userAgentHome)
 	storage := store.Store{Root: store.DefaultRoot(home)}
-	coordinate := "github.com/example/skills/-/demo"
+	skillID := "github.com/example/skills/-/demo"
 
-	userEntry := commandTestStoreEntry(t, storage, coordinate, "v1")
+	userEntry := commandTestStoreEntry(t, storage, skillID, "v1")
 	require.NoError(t, install.Install(userEntry, []install.Target{{
 		Agent: "test-agent", Scope: install.ScopeUser, Mode: install.ModeSymlink,
 		Path: filepath.Join(userAgentHome, "skills", "demo"),
 	}}))
 
-	projectEntry := commandTestStoreEntry(t, storage, coordinate, "v2")
+	projectEntry := commandTestStoreEntry(t, storage, skillID, "v2")
 	selectedTarget := install.Target{
 		Agent: "test-agent", Scope: install.ScopeProject, Mode: install.ModeCopy,
 		Path: filepath.Join(selectedProject, ".test-agent", "skills", "demo"),
@@ -71,8 +71,8 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	require.Equal(t, 3, report.SchemaVersion)
 	require.Len(t, report.Entries, 1)
 	entry := report.Entries[0]
-	require.Equal(t, "hub:"+coordinate, entry.Identity)
-	require.Equal(t, coordinate, entry.Coordinate)
+	require.Equal(t, "hub:"+skillID, entry.InventoryKey)
+	require.Equal(t, skillID, entry.SkillID)
 	require.Equal(t, "demo", entry.Name)
 	require.Equal(t, "hub", string(entry.Provenance))
 	require.Equal(t, "unknown", string(entry.Risk))
@@ -175,8 +175,8 @@ func TestInventoryJSONReportsDeclaredTargetWithoutReceipt(t *testing.T) {
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", filepath.Join(root, "agent-home"))
 	storage := store.Store{Root: store.DefaultRoot(home)}
-	coordinate := "github.com/example/skills/-/declared"
-	entry := commandTestStoreEntry(t, storage, coordinate, "v3")
+	skillID := "github.com/example/skills/-/declared"
+	entry := commandTestStoreEntry(t, storage, skillID, "v3")
 	require.NoError(t, os.MkdirAll(projectRoot, 0o755))
 
 	require.NoError(t, project.Upsert(
@@ -197,7 +197,7 @@ func TestInventoryJSONReportsDeclaredTargetWithoutReceipt(t *testing.T) {
 	var report inventoryReport
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &report))
 	require.Len(t, report.Entries, 1)
-	require.Equal(t, "hub:"+coordinate, report.Entries[0].Identity)
+	require.Equal(t, "hub:"+skillID, report.Entries[0].InventoryKey)
 	require.Equal(t, "receipt-missing", string(report.Entries[0].Health))
 	require.Equal(t, []string{"v3"}, report.Entries[0].Versions)
 	require.Len(t, report.Entries[0].Targets, 1)
@@ -273,7 +273,7 @@ func TestInventoryJSONReportsExternalInstallationsWithoutClaimingOrChangingThem(
 	for index := range report.Entries {
 		entry := &report.Entries[index]
 		switch {
-		case entry.Identity == "hub:"+managedEntry.Receipt.Coordinate:
+		case entry.InventoryKey == "hub:"+managedEntry.Receipt.SkillID:
 			managedIndex = index
 		case entry.Name == "demo" && entry.Provenance == "external":
 			externalIndex = index
@@ -287,9 +287,9 @@ func TestInventoryJSONReportsExternalInstallationsWithoutClaimingOrChangingThem(
 	managed := report.Entries[managedIndex]
 	external := report.Entries[externalIndex]
 	projectExternal := report.Entries[projectExternalIndex]
-	require.NotEqual(t, managed.Identity, external.Identity)
-	require.Contains(t, external.Identity, "external:")
-	require.Empty(t, external.Coordinate)
+	require.NotEqual(t, managed.InventoryKey, external.InventoryKey)
+	require.Contains(t, external.InventoryKey, "external:")
+	require.Empty(t, external.SkillID)
 	require.Empty(t, external.Versions)
 	require.Equal(t, "unknown", string(external.Risk))
 	require.Equal(t, "healthy", string(external.Health))
@@ -311,16 +311,16 @@ func TestInventoryJSONReportsExternalInstallationsWithoutClaimingOrChangingThem(
 	require.Len(t, installations, 1)
 }
 
-func commandTestStoreEntry(t *testing.T, storage store.Store, coordinate, version string) *store.Entry {
+func commandTestStoreEntry(t *testing.T, storage store.Store, skillID, version string) *store.Entry {
 	t.Helper()
-	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{
+	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{
 		"SKILL.md": "---\nname: demo\ndescription: inventory fixture\n---\n",
 	})
 	entry, err := storage.Put(&hub.Artifact{
-		Coordinate: coordinate,
+		SkillID: skillID,
 		Info: hub.Info{
 			Version: version, Risk: hub.RiskLow,
-			ContentDigest: commandTestContentDigest(t, zipData, coordinate, version),
+			ContentDigest: commandTestContentDigest(t, zipData, skillID, version),
 		},
 		Manifest: []byte("name: demo\ndescription: inventory fixture\n"),
 		ZIP:      zipData,

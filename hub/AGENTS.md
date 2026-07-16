@@ -10,7 +10,7 @@ This map governs the public Hub service. Read it with the root constitution and 
 - Entry point: `cmd/hub/main.go`
 - Service assembly: `cmd/hub/actions/`
 - Public seam: the Fiber HTTP router and documented HTTP protocol
-- Product responsibility: resolve public skill coordinates, validate manifests, produce immutable artifacts, serve search and rankings, and ingest anonymous usage events.
+- Product responsibility: resolve public Skill IDs, validate manifests, produce immutable artifacts, serve search and rankings, and ingest anonymous usage events.
 
 ## Commands
 
@@ -39,9 +39,9 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 
 ## Boundaries
 
-- The Hub owns public skill identity, source resolution, metadata, immutable artifacts, search, rankings, and usage-event ingestion.
+- The Hub owns public Skill IDs, source resolution, metadata, immutable artifacts, search, rankings, and usage-event ingestion.
 - The Hub does not install skills into local Agent directories and does not own App navigation or local library state.
-- Public endpoints must use readable skill coordinates and stable response contracts.
+- Public endpoints must use readable Skill IDs and stable response contracts.
 - Preserve immutable version semantics, commit identity, tree identity, and deterministic archive output.
 - Treat Athens-derived names and documents as legacy seams. When maintained code is touched, use SkillsGo terminology without erasing useful provenance.
 - `docs/themes/`, vendored dependencies, generated files, fixtures, and imported upstream assets are not maintained semantic modules.

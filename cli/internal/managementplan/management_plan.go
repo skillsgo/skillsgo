@@ -49,7 +49,7 @@ type TargetRequest struct {
 	Agent       string        `json:"agent"`
 	Mode        install.Mode  `json:"mode"`
 	Path        string        `json:"path"`
-	Coordinate  string        `json:"coordinate"`
+	SkillID     string        `json:"skillId"`
 	Version     string        `json:"version"`
 	Action      Action        `json:"action,omitempty"`
 	StateToken  string        `json:"stateToken,omitempty"`
@@ -66,7 +66,7 @@ type Target struct {
 type Item struct {
 	Target                  Target                 `json:"target"`
 	Name                    string                 `json:"name"`
-	Coordinate              string                 `json:"coordinate"`
+	SkillID                 string                 `json:"skillId"`
 	Version                 string                 `json:"version"`
 	Health                  inventory.Health       `json:"health"`
 	ReceiptState            inventory.ReceiptState `json:"receiptState"`
@@ -95,7 +95,7 @@ type Preflight struct {
 type Result struct {
 	Target     Target  `json:"target"`
 	Name       string  `json:"name"`
-	Coordinate string  `json:"coordinate"`
+	SkillID    string  `json:"skillId"`
 	Version    string  `json:"version"`
 	Action     Action  `json:"action"`
 	Outcome    Outcome `json:"outcome"`
@@ -121,7 +121,7 @@ type Progress struct {
 	Sequence      int           `json:"sequence"`
 	Target        Target        `json:"target"`
 	Name          string        `json:"name"`
-	Coordinate    string        `json:"coordinate"`
+	SkillID       string        `json:"skillId"`
 	Version       string        `json:"version"`
 	Action        Action        `json:"action"`
 	State         ProgressState `json:"state"`
@@ -167,7 +167,7 @@ func validateRequest(request TargetRequest) error {
 	if request.Mode != install.ModeCopy && request.Mode != install.ModeSymlink {
 		return fmt.Errorf("unsupported mode %q", request.Mode)
 	}
-	if err := source.ValidateCoordinate(request.Coordinate); err != nil {
+	if err := source.ValidateSkillID(request.SkillID); err != nil {
 		return err
 	}
 	if err := source.ValidateVersion(request.Version); err != nil {
@@ -222,7 +222,7 @@ func Build(catalog *agent.Catalog, storage store.Store, requests []TargetRequest
 		}
 		item := Item{
 			Target: Target{Scope: request.Scope, ProjectRoot: request.ProjectRoot, Agent: request.Agent, Mode: request.Mode, Path: request.Path},
-			Name:   entry.Name, Coordinate: entry.Coordinate, Version: target.Version,
+			Name:   entry.Name, SkillID: entry.SkillID, Version: target.Version,
 			Health: target.Health, ReceiptState: target.ReceiptState,
 			WorkspaceMetadataChange: request.Scope == install.ScopeProject,
 		}
@@ -268,7 +268,7 @@ func Build(catalog *agent.Catalog, storage store.Store, requests []TargetRequest
 
 func findInventoryTarget(report inventory.Report, request TargetRequest) (inventory.Entry, inventory.Target, error) {
 	for _, entry := range report.Entries {
-		if entry.Coordinate != request.Coordinate {
+		if entry.SkillID != request.SkillID {
 			continue
 		}
 		for _, target := range entry.Targets {
@@ -285,7 +285,7 @@ func findInventoryTarget(report inventory.Report, request TargetRequest) (invent
 
 func findInstallation(installations []install.Installation, request TargetRequest) (install.Installation, bool) {
 	for _, installation := range installations {
-		if installation.Coordinate == request.Coordinate && installation.Version == request.Version &&
+		if installation.SkillID == request.SkillID && installation.Version == request.Version &&
 			installation.Target.Scope == request.Scope && installation.Target.Agent == request.Agent &&
 			installation.Target.Mode == request.Mode && samePath(installation.Target.Path, request.Path) {
 			return installation, true
@@ -301,7 +301,7 @@ func allowedActions(storage store.Store, item Item) ([]Action, string) {
 	actions := []Action{ActionStopManaging}
 	switch item.Health {
 	case inventory.HealthMissing, inventory.HealthReplaced, inventory.HealthLocalModification, inventory.HealthReceiptMissing:
-		if _, err := storage.Get(item.Coordinate, item.Version); err == nil {
+		if _, err := storage.Get(item.SkillID, item.Version); err == nil {
 			actions = append([]Action{ActionRepair}, actions...)
 		} else {
 			return actions, "immutable Store artifact is unavailable; Stop Managing preserves the target content"
@@ -336,7 +336,7 @@ func managementStateToken(item Item) (string, error) {
 	payload, err := json.Marshal(struct {
 		Version      int                    `json:"version"`
 		Name         string                 `json:"name"`
-		Coordinate   string                 `json:"coordinate"`
+		SkillID      string                 `json:"skillId"`
 		SkillVersion string                 `json:"skillVersion"`
 		Health       inventory.Health       `json:"health"`
 		Receipt      inventory.ReceiptState `json:"receiptState"`
@@ -345,7 +345,7 @@ func managementStateToken(item Item) (string, error) {
 		ReceiptFile  string                 `json:"receiptFile"`
 		Manifest     string                 `json:"manifest"`
 		Lock         string                 `json:"lock"`
-	}{1, item.Name, item.Coordinate, item.Version, item.Health, item.ReceiptState, item.Target, filesystem, receiptState, manifestState, lockState})
+	}{1, item.Name, item.SkillID, item.Version, item.Health, item.ReceiptState, item.Target, filesystem, receiptState, manifestState, lockState})
 	if err != nil {
 		return "", err
 	}
@@ -372,7 +372,7 @@ func attachAffectedBindings(items []Item, report inventory.Report) {
 		}
 		bindings := make([]Target, 0)
 		for _, entry := range report.Entries {
-			if entry.Coordinate != items[index].Coordinate {
+			if entry.SkillID != items[index].SkillID {
 				continue
 			}
 			for _, candidate := range entry.Targets {
@@ -417,7 +417,7 @@ func Execute(storage store.Store, preflight Preflight, report func(Progress)) Ex
 		}
 		sequence++
 		item := preflight.Targets[index]
-		event := Progress{SchemaVersion: SchemaVersion, Phase: "management-progress", Sequence: sequence, Target: item.Target, Name: item.Name, Coordinate: item.Coordinate, Version: item.Version, Action: item.Action, State: state}
+		event := Progress{SchemaVersion: SchemaVersion, Phase: "management-progress", Sequence: sequence, Target: item.Target, Name: item.Name, SkillID: item.SkillID, Version: item.Version, Action: item.Action, State: state}
 		if state == ProgressFinished {
 			result := execution.Results[index]
 			event.Result = &result
@@ -427,9 +427,9 @@ func Execute(storage store.Store, preflight Preflight, report func(Progress)) Ex
 	repairGroups := map[string][]int{}
 	repairOrder := make([]string, 0)
 	for index, item := range preflight.Targets {
-		execution.Results[index] = Result{Target: item.Target, Name: item.Name, Coordinate: item.Coordinate, Version: item.Version, Action: item.Action}
+		execution.Results[index] = Result{Target: item.Target, Name: item.Name, SkillID: item.SkillID, Version: item.Version, Action: item.Action}
 		if item.Action == ActionRepair {
-			key := filepath.Clean(item.Target.Path) + "\x00" + item.Coordinate + "\x00" + item.Version
+			key := filepath.Clean(item.Target.Path) + "\x00" + item.SkillID + "\x00" + item.Version
 			if repairGroups[key] == nil {
 				repairOrder = append(repairOrder, key)
 			}
@@ -447,7 +447,7 @@ func Execute(storage store.Store, preflight Preflight, report func(Progress)) Ex
 			emit(index, ProgressStarted)
 		}
 		first := preflight.Targets[indexes[0]]
-		entry, err := storage.Get(first.Coordinate, first.Version)
+		entry, err := storage.Get(first.SkillID, first.Version)
 		if err == nil {
 			previous := make([]install.Installation, 0, len(indexes))
 			targets := make([]install.Target, 0, len(indexes))
@@ -489,7 +489,7 @@ func executeMetadataAction(storage store.Store, item Item) error {
 		}
 		return nil
 	case ActionStopManaging:
-		binding := install.Installation{Name: item.Name, Coordinate: item.Coordinate, Version: item.Version, Target: install.Target{Agent: item.Target.Agent, Scope: item.Target.Scope, Mode: item.Target.Mode, Path: item.Target.Path}}
+		binding := install.Installation{Name: item.Name, SkillID: item.SkillID, Version: item.Version, Target: install.Target{Agent: item.Target.Agent, Scope: item.Target.Scope, Mode: item.Target.Mode, Path: item.Target.Path}}
 		if item.Target.Scope == install.ScopeProject {
 			if err := project.RemoveBindings(item.Target.ProjectRoot, []install.Installation{binding}); err != nil {
 				return err

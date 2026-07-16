@@ -39,10 +39,10 @@ func (p *fixedArtifactProtocol) Zip(context.Context, string, string) (storage.Si
 }
 
 func TestCatalogProtocolIndexesSuccessfulArtifactResolution(t *testing.T) {
-	coordinate := "github.com/vercel-labs/skills/-/skills/find-skills"
+	skillID := "github.com/vercel-labs/skills/-/skills/find-skills"
 	entryPoints := map[string]func(t *testing.T, protocol download.Protocol){
 		"info": func(t *testing.T, protocol download.Protocol) {
-			data, err := protocol.Info(t.Context(), coordinate, "main")
+			data, err := protocol.Info(t.Context(), skillID, "main")
 			require.NoError(t, err)
 			var assessed struct {
 				Risk          string `json:"Risk"`
@@ -53,11 +53,11 @@ func TestCatalogProtocolIndexesSuccessfulArtifactResolution(t *testing.T) {
 			require.NotEmpty(t, assessed.ContentDigest)
 		},
 		"manifest": func(t *testing.T, protocol download.Protocol) {
-			_, err := protocol.Manifest(t.Context(), coordinate, "main")
+			_, err := protocol.Manifest(t.Context(), skillID, "main")
 			require.NoError(t, err)
 		},
 		"zip": func(t *testing.T, protocol download.Protocol) {
-			archive, err := protocol.Zip(t.Context(), coordinate, "main")
+			archive, err := protocol.Zip(t.Context(), skillID, "main")
 			require.NoError(t, err)
 			require.NoError(t, archive.Close())
 		},
@@ -69,7 +69,7 @@ func TestCatalogProtocolIndexesSuccessfulArtifactResolution(t *testing.T) {
 			underlying := &fixedArtifactProtocol{
 				info:     []byte(`{"Version":"v0.0.0-test","Time":"2026-07-15T00:00:00Z","Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/skills","Subdir":"skills/find-skills","Ref":"refs/heads/main","CommitSHA":"abc","TreeSHA":"def"}}`),
 				manifest: []byte("name: find-skills\ndescription: Finds useful Agent Skills.\n"),
-				zip:      catalogProtocolTestZIP(t, coordinate, "v0.0.0-test"),
+				zip:      catalogProtocolTestZIP(t, skillID, "v0.0.0-test"),
 			}
 			protocol := withCatalog(underlying, metadata)
 
@@ -77,25 +77,25 @@ func TestCatalogProtocolIndexesSuccessfulArtifactResolution(t *testing.T) {
 			results, err := metadata.Search(t.Context(), "find", 20, 0)
 			require.NoError(t, err)
 			require.Len(t, results, 1)
-			require.Equal(t, coordinate, results[0].Coordinate)
+			require.Equal(t, skillID, results[0].SkillID)
 			require.Equal(t, "v0.0.0-test", results[0].LatestVersion)
 		})
 	}
 }
 
 func TestCatalogProtocolDoesNotIndexWhenAssessmentFails(t *testing.T) {
-	coordinate := "github.com/vercel-labs/skills/-/skills/find-skills"
+	skillID := "github.com/vercel-labs/skills/-/skills/find-skills"
 	entryPoints := map[string]func(t *testing.T, protocol download.Protocol){
 		"info": func(t *testing.T, protocol download.Protocol) {
-			_, err := protocol.Info(t.Context(), coordinate, "main")
+			_, err := protocol.Info(t.Context(), skillID, "main")
 			require.Error(t, err)
 		},
 		"manifest": func(t *testing.T, protocol download.Protocol) {
-			_, err := protocol.Manifest(t.Context(), coordinate, "main")
+			_, err := protocol.Manifest(t.Context(), skillID, "main")
 			require.Error(t, err)
 		},
 		"zip": func(t *testing.T, protocol download.Protocol) {
-			_, err := protocol.Zip(t.Context(), coordinate, "main")
+			_, err := protocol.Zip(t.Context(), skillID, "main")
 			require.Error(t, err)
 		},
 	}
@@ -117,11 +117,11 @@ func TestCatalogProtocolDoesNotIndexWhenAssessmentFails(t *testing.T) {
 	}
 }
 
-func catalogProtocolTestZIP(t *testing.T, coordinate, version string) []byte {
+func catalogProtocolTestZIP(t *testing.T, skillID, version string) []byte {
 	t.Helper()
 	var buffer bytes.Buffer
 	writer := zip.NewWriter(&buffer)
-	entry, err := writer.Create(coordinate + "@" + version + "/SKILL.md")
+	entry, err := writer.Create(skillID + "@" + version + "/SKILL.md")
 	require.NoError(t, err)
 	_, err = entry.Write([]byte("---\nname: find-skills\ndescription: Finds useful Agent Skills.\n---\nUse this Skill.\n"))
 	require.NoError(t, err)

@@ -107,16 +107,16 @@ func writePlanExecutionStream(
 }
 
 func loadPlanEntry(cmd *cobra.Command, storage store.Store, hubURL string, reference source.Reference) (*store.Entry, error) {
-	if source.IsLocalCoordinate(reference.Coordinate) {
+	if source.IsLocalSkillID(reference.SkillID) {
 		if reference.Version == "" || reference.Version == "main" {
 			return nil, fmt.Errorf("Local Skill installation requires an immutable local version")
 		}
-		entry, err := storage.Get(reference.Coordinate, reference.Version)
+		entry, err := storage.Get(reference.SkillID, reference.Version)
 		if err != nil {
 			return nil, fmt.Errorf("read private Local Skill from Store: %w", err)
 		}
 		if entry.Receipt.EffectiveProvenance() != store.ProvenanceLocal {
-			return nil, fmt.Errorf("Local Skill identity has non-local provenance")
+			return nil, fmt.Errorf("Local Skill ID has non-local provenance")
 		}
 		return entry, nil
 	}
@@ -125,19 +125,19 @@ func loadPlanEntry(cmd *cobra.Command, storage store.Store, hubURL string, refer
 		return nil, err
 	}
 	if reference.Version != "" && reference.Version != "main" {
-		_, err := storage.Get(reference.Coordinate, reference.Version)
+		_, err := storage.Get(reference.SkillID, reference.Version)
 		if err == nil {
-			info, resolveErr := client.Resolve(cmd.Context(), reference.Coordinate, reference.Version)
+			info, resolveErr := client.Resolve(cmd.Context(), reference.SkillID, reference.Version)
 			if resolveErr != nil {
 				return nil, resolveErr
 			}
-			return storage.RefreshAssessment(reference.Coordinate, reference.Version, info)
+			return storage.RefreshAssessment(reference.SkillID, reference.Version, info)
 		}
 		if !errors.Is(err, store.ErrNotFound) {
 			return nil, err
 		}
 	}
-	artifact, err := client.Fetch(cmd.Context(), reference.Coordinate, reference.Version)
+	artifact, err := client.Fetch(cmd.Context(), reference.SkillID, reference.Version)
 	if err != nil {
 		return nil, err
 	}

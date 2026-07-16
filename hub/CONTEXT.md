@@ -12,13 +12,9 @@ _Avoid_: plugin, application, extension
 A GitHub, GitLab, well-known endpoint, or other supported public source containing a `SKILL.md` and its resources.
 _Avoid_: Hub-owned repository, cloud Skill
 
-**Skill Identity**:
-The stable identity of a logical Skill. For GitHub, identity combines the repository identity with the normalized directory containing `SKILL.md`; a fork or directory move creates a new identity unless an explicit migration relates it.
-_Avoid_: Skill name, slug, repository URL alone
-
-**Skill Coordinate**:
-The human-readable protocol address of a Skill, such as `github.com/owner/repository/-/skills/example`. The `/-/` separator is omitted for a repository-root Skill.
-_Avoid_: opaque artifact ID, name-only lookup
+**Skill ID**:
+The public canonical identity of a logical Skill, such as `github.com/owner/repository/-/skills/example`. A source or path move creates a new Skill ID; verified migration is an explicit relationship between the old and new IDs rather than hidden identity continuity.
+_Avoid_: Skill Identity, Skill Coordinate, opaque database ID, name-only lookup
 
 **Manifest**:
 The normalized metadata extracted from the `SKILL.md` frontmatter, including at least the Skill name and description while preserving supported specification fields.
