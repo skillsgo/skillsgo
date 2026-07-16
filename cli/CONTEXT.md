@@ -41,7 +41,7 @@ The editable `skillsgo.yaml` declaration that records the Skills, references, Ag
 _Avoid_: lock file, installation receipt
 
 **Workspace Lock**:
-The deterministic, committable `skillsgo-lock.yaml` file that records exact Skill identities, immutable versions, content digests, Hub origins, and Agent targets required to restore a Workspace.
+The deterministic, committable `skillsgo-lock.yaml` file that records exact Skill IDs, immutable versions, content digests, Hub origins, and Agent targets required to restore a Workspace.
 _Avoid_: alternate lock filenames, local database, arbitrary download list
 
 **Installation Receipt**:
@@ -53,7 +53,7 @@ The explicit, state-bound transition of one exact External Installation into man
 _Avoid_: name-only association, implicit takeover, reinstall
 
 **Local Skill Artifact**:
-An immutable private Store artifact imported from unmatched local content. It has a `local.skillsgo` coordinate and immutable local version, can be projected to more Installation Targets or exported, and has no Hub update or publication source.
+An immutable private Store artifact imported from unmatched local content. It has a `local.skillsgo` Skill ID and immutable local version, can be projected to more Installation Targets or exported, and has no Hub update or publication source.
 _Avoid_: Hub artifact, temporary target copy, published Skill
 
 **Active Skill Binding**:

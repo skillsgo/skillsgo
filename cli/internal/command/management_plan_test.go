@@ -25,9 +25,9 @@ func TestManagementPlanRemovesOnlyTheExactSelectedTargetAndRetainsStore(t *testi
 	testAgentHome := filepath.Join(root, "test-agent")
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", testAgentHome)
-	coordinate := "github.com/example/skills/-/demo"
+	skillID := "github.com/example/skills/-/demo"
 	storage := store.Store{Root: store.DefaultRoot(home)}
-	entry := updatePlanTestStoreEntry(t, storage, coordinate, "v1", "main", "old")
+	entry := updatePlanTestStoreEntry(t, storage, skillID, "v1", "main", "old")
 	targets := []install.Target{
 		{Agent: "test-agent", Scope: install.ScopeUser, Mode: install.ModeSymlink, Path: filepath.Join(testAgentHome, "skills", "demo")},
 		{Agent: "codex", Scope: install.ScopeUser, Mode: install.ModeSymlink, Path: filepath.Join(home, ".codex", "skills", "demo")},
@@ -37,7 +37,7 @@ func TestManagementPlanRemovesOnlyTheExactSelectedTargetAndRetainsStore(t *testi
 	requestJSON := func(target install.Target, action, stateToken string) string {
 		body, err := json.Marshal(map[string]any{
 			"scope": target.Scope, "agent": target.Agent, "mode": target.Mode,
-			"path": target.Path, "coordinate": coordinate, "version": "v1",
+			"path": target.Path, "skillId": skillID, "version": "v1",
 			"action": action, "stateToken": stateToken,
 		})
 		require.NoError(t, err)
@@ -82,19 +82,19 @@ func TestManagementPlanBlocksUnsafeRemoveAndSupportsRepairOrStopManaging(t *test
 		agentHome := filepath.Join(root, "test-agent")
 		t.Setenv("HOME", home)
 		t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-		coordinate := "github.com/example/skills/-/demo"
+		skillID := "github.com/example/skills/-/demo"
 		storage := store.Store{Root: store.DefaultRoot(home)}
-		entry := updatePlanTestStoreEntry(t, storage, coordinate, "v1", "main", "old")
+		entry := updatePlanTestStoreEntry(t, storage, skillID, "v1", "main", "old")
 		target := install.Target{Agent: "test-agent", Scope: install.ScopeUser, Mode: install.ModeCopy, Path: filepath.Join(agentHome, "skills", "demo")}
 		require.NoError(t, install.Install(entry, []install.Target{target}))
 		require.NoError(t, os.WriteFile(filepath.Join(target.Path, "SKILL.md"), []byte("changed"), 0o600))
 
-		preflight := managementPreflight(t, target, "", coordinate, "v1")
+		preflight := managementPreflight(t, target, "", skillID, "v1")
 		require.Equal(t, "local-modification", preflight.Health)
 		require.Equal(t, []string{"repair", "stop-managing"}, preflight.AllowedActions)
 		unsafeRequest, err := json.Marshal(map[string]any{
 			"scope": target.Scope, "agent": target.Agent, "mode": target.Mode,
-			"path": target.Path, "coordinate": coordinate, "version": "v1",
+			"path": target.Path, "skillId": skillID, "version": "v1",
 			"action": "remove", "stateToken": preflight.StateToken,
 		})
 		require.NoError(t, err)
@@ -107,7 +107,7 @@ func TestManagementPlanBlocksUnsafeRemoveAndSupportsRepairOrStopManaging(t *test
 		require.NoError(t, err)
 		require.Equal(t, "changed", string(contents))
 
-		output := executeManagementAction(t, target, "", coordinate, "v1", "repair", preflight.StateToken)
+		output := executeManagementAction(t, target, "", skillID, "v1", "repair", preflight.StateToken)
 		require.Contains(t, output, `"outcome":"succeeded"`)
 		contents, err = os.ReadFile(filepath.Join(target.Path, "SKILL.md"))
 		require.NoError(t, err)
@@ -122,17 +122,17 @@ func TestManagementPlanBlocksUnsafeRemoveAndSupportsRepairOrStopManaging(t *test
 		t.Setenv("HOME", home)
 		t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
 		require.NoError(t, os.MkdirAll(projectRoot, 0o700))
-		coordinate := "github.com/example/skills/-/demo"
+		skillID := "github.com/example/skills/-/demo"
 		storage := store.Store{Root: store.DefaultRoot(home)}
-		entry := updatePlanTestStoreEntry(t, storage, coordinate, "v1", "main", "old")
+		entry := updatePlanTestStoreEntry(t, storage, skillID, "v1", "main", "old")
 		target := install.Target{Agent: "test-agent", Scope: install.ScopeProject, Mode: install.ModeCopy, Path: filepath.Join(projectRoot, ".test-agent", "skills", "demo")}
 		require.NoError(t, install.Install(entry, []install.Target{target}))
-		require.NoError(t, project.Upsert(projectRoot, "demo", project.SkillRequirement{Source: coordinate, Ref: "main", Agents: []string{"test-agent"}, Mode: install.ModeCopy}, entry.Receipt))
+		require.NoError(t, project.Upsert(projectRoot, "demo", project.SkillRequirement{Source: skillID, Ref: "main", Agents: []string{"test-agent"}, Mode: install.ModeCopy}, entry.Receipt))
 		require.NoError(t, os.WriteFile(filepath.Join(target.Path, "SKILL.md"), []byte("private local change"), 0o600))
 
-		preflight := managementPreflight(t, target, projectRoot, coordinate, "v1")
+		preflight := managementPreflight(t, target, projectRoot, skillID, "v1")
 		require.NotContains(t, preflight.AllowedActions, "remove")
-		output := executeManagementAction(t, target, projectRoot, coordinate, "v1", "stop-managing", preflight.StateToken)
+		output := executeManagementAction(t, target, projectRoot, skillID, "v1", "stop-managing", preflight.StateToken)
 		require.Contains(t, output, `"outcome":"succeeded"`)
 		contents, err := os.ReadFile(filepath.Join(target.Path, "SKILL.md"))
 		require.NoError(t, err)
@@ -153,11 +153,11 @@ type managementPreflightItem struct {
 	StateToken     string   `json:"stateToken"`
 }
 
-func managementPreflight(t *testing.T, target install.Target, projectRoot, coordinate, version string) managementPreflightItem {
+func managementPreflight(t *testing.T, target install.Target, projectRoot, skillID, version string) managementPreflightItem {
 	t.Helper()
 	body, err := json.Marshal(map[string]any{
 		"scope": target.Scope, "projectRoot": projectRoot, "agent": target.Agent,
-		"mode": target.Mode, "path": target.Path, "coordinate": coordinate, "version": version,
+		"mode": target.Mode, "path": target.Path, "skillId": skillID, "version": version,
 	})
 	require.NoError(t, err)
 	var output bytes.Buffer
@@ -170,11 +170,11 @@ func managementPreflight(t *testing.T, target install.Target, projectRoot, coord
 	return response.Targets[0]
 }
 
-func executeManagementAction(t *testing.T, target install.Target, projectRoot, coordinate, version, action, stateToken string) string {
+func executeManagementAction(t *testing.T, target install.Target, projectRoot, skillID, version, action, stateToken string) string {
 	t.Helper()
 	body, err := json.Marshal(map[string]any{
 		"scope": target.Scope, "projectRoot": projectRoot, "agent": target.Agent,
-		"mode": target.Mode, "path": target.Path, "coordinate": coordinate, "version": version,
+		"mode": target.Mode, "path": target.Path, "skillId": skillID, "version": version,
 		"action": action, "stateToken": stateToken,
 	})
 	require.NoError(t, err)

@@ -45,13 +45,13 @@ func TestAdoptImportsUnmatchedExternalAsPrivateLocalWithoutPublishing(t *testing
 	require.NoError(t, Execute([]string{"inventory", "--user", "--output", "json"}, &inventoryOutput, &inventoryOutput))
 	var inventoryReport struct {
 		Entries []struct {
-			Identity string `json:"identity"`
+			InventoryKey string `json:"inventoryKey"`
 		} `json:"entries"`
 	}
 	require.NoError(t, json.Unmarshal(inventoryOutput.Bytes(), &inventoryReport))
 	require.Len(t, inventoryReport.Entries, 1)
 	target := map[string]any{
-		"identity": inventoryReport.Entries[0].Identity, "name": "private-demo",
+		"inventoryKey": inventoryReport.Entries[0].InventoryKey, "name": "private-demo",
 		"scope": "user", "agent": "test-agent", "path": targetPath,
 	}
 	raw, err := json.Marshal(target)
@@ -86,16 +86,16 @@ func TestAdoptImportsUnmatchedExternalAsPrivateLocalWithoutPublishing(t *testing
 	require.Equal(t, contents, mustReadFile(t, filepath.Join(targetPath, "SKILL.md")))
 	var result struct {
 		Provenance string `json:"provenance"`
-		Coordinate string `json:"coordinate"`
+		SkillID    string `json:"skillId"`
 		Version    string `json:"version"`
 	}
 	require.NoError(t, json.Unmarshal(output.Bytes(), &result))
 	require.Equal(t, "local", result.Provenance)
-	require.Contains(t, result.Coordinate, "local.skillsgo/")
+	require.Contains(t, result.SkillID, "local.skillsgo/")
 	exportPath := filepath.Join(root, "exports", "private-demo.zip")
 	output.Reset()
 	require.NoError(t, Execute([]string{
-		"export", "--coordinate", result.Coordinate, "--version", result.Version,
+		"export", "--skill-id", result.SkillID, "--version", result.Version,
 		"--destination", exportPath, "--output", "json",
 	}, &output, &output))
 	require.FileExists(t, exportPath)
@@ -109,7 +109,7 @@ func TestAdoptImportsUnmatchedExternalAsPrivateLocalWithoutPublishing(t *testing
 	require.NoError(t, err)
 	output.Reset()
 	require.NoError(t, Execute([]string{
-		"add", result.Coordinate, "--skill", "private-demo", "--version", result.Version,
+		"add", result.SkillID, "--skill", "private-demo", "--version", result.Version,
 		"--target", string(additionalTarget), "--preflight", "--output", "json", "--hub", server.URL,
 	}, &output, &output))
 	var installPlan struct {
@@ -121,7 +121,7 @@ func TestAdoptImportsUnmatchedExternalAsPrivateLocalWithoutPublishing(t *testing
 	require.Equal(t, "create", installPlan.Targets[0].Action)
 	output.Reset()
 	require.NoError(t, Execute([]string{
-		"add", result.Coordinate, "--skill", "private-demo", "--version", result.Version,
+		"add", result.SkillID, "--skill", "private-demo", "--version", result.Version,
 		"--target", string(additionalTarget), "--output", "json", "--hub", server.URL,
 	}, &output, &output))
 	require.Equal(t, 1, requestCount, "Local Skill installation must reuse Store without Hub access")
@@ -136,8 +136,8 @@ func TestAdoptImportsUnmatchedExternalAsPrivateLocalWithoutPublishing(t *testing
 	}
 	managedTarget := map[string]any{
 		"scope": "project", "projectRoot": projectRoot, "agent": "test-agent", "mode": "copy",
-		"path":       filepath.Join(projectRoot, ".test-agent", "skills", "private-demo"),
-		"coordinate": result.Coordinate, "version": result.Version,
+		"path":    filepath.Join(projectRoot, ".test-agent", "skills", "private-demo"),
+		"skillId": result.SkillID, "version": result.Version,
 	}
 	raw, err = json.Marshal(managedTarget)
 	require.NoError(t, err)
@@ -177,15 +177,15 @@ func TestAdoptAssociatesOnlyTheReviewedImmutableHubMatchWithoutReplacingContent(
 	require.NoError(t, os.MkdirAll(targetPath, 0o700))
 	contents := []byte("---\nname: demo\nsource: github.com/acme/skills\n---\n# Exact\n")
 	require.NoError(t, os.WriteFile(filepath.Join(targetPath, "SKILL.md"), contents, 0o600))
-	coordinate, version := "github.com/acme/skills/-/demo", "v1"
-	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{"SKILL.md": string(contents)})
-	digest := commandTestContentDigest(t, zipData, coordinate, version)
+	skillID, version := "github.com/acme/skills/-/demo", "v1"
+	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": string(contents)})
+	digest := commandTestContentDigest(t, zipData, skillID, version)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
 		case request.URL.Path == "/v1/matches":
 			require.Equal(t, digest, request.URL.Query().Get("contentDigest"))
 			require.Equal(t, "github.com/acme/skills", request.URL.Query().Get("sourceHint"))
-			fmt.Fprintf(writer, `{"schemaVersion":1,"contentDigest":%q,"matches":[{"coordinate":%q,"name":"demo","source":"github.com/acme/skills","skillPath":"demo","immutableVersion":%q,"commitSHA":"commit","treeSHA":"tree","contentDigest":%q}]}`, digest, coordinate, version, digest)
+			fmt.Fprintf(writer, `{"schemaVersion":1,"contentDigest":%q,"matches":[{"skillId":%q,"name":"demo","source":"github.com/acme/skills","skillPath":"demo","immutableVersion":%q,"commitSHA":"commit","treeSHA":"tree","contentDigest":%q}]}`, digest, skillID, version, digest)
 		case strings.HasSuffix(request.URL.Path, "/v1.info"):
 			fmt.Fprintf(writer, `{"Version":%q,"Risk":"low","ContentDigest":%q,"Origin":{"VCS":"git","URL":"https://github.com/acme/skills","Ref":"refs/heads/main","CommitSHA":"commit","TreeSHA":"tree"}}`, version, digest)
 		case strings.HasSuffix(request.URL.Path, "/v1.manifest"):
@@ -202,11 +202,11 @@ func TestAdoptAssociatesOnlyTheReviewedImmutableHubMatchWithoutReplacingContent(
 	require.NoError(t, Execute([]string{"inventory", "--user", "--output", "json"}, &inventoryOutput, &inventoryOutput))
 	var inventoryReport struct {
 		Entries []struct {
-			Identity string `json:"identity"`
+			InventoryKey string `json:"inventoryKey"`
 		} `json:"entries"`
 	}
 	require.NoError(t, json.Unmarshal(inventoryOutput.Bytes(), &inventoryReport))
-	target := map[string]any{"identity": inventoryReport.Entries[0].Identity, "name": "demo", "scope": "user", "agent": "test-agent", "path": targetPath}
+	target := map[string]any{"inventoryKey": inventoryReport.Entries[0].InventoryKey, "name": "demo", "scope": "user", "agent": "test-agent", "path": targetPath}
 	raw, err := json.Marshal(target)
 	require.NoError(t, err)
 	var output bytes.Buffer
@@ -214,15 +214,15 @@ func TestAdoptAssociatesOnlyTheReviewedImmutableHubMatchWithoutReplacingContent(
 	var preflight struct {
 		StateToken string `json:"stateToken"`
 		Matches    []struct {
-			Coordinate       string `json:"coordinate"`
+			SkillID          string `json:"skillId"`
 			ImmutableVersion string `json:"immutableVersion"`
 		} `json:"matches"`
 	}
 	require.NoError(t, json.Unmarshal(output.Bytes(), &preflight))
 	require.Len(t, preflight.Matches, 1)
-	require.Equal(t, coordinate, preflight.Matches[0].Coordinate)
+	require.Equal(t, skillID, preflight.Matches[0].SkillID)
 	target["action"], target["stateToken"] = "associate-hub", preflight.StateToken
-	target["matchCoordinate"], target["matchVersion"] = coordinate, version
+	target["matchSkillId"], target["matchVersion"] = skillID, version
 	raw, err = json.Marshal(target)
 	require.NoError(t, err)
 	output.Reset()
@@ -232,7 +232,7 @@ func TestAdoptAssociatesOnlyTheReviewedImmutableHubMatchWithoutReplacingContent(
 	require.NoError(t, err)
 	require.Len(t, installations, 1)
 	require.Equal(t, store.ProvenanceHub, installations[0].Provenance)
-	require.Equal(t, coordinate, installations[0].Coordinate)
+	require.Equal(t, skillID, installations[0].SkillID)
 }
 
 func mustReadFile(t *testing.T, path string) []byte {

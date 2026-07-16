@@ -123,7 +123,7 @@ func TestRetryReconcilesProjectManifestAfterArtifactWasAlreadyInstalled(t *testi
 		}),
 	)
 	requestA := Request{
-		Source: entry.Receipt.Coordinate, RequestedRef: "main", Name: "demo",
+		Source: entry.Receipt.SkillID, RequestedRef: "main", Name: "demo",
 		Targets: []TargetRequest{{
 			Scope: install.ScopeProject, ProjectRoot: projectRoot,
 			Agent: "agent-a", Mode: install.ModeCopy,
@@ -135,7 +135,7 @@ func TestRetryReconcilesProjectManifestAfterArtifactWasAlreadyInstalled(t *testi
 	require.NoError(t, err)
 
 	requestB := Request{
-		Source: entry.Receipt.Coordinate, RequestedRef: "main", Name: "demo",
+		Source: entry.Receipt.SkillID, RequestedRef: "main", Name: "demo",
 		Targets: []TargetRequest{{
 			Scope: install.ScopeProject, ProjectRoot: projectRoot,
 			Agent: "agent-b", Mode: install.ModeCopy,
@@ -213,7 +213,7 @@ func TestExecuteWithProgressRetainsSuccessfulTargetsAfterUnrelatedFailure(t *tes
 		agent.WithDefinition(agent.Definition{ID: "bad", Display: "Bad", UserDir: filepath.Join(badHome, "skills")}),
 	)
 	request := Request{
-		Source: entry.Receipt.Coordinate, RequestedRef: "main", Name: "demo",
+		Source: entry.Receipt.SkillID, RequestedRef: "main", Name: "demo",
 		Targets: []TargetRequest{
 			{Scope: install.ScopeUser, Agent: "good", Mode: install.ModeCopy},
 			{Scope: install.ScopeUser, Agent: "bad", Mode: install.ModeCopy},
@@ -350,7 +350,7 @@ func TestLocalModificationBlocksSilentReplacement(t *testing.T) {
 	entry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v1", "original")
 	updatedEntry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v2", "updated")
 	request := Request{
-		Source: entry.Receipt.Coordinate, RequestedRef: "main", Name: "demo",
+		Source: entry.Receipt.SkillID, RequestedRef: "main", Name: "demo",
 		Targets: []TargetRequest{{Scope: install.ScopeUser, Agent: "test-agent", Mode: install.ModeCopy}},
 	}
 	initial, err := Build(catalog, entry, storeRoot, request)
@@ -404,7 +404,7 @@ func TestDifferentIdentityNeverMergesWithoutExplicitReplacement(t *testing.T) {
 	oldEntry := testEntryVersion(t, storeRoot, "github.com/old/skills/-/demo", "v1", "old identity")
 	newEntry := testEntryVersion(t, storeRoot, "github.com/new/skills/-/demo", "v1", "new identity")
 	request := Request{
-		Source: oldEntry.Receipt.Coordinate, RequestedRef: "main", Name: "demo",
+		Source: oldEntry.Receipt.SkillID, RequestedRef: "main", Name: "demo",
 		Targets: []TargetRequest{{Scope: install.ScopeUser, Agent: "test-agent", Mode: install.ModeCopy}},
 	}
 	initial, err := Build(catalog, oldEntry, storeRoot, request)
@@ -413,11 +413,11 @@ func TestDifferentIdentityNeverMergesWithoutExplicitReplacement(t *testing.T) {
 	require.NoError(t, err)
 	targetPath := initial.Targets[0].Target.Path
 
-	request.Source = newEntry.Receipt.Coordinate
+	request.Source = newEntry.Receipt.SkillID
 	blocked, err := Build(catalog, newEntry, storeRoot, request)
 	require.NoError(t, err)
 	require.Equal(t, ActionConflict, blocked.Targets[0].Action)
-	require.Equal(t, "identity-collision", blocked.Targets[0].ReasonCode)
+	require.Equal(t, "skill-id-collision", blocked.Targets[0].ReasonCode)
 	_, err = Execute(newEntry, storeRoot, request, blocked)
 	require.Error(t, err)
 	requireFileContains(t, filepath.Join(targetPath, "SKILL.md"), "old identity")
@@ -432,7 +432,7 @@ func TestDifferentIdentityNeverMergesWithoutExplicitReplacement(t *testing.T) {
 	installations, err := install.ListInstallations(storeRoot, install.InventoryFilter{})
 	require.NoError(t, err)
 	require.Len(t, installations, 1)
-	require.Equal(t, newEntry.Receipt.Coordinate, installations[0].Coordinate)
+	require.Equal(t, newEntry.Receipt.SkillID, installations[0].SkillID)
 }
 
 func TestIdentityReplacementPreservesAllExplicitProjectAgents(t *testing.T) {
@@ -456,7 +456,7 @@ func TestIdentityReplacementPreservesAllExplicitProjectAgents(t *testing.T) {
 	oldEntry := testEntryVersion(t, storeRoot, "github.com/old/skills/-/demo", "v1", "old identity")
 	newEntry := testEntryVersion(t, storeRoot, "github.com/new/skills/-/demo", "v1", "new identity")
 	request := Request{
-		Source: oldEntry.Receipt.Coordinate, RequestedRef: "main", Name: "demo",
+		Source: oldEntry.Receipt.SkillID, RequestedRef: "main", Name: "demo",
 		Targets: []TargetRequest{
 			{Scope: install.ScopeProject, ProjectRoot: projectRoot, Agent: "agent-a", Mode: install.ModeCopy},
 			{Scope: install.ScopeProject, ProjectRoot: projectRoot, Agent: "agent-b", Mode: install.ModeCopy},
@@ -467,7 +467,7 @@ func TestIdentityReplacementPreservesAllExplicitProjectAgents(t *testing.T) {
 	_, err = Execute(oldEntry, storeRoot, request, initial)
 	require.NoError(t, err)
 
-	request.Source = newEntry.Receipt.Coordinate
+	request.Source = newEntry.Receipt.SkillID
 	singleTargetRequest := request
 	singleTargetRequest.Targets = append([]TargetRequest(nil), request.Targets[:1]...)
 	shared, err := Build(catalog, newEntry, storeRoot, singleTargetRequest)
@@ -492,8 +492,8 @@ func TestIdentityReplacementPreservesAllExplicitProjectAgents(t *testing.T) {
 	manifest, lockfile, err := project.Load(projectRoot)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{"agent-a", "agent-b"}, manifest.Skills["demo"].Agents)
-	require.Equal(t, newEntry.Receipt.Coordinate, manifest.Skills["demo"].Source)
-	require.Equal(t, newEntry.Receipt.Coordinate, lockfile.Skills["demo"].Coordinate)
+	require.Equal(t, newEntry.Receipt.SkillID, manifest.Skills["demo"].Source)
+	require.Equal(t, newEntry.Receipt.SkillID, lockfile.Skills["demo"].SkillID)
 }
 
 func TestRiskPolicyBlocksMutationUntilExplicitConfirmation(t *testing.T) {
@@ -511,7 +511,7 @@ func TestRiskPolicyBlocksMutationUntilExplicitConfirmation(t *testing.T) {
 	entry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/danger", "v1", "danger")
 	entry.Receipt.Risk = hub.RiskHigh
 	request := Request{
-		Source: entry.Receipt.Coordinate, RequestedRef: "main", Name: "danger",
+		Source: entry.Receipt.SkillID, RequestedRef: "main", Name: "danger",
 		Targets: []TargetRequest{{Scope: install.ScopeUser, Agent: "test-agent", Mode: install.ModeSymlink}},
 	}
 
@@ -564,16 +564,16 @@ func testEntry(t *testing.T, root string) *store.Entry {
 	return testEntryVersion(t, root, "github.com/example/skills/-/demo", "v1", "Demo")
 }
 
-func testEntryVersion(t *testing.T, root, coordinate, version, content string) *store.Entry {
+func testEntryVersion(t *testing.T, root, skillID, version, content string) *store.Entry {
 	t.Helper()
-	entryRoot := filepath.Join(root, filepath.FromSlash(coordinate+"@"+version))
+	entryRoot := filepath.Join(root, filepath.FromSlash(skillID+"@"+version))
 	artifact := filepath.Join(entryRoot, "artifact")
 	require.NoError(t, os.MkdirAll(artifact, 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(artifact, "SKILL.md"), []byte("# "+content+"\n"), 0o600))
 	entry := &store.Entry{
 		Root: entryRoot, Artifact: artifact,
 		Receipt: store.Receipt{
-			Coordinate: coordinate, Version: version, SHA256: "sha256-" + version,
+			SkillID: skillID, Version: version, SHA256: "sha256-" + version,
 			ContentDigest: "sha256:content-" + version, Risk: hub.RiskLow,
 		},
 	}

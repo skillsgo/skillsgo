@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Exercises public source parsing plus coordinate/version validation with canonical GitHub, private local, and hostile inputs.
- * [OUTPUT]: Specifies normalization compatibility, private Local Skill identity, and rejection of traversal-capable identity and version segments.
- * [POS]: Serves as behavior coverage for the CLI source-identity boundary.
+ * [INPUT]: Exercises public source parsing plus Skill ID/version validation with canonical GitHub, private local, and hostile inputs.
+ * [OUTPUT]: Specifies normalization compatibility, private Local Skill IDs, and rejection of traversal-capable Skill ID and version segments.
+ * [POS]: Serves as behavior coverage for the CLI Skill ID normalization boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package source
@@ -11,26 +11,26 @@ import (
 	"testing"
 )
 
-func TestParseCoordinate(t *testing.T) {
+func TestParseSkillID(t *testing.T) {
 	reference, err := Parse("github.com/mattpocock/skills/-/skills/engineering/ask-matt")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reference.Coordinate != "github.com/mattpocock/skills/-/skills/engineering/ask-matt" || reference.Version != "main" {
+	if reference.SkillID != "github.com/mattpocock/skills/-/skills/engineering/ask-matt" || reference.Version != "main" {
 		t.Fatalf("unexpected reference: %#v", reference)
 	}
 }
 
-func TestParseLocalCoordinateWithoutRewritingItAsGitHub(t *testing.T) {
+func TestParseLocalSkillIDWithoutRewritingItAsGitHub(t *testing.T) {
 	reference, err := Parse("local.skillsgo/0123456789abcdef/demo")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reference.Coordinate != "local.skillsgo/0123456789abcdef/demo" || reference.Version != "main" {
+	if reference.SkillID != "local.skillsgo/0123456789abcdef/demo" || reference.Version != "main" {
 		t.Fatalf("unexpected local reference: %#v", reference)
 	}
-	if !IsLocalCoordinate(reference.Coordinate) || IsLocalCoordinate("github.com/example/repo") {
-		t.Fatal("local coordinate classification failed")
+	if !IsLocalSkillID(reference.SkillID) || IsLocalSkillID("github.com/example/repo") {
+		t.Fatal("local Skill ID classification failed")
 	}
 }
 
@@ -39,7 +39,7 @@ func TestParseGitHubTreeURL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reference.Coordinate != "github.com/mattpocock/skills/-/skills/engineering/ask-matt" || reference.Version != "main" {
+	if reference.SkillID != "github.com/mattpocock/skills/-/skills/engineering/ask-matt" || reference.Version != "main" {
 		t.Fatalf("unexpected reference: %#v", reference)
 	}
 }
@@ -50,7 +50,7 @@ func TestSkillsSHCompatibilityGitHubDotGitURL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reference.Coordinate != "github.com/owner/repo" || reference.Version != "main" {
+	if reference.SkillID != "github.com/owner/repo" || reference.Version != "main" {
 		t.Fatalf("unexpected reference: %#v", reference)
 	}
 }
@@ -60,7 +60,7 @@ func TestSkillsSHCompatibilityGitHubShorthandWithSubpath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reference.Coordinate != "github.com/owner/repo/-/skills/demo" {
+	if reference.SkillID != "github.com/owner/repo/-/skills/demo" {
 		t.Fatalf("unexpected reference: %#v", reference)
 	}
 }
@@ -86,14 +86,14 @@ func TestParseRejectsTraversalSegments(t *testing.T) {
 	}
 }
 
-func TestValidateCoordinateRejectsNonCanonicalSeparators(t *testing.T) {
-	for _, coordinate := range []string{
+func TestValidateSkillIDRejectsNonCanonicalSeparators(t *testing.T) {
+	for _, skillID := range []string{
 		"github.com/owner/repo/skills/demo",
 		"github.com/owner/repo/-",
 		"github.com/owner/repo/-/./demo",
 	} {
-		if err := ValidateCoordinate(coordinate); err == nil {
-			t.Fatalf("expected invalid coordinate %q", coordinate)
+		if err := ValidateSkillID(skillID); err == nil {
+			t.Fatalf("expected invalid Skill ID %q", skillID)
 		}
 	}
 }

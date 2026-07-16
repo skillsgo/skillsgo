@@ -48,8 +48,8 @@ func TestCatalogAPIPostgresProtocol(t *testing.T) {
 
 	for _, name := range []string{"alpha", "bravo", "charlie"} {
 		require.NoError(t, metadata.UpsertSkill(ctx, &catalog.Skill{
-			Coordinate: "github.com/acme/skills/-/" + name,
-			Name:       name, Description: "Agent capability", LatestVersion: "main",
+			SkillID: "github.com/acme/skills/-/" + name,
+			Name:    name, Description: "Agent capability", LatestVersion: "main",
 		}))
 	}
 

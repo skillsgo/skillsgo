@@ -55,9 +55,9 @@ func IDLTE(id int64) predicate.Skill {
 	return predicate.Skill(sql.FieldLTE(FieldID, id))
 }
 
-// Coordinate applies equality check predicate on the "coordinate" field. It's identical to CoordinateEQ.
-func Coordinate(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldEQ(FieldCoordinate, v))
+// SkillID applies equality check predicate on the "skill_id" field. It's identical to SkillIDEQ.
+func SkillID(v string) predicate.Skill {
+	return predicate.Skill(sql.FieldEQ(FieldSkillID, v))
 }
 
 // Name applies equality check predicate on the "name" field. It's identical to NameEQ.
@@ -110,69 +110,69 @@ func UpdatedAt(v time.Time) predicate.Skill {
 	return predicate.Skill(sql.FieldEQ(FieldUpdatedAt, v))
 }
 
-// CoordinateEQ applies the EQ predicate on the "coordinate" field.
-func CoordinateEQ(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldEQ(FieldCoordinate, v))
+// SkillIDEQ applies the EQ predicate on the "skill_id" field.
+func SkillIDEQ(v string) predicate.Skill {
+	return predicate.Skill(sql.FieldEQ(FieldSkillID, v))
 }
 
-// CoordinateNEQ applies the NEQ predicate on the "coordinate" field.
-func CoordinateNEQ(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldNEQ(FieldCoordinate, v))
+// SkillIDNEQ applies the NEQ predicate on the "skill_id" field.
+func SkillIDNEQ(v string) predicate.Skill {
+	return predicate.Skill(sql.FieldNEQ(FieldSkillID, v))
 }
 
-// CoordinateIn applies the In predicate on the "coordinate" field.
-func CoordinateIn(vs ...string) predicate.Skill {
-	return predicate.Skill(sql.FieldIn(FieldCoordinate, vs...))
+// SkillIDIn applies the In predicate on the "skill_id" field.
+func SkillIDIn(vs ...string) predicate.Skill {
+	return predicate.Skill(sql.FieldIn(FieldSkillID, vs...))
 }
 
-// CoordinateNotIn applies the NotIn predicate on the "coordinate" field.
-func CoordinateNotIn(vs ...string) predicate.Skill {
-	return predicate.Skill(sql.FieldNotIn(FieldCoordinate, vs...))
+// SkillIDNotIn applies the NotIn predicate on the "skill_id" field.
+func SkillIDNotIn(vs ...string) predicate.Skill {
+	return predicate.Skill(sql.FieldNotIn(FieldSkillID, vs...))
 }
 
-// CoordinateGT applies the GT predicate on the "coordinate" field.
-func CoordinateGT(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldGT(FieldCoordinate, v))
+// SkillIDGT applies the GT predicate on the "skill_id" field.
+func SkillIDGT(v string) predicate.Skill {
+	return predicate.Skill(sql.FieldGT(FieldSkillID, v))
 }
 
-// CoordinateGTE applies the GTE predicate on the "coordinate" field.
-func CoordinateGTE(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldGTE(FieldCoordinate, v))
+// SkillIDGTE applies the GTE predicate on the "skill_id" field.
+func SkillIDGTE(v string) predicate.Skill {
+	return predicate.Skill(sql.FieldGTE(FieldSkillID, v))
 }
 
-// CoordinateLT applies the LT predicate on the "coordinate" field.
-func CoordinateLT(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldLT(FieldCoordinate, v))
+// SkillIDLT applies the LT predicate on the "skill_id" field.
+func SkillIDLT(v string) predicate.Skill {
+	return predicate.Skill(sql.FieldLT(FieldSkillID, v))
 }
 
-// CoordinateLTE applies the LTE predicate on the "coordinate" field.
-func CoordinateLTE(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldLTE(FieldCoordinate, v))
+// SkillIDLTE applies the LTE predicate on the "skill_id" field.
+func SkillIDLTE(v string) predicate.Skill {
+	return predicate.Skill(sql.FieldLTE(FieldSkillID, v))
 }
 
-// CoordinateContains applies the Contains predicate on the "coordinate" field.
-func CoordinateContains(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldContains(FieldCoordinate, v))
+// SkillIDContains applies the Contains predicate on the "skill_id" field.
+func SkillIDContains(v string) predicate.Skill {
+	return predicate.Skill(sql.FieldContains(FieldSkillID, v))
 }
 
-// CoordinateHasPrefix applies the HasPrefix predicate on the "coordinate" field.
-func CoordinateHasPrefix(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldHasPrefix(FieldCoordinate, v))
+// SkillIDHasPrefix applies the HasPrefix predicate on the "skill_id" field.
+func SkillIDHasPrefix(v string) predicate.Skill {
+	return predicate.Skill(sql.FieldHasPrefix(FieldSkillID, v))
 }
 
-// CoordinateHasSuffix applies the HasSuffix predicate on the "coordinate" field.
-func CoordinateHasSuffix(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldHasSuffix(FieldCoordinate, v))
+// SkillIDHasSuffix applies the HasSuffix predicate on the "skill_id" field.
+func SkillIDHasSuffix(v string) predicate.Skill {
+	return predicate.Skill(sql.FieldHasSuffix(FieldSkillID, v))
 }
 
-// CoordinateEqualFold applies the EqualFold predicate on the "coordinate" field.
-func CoordinateEqualFold(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldEqualFold(FieldCoordinate, v))
+// SkillIDEqualFold applies the EqualFold predicate on the "skill_id" field.
+func SkillIDEqualFold(v string) predicate.Skill {
+	return predicate.Skill(sql.FieldEqualFold(FieldSkillID, v))
 }
 
-// CoordinateContainsFold applies the ContainsFold predicate on the "coordinate" field.
-func CoordinateContainsFold(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldContainsFold(FieldCoordinate, v))
+// SkillIDContainsFold applies the ContainsFold predicate on the "skill_id" field.
+func SkillIDContainsFold(v string) predicate.Skill {
+	return predicate.Skill(sql.FieldContainsFold(FieldSkillID, v))
 }
 
 // NameEQ applies the EQ predicate on the "name" field.

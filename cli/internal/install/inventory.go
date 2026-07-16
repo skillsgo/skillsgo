@@ -21,7 +21,7 @@ import (
 
 type Installation struct {
 	Name          string           `json:"name"`
-	Coordinate    string           `json:"coordinate"`
+	SkillID       string           `json:"skillId"`
 	Version       string           `json:"version"`
 	StoreRoot     string           `json:"storeRoot"`
 	Artifact      string           `json:"artifact"`
@@ -78,7 +78,7 @@ func ListInstallations(storeRoot string, filter InventoryFilter) ([]Installation
 			return nil
 		}
 		installations = append(installations, Installation{
-			Name: name, Coordinate: receipt.Coordinate, Version: receipt.Version,
+			Name: name, SkillID: receipt.SkillID, Version: receipt.Version,
 			StoreRoot: entryRoot, Artifact: filepath.Join(entryRoot, "artifact"), ReceiptPath: path,
 			Target: target, InstalledAt: targetReceipt.InstalledAt.Format("2006-01-02T15:04:05Z"),
 			SHA256: receipt.SHA256, ContentDigest: receipt.ContentDigest,

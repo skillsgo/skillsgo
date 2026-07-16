@@ -14,8 +14,8 @@ const (
 	Label = "skill"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldCoordinate holds the string denoting the coordinate field in the database.
-	FieldCoordinate = "coordinate"
+	// FieldSkillID holds the string denoting the skill_id field in the database.
+	FieldSkillID = "skill_id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
 	// FieldDescription holds the string denoting the description field in the database.
@@ -72,7 +72,7 @@ const (
 // Columns holds all SQL columns for skill fields.
 var Columns = []string{
 	FieldID,
-	FieldCoordinate,
+	FieldSkillID,
 	FieldName,
 	FieldDescription,
 	FieldSourceHost,
@@ -96,8 +96,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// CoordinateValidator is a validator for the "coordinate" field. It is called by the builders before save.
-	CoordinateValidator func(string) error
+	// SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
+	SkillIDValidator func(string) error
 	// DefaultGithubStars holds the default value on creation for the "github_stars" field.
 	DefaultGithubStars int64
 	// DefaultVerified holds the default value on creation for the "verified" field.
@@ -118,9 +118,9 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
 }
 
-// ByCoordinate orders the results by the coordinate field.
-func ByCoordinate(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldCoordinate, opts...).ToFunc()
+// BySkillID orders the results by the skill_id field.
+func BySkillID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSkillID, opts...).ToFunc()
 }
 
 // ByName orders the results by the name field.

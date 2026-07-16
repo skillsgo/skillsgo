@@ -28,11 +28,11 @@ func TestExplicitUpdatePlanResolvesOwnReferencesAndUpdatesOnlySelectedTarget(t *
 	root := t.TempDir()
 	home := filepath.Join(root, "home")
 	t.Setenv("HOME", home)
-	coordinate := "github.com/example/skills/-/skills/demo"
+	skillID := "github.com/example/skills/-/skills/demo"
 	storage := store.Store{Root: store.DefaultRoot(home)}
-	oldEntry := updatePlanTestStoreEntry(t, storage, coordinate, "v1", "feature", "old-feature")
+	oldEntry := updatePlanTestStoreEntry(t, storage, skillID, "v1", "feature", "old-feature")
 	fixedCommit := strings.Repeat("a", 40)
-	fixedEntry := updatePlanTestStoreEntry(t, storage, coordinate, "v-fixed", fixedCommit, fixedCommit)
+	fixedEntry := updatePlanTestStoreEntry(t, storage, skillID, "v-fixed", fixedCommit, fixedCommit)
 	selectedTarget := install.Target{
 		Agent: "test-agent", Scope: install.ScopeUser, Mode: install.ModeCopy,
 		Path: filepath.Join(root, "selected", "demo"),
@@ -44,8 +44,8 @@ func TestExplicitUpdatePlanResolvesOwnReferencesAndUpdatesOnlySelectedTarget(t *
 	require.NoError(t, install.Install(oldEntry, []install.Target{selectedTarget}))
 	require.NoError(t, install.Install(fixedEntry, []install.Target{unselectedTarget}))
 
-	newZIP := commandTestZIP(t, coordinate+"@v2/", map[string]string{"SKILL.md": "new-main"})
-	newDigest := commandTestContentDigest(t, newZIP, coordinate, "v2")
+	newZIP := commandTestZIP(t, skillID+"@v2/", map[string]string{"SKILL.md": "new-main"})
+	newDigest := commandTestContentDigest(t, newZIP, skillID, "v2")
 	var resolvedPaths []string
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		resolvedPaths = append(resolvedPaths, request.URL.Path)
@@ -65,7 +65,7 @@ func TestExplicitUpdatePlanResolvesOwnReferencesAndUpdatesOnlySelectedTarget(t *
 	targetJSON := func(target install.Target, version string) string {
 		body, err := json.Marshal(map[string]any{
 			"scope": target.Scope, "agent": target.Agent, "mode": target.Mode,
-			"path": target.Path, "coordinate": coordinate, "version": version,
+			"path": target.Path, "skillId": skillID, "version": version,
 		})
 		require.NoError(t, err)
 		return string(body)
@@ -102,7 +102,7 @@ func TestExplicitUpdatePlanResolvesOwnReferencesAndUpdatesOnlySelectedTarget(t *
 
 	selectedExecution, err := json.Marshal(map[string]any{
 		"scope": selectedTarget.Scope, "agent": selectedTarget.Agent, "mode": selectedTarget.Mode,
-		"path": selectedTarget.Path, "coordinate": coordinate, "version": "v1",
+		"path": selectedTarget.Path, "skillId": skillID, "version": "v1",
 		"toVersion": preflight.Targets[0].ToVersion, "stateToken": preflight.Targets[0].StateToken,
 	})
 	require.NoError(t, err)
@@ -140,9 +140,9 @@ func TestExplicitUpdatePlanRetainsSuccessAndUpdatesWorkspaceLockOnlyAfterTargetS
 	projectRoot := filepath.Join(root, "project")
 	t.Setenv("HOME", home)
 	require.NoError(t, os.MkdirAll(projectRoot, 0o700))
-	coordinate := "github.com/example/skills/-/skills/demo"
+	skillID := "github.com/example/skills/-/skills/demo"
 	storage := store.Store{Root: store.DefaultRoot(home)}
-	oldEntry := updatePlanTestStoreEntry(t, storage, coordinate, "v1", "main", "old-main")
+	oldEntry := updatePlanTestStoreEntry(t, storage, skillID, "v1", "main", "old-main")
 	userTarget := install.Target{
 		Agent: "user-agent", Scope: install.ScopeUser, Mode: install.ModeCopy,
 		Path: filepath.Join(root, "user", "demo"),
@@ -156,13 +156,13 @@ func TestExplicitUpdatePlanRetainsSuccessAndUpdatesWorkspaceLockOnlyAfterTargetS
 		projectRoot,
 		"demo",
 		project.SkillRequirement{
-			Source: coordinate, Ref: "main", Agents: []string{"project-agent"}, Mode: install.ModeCopy,
+			Source: skillID, Ref: "main", Agents: []string{"project-agent"}, Mode: install.ModeCopy,
 		},
 		oldEntry.Receipt,
 	))
 
-	newZIP := commandTestZIP(t, coordinate+"@v2/", map[string]string{"SKILL.md": "new"})
-	newDigest := commandTestContentDigest(t, newZIP, coordinate, "v2")
+	newZIP := commandTestZIP(t, skillID+"@v2/", map[string]string{"SKILL.md": "new"})
+	newDigest := commandTestContentDigest(t, newZIP, skillID, "v2")
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
 		case strings.HasSuffix(request.URL.Path, "/main.info"), strings.HasSuffix(request.URL.Path, "/v2.info"):
@@ -181,7 +181,7 @@ func TestExplicitUpdatePlanRetainsSuccessAndUpdatesWorkspaceLockOnlyAfterTargetS
 		body, err := json.Marshal(map[string]any{
 			"scope": target.Scope, "projectRoot": projectRoot,
 			"agent": target.Agent, "mode": target.Mode, "path": target.Path,
-			"coordinate": coordinate, "version": "v1",
+			"skillId": skillID, "version": "v1",
 			"toVersion": toVersion, "stateToken": stateToken,
 		})
 		require.NoError(t, err)
@@ -256,9 +256,9 @@ func TestExplicitUpdatePlanRequiresAndSwitchesEverySharedBinding(t *testing.T) {
 	root := t.TempDir()
 	home := filepath.Join(root, "home")
 	t.Setenv("HOME", home)
-	coordinate := "github.com/example/skills/-/skills/demo"
+	skillID := "github.com/example/skills/-/skills/demo"
 	storage := store.Store{Root: store.DefaultRoot(home)}
-	oldEntry := updatePlanTestStoreEntry(t, storage, coordinate, "v1", "main", "old")
+	oldEntry := updatePlanTestStoreEntry(t, storage, skillID, "v1", "main", "old")
 	sharedPath := filepath.Join(root, "shared", "demo")
 	targets := []install.Target{
 		{Agent: "agent-a", Scope: install.ScopeUser, Mode: install.ModeCopy, Path: sharedPath},
@@ -268,7 +268,7 @@ func TestExplicitUpdatePlanRequiresAndSwitchesEverySharedBinding(t *testing.T) {
 	requestJSON := func(target install.Target, toVersion, stateToken string) string {
 		body, err := json.Marshal(map[string]any{
 			"scope": target.Scope, "agent": target.Agent, "mode": target.Mode,
-			"path": target.Path, "coordinate": coordinate, "version": "v1",
+			"path": target.Path, "skillId": skillID, "version": "v1",
 			"toVersion": toVersion, "stateToken": stateToken,
 		})
 		require.NoError(t, err)
@@ -281,8 +281,8 @@ func TestExplicitUpdatePlanRequiresAndSwitchesEverySharedBinding(t *testing.T) {
 	}, &output, &output)
 	require.ErrorContains(t, err, "requires every affected Agent binding")
 
-	newZIP := commandTestZIP(t, coordinate+"@v2/", map[string]string{"SKILL.md": "new"})
-	newDigest := commandTestContentDigest(t, newZIP, coordinate, "v2")
+	newZIP := commandTestZIP(t, skillID+"@v2/", map[string]string{"SKILL.md": "new"})
+	newDigest := commandTestContentDigest(t, newZIP, skillID, "v2")
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
 		case strings.HasSuffix(request.URL.Path, "/main.info"), strings.HasSuffix(request.URL.Path, "/v2.info"):
@@ -331,9 +331,9 @@ func TestExplicitUpdatePlanRequiresEveryAgentDeclaredByWorkspaceLock(t *testing.
 	projectRoot := filepath.Join(root, "project")
 	t.Setenv("HOME", home)
 	require.NoError(t, os.MkdirAll(projectRoot, 0o700))
-	coordinate := "github.com/example/skills/-/skills/demo"
+	skillID := "github.com/example/skills/-/skills/demo"
 	storage := store.Store{Root: store.DefaultRoot(home)}
-	oldEntry := updatePlanTestStoreEntry(t, storage, coordinate, "v1", "main", "old")
+	oldEntry := updatePlanTestStoreEntry(t, storage, skillID, "v1", "main", "old")
 	targets := []install.Target{
 		{
 			Agent: "agent-a", Scope: install.ScopeProject, Mode: install.ModeCopy,
@@ -349,7 +349,7 @@ func TestExplicitUpdatePlanRequiresEveryAgentDeclaredByWorkspaceLock(t *testing.
 		projectRoot,
 		"demo",
 		project.SkillRequirement{
-			Source: coordinate, Ref: "main", Agents: []string{"agent-a", "agent-b"}, Mode: install.ModeCopy,
+			Source: skillID, Ref: "main", Agents: []string{"agent-a", "agent-b"}, Mode: install.ModeCopy,
 		},
 		oldEntry.Receipt,
 	))
@@ -357,7 +357,7 @@ func TestExplicitUpdatePlanRequiresEveryAgentDeclaredByWorkspaceLock(t *testing.
 		body, err := json.Marshal(map[string]any{
 			"scope": target.Scope, "projectRoot": projectRoot,
 			"agent": target.Agent, "mode": target.Mode, "path": target.Path,
-			"coordinate": coordinate, "version": "v1",
+			"skillId": skillID, "version": "v1",
 		})
 		require.NoError(t, err)
 		return string(body)
@@ -369,8 +369,8 @@ func TestExplicitUpdatePlanRequiresEveryAgentDeclaredByWorkspaceLock(t *testing.
 	}, &output, &output)
 	require.ErrorContains(t, err, "requires every declared Agent target")
 
-	newZIP := commandTestZIP(t, coordinate+"@v2/", map[string]string{"SKILL.md": "new"})
-	newDigest := commandTestContentDigest(t, newZIP, coordinate, "v2")
+	newZIP := commandTestZIP(t, skillID+"@v2/", map[string]string{"SKILL.md": "new"})
+	newDigest := commandTestContentDigest(t, newZIP, skillID, "v2")
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if strings.HasSuffix(request.URL.Path, "/main.info") {
 			fmt.Fprintf(writer, `{"Version":"v2","Time":"2026-07-15T00:00:00Z","Risk":"low","ContentDigest":%q,"Origin":{"VCS":"git","URL":"https://github.com/example/skills","Subdir":"skills/demo","Ref":"refs/heads/main","CommitSHA":"new","TreeSHA":"new-tree"}}`, newDigest)
@@ -405,10 +405,10 @@ func TestExplicitUpdatePlanReconcilesWorkspaceLockAfterTargetAlreadySwitched(t *
 	projectRoot := filepath.Join(root, "project")
 	t.Setenv("HOME", home)
 	require.NoError(t, os.MkdirAll(projectRoot, 0o700))
-	coordinate := "github.com/example/skills/-/skills/demo"
+	skillID := "github.com/example/skills/-/skills/demo"
 	storage := store.Store{Root: store.DefaultRoot(home)}
-	oldEntry := updatePlanTestStoreEntry(t, storage, coordinate, "v1", "main", "old")
-	newEntry := updatePlanTestStoreEntry(t, storage, coordinate, "v2", "main", "new")
+	oldEntry := updatePlanTestStoreEntry(t, storage, skillID, "v1", "main", "old")
+	newEntry := updatePlanTestStoreEntry(t, storage, skillID, "v2", "main", "new")
 	target := install.Target{
 		Agent: "project-agent", Scope: install.ScopeProject, Mode: install.ModeCopy,
 		Path: filepath.Join(projectRoot, ".project-agent", "skills", "demo"),
@@ -418,7 +418,7 @@ func TestExplicitUpdatePlanReconcilesWorkspaceLockAfterTargetAlreadySwitched(t *
 		projectRoot,
 		"demo",
 		project.SkillRequirement{
-			Source: coordinate, Ref: "main", Agents: []string{"project-agent"}, Mode: install.ModeCopy,
+			Source: skillID, Ref: "main", Agents: []string{"project-agent"}, Mode: install.ModeCopy,
 		},
 		oldEntry.Receipt,
 	))
@@ -446,7 +446,7 @@ func TestExplicitUpdatePlanReconcilesWorkspaceLockAfterTargetAlreadySwitched(t *
 		body, marshalErr := json.Marshal(map[string]any{
 			"scope": target.Scope, "projectRoot": projectRoot,
 			"agent": target.Agent, "mode": target.Mode, "path": target.Path,
-			"coordinate": coordinate, "version": "v2",
+			"skillId": skillID, "version": "v2",
 			"toVersion": toVersion, "stateToken": stateToken,
 		})
 		require.NoError(t, marshalErr)
@@ -496,18 +496,18 @@ func TestExplicitUpdatePlanReconcilesWorkspaceLockAfterTargetAlreadySwitched(t *
 func updatePlanTestStoreEntry(
 	t *testing.T,
 	storage store.Store,
-	coordinate,
+	skillID,
 	version,
 	requestedRef,
 	commitSHA string,
 ) *store.Entry {
 	t.Helper()
-	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{"SKILL.md": version})
+	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": version})
 	entry, err := storage.Put(&hub.Artifact{
-		Coordinate: coordinate,
+		SkillID: skillID,
 		Info: hub.Info{
 			Version: version, Risk: hub.RiskLow,
-			ContentDigest: commandTestContentDigest(t, zipData, coordinate, version),
+			ContentDigest: commandTestContentDigest(t, zipData, skillID, version),
 			Origin: hub.Origin{
 				VCS: "git", URL: "https://github.com/example/skills", Subdir: "skills/demo",
 				Ref: "refs/heads/" + requestedRef, CommitSHA: commitSHA, TreeSHA: "tree-" + commitSHA,

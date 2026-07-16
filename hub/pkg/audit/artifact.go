@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on immutable ZIP bytes, canonical Skill coordinates, and resolved artifact versions.
+ * [INPUT]: Depends on immutable ZIP bytes, canonical Skill IDs, and resolved artifact versions.
  * [OUTPUT]: Provides bounded duplicate-safe artifact inspection with compression-independent content identity, real instructions, file metadata/content, executable signals, and deterministic risk evidence.
  * [POS]: Serves as the artifact-analysis boundary between Hub storage bytes and public audit metadata.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -71,7 +71,7 @@ var binaryExtensions = map[string]bool{
 	".bin": true, ".app": true, ".jar": true,
 }
 
-func AnalyzeArtifact(data []byte, coordinate, version string) (*Result, error) {
+func AnalyzeArtifact(data []byte, skillID, version string) (*Result, error) {
 	if len(data) == 0 || len(data) > MaxArchiveBytes {
 		return nil, fmt.Errorf("artifact archive size must be between 1 and %d bytes", MaxArchiveBytes)
 	}
@@ -82,7 +82,7 @@ func AnalyzeArtifact(data []byte, coordinate, version string) (*Result, error) {
 	if len(reader.File) > maxFiles {
 		return nil, fmt.Errorf("artifact contains more than %d files", maxFiles)
 	}
-	prefix := coordinate + "@" + version + "/"
+	prefix := skillID + "@" + version + "/"
 	entries := append([]*zip.File(nil), reader.File...)
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
 	var uncompressed uint64

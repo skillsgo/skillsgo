@@ -60,7 +60,7 @@ var (
 	// SkillsColumns holds the columns for the "skills" table.
 	SkillsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
-		{Name: "coordinate", Type: field.TypeString},
+		{Name: "skill_id", Type: field.TypeString},
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString},
 		{Name: "source_host", Type: field.TypeString},
@@ -79,7 +79,7 @@ var (
 		PrimaryKey: []*schema.Column{SkillsColumns[0]},
 		Indexes: []*schema.Index{
 			{
-				Name:    "skill_coordinate",
+				Name:    "skill_skill_id",
 				Unique:  true,
 				Columns: []*schema.Column{SkillsColumns[1]},
 			},

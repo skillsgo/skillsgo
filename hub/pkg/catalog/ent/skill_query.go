@@ -371,12 +371,12 @@ func (_q *SkillQuery) WithHourlyStats(opts ...func(*SkillHourlyStatQuery)) *Skil
 // Example:
 //
 //	var v []struct {
-//		Coordinate string `json:"coordinate,omitempty"`
+//		SkillID string `json:"skill_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Skill.Query().
-//		GroupBy(skill.FieldCoordinate).
+//		GroupBy(skill.FieldSkillID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *SkillQuery) GroupBy(field string, fields ...string) *SkillGroupBy {
@@ -394,11 +394,11 @@ func (_q *SkillQuery) GroupBy(field string, fields ...string) *SkillGroupBy {
 // Example:
 //
 //	var v []struct {
-//		Coordinate string `json:"coordinate,omitempty"`
+//		SkillID string `json:"skill_id,omitempty"`
 //	}
 //
 //	client.Skill.Query().
-//		Select(skill.FieldCoordinate).
+//		Select(skill.FieldSkillID).
 //		Scan(ctx, &v)
 func (_q *SkillQuery) Select(fields ...string) *SkillSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)

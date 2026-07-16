@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Exercises public Skill ID parsing with repository-root, nested, canonical, and hostile values.
+ * [OUTPUT]: Specifies reversible Skill ID formatting and invalid source/path rejection.
+ * [POS]: Serves as behavior coverage for the Hub Skill ID boundary.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package skill
 
 import (
@@ -6,37 +12,37 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParseSkillCoordinate(t *testing.T) {
+func TestParseSkillID(t *testing.T) {
 	tests := []struct {
 		name string
 		in   string
-		want SkillCoordinate
+		want SkillID
 	}{
 		{
 			name: "repository root",
 			in:   "github.com/op7418/guizang-ppt-skill",
-			want: SkillCoordinate{Repository: "github.com/op7418/guizang-ppt-skill", SkillPath: "."},
+			want: SkillID{Repository: "github.com/op7418/guizang-ppt-skill", SkillPath: "."},
 		},
 		{
 			name: "GitHub monorepo",
 			in:   "github.com/mattpocock/skills/-/skills/engineering/ask-matt",
-			want: SkillCoordinate{Repository: "github.com/mattpocock/skills", SkillPath: "skills/engineering/ask-matt"},
+			want: SkillID{Repository: "github.com/mattpocock/skills", SkillPath: "skills/engineering/ask-matt"},
 		},
 		{
 			name: "GitLab nested groups",
 			in:   "gitlab.com/company/platform/ai/skills/-/security/code-review",
-			want: SkillCoordinate{Repository: "gitlab.com/company/platform/ai/skills", SkillPath: "security/code-review"},
+			want: SkillID{Repository: "gitlab.com/company/platform/ai/skills", SkillPath: "security/code-review"},
 		},
 		{
 			name: "repository git suffix",
 			in:   "github.com/owner/repo.git/-/skills/code-review",
-			want: SkillCoordinate{Repository: "github.com/owner/repo", SkillPath: "skills/code-review"},
+			want: SkillID{Repository: "github.com/owner/repo", SkillPath: "skills/code-review"},
 		},
 	}
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			got, err := ParseSkillCoordinate(tc.in)
+			got, err := ParseSkillID(tc.in)
 			require.NoError(t, err)
 			require.Equal(t, tc.want, got)
 			canonical := tc.in
@@ -44,14 +50,14 @@ func TestParseSkillCoordinate(t *testing.T) {
 				canonical = "github.com/owner/repo/-/skills/code-review"
 			}
 			require.Equal(t, canonical, got.String())
-			roundTrip, err := ParseSkillCoordinate(got.String())
+			roundTrip, err := ParseSkillID(got.String())
 			require.NoError(t, err)
 			require.Equal(t, got, roundTrip)
 		})
 	}
 }
 
-func TestParseSkillCoordinateRejectsInvalidCoordinates(t *testing.T) {
+func TestParseSkillIDRejectsInvalidSkillIDs(t *testing.T) {
 	tests := []string{
 		"",
 		"github.com",
@@ -69,13 +75,13 @@ func TestParseSkillCoordinateRejectsInvalidCoordinates(t *testing.T) {
 
 	for _, input := range tests {
 		t.Run(input, func(t *testing.T) {
-			_, err := ParseSkillCoordinate(input)
+			_, err := ParseSkillID(input)
 			require.Error(t, err)
 		})
 	}
 }
 
-func TestParseGitHubSkillCoordinateRejectsImplicitSubdirectory(t *testing.T) {
-	_, err := parseGitHubSkillCoordinate("github.com/mattpocock/skills/skills/engineering/ask-matt")
+func TestParseGitHubSkillIDRejectsImplicitSubdirectory(t *testing.T) {
+	_, err := parseGitHubSkillID("github.com/mattpocock/skills/skills/engineering/ask-matt")
 	require.EqualError(t, err, `unsupported Skill repository "github.com/mattpocock/skills/skills/engineering/ask-matt"`)
 }

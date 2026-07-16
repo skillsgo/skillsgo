@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on immutable Skill ZIP bytes or extracted Store directories, canonical coordinates, resolved versions, and the Hub digest framing contract.
+ * [INPUT]: Depends on immutable Skill ZIP bytes or extracted Store directories, canonical Skill IDs, resolved versions, and the Hub digest framing contract.
  * [OUTPUT]: Provides bounded compression-independent ZIP/directory Content Digest computation and declared-digest verification.
  * [POS]: Serves as the CLI integrity boundary binding assessed Info metadata to downloaded and locally cached artifact files.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -27,13 +27,13 @@ const (
 )
 
 // VerifyContentDigest rejects artifact bytes that do not match assessed Info.
-func VerifyContentDigest(data []byte, coordinate, version, expected string) error {
-	actual, err := ContentDigest(data, coordinate, version)
+func VerifyContentDigest(data []byte, skillID, version, expected string) error {
+	actual, err := ContentDigest(data, skillID, version)
 	if err != nil {
 		return err
 	}
 	if actual != expected {
-		return fmt.Errorf("Hub Content Digest mismatch for %s@%s: %s != %s", coordinate, version, actual, expected)
+		return fmt.Errorf("Hub Content Digest mismatch for %s@%s: %s != %s", skillID, version, actual, expected)
 	}
 	return nil
 }
@@ -113,7 +113,7 @@ func ContentDirectoryDigest(root string) (string, error) {
 }
 
 // ContentDigest implements the Hub's normalized file-path/content framing.
-func ContentDigest(data []byte, coordinate, version string) (string, error) {
+func ContentDigest(data []byte, skillID, version string) (string, error) {
 	if len(data) == 0 || len(data) > maxArtifactArchiveBytes {
 		return "", fmt.Errorf("artifact archive size must be between 1 and %d bytes", maxArtifactArchiveBytes)
 	}
@@ -126,7 +126,7 @@ func ContentDigest(data []byte, coordinate, version string) (string, error) {
 	}
 	entries := append([]*zip.File(nil), reader.File...)
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
-	prefix := coordinate + "@" + version + "/"
+	prefix := skillID + "@" + version + "/"
 	hash := sha256.New()
 	seen := map[string]bool{}
 	var total uint64

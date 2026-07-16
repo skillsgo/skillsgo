@@ -26,7 +26,7 @@ type gitFetcher struct {
 	fs       afero.Fs
 	cacheDir string
 	syncs    singleflight.Group
-	cloneURL func(SkillCoordinate) string
+	cloneURL func(SkillID) string
 }
 
 type artifactFiles struct {
@@ -52,7 +52,7 @@ func NewFetcher(cacheDir string, fs afero.Fs) (Fetcher, error) {
 	return &gitFetcher{
 		fs:       fs,
 		cacheDir: cacheDir,
-		cloneURL: func(coordinate SkillCoordinate) string { return coordinate.RepositoryURL() },
+		cloneURL: func(skillID SkillID) string { return skillID.RepositoryURL() },
 	}, nil
 }
 
@@ -136,12 +136,12 @@ func (g *gitFetcher) fetch(ctx context.Context, skillPath, revision string, reso
 }
 
 func (g *gitFetcher) repositoryDir(repository string) (string, error) {
-	if err := validateCoordinatePath(repository); err != nil {
+	if err := validateSkillIDPath(repository); err != nil {
 		return "", fmt.Errorf("invalid repository cache path %q: %w", repository, err)
 	}
 
 	root := filepath.Join(g.cacheDir, "repositories")
-	// GitHub repository coordinates are case-insensitive. Lowercasing avoids
+	// GitHub repository IDs are case-insensitive. Lowercasing avoids
 	// duplicate caches on case-sensitive filesystems and collisions on macOS.
 	dir := filepath.Join(root, filepath.FromSlash(strings.ToLower(repository)))
 	relative, err := filepath.Rel(root, dir)
