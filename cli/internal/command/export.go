@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on one explicit Local Skill coordinate/version, user-selected destination, and private Store provenance.
- * [OUTPUT]: Exports a private Local Skill ZIP with stable JSON confirmation and no Registry access.
+ * [OUTPUT]: Exports a private Local Skill ZIP with stable JSON confirmation and no Hub access.
  * [POS]: Serves as the executable export boundary for Local Skills.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

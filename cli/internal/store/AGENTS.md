@@ -5,7 +5,7 @@
 
 - `store.go`: validates immutable artifact identity and extracted content on read, confines entries beneath the Store root, extracts archives safely, persists provenance-aware receipts, and refreshes risk assessment metadata without changing content or provenance.
 - `local.go`: imports reviewed private Local Skill directories as immutable Store entries and exports only Local-provenance entries without network access.
-- `store_test.go`: specifies immutable/idempotent Registry and Local storage, export, risk-only assessment refresh, local-tamper and content-digest rejection, archive and identity traversal defense, and exact retrieval.
+- `store_test.go`: specifies immutable/idempotent Hub and Local storage, export, risk-only assessment refresh, local-tamper and content-digest rejection, archive and identity traversal defense, and exact retrieval.
 
 ## Architectural Boundary
 

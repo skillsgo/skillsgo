@@ -388,7 +388,7 @@ func applyRisk(item Item, risk Risk, request Request) Item {
 	return item
 }
 
-// AuthorizeRisk applies the installation policy to immutable Registry risk metadata.
+// AuthorizeRisk applies the installation policy to immutable Hub risk metadata.
 func AuthorizeRisk(risk Risk, confirmed, allowCritical bool) error {
 	switch reason := riskBlockReason(risk, confirmed, allowCritical); reason {
 	case "high-risk":

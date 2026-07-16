@@ -9,7 +9,7 @@ The local execution engine used by both terminal users and the SkillsGo App. The
 _Avoid_: external prerequisite CLI, App-native engine, `skills` CLI fork
 
 **Availability Exit Code**:
-A stable process result used when a Registry-dependent command cannot reach its Registry (`69`) or times out temporarily (`75`). The App classifies these codes without parsing localized stderr; all local-only commands remain independent of Registry availability.
+A stable process result used when a Hub-dependent command cannot reach its Hub (`69`) or times out temporarily (`75`). The App classifies these codes without parsing localized stderr; all local-only commands remain independent of Hub availability.
 _Avoid_: stderr text matching, empty Library fallback, localized machine protocol
 
 **Agent Adapter**:
@@ -41,20 +41,20 @@ The editable `skillsgo.yaml` declaration that records the Skills, references, Ag
 _Avoid_: lock file, installation receipt
 
 **Workspace Lock**:
-The deterministic, committable `skillsgo-lock.yaml` file that records exact Skill identities, immutable versions, content digests, Registry origins, and Agent targets required to restore a Workspace.
+The deterministic, committable `skillsgo-lock.yaml` file that records exact Skill identities, immutable versions, content digests, Hub origins, and Agent targets required to restore a Workspace.
 _Avoid_: alternate lock filenames, local database, arbitrary download list
 
 **Installation Receipt**:
 The local record that connects a Store artifact to one installation target and records the source, version, mode, path, and installation time.
-_Avoid_: Workspace Lock, Registry metadata
+_Avoid_: Workspace Lock, Hub metadata
 
 **External Adoption**:
-The explicit, state-bound transition of one exact External Installation into managed ownership. An exact Content Digest match may associate it with a reviewed immutable Registry artifact; otherwise it may be imported as a private Local Skill without contacting a publication endpoint or replacing current target content.
+The explicit, state-bound transition of one exact External Installation into managed ownership. An exact Content Digest match may associate it with a reviewed immutable Hub artifact; otherwise it may be imported as a private Local Skill without contacting a publication endpoint or replacing current target content.
 _Avoid_: name-only association, implicit takeover, reinstall
 
 **Local Skill Artifact**:
-An immutable private Store artifact imported from unmatched local content. It has a `local.skillsgo` coordinate and immutable local version, can be projected to more Installation Targets or exported, and has no Registry update or publication source.
-_Avoid_: Registry artifact, temporary target copy, published Skill
+An immutable private Store artifact imported from unmatched local content. It has a `local.skillsgo` coordinate and immutable local version, can be projected to more Installation Targets or exported, and has no Hub update or publication source.
+_Avoid_: Hub artifact, temporary target copy, published Skill
 
 **Active Skill Binding**:
 The rule that one physical target path can expose only one Skill artifact at a time, even when multiple Agent Adapters reference that path. A same-name collision requires every affected binding plus an explicit, state-bound replacement decision and is never resolved by silently adding a suffix.
@@ -62,7 +62,7 @@ _Avoid_: automatic rename, same-path coexistence
 
 **Local Modification**:
 A difference between a copy-mode installation target and its source artifact. Modified targets require explicit review before update, replacement, or removal, and replacement authority expires when the reviewed filesystem or receipt state changes.
-_Avoid_: Registry version, automatically merged change
+_Avoid_: Hub version, automatically merged change
 
 **Update Plan**:
 A state-bound operation over exact managed Installation Targets. Every target resolves its own stored movable reference; tags and fixed commits are pinned; Workspace Lock changes are previewed; and each target produces independent progress and a final result.

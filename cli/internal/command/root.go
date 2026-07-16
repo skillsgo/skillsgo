@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Cobra and the Agent, Registry, Store, project, installation, adoption, Installation Plan, Update Plan, Target Management Plan, source, and i18n modules.
+ * [INPUT]: Depends on Cobra and the Agent, Hub, Store, project, installation, adoption, Installation Plan, Update Plan, Target Management Plan, source, and i18n modules.
  * [OUTPUT]: Provides command.Execute and the complete CLI graph, including stable Agent/Library contracts, Installation/Update/Target Management/External Adoption flows, and Local export, for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -18,17 +18,24 @@ import (
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/plan"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/spf13/cobra"
 )
 
 var version = "dev"
+
+func defaultHubURL() string {
+	if value := strings.TrimSpace(os.Getenv("SKILLSGO_HUB_URL")); value != "" {
+		return value
+	}
+	return "https://hub.skillsgo.ai"
+}
 
 func Execute(args []string, stdout, stderr io.Writer) error {
 	appi18n.Configure(languageArgument(args))
@@ -84,7 +91,7 @@ func testAgentOption() agent.CatalogOption {
 }
 
 func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
-	var registryURL, output string
+	var hubURL, output string
 	cmd := &cobra.Command{
 		Use:   "install",
 		Short: appi18n.T("install.short"),
@@ -98,7 +105,7 @@ func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			client, err := registry.New(registryURL, nil)
+			client, err := hub.New(hubURL, nil)
 			if err != nil {
 				return err
 			}
@@ -154,17 +161,14 @@ func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
 			return nil
 		},
 	}
-	defaultRegistry := strings.TrimSpace(os.Getenv("SKILLSGO_REGISTRY_URL"))
-	if defaultRegistry == "" {
-		defaultRegistry = "http://localhost:3000"
-	}
-	cmd.Flags().StringVar(&registryURL, "registry", defaultRegistry, appi18n.T("flag.registry"))
+	defaultHub := defaultHubURL()
+	cmd.Flags().StringVar(&hubURL, "hub", defaultHub, appi18n.T("flag.hub"))
 	cmd.Flags().StringVar(&output, "output", "human", appi18n.T("flag.output"))
 	return cmd
 }
 
 func newUpdateCommand(catalog *agent.Catalog) *cobra.Command {
-	var registryURL, output string
+	var hubURL, output string
 	var global, check, yes bool
 	var preflight bool
 	var explicitTargets []string
@@ -177,13 +181,13 @@ func newUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 				if len(args) > 0 || global || check {
 					return fmt.Errorf("explicit Update Plans cannot be combined with names, --global, or --check")
 				}
-				return runExplicitUpdatePlan(cmd, registryURL, output, preflight, explicitTargets)
+				return runExplicitUpdatePlan(cmd, hubURL, output, preflight, explicitTargets)
 			}
 			if preflight {
 				return fmt.Errorf("--preflight requires at least one --target")
 			}
 			if global {
-				return runGlobalUpdate(cmd, args, registryURL, output, check)
+				return runGlobalUpdate(cmd, args, hubURL, output, check)
 			}
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -207,7 +211,7 @@ func newUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 			if len(names) == 0 {
 				return fmt.Errorf("未找到要更新的 Skill")
 			}
-			client, err := registry.New(registryURL, nil)
+			client, err := hub.New(hubURL, nil)
 			if err != nil {
 				return err
 			}
@@ -281,11 +285,8 @@ func newUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 			return nil
 		},
 	}
-	defaultRegistry := strings.TrimSpace(os.Getenv("SKILLSGO_REGISTRY_URL"))
-	if defaultRegistry == "" {
-		defaultRegistry = "http://localhost:3000"
-	}
-	cmd.Flags().StringVar(&registryURL, "registry", defaultRegistry, "Registry 服务地址")
+	defaultHub := defaultHubURL()
+	cmd.Flags().StringVar(&hubURL, "hub", defaultHub, "Hub 服务地址")
 	cmd.Flags().StringVar(&output, "output", "human", "输出格式：human 或 json")
 	cmd.Flags().BoolVarP(&global, "global", "g", false, "更新用户级 Skill")
 	cmd.Flags().BoolVar(&check, "check", false, "只检查更新，不修改安装")
@@ -296,7 +297,7 @@ func newUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 	return cmd
 }
 
-func runGlobalUpdate(cmd *cobra.Command, names []string, registryURL, output string, check bool) error {
+func runGlobalUpdate(cmd *cobra.Command, names []string, hubURL, output string, check bool) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
@@ -331,7 +332,7 @@ func runGlobalUpdate(cmd *cobra.Command, names []string, registryURL, output str
 		keys = append(keys, key)
 	}
 	sort.Strings(keys)
-	client, err := registry.New(registryURL, nil)
+	client, err := hub.New(hubURL, nil)
 	if err != nil {
 		return err
 	}
@@ -512,7 +513,7 @@ type addOptions struct {
 	global, copy, yes, list, all, fullDepth, replace, preflight bool
 	riskConfirmed, allowCritical                                bool
 	agents, skills, subagents, targets                          []string
-	metadata, output, registryURL, artifactVersion              string
+	metadata, output, hubURL, artifactVersion                   string
 }
 
 func newAddCommand(catalog *agent.Catalog) *cobra.Command {
@@ -601,7 +602,7 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 					}
 				}
 			}
-			client, err := registry.New(options.registryURL, nil)
+			client, err := hub.New(options.hubURL, nil)
 			if err != nil {
 				return err
 			}
@@ -674,10 +675,7 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 	flags.BoolVar(&options.all, "all", false, appi18n.T("flag.all"))
 	flags.BoolVar(&options.fullDepth, "full-depth", false, appi18n.T("flag.full_depth"))
 	flags.StringVar(&options.output, "output", "human", appi18n.T("flag.output"))
-	defaultRegistry := strings.TrimSpace(os.Getenv("SKILLSGO_REGISTRY_URL"))
-	if defaultRegistry == "" {
-		defaultRegistry = "http://localhost:3000"
-	}
-	flags.StringVar(&options.registryURL, "registry", defaultRegistry, appi18n.T("flag.registry"))
+	defaultHub := defaultHubURL()
+	flags.StringVar(&options.hubURL, "hub", defaultHub, appi18n.T("flag.hub"))
 	return cmd
 }

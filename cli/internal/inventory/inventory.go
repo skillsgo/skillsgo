@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on managed Installation Receipts, explicit project roots, Workspace Manifest/Lock state, and read-only target filesystem metadata.
- * [OUTPUT]: Provides typed, versioned Registry/Local managed-Library reconciliation across receipts, explicit projects, Workspace state, Agent paths, provenance, target health, and copy-mode Local Modifications.
+ * [OUTPUT]: Provides typed, versioned Hub/Local managed-Library reconciliation across receipts, explicit projects, Workspace state, Agent paths, provenance, target health, and copy-mode Local Modifications.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -31,7 +31,7 @@ type ReceiptState string
 type TargetMode string
 
 const (
-	ProvenanceRegistry Provenance = "registry"
+	ProvenanceHub      Provenance = "hub"
 	ProvenanceLocal    Provenance = "local"
 	ProvenanceExternal Provenance = "external"
 	RiskUnknown        Risk       = "unknown"
@@ -126,7 +126,7 @@ func Build(options Options) (Report, error) {
 		if !included {
 			continue
 		}
-		provenance := ProvenanceRegistry
+		provenance := ProvenanceHub
 		if installation.Provenance == store.ProvenanceLocal {
 			provenance = ProvenanceLocal
 		}
@@ -407,7 +407,7 @@ func addDeclaredTargetsWithoutReceipts(
 				if receiptedTargets[key] {
 					continue
 				}
-				provenance := ProvenanceRegistry
+				provenance := ProvenanceHub
 				if source.IsLocalCoordinate(locked.Coordinate) {
 					provenance = ProvenanceLocal
 				}

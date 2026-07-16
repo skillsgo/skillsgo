@@ -1,10 +1,10 @@
 /*
- * [INPUT]: Depends on immutable Skill ZIP bytes or extracted Store directories, canonical coordinates, resolved versions, and the Registry digest framing contract.
+ * [INPUT]: Depends on immutable Skill ZIP bytes or extracted Store directories, canonical coordinates, resolved versions, and the Hub digest framing contract.
  * [OUTPUT]: Provides bounded compression-independent ZIP/directory Content Digest computation and declared-digest verification.
  * [POS]: Serves as the CLI integrity boundary binding assessed Info metadata to downloaded and locally cached artifact files.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-package registry
+package hub
 
 import (
 	"archive/zip"
@@ -33,7 +33,7 @@ func VerifyContentDigest(data []byte, coordinate, version, expected string) erro
 		return err
 	}
 	if actual != expected {
-		return fmt.Errorf("Registry Content Digest mismatch for %s@%s: %s != %s", coordinate, version, actual, expected)
+		return fmt.Errorf("Hub Content Digest mismatch for %s@%s: %s != %s", coordinate, version, actual, expected)
 	}
 	return nil
 }
@@ -50,7 +50,7 @@ func VerifyContentDirectory(root, expected string) error {
 	return nil
 }
 
-// ContentDirectoryDigest applies the Registry framing contract to an extracted
+// ContentDirectoryDigest applies the Hub framing contract to an extracted
 // artifact while rejecting symlinks, special files, and oversized content.
 func ContentDirectoryDigest(root string) (string, error) {
 	root, err := filepath.Abs(root)
@@ -112,7 +112,7 @@ func ContentDirectoryDigest(root string) (string, error) {
 	return fmt.Sprintf("sha256:%x", hash.Sum(nil)), nil
 }
 
-// ContentDigest implements the Registry's normalized file-path/content framing.
+// ContentDigest implements the Hub's normalized file-path/content framing.
 func ContentDigest(data []byte, coordinate, version string) (string, error) {
 	if len(data) == 0 || len(data) > maxArtifactArchiveBytes {
 		return "", fmt.Errorf("artifact archive size must be between 1 and %d bytes", maxArtifactArchiveBytes)

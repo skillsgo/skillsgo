@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on explicit update target JSON, Registry/Store clients, and the Update Plan domain.
+ * [INPUT]: Depends on explicit update target JSON, Hub/Store clients, and the Update Plan domain.
  * [OUTPUT]: Adapts App-driven Update Plan preflight JSON and execution NDJSON at the public command boundary.
  * [POS]: Serves as the executable adapter between Cobra flags and exact-target Update Plan orchestration.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/skillsgo/skillsgo/cli/internal/updateplan"
 	"github.com/spf13/cobra"
@@ -19,7 +19,7 @@ import (
 
 func runExplicitUpdatePlan(
 	cmd *cobra.Command,
-	registryURL,
+	hubURL,
 	output string,
 	preflightOnly bool,
 	rawTargets []string,
@@ -34,7 +34,7 @@ func runExplicitUpdatePlan(
 	if err != nil {
 		return err
 	}
-	client, err := registry.New(registryURL, nil)
+	client, err := hub.New(hubURL, nil)
 	if err != nil {
 		return err
 	}

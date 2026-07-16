@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on the project package imports and contracts declared in this file.
+ * [OUTPUT]: Provides the project package behavior implemented by files.go.
+ * [POS]: Serves as maintained source in the project package in its renamed SkillsGo Hub or CLI workspace.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package project
 
 import (
@@ -6,8 +12,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"gopkg.in/yaml.v3"
 )
@@ -48,10 +54,10 @@ type Lockfile struct {
 }
 
 type LockedSkill struct {
-	Coordinate string          `yaml:"coordinate"`
-	Version    string          `yaml:"version"`
-	SHA256     string          `yaml:"sha256"`
-	Origin     registry.Origin `yaml:"origin"`
+	Coordinate string     `yaml:"coordinate"`
+	Version    string     `yaml:"version"`
+	SHA256     string     `yaml:"sha256"`
+	Origin     hub.Origin `yaml:"origin"`
 }
 
 func CheckNameConflict(root, name, coordinate, ref string, mode install.Mode) error {

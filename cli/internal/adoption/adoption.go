@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on one exact External Installation, content identity, optional Registry matches, immutable Store ingestion, and explicit user action.
- * [OUTPUT]: Provides state-bound adoption preflight plus content-preserving Registry association or offline Local Skill import.
- * [POS]: Serves as the External-to-managed ownership transition domain between inventory, Registry, Store, install, and project boundaries.
+ * [INPUT]: Depends on one exact External Installation, content identity, optional Hub matches, immutable Store ingestion, and explicit user action.
+ * [OUTPUT]: Provides state-bound adoption preflight plus content-preserving Hub association or offline Local Skill import.
+ * [POS]: Serves as the External-to-managed ownership transition domain between inventory, Hub, Store, install, and project boundaries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package adoption
@@ -17,10 +17,10 @@ import (
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/inventory"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"gopkg.in/yaml.v3"
 )
@@ -30,8 +30,8 @@ const SchemaVersion = 1
 type Action string
 
 const (
-	ActionAssociateRegistry Action = "associate-registry"
-	ActionImportLocal       Action = "import-local"
+	ActionAssociateHub Action = "associate-hub"
+	ActionImportLocal  Action = "import-local"
 )
 
 type Request struct {
@@ -55,16 +55,16 @@ type Target struct {
 }
 
 type Preflight struct {
-	SchemaVersion  int                     `json:"schemaVersion"`
-	Phase          string                  `json:"phase"`
-	Identity       string                  `json:"identity"`
-	Name           string                  `json:"name"`
-	Target         Target                  `json:"target"`
-	ContentDigest  string                  `json:"contentDigest"`
-	SourceHint     string                  `json:"sourceHint,omitempty"`
-	StateToken     string                  `json:"stateToken"`
-	Matches        []registry.ContentMatch `json:"matches"`
-	CanImportLocal bool                    `json:"canImportLocal"`
+	SchemaVersion  int                `json:"schemaVersion"`
+	Phase          string             `json:"phase"`
+	Identity       string             `json:"identity"`
+	Name           string             `json:"name"`
+	Target         Target             `json:"target"`
+	ContentDigest  string             `json:"contentDigest"`
+	SourceHint     string             `json:"sourceHint,omitempty"`
+	StateToken     string             `json:"stateToken"`
+	Matches        []hub.ContentMatch `json:"matches"`
+	CanImportLocal bool               `json:"canImportLocal"`
 }
 
 type Result struct {
@@ -80,7 +80,7 @@ type Result struct {
 }
 
 type Matcher interface {
-	MatchContent(context.Context, string, string) ([]registry.ContentMatch, error)
+	MatchContent(context.Context, string, string) ([]hub.ContentMatch, error)
 }
 
 func Inspect(catalog *agent.Catalog, request Request) (Preflight, error) {
@@ -115,7 +115,7 @@ func Inspect(catalog *agent.Catalog, request Request) (Preflight, error) {
 	if !found {
 		return Preflight{}, fmt.Errorf("exact External Installation not found")
 	}
-	digest, err := registry.ContentDirectoryDigest(request.Path)
+	digest, err := hub.ContentDirectoryDigest(request.Path)
 	if err != nil {
 		return Preflight{}, err
 	}
@@ -129,7 +129,7 @@ func Inspect(catalog *agent.Catalog, request Request) (Preflight, error) {
 		SchemaVersion: SchemaVersion, Phase: "adoption-preflight", Identity: request.Identity,
 		Name: request.Name, Target: Target{Scope: request.Scope, ProjectRoot: request.ProjectRoot, Agent: request.Agent, Path: filepath.Clean(request.Path)},
 		ContentDigest: digest, SourceHint: sourceHint(request.Path), StateToken: "sha256:" + hex.EncodeToString(token[:]),
-		Matches: []registry.ContentMatch{}, CanImportLocal: true,
+		Matches: []hub.ContentMatch{}, CanImportLocal: true,
 	}, nil
 }
 
@@ -142,7 +142,7 @@ func AddMatches(ctx context.Context, preflight Preflight, matcher Matcher) (Pref
 	return preflight, nil
 }
 
-func Execute(ctx context.Context, request Request, preflight Preflight, client *registry.Client, storage store.Store) (Result, error) {
+func Execute(ctx context.Context, request Request, preflight Preflight, client *hub.Client, storage store.Store) (Result, error) {
 	if request.StateToken != preflight.StateToken {
 		return Result{}, fmt.Errorf("External Installation changed after review")
 	}
@@ -153,14 +153,14 @@ func Execute(ctx context.Context, request Request, preflight Preflight, client *
 	switch request.Action {
 	case ActionImportLocal:
 		if request.MatchCoordinate != "" || request.MatchVersion != "" {
-			return Result{}, fmt.Errorf("Local import cannot include a Registry match")
+			return Result{}, fmt.Errorf("Local import cannot include a Hub match")
 		}
 		entry, err = storage.ImportLocal(request.Path, request.Name)
 		provenance = "local"
 		ref = entryVersion(entry)
-	case ActionAssociateRegistry:
+	case ActionAssociateHub:
 		if client == nil || request.MatchCoordinate == "" || request.MatchVersion == "" {
-			return Result{}, fmt.Errorf("Registry association requires an exact match")
+			return Result{}, fmt.Errorf("Hub association requires an exact match")
 		}
 		matches, matchErr := client.MatchContent(ctx, preflight.ContentDigest, preflight.SourceHint)
 		if matchErr != nil {
@@ -173,17 +173,17 @@ func Execute(ctx context.Context, request Request, preflight Preflight, client *
 			}
 		}
 		if !matched {
-			return Result{}, fmt.Errorf("reviewed Registry match is no longer available")
+			return Result{}, fmt.Errorf("reviewed Hub match is no longer available")
 		}
 		artifact, fetchErr := client.Fetch(ctx, request.MatchCoordinate, request.MatchVersion)
 		if fetchErr != nil {
 			return Result{}, fetchErr
 		}
 		if artifact.Info.ContentDigest != preflight.ContentDigest {
-			return Result{}, fmt.Errorf("Registry match content changed")
+			return Result{}, fmt.Errorf("Hub match content changed")
 		}
 		entry, err = storage.Put(artifact)
-		provenance = "registry"
+		provenance = "hub"
 		ref = artifact.Info.Origin.Ref
 	default:
 		return Result{}, fmt.Errorf("explicit adoption action is required")

@@ -29,7 +29,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | --- | --- |
 | `cmd/skillsgo/` | Process entry point and executable wiring. |
 | `internal/agent/` | Supported Agent definitions, detection, and installation locations. |
-| `internal/adoption/` | State-bound transition from exact External Installations to Registry-managed or private Local Skills. |
+| `internal/adoption/` | State-bound transition from exact External Installations to Hub-managed or private Local Skills. |
 | `internal/command/` | CLI command graph, argument handling, and orchestration. |
 | `internal/i18n/` | Locale detection and user-facing CLI messages. |
 | `internal/install/` | Add, update, remove, copy-digest, explicit replacement, and materialization behavior. |
@@ -37,15 +37,15 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/managementplan/` | Exact-target Remove, Repair, and Stop Managing preflight, reviewed-state binding, and target-specific execution. |
 | `internal/plan/` | Explicit Installation Plan conflict/risk preflight, Workspace Lock preview, resolution validation, and target-specific execution. |
 | `internal/project/` | `skillsgo.yaml` and `skillsgo-lock.yaml` project state. |
-| `internal/registry/` | Client for the public SkillsGo Registry protocol and normalized artifact-integrity verification. |
+| `internal/hub/` | Client for the public SkillsGo Hub protocol and normalized artifact-integrity verification. |
 | `internal/source/` | Skill-coordinate parsing and source identity. |
-| `internal/store/` | User-level shared Registry/Local artifact cache, private Local import/export, and installation state. |
+| `internal/store/` | User-level shared Hub/Local artifact cache, private Local import/export, and installation state. |
 | `internal/updateplan/` | Exact-target update checks, pinned-reference classification, Workspace Lock previews, and partial update execution. |
 
 ## Boundaries
 
 - The CLI is the only product boundary that mutates local skill installations.
-- Registry interaction must use the public SkillsGo protocol rather than server internals.
+- Hub interaction must use the public SkillsGo protocol rather than server internals.
 - The CLI may expose stable machine-readable output and availability exit codes for the App; human output and localized stderr are not integration contracts.
 - Do not place Flutter UI state, layout, navigation, or visual policy in this workspace.
 - Preserve artifact integrity and deterministic lock behavior when changing installation flows.
