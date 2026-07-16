@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
 
@@ -76,7 +76,7 @@ func TestAdoptExistingRecordsBaselineWithoutReplacingContent(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	contentDigest, err := registry.ContentDirectoryDigest(artifact)
+	contentDigest, err := hub.ContentDirectoryDigest(artifact)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -10,7 +10,7 @@ import (
 	"context"
 	"testing"
 
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/stretchr/testify/require"
 )
@@ -20,9 +20,9 @@ type recordingMatcher struct {
 	hint   string
 }
 
-func (matcher *recordingMatcher) MatchContent(_ context.Context, digest, hint string) ([]registry.ContentMatch, error) {
+func (matcher *recordingMatcher) MatchContent(_ context.Context, digest, hint string) ([]hub.ContentMatch, error) {
 	matcher.digest, matcher.hint = digest, hint
-	return []registry.ContentMatch{{
+	return []hub.ContentMatch{{
 		Coordinate: "github.com/acme/skills/-/demo", ImmutableVersion: "v1", ContentDigest: digest,
 	}}, nil
 }

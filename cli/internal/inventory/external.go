@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the installed Agent Catalog, explicit project roots, accounted target keys, and read-only filesystem metadata under known Agent Skill directories.
- * [OUTPUT]: Adds path-identified External Installation entries and target metadata without creating receipts, mutating content, or contacting a Registry.
+ * [OUTPUT]: Adds path-identified External Installation entries and target metadata without creating receipts, mutating content, or contacting a Hub.
  * [POS]: Serves as the read-only external-content discovery half of unified inventory reconciliation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

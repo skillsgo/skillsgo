@@ -7,7 +7,7 @@
 
 ## Architectural Boundary
 
-This package owns Update Plan semantics. Cobra adapts its machine contract, while Registry, Store, install, and project packages retain their existing infrastructure responsibilities.
+This package owns Update Plan semantics. Cobra adapts its machine contract, while Hub, Store, install, and project packages retain their existing infrastructure responsibilities.
 
 ## Invariants
 

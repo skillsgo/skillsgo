@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on exact managed Installation identities, Store receipts, Workspace declarations/locks, Registry resolution, and safe target replacement.
+ * [INPUT]: Depends on exact managed Installation identities, Store receipts, Workspace declarations/locks, Hub resolution, and safe target replacement.
  * [OUTPUT]: Provides strict Update Plan decoding, per-target movable-reference resolution, pinned-target exclusion, shared-binding grouping, Workspace Lock previews/reconciliation, state-bound execution, and structured progress/results.
- * [POS]: Serves as the update orchestration domain between the public update command and Registry/Store/install/project boundaries.
+ * [POS]: Serves as the update orchestration domain between the public update command and Hub/Store/install/project boundaries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package updateplan
@@ -19,9 +19,9 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
@@ -145,9 +145,9 @@ type Progress struct {
 	Result        *Result       `json:"result,omitempty"`
 }
 
-type Registry interface {
-	Resolve(context.Context, string, string) (registry.Info, error)
-	Fetch(context.Context, string, string) (*registry.Artifact, error)
+type Hub interface {
+	Resolve(context.Context, string, string) (hub.Info, error)
+	Fetch(context.Context, string, string) (*hub.Artifact, error)
 }
 
 func DecodeTargets(values []string) ([]TargetRequest, error) {
@@ -208,7 +208,7 @@ func validateRequest(request TargetRequest) error {
 
 func Build(
 	ctx context.Context,
-	client Registry,
+	client Hub,
 	storage store.Store,
 	requests []TargetRequest,
 ) (Preflight, error) {
@@ -303,7 +303,7 @@ func Build(
 
 func buildItem(
 	ctx context.Context,
-	client Registry,
+	client Hub,
 	storage store.Store,
 	request TargetRequest,
 	installation install.Installation,
@@ -463,7 +463,7 @@ func updateStateToken(
 
 func Execute(
 	ctx context.Context,
-	client Registry,
+	client Hub,
 	storage store.Store,
 	preflight Preflight,
 	report func(Progress),
@@ -538,10 +538,10 @@ func Execute(
 		if reconcileOnly {
 			entry, mutationErr = storage.Get(first.Coordinate, first.ToVersion)
 		} else {
-			var artifact *registry.Artifact
+			var artifact *hub.Artifact
 			artifact, mutationErr = client.Fetch(ctx, first.Coordinate, first.ToVersion)
 			if mutationErr == nil && artifact.Info.Version != first.ToVersion {
-				mutationErr = fmt.Errorf("Registry returned unexpected update version %s", artifact.Info.Version)
+				mutationErr = fmt.Errorf("Hub returned unexpected update version %s", artifact.Info.Version)
 			}
 			if mutationErr == nil {
 				entry, mutationErr = storage.Put(artifact)

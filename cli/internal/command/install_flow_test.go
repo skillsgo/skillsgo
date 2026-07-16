@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses command.Execute with fixture Registry artifacts, temporary Store/Workspace roots, and resolved Agent targets.
- * [OUTPUT]: Specifies add/list/remove, Registry-assessed risk gates, offline restore, immutable update, and explicit source replacement command flows.
+ * [INPUT]: Uses command.Execute with fixture Hub artifacts, temporary Store/Workspace roots, and resolved Agent targets.
+ * [OUTPUT]: Specifies add/list/remove, Hub-assessed risk gates, offline restore, immutable update, and explicit source replacement command flows.
  * [POS]: Serves as end-to-end CLI behavior coverage at the public command seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -17,9 +17,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
 
@@ -45,7 +45,7 @@ func TestAddListRemoveFlow(t *testing.T) {
 	home := filepath.Join(t.TempDir(), "home")
 	t.Setenv("HOME", home)
 	var output bytes.Buffer
-	if err := Execute([]string{"add", coordinate, "--skill", "demo", "--agent", "codex", "--global", "--registry", server.URL, "--output", "json"}, &output, &output); err != nil {
+	if err := Execute([]string{"add", coordinate, "--skill", "demo", "--agent", "codex", "--global", "--hub", server.URL, "--output", "json"}, &output, &output); err != nil {
 		t.Fatal(err)
 	}
 	target := filepath.Join(home, ".codex", "skills", "demo")
@@ -70,17 +70,17 @@ func TestAddListRemoveFlow(t *testing.T) {
 	}
 }
 
-func TestAddRequiresConfirmationForRegistryAssessedRisk(t *testing.T) {
+func TestAddRequiresConfirmationForHubAssessedRisk(t *testing.T) {
 	tests := []struct {
 		name        string
-		risk        registry.Risk
+		risk        hub.Risk
 		flags       []string
 		wantSuccess bool
 	}{
-		{name: "high risk is blocked without confirmation", risk: registry.RiskHigh},
-		{name: "high risk accepts confirmation", risk: registry.RiskHigh, flags: []string{"--confirm-risk"}, wantSuccess: true},
-		{name: "critical risk remains blocked after confirmation", risk: registry.RiskCritical, flags: []string{"--confirm-risk"}},
-		{name: "critical risk requires explicit override", risk: registry.RiskCritical, flags: []string{"--confirm-risk", "--allow-critical"}, wantSuccess: true},
+		{name: "high risk is blocked without confirmation", risk: hub.RiskHigh},
+		{name: "high risk accepts confirmation", risk: hub.RiskHigh, flags: []string{"--confirm-risk"}, wantSuccess: true},
+		{name: "critical risk remains blocked after confirmation", risk: hub.RiskCritical, flags: []string{"--confirm-risk"}},
+		{name: "critical risk requires explicit override", risk: hub.RiskCritical, flags: []string{"--confirm-risk", "--allow-critical"}, wantSuccess: true},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
@@ -103,7 +103,7 @@ func TestAddRequiresConfirmationForRegistryAssessedRisk(t *testing.T) {
 
 			home := filepath.Join(t.TempDir(), "home")
 			t.Setenv("HOME", home)
-			arguments := []string{"add", coordinate, "--skill", "risky", "--agent", "codex", "--global", "--registry", server.URL}
+			arguments := []string{"add", coordinate, "--skill", "risky", "--agent", "codex", "--global", "--hub", server.URL}
 			arguments = append(arguments, test.flags...)
 			var output bytes.Buffer
 			err := Execute(arguments, &output, &output)
@@ -125,7 +125,7 @@ func TestAddRequiresConfirmationForRegistryAssessedRisk(t *testing.T) {
 	}
 }
 
-func TestAddRejectsPathLikeSkillNamesBeforeRegistryAccess(t *testing.T) {
+func TestAddRejectsPathLikeSkillNamesBeforeHubAccess(t *testing.T) {
 	home := filepath.Join(t.TempDir(), "home")
 	t.Setenv("HOME", home)
 	for _, name := range []string{".", "..", "../escape", "nested/escape", `nested\escape`} {
@@ -134,7 +134,7 @@ func TestAddRejectsPathLikeSkillNamesBeforeRegistryAccess(t *testing.T) {
 			err := Execute([]string{
 				"add", "github.com/example/skills/-/demo",
 				"--skill", name, "--agent", "codex", "--global",
-				"--registry", "http://127.0.0.1:1",
+				"--hub", "http://127.0.0.1:1",
 			}, &output, &output)
 			if err == nil || !strings.Contains(err.Error(), "invalid Skill name") {
 				t.Fatalf("expected path-safe name rejection, got %v", err)
@@ -167,14 +167,14 @@ func commandTestZIP(t *testing.T, prefix string, files map[string]string) []byte
 
 func commandTestContentDigest(t *testing.T, data []byte, coordinate, version string) string {
 	t.Helper()
-	digest, err := registry.ContentDigest(data, coordinate, version)
+	digest, err := hub.ContentDigest(data, coordinate, version)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return digest
 }
 
-func TestInstallRestoresFromStoreWithoutRegistry(t *testing.T) {
+func TestInstallRestoresFromStoreWithoutHub(t *testing.T) {
 	root := t.TempDir()
 	home := filepath.Join(root, "home")
 	projectRoot := filepath.Join(root, "project")
@@ -184,11 +184,11 @@ func TestInstallRestoresFromStoreWithoutRegistry(t *testing.T) {
 	t.Setenv("HOME", home)
 	coordinate, version := "github.com/example/skills/-/skills/offline", "v0.0.0-offline"
 	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: offline\ndescription: test\n---\n"})
-	artifact := &registry.Artifact{
+	artifact := &hub.Artifact{
 		Coordinate: coordinate,
-		Info: registry.Info{
-			Version: version, Risk: registry.RiskLow, ContentDigest: commandTestContentDigest(t, zipData, coordinate, version),
-			Origin: registry.Origin{VCS: "git", CommitSHA: "abc", TreeSHA: "def"},
+		Info: hub.Info{
+			Version: version, Risk: hub.RiskLow, ContentDigest: commandTestContentDigest(t, zipData, coordinate, version),
+			Origin: hub.Origin{VCS: "git", CommitSHA: "abc", TreeSHA: "def"},
 		},
 		Manifest: []byte("name: offline\ndescription: test\n"),
 		ZIP:      zipData,
@@ -209,7 +209,7 @@ func TestInstallRestoresFromStoreWithoutRegistry(t *testing.T) {
 	}
 	defer os.Chdir(oldCWD)
 	var output bytes.Buffer
-	if err := Execute([]string{"install", "--registry", "http://127.0.0.1:1", "--output", "json"}, &output, &output); err != nil {
+	if err := Execute([]string{"install", "--hub", "http://127.0.0.1:1", "--output", "json"}, &output, &output); err != nil {
 		t.Fatalf("offline install should use Store: %v\n%s", err, output.String())
 	}
 	if _, err := os.Stat(filepath.Join(projectRoot, ".agents", "skills", "offline", "SKILL.md")); err != nil {
@@ -226,11 +226,11 @@ func TestUpdateSwitchesTargetAndLockToNewVersion(t *testing.T) {
 	t.Setenv("HOME", home)
 	coordinate := "github.com/example/skills/-/skills/demo"
 	oldZIP := commandTestZIP(t, coordinate+"@v1/", map[string]string{"SKILL.md": "old"})
-	oldArtifact := &registry.Artifact{
+	oldArtifact := &hub.Artifact{
 		Coordinate: coordinate,
-		Info: registry.Info{
-			Version: "v1", Risk: registry.RiskLow, ContentDigest: commandTestContentDigest(t, oldZIP, coordinate, "v1"),
-			Origin: registry.Origin{VCS: "git", Ref: "main", CommitSHA: "old", TreeSHA: "old-tree"},
+		Info: hub.Info{
+			Version: "v1", Risk: hub.RiskLow, ContentDigest: commandTestContentDigest(t, oldZIP, coordinate, "v1"),
+			Origin: hub.Origin{VCS: "git", Ref: "main", CommitSHA: "old", TreeSHA: "old-tree"},
 		},
 		Manifest: []byte("name: demo\n"),
 		ZIP:      oldZIP,
@@ -271,7 +271,7 @@ func TestUpdateSwitchesTargetAndLockToNewVersion(t *testing.T) {
 	}
 	defer os.Chdir(oldCWD)
 	var output bytes.Buffer
-	if err := Execute([]string{"update", "demo", "--registry", server.URL, "--output", "json"}, &output, &output); err != nil {
+	if err := Execute([]string{"update", "demo", "--hub", server.URL, "--output", "json"}, &output, &output); err != nil {
 		t.Fatalf("update failed: %v\n%s", err, output.String())
 	}
 	contents, err := os.ReadFile(filepath.Join(target.Path, "SKILL.md"))
@@ -299,9 +299,9 @@ func TestAddReplaceChangesSourceAndRemovesObsoleteAgentBindings(t *testing.T) {
 	t.Setenv("HOME", home)
 	oldCoordinate := "github.com/old/skills/-/skills/demo"
 	oldZIP := commandTestZIP(t, oldCoordinate+"@v1/", map[string]string{"SKILL.md": "old"})
-	oldArtifact := &registry.Artifact{
+	oldArtifact := &hub.Artifact{
 		Coordinate: oldCoordinate,
-		Info:       registry.Info{Version: "v1", Risk: registry.RiskLow, ContentDigest: commandTestContentDigest(t, oldZIP, oldCoordinate, "v1")},
+		Info:       hub.Info{Version: "v1", Risk: hub.RiskLow, ContentDigest: commandTestContentDigest(t, oldZIP, oldCoordinate, "v1")},
 		Manifest:   []byte("name: demo\n"),
 		ZIP:        oldZIP,
 	}
@@ -343,7 +343,7 @@ func TestAddReplaceChangesSourceAndRemovesObsoleteAgentBindings(t *testing.T) {
 	}
 	defer os.Chdir(oldCWD)
 	var output bytes.Buffer
-	if err := Execute([]string{"add", newCoordinate, "--skill", "demo", "--agent", "codex", "--replace", "--registry", server.URL}, &output, &output); err != nil {
+	if err := Execute([]string{"add", newCoordinate, "--skill", "demo", "--agent", "codex", "--replace", "--hub", server.URL}, &output, &output); err != nil {
 		t.Fatalf("replace failed: %v\n%s", err, output.String())
 	}
 	contents, err := os.ReadFile(filepath.Join(codexTarget.Path, "SKILL.md"))

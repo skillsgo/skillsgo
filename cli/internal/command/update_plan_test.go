@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses command.Execute with explicit managed target identities, temporary Store receipts, and a fixture Registry.
+ * [INPUT]: Uses command.Execute with explicit managed target identities, temporary Store receipts, and a fixture Hub.
  * [OUTPUT]: Specifies per-target source resolution, pinned-commit exclusion, exact-target update execution, shared Workspace binding rules, Workspace Lock reconciliation, and structured progress/results.
  * [POS]: Serves as the public CLI contract coverage for App-driven Update Plans.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -17,9 +17,9 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/stretchr/testify/require"
 )
@@ -75,7 +75,7 @@ func TestExplicitUpdatePlanResolvesOwnReferencesAndUpdatesOnlySelectedTarget(t *
 		"update",
 		"--target", targetJSON(selectedTarget, "v1"),
 		"--target", targetJSON(unselectedTarget, "v-fixed"),
-		"--preflight", "--output", "json", "--registry", server.URL,
+		"--preflight", "--output", "json", "--hub", server.URL,
 	}, &output, &output))
 	var preflight struct {
 		SchemaVersion int    `json:"schemaVersion"`
@@ -109,7 +109,7 @@ func TestExplicitUpdatePlanResolvesOwnReferencesAndUpdatesOnlySelectedTarget(t *
 	output.Reset()
 	require.NoError(t, Execute([]string{
 		"update", "--target", string(selectedExecution),
-		"--output", "ndjson", "--registry", server.URL,
+		"--output", "ndjson", "--hub", server.URL,
 	}, &output, &output))
 	lines := strings.Split(strings.TrimSpace(output.String()), "\n")
 	require.Len(t, lines, 3)
@@ -194,7 +194,7 @@ func TestExplicitUpdatePlanRetainsSuccessAndUpdatesWorkspaceLockOnlyAfterTargetS
 	var output bytes.Buffer
 	require.NoError(t, Execute([]string{
 		"update", "--target", baseRequests[0], "--target", baseRequests[1],
-		"--preflight", "--output", "json", "--registry", server.URL,
+		"--preflight", "--output", "json", "--hub", server.URL,
 	}, &output, &output))
 	var preflight struct {
 		Targets []struct {
@@ -214,7 +214,7 @@ func TestExplicitUpdatePlanRetainsSuccessAndUpdatesWorkspaceLockOnlyAfterTargetS
 		"update",
 		"--target", requestJSON(userTarget, "", preflight.Targets[0].ToVersion, preflight.Targets[0].StateToken),
 		"--target", requestJSON(projectTarget, projectRoot, preflight.Targets[1].ToVersion, preflight.Targets[1].StateToken),
-		"--output", "ndjson", "--registry", server.URL,
+		"--output", "ndjson", "--hub", server.URL,
 	}, &output, &output))
 	lines := strings.Split(strings.TrimSpace(output.String()), "\n")
 	require.Len(t, lines, 5)
@@ -235,7 +235,7 @@ func TestExplicitUpdatePlanRetainsSuccessAndUpdatesWorkspaceLockOnlyAfterTargetS
 	output.Reset()
 	require.NoError(t, Execute([]string{
 		"update", "--target", baseRequests[1],
-		"--preflight", "--output", "json", "--registry", server.URL,
+		"--preflight", "--output", "json", "--hub", server.URL,
 	}, &output, &output))
 	preflight.Targets = nil
 	preflight.WorkspaceLockChanges = nil
@@ -245,7 +245,7 @@ func TestExplicitUpdatePlanRetainsSuccessAndUpdatesWorkspaceLockOnlyAfterTargetS
 	require.NoError(t, Execute([]string{
 		"update",
 		"--target", requestJSON(projectTarget, projectRoot, preflight.Targets[0].ToVersion, preflight.Targets[0].StateToken),
-		"--output", "ndjson", "--registry", server.URL,
+		"--output", "ndjson", "--hub", server.URL,
 	}, &output, &output))
 	_, lockfile, err = project.Load(projectRoot)
 	require.NoError(t, err)
@@ -277,7 +277,7 @@ func TestExplicitUpdatePlanRequiresAndSwitchesEverySharedBinding(t *testing.T) {
 	var output bytes.Buffer
 	err := Execute([]string{
 		"update", "--target", requestJSON(targets[0], "", ""),
-		"--preflight", "--output", "json", "--registry", "http://127.0.0.1:1",
+		"--preflight", "--output", "json", "--hub", "http://127.0.0.1:1",
 	}, &output, &output)
 	require.ErrorContains(t, err, "requires every affected Agent binding")
 
@@ -301,7 +301,7 @@ func TestExplicitUpdatePlanRequiresAndSwitchesEverySharedBinding(t *testing.T) {
 		"update",
 		"--target", requestJSON(targets[0], "", ""),
 		"--target", requestJSON(targets[1], "", ""),
-		"--preflight", "--output", "json", "--registry", server.URL,
+		"--preflight", "--output", "json", "--hub", server.URL,
 	}, &output, &output))
 	var preflight struct {
 		Targets []struct {
@@ -315,7 +315,7 @@ func TestExplicitUpdatePlanRequiresAndSwitchesEverySharedBinding(t *testing.T) {
 		"update",
 		"--target", requestJSON(targets[0], preflight.Targets[0].ToVersion, preflight.Targets[0].StateToken),
 		"--target", requestJSON(targets[1], preflight.Targets[1].ToVersion, preflight.Targets[1].StateToken),
-		"--output", "ndjson", "--registry", server.URL,
+		"--output", "ndjson", "--hub", server.URL,
 	}, &output, &output))
 	installations, err := install.ListInstallations(storage.Root, install.InventoryFilter{})
 	require.NoError(t, err)
@@ -365,7 +365,7 @@ func TestExplicitUpdatePlanRequiresEveryAgentDeclaredByWorkspaceLock(t *testing.
 	var output bytes.Buffer
 	err := Execute([]string{
 		"update", "--target", requestJSON(targets[0]),
-		"--preflight", "--output", "json", "--registry", "http://127.0.0.1:1",
+		"--preflight", "--output", "json", "--hub", "http://127.0.0.1:1",
 	}, &output, &output)
 	require.ErrorContains(t, err, "requires every declared Agent target")
 
@@ -384,7 +384,7 @@ func TestExplicitUpdatePlanRequiresEveryAgentDeclaredByWorkspaceLock(t *testing.
 		"update",
 		"--target", requestJSON(targets[0]),
 		"--target", requestJSON(targets[1]),
-		"--preflight", "--output", "json", "--registry", server.URL,
+		"--preflight", "--output", "json", "--hub", server.URL,
 	}, &output, &output))
 	var preflight struct {
 		Targets []struct {
@@ -429,7 +429,7 @@ func TestExplicitUpdatePlanReconcilesWorkspaceLockAfterTargetAlreadySwitched(t *
 
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if strings.HasSuffix(request.URL.Path, "/main.info") {
-			payload, marshalErr := json.Marshal(registry.Info{
+			payload, marshalErr := json.Marshal(hub.Info{
 				Version:       newEntry.Receipt.Version,
 				Risk:          newEntry.Receipt.Risk,
 				ContentDigest: newEntry.Receipt.ContentDigest,
@@ -456,7 +456,7 @@ func TestExplicitUpdatePlanReconcilesWorkspaceLockAfterTargetAlreadySwitched(t *
 	var output bytes.Buffer
 	require.NoError(t, Execute([]string{
 		"update", "--target", requestJSON("", ""),
-		"--preflight", "--output", "json", "--registry", server.URL,
+		"--preflight", "--output", "json", "--hub", server.URL,
 	}, &output, &output))
 	var preflight struct {
 		Targets []struct {
@@ -483,7 +483,7 @@ func TestExplicitUpdatePlanReconcilesWorkspaceLockAfterTargetAlreadySwitched(t *
 	output.Reset()
 	require.NoError(t, Execute([]string{
 		"update", "--target", requestJSON(preflight.Targets[0].ToVersion, preflight.Targets[0].StateToken),
-		"--output", "ndjson", "--registry", server.URL,
+		"--output", "ndjson", "--hub", server.URL,
 	}, &output, &output))
 	_, lockfile, err := project.Load(projectRoot)
 	require.NoError(t, err)
@@ -503,12 +503,12 @@ func updatePlanTestStoreEntry(
 ) *store.Entry {
 	t.Helper()
 	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{"SKILL.md": version})
-	entry, err := storage.Put(&registry.Artifact{
+	entry, err := storage.Put(&hub.Artifact{
 		Coordinate: coordinate,
-		Info: registry.Info{
-			Version: version, Risk: registry.RiskLow,
+		Info: hub.Info{
+			Version: version, Risk: hub.RiskLow,
 			ContentDigest: commandTestContentDigest(t, zipData, coordinate, version),
-			Origin: registry.Origin{
+			Origin: hub.Origin{
 				VCS: "git", URL: "https://github.com/example/skills", Subdir: "skills/demo",
 				Ref: "refs/heads/" + requestedRef, CommitSHA: commitSHA, TreeSHA: "tree-" + commitSHA,
 			},

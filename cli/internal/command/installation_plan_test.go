@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses command.Execute with a fixture Registry, hostile explicit project path, test Agent, and temporary Store/Workspace boundaries.
+ * [INPUT]: Uses command.Execute with a fixture Hub, hostile explicit project path, test Agent, and temporary Store/Workspace boundaries.
  * [OUTPUT]: Specifies schema-stable preflight/execution JSON, refreshed trusted-risk gates, state-bound resolutions, exact cached versions, explicit hostile target preservation, receipts, Lock previews, and identical skips.
  * [POS]: Serves as executable App-facing contract coverage for multi-location Installation Plans.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -17,10 +17,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/plan"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/registry"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/stretchr/testify/require"
 )
@@ -38,7 +38,7 @@ func TestExplicitInstallationPlanPreflightsExecutesAndSkipsExactTargets(t *testi
 	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{
 		"SKILL.md": "---\nname: demo\ndescription: exact targets\n---\n",
 	})
-	contentDigest, err := registry.ContentDigest(zipData, coordinate, version)
+	contentDigest, err := hub.ContentDigest(zipData, coordinate, version)
 	require.NoError(t, err)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
@@ -62,7 +62,7 @@ func TestExplicitInstallationPlanPreflightsExecutesAndSkipsExactTargets(t *testi
 	for _, target := range targets {
 		preflightArgs = append(preflightArgs, "--target", target)
 	}
-	preflightArgs = append(preflightArgs, "--preflight", "--registry", server.URL, "--output", "json")
+	preflightArgs = append(preflightArgs, "--preflight", "--hub", server.URL, "--output", "json")
 	var output bytes.Buffer
 	require.NoError(t, Execute(preflightArgs, &output, &output), output.String())
 	var preflight plan.Preflight
@@ -81,7 +81,7 @@ func TestExplicitInstallationPlanPreflightsExecutesAndSkipsExactTargets(t *testi
 	for _, target := range targets {
 		executeArgs = append(executeArgs, "--target", target)
 	}
-	executeArgs = append(executeArgs, "--version", version, "--confirm-risk", "--yes", "--registry", server.URL, "--output", "json")
+	executeArgs = append(executeArgs, "--version", version, "--confirm-risk", "--yes", "--hub", server.URL, "--output", "json")
 	output.Reset()
 	require.NoError(t, Execute(executeArgs, &output, &output), output.String())
 	var execution plan.Execution
@@ -127,7 +127,7 @@ func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
 	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{
 		"SKILL.md": "---\nname: demo\ndescription: assessment refresh\n---\n",
 	})
-	contentDigest, err := registry.ContentDigest(zipData, coordinate, version)
+	contentDigest, err := hub.ContentDigest(zipData, coordinate, version)
 	require.NoError(t, err)
 	risk := "low"
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -147,7 +147,7 @@ func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
 	preflight := func(extra ...string) plan.Preflight {
 		arguments := []string{
 			"add", coordinate, "--skill", "demo", "--target", target,
-			"--preflight", "--registry", server.URL, "--output", "json",
+			"--preflight", "--hub", server.URL, "--output", "json",
 		}
 		arguments = append(arguments, extra...)
 		var output bytes.Buffer
@@ -179,7 +179,7 @@ func TestExplicitInstallationNDJSONReportsEveryTargetAndRetainsSuccess(t *testin
 	zipData := commandTestZIP(t, coordinate+"@"+version+"/", map[string]string{
 		"SKILL.md": "---\nname: demo\ndescription: partial execution\n---\n",
 	})
-	contentDigest, err := registry.ContentDigest(zipData, coordinate, version)
+	contentDigest, err := hub.ContentDigest(zipData, coordinate, version)
 	require.NoError(t, err)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
@@ -198,7 +198,7 @@ func TestExplicitInstallationNDJSONReportsEveryTargetAndRetainsSuccess(t *testin
 		"add", coordinate, "--skill", "demo",
 		"--target", `{"scope":"user","agent":"test-agent","mode":"copy"}`,
 		"--target", fmt.Sprintf(`{"scope":"project","projectRoot":%q,"agent":"test-agent","mode":"copy"}`, projectRoot),
-		"--version", version, "--yes", "--output", "ndjson", "--registry", server.URL,
+		"--version", version, "--yes", "--output", "ndjson", "--hub", server.URL,
 	}
 	output := &triggeringBuffer{trigger: func() {
 		require.NoError(t, os.WriteFile(filepath.Join(projectRoot, ".test-agent"), []byte("blocks target parent"), 0o600))
