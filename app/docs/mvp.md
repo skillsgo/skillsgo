@@ -1,6 +1,6 @@
 # SkillsGo Personal MVP
 
-SkillsGo Personal MVP is a desktop manager for Agent Skills. It discovers public Skills through an open SkillsGo Registry and uses the App-bundled SkillsGo CLI to manage user-level and project-level installations.
+SkillsGo Personal MVP is a desktop manager for Agent Skills. It discovers public Skills through an open SkillsGo Hub and uses the App-bundled SkillsGo CLI to manage user-level and project-level installations.
 
 See [User Journeys and Information Architecture](user-routes.md) for the complete experience and [`CONTEXT.md`](../CONTEXT.md) for domain language.
 
@@ -21,7 +21,7 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 - Include both SkillsGo-managed targets and External Installations discovered on disk.
 - Aggregate all targets for one logical Skill while allowing different targets to retain different versions.
 - Check for updates and update, remove, repair, or retry selected targets.
-- Associate an External Installation with a Registry artifact or import it as a Local Skill.
+- Associate an External Installation with a Hub artifact or import it as a Local Skill.
 
 ### Projects
 
@@ -42,7 +42,7 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 
 - General: language and motion preferences.
 - Agents: detection state, paths, and re-detection.
-- Registry: official or self-hosted Origin and connectivity.
+- Hub: official or self-hosted Origin and connectivity.
 - Installation policy: symlink or copy, conflicts, risk confirmation, and anonymous install telemetry.
 - Storage: Store path, disk usage, and safe cleanup.
 - About: App, bundled CLI, updates, licenses, and privacy.
@@ -53,19 +53,19 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 - Private Skill hosting and enterprise audit.
 - Android and iOS.
 - Scanning the whole disk for projects.
-- Automatically publishing Local Skills to a Registry.
+- Automatically publishing Local Skills to a Hub.
 - Silently making Skill versions uniform across projects.
 - Updating or removing an External Installation before explicit adoption.
 - Pretending that mutations across multiple filesystem locations are one global transaction.
 
 ## Integration Boundaries
 
-- The App reads Registry search, ranking, detail, and immutable artifact protocols directly.
+- The App reads Hub search, ranking, detail, and immutable artifact protocols directly.
 - The App invokes stable JSON commands on the bundled SkillsGo CLI for local discovery and mutations.
 - The App never parses human-oriented CLI output and never constructs commands through a shell string.
 - A standalone CLI remains available to terminal users; the production App does not require a prior CLI install or configured `PATH`.
-- Users may configure a self-hosted Registry and all downloaded content remains digest-verified.
-- The Registry does not depend on the `skills.sh` website, APIs, or metadata.
+- Users may configure a self-hosted Hub and all downloaded content remains digest-verified.
+- The Hub does not depend on the `skills.sh` website, APIs, or metadata.
 
 ## Experience Constraints
 
@@ -88,5 +88,5 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 7. The Library aggregates by logical Skill and displays targets, scopes, and Version Divergence.
 8. The App detects External Installations and can associate or import them after confirmation.
 9. A user can check, update, and remove selected targets without changing unselected targets.
-10. Registry outages, inaccessible projects, unhealthy targets, and CLI failures all have recoverable states.
+10. Hub outages, inaccessible projects, unhealthy targets, and CLI failures all have recoverable states.
 11. Automated tests cover the core CLI JSON contracts, aggregation behavior, Installation Plans, and primary Flutter journeys.

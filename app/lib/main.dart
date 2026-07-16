@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Flutter desktop bindings, macOS window integration, Marionette debug instrumentation, and the real SkillsGateway.
- * [OUTPUT]: Starts the SkillsGo desktop process and exposes debug-only navigation measurements.
+ * [INPUT]: Depends on Flutter desktop bindings, macOS window integration, Marionette debug instrumentation, build mode, and the real SkillsGateway.
+ * [OUTPUT]: Starts the SkillsGo desktop process with a local Debug Hub or official Release Hub and exposes debug-only navigation measurements.
  * [POS]: Serves as the Flutter workspace process entry point and platform initialization boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -43,7 +43,15 @@ Future<void> main() async {
     await windowManager.focus();
   });
 
-  runApp(SkillsGoApp(gateway: RealSkillsGateway()));
+  runApp(
+    SkillsGoApp(
+      gateway: RealSkillsGateway(
+        hubBaseUrl: kDebugMode
+            ? 'http://127.0.0.1:3000'
+            : 'https://hub.skillsgo.ai',
+      ),
+    ),
+  );
 }
 
 List<Map<String, Object>> _measureNavigation() {

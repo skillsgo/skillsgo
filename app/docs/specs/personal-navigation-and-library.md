@@ -14,11 +14,11 @@ The current App assumes a user-level Codex installation, requires an externally 
 
 Build the Personal desktop experience around three stable top-level destinations: Discover, Library, and Settings. Each destination receives a Burrow-inspired floating left rail and retains its own navigation state.
 
-Discover provides Search, Ranking, Trending, and Hot views backed by the SkillsGo Registry. Library provides mutually exclusive All, User Scope, Added Project, and Installed Agent views. It aggregates all Installation Targets under one logical Library Entry while preserving Version Divergence and exposing External Installations.
+Discover provides Search, Ranking, Trending, and Hot views backed by the SkillsGo Hub. Library provides mutually exclusive All, User Scope, Added Project, and Installed Agent views. It aggregates all Installation Targets under one logical Library Entry while preserving Version Divergence and exposing External Installations.
 
 Installing a Skill opens an Installation Plan represented as a multi-location by multi-Agent matrix. Users may select any set of cells. The bundled SkillsGo CLI validates and executes the explicit targets, returns structured per-target outcomes, retains successful targets after partial failure, and supports retrying failed targets.
 
-Projects are added only through explicit directory selection. External Installations remain inspectable but read-only until the user associates them with an immutable Registry artifact or imports them as a Local Skill. Production App releases bundle a compatible SkillsGo CLI, so terminal setup is never a prerequisite for the GUI.
+Projects are added only through explicit directory selection. External Installations remain inspectable but read-only until the user associates them with an immutable Hub artifact or imports them as a Local Skill. Production App releases bundle a compatible SkillsGo CLI, so terminal setup is never a prerequisite for the GUI.
 
 ## User Stories
 
@@ -37,10 +37,10 @@ Projects are added only through explicit directory selection. External Installat
 13. As a user following current adoption, I want a Trending view based on the latest 24 hours, so that I can see what the ecosystem is using now.
 14. As a user looking for fast-rising Skills, I want a Hot view based on short-term velocity, so that sudden changes are visible separately from total popularity.
 15. As an international user, I want the four discovery destinations localized through the App's i18n system, so that navigation follows my system language.
-16. As a user comparing discovery results, I want each card to show name, description, source, Trust Level, version, risk, and the relevant ranking metric, so that I can make an informed choice.
+16. As a user comparing discovery results, I want each compact card to show the repository identity, name, description, source, and relevant ranking metric, while keeping trust, immutable version, and risk evidence in detail, so that I can scan quickly without losing the deeper audit path.
 17. As a user with an existing installation, I want discovery cards to show the target count, so that I know the Skill is already present somewhere.
-18. As a user with an existing installation, I want the action to say Install to More Targets, so that the App does not imply a duplicate installation.
-19. As a user browsing a collection, I want empty results to distinguish a real empty collection from a Registry failure, so that I know whether to change my query or retry.
+18. As a user scanning discovery cards, I want every card action to use the concise Install label, while the Installation Plan visibly excludes existing targets, so that compact copy does not permit duplicate installation.
+19. As a user browsing a collection, I want empty results to distinguish a real empty collection from a Hub failure, so that I know whether to change my query or retry.
 20. As an offline user, I want Discover to show a recoverable offline state, so that an empty screen is not mistaken for no available Skills.
 21. As a cautious user, I want to open a Skill before installation, so that I can inspect its real instructions.
 22. As a cautious user, I want rendered `SKILL.md` content, so that I can understand the behavior the Agent will receive.
@@ -79,7 +79,7 @@ Projects are added only through explicit directory selection. External Installat
 55. As a Library user, I want each entry to summarize target count, projects, Agents, versions, provenance, risk, and health, so that important state is visible before detail.
 56. As a user with Version Divergence, I want the number of active versions displayed, so that intentional project pinning is not presented as damage.
 57. As a user opening a Library Entry, I want every relevant Installation Target listed with location, Agent, version, type, and health, so that I can act on individual targets.
-58. As a user with a Registry Skill, I want to install it to more targets from Library detail, so that discovery is not the only entry point for distribution.
+58. As a user with a Hub Skill, I want to install it to more targets from Library detail, so that discovery is not the only entry point for distribution.
 59. As a user checking updates, I want every managed target resolved independently, so that different references and versions remain accurate.
 60. As a user updating a Skill, I want to select exact targets, so that project Locks are never changed implicitly.
 61. As a project user, I want an updated target to update its Workspace Lock after confirmation, so that the project remains reproducible.
@@ -90,11 +90,11 @@ Projects are added only through explicit directory selection. External Installat
 66. As a user with an existing Skill installed by another tool, I want it shown as an External Installation, so that the Library reflects the machine rather than only SkillsGo receipts.
 67. As a user inspecting an External Installation, I want to read its instructions, files, and risk, so that unmanaged does not mean invisible.
 68. As a user with an External Installation, I want update and removal disabled until adoption, so that SkillsGo does not claim ownership silently.
-69. As a user adopting an External Installation, I want SkillsGo to attempt an immutable Registry match, so that known content can regain source and update metadata.
-70. As a user reviewing a Registry match, I want source and version confirmed before association, so that content is not replaced by assumption.
+69. As a user adopting an External Installation, I want SkillsGo to attempt an immutable Hub match, so that known content can regain source and update metadata.
+70. As a user reviewing a Hub match, I want source and version confirmed before association, so that content is not replaced by assumption.
 71. As a user with custom content, I want to import an unmatched External Installation as a Local Skill, so that my own Skills can use the same management workflow.
 72. As a Local Skill user, I want to install it elsewhere, export it, or remove it, so that local content remains useful without being published.
-73. As a Local Skill author, I want import to remain local, so that adoption never publishes private content to a Registry.
+73. As a Local Skill author, I want import to remain local, so that adoption never publishes private content to a Hub.
 74. As a project user, I want to add a project through the operating-system directory picker, so that access is explicit.
 75. As a project user, I want a project to work without Git or existing SkillsGo files, so that local workspaces are not excluded.
 76. As a project user, I want SkillsGo to read the Workspace Manifest, Workspace Lock, and known Agent Skill directories, so that declared and actual inventory can be reconciled.
@@ -105,9 +105,9 @@ Projects are added only through explicit directory selection. External Installat
 81. As a privacy-conscious user, I want SkillsGo to avoid scanning the disk for projects, so that only explicitly selected directories are inspected.
 82. As a user with no Installed Agent, I want discovery to remain available, so that I can evaluate Skills before configuring an Agent.
 83. As a user with no Installed Agent, I want the installation sheet to explain the empty matrix and link to Agent guidance, so that the next step is clear.
-84. As an offline user, I want Library, projects, Agent views, and local detail to remain usable, so that local management does not depend on Registry availability.
-85. As a user configuring the product, I want separate General, Agents, Registry, Installation Policy, Storage, and About settings, so that unrelated concerns do not accumulate on one page.
-86. As a user of a self-hosted Registry, I want to configure and test a custom Registry Origin, so that the App is not locked to the official deployment.
+84. As an offline user, I want Library, projects, Agent views, and local detail to remain usable, so that local management does not depend on Hub availability.
+85. As a user configuring the product, I want separate General, Agents, Hub, Installation Policy, Storage, and About settings, so that unrelated concerns do not accumulate on one page.
+86. As a user of a self-hosted Hub, I want to configure and test a custom Hub Origin, so that the App is not locked to the official deployment.
 87. As a user diagnosing the App, I want the App and bundled CLI versions visible together, so that compatibility problems are actionable.
 88. As an accessibility user, I want reduced transparency, reduced motion, keyboard navigation, and semantic labels supported throughout the new routes, so that visual polish does not reduce usability.
 89. As a maintainer, I want all local mutations to remain owned by the SkillsGo CLI, so that Flutter and terminal workflows cannot diverge into separate package managers.
@@ -121,16 +121,16 @@ Projects are added only through explicit directory selection. External Installat
 - Add one floating rounded left rail per top-level destination. Rail items use visible labels; the rail is not an icon-only clone of Burrow.
 - Discover rail order is Search, Ranking, Trending, and Hot. Search is the initial route.
 - Library rail order is All, User Scope, Added Projects, Add Project, divider, and every Installed Agent. Location and Agent entries are mutually exclusive rather than combinable filters.
-- Settings rail order is General, Agents, Registry, Installation Policy, Storage, and About.
+- Settings rail order is General, Agents, Hub, Installation Policy, Storage, and About.
 - Preserve each top-level destination's last subroute, search input, scroll position, and in-flight operations for the current session. Detail navigation carries an explicit origin so Back restores the source view.
 - Production App packages a platform-compatible SkillsGo CLI and verifies its availability and compatibility at startup. The bundled executable is not installed into the user's system `PATH`.
 - Keep the App's highest test and orchestration seam as `SkillsGateway`. UI code receives domain objects and operations rather than directly invoking HTTP, processes, or the filesystem.
-- Expand the Gateway domain around Installed Agents, Added Projects, Library Entries, Installation Targets, Installation Plans, Target Results, External Installations, Local Skills, Version Divergence, and Registry collection pages.
+- Expand the Gateway domain around Installed Agents, Added Projects, Library Entries, Installation Targets, Installation Plans, Target Results, External Installations, Local Skills, Version Divergence, and Hub collection pages.
 - Treat the SkillsGo CLI as the only owner of local Skill mutations, Content-addressed Store state, Agent Adapter behavior, Installation Receipts, Workspace Manifests, and Workspace Locks.
 - Add a stable CLI machine contract for Installed Agent discovery. Each result includes canonical Agent ID, display name, installed state, supported scopes, and resolved user-level target information. Human CLI output is not part of the App contract.
 - Add a stable CLI inventory contract that accepts User Scope plus an explicit list of Added Project roots. It returns logical Skill identity when known, provenance, versions, and every Installation Target with scope, project, Agent, path, mode, receipt state, and health.
 - Inventory scans known Agent directories only. Project scanning is restricted to Added Projects passed by the App and never expands into general disk discovery.
-- Aggregate Registry Skills by stable Skill Identity, Local Skills by local identity, and leave unidentified External Installations distinct even when names match.
+- Aggregate Hub Skills by stable Skill Identity, Local Skills by local identity, and leave unidentified External Installations distinct even when names match.
 - Persist the Added Project list as App state using stable directory references appropriate to the desktop platform. Removing an Added Project deletes only the reference.
 - Model an Installation Plan as one Skill artifact plus an explicit list of location-and-Agent targets. Row and column selection are UI shortcuts that produce exact cells before execution.
 - The CLI preflights every target before mutation and returns target-specific actions such as create, replace, skip, conflict, or blocked-by-risk.
@@ -140,10 +140,10 @@ Projects are added only through explicit directory selection. External Installat
 - Updating targets resolves each target's own reference and current immutable version. Project updates modify the corresponding Workspace Lock only after confirmation. Fixed commits without a movable reference do not report an available update.
 - Removing a target never removes other targets for the same Library Entry. Store pruning remains a separate reference-aware operation.
 - Detect External Installations by reconciling known Agent directories with Installation Receipts. Inspection is read-only until adoption.
-- External adoption first attempts a Registry match using content identity and source hints. A confirmed match becomes a managed Registry Skill; an unmatched item may be imported as a Local Skill without publication or an online update source.
-- Registry collection contracts remain Search plus ranked Skills using `all_time`, `trending`, and `hot` semantics. Pagination and empty collections must return stable machine-readable shapes.
-- Registry detail must provide the immutable metadata needed by the App to display source, Manifest, files, Trust Level, and Risk Assessment without relying on human web pages.
-- Keep Registry Origin configurable. Official and self-hosted Origins use the same protocol and content verification rules.
+- External adoption first attempts a Hub match using content identity and source hints. A confirmed match becomes a managed Hub Skill; an unmatched item may be imported as a Local Skill without publication or an online update source.
+- Hub collection contracts remain Search plus ranked Skills using `all_time`, `trending`, and `hot` semantics. Pagination and empty collections must return stable machine-readable shapes.
+- Hub detail must provide the immutable metadata needed by the App to display source, Manifest, files, Trust Level, and Risk Assessment without relying on human web pages.
+- Keep Hub Origin configurable. Official and self-hosted Origins use the same protocol and content verification rules.
 - Risk policy remains artifact-specific: Personal requires additional confirmation for High, blocks Critical by default with an explicit override, and never silently deletes already installed content after a later warning.
 - All process execution uses an executable plus argument array and never shell interpolation.
 - All new repository documentation, ADRs, specifications, implementation plans, and issue content are written in English. User-facing copy continues through i18n and follows the system language by default.
@@ -153,13 +153,13 @@ Projects are added only through explicit directory selection. External Installat
 - A good test asserts behavior visible at an executable or user boundary: rendered navigation, stable JSON, HTTP responses, explicit filesystem effects, and recoverable errors. Tests must not depend on private Widget structure, Cobra helper functions, SQL query text, or implementation call counts.
 - The App uses `SkillsGateway` as its primary seam. Widget tests drive a fake Gateway through complete journeys and assert visible states and user actions.
 - Extend the existing high-level App journey coverage to include top-level and rail navigation, state restoration, all four Discover views, Skill detail origin restoration, Installation Plan matrix selection, per-target results, Library aggregation, Version Divergence, External Installation adoption, project lifecycle, offline behavior, and accessibility semantics.
-- Gateway contract tests use controlled HTTP clients and process runners to verify Registry and CLI schemas, non-success status handling, malformed responses, timeout behavior, and error translation.
-- The CLI uses its root `Execute` entry point as the primary seam. Tests provide arguments, stdout, stderr, temporary home and project directories, and controlled Registry HTTP servers.
+- Gateway contract tests use controlled HTTP clients and process runners to verify Hub and CLI schemas, non-success status handling, malformed responses, timeout behavior, and error translation.
+- The CLI uses its root `Execute` entry point as the primary seam. Tests provide arguments, stdout, stderr, temporary home and project directories, and controlled Hub HTTP servers.
 - Extend CLI command-flow tests to cover Installed Agent discovery, inventory reconciliation, explicit multi-target plans, row and column expansion results, collisions, Local Modifications, per-target partial failure, retry, project Lock changes, External Installation import, and stable structured output.
 - Lower-level Store, Agent Adapter, target, and project tests remain appropriate only for deterministic algorithms or safety invariants that are difficult to isolate through the command boundary.
-- The Registry uses its HTTP Router as the primary seam. Tests exercise Search, Ranking, Trending, Hot, detail, immutable metadata, pagination, empty arrays, validation, and idempotent install events through HTTP requests.
-- Registry HTTP tests run against SQLite for fast coverage. Existing PostgreSQL integration coverage verifies database portability for catalog and ranking behavior.
-- Add contract fixtures shared conceptually across App, CLI, and Registry so field names, enum values, and versioned protocol behavior cannot drift. Fixtures test public JSON rather than language-specific internal types.
+- The Hub uses its HTTP Router as the primary seam. Tests exercise Search, Ranking, Trending, Hot, detail, immutable metadata, pagination, empty arrays, validation, and idempotent install events through HTTP requests.
+- Hub HTTP tests run against SQLite for fast coverage. Existing PostgreSQL integration coverage verifies database portability for catalog and ranking behavior.
+- Add contract fixtures shared conceptually across App, CLI, and Hub so field names, enum values, and versioned protocol behavior cannot drift. Fixtures test public JSON rather than language-specific internal types.
 - Test partial failure with at least one writable target and one failing target, then assert the writable target remains installed and the failed target alone can be retried.
 - Test that a same-name different-identity Skill is never merged or overwritten without explicit replacement.
 - Test that an External Installation remains visible but cannot be updated or removed before adoption.
@@ -176,19 +176,19 @@ Projects are added only through explicit directory selection. External Installat
 - Android and iOS applications.
 - Automatic disk scanning for projects or repositories.
 - Installing or configuring third-party Agents on the user's behalf.
-- Publishing Local Skills to a Registry.
+- Publishing Local Skills to a Hub.
 - Ratings, reviews, comments, favorites, personalized recommendations, and social feeds.
 - Automatically making versions uniform across projects.
 - Background auto-update of Skill content.
 - Treating multi-location filesystem operations as one global transaction.
 - Updating or removing an External Installation before adoption.
 - Automatic merge of Local Modifications.
-- Redesigning the Registry artifact protocol beyond metadata required by the agreed user journeys.
+- Redesigning the Hub artifact protocol beyond metadata required by the agreed user journeys.
 - Team-specific private distribution and policy controls.
 
 ## Further Notes
 
-- The existing Registry already exposes Search and the three ranking sort modes, but the App currently consumes only Search.
+- The existing Hub already exposes Search and the three ranking sort modes, but the App currently consumes only Search.
 - The existing CLI already models many Agent Adapters, User Scope, Workspace Scope, the Content-addressed Store, Installation Receipts, Workspace Manifests, and Workspace Locks. The missing work is primarily stable high-level discovery, reconciliation, and multi-target operation contracts.
 - The current App Gateway is intentionally narrow and Codex-oriented. Expanding that seam should precede the nested navigation implementation so UI code is not built on temporary parsing logic.
 - The original external `skills` CLI and `skills.sh` MVP specification is superseded. System ADR-0001 establishes the bundled SkillsGo CLI as the production architecture.

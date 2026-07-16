@@ -36,7 +36,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The bundled SkillsGo CLI is incompatible with this version of SkillsGo. Update or reinstall the app.';
 
   @override
-  String get officialIndex => 'SkillsGo Registry';
+  String get officialIndex => 'SkillsGo Hub';
 
   @override
   String get discoverTitle => 'Find a skill for your next move.';
@@ -85,7 +85,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get offlineMessage =>
-      'SkillsGo could not reach the Registry. Check your network, proxy, or Registry Origin.';
+      'SkillsGo could not reach the Hub. Check your network, proxy, or Hub Origin.';
 
   @override
   String get searchFailedTitle => 'Search stumbled';
@@ -95,28 +95,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get validationMessage =>
-      'The Registry rejected the request. Review the query and try again.';
+      'The Hub rejected the request. Review the query and try again.';
 
   @override
-  String get serverTitle => 'Registry unavailable';
+  String get serverTitle => 'Hub unavailable';
 
   @override
   String get serverMessage =>
-      'The Registry could not complete this request. Try again in a moment.';
+      'The Hub could not complete this request. Try again in a moment.';
 
   @override
-  String get timeoutTitle => 'Registry timed out';
+  String get timeoutTitle => 'Hub timed out';
 
   @override
   String get timeoutMessage =>
-      'The Registry took too long to respond. Check the connection or try again.';
+      'The Hub took too long to respond. Check the connection or try again.';
 
   @override
-  String get invalidResponseTitle => 'Registry response unsupported';
+  String get invalidResponseTitle => 'Hub response unsupported';
 
   @override
   String get invalidResponseMessage =>
-      'This Registry returned a response SkillsGo cannot read. Check its version and protocol compatibility.';
+      'This Hub returned a response SkillsGo cannot read. Check its version and protocol compatibility.';
 
   @override
   String get tryAgain => 'Try again';
@@ -126,7 +126,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchEmptyMessage =>
-      'Enter a capability, source, or task to search the public Registry.';
+      'Enter a capability, source, or task to search the public Hub.';
 
   @override
   String get noSkillsTitle => 'No skills found';
@@ -142,7 +142,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get collectionEmptyMessage =>
-      'The Registry returned an empty collection. Try again after new install activity is recorded.';
+      'The Hub returned an empty collection. Try again after new install activity is recorded.';
 
   @override
   String get loadMore => 'Load more';
@@ -227,14 +227,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get artifactUnavailableMessage =>
-      'The Registry could not provide this immutable artifact. Retry now or inspect another version.';
+      'The Hub could not provide this immutable artifact. Retry now or inspect another version.';
 
   @override
   String get detailInvalidTitle => 'Artifact metadata unsupported';
 
   @override
   String get detailInvalidMessage =>
-      'The Registry returned incomplete or malformed audit metadata. Retry after checking Registry compatibility.';
+      'The Hub returned incomplete or malformed audit metadata. Retry after checking Hub compatibility.';
 
   @override
   String get instructionsTab => 'Instructions';
@@ -285,7 +285,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get fileContentTruncated =>
-      'Preview truncated by the Registry safety limit.';
+      'Preview truncated by the Hub safety limit.';
 
   @override
   String riskEvidence(String paths) {
@@ -315,7 +315,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get globalCodex => 'Global · Codex';
 
   @override
-  String get yourLibrary => 'Your Library';
+  String get yourLibrary => 'Installed Skills';
 
   @override
   String get libraryNavigation => 'Library navigation';
@@ -389,14 +389,14 @@ class AppLocalizationsEn extends AppLocalizations {
   String get libraryUnavailable => 'Library unavailable';
 
   @override
-  String get libraryEmpty => 'Your Library is empty';
+  String get libraryEmpty => 'No skills installed yet';
 
   @override
   String get libraryEmptyMessage =>
       'Install a Skill from Discover and it will appear here.';
 
   @override
-  String get searchLibrary => 'Search this Library view';
+  String get searchLibrary => 'Search installed skills';
 
   @override
   String get libraryNoMatches => 'No matching Skills';
@@ -421,7 +421,7 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get registryManaged => 'Registry managed';
+  String get hubManaged => 'Hub managed';
 
   @override
   String get localManaged => 'Local managed';
@@ -556,19 +556,19 @@ class AppLocalizationsEn extends AppLocalizations {
       'SkillsGo could not read this local installation. Check the target health and filesystem access, then retry.';
 
   @override
-  String get localConfiguration => 'Local configuration';
+  String get localConfiguration => 'SKILLSGO SETTINGS';
 
   @override
   String get settingsNavigation => 'Settings navigation';
 
   @override
-  String get general => 'General';
+  String get general => 'Personalize';
 
   @override
   String get agents => 'Agents';
 
   @override
-  String get registry => 'Registry';
+  String get hub => 'Hub';
 
   @override
   String get installationPolicy => 'Installation Policy';
@@ -577,24 +577,218 @@ class AppLocalizationsEn extends AppLocalizations {
   String get storage => 'Storage';
 
   @override
+  String get colorScheme => 'Color Scheme';
+
+  @override
   String get about => 'About';
 
   @override
-  String get generalSettingsTitle => 'Desktop preferences';
+  String get colorSchemeInspectorTitle => 'Generated Material color roles';
+
+  @override
+  String get colorSchemeInspectorDescription =>
+      'Preview every non-deprecated ColorScheme token generated from the current seed. Click a color to copy its HEX value.';
+
+  @override
+  String get colorSchemePairPreview => 'Semantic pairs';
+
+  @override
+  String get colorSchemePairPreviewDescription =>
+      'Foreground and background roles rendered together to expose contrast and hierarchy.';
+
+  @override
+  String get colorSchemeComponentPreview => 'Component preview';
+
+  @override
+  String get colorSchemeComponentPreviewDescription =>
+      'Representative Material controls rendered with this exact preview scheme.';
+
+  @override
+  String get colorSchemeSampleTitle => 'Skill card title';
+
+  @override
+  String get colorSchemeSampleBody => 'Secondary copy uses onSurfaceVariant.';
+
+  @override
+  String get colorSchemeCopied => 'Copied';
+
+  @override
+  String get colorSchemeSampleGlyphs => 'Aa 123';
+
+  @override
+  String get colorSchemeGroupPrimary => 'Primary';
+
+  @override
+  String get colorSchemeGroupPrimaryDescription =>
+      'Primary emphasis, containers, and fixed accent roles.';
+
+  @override
+  String get colorSchemeGroupSecondary => 'Secondary';
+
+  @override
+  String get colorSchemeGroupSecondaryDescription =>
+      'Supporting emphasis and fixed secondary roles.';
+
+  @override
+  String get colorSchemeGroupTertiary => 'Tertiary';
+
+  @override
+  String get colorSchemeGroupTertiaryDescription =>
+      'Contrasting accents and fixed tertiary roles.';
+
+  @override
+  String get colorSchemeGroupSurface => 'Surface';
+
+  @override
+  String get colorSchemeGroupSurfaceDescription =>
+      'Page, container, elevation, and foreground hierarchy.';
+
+  @override
+  String get colorSchemeGroupUtility => 'Outline & Utility';
+
+  @override
+  String get colorSchemeGroupUtilityDescription =>
+      'Boundaries, shadows, scrims, and inverse surfaces.';
+
+  @override
+  String get colorSchemeGroupError => 'Error';
+
+  @override
+  String get colorSchemeGroupErrorDescription =>
+      'Error actions, messages, and containers.';
+
+  @override
+  String get colorSchemeUsagePrimary =>
+      'Primary actions, focus, and high-emphasis accents.';
+
+  @override
+  String get colorSchemeUsageSecondary =>
+      'Supporting actions and medium-emphasis accents.';
+
+  @override
+  String get colorSchemeUsageTertiary =>
+      'Contrasting accents that complement primary and secondary.';
+
+  @override
+  String colorSchemeUsageContentOn(String token) {
+    return 'Text and icons displayed on $token.';
+  }
+
+  @override
+  String colorSchemeUsageContainer(String family) {
+    return 'Lower-emphasis $family container for selections and accents.';
+  }
+
+  @override
+  String colorSchemeUsageFixed(String family) {
+    return 'Brightness-independent fixed $family container.';
+  }
+
+  @override
+  String colorSchemeUsageFixedDim(String family) {
+    return 'Dimmed brightness-independent fixed $family container.';
+  }
+
+  @override
+  String colorSchemeUsageFixedContent(String family) {
+    return 'High-emphasis content on the fixed $family container.';
+  }
+
+  @override
+  String colorSchemeUsageFixedVariantContent(String family) {
+    return 'Lower-emphasis content on the fixed $family container.';
+  }
+
+  @override
+  String get colorSchemeUsageSurface => 'Base page and large-region surface.';
+
+  @override
+  String get colorSchemeUsageSurfaceDim =>
+      'Dimmed base surface used at the darkest surface tone.';
+
+  @override
+  String get colorSchemeUsageSurfaceBright =>
+      'Bright base surface used at the lightest surface tone.';
+
+  @override
+  String colorSchemeUsageSurfaceElevation(String level) {
+    return 'The $level surface-container elevation.';
+  }
+
+  @override
+  String get colorSchemeElevationLowest => 'lowest';
+
+  @override
+  String get colorSchemeElevationLow => 'low';
+
+  @override
+  String get colorSchemeElevationDefault => 'default';
+
+  @override
+  String get colorSchemeElevationHigh => 'high';
+
+  @override
+  String get colorSchemeElevationHighest => 'highest';
+
+  @override
+  String get colorSchemeUsageOnSurface =>
+      'Primary text and icons displayed on surfaces.';
+
+  @override
+  String get colorSchemeUsageOnSurfaceVariant =>
+      'Secondary text, labels, and subdued icons on surfaces.';
+
+  @override
+  String get colorSchemeUsageSurfaceTint =>
+      'Material elevation tint derived from primary.';
+
+  @override
+  String get colorSchemeUsageOutline =>
+      'Prominent boundaries and focused component outlines.';
+
+  @override
+  String get colorSchemeUsageOutlineVariant =>
+      'Subtle boundaries, separators, and low-emphasis outlines.';
+
+  @override
+  String get colorSchemeUsageShadow =>
+      'Drop-shadow color for elevated surfaces.';
+
+  @override
+  String get colorSchemeUsageScrim =>
+      'Modal overlay used to de-emphasize background content.';
+
+  @override
+  String get colorSchemeUsageInverseSurface =>
+      'Surface with reversed light and dark emphasis.';
+
+  @override
+  String get colorSchemeUsageInversePrimary =>
+      'Primary accent displayed on an inverse surface.';
+
+  @override
+  String get colorSchemeUsageError =>
+      'Error actions, status, and high-emphasis feedback.';
+
+  @override
+  String get save => 'Save';
+
+  @override
+  String get generalSettingsTitle => 'Make SkillsGo yours';
 
   @override
   String get generalSettingsDescription =>
-      'SkillsGo follows the system language and accessibility preferences, including reduced motion.';
+      'The interface follows your system language, accessibility, and motion preferences.';
 
   @override
   String get agentsSettingsTitle => 'Agent runtime';
 
   @override
-  String get registrySettingsTitle => 'Registry Origin';
+  String get hubSettingsTitle => 'Hub Origin';
 
   @override
-  String get registrySettingsDescription =>
-      'Use the official Registry or an HTTP(S) self-hosted origin that implements the same SkillsGo protocol.';
+  String get hubSettingsDescription =>
+      'Use the official Hub or an HTTP(S) self-hosted origin that implements the same SkillsGo protocol.';
 
   @override
   String get testConnection => 'Test connection';
@@ -612,28 +806,28 @@ class AppLocalizationsEn extends AppLocalizations {
   String get connectionFailed => 'Connection failed';
 
   @override
-  String get registryInvalidOrigin =>
+  String get hubInvalidOrigin =>
       'Enter a valid HTTP(S) Origin without credentials, a query, or a fragment.';
 
   @override
-  String registryHttpFailure(int status) {
-    return 'Registry returned HTTP $status. Check the Origin and server configuration.';
+  String hubHttpFailure(int status) {
+    return 'Hub returned HTTP $status. Check the Origin and server configuration.';
   }
 
   @override
-  String get registryInvalidProtocol =>
-      'The server did not return the SkillsGo Registry search protocol.';
+  String get hubInvalidProtocol =>
+      'The server did not return the SkillsGo Hub search protocol.';
 
   @override
-  String get registryInvalidJson => 'The Registry returned invalid JSON.';
+  String get hubInvalidJson => 'The Hub returned invalid JSON.';
 
   @override
-  String get registryConnectionFailure =>
-      'Could not reach the Registry. Check the Origin, network, proxy, and TLS configuration.';
+  String get hubConnectionFailure =>
+      'Could not reach the Hub. Check the Origin, network, proxy, and TLS configuration.';
 
   @override
-  String get registryConnectionTimeout =>
-      'The Registry connection timed out. Check the network or try again.';
+  String get hubConnectionTimeout =>
+      'The Hub connection timed out. Check the network or try again.';
 
   @override
   String get riskPolicyTitle => 'Personal risk policy';
@@ -698,7 +892,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get compatible => 'Compatible';
 
   @override
-  String get registryOriginSaved => 'Registry Origin saved and applied.';
+  String get hubOriginSaved => 'Hub Origin saved and applied.';
 
   @override
   String get policySaved => 'Installation policy saved.';
@@ -773,7 +967,35 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get privacySummary =>
-      'SkillsGo does not store searches or persist command logs. Its bundled CLI remains inside the App and is never installed into your system PATH.';
+      'Your searches aren’t saved, and SkillsGo doesn’t keep command logs.';
+
+  @override
+  String get folderColorTheme => 'Choose a theme color';
+
+  @override
+  String get folderColorThemeDescription =>
+      'Pick a color you like. SkillsGo will build a coordinated interface palette around it.';
+
+  @override
+  String get appearanceMode => 'Appearance';
+
+  @override
+  String get appearanceModeDescription =>
+      'Follow your system appearance, or always use a light or dark theme.';
+
+  @override
+  String get followSystem => 'System';
+
+  @override
+  String get lightMode => 'Light';
+
+  @override
+  String get darkMode => 'Dark';
+
+  @override
+  String folderThemeChoice(String theme) {
+    return '$theme Folder theme';
+  }
 
   @override
   String get privacyAffiliation =>
@@ -816,6 +1038,31 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get installSkill => 'Install Skill';
+
+  @override
+  String get installLocationTitle => 'Set installation location';
+
+  @override
+  String get userLevel => 'User Level';
+
+  @override
+  String get projectLevel => 'Project Level';
+
+  @override
+  String get projects => 'Projects';
+
+  @override
+  String get loading => 'Loading…';
+
+  @override
+  String userInstallSummary(int agents) {
+    return 'Available to $agents Agents at user level';
+  }
+
+  @override
+  String projectInstallSummary(int projects, int agents) {
+    return '$projects projects · $agents Agents';
+  }
 
   @override
   String get installationPlanTitle => 'Choose installation targets';
@@ -891,6 +1138,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String installSelectedTargets(int count) {
     return 'Install $count Targets';
   }
+
+  @override
+  String get confirmInstall => 'Confirm Installation';
+
+  @override
+  String installAllRepositorySkills(int count) {
+    return 'Install all repository skills ($count)';
+  }
+
+  @override
+  String installRepositorySkills(String repository, int count) {
+    return 'Install all $repository skills ($count)';
+  }
+
+  @override
+  String installSkillTo(String skill) {
+    return 'Install $skill to';
+  }
+
+  @override
+  String get availableInAllProjects => 'All projects';
+
+  @override
+  String get availableInSelectedProjects => 'Selected projects';
+
+  @override
+  String get usedBy => 'For Agents';
 
   @override
   String get backToTargets => 'Back to Targets';
@@ -1141,35 +1415,34 @@ class AppLocalizationsEn extends AppLocalizations {
   String get adoptionContentDigest => 'Content identity';
 
   @override
-  String get registryContentMatches => 'Registry matches';
+  String get hubContentMatches => 'Hub matches';
 
   @override
-  String registryMatchSource(String source) {
+  String hubMatchSource(String source) {
     return 'Source: $source';
   }
 
   @override
-  String registryMatchVersion(String version) {
+  String hubMatchVersion(String version) {
     return 'Immutable version: $version';
   }
 
   @override
-  String get associateRegistry => 'Associate with Registry';
+  String get associateHub => 'Associate with Hub';
 
   @override
   String get importAsLocal => 'Import as Local Skill';
 
   @override
   String get importAsLocalDescription =>
-      'No exact Registry match was found. This creates a private Local Skill with no publisher or update source.';
+      'No exact Hub match was found. This creates a private Local Skill with no publisher or update source.';
 
   @override
   String get adoptionPreservesContent =>
       'The current installation content will not be replaced. SkillsGo only records ownership after your confirmation.';
 
   @override
-  String get chooseRegistryMatch =>
-      'Select an exact Registry match to continue.';
+  String get chooseHubMatch => 'Select an exact Hub match to continue.';
 
   @override
   String get confirmAdoption => 'Confirm association';
@@ -1190,4 +1463,19 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get exportLocalSkillDescription =>
       'Export this Local Skill as a portable ZIP archive.';
+
+  @override
+  String get detailInstalls => 'Installs';
+
+  @override
+  String get detailRepository => 'Repository';
+
+  @override
+  String get detailGitHubStars => 'GitHub Stars';
+
+  @override
+  String get detailUpdated => 'Updated';
+
+  @override
+  String get detailArchiveSize => 'ZIP Size';
 }

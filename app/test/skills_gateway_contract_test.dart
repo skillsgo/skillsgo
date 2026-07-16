@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings, discovery/detail parsing, managed/external CLI inventory including Local Modifications, Registry-independent local inspection/project persistence, strict Installation/Update/Target Management/External Adoption contracts, Local export, stable CLI availability mapping, typed failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings, discovery/detail parsing including repository product metadata and Hub image URLs, managed/external CLI inventory including Local Modifications, Hub-independent local inspection/project persistence, strict Installation/Update/Target Management/External Adoption contracts, Local export, stable CLI availability mapping, typed failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,7 +18,7 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
-  test('registry settings persist and validate the search protocol', () async {
+  test('hub settings persist and validate the search protocol', () async {
     SharedPreferences.setMockInitialValues({});
     final requests = <Uri>[];
     final client = MockClient((request) async {
@@ -36,53 +36,47 @@ void main() {
       processRunner: _FakeProcessRunner()
         ..result = const ProcessOutput(exitCode: 0, stdout: '[]', stderr: ''),
       initialCliPath: '/usr/local/bin/skillsgo',
-      registryBaseUrl: 'https://official.example',
+      hubBaseUrl: 'https://official.example',
       appVersion: '1.2.3',
     );
 
-    expect(await gateway.loadRegistryOrigin(), 'https://official.example');
-    final status = await gateway.testRegistryOrigin(
+    expect(await gateway.loadHubOrigin(), 'https://official.example');
+    final status = await gateway.testHubOrigin(
       'https://self-hosted.example/base',
     );
     expect(status.isReady, isTrue);
     expect(requests.single.path, '/base/v1/search');
 
-    await gateway.saveRegistryOrigin('https://self-hosted.example/base/');
-    expect(
-      await gateway.loadRegistryOrigin(),
-      'https://self-hosted.example/base',
-    );
+    await gateway.saveHubOrigin('https://self-hosted.example/base/');
+    expect(await gateway.loadHubOrigin(), 'https://self-hosted.example/base');
     await gateway.discover(DiscoveryCollection.search, query: 'flutter');
     expect(requests.last.host, 'self-hosted.example');
     expect(requests.last.path, '/base/v1/search');
     final restored = RealSkillsGateway(
       httpClient: client,
-      registryBaseUrl: 'https://official.example',
+      hubBaseUrl: 'https://official.example',
       appVersion: '1.2.3',
     );
-    expect(
-      await restored.loadRegistryOrigin(),
-      'https://self-hosted.example/base',
-    );
+    expect(await restored.loadHubOrigin(), 'https://self-hosted.example/base');
 
-    await restored.resetRegistryOrigin();
-    expect(await restored.loadRegistryOrigin(), 'https://official.example');
+    await restored.resetHubOrigin();
+    expect(await restored.loadHubOrigin(), 'https://official.example');
   });
 
-  test('registry settings reject unsafe or malformed origins', () async {
+  test('hub settings reject unsafe or malformed origins', () async {
     SharedPreferences.setMockInitialValues({});
     final gateway = RealSkillsGateway(
       httpClient: MockClient((_) async => http.Response('{}', 200)),
-      registryBaseUrl: 'https://official.example',
+      hubBaseUrl: 'https://official.example',
       appVersion: '1.2.3',
     );
 
-    final status = await gateway.testRegistryOrigin(
+    final status = await gateway.testHubOrigin(
       'https://user:password@example.com?secret=yes',
     );
     expect(status.state, HealthState.invalid);
     await expectLater(
-      gateway.saveRegistryOrigin('file:///tmp/registry'),
+      gateway.saveHubOrigin('file:///tmp/hub'),
       throwsA(isA<FormatException>()),
     );
   });
@@ -198,7 +192,7 @@ void main() {
   });
 
   test(
-    'local Library boundaries remain usable without any Registry request',
+    'local Library boundaries remain usable without any Hub request',
     () async {
       final root = await Directory.systemTemp.createTemp(
         'skillsgo-offline-library-',
@@ -220,7 +214,7 @@ void main() {
           },
         ]),
       });
-      var registryRequests = 0;
+      var hubRequests = 0;
       final runner = _FakeProcessRunner()
         ..responses.addAll([
           ProcessOutput(
@@ -264,8 +258,8 @@ void main() {
         ]);
       final gateway = RealSkillsGateway(
         httpClient: MockClient((request) async {
-          registryRequests++;
-          throw const SocketException('Registry offline');
+          hubRequests++;
+          throw const SocketException('Hub offline');
         }),
         processRunner: runner,
         initialCliPath: '/bin/skillsgo',
@@ -282,31 +276,26 @@ void main() {
       expect(agents.installed.single.id, 'codex');
       expect(detail.markdown, '# Offline Skill');
       expect(await gateway.loadAddedProjects(), isEmpty);
-      expect(registryRequests, 0);
+      expect(hubRequests, 0);
     },
   );
 
-  test(
-    'registry settings turn transport failures into structured health',
-    () async {
-      SharedPreferences.setMockInitialValues({});
-      final gateway = RealSkillsGateway(
-        httpClient: MockClient(
-          (request) async =>
-              throw http.ClientException('TLS handshake failed', request.url),
-        ),
-        registryBaseUrl: 'https://official.example',
-        appVersion: '1.2.3',
-      );
+  test('hub settings turn transport failures into structured health', () async {
+    SharedPreferences.setMockInitialValues({});
+    final gateway = RealSkillsGateway(
+      httpClient: MockClient(
+        (request) async =>
+            throw http.ClientException('TLS handshake failed', request.url),
+      ),
+      hubBaseUrl: 'https://official.example',
+      appVersion: '1.2.3',
+    );
 
-      final status = await gateway.testRegistryOrigin(
-        'https://self-hosted.example',
-      );
+    final status = await gateway.testHubOrigin('https://self-hosted.example');
 
-      expect(status.state, HealthState.unreachable);
-      expect(status.issue, RegistryIssue.connectionFailure);
-    },
-  );
+    expect(status.state, HealthState.unreachable);
+    expect(status.issue, HubIssue.connectionFailure);
+  });
 
   test('Personal risk policy and product diagnostics are stable', () async {
     SharedPreferences.setMockInitialValues({});
@@ -320,7 +309,7 @@ void main() {
     final gateway = RealSkillsGateway(
       processRunner: runner,
       initialCliPath: '/Applications/SkillsGo.app/skillsgo',
-      registryBaseUrl: 'https://official.example',
+      hubBaseUrl: 'https://official.example',
       appVersion: '3.2.1',
     );
 
@@ -610,7 +599,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":3,"entries":[{"identity":"registry:github.com/flutter/skills/-/responsive-layout","name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"}]}]}',
+            '{"schemaVersion":3,"entries":[{"identity":"hub:github.com/flutter/skills/-/responsive-layout","name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -624,6 +613,7 @@ void main() {
               {
                 'coordinate': 'github.com/flutter/skills/-/responsive-layout',
                 'source': 'github.com/flutter/skills',
+                'imageUrl': 'https://images.example/flutter.png',
                 'skillPath': 'responsive-layout',
                 'name': 'Responsive Layout',
                 'description': 'Build adaptive Flutter layouts.',
@@ -654,6 +644,7 @@ void main() {
 
     expect(results, hasLength(1));
     expect(results.single.source, 'github.com/flutter/skills');
+    expect(results.single.imageUrl, 'https://images.example/flutter.png');
     expect(results.single.skillId, 'responsive-layout');
     expect(results.single.installs, 1200);
     expect(results.single.description, 'Build adaptive Flutter layouts.');
@@ -668,7 +659,7 @@ void main() {
   });
 
   test(
-    'ranked discovery routes use distinct Registry collection parameters',
+    'ranked discovery routes use distinct Hub collection parameters',
     () async {
       final requests = <Uri>[];
       final gateway = RealSkillsGateway(
@@ -706,7 +697,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            r'{"schemaVersion":3,"entries":[{"identity":"registry:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"registry","risk":"unknown","health":"receipt-missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"targets":[{"scope":"user","projectRoot":"","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","mode":"symlink","version":"v2.0.0","receiptState":"missing","health":"receipt-missing"}]}]}',
+            r'{"schemaVersion":3,"entries":[{"identity":"hub:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"hub","risk":"unknown","health":"receipt-missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"targets":[{"scope":"user","projectRoot":"","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","mode":"symlink","version":"v2.0.0","receiptState":"missing","health":"receipt-missing"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -733,7 +724,7 @@ void main() {
     );
 
     expect(skills.single.name, 'testing');
-    expect(skills.single.identity, 'registry:github.com/a/b');
+    expect(skills.single.identity, 'hub:github.com/a/b');
     expect(skills.single.coordinate, 'github.com/a/b');
     expect(skills.single.isLinkedToCodex, isTrue);
     expect(skills.single.targetCount, 2);
@@ -766,7 +757,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":3,"entries":[{"identity":"registry:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"healthy"}]}]}',
+            '{"schemaVersion":3,"entries":[{"identity":"hub:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -797,7 +788,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":3,"entries":[{"identity":"external:abc","name":"testing","coordinate":"","provenance":"external","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/external/testing","mode":"external","version":"","receiptState":"missing","health":"healthy"}]},{"identity":"registry:github.com/a/b/-/testing","name":"testing","coordinate":"github.com/a/b/-/testing","provenance":"registry","risk":"low","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/managed/testing","mode":"copy","version":"v1","receiptState":"present","health":"healthy"}]}]}',
+            '{"schemaVersion":3,"entries":[{"identity":"external:abc","name":"testing","coordinate":"","provenance":"external","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/external/testing","mode":"external","version":"","receiptState":"missing","health":"healthy"}]},{"identity":"hub:github.com/a/b/-/testing","name":"testing","coordinate":"github.com/a/b/-/testing","provenance":"hub","risk":"low","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/managed/testing","mode":"copy","version":"v1","receiptState":"present","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -1014,13 +1005,13 @@ void main() {
   });
 
   test(
-    'remote detail reads one auditable Registry contract and local targets',
+    'remote detail reads one auditable Hub contract and local targets',
     () async {
       final runner = _FakeProcessRunner()
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":3,"entries":[{"identity":"registry:github.com/a/b/-/test","name":"Test","coordinate":"github.com/a/b/-/test","provenance":"registry","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v0.0.0-test"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/test","mode":"copy","version":"v0.0.0-test","receiptState":"present","health":"healthy"}]}]}',
+              '{"schemaVersion":3,"entries":[{"identity":"hub:github.com/a/b/-/test","name":"Test","coordinate":"github.com/a/b/-/test","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v0.0.0-test"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/test","mode":"copy","version":"v0.0.0-test","receiptState":"present","health":"healthy"}]}]}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -1032,6 +1023,12 @@ void main() {
               'name': 'Test',
               'description': 'Test Skill',
               'source': 'github.com/a/b',
+              'repository': 'github.com/a/b',
+              'imageUrl': 'https://images.example/a.png',
+              'installs': 42,
+              'githubStars': 12800,
+              'sourceUpdatedAt': '2026-07-15T00:00:00Z',
+              'archiveSize': 24576,
               'requestedVersion': 'main',
               'immutableVersion': 'v0.0.0-test',
               'commitSHA': 'commit-abc',
@@ -1087,6 +1084,12 @@ void main() {
 
       final detail = await gateway.loadRemoteDetail(skill);
       expect(detail.markdown, '# Real instructions');
+      expect(detail.imageUrl, 'https://images.example/a.png');
+      expect(detail.installs, 42);
+      expect(detail.repository, 'github.com/a/b');
+      expect(detail.githubStars, 12800);
+      expect(detail.sourceUpdatedAt, DateTime.utc(2026, 7, 15).toLocal());
+      expect(detail.archiveSize, 24576);
       expect(detail.immutableVersion, 'v0.0.0-test');
       expect(detail.commitSHA, 'commit-abc');
       expect(detail.treeSHA, 'tree-def');
@@ -1185,7 +1188,7 @@ void main() {
       installs: 0,
     );
     const installed = InstalledSkill(
-      identity: r'registry:github.com/a/b/-/Test ; $(touch nope)',
+      identity: r'hub:github.com/a/b/-/Test ; $(touch nope)',
       name: r'Test ; $(touch nope)',
       path: r'/tmp/Test ; $(touch nope)',
       agents: ['codex'],
@@ -1217,8 +1220,8 @@ void main() {
       '--yes',
       '--output',
       'json',
-      '--registry',
-      'http://localhost:3000',
+      '--hub',
+      'https://hub.skillsgo.ai',
     ]);
     runner.result = const ProcessOutput(
       exitCode: 0,
@@ -1244,8 +1247,8 @@ void main() {
         '--preflight',
         '--output',
         'json',
-        '--registry',
-        'http://localhost:3000',
+        '--hub',
+        'https://hub.skillsgo.ai',
       ]),
     );
     runner.result = const ProcessOutput(
@@ -1948,7 +1951,7 @@ void main() {
   );
 
   test(
-    'External adoption preserves exact target arguments and reviewed Registry identity',
+    'External adoption preserves exact target arguments and reviewed Hub identity',
     () async {
       const path = '/tmp/external demo';
       const installed = InstalledSkill(
@@ -1980,14 +1983,14 @@ void main() {
           ProcessOutput(
             exitCode: 0,
             stdout:
-                '{"schemaVersion":1,"phase":"adoption-execution","action":"associate-registry","name":"External Demo","coordinate":"github.com/acme/skills/-/demo","version":"sha256:version","provenance":"registry","contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","target":{"scope":"user","agent":"codex","path":"/tmp/external demo"}}',
+                '{"schemaVersion":1,"phase":"adoption-execution","action":"associate-hub","name":"External Demo","coordinate":"github.com/acme/skills/-/demo","version":"sha256:version","provenance":"hub","contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","target":{"scope":"user","agent":"codex","path":"/tmp/external demo"}}',
             stderr: '',
           ),
         ]);
       final gateway = RealSkillsGateway(
         processRunner: runner,
         initialCliPath: '/bin/skillsgo',
-        registryBaseUrl: 'https://registry.example/base',
+        hubBaseUrl: 'https://hub.example/base',
       );
 
       final preflight = await gateway.preflightExternalAdoption(installed);
@@ -2006,15 +2009,15 @@ void main() {
         '--preflight',
         '--output',
         'json',
-        '--registry',
-        'https://registry.example/base',
+        '--hub',
+        'https://hub.example/base',
       ]);
 
       final result = await gateway.executeExternalAdoption(
-        preflight.selectRegistryMatch(preflight.matches.single),
+        preflight.selectHubMatch(preflight.matches.single),
       );
 
-      expect(result.provenance, LibraryProvenance.registry);
+      expect(result.provenance, LibraryProvenance.hub);
       expect(result.coordinate, 'github.com/acme/skills/-/demo');
       expect(jsonDecode(runner.lastArguments![2]), {
         'identity': 'external:abc',
@@ -2022,17 +2025,17 @@ void main() {
         'scope': 'user',
         'agent': 'codex',
         'path': path,
-        'action': 'associate-registry',
+        'action': 'associate-hub',
         'matchCoordinate': 'github.com/acme/skills/-/demo',
         'matchVersion': 'sha256:version',
         'stateToken': 'sha256:state',
       });
-      expect(runner.lastArguments, contains('https://registry.example/base'));
+      expect(runner.lastArguments, contains('https://hub.example/base'));
     },
   );
 
   test(
-    'Local import execution has no Registry argument and rejects human output',
+    'Local import execution has no Hub argument and rejects human output',
     () async {
       const target = InstallationPlanTarget(
         scope: InstallationScope.user,
@@ -2060,7 +2063,7 @@ void main() {
       final gateway = RealSkillsGateway(
         processRunner: runner,
         initialCliPath: '/bin/skillsgo',
-        registryBaseUrl: 'https://must-not-be-used.example',
+        hubBaseUrl: 'https://must-not-be-used.example',
       );
 
       final result = await gateway.executeExternalAdoption(
@@ -2068,7 +2071,7 @@ void main() {
       );
 
       expect(result.provenance, LibraryProvenance.local);
-      expect(runner.lastArguments, isNot(contains('--registry')));
+      expect(runner.lastArguments, isNot(contains('--hub')));
       expect(jsonDecode(runner.lastArguments![2]), {
         'identity': 'external:private',
         'name': 'Private',
@@ -2182,7 +2185,7 @@ void main() {
     () async {
       const coordinate = 'github.com/example/skills/-/test';
       const installed = InstalledSkill(
-        identity: 'registry:$coordinate',
+        identity: 'hub:$coordinate',
         name: 'Test',
         path: '/tmp/Test',
         agents: ['codex'],
@@ -2288,7 +2291,7 @@ void main() {
 
     final states = await gateway.checkUpdates(const [
       InstalledSkill(
-        identity: 'registry:github.com/example/skills/-/test',
+        identity: 'hub:github.com/example/skills/-/test',
         name: 'Test',
         path: '/tmp/Test',
         agents: ['codex'],
@@ -2306,7 +2309,7 @@ void main() {
     ]);
 
     expect(
-      states['registry:github.com/example/skills/-/test'],
+      states['hub:github.com/example/skills/-/test'],
       UpdateState.available,
     );
     expect(runner.lastArguments!.first, 'update');

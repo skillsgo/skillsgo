@@ -63,7 +63,7 @@ Cursor
 ```text
 General
 Agents
-Registry
+Hub
 Installation Policy
 Storage
 About
@@ -71,7 +71,7 @@ About
 
 - **General**: follow-system language, explicit language override, startup behavior, reduced motion, and reduced transparency.
 - **Agents**: detection state, paths, re-detection, and adapter guidance.
-- **Registry**: official or self-hosted Origin, connection health, and reset to default.
+- **Hub**: official or self-hosted Origin, connection health, and reset to default.
 - **Installation Policy**: symlink or copy defaults, conflict handling, risk confirmation, and install telemetry.
 - **Storage**: Store path, disk usage, reveal in file manager, and safe pruning of unreferenced artifacts.
 - **About**: App and bundled CLI versions, updates, repositories, licenses, and privacy.
@@ -80,12 +80,12 @@ About
 
 ```mermaid
 flowchart LR
-    A["Launch SkillsGo"] --> B["Check bundled CLI, Registry, and Installed Agents in parallel"]
+    A["Launch SkillsGo"] --> B["Check bundled CLI, Hub, and Installed Agents in parallel"]
     B --> C["Open Discover / Search"]
     C --> D{"Any Installed Agent?"}
     D -->|Yes| E["Installation Plans are available"]
     D -->|No| F["Discovery remains available; installation explains how to add an Agent"]
-    B --> G{"Registry available?"}
+    B --> G{"Hub available?"}
     G -->|No| H["Discover shows offline state; Library remains available"]
 ```
 
@@ -93,7 +93,7 @@ First launch requires no account, project, or external CLI. Health checks must n
 
 - A bundled CLI failure provides retry and diagnostics.
 - With no Installed Agent, users can still browse; the Installation Plan explains why no targets are available.
-- While the Registry is offline, the Library, local details, projects, and Agent views remain available.
+- While the Hub is offline, the Library, local details, projects, and Agent views remain available.
 
 ## Journey 1: Discover and Install a Skill
 
@@ -101,14 +101,14 @@ First launch requires no account, project, or external CLI. Health checks must n
 
 Search, Ranking, Trending, and Hot use one Skill-card model. Each card shows at least:
 
-- name and short description;
-- source repository and Trust Level;
+- repository avatar or owner fallback, name, and short description;
+- source repository;
 - install count or ranking-specific metric;
-- latest version;
-- risk state;
 - installed state and target count.
 
-Clicking the card opens detail. The card's Install action opens the Installation Plan directly. An already-installed Skill uses “Install to More Targets” instead of showing a misleading second Install action.
+Trust, immutable version, risk, and artifact audit metadata remain in Skill detail instead of competing with discovery comparison. Discovery cards use a responsive three-, two-, or one-column grid based on the available content width.
+
+Clicking the card opens detail. Every discovery card uses the compact “Install” action, which opens the Installation Plan directly. Existing targets remain visibly installed and cannot be selected again, so concise discovery copy never permits a duplicate installation.
 
 ### Pre-install Detail
 
@@ -176,9 +176,9 @@ The Library merges facts from:
 - `skillsgo.yaml` and `skillsgo-lock.yaml` in Added Projects;
 - user-level Skill directories for Installed Agents;
 - Agent Skill directories inside Added Projects;
-- Registry source, version, trust, and risk metadata.
+- Hub source, version, trust, and risk metadata.
 
-Registry Skills aggregate by stable Skill Identity. Local Skills aggregate by local identity. External Installations without a managed identity must not merge only because their names match.
+Hub Skills aggregate by stable Skill Identity. Local Skills aggregate by local identity. External Installations without a managed identity must not merge only because their names match.
 
 ### Library Cards
 
@@ -207,9 +207,9 @@ Installed detail presents the Skill first and lists the relevant targets:
 
 | Location | Agent | Version | Type | State |
 | --- | --- | --- | --- | --- |
-| User Scope | Codex | v1.4 | Registry | Current |
-| Project A | Codex | v1.2 | Registry | Update available |
-| Project A | Claude Code | v1.2 | Registry | Update available |
+| User Scope | Codex | v1.4 | Hub | Current |
+| Project A | Codex | v1.2 | Hub | Update available |
+| Project A | Claude Code | v1.2 | Hub | Update available |
 | Project B | Cursor | local-1 | Local | No online updates |
 
 Primary actions include:
@@ -229,7 +229,7 @@ Primary actions include:
 - Require explicit target selection in the matrix.
 - Update a project's Workspace Lock after confirmation.
 - Do not label a fixed commit without a movable reference as updateable.
-- Exclude External Installations and Local Skills without online sources from Registry updates.
+- Exclude External Installations and Local Skills without online sources from Hub updates.
 - Permit partial success and retry failed targets.
 
 ### Remove
@@ -247,13 +247,13 @@ An item found in an Agent directory without an Installation Receipt appears as a
 Bring Under Management performs the following journey:
 
 1. Compute the current content digest.
-2. Attempt to match an immutable Registry artifact.
+2. Attempt to match an immutable Hub artifact.
 3. If matched, show source and version and ask the user to confirm the association.
 4. If unmatched, allow import as a Local Skill.
 5. Store the Local Skill so it can be installed elsewhere, exported, or removed without gaining an online update source.
-6. Never publish content to the Registry as a side effect of import.
+6. Never publish content to the Hub as a side effect of import.
 
-Import preserves current content and never replaces an External Installation with a Registry version without explicit confirmation.
+Import preserves current content and never replaces an External Installation with a Hub version without explicit confirmation.
 
 ## Journey 5: Add and Manage a Project
 
@@ -296,7 +296,7 @@ Suggested logical routes:
 
 /settings/general
 /settings/agents
-/settings/registry
+/settings/hub
 /settings/install
 /settings/storage
 /settings/about
@@ -306,7 +306,7 @@ Suggested logical routes:
 
 | Scenario | Required experience |
 | --- | --- |
-| Registry offline | Discover provides retry; Library remains available |
+| Hub offline | Discover provides retry; Library remains available |
 | No Installed Agent | Discovery remains available; install explains the missing targets |
 | No Added Project | Keep Add Project visible without fake placeholder projects |
 | Empty project | Prompt installation of the project's first Skill |
@@ -326,9 +326,9 @@ The current App is a validation build with one Discover page, user-level Codex i
 3. detect and identify External Installations;
 4. return Library Entries with their Installation Targets;
 5. execute a multi-location, multi-Agent Installation Plan with per-target results;
-6. adopt an External Installation as a Registry Skill or Local Skill;
+6. adopt an External Installation as a Hub Skill or Local Skill;
 7. check, update, remove, repair, and retry selected targets;
-8. read Ranking, Trending, and Hot Registry collections;
+8. read Ranking, Trending, and Hot Hub collections;
 9. bundle and validate the matching CLI in each App release.
 
 The UI must not reconstruct inventory or operation results by parsing human-oriented CLI text while these contracts are being built.
