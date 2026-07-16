@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the current SkillsGo seed, Material 3 ColorScheme generation, localization, and clipboard services.
- * [OUTPUT]: Renders a read-only Light/Dark inspector for every non-deprecated Material 3 ColorScheme role plus semantic pair and component previews.
- * [POS]: Serves as the Settings developer surface for validating generated theme roles without creating a second theme system.
+ * [INPUT]: Depends on the current SkillsGo seed, the SkillsGo semantic token module, Material 3 mapping, localization, and clipboard services.
+ * [OUTPUT]: Renders a read-only Light/Dark inspector for SkillsGo product tokens, every non-deprecated Material 3 mapped role, semantic pairs, and component previews.
+ * [POS]: Serves as the Settings developer surface for validating the design-system interface and its Flutter adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
@@ -36,6 +36,7 @@ class _ColorSchemeInspectorState extends State<ColorSchemeInspector> {
       brightness: previewBrightness,
     );
     final scheme = previewTheme.colorScheme;
+    final skillsColors = previewTheme.extension<SkillsColorTokens>()!;
     final groups = _groups(scheme, l10n);
     return Theme(
       data: previewTheme,
@@ -50,6 +51,13 @@ class _ColorSchemeInspectorState extends State<ColorSchemeInspector> {
                   setState(() => previewBrightness = value),
             ),
             const SizedBox(height: 24),
+            _SectionTitle(
+              title: l10n.skillsColorTokensTitle,
+              description: l10n.skillsColorTokensDescription,
+            ),
+            const SizedBox(height: 12),
+            _TokenGrid(roles: _skillsTokenRoles(skillsColors, l10n)),
+            const SizedBox(height: 30),
             for (final group in groups) ...[
               _SectionTitle(title: group.name, description: group.description),
               const SizedBox(height: 12),
@@ -156,7 +164,7 @@ class _InspectorHeader extends StatelessWidget {
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    '${_hex(seed)} · fidelity',
+                    '${_hex(seed)} · SkillsGo',
                     style: const TextStyle(
                       fontFamily: SkillsTokens.monoFamily,
                       fontWeight: FontWeight.w600,
@@ -186,6 +194,36 @@ class _InspectorHeader extends StatelessWidget {
       ),
     );
   }
+}
+
+class _TokenGrid extends StatelessWidget {
+  const _TokenGrid({required this.roles});
+
+  final List<_ColorRole> roles;
+
+  @override
+  Widget build(BuildContext context) => LayoutBuilder(
+    builder: (context, constraints) {
+      final columns = constraints.maxWidth >= 900
+          ? 4
+          : constraints.maxWidth >= 620
+          ? 3
+          : 2;
+      const gap = 12.0;
+      final width = (constraints.maxWidth - gap * (columns - 1)) / columns;
+      return Wrap(
+        spacing: gap,
+        runSpacing: gap,
+        children: [
+          for (final role in roles)
+            SizedBox(
+              width: width,
+              child: _ColorRoleCard(role: role),
+            ),
+        ],
+      );
+    },
+  );
 }
 
 class _SectionTitle extends StatelessWidget {
@@ -455,6 +493,84 @@ class _ComponentPreview extends StatelessWidget {
     );
   }
 }
+
+List<_ColorRole> _skillsTokenRoles(
+  SkillsColorTokens colors,
+  AppLocalizations l10n,
+) => [
+  _ColorRole('canvas', colors.canvas, l10n.colorSchemeUsageSurface),
+  _ColorRole(
+    'folderBody',
+    colors.folderBody,
+    l10n.colorSchemeUsageSurfaceElevation('Folder'),
+  ),
+  _ColorRole(
+    'folderTabInactive',
+    colors.folderTabInactive,
+    l10n.colorSchemeUsageSurfaceElevation('Folder tab'),
+  ),
+  _ColorRole(
+    'surfaceDefault',
+    colors.surfaceDefault,
+    l10n.colorSchemeUsageSurface,
+  ),
+  _ColorRole(
+    'surfaceMuted',
+    colors.surfaceMuted,
+    l10n.colorSchemeUsageSurfaceElevation('muted'),
+  ),
+  _ColorRole(
+    'surfaceRaised',
+    colors.surfaceRaised,
+    l10n.colorSchemeUsageSurfaceElevation('raised'),
+  ),
+  _ColorRole(
+    'surfaceInset',
+    colors.surfaceInset,
+    l10n.colorSchemeUsageSurfaceElevation('inset'),
+  ),
+  _ColorRole(
+    'foregroundDefault',
+    colors.foregroundDefault,
+    l10n.colorSchemeUsageContentOn('surface'),
+  ),
+  _ColorRole(
+    'foregroundMuted',
+    colors.foregroundMuted,
+    l10n.colorSchemeUsageContentOn('muted surface'),
+  ),
+  _ColorRole(
+    'foregroundSubtle',
+    colors.foregroundSubtle,
+    l10n.colorSchemeUsageContentOn('subtle surface'),
+  ),
+  _ColorRole(
+    'borderDefault',
+    colors.borderDefault,
+    l10n.colorSchemeUsageOutline,
+  ),
+  _ColorRole(
+    'borderMuted',
+    colors.borderMuted,
+    l10n.colorSchemeUsageOutlineVariant,
+  ),
+  _ColorRole('accent', colors.accent, l10n.colorSchemeUsagePrimary),
+  _ColorRole(
+    'accentHover',
+    colors.accentHover,
+    l10n.colorSchemeUsageFixedDim('accent'),
+  ),
+  _ColorRole(
+    'accentMuted',
+    colors.accentMuted,
+    l10n.colorSchemeUsageContainer('accent'),
+  ),
+  _ColorRole(
+    'onAccent',
+    colors.onAccent,
+    l10n.colorSchemeUsageContentOn('accent'),
+  ),
+];
 
 List<_ColorGroup> _groups(ColorScheme scheme, AppLocalizations l10n) => [
   _ColorGroup(

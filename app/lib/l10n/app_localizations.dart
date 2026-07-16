@@ -1112,6 +1112,18 @@ abstract class AppLocalizations {
   /// **'Generated Material color roles'**
   String get colorSchemeInspectorTitle;
 
+  /// No description provided for @skillsColorTokensTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo semantic colors'**
+  String get skillsColorTokensTitle;
+
+  /// No description provided for @skillsColorTokensDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Product colors built from Radix Sand and organized with Primer semantics, with Folder as a dedicated spatial hierarchy.'**
+  String get skillsColorTokensDescription;
+
   /// No description provided for @colorSchemeInspectorDescription.
   ///
   /// In en, this message translates to:
@@ -1754,10 +1766,16 @@ abstract class AppLocalizations {
   /// **'Your searches aren’t saved, and SkillsGo doesn’t keep command logs.'**
   String get privacySummary;
 
+  /// No description provided for @personalizationTheme.
+  ///
+  /// In en, this message translates to:
+  /// **'Theme'**
+  String get personalizationTheme;
+
   /// No description provided for @folderColorTheme.
   ///
   /// In en, this message translates to:
-  /// **'Choose a theme color'**
+  /// **'Theme color'**
   String get folderColorTheme;
 
   /// No description provided for @folderColorThemeDescription.
@@ -1766,10 +1784,46 @@ abstract class AppLocalizations {
   /// **'Pick a color you like. SkillsGo will build a coordinated interface palette around it.'**
   String get folderColorThemeDescription;
 
+  /// No description provided for @brandNameNeteaseCloudMusic.
+  ///
+  /// In en, this message translates to:
+  /// **'NetEase Cloud Music'**
+  String get brandNameNeteaseCloudMusic;
+
+  /// No description provided for @brandNameRaspberryPi.
+  ///
+  /// In en, this message translates to:
+  /// **'Raspberry Pi'**
+  String get brandNameRaspberryPi;
+
+  /// No description provided for @brandNameChinaEasternAirlines.
+  ///
+  /// In en, this message translates to:
+  /// **'China Eastern Airlines'**
+  String get brandNameChinaEasternAirlines;
+
+  /// No description provided for @brandNameNvidia.
+  ///
+  /// In en, this message translates to:
+  /// **'NVIDIA'**
+  String get brandNameNvidia;
+
+  /// No description provided for @brandNameTaobao.
+  ///
+  /// In en, this message translates to:
+  /// **'Taobao'**
+  String get brandNameTaobao;
+
+  /// No description provided for @brandNameBitcoin.
+  ///
+  /// In en, this message translates to:
+  /// **'Bitcoin'**
+  String get brandNameBitcoin;
+
   /// No description provided for @appearanceMode.
   ///
   /// In en, this message translates to:
-  /// **'Appearance'**
+  /// **'Mode'**
   String get appearanceMode;
 
   /// No description provided for @appearanceModeDescription.
@@ -1795,6 +1849,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dark'**
   String get darkMode;
+
+  /// No description provided for @wallpaper.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallpaper'**
+  String get wallpaper;
+
+  /// No description provided for @wallpaperDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a celestial background. Your selection appears immediately behind Folder.'**
+  String get wallpaperDescription;
+
+  /// No description provided for @wallpaperSun.
+  ///
+  /// In en, this message translates to:
+  /// **'Sun'**
+  String get wallpaperSun;
+
+  /// No description provided for @wallpaperMercury.
+  ///
+  /// In en, this message translates to:
+  /// **'Mercury'**
+  String get wallpaperMercury;
+
+  /// No description provided for @wallpaperVenus.
+  ///
+  /// In en, this message translates to:
+  /// **'Venus'**
+  String get wallpaperVenus;
+
+  /// No description provided for @wallpaperEarth.
+  ///
+  /// In en, this message translates to:
+  /// **'Earth'**
+  String get wallpaperEarth;
+
+  /// No description provided for @wallpaperMars.
+  ///
+  /// In en, this message translates to:
+  /// **'Mars'**
+  String get wallpaperMars;
+
+  /// No description provided for @wallpaperJupiter.
+  ///
+  /// In en, this message translates to:
+  /// **'Jupiter'**
+  String get wallpaperJupiter;
+
+  /// No description provided for @wallpaperSaturn.
+  ///
+  /// In en, this message translates to:
+  /// **'Saturn'**
+  String get wallpaperSaturn;
+
+  /// No description provided for @wallpaperUranus.
+  ///
+  /// In en, this message translates to:
+  /// **'Uranus'**
+  String get wallpaperUranus;
+
+  /// No description provided for @wallpaperNeptune.
+  ///
+  /// In en, this message translates to:
+  /// **'Neptune'**
+  String get wallpaperNeptune;
+
+  /// No description provided for @wallpaperPluto.
+  ///
+  /// In en, this message translates to:
+  /// **'Pluto'**
+  String get wallpaperPluto;
+
+  /// No description provided for @wallpaperMoon.
+  ///
+  /// In en, this message translates to:
+  /// **'Moon'**
+  String get wallpaperMoon;
 
   /// No description provided for @folderThemeChoice.
   ///

@@ -586,6 +586,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get colorSchemeInspectorTitle => 'Generated Material color roles';
 
   @override
+  String get skillsColorTokensTitle => 'SkillsGo semantic colors';
+
+  @override
+  String get skillsColorTokensDescription =>
+      'Product colors built from Radix Sand and organized with Primer semantics, with Folder as a dedicated spatial hierarchy.';
+
+  @override
   String get colorSchemeInspectorDescription =>
       'Preview every non-deprecated ColorScheme token generated from the current seed. Click a color to copy its HEX value.';
 
@@ -970,14 +977,35 @@ class AppLocalizationsEn extends AppLocalizations {
       'Your searches aren’t saved, and SkillsGo doesn’t keep command logs.';
 
   @override
-  String get folderColorTheme => 'Choose a theme color';
+  String get personalizationTheme => 'Theme';
+
+  @override
+  String get folderColorTheme => 'Theme color';
 
   @override
   String get folderColorThemeDescription =>
       'Pick a color you like. SkillsGo will build a coordinated interface palette around it.';
 
   @override
-  String get appearanceMode => 'Appearance';
+  String get brandNameNeteaseCloudMusic => 'NetEase Cloud Music';
+
+  @override
+  String get brandNameRaspberryPi => 'Raspberry Pi';
+
+  @override
+  String get brandNameChinaEasternAirlines => 'China Eastern Airlines';
+
+  @override
+  String get brandNameNvidia => 'NVIDIA';
+
+  @override
+  String get brandNameTaobao => 'Taobao';
+
+  @override
+  String get brandNameBitcoin => 'Bitcoin';
+
+  @override
+  String get appearanceMode => 'Mode';
 
   @override
   String get appearanceModeDescription =>
@@ -991,6 +1019,46 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get darkMode => 'Dark';
+
+  @override
+  String get wallpaper => 'Wallpaper';
+
+  @override
+  String get wallpaperDescription =>
+      'Choose a celestial background. Your selection appears immediately behind Folder.';
+
+  @override
+  String get wallpaperSun => 'Sun';
+
+  @override
+  String get wallpaperMercury => 'Mercury';
+
+  @override
+  String get wallpaperVenus => 'Venus';
+
+  @override
+  String get wallpaperEarth => 'Earth';
+
+  @override
+  String get wallpaperMars => 'Mars';
+
+  @override
+  String get wallpaperJupiter => 'Jupiter';
+
+  @override
+  String get wallpaperSaturn => 'Saturn';
+
+  @override
+  String get wallpaperUranus => 'Uranus';
+
+  @override
+  String get wallpaperNeptune => 'Neptune';
+
+  @override
+  String get wallpaperPluto => 'Pluto';
+
+  @override
+  String get wallpaperMoon => 'Moon';
 
   @override
   String folderThemeChoice(String theme) {

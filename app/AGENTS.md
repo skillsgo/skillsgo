@@ -50,21 +50,32 @@ flutter build macos --release
 ## UI Component Policy
 
 - Use Flutter Material 3 primitives as the default foundation for controls, overlays, forms, feedback, semantics, and platform behavior.
-- Derive the application palette with `ColorScheme.fromSeed` and apply the Burrow-inspired visual language through SkillsGo Design Tokens and thin native brand components.
+- Build the application palette through the SkillsGo Design System: Primer-inspired semantic roles over Radix neutral scales, with Material 3 acting as the component adapter and the user seed controlling interaction accents.
 - Keep recurring Material composition behind the reusable native component layer; build custom widgets only for product-specific interactions such as the stateful destination rail, folder shell, or installation matrix.
 - Do not introduce a second component theme system. Product-specific colors may remain explicit only when they communicate stable status or brand meaning.
 
 ## Theme Policy
 
-- Generate both Light and Dark Material 3 schemes from the same user-selected seed with `ColorScheme.fromSeed` and `DynamicSchemeVariant.fidelity`.
+- Generate Light and Dark interaction accents from the same user-selected seed with `ColorScheme.fromSeed` and `DynamicSchemeVariant.fidelity`; keep the Folder hierarchy, neutral surfaces, readable foregrounds, and status colors stable through SkillsGo semantic tokens.
 - Support `ThemeMode.system`, `ThemeMode.light`, and `ThemeMode.dark`; default to the system appearance. Persist the preference through `SkillsGateway`, never by reading or writing `SharedPreferences` from UI code.
-- Use semantic `ColorScheme` roles for ordinary interface color. A background role must use its matching `on*` foreground role where one exists.
+- Use semantic `ColorScheme` roles for native Material components and `SkillsColorTokens` for product-specific Folder and spatial roles. A background role must use its matching foreground role.
 - Use `surface` and the tone-based `surfaceContainer*` roles for page backgrounds, large regions, cards, rails, and the Folder shell. Use `primary`, `primaryContainer`, secondary, and tertiary roles only for appropriately emphasized actions, focus, compact selections, and accents.
-- The active Folder body and tab are one foreground object and use `surfaceContainerHighest`; inactive Folder tabs use `surfaceContainerHigh`.
+- The active Folder body and tab are one foreground object and use `folderBody`; inactive Folder tabs use `folderTabInactive`.
 - Do not hard-code `Colors.white`, `Colors.black`, or a fixed dark page background for ordinary interface content. Explicit colors are allowed only for stable semantic status, source brand identity, raw user color previews, or other meaning that must not change with the theme.
 - Keep discovery cards neutral. Express themed hover state through borders, actions, focus, or restrained accent treatment instead of repainting a large card with an accent container.
 - Theme controls must update immediately, preserve the selected seed, support localization and reduced motion, and remain usable with keyboard and assistive technology.
 - Any new or materially changed UI component must be validated in Light and Dark modes with both low- and high-chroma seeds. Text and icon contrast must use the generated matching semantic roles rather than manual guesses.
+
+## Asynchronous Interaction Policy
+
+- User intent must receive visible feedback in the next rendered frame. Do not wait for Hub, CLI, filesystem, preference, or package operations before opening the requested destination, overlay, or operation surface.
+- Keep the App shell, navigation, dismissal, cancellation, and unrelated actions interactive while work is pending. Disable only controls that would duplicate or invalidate the in-flight operation.
+- Every remote, process, or filesystem-backed surface must implement five explicit states: `initialLoading`, `content`, `refreshing`, `empty`, and `error`. Do not encode loading as `null` when `null` can also mean empty or unavailable.
+- Use geometry-preserving skeletons only for cold loads with no usable content. When usable content already exists, retain it during refresh and expose restrained refresh progress instead of replacing it with a skeleton.
+- Independent data dependencies must render and fail independently. A slow optional dependency must not delay primary content or an interactive surface.
+- Preserve the last valid local Library inventory during Hub failures and the last valid discovery or detail content during refresh failures when its identity remains valid.
+- Long-running mutations may lock their own submit control, but must publish progress and keep safe navigation or cancellation paths available.
+- New journeys that depend on asynchronous data require widget tests proving next-frame feedback, stable content during refresh, explicit empty/error recovery, and reduced-motion plus accessibility semantics.
 
 ## Documentation Routing
 
