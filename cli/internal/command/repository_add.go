@@ -292,9 +292,15 @@ func addSelectedRepositorySkills(
 		if err != nil {
 			return err
 		}
-		if err := project.UpsertManifestRequirement(declarationRoot, selection.member.Info.ID, project.SkillRequirement{
+		obsolete := make([]install.Installation, 0, len(selection.prepared.previous))
+		for _, previous := range selection.prepared.previous {
+			if previous.SkillID != selection.member.Info.ID {
+				obsolete = append(obsolete, previous)
+			}
+		}
+		if err := project.ReplaceManifestBindings(declarationRoot, selection.member.Info.ID, project.SkillRequirement{
 			Source: selection.member.Info.ID, Ref: selection.member.Info.Version, Agents: agentIDs, Mode: mode,
-		}, true); err != nil {
+		}, true, obsolete); err != nil {
 			return err
 		}
 		installed = append(installed, installedResult{SkillID: entry.Receipt.SkillID, Name: entry.Receipt.Name,

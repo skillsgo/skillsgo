@@ -3,7 +3,8 @@
 
 ## Members
 
-- `files.go`: owns the editable `skillsgo.yaml` Workspace Manifest and nearest Workspace-root discovery.
+- `files.go`: owns the editable `skillsgo.yaml` Workspace Manifest, atomic requirement/binding mutation, and nearest Workspace-root discovery.
+- `file_lock.go`: provides bounded cross-process exclusion and stale-lock recovery shared by Workspace persistence writers.
 - `workspace_sum.go`: owns the generated, integrity-only `skillsgo.sum` ledger, checksum verification, and locked crash-safe updates.
 - `installed.go`: derives concrete managed installations from portable Workspace intent, immutable metadata, the Store, and current Agent paths.
 - `*_test.go`: specifies pure persistence parsing plus behavior exercised through the CLI command seam.

@@ -30,7 +30,6 @@ const (
 	testReplacementSkillID = "github.com/vercel-labs/skills/-/skills/find-skills"
 	testMismatchedNameID   = "github.com/vercel-labs/agent-skills/-/skills/react-best-practices"
 	testMismatchedName     = "vercel-react-best-practices"
-	testDeepSkillID        = "github.com/jwynia/agent-skills/-/skills/general/ideation/naming"
 )
 
 var testRepositorySkillIDs = []string{
@@ -71,19 +70,20 @@ func startEnvironment(t *testing.T, ctx context.Context) (testcontainers.Contain
 			testcontainers.BindMount(sandboxRoot, "/e2e"),
 		),
 		testcontainers.WithEnv(map[string]string{
-			"HOME":                           "/e2e/home",
-			"TMPDIR":                         "/e2e/tmp",
-			"XDG_CONFIG_HOME":                "/e2e/home/.config",
-			"XDG_CACHE_HOME":                 "/e2e/home/.cache",
-			"XDG_DATA_HOME":                  "/e2e/home/.local/share",
-			"SKILLSGO_HOME":                  "/e2e/home/.skillsgo",
-			"SKILLSGO_HUB_URL":               "http://127.0.0.1:3000",
-			"SKILLSGO_HUB_PORT":              ":3000",
-			"SKILLSGO_HUB_CACHE_DIR":         "/e2e/hub/cache",
-			"SKILLSGO_HUB_STORAGE_TYPE":      "disk",
-			"SKILLSGO_HUB_DISK_STORAGE_ROOT": "/e2e/hub/storage",
-			"SKILLSGO_LANG":                  "en",
-			"NO_COLOR":                       "1",
+			"HOME":                             "/e2e/home",
+			"TMPDIR":                           "/e2e/tmp",
+			"XDG_CONFIG_HOME":                  "/e2e/home/.config",
+			"XDG_CACHE_HOME":                   "/e2e/home/.cache",
+			"XDG_DATA_HOME":                    "/e2e/home/.local/share",
+			"SKILLSGO_HOME":                    "/e2e/home/.skillsgo",
+			"SKILLSGO_HUB_URL":                 "http://127.0.0.1:3000",
+			"SKILLSGO_HUB_PORT":                ":3000",
+			"SKILLSGO_HUB_CACHE_DIR":           "/e2e/hub/cache",
+			"SKILLSGO_HUB_STORAGE_TYPE":        "disk",
+			"SKILLSGO_HUB_DISK_STORAGE_ROOT":   "/e2e/hub/storage",
+			"SKILLSGO_ALLOW_PRIVATE_GIT_HOSTS": "true",
+			"SKILLSGO_LANG":                    "en",
+			"NO_COLOR":                         "1",
 		}),
 		testcontainers.WithWaitStrategy(
 			wait.ForHTTP("/readyz").
@@ -137,6 +137,13 @@ func execInContainer(t *testing.T, ctx context.Context, container testcontainers
 	return commandResult{exitCode: exitCode, output: string(output)}
 }
 
+func hubURL(t *testing.T, ctx context.Context, container testcontainers.Container) string {
+	t.Helper()
+	endpoint, err := container.Endpoint(ctx, "http")
+	require.NoError(t, err)
+	return endpoint
+}
+
 func containerPathOnHost(t *testing.T, sandboxRoot, containerPath string, suffix ...string) string {
 	t.Helper()
 	relative, err := filepath.Rel("/e2e", containerPath)
@@ -161,6 +168,12 @@ func findSingleFile(t *testing.T, root, suffix string) string {
 	require.NoError(t, err)
 	require.Len(t, matches, 1, "expected one %s file under %s", suffix, root)
 	return matches[0]
+}
+
+func findArtifactFile(t *testing.T, root, skillID, suffix string) string {
+	t.Helper()
+	artifactRoot := filepath.Join(root, filepath.FromSlash(skillID))
+	return findSingleFile(t, artifactRoot, suffix)
 }
 
 func resetLocalInstallation(t *testing.T, sandboxRoot string) {
