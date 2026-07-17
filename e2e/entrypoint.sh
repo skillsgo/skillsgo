@@ -13,4 +13,6 @@ mkdir -p \
   /e2e/hub/storage \
   /e2e/artifacts
 
+/usr/local/bin/e2e-git-fixtures
+
 exec /sbin/tini -- /usr/local/bin/skillsgo-hub

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical immutable dependency coordinates, resolved versions, desired Agent IDs, installation modes, and YAML persistence.
- * [OUTPUT]: Provides the editable lock-free Workspace Manifest, nearest-root discovery, requirement mutation, and Agent-binding removal.
+ * [OUTPUT]: Provides the editable Workspace Manifest, nearest-root discovery, and atomic requirement replacement or Agent-binding removal.
  * [POS]: Serves as the sole portable desired-state boundary for project and user scopes; resolution integrity belongs to skillsgo.sum.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,6 +18,8 @@ import (
 )
 
 const APIVersion = "skillsgo.dev/v1alpha1"
+
+const manifestLockName = ".skillsgo.yaml.lock"
 
 func UserRoot(home string) string { return filepath.Join(home, ".skillsgo") }
 
@@ -144,6 +146,26 @@ func UpsertManifestRequirement(root, dependency string, requirement SkillRequire
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return err
 	}
+	unlock, err := acquireFileLock(filepath.Join(root, manifestLockName))
+	if err != nil {
+		return err
+	}
+	defer unlock()
+	return upsertManifestRequirementLocked(root, dependency, requirement, mergeAgents)
+}
+
+func ReplaceManifestBindings(root, dependency string, requirement SkillRequirement, mergeAgents bool, removed []install.Installation) error {
+	if strings.TrimSpace(dependency) == "" || strings.TrimSpace(requirement.Ref) == "" {
+		return fmt.Errorf("canonical dependency and resolved version are required")
+	}
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		return err
+	}
+	unlock, err := acquireFileLock(filepath.Join(root, manifestLockName))
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	manifestPath := filepath.Join(root, "skillsgo.yaml")
 	manifest := Manifest{APIVersion: APIVersion, Skills: map[string]SkillRequirement{}}
 	if err := readYAMLIfExists(manifestPath, &manifest); err != nil {
@@ -156,19 +178,44 @@ func UpsertManifestRequirement(root, dependency string, requirement SkillRequire
 		manifest.Skills = map[string]SkillRequirement{}
 	}
 	if existing, ok := manifest.Skills[dependency]; ok && mergeAgents {
-		seen := map[string]bool{}
-		merged := make([]string, 0, len(existing.Agents)+len(requirement.Agents))
-		for _, agentID := range append(existing.Agents, requirement.Agents...) {
-			if !seen[agentID] {
-				seen[agentID] = true
-				merged = append(merged, agentID)
-			}
-		}
-		requirement.Agents = merged
+		requirement.Agents = mergeAgentIDs(existing.Agents, requirement.Agents)
+	}
+	requirement.Source = dependency
+	manifest.Skills[dependency] = requirement
+	removeBindingsFromManifest(&manifest, removed)
+	return writeYAMLAtomic(manifestPath, manifest)
+}
+
+func upsertManifestRequirementLocked(root, dependency string, requirement SkillRequirement, mergeAgents bool) error {
+	manifestPath := filepath.Join(root, "skillsgo.yaml")
+	manifest := Manifest{APIVersion: APIVersion, Skills: map[string]SkillRequirement{}}
+	if err := readYAMLIfExists(manifestPath, &manifest); err != nil {
+		return err
+	}
+	if manifest.APIVersion != APIVersion {
+		return fmt.Errorf("unsupported skillsgo.yaml apiVersion %q", manifest.APIVersion)
+	}
+	if manifest.Skills == nil {
+		manifest.Skills = map[string]SkillRequirement{}
+	}
+	if existing, ok := manifest.Skills[dependency]; ok && mergeAgents {
+		requirement.Agents = mergeAgentIDs(existing.Agents, requirement.Agents)
 	}
 	requirement.Source = dependency
 	manifest.Skills[dependency] = requirement
 	return writeYAMLAtomic(manifestPath, manifest)
+}
+
+func mergeAgentIDs(existing, added []string) []string {
+	seen := map[string]bool{}
+	merged := make([]string, 0, len(existing)+len(added))
+	for _, agentID := range append(existing, added...) {
+		if !seen[agentID] {
+			seen[agentID] = true
+			merged = append(merged, agentID)
+		}
+	}
+	return merged
 }
 
 // Upsert and Replace are execution helpers. Store receipts provide the exact
@@ -191,6 +238,11 @@ func persistReceiptRequirement(root string, requirement SkillRequirement, receip
 }
 
 func RemoveBindings(root string, removed []install.Installation) error {
+	unlock, err := acquireFileLock(filepath.Join(root, manifestLockName))
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	manifest, err := LoadManifest(root)
 	if os.IsNotExist(err) {
 		return nil
@@ -198,6 +250,11 @@ func RemoveBindings(root string, removed []install.Installation) error {
 	if err != nil {
 		return err
 	}
+	removeBindingsFromManifest(&manifest, removed)
+	return writeYAMLAtomic(filepath.Join(root, "skillsgo.yaml"), manifest)
+}
+
+func removeBindingsFromManifest(manifest *Manifest, removed []install.Installation) {
 	for _, installation := range removed {
 		requirement, ok := manifest.Skills[installation.SkillID]
 		if !ok {
@@ -216,10 +273,14 @@ func RemoveBindings(root string, removed []install.Installation) error {
 			manifest.Skills[installation.SkillID] = requirement
 		}
 	}
-	return writeYAMLAtomic(filepath.Join(root, "skillsgo.yaml"), manifest)
 }
 
 func RemoveManifestRequirements(root string, dependencies []string) error {
+	unlock, err := acquireFileLock(filepath.Join(root, manifestLockName))
+	if err != nil {
+		return err
+	}
+	defer unlock()
 	manifest, err := LoadManifest(root)
 	if err != nil {
 		return err
