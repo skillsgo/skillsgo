@@ -17,6 +17,7 @@ import (
 	huberrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
+	"golang.org/x/mod/semver"
 )
 
 func withRepositoryInfo(protocol download.Protocol, metadata *catalog.Catalog, materializers ...repositoryMaterializer) download.Protocol {
@@ -41,6 +42,83 @@ type repositoryInfo struct {
 	Time          time.Time         `json:"Time"`
 	CommitSHA     string            `json:"CommitSHA"`
 	Skills        []json.RawMessage `json:"Skills"`
+}
+
+func (p *repositoryInfoProtocol) List(ctx context.Context, resourceID string) ([]string, error) {
+	parsed, err := skill.ParseSkillID(resourceID)
+	if err != nil || parsed.String() != resourceID {
+		return nil, huberrors.E("repositoryInfoProtocol.List", err, huberrors.KindBadRequest)
+	}
+	if parsed.SkillPath == "." {
+		return p.Protocol.List(ctx, resourceID)
+	}
+	repositoryVersions, err := p.Protocol.List(ctx, parsed.Repository)
+	if err != nil {
+		return nil, err
+	}
+	if candidate := latestListedVersion(repositoryVersions); candidate != "" && p.materializer != nil {
+		members, lookupErr := p.metadata.RepositoryVersionMembers(ctx, parsed.Repository, candidate)
+		if lookupErr != nil {
+			return nil, lookupErr
+		}
+		if len(members) == 0 {
+			if _, materializeErr := p.materializer.Materialize(ctx, parsed.Repository, candidate); materializeErr != nil {
+				return nil, materializeErr
+			}
+		}
+	}
+	return p.metadata.SkillPublishedVersions(ctx, resourceID)
+}
+
+func (p *repositoryInfoProtocol) Latest(ctx context.Context, resourceID string) (*storage.RevInfo, error) {
+	parsed, err := skill.ParseSkillID(resourceID)
+	if err != nil || parsed.String() != resourceID {
+		return nil, huberrors.E("repositoryInfoProtocol.Latest", err, huberrors.KindBadRequest)
+	}
+	if parsed.SkillPath == "." {
+		return p.Protocol.Latest(ctx, resourceID)
+	}
+	repositoryLatest, err := p.Protocol.Latest(ctx, parsed.Repository)
+	if err != nil {
+		return nil, err
+	}
+	members, err := p.metadata.RepositoryVersionMembers(ctx, parsed.Repository, repositoryLatest.Version)
+	if err != nil {
+		return nil, err
+	}
+	if len(members) == 0 {
+		if p.materializer == nil {
+			return nil, huberrors.E("repositoryInfoProtocol.Latest", huberrors.S(resourceID), huberrors.KindNotFound)
+		}
+		if _, err := p.materializer.Materialize(ctx, parsed.Repository, "latest"); err != nil {
+			return nil, err
+		}
+	}
+	latest, err := p.metadata.SkillLatestPublishedVersion(ctx, resourceID)
+	if err != nil {
+		return nil, huberrors.E("repositoryInfoProtocol.Latest", huberrors.S(resourceID), huberrors.KindNotFound, err)
+	}
+	return &storage.RevInfo{Version: latest.Version, Time: latest.CommitTime}, nil
+}
+
+func latestListedVersion(versions []string) string {
+	stable, prerelease := "", ""
+	for _, version := range versions {
+		if !semver.IsValid(version) {
+			continue
+		}
+		if semver.Prerelease(version) == "" {
+			if stable == "" || semver.Compare(version, stable) > 0 {
+				stable = version
+			}
+		} else if prerelease == "" || semver.Compare(version, prerelease) > 0 {
+			prerelease = version
+		}
+	}
+	if stable != "" {
+		return stable
+	}
+	return prerelease
 }
 
 func (p *repositoryInfoProtocol) Info(ctx context.Context, resourceID, version string) ([]byte, error) {

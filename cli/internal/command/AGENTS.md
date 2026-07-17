@@ -24,7 +24,7 @@
 - `version.go`: serves the human version output and versioned App startup handshake.
 - `args_test.go`: covers public argument normalization and environment-gated test Agent behavior.
 - `i18n_test.go`: covers localized root and Local export command help.
-- `install_flow_test.go`: exercises legacy installation, immutable Manifest pinning after selector resolution, update, and restoration through `Execute`.
+- `install_flow_test.go`: exercises Repository and selected-Skill installation, canonical Workspace Manifest pinning after query resolution, update, and restoration through `Execute`.
 - `repository_add.go`: orchestrates whole-Repository Info selection, checksum verification, Store admission, Agent projection, and one-requirement Manifest persistence.
 - `repository_add_test.go`: specifies Repository selector matching and per-selector Version Query precedence.
 - `workspace_restore.go`: restores exact direct requirements from Workspace Sum, immutable Info Cache, Store, and current Agent roots without a lockfile.

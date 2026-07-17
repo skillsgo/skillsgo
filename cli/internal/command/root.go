@@ -7,7 +7,6 @@
 package command
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -20,10 +19,8 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
-	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/inventory"
-	"github.com/skillsgo/skillsgo/cli/internal/plan"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
@@ -627,166 +624,17 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if !strings.Contains(reference.SkillID, "/-/") {
-				if len(options.skills) > 0 {
-					return addSelectedRepositorySkills(cmd, catalog, reference, agentIDs, scope, mode, cwd, options)
-				}
-				return addWholeRepository(cmd, catalog, reference, agentIDs, scope, mode, cwd, options)
-			}
-			nameExplicit := len(options.skills) > 0
-			if len(options.skills) > 1 {
-				return fmt.Errorf("a Skill source resolves exactly one Skill")
-			}
-			home, err := os.UserHomeDir()
-			if err != nil {
-				return err
-			}
-			declarationRoot := cwd
-			if scope == install.ScopeUser {
-				declarationRoot = project.UserRoot(home)
-			}
-			replaceAuthorized := options.replace || options.yes
-			var targets []install.Target
-			var previous []install.Installation
-			prepareInstallationName := func(name string) error {
-				resolvedTargets, resolveErr := install.ResolveTargetsWithSubagents(catalog, agentIDs, options.subagents, scope, mode, cwd, name)
-				if resolveErr != nil {
-					return resolveErr
-				}
-				installed, installedErr := project.Installed(declarationRoot, catalog, scope, store.DefaultRoot(home))
-				if installedErr != nil {
-					return installedErr
-				}
-				matching := filterInstallations(installed, nil, map[string]bool{strings.ToLower(name): true})
-				if !replaceAuthorized {
-					for _, installation := range matching {
-						if installation.SkillID != reference.SkillID {
-							return fmt.Errorf("Skill 名称冲突：%q 已来自 %s，不能用 %s 静默覆盖", name, installation.SkillID, reference.SkillID)
-						}
-					}
-				}
-				options.skills = []string{name}
-				targets = resolvedTargets
-				previous = matching
-				return nil
-			}
-			if nameExplicit {
-				if err := prepareInstallationName(options.skills[0]); err != nil {
-					return err
+			if separator := strings.Index(reference.SkillID, "/-/"); separator >= 0 {
+				nestedPath := reference.SkillID[separator+len("/-/"):]
+				reference.SkillID = reference.SkillID[:separator]
+				if len(options.skills) == 0 {
+					options.skills = []string{nestedPath}
 				}
 			}
-			client, err := hub.New(options.hubURL, nil)
-			if err != nil {
-				return err
+			if len(options.skills) > 0 {
+				return addSelectedRepositorySkills(cmd, catalog, reference, agentIDs, scope, mode, cwd, options)
 			}
-			var artifact *hub.Artifact
-			var entry *store.Entry
-			execute := func(emit func(terminalui.Event)) error {
-				stage := func(id, label string, work func() error) error {
-					emit(terminalui.Event{Kind: terminalui.EventStarted, ID: id, Label: label})
-					if stageErr := work(); stageErr != nil {
-						emit(terminalui.Event{Kind: terminalui.EventFailed, ID: id, Label: label, Detail: stageErr.Error()})
-						return stageErr
-					}
-					emit(terminalui.Event{Kind: terminalui.EventSucceeded, ID: id, Label: label})
-					return nil
-				}
-				if err := stage("download", appi18n.T("operation.download"), func() error {
-					var fetchErr error
-					artifact, fetchErr = client.FetchWithProgress(cmd.Context(), reference.SkillID, reference.Version, func(current, total int64) {
-						emit(terminalui.Event{Kind: terminalui.EventProgress, ID: "download", Label: appi18n.T("operation.download"), Current: current, Total: total})
-					})
-					return fetchErr
-				}); err != nil {
-					return err
-				}
-				infoName := artifact.Info.Name
-				if nameExplicit && !strings.EqualFold(options.skills[0], infoName) {
-					return fmt.Errorf("requested Skill name %q does not match Info name %q", options.skills[0], infoName)
-				}
-				if !nameExplicit {
-					if err := prepareInstallationName(infoName); err != nil {
-						return err
-					}
-				}
-				if err := stage("verify", appi18n.T("operation.verify"), func() error {
-					if err := plan.AuthorizeRisk(plan.Risk(artifact.Info.Risk), options.riskConfirmed, options.allowCritical); err != nil {
-						return err
-					}
-					checksum, err := project.ContentH1(artifact.Info.ContentDigest)
-					if err != nil {
-						return err
-					}
-					verified := []project.SumEntry{{Path: artifact.SkillID, Version: artifact.Info.Version, Checksum: checksum}}
-					if err := project.ValidateVerifiedSums(declarationRoot, verified); err != nil {
-						return err
-					}
-					if err := (infocache.Cache{Root: infocache.DefaultRoot(home)}).Put(artifact.SkillID, artifact.Info.Version, "skill.info", artifact.InfoBytes); err != nil {
-						return err
-					}
-					return project.MergeVerifiedSums(declarationRoot, verified)
-				}); err != nil {
-					return err
-				}
-				if err := stage("store", appi18n.T("operation.store"), func() error {
-					var putErr error
-					entry, putErr = (store.Store{Root: store.DefaultRoot(home)}).Put(artifact)
-					return putErr
-				}); err != nil {
-					return err
-				}
-				if err := stage("targets", appi18n.T("operation.targets"), func() error {
-					if replaceAuthorized {
-						return install.ReplaceExplicit(entry, previous, targets)
-					}
-					return install.Install(entry, targets)
-				}); err != nil {
-					return err
-				}
-				return stage("declaration", appi18n.T("operation.declaration"), func() error {
-					if err := os.MkdirAll(declarationRoot, 0o700); err != nil {
-						return err
-					}
-					requirement := project.SkillRequirement{Source: reference.SkillID, Ref: entry.Receipt.Version, Agents: agentIDs, Mode: mode}
-					return project.UpsertManifestRequirement(declarationRoot, reference.SkillID, requirement, !replaceAuthorized || len(previous) == 0)
-				})
-			}
-			if options.output == "human" {
-				ui, err := humanUI(cmd)
-				if err != nil {
-					return err
-				}
-				if err := ui.Run(cmd.Context(), terminalui.Operation{Title: appi18n.T("operation.install"), Run: func(_ context.Context, emit func(terminalui.Event)) error {
-					return execute(emit)
-				}}); err != nil {
-					return err
-				}
-			} else if err := execute(func(terminalui.Event) {}); err != nil {
-				return err
-			}
-			response := struct {
-				SchemaVersion int              `json:"schemaVersion"`
-				Source        string           `json:"source"`
-				SkillID       string           `json:"skillId"`
-				Version       string           `json:"version"`
-				Store         string           `json:"store"`
-				Scope         install.Scope    `json:"scope"`
-				Targets       []install.Target `json:"targets"`
-			}{1, args[0], reference.SkillID, artifact.Info.Version, entry.Root, scope, targets}
-			if options.output == "json" {
-				encoder := json.NewEncoder(cmd.OutOrStdout())
-				encoder.SetIndent("", "  ")
-				return encoder.Encode(response)
-			}
-			ui, err := humanUI(cmd)
-			if err != nil {
-				return err
-			}
-			rows := make([]terminalui.Row, 0, len(targets))
-			for _, target := range targets {
-				rows = append(rows, terminalui.Row{State: "✓", Primary: target.Agent, Secondary: filepath.Clean(target.Path)})
-			}
-			return ui.Render(terminalui.Document{Title: strings.TrimSpace(appi18n.F("add.success", reference.SkillID, artifact.Info.Version, len(targets), scope)), Sections: []terminalui.Section{{Rows: rows}}})
+			return addWholeRepository(cmd, catalog, reference, agentIDs, scope, mode, cwd, options)
 		},
 	}
 	flags := cmd.Flags()

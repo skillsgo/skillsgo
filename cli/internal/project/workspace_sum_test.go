@@ -73,6 +73,14 @@ func TestWorkspaceSumRejectsMalformedLines(t *testing.T) {
 	}
 }
 
+func TestWorkspaceSumRejectsUnsupportedChecksumAlgorithms(t *testing.T) {
+	root := t.TempDir()
+	entry := SumEntry{Path: "github.com/example/repo/-/skills/demo", Version: "v1.2.3", Checksum: "future:b25l"}
+	if err := MergeVerifiedSums(root, []SumEntry{entry}); err == nil {
+		t.Fatal("expected unsupported Workspace Sum checksum algorithm rejection")
+	}
+}
+
 func TestWorkspaceSumConcurrentWritersDoNotLoseVerifiedEntries(t *testing.T) {
 	root := t.TempDir()
 	entries := []SumEntry{

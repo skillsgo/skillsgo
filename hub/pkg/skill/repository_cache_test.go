@@ -12,12 +12,14 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
+	"golang.org/x/mod/module"
 )
 
 type localRepositoryFixture struct {
@@ -105,6 +107,36 @@ func TestRepositoryCacheRefreshesMutableBranch(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEqual(t, first.CommitSHA, second.CommitSHA)
 	require.NotEqual(t, first.TreeSHA, second.TreeSHA)
+	require.NotEqual(t, first.Version, second.Version)
+	require.True(t, module.IsPseudoVersion(second.Version), second.Version)
+}
+
+func TestRevisionResolutionCanonicalizesTagsAndUntaggedCommits(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	tagged, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
+	require.NoError(t, err)
+	require.Equal(t, "v1.0.0", tagged.Version)
+	require.Equal(t, "refs/tags/v1.0.0", tagged.Ref)
+
+	f.writeSkill(t, ".", "repo", "untagged change")
+	f.commit(t, "untagged change")
+	runGit(t, f.work, "push", "origin", "HEAD")
+	commit := strings.TrimSpace(runGit(t, f.work, "rev-parse", "HEAD"))
+	branch, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
+	require.NoError(t, err)
+	require.True(t, module.IsPseudoVersion(branch.Version), branch.Version)
+	require.Equal(t, "refs/heads/main", branch.Ref)
+	exact, err := f.fetcher.Resolve(t.Context(), f.skillID, commit)
+	require.NoError(t, err)
+	require.Equal(t, branch.Version, exact.Version)
+	require.Equal(t, commit, exact.Ref)
+
+	runGit(t, f.work, "tag", "v1.1.0")
+	runGit(t, f.work, "push", "origin", "--tags")
+	taggedExact, err := f.fetcher.Resolve(t.Context(), f.skillID, commit)
+	require.NoError(t, err)
+	require.Equal(t, "v1.1.0", taggedExact.Version)
+	require.Equal(t, "refs/tags/v1.1.0", taggedExact.Ref)
 }
 
 func TestRepositoryTagCatalogUsesInjectedClockForFreshAndStaleTTL(t *testing.T) {
@@ -146,6 +178,33 @@ func TestRepositoryCacheIsSharedBySkillsInOneRepository(t *testing.T) {
 	entries, err := os.ReadDir(filepath.Join(f.cache, "repositories", "github.com", "skillsgo-test"))
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
+}
+
+func TestRepositoryDiscoverySkipsInvalidCandidatesWithoutBlockingValidSiblings(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	invalidDir := filepath.Join(f.work, "skills", "invalid")
+	require.NoError(t, os.MkdirAll(invalidDir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(invalidDir, "SKILL.md"), []byte("---\nname: invalid\n---\nMissing description.\n"), 0o644))
+	f.commit(t, "add invalid candidate")
+	runGit(t, f.work, "tag", "v1.1.0")
+	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
+
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		for _, member := range snapshot.Members {
+			if member.Version != nil && member.Version.Zip != nil {
+				require.NoError(t, member.Version.Zip.Close())
+			}
+		}
+	})
+	ids := make([]string, 0, len(snapshot.Members))
+	for _, member := range snapshot.Members {
+		ids = append(ids, member.SkillID)
+	}
+	require.Contains(t, ids, f.skillID)
+	require.Contains(t, ids, f.skillID+"/-/skills/child")
+	require.NotContains(t, ids, f.skillID+"/-/skills/invalid")
 }
 
 func TestRepositoryCacheCoalescesConcurrentResolve(t *testing.T) {
@@ -226,4 +285,21 @@ func TestVCSListerUsesRepositoryCache(t *testing.T) {
 	repositoryDir, err := f.fetcher.repositoryDir(f.skillID)
 	require.NoError(t, err)
 	require.True(t, isGitRepository(repositoryDir))
+}
+
+func TestNoTagLatestObservesRemoteDefaultBranchAndReturnsPseudoVersion(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	runGit(t, f.work, "tag", "-d", "v1.0.0")
+	runGit(t, f.work, "push", "origin", ":refs/tags/v1.0.0")
+	lister, err := NewVCSLister(f.fetcher, 10*time.Second)
+	require.NoError(t, err)
+	revision, versions, err := lister.List(t.Context(), f.skillID)
+	require.NoError(t, err)
+	require.Empty(t, versions)
+	require.True(t, module.IsPseudoVersion(revision.Version), revision.Version)
+
+	resolved, err := f.fetcher.Resolve(t.Context(), f.skillID, "latest")
+	require.NoError(t, err)
+	require.Equal(t, revision.Version, resolved.Version)
+	require.Equal(t, "refs/heads/main", resolved.Ref)
 }

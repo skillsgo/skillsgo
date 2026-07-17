@@ -213,6 +213,9 @@ func validateSumEntry(entry SumEntry) error {
 	if separator <= 0 || separator == len(entry.Checksum)-1 {
 		return fmt.Errorf("invalid Workspace Sum checksum %q", entry.Checksum)
 	}
+	if entry.Checksum[:separator] != "h1" {
+		return fmt.Errorf("unsupported Workspace Sum checksum algorithm %q", entry.Checksum[:separator])
+	}
 	if _, err := base64.StdEncoding.DecodeString(entry.Checksum[separator+1:]); err != nil {
 		return fmt.Errorf("invalid Workspace Sum checksum %q", entry.Checksum)
 	}
