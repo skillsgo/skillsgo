@@ -26,14 +26,17 @@ type repositoryMaterializer interface {
 }
 
 type repositoryPublisher struct {
-	fetcher  skill.RepositoryFetcher
-	storage  storage.Backend
-	protocol download.Protocol
-	metadata *catalog.Catalog
-	work     singleflight.Group
-	upstream chan struct{}
-	mu       sync.Mutex
-	negative map[string]negativePublication
+	fetcher     skill.RepositoryFetcher
+	storage     storage.Backend
+	protocol    download.Protocol
+	metadata    *catalog.Catalog
+	work        singleflight.Group
+	commit      singleflight.Group
+	upstream    chan struct{}
+	mu          sync.Mutex
+	negative    map[string]negativePublication
+	now         func() time.Time
+	negativeTTL time.Duration
 }
 
 type negativePublication struct {
@@ -42,14 +45,14 @@ type negativePublication struct {
 }
 
 func newRepositoryPublisher(fetcher skill.RepositoryFetcher, backend storage.Backend, protocol download.Protocol, metadata *catalog.Catalog) repositoryMaterializer {
-	return &repositoryPublisher{fetcher: fetcher, storage: backend, protocol: protocol, metadata: metadata, upstream: make(chan struct{}, 8), negative: make(map[string]negativePublication)}
+	return &repositoryPublisher{fetcher: fetcher, storage: backend, protocol: protocol, metadata: metadata, upstream: make(chan struct{}, 8), negative: make(map[string]negativePublication), now: time.Now, negativeTTL: 10 * time.Second}
 }
 
 func (p *repositoryPublisher) Materialize(ctx context.Context, repositoryID, query string) (string, error) {
 	key := "publish:" + repositoryID + "@" + query
 	p.mu.Lock()
 	negative, cached := p.negative[key]
-	if cached && time.Now().Before(negative.expires) {
+	if cached && p.now().Before(negative.expires) {
 		p.mu.Unlock()
 		return "", negative.err
 	}
@@ -69,7 +72,7 @@ func (p *repositoryPublisher) Materialize(ctx context.Context, repositoryID, que
 		version, materializeErr := p.materialize(workCtx, repositoryID, query)
 		if materializeErr != nil && huberrors.IsNotFoundErr(materializeErr) {
 			p.mu.Lock()
-			p.negative[key] = negativePublication{expires: time.Now().Add(10 * time.Second), err: materializeErr}
+			p.negative[key] = negativePublication{expires: p.now().Add(p.negativeTTL), err: materializeErr}
 			p.mu.Unlock()
 		}
 		return version, materializeErr
@@ -91,10 +94,38 @@ func (p *repositoryPublisher) materialize(ctx context.Context, repositoryID, que
 		return "", err
 	}
 	if snapshot.RepositoryID != repositoryID || snapshot.Version == "" || snapshot.CommitSHA == "" || len(snapshot.Members) == 0 {
+		closeRepositorySnapshot(snapshot)
 		return "", fmt.Errorf("Repository source returned an invalid snapshot for %s@%s", repositoryID, query)
 	}
+	invoked := false
+	result, err, _ := p.commit.Do("commit:"+repositoryID+"@"+snapshot.Version, func() (any, error) {
+		invoked = true
+		return p.publishSnapshot(ctx, repositoryID, query, snapshot)
+	})
+	if !invoked {
+		closeRepositorySnapshot(snapshot)
+	}
+	if err != nil {
+		return "", err
+	}
+	return result.(string), nil
+}
+
+func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID, query string, snapshot *skill.RepositorySnapshot) (string, error) {
 	memberIDs := make([]string, 0, len(snapshot.Members))
 	stored := make(map[string]bool, len(snapshot.Members))
+	newlyStored := make([]string, 0, len(snapshot.Members))
+	publicationCommitted := false
+	defer func() {
+		if publicationCommitted {
+			return
+		}
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		defer cancel()
+		for index := len(newlyStored) - 1; index >= 0; index-- {
+			_ = p.storage.Delete(cleanupCtx, newlyStored[index], snapshot.Version)
+		}
+	}()
 	for _, member := range snapshot.Members {
 		if member.Version == nil || member.Version.Semver != snapshot.Version || member.Version.Zip == nil {
 			return "", fmt.Errorf("Repository source returned an invalid member for %s@%s", repositoryID, query)
@@ -123,6 +154,7 @@ func (p *repositoryPublisher) materialize(ctx context.Context, repositoryID, que
 		); err != nil {
 			return "", err
 		}
+		newlyStored = append(newlyStored, member.SkillID)
 	}
 	published := make([]catalog.PublishedSkill, 0, len(memberIDs))
 	for _, memberID := range memberIDs {
@@ -154,5 +186,17 @@ func (p *repositoryPublisher) materialize(ctx context.Context, repositoryID, que
 	if err := p.metadata.PublishRepositoryVersion(ctx, repositoryID, published); err != nil {
 		return "", err
 	}
+	publicationCommitted = true
 	return snapshot.Version, nil
+}
+
+func closeRepositorySnapshot(snapshot *skill.RepositorySnapshot) {
+	if snapshot == nil {
+		return
+	}
+	for _, member := range snapshot.Members {
+		if member.Version != nil && member.Version.Zip != nil {
+			_ = member.Version.Zip.Close()
+		}
+	}
 }

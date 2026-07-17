@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -31,6 +32,8 @@ import (
 	entskillversion "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	skillpkg "github.com/skillsgo/skillsgo/hub/pkg/skill"
+	"golang.org/x/mod/module"
+	"golang.org/x/mod/semver"
 	_ "modernc.org/sqlite"
 )
 
@@ -208,6 +211,15 @@ ON CONFLICT (repository_id) DO UPDATE SET updated_at = excluded.updated_at`), pa
 		if skillPath == "." {
 			skillPath = ""
 		}
+		latestVersion := version
+		var currentLatest string
+		latestErr := tx.GetContext(ctx, &currentLatest, c.db.Rebind("SELECT latest_version FROM skills WHERE skill_id = ?"), candidate.Skill.SkillID)
+		if latestErr != nil && latestErr != sql.ErrNoRows {
+			return latestErr
+		}
+		if latestErr == nil {
+			latestVersion = preferredLatestVersion(currentLatest, version)
+		}
 		if _, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO skills
 (repository_id, skill_id, name, description, source_host, repository, skill_path, latest_version, github_stars, verified, created_at, updated_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
@@ -215,7 +227,7 @@ ON CONFLICT (skill_id) DO UPDATE SET repository_id = excluded.repository_id, nam
 description = excluded.description, source_host = excluded.source_host, repository = excluded.repository,
 skill_path = excluded.skill_path, latest_version = excluded.latest_version, updated_at = excluded.updated_at`),
 			repositoryRowID, candidate.Skill.SkillID, candidate.Skill.Name, candidate.Skill.Description,
-			parts[0], parts[1], skillPath, version, candidate.Skill.Verified, now, now); err != nil {
+			parts[0], parts[1], skillPath, latestVersion, candidate.Skill.Verified, now, now); err != nil {
 			return err
 		}
 		var skillRowID int64
@@ -235,6 +247,32 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?)`), skillRowID, version, candidate.Version.Commit
 		}
 	}
 	return tx.Commit()
+}
+
+func preferredLatestVersion(current, candidate string) string {
+	if current == "" {
+		return candidate
+	}
+	rank := func(version string) int {
+		if !semver.IsValid(version) || module.IsPseudoVersion(version) {
+			return 0
+		}
+		if semver.Prerelease(version) == "" {
+			return 2
+		}
+		return 1
+	}
+	currentRank, candidateRank := rank(current), rank(candidate)
+	if candidateRank != currentRank {
+		if candidateRank > currentRank {
+			return candidate
+		}
+		return current
+	}
+	if semver.IsValid(current) && semver.IsValid(candidate) && semver.Compare(candidate, current) > 0 {
+		return candidate
+	}
+	return current
 }
 
 type RiskAssessment struct {
@@ -501,6 +539,42 @@ func (c *Catalog) Skill(ctx context.Context, skillID string) (*Skill, error) {
 		return nil, err
 	}
 	return skillFromEnt(stored), nil
+}
+
+// SkillPublishedVersions returns the immutable semantic versions at which a
+// concrete Skill was an accepted Repository member. Pseudo-versions are
+// deliberately omitted from the public version list.
+func (c *Catalog) SkillPublishedVersions(ctx context.Context, skillID string) ([]string, error) {
+	statement := `SELECT sv.version
+FROM skills AS s JOIN skill_versions AS sv ON sv.skill_id = s.id
+WHERE s.skill_id = ? ORDER BY sv.version ASC`
+	versions := make([]string, 0)
+	if err := c.db.SelectContext(ctx, &versions, c.db.Rebind(statement), skillID); err != nil {
+		return nil, err
+	}
+	filtered := versions[:0]
+	for _, version := range versions {
+		if semver.IsValid(version) && !module.IsPseudoVersion(version) {
+			filtered = append(filtered, version)
+		}
+	}
+	sort.Slice(filtered, func(i, j int) bool { return semver.Compare(filtered[i], filtered[j]) < 0 })
+	return filtered, nil
+}
+
+// SkillLatestPublishedVersion returns the latest version selected for one
+// concrete Skill, which may intentionally trail its Repository after the
+// Skill disappears from a later publication.
+func (c *Catalog) SkillLatestPublishedVersion(ctx context.Context, skillID string) (*SkillVersion, error) {
+	statement := `SELECT sv.id, sv.skill_id, sv.version, sv.commit_sha, sv.tree_sha,
+sv.content_digest, sv.commit_time, sv.archive_size, sv.created_at
+FROM skills AS s JOIN skill_versions AS sv ON sv.skill_id = s.id AND sv.version = s.latest_version
+WHERE s.skill_id = ?`
+	var version SkillVersion
+	if err := c.db.GetContext(ctx, &version, c.db.Rebind(statement), skillID); err != nil {
+		return nil, err
+	}
+	return &version, nil
 }
 
 func (c *Catalog) RecordSkillVersion(ctx context.Context, skillID string, candidate SkillVersion) (*SkillVersion, error) {

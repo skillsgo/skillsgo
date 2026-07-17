@@ -206,6 +206,47 @@ func TestArtifactVersionsAreImmutableAndRiskAssessmentsAreAppendOnly(t *testing.
 	require.ErrorContains(t, err, "valid JSON")
 }
 
+func TestRepositoryPublicationKeepsIndependentSkillLatestHistory(t *testing.T) {
+	ctx := context.Background()
+	c, err := Open(ctx, config.DatabaseConfig{Type: "sqlite", DSN: filepath.Join(t.TempDir(), "hub.db"), MaxOpenConns: 1, MaxIdleConns: 1})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, c.Close()) })
+	repository := "github.com/acme/history"
+	member := repository + "/-/skills/member"
+	publish := func(version, commit string, skillIDs ...string) {
+		candidates := make([]PublishedSkill, 0, len(skillIDs))
+		for index, skillID := range skillIDs {
+			candidates = append(candidates, PublishedSkill{
+				Skill: Skill{SkillID: skillID, Name: fmt.Sprintf("member-%d", index), Description: "History fixture"},
+				Version: SkillVersion{Version: version, CommitSHA: commit, TreeSHA: fmt.Sprintf("tree-%s-%d", version, index),
+					ContentDigest: fmt.Sprintf("sha256:%064d", index+1), CommitTime: time.Now().UTC(), ArchiveSize: 10},
+			})
+		}
+		require.NoError(t, c.PublishRepositoryVersion(ctx, repository, candidates))
+	}
+
+	publish("v1.0.0", "commit-v1", repository, member)
+	publish("v2.0.0", "commit-v2", repository)
+	require.Equal(t, []string{"v1.0.0", "v2.0.0"}, mustPublishedVersions(t, c, repository), "unchanged members still receive every Repository publication version")
+	latest, err := c.SkillLatestPublishedVersion(ctx, member)
+	require.NoError(t, err)
+	require.Equal(t, "v1.0.0", latest.Version)
+	require.Equal(t, []string{"v1.0.0"}, mustPublishedVersions(t, c, member))
+
+	// An older version requested after newer history must not move latest back.
+	publish("v0.9.0", "commit-v0", repository, member)
+	latest, err = c.SkillLatestPublishedVersion(ctx, member)
+	require.NoError(t, err)
+	require.Equal(t, "v1.0.0", latest.Version)
+}
+
+func mustPublishedVersions(t *testing.T, c *Catalog, skillID string) []string {
+	t.Helper()
+	versions, err := c.SkillPublishedVersions(t.Context(), skillID)
+	require.NoError(t, err)
+	return versions
+}
+
 func TestSQLiteMigrationsAreVersionedAndIdempotent(t *testing.T) {
 	ctx := context.Background()
 	dsn := filepath.Join(t.TempDir(), "hub.db")

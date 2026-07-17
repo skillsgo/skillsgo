@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on one immutable Store entry, an installed Agent Catalog, explicit location-and-Agent requests, user/project declarations, and Workspace state.
- * [OUTPUT]: Provides strict target decoding, shared immutable-risk authorization, affirmative collision/Local Modification replacement, immutable Workspace declaration and Lock previews, optional reviewed conflicts, and resilient target-specific progress/results.
+ * [OUTPUT]: Provides strict target decoding, shared immutable-risk authorization, affirmative collision/Local Modification replacement, immutable Workspace Manifest previews, optional reviewed conflicts, and resilient target-specific progress/results.
  * [POS]: Serves as the domain orchestration layer between the add command and lower-level install/project mutation modules.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

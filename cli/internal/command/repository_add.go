@@ -205,6 +205,7 @@ func addSelectedRepositorySkills(
 				return err
 			}
 			resources[query] = resource
+			resources[resource.Info.Version] = resource
 			sums = append(sums, project.SumEntry{
 				Path: reference.SkillID, Version: resource.Info.Version + "/repository.info",
 				Checksum: project.H1(resource.InfoBytes),
@@ -270,6 +271,14 @@ func addSelectedRepositorySkills(
 		return err
 	}
 	storage := store.Store{Root: store.DefaultRoot(home)}
+	type installedResult struct {
+		SkillID string           `json:"skillId"`
+		Name    string           `json:"name"`
+		Version string           `json:"version"`
+		Store   string           `json:"store"`
+		Targets []install.Target `json:"targets"`
+	}
+	installed := make([]installedResult, 0, len(selections))
 	for _, selection := range selections {
 		entry, err := storage.Put(selection.prepared.artifact)
 		if err != nil {
@@ -288,15 +297,29 @@ func addSelectedRepositorySkills(
 		}, true); err != nil {
 			return err
 		}
+		installed = append(installed, installedResult{SkillID: entry.Receipt.SkillID, Name: entry.Receipt.Name,
+			Version: entry.Receipt.Version, Store: entry.Root, Targets: selection.prepared.targets})
 		if options.output != "json" {
 			fmt.Fprintf(cmd.OutOrStdout(), "✓ %s %s (%d targets)\n", entry.Receipt.Name, entry.Receipt.Version, len(selection.prepared.targets))
 		}
 	}
 	if options.output == "json" {
+		if len(installed) == 1 {
+			return json.NewEncoder(cmd.OutOrStdout()).Encode(struct {
+				SchemaVersion int              `json:"schemaVersion"`
+				Repository    string           `json:"repository"`
+				SkillID       string           `json:"skillId"`
+				Version       string           `json:"version"`
+				Store         string           `json:"store"`
+				Scope         install.Scope    `json:"scope"`
+				Targets       []install.Target `json:"targets"`
+			}{1, reference.SkillID, installed[0].SkillID, installed[0].Version, installed[0].Store, scope, installed[0].Targets})
+		}
 		return json.NewEncoder(cmd.OutOrStdout()).Encode(struct {
-			Repository string `json:"repository"`
-			Installed  int    `json:"installed"`
-		}{reference.SkillID, len(selections)})
+			SchemaVersion int               `json:"schemaVersion"`
+			Repository    string            `json:"repository"`
+			Members       []installedResult `json:"members"`
+		}{1, reference.SkillID, installed})
 	}
 	return nil
 }
@@ -313,6 +336,14 @@ func parseRepositorySelector(raw, inheritedQuery string) (string, string, error)
 	}
 	if raw == "" {
 		return "", "", fmt.Errorf("Skill selector must not be empty")
+	}
+	if strings.ContainsAny(raw, "\\\x00") {
+		return "", "", fmt.Errorf("invalid Skill selector %q", raw)
+	}
+	for _, segment := range strings.Split(strings.Trim(raw, "/"), "/") {
+		if segment == "." || segment == ".." || segment == "" {
+			return "", "", fmt.Errorf("invalid Skill selector %q", raw)
+		}
 	}
 	if err := source.ValidateVersion(query); err != nil {
 		return "", "", err

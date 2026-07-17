@@ -422,12 +422,25 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, re
 	version := revision
 	ref := revision
 	if !semver.IsValid(version) {
-		shortHash := commitSHA
-		if len(shortHash) > 12 {
-			shortHash = shortHash[:12]
+		tagOutput, tagErr := gitOutput(ctx, repoDir, "tag", "--points-at", commitSHA)
+		if tagErr != nil {
+			return nil, errors.E(op, tagErr)
 		}
-		version = modmodule.PseudoVersion("v0", "", commitTime, shortHash)
-		ref = "refs/heads/" + revision
+		if taggedVersion := latestSemanticVersion(strings.Fields(tagOutput)); taggedVersion != "" {
+			version = taggedVersion
+			ref = "refs/tags/" + taggedVersion
+		} else {
+			shortHash := commitSHA
+			if len(shortHash) > 12 {
+				shortHash = shortHash[:12]
+			}
+			version = modmodule.PseudoVersion("v0", "", commitTime, shortHash)
+			if resolvedRevision != "refs/remotes/origin/"+revision {
+				ref = commitSHA
+			} else {
+				ref = "refs/heads/" + revision
+			}
+		}
 	} else if !modmodule.IsPseudoVersion(version) {
 		ref = "refs/tags/" + revision
 	}
