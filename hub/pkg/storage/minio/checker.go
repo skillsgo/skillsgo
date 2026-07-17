@@ -19,7 +19,6 @@ func (s *storageImpl) Exists(ctx context.Context, module, version string) (bool,
 	_, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
 	versionedPath := s.versionLocation(module, version)
-	manifestPath := fmt.Sprintf("%s/manifest.yaml", versionedPath)
 	infoPath := fmt.Sprintf("%s/%s.info", versionedPath, version)
 	zipPath := fmt.Sprintf("%s/source.zip", versionedPath)
 
@@ -36,12 +35,10 @@ func (s *storageImpl) Exists(ctx context.Context, module, version string) (bool,
 		switch object.Key {
 		case infoPath:
 			count++
-		case manifestPath:
-			count++
 		case zipPath:
 			count++
 		}
 	}
 
-	return count == 3, nil
+	return count == 2, nil
 }

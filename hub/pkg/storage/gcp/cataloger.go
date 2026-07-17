@@ -29,7 +29,7 @@ func (s *Storage) Catalog(ctx context.Context, token string, pageSize int) ([]pa
 	res := make([]paths.AllPathParams, 0)
 
 	it := s.bucket.Objects(ctx, nil)
-	// one module@version consists of 3 pieces - info, manifest, zip
+	// one Skill@version consists of two pieces: Info and ZIP.
 	objCount := 3 * pageSize
 	p := iterator.NewPager(it, objCount, token)
 

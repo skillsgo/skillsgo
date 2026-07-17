@@ -27,7 +27,7 @@ func (s *Storage) Catalog(ctx context.Context, token string, pageSize int) ([]pa
 
 	res := make([]paths.AllPathParams, 0)
 
-	// one module@version consists of 3 pieces - info, manifest, zip
+	// one Skill@version consists of two pieces: Info and ZIP.
 	objCount := 3 * pageSize
 
 	marker := azblob.Marker{

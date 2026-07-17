@@ -92,7 +92,7 @@ type mockStorage struct {
 	existsResponse bool
 }
 
-func (ms *mockStorage) Save(ctx context.Context, module, version string, manifest []byte, zip io.Reader, zipMD5 []byte, info []byte) error {
+func (ms *mockStorage) Save(ctx context.Context, module, version string, zip io.Reader, zipMD5 []byte, info []byte) error {
 	ms.saveCalled = true
 	ms.givenVersion = version
 	return nil
@@ -109,10 +109,9 @@ type mockFetcher struct {
 
 func (mf *mockFetcher) Fetch(ctx context.Context, mod, ver string) (*storage.Version, error) {
 	return &storage.Version{
-		Info:     []byte("info"),
-		Manifest: []byte("gomod"),
-		Zip:      io.NopCloser(strings.NewReader("zipfile")),
-		Semver:   mf.ver,
+		Info:   []byte("info"),
+		Zip:    io.NopCloser(strings.NewReader("zipfile")),
+		Semver: mf.ver,
 	}, nil
 }
 
@@ -170,7 +169,7 @@ func (s *resolvedCacheStorage) Exists(_ context.Context, _, version string) (boo
 	return s.versions[version], nil
 }
 
-func (s *resolvedCacheStorage) Save(_ context.Context, _, version string, _ []byte, _ io.Reader, _, _ []byte) error {
+func (s *resolvedCacheStorage) Save(_ context.Context, _, version string, _ io.Reader, _, _ []byte) error {
 	s.versions[version] = true
 	return nil
 }
@@ -190,10 +189,9 @@ func (f *mockResolvedFetcher) Resolve(_ context.Context, _, _ string) (*skill.Re
 func (f *mockResolvedFetcher) FetchResolved(_ context.Context, _ string, resolution *skill.Resolution) (*storage.Version, error) {
 	f.fetchResolvedCalls++
 	return &storage.Version{
-		Info:     []byte("info"),
-		Manifest: []byte("manifest"),
-		Zip:      io.NopCloser(strings.NewReader("zipfile")),
-		Semver:   resolution.Version,
+		Info:   []byte("info"),
+		Zip:    io.NopCloser(strings.NewReader("zipfile")),
+		Semver: resolution.Version,
 	}, nil
 }
 

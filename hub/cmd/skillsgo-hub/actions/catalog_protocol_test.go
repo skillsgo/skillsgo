@@ -28,9 +28,8 @@ func TestSkillInfoRouteReturnsCompleteInstallMetadata(t *testing.T) {
 	skillID, version := "github.com/vercel-labs/skills/-/skills/find-skills", "v1.2.3"
 	archive := catalogProtocolTestZIP(t, skillID, version)
 	underlying := &fixedArtifactProtocol{
-		info:     []byte(`{"Version":"v1.2.3","Time":"2026-07-15T00:00:00Z","Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/skills","Subdir":"skills/find-skills","Ref":"refs/tags/v1.2.3","CommitSHA":"abc","TreeSHA":"def"}}`),
-		manifest: []byte("name: find-skills\ndescription: Finds useful Agent Skills.\nlicense: MIT\ncompatibility: Requires Git.\nallowed-tools: Bash(git:*)\nmetadata:\n  author: vercel-labs\n"),
-		zip:      archive,
+		info: []byte(`{"Version":"v1.2.3","Time":"2026-07-15T00:00:00Z","Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/skills","Subdir":"skills/find-skills","Ref":"refs/tags/v1.2.3","CommitSHA":"abc","TreeSHA":"def"}}`),
+		zip:  archive,
 	}
 	_, metadata := testCatalogAPI(t)
 	router := newFiberApp()
@@ -75,15 +74,13 @@ func TestSkillInfoRouteReturnsCompleteInstallMetadata(t *testing.T) {
 
 type fixedArtifactProtocol struct {
 	download.Protocol
-	info     []byte
-	manifest []byte
-	zip      []byte
+	info []byte
+	zip  []byte
 }
 
 type repositoryFixture struct {
-	info     []byte
-	manifest []byte
-	zip      []byte
+	info []byte
+	zip  []byte
 }
 
 type repositoryFixtureProtocol struct {
@@ -102,11 +99,6 @@ func (p *repositoryFixtureProtocol) fixture(skillID string) (repositoryFixture, 
 func (p *repositoryFixtureProtocol) Info(_ context.Context, skillID, _ string) ([]byte, error) {
 	fixture, err := p.fixture(skillID)
 	return fixture.info, err
-}
-
-func (p *repositoryFixtureProtocol) Manifest(_ context.Context, skillID, _ string) ([]byte, error) {
-	fixture, err := p.fixture(skillID)
-	return fixture.manifest, err
 }
 
 func (p *repositoryFixtureProtocol) Zip(_ context.Context, skillID, _ string) (storage.SizeReadCloser, error) {
@@ -128,9 +120,8 @@ func TestRepositoryInfoRouteEmbedsCompleteImmutableSkillInfo(t *testing.T) {
 	} {
 		archive := catalogProtocolTestZIPNamed(t, member.id, version, member.name, "Repository member.", "")
 		fixtures[member.id] = repositoryFixture{
-			info:     []byte(fmt.Sprintf(`{"Version":%q,"Time":"2026-07-15T00:00:00Z","Origin":{"VCS":"git","URL":"https://github.com/example/skills","Subdir":%q,"Ref":"refs/tags/v1.2.3","CommitSHA":"abc123","TreeSHA":%q}}`, version, member.path, member.tree)),
-			manifest: []byte("name: " + member.name + "\ndescription: Repository member.\n"),
-			zip:      archive,
+			info: []byte(fmt.Sprintf(`{"Version":%q,"Time":"2026-07-15T00:00:00Z","Origin":{"VCS":"git","URL":"https://github.com/example/skills","Subdir":%q,"Ref":"refs/tags/v1.2.3","CommitSHA":"abc123","TreeSHA":%q}}`, version, member.path, member.tree)),
+			zip:  archive,
 		}
 	}
 	_, metadata := testCatalogAPI(t)
@@ -171,10 +162,6 @@ func (p *fixedArtifactProtocol) Info(context.Context, string, string) ([]byte, e
 	return p.info, nil
 }
 
-func (p *fixedArtifactProtocol) Manifest(context.Context, string, string) ([]byte, error) {
-	return p.manifest, nil
-}
-
 func (p *fixedArtifactProtocol) Zip(context.Context, string, string) (storage.SizeReadCloser, error) {
 	return storage.NewSizer(io.NopCloser(bytes.NewReader(p.zip)), int64(len(p.zip))), nil
 }
@@ -204,9 +191,8 @@ func TestCatalogProtocolIndexesSuccessfulArtifactResolution(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			_, metadata := testCatalogAPI(t)
 			underlying := &fixedArtifactProtocol{
-				info:     []byte(`{"Version":"v0.0.0-test","Time":"2026-07-15T00:00:00Z","Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/skills","Subdir":"skills/find-skills","Ref":"refs/heads/main","CommitSHA":"abc","TreeSHA":"def"}}`),
-				manifest: []byte("name: find-skills\ndescription: Finds useful Agent Skills.\n"),
-				zip:      catalogProtocolTestZIP(t, skillID, "v0.0.0-test"),
+				info: []byte(`{"Version":"v0.0.0-test","Time":"2026-07-15T00:00:00Z","Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/skills","Subdir":"skills/find-skills","Ref":"refs/heads/main","CommitSHA":"abc","TreeSHA":"def"}}`),
+				zip:  catalogProtocolTestZIP(t, skillID, "v0.0.0-test"),
 			}
 			protocol := withCatalog(underlying, metadata)
 
@@ -237,9 +223,8 @@ func TestCatalogProtocolDoesNotIndexWhenAssessmentFails(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			_, metadata := testCatalogAPI(t)
 			protocol := withCatalog(&fixedArtifactProtocol{
-				info:     []byte(`{"Version":"v0.0.0-test"}`),
-				manifest: []byte("name: find-skills\ndescription: Finds useful Agent Skills.\n"),
-				zip:      []byte("not a ZIP archive"),
+				info: []byte(`{"Version":"v0.0.0-test"}`),
+				zip:  []byte("not a ZIP archive"),
 			}, metadata)
 
 			invoke(t, protocol)

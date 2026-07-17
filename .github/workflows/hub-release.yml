@@ -107,7 +107,7 @@ jobs:
           mkdir -p "dist/$package"
           go build -trimpath \
             -ldflags "-s -w -X github.com/skillsgo/skillsgo/hub/pkg/build.version=$VERSION -X github.com/skillsgo/skillsgo/hub/pkg/build.buildDate=$build_date" \
-            -o "dist/$package/skillsgo-hub" ./cmd/hub
+            -o "dist/$package/skillsgo-hub" ./cmd/skillsgo-hub
           cp LICENSE "dist/$package/LICENSE"
           echo "package=$package" >> "$GITHUB_OUTPUT"
 

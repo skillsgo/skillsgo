@@ -29,6 +29,10 @@ There is no dedicated refresh endpoint, webhook requirement, mandatory private r
 
 An immutable Repository Info miss resolves one revision to one commit, fetches the Repository once, scans `SKILL.md` candidates once, produces each valid deterministic per-Skill ZIP from that snapshot, and publishes the accepted member versions. Concurrent requests for the same Repository query share publication work. Invalid candidates create no Hub records and do not block valid siblings.
 
+Artifact writes are immutable-preflighted before mutation. Assessed member metadata is then committed in one Catalog transaction, and public member Info/ZIP reads are gated on that complete publication. A failed attempt may leave non-visible staged immutable bytes for retry, but cannot expose a partial Repository member set.
+
+Anonymous upstream work has a global concurrency ceiling, per-query singleflight, and a short negative cache. Public deployments reject Git hosts resolving to private, loopback, or link-local addresses, disable HTTP redirects for Git transport, and bound the cached Repository size. A self-hosted deployment that intentionally resolves private Git servers opts in with `SKILLSGO_ALLOW_PRIVATE_GIT_HOSTS=true`.
+
 A canonical tag permanently maps to its first published commit. A later moved tag is an immutable-version conflict and never overwrites stored Info or ZIP content. A Skill absent from a later tag is absent from that Repository Info; historical per-Skill artifacts remain available.
 
 ## Persistence

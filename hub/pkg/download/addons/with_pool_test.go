@@ -84,11 +84,7 @@ func TestPoolWrapper(t *testing.T) {
 	if !bytes.Equal(m.info, givenInfo) {
 		t.Fatalf("dp.Info: expected %s and %s to be equal", m.info, givenInfo)
 	}
-	m.err = fmt.Errorf("mod err")
-	_, err = dp.Manifest(t.Context(), mod, ver)
-	if m.err.Error() != err.Error() {
-		t.Fatalf("dp.Manifest: expected err to be `%v` but got `%v`", m.err, err)
-	}
+	m.err = fmt.Errorf("zip err")
 	_, err = dp.Zip(t.Context(), mod, ver)
 	if m.err.Error() != err.Error() {
 		t.Fatalf("dp.Zip: expected err to be `%v` but got `%v`", m.err, err)
@@ -100,7 +96,6 @@ type mockDP struct {
 	list     []string
 	info     []byte
 	latest   *storage.RevInfo
-	gomod    []byte
 	zip      storage.SizeReadCloser
 	inputMod string
 	inputVer string
@@ -132,17 +127,6 @@ func (m *mockDP) Latest(ctx context.Context, mod string) (*storage.RevInfo, erro
 		return nil, fmt.Errorf("expected mod input %v but got %v", m.inputMod, mod)
 	}
 	return m.latest, m.err
-}
-
-// Manifest implements GET /{skill}/@v/{version}.manifest
-func (m *mockDP) Manifest(ctx context.Context, mod, ver string) ([]byte, error) {
-	if m.inputMod != mod {
-		return nil, fmt.Errorf("expected mod input %v but got %v", m.inputMod, mod)
-	}
-	if m.inputVer != ver {
-		return nil, fmt.Errorf("expected ver input %v but got %v", m.inputVer, ver)
-	}
-	return m.gomod, m.err
 }
 
 // Zip implements GET /{skill}/@v/{version}.zip

@@ -59,12 +59,10 @@ func (r staticRepositoryMetadataReader) Read(
 }
 
 type catalogArtifactStub struct {
-	info        []byte
-	manifest    []byte
-	archive     []byte
-	infoErr     error
-	manifestErr error
-	archiveErr  error
+	info       []byte
+	archive    []byte
+	infoErr    error
+	archiveErr error
 }
 
 func (s *catalogArtifactStub) Info(context.Context, string, string) ([]byte, error) {
@@ -75,16 +73,6 @@ func (s *catalogArtifactStub) Info(context.Context, string, string) ([]byte, err
 		return s.info, nil
 	}
 	return []byte(`{"Version":"v0.0.0-test","Time":"2026-07-15T00:00:00Z","Origin":{"Ref":"refs/heads/main","CommitSHA":"commit-abc","TreeSHA":"tree-def"}}`), nil
-}
-
-func (s *catalogArtifactStub) Manifest(context.Context, string, string) ([]byte, error) {
-	if s.manifestErr != nil {
-		return nil, s.manifestErr
-	}
-	if s.manifest != nil {
-		return s.manifest, nil
-	}
-	return []byte("name: ask-matt\ndescription: Engineering skill router\n"), nil
 }
 
 func (s *catalogArtifactStub) Zip(_ context.Context, skillID, version string) (storage.SizeReadCloser, error) {

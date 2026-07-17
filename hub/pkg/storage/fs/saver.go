@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/afero"
 )
 
-func (s *storageImpl) Save(ctx context.Context, module, version string, manifest []byte, zip io.Reader, zipMD5, info []byte) error {
+func (s *storageImpl) Save(ctx context.Context, module, version string, zip io.Reader, zipMD5, info []byte) error {
 	const op errors.Op = "fs.Save"
 	_, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
@@ -27,13 +27,8 @@ func (s *storageImpl) Save(ctx context.Context, module, version string, manifest
 	// so an umask of for example 0077 allows directories and files to be
 	// created with mode 0700 / 0600, i.e. not world- or group-readable.
 
-	// Make the versioned directory to hold the manifest.yaml and the zipfile.
+	// Make the versioned directory to hold immutable Info and ZIP resources.
 	if err := s.filesystem.MkdirAll(dir, 0o777); err != nil {
-		return errors.E(op, err, errors.S(module), errors.V(version))
-	}
-
-	// Write the manifest.yaml file.
-	if err := afero.WriteFile(s.filesystem, filepath.Join(dir, "manifest.yaml"), manifest, 0o666); err != nil {
 		return errors.E(op, err, errors.S(module), errors.V(version))
 	}
 

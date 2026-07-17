@@ -54,37 +54,34 @@ func getStorage(tb testing.TB) *SkillStore {
 func TestQueryModuleVersionExists(t *testing.T) {
 	modname, ver := "getTestModule", "v1.2.3"
 	mock := &storage.Version{
-		Info:     []byte("123"),
-		Manifest: []byte("456"),
-		Zip:      io.NopCloser(bytes.NewReader([]byte("789"))),
+		Info: []byte("123"),
+		Zip:  io.NopCloser(bytes.NewReader([]byte("789"))),
 	}
 
 	ctx := t.Context()
 	backend := getStorage(t)
 
 	zipBts, _ := io.ReadAll(mock.Zip)
-	backend.Save(ctx, modname, ver, mock.Manifest, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
+	backend.Save(ctx, modname, ver, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
 	defer backend.Delete(ctx, modname, ver)
 
 	info, err := query(ctx, backend, modname, ver)
 	require.NoError(t, err)
 	require.Equal(t, mock.Info, info.Info)
-	require.Equal(t, mock.Manifest, info.Manifest)
 }
 
 func TestQueryKindNotFoundErrorCases(t *testing.T) {
 	modname, ver := "getTestModule", "v1.2.3"
 	mock := &storage.Version{
-		Info:     []byte("123"),
-		Manifest: []byte("456"),
-		Zip:      io.NopCloser(bytes.NewReader([]byte("789"))),
+		Info: []byte("123"),
+		Zip:  io.NopCloser(bytes.NewReader([]byte("789"))),
 	}
 
 	ctx := t.Context()
 	backend := getStorage(t)
 
 	zipBts, _ := io.ReadAll(mock.Zip)
-	backend.Save(ctx, modname, ver, mock.Manifest, bytes.NewReader(zipBts), nil, mock.Info)
+	backend.Save(ctx, modname, ver, bytes.NewReader(zipBts), nil, mock.Info)
 	defer backend.Delete(ctx, modname, ver)
 
 	testCases := []struct {
@@ -118,18 +115,17 @@ func TestQueryKindUnexpectedErrorCases(t *testing.T) {
 	defer client.Disconnect(t.Context())
 	coll := client.Database("athens").Collection("skills")
 	errDocs := []struct {
-		Skill    string `bson:"skill"`
-		Version  string `bson:"version"`
-		Manifest any    `bson:"manifest"`
-		Info     any    `bson:"info"`
+		Skill   string `bson:"skill"`
+		Version string `bson:"version"`
+		Info    any    `bson:"info"`
 	}{
-		{"model1", "v1.1.1", 12345678, "error document with integer mod"},
-		{"model2", "v2.0.0", true, "error document with boolean mod"},
+		{"model1", "v1.1.1", 12345678},
+		{"model2", "v2.0.0", true},
 	}
 	// In case some docs were inserted into the collection before, using upsert instead.
 	for _, errDoc := range errDocs {
 		filter := bson.D{{"skill", errDoc.Skill}, {"version", errDoc.Version}}
-		update := bson.D{{"$set", bson.D{{"manifest", errDoc.Manifest}, {"info", errDoc.Info}}}}
+		update := bson.D{{"$set", bson.D{{"info", errDoc.Info}}}}
 		opts := options.UpdateOne().SetUpsert(true).SetBypassDocumentValidation(true)
 		_, err = coll.UpdateOne(t.Context(), filter, update, opts)
 		if err != nil {

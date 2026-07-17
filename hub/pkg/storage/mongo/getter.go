@@ -31,20 +31,6 @@ func (s *SkillStore) Info(ctx context.Context, module, vsn string) ([]byte, erro
 	return result.Info, nil
 }
 
-// Manifest implements storage.Getter.
-func (s *SkillStore) Manifest(ctx context.Context, module, vsn string) ([]byte, error) {
-	const op errors.Op = "mongo.Manifest"
-	ctx, span := observ.StartSpan(ctx, op.String())
-	defer span.End()
-
-	result, err := query(ctx, s, module, vsn)
-	if err != nil {
-		return nil, errors.E(op, err)
-	}
-
-	return result.Manifest, nil
-}
-
 // Zip implements storage.Getter.
 func (s *SkillStore) Zip(ctx context.Context, module, vsn string) (storage.SizeReadCloser, error) {
 	const op errors.Op = "mongo.Zip"
