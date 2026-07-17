@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Ent schema fields and indexes for public Skill metadata.
- * [OUTPUT]: Defines the skills table entity, repository popularity metadata, defaults, and unique public Skill ID constraint.
+ * [OUTPUT]: Defines the skills table entity, owning Repository reference, popularity metadata, defaults, and unique public Skill ID constraint.
  * [POS]: Serves as the authoritative ORM schema for searchable Skill metadata.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,6 +21,7 @@ func (Skill) Fields() []ent.Field {
 	return []ent.Field{
 		field.Int64("id"),
 		field.String("skill_id").NotEmpty(),
+		field.Int64("repository_id"),
 		field.String("name"),
 		field.String("description"),
 		field.String("source_host"),
@@ -36,6 +37,7 @@ func (Skill) Fields() []ent.Field {
 
 func (Skill) Edges() []ent.Edge {
 	return []ent.Edge{
+		edge.From("source_repository", Repository.Type).Ref("skills").Field("repository_id").Unique().Required(),
 		edge.To("versions", SkillVersion.Type),
 		edge.To("install_events", InstallEvent.Type),
 		edge.To("hourly_stats", SkillHourlyStat.Type),

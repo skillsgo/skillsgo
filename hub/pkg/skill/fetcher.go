@@ -37,3 +37,22 @@ type ResolvedFetcher interface {
 	Resolve(ctx context.Context, skillPath, revision string) (*Resolution, error)
 	FetchResolved(ctx context.Context, skillPath string, resolution *Resolution) (*storage.Version, error)
 }
+
+// RepositoryFetcher resolves and scans one immutable Repository snapshot,
+// returning every installable Skill without repeating source synchronization.
+type RepositoryFetcher interface {
+	DiscoverRepository(ctx context.Context, repositoryID, revision string) (*RepositorySnapshot, error)
+}
+
+type RepositorySnapshot struct {
+	RepositoryID string
+	Version      string
+	CommitSHA    string
+	CommitTime   time.Time
+	Members      []RepositoryMember
+}
+
+type RepositoryMember struct {
+	SkillID string
+	Version *storage.Version
+}

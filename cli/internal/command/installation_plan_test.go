@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with a fixture Hub, hostile explicit project path, test Agent, and temporary Store/Workspace boundaries.
- * [OUTPUT]: Specifies schema-stable preflight/execution JSON, refreshed trusted-risk gates, state-bound resolutions, exact cached versions, explicit hostile target preservation, receipts, Lock previews, and identical skips.
+ * [OUTPUT]: Specifies schema-stable preflight/execution JSON, refreshed trusted-risk gates, state-bound resolutions, exact cached versions, explicit hostile target preservation, Lock previews, and identical skips.
  * [POS]: Serves as executable App-facing contract coverage for multi-location Installation Plans.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,10 +18,8 @@ import (
 	"testing"
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
-	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/plan"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/stretchr/testify/require"
 )
 
@@ -43,9 +41,7 @@ func TestExplicitInstallationPlanPreflightsExecutesAndSkipsExactTargets(t *testi
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
 		case strings.HasSuffix(request.URL.Path, ".info"):
-			fmt.Fprintf(writer, `{"Version":%q,"Risk":"high","ContentDigest":%q,"Origin":{"VCS":"git","URL":"https://github.com/example/skills","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, version, contentDigest)
-		case strings.HasSuffix(request.URL.Path, "/"+version+".manifest"):
-			fmt.Fprint(writer, "name: demo\ndescription: exact targets\n")
+			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"exact targets","Version":%q,"Risk":"high","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/example/skills","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, version, contentDigest, len(zipData))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 			_, _ = writer.Write(zipData)
 		default:
@@ -73,7 +69,7 @@ func TestExplicitInstallationPlanPreflightsExecutesAndSkipsExactTargets(t *testi
 	require.Zero(t, preflight.Summary.Create)
 	require.Equal(t, 2, preflight.Summary.BlockedByRisk)
 	require.Equal(t, "high-risk", preflight.Targets[0].ReasonCode)
-	require.Len(t, preflight.WorkspaceLockChanges, 1)
+	require.Len(t, preflight.WorkspaceManifestChanges, 1)
 	require.Equal(t, projectRoot, preflight.Targets[1].Target.ProjectRoot)
 	require.NoFileExists(t, filepath.Join(projectRoot, ".test-agent", "skills", "demo", "SKILL.md"))
 
@@ -94,14 +90,10 @@ func TestExplicitInstallationPlanPreflightsExecutesAndSkipsExactTargets(t *testi
 		require.FileExists(t, filepath.Join(result.Target.Path, "SKILL.md"))
 	}
 	require.NoFileExists(t, filepath.Join(root, "never"))
-	manifest, lockfile, err := project.Load(projectRoot)
+	manifest, err := project.LoadManifest(projectRoot)
 	require.NoError(t, err)
-	require.Equal(t, []string{"test-agent"}, manifest.Skills["demo"].Agents)
-	require.Equal(t, version, lockfile.Skills["demo"].Version)
-	installations, err := install.ListInstallations(store.DefaultRoot(home), install.InventoryFilter{})
-	require.NoError(t, err)
-	require.Len(t, installations, 2)
-
+	require.Equal(t, []string{"test-agent"}, manifest.Skills[skillID].Agents)
+	require.Equal(t, version, manifest.Skills[skillID].Ref)
 	skipArgs := append([]string{}, executeArgs...)
 	for index, argument := range skipArgs {
 		if argument == "--yes" {
@@ -113,7 +105,7 @@ func TestExplicitInstallationPlanPreflightsExecutesAndSkipsExactTargets(t *testi
 	require.NoError(t, json.Unmarshal(output.Bytes(), &preflight))
 	require.Zero(t, preflight.Summary.Create)
 	require.Equal(t, 2, preflight.Summary.Skip)
-	require.Empty(t, preflight.WorkspaceLockChanges)
+	require.Empty(t, preflight.WorkspaceManifestChanges)
 }
 
 func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
@@ -133,9 +125,7 @@ func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
 		case strings.HasSuffix(request.URL.Path, ".info"):
-			fmt.Fprintf(writer, `{"Version":%q,"Risk":%q,"ContentDigest":%q,"Origin":{"VCS":"git","URL":"https://github.com/example/skills","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, version, risk, contentDigest)
-		case strings.HasSuffix(request.URL.Path, "/"+version+".manifest"):
-			fmt.Fprint(writer, "name: demo\ndescription: assessment refresh\n")
+			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"assessment refresh","Version":%q,"Risk":%q,"ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/example/skills","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, version, risk, contentDigest, len(zipData))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 			_, _ = writer.Write(zipData)
 		default:
@@ -184,9 +174,7 @@ func TestExplicitInstallationNDJSONReportsEveryTargetAndRetainsSuccess(t *testin
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
 		case strings.HasSuffix(request.URL.Path, ".info"):
-			fmt.Fprintf(writer, `{"Version":%q,"Risk":"low","ContentDigest":%q,"Origin":{"VCS":"git","URL":"https://github.com/example/skills","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, version, contentDigest)
-		case strings.HasSuffix(request.URL.Path, "/"+version+".manifest"):
-			fmt.Fprint(writer, "name: demo\ndescription: partial execution\n")
+			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"partial execution","Version":%q,"Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/example/skills","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, version, contentDigest, len(zipData))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 			_, _ = writer.Write(zipData)
 		default:

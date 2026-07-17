@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/installevent"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/riskassessment"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/schema"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
@@ -24,6 +25,30 @@ func init() {
 	installeventDescReceivedAt := installeventFields[7].Descriptor()
 	// installevent.DefaultReceivedAt holds the default value on creation for the received_at field.
 	installevent.DefaultReceivedAt = installeventDescReceivedAt.Default.(func() time.Time)
+	repositoryFields := schema.Repository{}.Fields()
+	_ = repositoryFields
+	// repositoryDescSourceHost is the schema descriptor for source_host field.
+	repositoryDescSourceHost := repositoryFields[1].Descriptor()
+	// repository.SourceHostValidator is a validator for the "source_host" field. It is called by the builders before save.
+	repository.SourceHostValidator = repositoryDescSourceHost.Validators[0].(func(string) error)
+	// repositoryDescRepositoryPath is the schema descriptor for repository_path field.
+	repositoryDescRepositoryPath := repositoryFields[2].Descriptor()
+	// repository.RepositoryPathValidator is a validator for the "repository_path" field. It is called by the builders before save.
+	repository.RepositoryPathValidator = repositoryDescRepositoryPath.Validators[0].(func(string) error)
+	// repositoryDescRepositoryID is the schema descriptor for repository_id field.
+	repositoryDescRepositoryID := repositoryFields[3].Descriptor()
+	// repository.RepositoryIDValidator is a validator for the "repository_id" field. It is called by the builders before save.
+	repository.RepositoryIDValidator = repositoryDescRepositoryID.Validators[0].(func(string) error)
+	// repositoryDescCreatedAt is the schema descriptor for created_at field.
+	repositoryDescCreatedAt := repositoryFields[4].Descriptor()
+	// repository.DefaultCreatedAt holds the default value on creation for the created_at field.
+	repository.DefaultCreatedAt = repositoryDescCreatedAt.Default.(func() time.Time)
+	// repositoryDescUpdatedAt is the schema descriptor for updated_at field.
+	repositoryDescUpdatedAt := repositoryFields[5].Descriptor()
+	// repository.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	repository.DefaultUpdatedAt = repositoryDescUpdatedAt.Default.(func() time.Time)
+	// repository.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	repository.UpdateDefaultUpdatedAt = repositoryDescUpdatedAt.UpdateDefault.(func() time.Time)
 	riskassessmentFields := schema.RiskAssessment{}.Fields()
 	_ = riskassessmentFields
 	// riskassessmentDescLevel is the schema descriptor for level field.
@@ -53,19 +78,19 @@ func init() {
 	// skill.SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
 	skill.SkillIDValidator = skillDescSkillID.Validators[0].(func(string) error)
 	// skillDescGithubStars is the schema descriptor for github_stars field.
-	skillDescGithubStars := skillFields[8].Descriptor()
+	skillDescGithubStars := skillFields[9].Descriptor()
 	// skill.DefaultGithubStars holds the default value on creation for the github_stars field.
 	skill.DefaultGithubStars = skillDescGithubStars.Default.(int64)
 	// skillDescVerified is the schema descriptor for verified field.
-	skillDescVerified := skillFields[9].Descriptor()
+	skillDescVerified := skillFields[10].Descriptor()
 	// skill.DefaultVerified holds the default value on creation for the verified field.
 	skill.DefaultVerified = skillDescVerified.Default.(bool)
 	// skillDescCreatedAt is the schema descriptor for created_at field.
-	skillDescCreatedAt := skillFields[10].Descriptor()
+	skillDescCreatedAt := skillFields[11].Descriptor()
 	// skill.DefaultCreatedAt holds the default value on creation for the created_at field.
 	skill.DefaultCreatedAt = skillDescCreatedAt.Default.(func() time.Time)
 	// skillDescUpdatedAt is the schema descriptor for updated_at field.
-	skillDescUpdatedAt := skillFields[11].Descriptor()
+	skillDescUpdatedAt := skillFields[12].Descriptor()
 	// skill.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	skill.DefaultUpdatedAt = skillDescUpdatedAt.Default.(func() time.Time)
 	// skill.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/installevent"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/predicate"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/riskassessment"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillhourlystat"
@@ -30,6 +31,7 @@ const (
 
 	// Node types.
 	TypeInstallEvent    = "InstallEvent"
+	TypeRepository      = "Repository"
 	TypeRiskAssessment  = "RiskAssessment"
 	TypeSkill           = "Skill"
 	TypeSkillHourlyStat = "SkillHourlyStat"
@@ -750,6 +752,647 @@ func (m *InstallEventMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown InstallEvent edge %s", name)
 }
 
+// RepositoryMutation represents an operation that mutates the Repository nodes in the graph.
+type RepositoryMutation struct {
+	config
+	op              Op
+	typ             string
+	id              *int64
+	source_host     *string
+	repository_path *string
+	repository_id   *string
+	created_at      *time.Time
+	updated_at      *time.Time
+	clearedFields   map[string]struct{}
+	skills          map[int64]struct{}
+	removedskills   map[int64]struct{}
+	clearedskills   bool
+	done            bool
+	oldValue        func(context.Context) (*Repository, error)
+	predicates      []predicate.Repository
+}
+
+var _ ent.Mutation = (*RepositoryMutation)(nil)
+
+// repositoryOption allows management of the mutation configuration using functional options.
+type repositoryOption func(*RepositoryMutation)
+
+// newRepositoryMutation creates new mutation for the Repository entity.
+func newRepositoryMutation(c config, op Op, opts ...repositoryOption) *RepositoryMutation {
+	m := &RepositoryMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeRepository,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withRepositoryID sets the ID field of the mutation.
+func withRepositoryID(id int64) repositoryOption {
+	return func(m *RepositoryMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *Repository
+		)
+		m.oldValue = func(ctx context.Context) (*Repository, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().Repository.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withRepository sets the old Repository of the mutation.
+func withRepository(node *Repository) repositoryOption {
+	return func(m *RepositoryMutation) {
+		m.oldValue = func(context.Context) (*Repository, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m RepositoryMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m RepositoryMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of Repository entities.
+func (m *RepositoryMutation) SetID(id int64) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *RepositoryMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *RepositoryMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().Repository.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetSourceHost sets the "source_host" field.
+func (m *RepositoryMutation) SetSourceHost(s string) {
+	m.source_host = &s
+}
+
+// SourceHost returns the value of the "source_host" field in the mutation.
+func (m *RepositoryMutation) SourceHost() (r string, exists bool) {
+	v := m.source_host
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSourceHost returns the old "source_host" field's value of the Repository entity.
+// If the Repository object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryMutation) OldSourceHost(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSourceHost is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSourceHost requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSourceHost: %w", err)
+	}
+	return oldValue.SourceHost, nil
+}
+
+// ResetSourceHost resets all changes to the "source_host" field.
+func (m *RepositoryMutation) ResetSourceHost() {
+	m.source_host = nil
+}
+
+// SetRepositoryPath sets the "repository_path" field.
+func (m *RepositoryMutation) SetRepositoryPath(s string) {
+	m.repository_path = &s
+}
+
+// RepositoryPath returns the value of the "repository_path" field in the mutation.
+func (m *RepositoryMutation) RepositoryPath() (r string, exists bool) {
+	v := m.repository_path
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRepositoryPath returns the old "repository_path" field's value of the Repository entity.
+// If the Repository object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryMutation) OldRepositoryPath(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRepositoryPath is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRepositoryPath requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRepositoryPath: %w", err)
+	}
+	return oldValue.RepositoryPath, nil
+}
+
+// ResetRepositoryPath resets all changes to the "repository_path" field.
+func (m *RepositoryMutation) ResetRepositoryPath() {
+	m.repository_path = nil
+}
+
+// SetRepositoryID sets the "repository_id" field.
+func (m *RepositoryMutation) SetRepositoryID(s string) {
+	m.repository_id = &s
+}
+
+// RepositoryID returns the value of the "repository_id" field in the mutation.
+func (m *RepositoryMutation) RepositoryID() (r string, exists bool) {
+	v := m.repository_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRepositoryID returns the old "repository_id" field's value of the Repository entity.
+// If the Repository object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryMutation) OldRepositoryID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRepositoryID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRepositoryID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRepositoryID: %w", err)
+	}
+	return oldValue.RepositoryID, nil
+}
+
+// ResetRepositoryID resets all changes to the "repository_id" field.
+func (m *RepositoryMutation) ResetRepositoryID() {
+	m.repository_id = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *RepositoryMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *RepositoryMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the Repository entity.
+// If the Repository object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *RepositoryMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *RepositoryMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *RepositoryMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the Repository entity.
+// If the Repository object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *RepositoryMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// AddSkillIDs adds the "skills" edge to the Skill entity by ids.
+func (m *RepositoryMutation) AddSkillIDs(ids ...int64) {
+	if m.skills == nil {
+		m.skills = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.skills[ids[i]] = struct{}{}
+	}
+}
+
+// ClearSkills clears the "skills" edge to the Skill entity.
+func (m *RepositoryMutation) ClearSkills() {
+	m.clearedskills = true
+}
+
+// SkillsCleared reports if the "skills" edge to the Skill entity was cleared.
+func (m *RepositoryMutation) SkillsCleared() bool {
+	return m.clearedskills
+}
+
+// RemoveSkillIDs removes the "skills" edge to the Skill entity by IDs.
+func (m *RepositoryMutation) RemoveSkillIDs(ids ...int64) {
+	if m.removedskills == nil {
+		m.removedskills = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.skills, ids[i])
+		m.removedskills[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedSkills returns the removed IDs of the "skills" edge to the Skill entity.
+func (m *RepositoryMutation) RemovedSkillsIDs() (ids []int64) {
+	for id := range m.removedskills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// SkillsIDs returns the "skills" edge IDs in the mutation.
+func (m *RepositoryMutation) SkillsIDs() (ids []int64) {
+	for id := range m.skills {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetSkills resets all changes to the "skills" edge.
+func (m *RepositoryMutation) ResetSkills() {
+	m.skills = nil
+	m.clearedskills = false
+	m.removedskills = nil
+}
+
+// Where appends a list predicates to the RepositoryMutation builder.
+func (m *RepositoryMutation) Where(ps ...predicate.Repository) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the RepositoryMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *RepositoryMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.Repository, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *RepositoryMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *RepositoryMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (Repository).
+func (m *RepositoryMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *RepositoryMutation) Fields() []string {
+	fields := make([]string, 0, 5)
+	if m.source_host != nil {
+		fields = append(fields, repository.FieldSourceHost)
+	}
+	if m.repository_path != nil {
+		fields = append(fields, repository.FieldRepositoryPath)
+	}
+	if m.repository_id != nil {
+		fields = append(fields, repository.FieldRepositoryID)
+	}
+	if m.created_at != nil {
+		fields = append(fields, repository.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, repository.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *RepositoryMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case repository.FieldSourceHost:
+		return m.SourceHost()
+	case repository.FieldRepositoryPath:
+		return m.RepositoryPath()
+	case repository.FieldRepositoryID:
+		return m.RepositoryID()
+	case repository.FieldCreatedAt:
+		return m.CreatedAt()
+	case repository.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *RepositoryMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case repository.FieldSourceHost:
+		return m.OldSourceHost(ctx)
+	case repository.FieldRepositoryPath:
+		return m.OldRepositoryPath(ctx)
+	case repository.FieldRepositoryID:
+		return m.OldRepositoryID(ctx)
+	case repository.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case repository.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown Repository field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *RepositoryMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case repository.FieldSourceHost:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSourceHost(v)
+		return nil
+	case repository.FieldRepositoryPath:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRepositoryPath(v)
+		return nil
+	case repository.FieldRepositoryID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRepositoryID(v)
+		return nil
+	case repository.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case repository.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown Repository field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *RepositoryMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *RepositoryMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *RepositoryMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Repository numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *RepositoryMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *RepositoryMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *RepositoryMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown Repository nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *RepositoryMutation) ResetField(name string) error {
+	switch name {
+	case repository.FieldSourceHost:
+		m.ResetSourceHost()
+		return nil
+	case repository.FieldRepositoryPath:
+		m.ResetRepositoryPath()
+		return nil
+	case repository.FieldRepositoryID:
+		m.ResetRepositoryID()
+		return nil
+	case repository.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case repository.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown Repository field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *RepositoryMutation) AddedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.skills != nil {
+		edges = append(edges, repository.EdgeSkills)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *RepositoryMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case repository.EdgeSkills:
+		ids := make([]ent.Value, 0, len(m.skills))
+		for id := range m.skills {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *RepositoryMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.removedskills != nil {
+		edges = append(edges, repository.EdgeSkills)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *RepositoryMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case repository.EdgeSkills:
+		ids := make([]ent.Value, 0, len(m.removedskills))
+		for id := range m.removedskills {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *RepositoryMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 1)
+	if m.clearedskills {
+		edges = append(edges, repository.EdgeSkills)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *RepositoryMutation) EdgeCleared(name string) bool {
+	switch name {
+	case repository.EdgeSkills:
+		return m.clearedskills
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *RepositoryMutation) ClearEdge(name string) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown Repository unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *RepositoryMutation) ResetEdge(name string) error {
+	switch name {
+	case repository.EdgeSkills:
+		m.ResetSkills()
+		return nil
+	}
+	return fmt.Errorf("unknown Repository edge %s", name)
+}
+
 // RiskAssessmentMutation represents an operation that mutates the RiskAssessment nodes in the graph.
 type RiskAssessmentMutation struct {
 	config
@@ -1412,34 +2055,36 @@ func (m *RiskAssessmentMutation) ResetEdge(name string) error {
 // SkillMutation represents an operation that mutates the Skill nodes in the graph.
 type SkillMutation struct {
 	config
-	op                    Op
-	typ                   string
-	id                    *int64
-	skill_id              *string
-	name                  *string
-	description           *string
-	source_host           *string
-	repository            *string
-	skill_path            *string
-	latest_version        *string
-	github_stars          *int64
-	addgithub_stars       *int64
-	verified              *bool
-	created_at            *time.Time
-	updated_at            *time.Time
-	clearedFields         map[string]struct{}
-	versions              map[int64]struct{}
-	removedversions       map[int64]struct{}
-	clearedversions       bool
-	install_events        map[string]struct{}
-	removedinstall_events map[string]struct{}
-	clearedinstall_events bool
-	hourly_stats          map[int64]struct{}
-	removedhourly_stats   map[int64]struct{}
-	clearedhourly_stats   bool
-	done                  bool
-	oldValue              func(context.Context) (*Skill, error)
-	predicates            []predicate.Skill
+	op                       Op
+	typ                      string
+	id                       *int64
+	skill_id                 *string
+	name                     *string
+	description              *string
+	source_host              *string
+	repository               *string
+	skill_path               *string
+	latest_version           *string
+	github_stars             *int64
+	addgithub_stars          *int64
+	verified                 *bool
+	created_at               *time.Time
+	updated_at               *time.Time
+	clearedFields            map[string]struct{}
+	source_repository        *int64
+	clearedsource_repository bool
+	versions                 map[int64]struct{}
+	removedversions          map[int64]struct{}
+	clearedversions          bool
+	install_events           map[string]struct{}
+	removedinstall_events    map[string]struct{}
+	clearedinstall_events    bool
+	hourly_stats             map[int64]struct{}
+	removedhourly_stats      map[int64]struct{}
+	clearedhourly_stats      bool
+	done                     bool
+	oldValue                 func(context.Context) (*Skill, error)
+	predicates               []predicate.Skill
 }
 
 var _ ent.Mutation = (*SkillMutation)(nil)
@@ -1580,6 +2225,42 @@ func (m *SkillMutation) OldSkillID(ctx context.Context) (v string, err error) {
 // ResetSkillID resets all changes to the "skill_id" field.
 func (m *SkillMutation) ResetSkillID() {
 	m.skill_id = nil
+}
+
+// SetRepositoryID sets the "repository_id" field.
+func (m *SkillMutation) SetRepositoryID(i int64) {
+	m.source_repository = &i
+}
+
+// RepositoryID returns the value of the "repository_id" field in the mutation.
+func (m *SkillMutation) RepositoryID() (r int64, exists bool) {
+	v := m.source_repository
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldRepositoryID returns the old "repository_id" field's value of the Skill entity.
+// If the Skill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SkillMutation) OldRepositoryID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldRepositoryID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldRepositoryID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldRepositoryID: %w", err)
+	}
+	return oldValue.RepositoryID, nil
+}
+
+// ResetRepositoryID resets all changes to the "repository_id" field.
+func (m *SkillMutation) ResetRepositoryID() {
+	m.source_repository = nil
 }
 
 // SetName sets the "name" field.
@@ -1962,6 +2643,46 @@ func (m *SkillMutation) ResetUpdatedAt() {
 	m.updated_at = nil
 }
 
+// SetSourceRepositoryID sets the "source_repository" edge to the Repository entity by id.
+func (m *SkillMutation) SetSourceRepositoryID(id int64) {
+	m.source_repository = &id
+}
+
+// ClearSourceRepository clears the "source_repository" edge to the Repository entity.
+func (m *SkillMutation) ClearSourceRepository() {
+	m.clearedsource_repository = true
+	m.clearedFields[skill.FieldRepositoryID] = struct{}{}
+}
+
+// SourceRepositoryCleared reports if the "source_repository" edge to the Repository entity was cleared.
+func (m *SkillMutation) SourceRepositoryCleared() bool {
+	return m.clearedsource_repository
+}
+
+// SourceRepositoryID returns the "source_repository" edge ID in the mutation.
+func (m *SkillMutation) SourceRepositoryID() (id int64, exists bool) {
+	if m.source_repository != nil {
+		return *m.source_repository, true
+	}
+	return
+}
+
+// SourceRepositoryIDs returns the "source_repository" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// SourceRepositoryID instead. It exists only for internal usage by the builders.
+func (m *SkillMutation) SourceRepositoryIDs() (ids []int64) {
+	if id := m.source_repository; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetSourceRepository resets all changes to the "source_repository" edge.
+func (m *SkillMutation) ResetSourceRepository() {
+	m.source_repository = nil
+	m.clearedsource_repository = false
+}
+
 // AddVersionIDs adds the "versions" edge to the SkillVersion entity by ids.
 func (m *SkillMutation) AddVersionIDs(ids ...int64) {
 	if m.versions == nil {
@@ -2158,9 +2879,12 @@ func (m *SkillMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SkillMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.skill_id != nil {
 		fields = append(fields, skill.FieldSkillID)
+	}
+	if m.source_repository != nil {
+		fields = append(fields, skill.FieldRepositoryID)
 	}
 	if m.name != nil {
 		fields = append(fields, skill.FieldName)
@@ -2202,6 +2926,8 @@ func (m *SkillMutation) Field(name string) (ent.Value, bool) {
 	switch name {
 	case skill.FieldSkillID:
 		return m.SkillID()
+	case skill.FieldRepositoryID:
+		return m.RepositoryID()
 	case skill.FieldName:
 		return m.Name()
 	case skill.FieldDescription:
@@ -2233,6 +2959,8 @@ func (m *SkillMutation) OldField(ctx context.Context, name string) (ent.Value, e
 	switch name {
 	case skill.FieldSkillID:
 		return m.OldSkillID(ctx)
+	case skill.FieldRepositoryID:
+		return m.OldRepositoryID(ctx)
 	case skill.FieldName:
 		return m.OldName(ctx)
 	case skill.FieldDescription:
@@ -2268,6 +2996,13 @@ func (m *SkillMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSkillID(v)
+		return nil
+	case skill.FieldRepositoryID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetRepositoryID(v)
 		return nil
 	case skill.FieldName:
 		v, ok := value.(string)
@@ -2406,6 +3141,9 @@ func (m *SkillMutation) ResetField(name string) error {
 	case skill.FieldSkillID:
 		m.ResetSkillID()
 		return nil
+	case skill.FieldRepositoryID:
+		m.ResetRepositoryID()
+		return nil
 	case skill.FieldName:
 		m.ResetName()
 		return nil
@@ -2442,7 +3180,10 @@ func (m *SkillMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *SkillMutation) AddedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
+	if m.source_repository != nil {
+		edges = append(edges, skill.EdgeSourceRepository)
+	}
 	if m.versions != nil {
 		edges = append(edges, skill.EdgeVersions)
 	}
@@ -2459,6 +3200,10 @@ func (m *SkillMutation) AddedEdges() []string {
 // name in this mutation.
 func (m *SkillMutation) AddedIDs(name string) []ent.Value {
 	switch name {
+	case skill.EdgeSourceRepository:
+		if id := m.source_repository; id != nil {
+			return []ent.Value{*id}
+		}
 	case skill.EdgeVersions:
 		ids := make([]ent.Value, 0, len(m.versions))
 		for id := range m.versions {
@@ -2483,7 +3228,7 @@ func (m *SkillMutation) AddedIDs(name string) []ent.Value {
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *SkillMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
 	if m.removedversions != nil {
 		edges = append(edges, skill.EdgeVersions)
 	}
@@ -2524,7 +3269,10 @@ func (m *SkillMutation) RemovedIDs(name string) []ent.Value {
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *SkillMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 3)
+	edges := make([]string, 0, 4)
+	if m.clearedsource_repository {
+		edges = append(edges, skill.EdgeSourceRepository)
+	}
 	if m.clearedversions {
 		edges = append(edges, skill.EdgeVersions)
 	}
@@ -2541,6 +3289,8 @@ func (m *SkillMutation) ClearedEdges() []string {
 // was cleared in this mutation.
 func (m *SkillMutation) EdgeCleared(name string) bool {
 	switch name {
+	case skill.EdgeSourceRepository:
+		return m.clearedsource_repository
 	case skill.EdgeVersions:
 		return m.clearedversions
 	case skill.EdgeInstallEvents:
@@ -2555,6 +3305,9 @@ func (m *SkillMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *SkillMutation) ClearEdge(name string) error {
 	switch name {
+	case skill.EdgeSourceRepository:
+		m.ClearSourceRepository()
+		return nil
 	}
 	return fmt.Errorf("unknown Skill unique edge %s", name)
 }
@@ -2563,6 +3316,9 @@ func (m *SkillMutation) ClearEdge(name string) error {
 // It returns an error if the edge is not defined in the schema.
 func (m *SkillMutation) ResetEdge(name string) error {
 	switch name {
+	case skill.EdgeSourceRepository:
+		m.ResetSourceRepository()
+		return nil
 	case skill.EdgeVersions:
 		m.ResetVersions()
 		return nil

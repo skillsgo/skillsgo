@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/installevent"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillhourlystat"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
@@ -28,6 +29,12 @@ type SkillCreate struct {
 // SetSkillID sets the "skill_id" field.
 func (_c *SkillCreate) SetSkillID(v string) *SkillCreate {
 	_c.mutation.SetSkillID(v)
+	return _c
+}
+
+// SetRepositoryID sets the "repository_id" field.
+func (_c *SkillCreate) SetRepositoryID(v int64) *SkillCreate {
+	_c.mutation.SetRepositoryID(v)
 	return _c
 }
 
@@ -127,6 +134,17 @@ func (_c *SkillCreate) SetNillableUpdatedAt(v *time.Time) *SkillCreate {
 func (_c *SkillCreate) SetID(v int64) *SkillCreate {
 	_c.mutation.SetID(v)
 	return _c
+}
+
+// SetSourceRepositoryID sets the "source_repository" edge to the Repository entity by ID.
+func (_c *SkillCreate) SetSourceRepositoryID(id int64) *SkillCreate {
+	_c.mutation.SetSourceRepositoryID(id)
+	return _c
+}
+
+// SetSourceRepository sets the "source_repository" edge to the Repository entity.
+func (_c *SkillCreate) SetSourceRepository(v *Repository) *SkillCreate {
+	return _c.SetSourceRepositoryID(v.ID)
 }
 
 // AddVersionIDs adds the "versions" edge to the SkillVersion entity by IDs.
@@ -237,6 +255,9 @@ func (_c *SkillCreate) check() error {
 			return &ValidationError{Name: "skill_id", err: fmt.Errorf(`ent: validator failed for field "Skill.skill_id": %w`, err)}
 		}
 	}
+	if _, ok := _c.mutation.RepositoryID(); !ok {
+		return &ValidationError{Name: "repository_id", err: errors.New(`ent: missing required field "Skill.repository_id"`)}
+	}
 	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Skill.name"`)}
 	}
@@ -266,6 +287,9 @@ func (_c *SkillCreate) check() error {
 	}
 	if _, ok := _c.mutation.UpdatedAt(); !ok {
 		return &ValidationError{Name: "updated_at", err: errors.New(`ent: missing required field "Skill.updated_at"`)}
+	}
+	if len(_c.mutation.SourceRepositoryIDs()) == 0 {
+		return &ValidationError{Name: "source_repository", err: errors.New(`ent: missing required edge "Skill.source_repository"`)}
 	}
 	return nil
 }
@@ -343,6 +367,23 @@ func (_c *SkillCreate) createSpec() (*Skill, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.UpdatedAt(); ok {
 		_spec.SetField(skill.FieldUpdatedAt, field.TypeTime, value)
 		_node.UpdatedAt = value
+	}
+	if nodes := _c.mutation.SourceRepositoryIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   skill.SourceRepositoryTable,
+			Columns: []string{skill.SourceRepositoryColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repository.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.RepositoryID = nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
 	}
 	if nodes := _c.mutation.VersionsIDs(); len(nodes) > 0 {
 		edge := &sqlgraph.EdgeSpec{
@@ -453,6 +494,18 @@ func (u *SkillUpsert) SetSkillID(v string) *SkillUpsert {
 // UpdateSkillID sets the "skill_id" field to the value that was provided on create.
 func (u *SkillUpsert) UpdateSkillID() *SkillUpsert {
 	u.SetExcluded(skill.FieldSkillID)
+	return u
+}
+
+// SetRepositoryID sets the "repository_id" field.
+func (u *SkillUpsert) SetRepositoryID(v int64) *SkillUpsert {
+	u.Set(skill.FieldRepositoryID, v)
+	return u
+}
+
+// UpdateRepositoryID sets the "repository_id" field to the value that was provided on create.
+func (u *SkillUpsert) UpdateRepositoryID() *SkillUpsert {
+	u.SetExcluded(skill.FieldRepositoryID)
 	return u
 }
 
@@ -641,6 +694,20 @@ func (u *SkillUpsertOne) SetSkillID(v string) *SkillUpsertOne {
 func (u *SkillUpsertOne) UpdateSkillID() *SkillUpsertOne {
 	return u.Update(func(s *SkillUpsert) {
 		s.UpdateSkillID()
+	})
+}
+
+// SetRepositoryID sets the "repository_id" field.
+func (u *SkillUpsertOne) SetRepositoryID(v int64) *SkillUpsertOne {
+	return u.Update(func(s *SkillUpsert) {
+		s.SetRepositoryID(v)
+	})
+}
+
+// UpdateRepositoryID sets the "repository_id" field to the value that was provided on create.
+func (u *SkillUpsertOne) UpdateRepositoryID() *SkillUpsertOne {
+	return u.Update(func(s *SkillUpsert) {
+		s.UpdateRepositoryID()
 	})
 }
 
@@ -1016,6 +1083,20 @@ func (u *SkillUpsertBulk) SetSkillID(v string) *SkillUpsertBulk {
 func (u *SkillUpsertBulk) UpdateSkillID() *SkillUpsertBulk {
 	return u.Update(func(s *SkillUpsert) {
 		s.UpdateSkillID()
+	})
+}
+
+// SetRepositoryID sets the "repository_id" field.
+func (u *SkillUpsertBulk) SetRepositoryID(v int64) *SkillUpsertBulk {
+	return u.Update(func(s *SkillUpsert) {
+		s.SetRepositoryID(v)
+	})
+}
+
+// UpdateRepositoryID sets the "repository_id" field to the value that was provided on create.
+func (u *SkillUpsertBulk) UpdateRepositoryID() *SkillUpsertBulk {
+	return u.Update(func(s *SkillUpsert) {
+		s.UpdateRepositoryID()
 	})
 }
 

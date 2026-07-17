@@ -34,6 +34,11 @@ func TestParseSkillID(t *testing.T) {
 			want: SkillID{Repository: "gitlab.com/company/platform/ai/skills", SkillPath: "security/code-review"},
 		},
 		{
+			name: "repository identity is case normalized while Skill path is preserved",
+			in:   "GitLab.Example.COM/Group/SubGroup/Repo/-/Skills/Find-Skill",
+			want: SkillID{Repository: "gitlab.example.com/group/subgroup/repo", SkillPath: "Skills/Find-Skill"},
+		},
+		{
 			name: "repository git suffix",
 			in:   "github.com/owner/repo.git/-/skills/code-review",
 			want: SkillID{Repository: "github.com/owner/repo", SkillPath: "skills/code-review"},
@@ -48,6 +53,8 @@ func TestParseSkillID(t *testing.T) {
 			canonical := tc.in
 			if tc.name == "repository git suffix" {
 				canonical = "github.com/owner/repo/-/skills/code-review"
+			} else if tc.name == "repository identity is case normalized while Skill path is preserved" {
+				canonical = "gitlab.example.com/group/subgroup/repo/-/Skills/Find-Skill"
 			}
 			require.Equal(t, canonical, got.String())
 			roundTrip, err := ParseSkillID(got.String())
@@ -83,5 +90,5 @@ func TestParseSkillIDRejectsInvalidSkillIDs(t *testing.T) {
 
 func TestParseGitHubSkillIDRejectsImplicitSubdirectory(t *testing.T) {
 	_, err := parseGitHubSkillID("github.com/mattpocock/skills/skills/engineering/ask-matt")
-	require.EqualError(t, err, `unsupported Skill repository "github.com/mattpocock/skills/skills/engineering/ask-matt"`)
+	require.EqualError(t, err, `invalid GitHub repository "github.com/mattpocock/skills/skills/engineering/ask-matt": expected github.com/owner/repo`)
 }

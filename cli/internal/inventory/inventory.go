@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on managed Installation Receipts, explicit project roots, Workspace Manifest/Lock state, and read-only target filesystem metadata.
- * [OUTPUT]: Provides typed, versioned Hub/Local managed-Library reconciliation across receipts, explicit projects, Workspace state, Agent paths, provenance, target health, and copy-mode Local Modifications.
+ * [INPUT]: Depends on Workspace Manifests, exact immutable metadata, the Agent Catalog, Store receipts, and read-only target filesystem metadata.
+ * [OUTPUT]: Provides inventory v5 Hub/Local managed-Library reconciliation with local manifest descriptions, explicit projects, alias-aware Agent paths, target health, copy-mode Local Modifications, and Discovery-Root-derived visibility.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,18 +16,16 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
 
-const SchemaVersion = 3
+const SchemaVersion = 5
 
 var ErrEmptyProjectRoot = errors.New("project root must not be empty")
 
 type Provenance string
 type Risk string
 type Health string
-type ReceiptState string
 type TargetMode string
 
 const (
@@ -45,10 +43,6 @@ const (
 	HealthWorkspaceUnreadable Health = "workspace-unreadable"
 	HealthLockMismatch        Health = "lock-mismatch"
 	HealthUnexpectedPath      Health = "unexpected-path"
-	HealthReceiptMissing      Health = "receipt-missing"
-
-	ReceiptPresent ReceiptState = "present"
-	ReceiptMissing ReceiptState = "missing"
 
 	TargetModeSymlink  TargetMode = "symlink"
 	TargetModeCopy     TargetMode = "copy"
@@ -61,28 +55,38 @@ type Report struct {
 }
 
 type Entry struct {
-	InventoryKey      string     `json:"inventoryKey"`
-	Name              string     `json:"name"`
-	SkillID           string     `json:"skillId"`
-	Provenance        Provenance `json:"provenance"`
-	Risk              Risk       `json:"risk"`
-	Health            Health     `json:"health"`
-	Agents            []string   `json:"agents"`
-	Projects          []string   `json:"projects"`
-	Versions          []string   `json:"versions"`
-	VersionDivergence bool       `json:"versionDivergence"`
-	Targets           []Target   `json:"targets"`
+	InventoryKey      string       `json:"inventoryKey"`
+	Name              string       `json:"name"`
+	Description       string       `json:"description"`
+	SkillID           string       `json:"skillId"`
+	Provenance        Provenance   `json:"provenance"`
+	Risk              Risk         `json:"risk"`
+	Health            Health       `json:"health"`
+	Agents            []string     `json:"agents"`
+	Projects          []string     `json:"projects"`
+	Versions          []string     `json:"versions"`
+	VersionDivergence bool         `json:"versionDivergence"`
+	Targets           []Target     `json:"targets"`
+	Visibility        []Visibility `json:"visibility"`
+}
+
+type Visibility struct {
+	Agent        string                      `json:"agent"`
+	Scope        install.Scope               `json:"scope"`
+	ProjectRoot  string                      `json:"projectRoot,omitempty"`
+	Paths        []string                    `json:"paths"`
+	Verification agent.DiscoveryVerification `json:"verification"`
 }
 
 type Target struct {
-	Scope        install.Scope `json:"scope"`
-	ProjectRoot  string        `json:"projectRoot,omitempty"`
-	Agent        string        `json:"agent"`
-	Path         string        `json:"path"`
-	Mode         TargetMode    `json:"mode"`
-	Version      string        `json:"version"`
-	ReceiptState ReceiptState  `json:"receiptState"`
-	Health       Health        `json:"health"`
+	Scope         install.Scope `json:"scope"`
+	ProjectRoot   string        `json:"projectRoot,omitempty"`
+	Agent         string        `json:"agent"`
+	Path          string        `json:"path"`
+	CanonicalPath string        `json:"canonicalPath,omitempty"`
+	Mode          TargetMode    `json:"mode"`
+	Version       string        `json:"version"`
+	Health        Health        `json:"health"`
 }
 
 type Options struct {
@@ -93,7 +97,6 @@ type Options struct {
 
 type workspaceInventoryState struct {
 	manifest project.Manifest
-	lock     project.Lockfile
 	present  bool
 	valid    bool
 }
@@ -110,58 +113,64 @@ func Build(options Options) (Report, error) {
 	if err != nil {
 		return Report{}, err
 	}
-	workspaces := make(map[string]workspaceInventoryState, len(projectRoots))
-	for _, root := range projectRoots {
-		workspaces[root] = loadWorkspaceInventoryState(root)
-	}
-	installations, err := install.ListInstallations(store.DefaultRoot(home), install.InventoryFilter{})
-	if err != nil {
-		return Report{}, err
-	}
-
 	entries := map[string]*Entry{}
-	receiptedTargets := map[string]bool{}
-	for _, installation := range installations {
-		projectRoot, included := inventoryLocation(installation.Target, options.IncludeUser, projectRoots)
-		if !included {
-			continue
+	accountedTargets := map[string]bool{}
+	type declarationRoot struct {
+		root  string
+		scope install.Scope
+	}
+	roots := make([]declarationRoot, 0, len(projectRoots)+1)
+	if options.IncludeUser {
+		roots = append(roots, declarationRoot{root: project.UserRoot(home), scope: install.ScopeUser})
+	}
+	for _, root := range projectRoots {
+		roots = append(roots, declarationRoot{root: root, scope: install.ScopeProject})
+	}
+	for _, declaration := range roots {
+		installations, installedErr := project.Installed(declaration.root, options.Catalog, declaration.scope, store.DefaultRoot(home))
+		if installedErr != nil {
+			return Report{}, installedErr
 		}
-		provenance := ProvenanceHub
-		if installation.Provenance == store.ProvenanceLocal {
-			provenance = ProvenanceLocal
-		}
-		entry := ensureEntry(entries, installation.Name, installation.SkillID, provenance)
-		health := managedTargetHealth(
-			installation,
-			managedTargetPathExpected(options.Catalog, installation, projectRoot),
-		)
-		if projectRoot != "" && health == HealthHealthy {
-			health = reconciledProjectHealth(installation, workspaces[projectRoot])
-		}
-		entry.Targets = append(entry.Targets, Target{
-			Scope: installation.Target.Scope, ProjectRoot: projectRoot,
-			Agent: installation.Target.Agent, Path: filepath.Clean(installation.Target.Path),
-			Mode: TargetMode(installation.Target.Mode), Version: installation.Version,
-			ReceiptState: ReceiptPresent, Health: health,
-		})
-		receiptedTargets[targetKey(installation.Target.Agent, installation.Target.Scope, installation.Target.Path)] = true
-		if health != HealthHealthy && entry.Health == HealthHealthy {
-			entry.Health = health
-		}
-		entry.Agents = appendUnique(entry.Agents, installation.Target.Agent)
-		entry.Versions = appendUnique(entry.Versions, installation.Version)
-		if projectRoot != "" {
-			entry.Projects = appendUnique(entry.Projects, projectRoot)
+		for _, installation := range installations {
+			projectRoot := ""
+			if declaration.scope == install.ScopeProject {
+				projectRoot = declaration.root
+			}
+			provenance := ProvenanceHub
+			if installation.Provenance == store.ProvenanceLocal {
+				provenance = ProvenanceLocal
+			}
+			entry := ensureEntry(entries, installation.Name, installation.SkillID, provenance)
+			setEntryDescription(entry, installation.Target.Path)
+			health := managedTargetHealth(
+				installation,
+				managedTargetPathExpected(options.Catalog, installation, projectRoot),
+			)
+			entry.Targets = append(entry.Targets, Target{
+				Scope: installation.Target.Scope, ProjectRoot: projectRoot,
+				Agent: installation.Target.Agent, Path: filepath.Clean(installation.Target.Path),
+				CanonicalPath: installation.Target.CanonicalPath,
+				Mode:          TargetMode(installation.Target.Mode), Version: installation.Version, Health: health,
+			})
+			accountedTargets[targetKey(installation.Target.Agent, installation.Target.Scope, installation.Target.Path)] = true
+			if health != HealthHealthy && entry.Health == HealthHealthy {
+				entry.Health = health
+			}
+			entry.Agents = appendUnique(entry.Agents, installation.Target.Agent)
+			entry.Versions = appendUnique(entry.Versions, installation.Version)
+			if projectRoot != "" {
+				entry.Projects = appendUnique(entry.Projects, projectRoot)
+			}
 		}
 	}
-	addDeclaredTargetsWithoutReceipts(entries, receiptedTargets, workspaces, options.Catalog)
 	addExternalInstallations(
 		entries,
-		receiptedTargets,
+		accountedTargets,
 		projectRoots,
 		options.IncludeUser,
 		options.Catalog,
 	)
+	addVisibility(entries, options.Catalog, options.IncludeUser, projectRoots)
 
 	report := Report{SchemaVersion: SchemaVersion, Entries: make([]Entry, 0, len(entries))}
 	for _, entry := range entries {
@@ -182,6 +191,16 @@ func Build(options Options) (Report, error) {
 			}
 			return left.Path < right.Path
 		})
+		sort.Slice(entry.Visibility, func(i, j int) bool {
+			left, right := entry.Visibility[i], entry.Visibility[j]
+			if left.Scope != right.Scope {
+				return left.Scope == install.ScopeUser
+			}
+			if left.ProjectRoot != right.ProjectRoot {
+				return left.ProjectRoot < right.ProjectRoot
+			}
+			return left.Agent < right.Agent
+		})
 		report.Entries = append(report.Entries, *entry)
 	}
 	sort.Slice(report.Entries, func(i, j int) bool {
@@ -191,6 +210,68 @@ func Build(options Options) (Report, error) {
 		return report.Entries[i].InventoryKey < report.Entries[j].InventoryKey
 	})
 	return report, nil
+}
+
+func addVisibility(entries map[string]*Entry, catalog *agent.Catalog, includeUser bool, projectRoots []string) {
+	definitions := catalog.Installed()
+	for _, entry := range entries {
+		entry.Visibility = []Visibility{}
+		for _, definition := range definitions {
+			if includeUser {
+				if roots, ok := catalog.SkillRoots(definition.ID, agent.ScopeUser, ""); ok {
+					appendVisibility(entry, definition.ID, install.ScopeUser, "", roots)
+				}
+			}
+			for _, projectRoot := range projectRoots {
+				if roots, ok := catalog.SkillRoots(definition.ID, agent.ScopeProject, projectRoot); ok {
+					appendVisibility(entry, definition.ID, install.ScopeProject, projectRoot, roots)
+				}
+			}
+		}
+	}
+}
+
+func appendVisibility(entry *Entry, agentID string, scope install.Scope, projectRoot string, roots agent.SkillRoots) {
+	names := make([]string, 0, len(entry.Targets))
+	physicalTargets := make([]string, 0, len(entry.Targets)*2)
+	for _, target := range entry.Targets {
+		if target.Scope != scope || target.ProjectRoot != projectRoot {
+			continue
+		}
+		names = appendUnique(names, filepath.Base(target.Path))
+		physicalTargets = appendUnique(physicalTargets, resolveInventoryPath(target.Path))
+		if target.CanonicalPath != "" {
+			physicalTargets = appendUnique(physicalTargets, resolveInventoryPath(target.CanonicalPath))
+		}
+	}
+	if len(names) == 0 {
+		return
+	}
+	paths := make([]string, 0)
+	for _, root := range roots.DiscoveryRoots {
+		for _, name := range names {
+			candidate := filepath.Join(root, name)
+			info, err := os.Stat(filepath.Join(candidate, "SKILL.md"))
+			if err != nil || !info.Mode().IsRegular() {
+				continue
+			}
+			resolved := resolveInventoryPath(candidate)
+			for _, target := range physicalTargets {
+				if resolved == target {
+					paths = appendUnique(paths, filepath.Clean(candidate))
+					break
+				}
+			}
+		}
+	}
+	if len(paths) == 0 {
+		return
+	}
+	sort.Strings(paths)
+	entry.Visibility = append(entry.Visibility, Visibility{
+		Agent: agentID, Scope: scope, ProjectRoot: projectRoot,
+		Paths: paths, Verification: roots.Verification,
+	})
 }
 
 func normalizeProjectRoots(values []string) ([]string, error) {
@@ -258,15 +339,14 @@ func resolveInventoryPath(path string) string {
 
 func loadWorkspaceInventoryState(root string) workspaceInventoryState {
 	manifestExists, manifestReadable := workspaceFileState(filepath.Join(root, "skillsgo.yaml"))
-	lockExists, lockReadable := workspaceFileState(filepath.Join(root, "skillsgo-lock.yaml"))
-	if !manifestExists && !lockExists {
+	if !manifestExists {
 		return workspaceInventoryState{}
 	}
-	if !manifestExists || !lockExists || !manifestReadable || !lockReadable {
+	if !manifestReadable {
 		return workspaceInventoryState{present: true}
 	}
-	manifest, lock, err := project.Load(root)
-	return workspaceInventoryState{manifest: manifest, lock: lock, present: true, valid: err == nil}
+	manifest, err := project.LoadManifest(root)
+	return workspaceInventoryState{manifest: manifest, present: true, valid: err == nil}
 }
 
 func workspaceFileState(path string) (present bool, readable bool) {
@@ -287,14 +367,9 @@ func reconciledProjectHealth(installation install.Installation, workspace worksp
 	if !workspace.valid {
 		return HealthWorkspaceUnreadable
 	}
-	requirement, declared := workspace.manifest.Skills[installation.Name]
-	locked, lockedPresent := workspace.lock.Skills[installation.Name]
-	if !declared || !lockedPresent {
+	_, requirement, declared := workspace.manifest.Dependency(installation.SkillID)
+	if !declared {
 		return HealthUndeclared
-	}
-	mode := requirement.Mode
-	if mode == "" {
-		mode = install.ModeSymlink
 	}
 	agentDeclared := false
 	for _, agentID := range requirement.Agents {
@@ -304,9 +379,7 @@ func reconciledProjectHealth(installation install.Installation, workspace worksp
 		}
 	}
 	if requirement.Source != installation.SkillID ||
-		locked.SkillID != installation.SkillID ||
-		locked.Version != installation.Version ||
-		mode != installation.Target.Mode ||
+		requirement.Ref != installation.Version ||
 		!agentDeclared {
 		return HealthLockMismatch
 	}
@@ -333,11 +406,30 @@ func managedTargetHealth(installation install.Installation, pathExpected bool) H
 		return HealthUnreadable
 	}
 	if installation.Target.Mode == install.ModeSymlink {
+		canonicalAlias := info.Mode()&os.ModeSymlink == 0 && installation.Target.CanonicalPath != "" &&
+			resolveInventoryPath(installation.Target.Path) == resolveInventoryPath(installation.Target.CanonicalPath)
+		if installation.Target.CanonicalPath != "" && (filepath.Clean(installation.Target.Path) == filepath.Clean(installation.Target.CanonicalPath) || canonicalAlias) {
+			if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+				return HealthReplaced
+			}
+			matches, digestErr := install.CopyMatchesArtifact(installation.Target.Path, installation.Artifact)
+			if digestErr != nil {
+				return HealthUnreadable
+			}
+			if !matches {
+				return HealthLocalModification
+			}
+			return HealthHealthy
+		}
 		if info.Mode()&os.ModeSymlink == 0 {
 			return HealthReplaced
 		}
 		link, err := filepath.EvalSymlinks(installation.Target.Path)
-		if err != nil || resolveInventoryPath(link) != resolveInventoryPath(installation.Artifact) {
+		expected := installation.Artifact
+		if installation.Target.CanonicalPath != "" {
+			expected = installation.Target.CanonicalPath
+		}
+		if err != nil || resolveInventoryPath(link) != resolveInventoryPath(expected) {
 			return HealthReplaced
 		}
 		return HealthHealthy
@@ -365,68 +457,6 @@ func managedTargetHealth(installation install.Installation, pathExpected bool) H
 	return HealthReplaced
 }
 
-func addDeclaredTargetsWithoutReceipts(
-	entries map[string]*Entry,
-	receiptedTargets map[string]bool,
-	workspaces map[string]workspaceInventoryState,
-	catalog *agent.Catalog,
-) {
-	roots := make([]string, 0, len(workspaces))
-	for root := range workspaces {
-		roots = append(roots, root)
-	}
-	sort.Strings(roots)
-	for _, root := range roots {
-		workspace := workspaces[root]
-		if !workspace.valid {
-			continue
-		}
-		names := make([]string, 0, len(workspace.manifest.Skills))
-		for name := range workspace.manifest.Skills {
-			names = append(names, name)
-		}
-		sort.Strings(names)
-		for _, name := range names {
-			requirement := workspace.manifest.Skills[name]
-			locked, lockedPresent := workspace.lock.Skills[name]
-			if !lockedPresent || locked.SkillID == "" || locked.Version == "" || requirement.Source != locked.SkillID {
-				continue
-			}
-			mode := requirement.Mode
-			if mode == "" {
-				mode = install.ModeSymlink
-			}
-			agents := append([]string(nil), requirement.Agents...)
-			sort.Strings(agents)
-			for _, agentID := range agents {
-				path, known := expectedTargetPath(catalog, agentID, install.ScopeProject, root, name)
-				if !known {
-					continue
-				}
-				key := targetKey(agentID, install.ScopeProject, path)
-				if receiptedTargets[key] {
-					continue
-				}
-				provenance := ProvenanceHub
-				if source.IsLocalSkillID(locked.SkillID) {
-					provenance = ProvenanceLocal
-				}
-				entry := ensureEntry(entries, name, locked.SkillID, provenance)
-				entry.Targets = append(entry.Targets, Target{
-					Scope: install.ScopeProject, ProjectRoot: root, Agent: agentID,
-					Path: filepath.Clean(path), Mode: TargetMode(mode), Version: locked.Version,
-					ReceiptState: ReceiptMissing, Health: HealthReceiptMissing,
-				})
-				receiptedTargets[key] = true
-				entry.Health = HealthReceiptMissing
-				entry.Agents = appendUnique(entry.Agents, agentID)
-				entry.Projects = appendUnique(entry.Projects, root)
-				entry.Versions = appendUnique(entry.Versions, locked.Version)
-			}
-		}
-	}
-}
-
 func ensureEntry(entries map[string]*Entry, name, skillID string, provenance Provenance) *Entry {
 	inventoryKey := string(provenance) + ":" + skillID
 	if entry := entries[inventoryKey]; entry != nil {
@@ -435,7 +465,7 @@ func ensureEntry(entries map[string]*Entry, name, skillID string, provenance Pro
 	entry := &Entry{
 		InventoryKey: inventoryKey, Name: name, SkillID: skillID,
 		Provenance: provenance, Risk: RiskUnknown, Health: HealthHealthy,
-		Agents: []string{}, Projects: []string{}, Versions: []string{}, Targets: []Target{},
+		Agents: []string{}, Projects: []string{}, Versions: []string{}, Targets: []Target{}, Visibility: []Visibility{},
 	}
 	entries[inventoryKey] = entry
 	return entry

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on exact managed Installation identities, Store receipts, Workspace declarations/locks, Hub resolution, and safe target replacement.
- * [OUTPUT]: Provides strict Update Plan decoding, per-target movable-reference resolution, pinned-target exclusion, shared-binding grouping, Workspace Lock previews/reconciliation, state-bound execution, and structured progress/results.
+ * [OUTPUT]: Provides strict Update Plan decoding, per-target resolution, pinned-target exclusion, shared-binding grouping, Workspace Manifest previews/reconciliation, state-bound execution, and structured progress/results.
  * [POS]: Serves as the update orchestration domain between the public update command and Hub/Store/install/project boundaries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -45,7 +46,7 @@ const (
 	ProgressStarted  ProgressState = "started"
 	ProgressFinished ProgressState = "finished"
 
-	reasonWorkspaceLockReconcile = "workspace-lock-reconcile"
+	reasonWorkspaceManifestReconcile = "workspace-lock-reconcile"
 )
 
 type TargetRequest struct {
@@ -69,23 +70,23 @@ type Target struct {
 }
 
 type Item struct {
-	Target              Target   `json:"target"`
-	Name                string   `json:"name"`
-	SkillID             string   `json:"skillId"`
-	SourceRef           string   `json:"sourceRef"`
-	FromVersion         string   `json:"fromVersion"`
-	ToVersion           string   `json:"toVersion"`
-	Action              Action   `json:"action"`
-	ReasonCode          string   `json:"reasonCode,omitempty"`
-	Diagnostic          string   `json:"diagnostic,omitempty"`
-	StateToken          string   `json:"stateToken"`
-	WorkspaceLockChange bool     `json:"workspaceLockChange"`
-	AffectedBindings    []Target `json:"affectedBindings,omitempty"`
-	installation        install.Installation
-	workspaceLockFrom   string
+	Target                  Target   `json:"target"`
+	Name                    string   `json:"name"`
+	SkillID                 string   `json:"skillId"`
+	SourceRef               string   `json:"sourceRef"`
+	FromVersion             string   `json:"fromVersion"`
+	ToVersion               string   `json:"toVersion"`
+	Action                  Action   `json:"action"`
+	ReasonCode              string   `json:"reasonCode,omitempty"`
+	Diagnostic              string   `json:"diagnostic,omitempty"`
+	StateToken              string   `json:"stateToken"`
+	WorkspaceManifestChange bool     `json:"workspaceManifestChange"`
+	AffectedBindings        []Target `json:"affectedBindings,omitempty"`
+	installation            install.Installation
+	workspaceManifestFrom   string
 }
 
-type WorkspaceLockChange struct {
+type WorkspaceManifestChange struct {
 	ProjectRoot string `json:"projectRoot"`
 	Path        string `json:"path"`
 	Skill       string `json:"skill"`
@@ -101,11 +102,11 @@ type Summary struct {
 }
 
 type Preflight struct {
-	SchemaVersion        int                   `json:"schemaVersion"`
-	Phase                string                `json:"phase"`
-	Targets              []Item                `json:"targets"`
-	WorkspaceLockChanges []WorkspaceLockChange `json:"workspaceLockChanges"`
-	Summary              Summary               `json:"summary"`
+	SchemaVersion            int                       `json:"schemaVersion"`
+	Phase                    string                    `json:"phase"`
+	Targets                  []Item                    `json:"targets"`
+	WorkspaceManifestChanges []WorkspaceManifestChange `json:"workspaceManifestChanges"`
+	Summary                  Summary                   `json:"summary"`
 }
 
 type Result struct {
@@ -212,15 +213,23 @@ func Build(
 	storage store.Store,
 	requests []TargetRequest,
 ) (Preflight, error) {
-	installations, err := install.ListInstallations(storage.Root, install.InventoryFilter{})
-	if err != nil {
-		return Preflight{}, err
+	installations := make([]install.Installation, 0, len(requests))
+	for _, request := range requests {
+		entry, err := storage.Get(request.SkillID, request.Version)
+		if err != nil {
+			return Preflight{}, fmt.Errorf("managed Store artifact not found for %s: %w", request.Path, err)
+		}
+		installations = append(installations, install.Installation{
+			Name: entry.Receipt.Name, SkillID: request.SkillID, Version: request.Version,
+			StoreRoot: entry.Root, Artifact: entry.Artifact, ContentDigest: entry.Receipt.ContentDigest,
+			Target: install.Target{Agent: request.Agent, Scope: request.Scope, Mode: request.Mode, Path: request.Path},
+		})
 	}
 	preflight := Preflight{
-		SchemaVersion:        SchemaVersion,
-		Phase:                "update-preflight",
-		Targets:              make([]Item, 0, len(requests)),
-		WorkspaceLockChanges: []WorkspaceLockChange{},
+		SchemaVersion:            SchemaVersion,
+		Phase:                    "update-preflight",
+		Targets:                  make([]Item, 0, len(requests)),
+		WorkspaceManifestChanges: []WorkspaceManifestChange{},
 	}
 	seen := map[string]bool{}
 	seenLocks := map[string]bool{}
@@ -241,6 +250,9 @@ func Build(
 		return Preflight{}, err
 	}
 	if err := validateCompleteWorkspaceBindings(requests, matched); err != nil {
+		return Preflight{}, err
+	}
+	if err := validateCompleteUserBindings(filepath.Dir(storage.Root), requests); err != nil {
 		return Preflight{}, err
 	}
 	for index, request := range requests {
@@ -264,15 +276,15 @@ func Build(
 		case ActionFailed:
 			preflight.Summary.Failed++
 		}
-		if item.WorkspaceLockChange {
+		if item.WorkspaceManifestChange {
 			lockKey := filepath.Clean(item.Target.ProjectRoot) + "\x00" + item.Name + "\x00" + item.ToVersion
 			if !seenLocks[lockKey] {
 				seenLocks[lockKey] = true
-				preflight.WorkspaceLockChanges = append(preflight.WorkspaceLockChanges, WorkspaceLockChange{
+				preflight.WorkspaceManifestChanges = append(preflight.WorkspaceManifestChanges, WorkspaceManifestChange{
 					ProjectRoot: item.Target.ProjectRoot,
-					Path:        filepath.Join(item.Target.ProjectRoot, "skillsgo-lock.yaml"),
+					Path:        filepath.Join(item.Target.ProjectRoot, "skillsgo.yaml"),
 					Skill:       item.Name,
-					FromVersion: item.workspaceLockFrom,
+					FromVersion: item.workspaceManifestFrom,
 					ToVersion:   item.ToVersion,
 				})
 			}
@@ -301,6 +313,40 @@ func Build(
 	return preflight, nil
 }
 
+func validateCompleteUserBindings(root string, requests []TargetRequest) error {
+	manifest, err := project.LoadManifest(root)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return nil
+		}
+		return err
+	}
+	checked := map[string]bool{}
+	for _, request := range requests {
+		if request.Scope != install.ScopeUser || checked[request.SkillID] {
+			continue
+		}
+		checked[request.SkillID] = true
+		_, requirement, ok := manifest.Dependency(request.SkillID)
+		if !ok {
+			return fmt.Errorf("user dependencies are missing Skill %q", request.SkillID)
+		}
+		for _, agentID := range requirement.Agents {
+			found := false
+			for _, candidate := range requests {
+				if candidate.Scope == install.ScopeUser && candidate.SkillID == request.SkillID && candidate.Agent == agentID {
+					found = true
+					break
+				}
+			}
+			if !found {
+				return fmt.Errorf("shared Update Target %s requires every affected Agent binding", request.Path)
+			}
+		}
+	}
+	return nil
+}
+
 func buildItem(
 	ctx context.Context,
 	client Hub,
@@ -312,7 +358,7 @@ func buildItem(
 	if err != nil {
 		return Item{}, err
 	}
-	reference, fixed, workspaceLockFrom, err := sourceReference(request, installation, entry.Receipt)
+	reference, fixed, workspaceManifestFrom, err := sourceReference(request, installation, entry.Receipt)
 	if err != nil {
 		return Item{}, err
 	}
@@ -320,7 +366,7 @@ func buildItem(
 		installation,
 		request.ProjectRoot,
 		reference,
-		workspaceLockFrom,
+		workspaceManifestFrom,
 	)
 	if err != nil {
 		return Item{}, err
@@ -333,7 +379,7 @@ func buildItem(
 		Name: installation.Name, SkillID: installation.SkillID,
 		SourceRef: reference, FromVersion: installation.Version,
 		ToVersion: installation.Version, StateToken: stateToken,
-		installation: installation, workspaceLockFrom: workspaceLockFrom,
+		installation: installation, workspaceManifestFrom: workspaceManifestFrom,
 	}
 	if fixed {
 		item.Action = ActionPinned
@@ -350,17 +396,17 @@ func buildItem(
 	item.ToVersion = info.Version
 	if request.Scope == install.ScopeProject {
 		switch {
-		case info.Version == installation.Version && workspaceLockFrom == installation.Version:
+		case info.Version == installation.Version && workspaceManifestFrom == installation.Version:
 			item.Action = ActionCurrent
 		case info.Version == installation.Version:
 			item.Action = ActionUpdate
-			item.ReasonCode = reasonWorkspaceLockReconcile
-			item.WorkspaceLockChange = true
-		case workspaceLockFrom != installation.Version:
-			return Item{}, fmt.Errorf("Workspace Lock does not match target %s", request.Path)
+			item.ReasonCode = reasonWorkspaceManifestReconcile
+			item.WorkspaceManifestChange = true
+		case workspaceManifestFrom != installation.Version:
+			return Item{}, fmt.Errorf("Workspace Manifest does not match target %s", request.Path)
 		default:
 			item.Action = ActionUpdate
-			item.WorkspaceLockChange = true
+			item.WorkspaceManifestChange = true
 		}
 	} else if info.Version == installation.Version {
 		item.Action = ActionCurrent
@@ -376,17 +422,13 @@ func sourceReference(
 	receipt store.Receipt,
 ) (string, bool, string, error) {
 	if request.Scope == install.ScopeProject {
-		manifest, lockfile, err := project.Load(request.ProjectRoot)
+		manifest, err := project.LoadManifest(request.ProjectRoot)
 		if err != nil {
 			return "", false, "", err
 		}
-		requirement, ok := manifest.Skills[installation.Name]
+		_, requirement, ok := manifest.Dependency(installation.SkillID)
 		if !ok {
 			return "", false, "", fmt.Errorf("skillsgo.yaml is missing Skill %q", installation.Name)
-		}
-		locked, ok := lockfile.Skills[installation.Name]
-		if !ok || locked.SkillID != installation.SkillID {
-			return "", false, "", fmt.Errorf("Workspace Lock does not match target %s", request.Path)
 		}
 		if !contains(requirement.Agents, request.Agent) {
 			return "", false, "", fmt.Errorf("skillsgo.yaml does not declare Agent %q", request.Agent)
@@ -395,7 +437,7 @@ func sourceReference(
 		if ref == "" {
 			ref = "main"
 		}
-		return ref, isFixedReference(ref, receipt), locked.Version, nil
+		return ref, isFixedReference(ref, receipt), requirement.Ref, nil
 	}
 	ref := receipt.Origin.Ref
 	if strings.HasPrefix(ref, "refs/heads/") {
@@ -412,8 +454,12 @@ func sourceReference(
 }
 
 var hexadecimalReference = regexp.MustCompile(`^[0-9a-fA-F]{7,64}$`)
+var pseudoVersionReference = regexp.MustCompile(`^v[0-9]+\.(?:0\.0-|[0-9]+\.[0-9]+-(?:[^+]*\.)?0\.)[0-9]{14}-[A-Za-z0-9]+(?:\+incompatible)?$`)
 
 func isFixedReference(reference string, receipt store.Receipt) bool {
+	if pseudoVersionReference.MatchString(reference) {
+		return true
+	}
 	if receipt.Origin.Ref == "refs/heads/"+reference {
 		return false
 	}
@@ -430,28 +476,28 @@ func updateStateToken(
 	installation install.Installation,
 	projectRoot,
 	sourceRef,
-	workspaceLockVersion string,
+	workspaceManifestVersion string,
 ) (string, error) {
 	filesystem, err := install.TargetStateDigest(installation.Target.Path)
 	if err != nil {
 		return "", err
 	}
 	payload, err := json.Marshal(struct {
-		Version       int            `json:"version"`
-		Name          string         `json:"name"`
-		SkillID       string         `json:"skillId"`
-		FromVersion   string         `json:"fromVersion"`
-		SHA256        string         `json:"sha256"`
-		ContentDigest string         `json:"contentDigest"`
-		SourceRef     string         `json:"sourceRef"`
-		ProjectRoot   string         `json:"projectRoot"`
-		WorkspaceLock string         `json:"workspaceLockVersion,omitempty"`
-		Target        install.Target `json:"target"`
-		Filesystem    string         `json:"filesystem"`
+		Version           int            `json:"version"`
+		Name              string         `json:"name"`
+		SkillID           string         `json:"skillId"`
+		FromVersion       string         `json:"fromVersion"`
+		SHA256            string         `json:"sha256"`
+		ContentDigest     string         `json:"contentDigest"`
+		SourceRef         string         `json:"sourceRef"`
+		ProjectRoot       string         `json:"projectRoot"`
+		WorkspaceManifest string         `json:"workspaceManifestVersion,omitempty"`
+		Target            install.Target `json:"target"`
+		Filesystem        string         `json:"filesystem"`
 	}{
 		1, installation.Name, installation.SkillID, installation.Version,
 		installation.SHA256, installation.ContentDigest, sourceRef, projectRoot,
-		workspaceLockVersion,
+		workspaceManifestVersion,
 		installation.Target, filesystem,
 	})
 	if err != nil {
@@ -528,7 +574,7 @@ func Execute(
 		first := preflight.Targets[indexes[0]]
 		reconcileOnly := true
 		for _, index := range indexes {
-			if preflight.Targets[index].ReasonCode != reasonWorkspaceLockReconcile {
+			if preflight.Targets[index].ReasonCode != reasonWorkspaceManifestReconcile {
 				reconcileOnly = false
 				break
 			}
@@ -575,7 +621,14 @@ func Execute(
 			if _, checked := lockErrors[lockKey]; checked {
 				continue
 			}
-			lockErrors[lockKey] = project.UpdateLock(item.Target.ProjectRoot, item.Name, entry.Receipt)
+			manifest, loadErr := project.LoadManifest(item.Target.ProjectRoot)
+			if loadErr != nil {
+				lockErrors[lockKey] = loadErr
+				continue
+			}
+			requirement := manifest.Skills[entry.Receipt.SkillID]
+			requirement.Ref = entry.Receipt.Version
+			lockErrors[lockKey] = project.UpsertManifestRequirement(item.Target.ProjectRoot, entry.Receipt.SkillID, requirement, false)
 		}
 		for _, index := range indexes {
 			item := preflight.Targets[index]
@@ -621,23 +674,23 @@ func validateCompletePhysicalBindings(
 	all,
 	selected []install.Installation,
 ) error {
-	selectedReceipts := map[string]bool{}
+	selectedBindings := map[string]bool{}
 	for _, installation := range selected {
-		selectedReceipts[installation.ReceiptPath] = true
+		selectedBindings[targetKey(installation.Target.Scope, "", installation.Target.Agent, installation.Target.Mode, installation.Target.Path)] = true
 	}
 	for _, chosen := range selected {
 		for _, binding := range all {
 			if !samePath(binding.Target.Path, chosen.Target.Path) {
 				continue
 			}
-			if !selectedReceipts[binding.ReceiptPath] {
+			if !selectedBindings[targetKey(binding.Target.Scope, "", binding.Target.Agent, binding.Target.Mode, binding.Target.Path)] {
 				return fmt.Errorf(
 					"shared Update Target %s requires every affected Agent binding",
 					chosen.Target.Path,
 				)
 			}
 			if binding.SkillID != chosen.SkillID || binding.Version != chosen.Version {
-				return fmt.Errorf("shared Update Target %s has inconsistent receipts", chosen.Target.Path)
+				return fmt.Errorf("shared Update Target %s has inconsistent declarations", chosen.Target.Path)
 			}
 		}
 	}
@@ -665,11 +718,11 @@ func validateCompleteWorkspaceBindings(
 			continue
 		}
 		checked[workspaceKey] = true
-		manifest, _, err := project.Load(request.ProjectRoot)
+		manifest, err := project.LoadManifest(request.ProjectRoot)
 		if err != nil {
 			return err
 		}
-		requirement, ok := manifest.Skills[chosen.Name]
+		_, requirement, ok := manifest.Dependency(chosen.SkillID)
 		if !ok {
 			return fmt.Errorf("skillsgo.yaml is missing Skill %q", chosen.Name)
 		}
@@ -688,7 +741,7 @@ func validateCompleteWorkspaceBindings(
 			}
 			if !found {
 				return fmt.Errorf(
-					"Workspace Lock for %s requires every declared Agent target, including %s",
+					"Workspace Manifest for %s requires every declared Agent target, including %s",
 					chosen.Name,
 					agentID,
 				)
@@ -734,7 +787,7 @@ func validateResolvedPhysicalBindings(items []Item) error {
 			workspaceKey := filepath.Clean(item.Target.ProjectRoot) + "\x00" + item.Name
 			if previous, ok := byWorkspaceSkill[workspaceKey]; ok && previous != current {
 				return fmt.Errorf(
-					"Workspace Lock for %s resolved to inconsistent actions or versions",
+					"Workspace Manifest for %s resolved to inconsistent actions or versions",
 					item.Name,
 				)
 			}

@@ -44,10 +44,10 @@ const (
 	// SkillColumn is the table column denoting the skill relation/edge.
 	SkillColumn = "skill_id"
 	// RiskAssessmentsTable is the table that holds the risk_assessments relation/edge.
-	RiskAssessmentsTable = "risk_assessments"
+	RiskAssessmentsTable = "skill_risk_assessments"
 	// RiskAssessmentsInverseTable is the table name for the RiskAssessment entity.
 	// It exists in this package in order to avoid circular dependency with the "riskassessment" package.
-	RiskAssessmentsInverseTable = "risk_assessments"
+	RiskAssessmentsInverseTable = "skill_risk_assessments"
 	// RiskAssessmentsColumn is the table column denoting the risk_assessments relation/edge.
 	RiskAssessmentsColumn = "skill_version_id"
 )

@@ -24,7 +24,7 @@ COPY . .
 RUN DATE="$(date -u +%Y-%m-%d-%H:%M:%S-%Z)" && \
     go build \
     -ldflags "-X github.com/skillsgo/skillsgo/hub/pkg/build.version=$VERSION -X github.com/skillsgo/skillsgo/hub/pkg/build.buildDate=$DATE -s -w" \
-    -o /bin/skillsgo-hub ./cmd/hub
+    -o /bin/skillsgo-hub ./cmd/skillsgo-hub
 
 FROM alpine:3.23
 ARG TARGETARCH

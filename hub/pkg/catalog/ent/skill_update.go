@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/installevent"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/predicate"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillhourlystat"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
@@ -41,6 +42,20 @@ func (_u *SkillUpdate) SetSkillID(v string) *SkillUpdate {
 func (_u *SkillUpdate) SetNillableSkillID(v *string) *SkillUpdate {
 	if v != nil {
 		_u.SetSkillID(*v)
+	}
+	return _u
+}
+
+// SetRepositoryID sets the "repository_id" field.
+func (_u *SkillUpdate) SetRepositoryID(v int64) *SkillUpdate {
+	_u.mutation.SetRepositoryID(v)
+	return _u
+}
+
+// SetNillableRepositoryID sets the "repository_id" field if the given value is not nil.
+func (_u *SkillUpdate) SetNillableRepositoryID(v *int64) *SkillUpdate {
+	if v != nil {
+		_u.SetRepositoryID(*v)
 	}
 	return _u
 }
@@ -184,6 +199,17 @@ func (_u *SkillUpdate) SetUpdatedAt(v time.Time) *SkillUpdate {
 	return _u
 }
 
+// SetSourceRepositoryID sets the "source_repository" edge to the Repository entity by ID.
+func (_u *SkillUpdate) SetSourceRepositoryID(id int64) *SkillUpdate {
+	_u.mutation.SetSourceRepositoryID(id)
+	return _u
+}
+
+// SetSourceRepository sets the "source_repository" edge to the Repository entity.
+func (_u *SkillUpdate) SetSourceRepository(v *Repository) *SkillUpdate {
+	return _u.SetSourceRepositoryID(v.ID)
+}
+
 // AddVersionIDs adds the "versions" edge to the SkillVersion entity by IDs.
 func (_u *SkillUpdate) AddVersionIDs(ids ...int64) *SkillUpdate {
 	_u.mutation.AddVersionIDs(ids...)
@@ -232,6 +258,12 @@ func (_u *SkillUpdate) AddHourlyStats(v ...*SkillHourlyStat) *SkillUpdate {
 // Mutation returns the SkillMutation object of the builder.
 func (_u *SkillUpdate) Mutation() *SkillMutation {
 	return _u.mutation
+}
+
+// ClearSourceRepository clears the "source_repository" edge to the Repository entity.
+func (_u *SkillUpdate) ClearSourceRepository() *SkillUpdate {
+	_u.mutation.ClearSourceRepository()
+	return _u
 }
 
 // ClearVersions clears all "versions" edges to the SkillVersion entity.
@@ -340,6 +372,9 @@ func (_u *SkillUpdate) check() error {
 			return &ValidationError{Name: "skill_id", err: fmt.Errorf(`ent: validator failed for field "Skill.skill_id": %w`, err)}
 		}
 	}
+	if _u.mutation.SourceRepositoryCleared() && len(_u.mutation.SourceRepositoryIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Skill.source_repository"`)
+	}
 	return nil
 }
 
@@ -390,6 +425,35 @@ func (_u *SkillUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(skill.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SourceRepositoryCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   skill.SourceRepositoryTable,
+			Columns: []string{skill.SourceRepositoryColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repository.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.SourceRepositoryIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   skill.SourceRepositoryTable,
+			Columns: []string{skill.SourceRepositoryColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repository.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.VersionsCleared() {
 		edge := &sqlgraph.EdgeSpec{
@@ -560,6 +624,20 @@ func (_u *SkillUpdateOne) SetNillableSkillID(v *string) *SkillUpdateOne {
 	return _u
 }
 
+// SetRepositoryID sets the "repository_id" field.
+func (_u *SkillUpdateOne) SetRepositoryID(v int64) *SkillUpdateOne {
+	_u.mutation.SetRepositoryID(v)
+	return _u
+}
+
+// SetNillableRepositoryID sets the "repository_id" field if the given value is not nil.
+func (_u *SkillUpdateOne) SetNillableRepositoryID(v *int64) *SkillUpdateOne {
+	if v != nil {
+		_u.SetRepositoryID(*v)
+	}
+	return _u
+}
+
 // SetName sets the "name" field.
 func (_u *SkillUpdateOne) SetName(v string) *SkillUpdateOne {
 	_u.mutation.SetName(v)
@@ -699,6 +777,17 @@ func (_u *SkillUpdateOne) SetUpdatedAt(v time.Time) *SkillUpdateOne {
 	return _u
 }
 
+// SetSourceRepositoryID sets the "source_repository" edge to the Repository entity by ID.
+func (_u *SkillUpdateOne) SetSourceRepositoryID(id int64) *SkillUpdateOne {
+	_u.mutation.SetSourceRepositoryID(id)
+	return _u
+}
+
+// SetSourceRepository sets the "source_repository" edge to the Repository entity.
+func (_u *SkillUpdateOne) SetSourceRepository(v *Repository) *SkillUpdateOne {
+	return _u.SetSourceRepositoryID(v.ID)
+}
+
 // AddVersionIDs adds the "versions" edge to the SkillVersion entity by IDs.
 func (_u *SkillUpdateOne) AddVersionIDs(ids ...int64) *SkillUpdateOne {
 	_u.mutation.AddVersionIDs(ids...)
@@ -747,6 +836,12 @@ func (_u *SkillUpdateOne) AddHourlyStats(v ...*SkillHourlyStat) *SkillUpdateOne 
 // Mutation returns the SkillMutation object of the builder.
 func (_u *SkillUpdateOne) Mutation() *SkillMutation {
 	return _u.mutation
+}
+
+// ClearSourceRepository clears the "source_repository" edge to the Repository entity.
+func (_u *SkillUpdateOne) ClearSourceRepository() *SkillUpdateOne {
+	_u.mutation.ClearSourceRepository()
+	return _u
 }
 
 // ClearVersions clears all "versions" edges to the SkillVersion entity.
@@ -868,6 +963,9 @@ func (_u *SkillUpdateOne) check() error {
 			return &ValidationError{Name: "skill_id", err: fmt.Errorf(`ent: validator failed for field "Skill.skill_id": %w`, err)}
 		}
 	}
+	if _u.mutation.SourceRepositoryCleared() && len(_u.mutation.SourceRepositoryIDs()) > 0 {
+		return errors.New(`ent: clearing a required unique edge "Skill.source_repository"`)
+	}
 	return nil
 }
 
@@ -935,6 +1033,35 @@ func (_u *SkillUpdateOne) sqlSave(ctx context.Context) (_node *Skill, err error)
 	}
 	if value, ok := _u.mutation.UpdatedAt(); ok {
 		_spec.SetField(skill.FieldUpdatedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SourceRepositoryCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   skill.SourceRepositoryTable,
+			Columns: []string{skill.SourceRepositoryColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repository.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.SourceRepositoryIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: true,
+			Table:   skill.SourceRepositoryTable,
+			Columns: []string{skill.SourceRepositoryColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repository.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
 	if _u.mutation.VersionsCleared() {
 		edge := &sqlgraph.EdgeSpec{

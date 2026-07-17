@@ -33,9 +33,9 @@ const (
 	// SkillFieldID holds the string denoting the ID field of the Skill.
 	SkillFieldID = "id"
 	// Table holds the table name of the installevent in the database.
-	Table = "install_events"
+	Table = "skill_install_events"
 	// SkillTable is the table that holds the skill relation/edge.
-	SkillTable = "install_events"
+	SkillTable = "skill_install_events"
 	// SkillInverseTable is the table name for the Skill entity.
 	// It exists in this package in order to avoid circular dependency with the "skill" package.
 	SkillInverseTable = "skills"

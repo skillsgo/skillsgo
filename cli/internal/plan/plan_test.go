@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses temporary Agent, Store-entry, target, and Workspace fixtures at the public Installation Plan domain seam.
- * [OUTPUT]: Specifies strict target JSON, explicit-cell preservation, shared-path and state-bound conflict resolution, trusted-risk gates, zero-mutation unresolved plans, Workspace Lock previews, Local Modification protection, resilient per-target progress/results, and receipts.
+ * [OUTPUT]: Specifies strict target JSON, explicit-cell preservation, shared-path and state-bound conflict resolution, trusted-risk gates, zero-mutation unresolved plans, Workspace Manifest previews, Local Modification protection, resilient per-target progress/results, and receipts.
  * [POS]: Serves as deterministic domain coverage beneath the public CLI command-flow contract.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -43,6 +43,15 @@ func TestBuildRejectsPathLikeSkillNames(t *testing.T) {
 	}
 }
 
+func TestBuildRejectsNameThatDiffersFromSkillInfo(t *testing.T) {
+	root := t.TempDir()
+	entry := testEntry(t, filepath.Join(root, "store"))
+	catalog := agent.NewCatalog(agent.Paths{Home: root, ConfigHome: filepath.Join(root, "config"), CWD: root})
+	_, err := Build(catalog, entry, entry.Root, Request{Name: "renamed-demo", Targets: []TargetRequest{{}}})
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "Skill Info name")
+}
+
 func TestBuildAndExecuteExplicitTargetsThenSkipIdenticalTargets(t *testing.T) {
 	root := t.TempDir()
 	agentHome := filepath.Join(root, "agent home")
@@ -73,8 +82,8 @@ func TestBuildAndExecuteExplicitTargetsThenSkipIdenticalTargets(t *testing.T) {
 	require.Len(t, preflight.Targets, 2)
 	require.Equal(t, install.ScopeUser, preflight.Targets[0].Target.Scope)
 	require.Equal(t, projectRoot, preflight.Targets[1].Target.ProjectRoot)
-	require.True(t, preflight.Targets[1].WorkspaceLockChange)
-	require.Equal(t, filepath.Join(projectRoot, "skillsgo-lock.yaml"), preflight.WorkspaceLockChanges[0].Path)
+	require.True(t, preflight.Targets[1].WorkspaceManifestChange)
+	require.Equal(t, filepath.Join(projectRoot, "skillsgo.yaml"), preflight.WorkspaceManifestChanges[0].Path)
 
 	execution, err := Execute(entry, storeRoot, request, preflight)
 	require.NoError(t, err)
@@ -84,19 +93,19 @@ func TestBuildAndExecuteExplicitTargetsThenSkipIdenticalTargets(t *testing.T) {
 		require.Equal(t, OutcomeSucceeded, result.Outcome)
 		require.FileExists(t, filepath.Join(result.Target.Path, "SKILL.md"))
 	}
-	installations, err := install.ListInstallations(storeRoot, install.InventoryFilter{})
+	installations, err := declaredInstallations(catalog, storeRoot, request.Targets)
 	require.NoError(t, err)
 	require.Len(t, installations, 2)
-	manifest, lockfile, err := project.Load(projectRoot)
+	manifest, err := project.LoadManifest(projectRoot)
 	require.NoError(t, err)
-	require.Equal(t, []string{"test-agent"}, manifest.Skills["demo"].Agents)
-	require.Equal(t, "v1", lockfile.Skills["demo"].Version)
+	require.Equal(t, []string{"test-agent"}, manifest.Skills[entry.Receipt.SkillID].Agents)
+	require.Equal(t, "v1", manifest.Skills[entry.Receipt.SkillID].Ref)
 
 	second, err := Build(catalog, entry, storeRoot, request)
 	require.NoError(t, err)
 	require.Zero(t, second.Summary.Create)
 	require.Equal(t, 2, second.Summary.Skip)
-	require.Empty(t, second.WorkspaceLockChanges)
+	require.Empty(t, second.WorkspaceManifestChanges)
 	secondExecution, err := Execute(entry, storeRoot, request, second)
 	require.NoError(t, err)
 	require.Equal(t, 2, secondExecution.Summary.Skipped)
@@ -149,14 +158,14 @@ func TestRetryReconcilesProjectManifestAfterArtifactWasAlreadyInstalled(t *testi
 	retry, err := Build(catalog, entry, storeRoot, requestB)
 	require.NoError(t, err)
 	require.Equal(t, ActionSkip, retry.Targets[0].Action)
-	require.True(t, retry.Targets[0].WorkspaceLockChange)
+	require.True(t, retry.Targets[0].WorkspaceManifestChange)
 	execution, err := Execute(entry, storeRoot, requestB, retry)
 	require.NoError(t, err)
 	require.Equal(t, OutcomeSkipped, execution.Results[0].Outcome)
 
-	manifest, _, err := project.Load(projectRoot)
+	manifest, err := project.LoadManifest(projectRoot)
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"agent-a", "agent-b"}, manifest.Skills["demo"].Agents)
+	require.ElementsMatch(t, []string{"agent-a", "agent-b"}, manifest.Skills[entry.Receipt.SkillID].Agents)
 }
 
 func TestExecuteRecordsEveryAgentWhenTargetsShareOnePhysicalCopy(t *testing.T) {
@@ -190,7 +199,7 @@ func TestExecuteRecordsEveryAgentWhenTargetsShareOnePhysicalCopy(t *testing.T) {
 	execution, err := Execute(entry, storeRoot, request, preflight)
 	require.NoError(t, err)
 	require.Equal(t, 2, execution.Summary.Succeeded)
-	installations, err := install.ListInstallations(storeRoot, install.InventoryFilter{})
+	installations, err := declaredInstallations(catalog, storeRoot, request.Targets)
 	require.NoError(t, err)
 	require.Len(t, installations, 2)
 	require.ElementsMatch(t, []string{"agent-a", "agent-b"}, []string{
@@ -315,9 +324,9 @@ func TestVersionConflictRequiresExplicitReplacementBeforeAnyMutation(t *testing.
 	require.NoError(t, err)
 	require.Equal(t, ActionConflict, conflicted.Targets[0].Action)
 	require.Equal(t, "version-conflict", conflicted.Targets[0].ReasonCode)
-	require.True(t, conflicted.Targets[0].WorkspaceLockChange)
-	require.Equal(t, "v1", conflicted.WorkspaceLockChanges[0].FromVersion)
-	require.Equal(t, "v2", conflicted.WorkspaceLockChanges[0].ToVersion)
+	require.True(t, conflicted.Targets[0].WorkspaceManifestChange)
+	require.Equal(t, "v1", conflicted.WorkspaceManifestChanges[0].FromVersion)
+	require.Equal(t, "v2", conflicted.WorkspaceManifestChanges[0].ToVersion)
 	require.Equal(t, ActionCreate, conflicted.Targets[1].Action)
 	_, err = Execute(newEntry, storeRoot, request, conflicted)
 	require.Error(t, err)
@@ -429,7 +438,46 @@ func TestDifferentIdentityNeverMergesWithoutExplicitReplacement(t *testing.T) {
 	_, err = Execute(newEntry, storeRoot, request, replacement)
 	require.NoError(t, err)
 	requireFileContains(t, filepath.Join(targetPath, "SKILL.md"), "new identity")
-	installations, err := install.ListInstallations(storeRoot, install.InventoryFilter{})
+	installations, err := declaredInstallations(catalog, storeRoot, request.Targets)
+	require.NoError(t, err)
+	require.Len(t, installations, 1)
+	require.Equal(t, newEntry.Receipt.SkillID, installations[0].SkillID)
+}
+
+func TestAutoReplaceOverwritesSameNameSkillWithoutSeparateReview(t *testing.T) {
+	root := t.TempDir()
+	agentHome := filepath.Join(root, "agent-home")
+	storeRoot := filepath.Join(root, "store")
+	require.NoError(t, os.MkdirAll(agentHome, 0o700))
+	catalog := agent.NewCatalog(
+		agent.Paths{Home: root, ConfigHome: filepath.Join(root, "config"), CWD: root},
+		agent.WithDefinition(agent.Definition{
+			ID: "test-agent", Display: "Test Agent",
+			UserDir: filepath.Join(agentHome, "skills"), ProjectDir: ".agent/skills",
+		}),
+	)
+	oldEntry := testEntryVersion(t, storeRoot, "github.com/old/skills/-/demo", "v1", "old identity")
+	newEntry := testEntryVersion(t, storeRoot, "github.com/new/skills/-/demo", "v1", "new identity")
+	request := Request{
+		Source: oldEntry.Receipt.SkillID, RequestedRef: "main", Name: "demo",
+		Targets: []TargetRequest{{Scope: install.ScopeUser, Agent: "test-agent", Mode: install.ModeCopy}},
+	}
+	initial, err := Build(catalog, oldEntry, storeRoot, request)
+	require.NoError(t, err)
+	_, err = Execute(oldEntry, storeRoot, request, initial)
+	require.NoError(t, err)
+
+	request.Source = newEntry.Receipt.SkillID
+	request.AutoReplace = true
+	replacement, err := Build(catalog, newEntry, storeRoot, request)
+	require.NoError(t, err)
+	require.Equal(t, ActionReplace, replacement.Targets[0].Action)
+	require.Equal(t, "skill-id-collision", replacement.Targets[0].ReasonCode)
+	execution, err := Execute(newEntry, storeRoot, request, replacement)
+	require.NoError(t, err)
+	require.Equal(t, 1, execution.Summary.Succeeded)
+	requireFileContains(t, filepath.Join(agentHome, "skills", "demo", "SKILL.md"), "new identity")
+	installations, err := declaredInstallations(catalog, storeRoot, request.Targets)
 	require.NoError(t, err)
 	require.Len(t, installations, 1)
 	require.Equal(t, newEntry.Receipt.SkillID, installations[0].SkillID)
@@ -489,11 +537,11 @@ func TestIdentityReplacementPreservesAllExplicitProjectAgents(t *testing.T) {
 	result, err := Execute(newEntry, storeRoot, request, replacement)
 	require.NoError(t, err)
 	require.Equal(t, 2, result.Summary.Succeeded)
-	manifest, lockfile, err := project.Load(projectRoot)
+	manifest, err := project.LoadManifest(projectRoot)
 	require.NoError(t, err)
-	require.ElementsMatch(t, []string{"agent-a", "agent-b"}, manifest.Skills["demo"].Agents)
-	require.Equal(t, newEntry.Receipt.SkillID, manifest.Skills["demo"].Source)
-	require.Equal(t, newEntry.Receipt.SkillID, lockfile.Skills["demo"].SkillID)
+	require.ElementsMatch(t, []string{"agent-a", "agent-b"}, manifest.Skills[newEntry.Receipt.SkillID].Agents)
+	require.Equal(t, newEntry.Receipt.SkillID, manifest.Skills[newEntry.Receipt.SkillID].Source)
+	require.Equal(t, newEntry.Receipt.Version, manifest.Skills[newEntry.Receipt.SkillID].Ref)
 }
 
 func TestRiskPolicyBlocksMutationUntilExplicitConfirmation(t *testing.T) {
@@ -509,6 +557,7 @@ func TestRiskPolicyBlocksMutationUntilExplicitConfirmation(t *testing.T) {
 		}),
 	)
 	entry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/danger", "v1", "danger")
+	entry.Receipt.Name = "danger"
 	entry.Receipt.Risk = hub.RiskHigh
 	request := Request{
 		Source: entry.Receipt.SkillID, RequestedRef: "main", Name: "danger",
@@ -570,11 +619,13 @@ func testEntryVersion(t *testing.T, root, skillID, version, content string) *sto
 	artifact := filepath.Join(entryRoot, "artifact")
 	require.NoError(t, os.MkdirAll(artifact, 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(artifact, "SKILL.md"), []byte("# "+content+"\n"), 0o600))
+	contentDigest, err := hub.ContentDirectoryDigest(artifact)
+	require.NoError(t, err)
 	entry := &store.Entry{
 		Root: entryRoot, Artifact: artifact,
 		Receipt: store.Receipt{
-			SkillID: skillID, Version: version, SHA256: "sha256-" + version,
-			ContentDigest: "sha256:content-" + version, Risk: hub.RiskLow,
+			SkillID: skillID, Name: "demo", Version: version, SHA256: "sha256-" + version,
+			ContentDigest: contentDigest, Risk: hub.RiskLow,
 		},
 	}
 	receipt, err := yaml.Marshal(entry.Receipt)

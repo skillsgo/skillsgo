@@ -1,17 +1,71 @@
 /*
- * [INPUT]: Uses an HTTP test Hub with exact content-match JSON and hostile contract variants.
- * [OUTPUT]: Specifies source-hint request encoding and strict immutable content-match response validation.
+ * [INPUT]: Uses an HTTP test Hub with exact content-match JSON, hostile contract variants, and deterministic artifact byte streams.
+ * [OUTPUT]: Specifies Hub-owned version-selector resolution, source-hint request encoding, strict immutable content-match response validation, and monotonic download progress.
  * [POS]: Serves as public Hub content-match client contract coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package hub
 
 import (
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
 )
+
+func TestProgressReaderReportsMonotonicBytes(t *testing.T) {
+	updates := make([]int64, 0)
+	reader := &progressReader{
+		reader: strings.NewReader("artifact"), total: 8,
+		progress: func(current, total int64) {
+			if total != 8 {
+				t.Fatalf("unexpected total %d", total)
+			}
+			updates = append(updates, current)
+		},
+	}
+	body, err := io.ReadAll(reader)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(body) != "artifact" || len(updates) == 0 || updates[len(updates)-1] != 8 {
+		t.Fatalf("unexpected progress %v for %q", updates, body)
+	}
+}
+
+func TestResolveUsesVersionQueryInfoDirectly(t *testing.T) {
+	skillID := "github.com/example/skills/-/demo"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		switch {
+		case strings.HasSuffix(request.URL.Path, "/~1.5.0.info"):
+			_, _ = w.Write([]byte(`{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/example/skills/-/demo","Name":"demo","Description":"test","Version":"v1.5.19","Risk":"low","ContentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Origin":{"Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"tree"}}`))
+		default:
+			http.NotFound(w, request)
+		}
+	}))
+	defer server.Close()
+	client, err := New(server.URL, server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	info, err := client.Resolve(t.Context(), skillID, "~1.5.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info.Version != "v1.5.19" {
+		t.Fatalf("unexpected immutable version: %q", info.Version)
+	}
+}
+
+func TestLatestVersionPrefersStableAndFallsBackToPrerelease(t *testing.T) {
+	if got := latestVersion([]string{"v1.8.0", "v2.0.0-rc.1"}); got != "v1.8.0" {
+		t.Fatalf("latest stable = %q", got)
+	}
+	if got := latestVersion([]string{"v2.0.0-beta.1", "v2.0.0-beta.2"}); got != "v2.0.0-beta.2" {
+		t.Fatalf("latest prerelease = %q", got)
+	}
+}
 
 func TestMatchContentUsesDigestAndSourceHint(t *testing.T) {
 	digest := "sha256:" + strings.Repeat("a", 64)

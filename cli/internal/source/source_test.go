@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Exercises public source parsing plus Skill ID/version validation with canonical GitHub, private local, and hostile inputs.
- * [OUTPUT]: Specifies normalization compatibility, private Local Skill IDs, and rejection of traversal-capable Skill ID and version segments.
+ * [INPUT]: Exercises public source parsing plus Skill ID/version-selector validation with canonical GitHub, private local, and hostile inputs.
+ * [OUTPUT]: Specifies package@version normalization, private Local Skill IDs, and rejection of traversal-capable Skill ID and version segments.
  * [POS]: Serves as behavior coverage for the CLI Skill ID normalization boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,7 +16,17 @@ func TestParseSkillID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reference.SkillID != "github.com/mattpocock/skills/-/skills/engineering/ask-matt" || reference.Version != "main" {
+	if reference.SkillID != "github.com/mattpocock/skills/-/skills/engineering/ask-matt" || reference.Version != "latest" {
+		t.Fatalf("unexpected reference: %#v", reference)
+	}
+}
+
+func TestParseCanonicalSkillWithVersionSelector(t *testing.T) {
+	reference, err := Parse("github.com/mattpocock/skills/-/handoff@^1.0.8")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reference.SkillID != "github.com/mattpocock/skills/-/handoff" || reference.Version != "^1.0.8" {
 		t.Fatalf("unexpected reference: %#v", reference)
 	}
 }
@@ -26,7 +36,7 @@ func TestParseLocalSkillIDWithoutRewritingItAsGitHub(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reference.SkillID != "local.skillsgo/0123456789abcdef/demo" || reference.Version != "main" {
+	if reference.SkillID != "local.skillsgo/0123456789abcdef/demo" || reference.Version != "latest" {
 		t.Fatalf("unexpected local reference: %#v", reference)
 	}
 	if !IsLocalSkillID(reference.SkillID) || IsLocalSkillID("github.com/example/repo") {
@@ -44,13 +54,62 @@ func TestParseGitHubTreeURL(t *testing.T) {
 	}
 }
 
+func TestParseRepositorySourceSupportsArbitraryGitHostsAndNamespaceDepth(t *testing.T) {
+	tests := map[string]Reference{
+		"https://gitlab.example.com/group/subgroup/repo": {
+			SkillID: "gitlab.example.com/group/subgroup/repo", Version: "latest",
+		},
+		"https://gitlab.example.com/group/subgroup/repo.git@v1.2.3": {
+			SkillID: "gitlab.example.com/group/subgroup/repo", Version: "v1.2.3",
+		},
+		"gitlab.example.com/group/subgroup/repo@main": {
+			SkillID: "gitlab.example.com/group/subgroup/repo", Version: "main",
+		},
+		"gitlab.example.com/group/subgroup/repo/-/skills/find-skills@abc123": {
+			SkillID: "gitlab.example.com/group/subgroup/repo/-/skills/find-skills", Version: "abc123",
+		},
+	}
+	for input, want := range tests {
+		t.Run(strings.ReplaceAll(input, "/", "_"), func(t *testing.T) {
+			got, err := Parse(input)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != want {
+				t.Fatalf("Parse(%q) = %#v, want %#v", input, got, want)
+			}
+		})
+	}
+}
+
+func TestValidateSkillIDUsesExplicitRepositoryBoundaryInsteadOfHostDepth(t *testing.T) {
+	valid := []string{
+		"gitlab.example.com/group/subgroup/repo",
+		"gitlab.example.com/group/subgroup/repo/-/skills/find-skills",
+		"git.internal.example/org/platform/team/repository/-/nested/skill",
+	}
+	for _, skillID := range valid {
+		if err := ValidateSkillID(skillID); err != nil {
+			t.Fatalf("expected valid Skill ID %q: %v", skillID, err)
+		}
+	}
+	for _, skillID := range []string{
+		"gitlab.example.com/group/repo/-/",
+		"gitlab.example.com/group/repo/-/skill/-/nested",
+	} {
+		if err := ValidateSkillID(skillID); err == nil {
+			t.Fatalf("expected invalid Skill ID %q", skillID)
+		}
+	}
+}
+
 // This covers the first Hub input subset aligned with skills-sh source-parser tests.
 func TestSkillsSHCompatibilityGitHubDotGitURL(t *testing.T) {
 	reference, err := Parse("https://github.com/owner/repo.git")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reference.SkillID != "github.com/owner/repo" || reference.Version != "main" {
+	if reference.SkillID != "github.com/owner/repo" || reference.Version != "latest" {
 		t.Fatalf("unexpected reference: %#v", reference)
 	}
 }

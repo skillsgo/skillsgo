@@ -51,7 +51,6 @@ func RegisterHandlers(r fiber.Router, opts *HandlerOpts) {
 	r.Get("/+/@latest", noCache, LogEntryHandler(LatestHandler, opts))
 
 	r.Get("/+/@v/:version.info", LogEntryHandler(InfoHandler, opts))
-	r.Get("/+/@v/:version.manifest", LogEntryHandler(ManifestHandler, opts))
 	zipHandler := LogEntryHandler(ZipHandler, opts)
 	r.Get("/+/@v/:version.zip", zipHandler)
 	r.Head("/+/@v/:version.zip", zipHandler)

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on validated Skill IDs, immutable Hub or Local Skill artifacts, ZIP archives, and filesystem containment rules.
- * [OUTPUT]: Provides confined immutable Store put/get operations, safe extraction, immutable-content checks, provenance-aware receipts, and refreshable assessment metadata.
+ * [INPUT]: Depends on validated Skill IDs, enriched immutable Hub Info or Local Skill metadata, ZIP archives, and filesystem containment rules.
+ * [OUTPUT]: Provides confined immutable Store put/get operations, safe extraction, immutable-content checks, Info-named provenance-aware receipts, and refreshable assessment metadata.
  * [POS]: Serves as the local Content-addressed Store boundary beneath installation and inventory flows.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,6 +16,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
@@ -119,8 +120,12 @@ func (s Store) Put(artifact *hub.Artifact) (*Entry, error) {
 	); err != nil {
 		return nil, err
 	}
+	name := artifact.Info.Name
+	if err := validateArtifactName(name); err != nil {
+		return nil, err
+	}
 	receipt := Receipt{
-		SkillID: artifact.SkillID, Version: artifact.Info.Version,
+		SkillID: artifact.SkillID, Version: artifact.Info.Version, Name: name,
 		Provenance: ProvenanceHub, ContentDigest: artifact.Info.ContentDigest,
 		Risk: artifact.Info.Risk, Origin: artifact.Info.Origin,
 	}
@@ -154,9 +159,6 @@ func (s Store) Put(artifact *hub.Artifact) (*Entry, error) {
 	if err := os.WriteFile(filepath.Join(temp, "info.json"), mustJSON(artifact.Info), 0o600); err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(filepath.Join(temp, "manifest.yaml"), artifact.Manifest, 0o600); err != nil {
-		return nil, err
-	}
 	receiptBytes, err := yaml.Marshal(receipt)
 	if err != nil {
 		return nil, err
@@ -168,6 +170,13 @@ func (s Store) Put(artifact *hub.Artifact) (*Entry, error) {
 		return nil, err
 	}
 	return &Entry{Root: root, Artifact: artifactRoot, Receipt: receipt}, nil
+}
+
+func validateArtifactName(name string) error {
+	if len(name) > 64 || !regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`).MatchString(name) {
+		return fmt.Errorf("invalid Hub artifact Info Skill name %q", name)
+	}
+	return nil
 }
 
 // RefreshAssessment updates risk metadata for an already cached immutable

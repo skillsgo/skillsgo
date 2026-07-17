@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the project package imports and contracts declared in this file.
- * [OUTPUT]: Provides the project package behavior implemented by files.go.
- * [POS]: Serves as maintained source in the project package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on canonical immutable dependency coordinates, resolved versions, desired Agent IDs, installation modes, and YAML persistence.
+ * [OUTPUT]: Provides the editable lock-free Workspace Manifest, nearest-root discovery, requirement mutation, and Agent-binding removal.
+ * [POS]: Serves as the sole portable desired-state boundary for project and user scopes; resolution integrity belongs to skillsgo.sum.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package project
@@ -12,7 +12,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"gopkg.in/yaml.v3"
@@ -20,159 +19,143 @@ import (
 
 const APIVersion = "skillsgo.dev/v1alpha1"
 
+func UserRoot(home string) string { return filepath.Join(home, ".skillsgo") }
+
 type Manifest struct {
 	APIVersion string                      `yaml:"apiVersion"`
-	Skills     map[string]SkillRequirement `yaml:"skills"`
+	Skills     map[string]SkillRequirement `yaml:"dependencies"`
 }
 
 type SkillRequirement struct {
-	Source string       `yaml:"source"`
-	Ref    string       `yaml:"ref,omitempty"`
-	Agents []string     `yaml:"agents"`
-	Mode   install.Mode `yaml:"mode,omitempty"`
+	Source string       `yaml:"-"`
+	Ref    string       `yaml:"-"`
+	Agents []string     `yaml:"-"`
+	Mode   install.Mode `yaml:"-"`
 }
 
-func UpdateLock(root, name string, receipt store.Receipt) error {
-	lockPath := filepath.Join(root, "skillsgo-lock.yaml")
-	var lockfile Lockfile
-	if err := readRequiredYAML(lockPath, &lockfile); err != nil {
-		return err
+func (requirement SkillRequirement) MarshalYAML() (any, error) {
+	version := strings.TrimSpace(requirement.Ref)
+	if version == "" {
+		return nil, fmt.Errorf("dependency version must not be empty")
 	}
-	if lockfile.LockfileVersion != 1 {
-		return fmt.Errorf("不支持的 skillsgo-lock.yaml lockfileVersion %d", lockfile.LockfileVersion)
+	if len(requirement.Agents) == 0 {
+		return version, nil
 	}
-	if _, ok := lockfile.Skills[name]; !ok {
-		return fmt.Errorf("skillsgo-lock.yaml 缺少 Skill %q", name)
-	}
-	lockfile.Skills[name] = LockedSkill{SkillID: receipt.SkillID, Version: receipt.Version, SHA256: receipt.SHA256, Origin: receipt.Origin}
-	return writeYAMLAtomic(lockPath, lockfile)
+	return version + " [" + strings.Join(requirement.Agents, ", ") + "]", nil
 }
 
-type Lockfile struct {
-	LockfileVersion int                    `yaml:"lockfileVersion"`
-	Skills          map[string]LockedSkill `yaml:"skills"`
-}
-
-type LockedSkill struct {
-	SkillID string     `yaml:"id"`
-	Version string     `yaml:"version"`
-	SHA256  string     `yaml:"sha256"`
-	Origin  hub.Origin `yaml:"origin"`
-}
-
-func CheckNameConflict(root, name, skillID, ref string, mode install.Mode) error {
-	manifestPath := filepath.Join(root, "skillsgo.yaml")
-	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		return err
+func (requirement *SkillRequirement) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.ScalarNode {
+		return fmt.Errorf("dependency must be a one-line version and optional Agent list")
 	}
-	manifest, lockfile, err := Load(root)
+	value := strings.TrimSpace(node.Value)
+	if value == "" {
+		return fmt.Errorf("dependency version must not be empty")
+	}
+	requirement.Agents = nil
+	if strings.HasSuffix(value, "]") {
+		opening := strings.LastIndex(value, " [")
+		if opening < 0 {
+			return fmt.Errorf("invalid Agent list in dependency %q", value)
+		}
+		rawAgents := strings.TrimSpace(value[opening+2 : len(value)-1])
+		if rawAgents == "" {
+			return fmt.Errorf("dependency Agent list must not be empty")
+		}
+		seen := map[string]bool{}
+		for _, raw := range strings.Split(rawAgents, ",") {
+			agentID := strings.TrimSpace(raw)
+			if agentID == "" || strings.ContainsAny(agentID, " []") {
+				return fmt.Errorf("invalid Agent %q", raw)
+			}
+			if !seen[agentID] {
+				seen[agentID] = true
+				requirement.Agents = append(requirement.Agents, agentID)
+			}
+		}
+		value = strings.TrimSpace(value[:opening])
+	}
+	if value == "" {
+		return fmt.Errorf("dependency version must not be empty")
+	}
+	requirement.Ref = value
+	return nil
+}
+
+func FindRoot(start string) (string, error) {
+	current, err := filepath.Abs(start)
+	if err != nil {
+		return "", err
+	}
+	for {
+		manifestErr := fileExists(filepath.Join(current, "skillsgo.yaml"))
+		if manifestErr == nil {
+			return current, nil
+		}
+		if !os.IsNotExist(manifestErr) {
+			return "", manifestErr
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return "", os.ErrNotExist
+		}
+		current = parent
+	}
+}
+
+func fileExists(path string) error {
+	info, err := os.Stat(path)
 	if err != nil {
 		return err
 	}
-	if _, exists := manifest.Skills[name]; !exists {
-		return nil
-	}
-	locked, exists := lockfile.Skills[name]
-	if !exists {
-		return fmt.Errorf("项目声明包含 Skill %q，但锁文件缺少对应记录", name)
-	}
-	if locked.SkillID != skillID {
-		return fmt.Errorf("Skill 名称冲突：%q 已来自 %s，不能用 %s 静默覆盖", name, locked.SkillID, skillID)
-	}
-	existing := manifest.Skills[name]
-	existingRef := existing.Ref
-	if existingRef == "" {
-		existingRef = "main"
-	}
-	if ref == "" {
-		ref = "main"
-	}
-	if existingRef != ref {
-		return fmt.Errorf("Skill %q 已跟踪 ref %q，不能静默改为 %q", name, existingRef, ref)
-	}
-	existingMode := existing.Mode
-	if existingMode == "" {
-		existingMode = install.ModeSymlink
-	}
-	if mode == "" {
-		mode = install.ModeSymlink
-	}
-	if existingMode != mode {
-		return fmt.Errorf("Skill %q 已使用 %s 模式，不能同时使用 %s 模式", name, existingMode, mode)
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("%s is not a regular file", path)
 	}
 	return nil
 }
 
-func RemoveBindings(root string, removed []install.Installation) error {
-	manifestPath := filepath.Join(root, "skillsgo.yaml")
-	if _, err := os.Stat(manifestPath); os.IsNotExist(err) {
-		return nil
-	} else if err != nil {
-		return err
-	}
-	manifest, lockfile, err := Load(root)
-	if err != nil {
-		return err
-	}
-	removedAgents := map[string]map[string]bool{}
-	for _, installation := range removed {
-		if installation.Target.Scope != install.ScopeProject {
-			continue
-		}
-		name := strings.ToLower(installation.Name)
-		if removedAgents[name] == nil {
-			removedAgents[name] = map[string]bool{}
-		}
-		removedAgents[name][installation.Target.Agent] = true
-	}
-	for name, requirement := range manifest.Skills {
-		agentsToRemove := removedAgents[strings.ToLower(name)]
-		if len(agentsToRemove) == 0 {
-			continue
-		}
-		remaining := make([]string, 0, len(requirement.Agents))
-		for _, agentID := range requirement.Agents {
-			if !agentsToRemove[agentID] {
-				remaining = append(remaining, agentID)
-			}
-		}
-		if len(remaining) == 0 {
-			delete(manifest.Skills, name)
-			delete(lockfile.Skills, name)
-			continue
-		}
-		requirement.Agents = remaining
-		manifest.Skills[name] = requirement
-	}
-	if err := writeYAMLAtomic(manifestPath, manifest); err != nil {
-		return err
-	}
-	return writeYAMLAtomic(filepath.Join(root, "skillsgo-lock.yaml"), lockfile)
+func (manifest Manifest) Dependency(skillID string) (string, SkillRequirement, bool) {
+	requirement, ok := manifest.Skills[skillID]
+	return skillID, requirement, ok
 }
 
-func Upsert(root, name string, requirement SkillRequirement, receipt store.Receipt) error {
-	return writeRequirement(root, name, requirement, receipt, true)
+func LoadManifest(root string) (Manifest, error) {
+	var manifest Manifest
+	if err := readRequiredYAML(filepath.Join(root, "skillsgo.yaml"), &manifest); err != nil {
+		return Manifest{}, err
+	}
+	if manifest.APIVersion != APIVersion {
+		return Manifest{}, fmt.Errorf("unsupported skillsgo.yaml apiVersion %q", manifest.APIVersion)
+	}
+	if manifest.Skills == nil {
+		manifest.Skills = map[string]SkillRequirement{}
+	}
+	for source, requirement := range manifest.Skills {
+		requirement.Source = source
+		manifest.Skills[source] = requirement
+	}
+	return manifest, nil
 }
 
-func Replace(root, name string, requirement SkillRequirement, receipt store.Receipt) error {
-	return writeRequirement(root, name, requirement, receipt, false)
-}
-
-func writeRequirement(root, name string, requirement SkillRequirement, receipt store.Receipt, mergeAgents bool) error {
+func UpsertManifestRequirement(root, dependency string, requirement SkillRequirement, mergeAgents bool) error {
+	if strings.TrimSpace(dependency) == "" || strings.TrimSpace(requirement.Ref) == "" {
+		return fmt.Errorf("canonical dependency and resolved version are required")
+	}
+	if err := os.MkdirAll(root, 0o700); err != nil {
+		return err
+	}
 	manifestPath := filepath.Join(root, "skillsgo.yaml")
 	manifest := Manifest{APIVersion: APIVersion, Skills: map[string]SkillRequirement{}}
 	if err := readYAMLIfExists(manifestPath, &manifest); err != nil {
 		return err
 	}
 	if manifest.APIVersion != APIVersion {
-		return fmt.Errorf("不支持的 skillsgo.yaml apiVersion %q", manifest.APIVersion)
+		return fmt.Errorf("unsupported skillsgo.yaml apiVersion %q", manifest.APIVersion)
 	}
 	if manifest.Skills == nil {
 		manifest.Skills = map[string]SkillRequirement{}
 	}
-	if existing, ok := manifest.Skills[name]; ok && mergeAgents {
+	if existing, ok := manifest.Skills[dependency]; ok && mergeAgents {
 		seen := map[string]bool{}
 		merged := make([]string, 0, len(existing.Agents)+len(requirement.Agents))
 		for _, agentID := range append(existing.Agents, requirement.Agents...) {
@@ -183,43 +166,68 @@ func writeRequirement(root, name string, requirement SkillRequirement, receipt s
 		}
 		requirement.Agents = merged
 	}
-	requirement.Source = receipt.SkillID
-	manifest.Skills[name] = requirement
-	if err := writeYAMLAtomic(manifestPath, manifest); err != nil {
-		return err
-	}
-
-	lockPath := filepath.Join(root, "skillsgo-lock.yaml")
-	lockfile := Lockfile{LockfileVersion: 1, Skills: map[string]LockedSkill{}}
-	if err := readYAMLIfExists(lockPath, &lockfile); err != nil {
-		return err
-	}
-	if lockfile.LockfileVersion != 1 {
-		return fmt.Errorf("不支持的 skillsgo-lock.yaml lockfileVersion %d", lockfile.LockfileVersion)
-	}
-	if lockfile.Skills == nil {
-		lockfile.Skills = map[string]LockedSkill{}
-	}
-	lockfile.Skills[name] = LockedSkill{SkillID: receipt.SkillID, Version: receipt.Version, SHA256: receipt.SHA256, Origin: receipt.Origin}
-	return writeYAMLAtomic(lockPath, lockfile)
+	requirement.Source = dependency
+	manifest.Skills[dependency] = requirement
+	return writeYAMLAtomic(manifestPath, manifest)
 }
 
-func Load(root string) (Manifest, Lockfile, error) {
-	var manifest Manifest
-	if err := readRequiredYAML(filepath.Join(root, "skillsgo.yaml"), &manifest); err != nil {
-		return Manifest{}, Lockfile{}, err
+// Upsert and Replace are execution helpers. Store receipts provide the exact
+// identity and version; only canonical desired state is persisted.
+func Upsert(root, _ string, requirement SkillRequirement, receipt store.Receipt) error {
+	return persistReceiptRequirement(root, requirement, receipt, true)
+}
+
+func Replace(root, _ string, requirement SkillRequirement, receipt store.Receipt) error {
+	return persistReceiptRequirement(root, requirement, receipt, false)
+}
+
+func persistReceiptRequirement(root string, requirement SkillRequirement, receipt store.Receipt, mergeAgents bool) error {
+	if receipt.SkillID == "" || receipt.Version == "" {
+		return fmt.Errorf("immutable Store receipt identity is required")
 	}
-	if manifest.APIVersion != APIVersion {
-		return Manifest{}, Lockfile{}, fmt.Errorf("不支持的 skillsgo.yaml apiVersion %q", manifest.APIVersion)
+	requirement.Source = receipt.SkillID
+	requirement.Ref = receipt.Version
+	return UpsertManifestRequirement(root, receipt.SkillID, requirement, mergeAgents)
+}
+
+func RemoveBindings(root string, removed []install.Installation) error {
+	manifest, err := LoadManifest(root)
+	if os.IsNotExist(err) {
+		return nil
 	}
-	var lockfile Lockfile
-	if err := readRequiredYAML(filepath.Join(root, "skillsgo-lock.yaml"), &lockfile); err != nil {
-		return Manifest{}, Lockfile{}, err
+	if err != nil {
+		return err
 	}
-	if lockfile.LockfileVersion != 1 {
-		return Manifest{}, Lockfile{}, fmt.Errorf("不支持的 skillsgo-lock.yaml lockfileVersion %d", lockfile.LockfileVersion)
+	for _, installation := range removed {
+		requirement, ok := manifest.Skills[installation.SkillID]
+		if !ok {
+			continue
+		}
+		remaining := make([]string, 0, len(requirement.Agents))
+		for _, agentID := range requirement.Agents {
+			if agentID != installation.Target.Agent {
+				remaining = append(remaining, agentID)
+			}
+		}
+		if len(remaining) == 0 {
+			delete(manifest.Skills, installation.SkillID)
+		} else {
+			requirement.Agents = remaining
+			manifest.Skills[installation.SkillID] = requirement
+		}
 	}
-	return manifest, lockfile, nil
+	return writeYAMLAtomic(filepath.Join(root, "skillsgo.yaml"), manifest)
+}
+
+func RemoveManifestRequirements(root string, dependencies []string) error {
+	manifest, err := LoadManifest(root)
+	if err != nil {
+		return err
+	}
+	for _, dependency := range dependencies {
+		delete(manifest.Skills, dependency)
+	}
+	return writeYAMLAtomic(filepath.Join(root, "skillsgo.yaml"), manifest)
 }
 
 func readRequiredYAML(path string, target any) error {
@@ -228,7 +236,7 @@ func readRequiredYAML(path string, target any) error {
 		return err
 	}
 	if err := yaml.Unmarshal(data, target); err != nil {
-		return fmt.Errorf("解析 %s: %w", path, err)
+		return fmt.Errorf("parse %s: %w", path, err)
 	}
 	return nil
 }
@@ -242,7 +250,7 @@ func readYAMLIfExists(path string, target any) error {
 		return err
 	}
 	if err := yaml.Unmarshal(data, target); err != nil {
-		return fmt.Errorf("解析 %s: %w", path, err)
+		return fmt.Errorf("parse %s: %w", path, err)
 	}
 	return nil
 }
@@ -252,22 +260,26 @@ func writeYAMLAtomic(path string, value any) error {
 	if err != nil {
 		return err
 	}
-	temp, err := os.CreateTemp(filepath.Dir(path), ".skillsgo-yaml-")
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".skillsgo-yaml-")
 	if err != nil {
 		return err
 	}
-	tempName := temp.Name()
-	defer os.Remove(tempName)
-	if err := temp.Chmod(0o600); err != nil {
-		temp.Close()
+	temporaryPath := temporary.Name()
+	defer os.Remove(temporaryPath)
+	if err := temporary.Chmod(0o600); err != nil {
+		_ = temporary.Close()
 		return err
 	}
-	if _, err := temp.Write(data); err != nil {
-		temp.Close()
+	if _, err := temporary.Write(data); err != nil {
+		_ = temporary.Close()
 		return err
 	}
-	if err := temp.Close(); err != nil {
+	if err := temporary.Sync(); err != nil {
+		_ = temporary.Close()
 		return err
 	}
-	return os.Rename(tempName, path)
+	if err := temporary.Close(); err != nil {
+		return err
+	}
+	return os.Rename(temporaryPath, path)
 }

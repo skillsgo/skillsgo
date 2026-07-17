@@ -14,6 +14,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/installevent"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/predicate"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillhourlystat"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
@@ -22,13 +23,14 @@ import (
 // SkillQuery is the builder for querying Skill entities.
 type SkillQuery struct {
 	config
-	ctx               *QueryContext
-	order             []skill.OrderOption
-	inters            []Interceptor
-	predicates        []predicate.Skill
-	withVersions      *SkillVersionQuery
-	withInstallEvents *InstallEventQuery
-	withHourlyStats   *SkillHourlyStatQuery
+	ctx                  *QueryContext
+	order                []skill.OrderOption
+	inters               []Interceptor
+	predicates           []predicate.Skill
+	withSourceRepository *RepositoryQuery
+	withVersions         *SkillVersionQuery
+	withInstallEvents    *InstallEventQuery
+	withHourlyStats      *SkillHourlyStatQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -63,6 +65,28 @@ func (_q *SkillQuery) Unique(unique bool) *SkillQuery {
 func (_q *SkillQuery) Order(o ...skill.OrderOption) *SkillQuery {
 	_q.order = append(_q.order, o...)
 	return _q
+}
+
+// QuerySourceRepository chains the current query on the "source_repository" edge.
+func (_q *SkillQuery) QuerySourceRepository() *RepositoryQuery {
+	query := (&RepositoryClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(skill.Table, skill.FieldID, selector),
+			sqlgraph.To(repository.Table, repository.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, skill.SourceRepositoryTable, skill.SourceRepositoryColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
 }
 
 // QueryVersions chains the current query on the "versions" edge.
@@ -318,18 +342,30 @@ func (_q *SkillQuery) Clone() *SkillQuery {
 		return nil
 	}
 	return &SkillQuery{
-		config:            _q.config,
-		ctx:               _q.ctx.Clone(),
-		order:             append([]skill.OrderOption{}, _q.order...),
-		inters:            append([]Interceptor{}, _q.inters...),
-		predicates:        append([]predicate.Skill{}, _q.predicates...),
-		withVersions:      _q.withVersions.Clone(),
-		withInstallEvents: _q.withInstallEvents.Clone(),
-		withHourlyStats:   _q.withHourlyStats.Clone(),
+		config:               _q.config,
+		ctx:                  _q.ctx.Clone(),
+		order:                append([]skill.OrderOption{}, _q.order...),
+		inters:               append([]Interceptor{}, _q.inters...),
+		predicates:           append([]predicate.Skill{}, _q.predicates...),
+		withSourceRepository: _q.withSourceRepository.Clone(),
+		withVersions:         _q.withVersions.Clone(),
+		withInstallEvents:    _q.withInstallEvents.Clone(),
+		withHourlyStats:      _q.withHourlyStats.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
 	}
+}
+
+// WithSourceRepository tells the query-builder to eager-load the nodes that are connected to
+// the "source_repository" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *SkillQuery) WithSourceRepository(opts ...func(*RepositoryQuery)) *SkillQuery {
+	query := (&RepositoryClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withSourceRepository = query
+	return _q
 }
 
 // WithVersions tells the query-builder to eager-load the nodes that are connected to
@@ -443,7 +479,8 @@ func (_q *SkillQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Skill,
 	var (
 		nodes       = []*Skill{}
 		_spec       = _q.querySpec()
-		loadedTypes = [3]bool{
+		loadedTypes = [4]bool{
+			_q.withSourceRepository != nil,
 			_q.withVersions != nil,
 			_q.withInstallEvents != nil,
 			_q.withHourlyStats != nil,
@@ -466,6 +503,12 @@ func (_q *SkillQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Skill,
 	}
 	if len(nodes) == 0 {
 		return nodes, nil
+	}
+	if query := _q.withSourceRepository; query != nil {
+		if err := _q.loadSourceRepository(ctx, query, nodes, nil,
+			func(n *Skill, e *Repository) { n.Edges.SourceRepository = e }); err != nil {
+			return nil, err
+		}
 	}
 	if query := _q.withVersions; query != nil {
 		if err := _q.loadVersions(ctx, query, nodes,
@@ -491,6 +534,35 @@ func (_q *SkillQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Skill,
 	return nodes, nil
 }
 
+func (_q *SkillQuery) loadSourceRepository(ctx context.Context, query *RepositoryQuery, nodes []*Skill, init func(*Skill), assign func(*Skill, *Repository)) error {
+	ids := make([]int64, 0, len(nodes))
+	nodeids := make(map[int64][]*Skill)
+	for i := range nodes {
+		fk := nodes[i].RepositoryID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(repository.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "repository_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
 func (_q *SkillQuery) loadVersions(ctx context.Context, query *SkillVersionQuery, nodes []*Skill, init func(*Skill), assign func(*Skill, *SkillVersion)) error {
 	fks := make([]driver.Value, 0, len(nodes))
 	nodeids := make(map[int64]*Skill)
@@ -606,6 +678,9 @@ func (_q *SkillQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != skill.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if _q.withSourceRepository != nil {
+			_spec.Node.AddColumnOnce(skill.FieldRepositoryID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {

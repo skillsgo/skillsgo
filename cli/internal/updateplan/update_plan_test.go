@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses hostile and malformed explicit Update Target JSON at the Update Plan domain boundary.
- * [OUTPUT]: Specifies strict one-object decoding and path-preserving argument semantics.
+ * [OUTPUT]: Specifies strict one-object decoding, path-preserving argument semantics, and fixed versus movable source-reference classification.
  * [POS]: Serves as focused validation coverage beneath the public update command contract.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -48,6 +48,16 @@ func TestFixedReferenceKeepsSemverNamedBranchesMovable(t *testing.T) {
 		},
 	}
 	require.False(t, isFixedReference("v1.2.3", receipt))
+}
+
+func TestFixedReferencePinsResolvedBranchPseudoVersion(t *testing.T) {
+	receipt := store.Receipt{
+		Origin: hub.Origin{
+			Ref:       "refs/heads/feature-x",
+			CommitSHA: "777599e1159e",
+		},
+	}
+	require.True(t, isFixedReference("v0.0.0-20260717100000-777599e1159e", receipt))
 }
 
 func TestFixedReferenceLetsProjectMoveToADifferentSemverTag(t *testing.T) {
