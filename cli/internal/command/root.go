@@ -1,14 +1,14 @@
 /*
- * [INPUT]: Depends on Cobra and the Agent, Hub, Store, project, installation, adoption, Installation Plan, Update Plan, Target Management Plan, source, and i18n modules.
- * [OUTPUT]: Provides command.Execute and the complete CLI graph, including stable Agent/Library contracts, Installation/Update/Target Management/External Adoption flows, and Local export, for terminal and App callers.
+ * [INPUT]: Depends on Cobra and the Agent, Hub, Store, project, installation, Installation Plan, Update Plan, Target Management Plan, source, i18n, and terminal UI modules.
+ * [OUTPUT]: Provides command.Execute and the complete CLI graph, including adaptive Human UI policy, unified managed/External listing, stable Agent/Library contracts, Installation/Update/Target Management flows with exact External removal, and Local export, for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
 
 import (
+	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -20,11 +20,14 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
+	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
+	"github.com/skillsgo/skillsgo/cli/internal/inventory"
 	"github.com/skillsgo/skillsgo/cli/internal/plan"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
+	"github.com/skillsgo/skillsgo/cli/internal/terminalui"
 	"github.com/spf13/cobra"
 )
 
@@ -71,7 +74,9 @@ func newRootCommand(stdout, stderr io.Writer) (*cobra.Command, error) {
 	root.Version = version
 	var languageOverride string
 	root.PersistentFlags().StringVar(&languageOverride, "lang", strings.TrimSpace(os.Getenv("SKILLSGO_LANG")), appi18n.T("flag.lang"))
-	root.AddCommand(newVersionCommand(), newDiagnosticsCommand(), newAgentsCommand(catalog), newInventoryCommand(catalog), newAddCommand(catalog), newInstallCommand(catalog), placeholder("use", "use <package>@<skill>"), newRemoveCommand(catalog), newManageCommand(catalog), newAdoptCommand(catalog), newExportCommand(), newListCommand(catalog), placeholder("find", "find [query]"), newUpdateCommand(catalog), placeholder("init", "init [name]"))
+	root.PersistentFlags().String("ui", string(terminalui.ModeAuto), appi18n.T("flag.ui"))
+	root.PersistentFlags().String("color", string(terminalui.ColorAuto), appi18n.T("flag.color"))
+	root.AddCommand(newVersionCommand(), newDiagnosticsCommand(), newAgentsCommand(catalog), newInventoryCommand(catalog), newAddCommand(catalog), newInstallCommand(catalog), placeholder("use", "use <package>@<skill>"), newRemoveCommand(catalog), newManageCommand(catalog), newExportCommand(), newListCommand(catalog), placeholder("find", "find [query]"), newUpdateCommand(catalog), placeholder("init", "init [name]"))
 	return root, nil
 }
 
@@ -101,68 +106,34 @@ func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			manifest, lockfile, err := project.Load(cwd)
-			if err != nil {
-				return err
+			if discovered, discoverErr := project.FindRoot(cwd); discoverErr == nil {
+				cwd = discovered
 			}
 			client, err := hub.New(hubURL, nil)
 			if err != nil {
 				return err
 			}
-			home, err := os.UserHomeDir()
+			results, err := restoreWorkspace(cmd.Context(), cwd, catalog, client)
 			if err != nil {
 				return err
-			}
-			storage := store.Store{Root: store.DefaultRoot(home)}
-			type restored struct {
-				Name    string `json:"name"`
-				Version string `json:"version"`
-				Targets int    `json:"targets"`
-			}
-			results := make([]restored, 0, len(manifest.Skills))
-			for name, requirement := range manifest.Skills {
-				locked, ok := lockfile.Skills[name]
-				if !ok {
-					return fmt.Errorf("skillsgo-lock.yaml 缺少 Skill %q", name)
-				}
-				entry, err := storage.Get(locked.SkillID, locked.Version)
-				if errors.Is(err, store.ErrNotFound) {
-					artifact, fetchErr := client.Fetch(cmd.Context(), locked.SkillID, locked.Version)
-					if fetchErr != nil {
-						return fmt.Errorf("下载 %s: %w", name, fetchErr)
-					}
-					entry, err = storage.Put(artifact)
-				}
-				if err != nil {
-					return fmt.Errorf("读取 Store 中的 %s: %w", name, err)
-				}
-				if entry.Receipt.SHA256 != locked.SHA256 {
-					return fmt.Errorf("Skill %q 摘要不匹配：锁文件 %s，下载 %s", name, locked.SHA256, entry.Receipt.SHA256)
-				}
-				mode := requirement.Mode
-				if mode == "" {
-					mode = install.ModeSymlink
-				}
-				targets, err := install.ResolveTargets(catalog, requirement.Agents, install.ScopeProject, mode, cwd, name)
-				if err != nil {
-					return err
-				}
-				if err := install.Install(entry, targets); err != nil {
-					return err
-				}
-				results = append(results, restored{Name: name, Version: locked.Version, Targets: len(targets)})
 			}
 			if output == "json" {
 				encoder := json.NewEncoder(cmd.OutOrStdout())
 				encoder.SetIndent("", "  ")
 				return encoder.Encode(results)
 			}
-			fmt.Fprint(cmd.OutOrStdout(), appi18n.F("install.success", len(results)))
-			return nil
+			ui, err := humanUI(cmd)
+			if err != nil {
+				return err
+			}
+			rows := make([]terminalui.Row, 0, len(results))
+			for _, result := range results {
+				rows = append(rows, terminalui.Row{State: "✓", Primary: result.Name, Secondary: result.Version, Meta: []string{fmt.Sprintf("%d targets", result.Targets)}})
+			}
+			return ui.Render(terminalui.Document{Title: strings.TrimSpace(appi18n.F("install.success", len(results))), Sections: []terminalui.Section{{Rows: rows}}})
 		},
 	}
-	defaultHub := defaultHubURL()
-	cmd.Flags().StringVar(&hubURL, "hub", defaultHub, appi18n.T("flag.hub"))
+	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), appi18n.T("flag.hub"))
 	cmd.Flags().StringVar(&output, "output", "human", appi18n.T("flag.output"))
 	return cmd
 }
@@ -187,13 +158,16 @@ func newUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 				return fmt.Errorf("--preflight requires at least one --target")
 			}
 			if global {
-				return runGlobalUpdate(cmd, args, hubURL, output, check)
+				return runGlobalUpdate(cmd, catalog, args, hubURL, output, check)
 			}
 			cwd, err := os.Getwd()
 			if err != nil {
 				return err
 			}
-			manifest, lockfile, err := project.Load(cwd)
+			if discovered, discoverErr := project.FindRoot(cwd); discoverErr == nil {
+				cwd = discovered
+			}
+			manifest, err := project.LoadManifest(cwd)
 			if err != nil {
 				return err
 			}
@@ -201,88 +175,45 @@ func newUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 			for _, name := range args {
 				selected[strings.ToLower(name)] = true
 			}
-			names := make([]string, 0, len(manifest.Skills))
-			for name := range manifest.Skills {
-				if len(selected) == 0 || selected[strings.ToLower(name)] {
-					names = append(names, name)
+			skillIDs := make([]string, 0, len(manifest.Skills))
+			for skillID := range manifest.Skills {
+				if len(selected) == 0 || selected[strings.ToLower(skillID)] {
+					skillIDs = append(skillIDs, skillID)
 				}
 			}
-			sort.Strings(names)
-			if len(names) == 0 {
+			sort.Strings(skillIDs)
+			if len(skillIDs) == 0 {
 				return fmt.Errorf("未找到要更新的 Skill")
 			}
-			client, err := hub.New(hubURL, nil)
-			if err != nil {
-				return err
-			}
-			home, err := os.UserHomeDir()
-			if err != nil {
-				return err
-			}
-			storage := store.Store{Root: store.DefaultRoot(home)}
 			type updateResult struct {
 				Name    string `json:"name"`
 				From    string `json:"from"`
 				To      string `json:"to"`
 				Updated bool   `json:"updated"`
 			}
-			results := make([]updateResult, 0, len(names))
-			for _, name := range names {
-				requirement := manifest.Skills[name]
-				locked, ok := lockfile.Skills[name]
-				if !ok {
-					return fmt.Errorf("skillsgo-lock.yaml 缺少 Skill %q", name)
-				}
-				ref := requirement.Ref
-				if ref == "" {
-					ref = "main"
-				}
-				artifact, err := client.Fetch(cmd.Context(), locked.SkillID, ref)
-				if err != nil {
-					return fmt.Errorf("检查 %s 更新: %w", name, err)
-				}
-				if artifact.Info.Version == locked.Version {
-					results = append(results, updateResult{Name: name, From: locked.Version, To: locked.Version, Updated: false})
-					continue
-				}
-				entry, err := storage.Put(artifact)
-				if err != nil {
-					return err
-				}
-				mode := requirement.Mode
-				if mode == "" {
-					mode = install.ModeSymlink
-				}
-				targets, err := install.ResolveTargets(catalog, requirement.Agents, install.ScopeProject, mode, cwd, name)
-				if err != nil {
-					return err
-				}
-				projectScope := install.ScopeProject
-				previous, err := install.ListInstallations(storage.Root, install.InventoryFilter{Scope: &projectScope, ProjectRoot: cwd, Names: map[string]bool{strings.ToLower(name): true}})
-				if err != nil {
-					return err
-				}
-				if err := install.Replace(entry, previous, targets); err != nil {
-					return fmt.Errorf("切换 %s: %w", name, err)
-				}
-				if err := project.UpdateLock(cwd, name, entry.Receipt); err != nil {
-					return err
-				}
-				results = append(results, updateResult{Name: name, From: locked.Version, To: entry.Receipt.Version, Updated: true})
+			results := make([]updateResult, 0, len(skillIDs))
+			for _, skillID := range skillIDs {
+				requirement := manifest.Skills[skillID]
+				results = append(results, updateResult{Name: skillID, From: requirement.Ref, To: requirement.Ref, Updated: false})
 			}
 			if output == "json" {
 				encoder := json.NewEncoder(cmd.OutOrStdout())
 				encoder.SetIndent("", "  ")
 				return encoder.Encode(results)
 			}
-			for _, result := range results {
-				if result.Updated {
-					fmt.Fprintf(cmd.OutOrStdout(), "已更新 %s：%s → %s\n", result.Name, result.From, result.To)
-				} else {
-					fmt.Fprintf(cmd.OutOrStdout(), "%s 已是最新版本（%s）\n", result.Name, result.From)
-				}
+			ui, err := humanUI(cmd)
+			if err != nil {
+				return err
 			}
-			return nil
+			rows := make([]terminalui.Row, 0, len(results))
+			for _, result := range results {
+				state, version := "•", result.From
+				if result.Updated {
+					state, version = "✓", result.From+" → "+result.To
+				}
+				rows = append(rows, terminalui.Row{State: state, Primary: result.Name, Secondary: version})
+			}
+			return ui.Render(terminalui.Document{Title: appi18n.T("result.update"), Sections: []terminalui.Section{{Rows: rows}}})
 		},
 	}
 	defaultHub := defaultHubURL()
@@ -297,24 +228,24 @@ func newUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 	return cmd
 }
 
-func runGlobalUpdate(cmd *cobra.Command, names []string, hubURL, output string, check bool) error {
+func runGlobalUpdate(cmd *cobra.Command, catalog *agent.Catalog, names []string, hubURL, output string, check bool) error {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
 	}
 	storage := store.Store{Root: store.DefaultRoot(home)}
 	scope := install.ScopeUser
-	filter := install.InventoryFilter{Scope: &scope}
+	namesFilter := map[string]bool{}
 	if len(names) > 0 {
-		filter.Names = map[string]bool{}
 		for _, name := range names {
-			filter.Names[strings.ToLower(name)] = true
+			namesFilter[strings.ToLower(name)] = true
 		}
 	}
-	installed, err := install.ListInstallations(storage.Root, filter)
+	installed, err := project.Installed(project.UserRoot(home), catalog, scope, storage.Root)
 	if err != nil {
 		return err
 	}
+	installed = filterInstallations(installed, nil, namesFilter)
 	type result struct {
 		Name      string `json:"name"`
 		SkillID   string `json:"skillId"`
@@ -370,14 +301,19 @@ func runGlobalUpdate(cmd *cobra.Command, names []string, hubURL, output string, 
 		encoder.SetIndent("", "  ")
 		return encoder.Encode(results)
 	}
-	for _, item := range results {
-		if item.Available {
-			fmt.Fprintf(cmd.OutOrStdout(), "%s: %s → %s\n", item.Name, item.From, item.To)
-		} else {
-			fmt.Fprintf(cmd.OutOrStdout(), "%s 已是最新版本（%s）\n", item.Name, item.From)
-		}
+	ui, err := humanUI(cmd)
+	if err != nil {
+		return err
 	}
-	return nil
+	rows := make([]terminalui.Row, 0, len(results))
+	for _, item := range results {
+		state, version := "•", item.From
+		if item.Available {
+			state, version = "✓", item.From+" → "+item.To
+		}
+		rows = append(rows, terminalui.Row{State: state, Primary: item.Name, Secondary: version})
+	}
+	return ui.Render(terminalui.Document{Title: appi18n.T("result.update"), Sections: []terminalui.Section{{Rows: rows}}})
 }
 
 type inventoryOptions struct {
@@ -393,23 +329,24 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 		Aliases: []string{"ls"},
 		Args:    cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			installations, err := loadInstallations(catalog, options, nil)
+			entries, err := listInventory(catalog, options)
 			if err != nil {
 				return err
 			}
 			if options.output == "json" {
 				encoder := json.NewEncoder(cmd.OutOrStdout())
 				encoder.SetIndent("", "  ")
-				return encoder.Encode(installations)
+				return encoder.Encode(entries)
 			}
-			if len(installations) == 0 {
+			if len(entries) == 0 {
 				fmt.Fprintln(cmd.OutOrStdout(), appi18n.T("list.empty"))
 				return nil
 			}
-			for _, installation := range installations {
-				fmt.Fprintf(cmd.OutOrStdout(), "%s  %s  %s  %s\n", installation.Name, installation.Target.Agent, installation.Target.Scope, filepath.Clean(installation.Target.Path))
+			ui, err := humanUI(cmd)
+			if err != nil {
+				return err
 			}
-			return nil
+			return ui.Render(listDocument(entries, options.global))
 		},
 	}
 	cmd.Flags().BoolVarP(&options.global, "global", "g", false, "列出用户级 Skill（默认列出当前项目）")
@@ -424,6 +361,87 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 		return err
 	}
 	return cmd
+}
+
+func listDocument(entries []inventory.Entry, global bool) terminalui.Document {
+	title := appi18n.T("list.title.project")
+	if global {
+		title = appi18n.T("list.title.global")
+	}
+	sections := make([]terminalui.Section, 0, 3)
+	for _, provenance := range []inventory.Provenance{inventory.ProvenanceHub, inventory.ProvenanceLocal, inventory.ProvenanceExternal} {
+		section := terminalui.Section{Title: appi18n.T("list.section." + string(provenance))}
+		for _, entry := range entries {
+			if entry.Provenance != provenance || len(entry.Targets) == 0 {
+				continue
+			}
+			agents := append([]string(nil), entry.Agents...)
+			for _, visibility := range entry.Visibility {
+				if !slices.Contains(agents, visibility.Agent) {
+					agents = append(agents, visibility.Agent)
+				}
+			}
+			sort.Strings(agents)
+			state := "✓"
+			if entry.Health != inventory.HealthHealthy {
+				state = "!"
+			}
+			section.Rows = append(section.Rows, terminalui.Row{
+				State: state, Primary: entry.Name,
+				Secondary: filepath.Clean(entry.Targets[0].Path), Meta: agents,
+			})
+		}
+		if len(section.Rows) > 0 {
+			sections = append(sections, section)
+		}
+	}
+	return terminalui.Document{Title: title, Sections: sections}
+}
+
+func listInventory(catalog *agent.Catalog, options inventoryOptions) ([]inventory.Entry, error) {
+	selectedAgents := map[string]bool{}
+	for _, id := range options.agents {
+		if id == "*" {
+			selectedAgents = nil
+			break
+		}
+		if _, ok := catalog.Get(id); !ok {
+			return nil, fmt.Errorf("未知 Agent %q", id)
+		}
+		selectedAgents[id] = true
+	}
+	buildOptions := inventory.Options{Catalog: catalog}
+	if options.global {
+		buildOptions.IncludeUser = true
+	} else {
+		cwd, err := os.Getwd()
+		if err != nil {
+			return nil, err
+		}
+		buildOptions.Projects = []string{cwd}
+	}
+	report, err := inventory.Build(buildOptions)
+	if err != nil {
+		return nil, err
+	}
+	if len(selectedAgents) == 0 {
+		return report.Entries, nil
+	}
+	entries := make([]inventory.Entry, 0, len(report.Entries))
+	for _, entry := range report.Entries {
+		targets := make([]inventory.Target, 0, len(entry.Targets))
+		for _, target := range entry.Targets {
+			if selectedAgents[target.Agent] {
+				targets = append(targets, target)
+			}
+		}
+		if len(targets) == 0 {
+			continue
+		}
+		entry.Targets = targets
+		entries = append(entries, entry)
+	}
+	return entries, nil
 }
 
 func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
@@ -443,10 +461,20 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 			for _, name := range args {
 				names[strings.ToLower(name)] = true
 			}
-			installations, err := loadInstallations(catalog, options, names)
+			allInstallations, err := loadInstallations(catalog, inventoryOptions{global: options.global}, nil)
 			if err != nil {
 				return err
 			}
+			installations := filterInstallations(allInstallations, func() map[string]bool {
+				if len(options.agents) == 0 {
+					return nil
+				}
+				selected := map[string]bool{}
+				for _, agentID := range options.agents {
+					selected[agentID] = true
+				}
+				return selected
+			}(), names)
 			if len(installations) == 0 {
 				return fmt.Errorf("未找到匹配的已安装 Skill")
 			}
@@ -455,20 +483,28 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if err := install.RemoveInstallations(store.DefaultRoot(home), installations); err != nil {
+			if err := install.RemoveDeclaredInstallations(installations, allInstallations); err != nil {
 				return err
 			}
+			declarationRoot := project.UserRoot(home)
 			if !options.global {
-				cwd, err := os.Getwd()
+				declarationRoot, err = os.Getwd()
 				if err != nil {
 					return err
 				}
-				if err := project.RemoveBindings(cwd, installations); err != nil {
-					return err
-				}
 			}
-			fmt.Fprint(cmd.OutOrStdout(), appi18n.F("remove.success", len(installations)))
-			return nil
+			if err := project.RemoveBindings(declarationRoot, installations); err != nil {
+				return err
+			}
+			ui, err := humanUI(cmd)
+			if err != nil {
+				return err
+			}
+			rows := make([]terminalui.Row, 0, len(installations))
+			for _, installation := range installations {
+				rows = append(rows, terminalui.Row{State: "✓", Primary: installation.Name, Secondary: installation.Target.Agent, Meta: []string{filepath.Clean(installation.Target.Path)}})
+			}
+			return ui.Render(terminalui.Document{Title: appi18n.T("result.remove"), Sections: []terminalui.Section{{Rows: rows}}})
 		},
 	}
 	cmd.Flags().BoolVarP(&options.global, "global", "g", false, "从用户级目录移除")
@@ -502,7 +538,29 @@ func loadInstallations(catalog *agent.Catalog, options inventoryOptions, names m
 	if err != nil {
 		return nil, err
 	}
-	return install.ListInstallations(store.DefaultRoot(home), install.InventoryFilter{Scope: &scope, Agents: agentFilter, ProjectRoot: cwd, Names: names})
+	declarationRoot := cwd
+	if scope == install.ScopeUser {
+		declarationRoot = project.UserRoot(home)
+	}
+	installations, err := project.Installed(declarationRoot, catalog, scope, store.DefaultRoot(home))
+	if err != nil {
+		return nil, err
+	}
+	return filterInstallations(installations, agentFilter, names), nil
+}
+
+func filterInstallations(items []install.Installation, agents, names map[string]bool) []install.Installation {
+	filtered := make([]install.Installation, 0, len(items))
+	for _, item := range items {
+		if len(agents) > 0 && !agents[item.Target.Agent] {
+			continue
+		}
+		if len(names) > 0 && !names[strings.ToLower(item.Name)] && !names[strings.ToLower(item.SkillID)] {
+			continue
+		}
+		filtered = append(filtered, item)
+	}
+	return filtered
 }
 
 func placeholder(name, use string, aliases ...string) *cobra.Command {
@@ -510,10 +568,10 @@ func placeholder(name, use string, aliases ...string) *cobra.Command {
 }
 
 type addOptions struct {
-	global, copy, yes, list, all, fullDepth, replace, preflight bool
-	riskConfirmed, allowCritical                                bool
-	agents, skills, subagents, targets                          []string
-	metadata, output, hubURL, artifactVersion                   string
+	global, copy, yes, list, fullDepth, replace, preflight bool
+	riskConfirmed, allowCritical                           bool
+	agents, skills, subagents, targets                     []string
+	metadata, output, hubURL, artifactVersion              string
 }
 
 func newAddCommand(catalog *agent.Catalog) *cobra.Command {
@@ -523,12 +581,6 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 		Aliases: []string{"a"},
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if options.all {
-				options.skills, options.agents, options.yes = []string{"*"}, []string{"*"}, true
-			}
-			if len(options.skills) == 0 {
-				return fmt.Errorf("%s", appi18n.T("error.skill_required"))
-			}
 			if len(options.targets) > 0 {
 				return runExplicitInstallationPlan(cmd, catalog, args[0], options)
 			}
@@ -571,70 +623,146 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			targets, err := install.ResolveTargetsWithSubagents(catalog, agentIDs, options.subagents, scope, mode, cwd, options.skills[0])
-			if err != nil {
-				return err
-			}
 			reference, err := source.Parse(args[0])
 			if err != nil {
 				return err
+			}
+			if !strings.Contains(reference.SkillID, "/-/") {
+				if len(options.skills) > 0 {
+					return addSelectedRepositorySkills(cmd, catalog, reference, agentIDs, scope, mode, cwd, options)
+				}
+				return addWholeRepository(cmd, catalog, reference, agentIDs, scope, mode, cwd, options)
+			}
+			nameExplicit := len(options.skills) > 0
+			if len(options.skills) > 1 {
+				return fmt.Errorf("a Skill source resolves exactly one Skill")
 			}
 			home, err := os.UserHomeDir()
 			if err != nil {
 				return err
 			}
-			filter := install.InventoryFilter{Scope: &scope, Names: map[string]bool{strings.ToLower(options.skills[0]): true}}
-			if scope == install.ScopeProject {
-				filter.ProjectRoot = cwd
+			declarationRoot := cwd
+			if scope == install.ScopeUser {
+				declarationRoot = project.UserRoot(home)
 			}
-			previous, err := install.ListInstallations(store.DefaultRoot(home), filter)
-			if err != nil {
-				return err
-			}
-			if scope == install.ScopeProject && !options.replace {
-				if err := project.CheckNameConflict(cwd, options.skills[0], reference.SkillID, reference.Version, mode); err != nil {
-					return err
+			replaceAuthorized := options.replace || options.yes
+			var targets []install.Target
+			var previous []install.Installation
+			prepareInstallationName := func(name string) error {
+				resolvedTargets, resolveErr := install.ResolveTargetsWithSubagents(catalog, agentIDs, options.subagents, scope, mode, cwd, name)
+				if resolveErr != nil {
+					return resolveErr
 				}
-			} else if scope == install.ScopeUser && !options.replace {
-				for _, installation := range previous {
-					if installation.SkillID != reference.SkillID {
-						return fmt.Errorf("Skill 名称冲突：%q 已来自 %s，不能用 %s 静默覆盖", options.skills[0], installation.SkillID, reference.SkillID)
+				installed, installedErr := project.Installed(declarationRoot, catalog, scope, store.DefaultRoot(home))
+				if installedErr != nil {
+					return installedErr
+				}
+				matching := filterInstallations(installed, nil, map[string]bool{strings.ToLower(name): true})
+				if !replaceAuthorized {
+					for _, installation := range matching {
+						if installation.SkillID != reference.SkillID {
+							return fmt.Errorf("Skill 名称冲突：%q 已来自 %s，不能用 %s 静默覆盖", name, installation.SkillID, reference.SkillID)
+						}
 					}
+				}
+				options.skills = []string{name}
+				targets = resolvedTargets
+				previous = matching
+				return nil
+			}
+			if nameExplicit {
+				if err := prepareInstallationName(options.skills[0]); err != nil {
+					return err
 				}
 			}
 			client, err := hub.New(options.hubURL, nil)
 			if err != nil {
 				return err
 			}
-			artifact, err := client.Fetch(cmd.Context(), reference.SkillID, reference.Version)
-			if err != nil {
-				return err
-			}
-			if err := plan.AuthorizeRisk(plan.Risk(artifact.Info.Risk), options.riskConfirmed, options.allowCritical); err != nil {
-				return err
-			}
-			entry, err := (store.Store{Root: store.DefaultRoot(home)}).Put(artifact)
-			if err != nil {
-				return err
-			}
-			if options.replace && len(previous) > 0 {
-				if err := install.Replace(entry, previous, targets); err != nil {
+			var artifact *hub.Artifact
+			var entry *store.Entry
+			execute := func(emit func(terminalui.Event)) error {
+				stage := func(id, label string, work func() error) error {
+					emit(terminalui.Event{Kind: terminalui.EventStarted, ID: id, Label: label})
+					if stageErr := work(); stageErr != nil {
+						emit(terminalui.Event{Kind: terminalui.EventFailed, ID: id, Label: label, Detail: stageErr.Error()})
+						return stageErr
+					}
+					emit(terminalui.Event{Kind: terminalui.EventSucceeded, ID: id, Label: label})
+					return nil
+				}
+				if err := stage("download", appi18n.T("operation.download"), func() error {
+					var fetchErr error
+					artifact, fetchErr = client.FetchWithProgress(cmd.Context(), reference.SkillID, reference.Version, func(current, total int64) {
+						emit(terminalui.Event{Kind: terminalui.EventProgress, ID: "download", Label: appi18n.T("operation.download"), Current: current, Total: total})
+					})
+					return fetchErr
+				}); err != nil {
 					return err
 				}
-			} else if err := install.Install(entry, targets); err != nil {
-				return err
+				infoName := artifact.Info.Name
+				if nameExplicit && !strings.EqualFold(options.skills[0], infoName) {
+					return fmt.Errorf("requested Skill name %q does not match Info name %q", options.skills[0], infoName)
+				}
+				if !nameExplicit {
+					if err := prepareInstallationName(infoName); err != nil {
+						return err
+					}
+				}
+				if err := stage("verify", appi18n.T("operation.verify"), func() error {
+					if err := plan.AuthorizeRisk(plan.Risk(artifact.Info.Risk), options.riskConfirmed, options.allowCritical); err != nil {
+						return err
+					}
+					checksum, err := project.ContentH1(artifact.Info.ContentDigest)
+					if err != nil {
+						return err
+					}
+					verified := []project.SumEntry{{Path: artifact.SkillID, Version: artifact.Info.Version, Checksum: checksum}}
+					if err := project.ValidateVerifiedSums(declarationRoot, verified); err != nil {
+						return err
+					}
+					if err := (infocache.Cache{Root: infocache.DefaultRoot(home)}).Put(artifact.SkillID, artifact.Info.Version, "skill.info", artifact.InfoBytes); err != nil {
+						return err
+					}
+					return project.MergeVerifiedSums(declarationRoot, verified)
+				}); err != nil {
+					return err
+				}
+				if err := stage("store", appi18n.T("operation.store"), func() error {
+					var putErr error
+					entry, putErr = (store.Store{Root: store.DefaultRoot(home)}).Put(artifact)
+					return putErr
+				}); err != nil {
+					return err
+				}
+				if err := stage("targets", appi18n.T("operation.targets"), func() error {
+					if replaceAuthorized {
+						return install.ReplaceExplicit(entry, previous, targets)
+					}
+					return install.Install(entry, targets)
+				}); err != nil {
+					return err
+				}
+				return stage("declaration", appi18n.T("operation.declaration"), func() error {
+					if err := os.MkdirAll(declarationRoot, 0o700); err != nil {
+						return err
+					}
+					requirement := project.SkillRequirement{Source: reference.SkillID, Ref: entry.Receipt.Version, Agents: agentIDs, Mode: mode}
+					return project.UpsertManifestRequirement(declarationRoot, reference.SkillID, requirement, !replaceAuthorized || len(previous) == 0)
+				})
 			}
-			if scope == install.ScopeProject {
-				requirement := project.SkillRequirement{Source: args[0], Ref: reference.Version, Agents: agentIDs, Mode: mode}
-				var writeErr error
-				if options.replace {
-					writeErr = project.Replace(cwd, options.skills[0], requirement, entry.Receipt)
-				} else {
-					writeErr = project.Upsert(cwd, options.skills[0], requirement, entry.Receipt)
+			if options.output == "human" {
+				ui, err := humanUI(cmd)
+				if err != nil {
+					return err
 				}
-				if writeErr != nil {
-					return writeErr
+				if err := ui.Run(cmd.Context(), terminalui.Operation{Title: appi18n.T("operation.install"), Run: func(_ context.Context, emit func(terminalui.Event)) error {
+					return execute(emit)
+				}}); err != nil {
+					return err
 				}
+			} else if err := execute(func(terminalui.Event) {}); err != nil {
+				return err
 			}
 			response := struct {
 				SchemaVersion int              `json:"schemaVersion"`
@@ -650,11 +778,15 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 				encoder.SetIndent("", "  ")
 				return encoder.Encode(response)
 			}
-			fmt.Fprint(cmd.OutOrStdout(), appi18n.F("add.success", reference.SkillID, artifact.Info.Version, len(targets), scope))
-			for _, target := range targets {
-				fmt.Fprintf(cmd.OutOrStdout(), "- %s: %s\n", target.Agent, filepath.Clean(target.Path))
+			ui, err := humanUI(cmd)
+			if err != nil {
+				return err
 			}
-			return nil
+			rows := make([]terminalui.Row, 0, len(targets))
+			for _, target := range targets {
+				rows = append(rows, terminalui.Row{State: "✓", Primary: target.Agent, Secondary: filepath.Clean(target.Path)})
+			}
+			return ui.Render(terminalui.Document{Title: strings.TrimSpace(appi18n.F("add.success", reference.SkillID, artifact.Info.Version, len(targets), scope)), Sections: []terminalui.Section{{Rows: rows}}})
 		},
 	}
 	flags := cmd.Flags()
@@ -672,7 +804,6 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 	flags.BoolVar(&options.allowCritical, "allow-critical", false, appi18n.T("flag.allow_critical"))
 	flags.StringVar(&options.metadata, "metadata", "", appi18n.T("flag.metadata"))
 	flags.StringArrayVar(&options.subagents, "subagent", nil, appi18n.T("flag.subagent"))
-	flags.BoolVar(&options.all, "all", false, appi18n.T("flag.all"))
 	flags.BoolVar(&options.fullDepth, "full-depth", false, appi18n.T("flag.full_depth"))
 	flags.StringVar(&options.output, "output", "human", appi18n.T("flag.output"))
 	defaultHub := defaultHubURL()

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with temporary Store receipts, explicit project roots, Workspace files, and the test Agent.
- * [OUTPUT]: Specifies the versioned managed/external inventory JSON contract, target reconciliation, Local Modification health, inventory-key separation, read-only inspection, and explicit-root privacy boundary.
+ * [OUTPUT]: Specifies the inventory v5 managed/external target and derived-visibility JSON contract, target reconciliation, Local Modification health, inventory-key separation, read-only inspection, and explicit-root privacy boundary.
  * [POS]: Serves as executable contract coverage for the App-facing unified Library inventory.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -35,8 +35,9 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	userEntry := commandTestStoreEntry(t, storage, skillID, "v1")
 	require.NoError(t, install.Install(userEntry, []install.Target{{
 		Agent: "test-agent", Scope: install.ScopeUser, Mode: install.ModeSymlink,
-		Path: filepath.Join(userAgentHome, "skills", "demo"),
+		Path: filepath.Join(userAgentHome, "skills", "demo"), CanonicalPath: filepath.Join(home, ".agents", "skills", "demo"),
 	}}))
+	require.NoError(t, project.Upsert(project.UserRoot(home), "demo", project.SkillRequirement{Source: skillID, Ref: "main", Agents: []string{"test-agent"}}, userEntry.Receipt))
 
 	projectEntry := commandTestStoreEntry(t, storage, skillID, "v2")
 	selectedTarget := install.Target{
@@ -54,7 +55,7 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	hiddenEntry := commandTestStoreEntry(t, storage, "github.com/private/hidden/-/secret", "v1")
 	require.NoError(t, install.Install(hiddenEntry, []install.Target{{
 		Agent: "test-agent", Scope: install.ScopeProject, Mode: install.ModeSymlink,
-		Path: filepath.Join(unselectedProject, ".test-agent", "skills", "secret"),
+		Path: filepath.Join(unselectedProject, ".test-agent", "skills", "secret"), CanonicalPath: filepath.Join(unselectedProject, ".agents", "skills", "secret"),
 	}}))
 
 	var stdout, stderr bytes.Buffer
@@ -68,7 +69,7 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 
 	var report inventoryReport
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &report))
-	require.Equal(t, 3, report.SchemaVersion)
+	require.Equal(t, 5, report.SchemaVersion)
 	require.Len(t, report.Entries, 1)
 	entry := report.Entries[0]
 	require.Equal(t, "hub:"+skillID, entry.InventoryKey)
@@ -82,7 +83,13 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	require.True(t, entry.VersionDivergence)
 	require.Equal(t, "healthy", string(entry.Health))
 	require.Len(t, entry.Targets, 2)
-	require.Equal(t, "present", string(entry.Targets[0].ReceiptState))
+	require.Len(t, entry.Visibility, 2)
+	require.Equal(t, "test-agent", entry.Visibility[0].Agent)
+	require.Equal(t, install.ScopeUser, entry.Visibility[0].Scope)
+	require.Equal(t, []string{filepath.Join(userAgentHome, "skills", "demo")}, entry.Visibility[0].Paths)
+	require.Equal(t, "unverified", string(entry.Visibility[0].Verification))
+	require.Equal(t, install.ScopeProject, entry.Visibility[1].Scope)
+	require.Equal(t, selectedProject, entry.Visibility[1].ProjectRoot)
 	require.Equal(t, "healthy", string(entry.Targets[0].Health))
 	require.Empty(t, entry.Targets[0].ProjectRoot)
 	require.Equal(t, selectedProject, entry.Targets[1].ProjectRoot)
@@ -111,12 +118,12 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(selectedTarget.Path, "SKILL.md"), original, 0o600))
 
-	lockPath := filepath.Join(selectedProject, "skillsgo-lock.yaml")
-	lockBytes, err := os.ReadFile(lockPath)
+	manifestPath := filepath.Join(selectedProject, "skillsgo.yaml")
+	manifestBytes, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(
-		lockPath,
-		bytes.ReplaceAll(lockBytes, []byte("v2"), []byte("v999")),
+		manifestPath,
+		bytes.ReplaceAll(manifestBytes, []byte("v2"), []byte("v999")),
 		0o600,
 	))
 	stdout.Reset()
@@ -128,8 +135,7 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	))
 	report = inventoryReport{}
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &report))
-	require.Equal(t, "lock-mismatch", string(report.Entries[0].Health))
-	require.Equal(t, "lock-mismatch", string(report.Entries[0].Targets[1].Health))
+	require.Equal(t, "healthy", string(report.Entries[0].Health))
 
 	require.NoError(t, os.RemoveAll(selectedTarget.Path))
 	stdout.Reset()
@@ -141,8 +147,7 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	))
 	report = inventoryReport{}
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &report))
-	require.Len(t, report.Entries[0].Targets, 2)
-	require.Equal(t, "missing", string(report.Entries[0].Targets[1].Health))
+	require.Len(t, report.Entries[0].Targets, 1)
 
 	unexpectedPath := filepath.Join(root, "arbitrary", "demo")
 	require.NoError(t, install.Install(userEntry, []install.Target{{
@@ -158,14 +163,7 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	))
 	report = inventoryReport{}
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &report))
-	var unexpectedFound bool
-	for _, target := range report.Entries[0].Targets {
-		if target.Path == unexpectedPath {
-			unexpectedFound = true
-			require.Equal(t, "unexpected-path", string(target.Health))
-		}
-	}
-	require.True(t, unexpectedFound)
+	require.NotContains(t, stdout.String(), unexpectedPath)
 }
 
 func TestInventoryJSONReportsDeclaredTargetWithoutReceipt(t *testing.T) {
@@ -198,16 +196,15 @@ func TestInventoryJSONReportsDeclaredTargetWithoutReceipt(t *testing.T) {
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &report))
 	require.Len(t, report.Entries, 1)
 	require.Equal(t, "hub:"+skillID, report.Entries[0].InventoryKey)
-	require.Equal(t, "receipt-missing", string(report.Entries[0].Health))
+	require.Equal(t, "missing", string(report.Entries[0].Health))
 	require.Equal(t, []string{"v3"}, report.Entries[0].Versions)
 	require.Len(t, report.Entries[0].Targets, 1)
 	target := report.Entries[0].Targets[0]
 	require.Equal(t, projectRoot, target.ProjectRoot)
 	require.Equal(t, "test-agent", target.Agent)
-	require.Equal(t, filepath.Join(projectRoot, ".test-agent", "skills", "declared"), target.Path)
-	require.Equal(t, string(install.ModeCopy), string(target.Mode))
-	require.Equal(t, "missing", string(target.ReceiptState))
-	require.Equal(t, "receipt-missing", string(target.Health))
+	require.Equal(t, filepath.Join(projectRoot, ".test-agent", "skills", "demo"), target.Path)
+	require.Equal(t, string(install.ModeSymlink), string(target.Mode))
+	require.Equal(t, "missing", string(target.Health))
 }
 
 func TestInventoryJSONReportsExternalInstallationsWithoutClaimingOrChangingThem(t *testing.T) {
@@ -288,6 +285,8 @@ func TestInventoryJSONReportsExternalInstallationsWithoutClaimingOrChangingThem(
 	external := report.Entries[externalIndex]
 	projectExternal := report.Entries[projectExternalIndex]
 	require.NotEqual(t, managed.InventoryKey, external.InventoryKey)
+	require.Equal(t, "inventory fixture", managed.Description)
+	require.Equal(t, "unmanaged fixture", external.Description)
 	require.Contains(t, external.InventoryKey, "external:")
 	require.Empty(t, external.SkillID)
 	require.Empty(t, external.Versions)
@@ -297,7 +296,6 @@ func TestInventoryJSONReportsExternalInstallationsWithoutClaimingOrChangingThem(
 	require.Equal(t, externalPath, external.Targets[0].Path)
 	require.Equal(t, "external", string(external.Targets[0].Mode))
 	require.Empty(t, external.Targets[0].Version)
-	require.Equal(t, "missing", string(external.Targets[0].ReceiptState))
 	require.Equal(t, selectedProject, projectExternal.Targets[0].ProjectRoot)
 	require.NotContains(t, stdout.String(), hiddenPath)
 	require.NotContains(t, stdout.String(), "escaped")
@@ -306,9 +304,6 @@ func TestInventoryJSONReportsExternalInstallationsWithoutClaimingOrChangingThem(
 	after, err := os.ReadFile(filepath.Join(externalPath, "SKILL.md"))
 	require.NoError(t, err)
 	require.Equal(t, before, after)
-	installations, err := install.ListInstallations(storage.Root, install.InventoryFilter{})
-	require.NoError(t, err)
-	require.Len(t, installations, 1)
 }
 
 func commandTestStoreEntry(t *testing.T, storage store.Store, skillID, version string) *store.Entry {
@@ -319,11 +314,11 @@ func commandTestStoreEntry(t *testing.T, storage store.Store, skillID, version s
 	entry, err := storage.Put(&hub.Artifact{
 		SkillID: skillID,
 		Info: hub.Info{
-			Version: version, Risk: hub.RiskLow,
+			SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: "demo", Description: "inventory fixture",
+			Version: version, Risk: hub.RiskLow, ArchiveSize: int64(len(zipData)),
 			ContentDigest: commandTestContentDigest(t, zipData, skillID, version),
 		},
-		Manifest: []byte("name: demo\ndescription: inventory fixture\n"),
-		ZIP:      zipData,
+		ZIP: zipData,
 	})
 	require.NoError(t, err)
 	return entry

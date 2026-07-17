@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses command.Execute with exact managed targets, temporary Store receipts, filesystem drift, and Workspace metadata.
- * [OUTPUT]: Specifies exact-target removal, unsafe-remove blocking, Repair, Stop Managing content preservation, Store retention, and machine progress/results.
+ * [INPUT]: Uses command.Execute with exact managed and External targets, temporary Store receipts, filesystem drift, and Workspace metadata.
+ * [OUTPUT]: Specifies exact managed and External removal, unsafe-remove blocking, Repair, Stop Managing content preservation, Store retention, and machine progress/results.
  * [POS]: Serves as the public CLI contract coverage for App-driven Target Management Plans.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,6 +13,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
@@ -29,10 +30,11 @@ func TestManagementPlanRemovesOnlyTheExactSelectedTargetAndRetainsStore(t *testi
 	storage := store.Store{Root: store.DefaultRoot(home)}
 	entry := updatePlanTestStoreEntry(t, storage, skillID, "v1", "main", "old")
 	targets := []install.Target{
-		{Agent: "test-agent", Scope: install.ScopeUser, Mode: install.ModeSymlink, Path: filepath.Join(testAgentHome, "skills", "demo")},
-		{Agent: "codex", Scope: install.ScopeUser, Mode: install.ModeSymlink, Path: filepath.Join(home, ".codex", "skills", "demo")},
+		{Agent: "test-agent", Scope: install.ScopeUser, Mode: install.ModeSymlink, Path: filepath.Join(testAgentHome, "skills", "demo"), CanonicalPath: filepath.Join(home, ".agents", "skills", "demo")},
+		{Agent: "codex", Scope: install.ScopeUser, Mode: install.ModeSymlink, Path: filepath.Join(home, ".codex", "skills", "demo"), CanonicalPath: filepath.Join(home, ".agents", "skills", "demo")},
 	}
 	require.NoError(t, install.Install(entry, targets))
+	require.NoError(t, project.Upsert(project.UserRoot(home), "demo", project.SkillRequirement{Source: skillID, Ref: "main", Agents: []string{"test-agent", "codex"}}, entry.Receipt))
 
 	requestJSON := func(target install.Target, action, stateToken string) string {
 		body, err := json.Marshal(map[string]any{
@@ -67,12 +69,47 @@ func TestManagementPlanRemovesOnlyTheExactSelectedTargetAndRetainsStore(t *testi
 	}, &output, &output))
 	require.NoFileExists(t, targets[0].Path)
 	require.FileExists(t, filepath.Join(targets[1].Path, "SKILL.md"))
-	installations, err := install.ListInstallations(storage.Root, install.InventoryFilter{})
-	require.NoError(t, err)
-	require.Len(t, installations, 1)
-	require.Equal(t, "codex", installations[0].Target.Agent)
 	require.DirExists(t, entry.Root)
 	require.Contains(t, output.String(), `"phase":"management-execution"`)
+}
+
+func updatePlanTestStoreEntry(t *testing.T, storage store.Store, skillID, version, requestedRef, commitSHA string) *store.Entry {
+	t.Helper()
+	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": version})
+	entry, err := storage.Put(&hub.Artifact{
+		SkillID: skillID,
+		Info: hub.Info{
+			SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: "demo", Description: "test",
+			Version: version, Risk: hub.RiskLow, ContentDigest: commandTestContentDigest(t, zipData, skillID, version), ArchiveSize: int64(len(zipData)),
+			Origin: hub.Origin{VCS: "git", URL: "https://github.com/example/skills", Subdir: "skills/demo", Ref: "refs/heads/" + requestedRef, CommitSHA: commitSHA, TreeSHA: "tree-" + commitSHA},
+		},
+		ZIP: zipData,
+	})
+	require.NoError(t, err)
+	return entry
+}
+
+func TestManagementPlanRemovesExactExternalInstallationWithoutCreatingOwnership(t *testing.T) {
+	root := t.TempDir()
+	home := filepath.Join(root, "home")
+	agentHome := filepath.Join(root, "test-agent")
+	t.Setenv("HOME", home)
+	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
+	externalPath := filepath.Join(agentHome, "skills", "external-demo")
+	relatedPath := filepath.Join(agentHome, "skills", "keep-me")
+	for path, name := range map[string]string{externalPath: "external-demo", relatedPath: "keep-me"} {
+		require.NoError(t, os.MkdirAll(path, 0o700))
+		require.NoError(t, os.WriteFile(filepath.Join(path, "SKILL.md"), []byte("---\nname: "+name+"\n---\n"), 0o600))
+	}
+	target := install.Target{Agent: "test-agent", Scope: install.ScopeUser, Mode: install.Mode("external"), Path: externalPath}
+	preflight := managementPreflight(t, target, "", "", "")
+	require.Equal(t, "healthy", preflight.Health)
+	require.Equal(t, []string{"remove"}, preflight.AllowedActions)
+
+	output := executeManagementAction(t, target, "", "", "", "remove", preflight.StateToken)
+	require.Contains(t, output, `"outcome":"succeeded"`)
+	require.NoDirExists(t, externalPath)
+	require.FileExists(t, filepath.Join(relatedPath, "SKILL.md"))
 }
 
 func TestManagementPlanBlocksUnsafeRemoveAndSupportsRepairOrStopManaging(t *testing.T) {
@@ -87,6 +124,7 @@ func TestManagementPlanBlocksUnsafeRemoveAndSupportsRepairOrStopManaging(t *test
 		entry := updatePlanTestStoreEntry(t, storage, skillID, "v1", "main", "old")
 		target := install.Target{Agent: "test-agent", Scope: install.ScopeUser, Mode: install.ModeCopy, Path: filepath.Join(agentHome, "skills", "demo")}
 		require.NoError(t, install.Install(entry, []install.Target{target}))
+		require.NoError(t, project.Upsert(project.UserRoot(home), "demo", project.SkillRequirement{Source: skillID, Ref: "main", Agents: []string{"test-agent"}}, entry.Receipt))
 		require.NoError(t, os.WriteFile(filepath.Join(target.Path, "SKILL.md"), []byte("changed"), 0o600))
 
 		preflight := managementPreflight(t, target, "", skillID, "v1")
@@ -137,13 +175,9 @@ func TestManagementPlanBlocksUnsafeRemoveAndSupportsRepairOrStopManaging(t *test
 		contents, err := os.ReadFile(filepath.Join(target.Path, "SKILL.md"))
 		require.NoError(t, err)
 		require.Equal(t, "private local change", string(contents))
-		installations, err := install.ListInstallations(storage.Root, install.InventoryFilter{})
-		require.NoError(t, err)
-		require.Empty(t, installations)
-		manifest, lockfile, err := project.Load(projectRoot)
+		manifest, err := project.LoadManifest(projectRoot)
 		require.NoError(t, err)
 		require.NotContains(t, manifest.Skills, "demo")
-		require.NotContains(t, lockfile.Skills, "demo")
 	})
 }
 

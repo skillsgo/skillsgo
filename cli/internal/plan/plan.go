@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on one immutable Store entry, an installed Agent Catalog, explicit location-and-Agent requests, Installation Receipts, and Workspace state.
- * [OUTPUT]: Provides strict target decoding, shared immutable-risk authorization, collision/Local Modification preflight actions, Workspace Lock previews, zero-mutation unresolved-plan rejection, and resilient target-specific progress/results.
+ * [INPUT]: Depends on one immutable Store entry, an installed Agent Catalog, explicit location-and-Agent requests, user/project declarations, and Workspace state.
+ * [OUTPUT]: Provides strict target decoding, shared immutable-risk authorization, affirmative collision/Local Modification replacement, immutable Workspace declaration and Lock previews, optional reviewed conflicts, and resilient target-specific progress/results.
  * [POS]: Serves as the domain orchestration layer between the add command and lower-level install/project mutation modules.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	hubclient "github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
@@ -72,6 +73,7 @@ type Request struct {
 	Targets       []TargetRequest
 	RiskConfirmed bool
 	AllowCritical bool
+	AutoReplace   bool
 }
 
 type Artifact struct {
@@ -83,20 +85,21 @@ type Artifact struct {
 }
 
 type Target struct {
-	Scope       install.Scope `json:"scope"`
-	ProjectRoot string        `json:"projectRoot,omitempty"`
-	Agent       string        `json:"agent"`
-	Mode        install.Mode  `json:"mode"`
-	Path        string        `json:"path"`
+	Scope         install.Scope `json:"scope"`
+	ProjectRoot   string        `json:"projectRoot,omitempty"`
+	Agent         string        `json:"agent"`
+	Mode          install.Mode  `json:"mode"`
+	Path          string        `json:"path"`
+	CanonicalPath string        `json:"canonicalPath,omitempty"`
 }
 
 type Item struct {
-	Target              Target            `json:"target"`
-	Action              Action            `json:"action"`
-	ReasonCode          string            `json:"reasonCode,omitempty"`
-	StateToken          string            `json:"stateToken,omitempty"`
-	AffectedBindings    []AffectedBinding `json:"affectedBindings,omitempty"`
-	WorkspaceLockChange bool              `json:"workspaceLockChange"`
+	Target                  Target            `json:"target"`
+	Action                  Action            `json:"action"`
+	ReasonCode              string            `json:"reasonCode,omitempty"`
+	StateToken              string            `json:"stateToken,omitempty"`
+	AffectedBindings        []AffectedBinding `json:"affectedBindings,omitempty"`
+	WorkspaceManifestChange bool              `json:"workspaceManifestChange"`
 }
 
 type AffectedBinding struct {
@@ -114,7 +117,7 @@ type Summary struct {
 	BlockedByRisk int `json:"blockedByRisk"`
 }
 
-type WorkspaceLockChange struct {
+type WorkspaceManifestChange struct {
 	ProjectRoot string `json:"projectRoot"`
 	Path        string `json:"path"`
 	Skill       string `json:"skill"`
@@ -123,12 +126,12 @@ type WorkspaceLockChange struct {
 }
 
 type Preflight struct {
-	SchemaVersion        int                   `json:"schemaVersion"`
-	Phase                string                `json:"phase"`
-	Artifact             Artifact              `json:"artifact"`
-	Targets              []Item                `json:"targets"`
-	Summary              Summary               `json:"summary"`
-	WorkspaceLockChanges []WorkspaceLockChange `json:"workspaceLockChanges"`
+	SchemaVersion            int                       `json:"schemaVersion"`
+	Phase                    string                    `json:"phase"`
+	Artifact                 Artifact                  `json:"artifact"`
+	Targets                  []Item                    `json:"targets"`
+	Summary                  Summary                   `json:"summary"`
+	WorkspaceManifestChanges []WorkspaceManifestChange `json:"workspaceManifestChanges"`
 }
 
 type Result struct {
@@ -186,6 +189,9 @@ func Build(catalog *agent.Catalog, entry *store.Entry, storeRoot string, request
 	if err := install.ValidateSkillName(request.Name); err != nil {
 		return Preflight{}, err
 	}
+	if request.Name != entry.Receipt.Name {
+		return Preflight{}, fmt.Errorf("requested Skill name %q does not match Skill Info name %q", request.Name, entry.Receipt.Name)
+	}
 	if len(request.Targets) == 0 {
 		return Preflight{}, fmt.Errorf("an Installation Plan requires at least one explicit target")
 	}
@@ -197,7 +203,7 @@ func Build(catalog *agent.Catalog, entry *store.Entry, storeRoot string, request
 	for _, definition := range catalog.Installed() {
 		installed[definition.ID] = true
 	}
-	installations, err := install.ListInstallations(storeRoot, install.InventoryFilter{})
+	installations, err := declaredInstallations(catalog, storeRoot, request.Targets)
 	if err != nil {
 		return Preflight{}, err
 	}
@@ -206,11 +212,11 @@ func Build(catalog *agent.Catalog, entry *store.Entry, storeRoot string, request
 		Version: entry.Receipt.Version, Name: request.Name, Risk: risk,
 	}
 	preflight := Preflight{
-		SchemaVersion:        SchemaVersion,
-		Phase:                "preflight",
-		Artifact:             artifact,
-		Targets:              make([]Item, 0, len(request.Targets)),
-		WorkspaceLockChanges: []WorkspaceLockChange{},
+		SchemaVersion:            SchemaVersion,
+		Phase:                    "preflight",
+		Artifact:                 artifact,
+		Targets:                  make([]Item, 0, len(request.Targets)),
+		WorkspaceManifestChanges: []WorkspaceManifestChange{},
 	}
 	seenCells := map[string]bool{}
 	pathModes := map[string]install.Mode{}
@@ -229,33 +235,39 @@ func Build(catalog *agent.Catalog, entry *store.Entry, storeRoot string, request
 		if existingMode, ok := pathModes[pathKey]; ok && existingMode != item.Target.Mode {
 			return Preflight{}, fmt.Errorf("shared Installation Target %s requires one installation mode", pathKey)
 		}
+		if request.AutoReplace && item.Action == ActionConflict {
+			item.Action = ActionReplace
+		}
 		pathModes[pathKey] = item.Target.Mode
 		resolvedItems = append(resolvedItems, item)
 	}
 
 	seenLocks := map[string]bool{}
 	for _, resolved := range resolvedItems {
-		item, err := exposeSharedBindings(catalog, installed, request.Name, resolved, resolvedItems, installations)
+		item, err := exposeSharedBindings(catalog, installed, request.Name, resolved, resolvedItems, installations, request.AutoReplace)
 		if err != nil {
 			return Preflight{}, err
 		}
+		if request.AutoReplace && item.Action == ActionConflict {
+			item.Action = ActionReplace
+		}
 		item = applyRisk(item, risk, request)
 		if item.Target.Scope == install.ScopeProject {
-			changed, fromVersion, err := lockWillChange(
+			changed, fromVersion, err := manifestWillChange(
 				item.Target.ProjectRoot,
 				request.Name,
 				entry.Receipt,
-				workspaceRequirement(request, item.Target),
+				workspaceRequirement(request, item.Target, entry.Receipt.Version),
 			)
 			if err != nil {
 				return Preflight{}, err
 			}
-			item.WorkspaceLockChange = changed
+			item.WorkspaceManifestChange = changed
 			if changed && !seenLocks[item.Target.ProjectRoot] {
 				seenLocks[item.Target.ProjectRoot] = true
-				preflight.WorkspaceLockChanges = append(preflight.WorkspaceLockChanges, WorkspaceLockChange{
+				preflight.WorkspaceManifestChanges = append(preflight.WorkspaceManifestChanges, WorkspaceManifestChange{
 					ProjectRoot: item.Target.ProjectRoot,
-					Path:        filepath.Join(item.Target.ProjectRoot, "skillsgo-lock.yaml"),
+					Path:        filepath.Join(item.Target.ProjectRoot, "skillsgo.yaml"),
 					Skill:       request.Name,
 					FromVersion: fromVersion,
 					ToVersion:   entry.Receipt.Version,
@@ -275,6 +287,7 @@ func exposeSharedBindings(
 	item Item,
 	selected []Item,
 	installations []install.Installation,
+	autoReplace bool,
 ) (Item, error) {
 	bindings, err := affectedBindings(catalog, installed, name, item.Target, installations)
 	if err != nil {
@@ -298,6 +311,9 @@ func exposeSharedBindings(
 		}
 		if selectedBinding {
 			continue
+		}
+		if autoReplace {
+			return item, nil
 		}
 		stateToken, err := replacementStateToken(item.Target, "shared-target-conflict", installations)
 		if err != nil {
@@ -469,7 +485,7 @@ func resolveItem(
 	}
 	target := Target{
 		Scope: requested.Scope, ProjectRoot: projectRoot, Agent: requested.Agent,
-		Mode: requested.Mode, Path: filepath.Clean(resolved[0].Path),
+		Mode: requested.Mode, Path: filepath.Clean(resolved[0].Path), CanonicalPath: filepath.Clean(resolved[0].CanonicalPath),
 	}
 	info, pathErr := os.Lstat(target.Path)
 	if pathErr != nil && !os.IsNotExist(pathErr) {
@@ -491,7 +507,7 @@ func resolveItem(
 					return Item{Target: target, Action: ActionSkip, ReasonCode: "identical-target"}, nil
 				}
 				reason := "local-modification"
-				if matchesReceipt && installation.SkillID != entry.Receipt.SkillID {
+				if installation.SkillID != entry.Receipt.SkillID {
 					reason = "skill-id-collision"
 				} else if matchesReceipt && installation.Version != entry.Receipt.Version {
 					reason = "version-conflict"
@@ -499,9 +515,46 @@ func resolveItem(
 				return replacementItem(target, reason, requested, installations)
 			}
 		}
+		matchesArtifact, matchErr := targetMatchesEntry(info, target, entry)
+		if matchErr != nil {
+			return Item{}, matchErr
+		}
+		if matchesArtifact {
+			return Item{Target: target, Action: ActionSkip, ReasonCode: "identical-target"}, nil
+		}
 		return replacementItem(target, "skill-id-collision", requested, installations)
 	}
 	return Item{Target: target, Action: ActionCreate}, nil
+}
+
+func targetMatchesEntry(info os.FileInfo, target Target, entry *store.Entry) (bool, error) {
+	if target.Mode == install.ModeCopy {
+		if !info.IsDir() {
+			return false, nil
+		}
+		return install.CopyMatchesArtifact(target.Path, entry.Artifact)
+	}
+	if target.CanonicalPath != "" && filepath.Clean(target.Path) == filepath.Clean(target.CanonicalPath) {
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+			return false, nil
+		}
+		return install.CopyMatchesArtifact(target.Path, entry.Artifact)
+	}
+	if info.Mode()&os.ModeSymlink == 0 {
+		return false, nil
+	}
+	link, err := os.Readlink(target.Path)
+	if err != nil {
+		return false, err
+	}
+	if !filepath.IsAbs(link) {
+		link = filepath.Join(filepath.Dir(target.Path), link)
+	}
+	expected := entry.Artifact
+	if target.CanonicalPath != "" {
+		expected = target.CanonicalPath
+	}
+	return sameLocation(link, expected), nil
 }
 
 func installationTargetMatches(info os.FileInfo, installation install.Installation) (bool, error) {
@@ -509,10 +562,27 @@ func installationTargetMatches(info os.FileInfo, installation install.Installati
 		if !info.IsDir() {
 			return false, nil
 		}
+		if installation.ContentDigest != "" {
+			if err := hubclient.VerifyContentDirectory(installation.Target.Path, installation.ContentDigest); err == nil {
+				return true, nil
+			}
+		}
+		if installation.Artifact == "" {
+			return false, nil
+		}
+		return install.CopyMatchesArtifact(installation.Target.Path, installation.Artifact)
+	}
+	if installation.Target.CanonicalPath != "" && filepath.Clean(installation.Target.Path) == filepath.Clean(installation.Target.CanonicalPath) {
+		if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 || installation.Artifact == "" {
+			return false, nil
+		}
 		return install.CopyMatchesArtifact(installation.Target.Path, installation.Artifact)
 	}
 	if info.Mode()&os.ModeSymlink == 0 {
 		return false, nil
+	}
+	if installation.Artifact == "" {
+		return true, nil
 	}
 	link, err := os.Readlink(installation.Target.Path)
 	if err != nil {
@@ -521,7 +591,11 @@ func installationTargetMatches(info os.FileInfo, installation install.Installati
 	if !filepath.IsAbs(link) {
 		link = filepath.Join(filepath.Dir(installation.Target.Path), link)
 	}
-	return samePath(link, installation.Artifact), nil
+	expected := installation.Artifact
+	if installation.Target.CanonicalPath != "" {
+		expected = installation.Target.CanonicalPath
+	}
+	return samePath(link, expected), nil
 }
 
 func replacementItem(
@@ -558,17 +632,6 @@ func replacementStateToken(target Target, reason string, installations []install
 		return "", err
 	}
 	bindings := make([]replacementBindingState, 0)
-	for _, installation := range installations {
-		if !sameLocation(installation.Target.Path, target.Path) {
-			continue
-		}
-		bindings = append(bindings, replacementBindingState{
-			Agent: installation.Target.Agent, Scope: installation.Target.Scope,
-			Mode: installation.Target.Mode, SkillID: installation.SkillID,
-			Version: installation.Version, SHA256: installation.SHA256,
-			ContentDigest: installation.ContentDigest,
-		})
-	}
 	sort.Slice(bindings, func(i, j int) bool {
 		left, right := bindings[i], bindings[j]
 		if left.Agent != right.Agent {
@@ -605,40 +668,31 @@ func replacementStateToken(target Target, reason string, installations []install
 	return fmt.Sprintf("sha256:%x", digest[:]), nil
 }
 
-func lockWillChange(
+func manifestWillChange(
 	root,
 	name string,
 	receipt store.Receipt,
 	expected project.SkillRequirement,
 ) (bool, string, error) {
 	manifestPath := filepath.Join(root, "skillsgo.yaml")
-	lockPath := filepath.Join(root, "skillsgo-lock.yaml")
 	_, manifestErr := os.Stat(manifestPath)
-	_, lockErr := os.Stat(lockPath)
-	if os.IsNotExist(manifestErr) && os.IsNotExist(lockErr) {
+	if os.IsNotExist(manifestErr) {
 		return true, "", nil
 	}
-	if manifestErr != nil || lockErr != nil {
-		return false, "", fmt.Errorf("project %q has incomplete Workspace state", root)
+	if manifestErr != nil {
+		return false, "", manifestErr
 	}
-	manifest, lockfile, err := project.Load(root)
+	manifest, err := project.LoadManifest(root)
 	if err != nil {
 		return false, "", err
 	}
-	locked, ok := lockfile.Skills[name]
-	if !ok {
-		return true, "", nil
-	}
-	requirement, requirementExists := manifest.Skills[name]
-	changed := locked.SkillID != receipt.SkillID ||
-		locked.Version != receipt.Version ||
-		locked.SHA256 != receipt.SHA256 ||
-		!requirementExists ||
+	_, requirement, requirementExists := manifest.Dependency(receipt.SkillID)
+	changed := !requirementExists ||
 		requirement.Source != receipt.SkillID ||
-		requirement.Ref != expected.Ref ||
+		requirement.Ref != receipt.Version ||
 		normalizedMode(requirement.Mode) != normalizedMode(expected.Mode) ||
 		!containsString(requirement.Agents, expected.Agents[0])
-	return changed, locked.Version, nil
+	return changed, requirement.Ref, nil
 }
 
 func Execute(entry *store.Entry, storeRoot string, request Request, preflight Preflight) (Execution, error) {
@@ -678,15 +732,11 @@ func ExecuteWithProgress(
 		}
 		report(event)
 	}
-	currentInstallations, err := install.ListInstallations(storeRoot, install.InventoryFilter{})
-	if err != nil {
-		return execution, err
-	}
 	for _, item := range preflight.Targets {
 		if item.Action != ActionReplace {
 			continue
 		}
-		currentState, err := replacementStateToken(item.Target, item.ReasonCode, currentInstallations)
+		currentState, err := replacementStateToken(item.Target, item.ReasonCode, nil)
 		if err != nil {
 			return execution, err
 		}
@@ -702,8 +752,8 @@ func ExecuteWithProgress(
 		switch item.Action {
 		case ActionSkip:
 			emit(index, ProgressStarted)
-			if item.WorkspaceLockChange {
-				if err := updateWorkspace(entry, request, item.Target, item.ReasonCode, skillIDReplaced); err != nil {
+			if item.WorkspaceManifestChange {
+				if err := updateWorkspace(entry, storeRoot, request, item.Target, item.ReasonCode, skillIDReplaced); err != nil {
 					execution.Results[index].Outcome = OutcomeFailed
 					execution.Results[index].ErrorCode = "workspace-update-failed"
 					execution.Results[index].Diagnostic = err.Error()
@@ -754,7 +804,7 @@ func ExecuteWithProgress(
 		}
 		for _, index := range indexes {
 			item := preflight.Targets[index]
-			if err := updateWorkspace(entry, request, item.Target, item.ReasonCode, skillIDReplaced); err != nil {
+			if err := updateWorkspace(entry, storeRoot, request, item.Target, item.ReasonCode, skillIDReplaced); err != nil {
 				execution.Results[index].Outcome = OutcomeFailed
 				execution.Results[index].ErrorCode = "workspace-update-failed"
 				execution.Results[index].Diagnostic = err.Error()
@@ -781,48 +831,75 @@ func ExecuteWithProgress(
 }
 
 func installationsAtPaths(storeRoot string, preflight Preflight, indexes []int) ([]install.Installation, error) {
-	all, err := install.ListInstallations(storeRoot, install.InventoryFilter{})
-	if err != nil {
-		return nil, err
-	}
-	paths := map[string]bool{}
-	for _, index := range indexes {
-		paths[filepath.Clean(preflight.Targets[index].Target.Path)] = true
-	}
-	previous := make([]install.Installation, 0)
-	for _, installation := range all {
-		if paths[filepath.Clean(installation.Target.Path)] {
-			previous = append(previous, installation)
+	return nil, nil
+}
+
+func declaredInstallations(catalog *agent.Catalog, storeRoot string, targets []TargetRequest) ([]install.Installation, error) {
+	roots := map[string]install.Scope{}
+	for _, target := range targets {
+		root := target.ProjectRoot
+		if target.Scope == install.ScopeUser {
+			root = filepath.Dir(storeRoot)
 		}
+		roots[filepath.Clean(root)] = target.Scope
 	}
-	return previous, nil
+	result := make([]install.Installation, 0)
+	for root, scope := range roots {
+		items, err := project.Installed(root, catalog, scope, storeRoot)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, items...)
+	}
+	return result, nil
 }
 
 func updateWorkspace(
 	entry *store.Entry,
+	storeRoot string,
 	request Request,
 	target Target,
 	reasonCode string,
 	skillIDReplaced map[string]bool,
 ) error {
-	if target.Scope != install.ScopeProject {
-		return nil
+	root := target.ProjectRoot
+	if target.Scope == install.ScopeUser {
+		root = filepath.Dir(storeRoot)
 	}
-	requirement := workspaceRequirement(request, target)
-	if reasonCode == "skill-id-collision" && !skillIDReplaced[target.ProjectRoot] {
-		if err := project.Replace(target.ProjectRoot, request.Name, requirement, entry.Receipt); err != nil {
+	requirement := workspaceRequirement(request, target, entry.Receipt.Version)
+	if reasonCode == "skill-id-collision" && !skillIDReplaced[root] {
+		manifest, err := project.LoadManifest(root)
+		if err == nil {
+			storage := store.Store{Root: storeRoot}
+			obsolete := make([]string, 0)
+			for dependency, existing := range manifest.Skills {
+				if dependency == entry.Receipt.SkillID {
+					continue
+				}
+				cached, getErr := storage.Get(dependency, existing.Ref)
+				if getErr == nil && strings.EqualFold(cached.Receipt.Name, request.Name) {
+					obsolete = append(obsolete, dependency)
+				}
+			}
+			if len(obsolete) > 0 {
+				if err := project.RemoveManifestRequirements(root, obsolete); err != nil {
+					return err
+				}
+			}
+		}
+		if err := project.Replace(root, request.Name, requirement, entry.Receipt); err != nil {
 			return err
 		}
-		skillIDReplaced[target.ProjectRoot] = true
+		skillIDReplaced[root] = true
 		return nil
 	}
-	return project.Upsert(target.ProjectRoot, request.Name, requirement, entry.Receipt)
+	return project.Upsert(root, request.Name, requirement, entry.Receipt)
 }
 
-func workspaceRequirement(request Request, target Target) project.SkillRequirement {
+func workspaceRequirement(request Request, target Target, immutableVersion string) project.SkillRequirement {
 	return project.SkillRequirement{
 		Source: request.Source,
-		Ref:    request.RequestedRef,
+		Ref:    immutableVersion,
 		Agents: []string{target.Agent},
 		Mode:   target.Mode,
 	}
@@ -845,7 +922,7 @@ func containsString(values []string, expected string) bool {
 }
 
 func installTarget(target Target) install.Target {
-	return install.Target{Agent: target.Agent, Scope: target.Scope, Mode: target.Mode, Path: target.Path}
+	return install.Target{Agent: target.Agent, Scope: target.Scope, Mode: target.Mode, Path: target.Path, CanonicalPath: target.CanonicalPath}
 }
 
 func incrementAction(summary *Summary, action Action) {

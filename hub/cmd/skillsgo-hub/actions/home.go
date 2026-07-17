@@ -72,7 +72,6 @@ const homepage = `<!DOCTYPE html>
 
 	<h3>Skill manifest</h3>
 	<p>This endpoint returns the YAML frontmatter from SKILL.md for a specific version:</p>
-	<pre>GET {{ .Host }}/github.com/example/skills/my-skill/@v/v1.0.0.manifest</pre>
 	<pre>name: my-skill\ndescription: Example Skill</pre>
 
 	<h3>Module sources</h3>

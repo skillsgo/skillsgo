@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Ent schema fields for append-only risk evidence bound to immutable versions.
- * [OUTPUT]: Defines the risk_assessments entity without a deduplication constraint.
+ * [OUTPUT]: Defines the skill_risk_assessments entity without a deduplication constraint.
  * [POS]: Serves as the authoritative ORM schema for immutable risk-assessment history.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,11 +11,17 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/entsql"
+	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
 
 type RiskAssessment struct{ ent.Schema }
+
+func (RiskAssessment) Annotations() []schema.Annotation {
+	return []schema.Annotation{entsql.Annotation{Table: "skill_risk_assessments"}}
+}
 
 func (RiskAssessment) Fields() []ent.Field {
 	return []ent.Field{

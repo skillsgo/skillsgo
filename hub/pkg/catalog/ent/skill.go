@@ -9,6 +9,7 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
 )
 
@@ -19,6 +20,8 @@ type Skill struct {
 	ID int64 `json:"id,omitempty"`
 	// SkillID holds the value of the "skill_id" field.
 	SkillID string `json:"skill_id,omitempty"`
+	// RepositoryID holds the value of the "repository_id" field.
+	RepositoryID int64 `json:"repository_id,omitempty"`
 	// Name holds the value of the "name" field.
 	Name string `json:"name,omitempty"`
 	// Description holds the value of the "description" field.
@@ -47,6 +50,8 @@ type Skill struct {
 
 // SkillEdges holds the relations/edges for other nodes in the graph.
 type SkillEdges struct {
+	// SourceRepository holds the value of the source_repository edge.
+	SourceRepository *Repository `json:"source_repository,omitempty"`
 	// Versions holds the value of the versions edge.
 	Versions []*SkillVersion `json:"versions,omitempty"`
 	// InstallEvents holds the value of the install_events edge.
@@ -55,13 +60,24 @@ type SkillEdges struct {
 	HourlyStats []*SkillHourlyStat `json:"hourly_stats,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [3]bool
+	loadedTypes [4]bool
+}
+
+// SourceRepositoryOrErr returns the SourceRepository value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e SkillEdges) SourceRepositoryOrErr() (*Repository, error) {
+	if e.SourceRepository != nil {
+		return e.SourceRepository, nil
+	} else if e.loadedTypes[0] {
+		return nil, &NotFoundError{label: repository.Label}
+	}
+	return nil, &NotLoadedError{edge: "source_repository"}
 }
 
 // VersionsOrErr returns the Versions value or an error if the edge
 // was not loaded in eager-loading.
 func (e SkillEdges) VersionsOrErr() ([]*SkillVersion, error) {
-	if e.loadedTypes[0] {
+	if e.loadedTypes[1] {
 		return e.Versions, nil
 	}
 	return nil, &NotLoadedError{edge: "versions"}
@@ -70,7 +86,7 @@ func (e SkillEdges) VersionsOrErr() ([]*SkillVersion, error) {
 // InstallEventsOrErr returns the InstallEvents value or an error if the edge
 // was not loaded in eager-loading.
 func (e SkillEdges) InstallEventsOrErr() ([]*InstallEvent, error) {
-	if e.loadedTypes[1] {
+	if e.loadedTypes[2] {
 		return e.InstallEvents, nil
 	}
 	return nil, &NotLoadedError{edge: "install_events"}
@@ -79,7 +95,7 @@ func (e SkillEdges) InstallEventsOrErr() ([]*InstallEvent, error) {
 // HourlyStatsOrErr returns the HourlyStats value or an error if the edge
 // was not loaded in eager-loading.
 func (e SkillEdges) HourlyStatsOrErr() ([]*SkillHourlyStat, error) {
-	if e.loadedTypes[2] {
+	if e.loadedTypes[3] {
 		return e.HourlyStats, nil
 	}
 	return nil, &NotLoadedError{edge: "hourly_stats"}
@@ -92,7 +108,7 @@ func (*Skill) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case skill.FieldVerified:
 			values[i] = new(sql.NullBool)
-		case skill.FieldID, skill.FieldGithubStars:
+		case skill.FieldID, skill.FieldRepositoryID, skill.FieldGithubStars:
 			values[i] = new(sql.NullInt64)
 		case skill.FieldSkillID, skill.FieldName, skill.FieldDescription, skill.FieldSourceHost, skill.FieldRepository, skill.FieldSkillPath, skill.FieldLatestVersion:
 			values[i] = new(sql.NullString)
@@ -124,6 +140,12 @@ func (_m *Skill) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field skill_id", values[i])
 			} else if value.Valid {
 				_m.SkillID = value.String
+			}
+		case skill.FieldRepositoryID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field repository_id", values[i])
+			} else if value.Valid {
+				_m.RepositoryID = value.Int64
 			}
 		case skill.FieldName:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -198,6 +220,11 @@ func (_m *Skill) Value(name string) (ent.Value, error) {
 	return _m.selectValues.Get(name)
 }
 
+// QuerySourceRepository queries the "source_repository" edge of the Skill entity.
+func (_m *Skill) QuerySourceRepository() *RepositoryQuery {
+	return NewSkillClient(_m.config).QuerySourceRepository(_m)
+}
+
 // QueryVersions queries the "versions" edge of the Skill entity.
 func (_m *Skill) QueryVersions() *SkillVersionQuery {
 	return NewSkillClient(_m.config).QueryVersions(_m)
@@ -238,6 +265,9 @@ func (_m *Skill) String() string {
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
 	builder.WriteString("skill_id=")
 	builder.WriteString(_m.SkillID)
+	builder.WriteString(", ")
+	builder.WriteString("repository_id=")
+	builder.WriteString(fmt.Sprintf("%v", _m.RepositoryID))
 	builder.WriteString(", ")
 	builder.WriteString("name=")
 	builder.WriteString(_m.Name)

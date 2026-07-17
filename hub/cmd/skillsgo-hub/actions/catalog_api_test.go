@@ -154,7 +154,6 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), detailBody.SourceUpdatedAt)
 	require.Positive(t, detailBody.ArchiveSize)
 	require.Contains(t, detailBody.ContentDigest, "sha256:")
-	require.Contains(t, detailBody.Manifest, "name: ask-matt")
 	require.Contains(t, detailBody.Instructions, "# Ask Matt")
 	require.Equal(t, "unverified", detailBody.TrustLevel)
 	require.Equal(t, "medium", detailBody.RiskAssessment.Level)

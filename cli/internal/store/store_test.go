@@ -44,6 +44,31 @@ func TestPutExtractsArtifactAndIsIdempotent(t *testing.T) {
 	}
 }
 
+func TestPutPersistsInfoNameIndependentFromSkillIDPath(t *testing.T) {
+	artifact := testArtifact(t, map[string]string{
+		"SKILL.md": "---\nname: vercel-react-best-practices\ndescription: React guidance.\n---\n# Instructions\n",
+	})
+	artifact.SkillID = "github.com/vercel-labs/agent-skills/-/skills/react-best-practices"
+	artifact.Info.ID = artifact.SkillID
+	artifact.Info.Name = "vercel-react-best-practices"
+	artifact.ZIP = testArchive(t, artifact.SkillID, artifact.Info.Version, map[string]string{
+		"SKILL.md": "---\nname: vercel-react-best-practices\ndescription: React guidance.\n---\n# Instructions\n",
+	})
+	digest, err := hub.ContentDigest(artifact.ZIP, artifact.SkillID, artifact.Info.Version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	artifact.Info.ContentDigest = digest
+
+	entry, err := (Store{Root: t.TempDir()}).Put(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if entry.Receipt.Name != "vercel-react-best-practices" {
+		t.Fatalf("expected manifest name in receipt, got %q", entry.Receipt.Name)
+	}
+}
+
 func TestImportAndExportLocalSkillPreservesPrivateContent(t *testing.T) {
 	root := t.TempDir()
 	sourceRoot := filepath.Join(root, "source")
@@ -254,9 +279,10 @@ func testArtifact(t *testing.T, files map[string]string) *hub.Artifact {
 	return &hub.Artifact{
 		SkillID: skillID,
 		Info: hub.Info{
-			Version: version, Risk: hub.RiskLow, ContentDigest: contentDigest,
+			SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: "demo", Description: "test",
+			Version: version, Risk: hub.RiskLow, ContentDigest: contentDigest, ArchiveSize: int64(len(archive)),
 		},
-		Manifest: []byte("name: demo\n"), ZIP: archive,
+		ZIP: archive,
 	}
 }
 

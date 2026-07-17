@@ -3,8 +3,8 @@
 
 ## Members
 
-- `plan.go`: validates explicit location-and-Agent cells, state-bound resolutions, and shared bindings; classifies version/Skill ID/Local Modification/trusted-risk outcomes; builds stable preflight records; and executes fully resolved target groups with structured progress while retaining unrelated successes.
-- `plan_test.go`: specifies strict target decoding, explicit-cell validation, state drift, shared paths, skip and conflict behavior, zero-mutation unresolved plans, trusted-risk gates, Workspace Lock previews, and resilient target-specific progress/results.
+- `plan.go`: validates explicit location-and-Agent cells and shared bindings; classifies version/Skill ID/Local Modification/trusted-risk outcomes; pins resolved immutable versions in declarations; turns affirmative add requests into in-place replacements; builds stable preflight records; and executes target groups with structured progress while retaining unrelated successes.
+- `plan_test.go`: specifies strict target decoding, explicit-cell validation, state drift, shared paths, affirmative same-name replacement, skip and conflict behavior, trusted-risk gates, Workspace Manifest previews, and resilient target-specific progress/results.
 
 ## Architectural Boundary
 

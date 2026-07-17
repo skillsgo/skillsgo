@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// InstallEvent is the client for interacting with the InstallEvent builders.
 	InstallEvent *InstallEventClient
+	// Repository is the client for interacting with the Repository builders.
+	Repository *RepositoryClient
 	// RiskAssessment is the client for interacting with the RiskAssessment builders.
 	RiskAssessment *RiskAssessmentClient
 	// Skill is the client for interacting with the Skill builders.
@@ -156,6 +158,7 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.InstallEvent = NewInstallEventClient(tx.config)
+	tx.Repository = NewRepositoryClient(tx.config)
 	tx.RiskAssessment = NewRiskAssessmentClient(tx.config)
 	tx.Skill = NewSkillClient(tx.config)
 	tx.SkillHourlyStat = NewSkillHourlyStatClient(tx.config)
