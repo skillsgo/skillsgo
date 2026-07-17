@@ -158,6 +158,17 @@ func (c *Client) Repository(ctx context.Context, repositoryID, query string) (*R
 		}
 		if selected := latestVersion(versions); selected != "" {
 			query = selected
+		} else {
+			var latest struct {
+				Version string `json:"Version"`
+			}
+			if err := c.getJSON(ctx, c.latestEndpoint(repositoryID), &latest); err != nil {
+				return nil, err
+			}
+			if err := source.ValidateVersion(latest.Version); err != nil {
+				return nil, fmt.Errorf("Hub returned invalid latest Repository version for %s: %w", repositoryID, err)
+			}
+			query = latest.Version
 		}
 	}
 	infoBytes, err := c.get(ctx, c.endpoint(repositoryID, query+".info"))
@@ -342,7 +353,34 @@ func validateAssessedInfo(skillID, requestedVersion string, info Info) error {
 }
 
 func (c *Client) endpoint(skillID, file string) string {
-	return c.baseURL + "/" + strings.Trim(skillID, "/") + "/@v/" + file
+	escapedID, err := modmodule.EscapePath(strings.Trim(skillID, "/"))
+	if err != nil {
+		// Canonical IDs have already crossed the source parser boundary. Keep
+		// this helper total while allowing the Router to reject impossible IDs.
+		escapedID = strings.Trim(skillID, "/")
+	}
+	if file == "list" {
+		return c.baseURL + "/" + escapedID + "/@v/list"
+	}
+	for _, suffix := range []string{".info", ".zip"} {
+		if strings.HasSuffix(file, suffix) {
+			version := strings.TrimSuffix(file, suffix)
+			escapedVersion, escapeErr := modmodule.EscapeVersion(version)
+			if escapeErr == nil {
+				file = escapedVersion + suffix
+			}
+			break
+		}
+	}
+	return c.baseURL + "/" + escapedID + "/@v/" + file
+}
+
+func (c *Client) latestEndpoint(skillID string) string {
+	escapedID, err := modmodule.EscapePath(strings.Trim(skillID, "/"))
+	if err != nil {
+		escapedID = strings.Trim(skillID, "/")
+	}
+	return c.baseURL + "/" + escapedID + "/@latest"
 }
 
 func (c *Client) getJSON(ctx context.Context, endpoint string, target any) error {

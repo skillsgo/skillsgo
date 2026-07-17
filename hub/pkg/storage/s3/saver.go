@@ -19,11 +19,11 @@ import (
 )
 
 // Save implements the (github.com/skillsgo/skillsgo/hub/pkg/storage).Saver interface.
-func (s *Storage) Save(ctx context.Context, module, version string, manifest []byte, zip io.Reader, zipMD5, info []byte) error {
+func (s *Storage) Save(ctx context.Context, module, version string, zip io.Reader, zipMD5, info []byte) error {
 	const op errors.Op = "s3.Save"
 	ctx, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
-	err := artifactUploader.Upload(ctx, module, version, bytes.NewReader(info), bytes.NewReader(manifest), zip, s.upload, s.timeout)
+	err := artifactUploader.Upload(ctx, module, version, bytes.NewReader(info), zip, s.upload, s.timeout)
 	// TODO: take out lease on the /list file and add the version to it
 	//
 	// Do that only after module source+metadata is uploaded

@@ -44,10 +44,6 @@ func testNotFound(t *testing.T, b storage.Backend) {
 	require.Error(t, err)
 	require.Equal(t, errors.KindNotFound, errors.Kind(err))
 
-	_, err = b.Manifest(ctx, mod, ver)
-	require.Error(t, err)
-	require.Equal(t, errors.KindNotFound, errors.Kind(err))
-
 	_, err = b.Info(ctx, mod, ver)
 	require.Error(t, err)
 	require.Equal(t, errors.KindNotFound, errors.Kind(err))
@@ -80,7 +76,6 @@ func testListSuffix(t *testing.T, b storage.Backend) {
 				ctx,
 				modname,
 				version,
-				mock.Manifest,
 				mock.Zip,
 				mock.ZipMD5,
 				mock.Info,
@@ -119,7 +114,6 @@ func testList(t *testing.T, b storage.Backend) {
 			ctx,
 			modname,
 			version,
-			mock.Manifest,
 			mock.Zip,
 			mock.ZipMD5,
 			mock.Info,
@@ -143,16 +137,12 @@ func testGet(t *testing.T, b storage.Backend) {
 	ver := "v1.2.3"
 	mock := getMockModule()
 	zipBts, _ := io.ReadAll(mock.Zip)
-	b.Save(ctx, modname, ver, mock.Manifest, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
+	b.Save(ctx, modname, ver, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
 	defer b.Delete(ctx, modname, ver)
 
 	info, err := b.Info(ctx, modname, ver)
 	require.NoError(t, err)
 	require.Equal(t, mock.Info, info)
-
-	mod, err := b.Manifest(ctx, modname, ver)
-	require.NoError(t, err)
-	require.Equal(t, string(mock.Manifest), string(mod))
 
 	zip, err := b.Zip(ctx, modname, ver)
 	require.NoError(t, err)
@@ -168,7 +158,7 @@ func testExists(t *testing.T, b storage.Backend) {
 	ver := "v1.2.3"
 	mock := getMockModule()
 	zipBts, _ := io.ReadAll(mock.Zip)
-	b.Save(ctx, modname, ver, mock.Manifest, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
+	b.Save(ctx, modname, ver, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
 	defer b.Delete(ctx, modname, ver)
 	checker := storage.WithChecker(b)
 	exists, err := checker.Exists(ctx, modname, ver)
@@ -182,7 +172,7 @@ func testShouldNotExist(t *testing.T, b storage.Backend) {
 	ver := "v1.2.3-pre.1"
 	mock := getMockModule()
 	zipBts, _ := io.ReadAll(mock.Zip)
-	err := b.Save(ctx, mod, ver, mock.Manifest, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
+	err := b.Save(ctx, mod, ver, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
 	require.NoError(t, err, "should successfully safe a mock module")
 	defer b.Delete(ctx, mod, ver)
 
@@ -204,7 +194,7 @@ func testDelete(t *testing.T, b storage.Backend) {
 	version := fmt.Sprintf("%s%d", "delete", rand.Int())
 
 	mock := getMockModule()
-	err := b.Save(ctx, modname, version, mock.Manifest, mock.Zip, mock.ZipMD5, mock.Info)
+	err := b.Save(ctx, modname, version, mock.Zip, mock.ZipMD5, mock.Info)
 	require.NoError(t, err)
 
 	err = b.Delete(ctx, modname, version)
@@ -217,9 +207,8 @@ func testDelete(t *testing.T, b storage.Backend) {
 
 func getMockModule() *storage.Version {
 	return &storage.Version{
-		Info:     []byte("123"),
-		Manifest: []byte("456"),
-		Zip:      io.NopCloser(bytes.NewReader([]byte("789"))),
-		ZipMD5:   md5.New().Sum([]byte("789")),
+		Info:   []byte("123"),
+		Zip:    io.NopCloser(bytes.NewReader([]byte("789"))),
+		ZipMD5: md5.New().Sum([]byte("789")),
 	}
 }

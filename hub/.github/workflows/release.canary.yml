@@ -32,7 +32,7 @@ jobs:
       - name: Build and push images
         uses: docker/build-push-action@v7
         with:
-          file: cmd/hub/Dockerfile
+          file: cmd/skillsgo-hub/Dockerfile
           build-args: VERSION=${{ github.sha }}
           tags: gomods/athens:canary,gomods/athens-dev:${{ steps.vars.outputs.sha_short }}
           push: true

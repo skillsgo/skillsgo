@@ -49,19 +49,6 @@ func NewServer(strg storage.Backend) http.Handler {
 		}
 		_, _ = w.Write(info)
 	})
-	manifestHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		params, err := paths.GetAllParams(r.URL.Path)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		mod, err := strg.Manifest(r.Context(), params.Skill, params.Version)
-		if err != nil {
-			http.Error(w, err.Error(), errors.Kind(err))
-			return
-		}
-		_, _ = w.Write(mod)
-	})
 	zipHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		params, err := paths.GetAllParams(r.URL.Path)
 		if err != nil {
@@ -100,24 +87,13 @@ func NewServer(strg storage.Backend) http.Handler {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		manifestReader, _, err := r.FormFile("manifest.yaml")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
-		defer func() { _ = manifestReader.Close() }()
-		modFile, err := io.ReadAll(manifestReader)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
-			return
-		}
 		modZ, _, err := r.FormFile("skill.zip")
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
 		defer func() { _ = modZ.Close() }()
-		err = strg.Save(r.Context(), params.Skill, params.Version, modFile, modZ, nil, info)
+		err = strg.Save(r.Context(), params.Skill, params.Version, modZ, nil, info)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -143,8 +119,6 @@ func NewServer(strg storage.Backend) http.Handler {
 			listHandler.ServeHTTP(w, r)
 		case r.Method == http.MethodGet && strings.HasSuffix(requestPath, ".info"):
 			infoHandler.ServeHTTP(w, r)
-		case r.Method == http.MethodGet && strings.HasSuffix(requestPath, ".manifest"):
-			manifestHandler.ServeHTTP(w, r)
 		case r.Method == http.MethodGet && strings.HasSuffix(requestPath, ".zip"):
 			zipHandler.ServeHTTP(w, r)
 		case r.Method == http.MethodPost && strings.HasSuffix(requestPath, ".save"):

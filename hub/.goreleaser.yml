@@ -16,7 +16,7 @@ builds:
   goarch:
     - amd64
     - arm64
-  main: cmd/hub/main.go
+  main: cmd/skillsgo-hub/main.go
   binary: skillsgo-hub
   ldflags:
     - -X "github.com/skillsgo/skillsgo/hub/pkg/build.version={{ .Tag }}"

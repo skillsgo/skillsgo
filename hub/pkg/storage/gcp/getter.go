@@ -8,7 +8,6 @@ package gcp
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"cloud.google.com/go/storage"
@@ -33,24 +32,6 @@ func (s *Storage) Info(ctx context.Context, module, version string) ([]byte, err
 		return nil, errors.E(op, err, errors.S(module), errors.V(version))
 	}
 	return infoBytes, nil
-}
-
-// Manifest implements Getter.
-func (s *Storage) Manifest(ctx context.Context, module, version string) ([]byte, error) {
-	const op errors.Op = "gcp.Manifest"
-	ctx, span := observ.StartSpan(ctx, op.String())
-	defer span.End()
-	manifestReader, err := s.bucket.Object(config.PackageVersionedName(module, version, "manifest")).NewReader(ctx)
-	if err != nil {
-		return nil, errors.E(op, err, getErrorKind(err), errors.S(module), errors.V(version))
-	}
-	modBytes, err := io.ReadAll(manifestReader)
-	_ = manifestReader.Close()
-	if err != nil {
-		return nil, errors.E(op, fmt.Errorf("could not get new reader for mod file: %w", err), errors.S(module), errors.V(version))
-	}
-
-	return modBytes, nil
 }
 
 // Zip implements Getter.

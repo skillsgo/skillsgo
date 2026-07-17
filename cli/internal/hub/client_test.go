@@ -7,6 +7,7 @@
 package hub
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -31,6 +32,54 @@ func TestProgressReaderReportsMonotonicBytes(t *testing.T) {
 	}
 	if string(body) != "artifact" || len(updates) == 0 || updates[len(updates)-1] != 8 {
 		t.Fatalf("unexpected progress %v for %q", updates, body)
+	}
+}
+
+func TestRepositoryLatestFallbackUsesLatestThenCanonicalInfo(t *testing.T) {
+	repository, version := "github.com/example/untagged", "v0.0.0-20260718120000-abcdef123456"
+	requests := make([]string, 0, 3)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		requests = append(requests, request.URL.Path)
+		switch request.URL.Path {
+		case "/" + repository + "/@v/list":
+			_, _ = w.Write(nil)
+		case "/" + repository + "/@latest":
+			fmt.Fprintf(w, `{"Version":%q,"Time":"2026-07-18T12:00:00Z"}`, version)
+		case "/" + repository + "/@v/" + version + ".info":
+			fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-18T12:00:00Z","CommitSHA":"abcdef1234567890","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Name":"root","Description":"root","Risk":"low","ContentDigest":"sha256:%s","ArchiveSize":1,"Origin":{"CommitSHA":"abcdef1234567890","TreeSHA":"tree"}}]}`, repository, version, repository, version, strings.Repeat("a", 64))
+		default:
+			http.NotFound(w, request)
+		}
+	}))
+	defer server.Close()
+	client, err := New(server.URL, server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	resource, err := client.Repository(t.Context(), repository, "latest")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if resource.Info.Version != version || len(requests) != 3 || !strings.HasSuffix(requests[1], "/@latest") {
+		t.Fatalf("unexpected latest flow: version=%q requests=%v", resource.Info.Version, requests)
+	}
+}
+
+func TestProxyEndpointEscapesSkillPathCase(t *testing.T) {
+	skillID := "github.com/example/skills/-/Skills/Demo"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
+		if request.URL.EscapedPath() != "/github.com/example/skills/-/!skills/!demo/@v/v1.2.3.info" {
+			t.Fatalf("unexpected escaped path %q", request.URL.EscapedPath())
+		}
+		fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":"v1.2.3","Risk":"low","ContentDigest":"sha256:%s","Origin":{"CommitSHA":"commit","TreeSHA":"tree"}}`, skillID, strings.Repeat("a", 64))
+	}))
+	defer server.Close()
+	client, err := New(server.URL, server.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.Resolve(t.Context(), skillID, "v1.2.3"); err != nil {
+		t.Fatal(err)
 	}
 }
 

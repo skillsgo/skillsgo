@@ -110,7 +110,7 @@ func (s *stasher) Stash(ctx context.Context, mod, ver string) (string, error) {
 			}
 		}
 		defer func() { _ = v.Zip.Close() }()
-		if err := s.storage.Save(ctx, mod, v.Semver, v.Manifest, v.Zip, v.ZipMD5, v.Info); err != nil {
+		if err := s.storage.Save(ctx, mod, v.Semver, v.Zip, v.ZipMD5, v.Info); err != nil {
 			return "", errors.E(op, err)
 		}
 		if err := s.indexer.Index(ctx, mod, v.Semver); err != nil && !errors.Is(err, errors.KindAlreadyExists) {

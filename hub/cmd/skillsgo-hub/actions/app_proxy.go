@@ -119,7 +119,7 @@ func addProxyRoutesWithCatalog(
 		if !ok {
 			return fmt.Errorf("configured Skill fetcher does not support Repository discovery")
 		}
-		dp = withRepositoryInfo(dp, metadata, newRepositoryPublisher(repositoryFetcher, s, dp))
+		dp = withRepositoryInfo(dp, metadata, newRepositoryPublisher(repositoryFetcher, s, dp, metadata))
 		registerCatalogAPIRoutes(
 			r,
 			metadata,

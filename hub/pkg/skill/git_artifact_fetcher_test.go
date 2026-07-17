@@ -69,8 +69,6 @@ func (s *SkillSuite) TestGitFetcherFetch() {
 	r.Equal("3652b3c7aa21492717945b6063ae278030101dd8", info.Origin.CommitSHA)
 	r.Equal("f17a01bcf457cca0ba9a3432fb7218a064261a14", info.Origin.TreeSHA)
 
-	r.True(len(ver.Manifest) > 0)
-
 	zipBytes, err := io.ReadAll(ver.Zip)
 	r.NoError(err)
 	r.True(len(zipBytes) > 0)

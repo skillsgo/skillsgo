@@ -70,7 +70,7 @@ const homepage = `<!DOCTYPE html>
 	"Time": "1972-07-18T12:34:56Z"
 }</pre>
 
-	<h3>Skill manifest</h3>
+	<h3>Skill metadata</h3>
 	<p>This endpoint returns the YAML frontmatter from SKILL.md for a specific version:</p>
 	<pre>name: my-skill\ndescription: Example Skill</pre>
 

@@ -7,7 +7,6 @@
 - `artifact_digest.go`: recomputes the Hub-compatible normalized Content Digest from ZIP or extracted directories and binds Info to exact artifact files.
 - `artifact_digest_test.go`: specifies golden deterministic digest acceptance and mismatch rejection.
 - `client_test.go`: specifies source-hint request encoding and strict content-match response validation.
-- `manifest.go`, `manifest_test.go`: extract and validate the Manifest-defined installation name independently from source paths.
 
 ## Architectural Boundary
 

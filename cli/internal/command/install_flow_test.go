@@ -9,6 +9,7 @@ package command
 import (
 	"archive/zip"
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -17,8 +18,10 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
+	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
@@ -282,6 +285,26 @@ func commandTestContentDigest(t *testing.T, data []byte, skillID, version string
 	return digest
 }
 
+func commandTestRepositoryInfo(t *testing.T, repositoryID, version, commit string, members ...hub.Info) []byte {
+	t.Helper()
+	rawMembers := make([]json.RawMessage, 0, len(members))
+	for _, member := range members {
+		encoded, err := json.Marshal(member)
+		if err != nil {
+			t.Fatal(err)
+		}
+		rawMembers = append(rawMembers, encoded)
+	}
+	encoded, err := json.Marshal(hub.RepositoryInfo{
+		SchemaVersion: 1, Kind: "Repository", ID: repositoryID, Version: version,
+		Time: time.Unix(1, 0).UTC(), CommitSHA: commit, Skills: rawMembers,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return encoded
+}
+
 func TestInstallRestoresFromStoreWithoutHub(t *testing.T) {
 	root := t.TempDir()
 	home := filepath.Join(root, "home")
@@ -307,6 +330,14 @@ func TestInstallRestoresFromStoreWithoutHub(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := project.Upsert(projectRoot, name, project.SkillRequirement{Source: skillID, Agents: []string{"codex", "claude-code"}, Mode: install.ModeSymlink}, entry.Receipt); err != nil {
+		t.Fatal(err)
+	}
+	repositoryID := strings.SplitN(skillID, "/-/", 2)[0]
+	repositoryInfo := commandTestRepositoryInfo(t, repositoryID, version, "abc", artifact.Info)
+	if err := (infocache.Cache{Root: infocache.DefaultRoot(home)}).Put(repositoryID, version, "repository.info", repositoryInfo); err != nil {
+		t.Fatal(err)
+	}
+	if err := project.MergeVerifiedSums(projectRoot, []project.SumEntry{{Path: repositoryID, Version: version + "/repository.info", Checksum: project.H1(repositoryInfo)}}); err != nil {
 		t.Fatal(err)
 	}
 	oldCWD, err := os.Getwd()
@@ -378,7 +409,10 @@ func TestInstallOnCleanMachineRefillsStoreFromHubAndRestoresTopology(t *testing.
 	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		repositoryID := strings.SplitN(skillID, "/-/", 2)[0]
 		switch {
+		case request.URL.Path == "/"+repositoryID+"/@v/"+version+".info":
+			writer.Write(commandTestRepositoryInfo(t, repositoryID, version, "clean", artifact.Info))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".info"):
 			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"clean-restore","Description":"test","Version":%q,"Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","CommitSHA":"clean","TreeSHA":"clean-tree"}}`, skillID, version, digest, len(zipData))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):

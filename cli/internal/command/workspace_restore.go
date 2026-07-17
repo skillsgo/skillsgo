@@ -52,6 +52,23 @@ func restoreWorkspace(ctx context.Context, root string, catalog *agent.Catalog, 
 	verified := make([]project.SumEntry, 0, len(manifest.Skills)*2)
 	for dependency, requirement := range manifest.Skills {
 		if strings.Contains(dependency, "/-/") {
+			repositoryID := strings.SplitN(dependency, "/-/", 2)[0]
+			resource, loadErr := loadExactRepository(ctx, client, cache, repositoryID, requirement.Ref)
+			if loadErr != nil {
+				return nil, loadErr
+			}
+			verified = append(verified, project.SumEntry{Path: repositoryID, Version: resource.Info.Version + "/repository.info", Checksum: project.H1(resource.InfoBytes)})
+			repositories = append(repositories, resource)
+			var selected *hub.RepositoryMember
+			for index := range resource.Members {
+				if resource.Members[index].Info.ID == dependency {
+					selected = &resource.Members[index]
+					break
+				}
+			}
+			if selected == nil {
+				return nil, fmt.Errorf("Repository Info %s@%s does not contain selected Skill %s", repositoryID, requirement.Ref, dependency)
+			}
 			entry, getErr := storage.Get(dependency, requirement.Ref)
 			if getErr == nil {
 				checksum, checksumErr := project.ContentH1(entry.Receipt.ContentDigest)
@@ -59,13 +76,13 @@ func restoreWorkspace(ctx context.Context, root string, catalog *agent.Catalog, 
 					return nil, checksumErr
 				}
 				verified = append(verified, project.SumEntry{Path: dependency, Version: requirement.Ref, Checksum: checksum})
-				packages = append(packages, restorePackage{info: hub.Info{ID: dependency, Version: requirement.Ref, Name: entry.Receipt.Name, ContentDigest: entry.Receipt.ContentDigest}, requirement: requirement, entry: entry})
+				packages = append(packages, restorePackage{info: selected.Info, member: selected, requirement: requirement, entry: entry})
 				continue
 			}
 			if !errors.Is(getErr, store.ErrNotFound) {
 				return nil, getErr
 			}
-			artifact, fetchErr := client.Fetch(ctx, dependency, requirement.Ref)
+			artifact, fetchErr := client.FetchRepositoryMember(ctx, *selected, nil)
 			if fetchErr != nil {
 				return nil, fmt.Errorf("fetch exact Skill %s@%s: %w", dependency, requirement.Ref, fetchErr)
 			}

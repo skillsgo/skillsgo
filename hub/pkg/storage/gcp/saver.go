@@ -19,18 +19,18 @@ import (
 	googleapi "google.golang.org/api/googleapi"
 )
 
-// Save uploads the module's .manifest, .zip and .info files for a given version
+// Save uploads the Skill's .zip and .info files for a given version.
 // It expects a context, which can be provided using context.Background
 // from the standard library until context has been threaded down the stack.
 // see issue: https://github.com/skillsgo/skillsgo/hub/issues/174
 //
 // Uploaded files are publicly accessible in the storage bucket as per
 // an ACL rule.
-func (s *Storage) Save(ctx context.Context, module, version string, manifest []byte, zip io.Reader, zipMD5, info []byte) error {
+func (s *Storage) Save(ctx context.Context, module, version string, zip io.Reader, zipMD5, info []byte) error {
 	const op errors.Op = "gcp.save"
 	ctx, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
-	err := s.save(ctx, module, version, manifest, zip, zipMD5, info)
+	err := s.save(ctx, module, version, zip, zipMD5, info)
 	if err != nil {
 		return errors.E(op, err)
 	}
@@ -43,20 +43,13 @@ func (s *Storage) SetStaleThreshold(threshold time.Duration) {
 	s.staleThreshold = threshold
 }
 
-func (s *Storage) save(ctx context.Context, module, version string, manifest []byte, zip io.Reader, zipMD5, info []byte) error {
+func (s *Storage) save(ctx context.Context, module, version string, zip io.Reader, zipMD5, info []byte) error {
 	const op errors.Op = "gcp.save"
 	ctx, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
 
-	manifestPath := config.PackageVersionedName(module, version, "manifest")
-	err := s.upload(ctx, manifestPath, bytes.NewReader(manifest), nil, false)
-	// KindAlreadyExists means the file is uploaded (somewhere else) successfully.
-	if err != nil && !errors.Is(err, errors.KindAlreadyExists) {
-		return errors.E(op, err)
-	}
-
 	zipPath := config.PackageVersionedName(module, version, "zip")
-	err = s.upload(ctx, zipPath, zip, zipMD5, true)
+	err := s.upload(ctx, zipPath, zip, zipMD5, true)
 	if err != nil && !errors.Is(err, errors.KindAlreadyExists) {
 		return errors.E(op, err)
 	}

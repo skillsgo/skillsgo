@@ -8,7 +8,6 @@ package s3
 
 import (
 	"context"
-	"fmt"
 	"io"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -41,30 +40,6 @@ func (s *Storage) Info(ctx context.Context, module, version string) ([]byte, err
 		return nil, errors.E(op, err, errors.S(module), errors.V(version))
 	}
 	return infoBytes, nil
-}
-
-// Manifest implements the (./pkg/storage).Getter interface.
-func (s *Storage) Manifest(ctx context.Context, module, version string) ([]byte, error) {
-	const op errors.Op = "s3.Manifest"
-	ctx, span := observ.StartSpan(ctx, op.String())
-	defer span.End()
-
-	manifestReader, err := s.open(ctx, config.PackageVersionedName(module, version, "manifest"))
-	if err != nil {
-		var nsk *types.NoSuchKey
-		if errors.AsErr(err, &nsk) {
-			return nil, errors.E(op, errors.S(module), errors.V(version), errors.KindNotFound)
-		}
-		return nil, errors.E(op, err, errors.S(module), errors.V(version))
-	}
-	defer func() { _ = manifestReader.Close() }()
-
-	modBytes, err := io.ReadAll(manifestReader)
-	if err != nil {
-		return nil, errors.E(op, fmt.Errorf("could not get new reader for mod file: %w", err), errors.S(module), errors.V(version))
-	}
-
-	return modBytes, nil
 }
 
 // Zip implements the (./pkg/storage).Getter interface.

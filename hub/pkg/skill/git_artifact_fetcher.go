@@ -30,11 +30,10 @@ type gitFetcher struct {
 }
 
 type artifactFiles struct {
-	Path     string
-	Version  string
-	Info     string
-	Manifest string
-	Zip      string
+	Path    string
+	Version string
+	Info    string
+	Zip     string
 }
 
 // NewFetcher creates a Skill fetcher backed by Git.
@@ -95,11 +94,6 @@ func (g *gitFetcher) fetch(ctx context.Context, skillPath, revision string, reso
 		return nil, errors.E(op, err)
 	}
 	storageVer.Info = info
-
-	storageVer.Manifest, err = afero.ReadFile(g.fs, m.Manifest)
-	if err != nil {
-		return nil, errors.E(op, err)
-	}
 
 	zipMD5, err := func() ([]byte, error) {
 		// Perform in a separate function to ensure file is closed

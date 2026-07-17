@@ -119,10 +119,10 @@ $ sudo journalctl -u athens --since today --follow
 
 If you're inside GOPATH, make sure `GO111MODULE=on`, if you're outside GOPATH, then Go Modules are on by default.
 
-The main package is inside `cmd/hub` and is run like any Go project as follows:
+The main package is inside `cmd/skillsgo-hub` and is run like any Go project as follows:
 
 ```console
-$ cd cmd/hub
+$ cd cmd/skillsgo-hub
 $ go build
 $ ./hub
 ```

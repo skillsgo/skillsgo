@@ -32,11 +32,9 @@ func (s *Storage) Exists(ctx context.Context, module, version string) (bool, err
 		switch p {
 		case config.PackageVersionedName(module, version, "info"):
 			count++
-		case config.PackageVersionedName(module, version, "manifest"):
-			count++
 		case config.PackageVersionedName(module, version, "zip"):
 			count++
 		}
 	}
-	return count == 3, nil
+	return count == 2, nil
 }

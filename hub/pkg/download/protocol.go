@@ -35,9 +35,6 @@ type Protocol interface {
 	// Latest implements GET /{skill}/@latest
 	Latest(ctx context.Context, mod string) (*storage.RevInfo, error)
 
-	// Manifest implements GET /{skill}/@v/{version}.manifest
-	Manifest(ctx context.Context, mod, ver string) ([]byte, error)
-
 	// Zip implements GET /{skill}/@v/{version}.zip
 	Zip(ctx context.Context, mod, ver string) (storage.SizeReadCloser, error)
 }
@@ -217,26 +214,6 @@ func (p *protocol) Info(ctx context.Context, mod, ver string) ([]byte, error) {
 	}
 
 	return info, nil
-}
-
-func (p *protocol) Manifest(ctx context.Context, mod, ver string) ([]byte, error) {
-	const op errors.Op = "protocol.Manifest"
-	ctx, span := observ.StartSpan(ctx, op.String())
-	defer span.End()
-	manifest, err := p.storage.Manifest(ctx, mod, ver)
-	if err == nil {
-		observ.RecordCacheLookup(ctx, "hit", "gomod")
-	} else if errors.IsNotFoundErr(err) {
-		observ.RecordCacheLookup(ctx, "miss", "gomod")
-		err = p.processDownload(ctx, mod, ver, func(newVer string) error {
-			manifest, err = p.storage.Manifest(ctx, mod, newVer)
-			return err
-		})
-	}
-	if err != nil {
-		return nil, errors.E(op, err)
-	}
-	return manifest, nil
 }
 
 func (p *protocol) Zip(ctx context.Context, mod, ver string) (storage.SizeReadCloser, error) {

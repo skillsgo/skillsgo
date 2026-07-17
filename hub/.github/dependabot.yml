@@ -21,7 +21,7 @@ updates:
     target-branch: main
   - package-ecosystem: docker
     directories:
-      - /cmd/hub
+      - /cmd/skillsgo-hub
     schedule:
       interval: weekly
     commit-message:

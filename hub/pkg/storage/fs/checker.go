@@ -29,5 +29,5 @@ func (s *storageImpl) Exists(ctx context.Context, module, version string) (bool,
 		return false, errors.E(op, errors.S(module), errors.V(version), err)
 	}
 
-	return len(files) == 3, nil
+	return len(files) == 2, nil
 }

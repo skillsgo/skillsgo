@@ -25,7 +25,7 @@ fi
 
 REPO_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." >/dev/null && pwd )/"
 
-docker build --build-arg VERSION=${VERSION} -t ${REGISTRY}skillsgo-hub:${VERSION} -f ${REPO_DIR}cmd/hub/Dockerfile ${REPO_DIR}
+docker build --build-arg VERSION=${VERSION} -t ${REGISTRY}skillsgo-hub:${VERSION} -f ${REPO_DIR}cmd/skillsgo-hub/Dockerfile ${REPO_DIR}
 
 # Apply the mutable tag to the immutable version
 docker tag ${REGISTRY}skillsgo-hub:${VERSION} ${REGISTRY}skillsgo-hub:${MUTABLE_TAG}

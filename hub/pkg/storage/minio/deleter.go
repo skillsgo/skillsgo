@@ -29,11 +29,6 @@ func (s *storageImpl) Delete(ctx context.Context, module, version string) error 
 
 	versionedPath := s.versionLocation(module, version)
 
-	manifestPath := fmt.Sprintf("%s/manifest.yaml", versionedPath)
-	if err := s.minioClient.RemoveObject(s.bucketName, manifestPath); err != nil {
-		return errors.E(op, err, errors.S(module), errors.V(version))
-	}
-
 	zipPath := fmt.Sprintf("%s/source.zip", versionedPath)
 	if err := s.minioClient.RemoveObject(s.bucketName, zipPath); err != nil {
 		return errors.E(op, err, errors.S(module), errors.V(version))

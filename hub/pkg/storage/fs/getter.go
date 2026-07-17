@@ -30,19 +30,6 @@ func (s *storageImpl) Info(ctx context.Context, module, version string) ([]byte,
 	return info, nil
 }
 
-func (s *storageImpl) Manifest(ctx context.Context, module, version string) ([]byte, error) {
-	const op errors.Op = "fs.Manifest"
-	_, span := observ.StartSpan(ctx, op.String())
-	defer span.End()
-	versionedPath := s.versionLocation(module, version)
-	manifest, err := afero.ReadFile(s.filesystem, filepath.Join(versionedPath, "manifest.yaml"))
-	if err != nil {
-		return nil, errors.E(op, errors.S(module), errors.V(version), errors.KindNotFound)
-	}
-
-	return manifest, nil
-}
-
 func (s *storageImpl) Zip(ctx context.Context, module, version string) (storage.SizeReadCloser, error) {
 	const op errors.Op = "fs.Zip"
 	_, span := observ.StartSpan(ctx, op.String())

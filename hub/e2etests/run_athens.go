@@ -22,7 +22,7 @@ import (
 
 func buildAthens(goBin, destPath string, env []string) (string, error) {
 	target := path.Join(destPath, "skillsgo-hub")
-	binFolder, err := filepath.Abs("../cmd/hub")
+	binFolder, err := filepath.Abs("../cmd/skillsgo-hub")
 	if err != nil {
 		return "", fmt.Errorf("Failed to get athens source path %v", err)
 	}

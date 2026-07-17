@@ -16,6 +16,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/download"
 	huberrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
+	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 )
 
 func withRepositoryInfo(protocol download.Protocol, metadata *catalog.Catalog, materializers ...repositoryMaterializer) download.Protocol {
@@ -48,7 +49,11 @@ func (p *repositoryInfoProtocol) Info(ctx context.Context, resourceID, version s
 		return nil, huberrors.E("repositoryInfoProtocol.Info", err, huberrors.KindBadRequest)
 	}
 	if parsed.SkillPath != "." {
-		return p.Protocol.Info(ctx, resourceID, version)
+		canonicalVersion, ensureErr := p.ensurePublished(ctx, parsed.Repository, resourceID, version)
+		if ensureErr != nil {
+			return nil, ensureErr
+		}
+		return p.Protocol.Info(ctx, resourceID, canonicalVersion)
 	}
 	members, err := p.metadata.RepositoryVersionMembers(ctx, resourceID, version)
 	if err != nil {
@@ -91,4 +96,43 @@ func (p *repositoryInfoProtocol) Info(ctx context.Context, resourceID, version s
 		return nil, fmt.Errorf("encode Repository Info: %w", err)
 	}
 	return encoded, nil
+}
+
+func (p *repositoryInfoProtocol) Zip(ctx context.Context, resourceID, version string) (storage.SizeReadCloser, error) {
+	parsed, err := skill.ParseSkillID(resourceID)
+	if err != nil || parsed.String() != resourceID {
+		return nil, huberrors.E("repositoryInfoProtocol.Zip", err, huberrors.KindBadRequest)
+	}
+	canonicalVersion, err := p.ensurePublished(ctx, parsed.Repository, resourceID, version)
+	if err != nil {
+		return nil, err
+	}
+	return p.Protocol.Zip(ctx, resourceID, canonicalVersion)
+}
+
+func (p *repositoryInfoProtocol) ensurePublished(ctx context.Context, repositoryID, resourceID, version string) (string, error) {
+	members, err := p.metadata.RepositoryVersionMembers(ctx, repositoryID, version)
+	if err != nil {
+		return "", err
+	}
+	canonicalVersion := version
+	if len(members) == 0 {
+		if p.materializer == nil {
+			return "", huberrors.E("repositoryInfoProtocol.ensurePublished", huberrors.S(resourceID), huberrors.V(version), huberrors.KindNotFound)
+		}
+		canonicalVersion, err = p.materializer.Materialize(ctx, repositoryID, version)
+		if err != nil {
+			return "", err
+		}
+		members, err = p.metadata.RepositoryVersionMembers(ctx, repositoryID, canonicalVersion)
+		if err != nil {
+			return "", err
+		}
+	}
+	for _, member := range members {
+		if member.SkillID == resourceID {
+			return canonicalVersion, nil
+		}
+	}
+	return "", huberrors.E("repositoryInfoProtocol.ensurePublished", huberrors.S(resourceID), huberrors.V(canonicalVersion), huberrors.KindNotFound)
 }

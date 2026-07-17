@@ -21,8 +21,6 @@ bin/*
 .envrc
 athens
 /hub
-cmd/hub/skillsgo-hub
-cmd/hub/bin
 test-keys.json
 tmp
 .vs

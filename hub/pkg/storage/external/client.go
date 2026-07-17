@@ -65,19 +65,6 @@ func (s *service) Info(ctx context.Context, mod, ver string) ([]byte, error) {
 	return info, nil
 }
 
-func (s *service) Manifest(ctx context.Context, mod, ver string) ([]byte, error) {
-	const op errors.Op = "external.Manifest"
-	body, _, err := s.getRequest(ctx, mod, ver, "manifest")
-	if err != nil {
-		return nil, errors.E(op, err)
-	}
-	modFile, err := io.ReadAll(body)
-	if err != nil {
-		return nil, errors.E(op, err)
-	}
-	return modFile, nil
-}
-
 func (s *service) Zip(ctx context.Context, mod, ver string) (storage.SizeReadCloser, error) {
 	const op errors.Op = "external.Zip"
 	body, size, err := s.getRequest(ctx, mod, ver, "zip")
@@ -87,7 +74,7 @@ func (s *service) Zip(ctx context.Context, mod, ver string) (storage.SizeReadClo
 	return storage.NewSizer(body, size), nil
 }
 
-func (s *service) Save(ctx context.Context, mod, ver string, modFile []byte, zip io.Reader, zipMD5, info []byte) error {
+func (s *service) Save(ctx context.Context, mod, ver string, zip io.Reader, zipMD5, info []byte) error {
 	const op errors.Op = "external.Save"
 	var err error
 	mod, err = module.EscapePath(mod)
@@ -98,7 +85,7 @@ func (s *service) Save(ctx context.Context, mod, ver string, modFile []byte, zip
 	pr, pw := io.Pipe()
 	mw := multipart.NewWriter(pw)
 	go func() {
-		err := upload(mw, modFile, info, zip)
+		err := upload(mw, info, zip)
 		_ = pw.CloseWithError(err)
 	}()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, pr)
@@ -128,7 +115,7 @@ func (s *service) Delete(ctx context.Context, mod, ver string) error {
 	return nil
 }
 
-func upload(mw *multipart.Writer, mod, info []byte, zip io.Reader) error {
+func upload(mw *multipart.Writer, info []byte, zip io.Reader) error {
 	defer func() { _ = mw.Close() }()
 	infoW, err := mw.CreateFormFile("info.json", "info.json")
 	if err != nil {
@@ -137,14 +124,6 @@ func upload(mw *multipart.Writer, mod, info []byte, zip io.Reader) error {
 	_, err = infoW.Write(info)
 	if err != nil {
 		return fmt.Errorf("error writing info file: %w", err)
-	}
-	manifestWriter, err := mw.CreateFormFile("manifest.yaml", "manifest.yaml")
-	if err != nil {
-		return fmt.Errorf("error creating mod file: %w", err)
-	}
-	_, err = manifestWriter.Write(mod)
-	if err != nil {
-		return fmt.Errorf("error writing mod file: %w", err)
 	}
 	zipW, err := mw.CreateFormFile("skill.zip", "skill.zip")
 	if err != nil {

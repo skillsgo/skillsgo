@@ -32,6 +32,17 @@ type catalogProtocol struct {
 	metadata *catalog.Catalog
 }
 
+type suppressCatalogIndexKey struct{}
+
+func withoutCatalogIndex(ctx context.Context) context.Context {
+	return context.WithValue(ctx, suppressCatalogIndexKey{}, true)
+}
+
+func shouldIndexCatalog(ctx context.Context) bool {
+	suppressed, _ := ctx.Value(suppressCatalogIndexKey{}).(bool)
+	return !suppressed
+}
+
 type catalogArtifactInfo struct {
 	Version string    `json:"Version"`
 	Time    time.Time `json:"Time"`
@@ -44,7 +55,7 @@ type catalogArtifactInfo struct {
 	ArchiveSize   int64  `json:"ArchiveSize"`
 }
 
-type catalogManifest struct {
+type skillFrontmatter struct {
 	Name          string            `yaml:"name"`
 	Description   string            `yaml:"description"`
 	License       string            `yaml:"license"`
@@ -62,8 +73,10 @@ func (p *catalogProtocol) Info(ctx context.Context, skillID, version string) ([]
 	if err != nil {
 		return nil, err
 	}
-	if err := p.index(ctx, skillID, assessed); err != nil {
-		return nil, err
+	if shouldIndexCatalog(ctx) {
+		if err := p.index(ctx, skillID, assessed); err != nil {
+			return nil, err
+		}
 	}
 	return assessed, nil
 }
@@ -83,12 +96,12 @@ func (p *catalogProtocol) bindAssessment(ctx context.Context, skillID string, in
 			return nil, err
 		}
 	}
-	manifest, err := metadataFromArchive(archiveBytes)
+	metadata, err := metadataFromArchive(archiveBytes)
 	if err != nil {
 		return nil, err
 	}
-	if manifest.Name == "" || manifest.Description == "" {
-		return nil, fmt.Errorf("decode Skill manifest for Info: name and description are required")
+	if metadata.Name == "" || metadata.Description == "" {
+		return nil, fmt.Errorf("decode Skill metadata for Info: name and description are required")
 	}
 	analysis, err := audit.AnalyzeArtifact(archiveBytes, skillID, info.Version)
 	if err != nil {
@@ -103,20 +116,20 @@ func (p *catalogProtocol) bindAssessment(ctx context.Context, skillID string, in
 	response["SchemaVersion"] = 1
 	response["Kind"] = "Skill"
 	response["ID"] = skillID
-	response["Name"] = manifest.Name
-	response["Description"] = manifest.Description
+	response["Name"] = metadata.Name
+	response["Description"] = metadata.Description
 	response["ArchiveSize"] = len(archiveBytes)
-	if manifest.License != "" {
-		response["License"] = manifest.License
+	if metadata.License != "" {
+		response["License"] = metadata.License
 	}
-	if manifest.Compatibility != "" {
-		response["Compatibility"] = manifest.Compatibility
+	if metadata.Compatibility != "" {
+		response["Compatibility"] = metadata.Compatibility
 	}
-	if manifest.AllowedTools != "" {
-		response["AllowedTools"] = manifest.AllowedTools
+	if metadata.AllowedTools != "" {
+		response["AllowedTools"] = metadata.AllowedTools
 	}
-	if len(manifest.Metadata) > 0 {
-		response["Metadata"] = manifest.Metadata
+	if len(metadata.Metadata) > 0 {
+		response["Metadata"] = metadata.Metadata
 	}
 	encoded, err := json.Marshal(response)
 	if err != nil {
@@ -142,8 +155,10 @@ func (p *catalogProtocol) Zip(ctx context.Context, skillID, version string) (sto
 	if err != nil {
 		return nil, err
 	}
-	if err := p.index(ctx, skillID, assessed); err != nil {
-		return nil, err
+	if shouldIndexCatalog(ctx) {
+		if err := p.index(ctx, skillID, assessed); err != nil {
+			return nil, err
+		}
 	}
 	return storage.NewSizer(io.NopCloser(bytes.NewReader(archiveBytes)), int64(len(archiveBytes))), nil
 }
@@ -161,7 +176,7 @@ func (p *catalogProtocol) index(ctx context.Context, skillID string, infoBytes [
 		Description string `json:"Description"`
 	}
 	if err := json.Unmarshal(infoBytes, &metadata); err != nil || metadata.Name == "" || metadata.Description == "" {
-		return fmt.Errorf("decode Skill manifest for catalog: name and description are required")
+		return fmt.Errorf("decode Skill metadata for catalog: name and description are required")
 	}
 	if err := p.metadata.UpsertSkill(ctx, &catalog.Skill{
 		SkillID:       skillID,
@@ -180,10 +195,10 @@ func (p *catalogProtocol) index(ctx context.Context, skillID string, infoBytes [
 	return nil
 }
 
-func metadataFromArchive(archiveBytes []byte) (catalogManifest, error) {
+func metadataFromArchive(archiveBytes []byte) (skillFrontmatter, error) {
 	reader, err := zip.NewReader(bytes.NewReader(archiveBytes), int64(len(archiveBytes)))
 	if err != nil {
-		return catalogManifest{}, fmt.Errorf("read Skill archive metadata: %w", err)
+		return skillFrontmatter{}, fmt.Errorf("read Skill archive metadata: %w", err)
 	}
 	for _, file := range reader.File {
 		if !strings.HasSuffix(file.Name, "/SKILL.md") {
@@ -191,28 +206,28 @@ func metadataFromArchive(archiveBytes []byte) (catalogManifest, error) {
 		}
 		opened, err := file.Open()
 		if err != nil {
-			return catalogManifest{}, err
+			return skillFrontmatter{}, err
 		}
 		contents, readErr := io.ReadAll(opened)
 		closeErr := opened.Close()
 		if readErr != nil {
-			return catalogManifest{}, readErr
+			return skillFrontmatter{}, readErr
 		}
 		if closeErr != nil {
-			return catalogManifest{}, closeErr
+			return skillFrontmatter{}, closeErr
 		}
 		parts := bytes.SplitN(contents, []byte("---"), 3)
 		if len(parts) != 3 || len(bytes.TrimSpace(parts[0])) != 0 {
-			return catalogManifest{}, fmt.Errorf("SKILL.md is missing YAML frontmatter")
+			return skillFrontmatter{}, fmt.Errorf("SKILL.md is missing YAML frontmatter")
 		}
-		var metadata catalogManifest
+		var metadata skillFrontmatter
 		if err := yaml.Unmarshal(parts[1], &metadata); err != nil {
-			return catalogManifest{}, fmt.Errorf("decode SKILL.md frontmatter: %w", err)
+			return skillFrontmatter{}, fmt.Errorf("decode SKILL.md frontmatter: %w", err)
 		}
 		if metadata.Name == "" || metadata.Description == "" {
-			return catalogManifest{}, fmt.Errorf("decode SKILL.md frontmatter: name and description are required")
+			return skillFrontmatter{}, fmt.Errorf("decode SKILL.md frontmatter: name and description are required")
 		}
 		return metadata, nil
 	}
-	return catalogManifest{}, fmt.Errorf("Skill archive contains no SKILL.md")
+	return skillFrontmatter{}, fmt.Errorf("Skill archive contains no SKILL.md")
 }

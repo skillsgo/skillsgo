@@ -18,7 +18,7 @@ import (
 )
 
 // Save stores a module in mongo storage.
-func (s *SkillStore) Save(ctx context.Context, module, version string, manifest []byte, zip io.Reader, zipMD5, info []byte) error {
+func (s *SkillStore) Save(ctx context.Context, module, version string, zip io.Reader, zipMD5, info []byte) error {
 	const op errors.Op = "mongo.Save"
 	ctx, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
@@ -51,10 +51,9 @@ func (s *SkillStore) Save(ctx context.Context, module, version string, manifest 
 	}
 
 	m := &storage.Skill{
-		Skill:    module,
-		Version:  version,
-		Manifest: manifest,
-		Info:     info,
+		Skill:   module,
+		Version: version,
+		Info:    info,
 	}
 
 	c := s.client.Database(s.db).Collection(s.coll)

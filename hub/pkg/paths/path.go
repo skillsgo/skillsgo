@@ -39,7 +39,7 @@ func GetVersion(requestPath string) (string, error) {
 		return "", errors.E(op, "missing version parameter")
 	}
 	version := requestPath[i+len("/@v/"):]
-	for _, suffix := range []string{".info", ".manifest", ".zip", ".save", ".delete"} {
+	for _, suffix := range []string{".info", ".zip", ".save", ".delete"} {
 		version = strings.TrimSuffix(version, suffix)
 	}
 	if version == "list" {

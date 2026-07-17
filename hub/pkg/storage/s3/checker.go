@@ -25,7 +25,7 @@ func (s *Storage) Exists(ctx context.Context, module, version string) (bool, err
 	ctx, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
 
-	files := []string{"info", "manifest", "zip"}
+	files := []string{"info", "zip"}
 	errChan := make(chan error, len(files))
 	defer close(errChan)
 	cancelingCtx, cancel := context.WithCancel(ctx)

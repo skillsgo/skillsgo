@@ -1,6 +1,12 @@
 //go:build e2etests
 // +build e2etests
 
+/*
+ * [INPUT]: Depends on a running Hub, public root/nested Skill fixtures, enriched Info, and deterministic ZIP delivery.
+ * [OUTPUT]: Specifies end-to-end exact Info metadata, immutable cache replay, and complete root/nested Skill ZIP contents.
+ * [POS]: Serves as the external protocol acceptance test after independent Manifest resource contraction.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package e2etests
 
 import (
@@ -24,6 +30,7 @@ const (
 
 type skillModuleInfo struct {
 	Version string `json:"Version"`
+	Name    string `json:"Name"`
 	Origin  struct {
 		CommitSHA string `json:"CommitSHA"`
 		TreeSHA   string `json:"TreeSHA"`
@@ -41,10 +48,7 @@ func (m *E2eSuite) TestSkillArtifact() {
 	m.Equal(testSkillTreeSHA, info.Origin.TreeSHA)
 	m.Equal("refs/tags/"+testSkillVersion, info.Origin.Ref)
 
-	modBody := m.getProxyArtifact(testSkillModule + "/@v/" + testSkillVersion + ".manifest")
-	m.Contains(string(modBody), "name: guizang-ppt-skill\n")
-	m.Contains(string(modBody), "description: ")
-	m.NotContains(string(modBody), "---")
+	m.Equal("guizang-ppt-skill", info.Name)
 
 	zipBody := m.getProxyArtifact(testSkillModule + "/@v/" + testSkillVersion + ".zip")
 	zipBodyFromCache := m.getProxyArtifact(testSkillModule + "/@v/" + testSkillVersion + ".zip")
@@ -78,8 +82,7 @@ func (m *E2eSuite) TestNestedSkillArtifact() {
 	m.Equal(testSkillMonorepoCommitSHA, info.Origin.CommitSHA)
 	m.Equal(testNestedSkillTreeSHA, info.Origin.TreeSHA)
 
-	modBody := m.getProxyArtifact(testNestedSkillModule + "/@v/main.manifest")
-	m.Equal("name: ask-matt\ndescription: Ask which skill or flow fits your situation. A router over the skills in this repo.\ndisable-model-invocation: true\n", string(modBody))
+	m.Equal("ask-matt", info.Name)
 
 	zipBody := m.getProxyArtifact(testNestedSkillModule + "/@v/main.zip")
 	reader, err := zip.NewReader(bytes.NewReader(zipBody), int64(len(zipBody)))

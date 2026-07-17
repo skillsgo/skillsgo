@@ -3,7 +3,7 @@ services:
   dev:
     build:
       context: .
-      dockerfile: cmd/hub/Dockerfile
+      dockerfile: cmd/skillsgo-hub/Dockerfile
       args:
         GOLANG_VERSION: "1.26.2"
     environment:

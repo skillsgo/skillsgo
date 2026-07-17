@@ -17,14 +17,14 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 )
 
-const numFiles = 3
+const numFiles = 2
 
 // Uploader takes a stream and saves it to the blob store under a given path.
 type Uploader func(ctx context.Context, path, contentType string, stream io.Reader) error
 
-// Upload saves .info, .manifest and .zip files to the blob store in parallel.
+// Upload saves .info and .zip files to the blob store in parallel.
 // Returns multierror containing errors from all uploads and timeouts.
-func Upload(ctx context.Context, module, version string, info, manifest, zip io.Reader, uploader Uploader, timeout time.Duration) error {
+func Upload(ctx context.Context, module, version string, info, zip io.Reader, uploader Uploader, timeout time.Duration) error {
 	const op errors.Op = "module.Upload"
 	tctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
@@ -50,7 +50,6 @@ func Upload(ctx context.Context, module, version string, info, manifest, zip io.
 		}
 	}
 	go saveOrAbort("info", "application/json", info)
-	go saveOrAbort("manifest", "text/plain", manifest)
 	go saveOrAbort("zip", "application/octet-stream", zip)
 
 	var errs error

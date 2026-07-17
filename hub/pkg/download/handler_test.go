@@ -59,11 +59,6 @@ func (mp *mockProtocol) Info(ctx context.Context, mod, ver string) ([]byte, erro
 	return nil, errors.E(op, "not found", errors.KindRedirect)
 }
 
-func (mp *mockProtocol) Manifest(ctx context.Context, mod, ver string) ([]byte, error) {
-	const op errors.Op = "mockProtocol.Manifest"
-	return nil, errors.E(op, "not found", errors.KindRedirect)
-}
-
 func (mp *mockProtocol) Zip(ctx context.Context, mod, ver string) (storage.SizeReadCloser, error) {
 	const op errors.Op = "mockProtocol.Zip"
 	return nil, errors.E(op, "not found", errors.KindRedirect)

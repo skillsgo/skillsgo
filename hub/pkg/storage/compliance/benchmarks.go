@@ -36,7 +36,6 @@ func benchList(b *testing.B, s storage.Backend, reset func() error) {
 		b.Context(),
 		module,
 		version,
-		mock.Manifest,
 		mock.Zip,
 		mock.ZipMD5,
 		mock.Info,
@@ -69,7 +68,6 @@ func benchSave(b *testing.B, s storage.Backend, reset func() error) {
 				ctx,
 				fmt.Sprintf("save-%s-%d", module, mi),
 				version,
-				mock.Manifest,
 				bytes.NewReader(zipBts),
 				mock.ZipMD5,
 				mock.Info,
@@ -94,7 +92,7 @@ func benchDelete(b *testing.B, s storage.Backend, reset func() error) {
 	b.Run("delete", func(b *testing.B) {
 		for i := 0; i < b.N; i++ {
 			name := fmt.Sprintf("del-%s-%d", module, i)
-			err := s.Save(ctx, name, version, mock.Manifest, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
+			err := s.Save(ctx, name, version, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
 			require.NoError(b, err, "saving %s for storage failed", name)
 			err = s.Delete(ctx, name, version)
 			require.NoError(b, err, "delete failed: %s", name)
@@ -111,7 +109,7 @@ func benchExists(b *testing.B, s storage.Backend, reset func() error) {
 	mock := getMockModule()
 
 	ctx := b.Context()
-	err := s.Save(ctx, module, version, mock.Manifest, mock.Zip, mock.ZipMD5, mock.Info)
+	err := s.Save(ctx, module, version, mock.Zip, mock.ZipMD5, mock.Info)
 	require.NoError(b, err)
 
 	b.Run("exists", func(b *testing.B) {

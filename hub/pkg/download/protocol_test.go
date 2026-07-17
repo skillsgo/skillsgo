@@ -175,7 +175,7 @@ func TestListMode(t *testing.T) {
 			networkMode: tc.networkmode,
 		}
 		for _, tag := range tc.storageTags {
-			err := strg.Save(ctx, tc.path, tag, []byte("mod"), bytes.NewReader([]byte("zip")), nil, []byte("info"))
+			err := strg.Save(ctx, tc.path, tag, bytes.NewReader([]byte("zip")), nil, []byte("info"))
 			require.NoError(t, err)
 		}
 		t.Run(tc.name, func(t *testing.T) {
@@ -306,53 +306,6 @@ func TestInfo(t *testing.T) {
 	}
 }
 
-type manifestTest struct {
-	name         string
-	path         string
-	version      string
-	wantContains string
-	err          bool
-}
-
-var manifestTests = []manifestTest{
-	{
-		name:         "root Skill",
-		path:         "github.com/op7418/guizang-ppt-skill",
-		version:      "v1.1.0",
-		wantContains: "name: guizang-ppt-skill\n",
-	},
-	{
-		name:         "nested Skill",
-		path:         "github.com/mattpocock/skills/-/skills/engineering/ask-matt",
-		version:      "main",
-		wantContains: "name: ask-matt\n",
-	},
-	{
-		name:    "incorrect github repo",
-		path:    "github.com/athens-artifacts/not-exists",
-		version: "v1.0.0",
-		err:     true,
-	},
-}
-
-func TestManifest(t *testing.T) {
-	dp := getDP(t)
-	ctx := t.Context()
-
-	for _, tc := range manifestTests {
-		t.Run(tc.name, func(t *testing.T) {
-			manifest, err := dp.Manifest(ctx, tc.path, tc.version)
-			require.Equal(t, tc.err, err != nil, err)
-
-			if tc.err {
-				return
-			}
-			require.Contains(t, string(manifest), tc.wantContains)
-			require.NotContains(t, string(manifest), "---")
-		})
-	}
-}
-
 type testMod struct {
 	mod, ver string
 }
@@ -377,7 +330,7 @@ func TestDownloadProtocol(t *testing.T) {
 	for i := range mods {
 		m := mods[i]
 		eg.Go(func() error {
-			_, err := dp.Manifest(ctx, m.mod, m.ver)
+			_, err := dp.Info(ctx, m.mod, m.ver)
 			return err
 		})
 	}
@@ -388,7 +341,7 @@ func TestDownloadProtocol(t *testing.T) {
 	}
 
 	for _, m := range mods {
-		bts, err := dp.Manifest(ctx, m.mod, m.ver)
+		bts, err := dp.Info(ctx, m.mod, m.ver)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -403,9 +356,8 @@ type mockFetcher struct{}
 func (m *mockFetcher) Fetch(ctx context.Context, mod, ver string) (*storage.Version, error) {
 	bts := []byte(mod + "@" + ver)
 	return &storage.Version{
-		Manifest: bts,
-		Info:     bts,
-		Zip:      io.NopCloser(bytes.NewReader(bts)),
+		Info: bts,
+		Zip:  io.NopCloser(bytes.NewReader(bts)),
 	}, nil
 }
 
@@ -416,14 +368,14 @@ func TestDownloadProtocolWhenFetchFails(t *testing.T) {
 	}
 	fakeMod := testMod{"github.com/athens-artifacts/samplelib", "v1.0.0"}
 	bts := []byte(fakeMod.mod + "@" + fakeMod.ver)
-	err = s.Save(t.Context(), fakeMod.mod, fakeMod.ver, bts, io.NopCloser(bytes.NewReader(bts)), nil, bts)
+	err = s.Save(t.Context(), fakeMod.mod, fakeMod.ver, io.NopCloser(bytes.NewReader(bts)), nil, bts)
 	if err != nil {
 		t.Fatal(err)
 	}
 	mp := &notFoundFetcher{}
 	st := stash.New(mp, s, nop.New(), 10*time.Minute)
 	dp := New(&Opts{s, st, nil, nil, Strict})
-	_, err = dp.Manifest(t.Context(), fakeMod.mod, fakeMod.ver)
+	_, err = dp.Info(t.Context(), fakeMod.mod, fakeMod.ver)
 	if err != nil {
 		t.Errorf("Download protocol should succeed, instead it gave error %s \n", err)
 	}
@@ -458,7 +410,7 @@ type mockStasher struct {
 }
 
 func (ms *mockStasher) Stash(ctx context.Context, mod string, ver string) (string, error) {
-	err := ms.s.Save(ctx, mod, ver, []byte("mod"), strings.NewReader("zip"), nil, []byte("info"))
+	err := ms.s.Save(ctx, mod, ver, strings.NewReader("zip"), nil, []byte("info"))
 	ms.ch <- true // signal async stashing is done
 	return ver, err
 }
