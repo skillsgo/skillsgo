@@ -40,7 +40,6 @@ func (d *DeleteTests) TestDeleteTimeout() {
 	r.Error(err, "deleter returned at least one error")
 	r.Contains(err.Error(), "deleting mx.1.1.1.info failed: context deadline exceeded")
 	r.Contains(err.Error(), "deleting mx.1.1.1.zip failed: context deadline exceeded")
-	r.Contains(err.Error(), "deleting mx.1.1.1.manifest failed: context deadline exceeded")
 }
 
 func (d *DeleteTests) TestDeleteError() {

@@ -9,11 +9,13 @@ endif
 
 .PHONY: build
 build: ## build the SkillsGo Hub
-	go build -ldflags="-w -s" -o ./cmd/hub/skillsgo-hub ./cmd/hub
+	mkdir -p ./bin
+	go build -ldflags="-w -s" -o ./bin/skillsgo-hub ./cmd/skillsgo-hub
 
 .PHONY: build-ver
 build-ver: ## build the SkillsGo Hub with version number
-	GO111MODULE=on CGO_ENABLED=0 GOPROXY="https://proxy.golang.org" go build -ldflags "-s -w -X github.com/skillsgo/skillsgo/hub/pkg/build.version=$(VERSION) -X github.com/skillsgo/skillsgo/hub/pkg/build.buildDate=$(DATE)" -o skillsgo-hub ./cmd/hub
+	mkdir -p ./bin
+	GO111MODULE=on CGO_ENABLED=0 GOPROXY="https://proxy.golang.org" go build -ldflags "-s -w -X github.com/skillsgo/skillsgo/hub/pkg/build.version=$(VERSION) -X github.com/skillsgo/skillsgo/hub/pkg/build.buildDate=$(DATE)" -o ./bin/skillsgo-hub ./cmd/skillsgo-hub
 
 skillsgo-hub:
 	$(MAKE) build-ver
@@ -26,7 +28,7 @@ build-image:
 
 .PHONY: run
 run: ## run the SkillsGo Hub with dev configs
-	cd ./cmd/hub && go run . -config_file ../../config.dev.toml
+	cd ./cmd/skillsgo-hub && go run . -config_file ../../config.dev.toml
 
 .PHONY: run-docker
 run-docker:
@@ -87,7 +89,7 @@ docker: hub-docker
 
 .PHONY: hub-docker
 hub-docker:
-	docker build -t skillsgo/hub -f cmd/hub/Dockerfile --build-arg GOLANG_VERSION=${GOLANG_VERSION} .
+	docker build -t skillsgo/hub -f cmd/skillsgo-hub/Dockerfile --build-arg GOLANG_VERSION=${GOLANG_VERSION} .
 
 .PHONY: docker-push
 docker-push:
@@ -119,7 +121,7 @@ dev-teardown:
 
 .PHONY: clean
 clean: ## delete all locally-built artefacts (not including docker images)
-	rm -f skillsgo-hub cmd/hub/skillsgo-hub
+	rm -rf ./bin
 
 .PHONY: help
 help: ## display help page

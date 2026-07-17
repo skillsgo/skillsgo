@@ -101,22 +101,6 @@ func (p *withpool) Latest(ctx context.Context, mod string) (*storage.RevInfo, er
 	return info, nil
 }
 
-func (p *withpool) Manifest(ctx context.Context, mod, ver string) ([]byte, error) {
-	const op errors.Op = "pool.Manifest"
-	var manifest []byte
-	var err error
-	done := make(chan struct{}, 1)
-	p.jobCh <- func() {
-		manifest, err = p.dp.Manifest(ctx, mod, ver)
-		close(done)
-	}
-	<-done
-	if err != nil {
-		return nil, errors.E(op, err)
-	}
-	return manifest, nil
-}
-
 func (p *withpool) Zip(ctx context.Context, mod, ver string) (storage.SizeReadCloser, error) {
 	const op errors.Op = "pool.Zip"
 	var zip storage.SizeReadCloser

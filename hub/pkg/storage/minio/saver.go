@@ -19,21 +19,16 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
 )
 
-func (s *storageImpl) Save(ctx context.Context, module, vsn string, manifest []byte, zip io.Reader, zipMD5, info []byte) error {
+func (s *storageImpl) Save(ctx context.Context, module, vsn string, zip io.Reader, zipMD5, info []byte) error {
 	const op errors.Op = "storage.minio.Save"
 	_, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
 	dir := s.versionLocation(module, vsn)
-	manifestFileName := dir + "/" + "manifest.yaml"
 	infoFileName := dir + "/" + vsn + ".info"
-	_, err := s.minioClient.PutObject(s.bucketName, manifestFileName, bytes.NewReader(manifest), int64(len(manifest)), minio.PutObjectOptions{})
-	if err != nil {
-		return errors.E(op, err)
-	}
 	// Chunk the stream into 8mb and send them in parts to minio.
 	// This is because the minio client over-allocates a stream buffer (600Mb)
 	// when the size is unknown, see https://github.com/minio/minio-go/issues/848
-	err = s.saveZip(dir, module, vsn, zip)
+	err := s.saveZip(dir, module, vsn, zip)
 	if err != nil {
 		return errors.E(op, err)
 	}

@@ -38,7 +38,7 @@ jobs:
       - name: Build and push images
         uses: docker/build-push-action@v7
         with:
-          file: cmd/hub/Dockerfile
+          file: cmd/skillsgo-hub/Dockerfile
           build-args: VERSION=${{ github.ref_name }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

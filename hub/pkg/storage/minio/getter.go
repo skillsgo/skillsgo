@@ -36,24 +36,6 @@ func (s *storageImpl) Info(ctx context.Context, module, vsn string) ([]byte, err
 	return info, nil
 }
 
-func (s *storageImpl) Manifest(ctx context.Context, module, vsn string) ([]byte, error) {
-	const op errors.Op = "minio.Manifest"
-	_, span := observ.StartSpan(ctx, op.String())
-	defer span.End()
-	manifestPath := fmt.Sprintf("%s/manifest.yaml", s.versionLocation(module, vsn))
-	manifestReader, err := s.minioClient.GetObject(s.bucketName, manifestPath, minio.GetObjectOptions{})
-	if err != nil {
-		return nil, errors.E(op, err)
-	}
-	defer func() { _ = manifestReader.Close() }()
-	manifest, err := io.ReadAll(manifestReader)
-	if err != nil {
-		return nil, transformNotFoundErr(op, module, vsn, err)
-	}
-
-	return manifest, nil
-}
-
 func (s *storageImpl) Zip(ctx context.Context, module, vsn string) (storage.SizeReadCloser, error) {
 	const op errors.Op = "minio.Zip"
 	_, span := observ.StartSpan(ctx, op.String())

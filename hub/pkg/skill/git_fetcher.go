@@ -10,10 +10,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -79,10 +82,6 @@ func (g *gitFetcher) downloadWithGit(ctx context.Context, _ string, artifactDir,
 	if err := g.fs.MkdirAll(artifactDir, 0o755); err != nil {
 		return artifactFiles{}, errors.E(op, err)
 	}
-	manifestPath := filepath.Join(artifactDir, "manifest.yaml")
-	if err := afero.WriteFile(g.fs, manifestPath, manifest, 0o644); err != nil {
-		return artifactFiles{}, errors.E(op, err)
-	}
 	zipPath := filepath.Join(artifactDir, version+".zip")
 	zipFile, err := g.fs.Create(zipPath)
 	if err != nil {
@@ -122,11 +121,10 @@ func (g *gitFetcher) downloadWithGit(ctx context.Context, _ string, artifactDir,
 	}
 
 	return artifactFiles{
-		Path:     skillPath,
-		Version:  version,
-		Info:     infoPath,
-		Manifest: manifestPath,
-		Zip:      zipPath,
+		Path:    skillPath,
+		Version: version,
+		Info:    infoPath,
+		Zip:     zipPath,
 	}, nil
 }
 
@@ -242,8 +240,12 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 			return nil, errors.E(op, err)
 		}
 
+		cloneURL := g.cloneURL(skillID)
+		if err := validateRepositoryNetworkTarget(ctx, skillID.Repository, cloneURL); err != nil {
+			return nil, errors.E(op, err)
+		}
 		if isGitRepository(repoDir) {
-			fetch := exec.CommandContext(ctx, "git", "fetch", "--prune", "--tags", "origin")
+			fetch := exec.CommandContext(ctx, "git", "-c", "http.followRedirects=false", "fetch", "--prune", "--tags", "origin")
 			fetch.Dir = repoDir
 			fetch.Env = os.Environ()
 			if output, err := fetch.CombinedOutput(); err == nil {
@@ -275,12 +277,15 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 		}
 		defer os.RemoveAll(tmpDir)
 		cloneDir := filepath.Join(tmpDir, "repository")
-		clone := exec.CommandContext(ctx, "git", "clone", "--filter=blob:none", "--no-checkout", g.cloneURL(skillID), cloneDir)
+		clone := exec.CommandContext(ctx, "git", "-c", "http.followRedirects=false", "clone", "--filter=blob:none", "--no-checkout", cloneURL, cloneDir)
 		clone.Env = os.Environ()
 		if _, err := clone.CombinedOutput(); err != nil {
 			return nil, errors.E(op,
 				fmt.Sprintf("Skill repository %q not found", skillID.Repository),
 				errors.S(skillID.String()), errors.KindNotFound)
+		}
+		if err := enforceRepositoryDiskLimit(cloneDir); err != nil {
+			return nil, errors.E(op, err, errors.KindBadRequest)
 		}
 		if err := os.Rename(cloneDir, repoDir); err != nil {
 			return nil, errors.E(op, err)
@@ -288,6 +293,65 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 		return nil, g.writeRepositoryMetadata(repoDir, skillID)
 	})
 	return err
+}
+
+func validateRepositoryNetworkTarget(ctx context.Context, repositoryID, cloneURL string) error {
+	if strings.EqualFold(strings.TrimSpace(os.Getenv("SKILLSGO_ALLOW_PRIVATE_GIT_HOSTS")), "true") {
+		return nil
+	}
+	host := strings.SplitN(repositoryID, "/", 2)[0]
+	parsed, err := url.Parse(cloneURL)
+	if err != nil {
+		return fmt.Errorf("invalid Repository clone URL: %w", err)
+	}
+	// Explicitly injected non-network transports are test/operator seams. The
+	// public-host policy applies to the canonical HTTPS source transport.
+	if !strings.EqualFold(parsed.Hostname(), host) {
+		return nil
+	}
+	addresses, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+	if err != nil {
+		return errors.E("validateRepositoryNetworkTarget", fmt.Errorf("resolve Repository host %q: %w", host, err), errors.KindNotFound)
+	}
+	if len(addresses) == 0 {
+		return fmt.Errorf("Repository host %q has no address", host)
+	}
+	for _, address := range addresses {
+		ip := address.IP
+		if !ip.IsGlobalUnicast() || ip.IsPrivate() || ip.IsLoopback() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsUnspecified() {
+			return errors.E("validateRepositoryNetworkTarget", fmt.Errorf("Repository host %q resolves to a non-public address", host), errors.KindBadRequest)
+		}
+	}
+	return nil
+}
+
+func enforceRepositoryDiskLimit(root string) error {
+	limit := int64(512 << 20)
+	if configured := strings.TrimSpace(os.Getenv("SKILLSGO_REPOSITORY_MAX_BYTES")); configured != "" {
+		parsed, err := strconv.ParseInt(configured, 10, 64)
+		if err != nil || parsed <= 0 {
+			return fmt.Errorf("invalid SKILLSGO_REPOSITORY_MAX_BYTES %q", configured)
+		}
+		limit = parsed
+	}
+	var total int64
+	return filepath.WalkDir(root, func(_ string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if !entry.Type().IsRegular() {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		total += info.Size()
+		if total > limit {
+			return fmt.Errorf("Repository exceeds configured %d-byte cache limit", limit)
+		}
+		return nil
+	})
 }
 
 func (g *gitFetcher) writeRepositoryMetadata(repoDir string, skillID SkillID) error {

@@ -129,6 +129,114 @@ type RepositoryVersionMember struct {
 	ArchiveSize   int64     `db:"archive_size"`
 }
 
+// PublishedSkill is one fully assessed member of an immutable Repository publication.
+type PublishedSkill struct {
+	Skill   Skill
+	Version SkillVersion
+}
+
+// PublishRepositoryVersion exposes a complete Repository member set in one transaction.
+// Existing immutable versions are accepted only when the complete set and every
+// source/content identity field are byte-for-byte equivalent at the model boundary.
+func (c *Catalog) PublishRepositoryVersion(ctx context.Context, repositoryID string, candidates []PublishedSkill) error {
+	parsedRepository, err := skillpkg.ParseSkillID(repositoryID)
+	if err != nil || parsedRepository.SkillPath != "." || parsedRepository.String() != repositoryID {
+		return fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
+	}
+	if len(candidates) == 0 {
+		return fmt.Errorf("Repository publication requires at least one Skill")
+	}
+	version := candidates[0].Version.Version
+	commitSHA := candidates[0].Version.CommitSHA
+	seen := make(map[string]bool, len(candidates))
+	for _, candidate := range candidates {
+		parsedSkill, parseErr := skillpkg.ParseSkillID(candidate.Skill.SkillID)
+		if parseErr != nil || parsedSkill.Repository != repositoryID || parsedSkill.String() != candidate.Skill.SkillID {
+			return fmt.Errorf("Repository publication contains invalid Skill %q", candidate.Skill.SkillID)
+		}
+		if seen[candidate.Skill.SkillID] || candidate.Version.Version != version || candidate.Version.CommitSHA != commitSHA ||
+			candidate.Version.TreeSHA == "" || candidate.Version.ContentDigest == "" {
+			return fmt.Errorf("Repository publication contains inconsistent member %q", candidate.Skill.SkillID)
+		}
+		seen[candidate.Skill.SkillID] = true
+	}
+	tx, err := c.db.BeginTxx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+	existing := make([]RepositoryVersionMember, 0)
+	query := `SELECT s.skill_id, sv.version, sv.commit_sha, sv.tree_sha, sv.content_digest, sv.commit_time, sv.archive_size
+FROM repositories AS r JOIN skills AS s ON s.repository_id = r.id
+JOIN skill_versions AS sv ON sv.skill_id = s.id
+WHERE r.repository_id = ? AND sv.version = ? ORDER BY s.skill_id ASC`
+	if err := tx.SelectContext(ctx, &existing, c.db.Rebind(query), repositoryID, version); err != nil {
+		return err
+	}
+	if len(existing) > 0 {
+		if len(existing) != len(candidates) {
+			return fmt.Errorf("immutable Repository version conflict for %s@%s", repositoryID, version)
+		}
+		byID := make(map[string]RepositoryVersionMember, len(existing))
+		for _, member := range existing {
+			byID[member.SkillID] = member
+		}
+		for _, candidate := range candidates {
+			member, ok := byID[candidate.Skill.SkillID]
+			if !ok || member.CommitSHA != candidate.Version.CommitSHA || member.TreeSHA != candidate.Version.TreeSHA ||
+				member.ContentDigest != candidate.Version.ContentDigest || !member.CommitTime.Equal(candidate.Version.CommitTime) ||
+				member.ArchiveSize != candidate.Version.ArchiveSize {
+				return fmt.Errorf("immutable Repository version conflict for %s@%s", repositoryID, version)
+			}
+		}
+		return nil
+	}
+	now := time.Now().UTC()
+	parts := strings.SplitN(repositoryID, "/", 2)
+	if _, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO repositories
+(source_host, repository_path, repository_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
+ON CONFLICT (repository_id) DO UPDATE SET updated_at = excluded.updated_at`), parts[0], parts[1], repositoryID, now, now); err != nil {
+		return err
+	}
+	var repositoryRowID int64
+	if err := tx.GetContext(ctx, &repositoryRowID, c.db.Rebind("SELECT id FROM repositories WHERE repository_id = ?"), repositoryID); err != nil {
+		return err
+	}
+	for _, candidate := range candidates {
+		parsedSkill, _ := skillpkg.ParseSkillID(candidate.Skill.SkillID)
+		skillPath := parsedSkill.SkillPath
+		if skillPath == "." {
+			skillPath = ""
+		}
+		if _, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO skills
+(repository_id, skill_id, name, description, source_host, repository, skill_path, latest_version, github_stars, verified, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+ON CONFLICT (skill_id) DO UPDATE SET repository_id = excluded.repository_id, name = excluded.name,
+description = excluded.description, source_host = excluded.source_host, repository = excluded.repository,
+skill_path = excluded.skill_path, latest_version = excluded.latest_version, updated_at = excluded.updated_at`),
+			repositoryRowID, candidate.Skill.SkillID, candidate.Skill.Name, candidate.Skill.Description,
+			parts[0], parts[1], skillPath, version, candidate.Skill.Verified, now, now); err != nil {
+			return err
+		}
+		var skillRowID int64
+		if err := tx.GetContext(ctx, &skillRowID, c.db.Rebind("SELECT id FROM skills WHERE skill_id = ?"), candidate.Skill.SkillID); err != nil {
+			return err
+		}
+		createdAt := candidate.Version.CreatedAt
+		if createdAt.IsZero() {
+			createdAt = now
+		}
+		if _, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO skill_versions
+(skill_id, version, commit_sha, tree_sha, content_digest, commit_time, archive_size, created_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)`), skillRowID, version, candidate.Version.CommitSHA,
+			candidate.Version.TreeSHA, candidate.Version.ContentDigest, candidate.Version.CommitTime,
+			candidate.Version.ArchiveSize, createdAt); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
+}
+
 type RiskAssessment struct {
 	RowID             int64     `db:"id" json:"-"`
 	SkillVersionRowID int64     `db:"skill_version_id" json:"-"`

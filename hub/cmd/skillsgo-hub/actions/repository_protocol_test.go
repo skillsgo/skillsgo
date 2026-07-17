@@ -11,6 +11,7 @@ import (
 	"context"
 	"crypto/md5" //nolint:gosec
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -32,6 +33,88 @@ type countedRepositoryFetcher struct {
 	calls    atomic.Int32
 	delay    time.Duration
 	snapshot func() *skill.RepositorySnapshot
+}
+
+type failSecondSaveStorage struct {
+	storage.Backend
+	calls  atomic.Int32
+	failed atomic.Bool
+}
+
+func (s *failSecondSaveStorage) Save(ctx context.Context, module, version string, archive io.Reader, archiveMD5, info []byte) error {
+	if s.calls.Add(1) == 2 && s.failed.CompareAndSwap(false, true) {
+		return fmt.Errorf("injected second-member save failure")
+	}
+	return s.Backend.Save(ctx, module, version, archive, archiveMD5, info)
+}
+
+func TestRepositoryPublicationFailureExposesNoPartialMemberSet(t *testing.T) {
+	repository, version := "github.com/example/atomic", "v1.0.0"
+	fetcher := &countedRepositoryFetcher{snapshot: func() *skill.RepositorySnapshot {
+		members := make([]skill.RepositoryMember, 0, 2)
+		for index, id := range []string{repository, repository + "/-/skills/nested"} {
+			name := fmt.Sprintf("member-%d", index)
+			archive := catalogProtocolTestZIPNamed(t, id, version, name, "Atomic fixture.", "")
+			info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z", "Origin": map[string]any{
+				"VCS": "git", "URL": "https://github.com/example/atomic", "Subdir": "", "Ref": "refs/tags/v1.0.0", "CommitSHA": "commit-atomic", "TreeSHA": fmt.Sprintf("tree-%d", index),
+			}})
+			require.NoError(t, err)
+			digest := md5.Sum(archive) //nolint:gosec
+			members = append(members, skill.RepositoryMember{SkillID: id, Version: &storage.Version{Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version}})
+		}
+		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "commit-atomic", CommitTime: time.Now().UTC(), Members: members}
+	}}
+	memory, err := mem.NewStorage()
+	require.NoError(t, err)
+	backend := &failSecondSaveStorage{Backend: memory}
+	_, metadata := testCatalogAPI(t)
+	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
+	skills := withCatalog(raw, metadata)
+	publisher := newRepositoryPublisher(fetcher, backend, skills, metadata)
+	_, err = publisher.Materialize(t.Context(), repository, version)
+	require.ErrorContains(t, err, "injected second-member save failure")
+	members, err := metadata.RepositoryVersionMembers(t.Context(), repository, version)
+	require.NoError(t, err)
+	require.Empty(t, members, "failed publication must expose no member rows")
+
+	_, err = publisher.Materialize(t.Context(), repository, version)
+	require.NoError(t, err)
+	members, err = metadata.RepositoryVersionMembers(t.Context(), repository, version)
+	require.NoError(t, err)
+	require.Len(t, members, 2)
+}
+
+func TestMovedTagConflictsBeforeStoredArtifactsChange(t *testing.T) {
+	repository, version := "github.com/example/immutable", "v1.0.0"
+	var commit = "commit-one"
+	fetcher := &countedRepositoryFetcher{snapshot: func() *skill.RepositorySnapshot {
+		archive := catalogProtocolTestZIPNamed(t, repository, version, "immutable", commit, "")
+		info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z", "Origin": map[string]any{
+			"VCS": "git", "URL": "https://github.com/example/immutable", "Ref": "refs/tags/v1.0.0", "CommitSHA": commit, "TreeSHA": "tree-" + commit,
+		}})
+		require.NoError(t, err)
+		digest := md5.Sum(archive) //nolint:gosec
+		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: commit, CommitTime: time.Now().UTC(), Members: []skill.RepositoryMember{{
+			SkillID: repository, Version: &storage.Version{Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version},
+		}}}
+	}}
+	backend, err := mem.NewStorage()
+	require.NoError(t, err)
+	_, metadata := testCatalogAPI(t)
+	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
+	skills := withCatalog(raw, metadata)
+	publisher := newRepositoryPublisher(fetcher, backend, skills, metadata)
+	_, err = publisher.Materialize(t.Context(), repository, version)
+	require.NoError(t, err)
+	original, err := backend.Info(t.Context(), repository, version)
+	require.NoError(t, err)
+
+	commit = "commit-two"
+	_, err = publisher.Materialize(t.Context(), repository, version)
+	require.ErrorContains(t, err, "immutable Repository version conflict")
+	retained, err := backend.Info(t.Context(), repository, version)
+	require.NoError(t, err)
+	require.Equal(t, original, retained)
 }
 
 func (f *countedRepositoryFetcher) DiscoverRepository(context.Context, string, string) (*skill.RepositorySnapshot, error) {
@@ -58,8 +141,7 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 			require.NoError(t, err)
 			digest := md5.Sum(archive) //nolint:gosec
 			members = append(members, skill.RepositoryMember{SkillID: item.id, Version: &storage.Version{
-				Manifest: []byte("name: " + item.name + "\ndescription: Repository member.\n"),
-				Info:     info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version,
+				Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version,
 			}})
 		}
 		return &skill.RepositorySnapshot{
@@ -75,7 +157,7 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 		Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline,
 	})
 	skills := withCatalog(raw, metadata)
-	protocol := withRepositoryInfo(skills, metadata, newRepositoryPublisher(fetcher, backend, skills))
+	protocol := withRepositoryInfo(skills, metadata, newRepositoryPublisher(fetcher, backend, skills, metadata))
 	router := newFiberApp()
 	download.RegisterHandlers(router, &download.HandlerOpts{
 		Protocol: protocol, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync},
@@ -105,7 +187,7 @@ func TestConcurrentUnknownRepositoryInfoSharesOnePublication(t *testing.T) {
 		require.NoError(t, err)
 		digest := md5.Sum(archive) //nolint:gosec
 		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "commit-one", CommitTime: time.Now().UTC(), Members: []skill.RepositoryMember{{
-			SkillID: repository, Version: &storage.Version{Manifest: []byte("name: concurrent\ndescription: Concurrent fixture.\n"), Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version},
+			SkillID: repository, Version: &storage.Version{Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version},
 		}}}
 	}}
 	backend, err := mem.NewStorage()
@@ -113,7 +195,7 @@ func TestConcurrentUnknownRepositoryInfoSharesOnePublication(t *testing.T) {
 	_, metadata := testCatalogAPI(t)
 	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
 	skills := withCatalog(raw, metadata)
-	protocol := withRepositoryInfo(skills, metadata, newRepositoryPublisher(fetcher, backend, skills))
+	protocol := withRepositoryInfo(skills, metadata, newRepositoryPublisher(fetcher, backend, skills, metadata))
 	router := newFiberApp()
 	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
 	var wait sync.WaitGroup

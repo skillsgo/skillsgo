@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on immutable Skill coordinates and canonical versions.
+ * [OUTPUT]: Defines Info and ZIP reads plus the sized ZIP stream contract for every storage backend.
+ * [POS]: Serves as the read side of the contracted Hub artifact storage boundary.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package storage
 
 import (
@@ -8,7 +14,6 @@ import (
 // Getter gets module metadata and its source from underlying storage.
 type Getter interface {
 	Info(ctx context.Context, module, vsn string) ([]byte, error)
-	Manifest(ctx context.Context, module, vsn string) ([]byte, error)
 	Zip(ctx context.Context, module, vsn string) (SizeReadCloser, error)
 }
 

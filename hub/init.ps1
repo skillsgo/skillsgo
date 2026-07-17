@@ -116,12 +116,12 @@ if ($test_e2e.IsPresent) {
 }
 
 if ($docker.IsPresent) {
-	& docker build -t skillsgo/hub -f cmd/hub/Dockerfile .
+	& docker build -t skillsgo/hub -f cmd/skillsgo-hub/Dockerfile .
 }
 
 
 if ($proxy_docker.IsPresent) {
-	& docker build -t skillsgo/hub -f cmd/hub/Dockerfile .
+	& docker build -t skillsgo/hub -f cmd/skillsgo-hub/Dockerfile .
 }
 
 if ($bench.IsPresent) {

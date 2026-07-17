@@ -11,7 +11,7 @@
 - `catalog_postgres_integration_test.go`: verifies pagination and empty discovery response parity through the same HTTP router against PostgreSQL.
 - `catalog_protocol.go`, `catalog_protocol_test.go`: index immutable artifact metadata and bind audited Risk plus Content Digest to exact Info responses.
 - `repository_protocol.go`: aggregates exact per-Skill Info into self-contained immutable Repository Info on bare coordinates.
-- `repository_publisher.go`: coordinates cold one-snapshot Repository discovery, immutable member storage, and Catalog visibility.
+- `repository_publisher.go`: coordinates cold one-snapshot Repository discovery, immutable conflict preflight, bounded/negative-cached upstream work, and transactional Catalog visibility.
 - `repository_metadata.go`: reads best-effort GitHub repository popularity metadata without making artifact availability depend on GitHub's API.
 - `health.go`, `readiness.go`: expose service health and readiness probes.
 - `home.go`, `robots.go`, `version.go`: serve the human landing, crawler policy, and service version surfaces.

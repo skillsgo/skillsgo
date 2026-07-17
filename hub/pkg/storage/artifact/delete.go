@@ -19,7 +19,7 @@ import (
 // Deleter takes a path to a file and deletes it from the blob store.
 type Deleter func(ctx context.Context, path string) error
 
-// Delete deletes .info, .manifest and .zip files from the blob store in parallel.
+// Delete deletes .info and .zip files from the blob store in parallel.
 // Returns multierror containing errors from all deletes and timeouts.
 func Delete(ctx context.Context, module, version string, del Deleter, timeout time.Duration) error {
 	const op errors.Op = "module.Delete"
@@ -48,7 +48,6 @@ func Delete(ctx context.Context, module, version string, del Deleter, timeout ti
 	}
 
 	go delOrAbort("info")
-	go delOrAbort("manifest")
 	go delOrAbort("zip")
 
 	var errs error

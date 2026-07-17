@@ -9,7 +9,7 @@ This map governs the Go command-line workspace. Read it with the root constituti
 - Module: `github.com/skillsgo/skillsgo/cli`
 - Entry point: `cmd/skillsgo/main.go`
 - Command seam: `command.Execute`
-- Product responsibility: own local skill mutations, installation targets, project declarations, lock state, and shared artifact-store state.
+- Product responsibility: own local Skill mutations, installation targets, canonical Workspace declarations, integrity checksums, immutable Info cache, and shared artifact-store state.
 
 ## Commands
 
@@ -51,7 +51,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 - Hub interaction must use the public SkillsGo protocol rather than server internals.
 - The CLI may expose stable machine-readable output and availability exit codes for the App; human output and localized stderr are not integration contracts.
 - Do not place Flutter UI state, layout, navigation, or visual policy in this workspace.
-- Preserve artifact integrity and deterministic lock behavior when changing installation flows.
+- Preserve artifact integrity and deterministic restoration without introducing a dependency lock graph.
 
 ## Documentation Routing
 

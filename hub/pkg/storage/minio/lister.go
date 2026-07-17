@@ -33,8 +33,8 @@ func (s *storageImpl) List(ctx context.Context, module string) ([]string, error)
 		}
 
 		key, _, ver := extractKey(object.Key)
-		manifestKey := fmt.Sprintf("%s/manifest.yaml", s.versionLocation(module, ver))
-		if manifestKey == key {
+		infoKey := fmt.Sprintf("%s/%s.info", s.versionLocation(module, ver), ver)
+		if infoKey == key {
 			ret = append(ret, ver)
 		}
 	}

@@ -45,7 +45,7 @@ func TestWithGCS(t *testing.T) {
 	defer strg.Delete(ctx, mod, ver)
 
 	// sanity check
-	_, err := strg.Manifest(ctx, mod, ver)
+	_, err := strg.Info(ctx, mod, ver)
 	if !errors.Is(err, errors.KindNotFound) {
 		t.Fatalf("expected the stash bucket to return a NotFound error but got: %v", err)
 	}
@@ -75,10 +75,6 @@ func TestWithGCS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifestContent, err := strg.Manifest(ctx, mod, ver)
-	if err != nil {
-		t.Fatal(err)
-	}
 	zip, err := strg.Zip(ctx, mod, ver)
 	if err != nil {
 		t.Fatal(err)
@@ -87,9 +83,6 @@ func TestWithGCS(t *testing.T) {
 	zipContent, err := io.ReadAll(zip)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if !bytes.Equal(info, manifestContent) {
-		t.Fatalf("expected info and go.mod to be equal but info was {%v} and content was {%v}", string(info), string(manifestContent))
 	}
 	if !bytes.Equal(info, zipContent) {
 		t.Fatalf("expected info and zip to be equal but info was {%v} and content was {%v}", string(info), string(zipContent))
@@ -111,7 +104,7 @@ func TestWithGCSPartialFailure(t *testing.T) {
 	defer strg.Delete(ctx, mod, ver)
 
 	// sanity check
-	_, err := strg.Manifest(ctx, mod, ver)
+	_, err := strg.Info(ctx, mod, ver)
 	if !errors.Is(err, errors.KindNotFound) {
 		t.Fatalf("expected the stash bucket to return a NotFound error but got: %v", err)
 	}
@@ -125,7 +118,7 @@ func TestWithGCSPartialFailure(t *testing.T) {
 	}
 	s := gs(ms)
 	// We simulate a failure by manually passing an io.Reader that will fail.
-	err = ms.strg.Save(ctx, "stashmod", "v1.0.0", []byte(ms.content), fr, nil, []byte(ms.content))
+	err = ms.strg.Save(ctx, "stashmod", "v1.0.0", fr, nil, []byte(ms.content))
 	if err == nil {
 		// We *want* to fail.
 		t.Fatal(err)
@@ -141,10 +134,6 @@ func TestWithGCSPartialFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	manifestContent, err := strg.Manifest(ctx, mod, ver)
-	if err != nil {
-		t.Fatal(err)
-	}
 	zip, err := strg.Zip(ctx, mod, ver)
 	if err != nil {
 		t.Fatal(err)
@@ -153,9 +142,6 @@ func TestWithGCSPartialFailure(t *testing.T) {
 	zipContent, err := io.ReadAll(zip)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if !bytes.Equal(info, manifestContent) {
-		t.Fatalf("expected info and go.mod to be equal but info was {%v} and content was {%v}", string(info), string(manifestContent))
 	}
 	if !bytes.Equal(info, zipContent) {
 		t.Fatalf("expected info and zip to be equal but info was {%v} and content was {%v}", string(info), string(zipContent))
@@ -176,7 +162,6 @@ func (ms *mockGCPStasher) Stash(ctx context.Context, mod, ver string) (string, e
 		ctx,
 		mod,
 		ver,
-		[]byte(ms.content),
 		strings.NewReader(ms.content),
 		nil,
 		[]byte(ms.content),

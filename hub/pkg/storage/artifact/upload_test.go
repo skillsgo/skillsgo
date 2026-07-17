@@ -37,17 +37,16 @@ func (u *UploadTests) TearDownTest() {
 func (u *UploadTests) TestUploadTimeout() {
 	r := u.Require()
 	rd := bytes.NewReader([]byte("123"))
-	err := Upload(u.T().Context(), "mx", "1.1.1", rd, rd, rd, uplWithTimeout, time.Second)
+	err := Upload(u.T().Context(), "mx", "1.1.1", rd, rd, uplWithTimeout, time.Second)
 	r.Error(err, "deleter returned at least one error")
 	r.Contains(err.Error(), "uploading mx.1.1.1.info failed: context deadline exceeded")
 	r.Contains(err.Error(), "uploading mx.1.1.1.zip failed: context deadline exceeded")
-	r.Contains(err.Error(), "uploading mx.1.1.1.manifest failed: context deadline exceeded")
 }
 
 func (u *UploadTests) TestUploadError() {
 	r := u.Require()
 	rd := bytes.NewReader([]byte("123"))
-	err := Upload(u.T().Context(), "mx", "1.1.1", rd, rd, rd, uplWithErr, time.Second)
+	err := Upload(u.T().Context(), "mx", "1.1.1", rd, rd, uplWithErr, time.Second)
 	r.Error(err, "deleter returned at least one error")
 	r.Contains(err.Error(), "some err")
 }

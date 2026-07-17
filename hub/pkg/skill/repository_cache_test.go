@@ -107,6 +107,32 @@ func TestRepositoryCacheRefreshesMutableBranch(t *testing.T) {
 	require.NotEqual(t, first.TreeSHA, second.TreeSHA)
 }
 
+func TestRepositoryTagCatalogUsesInjectedClockForFreshAndStaleTTL(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
+	lister := &vcsLister{
+		repositories: f.fetcher,
+		timeout:      time.Minute,
+		ttl:          time.Minute,
+		now:          func() time.Time { return now },
+		catalogs:     map[string]tagCatalog{},
+	}
+	_, versions, err := lister.List(t.Context(), f.skillID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"v1.0.0"}, versions)
+
+	runGit(t, f.work, "tag", "v2.0.0")
+	runGit(t, f.work, "push", "origin", "--tags")
+	_, versions, err = lister.List(t.Context(), f.skillID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"v1.0.0"}, versions, "fresh catalog must not repeat upstream discovery")
+
+	now = now.Add(time.Minute + time.Nanosecond)
+	_, versions, err = lister.List(t.Context(), f.skillID)
+	require.NoError(t, err)
+	require.Equal(t, []string{"v1.0.0", "v2.0.0"}, versions)
+}
+
 func TestRepositoryCacheIsSharedBySkillsInOneRepository(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	_, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
