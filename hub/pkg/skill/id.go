@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on public source paths and the canonical `/-/` Skill path separator.
- * [OUTPUT]: Provides canonical Skill ID parsing, formatting, repository URLs, and derived Skill names.
+ * [OUTPUT]: Provides canonical Skill ID parsing, formatting, repository URLs, and repository-relative source paths.
  * [POS]: Serves as the public Skill ID value boundary for Hub source resolution and Catalog indexing.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -34,7 +34,7 @@ func ParseSkillID(value string) (SkillID, error) {
 	}
 
 	repository, skillPath, hasSkillPath := strings.Cut(value, skillPathSeparator)
-	repository = strings.TrimSuffix(repository, ".git")
+	repository = strings.ToLower(strings.TrimSuffix(repository, ".git"))
 	if err := validateSkillIDPath(repository); err != nil {
 		return SkillID{}, fmt.Errorf("invalid Skill repository %q: %w", repository, err)
 	}
@@ -44,6 +44,9 @@ func ParseSkillID(value string) (SkillID, error) {
 	host := strings.SplitN(repository, "/", 2)[0]
 	if (!strings.Contains(host, ".") && host != "localhost") || strings.Contains(host, "@") {
 		return SkillID{}, fmt.Errorf("invalid Skill repository %q: expected a full host name", repository)
+	}
+	if host == "github.com" && len(strings.Split(repository, "/")) != 3 {
+		return SkillID{}, fmt.Errorf("invalid GitHub repository %q: expected github.com/owner/repo", repository)
 	}
 	if !hasSkillPath {
 		return SkillID{Repository: repository, SkillPath: "."}, nil
@@ -87,16 +90,6 @@ func (c SkillID) String() string {
 // RepositoryURL returns the HTTPS clone URL for the repository.
 func (c SkillID) RepositoryURL() string {
 	return "https://" + c.Repository
-}
-
-// SkillName returns the directory name that must match the Manifest name.
-func (c SkillID) SkillName() string {
-	path := c.SkillPath
-	if path == "." || path == "" {
-		path = c.Repository
-	}
-	parts := strings.Split(path, "/")
-	return parts[len(parts)-1]
 }
 
 func (c SkillID) repositorySubdir() string {

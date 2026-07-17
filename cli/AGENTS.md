@@ -18,7 +18,7 @@ Run from `cli/`:
 ```bash
 go fmt ./...
 go test ./...
-go build ./cmd/skillsgo
+make build
 ```
 
 Use a narrower `gofmt` target when unrelated working-tree changes are present.
@@ -28,19 +28,22 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | Path | Responsibility |
 | --- | --- |
 | `cmd/skillsgo/` | Process entry point and executable wiring. |
+| `bin/skillsgo` | Ignored local development binary produced by `make build`. |
 | `internal/agent/` | Supported Agent definitions, detection, and installation locations. |
-| `internal/adoption/` | State-bound transition from exact External Installations to Hub-managed or private Local Skills. |
+| `internal/adoption/` | Dormant post-MVP domain code for a possible future explicit External Adoption flow; it is not registered in the public CLI graph. |
 | `internal/command/` | CLI command graph, argument handling, and orchestration. |
 | `internal/i18n/` | Locale detection and user-facing CLI messages. |
 | `internal/install/` | Add, update, remove, copy-digest, explicit replacement, and materialization behavior. |
-| `internal/inventory/` | Read-only managed and External Library reconciliation across receipts, explicit projects, Workspace declarations, known Agent paths, and Local Modifications. |
-| `internal/managementplan/` | Exact-target Remove, Repair, and Stop Managing preflight, reviewed-state binding, and target-specific execution. |
-| `internal/plan/` | Explicit Installation Plan conflict/risk preflight, Workspace Lock preview, resolution validation, and target-specific execution. |
-| `internal/project/` | `skillsgo.yaml` and `skillsgo-lock.yaml` project state. |
+| `internal/inventory/` | Read-only managed and External Library reconciliation across Workspace Manifests, known Agent paths, Store artifacts, Local Modifications, and derived Agent visibility. |
+| `internal/managementplan/` | Exact-target managed Remove/Repair/Stop Managing and External Remove preflight, reviewed-state binding, and target-specific execution. |
+| `internal/plan/` | Explicit Installation Plan conflict/risk preflight, Workspace Manifest preview, resolution validation, and target-specific execution. |
+| `internal/project/` | Canonical direct requirements in `skillsgo.yaml` and integrity-only `skillsgo.sum` state for project and `~/.skillsgo` user scopes. |
+| `internal/infocache/` | Exact immutable Repository and Skill Info bytes used for checksum-verified offline restore. |
 | `internal/hub/` | Client for the public SkillsGo Hub protocol and normalized artifact-integrity verification. |
 | `internal/source/` | Skill ID parsing and source reference normalization. |
 | `internal/store/` | User-level shared Hub/Local artifact cache, private Local import/export, and installation state. |
-| `internal/updateplan/` | Exact-target update checks, pinned-reference classification, Workspace Lock previews, and partial update execution. |
+| `internal/terminalui/` | Human terminal documents, automatic Interactive/Plain selection, responsive styling, and live operation progress. |
+| `internal/updateplan/` | Exact-target update checks, immutable-reference classification, Workspace Manifest previews, and partial update execution. |
 
 ## Boundaries
 

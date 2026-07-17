@@ -34,7 +34,7 @@ func extractManifest(skillFile []byte) (manifest, body []byte, err error) {
 	return nil, nil, fmt.Errorf("SKILL.md frontmatter is missing its closing delimiter")
 }
 
-func validateManifest(manifest, body []byte, expectedName string) error {
+func validateManifest(manifest, body []byte) error {
 	var document yaml.Node
 	if err := yaml.Unmarshal(manifest, &document); err != nil || len(document.Content) != 1 {
 		return fmt.Errorf("invalid SKILL.md frontmatter")
@@ -60,10 +60,6 @@ func validateManifest(manifest, body []byte, expectedName string) error {
 	if utf8.RuneCountInString(name) > 64 || !skillNamePattern.MatchString(name) {
 		return fmt.Errorf(`field "name" must be 1-64 characters of lowercase letters, numbers, and single hyphens`)
 	}
-	if name != expectedName {
-		return fmt.Errorf(`field "name" %q must match Skill directory name %q`, name, expectedName)
-	}
-
 	description, err := requiredStringField(fields, "description")
 	if err != nil {
 		return err

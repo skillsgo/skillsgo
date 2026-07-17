@@ -3,13 +3,14 @@
 
 ## Members
 
-- `client.go`: resolves exact content matches and assessed Info, downloads Manifest/ZIP responses, and exposes typed HTTP failures from a configured SkillsGo Hub.
+- `client.go`: delegates version selectors to the Hub, resolves exact content matches, consumes self-contained Repository/Skill Info, downloads verified ZIP responses with optional byte progress, and exposes typed HTTP failures from a configured SkillsGo Hub.
 - `artifact_digest.go`: recomputes the Hub-compatible normalized Content Digest from ZIP or extracted directories and binds Info to exact artifact files.
 - `artifact_digest_test.go`: specifies golden deterministic digest acceptance and mismatch rejection.
 - `client_test.go`: specifies source-hint request encoding and strict content-match response validation.
+- `manifest.go`, `manifest_test.go`: extract and validate the Manifest-defined installation name independently from source paths.
 
 ## Architectural Boundary
 
-This module owns the CLI's public Hub protocol client and artifact-integrity verification. It must not persist Store state, infer installation targets, or expose human-oriented response parsing to the App.
+This module owns the CLI's public Hub protocol client and artifact-integrity verification. It must not implement SemVer selection, persist Store state, infer installation targets, or expose human-oriented response parsing to the App.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

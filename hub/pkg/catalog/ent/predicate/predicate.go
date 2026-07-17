@@ -9,6 +9,9 @@ import (
 // InstallEvent is the predicate function for installevent builders.
 type InstallEvent func(*sql.Selector)
 
+// Repository is the predicate function for repository builders.
+type Repository func(*sql.Selector)
+
 // RiskAssessment is the predicate function for riskassessment builders.
 type RiskAssessment func(*sql.Selector)
 

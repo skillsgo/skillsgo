@@ -16,6 +16,8 @@ const (
 	FieldID = "id"
 	// FieldSkillID holds the string denoting the skill_id field in the database.
 	FieldSkillID = "skill_id"
+	// FieldRepositoryID holds the string denoting the repository_id field in the database.
+	FieldRepositoryID = "repository_id"
 	// FieldName holds the string denoting the name field in the database.
 	FieldName = "name"
 	// FieldDescription holds the string denoting the description field in the database.
@@ -36,6 +38,8 @@ const (
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
 	FieldUpdatedAt = "updated_at"
+	// EdgeSourceRepository holds the string denoting the source_repository edge name in mutations.
+	EdgeSourceRepository = "source_repository"
 	// EdgeVersions holds the string denoting the versions edge name in mutations.
 	EdgeVersions = "versions"
 	// EdgeInstallEvents holds the string denoting the install_events edge name in mutations.
@@ -46,6 +50,13 @@ const (
 	InstallEventFieldID = "event_id"
 	// Table holds the table name of the skill in the database.
 	Table = "skills"
+	// SourceRepositoryTable is the table that holds the source_repository relation/edge.
+	SourceRepositoryTable = "skills"
+	// SourceRepositoryInverseTable is the table name for the Repository entity.
+	// It exists in this package in order to avoid circular dependency with the "repository" package.
+	SourceRepositoryInverseTable = "repositories"
+	// SourceRepositoryColumn is the table column denoting the source_repository relation/edge.
+	SourceRepositoryColumn = "repository_id"
 	// VersionsTable is the table that holds the versions relation/edge.
 	VersionsTable = "skill_versions"
 	// VersionsInverseTable is the table name for the SkillVersion entity.
@@ -54,10 +65,10 @@ const (
 	// VersionsColumn is the table column denoting the versions relation/edge.
 	VersionsColumn = "skill_id"
 	// InstallEventsTable is the table that holds the install_events relation/edge.
-	InstallEventsTable = "install_events"
+	InstallEventsTable = "skill_install_events"
 	// InstallEventsInverseTable is the table name for the InstallEvent entity.
 	// It exists in this package in order to avoid circular dependency with the "installevent" package.
-	InstallEventsInverseTable = "install_events"
+	InstallEventsInverseTable = "skill_install_events"
 	// InstallEventsColumn is the table column denoting the install_events relation/edge.
 	InstallEventsColumn = "skill_id"
 	// HourlyStatsTable is the table that holds the hourly_stats relation/edge.
@@ -73,6 +84,7 @@ const (
 var Columns = []string{
 	FieldID,
 	FieldSkillID,
+	FieldRepositoryID,
 	FieldName,
 	FieldDescription,
 	FieldSourceHost,
@@ -121,6 +133,11 @@ func ByID(opts ...sql.OrderTermOption) OrderOption {
 // BySkillID orders the results by the skill_id field.
 func BySkillID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSkillID, opts...).ToFunc()
+}
+
+// ByRepositoryID orders the results by the repository_id field.
+func ByRepositoryID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRepositoryID, opts...).ToFunc()
 }
 
 // ByName orders the results by the name field.
@@ -173,6 +190,13 @@ func ByUpdatedAt(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldUpdatedAt, opts...).ToFunc()
 }
 
+// BySourceRepositoryField orders the results by source_repository field.
+func BySourceRepositoryField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newSourceRepositoryStep(), sql.OrderByField(field, opts...))
+	}
+}
+
 // ByVersionsCount orders the results by versions count.
 func ByVersionsCount(opts ...sql.OrderTermOption) OrderOption {
 	return func(s *sql.Selector) {
@@ -213,6 +237,13 @@ func ByHourlyStats(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 	return func(s *sql.Selector) {
 		sqlgraph.OrderByNeighborTerms(s, newHourlyStatsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
+}
+func newSourceRepositoryStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(SourceRepositoryInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, true, SourceRepositoryTable, SourceRepositoryColumn),
+	)
 }
 func newVersionsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(

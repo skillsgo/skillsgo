@@ -25,6 +25,7 @@ import (
 	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 	catalogent "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent"
+	entrepository "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	entriskassessment "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/riskassessment"
 	entskill "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
 	entskillversion "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
@@ -82,18 +83,28 @@ func Open(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 func (c *Catalog) Close() error { return c.orm.Close() }
 
 type Skill struct {
-	RowID         int64     `db:"id" json:"-"`
-	SkillID       string    `db:"skill_id" json:"id"`
-	Name          string    `db:"name" json:"name"`
-	Description   string    `db:"description" json:"description"`
-	SourceHost    string    `db:"source_host" json:"sourceHost"`
-	Repository    string    `db:"repository" json:"repository"`
-	SkillPath     string    `db:"skill_path" json:"skillPath"`
-	LatestVersion string    `db:"latest_version" json:"latestVersion"`
-	GitHubStars   int64     `db:"github_stars" json:"githubStars"`
-	Verified      bool      `db:"verified" json:"verified"`
-	CreatedAt     time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt     time.Time `db:"updated_at" json:"updatedAt"`
+	RowID           int64     `db:"id" json:"-"`
+	RepositoryRowID int64     `db:"repository_id" json:"-"`
+	SkillID         string    `db:"skill_id" json:"id"`
+	Name            string    `db:"name" json:"name"`
+	Description     string    `db:"description" json:"description"`
+	SourceHost      string    `db:"source_host" json:"sourceHost"`
+	Repository      string    `db:"repository" json:"repository"`
+	SkillPath       string    `db:"skill_path" json:"skillPath"`
+	LatestVersion   string    `db:"latest_version" json:"latestVersion"`
+	GitHubStars     int64     `db:"github_stars" json:"githubStars"`
+	Verified        bool      `db:"verified" json:"verified"`
+	CreatedAt       time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt       time.Time `db:"updated_at" json:"updatedAt"`
+}
+
+type Repository struct {
+	RowID          int64     `db:"id" json:"-"`
+	SourceHost     string    `db:"source_host" json:"sourceHost"`
+	RepositoryPath string    `db:"repository_path" json:"repositoryPath"`
+	RepositoryID   string    `db:"repository_id" json:"id"`
+	CreatedAt      time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt      time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 type SkillVersion struct {
@@ -106,6 +117,16 @@ type SkillVersion struct {
 	CommitTime    time.Time `db:"commit_time" json:"commitTime"`
 	ArchiveSize   int64     `db:"archive_size" json:"archiveSize"`
 	CreatedAt     time.Time `db:"created_at" json:"createdAt"`
+}
+
+type RepositoryVersionMember struct {
+	SkillID       string    `db:"skill_id"`
+	Version       string    `db:"version"`
+	CommitSHA     string    `db:"commit_sha"`
+	TreeSHA       string    `db:"tree_sha"`
+	ContentDigest string    `db:"content_digest"`
+	CommitTime    time.Time `db:"commit_time"`
+	ArchiveSize   int64     `db:"archive_size"`
 }
 
 type RiskAssessment struct {
@@ -216,7 +237,7 @@ func (c *Catalog) RecordInstall(ctx context.Context, event InstallEvent) (bool, 
 	if err != nil {
 		return false, err
 	}
-	result, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO install_events
+	result, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO skill_install_events
 (event_id, skill_id, version, agents, scope, cli_version, occurred_at)
 VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (event_id) DO NOTHING`),
 		event.EventID, rowID, event.Version, string(agents), event.Scope, event.CLIVersion, event.OccurredAt)
@@ -256,6 +277,10 @@ func (c *Catalog) UpsertSkill(ctx context.Context, skill *Skill) error {
 	repositoryParts := strings.SplitN(skillID.Repository, "/", 2)
 	skill.SourceHost = repositoryParts[0]
 	skill.Repository = repositoryParts[1]
+	repository, err := c.RegisterRepository(ctx, skillID.Repository)
+	if err != nil {
+		return err
+	}
 	if skillID.SkillPath == "." {
 		skill.SkillPath = ""
 	} else {
@@ -267,7 +292,8 @@ func (c *Catalog) UpsertSkill(ctx context.Context, skill *Skill) error {
 	}
 	skill.UpdatedAt = now
 	stored, err := c.orm.Skill.Create().
-		SetSkillID(skill.SkillID).SetName(skill.Name).SetDescription(skill.Description).
+		SetSkillID(skill.SkillID).SetRepositoryID(repository.RowID).SetSourceRepositoryID(repository.RowID).
+		SetName(skill.Name).SetDescription(skill.Description).
 		SetSourceHost(skill.SourceHost).SetRepository(skill.Repository).SetSkillPath(skill.SkillPath).
 		SetLatestVersion(skill.LatestVersion).SetVerified(skill.Verified).
 		SetCreatedAt(skill.CreatedAt).SetUpdatedAt(skill.UpdatedAt).
@@ -276,6 +302,67 @@ func (c *Catalog) UpsertSkill(ctx context.Context, skill *Skill) error {
 		skill.RowID = stored
 	}
 	return err
+}
+
+func (c *Catalog) RegisterRepository(ctx context.Context, repositoryID string) (*Repository, error) {
+	parsed, err := skillpkg.ParseSkillID(repositoryID)
+	if err != nil {
+		return nil, fmt.Errorf("invalid Repository ID: %w", err)
+	}
+	if parsed.SkillPath != "." || parsed.String() != repositoryID {
+		return nil, fmt.Errorf("Repository ID must be the canonical bare source coordinate %q", parsed.Repository)
+	}
+	parts := strings.SplitN(parsed.Repository, "/", 2)
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid Repository ID %q", repositoryID)
+	}
+	now := time.Now().UTC()
+	rowID, err := c.orm.Repository.Create().
+		SetSourceHost(parts[0]).SetRepositoryPath(parts[1]).SetRepositoryID(parsed.Repository).
+		SetCreatedAt(now).SetUpdatedAt(now).
+		OnConflictColumns(entrepository.FieldRepositoryID).UpdateNewValues().ID(ctx)
+	if err != nil {
+		return nil, err
+	}
+	stored, err := c.orm.Repository.Get(ctx, rowID)
+	if err != nil {
+		return nil, err
+	}
+	return repositoryFromEnt(stored), nil
+}
+
+func (c *Catalog) Repository(ctx context.Context, repositoryID string) (*Repository, error) {
+	parsed, err := skillpkg.ParseSkillID(repositoryID)
+	if err != nil || parsed.SkillPath != "." || parsed.String() != repositoryID {
+		return nil, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
+	}
+	stored, err := c.orm.Repository.Query().Where(entrepository.RepositoryIDEQ(repositoryID)).Only(ctx)
+	if err != nil {
+		if catalogent.IsNotFound(err) {
+			return nil, sql.ErrNoRows
+		}
+		return nil, err
+	}
+	return repositoryFromEnt(stored), nil
+}
+
+func (c *Catalog) RepositoryVersionMembers(ctx context.Context, repositoryID, version string) ([]RepositoryVersionMember, error) {
+	parsed, err := skillpkg.ParseSkillID(repositoryID)
+	if err != nil || parsed.SkillPath != "." || parsed.String() != repositoryID {
+		return nil, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
+	}
+	statement := `SELECT s.skill_id, sv.version, sv.commit_sha, sv.tree_sha,
+sv.content_digest, sv.commit_time, sv.archive_size
+FROM repositories AS r
+JOIN skills AS s ON s.repository_id = r.id
+JOIN skill_versions AS sv ON sv.skill_id = s.id
+WHERE r.repository_id = ? AND sv.version = ?
+ORDER BY CASE WHEN s.skill_path = '' THEN 0 ELSE 1 END, s.skill_id ASC`
+	members := make([]RepositoryVersionMember, 0)
+	if err := c.db.SelectContext(ctx, &members, c.db.Rebind(statement), repositoryID, version); err != nil {
+		return nil, err
+	}
+	return members, nil
 }
 
 func (c *Catalog) UpdateGitHubStars(ctx context.Context, skillID string, stars int64) error {
@@ -447,10 +534,17 @@ FROM skills AS s LEFT JOIN skill_stats AS st ON st.skill_id = s.id`
 }
 
 func skillFromEnt(entity *catalogent.Skill) *Skill {
-	return &Skill{RowID: entity.ID, SkillID: entity.SkillID, Name: entity.Name, Description: entity.Description,
+	return &Skill{RowID: entity.ID, RepositoryRowID: entity.RepositoryID, SkillID: entity.SkillID, Name: entity.Name, Description: entity.Description,
 		SourceHost: entity.SourceHost, Repository: entity.Repository, SkillPath: entity.SkillPath,
 		LatestVersion: entity.LatestVersion, GitHubStars: entity.GithubStars, Verified: entity.Verified,
 		CreatedAt: entity.CreatedAt, UpdatedAt: entity.UpdatedAt}
+}
+
+func repositoryFromEnt(entity *catalogent.Repository) *Repository {
+	return &Repository{
+		RowID: entity.ID, SourceHost: entity.SourceHost, RepositoryPath: entity.RepositoryPath,
+		RepositoryID: entity.RepositoryID, CreatedAt: entity.CreatedAt, UpdatedAt: entity.UpdatedAt,
+	}
 }
 
 func skillVersionFromEnt(entity *catalogent.SkillVersion) *SkillVersion {

@@ -29,9 +29,9 @@ const (
 	// EdgeSkillVersion holds the string denoting the skill_version edge name in mutations.
 	EdgeSkillVersion = "skill_version"
 	// Table holds the table name of the riskassessment in the database.
-	Table = "risk_assessments"
+	Table = "skill_risk_assessments"
 	// SkillVersionTable is the table that holds the skill_version relation/edge.
-	SkillVersionTable = "risk_assessments"
+	SkillVersionTable = "skill_risk_assessments"
 	// SkillVersionInverseTable is the table name for the SkillVersion entity.
 	// It exists in this package in order to avoid circular dependency with the "skillversion" package.
 	SkillVersionInverseTable = "skill_versions"

@@ -60,6 +60,11 @@ func SkillID(v string) predicate.Skill {
 	return predicate.Skill(sql.FieldEQ(FieldSkillID, v))
 }
 
+// RepositoryID applies equality check predicate on the "repository_id" field. It's identical to RepositoryIDEQ.
+func RepositoryID(v int64) predicate.Skill {
+	return predicate.Skill(sql.FieldEQ(FieldRepositoryID, v))
+}
+
 // Name applies equality check predicate on the "name" field. It's identical to NameEQ.
 func Name(v string) predicate.Skill {
 	return predicate.Skill(sql.FieldEQ(FieldName, v))
@@ -173,6 +178,26 @@ func SkillIDEqualFold(v string) predicate.Skill {
 // SkillIDContainsFold applies the ContainsFold predicate on the "skill_id" field.
 func SkillIDContainsFold(v string) predicate.Skill {
 	return predicate.Skill(sql.FieldContainsFold(FieldSkillID, v))
+}
+
+// RepositoryIDEQ applies the EQ predicate on the "repository_id" field.
+func RepositoryIDEQ(v int64) predicate.Skill {
+	return predicate.Skill(sql.FieldEQ(FieldRepositoryID, v))
+}
+
+// RepositoryIDNEQ applies the NEQ predicate on the "repository_id" field.
+func RepositoryIDNEQ(v int64) predicate.Skill {
+	return predicate.Skill(sql.FieldNEQ(FieldRepositoryID, v))
+}
+
+// RepositoryIDIn applies the In predicate on the "repository_id" field.
+func RepositoryIDIn(vs ...int64) predicate.Skill {
+	return predicate.Skill(sql.FieldIn(FieldRepositoryID, vs...))
+}
+
+// RepositoryIDNotIn applies the NotIn predicate on the "repository_id" field.
+func RepositoryIDNotIn(vs ...int64) predicate.Skill {
+	return predicate.Skill(sql.FieldNotIn(FieldRepositoryID, vs...))
 }
 
 // NameEQ applies the EQ predicate on the "name" field.
@@ -693,6 +718,29 @@ func UpdatedAtLT(v time.Time) predicate.Skill {
 // UpdatedAtLTE applies the LTE predicate on the "updated_at" field.
 func UpdatedAtLTE(v time.Time) predicate.Skill {
 	return predicate.Skill(sql.FieldLTE(FieldUpdatedAt, v))
+}
+
+// HasSourceRepository applies the HasEdge predicate on the "source_repository" edge.
+func HasSourceRepository() predicate.Skill {
+	return predicate.Skill(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, SourceRepositoryTable, SourceRepositoryColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasSourceRepositoryWith applies the HasEdge predicate on the "source_repository" edge with a given conditions (other predicates).
+func HasSourceRepositoryWith(preds ...predicate.Repository) predicate.Skill {
+	return predicate.Skill(func(s *sql.Selector) {
+		step := newSourceRepositoryStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
 }
 
 // HasVersions applies the HasEdge predicate on the "versions" edge.

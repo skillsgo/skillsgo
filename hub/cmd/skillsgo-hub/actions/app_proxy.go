@@ -115,6 +115,11 @@ func addProxyRoutesWithCatalog(
 	dp := download.New(dpOpts, addons.WithPool(c.ProtocolWorkers))
 	if metadata != nil {
 		dp = withCatalog(dp, metadata)
+		repositoryFetcher, ok := skillFetcher.(skill.RepositoryFetcher)
+		if !ok {
+			return fmt.Errorf("configured Skill fetcher does not support Repository discovery")
+		}
+		dp = withRepositoryInfo(dp, metadata, newRepositoryPublisher(repositoryFetcher, s, dp))
 		registerCatalogAPIRoutes(
 			r,
 			metadata,

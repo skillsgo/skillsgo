@@ -9,9 +9,10 @@ package skill
 import (
 	"context"
 	"fmt"
-	"path/filepath"
+	"os"
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
@@ -24,6 +25,17 @@ import (
 type vcsLister struct {
 	repositories *gitFetcher
 	timeout      time.Duration
+	ttl          time.Duration
+	now          func() time.Time
+	mu           sync.Mutex
+	catalogs     map[string]tagCatalog
+}
+
+type tagCatalog struct {
+	expires  time.Time
+	rev      storage.RevInfo
+	versions []string
+	err      error
 }
 
 // NewVCSLister creates an UpstreamLister that shares the Fetcher's persistent
@@ -33,7 +45,15 @@ func NewVCSLister(fetcher Fetcher, timeout time.Duration) (UpstreamLister, error
 	if !ok {
 		return nil, fmt.Errorf("VCS lister requires the Git-backed Skill fetcher")
 	}
-	return &vcsLister{repositories: repositories, timeout: timeout}, nil
+	ttl := time.Minute
+	if configured := strings.TrimSpace(os.Getenv("SKILLSGO_REPOSITORY_TAG_TTL")); configured != "" {
+		parsed, err := time.ParseDuration(configured)
+		if err != nil || parsed <= 0 {
+			return nil, fmt.Errorf("invalid SKILLSGO_REPOSITORY_TAG_TTL %q", configured)
+		}
+		ttl = parsed
+	}
+	return &vcsLister{repositories: repositories, timeout: timeout, ttl: ttl, now: time.Now, catalogs: map[string]tagCatalog{}}, nil
 }
 
 type listSFResp struct {
@@ -46,12 +66,22 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 	_, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
 
-	value, err, _ := l.repositories.syncs.Do("list:"+skillPath, func() (any, error) {
-		skillID, err := parseGitHubSkillID(skillPath)
-		if err != nil {
-			return nil, errors.E(op, err, errors.KindNotFound)
+	skillID, err := ParseSkillID(skillPath)
+	if err != nil {
+		return nil, nil, errors.E(op, err, errors.KindNotFound)
+	}
+	l.mu.Lock()
+	cached, ok := l.catalogs[skillID.Repository]
+	if ok && l.now().Before(cached.expires) {
+		l.mu.Unlock()
+		if cached.err != nil {
+			return nil, nil, cached.err
 		}
-		subdir := skillID.repositorySubdir()
+		rev := cached.rev
+		return &rev, append([]string(nil), cached.versions...), nil
+	}
+	l.mu.Unlock()
+	value, err, _ := l.repositories.syncs.Do("list:"+skillID.Repository, func() (any, error) {
 
 		timeoutCtx, cancel := context.WithTimeout(ctx, l.timeout)
 		defer cancel()
@@ -64,17 +94,6 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 		repoDir, err := l.repositories.repositoryDir(skillID.Repository)
 		if err != nil {
 			return nil, errors.E(op, err)
-		}
-		if subdir != "" {
-			headHash, err := gitOutput(timeoutCtx, repoDir, "rev-parse", "HEAD^{commit}")
-			if err != nil {
-				return nil, errors.E(op, err, errors.KindNotFound)
-			}
-			if _, err := gitFileContent(timeoutCtx, repoDir, headHash, filepath.ToSlash(filepath.Join(subdir, "SKILL.md"))); err != nil {
-				return nil, errors.E(op,
-					fmt.Sprintf("SKILL.md not found for Skill %q at default revision", skillPath),
-					errors.S(skillPath), errors.KindNotFound)
-			}
 		}
 		tagOutput, err := gitOutput(timeoutCtx, repoDir, "tag", "--list")
 		if err != nil {
@@ -90,8 +109,8 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 
 		version := ""
 		ref := ""
-		if len(versions) > 0 {
-			version = versions[len(versions)-1]
+		if selected := latestSemanticVersion(versions); selected != "" {
+			version = selected
 			ref = "refs/tags/" + version
 		} else {
 			ref, err = gitOutput(timeoutCtx, repoDir, "symbolic-ref", "refs/remotes/origin/HEAD")
@@ -124,8 +143,18 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 		}, nil
 	})
 	if err != nil {
+		negativeTTL := 15 * time.Second
+		if l.ttl < negativeTTL {
+			negativeTTL = l.ttl
+		}
+		l.mu.Lock()
+		l.catalogs[skillID.Repository] = tagCatalog{expires: l.now().Add(negativeTTL), err: err}
+		l.mu.Unlock()
 		return nil, nil, err
 	}
 	result := value.(listSFResp)
+	l.mu.Lock()
+	l.catalogs[skillID.Repository] = tagCatalog{expires: l.now().Add(l.ttl), rev: *result.rev, versions: append([]string(nil), result.versions...)}
+	l.mu.Unlock()
 	return result.rev, result.versions, nil
 }

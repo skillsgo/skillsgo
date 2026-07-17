@@ -3,13 +3,14 @@
 package migrate
 
 import (
+	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/schema/field"
 )
 
 var (
-	// InstallEventsColumns holds the columns for the "install_events" table.
-	InstallEventsColumns = []*schema.Column{
+	// SkillInstallEventsColumns holds the columns for the "skill_install_events" table.
+	SkillInstallEventsColumns = []*schema.Column{
 		{Name: "event_id", Type: field.TypeString},
 		{Name: "version", Type: field.TypeString},
 		{Name: "agents", Type: field.TypeString, SchemaType: map[string]string{"postgres": "jsonb"}},
@@ -19,22 +20,49 @@ var (
 		{Name: "received_at", Type: field.TypeTime},
 		{Name: "skill_id", Type: field.TypeInt64},
 	}
-	// InstallEventsTable holds the schema information for the "install_events" table.
-	InstallEventsTable = &schema.Table{
-		Name:       "install_events",
-		Columns:    InstallEventsColumns,
-		PrimaryKey: []*schema.Column{InstallEventsColumns[0]},
+	// SkillInstallEventsTable holds the schema information for the "skill_install_events" table.
+	SkillInstallEventsTable = &schema.Table{
+		Name:       "skill_install_events",
+		Columns:    SkillInstallEventsColumns,
+		PrimaryKey: []*schema.Column{SkillInstallEventsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "install_events_skills_install_events",
-				Columns:    []*schema.Column{InstallEventsColumns[7]},
+				Symbol:     "skill_install_events_skills_install_events",
+				Columns:    []*schema.Column{SkillInstallEventsColumns[7]},
 				RefColumns: []*schema.Column{SkillsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
 	}
-	// RiskAssessmentsColumns holds the columns for the "risk_assessments" table.
-	RiskAssessmentsColumns = []*schema.Column{
+	// RepositoriesColumns holds the columns for the "repositories" table.
+	RepositoriesColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "source_host", Type: field.TypeString},
+		{Name: "repository_path", Type: field.TypeString},
+		{Name: "repository_id", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// RepositoriesTable holds the schema information for the "repositories" table.
+	RepositoriesTable = &schema.Table{
+		Name:       "repositories",
+		Columns:    RepositoriesColumns,
+		PrimaryKey: []*schema.Column{RepositoriesColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "repository_source_host_repository_path",
+				Unique:  true,
+				Columns: []*schema.Column{RepositoriesColumns[1], RepositoriesColumns[2]},
+			},
+			{
+				Name:    "repository_repository_id",
+				Unique:  true,
+				Columns: []*schema.Column{RepositoriesColumns[3]},
+			},
+		},
+	}
+	// SkillRiskAssessmentsColumns holds the columns for the "skill_risk_assessments" table.
+	SkillRiskAssessmentsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
 		{Name: "level", Type: field.TypeString},
 		{Name: "scanner_version", Type: field.TypeString},
@@ -43,15 +71,15 @@ var (
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "skill_version_id", Type: field.TypeInt64},
 	}
-	// RiskAssessmentsTable holds the schema information for the "risk_assessments" table.
-	RiskAssessmentsTable = &schema.Table{
-		Name:       "risk_assessments",
-		Columns:    RiskAssessmentsColumns,
-		PrimaryKey: []*schema.Column{RiskAssessmentsColumns[0]},
+	// SkillRiskAssessmentsTable holds the schema information for the "skill_risk_assessments" table.
+	SkillRiskAssessmentsTable = &schema.Table{
+		Name:       "skill_risk_assessments",
+		Columns:    SkillRiskAssessmentsColumns,
+		PrimaryKey: []*schema.Column{SkillRiskAssessmentsColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "risk_assessments_skill_versions_risk_assessments",
-				Columns:    []*schema.Column{RiskAssessmentsColumns[6]},
+				Symbol:     "skill_risk_assessments_skill_versions_risk_assessments",
+				Columns:    []*schema.Column{SkillRiskAssessmentsColumns[6]},
 				RefColumns: []*schema.Column{SkillVersionsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -71,12 +99,21 @@ var (
 		{Name: "verified", Type: field.TypeBool, Default: false},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "repository_id", Type: field.TypeInt64},
 	}
 	// SkillsTable holds the schema information for the "skills" table.
 	SkillsTable = &schema.Table{
 		Name:       "skills",
 		Columns:    SkillsColumns,
 		PrimaryKey: []*schema.Column{SkillsColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "skills_repositories_skills",
+				Columns:    []*schema.Column{SkillsColumns[12]},
+				RefColumns: []*schema.Column{RepositoriesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "skill_skill_id",
@@ -159,8 +196,9 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
-		InstallEventsTable,
-		RiskAssessmentsTable,
+		SkillInstallEventsTable,
+		RepositoriesTable,
+		SkillRiskAssessmentsTable,
 		SkillsTable,
 		SkillHourlyStatsTable,
 		SkillStatsTable,
@@ -169,8 +207,15 @@ var (
 )
 
 func init() {
-	InstallEventsTable.ForeignKeys[0].RefTable = SkillsTable
-	RiskAssessmentsTable.ForeignKeys[0].RefTable = SkillVersionsTable
+	SkillInstallEventsTable.ForeignKeys[0].RefTable = SkillsTable
+	SkillInstallEventsTable.Annotation = &entsql.Annotation{
+		Table: "skill_install_events",
+	}
+	SkillRiskAssessmentsTable.ForeignKeys[0].RefTable = SkillVersionsTable
+	SkillRiskAssessmentsTable.Annotation = &entsql.Annotation{
+		Table: "skill_risk_assessments",
+	}
+	SkillsTable.ForeignKeys[0].RefTable = RepositoriesTable
 	SkillHourlyStatsTable.ForeignKeys[0].RefTable = SkillsTable
 	SkillVersionsTable.ForeignKeys[0].RefTable = SkillsTable
 }

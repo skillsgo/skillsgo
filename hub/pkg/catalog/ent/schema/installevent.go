@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Ent schema fields for idempotent, privacy-limited install events.
- * [OUTPUT]: Defines the install_events entity keyed by the caller-provided event identifier.
+ * [OUTPUT]: Defines the skill_install_events entity keyed by the caller-provided event identifier.
  * [POS]: Serves as the authoritative ORM schema for accepted install-event facts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,11 +11,17 @@ import (
 
 	"entgo.io/ent"
 	"entgo.io/ent/dialect"
+	entsql "entgo.io/ent/dialect/entsql"
+	"entgo.io/ent/schema"
 	"entgo.io/ent/schema/edge"
 	"entgo.io/ent/schema/field"
 )
 
 type InstallEvent struct{ ent.Schema }
+
+func (InstallEvent) Annotations() []schema.Annotation {
+	return []schema.Annotation{entsql.Annotation{Table: "skill_install_events"}}
+}
 
 func (InstallEvent) Fields() []ent.Field {
 	return []ent.Field{

@@ -75,7 +75,6 @@ type skillDetailResponse struct {
 	TreeSHA              string               `json:"treeSHA"`
 	SourceRef            string               `json:"sourceRef"`
 	ContentDigest        string               `json:"contentDigest"`
-	Manifest             string               `json:"manifest"`
 	Instructions         string               `json:"instructions"`
 	TrustLevel           string               `json:"trustLevel"`
 	RiskAssessment       audit.RiskAssessment `json:"riskAssessment"`
@@ -103,7 +102,6 @@ type contentMatch struct {
 
 type artifactReader interface {
 	Info(context.Context, string, string) ([]byte, error)
-	Manifest(context.Context, string, string) ([]byte, error)
 	Zip(context.Context, string, string) (storage.SizeReadCloser, error)
 }
 
@@ -305,13 +303,6 @@ func skillDetailHandler(
 		if json.Unmarshal(infoBytes, &info) != nil || info.Version == "" || info.Origin == nil || info.Origin.CommitSHA == "" || info.Origin.TreeSHA == "" {
 			return writeAPIErrorCode(c, fiber.StatusBadGateway, "artifact_invalid", "artifact info is invalid")
 		}
-		manifest, err := artifacts.Manifest(c.Context(), skill.SkillID, info.Version)
-		if err != nil {
-			return writeArtifactReadError(c, err)
-		}
-		if len(strings.TrimSpace(string(manifest))) == 0 {
-			return writeAPIErrorCode(c, fiber.StatusBadGateway, "artifact_invalid", "artifact manifest is invalid")
-		}
 		archive, err := artifacts.Zip(c.Context(), skill.SkillID, info.Version)
 		if err != nil {
 			return writeArtifactReadError(c, err)
@@ -361,7 +352,7 @@ func skillDetailHandler(
 			ArchiveSize: version.ArchiveSize, RequestedVersion: skill.LatestVersion,
 			ImageURL:         skillImageURL(skill.SourceHost, skill.Repository),
 			ImmutableVersion: info.Version, CommitSHA: info.Origin.CommitSHA, TreeSHA: info.Origin.TreeSHA,
-			SourceRef: info.Origin.Ref, ContentDigest: analysis.ContentDigest, Manifest: string(manifest),
+			SourceRef: info.Origin.Ref, ContentDigest: analysis.ContentDigest,
 			Instructions: analysis.Instructions, TrustLevel: trustLevel, RiskAssessment: analysis.Risk,
 			Files: analysis.Files, HasExecutableContent: analysis.HasExecutableContent,
 			ExecutableFiles: analysis.ExecutableFiles,

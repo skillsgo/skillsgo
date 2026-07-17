@@ -3,7 +3,7 @@
 
 ## Members
 
-- `source.go`: parses supported GitHub references and private Local Skill IDs, then validates canonical, path-safe Skill IDs and version segments.
+- `source.go`: parses supported GitHub references and private Local Skill IDs, preserves explicit selectors, defaults omitted repository versions to `latest`, then validates canonical, path-safe Skill IDs and selector segments.
 - `source_test.go`: specifies Hub/local Skill ID normalization plus hostile Skill ID/version segment rejection through the public parser and validators.
 
 ## Architectural Boundary

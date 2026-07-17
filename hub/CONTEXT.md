@@ -12,17 +12,37 @@ _Avoid_: plugin, application, extension
 A GitHub, GitLab, well-known endpoint, or other supported public source containing a `SKILL.md` and its resources.
 _Avoid_: Hub-owned repository, cloud Skill
 
+**Source Repository**:
+A public version-control repository registered with the Hub under a canonical, case-normalized host and arbitrary-depth repository path. It is the unit of demand-driven remote version discovery; Skill paths inside it retain their source-tree casing.
+_Avoid_: Skill ID, repository URL spelling, refresh schedule
+
+**Version Query**:
+A semantic version, `latest`, branch, or commit supplied to an Info request. The response always names a canonical immutable semantic or pseudo-version; clients persist that result rather than the movable query.
+_Avoid_: refresh command, subscription, raw transport URL
+
+**Repository Publication**:
+The atomic visibility change that publishes every valid Skill observed at one repository tag and commit. Invalid or missing `SKILL.md` candidates are not Skills and are omitted without blocking other valid Skills; no partial set of accepted Skill versions becomes visible.
+_Avoid_: Repository Batch table, repository ZIP, all-or-nothing source validation
+
+**Published Version**:
+An immutable Skill version declared by a canonical semantic-version Git tag. The tag resolves to one commit permanently; moving a previously published tag is a conflict and never overwrites Hub data. A GitHub Release is optional presentation metadata and is not a version signal.
+_Avoid_: GitHub Release, mutable branch head, npm-style publish event
+
+**Revision Resolution**:
+An explicit, user-triggered resolution of a branch, tag, or commit to one immutable commit and canonical version. Branches may resolve to pseudo-versions, but they do not advance automatically; a user must resolve the branch again to observe a later commit.
+_Avoid_: branch subscription, automatic default-branch refresh, mutable artifact
+
 **Skill ID**:
 The public canonical identity of a logical Skill, such as `github.com/owner/repository/-/skills/example`. A source or path move creates a new Skill ID; verified migration is an explicit relationship between the old and new IDs rather than hidden identity continuity.
 _Avoid_: Skill Identity, Skill Coordinate, opaque database ID, name-only lookup
 
-**Manifest**:
-The normalized metadata extracted from the `SKILL.md` frontmatter, including at least the Skill name and description while preserving supported specification fields.
-_Avoid_: complete Skill archive, rendered Markdown body
+**Skill Info**:
+The single immutable structured metadata resource for one Skill version. It contains canonical identity and version, normalized `SKILL.md` frontmatter, source commit and tree, Risk, Content Digest, and Archive Size. The original `SKILL.md` remains authoritative inside the ZIP.
+_Avoid_: separate artifact manifest, mutable branch response
 
-**Info**:
-The immutable resolution metadata for one Skill version, including the resolved version, source commit, directory tree SHA, origin, audited Risk Assessment, and Content Digest for the exact artifact bytes served by the Hub.
-_Avoid_: Manifest, mutable branch response
+**Repository Info**:
+The immutable metadata resource for one Repository version and commit, embedding the complete Skill Info records for every valid root or nested Skill observed in that source snapshot.
+_Avoid_: editorial member list, Repository ZIP, persisted expansion graph
 
 **Immutable Skill Artifact**:
 The installable file set for one Skill at one resolved source commit. A branch such as `main` is a movable reference that resolves to an immutable artifact before download and caching.

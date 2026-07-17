@@ -1,3 +1,7 @@
+// [INPUT]: Depends on the Go toolchain plus Hub HTTP, storage, source-resolution, npm-style SemVer constraint, telemetry, and test libraries.
+// [OUTPUT]: Defines the reproducible SkillsGo Hub module dependency graph.
+// [POS]: Serves as the F2 build manifest for the Hub workspace.
+// [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 module github.com/skillsgo/skillsgo/hub
 
 go 1.26.4
@@ -11,6 +15,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azidentity v1.13.1
 	github.com/Azure/azure-storage-blob-go v0.15.0
 	github.com/BurntSushi/toml v1.6.0
+	github.com/Masterminds/semver/v3 v3.5.0
 	github.com/aws/aws-sdk-go-v2 v1.42.0
 	github.com/aws/aws-sdk-go-v2/config v1.32.25
 	github.com/aws/aws-sdk-go-v2/credentials v1.19.24

@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/installevent"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/riskassessment"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillhourlystat"
@@ -79,6 +80,7 @@ func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
 			installevent.Table:    installevent.ValidColumn,
+			repository.Table:      repository.ValidColumn,
 			riskassessment.Table:  riskassessment.ValidColumn,
 			skill.Table:           skill.ValidColumn,
 			skillhourlystat.Table: skillhourlystat.ValidColumn,

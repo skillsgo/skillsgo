@@ -7,8 +7,8 @@ This map governs the public Hub service. Read it with the root constitution and 
 ## Workspace Identity
 
 - Module: `github.com/skillsgo/skillsgo/hub`
-- Entry point: `cmd/hub/main.go`
-- Service assembly: `cmd/hub/actions/`
+- Entry point: `cmd/skillsgo-hub/main.go`
+- Service assembly: `cmd/skillsgo-hub/actions/`
 - Public seam: the Fiber HTTP router and documented HTTP protocol
 - Product responsibility: resolve public Skill IDs, validate manifests, produce immutable artifacts, serve search and rankings, and ingest anonymous usage events.
 
@@ -19,7 +19,8 @@ Run from `hub/`:
 ```bash
 go fmt ./...
 go test ./...
-go run ./cmd/hub -config_file=./config.dev.toml
+make build
+go run ./cmd/skillsgo-hub -config_file=./config.dev.toml
 ```
 
 Use a narrower `gofmt` target when unrelated working-tree changes are present.
@@ -28,7 +29,8 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 
 | Path | Responsibility |
 | --- | --- |
-| `cmd/hub/` | Service entry point, configuration, dependency assembly, and HTTP wiring. |
+| `cmd/skillsgo-hub/` | Service entry point, configuration, dependency assembly, and HTTP wiring. |
+| `bin/skillsgo-hub` | Ignored local development binary produced by `make build`; release artifacts remain under `dist/`. |
 | `internal/` | Hub-private integration helpers that are not public packages. |
 | `pkg/` | Hub domain modules, source resolution, storage, search, protocol, and telemetry behavior. |
 | `pkg/config/` and `config.dev.toml` | Configuration model, environment-variable binding, and local development defaults. |

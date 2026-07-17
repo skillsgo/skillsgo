@@ -1,5 +1,6 @@
-h1:lnF02hIwnlFDAHkLGQlFw5dX12V3iJ0py0NilPBxufI=
+h1:J/TOYfLmEzPIekInFT1Izz3aNvDrc0aJCd6exQl9bbk=
 202607160001_initial.sql h1:mr4VHQZ8tple0qp/nRJoYo6GZX0/rG638JnIGQcT8Fk=
 202607160002_search_triggers.sql h1:bRGTjHGs5sDObXWY0VX3nRovBGe1ZTrjrTZT6VJfQnY=
 202607160003_product_metadata.sql h1:1u5ZDb0deuUXih4mhvwLmvHV42QZfhgPVWnxq8brj7s=
 202607170001_rename_coordinate_to_skill_id.sql h1:bPcAy5mQInJNBhMlZNRhhuLucUZeb2NmxmEdJne2mQk=
+202607180001_repository_registry.sql h1:ZRgD6i2GNeGTKQKGgJ9ahI7YqWn+Tc2l0zyRdrpU0PQ=

@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/skillsgo/skillsgo/hub/cmd/hub/actions"
+	"github.com/skillsgo/skillsgo/hub/cmd/skillsgo-hub/actions"
 	"github.com/skillsgo/skillsgo/hub/internal/shutdown"
 	"github.com/skillsgo/skillsgo/hub/pkg/build"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"

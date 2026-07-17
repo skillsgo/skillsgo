@@ -31,7 +31,6 @@ func TestRedirect(t *testing.T) {
 		})
 		for _, path := range [...]string{
 			"/github.com/skillsgo/skillsgo/hub/@v/v0.4.0.info",
-			"/github.com/skillsgo/skillsgo/hub/@v/v0.4.0.manifest",
 			"/github.com/skillsgo/skillsgo/hub/@v/v0.4.0.zip",
 		} {
 			req, _ := http.NewRequest("GET", path, nil)

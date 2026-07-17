@@ -13,6 +13,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -26,7 +27,7 @@ import (
 
 func (g *gitFetcher) downloadWithGit(ctx context.Context, _ string, artifactDir, skillPath, revision string, resolution *Resolution) (artifactFiles, error) {
 	const op errors.Op = "skill.downloadWithGit"
-	skillID, err := parseGitHubSkillID(skillPath)
+	skillID, err := ParseSkillID(skillPath)
 	if err != nil {
 		return artifactFiles{}, errors.E(op, err, errors.KindNotFound)
 	}
@@ -68,7 +69,7 @@ func (g *gitFetcher) downloadWithGit(ctx context.Context, _ string, artifactDir,
 	}
 	manifest, body, err := extractManifest(manifestSource)
 	if err == nil {
-		err = validateManifest(manifest, body, skillID.SkillName())
+		err = validateManifest(manifest, body)
 	}
 	if err != nil {
 		return artifactFiles{}, errors.E(op, err,
@@ -133,7 +134,7 @@ func (g *gitFetcher) downloadWithGit(ctx context.Context, _ string, artifactDir,
 // packaging the Skill contents.
 func (g *gitFetcher) Resolve(ctx context.Context, skillPath, revision string) (*Resolution, error) {
 	const op errors.Op = "gitFetcher.Resolve"
-	skillID, err := parseGitHubSkillID(skillPath)
+	skillID, err := ParseSkillID(skillPath)
 	if err != nil {
 		return nil, errors.E(op, err, errors.KindNotFound)
 	}
@@ -145,6 +146,81 @@ func (g *gitFetcher) Resolve(ctx context.Context, skillPath, revision string) (*
 		return nil, errors.E(op, err)
 	}
 	return resolveGitRevision(ctx, repoDir, skillID, revision)
+}
+
+// DiscoverRepository synchronizes and resolves a Repository once, scans the
+// selected commit once, and prepares every valid Skill from that snapshot.
+func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revision string) (*RepositorySnapshot, error) {
+	const op errors.Op = "gitFetcher.DiscoverRepository"
+	repository, err := ParseSkillID(repositoryID)
+	if err != nil || repository.SkillPath != "." || repository.String() != repositoryID {
+		return nil, errors.E(op, fmt.Errorf("invalid canonical Repository ID %q", repositoryID), errors.KindBadRequest)
+	}
+	if err := g.syncRepository(ctx, repository); err != nil {
+		return nil, err
+	}
+	repoDir, err := g.repositoryDir(repository.Repository)
+	if err != nil {
+		return nil, errors.E(op, err)
+	}
+	resolution, err := resolveGitRevision(ctx, repoDir, repository, revision)
+	if err != nil {
+		return nil, err
+	}
+	listing, err := gitOutput(ctx, repoDir, "ls-tree", "-r", "--name-only", resolution.CommitSHA)
+	if err != nil {
+		return nil, errors.E(op, err)
+	}
+	candidates := make([]string, 0)
+	for _, file := range strings.Split(listing, "\n") {
+		file = strings.TrimSpace(file)
+		if file == "SKILL.md" || strings.HasSuffix(file, "/SKILL.md") {
+			candidates = append(candidates, file)
+		}
+	}
+	sort.Strings(candidates)
+	snapshot := &RepositorySnapshot{
+		RepositoryID: repositoryID, Version: resolution.Version,
+		CommitSHA: resolution.CommitSHA, CommitTime: resolution.CommitTime,
+		Members: make([]RepositoryMember, 0, len(candidates)),
+	}
+	closeMembers := func() {
+		for _, member := range snapshot.Members {
+			if member.Version != nil && member.Version.Zip != nil {
+				_ = member.Version.Zip.Close()
+			}
+		}
+	}
+	for _, candidate := range candidates {
+		directory := filepath.ToSlash(filepath.Dir(candidate))
+		memberID := repositoryID
+		if directory != "." {
+			memberID += skillPathSeparator + directory
+		}
+		memberResolution := *resolution
+		memberResolution.TreeSHA, err = gitOutput(ctx, repoDir, "rev-parse", resolution.CommitSHA+":"+directory)
+		if directory == "." {
+			memberResolution.TreeSHA = resolution.TreeSHA
+			err = nil
+		}
+		if err != nil {
+			closeMembers()
+			return nil, errors.E(op, err)
+		}
+		version, fetchErr := g.fetch(ctx, memberID, revision, &memberResolution)
+		if fetchErr != nil {
+			if errors.Kind(fetchErr) == errors.KindBadRequest || errors.Kind(fetchErr) == errors.KindNotFound {
+				continue
+			}
+			closeMembers()
+			return nil, fetchErr
+		}
+		snapshot.Members = append(snapshot.Members, RepositoryMember{SkillID: memberID, Version: version})
+	}
+	if len(snapshot.Members) == 0 {
+		return nil, errors.E(op, errors.S(repositoryID), errors.V(revision), "Repository contains no installable Skills", errors.KindNotFound)
+	}
+	return snapshot, nil
 }
 
 type repositoryMetadata struct {
@@ -234,6 +310,28 @@ func isGitRepository(repoDir string) bool {
 
 func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, revision string) (*Resolution, error) {
 	const op errors.Op = "skill.resolveGitRevision"
+	requestedRevision := revision
+	if revision == "latest" {
+		tagOutput, err := gitOutput(ctx, repoDir, "tag", "--list")
+		if err != nil {
+			return nil, errors.E(op, err)
+		}
+		versions := make([]string, 0)
+		for _, tag := range strings.Fields(tagOutput) {
+			if semver.IsValid(tag) {
+				versions = append(versions, tag)
+			}
+		}
+		if selected := latestSemanticVersion(versions); selected != "" {
+			revision = selected
+		} else {
+			defaultRef, err := gitOutput(ctx, repoDir, "symbolic-ref", "refs/remotes/origin/HEAD")
+			if err != nil {
+				return nil, errors.E(op, err)
+			}
+			revision = strings.TrimPrefix(defaultRef, "refs/remotes/origin/")
+		}
+	}
 	resolvedRevision := revision
 	if semver.IsValid(revision) && modmodule.IsPseudoVersion(revision) {
 		if pseudoRevision, err := modmodule.PseudoVersionRev(revision); err == nil {
@@ -280,13 +378,34 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, re
 			errors.S(skillID.String()), errors.V(revision), errors.KindNotFound)
 	}
 	return &Resolution{
-		Requested:  revision,
+		Requested:  requestedRevision,
 		Version:    version,
 		Ref:        ref,
 		CommitSHA:  commitSHA,
 		TreeSHA:    treeSHA,
 		CommitTime: commitTime,
 	}, nil
+}
+
+func latestSemanticVersion(versions []string) string {
+	stable := ""
+	prerelease := ""
+	for _, version := range versions {
+		if !semver.IsValid(version) {
+			continue
+		}
+		if semver.Prerelease(version) == "" {
+			if stable == "" || semver.Compare(version, stable) > 0 {
+				stable = version
+			}
+		} else if prerelease == "" || semver.Compare(version, prerelease) > 0 {
+			prerelease = version
+		}
+	}
+	if stable != "" {
+		return stable
+	}
+	return prerelease
 }
 
 func gitOutput(ctx context.Context, repoDir string, args ...string) (string, error) {
