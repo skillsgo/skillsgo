@@ -13,8 +13,10 @@ This workspace owns black-box user-journey tests spanning the released CLI and H
 
 - `Dockerfile`: builds the CLI and Hub Linux binaries into the reusable test image.
 - `entrypoint.sh`: initializes the mounted sandbox and runs the Hub as the container foreground process.
+- `git-fixtures.sh`: creates deterministic local Git remotes reached through the public Repository source path.
+- `git-wrapper.sh`: delegates to system Git while adding deterministic latency for capacity-only source fixtures.
 - `environment_test.go`: owns disposable container startup, the isolated bind mount, command execution, shared fixtures, and assertion helpers.
-- `j01_*_test.go` through `j25_*_test.go`: each file owns exactly one numbered user-journey contract from `USER-JOURNEYS.md`; support code must remain outside these files.
+- `j01_*_test.go` through `j35_*_test.go`: each file owns exactly one numbered user-journey contract from `USER-JOURNEYS.md`; support code must remain outside these files.
 - `USER-JOURNEYS.md`: prioritizes real cross-product user stories and their observable acceptance boundaries.
 
 ## Boundaries
