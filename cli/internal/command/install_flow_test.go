@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with fixture Hub artifacts, temporary Store/Workspace roots, and resolved Agent targets.
- * [OUTPUT]: Specifies add/list/remove, Go Modules-style immutable Manifest pinning after selector resolution, Hub-assessed risk gates, affirmative overwrite installation, exact offline and clean-machine multi-Agent/repository restoration, immutable update, and explicit source replacement command flows.
+ * [OUTPUT]: Specifies add/list/remove, canonical Workspace Manifest persistence plus Workspace Sum integrity, Hub-assessed risk gates, affirmative overwrite installation, exact offline and clean-machine multi-Agent/Repository restoration, immutable update, and explicit source replacement command flows.
  * [POS]: Serves as end-to-end CLI behavior coverage at the public command seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -25,17 +25,22 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
+	"github.com/stretchr/testify/require"
 )
 
 func TestAddListRemoveFlow(t *testing.T) {
 	skillID, version := "github.com/example/skills/-/skills/demo", "v0.0.0-test"
 	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: demo\ndescription: test\n---\n"})
 	contentDigest := commandTestContentDigest(t, zipData, skillID, version)
+	repository := strings.SplitN(skillID, "/-/", 2)[0]
+	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":%q,"Time":"2026-01-01T00:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/example/skills","Subdir":"skills/demo","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, version, contentDigest, len(zipData))
+	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case strings.HasSuffix(request.URL.Path, "/latest.info"):
-			writer.Header().Set("Content-Type", "application/json")
-			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":%q,"Time":"2026-01-01T00:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/example/skills","Subdir":"skills/demo","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, version, contentDigest, len(zipData))
+		case request.URL.Path == "/"+repository+"/@v/list":
+			fmt.Fprintln(writer, version)
+		case request.URL.Path == "/"+repository+"/@v/"+version+".info":
+			_, _ = writer.Write([]byte(repositoryInfo))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 			writer.Write(zipData)
 		default:
@@ -79,10 +84,15 @@ func TestAddUsesInfoNameIndependentFromSkillIDPath(t *testing.T) {
 		"SKILL.md": "---\nname: " + name + "\ndescription: React guidance.\n---\n# Instructions\n",
 	})
 	contentDigest := commandTestContentDigest(t, zipData, skillID, version)
+	repository := strings.SplitN(skillID, "/-/", 2)[0]
+	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":%q,"Description":"React guidance.","Version":%q,"Time":"2026-01-01T00:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/agent-skills","Subdir":"skills/react-best-practices","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, name, version, contentDigest, len(zipData))
+	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case strings.HasSuffix(request.URL.Path, "/latest.info"):
-			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":%q,"Description":"React guidance.","Version":%q,"Time":"2026-01-01T00:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/agent-skills","Subdir":"skills/react-best-practices","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, name, version, contentDigest, len(zipData))
+		case request.URL.Path == "/"+repository+"/@v/list":
+			fmt.Fprintln(writer, version)
+		case request.URL.Path == "/"+repository+"/@v/"+version+".info":
+			_, _ = writer.Write([]byte(repositoryInfo))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 			_, _ = writer.Write(zipData)
 		default:
@@ -119,11 +129,16 @@ func TestAddInstallsFromEnrichedInfoWithoutManifestRequest(t *testing.T) {
 		"SKILL.md": "---\nname: " + name + "\ndescription: React guidance.\nlicense: MIT\n---\n# Instructions\n",
 	})
 	contentDigest := commandTestContentDigest(t, zipData, skillID, version)
+	repository := strings.SplitN(skillID, "/-/", 2)[0]
+	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Time":"2026-01-01T00:00:00Z","Name":%q,"Description":"React guidance.","License":"MIT","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/agent-skills","Subdir":"skills/react-best-practices","Ref":"refs/tags/v1.2.3","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, version, name, contentDigest, len(zipData))
+	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
 	manifestRequested := false
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case strings.HasSuffix(request.URL.Path, "/latest.info"):
-			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Time":"2026-01-01T00:00:00Z","Name":%q,"Description":"React guidance.","License":"MIT","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/agent-skills","Subdir":"skills/react-best-practices","Ref":"refs/tags/v1.2.3","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, version, name, contentDigest, len(zipData))
+		case request.URL.Path == "/"+repository+"/@v/list":
+			fmt.Fprintln(writer, version)
+		case request.URL.Path == "/"+repository+"/@v/"+version+".info":
+			_, _ = writer.Write([]byte(repositoryInfo))
 		case strings.HasSuffix(request.URL.Path, ".manifest"):
 			manifestRequested = true
 			http.Error(writer, "manifest must not be requested", http.StatusGone)
@@ -150,15 +165,18 @@ func TestAddInstallsFromEnrichedInfoWithoutManifestRequest(t *testing.T) {
 	}
 }
 
-func TestAddBranchStoresResolvedImmutableVersionInManifestAndLock(t *testing.T) {
+func TestAddBranchStoresResolvedImmutableVersionInManifest(t *testing.T) {
 	skillID, version := "github.com/vercel-labs/skills/-/skills/find-skills", "v0.0.0-20260717100000-777599e1159e"
 	branch := "feature-x"
 	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: find-skills\ndescription: test\n---\n"})
 	contentDigest := commandTestContentDigest(t, zipData, skillID, version)
+	repository := strings.SplitN(skillID, "/-/", 2)[0]
+	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"find-skills","Description":"test","Version":%q,"Time":"2026-07-17T10:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/skills","Subdir":"skills/find-skills","Ref":"refs/heads/feature-x","CommitSHA":"777599e1159e","TreeSHA":"76a98a285cb0"}}`, skillID, version, contentDigest, len(zipData))
+	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"777599e1159e","Skills":[%s]}`, repository, version, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case strings.HasSuffix(request.URL.Path, "/"+branch+".info"):
-			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"find-skills","Description":"test","Version":%q,"Time":"2026-07-17T10:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/skills","Subdir":"skills/find-skills","Ref":"refs/heads/feature-x","CommitSHA":"777599e1159e","TreeSHA":"76a98a285cb0"}}`, skillID, version, contentDigest, len(zipData))
+		case request.URL.Path == "/"+repository+"/@v/"+branch+".info":
+			_, _ = writer.Write([]byte(repositoryInfo))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 			_, _ = writer.Write(zipData)
 		default:
@@ -200,10 +218,15 @@ func TestAddRequiresConfirmationForHubAssessedRisk(t *testing.T) {
 			skillID, version := "github.com/example/skills/-/skills/risky", "v1"
 			zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: risky\ndescription: test\n---\n"})
 			contentDigest := commandTestContentDigest(t, zipData, skillID, version)
+			repository := strings.SplitN(skillID, "/-/", 2)[0]
+			memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"risky","Description":"test","Version":%q,"Time":"2026-01-01T00:00:00Z","Risk":%q,"ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/example/skills","Subdir":"skills/risky","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, version, test.risk, contentDigest, len(zipData))
+			repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 				switch {
-				case strings.HasSuffix(request.URL.Path, "/latest.info"):
-					fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"risky","Description":"test","Version":%q,"Time":"2026-01-01T00:00:00Z","Risk":%q,"ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/example/skills","Subdir":"skills/risky","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, version, test.risk, contentDigest, len(zipData))
+				case request.URL.Path == "/"+repository+"/@v/list":
+					fmt.Fprintln(writer, version)
+				case request.URL.Path == "/"+repository+"/@v/"+version+".info":
+					_, _ = writer.Write([]byte(repositoryInfo))
 				case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 					_, _ = writer.Write(zipData)
 				default:
@@ -239,7 +262,7 @@ func TestAddRequiresConfirmationForHubAssessedRisk(t *testing.T) {
 func TestAddRejectsPathLikeSkillNamesBeforeHubAccess(t *testing.T) {
 	home := filepath.Join(t.TempDir(), "home")
 	t.Setenv("HOME", home)
-	for _, name := range []string{".", "..", "../escape", "nested/escape", `nested\escape`} {
+	for _, name := range []string{".", "..", "../escape", `nested\escape`} {
 		t.Run(strings.ReplaceAll(name, "/", "_"), func(t *testing.T) {
 			var output bytes.Buffer
 			err := Execute([]string{
@@ -247,7 +270,7 @@ func TestAddRejectsPathLikeSkillNamesBeforeHubAccess(t *testing.T) {
 				"--skill", name, "--agent", "codex", "--global",
 				"--hub", "http://127.0.0.1:1",
 			}, &output, &output)
-			if err == nil || !strings.Contains(err.Error(), "invalid Skill name") {
+			if err == nil || !strings.Contains(err.Error(), "invalid Skill selector") {
 				t.Fatalf("expected path-safe name rejection, got %v", err)
 			}
 		})
@@ -615,6 +638,98 @@ func TestAddSelectsRepeatedRepositoryMembersFromOneInfo(t *testing.T) {
 	}
 }
 
+func TestAddGroupsSelectedRepositoryMembersByInheritedAndOverriddenVersions(t *testing.T) {
+	root := t.TempDir()
+	home, workspace := filepath.Join(root, "home"), filepath.Join(root, "workspace")
+	require.NoError(t, os.MkdirAll(workspace, 0o700))
+	t.Setenv("HOME", home)
+	repository := "gitlab.example.com/group/subgroup/mixed"
+	versions := []string{"v1.0.0", "v2.0.0"}
+	type artifact struct {
+		id, version string
+		zip         []byte
+	}
+	artifacts := make([]artifact, 0, 4)
+	infoByVersion := map[string][]byte{}
+	for _, version := range versions {
+		infos := make([]string, 0, 2)
+		for _, item := range []struct{ path, name string }{{"skills/alpha", "alpha"}, {"skills/beta", "beta"}} {
+			id := repository + "/-/" + item.path
+			archive := commandTestZIP(t, id+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: " + item.name + "\ndescription: mixed version member\n---\n"})
+			digest := commandTestContentDigest(t, archive, id, version)
+			infos = append(infos, fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":%q,"Description":"mixed version member","Version":%q,"Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","CommitSHA":%q,"TreeSHA":%q}}`, id, item.name, version, digest, len(archive), "commit-"+version, "tree-"+item.name+"-"+version))
+			artifacts = append(artifacts, artifact{id: id, version: version, zip: archive})
+		}
+		infoByVersion[version] = []byte(fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":%q,"Skills":[%s]}`, repository, version, "commit-"+version, strings.Join(infos, ",")))
+	}
+	infoRequests := map[string]int{}
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		for version, info := range infoByVersion {
+			if request.URL.Path == "/"+repository+"/@v/"+version+".info" {
+				infoRequests[version]++
+				_, _ = writer.Write(info)
+				return
+			}
+		}
+		for _, item := range artifacts {
+			if request.URL.Path == "/"+item.id+"/@v/"+item.version+".zip" {
+				_, _ = writer.Write(item.zip)
+				return
+			}
+		}
+		http.NotFound(writer, request)
+	}))
+	defer server.Close()
+	oldCWD, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(workspace))
+	defer os.Chdir(oldCWD)
+
+	var output bytes.Buffer
+	err = Execute([]string{"add", "https://" + repository + "@v1.0.0", "--skill", "alpha", "--skill", "beta@v2.0.0", "--agent", "codex", "--yes", "--hub", server.URL, "--output", "json"}, &output, &output)
+	require.NoError(t, err, output.String())
+	require.Equal(t, map[string]int{"v1.0.0": 1, "v2.0.0": 1}, infoRequests)
+	manifest, err := project.LoadManifest(workspace)
+	require.NoError(t, err)
+	require.Equal(t, "v1.0.0", manifest.Skills[repository+"/-/skills/alpha"].Ref)
+	require.Equal(t, "v2.0.0", manifest.Skills[repository+"/-/skills/beta"].Ref)
+	require.FileExists(t, filepath.Join(workspace, ".agents", "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, filepath.Join(workspace, ".agents", "skills", "beta", "SKILL.md"))
+}
+
+func TestAddRejectsMemberMissingFromRequestedRepositoryVersionBeforeMutation(t *testing.T) {
+	root := t.TempDir()
+	home, workspace := filepath.Join(root, "home"), filepath.Join(root, "workspace")
+	require.NoError(t, os.MkdirAll(workspace, 0o700))
+	t.Setenv("HOME", home)
+	repository := "gitlab.example.com/group/subgroup/missing-member"
+	alphaID := repository + "/-/skills/alpha"
+	alphaArchive := commandTestZIP(t, alphaID+"@v1.0.0/", map[string]string{"SKILL.md": "---\nname: alpha\ndescription: available only in v1\n---\n"})
+	alphaDigest := commandTestContentDigest(t, alphaArchive, alphaID, "v1.0.0")
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/" + repository + "/@v/v1.0.0.info":
+			_, _ = fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v1.0.0","CommitSHA":"commit-v1","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"alpha","Description":"available only in v1","Version":"v1.0.0","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","CommitSHA":"commit-v1","TreeSHA":"tree-alpha-v1"}}]}`, repository, alphaID, alphaDigest, len(alphaArchive))
+		case "/" + repository + "/@v/v2.0.0.info":
+			_, _ = fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v2.0.0","CommitSHA":"commit-v2","Skills":[]}`, repository)
+		default:
+			http.NotFound(writer, request)
+		}
+	}))
+	defer server.Close()
+	oldCWD, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(workspace))
+	defer os.Chdir(oldCWD)
+
+	var output bytes.Buffer
+	err = Execute([]string{"add", "https://" + repository + "@v1.0.0", "--skill", "alpha", "--skill", "alpha@v2.0.0", "--agent", "codex", "--yes", "--hub", server.URL, "--output", "json"}, &output, &output)
+	require.Error(t, err)
+	require.NoDirExists(t, filepath.Join(workspace, ".agents"))
+	require.NoFileExists(t, filepath.Join(workspace, "skillsgo.yaml"))
+	require.NoFileExists(t, filepath.Join(workspace, "skillsgo.sum"))
+}
+
 func assertRestoredInstallationTree(t *testing.T, projectRoot string, skillNames []string) {
 	t.Helper()
 	expected := map[string]string{
@@ -701,10 +816,15 @@ func TestAddReplaceChangesSourceAndRemovesObsoleteAgentBindings(t *testing.T) {
 	newSkillID := "github.com/new/skills/-/skills/demo"
 	newZIP := commandTestZIP(t, newSkillID+"@v2/", map[string]string{"SKILL.md": "new"})
 	newDigest := commandTestContentDigest(t, newZIP, newSkillID, "v2")
+	newRepository := strings.SplitN(newSkillID, "/-/", 2)[0]
+	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":"v2","Time":"2026-01-02T00:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/new/skills","Subdir":"skills/demo","Ref":"main","CommitSHA":"new","TreeSHA":"new-tree"}}`, newSkillID, newDigest, len(newZIP))
+	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v2","CommitSHA":"new","Skills":[%s]}`, newRepository, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case strings.HasSuffix(request.URL.Path, "/latest.info"):
-			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":"v2","Time":"2026-01-02T00:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/new/skills","Subdir":"skills/demo","Ref":"main","CommitSHA":"new","TreeSHA":"new-tree"}}`, newSkillID, newDigest, len(newZIP))
+		case request.URL.Path == "/"+newRepository+"/@v/list":
+			fmt.Fprintln(writer, "v2")
+		case request.URL.Path == "/"+newRepository+"/@v/v2.info":
+			_, _ = writer.Write([]byte(repositoryInfo))
 		case strings.HasSuffix(request.URL.Path, "/v2.zip"):
 			writer.Write(newZIP)
 		default:

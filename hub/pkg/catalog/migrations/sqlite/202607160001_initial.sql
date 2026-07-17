@@ -2,6 +2,15 @@
 -- [OUTPUT]: Provides the initial Catalog relational schema and FTS5 search index.
 -- [POS]: Serves as the first reviewed SQLite schema migration for the Hub Catalog.
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+CREATE TABLE repositories (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  source_host TEXT NOT NULL,
+  repository_path TEXT NOT NULL,
+  repository_id TEXT NOT NULL UNIQUE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(source_host, repository_path)
+);
 CREATE TABLE skills (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   coordinate TEXT NOT NULL UNIQUE,
@@ -9,6 +18,7 @@ CREATE TABLE skills (
   description TEXT NOT NULL,
   source_host TEXT NOT NULL,
   repository TEXT NOT NULL,
+  repository_id INTEGER NOT NULL REFERENCES repositories(id),
   skill_path TEXT NOT NULL,
   latest_version TEXT NOT NULL,
   verified BOOLEAN NOT NULL DEFAULT FALSE,

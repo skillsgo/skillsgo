@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on Agent Catalog path resolution and installation target scopes/modes.
+ * [OUTPUT]: Specifies canonical and projected target paths for project and user installations.
+ * [POS]: Serves as target-path contract coverage for the installation module.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package install
 
 import (
@@ -15,11 +21,14 @@ func TestResolveProjectAndUserTargets(t *testing.T) {
 	projectTargets, err := ResolveTargets(catalog, []string{"codex", "claude-code"}, ScopeProject, ModeSymlink, "/workspace", "pdf")
 	require.NoError(t, err)
 	require.Equal(t, filepath.Join("/workspace", ".agents", "skills", "pdf"), projectTargets[0].Path)
+	require.Equal(t, filepath.Join("/workspace", ".agents", "skills", "pdf"), projectTargets[0].CanonicalPath)
 	require.Equal(t, filepath.Join("/workspace", ".claude", "skills", "pdf"), projectTargets[1].Path)
+	require.Equal(t, filepath.Join("/workspace", ".agents", "skills", "pdf"), projectTargets[1].CanonicalPath)
 
 	userTargets, err := ResolveTargets(catalog, []string{"codex"}, ScopeUser, ModeCopy, "/ignored", "pdf")
 	require.NoError(t, err)
 	require.Equal(t, filepath.Join(home, ".codex", "skills", "pdf"), userTargets[0].Path)
+	require.Equal(t, filepath.Join(home, ".agents", "skills", "pdf"), userTargets[0].CanonicalPath)
 	require.Equal(t, ModeCopy, userTargets[0].Mode)
 }
 
@@ -27,7 +36,8 @@ func TestResolveEveSubagentTargets(t *testing.T) {
 	catalog := agent.NewCatalog(agent.Paths{Home: t.TempDir(), ConfigHome: t.TempDir(), CWD: "/workspace"})
 	targets, err := ResolveTargetsWithSubagents(catalog, []string{"eve"}, []string{"writer"}, ScopeProject, ModeCopy, "/workspace", "pdf")
 	require.NoError(t, err)
-	require.Equal(t, []Target{{Agent: "eve:writer", Scope: ScopeProject, Mode: ModeCopy, Path: filepath.Join("/workspace", "agent", "subagents", "writer", "skills", "pdf")}}, targets)
+	path := filepath.Join("/workspace", "agent", "subagents", "writer", "skills", "pdf")
+	require.Equal(t, []Target{{Agent: "eve:writer", Scope: ScopeProject, Mode: ModeCopy, Path: path, CanonicalPath: path}}, targets)
 
 	targets, err = ResolveTargetsWithSubagents(catalog, []string{"eve"}, []string{"root", "writer"}, ScopeProject, ModeCopy, "/workspace", "pdf")
 	require.NoError(t, err)

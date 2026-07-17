@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with a fixture Hub, hostile explicit project path, test Agent, and temporary Store/Workspace boundaries.
- * [OUTPUT]: Specifies schema-stable preflight/execution JSON, refreshed trusted-risk gates, state-bound resolutions, exact cached versions, explicit hostile target preservation, Lock previews, and identical skips.
+ * [OUTPUT]: Specifies schema-stable preflight/execution JSON, refreshed trusted-risk gates, state-bound resolutions, exact cached versions, explicit hostile target preservation, Manifest previews, and identical skips.
  * [POS]: Serves as executable App-facing contract coverage for multi-location Installation Plans.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
