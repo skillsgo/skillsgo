@@ -12,6 +12,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discover => 'Discover';
 
   @override
+  String get discoverSkills => 'It’s nice to know a little more.';
+
+  @override
   String get library => 'Library';
 
   @override
@@ -42,7 +45,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discoverTitle => 'Find a skill for your next move.';
 
   @override
-  String get searchSkills => 'Search skills…';
+  String searchResultsFor(String query) {
+    return 'Results for “$query”';
+  }
+
+  @override
+  String get searchSkills => 'Search skills or paste a Git link…';
 
   @override
   String get search => 'Search';
@@ -119,6 +127,13 @@ class AppLocalizationsEn extends AppLocalizations {
       'This Hub returned a response SkillsGo cannot read. Check its version and protocol compatibility.';
 
   @override
+  String get invalidLocalDataTitle => 'Local installation data unreadable';
+
+  @override
+  String get invalidLocalDataMessage =>
+      'The SkillsGo CLI returned local installation data the App cannot read. Update the CLI or remove damaged installation records, then try again.';
+
+  @override
   String get tryAgain => 'Try again';
 
   @override
@@ -136,6 +151,42 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get focusSearch => 'Focus search';
+
+  @override
+  String get skillsFromLink => 'Skills from this link';
+
+  @override
+  String skillCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count skills',
+      one: '1 skill',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String sourceResultsSummary(String source, int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count skills from $source',
+      one: '1 skill from $source',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get sourceSearchEmptyTitle => 'This link is ready to inspect';
+
+  @override
+  String sourceSearchEmptyMessage(String source) {
+    return '$source is not in the current search results. SkillsGo can inspect the link directly in the next step.';
+  }
+
+  @override
+  String get inspectSource => 'View skills in this link';
 
   @override
   String get collectionEmptyTitle => 'No Skills in this collection';
@@ -324,6 +375,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get all => 'All';
 
   @override
+  String get updatesOnly => 'Updates';
+
+  @override
+  String get allAgents => 'All Agents';
+
+  @override
+  String get allProjects => 'All Projects';
+
+  @override
+  String get specificProject => 'Project';
+
+  @override
   String get addProject => 'Add Project';
 
   @override
@@ -469,9 +532,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get healthUnexpectedPath => 'Unexpected target path';
 
   @override
-  String get healthReceiptMissing => 'Receipt missing';
-
-  @override
   String get modeSymlink => 'Symlink';
 
   @override
@@ -479,15 +539,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get modeExternal => 'External';
-
-  @override
-  String get receiptPresent => 'Receipt present';
-
-  @override
-  String get receiptMissing => 'Receipt missing';
-
-  @override
-  String get receiptInvalid => 'Receipt invalid';
 
   @override
   String get notLinked => 'NOT LINKED';
@@ -503,6 +554,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get manageTargets => 'Manage targets';
+
+  @override
+  String skillsSelected(int count) {
+    return '$count selected';
+  }
+
+  @override
+  String get clearSelection => 'Clear selection';
 
   @override
   String get manageTargetsTitle => 'Manage installation targets';
@@ -542,7 +601,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workspaceOwnershipChanges =>
-      'Selected project actions will update skillsgo.yaml and skillsgo-lock.yaml.';
+      'Selected project actions will update skillsgo.yaml and skillsgo.yaml.';
 
   @override
   String get targetContentPreserved =>
@@ -1133,60 +1192,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get installationPlanTitle => 'Choose installation targets';
-
-  @override
-  String get closeInstallationPlan => 'Close installation plan';
-
-  @override
-  String get installationPlanDescription =>
-      'Select exact location-and-Agent cells. Row and column controls are shortcuts for those explicit cells.';
-
-  @override
-  String get reviewInstallationPlan => 'Review installation plan';
-
-  @override
-  String get reviewInstallationPlanDescription =>
-      'Review every target action and Workspace Lock change before files are changed.';
-
-  @override
   String get installationResults => 'Installation results';
 
   @override
-  String get installationResultsDescription =>
-      'Each target completed independently. You can stay here or view the installed Skill in Library.';
-
-  @override
   String get installationInProgress => 'Installation in progress';
-
-  @override
-  String get locationAgentMatrix => 'Location × Agent';
-
-  @override
-  String targetsSelected(int count) {
-    return '$count targets selected';
-  }
-
-  @override
-  String get location => 'Location';
-
-  @override
-  String get select => 'Select';
-
-  @override
-  String selectTarget(String location, String agent) {
-    return 'Select $location for $agent';
-  }
-
-  @override
-  String selectLocationTargets(String location) {
-    return 'Select all available targets in $location';
-  }
-
-  @override
-  String selectAgentTargets(String agent) {
-    return 'Select all available targets for $agent';
-  }
 
   @override
   String get projectUnavailable => 'Project unavailable';
@@ -1196,16 +1205,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get unsupportedCell => 'Unavailable';
-
-  @override
-  String reviewTargets(int count) {
-    return 'Review $count Targets';
-  }
-
-  @override
-  String installSelectedTargets(int count) {
-    return 'Install $count Targets';
-  }
 
   @override
   String get confirmInstall => 'Confirm Installation';
@@ -1276,8 +1275,8 @@ class AppLocalizationsEn extends AppLocalizations {
       'Replace the installed version at this target';
 
   @override
-  String get replaceIdentityCollision =>
-      'Replace the different Skill identity at this target';
+  String get replaceSkillIdCollision =>
+      'Replace the different Skill ID at this target';
 
   @override
   String get replaceLocalModification =>
@@ -1314,10 +1313,11 @@ class AppLocalizationsEn extends AppLocalizations {
       'Enable the explicit Critical-risk override in Settings before this plan can continue.';
 
   @override
-  String get workspaceLockChanges => 'Workspace Lock changes';
+  String get workspaceManifestChanges => 'Workspace Manifest changes';
 
   @override
-  String get noWorkspaceLockChanges => 'No Workspace Lock files will change.';
+  String get noWorkspaceManifestChanges =>
+      'No Workspace Manifest files will change.';
 
   @override
   String lockVersionChange(String from, String to) {
@@ -1404,7 +1404,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get updateCheckTargetFailed => 'Update check failed';
 
   @override
-  String get reconcileWorkspaceLockTarget => 'Repair workspace lock';
+  String get reconcileWorkspaceManifestTarget => 'Repair workspace manifest';
 
   @override
   String get updateSelectedTargets => 'Update selected targets';
@@ -1470,7 +1470,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get installationPlanFailed => 'Installation plan could not continue';
 
   @override
+  String get installationFailed => 'Installation could not be completed';
+
+  @override
   String get bringUnderManagement => 'Bring under management';
+
+  @override
+  String get localSource => 'Local source';
+
+  @override
+  String get noDescriptionAvailable => 'No description available';
+
+  @override
+  String moreCoverage(int count) {
+    return '+$count more locations';
+  }
 
   @override
   String get adoptExternalTitle => 'Bring this installation under management';

@@ -1,10 +1,11 @@
 /*
- * [INPUT]: Depends on SkillsGateway discovery models, localized copy, the SkillsGo design-system interface, Flutter Material rendering, the bundled solar-starfield background asset, native components, and the shared installation MenuAnchor.
+ * [INPUT]: Depends on SkillsGateway discovery models, localized copy, the SkillsGo design-system interface, Flutter Material rendering, HugeIcons, the bundled solar-starfield background asset, native components, and the shared installation MenuAnchor.
  * [OUTPUT]: Exports SkillsGo theme and semantic color interfaces and provides the full-window photographic background behind Folder, typography/status tokens, controls, Hub-image-backed discovery cards, anchored installation actions, status elements, and viewport-safe empty states.
  * [POS]: Serves as the thin branded presentation layer over the SkillsGo design system and native Flutter Material behavior.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../domain/skills_gateway.dart';
 import '../l10n/app_localizations.dart';
@@ -175,14 +176,16 @@ class SecondaryCapsuleButton extends StatelessWidget {
   });
   final String label;
   final VoidCallback? onPressed;
-  final IconData? icon;
+  final List<List<dynamic>>? icon;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     return OutlinedButton.icon(
       onPressed: onPressed,
-      icon: icon == null ? const SizedBox.shrink() : Icon(icon, size: 16),
+      icon: icon == null
+          ? const SizedBox.shrink()
+          : HugeIcon(icon: icon!, size: 16, strokeWidth: 1.8),
       style: OutlinedButton.styleFrom(
         minimumSize: const Size(0, 42),
         padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -192,6 +195,24 @@ class SecondaryCapsuleButton extends StatelessWidget {
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
       ),
       label: Text(label),
+    );
+  }
+}
+
+enum SkillSearchAppearance { capsule, leaderboard }
+
+class SearchVisualIcon extends StatelessWidget {
+  const SearchVisualIcon({super.key, required this.color});
+
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return HugeIcon(
+      icon: HugeIcons.strokeRoundedSearchVisual,
+      size: 20,
+      strokeWidth: 2,
+      color: color,
     );
   }
 }
@@ -207,6 +228,10 @@ class SkillSearchField extends StatelessWidget {
     this.active = false,
     this.loading = false,
     this.compact = false,
+    this.showClearButton = true,
+    this.height,
+    this.appearance = SkillSearchAppearance.capsule,
+    this.showShortcutHint = false,
   });
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -216,6 +241,10 @@ class SkillSearchField extends StatelessWidget {
   final bool active;
   final bool loading;
   final bool compact;
+  final bool showClearButton;
+  final double? height;
+  final SkillSearchAppearance appearance;
+  final bool showShortcutHint;
 
   @override
   Widget build(BuildContext context) {
@@ -225,13 +254,108 @@ class SkillSearchField extends StatelessWidget {
       textField: true,
       child: SizedBox(
         key: const Key('skill-search'),
-        height: compact ? 44 : 52,
+        height: height ?? (compact ? 44 : 52),
         child: AnimatedBuilder(
           animation: Listenable.merge([controller, focusNode]),
           builder: (context, _) {
             final scheme = Theme.of(context).colorScheme;
             final components = context.skillsComponents;
             final value = controller.value;
+            if (appearance == SkillSearchAppearance.leaderboard) {
+              const contentAlignment = 0.5;
+              final animationDuration = MediaQuery.disableAnimationsOf(context)
+                  ? Duration.zero
+                  : const Duration(milliseconds: 100);
+              return AnimatedContainer(
+                duration: animationDuration,
+                decoration: BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(
+                      color: focusNode.hasFocus
+                          ? scheme.onSurface
+                          : components.controlBorder,
+                      width: focusNode.hasFocus ? 1.5 : 1,
+                    ),
+                  ),
+                ),
+                child: TextField(
+                  controller: controller,
+                  focusNode: focusNode,
+                  onChanged: onChanged,
+                  onSubmitted: onSubmitted,
+                  textInputAction: TextInputAction.search,
+                  textAlignVertical: const TextAlignVertical(
+                    y: contentAlignment,
+                  ),
+                  cursorColor: scheme.onSurface,
+                  style: TextStyle(
+                    color: scheme.onSurface,
+                    fontFamily: SkillsTokens.monoFamily,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                  ),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    border: InputBorder.none,
+                    contentPadding: EdgeInsets.zero,
+                    prefixIconConstraints: const BoxConstraints.tightFor(
+                      width: 32,
+                      height: 45,
+                    ),
+                    prefixIcon: Align(
+                      alignment: const Alignment(0, contentAlignment),
+                      child: SearchVisualIcon(
+                        key: const Key('search-visual-icon'),
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                    hintText: l10n.searchSkills,
+                    hintStyle: TextStyle(
+                      color: scheme.textTertiary,
+                      fontFamily: SkillsTokens.monoFamily,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w400,
+                    ),
+                    suffixIconConstraints: const BoxConstraints.tightFor(
+                      width: 32,
+                      height: 45,
+                    ),
+                    suffixIcon: loading
+                        ? const Align(
+                            alignment: Alignment(0, contentAlignment),
+                            child: SizedBox.square(
+                              dimension: 14,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 1.8,
+                              ),
+                            ),
+                          )
+                        : showShortcutHint
+                        ? Align(
+                            alignment: const Alignment(0, contentAlignment),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                border: Border.all(
+                                  color: components.controlBorder,
+                                ),
+                                borderRadius: BorderRadius.circular(5),
+                              ),
+                              child: Icon(
+                                Icons.keyboard_return_rounded,
+                                size: 13,
+                                color: scheme.onSurfaceVariant,
+                              ),
+                            ),
+                          )
+                        : null,
+                  ),
+                ),
+              );
+            }
             final foreground = active
                 ? scheme.onPrimaryContainer
                 : scheme.onSurface;
@@ -285,7 +409,22 @@ class SkillSearchField extends StatelessWidget {
                     color: scheme.textTertiary,
                     fontWeight: FontWeight.w300,
                   ),
-                  prefixIcon: Icon(Icons.search, size: 19, color: secondary),
+                  prefixIconConstraints: const BoxConstraints(
+                    minWidth: 42,
+                    minHeight: 42,
+                  ),
+                  prefixIcon: SizedBox(
+                    width: 42,
+                    height: 42,
+                    child: Center(
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedSearch01,
+                        size: 17,
+                        strokeWidth: 1.5,
+                        color: secondary,
+                      ),
+                    ),
+                  ),
                   suffixIcon: loading
                       ? Padding(
                           padding: const EdgeInsets.all(13),
@@ -297,7 +436,7 @@ class SkillSearchField extends StatelessWidget {
                             ),
                           ),
                         )
-                      : value.text.isEmpty
+                      : value.text.isEmpty || !showClearButton
                       ? null
                       : IconButton(
                           key: const Key('skill-search-clear'),
@@ -307,9 +446,10 @@ class SkillSearchField extends StatelessWidget {
                             onCleared?.call();
                             focusNode.requestFocus();
                           },
-                          icon: Icon(
-                            Icons.close_rounded,
+                          icon: HugeIcon(
+                            icon: HugeIcons.strokeRoundedCancel01,
                             size: 17,
+                            strokeWidth: 1.8,
                             color: secondary,
                           ),
                         ),
@@ -521,13 +661,16 @@ class _RepositoryAvatarState extends State<RepositoryAvatar> {
   @override
   Widget build(BuildContext context) {
     final imageUrl = imageFailed ? null : widget.imageUrl;
+    final scheme = Theme.of(context).colorScheme;
     return Container(
       width: widget.size,
       height: widget.size,
       alignment: Alignment.center,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        color: imageUrl == null
+            ? scheme.secondaryContainer
+            : scheme.surfaceContainerHighest,
         borderRadius: BorderRadius.circular(widget.borderRadius),
       ),
       child: imageUrl == null
@@ -564,7 +707,7 @@ class _RepositoryAvatarFallback extends StatelessWidget {
       source,
     ).substring(0, _repositoryOwner(source).length.clamp(0, 2)).toUpperCase(),
     style: TextStyle(
-      color: Theme.of(context).colorScheme.onSurfaceVariant,
+      color: Theme.of(context).colorScheme.onSecondaryContainer,
       fontWeight: FontWeight.w700,
       fontSize: (size * .34).clamp(12, 32),
     ),

@@ -83,6 +83,13 @@ void main() {
       expect(components.overlay, isNot(components.overlayBackdrop));
       expect(components.focusRingWidth, 2);
       expect(components.statusSuccess, isNot(components.statusDanger));
+      expect(
+        _contrastRatio(
+          theme.colorScheme.inverseSurface,
+          components.statusDangerOnInverse,
+        ),
+        greaterThanOrEqualTo(4.5),
+      );
       expect(components.statusAttention, isNot(components.statusSevere));
       expect(
         _contrastRatio(components.primaryHover, components.primaryForeground),

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Flutter Material animation, overlay, pointer, text-editing, and rendering primitives plus the local Bloom style model.
+ * [INPUT]: Depends on Flutter Material animation, HugeIcons, overlay, pointer, text-editing, and rendering primitives plus the local Bloom style model.
  * [OUTPUT]: Provides a vendored Bloom color picker with explicit named presets, brand-name hover tooltips, seeded-color selection, and the original Portal Labs bloom motion.
  * [POS]: Serves as the product-specific theme picker in the App UI module; derived from Portal Labs under the MIT license recorded in THIRD_PARTY_NOTICES.md.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -8,6 +8,7 @@ import 'dart:ui';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'models/bloom_color_picker_style.dart';
 
 export 'models/bloom_color_picker_style.dart';
@@ -638,9 +639,10 @@ class _BloomColorPickerState extends State<BloomColorPicker>
                               shape: BoxShape.circle,
                               color: Color(0xFF1A1A1A),
                             ),
-                            child: const Icon(
-                              Icons.check,
+                            child: const HugeIcon(
+                              icon: HugeIcons.strokeRoundedCheckmarkCircle02,
                               size: 12,
+                              strokeWidth: 1.8,
                               color: Colors.white,
                             ),
                           ),
@@ -648,9 +650,10 @@ class _BloomColorPickerState extends State<BloomColorPicker>
                       : GestureDetector(
                           key: const ValueKey('edit'),
                           onTap: () => _hexFocusNode.requestFocus(),
-                          child: Icon(
-                            Icons.edit,
+                          child: HugeIcon(
+                            icon: HugeIcons.strokeRoundedEdit02,
                             size: 16,
+                            strokeWidth: 1.8,
                             color: widget.style.iconColor,
                           ),
                         ),

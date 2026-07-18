@@ -82,9 +82,9 @@ About
 flowchart LR
     A["Launch SkillsGo"] --> B["Check bundled CLI, Hub, and Installed Agents in parallel"]
     B --> C["Open Discover / Search"]
-    C --> D{"Any Installed Agent?"}
-    D -->|Yes| E["Installation Plans are available"]
-    D -->|No| F["Discovery remains available; installation explains how to add an Agent"]
+    C --> D{"Any supported Agent target?"}
+    D -->|Yes| E["Direct installation is available"]
+    D -->|No| F["Discovery remains available"]
     B --> G{"Hub available?"}
     G -->|No| H["Discover shows offline state; Library remains available"]
 ```
@@ -92,7 +92,7 @@ flowchart LR
 First launch requires no account, project, or external CLI. Health checks must not delay the window:
 
 - A bundled CLI failure provides retry and diagnostics.
-- With no Installed Agent, users can still browse; the Installation Plan explains why no targets are available.
+- A supported Agent remains an installation target even when its application is not currently installed; SkillsGo creates the target directory when needed.
 - While the Hub is offline, the Library, local details, projects, and Agent views remain available.
 
 ## Journey 1: Discover and Install a Skill
@@ -108,7 +108,7 @@ Search, Ranking, Trending, and Hot use one Skill-card model. Each card shows at 
 
 Trust, immutable version, risk, and artifact audit metadata remain in Skill detail instead of competing with discovery comparison. Discovery cards use a responsive three-, two-, or one-column grid based on the available content width.
 
-Clicking the card opens detail. Every discovery card uses the compact “Install” action, which opens the Installation Plan directly. Existing targets remain visibly installed and cannot be selected again, so concise discovery copy never permits a duplicate installation.
+Clicking the card opens detail. Every discovery card uses the compact “Install” action, which opens the location selector directly. Existing targets remain visibly installed and cannot be selected again, so concise discovery copy never permits a duplicate installation.
 
 ### Pre-install Detail
 
@@ -123,9 +123,9 @@ Detail preserves the originating query, ranking position, and scroll state. It i
 
 Back navigation restores the exact originating list state instead of returning to the Discover root.
 
-### Build an Installation Plan
+### Select Installation Targets
 
-The installation sheet uses a location-by-Agent matrix. Rows include User Scope and every Added Project; columns include every Installed Agent.
+The installation sheet uses a location-by-Agent matrix. Rows include User Scope and every Added Project; columns include every supported Agent. Installed Agents are selected by default; supported but uninstalled Agents remain available explicitly.
 
 | Location | Codex | Claude Code | Cursor |
 | --- | ---: | ---: | ---: |
@@ -146,7 +146,7 @@ Before execution, show:
 
 - artifact version and source;
 - counts for create, replace, skip, conflict, and risky targets;
-- Workspace Locks that will change;
+- Workspace Manifests that will change;
 - the selected resolution for each conflict;
 - any additional High or Critical risk confirmation.
 
@@ -173,24 +173,27 @@ The user can Retry Failed Targets, View in Library, or remain on the current det
 The Library merges facts from:
 
 - the Content-addressed Store and Installation Receipts;
-- `skillsgo.yaml` and `skillsgo-lock.yaml` in Added Projects;
+- `skillsgo.yaml` and `skillsgo.yaml` in Added Projects;
 - user-level Skill directories for Installed Agents;
 - Agent Skill directories inside Added Projects;
 - Hub source, version, trust, and risk metadata.
 
-Hub Skills aggregate by stable Skill Identity. Local Skills aggregate by local identity. External Installations without a managed identity must not merge only because their names match.
+Hub Skills aggregate by stable Skill ID. Local Skills aggregate by inventory key. External Installations without a managed Skill ID must not merge only because their names match.
 
-### Library Cards
+### Library Rows
 
-One logical Skill appears as one Library Entry regardless of target count. The card shows:
+One logical Skill appears as one Library Entry regardless of target count. The
+row keeps the Skill identity primary and shows:
 
-- name, source type, Trust Level, and risk state;
-- Installation Target count;
-- Agent and project summary;
-- number of active versions;
-- External Installation, Local Skill, update, Local Modification, or unhealthy-target state.
+- name and description, with installation coverage as the fallback summary;
+- the Agents that can discover or own targets for the Skill.
 
-When targets use different versions, show “3 versions” rather than presenting Version Divergence as an error.
+Each row has a selection checkbox. Selecting one or more rows opens a floating
+selection bar for the existing Update and Manage Targets journeys. These
+journeys retain their per-entry preflight, exact-target review, confirmation,
+progress, and result behavior. Health, provenance, target count, versions, risk,
+and update details remain available in Skill detail rather than as row status or
+row actions.
 
 ### View Semantics
 
@@ -227,7 +230,7 @@ Primary actions include:
 - Resolve the update source and available version for every managed target.
 - Permit projects to retain different versions.
 - Require explicit target selection in the matrix.
-- Update a project's Workspace Lock after confirmation.
+- Update a project's Workspace Manifest after confirmation.
 - Do not label a fixed commit without a movable reference as updateable.
 - Exclude External Installations and Local Skills without online sources from Hub updates.
 - Permit partial success and retry failed targets.
@@ -237,8 +240,8 @@ Primary actions include:
 - Show only targets belonging to the current Skill.
 - Require explicit target selection instead of an ambiguous Delete Skill action.
 - Removing one target never affects other targets for the same Skill.
-- Removing the final target does not immediately prune Store content still referenced by a recoverable Workspace Lock.
-- Do not remove an External Installation before adoption.
+- Removing the final target does not immediately prune Store content still referenced by a recoverable Workspace Manifest.
+- Allow exact-path External Installation removal after reviewed confirmation; do not require or perform adoption.
 
 ## Journey 4: Adopt an External Installation
 
@@ -261,7 +264,7 @@ Add Project performs the following journey:
 
 1. Select one directory through the operating-system file picker.
 2. Grant and persist explicit access to that directory.
-3. Read the Workspace Manifest and Workspace Lock when present.
+3. Read the Workspace Manifest and Workspace Manifest when present.
 4. Inspect known Agent Skill directories inside the project.
 5. Merge managed targets and External Installations.
 6. Pin the project in the left rail and open its view.
@@ -311,7 +314,7 @@ Suggested logical routes:
 | No Added Project | Keep Add Project visible without fake placeholder projects |
 | Empty project | Prompt installation of the project's first Skill |
 | Agent with zero Skills | Keep the Agent entry and prompt discovery |
-| External Installation | Allow inspection and adoption; disable direct update and removal |
+| External Installation | Allow inspection and exact-path removal; disable update, repair, and adoption |
 | Version Divergence | Display versions and targets without treating it as an error |
 | Partial failure | Retain successes, show per-target causes, and retry failures |
 | Manually replaced target | Mark unhealthy; do not delete automatically; offer repair or stop managing |

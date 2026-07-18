@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on resolved SkillsGo semantic colors and Primer Primitives 11.9.0 component-state conventions.
- * [OUTPUT]: Provides source-traceable button, control, card, overlay, navigation, search, and focus tokens as a Flutter ThemeExtension.
+ * [OUTPUT]: Provides source-traceable button, control, card, overlay, navigation, search, focus, and inverse-surface danger tokens as a Flutter ThemeExtension.
  * [POS]: Serves as the component-token layer between SkillsGo semantic colors and reusable Flutter widgets.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -42,6 +42,7 @@ class SkillsComponentTokens extends ThemeExtension<SkillsComponentTokens> {
     required this.statusDanger,
     required this.statusDangerContainer,
     required this.statusDangerSolid,
+    required this.statusDangerOnInverse,
     required this.statusDangerForeground,
     this.focusRingWidth = 2,
   });
@@ -79,6 +80,7 @@ class SkillsComponentTokens extends ThemeExtension<SkillsComponentTokens> {
   final Color statusDanger;
   final Color statusDangerContainer;
   final Color statusDangerSolid;
+  final Color statusDangerOnInverse;
   final Color statusDangerForeground;
   final double focusRingWidth;
 
@@ -117,6 +119,7 @@ class SkillsComponentTokens extends ThemeExtension<SkillsComponentTokens> {
     Color? statusDanger,
     Color? statusDangerContainer,
     Color? statusDangerSolid,
+    Color? statusDangerOnInverse,
     Color? statusDangerForeground,
     double? focusRingWidth,
   }) => SkillsComponentTokens(
@@ -157,6 +160,7 @@ class SkillsComponentTokens extends ThemeExtension<SkillsComponentTokens> {
     statusDanger: statusDanger ?? this.statusDanger,
     statusDangerContainer: statusDangerContainer ?? this.statusDangerContainer,
     statusDangerSolid: statusDangerSolid ?? this.statusDangerSolid,
+    statusDangerOnInverse: statusDangerOnInverse ?? this.statusDangerOnInverse,
     statusDangerForeground:
         statusDangerForeground ?? this.statusDangerForeground,
     focusRingWidth: focusRingWidth ?? this.focusRingWidth,
@@ -221,6 +225,10 @@ class SkillsComponentTokens extends ThemeExtension<SkillsComponentTokens> {
         other.statusDangerContainer,
       ),
       statusDangerSolid: mix(statusDangerSolid, other.statusDangerSolid),
+      statusDangerOnInverse: mix(
+        statusDangerOnInverse,
+        other.statusDangerOnInverse,
+      ),
       statusDangerForeground: mix(
         statusDangerForeground,
         other.statusDangerForeground,

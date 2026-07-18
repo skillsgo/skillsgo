@@ -10,7 +10,7 @@ This map governs the Flutter desktop application workspace. Read it with the roo
 - Runtime: Flutter desktop; macOS is the currently maintained target.
 - Entry points: `lib/main.dart` and `lib/app.dart`
 - Integration seam: `SkillsGateway`
-- Product responsibility: present discovery and Library workflows, collect installation/adoption/export intent, and delegate Hub reads or local mutations to the correct boundary.
+- Product responsibility: present discovery and Library workflows, collect installation, exact External removal, and export intent, and delegate Hub reads or local mutations to the correct boundary.
 
 ## Commands
 
@@ -40,7 +40,7 @@ flutter build macos --release
 ## Boundaries
 
 - The App may read public Hub APIs and invoke the SkillsGo CLI through typed adapters.
-- The CLI owns local installation, update, removal, target detection, manifests, locks, and the shared store.
+- The CLI owns local installation, update, removal, target detection, Workspace Manifests, Workspace Sums, and the shared store.
 - The Hub owns public skill metadata, search, rankings, immutable artifacts, and event ingestion.
 - Do not parse human-oriented CLI output. Prefer stable machine-readable output and typed models.
 - Hub availability failures must not replace valid local Library inventory or reset the selected Library route; local reads and safe local-only mutations remain independent.
@@ -50,6 +50,7 @@ flutter build macos --release
 ## UI Component Policy
 
 - Use Flutter Material 3 primitives as the default foundation for controls, overlays, forms, feedback, semantics, and platform behavior.
+- Use HugeIcons `strokeRounded` icons for every authored App icon. Do not introduce Flutter Material `Icons.*`, Cupertino icons, or another icon family in App UI; preserve Material components while supplying HugeIcons widgets through their icon slots. Prefer a semantic HugeIcons glyph over a merely similar shape, and keep neighboring icon size and stroke weight consistent.
 - Build the application palette through the SkillsGo Design System: Primer-inspired semantic roles over Radix neutral scales, with Material 3 acting as the component adapter and the user seed controlling interaction accents.
 - Keep recurring Material composition behind the reusable native component layer; build custom widgets only for product-specific interactions such as the stateful destination rail, folder shell, or installation matrix.
 - Do not introduce a second component theme system. Product-specific colors may remain explicit only when they communicate stable status or brand meaning.

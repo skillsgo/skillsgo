@@ -104,6 +104,12 @@ abstract class AppLocalizations {
   /// **'Discover'**
   String get discover;
 
+  /// No description provided for @discoverSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'It’s nice to know a little more.'**
+  String get discoverSkills;
+
   /// No description provided for @library.
   ///
   /// In en, this message translates to:
@@ -158,10 +164,16 @@ abstract class AppLocalizations {
   /// **'Find a skill for your next move.'**
   String get discoverTitle;
 
+  /// No description provided for @searchResultsFor.
+  ///
+  /// In en, this message translates to:
+  /// **'Results for “{query}”'**
+  String searchResultsFor(String query);
+
   /// No description provided for @searchSkills.
   ///
   /// In en, this message translates to:
-  /// **'Search skills…'**
+  /// **'Search skills or paste a Git link…'**
   String get searchSkills;
 
   /// No description provided for @search.
@@ -296,6 +308,18 @@ abstract class AppLocalizations {
   /// **'This Hub returned a response SkillsGo cannot read. Check its version and protocol compatibility.'**
   String get invalidResponseMessage;
 
+  /// No description provided for @invalidLocalDataTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Local installation data unreadable'**
+  String get invalidLocalDataTitle;
+
+  /// No description provided for @invalidLocalDataMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The SkillsGo CLI returned local installation data the App cannot read. Update the CLI or remove damaged installation records, then try again.'**
+  String get invalidLocalDataMessage;
+
   /// No description provided for @tryAgain.
   ///
   /// In en, this message translates to:
@@ -331,6 +355,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Focus search'**
   String get focusSearch;
+
+  /// No description provided for @skillsFromLink.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills from this link'**
+  String get skillsFromLink;
+
+  /// No description provided for @skillCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 skill} other{{count} skills}}'**
+  String skillCount(int count);
+
+  /// No description provided for @sourceResultsSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 skill from {source}} other{{count} skills from {source}}}'**
+  String sourceResultsSummary(String source, int count);
+
+  /// No description provided for @sourceSearchEmptyTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'This link is ready to inspect'**
+  String get sourceSearchEmptyTitle;
+
+  /// No description provided for @sourceSearchEmptyMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'{source} is not in the current search results. SkillsGo can inspect the link directly in the next step.'**
+  String sourceSearchEmptyMessage(String source);
+
+  /// No description provided for @inspectSource.
+  ///
+  /// In en, this message translates to:
+  /// **'View skills in this link'**
+  String get inspectSource;
 
   /// No description provided for @collectionEmptyTitle.
   ///
@@ -644,6 +704,30 @@ abstract class AppLocalizations {
   /// **'All'**
   String get all;
 
+  /// No description provided for @updatesOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates'**
+  String get updatesOnly;
+
+  /// No description provided for @allAgents.
+  ///
+  /// In en, this message translates to:
+  /// **'All Agents'**
+  String get allAgents;
+
+  /// No description provided for @allProjects.
+  ///
+  /// In en, this message translates to:
+  /// **'All Projects'**
+  String get allProjects;
+
+  /// No description provided for @specificProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get specificProject;
+
   /// No description provided for @addProject.
   ///
   /// In en, this message translates to:
@@ -896,12 +980,6 @@ abstract class AppLocalizations {
   /// **'Unexpected target path'**
   String get healthUnexpectedPath;
 
-  /// No description provided for @healthReceiptMissing.
-  ///
-  /// In en, this message translates to:
-  /// **'Receipt missing'**
-  String get healthReceiptMissing;
-
   /// No description provided for @modeSymlink.
   ///
   /// In en, this message translates to:
@@ -919,24 +997,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'External'**
   String get modeExternal;
-
-  /// No description provided for @receiptPresent.
-  ///
-  /// In en, this message translates to:
-  /// **'Receipt present'**
-  String get receiptPresent;
-
-  /// No description provided for @receiptMissing.
-  ///
-  /// In en, this message translates to:
-  /// **'Receipt missing'**
-  String get receiptMissing;
-
-  /// No description provided for @receiptInvalid.
-  ///
-  /// In en, this message translates to:
-  /// **'Receipt invalid'**
-  String get receiptInvalid;
 
   /// No description provided for @notLinked.
   ///
@@ -967,6 +1027,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Manage targets'**
   String get manageTargets;
+
+  /// No description provided for @skillsSelected.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} selected'**
+  String skillsSelected(int count);
+
+  /// No description provided for @clearSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear selection'**
+  String get clearSelection;
 
   /// No description provided for @manageTargetsTitle.
   ///
@@ -1031,7 +1103,7 @@ abstract class AppLocalizations {
   /// No description provided for @workspaceOwnershipChanges.
   ///
   /// In en, this message translates to:
-  /// **'Selected project actions will update skillsgo.yaml and skillsgo-lock.yaml.'**
+  /// **'Selected project actions will update skillsgo.yaml and skillsgo.yaml.'**
   String get workspaceOwnershipChanges;
 
   /// No description provided for @targetContentPreserved.
@@ -2054,95 +2126,17 @@ abstract class AppLocalizations {
   /// **'{projects} projects · {agents} Agents'**
   String projectInstallSummary(int projects, int agents);
 
-  /// No description provided for @installationPlanTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Choose installation targets'**
-  String get installationPlanTitle;
-
-  /// No description provided for @closeInstallationPlan.
-  ///
-  /// In en, this message translates to:
-  /// **'Close installation plan'**
-  String get closeInstallationPlan;
-
-  /// No description provided for @installationPlanDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Select exact location-and-Agent cells. Row and column controls are shortcuts for those explicit cells.'**
-  String get installationPlanDescription;
-
-  /// No description provided for @reviewInstallationPlan.
-  ///
-  /// In en, this message translates to:
-  /// **'Review installation plan'**
-  String get reviewInstallationPlan;
-
-  /// No description provided for @reviewInstallationPlanDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Review every target action and Workspace Lock change before files are changed.'**
-  String get reviewInstallationPlanDescription;
-
   /// No description provided for @installationResults.
   ///
   /// In en, this message translates to:
   /// **'Installation results'**
   String get installationResults;
 
-  /// No description provided for @installationResultsDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Each target completed independently. You can stay here or view the installed Skill in Library.'**
-  String get installationResultsDescription;
-
   /// No description provided for @installationInProgress.
   ///
   /// In en, this message translates to:
   /// **'Installation in progress'**
   String get installationInProgress;
-
-  /// No description provided for @locationAgentMatrix.
-  ///
-  /// In en, this message translates to:
-  /// **'Location × Agent'**
-  String get locationAgentMatrix;
-
-  /// No description provided for @targetsSelected.
-  ///
-  /// In en, this message translates to:
-  /// **'{count} targets selected'**
-  String targetsSelected(int count);
-
-  /// No description provided for @location.
-  ///
-  /// In en, this message translates to:
-  /// **'Location'**
-  String get location;
-
-  /// No description provided for @select.
-  ///
-  /// In en, this message translates to:
-  /// **'Select'**
-  String get select;
-
-  /// No description provided for @selectTarget.
-  ///
-  /// In en, this message translates to:
-  /// **'Select {location} for {agent}'**
-  String selectTarget(String location, String agent);
-
-  /// No description provided for @selectLocationTargets.
-  ///
-  /// In en, this message translates to:
-  /// **'Select all available targets in {location}'**
-  String selectLocationTargets(String location);
-
-  /// No description provided for @selectAgentTargets.
-  ///
-  /// In en, this message translates to:
-  /// **'Select all available targets for {agent}'**
-  String selectAgentTargets(String agent);
 
   /// No description provided for @projectUnavailable.
   ///
@@ -2161,18 +2155,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unavailable'**
   String get unsupportedCell;
-
-  /// No description provided for @reviewTargets.
-  ///
-  /// In en, this message translates to:
-  /// **'Review {count} Targets'**
-  String reviewTargets(int count);
-
-  /// No description provided for @installSelectedTargets.
-  ///
-  /// In en, this message translates to:
-  /// **'Install {count} Targets'**
-  String installSelectedTargets(int count);
 
   /// No description provided for @confirmInstall.
   ///
@@ -2276,11 +2258,11 @@ abstract class AppLocalizations {
   /// **'Replace the installed version at this target'**
   String get replaceVersionConflict;
 
-  /// No description provided for @replaceIdentityCollision.
+  /// No description provided for @replaceSkillIdCollision.
   ///
   /// In en, this message translates to:
-  /// **'Replace the different Skill identity at this target'**
-  String get replaceIdentityCollision;
+  /// **'Replace the different Skill ID at this target'**
+  String get replaceSkillIdCollision;
 
   /// No description provided for @replaceLocalModification.
   ///
@@ -2336,17 +2318,17 @@ abstract class AppLocalizations {
   /// **'Enable the explicit Critical-risk override in Settings before this plan can continue.'**
   String get criticalRiskOverrideDisabled;
 
-  /// No description provided for @workspaceLockChanges.
+  /// No description provided for @workspaceManifestChanges.
   ///
   /// In en, this message translates to:
-  /// **'Workspace Lock changes'**
-  String get workspaceLockChanges;
+  /// **'Workspace Manifest changes'**
+  String get workspaceManifestChanges;
 
-  /// No description provided for @noWorkspaceLockChanges.
+  /// No description provided for @noWorkspaceManifestChanges.
   ///
   /// In en, this message translates to:
-  /// **'No Workspace Lock files will change.'**
-  String get noWorkspaceLockChanges;
+  /// **'No Workspace Manifest files will change.'**
+  String get noWorkspaceManifestChanges;
 
   /// No description provided for @lockVersionChange.
   ///
@@ -2474,11 +2456,11 @@ abstract class AppLocalizations {
   /// **'Update check failed'**
   String get updateCheckTargetFailed;
 
-  /// No description provided for @reconcileWorkspaceLockTarget.
+  /// No description provided for @reconcileWorkspaceManifestTarget.
   ///
   /// In en, this message translates to:
-  /// **'Repair workspace lock'**
-  String get reconcileWorkspaceLockTarget;
+  /// **'Repair workspace manifest'**
+  String get reconcileWorkspaceManifestTarget;
 
   /// No description provided for @updateSelectedTargets.
   ///
@@ -2576,11 +2558,35 @@ abstract class AppLocalizations {
   /// **'Installation plan could not continue'**
   String get installationPlanFailed;
 
+  /// No description provided for @installationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation could not be completed'**
+  String get installationFailed;
+
   /// No description provided for @bringUnderManagement.
   ///
   /// In en, this message translates to:
   /// **'Bring under management'**
   String get bringUnderManagement;
+
+  /// No description provided for @localSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Local source'**
+  String get localSource;
+
+  /// No description provided for @noDescriptionAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'No description available'**
+  String get noDescriptionAvailable;
+
+  /// No description provided for @moreCoverage.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more locations'**
+  String moreCoverage(int count);
 
   /// No description provided for @adoptExternalTitle.
   ///

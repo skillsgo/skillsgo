@@ -41,23 +41,23 @@ A local directory that a Personal User explicitly adds to the Library. SkillsGo 
 _Avoid_: automatically discovered repository, recent repository
 
 **Library Entry**:
-The aggregate Library representation of one logical Skill. Targets across multiple Agents, scopes, and versions appear under one entry and are managed individually in its detail view.
+The aggregate Library representation of one logical Skill. Managed Targets across multiple Agents, scopes, and versions appear under one entry and are managed individually in its detail view; derived Agent Visibility separately explains which Installed Agents can discover the same physical content.
 _Avoid_: installation row, Skill copy
 
-**Installation Plan**:
-A user-selected matrix of location-and-Agent installation targets. A plan may contain multiple locations and multiple Agents, but only explicitly selected cells become targets. Conflict replacement is bound to the reviewed reason and target state; a physical path shared by Agent bindings requires every affected Agent cell before replacement.
-_Avoid_: default install everywhere, automatic Cartesian product
+**Agent Visibility**:
+A read-only inventory observation derived by the CLI from the Agent Catalog's Discovery Roots and current filesystem identity. It may include Agents without managed Targets and never grants update or removal authority.
+_Avoid_: Installation Target, enabled toggle, persisted `visibleTo`
+
+**Installation Request**:
+The App's direct request to install one immutable Skill into explicit location-and-Agent selections. The CLI may prepare concrete actions internally for safety, but that preparation is process-local and is not an App protocol or a second user review step.
+_Avoid_: second installation selector, user-facing review ceremony
 
 **Target Result**:
 The success, skipped, conflict, or failure outcome for one target in a multi-target operation. Successful targets remain installed when another target fails, and failed targets can be retried independently.
 _Avoid_: global transaction result, all-or-nothing install
 
-**Target Progress**:
-A schema-versioned started or finished machine event for exactly one Installation Target. The App retains these events outside transient dialogs, restores them after navigation, and never derives them from localized CLI text.
-_Avoid_: parsed terminal line, global spinner, inferred completion
-
 **Update Plan**:
-A reviewed set of exact managed Installation Targets, each resolved from its own stored source reference to an immutable destination version. Pinned targets are non-updateable, selected Workspace Lock changes are explicit, and results remain target-specific for failed-only retry.
+A reviewed set of exact managed Installation Targets, each resolved from its canonical Workspace Manifest requirement to an immutable destination version. Pinned targets are non-updateable, selected Workspace Manifest changes are explicit, and results remain target-specific for failed-only retry.
 _Avoid_: update every copy, latest-version overwrite, Skill-name-only update
 
 **Target Management Plan**:
@@ -69,15 +69,15 @@ An explicit action offered for recoverable unhealthy managed targets. It restore
 _Avoid_: automatic repair, silent overwrite
 
 **Stop Managing**:
-An explicit content-preserving action for an unhealthy target. It removes SkillsGo ownership metadata, including selected Workspace Manifest and Lock bindings, while leaving current target content in place.
+An explicit content-preserving action for an unhealthy target. It removes SkillsGo ownership metadata, including selected Workspace Manifest bindings, while leaving current target content in place. Historical Workspace Sum entries may remain because they are integrity evidence rather than ownership.
 _Avoid_: remove, delete, uninstall
 
 **External Installation**:
 A Skill found in an Installed Agent's directory without a SkillsGo installation receipt. The Library can inspect it but cannot update or remove it until the user explicitly brings it under management.
 _Avoid_: broken Skill, unknown Skill, managed installation
 
-**External Adoption Plan**:
-A reviewed, state-bound transition for one exact External Installation. SkillsGo first matches by Content Digest and optional source hints, then requires the user to confirm either one immutable Hub artifact or an unmatched Local import; it never replaces the current content during adoption.
+**External Removal Plan**:
+A reviewed, state-bound deletion for one exact External Installation. SkillsGo shows the exact target and deletes only after confirmation; it does not create ownership metadata or infer a source.
 _Avoid_: name-based claim, automatic import, reinstall
 
 **Local Skill**:
@@ -85,7 +85,7 @@ A managed Skill created by importing an External Installation that does not matc
 _Avoid_: published Skill, Hub artifact, unmanaged installation
 
 **Version Divergence**:
-The valid state in which targets for one Skill intentionally use different immutable versions. The Library displays the versions and never silently rewrites project Locks to make them uniform.
+The valid state in which targets for one Skill intentionally use different immutable versions. The Library displays the versions and never silently rewrites project requirements to make them uniform.
 _Avoid_: version conflict, automatic repair state
 
 **Skill Risk Policy**:

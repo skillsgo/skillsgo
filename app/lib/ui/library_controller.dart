@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Riverpod, SkillsGateway library contracts, and the App-scoped Gateway provider.
- * [OUTPUT]: Provides immutable Library content and an AsyncNotifier that owns initial loading, stale-content refresh, and load failures.
+ * [OUTPUT]: Provides immutable Library content and a user-retry-controlled AsyncNotifier that owns initial loading, stale-content refresh, and stable load failures without implicit provider retries.
  * [POS]: Serves as the Library journey's business-state boundary while widgets retain only short-lived interaction state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -40,6 +40,7 @@ class LibraryContentState {
 final libraryProvider =
     AsyncNotifierProvider<LibraryController, LibraryContentState>(
       LibraryController.new,
+      retry: (_, _) => null,
     );
 
 class LibraryController extends AsyncNotifier<LibraryContentState> {

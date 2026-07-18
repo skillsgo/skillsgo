@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the app_shell library for gateway contracts, Riverpod installation operations, localized UI components, and shared navigation callbacks.
- * [OUTPUT]: Provides remote Skill detail plus Installation, Update, Target Management, risk review, progress, result, and retry flows.
+ * [INPUT]: Depends on the app_shell library for gateway contracts, HugeIcons, Riverpod installation operations, localized UI components, and shared navigation callbacks.
+ * [OUTPUT]: Provides remote Skill detail plus direct confirmed Installation, Update, Target Management, risk, progress, result, and retry flows without a second target matrix.
  * [POS]: Serves as the complete mutation-flow view module split from the desktop shell while sharing its private library contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -91,1103 +91,14 @@ Future<void> _installRepositorySkills(
 ) async {
   for (final skill in skills) {
     final detail = await gateway.loadRemoteDetail(skill);
-    final operation = InstallOperationController();
-    final plan = await operation.preflight(
-      gateway,
+    await gateway.installTargets(
       skill,
       detail.immutableVersion,
       selections,
+      confirmRisk: true,
       allowCritical: riskPolicy.allowCriticalOverride,
     );
-    if (plan == null ||
-        plan.summary.conflict > 0 ||
-        plan.summary.blockedByRisk > 0) {
-      continue;
-    }
-    await operation.execute(gateway);
   }
-}
-
-enum _InstallationPlanOutcome { viewLibrary }
-
-class _InstallationPlanDialog extends StatefulWidget {
-  const _InstallationPlanDialog({
-    required this.gateway,
-    required this.skill,
-    required this.detail,
-    required this.catalog,
-    required this.initialProjects,
-    required this.operation,
-    required this.onProjectAdded,
-    required this.riskPolicy,
-  });
-
-  final SkillsGateway gateway;
-  final SkillSummary skill;
-  final SkillDetail detail;
-  final AgentCatalog catalog;
-  final List<AddedProject> initialProjects;
-  final InstallOperationController operation;
-  final ValueChanged<AddedProject> onProjectAdded;
-  final PersonalRiskPolicy riskPolicy;
-
-  @override
-  State<_InstallationPlanDialog> createState() =>
-      _InstallationPlanDialogState();
-}
-
-class _InstallationPlanDialogState extends State<_InstallationPlanDialog> {
-  late List<AddedProject> projects;
-  final selected = <String, InstallationTargetSelection>{};
-  bool riskConfirmed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    projects = List.of(widget.initialProjects);
-    for (final selection in widget.operation.selections) {
-      selected[_selectionKey(selection)] = selection;
-    }
-  }
-
-  List<
-    ({
-      String key,
-      String label,
-      InstallationScope scope,
-      String projectRoot,
-      bool enabled,
-    })
-  >
-  get rows => [
-    (
-      key: 'user',
-      label: context.l10n.userScope,
-      scope: InstallationScope.user,
-      projectRoot: '',
-      enabled: true,
-    ),
-    ...projects.map(
-      (project) => (
-        key: 'project:${project.id}',
-        label: project.name,
-        scope: InstallationScope.project,
-        projectRoot: project.path,
-        enabled: project.isAccessible,
-      ),
-    ),
-  ];
-
-  List<AgentStatus> get agents => widget.catalog.installed;
-
-  String _selectionKey(InstallationTargetSelection selection) =>
-      '${selection.scope.name}\u0000${selection.projectRoot}\u0000${selection.agent}';
-
-  InstallationTargetSelection _selectionFor(
-    ({
-      String key,
-      String label,
-      InstallationScope scope,
-      String projectRoot,
-      bool enabled,
-    })
-    row,
-    AgentStatus agent,
-  ) => InstallationTargetSelection(
-    scope: row.scope,
-    projectRoot: row.projectRoot,
-    agent: agent.id,
-  );
-
-  bool _isInstalled(
-    ({
-      String key,
-      String label,
-      InstallationScope scope,
-      String projectRoot,
-      bool enabled,
-    })
-    row,
-    AgentStatus agent,
-  ) => widget.detail.installationTargets.any(
-    (target) =>
-        target.scope == row.scope &&
-        target.projectRoot == row.projectRoot &&
-        target.agent == agent.id &&
-        target.version == widget.detail.immutableVersion &&
-        target.health == InstallationHealth.healthy,
-  );
-
-  bool _isEligible(
-    ({
-      String key,
-      String label,
-      InstallationScope scope,
-      String projectRoot,
-      bool enabled,
-    })
-    row,
-    AgentStatus agent,
-  ) =>
-      row.enabled &&
-      agent.supportedScopes.contains(row.scope) &&
-      !_isInstalled(row, agent);
-
-  List<InstallationTargetSelection> get selectedInMatrixOrder => [
-    for (final row in rows)
-      for (final agent in agents)
-        if (selected.containsKey(_selectionKey(_selectionFor(row, agent))))
-          selected[_selectionKey(_selectionFor(row, agent))]!,
-  ];
-
-  void _toggleCell(
-    ({
-      String key,
-      String label,
-      InstallationScope scope,
-      String projectRoot,
-      bool enabled,
-    })
-    row,
-    AgentStatus agent,
-    bool value,
-  ) {
-    final selection = _selectionFor(row, agent);
-    setState(() {
-      if (value) {
-        selected[_selectionKey(selection)] = selection;
-      } else {
-        selected.remove(_selectionKey(selection));
-      }
-    });
-  }
-
-  void _toggleRow(
-    ({
-      String key,
-      String label,
-      InstallationScope scope,
-      String projectRoot,
-      bool enabled,
-    })
-    row,
-    bool value,
-  ) {
-    setState(() {
-      for (final agent in agents.where((agent) => _isEligible(row, agent))) {
-        final selection = _selectionFor(row, agent);
-        if (value) {
-          selected[_selectionKey(selection)] = selection;
-        } else {
-          selected.remove(_selectionKey(selection));
-        }
-      }
-    });
-  }
-
-  void _toggleAgent(AgentStatus agent, bool value) {
-    setState(() {
-      for (final row in rows.where((row) => _isEligible(row, agent))) {
-        final selection = _selectionFor(row, agent);
-        if (value) {
-          selected[_selectionKey(selection)] = selection;
-        } else {
-          selected.remove(_selectionKey(selection));
-        }
-      }
-    });
-  }
-
-  Future<void> _addProject() async {
-    final project = await widget.gateway.addProject();
-    if (project == null || !mounted) return;
-    setState(() {
-      final index = projects.indexWhere((item) => item.id == project.id);
-      if (index < 0) {
-        projects = [...projects, project];
-      } else {
-        projects[index] = project;
-      }
-    });
-    widget.onProjectAdded(project);
-  }
-
-  Future<void> _preflight() async {
-    await widget.operation.preflight(
-      widget.gateway,
-      widget.skill,
-      widget.detail.immutableVersion,
-      selectedInMatrixOrder,
-      riskConfirmed: riskConfirmed,
-      allowCritical: widget.riskPolicy.allowCriticalOverride,
-    );
-    if (mounted) setState(() {});
-  }
-
-  Future<void> _execute() async {
-    await widget.operation.execute(widget.gateway);
-    if (mounted) setState(() {});
-  }
-
-  Future<void> _retryFailed() async {
-    await widget.operation.retryFailed(widget.gateway, widget.skill);
-    if (mounted) setState(() {});
-  }
-
-  void _editTargets() {
-    widget.operation.editTargets();
-    setState(() {});
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final execution = widget.operation.execution;
-    final plan = widget.operation.plan;
-    final showingProgress =
-        widget.operation.operating &&
-        widget.operation.progress.isNotEmpty &&
-        execution == null;
-    return SkillsDialog(
-      constraints: const BoxConstraints(maxWidth: 1040, maxHeight: 760),
-      closeIcon: Semantics(
-        container: true,
-        label: context.l10n.closeInstallationPlan,
-        button: true,
-        child: ExcludeSemantics(
-          child: IconButton(
-            visualDensity: VisualDensity.compact,
-            onPressed: () => Navigator.pop(context),
-            icon: const Icon(Icons.close, size: 16),
-          ),
-        ),
-      ),
-      title: Text(
-        showingProgress
-            ? context.l10n.installationProgressTitle
-            : execution != null
-            ? context.l10n.installationResults
-            : plan != null
-            ? context.l10n.reviewInstallationPlan
-            : context.l10n.installationPlanTitle,
-      ),
-      description: Text(
-        showingProgress
-            ? context.l10n.installationProgressSummary(
-                widget.operation.finishedTargetCount,
-                plan?.targets.length ?? 0,
-              )
-            : execution != null
-            ? context.l10n.installationResultsDescription
-            : plan != null
-            ? context.l10n.reviewInstallationPlanDescription
-            : context.l10n.installationPlanDescription,
-      ),
-      actions: _actions(plan, execution),
-      child: SizedBox(
-        width: 940,
-        height: 540,
-        child: AnimatedSwitcher(
-          duration: const Duration(milliseconds: 180),
-          child: showingProgress && plan != null
-              ? _progress(plan)
-              : execution != null
-              ? _result(execution)
-              : plan != null
-              ? _preflightReview(plan)
-              : _matrix(),
-        ),
-      ),
-    );
-  }
-
-  List<Widget> _actions(
-    InstallationPlan? plan,
-    InstallationExecution? execution,
-  ) {
-    if (execution != null) {
-      return [
-        SkillsButton.outline(
-          onPressed: () => Navigator.pop(context),
-          child: Text(context.l10n.stayHere),
-        ),
-        SkillsButton(
-          enabled: execution.hasSuccess,
-          onPressed: () =>
-              Navigator.pop(context, _InstallationPlanOutcome.viewLibrary),
-          child: Text(context.l10n.viewInLibrary),
-        ),
-        if (execution.summary.failed > 0)
-          SkillsButton.outline(
-            enabled: !widget.operation.operating,
-            onPressed: _retryFailed,
-            child: widget.operation.operating
-                ? SizedBox(
-                    width: 32,
-                    child: SkillsProgress(
-                      minHeight: 4,
-                      semanticsLabel: context.l10n.installationInProgress,
-                    ),
-                  )
-                : Text(
-                    context.l10n.retryFailedTargets(execution.summary.failed),
-                  ),
-          ),
-      ];
-    }
-    if (widget.operation.operating && widget.operation.progress.isNotEmpty) {
-      return [
-        SkillsButton.outline(
-          onPressed: () => Navigator.pop(context),
-          child: Text(context.l10n.stayHere),
-        ),
-      ];
-    }
-    if (plan != null) {
-      final unresolved =
-          plan.summary.conflict > 0 || plan.summary.blockedByRisk > 0;
-      return [
-        SkillsButton.outline(
-          enabled: !widget.operation.operating,
-          onPressed: _editTargets,
-          child: Text(context.l10n.backToTargets),
-        ),
-        SkillsButton(
-          enabled:
-              !widget.operation.operating && (!unresolved || _canRefresh(plan)),
-          onPressed: unresolved ? _preflight : _execute,
-          child: widget.operation.operating
-              ? SizedBox(
-                  width: 32,
-                  child: SkillsProgress(
-                    minHeight: 4,
-                    semanticsLabel: context.l10n.installationInProgress,
-                  ),
-                )
-              : Text(
-                  unresolved
-                      ? context.l10n.refreshInstallationPlan
-                      : context.l10n.installSelectedTargets(
-                          plan.targets.length,
-                        ),
-                ),
-        ),
-      ];
-    }
-    return [
-      SkillsButton.outline(
-        enabled: !widget.operation.operating,
-        onPressed: _addProject,
-        child: Text(context.l10n.addProject),
-      ),
-      SkillsButton.outline(
-        enabled: !widget.operation.operating,
-        onPressed: () => Navigator.pop(context),
-        child: Text(context.l10n.cancel),
-      ),
-      SkillsButton(
-        enabled: selected.isNotEmpty && !widget.operation.operating,
-        onPressed: _preflight,
-        child: widget.operation.operating
-            ? SizedBox(
-                width: 32,
-                child: SkillsProgress(
-                  minHeight: 4,
-                  semanticsLabel: context.l10n.installationInProgress,
-                ),
-              )
-            : Text(context.l10n.reviewTargets(selected.length)),
-      ),
-    ];
-  }
-
-  Widget _matrix() {
-    final width = 210.0 + agents.length * 176.0;
-    return Column(
-      key: const ValueKey('installation-matrix'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            SectionEyebrow(context.l10n.locationAgentMatrix),
-            const Spacer(),
-            Text(
-              context.l10n.targetsSelected(selected.length),
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 14),
-        Expanded(
-          child: SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: SizedBox(
-              width: width,
-              child: Column(
-                children: [
-                  _matrixHeader(),
-                  SkillsSeparator.horizontal(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
-                  Expanded(
-                    child: ListView.separated(
-                      itemCount: rows.length,
-                      separatorBuilder: (_, _) => SkillsSeparator.horizontal(
-                        color: Theme.of(context).colorScheme.outlineVariant,
-                      ),
-                      itemBuilder: (context, index) => _matrixRow(rows[index]),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        if (widget.operation.error != null) ...[
-          const SizedBox(height: 10),
-          _PlanError(error: widget.operation.error!),
-        ],
-      ],
-    );
-  }
-
-  Widget _matrixHeader() => SizedBox(
-    height: 76,
-    child: Row(
-      children: [
-        SizedBox(
-          width: 210,
-          child: Text(
-            context.l10n.location,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-              fontWeight: FontWeight.w700,
-            ),
-          ),
-        ),
-        ...agents.map((agent) {
-          final eligible = rows.where((row) => _isEligible(row, agent));
-          final allSelected =
-              eligible.isNotEmpty &&
-              eligible.every(
-                (row) => selected.containsKey(
-                  _selectionKey(_selectionFor(row, agent)),
-                ),
-              );
-          return SizedBox(
-            width: 176,
-            child: Semantics(
-              label: context.l10n.selectAgentTargets(agent.displayName),
-              checked: allSelected,
-              enabled: eligible.isNotEmpty,
-              onTap: eligible.isEmpty
-                  ? null
-                  : () => _toggleAgent(agent, !allSelected),
-              excludeSemantics: true,
-              child: SkillsCheckbox(
-                value: allSelected,
-                enabled: eligible.isNotEmpty,
-                onChanged: (value) => _toggleAgent(agent, value),
-                label: SizedBox(
-                  width: 132,
-                  child: Text(
-                    agent.displayName,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                ),
-              ),
-            ),
-          );
-        }),
-      ],
-    ),
-  );
-
-  Widget _matrixRow(
-    ({
-      String key,
-      String label,
-      InstallationScope scope,
-      String projectRoot,
-      bool enabled,
-    })
-    row,
-  ) {
-    final eligible = agents.where((agent) => _isEligible(row, agent));
-    final allSelected =
-        eligible.isNotEmpty &&
-        eligible.every(
-          (agent) =>
-              selected.containsKey(_selectionKey(_selectionFor(row, agent))),
-        );
-    return SizedBox(
-      height: 76,
-      child: Row(
-        children: [
-          SizedBox(
-            width: 210,
-            child: Semantics(
-              label: context.l10n.selectLocationTargets(row.label),
-              checked: allSelected,
-              enabled: eligible.isNotEmpty,
-              onTap: eligible.isEmpty
-                  ? null
-                  : () => _toggleRow(row, !allSelected),
-              excludeSemantics: true,
-              child: SkillsCheckbox(
-                value: allSelected,
-                enabled: eligible.isNotEmpty,
-                onChanged: (value) => _toggleRow(row, value),
-                label: SizedBox(
-                  width: 164,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        row.label,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w700),
-                      ),
-                      if (!row.enabled)
-                        Text(
-                          context.l10n.projectUnavailable,
-                          style: TextStyle(
-                            color: context.skillsComponents.statusAttention,
-                            fontSize: 11,
-                          ),
-                        ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          ...agents.map((agent) => _matrixCell(row, agent)),
-        ],
-      ),
-    );
-  }
-
-  Widget _matrixCell(
-    ({
-      String key,
-      String label,
-      InstallationScope scope,
-      String projectRoot,
-      bool enabled,
-    })
-    row,
-    AgentStatus agent,
-  ) {
-    final selection = _selectionFor(row, agent);
-    final key = _selectionKey(selection);
-    final installed = _isInstalled(row, agent);
-    final eligible = _isEligible(row, agent);
-    return SizedBox(
-      width: 176,
-      child: Center(
-        child: installed
-            ? StatusChip(
-                label: context.l10n.installedCell,
-                color: context.skillsComponents.statusSuccess,
-              )
-            : eligible
-            ? Semantics(
-                label: context.l10n.selectTarget(row.label, agent.displayName),
-                checked: selected.containsKey(key),
-                enabled: true,
-                onTap: () =>
-                    _toggleCell(row, agent, !selected.containsKey(key)),
-                excludeSemantics: true,
-                child: SkillsCheckbox(
-                  value: selected.containsKey(key),
-                  onChanged: (value) => _toggleCell(row, agent, value),
-                  label: Text(context.l10n.select),
-                ),
-              )
-            : StatusChip(
-                label: context.l10n.unsupportedCell,
-                color: Theme.of(
-                  context,
-                ).colorScheme.onSurfaceVariant.withValues(alpha: .72),
-              ),
-      ),
-    );
-  }
-
-  Widget _preflightReview(InstallationPlan plan) => Column(
-    key: const ValueKey('installation-preflight'),
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Wrap(
-        spacing: 8,
-        runSpacing: 8,
-        children: [
-          StatusChip(
-            label: context.l10n.planCreateCount(plan.summary.create),
-            color: context.skillsComponents.statusSuccess,
-          ),
-          StatusChip(
-            label: context.l10n.planSkipCount(plan.summary.skip),
-            color: context.skillsComponents.statusAccent,
-          ),
-          StatusChip(
-            label: context.l10n.planReplaceCount(plan.summary.replace),
-            color: context.skillsComponents.statusAttention,
-          ),
-          StatusChip(
-            label: context.l10n.planConflictCount(plan.summary.conflict),
-            color: plan.summary.conflict > 0
-                ? context.skillsComponents.statusAttention
-                : Theme.of(
-                    context,
-                  ).colorScheme.onSurfaceVariant.withValues(alpha: .72),
-          ),
-          StatusChip(
-            label: context.l10n.planRiskCount(plan.summary.blockedByRisk),
-            color: plan.summary.blockedByRisk > 0
-                ? context.skillsComponents.statusDanger
-                : Theme.of(
-                    context,
-                  ).colorScheme.onSurfaceVariant.withValues(alpha: .72),
-          ),
-          StatusChip(
-            label: plan.version,
-            color: context.skillsComponents.statusAccent,
-          ),
-        ],
-      ),
-      const SizedBox(height: 14),
-      SelectableText(
-        plan.coordinate,
-        style: TextStyle(
-          fontFamily: SkillsTokens.monoFamily,
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-        ),
-      ),
-      const SizedBox(height: 14),
-      if (plan.summary.blockedByRisk > 0) ...[
-        _riskResolution(plan),
-        const SizedBox(height: 12),
-      ],
-      Expanded(
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              flex: 3,
-              child: GlassCard(
-                child: ListView.separated(
-                  itemCount: plan.targets.length,
-                  separatorBuilder: (_, _) => SkillsSeparator.horizontal(
-                    color: Theme.of(context).colorScheme.outlineVariant,
-                  ),
-                  itemBuilder: (context, index) =>
-                      _plannedTarget(plan.targets[index]),
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              flex: 2,
-              child: GlassCard(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    SectionEyebrow(context.l10n.workspaceLockChanges),
-                    const SizedBox(height: 10),
-                    Expanded(
-                      child: plan.workspaceLockChanges.isEmpty
-                          ? Text(
-                              context.l10n.noWorkspaceLockChanges,
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                            )
-                          : ListView.separated(
-                              itemCount: plan.workspaceLockChanges.length,
-                              separatorBuilder: (_, _) =>
-                                  const SizedBox(height: 10),
-                              itemBuilder: (context, index) {
-                                final change = plan.workspaceLockChanges[index];
-                                return Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      change.projectRoot,
-                                      maxLines: 2,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    Text(
-                                      context.l10n.lockVersionChange(
-                                        change.fromVersion.isEmpty
-                                            ? context.l10n.notPresent
-                                            : change.fromVersion,
-                                        change.toVersion,
-                                      ),
-                                      style: TextStyle(
-                                        color: Theme.of(
-                                          context,
-                                        ).colorScheme.onSurfaceVariant,
-                                        fontFamily: SkillsTokens.monoFamily,
-                                        fontSize: 11,
-                                      ),
-                                    ),
-                                  ],
-                                );
-                              },
-                            ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-      if (widget.operation.error != null) ...[
-        const SizedBox(height: 10),
-        _PlanError(error: widget.operation.error!),
-      ],
-    ],
-  );
-
-  Widget _plannedTarget(InstallationPlanItem item) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 10),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          children: [
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    _targetLabel(context, item.target),
-                    style: const TextStyle(fontWeight: FontWeight.w700),
-                  ),
-                  const SizedBox(height: 3),
-                  Text(
-                    item.target.path,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Theme.of(
-                        context,
-                      ).colorScheme.onSurfaceVariant.withValues(alpha: .72),
-                      fontFamily: SkillsTokens.monoFamily,
-                      fontSize: 11,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 10),
-            StatusChip(
-              label: _planActionLabel(context, item.action),
-              color: switch (item.action) {
-                InstallationPlanAction.create =>
-                  context.skillsComponents.statusSuccess,
-                InstallationPlanAction.skip =>
-                  context.skillsComponents.statusAccent,
-                InstallationPlanAction.replace =>
-                  context.skillsComponents.statusAttention,
-                InstallationPlanAction.conflict ||
-                InstallationPlanAction.blockedByRisk =>
-                  context.skillsComponents.statusDanger,
-              },
-            ),
-          ],
-        ),
-        if (item.action == InstallationPlanAction.conflict) ...[
-          const SizedBox(height: 8),
-          if (item.reasonCode == 'shared-target-conflict')
-            SkillsAlert.destructive(
-              icon: const Icon(Icons.hub_outlined),
-              title: Text(context.l10n.sharedTargetConflict),
-              description: Text(
-                context.l10n.sharedTargetConflictDescription(
-                  item.affectedBindings
-                      .map((binding) => binding.agent)
-                      .toSet()
-                      .join(', '),
-                ),
-              ),
-            )
-          else
-            SkillsCheckbox(
-              value: _selectionMatchesReview(item),
-              onChanged: (value) => _setResolution(item, value),
-              label: Text(_conflictResolutionLabel(context, item.reasonCode)),
-            ),
-        ],
-      ],
-    ),
-  );
-
-  InstallationTargetSelection _selectionForTarget(
-    InstallationPlanTarget target,
-  ) {
-    final fallback = InstallationTargetSelection(
-      scope: target.scope,
-      projectRoot: target.projectRoot,
-      agent: target.agent,
-      mode: target.mode,
-    );
-    return selected[_selectionKey(fallback)] ?? fallback;
-  }
-
-  bool _selectionMatchesReview(InstallationPlanItem item) {
-    final selection = _selectionForTarget(item.target);
-    return selection.resolution == InstallationTargetResolution.replace &&
-        selection.expectedReason == item.reasonCode &&
-        selection.expectedState == item.stateToken;
-  }
-
-  void _setResolution(InstallationPlanItem item, bool replace) {
-    final current = _selectionForTarget(item.target);
-    setState(() {
-      selected[_selectionKey(current)] = current.copyWith(
-        resolution: replace
-            ? InstallationTargetResolution.replace
-            : InstallationTargetResolution.none,
-        expectedReason: replace ? item.reasonCode : '',
-        expectedState: replace ? item.stateToken : '',
-      );
-    });
-  }
-
-  bool _canRefresh(InstallationPlan plan) {
-    final conflictsResolved = plan.targets
-        .where((item) => item.action == InstallationPlanAction.conflict)
-        .every(_selectionMatchesReview);
-    if (!conflictsResolved) return false;
-    final blocked = plan.targets.where(
-      (item) => item.action == InstallationPlanAction.blockedByRisk,
-    );
-    if (blocked.isEmpty) return true;
-    final critical = blocked.any((item) => item.reasonCode == 'critical-risk');
-    return riskConfirmed &&
-        (!critical || widget.riskPolicy.allowCriticalOverride);
-  }
-
-  Widget _riskResolution(InstallationPlan plan) {
-    final critical = plan.targets.any(
-      (item) =>
-          item.action == InstallationPlanAction.blockedByRisk &&
-          item.reasonCode == 'critical-risk',
-    );
-    if (critical && !widget.riskPolicy.allowCriticalOverride) {
-      return SkillsAlert.destructive(
-        icon: const Icon(Icons.shield_outlined),
-        title: Text(context.l10n.criticalRiskBlocked),
-        description: Text(context.l10n.criticalRiskOverrideDisabled),
-      );
-    }
-    return SkillsAlert(
-      icon: const Icon(Icons.warning_amber_rounded),
-      title: Text(
-        critical
-            ? context.l10n.confirmCriticalRiskArtifact
-            : context.l10n.confirmHighRiskArtifact,
-      ),
-      description: SkillsCheckbox(
-        value: riskConfirmed,
-        onChanged: (value) => setState(() => riskConfirmed = value),
-        label: Text(context.l10n.confirmRiskForSelectedTargets),
-      ),
-    );
-  }
-
-  Widget _progress(InstallationPlan plan) {
-    final progress = {
-      for (final event in widget.operation.progress)
-        operationTargetKey(event.target): event,
-    };
-    return Column(
-      key: const ValueKey('installation-progress'),
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        SkillsCard(
-          width: double.infinity,
-          title: Text(context.l10n.installationProgressTitle),
-          description: Text(
-            context.l10n.installationProgressSummary(
-              widget.operation.finishedTargetCount,
-              plan.targets.length,
-            ),
-          ),
-          footer: SkillsProgress(
-            value: plan.targets.isEmpty
-                ? 0
-                : widget.operation.finishedTargetCount / plan.targets.length,
-            minHeight: 5,
-            semanticsLabel: context.l10n.installationInProgress,
-          ),
-        ),
-        const SizedBox(height: 14),
-        Expanded(
-          child: GlassCard(
-            child: ListView.separated(
-              itemCount: plan.targets.length,
-              separatorBuilder: (_, _) => SkillsSeparator.horizontal(
-                color: Theme.of(context).colorScheme.outlineVariant,
-              ),
-              itemBuilder: (context, index) {
-                final item = plan.targets[index];
-                final event = progress[operationTargetKey(item.target)];
-                final finished =
-                    event?.state == InstallationProgressState.finished;
-                final failed =
-                    event?.result?.outcome == InstallationTargetOutcome.failed;
-                final label = event == null
-                    ? context.l10n.targetWaiting
-                    : finished
-                    ? _targetOutcomeLabel(context, event.result!.outcome)
-                    : context.l10n.targetRunning;
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 11),
-                  child: Row(
-                    children: [
-                      Icon(
-                        finished
-                            ? failed
-                                  ? Icons.error
-                                  : Icons.check_circle
-                            : Icons.pending_outlined,
-                        color: finished
-                            ? failed
-                                  ? context.skillsComponents.statusDanger
-                                  : context.skillsComponents.statusSuccess
-                            : context.skillsComponents.statusAccent,
-                        size: 18,
-                      ),
-                      const SizedBox(width: 10),
-                      Expanded(
-                        child: Text(
-                          _targetLabel(context, item.target),
-                          style: const TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                      StatusChip(
-                        label: label,
-                        color: failed
-                            ? context.skillsComponents.statusDanger
-                            : context.skillsComponents.statusAccent,
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _result(InstallationExecution execution) => Column(
-    key: const ValueKey('installation-result'),
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      Text(
-        context.l10n.installationResultSummary(
-          execution.summary.succeeded,
-          execution.summary.failed,
-        ),
-        style: const TextStyle(
-          fontFamily: SkillsTokens.serifFamily,
-          fontSize: 26,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-      const SizedBox(height: 8),
-      Text(
-        execution.coordinate,
-        style: TextStyle(
-          color: Theme.of(context).colorScheme.onSurfaceVariant,
-          fontFamily: SkillsTokens.monoFamily,
-        ),
-      ),
-      const SizedBox(height: 16),
-      Expanded(
-        child: GlassCard(
-          child: ListView.separated(
-            itemCount: execution.results.length,
-            separatorBuilder: (_, _) => SkillsSeparator.horizontal(
-              color: Theme.of(context).colorScheme.outlineVariant,
-            ),
-            itemBuilder: (context, index) {
-              final result = execution.results[index];
-              final success =
-                  result.outcome == InstallationTargetOutcome.succeeded ||
-                  result.outcome == InstallationTargetOutcome.skipped;
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 11),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Icon(
-                      success ? Icons.check_circle : Icons.error,
-                      color: success
-                          ? context.skillsComponents.statusSuccess
-                          : context.skillsComponents.statusDanger,
-                      size: 18,
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            _targetLabel(context, result.target),
-                            style: const TextStyle(fontWeight: FontWeight.w700),
-                          ),
-                          if (result.errorCode.isNotEmpty)
-                            Text(
-                              _installationErrorLabel(
-                                context,
-                                result.errorCode,
-                              ),
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    StatusChip(
-                      label: _targetOutcomeLabel(context, result.outcome),
-                      color: success
-                          ? context.skillsComponents.statusSuccess
-                          : context.skillsComponents.statusDanger,
-                    ),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ),
-      if (widget.operation.error != null) ...[
-        const SizedBox(height: 10),
-        _PlanError(error: widget.operation.error!),
-      ],
-    ],
-  );
 }
 
 class _PlanError extends StatelessWidget {
@@ -1198,8 +109,11 @@ class _PlanError extends StatelessWidget {
   Widget build(BuildContext context) {
     final copy = _failureCopy(context, error);
     return SkillsAlert.destructive(
-      icon: const Icon(Icons.error_outline),
-      title: Text(context.l10n.installationPlanFailed),
+      icon: const HugeIcon(
+        icon: HugeIcons.strokeRoundedAlertCircle,
+        strokeWidth: 1.8,
+      ),
+      title: Text(context.l10n.installationFailed),
       description: Text(copy.message),
     );
   }
@@ -1228,43 +142,6 @@ String _targetLabel(BuildContext context, InstallationPlanTarget target) {
       : p.basename(target.projectRoot);
   return '$location / ${target.agent}';
 }
-
-String _planActionLabel(BuildContext context, InstallationPlanAction action) =>
-    switch (action) {
-      InstallationPlanAction.create => context.l10n.planActionCreate,
-      InstallationPlanAction.replace => context.l10n.planActionReplace,
-      InstallationPlanAction.skip => context.l10n.planActionSkip,
-      InstallationPlanAction.conflict => context.l10n.planActionConflict,
-      InstallationPlanAction.blockedByRisk =>
-        context.l10n.planActionBlockedByRisk,
-    };
-
-String _targetOutcomeLabel(
-  BuildContext context,
-  InstallationTargetOutcome outcome,
-) => switch (outcome) {
-  InstallationTargetOutcome.succeeded => context.l10n.targetSucceeded,
-  InstallationTargetOutcome.skipped => context.l10n.targetSkipped,
-  InstallationTargetOutcome.conflict => context.l10n.targetConflict,
-  InstallationTargetOutcome.failed => context.l10n.targetFailed,
-};
-
-String _installationErrorLabel(BuildContext context, String code) =>
-    switch (code) {
-      'target-path-exists' => context.l10n.targetPathExists,
-      'blocked-by-risk' => context.l10n.targetBlockedByRisk,
-      'install-failed' => context.l10n.targetInstallFailed,
-      'workspace-update-failed' => context.l10n.targetWorkspaceUpdateFailed,
-      _ => context.l10n.installationPlanFailed,
-    };
-
-String _conflictResolutionLabel(BuildContext context, String code) =>
-    switch (code) {
-      'version-conflict' => context.l10n.replaceVersionConflict,
-      'identity-collision' => context.l10n.replaceIdentityCollision,
-      'local-modification' => context.l10n.replaceLocalModification,
-      _ => context.l10n.replaceConflictingTarget,
-    };
 
 class _RemoteDetailScreen extends ConsumerStatefulWidget {
   const _RemoteDetailScreen({
@@ -1299,7 +176,6 @@ class _RemoteDetailScreenState extends ConsumerState<_RemoteDetailScreen> {
   List<SkillSummary> repositorySkills = const [];
   PersonalRiskPolicy riskPolicy = const PersonalRiskPolicy();
   bool didOpenInitialPlan = false;
-  bool installationDialogOpen = false;
   bool get operating => widget.operation.operating;
   InstallationExecution? get execution => widget.operation.execution;
 
@@ -1373,7 +249,7 @@ class _RemoteDetailScreenState extends ConsumerState<_RemoteDetailScreen> {
 
   Future<void> install(InstallLocationMenuPresenter present) async {
     if (agentCatalog == null || detail == null) return;
-    final selections = await present(
+    await present(
       InstallLocationMenuRequest(
         gateway: widget.gateway,
         catalog: agentCatalog!,
@@ -1391,66 +267,55 @@ class _RemoteDetailScreenState extends ConsumerState<_RemoteDetailScreen> {
           }
         },
       ),
+      (choice) async {
+        try {
+          if (choice.action == InstallLocationAction.repositorySkills) {
+            await _installRepositorySkills(
+              widget.gateway,
+              repositorySkills,
+              choice.selections,
+              riskPolicy,
+            );
+          } else {
+            final result = await widget.operation.installTargets(
+              widget.gateway,
+              widget.skill,
+              detail!.immutableVersion,
+              choice.selections,
+              confirmRisk: true,
+              allowCritical: riskPolicy.allowCriticalOverride,
+            );
+            if (result == null || widget.operation.error != null) {
+              if (!mounted) {
+                return const InstallLocationSubmission.success();
+              }
+              final copy = _failureCopy(
+                context,
+                widget.operation.error ?? StateError('Installation failed.'),
+              );
+              return InstallLocationSubmission.failure(
+                title: context.l10n.installationFailed,
+                message: copy.message,
+              );
+            }
+          }
+          if (mounted) {
+            ref.invalidate(libraryProvider);
+            setState(() {});
+          }
+          return const InstallLocationSubmission.success();
+        } on Object catch (error) {
+          if (!mounted) {
+            return const InstallLocationSubmission.success();
+          }
+          final copy = _failureCopy(context, error);
+          return InstallLocationSubmission.failure(
+            title: context.l10n.installationFailed,
+            message: copy.message,
+          );
+        }
+      },
     );
-    if (!mounted || selections == null || selections.selections.isEmpty) return;
-    if (selections.action == InstallLocationAction.repositorySkills) {
-      await _installRepositorySkills(
-        widget.gateway,
-        repositorySkills,
-        selections.selections,
-        riskPolicy,
-      );
-      if (mounted) setState(() {});
-      return;
-    }
-    widget.operation.editTargets();
-    final plan = await widget.operation.preflight(
-      widget.gateway,
-      widget.skill,
-      detail!.immutableVersion,
-      selections.selections,
-      allowCritical: riskPolicy.allowCriticalOverride,
-    );
-    if (!mounted) return;
-    final requiresReview =
-        plan == null ||
-        plan.summary.conflict > 0 ||
-        plan.summary.blockedByRisk > 0;
-    if (!requiresReview) {
-      final result = await widget.operation.execute(widget.gateway);
-      if (!mounted) return;
-      if (result != null &&
-          result.summary.failed == 0 &&
-          result.summary.conflict == 0) {
-        ref.invalidate(libraryProvider);
-        setState(() {});
-        return;
-      }
-    }
-    setState(() => installationDialogOpen = true);
-    final outcome = await showSkillsDialog<_InstallationPlanOutcome>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => _InstallationPlanDialog(
-        gateway: widget.gateway,
-        skill: widget.skill,
-        detail: detail!,
-        catalog: agentCatalog!,
-        initialProjects: addedProjects,
-        operation: widget.operation,
-        riskPolicy: riskPolicy,
-        onProjectAdded: (project) {},
-      ),
-    );
-    if (mounted) setState(() => installationDialogOpen = false);
-    if (outcome == _InstallationPlanOutcome.viewLibrary && mounted) {
-      widget.onViewLibrary();
-    } else if (mounted) {
-      if (widget.operation.execution?.hasSuccess == true) {
-        ref.invalidate(libraryProvider);
-      }
-      setState(() {});
-    }
   }
 
   @override
@@ -1612,9 +477,7 @@ class _RemoteDetailScreenState extends ConsumerState<_RemoteDetailScreen> {
                           labelStyle: const TextStyle(
                             fontWeight: FontWeight.w400,
                           ),
-                          onPressed:
-                              agentCatalog == null ||
-                                  agentCatalog!.installed.isEmpty
+                          onPressed: agentCatalog == null
                               ? null
                               : () => install(present),
                           busy: operating,
@@ -1767,9 +630,7 @@ class _RemoteDetailScreenState extends ConsumerState<_RemoteDetailScreen> {
                                       fontSize: 15,
                                       fontWeight: FontWeight.w400,
                                     ),
-                                    onPressed:
-                                        agentCatalog == null ||
-                                            agentCatalog!.installed.isEmpty
+                                    onPressed: agentCatalog == null
                                         ? null
                                         : () => install(present),
                                     busy: operating,
@@ -1842,34 +703,11 @@ class _RemoteDetailScreenState extends ConsumerState<_RemoteDetailScreen> {
               ],
             ),
           ],
-          if (agentCatalog != null && agentCatalog!.installed.isEmpty) ...[
-            const SizedBox(height: 12),
-            SkillsCard(
-              width: double.infinity,
-              title: Text(context.l10n.noInstalledAgentsTitle),
-              description: Text(context.l10n.noInstalledAgentsMessage),
-            ),
-          ],
-          if (operating &&
-              widget.operation.progress.isNotEmpty &&
-              execution == null) ...[
+          if (widget.operation.error != null) ...[
             const SizedBox(height: 14),
-            SkillsCard(
-              width: double.infinity,
-              title: Text(context.l10n.installationProgressTitle),
-              description: Text(
-                context.l10n.installationProgressSummary(
-                  widget.operation.finishedTargetCount,
-                  widget.operation.plan?.targets.length ?? 0,
-                ),
-              ),
-              footer: SkillsProgress(
-                minHeight: 5,
-                semanticsLabel: context.l10n.installationInProgress,
-              ),
-            ),
+            _PlanError(error: widget.operation.error!),
           ],
-          if (execution != null && !installationDialogOpen) ...[
+          if (execution != null) ...[
             const SizedBox(height: 14),
             _InstallationCompletionBanner(execution: execution!),
           ],
@@ -2054,8 +892,9 @@ class _RiskNotice extends StatelessWidget {
     ),
     child: Row(
       children: [
-        Icon(
-          Icons.warning_amber_rounded,
+        HugeIcon(
+          icon: HugeIcons.strokeRoundedAlert02,
+          strokeWidth: 1.8,
           color: context.skillsComponents.statusAttention,
         ),
         const SizedBox(width: 10),
@@ -2497,7 +1336,7 @@ class _UpdatePlanDialogState extends ConsumerState<_UpdatePlanDialog> {
       if (item.action == UpdatePlanAction.update) updateTargetKey(item.target),
   };
   UpdateOperationState get operation =>
-      ref.read(updateOperationProvider(widget.skill.identity));
+      ref.read(updateOperationProvider(widget.skill.inventoryKey));
 
   Map<String, UpdateTargetProgress> get progress => operation.progress;
 
@@ -2520,17 +1359,17 @@ class _UpdatePlanDialogState extends ConsumerState<_UpdatePlanDialog> {
   Future<void> _execute({UpdatePlan? retryPlan}) async {
     final plan = retryPlan ?? widget.plan.selectTargets(selectedItems);
     await ref
-        .read(updateOperationProvider(widget.skill.identity).notifier)
+        .read(updateOperationProvider(widget.skill.inventoryKey).notifier)
         .execute(plan);
   }
 
   Future<void> _retryFailed() => ref
-      .read(updateOperationProvider(widget.skill.identity).notifier)
+      .read(updateOperationProvider(widget.skill.inventoryKey).notifier)
       .retryFailed(widget.skill);
 
   @override
   Widget build(BuildContext context) {
-    ref.watch(updateOperationProvider(widget.skill.identity));
+    ref.watch(updateOperationProvider(widget.skill.inventoryKey));
     final currentExecution = execution;
     final title = operating
         ? context.l10n.updateProgressTitle
@@ -2711,14 +1550,14 @@ class _UpdatePlanDialogState extends ConsumerState<_UpdatePlanDialog> {
             ),
           ),
         ),
-        if (selectedPlan.workspaceLockChanges.isNotEmpty) ...[
+        if (selectedPlan.workspaceManifestChanges.isNotEmpty) ...[
           const SizedBox(height: 12),
           Text(
-            context.l10n.workspaceLockChanges,
+            context.l10n.workspaceManifestChanges,
             style: const TextStyle(fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
-          for (final change in selectedPlan.workspaceLockChanges)
+          for (final change in selectedPlan.workspaceManifestChanges)
             Text(
               '${change.path}: ${change.fromVersion} → ${change.toVersion}',
               style: TextStyle(
@@ -2766,12 +1605,13 @@ class _UpdatePlanDialogState extends ConsumerState<_UpdatePlanDialog> {
                 padding: const EdgeInsets.symmetric(vertical: 11),
                 child: Row(
                   children: [
-                    Icon(
-                      finished
+                    HugeIcon(
+                      icon: finished
                           ? failed
-                                ? Icons.error
-                                : Icons.check_circle
-                          : Icons.pending_outlined,
+                                ? HugeIcons.strokeRoundedAlertCircle
+                                : HugeIcons.strokeRoundedCheckmarkCircle02
+                          : HugeIcons.strokeRoundedLoading03,
+                      strokeWidth: 1.8,
                       color: finished
                           ? failed
                                 ? context.skillsComponents.statusDanger
@@ -2841,8 +1681,11 @@ class _UpdatePlanDialogState extends ConsumerState<_UpdatePlanDialog> {
                 padding: const EdgeInsets.symmetric(vertical: 11),
                 child: Row(
                   children: [
-                    Icon(
-                      failed ? Icons.error : Icons.check_circle,
+                    HugeIcon(
+                      icon: failed
+                          ? HugeIcons.strokeRoundedAlertCircle
+                          : HugeIcons.strokeRoundedCheckmarkCircle02,
+                      strokeWidth: 1.8,
                       color: failed
                           ? context.skillsComponents.statusDanger
                           : context.skillsComponents.statusSuccess,
@@ -2898,8 +1741,8 @@ class _UpdatePlanDialogState extends ConsumerState<_UpdatePlanDialog> {
 }
 
 String _updatePlanItemLabel(BuildContext context, UpdatePlanItem item) =>
-    item.reasonCode == 'workspace-lock-reconcile'
-    ? context.l10n.reconcileWorkspaceLockTarget
+    item.reasonCode == 'workspace-manifest-reconcile'
+    ? context.l10n.reconcileWorkspaceManifestTarget
     : switch (item.action) {
         UpdatePlanAction.update => context.l10n.updateVersionChange(
           item.fromVersion,
