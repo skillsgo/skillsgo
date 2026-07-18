@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on temporary Git repositories, the Skill ID parser, repository caching, and Git resolution behavior.
- * [OUTPUT]: Specifies shared repository caching, nested Skill resolution, refresh, tag listing, and concurrent access behavior.
+ * [OUTPUT]: Specifies shared repository caching, batch-version identity, nested Skill resolution, refresh, tag listing, and concurrent access behavior.
  * [POS]: Serves as the repository integration contract for the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,6 +8,7 @@ package skill
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"os"
 	"os/exec"
@@ -78,6 +79,17 @@ func runGit(t *testing.T, dir string, args ...string) string {
 	output, err := cmd.CombinedOutput()
 	require.NoError(t, err, "%s", output)
 	return string(output)
+}
+
+func artifactIdentity(t *testing.T, infoBytes []byte) (string, string, string) {
+	t.Helper()
+	var info struct {
+		Version   string `json:"Version"`
+		CommitSHA string `json:"CommitSHA"`
+		TreeSHA   string `json:"TreeSHA"`
+	}
+	require.NoError(t, json.Unmarshal(infoBytes, &info))
+	return info.Version, info.CommitSHA, info.TreeSHA
 }
 
 func TestRepositoryCacheResolveAndFetchResolved(t *testing.T) {
@@ -205,6 +217,97 @@ func TestRepositoryDiscoverySkipsInvalidCandidatesWithoutBlockingValidSiblings(t
 	require.Contains(t, ids, f.skillID)
 	require.Contains(t, ids, f.skillID+"/-/skills/child")
 	require.NotContains(t, ids, f.skillID+"/-/skills/invalid")
+}
+
+func TestRepositoryDiscoveryUsesTagAsSharedBatchVersionAndTreeAsMemberIdentity(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "latest")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		for _, member := range snapshot.Members {
+			if member.Version != nil && member.Version.Zip != nil {
+				require.NoError(t, member.Version.Zip.Close())
+			}
+		}
+	})
+
+	require.Equal(t, "v1.0.0", snapshot.Version)
+	require.NotEmpty(t, snapshot.CommitSHA)
+	require.Len(t, snapshot.Members, 2)
+	trees := make(map[string]struct{}, len(snapshot.Members))
+	for _, member := range snapshot.Members {
+		version, commitSHA, treeSHA := artifactIdentity(t, member.Version.Info)
+		require.Equal(t, snapshot.Version, version)
+		require.Equal(t, snapshot.CommitSHA, commitSHA)
+		require.NotEmpty(t, treeSHA)
+		trees[treeSHA] = struct{}{}
+	}
+	require.Len(t, trees, 2, "each Skill directory must retain its own tree identity")
+}
+
+func TestRepositoryDiscoveryFallsBackToHeadPseudoVersionSharedByAllMembers(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	runGit(t, f.work, "tag", "-d", "v1.0.0")
+	runGit(t, f.work, "push", "origin", ":refs/tags/v1.0.0")
+
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "latest")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		for _, member := range snapshot.Members {
+			if member.Version != nil && member.Version.Zip != nil {
+				require.NoError(t, member.Version.Zip.Close())
+			}
+		}
+	})
+
+	require.True(t, module.IsPseudoVersion(snapshot.Version), snapshot.Version)
+	require.Contains(t, snapshot.Version, snapshot.CommitSHA[:12])
+	for _, member := range snapshot.Members {
+		version, commitSHA, treeSHA := artifactIdentity(t, member.Version.Info)
+		require.Equal(t, snapshot.Version, version)
+		require.Equal(t, snapshot.CommitSHA, commitSHA)
+		require.NotEmpty(t, treeSHA)
+	}
+}
+
+func TestUnrelatedSkillChangeAdvancesBatchWithoutChangingSiblingTree(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	first, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "latest")
+	require.NoError(t, err)
+	childID := f.skillID + "/-/skills/child"
+	childTree := ""
+	for _, member := range first.Members {
+		if member.SkillID == childID {
+			_, _, childTree = artifactIdentity(t, member.Version.Info)
+		}
+		if member.Version != nil && member.Version.Zip != nil {
+			require.NoError(t, member.Version.Zip.Close())
+		}
+	}
+	require.NotEmpty(t, childTree)
+
+	f.writeSkill(t, ".", "repo", "root changed only")
+	f.commit(t, "change root Skill only")
+	runGit(t, f.work, "push", "origin", "HEAD")
+	second, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "main")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		for _, member := range second.Members {
+			if member.Version != nil && member.Version.Zip != nil {
+				require.NoError(t, member.Version.Zip.Close())
+			}
+		}
+	})
+
+	require.NotEqual(t, first.Version, second.Version)
+	require.NotEqual(t, first.CommitSHA, second.CommitSHA)
+	for _, member := range second.Members {
+		version, _, treeSHA := artifactIdentity(t, member.Version.Info)
+		require.Equal(t, second.Version, version)
+		if member.SkillID == childID {
+			require.Equal(t, childTree, treeSHA)
+		}
+	}
 }
 
 func TestRepositoryCacheCoalescesConcurrentResolve(t *testing.T) {

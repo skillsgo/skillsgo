@@ -5,7 +5,7 @@
 
 - `catalog.go`: exposes the Catalog API, uses Ent for entity persistence, and owns dialect-specific discovery, install aggregation, pagination, and ranking queries.
 - `migrations.go`: executes embedded, checksummed, ordered Atlas SQL migrations and serializes PostgreSQL migration runs.
-- `migrations/`: contains reviewed SQLite/PostgreSQL versioned schema changes, including database-specific full-text search resources.
+- `migrations/`: contains one reviewed pre-release baseline migration per database, including database-specific full-text search resources.
 - `migrate/main.go`: authors named Ent/Atlas schema diffs against disposable development databases.
 - `ent/schema/`: defines the authoritative Ent entity model; generated siblings under `ent/` are reproducible build output.
 - `catalog_test.go`: specifies the SQLite behavior contract, including migration history, canonical Skill IDs, exact content matching, immutable audit evidence, search fields, pagination, and ranking windows.

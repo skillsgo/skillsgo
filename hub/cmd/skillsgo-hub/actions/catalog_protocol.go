@@ -44,15 +44,14 @@ func shouldIndexCatalog(ctx context.Context) bool {
 }
 
 type catalogArtifactInfo struct {
-	Version string    `json:"Version"`
-	Time    time.Time `json:"Time"`
-	Origin  struct {
-		CommitSHA string `json:"CommitSHA"`
-		TreeSHA   string `json:"TreeSHA"`
-	} `json:"Origin"`
-	Risk          string `json:"Risk"`
-	ContentDigest string `json:"ContentDigest"`
-	ArchiveSize   int64  `json:"ArchiveSize"`
+	Version       string    `json:"Version"`
+	Time          time.Time `json:"Time"`
+	Ref           string    `json:"Ref"`
+	CommitSHA     string    `json:"CommitSHA"`
+	TreeSHA       string    `json:"TreeSHA"`
+	Risk          string    `json:"Risk"`
+	ContentDigest string    `json:"ContentDigest"`
+	ArchiveSize   int64     `json:"ArchiveSize"`
 }
 
 type skillFrontmatter struct {
@@ -187,7 +186,7 @@ func (p *catalogProtocol) index(ctx context.Context, skillID string, infoBytes [
 		return fmt.Errorf("upsert Skill catalog metadata: %w", err)
 	}
 	if _, err := p.metadata.RecordSkillVersion(ctx, skillID, catalog.SkillVersion{
-		Version: info.Version, CommitSHA: info.Origin.CommitSHA, TreeSHA: info.Origin.TreeSHA,
+		Version: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA,
 		ContentDigest: info.ContentDigest, CommitTime: info.Time, ArchiveSize: info.ArchiveSize,
 	}); err != nil {
 		return fmt.Errorf("record Skill version metadata: %w", err)

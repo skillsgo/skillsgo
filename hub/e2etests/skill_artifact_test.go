@@ -29,13 +29,11 @@ const (
 )
 
 type skillModuleInfo struct {
-	Version string `json:"Version"`
-	Name    string `json:"Name"`
-	Origin  struct {
-		CommitSHA string `json:"CommitSHA"`
-		TreeSHA   string `json:"TreeSHA"`
-		Ref       string `json:"Ref"`
-	} `json:"Origin"`
+	Version   string `json:"Version"`
+	Name      string `json:"Name"`
+	CommitSHA string `json:"CommitSHA"`
+	TreeSHA   string `json:"TreeSHA"`
+	Ref       string `json:"Ref"`
 }
 
 // TestSkillArtifact verifies a tagged repository with a root SKILL.md.
@@ -44,9 +42,9 @@ func (m *E2eSuite) TestSkillArtifact() {
 	var info skillModuleInfo
 	m.Require().NoError(json.Unmarshal(infoBody, &info))
 	m.Equal(testSkillVersion, info.Version)
-	m.Equal("3652b3c7aa21492717945b6063ae278030101dd8", info.Origin.CommitSHA)
-	m.Equal(testSkillTreeSHA, info.Origin.TreeSHA)
-	m.Equal("refs/tags/"+testSkillVersion, info.Origin.Ref)
+	m.Equal("3652b3c7aa21492717945b6063ae278030101dd8", info.CommitSHA)
+	m.Equal(testSkillTreeSHA, info.TreeSHA)
+	m.Equal("refs/tags/"+testSkillVersion, info.Ref)
 
 	m.Equal("guizang-ppt-skill", info.Name)
 
@@ -79,8 +77,8 @@ func (m *E2eSuite) TestNestedSkillArtifact() {
 	var info skillModuleInfo
 	m.Require().NoError(json.Unmarshal(infoBody, &info))
 	m.Equal(testNestedSkillVersion, info.Version)
-	m.Equal(testSkillMonorepoCommitSHA, info.Origin.CommitSHA)
-	m.Equal(testNestedSkillTreeSHA, info.Origin.TreeSHA)
+	m.Equal(testSkillMonorepoCommitSHA, info.CommitSHA)
+	m.Equal(testNestedSkillTreeSHA, info.TreeSHA)
 
 	m.Equal("ask-matt", info.Name)
 

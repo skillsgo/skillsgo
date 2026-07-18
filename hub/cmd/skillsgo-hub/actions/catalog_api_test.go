@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the Hub HTTP router with a temporary SQLite Catalog and deterministic public requests.
- * [OUTPUT]: Specifies discovery schemas, product metadata, exact content matching, pagination, validation, detail, and install-event behavior.
+ * [OUTPUT]: Specifies public API contracts plus correlated, redacted private diagnostics for internal failures.
  * [POS]: Serves as executable public HTTP contract coverage for Hub discovery clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"errors"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -24,6 +25,8 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
+	"github.com/skillsgo/skillsgo/hub/pkg/log"
+	"github.com/skillsgo/skillsgo/hub/pkg/middleware"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/stretchr/testify/require"
 )
@@ -50,6 +53,37 @@ type staticRepositoryMetadataReader struct {
 	err   error
 }
 
+func TestInternalAPIErrorKeepsPublicResponseSafeAndLogsRedactedCause(t *testing.T) {
+	var logs bytes.Buffer
+	logger := log.NewWithOutput(&logs, "", slog.LevelDebug, "json")
+	app := newFiberApp()
+	app.Use(middleware.WithRequestID, middleware.LogEntryMiddleware(logger), middleware.RequestLogger)
+	app.Get("/failure", func(c fiber.Ctx) error {
+		return writeInternalAPIError(
+			c,
+			"catalog.test_failure",
+			fiber.StatusInternalServerError,
+			"internal_error",
+			"operation failed",
+			errors.New("database rejected token=private-value"),
+		)
+	})
+
+	response, err := app.Test(httptest.NewRequest(http.MethodGet, "/failure", nil))
+	require.NoError(t, err)
+	body, err := io.ReadAll(response.Body)
+	require.NoError(t, err)
+	require.Equal(t, fiber.StatusInternalServerError, response.StatusCode)
+	require.Contains(t, string(body), "operation failed")
+	require.NotContains(t, string(body), "database rejected")
+	require.NotContains(t, string(body), "private-value")
+	require.Contains(t, logs.String(), `"operation":"catalog.test_failure"`)
+	require.Contains(t, logs.String(), `"error_code":"internal_error"`)
+	require.Contains(t, logs.String(), `"request_id":`)
+	require.Contains(t, logs.String(), "[REDACTED]")
+	require.NotContains(t, logs.String(), "private-value")
+}
+
 func (r staticRepositoryMetadataReader) Read(
 	context.Context,
 	string,
@@ -72,7 +106,7 @@ func (s *catalogArtifactStub) Info(context.Context, string, string) ([]byte, err
 	if s.info != nil {
 		return s.info, nil
 	}
-	return []byte(`{"Version":"v0.0.0-test","Time":"2026-07-15T00:00:00Z","Origin":{"Ref":"refs/heads/main","CommitSHA":"commit-abc","TreeSHA":"tree-def"}}`), nil
+	return []byte(`{"Version":"v0.0.0-test","Time":"2026-07-15T00:00:00Z","Ref":"refs/heads/main","CommitSHA":"commit-abc","TreeSHA":"tree-def"}`), nil
 }
 
 func (s *catalogArtifactStub) Zip(_ context.Context, skillID, version string) (storage.SizeReadCloser, error) {
