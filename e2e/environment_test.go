@@ -187,7 +187,7 @@ func requireNoLocalInstallation(t *testing.T, sandboxRoot string) {
 	t.Helper()
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "store"))
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
 }
 

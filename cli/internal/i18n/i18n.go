@@ -62,7 +62,7 @@ var messages = map[string][2]string{
 	"inventory.health.lock_mismatch":        {"Lock mismatch", "锁文件不匹配"},
 	"inventory.health.unexpected_path":      {"unexpected target path", "目标路径异常"},
 	"inventory.health.receipt_missing":      {"receipt missing", "回执缺失"},
-	"install.short":                         {"Restore project Skills from skillsgo.yaml", "按照 skillsgo.yaml 恢复项目 Skill"},
+	"install.short":                         {"Restore project Skills from skillsgo.mod", "按照 skillsgo.mod 恢复项目 Skill"},
 	"update.short":                          {"Update project Skills and atomically switch targets", "更新项目 Skill 并原子切换安装目标"},
 	"flag.hub":                              {"Hub service URL", "Hub 服务地址"},
 	"flag.output":                           {"Output format: human, json, or execution ndjson", "输出格式：human、json 或执行阶段 ndjson"},

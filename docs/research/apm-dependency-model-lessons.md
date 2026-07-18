@@ -84,7 +84,7 @@ SkillsGo should make automated update tooling possible through a stable machine-
 The current SkillsGo architecture already avoids several APM failure modes:
 
 - **Repository members retain canonical Skill IDs.** Repository installation expands to concrete Skill packages instead of discarding member provenance.
-- **Intent and integrity are separate without a dependency lock.** `skillsgo.yaml` records canonical direct requirements and desired Agents, while the generated `skillsgo.sum` records only hashes for exact immutable Info and Skill content.
+- **Intent and integrity are separate without a dependency lock.** `skillsgo.mod` records canonical direct requirements and desired Agents, while the generated `skillsgo.sum` records only hashes for exact immutable Info and Skill content.
 - **Artifacts are immutable and content-addressed.** The CLI verifies Hub artifact identity and content before admitting it to the Store.
 - **Store and Agent projection are separate.** Agents do not mutate the shared Store directly; installation creates scope-local canonical content and explicit Agent-facing projections.
 - **Installation receipts and inventory preserve target state.** SkillsGo can distinguish managed, missing, modified, replaced, dangling, and external installations rather than equating a directory's presence with ownership.

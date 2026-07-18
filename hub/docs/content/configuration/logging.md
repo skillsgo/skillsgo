@@ -1,17 +1,27 @@
 ---
 title: Logging
-description: Configure the logger for your desired output
+description: Configure structured, correlated, and credential-safe Hub logs
 weight: 9
 ---
 
-Athens is designed to support a myriad of logging scenarios.
+SkillsGo Hub emits structured operator logs for HTTP requests, Catalog failures, artifact caching, upstream fetches, and Repository publication.
 
 ## Standard
 
-The standard structured logger can be configured in `plain` or `json` formatting via `LogFormat` or `SKILLSGO_HUB_LOG_FORMAT`. Additionally, verbosity can be controlled by setting `LogLevel` or `SKILLSGO_HUB_LOG_LEVEL`. In order for the standard structured logger to work, `CloudRuntime` and `SKILLSGO_HUB_CLOUD_RUNTIME` should not be set to a valid value.
+Configure output as `plain` or `json` with `LogFormat` or `SKILLSGO_HUB_LOG_FORMAT`. Configure verbosity with `LogLevel` or `SKILLSGO_HUB_LOG_LEVEL`. Supported levels are `debug`, `info`, `warn`/`warning`, and `error`; legacy `trace` maps to `debug`, while `fatal` and `panic` map to `error`.
 
-The logging is via [Logrus](https://github.com/sirupsen/logrus), so the allowed values for logging config options are determined by that project. For example, `SKILLSGO_HUB_LOG_LEVEL` can be `debug`, `info`, `warn`/`warning`, `error`, etc.
+Use JSON in production so fields remain queryable. Every HTTP completion event includes `request_id`, `http_method`, `http_path`, `route`, `http_status`, `duration_ms`, `response_bytes`, and `handler_error`. Query strings are deliberately excluded. Health and readiness successes are Debug events; normal requests and expected client failures are Info; rate limits are Warn; server failures are Error.
+
+Repository publication adds `repository_id`, `requested_ref`, immutable `version`, `commit_sha`, `member_count`, cache outcome, Singleflight sharing, and duration. Artifact delivery adds cache resource/result, requested and resolved versions, download mode, and upstream duration.
+
+Repository source-metadata refreshes report provider-neutral cache outcomes (`hit`, `revalidated`, `refreshed`, `retry_blocked`, or `unsupported`) by `repository_id`. Provider adapters may add safe diagnostics such as an upstream request ID, status, rate-limit remaining count, and reset time.
+
+Git source synchronization reports the Repository, source host, phase (`network_validation`, `clone`, or `fetch`), outcome, duration, and whether an existing local Repository remains usable. Failed Git commands retain bounded stderr for diagnosis. GitHub REST metadata calls additionally report the operation, conditional-request state, response status, request ID, rate-limit remainder, and duration. Credential redaction applies to both paths.
+
+The logger redacts sensitive field names and common credential forms in messages, including authorization values, passwords, tokens, secrets, API keys, Bearer credentials, GitHub tokens, and URL userinfo. Operators must still avoid adding artifact content, request bodies, environment dumps, or authentication headers to logs.
+
+Public API error messages remain sanitized. The corresponding private log retains `request_id`, `operation`, `error_code`, typed error kind, and the redacted underlying diagnostic.
 
 ## Runtimes
 
-Athens can be configured according to certain cloud provider specific runtimes. The **GCP** runtime configures Athens to rename certain logging fields that could be dropped or overriden when running in a GCP logging environment. This runtime can be used with `LogLevel` or `SKILLSGO_HUB_LOG_LEVEL` to control the verbosity of logs.
+The **GCP** runtime emits Google Cloud-compatible `timestamp`, `severity`, and `message` fields while preserving the same structured attributes and level filtering.

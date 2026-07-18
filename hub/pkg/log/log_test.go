@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on the slog-backed Hub logger, output formatters, field handling, and credential redaction.
+ * [OUTPUT]: Verifies level filtering, runtime formats, structured fields, and secret-safe log output.
+ * [POS]: Serves as the behavioral contract for Hub logging across local and production runtimes.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package log
 
 import (

@@ -74,20 +74,6 @@ func (_c *SkillCreate) SetLatestVersion(v string) *SkillCreate {
 	return _c
 }
 
-// SetGithubStars sets the "github_stars" field.
-func (_c *SkillCreate) SetGithubStars(v int64) *SkillCreate {
-	_c.mutation.SetGithubStars(v)
-	return _c
-}
-
-// SetNillableGithubStars sets the "github_stars" field if the given value is not nil.
-func (_c *SkillCreate) SetNillableGithubStars(v *int64) *SkillCreate {
-	if v != nil {
-		_c.SetGithubStars(*v)
-	}
-	return _c
-}
-
 // SetVerified sets the "verified" field.
 func (_c *SkillCreate) SetVerified(v bool) *SkillCreate {
 	_c.mutation.SetVerified(v)
@@ -227,10 +213,6 @@ func (_c *SkillCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *SkillCreate) defaults() {
-	if _, ok := _c.mutation.GithubStars(); !ok {
-		v := skill.DefaultGithubStars
-		_c.mutation.SetGithubStars(v)
-	}
 	if _, ok := _c.mutation.Verified(); !ok {
 		v := skill.DefaultVerified
 		_c.mutation.SetVerified(v)
@@ -275,9 +257,6 @@ func (_c *SkillCreate) check() error {
 	}
 	if _, ok := _c.mutation.LatestVersion(); !ok {
 		return &ValidationError{Name: "latest_version", err: errors.New(`ent: missing required field "Skill.latest_version"`)}
-	}
-	if _, ok := _c.mutation.GithubStars(); !ok {
-		return &ValidationError{Name: "github_stars", err: errors.New(`ent: missing required field "Skill.github_stars"`)}
 	}
 	if _, ok := _c.mutation.Verified(); !ok {
 		return &ValidationError{Name: "verified", err: errors.New(`ent: missing required field "Skill.verified"`)}
@@ -351,10 +330,6 @@ func (_c *SkillCreate) createSpec() (*Skill, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.LatestVersion(); ok {
 		_spec.SetField(skill.FieldLatestVersion, field.TypeString, value)
 		_node.LatestVersion = value
-	}
-	if value, ok := _c.mutation.GithubStars(); ok {
-		_spec.SetField(skill.FieldGithubStars, field.TypeInt64, value)
-		_node.GithubStars = value
 	}
 	if value, ok := _c.mutation.Verified(); ok {
 		_spec.SetField(skill.FieldVerified, field.TypeBool, value)
@@ -581,24 +556,6 @@ func (u *SkillUpsert) UpdateLatestVersion() *SkillUpsert {
 	return u
 }
 
-// SetGithubStars sets the "github_stars" field.
-func (u *SkillUpsert) SetGithubStars(v int64) *SkillUpsert {
-	u.Set(skill.FieldGithubStars, v)
-	return u
-}
-
-// UpdateGithubStars sets the "github_stars" field to the value that was provided on create.
-func (u *SkillUpsert) UpdateGithubStars() *SkillUpsert {
-	u.SetExcluded(skill.FieldGithubStars)
-	return u
-}
-
-// AddGithubStars adds v to the "github_stars" field.
-func (u *SkillUpsert) AddGithubStars(v int64) *SkillUpsert {
-	u.Add(skill.FieldGithubStars, v)
-	return u
-}
-
 // SetVerified sets the "verified" field.
 func (u *SkillUpsert) SetVerified(v bool) *SkillUpsert {
 	u.Set(skill.FieldVerified, v)
@@ -792,27 +749,6 @@ func (u *SkillUpsertOne) SetLatestVersion(v string) *SkillUpsertOne {
 func (u *SkillUpsertOne) UpdateLatestVersion() *SkillUpsertOne {
 	return u.Update(func(s *SkillUpsert) {
 		s.UpdateLatestVersion()
-	})
-}
-
-// SetGithubStars sets the "github_stars" field.
-func (u *SkillUpsertOne) SetGithubStars(v int64) *SkillUpsertOne {
-	return u.Update(func(s *SkillUpsert) {
-		s.SetGithubStars(v)
-	})
-}
-
-// AddGithubStars adds v to the "github_stars" field.
-func (u *SkillUpsertOne) AddGithubStars(v int64) *SkillUpsertOne {
-	return u.Update(func(s *SkillUpsert) {
-		s.AddGithubStars(v)
-	})
-}
-
-// UpdateGithubStars sets the "github_stars" field to the value that was provided on create.
-func (u *SkillUpsertOne) UpdateGithubStars() *SkillUpsertOne {
-	return u.Update(func(s *SkillUpsert) {
-		s.UpdateGithubStars()
 	})
 }
 
@@ -1181,27 +1117,6 @@ func (u *SkillUpsertBulk) SetLatestVersion(v string) *SkillUpsertBulk {
 func (u *SkillUpsertBulk) UpdateLatestVersion() *SkillUpsertBulk {
 	return u.Update(func(s *SkillUpsert) {
 		s.UpdateLatestVersion()
-	})
-}
-
-// SetGithubStars sets the "github_stars" field.
-func (u *SkillUpsertBulk) SetGithubStars(v int64) *SkillUpsertBulk {
-	return u.Update(func(s *SkillUpsert) {
-		s.SetGithubStars(v)
-	})
-}
-
-// AddGithubStars adds v to the "github_stars" field.
-func (u *SkillUpsertBulk) AddGithubStars(v int64) *SkillUpsertBulk {
-	return u.Update(func(s *SkillUpsert) {
-		s.AddGithubStars(v)
-	})
-}
-
-// UpdateGithubStars sets the "github_stars" field to the value that was provided on create.
-func (u *SkillUpsertBulk) UpdateGithubStars() *SkillUpsertBulk {
-	return u.Update(func(s *SkillUpsert) {
-		s.UpdateGithubStars()
 	})
 }
 

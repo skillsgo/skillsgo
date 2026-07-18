@@ -23,6 +23,14 @@ type Repository struct {
 	RepositoryPath string `json:"repository_path,omitempty"`
 	// RepositoryID holds the value of the "repository_id" field.
 	RepositoryID string `json:"repository_id,omitempty"`
+	// Stars holds the value of the "stars" field.
+	Stars int64 `json:"stars,omitempty"`
+	// SourceMetadataEtag holds the value of the "source_metadata_etag" field.
+	SourceMetadataEtag string `json:"source_metadata_etag,omitempty"`
+	// SourceMetadataCheckedAt holds the value of the "source_metadata_checked_at" field.
+	SourceMetadataCheckedAt *time.Time `json:"source_metadata_checked_at,omitempty"`
+	// SourceMetadataRetryAt holds the value of the "source_metadata_retry_at" field.
+	SourceMetadataRetryAt *time.Time `json:"source_metadata_retry_at,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// UpdatedAt holds the value of the "updated_at" field.
@@ -56,11 +64,11 @@ func (*Repository) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case repository.FieldID:
+		case repository.FieldID, repository.FieldStars:
 			values[i] = new(sql.NullInt64)
-		case repository.FieldSourceHost, repository.FieldRepositoryPath, repository.FieldRepositoryID:
+		case repository.FieldSourceHost, repository.FieldRepositoryPath, repository.FieldRepositoryID, repository.FieldSourceMetadataEtag:
 			values[i] = new(sql.NullString)
-		case repository.FieldCreatedAt, repository.FieldUpdatedAt:
+		case repository.FieldSourceMetadataCheckedAt, repository.FieldSourceMetadataRetryAt, repository.FieldCreatedAt, repository.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
 		default:
 			values[i] = new(sql.UnknownType)
@@ -100,6 +108,32 @@ func (_m *Repository) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field repository_id", values[i])
 			} else if value.Valid {
 				_m.RepositoryID = value.String
+			}
+		case repository.FieldStars:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field stars", values[i])
+			} else if value.Valid {
+				_m.Stars = value.Int64
+			}
+		case repository.FieldSourceMetadataEtag:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field source_metadata_etag", values[i])
+			} else if value.Valid {
+				_m.SourceMetadataEtag = value.String
+			}
+		case repository.FieldSourceMetadataCheckedAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field source_metadata_checked_at", values[i])
+			} else if value.Valid {
+				_m.SourceMetadataCheckedAt = new(time.Time)
+				*_m.SourceMetadataCheckedAt = value.Time
+			}
+		case repository.FieldSourceMetadataRetryAt:
+			if value, ok := values[i].(*sql.NullTime); !ok {
+				return fmt.Errorf("unexpected type %T for field source_metadata_retry_at", values[i])
+			} else if value.Valid {
+				_m.SourceMetadataRetryAt = new(time.Time)
+				*_m.SourceMetadataRetryAt = value.Time
 			}
 		case repository.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -162,6 +196,22 @@ func (_m *Repository) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("repository_id=")
 	builder.WriteString(_m.RepositoryID)
+	builder.WriteString(", ")
+	builder.WriteString("stars=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Stars))
+	builder.WriteString(", ")
+	builder.WriteString("source_metadata_etag=")
+	builder.WriteString(_m.SourceMetadataEtag)
+	builder.WriteString(", ")
+	if v := _m.SourceMetadataCheckedAt; v != nil {
+		builder.WriteString("source_metadata_checked_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
+	builder.WriteString(", ")
+	if v := _m.SourceMetadataRetryAt; v != nil {
+		builder.WriteString("source_metadata_retry_at=")
+		builder.WriteString(v.Format(time.ANSIC))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

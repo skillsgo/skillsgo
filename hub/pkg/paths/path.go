@@ -17,6 +17,7 @@ import (
 func GetSkill(requestPath string) (string, error) {
 	const op errors.Op = "paths.GetSkill"
 	skill := strings.TrimPrefix(requestPath, "/")
+	skill = strings.TrimPrefix(skill, "mod/")
 	if i := strings.Index(skill, "/@v/"); i >= 0 {
 		skill = skill[:i]
 	} else if i := strings.Index(skill, "/@latest"); i >= 0 {

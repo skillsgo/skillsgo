@@ -22,7 +22,7 @@ func TestJ23UpdateFailureIsNonZeroAndAtomic(t *testing.T) {
 	require.Equal(t, 0, add.exitCode, add.output)
 	paths := []string{
 		filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt", "SKILL.md"),
-		filepath.Join(sandboxRoot, "project", "skillsgo.yaml"),
+		filepath.Join(sandboxRoot, "project", "skillsgo.mod"),
 		filepath.Join(sandboxRoot, "project", "skillsgo.sum"),
 	}
 	before := make([][]byte, len(paths))

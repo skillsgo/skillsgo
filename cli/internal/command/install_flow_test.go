@@ -37,9 +37,9 @@ func TestAddListRemoveFlow(t *testing.T) {
 	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Ref":"main","CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case request.URL.Path == "/"+repository+"/@v/list":
+		case request.URL.Path == "/mod/"+repository+"/@v/list":
 			fmt.Fprintln(writer, version)
-		case request.URL.Path == "/"+repository+"/@v/"+version+".info":
+		case request.URL.Path == "/mod/"+repository+"/@v/"+version+".info":
 			_, _ = writer.Write([]byte(repositoryInfo))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 			writer.Write(zipData)
@@ -89,9 +89,9 @@ func TestAddUsesInfoNameIndependentFromSkillIDPath(t *testing.T) {
 	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Ref":"main","CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case request.URL.Path == "/"+repository+"/@v/list":
+		case request.URL.Path == "/mod/"+repository+"/@v/list":
 			fmt.Fprintln(writer, version)
-		case request.URL.Path == "/"+repository+"/@v/"+version+".info":
+		case request.URL.Path == "/mod/"+repository+"/@v/"+version+".info":
 			_, _ = writer.Write([]byte(repositoryInfo))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 			_, _ = writer.Write(zipData)
@@ -135,9 +135,9 @@ func TestAddInstallsFromEnrichedInfoWithoutManifestRequest(t *testing.T) {
 	manifestRequested := false
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case request.URL.Path == "/"+repository+"/@v/list":
+		case request.URL.Path == "/mod/"+repository+"/@v/list":
 			fmt.Fprintln(writer, version)
-		case request.URL.Path == "/"+repository+"/@v/"+version+".info":
+		case request.URL.Path == "/mod/"+repository+"/@v/"+version+".info":
 			_, _ = writer.Write([]byte(repositoryInfo))
 		case strings.HasSuffix(request.URL.Path, ".manifest"):
 			manifestRequested = true
@@ -175,7 +175,7 @@ func TestAddBranchStoresResolvedImmutableVersionInManifest(t *testing.T) {
 	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Ref":"refs/heads/feature-x","CommitSHA":"777599e1159e","Skills":[%s]}`, repository, version, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case request.URL.Path == "/"+repository+"/@v/"+branch+".info":
+		case request.URL.Path == "/mod/"+repository+"/@v/"+branch+".info":
 			_, _ = writer.Write([]byte(repositoryInfo))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 			_, _ = writer.Write(zipData)
@@ -223,9 +223,9 @@ func TestAddRequiresConfirmationForHubAssessedRisk(t *testing.T) {
 			repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Ref":"main","CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 				switch {
-				case request.URL.Path == "/"+repository+"/@v/list":
+				case request.URL.Path == "/mod/"+repository+"/@v/list":
 					fmt.Fprintln(writer, version)
-				case request.URL.Path == "/"+repository+"/@v/"+version+".info":
+				case request.URL.Path == "/mod/"+repository+"/@v/"+version+".info":
 					_, _ = writer.Write([]byte(repositoryInfo))
 				case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 					_, _ = writer.Write(zipData)
@@ -434,7 +434,7 @@ func TestInstallOnCleanMachineRefillsStoreFromHubAndRestoresTopology(t *testing.
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		repositoryID := strings.SplitN(skillID, "/-/", 2)[0]
 		switch {
-		case request.URL.Path == "/"+repositoryID+"/@v/"+version+".info":
+		case request.URL.Path == "/mod/"+repositoryID+"/@v/"+version+".info":
 			writer.Write(commandTestRepositoryInfo(t, repositoryID, version, "clean", artifact.Info))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".info"):
 			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"clean-restore","Description":"test","Version":%q,"Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","CommitSHA":"clean","TreeSHA":"clean-tree"}`, skillID, version, digest, len(zipData))
@@ -501,17 +501,17 @@ func TestAddExactRepositoryUsesInfoAndWritesGoFirstWorkspace(t *testing.T) {
 	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-15T00:00:00Z","Ref":"refs/tags/v2.0.0","CommitSHA":"repo-commit","Skills":[%s]}`, repository, version, strings.Join(memberInfos, ","))
 	forbiddenRequest := ""
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if strings.Contains(request.URL.Path, "/v1/search") || strings.Contains(request.URL.Path, "/@resolve") || strings.HasSuffix(request.URL.Path, ".manifest") {
+		if strings.Contains(request.URL.Path, "/api/v1/search") || strings.Contains(request.URL.Path, "/@resolve") || strings.HasSuffix(request.URL.Path, ".manifest") {
 			forbiddenRequest = request.URL.String()
 			http.Error(writer, "contracted request", http.StatusGone)
 			return
 		}
-		if request.URL.Path == "/"+repository+"/@v/"+version+".info" {
+		if request.URL.Path == "/mod/"+repository+"/@v/"+version+".info" {
 			_, _ = writer.Write([]byte(repositoryInfo))
 			return
 		}
 		for _, member := range members {
-			if request.URL.Path == "/"+member.id+"/@v/"+version+".zip" {
+			if request.URL.Path == "/mod/"+member.id+"/@v/"+version+".zip" {
 				_, _ = writer.Write(member.zip)
 				return
 			}
@@ -537,12 +537,12 @@ func TestAddExactRepositoryUsesInfoAndWritesGoFirstWorkspace(t *testing.T) {
 		t.Fatalf("CLI used contracted Repository discovery request %s", forbiddenRequest)
 	}
 	assertRestoredInstallationTree(t, projectRoot, []string{"alpha", "root-skill"})
-	manifestBytes, err := os.ReadFile(filepath.Join(projectRoot, "skillsgo.yaml"))
+	manifestBytes, err := os.ReadFile(filepath.Join(projectRoot, "skillsgo.mod"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	manifestText := string(manifestBytes)
-	if !strings.Contains(manifestText, repository+": "+version+" [codex, claude-code]") || strings.Contains(manifestText, "/-/skills/alpha:") {
+	if !strings.Contains(manifestText, repository+" "+version+" [codex, claude-code]") || strings.Contains(manifestText, "/-/skills/alpha ") {
 		t.Fatalf("Workspace Manifest did not preserve one Repository requirement:\n%s", manifestText)
 	}
 	sumBytes, err := os.ReadFile(filepath.Join(projectRoot, "skillsgo.sum"))
@@ -598,13 +598,13 @@ func TestAddSelectsRepeatedRepositoryMembersFromOneInfo(t *testing.T) {
 	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"commit","Skills":[%s]}`, repository, version, strings.Join(infos, ","))
 	infoRequests, zipRequests := 0, map[string]int{}
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Path == "/"+repository+"/@v/"+version+".info" {
+		if request.URL.Path == "/mod/"+repository+"/@v/"+version+".info" {
 			infoRequests++
 			_, _ = writer.Write([]byte(repositoryInfo))
 			return
 		}
 		for _, item := range fixtures {
-			if request.URL.Path == "/"+item.id+"/@v/"+version+".zip" {
+			if request.URL.Path == "/mod/"+item.id+"/@v/"+version+".zip" {
 				zipRequests[item.id]++
 				_, _ = writer.Write(item.zip)
 				return
@@ -665,14 +665,14 @@ func TestAddGroupsSelectedRepositoryMembersByInheritedAndOverriddenVersions(t *t
 	infoRequests := map[string]int{}
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		for version, info := range infoByVersion {
-			if request.URL.Path == "/"+repository+"/@v/"+version+".info" {
+			if request.URL.Path == "/mod/"+repository+"/@v/"+version+".info" {
 				infoRequests[version]++
 				_, _ = writer.Write(info)
 				return
 			}
 		}
 		for _, item := range artifacts {
-			if request.URL.Path == "/"+item.id+"/@v/"+item.version+".zip" {
+			if request.URL.Path == "/mod/"+item.id+"/@v/"+item.version+".zip" {
 				_, _ = writer.Write(item.zip)
 				return
 			}
@@ -708,9 +708,9 @@ func TestAddRejectsMemberMissingFromRequestedRepositoryVersionBeforeMutation(t *
 	alphaDigest := commandTestContentDigest(t, alphaArchive, alphaID, "v1.0.0")
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
-		case "/" + repository + "/@v/v1.0.0.info":
+		case "/mod/" + repository + "/@v/v1.0.0.info":
 			_, _ = fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v1.0.0","CommitSHA":"commit-v1","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"alpha","Description":"available only in v1","Version":"v1.0.0","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","CommitSHA":"commit-v1","TreeSHA":"tree-alpha-v1"}]}`, repository, alphaID, alphaDigest, len(alphaArchive))
-		case "/" + repository + "/@v/v2.0.0.info":
+		case "/mod/" + repository + "/@v/v2.0.0.info":
 			_, _ = fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v2.0.0","CommitSHA":"commit-v2","Skills":[]}`, repository)
 		default:
 			http.NotFound(writer, request)
@@ -726,7 +726,7 @@ func TestAddRejectsMemberMissingFromRequestedRepositoryVersionBeforeMutation(t *
 	err = Execute([]string{"add", "https://" + repository + "@v1.0.0", "--skill", "alpha", "--skill", "alpha@v2.0.0", "--agent", "codex", "--yes", "--hub", server.URL, "--output", "json"}, &output, &output)
 	require.Error(t, err)
 	require.NoDirExists(t, filepath.Join(workspace, ".agents"))
-	require.NoFileExists(t, filepath.Join(workspace, "skillsgo.yaml"))
+	require.NoFileExists(t, filepath.Join(workspace, "skillsgo.mod"))
 	require.NoFileExists(t, filepath.Join(workspace, "skillsgo.sum"))
 }
 
@@ -821,9 +821,9 @@ func TestAddReplaceChangesSourceAndRemovesObsoleteAgentBindings(t *testing.T) {
 	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v2","Ref":"main","CommitSHA":"new","Skills":[%s]}`, newRepository, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case request.URL.Path == "/"+newRepository+"/@v/list":
+		case request.URL.Path == "/mod/"+newRepository+"/@v/list":
 			fmt.Fprintln(writer, "v2")
-		case request.URL.Path == "/"+newRepository+"/@v/v2.info":
+		case request.URL.Path == "/mod/"+newRepository+"/@v/v2.info":
 			_, _ = writer.Write([]byte(repositoryInfo))
 		case strings.HasSuffix(request.URL.Path, "/v2.zip"):
 			writer.Write(newZIP)

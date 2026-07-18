@@ -32,7 +32,7 @@ func TestJ19ImmutableReuse(t *testing.T) {
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 
-	artifactURL := "http://127.0.0.1:3000/" + testSkillID + "/@v/" + installed.Version + ".zip"
+	artifactURL := "http://127.0.0.1:3000/mod/" + testSkillID + "/@v/" + installed.Version + ".zip"
 	firstDownload := execInContainer(t, ctx, container,
 		"wget", "-qO", "/e2e/artifacts/first.zip", artifactURL,
 	)

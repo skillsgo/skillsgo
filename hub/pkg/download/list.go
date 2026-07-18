@@ -18,7 +18,7 @@ import (
 )
 
 // PathList URL.
-const PathList = "/{skill:.+}/@v/list"
+const PathList = "/mod/{skill:.+}/@v/list"
 
 // ListHandler implements GET baseURL/module/@v/list.
 func ListHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handler {

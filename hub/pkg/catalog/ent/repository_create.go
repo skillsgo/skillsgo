@@ -41,6 +41,62 @@ func (_c *RepositoryCreate) SetRepositoryID(v string) *RepositoryCreate {
 	return _c
 }
 
+// SetStars sets the "stars" field.
+func (_c *RepositoryCreate) SetStars(v int64) *RepositoryCreate {
+	_c.mutation.SetStars(v)
+	return _c
+}
+
+// SetNillableStars sets the "stars" field if the given value is not nil.
+func (_c *RepositoryCreate) SetNillableStars(v *int64) *RepositoryCreate {
+	if v != nil {
+		_c.SetStars(*v)
+	}
+	return _c
+}
+
+// SetSourceMetadataEtag sets the "source_metadata_etag" field.
+func (_c *RepositoryCreate) SetSourceMetadataEtag(v string) *RepositoryCreate {
+	_c.mutation.SetSourceMetadataEtag(v)
+	return _c
+}
+
+// SetNillableSourceMetadataEtag sets the "source_metadata_etag" field if the given value is not nil.
+func (_c *RepositoryCreate) SetNillableSourceMetadataEtag(v *string) *RepositoryCreate {
+	if v != nil {
+		_c.SetSourceMetadataEtag(*v)
+	}
+	return _c
+}
+
+// SetSourceMetadataCheckedAt sets the "source_metadata_checked_at" field.
+func (_c *RepositoryCreate) SetSourceMetadataCheckedAt(v time.Time) *RepositoryCreate {
+	_c.mutation.SetSourceMetadataCheckedAt(v)
+	return _c
+}
+
+// SetNillableSourceMetadataCheckedAt sets the "source_metadata_checked_at" field if the given value is not nil.
+func (_c *RepositoryCreate) SetNillableSourceMetadataCheckedAt(v *time.Time) *RepositoryCreate {
+	if v != nil {
+		_c.SetSourceMetadataCheckedAt(*v)
+	}
+	return _c
+}
+
+// SetSourceMetadataRetryAt sets the "source_metadata_retry_at" field.
+func (_c *RepositoryCreate) SetSourceMetadataRetryAt(v time.Time) *RepositoryCreate {
+	_c.mutation.SetSourceMetadataRetryAt(v)
+	return _c
+}
+
+// SetNillableSourceMetadataRetryAt sets the "source_metadata_retry_at" field if the given value is not nil.
+func (_c *RepositoryCreate) SetNillableSourceMetadataRetryAt(v *time.Time) *RepositoryCreate {
+	if v != nil {
+		_c.SetSourceMetadataRetryAt(*v)
+	}
+	return _c
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_c *RepositoryCreate) SetCreatedAt(v time.Time) *RepositoryCreate {
 	_c.mutation.SetCreatedAt(v)
@@ -125,6 +181,10 @@ func (_c *RepositoryCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *RepositoryCreate) defaults() {
+	if _, ok := _c.mutation.Stars(); !ok {
+		v := repository.DefaultStars
+		_c.mutation.SetStars(v)
+	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := repository.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -160,6 +220,9 @@ func (_c *RepositoryCreate) check() error {
 		if err := repository.RepositoryIDValidator(v); err != nil {
 			return &ValidationError{Name: "repository_id", err: fmt.Errorf(`ent: validator failed for field "Repository.repository_id": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.Stars(); !ok {
+		return &ValidationError{Name: "stars", err: errors.New(`ent: missing required field "Repository.stars"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "Repository.created_at"`)}
@@ -211,6 +274,22 @@ func (_c *RepositoryCreate) createSpec() (*Repository, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RepositoryID(); ok {
 		_spec.SetField(repository.FieldRepositoryID, field.TypeString, value)
 		_node.RepositoryID = value
+	}
+	if value, ok := _c.mutation.Stars(); ok {
+		_spec.SetField(repository.FieldStars, field.TypeInt64, value)
+		_node.Stars = value
+	}
+	if value, ok := _c.mutation.SourceMetadataEtag(); ok {
+		_spec.SetField(repository.FieldSourceMetadataEtag, field.TypeString, value)
+		_node.SourceMetadataEtag = value
+	}
+	if value, ok := _c.mutation.SourceMetadataCheckedAt(); ok {
+		_spec.SetField(repository.FieldSourceMetadataCheckedAt, field.TypeTime, value)
+		_node.SourceMetadataCheckedAt = &value
+	}
+	if value, ok := _c.mutation.SourceMetadataRetryAt(); ok {
+		_spec.SetField(repository.FieldSourceMetadataRetryAt, field.TypeTime, value)
+		_node.SourceMetadataRetryAt = &value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(repository.FieldCreatedAt, field.TypeTime, value)
@@ -321,6 +400,78 @@ func (u *RepositoryUpsert) SetRepositoryID(v string) *RepositoryUpsert {
 // UpdateRepositoryID sets the "repository_id" field to the value that was provided on create.
 func (u *RepositoryUpsert) UpdateRepositoryID() *RepositoryUpsert {
 	u.SetExcluded(repository.FieldRepositoryID)
+	return u
+}
+
+// SetStars sets the "stars" field.
+func (u *RepositoryUpsert) SetStars(v int64) *RepositoryUpsert {
+	u.Set(repository.FieldStars, v)
+	return u
+}
+
+// UpdateStars sets the "stars" field to the value that was provided on create.
+func (u *RepositoryUpsert) UpdateStars() *RepositoryUpsert {
+	u.SetExcluded(repository.FieldStars)
+	return u
+}
+
+// AddStars adds v to the "stars" field.
+func (u *RepositoryUpsert) AddStars(v int64) *RepositoryUpsert {
+	u.Add(repository.FieldStars, v)
+	return u
+}
+
+// SetSourceMetadataEtag sets the "source_metadata_etag" field.
+func (u *RepositoryUpsert) SetSourceMetadataEtag(v string) *RepositoryUpsert {
+	u.Set(repository.FieldSourceMetadataEtag, v)
+	return u
+}
+
+// UpdateSourceMetadataEtag sets the "source_metadata_etag" field to the value that was provided on create.
+func (u *RepositoryUpsert) UpdateSourceMetadataEtag() *RepositoryUpsert {
+	u.SetExcluded(repository.FieldSourceMetadataEtag)
+	return u
+}
+
+// ClearSourceMetadataEtag clears the value of the "source_metadata_etag" field.
+func (u *RepositoryUpsert) ClearSourceMetadataEtag() *RepositoryUpsert {
+	u.SetNull(repository.FieldSourceMetadataEtag)
+	return u
+}
+
+// SetSourceMetadataCheckedAt sets the "source_metadata_checked_at" field.
+func (u *RepositoryUpsert) SetSourceMetadataCheckedAt(v time.Time) *RepositoryUpsert {
+	u.Set(repository.FieldSourceMetadataCheckedAt, v)
+	return u
+}
+
+// UpdateSourceMetadataCheckedAt sets the "source_metadata_checked_at" field to the value that was provided on create.
+func (u *RepositoryUpsert) UpdateSourceMetadataCheckedAt() *RepositoryUpsert {
+	u.SetExcluded(repository.FieldSourceMetadataCheckedAt)
+	return u
+}
+
+// ClearSourceMetadataCheckedAt clears the value of the "source_metadata_checked_at" field.
+func (u *RepositoryUpsert) ClearSourceMetadataCheckedAt() *RepositoryUpsert {
+	u.SetNull(repository.FieldSourceMetadataCheckedAt)
+	return u
+}
+
+// SetSourceMetadataRetryAt sets the "source_metadata_retry_at" field.
+func (u *RepositoryUpsert) SetSourceMetadataRetryAt(v time.Time) *RepositoryUpsert {
+	u.Set(repository.FieldSourceMetadataRetryAt, v)
+	return u
+}
+
+// UpdateSourceMetadataRetryAt sets the "source_metadata_retry_at" field to the value that was provided on create.
+func (u *RepositoryUpsert) UpdateSourceMetadataRetryAt() *RepositoryUpsert {
+	u.SetExcluded(repository.FieldSourceMetadataRetryAt)
+	return u
+}
+
+// ClearSourceMetadataRetryAt clears the value of the "source_metadata_retry_at" field.
+func (u *RepositoryUpsert) ClearSourceMetadataRetryAt() *RepositoryUpsert {
+	u.SetNull(repository.FieldSourceMetadataRetryAt)
 	return u
 }
 
@@ -435,6 +586,90 @@ func (u *RepositoryUpsertOne) SetRepositoryID(v string) *RepositoryUpsertOne {
 func (u *RepositoryUpsertOne) UpdateRepositoryID() *RepositoryUpsertOne {
 	return u.Update(func(s *RepositoryUpsert) {
 		s.UpdateRepositoryID()
+	})
+}
+
+// SetStars sets the "stars" field.
+func (u *RepositoryUpsertOne) SetStars(v int64) *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.SetStars(v)
+	})
+}
+
+// AddStars adds v to the "stars" field.
+func (u *RepositoryUpsertOne) AddStars(v int64) *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.AddStars(v)
+	})
+}
+
+// UpdateStars sets the "stars" field to the value that was provided on create.
+func (u *RepositoryUpsertOne) UpdateStars() *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.UpdateStars()
+	})
+}
+
+// SetSourceMetadataEtag sets the "source_metadata_etag" field.
+func (u *RepositoryUpsertOne) SetSourceMetadataEtag(v string) *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.SetSourceMetadataEtag(v)
+	})
+}
+
+// UpdateSourceMetadataEtag sets the "source_metadata_etag" field to the value that was provided on create.
+func (u *RepositoryUpsertOne) UpdateSourceMetadataEtag() *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.UpdateSourceMetadataEtag()
+	})
+}
+
+// ClearSourceMetadataEtag clears the value of the "source_metadata_etag" field.
+func (u *RepositoryUpsertOne) ClearSourceMetadataEtag() *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.ClearSourceMetadataEtag()
+	})
+}
+
+// SetSourceMetadataCheckedAt sets the "source_metadata_checked_at" field.
+func (u *RepositoryUpsertOne) SetSourceMetadataCheckedAt(v time.Time) *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.SetSourceMetadataCheckedAt(v)
+	})
+}
+
+// UpdateSourceMetadataCheckedAt sets the "source_metadata_checked_at" field to the value that was provided on create.
+func (u *RepositoryUpsertOne) UpdateSourceMetadataCheckedAt() *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.UpdateSourceMetadataCheckedAt()
+	})
+}
+
+// ClearSourceMetadataCheckedAt clears the value of the "source_metadata_checked_at" field.
+func (u *RepositoryUpsertOne) ClearSourceMetadataCheckedAt() *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.ClearSourceMetadataCheckedAt()
+	})
+}
+
+// SetSourceMetadataRetryAt sets the "source_metadata_retry_at" field.
+func (u *RepositoryUpsertOne) SetSourceMetadataRetryAt(v time.Time) *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.SetSourceMetadataRetryAt(v)
+	})
+}
+
+// UpdateSourceMetadataRetryAt sets the "source_metadata_retry_at" field to the value that was provided on create.
+func (u *RepositoryUpsertOne) UpdateSourceMetadataRetryAt() *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.UpdateSourceMetadataRetryAt()
+	})
+}
+
+// ClearSourceMetadataRetryAt clears the value of the "source_metadata_retry_at" field.
+func (u *RepositoryUpsertOne) ClearSourceMetadataRetryAt() *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.ClearSourceMetadataRetryAt()
 	})
 }
 
@@ -719,6 +954,90 @@ func (u *RepositoryUpsertBulk) SetRepositoryID(v string) *RepositoryUpsertBulk {
 func (u *RepositoryUpsertBulk) UpdateRepositoryID() *RepositoryUpsertBulk {
 	return u.Update(func(s *RepositoryUpsert) {
 		s.UpdateRepositoryID()
+	})
+}
+
+// SetStars sets the "stars" field.
+func (u *RepositoryUpsertBulk) SetStars(v int64) *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.SetStars(v)
+	})
+}
+
+// AddStars adds v to the "stars" field.
+func (u *RepositoryUpsertBulk) AddStars(v int64) *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.AddStars(v)
+	})
+}
+
+// UpdateStars sets the "stars" field to the value that was provided on create.
+func (u *RepositoryUpsertBulk) UpdateStars() *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.UpdateStars()
+	})
+}
+
+// SetSourceMetadataEtag sets the "source_metadata_etag" field.
+func (u *RepositoryUpsertBulk) SetSourceMetadataEtag(v string) *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.SetSourceMetadataEtag(v)
+	})
+}
+
+// UpdateSourceMetadataEtag sets the "source_metadata_etag" field to the value that was provided on create.
+func (u *RepositoryUpsertBulk) UpdateSourceMetadataEtag() *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.UpdateSourceMetadataEtag()
+	})
+}
+
+// ClearSourceMetadataEtag clears the value of the "source_metadata_etag" field.
+func (u *RepositoryUpsertBulk) ClearSourceMetadataEtag() *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.ClearSourceMetadataEtag()
+	})
+}
+
+// SetSourceMetadataCheckedAt sets the "source_metadata_checked_at" field.
+func (u *RepositoryUpsertBulk) SetSourceMetadataCheckedAt(v time.Time) *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.SetSourceMetadataCheckedAt(v)
+	})
+}
+
+// UpdateSourceMetadataCheckedAt sets the "source_metadata_checked_at" field to the value that was provided on create.
+func (u *RepositoryUpsertBulk) UpdateSourceMetadataCheckedAt() *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.UpdateSourceMetadataCheckedAt()
+	})
+}
+
+// ClearSourceMetadataCheckedAt clears the value of the "source_metadata_checked_at" field.
+func (u *RepositoryUpsertBulk) ClearSourceMetadataCheckedAt() *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.ClearSourceMetadataCheckedAt()
+	})
+}
+
+// SetSourceMetadataRetryAt sets the "source_metadata_retry_at" field.
+func (u *RepositoryUpsertBulk) SetSourceMetadataRetryAt(v time.Time) *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.SetSourceMetadataRetryAt(v)
+	})
+}
+
+// UpdateSourceMetadataRetryAt sets the "source_metadata_retry_at" field to the value that was provided on create.
+func (u *RepositoryUpsertBulk) UpdateSourceMetadataRetryAt() *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.UpdateSourceMetadataRetryAt()
+	})
+}
+
+// ClearSourceMetadataRetryAt clears the value of the "source_metadata_retry_at" field.
+func (u *RepositoryUpsertBulk) ClearSourceMetadataRetryAt() *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.ClearSourceMetadataRetryAt()
 	})
 }
 

@@ -49,7 +49,7 @@ The installation scope rooted at a user-selected local directory. A Workspace do
 _Avoid_: repository-only scope, independent project Store
 
 **Workspace Manifest**:
-The editable `skillsgo.yaml` declaration whose `dependencies` map keys are canonical Skill or repository sources and whose one-line values combine the resolved immutable version with an optional `[agent, ...]` target list. Like `go.mod`, installing through a branch, `latest`, or another movable selector records the resulting immutable pseudo-version; following that selector again requires an explicit add request.
+The editable `skillsgo.mod` declaration whose `require` entries contain a canonical Skill or repository coordinate, its resolved immutable version, and an optional `[agent, ...]` target list. Installing through a branch, `latest`, or another movable selector records the resulting immutable pseudo-version; following that selector again requires an explicit add request.
 _Avoid_: lock file, installation receipt
 
 **Workspace Sum**:
@@ -61,7 +61,7 @@ The user-local cache of exact Skill Info and Repository Info response bytes. Cac
 _Avoid_: mutable resolution cache, membership database, Workspace state
 
 **User Declaration Root**:
-The `~/.skillsgo` directory that owns user-scope `skillsgo.yaml`, `skillsgo.sum`, the immutable Info Cache, and the shared Store. Agent-specific directories remain derived installation targets rather than SkillsGo state roots.
+The `~/.skillsgo` directory that owns user-scope `skillsgo.mod`, `skillsgo.sum`, the immutable Info Cache, and the shared Store. Agent-specific directories remain derived installation targets rather than SkillsGo state roots.
 _Avoid_: `~/.agents` ownership database, per-Agent manifest
 
 **Installation Receipt**:
