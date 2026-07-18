@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses temporary Agent, Store-entry, target, and Workspace fixtures at the public Installation Plan domain seam.
- * [OUTPUT]: Specifies strict target JSON, explicit-cell preservation, shared-path and state-bound conflict resolution, trusted-risk gates, zero-mutation unresolved plans, Workspace Manifest previews, Local Modification protection, resilient per-target progress/results, and receipts.
+ * [OUTPUT]: Specifies strict target JSON, supported-but-not-installed Agent targeting, explicit-cell preservation, shared-path and state-bound conflict resolution, trusted-risk gates, zero-mutation unresolved plans, declaration-failure compensation, Local Modification protection, and resilient per-target results.
  * [POS]: Serves as deterministic domain coverage beneath the public CLI command-flow contract.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -50,6 +50,31 @@ func TestBuildRejectsNameThatDiffersFromSkillInfo(t *testing.T) {
 	_, err := Build(catalog, entry, entry.Root, Request{Name: "renamed-demo", Targets: []TargetRequest{{}}})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "Skill Info name")
+}
+
+func TestBuildAllowsSupportedAgentThatIsNotInstalled(t *testing.T) {
+	root := t.TempDir()
+	storeRoot := filepath.Join(root, "store")
+	entry := testEntry(t, storeRoot)
+	catalog := agent.NewCatalog(
+		agent.Paths{Home: root, ConfigHome: filepath.Join(root, "config"), CWD: root},
+		agent.WithDefinition(agent.Definition{
+			ID: "future-agent", Display: "Future Agent",
+			ProjectDir: ".future-agent/skills", UserDir: filepath.Join(root, ".future-agent", "skills"),
+		}),
+	)
+	require.False(t, catalog.DetectInstalled("future-agent"))
+	request := Request{
+		Source: entry.Receipt.SkillID, RequestedRef: "v1", Name: entry.Receipt.Name,
+		Targets: []TargetRequest{{Scope: install.ScopeUser, Agent: "future-agent", Mode: install.ModeCopy}},
+	}
+	prepared, err := Build(catalog, entry, storeRoot, request)
+	require.NoError(t, err)
+	require.Equal(t, ActionCreate, prepared.Targets[0].Action)
+	execution, err := Execute(entry, storeRoot, request, prepared)
+	require.NoError(t, err)
+	require.Equal(t, OutcomeSucceeded, execution.Results[0].Outcome)
+	require.FileExists(t, filepath.Join(prepared.Targets[0].Target.Path, "SKILL.md"))
 }
 
 func TestBuildAndExecuteExplicitTargetsThenSkipIdenticalTargets(t *testing.T) {
@@ -116,7 +141,9 @@ func TestRetryReconcilesProjectManifestAfterArtifactWasAlreadyInstalled(t *testi
 	root := t.TempDir()
 	projectRoot := filepath.Join(root, "project")
 	storeRoot := filepath.Join(root, "store")
+	agentHome := filepath.Join(root, "agent-home")
 	require.NoError(t, os.MkdirAll(projectRoot, 0o700))
+	require.NoError(t, os.MkdirAll(agentHome, 0o700))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "agent-a"), 0o700))
 	require.NoError(t, os.MkdirAll(filepath.Join(root, "agent-b"), 0o700))
 	entry := testEntry(t, storeRoot)
@@ -166,6 +193,80 @@ func TestRetryReconcilesProjectManifestAfterArtifactWasAlreadyInstalled(t *testi
 	manifest, err := project.LoadManifest(projectRoot)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{"agent-a", "agent-b"}, manifest.Skills[entry.Receipt.SkillID].Agents)
+}
+
+func TestCreateRollsBackTargetWhenWorkspacePersistenceFails(t *testing.T) {
+	root := t.TempDir()
+	projectRoot := filepath.Join(root, "project")
+	storeRoot := filepath.Join(root, "store")
+	agentHome := filepath.Join(root, "agent-home")
+	require.NoError(t, os.MkdirAll(projectRoot, 0o700))
+	require.NoError(t, os.MkdirAll(agentHome, 0o700))
+	catalog := agent.NewCatalog(
+		agent.Paths{Home: root, ConfigHome: filepath.Join(root, "config"), CWD: root},
+		agent.WithDefinition(agent.Definition{
+			ID: "test-agent", Display: "Test Agent", UserDir: agentHome, ProjectDir: ".agent/skills",
+		}),
+	)
+	entry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v1", "demo")
+	request := Request{
+		Source: entry.Receipt.SkillID, RequestedRef: "v1", Name: "demo",
+		Targets: []TargetRequest{{Scope: install.ScopeProject, ProjectRoot: projectRoot, Agent: "test-agent", Mode: install.ModeCopy}},
+	}
+	preflight, err := Build(catalog, entry, storeRoot, request)
+	require.NoError(t, err)
+	require.Equal(t, ActionCreate, preflight.Targets[0].Action)
+	// The plan was reviewed while no Manifest existed. Occupying its exact path
+	// after review forces persistence to fail after target materialization.
+	require.NoError(t, os.Mkdir(filepath.Join(projectRoot, "skillsgo.yaml"), 0o700))
+	execution, err := Execute(entry, storeRoot, request, preflight)
+	require.NoError(t, err)
+	require.Equal(t, OutcomeFailed, execution.Results[0].Outcome)
+	require.Equal(t, "workspace-update-failed", execution.Results[0].ErrorCode)
+	require.NoFileExists(t, preflight.Targets[0].Target.Path)
+}
+
+func TestReplaceRestoresPreviousTargetWhenWorkspacePersistenceFails(t *testing.T) {
+	root := t.TempDir()
+	projectRoot := filepath.Join(root, "project")
+	storeRoot := filepath.Join(root, "store")
+	agentHome := filepath.Join(root, "agent-home")
+	require.NoError(t, os.MkdirAll(projectRoot, 0o700))
+	require.NoError(t, os.MkdirAll(agentHome, 0o700))
+	catalog := agent.NewCatalog(
+		agent.Paths{Home: root, ConfigHome: filepath.Join(root, "config"), CWD: root},
+		agent.WithDefinition(agent.Definition{
+			ID: "test-agent", Display: "Test Agent", UserDir: agentHome, ProjectDir: ".agent/skills",
+		}),
+	)
+	oldEntry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v1", "old")
+	newEntry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v2", "new")
+	request := Request{
+		Source: oldEntry.Receipt.SkillID, RequestedRef: "main", Name: "demo",
+		Targets: []TargetRequest{{Scope: install.ScopeProject, ProjectRoot: projectRoot, Agent: "test-agent", Mode: install.ModeCopy}},
+	}
+	initial, err := Build(catalog, oldEntry, storeRoot, request)
+	require.NoError(t, err)
+	_, err = Execute(oldEntry, storeRoot, request, initial)
+	require.NoError(t, err)
+	targetPath := initial.Targets[0].Target.Path
+	requireFileContains(t, filepath.Join(targetPath, "SKILL.md"), "old")
+
+	reviewed, err := Build(catalog, newEntry, storeRoot, request)
+	require.NoError(t, err)
+	require.Equal(t, ActionConflict, reviewed.Targets[0].Action)
+	authorizeReplacement(&request.Targets[0], reviewed.Targets[0])
+	replacement, err := Build(catalog, newEntry, storeRoot, request)
+	require.NoError(t, err)
+	require.Equal(t, ActionReplace, replacement.Targets[0].Action)
+	require.NoError(t, os.Remove(filepath.Join(projectRoot, "skillsgo.yaml")))
+	require.NoError(t, os.Mkdir(filepath.Join(projectRoot, "skillsgo.yaml"), 0o700))
+	execution, err := Execute(newEntry, storeRoot, request, replacement)
+	require.NoError(t, err)
+	require.Equal(t, OutcomeFailed, execution.Results[0].Outcome)
+	require.Equal(t, "workspace-update-failed", execution.Results[0].ErrorCode)
+	requireFileContains(t, filepath.Join(targetPath, "SKILL.md"), "old")
+	require.NoFileExists(t, targetPath+".skillsgo-backup")
 }
 
 func TestExecuteRecordsEveryAgentWhenTargetsShareOnePhysicalCopy(t *testing.T) {

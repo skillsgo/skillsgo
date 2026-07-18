@@ -1,0 +1,132 @@
+/*
+ * [INPUT]: Depends on the source coordinate parser, the public Hub Repository Info client, Cobra output selection, and terminal writers.
+ * [OUTPUT]: Provides the read-only `skillsgo info <source>` command with direct Repository or Skill Info JSON.
+ * [POS]: Serves as the explicit-source discovery Adapter used by terminal users and the App without mutating local CLI state.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+package command
+
+import (
+	"context"
+	"encoding/json"
+	"fmt"
+	"strings"
+	"time"
+
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
+	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
+	"github.com/skillsgo/skillsgo/cli/internal/source"
+	"github.com/spf13/cobra"
+)
+
+type skillInfoView struct {
+	hub.Info
+	ImageURL       *string  `json:"ImageURL,omitempty"`
+	Installs       int64    `json:"Installs"`
+	GitHubStars    int64    `json:"GitHubStars"`
+	TrustLevel     string   `json:"TrustLevel"`
+	RiskAssessment hub.Risk `json:"RiskAssessment"`
+}
+
+type repositoryInfoView struct {
+	SchemaVersion int             `json:"SchemaVersion"`
+	Kind          string          `json:"Kind"`
+	ID            string          `json:"ID"`
+	Version       string          `json:"Version"`
+	Time          time.Time       `json:"Time"`
+	Ref           string          `json:"Ref"`
+	CommitSHA     string          `json:"CommitSHA"`
+	Skills        []skillInfoView `json:"Skills"`
+}
+
+func productSkillInfo(ctx context.Context, client *hub.Client, info hub.Info) (skillInfoView, error) {
+	metadata, err := client.SkillProduct(ctx, info.ID)
+	if err != nil {
+		return skillInfoView{}, err
+	}
+	risk := metadata.RiskAssessment.Level
+	if risk == "" {
+		risk = info.Risk
+	}
+	return skillInfoView{
+		Info: info, ImageURL: metadata.ImageURL, Installs: metadata.Installs,
+		GitHubStars: metadata.GitHubStars, TrustLevel: metadata.TrustLevel, RiskAssessment: risk,
+	}, nil
+}
+
+func newInfoCommand() *cobra.Command {
+	var hubURL, output string
+	cmd := &cobra.Command{
+		Use:   "info <source>",
+		Short: appi18n.T("info.short"),
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if output != "human" && output != "json" {
+				return fmt.Errorf("%s", appi18n.T("info.error.output"))
+			}
+			reference, err := source.Parse(args[0])
+			if err != nil {
+				return err
+			}
+			if source.IsLocalSkillID(reference.SkillID) {
+				return fmt.Errorf("%s", appi18n.T("info.error.public_source"))
+			}
+			repositoryID, _, nested := strings.Cut(reference.SkillID, "/-/")
+			client, err := hub.New(hubURL, nil)
+			if err != nil {
+				return err
+			}
+			if nested {
+				info, resolveErr := client.Resolve(cmd.Context(), reference.SkillID, reference.Version)
+				if resolveErr != nil {
+					return resolveErr
+				}
+				view, productErr := productSkillInfo(cmd.Context(), client, info)
+				if productErr != nil {
+					return productErr
+				}
+				if output == "json" {
+					encoder := json.NewEncoder(cmd.OutOrStdout())
+					encoder.SetIndent("", "  ")
+					return encoder.Encode(view)
+				}
+				_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s@%s\n%s\n", info.ID, info.Version, info.Description)
+				return err
+			}
+			resource, err := client.Repository(cmd.Context(), repositoryID, reference.Version)
+			if err != nil {
+				return err
+			}
+			if output == "json" {
+				view := repositoryInfoView{
+					SchemaVersion: resource.Info.SchemaVersion, Kind: resource.Info.Kind, ID: resource.Info.ID,
+					Version: resource.Info.Version, Time: resource.Info.Time, Ref: resource.Info.Ref,
+					CommitSHA: resource.Info.CommitSHA, Skills: make([]skillInfoView, 0, len(resource.Members)),
+				}
+				for _, member := range resource.Members {
+					skillView, productErr := productSkillInfo(cmd.Context(), client, member.Info)
+					if productErr != nil {
+						return productErr
+					}
+					view.Skills = append(view.Skills, skillView)
+				}
+				encoder := json.NewEncoder(cmd.OutOrStdout())
+				encoder.SetIndent("", "  ")
+				return encoder.Encode(view)
+			}
+			if _, err = fmt.Fprintf(cmd.OutOrStdout(), "%s@%s (%s)\n", resource.Info.ID, resource.Info.Version, resource.Info.CommitSHA); err != nil {
+				return err
+			}
+			for _, member := range resource.Members {
+				if _, err = fmt.Fprintf(cmd.OutOrStdout(), "- %s\t%s\n", member.Info.ID, member.Info.Name); err != nil {
+					return err
+				}
+			}
+			return nil
+		},
+	}
+	flags := cmd.Flags()
+	flags.StringVar(&output, "output", "human", appi18n.T("flag.output"))
+	flags.StringVar(&hubURL, "hub", defaultHubURL(), appi18n.T("flag.hub"))
+	return cmd
+}

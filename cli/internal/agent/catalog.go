@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on operating-system home/config paths, Agent-specific environment overrides, and the official supported Agent table.
- * [OUTPUT]: Provides canonical Agent definitions, resolved user targets, complete catalog enumeration, and test-only catalog extension.
+ * [OUTPUT]: Provides canonical Agent definitions, resolved managed/discovery roots, complete catalog enumeration, and test-only catalog extension.
  * [POS]: Serves as the source of truth for every Agent Adapter supported by the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -19,6 +19,22 @@ type Definition struct {
 	UserDir               string `json:"userDir,omitempty"`
 	ShowInUniversalList   bool   `json:"showInUniversalList"`
 	ShowInUniversalPrompt bool   `json:"showInUniversalPrompt"`
+}
+
+type DiscoveryVerification string
+
+const (
+	DiscoveryVerified   DiscoveryVerification = "verified"
+	DiscoveryUnverified DiscoveryVerification = "unverified"
+)
+
+// SkillRoots separates the one directory SkillsGo manages from every directory
+// through which the Agent may discover Skills. DiscoveryRoots is read-only
+// catalog knowledge and does not authorize writes outside ManagedRoot.
+type SkillRoots struct {
+	ManagedRoot    string                `json:"managedRoot"`
+	DiscoveryRoots []string              `json:"discoveryRoots"`
+	Verification   DiscoveryVerification `json:"verification"`
 }
 
 type Paths struct {
@@ -111,6 +127,102 @@ func envHome(key, fallback string) string {
 }
 
 func (c *Catalog) Get(id string) (Definition, bool) { value, ok := c.definitions[id]; return value, ok }
+
+// Home returns the operating-system user root used to resolve shared user-level
+// Skill storage. Agent-specific overrides do not change this shared root.
+func (c *Catalog) Home() string { return c.paths.Home }
+
+// SkillRoots resolves an Agent's managed root and known discovery roots for a
+// scope. Installation code continues to use the managed root only.
+func (c *Catalog) SkillRoots(id string, scope Scope, projectRoot string) (SkillRoots, bool) {
+	definition, ok := c.Get(id)
+	if !ok {
+		return SkillRoots{}, false
+	}
+
+	managedRoot := definition.UserDir
+	if scope == ScopeProject {
+		if definition.ProjectDir == "" || projectRoot == "" {
+			return SkillRoots{}, false
+		}
+		managedRoot = filepath.Join(projectRoot, filepath.FromSlash(definition.ProjectDir))
+	}
+	if managedRoot == "" {
+		return SkillRoots{}, false
+	}
+
+	roots := []string{filepath.Clean(managedRoot)}
+	for _, root := range additionalDiscoveryRoots(id, scope, c.paths, projectRoot) {
+		roots = appendPathIfMissing(roots, root)
+	}
+	return SkillRoots{
+		ManagedRoot: filepath.Clean(managedRoot), DiscoveryRoots: roots,
+		Verification: discoveryVerification(id, scope),
+	}, true
+}
+
+func discoveryVerification(id string, scope Scope) DiscoveryVerification {
+	switch id {
+	case "codex", "claude-code", "cursor", "opencode", "openclaw":
+		return DiscoveryVerified
+	case "hermes-agent":
+		if scope == ScopeUser {
+			return DiscoveryVerified
+		}
+	}
+	return DiscoveryUnverified
+}
+
+func additionalDiscoveryRoots(id string, scope Scope, paths Paths, projectRoot string) []string {
+	if scope == ScopeProject {
+		switch id {
+		case "cursor":
+			return projectDiscoveryRoots(projectRoot, ".cursor/skills", ".claude/skills", ".codex/skills")
+		case "opencode":
+			return projectDiscoveryRoots(projectRoot, ".opencode/skills", ".claude/skills")
+		case "openclaw":
+			return projectDiscoveryRoots(projectRoot, ".agents/skills")
+		default:
+			return nil
+		}
+	}
+
+	shared := filepath.Join(paths.Home, ".agents", "skills")
+	switch id {
+	case "codex":
+		return []string{shared, "/etc/codex/skills"}
+	case "cursor":
+		return []string{
+			shared,
+			filepath.Join(paths.Home, ".claude", "skills"),
+			filepath.Join(envHome("CODEX_HOME", filepath.Join(paths.Home, ".codex")), "skills"),
+		}
+	case "opencode":
+		return []string{shared, filepath.Join(paths.Home, ".claude", "skills")}
+	case "openclaw":
+		return []string{shared}
+	default:
+		return nil
+	}
+}
+
+func projectDiscoveryRoots(projectRoot string, relativeRoots ...string) []string {
+	roots := make([]string, 0, len(relativeRoots))
+	for _, root := range relativeRoots {
+		roots = append(roots, filepath.Join(projectRoot, filepath.FromSlash(root)))
+	}
+	return roots
+}
+
+func appendPathIfMissing(paths []string, candidate string) []string {
+	candidate = filepath.Clean(candidate)
+	for _, path := range paths {
+		if filepath.Clean(path) == candidate {
+			return paths
+		}
+	}
+	return append(paths, candidate)
+}
 
 func (c *Catalog) All() []Definition {
 	result := make([]Definition, 0, len(c.definitions))

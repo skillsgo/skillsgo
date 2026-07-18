@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on validated Skill IDs, enriched immutable Hub Info or Local Skill metadata, ZIP archives, and filesystem containment rules.
- * [OUTPUT]: Provides confined immutable Store put/get operations, safe extraction, immutable-content checks, Info-named provenance-aware receipts, and refreshable assessment metadata.
+ * [OUTPUT]: Provides concurrency-safe confined immutable Store put/get operations, safe extraction, immutable-content checks, Info-named provenance-aware receipts, and refreshable assessment metadata.
  * [POS]: Serves as the local Content-addressed Store boundary beneath installation and inventory flows.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -34,7 +34,9 @@ type Receipt struct {
 	SHA256        string     `yaml:"sha256"`
 	ContentDigest string     `yaml:"contentDigest"`
 	Risk          hub.Risk   `yaml:"risk"`
-	Origin        hub.Origin `yaml:"origin"`
+	Ref           string     `yaml:"ref,omitempty"`
+	CommitSHA     string     `yaml:"commitSHA,omitempty"`
+	TreeSHA       string     `yaml:"treeSHA,omitempty"`
 }
 
 type Provenance string
@@ -127,7 +129,8 @@ func (s Store) Put(artifact *hub.Artifact) (*Entry, error) {
 	receipt := Receipt{
 		SkillID: artifact.SkillID, Version: artifact.Info.Version, Name: name,
 		Provenance: ProvenanceHub, ContentDigest: artifact.Info.ContentDigest,
-		Risk: artifact.Info.Risk, Origin: artifact.Info.Origin,
+		Risk: artifact.Info.Risk, Ref: artifact.Info.Ref,
+		CommitSHA: artifact.Info.CommitSHA, TreeSHA: artifact.Info.TreeSHA,
 	}
 	hash := sha256.Sum256(artifact.ZIP)
 	receipt.SHA256 = hex.EncodeToString(hash[:])
@@ -135,6 +138,16 @@ func (s Store) Put(artifact *hub.Artifact) (*Entry, error) {
 	if err != nil {
 		return nil, err
 	}
+	if err := os.MkdirAll(filepath.Dir(root), 0o700); err != nil {
+		return nil, err
+	}
+	unlock, err := acquireEntryLock(root)
+	if err != nil {
+		return nil, err
+	}
+	defer unlock()
+	// Re-check after acquiring the version lock: another process may have
+	// completed the same immutable entry while this writer was waiting.
 	artifactRoot := filepath.Join(root, "artifact")
 	if existing, err := readReceipt(filepath.Join(root, "receipt.yaml")); err == nil && existing.SHA256 == receipt.SHA256 {
 		return s.RefreshAssessment(artifact.SkillID, artifact.Info.Version, artifact.Info)
@@ -145,9 +158,6 @@ func (s Store) Put(artifact *hub.Artifact) (*Entry, error) {
 		return nil, err
 	}
 
-	if err := os.MkdirAll(filepath.Dir(root), 0o700); err != nil {
-		return nil, err
-	}
 	temp, err := os.MkdirTemp(filepath.Dir(root), ".skillsgo-store-")
 	if err != nil {
 		return nil, err
@@ -195,8 +205,8 @@ func (s Store) RefreshAssessment(skillID, version string, info hub.Info) (*Entry
 			skillID, version, entry.Receipt.ContentDigest, info.ContentDigest,
 		)
 	}
-	if entry.Receipt.Origin != info.Origin {
-		return nil, fmt.Errorf("immutable Origin changed for %s@%s", skillID, version)
+	if entry.Receipt.Ref != info.Ref || entry.Receipt.CommitSHA != info.CommitSHA || entry.Receipt.TreeSHA != info.TreeSHA {
+		return nil, fmt.Errorf("immutable source identity changed for %s@%s", skillID, version)
 	}
 	updated := entry.Receipt
 	updated.Risk = info.Risk
