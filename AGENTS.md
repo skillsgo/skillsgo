@@ -38,6 +38,7 @@ skillsgo/
 ## Toolchain
 
 - Root validation entry: `make test`.
+- Unified macOS development entry: `make dev`; it starts the local Hub with debug logging, builds the development CLI, and runs the Flutter App on macOS with save-triggered Hot Reload while preserving Flutter's manual terminal controls.
 - App: Flutter; use `flutter analyze` and `flutter test` from `app/`.
 - CLI: Go; use `gofmt` and `go test ./...` from `cli/`.
 - Hub: Go; use `gofmt` and `go test ./...` from `hub/`.

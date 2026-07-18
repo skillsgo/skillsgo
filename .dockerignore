@@ -1,0 +1,18 @@
+# [INPUT]: Depends on the root-context e2e image build and the CLI, Hub, and e2e source workspaces.
+# [OUTPUT]: Restricts root Docker build contexts to sources required by cross-product end-to-end tests.
+# [POS]: Serves as the repository-level Docker context boundary, excluding local binaries, App assets, docs, and VCS state.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+*
+!cli/
+!cli/**
+!hub/
+!hub/**
+!e2e/
+!e2e/**
+
+cli/bin/
+hub/bin/
+hub/hub
+hub/docs/
+hub/charts/
+hub/dist/
