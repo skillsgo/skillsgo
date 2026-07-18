@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a configured Hub origin, canonical Skill IDs, Hub-owned selector resolution, exact content-match responses, and enriched immutable Info/ZIP protocol responses.
- * [OUTPUT]: Provides delegated selector resolution, validated content-identity matching, immutable artifact fetch with optional byte progress, normalized Skill metadata, Hub-bound Risk and Content Digest metadata, and typed HTTP failures.
+ * [OUTPUT]: Provides delegated selector resolution, validated content-identity matching, immutable artifact fetch with optional byte progress, normalized Skill metadata, Hub-bound Risk and Content Digest metadata, and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -131,11 +131,21 @@ type Client struct {
 type HTTPError struct {
 	StatusCode int
 	Body       string
+	RequestID  string
 }
 
 func (e *HTTPError) Error() string {
 	return fmt.Sprintf("Hub 返回 HTTP %d: %s", e.StatusCode, e.Body)
 }
+
+type ProtocolError struct {
+	Err          error
+	Incompatible bool
+}
+
+func (e *ProtocolError) Error() string { return e.Err.Error() }
+
+func (e *ProtocolError) Unwrap() error { return e.Err }
 
 func New(baseURL string, client *http.Client) (*Client, error) {
 	parsed, err := url.Parse(strings.TrimRight(baseURL, "/"))
@@ -353,7 +363,10 @@ func validateAssessedInfo(skillID, requestedVersion string, info Info) error {
 	if info.Version == "" || !info.Risk.Valid() || !strings.HasPrefix(info.ContentDigest, "sha256:") || info.ArchiveSize < 0 {
 		return fmt.Errorf("Hub returned incomplete assessed Info for %s", skillID)
 	}
-	if info.SchemaVersion != 1 || info.Kind != "Skill" || info.ID != skillID || info.Name == "" || info.Description == "" {
+	if info.SchemaVersion != 1 {
+		return &ProtocolError{Err: fmt.Errorf("Hub returned unsupported Info schema %d for %s", info.SchemaVersion, skillID), Incompatible: true}
+	}
+	if info.Kind != "Skill" || info.ID != skillID || info.Name == "" || info.Description == "" {
 		return fmt.Errorf("Hub returned incomplete assessed Info for %s", skillID)
 	}
 	if err := source.ValidateVersion(info.Version); err != nil {
@@ -405,7 +418,7 @@ func (c *Client) getJSON(ctx context.Context, endpoint string, target any) error
 		return err
 	}
 	if err := json.Unmarshal(body, target); err != nil {
-		return fmt.Errorf("解析 Hub 响应: %w", err)
+		return &ProtocolError{Err: fmt.Errorf("解析 Hub 响应: %w", err)}
 	}
 	return nil
 }
@@ -426,7 +439,11 @@ func (c *Client) getWithProgress(ctx context.Context, endpoint string, progress 
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
-		return nil, &HTTPError{StatusCode: resp.StatusCode, Body: strings.TrimSpace(string(body))}
+		return nil, &HTTPError{
+			StatusCode: resp.StatusCode,
+			Body:       strings.TrimSpace(string(body)),
+			RequestID:  resp.Header.Get("Athens-Request-ID"),
+		}
 	}
 	reader := io.Reader(resp.Body)
 	if progress != nil {

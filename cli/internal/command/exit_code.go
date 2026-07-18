@@ -38,9 +38,9 @@ func ExitCode(err error) int {
 	var responseError *hub.HTTPError
 	if errors.As(err, &responseError) {
 		switch responseError.StatusCode {
-		case http.StatusRequestTimeout, http.StatusTooManyRequests:
+		case http.StatusRequestTimeout, http.StatusTooManyRequests, http.StatusGatewayTimeout:
 			return ExitTemporary
-		case http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		case http.StatusBadGateway, http.StatusServiceUnavailable:
 			return ExitUnavailable
 		}
 	}

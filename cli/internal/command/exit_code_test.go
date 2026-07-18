@@ -23,5 +23,6 @@ func TestExitCodeClassifiesHubAvailabilityWithoutParsingMessages(t *testing.T) {
 	require.Equal(t, ExitUnavailable, ExitCode(fmt.Errorf("wrapped: %w", &url.Error{Op: "Get", URL: "https://hub.example", Err: syscall.ECONNREFUSED})))
 	require.Equal(t, ExitUnavailable, ExitCode(&hub.HTTPError{StatusCode: 503}))
 	require.Equal(t, ExitTemporary, ExitCode(&hub.HTTPError{StatusCode: 429}))
+	require.Equal(t, ExitTemporary, ExitCode(&hub.HTTPError{StatusCode: 504}))
 	require.Equal(t, ExitFailure, ExitCode(fmt.Errorf("invalid target")))
 }

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery metadata including Repository source summaries and Hub image URLs, auditable artifacts, unified Hub/Local/External Library entries, managed targets, derived Agent visibility, explicit Installation/Update/Target Management/External Adoption flows, Local export, project references, Agent inspection, CLI, Hub and typed appearance/wallpaper settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery metadata including Repository source summaries and Hub image URLs, auditable artifacts, unified Hub/Local/External Library entries, managed targets, derived Agent visibility, explicit Installation/Update/Target Management/External Adoption flows, Local export, project references, Agent inspection, CLI machine failures, Hub and typed appearance/wallpaper settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -1043,11 +1043,21 @@ class SkillsException implements Exception {
     this.message, {
     this.kind = SkillsFailureKind.server,
     this.isOffline = false,
+    this.code = '',
+    this.retryable = false,
+    this.details = const {},
+    this.requestId = '',
+    this.diagnostic = '',
   });
 
   final String message;
   final SkillsFailureKind kind;
   final bool isOffline;
+  final String code;
+  final bool retryable;
+  final Map<String, Object?> details;
+  final String requestId;
+  final String diagnostic;
 
   @override
   String toString() => message;

@@ -3,7 +3,9 @@
 
 ## Members
 
-- `root.go`: constructs the public Cobra command graph, exposes the `Execute` behavior seam, adapts unified inventory into `list`, and reports legacy Human operations through terminal UI documents/events.
+- `root.go`: constructs the public Cobra command graph, exposes the `Execute` behavior seam, emits recognized machine-mode failures, adapts unified inventory into `list`, and reports legacy Human operations through terminal UI documents/events.
+- `machine_failure.go`: translates wrapped command failures into the minimal versioned JSON or NDJSON machine document without making stderr a parsing contract.
+- `machine_failure_test.go`: specifies early JSON and NDJSON failure documents through the public `Execute` seam.
 - `terminal_ui.go`: resolves inherited Human UI/color policy into the shared terminal presentation Adapter.
 - `args.go`: normalizes compatible multi-value flag syntax before Cobra parses arguments.
 - `diagnostics.go`: exposes versioned, read-only local Store health for App integration and adaptive terminal diagnostics.

@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on Hub HTTP, the local filesystem, the platform directory picker, SharedPreferences-backed product preferences, and executable process boundaries.
- * [OUTPUT]: Provides production Hub and typed appearance/wallpaper settings, CLI-backed explicit-source discovery with empty-search GitHub shorthand fallback, discovery/detail metadata parsing including installs, repository Stars, source update time, ZIP size and image URLs, managed/external inventory and derived visibility parsing, strict Installation/Update/Target Management machine contracts including External removal, dormant post-MVP External Adoption adapters, Local export, local file inspection, project persistence, Agent inspection, stable CLI availability mapping, typed failures, diagnostics, CLI verification, and Skill operations.
- * [POS]: Serves as the App infrastructure adapter between domain journeys, the Hub, and the SkillsGo CLI.
+ * [INPUT]: Depends on the bundled CLI process boundary plus legacy Hub HTTP reads pending migration, the local filesystem, the platform directory picker, and SharedPreferences-backed product preferences.
+ * [OUTPUT]: Provides typed CLI-backed business operations including versioned machine-failure parsing, plus temporary legacy Hub discovery/detail reads, local inspection, project persistence, diagnostics, and appearance/wallpaper settings.
+ * [POS]: Serves as the App infrastructure adapter for the CLI-mediated business boundary while temporarily isolating legacy direct Hub reads scheduled for removal.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
@@ -3121,6 +3121,8 @@ class RealSkillsGateway implements SkillsGateway {
   }
 
   SkillsException _commandFailure(CommandResult result) {
+    final machineFailure = _parseMachineFailure(result.output.stdout);
+    if (machineFailure != null) return machineFailure;
     final stderr = result.output.stderr.trim();
     final message = stderr.isEmpty
         ? 'SkillsGo CLI exited with code ${result.output.exitCode}.'
@@ -3134,5 +3136,66 @@ class RealSkillsGateway implements SkillsGateway {
       75 => SkillsException(message, kind: SkillsFailureKind.timeout),
       _ => SkillsException(message),
     };
+  }
+
+  SkillsException? _parseMachineFailure(String stdout) {
+    if (stdout.trim().isEmpty) return null;
+    try {
+      Object? decoded;
+      try {
+        decoded = jsonDecode(stdout);
+      } on FormatException {
+        final lines = const LineSplitter()
+            .convert(stdout)
+            .where((line) => line.trim().isNotEmpty)
+            .toList(growable: false);
+        if (lines.isEmpty) rethrow;
+        decoded = jsonDecode(lines.last);
+      }
+      if (decoded is! Map<String, dynamic> ||
+          decoded['schemaVersion'] != 1 ||
+          decoded['phase'] != 'error' ||
+          decoded['error'] is! Map<String, dynamic>) {
+        throw const FormatException();
+      }
+      final raw = decoded['error'] as Map<String, dynamic>;
+      if (raw['code'] is! String ||
+          (raw['code'] as String).isEmpty ||
+          raw['retryable'] is! bool ||
+          (raw['details'] != null && raw['details'] is! Map<String, dynamic>) ||
+          (raw['requestId'] != null && raw['requestId'] is! String) ||
+          (raw['diagnostic'] != null && raw['diagnostic'] is! String)) {
+        throw const FormatException();
+      }
+      final code = raw['code'] as String;
+      final kind = switch (code) {
+        'input.invalid' => SkillsFailureKind.validation,
+        'hub.unavailable' => SkillsFailureKind.offline,
+        'hub.timeout' => SkillsFailureKind.timeout,
+        'hub.rate_limited' => SkillsFailureKind.server,
+        'protocol.invalid_response' => SkillsFailureKind.invalidResponse,
+        'protocol.incompatible' ||
+        'local.data_invalid' => SkillsFailureKind.invalidLocalData,
+        _ => SkillsFailureKind.server,
+      };
+      return SkillsException(
+        code,
+        kind: kind,
+        isOffline: code == 'hub.unavailable',
+        code: code,
+        retryable: raw['retryable'] as bool,
+        details: Map<String, Object?>.unmodifiable(
+          (raw['details'] as Map<String, dynamic>?) ?? const {},
+        ),
+        requestId: raw['requestId'] as String? ?? '',
+        diagnostic: raw['diagnostic'] as String? ?? '',
+      );
+    } on FormatException {
+      return const SkillsException(
+        'protocol.incompatible',
+        kind: SkillsFailureKind.invalidLocalData,
+        code: 'protocol.incompatible',
+      );
+    }
   }
 }

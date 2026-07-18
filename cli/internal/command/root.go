@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra and the Agent, Hub, Store, project, installation, Installation Plan, Update Plan, Target Management Plan, source, i18n, and terminal UI modules.
- * [OUTPUT]: Provides command.Execute and the complete CLI graph, including explicit-source Info, adaptive Human UI policy, unified managed/External listing, stable Agent/Library contracts, Installation/Update/Target Management flows with exact External removal, and Local export, for terminal and App callers.
+ * [OUTPUT]: Provides command.Execute and the complete CLI graph, including recognized machine-mode failure documents, explicit-source Info, adaptive Human UI policy, unified managed/External listing, stable Agent/Library contracts, Installation/Update/Target Management flows with exact External removal, and Local export, for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -39,12 +39,21 @@ func defaultHubURL() string {
 
 func Execute(args []string, stdout, stderr io.Writer) error {
 	appi18n.Configure(languageArgument(args))
-	root, err := newRootCommand(stdout, stderr)
+	machineStdout := &machineOutputWriter{Writer: stdout}
+	root, err := newRootCommand(machineStdout, stderr)
 	if err != nil {
 		return err
 	}
 	root.SetArgs(normalizeMultiValueFlags(args))
-	return root.Execute()
+	err = root.Execute()
+	mode := machineOutputMode(args)
+	if err == nil || mode == "" || machineStdout.HasCompletedResult(mode) {
+		return err
+	}
+	if encodeErr := writeMachineFailure(machineStdout, err); encodeErr != nil {
+		return fmt.Errorf("write machine failure: %w", encodeErr)
+	}
+	return err
 }
 
 func languageArgument(args []string) string {
