@@ -321,7 +321,7 @@ func managementStateToken(storeRoot string, item Item) (string, error) {
 	}
 	manifestState, sumState := "", ""
 	if declarationRoot != "" {
-		manifestState, err = fileStateDigest(filepath.Join(declarationRoot, "skillsgo.yaml"))
+		manifestState, err = fileStateDigest(filepath.Join(declarationRoot, "skillsgo.mod"))
 		if err != nil {
 			return "", err
 		}

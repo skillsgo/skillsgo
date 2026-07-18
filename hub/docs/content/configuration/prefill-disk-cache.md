@@ -105,7 +105,7 @@ At this point, your Athens server should have its disk-based cache filled with t
 You can quickly test this behavior by running below `curl` command, assuming your Athens server is running on `http://localhost:3000` and is already configured to use the same disk storage that you pre-filled above.
 
 ```console
-$ curl localhost:3000/github.com/my/module/@v/$VERSION.info
+$ curl localhost:3000/mod/github.com/my/module/@v/$VERSION.info
 ```
 
 When you run this command, Athens should immediately return, without contacting any other network services.

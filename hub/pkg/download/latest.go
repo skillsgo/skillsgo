@@ -15,7 +15,7 @@ import (
 )
 
 // PathLatest URL.
-const PathLatest = "/{skill:.+}/@latest"
+const PathLatest = "/mod/{skill:.+}/@latest"
 
 // LatestHandler implements GET baseURL/module/@latest.
 func LatestHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handler {

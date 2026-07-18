@@ -89,7 +89,7 @@ func (r staticRepositoryMetadataReader) Read(
 	string,
 	string,
 ) (repositoryMetadata, error) {
-	return repositoryMetadata{GitHubStars: r.stars}, r.err
+	return repositoryMetadata{Stars: r.stars}, r.err
 }
 
 type catalogArtifactStub struct {
@@ -147,8 +147,8 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.NoError(t, c.UpsertSkill(context.Background(), skill))
 
 	for _, path := range []string{
-		"/v1/skills?limit=10",
-		"/v1/search?q=engineering",
+		"/api/v1/skills?limit=10",
+		"/api/v1/search?q=engineering",
 	} {
 		recorder := httptest.NewRecorder()
 		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, path, nil))
@@ -158,7 +158,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	}
 
 	detail := httptest.NewRecorder()
-	serveFiber(t, r, detail, httptest.NewRequest(http.MethodGet, "/v1/skills/github.com/mattpocock/skills/-/skills/engineering/ask-matt", nil))
+	serveFiber(t, r, detail, httptest.NewRequest(http.MethodGet, "/api/v1/skills/github.com/mattpocock/skills/-/skills/engineering/ask-matt", nil))
 	require.Equal(t, http.StatusOK, detail.Code)
 	var detailBody skillDetailResponse
 	require.NoError(t, json.NewDecoder(detail.Body).Decode(&detailBody))
@@ -172,7 +172,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, "refs/heads/main", detailBody.SourceRef)
 	require.Equal(t, "github.com/mattpocock/skills", detailBody.Repository)
 	require.Equal(t, int64(0), detailBody.Installs)
-	require.Equal(t, int64(12800), detailBody.GitHubStars)
+	require.Equal(t, int64(12800), detailBody.Stars)
 	require.Equal(t, time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), detailBody.SourceUpdatedAt)
 	require.Positive(t, detailBody.ArchiveSize)
 	require.Contains(t, detailBody.ContentDigest, "sha256:")
@@ -183,7 +183,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Len(t, detailBody.Files, 2)
 
 	matchRecorder := httptest.NewRecorder()
-	matchURL := "/v1/matches?contentDigest=" + url.QueryEscape(detailBody.ContentDigest) + "&sourceHint=" + url.QueryEscape("mattpocock/skills")
+	matchURL := "/api/v1/matches?contentDigest=" + url.QueryEscape(detailBody.ContentDigest) + "&sourceHint=" + url.QueryEscape("mattpocock/skills")
 	serveFiber(t, r, matchRecorder, httptest.NewRequest(http.MethodGet, matchURL, nil))
 	require.Equal(t, http.StatusOK, matchRecorder.Code)
 	var matchBody contentMatchesResponse
@@ -195,7 +195,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, detailBody.ImmutableVersion, matchBody.Matches[0].ImmutableVersion)
 
 	recorder := httptest.NewRecorder()
-	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/v1/search?q=engineering", nil))
+	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/search?q=engineering", nil))
 	var response skillsResponse
 	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&response))
 	require.Equal(t, "search", response.Collection)
@@ -241,7 +241,7 @@ func TestCatalogAPIDetailReturnsStableArtifactFailures(t *testing.T) {
 			router := newFiberApp()
 			registerCatalogAPIRoutes(router, metadata, testCase.stub)
 			recorder := httptest.NewRecorder()
-			serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/v1/skills/"+skill.SkillID, nil))
+			serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/skills/"+skill.SkillID, nil))
 			require.Equal(t, testCase.status, recorder.Code)
 			var body errorResponse
 			require.NoError(t, json.NewDecoder(recorder.Body).Decode(&body))
@@ -252,7 +252,7 @@ func TestCatalogAPIDetailReturnsStableArtifactFailures(t *testing.T) {
 
 func TestCatalogAPICollectionsReturnEmptyArrays(t *testing.T) {
 	r, _ := testCatalogAPI(t)
-	for path, collection := range map[string]string{"/v1/search?q=missing": "search", "/v1/skills": "all_time"} {
+	for path, collection := range map[string]string{"/api/v1/search?q=missing": "search", "/api/v1/skills": "all_time"} {
 		recorder := httptest.NewRecorder()
 		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, path, nil))
 
@@ -271,7 +271,7 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 	}
 
 	first := httptest.NewRecorder()
-	serveFiber(t, r, first, httptest.NewRequest(http.MethodGet, "/v1/search?q=capability&limit=2", nil))
+	serveFiber(t, r, first, httptest.NewRequest(http.MethodGet, "/api/v1/search?q=capability&limit=2", nil))
 	require.Equal(t, http.StatusOK, first.Code)
 	var firstPage skillsResponse
 	require.NoError(t, json.NewDecoder(first.Body).Decode(&firstPage))
@@ -280,7 +280,7 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 	require.Equal(t, 2, *firstPage.Page.NextOffset)
 
 	second := httptest.NewRecorder()
-	serveFiber(t, r, second, httptest.NewRequest(http.MethodGet, "/v1/search?q=capability&limit=2&offset=2", nil))
+	serveFiber(t, r, second, httptest.NewRequest(http.MethodGet, "/api/v1/search?q=capability&limit=2&offset=2", nil))
 	var secondPage skillsResponse
 	require.NoError(t, json.NewDecoder(second.Body).Decode(&secondPage))
 	require.Len(t, secondPage.Skills, 1)
@@ -291,13 +291,13 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 func TestCatalogAPIValidationAndNotFound(t *testing.T) {
 	r, _ := testCatalogAPI(t)
 	for path, status := range map[string]int{
-		"/v1/search":                            http.StatusBadRequest,
-		"/v1/search?limit=101":                  http.StatusBadRequest,
-		"/v1/search?q=valid&offset=invalid":     http.StatusBadRequest,
-		"/v1/skills?offset=-1":                  http.StatusBadRequest,
-		"/v1/skills?sort=popular":               http.StatusBadRequest,
-		"/v1/matches?contentDigest=sha256:nope": http.StatusBadRequest,
-		"/v1/skills/github.com/unknown/repo":    http.StatusNotFound,
+		"/api/v1/search":                            http.StatusBadRequest,
+		"/api/v1/search?limit=101":                  http.StatusBadRequest,
+		"/api/v1/search?q=valid&offset=invalid":     http.StatusBadRequest,
+		"/api/v1/skills?offset=-1":                  http.StatusBadRequest,
+		"/api/v1/skills?sort=popular":               http.StatusBadRequest,
+		"/api/v1/matches?contentDigest=sha256:nope": http.StatusBadRequest,
+		"/api/v1/skills/github.com/unknown/repo":    http.StatusNotFound,
 	} {
 		recorder := httptest.NewRecorder()
 		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, path, nil))
@@ -308,6 +308,15 @@ func TestCatalogAPIValidationAndNotFound(t *testing.T) {
 	}
 }
 
+func TestCatalogAPIIsNamespacedUnderAPI(t *testing.T) {
+	r, _ := testCatalogAPI(t)
+	for _, path := range []string{"/v1/search?q=skill", "/v1/skills"} {
+		recorder := httptest.NewRecorder()
+		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, path, nil))
+		require.Equal(t, http.StatusNotFound, recorder.Code, path)
+	}
+}
+
 func TestInstallEventAPIIsIdempotent(t *testing.T) {
 	r, c := testCatalogAPI(t)
 	skill := &catalog.Skill{SkillID: "github.com/acme/skills", Name: "acme", LatestVersion: "main"}
@@ -315,12 +324,12 @@ func TestInstallEventAPIIsIdempotent(t *testing.T) {
 	body := `{"eventId":"019f5e99-e1dd-77e3-b259-61e09396d599","skillId":"github.com/acme/skills","version":"main","agents":["codex","claude-code"],"scope":"project","cliVersion":"0.1.0","occurredAt":"` + time.Now().UTC().Format(time.RFC3339Nano) + `"}`
 	for index, accepted := range []string{"true", "false"} {
 		recorder := httptest.NewRecorder()
-		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodPost, "/v1/events/install", strings.NewReader(body)))
+		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodPost, "/api/v1/events/install", strings.NewReader(body)))
 		require.Equal(t, http.StatusAccepted, recorder.Code, index)
 		require.Contains(t, recorder.Body.String(), `"accepted":`+accepted)
 	}
 	recorder := httptest.NewRecorder()
-	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/v1/skills?sort=all_time", nil))
+	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/skills?sort=all_time", nil))
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.Contains(t, recorder.Body.String(), `"kind":"all_time_installs","value":1`)
 }

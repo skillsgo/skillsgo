@@ -173,7 +173,7 @@ The user can Retry Failed Targets, View in Library, or remain on the current det
 The Library merges facts from:
 
 - the Content-addressed Store and Installation Receipts;
-- `skillsgo.yaml` and `skillsgo.yaml` in Added Projects;
+- `skillsgo.mod` and `skillsgo.sum` in Added Projects;
 - user-level Skill directories for Installed Agents;
 - Agent Skill directories inside Added Projects;
 - Hub source, version, trust, and risk metadata.

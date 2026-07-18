@@ -6,8 +6,8 @@
 - `app_shell.dart`: composes the desktop shell, primary destination navigation, App-scoped appearance state, CLI recovery banner, and shared UI helpers consumed by the split feature parts.
 - `app_providers.dart`: defines the application-scoped Riverpod dependency boundary for `SkillsGateway`.
 - `appearance_controller.dart`: owns immutable App appearance settings and their optimistic persistence through Riverpod.
-- `discover_controller.dart`: owns immutable, race-safe Discover route caches, search, loading, errors, and pagination through Riverpod.
-- `discover_screen.dart`: renders the Discover destination, search and collection routes, detail transitions, and installation entry points as an `app_shell.dart` library part.
+- `discover_controller.dart`: owns immutable, race-safe Discover route and Repository-summary caches, search, loading, errors, and pagination through Riverpod.
+- `discover_screen.dart`: renders the Discover destination with leaderboard-style search, collection tabs, metadata-rich Repository source headers, route-local results, detail transitions, and installation entry points as an `app_shell.dart` library part.
 - `install_operation_controller.dart`: owns immutable per-Skill direct installation execution and error state through a Riverpod family.
 - `installation_flows.dart`: renders remote Skill detail plus direct confirmed Installation, Update, Target Management, risk, progress, result, and retry flows as an `app_shell.dart` library part.
 - `library_controller.dart`: owns immutable Library content plus initial-load, stale-refresh, and load-error transitions through Riverpod.

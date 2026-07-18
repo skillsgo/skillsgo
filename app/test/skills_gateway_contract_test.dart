@@ -45,13 +45,13 @@ void main() {
       'https://self-hosted.example/base',
     );
     expect(status.isReady, isTrue);
-    expect(requests.single.path, '/base/v1/search');
+    expect(requests.single.path, '/base/api/v1/search');
 
     await gateway.saveHubOrigin('https://self-hosted.example/base/');
     expect(await gateway.loadHubOrigin(), 'https://self-hosted.example/base');
     await gateway.discover(DiscoveryCollection.search, query: 'flutter');
     expect(requests.last.host, 'self-hosted.example');
-    expect(requests.last.path, '/base/v1/search');
+    expect(requests.last.path, '/base/api/v1/search');
     final restored = RealSkillsGateway(
       httpClient: client,
       hubBaseUrl: 'https://official.example',
@@ -93,7 +93,9 @@ void main() {
       await original.create();
       await relocated.create();
       await unselected.create();
-      await File('${original.path}/skillsgo.yaml').writeAsString('keep: true');
+      await File(
+        '${original.path}/skillsgo.mod',
+      ).writeAsString('require (\n)\n');
       await File('${original.path}/skillsgo.sum').writeAsString('keep');
       await Directory(
         '${original.path}/.agents/skills',
@@ -134,8 +136,8 @@ void main() {
       await restarted.removeProject(added.id);
       expect(await restarted.loadAddedProjects(), isEmpty);
       expect(
-        await File('${original.path}/skillsgo.yaml').readAsString(),
-        'keep: true',
+        await File('${original.path}/skillsgo.mod').readAsString(),
+        'require (\n)\n',
       );
       expect(
         await File('${original.path}/skillsgo.sum').readAsString(),
@@ -613,7 +615,7 @@ void main() {
       );
     final gateway = RealSkillsGateway(
       httpClient: MockClient((request) async {
-        expect(request.url.path, '/v1/search');
+        expect(request.url.path, '/api/v1/search');
         expect(request.url.queryParameters['offset'], '0');
         return http.Response(
           jsonEncode({
@@ -673,7 +675,7 @@ void main() {
         const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/acme/skills","Version":"v1.2.3","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/acme/skills/-/skills/demo","Version":"v1.2.3","Name":"demo","Description":"Demo Skill","ImageURL":"https://github.com/acme.png?size=72","Installs":42,"GitHubStars":7,"TrustLevel":"community_verified","RiskAssessment":"low","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"tree","ContentDigest":"sha256:digest","ArchiveSize":12}]}',
+              '{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/acme/skills","Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Description":"Skills for product teams.","License":"MIT","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/acme/skills/-/skills/demo","Version":"v1.2.3","Name":"demo","Description":"Demo Skill","ImageURL":"https://github.com/acme.png?size=72","Installs":42,"Stars":7,"TrustLevel":"community_verified","RiskAssessment":"low","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"tree","ContentDigest":"sha256:digest","ArchiveSize":12}]}',
           stderr: '',
         ),
         const ProcessOutput(
@@ -702,6 +704,12 @@ void main() {
     expect(page.skills.single.installs, 42);
     expect(page.skills.single.trustLevel, SkillTrustLevel.communityVerified);
     expect(page.skills.single.riskAssessment, SkillRiskAssessment.low);
+    expect(page.repository?.id, 'github.com/acme/skills');
+    expect(page.repository?.description, 'Skills for product teams.');
+    expect(page.repository?.stars, 7);
+    expect(page.repository?.latestVersion, 'v1.2.3');
+    expect(page.repository?.license, 'MIT');
+    expect(page.repository?.updatedAt, DateTime.utc(2026, 7, 18, 12));
     expect(runner.calls.first.arguments, [
       'info',
       'https://github.com/acme/skills',
@@ -1174,7 +1182,7 @@ void main() {
         );
       final gateway = RealSkillsGateway(
         httpClient: MockClient((request) async {
-          expect(request.url.path, '/v1/skills/github.com/a/b/-/test');
+          expect(request.url.path, '/api/v1/skills/github.com/a/b/-/test');
           return http.Response(
             jsonEncode({
               'id': 'github.com/a/b/-/test',
@@ -1184,7 +1192,7 @@ void main() {
               'repository': 'github.com/a/b',
               'imageUrl': 'https://images.example/a.png',
               'installs': 42,
-              'githubStars': 12800,
+              'stars': 12800,
               'sourceUpdatedAt': '2026-07-15T00:00:00Z',
               'archiveSize': 24576,
               'requestedVersion': 'main',
@@ -1244,7 +1252,7 @@ void main() {
       expect(detail.imageUrl, 'https://images.example/a.png');
       expect(detail.installs, 42);
       expect(detail.repository, 'github.com/a/b');
-      expect(detail.githubStars, 12800);
+      expect(detail.stars, 12800);
       expect(detail.sourceUpdatedAt, DateTime.utc(2026, 7, 15).toLocal());
       expect(detail.archiveSize, 24576);
       expect(detail.immutableVersion, 'v0.0.0-test');

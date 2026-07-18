@@ -57,7 +57,7 @@ func TestJ10RemoveOneBinding(t *testing.T) {
 	require.ErrorIs(t, err, os.ErrNotExist)
 	require.FileExists(t, filepath.Join(canonical, "SKILL.md"))
 
-	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 	require.NoError(t, err)
 	require.Contains(t, string(manifest), "codex")
 	require.NotContains(t, string(manifest), "claude-code")

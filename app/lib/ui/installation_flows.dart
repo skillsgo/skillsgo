@@ -743,8 +743,8 @@ class _RemoteDetailScreenState extends ConsumerState<_RemoteDetailScreen> {
         ),
       ),
       (
-        label: context.l10n.detailGitHubStars,
-        value: _compactCount(value.githubStars),
+        label: context.l10n.detailStars,
+        value: _compactCount(value.stars),
       ),
       (
         label: context.l10n.detailUpdated,

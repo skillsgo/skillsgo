@@ -108,7 +108,7 @@ func TestBuildAndExecuteExplicitTargetsThenSkipIdenticalTargets(t *testing.T) {
 	require.Equal(t, install.ScopeUser, preflight.Targets[0].Target.Scope)
 	require.Equal(t, projectRoot, preflight.Targets[1].Target.ProjectRoot)
 	require.True(t, preflight.Targets[1].WorkspaceManifestChange)
-	require.Equal(t, filepath.Join(projectRoot, "skillsgo.yaml"), preflight.WorkspaceManifestChanges[0].Path)
+	require.Equal(t, filepath.Join(projectRoot, "skillsgo.mod"), preflight.WorkspaceManifestChanges[0].Path)
 
 	execution, err := Execute(entry, storeRoot, request, preflight)
 	require.NoError(t, err)
@@ -218,7 +218,7 @@ func TestCreateRollsBackTargetWhenWorkspacePersistenceFails(t *testing.T) {
 	require.Equal(t, ActionCreate, preflight.Targets[0].Action)
 	// The plan was reviewed while no Manifest existed. Occupying its exact path
 	// after review forces persistence to fail after target materialization.
-	require.NoError(t, os.Mkdir(filepath.Join(projectRoot, "skillsgo.yaml"), 0o700))
+	require.NoError(t, os.Mkdir(filepath.Join(projectRoot, "skillsgo.mod"), 0o700))
 	execution, err := Execute(entry, storeRoot, request, preflight)
 	require.NoError(t, err)
 	require.Equal(t, OutcomeFailed, execution.Results[0].Outcome)
@@ -259,8 +259,8 @@ func TestReplaceRestoresPreviousTargetWhenWorkspacePersistenceFails(t *testing.T
 	replacement, err := Build(catalog, newEntry, storeRoot, request)
 	require.NoError(t, err)
 	require.Equal(t, ActionReplace, replacement.Targets[0].Action)
-	require.NoError(t, os.Remove(filepath.Join(projectRoot, "skillsgo.yaml")))
-	require.NoError(t, os.Mkdir(filepath.Join(projectRoot, "skillsgo.yaml"), 0o700))
+	require.NoError(t, os.Remove(filepath.Join(projectRoot, "skillsgo.mod")))
+	require.NoError(t, os.Mkdir(filepath.Join(projectRoot, "skillsgo.mod"), 0o700))
 	execution, err := Execute(newEntry, storeRoot, request, replacement)
 	require.NoError(t, err)
 	require.Equal(t, OutcomeFailed, execution.Results[0].Outcome)

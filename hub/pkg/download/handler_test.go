@@ -30,8 +30,8 @@ func TestRedirect(t *testing.T) {
 			},
 		})
 		for _, path := range [...]string{
-			"/github.com/skillsgo/skillsgo/hub/@v/v0.4.0.info",
-			"/github.com/skillsgo/skillsgo/hub/@v/v0.4.0.zip",
+			"/mod/github.com/skillsgo/skillsgo/hub/@v/v0.4.0.info",
+			"/mod/github.com/skillsgo/skillsgo/hub/@v/v0.4.0.zip",
 		} {
 			req, _ := http.NewRequest("GET", path, nil)
 			response, err := r.Test(req)
@@ -47,6 +47,22 @@ func TestRedirect(t *testing.T) {
 				t.Fatalf("expected the handler to redirect to %q but got %q", expectedRedirect, givenRedirect)
 			}
 		}
+	}
+}
+
+func TestArtifactProtocolIsNamespacedUnderMod(t *testing.T) {
+	r := fiber.New()
+	RegisterHandlers(r, &HandlerOpts{Protocol: &mockProtocol{}, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Redirect, DownloadURL: "https://example.test"}})
+	request, err := http.NewRequest(http.MethodGet, "/github.com/skillsgo/skillsgo/@v/v1.0.0.info", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := r.Test(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != http.StatusNotFound {
+		t.Fatalf("legacy root protocol route returned %d, want 404", response.StatusCode)
 	}
 }
 

@@ -8,6 +8,10 @@ CREATE TABLE repositories (
   source_host TEXT NOT NULL,
   repository_path TEXT NOT NULL,
   repository_id TEXT NOT NULL UNIQUE,
+  stars INTEGER NOT NULL DEFAULT 0,
+  source_metadata_etag TEXT,
+  source_metadata_checked_at TIMESTAMP,
+  source_metadata_retry_at TIMESTAMP,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(source_host, repository_path)
@@ -23,7 +27,6 @@ CREATE TABLE skills (
   skill_path TEXT NOT NULL,
   latest_version TEXT NOT NULL,
   verified BOOLEAN NOT NULL DEFAULT FALSE,
-  github_stars INTEGER NOT NULL DEFAULT 0,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

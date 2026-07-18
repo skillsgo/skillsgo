@@ -39,7 +39,7 @@ func TestSkillInfoRouteReturnsCompleteInstallMetadata(t *testing.T) {
 	})
 
 	recorder := httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+skillID+"/@v/"+version+".info", nil))
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+skillID+"/@v/"+version+".info", nil))
 	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
 	var info struct {
 		SchemaVersion int               `json:"SchemaVersion"`
@@ -137,7 +137,7 @@ func TestRepositoryInfoRouteEmbedsCompleteImmutableSkillInfo(t *testing.T) {
 	})
 
 	recorder := httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/"+version+".info", nil))
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+repository+"/@v/"+version+".info", nil))
 	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
 	var info struct {
 		SchemaVersion int               `json:"SchemaVersion"`

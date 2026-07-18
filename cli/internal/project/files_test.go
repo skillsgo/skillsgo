@@ -9,12 +9,50 @@ package project
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
+
+func TestSkillsGoModParsesGoRequireFormsAndAgentExtension(t *testing.T) {
+	manifest, err := parseManifest("skillsgo.mod", []byte(`// portable desired state
+require github.com/example/root v1.2.3 [codex]
+
+require (
+	github.com/example/repo/-/skills/design v2.0.0 [zed, claude-code, codex]
+)
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := manifest.Skills["github.com/example/root"]; got.Ref != "v1.2.3" || strings.Join(got.Agents, ",") != "codex" {
+		t.Fatalf("root requirement = %#v", got)
+	}
+	if got := manifest.Skills["github.com/example/repo/-/skills/design"]; got.Ref != "v2.0.0" || strings.Join(got.Agents, ",") != "zed,claude-code,codex" {
+		t.Fatalf("nested requirement = %#v", got)
+	}
+}
+
+func TestSkillsGoModWriterUsesCanonicalRequireBlock(t *testing.T) {
+	root := t.TempDir()
+	if err := UpsertManifestRequirement(root, "github.com/owner/repo/-/skills/design", SkillRequirement{Ref: "v2.0.0", Agents: []string{"zed", "codex"}}, false); err != nil {
+		t.Fatal(err)
+	}
+	if err := UpsertManifestRequirement(root, "github.com/owner/repo", SkillRequirement{Ref: "v1.2.3", Agents: []string{"claude-code"}}, false); err != nil {
+		t.Fatal(err)
+	}
+	data, err := os.ReadFile(filepath.Join(root, "skillsgo.mod"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := "require (\n\tgithub.com/owner/repo v1.2.3 [claude-code]\n\tgithub.com/owner/repo/-/skills/design v2.0.0 [zed, codex]\n)\n"
+	if string(data) != want {
+		t.Fatalf("skillsgo.mod =\n%s\nwant:\n%s", data, want)
+	}
+}
 
 func TestManifestAloneDefinesWorkspaceAndPersistsCanonicalRequirement(t *testing.T) {
 	root := t.TempDir()

@@ -24,11 +24,11 @@ func TestJ26RepositoryRestoreOffline(t *testing.T) {
 		"--agent", "codex", "--copy", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, add.exitCode, add.output)
-	manifestBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	manifestBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 	require.NoError(t, err)
 	sumBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
 	require.NoError(t, err)
-	require.Contains(t, string(manifestBefore), "fixtures.test/group/subgroup/collection:")
+	require.Contains(t, string(manifestBefore), "fixtures.test/group/subgroup/collection ")
 	require.NotContains(t, string(manifestBefore), "/-/")
 
 	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "project", ".agents")))
@@ -38,7 +38,7 @@ func TestJ26RepositoryRestoreOffline(t *testing.T) {
 		require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", name, "SKILL.md"))
 	}
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "invalid"))
-	manifestAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	manifestAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 	require.NoError(t, err)
 	sumAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
 	require.NoError(t, err)

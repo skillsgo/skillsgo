@@ -34,8 +34,6 @@ type Skill struct {
 	SkillPath string `json:"skill_path,omitempty"`
 	// LatestVersion holds the value of the "latest_version" field.
 	LatestVersion string `json:"latest_version,omitempty"`
-	// GithubStars holds the value of the "github_stars" field.
-	GithubStars int64 `json:"github_stars,omitempty"`
 	// Verified holds the value of the "verified" field.
 	Verified bool `json:"verified,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
@@ -108,7 +106,7 @@ func (*Skill) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case skill.FieldVerified:
 			values[i] = new(sql.NullBool)
-		case skill.FieldID, skill.FieldRepositoryID, skill.FieldGithubStars:
+		case skill.FieldID, skill.FieldRepositoryID:
 			values[i] = new(sql.NullInt64)
 		case skill.FieldSkillID, skill.FieldName, skill.FieldDescription, skill.FieldSourceHost, skill.FieldRepository, skill.FieldSkillPath, skill.FieldLatestVersion:
 			values[i] = new(sql.NullString)
@@ -182,12 +180,6 @@ func (_m *Skill) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field latest_version", values[i])
 			} else if value.Valid {
 				_m.LatestVersion = value.String
-			}
-		case skill.FieldGithubStars:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field github_stars", values[i])
-			} else if value.Valid {
-				_m.GithubStars = value.Int64
 			}
 		case skill.FieldVerified:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -286,9 +278,6 @@ func (_m *Skill) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("latest_version=")
 	builder.WriteString(_m.LatestVersion)
-	builder.WriteString(", ")
-	builder.WriteString("github_stars=")
-	builder.WriteString(fmt.Sprintf("%v", _m.GithubStars))
 	builder.WriteString(", ")
 	builder.WriteString("verified=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Verified))

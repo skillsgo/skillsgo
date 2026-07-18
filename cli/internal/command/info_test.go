@@ -30,15 +30,15 @@ func TestInfoRepositoryUsesLazyLatestAndDoesNotWriteLocalState(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		requests = append(requests, request.URL.Path)
 		switch request.URL.Path {
-		case "/" + repositoryID + "/@v/list":
+		case "/mod/" + repositoryID + "/@v/list":
 			writer.WriteHeader(http.StatusOK)
-		case "/" + repositoryID + "/@latest":
+		case "/mod/" + repositoryID + "/@latest":
 			_, _ = fmt.Fprintf(writer, `{"Version":%q,"Time":"2026-07-18T12:00:00Z"}`, version)
-		case "/" + repositoryID + "/@v/" + version + ".info":
+		case "/mod/" + repositoryID + "/@v/" + version + ".info":
 			_, _ = writer.Write(repositoryInfo)
-		case "/v1/skills/" + repositoryID, "/v1/skills/" + repositoryID + "/-/tools/demo":
-			id := strings.TrimPrefix(request.URL.Path, "/v1/skills/")
-			_, _ = fmt.Fprintf(writer, `{"id":%q,"imageUrl":"https://github.com/example.png?size=72","installs":12,"githubStars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, id)
+		case "/api/v1/skills/" + repositoryID, "/api/v1/skills/" + repositoryID + "/-/tools/demo":
+			id := strings.TrimPrefix(request.URL.Path, "/api/v1/skills/")
+			_, _ = fmt.Fprintf(writer, `{"id":%q,"imageUrl":"https://github.com/example.png?size=72","installs":12,"stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, id)
 		default:
 			http.NotFound(writer, request)
 		}
@@ -69,15 +69,15 @@ func TestInfoRepositoryUsesLazyLatestAndDoesNotWriteLocalState(t *testing.T) {
 	if result.ID != repositoryID || result.Version != version || len(result.Skills) != len(members) {
 		t.Fatalf("unexpected Repository Info: %#v", result)
 	}
-	if result.Skills[0].ImageURL == nil || result.Skills[0].Installs != 12 || result.Skills[0].GitHubStars != 34 || result.Skills[0].RiskAssessment != hub.RiskLow {
+	if result.Skills[0].ImageURL == nil || result.Skills[0].Installs != 12 || result.Skills[0].Stars != 34 || result.Skills[0].RiskAssessment != hub.RiskLow {
 		t.Fatalf("Repository Skill is not card-ready: %#v", result.Skills[0])
 	}
 	if strings.Join(requests, "\n") != strings.Join([]string{
-		"/" + repositoryID + "/@v/list",
-		"/" + repositoryID + "/@latest",
-		"/" + repositoryID + "/@v/" + version + ".info",
-		"/v1/skills/" + repositoryID,
-		"/v1/skills/" + repositoryID + "/-/tools/demo",
+		"/mod/" + repositoryID + "/@v/list",
+		"/mod/" + repositoryID + "/@latest",
+		"/mod/" + repositoryID + "/@v/" + version + ".info",
+		"/api/v1/skills/" + repositoryID,
+		"/api/v1/skills/" + repositoryID + "/-/tools/demo",
 	}, "\n") {
 		t.Fatalf("unexpected requests: %v", requests)
 	}
@@ -95,10 +95,10 @@ func TestInfoSelectsNestedSkillFromExactRepositoryBatch(t *testing.T) {
 	members := infoTestMembers(repositoryID, version, commit)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
-		case "/" + repositoryID + "/-/tools/demo/@v/" + version + ".info":
+		case "/mod/" + repositoryID + "/-/tools/demo/@v/" + version + ".info":
 			_ = json.NewEncoder(writer).Encode(members[1])
-		case "/v1/skills/" + repositoryID + "/-/tools/demo":
-			_, _ = fmt.Fprintf(writer, `{"id":%q,"installs":12,"githubStars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, members[1].ID)
+		case "/api/v1/skills/" + repositoryID + "/-/tools/demo":
+			_, _ = fmt.Fprintf(writer, `{"id":%q,"installs":12,"stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, members[1].ID)
 		default:
 			http.NotFound(writer, request)
 		}
@@ -116,7 +116,7 @@ func TestInfoSelectsNestedSkillFromExactRepositoryBatch(t *testing.T) {
 	if result.Kind != "Skill" || result.ID != repositoryID+"/-/tools/demo" || result.Version != version {
 		t.Fatalf("unexpected nested Skill result: %#v", result)
 	}
-	if result.Installs != 12 || result.GitHubStars != 34 || result.RiskAssessment != hub.RiskLow {
+	if result.Installs != 12 || result.Stars != 34 || result.RiskAssessment != hub.RiskLow {
 		t.Fatalf("nested Skill is not card-ready: %#v", result)
 	}
 

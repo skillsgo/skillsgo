@@ -99,7 +99,7 @@ type SkillProductMetadata struct {
 	ID             string  `json:"id"`
 	ImageURL       *string `json:"imageUrl"`
 	Installs       int64   `json:"installs"`
-	GitHubStars    int64   `json:"githubStars"`
+	Stars          int64   `json:"stars"`
 	TrustLevel     string  `json:"trustLevel"`
 	RiskAssessment struct {
 		Level Risk `json:"level"`
@@ -314,7 +314,7 @@ func (c *Client) Resolve(ctx context.Context, skillID, requestedVersion string) 
 
 func (c *Client) SkillProduct(ctx context.Context, skillID string) (SkillProductMetadata, error) {
 	var metadata SkillProductMetadata
-	if err := c.getJSON(ctx, c.baseURL+"/v1/skills/"+skillID, &metadata); err != nil {
+	if err := c.getJSON(ctx, c.baseURL+"/api/v1/skills/"+skillID, &metadata); err != nil {
 		return SkillProductMetadata{}, err
 	}
 	if metadata.ID != skillID {
@@ -329,7 +329,7 @@ func (c *Client) MatchContent(ctx context.Context, contentDigest, sourceHint str
 		query.Set("sourceHint", strings.TrimSpace(sourceHint))
 	}
 	var response contentMatchesResponse
-	if err := c.getJSON(ctx, c.baseURL+"/v1/matches?"+query.Encode(), &response); err != nil {
+	if err := c.getJSON(ctx, c.baseURL+"/api/v1/matches?"+query.Encode(), &response); err != nil {
 		return nil, err
 	}
 	if response.SchemaVersion != 1 || response.ContentDigest != contentDigest || response.Matches == nil {
@@ -376,7 +376,7 @@ func (c *Client) endpoint(skillID, file string) string {
 		escapedID = strings.Trim(skillID, "/")
 	}
 	if file == "list" {
-		return c.baseURL + "/" + escapedID + "/@v/list"
+		return c.baseURL + "/mod/" + escapedID + "/@v/list"
 	}
 	for _, suffix := range []string{".info", ".zip"} {
 		if strings.HasSuffix(file, suffix) {
@@ -388,7 +388,7 @@ func (c *Client) endpoint(skillID, file string) string {
 			break
 		}
 	}
-	return c.baseURL + "/" + escapedID + "/@v/" + file
+	return c.baseURL + "/mod/" + escapedID + "/@v/" + file
 }
 
 func (c *Client) latestEndpoint(skillID string) string {
@@ -396,7 +396,7 @@ func (c *Client) latestEndpoint(skillID string) string {
 	if err != nil {
 		escapedID = strings.Trim(skillID, "/")
 	}
-	return c.baseURL + "/" + escapedID + "/@latest"
+	return c.baseURL + "/mod/" + escapedID + "/@latest"
 }
 
 func (c *Client) getJSON(ctx context.Context, endpoint string, target any) error {

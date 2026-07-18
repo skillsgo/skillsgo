@@ -46,14 +46,14 @@ func RegisterHandlers(r fiber.Router, opts *HandlerOpts) {
 		panic("absolutely unacceptable handler opts")
 	}
 	noCache := middleware.FiberCacheControl("no-cache, no-store, must-revalidate")
-	r.All("/+/@v/list", noCache, LogEntryHandler(ListHandler, opts))
+	r.All("/mod/+/@v/list", noCache, LogEntryHandler(ListHandler, opts))
 
-	r.Get("/+/@latest", noCache, LogEntryHandler(LatestHandler, opts))
+	r.Get("/mod/+/@latest", noCache, LogEntryHandler(LatestHandler, opts))
 
-	r.Get("/+/@v/:version.info", LogEntryHandler(InfoHandler, opts))
+	r.Get("/mod/+/@v/:version.info", LogEntryHandler(InfoHandler, opts))
 	zipHandler := LogEntryHandler(ZipHandler, opts)
-	r.Get("/+/@v/:version.zip", zipHandler)
-	r.Head("/+/@v/:version.zip", zipHandler)
+	r.Get("/mod/+/@v/:version.zip", zipHandler)
+	r.Head("/mod/+/@v/:version.zip", zipHandler)
 }
 
 func getRedirectURL(base, downloadPath string) (string, error) {

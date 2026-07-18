@@ -18,7 +18,7 @@ import (
 func TestJ34CoordinateCaseAndEscape(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
-	repositoryInfo := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/fixtures.test/group/subgroup/collection/@v/v1.0.0.info")
+	repositoryInfo := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/mod/fixtures.test/group/subgroup/collection/@v/v1.0.0.info")
 	require.Equal(t, 0, repositoryInfo.exitCode, repositoryInfo.output)
 	require.Contains(t, repositoryInfo.output, `"ID":"fixtures.test/group/subgroup/collection/-/skills/CamelCase"`)
 	result := execCLI(t, ctx, container,
@@ -26,12 +26,12 @@ func TestJ34CoordinateCaseAndEscape(t *testing.T) {
 		"--skill", "camel-case", "--agent", "codex", "--copy", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, result.exitCode, result.output)
-	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 	require.NoError(t, err)
-	require.Contains(t, string(manifest), "fixtures.test/group/subgroup/collection/-/skills/CamelCase: v1.0.0")
+	require.Contains(t, string(manifest), "fixtures.test/group/subgroup/collection/-/skills/CamelCase v1.0.0")
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "camel-case", "SKILL.md"))
 
-	escaped := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/fixtures.test/group/subgroup/collection/-/skills/!camel!case/@v/v1.0.0.info")
+	escaped := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/mod/fixtures.test/group/subgroup/collection/-/skills/!camel!case/@v/v1.0.0.info")
 	require.Equal(t, 0, escaped.exitCode, escaped.output)
 	require.Contains(t, escaped.output, `"ID":"fixtures.test/group/subgroup/collection/-/skills/CamelCase"`)
 }

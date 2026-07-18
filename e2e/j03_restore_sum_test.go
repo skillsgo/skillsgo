@@ -71,5 +71,5 @@ func TestJ03RestoreSum(t *testing.T) {
 	nestedRestore := execCLIFrom(t, ctx, container, "/e2e/project/packages/demo", "install", "--output", "json")
 	require.Equal(t, 0, nestedRestore.exitCode, nestedRestore.output)
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt", "SKILL.md"))
-	require.NoFileExists(t, filepath.Join(nested, "skillsgo.yaml"))
+	require.NoFileExists(t, filepath.Join(nested, "skillsgo.mod"))
 }

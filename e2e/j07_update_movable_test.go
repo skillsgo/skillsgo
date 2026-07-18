@@ -33,7 +33,7 @@ func TestJ07UpdateMovable(t *testing.T) {
 	var oldInstalled addResponse
 	require.NoError(t, json.Unmarshal([]byte(oldAdd.output), &oldInstalled), oldAdd.output)
 
-	manifestPath := filepath.Join(sandboxRoot, "project", "skillsgo.yaml")
+	manifestPath := filepath.Join(sandboxRoot, "project", "skillsgo.mod")
 	manifestBefore, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
 	require.NotContains(t, string(manifestBefore), "main", "movable query must not be persisted")

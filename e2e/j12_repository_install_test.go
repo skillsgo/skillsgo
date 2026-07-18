@@ -33,13 +33,13 @@ func TestJ12RepositoryInstall(t *testing.T) {
 
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", testMismatchedName, "SKILL.md"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "web-design-guidelines", "SKILL.md"))
-	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 	require.NoError(t, err)
 	sumFile, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
 	require.NoError(t, err)
-	require.Contains(t, string(manifest), "github.com/vercel-labs/agent-skills:")
+	require.Contains(t, string(manifest), "github.com/vercel-labs/agent-skills ")
 	for _, skillID := range testRepositorySkillIDs {
-		require.NotContains(t, string(manifest), skillID+":")
+		require.NotContains(t, string(manifest), skillID+" ")
 		require.Contains(t, string(sumFile), skillID+" ")
 	}
 }

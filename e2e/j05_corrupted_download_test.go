@@ -34,7 +34,7 @@ func TestJ05CorruptedDownload(t *testing.T) {
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 
-	manifestPath := filepath.Join(sandboxRoot, "project", "skillsgo.yaml")
+	manifestPath := filepath.Join(sandboxRoot, "project", "skillsgo.mod")
 	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo.sum")
 	manifestBefore, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
@@ -55,6 +55,6 @@ func TestJ05CorruptedDownload(t *testing.T) {
 	require.NoError(t, err)
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	require.Equal(t, manifestBefore, manifestAfter, "failed restoration must not rewrite skillsgo.yaml")
+	require.Equal(t, manifestBefore, manifestAfter, "failed restoration must not rewrite skillsgo.mod")
 	require.Equal(t, sumBefore, sumAfter, "failed restoration must not rewrite skillsgo.sum")
 }

@@ -71,6 +71,87 @@ func (_u *RepositoryUpdate) SetNillableRepositoryID(v *string) *RepositoryUpdate
 	return _u
 }
 
+// SetStars sets the "stars" field.
+func (_u *RepositoryUpdate) SetStars(v int64) *RepositoryUpdate {
+	_u.mutation.ResetStars()
+	_u.mutation.SetStars(v)
+	return _u
+}
+
+// SetNillableStars sets the "stars" field if the given value is not nil.
+func (_u *RepositoryUpdate) SetNillableStars(v *int64) *RepositoryUpdate {
+	if v != nil {
+		_u.SetStars(*v)
+	}
+	return _u
+}
+
+// AddStars adds value to the "stars" field.
+func (_u *RepositoryUpdate) AddStars(v int64) *RepositoryUpdate {
+	_u.mutation.AddStars(v)
+	return _u
+}
+
+// SetSourceMetadataEtag sets the "source_metadata_etag" field.
+func (_u *RepositoryUpdate) SetSourceMetadataEtag(v string) *RepositoryUpdate {
+	_u.mutation.SetSourceMetadataEtag(v)
+	return _u
+}
+
+// SetNillableSourceMetadataEtag sets the "source_metadata_etag" field if the given value is not nil.
+func (_u *RepositoryUpdate) SetNillableSourceMetadataEtag(v *string) *RepositoryUpdate {
+	if v != nil {
+		_u.SetSourceMetadataEtag(*v)
+	}
+	return _u
+}
+
+// ClearSourceMetadataEtag clears the value of the "source_metadata_etag" field.
+func (_u *RepositoryUpdate) ClearSourceMetadataEtag() *RepositoryUpdate {
+	_u.mutation.ClearSourceMetadataEtag()
+	return _u
+}
+
+// SetSourceMetadataCheckedAt sets the "source_metadata_checked_at" field.
+func (_u *RepositoryUpdate) SetSourceMetadataCheckedAt(v time.Time) *RepositoryUpdate {
+	_u.mutation.SetSourceMetadataCheckedAt(v)
+	return _u
+}
+
+// SetNillableSourceMetadataCheckedAt sets the "source_metadata_checked_at" field if the given value is not nil.
+func (_u *RepositoryUpdate) SetNillableSourceMetadataCheckedAt(v *time.Time) *RepositoryUpdate {
+	if v != nil {
+		_u.SetSourceMetadataCheckedAt(*v)
+	}
+	return _u
+}
+
+// ClearSourceMetadataCheckedAt clears the value of the "source_metadata_checked_at" field.
+func (_u *RepositoryUpdate) ClearSourceMetadataCheckedAt() *RepositoryUpdate {
+	_u.mutation.ClearSourceMetadataCheckedAt()
+	return _u
+}
+
+// SetSourceMetadataRetryAt sets the "source_metadata_retry_at" field.
+func (_u *RepositoryUpdate) SetSourceMetadataRetryAt(v time.Time) *RepositoryUpdate {
+	_u.mutation.SetSourceMetadataRetryAt(v)
+	return _u
+}
+
+// SetNillableSourceMetadataRetryAt sets the "source_metadata_retry_at" field if the given value is not nil.
+func (_u *RepositoryUpdate) SetNillableSourceMetadataRetryAt(v *time.Time) *RepositoryUpdate {
+	if v != nil {
+		_u.SetSourceMetadataRetryAt(*v)
+	}
+	return _u
+}
+
+// ClearSourceMetadataRetryAt clears the value of the "source_metadata_retry_at" field.
+func (_u *RepositoryUpdate) ClearSourceMetadataRetryAt() *RepositoryUpdate {
+	_u.mutation.ClearSourceMetadataRetryAt()
+	return _u
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (_u *RepositoryUpdate) SetCreatedAt(v time.Time) *RepositoryUpdate {
 	_u.mutation.SetCreatedAt(v)
@@ -209,6 +290,30 @@ func (_u *RepositoryUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	if value, ok := _u.mutation.RepositoryID(); ok {
 		_spec.SetField(repository.FieldRepositoryID, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.Stars(); ok {
+		_spec.SetField(repository.FieldStars, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedStars(); ok {
+		_spec.AddField(repository.FieldStars, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.SourceMetadataEtag(); ok {
+		_spec.SetField(repository.FieldSourceMetadataEtag, field.TypeString, value)
+	}
+	if _u.mutation.SourceMetadataEtagCleared() {
+		_spec.ClearField(repository.FieldSourceMetadataEtag, field.TypeString)
+	}
+	if value, ok := _u.mutation.SourceMetadataCheckedAt(); ok {
+		_spec.SetField(repository.FieldSourceMetadataCheckedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SourceMetadataCheckedAtCleared() {
+		_spec.ClearField(repository.FieldSourceMetadataCheckedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SourceMetadataRetryAt(); ok {
+		_spec.SetField(repository.FieldSourceMetadataRetryAt, field.TypeTime, value)
+	}
+	if _u.mutation.SourceMetadataRetryAtCleared() {
+		_spec.ClearField(repository.FieldSourceMetadataRetryAt, field.TypeTime)
+	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(repository.FieldCreatedAt, field.TypeTime, value)
 	}
@@ -319,6 +424,87 @@ func (_u *RepositoryUpdateOne) SetNillableRepositoryID(v *string) *RepositoryUpd
 	if v != nil {
 		_u.SetRepositoryID(*v)
 	}
+	return _u
+}
+
+// SetStars sets the "stars" field.
+func (_u *RepositoryUpdateOne) SetStars(v int64) *RepositoryUpdateOne {
+	_u.mutation.ResetStars()
+	_u.mutation.SetStars(v)
+	return _u
+}
+
+// SetNillableStars sets the "stars" field if the given value is not nil.
+func (_u *RepositoryUpdateOne) SetNillableStars(v *int64) *RepositoryUpdateOne {
+	if v != nil {
+		_u.SetStars(*v)
+	}
+	return _u
+}
+
+// AddStars adds value to the "stars" field.
+func (_u *RepositoryUpdateOne) AddStars(v int64) *RepositoryUpdateOne {
+	_u.mutation.AddStars(v)
+	return _u
+}
+
+// SetSourceMetadataEtag sets the "source_metadata_etag" field.
+func (_u *RepositoryUpdateOne) SetSourceMetadataEtag(v string) *RepositoryUpdateOne {
+	_u.mutation.SetSourceMetadataEtag(v)
+	return _u
+}
+
+// SetNillableSourceMetadataEtag sets the "source_metadata_etag" field if the given value is not nil.
+func (_u *RepositoryUpdateOne) SetNillableSourceMetadataEtag(v *string) *RepositoryUpdateOne {
+	if v != nil {
+		_u.SetSourceMetadataEtag(*v)
+	}
+	return _u
+}
+
+// ClearSourceMetadataEtag clears the value of the "source_metadata_etag" field.
+func (_u *RepositoryUpdateOne) ClearSourceMetadataEtag() *RepositoryUpdateOne {
+	_u.mutation.ClearSourceMetadataEtag()
+	return _u
+}
+
+// SetSourceMetadataCheckedAt sets the "source_metadata_checked_at" field.
+func (_u *RepositoryUpdateOne) SetSourceMetadataCheckedAt(v time.Time) *RepositoryUpdateOne {
+	_u.mutation.SetSourceMetadataCheckedAt(v)
+	return _u
+}
+
+// SetNillableSourceMetadataCheckedAt sets the "source_metadata_checked_at" field if the given value is not nil.
+func (_u *RepositoryUpdateOne) SetNillableSourceMetadataCheckedAt(v *time.Time) *RepositoryUpdateOne {
+	if v != nil {
+		_u.SetSourceMetadataCheckedAt(*v)
+	}
+	return _u
+}
+
+// ClearSourceMetadataCheckedAt clears the value of the "source_metadata_checked_at" field.
+func (_u *RepositoryUpdateOne) ClearSourceMetadataCheckedAt() *RepositoryUpdateOne {
+	_u.mutation.ClearSourceMetadataCheckedAt()
+	return _u
+}
+
+// SetSourceMetadataRetryAt sets the "source_metadata_retry_at" field.
+func (_u *RepositoryUpdateOne) SetSourceMetadataRetryAt(v time.Time) *RepositoryUpdateOne {
+	_u.mutation.SetSourceMetadataRetryAt(v)
+	return _u
+}
+
+// SetNillableSourceMetadataRetryAt sets the "source_metadata_retry_at" field if the given value is not nil.
+func (_u *RepositoryUpdateOne) SetNillableSourceMetadataRetryAt(v *time.Time) *RepositoryUpdateOne {
+	if v != nil {
+		_u.SetSourceMetadataRetryAt(*v)
+	}
+	return _u
+}
+
+// ClearSourceMetadataRetryAt clears the value of the "source_metadata_retry_at" field.
+func (_u *RepositoryUpdateOne) ClearSourceMetadataRetryAt() *RepositoryUpdateOne {
+	_u.mutation.ClearSourceMetadataRetryAt()
 	return _u
 }
 
@@ -489,6 +675,30 @@ func (_u *RepositoryUpdateOne) sqlSave(ctx context.Context) (_node *Repository, 
 	}
 	if value, ok := _u.mutation.RepositoryID(); ok {
 		_spec.SetField(repository.FieldRepositoryID, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Stars(); ok {
+		_spec.SetField(repository.FieldStars, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.AddedStars(); ok {
+		_spec.AddField(repository.FieldStars, field.TypeInt64, value)
+	}
+	if value, ok := _u.mutation.SourceMetadataEtag(); ok {
+		_spec.SetField(repository.FieldSourceMetadataEtag, field.TypeString, value)
+	}
+	if _u.mutation.SourceMetadataEtagCleared() {
+		_spec.ClearField(repository.FieldSourceMetadataEtag, field.TypeString)
+	}
+	if value, ok := _u.mutation.SourceMetadataCheckedAt(); ok {
+		_spec.SetField(repository.FieldSourceMetadataCheckedAt, field.TypeTime, value)
+	}
+	if _u.mutation.SourceMetadataCheckedAtCleared() {
+		_spec.ClearField(repository.FieldSourceMetadataCheckedAt, field.TypeTime)
+	}
+	if value, ok := _u.mutation.SourceMetadataRetryAt(); ok {
+		_spec.SetField(repository.FieldSourceMetadataRetryAt, field.TypeTime, value)
+	}
+	if _u.mutation.SourceMetadataRetryAtCleared() {
+		_spec.ClearField(repository.FieldSourceMetadataRetryAt, field.TypeTime)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(repository.FieldCreatedAt, field.TypeTime, value)

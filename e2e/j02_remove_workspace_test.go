@@ -44,7 +44,7 @@ func TestJ02RemoveWorkspace(t *testing.T) {
 	require.True(t, strings.HasPrefix(installed.Store, "/e2e/home/.skillsgo/store/"), "Store path escaped the isolated home: %s", installed.Store)
 
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt", "SKILL.md"))
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
 	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Store, "artifact", "SKILL.md"))
 

@@ -11,7 +11,7 @@
 - `exit_code.go`, `exit_code_test.go`: classify wrapped Hub availability and timeout failures into stable process exit codes consumed by the App without parsing stderr.
 - `agents.go`: exposes complete supported and installed Agent discovery through versioned JSON and grouped adaptive Human output.
 - `agents_test.go`: specifies the stable App-facing Agent discovery machine contract.
-- `info.go`: exposes direct, read-only Repository or Skill JSON with immutable source identity plus Hub product metadata required by App cards.
+- `info.go`: exposes direct, read-only Repository or Skill JSON with immutable source identity plus provider-neutral Hub product metadata required by App cards.
 - `info_test.go`: specifies lazy latest resolution, exact Repository-batch member selection, stable JSON, missing-member failure, and the no-local-write boundary.
 - `export.go`: exports one private Local Skill artifact with machine confirmation or adaptive Human progress, without Hub access.
 - `inventory.go`: adapts the managed/external inventory domain report into stable JSON and grouped adaptive Human output.

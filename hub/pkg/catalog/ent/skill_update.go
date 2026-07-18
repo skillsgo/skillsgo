@@ -144,27 +144,6 @@ func (_u *SkillUpdate) SetNillableLatestVersion(v *string) *SkillUpdate {
 	return _u
 }
 
-// SetGithubStars sets the "github_stars" field.
-func (_u *SkillUpdate) SetGithubStars(v int64) *SkillUpdate {
-	_u.mutation.ResetGithubStars()
-	_u.mutation.SetGithubStars(v)
-	return _u
-}
-
-// SetNillableGithubStars sets the "github_stars" field if the given value is not nil.
-func (_u *SkillUpdate) SetNillableGithubStars(v *int64) *SkillUpdate {
-	if v != nil {
-		_u.SetGithubStars(*v)
-	}
-	return _u
-}
-
-// AddGithubStars adds value to the "github_stars" field.
-func (_u *SkillUpdate) AddGithubStars(v int64) *SkillUpdate {
-	_u.mutation.AddGithubStars(v)
-	return _u
-}
-
 // SetVerified sets the "verified" field.
 func (_u *SkillUpdate) SetVerified(v bool) *SkillUpdate {
 	_u.mutation.SetVerified(v)
@@ -410,12 +389,6 @@ func (_u *SkillUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.LatestVersion(); ok {
 		_spec.SetField(skill.FieldLatestVersion, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.GithubStars(); ok {
-		_spec.SetField(skill.FieldGithubStars, field.TypeInt64, value)
-	}
-	if value, ok := _u.mutation.AddedGithubStars(); ok {
-		_spec.AddField(skill.FieldGithubStars, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.Verified(); ok {
 		_spec.SetField(skill.FieldVerified, field.TypeBool, value)
@@ -722,27 +695,6 @@ func (_u *SkillUpdateOne) SetNillableLatestVersion(v *string) *SkillUpdateOne {
 	return _u
 }
 
-// SetGithubStars sets the "github_stars" field.
-func (_u *SkillUpdateOne) SetGithubStars(v int64) *SkillUpdateOne {
-	_u.mutation.ResetGithubStars()
-	_u.mutation.SetGithubStars(v)
-	return _u
-}
-
-// SetNillableGithubStars sets the "github_stars" field if the given value is not nil.
-func (_u *SkillUpdateOne) SetNillableGithubStars(v *int64) *SkillUpdateOne {
-	if v != nil {
-		_u.SetGithubStars(*v)
-	}
-	return _u
-}
-
-// AddGithubStars adds value to the "github_stars" field.
-func (_u *SkillUpdateOne) AddGithubStars(v int64) *SkillUpdateOne {
-	_u.mutation.AddGithubStars(v)
-	return _u
-}
-
 // SetVerified sets the "verified" field.
 func (_u *SkillUpdateOne) SetVerified(v bool) *SkillUpdateOne {
 	_u.mutation.SetVerified(v)
@@ -1018,12 +970,6 @@ func (_u *SkillUpdateOne) sqlSave(ctx context.Context) (_node *Skill, err error)
 	}
 	if value, ok := _u.mutation.LatestVersion(); ok {
 		_spec.SetField(skill.FieldLatestVersion, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.GithubStars(); ok {
-		_spec.SetField(skill.FieldGithubStars, field.TypeInt64, value)
-	}
-	if value, ok := _u.mutation.AddedGithubStars(); ok {
-		_spec.AddField(skill.FieldGithubStars, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.Verified(); ok {
 		_spec.SetField(skill.FieldVerified, field.TypeBool, value)

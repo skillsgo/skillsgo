@@ -1016,7 +1016,7 @@ class RealSkillsGateway implements SkillsGateway {
     }
     final normalized = base.toString().replaceFirst(RegExp(r'/$'), '');
     final uri = base
-        .resolve('v1/search')
+        .resolve('api/v1/search')
         .replace(
           queryParameters: const {'q': 'skillsgo-settings-probe', 'limit': '1'},
         );
@@ -1161,7 +1161,9 @@ class RealSkillsGateway implements SkillsGateway {
     };
     final uri = _hubBase
         .resolve(
-          collection == DiscoveryCollection.search ? 'v1/search' : 'v1/skills',
+          collection == DiscoveryCollection.search
+              ? 'api/v1/search'
+              : 'api/v1/skills',
         )
         .replace(queryParameters: parameters);
     try {
@@ -1388,7 +1390,42 @@ class RealSkillsGateway implements SkillsGateway {
             );
           })
           .toList(growable: false);
-      return DiscoveryPage(skills: skills);
+      final firstSkill = rawSkills.isEmpty ? null : rawSkills.first;
+      final firstSkillMap = firstSkill is Map<String, dynamic>
+          ? firstSkill
+          : null;
+      final repositoryID = decoded['Kind'] == 'Repository'
+          ? decoded['ID']
+          : skills.isEmpty
+          ? null
+          : skills.first.source;
+      final repositoryTime = decoded['Time'];
+      return DiscoveryPage(
+        skills: skills,
+        repository: repositoryID is String
+            ? RepositorySummary(
+                id: repositoryID,
+                imageUrl: firstSkillMap?['ImageURL'] as String?,
+                description: decoded['Description'] is String
+                    ? decoded['Description'] as String
+                    : '',
+                stars: firstSkillMap?['Stars'] is num
+                    ? (firstSkillMap!['Stars'] as num).toInt()
+                    : 0,
+                latestVersion: decoded['Version'] is String
+                    ? decoded['Version'] as String
+                    : skills.isEmpty
+                    ? ''
+                    : skills.first.latestVersion,
+                updatedAt: repositoryTime is String
+                    ? DateTime.tryParse(repositoryTime)
+                    : null,
+                license: decoded['License'] is String
+                    ? decoded['License'] as String
+                    : null,
+              )
+            : null,
+      );
     } on FormatException {
       throw const SkillsException(
         'SkillsGo Info returned invalid JSON.',
@@ -1400,7 +1437,7 @@ class RealSkillsGateway implements SkillsGateway {
   @override
   Future<SkillDetail> loadRemoteDetail(SkillSummary skill) async {
     await _ensureHubOrigin();
-    final uri = _hubBase.resolve('v1/skills/${skill.id}');
+    final uri = _hubBase.resolve('api/v1/skills/${skill.id}');
     try {
       final response = await _http.get(uri).timeout(detailTimeout);
       if (response.statusCode < 200 || response.statusCode >= 300) {
@@ -1449,7 +1486,7 @@ class RealSkillsGateway implements SkillsGateway {
       if (requiredStrings.any((field) => decoded[field] is! String) ||
           (decoded['imageUrl'] != null && decoded['imageUrl'] is! String) ||
           decoded['installs'] is! num ||
-          decoded['githubStars'] is! num ||
+          decoded['stars'] is! num ||
           decoded['sourceUpdatedAt'] is! String ||
           decoded['archiveSize'] is! num ||
           decoded['id'] != skill.id ||
@@ -1539,7 +1576,7 @@ class RealSkillsGateway implements SkillsGateway {
         imageUrl: decoded['imageUrl'] as String?,
         installs: (decoded['installs'] as num).toInt(),
         repository: decoded['repository'] as String,
-        githubStars: (decoded['githubStars'] as num).toInt(),
+        stars: (decoded['stars'] as num).toInt(),
         sourceUpdatedAt: DateTime.parse(
           decoded['sourceUpdatedAt'] as String,
         ).toLocal(),
@@ -2801,7 +2838,7 @@ class RealSkillsGateway implements SkillsGateway {
             fromVersion.isEmpty ||
             toVersion.isEmpty ||
             p.normalize(path) !=
-                p.normalize(p.join(projectRoot, 'skillsgo.yaml')) ||
+                p.normalize(p.join(projectRoot, 'skillsgo.mod')) ||
             !matchesItem ||
             !changeKeys.add(key)) {
           throw const FormatException();

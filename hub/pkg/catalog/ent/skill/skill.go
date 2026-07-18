@@ -30,8 +30,6 @@ const (
 	FieldSkillPath = "skill_path"
 	// FieldLatestVersion holds the string denoting the latest_version field in the database.
 	FieldLatestVersion = "latest_version"
-	// FieldGithubStars holds the string denoting the github_stars field in the database.
-	FieldGithubStars = "github_stars"
 	// FieldVerified holds the string denoting the verified field in the database.
 	FieldVerified = "verified"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
@@ -91,7 +89,6 @@ var Columns = []string{
 	FieldRepository,
 	FieldSkillPath,
 	FieldLatestVersion,
-	FieldGithubStars,
 	FieldVerified,
 	FieldCreatedAt,
 	FieldUpdatedAt,
@@ -110,8 +107,6 @@ func ValidColumn(column string) bool {
 var (
 	// SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
 	SkillIDValidator func(string) error
-	// DefaultGithubStars holds the default value on creation for the "github_stars" field.
-	DefaultGithubStars int64
 	// DefaultVerified holds the default value on creation for the "verified" field.
 	DefaultVerified bool
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
@@ -168,11 +163,6 @@ func BySkillPath(opts ...sql.OrderTermOption) OrderOption {
 // ByLatestVersion orders the results by the latest_version field.
 func ByLatestVersion(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLatestVersion, opts...).ToFunc()
-}
-
-// ByGithubStars orders the results by the github_stars field.
-func ByGithubStars(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldGithubStars, opts...).ToFunc()
 }
 
 // ByVerified orders the results by the verified field.

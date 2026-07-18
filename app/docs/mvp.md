@@ -27,7 +27,7 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 
 - Add a project only through an explicit directory selection.
 - Do not require the directory to be a Git repository or to contain existing SkillsGo files.
-- Read `skillsgo.yaml`, `skillsgo.yaml`, and project Agent Skill directories.
+- Read `skillsgo.mod`, `skillsgo.sum`, and project Agent Skill directories.
 - Removing a project from the rail only stops tracking it; it never deletes project content.
 
 ### Installation

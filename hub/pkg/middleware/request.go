@@ -25,8 +25,12 @@ func RequestLogger(c fiber.Ctx) error {
 	if status == 0 {
 		status = fiber.StatusOK
 	}
+	if err != nil && status < http.StatusBadRequest {
+		status = fiber.StatusInternalServerError
+	}
 	entry := log.EntryFromContext(c.Context()).WithFields(map[string]any{
 		"duration_ms":    time.Since(started).Milliseconds(),
+		"handler_error":  err != nil,
 		"http_status":    status,
 		"response_bytes": len(c.Response().Body()),
 		"route":          c.Route().Path,
@@ -34,7 +38,7 @@ func RequestLogger(c fiber.Ctx) error {
 	switch {
 	case status >= http.StatusInternalServerError:
 		entry.Errorf("request completed")
-	case status >= http.StatusBadRequest:
+	case status == http.StatusTooManyRequests:
 		entry.Warnf("request completed")
 	case c.Path() == "/healthz" || c.Path() == "/readyz":
 		entry.Debugf("request completed")

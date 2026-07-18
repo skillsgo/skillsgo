@@ -282,7 +282,7 @@ func Build(
 				seenLocks[lockKey] = true
 				preflight.WorkspaceManifestChanges = append(preflight.WorkspaceManifestChanges, WorkspaceManifestChange{
 					ProjectRoot: item.Target.ProjectRoot,
-					Path:        filepath.Join(item.Target.ProjectRoot, "skillsgo.yaml"),
+					Path:        filepath.Join(item.Target.ProjectRoot, "skillsgo.mod"),
 					Skill:       item.Name,
 					FromVersion: item.workspaceManifestFrom,
 					ToVersion:   item.ToVersion,
@@ -428,10 +428,10 @@ func sourceReference(
 		}
 		_, requirement, ok := manifest.Dependency(installation.SkillID)
 		if !ok {
-			return "", false, "", fmt.Errorf("skillsgo.yaml is missing Skill %q", installation.Name)
+			return "", false, "", fmt.Errorf("skillsgo.mod is missing Skill %q", installation.Name)
 		}
 		if !contains(requirement.Agents, request.Agent) {
-			return "", false, "", fmt.Errorf("skillsgo.yaml does not declare Agent %q", request.Agent)
+			return "", false, "", fmt.Errorf("skillsgo.mod does not declare Agent %q", request.Agent)
 		}
 		ref := requirement.Ref
 		if ref == "" {
@@ -724,7 +724,7 @@ func validateCompleteWorkspaceBindings(
 		}
 		_, requirement, ok := manifest.Dependency(chosen.SkillID)
 		if !ok {
-			return fmt.Errorf("skillsgo.yaml is missing Skill %q", chosen.Name)
+			return fmt.Errorf("skillsgo.mod is missing Skill %q", chosen.Name)
 		}
 		for _, agentID := range requirement.Agents {
 			found := false

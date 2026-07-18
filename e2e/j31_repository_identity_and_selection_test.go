@@ -25,9 +25,9 @@ func TestJ31RepositoryIdentityAndSelection(t *testing.T) {
 		"--agent", "codex", "--copy", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, selected.exitCode, selected.output)
-	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 	require.NoError(t, err)
-	require.Contains(t, string(manifest), collection+"/-/skills/alpha: v1.0.0")
+	require.Contains(t, string(manifest), collection+"/-/skills/alpha v1.0.0")
 
 	resetLocalInstallation(t, sandboxRoot)
 	rootOnly := execCLI(t, ctx, container,
@@ -50,9 +50,9 @@ func TestJ31RepositoryIdentityAndSelection(t *testing.T) {
 	)
 	require.Equal(t, 0, disambiguated.exitCode, disambiguated.output)
 
-	rootZIP := execInContainer(t, ctx, container, "sh", "-c", "wget -qO /tmp/root.zip http://127.0.0.1:3000/"+collection+"/@v/v1.0.0.zip && unzip -l /tmp/root.zip")
+	rootZIP := execInContainer(t, ctx, container, "sh", "-c", "wget -qO /tmp/root.zip http://127.0.0.1:3000/mod/"+collection+"/@v/v1.0.0.zip && unzip -l /tmp/root.zip")
 	require.Equal(t, 0, rootZIP.exitCode, rootZIP.output)
 	require.Contains(t, rootZIP.output, "SKILL.md")
-	noAggregate := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/fixtures.test/group/subgroup/mixed/@v/v1.0.0.zip")
+	noAggregate := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/mod/fixtures.test/group/subgroup/mixed/@v/v1.0.0.zip")
 	require.NotEqual(t, 0, noAggregate.exitCode, noAggregate.output)
 }

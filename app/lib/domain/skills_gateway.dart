@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery metadata including repository product signals and Hub image URLs, auditable artifacts, unified Hub/Local/External Library entries, managed targets, derived Agent visibility, explicit Installation/Update/Target Management/External Adoption flows, Local export, project references, Agent inspection, CLI, Hub and typed appearance/wallpaper settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery metadata including Repository source summaries and Hub image URLs, auditable artifacts, unified Hub/Local/External Library entries, managed targets, derived Agent visibility, explicit Installation/Update/Target Management/External Adoption flows, Local export, project references, Agent inspection, CLI, Hub and typed appearance/wallpaper settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -175,11 +175,32 @@ class SkillSummary {
   bool get isInstalled => localTargetCount > 0;
 }
 
+class RepositorySummary {
+  const RepositorySummary({
+    required this.id,
+    this.imageUrl,
+    this.description = '',
+    this.stars = 0,
+    this.latestVersion = '',
+    this.updatedAt,
+    this.license,
+  });
+
+  final String id;
+  final String? imageUrl;
+  final String description;
+  final int stars;
+  final String latestVersion;
+  final DateTime? updatedAt;
+  final String? license;
+}
+
 class DiscoveryPage {
-  const DiscoveryPage({required this.skills, this.nextOffset});
+  const DiscoveryPage({required this.skills, this.nextOffset, this.repository});
 
   final List<SkillSummary> skills;
   final int? nextOffset;
+  final RepositorySummary? repository;
 }
 
 class SkillFile {
@@ -825,7 +846,7 @@ class SkillDetail {
     this.imageUrl,
     this.installs = 0,
     this.repository = '',
-    this.githubStars = 0,
+    this.stars = 0,
     this.sourceUpdatedAt,
     this.archiveSize = 0,
     this.description = '',
@@ -850,7 +871,7 @@ class SkillDetail {
   final String? imageUrl;
   final int installs;
   final String repository;
-  final int githubStars;
+  final int stars;
   final DateTime? sourceUpdatedAt;
   final int archiveSize;
   final String description;

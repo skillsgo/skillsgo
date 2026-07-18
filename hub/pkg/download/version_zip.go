@@ -16,7 +16,7 @@ import (
 )
 
 // PathVersionZip URL.
-const PathVersionZip = "/{skill:.+}/@v/{version}.zip"
+const PathVersionZip = "/mod/{skill:.+}/@v/{version}.zip"
 
 // ZipHandler implements GET baseURL/module/@v/version.zip.
 func ZipHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handler {

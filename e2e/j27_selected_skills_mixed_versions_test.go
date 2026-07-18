@@ -33,10 +33,10 @@ func TestJ27SelectedSkillsMixedVersions(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(alpha), "Alpha v1.")
 	require.Contains(t, string(beta), "Beta v2.")
-	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 	require.NoError(t, err)
-	require.Contains(t, string(manifest), "fixtures.test/group/subgroup/mixed/-/skills/alpha: v1.0.0")
-	require.Contains(t, string(manifest), "fixtures.test/group/subgroup/mixed/-/skills/beta: v1.1.0")
+	require.Contains(t, string(manifest), "fixtures.test/group/subgroup/mixed/-/skills/alpha v1.0.0")
+	require.Contains(t, string(manifest), "fixtures.test/group/subgroup/mixed/-/skills/beta v1.1.0")
 	require.NotContains(t, string(manifest), "fixtures.test/group/subgroup/mixed:")
 
 	resetLocalInstallation(t, sandboxRoot)

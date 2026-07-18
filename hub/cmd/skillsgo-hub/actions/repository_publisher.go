@@ -96,10 +96,18 @@ func (p *repositoryPublisher) Materialize(ctx context.Context, repositoryID, que
 		return "", ctx.Err()
 	case resolved := <-result:
 		if resolved.Err != nil {
-			entry.WithFields(map[string]any{
+			failed := entry.WithFields(map[string]any{
 				"duration_ms":         time.Since(started).Milliseconds(),
 				"singleflight_shared": resolved.Shared,
-			}).SystemErr(resolved.Err)
+			})
+			switch {
+			case huberrors.IsNotFoundErr(resolved.Err):
+				failed.Infof("repository publication not found")
+			case huberrors.Kind(resolved.Err) == huberrors.KindRateLimit:
+				failed.Warnf("repository publication rate limited")
+			default:
+				failed.SystemErr(resolved.Err)
+			}
 			return "", resolved.Err
 		}
 		version := resolved.Val.(string)

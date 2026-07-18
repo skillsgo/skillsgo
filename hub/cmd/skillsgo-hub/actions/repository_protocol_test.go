@@ -230,7 +230,7 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 
 	for attempt := 0; attempt < 2; attempt++ {
 		recorder := httptest.NewRecorder()
-		serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/"+version+".info", nil))
+		serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+repository+"/@v/"+version+".info", nil))
 		require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
 		var info repositoryInfo
 		require.NoError(t, json.NewDecoder(recorder.Body).Decode(&info))
@@ -283,7 +283,7 @@ func TestConcurrentUnknownRepositoryInfoSharesOnePublication(t *testing.T) {
 		go func() {
 			defer wait.Done()
 			recorder := httptest.NewRecorder()
-			serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/"+version+".info", nil))
+			serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+repository+"/@v/"+version+".info", nil))
 			require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
 		}()
 	}
@@ -366,7 +366,7 @@ func TestAnonymousRepositoryPublicationReturnsStableOverloadAndReleasesCapacity(
 	for _, repository := range repositories[:8] {
 		go func(repository string) {
 			recorder := httptest.NewRecorder()
-			serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/"+version+".info", nil))
+			serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+repository+"/@v/"+version+".info", nil))
 			responses <- response{code: recorder.Code}
 		}(repository)
 	}
@@ -378,7 +378,7 @@ func TestAnonymousRepositoryPublicationReturnsStableOverloadAndReleasesCapacity(
 		}
 	}
 	overloaded := httptest.NewRecorder()
-	serveFiber(t, router, overloaded, httptest.NewRequest(http.MethodGet, "/"+repositories[8]+"/@v/"+version+".info", nil))
+	serveFiber(t, router, overloaded, httptest.NewRequest(http.MethodGet, "/mod/"+repositories[8]+"/@v/"+version+".info", nil))
 	require.Equal(t, http.StatusTooManyRequests, overloaded.Code, overloaded.Body.String())
 
 	close(fetcher.release)
@@ -386,7 +386,7 @@ func TestAnonymousRepositoryPublicationReturnsStableOverloadAndReleasesCapacity(
 		require.Equal(t, http.StatusOK, (<-responses).code)
 	}
 	retry := httptest.NewRecorder()
-	serveFiber(t, router, retry, httptest.NewRequest(http.MethodGet, "/"+repositories[8]+"/@v/"+version+".info", nil))
+	serveFiber(t, router, retry, httptest.NewRequest(http.MethodGet, "/mod/"+repositories[8]+"/@v/"+version+".info", nil))
 	require.Equal(t, http.StatusOK, retry.Code, retry.Body.String())
 }
 
@@ -453,7 +453,7 @@ func TestMissingRepositoryRevisionUsesShortBoundedNegativeCache(t *testing.T) {
 	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
 	request := func(version string) int {
 		recorder := httptest.NewRecorder()
-		serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/"+version+".info", nil))
+		serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+repository+"/@v/"+version+".info", nil))
 		return recorder.Code
 	}
 	require.Equal(t, http.StatusNotFound, request("v1.0.0"))
@@ -508,26 +508,26 @@ func TestNestedSkillLatestStopsAtLastPublicationWhereItExists(t *testing.T) {
 	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
 
 	recorder := httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/v1.0.0.info", nil))
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+repository+"/@v/v1.0.0.info", nil))
 	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
 	publicationVersion = "v2.0.0"
 
 	recorder = httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+nested+"/@v/list", nil))
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+nested+"/@v/list", nil))
 	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
 	require.Equal(t, "v1.0.0", strings.TrimSpace(recorder.Body.String()))
 
 	recorder = httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+nested+"/@latest", nil))
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+nested+"/@latest", nil))
 	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
 	var latest storage.RevInfo
 	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&latest))
 	require.Equal(t, "v1.0.0", latest.Version)
 
 	recorder = httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+nested+"/@v/v1.0.0.zip", nil))
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+nested+"/@v/v1.0.0.zip", nil))
 	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
 	recorder = httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+nested+"/@v/v2.0.0.zip", nil))
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+nested+"/@v/v2.0.0.zip", nil))
 	require.Equal(t, http.StatusNotFound, recorder.Code, recorder.Body.String())
 }

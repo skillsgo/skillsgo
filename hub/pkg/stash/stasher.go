@@ -151,6 +151,11 @@ func (s *stasher) fetchResolved(ctx context.Context, f skill.ResolvedFetcher, sk
 	if err != nil {
 		observ.RecordUpstreamFetch(ctx, "failure")
 		observ.RecordUpstreamFetchDuration(ctx, "failure", duration)
+		log.EntryFromContext(ctx).WithFields(map[string]any{
+			"duration_ms": duration.Milliseconds(),
+			"result":      "failure",
+			"skill_id":    skillPath,
+		}).SystemErr(errors.E(op, err))
 		return nil, errors.E(op, err)
 	}
 	observ.RecordUpstreamFetch(ctx, "success")
@@ -172,6 +177,12 @@ func (s *stasher) fetchModule(ctx context.Context, mod, ver string) (*storage.Ve
 	if err != nil {
 		observ.RecordUpstreamFetch(ctx, "failure")
 		observ.RecordUpstreamFetchDuration(ctx, "failure", duration)
+		log.EntryFromContext(ctx).WithFields(map[string]any{
+			"duration_ms": duration.Milliseconds(),
+			"result":      "failure",
+			"skill_id":    mod,
+			"version":     ver,
+		}).SystemErr(errors.E(op, err))
 		return nil, errors.E(op, err)
 	}
 

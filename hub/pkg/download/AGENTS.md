@@ -3,7 +3,7 @@
 
 ## Members
 
-- `protocol.go`, `handler.go`, and version-specific handlers: expose List, Latest, immutable Info, and Skill ZIP routes over composable storage and source protocols.
+- `protocol.go`, `handler.go`, and version-specific handlers: expose `/mod`-namespaced List, Latest, immutable Info, and Skill ZIP routes over composable storage and source protocols, with structured cache and dispatch observability.
 - `addons/` and `mode/`: wrap protocol execution with concurrency control and synchronous or redirect delivery policy.
 - `*_test.go`: specify the public HTTP and Protocol contracts, including version listing, caching, fallback, and artifact delivery.
 

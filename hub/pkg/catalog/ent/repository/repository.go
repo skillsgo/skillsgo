@@ -20,6 +20,14 @@ const (
 	FieldRepositoryPath = "repository_path"
 	// FieldRepositoryID holds the string denoting the repository_id field in the database.
 	FieldRepositoryID = "repository_id"
+	// FieldStars holds the string denoting the stars field in the database.
+	FieldStars = "stars"
+	// FieldSourceMetadataEtag holds the string denoting the source_metadata_etag field in the database.
+	FieldSourceMetadataEtag = "source_metadata_etag"
+	// FieldSourceMetadataCheckedAt holds the string denoting the source_metadata_checked_at field in the database.
+	FieldSourceMetadataCheckedAt = "source_metadata_checked_at"
+	// FieldSourceMetadataRetryAt holds the string denoting the source_metadata_retry_at field in the database.
+	FieldSourceMetadataRetryAt = "source_metadata_retry_at"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// FieldUpdatedAt holds the string denoting the updated_at field in the database.
@@ -43,6 +51,10 @@ var Columns = []string{
 	FieldSourceHost,
 	FieldRepositoryPath,
 	FieldRepositoryID,
+	FieldStars,
+	FieldSourceMetadataEtag,
+	FieldSourceMetadataCheckedAt,
+	FieldSourceMetadataRetryAt,
 	FieldCreatedAt,
 	FieldUpdatedAt,
 }
@@ -64,6 +76,8 @@ var (
 	RepositoryPathValidator func(string) error
 	// RepositoryIDValidator is a validator for the "repository_id" field. It is called by the builders before save.
 	RepositoryIDValidator func(string) error
+	// DefaultStars holds the default value on creation for the "stars" field.
+	DefaultStars int64
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 	// DefaultUpdatedAt holds the default value on creation for the "updated_at" field.
@@ -93,6 +107,26 @@ func ByRepositoryPath(opts ...sql.OrderTermOption) OrderOption {
 // ByRepositoryID orders the results by the repository_id field.
 func ByRepositoryID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRepositoryID, opts...).ToFunc()
+}
+
+// ByStars orders the results by the stars field.
+func ByStars(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldStars, opts...).ToFunc()
+}
+
+// BySourceMetadataEtag orders the results by the source_metadata_etag field.
+func BySourceMetadataEtag(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSourceMetadataEtag, opts...).ToFunc()
+}
+
+// BySourceMetadataCheckedAt orders the results by the source_metadata_checked_at field.
+func BySourceMetadataCheckedAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSourceMetadataCheckedAt, opts...).ToFunc()
+}
+
+// BySourceMetadataRetryAt orders the results by the source_metadata_retry_at field.
+func BySourceMetadataRetryAt(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSourceMetadataRetryAt, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

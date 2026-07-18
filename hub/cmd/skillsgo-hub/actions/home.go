@@ -57,11 +57,11 @@ const homepage = `<!DOCTYPE html>
 
 	<h3>List of versions</h3>
 	<p>This endpoint returns a list of versions that Athens knows about for <code>acidburn/htp</code>:</p>
-	<pre>GET {{ .Host }}/github.com/acidburn/htp/@v/list</pre>
+	<pre>GET {{ .Host }}/mod/github.com/acidburn/htp/@v/list</pre>
 
 	<h3>Version info</h3>
 	<p>This endpoint returns information about a specific version of a module:</p>
-	<pre>GET {{ .Host }}/github.com/acidburn/htp/@v/v1.0.0.info</pre>
+	<pre>GET {{ .Host }}/mod/github.com/acidburn/htp/@v/v1.0.0.info</pre>
 	<p>This returns JSON with information about v1.0.0. It looks like this:
 	<pre>{
 	"Name": "v1.0.0",
@@ -75,11 +75,11 @@ const homepage = `<!DOCTYPE html>
 	<pre>name: my-skill\ndescription: Example Skill</pre>
 
 	<h3>Module sources</h3>
-	<pre>GET {{ .Host }}/github.com/acidburn/htp/@v/v1.0.0.zip</pre>
+	<pre>GET {{ .Host }}/mod/github.com/acidburn/htp/@v/v1.0.0.zip</pre>
 	<p>This is what it sounds like — it sends back a zip file with the source code for the module in version v1.0.0.</p>
 
 	<h3>Latest</h3>
-	<pre>GET {{ .Host }}/github.com/acidburn/htp/@latest</pre>
+	<pre>GET {{ .Host }}/mod/github.com/acidburn/htp/@latest</pre>
 	<p>This endpoint returns the latest version of the module. If the version does not exist it should retrieve the hash of latest commit.</p>
 
 </body>

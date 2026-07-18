@@ -95,11 +95,6 @@ func LatestVersion(v string) predicate.Skill {
 	return predicate.Skill(sql.FieldEQ(FieldLatestVersion, v))
 }
 
-// GithubStars applies equality check predicate on the "github_stars" field. It's identical to GithubStarsEQ.
-func GithubStars(v int64) predicate.Skill {
-	return predicate.Skill(sql.FieldEQ(FieldGithubStars, v))
-}
-
 // Verified applies equality check predicate on the "verified" field. It's identical to VerifiedEQ.
 func Verified(v bool) predicate.Skill {
 	return predicate.Skill(sql.FieldEQ(FieldVerified, v))
@@ -588,46 +583,6 @@ func LatestVersionEqualFold(v string) predicate.Skill {
 // LatestVersionContainsFold applies the ContainsFold predicate on the "latest_version" field.
 func LatestVersionContainsFold(v string) predicate.Skill {
 	return predicate.Skill(sql.FieldContainsFold(FieldLatestVersion, v))
-}
-
-// GithubStarsEQ applies the EQ predicate on the "github_stars" field.
-func GithubStarsEQ(v int64) predicate.Skill {
-	return predicate.Skill(sql.FieldEQ(FieldGithubStars, v))
-}
-
-// GithubStarsNEQ applies the NEQ predicate on the "github_stars" field.
-func GithubStarsNEQ(v int64) predicate.Skill {
-	return predicate.Skill(sql.FieldNEQ(FieldGithubStars, v))
-}
-
-// GithubStarsIn applies the In predicate on the "github_stars" field.
-func GithubStarsIn(vs ...int64) predicate.Skill {
-	return predicate.Skill(sql.FieldIn(FieldGithubStars, vs...))
-}
-
-// GithubStarsNotIn applies the NotIn predicate on the "github_stars" field.
-func GithubStarsNotIn(vs ...int64) predicate.Skill {
-	return predicate.Skill(sql.FieldNotIn(FieldGithubStars, vs...))
-}
-
-// GithubStarsGT applies the GT predicate on the "github_stars" field.
-func GithubStarsGT(v int64) predicate.Skill {
-	return predicate.Skill(sql.FieldGT(FieldGithubStars, v))
-}
-
-// GithubStarsGTE applies the GTE predicate on the "github_stars" field.
-func GithubStarsGTE(v int64) predicate.Skill {
-	return predicate.Skill(sql.FieldGTE(FieldGithubStars, v))
-}
-
-// GithubStarsLT applies the LT predicate on the "github_stars" field.
-func GithubStarsLT(v int64) predicate.Skill {
-	return predicate.Skill(sql.FieldLT(FieldGithubStars, v))
-}
-
-// GithubStarsLTE applies the LTE predicate on the "github_stars" field.
-func GithubStarsLTE(v int64) predicate.Skill {
-	return predicate.Skill(sql.FieldLTE(FieldGithubStars, v))
 }
 
 // VerifiedEQ applies the EQ predicate on the "verified" field.

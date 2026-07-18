@@ -338,7 +338,7 @@ func resolveInventoryPath(path string) string {
 }
 
 func loadWorkspaceInventoryState(root string) workspaceInventoryState {
-	manifestExists, manifestReadable := workspaceFileState(filepath.Join(root, "skillsgo.yaml"))
+	manifestExists, manifestReadable := workspaceFileState(filepath.Join(root, "skillsgo.mod"))
 	if !manifestExists {
 		return workspaceInventoryState{}
 	}

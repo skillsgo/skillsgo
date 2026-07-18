@@ -67,7 +67,7 @@ type skillDetailResponse struct {
 	Repository           string               `json:"repository"`
 	ImageURL             *string              `json:"imageUrl"`
 	Installs             int64                `json:"installs"`
-	GitHubStars          int64                `json:"githubStars"`
+	Stars                int64                `json:"stars"`
 	SourceUpdatedAt      time.Time            `json:"sourceUpdatedAt"`
 	ArchiveSize          int64                `json:"archiveSize"`
 	RequestedVersion     string               `json:"requestedVersion"`
@@ -121,11 +121,11 @@ func registerCatalogAPIRoutes(
 	if len(repositoryReaders) > 0 {
 		repositories = repositoryReaders[0]
 	}
-	r.Get("/v1/search", searchSkillsHandler(metadata))
-	r.Get("/v1/skills", listSkillsHandler(metadata))
-	r.Get("/v1/matches", contentMatchesHandler(metadata))
-	r.Get("/v1/skills/+", skillDetailHandler(metadata, artifacts, repositories))
-	r.Post("/v1/events/install", installEventHandler(metadata))
+	r.Get("/api/v1/search", searchSkillsHandler(metadata))
+	r.Get("/api/v1/skills", listSkillsHandler(metadata))
+	r.Get("/api/v1/matches", contentMatchesHandler(metadata))
+	r.Get("/api/v1/skills/+", skillDetailHandler(metadata, artifacts, repositories))
+	r.Post("/api/v1/events/install", installEventHandler(metadata))
 }
 
 func contentMatchesHandler(metadata *catalog.Catalog) fiber.Handler {
@@ -334,14 +334,11 @@ func skillDetailHandler(
 		if skill.Verified {
 			trustLevel = "community_verified"
 		}
-		if repositories != nil &&
-			(skill.GitHubStars == 0 || time.Since(skill.UpdatedAt) >= 6*time.Hour) {
+		if repositories != nil {
 			if source, sourceErr := repositories.Read(c.Context(), skill.SourceHost, skill.Repository); sourceErr != nil {
 				logBestEffortFailure(c, "repository.read_metadata", skill.SkillID, sourceErr)
-			} else if updateErr := metadata.UpdateGitHubStars(c.Context(), skill.SkillID, source.GitHubStars); updateErr != nil {
-				logBestEffortFailure(c, "catalog.update_github_stars", skill.SkillID, updateErr)
 			} else {
-				skill.GitHubStars = source.GitHubStars
+				skill.Stars = source.Stars
 			}
 		}
 		installs, err := metadata.TotalInstalls(c.Context(), skill.RowID)
@@ -351,7 +348,7 @@ func skillDetailHandler(
 		return writeJSON(c, fiber.StatusOK, skillDetailResponse{
 			SkillID: skill.SkillID, Name: skill.Name, Description: skill.Description,
 			Source: skill.SourceHost + "/" + skill.Repository, Repository: skill.SourceHost + "/" + skill.Repository,
-			Installs: installs, GitHubStars: skill.GitHubStars, SourceUpdatedAt: version.CommitTime,
+			Installs: installs, Stars: skill.Stars, SourceUpdatedAt: version.CommitTime,
 			ArchiveSize: version.ArchiveSize, RequestedVersion: skill.LatestVersion,
 			ImageURL:         skillImageURL(skill.SourceHost, skill.Repository),
 			ImmutableVersion: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA,
@@ -414,10 +411,18 @@ func writeInternalAPIError(c fiber.Ctx, operation string, status int, code, publ
 }
 
 func logBestEffortFailure(c fiber.Ctx, operation, skillID string, err error) {
-	log.EntryFromContext(c.Context()).WithFields(map[string]any{
+	fields := map[string]any{
+		"error":     err.Error(),
 		"operation": operation,
 		"skill_id":  skillID,
-	}).Warnf("best-effort dependency failed: %v", err)
+	}
+	var diagnostic interface{ LogFields() map[string]any }
+	if errors.As(err, &diagnostic) {
+		for key, value := range diagnostic.LogFields() {
+			fields[key] = value
+		}
+	}
+	log.EntryFromContext(c.Context()).WithFields(fields).Warnf("best-effort dependency failed")
 }
 
 func apiPagination(c fiber.Ctx) (int, int, bool) {

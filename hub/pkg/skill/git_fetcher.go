@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the skill package imports and contracts declared in this file.
- * [OUTPUT]: Provides the skill package behavior implemented by git_fetcher.go.
+ * [OUTPUT]: Provides bounded shared Git repository synchronization, revision resolution, repository-owned Skill discovery that excludes hidden installation directories, and correlated Git transport diagnostics.
  * [POS]: Serves as maintained source in the skill package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
+	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/spf13/afero"
 	modmodule "golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
@@ -164,7 +165,7 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revis
 	candidates := make([]string, 0)
 	for _, file := range strings.Split(listing, "\n") {
 		file = strings.TrimSpace(file)
-		if file == "SKILL.md" || strings.HasSuffix(file, "/SKILL.md") {
+		if isRepositoryOwnedSkillCandidate(file) {
 			candidates = append(candidates, file)
 		}
 	}
@@ -213,6 +214,21 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revis
 	return snapshot, nil
 }
 
+func isRepositoryOwnedSkillCandidate(file string) bool {
+	if file == "SKILL.md" {
+		return true
+	}
+	if !strings.HasSuffix(file, "/SKILL.md") {
+		return false
+	}
+	for _, segment := range strings.Split(strings.TrimSuffix(file, "/SKILL.md"), "/") {
+		if strings.HasPrefix(segment, ".") {
+			return false
+		}
+	}
+	return true
+}
+
 type repositoryMetadata struct {
 	Repository string    `json:"repository"`
 	URL        string    `json:"url"`
@@ -224,6 +240,13 @@ type repositoryMetadata struct {
 func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error {
 	_, err, _ := g.syncs.Do(skillID.Repository, func() (any, error) {
 		const op errors.Op = "gitFetcher.syncRepository"
+		started := time.Now()
+		entry := log.EntryFromContext(ctx).WithFields(map[string]any{
+			"dependency":    "git_source",
+			"repository_id": skillID.Repository,
+			"source_host":   strings.SplitN(skillID.Repository, "/", 2)[0],
+		})
+		entry.Debugf("repository git synchronization started")
 		repoDir, err := g.repositoryDir(skillID.Repository)
 		if err != nil {
 			return nil, errors.E(op, err)
@@ -234,15 +257,32 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 
 		cloneURL := g.cloneURL(skillID)
 		if err := validateRepositoryNetworkTarget(ctx, skillID.Repository, cloneURL); err != nil {
+			entry.WithFields(map[string]any{
+				"duration_ms": time.Since(started).Milliseconds(),
+				"error":       err.Error(),
+				"git_phase":   "network_validation",
+			}).Warnf("repository git synchronization failed")
 			return nil, errors.E(op, err)
 		}
 		if isGitRepository(repoDir) {
+			fetchStarted := time.Now()
 			fetch := exec.CommandContext(ctx, "git", "-c", "http.followRedirects=false", "fetch", "--prune", "--tags", "origin")
 			fetch.Dir = repoDir
 			fetch.Env = os.Environ()
 			if output, err := fetch.CombinedOutput(); err == nil {
+				entry.WithFields(map[string]any{
+					"duration_ms": time.Since(fetchStarted).Milliseconds(),
+					"git_phase":   "fetch",
+					"result":      "success",
+				}).Debugf("repository git transport completed")
 				return nil, g.writeRepositoryMetadata(repoDir, skillID)
 			} else if ctx.Err() != nil {
+				entry.WithFields(map[string]any{
+					"duration_ms": time.Since(fetchStarted).Milliseconds(),
+					"error":       ctx.Err().Error(),
+					"git_phase":   "fetch",
+					"result":      "canceled",
+				}).Warnf("repository git transport failed")
 				return nil, errors.E(op, ctx.Err())
 			} else {
 				// A remote or authentication failure must not destroy a usable
@@ -251,8 +291,23 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 				fsck.Dir = repoDir
 				fsck.Env = os.Environ()
 				if _, fsckErr := fsck.CombinedOutput(); fsckErr == nil {
-					return nil, errors.E(op, fmt.Errorf("git fetch failed: %s", strings.TrimSpace(string(output))))
+					diagnostic := gitTransportDiagnostic(output)
+					entry.WithFields(map[string]any{
+						"duration_ms":             time.Since(fetchStarted).Milliseconds(),
+						"error":                   diagnostic,
+						"git_phase":               "fetch",
+						"local_repository_usable": true,
+						"result":                  "failure",
+					}).Warnf("repository git transport failed")
+					return nil, errors.E(op, fmt.Errorf("git fetch failed: %s", diagnostic))
 				}
+				entry.WithFields(map[string]any{
+					"duration_ms":             time.Since(fetchStarted).Milliseconds(),
+					"error":                   gitTransportDiagnostic(output),
+					"git_phase":               "fetch",
+					"local_repository_usable": false,
+					"result":                  "failure",
+				}).Warnf("repository git transport failed")
 				if err := os.RemoveAll(repoDir); err != nil {
 					return nil, errors.E(op, err)
 				}
@@ -269,13 +324,26 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 		}
 		defer os.RemoveAll(tmpDir)
 		cloneDir := filepath.Join(tmpDir, "repository")
+		cloneStarted := time.Now()
 		clone := exec.CommandContext(ctx, "git", "-c", "http.followRedirects=false", "clone", "--filter=blob:none", "--no-checkout", cloneURL, cloneDir)
 		clone.Env = os.Environ()
-		if _, err := clone.CombinedOutput(); err != nil {
+		if output, err := clone.CombinedOutput(); err != nil {
+			diagnostic := gitTransportDiagnostic(output)
+			entry.WithFields(map[string]any{
+				"duration_ms": time.Since(cloneStarted).Milliseconds(),
+				"error":       diagnostic,
+				"git_phase":   "clone",
+				"result":      "failure",
+			}).Warnf("repository git transport failed")
 			return nil, errors.E(op,
 				fmt.Sprintf("Skill repository %q not found", skillID.Repository),
 				errors.S(skillID.String()), errors.KindNotFound)
 		}
+		entry.WithFields(map[string]any{
+			"duration_ms": time.Since(cloneStarted).Milliseconds(),
+			"git_phase":   "clone",
+			"result":      "success",
+		}).Debugf("repository git transport completed")
 		if err := enforceRepositoryDiskLimit(cloneDir); err != nil {
 			return nil, errors.E(op, err, errors.KindBadRequest)
 		}
@@ -285,6 +353,15 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 		return nil, g.writeRepositoryMetadata(repoDir, skillID)
 	})
 	return err
+}
+
+func gitTransportDiagnostic(output []byte) string {
+	const maxBytes = 4096
+	diagnostic := strings.TrimSpace(string(output))
+	if len(diagnostic) <= maxBytes {
+		return diagnostic
+	}
+	return diagnostic[:maxBytes] + "…"
 }
 
 func validateRepositoryNetworkTarget(ctx context.Context, repositoryID, cloneURL string) error {
