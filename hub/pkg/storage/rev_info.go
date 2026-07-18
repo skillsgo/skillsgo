@@ -40,10 +40,13 @@ type Origin struct {
 // GET baseURL/module/@v/version.info
 // from https://pkg.go.dev/cmd/go/internal/modfetch/codehost#RevInfo.
 type RevInfo struct {
-	Origin  *Origin
-	Name    string    // complete ID in underlying repository
-	Short   string    // shortened ID, for use in pseudo-version
-	Version string    // version used in lookup
-	Time    time.Time // commit time
-	Tags    []string  // known tags for commit
+	Origin    *Origin
+	Name      string    // complete ID in underlying repository
+	Short     string    // shortened ID, for use in pseudo-version
+	Version   string    // version used in lookup
+	Time      time.Time // commit time
+	Tags      []string  // known tags for commit
+	Ref       string    `json:",omitempty"`
+	CommitSHA string    `json:",omitempty"`
+	TreeSHA   string    `json:",omitempty"`
 }

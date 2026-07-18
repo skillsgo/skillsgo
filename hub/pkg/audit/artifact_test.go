@@ -29,6 +29,7 @@ func TestAnalyzeArtifactExtractsInspectableFilesAndRiskEvidence(t *testing.T) {
 	require.Contains(t, result.Instructions, "# Real instructions")
 	require.Equal(t, "high", result.Risk.Level)
 	require.Equal(t, ScannerVersion, result.Risk.ScannerVersion)
+	require.Equal(t, result.ContentDigest, result.Risk.ArtifactDigest)
 	require.ElementsMatch(t, []Evidence{
 		{Code: "script_file", Path: "scripts/run.sh"},
 		{Code: "binary_executable", Path: "bin/helper.exe"},

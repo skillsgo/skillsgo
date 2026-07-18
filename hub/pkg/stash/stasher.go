@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the stash package imports and contracts declared in this file.
- * [OUTPUT]: Provides the stash package behavior implemented by stasher.go.
- * [POS]: Serves as maintained source in the stash package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on request-scoped logging, immutable source resolution, storage, indexing, metrics, and singleflight.
+ * [OUTPUT]: Persists resolved artifacts while preserving correlation context and reporting cache, singleflight, resolution, and upstream duration telemetry.
+ * [POS]: Serves as the observable source-to-storage transaction in the artifact pipeline.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package stash
@@ -16,7 +16,6 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
-	"go.opentelemetry.io/otel/trace"
 	"golang.org/x/mod/semver"
 	"golang.org/x/sync/singleflight"
 )
@@ -58,12 +57,18 @@ func (s *stasher) Stash(ctx context.Context, mod, ver string) (string, error) {
 	const op errors.Op = "stasher.Stash"
 	ctx, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
-	log.EntryFromContext(ctx).Debugf("saving %s@%s to storage...", mod, ver)
+	started := time.Now()
+	entry := log.EntryFromContext(ctx).WithFields(map[string]any{
+		"skill_id":          mod,
+		"requested_version": ver,
+	})
+	entry.Debugf("artifact stash requested")
+	cacheResult := "miss"
 
-	semver_, err, _ := s.sfg.Do(mod+"###"+ver, func() (any, error) {
+	semver_, err, shared := s.sfg.Do(mod+"###"+ver, func() (any, error) {
 		// create a new context that ditches whatever deadline the caller passed
 		// but keep the tracing info so that we can properly trace the whole thing.
-		ctx, cancel := context.WithTimeout(trace.ContextWithSpan(context.Background(), span), s.timeout)
+		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), s.timeout)
 		defer cancel()
 		if semver.IsValid(ver) {
 			exists, err := s.checker.Exists(ctx, mod, ver)
@@ -71,6 +76,7 @@ func (s *stasher) Stash(ctx context.Context, mod, ver string) (string, error) {
 				return "", errors.E(op, err)
 			}
 			if exists {
+				cacheResult = "hit"
 				return ver, nil
 			}
 		}
@@ -86,6 +92,7 @@ func (s *stasher) Stash(ctx context.Context, mod, ver string) (string, error) {
 				return "", errors.E(op, err)
 			}
 			if exists {
+				cacheResult = "hit"
 				return resolution.Version, nil
 			}
 			v, err = s.fetchResolved(ctx, resolvedFetcher, mod, resolution)
@@ -104,6 +111,7 @@ func (s *stasher) Stash(ctx context.Context, mod, ver string) (string, error) {
 					return "", errors.E(op, err)
 				}
 				if exists {
+					cacheResult = "hit"
 					_ = v.Zip.Close()
 					return v.Semver, nil
 				}
@@ -126,6 +134,12 @@ func (s *stasher) Stash(ctx context.Context, mod, ver string) (string, error) {
 	if !ok {
 		return "", errors.E(op, "unexpected type assertion failure for semver", errors.KindUnexpected)
 	}
+	entry.WithFields(map[string]any{
+		"cache_result":        cacheResult,
+		"duration_ms":         time.Since(started).Milliseconds(),
+		"resolved_version":    semver,
+		"singleflight_shared": shared,
+	}).Debugf("artifact stash completed")
 	return semver, nil
 }
 
@@ -141,6 +155,11 @@ func (s *stasher) fetchResolved(ctx context.Context, f skill.ResolvedFetcher, sk
 	}
 	observ.RecordUpstreamFetch(ctx, "success")
 	observ.RecordUpstreamFetchDuration(ctx, "success", duration)
+	log.EntryFromContext(ctx).WithFields(map[string]any{
+		"duration_ms": duration.Milliseconds(),
+		"result":      "success",
+		"skill_id":    skillPath,
+	}).Debugf("upstream artifact fetch completed")
 	return v, nil
 }
 
@@ -158,5 +177,11 @@ func (s *stasher) fetchModule(ctx context.Context, mod, ver string) (*storage.Ve
 
 	observ.RecordUpstreamFetch(ctx, "success")
 	observ.RecordUpstreamFetchDuration(ctx, "success", duration)
+	log.EntryFromContext(ctx).WithFields(map[string]any{
+		"duration_ms": duration.Milliseconds(),
+		"result":      "success",
+		"skill_id":    mod,
+		"version":     ver,
+	}).Debugf("upstream artifact fetch completed")
 	return v, nil
 }

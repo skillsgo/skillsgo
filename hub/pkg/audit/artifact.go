@@ -47,6 +47,7 @@ type Evidence struct {
 type RiskAssessment struct {
 	Level          string     `json:"level"`
 	ScannerVersion string     `json:"scannerVersion"`
+	ArtifactDigest string     `json:"artifactDigest"`
 	Evidence       []Evidence `json:"evidence"`
 }
 
@@ -183,6 +184,7 @@ func AnalyzeArtifact(data []byte, skillID, version string) (*Result, error) {
 		return nil, fmt.Errorf("artifact does not contain SKILL.md")
 	}
 	result.ContentDigest = fmt.Sprintf("sha256:%x", contentHash.Sum(nil))
+	result.Risk.ArtifactDigest = result.ContentDigest
 	return result, nil
 }
 

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber, the Catalog, immutable artifact protocol, ZIP audit boundary, request validation, and UTC ranking windows.
- * [OUTPUT]: Provides stable public search, ranked collection and product-ready detail metadata including installs, repository popularity, source update time and ZIP size, exact content-match, auditable artifacts, and idempotent install-event endpoints.
+ * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, immutable artifact protocol, ZIP audit boundary, request validation, and UTC ranking windows.
+ * [OUTPUT]: Provides stable public APIs plus correlated private diagnostics for internal and best-effort dependency failures.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -23,6 +23,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/audit"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	skillerrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
+	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 )
 
@@ -140,7 +141,7 @@ func contentMatchesHandler(metadata *catalog.Catalog) fiber.Handler {
 		}
 		matches, err := metadata.MatchContent(c.Context(), digest, hint, 20)
 		if err != nil {
-			return writeAPIError(c, fiber.StatusInternalServerError, "content match failed")
+			return writeInternalAPIError(c, "catalog.content_matches", fiber.StatusInternalServerError, "internal_error", "content match failed", err)
 		}
 		response := contentMatchesResponse{SchemaVersion: 1, ContentDigest: digest, Matches: make([]contentMatch, 0, len(matches))}
 		for _, match := range matches {
@@ -177,7 +178,7 @@ func installEventHandler(metadata *catalog.Catalog) fiber.Handler {
 			return writeAPIError(c, fiber.StatusNotFound, "skill not found")
 		}
 		if err != nil {
-			return writeAPIError(c, fiber.StatusInternalServerError, "event recording failed")
+			return writeInternalAPIError(c, "catalog.record_install_event", fiber.StatusInternalServerError, "internal_error", "event recording failed", err)
 		}
 		return writeJSON(c, fiber.StatusAccepted, map[string]bool{"accepted": inserted})
 	}
@@ -217,7 +218,7 @@ func searchSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 		}
 		skills, err := metadata.Search(c.Context(), query, limit+1, offset)
 		if err != nil {
-			return writeAPIError(c, fiber.StatusInternalServerError, "search failed")
+			return writeInternalAPIError(c, "catalog.search", fiber.StatusInternalServerError, "internal_error", "search failed", err)
 		}
 		return writeJSON(c, fiber.StatusOK, discoveryResponse("search", "all_time_installs", skills, limit, offset))
 	}
@@ -238,7 +239,7 @@ func listSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 		}
 		skills, err := metadata.RankedSkills(c.Context(), sort, limit+1, offset, time.Now().UTC())
 		if err != nil {
-			return writeAPIError(c, fiber.StatusInternalServerError, "list failed")
+			return writeInternalAPIError(c, "catalog.ranked_skills", fiber.StatusInternalServerError, "internal_error", "list failed", err)
 		}
 		metricKind := map[string]string{
 			"all_time": "all_time_installs",
@@ -290,44 +291,44 @@ func skillDetailHandler(
 			return writeAPIError(c, fiber.StatusNotFound, "skill not found")
 		}
 		if err != nil {
-			return writeAPIError(c, fiber.StatusInternalServerError, "detail failed")
+			return writeInternalAPIError(c, "catalog.skill_detail", fiber.StatusInternalServerError, "internal_error", "detail failed", err)
 		}
 		if artifacts == nil {
 			return writeAPIErrorCode(c, fiber.StatusServiceUnavailable, "artifact_unavailable", "artifact service unavailable")
 		}
 		infoBytes, err := artifacts.Info(c.Context(), skill.SkillID, skill.LatestVersion)
 		if err != nil {
-			return writeArtifactReadError(c, err)
+			return writeArtifactReadError(c, "artifact.info", err)
 		}
-		var info storage.RevInfo
-		if json.Unmarshal(infoBytes, &info) != nil || info.Version == "" || info.Origin == nil || info.Origin.CommitSHA == "" || info.Origin.TreeSHA == "" {
-			return writeAPIErrorCode(c, fiber.StatusBadGateway, "artifact_invalid", "artifact info is invalid")
+		var info catalogArtifactInfo
+		if json.Unmarshal(infoBytes, &info) != nil || info.Version == "" || info.CommitSHA == "" || info.TreeSHA == "" {
+			return writeInternalAPIError(c, "artifact.decode_info", fiber.StatusBadGateway, "artifact_invalid", "artifact info is invalid", errors.New("artifact info is missing immutable identity fields"))
 		}
 		archive, err := artifacts.Zip(c.Context(), skill.SkillID, info.Version)
 		if err != nil {
-			return writeArtifactReadError(c, err)
+			return writeArtifactReadError(c, "artifact.zip", err)
 		}
 		archiveSize := archive.Size()
 		archiveBytes, err := readAuditArchive(archive)
 		if err != nil {
-			return writeAPIErrorCode(c, fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid")
+			return writeInternalAPIError(c, "artifact.read_archive", fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid", err)
 		}
 		analysis, err := audit.AnalyzeArtifact(archiveBytes, skill.SkillID, info.Version)
 		if err != nil {
-			return writeAPIErrorCode(c, fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid")
+			return writeInternalAPIError(c, "artifact.audit", fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid", err)
 		}
 		version, err := metadata.RecordSkillVersion(c.Context(), skill.SkillID, catalog.SkillVersion{
-			Version: info.Version, CommitSHA: info.Origin.CommitSHA, TreeSHA: info.Origin.TreeSHA, ContentDigest: analysis.ContentDigest,
+			Version: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA, ContentDigest: analysis.ContentDigest,
 			CommitTime: info.Time, ArchiveSize: archiveSize,
 		})
 		if err != nil {
-			return writeAPIError(c, fiber.StatusInternalServerError, "artifact metadata failed")
+			return writeInternalAPIError(c, "catalog.record_skill_version", fiber.StatusInternalServerError, "internal_error", "artifact metadata failed", err)
 		}
 		evidence, _ := json.Marshal(analysis.Risk.Evidence)
 		if _, err := metadata.AppendRiskAssessment(c.Context(), version.RowID, catalog.RiskAssessment{
 			Level: analysis.Risk.Level, ScannerVersion: analysis.Risk.ScannerVersion, Evidence: string(evidence),
 		}); err != nil {
-			return writeAPIError(c, fiber.StatusInternalServerError, "risk assessment failed")
+			return writeInternalAPIError(c, "catalog.append_risk_assessment", fiber.StatusInternalServerError, "internal_error", "risk assessment failed", err)
 		}
 		trustLevel := "unverified"
 		if skill.Verified {
@@ -335,15 +336,17 @@ func skillDetailHandler(
 		}
 		if repositories != nil &&
 			(skill.GitHubStars == 0 || time.Since(skill.UpdatedAt) >= 6*time.Hour) {
-			if source, sourceErr := repositories.Read(c.Context(), skill.SourceHost, skill.Repository); sourceErr == nil {
-				if updateErr := metadata.UpdateGitHubStars(c.Context(), skill.SkillID, source.GitHubStars); updateErr == nil {
-					skill.GitHubStars = source.GitHubStars
-				}
+			if source, sourceErr := repositories.Read(c.Context(), skill.SourceHost, skill.Repository); sourceErr != nil {
+				logBestEffortFailure(c, "repository.read_metadata", skill.SkillID, sourceErr)
+			} else if updateErr := metadata.UpdateGitHubStars(c.Context(), skill.SkillID, source.GitHubStars); updateErr != nil {
+				logBestEffortFailure(c, "catalog.update_github_stars", skill.SkillID, updateErr)
+			} else {
+				skill.GitHubStars = source.GitHubStars
 			}
 		}
 		installs, err := metadata.TotalInstalls(c.Context(), skill.RowID)
 		if err != nil {
-			return writeAPIError(c, fiber.StatusInternalServerError, "install metadata failed")
+			return writeInternalAPIError(c, "catalog.total_installs", fiber.StatusInternalServerError, "internal_error", "install metadata failed", err)
 		}
 		return writeJSON(c, fiber.StatusOK, skillDetailResponse{
 			SkillID: skill.SkillID, Name: skill.Name, Description: skill.Description,
@@ -351,8 +354,8 @@ func skillDetailHandler(
 			Installs: installs, GitHubStars: skill.GitHubStars, SourceUpdatedAt: version.CommitTime,
 			ArchiveSize: version.ArchiveSize, RequestedVersion: skill.LatestVersion,
 			ImageURL:         skillImageURL(skill.SourceHost, skill.Repository),
-			ImmutableVersion: info.Version, CommitSHA: info.Origin.CommitSHA, TreeSHA: info.Origin.TreeSHA,
-			SourceRef: info.Origin.Ref, ContentDigest: analysis.ContentDigest,
+			ImmutableVersion: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA,
+			SourceRef: info.Ref, ContentDigest: analysis.ContentDigest,
 			Instructions: analysis.Instructions, TrustLevel: trustLevel, RiskAssessment: analysis.Risk,
 			Files: analysis.Files, HasExecutableContent: analysis.HasExecutableContent,
 			ExecutableFiles: analysis.ExecutableFiles,
@@ -392,11 +395,29 @@ func readAuditArchive(archive storage.SizeReadCloser) ([]byte, error) {
 	return data, nil
 }
 
-func writeArtifactReadError(c fiber.Ctx, err error) error {
+func writeArtifactReadError(c fiber.Ctx, operation string, err error) error {
 	if skillerrors.Kind(err) == fiber.StatusNotFound {
+		log.EntryFromContext(c.Context()).WithFields(map[string]any{
+			"error_code": "artifact_unavailable",
+			"operation":  operation,
+		}).Infof("artifact unavailable")
 		return writeAPIErrorCode(c, fiber.StatusNotFound, "artifact_unavailable", "artifact not found")
 	}
-	return writeAPIErrorCode(c, fiber.StatusServiceUnavailable, "artifact_unavailable", "artifact unavailable")
+	return writeInternalAPIError(c, operation, fiber.StatusServiceUnavailable, "artifact_unavailable", "artifact unavailable", err)
+}
+
+func writeInternalAPIError(c fiber.Ctx, operation string, status int, code, publicMessage string, err error) error {
+	log.EntryFromContext(c.Context()).WithFields(map[string]any{
+		"error_code": code,
+	}).SystemErr(skillerrors.E(skillerrors.Op(operation), err, status))
+	return writeAPIErrorCode(c, status, code, publicMessage)
+}
+
+func logBestEffortFailure(c fiber.Ctx, operation, skillID string, err error) {
+	log.EntryFromContext(c.Context()).WithFields(map[string]any{
+		"operation": operation,
+		"skill_id":  skillID,
+	}).Warnf("best-effort dependency failed: %v", err)
 }
 
 func apiPagination(c fiber.Ctx) (int, int, bool) {

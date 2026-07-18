@@ -28,7 +28,7 @@ func TestSkillInfoRouteReturnsCompleteInstallMetadata(t *testing.T) {
 	skillID, version := "github.com/vercel-labs/skills/-/skills/find-skills", "v1.2.3"
 	archive := catalogProtocolTestZIP(t, skillID, version)
 	underlying := &fixedArtifactProtocol{
-		info: []byte(`{"Version":"v1.2.3","Time":"2026-07-15T00:00:00Z","Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/skills","Subdir":"skills/find-skills","Ref":"refs/tags/v1.2.3","CommitSHA":"abc","TreeSHA":"def"}}`),
+		info: []byte(`{"Version":"v1.2.3","Time":"2026-07-15T00:00:00Z","VCS":"git","URL":"https://github.com/vercel-labs/skills","Subdir":"skills/find-skills","Ref":"refs/tags/v1.2.3","CommitSHA":"abc","TreeSHA":"def"}`),
 		zip:  archive,
 	}
 	_, metadata := testCatalogAPI(t)
@@ -120,7 +120,7 @@ func TestRepositoryInfoRouteEmbedsCompleteImmutableSkillInfo(t *testing.T) {
 	} {
 		archive := catalogProtocolTestZIPNamed(t, member.id, version, member.name, "Repository member.", "")
 		fixtures[member.id] = repositoryFixture{
-			info: []byte(fmt.Sprintf(`{"Version":%q,"Time":"2026-07-15T00:00:00Z","Origin":{"VCS":"git","URL":"https://github.com/example/skills","Subdir":%q,"Ref":"refs/tags/v1.2.3","CommitSHA":"abc123","TreeSHA":%q}}`, version, member.path, member.tree)),
+			info: []byte(fmt.Sprintf(`{"Version":%q,"Time":"2026-07-15T00:00:00Z","VCS":"git","URL":"https://github.com/example/skills","Subdir":%q,"Ref":"refs/tags/v1.2.3","CommitSHA":"abc123","TreeSHA":%q}`, version, member.path, member.tree)),
 			zip:  archive,
 		}
 	}
@@ -144,6 +144,7 @@ func TestRepositoryInfoRouteEmbedsCompleteImmutableSkillInfo(t *testing.T) {
 		Kind          string            `json:"Kind"`
 		ID            string            `json:"ID"`
 		Version       string            `json:"Version"`
+		Ref           string            `json:"Ref"`
 		CommitSHA     string            `json:"CommitSHA"`
 		Skills        []json.RawMessage `json:"Skills"`
 	}
@@ -152,6 +153,7 @@ func TestRepositoryInfoRouteEmbedsCompleteImmutableSkillInfo(t *testing.T) {
 	require.Equal(t, "Repository", info.Kind)
 	require.Equal(t, repository, info.ID)
 	require.Equal(t, version, info.Version)
+	require.Equal(t, "refs/tags/v1.2.3", info.Ref)
 	require.Equal(t, "abc123", info.CommitSHA)
 	require.Len(t, info.Skills, 2)
 	require.Contains(t, string(info.Skills[0])+string(info.Skills[1]), `"Name":"root-skill"`)
@@ -191,7 +193,7 @@ func TestCatalogProtocolIndexesSuccessfulArtifactResolution(t *testing.T) {
 		t.Run(name, func(t *testing.T) {
 			_, metadata := testCatalogAPI(t)
 			underlying := &fixedArtifactProtocol{
-				info: []byte(`{"Version":"v0.0.0-test","Time":"2026-07-15T00:00:00Z","Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/skills","Subdir":"skills/find-skills","Ref":"refs/heads/main","CommitSHA":"abc","TreeSHA":"def"}}`),
+				info: []byte(`{"Version":"v0.0.0-test","Time":"2026-07-15T00:00:00Z","VCS":"git","URL":"https://github.com/vercel-labs/skills","Subdir":"skills/find-skills","Ref":"refs/heads/main","CommitSHA":"abc","TreeSHA":"def"}`),
 				zip:  catalogProtocolTestZIP(t, skillID, "v0.0.0-test"),
 			}
 			protocol := withCatalog(underlying, metadata)

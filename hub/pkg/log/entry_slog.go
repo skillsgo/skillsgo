@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the log package imports and contracts declared in this file.
- * [OUTPUT]: Provides the log package behavior implemented by entry_slog.go.
- * [POS]: Serves as maintained source in the log package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on slog, Hub error metadata, deterministic field ordering, and centralized credential redaction.
+ * [OUTPUT]: Provides severity-aware structured entries whose messages and fields are sanitized before emission.
+ * [POS]: Serves as the safe structured-log emission boundary for every Hub component.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package log
@@ -20,10 +20,18 @@ type entry struct {
 	sl *slog.Logger
 }
 
-func (e *entry) Debugf(format string, args ...any) { e.sl.Debug(fmt.Sprintf(format, args...)) }
-func (e *entry) Infof(format string, args ...any)  { e.sl.Info(fmt.Sprintf(format, args...)) }
-func (e *entry) Warnf(format string, args ...any)  { e.sl.Warn(fmt.Sprintf(format, args...)) }
-func (e *entry) Errorf(format string, args ...any) { e.sl.Error(fmt.Sprintf(format, args...)) }
+func (e *entry) Debugf(format string, args ...any) {
+	e.sl.Debug(redactText(fmt.Sprintf(format, args...)))
+}
+func (e *entry) Infof(format string, args ...any) {
+	e.sl.Info(redactText(fmt.Sprintf(format, args...)))
+}
+func (e *entry) Warnf(format string, args ...any) {
+	e.sl.Warn(redactText(fmt.Sprintf(format, args...)))
+}
+func (e *entry) Errorf(format string, args ...any) {
+	e.sl.Error(redactText(fmt.Sprintf(format, args...)))
+}
 
 func (e *entry) WithFields(fields map[string]any) Entry {
 	return &entry{sl: e.sl.With(attrsFromFields(fields)...)}
@@ -70,7 +78,7 @@ func attrsFromFields(fields map[string]any) []any {
 
 	attrs := make([]any, 0, len(keys))
 	for _, k := range keys {
-		attrs = append(attrs, slog.Any(k, fields[k]))
+		attrs = append(attrs, slog.Any(k, redactField(k, fields[k])))
 	}
 	return attrs
 }

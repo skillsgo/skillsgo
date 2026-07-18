@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on the download package imports and contracts declared in this file.
- * [OUTPUT]: Provides the download package behavior implemented by protocol.go.
- * [POS]: Serves as maintained source in the download package in its renamed SkillsGo Hub or CLI workspace.
+ * [OUTPUT]: Provides storage-first artifact protocol behavior with cache and download-mode telemetry.
+ * [POS]: Serves as the observable storage/source orchestration layer in the artifact download protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package download
@@ -202,8 +202,10 @@ func (p *protocol) Info(ctx context.Context, mod, ver string) ([]byte, error) {
 	info, err := p.storage.Info(ctx, mod, ver)
 	if err == nil {
 		observ.RecordCacheLookup(ctx, "hit", "info")
+		logCacheLookup(ctx, mod, ver, "info", "hit")
 	} else if errors.IsNotFoundErr(err) {
 		observ.RecordCacheLookup(ctx, "miss", "info")
+		logCacheLookup(ctx, mod, ver, "info", "miss")
 		err = p.processDownload(ctx, mod, ver, func(newVer string) error {
 			info, err = p.storage.Info(ctx, mod, newVer)
 			return err
@@ -223,8 +225,10 @@ func (p *protocol) Zip(ctx context.Context, mod, ver string) (storage.SizeReadCl
 	zip, err := p.storage.Zip(ctx, mod, ver)
 	if err == nil {
 		observ.RecordCacheLookup(ctx, "hit", "zip")
+		logCacheLookup(ctx, mod, ver, "zip", "hit")
 	} else if errors.IsNotFoundErr(err) {
 		observ.RecordCacheLookup(ctx, "miss", "zip")
+		logCacheLookup(ctx, mod, ver, "zip", "miss")
 		err = p.processDownload(ctx, mod, ver, func(newVer string) error {
 			zip, err = p.storage.Zip(ctx, mod, newVer)
 			return err
@@ -243,6 +247,11 @@ func (p *protocol) processDownload(ctx context.Context, mod, ver string, f func(
 	// This is needed so that the async go routines can continue even after the HTTP request is complete (which leads to context cancellation).
 	ctx, cancel := copyContextWithCustomTimeout(ctx, time.Minute*15)
 	defer cancel()
+	log.EntryFromContext(ctx).WithFields(map[string]any{
+		"download_mode": p.df.Match(mod),
+		"skill_id":      mod,
+		"version":       ver,
+	}).Debugf("artifact download dispatched")
 	switch p.df.Match(mod) {
 	case mode.Sync:
 		newVer, err := p.stasher.Stash(ctx, mod, ver)
@@ -262,6 +271,15 @@ func (p *protocol) processDownload(ctx context.Context, mod, ver string, f func(
 		return errors.E(op, "none", errors.KindNotFound)
 	}
 	return nil
+}
+
+func logCacheLookup(ctx context.Context, skillID, version, resource, result string) {
+	log.EntryFromContext(ctx).WithFields(map[string]any{
+		"cache_resource": resource,
+		"cache_result":   result,
+		"skill_id":       skillID,
+		"version":        version,
+	}).Debugf("artifact cache lookup")
 }
 
 // union concatenates two version lists and removes duplicates.

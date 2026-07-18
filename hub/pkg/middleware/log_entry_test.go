@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the middleware package imports and contracts declared in this file.
- * [OUTPUT]: Specifies the middleware package behavior covered by log_entry_test.go.
+ * [OUTPUT]: Specifies query-free request correlation fields and structured completion telemetry.
  * [POS]: Serves as test coverage for the middleware package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -36,6 +36,30 @@ func TestLogContext(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	expected := `"http-method":"GET","http-path":"/test","request-id":""`
+	expected := `"http_method":"GET","http_path":"/test","request_id":""`
 	assert.True(t, strings.Contains(buf.String(), expected), fmt.Sprintf("%s should contain: %s", buf.String(), expected))
+}
+
+func TestRequestLoggerRecordsStructuredCompletionWithoutQuery(t *testing.T) {
+	var buf bytes.Buffer
+	lggr := log.NewWithOutput(&buf, "", slog.LevelDebug, "json")
+	app := fiber.New()
+	app.Use(LogEntryMiddleware(lggr), RequestLogger)
+	app.Get("/skills", func(c fiber.Ctx) error { return c.Status(fiber.StatusCreated).SendString("ok") })
+	req, _ := http.NewRequest(http.MethodGet, "/skills?token=secret", nil)
+	if _, err := app.Test(req); err != nil {
+		t.Fatal(err)
+	}
+
+	output := buf.String()
+	for _, expected := range []string{
+		`"msg":"request completed"`,
+		`"http_status":201`,
+		`"response_bytes":2`,
+		`"route":"/skills"`,
+		`"duration_ms":`,
+	} {
+		assert.Contains(t, output, expected)
+	}
+	assert.NotContains(t, output, "secret")
 }
