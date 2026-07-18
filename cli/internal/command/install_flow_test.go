@@ -33,8 +33,8 @@ func TestAddListRemoveFlow(t *testing.T) {
 	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: demo\ndescription: test\n---\n"})
 	contentDigest := commandTestContentDigest(t, zipData, skillID, version)
 	repository := strings.SplitN(skillID, "/-/", 2)[0]
-	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":%q,"Time":"2026-01-01T00:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/example/skills","Subdir":"skills/demo","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, version, contentDigest, len(zipData))
-	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
+	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":%q,"Time":"2026-01-01T00:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/example/skills","Subdir":"skills/demo","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}`, skillID, version, contentDigest, len(zipData))
+	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Ref":"main","CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
 		case request.URL.Path == "/"+repository+"/@v/list":
@@ -85,8 +85,8 @@ func TestAddUsesInfoNameIndependentFromSkillIDPath(t *testing.T) {
 	})
 	contentDigest := commandTestContentDigest(t, zipData, skillID, version)
 	repository := strings.SplitN(skillID, "/-/", 2)[0]
-	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":%q,"Description":"React guidance.","Version":%q,"Time":"2026-01-01T00:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/agent-skills","Subdir":"skills/react-best-practices","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, name, version, contentDigest, len(zipData))
-	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
+	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":%q,"Description":"React guidance.","Version":%q,"Time":"2026-01-01T00:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/vercel-labs/agent-skills","Subdir":"skills/react-best-practices","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}`, skillID, name, version, contentDigest, len(zipData))
+	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Ref":"main","CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
 		case request.URL.Path == "/"+repository+"/@v/list":
@@ -130,8 +130,8 @@ func TestAddInstallsFromEnrichedInfoWithoutManifestRequest(t *testing.T) {
 	})
 	contentDigest := commandTestContentDigest(t, zipData, skillID, version)
 	repository := strings.SplitN(skillID, "/-/", 2)[0]
-	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Time":"2026-01-01T00:00:00Z","Name":%q,"Description":"React guidance.","License":"MIT","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/agent-skills","Subdir":"skills/react-best-practices","Ref":"refs/tags/v1.2.3","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, version, name, contentDigest, len(zipData))
-	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
+	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Time":"2026-01-01T00:00:00Z","Name":%q,"Description":"React guidance.","License":"MIT","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/vercel-labs/agent-skills","Subdir":"skills/react-best-practices","Ref":"refs/tags/v1.2.3","CommitSHA":"abc","TreeSHA":"def"}`, skillID, version, name, contentDigest, len(zipData))
+	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Ref":"refs/tags/v1.2.3","CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
 	manifestRequested := false
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
@@ -171,8 +171,8 @@ func TestAddBranchStoresResolvedImmutableVersionInManifest(t *testing.T) {
 	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: find-skills\ndescription: test\n---\n"})
 	contentDigest := commandTestContentDigest(t, zipData, skillID, version)
 	repository := strings.SplitN(skillID, "/-/", 2)[0]
-	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"find-skills","Description":"test","Version":%q,"Time":"2026-07-17T10:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/vercel-labs/skills","Subdir":"skills/find-skills","Ref":"refs/heads/feature-x","CommitSHA":"777599e1159e","TreeSHA":"76a98a285cb0"}}`, skillID, version, contentDigest, len(zipData))
-	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"777599e1159e","Skills":[%s]}`, repository, version, memberInfo)
+	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"find-skills","Description":"test","Version":%q,"Time":"2026-07-17T10:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/vercel-labs/skills","Subdir":"skills/find-skills","Ref":"refs/heads/feature-x","CommitSHA":"777599e1159e","TreeSHA":"76a98a285cb0"}`, skillID, version, contentDigest, len(zipData))
+	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Ref":"refs/heads/feature-x","CommitSHA":"777599e1159e","Skills":[%s]}`, repository, version, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
 		case request.URL.Path == "/"+repository+"/@v/"+branch+".info":
@@ -219,8 +219,8 @@ func TestAddRequiresConfirmationForHubAssessedRisk(t *testing.T) {
 			zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: risky\ndescription: test\n---\n"})
 			contentDigest := commandTestContentDigest(t, zipData, skillID, version)
 			repository := strings.SplitN(skillID, "/-/", 2)[0]
-			memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"risky","Description":"test","Version":%q,"Time":"2026-01-01T00:00:00Z","Risk":%q,"ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/example/skills","Subdir":"skills/risky","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}}`, skillID, version, test.risk, contentDigest, len(zipData))
-			repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
+			memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"risky","Description":"test","Version":%q,"Time":"2026-01-01T00:00:00Z","Risk":%q,"ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/example/skills","Subdir":"skills/risky","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}`, skillID, version, test.risk, contentDigest, len(zipData))
+			repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Ref":"main","CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 				switch {
 				case request.URL.Path == "/"+repository+"/@v/list":
@@ -320,7 +320,7 @@ func commandTestRepositoryInfo(t *testing.T, repositoryID, version, commit strin
 	}
 	encoded, err := json.Marshal(hub.RepositoryInfo{
 		SchemaVersion: 1, Kind: "Repository", ID: repositoryID, Version: version,
-		Time: time.Unix(1, 0).UTC(), CommitSHA: commit, Skills: rawMembers,
+		Time: time.Unix(1, 0).UTC(), Ref: members[0].Ref, CommitSHA: commit, Skills: rawMembers,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -344,7 +344,7 @@ func TestInstallRestoresFromStoreWithoutHub(t *testing.T) {
 		Info: hub.Info{
 			SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: name, Description: "test",
 			Version: version, Risk: hub.RiskLow, ContentDigest: commandTestContentDigest(t, zipData, skillID, version), ArchiveSize: int64(len(zipData)),
-			Origin: hub.Origin{VCS: "git", CommitSHA: "abc", TreeSHA: "def"},
+			CommitSHA: "abc", TreeSHA: "def",
 		},
 		ZIP: zipData,
 	}
@@ -410,7 +410,7 @@ func TestInstallOnCleanMachineRefillsStoreFromHubAndRestoresTopology(t *testing.
 		Info: hub.Info{
 			SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: "clean-restore", Description: "test",
 			Version: version, Risk: hub.RiskLow, ContentDigest: digest, ArchiveSize: int64(len(zipData)),
-			Origin: hub.Origin{VCS: "git", CommitSHA: "clean", TreeSHA: "clean-tree"},
+			CommitSHA: "clean", TreeSHA: "clean-tree",
 		},
 		ZIP: zipData,
 	}
@@ -437,7 +437,7 @@ func TestInstallOnCleanMachineRefillsStoreFromHubAndRestoresTopology(t *testing.
 		case request.URL.Path == "/"+repositoryID+"/@v/"+version+".info":
 			writer.Write(commandTestRepositoryInfo(t, repositoryID, version, "clean", artifact.Info))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".info"):
-			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"clean-restore","Description":"test","Version":%q,"Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","CommitSHA":"clean","TreeSHA":"clean-tree"}}`, skillID, version, digest, len(zipData))
+			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"clean-restore","Description":"test","Version":%q,"Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","CommitSHA":"clean","TreeSHA":"clean-tree"}`, skillID, version, digest, len(zipData))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 			writer.Write(zipData)
 		default:
@@ -495,10 +495,10 @@ func TestAddExactRepositoryUsesInfoAndWritesGoFirstWorkspace(t *testing.T) {
 			"SKILL.md": "---\nname: " + item.name + "\ndescription: Repository member.\n---\n# Instructions\n",
 		})
 		digest := commandTestContentDigest(t, zipData, item.id, version)
-		memberInfos = append(memberInfos, fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Time":"2026-07-15T00:00:00Z","Name":%q,"Description":"Repository member.","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/example/bundle","Ref":"refs/tags/v2.0.0","CommitSHA":"repo-commit","TreeSHA":%q}}`, item.id, version, item.name, digest, len(zipData), item.tree))
+		memberInfos = append(memberInfos, fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Time":"2026-07-15T00:00:00Z","Name":%q,"Description":"Repository member.","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/example/bundle","Ref":"refs/tags/v2.0.0","CommitSHA":"repo-commit","TreeSHA":%q}`, item.id, version, item.name, digest, len(zipData), item.tree))
 		members = append(members, memberFixture{id: item.id, name: item.name, tree: item.tree, digest: digest, zip: zipData})
 	}
-	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-15T00:00:00Z","CommitSHA":"repo-commit","Skills":[%s]}`, repository, version, strings.Join(memberInfos, ","))
+	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-15T00:00:00Z","Ref":"refs/tags/v2.0.0","CommitSHA":"repo-commit","Skills":[%s]}`, repository, version, strings.Join(memberInfos, ","))
 	forbiddenRequest := ""
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		if strings.Contains(request.URL.Path, "/v1/search") || strings.Contains(request.URL.Path, "/@resolve") || strings.HasSuffix(request.URL.Path, ".manifest") {
@@ -592,7 +592,7 @@ func TestAddSelectsRepeatedRepositoryMembersFromOneInfo(t *testing.T) {
 	} {
 		archive := commandTestZIP(t, item.id+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: " + item.name + "\ndescription: selected member\n---\n"})
 		digest := commandTestContentDigest(t, archive, item.id, version)
-		infos = append(infos, fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":%q,"Description":"selected member","Version":%q,"Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","CommitSHA":"commit","TreeSHA":%q}}`, item.id, item.name, version, digest, len(archive), "tree-"+item.name))
+		infos = append(infos, fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":%q,"Description":"selected member","Version":%q,"Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","CommitSHA":"commit","TreeSHA":%q}`, item.id, item.name, version, digest, len(archive), "tree-"+item.name))
 		fixtures = append(fixtures, fixture{id: item.id, name: item.name, zip: archive})
 	}
 	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"commit","Skills":[%s]}`, repository, version, strings.Join(infos, ","))
@@ -657,7 +657,7 @@ func TestAddGroupsSelectedRepositoryMembersByInheritedAndOverriddenVersions(t *t
 			id := repository + "/-/" + item.path
 			archive := commandTestZIP(t, id+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: " + item.name + "\ndescription: mixed version member\n---\n"})
 			digest := commandTestContentDigest(t, archive, id, version)
-			infos = append(infos, fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":%q,"Description":"mixed version member","Version":%q,"Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","CommitSHA":%q,"TreeSHA":%q}}`, id, item.name, version, digest, len(archive), "commit-"+version, "tree-"+item.name+"-"+version))
+			infos = append(infos, fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":%q,"Description":"mixed version member","Version":%q,"Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","CommitSHA":%q,"TreeSHA":%q}`, id, item.name, version, digest, len(archive), "commit-"+version, "tree-"+item.name+"-"+version))
 			artifacts = append(artifacts, artifact{id: id, version: version, zip: archive})
 		}
 		infoByVersion[version] = []byte(fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":%q,"Skills":[%s]}`, repository, version, "commit-"+version, strings.Join(infos, ",")))
@@ -709,7 +709,7 @@ func TestAddRejectsMemberMissingFromRequestedRepositoryVersionBeforeMutation(t *
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
 		case "/" + repository + "/@v/v1.0.0.info":
-			_, _ = fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v1.0.0","CommitSHA":"commit-v1","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"alpha","Description":"available only in v1","Version":"v1.0.0","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","CommitSHA":"commit-v1","TreeSHA":"tree-alpha-v1"}}]}`, repository, alphaID, alphaDigest, len(alphaArchive))
+			_, _ = fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v1.0.0","CommitSHA":"commit-v1","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"alpha","Description":"available only in v1","Version":"v1.0.0","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","CommitSHA":"commit-v1","TreeSHA":"tree-alpha-v1"}]}`, repository, alphaID, alphaDigest, len(alphaArchive))
 		case "/" + repository + "/@v/v2.0.0.info":
 			_, _ = fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v2.0.0","CommitSHA":"commit-v2","Skills":[]}`, repository)
 		default:
@@ -817,8 +817,8 @@ func TestAddReplaceChangesSourceAndRemovesObsoleteAgentBindings(t *testing.T) {
 	newZIP := commandTestZIP(t, newSkillID+"@v2/", map[string]string{"SKILL.md": "new"})
 	newDigest := commandTestContentDigest(t, newZIP, newSkillID, "v2")
 	newRepository := strings.SplitN(newSkillID, "/-/", 2)[0]
-	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":"v2","Time":"2026-01-02T00:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"Origin":{"VCS":"git","URL":"https://github.com/new/skills","Subdir":"skills/demo","Ref":"main","CommitSHA":"new","TreeSHA":"new-tree"}}`, newSkillID, newDigest, len(newZIP))
-	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v2","CommitSHA":"new","Skills":[%s]}`, newRepository, memberInfo)
+	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":"v2","Time":"2026-01-02T00:00:00Z","Risk":"low","ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/new/skills","Subdir":"skills/demo","Ref":"main","CommitSHA":"new","TreeSHA":"new-tree"}`, newSkillID, newDigest, len(newZIP))
+	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v2","Ref":"main","CommitSHA":"new","Skills":[%s]}`, newRepository, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
 		case request.URL.Path == "/"+newRepository+"/@v/list":

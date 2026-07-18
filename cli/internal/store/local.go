@@ -48,18 +48,17 @@ func (s Store) ImportLocal(root, name string) (*Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	manifest, err := localManifest(filepath.Join(root, "SKILL.md"), name)
-	if err != nil {
+	if _, err := localManifest(filepath.Join(root, "SKILL.md"), name); err != nil {
 		return nil, err
 	}
 	entry, err := s.Put(&hub.Artifact{
 		SkillID: skillID,
 		Info: hub.Info{
-			Version: version, Risk: hub.RiskUnknown, ContentDigest: digest,
-			Origin: hub.Origin{VCS: "local", Ref: version},
+			SchemaVersion: 1, Kind: "Skill", ID: skillID, Version: version,
+			Name: name, Description: "Private local Skill", Risk: hub.RiskUnknown, ContentDigest: digest,
+			Ref: version,
 		},
-		Manifest: manifest,
-		ZIP:      archive,
+		ZIP: archive,
 	})
 	if err != nil {
 		return nil, err

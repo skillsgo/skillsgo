@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on immutable Store entries, resolved Agent targets, filesystem metadata, and YAML target receipts.
- * [OUTPUT]: Provides atomic symlink/copy installation, content-preserving existing-target adoption, unambiguous directory and exact target-state digests, artifact-copy comparison, and per-target receipt creation.
+ * [INPUT]: Depends on immutable Store entries, resolved Agent targets, and filesystem metadata.
+ * [OUTPUT]: Provides rollback-capable canonical materialization plus alias-aware Agent symlink/copy projection, content-preserving existing-target validation, and stable filesystem digests.
  * [POS]: Serves as the low-level materialization boundary used by Installation Plans and legacy CLI flows.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,45 +15,104 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
-	"time"
 
 	hubclient "github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
-	"gopkg.in/yaml.v3"
 )
 
-type TargetReceipt struct {
-	Agent       string    `yaml:"agent"`
-	Scope       Scope     `yaml:"scope"`
-	Mode        Mode      `yaml:"mode"`
-	Path        string    `yaml:"path"`
-	InstalledAt time.Time `yaml:"installedAt"`
-	StateDigest string    `yaml:"stateDigest,omitempty"`
+func Install(entry *store.Entry, targets []Target) error {
+	return InstallThen(entry, targets, nil)
 }
 
-func Install(entry *store.Entry, targets []Target) error {
+// InstallThen keeps track of paths created by this operation and removes them
+// if the higher-level persistence callback fails.
+func InstallThen(entry *store.Entry, targets []Target, after func() error) error {
 	installedPaths := map[string]Mode{}
+	created := make([]string, 0, len(targets)*2)
+	seenCreated := map[string]bool{}
+	rememberAbsent := func(path string) {
+		path = filepath.Clean(path)
+		if path == "." || seenCreated[path] {
+			return
+		}
+		if _, err := os.Lstat(path); os.IsNotExist(err) {
+			seenCreated[path] = true
+			created = append(created, path)
+		}
+	}
+	rollback := func() {
+		for index := len(created) - 1; index >= 0; index-- {
+			_ = os.RemoveAll(created[index])
+		}
+	}
 	for _, target := range targets {
 		cleanPath := filepath.Clean(target.Path)
 		if previousMode, ok := installedPaths[cleanPath]; ok {
 			if previousMode != target.Mode {
+				rollback()
 				return fmt.Errorf("目标 %q 同时使用了 %s 和 %s 安装模式", cleanPath, previousMode, target.Mode)
 			}
 		} else {
-			if err := installTarget(entry.Artifact, cleanPath, target.Mode); err != nil {
+			rememberAbsent(cleanPath)
+			if target.Mode == ModeSymlink && target.CanonicalPath != "" {
+				rememberAbsent(target.CanonicalPath)
+			}
+			if err := installResolvedTarget(entry.Artifact, target); err != nil {
+				rollback()
 				return fmt.Errorf("安装 %s 到 %s: %w", target.Agent, cleanPath, err)
 			}
 			installedPaths[cleanPath] = target.Mode
 		}
-		if err := writeTargetReceipt(entry.Root, target); err != nil {
+	}
+	if after != nil {
+		if err := after(); err != nil {
+			rollback()
 			return err
 		}
 	}
 	return nil
 }
 
-// AdoptExisting records an exact external directory as a managed copy without
-// replacing, rewriting, or relinking its current content.
+func installResolvedTarget(artifact string, target Target) error {
+	if target.Mode == ModeCopy {
+		return installTarget(artifact, filepath.Clean(target.Path), ModeCopy)
+	}
+	canonical := filepath.Clean(target.CanonicalPath)
+	if canonical == "." || target.CanonicalPath == "" {
+		return fmt.Errorf("软链安装缺少 canonical 路径")
+	}
+	if err := ensureCanonical(artifact, canonical); err != nil {
+		return err
+	}
+	if filepath.Clean(canonical) == filepath.Clean(target.Path) || samePath(canonical, target.Path) {
+		return nil
+	}
+	return installTarget(canonical, filepath.Clean(target.Path), ModeSymlink)
+}
+
+func ensureCanonical(artifact, canonical string) error {
+	info, err := os.Lstat(canonical)
+	if os.IsNotExist(err) {
+		return installTarget(artifact, canonical, ModeCopy)
+	}
+	if err != nil {
+		return err
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("canonical 目标已存在且不是实体目录：%s", canonical)
+	}
+	matches, err := CopyMatchesArtifact(canonical, artifact)
+	if err != nil {
+		return err
+	}
+	if !matches {
+		return fmt.Errorf("canonical 目标已存在且内容不同：%s", canonical)
+	}
+	return nil
+}
+
+// AdoptExisting validates an exact external directory before its declaration
+// is added without replacing, rewriting, or relinking its current content.
 func AdoptExisting(entry *store.Entry, target Target) error {
 	if target.Mode != ModeCopy {
 		return fmt.Errorf("existing targets can be adopted only in copy mode")
@@ -68,7 +127,7 @@ func AdoptExisting(entry *store.Entry, target Target) error {
 	if err := hubclient.VerifyContentDirectory(target.Path, entry.Receipt.ContentDigest); err != nil {
 		return fmt.Errorf("existing target content does not match reviewed artifact: %w", err)
 	}
-	return writeTargetReceipt(entry.Root, target)
+	return nil
 }
 
 func installTarget(artifact, target string, mode Mode) error {
@@ -159,7 +218,7 @@ func copyDirectory(source, destination string) error {
 
 // DirectoryDigest returns a stable digest of directory entries, relative
 // paths, permission bits, and regular-file contents. It is used to detect
-// copy-mode Local Modifications without trusting mutable receipts.
+// copy-mode Local Modifications from live filesystem state.
 func DirectoryDigest(root string) (string, error) {
 	hash := sha256.New()
 	_, _ = hash.Write([]byte("skillsgo-directory-digest-v1\x00"))
@@ -290,45 +349,6 @@ func TargetStateDigest(path string) (string, error) {
 		return "", fmt.Errorf("unsupported target file type %q", path)
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
-}
-
-func writeTargetReceipt(entryRoot string, target Target) error {
-	receipt := TargetReceipt{Agent: target.Agent, Scope: target.Scope, Mode: target.Mode, Path: filepath.Clean(target.Path), InstalledAt: time.Now().UTC()}
-	if target.Mode == ModeCopy {
-		stateDigest, err := DirectoryDigest(target.Path)
-		if err != nil {
-			return err
-		}
-		receipt.StateDigest = stateDigest
-	}
-	data, err := yaml.Marshal(receipt)
-	if err != nil {
-		return err
-	}
-	digest := sha256.Sum256([]byte(receipt.Agent + "\x00" + string(receipt.Scope) + "\x00" + receipt.Path))
-	name := receipt.Agent + "-" + hex.EncodeToString(digest[:8]) + ".yaml"
-	directory := filepath.Join(entryRoot, "targets")
-	if err := os.MkdirAll(directory, 0o700); err != nil {
-		return err
-	}
-	temp, err := os.CreateTemp(directory, ".receipt-")
-	if err != nil {
-		return err
-	}
-	tempName := temp.Name()
-	defer os.Remove(tempName)
-	if err := temp.Chmod(0o600); err != nil {
-		temp.Close()
-		return err
-	}
-	if _, err := temp.Write(data); err != nil {
-		temp.Close()
-		return err
-	}
-	if err := temp.Close(); err != nil {
-		return err
-	}
-	return os.Rename(tempName, filepath.Join(directory, name))
 }
 
 func samePath(left, right string) bool {

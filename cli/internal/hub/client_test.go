@@ -46,7 +46,7 @@ func TestRepositoryLatestFallbackUsesLatestThenCanonicalInfo(t *testing.T) {
 		case "/" + repository + "/@latest":
 			fmt.Fprintf(w, `{"Version":%q,"Time":"2026-07-18T12:00:00Z"}`, version)
 		case "/" + repository + "/@v/" + version + ".info":
-			fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-18T12:00:00Z","CommitSHA":"abcdef1234567890","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Name":"root","Description":"root","Risk":"low","ContentDigest":"sha256:%s","ArchiveSize":1,"Origin":{"CommitSHA":"abcdef1234567890","TreeSHA":"tree"}}]}`, repository, version, repository, version, strings.Repeat("a", 64))
+			fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-18T12:00:00Z","CommitSHA":"abcdef1234567890","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Name":"root","Description":"root","Risk":"low","ContentDigest":"sha256:%s","ArchiveSize":1,"CommitSHA":"abcdef1234567890","TreeSHA":"tree"}]}`, repository, version, repository, version, strings.Repeat("a", 64))
 		default:
 			http.NotFound(w, request)
 		}
@@ -71,7 +71,7 @@ func TestProxyEndpointEscapesSkillPathCase(t *testing.T) {
 		if request.URL.EscapedPath() != "/github.com/example/skills/-/!skills/!demo/@v/v1.2.3.info" {
 			t.Fatalf("unexpected escaped path %q", request.URL.EscapedPath())
 		}
-		fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":"v1.2.3","Risk":"low","ContentDigest":"sha256:%s","Origin":{"CommitSHA":"commit","TreeSHA":"tree"}}`, skillID, strings.Repeat("a", 64))
+		fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":"v1.2.3","Risk":"low","ContentDigest":"sha256:%s","CommitSHA":"commit","TreeSHA":"tree"}`, skillID, strings.Repeat("a", 64))
 	}))
 	defer server.Close()
 	client, err := New(server.URL, server.Client())
@@ -88,7 +88,7 @@ func TestResolveUsesVersionQueryInfoDirectly(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		switch {
 		case strings.HasSuffix(request.URL.Path, "/~1.5.0.info"):
-			_, _ = w.Write([]byte(`{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/example/skills/-/demo","Name":"demo","Description":"test","Version":"v1.5.19","Risk":"low","ContentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Origin":{"Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"tree"}}`))
+			_, _ = w.Write([]byte(`{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/example/skills/-/demo","Name":"demo","Description":"test","Version":"v1.5.19","Risk":"low","ContentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"tree"}`))
 		default:
 			http.NotFound(w, request)
 		}

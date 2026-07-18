@@ -9,7 +9,6 @@ package updateplan
 import (
 	"testing"
 
-	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/stretchr/testify/require"
@@ -32,40 +31,28 @@ func TestDecodeTargetsIsStrictAndPreservesHostilePaths(t *testing.T) {
 
 func TestFixedReferenceRecognizesNonSemverTags(t *testing.T) {
 	receipt := store.Receipt{
-		Origin: hub.Origin{
-			Ref:       "refs/tags/release",
-			CommitSHA: "0123456789abcdef",
-		},
+		Ref: "refs/tags/release", CommitSHA: "0123456789abcdef",
 	}
 	require.True(t, isFixedReference("release", receipt))
 }
 
 func TestFixedReferenceKeepsSemverNamedBranchesMovable(t *testing.T) {
 	receipt := store.Receipt{
-		Origin: hub.Origin{
-			Ref:       "refs/heads/v1.2.3",
-			CommitSHA: "0123456789abcdef",
-		},
+		Ref: "refs/heads/v1.2.3", CommitSHA: "0123456789abcdef",
 	}
 	require.False(t, isFixedReference("v1.2.3", receipt))
 }
 
 func TestFixedReferencePinsResolvedBranchPseudoVersion(t *testing.T) {
 	receipt := store.Receipt{
-		Origin: hub.Origin{
-			Ref:       "refs/heads/feature-x",
-			CommitSHA: "777599e1159e",
-		},
+		Ref: "refs/heads/feature-x", CommitSHA: "777599e1159e",
 	}
 	require.True(t, isFixedReference("v0.0.0-20260717100000-777599e1159e", receipt))
 }
 
 func TestFixedReferenceLetsProjectMoveToADifferentSemverTag(t *testing.T) {
 	receipt := store.Receipt{
-		Origin: hub.Origin{
-			Ref:       "refs/tags/v1.2.3",
-			CommitSHA: "0123456789abcdef",
-		},
+		Ref: "refs/tags/v1.2.3", CommitSHA: "0123456789abcdef",
 	}
 	require.False(t, isFixedReference("v2.0.0", receipt))
 	require.True(t, isFixedReference("v1.2.3", receipt))

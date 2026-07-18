@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Exercises Store put/get with immutable Hub and Local Skill artifacts, conflicting archives, explicit exports, and hostile Skill IDs.
- * [OUTPUT]: Specifies idempotent Hub/local storage, private export, risk-only assessment refresh, local-tamper/content/archive digest conflicts, ZIP-slip defense, root containment, and exact retrieval.
+ * [OUTPUT]: Specifies concurrent idempotent Hub/local storage, private export, risk-only assessment refresh, local-tamper/content/archive digest conflicts, ZIP-slip defense, root containment, and exact retrieval.
  * [POS]: Serves as behavior coverage for the Content-addressed Store boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -41,6 +42,38 @@ func TestPutExtractsArtifactAndIsIdempotent(t *testing.T) {
 	}
 	if !bytes.HasPrefix(info, []byte("{")) {
 		t.Fatalf("info.json is not JSON: %q", info)
+	}
+}
+
+func TestConcurrentPutSerializesOneImmutableEntry(t *testing.T) {
+	storage := Store{Root: t.TempDir()}
+	artifact := testArtifact(t, map[string]string{"SKILL.md": "concurrent"})
+	const writers = 12
+	start := make(chan struct{})
+	errors := make(chan error, writers)
+	var ready sync.WaitGroup
+	ready.Add(writers)
+	for range writers {
+		go func() {
+			ready.Done()
+			<-start
+			_, err := storage.Put(artifact)
+			errors <- err
+		}()
+	}
+	ready.Wait()
+	close(start)
+	for range writers {
+		if err := <-errors; err != nil {
+			t.Fatal(err)
+		}
+	}
+	entry, err := storage.Get(artifact.SkillID, artifact.Info.Version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(entry.Artifact, "SKILL.md")); err != nil {
+		t.Fatal(err)
 	}
 }
 
@@ -223,24 +256,25 @@ func TestGetRejectsLocallyModifiedStoreArtifact(t *testing.T) {
 	}
 }
 
-func TestRefreshAssessmentRejectsChangedImmutableOrigin(t *testing.T) {
+func TestRefreshAssessmentRejectsChangedImmutableSourceIdentity(t *testing.T) {
 	storage := Store{Root: t.TempDir()}
 	artifact := testArtifact(t, map[string]string{"SKILL.md": "demo"})
-	artifact.Info.Origin = hub.Origin{VCS: "git", URL: "https://github.com/example/repo", CommitSHA: "one", TreeSHA: "tree-one"}
+	artifact.Info.CommitSHA = "one"
+	artifact.Info.TreeSHA = "tree-one"
 	if _, err := storage.Put(artifact); err != nil {
 		t.Fatal(err)
 	}
 	changed := artifact.Info
 	changed.Risk = hub.RiskHigh
-	changed.Origin.CommitSHA = "two"
+	changed.CommitSHA = "two"
 	if _, err := storage.RefreshAssessment(artifact.SkillID, artifact.Info.Version, changed); err == nil {
-		t.Fatal("expected immutable Origin change rejection")
+		t.Fatal("expected immutable source identity change rejection")
 	}
 	loaded, err := storage.Get(artifact.SkillID, artifact.Info.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if loaded.Receipt.Risk != hub.RiskLow || loaded.Receipt.Origin.CommitSHA != "one" {
+	if loaded.Receipt.Risk != hub.RiskLow || loaded.Receipt.CommitSHA != "one" {
 		t.Fatalf("immutable receipt changed after rejected refresh: %#v", loaded.Receipt)
 	}
 }

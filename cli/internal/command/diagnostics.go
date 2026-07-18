@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Cobra, the operating-system home directory, and the Store module's canonical root.
- * [OUTPUT]: Provides a read-only, versioned JSON diagnostics contract for SkillsGo and localized human status output.
+ * [INPUT]: Depends on Cobra, terminal documents, the operating-system home directory, and the Store module's canonical root.
+ * [OUTPUT]: Provides a read-only, versioned JSON diagnostics contract for SkillsGo and adaptive Human status output.
  * [POS]: Serves as the CLI-owned inspection boundary for local Store state without exposing filesystem ownership to the App.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,6 +14,7 @@ import (
 
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
+	"github.com/skillsgo/skillsgo/cli/internal/terminalui"
 	"github.com/spf13/cobra"
 )
 
@@ -48,13 +49,20 @@ func newDiagnosticsCommand() *cobra.Command {
 			case "json":
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(report)
 			case "human":
-				_, err = fmt.Fprintf(
-					cmd.OutOrStdout(),
-					appi18n.T("diagnostics.store"),
-					report.Store.Path,
-					appi18n.T("diagnostics.state."+report.Store.State),
-				)
-				return err
+				ui, err := humanUI(cmd)
+				if err != nil {
+					return err
+				}
+				state := "✓"
+				if report.Store.State != "ready" {
+					state = "!"
+				}
+				return ui.Render(terminalui.Document{Title: appi18n.T("diagnostics.title"), Sections: []terminalui.Section{{
+					Title: appi18n.T("diagnostics.section.storage"), Rows: []terminalui.Row{{
+						State: state, Primary: "Store", Secondary: report.Store.Path,
+						Meta: []string{appi18n.T("diagnostics.state." + report.Store.State)},
+					}},
+				}}})
 			default:
 				return fmt.Errorf("unsupported output format %q", output)
 			}

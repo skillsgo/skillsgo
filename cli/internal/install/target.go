@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Agent Catalog, explicit scope/mode/Agent selections, project roots, and path-safe Skill names.
- * [OUTPUT]: Provides shared Skill-name validation and deterministic Agent Installation Target resolution, including Eve subagents.
+ * [OUTPUT]: Provides shared Skill-name validation and deterministic canonical-plus-Agent Installation Target resolution, including Eve subagents.
  * [POS]: Serves as the logical-to-physical target mapping boundary beneath all CLI installation flows.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -29,10 +29,11 @@ const (
 )
 
 type Target struct {
-	Agent string `json:"agent"`
-	Scope Scope  `json:"scope"`
-	Mode  Mode   `json:"mode"`
-	Path  string `json:"path"`
+	Agent         string `json:"agent"`
+	Scope         Scope  `json:"scope"`
+	Mode          Mode   `json:"mode"`
+	Path          string `json:"path"`
+	CanonicalPath string `json:"canonicalPath,omitempty"`
 }
 
 func ResolveTargetsWithSubagents(catalog *agent.Catalog, ids, eveSubagents []string, scope Scope, mode Mode, projectRoot, skillName string) ([]Target, error) {
@@ -75,7 +76,8 @@ func ResolveTargetsWithSubagents(catalog *agent.Catalog, ids, eveSubagents []str
 		if name == "" || name != filepath.Base(name) || strings.ContainsAny(name, `/\\`) {
 			return nil, fmt.Errorf("无效的 Eve 子 Agent %q", name)
 		}
-		targets = append(targets, Target{Agent: "eve:" + name, Scope: scope, Mode: mode, Path: filepath.Join(projectRoot, "agent", "subagents", name, "skills", skillName)})
+		path := filepath.Join(projectRoot, "agent", "subagents", name, "skills", skillName)
+		targets = append(targets, Target{Agent: "eve:" + name, Scope: scope, Mode: mode, Path: path, CanonicalPath: path})
 	}
 	return targets, nil
 }
@@ -101,12 +103,19 @@ func ResolveTargets(catalog *agent.Catalog, ids []string, scope Scope, mode Mode
 			root = filepath.Join(projectRoot, filepath.FromSlash(definition.ProjectDir))
 		}
 		path := filepath.Join(root, skillName)
+		canonical := filepath.Join(projectRoot, ".agents", "skills", skillName)
+		if scope == ScopeUser {
+			canonical = filepath.Join(catalog.Home(), ".agents", "skills", skillName)
+		}
+		if id == "eve" {
+			canonical = path
+		}
 		key := id + "\x00" + path
 		if seen[key] {
 			continue
 		}
 		seen[key] = true
-		targets = append(targets, Target{Agent: id, Scope: scope, Mode: mode, Path: path})
+		targets = append(targets, Target{Agent: id, Scope: scope, Mode: mode, Path: path, CanonicalPath: canonical})
 	}
 	return targets, nil
 }

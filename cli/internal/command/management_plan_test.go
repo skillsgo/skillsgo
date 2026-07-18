@@ -81,7 +81,7 @@ func updatePlanTestStoreEntry(t *testing.T, storage store.Store, skillID, versio
 		Info: hub.Info{
 			SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: "demo", Description: "test",
 			Version: version, Risk: hub.RiskLow, ContentDigest: commandTestContentDigest(t, zipData, skillID, version), ArchiveSize: int64(len(zipData)),
-			Origin: hub.Origin{VCS: "git", URL: "https://github.com/example/skills", Subdir: "skills/demo", Ref: "refs/heads/" + requestedRef, CommitSHA: commitSHA, TreeSHA: "tree-" + commitSHA},
+			Ref: "refs/heads/" + requestedRef, CommitSHA: commitSHA, TreeSHA: "tree-" + commitSHA,
 		},
 		ZIP: zipData,
 	})

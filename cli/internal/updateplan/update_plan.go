@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on exact managed Installation identities, Store receipts, Workspace declarations/locks, Hub resolution, and safe target replacement.
+ * [INPUT]: Depends on exact managed Installation identities, Store receipts, canonical Workspace Manifest declarations, Hub resolution, and safe target replacement.
  * [OUTPUT]: Provides strict Update Plan decoding, per-target resolution, pinned-target exclusion, shared-binding grouping, Workspace Manifest previews/reconciliation, state-bound execution, and structured progress/results.
  * [POS]: Serves as the update orchestration domain between the public update command and Hub/Store/install/project boundaries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -46,7 +46,7 @@ const (
 	ProgressStarted  ProgressState = "started"
 	ProgressFinished ProgressState = "finished"
 
-	reasonWorkspaceManifestReconcile = "workspace-lock-reconcile"
+	reasonWorkspaceManifestReconcile = "workspace-manifest-reconcile"
 )
 
 type TargetRequest struct {
@@ -439,16 +439,16 @@ func sourceReference(
 		}
 		return ref, isFixedReference(ref, receipt), requirement.Ref, nil
 	}
-	ref := receipt.Origin.Ref
+	ref := receipt.Ref
 	if strings.HasPrefix(ref, "refs/heads/") {
 		ref = strings.TrimPrefix(ref, "refs/heads/")
-		return ref, isCommitReference(ref, receipt.Origin.CommitSHA), "", nil
+		return ref, isCommitReference(ref, receipt.CommitSHA), "", nil
 	}
 	if strings.HasPrefix(ref, "refs/tags/") {
 		return strings.TrimPrefix(ref, "refs/tags/"), true, "", nil
 	}
 	if ref == "" {
-		return receipt.Origin.CommitSHA, true, "", nil
+		return receipt.CommitSHA, true, "", nil
 	}
 	return ref, isFixedReference(ref, receipt), "", nil
 }
@@ -460,11 +460,11 @@ func isFixedReference(reference string, receipt store.Receipt) bool {
 	if pseudoVersionReference.MatchString(reference) {
 		return true
 	}
-	if receipt.Origin.Ref == "refs/heads/"+reference {
+	if receipt.Ref == "refs/heads/"+reference {
 		return false
 	}
-	return receipt.Origin.Ref == "refs/tags/"+reference ||
-		isCommitReference(reference, receipt.Origin.CommitSHA)
+	return receipt.Ref == "refs/tags/"+reference ||
+		isCommitReference(reference, receipt.CommitSHA)
 }
 
 func isCommitReference(reference, commitSHA string) bool {

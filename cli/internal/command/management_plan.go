@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on explicit management target JSON, the Agent catalog, Store state, and the Target Management Plan domain.
- * [OUTPUT]: Adapts App-driven management preflight JSON and execution NDJSON at the public command boundary.
+ * [INPUT]: Depends on explicit management target JSON, the Agent catalog, Store state, Target Management Plan domain events, and terminal operation reporting.
+ * [OUTPUT]: Adapts management preflight JSON plus adaptive Human, JSON, or NDJSON execution at the public command boundary.
  * [POS]: Serves as the executable adapter between Cobra flags and exact-target Remove/Repair/Stop Managing orchestration.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,7 @@ import (
 	"os"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/managementplan"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/spf13/cobra"
@@ -45,8 +46,8 @@ func runManagementPlan(
 	if preflightOnly && output != "json" {
 		return fmt.Errorf("Target Management Plan preflight requires --output json")
 	}
-	if !preflightOnly && output != "json" && output != "ndjson" {
-		return fmt.Errorf("Target Management Plan execution requires --output json or ndjson")
+	if !preflightOnly && output != "human" && output != "json" && output != "ndjson" {
+		return fmt.Errorf("Target Management Plan execution requires --output human, json, or ndjson")
 	}
 	requests, err := managementplan.DecodeTargets(rawTargets)
 	if err != nil {
@@ -83,6 +84,23 @@ func runManagementPlan(
 			return streamErr
 		}
 		return encoder.Encode(execution)
+	}
+	if output == "human" {
+		ui, err := humanUI(cmd)
+		if err != nil {
+			return err
+		}
+		var execution managementplan.Execution
+		err = ui.Run(cmd.Context(), terminalOperation(appi18n.T("operation.manage"), func(emit func(terminalEvent)) error {
+			execution = managementplan.Execute(storage, preflight, func(progress managementplan.Progress) {
+				emit(managementProgressEvent(progress))
+			})
+			return nil
+		}))
+		if err != nil {
+			return err
+		}
+		return writePlanOutput(cmd, "human", execution, fmt.Sprintf("Managed %d target(s), failed %d\n", execution.Summary.Succeeded, execution.Summary.Failed))
 	}
 	execution := managementplan.Execute(storage, preflight, nil)
 	encoder := json.NewEncoder(cmd.OutOrStdout())

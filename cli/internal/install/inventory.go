@@ -1,22 +1,17 @@
 /*
- * [INPUT]: Depends on Store receipts, target receipts, filesystem bindings, and read-only inventory filters.
- * [OUTPUT]: Provides provenance-aware managed Installation records, filtering, baseline-validated safe copy removal, and content-preserving receipt cleanup.
- * [POS]: Serves as the managed Installation inventory boundary shared by plans, Library reconciliation, and mutations.
+ * [INPUT]: Depends on declaration-derived Installation records and live filesystem bindings.
+ * [OUTPUT]: Provides safe exact-target removal with shared-binding, parent-alias, and Local Modification protection.
+ * [POS]: Serves as the filesystem-removal boundary used by declaration-driven mutations.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package install
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
-	"sort"
-	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/store"
-	"gopkg.in/yaml.v3"
 )
 
 type Installation struct {
@@ -25,159 +20,59 @@ type Installation struct {
 	Version       string           `json:"version"`
 	StoreRoot     string           `json:"storeRoot"`
 	Artifact      string           `json:"artifact"`
-	ReceiptPath   string           `json:"-"`
 	Target        Target           `json:"target"`
-	InstalledAt   string           `json:"installedAt"`
 	SHA256        string           `json:"-"`
 	ContentDigest string           `json:"-"`
 	TargetState   string           `json:"-"`
 	Provenance    store.Provenance `json:"-"`
 }
 
-type InventoryFilter struct {
-	Scope       *Scope
-	Agents      map[string]bool
-	ProjectRoot string
-	Names       map[string]bool
-}
-
-func ListInstallations(storeRoot string, filter InventoryFilter) ([]Installation, error) {
-	installations := make([]Installation, 0)
-	err := filepath.WalkDir(storeRoot, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			if errors.Is(walkErr, os.ErrNotExist) {
-				return nil
+func RemoveDeclaredInstallations(selected, all []Installation) error {
+	selectedTargets := map[string]bool{}
+	for _, installation := range selected {
+		selectedTargets[installation.Target.Agent+"\x00"+filepath.Clean(installation.Target.Path)] = true
+	}
+	removePass := func(canonicalPass bool) error {
+		removedPaths := map[string]bool{}
+		for _, installation := range selected {
+			path := filepath.Clean(installation.Target.Path)
+			isCanonical := installation.Target.CanonicalPath != "" && path == filepath.Clean(installation.Target.CanonicalPath)
+			if isCanonical != canonicalPass {
+				continue
 			}
-			return walkErr
-		}
-		if entry.IsDir() || filepath.Ext(entry.Name()) != ".yaml" || filepath.Base(filepath.Dir(path)) != "targets" {
-			return nil
-		}
-		data, err := os.ReadFile(path)
-		if err != nil {
-			return err
-		}
-		var targetReceipt TargetReceipt
-		if err := yaml.Unmarshal(data, &targetReceipt); err != nil {
-			return fmt.Errorf("解析安装回执 %s: %w", path, err)
-		}
-		target := Target{Agent: targetReceipt.Agent, Scope: targetReceipt.Scope, Mode: targetReceipt.Mode, Path: targetReceipt.Path}
-		if !matchesFilter(target, filter) {
-			return nil
-		}
-		entryRoot := filepath.Dir(filepath.Dir(path))
-		receipt, err := store.ReadReceipt(filepath.Join(entryRoot, "receipt.yaml"))
-		if err != nil {
-			return fmt.Errorf("读取 Store 回执 %s: %w", entryRoot, err)
-		}
-		name := receipt.Name
-		if name == "" {
-			name = filepath.Base(target.Path)
-		}
-		if len(filter.Names) > 0 && !filter.Names[strings.ToLower(name)] {
-			return nil
-		}
-		installations = append(installations, Installation{
-			Name: name, SkillID: receipt.SkillID, Version: receipt.Version,
-			StoreRoot: entryRoot, Artifact: filepath.Join(entryRoot, "artifact"), ReceiptPath: path,
-			Target: target, InstalledAt: targetReceipt.InstalledAt.Format("2006-01-02T15:04:05Z"),
-			SHA256: receipt.SHA256, ContentDigest: receipt.ContentDigest,
-			TargetState: targetReceipt.StateDigest, Provenance: receipt.EffectiveProvenance(),
-		})
-		return nil
-	})
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return nil, err
-	}
-	sort.Slice(installations, func(i, j int) bool {
-		if installations[i].Name != installations[j].Name {
-			return installations[i].Name < installations[j].Name
-		}
-		return installations[i].Target.Agent < installations[j].Target.Agent
-	})
-	return installations, nil
-}
-
-func matchesFilter(target Target, filter InventoryFilter) bool {
-	if filter.Scope != nil && target.Scope != *filter.Scope {
-		return false
-	}
-	if len(filter.Agents) > 0 && !filter.Agents[target.Agent] {
-		return false
-	}
-	if target.Scope == ScopeProject && filter.ProjectRoot != "" {
-		projectRoot := resolveDirectory(filter.ProjectRoot)
-		targetPath := filepath.Join(resolveDirectory(filepath.Dir(target.Path)), filepath.Base(target.Path))
-		relative, err := filepath.Rel(projectRoot, targetPath)
-		if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
-			return false
-		}
-	}
-	return true
-}
-
-func resolveDirectory(path string) string {
-	resolved, err := filepath.EvalSymlinks(path)
-	if err == nil {
-		return resolved
-	}
-	absolute, err := filepath.Abs(path)
-	if err == nil {
-		return absolute
-	}
-	return filepath.Clean(path)
-}
-
-func RemoveInstallations(storeRoot string, installations []Installation) error {
-	selected := map[string]bool{}
-	for _, installation := range installations {
-		selected[installation.ReceiptPath] = true
-	}
-	all, err := ListInstallations(storeRoot, InventoryFilter{})
-	if err != nil {
-		return err
-	}
-	destructivePaths := map[string]bool{}
-	for _, installation := range installations {
-		path := filepath.Clean(installation.Target.Path)
-		usedByOtherReceipt := false
-		for _, candidate := range all {
-			if filepath.Clean(candidate.Target.Path) == path && !selected[candidate.ReceiptPath] {
-				usedByOtherReceipt = true
-				break
+			if removedPaths[path] {
+				continue
 			}
-		}
-		if !usedByOtherReceipt && !destructivePaths[path] {
+			usedByUnselected := false
+			for _, candidate := range all {
+				candidatePath := filepath.Clean(candidate.Target.Path)
+				candidateKey := candidate.Target.Agent + "\x00" + candidatePath
+				samePhysicalTarget := candidatePath == path
+				if isCanonical && candidate.Target.CanonicalPath != "" {
+					samePhysicalTarget = filepath.Clean(candidate.Target.CanonicalPath) == path
+				}
+				if samePhysicalTarget && !selectedTargets[candidateKey] {
+					usedByUnselected = true
+					break
+				}
+			}
+			if usedByUnselected {
+				continue
+			}
 			if err := validateTargetRemoval(installation); err != nil {
 				return err
 			}
-			destructivePaths[path] = true
-		}
-	}
-	for _, installation := range installations {
-		path := filepath.Clean(installation.Target.Path)
-		if destructivePaths[path] {
 			if err := removeTargetSafely(installation); err != nil {
 				return err
 			}
-			delete(destructivePaths, path)
+			removedPaths[path] = true
 		}
-		if err := os.Remove(installation.ReceiptPath); err != nil && !os.IsNotExist(err) {
-			return err
-		}
+		return nil
 	}
-	return nil
-}
-
-// ForgetInstallations removes only SkillsGo ownership receipts. It never
-// changes the filesystem objects currently occupying target paths.
-func ForgetInstallations(installations []Installation) error {
-	for _, installation := range installations {
-		if err := os.Remove(installation.ReceiptPath); err != nil && !os.IsNotExist(err) {
-			return err
-		}
+	if err := removePass(false); err != nil {
+		return err
 	}
-	return nil
+	return removePass(true)
 }
 
 func validateTargetRemoval(installation Installation) error {
@@ -189,6 +84,19 @@ func validateTargetRemoval(installation Installation) error {
 		return err
 	}
 	if installation.Target.Mode == ModeSymlink {
+		if installation.Target.CanonicalPath != "" && filepath.Clean(installation.Target.Path) == filepath.Clean(installation.Target.CanonicalPath) {
+			if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+				return fmt.Errorf("refusing to remove replaced canonical target %s", installation.Target.Path)
+			}
+			matches, err := CopyMatchesArtifact(installation.Target.Path, installation.Artifact)
+			if err != nil || !matches {
+				return fmt.Errorf("refusing to remove modified canonical target %s", installation.Target.Path)
+			}
+			return nil
+		}
+		if info.Mode()&os.ModeSymlink == 0 && installation.Target.CanonicalPath != "" && samePath(installation.Target.Path, installation.Target.CanonicalPath) {
+			return nil
+		}
 		if info.Mode()&os.ModeSymlink == 0 {
 			return fmt.Errorf("refusing to remove replaced target %s", installation.Target.Path)
 		}
@@ -199,7 +107,11 @@ func validateTargetRemoval(installation Installation) error {
 		if !filepath.IsAbs(link) {
 			link = filepath.Join(filepath.Dir(installation.Target.Path), link)
 		}
-		if !samePath(link, installation.Artifact) {
+		expected := installation.Artifact
+		if installation.Target.CanonicalPath != "" {
+			expected = installation.Target.CanonicalPath
+		}
+		if !samePath(link, expected) {
 			return fmt.Errorf("refusing to remove redirected symlink %s", installation.Target.Path)
 		}
 		return nil
@@ -239,6 +151,12 @@ func removeTargetSafely(installation Installation) error {
 		return err
 	}
 	if installation.Target.Mode == ModeSymlink {
+		if installation.Target.CanonicalPath != "" && filepath.Clean(installation.Target.Path) == filepath.Clean(installation.Target.CanonicalPath) {
+			return os.RemoveAll(installation.Target.Path)
+		}
+		if info.Mode()&os.ModeSymlink == 0 && installation.Target.CanonicalPath != "" && samePath(installation.Target.Path, installation.Target.CanonicalPath) {
+			return nil
+		}
 		return os.Remove(installation.Target.Path)
 	}
 	_ = info

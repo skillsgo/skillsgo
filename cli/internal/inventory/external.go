@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the installed Agent Catalog, explicit project roots, accounted target keys, and read-only filesystem metadata under known Agent Skill directories.
- * [OUTPUT]: Adds path-identified External Installation entries and target metadata without creating receipts, mutating content, or contacting a Hub.
+ * [OUTPUT]: Adds path-identified External Installation entries, manifest names/descriptions, and target metadata without creating declarations, mutating content, or contacting a Hub.
  * [POS]: Serves as the read-only external-content discovery half of unified inventory reconciliation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -91,11 +91,15 @@ func scanExternalDirectory(
 		if accountedTargets[key] {
 			continue
 		}
-		entry := ensureExternalEntry(entries, externalSkillName(manifestPath, child.Name()), path)
+		metadata := readSkillManifestMetadata(manifestPath)
+		name := metadata.name
+		if name == "" {
+			name = child.Name()
+		}
+		entry := ensureExternalEntry(entries, name, metadata.description, path)
 		entry.Targets = append(entry.Targets, Target{
 			Scope: scope, ProjectRoot: projectRoot, Agent: agentID,
-			Path: filepath.Clean(path), Mode: TargetModeExternal, Version: "",
-			ReceiptState: ReceiptMissing, Health: HealthHealthy,
+			Path: filepath.Clean(path), Mode: TargetModeExternal, Version: "", Health: HealthHealthy,
 		})
 		entry.Agents = appendUnique(entry.Agents, agentID)
 		if projectRoot != "" {
@@ -105,14 +109,14 @@ func scanExternalDirectory(
 	}
 }
 
-func ensureExternalEntry(entries map[string]*Entry, name, path string) *Entry {
+func ensureExternalEntry(entries map[string]*Entry, name, description, path string) *Entry {
 	digest := sha256.Sum256([]byte(resolveInventoryPath(path)))
 	inventoryKey := "external:" + hex.EncodeToString(digest[:])
 	if entry := entries[inventoryKey]; entry != nil {
 		return entry
 	}
 	entry := &Entry{
-		InventoryKey: inventoryKey, Name: name, SkillID: "",
+		InventoryKey: inventoryKey, Name: name, Description: description, SkillID: "",
 		Provenance: ProvenanceExternal, Risk: RiskUnknown, Health: HealthHealthy,
 		Agents: []string{}, Projects: []string{}, Versions: []string{}, Targets: []Target{},
 	}
@@ -120,29 +124,45 @@ func ensureExternalEntry(entries map[string]*Entry, name, path string) *Entry {
 	return entry
 }
 
-func externalSkillName(manifestPath, fallback string) string {
+type skillManifestMetadata struct {
+	name        string
+	description string
+}
+
+func setEntryDescription(entry *Entry, targetPath string) {
+	if entry.Description != "" {
+		return
+	}
+	entry.Description = readSkillManifestMetadata(filepath.Join(targetPath, "SKILL.md")).description
+}
+
+func readSkillManifestMetadata(manifestPath string) skillManifestMetadata {
 	file, err := os.Open(manifestPath)
 	if err != nil {
-		return fallback
+		return skillManifestMetadata{}
 	}
 	defer file.Close()
 	data, err := io.ReadAll(io.LimitReader(file, externalManifestReadLimit))
 	if err != nil {
-		return fallback
+		return skillManifestMetadata{}
 	}
 	normalized := strings.ReplaceAll(string(data), "\r\n", "\n")
 	if !strings.HasPrefix(normalized, "---\n") {
-		return fallback
+		return skillManifestMetadata{}
 	}
 	end := strings.Index(normalized[4:], "\n---\n")
 	if end < 0 {
-		return fallback
+		return skillManifestMetadata{}
 	}
 	var manifest struct {
-		Name string `yaml:"name"`
+		Name        string `yaml:"name"`
+		Description string `yaml:"description"`
 	}
-	if yaml.Unmarshal([]byte(normalized[4:4+end]), &manifest) != nil || strings.TrimSpace(manifest.Name) == "" {
-		return fallback
+	if yaml.Unmarshal([]byte(normalized[4:4+end]), &manifest) != nil {
+		return skillManifestMetadata{}
 	}
-	return strings.TrimSpace(manifest.Name)
+	return skillManifestMetadata{
+		name:        strings.TrimSpace(manifest.Name),
+		description: strings.TrimSpace(manifest.Description),
+	}
 }

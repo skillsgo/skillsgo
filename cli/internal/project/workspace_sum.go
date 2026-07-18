@@ -17,16 +17,13 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
-	"time"
 
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 )
 
 const (
-	workspaceSumName        = "skillsgo.sum"
-	workspaceSumLockName    = ".skillsgo.sum.lock"
-	workspaceSumLockTimeout = 10 * time.Second
-	workspaceSumStaleLock   = time.Minute
+	workspaceSumName     = "skillsgo.sum"
+	workspaceSumLockName = ".skillsgo.sum.lock"
 )
 
 var (
@@ -133,7 +130,7 @@ func MergeVerifiedSums(root string, verified []SumEntry) error {
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return err
 	}
-	unlock, err := acquireWorkspaceSumLock(filepath.Join(root, workspaceSumLockName))
+	unlock, err := acquireFileLock(filepath.Join(root, workspaceSumLockName))
 	if err != nil {
 		return err
 	}
@@ -225,36 +222,6 @@ func validateSumEntry(entry SumEntry) error {
 func checksumAlgorithm(checksum string) string {
 	algorithm, _, _ := strings.Cut(checksum, ":")
 	return algorithm
-}
-
-func acquireWorkspaceSumLock(path string) (func(), error) {
-	deadline := time.Now().Add(workspaceSumLockTimeout)
-	for {
-		lock, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-		if err == nil {
-			if _, writeErr := fmt.Fprintf(lock, "%d\n", os.Getpid()); writeErr != nil {
-				_ = lock.Close()
-				_ = os.Remove(path)
-				return nil, writeErr
-			}
-			if closeErr := lock.Close(); closeErr != nil {
-				_ = os.Remove(path)
-				return nil, closeErr
-			}
-			return func() { _ = os.Remove(path) }, nil
-		}
-		if !os.IsExist(err) {
-			return nil, err
-		}
-		if info, statErr := os.Stat(path); statErr == nil && time.Since(info.ModTime()) > workspaceSumStaleLock {
-			_ = os.Remove(path)
-			continue
-		}
-		if time.Now().After(deadline) {
-			return nil, fmt.Errorf("timed out waiting for Workspace Sum lock %s", path)
-		}
-		time.Sleep(10 * time.Millisecond)
-	}
 }
 
 func writeWorkspaceSumAtomic(path string, data []byte) error {

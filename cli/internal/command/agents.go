@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Cobra, localized human copy, and the Agent Catalog's stable status records.
- * [OUTPUT]: Provides `skillsgo agents` with a versioned JSON contract and localized human summary.
+ * [INPUT]: Depends on Cobra, localized human copy, terminal documents, and the Agent Catalog's stable status records.
+ * [OUTPUT]: Provides `skillsgo agents` with a versioned JSON contract and grouped adaptive Human summary.
  * [POS]: Serves as the CLI serialization boundary for complete supported and installed Agent discovery.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,7 @@ import (
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
+	"github.com/skillsgo/skillsgo/cli/internal/terminalui"
 	"github.com/spf13/cobra"
 )
 
@@ -34,16 +35,33 @@ func newAgentsCommand(catalog *agent.Catalog) *cobra.Command {
 			case "json":
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(report)
 			case "human":
+				sections := []terminalui.Section{
+					{Title: appi18n.T("agents.section.installed")},
+					{Title: appi18n.T("agents.section.supported")},
+				}
 				for _, status := range report.Agents {
 					state := appi18n.T("agents.state.supported")
+					section := 1
+					marker := "•"
 					if status.Installed {
 						state = appi18n.T("agents.state.installed")
+						section = 0
+						marker = "✓"
 					}
-					if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s\t%s\t%s\n", status.ID, status.DisplayName, state); err != nil {
-						return err
+					secondary := status.ID
+					meta := []string{state}
+					if status.UserTarget != nil {
+						meta = append(meta, status.UserTarget.Path)
 					}
+					sections[section].Rows = append(sections[section].Rows, terminalui.Row{
+						State: marker, Primary: status.DisplayName, Secondary: secondary, Meta: meta,
+					})
 				}
-				return nil
+				ui, err := humanUI(cmd)
+				if err != nil {
+					return err
+				}
+				return ui.Render(terminalui.Document{Title: appi18n.T("agents.title"), Sections: sections})
 			default:
 				return fmt.Errorf("unsupported output format %q", output)
 			}

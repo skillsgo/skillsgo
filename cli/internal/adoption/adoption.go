@@ -184,7 +184,7 @@ func Execute(ctx context.Context, request Request, preflight Preflight, client *
 		}
 		entry, err = storage.Put(artifact)
 		provenance = "hub"
-		ref = artifact.Info.Origin.Ref
+		ref = artifact.Info.Ref
 	default:
 		return Result{}, fmt.Errorf("explicit adoption action is required")
 	}

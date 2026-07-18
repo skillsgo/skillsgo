@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra and the Agent, Hub, Store, project, installation, Installation Plan, Update Plan, Target Management Plan, source, i18n, and terminal UI modules.
- * [OUTPUT]: Provides command.Execute and the complete CLI graph, including adaptive Human UI policy, unified managed/External listing, stable Agent/Library contracts, Installation/Update/Target Management flows with exact External removal, and Local export, for terminal and App callers.
+ * [OUTPUT]: Provides command.Execute and the complete CLI graph, including explicit-source Info, adaptive Human UI policy, unified managed/External listing, stable Agent/Library contracts, Installation/Update/Target Management flows with exact External removal, and Local export, for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -73,7 +73,7 @@ func newRootCommand(stdout, stderr io.Writer) (*cobra.Command, error) {
 	root.PersistentFlags().StringVar(&languageOverride, "lang", strings.TrimSpace(os.Getenv("SKILLSGO_LANG")), appi18n.T("flag.lang"))
 	root.PersistentFlags().String("ui", string(terminalui.ModeAuto), appi18n.T("flag.ui"))
 	root.PersistentFlags().String("color", string(terminalui.ColorAuto), appi18n.T("flag.color"))
-	root.AddCommand(newVersionCommand(), newDiagnosticsCommand(), newAgentsCommand(catalog), newInventoryCommand(catalog), newAddCommand(catalog), newInstallCommand(catalog), placeholder("use", "use <package>@<skill>"), newRemoveCommand(catalog), newManageCommand(catalog), newExportCommand(), newListCommand(catalog), placeholder("find", "find [query]"), newUpdateCommand(catalog), placeholder("init", "init [name]"))
+	root.AddCommand(newVersionCommand(), newDiagnosticsCommand(), newAgentsCommand(catalog), newInventoryCommand(catalog), newInfoCommand(), newAddCommand(catalog), newInstallCommand(catalog), placeholder("use", "use <package>@<skill>"), newRemoveCommand(catalog), newManageCommand(catalog), newExportCommand(), newListCommand(catalog), placeholder("find", "find [query]"), newUpdateCommand(catalog), placeholder("init", "init [name]"))
 	return root, nil
 }
 
@@ -565,10 +565,10 @@ func placeholder(name, use string, aliases ...string) *cobra.Command {
 }
 
 type addOptions struct {
-	global, copy, yes, list, fullDepth, replace, preflight bool
-	riskConfirmed, allowCritical                           bool
-	agents, skills, subagents, targets                     []string
-	metadata, output, hubURL, artifactVersion              string
+	global, copy, yes, list, fullDepth, replace bool
+	riskConfirmed, allowCritical                bool
+	agents, skills, subagents, targets          []string
+	metadata, output, hubURL, artifactVersion   string
 }
 
 func newAddCommand(catalog *agent.Catalog) *cobra.Command {
@@ -581,8 +581,8 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 			if len(options.targets) > 0 {
 				return runExplicitInstallationPlan(cmd, catalog, args[0], options)
 			}
-			if options.preflight || options.artifactVersion != "" {
-				return fmt.Errorf("--preflight and --version require at least one --target")
+			if options.artifactVersion != "" {
+				return fmt.Errorf("--version requires at least one --target")
 			}
 			agentIDs := options.agents
 			if len(agentIDs) == 0 {
@@ -646,7 +646,6 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 	flags.BoolVar(&options.copy, "copy", false, appi18n.T("flag.copy"))
 	flags.BoolVar(&options.replace, "replace", false, appi18n.T("flag.replace"))
 	flags.StringArrayVar(&options.targets, "target", nil, appi18n.T("flag.target"))
-	flags.BoolVar(&options.preflight, "preflight", false, appi18n.T("flag.preflight"))
 	flags.StringVar(&options.artifactVersion, "version", "", appi18n.T("flag.artifact_version"))
 	flags.BoolVar(&options.riskConfirmed, "confirm-risk", false, appi18n.T("flag.confirm_risk"))
 	flags.BoolVar(&options.allowCritical, "allow-critical", false, appi18n.T("flag.allow_critical"))

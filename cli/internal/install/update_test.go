@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Uses temporary old/new Store artifacts, canonical directories, Agent projections, and injected target collisions.
+ * [OUTPUT]: Specifies atomic canonical replacement, explicit legacy Store-link migration, projection preservation, rollback after partial failure, and identical-entry idempotence.
+ * [POS]: Serves as filesystem transaction coverage for the installation update boundary.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package install
 
 import (
@@ -8,31 +14,37 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
 
-func TestReplaceSwitchesSymlinkAndRemovesOldReceipt(t *testing.T) {
+func TestReplaceUpdatesCanonicalAndKeepsAgentProjectionLinked(t *testing.T) {
 	root := t.TempDir()
 	oldEntry := updateTestEntry(t, filepath.Join(root, "old"))
 	newEntry := updateTestEntry(t, filepath.Join(root, "new"))
-	target := Target{Agent: "codex", Scope: ScopeProject, Mode: ModeSymlink, Path: filepath.Join(root, "project", ".agents", "skills", "demo")}
-	if err := Install(oldEntry, []Target{target}); err != nil {
+	canonical := filepath.Join(root, "project", ".agents", "skills", "demo")
+	canonicalTarget := Target{Agent: "codex", Scope: ScopeProject, Mode: ModeSymlink, Path: canonical, CanonicalPath: canonical}
+	linkedTarget := Target{Agent: "claude-code", Scope: ScopeProject, Mode: ModeSymlink, Path: filepath.Join(root, "project", ".claude", "skills", "demo"), CanonicalPath: canonical}
+	targets := []Target{canonicalTarget, linkedTarget}
+	if err := Install(oldEntry, targets); err != nil {
 		t.Fatal(err)
 	}
-	receipts, _ := filepath.Glob(filepath.Join(oldEntry.Root, "targets", "*.yaml"))
-	previous := []Installation{{Name: "demo", StoreRoot: oldEntry.Root, Artifact: oldEntry.Artifact, ReceiptPath: receipts[0], Target: target}}
-	if err := Replace(newEntry, previous, []Target{target}); err != nil {
+	previous := []Installation{
+		{Name: "demo", StoreRoot: oldEntry.Root, Artifact: oldEntry.Artifact, Target: canonicalTarget},
+		{Name: "demo", StoreRoot: oldEntry.Root, Artifact: oldEntry.Artifact, Target: linkedTarget},
+	}
+	if err := Replace(newEntry, previous, targets); err != nil {
 		t.Fatal(err)
 	}
-	link, err := os.Readlink(target.Path)
-	if err != nil {
-		t.Fatal(err)
+	matches, err := CopyMatchesArtifact(canonical, newEntry.Artifact)
+	if err != nil || !matches {
+		t.Fatalf("canonical did not switch to new content: %v", err)
 	}
-	if !filepath.IsAbs(link) {
-		link = filepath.Join(filepath.Dir(target.Path), link)
+	info, err := os.Lstat(linkedTarget.Path)
+	if err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("Agent projection stopped being a symlink: info=%v err=%v", info, err)
 	}
-	if !samePath(link, newEntry.Artifact) {
-		t.Fatalf("target did not switch to new artifact: %s", link)
-	}
-	if _, err := os.Stat(receipts[0]); !os.IsNotExist(err) {
-		t.Fatalf("old receipt should be removed, got %v", err)
+	resolved, err := filepath.EvalSymlinks(linkedTarget.Path)
+	resolvedInfo, resolvedErr := os.Stat(resolved)
+	canonicalInfo, canonicalErr := os.Stat(canonical)
+	if err != nil || resolvedErr != nil || canonicalErr != nil || !os.SameFile(resolvedInfo, canonicalInfo) {
+		t.Fatalf("Agent projection no longer points to canonical: %s (%v)", resolved, err)
 	}
 }
 
@@ -40,45 +52,80 @@ func TestReplaceRollsBackEarlierTargetWhenLaterTargetFails(t *testing.T) {
 	root := t.TempDir()
 	oldEntry := updateTestEntry(t, filepath.Join(root, "old"))
 	newEntry := updateTestEntry(t, filepath.Join(root, "new"))
-	first := Target{Agent: "codex", Scope: ScopeProject, Mode: ModeSymlink, Path: filepath.Join(root, "project", ".agents", "skills", "demo")}
+	canonical := filepath.Join(root, "project", ".agents", "skills", "demo")
+	first := Target{Agent: "codex", Scope: ScopeProject, Mode: ModeSymlink, Path: canonical, CanonicalPath: canonical}
 	if err := Install(oldEntry, []Target{first}); err != nil {
 		t.Fatal(err)
 	}
-	receipts, _ := filepath.Glob(filepath.Join(oldEntry.Root, "targets", "*.yaml"))
-	previous := []Installation{{Name: "demo", StoreRoot: oldEntry.Root, Artifact: oldEntry.Artifact, ReceiptPath: receipts[0], Target: first}}
-	second := Target{Agent: "claude-code", Scope: ScopeProject, Mode: ModeSymlink, Path: filepath.Join(root, "project", ".claude", "skills", "demo")}
+	previous := []Installation{{Name: "demo", StoreRoot: oldEntry.Root, Artifact: oldEntry.Artifact, Target: first}}
+	second := Target{Agent: "claude-code", Scope: ScopeProject, Mode: ModeSymlink, Path: filepath.Join(root, "project", ".claude", "skills", "demo"), CanonicalPath: canonical}
 	if err := os.MkdirAll(second.Path, 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := Replace(newEntry, previous, []Target{first, second}); err == nil {
 		t.Fatal("expected untracked target failure")
 	}
-	link, err := os.Readlink(first.Path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !filepath.IsAbs(link) {
-		link = filepath.Join(filepath.Dir(first.Path), link)
-	}
-	if !samePath(link, oldEntry.Artifact) {
-		t.Fatalf("first target was not rolled back: %s", link)
+	matches, err := CopyMatchesArtifact(first.Path, oldEntry.Artifact)
+	if err != nil || !matches {
+		t.Fatalf("canonical was not rolled back: %v", err)
 	}
 }
 
-func TestReplaceSameStoreEntryKeepsReceipt(t *testing.T) {
+func TestReplaceSameStoreEntryKeepsTarget(t *testing.T) {
 	root := t.TempDir()
 	entry := updateTestEntry(t, filepath.Join(root, "entry"))
-	target := Target{Agent: "codex", Scope: ScopeProject, Mode: ModeSymlink, Path: filepath.Join(root, "project", ".agents", "skills", "demo")}
+	canonical := filepath.Join(root, "project", ".agents", "skills", "demo")
+	target := Target{Agent: "codex", Scope: ScopeProject, Mode: ModeSymlink, Path: canonical, CanonicalPath: canonical}
 	if err := Install(entry, []Target{target}); err != nil {
 		t.Fatal(err)
 	}
-	receipts, _ := filepath.Glob(filepath.Join(entry.Root, "targets", "*.yaml"))
-	previous := []Installation{{Name: "demo", StoreRoot: entry.Root, Artifact: entry.Artifact, ReceiptPath: receipts[0], Target: target}}
+	previous := []Installation{{Name: "demo", StoreRoot: entry.Root, Artifact: entry.Artifact, Target: target}}
 	if err := Replace(entry, previous, []Target{target}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(receipts[0]); err != nil {
-		t.Fatalf("same-entry replacement removed current receipt: %v", err)
+	if _, err := os.Lstat(target.Path); err != nil {
+		t.Fatalf("same-entry replacement removed current target: %v", err)
+	}
+}
+
+func TestReplaceExplicitMigratesLegacyStoreDirectLinks(t *testing.T) {
+	root := t.TempDir()
+	entry := updateTestEntry(t, filepath.Join(root, "store"))
+	canonical := filepath.Join(root, "home", ".agents", "skills", "demo")
+	projection := filepath.Join(root, "home", ".codex", "skills", "demo")
+	if err := os.MkdirAll(filepath.Dir(canonical), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Dir(projection), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{canonical, projection} {
+		relative, err := filepath.Rel(filepath.Dir(path), entry.Artifact)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(relative, path); err != nil {
+			t.Fatal(err)
+		}
+	}
+	target := Target{Agent: "codex", Scope: ScopeUser, Mode: ModeSymlink, Path: projection, CanonicalPath: canonical}
+	if err := ReplaceExplicit(entry, nil, []Target{target}); err != nil {
+		t.Fatal(err)
+	}
+	canonicalInfo, err := os.Lstat(canonical)
+	if err != nil || !canonicalInfo.IsDir() || canonicalInfo.Mode()&os.ModeSymlink != 0 {
+		t.Fatalf("expected materialized canonical directory, info=%v err=%v", canonicalInfo, err)
+	}
+	projectionInfo, err := os.Lstat(projection)
+	if err != nil || projectionInfo.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("expected Agent projection symlink, info=%v err=%v", projectionInfo, err)
+	}
+	resolved, err := filepath.EvalSymlinks(projection)
+	if err != nil || !samePath(resolved, canonical) {
+		t.Fatalf("expected projection to resolve to canonical %s, got %s (%v)", canonical, resolved, err)
+	}
+	if _, err := os.Stat(filepath.Join(projection, "SKILL.md")); err != nil {
+		t.Fatalf("migrated projection cannot read artifact: %v", err)
 	}
 }
 

@@ -21,22 +21,15 @@ import (
 	modsemver "golang.org/x/mod/semver"
 )
 
-type Origin struct {
-	VCS       string `json:"VCS" yaml:"vcs"`
-	URL       string `json:"URL" yaml:"url"`
-	Subdir    string `json:"Subdir" yaml:"subdir"`
-	Ref       string `json:"Ref" yaml:"ref"`
-	CommitSHA string `json:"CommitSHA" yaml:"commitSHA"`
-	TreeSHA   string `json:"TreeSHA" yaml:"treeSHA"`
-}
-
 type Info struct {
 	SchemaVersion int               `json:"SchemaVersion" yaml:"schemaVersion"`
 	Kind          string            `json:"Kind" yaml:"kind"`
 	ID            string            `json:"ID" yaml:"id"`
 	Version       string            `json:"Version" yaml:"version"`
 	Time          time.Time         `json:"Time" yaml:"time"`
-	Origin        Origin            `json:"Origin" yaml:"origin"`
+	Ref           string            `json:"Ref" yaml:"ref"`
+	CommitSHA     string            `json:"CommitSHA" yaml:"commitSHA"`
+	TreeSHA       string            `json:"TreeSHA" yaml:"treeSHA"`
 	Name          string            `json:"Name" yaml:"name"`
 	Description   string            `json:"Description" yaml:"description"`
 	License       string            `json:"License,omitempty" yaml:"license,omitempty"`
@@ -75,6 +68,7 @@ type RepositoryInfo struct {
 	ID            string            `json:"ID"`
 	Version       string            `json:"Version"`
 	Time          time.Time         `json:"Time"`
+	Ref           string            `json:"Ref"`
 	CommitSHA     string            `json:"CommitSHA"`
 	Skills        []json.RawMessage `json:"Skills"`
 }
@@ -99,6 +93,17 @@ type ContentMatch struct {
 	CommitSHA        string `json:"commitSHA"`
 	TreeSHA          string `json:"treeSHA"`
 	ContentDigest    string `json:"contentDigest"`
+}
+
+type SkillProductMetadata struct {
+	ID             string  `json:"id"`
+	ImageURL       *string `json:"imageUrl"`
+	Installs       int64   `json:"installs"`
+	GitHubStars    int64   `json:"githubStars"`
+	TrustLevel     string  `json:"trustLevel"`
+	RiskAssessment struct {
+		Level Risk `json:"level"`
+	} `json:"riskAssessment"`
 }
 
 type SkillSummary struct {
@@ -238,7 +243,7 @@ func ParseRepositoryInfo(repositoryID string, infoBytes []byte) (*RepositoryReso
 		if member.ID != repositoryID && !strings.HasPrefix(member.ID, prefix) {
 			return nil, fmt.Errorf("Repository Info contains foreign Skill %q", member.ID)
 		}
-		if seen[member.ID] || member.Version != info.Version || member.Origin.CommitSHA != info.CommitSHA {
+		if seen[member.ID] || member.Version != info.Version || member.CommitSHA != info.CommitSHA || member.Ref != info.Ref {
 			return nil, fmt.Errorf("Repository Info contains inconsistent Skill %q", member.ID)
 		}
 		if err := validateAssessedInfo(member.ID, info.Version, member); err != nil {
@@ -305,6 +310,17 @@ func (c *Client) Resolve(ctx context.Context, skillID, requestedVersion string) 
 		return Info{}, err
 	}
 	return info, nil
+}
+
+func (c *Client) SkillProduct(ctx context.Context, skillID string) (SkillProductMetadata, error) {
+	var metadata SkillProductMetadata
+	if err := c.getJSON(ctx, c.baseURL+"/v1/skills/"+skillID, &metadata); err != nil {
+		return SkillProductMetadata{}, err
+	}
+	if metadata.ID != skillID {
+		return SkillProductMetadata{}, fmt.Errorf("Hub returned mismatched Skill product metadata for %s", skillID)
+	}
+	return metadata, nil
 }
 
 func (c *Client) MatchContent(ctx context.Context, contentDigest, sourceHint string) ([]ContentMatch, error) {
