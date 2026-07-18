@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery metadata including repository product signals and Hub image URLs, auditable artifacts, unified Hub/Local/External Library entries and targets, explicit Installation/Update/Target Management/External Adoption flows, Local export, project references, Agent inspection, CLI, Hub and typed appearance/wallpaper settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery metadata including repository product signals and Hub image URLs, auditable artifacts, unified Hub/Local/External Library entries, managed targets, derived Agent visibility, explicit Installation/Update/Target Management/External Adoption flows, Local export, project references, Agent inspection, CLI, Hub and typed appearance/wallpaper settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -20,6 +20,7 @@ enum SkillsFailureKind {
   timeout,
   offline,
   invalidResponse,
+  invalidLocalData,
   artifactUnavailable,
 }
 
@@ -40,9 +41,9 @@ enum InstallationScope { user, project }
 
 enum InstallationMode { symlink, copy, external }
 
-enum InstallationPlanAction { create, replace, skip, conflict, blockedByRisk }
+enum DiscoveryVerification { verified, unverified }
 
-enum InstallationTargetResolution { none, replace }
+enum InstallationPlanAction { create, replace, skip, conflict, blockedByRisk }
 
 enum InstallationTargetOutcome { succeeded, skipped, conflict, failed }
 
@@ -58,8 +59,6 @@ enum TargetManagementOutcome { succeeded, failed }
 
 enum ExternalAdoptionAction { associateHub, importLocal }
 
-enum ReceiptState { present, missing, invalid }
-
 enum InstallationHealth {
   healthy,
   missing,
@@ -70,7 +69,6 @@ enum InstallationHealth {
   workspaceUnreadable,
   lockMismatch,
   unexpectedPath,
-  receiptMissing,
 }
 
 enum LibraryProvenance { hub, local, external }
@@ -146,7 +144,7 @@ class CliStatus {
 class SkillSummary {
   const SkillSummary({
     required this.id,
-    required this.skillId,
+    required this.installName,
     required this.name,
     required this.source,
     required this.installs,
@@ -161,7 +159,7 @@ class SkillSummary {
   });
 
   final String id;
-  final String skillId;
+  final String installName;
   final String name;
   final String source;
   final String? imageUrl;
@@ -219,7 +217,6 @@ class SkillInstallationTarget {
     required this.version,
     this.projectRoot = '',
     this.mode = InstallationMode.symlink,
-    this.receiptState = ReceiptState.present,
     this.health = InstallationHealth.healthy,
   });
 
@@ -229,8 +226,23 @@ class SkillInstallationTarget {
   final String version;
   final String projectRoot;
   final InstallationMode mode;
-  final ReceiptState receiptState;
   final InstallationHealth health;
+}
+
+class SkillVisibility {
+  const SkillVisibility({
+    required this.agent,
+    required this.scope,
+    required this.paths,
+    required this.verification,
+    this.projectRoot = '',
+  });
+
+  final String agent;
+  final InstallationScope scope;
+  final String projectRoot;
+  final List<String> paths;
+  final DiscoveryVerification verification;
 }
 
 class InstallationTargetSelection {
@@ -239,32 +251,12 @@ class InstallationTargetSelection {
     required this.agent,
     this.projectRoot = '',
     this.mode = InstallationMode.symlink,
-    this.resolution = InstallationTargetResolution.none,
-    this.expectedReason = '',
-    this.expectedState = '',
   });
 
   final InstallationScope scope;
   final String projectRoot;
   final String agent;
   final InstallationMode mode;
-  final InstallationTargetResolution resolution;
-  final String expectedReason;
-  final String expectedState;
-
-  InstallationTargetSelection copyWith({
-    InstallationTargetResolution? resolution,
-    String? expectedReason,
-    String? expectedState,
-  }) => InstallationTargetSelection(
-    scope: scope,
-    projectRoot: projectRoot,
-    agent: agent,
-    mode: mode,
-    resolution: resolution ?? this.resolution,
-    expectedReason: expectedReason ?? this.expectedReason,
-    expectedState: expectedState ?? this.expectedState,
-  );
 }
 
 class InstallationPlanTarget {
@@ -283,56 +275,8 @@ class InstallationPlanTarget {
   final String path;
 }
 
-class InstallationPlanItem {
-  const InstallationPlanItem({
-    required this.target,
-    required this.action,
-    required this.workspaceLockChange,
-    this.reasonCode = '',
-    this.stateToken = '',
-    this.affectedBindings = const [],
-  });
-
-  final InstallationPlanTarget target;
-  final InstallationPlanAction action;
-  final bool workspaceLockChange;
-  final String reasonCode;
-  final String stateToken;
-  final List<InstallationAffectedBinding> affectedBindings;
-}
-
-class InstallationAffectedBinding {
-  const InstallationAffectedBinding({
-    required this.agent,
-    required this.scope,
-    required this.mode,
-    required this.path,
-  });
-
-  final String agent;
-  final InstallationScope scope;
-  final InstallationMode mode;
-  final String path;
-}
-
-class InstallationPlanSummary {
-  const InstallationPlanSummary({
-    required this.create,
-    required this.replace,
-    required this.skip,
-    required this.conflict,
-    required this.blockedByRisk,
-  });
-
-  final int create;
-  final int replace;
-  final int skip;
-  final int conflict;
-  final int blockedByRisk;
-}
-
-class WorkspaceLockChange {
-  const WorkspaceLockChange({
+class WorkspaceManifestChange {
+  const WorkspaceManifestChange({
     required this.projectRoot,
     required this.path,
     required this.skill,
@@ -345,34 +289,6 @@ class WorkspaceLockChange {
   final String skill;
   final String fromVersion;
   final String toVersion;
-}
-
-class InstallationPlan {
-  const InstallationPlan({
-    required this.source,
-    required this.coordinate,
-    required this.version,
-    required this.name,
-    required this.selections,
-    required this.targets,
-    required this.summary,
-    required this.workspaceLockChanges,
-    required this.riskAssessment,
-    required this.riskConfirmed,
-    required this.allowCritical,
-  });
-
-  final String source;
-  final String coordinate;
-  final String version;
-  final String name;
-  final List<InstallationTargetSelection> selections;
-  final List<InstallationPlanItem> targets;
-  final InstallationPlanSummary summary;
-  final List<WorkspaceLockChange> workspaceLockChanges;
-  final SkillRiskAssessment riskAssessment;
-  final bool riskConfirmed;
-  final bool allowCritical;
 }
 
 class InstallationTargetResult {
@@ -407,14 +323,14 @@ class InstallationExecutionSummary {
 
 class InstallationExecution {
   const InstallationExecution({
-    required this.coordinate,
+    required this.skillId,
     required this.version,
     required this.name,
     required this.results,
     required this.summary,
   });
 
-  final String coordinate;
+  final String skillId;
   final String version;
   final String name;
   final List<InstallationTargetResult> results;
@@ -423,33 +339,17 @@ class InstallationExecution {
   bool get hasSuccess => summary.succeeded > 0 || summary.skipped > 0;
 }
 
-class InstallationTargetProgress {
-  const InstallationTargetProgress({
-    required this.sequence,
-    required this.target,
-    required this.action,
-    required this.state,
-    this.result,
-  });
-
-  final int sequence;
-  final InstallationPlanTarget target;
-  final InstallationPlanAction action;
-  final InstallationProgressState state;
-  final InstallationTargetResult? result;
-}
-
 class UpdatePlanItem {
   const UpdatePlanItem({
     required this.target,
     required this.name,
-    required this.coordinate,
+    required this.skillId,
     required this.sourceRef,
     required this.fromVersion,
     required this.toVersion,
     required this.action,
     required this.stateToken,
-    required this.workspaceLockChange,
+    required this.workspaceManifestChange,
     this.reasonCode = '',
     this.diagnostic = '',
     this.affectedBindings = const [],
@@ -457,7 +357,7 @@ class UpdatePlanItem {
 
   final InstallationPlanTarget target;
   final String name;
-  final String coordinate;
+  final String skillId;
   final String sourceRef;
   final String fromVersion;
   final String toVersion;
@@ -465,7 +365,7 @@ class UpdatePlanItem {
   final String reasonCode;
   final String diagnostic;
   final String stateToken;
-  final bool workspaceLockChange;
+  final bool workspaceManifestChange;
   final List<InstallationPlanTarget> affectedBindings;
 }
 
@@ -486,23 +386,23 @@ class UpdatePlanSummary {
 class UpdatePlan {
   const UpdatePlan({
     required this.targets,
-    required this.workspaceLockChanges,
+    required this.workspaceManifestChanges,
     required this.summary,
   });
 
   final List<UpdatePlanItem> targets;
-  final List<WorkspaceLockChange> workspaceLockChanges;
+  final List<WorkspaceManifestChange> workspaceManifestChanges;
   final UpdatePlanSummary summary;
 
   UpdatePlan selectTargets(Iterable<UpdatePlanItem> selected) {
     final values = List<UpdatePlanItem>.unmodifiable(selected);
     return UpdatePlan(
       targets: values,
-      workspaceLockChanges: List.unmodifiable(
-        workspaceLockChanges.where(
+      workspaceManifestChanges: List.unmodifiable(
+        workspaceManifestChanges.where(
           (change) => values.any(
             (item) =>
-                item.workspaceLockChange &&
+                item.workspaceManifestChange &&
                 item.target.projectRoot == change.projectRoot &&
                 item.name == change.skill &&
                 item.toVersion == change.toVersion,
@@ -556,7 +456,7 @@ class UpdateTargetResult {
   const UpdateTargetResult({
     required this.target,
     required this.name,
-    required this.coordinate,
+    required this.skillId,
     required this.fromVersion,
     required this.toVersion,
     required this.outcome,
@@ -566,7 +466,7 @@ class UpdateTargetResult {
 
   final InstallationPlanTarget target;
   final String name;
-  final String coordinate;
+  final String skillId;
   final String fromVersion;
   final String toVersion;
   final UpdateTargetOutcome outcome;
@@ -598,7 +498,7 @@ class UpdateTargetProgress {
     required this.sequence,
     required this.target,
     required this.name,
-    required this.coordinate,
+    required this.skillId,
     required this.fromVersion,
     required this.toVersion,
     required this.state,
@@ -608,7 +508,7 @@ class UpdateTargetProgress {
   final int sequence;
   final InstallationPlanTarget target;
   final String name;
-  final String coordinate;
+  final String skillId;
   final String fromVersion;
   final String toVersion;
   final InstallationProgressState state;
@@ -619,10 +519,9 @@ class TargetManagementPlanItem {
   const TargetManagementPlanItem({
     required this.target,
     required this.name,
-    required this.coordinate,
+    required this.skillId,
     required this.version,
     required this.health,
-    required this.receiptState,
     required this.allowedActions,
     required this.stateToken,
     required this.workspaceMetadataChange,
@@ -633,10 +532,9 @@ class TargetManagementPlanItem {
 
   final InstallationPlanTarget target;
   final String name;
-  final String coordinate;
+  final String skillId;
   final String version;
   final InstallationHealth health;
-  final ReceiptState receiptState;
   final List<TargetManagementAction> allowedActions;
   final TargetManagementAction? action;
   final String stateToken;
@@ -648,10 +546,9 @@ class TargetManagementPlanItem {
       TargetManagementPlanItem(
         target: target,
         name: name,
-        coordinate: coordinate,
+        skillId: skillId,
         version: version,
         health: health,
-        receiptState: receiptState,
         allowedActions: allowedActions,
         action: selectedAction,
         stateToken: stateToken,
@@ -712,7 +609,7 @@ class TargetManagementResult {
   const TargetManagementResult({
     required this.target,
     required this.name,
-    required this.coordinate,
+    required this.skillId,
     required this.version,
     required this.action,
     required this.outcome,
@@ -722,7 +619,7 @@ class TargetManagementResult {
 
   final InstallationPlanTarget target;
   final String name;
-  final String coordinate;
+  final String skillId;
   final String version;
   final TargetManagementAction action;
   final TargetManagementOutcome outcome;
@@ -755,7 +652,7 @@ class TargetManagementProgress {
     required this.sequence,
     required this.target,
     required this.name,
-    required this.coordinate,
+    required this.skillId,
     required this.version,
     required this.action,
     required this.state,
@@ -765,7 +662,7 @@ class TargetManagementProgress {
   final int sequence;
   final InstallationPlanTarget target;
   final String name;
-  final String coordinate;
+  final String skillId;
   final String version;
   final TargetManagementAction action;
   final InstallationProgressState state;
@@ -774,7 +671,7 @@ class TargetManagementProgress {
 
 class HubContentMatch {
   const HubContentMatch({
-    required this.coordinate,
+    required this.skillId,
     required this.name,
     required this.source,
     required this.immutableVersion,
@@ -784,7 +681,7 @@ class HubContentMatch {
     this.skillPath = '',
   });
 
-  final String coordinate;
+  final String skillId;
   final String name;
   final String source;
   final String skillPath;
@@ -796,7 +693,7 @@ class HubContentMatch {
 
 class ExternalAdoptionPlan {
   const ExternalAdoptionPlan({
-    required this.identity,
+    required this.inventoryKey,
     required this.name,
     required this.target,
     required this.contentDigest,
@@ -808,7 +705,7 @@ class ExternalAdoptionPlan {
     this.selectedMatch,
   });
 
-  final String identity;
+  final String inventoryKey;
   final String name;
   final InstallationPlanTarget target;
   final String contentDigest;
@@ -821,7 +718,7 @@ class ExternalAdoptionPlan {
 
   ExternalAdoptionPlan selectHubMatch(HubContentMatch match) =>
       ExternalAdoptionPlan(
-        identity: identity,
+        inventoryKey: inventoryKey,
         name: name,
         target: target,
         contentDigest: contentDigest,
@@ -834,7 +731,7 @@ class ExternalAdoptionPlan {
       );
 
   ExternalAdoptionPlan selectLocalImport() => ExternalAdoptionPlan(
-    identity: identity,
+    inventoryKey: inventoryKey,
     name: name,
     target: target,
     contentDigest: contentDigest,
@@ -850,7 +747,7 @@ class ExternalAdoptionResult {
   const ExternalAdoptionResult({
     required this.action,
     required this.name,
-    required this.coordinate,
+    required this.skillId,
     required this.version,
     required this.provenance,
     required this.contentDigest,
@@ -859,7 +756,7 @@ class ExternalAdoptionResult {
 
   final ExternalAdoptionAction action;
   final String name;
-  final String coordinate;
+  final String skillId;
   final String version;
   final LibraryProvenance provenance;
   final String contentDigest;
@@ -903,6 +800,7 @@ class AddedProject {
   const AddedProject({
     required this.id,
     required this.name,
+    this.description = '',
     required this.path,
     required this.accessState,
     this.diagnostic,
@@ -910,6 +808,7 @@ class AddedProject {
 
   final String id;
   final String name;
+  final String description;
   final String path;
   final ProjectAccessState accessState;
   final String? diagnostic;
@@ -936,7 +835,6 @@ class SkillDetail {
     this.treeSHA = '',
     this.sourceRef = '',
     this.contentDigest = '',
-    this.manifest = '',
     this.trustLevel = SkillTrustLevel.unverified,
     this.riskAssessment = SkillRiskAssessment.unknown,
     this.riskScannerVersion = '',
@@ -962,7 +860,6 @@ class SkillDetail {
   final String treeSHA;
   final String sourceRef;
   final String contentDigest;
-  final String manifest;
   final SkillTrustLevel trustLevel;
   final SkillRiskAssessment riskAssessment;
   final String riskScannerVersion;
@@ -996,12 +893,14 @@ class SkillDetail {
 class InstalledSkill {
   const InstalledSkill({
     required this.name,
+    this.description = '',
     required this.path,
     required this.agents,
     required this.targetCount,
-    this.identity = '',
-    this.coordinate = '',
+    this.inventoryKey = '',
+    this.skillId = '',
     this.targets = const [],
+    this.visibility = const [],
     this.provenance = LibraryProvenance.hub,
     this.riskAssessment = SkillRiskAssessment.unknown,
     this.health = InstallationHealth.healthy,
@@ -1011,12 +910,14 @@ class InstalledSkill {
   });
 
   final String name;
+  final String description;
   final String path;
   final List<String> agents;
   final int targetCount;
-  final String identity;
-  final String coordinate;
+  final String inventoryKey;
+  final String skillId;
   final List<SkillInstallationTarget> targets;
+  final List<SkillVisibility> visibility;
   final LibraryProvenance provenance;
   final SkillRiskAssessment riskAssessment;
   final InstallationHealth health;
@@ -1052,13 +953,15 @@ class InstalledSkill {
     }
     final versionList = selectedVersions.toList()..sort();
     return InstalledSkill(
-      identity: identity,
+      inventoryKey: inventoryKey,
       name: name,
+      description: description,
       path: selectedTargets.first.path,
       agents: (selectedAgents.toList()..sort()),
       targetCount: selectedTargets.length,
-      coordinate: coordinate,
+      skillId: skillId,
       targets: List.unmodifiable(selectedTargets),
+      visibility: visibility,
       provenance: provenance,
       riskAssessment: riskAssessment,
       health: selectedHealth,
@@ -1163,22 +1066,18 @@ abstract interface class SkillsGateway {
     List<AddedProject> projects = const [],
   });
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill);
-  Future<InstallationPlan> preflightInstall(
-    SkillSummary skill,
-    String immutableVersion,
-    List<InstallationTargetSelection> selections, {
-    bool riskConfirmed = false,
-    bool allowCritical = false,
-  });
-  Future<InstallationExecution> executeInstall(
-    InstallationPlan plan, {
-    void Function(InstallationTargetProgress progress)? onProgress,
-  });
   Future<CommandResult> install(SkillSummary skill);
   Future<TargetManagementPlan> preflightTargetManagement(
     InstalledSkill skill,
     List<SkillInstallationTarget> targets,
   );
+  Future<InstallationExecution> installTargets(
+    SkillSummary skill,
+    String immutableVersion,
+    List<InstallationTargetSelection> selections, {
+    bool confirmRisk = false,
+    bool allowCritical = false,
+  });
   Future<TargetManagementExecution> executeTargetManagement(
     TargetManagementPlan plan, {
     void Function(TargetManagementProgress progress)? onProgress,

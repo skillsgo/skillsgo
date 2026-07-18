@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on SkillsGateway contracts, Riverpod feature state, split feature view parts, localized copy, Flutter spring physics, native Material components, the accessible themeable primary folder, stateful nested navigation, and SkillsGo brand tokens.
+ * [INPUT]: Depends on SkillsGateway contracts, Riverpod feature state, split feature view parts, localized copy, Flutter spring physics, HugeIcons, native Material components, the accessible themeable primary folder, stateful nested navigation, and SkillsGo brand tokens.
  * [OUTPUT]: Provides the desktop shell composition plus shared UI contracts consumed by split Discover, Library, Settings, and mutation-flow views.
  * [POS]: Serves as the primary rendered product surface and translates domain states into accessible localized UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -74,6 +74,10 @@ extension on BuildContext {
     SkillsFailureKind.invalidResponse => (
       title: context.l10n.invalidResponseTitle,
       message: context.l10n.invalidResponseMessage,
+    ),
+    SkillsFailureKind.invalidLocalData => (
+      title: context.l10n.invalidLocalDataTitle,
+      message: context.l10n.invalidLocalDataMessage,
     ),
     SkillsFailureKind.artifactUnavailable => (
       title: context.l10n.artifactUnavailableTitle,
@@ -296,9 +300,10 @@ class _CliBanner extends StatelessWidget {
     ),
     child: Row(
       children: [
-        Icon(
-          Icons.terminal,
+        HugeIcon(
+          icon: HugeIcons.strokeRoundedComputerTerminal01,
           size: 17,
+          strokeWidth: 1.8,
           color: context.skillsComponents.statusAttention,
         ),
         const SizedBox(width: 9),
@@ -324,14 +329,20 @@ class OperationPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     if (result.output.exitCode == 69) {
       return SkillsAlert(
-        icon: const Icon(Icons.cloud_off_outlined),
+        icon: const HugeIcon(
+          icon: HugeIcons.strokeRoundedCloudOff,
+          strokeWidth: 1.8,
+        ),
         title: Text(context.l10n.offlineTitle),
         description: Text(context.l10n.offlineMessage),
       );
     }
     if (result.output.exitCode == 75) {
       return SkillsAlert(
-        icon: const Icon(Icons.timer_off_outlined),
+        icon: const HugeIcon(
+          icon: HugeIcons.strokeRoundedAlarmClockOff,
+          strokeWidth: 1.8,
+        ),
         title: Text(context.l10n.timeoutTitle),
         description: Text(context.l10n.timeoutMessage),
       );
@@ -346,8 +357,11 @@ class OperationPanel extends StatelessWidget {
       collapsedShape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
       ),
-      leading: Icon(
-        result.succeeded ? Icons.check_circle_outline : Icons.error_outline,
+      leading: HugeIcon(
+        icon: result.succeeded
+            ? HugeIcons.strokeRoundedCheckmarkCircle02
+            : HugeIcons.strokeRoundedAlertCircle,
+        strokeWidth: 1.8,
         color: statusColor,
       ),
       title: Text(
@@ -447,17 +461,8 @@ CommandResult _exceptionResult(Object error) {
   );
 }
 
-String _updateLabel(BuildContext context, UpdateState state) => switch (state) {
-  UpdateState.unknown => context.l10n.updateUnknown,
-  UpdateState.checking => context.l10n.updateChecking,
-  UpdateState.upToDate => context.l10n.upToDate,
-  UpdateState.available => context.l10n.updateAvailable,
-  UpdateState.unsupported => context.l10n.updateUnavailable,
-  UpdateState.failed => context.l10n.updateCheckFailed,
-};
-
 String _libraryUpdateKey(InstalledSkill skill) =>
-    skill.identity.isEmpty ? skill.name : skill.identity;
+    skill.inventoryKey.isEmpty ? skill.name : skill.inventoryKey;
 
 String _agentDisplayLabel(String agent) => agent
     .split(RegExp(r'[-_]'))
@@ -470,13 +475,6 @@ String _installationModeLabel(BuildContext context, InstallationMode mode) =>
       InstallationMode.symlink => context.l10n.modeSymlink,
       InstallationMode.copy => context.l10n.modeCopy,
       InstallationMode.external => context.l10n.modeExternal,
-    };
-
-String _receiptStateLabel(BuildContext context, ReceiptState state) =>
-    switch (state) {
-      ReceiptState.present => context.l10n.receiptPresent,
-      ReceiptState.missing => context.l10n.receiptMissing,
-      ReceiptState.invalid => context.l10n.receiptInvalid,
     };
 
 Widget _libraryProvenanceChip(
@@ -539,10 +537,6 @@ Widget _installationHealthChip(
     ),
     InstallationHealth.unexpectedPath => (
       label: context.l10n.healthUnexpectedPath,
-      color: context.skillsComponents.statusDanger,
-    ),
-    InstallationHealth.receiptMissing => (
-      label: context.l10n.healthReceiptMissing,
       color: context.skillsComponents.statusDanger,
     ),
   };

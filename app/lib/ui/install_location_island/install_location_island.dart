@@ -1,13 +1,14 @@
 /*
  * Derived from Portal Labs Todo List Interaction, Copyright (c) 2026 Luis Portal, MIT License.
  * See /app/THIRD_PARTY_NOTICES.md for the complete attribution and license text.
- * [INPUT]: Depends on Flutter Material, physics, semantics, a caller-provided scope selector, optional row-leading identities, and an isolated inner scroll position.
+ * [INPUT]: Depends on Flutter Material, HugeIcons, physics, semantics, a caller-provided scope selector, optional row-leading identities, and an isolated inner scroll position.
  * [OUTPUT]: Provides a controlled installation-location Island with a composable header, compact identified rows, collapsible groups, animated rows, clipped rounded corners, and Portal Labs visual structure.
  * [POS]: Serves as the vendored Portal Labs interaction adapted from Todo semantics to SkillsGo installation targets.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 @immutable
 class InstallLocationIslandItem {
@@ -17,6 +18,7 @@ class InstallLocationIslandItem {
     required this.selected,
     required this.enabled,
     this.leading,
+    this.inlineStatusText,
     this.supportingText,
   });
 
@@ -25,6 +27,7 @@ class InstallLocationIslandItem {
   final bool selected;
   final bool enabled;
   final Widget? leading;
+  final String? inlineStatusText;
   final String? supportingText;
 }
 
@@ -247,9 +250,10 @@ class _IslandGroupState extends State<_IslandGroup>
                           ),
                         ),
                       ),
-                      child: Icon(
-                        Icons.arrow_right_rounded,
+                      child: HugeIcon(
+                        icon: HugeIcons.strokeRoundedArrowRight01,
                         size: 22,
+                        strokeWidth: 1.8,
                         color: widget.style.textColor,
                       ),
                     ),
@@ -351,9 +355,10 @@ class _IslandItem extends StatelessWidget {
                     borderRadius: BorderRadius.circular(5),
                   ),
                   child: item.selected
-                      ? Icon(
-                          Icons.check_rounded,
+                      ? HugeIcon(
+                          icon: HugeIcons.strokeRoundedCheckmarkCircle02,
                           size: 12,
+                          strokeWidth: 1.8,
                           color: style.selectedForegroundColor,
                         )
                       : null,
@@ -369,17 +374,37 @@ class _IslandItem extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    item.label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: item.enabled
-                          ? style.textColor
-                          : style.secondaryTextColor.withValues(alpha: .55),
-                      fontSize: 13.5,
-                      fontWeight: FontWeight.w400,
-                    ),
+                  Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          item.label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            color: item.enabled
+                                ? style.textColor
+                                : style.secondaryTextColor.withValues(
+                                    alpha: .55,
+                                  ),
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w400,
+                          ),
+                        ),
+                      ),
+                      if (item.inlineStatusText != null) ...[
+                        const SizedBox(width: 7),
+                        Text(
+                          item.inlineStatusText!,
+                          maxLines: 1,
+                          style: TextStyle(
+                            color: style.secondaryTextColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   if (item.supportingText != null)
                     Text(

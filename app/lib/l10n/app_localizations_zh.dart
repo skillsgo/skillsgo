@@ -12,6 +12,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get discover => '发现';
 
   @override
+  String get discoverSkills => '多会一点，总是好的。';
+
+  @override
   String get library => '已安装';
 
   @override
@@ -40,7 +43,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get discoverTitle => '找到下一步所需的技能。';
 
   @override
-  String get searchSkills => '搜索技能…';
+  String searchResultsFor(String query) {
+    return '“$query”的搜索结果';
+  }
+
+  @override
+  String get searchSkills => '搜索技能或粘贴 Git 链接…';
 
   @override
   String get search => '搜索';
@@ -110,6 +118,13 @@ class AppLocalizationsZh extends AppLocalizations {
       '该 Hub 返回了 SkillsGo 无法读取的响应，请检查其版本与协议兼容性。';
 
   @override
+  String get invalidLocalDataTitle => '本地安装数据无法读取';
+
+  @override
+  String get invalidLocalDataMessage =>
+      'SkillsGo CLI 返回了 App 无法识别的本地安装数据。请更新 CLI，或清理损坏的安装记录后重试。';
+
+  @override
   String get tryAgain => '重试';
 
   @override
@@ -126,6 +141,30 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get focusSearch => '回到搜索框';
+
+  @override
+  String get skillsFromLink => '这个链接中的技能';
+
+  @override
+  String skillCount(int count) {
+    return '$count 个技能';
+  }
+
+  @override
+  String sourceResultsSummary(String source, int count) {
+    return '来自 $source 的 $count 个技能';
+  }
+
+  @override
+  String get sourceSearchEmptyTitle => '可以查看这个链接';
+
+  @override
+  String sourceSearchEmptyMessage(String source) {
+    return '当前搜索结果中没有 $source。下一步 SkillsGo 可以直接查看这个链接中的技能。';
+  }
+
+  @override
+  String get inspectSource => '查看链接中的技能';
 
   @override
   String get collectionEmptyTitle => '该集合中暂无 Skill';
@@ -309,6 +348,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get all => '所有';
 
   @override
+  String get updatesOnly => '有更新';
+
+  @override
+  String get allAgents => '所有 Agent';
+
+  @override
+  String get allProjects => '所有项目';
+
+  @override
+  String get specificProject => '指定项目';
+
+  @override
   String get addProject => '添加项目';
 
   @override
@@ -450,9 +501,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get healthUnexpectedPath => '目标路径异常';
 
   @override
-  String get healthReceiptMissing => '安装回执缺失';
-
-  @override
   String get modeSymlink => '软链接';
 
   @override
@@ -460,15 +508,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get modeExternal => '外部';
-
-  @override
-  String get receiptPresent => '回执存在';
-
-  @override
-  String get receiptMissing => '回执缺失';
-
-  @override
-  String get receiptInvalid => '回执无效';
 
   @override
   String get notLinked => '未连接';
@@ -484,6 +523,14 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get manageTargets => '管理目标';
+
+  @override
+  String skillsSelected(int count) {
+    return '已选择 $count 项';
+  }
+
+  @override
+  String get clearSelection => '清除选择';
 
   @override
   String get manageTargetsTitle => '管理安装目标';
@@ -521,7 +568,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get workspaceOwnershipChanges =>
-      '所选项目操作将更新 skillsgo.yaml 和 skillsgo-lock.yaml。';
+      '所选项目操作将更新 skillsgo.yaml 和 skillsgo.yaml。';
 
   @override
   String get targetContentPreserved => '目标当前内容会被保留。';
@@ -1072,59 +1119,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get installationPlanTitle => '选择安装目标';
-
-  @override
-  String get closeInstallationPlan => '关闭安装计划';
-
-  @override
-  String get installationPlanDescription =>
-      '请选择明确的位置与 Agent 单元格；行列控件只是批量选择这些明确目标的快捷方式。';
-
-  @override
-  String get reviewInstallationPlan => '检查安装计划';
-
-  @override
-  String get reviewInstallationPlanDescription =>
-      '在修改文件前，检查每个目标操作和 Workspace Lock 变更。';
-
-  @override
   String get installationResults => '安装结果';
 
   @override
-  String get installationResultsDescription => '每个目标独立完成。你可以留在这里，或前往已安装页面查看技能。';
-
-  @override
   String get installationInProgress => '正在安装';
-
-  @override
-  String get locationAgentMatrix => '位置 × Agent';
-
-  @override
-  String targetsSelected(int count) {
-    return '已选择 $count 个目标';
-  }
-
-  @override
-  String get location => '位置';
-
-  @override
-  String get select => '选择';
-
-  @override
-  String selectTarget(String location, String agent) {
-    return '为 $agent 选择 $location';
-  }
-
-  @override
-  String selectLocationTargets(String location) {
-    return '选择 $location 中所有可用目标';
-  }
-
-  @override
-  String selectAgentTargets(String agent) {
-    return '选择 $agent 的所有可用目标';
-  }
 
   @override
   String get projectUnavailable => '项目不可用';
@@ -1134,16 +1132,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get unsupportedCell => '不可用';
-
-  @override
-  String reviewTargets(int count) {
-    return '检查 $count 个目标';
-  }
-
-  @override
-  String installSelectedTargets(int count) {
-    return '安装 $count 个目标';
-  }
 
   @override
   String get confirmInstall => '确认安装';
@@ -1213,7 +1201,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get replaceVersionConflict => '替换这个目标中已安装的版本';
 
   @override
-  String get replaceIdentityCollision => '替换这个目标中的不同技能身份';
+  String get replaceSkillIdCollision => '替换这个目标中的不同 Skill ID';
 
   @override
   String get replaceLocalModification => '放弃本地修改并替换这个目标';
@@ -1245,10 +1233,10 @@ class AppLocalizationsZh extends AppLocalizations {
   String get criticalRiskOverrideDisabled => '请先在设置中启用显式的严重风险覆盖策略，才能继续此计划。';
 
   @override
-  String get workspaceLockChanges => 'Workspace Lock 变更';
+  String get workspaceManifestChanges => 'Workspace Manifest 变更';
 
   @override
-  String get noWorkspaceLockChanges => '不会修改 Workspace Lock 文件。';
+  String get noWorkspaceManifestChanges => '不会修改 Workspace Manifest 文件。';
 
   @override
   String lockVersionChange(String from, String to) {
@@ -1328,7 +1316,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updateCheckTargetFailed => '更新检查失败';
 
   @override
-  String get reconcileWorkspaceLockTarget => '修复工作区锁文件';
+  String get reconcileWorkspaceManifestTarget => '修复工作区清单';
 
   @override
   String get updateSelectedTargets => '更新所选目标';
@@ -1383,7 +1371,21 @@ class AppLocalizationsZh extends AppLocalizations {
   String get installationPlanFailed => '安装计划无法继续';
 
   @override
+  String get installationFailed => '安装未能完成';
+
+  @override
   String get bringUnderManagement => '纳入管理';
+
+  @override
+  String get localSource => '本地来源';
+
+  @override
+  String get noDescriptionAvailable => '暂无描述';
+
+  @override
+  String moreCoverage(int count) {
+    return '另外 $count 个安装位置';
+  }
 
   @override
   String get adoptExternalTitle => '将此外部安装纳入管理';

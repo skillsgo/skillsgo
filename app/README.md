@@ -9,7 +9,7 @@ SkillsGo is a desktop manager for Agent Skills. It discovers public Skills throu
 - A multi-location, multi-Agent installation matrix
 - Aggregated management of user-level, project-level, managed, and external installations
 - Per-target update checks, updates, removal, repair, and retry
-- Hub association or local import for external installations
+- Read-only discovery and exact-path removal for external installations
 - Official or self-hosted Hub configuration
 
 The Personal MVP requires no account and excludes teams, billing, approval, and cloud synchronization.

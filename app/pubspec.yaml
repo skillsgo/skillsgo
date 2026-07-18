@@ -54,6 +54,7 @@ dependencies:
   hugeicons: ^1.1.7
   flutter_svg: ^2.2.3
   url_launcher: ^6.3.2
+  portal_labs: ^0.34.0
 
 dev_dependencies:
   flutter_test:

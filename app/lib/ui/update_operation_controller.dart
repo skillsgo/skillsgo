@@ -55,9 +55,9 @@ final updateOperationProvider = NotifierProvider.family
     );
 
 class UpdateOperationController extends Notifier<UpdateOperationState> {
-  UpdateOperationController(this.skillIdentity);
+  UpdateOperationController(this.inventoryKey);
 
-  final String skillIdentity;
+  final String inventoryKey;
 
   SkillsGateway get _gateway => ref.read(skillsGatewayProvider);
 
@@ -112,7 +112,7 @@ class UpdateOperationController extends Notifier<UpdateOperationState> {
       final projects = await _gateway.loadAddedProjects();
       final entries = await _gateway.listInstalled(projects: projects);
       final refreshed = entries.where(
-        (entry) => entry.identity == skill.identity,
+        (entry) => entry.inventoryKey == skill.inventoryKey,
       );
       if (refreshed.isEmpty) {
         throw const SkillsException(
@@ -141,7 +141,7 @@ class UpdateOperationController extends Notifier<UpdateOperationState> {
             UpdateTargetResult(
               target: item.target,
               name: item.name,
-              coordinate: item.coordinate,
+              skillId: item.skillId,
               fromVersion: item.fromVersion,
               toVersion: item.toVersion,
               outcome: item.action == UpdatePlanAction.failed

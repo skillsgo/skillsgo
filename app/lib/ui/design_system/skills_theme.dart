@@ -88,6 +88,9 @@ ThemeData buildSkillsTheme(
     statusDanger: status.danger.foreground,
     statusDangerContainer: status.danger.container,
     statusDangerSolid: status.danger.solid,
+    statusDangerOnInverse: dark
+        ? SkillsRadixStatus.light.danger.foreground
+        : SkillsRadixStatus.dark.danger.solid,
     statusDangerForeground: dark ? sand[0] : Colors.white,
   );
   final scheme = accentScheme.copyWith(

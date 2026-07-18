@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings, discovery/detail parsing including repository product metadata and Hub image URLs, managed/external CLI inventory including Local Modifications, Hub-independent local inspection/project persistence, strict Installation/Update/Target Management/External Adoption contracts, Local export, stable CLI availability mapping, typed failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings, CLI-backed explicit-source discovery including empty-search GitHub shorthand fallback, discovery/detail parsing including repository product metadata and Hub image URLs, inventory v5 managed/external targets plus derived visibility and Local Modifications, Hub-independent local inspection/project persistence, strict Installation/Update/Target Management contracts including External removal, dormant post-MVP External Adoption adapters, Local export, stable CLI availability mapping, typed failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -82,7 +82,7 @@ void main() {
   });
 
   test(
-    'Added Projects persist, relocate by stable identity, and remove only the App reference',
+    'Added Projects persist, relocate by stable inventoryKey, and remove only the App reference',
     () async {
       SharedPreferences.setMockInitialValues({});
       final root = await Directory.systemTemp.createTemp('skillsgo-projects-');
@@ -94,7 +94,7 @@ void main() {
       await relocated.create();
       await unselected.create();
       await File('${original.path}/skillsgo.yaml').writeAsString('keep: true');
-      await File('${original.path}/skillsgo-lock.yaml').writeAsString('keep');
+      await File('${original.path}/skillsgo.sum').writeAsString('keep');
       await Directory(
         '${original.path}/.agents/skills',
       ).create(recursive: true);
@@ -138,7 +138,7 @@ void main() {
         'keep: true',
       );
       expect(
-        await File('${original.path}/skillsgo-lock.yaml').readAsString(),
+        await File('${original.path}/skillsgo.sum').readAsString(),
         'keep',
       );
       expect(
@@ -220,12 +220,12 @@ void main() {
           ProcessOutput(
             exitCode: 0,
             stdout: jsonEncode({
-              'schemaVersion': 3,
+              'schemaVersion': 5,
               'entries': [
                 {
-                  'identity': 'external:offline',
+                  'inventoryKey': 'external:offline',
                   'name': 'offline-skill',
-                  'coordinate': '',
+                  'skillId': '',
                   'provenance': 'external',
                   'risk': 'unknown',
                   'health': 'healthy',
@@ -233,6 +233,7 @@ void main() {
                   'projects': <String>[],
                   'versions': <String>[],
                   'versionDivergence': false,
+                  'visibility': <Object>[],
                   'targets': [
                     {
                       'scope': 'user',
@@ -240,7 +241,6 @@ void main() {
                       'path': skillDirectory.path,
                       'mode': 'external',
                       'version': '',
-                      'receiptState': 'missing',
                       'health': 'healthy',
                     },
                   ],
@@ -590,7 +590,16 @@ void main() {
       CliAvailability.incompatible,
     );
 
-    await expectLater(gateway.listInstalled(), throwsA(isA<SkillsException>()));
+    await expectLater(
+      gateway.listInstalled(),
+      throwsA(
+        isA<SkillsException>().having(
+          (error) => error.kind,
+          'kind',
+          SkillsFailureKind.invalidLocalData,
+        ),
+      ),
+    );
     expect(runner.lastArguments, ['version', '--output', 'json']);
   });
 
@@ -599,7 +608,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":3,"entries":[{"identity":"hub:github.com/flutter/skills/-/responsive-layout","name":"Responsive Layout","coordinate":"github.com/flutter/skills/-/responsive-layout","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","mode":"copy","version":"v1.2.3","receiptState":"present","health":"healthy"}]}]}',
+            '{"schemaVersion":5,"entries":[{"inventoryKey":"hub:github.com/flutter/skills/-/responsive-layout","name":"Responsive Layout","skillId":"github.com/flutter/skills/-/responsive-layout","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","mode":"copy","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","mode":"copy","version":"v1.2.3","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -611,7 +620,7 @@ void main() {
             'collection': 'search',
             'skills': [
               {
-                'coordinate': 'github.com/flutter/skills/-/responsive-layout',
+                'id': 'github.com/flutter/skills/-/responsive-layout',
                 'source': 'github.com/flutter/skills',
                 'imageUrl': 'https://images.example/flutter.png',
                 'skillPath': 'responsive-layout',
@@ -645,7 +654,7 @@ void main() {
     expect(results, hasLength(1));
     expect(results.single.source, 'github.com/flutter/skills');
     expect(results.single.imageUrl, 'https://images.example/flutter.png');
-    expect(results.single.skillId, 'responsive-layout');
+    expect(results.single.installName, 'responsive-layout');
     expect(results.single.installs, 1200);
     expect(results.single.description, 'Build adaptive Flutter layouts.');
     expect(results.single.trustLevel, SkillTrustLevel.communityVerified);
@@ -657,6 +666,136 @@ void main() {
     expect(installed.single.agents, ['codex']);
     expect(installed.single.targetCount, 2);
   });
+
+  test('explicit Git source discovery goes through CLI info', () async {
+    final runner = _FakeProcessRunner()
+      ..responses.addAll([
+        const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/acme/skills","Version":"v1.2.3","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/acme/skills/-/skills/demo","Version":"v1.2.3","Name":"demo","Description":"Demo Skill","ImageURL":"https://github.com/acme.png?size=72","Installs":42,"GitHubStars":7,"TrustLevel":"community_verified","RiskAssessment":"low","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"tree","ContentDigest":"sha256:digest","ArchiveSize":12}]}',
+          stderr: '',
+        ),
+        const ProcessOutput(
+          exitCode: 0,
+          stdout: '{"schemaVersion":5,"entries":[]}',
+          stderr: '',
+        ),
+      ]);
+    final gateway = RealSkillsGateway(
+      httpClient: MockClient((_) async {
+        fail('explicit source discovery must not call Hub HTTP directly');
+      }),
+      processRunner: runner,
+      initialCliPath: '/usr/local/bin/skillsgo',
+      hubBaseUrl: 'https://hub.example.test',
+    );
+
+    final page = await gateway.discover(
+      DiscoveryCollection.search,
+      query: 'https://github.com/acme/skills',
+    );
+
+    expect(page.skills, hasLength(1));
+    expect(page.skills.single.id, 'github.com/acme/skills/-/skills/demo');
+    expect(page.skills.single.imageUrl, 'https://github.com/acme.png?size=72');
+    expect(page.skills.single.installs, 42);
+    expect(page.skills.single.trustLevel, SkillTrustLevel.communityVerified);
+    expect(page.skills.single.riskAssessment, SkillRiskAssessment.low);
+    expect(runner.calls.first.arguments, [
+      'info',
+      'https://github.com/acme/skills',
+      '--hub',
+      'https://hub.example.test',
+      '--output',
+      'json',
+    ]);
+  });
+
+  test(
+    'GitHub owner repository shorthand falls back to CLI only after empty search',
+    () async {
+      final requests = <Uri>[];
+      final runner = _FakeProcessRunner()
+        ..responses.addAll([
+          const ProcessOutput(
+            exitCode: 0,
+            stdout:
+                '{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/anthropics/skills","Version":"v1.0.0","Ref":"refs/tags/v1.0.0","CommitSHA":"commit","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/anthropics/skills/-/skills/demo","Version":"v1.0.0","Name":"demo","Description":"Demo Skill","Installs":12,"TrustLevel":"unverified","RiskAssessment":"unknown","Ref":"refs/tags/v1.0.0","CommitSHA":"commit","TreeSHA":"tree","ContentDigest":"sha256:digest","ArchiveSize":12}]}',
+            stderr: '',
+          ),
+          const ProcessOutput(
+            exitCode: 0,
+            stdout: '{"schemaVersion":5,"entries":[]}',
+            stderr: '',
+          ),
+        ]);
+      final gateway = RealSkillsGateway(
+        httpClient: MockClient((request) async {
+          requests.add(request.url);
+          return http.Response(
+            '{"collection":"search","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}',
+            200,
+          );
+        }),
+        processRunner: runner,
+        initialCliPath: '/usr/local/bin/skillsgo',
+        hubBaseUrl: 'https://hub.example.test',
+      );
+
+      final page = await gateway.discover(
+        DiscoveryCollection.search,
+        query: 'anthropics/skills',
+      );
+
+      expect(requests.single.queryParameters['q'], 'anthropics/skills');
+      expect(
+        page.skills.single.id,
+        'github.com/anthropics/skills/-/skills/demo',
+      );
+      expect(runner.calls.first.arguments, [
+        'info',
+        'github.com/anthropics/skills',
+        '--hub',
+        'https://hub.example.test',
+        '--output',
+        'json',
+      ]);
+    },
+  );
+
+  test(
+    'GitHub owner repository shorthand keeps non-empty search results',
+    () async {
+      final runner = _FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 0,
+          stdout: '{"schemaVersion":5,"entries":[]}',
+          stderr: '',
+        );
+      final gateway = RealSkillsGateway(
+        httpClient: MockClient(
+          (_) async => http.Response(
+            '{"collection":"search","skills":[{"id":"github.com/catalog/skills/-/skills/match","source":"github.com/catalog/skills","skillPath":"skills/match","name":"match","description":"Catalog match","latestVersion":"v1.0.0","trustLevel":"unverified","riskAssessment":"unknown","metric":{"kind":"all_time_installs","value":1,"change":0}}],"page":{"limit":20,"offset":0,"nextOffset":null}}',
+            200,
+          ),
+        ),
+        processRunner: runner,
+        initialCliPath: '/usr/local/bin/skillsgo',
+      );
+
+      final page = await gateway.discover(
+        DiscoveryCollection.search,
+        query: 'anthropics/skills',
+      );
+
+      expect(page.skills.single.id, 'github.com/catalog/skills/-/skills/match');
+      expect(
+        runner.calls.where((call) => call.arguments.contains('info')),
+        isEmpty,
+      );
+    },
+  );
 
   test(
     'ranked discovery routes use distinct Hub collection parameters',
@@ -697,7 +836,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            r'{"schemaVersion":3,"entries":[{"identity":"hub:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"hub","risk":"unknown","health":"receipt-missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"targets":[{"scope":"user","projectRoot":"","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","mode":"symlink","version":"v2.0.0","receiptState":"missing","health":"receipt-missing"}]}]}',
+            r'{"schemaVersion":5,"entries":[{"inventoryKey":"hub:github.com/a/b","name":"testing","skillId":"github.com/a/b","provenance":"hub","risk":"unknown","health":"missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"visibility":[{"agent":"codex","scope":"user","paths":["/tmp/testing","/tmp/shared/testing"],"verification":"verified"},{"agent":"opencode","scope":"project","projectRoot":"/work/project;$(touch nope)","paths":["/work/project;$(touch nope)/.agents/skills/testing"],"verification":"unverified"}],"targets":[{"scope":"user","projectRoot":"","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","mode":"symlink","version":"v2.0.0","health":"missing"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -724,24 +863,35 @@ void main() {
     );
 
     expect(skills.single.name, 'testing');
-    expect(skills.single.identity, 'hub:github.com/a/b');
-    expect(skills.single.coordinate, 'github.com/a/b');
+    expect(skills.single.inventoryKey, 'hub:github.com/a/b');
+    expect(skills.single.skillId, 'github.com/a/b');
     expect(skills.single.isLinkedToCodex, isTrue);
     expect(skills.single.targetCount, 2);
     expect(skills.single.versionDivergence, isTrue);
     expect(skills.single.versions, ['v1.0.0', 'v2.0.0']);
     expect(skills.single.projects, [r'/work/project;$(touch nope)']);
+    expect(skills.single.visibility, hasLength(2));
+    expect(skills.single.visibility.first.agent, 'codex');
+    expect(skills.single.visibility.first.scope, InstallationScope.user);
+    expect(skills.single.visibility.first.paths, [
+      '/tmp/testing',
+      '/tmp/shared/testing',
+    ]);
+    expect(
+      skills.single.visibility.first.verification,
+      DiscoveryVerification.verified,
+    );
+    expect(skills.single.visibility.last.agent, 'opencode');
+    expect(
+      skills.single.visibility.last.verification,
+      DiscoveryVerification.unverified,
+    );
     expect(skills.single.targets.last.mode, InstallationMode.symlink);
-    expect(skills.single.health, InstallationHealth.receiptMissing);
     expect(
       skills.single.targets.first.health,
       InstallationHealth.localModification,
     );
-    expect(skills.single.targets.last.receiptState, ReceiptState.missing);
-    expect(
-      skills.single.targets.last.health,
-      InstallationHealth.receiptMissing,
-    );
+    expect(skills.single.targets.last.health, InstallationHealth.missing);
     expect(runner.lastArguments, [
       'inventory',
       '--user',
@@ -757,7 +907,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":3,"entries":[{"identity":"hub:github.com/a/b","name":"testing","coordinate":"github.com/a/b","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","receiptState":"present","health":"healthy"}]}]}',
+            '{"schemaVersion":5,"entries":[{"inventoryKey":"hub:github.com/a/b","name":"testing","skillId":"github.com/a/b","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -766,7 +916,16 @@ void main() {
       initialCliPath: '/usr/local/bin/skillsgo',
     );
 
-    await expectLater(gateway.listInstalled(), throwsA(isA<SkillsException>()));
+    await expectLater(
+      gateway.listInstalled(),
+      throwsA(
+        isA<SkillsException>().having(
+          (error) => error.kind,
+          'kind',
+          SkillsFailureKind.invalidLocalData,
+        ),
+      ),
+    );
   });
 
   test('listInstalled rejects the obsolete inventory schema', () async {
@@ -774,7 +933,7 @@ void main() {
       processRunner: _FakeProcessRunner()
         ..result = const ProcessOutput(
           exitCode: 0,
-          stdout: '{"schemaVersion":2,"entries":[]}',
+          stdout: '{"schemaVersion":4,"entries":[]}',
           stderr: '',
         ),
       initialCliPath: '/usr/local/bin/skillsgo',
@@ -788,7 +947,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":3,"entries":[{"identity":"external:abc","name":"testing","coordinate":"","provenance":"external","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/external/testing","mode":"external","version":"","receiptState":"missing","health":"healthy"}]},{"identity":"hub:github.com/a/b/-/testing","name":"testing","coordinate":"github.com/a/b/-/testing","provenance":"hub","risk":"low","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/managed/testing","mode":"copy","version":"v1","receiptState":"present","health":"healthy"}]}]}',
+            '{"schemaVersion":5,"entries":[{"inventoryKey":"external:abc","name":"testing","skillId":"","provenance":"external","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/external/testing","mode":"external","version":"","health":"healthy"}]},{"inventoryKey":"hub:github.com/a/b/-/testing","name":"testing","skillId":"github.com/a/b/-/testing","provenance":"hub","risk":"low","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/managed/testing","mode":"copy","version":"v1","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -803,12 +962,11 @@ void main() {
     final external = skills.singleWhere(
       (skill) => skill.provenance == LibraryProvenance.external,
     );
-    expect(external.identity, 'external:abc');
-    expect(external.coordinate, isEmpty);
+    expect(external.inventoryKey, 'external:abc');
+    expect(external.skillId, isEmpty);
     expect(external.versions, isEmpty);
     expect(external.targets.single.mode, InstallationMode.external);
     expect(external.targets.single.version, isEmpty);
-    expect(external.targets.single.receiptState, ReceiptState.missing);
   });
 
   test(
@@ -867,7 +1025,7 @@ void main() {
           isA<SkillsException>().having(
             (error) => error.kind,
             'kind',
-            SkillsFailureKind.invalidResponse,
+            SkillsFailureKind.invalidLocalData,
           ),
         ),
       );
@@ -921,7 +1079,7 @@ void main() {
           isA<SkillsException>().having(
             (error) => error.kind,
             'kind',
-            SkillsFailureKind.invalidResponse,
+            SkillsFailureKind.invalidLocalData,
           ),
         ),
       );
@@ -1011,7 +1169,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":3,"entries":[{"identity":"hub:github.com/a/b/-/test","name":"Test","coordinate":"github.com/a/b/-/test","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v0.0.0-test"],"versionDivergence":false,"targets":[{"scope":"user","agent":"codex","path":"/tmp/test","mode":"copy","version":"v0.0.0-test","receiptState":"present","health":"healthy"}]}]}',
+              '{"schemaVersion":5,"entries":[{"inventoryKey":"hub:github.com/a/b/-/test","name":"Test","skillId":"github.com/a/b/-/test","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v0.0.0-test"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/test","mode":"copy","version":"v0.0.0-test","health":"healthy"}]}]}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -1019,7 +1177,7 @@ void main() {
           expect(request.url.path, '/v1/skills/github.com/a/b/-/test');
           return http.Response(
             jsonEncode({
-              'coordinate': 'github.com/a/b/-/test',
+              'id': 'github.com/a/b/-/test',
               'name': 'Test',
               'description': 'Test Skill',
               'source': 'github.com/a/b',
@@ -1035,7 +1193,6 @@ void main() {
               'treeSHA': 'tree-def',
               'sourceRef': 'refs/heads/main',
               'contentDigest': 'sha256:digest',
-              'manifest': 'name: test\ndescription: Test Skill',
               'instructions': '# Real instructions',
               'trustLevel': 'publisher_verified',
               'riskAssessment': {
@@ -1076,7 +1233,7 @@ void main() {
       );
       const skill = SkillSummary(
         id: 'github.com/a/b/-/test',
-        skillId: 'test',
+        installName: 'test',
         name: 'Test',
         source: 'github.com/a/b/-/test',
         installs: 2,
@@ -1156,7 +1313,7 @@ void main() {
           gateway.loadRemoteDetail(
             const SkillSummary(
               id: 'github.com/a/b/-/test',
-              skillId: 'test',
+              installName: 'test',
               name: 'Test',
               source: 'github.com/a/b',
               installs: 0,
@@ -1182,18 +1339,18 @@ void main() {
     );
     const summary = SkillSummary(
       id: r'github.com/a/b/-/test;$(touch nope)',
-      skillId: r"test name';$(touch nope)",
+      installName: r"test name';$(touch nope)",
       name: 'Test',
       source: r'github.com/a/b/-/test;$(touch nope)',
       installs: 0,
     );
     const installed = InstalledSkill(
-      identity: r'hub:github.com/a/b/-/Test ; $(touch nope)',
+      inventoryKey: r'hub:github.com/a/b/-/Test ; $(touch nope)',
       name: r'Test ; $(touch nope)',
       path: r'/tmp/Test ; $(touch nope)',
       agents: ['codex'],
       targetCount: 1,
-      coordinate: r'github.com/a/b/-/Test ; $(touch nope)',
+      skillId: r'github.com/a/b/-/Test ; $(touch nope)',
       targets: [
         SkillInstallationTarget(
           agent: 'codex',
@@ -1226,7 +1383,7 @@ void main() {
     runner.result = const ProcessOutput(
       exitCode: 0,
       stdout: r'''
-{"schemaVersion":1,"phase":"update-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","coordinate":"github.com/a/b/-/Test ; $(touch nope)","sourceRef":"main","fromVersion":"v1","toVersion":"v2","action":"update","stateToken":"sha256:state","workspaceLockChange":false}],"workspaceLockChanges":[],"summary":{"update":1,"current":0,"pinned":0,"failed":0}}
+{"schemaVersion":1,"phase":"update-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","skillId":"github.com/a/b/-/Test ; $(touch nope)","sourceRef":"main","fromVersion":"v1","toVersion":"v2","action":"update","stateToken":"sha256:state","workspaceManifestChange":false}],"workspaceManifestChanges":[],"summary":{"update":1,"current":0,"pinned":0,"failed":0}}
 ''',
       stderr: '',
     );
@@ -1238,7 +1395,7 @@ void main() {
       'agent': 'codex',
       'mode': 'symlink',
       'path': r'/tmp/Test ; $(touch nope)',
-      'coordinate': r'github.com/a/b/-/Test ; $(touch nope)',
+      'skillId': r'github.com/a/b/-/Test ; $(touch nope)',
       'version': 'v1',
     });
     expect(
@@ -1254,7 +1411,7 @@ void main() {
     runner.result = const ProcessOutput(
       exitCode: 0,
       stdout: r'''
-{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","coordinate":"github.com/a/b/-/Test ; $(touch nope)","version":"v1","health":"healthy","receiptState":"present","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1,"repairable":0,"stoppable":0}}
+{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","skillId":"github.com/a/b/-/Test ; $(touch nope)","version":"v1","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1,"repairable":0,"stoppable":0}}
 ''',
       stderr: '',
     );
@@ -1266,7 +1423,7 @@ void main() {
       'agent': 'codex',
       'mode': 'symlink',
       'path': r'/tmp/Test ; $(touch nope)',
-      'coordinate': r'github.com/a/b/-/Test ; $(touch nope)',
+      'skillId': r'github.com/a/b/-/Test ; $(touch nope)',
       'version': 'v1',
     });
     expect(
@@ -1280,530 +1437,68 @@ void main() {
   });
 
   test(
-    'explicit Installation Plans preserve cells and parse target results',
+    'confirmed target installation invokes add --yes without preflight',
     () async {
-      const coordinate = 'github.com/a/b/-/test';
-      const projectRoot = r'/work/Project ;$(touch never)';
-      final userTarget = {
+      const skillId = 'github.com/example/skills/-/demo';
+      const target = {
         'scope': 'user',
         'agent': 'codex',
         'mode': 'symlink',
-        'path': '/Users/test/.codex/skills/test',
-      };
-      final projectTarget = {
-        'scope': 'project',
-        'projectRoot': projectRoot,
-        'agent': 'claude-code',
-        'mode': 'copy',
-        'path': '$projectRoot/.claude/skills/test',
-      };
-      final artifact = {
-        'source': coordinate,
-        'coordinate': coordinate,
-        'version': 'v1',
-        'name': 'test',
-        'risk': 'high',
+        'path': '/Users/test/.codex/skills/demo',
+        'canonicalPath': '/Users/test/.agents/skills/demo',
       };
       final runner = _FakeProcessRunner()
-        ..responses.addAll([
-          ProcessOutput(
-            exitCode: 0,
-            stdout: jsonEncode({
-              'schemaVersion': 2,
-              'phase': 'preflight',
-              'artifact': artifact,
-              'targets': [
-                {
-                  'target': userTarget,
-                  'action': 'skip',
-                  'reasonCode': 'identical-target',
-                  'workspaceLockChange': false,
-                },
-                {
-                  'target': projectTarget,
-                  'action': 'replace',
-                  'reasonCode': 'identity-collision',
-                  'stateToken': 'sha256:reviewed-project',
-                  'workspaceLockChange': true,
-                },
-              ],
-              'summary': {
-                'create': 0,
-                'replace': 1,
-                'skip': 1,
-                'conflict': 0,
-                'blockedByRisk': 0,
-              },
-              'workspaceLockChanges': [
-                {
-                  'projectRoot': projectRoot,
-                  'path': '$projectRoot/skillsgo-lock.yaml',
-                  'skill': 'test',
-                  'toVersion': 'v1',
-                },
-              ],
-            }),
-            stderr: '',
-          ),
-          ProcessOutput(
-            exitCode: 0,
-            stdout: [
-              {
-                'schemaVersion': 2,
-                'phase': 'execution-progress',
-                'sequence': 1,
-                'artifact': artifact,
-                'target': userTarget,
-                'action': 'skip',
-                'state': 'started',
-              },
-              {
-                'schemaVersion': 2,
-                'phase': 'execution-progress',
-                'sequence': 2,
-                'artifact': artifact,
-                'target': userTarget,
-                'action': 'skip',
-                'state': 'finished',
-                'result': {
-                  'target': userTarget,
-                  'action': 'skip',
-                  'outcome': 'skipped',
-                },
-              },
-              {
-                'schemaVersion': 2,
-                'phase': 'execution-progress',
-                'sequence': 3,
-                'artifact': artifact,
-                'target': projectTarget,
-                'action': 'replace',
-                'state': 'started',
-              },
-              {
-                'schemaVersion': 2,
-                'phase': 'execution-progress',
-                'sequence': 4,
-                'artifact': artifact,
-                'target': projectTarget,
-                'action': 'replace',
-                'state': 'finished',
-                'result': {
-                  'target': projectTarget,
-                  'action': 'replace',
-                  'outcome': 'succeeded',
-                },
-              },
-              {
-                'schemaVersion': 2,
-                'phase': 'execution',
-                'artifact': artifact,
-                'results': [
-                  {
-                    'target': userTarget,
-                    'action': 'skip',
-                    'outcome': 'skipped',
-                  },
-                  {
-                    'target': projectTarget,
-                    'action': 'replace',
-                    'outcome': 'succeeded',
-                  },
-                ],
-                'summary': {
-                  'succeeded': 1,
-                  'skipped': 1,
-                  'conflict': 0,
-                  'failed': 0,
-                },
-              },
-            ].map(jsonEncode).join('\n'),
-            stderr: '',
-          ),
-        ]);
-      final gateway = RealSkillsGateway(
-        processRunner: runner,
-        initialCliPath: r'/Applications/Skills Go/$(echo never)/skillsgo',
-      );
-      const skill = SkillSummary(
-        id: coordinate,
-        skillId: 'test',
-        name: 'Test',
-        source: 'github.com/a/b',
-        installs: 0,
-        latestVersion: 'v1',
-      );
-      const selections = [
-        InstallationTargetSelection(
-          scope: InstallationScope.user,
-          agent: 'codex',
-        ),
-        InstallationTargetSelection(
-          scope: InstallationScope.project,
-          projectRoot: projectRoot,
-          agent: 'claude-code',
-          mode: InstallationMode.copy,
-          resolution: InstallationTargetResolution.replace,
-          expectedReason: 'identity-collision',
-          expectedState: 'sha256:reviewed-project',
-        ),
-      ];
-
-      final plan = await gateway.preflightInstall(
-        skill,
-        'v1',
-        selections,
-        riskConfirmed: true,
-      );
-
-      expect(plan.version, 'v1');
-      expect(plan.riskAssessment, SkillRiskAssessment.high);
-      expect(plan.targets.map((target) => target.action), [
-        InstallationPlanAction.skip,
-        InstallationPlanAction.replace,
-      ]);
-      expect(plan.workspaceLockChanges.single.projectRoot, projectRoot);
-      expect(runner.lastArguments!.take(4), [
-        'add',
-        coordinate,
-        '--skill',
-        'test',
-      ]);
-      expect(
-        runner.lastArguments,
-        containsAllInOrder([
-          '--version',
-          'v1',
-          '--confirm-risk',
-          '--preflight',
-        ]),
-      );
-      expect(runner.lastArguments, isNot(contains('--risk')));
-      final targetArguments = <Map<String, dynamic>>[];
-      for (var index = 0; index < runner.lastArguments!.length; index++) {
-        if (runner.lastArguments![index] == '--target') {
-          targetArguments.add(
-            jsonDecode(runner.lastArguments![index + 1])
-                as Map<String, dynamic>,
-          );
-        }
-      }
-      expect(targetArguments, [
-        {'scope': 'user', 'agent': 'codex', 'mode': 'symlink'},
-        {
-          'scope': 'project',
-          'projectRoot': projectRoot,
-          'agent': 'claude-code',
-          'mode': 'copy',
-          'resolution': 'replace',
-          'expectedReason': 'identity-collision',
-          'expectedState': 'sha256:reviewed-project',
-        },
-      ]);
-
-      final progress = <InstallationTargetProgress>[];
-      final execution = await gateway.executeInstall(
-        plan,
-        onProgress: progress.add,
-      );
-
-      expect(execution.summary.succeeded, 1);
-      expect(execution.summary.skipped, 1);
-      expect(progress.map((event) => event.sequence), [1, 2, 3, 4]);
-      expect(
-        progress.last.result?.outcome,
-        InstallationTargetOutcome.succeeded,
-      );
-      expect(runner.lastArguments, containsAllInOrder(['--version', 'v1']));
-      expect(runner.lastArguments, containsAllInOrder(['--output', 'ndjson']));
-      expect(
-        runner.calls.map((call) => call.executable),
-        everyElement(r'/Applications/Skills Go/$(echo never)/skillsgo'),
-      );
-      expect(
-        runner.calls.expand((call) => call.arguments),
-        isNot(contains('/bin/sh')),
-      );
-    },
-  );
-
-  test('Installation execution never parses human-readable output', () async {
-    final runner = _FakeProcessRunner()
-      ..result = const ProcessOutput(
-        exitCode: 0,
-        stdout: '已安装 1 个目标。',
-        stderr: '',
-      );
-    final gateway = RealSkillsGateway(
-      processRunner: runner,
-      initialCliPath: '/Applications/SkillsGo.app/skillsgo',
-    );
-    const target = InstallationPlanTarget(
-      scope: InstallationScope.user,
-      agent: 'codex',
-      mode: InstallationMode.symlink,
-      path: '/Users/test/.codex/skills/test',
-    );
-    const plan = InstallationPlan(
-      source: 'github.com/a/b/-/test',
-      coordinate: 'github.com/a/b/-/test',
-      version: 'v1',
-      name: 'test',
-      selections: [
-        InstallationTargetSelection(
-          scope: InstallationScope.user,
-          agent: 'codex',
-        ),
-      ],
-      targets: [
-        InstallationPlanItem(
-          target: target,
-          action: InstallationPlanAction.create,
-          workspaceLockChange: false,
-        ),
-      ],
-      summary: InstallationPlanSummary(
-        create: 1,
-        replace: 0,
-        skip: 0,
-        conflict: 0,
-        blockedByRisk: 0,
-      ),
-      workspaceLockChanges: [],
-      riskAssessment: SkillRiskAssessment.low,
-      riskConfirmed: false,
-      allowCritical: false,
-    );
-
-    await expectLater(
-      gateway.executeInstall(plan),
-      throwsA(
-        isA<SkillsException>().having(
-          (error) => error.kind,
-          'kind',
-          SkillsFailureKind.invalidResponse,
-        ),
-      ),
-    );
-    expect(runner.lastArguments, containsAllInOrder(['--output', 'ndjson']));
-  });
-
-  test('Installation Plan rejects malformed machine contracts', () async {
-    const coordinate = 'github.com/a/b/-/test';
-    const projectRoot = '/work/project';
-    const skill = SkillSummary(
-      id: coordinate,
-      skillId: 'test',
-      name: 'Test',
-      source: 'github.com/a/b',
-      installs: 0,
-      latestVersion: 'v1',
-    );
-    const selections = [
-      InstallationTargetSelection(
-        scope: InstallationScope.user,
-        agent: 'codex',
-      ),
-      InstallationTargetSelection(
-        scope: InstallationScope.project,
-        projectRoot: projectRoot,
-        agent: 'claude-code',
-        mode: InstallationMode.copy,
-      ),
-    ];
-
-    Map<String, dynamic> validPreflight() => {
-      'schemaVersion': 2,
-      'phase': 'preflight',
-      'artifact': {
-        'source': coordinate,
-        'coordinate': coordinate,
-        'version': 'v1',
-        'name': 'test',
-        'risk': 'low',
-      },
-      'targets': [
-        {
-          'target': {
-            'scope': 'user',
-            'agent': 'codex',
-            'mode': 'symlink',
-            'path': '/Users/test/.codex/skills/test',
-          },
-          'action': 'skip',
-          'reasonCode': 'identical-target',
-          'workspaceLockChange': false,
-        },
-        {
-          'target': {
-            'scope': 'project',
-            'projectRoot': projectRoot,
-            'agent': 'claude-code',
-            'mode': 'copy',
-            'path': '$projectRoot/.claude/skills/test',
-          },
-          'action': 'create',
-          'workspaceLockChange': true,
-        },
-      ],
-      'summary': {
-        'create': 1,
-        'replace': 0,
-        'skip': 1,
-        'conflict': 0,
-        'blockedByRisk': 0,
-      },
-      'workspaceLockChanges': <Map<String, dynamic>>[
-        {
-          'projectRoot': projectRoot,
-          'path': '$projectRoot/skillsgo-lock.yaml',
-          'skill': 'test',
-          'toVersion': 'v1',
-        },
-      ],
-    };
-
-    final malformedPreflights = <Map<String, dynamic> Function()>[
-      () => validPreflight()..['schemaVersion'] = 1,
-      () => validPreflight()..['phase'] = 'execution',
-      () {
-        final value = validPreflight();
-        ((value['targets'] as List).first as Map<String, dynamic>)['action'] =
-            'unknown';
-        return value;
-      },
-      () {
-        final value = validPreflight();
-        ((value['artifact'] as Map<String, dynamic>))['coordinate'] =
-            'github.com/attacker/repo/-/test';
-        return value;
-      },
-      () {
-        final value = validPreflight();
-        final targets = value['targets'] as List;
-        value['targets'] = targets.reversed.toList();
-        return value;
-      },
-      () {
-        final value = validPreflight();
-        ((value['summary'] as Map<String, dynamic>))['create'] = 2;
-        return value;
-      },
-      () {
-        final value = validPreflight();
-        final locks = value['workspaceLockChanges'] as List;
-        locks.add(Map<String, dynamic>.from(locks.single as Map));
-        return value;
-      },
-      () {
-        final value = validPreflight();
-        final target = (value['targets'] as List).first as Map<String, dynamic>;
-        target
-          ..['action'] = 'conflict'
-          ..['reasonCode'] = 'shared-target-conflict'
-          ..['stateToken'] = 'sha256:shared'
-          ..['affectedBindings'] = [
-            {
-              'agent': 'codex',
-              'scope': 'user',
-              'mode': 'symlink',
-              'path': '/Users/test/.codex/skills/test',
-            },
-            {
-              'agent': 'claude-code',
-              'scope': 'user',
-              'mode': 'symlink',
-              'path': '/tmp/not-the-shared-target',
-            },
-          ];
-        final summary = value['summary'] as Map<String, dynamic>;
-        summary
-          ..['skip'] = 0
-          ..['conflict'] = 1;
-        return value;
-      },
-    ];
-
-    for (final malformed in malformedPreflights) {
-      final runner = _FakeProcessRunner()
-        ..responses.add(
-          ProcessOutput(
-            exitCode: 0,
-            stdout: jsonEncode(malformed()),
-            stderr: '',
-          ),
-        );
-      final gateway = RealSkillsGateway(
-        processRunner: runner,
-        initialCliPath: '/Applications/SkillsGo.app/skillsgo',
-      );
-      await expectLater(
-        gateway.preflightInstall(skill, 'v1', selections),
-        throwsA(
-          isA<SkillsException>().having(
-            (error) => error.kind,
-            'kind',
-            SkillsFailureKind.invalidResponse,
-          ),
-        ),
-      );
-    }
-
-    final runner = _FakeProcessRunner()
-      ..responses.addAll([
-        ProcessOutput(
-          exitCode: 0,
-          stdout: jsonEncode(validPreflight()),
-          stderr: '',
-        ),
-        ProcessOutput(
+        ..result = ProcessOutput(
           exitCode: 0,
           stdout: jsonEncode({
             'schemaVersion': 2,
             'phase': 'execution',
-            'artifact': validPreflight()['artifact'],
+            'artifact': {
+              'source': skillId,
+              'skillId': skillId,
+              'version': 'v1',
+              'name': 'demo',
+              'risk': 'low',
+            },
             'results': [
-              {
-                'target':
-                    ((validPreflight()['targets'] as List).first
-                        as Map<String, dynamic>)['target'],
-                'action': 'skip',
-                'outcome': 'unknown',
-              },
-              {
-                'target':
-                    ((validPreflight()['targets'] as List).last
-                        as Map<String, dynamic>)['target'],
-                'action': 'create',
-                'outcome': 'succeeded',
-              },
+              {'target': target, 'action': 'replace', 'outcome': 'succeeded'},
             ],
             'summary': {
               'succeeded': 1,
-              'skipped': 1,
+              'skipped': 0,
               'conflict': 0,
               'failed': 0,
             },
           }),
           stderr: '',
+        );
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/Applications/SkillsGo.app/skillsgo',
+      );
+      const skill = SkillSummary(
+        id: skillId,
+        installName: 'demo',
+        name: 'Demo',
+        source: 'github.com/example/skills',
+        installs: 0,
+        latestVersion: 'v1',
+      );
+
+      final execution = await gateway.installTargets(skill, 'v1', const [
+        InstallationTargetSelection(
+          scope: InstallationScope.user,
+          agent: 'codex',
         ),
-      ]);
-    final gateway = RealSkillsGateway(
-      processRunner: runner,
-      initialCliPath: '/Applications/SkillsGo.app/skillsgo',
-    );
-    final plan = await gateway.preflightInstall(skill, 'v1', selections);
-    await expectLater(
-      gateway.executeInstall(plan),
-      throwsA(
-        isA<SkillsException>().having(
-          (error) => error.kind,
-          'kind',
-          SkillsFailureKind.invalidResponse,
-        ),
-      ),
-    );
-  });
+      ], confirmRisk: true);
+
+      expect(execution.summary.succeeded, 1);
+      expect(runner.lastArguments, contains('--yes'));
+      expect(runner.lastArguments, isNot(contains('--preflight')));
+      expect(runner.lastArguments, containsAllInOrder(['--output', 'json']));
+      expect(runner.lastArguments, contains('--confirm-risk'));
+    },
+  );
 
   test('local detail reads canonical SKILL.md without writing files', () async {
     final directory = await Directory.systemTemp.createTemp('skillsgo-test-');
@@ -1896,7 +1591,7 @@ void main() {
         initialCliPath: '/bin/skillsgo',
       );
       final external = InstalledSkill(
-        identity: 'external:abc',
+        inventoryKey: 'external:abc',
         name: 'external',
         path: directory.path,
         agents: const ['codex'],
@@ -1910,7 +1605,6 @@ void main() {
             path: directory.path,
             version: '',
             mode: InstallationMode.external,
-            receiptState: ReceiptState.missing,
           ),
         ],
       );
@@ -1939,10 +1633,6 @@ void main() {
         gateway.preflightUpdate(external, external.targets),
         throwsA(isA<SkillsException>()),
       );
-      await expectLater(
-        gateway.preflightTargetManagement(external, external.targets),
-        throwsA(isA<SkillsException>()),
-      );
       expect(runner.calls, isEmpty);
       for (final file in [skillFile, script, notes, large]) {
         expect(await file.readAsBytes(), before[file.path]);
@@ -1955,7 +1645,7 @@ void main() {
     () async {
       const path = '/tmp/external demo';
       const installed = InstalledSkill(
-        identity: 'external:abc',
+        inventoryKey: 'external:abc',
         name: 'External Demo',
         path: path,
         agents: ['codex'],
@@ -1968,7 +1658,6 @@ void main() {
             path: path,
             version: '',
             mode: InstallationMode.external,
-            receiptState: ReceiptState.missing,
           ),
         ],
       );
@@ -1977,13 +1666,13 @@ void main() {
           ProcessOutput(
             exitCode: 0,
             stdout:
-                '{"schemaVersion":1,"phase":"adoption-preflight","identity":"external:abc","name":"External Demo","target":{"scope":"user","agent":"codex","path":"/tmp/external demo"},"contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sourceHint":"github.com/acme/skills","stateToken":"sha256:state","matches":[{"coordinate":"github.com/acme/skills/-/demo","name":"Demo","source":"github.com/acme/skills","skillPath":"demo","immutableVersion":"sha256:version","commitSHA":"commit","treeSHA":"tree","contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}],"canImportLocal":true}',
+                '{"schemaVersion":1,"phase":"adoption-preflight","inventoryKey":"external:abc","name":"External Demo","target":{"scope":"user","agent":"codex","path":"/tmp/external demo"},"contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sourceHint":"github.com/acme/skills","stateToken":"sha256:state","matches":[{"skillId":"github.com/acme/skills/-/demo","name":"Demo","source":"github.com/acme/skills","skillPath":"demo","immutableVersion":"sha256:version","commitSHA":"commit","treeSHA":"tree","contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}],"canImportLocal":true}',
             stderr: '',
           ),
           ProcessOutput(
             exitCode: 0,
             stdout:
-                '{"schemaVersion":1,"phase":"adoption-execution","action":"associate-hub","name":"External Demo","coordinate":"github.com/acme/skills/-/demo","version":"sha256:version","provenance":"hub","contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","target":{"scope":"user","agent":"codex","path":"/tmp/external demo"}}',
+                '{"schemaVersion":1,"phase":"adoption-execution","action":"associate-hub","name":"External Demo","skillId":"github.com/acme/skills/-/demo","version":"sha256:version","provenance":"hub","contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","target":{"scope":"user","agent":"codex","path":"/tmp/external demo"}}',
             stderr: '',
           ),
         ]);
@@ -2000,7 +1689,7 @@ void main() {
         'adopt',
         '--target',
         jsonEncode({
-          'identity': 'external:abc',
+          'inventoryKey': 'external:abc',
           'name': 'External Demo',
           'scope': 'user',
           'agent': 'codex',
@@ -2018,15 +1707,15 @@ void main() {
       );
 
       expect(result.provenance, LibraryProvenance.hub);
-      expect(result.coordinate, 'github.com/acme/skills/-/demo');
+      expect(result.skillId, 'github.com/acme/skills/-/demo');
       expect(jsonDecode(runner.lastArguments![2]), {
-        'identity': 'external:abc',
+        'inventoryKey': 'external:abc',
         'name': 'External Demo',
         'scope': 'user',
         'agent': 'codex',
         'path': path,
         'action': 'associate-hub',
-        'matchCoordinate': 'github.com/acme/skills/-/demo',
+        'matchSkillId': 'github.com/acme/skills/-/demo',
         'matchVersion': 'sha256:version',
         'stateToken': 'sha256:state',
       });
@@ -2044,7 +1733,7 @@ void main() {
         path: '/tmp/private',
       );
       const plan = ExternalAdoptionPlan(
-        identity: 'external:private',
+        inventoryKey: 'external:private',
         name: 'Private',
         target: target,
         contentDigest:
@@ -2057,7 +1746,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":1,"phase":"adoption-execution","action":"import-local","name":"Private","coordinate":"local.skillsgo/abc/Private","version":"local-abc","provenance":"local","contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","target":{"scope":"user","agent":"codex","path":"/tmp/private"}}',
+              '{"schemaVersion":1,"phase":"adoption-execution","action":"import-local","name":"Private","skillId":"local.skillsgo/abc/Private","version":"local-abc","provenance":"local","contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","target":{"scope":"user","agent":"codex","path":"/tmp/private"}}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -2073,7 +1762,7 @@ void main() {
       expect(result.provenance, LibraryProvenance.local);
       expect(runner.lastArguments, isNot(contains('--hub')));
       expect(jsonDecode(runner.lastArguments![2]), {
-        'identity': 'external:private',
+        'inventoryKey': 'external:private',
         'name': 'Private',
         'scope': 'user',
         'agent': 'codex',
@@ -2104,12 +1793,12 @@ void main() {
     'Local export honors cancellation and exact destination arguments',
     () async {
       const local = InstalledSkill(
-        identity: 'local:abc',
+        inventoryKey: 'local:abc',
         name: 'Private Demo',
         path: '/tmp/private',
         agents: ['codex'],
         targetCount: 1,
-        coordinate: 'local.skillsgo/abc/Private-Demo',
+        skillId: 'local.skillsgo/abc/Private-Demo',
         provenance: LibraryProvenance.local,
         versions: ['local-abc'],
         targets: [
@@ -2135,7 +1824,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":1,"phase":"local-export","coordinate":"local.skillsgo/abc/Private-Demo","version":"local-abc","destination":"/tmp/export destination.zip"}',
+              '{"schemaVersion":1,"phase":"local-export","skillId":"local.skillsgo/abc/Private-Demo","version":"local-abc","destination":"/tmp/export destination.zip"}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -2152,7 +1841,7 @@ void main() {
       expect(result?.succeeded, isTrue);
       expect(runner.lastArguments, [
         'export',
-        '--coordinate',
+        '--skill-id',
         'local.skillsgo/abc/Private-Demo',
         '--version',
         'local-abc',
@@ -2183,14 +1872,14 @@ void main() {
   test(
     'Target Management Plans preserve exact targets and parse versioned NDJSON',
     () async {
-      const coordinate = 'github.com/example/skills/-/test';
+      const skillId = 'github.com/example/skills/-/test';
       const installed = InstalledSkill(
-        identity: 'hub:$coordinate',
+        inventoryKey: 'hub:$skillId',
         name: 'Test',
         path: '/tmp/Test',
         agents: ['codex'],
         targetCount: 1,
-        coordinate: coordinate,
+        skillId: skillId,
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
@@ -2205,16 +1894,16 @@ void main() {
           ProcessOutput(
             exitCode: 0,
             stdout: '''
-{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","version":"v1","health":"healthy","receiptState":"present","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1,"repairable":0,"stoppable":0}}
+{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1,"repairable":0,"stoppable":0}}
 ''',
             stderr: '',
           ),
           ProcessOutput(
             exitCode: 0,
             stdout: '''
-{"schemaVersion":1,"phase":"management-progress","sequence":1,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","version":"v1","action":"remove","state":"started"}
-{"schemaVersion":1,"phase":"management-progress","sequence":2,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","version":"v1","action":"remove","state":"finished","result":{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","version":"v1","action":"remove","outcome":"succeeded"}}
-{"schemaVersion":1,"phase":"management-execution","results":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","version":"v1","action":"remove","outcome":"succeeded"}],"summary":{"succeeded":1,"failed":0}}
+{"schemaVersion":1,"phase":"management-progress","sequence":1,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","state":"started"}
+{"schemaVersion":1,"phase":"management-progress","sequence":2,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","state":"finished","result":{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","outcome":"succeeded"}}
+{"schemaVersion":1,"phase":"management-execution","results":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","outcome":"succeeded"}],"summary":{"succeeded":1,"failed":0}}
 ''',
             stderr: '',
           ),
@@ -2250,7 +1939,7 @@ void main() {
         'agent': 'codex',
         'mode': 'symlink',
         'path': '/tmp/Test',
-        'coordinate': coordinate,
+        'skillId': skillId,
         'version': 'v1',
         'action': 'remove',
         'stateToken': 'sha256:state',
@@ -2280,7 +1969,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout: '''
-{"schemaVersion":1,"phase":"update-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","sourceRef":"main","fromVersion":"v1","toVersion":"v2","action":"update","stateToken":"sha256:state","workspaceLockChange":false}],"workspaceLockChanges":[],"summary":{"update":1,"current":0,"pinned":0,"failed":0}}
+{"schemaVersion":1,"phase":"update-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","sourceRef":"main","fromVersion":"v1","toVersion":"v2","action":"update","stateToken":"sha256:state","workspaceManifestChange":false}],"workspaceManifestChanges":[],"summary":{"update":1,"current":0,"pinned":0,"failed":0}}
 ''',
         stderr: '',
       );
@@ -2291,12 +1980,12 @@ void main() {
 
     final states = await gateway.checkUpdates(const [
       InstalledSkill(
-        identity: 'hub:github.com/example/skills/-/test',
+        inventoryKey: 'hub:github.com/example/skills/-/test',
         name: 'Test',
         path: '/tmp/Test',
         agents: ['codex'],
         targetCount: 1,
-        coordinate: 'github.com/example/skills/-/test',
+        skillId: 'github.com/example/skills/-/test',
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
@@ -2323,7 +2012,7 @@ void main() {
       'agent': 'codex',
       'mode': 'symlink',
       'path': '/tmp/Test',
-      'coordinate': 'github.com/example/skills/-/test',
+      'skillId': 'github.com/example/skills/-/test',
       'version': 'v1',
     });
     expect(runner.lastArguments, containsAll(['--preflight', 'json']));
@@ -2334,9 +2023,9 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout: '''
-{"schemaVersion":1,"phase":"update-progress","sequence":1,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","state":"started"}
-{"schemaVersion":1,"phase":"update-progress","sequence":2,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","state":"finished","result":{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","outcome":"succeeded"}}
-{"schemaVersion":1,"phase":"update-execution","results":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","coordinate":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","outcome":"succeeded"}],"summary":{"succeeded":1,"skipped":0,"failed":0}}
+{"schemaVersion":1,"phase":"update-progress","sequence":1,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","state":"started"}
+{"schemaVersion":1,"phase":"update-progress","sequence":2,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","state":"finished","result":{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","outcome":"succeeded"}}
+{"schemaVersion":1,"phase":"update-execution","results":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","outcome":"succeeded"}],"summary":{"succeeded":1,"skipped":0,"failed":0}}
 ''',
         stderr: '',
       );
@@ -2355,16 +2044,16 @@ void main() {
         UpdatePlanItem(
           target: target,
           name: 'Test',
-          coordinate: 'github.com/example/skills/-/test',
+          skillId: 'github.com/example/skills/-/test',
           sourceRef: 'main',
           fromVersion: 'v1',
           toVersion: 'v2',
           action: UpdatePlanAction.update,
           stateToken: 'sha256:state',
-          workspaceLockChange: false,
+          workspaceManifestChange: false,
         ),
       ],
-      workspaceLockChanges: [],
+      workspaceManifestChanges: [],
       summary: UpdatePlanSummary(update: 1, current: 0, pinned: 0, failed: 0),
     );
     final progress = <UpdateTargetProgress>[];

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the app_shell library for Flutter UI primitives, appearance callbacks, gateway settings operations, localization, and shared components.
+ * [INPUT]: Depends on the app_shell library for Flutter UI primitives, HugeIcons, appearance callbacks, gateway settings operations, localization, and shared components.
  * [OUTPUT]: Provides the Settings destination, nested routes, appearance controls, Agent inspection, Hub origin, storage, risk policy, and About views.
  * [POS]: Serves as the complete Settings feature view module split from the desktop shell while sharing its private library contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -577,17 +577,17 @@ class _SettingsScreenState extends State<SettingsScreen>
       tabs: [
         DiscreteTab(
           label: context.l10n.followSystem,
-          icon: Icons.brightness_auto_rounded,
+          icon: HugeIcons.strokeRoundedComputer,
           activeColor: scheme.onPrimaryContainer,
         ),
         DiscreteTab(
           label: context.l10n.lightMode,
-          icon: Icons.light_mode_rounded,
+          icon: HugeIcons.strokeRoundedSun01,
           activeColor: scheme.onPrimaryContainer,
         ),
         DiscreteTab(
           label: context.l10n.darkMode,
-          icon: Icons.dark_mode_rounded,
+          icon: HugeIcons.strokeRoundedMoon02,
           activeColor: scheme.onPrimaryContainer,
         ),
       ],

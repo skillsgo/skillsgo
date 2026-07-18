@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on SkillsGateway Agent and Added Project models, localized copy, Flutter Material MenuAnchor, HugeIcons project glyphs, and vendored Agent SVGs.
- * [OUTPUT]: Provides an edge-aware anchored installation menu that opens immediately, resolves its data behind geometry-preserving skeletons, asks where a Skill should be available, and returns explicit location-and-Agent selections.
+ * [INPUT]: Depends on SkillsGateway Agent and Added Project models, localized copy, Flutter Material MenuAnchor, Portal Labs stacked toasts, HugeIcons project glyphs, and vendored Agent SVGs.
+ * [OUTPUT]: Provides an edge-aware anchored installation menu that opens immediately, resolves its data behind geometry-preserving skeletons, asks where a Skill should be available, executes submitted selections, and stays open while App-top stacked error feedback is visible until installation succeeds.
  * [POS]: Serves as the shared first step of installation from discovery cards and remote Skill detail.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,6 +8,7 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:portal_labs/portal_labs.dart';
 
 import '../domain/skills_gateway.dart';
 import '../l10n/app_localizations.dart';
@@ -62,7 +63,25 @@ class InstallLocationChoice {
 }
 
 typedef InstallLocationMenuPresenter =
-    Future<InstallLocationChoice?> Function(InstallLocationMenuRequest request);
+    Future<bool?> Function(
+      InstallLocationMenuRequest request,
+      Future<InstallLocationSubmission> Function(InstallLocationChoice choice)
+      submit,
+    );
+
+class InstallLocationSubmission {
+  const InstallLocationSubmission.success() : title = null, message = null;
+
+  const InstallLocationSubmission.failure({
+    required this.title,
+    required this.message,
+  });
+
+  final String? title;
+  final String? message;
+
+  bool get succeeded => title == null;
+}
 
 class InstallLocationMenuAnchor extends StatefulWidget {
   const InstallLocationMenuAnchor({super.key, required this.builder});
@@ -80,35 +99,119 @@ class InstallLocationMenuAnchor extends StatefulWidget {
 
 class _InstallLocationMenuAnchorState extends State<InstallLocationMenuAnchor> {
   final controller = MenuController();
+  final toastController = StackedToastController();
+  OverlayEntry? toastOverlay;
   InstallLocationMenuRequest? request;
-  Completer<InstallLocationChoice?>? result;
+  Future<InstallLocationSubmission> Function(InstallLocationChoice choice)?
+  submit;
+  Completer<bool?>? result;
+  bool submitting = false;
 
-  Future<InstallLocationChoice?> _present(
+  Future<bool?> _present(
     InstallLocationMenuRequest next,
+    Future<InstallLocationSubmission> Function(InstallLocationChoice choice)
+    nextSubmit,
   ) async {
     if (controller.isOpen) controller.close();
     result?.complete(null);
-    final completer = Completer<InstallLocationChoice?>();
+    final completer = Completer<bool?>();
     setState(() {
       request = next;
+      submit = nextSubmit;
       result = completer;
     });
     await WidgetsBinding.instance.endOfFrame;
     if (!mounted) return null;
+    _ensureToastOverlay();
     controller.open();
     return completer.future;
   }
 
-  void _complete(InstallLocationChoice choice) {
-    result?.complete(choice);
-    result = null;
-    controller.close();
+  void _ensureToastOverlay() {
+    if (toastOverlay != null) return;
+    final entry = OverlayEntry(
+      builder: (context) => Positioned(
+        top: 0,
+        left: 0,
+        right: 0,
+        height: 320,
+        child: IgnorePointer(
+          child: Align(
+            alignment: Alignment.topCenter,
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 520),
+              child: SizedBox.expand(
+                child: StackedToastInteraction(
+                  controller: toastController,
+                  style: const StackedToastStyle(
+                    horizontalPadding: 12,
+                    topMargin: 16,
+                    maxStackedItems: 3,
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    toastOverlay = entry;
+    Overlay.of(context, rootOverlay: true).insert(entry);
+  }
+
+  Future<void> _complete(InstallLocationChoice choice) async {
+    final execute = submit;
+    if (execute == null || submitting) return;
+    setState(() => submitting = true);
+    late InstallLocationSubmission outcome;
+    try {
+      outcome = await execute(choice);
+    } on Object catch (error) {
+      if (!mounted) return;
+      outcome = InstallLocationSubmission.failure(
+        title: AppLocalizations.of(context).installationFailed,
+        message: error.toString(),
+      );
+    }
+    if (!mounted) return;
+    setState(() => submitting = false);
+    if (outcome.succeeded) {
+      result?.complete(true);
+      result = null;
+      controller.close();
+      return;
+    }
+    toastController.show(
+      StackedToastItem(
+        id: 'install-error-${DateTime.now().microsecondsSinceEpoch}',
+        type: StackedToastType.error,
+        title: outcome.title!,
+        message: outcome.message!,
+        duration: const Duration(seconds: 6),
+        actionLabel: MaterialLocalizations.of(context).closeButtonLabel,
+      ),
+    );
   }
 
   void _closed() {
     result?.complete(null);
     result = null;
-    if (mounted) setState(() => request = null);
+    if (mounted) {
+      setState(() {
+        request = null;
+        submit = null;
+        submitting = false;
+      });
+    }
+    toastOverlay?.remove();
+    toastOverlay = null;
+  }
+
+  @override
+  void dispose() {
+    toastOverlay?.remove();
+    toastOverlay = null;
+    super.dispose();
   }
 
   @override
@@ -137,23 +240,33 @@ class _InstallLocationMenuAnchorState extends State<InstallLocationMenuAnchor> {
           : [
               SizedBox(
                 width: 400,
-                child: current.isLoading
-                    ? _AsyncInstallLocationCard(
-                        key: ObjectKey(current),
-                        summary: current.summary!,
-                        loader: current.loader!,
-                        onSubmit: _complete,
-                      )
-                    : _InstallLocationCard(
-                        gateway: current.gateway!,
-                        catalog: current.catalog!,
-                        detail: current.detail!,
-                        repositorySkills: current.repositorySkills!,
-                        repositorySkillsFuture: current.repositorySkillsFuture,
-                        initialProjects: current.projects!,
-                        onProjectAdded: current.onProjectAdded!,
-                        onSubmit: _complete,
+                child: Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    current.isLoading
+                        ? _AsyncInstallLocationCard(
+                            key: ObjectKey(current),
+                            summary: current.summary!,
+                            loader: current.loader!,
+                            onSubmit: _complete,
+                          )
+                        : _InstallLocationCard(
+                            gateway: current.gateway!,
+                            catalog: current.catalog!,
+                            detail: current.detail!,
+                            repositorySkills: current.repositorySkills!,
+                            repositorySkillsFuture:
+                                current.repositorySkillsFuture,
+                            initialProjects: current.projects!,
+                            onProjectAdded: current.onProjectAdded!,
+                            onSubmit: _complete,
+                          ),
+                    if (submitting)
+                      const Positioned.fill(
+                        child: AbsorbPointer(child: SizedBox.expand()),
                       ),
+                  ],
+                ),
               ),
             ],
       builder: (context, menuController, child) =>
@@ -283,7 +396,7 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
   late List<SkillSummary> repositorySkills;
   bool repositorySkillsLoading = false;
 
-  List<AgentStatus> get agents => widget.catalog.installed;
+  List<AgentStatus> get agents => widget.catalog.agents;
 
   @override
   void initState() {
@@ -304,7 +417,9 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
     selectedUserAgents.addAll(
       agents
           .where(
-            (agent) => agent.supportedScopes.contains(InstallationScope.user),
+            (agent) =>
+                agent.installed &&
+                agent.supportedScopes.contains(InstallationScope.user),
           )
           .map((agent) => agent.id),
     );
@@ -312,6 +427,7 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
       agents
           .where(
             (agent) =>
+                agent.installed &&
                 agent.supportedScopes.contains(InstallationScope.project),
           )
           .map((agent) => agent.id),
@@ -639,11 +755,13 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
                 agent.supportedScopes.contains(targetScope) &&
                 (targetScope != InstallationScope.user ||
                     !_isInstalled(targetScope, '', agent.id)),
+            inlineStatusText:
+                targetScope == InstallationScope.user &&
+                    _isInstalled(targetScope, '', agent.id)
+                ? l10n.installedCell
+                : null,
             supportingText: !agent.supportedScopes.contains(targetScope)
                 ? l10n.unsupportedCell
-                : targetScope == InstallationScope.user &&
-                      _isInstalled(targetScope, '', agent.id)
-                ? l10n.installedCell
                 : null,
           ),
       ],

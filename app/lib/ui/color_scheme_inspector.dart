@@ -1,11 +1,12 @@
 /*
- * [INPUT]: Depends on the current SkillsGo seed, the SkillsGo semantic token module, Material 3 mapping, localization, and clipboard services.
+ * [INPUT]: Depends on the current SkillsGo seed, HugeIcons, the SkillsGo semantic token module, Material 3 mapping, localization, and clipboard services.
  * [OUTPUT]: Renders a read-only Light/Dark inspector for SkillsGo product tokens, every non-deprecated Material 3 mapped role, semantic pairs, and component previews.
  * [POS]: Serves as the Settings developer surface for validating the design-system interface and its Flutter adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import '../l10n/app_localizations.dart';
 import 'brand.dart';
@@ -179,12 +180,18 @@ class _InspectorHeader extends StatelessWidget {
               ButtonSegment(
                 value: Brightness.light,
                 label: Text(l10n.lightMode),
-                icon: const Icon(Icons.light_mode_outlined),
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedSun01,
+                  strokeWidth: 1.8,
+                ),
               ),
               ButtonSegment(
                 value: Brightness.dark,
                 label: Text(l10n.darkMode),
-                icon: const Icon(Icons.dark_mode_outlined),
+                icon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedMoon02,
+                  strokeWidth: 1.8,
+                ),
               ),
             ],
             selected: {brightness},
@@ -459,7 +466,11 @@ class _ComponentPreview extends StatelessWidget {
             child: TextField(
               decoration: InputDecoration(
                 hintText: l10n.searchSkills,
-                prefixIcon: const Icon(Icons.search),
+                prefixIcon: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedSearch01,
+                  size: 20,
+                  strokeWidth: 1.8,
+                ),
               ),
             ),
           ),

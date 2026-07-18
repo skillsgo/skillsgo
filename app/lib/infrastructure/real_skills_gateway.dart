@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Hub HTTP, the local filesystem, the platform directory picker, SharedPreferences-backed product preferences, and executable process boundaries.
- * [OUTPUT]: Provides production Hub and typed appearance/wallpaper settings, discovery/detail metadata parsing including installs, repository Stars, source update time, ZIP size and image URLs, managed/external inventory parsing, strict Installation/Update/Target Management/External Adoption machine contracts, Local export, local file inspection, project persistence, Agent inspection, stable CLI availability mapping, typed failures, diagnostics, CLI verification, and Skill operations.
+ * [OUTPUT]: Provides production Hub and typed appearance/wallpaper settings, CLI-backed explicit-source discovery with empty-search GitHub shorthand fallback, discovery/detail metadata parsing including installs, repository Stars, source update time, ZIP size and image URLs, managed/external inventory and derived visibility parsing, strict Installation/Update/Target Management machine contracts including External removal, dormant post-MVP External Adoption adapters, Local export, local file inspection, project persistence, Agent inspection, stable CLI availability mapping, typed failures, diagnostics, CLI verification, and Skill operations.
  * [POS]: Serves as the App infrastructure adapter between domain journeys, the Hub, and the SkillsGo CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -148,36 +148,6 @@ InstallationTargetOutcome _installationTargetOutcome(Object? value) =>
       _ => throw const FormatException('Unknown Installation Target outcome.'),
     };
 
-String _installationPlanReasonCode(Object? value) => switch (value) {
-  null => '',
-  'identical-target' => 'identical-target',
-  'version-conflict' => 'version-conflict',
-  'identity-collision' => 'identity-collision',
-  'local-modification' => 'local-modification',
-  'shared-target-conflict' => 'shared-target-conflict',
-  'high-risk' => 'high-risk',
-  'critical-risk' => 'critical-risk',
-  'blocked-by-risk' => 'blocked-by-risk',
-  _ => throw const FormatException('Unknown Installation Plan reason code.'),
-};
-
-bool _validPlanReason(InstallationPlanAction action, String reasonCode) =>
-    switch (action) {
-      InstallationPlanAction.create => reasonCode.isEmpty,
-      InstallationPlanAction.skip => reasonCode == 'identical-target',
-      InstallationPlanAction.replace =>
-        reasonCode == 'version-conflict' ||
-            reasonCode == 'identity-collision' ||
-            reasonCode == 'local-modification',
-      InstallationPlanAction.conflict =>
-        reasonCode == 'version-conflict' ||
-            reasonCode == 'identity-collision' ||
-            reasonCode == 'local-modification' ||
-            reasonCode == 'shared-target-conflict',
-      InstallationPlanAction.blockedByRisk =>
-        reasonCode == 'high-risk' || reasonCode == 'critical-risk',
-    };
-
 String _installationErrorCode(Object? value) => switch (value) {
   null => '',
   'target-path-exists' => 'target-path-exists',
@@ -185,13 +155,6 @@ String _installationErrorCode(Object? value) => switch (value) {
   'install-failed' => 'install-failed',
   'workspace-update-failed' => 'workspace-update-failed',
   _ => throw const FormatException('Unknown Installation Target error code.'),
-};
-
-ReceiptState _receiptState(Object? value) => switch (value) {
-  'present' => ReceiptState.present,
-  'missing' => ReceiptState.missing,
-  'invalid' => ReceiptState.invalid,
-  _ => throw const FormatException('Unknown receipt state.'),
 };
 
 InstallationHealth _installationHealth(Object? value) => switch (value) {
@@ -204,7 +167,6 @@ InstallationHealth _installationHealth(Object? value) => switch (value) {
   'workspace-unreadable' => InstallationHealth.workspaceUnreadable,
   'lock-mismatch' => InstallationHealth.lockMismatch,
   'unexpected-path' => InstallationHealth.unexpectedPath,
-  'receipt-missing' => InstallationHealth.receiptMissing,
   _ => throw const FormatException('Unknown installation health.'),
 };
 
@@ -215,14 +177,19 @@ LibraryProvenance _libraryProvenance(Object? value) => switch (value) {
   _ => throw const FormatException('Unknown Library provenance.'),
 };
 
+DiscoveryVerification _discoveryVerification(Object? value) => switch (value) {
+  'verified' => DiscoveryVerification.verified,
+  'unverified' => DiscoveryVerification.unverified,
+  _ => throw const FormatException('Unknown discovery verification.'),
+};
+
 int _localTargetReadRank(SkillInstallationTarget target) {
   if (target.health == InstallationHealth.healthy) return 0;
-  if (target.receiptState == ReceiptState.present) return 1;
-  return 2;
+  return 1;
 }
 
 const _localFilePreviewLimit = 256 * 1024;
-const _inventorySchemaVersion = 3;
+const _inventorySchemaVersion = 5;
 const _installationPlanSchemaVersion = 2;
 
 bool _looksExecutablePath(String path) {
@@ -308,7 +275,10 @@ int _strictNonNegativeInt(Object? value) {
   return value;
 }
 
-InstallationPlanTarget _installationPlanTarget(Object? raw) {
+InstallationPlanTarget _installationPlanTarget(
+  Object? raw, {
+  bool allowExternal = false,
+}) {
   if (raw is! Map<String, dynamic> ||
       raw['agent'] is! String ||
       (raw['agent'] as String).isEmpty ||
@@ -320,7 +290,7 @@ InstallationPlanTarget _installationPlanTarget(Object? raw) {
   final scope = _installationScope(raw['scope']);
   final mode = _installationMode(raw['mode']);
   final projectRoot = raw['projectRoot'] as String? ?? '';
-  if (mode == InstallationMode.external ||
+  if ((!allowExternal && mode == InstallationMode.external) ||
       (scope == InstallationScope.user && projectRoot.isNotEmpty) ||
       (scope == InstallationScope.project && projectRoot.isEmpty)) {
     throw const FormatException();
@@ -329,24 +299,6 @@ InstallationPlanTarget _installationPlanTarget(Object? raw) {
     scope: scope,
     projectRoot: projectRoot,
     agent: raw['agent'] as String,
-    mode: mode,
-    path: raw['path'] as String,
-  );
-}
-
-InstallationAffectedBinding _installationAffectedBinding(Object? raw) {
-  if (raw is! Map<String, dynamic> ||
-      raw['agent'] is! String ||
-      (raw['agent'] as String).isEmpty ||
-      raw['path'] is! String ||
-      (raw['path'] as String).isEmpty) {
-    throw const FormatException();
-  }
-  final mode = _installationMode(raw['mode']);
-  if (mode == InstallationMode.external) throw const FormatException();
-  return InstallationAffectedBinding(
-    agent: raw['agent'] as String,
-    scope: _installationScope(raw['scope']),
     mode: mode,
     path: raw['path'] as String,
   );
@@ -362,72 +314,64 @@ bool _samePlanTarget(
     left.mode == right.mode &&
     left.path == right.path;
 
-String _installationTargetKey(InstallationPlanTarget target) =>
-    '${target.scope.name}\u0000${target.projectRoot}\u0000${target.agent}\u0000${target.mode.name}\u0000${target.path}';
-
-void _validateInstallationArtifact(Object? raw, InstallationPlan plan) {
-  if (raw is! Map<String, dynamic> ||
-      raw['source'] != plan.source ||
-      raw['coordinate'] != plan.coordinate ||
-      raw['version'] != plan.version ||
-      raw['name'] != plan.name) {
-    throw const FormatException();
-  }
-}
-
-InstallationTargetResult _installationTargetResult(
+InstallationExecution _directInstallationExecution(
   Object? raw,
-  InstallationPlanItem expected,
-) {
-  if (raw is! Map<String, dynamic> ||
-      (raw['errorCode'] != null && raw['errorCode'] is! String) ||
-      (raw['diagnostic'] != null && raw['diagnostic'] is! String)) {
-    throw const FormatException();
-  }
-  final target = _installationPlanTarget(raw['target']);
-  final action = _installationPlanAction(raw['action']);
-  if (!_samePlanTarget(target, expected.target) || action != expected.action) {
-    throw const FormatException();
-  }
-  final outcome = _installationTargetOutcome(raw['outcome']);
-  final errorCode = _installationErrorCode(raw['errorCode']);
-  if ((outcome == InstallationTargetOutcome.succeeded ||
-          outcome == InstallationTargetOutcome.skipped) &&
-      errorCode.isNotEmpty) {
-    throw const FormatException();
-  }
-  if ((outcome == InstallationTargetOutcome.conflict ||
-          outcome == InstallationTargetOutcome.failed) &&
-      errorCode.isEmpty) {
-    throw const FormatException();
-  }
-  return InstallationTargetResult(
-    target: target,
-    action: action,
-    outcome: outcome,
-    errorCode: errorCode,
-    diagnostic: raw['diagnostic'] as String? ?? '',
-  );
-}
-
-InstallationExecution _installationExecution(
-  Object? raw,
-  InstallationPlan plan,
+  SkillSummary skill,
+  String immutableVersion,
+  List<InstallationTargetSelection> selections,
 ) {
   if (raw is! Map<String, dynamic> ||
       raw['schemaVersion'] != _installationPlanSchemaVersion ||
       raw['phase'] != 'execution' ||
+      raw['artifact'] is! Map<String, dynamic> ||
       raw['results'] is! List ||
       raw['summary'] is! Map<String, dynamic>) {
     throw const FormatException();
   }
-  _validateInstallationArtifact(raw['artifact'], plan);
+  final artifact = raw['artifact'] as Map<String, dynamic>;
+  if (artifact['source'] != skill.id ||
+      artifact['skillId'] != skill.id ||
+      artifact['version'] != immutableVersion ||
+      artifact['name'] != skill.installName) {
+    throw const FormatException();
+  }
   final rawResults = raw['results'] as List;
-  if (rawResults.length != plan.targets.length) throw const FormatException();
-  final results = <InstallationTargetResult>[
-    for (var index = 0; index < rawResults.length; index++)
-      _installationTargetResult(rawResults[index], plan.targets[index]),
-  ];
+  if (rawResults.length != selections.length) throw const FormatException();
+  final results = <InstallationTargetResult>[];
+  for (var index = 0; index < rawResults.length; index++) {
+    final result = rawResults[index];
+    if (result is! Map<String, dynamic>) throw const FormatException();
+    final target = _installationPlanTarget(result['target']);
+    final selection = selections[index];
+    if (target.scope != selection.scope ||
+        target.projectRoot != selection.projectRoot ||
+        target.agent != selection.agent ||
+        target.mode != selection.mode) {
+      throw const FormatException();
+    }
+    final action = _installationPlanAction(result['action']);
+    final outcome = _installationTargetOutcome(result['outcome']);
+    final errorCode = _installationErrorCode(result['errorCode']);
+    if ((outcome == InstallationTargetOutcome.succeeded ||
+            outcome == InstallationTargetOutcome.skipped) &&
+        errorCode.isNotEmpty) {
+      throw const FormatException();
+    }
+    if ((outcome == InstallationTargetOutcome.conflict ||
+            outcome == InstallationTargetOutcome.failed) &&
+        errorCode.isEmpty) {
+      throw const FormatException();
+    }
+    results.add(
+      InstallationTargetResult(
+        target: target,
+        action: action,
+        outcome: outcome,
+        errorCode: errorCode,
+        diagnostic: result['diagnostic'] as String? ?? '',
+      ),
+    );
+  }
   final rawSummary = raw['summary'] as Map<String, dynamic>;
   final summary = InstallationExecutionSummary(
     succeeded: _strictNonNegativeInt(rawSummary['succeeded']),
@@ -446,9 +390,9 @@ InstallationExecution _installationExecution(
     throw const FormatException();
   }
   return InstallationExecution(
-    coordinate: plan.coordinate,
-    version: plan.version,
-    name: plan.name,
+    skillId: skill.id,
+    version: immutableVersion,
+    name: skill.installName,
     results: List.unmodifiable(results),
     summary: summary,
   );
@@ -472,14 +416,17 @@ UpdateTargetOutcome _updateTargetOutcome(Object? value) => switch (value) {
 UpdateTargetResult _updateTargetResult(Object? raw, UpdatePlanItem expected) {
   if (raw is! Map<String, dynamic> ||
       raw['name'] != expected.name ||
-      raw['coordinate'] != expected.coordinate ||
+      raw['skillId'] != expected.skillId ||
       raw['fromVersion'] != expected.fromVersion ||
       raw['toVersion'] != expected.toVersion ||
       (raw['errorCode'] != null && raw['errorCode'] is! String) ||
       (raw['diagnostic'] != null && raw['diagnostic'] is! String)) {
     throw const FormatException();
   }
-  final target = _installationPlanTarget(raw['target']);
+  final target = _installationPlanTarget(
+    raw['target'],
+    allowExternal: expected.target.mode == InstallationMode.external,
+  );
   if (!_samePlanTarget(target, expected.target)) throw const FormatException();
   final outcome = _updateTargetOutcome(raw['outcome']);
   final errorCode = raw['errorCode'] as String? ?? '';
@@ -492,7 +439,7 @@ UpdateTargetResult _updateTargetResult(Object? raw, UpdatePlanItem expected) {
   return UpdateTargetResult(
     target: target,
     name: expected.name,
-    coordinate: expected.coordinate,
+    skillId: expected.skillId,
     fromVersion: expected.fromVersion,
     toVersion: expected.toVersion,
     outcome: outcome,
@@ -545,14 +492,17 @@ TargetManagementResult _targetManagementResult(
 ) {
   if (raw is! Map<String, dynamic> ||
       raw['name'] != expected.name ||
-      raw['coordinate'] != expected.coordinate ||
+      raw['skillId'] != expected.skillId ||
       raw['version'] != expected.version ||
       raw['action'] != _targetManagementActionValue(expected.action!) ||
       (raw['errorCode'] != null && raw['errorCode'] is! String) ||
       (raw['diagnostic'] != null && raw['diagnostic'] is! String)) {
     throw const FormatException();
   }
-  final target = _installationPlanTarget(raw['target']);
+  final target = _installationPlanTarget(
+    raw['target'],
+    allowExternal: expected.target.mode == InstallationMode.external,
+  );
   if (!_samePlanTarget(target, expected.target)) throw const FormatException();
   final outcome = _targetManagementOutcome(raw['outcome']);
   final errorCode = raw['errorCode'] as String? ?? '';
@@ -565,7 +515,7 @@ TargetManagementResult _targetManagementResult(
   return TargetManagementResult(
     target: target,
     name: expected.name,
-    coordinate: expected.coordinate,
+    skillId: expected.skillId,
     version: expected.version,
     action: expected.action!,
     outcome: outcome,
@@ -575,7 +525,7 @@ TargetManagementResult _targetManagementResult(
 }
 
 String _installedSkillUpdateKey(InstalledSkill skill) =>
-    skill.identity.isEmpty ? skill.name : skill.identity;
+    skill.inventoryKey.isEmpty ? skill.name : skill.inventoryKey;
 
 String _scopeValue(InstallationScope scope) => switch (scope) {
   InstallationScope.user => 'user',
@@ -595,12 +545,6 @@ String _targetArgument(InstallationTargetSelection selection) => jsonEncode({
   if (selection.projectRoot.isNotEmpty) 'projectRoot': selection.projectRoot,
   'agent': selection.agent,
   'mode': _modeValue(selection.mode),
-  if (selection.resolution == InstallationTargetResolution.replace)
-    'resolution': 'replace',
-  if (selection.resolution == InstallationTargetResolution.replace)
-    'expectedReason': selection.expectedReason,
-  if (selection.resolution == InstallationTargetResolution.replace)
-    'expectedState': selection.expectedState,
 });
 
 SkillMetricKind _metricKind(String value) => switch (value) {
@@ -1199,6 +1143,10 @@ class RealSkillsGateway implements SkillsGateway {
       );
     }
     await _ensureHubOrigin();
+    if (collection == DiscoveryCollection.search &&
+        _looksLikeExplicitSkillSource(trimmedQuery)) {
+      return _discoverExplicitSource(trimmedQuery);
+    }
     final expectedCollection = switch (collection) {
       DiscoveryCollection.search => 'search',
       DiscoveryCollection.ranking => 'all_time',
@@ -1246,20 +1194,27 @@ class RealSkillsGateway implements SkillsGateway {
           kind: SkillsFailureKind.invalidResponse,
         );
       }
+      final rawSkills = decoded['skills'] as List;
+      if (collection == DiscoveryCollection.search &&
+          offset == 0 &&
+          rawSkills.isEmpty &&
+          _looksLikeGitHubRepositoryShorthand(trimmedQuery)) {
+        return _discoverExplicitSource('github.com/$trimmedQuery');
+      }
       final installedCounts = <String, int>{};
       try {
         final installed = await listInstalled(
           projects: await loadAddedProjects(),
         );
         for (final skill in installed) {
-          if (skill.coordinate.isNotEmpty) {
-            installedCounts[skill.coordinate] = skill.targetCount;
+          if (skill.skillId.isNotEmpty) {
+            installedCounts[skill.skillId] = skill.targetCount;
           }
         }
       } on Object {
         // Discovery remains available when local CLI inventory is unavailable.
       }
-      final skills = (decoded['skills'] as List)
+      final skills = rawSkills
           .map((raw) {
             if (raw is! Map<String, dynamic>) {
               throw const SkillsException(
@@ -1268,18 +1223,18 @@ class RealSkillsGateway implements SkillsGateway {
               );
             }
             final source = raw['source'];
-            final skillId =
+            final installName =
                 raw['skillPath'] is String &&
                     (raw['skillPath'] as String).isNotEmpty
                 ? p.basename(raw['skillPath'] as String)
                 : raw['name'];
-            final id = raw['coordinate'];
+            final id = raw['id'];
             final name = raw['name'];
             final description = raw['description'];
             final version = raw['latestVersion'];
             final metric = raw['metric'];
             if (source is! String ||
-                skillId is! String ||
+                installName is! String ||
                 id is! String ||
                 name is! String ||
                 description is! String ||
@@ -1302,7 +1257,7 @@ class RealSkillsGateway implements SkillsGateway {
             }
             return SkillSummary(
               id: id,
-              skillId: skillId,
+              installName: installName,
               name: name,
               source: source,
               imageUrl: imageUrl as String?,
@@ -1348,6 +1303,100 @@ class RealSkillsGateway implements SkillsGateway {
     }
   }
 
+  static bool _looksLikeExplicitSkillSource(String query) {
+    final value = query.trim();
+    if (value.contains('://') || value.startsWith('git@')) return true;
+    if (value.contains(RegExp(r'\s'))) return false;
+    final coordinate = value.split('@').first;
+    final segments = coordinate.split('/');
+    return segments.length >= 3 && segments.first.contains('.');
+  }
+
+  static bool _looksLikeGitHubRepositoryShorthand(String query) =>
+      RegExp(r'^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$').hasMatch(query);
+
+  Future<DiscoveryPage> _discoverExplicitSource(String source) async {
+    final result = await _runCli([
+      'info',
+      source,
+      '--hub',
+      _hubOrigin,
+      '--output',
+      'json',
+    ]);
+    if (!result.succeeded) throw _commandFailure(result);
+    try {
+      final decoded = jsonDecode(result.output.stdout);
+      if (decoded is! Map<String, dynamic> ||
+          decoded['SchemaVersion'] != 1 ||
+          decoded['Kind'] is! String) {
+        throw const FormatException('Invalid SkillsGo Info response.');
+      }
+      final rawSkills = switch (decoded['Kind']) {
+        'Skill' => <Object?>[decoded],
+        'Repository' when decoded['Skills'] is List =>
+          decoded['Skills'] as List,
+        _ => throw const FormatException('Unknown SkillsGo Info kind.'),
+      };
+      final installedCounts = <String, int>{};
+      try {
+        final installed = await listInstalled(
+          projects: await loadAddedProjects(),
+        );
+        for (final skill in installed) {
+          if (skill.skillId.isNotEmpty) {
+            installedCounts[skill.skillId] = skill.targetCount;
+          }
+        }
+      } on Object {
+        // Explicit-source discovery remains useful without local inventory.
+      }
+      final skills = rawSkills
+          .map((raw) {
+            if (raw is! Map<String, dynamic>) {
+              throw const FormatException('Invalid Skill Info member.');
+            }
+            final id = raw['ID'];
+            final name = raw['Name'];
+            final description = raw['Description'];
+            final version = raw['Version'];
+            final installs = raw['Installs'];
+            if (id is! String ||
+                name is! String ||
+                description is! String ||
+                version is! String ||
+                installs is! num) {
+              throw const FormatException('Incomplete Skill Info member.');
+            }
+            final imageURL = raw['ImageURL'];
+            if (imageURL != null && imageURL is! String) {
+              throw const FormatException('Invalid Skill Info image URL.');
+            }
+            final repository = id.split('/-/').first;
+            return SkillSummary(
+              id: id,
+              installName: name,
+              name: name,
+              source: repository,
+              imageUrl: imageURL as String?,
+              description: description,
+              installs: installs.toInt(),
+              latestVersion: version,
+              trustLevel: _trustLevel(raw['TrustLevel']),
+              riskAssessment: _riskAssessment(raw['RiskAssessment']),
+              localTargetCount: installedCounts[id] ?? 0,
+            );
+          })
+          .toList(growable: false);
+      return DiscoveryPage(skills: skills);
+    } on FormatException {
+      throw const SkillsException(
+        'SkillsGo Info returned invalid JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
+  }
+
   @override
   Future<SkillDetail> loadRemoteDetail(SkillSummary skill) async {
     await _ensureHubOrigin();
@@ -1383,7 +1432,7 @@ class RealSkillsGateway implements SkillsGateway {
         );
       }
       const requiredStrings = [
-        'coordinate',
+        'id',
         'name',
         'description',
         'source',
@@ -1394,7 +1443,6 @@ class RealSkillsGateway implements SkillsGateway {
         'treeSHA',
         'sourceRef',
         'contentDigest',
-        'manifest',
         'instructions',
         'trustLevel',
       ];
@@ -1404,7 +1452,7 @@ class RealSkillsGateway implements SkillsGateway {
           decoded['githubStars'] is! num ||
           decoded['sourceUpdatedAt'] is! String ||
           decoded['archiveSize'] is! num ||
-          decoded['coordinate'] != skill.id ||
+          decoded['id'] != skill.id ||
           decoded['riskAssessment'] is! Map<String, dynamic> ||
           decoded['files'] is! List ||
           decoded['hasExecutableContent'] is! bool ||
@@ -1477,7 +1525,7 @@ class RealSkillsGateway implements SkillsGateway {
           projects: await loadAddedProjects(),
         );
         installationTargets = installed
-            .where((entry) => entry.coordinate == skill.id)
+            .where((entry) => entry.skillId == skill.id)
             .expand((entry) => entry.targets)
             .toList(growable: false);
       } on Object {
@@ -1503,7 +1551,6 @@ class RealSkillsGateway implements SkillsGateway {
         treeSHA: decoded['treeSHA'] as String,
         sourceRef: decoded['sourceRef'] as String,
         contentDigest: decoded['contentDigest'] as String,
-        manifest: decoded['manifest'] as String,
         trustLevel: _trustLevel(decoded['trustLevel']),
         riskAssessment: _riskAssessment(risk['level']),
         riskScannerVersion: risk['scannerVersion'] as String,
@@ -1557,6 +1604,9 @@ class RealSkillsGateway implements SkillsGateway {
       if (!status.isReady) {
         throw SkillsException(
           status.message ?? 'The SkillsGo CLI is not ready. Open Settings.',
+          kind: status.issue == CliIssue.damaged
+              ? SkillsFailureKind.invalidLocalData
+              : SkillsFailureKind.server,
         );
       }
     }
@@ -1629,7 +1679,7 @@ class RealSkillsGateway implements SkillsGateway {
     } on FormatException {
       throw const SkillsException(
         'The SkillsGo CLI returned invalid Agent JSON.',
-        kind: SkillsFailureKind.invalidResponse,
+        kind: SkillsFailureKind.invalidLocalData,
       );
     }
   }
@@ -1657,13 +1707,15 @@ class RealSkillsGateway implements SkillsGateway {
       return (decoded['entries'] as List)
           .map((raw) {
             if (raw is! Map<String, dynamic> ||
-                raw['identity'] is! String ||
-                (raw['identity'] as String).isEmpty ||
+                raw['inventoryKey'] is! String ||
+                (raw['inventoryKey'] as String).isEmpty ||
                 raw['name'] is! String ||
                 (raw['name'] as String).isEmpty ||
-                raw['coordinate'] is! String ||
+                (raw['description'] != null && raw['description'] is! String) ||
+                raw['skillId'] is! String ||
                 raw['versionDivergence'] is! bool ||
-                raw['targets'] is! List) {
+                raw['targets'] is! List ||
+                raw['visibility'] is! List) {
               throw const FormatException();
             }
             final provenance = _libraryProvenance(raw['provenance']);
@@ -1684,15 +1736,13 @@ class RealSkillsGateway implements SkillsGateway {
                   final projectRoot = target['projectRoot'] as String? ?? '';
                   final version = target['version'] as String;
                   final mode = _installationMode(target['mode']);
-                  final receiptState = _receiptState(target['receiptState']);
                   if ((scope == InstallationScope.project &&
                           projectRoot.isEmpty) ||
                       (scope == InstallationScope.user &&
                           projectRoot.isNotEmpty) ||
                       (provenance == LibraryProvenance.external &&
                           (version.isNotEmpty ||
-                              mode != InstallationMode.external ||
-                              receiptState != ReceiptState.missing)) ||
+                              mode != InstallationMode.external)) ||
                       (provenance != LibraryProvenance.external &&
                           (version.isEmpty ||
                               mode == InstallationMode.external)) ||
@@ -1708,7 +1758,6 @@ class RealSkillsGateway implements SkillsGateway {
                     version: version,
                     projectRoot: projectRoot,
                     mode: mode,
-                    receiptState: receiptState,
                     health: _installationHealth(target['health']),
                   );
                 })
@@ -1717,6 +1766,39 @@ class RealSkillsGateway implements SkillsGateway {
             final agents = _strictStringList(raw['agents']);
             final projectRoots = _strictStringList(raw['projects']);
             final versions = _strictStringList(raw['versions']);
+            final visibilityKeys = <String>{};
+            final visibility = (raw['visibility'] as List)
+                .map((item) {
+                  if (item is! Map<String, dynamic> ||
+                      item['agent'] is! String ||
+                      (item['agent'] as String).isEmpty ||
+                      item['paths'] is! List ||
+                      (item['projectRoot'] != null &&
+                          item['projectRoot'] is! String)) {
+                    throw const FormatException();
+                  }
+                  final scope = _installationScope(item['scope']);
+                  final projectRoot = item['projectRoot'] as String? ?? '';
+                  final paths = _strictStringList(item['paths']);
+                  final key =
+                      '${item['agent']}\u0000${item['scope']}\u0000$projectRoot';
+                  if (paths.isEmpty ||
+                      (scope == InstallationScope.project &&
+                          projectRoot.isEmpty) ||
+                      (scope == InstallationScope.user &&
+                          projectRoot.isNotEmpty) ||
+                      !visibilityKeys.add(key)) {
+                    throw const FormatException();
+                  }
+                  return SkillVisibility(
+                    agent: item['agent'] as String,
+                    scope: scope,
+                    projectRoot: projectRoot,
+                    paths: paths,
+                    verification: _discoveryVerification(item['verification']),
+                  );
+                })
+                .toList(growable: false);
             if ((provenance != LibraryProvenance.external &&
                     versions.isEmpty) ||
                 !_sameStringSet(
@@ -1739,24 +1821,26 @@ class RealSkillsGateway implements SkillsGateway {
               throw const FormatException();
             }
             if (provenance == LibraryProvenance.hub &&
-                ((raw['coordinate'] as String).isEmpty ||
-                    raw['identity'] != 'hub:${raw['coordinate']}')) {
+                ((raw['skillId'] as String).isEmpty ||
+                    raw['inventoryKey'] != 'hub:${raw['skillId']}')) {
               throw const FormatException();
             }
             if (provenance == LibraryProvenance.external &&
-                ((raw['coordinate'] as String).isNotEmpty ||
+                ((raw['skillId'] as String).isNotEmpty ||
                     versions.isNotEmpty ||
-                    !(raw['identity'] as String).startsWith('external:'))) {
+                    !(raw['inventoryKey'] as String).startsWith('external:'))) {
               throw const FormatException();
             }
             return InstalledSkill(
-              identity: raw['identity'] as String,
+              inventoryKey: raw['inventoryKey'] as String,
               name: raw['name'] as String,
+              description: raw['description'] as String? ?? '',
               path: targets.first.path,
               agents: agents,
               targetCount: targets.length,
-              coordinate: raw['coordinate'] as String,
+              skillId: raw['skillId'] as String,
               targets: targets,
+              visibility: visibility,
               provenance: provenance,
               riskAssessment: _riskAssessment(raw['risk']),
               health: _installationHealth(raw['health']),
@@ -1769,7 +1853,7 @@ class RealSkillsGateway implements SkillsGateway {
     } on FormatException {
       throw const SkillsException(
         'The SkillsGo CLI returned invalid inventory JSON.',
-        kind: SkillsFailureKind.invalidResponse,
+        kind: SkillsFailureKind.invalidLocalData,
       );
     }
   }
@@ -1836,11 +1920,11 @@ class RealSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<InstallationPlan> preflightInstall(
+  Future<InstallationExecution> installTargets(
     SkillSummary skill,
     String immutableVersion,
     List<InstallationTargetSelection> selections, {
-    bool riskConfirmed = false,
+    bool confirmRisk = false,
     bool allowCritical = false,
   }) async {
     if (immutableVersion.isEmpty || selections.isEmpty) {
@@ -1849,330 +1933,31 @@ class RealSkillsGateway implements SkillsGateway {
         kind: SkillsFailureKind.validation,
       );
     }
-    final cells = <String>{};
-    for (final selection in selections) {
-      final key =
-          '${_scopeValue(selection.scope)}\u0000${selection.projectRoot}\u0000${selection.agent}';
-      if (!cells.add(key) ||
-          selection.agent.isEmpty ||
-          (selection.scope == InstallationScope.user &&
-              selection.projectRoot.isNotEmpty) ||
-          (selection.scope == InstallationScope.project &&
-              selection.projectRoot.isEmpty) ||
-          (selection.resolution == InstallationTargetResolution.replace &&
-              (selection.expectedReason.isEmpty ||
-                  selection.expectedState.isEmpty)) ||
-          (selection.resolution == InstallationTargetResolution.none &&
-              (selection.expectedReason.isNotEmpty ||
-                  selection.expectedState.isNotEmpty)) ||
-          selection.mode == InstallationMode.external) {
-        throw const SkillsException(
-          'The Installation Target selection is invalid.',
-          kind: SkillsFailureKind.validation,
-        );
-      }
-    }
     await _ensureHubOrigin();
-    final arguments = <String>['add', skill.id, '--skill', skill.skillId];
+    final arguments = <String>['add', skill.id, '--skill', skill.installName];
     for (final selection in selections) {
       arguments.addAll(['--target', _targetArgument(selection)]);
     }
     arguments.addAll([
       '--version',
       immutableVersion,
-      if (riskConfirmed) '--confirm-risk',
+      if (confirmRisk) '--confirm-risk',
       if (allowCritical) '--allow-critical',
-      '--preflight',
+      '--yes',
       '--output',
       'json',
       '--hub',
       _hubOrigin,
     ]);
-    final result = await _runCli(arguments);
-    if (!result.succeeded) throw _commandFailure(result);
-    try {
-      final decoded = jsonDecode(result.output.stdout);
-      if (decoded is! Map<String, dynamic> ||
-          decoded['schemaVersion'] != _installationPlanSchemaVersion ||
-          decoded['phase'] != 'preflight' ||
-          decoded['artifact'] is! Map<String, dynamic> ||
-          decoded['targets'] is! List ||
-          decoded['summary'] is! Map<String, dynamic> ||
-          decoded['workspaceLockChanges'] is! List) {
-        throw const FormatException();
-      }
-      final artifact = decoded['artifact'] as Map<String, dynamic>;
-      if (artifact['source'] is! String ||
-          artifact['coordinate'] != skill.id ||
-          artifact['version'] != immutableVersion ||
-          artifact['name'] != skill.skillId ||
-          artifact['source'] != skill.id ||
-          artifact['risk'] is! String) {
-        throw const FormatException();
-      }
-      final trustedRiskAssessment = _riskAssessment(artifact['risk']);
-      final rawTargets = decoded['targets'] as List;
-      if (rawTargets.length != selections.length) throw const FormatException();
-      final targets = <InstallationPlanItem>[];
-      for (var index = 0; index < rawTargets.length; index++) {
-        final raw = rawTargets[index];
-        if (raw is! Map<String, dynamic> ||
-            raw['workspaceLockChange'] is! bool ||
-            (raw['reasonCode'] != null && raw['reasonCode'] is! String) ||
-            (raw['stateToken'] != null && raw['stateToken'] is! String) ||
-            (raw['affectedBindings'] != null &&
-                raw['affectedBindings'] is! List)) {
-          throw const FormatException();
-        }
-        final target = _installationPlanTarget(raw['target']);
-        final selection = selections[index];
-        if (target.scope != selection.scope ||
-            target.projectRoot != selection.projectRoot ||
-            target.agent != selection.agent ||
-            target.mode != selection.mode) {
-          throw const FormatException();
-        }
-        final action = _installationPlanAction(raw['action']);
-        final reasonCode = _installationPlanReasonCode(raw['reasonCode']);
-        if (!_validPlanReason(action, reasonCode)) {
-          throw const FormatException();
-        }
-        final stateToken = raw['stateToken'] as String? ?? '';
-        if ((action == InstallationPlanAction.conflict ||
-                action == InstallationPlanAction.replace) &&
-            stateToken.isEmpty) {
-          throw const FormatException();
-        }
-        final affectedBindings =
-            ((raw['affectedBindings'] as List?) ?? const [])
-                .map(_installationAffectedBinding)
-                .toList(growable: false);
-        if (reasonCode == 'shared-target-conflict') {
-          final bindingKeys = <String>{};
-          var includesTargetBinding = false;
-          for (final binding in affectedBindings) {
-            final key = '${binding.scope.name}\u0000${binding.agent}';
-            if (binding.path != target.path ||
-                binding.scope != target.scope ||
-                !bindingKeys.add(key)) {
-              throw const FormatException();
-            }
-            if (binding.agent == target.agent) includesTargetBinding = true;
-          }
-          if (affectedBindings.length < 2 || !includesTargetBinding) {
-            throw const FormatException();
-          }
-        }
-        targets.add(
-          InstallationPlanItem(
-            target: target,
-            action: action,
-            workspaceLockChange: raw['workspaceLockChange'] as bool,
-            reasonCode: reasonCode,
-            stateToken: stateToken,
-            affectedBindings: affectedBindings,
-          ),
-        );
-      }
-      final rawSummary = decoded['summary'] as Map<String, dynamic>;
-      final summary = InstallationPlanSummary(
-        create: _strictNonNegativeInt(rawSummary['create']),
-        replace: _strictNonNegativeInt(rawSummary['replace']),
-        skip: _strictNonNegativeInt(rawSummary['skip']),
-        conflict: _strictNonNegativeInt(rawSummary['conflict']),
-        blockedByRisk: _strictNonNegativeInt(rawSummary['blockedByRisk']),
-      );
-      final actionCounts = {
-        for (final action in InstallationPlanAction.values)
-          action: targets.where((item) => item.action == action).length,
-      };
-      if (summary.create != actionCounts[InstallationPlanAction.create] ||
-          summary.replace != actionCounts[InstallationPlanAction.replace] ||
-          summary.skip != actionCounts[InstallationPlanAction.skip] ||
-          summary.conflict != actionCounts[InstallationPlanAction.conflict] ||
-          summary.blockedByRisk !=
-              actionCounts[InstallationPlanAction.blockedByRisk]) {
-        throw const FormatException();
-      }
-      final lockRoots = <String>{};
-      final lockChanges = (decoded['workspaceLockChanges'] as List)
-          .map((raw) {
-            if (raw is! Map<String, dynamic> ||
-                raw['projectRoot'] is! String ||
-                (raw['projectRoot'] as String).isEmpty ||
-                raw['path'] is! String ||
-                (raw['path'] as String).isEmpty ||
-                raw['skill'] != skill.skillId ||
-                raw['toVersion'] != artifact['version'] ||
-                (raw['fromVersion'] != null && raw['fromVersion'] is! String) ||
-                !lockRoots.add(raw['projectRoot'] as String)) {
-              throw const FormatException();
-            }
-            return WorkspaceLockChange(
-              projectRoot: raw['projectRoot'] as String,
-              path: raw['path'] as String,
-              skill: raw['skill'] as String,
-              fromVersion: raw['fromVersion'] as String? ?? '',
-              toVersion: raw['toVersion'] as String,
-            );
-          })
-          .toList(growable: false);
-      final expectedLockRoots = targets
-          .where((item) => item.workspaceLockChange)
-          .map((item) => item.target.projectRoot)
-          .toSet();
-      if (expectedLockRoots.length != lockRoots.length ||
-          !expectedLockRoots.every(lockRoots.contains)) {
-        throw const FormatException();
-      }
-      return InstallationPlan(
-        source: artifact['source'] as String,
-        coordinate: artifact['coordinate'] as String,
-        version: artifact['version'] as String,
-        name: artifact['name'] as String,
-        selections: List.unmodifiable(selections),
-        targets: List.unmodifiable(targets),
-        summary: summary,
-        workspaceLockChanges: lockChanges,
-        riskAssessment: trustedRiskAssessment,
-        riskConfirmed: riskConfirmed,
-        allowCritical: allowCritical,
-      );
-    } on FormatException {
-      throw const SkillsException(
-        'The SkillsGo CLI returned invalid Installation Plan JSON.',
-        kind: SkillsFailureKind.invalidResponse,
-      );
-    }
-  }
-
-  @override
-  Future<InstallationExecution> executeInstall(
-    InstallationPlan plan, {
-    void Function(InstallationTargetProgress progress)? onProgress,
-  }) async {
-    await _ensureHubOrigin();
-    final arguments = <String>['add', plan.source, '--skill', plan.name];
-    for (final selection in plan.selections) {
-      arguments.addAll(['--target', _targetArgument(selection)]);
-    }
-    arguments.addAll([
-      '--version',
-      plan.version,
-      if (plan.riskConfirmed) '--confirm-risk',
-      if (plan.allowCritical) '--allow-critical',
-      '--yes',
-      '--output',
-      'ndjson',
-      '--hub',
-      _hubOrigin,
-    ]);
-    final expectedTargets = {
-      for (final item in plan.targets)
-        _installationTargetKey(item.target): item,
-    };
-    if (expectedTargets.length != plan.targets.length) {
-      throw const SkillsException(
-        'The Installation Plan contains duplicate targets.',
-        kind: SkillsFailureKind.validation,
-      );
-    }
-    final states = <String, InstallationProgressState>{};
-    final terminalResults = <String, InstallationTargetResult>{};
-    Map<String, dynamic>? finalPayload;
-    Object? streamFailure;
-    var expectedSequence = 1;
-    var sawLine = false;
-    void consumeLine(String line) {
-      sawLine = true;
-      if (streamFailure != null) return;
-      try {
-        final decoded = jsonDecode(line);
-        if (decoded is! Map<String, dynamic> ||
-            decoded['schemaVersion'] != _installationPlanSchemaVersion) {
-          throw const FormatException();
-        }
-        switch (decoded['phase']) {
-          case 'execution-progress':
-            _validateInstallationArtifact(decoded['artifact'], plan);
-            if (decoded['sequence'] != expectedSequence++) {
-              throw const FormatException();
-            }
-            final target = _installationPlanTarget(decoded['target']);
-            final key = _installationTargetKey(target);
-            final expected = expectedTargets[key];
-            final action = _installationPlanAction(decoded['action']);
-            if (expected == null || action != expected.action) {
-              throw const FormatException();
-            }
-            final state = switch (decoded['state']) {
-              'started' => InstallationProgressState.started,
-              'finished' => InstallationProgressState.finished,
-              _ => throw const FormatException(),
-            };
-            InstallationTargetResult? result;
-            if (state == InstallationProgressState.started) {
-              if (states.containsKey(key) || decoded.containsKey('result')) {
-                throw const FormatException();
-              }
-            } else {
-              if (states[key] != InstallationProgressState.started ||
-                  decoded['result'] == null) {
-                throw const FormatException();
-              }
-              result = _installationTargetResult(decoded['result'], expected);
-              terminalResults[key] = result;
-            }
-            states[key] = state;
-            onProgress?.call(
-              InstallationTargetProgress(
-                sequence: decoded['sequence'] as int,
-                target: target,
-                action: action,
-                state: state,
-                result: result,
-              ),
-            );
-          case 'execution':
-            if (finalPayload != null ||
-                states.length != expectedTargets.length ||
-                states.values.any(
-                  (state) => state != InstallationProgressState.finished,
-                )) {
-              throw const FormatException();
-            }
-            finalPayload = decoded;
-          default:
-            throw const FormatException();
-        }
-      } catch (error) {
-        streamFailure = error;
-      }
-    }
-
-    final command = await _runCli(arguments, onStdoutLine: consumeLine);
-    if (!sawLine) {
-      for (final line in const LineSplitter().convert(command.output.stdout)) {
-        consumeLine(line);
-      }
-    }
+    final command = await _runCli(arguments);
     if (!command.succeeded) throw _commandFailure(command);
     try {
-      if (streamFailure != null || finalPayload == null) {
-        throw const FormatException();
-      }
-      final execution = _installationExecution(finalPayload, plan);
-      for (final result in execution.results) {
-        final streamed = terminalResults[_installationTargetKey(result.target)];
-        if (streamed == null ||
-            streamed.action != result.action ||
-            streamed.outcome != result.outcome ||
-            streamed.errorCode != result.errorCode ||
-            streamed.diagnostic != result.diagnostic) {
-          throw const FormatException();
-        }
-      }
-      return execution;
+      return _directInstallationExecution(
+        jsonDecode(command.output.stdout),
+        skill,
+        immutableVersion,
+        selections,
+      );
     } on FormatException {
       throw const SkillsException(
         'The SkillsGo CLI returned invalid Installation Result JSON.',
@@ -2188,7 +1973,7 @@ class RealSkillsGateway implements SkillsGateway {
       'add',
       skill.id,
       '--skill',
-      skill.skillId,
+      skill.installName,
       '--global',
       '--agent',
       'codex',
@@ -2207,7 +1992,7 @@ class RealSkillsGateway implements SkillsGateway {
     HubContentMatch? match,
     String? stateToken,
   }) => {
-    'identity': skill.identity,
+    'inventoryKey': skill.inventoryKey,
     'name': skill.name,
     'scope': target.scope.name,
     if (target.scope == InstallationScope.project)
@@ -2215,7 +2000,7 @@ class RealSkillsGateway implements SkillsGateway {
     'agent': target.agent,
     'path': target.path,
     if (action != null) 'action': _externalAdoptionActionValue(action),
-    if (match != null) 'matchCoordinate': match.coordinate,
+    if (match != null) 'matchSkillId': match.skillId,
     if (match != null) 'matchVersion': match.immutableVersion,
     'stateToken': ?stateToken,
   };
@@ -2250,7 +2035,7 @@ class RealSkillsGateway implements SkillsGateway {
       if (raw is! Map<String, dynamic> ||
           raw['schemaVersion'] != 1 ||
           raw['phase'] != 'adoption-preflight' ||
-          raw['identity'] != skill.identity ||
+          raw['inventoryKey'] != skill.inventoryKey ||
           raw['name'] != skill.name ||
           !_isSha256Digest(raw['contentDigest']) ||
           raw['stateToken'] is! String ||
@@ -2272,8 +2057,8 @@ class RealSkillsGateway implements SkillsGateway {
       final seen = <String>{};
       for (final candidate in raw['matches'] as List) {
         if (candidate is! Map<String, dynamic> ||
-            candidate['coordinate'] is! String ||
-            (candidate['coordinate'] as String).isEmpty ||
+            candidate['skillId'] is! String ||
+            (candidate['skillId'] as String).isEmpty ||
             candidate['name'] is! String ||
             (candidate['name'] as String).isEmpty ||
             candidate['source'] is! String ||
@@ -2289,11 +2074,11 @@ class RealSkillsGateway implements SkillsGateway {
           throw const FormatException();
         }
         final key =
-            '${candidate['coordinate']}\u0000${candidate['immutableVersion']}';
+            '${candidate['skillId']}\u0000${candidate['immutableVersion']}';
         if (!seen.add(key)) throw const FormatException();
         matches.add(
           HubContentMatch(
-            coordinate: candidate['coordinate'] as String,
+            skillId: candidate['skillId'] as String,
             name: candidate['name'] as String,
             source: candidate['source'] as String,
             skillPath: candidate['skillPath'] as String,
@@ -2305,7 +2090,7 @@ class RealSkillsGateway implements SkillsGateway {
         );
       }
       return ExternalAdoptionPlan(
-        identity: skill.identity,
+        inventoryKey: skill.inventoryKey,
         name: skill.name,
         target: InstallationPlanTarget(
           scope: sourceTarget.scope,
@@ -2338,7 +2123,7 @@ class RealSkillsGateway implements SkillsGateway {
         selected != null &&
         plan.matches.any(
           (candidate) =>
-              candidate.coordinate == selected.coordinate &&
+              candidate.skillId == selected.skillId &&
               candidate.immutableVersion == selected.immutableVersion &&
               candidate.contentDigest == plan.contentDigest,
         );
@@ -2358,10 +2143,9 @@ class RealSkillsGateway implements SkillsGateway {
       path: plan.target.path,
       version: '',
       mode: InstallationMode.external,
-      receiptState: ReceiptState.missing,
     );
     final skill = InstalledSkill(
-      identity: plan.identity,
+      inventoryKey: plan.inventoryKey,
       name: plan.name,
       path: plan.target.path,
       agents: [plan.target.agent],
@@ -2397,8 +2181,8 @@ class RealSkillsGateway implements SkillsGateway {
           raw['phase'] != 'adoption-execution' ||
           raw['action'] != _externalAdoptionActionValue(action) ||
           raw['name'] != plan.name ||
-          raw['coordinate'] is! String ||
-          (raw['coordinate'] as String).isEmpty ||
+          raw['skillId'] is! String ||
+          (raw['skillId'] as String).isEmpty ||
           raw['version'] is! String ||
           (raw['version'] as String).isEmpty ||
           raw['contentDigest'] != plan.contentDigest ||
@@ -2412,12 +2196,12 @@ class RealSkillsGateway implements SkillsGateway {
           : LibraryProvenance.hub;
       if (provenance != expectedProvenance) throw const FormatException();
       if (action == ExternalAdoptionAction.associateHub &&
-          (raw['coordinate'] != selected!.coordinate ||
+          (raw['skillId'] != selected!.skillId ||
               raw['version'] != selected.immutableVersion)) {
         throw const FormatException();
       }
       if (action == ExternalAdoptionAction.importLocal &&
-          (!(raw['coordinate'] as String).startsWith('local.skillsgo/') ||
+          (!(raw['skillId'] as String).startsWith('local.skillsgo/') ||
               !(raw['version'] as String).startsWith('local-'))) {
         throw const FormatException();
       }
@@ -2429,7 +2213,7 @@ class RealSkillsGateway implements SkillsGateway {
       return ExternalAdoptionResult(
         action: _externalAdoptionAction(raw['action']),
         name: plan.name,
-        coordinate: raw['coordinate'] as String,
+        skillId: raw['skillId'] as String,
         version: raw['version'] as String,
         provenance: provenance,
         contentDigest: plan.contentDigest,
@@ -2455,7 +2239,7 @@ class RealSkillsGateway implements SkillsGateway {
         .map((target) => target.version)
         .where((version) => version.isNotEmpty)
         .toSet();
-    if (skill.coordinate.isEmpty || versions.length != 1) {
+    if (skill.skillId.isEmpty || versions.length != 1) {
       throw const SkillsException(
         'Local Skill export requires one immutable version.',
         kind: SkillsFailureKind.validation,
@@ -2465,8 +2249,8 @@ class RealSkillsGateway implements SkillsGateway {
     if (destination == null) return null;
     final result = await _runCli([
       'export',
-      '--coordinate',
-      skill.coordinate,
+      '--skill-id',
+      skill.skillId,
       '--version',
       versions.single,
       '--destination',
@@ -2480,7 +2264,7 @@ class RealSkillsGateway implements SkillsGateway {
       if (raw is! Map<String, dynamic> ||
           raw['schemaVersion'] != 1 ||
           raw['phase'] != 'local-export' ||
-          raw['coordinate'] != skill.coordinate ||
+          raw['skillId'] != skill.skillId ||
           raw['version'] != versions.single ||
           raw['destination'] != destination) {
         throw const FormatException();
@@ -2495,7 +2279,7 @@ class RealSkillsGateway implements SkillsGateway {
   }
 
   String _managementTargetArgument(
-    String coordinate,
+    String skillId,
     SkillInstallationTarget target, {
     TargetManagementAction? action,
     String? stateToken,
@@ -2506,7 +2290,7 @@ class RealSkillsGateway implements SkillsGateway {
     'agent': target.agent,
     'mode': target.mode.name,
     'path': target.path,
-    'coordinate': coordinate,
+    'skillId': skillId,
     'version': target.version,
     if (action != null) 'action': _targetManagementActionValue(action),
     'stateToken': ?stateToken,
@@ -2517,18 +2301,21 @@ class RealSkillsGateway implements SkillsGateway {
     InstalledSkill skill,
     List<SkillInstallationTarget> targets,
   ) async {
-    if (skill.provenance == LibraryProvenance.external ||
-        skill.coordinate.isEmpty ||
+    final external = skill.provenance == LibraryProvenance.external;
+    if ((!external && skill.skillId.isEmpty) ||
         targets.isEmpty ||
         targets.any(
           (target) =>
-              target.mode == InstallationMode.external ||
-              target.version.isEmpty ||
+              (external
+                  ? target.mode != InstallationMode.external ||
+                        target.version.isNotEmpty
+                  : target.mode == InstallationMode.external ||
+                        target.version.isEmpty) ||
               (target.scope == InstallationScope.project &&
                   target.projectRoot.isEmpty),
         )) {
       throw const SkillsException(
-        'Only exact managed targets can enter a Target Management Plan.',
+        'Only exact managed targets or exact External Installation removals can enter a Target Management Plan.',
         kind: SkillsFailureKind.validation,
       );
     }
@@ -2536,7 +2323,7 @@ class RealSkillsGateway implements SkillsGateway {
     for (final target in targets) {
       arguments.addAll([
         '--target',
-        _managementTargetArgument(skill.coordinate, target),
+        _managementTargetArgument(skill.skillId, target),
       ]);
     }
     arguments.addAll(['--preflight', '--output', 'json']);
@@ -2558,7 +2345,7 @@ class RealSkillsGateway implements SkillsGateway {
         final raw = rawTargets[index];
         if (raw is! Map<String, dynamic> ||
             raw['name'] is! String ||
-            raw['coordinate'] != skill.coordinate ||
+            raw['skillId'] != skill.skillId ||
             raw['version'] != targets[index].version ||
             raw['allowedActions'] is! List ||
             raw['stateToken'] is! String ||
@@ -2570,7 +2357,10 @@ class RealSkillsGateway implements SkillsGateway {
                 raw['affectedBindings'] is! List)) {
           throw const FormatException();
         }
-        final target = _installationPlanTarget(raw['target']);
+        final target = _installationPlanTarget(
+          raw['target'],
+          allowExternal: external,
+        );
         final expected = targets[index];
         if (target.scope != expected.scope ||
             target.projectRoot != expected.projectRoot ||
@@ -2578,11 +2368,10 @@ class RealSkillsGateway implements SkillsGateway {
             target.mode != expected.mode ||
             target.path != expected.path ||
             (raw['workspaceMetadataChange'] as bool) !=
-                (target.scope == InstallationScope.project)) {
+                (target.scope == InstallationScope.project && !external)) {
           throw const FormatException();
         }
         final health = _installationHealth(raw['health']);
-        final receiptState = _receiptState(raw['receiptState']);
         final actionValues = raw['allowedActions'] as List;
         final allowedActions = actionValues
             .map(_targetManagementAction)
@@ -2603,10 +2392,9 @@ class RealSkillsGateway implements SkillsGateway {
           TargetManagementPlanItem(
             target: target,
             name: raw['name'] as String,
-            coordinate: skill.coordinate,
+            skillId: skill.skillId,
             version: expected.version,
             health: health,
-            receiptState: receiptState,
             allowedActions: List.unmodifiable(allowedActions),
             stateToken: raw['stateToken'] as String,
             workspaceMetadataChange: raw['workspaceMetadataChange'] as bool,
@@ -2614,7 +2402,7 @@ class RealSkillsGateway implements SkillsGateway {
             affectedBindings: List.unmodifiable([
               for (final binding
                   in raw['affectedBindings'] as List? ?? const [])
-                _installationPlanTarget(binding),
+                _installationPlanTarget(binding, allowExternal: external),
             ]),
           ),
         );
@@ -2685,7 +2473,7 @@ class RealSkillsGateway implements SkillsGateway {
           'agent': item.target.agent,
           'mode': item.target.mode.name,
           'path': item.target.path,
-          'coordinate': item.coordinate,
+          'skillId': item.skillId,
           'version': item.version,
           'action': _targetManagementActionValue(item.action!),
           'stateToken': item.stateToken,
@@ -2713,17 +2501,20 @@ class RealSkillsGateway implements SkillsGateway {
         if (raw['phase'] == 'management-progress') {
           if (raw['sequence'] != sequence++ ||
               raw['name'] is! String ||
-              raw['coordinate'] is! String ||
+              raw['skillId'] is! String ||
               raw['version'] is! String ||
               raw['action'] is! String) {
             throw const FormatException();
           }
-          final target = _installationPlanTarget(raw['target']);
+          final target = _installationPlanTarget(
+            raw['target'],
+            allowExternal: true,
+          );
           final key = updateTargetKey(target);
           final item = expected[key];
           if (item == null ||
               raw['name'] != item.name ||
-              raw['coordinate'] != item.coordinate ||
+              raw['skillId'] != item.skillId ||
               raw['version'] != item.version ||
               raw['action'] != _targetManagementActionValue(item.action!)) {
             throw const FormatException();
@@ -2752,7 +2543,7 @@ class RealSkillsGateway implements SkillsGateway {
               sequence: raw['sequence'] as int,
               target: target,
               name: item.name,
-              coordinate: item.coordinate,
+              skillId: item.skillId,
               version: item.version,
               action: item.action!,
               state: state,
@@ -2842,7 +2633,7 @@ class RealSkillsGateway implements SkillsGateway {
   }
 
   String _updateTargetArgument(
-    String coordinate,
+    String skillId,
     SkillInstallationTarget target, {
     String? toVersion,
     String? stateToken,
@@ -2853,7 +2644,7 @@ class RealSkillsGateway implements SkillsGateway {
     'agent': target.agent,
     'mode': target.mode.name,
     'path': target.path,
-    'coordinate': coordinate,
+    'skillId': skillId,
     'version': target.version,
     'toVersion': ?toVersion,
     'stateToken': ?stateToken,
@@ -2865,7 +2656,7 @@ class RealSkillsGateway implements SkillsGateway {
     List<SkillInstallationTarget> targets,
   ) async {
     if (skill.provenance != LibraryProvenance.hub ||
-        skill.coordinate.isEmpty ||
+        skill.skillId.isEmpty ||
         targets.isEmpty ||
         targets.any(
           (target) =>
@@ -2884,7 +2675,7 @@ class RealSkillsGateway implements SkillsGateway {
     for (final target in targets) {
       arguments.addAll([
         '--target',
-        _updateTargetArgument(skill.coordinate, target),
+        _updateTargetArgument(skill.skillId, target),
       ]);
     }
     arguments.addAll(['--preflight', '--output', 'json', '--hub', _hubOrigin]);
@@ -2896,7 +2687,7 @@ class RealSkillsGateway implements SkillsGateway {
           decoded['schemaVersion'] != 1 ||
           decoded['phase'] != 'update-preflight' ||
           decoded['targets'] is! List ||
-          decoded['workspaceLockChanges'] is! List ||
+          decoded['workspaceManifestChanges'] is! List ||
           decoded['summary'] is! Map<String, dynamic>) {
         throw const FormatException();
       }
@@ -2907,12 +2698,12 @@ class RealSkillsGateway implements SkillsGateway {
         final raw = rawTargets[index];
         if (raw is! Map<String, dynamic> ||
             raw['name'] is! String ||
-            raw['coordinate'] != skill.coordinate ||
+            raw['skillId'] != skill.skillId ||
             raw['sourceRef'] is! String ||
             raw['fromVersion'] != targets[index].version ||
             raw['toVersion'] is! String ||
             raw['stateToken'] is! String ||
-            raw['workspaceLockChange'] is! bool ||
+            raw['workspaceManifestChange'] is! bool ||
             (raw['affectedBindings'] != null &&
                 raw['affectedBindings'] is! List) ||
             (raw['reasonCode'] != null && raw['reasonCode'] is! String) ||
@@ -2926,21 +2717,21 @@ class RealSkillsGateway implements SkillsGateway {
         final fromVersion = expected.version;
         final toVersion = raw['toVersion'] as String;
         final stateToken = raw['stateToken'] as String;
-        final workspaceLockChange = raw['workspaceLockChange'] as bool;
+        final workspaceManifestChange = raw['workspaceManifestChange'] as bool;
         if (target.scope != expected.scope ||
             target.projectRoot != expected.projectRoot ||
             target.agent != expected.agent ||
             target.mode != expected.mode ||
             target.path != expected.path ||
             stateToken.isEmpty ||
-            (workspaceLockChange &&
+            (workspaceManifestChange &&
                 target.scope != InstallationScope.project) ||
             (action == UpdatePlanAction.update &&
                 fromVersion == toVersion &&
-                reasonCode != 'workspace-lock-reconcile') ||
-            (reasonCode == 'workspace-lock-reconcile' &&
+                reasonCode != 'workspace-manifest-reconcile') ||
+            (reasonCode == 'workspace-manifest-reconcile' &&
                 (action != UpdatePlanAction.update ||
-                    !workspaceLockChange ||
+                    !workspaceManifestChange ||
                     fromVersion != toVersion))) {
           throw const FormatException();
         }
@@ -2948,7 +2739,7 @@ class RealSkillsGateway implements SkillsGateway {
           UpdatePlanItem(
             target: target,
             name: raw['name'] as String,
-            coordinate: skill.coordinate,
+            skillId: skill.skillId,
             sourceRef: raw['sourceRef'] as String,
             fromVersion: fromVersion,
             toVersion: toVersion,
@@ -2956,7 +2747,7 @@ class RealSkillsGateway implements SkillsGateway {
             reasonCode: reasonCode,
             diagnostic: raw['diagnostic'] as String? ?? '',
             stateToken: stateToken,
-            workspaceLockChange: workspaceLockChange,
+            workspaceManifestChange: workspaceManifestChange,
             affectedBindings: List.unmodifiable([
               for (final binding
                   in raw['affectedBindings'] as List? ?? const [])
@@ -2980,9 +2771,9 @@ class RealSkillsGateway implements SkillsGateway {
           throw const FormatException();
         }
       }
-      final changes = <WorkspaceLockChange>[];
+      final changes = <WorkspaceManifestChange>[];
       final changeKeys = <String>{};
-      for (final raw in decoded['workspaceLockChanges'] as List) {
+      for (final raw in decoded['workspaceManifestChanges'] as List) {
         if (raw is! Map<String, dynamic> ||
             raw['projectRoot'] is! String ||
             raw['path'] is! String ||
@@ -2999,7 +2790,7 @@ class RealSkillsGateway implements SkillsGateway {
         final key = '$projectRoot\u0000$skillName\u0000$toVersion';
         final matchesItem = items.any(
           (item) =>
-              item.workspaceLockChange &&
+              item.workspaceManifestChange &&
               item.target.scope == InstallationScope.project &&
               item.target.projectRoot == projectRoot &&
               item.name == skillName &&
@@ -3010,13 +2801,13 @@ class RealSkillsGateway implements SkillsGateway {
             fromVersion.isEmpty ||
             toVersion.isEmpty ||
             p.normalize(path) !=
-                p.normalize(p.join(projectRoot, 'skillsgo-lock.yaml')) ||
+                p.normalize(p.join(projectRoot, 'skillsgo.yaml')) ||
             !matchesItem ||
             !changeKeys.add(key)) {
           throw const FormatException();
         }
         changes.add(
-          WorkspaceLockChange(
+          WorkspaceManifestChange(
             projectRoot: projectRoot,
             path: path,
             skill: skillName,
@@ -3027,7 +2818,7 @@ class RealSkillsGateway implements SkillsGateway {
       }
       final expectedChangeKeys = {
         for (final item in items)
-          if (item.workspaceLockChange)
+          if (item.workspaceManifestChange)
             '${item.target.projectRoot}\u0000${item.name}\u0000${item.toVersion}',
       };
       if (changeKeys.length != expectedChangeKeys.length ||
@@ -3061,7 +2852,7 @@ class RealSkillsGateway implements SkillsGateway {
       }
       return UpdatePlan(
         targets: List.unmodifiable(items),
-        workspaceLockChanges: List.unmodifiable(changes),
+        workspaceManifestChanges: List.unmodifiable(changes),
         summary: summary,
       );
     } on FormatException {
@@ -3096,7 +2887,7 @@ class RealSkillsGateway implements SkillsGateway {
           'agent': item.target.agent,
           'mode': item.target.mode.name,
           'path': item.target.path,
-          'coordinate': item.coordinate,
+          'skillId': item.skillId,
           'version': item.fromVersion,
           'toVersion': item.toVersion,
           'stateToken': item.stateToken,
@@ -3124,7 +2915,7 @@ class RealSkillsGateway implements SkillsGateway {
         if (raw['phase'] == 'update-progress') {
           if (raw['sequence'] != sequence++ ||
               raw['name'] is! String ||
-              raw['coordinate'] is! String ||
+              raw['skillId'] is! String ||
               raw['fromVersion'] is! String ||
               raw['toVersion'] is! String) {
             throw const FormatException();
@@ -3134,7 +2925,7 @@ class RealSkillsGateway implements SkillsGateway {
           final item = expected[key];
           if (item == null ||
               raw['name'] != item.name ||
-              raw['coordinate'] != item.coordinate ||
+              raw['skillId'] != item.skillId ||
               raw['fromVersion'] != item.fromVersion ||
               raw['toVersion'] != item.toVersion) {
             throw const FormatException();
@@ -3163,7 +2954,7 @@ class RealSkillsGateway implements SkillsGateway {
               sequence: raw['sequence'] as int,
               target: target,
               name: item.name,
-              coordinate: item.coordinate,
+              skillId: item.skillId,
               fromVersion: item.fromVersion,
               toVersion: item.toVersion,
               state: state,

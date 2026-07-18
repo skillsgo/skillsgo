@@ -59,10 +59,10 @@ Projects are added only through explicit directory selection. External Installat
 35. As a user adding a new project during installation, I want Add Project available inside the plan, so that I do not lose the Skill or current selection.
 36. As a user reinstalling an existing target, I want identical targets marked as already installed, so that the App does not create duplicates.
 37. As a user encountering a different installed version, I want the affected cell to show the version conflict, so that replacement is deliberate.
-38. As a user encountering a same-name different-source Skill, I want the identity collision explained, so that a familiar name is not treated as proof of equivalence.
+38. As a user encountering a same-name different-source Skill, I want the Skill ID collision explained, so that a familiar name is not treated as proof of equivalence.
 39. As a user with a Local Modification, I want the affected target blocked from silent replacement, so that my changes are not lost.
 40. As a user confirming an Installation Plan, I want counts for create, replace, skip, conflict, and risk outcomes, so that the plan is understandable at a glance.
-41. As a project user, I want Workspace Locks that will change listed before execution, so that repository modifications are explicit.
+41. As a project user, I want Workspace Manifests that will change listed before execution, so that repository modifications are explicit.
 42. As a security-conscious user, I want High and Critical Risk Assessments to trigger the configured confirmation policy, so that risky content is never installed silently.
 43. As a user executing a multi-target plan, I want per-target progress and outcomes, so that one slow or failed target does not hide the rest.
 44. As a user after partial failure, I want successful targets retained, so that unrelated locations are not rolled back.
@@ -76,28 +76,31 @@ Projects are added only through explicit directory selection. External Installat
 52. As a Library user, I want project and Agent entries to be mutually exclusive, so that one rail selection always has one clear meaning.
 53. As a Library user, I want search within the current view, so that I can narrow a large inventory without changing navigation semantics.
 54. As a Library user, I want one Library Entry per logical Skill, so that installing a Skill in many places does not flood the list.
-55. As a Library user, I want each entry to summarize target count, projects, Agents, versions, provenance, risk, and health, so that important state is visible before detail.
-56. As a user with Version Divergence, I want the number of active versions displayed, so that intentional project pinning is not presented as damage.
+55. As a Library user, I want compact, selectable rows with Skill identity and Agent coverage, so that I can scan a large inventory without card chrome.
+56. As a Library user, I want existing Update and Manage Targets journeys to appear in a floating selection bar, so that row actions remain uncluttered without weakening exact-target review.
 57. As a user opening a Library Entry, I want every relevant Installation Target listed with location, Agent, version, type, and health, so that I can act on individual targets.
 58. As a user with a Hub Skill, I want to install it to more targets from Library detail, so that discovery is not the only entry point for distribution.
 59. As a user checking updates, I want every managed target resolved independently, so that different references and versions remain accurate.
-60. As a user updating a Skill, I want to select exact targets, so that project Locks are never changed implicitly.
-61. As a project user, I want an updated target to update its Workspace Lock after confirmation, so that the project remains reproducible.
+60. As a user updating a Skill, I want to select exact targets, so that project Manifests are never changed implicitly.
+61. As a project user, I want an updated target to update its Workspace Manifest after confirmation, so that the project remains reproducible.
 62. As a user with a fixed commit target, I want it excluded from misleading update prompts when it has no movable reference, so that pinning remains meaningful.
 63. As a user removing a Skill, I want to choose exact targets, so that other Agents and projects remain unchanged.
-64. As a user removing the last active target, I want Store cleanup to honor remaining Workspace Lock references, so that restore remains possible.
+64. As a user removing the last active target, I want Store cleanup to honor remaining Workspace Manifest references, so that restore remains possible.
 65. As a user with an unhealthy target, I want repair or stop-managing actions, so that SkillsGo never deletes an unexpected filesystem object automatically.
 66. As a user with an existing Skill installed by another tool, I want it shown as an External Installation, so that the Library reflects the machine rather than only SkillsGo receipts.
 67. As a user inspecting an External Installation, I want to read its instructions, files, and risk, so that unmanaged does not mean invisible.
-68. As a user with an External Installation, I want update and removal disabled until adoption, so that SkillsGo does not claim ownership silently.
-69. As a user adopting an External Installation, I want SkillsGo to attempt an immutable Hub match, so that known content can regain source and update metadata.
+68. As a user with an External Installation, I want update and repair disabled while exact-path removal remains available, so that SkillsGo never claims ownership silently.
+69. External Adoption is deferred beyond the first release; reinstalling from an explicit source is the only way to create managed ownership.
 70. As a user reviewing a Hub match, I want source and version confirmed before association, so that content is not replaced by assumption.
+71. As a user pasting an explicit Git source, I want the App to resolve it through the bundled CLI and render the returned Repository members or single Skill with the existing discovery cards, so that uncataloged public sources remain installable without direct App-to-Hub protocol coupling.
+
+For GitHub `owner/repository` shorthand, ordinary search retains precedence. The App retries the value as `github.com/owner/repository` through the CLI only when the first search page is empty; an existing catalog match is always preserved.
 71. As a user with custom content, I want to import an unmatched External Installation as a Local Skill, so that my own Skills can use the same management workflow.
 72. As a Local Skill user, I want to install it elsewhere, export it, or remove it, so that local content remains useful without being published.
 73. As a Local Skill author, I want import to remain local, so that adoption never publishes private content to a Hub.
 74. As a project user, I want to add a project through the operating-system directory picker, so that access is explicit.
 75. As a project user, I want a project to work without Git or existing SkillsGo files, so that local workspaces are not excluded.
-76. As a project user, I want SkillsGo to read the Workspace Manifest, Workspace Lock, and known Agent Skill directories, so that declared and actual inventory can be reconciled.
+76. As a project user, I want SkillsGo to read the Workspace Manifest, Workspace Manifest, and known Agent Skill directories, so that declared and actual inventory can be reconciled.
 77. As a project user, I want projects restored after App restart, so that navigation remains stable.
 78. As a project user, I want removing a project from SkillsGo to leave its files untouched, so that navigation cleanup is not destructive.
 79. As a user with a moved project, I want a Relocate action, so that its identity and history can be recovered.
@@ -126,21 +129,21 @@ Projects are added only through explicit directory selection. External Installat
 - Production App packages a platform-compatible SkillsGo CLI and verifies its availability and compatibility at startup. The bundled executable is not installed into the user's system `PATH`.
 - Keep the App's highest test and orchestration seam as `SkillsGateway`. UI code receives domain objects and operations rather than directly invoking HTTP, processes, or the filesystem.
 - Expand the Gateway domain around Installed Agents, Added Projects, Library Entries, Installation Targets, Installation Plans, Target Results, External Installations, Local Skills, Version Divergence, and Hub collection pages.
-- Treat the SkillsGo CLI as the only owner of local Skill mutations, Content-addressed Store state, Agent Adapter behavior, Installation Receipts, Workspace Manifests, and Workspace Locks.
+- Treat the SkillsGo CLI as the only owner of local Skill mutations, Content-addressed Store state, Agent Adapter behavior, Installation Receipts, Workspace Manifests, and Workspace Manifests.
 - Add a stable CLI machine contract for Installed Agent discovery. Each result includes canonical Agent ID, display name, installed state, supported scopes, and resolved user-level target information. Human CLI output is not part of the App contract.
-- Add a stable CLI inventory contract that accepts User Scope plus an explicit list of Added Project roots. It returns logical Skill identity when known, provenance, versions, and every Installation Target with scope, project, Agent, path, mode, receipt state, and health.
+- Add a stable CLI inventory contract that accepts User Scope plus an explicit list of Added Project roots. It returns the public Skill ID when known, an inventory key, provenance, versions, and every Installation Target with scope, project, Agent, path, mode, receipt state, and health.
 - Inventory scans known Agent directories only. Project scanning is restricted to Added Projects passed by the App and never expands into general disk discovery.
-- Aggregate Hub Skills by stable Skill Identity, Local Skills by local identity, and leave unidentified External Installations distinct even when names match.
+- Aggregate Hub Skills by stable Skill ID, Local Skills by inventory key, and leave External Installations without a managed Skill ID distinct even when names match.
 - Persist the Added Project list as App state using stable directory references appropriate to the desktop platform. Removing an Added Project deletes only the reference.
 - Model an Installation Plan as one Skill artifact plus an explicit list of location-and-Agent targets. Row and column selection are UI shortcuts that produce exact cells before execution.
 - The CLI preflights every target before mutation and returns target-specific actions such as create, replace, skip, conflict, or blocked-by-risk.
 - Multi-target execution commits each Installation Target independently. A failure does not roll back unrelated successful targets. The final structured response includes every Target Result and enough identity to retry only failed targets.
 - Structured operation progress must remain machine-readable. The final result is stable JSON; if streaming progress is introduced, it uses a versioned structured event protocol rather than localized text parsing.
-- Existing identical targets are skipped. Same-name different-identity collisions, Version Divergence, and Local Modifications require explicit resolutions.
-- Updating targets resolves each target's own reference and current immutable version. Project updates modify the corresponding Workspace Lock only after confirmation. Fixed commits without a movable reference do not report an available update.
+- Existing identical targets are skipped. Same-name different-Skill-ID collisions, Version Divergence, and Local Modifications require explicit resolutions.
+- Updating targets resolves each target's own reference and current immutable version. Project updates modify the corresponding Workspace Manifest only after confirmation. Fixed commits without a movable reference do not report an available update.
 - Removing a target never removes other targets for the same Library Entry. Store pruning remains a separate reference-aware operation.
 - Detect External Installations by reconciling known Agent directories with Installation Receipts. Inspection is read-only until adoption.
-- External adoption first attempts a Hub match using content identity and source hints. A confirmed match becomes a managed Hub Skill; an unmatched item may be imported as a Local Skill without publication or an online update source.
+- External removal uses the exact discovered target and reviewed filesystem state. It creates no receipt, Workspace declaration, or inferred source metadata.
 - Hub collection contracts remain Search plus ranked Skills using `all_time`, `trending`, and `hot` semantics. Pagination and empty collections must return stable machine-readable shapes.
 - Hub detail must provide the immutable metadata needed by the App to display source, Manifest, files, Trust Level, and Risk Assessment without relying on human web pages.
 - Keep Hub Origin configurable. Official and self-hosted Origins use the same protocol and content verification rules.
@@ -155,18 +158,18 @@ Projects are added only through explicit directory selection. External Installat
 - Extend the existing high-level App journey coverage to include top-level and rail navigation, state restoration, all four Discover views, Skill detail origin restoration, Installation Plan matrix selection, per-target results, Library aggregation, Version Divergence, External Installation adoption, project lifecycle, offline behavior, and accessibility semantics.
 - Gateway contract tests use controlled HTTP clients and process runners to verify Hub and CLI schemas, non-success status handling, malformed responses, timeout behavior, and error translation.
 - The CLI uses its root `Execute` entry point as the primary seam. Tests provide arguments, stdout, stderr, temporary home and project directories, and controlled Hub HTTP servers.
-- Extend CLI command-flow tests to cover Installed Agent discovery, inventory reconciliation, explicit multi-target plans, row and column expansion results, collisions, Local Modifications, per-target partial failure, retry, project Lock changes, External Installation import, and stable structured output.
+- Extend CLI command-flow tests to cover Installed Agent discovery, inventory reconciliation, explicit multi-target plans, row and column expansion results, collisions, Local Modifications, per-target partial failure, retry, project Manifest changes, External Installation import, and stable structured output.
 - Lower-level Store, Agent Adapter, target, and project tests remain appropriate only for deterministic algorithms or safety invariants that are difficult to isolate through the command boundary.
 - The Hub uses its HTTP Router as the primary seam. Tests exercise Search, Ranking, Trending, Hot, detail, immutable metadata, pagination, empty arrays, validation, and idempotent install events through HTTP requests.
 - Hub HTTP tests run against SQLite for fast coverage. Existing PostgreSQL integration coverage verifies database portability for catalog and ranking behavior.
 - Add contract fixtures shared conceptually across App, CLI, and Hub so field names, enum values, and versioned protocol behavior cannot drift. Fixtures test public JSON rather than language-specific internal types.
 - Test partial failure with at least one writable target and one failing target, then assert the writable target remains installed and the failed target alone can be retried.
 - Test that a same-name different-identity Skill is never merged or overwritten without explicit replacement.
-- Test that an External Installation remains visible but cannot be updated or removed before adoption.
+- Test that an External Installation remains visible, cannot be updated or repaired, and can be removed only through an exact reviewed target.
 - Test that Local Skill import does not contact a publication endpoint and does not acquire a false online update state.
-- Test that removing an Added Project leaves its directory, Workspace Manifest, Workspace Lock, and Agent Skill directories unchanged.
+- Test that removing an Added Project leaves its directory, Workspace Manifest, Workspace Manifest, and Agent Skill directories unchanged.
 - Test session navigation state at the Widget seam rather than private state objects.
-- Preserve the existing no-shell execution tests and add hostile coordinate, name, and path inputs to confirm they remain plain arguments.
+- Preserve the existing no-shell execution tests and add hostile Skill ID, name, and path inputs to confirm they remain plain arguments.
 - Manual desktop acceptance covers bundled CLI discovery, directory-picker permissions, a real multi-Agent matrix operation, partial failure presentation, keyboard navigation, reduced motion, and App restart with restored Added Projects.
 
 ## Out of Scope
@@ -181,7 +184,7 @@ Projects are added only through explicit directory selection. External Installat
 - Automatically making versions uniform across projects.
 - Background auto-update of Skill content.
 - Treating multi-location filesystem operations as one global transaction.
-- Updating or removing an External Installation before adoption.
+- Updating, repairing, or adopting an External Installation in the first release.
 - Automatic merge of Local Modifications.
 - Redesigning the Hub artifact protocol beyond metadata required by the agreed user journeys.
 - Team-specific private distribution and policy controls.
@@ -189,7 +192,7 @@ Projects are added only through explicit directory selection. External Installat
 ## Further Notes
 
 - The existing Hub already exposes Search and the three ranking sort modes, but the App currently consumes only Search.
-- The existing CLI already models many Agent Adapters, User Scope, Workspace Scope, the Content-addressed Store, Installation Receipts, Workspace Manifests, and Workspace Locks. The missing work is primarily stable high-level discovery, reconciliation, and multi-target operation contracts.
+- The existing CLI already models many Agent Adapters, User Scope, Workspace Scope, the Content-addressed Store, Installation Receipts, Workspace Manifests, and Workspace Manifests. The missing work is primarily stable high-level discovery, reconciliation, and multi-target operation contracts.
 - The current App Gateway is intentionally narrow and Codex-oriented. Expanding that seam should precede the nested navigation implementation so UI code is not built on temporary parsing logic.
 - The original external `skills` CLI and `skills.sh` MVP specification is superseded. System ADR-0001 establishes the bundled SkillsGo CLI as the production architecture.
 - The Burrow reference supplies visual language and motion quality, not its exact icon-only navigation. SkillsGo requires text because Added Projects and Installed Agents are dynamic user-owned entities.

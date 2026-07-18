@@ -1,13 +1,14 @@
 /*
  * Derived from Portal Labs Discrete Tabs, Copyright (c) 2026 Luis Portal, MIT License.
  * See /app/THIRD_PARTY_NOTICES.md for the complete attribution and license text.
- * [INPUT]: Depends on Flutter Material animation, focus, semantics, and haptic APIs.
- * [OUTPUT]: Provides an accessible controlled or uncontrolled expanding pill tab selector.
- * [POS]: Serves as the vendored Portal Labs appearance-mode selector in the App UI module.
+ * [INPUT]: Depends on Flutter Material animation, focus, semantics, and haptic APIs plus HugeIcons rendering.
+ * [OUTPUT]: Provides an accessible controlled or uncontrolled expanding pill tab selector with a shared neutral selected background.
+ * [POS]: Serves as the vendored Portal Labs collection and appearance-mode selector in the App UI module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:hugeicons/hugeicons.dart';
 
 import 'shimmer_text.dart';
 
@@ -19,7 +20,7 @@ class DiscreteTab {
   });
 
   final String label;
-  final IconData icon;
+  final List<List<dynamic>> icon;
   final Color activeColor;
 }
 
@@ -131,6 +132,7 @@ class _DiscreteTabItem extends StatelessWidget {
         ? Duration.zero
         : const Duration(milliseconds: 600);
     return FocusableActionDetector(
+      key: ValueKey('discrete-tab-focus-${tab.label}'),
       mouseCursor: SystemMouseCursors.click,
       shortcuts: const {
         SingleActivator(LogicalKeyboardKey.enter): ActivateIntent(),
@@ -179,54 +181,72 @@ class _DiscreteTabItem extends StatelessWidget {
                   scale: selected ? 1.08 : 1,
                   duration: duration,
                   curve: reduceMotion ? Curves.linear : Curves.easeOutBack,
-                  child: Icon(
-                    tab.icon,
+                  child: HugeIcon(
+                    icon: tab.icon,
                     size: 20,
+                    strokeWidth: 1.8,
                     color: selected ? tab.activeColor : style.inactiveIconColor,
                   ),
                 ),
                 ClipRect(
-                  child: AnimatedSize(
-                    duration: duration,
-                    curve: reduceMotion ? Curves.linear : Curves.easeOutBack,
-                    alignment: Alignment.centerLeft,
-                    child: selected
-                        ? TweenAnimationBuilder<double>(
-                            tween: Tween(begin: 0, end: 1),
-                            duration: reduceMotion
-                                ? Duration.zero
-                                : const Duration(milliseconds: 400),
-                            curve: Curves.easeOutCubic,
-                            builder: (context, value, child) => Opacity(
-                              opacity: value,
-                              child: Transform.translate(
-                                offset: Offset(-10 * (1 - value), 0),
-                                child: child,
-                              ),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.only(left: 6),
-                              child: ShimmerText(
-                                text: tab.label,
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w700,
-                                  letterSpacing: -.5,
-                                  color: tab.activeColor,
+                  child: reduceMotion
+                      ? selected
+                            ? Padding(
+                                padding: const EdgeInsets.only(left: 6),
+                                child: Text(
+                                  tab.label,
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    letterSpacing: -.5,
+                                    color: tab.activeColor,
+                                  ),
                                 ),
-                                baseColor: tab.activeColor,
-                                highlightColor:
-                                    Color.lerp(
-                                      tab.activeColor,
-                                      Theme.of(context).colorScheme.onSurface,
-                                      .8,
-                                    ) ??
-                                    tab.activeColor,
-                              ),
-                            ),
-                          )
-                        : const SizedBox.shrink(),
-                  ),
+                              )
+                            : const SizedBox.shrink()
+                      : AnimatedSize(
+                          duration: duration,
+                          curve: Curves.easeOutBack,
+                          alignment: Alignment.centerLeft,
+                          child: selected
+                              ? TweenAnimationBuilder<double>(
+                                  tween: Tween(begin: 0, end: 1),
+                                  duration: reduceMotion
+                                      ? Duration.zero
+                                      : const Duration(milliseconds: 400),
+                                  curve: Curves.easeOutCubic,
+                                  builder: (context, value, child) => Opacity(
+                                    opacity: value,
+                                    child: Transform.translate(
+                                      offset: Offset(-10 * (1 - value), 0),
+                                      child: child,
+                                    ),
+                                  ),
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(left: 6),
+                                    child: ShimmerText(
+                                      text: tab.label,
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w700,
+                                        letterSpacing: -.5,
+                                        color: tab.activeColor,
+                                      ),
+                                      baseColor: tab.activeColor,
+                                      highlightColor:
+                                          Color.lerp(
+                                            tab.activeColor,
+                                            Theme.of(
+                                              context,
+                                            ).colorScheme.onSurface,
+                                            .8,
+                                          ) ??
+                                          tab.activeColor,
+                                    ),
+                                  ),
+                                )
+                              : const SizedBox.shrink(),
+                        ),
                 ),
               ],
             ),

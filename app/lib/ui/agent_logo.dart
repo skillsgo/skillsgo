@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter Material theming, flutter_svg, and vendored Agent logo assets.
- * [OUTPUT]: Provides the shared AgentLogo widget and canonical Agent ID-to-asset mapping with a text fallback.
+ * [OUTPUT]: Provides the shared theme-aware AgentLogo widget, canonical Agent ID-to-asset mappings, optional dark variants, and a text fallback.
  * [POS]: Serves as the single Agent identity visual used by installation and Library navigation surfaces.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -80,9 +80,18 @@ class AgentLogo extends StatelessWidget {
     _ => null,
   };
 
+  static String? darkAssetPathFor(String agentId) =>
+      switch (agentId.toLowerCase()) {
+        'opencode' => 'assets/agent-logos/opencode-dark.svg',
+        _ => null,
+      };
+
   @override
   Widget build(BuildContext context) {
-    final path = assetPathFor(agentId);
+    final basePath = assetPathFor(agentId);
+    final path = Theme.of(context).brightness == Brightness.dark
+        ? darkAssetPathFor(agentId) ?? basePath
+        : basePath;
     if (path != null) {
       return SizedBox.square(
         dimension: size,
