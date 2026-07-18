@@ -1,37 +1,25 @@
 # Cross-Product End-to-End Tests
-> F1 Domain Map + F2 Workspace Map | Parent: `/AGENTS.md` | Manifest: `go.mod`
+> F1 Domain Map | Parent: `/AGENTS.md`
 
-This workspace owns black-box user-journey tests spanning the released CLI and Hub binaries.
+This domain owns black-box release journeys across SkillsGo product boundaries.
 
-## Workspace Identity
+## Workspaces
 
-- Module: `github.com/skillsgo/skillsgo/e2e`
-- Runtime: Go test controller plus one disposable Linux container per scenario
-- Public seams: CLI process arguments and JSON output, Hub HTTP protocol, and user-visible filesystem state
-
-## Members
-
-- `Dockerfile`: builds the CLI and Hub Linux binaries into the reusable test image.
-- `entrypoint.sh`: initializes the mounted sandbox and runs the Hub as the container foreground process.
-- `git-fixtures.sh`: creates deterministic local Git remotes reached through the public Repository source path.
-- `git-wrapper.sh`: delegates to system Git while adding deterministic latency for capacity-only source fixtures.
-- `environment_test.go`: owns disposable container startup, the isolated bind mount, command execution, shared fixtures, and assertion helpers.
-- `j01_*_test.go` through `j36_*_test.go`: each file owns exactly one numbered user-journey contract from `USER-JOURNEYS.md`; support code must remain outside these files.
-- `USER-JOURNEYS.md`: prioritizes real cross-product user stories and their observable acceptance boundaries.
-
-## Boundaries
-
-- Tests must not import `cli/internal/**` or `hub/internal/**` packages.
-- Every scenario must use its own container and `t.TempDir()` bind mount.
-- Never mount the repository, the host home directory, or a real Agent directory into a scenario container.
-- Assertions target stable JSON, HTTP, and filesystem contracts rather than human-oriented terminal copy.
+- `cli/`: Linux container journeys spanning the released CLI, Hub, public HTTP/JSON contracts, and isolated filesystem state.
+- `app/`: macOS desktop journeys spanning the real Flutter App, released CLI process, disposable Hub, and isolated Agent/project state.
 
 ## Commands
 
-Run from this directory:
+Run from the repository root:
 
 ```bash
-go test -v ./...
+make test-e2e-cli
+make test-e2e-app
+make test-e2e
 ```
 
-[PROTOCOL]: Update this map when workspace structure, ownership, commands, or boundaries change.
+## Boundary
+
+App journeys must drive the rendered desktop product and use real CLI and Hub boundaries. Widget tests with a fake `SkillsGateway` are App component tests and must not be presented as E2E coverage.
+
+[PROTOCOL]: Update this map when E2E workspaces, commands, or cross-product boundaries change.

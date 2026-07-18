@@ -6,6 +6,51 @@
  */
 part of 'app_shell.dart';
 
+Widget _targetFailureDetails(BuildContext context, TargetFailure failure) {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(switch (failure.code) {
+        'installation.target_failed' =>
+          context.l10n.installationTargetFailureMessage,
+        'workspace.persistence_failed' =>
+          context.l10n.workspacePersistenceFailureMessage,
+        'installation.state_changed' =>
+          context.l10n.installationStateChangedMessage,
+        'update.target_failed' => context.l10n.updateTargetFailureMessage,
+        'management.target_failed' =>
+          context.l10n.managementTargetFailureMessage,
+        _ =>
+          failure.retryable
+              ? context.l10n.targetFailureRetryable
+              : context.l10n.targetFailureNeedsAttention,
+      }, style: TextStyle(color: context.skillsComponents.statusDanger)),
+      if (failure.diagnostic.isNotEmpty)
+        Material(
+          type: MaterialType.transparency,
+          child: ExpansionTile(
+            tilePadding: EdgeInsets.zero,
+            childrenPadding: const EdgeInsets.only(bottom: 8),
+            title: Text(
+              context.l10n.technicalDetails,
+              style: const TextStyle(fontSize: 12),
+            ),
+            children: [
+              SelectableText(
+                failure.diagnostic,
+                style: TextStyle(
+                  color: context.skillsComponents.statusDanger,
+                  fontFamily: SkillsTokens.monoFamily,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ),
+        ),
+    ],
+  );
+}
+
 class _SkillCardSkeleton extends StatelessWidget {
   const _SkillCardSkeleton();
 
@@ -657,10 +702,6 @@ class _RemoteDetailScreenState extends ConsumerState<_RemoteDetailScreen> {
           ),
           const SizedBox(height: 24),
           _detailProductMetadata(value),
-          if (value.hasExecutableContent || value.riskEvidence.isNotEmpty) ...[
-            const SizedBox(height: 12),
-            _RiskNotice(detail: value),
-          ],
           if (value.installationTargets.isNotEmpty) ...[
             const SizedBox(height: 12),
             Row(
@@ -742,10 +783,7 @@ class _RemoteDetailScreenState extends ConsumerState<_RemoteDetailScreen> {
           value.repository.isEmpty ? value.source : value.repository,
         ),
       ),
-      (
-        label: context.l10n.detailStars,
-        value: _compactCount(value.stars),
-      ),
+      (label: context.l10n.detailStars, value: _compactCount(value.stars)),
       (
         label: context.l10n.detailUpdated,
         value: _shortDate(value.sourceUpdatedAt),
@@ -875,60 +913,6 @@ class _RemoteDetailScreenState extends ConsumerState<_RemoteDetailScreen> {
     }
     return '${(bytes / 1024).toStringAsFixed(bytes >= 10240 ? 0 : 1)} KB';
   }
-}
-
-class _RiskNotice extends StatelessWidget {
-  const _RiskNotice({required this.detail});
-  final SkillDetail detail;
-  @override
-  Widget build(BuildContext context) => Container(
-    padding: const EdgeInsets.all(14),
-    decoration: BoxDecoration(
-      color: context.skillsComponents.statusAttention.withValues(alpha: .12),
-      borderRadius: BorderRadius.circular(14),
-      border: Border.all(
-        color: context.skillsComponents.statusAttention.withValues(alpha: .35),
-      ),
-    ),
-    child: Row(
-      children: [
-        HugeIcon(
-          icon: HugeIcons.strokeRoundedAlert02,
-          strokeWidth: 1.8,
-          color: context.skillsComponents.statusAttention,
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                context.l10n.executableRisk,
-                style: TextStyle(
-                  color: context.skillsComponents.statusAttention,
-                ),
-              ),
-              if (detail.riskEvidence.isNotEmpty) ...[
-                const SizedBox(height: 4),
-                Text(
-                  context.l10n.riskEvidence(
-                    detail.riskEvidence
-                        .map((evidence) => evidence.path)
-                        .join(', '),
-                  ),
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    fontFamily: SkillsTokens.monoFamily,
-                    fontSize: 11,
-                  ),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
 }
 
 class _TargetManagementDialog extends ConsumerStatefulWidget {
@@ -1280,13 +1264,8 @@ class _TargetManagementDialogState
                         color: Theme.of(context).colorScheme.onSurfaceVariant,
                       ),
                     ),
-                    if (result.diagnostic.isNotEmpty)
-                      Text(
-                        result.diagnostic,
-                        style: TextStyle(
-                          color: context.skillsComponents.statusDanger,
-                        ),
-                      ),
+                    if (result.error != null)
+                      _targetFailureDetails(context, result.error!),
                   ],
                 ),
               ),
@@ -1711,13 +1690,8 @@ class _UpdatePlanDialogState extends ConsumerState<_UpdatePlanDialog> {
                               ).colorScheme.onSurfaceVariant,
                             ),
                           ),
-                          if (result.diagnostic.isNotEmpty)
-                            Text(
-                              result.diagnostic,
-                              style: TextStyle(
-                                color: context.skillsComponents.statusDanger,
-                              ),
-                            ),
+                          if (result.error != null)
+                            _targetFailureDetails(context, result.error!),
                         ],
                       ),
                     ),

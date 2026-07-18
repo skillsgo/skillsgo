@@ -83,7 +83,10 @@ func runManagementPlan(
 		if streamErr != nil {
 			return streamErr
 		}
-		return encoder.Encode(execution)
+		if err := encoder.Encode(execution); err != nil {
+			return err
+		}
+		return managementExecutionError(execution)
 	}
 	if output == "human" {
 		ui, err := humanUI(cmd)
@@ -100,10 +103,23 @@ func runManagementPlan(
 		if err != nil {
 			return err
 		}
-		return writePlanOutput(cmd, "human", execution, fmt.Sprintf("Managed %d target(s), failed %d\n", execution.Summary.Succeeded, execution.Summary.Failed))
+		if err := writePlanOutput(cmd, "human", execution, appi18n.F("management.execution.summary", execution.Summary.Succeeded, execution.Summary.Failed)); err != nil {
+			return err
+		}
+		return managementExecutionError(execution)
 	}
 	execution := managementplan.Execute(storage, preflight, nil)
 	encoder := json.NewEncoder(cmd.OutOrStdout())
 	encoder.SetIndent("", "  ")
-	return encoder.Encode(execution)
+	if err := encoder.Encode(execution); err != nil {
+		return err
+	}
+	return managementExecutionError(execution)
+}
+
+func managementExecutionError(execution managementplan.Execution) error {
+	if execution.Summary.Failed > 0 {
+		return fmt.Errorf("%d management target(s) failed", execution.Summary.Failed)
+	}
+	return nil
 }

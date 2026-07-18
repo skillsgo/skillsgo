@@ -4,7 +4,7 @@
 ## Members
 
 - `update_plan.go`: validates exact managed targets, preserves canonical immutable Workspace requirements, groups shared physical and Workspace bindings, previews Workspace Manifest changes, and executes state-bound updates or declaration-only reconciliation with per-target progress/results.
-- `update_plan_test.go`: specifies strict hostile target decoding at the Update Plan boundary.
+- `update_plan_test.go`: specifies strict hostile target decoding and nested target-failure results at the Update Plan boundary.
 
 ## Architectural Boundary
 

@@ -46,10 +46,11 @@ func installationProgressEvent(progress plan.Progress) terminalEvent {
 		event.Kind = terminalui.EventStarted
 	} else if progress.Result != nil && progress.Result.Outcome == plan.OutcomeFailed {
 		event.Kind = terminalui.EventFailed
-		event.Detail = progress.Result.Diagnostic
+		if progress.Result.Error != nil {
+			event.Detail = progress.Result.Error.Diagnostic
+		}
 	} else if progress.Result != nil && progress.Result.Outcome == plan.OutcomeConflict {
 		event.Kind = terminalui.EventWarning
-		event.Detail = progress.Result.Diagnostic
 	} else {
 		event.Kind = terminalui.EventSucceeded
 	}
@@ -62,7 +63,9 @@ func updateProgressEvent(progress updateplan.Progress) terminalEvent {
 		event.Kind = terminalui.EventStarted
 	} else if progress.Result != nil && progress.Result.Outcome == updateplan.OutcomeFailed {
 		event.Kind = terminalui.EventFailed
-		event.Detail = progress.Result.Diagnostic
+		if progress.Result.Error != nil {
+			event.Detail = progress.Result.Error.Diagnostic
+		}
 	} else {
 		event.Kind = terminalui.EventSucceeded
 	}
@@ -75,7 +78,9 @@ func managementProgressEvent(progress managementplan.Progress) terminalEvent {
 		event.Kind = terminalui.EventStarted
 	} else if progress.Result != nil && progress.Result.Outcome == managementplan.OutcomeFailed {
 		event.Kind = terminalui.EventFailed
-		event.Detail = progress.Result.Diagnostic
+		if progress.Result.Error != nil {
+			event.Detail = progress.Result.Error.Diagnostic
+		}
 	} else {
 		event.Kind = terminalui.EventSucceeded
 	}

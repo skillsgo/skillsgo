@@ -7,6 +7,7 @@
 - `0002-name-public-distribution-context-hub.md`: establishes SkillsGo Hub as the shared product and domain name for public Skill discovery and distribution.
 - `0003-use-public-skill-ids.md`: establishes one canonical public Skill ID, removes the separate Skill Identity concept, and distinguishes public IDs from internal database row IDs.
 - `0004-separate-module-and-api-surfaces.md`: separates Go-like artifact distribution under `/mod`, product APIs under `/api/v1`, and portable local intent in `skillsgo.mod`.
+- `0005-route-app-through-cli-and-stabilize-machine-failures.md`: makes the CLI the App's only business-integration boundary and establishes the minimal public machine-failure contract for App and automation callers.
 
 ## Architectural Boundary
 

@@ -60,7 +60,7 @@ func startEnvironment(t *testing.T, ctx context.Context) (testcontainers.Contain
 		"",
 		testcontainers.WithDockerfile(testcontainers.FromDockerfile{
 			Context:    repositoryRoot,
-			Dockerfile: "e2e/Dockerfile",
+			Dockerfile: "e2e/cli/Dockerfile",
 			Repo:       "skillsgo-e2e",
 			Tag:        "local",
 			KeepImage:  true,
@@ -215,7 +215,7 @@ func findRepositoryRoot(t *testing.T) string {
 	t.Helper()
 	_, filename, _, ok := runtime.Caller(0)
 	require.True(t, ok)
-	root := filepath.Clean(filepath.Join(filepath.Dir(filename), ".."))
+	root := filepath.Clean(filepath.Join(filepath.Dir(filename), "..", ".."))
 	_, err := os.Stat(filepath.Join(root, "cli", "go.mod"))
 	require.NoError(t, err)
 	_, err = os.Stat(filepath.Join(root, "hub", "go.mod"))

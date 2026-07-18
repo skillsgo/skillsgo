@@ -312,20 +312,34 @@ class WorkspaceManifestChange {
   final String toVersion;
 }
 
+class TargetFailure {
+  const TargetFailure({
+    required this.code,
+    required this.retryable,
+    this.details = const {},
+    this.requestId = '',
+    this.diagnostic = '',
+  });
+
+  final String code;
+  final bool retryable;
+  final Map<String, Object?> details;
+  final String requestId;
+  final String diagnostic;
+}
+
 class InstallationTargetResult {
   const InstallationTargetResult({
     required this.target,
     required this.action,
     required this.outcome,
-    this.errorCode = '',
-    this.diagnostic = '',
+    this.error,
   });
 
   final InstallationPlanTarget target;
   final InstallationPlanAction action;
   final InstallationTargetOutcome outcome;
-  final String errorCode;
-  final String diagnostic;
+  final TargetFailure? error;
 }
 
 class InstallationExecutionSummary {
@@ -481,8 +495,7 @@ class UpdateTargetResult {
     required this.fromVersion,
     required this.toVersion,
     required this.outcome,
-    this.errorCode = '',
-    this.diagnostic = '',
+    this.error,
   });
 
   final InstallationPlanTarget target;
@@ -491,8 +504,7 @@ class UpdateTargetResult {
   final String fromVersion;
   final String toVersion;
   final UpdateTargetOutcome outcome;
-  final String errorCode;
-  final String diagnostic;
+  final TargetFailure? error;
 }
 
 class UpdateExecutionSummary {
@@ -634,8 +646,7 @@ class TargetManagementResult {
     required this.version,
     required this.action,
     required this.outcome,
-    this.errorCode = '',
-    this.diagnostic = '',
+    this.error,
   });
 
   final InstallationPlanTarget target;
@@ -644,8 +655,7 @@ class TargetManagementResult {
   final String version;
   final TargetManagementAction action;
   final TargetManagementOutcome outcome;
-  final String errorCode;
-  final String diagnostic;
+  final TargetFailure? error;
 }
 
 class TargetManagementExecutionSummary {

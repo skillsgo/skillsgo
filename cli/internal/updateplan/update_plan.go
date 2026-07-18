@@ -110,14 +110,19 @@ type Preflight struct {
 }
 
 type Result struct {
-	Target      Target  `json:"target"`
-	Name        string  `json:"name"`
-	SkillID     string  `json:"skillId"`
-	FromVersion string  `json:"fromVersion"`
-	ToVersion   string  `json:"toVersion"`
-	Outcome     Outcome `json:"outcome"`
-	ErrorCode   string  `json:"errorCode,omitempty"`
-	Diagnostic  string  `json:"diagnostic,omitempty"`
+	Target      Target       `json:"target"`
+	Name        string       `json:"name"`
+	SkillID     string       `json:"skillId"`
+	FromVersion string       `json:"fromVersion"`
+	ToVersion   string       `json:"toVersion"`
+	Outcome     Outcome      `json:"outcome"`
+	Error       *TargetError `json:"error,omitempty"`
+}
+
+type TargetError struct {
+	Code       string `json:"code"`
+	Retryable  bool   `json:"retryable"`
+	Diagnostic string `json:"diagnostic,omitempty"`
 }
 
 type ResultSummary struct {
@@ -552,8 +557,7 @@ func Execute(
 		case ActionFailed:
 			emit(index, ProgressStarted)
 			execution.Results[index].Outcome = OutcomeFailed
-			execution.Results[index].ErrorCode = item.ReasonCode
-			execution.Results[index].Diagnostic = item.Diagnostic
+			execution.Results[index].Error = &TargetError{Code: "update.target_failed", Retryable: true, Diagnostic: item.Diagnostic}
 			emit(index, ProgressFinished)
 		case ActionUpdate:
 			key := filepath.Clean(item.Target.Path) + "\x00" + item.SkillID + "\x00" + item.ToVersion
@@ -605,8 +609,7 @@ func Execute(
 		if mutationErr != nil {
 			for _, index := range indexes {
 				execution.Results[index].Outcome = OutcomeFailed
-				execution.Results[index].ErrorCode = "update-failed"
-				execution.Results[index].Diagnostic = mutationErr.Error()
+				execution.Results[index].Error = &TargetError{Code: "update.target_failed", Retryable: true, Diagnostic: mutationErr.Error()}
 				emit(index, ProgressFinished)
 			}
 			continue
@@ -635,8 +638,7 @@ func Execute(
 			lockErr := lockErrors[filepath.Clean(item.Target.ProjectRoot)+"\x00"+item.Name]
 			if item.Target.Scope == install.ScopeProject && lockErr != nil {
 				execution.Results[index].Outcome = OutcomeFailed
-				execution.Results[index].ErrorCode = "workspace-update-failed"
-				execution.Results[index].Diagnostic = lockErr.Error()
+				execution.Results[index].Error = &TargetError{Code: "workspace.persistence_failed", Retryable: true, Diagnostic: lockErr.Error()}
 			} else {
 				execution.Results[index].Outcome = OutcomeSucceeded
 			}

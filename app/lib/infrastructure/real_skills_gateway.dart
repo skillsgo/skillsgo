@@ -148,15 +148,6 @@ InstallationTargetOutcome _installationTargetOutcome(Object? value) =>
       _ => throw const FormatException('Unknown Installation Target outcome.'),
     };
 
-String _installationErrorCode(Object? value) => switch (value) {
-  null => '',
-  'target-path-exists' => 'target-path-exists',
-  'blocked-by-risk' => 'blocked-by-risk',
-  'install-failed' => 'install-failed',
-  'workspace-update-failed' => 'workspace-update-failed',
-  _ => throw const FormatException('Unknown Installation Target error code.'),
-};
-
 InstallationHealth _installationHealth(Object? value) => switch (value) {
   'healthy' => InstallationHealth.healthy,
   'missing' => InstallationHealth.missing,
@@ -190,7 +181,7 @@ int _localTargetReadRank(SkillInstallationTarget target) {
 
 const _localFilePreviewLimit = 256 * 1024;
 const _inventorySchemaVersion = 5;
-const _installationPlanSchemaVersion = 2;
+const _installationPlanSchemaVersion = 3;
 
 bool _looksExecutablePath(String path) {
   final lower = path.toLowerCase();
@@ -351,15 +342,18 @@ InstallationExecution _directInstallationExecution(
     }
     final action = _installationPlanAction(result['action']);
     final outcome = _installationTargetOutcome(result['outcome']);
-    final errorCode = _installationErrorCode(result['errorCode']);
+    if (result.containsKey('errorCode') || result.containsKey('diagnostic')) {
+      throw const FormatException();
+    }
+    final error = _targetFailure(result['error']);
     if ((outcome == InstallationTargetOutcome.succeeded ||
             outcome == InstallationTargetOutcome.skipped) &&
-        errorCode.isNotEmpty) {
+        error != null) {
       throw const FormatException();
     }
     if ((outcome == InstallationTargetOutcome.conflict ||
             outcome == InstallationTargetOutcome.failed) &&
-        errorCode.isEmpty) {
+        error == null) {
       throw const FormatException();
     }
     results.add(
@@ -367,8 +361,7 @@ InstallationExecution _directInstallationExecution(
         target: target,
         action: action,
         outcome: outcome,
-        errorCode: errorCode,
-        diagnostic: result['diagnostic'] as String? ?? '',
+        error: error,
       ),
     );
   }
@@ -413,14 +406,36 @@ UpdateTargetOutcome _updateTargetOutcome(Object? value) => switch (value) {
   _ => throw const FormatException(),
 };
 
+TargetFailure? _targetFailure(Object? raw) {
+  if (raw == null) return null;
+  if (raw is! Map<String, dynamic> ||
+      raw['code'] is! String ||
+      (raw['code'] as String).isEmpty ||
+      raw['retryable'] is! bool ||
+      (raw['details'] != null && raw['details'] is! Map<String, dynamic>) ||
+      (raw['requestId'] != null && raw['requestId'] is! String) ||
+      (raw['diagnostic'] != null && raw['diagnostic'] is! String)) {
+    throw const FormatException();
+  }
+  return TargetFailure(
+    code: raw['code'] as String,
+    retryable: raw['retryable'] as bool,
+    details: Map<String, Object?>.unmodifiable(
+      raw['details'] as Map<String, dynamic>? ?? const {},
+    ),
+    requestId: raw['requestId'] as String? ?? '',
+    diagnostic: raw['diagnostic'] as String? ?? '',
+  );
+}
+
 UpdateTargetResult _updateTargetResult(Object? raw, UpdatePlanItem expected) {
   if (raw is! Map<String, dynamic> ||
       raw['name'] != expected.name ||
       raw['skillId'] != expected.skillId ||
       raw['fromVersion'] != expected.fromVersion ||
       raw['toVersion'] != expected.toVersion ||
-      (raw['errorCode'] != null && raw['errorCode'] is! String) ||
-      (raw['diagnostic'] != null && raw['diagnostic'] is! String)) {
+      raw.containsKey('errorCode') ||
+      raw.containsKey('diagnostic')) {
     throw const FormatException();
   }
   final target = _installationPlanTarget(
@@ -429,11 +444,11 @@ UpdateTargetResult _updateTargetResult(Object? raw, UpdatePlanItem expected) {
   );
   if (!_samePlanTarget(target, expected.target)) throw const FormatException();
   final outcome = _updateTargetOutcome(raw['outcome']);
-  final errorCode = raw['errorCode'] as String? ?? '';
-  if (outcome == UpdateTargetOutcome.failed && errorCode.isEmpty) {
+  final error = _targetFailure(raw['error']);
+  if (outcome == UpdateTargetOutcome.failed && error == null) {
     throw const FormatException();
   }
-  if (outcome != UpdateTargetOutcome.failed && errorCode.isNotEmpty) {
+  if (outcome != UpdateTargetOutcome.failed && error != null) {
     throw const FormatException();
   }
   return UpdateTargetResult(
@@ -443,8 +458,7 @@ UpdateTargetResult _updateTargetResult(Object? raw, UpdatePlanItem expected) {
     fromVersion: expected.fromVersion,
     toVersion: expected.toVersion,
     outcome: outcome,
-    errorCode: errorCode,
-    diagnostic: raw['diagnostic'] as String? ?? '',
+    error: error,
   );
 }
 
@@ -495,8 +509,8 @@ TargetManagementResult _targetManagementResult(
       raw['skillId'] != expected.skillId ||
       raw['version'] != expected.version ||
       raw['action'] != _targetManagementActionValue(expected.action!) ||
-      (raw['errorCode'] != null && raw['errorCode'] is! String) ||
-      (raw['diagnostic'] != null && raw['diagnostic'] is! String)) {
+      raw.containsKey('errorCode') ||
+      raw.containsKey('diagnostic')) {
     throw const FormatException();
   }
   final target = _installationPlanTarget(
@@ -505,11 +519,11 @@ TargetManagementResult _targetManagementResult(
   );
   if (!_samePlanTarget(target, expected.target)) throw const FormatException();
   final outcome = _targetManagementOutcome(raw['outcome']);
-  final errorCode = raw['errorCode'] as String? ?? '';
-  if (outcome == TargetManagementOutcome.failed && errorCode.isEmpty) {
+  final error = _targetFailure(raw['error']);
+  if (outcome == TargetManagementOutcome.failed && error == null) {
     throw const FormatException();
   }
-  if (outcome == TargetManagementOutcome.succeeded && errorCode.isNotEmpty) {
+  if (outcome == TargetManagementOutcome.succeeded && error != null) {
     throw const FormatException();
   }
   return TargetManagementResult(
@@ -519,8 +533,7 @@ TargetManagementResult _targetManagementResult(
     version: expected.version,
     action: expected.action!,
     outcome: outcome,
-    errorCode: errorCode,
-    diagnostic: raw['diagnostic'] as String? ?? '',
+    error: error,
   );
 }
 
@@ -593,7 +606,7 @@ class RealSkillsGateway implements SkillsGateway {
   static const _allowCriticalOverrideKey = 'allow_critical_risk_override';
   static const _addedProjectsKey = 'added_projects_v1';
   static const _startupHandshakeSchemaVersion = 1;
-  static const _appProtocolVersion = 8;
+  static const _appProtocolVersion = 9;
   final http.Client _http;
   final ProcessRunner _runner;
   final Uri _defaultHubBase;
@@ -1987,7 +2000,6 @@ class RealSkillsGateway implements SkillsGateway {
       _hubOrigin,
     ]);
     final command = await _runCli(arguments);
-    if (!command.succeeded) throw _commandFailure(command);
     try {
       return _directInstallationExecution(
         jsonDecode(command.output.stdout),
@@ -1996,6 +2008,7 @@ class RealSkillsGateway implements SkillsGateway {
         selections,
       );
     } on FormatException {
+      if (!command.succeeded) throw _commandFailure(command);
       throw const SkillsException(
         'The SkillsGo CLI returned invalid Installation Result JSON.',
         kind: SkillsFailureKind.invalidResponse,
@@ -2610,7 +2623,9 @@ class RealSkillsGateway implements SkillsGateway {
         consume(line);
       }
     }
-    if (!command.succeeded) throw _commandFailure(command);
+    if (!command.succeeded && finalPayload == null) {
+      throw _commandFailure(command);
+    }
     try {
       final raw = finalPayload;
       if (streamFailure != null ||
@@ -2631,8 +2646,8 @@ class RealSkillsGateway implements SkillsGateway {
         final streamed = terminal[updateTargetKey(result.target)];
         if (streamed == null ||
             streamed.outcome != result.outcome ||
-            streamed.errorCode != result.errorCode ||
-            streamed.diagnostic != result.diagnostic) {
+            streamed.error?.code != result.error?.code ||
+            streamed.error?.diagnostic != result.error?.diagnostic) {
           throw const FormatException();
         }
       }
@@ -3021,7 +3036,9 @@ class RealSkillsGateway implements SkillsGateway {
         consume(line);
       }
     }
-    if (!command.succeeded) throw _commandFailure(command);
+    if (!command.succeeded && finalPayload == null) {
+      throw _commandFailure(command);
+    }
     try {
       final raw = finalPayload;
       if (streamFailure != null ||
@@ -3042,8 +3059,8 @@ class RealSkillsGateway implements SkillsGateway {
         final streamed = terminal[updateTargetKey(result.target)];
         if (streamed == null ||
             streamed.outcome != result.outcome ||
-            streamed.errorCode != result.errorCode ||
-            streamed.diagnostic != result.diagnostic) {
+            streamed.error?.code != result.error?.code ||
+            streamed.error?.diagnostic != result.error?.diagnostic) {
           throw const FormatException();
         }
       }

@@ -1,15 +1,19 @@
 /*
- * [INPUT]: Uses hostile explicit Target Management JSON at the domain boundary.
- * [OUTPUT]: Specifies strict decoding, action/token pairing, and exact path preservation.
+ * [INPUT]: Uses hostile Target Management JSON plus real Remove, Repair, Stop Managing, and External removal failure boundaries.
+ * [OUTPUT]: Specifies strict decoding, action/token pairing, nested action-family failures, and mixed independent outcomes.
  * [POS]: Serves as focused validation coverage beneath the public manage command contract.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package managementplan
 
 import (
+	"encoding/json"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/skillsgo/skillsgo/cli/internal/install"
+	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/stretchr/testify/require"
 )
 
@@ -26,4 +30,68 @@ func TestDecodeTargetsIsStrictAndPreservesHostilePaths(t *testing.T) {
 	require.Error(t, err)
 	_, err = DecodeTargets([]string{`{"scope":"user","agent":"codex","mode":"copy","path":"/tmp/demo","skillId":"github.com/example/skills/-/demo","version":"v1","action":"remove"}`})
 	require.ErrorContains(t, err, "stateToken")
+}
+
+func TestExecutePublishesNestedFailureForEveryManagementActionFamily(t *testing.T) {
+	tests := []struct {
+		name string
+		item Item
+	}{
+		{
+			name: "managed remove",
+			item: Item{Target: Target{Scope: install.ScopeUser, Mode: install.ModeCopy, Path: "/missing"}, Action: ActionRemove},
+		},
+		{
+			name: "repair",
+			item: Item{Target: Target{Scope: install.ScopeUser, Mode: install.ModeCopy, Path: "/missing"}, SkillID: "github.com/example/skills/-/demo", Version: "v1", Action: ActionRepair},
+		},
+		{
+			name: "stop managing",
+			item: Item{Target: Target{Scope: install.ScopeProject, ProjectRoot: "\x00", Mode: install.ModeCopy, Path: "/missing"}, Action: ActionStopManaging},
+		},
+		{
+			name: "external removal",
+			item: Item{Target: Target{Scope: install.ScopeUser, Mode: install.Mode("external"), Path: "\x00"}, Action: ActionRemove},
+		},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			execution := Execute(store.Store{Root: filepath.Join(t.TempDir(), "store")}, Preflight{Targets: []Item{test.item}}, nil)
+			require.Equal(t, 1, execution.Summary.Failed)
+			require.Equal(t, OutcomeFailed, execution.Results[0].Outcome)
+			require.Equal(t, "management.target_failed", execution.Results[0].Error.Code)
+			require.True(t, execution.Results[0].Error.Retryable)
+		})
+	}
+}
+
+func TestExecuteKeepsSuccessfulManagementActionBesideFailure(t *testing.T) {
+	root := t.TempDir()
+	externalPath := filepath.Join(root, "external")
+	require.NoError(t, os.MkdirAll(externalPath, 0o700))
+	execution := Execute(store.Store{Root: filepath.Join(root, "store")}, Preflight{Targets: []Item{
+		{Target: Target{Scope: install.ScopeUser, Mode: install.Mode("external"), Path: externalPath}, Action: ActionRemove},
+		{Target: Target{Scope: install.ScopeUser, Mode: install.Mode("external"), Path: "\x00"}, Action: ActionRemove},
+	}}, nil)
+
+	require.Equal(t, 1, execution.Summary.Succeeded)
+	require.Equal(t, 1, execution.Summary.Failed)
+	require.Equal(t, OutcomeSucceeded, execution.Results[0].Outcome)
+	require.Nil(t, execution.Results[0].Error)
+	require.Equal(t, OutcomeFailed, execution.Results[1].Outcome)
+	require.NoDirExists(t, externalPath)
+}
+
+func TestExecutePublishesNestedTargetFailure(t *testing.T) {
+	execution := Execute(store.Store{}, Preflight{Targets: []Item{{
+		Target: Target{Scope: install.ScopeUser, Agent: "codex", Mode: install.ModeCopy, Path: "/tmp/demo"},
+		Name:   "demo", SkillID: "github.com/example/skills/-/demo", Version: "v1", Action: Action("unsupported"),
+	}}}, nil)
+
+	require.Equal(t, OutcomeFailed, execution.Results[0].Outcome)
+	require.Equal(t, "management.target_failed", execution.Results[0].Error.Code)
+	require.True(t, execution.Results[0].Error.Retryable)
+	encoded, err := json.Marshal(execution)
+	require.NoError(t, err)
+	require.NotContains(t, string(encoded), "errorCode")
 }

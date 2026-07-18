@@ -94,6 +94,8 @@ var messages = map[string][2]string{
 	"add.success":                           {"Installed %s@%s to %d Agent target(s) (%s)\n", "已安装 %s@%s 到 %d 个 Agent 目标（%s）\n"},
 	"plan.preflight.success":                {"Planned %d target(s): %d create, %d skip\n", "已规划 %d 个目标：%d 个创建，%d 个跳过\n"},
 	"plan.execution.success":                {"Installed %d target(s), skipped %d, failed %d\n", "已安装 %d 个目标，跳过 %d 个，失败 %d 个\n"},
+	"update.execution.summary":              {"Updated %d target(s), failed %d\n", "已更新 %d 个目标，失败 %d 个\n"},
+	"management.execution.summary":          {"Managed %d target(s), failed %d\n", "已处理 %d 个目标，失败 %d 个\n"},
 	"operation.install":                     {"Installing Skill", "正在安装 Skill"},
 	"operation.download":                    {"Download artifact", "下载制品"},
 	"operation.verify":                      {"Verify content and risk", "校验内容与风险"},

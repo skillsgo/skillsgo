@@ -1,6 +1,6 @@
 // [INPUT]: Depends on Go, Testcontainers-Go, and Testify for disposable black-box system tests.
 // [OUTPUT]: Defines the reproducible cross-product end-to-end test dependency graph.
-// [POS]: Serves as the F2 build manifest for the root e2e workspace.
+// [POS]: Serves as the F2 build manifest for the CLI-plus-Hub e2e workspace.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 module github.com/skillsgo/skillsgo/e2e
 

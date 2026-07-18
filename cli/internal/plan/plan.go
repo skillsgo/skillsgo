@@ -24,7 +24,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
 
-const SchemaVersion = 2
+const SchemaVersion = 3
 
 type Action string
 type Outcome string
@@ -135,11 +135,17 @@ type Preflight struct {
 }
 
 type Result struct {
-	Target     Target  `json:"target"`
-	Action     Action  `json:"action"`
-	Outcome    Outcome `json:"outcome"`
-	ErrorCode  string  `json:"errorCode,omitempty"`
-	Diagnostic string  `json:"diagnostic,omitempty"`
+	Target  Target       `json:"target"`
+	Action  Action       `json:"action"`
+	Outcome Outcome      `json:"outcome"`
+	Error   *TargetError `json:"error,omitempty"`
+}
+
+type TargetError struct {
+	Code       string         `json:"code"`
+	Retryable  bool           `json:"retryable"`
+	Details    map[string]any `json:"details,omitempty"`
+	Diagnostic string         `json:"diagnostic,omitempty"`
 }
 
 type ResultSummary struct {
@@ -708,9 +714,6 @@ func ExecuteWithProgress(
 		Artifact:      preflight.Artifact,
 		Results:       make([]Result, len(preflight.Targets)),
 	}
-	if preflight.Summary.Conflict > 0 || preflight.Summary.BlockedByRisk > 0 {
-		return execution, fmt.Errorf("Installation Plan has unresolved targets")
-	}
 	sequence := 0
 	emit := func(index int, state ProgressState) {
 		if report == nil {
@@ -728,16 +731,18 @@ func ExecuteWithProgress(
 		}
 		report(event)
 	}
-	for _, item := range preflight.Targets {
+	staleTargets := map[int]error{}
+	for index, item := range preflight.Targets {
 		if item.Action != ActionReplace {
 			continue
 		}
 		currentState, err := replacementStateToken(item.Target, item.ReasonCode, nil)
 		if err != nil {
-			return execution, err
+			staleTargets[index] = err
+			continue
 		}
 		if item.StateToken == "" || item.StateToken != currentState {
-			return execution, fmt.Errorf("Installation Target changed after replacement review: %s", item.Target.Path)
+			staleTargets[index] = fmt.Errorf("Installation Target changed after replacement review: %s", item.Target.Path)
 		}
 	}
 	groups := map[string][]int{}
@@ -745,22 +750,36 @@ func ExecuteWithProgress(
 	skillIDReplaced := map[string]bool{}
 	for index, item := range preflight.Targets {
 		execution.Results[index] = Result{Target: item.Target, Action: item.Action}
+		if staleErr := staleTargets[index]; staleErr != nil {
+			emit(index, ProgressStarted)
+			execution.Results[index].Outcome = OutcomeFailed
+			execution.Results[index].Error = &TargetError{Code: "installation.state_changed", Retryable: true, Details: map[string]any{"path": item.Target.Path}, Diagnostic: staleErr.Error()}
+			emit(index, ProgressFinished)
+			continue
+		}
 		switch item.Action {
 		case ActionSkip:
 			emit(index, ProgressStarted)
 			if item.WorkspaceManifestChange {
 				if err := updateWorkspace(entry, storeRoot, request, item.Target, item.ReasonCode, skillIDReplaced); err != nil {
 					execution.Results[index].Outcome = OutcomeFailed
-					execution.Results[index].ErrorCode = "workspace-update-failed"
-					execution.Results[index].Diagnostic = err.Error()
+					execution.Results[index].Error = &TargetError{Code: "workspace.persistence_failed", Retryable: true, Details: map[string]any{"path": filepath.Join(item.Target.ProjectRoot, "skillsgo.mod")}, Diagnostic: err.Error()}
 					emit(index, ProgressFinished)
 					continue
 				}
 			}
 			execution.Results[index].Outcome = OutcomeSkipped
 			emit(index, ProgressFinished)
-		case ActionConflict, ActionRisk:
-			return execution, fmt.Errorf("Installation Plan has unresolved target %s", item.Target.Path)
+		case ActionConflict:
+			emit(index, ProgressStarted)
+			execution.Results[index].Outcome = OutcomeConflict
+			execution.Results[index].Error = &TargetError{Code: "installation.state_changed", Retryable: true, Details: map[string]any{"path": item.Target.Path}}
+			emit(index, ProgressFinished)
+		case ActionRisk:
+			emit(index, ProgressStarted)
+			execution.Results[index].Outcome = OutcomeFailed
+			execution.Results[index].Error = &TargetError{Code: "input.invalid", Retryable: false, Details: map[string]any{"path": item.Target.Path}}
+			emit(index, ProgressFinished)
 		case ActionCreate, ActionReplace:
 			key := filepath.Clean(item.Target.Path) + "\x00" + string(item.Target.Mode) + "\x00" + string(item.Action)
 			if groups[key] == nil {
@@ -803,12 +822,13 @@ func ExecuteWithProgress(
 		if mutationErr != nil {
 			for _, index := range indexes {
 				execution.Results[index].Outcome = OutcomeFailed
+				code := "installation.target_failed"
+				details := map[string]any(nil)
 				if workspaceErr {
-					execution.Results[index].ErrorCode = "workspace-update-failed"
-				} else {
-					execution.Results[index].ErrorCode = "install-failed"
+					code = "workspace.persistence_failed"
+					details = map[string]any{"path": filepath.Join(preflight.Targets[index].Target.ProjectRoot, "skillsgo.mod")}
 				}
-				execution.Results[index].Diagnostic = mutationErr.Error()
+				execution.Results[index].Error = &TargetError{Code: code, Retryable: true, Details: details, Diagnostic: mutationErr.Error()}
 				emit(index, ProgressFinished)
 			}
 			continue

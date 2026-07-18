@@ -343,7 +343,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 8,
+            'appProtocolVersion': 9,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -450,7 +450,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '0.1.0',
-          'appProtocolVersion': 8,
+          'appProtocolVersion': 9,
           'os': 'linux',
           'architecture': 'arm64',
         }),
@@ -478,7 +478,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '7.4.2',
-            'appProtocolVersion': 8,
+            'appProtocolVersion': 9,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -506,7 +506,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': 'dev',
-          'appProtocolVersion': 8,
+          'appProtocolVersion': 9,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -535,7 +535,7 @@ void main() {
           'schemaVersion': 1,
           'product': 'skillsgo',
           'version': '1.0.0',
-          'appProtocolVersion': 8,
+          'appProtocolVersion': 9,
           'os': 'darwin',
           'architecture': 'arm64',
         }),
@@ -562,7 +562,7 @@ void main() {
             'schemaVersion': 1,
             'product': 'skillsgo',
             'version': '0.1.0',
-            'appProtocolVersion': 8,
+            'appProtocolVersion': 9,
             'os': 'darwin',
             'architecture': 'arm64',
           }),
@@ -1569,7 +1569,7 @@ void main() {
         ..result = ProcessOutput(
           exitCode: 0,
           stdout: jsonEncode({
-            'schemaVersion': 2,
+            'schemaVersion': 3,
             'phase': 'execution',
             'artifact': {
               'source': skillId,
@@ -1615,6 +1615,50 @@ void main() {
       expect(runner.lastArguments, isNot(contains('--preflight')));
       expect(runner.lastArguments, containsAllInOrder(['--output', 'json']));
       expect(runner.lastArguments, contains('--confirm-risk'));
+
+      runner.result = ProcessOutput(
+        exitCode: 1,
+        stdout: jsonEncode({
+          'schemaVersion': 3,
+          'phase': 'execution',
+          'artifact': {
+            'source': skillId,
+            'skillId': skillId,
+            'version': 'v1',
+            'name': 'demo',
+            'risk': 'low',
+          },
+          'results': [
+            {
+              'target': target,
+              'action': 'replace',
+              'outcome': 'failed',
+              'error': {
+                'code': 'workspace.persistence_failed',
+                'retryable': true,
+                'details': {'path': '/work/project/skillsgo.mod'},
+                'requestId': 'req-install',
+                'diagnostic': 'permission denied',
+              },
+            },
+          ],
+          'summary': {'succeeded': 0, 'skipped': 0, 'conflict': 0, 'failed': 1},
+        }),
+        stderr: '安装失败',
+      );
+      final failed = await gateway.installTargets(skill, 'v1', const [
+        InstallationTargetSelection(
+          scope: InstallationScope.user,
+          agent: 'codex',
+        ),
+      ], confirmRisk: true);
+      expect(failed.results.single.error?.code, 'workspace.persistence_failed');
+      expect(failed.results.single.error?.retryable, isTrue);
+      expect(failed.results.single.error?.requestId, 'req-install');
+      expect(
+        failed.results.single.error?.details['path'],
+        '/work/project/skillsgo.mod',
+      );
     },
   );
 
@@ -2065,6 +2109,31 @@ void main() {
       expect(runner.lastArguments, containsAll(['--output', 'ndjson']));
 
       runner.result = const ProcessOutput(
+        exitCode: 1,
+        stdout: '''
+{"schemaVersion":1,"phase":"management-progress","sequence":1,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","state":"started"}
+{"schemaVersion":1,"phase":"management-progress","sequence":2,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","state":"finished","result":{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","outcome":"failed","error":{"code":"management.target_failed","retryable":true,"details":{"path":"/tmp/Test"},"diagnostic":"developer detail"}}}
+{"schemaVersion":1,"phase":"management-execution","results":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","outcome":"failed","error":{"code":"management.target_failed","retryable":true,"details":{"path":"/tmp/Test"},"diagnostic":"developer detail"}}],"summary":{"succeeded":0,"failed":1}}
+''',
+        stderr: 'localized stderr must not classify',
+      );
+      final failedExecution = await gateway.executeTargetManagement(plan);
+      expect(failedExecution.summary.failed, 1);
+      expect(
+        failedExecution.results.single.error?.code,
+        'management.target_failed',
+      );
+      expect(failedExecution.results.single.error?.retryable, isTrue);
+      expect(
+        failedExecution.results.single.error?.details['path'],
+        '/tmp/Test',
+      );
+      expect(
+        failedExecution.results.single.error?.diagnostic,
+        'developer detail',
+      );
+
+      runner.result = const ProcessOutput(
         exitCode: 0,
         stdout: 'Removed one target.',
         stderr: '',
@@ -2185,6 +2254,25 @@ void main() {
     expect(execution.summary.succeeded, 1);
     expect(execution.results.single.toVersion, 'v2');
     expect(runner.lastArguments, containsAll(['--output', 'ndjson']));
+
+    runner.result = const ProcessOutput(
+      exitCode: 1,
+      stdout: '''
+{"schemaVersion":1,"phase":"update-progress","sequence":1,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","state":"started"}
+{"schemaVersion":1,"phase":"update-progress","sequence":2,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","state":"finished","result":{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","outcome":"failed","error":{"code":"update.target_failed","retryable":true,"requestId":"req-42","diagnostic":"developer detail","future":"ignored"}}}
+{"schemaVersion":1,"phase":"update-execution","results":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","outcome":"failed","error":{"code":"update.target_failed","retryable":true,"requestId":"req-42","diagnostic":"developer detail","future":"ignored"}}],"summary":{"succeeded":0,"skipped":0,"failed":1}}
+''',
+      stderr: '任意本地化诊断',
+    );
+    final failedExecution = await gateway.executeUpdate(plan);
+    expect(failedExecution.summary.failed, 1);
+    expect(failedExecution.results.single.error?.code, 'update.target_failed');
+    expect(failedExecution.results.single.error?.retryable, isTrue);
+    expect(failedExecution.results.single.error?.requestId, 'req-42');
+    expect(
+      failedExecution.results.single.error?.diagnostic,
+      'developer detail',
+    );
 
     runner.result = const ProcessOutput(
       exitCode: 0,
