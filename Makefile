@@ -1,4 +1,20 @@
-# [INPUT]: Depends on the build, deployment, or runtime values declared in Makefile.\n# [OUTPUT]: Provides the SkillsGo Hub or monorepo configuration defined by Makefile.\n# [POS]: Serves as maintained configuration in the renamed SkillsGo Hub workspace or its repository integration.\n# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md\n.PHONY: test test-app test-cli test-hub analyze-app format-cli format-hub
+# [INPUT]: Depends on scripts/dev.sh plus the App, CLI, and Hub workspace build and validation entry points.
+# [OUTPUT]: Provides the unified macOS development session plus repository-level local builds, tests, analysis, and formatting commands.
+# [POS]: Serves as the monorepo task entry point and delegates product-specific work to each workspace.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+
+.PHONY: dev build build-cli build-hub test test-app test-cli test-hub analyze-app format-cli format-hub
+
+dev:
+	./scripts/dev.sh
+
+build: build-cli build-hub
+
+build-cli:
+	$(MAKE) -C cli build
+
+build-hub:
+	$(MAKE) -C hub build
 
 test: test-hub test-cli test-app
 
