@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on one resolved Repository snapshot, immutable artifact storage, and enriched per-Skill protocol indexing.
- * [OUTPUT]: Materializes every accepted Repository member from one source discovery and returns its canonical immutable version.
- * [POS]: Serves as the cold-publication coordinator between Git Repository discovery, artifact storage, and Repository Info visibility.
+ * [INPUT]: Depends on request-scoped structured logging, one resolved Repository snapshot, immutable artifact storage, and enriched per-Skill protocol indexing.
+ * [OUTPUT]: Materializes every accepted Repository member and emits a correlated, bounded publication lifecycle without logging credentials or artifact content.
+ * [POS]: Serves as the observable cold-publication coordinator between Git Repository discovery, artifact storage, and Repository Info visibility.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -16,6 +16,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/skillsgo/skillsgo/hub/pkg/download"
 	huberrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
+	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"golang.org/x/sync/singleflight"
@@ -49,11 +50,22 @@ func newRepositoryPublisher(fetcher skill.RepositoryFetcher, backend storage.Bac
 }
 
 func (p *repositoryPublisher) Materialize(ctx context.Context, repositoryID, query string) (string, error) {
+	started := time.Now()
 	key := "publish:" + repositoryID + "@" + query
+	entry := log.EntryFromContext(ctx).WithFields(map[string]any{
+		"component":     "repository_publisher",
+		"repository_id": repositoryID,
+		"requested_ref": query,
+	})
+	entry.Debugf("repository publication requested")
 	p.mu.Lock()
 	negative, cached := p.negative[key]
 	if cached && p.now().Before(negative.expires) {
 		p.mu.Unlock()
+		entry.WithFields(map[string]any{
+			"cache":       "negative",
+			"duration_ms": time.Since(started).Milliseconds(),
+		}).Debugf("repository publication cache hit")
 		return "", negative.err
 	}
 	if cached {
@@ -61,12 +73,14 @@ func (p *repositoryPublisher) Materialize(ctx context.Context, repositoryID, que
 	}
 	p.mu.Unlock()
 	result := p.work.DoChan(key, func() (any, error) {
+		entry.Debugf("repository publication started")
 		workCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Minute)
 		defer cancel()
 		select {
 		case p.upstream <- struct{}{}:
 			defer func() { <-p.upstream }()
 		default:
+			entry.Warnf("repository publication upstream capacity exhausted")
 			return "", huberrors.E("repositoryPublisher.Materialize", "upstream Repository resolution is at capacity", huberrors.KindRateLimit)
 		}
 		version, materializeErr := p.materialize(workCtx, repositoryID, query)
@@ -82,13 +96,24 @@ func (p *repositoryPublisher) Materialize(ctx context.Context, repositoryID, que
 		return "", ctx.Err()
 	case resolved := <-result:
 		if resolved.Err != nil {
+			entry.WithFields(map[string]any{
+				"duration_ms":         time.Since(started).Milliseconds(),
+				"singleflight_shared": resolved.Shared,
+			}).SystemErr(resolved.Err)
 			return "", resolved.Err
 		}
-		return resolved.Val.(string), nil
+		version := resolved.Val.(string)
+		entry.WithFields(map[string]any{
+			"duration_ms":         time.Since(started).Milliseconds(),
+			"singleflight_shared": resolved.Shared,
+			"version":             version,
+		}).Infof("repository publication completed")
+		return version, nil
 	}
 }
 
 func (p *repositoryPublisher) materialize(ctx context.Context, repositoryID, query string) (string, error) {
+	started := time.Now()
 	snapshot, err := p.fetcher.DiscoverRepository(ctx, repositoryID, query)
 	if err != nil {
 		return "", err
@@ -97,6 +122,13 @@ func (p *repositoryPublisher) materialize(ctx context.Context, repositoryID, que
 		closeRepositorySnapshot(snapshot)
 		return "", fmt.Errorf("Repository source returned an invalid snapshot for %s@%s", repositoryID, query)
 	}
+	log.EntryFromContext(ctx).WithFields(map[string]any{
+		"commit_sha":    snapshot.CommitSHA,
+		"duration_ms":   time.Since(started).Milliseconds(),
+		"member_count":  len(snapshot.Members),
+		"repository_id": repositoryID,
+		"version":       snapshot.Version,
+	}).Debugf("repository snapshot discovered")
 	invoked := false
 	result, err, _ := p.commit.Do("commit:"+repositoryID+"@"+snapshot.Version, func() (any, error) {
 		invoked = true
@@ -123,7 +155,13 @@ func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID,
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
 		defer cancel()
 		for index := len(newlyStored) - 1; index >= 0; index-- {
-			_ = p.storage.Delete(cleanupCtx, newlyStored[index], snapshot.Version)
+			if err := p.storage.Delete(cleanupCtx, newlyStored[index], snapshot.Version); err != nil {
+				log.EntryFromContext(ctx).WithFields(map[string]any{
+					"repository_id": repositoryID,
+					"skill_id":      newlyStored[index],
+					"version":       snapshot.Version,
+				}).Warnf("repository publication rollback failed: %v", err)
+			}
 		}
 	}()
 	for _, member := range snapshot.Members {
@@ -135,7 +173,7 @@ func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID,
 		existingInfo, existingErr := p.storage.Info(ctx, member.SkillID, snapshot.Version)
 		if existingErr == nil {
 			var existing catalogArtifactInfo
-			if json.Unmarshal(existingInfo, &existing) != nil || existing.Origin.CommitSHA != snapshot.CommitSHA {
+			if json.Unmarshal(existingInfo, &existing) != nil || existing.CommitSHA != snapshot.CommitSHA {
 				return "", fmt.Errorf("immutable Repository version conflict for %s@%s", repositoryID, snapshot.Version)
 			}
 			stored[member.SkillID] = true
@@ -169,17 +207,15 @@ func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID,
 			Time          time.Time `json:"Time"`
 			ContentDigest string    `json:"ContentDigest"`
 			ArchiveSize   int64     `json:"ArchiveSize"`
-			Origin        struct {
-				CommitSHA string `json:"CommitSHA"`
-				TreeSHA   string `json:"TreeSHA"`
-			} `json:"Origin"`
+			CommitSHA     string    `json:"CommitSHA"`
+			TreeSHA       string    `json:"TreeSHA"`
 		}
 		if err := json.Unmarshal(assessed, &info); err != nil {
 			return "", fmt.Errorf("decode assessed Repository member: %w", err)
 		}
 		published = append(published, catalog.PublishedSkill{
 			Skill: catalog.Skill{SkillID: memberID, Name: info.Name, Description: info.Description, LatestVersion: info.Version},
-			Version: catalog.SkillVersion{Version: info.Version, CommitSHA: info.Origin.CommitSHA, TreeSHA: info.Origin.TreeSHA,
+			Version: catalog.SkillVersion{Version: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA,
 				ContentDigest: info.ContentDigest, CommitTime: info.Time, ArchiveSize: info.ArchiveSize},
 		})
 	}
@@ -187,6 +223,12 @@ func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID,
 		return "", err
 	}
 	publicationCommitted = true
+	log.EntryFromContext(ctx).WithFields(map[string]any{
+		"member_count":       len(memberIDs),
+		"new_artifact_count": len(newlyStored),
+		"repository_id":      repositoryID,
+		"version":            snapshot.Version,
+	}).Debugf("repository publication committed")
 	return snapshot.Version, nil
 }
 

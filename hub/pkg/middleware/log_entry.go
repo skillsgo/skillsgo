@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on the middleware package imports and contracts declared in this file.
- * [OUTPUT]: Provides the middleware package behavior implemented by log_entry.go.
- * [POS]: Serves as maintained source in the middleware package in its renamed SkillsGo Hub or CLI workspace.
+ * [OUTPUT]: Provides request-scoped structured log context without query strings or credentials.
+ * [POS]: Serves as the correlation-field initializer for the Hub middleware stack.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package middleware
@@ -18,9 +18,9 @@ func LogEntryMiddleware(lggr *log.Logger) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		ctx := c.Context()
 		ent := lggr.WithFields(map[string]any{
-			"http-method": c.Method(),
-			"http-path":   c.Path(),
-			"request-id":  requestid.FromContext(ctx),
+			"http_method": c.Method(),
+			"http_path":   c.Path(),
+			"request_id":  requestid.FromContext(ctx),
 		})
 		ctx = log.SetEntryInContext(ctx, ent)
 		c.SetContext(ctx)

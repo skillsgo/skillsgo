@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the Hub Router with an empty Catalog/storage pair and a counted Repository snapshot source double.
- * [OUTPUT]: Specifies cold exact-version publication, one-snapshot multi-Skill discovery, immutable cache reuse, and self-contained Repository Info.
+ * [OUTPUT]: Specifies cold exact-version publication, one-snapshot multi-Skill discovery, immutable cache reuse, correlated publication logs, and self-contained Repository Info.
  * [POS]: Serves as public Router acceptance coverage for demand-driven Repository materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,6 +13,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -25,6 +26,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
 	huberrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
+	"github.com/skillsgo/skillsgo/hub/pkg/middleware"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/mem"
@@ -111,9 +113,9 @@ func TestRepositoryPublicationFailureExposesNoPartialMemberSet(t *testing.T) {
 		for index, id := range []string{repository, repository + "/-/skills/nested"} {
 			name := fmt.Sprintf("member-%d", index)
 			archive := catalogProtocolTestZIPNamed(t, id, version, name, "Atomic fixture.", "")
-			info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z", "Origin": map[string]any{
+			info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
 				"VCS": "git", "URL": "https://github.com/example/atomic", "Subdir": "", "Ref": "refs/tags/v1.0.0", "CommitSHA": "commit-atomic", "TreeSHA": fmt.Sprintf("tree-%d", index),
-			}})
+			})
 			require.NoError(t, err)
 			digest := md5.Sum(archive) //nolint:gosec
 			members = append(members, skill.RepositoryMember{SkillID: id, Version: &storage.Version{Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version}})
@@ -149,9 +151,9 @@ func TestMovedTagConflictsBeforeStoredArtifactsChange(t *testing.T) {
 	var commit = "commit-one"
 	fetcher := &countedRepositoryFetcher{snapshot: func() *skill.RepositorySnapshot {
 		archive := catalogProtocolTestZIPNamed(t, repository, version, "immutable", commit, "")
-		info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z", "Origin": map[string]any{
+		info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
 			"VCS": "git", "URL": "https://github.com/example/immutable", "Ref": "refs/tags/v1.0.0", "CommitSHA": commit, "TreeSHA": "tree-" + commit,
-		}})
+		})
 		require.NoError(t, err)
 		digest := md5.Sum(archive) //nolint:gosec
 		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: commit, CommitTime: time.Now().UTC(), Members: []skill.RepositoryMember{{
@@ -196,7 +198,7 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 			archive := catalogProtocolTestZIPNamed(t, item.id, version, item.name, "Repository member.", "")
 			info, err := json.Marshal(map[string]any{
 				"Version": version, "Time": "2026-07-15T00:00:00Z",
-				"Origin": map[string]any{"VCS": "git", "URL": "https://github.com/example/skills", "Subdir": item.subdir, "Ref": "refs/tags/v1.2.3", "CommitSHA": "abc123", "TreeSHA": item.tree},
+				"VCS": "git", "URL": "https://github.com/example/skills", "Subdir": item.subdir, "Ref": "refs/tags/v1.2.3", "CommitSHA": "abc123", "TreeSHA": item.tree,
 			})
 			require.NoError(t, err)
 			digest := md5.Sum(archive) //nolint:gosec
@@ -218,9 +220,12 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 	})
 	skills := withCatalog(raw, metadata)
 	protocol := withRepositoryInfo(skills, metadata, newRepositoryPublisher(fetcher, backend, skills, metadata))
+	var logs bytes.Buffer
+	logger := log.NewWithOutput(&logs, "", slog.LevelDebug, "json")
 	router := newFiberApp()
+	router.Use(middleware.WithRequestID, middleware.LogEntryMiddleware(logger), middleware.RequestLogger)
 	download.RegisterHandlers(router, &download.HandlerOpts{
-		Protocol: protocol, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync},
+		Protocol: protocol, Logger: logger, DownloadFile: &mode.DownloadFile{Mode: mode.Sync},
 	})
 
 	for attempt := 0; attempt < 2; attempt++ {
@@ -231,9 +236,23 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 		require.NoError(t, json.NewDecoder(recorder.Body).Decode(&info))
 		require.Equal(t, repository, info.ID)
 		require.Equal(t, version, info.Version)
+		require.Equal(t, "refs/tags/v1.2.3", info.Ref)
 		require.Len(t, info.Skills, 2)
+		require.NotContains(t, recorder.Body.String(), `"Origin"`)
 	}
 	require.Equal(t, int32(1), fetcher.calls.Load(), "immutable Repository Info cache hit must not repeat source discovery")
+	for _, event := range []string{
+		"repository publication requested",
+		"repository snapshot discovered",
+		"repository publication committed",
+		"repository publication completed",
+		`"cache_result":"miss"`,
+		`"cache_result":"hit"`,
+		`"repository_id":"github.com/example/skills"`,
+		`"request_id":`,
+	} {
+		require.Contains(t, logs.String(), event)
+	}
 }
 
 func TestConcurrentUnknownRepositoryInfoSharesOnePublication(t *testing.T) {
@@ -242,7 +261,7 @@ func TestConcurrentUnknownRepositoryInfoSharesOnePublication(t *testing.T) {
 		archive := catalogProtocolTestZIPNamed(t, repository, version, "concurrent", "Concurrent fixture.", "")
 		info, err := json.Marshal(map[string]any{
 			"Version": version, "Time": "2026-07-15T00:00:00Z",
-			"Origin": map[string]any{"VCS": "git", "URL": "https://github.com/example/concurrent", "Ref": "refs/tags/v1.0.0", "CommitSHA": "commit-one", "TreeSHA": "tree-one"},
+			"VCS": "git", "URL": "https://github.com/example/concurrent", "Ref": "refs/tags/v1.0.0", "CommitSHA": "commit-one", "TreeSHA": "tree-one",
 		})
 		require.NoError(t, err)
 		digest := md5.Sum(archive) //nolint:gosec
@@ -276,9 +295,9 @@ func TestDifferentQueriesResolvingToOneCanonicalVersionShareCommit(t *testing.T)
 	repository, version := "github.com/example/aliases", "v1.0.0"
 	fetcher := &countedRepositoryFetcher{delay: 25 * time.Millisecond, snapshot: func() *skill.RepositorySnapshot {
 		archive := catalogProtocolTestZIPNamed(t, repository, version, "aliases", "Alias fixture.", "")
-		info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z", "Origin": map[string]any{
+		info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
 			"VCS": "git", "URL": "https://" + repository, "Ref": "refs/tags/" + version, "CommitSHA": "commit-aliases", "TreeSHA": "tree-aliases",
-		}})
+		})
 		require.NoError(t, err)
 		digest := md5.Sum(archive) //nolint:gosec
 		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "commit-aliases", CommitTime: time.Now().UTC(), Members: []skill.RepositoryMember{{
@@ -318,10 +337,10 @@ func TestAnonymousRepositoryPublicationReturnsStableOverloadAndReleasesCapacity(
 		repository := fmt.Sprintf("github.com/example/capacity-%d", index)
 		repositories[index] = repository
 		archive := catalogProtocolTestZIPNamed(t, repository, version, fmt.Sprintf("capacity-%d", index), "Capacity fixture.", "")
-		info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z", "Origin": map[string]any{
+		info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
 			"VCS": "git", "URL": "https://" + repository, "Ref": "refs/tags/" + version,
 			"CommitSHA": fmt.Sprintf("commit-%d", index), "TreeSHA": "tree-root",
-		}})
+		})
 		require.NoError(t, err)
 		digest := md5.Sum(archive) //nolint:gosec
 		snapshots[repository] = &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: fmt.Sprintf("commit-%d", index),
@@ -374,9 +393,9 @@ func TestAnonymousRepositoryPublicationReturnsStableOverloadAndReleasesCapacity(
 func TestCanceledRepositoryWaiterDoesNotPoisonSharedPublication(t *testing.T) {
 	repository, version := "github.com/example/cancel", "v1.0.0"
 	archive := catalogProtocolTestZIPNamed(t, repository, version, "cancel", "Cancellation fixture.", "")
-	info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z", "Origin": map[string]any{
+	info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
 		"VCS": "git", "URL": "https://" + repository, "Ref": "refs/tags/" + version, "CommitSHA": "commit-cancel", "TreeSHA": "tree-cancel",
-	}})
+	})
 	require.NoError(t, err)
 	digest := md5.Sum(archive) //nolint:gosec
 	snapshot := &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "commit-cancel",
@@ -464,10 +483,10 @@ func TestNestedSkillLatestStopsAtLastPublicationWhereItExists(t *testing.T) {
 				name = "nested"
 			}
 			archive := catalogProtocolTestZIPNamed(t, id, version, name, "History fixture.", "")
-			info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z", "Origin": map[string]any{
+			info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
 				"VCS": "git", "URL": "https://github.com/example/history", "Ref": "refs/tags/" + version,
 				"CommitSHA": "commit-" + version, "TreeSHA": fmt.Sprintf("tree-%s-%d", version, index),
-			}})
+			})
 			require.NoError(t, err)
 			digest := md5.Sum(archive) //nolint:gosec
 			members = append(members, skill.RepositoryMember{SkillID: id, Version: &storage.Version{

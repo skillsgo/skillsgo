@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on canonical bare Repository IDs, immutable per-Skill Info resources, and Catalog Repository/version membership.
- * [OUTPUT]: Provides self-contained immutable Repository Info on the bare coordinate while preserving per-Skill ZIP delivery.
+ * [INPUT]: Depends on request-scoped logging, canonical bare Repository IDs, immutable per-Skill Info resources, and Catalog Repository/version membership.
+ * [OUTPUT]: Provides self-contained immutable Repository Info plus Repository publication-cache decisions while preserving per-Skill ZIP delivery.
  * [POS]: Serves as the Repository aggregation protocol decorator outside enriched per-Skill Catalog behavior.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,6 +15,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/skillsgo/skillsgo/hub/pkg/download"
 	huberrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
+	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"golang.org/x/mod/semver"
@@ -40,6 +41,7 @@ type repositoryInfo struct {
 	ID            string            `json:"ID"`
 	Version       string            `json:"Version"`
 	Time          time.Time         `json:"Time"`
+	Ref           string            `json:"Ref"`
 	CommitSHA     string            `json:"CommitSHA"`
 	Skills        []json.RawMessage `json:"Skills"`
 }
@@ -138,6 +140,7 @@ func (p *repositoryInfoProtocol) Info(ctx context.Context, resourceID, version s
 		return nil, err
 	}
 	if len(members) == 0 {
+		logRepositoryPublicationLookup(ctx, resourceID, version, "miss")
 		if p.materializer == nil {
 			return nil, huberrors.E("repositoryInfoProtocol.Info", huberrors.S(resourceID), huberrors.V(version), huberrors.KindNotFound)
 		}
@@ -153,6 +156,8 @@ func (p *repositoryInfoProtocol) Info(ctx context.Context, resourceID, version s
 		if len(members) == 0 {
 			return nil, fmt.Errorf("Repository publication produced no visible members for %s@%s", resourceID, version)
 		}
+	} else {
+		logRepositoryPublicationLookup(ctx, resourceID, version, "hit")
 	}
 	response := repositoryInfo{
 		SchemaVersion: 1, Kind: "Repository", ID: resourceID, Version: version,
@@ -166,6 +171,18 @@ func (p *repositoryInfoProtocol) Info(ctx context.Context, resourceID, version s
 		info, err := p.Protocol.Info(ctx, member.SkillID, version)
 		if err != nil {
 			return nil, err
+		}
+		var identity struct {
+			Ref       string `json:"Ref"`
+			CommitSHA string `json:"CommitSHA"`
+		}
+		if json.Unmarshal(info, &identity) != nil || identity.CommitSHA != response.CommitSHA || identity.Ref == "" {
+			return nil, fmt.Errorf("Repository member Info is inconsistent for %s@%s", resourceID, version)
+		}
+		if response.Ref == "" {
+			response.Ref = identity.Ref
+		} else if response.Ref != identity.Ref {
+			return nil, fmt.Errorf("Repository member refs are inconsistent for %s@%s", resourceID, version)
 		}
 		response.Skills = append(response.Skills, json.RawMessage(info))
 	}
@@ -195,6 +212,7 @@ func (p *repositoryInfoProtocol) ensurePublished(ctx context.Context, repository
 	}
 	canonicalVersion := version
 	if len(members) == 0 {
+		logRepositoryPublicationLookup(ctx, repositoryID, version, "miss")
 		if p.materializer == nil {
 			return "", huberrors.E("repositoryInfoProtocol.ensurePublished", huberrors.S(resourceID), huberrors.V(version), huberrors.KindNotFound)
 		}
@@ -202,6 +220,8 @@ func (p *repositoryInfoProtocol) ensurePublished(ctx context.Context, repository
 		if err != nil {
 			return "", err
 		}
+	} else {
+		logRepositoryPublicationLookup(ctx, repositoryID, version, "hit")
 		members, err = p.metadata.RepositoryVersionMembers(ctx, repositoryID, canonicalVersion)
 		if err != nil {
 			return "", err
@@ -213,4 +233,13 @@ func (p *repositoryInfoProtocol) ensurePublished(ctx context.Context, repository
 		}
 	}
 	return "", huberrors.E("repositoryInfoProtocol.ensurePublished", huberrors.S(resourceID), huberrors.V(canonicalVersion), huberrors.KindNotFound)
+}
+
+func logRepositoryPublicationLookup(ctx context.Context, repositoryID, version, result string) {
+	log.EntryFromContext(ctx).WithFields(map[string]any{
+		"cache_resource": "repository_publication",
+		"cache_result":   result,
+		"repository_id":  repositoryID,
+		"version":        version,
+	}).Debugf("repository publication lookup")
 }

@@ -21,7 +21,6 @@ import (
 	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
-	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/spf13/afero"
 	modmodule "golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
@@ -35,7 +34,6 @@ func (g *gitFetcher) downloadWithGit(ctx context.Context, _ string, artifactDir,
 		return artifactFiles{}, errors.E(op, err, errors.KindNotFound)
 	}
 	subdir := skillID.repositorySubdir()
-	repositoryURL := skillID.RepositoryURL()
 	repoDir, err := g.repositoryDir(skillID.Repository)
 	if err != nil {
 		return artifactFiles{}, errors.E(op, err)
@@ -99,19 +97,13 @@ func (g *gitFetcher) downloadWithGit(ctx context.Context, _ string, artifactDir,
 		return artifactFiles{}, errors.E(op, err)
 	}
 
-	origin := storage.Origin{
-		VCS:       "git",
-		URL:       repositoryURL,
-		Subdir:    subdir,
-		Ref:       ref,
-		CommitSHA: hash,
-		TreeSHA:   resolution.TreeSHA,
-	}
 	infoBytes, err := json.Marshal(struct {
-		Version string    `json:"Version"`
-		Time    time.Time `json:"Time"`
-		Origin  any       `json:"Origin"`
-	}{version, commitTime, origin})
+		Version   string    `json:"Version"`
+		Time      time.Time `json:"Time"`
+		Ref       string    `json:"Ref"`
+		CommitSHA string    `json:"CommitSHA"`
+		TreeSHA   string    `json:"TreeSHA"`
+	}{version, commitTime, ref, hash, resolution.TreeSHA})
 	if err != nil {
 		return artifactFiles{}, errors.E(op, err)
 	}

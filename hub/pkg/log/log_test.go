@@ -148,3 +148,20 @@ func TestNoOpLogger(t *testing.T) {
 	l := NoOpLogger()
 	require.NotPanics(t, func() { l.Infof("test") })
 }
+
+func TestLoggerRedactsCredentialsInMessagesAndFields(t *testing.T) {
+	var buf bytes.Buffer
+	logger := NewWithOutput(&buf, "", slog.LevelDebug, "json")
+	logger.WithFields(map[string]any{
+		"authorization":  "Bearer field-secret",
+		"repository_url": "https://user:password@example.com/org/repo",
+	}).Errorf("request failed token=ghp_abcdefghijklmnopqrstuvwxyz password=hunter2 Bearer raw-secret")
+
+	output := buf.String()
+	require.NotContains(t, output, "field-secret")
+	require.NotContains(t, output, "password@example.com")
+	require.NotContains(t, output, "ghp_abcdefghijklmnopqrstuvwxyz")
+	require.NotContains(t, output, "hunter2")
+	require.NotContains(t, output, "raw-secret")
+	require.Contains(t, output, redacted)
+}

@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
-	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/spf13/afero"
 )
 
@@ -64,10 +63,13 @@ func (s *SkillSuite) TestGitFetcherFetch() {
 	defer ver.Zip.Close()
 
 	r.True(len(ver.Info) > 0)
-	var info storage.RevInfo
+	var info struct {
+		CommitSHA string `json:"CommitSHA"`
+		TreeSHA   string `json:"TreeSHA"`
+	}
 	r.NoError(json.Unmarshal(ver.Info, &info))
-	r.Equal("3652b3c7aa21492717945b6063ae278030101dd8", info.Origin.CommitSHA)
-	r.Equal("f17a01bcf457cca0ba9a3432fb7218a064261a14", info.Origin.TreeSHA)
+	r.Equal("3652b3c7aa21492717945b6063ae278030101dd8", info.CommitSHA)
+	r.Equal("f17a01bcf457cca0ba9a3432fb7218a064261a14", info.TreeSHA)
 
 	zipBytes, err := io.ReadAll(ver.Zip)
 	r.NoError(err)

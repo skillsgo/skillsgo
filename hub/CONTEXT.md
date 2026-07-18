@@ -24,6 +24,10 @@ _Avoid_: refresh command, subscription, raw transport URL
 The atomic visibility change that publishes every valid Skill observed at one repository tag and commit. Invalid or missing `SKILL.md` candidates are not Skills and are omitted without blocking other valid Skills; no partial set of accepted Skill versions becomes visible.
 _Avoid_: Repository Batch table, repository ZIP, all-or-nothing source validation
 
+**Repository Batch Version**:
+The canonical immutable version shared by Repository Info and every Skill Info member observed at one source commit. `latest` selects the highest stable semantic-version tag, or resolves the default-branch HEAD to a commit-based pseudo-version when no stable tag exists. A member's Git Tree SHA identifies that Skill directory's content for change detection; it never replaces the shared batch version or the pseudo-version's commit suffix.
+_Avoid_: per-Skill pseudo-version, Tree-SHA version suffix, mutable `latest` in persisted dependencies
+
 **Published Version**:
 An immutable Skill version declared by a canonical semantic-version Git tag. The tag resolves to one commit permanently; moving a previously published tag is a conflict and never overwrites Hub data. A GitHub Release is optional presentation metadata and is not a version signal.
 _Avoid_: GitHub Release, mutable branch head, npm-style publish event
@@ -37,8 +41,8 @@ The public canonical identity of a logical Skill, such as `github.com/owner/repo
 _Avoid_: Skill Identity, Skill Coordinate, opaque database ID, name-only lookup
 
 **Skill Info**:
-The single immutable structured metadata resource for one Skill version. It contains canonical identity and version, normalized `SKILL.md` frontmatter, source commit and tree, Risk, Content Digest, and Archive Size. The original `SKILL.md` remains authoritative inside the ZIP.
-_Avoid_: separate artifact manifest, mutable branch response
+The single immutable structured metadata resource for one Skill version. It contains canonical identity and version, normalized `SKILL.md` frontmatter, and flat `Ref`, `CommitSHA`, and `TreeSHA` source fields alongside Risk, Content Digest, and Archive Size. Source URL and subdirectory are derived from the Skill ID rather than repeated in an Origin object. The original `SKILL.md` remains authoritative inside the ZIP.
+_Avoid_: separate artifact manifest, nested Origin object, repeated source URL, mutable branch response
 
 **Repository Info**:
 The immutable metadata resource for one Repository version and commit, embedding the complete Skill Info records for every valid root or nested Skill observed in that source snapshot.
