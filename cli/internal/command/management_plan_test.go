@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with exact managed and External targets, temporary Store receipts, filesystem drift, and Workspace metadata.
- * [OUTPUT]: Specifies exact managed and External removal, unsafe-remove blocking, Repair, Stop Managing content preservation, Store retention, and machine progress/results.
+ * [OUTPUT]: Specifies exact managed and External removal, unsafe-remove blocking, Repair, Stop Managing content preservation, Store retention, and complete JSON/NDJSON failure results before non-zero status.
  * [POS]: Serves as the public CLI contract coverage for App-driven Target Management Plans.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -179,6 +179,60 @@ func TestManagementPlanBlocksUnsafeRemoveAndSupportsRepairOrStopManaging(t *test
 		require.NoError(t, err)
 		require.NotContains(t, manifest.Skills, "demo")
 	})
+}
+
+func TestManagementPlanWritesCompleteJSONAndNDJSONBeforeFailure(t *testing.T) {
+	for _, outputMode := range []string{"json", "ndjson"} {
+		t.Run(outputMode, func(t *testing.T) {
+			root := t.TempDir()
+			home := filepath.Join(root, "home")
+			agentHome := filepath.Join(root, "test-agent")
+			projectRoot := filepath.Join(root, "project")
+			t.Setenv("HOME", home)
+			t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
+			require.NoError(t, os.MkdirAll(projectRoot, 0o700))
+			skillID := "github.com/example/skills/-/demo"
+			storage := store.Store{Root: store.DefaultRoot(home)}
+			entry := updatePlanTestStoreEntry(t, storage, skillID, "v1", "main", "old")
+			target := install.Target{Agent: "test-agent", Scope: install.ScopeProject, Mode: install.ModeCopy, Path: filepath.Join(projectRoot, ".test-agent", "skills", "demo")}
+			require.NoError(t, install.Install(entry, []install.Target{target}))
+			require.NoError(t, project.Upsert(projectRoot, "demo", project.SkillRequirement{Source: skillID, Ref: "main", Agents: []string{"test-agent"}, Mode: install.ModeCopy}, entry.Receipt))
+			require.NoError(t, os.WriteFile(filepath.Join(target.Path, "SKILL.md"), []byte("local change"), 0o600))
+			preflight := managementPreflight(t, target, projectRoot, skillID, "v1")
+			require.Contains(t, preflight.AllowedActions, "stop-managing")
+			require.NoError(t, os.Chmod(projectRoot, 0o500))
+			t.Cleanup(func() { _ = os.Chmod(projectRoot, 0o700) })
+			body, err := json.Marshal(map[string]any{
+				"scope": "project", "projectRoot": projectRoot, "agent": "test-agent", "mode": "copy",
+				"path": target.Path, "skillId": skillID, "version": "v1", "action": "stop-managing", "stateToken": preflight.StateToken,
+			})
+			require.NoError(t, err)
+			var output bytes.Buffer
+			err = Execute([]string{"manage", "--target", string(body), "--output", outputMode}, &output, &output)
+			require.Error(t, err)
+			lines := bytes.Split(bytes.TrimSpace(output.Bytes()), []byte("\n"))
+			final := output.Bytes()
+			if outputMode == "ndjson" {
+				require.GreaterOrEqual(t, len(lines), 3)
+				final = lines[len(lines)-1]
+			}
+			var execution struct {
+				Phase   string `json:"phase"`
+				Results []struct {
+					Error struct {
+						Code string `json:"code"`
+					} `json:"error"`
+				} `json:"results"`
+				Summary struct {
+					Failed int `json:"failed"`
+				} `json:"summary"`
+			}
+			require.NoError(t, json.Unmarshal(final, &execution), output.String())
+			require.Equal(t, "management-execution", execution.Phase)
+			require.Equal(t, 1, execution.Summary.Failed)
+			require.Equal(t, "management.target_failed", execution.Results[0].Error.Code)
+		})
+	}
 }
 
 type managementPreflightItem struct {

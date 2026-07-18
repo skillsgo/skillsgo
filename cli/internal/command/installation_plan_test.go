@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with a fixture Hub, hostile explicit project path, test Agent, and temporary Store/Workspace boundaries.
- * [OUTPUT]: Specifies direct execution JSON, refreshed trusted-risk gates, exact cached versions, explicit hostile target preservation, Manifest persistence, and identical skips.
+ * [OUTPUT]: Specifies direct execution JSON, refreshed trusted-risk gates, exact cached versions, explicit hostile target preservation, Manifest and Sum persistence, and identical skips.
  * [POS]: Serves as executable App-facing contract coverage for direct multi-location installation mutations.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -33,6 +33,7 @@ func TestExplicitInstallationExecutesAndSkipsExactTargets(t *testing.T) {
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
 	skillID, version := "github.com/example/skills/-/demo", "v1"
+	repositoryID := "github.com/example/skills"
 	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{
 		"SKILL.md": "---\nname: demo\ndescription: exact targets\n---\n",
 	})
@@ -40,6 +41,12 @@ func TestExplicitInstallationExecutesAndSkipsExactTargets(t *testing.T) {
 	require.NoError(t, err)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
+		case request.URL.Path == "/mod/"+repositoryID+"/@v/"+version+".info":
+			_, _ = writer.Write(commandTestRepositoryInfo(t, repositoryID, version, "abc", hub.Info{
+				SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: "demo", Description: "exact targets",
+				Version: version, Risk: hub.RiskHigh, ContentDigest: contentDigest, ArchiveSize: int64(len(zipData)),
+				Ref: "main", CommitSHA: "abc", TreeSHA: "def",
+			}))
 		case strings.HasSuffix(request.URL.Path, ".info"):
 			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"exact targets","Version":%q,"Risk":"high","ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/example/skills","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}`, skillID, version, contentDigest, len(zipData))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
@@ -75,6 +82,13 @@ func TestExplicitInstallationExecutesAndSkipsExactTargets(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"test-agent"}, manifest.Skills[skillID].Agents)
 	require.Equal(t, version, manifest.Skills[skillID].Ref)
+	for _, declarationRoot := range []string{projectRoot, filepath.Join(home, ".skillsgo")} {
+		sumBytes, readErr := os.ReadFile(filepath.Join(declarationRoot, "skillsgo.sum"))
+		require.NoError(t, readErr)
+		sumText := string(sumBytes)
+		require.Contains(t, sumText, repositoryID+" "+version+"/repository.info h1:")
+		require.Contains(t, sumText, skillID+" "+version+" h1:")
+	}
 	output.Reset()
 	require.NoError(t, Execute(executeArgs, &output, &output), output.String())
 	require.NoError(t, json.Unmarshal(output.Bytes(), &execution))
@@ -89,6 +103,7 @@ func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
 	skillID, version := "github.com/example/skills/-/demo", "v1"
+	repositoryID := "github.com/example/skills"
 	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{
 		"SKILL.md": "---\nname: demo\ndescription: assessment refresh\n---\n",
 	})
@@ -97,6 +112,12 @@ func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
 	risk := "low"
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
+		case request.URL.Path == "/mod/"+repositoryID+"/@v/"+version+".info":
+			_, _ = writer.Write(commandTestRepositoryInfo(t, repositoryID, version, "abc", hub.Info{
+				SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: "demo", Description: "assessment refresh",
+				Version: version, Risk: hub.Risk(risk), ContentDigest: contentDigest, ArchiveSize: int64(len(zipData)),
+				Ref: "main", CommitSHA: "abc", TreeSHA: "def",
+			}))
 		case strings.HasSuffix(request.URL.Path, ".info"):
 			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"assessment refresh","Version":%q,"Risk":%q,"ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/example/skills","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}`, skillID, version, risk, contentDigest, len(zipData))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
@@ -110,7 +131,7 @@ func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
 	execute := func(extra ...string) error {
 		arguments := []string{
 			"add", skillID, "--skill", "demo", "--target", target,
-			"--yes", "--hub", server.URL, "--output", "json",
+			"--version", version, "--yes", "--hub", server.URL, "--output", "json",
 		}
 		arguments = append(arguments, extra...)
 		var output bytes.Buffer
@@ -121,5 +142,5 @@ func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
 	require.NoError(t, os.RemoveAll(filepath.Join(agentHome, "skills", "demo")))
 	require.NoError(t, os.RemoveAll(filepath.Join(home, ".agents", "skills", "demo")))
 	risk = "critical"
-	require.Error(t, execute("--version", version))
+	require.Error(t, execute())
 }

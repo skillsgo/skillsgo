@@ -348,11 +348,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Preview truncated by the Hub safety limit.';
 
   @override
-  String riskEvidence(String paths) {
-    return 'Executable evidence: $paths';
-  }
-
-  @override
   String get retry => 'Retry';
 
   @override
@@ -366,10 +361,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get snapshotFiles => 'Snapshot files';
-
-  @override
-  String get executableRisk =>
-      'This snapshot contains scripts or executable content. Review the files before installing; SkillsGo does not audit them.';
 
   @override
   String get globalCodex => 'Global · Codex';
@@ -1191,6 +1182,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get loading => 'Loading…';
 
   @override
+  String get repositoryParsing => 'Parsing Repository…';
+
+  @override
   String userInstallSummary(int agents) {
     return 'Available to $agents Agents at user level';
   }
@@ -1222,6 +1216,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String installAllRepositorySkills(int count) {
     return 'Install all repository skills ($count)';
   }
+
+  @override
+  String get installAllSkillsTo => 'Install all skills to';
 
   @override
   String installRepositorySkills(String repository, int count) {
@@ -1458,6 +1455,36 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get targetFailed => 'Failed';
+
+  @override
+  String get targetFailureRetryable => 'This target failed. You can retry it.';
+
+  @override
+  String get targetFailureNeedsAttention =>
+      'This target needs attention before you retry.';
+
+  @override
+  String get installationTargetFailureMessage =>
+      'The target was restored to its previous state. Check its path, then retry.';
+
+  @override
+  String get workspacePersistenceFailureMessage =>
+      'SkillsGo restored this target because the Workspace Manifest could not be saved. Check Workspace access, then retry.';
+
+  @override
+  String get installationStateChangedMessage =>
+      'This target changed after review. Review the current state before retrying.';
+
+  @override
+  String get updateTargetFailureMessage =>
+      'This update target failed without stopping unrelated updates. Retry the failed target.';
+
+  @override
+  String get managementTargetFailureMessage =>
+      'This target action failed without undoing unrelated actions. Retry the failed target.';
+
+  @override
+  String get technicalDetails => 'Technical details';
 
   @override
   String get targetPathExists =>

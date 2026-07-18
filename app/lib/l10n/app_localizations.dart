@@ -656,12 +656,6 @@ abstract class AppLocalizations {
   /// **'Preview truncated by the Hub safety limit.'**
   String get fileContentTruncated;
 
-  /// No description provided for @riskEvidence.
-  ///
-  /// In en, this message translates to:
-  /// **'Executable evidence: {paths}'**
-  String riskEvidence(String paths);
-
   /// No description provided for @retry.
   ///
   /// In en, this message translates to:
@@ -691,12 +685,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Snapshot files'**
   String get snapshotFiles;
-
-  /// No description provided for @executableRisk.
-  ///
-  /// In en, this message translates to:
-  /// **'This snapshot contains scripts or executable content. Review the files before installing; SkillsGo does not audit them.'**
-  String get executableRisk;
 
   /// No description provided for @globalCodex.
   ///
@@ -2132,6 +2120,12 @@ abstract class AppLocalizations {
   /// **'Loading…'**
   String get loading;
 
+  /// No description provided for @repositoryParsing.
+  ///
+  /// In en, this message translates to:
+  /// **'Parsing Repository…'**
+  String get repositoryParsing;
+
   /// No description provided for @userInstallSummary.
   ///
   /// In en, this message translates to:
@@ -2185,6 +2179,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Install all repository skills ({count})'**
   String installAllRepositorySkills(int count);
+
+  /// No description provided for @installAllSkillsTo.
+  ///
+  /// In en, this message translates to:
+  /// **'Install all skills to'**
+  String get installAllSkillsTo;
 
   /// No description provided for @installRepositorySkills.
   ///
@@ -2545,6 +2545,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed'**
   String get targetFailed;
+
+  /// No description provided for @targetFailureRetryable.
+  ///
+  /// In en, this message translates to:
+  /// **'This target failed. You can retry it.'**
+  String get targetFailureRetryable;
+
+  /// No description provided for @targetFailureNeedsAttention.
+  ///
+  /// In en, this message translates to:
+  /// **'This target needs attention before you retry.'**
+  String get targetFailureNeedsAttention;
+
+  /// No description provided for @installationTargetFailureMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The target was restored to its previous state. Check its path, then retry.'**
+  String get installationTargetFailureMessage;
+
+  /// No description provided for @workspacePersistenceFailureMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo restored this target because the Workspace Manifest could not be saved. Check Workspace access, then retry.'**
+  String get workspacePersistenceFailureMessage;
+
+  /// No description provided for @installationStateChangedMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This target changed after review. Review the current state before retrying.'**
+  String get installationStateChangedMessage;
+
+  /// No description provided for @updateTargetFailureMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This update target failed without stopping unrelated updates. Retry the failed target.'**
+  String get updateTargetFailureMessage;
+
+  /// No description provided for @managementTargetFailureMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'This target action failed without undoing unrelated actions. Retry the failed target.'**
+  String get managementTargetFailureMessage;
+
+  /// No description provided for @technicalDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Technical details'**
+  String get technicalDetails;
 
   /// No description provided for @targetPathExists.
   ///

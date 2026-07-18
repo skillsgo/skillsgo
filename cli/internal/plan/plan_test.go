@@ -113,6 +113,7 @@ func TestBuildAndExecuteExplicitTargetsThenSkipIdenticalTargets(t *testing.T) {
 	execution, err := Execute(entry, storeRoot, request, preflight)
 	require.NoError(t, err)
 	require.Equal(t, 2, execution.Summary.Succeeded)
+	require.Zero(t, execution.Summary.Skipped)
 	require.Zero(t, execution.Summary.Failed)
 	for _, result := range execution.Results {
 		require.Equal(t, OutcomeSucceeded, result.Outcome)
@@ -222,7 +223,8 @@ func TestCreateRollsBackTargetWhenWorkspacePersistenceFails(t *testing.T) {
 	execution, err := Execute(entry, storeRoot, request, preflight)
 	require.NoError(t, err)
 	require.Equal(t, OutcomeFailed, execution.Results[0].Outcome)
-	require.Equal(t, "workspace-update-failed", execution.Results[0].ErrorCode)
+	require.Equal(t, "workspace.persistence_failed", execution.Results[0].Error.Code)
+	require.True(t, execution.Results[0].Error.Retryable)
 	require.NoFileExists(t, preflight.Targets[0].Target.Path)
 }
 
@@ -264,7 +266,8 @@ func TestReplaceRestoresPreviousTargetWhenWorkspacePersistenceFails(t *testing.T
 	execution, err := Execute(newEntry, storeRoot, request, replacement)
 	require.NoError(t, err)
 	require.Equal(t, OutcomeFailed, execution.Results[0].Outcome)
-	require.Equal(t, "workspace-update-failed", execution.Results[0].ErrorCode)
+	require.Equal(t, "workspace.persistence_failed", execution.Results[0].Error.Code)
+	require.True(t, execution.Results[0].Error.Retryable)
 	requireFileContains(t, filepath.Join(targetPath, "SKILL.md"), "old")
 	require.NoFileExists(t, targetPath+".skillsgo-backup")
 }
@@ -386,8 +389,10 @@ func TestSharedPhysicalCreateRequiresEveryInstalledAgentCell(t *testing.T) {
 		preflight.Targets[0].AffectedBindings[0].Agent,
 		preflight.Targets[0].AffectedBindings[1].Agent,
 	})
-	_, err = Execute(entry, storeRoot, request, preflight)
-	require.Error(t, err)
+	execution, err := Execute(entry, storeRoot, request, preflight)
+	require.NoError(t, err)
+	require.Equal(t, OutcomeConflict, execution.Results[0].Outcome)
+	require.Equal(t, "installation.state_changed", execution.Results[0].Error.Code)
 	require.NoFileExists(t, filepath.Join(agentHome, "skills", "demo", "SKILL.md"))
 }
 
@@ -429,10 +434,12 @@ func TestVersionConflictRequiresExplicitReplacementBeforeAnyMutation(t *testing.
 	require.Equal(t, "v1", conflicted.WorkspaceManifestChanges[0].FromVersion)
 	require.Equal(t, "v2", conflicted.WorkspaceManifestChanges[0].ToVersion)
 	require.Equal(t, ActionCreate, conflicted.Targets[1].Action)
-	_, err = Execute(newEntry, storeRoot, request, conflicted)
-	require.Error(t, err)
+	conflictExecution, err := Execute(newEntry, storeRoot, request, conflicted)
+	require.NoError(t, err)
+	require.Equal(t, OutcomeConflict, conflictExecution.Results[0].Outcome)
+	require.Equal(t, OutcomeSucceeded, conflictExecution.Results[1].Outcome)
 	requireFileContains(t, filepath.Join(targetPath, "SKILL.md"), "old")
-	require.NoFileExists(t, conflicted.Targets[1].Target.Path)
+	require.FileExists(t, filepath.Join(conflicted.Targets[1].Target.Path, "SKILL.md"))
 
 	authorizeReplacement(&request.Targets[0], conflicted.Targets[0])
 	replacement, err := Build(catalog, newEntry, storeRoot, request)
@@ -440,7 +447,8 @@ func TestVersionConflictRequiresExplicitReplacementBeforeAnyMutation(t *testing.
 	require.Equal(t, ActionReplace, replacement.Targets[0].Action)
 	execution, err := Execute(newEntry, storeRoot, request, replacement)
 	require.NoError(t, err)
-	require.Equal(t, 2, execution.Summary.Succeeded)
+	require.Equal(t, 1, execution.Summary.Succeeded)
+	require.Equal(t, 1, execution.Summary.Skipped)
 	require.Equal(t, OutcomeSucceeded, execution.Results[0].Outcome)
 	requireFileContains(t, filepath.Join(targetPath, "SKILL.md"), "new")
 }
@@ -474,8 +482,9 @@ func TestLocalModificationBlocksSilentReplacement(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ActionConflict, blocked.Targets[0].Action)
 	require.Equal(t, "local-modification", blocked.Targets[0].ReasonCode)
-	_, err = Execute(updatedEntry, storeRoot, request, blocked)
-	require.Error(t, err)
+	blockedExecution, err := Execute(updatedEntry, storeRoot, request, blocked)
+	require.NoError(t, err)
+	require.Equal(t, OutcomeConflict, blockedExecution.Results[0].Outcome)
 	requireFileContains(t, filepath.Join(targetPath, "SKILL.md"), "locally edited")
 
 	authorizeReplacement(&request.Targets[0], blocked.Targets[0])
@@ -483,8 +492,10 @@ func TestLocalModificationBlocksSilentReplacement(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ActionReplace, replacement.Targets[0].Action)
 	require.NoError(t, os.WriteFile(filepath.Join(targetPath, "SKILL.md"), []byte("# edited after review\n"), 0o600))
-	_, err = Execute(updatedEntry, storeRoot, request, replacement)
-	require.Error(t, err)
+	staleExecution, err := Execute(updatedEntry, storeRoot, request, replacement)
+	require.NoError(t, err)
+	require.Equal(t, OutcomeFailed, staleExecution.Results[0].Outcome)
+	require.Equal(t, "installation.state_changed", staleExecution.Results[0].Error.Code)
 	requireFileContains(t, filepath.Join(targetPath, "SKILL.md"), "edited after review")
 
 	changed, err := Build(catalog, updatedEntry, storeRoot, request)
@@ -528,8 +539,9 @@ func TestDifferentIdentityNeverMergesWithoutExplicitReplacement(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ActionConflict, blocked.Targets[0].Action)
 	require.Equal(t, "skill-id-collision", blocked.Targets[0].ReasonCode)
-	_, err = Execute(newEntry, storeRoot, request, blocked)
-	require.Error(t, err)
+	blockedExecution, err := Execute(newEntry, storeRoot, request, blocked)
+	require.NoError(t, err)
+	require.Equal(t, OutcomeConflict, blockedExecution.Results[0].Outcome)
 	requireFileContains(t, filepath.Join(targetPath, "SKILL.md"), "old identity")
 
 	authorizeReplacement(&request.Targets[0], blocked.Targets[0])
@@ -624,8 +636,9 @@ func TestIdentityReplacementPreservesAllExplicitProjectAgents(t *testing.T) {
 	require.Equal(t, ActionConflict, shared.Targets[0].Action)
 	require.Equal(t, "shared-target-conflict", shared.Targets[0].ReasonCode)
 	require.Len(t, shared.Targets[0].AffectedBindings, 2)
-	_, err = Execute(newEntry, storeRoot, singleTargetRequest, shared)
-	require.Error(t, err)
+	sharedExecution, err := Execute(newEntry, storeRoot, singleTargetRequest, shared)
+	require.NoError(t, err)
+	require.Equal(t, OutcomeConflict, sharedExecution.Results[0].Outcome)
 	requireFileContains(t, filepath.Join(shared.Targets[0].Target.Path, "SKILL.md"), "old identity")
 
 	reviewed, err := Build(catalog, newEntry, storeRoot, request)
@@ -669,8 +682,10 @@ func TestRiskPolicyBlocksMutationUntilExplicitConfirmation(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ActionRisk, high.Targets[0].Action)
 	require.Equal(t, "high-risk", high.Targets[0].ReasonCode)
-	_, err = Execute(entry, storeRoot, request, high)
-	require.Error(t, err)
+	highExecution, err := Execute(entry, storeRoot, request, high)
+	require.NoError(t, err)
+	require.Equal(t, OutcomeFailed, highExecution.Results[0].Outcome)
+	require.Equal(t, "input.invalid", highExecution.Results[0].Error.Code)
 	require.NoFileExists(t, high.Targets[0].Target.Path)
 
 	request.RiskConfirmed = true
@@ -683,8 +698,10 @@ func TestRiskPolicyBlocksMutationUntilExplicitConfirmation(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, ActionRisk, critical.Targets[0].Action)
 	require.Equal(t, "critical-risk", critical.Targets[0].ReasonCode)
-	_, err = Execute(entry, storeRoot, request, critical)
-	require.Error(t, err)
+	criticalExecution, err := Execute(entry, storeRoot, request, critical)
+	require.NoError(t, err)
+	require.Equal(t, OutcomeFailed, criticalExecution.Results[0].Outcome)
+	require.Equal(t, "input.invalid", criticalExecution.Results[0].Error.Code)
 	require.NoFileExists(t, critical.Targets[0].Target.Path)
 
 	request.AllowCritical = true

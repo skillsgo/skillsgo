@@ -285,6 +285,26 @@ As a user moving a Workspace between machines, I want `skillsgo.mod` to preserve
 
 Status: implemented with canonical `require` formatting, Codex and Claude Code target restoration, unchanged `skillsgo.mod` and `skillsgo.sum` bytes, successful `/mod` and `/api/v1` requests, and explicit 404 responses from the removed root artifact and `/v1` routes by `j36_mod_namespace_and_restore_test.go`.
 
+### J37 — Preserve integrity for App-driven explicit targets
+
+As an App user selecting exact project and Agent targets, I want installation to persist the same complete integrity evidence as terminal installation so that the Workspace remains reproducible rather than depending on the machine that performed the install.
+
+The App-facing `add --target --version` contract writes both the selected Skill content checksum and its immutable Repository Info checksum, caches exact Repository Info, and restores the deleted target while the Hub is unavailable.
+
+Status: implemented with a deterministic nested Skill and offline copy-mode recovery by `j37_explicit_target_integrity_test.go`.
+
+### J38 — Diagnose a machine-mode Hub failure without parsing prose
+
+As a CI/CD or developer-automation user, I want a recognized machine-mode failure to provide a stable code, retryability, diagnostic context, and process status so that automation and troubleshooting do not depend on localized terminal text.
+
+Status: implemented against an unreachable Hub with released CLI JSON stdout and exit 69 by `j38_machine_failure_contract_test.go`.
+
+### J39 — Keep a successful installation group when another group fails
+
+As an App or automation user installing to independent targets, I want one target failure to leave another committed Installation Target Group intact and report both outcomes.
+
+Status: implemented with schema 3, one committed Codex Project target, one failed Codex User target, nested `installation.target_failed`, and non-zero process status by `j39_installation_partial_failure_test.go`.
+
 ## GitHub Issue #27 User-Story Coverage Index
 
 The numbered user stories in #27 are release-reviewed through these black-box journeys:

@@ -147,8 +147,13 @@ class UpdateOperationController extends Notifier<UpdateOperationState> {
               outcome: item.action == UpdatePlanAction.failed
                   ? UpdateTargetOutcome.failed
                   : UpdateTargetOutcome.skipped,
-              errorCode: item.reasonCode,
-              diagnostic: item.diagnostic,
+              error: item.action == UpdatePlanAction.failed
+                  ? TargetFailure(
+                      code: 'update.target_failed',
+                      retryable: true,
+                      diagnostic: item.diagnostic,
+                    )
+                  : null,
             ),
       ];
       final updateItems = retryPlan.targets

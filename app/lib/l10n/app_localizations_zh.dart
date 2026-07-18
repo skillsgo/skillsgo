@@ -322,11 +322,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get fileContentTruncated => 'Hub 已按安全大小限制截断预览。';
 
   @override
-  String riskEvidence(String paths) {
-    return '可执行内容证据：$paths';
-  }
-
-  @override
   String get retry => '重试';
 
   @override
@@ -340,9 +335,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get snapshotFiles => '快照文件';
-
-  @override
-  String get executableRisk => '此快照包含脚本或可执行内容。请在安装前检查文件；SkillsGo 不会对其进行安全审计。';
 
   @override
   String get globalCodex => '全局 · Codex';
@@ -1118,6 +1110,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loading => '正在加载…';
 
   @override
+  String get repositoryParsing => '正在解析 Repository…';
+
+  @override
   String userInstallSummary(int agents) {
     return '将在用户级别供 $agents 个智能体使用';
   }
@@ -1149,6 +1144,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String installAllRepositorySkills(int count) {
     return '安装仓库所有技能（$count）';
   }
+
+  @override
+  String get installAllSkillsTo => '安装所有技能到';
 
   @override
   String installRepositorySkills(String repository, int count) {
@@ -1363,6 +1361,31 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get targetFailed => '失败';
+
+  @override
+  String get targetFailureRetryable => '此目标执行失败，可以重试。';
+
+  @override
+  String get targetFailureNeedsAttention => '重试前需要先处理此目标的问题。';
+
+  @override
+  String get installationTargetFailureMessage => '此目标已恢复到先前状态。请检查目标路径后重试。';
+
+  @override
+  String get workspacePersistenceFailureMessage =>
+      'Workspace Manifest 无法保存，SkillsGo 已恢复此目标。请检查 Workspace 访问权限后重试。';
+
+  @override
+  String get installationStateChangedMessage => '此目标在确认后发生了变化。请重新检查当前状态再重试。';
+
+  @override
+  String get updateTargetFailureMessage => '此更新目标失败，其他更新不受影响。请重试失败目标。';
+
+  @override
+  String get managementTargetFailureMessage => '此目标操作失败，其他操作不会撤销。请重试失败目标。';
+
+  @override
+  String get technicalDetails => '技术详情';
 
   @override
   String get targetPathExists => '目标路径已有其他内容。';

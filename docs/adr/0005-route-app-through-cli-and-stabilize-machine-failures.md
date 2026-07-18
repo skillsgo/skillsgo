@@ -1,0 +1,7 @@
+# Route App Business Operations Through the CLI and Stabilize Machine Failures
+
+The SkillsGo App uses the bundled CLI as its only business-integration boundary and never calls a Hub directly. This keeps Hub protocol handling, local state, and mutation semantics in the same execution engine used by terminal users, CI/CD, and developer automation, while the App remains a typed presentation client of the public, versioned CLI machine protocol.
+
+Machine mode writes its complete JSON or NDJSON result to stdout and returns a non-zero exit code whenever any requested mutation target fails; stderr remains optional, unstable Human diagnostic output and is never a machine contract. A machine failure has a stable domain-oriented `code` plus `retryable`, with `details`, `requestId`, and `diagnostic` only when needed. These fields remain language-neutral: CLI Human mode owns terminal localization, and the App maps stable codes to its own localized product copy. The optional `diagnostic` is not stable or parseable and must not drive caller behavior.
+
+Installation retains its existing compensation scope: one Installation Target Group is atomic, while unrelated groups in the same Installation Request may succeed or fail independently. The first implementation is intentionally limited to structured failures before a command result exists, stable target error codes, and consistent failure exit status for mutation commands; it does not introduce a shared source-code error framework, a category taxonomy, nested causes, or a new version-negotiation mechanism.

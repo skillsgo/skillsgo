@@ -92,14 +92,19 @@ type Preflight struct {
 }
 
 type Result struct {
-	Target     Target  `json:"target"`
-	Name       string  `json:"name"`
-	SkillID    string  `json:"skillId"`
-	Version    string  `json:"version"`
-	Action     Action  `json:"action"`
-	Outcome    Outcome `json:"outcome"`
-	ErrorCode  string  `json:"errorCode,omitempty"`
-	Diagnostic string  `json:"diagnostic,omitempty"`
+	Target  Target       `json:"target"`
+	Name    string       `json:"name"`
+	SkillID string       `json:"skillId"`
+	Version string       `json:"version"`
+	Action  Action       `json:"action"`
+	Outcome Outcome      `json:"outcome"`
+	Error   *TargetError `json:"error,omitempty"`
+}
+
+type TargetError struct {
+	Code       string `json:"code"`
+	Retryable  bool   `json:"retryable"`
+	Diagnostic string `json:"diagnostic,omitempty"`
 }
 
 type ResultSummary struct {
@@ -505,8 +510,7 @@ func finishResult(execution *Execution, index int, err error) {
 		return
 	}
 	execution.Results[index].Outcome = OutcomeFailed
-	execution.Results[index].ErrorCode = "management-failed"
-	execution.Results[index].Diagnostic = err.Error()
+	execution.Results[index].Error = &TargetError{Code: "management.target_failed", Retryable: true, Diagnostic: err.Error()}
 }
 
 func containsAction(values []Action, expected Action) bool {

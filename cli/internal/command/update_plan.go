@@ -89,7 +89,7 @@ func runExplicitUpdatePlan(
 		if err != nil {
 			return err
 		}
-		if err := writePlanOutput(cmd, "human", execution, fmt.Sprintf("Updated %d target(s), failed %d\n", execution.Summary.Succeeded, execution.Summary.Failed)); err != nil {
+		if err := writePlanOutput(cmd, "human", execution, appi18n.F("update.execution.summary", execution.Summary.Succeeded, execution.Summary.Failed)); err != nil {
 			return err
 		}
 		return updateExecutionError(execution)
