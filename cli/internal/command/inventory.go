@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Cobra, localized human copy, the Agent Catalog, and the inventory domain report builder.
- * [OUTPUT]: Provides `skillsgo inventory` with stable managed/external JSON serialization and localized human summaries for explicit Library locations.
+ * [INPUT]: Depends on Cobra, localized human copy, terminal documents, the Agent Catalog, and the inventory domain report builder.
+ * [OUTPUT]: Provides `skillsgo inventory` with stable managed/external JSON serialization and adaptive Human summaries for explicit Library locations.
  * [POS]: Serves as the thin executable adapter for unified Library inventory without owning reconciliation mechanics.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,6 +15,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/inventory"
+	"github.com/skillsgo/skillsgo/cli/internal/terminalui"
 	"github.com/spf13/cobra"
 )
 
@@ -49,19 +50,22 @@ func newInventoryCommand(catalog *agent.Catalog) *cobra.Command {
 			case "json":
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(report)
 			case "human":
+				rows := make([]terminalui.Row, 0, len(report.Entries))
 				for _, entry := range report.Entries {
 					healthKey := strings.ReplaceAll(string(entry.Health), "-", "_")
-					if _, err := fmt.Fprintf(
-						cmd.OutOrStdout(),
-						appi18n.T("inventory.row"),
-						entry.Name,
-						len(entry.Targets),
-						appi18n.T("inventory.health."+healthKey),
-					); err != nil {
-						return err
+					state := "✓"
+					if entry.Health != inventory.HealthHealthy {
+						state = "!"
 					}
+					rows = append(rows, terminalui.Row{State: state, Primary: entry.Name,
+						Secondary: fmt.Sprintf("%d targets", len(entry.Targets)),
+						Meta:      []string{string(entry.Provenance), appi18n.T("inventory.health." + healthKey)}})
 				}
-				return nil
+				ui, err := humanUI(cmd)
+				if err != nil {
+					return err
+				}
+				return ui.Render(terminalui.Document{Title: appi18n.T("inventory.title"), Sections: []terminalui.Section{{Rows: rows}}})
 			default:
 				return fmt.Errorf(appi18n.T("inventory.error.output"), output)
 			}

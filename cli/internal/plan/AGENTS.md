@@ -3,11 +3,11 @@
 
 ## Members
 
-- `plan.go`: validates explicit location-and-Agent cells and shared bindings; classifies version/Skill ID/Local Modification/trusted-risk outcomes; pins resolved immutable versions in declarations; turns affirmative add requests into in-place replacements; builds stable preflight records; and executes target groups with structured progress while retaining unrelated successes.
-- `plan_test.go`: specifies strict target decoding, explicit-cell validation, state drift, shared paths, affirmative same-name replacement, skip and conflict behavior, trusted-risk gates, Workspace Manifest previews, and resilient target-specific progress/results.
+- `plan.go`: prepares process-local explicit location-and-Agent mutations, classifies version/Skill ID/Local Modification/trusted-risk outcomes, pins resolved immutable versions in declarations, turns affirmative add requests into in-place replacements, and applies target groups with compensation while retaining unrelated successes.
+- `plan_test.go`: specifies strict target decoding, supported-but-not-installed Agents, explicit-cell validation, state drift, shared paths, affirmative same-name replacement, skip and conflict behavior, trusted-risk gates, and resilient target-specific results.
 
 ## Architectural Boundary
 
-This module owns the CLI domain contract for one immutable artifact plus an explicit list of Installation Targets and state-bound per-target resolutions. It may resolve known Agent paths, compare copy content, expose shared physical bindings, enforce Hub-derived artifact risk confirmation, and orchestrate `install` and `project` mutations, but it must not infer a Cartesian product, localize machine output, or depend on Flutter state.
+This module owns process-local preparation and application for one immutable artifact plus an explicit list of Installation Targets. It may resolve supported Agent paths regardless of current Agent installation, compare copy content, enforce Hub-derived artifact risk confirmation, and orchestrate compensated `install` and `project` mutations, but it must not expose a user-facing review protocol, infer a Cartesian product, localize machine output, or depend on Flutter state.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

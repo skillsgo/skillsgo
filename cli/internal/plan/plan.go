@@ -222,7 +222,7 @@ func Build(catalog *agent.Catalog, entry *store.Entry, storeRoot string, request
 	pathModes := map[string]install.Mode{}
 	resolvedItems := make([]Item, 0, len(request.Targets))
 	for _, requested := range request.Targets {
-		item, err := resolveItem(catalog, entry, installations, installed, request.Name, requested)
+		item, err := resolveItem(catalog, entry, installations, request.Name, requested)
 		if err != nil {
 			return Preflight{}, err
 		}
@@ -434,13 +434,9 @@ func resolveItem(
 	catalog *agent.Catalog,
 	entry *store.Entry,
 	installations []install.Installation,
-	installed map[string]bool,
 	name string,
 	requested TargetRequest,
 ) (Item, error) {
-	if !installed[requested.Agent] {
-		return Item{}, fmt.Errorf("Agent %q is not installed", requested.Agent)
-	}
 	definition, ok := catalog.Get(requested.Agent)
 	if !ok {
 		return Item{}, fmt.Errorf("unknown Agent %q", requested.Agent)
@@ -783,34 +779,41 @@ func ExecuteWithProgress(
 			targets = append(targets, installTarget(preflight.Targets[index].Target))
 		}
 		var mutationErr error
+		workspaceErr := false
+		persistWorkspace := func() error {
+			for _, index := range indexes {
+				item := preflight.Targets[index]
+				if err := updateWorkspace(entry, storeRoot, request, item.Target, item.ReasonCode, skillIDReplaced); err != nil {
+					workspaceErr = true
+					return err
+				}
+			}
+			return nil
+		}
 		if preflight.Targets[indexes[0]].Action == ActionReplace {
 			previous, err := installationsAtPaths(storeRoot, preflight, indexes)
 			if err != nil {
 				mutationErr = err
 			} else {
-				mutationErr = install.ReplaceExplicit(entry, previous, targets)
+				mutationErr = install.ReplaceExplicitThen(entry, previous, targets, persistWorkspace)
 			}
 		} else {
-			mutationErr = install.Install(entry, targets)
+			mutationErr = install.InstallThen(entry, targets, persistWorkspace)
 		}
 		if mutationErr != nil {
 			for _, index := range indexes {
 				execution.Results[index].Outcome = OutcomeFailed
-				execution.Results[index].ErrorCode = "install-failed"
+				if workspaceErr {
+					execution.Results[index].ErrorCode = "workspace-update-failed"
+				} else {
+					execution.Results[index].ErrorCode = "install-failed"
+				}
 				execution.Results[index].Diagnostic = mutationErr.Error()
 				emit(index, ProgressFinished)
 			}
 			continue
 		}
 		for _, index := range indexes {
-			item := preflight.Targets[index]
-			if err := updateWorkspace(entry, storeRoot, request, item.Target, item.ReasonCode, skillIDReplaced); err != nil {
-				execution.Results[index].Outcome = OutcomeFailed
-				execution.Results[index].ErrorCode = "workspace-update-failed"
-				execution.Results[index].Diagnostic = err.Error()
-				emit(index, ProgressFinished)
-				continue
-			}
 			execution.Results[index].Outcome = OutcomeSucceeded
 			emit(index, ProgressFinished)
 		}

@@ -36,7 +36,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/install/` | Add, update, remove, copy-digest, explicit replacement, and materialization behavior. |
 | `internal/inventory/` | Read-only managed and External Library reconciliation across Workspace Manifests, known Agent paths, Store artifacts, Local Modifications, and derived Agent visibility. |
 | `internal/managementplan/` | Exact-target managed Remove/Repair/Stop Managing and External Remove preflight, reviewed-state binding, and target-specific execution. |
-| `internal/plan/` | Explicit Installation Plan conflict/risk preflight, Workspace Manifest preview, resolution validation, and target-specific execution. |
+| `internal/plan/` | Process-local installation preparation, conflict/risk validation, Workspace Manifest mutation, and target-specific execution. |
 | `internal/project/` | Canonical direct requirements in `skillsgo.yaml` and integrity-only `skillsgo.sum` state for project and `~/.skillsgo` user scopes. |
 | `internal/infocache/` | Exact immutable Repository and Skill Info bytes used for checksum-verified offline restore. |
 | `internal/hub/` | Client for the public SkillsGo Hub protocol and normalized artifact-integrity verification. |
