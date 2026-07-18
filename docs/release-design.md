@@ -149,7 +149,7 @@ GitHub-generated release notes are sufficient initially. A changeset or conventi
 App, CLI, and Hub versions do not need to match. Compatibility is expressed through protocol and capability versions rather than inferred from product SemVer.
 
 ```text
-GET /v1/capabilities
+GET /api/v1/capabilities
 ```
 
 The response includes at least a protocol version, Hub version, and feature list. Clients enable behavior based on the declared protocol and capabilities.

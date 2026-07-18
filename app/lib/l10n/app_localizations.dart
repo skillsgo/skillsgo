@@ -164,6 +164,12 @@ abstract class AppLocalizations {
   /// **'Find a skill for your next move.'**
   String get discoverTitle;
 
+  /// No description provided for @skillsLeaderboard.
+  ///
+  /// In en, this message translates to:
+  /// **'It’s nice to know a little more.'**
+  String get skillsLeaderboard;
+
   /// No description provided for @searchResultsFor.
   ///
   /// In en, this message translates to:
@@ -415,6 +421,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Install'**
   String get install;
+
+  /// No description provided for @installAll.
+  ///
+  /// In en, this message translates to:
+  /// **'Install all skills'**
+  String get installAll;
+
+  /// No description provided for @latestCommit.
+  ///
+  /// In en, this message translates to:
+  /// **'Latest commit'**
+  String get latestCommit;
 
   /// No description provided for @installToMoreTargets.
   ///
@@ -689,7 +707,7 @@ abstract class AppLocalizations {
   /// No description provided for @yourLibrary.
   ///
   /// In en, this message translates to:
-  /// **'Installed Skills'**
+  /// **'What you know is all here.'**
   String get yourLibrary;
 
   /// No description provided for @libraryNavigation.
@@ -1103,7 +1121,7 @@ abstract class AppLocalizations {
   /// No description provided for @workspaceOwnershipChanges.
   ///
   /// In en, this message translates to:
-  /// **'Selected project actions will update skillsgo.yaml and skillsgo.yaml.'**
+  /// **'Selected project actions will update skillsgo.mod and skillsgo.sum.'**
   String get workspaceOwnershipChanges;
 
   /// No description provided for @targetContentPreserved.
@@ -2702,11 +2720,11 @@ abstract class AppLocalizations {
   /// **'Repository'**
   String get detailRepository;
 
-  /// No description provided for @detailGitHubStars.
+  /// No description provided for @detailStars.
   ///
   /// In en, this message translates to:
-  /// **'GitHub Stars'**
-  String get detailGitHubStars;
+  /// **'Stars'**
+  String get detailStars;
 
   /// No description provided for @detailUpdated.
   ///

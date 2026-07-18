@@ -365,7 +365,7 @@ class _RailButton<T> extends StatelessWidget {
               HugeIcon(
                 icon: item.icon!,
                 size: 18,
-                strokeWidth: 1.8,
+                strokeWidth: 1.5,
                 color: foreground,
               ),
               const SizedBox(width: 10),

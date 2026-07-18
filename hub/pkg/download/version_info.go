@@ -14,7 +14,7 @@ import (
 )
 
 // PathVersionInfo URL.
-const PathVersionInfo = "/{skill:.+}/@v/{version}.info"
+const PathVersionInfo = "/mod/{skill:.+}/@v/{version}.info"
 
 // InfoHandler implements GET baseURL/module/@v/version.info.
 func InfoHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handler {

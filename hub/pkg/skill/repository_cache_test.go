@@ -219,6 +219,33 @@ func TestRepositoryDiscoverySkipsInvalidCandidatesWithoutBlockingValidSiblings(t
 	require.NotContains(t, ids, f.skillID+"/-/skills/invalid")
 }
 
+func TestRepositoryDiscoveryExcludesSkillsInstalledUnderHiddenDirectories(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	f.writeSkill(t, ".claude/skills/release-skills", "release-skills", "installed dependency")
+	f.writeSkill(t, ".agents/skills/shared-skill", "shared-skill", "installed dependency")
+	f.commit(t, "add installed hidden skills")
+	runGit(t, f.work, "tag", "v1.1.0")
+	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
+
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		for _, member := range snapshot.Members {
+			if member.Version != nil && member.Version.Zip != nil {
+				require.NoError(t, member.Version.Zip.Close())
+			}
+		}
+	})
+	ids := make([]string, 0, len(snapshot.Members))
+	for _, member := range snapshot.Members {
+		ids = append(ids, member.SkillID)
+	}
+	require.ElementsMatch(t, []string{
+		f.skillID,
+		f.skillID + "/-/skills/child",
+	}, ids)
+}
+
 func TestRepositoryDiscoveryUsesTagAsSharedBatchVersionAndTreeAsMemberIdentity(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "latest")

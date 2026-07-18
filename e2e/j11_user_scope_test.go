@@ -38,9 +38,9 @@ func TestJ11UserScope(t *testing.T) {
 
 	userTarget := filepath.Join(sandboxRoot, "home", ".codex", "skills", "ask-matt")
 	require.FileExists(t, filepath.Join(userTarget, "SKILL.md"))
-	require.FileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo.yaml"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo.mod"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo.sum"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 
 	remove := execCLI(t, ctx, container,
 		"remove", "ask-matt",

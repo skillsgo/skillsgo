@@ -31,7 +31,7 @@ func TestJ29RepositoryHistory(t *testing.T) {
 	require.Equal(t, 0, oldBeta.exitCode, oldBeta.output)
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "beta", "SKILL.md"))
 
-	nestedLatest := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/"+repository+"/-/skills/beta/@latest")
+	nestedLatest := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/mod/"+repository+"/-/skills/beta/@latest")
 	require.Equal(t, 0, nestedLatest.exitCode, nestedLatest.output)
 	require.Contains(t, nestedLatest.output, `"Version":"v1.0.0"`)
 }

@@ -70,6 +70,26 @@ func RepositoryID(v string) predicate.Repository {
 	return predicate.Repository(sql.FieldEQ(FieldRepositoryID, v))
 }
 
+// Stars applies equality check predicate on the "stars" field. It's identical to StarsEQ.
+func Stars(v int64) predicate.Repository {
+	return predicate.Repository(sql.FieldEQ(FieldStars, v))
+}
+
+// SourceMetadataEtag applies equality check predicate on the "source_metadata_etag" field. It's identical to SourceMetadataEtagEQ.
+func SourceMetadataEtag(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldEQ(FieldSourceMetadataEtag, v))
+}
+
+// SourceMetadataCheckedAt applies equality check predicate on the "source_metadata_checked_at" field. It's identical to SourceMetadataCheckedAtEQ.
+func SourceMetadataCheckedAt(v time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldEQ(FieldSourceMetadataCheckedAt, v))
+}
+
+// SourceMetadataRetryAt applies equality check predicate on the "source_metadata_retry_at" field. It's identical to SourceMetadataRetryAtEQ.
+func SourceMetadataRetryAt(v time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldEQ(FieldSourceMetadataRetryAt, v))
+}
+
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
 func CreatedAt(v time.Time) predicate.Repository {
 	return predicate.Repository(sql.FieldEQ(FieldCreatedAt, v))
@@ -273,6 +293,221 @@ func RepositoryIDEqualFold(v string) predicate.Repository {
 // RepositoryIDContainsFold applies the ContainsFold predicate on the "repository_id" field.
 func RepositoryIDContainsFold(v string) predicate.Repository {
 	return predicate.Repository(sql.FieldContainsFold(FieldRepositoryID, v))
+}
+
+// StarsEQ applies the EQ predicate on the "stars" field.
+func StarsEQ(v int64) predicate.Repository {
+	return predicate.Repository(sql.FieldEQ(FieldStars, v))
+}
+
+// StarsNEQ applies the NEQ predicate on the "stars" field.
+func StarsNEQ(v int64) predicate.Repository {
+	return predicate.Repository(sql.FieldNEQ(FieldStars, v))
+}
+
+// StarsIn applies the In predicate on the "stars" field.
+func StarsIn(vs ...int64) predicate.Repository {
+	return predicate.Repository(sql.FieldIn(FieldStars, vs...))
+}
+
+// StarsNotIn applies the NotIn predicate on the "stars" field.
+func StarsNotIn(vs ...int64) predicate.Repository {
+	return predicate.Repository(sql.FieldNotIn(FieldStars, vs...))
+}
+
+// StarsGT applies the GT predicate on the "stars" field.
+func StarsGT(v int64) predicate.Repository {
+	return predicate.Repository(sql.FieldGT(FieldStars, v))
+}
+
+// StarsGTE applies the GTE predicate on the "stars" field.
+func StarsGTE(v int64) predicate.Repository {
+	return predicate.Repository(sql.FieldGTE(FieldStars, v))
+}
+
+// StarsLT applies the LT predicate on the "stars" field.
+func StarsLT(v int64) predicate.Repository {
+	return predicate.Repository(sql.FieldLT(FieldStars, v))
+}
+
+// StarsLTE applies the LTE predicate on the "stars" field.
+func StarsLTE(v int64) predicate.Repository {
+	return predicate.Repository(sql.FieldLTE(FieldStars, v))
+}
+
+// SourceMetadataEtagEQ applies the EQ predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagEQ(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldEQ(FieldSourceMetadataEtag, v))
+}
+
+// SourceMetadataEtagNEQ applies the NEQ predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagNEQ(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldNEQ(FieldSourceMetadataEtag, v))
+}
+
+// SourceMetadataEtagIn applies the In predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagIn(vs ...string) predicate.Repository {
+	return predicate.Repository(sql.FieldIn(FieldSourceMetadataEtag, vs...))
+}
+
+// SourceMetadataEtagNotIn applies the NotIn predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagNotIn(vs ...string) predicate.Repository {
+	return predicate.Repository(sql.FieldNotIn(FieldSourceMetadataEtag, vs...))
+}
+
+// SourceMetadataEtagGT applies the GT predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagGT(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldGT(FieldSourceMetadataEtag, v))
+}
+
+// SourceMetadataEtagGTE applies the GTE predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagGTE(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldGTE(FieldSourceMetadataEtag, v))
+}
+
+// SourceMetadataEtagLT applies the LT predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagLT(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldLT(FieldSourceMetadataEtag, v))
+}
+
+// SourceMetadataEtagLTE applies the LTE predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagLTE(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldLTE(FieldSourceMetadataEtag, v))
+}
+
+// SourceMetadataEtagContains applies the Contains predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagContains(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldContains(FieldSourceMetadataEtag, v))
+}
+
+// SourceMetadataEtagHasPrefix applies the HasPrefix predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagHasPrefix(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldHasPrefix(FieldSourceMetadataEtag, v))
+}
+
+// SourceMetadataEtagHasSuffix applies the HasSuffix predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagHasSuffix(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldHasSuffix(FieldSourceMetadataEtag, v))
+}
+
+// SourceMetadataEtagIsNil applies the IsNil predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagIsNil() predicate.Repository {
+	return predicate.Repository(sql.FieldIsNull(FieldSourceMetadataEtag))
+}
+
+// SourceMetadataEtagNotNil applies the NotNil predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagNotNil() predicate.Repository {
+	return predicate.Repository(sql.FieldNotNull(FieldSourceMetadataEtag))
+}
+
+// SourceMetadataEtagEqualFold applies the EqualFold predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagEqualFold(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldEqualFold(FieldSourceMetadataEtag, v))
+}
+
+// SourceMetadataEtagContainsFold applies the ContainsFold predicate on the "source_metadata_etag" field.
+func SourceMetadataEtagContainsFold(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldContainsFold(FieldSourceMetadataEtag, v))
+}
+
+// SourceMetadataCheckedAtEQ applies the EQ predicate on the "source_metadata_checked_at" field.
+func SourceMetadataCheckedAtEQ(v time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldEQ(FieldSourceMetadataCheckedAt, v))
+}
+
+// SourceMetadataCheckedAtNEQ applies the NEQ predicate on the "source_metadata_checked_at" field.
+func SourceMetadataCheckedAtNEQ(v time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldNEQ(FieldSourceMetadataCheckedAt, v))
+}
+
+// SourceMetadataCheckedAtIn applies the In predicate on the "source_metadata_checked_at" field.
+func SourceMetadataCheckedAtIn(vs ...time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldIn(FieldSourceMetadataCheckedAt, vs...))
+}
+
+// SourceMetadataCheckedAtNotIn applies the NotIn predicate on the "source_metadata_checked_at" field.
+func SourceMetadataCheckedAtNotIn(vs ...time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldNotIn(FieldSourceMetadataCheckedAt, vs...))
+}
+
+// SourceMetadataCheckedAtGT applies the GT predicate on the "source_metadata_checked_at" field.
+func SourceMetadataCheckedAtGT(v time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldGT(FieldSourceMetadataCheckedAt, v))
+}
+
+// SourceMetadataCheckedAtGTE applies the GTE predicate on the "source_metadata_checked_at" field.
+func SourceMetadataCheckedAtGTE(v time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldGTE(FieldSourceMetadataCheckedAt, v))
+}
+
+// SourceMetadataCheckedAtLT applies the LT predicate on the "source_metadata_checked_at" field.
+func SourceMetadataCheckedAtLT(v time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldLT(FieldSourceMetadataCheckedAt, v))
+}
+
+// SourceMetadataCheckedAtLTE applies the LTE predicate on the "source_metadata_checked_at" field.
+func SourceMetadataCheckedAtLTE(v time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldLTE(FieldSourceMetadataCheckedAt, v))
+}
+
+// SourceMetadataCheckedAtIsNil applies the IsNil predicate on the "source_metadata_checked_at" field.
+func SourceMetadataCheckedAtIsNil() predicate.Repository {
+	return predicate.Repository(sql.FieldIsNull(FieldSourceMetadataCheckedAt))
+}
+
+// SourceMetadataCheckedAtNotNil applies the NotNil predicate on the "source_metadata_checked_at" field.
+func SourceMetadataCheckedAtNotNil() predicate.Repository {
+	return predicate.Repository(sql.FieldNotNull(FieldSourceMetadataCheckedAt))
+}
+
+// SourceMetadataRetryAtEQ applies the EQ predicate on the "source_metadata_retry_at" field.
+func SourceMetadataRetryAtEQ(v time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldEQ(FieldSourceMetadataRetryAt, v))
+}
+
+// SourceMetadataRetryAtNEQ applies the NEQ predicate on the "source_metadata_retry_at" field.
+func SourceMetadataRetryAtNEQ(v time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldNEQ(FieldSourceMetadataRetryAt, v))
+}
+
+// SourceMetadataRetryAtIn applies the In predicate on the "source_metadata_retry_at" field.
+func SourceMetadataRetryAtIn(vs ...time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldIn(FieldSourceMetadataRetryAt, vs...))
+}
+
+// SourceMetadataRetryAtNotIn applies the NotIn predicate on the "source_metadata_retry_at" field.
+func SourceMetadataRetryAtNotIn(vs ...time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldNotIn(FieldSourceMetadataRetryAt, vs...))
+}
+
+// SourceMetadataRetryAtGT applies the GT predicate on the "source_metadata_retry_at" field.
+func SourceMetadataRetryAtGT(v time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldGT(FieldSourceMetadataRetryAt, v))
+}
+
+// SourceMetadataRetryAtGTE applies the GTE predicate on the "source_metadata_retry_at" field.
+func SourceMetadataRetryAtGTE(v time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldGTE(FieldSourceMetadataRetryAt, v))
+}
+
+// SourceMetadataRetryAtLT applies the LT predicate on the "source_metadata_retry_at" field.
+func SourceMetadataRetryAtLT(v time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldLT(FieldSourceMetadataRetryAt, v))
+}
+
+// SourceMetadataRetryAtLTE applies the LTE predicate on the "source_metadata_retry_at" field.
+func SourceMetadataRetryAtLTE(v time.Time) predicate.Repository {
+	return predicate.Repository(sql.FieldLTE(FieldSourceMetadataRetryAt, v))
+}
+
+// SourceMetadataRetryAtIsNil applies the IsNil predicate on the "source_metadata_retry_at" field.
+func SourceMetadataRetryAtIsNil() predicate.Repository {
+	return predicate.Repository(sql.FieldIsNull(FieldSourceMetadataRetryAt))
+}
+
+// SourceMetadataRetryAtNotNil applies the NotNil predicate on the "source_metadata_retry_at" field.
+func SourceMetadataRetryAtNotNil() predicate.Repository {
+	return predicate.Repository(sql.FieldNotNull(FieldSourceMetadataRetryAt))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

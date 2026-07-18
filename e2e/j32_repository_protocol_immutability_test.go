@@ -18,7 +18,7 @@ func TestJ32RepositoryProtocolImmutability(t *testing.T) {
 	ctx := context.Background()
 	container, _ := startEnvironment(t, ctx)
 	repository := "fixtures.test/group/subgroup/collection"
-	base := "http://127.0.0.1:3000/" + repository
+	base := "http://127.0.0.1:3000/mod/" + repository
 
 	list := execInContainer(t, ctx, container, "wget", "-qO-", base+"/@v/list")
 	require.Equal(t, 0, list.exitCode, list.output)
@@ -52,7 +52,7 @@ func TestJ32RepositoryProtocolImmutability(t *testing.T) {
 	require.Equal(t, 0, head.exitCode, head.output)
 	rootHead := execInContainer(t, ctx, container, "wget", "--spider", "-q", base+"/@v/v1.0.0.zip")
 	require.Equal(t, 0, rootHead.exitCode, rootHead.output)
-	noRootHead := execInContainer(t, ctx, container, "wget", "--spider", "-q", "http://127.0.0.1:3000/fixtures.test/group/subgroup/mixed/@v/v1.0.0.zip")
+	noRootHead := execInContainer(t, ctx, container, "wget", "--spider", "-q", "http://127.0.0.1:3000/mod/fixtures.test/group/subgroup/mixed/@v/v1.0.0.zip")
 	require.NotEqual(t, 0, noRootHead.exitCode, noRootHead.output)
 	zipBefore := execInContainer(t, ctx, container, "sh", "-c", "wget -qO- "+base+"/-/skills/alpha/@v/v1.0.0.zip | sha256sum")
 	require.Equal(t, 0, zipBefore.exitCode, zipBefore.output)

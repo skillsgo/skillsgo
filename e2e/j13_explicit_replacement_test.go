@@ -32,7 +32,7 @@ func TestJ13ExplicitReplacement(t *testing.T) {
 		"--output", "json",
 	)
 	require.Equal(t, 0, first.exitCode, first.output)
-	manifestPath := filepath.Join(sandboxRoot, "project", "skillsgo.yaml")
+	manifestPath := filepath.Join(sandboxRoot, "project", "skillsgo.mod")
 	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo.sum")
 	manifestBefore, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)

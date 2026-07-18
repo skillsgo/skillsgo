@@ -43,6 +43,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get discoverTitle => '找到下一步所需的技能。';
 
   @override
+  String get skillsLeaderboard => '多会一点，总是好的。';
+
+  @override
   String searchResultsFor(String query) {
     return '“$query”的搜索结果';
   }
@@ -177,6 +180,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get install => '安装';
+
+  @override
+  String get installAll => '安装所有技能';
+
+  @override
+  String get latestCommit => '最新提交';
 
   @override
   String get installToMoreTargets => '安装到更多目标';
@@ -339,7 +348,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get globalCodex => '全局 · Codex';
 
   @override
-  String get yourLibrary => '已安装技能';
+  String get yourLibrary => '已经会的，都在这里。';
 
   @override
   String get libraryNavigation => '已安装技能导航';
@@ -568,7 +577,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get workspaceOwnershipChanges =>
-      '所选项目操作将更新 skillsgo.yaml 和 skillsgo.yaml。';
+      '所选项目操作将更新 skillsgo.mod 和 skillsgo.sum。';
 
   @override
   String get targetContentPreserved => '目标当前内容会被保留。';
@@ -1451,7 +1460,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get detailRepository => '仓库';
 
   @override
-  String get detailGitHubStars => 'GitHub Stars';
+  String get detailStars => '星标';
 
   @override
   String get detailUpdated => '最近更新';

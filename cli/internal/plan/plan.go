@@ -267,7 +267,7 @@ func Build(catalog *agent.Catalog, entry *store.Entry, storeRoot string, request
 				seenLocks[item.Target.ProjectRoot] = true
 				preflight.WorkspaceManifestChanges = append(preflight.WorkspaceManifestChanges, WorkspaceManifestChange{
 					ProjectRoot: item.Target.ProjectRoot,
-					Path:        filepath.Join(item.Target.ProjectRoot, "skillsgo.yaml"),
+					Path:        filepath.Join(item.Target.ProjectRoot, "skillsgo.mod"),
 					Skill:       request.Name,
 					FromVersion: fromVersion,
 					ToVersion:   entry.Receipt.Version,
@@ -670,7 +670,7 @@ func manifestWillChange(
 	receipt store.Receipt,
 	expected project.SkillRequirement,
 ) (bool, string, error) {
-	manifestPath := filepath.Join(root, "skillsgo.yaml")
+	manifestPath := filepath.Join(root, "skillsgo.mod")
 	_, manifestErr := os.Stat(manifestPath)
 	if os.IsNotExist(manifestErr) {
 		return true, "", nil

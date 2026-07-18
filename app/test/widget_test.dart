@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, shared navigation primitives, the vendored named-preset Bloom color picker, and a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
- * [OUTPUT]: Specifies startup, persistent primary folder navigation, opaque directional discovery/detail transitions, detail product metadata, discovery/detail recovery, outage-resilient Hub/Local/External Library views, projects, Agents, Settings, anchored installation-location selection, Installation/Update/Target Management journeys including External removal, offline retry, Local install-more/export, exact-target recovery, focus, accessibility, and mutations.
+ * [OUTPUT]: Specifies startup, persistent primary folder navigation, aligned editorial destination frames, leaderboard-style discovery search and tabs, opaque directional discovery/detail transitions, detail product metadata, discovery/detail recovery, outage-resilient Hub/Local/External Library views, projects, Agents, Settings, anchored installation-location selection, Installation/Update/Target Management journeys including External removal, offline retry, Local install-more/export, exact-target recovery, focus, accessibility, and mutations.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -36,7 +36,7 @@ void main() {
 
     expect(find.text('发现'), findsOneWidget);
     expect(find.text('已安装'), findsOneWidget);
-    expect(find.text('当前热门'), findsWidgets);
+    expect(find.text('多会一点，总是好的。'), findsOneWidget);
 
     for (final route in const {
       '排行': '历史排行',
@@ -45,7 +45,7 @@ void main() {
     }.entries) {
       await tester.tap(find.text(route.key));
       await tester.pumpAndSettle();
-      expect(find.text(route.value), findsOneWidget);
+      expect(_isSemanticallySelected(tester, route.key), isTrue);
     }
 
     await tester.tap(find.byKey(const Key('primary-destination-settings')));
@@ -372,7 +372,21 @@ void main() {
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
-    final gateway = FakeSkillsGateway();
+    final gateway = FakeSkillsGateway(
+      discoveryPages: {
+        'search:0': DiscoveryPage(
+          skills: FakeSkillsGateway._defaultSearchResults,
+          repository: RepositorySummary(
+            id: 'github.com/example/skills',
+            description: 'A focused collection of Flutter engineering skills.',
+            stars: 12800,
+            latestVersion: 'v1.2.3',
+            updatedAt: DateTime.utc(2026, 7, 15),
+            license: 'MIT',
+          ),
+        ),
+      },
+    );
     await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
 
@@ -381,8 +395,16 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const Key('discover-source-context')), findsOneWidget);
-    expect(find.text('Skills from this link'), findsOneWidget);
-    expect(find.text('github.com/example/skills'), findsWidgets);
+    expect(find.text('example / skills'), findsOneWidget);
+    expect(
+      find.text('A focused collection of Flutter engineering skills.'),
+      findsOneWidget,
+    );
+    expect(find.text('★ 12.8K'), findsOneWidget);
+    expect(find.text('MIT'), findsOneWidget);
+    expect(find.text('v1.2.3'), findsOneWidget);
+    expect(find.text('1 skill'), findsOneWidget);
+    expect(find.text('Install all skills'), findsOneWidget);
     expect(find.text('Flutter Pro'), findsOneWidget);
     expect(find.byType(SkillCard), findsWidgets);
   });
@@ -435,6 +457,36 @@ void main() {
     expect(_isSemanticallySelected(tester, 'Hot'), isTrue);
   });
 
+  testWidgets('Discover search shifts into query mode and reverses on clear', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+
+    final search = find.byKey(const Key('skill-search-input'));
+    final restingY = tester.getTopLeft(search).dy;
+    await tester.enterText(_searchInput(), 'flutter');
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final enteringY = tester.getTopLeft(search).dy;
+    expect(enteringY, lessThan(restingY));
+
+    await tester.pumpAndSettle();
+    final queryY = tester.getTopLeft(search).dy;
+    expect(queryY, lessThan(enteringY));
+    await tester.tap(find.byKey(const Key('skill-search-clear')));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final clearingY = tester.getTopLeft(search).dy;
+    expect(clearingY, greaterThan(queryY));
+    expect(clearingY, lessThan(restingY));
+
+    await tester.pumpAndSettle();
+    expect(tester.getTopLeft(search).dy, restingY);
+    expect(FocusManager.instance.primaryFocus, isNotNull);
+  });
+
   testWidgets('Discover keeps search in the collection rail', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
@@ -442,6 +494,7 @@ void main() {
 
     expect(find.byKey(const Key('skill-search-input')), findsOneWidget);
     expect(find.byKey(const Key('discovery-options-mode')), findsOneWidget);
+    expect(find.text('⌘ F'), findsOneWidget);
     expect(find.byKey(const Key('discovery-search-close')), findsNothing);
     await tester.enterText(_searchInput(), 'flutter');
     await tester.testTextInput.receiveAction(TextInputAction.search);
@@ -551,7 +604,7 @@ void main() {
     );
   });
 
-  testWidgets('Discover collection title scrolls with its results', (
+  testWidgets('Discover leaderboard header stays fixed while results scroll', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
@@ -576,15 +629,48 @@ void main() {
     await tester.tap(find.text('Ranking'));
     await tester.pumpAndSettle();
 
-    expect(find.text('All-time ranking'), findsOneWidget);
+    expect(find.text('It’s nice to know a little more.'), findsOneWidget);
     await tester.drag(
       find.byKey(const ValueKey('discover-results-ranking')),
       const Offset(0, -500),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('All-time ranking'), findsNothing);
+    expect(find.text('It’s nice to know a little more.'), findsOneWidget);
     expect(find.text('Ranked 6'), findsOneWidget);
+  });
+
+  testWidgets('Discover and Library share the editorial content frame', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+
+    final discoverTitle = find
+        .text('It’s nice to know a little more.')
+        .hitTestable();
+    final discoverOrigin = tester.getTopLeft(discoverTitle);
+    final discoverText = tester.widget<Text>(discoverTitle);
+
+    expect(discoverText.style?.fontFamily, SkillsTokens.monoFamily);
+    expect(discoverText.style?.fontSize, 20);
+    expect(discoverText.style?.fontWeight, FontWeight.w200);
+    expect(discoverText.style?.height, 28 / 20);
+
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+
+    final libraryTitle = find.text('What you know is all here.').hitTestable();
+    final libraryOrigin = tester.getTopLeft(libraryTitle);
+    final libraryText = tester.widget<Text>(libraryTitle);
+
+    expect(libraryOrigin.dx, discoverOrigin.dx);
+    expect(libraryOrigin.dy, discoverOrigin.dy);
+    expect(libraryText.style?.fontFamily, discoverText.style?.fontFamily);
+    expect(libraryText.style?.fontSize, discoverText.style?.fontSize);
+    expect(libraryText.style?.fontWeight, discoverText.style?.fontWeight);
+    expect(libraryText.style?.height, discoverText.style?.height);
   });
 
   testWidgets('Discover pagination appends the next stable page', (
@@ -1352,6 +1438,16 @@ void main() {
 
       expect(find.text(failure.value), findsOneWidget);
       expect(find.text('raw'), findsNothing);
+      if (failure.key == SkillsFailureKind.server) {
+        final panel = tester.getRect(
+          find.byKey(const Key('discover-state-panel')),
+        );
+        final search = tester.getRect(
+          find.byKey(const Key('skill-search-input')),
+        );
+        expect(panel.width, 720);
+        expect(panel.center.dx, search.center.dx);
+      }
     });
   }
 
@@ -1366,8 +1462,10 @@ void main() {
     expect(find.text('Trending'), findsOneWidget);
     expect(find.text('Hot'), findsOneWidget);
 
-    await tester.enterText(_searchInput(), 'stateful');
     await tester.tap(find.text('Ranking'));
+    await tester.pumpAndSettle();
+    await tester.enterText(_searchInput(), 'stateful');
+    await tester.pump(const Duration(milliseconds: 250));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
@@ -1394,9 +1492,11 @@ void main() {
 
     await tester.tap(find.byKey(const Key('primary-destination-discover')));
     await tester.pumpAndSettle();
-    expect(find.text('Ranking'), findsOneWidget);
-    expect(find.text('All-time ranking'), findsOneWidget);
-    expect(_isSemanticallySelected(tester, 'Ranking'), isTrue);
+    expect(
+      tester.widget<EditableText>(_searchInput()).controller.text,
+      'stateful',
+    );
+    expect(find.text('Flutter Pro'), findsOneWidget);
 
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
@@ -1577,7 +1677,10 @@ void main() {
     );
 
     expect(find.text('Agent 19').hitTestable(), findsOneWidget);
-    expect(find.text('Installed Skills').hitTestable(), findsOneWidget);
+    expect(
+      find.text('What you know is all here.').hitTestable(),
+      findsOneWidget,
+    );
   });
 
   testWidgets('Library renders a cold-load skeleton before CLI inspection', (
@@ -2318,7 +2421,7 @@ void main() {
         find.text('Current target content will be preserved.'),
         findsOneWidget,
       );
-      expect(find.textContaining('skillsgo.yaml'), findsOneWidget);
+      expect(find.textContaining('skillsgo.mod'), findsOneWidget);
       await tester.tap(find.text('Apply selected actions'));
       await tester.pumpAndSettle();
       await tester.tap(find.text('Close'));
@@ -2745,21 +2848,32 @@ void main() {
     expect(find.text('User Scope / Cursor · local-abc'), findsOneWidget);
   });
 
-  testWidgets('collection rail changes selection without moving layout', (
+  testWidgets('leaderboard tabs change selection without moving layout', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
     await tester.pumpAndSettle();
 
+    final indicator = find.byKey(const Key('discover-tab-indicator'));
+    final hotIndicatorX = tester.getTopLeft(indicator).dx;
+    final rankingX = tester
+        .getTopLeft(find.byKey(const ValueKey('discover-tab-ranking')))
+        .dx;
     await tester.tap(find.text('Ranking'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 40));
+    final movingIndicatorX = tester.getTopLeft(indicator).dx;
+    expect(movingIndicatorX, lessThan(hotIndicatorX));
+    expect(movingIndicatorX, greaterThan(rankingX));
     await tester.pumpAndSettle();
+    expect(tester.getTopLeft(indicator).dx, closeTo(rankingX, 0.01));
     expect(_isSemanticallySelected(tester, 'Ranking'), isTrue);
-    expect(find.text('All-time ranking'), findsOneWidget);
+    expect(find.text('It’s nice to know a little more.'), findsOneWidget);
     expect(find.byKey(const Key('discovery-options-mode')), findsOneWidget);
   });
 
-  testWidgets('reduced motion keeps rail selection immediate', (tester) async {
+  testWidgets('reduced motion keeps tab selection immediate', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     tester.platformDispatcher.accessibilityFeaturesTestValue =
         const FakeAccessibilityFeatures(disableAnimations: true);
@@ -2780,18 +2894,13 @@ void main() {
     );
   });
 
-  testWidgets('keyboard focus can activate the next rail destination', (
+  testWidgets('keyboard focus can activate the first leaderboard tab', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
     await tester.pumpAndSettle();
 
-    final hotButton = tester.widget<TextButton>(
-      find.widgetWithText(TextButton, 'Hot'),
-    );
-    hotButton.focusNode!.requestFocus();
-    await tester.pump();
     await tester.sendKeyEvent(LogicalKeyboardKey.tab);
     await tester.sendKeyEvent(LogicalKeyboardKey.enter);
     await tester.pumpAndSettle();
@@ -3122,7 +3231,7 @@ void main() {
 
     expect(find.text('Select targets to update'), findsOneWidget);
     expect(find.text('2 of 2 updateable targets selected'), findsOneWidget);
-    expect(find.textContaining('/tmp/project/skillsgo.yaml'), findsOneWidget);
+    expect(find.textContaining('/tmp/project/skillsgo.mod'), findsOneWidget);
     await tester.tap(
       find
           .descendant(
@@ -3133,7 +3242,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('1 of 2 updateable targets selected'), findsOneWidget);
-    expect(find.textContaining('/tmp/project/skillsgo.yaml'), findsNothing);
+    expect(find.textContaining('/tmp/project/skillsgo.mod'), findsNothing);
     await tester.tap(find.text('Update selected targets'));
     await tester.pumpAndSettle();
 
@@ -3422,7 +3531,7 @@ class FakeSkillsGateway implements SkillsGateway {
     source: 'example/skills',
     repository: 'github.com/example/skills',
     installs: 1200,
-    githubStars: 12800,
+    stars: 12800,
     sourceUpdatedAt: DateTime.utc(2026, 7, 15),
     archiveSize: 24576,
     description: 'Build reliable Flutter products.',
@@ -4045,7 +4154,7 @@ class FakeSkillsGateway implements SkillsGateway {
           if (item.workspaceManifestChange)
             WorkspaceManifestChange(
               projectRoot: item.target.projectRoot,
-              path: '${item.target.projectRoot}/skillsgo.yaml',
+              path: '${item.target.projectRoot}/skillsgo.mod',
               skill: item.name,
               fromVersion: item.fromVersion,
               toVersion: item.toVersion,

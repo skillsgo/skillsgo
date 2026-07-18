@@ -755,21 +755,26 @@ func (m *InstallEventMutation) ResetEdge(name string) error {
 // RepositoryMutation represents an operation that mutates the Repository nodes in the graph.
 type RepositoryMutation struct {
 	config
-	op              Op
-	typ             string
-	id              *int64
-	source_host     *string
-	repository_path *string
-	repository_id   *string
-	created_at      *time.Time
-	updated_at      *time.Time
-	clearedFields   map[string]struct{}
-	skills          map[int64]struct{}
-	removedskills   map[int64]struct{}
-	clearedskills   bool
-	done            bool
-	oldValue        func(context.Context) (*Repository, error)
-	predicates      []predicate.Repository
+	op                         Op
+	typ                        string
+	id                         *int64
+	source_host                *string
+	repository_path            *string
+	repository_id              *string
+	stars                      *int64
+	addstars                   *int64
+	source_metadata_etag       *string
+	source_metadata_checked_at *time.Time
+	source_metadata_retry_at   *time.Time
+	created_at                 *time.Time
+	updated_at                 *time.Time
+	clearedFields              map[string]struct{}
+	skills                     map[int64]struct{}
+	removedskills              map[int64]struct{}
+	clearedskills              bool
+	done                       bool
+	oldValue                   func(context.Context) (*Repository, error)
+	predicates                 []predicate.Repository
 }
 
 var _ ent.Mutation = (*RepositoryMutation)(nil)
@@ -984,6 +989,209 @@ func (m *RepositoryMutation) ResetRepositoryID() {
 	m.repository_id = nil
 }
 
+// SetStars sets the "stars" field.
+func (m *RepositoryMutation) SetStars(i int64) {
+	m.stars = &i
+	m.addstars = nil
+}
+
+// Stars returns the value of the "stars" field in the mutation.
+func (m *RepositoryMutation) Stars() (r int64, exists bool) {
+	v := m.stars
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldStars returns the old "stars" field's value of the Repository entity.
+// If the Repository object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryMutation) OldStars(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldStars is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldStars requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldStars: %w", err)
+	}
+	return oldValue.Stars, nil
+}
+
+// AddStars adds i to the "stars" field.
+func (m *RepositoryMutation) AddStars(i int64) {
+	if m.addstars != nil {
+		*m.addstars += i
+	} else {
+		m.addstars = &i
+	}
+}
+
+// AddedStars returns the value that was added to the "stars" field in this mutation.
+func (m *RepositoryMutation) AddedStars() (r int64, exists bool) {
+	v := m.addstars
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetStars resets all changes to the "stars" field.
+func (m *RepositoryMutation) ResetStars() {
+	m.stars = nil
+	m.addstars = nil
+}
+
+// SetSourceMetadataEtag sets the "source_metadata_etag" field.
+func (m *RepositoryMutation) SetSourceMetadataEtag(s string) {
+	m.source_metadata_etag = &s
+}
+
+// SourceMetadataEtag returns the value of the "source_metadata_etag" field in the mutation.
+func (m *RepositoryMutation) SourceMetadataEtag() (r string, exists bool) {
+	v := m.source_metadata_etag
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSourceMetadataEtag returns the old "source_metadata_etag" field's value of the Repository entity.
+// If the Repository object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryMutation) OldSourceMetadataEtag(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSourceMetadataEtag is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSourceMetadataEtag requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSourceMetadataEtag: %w", err)
+	}
+	return oldValue.SourceMetadataEtag, nil
+}
+
+// ClearSourceMetadataEtag clears the value of the "source_metadata_etag" field.
+func (m *RepositoryMutation) ClearSourceMetadataEtag() {
+	m.source_metadata_etag = nil
+	m.clearedFields[repository.FieldSourceMetadataEtag] = struct{}{}
+}
+
+// SourceMetadataEtagCleared returns if the "source_metadata_etag" field was cleared in this mutation.
+func (m *RepositoryMutation) SourceMetadataEtagCleared() bool {
+	_, ok := m.clearedFields[repository.FieldSourceMetadataEtag]
+	return ok
+}
+
+// ResetSourceMetadataEtag resets all changes to the "source_metadata_etag" field.
+func (m *RepositoryMutation) ResetSourceMetadataEtag() {
+	m.source_metadata_etag = nil
+	delete(m.clearedFields, repository.FieldSourceMetadataEtag)
+}
+
+// SetSourceMetadataCheckedAt sets the "source_metadata_checked_at" field.
+func (m *RepositoryMutation) SetSourceMetadataCheckedAt(t time.Time) {
+	m.source_metadata_checked_at = &t
+}
+
+// SourceMetadataCheckedAt returns the value of the "source_metadata_checked_at" field in the mutation.
+func (m *RepositoryMutation) SourceMetadataCheckedAt() (r time.Time, exists bool) {
+	v := m.source_metadata_checked_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSourceMetadataCheckedAt returns the old "source_metadata_checked_at" field's value of the Repository entity.
+// If the Repository object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryMutation) OldSourceMetadataCheckedAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSourceMetadataCheckedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSourceMetadataCheckedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSourceMetadataCheckedAt: %w", err)
+	}
+	return oldValue.SourceMetadataCheckedAt, nil
+}
+
+// ClearSourceMetadataCheckedAt clears the value of the "source_metadata_checked_at" field.
+func (m *RepositoryMutation) ClearSourceMetadataCheckedAt() {
+	m.source_metadata_checked_at = nil
+	m.clearedFields[repository.FieldSourceMetadataCheckedAt] = struct{}{}
+}
+
+// SourceMetadataCheckedAtCleared returns if the "source_metadata_checked_at" field was cleared in this mutation.
+func (m *RepositoryMutation) SourceMetadataCheckedAtCleared() bool {
+	_, ok := m.clearedFields[repository.FieldSourceMetadataCheckedAt]
+	return ok
+}
+
+// ResetSourceMetadataCheckedAt resets all changes to the "source_metadata_checked_at" field.
+func (m *RepositoryMutation) ResetSourceMetadataCheckedAt() {
+	m.source_metadata_checked_at = nil
+	delete(m.clearedFields, repository.FieldSourceMetadataCheckedAt)
+}
+
+// SetSourceMetadataRetryAt sets the "source_metadata_retry_at" field.
+func (m *RepositoryMutation) SetSourceMetadataRetryAt(t time.Time) {
+	m.source_metadata_retry_at = &t
+}
+
+// SourceMetadataRetryAt returns the value of the "source_metadata_retry_at" field in the mutation.
+func (m *RepositoryMutation) SourceMetadataRetryAt() (r time.Time, exists bool) {
+	v := m.source_metadata_retry_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSourceMetadataRetryAt returns the old "source_metadata_retry_at" field's value of the Repository entity.
+// If the Repository object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryMutation) OldSourceMetadataRetryAt(ctx context.Context) (v *time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSourceMetadataRetryAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSourceMetadataRetryAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSourceMetadataRetryAt: %w", err)
+	}
+	return oldValue.SourceMetadataRetryAt, nil
+}
+
+// ClearSourceMetadataRetryAt clears the value of the "source_metadata_retry_at" field.
+func (m *RepositoryMutation) ClearSourceMetadataRetryAt() {
+	m.source_metadata_retry_at = nil
+	m.clearedFields[repository.FieldSourceMetadataRetryAt] = struct{}{}
+}
+
+// SourceMetadataRetryAtCleared returns if the "source_metadata_retry_at" field was cleared in this mutation.
+func (m *RepositoryMutation) SourceMetadataRetryAtCleared() bool {
+	_, ok := m.clearedFields[repository.FieldSourceMetadataRetryAt]
+	return ok
+}
+
+// ResetSourceMetadataRetryAt resets all changes to the "source_metadata_retry_at" field.
+func (m *RepositoryMutation) ResetSourceMetadataRetryAt() {
+	m.source_metadata_retry_at = nil
+	delete(m.clearedFields, repository.FieldSourceMetadataRetryAt)
+}
+
 // SetCreatedAt sets the "created_at" field.
 func (m *RepositoryMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
@@ -1144,7 +1352,7 @@ func (m *RepositoryMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RepositoryMutation) Fields() []string {
-	fields := make([]string, 0, 5)
+	fields := make([]string, 0, 9)
 	if m.source_host != nil {
 		fields = append(fields, repository.FieldSourceHost)
 	}
@@ -1153,6 +1361,18 @@ func (m *RepositoryMutation) Fields() []string {
 	}
 	if m.repository_id != nil {
 		fields = append(fields, repository.FieldRepositoryID)
+	}
+	if m.stars != nil {
+		fields = append(fields, repository.FieldStars)
+	}
+	if m.source_metadata_etag != nil {
+		fields = append(fields, repository.FieldSourceMetadataEtag)
+	}
+	if m.source_metadata_checked_at != nil {
+		fields = append(fields, repository.FieldSourceMetadataCheckedAt)
+	}
+	if m.source_metadata_retry_at != nil {
+		fields = append(fields, repository.FieldSourceMetadataRetryAt)
 	}
 	if m.created_at != nil {
 		fields = append(fields, repository.FieldCreatedAt)
@@ -1174,6 +1394,14 @@ func (m *RepositoryMutation) Field(name string) (ent.Value, bool) {
 		return m.RepositoryPath()
 	case repository.FieldRepositoryID:
 		return m.RepositoryID()
+	case repository.FieldStars:
+		return m.Stars()
+	case repository.FieldSourceMetadataEtag:
+		return m.SourceMetadataEtag()
+	case repository.FieldSourceMetadataCheckedAt:
+		return m.SourceMetadataCheckedAt()
+	case repository.FieldSourceMetadataRetryAt:
+		return m.SourceMetadataRetryAt()
 	case repository.FieldCreatedAt:
 		return m.CreatedAt()
 	case repository.FieldUpdatedAt:
@@ -1193,6 +1421,14 @@ func (m *RepositoryMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldRepositoryPath(ctx)
 	case repository.FieldRepositoryID:
 		return m.OldRepositoryID(ctx)
+	case repository.FieldStars:
+		return m.OldStars(ctx)
+	case repository.FieldSourceMetadataEtag:
+		return m.OldSourceMetadataEtag(ctx)
+	case repository.FieldSourceMetadataCheckedAt:
+		return m.OldSourceMetadataCheckedAt(ctx)
+	case repository.FieldSourceMetadataRetryAt:
+		return m.OldSourceMetadataRetryAt(ctx)
 	case repository.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	case repository.FieldUpdatedAt:
@@ -1227,6 +1463,34 @@ func (m *RepositoryMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetRepositoryID(v)
 		return nil
+	case repository.FieldStars:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetStars(v)
+		return nil
+	case repository.FieldSourceMetadataEtag:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSourceMetadataEtag(v)
+		return nil
+	case repository.FieldSourceMetadataCheckedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSourceMetadataCheckedAt(v)
+		return nil
+	case repository.FieldSourceMetadataRetryAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSourceMetadataRetryAt(v)
+		return nil
 	case repository.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
@@ -1248,13 +1512,21 @@ func (m *RepositoryMutation) SetField(name string, value ent.Value) error {
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
 func (m *RepositoryMutation) AddedFields() []string {
-	return nil
+	var fields []string
+	if m.addstars != nil {
+		fields = append(fields, repository.FieldStars)
+	}
+	return fields
 }
 
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
 func (m *RepositoryMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case repository.FieldStars:
+		return m.AddedStars()
+	}
 	return nil, false
 }
 
@@ -1263,6 +1535,13 @@ func (m *RepositoryMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *RepositoryMutation) AddField(name string, value ent.Value) error {
 	switch name {
+	case repository.FieldStars:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddStars(v)
+		return nil
 	}
 	return fmt.Errorf("unknown Repository numeric field %s", name)
 }
@@ -1270,7 +1549,17 @@ func (m *RepositoryMutation) AddField(name string, value ent.Value) error {
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
 func (m *RepositoryMutation) ClearedFields() []string {
-	return nil
+	var fields []string
+	if m.FieldCleared(repository.FieldSourceMetadataEtag) {
+		fields = append(fields, repository.FieldSourceMetadataEtag)
+	}
+	if m.FieldCleared(repository.FieldSourceMetadataCheckedAt) {
+		fields = append(fields, repository.FieldSourceMetadataCheckedAt)
+	}
+	if m.FieldCleared(repository.FieldSourceMetadataRetryAt) {
+		fields = append(fields, repository.FieldSourceMetadataRetryAt)
+	}
+	return fields
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
@@ -1283,6 +1572,17 @@ func (m *RepositoryMutation) FieldCleared(name string) bool {
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
 func (m *RepositoryMutation) ClearField(name string) error {
+	switch name {
+	case repository.FieldSourceMetadataEtag:
+		m.ClearSourceMetadataEtag()
+		return nil
+	case repository.FieldSourceMetadataCheckedAt:
+		m.ClearSourceMetadataCheckedAt()
+		return nil
+	case repository.FieldSourceMetadataRetryAt:
+		m.ClearSourceMetadataRetryAt()
+		return nil
+	}
 	return fmt.Errorf("unknown Repository nullable field %s", name)
 }
 
@@ -1298,6 +1598,18 @@ func (m *RepositoryMutation) ResetField(name string) error {
 		return nil
 	case repository.FieldRepositoryID:
 		m.ResetRepositoryID()
+		return nil
+	case repository.FieldStars:
+		m.ResetStars()
+		return nil
+	case repository.FieldSourceMetadataEtag:
+		m.ResetSourceMetadataEtag()
+		return nil
+	case repository.FieldSourceMetadataCheckedAt:
+		m.ResetSourceMetadataCheckedAt()
+		return nil
+	case repository.FieldSourceMetadataRetryAt:
+		m.ResetSourceMetadataRetryAt()
 		return nil
 	case repository.FieldCreatedAt:
 		m.ResetCreatedAt()
@@ -2065,8 +2377,6 @@ type SkillMutation struct {
 	repository               *string
 	skill_path               *string
 	latest_version           *string
-	github_stars             *int64
-	addgithub_stars          *int64
 	verified                 *bool
 	created_at               *time.Time
 	updated_at               *time.Time
@@ -2479,62 +2789,6 @@ func (m *SkillMutation) ResetLatestVersion() {
 	m.latest_version = nil
 }
 
-// SetGithubStars sets the "github_stars" field.
-func (m *SkillMutation) SetGithubStars(i int64) {
-	m.github_stars = &i
-	m.addgithub_stars = nil
-}
-
-// GithubStars returns the value of the "github_stars" field in the mutation.
-func (m *SkillMutation) GithubStars() (r int64, exists bool) {
-	v := m.github_stars
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldGithubStars returns the old "github_stars" field's value of the Skill entity.
-// If the Skill object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillMutation) OldGithubStars(ctx context.Context) (v int64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldGithubStars is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldGithubStars requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldGithubStars: %w", err)
-	}
-	return oldValue.GithubStars, nil
-}
-
-// AddGithubStars adds i to the "github_stars" field.
-func (m *SkillMutation) AddGithubStars(i int64) {
-	if m.addgithub_stars != nil {
-		*m.addgithub_stars += i
-	} else {
-		m.addgithub_stars = &i
-	}
-}
-
-// AddedGithubStars returns the value that was added to the "github_stars" field in this mutation.
-func (m *SkillMutation) AddedGithubStars() (r int64, exists bool) {
-	v := m.addgithub_stars
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetGithubStars resets all changes to the "github_stars" field.
-func (m *SkillMutation) ResetGithubStars() {
-	m.github_stars = nil
-	m.addgithub_stars = nil
-}
-
 // SetVerified sets the "verified" field.
 func (m *SkillMutation) SetVerified(b bool) {
 	m.verified = &b
@@ -2879,7 +3133,7 @@ func (m *SkillMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SkillMutation) Fields() []string {
-	fields := make([]string, 0, 12)
+	fields := make([]string, 0, 11)
 	if m.skill_id != nil {
 		fields = append(fields, skill.FieldSkillID)
 	}
@@ -2903,9 +3157,6 @@ func (m *SkillMutation) Fields() []string {
 	}
 	if m.latest_version != nil {
 		fields = append(fields, skill.FieldLatestVersion)
-	}
-	if m.github_stars != nil {
-		fields = append(fields, skill.FieldGithubStars)
 	}
 	if m.verified != nil {
 		fields = append(fields, skill.FieldVerified)
@@ -2940,8 +3191,6 @@ func (m *SkillMutation) Field(name string) (ent.Value, bool) {
 		return m.SkillPath()
 	case skill.FieldLatestVersion:
 		return m.LatestVersion()
-	case skill.FieldGithubStars:
-		return m.GithubStars()
 	case skill.FieldVerified:
 		return m.Verified()
 	case skill.FieldCreatedAt:
@@ -2973,8 +3222,6 @@ func (m *SkillMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldSkillPath(ctx)
 	case skill.FieldLatestVersion:
 		return m.OldLatestVersion(ctx)
-	case skill.FieldGithubStars:
-		return m.OldGithubStars(ctx)
 	case skill.FieldVerified:
 		return m.OldVerified(ctx)
 	case skill.FieldCreatedAt:
@@ -3046,13 +3293,6 @@ func (m *SkillMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetLatestVersion(v)
 		return nil
-	case skill.FieldGithubStars:
-		v, ok := value.(int64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetGithubStars(v)
-		return nil
 	case skill.FieldVerified:
 		v, ok := value.(bool)
 		if !ok {
@@ -3082,9 +3322,6 @@ func (m *SkillMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *SkillMutation) AddedFields() []string {
 	var fields []string
-	if m.addgithub_stars != nil {
-		fields = append(fields, skill.FieldGithubStars)
-	}
 	return fields
 }
 
@@ -3093,8 +3330,6 @@ func (m *SkillMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *SkillMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case skill.FieldGithubStars:
-		return m.AddedGithubStars()
 	}
 	return nil, false
 }
@@ -3104,13 +3339,6 @@ func (m *SkillMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *SkillMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case skill.FieldGithubStars:
-		v, ok := value.(int64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddGithubStars(v)
-		return nil
 	}
 	return fmt.Errorf("unknown Skill numeric field %s", name)
 }
@@ -3161,9 +3389,6 @@ func (m *SkillMutation) ResetField(name string) error {
 		return nil
 	case skill.FieldLatestVersion:
 		m.ResetLatestVersion()
-		return nil
-	case skill.FieldGithubStars:
-		m.ResetGithubStars()
 		return nil
 	case skill.FieldVerified:
 		m.ResetVerified()

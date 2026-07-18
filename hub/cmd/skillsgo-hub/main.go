@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the main package imports and contracts declared in this file.
- * [OUTPUT]: Provides the main package behavior implemented by main.go.
- * [POS]: Serves as maintained source in the main package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on validated Hub configuration, safe structured logging, service assembly, listeners, and shutdown signals.
+ * [OUTPUT]: Starts the Hub, reports a non-secret effective runtime profile, and performs coordinated shutdown.
+ * [POS]: Serves as the process lifecycle and operator-observability entry point for the Hub.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package main
@@ -49,6 +49,27 @@ func main() {
 	}
 
 	logger := hublog.New(conf.CloudRuntime, logLvl, conf.LogFormat)
+	databaseType := "unconfigured"
+	if conf.Database != nil {
+		databaseType = conf.Database.Type
+	}
+	logger.WithFields(map[string]any{
+		"database_type":          databaseType,
+		"download_mode":          conf.DownloadMode,
+		"environment":            conf.Environment,
+		"github_auth_configured": conf.GithubToken != "" || conf.NETRCPath != "",
+		"index_type":             conf.IndexType,
+		"log_format":             conf.LogFormat,
+		"log_level":              conf.LogLevel,
+		"network_mode":           conf.NetworkMode,
+		"protocol_workers":       conf.ProtocolWorkers,
+		"singleflight_type":      conf.SingleFlightType,
+		"skill_fetch_workers":    conf.SkillFetchWorkers,
+		"stats_exporter":         conf.StatsExporter,
+		"storage_type":           conf.StorageType,
+		"tls_configured":         conf.TLSCertFile != "" && conf.TLSKeyFile != "",
+		"trace_exporter":         conf.TraceExporter,
+	}).Infof("hub runtime configured")
 
 	// Route the standard library logger's output through our logger at the
 	// error level.

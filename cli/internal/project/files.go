@@ -1,87 +1,38 @@
 /*
- * [INPUT]: Depends on canonical immutable dependency coordinates, resolved versions, desired Agent IDs, installation modes, and YAML persistence.
- * [OUTPUT]: Provides the editable Workspace Manifest, nearest-root discovery, and atomic requirement replacement or Agent-binding removal.
+ * [INPUT]: Depends on canonical immutable dependency coordinates, resolved versions, desired Agent IDs, installation modes, and Go module-file syntax validation.
+ * [OUTPUT]: Provides the editable skillsgo.mod declaration, nearest-root discovery, and atomic requirement replacement or Agent-binding removal.
  * [POS]: Serves as the sole portable desired-state boundary for project and user scopes; resolution integrity belongs to skillsgo.sum.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package project
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
-	"gopkg.in/yaml.v3"
+	"golang.org/x/mod/modfile"
 )
 
-const APIVersion = "skillsgo.dev/v1alpha1"
-
-const manifestLockName = ".skillsgo.yaml.lock"
+const manifestName = "skillsgo.mod"
+const manifestLockName = ".skillsgo.mod.lock"
 
 func UserRoot(home string) string { return filepath.Join(home, ".skillsgo") }
 
 type Manifest struct {
-	APIVersion string                      `yaml:"apiVersion"`
-	Skills     map[string]SkillRequirement `yaml:"dependencies"`
+	Skills map[string]SkillRequirement
 }
 
 type SkillRequirement struct {
-	Source string       `yaml:"-"`
-	Ref    string       `yaml:"-"`
-	Agents []string     `yaml:"-"`
-	Mode   install.Mode `yaml:"-"`
-}
-
-func (requirement SkillRequirement) MarshalYAML() (any, error) {
-	version := strings.TrimSpace(requirement.Ref)
-	if version == "" {
-		return nil, fmt.Errorf("dependency version must not be empty")
-	}
-	if len(requirement.Agents) == 0 {
-		return version, nil
-	}
-	return version + " [" + strings.Join(requirement.Agents, ", ") + "]", nil
-}
-
-func (requirement *SkillRequirement) UnmarshalYAML(node *yaml.Node) error {
-	if node.Kind != yaml.ScalarNode {
-		return fmt.Errorf("dependency must be a one-line version and optional Agent list")
-	}
-	value := strings.TrimSpace(node.Value)
-	if value == "" {
-		return fmt.Errorf("dependency version must not be empty")
-	}
-	requirement.Agents = nil
-	if strings.HasSuffix(value, "]") {
-		opening := strings.LastIndex(value, " [")
-		if opening < 0 {
-			return fmt.Errorf("invalid Agent list in dependency %q", value)
-		}
-		rawAgents := strings.TrimSpace(value[opening+2 : len(value)-1])
-		if rawAgents == "" {
-			return fmt.Errorf("dependency Agent list must not be empty")
-		}
-		seen := map[string]bool{}
-		for _, raw := range strings.Split(rawAgents, ",") {
-			agentID := strings.TrimSpace(raw)
-			if agentID == "" || strings.ContainsAny(agentID, " []") {
-				return fmt.Errorf("invalid Agent %q", raw)
-			}
-			if !seen[agentID] {
-				seen[agentID] = true
-				requirement.Agents = append(requirement.Agents, agentID)
-			}
-		}
-		value = strings.TrimSpace(value[:opening])
-	}
-	if value == "" {
-		return fmt.Errorf("dependency version must not be empty")
-	}
-	requirement.Ref = value
-	return nil
+	Source string
+	Ref    string
+	Agents []string
+	Mode   install.Mode
 }
 
 func FindRoot(start string) (string, error) {
@@ -90,7 +41,7 @@ func FindRoot(start string) (string, error) {
 		return "", err
 	}
 	for {
-		manifestErr := fileExists(filepath.Join(current, "skillsgo.yaml"))
+		manifestErr := fileExists(filepath.Join(current, manifestName))
 		if manifestErr == nil {
 			return current, nil
 		}
@@ -122,42 +73,145 @@ func (manifest Manifest) Dependency(skillID string) (string, SkillRequirement, b
 }
 
 func LoadManifest(root string) (Manifest, error) {
-	var manifest Manifest
-	if err := readRequiredYAML(filepath.Join(root, "skillsgo.yaml"), &manifest); err != nil {
+	path := filepath.Join(root, manifestName)
+	data, err := os.ReadFile(path)
+	if err != nil {
 		return Manifest{}, err
 	}
-	if manifest.APIVersion != APIVersion {
-		return Manifest{}, fmt.Errorf("unsupported skillsgo.yaml apiVersion %q", manifest.APIVersion)
+	return parseManifest(path, data)
+}
+
+func parseManifest(path string, data []byte) (Manifest, error) {
+	converted, versionsBySource, agentsBySource, err := convertAgentListsToComments(data)
+	if err != nil {
+		return Manifest{}, fmt.Errorf("parse %s: %w", path, err)
 	}
-	if manifest.Skills == nil {
-		manifest.Skills = map[string]SkillRequirement{}
+	parsed, err := modfile.Parse(path, converted, nil)
+	if err != nil {
+		return Manifest{}, err
 	}
-	for source, requirement := range manifest.Skills {
-		requirement.Source = source
-		manifest.Skills[source] = requirement
+	if parsed.Module != nil || parsed.Go != nil || parsed.Toolchain != nil || len(parsed.Godebug)+len(parsed.Exclude)+len(parsed.Replace)+len(parsed.Retract)+len(parsed.Tool)+len(parsed.Ignore) > 0 {
+		return Manifest{}, fmt.Errorf("parse %s: skillsgo.mod supports only require directives", path)
+	}
+	manifest := Manifest{Skills: map[string]SkillRequirement{}}
+	for _, required := range parsed.Require {
+		if required.Indirect {
+			return Manifest{}, fmt.Errorf("parse %s: indirect requirements are not supported", path)
+		}
+		if _, exists := manifest.Skills[required.Mod.Path]; exists {
+			return Manifest{}, fmt.Errorf("parse %s: duplicate requirement %q", path, required.Mod.Path)
+		}
+		manifest.Skills[required.Mod.Path] = SkillRequirement{
+			Source: required.Mod.Path,
+			Ref:    versionsBySource[required.Mod.Path],
+			Agents: agentsBySource[required.Mod.Path],
+		}
 	}
 	return manifest, nil
 }
 
+// convertAgentListsToComments keeps parsing aligned with Go's module-file
+// grammar while treating [agent, ...] as a SkillsGo-specific require suffix.
+func convertAgentListsToComments(data []byte) ([]byte, map[string]string, map[string][]string, error) {
+	lines := bytes.Split(data, []byte("\n"))
+	versionsBySource := map[string]string{}
+	agentsBySource := map[string][]string{}
+	inRequireBlock := false
+	for index, raw := range lines {
+		line := string(raw)
+		code := strings.TrimSpace(strings.SplitN(line, "//", 2)[0])
+		if code == "require (" {
+			inRequireBlock = true
+			continue
+		}
+		if inRequireBlock && code == ")" {
+			inRequireBlock = false
+			continue
+		}
+		if code == "" || strings.HasPrefix(code, "//") {
+			continue
+		}
+		body := code
+		if !inRequireBlock {
+			if !strings.HasPrefix(body, "require ") {
+				continue
+			}
+			body = strings.TrimSpace(strings.TrimPrefix(body, "require "))
+		}
+		opening := strings.LastIndex(body, "[")
+		requirementBody := body
+		var agents []string
+		if opening >= 0 {
+			if !strings.HasSuffix(body, "]") {
+				return nil, nil, nil, fmt.Errorf("line %d: invalid Agent list", index+1)
+			}
+			requirementBody = strings.TrimSpace(body[:opening])
+			var err error
+			agents, err = parseAgents(body[opening+1 : len(body)-1])
+			if err != nil {
+				return nil, nil, nil, fmt.Errorf("line %d: %w", index+1, err)
+			}
+		}
+		fields := strings.Fields(requirementBody)
+		if len(fields) != 2 {
+			return nil, nil, nil, fmt.Errorf("line %d: require must contain a coordinate, version, and Agent list", index+1)
+		}
+		if _, exists := agentsBySource[fields[0]]; exists {
+			return nil, nil, nil, fmt.Errorf("line %d: duplicate requirement %q", index+1, fields[0])
+		}
+		versionsBySource[fields[0]] = fields[1]
+		agentsBySource[fields[0]] = agents
+		prefix := line[:strings.Index(line, strings.TrimSpace(line))]
+		if inRequireBlock {
+			lines[index] = []byte(prefix + fields[0] + " v0.0.0")
+		} else {
+			lines[index] = []byte(prefix + "require " + fields[0] + " v0.0.0")
+		}
+	}
+	return bytes.Join(lines, []byte("\n")), versionsBySource, agentsBySource, nil
+}
+
+func parseAgents(raw string) ([]string, error) {
+	if strings.TrimSpace(raw) == "" {
+		return nil, fmt.Errorf("dependency Agent list must not be empty")
+	}
+	seen := map[string]bool{}
+	agents := make([]string, 0)
+	for _, item := range strings.Split(raw, ",") {
+		agentID := strings.TrimSpace(item)
+		if agentID == "" || strings.ContainsAny(agentID, " []\t\r\n") {
+			return nil, fmt.Errorf("invalid Agent %q", item)
+		}
+		if !seen[agentID] {
+			seen[agentID] = true
+			agents = append(agents, agentID)
+		}
+	}
+	return agents, nil
+}
+
 func UpsertManifestRequirement(root, dependency string, requirement SkillRequirement, mergeAgents bool) error {
-	if strings.TrimSpace(dependency) == "" || strings.TrimSpace(requirement.Ref) == "" {
-		return fmt.Errorf("canonical dependency and resolved version are required")
-	}
-	if err := os.MkdirAll(root, 0o700); err != nil {
-		return err
-	}
-	unlock, err := acquireFileLock(filepath.Join(root, manifestLockName))
-	if err != nil {
-		return err
-	}
-	defer unlock()
-	return upsertManifestRequirementLocked(root, dependency, requirement, mergeAgents)
+	return mutateManifest(root, func(manifest *Manifest) {
+		if existing, ok := manifest.Skills[dependency]; ok && mergeAgents {
+			requirement.Agents = mergeAgentIDs(existing.Agents, requirement.Agents)
+		}
+		requirement.Source = dependency
+		manifest.Skills[dependency] = requirement
+	})
 }
 
 func ReplaceManifestBindings(root, dependency string, requirement SkillRequirement, mergeAgents bool, removed []install.Installation) error {
-	if strings.TrimSpace(dependency) == "" || strings.TrimSpace(requirement.Ref) == "" {
-		return fmt.Errorf("canonical dependency and resolved version are required")
-	}
+	return mutateManifest(root, func(manifest *Manifest) {
+		if existing, ok := manifest.Skills[dependency]; ok && mergeAgents {
+			requirement.Agents = mergeAgentIDs(existing.Agents, requirement.Agents)
+		}
+		requirement.Source = dependency
+		manifest.Skills[dependency] = requirement
+		removeBindingsFromManifest(manifest, removed)
+	})
+}
+
+func mutateManifest(root string, mutation func(*Manifest)) error {
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return err
 	}
@@ -166,44 +220,17 @@ func ReplaceManifestBindings(root, dependency string, requirement SkillRequireme
 		return err
 	}
 	defer unlock()
-	manifestPath := filepath.Join(root, "skillsgo.yaml")
-	manifest := Manifest{APIVersion: APIVersion, Skills: map[string]SkillRequirement{}}
-	if err := readYAMLIfExists(manifestPath, &manifest); err != nil {
-		return err
+	manifest := Manifest{Skills: map[string]SkillRequirement{}}
+	if data, readErr := os.ReadFile(filepath.Join(root, manifestName)); readErr == nil {
+		manifest, err = parseManifest(filepath.Join(root, manifestName), data)
+		if err != nil {
+			return err
+		}
+	} else if !os.IsNotExist(readErr) {
+		return readErr
 	}
-	if manifest.APIVersion != APIVersion {
-		return fmt.Errorf("unsupported skillsgo.yaml apiVersion %q", manifest.APIVersion)
-	}
-	if manifest.Skills == nil {
-		manifest.Skills = map[string]SkillRequirement{}
-	}
-	if existing, ok := manifest.Skills[dependency]; ok && mergeAgents {
-		requirement.Agents = mergeAgentIDs(existing.Agents, requirement.Agents)
-	}
-	requirement.Source = dependency
-	manifest.Skills[dependency] = requirement
-	removeBindingsFromManifest(&manifest, removed)
-	return writeYAMLAtomic(manifestPath, manifest)
-}
-
-func upsertManifestRequirementLocked(root, dependency string, requirement SkillRequirement, mergeAgents bool) error {
-	manifestPath := filepath.Join(root, "skillsgo.yaml")
-	manifest := Manifest{APIVersion: APIVersion, Skills: map[string]SkillRequirement{}}
-	if err := readYAMLIfExists(manifestPath, &manifest); err != nil {
-		return err
-	}
-	if manifest.APIVersion != APIVersion {
-		return fmt.Errorf("unsupported skillsgo.yaml apiVersion %q", manifest.APIVersion)
-	}
-	if manifest.Skills == nil {
-		manifest.Skills = map[string]SkillRequirement{}
-	}
-	if existing, ok := manifest.Skills[dependency]; ok && mergeAgents {
-		requirement.Agents = mergeAgentIDs(existing.Agents, requirement.Agents)
-	}
-	requirement.Source = dependency
-	manifest.Skills[dependency] = requirement
-	return writeYAMLAtomic(manifestPath, manifest)
+	mutation(&manifest)
+	return writeManifestAtomic(filepath.Join(root, manifestName), manifest)
 }
 
 func mergeAgentIDs(existing, added []string) []string {
@@ -218,8 +245,6 @@ func mergeAgentIDs(existing, added []string) []string {
 	return merged
 }
 
-// Upsert and Replace are execution helpers. Store receipts provide the exact
-// identity and version; only canonical desired state is persisted.
 func Upsert(root, _ string, requirement SkillRequirement, receipt store.Receipt) error {
 	return persistReceiptRequirement(root, requirement, receipt, true)
 }
@@ -238,20 +263,10 @@ func persistReceiptRequirement(root string, requirement SkillRequirement, receip
 }
 
 func RemoveBindings(root string, removed []install.Installation) error {
-	unlock, err := acquireFileLock(filepath.Join(root, manifestLockName))
-	if err != nil {
-		return err
-	}
-	defer unlock()
-	manifest, err := LoadManifest(root)
-	if os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, manifestName)); os.IsNotExist(err) {
 		return nil
 	}
-	if err != nil {
-		return err
-	}
-	removeBindingsFromManifest(&manifest, removed)
-	return writeYAMLAtomic(filepath.Join(root, "skillsgo.yaml"), manifest)
+	return mutateManifest(root, func(manifest *Manifest) { removeBindingsFromManifest(manifest, removed) })
 }
 
 func removeBindingsFromManifest(manifest *Manifest, removed []install.Installation) {
@@ -276,52 +291,42 @@ func removeBindingsFromManifest(manifest *Manifest, removed []install.Installati
 }
 
 func RemoveManifestRequirements(root string, dependencies []string) error {
-	unlock, err := acquireFileLock(filepath.Join(root, manifestLockName))
-	if err != nil {
-		return err
+	return mutateManifest(root, func(manifest *Manifest) {
+		for _, dependency := range dependencies {
+			delete(manifest.Skills, dependency)
+		}
+	})
+}
+
+func writeManifestAtomic(path string, manifest Manifest) error {
+	dependencies := make([]string, 0, len(manifest.Skills))
+	for dependency := range manifest.Skills {
+		dependencies = append(dependencies, dependency)
 	}
-	defer unlock()
-	manifest, err := LoadManifest(root)
-	if err != nil {
-		return err
-	}
+	sort.Strings(dependencies)
+	var data strings.Builder
+	data.WriteString("require (\n")
 	for _, dependency := range dependencies {
-		delete(manifest.Skills, dependency)
+		requirement := manifest.Skills[dependency]
+		if strings.TrimSpace(requirement.Ref) == "" {
+			return fmt.Errorf("dependency version must not be empty")
+		}
+		data.WriteString("\t")
+		data.WriteString(dependency)
+		data.WriteString(" ")
+		data.WriteString(requirement.Ref)
+		if len(requirement.Agents) > 0 {
+			data.WriteString(" [")
+			data.WriteString(strings.Join(requirement.Agents, ", "))
+			data.WriteString("]")
+		}
+		data.WriteString("\n")
 	}
-	return writeYAMLAtomic(filepath.Join(root, "skillsgo.yaml"), manifest)
-}
-
-func readRequiredYAML(path string, target any) error {
-	data, err := os.ReadFile(path)
-	if err != nil {
+	data.WriteString(")\n")
+	if _, _, _, err := convertAgentListsToComments([]byte(data.String())); err != nil {
 		return err
 	}
-	if err := yaml.Unmarshal(data, target); err != nil {
-		return fmt.Errorf("parse %s: %w", path, err)
-	}
-	return nil
-}
-
-func readYAMLIfExists(path string, target any) error {
-	data, err := os.ReadFile(path)
-	if os.IsNotExist(err) {
-		return nil
-	}
-	if err != nil {
-		return err
-	}
-	if err := yaml.Unmarshal(data, target); err != nil {
-		return fmt.Errorf("parse %s: %w", path, err)
-	}
-	return nil
-}
-
-func writeYAMLAtomic(path string, value any) error {
-	data, err := yaml.Marshal(value)
-	if err != nil {
-		return err
-	}
-	temporary, err := os.CreateTemp(filepath.Dir(path), ".skillsgo-yaml-")
+	temporary, err := os.CreateTemp(filepath.Dir(path), ".skillsgo-mod-")
 	if err != nil {
 		return err
 	}
@@ -331,7 +336,7 @@ func writeYAMLAtomic(path string, value any) error {
 		_ = temporary.Close()
 		return err
 	}
-	if _, err := temporary.Write(data); err != nil {
+	if _, err := temporary.WriteString(data.String()); err != nil {
 		_ = temporary.Close()
 		return err
 	}

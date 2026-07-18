@@ -22,7 +22,7 @@ func TestJ25CatalogAuditConsistency(t *testing.T) {
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed))
 
-	endpoint := "http://127.0.0.1:3000/v1/skills/" + testSkillID
+	endpoint := "http://127.0.0.1:3000/api/v1/skills/" + testSkillID
 	detail := execInContainer(t, ctx, container, "wget", "-qO-", endpoint)
 	require.Equal(t, 0, detail.exitCode, detail.output)
 	var response struct {

@@ -124,7 +124,7 @@ func addProxyRoutesWithCatalog(
 			r,
 			metadata,
 			dp,
-			newGitHubRepositoryMetadataReader(c.GithubToken),
+			newRepositoryMetadataCache(metadata, newGitHubRepositoryMetadataReader(c.GithubToken)),
 		)
 	}
 

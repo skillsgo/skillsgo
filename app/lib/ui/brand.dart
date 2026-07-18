@@ -62,6 +62,40 @@ extension SkillsColorRoles on ColorScheme {
   Color get cardHover => surfaceContainer;
 }
 
+class SkillsContentFrame extends StatelessWidget {
+  const SkillsContentFrame({super.key, required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.fromLTRB(28, 26, 28, 24),
+    child: Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 1152),
+        child: SizedBox.expand(child: child),
+      ),
+    ),
+  );
+}
+
+class SkillsEditorialTitle extends StatelessWidget {
+  const SkillsEditorialTitle(this.text, {super.key});
+
+  final String text;
+
+  @override
+  Widget build(BuildContext context) => Text(
+    text,
+    style: const TextStyle(
+      fontFamily: SkillsTokens.monoFamily,
+      fontSize: 20,
+      height: 28 / 20,
+      fontWeight: FontWeight.w200,
+    ),
+  );
+}
+
 class GlassCard extends StatelessWidget {
   const GlassCard({
     super.key,
@@ -202,16 +236,23 @@ class SecondaryCapsuleButton extends StatelessWidget {
 enum SkillSearchAppearance { capsule, leaderboard }
 
 class SearchVisualIcon extends StatelessWidget {
-  const SearchVisualIcon({super.key, required this.color});
+  const SearchVisualIcon({
+    super.key,
+    required this.color,
+    this.sparkles = false,
+  });
 
   final Color color;
+  final bool sparkles;
 
   @override
   Widget build(BuildContext context) {
     return HugeIcon(
-      icon: HugeIcons.strokeRoundedSearchVisual,
-      size: 20,
-      strokeWidth: 2,
+      icon: sparkles
+          ? HugeIcons.strokeRoundedSparkles
+          : HugeIcons.strokeRoundedSearchArea,
+      size: 18,
+      strokeWidth: 1.8,
       color: color,
     );
   }
@@ -263,6 +304,9 @@ class SkillSearchField extends StatelessWidget {
             final value = controller.value;
             if (appearance == SkillSearchAppearance.leaderboard) {
               const contentAlignment = 0.5;
+              final showSparkles =
+                  value.text.contains(' ') && value.text.trim().length >= 2;
+              final reduceMotion = MediaQuery.disableAnimationsOf(context);
               final animationDuration = MediaQuery.disableAnimationsOf(context)
                   ? Duration.zero
                   : const Duration(milliseconds: 100);
@@ -274,7 +318,7 @@ class SkillSearchField extends StatelessWidget {
                       color: focusNode.hasFocus
                           ? scheme.onSurface
                           : components.controlBorder,
-                      width: focusNode.hasFocus ? 1.5 : 1,
+                      width: 1,
                     ),
                   ),
                 ),
@@ -297,16 +341,40 @@ class SkillSearchField extends StatelessWidget {
                   decoration: InputDecoration(
                     isDense: true,
                     border: InputBorder.none,
-                    contentPadding: EdgeInsets.zero,
+                    contentPadding: const EdgeInsets.only(bottom: 2),
                     prefixIconConstraints: const BoxConstraints.tightFor(
                       width: 32,
                       height: 45,
                     ),
                     prefixIcon: Align(
-                      alignment: const Alignment(0, contentAlignment),
-                      child: SearchVisualIcon(
-                        key: const Key('search-visual-icon'),
-                        color: scheme.onSurface,
+                      alignment: const Alignment(-1, contentAlignment),
+                      child: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          AnimatedOpacity(
+                            key: const Key('search-visual-icon'),
+                            opacity: showSparkles ? 0 : 1,
+                            duration: reduceMotion
+                                ? Duration.zero
+                                : const Duration(milliseconds: 200),
+                            curve: const Cubic(0.4, 0, 0.2, 1),
+                            child: SearchVisualIcon(
+                              color: scheme.onSurfaceVariant,
+                            ),
+                          ),
+                          AnimatedOpacity(
+                            key: const Key('search-sparkles-icon'),
+                            opacity: showSparkles ? 1 : 0,
+                            duration: reduceMotion
+                                ? Duration.zero
+                                : const Duration(milliseconds: 200),
+                            curve: const Cubic(0.4, 0, 0.2, 1),
+                            child: SearchVisualIcon(
+                              color: scheme.onSurfaceVariant,
+                              sparkles: true,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     hintText: l10n.searchSkills,
@@ -330,24 +398,88 @@ class SkillSearchField extends StatelessWidget {
                               ),
                             ),
                           )
+                        : value.text.isNotEmpty && showClearButton
+                        ? Align(
+                            alignment: const Alignment(0, contentAlignment),
+                            child: SizedBox.square(
+                              dimension: 24,
+                              child: IconButton(
+                                key: const Key('skill-search-clear'),
+                                tooltip: null,
+                                padding: EdgeInsets.zero,
+                                constraints: const BoxConstraints.tightFor(
+                                  width: 24,
+                                  height: 24,
+                                ),
+                                style: ButtonStyle(
+                                  minimumSize: const WidgetStatePropertyAll(
+                                    Size.zero,
+                                  ),
+                                  tapTargetSize:
+                                      MaterialTapTargetSize.shrinkWrap,
+                                  backgroundColor:
+                                      WidgetStateProperty.resolveWith((states) {
+                                        if (states.contains(
+                                          WidgetState.pressed,
+                                        )) {
+                                          return scheme.onSurface.withValues(
+                                            alpha: 0.12,
+                                          );
+                                        }
+                                        if (states.contains(
+                                          WidgetState.hovered,
+                                        )) {
+                                          return scheme.onSurface.withValues(
+                                            alpha: 0.08,
+                                          );
+                                        }
+                                        return Colors.transparent;
+                                      }),
+                                  overlayColor: const WidgetStatePropertyAll(
+                                    Colors.transparent,
+                                  ),
+                                  shape: WidgetStatePropertyAll(
+                                    RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                  ),
+                                ),
+                                onPressed: () {
+                                  controller.clear();
+                                  onCleared?.call();
+                                  focusNode.requestFocus();
+                                },
+                                icon: HugeIcon(
+                                  icon: HugeIcons.strokeRoundedCancel01,
+                                  size: 16,
+                                  strokeWidth: 1.8,
+                                  color: scheme.onSurfaceVariant,
+                                ),
+                              ),
+                            ),
+                          )
                         : showShortcutHint
                         ? Align(
                             alignment: const Alignment(0, contentAlignment),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
+                                horizontal: 4,
                                 vertical: 2,
                               ),
                               decoration: BoxDecoration(
-                                border: Border.all(
-                                  color: components.controlBorder,
-                                ),
-                                borderRadius: BorderRadius.circular(5),
+                                color: scheme.onSurface.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(4),
                               ),
-                              child: Icon(
-                                Icons.keyboard_return_rounded,
-                                size: 13,
-                                color: scheme.onSurfaceVariant,
+                              child: Text(
+                                '⌘ F',
+                                style: TextStyle(
+                                  color: scheme.onSurfaceVariant,
+                                  fontFamily: SkillsTokens.monoFamily,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  letterSpacing: 0.2,
+                                  height: 1,
+                                ),
                               ),
                             ),
                           )
@@ -513,15 +645,16 @@ class _SkillCardState extends State<SkillCard> {
         builder: (context, progress, _) {
           final scheme = Theme.of(context).colorScheme;
           final components = context.skillsComponents;
+          final light = scheme.brightness == Brightness.light;
+          final restColor = light
+              ? scheme.surfaceContainer
+              : components.cardRest;
+          final hoverColor = light ? scheme.surfaceDim : components.cardHover;
           return Card(
             margin: EdgeInsets.zero,
             elevation: 0,
             surfaceTintColor: Colors.transparent,
-            color: Color.lerp(
-              components.cardRest,
-              components.cardHover,
-              progress,
-            ),
+            color: Color.lerp(restColor, hoverColor, progress),
             clipBehavior: Clip.antiAlias,
             shape: RoundedRectangleBorder(borderRadius: radius),
             child: Semantics(
@@ -578,7 +711,7 @@ class _SkillCardState extends State<SkillCard> {
                       Expanded(
                         child: Text(
                           widget.skill.description,
-                          maxLines: 2,
+                          maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
                             color: scheme.textSecondary,

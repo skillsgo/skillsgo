@@ -35,16 +35,14 @@ func TestJ08PreservePin(t *testing.T) {
 	infoBytes, err := os.ReadFile(hubInfo)
 	require.NoError(t, err)
 	var info struct {
-		Origin struct {
-			CommitSHA string `json:"CommitSHA"`
-		} `json:"Origin"`
+		CommitSHA string `json:"CommitSHA"`
 	}
 	require.NoError(t, json.Unmarshal(infoBytes, &info))
-	require.NotEmpty(t, info.Origin.CommitSHA)
+	require.NotEmpty(t, info.CommitSHA)
 
 	resetLocalInstallation(t, sandboxRoot)
 	pinnedAdd := execCLI(t, ctx, container,
-		"add", testSkillID+"@"+info.Origin.CommitSHA,
+		"add", testSkillID+"@"+info.CommitSHA,
 		"--agent", "codex",
 		"--copy",
 		"--yes",

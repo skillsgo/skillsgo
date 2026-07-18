@@ -45,6 +45,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get discoverTitle => 'Find a skill for your next move.';
 
   @override
+  String get skillsLeaderboard => 'It’s nice to know a little more.';
+
+  @override
   String searchResultsFor(String query) {
     return 'Results for “$query”';
   }
@@ -200,6 +203,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get install => 'Install';
+
+  @override
+  String get installAll => 'Install all skills';
+
+  @override
+  String get latestCommit => 'Latest commit';
 
   @override
   String get installToMoreTargets => 'Install to More Targets';
@@ -366,7 +375,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get globalCodex => 'Global · Codex';
 
   @override
-  String get yourLibrary => 'Installed Skills';
+  String get yourLibrary => 'What you know is all here.';
 
   @override
   String get libraryNavigation => 'Library navigation';
@@ -601,7 +610,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get workspaceOwnershipChanges =>
-      'Selected project actions will update skillsgo.yaml and skillsgo.yaml.';
+      'Selected project actions will update skillsgo.mod and skillsgo.sum.';
 
   @override
   String get targetContentPreserved =>
@@ -1553,7 +1562,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get detailRepository => 'Repository';
 
   @override
-  String get detailGitHubStars => 'GitHub Stars';
+  String get detailStars => 'Stars';
 
   @override
   String get detailUpdated => 'Updated';

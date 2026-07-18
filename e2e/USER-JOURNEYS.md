@@ -33,7 +33,7 @@ Status: implemented for Codex by `j02_remove_workspace_test.go`.
 
 As a user opening an existing Workspace, I want `skillsgo install` to recreate every declared Agent target from canonical requirements and verified immutable caches so that the Workspace is reproducible on a clean machine.
 
-The restored files match the Workspace Sum, all declared targets exist, and restoration uses only canonical versions from `skillsgo.yaml` rather than re-resolving movable input.
+The restored files match the Workspace Sum, all declared targets exist, and restoration uses only canonical versions from `skillsgo.mod` rather than re-resolving movable input.
 
 Status: implemented for a clean Codex copy-mode restore, including invocation from a nested Workspace directory, by `j03_restore_sum_test.go`.
 
@@ -279,6 +279,12 @@ As a Catalog and protocol consumer, I want ordinary demand discovery to publish 
 
 Status: implemented from an initially absent Skill detail through ordinary add and subsequent Catalog visibility, with explicit absence checks for `@resolve`, `.manifest`, and the future `.skillsgo` resource, by `j35_lazy_catalog_and_protocol_surface_test.go`.
 
+### J36 — Restore portable Agent targets through separated module and API surfaces
+
+As a user moving a Workspace between machines, I want `skillsgo.mod` to preserve exact requirements and Agent targets while the Hub keeps artifact transport separate from product APIs.
+
+Status: implemented with canonical `require` formatting, Codex and Claude Code target restoration, unchanged `skillsgo.mod` and `skillsgo.sum` bytes, successful `/mod` and `/api/v1` requests, and explicit 404 responses from the removed root artifact and `/v1` routes by `j36_mod_namespace_and_restore_test.go`.
+
 ## GitHub Issue #27 User-Story Coverage Index
 
 The numbered user stories in #27 are release-reviewed through these black-box journeys:
@@ -302,3 +308,4 @@ The numbered user stories in #27 are release-reviewed through these black-box jo
 | 40: demand-discovered Catalog visibility | J35 |
 | 41: display identity versus escaped HTTP path | J34 |
 | 42: explicit SkillsGo protocol divergence and future-resource isolation | J32, J35 |
+| 43: `skillsgo.mod`, Agent target restoration, and `/mod` versus `/api/v1` separation | J36 |

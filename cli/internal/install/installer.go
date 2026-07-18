@@ -82,7 +82,7 @@ func installResolvedTarget(artifact string, target Target) error {
 		return fmt.Errorf("软链安装缺少 canonical 路径")
 	}
 	if err := ensureCanonical(artifact, canonical); err != nil {
-		return err
+		return fmt.Errorf("materialize canonical %s from %s: %w", canonical, artifact, err)
 	}
 	if filepath.Clean(canonical) == filepath.Clean(target.Path) || samePath(canonical, target.Path) {
 		return nil
@@ -93,7 +93,10 @@ func installResolvedTarget(artifact string, target Target) error {
 func ensureCanonical(artifact, canonical string) error {
 	info, err := os.Lstat(canonical)
 	if os.IsNotExist(err) {
-		return installTarget(artifact, canonical, ModeCopy)
+		if err := installTarget(artifact, canonical, ModeCopy); err != nil {
+			return fmt.Errorf("create missing canonical: %w", err)
+		}
+		return nil
 	}
 	if err != nil {
 		return err
@@ -103,7 +106,7 @@ func ensureCanonical(artifact, canonical string) error {
 	}
 	matches, err := CopyMatchesArtifact(canonical, artifact)
 	if err != nil {
-		return err
+		return fmt.Errorf("verify existing canonical: %w", err)
 	}
 	if !matches {
 		return fmt.Errorf("canonical 目标已存在且内容不同：%s", canonical)

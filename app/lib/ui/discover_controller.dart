@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Riverpod, SkillsGateway discovery contracts, and the App-scoped Gateway provider.
- * [OUTPUT]: Provides immutable per-route discovery caches and race-safe search, initial-load, and pagination actions.
+ * [OUTPUT]: Provides immutable per-route discovery and Repository-summary caches plus race-safe search, initial-load, and pagination actions.
  * [POS]: Serves as the Discover journey's business-state boundary; scroll, focus, and transitions remain widget-owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,6 +14,7 @@ enum DiscoverRoute { search, ranking, trending, hot }
 class DiscoverRouteState {
   const DiscoverRouteState({
     this.results,
+    this.repository,
     this.error,
     this.nextOffset,
     this.generation = 0,
@@ -22,6 +23,7 @@ class DiscoverRouteState {
   });
 
   final List<SkillSummary>? results;
+  final RepositorySummary? repository;
   final Object? error;
   final int? nextOffset;
   final int generation;
@@ -31,6 +33,8 @@ class DiscoverRouteState {
   DiscoverRouteState copyWith({
     List<SkillSummary>? results,
     bool clearResults = false,
+    RepositorySummary? repository,
+    bool clearRepository = false,
     Object? error,
     bool clearError = false,
     int? nextOffset,
@@ -40,6 +44,7 @@ class DiscoverRouteState {
     bool? loadingMore,
   }) => DiscoverRouteState(
     results: clearResults ? null : results ?? this.results,
+    repository: clearRepository ? null : repository ?? this.repository,
     error: clearError ? null : error ?? this.error,
     nextOffset: clearNextOffset ? null : nextOffset ?? this.nextOffset,
     generation: generation ?? this.generation,
@@ -94,6 +99,7 @@ class DiscoverController extends Notifier<DiscoverState> {
       current.copyWith(
         clearError: true,
         clearResults: reset,
+        clearRepository: reset,
         clearNextOffset: reset,
         generation: generation,
         loading: reset,
@@ -112,6 +118,7 @@ class DiscoverController extends Notifier<DiscoverState> {
         route,
         latest.copyWith(
           results: reset ? page.skills : [...?latest.results, ...page.skills],
+          repository: reset ? page.repository : latest.repository,
           nextOffset: page.nextOffset,
           clearNextOffset: page.nextOffset == null,
           loading: false,

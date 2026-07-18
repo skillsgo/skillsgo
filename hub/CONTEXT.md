@@ -21,7 +21,7 @@ A semantic version, `latest`, branch, or commit supplied to an Info request. The
 _Avoid_: refresh command, subscription, raw transport URL
 
 **Repository Publication**:
-The atomic visibility change that publishes every valid Skill observed at one repository tag and commit. Invalid or missing `SKILL.md` candidates are not Skills and are omitted without blocking other valid Skills; no partial set of accepted Skill versions becomes visible.
+The atomic visibility change that publishes every repository-owned Skill observed at one repository tag and commit. A `SKILL.md` beneath a hidden directory is treated as installed consumer state rather than a repository publication candidate. Invalid or missing visible candidates are omitted without blocking other valid Skills; no partial set of accepted Skill versions becomes visible.
 _Avoid_: Repository Batch table, repository ZIP, all-or-nothing source validation
 
 **Repository Batch Version**:

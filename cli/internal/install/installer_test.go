@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses temporary immutable artifacts, existing external directories, resolved targets, filesystem modes, and adversarial directory layouts.
- * [OUTPUT]: Specifies shared-path materialization, projection lifecycle safety, legacy Store-link rejection, content-preserving adoption validation, collision refusal, copy fidelity, and unambiguous Local Modification digests.
+ * [OUTPUT]: Specifies shared-path materialization and restoration, projection lifecycle safety, legacy Store-link rejection, content-preserving adoption validation, collision refusal, copy fidelity, and unambiguous Local Modification digests.
  * [POS]: Serves as behavior coverage for the installation materialization boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,6 +13,7 @@ import (
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
+	"github.com/stretchr/testify/require"
 )
 
 func TestInstallSharedPhysicalTargetMaterializesOnce(t *testing.T) {
@@ -65,6 +66,28 @@ func TestInstallMaterializesCanonicalAndLinksAgentSpecificTarget(t *testing.T) {
 	if err != nil || resolvedErr != nil || canonicalErr != nil || !os.SameFile(resolvedInfo, canonicalInfo) {
 		t.Fatalf("expected target to resolve to canonical %s, got %s (%v)", canonical, resolved, err)
 	}
+}
+
+func TestInstallRestoresMissingCanonicalAndProjectionTogether(t *testing.T) {
+	root := t.TempDir()
+	artifact := filepath.Join(root, "store", "artifact")
+	canonical := filepath.Join(root, "project", ".agents", "skills", "demo")
+	projection := filepath.Join(root, "project", ".claude", "skills", "demo")
+	require.NoError(t, os.MkdirAll(artifact, 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(artifact, "SKILL.md"), []byte("demo"), 0o600))
+	entry := &store.Entry{Root: filepath.Dir(artifact), Artifact: artifact}
+	targets := []Target{
+		{Agent: "codex", Scope: ScopeProject, Mode: ModeSymlink, Path: canonical, CanonicalPath: canonical},
+		{Agent: "claude-code", Scope: ScopeProject, Mode: ModeSymlink, Path: projection, CanonicalPath: canonical},
+	}
+	require.NoError(t, Install(entry, targets))
+	require.NoError(t, os.RemoveAll(filepath.Join(root, "project", ".agents")))
+	require.NoError(t, os.RemoveAll(filepath.Join(root, "project", ".claude")))
+	require.NoError(t, Install(entry, targets))
+	require.FileExists(t, filepath.Join(canonical, "SKILL.md"))
+	info, err := os.Lstat(projection)
+	require.NoError(t, err)
+	require.NotZero(t, info.Mode()&os.ModeSymlink)
 }
 
 func TestInstallUserScopeMaterializesHomeCanonicalAndAgentProjection(t *testing.T) {

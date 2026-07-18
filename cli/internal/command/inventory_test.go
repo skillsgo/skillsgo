@@ -118,7 +118,7 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(filepath.Join(selectedTarget.Path, "SKILL.md"), original, 0o600))
 
-	manifestPath := filepath.Join(selectedProject, "skillsgo.yaml")
+	manifestPath := filepath.Join(selectedProject, "skillsgo.mod")
 	manifestBytes, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(

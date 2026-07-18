@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Ent entities, SQLx for dialect-specific discovery queries, versioned Atlas SQL migrations, Hub database configuration, and canonical Skill IDs.
- * [OUTPUT]: Provides persistent searchable Skill and repository metadata, immutable versions with commit time and ZIP size, exact content-identity matching, append-only risk assessments, install aggregation, pagination, and distinct rankings on SQLite/PostgreSQL.
+ * [OUTPUT]: Provides persistent searchable Skill and repository metadata, Repository-scoped GitHub cache state, immutable versions with commit time and ZIP size, exact content-identity matching, append-only risk assessments, install aggregation, pagination, and distinct rankings on SQLite/PostgreSQL.
  * [POS]: Serves as the Hub discovery data boundary while artifact bytes remain owned by storage packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -95,19 +95,23 @@ type Skill struct {
 	Repository      string    `db:"repository" json:"repository"`
 	SkillPath       string    `db:"skill_path" json:"skillPath"`
 	LatestVersion   string    `db:"latest_version" json:"latestVersion"`
-	GitHubStars     int64     `db:"github_stars" json:"githubStars"`
+	Stars           int64     `db:"stars" json:"stars"`
 	Verified        bool      `db:"verified" json:"verified"`
 	CreatedAt       time.Time `db:"created_at" json:"createdAt"`
 	UpdatedAt       time.Time `db:"updated_at" json:"updatedAt"`
 }
 
 type Repository struct {
-	RowID          int64     `db:"id" json:"-"`
-	SourceHost     string    `db:"source_host" json:"sourceHost"`
-	RepositoryPath string    `db:"repository_path" json:"repositoryPath"`
-	RepositoryID   string    `db:"repository_id" json:"id"`
-	CreatedAt      time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt      time.Time `db:"updated_at" json:"updatedAt"`
+	RowID                   int64      `db:"id" json:"-"`
+	SourceHost              string     `db:"source_host" json:"sourceHost"`
+	RepositoryPath          string     `db:"repository_path" json:"repositoryPath"`
+	RepositoryID            string     `db:"repository_id" json:"id"`
+	Stars                   int64      `db:"stars" json:"stars"`
+	SourceMetadataETag      string     `db:"source_metadata_etag" json:"-"`
+	SourceMetadataCheckedAt *time.Time `db:"source_metadata_checked_at" json:"-"`
+	SourceMetadataRetryAt   *time.Time `db:"source_metadata_retry_at" json:"-"`
+	CreatedAt               time.Time  `db:"created_at" json:"createdAt"`
+	UpdatedAt               time.Time  `db:"updated_at" json:"updatedAt"`
 }
 
 type SkillVersion struct {
@@ -221,8 +225,8 @@ ON CONFLICT (repository_id) DO UPDATE SET updated_at = excluded.updated_at`), pa
 			latestVersion = preferredLatestVersion(currentLatest, version)
 		}
 		if _, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO skills
-(repository_id, skill_id, name, description, source_host, repository, skill_path, latest_version, github_stars, verified, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, 0, ?, ?, ?)
+(repository_id, skill_id, name, description, source_host, repository, skill_path, latest_version, verified, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (skill_id) DO UPDATE SET repository_id = excluded.repository_id, name = excluded.name,
 description = excluded.description, source_host = excluded.source_host, repository = excluded.repository,
 skill_path = excluded.skill_path, latest_version = excluded.latest_version, updated_at = excluded.updated_at`),
@@ -357,10 +361,11 @@ func (c *Catalog) RankedSkills(ctx context.Context, sort string, limit, offset i
 	default:
 		return nil, fmt.Errorf("unsupported ranking %q", sort)
 	}
-	query := `SELECT s.*, ` + installs + ` AS installs, ` + change + ` AS change
-FROM skills AS s LEFT JOIN skill_stats AS st ON st.skill_id = s.id
+	query := `SELECT s.*, r.stars AS stars, ` + installs + ` AS installs, ` + change + ` AS change
+FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
+LEFT JOIN skill_stats AS st ON st.skill_id = s.id
 LEFT JOIN skill_hourly_stats AS hs ON hs.skill_id = s.id
-GROUP BY s.id, st.total_installs ORDER BY ` + order + ` LIMIT ? OFFSET ?`
+GROUP BY s.id, r.stars, st.total_installs ORDER BY ` + order + ` LIMIT ? OFFSET ?`
 	args = append(args, limit, offset)
 	var skills []RankedSkill
 	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(query), args...)
@@ -466,7 +471,7 @@ func (c *Catalog) RegisterRepository(ctx context.Context, repositoryID string) (
 	rowID, err := c.orm.Repository.Create().
 		SetSourceHost(parts[0]).SetRepositoryPath(parts[1]).SetRepositoryID(parsed.Repository).
 		SetCreatedAt(now).SetUpdatedAt(now).
-		OnConflictColumns(entrepository.FieldRepositoryID).UpdateNewValues().ID(ctx)
+		OnConflictColumns(entrepository.FieldRepositoryID).SetUpdatedAt(now).ID(ctx)
 	if err != nil {
 		return nil, err
 	}
@@ -511,11 +516,24 @@ ORDER BY CASE WHEN s.skill_path = '' THEN 0 ELSE 1 END, s.skill_id ASC`
 	return members, nil
 }
 
-func (c *Catalog) UpdateGitHubStars(ctx context.Context, skillID string, stars int64) error {
+func (c *Catalog) UpdateRepositorySourceMetadata(ctx context.Context, repositoryID string, stars int64, etag string, checkedAt *time.Time, retryAt *time.Time) error {
 	if stars < 0 {
-		return fmt.Errorf("github stars cannot be negative")
+		return fmt.Errorf("repository stars cannot be negative")
 	}
-	_, err := c.orm.Skill.Update().Where(entskill.SkillIDEQ(skillID)).SetGithubStars(stars).Save(ctx)
+	update := c.orm.Repository.Update().Where(entrepository.RepositoryIDEQ(repositoryID)).
+		SetStars(stars).SetSourceMetadataEtag(etag)
+	if checkedAt != nil {
+		update.SetSourceMetadataCheckedAt(*checkedAt)
+	}
+	if retryAt == nil {
+		update.ClearSourceMetadataRetryAt()
+	} else {
+		update.SetSourceMetadataRetryAt(*retryAt)
+	}
+	updated, err := update.Save(ctx)
+	if err == nil && updated == 0 {
+		return sql.ErrNoRows
+	}
 	return err
 }
 
@@ -531,14 +549,10 @@ func (c *Catalog) TotalInstalls(ctx context.Context, rowID int64) (int64, error)
 }
 
 func (c *Catalog) Skill(ctx context.Context, skillID string) (*Skill, error) {
-	stored, err := c.orm.Skill.Query().Where(entskill.SkillIDEQ(skillID)).Only(ctx)
-	if err != nil {
-		if catalogent.IsNotFound(err) {
-			return nil, sql.ErrNoRows
-		}
-		return nil, err
-	}
-	return skillFromEnt(stored), nil
+	var stored Skill
+	err := c.db.GetContext(ctx, &stored, c.db.Rebind(`SELECT s.*, r.stars AS stars
+FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id WHERE s.skill_id = ?`), skillID)
+	return &stored, err
 }
 
 // SkillPublishedVersions returns the immutable semantic versions at which a
@@ -676,7 +690,9 @@ func (c *Catalog) Skills(ctx context.Context, limit, offset int) ([]Skill, error
 		offset = 0
 	}
 	var skills []Skill
-	err := c.db.SelectContext(ctx, &skills, c.db.Rebind("SELECT * FROM skills ORDER BY verified DESC, name ASC LIMIT ? OFFSET ?"), limit, offset)
+	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(`SELECT s.*, r.stars AS stars
+FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
+ORDER BY s.verified DESC, s.name ASC LIMIT ? OFFSET ?`), limit, offset)
 	return skills, err
 }
 
@@ -687,8 +703,9 @@ func (c *Catalog) Search(ctx context.Context, query string, limit, offset int) (
 	}
 	query = strings.TrimSpace(query)
 	var skills []RankedSkill
-	statement := `SELECT s.*, COALESCE(st.total_installs, 0) AS installs, 0 AS change
-FROM skills AS s LEFT JOIN skill_stats AS st ON st.skill_id = s.id`
+	statement := `SELECT s.*, r.stars AS stars, COALESCE(st.total_installs, 0) AS installs, 0 AS change
+FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
+LEFT JOIN skill_stats AS st ON st.skill_id = s.id`
 	args := make([]any, 0, 5)
 	order := "s.verified DESC, s.name ASC"
 	if query != "" {
@@ -718,14 +735,16 @@ FROM skills AS s LEFT JOIN skill_stats AS st ON st.skill_id = s.id`
 func skillFromEnt(entity *catalogent.Skill) *Skill {
 	return &Skill{RowID: entity.ID, RepositoryRowID: entity.RepositoryID, SkillID: entity.SkillID, Name: entity.Name, Description: entity.Description,
 		SourceHost: entity.SourceHost, Repository: entity.Repository, SkillPath: entity.SkillPath,
-		LatestVersion: entity.LatestVersion, GitHubStars: entity.GithubStars, Verified: entity.Verified,
+		LatestVersion: entity.LatestVersion, Verified: entity.Verified,
 		CreatedAt: entity.CreatedAt, UpdatedAt: entity.UpdatedAt}
 }
 
 func repositoryFromEnt(entity *catalogent.Repository) *Repository {
 	return &Repository{
 		RowID: entity.ID, SourceHost: entity.SourceHost, RepositoryPath: entity.RepositoryPath,
-		RepositoryID: entity.RepositoryID, CreatedAt: entity.CreatedAt, UpdatedAt: entity.UpdatedAt,
+		RepositoryID: entity.RepositoryID, Stars: entity.Stars, SourceMetadataETag: entity.SourceMetadataEtag,
+		SourceMetadataCheckedAt: entity.SourceMetadataCheckedAt, SourceMetadataRetryAt: entity.SourceMetadataRetryAt,
+		CreatedAt: entity.CreatedAt, UpdatedAt: entity.UpdatedAt,
 	}
 }
 

@@ -318,11 +318,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       (skill) => updates[_libraryUpdateKey(skill)] == UpdateState.available,
     );
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
-    return Stack(
-      children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(24, 26, 28, 24),
-          child: Column(
+    return SkillsContentFrame(
+      child: Stack(
+        children: [
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
@@ -332,14 +331,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          context.l10n.yourLibrary,
-                          style: const TextStyle(
-                            fontFamily: SkillsTokens.serifFamily,
-                            fontSize: 38,
-                            fontWeight: FontWeight.w200,
-                          ),
-                        ),
+                        SkillsEditorialTitle(context.l10n.yourLibrary),
                       ],
                     ),
                   ),
@@ -497,40 +489,41 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               Expanded(child: _body()),
             ],
           ),
-        ),
-        Positioned(
-          left: 24,
-          right: 28,
-          bottom: 18,
-          child: Align(
-            alignment: Alignment.bottomCenter,
-            child: _LibrarySelectionBarTransition(
-              key: const Key('library-selection-bar-switcher'),
-              disableAnimations: disableAnimations,
-              child: selected.isEmpty
-                  ? null
-                  : _LibrarySelectionBar(
-                      key: const ValueKey('selection-bar-visible'),
-                      selectedCount: selected.length,
-                      updateableCount: updateableSelected.length,
-                      operating: selected.any(
-                        (skill) => operatingSkills.contains(skill.name),
+          Positioned(
+            left: 24,
+            right: 28,
+            bottom: 18,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: _LibrarySelectionBarTransition(
+                key: const Key('library-selection-bar-switcher'),
+                disableAnimations: disableAnimations,
+                child: selected.isEmpty
+                    ? null
+                    : _LibrarySelectionBar(
+                        key: const ValueKey('selection-bar-visible'),
+                        selectedCount: selected.length,
+                        updateableCount: updateableSelected.length,
+                        operating: selected.any(
+                          (skill) => operatingSkills.contains(skill.name),
+                        ),
+                        onClear: () => setState(selectedSkillKeys.clear),
+                        onUpdate: _updateSelectedSkills,
+                        onManage: _manageSelectedSkills,
+                        manageLabel:
+                            selected.every(
+                              (skill) =>
+                                  skill.provenance ==
+                                  LibraryProvenance.external,
+                            )
+                            ? context.l10n.remove
+                            : context.l10n.manageTargets,
                       ),
-                      onClear: () => setState(selectedSkillKeys.clear),
-                      onUpdate: _updateSelectedSkills,
-                      onManage: _manageSelectedSkills,
-                      manageLabel:
-                          selected.every(
-                            (skill) =>
-                                skill.provenance == LibraryProvenance.external,
-                          )
-                          ? context.l10n.remove
-                          : context.l10n.manageTargets,
-                    ),
+              ),
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
