@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with a fixture Hub serving Repository latest/list/info resources and canonical source coordinates.
- * [OUTPUT]: Specifies direct read-only Repository and nested Skill Info JSON, lazy latest resolution, and exact Skill lookup.
+ * [OUTPUT]: Specifies direct read-only Repository and nested Skill Info JSON, lazy latest resolution, exact Skill lookup, and structured Hub failure output in machine mode.
  * [POS]: Serves as the public CLI behavior contract for explicit-source discovery consumed by the App.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -124,6 +124,152 @@ func TestInfoSelectsNestedSkillFromExactRepositoryBatch(t *testing.T) {
 	err := Execute([]string{"info", repositoryID + "/-/missing@" + version, "--hub", server.URL, "--output=json"}, &output, &output)
 	if err == nil {
 		t.Fatalf("expected missing Skill error, got %v", err)
+	}
+}
+
+func TestInfoWritesStructuredHubFailureToMachineStdout(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+		writer.WriteHeader(http.StatusServiceUnavailable)
+		_, _ = writer.Write([]byte(`{"code":"internal_error","error":"localized or proxy-owned text"}`))
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	err := Execute(
+		[]string{"info", "github.com/example/skills", "--hub", server.URL, "--output", "json"},
+		&stdout,
+		&stderr,
+	)
+	if err == nil {
+		t.Fatal("expected Hub failure")
+	}
+	var document struct {
+		SchemaVersion int    `json:"schemaVersion"`
+		Phase         string `json:"phase"`
+		Error         struct {
+			Code       string `json:"code"`
+			Retryable  bool   `json:"retryable"`
+			Diagnostic string `json:"diagnostic"`
+		} `json:"error"`
+	}
+	if decodeErr := json.Unmarshal(stdout.Bytes(), &document); decodeErr != nil {
+		t.Fatalf("machine stdout is not one JSON failure document: %v\n%s", decodeErr, stdout.String())
+	}
+	if document.SchemaVersion != 1 || document.Phase != "error" {
+		t.Fatalf("unexpected failure document: %#v", document)
+	}
+	if document.Error.Code != "hub.unavailable" || !document.Error.Retryable {
+		t.Fatalf("unexpected machine error: %#v", document.Error)
+	}
+	if !strings.Contains(document.Error.Diagnostic, "503") {
+		t.Fatalf("missing developer diagnostic: %#v", document.Error)
+	}
+	if strings.Contains(document.Error.Diagnostic, "localized or proxy-owned text") {
+		t.Fatalf("Hub response body leaked into diagnostic: %#v", document.Error)
+	}
+	if stderr.Len() != 0 {
+		t.Fatalf("command seam wrote machine diagnostics to stderr: %q", stderr.String())
+	}
+}
+
+func TestInfoClassifiesStableMachineHubFailures(t *testing.T) {
+	testCases := []struct {
+		name      string
+		status    int
+		code      string
+		retryable bool
+		exitCode  int
+		requestID string
+	}{
+		{name: "invalid input", status: http.StatusNotFound, code: "input.invalid", exitCode: ExitFailure},
+		{name: "rate limited", status: http.StatusTooManyRequests, code: "hub.rate_limited", retryable: true, exitCode: ExitTemporary, requestID: "request-rate"},
+		{name: "gateway timeout", status: http.StatusGatewayTimeout, code: "hub.timeout", retryable: true, exitCode: ExitTemporary},
+		{name: "unavailable", status: http.StatusServiceUnavailable, code: "hub.unavailable", retryable: true, exitCode: ExitUnavailable},
+	}
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
+				if testCase.requestID != "" {
+					writer.Header().Set("Athens-Request-ID", testCase.requestID)
+				}
+				writer.WriteHeader(testCase.status)
+			}))
+			defer server.Close()
+
+			var stdout, stderr bytes.Buffer
+			err := Execute([]string{"info", "github.com/example/skills", "--hub", server.URL, "--output=json"}, &stdout, &stderr)
+			if err == nil {
+				t.Fatal("expected Hub failure")
+			}
+			var document machineFailureDocument
+			if decodeErr := json.Unmarshal(stdout.Bytes(), &document); decodeErr != nil {
+				t.Fatalf("decode failure document: %v", decodeErr)
+			}
+			if document.Error.Code != testCase.code || document.Error.Retryable != testCase.retryable {
+				t.Fatalf("unexpected error: %#v", document.Error)
+			}
+			if document.Error.RequestID != testCase.requestID {
+				t.Fatalf("request ID = %q, want %q", document.Error.RequestID, testCase.requestID)
+			}
+			if ExitCode(err) != testCase.exitCode {
+				t.Fatalf("exit code = %d, want %d", ExitCode(err), testCase.exitCode)
+			}
+		})
+	}
+}
+
+func TestInfoClassifiesMalformedHubJSONAsInvalidResponse(t *testing.T) {
+	repositoryID, version := "github.com/example/skills/-/demo", "v1.2.3"
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/mod/" + repositoryID + "/@v/" + version + ".info":
+			_, _ = writer.Write([]byte("{"))
+		default:
+			http.NotFound(writer, request)
+		}
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	err := Execute([]string{"info", repositoryID + "@" + version, "--hub", server.URL, "--output=json"}, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("expected malformed Hub response failure")
+	}
+	var document machineFailureDocument
+	if decodeErr := json.Unmarshal(stdout.Bytes(), &document); decodeErr != nil {
+		t.Fatalf("decode failure document: %v", decodeErr)
+	}
+	if document.Error.Code != "protocol.invalid_response" || !document.Error.Retryable {
+		t.Fatalf("unexpected error: %#v", document.Error)
+	}
+}
+
+func TestInfoClassifiesUnsupportedHubSchemaAsIncompatible(t *testing.T) {
+	repositoryID, version := "github.com/example/skills/-/demo", "v1.2.3"
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		if request.URL.Path != "/mod/"+repositoryID+"/@v/"+version+".info" {
+			http.NotFound(writer, request)
+			return
+		}
+		_ = json.NewEncoder(writer).Encode(hub.Info{
+			SchemaVersion: 2, Kind: "Skill", ID: repositoryID, Version: version,
+			Name: "demo", Description: "test", Risk: hub.RiskLow,
+			ContentDigest: "sha256:" + strings.Repeat("a", 64), ArchiveSize: 1,
+		})
+	}))
+	defer server.Close()
+
+	var stdout, stderr bytes.Buffer
+	err := Execute([]string{"info", repositoryID + "@" + version, "--hub", server.URL, "--output=json"}, &stdout, &stderr)
+	if err == nil {
+		t.Fatal("expected incompatible Hub schema failure")
+	}
+	var document machineFailureDocument
+	if decodeErr := json.Unmarshal(stdout.Bytes(), &document); decodeErr != nil {
+		t.Fatalf("decode failure document: %v", decodeErr)
+	}
+	if document.Error.Code != "protocol.incompatible" || document.Error.Retryable {
+		t.Fatalf("unexpected error: %#v", document.Error)
 	}
 }
 

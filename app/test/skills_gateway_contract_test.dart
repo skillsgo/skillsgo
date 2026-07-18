@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings, CLI-backed explicit-source discovery including empty-search GitHub shorthand fallback, discovery/detail parsing including repository product metadata and Hub image URLs, inventory v5 managed/external targets plus derived visibility and Local Modifications, Hub-independent local inspection/project persistence, strict Installation/Update/Target Management contracts including External removal, dormant post-MVP External Adoption adapters, Local export, stable CLI availability mapping, typed failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings, CLI-backed explicit-source discovery including empty-search GitHub shorthand fallback, discovery/detail parsing including repository product metadata and Hub image URLs, inventory v5 managed/external targets plus derived visibility and Local Modifications, Hub-independent local inspection/project persistence, strict Installation/Update/Target Management contracts including External removal, dormant post-MVP External Adoption adapters, Local export, stable CLI availability mapping, versioned machine failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -1093,6 +1093,116 @@ void main() {
       );
     },
   );
+
+  test('CLI machine failures classify without localized stderr', () async {
+    final gateway = RealSkillsGateway(
+      processRunner: _FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 69,
+          stdout:
+              '{"schemaVersion":1,"phase":"error","error":{"code":"hub.unavailable","retryable":true,"requestId":"req-123","diagnostic":"connection refused"}}',
+          stderr: '任意本地化诊断，不属于机器协议',
+        ),
+      initialCliPath: '/usr/local/bin/skillsgo',
+    );
+
+    await expectLater(
+      gateway.inspectAgents(),
+      throwsA(
+        isA<SkillsException>()
+            .having((error) => error.kind, 'kind', SkillsFailureKind.offline)
+            .having((error) => error.code, 'code', 'hub.unavailable')
+            .having((error) => error.retryable, 'retryable', isTrue)
+            .having((error) => error.requestId, 'requestId', 'req-123')
+            .having(
+              (error) => error.diagnostic,
+              'diagnostic',
+              'connection refused',
+            )
+            .having(
+              (error) => error.message,
+              'message',
+              isNot(contains('任意本地化诊断')),
+            ),
+      ),
+    );
+  });
+
+  test(
+    'CLI machine failures tolerate unknown codes and additive fields',
+    () async {
+      final gateway = RealSkillsGateway(
+        processRunner: _FakeProcessRunner()
+          ..result = const ProcessOutput(
+            exitCode: 1,
+            stdout:
+                '{"schemaVersion":1,"phase":"error","future":"ignored","error":{"code":"future.new_failure","retryable":false,"futureDetail":42}}',
+            stderr: 'must not become product copy',
+          ),
+        initialCliPath: '/usr/local/bin/skillsgo',
+      );
+
+      await expectLater(
+        gateway.inspectAgents(),
+        throwsA(
+          isA<SkillsException>()
+              .having((error) => error.kind, 'kind', SkillsFailureKind.server)
+              .having((error) => error.code, 'code', 'future.new_failure')
+              .having((error) => error.retryable, 'retryable', isFalse),
+        ),
+      );
+    },
+  );
+
+  test('malformed CLI machine failure is a protocol failure', () async {
+    final gateway = RealSkillsGateway(
+      processRunner: _FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 69,
+          stdout:
+              '{"schemaVersion":2,"phase":"error","error":{"code":"hub.unavailable","retryable":true}}',
+          stderr: 'offline text must not override the malformed protocol',
+        ),
+      initialCliPath: '/usr/local/bin/skillsgo',
+    );
+
+    await expectLater(
+      gateway.inspectAgents(),
+      throwsA(
+        isA<SkillsException>()
+            .having(
+              (error) => error.kind,
+              'kind',
+              SkillsFailureKind.invalidLocalData,
+            )
+            .having((error) => error.code, 'code', 'protocol.incompatible'),
+      ),
+    );
+  });
+
+  test('CLI machine failure reads the final NDJSON line', () async {
+    final gateway = RealSkillsGateway(
+      processRunner: _FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 75,
+          stdout:
+              '{"schemaVersion":1,"phase":"update-progress","sequence":1}\n'
+              '{"schemaVersion":1,"phase":"error","error":{"code":"hub.timeout","retryable":true}}\n',
+          stderr: 'localized timeout diagnostic',
+        ),
+      initialCliPath: '/usr/local/bin/skillsgo',
+    );
+
+    await expectLater(
+      gateway.inspectAgents(),
+      throwsA(
+        isA<SkillsException>()
+            .having((error) => error.kind, 'kind', SkillsFailureKind.timeout)
+            .having((error) => error.code, 'code', 'hub.timeout')
+            .having((error) => error.retryable, 'retryable', isTrue),
+      ),
+    );
+  });
 
   test('search rejects non-2xx, invalid JSON and missing fields', () async {
     for (final failure in [
