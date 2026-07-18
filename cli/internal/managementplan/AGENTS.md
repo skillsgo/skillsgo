@@ -4,7 +4,7 @@
 ## Members
 
 - `management_plan.go`: validates exact managed or External targets, classifies safe actions, binds reviewed state, and executes Remove, Repair, Stop Managing, or explicit External removal with target-specific results.
-- `management_plan_test.go`: specifies strict hostile input decoding and action validation.
+- `management_plan_test.go`: specifies strict hostile input decoding, action validation, and nested target-failure results.
 
 ## Architectural Boundary
 
