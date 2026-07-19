@@ -52,13 +52,29 @@ _Avoid_: editorial member list, Repository ZIP, persisted expansion graph
 The installable file set for one Skill at one resolved source commit. A branch such as `main` is a movable reference that resolves to an immutable artifact before download and caching.
 _Avoid_: live repository directory, mutable cache entry
 
+**Source Presentation**:
+Author-maintained Repository or Skill description found in source metadata or a localized source document. It may be displayed and indexed but never replaces the canonical `SKILL.md` in an Immutable Skill Artifact.
+_Avoid_: localized README body, translated instructions, generated Skill
+
+**Hub Enrichment**:
+Presentation-only Repository Description or Skill Description produced by Hub analysis for one immutable source revision and locale. It belongs to the Hub catalog and may improve discovery or detail views without changing Skill Info, Content Digest, installation, or execution semantics.
+_Avoid_: artifact translation, localized Skill version, source rewrite
+
+**Localized Search Document**:
+The locale-specific search projection of canonical identity plus localized Repository and Skill descriptions for one Skill. It determines retrieval and ranking text but is not an installable resource.
+_Avoid_: localized artifact, translated package, Skill Info
+
+**Enrichment Run**:
+One auditable analysis attempt over a specific immutable source revision, analyzer identity, prompt revision, and requested locale set. Its outputs become active only after validation and never overwrite historical run evidence.
+_Avoid_: cron result, mutable translation row, artifact scan
+
 **Content Digest**:
 The deterministic SHA-256 identity of a normalized Skill artifact. Archive compression has its own digest and must not change the content identity.
 _Avoid_: archive hash, Git tree SHA
 
 **Content Match**:
-An exact lookup of immutable Hub artifacts by Content Digest, optionally ranked by a source hint. It supports reviewed association of existing content and never treats a matching name as evidence of identity.
-_Avoid_: fuzzy name match, mutable branch lookup, automatic ownership claim
+An exact lookup of immutable Hub artifacts by complete Content Digest, optionally ranked by a source hint. It can support a later reviewed association flow for External Installations that are absent from supported locks, but the current lock-backed Batch Takeover does not call the Hub. It never treats matching metadata as evidence of identity.
+_Avoid_: fuzzy name match, metadata fingerprint, mutable branch lookup, automatic ownership claim
 
 **Hub Origin**:
 The trusted Hub base used to resolve metadata and download an artifact. Clients may use the official service or a self-hosted Origin and still verify content digests.

@@ -12,7 +12,7 @@
 - `catalog_protocol.go`, `catalog_protocol_test.go`: index immutable artifact metadata and bind audited Risk plus Content Digest to exact Info responses.
 - `repository_protocol.go`: aggregates exact flat per-Skill Info into self-contained immutable Repository Info with one shared Ref, Commit SHA, and batch version on bare coordinates, and reports publication-cache decisions.
 - `repository_publisher.go`: coordinates and logs cold one-snapshot Repository discovery, immutable conflict preflight, bounded/negative-cached upstream work, rollback, and transactional Catalog visibility.
-- `repository_metadata.go`, `repository_metadata_test.go`: route Repository metadata by source host, share TTL/ETag/Singleflight/stale/backoff state through the Catalog, and implement GitHub-specific reads plus safe diagnostics without making artifact availability depend on a provider API.
+- `repository_metadata.go`, `repository_metadata_test.go`: route Repository About descriptions and popularity metadata by source host, share TTL/ETag/Singleflight/stale/backoff state through the Catalog, and implement GitHub-specific reads plus safe diagnostics without making artifact availability depend on a provider API.
 - `health.go`, `readiness.go`: expose service health and readiness probes.
 - `home.go`, `robots.go`, `version.go`: serve the human landing, crawler policy, and service version surfaces.
 - `index.go`, `index_test.go`: assemble the configured module index behavior.

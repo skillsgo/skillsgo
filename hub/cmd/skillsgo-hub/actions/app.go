@@ -10,6 +10,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"strings"
 	"sync"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	mw "github.com/skillsgo/skillsgo/hub/pkg/middleware"
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
+	"github.com/skillsgo/skillsgo/hub/pkg/translation"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
 )
@@ -160,9 +162,11 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 		return nil, cleanup, fmt.Errorf("opening metadata catalog: %w", err)
 	}
 	exporterCleanup := cleanup
+	translationCleanup := noop
 	var metadataOnce sync.Once
 	cleanup = func() {
 		metadataOnce.Do(func() {
+			translationCleanup()
 			_ = metadata.Close()
 		})
 		exporterCleanup()
@@ -174,6 +178,27 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 	}
 	if err := addProxyRoutesWithCatalog(proxyRouter, store, logger, conf, metadata); err != nil {
 		return nil, cleanup, fmt.Errorf("adding proxy routes: %w", err)
+	}
+	if conf.LLM.Enabled() {
+		workerCtx, cancelWorker := context.WithCancel(context.Background())
+		var workerWG sync.WaitGroup
+		translator := translation.NewOpenAITranslator(conf.LLM.BaseURL, conf.LLM.APIKey, conf.LLM.Model)
+		for _, locale := range conf.LLM.TranslationLocales {
+			worker := translation.NewWorker(
+				metadata, translator, logger, locale, conf.LLM.PromptVersion,
+				conf.LLM.TranslationBatch, time.Duration(conf.LLM.TranslationInterval)*time.Second,
+			)
+			workerWG.Add(1)
+			go func() {
+				defer workerWG.Done()
+				worker.Run(workerCtx)
+			}()
+		}
+		translationCleanup = func() {
+			cancelWorker()
+			workerWG.Wait()
+		}
+		logger.Infof("description translation enabled with model %s for locales %s", conf.LLM.Model, strings.Join(conf.LLM.TranslationLocales, ","))
 	}
 
 	return r, cleanup, nil

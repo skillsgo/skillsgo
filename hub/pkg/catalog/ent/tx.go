@@ -14,6 +14,8 @@ type Tx struct {
 	config
 	// InstallEvent is the client for interacting with the InstallEvent builders.
 	InstallEvent *InstallEventClient
+	// LocalizedDescription is the client for interacting with the LocalizedDescription builders.
+	LocalizedDescription *LocalizedDescriptionClient
 	// Repository is the client for interacting with the Repository builders.
 	Repository *RepositoryClient
 	// RiskAssessment is the client for interacting with the RiskAssessment builders.
@@ -158,6 +160,7 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.InstallEvent = NewInstallEventClient(tx.config)
+	tx.LocalizedDescription = NewLocalizedDescriptionClient(tx.config)
 	tx.Repository = NewRepositoryClient(tx.config)
 	tx.RiskAssessment = NewRiskAssessmentClient(tx.config)
 	tx.Skill = NewSkillClient(tx.config)

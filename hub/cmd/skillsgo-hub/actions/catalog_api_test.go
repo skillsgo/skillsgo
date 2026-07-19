@@ -164,7 +164,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.NoError(t, json.NewDecoder(detail.Body).Decode(&detailBody))
 	require.Equal(t, skill.SkillID, detailBody.SkillID)
 	require.NotNil(t, detailBody.ImageURL)
-	require.Equal(t, "https://github.com/mattpocock.png?size=72", *detailBody.ImageURL)
+	require.Equal(t, "https://github.com/mattpocock.png?size=256", *detailBody.ImageURL)
 	require.Equal(t, "main", detailBody.RequestedVersion)
 	require.Equal(t, "v0.0.0-test", detailBody.ImmutableVersion)
 	require.Equal(t, "commit-abc", detailBody.CommitSHA)
@@ -204,7 +204,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Nil(t, response.Page.NextOffset)
 	require.Len(t, response.Skills, 1)
 	require.NotNil(t, response.Skills[0].ImageURL)
-	require.Equal(t, "https://github.com/mattpocock.png?size=72", *response.Skills[0].ImageURL)
+	require.Equal(t, "https://github.com/mattpocock.png?size=256", *response.Skills[0].ImageURL)
 	require.Equal(t, "unverified", response.Skills[0].TrustLevel)
 	require.Equal(t, "unknown", response.Skills[0].RiskAssessment)
 	require.Equal(t, "all_time_installs", response.Skills[0].Metric.Kind)
@@ -214,7 +214,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 func TestSkillImageURLSupportsGitHubOnly(t *testing.T) {
 	github := skillImageURL("GitHub.com", "owner/repository")
 	require.NotNil(t, github)
-	require.Equal(t, "https://github.com/owner.png?size=72", *github)
+	require.Equal(t, "https://github.com/owner.png?size=256", *github)
 	require.Nil(t, skillImageURL("gitlab.com", "owner/repository"))
 	require.Nil(t, skillImageURL("github.com", "repository"))
 }

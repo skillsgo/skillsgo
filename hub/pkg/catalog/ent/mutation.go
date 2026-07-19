@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/installevent"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/localizeddescription"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/predicate"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/riskassessment"
@@ -30,13 +31,14 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeInstallEvent    = "InstallEvent"
-	TypeRepository      = "Repository"
-	TypeRiskAssessment  = "RiskAssessment"
-	TypeSkill           = "Skill"
-	TypeSkillHourlyStat = "SkillHourlyStat"
-	TypeSkillStat       = "SkillStat"
-	TypeSkillVersion    = "SkillVersion"
+	TypeInstallEvent         = "InstallEvent"
+	TypeLocalizedDescription = "LocalizedDescription"
+	TypeRepository           = "Repository"
+	TypeRiskAssessment       = "RiskAssessment"
+	TypeSkill                = "Skill"
+	TypeSkillHourlyStat      = "SkillHourlyStat"
+	TypeSkillStat            = "SkillStat"
+	TypeSkillVersion         = "SkillVersion"
 )
 
 // InstallEventMutation represents an operation that mutates the InstallEvent nodes in the graph.
@@ -752,6 +754,716 @@ func (m *InstallEventMutation) ResetEdge(name string) error {
 	return fmt.Errorf("unknown InstallEvent edge %s", name)
 }
 
+// LocalizedDescriptionMutation represents an operation that mutates the LocalizedDescription nodes in the graph.
+type LocalizedDescriptionMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int64
+	resource_kind  *string
+	resource_id    *string
+	locale         *string
+	description    *string
+	source_digest  *string
+	prompt_version *string
+	created_at     *time.Time
+	updated_at     *time.Time
+	clearedFields  map[string]struct{}
+	done           bool
+	oldValue       func(context.Context) (*LocalizedDescription, error)
+	predicates     []predicate.LocalizedDescription
+}
+
+var _ ent.Mutation = (*LocalizedDescriptionMutation)(nil)
+
+// localizeddescriptionOption allows management of the mutation configuration using functional options.
+type localizeddescriptionOption func(*LocalizedDescriptionMutation)
+
+// newLocalizedDescriptionMutation creates new mutation for the LocalizedDescription entity.
+func newLocalizedDescriptionMutation(c config, op Op, opts ...localizeddescriptionOption) *LocalizedDescriptionMutation {
+	m := &LocalizedDescriptionMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeLocalizedDescription,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withLocalizedDescriptionID sets the ID field of the mutation.
+func withLocalizedDescriptionID(id int64) localizeddescriptionOption {
+	return func(m *LocalizedDescriptionMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *LocalizedDescription
+		)
+		m.oldValue = func(ctx context.Context) (*LocalizedDescription, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().LocalizedDescription.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withLocalizedDescription sets the old LocalizedDescription of the mutation.
+func withLocalizedDescription(node *LocalizedDescription) localizeddescriptionOption {
+	return func(m *LocalizedDescriptionMutation) {
+		m.oldValue = func(context.Context) (*LocalizedDescription, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m LocalizedDescriptionMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m LocalizedDescriptionMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of LocalizedDescription entities.
+func (m *LocalizedDescriptionMutation) SetID(id int64) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *LocalizedDescriptionMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *LocalizedDescriptionMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().LocalizedDescription.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetResourceKind sets the "resource_kind" field.
+func (m *LocalizedDescriptionMutation) SetResourceKind(s string) {
+	m.resource_kind = &s
+}
+
+// ResourceKind returns the value of the "resource_kind" field in the mutation.
+func (m *LocalizedDescriptionMutation) ResourceKind() (r string, exists bool) {
+	v := m.resource_kind
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldResourceKind returns the old "resource_kind" field's value of the LocalizedDescription entity.
+// If the LocalizedDescription object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LocalizedDescriptionMutation) OldResourceKind(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldResourceKind is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldResourceKind requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldResourceKind: %w", err)
+	}
+	return oldValue.ResourceKind, nil
+}
+
+// ResetResourceKind resets all changes to the "resource_kind" field.
+func (m *LocalizedDescriptionMutation) ResetResourceKind() {
+	m.resource_kind = nil
+}
+
+// SetResourceID sets the "resource_id" field.
+func (m *LocalizedDescriptionMutation) SetResourceID(s string) {
+	m.resource_id = &s
+}
+
+// ResourceID returns the value of the "resource_id" field in the mutation.
+func (m *LocalizedDescriptionMutation) ResourceID() (r string, exists bool) {
+	v := m.resource_id
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldResourceID returns the old "resource_id" field's value of the LocalizedDescription entity.
+// If the LocalizedDescription object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LocalizedDescriptionMutation) OldResourceID(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldResourceID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldResourceID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldResourceID: %w", err)
+	}
+	return oldValue.ResourceID, nil
+}
+
+// ResetResourceID resets all changes to the "resource_id" field.
+func (m *LocalizedDescriptionMutation) ResetResourceID() {
+	m.resource_id = nil
+}
+
+// SetLocale sets the "locale" field.
+func (m *LocalizedDescriptionMutation) SetLocale(s string) {
+	m.locale = &s
+}
+
+// Locale returns the value of the "locale" field in the mutation.
+func (m *LocalizedDescriptionMutation) Locale() (r string, exists bool) {
+	v := m.locale
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldLocale returns the old "locale" field's value of the LocalizedDescription entity.
+// If the LocalizedDescription object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LocalizedDescriptionMutation) OldLocale(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldLocale is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldLocale requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldLocale: %w", err)
+	}
+	return oldValue.Locale, nil
+}
+
+// ResetLocale resets all changes to the "locale" field.
+func (m *LocalizedDescriptionMutation) ResetLocale() {
+	m.locale = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *LocalizedDescriptionMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *LocalizedDescriptionMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the LocalizedDescription entity.
+// If the LocalizedDescription object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LocalizedDescriptionMutation) OldDescription(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *LocalizedDescriptionMutation) ResetDescription() {
+	m.description = nil
+}
+
+// SetSourceDigest sets the "source_digest" field.
+func (m *LocalizedDescriptionMutation) SetSourceDigest(s string) {
+	m.source_digest = &s
+}
+
+// SourceDigest returns the value of the "source_digest" field in the mutation.
+func (m *LocalizedDescriptionMutation) SourceDigest() (r string, exists bool) {
+	v := m.source_digest
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSourceDigest returns the old "source_digest" field's value of the LocalizedDescription entity.
+// If the LocalizedDescription object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LocalizedDescriptionMutation) OldSourceDigest(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSourceDigest is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSourceDigest requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSourceDigest: %w", err)
+	}
+	return oldValue.SourceDigest, nil
+}
+
+// ResetSourceDigest resets all changes to the "source_digest" field.
+func (m *LocalizedDescriptionMutation) ResetSourceDigest() {
+	m.source_digest = nil
+}
+
+// SetPromptVersion sets the "prompt_version" field.
+func (m *LocalizedDescriptionMutation) SetPromptVersion(s string) {
+	m.prompt_version = &s
+}
+
+// PromptVersion returns the value of the "prompt_version" field in the mutation.
+func (m *LocalizedDescriptionMutation) PromptVersion() (r string, exists bool) {
+	v := m.prompt_version
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldPromptVersion returns the old "prompt_version" field's value of the LocalizedDescription entity.
+// If the LocalizedDescription object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LocalizedDescriptionMutation) OldPromptVersion(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldPromptVersion is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldPromptVersion requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldPromptVersion: %w", err)
+	}
+	return oldValue.PromptVersion, nil
+}
+
+// ResetPromptVersion resets all changes to the "prompt_version" field.
+func (m *LocalizedDescriptionMutation) ResetPromptVersion() {
+	m.prompt_version = nil
+}
+
+// SetCreatedAt sets the "created_at" field.
+func (m *LocalizedDescriptionMutation) SetCreatedAt(t time.Time) {
+	m.created_at = &t
+}
+
+// CreatedAt returns the value of the "created_at" field in the mutation.
+func (m *LocalizedDescriptionMutation) CreatedAt() (r time.Time, exists bool) {
+	v := m.created_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCreatedAt returns the old "created_at" field's value of the LocalizedDescription entity.
+// If the LocalizedDescription object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LocalizedDescriptionMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
+	}
+	return oldValue.CreatedAt, nil
+}
+
+// ResetCreatedAt resets all changes to the "created_at" field.
+func (m *LocalizedDescriptionMutation) ResetCreatedAt() {
+	m.created_at = nil
+}
+
+// SetUpdatedAt sets the "updated_at" field.
+func (m *LocalizedDescriptionMutation) SetUpdatedAt(t time.Time) {
+	m.updated_at = &t
+}
+
+// UpdatedAt returns the value of the "updated_at" field in the mutation.
+func (m *LocalizedDescriptionMutation) UpdatedAt() (r time.Time, exists bool) {
+	v := m.updated_at
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldUpdatedAt returns the old "updated_at" field's value of the LocalizedDescription entity.
+// If the LocalizedDescription object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *LocalizedDescriptionMutation) OldUpdatedAt(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldUpdatedAt is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldUpdatedAt requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldUpdatedAt: %w", err)
+	}
+	return oldValue.UpdatedAt, nil
+}
+
+// ResetUpdatedAt resets all changes to the "updated_at" field.
+func (m *LocalizedDescriptionMutation) ResetUpdatedAt() {
+	m.updated_at = nil
+}
+
+// Where appends a list predicates to the LocalizedDescriptionMutation builder.
+func (m *LocalizedDescriptionMutation) Where(ps ...predicate.LocalizedDescription) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the LocalizedDescriptionMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *LocalizedDescriptionMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.LocalizedDescription, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *LocalizedDescriptionMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *LocalizedDescriptionMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (LocalizedDescription).
+func (m *LocalizedDescriptionMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *LocalizedDescriptionMutation) Fields() []string {
+	fields := make([]string, 0, 8)
+	if m.resource_kind != nil {
+		fields = append(fields, localizeddescription.FieldResourceKind)
+	}
+	if m.resource_id != nil {
+		fields = append(fields, localizeddescription.FieldResourceID)
+	}
+	if m.locale != nil {
+		fields = append(fields, localizeddescription.FieldLocale)
+	}
+	if m.description != nil {
+		fields = append(fields, localizeddescription.FieldDescription)
+	}
+	if m.source_digest != nil {
+		fields = append(fields, localizeddescription.FieldSourceDigest)
+	}
+	if m.prompt_version != nil {
+		fields = append(fields, localizeddescription.FieldPromptVersion)
+	}
+	if m.created_at != nil {
+		fields = append(fields, localizeddescription.FieldCreatedAt)
+	}
+	if m.updated_at != nil {
+		fields = append(fields, localizeddescription.FieldUpdatedAt)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *LocalizedDescriptionMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case localizeddescription.FieldResourceKind:
+		return m.ResourceKind()
+	case localizeddescription.FieldResourceID:
+		return m.ResourceID()
+	case localizeddescription.FieldLocale:
+		return m.Locale()
+	case localizeddescription.FieldDescription:
+		return m.Description()
+	case localizeddescription.FieldSourceDigest:
+		return m.SourceDigest()
+	case localizeddescription.FieldPromptVersion:
+		return m.PromptVersion()
+	case localizeddescription.FieldCreatedAt:
+		return m.CreatedAt()
+	case localizeddescription.FieldUpdatedAt:
+		return m.UpdatedAt()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *LocalizedDescriptionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case localizeddescription.FieldResourceKind:
+		return m.OldResourceKind(ctx)
+	case localizeddescription.FieldResourceID:
+		return m.OldResourceID(ctx)
+	case localizeddescription.FieldLocale:
+		return m.OldLocale(ctx)
+	case localizeddescription.FieldDescription:
+		return m.OldDescription(ctx)
+	case localizeddescription.FieldSourceDigest:
+		return m.OldSourceDigest(ctx)
+	case localizeddescription.FieldPromptVersion:
+		return m.OldPromptVersion(ctx)
+	case localizeddescription.FieldCreatedAt:
+		return m.OldCreatedAt(ctx)
+	case localizeddescription.FieldUpdatedAt:
+		return m.OldUpdatedAt(ctx)
+	}
+	return nil, fmt.Errorf("unknown LocalizedDescription field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *LocalizedDescriptionMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case localizeddescription.FieldResourceKind:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetResourceKind(v)
+		return nil
+	case localizeddescription.FieldResourceID:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetResourceID(v)
+		return nil
+	case localizeddescription.FieldLocale:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetLocale(v)
+		return nil
+	case localizeddescription.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
+		return nil
+	case localizeddescription.FieldSourceDigest:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSourceDigest(v)
+		return nil
+	case localizeddescription.FieldPromptVersion:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetPromptVersion(v)
+		return nil
+	case localizeddescription.FieldCreatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCreatedAt(v)
+		return nil
+	case localizeddescription.FieldUpdatedAt:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetUpdatedAt(v)
+		return nil
+	}
+	return fmt.Errorf("unknown LocalizedDescription field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *LocalizedDescriptionMutation) AddedFields() []string {
+	return nil
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *LocalizedDescriptionMutation) AddedField(name string) (ent.Value, bool) {
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *LocalizedDescriptionMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	}
+	return fmt.Errorf("unknown LocalizedDescription numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *LocalizedDescriptionMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *LocalizedDescriptionMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *LocalizedDescriptionMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown LocalizedDescription nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *LocalizedDescriptionMutation) ResetField(name string) error {
+	switch name {
+	case localizeddescription.FieldResourceKind:
+		m.ResetResourceKind()
+		return nil
+	case localizeddescription.FieldResourceID:
+		m.ResetResourceID()
+		return nil
+	case localizeddescription.FieldLocale:
+		m.ResetLocale()
+		return nil
+	case localizeddescription.FieldDescription:
+		m.ResetDescription()
+		return nil
+	case localizeddescription.FieldSourceDigest:
+		m.ResetSourceDigest()
+		return nil
+	case localizeddescription.FieldPromptVersion:
+		m.ResetPromptVersion()
+		return nil
+	case localizeddescription.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	case localizeddescription.FieldUpdatedAt:
+		m.ResetUpdatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown LocalizedDescription field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *LocalizedDescriptionMutation) AddedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *LocalizedDescriptionMutation) AddedIDs(name string) []ent.Value {
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *LocalizedDescriptionMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *LocalizedDescriptionMutation) RemovedIDs(name string) []ent.Value {
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *LocalizedDescriptionMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 0)
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *LocalizedDescriptionMutation) EdgeCleared(name string) bool {
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *LocalizedDescriptionMutation) ClearEdge(name string) error {
+	return fmt.Errorf("unknown LocalizedDescription unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *LocalizedDescriptionMutation) ResetEdge(name string) error {
+	return fmt.Errorf("unknown LocalizedDescription edge %s", name)
+}
+
 // RepositoryMutation represents an operation that mutates the Repository nodes in the graph.
 type RepositoryMutation struct {
 	config
@@ -761,6 +1473,7 @@ type RepositoryMutation struct {
 	source_host                *string
 	repository_path            *string
 	repository_id              *string
+	description                *string
 	stars                      *int64
 	addstars                   *int64
 	source_metadata_etag       *string
@@ -987,6 +1700,42 @@ func (m *RepositoryMutation) OldRepositoryID(ctx context.Context) (v string, err
 // ResetRepositoryID resets all changes to the "repository_id" field.
 func (m *RepositoryMutation) ResetRepositoryID() {
 	m.repository_id = nil
+}
+
+// SetDescription sets the "description" field.
+func (m *RepositoryMutation) SetDescription(s string) {
+	m.description = &s
+}
+
+// Description returns the value of the "description" field in the mutation.
+func (m *RepositoryMutation) Description() (r string, exists bool) {
+	v := m.description
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDescription returns the old "description" field's value of the Repository entity.
+// If the Repository object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryMutation) OldDescription(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDescription is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDescription requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDescription: %w", err)
+	}
+	return oldValue.Description, nil
+}
+
+// ResetDescription resets all changes to the "description" field.
+func (m *RepositoryMutation) ResetDescription() {
+	m.description = nil
 }
 
 // SetStars sets the "stars" field.
@@ -1352,7 +2101,7 @@ func (m *RepositoryMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RepositoryMutation) Fields() []string {
-	fields := make([]string, 0, 9)
+	fields := make([]string, 0, 10)
 	if m.source_host != nil {
 		fields = append(fields, repository.FieldSourceHost)
 	}
@@ -1361,6 +2110,9 @@ func (m *RepositoryMutation) Fields() []string {
 	}
 	if m.repository_id != nil {
 		fields = append(fields, repository.FieldRepositoryID)
+	}
+	if m.description != nil {
+		fields = append(fields, repository.FieldDescription)
 	}
 	if m.stars != nil {
 		fields = append(fields, repository.FieldStars)
@@ -1394,6 +2146,8 @@ func (m *RepositoryMutation) Field(name string) (ent.Value, bool) {
 		return m.RepositoryPath()
 	case repository.FieldRepositoryID:
 		return m.RepositoryID()
+	case repository.FieldDescription:
+		return m.Description()
 	case repository.FieldStars:
 		return m.Stars()
 	case repository.FieldSourceMetadataEtag:
@@ -1421,6 +2175,8 @@ func (m *RepositoryMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldRepositoryPath(ctx)
 	case repository.FieldRepositoryID:
 		return m.OldRepositoryID(ctx)
+	case repository.FieldDescription:
+		return m.OldDescription(ctx)
 	case repository.FieldStars:
 		return m.OldStars(ctx)
 	case repository.FieldSourceMetadataEtag:
@@ -1462,6 +2218,13 @@ func (m *RepositoryMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRepositoryID(v)
+		return nil
+	case repository.FieldDescription:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDescription(v)
 		return nil
 	case repository.FieldStars:
 		v, ok := value.(int64)
@@ -1598,6 +2361,9 @@ func (m *RepositoryMutation) ResetField(name string) error {
 		return nil
 	case repository.FieldRepositoryID:
 		m.ResetRepositoryID()
+		return nil
+	case repository.FieldDescription:
+		m.ResetDescription()
 		return nil
 	case repository.FieldStars:
 		m.ResetStars()

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Repository metadata cache, GitHub adapter, temporary Catalog, and representative HTTP failure responses.
- * [OUTPUT]: Verifies Repository-scoped TTL/ETag/rate-limit caching plus safe GitHub authentication, permission, and rate-limit diagnostics.
+ * [OUTPUT]: Verifies Repository-scoped About description, Stars, TTL/ETag/rate-limit caching plus safe GitHub authentication, permission, and rate-limit diagnostics.
  * [POS]: Serves as the operational diagnostics contract for the best-effort GitHub metadata dependency.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -106,7 +106,7 @@ func TestRepositoryMetadataCacheSharesStarsAndRevalidatesWithETag(t *testing.T) 
 		require.NoError(t, metadata.UpsertSkill(t.Context(), &catalog.Skill{SkillID: id, Name: id, LatestVersion: "v1.0.0"}))
 	}
 	source := &recordingMetadataSource{results: []metadataSourceResult{
-		{metadata: repositoryMetadata{Stars: 42, ETag: `"repo-v1"`}},
+		{metadata: repositoryMetadata{Description: "Agent Skills from Acme.", Stars: 42, ETag: `"repo-v1"`}},
 		{metadata: repositoryMetadata{NotModified: true, ETag: `"repo-v1"`}},
 	}}
 	cache := newRepositoryMetadataCache(metadata, source).(*repositoryMetadataCache)
@@ -116,6 +116,7 @@ func TestRepositoryMetadataCacheSharesStarsAndRevalidatesWithETag(t *testing.T) 
 	first, err := cache.Read(t.Context(), "github.com", "acme/skills")
 	require.NoError(t, err)
 	require.Equal(t, int64(42), first.Stars)
+	require.Equal(t, "Agent Skills from Acme.", first.Description)
 	second, err := cache.Read(t.Context(), "github.com", "acme/skills")
 	require.NoError(t, err)
 	require.Equal(t, int64(42), second.Stars)
@@ -131,6 +132,7 @@ func TestRepositoryMetadataCacheSharesStarsAndRevalidatesWithETag(t *testing.T) 
 	revalidated, err := cache.Read(t.Context(), "github.com", "acme/skills")
 	require.NoError(t, err)
 	require.Equal(t, int64(42), revalidated.Stars)
+	require.Equal(t, "Agent Skills from Acme.", revalidated.Description)
 	require.Equal(t, 2, source.calls)
 	require.Equal(t, []string{"", `"repo-v1"`}, source.etags)
 }

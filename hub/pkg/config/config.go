@@ -20,6 +20,7 @@ import (
 	"github.com/kelseyhightower/envconfig"
 	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
+	"github.com/skillsgo/skillsgo/hub/pkg/presentation"
 )
 
 const defaultConfigFile = "athens.toml"
@@ -69,6 +70,7 @@ type Config struct {
 	Storage               *Storage
 	Index                 *Index
 	Database              *DatabaseConfig
+	LLM                   *LLMConfig
 }
 
 // EnvList is a list of key-value environment
@@ -223,6 +225,11 @@ func defaultConfig() *Config {
 			MaxIdleConns:    1,
 			ConnMaxLifetime: 0,
 		},
+		LLM: &LLMConfig{
+			BaseURL: "https://api.deepseek.com", Model: "deepseek-v4-flash",
+			TranslationLocales: []string{"zh-Hans"}, TranslationInterval: 900,
+			TranslationBatch: 100, PromptVersion: "description-v1",
+		},
 	}
 }
 
@@ -283,6 +290,22 @@ func envOverride(config *Config) error {
 	if config.Database == nil {
 		config.Database = &DatabaseConfig{Type: "sqlite", MaxOpenConns: 1, MaxIdleConns: 1}
 	}
+	if config.LLM == nil {
+		config.LLM = defaultConfig().LLM
+	}
+	seenLocales := make(map[string]bool, len(config.LLM.TranslationLocales))
+	canonicalLocales := make([]string, 0, len(config.LLM.TranslationLocales))
+	for _, locale := range config.LLM.TranslationLocales {
+		canonical, canonicalErr := presentation.CanonicalLocale(locale)
+		if canonicalErr != nil {
+			return canonicalErr
+		}
+		if !seenLocales[canonical] {
+			seenLocales[canonical] = true
+			canonicalLocales = append(canonicalLocales, canonical)
+		}
+	}
+	config.LLM.TranslationLocales = canonicalLocales
 	config.Database.DSN, err = resolveHubDatabaseDSN(config.Database.Type, config.Database.DSN)
 	if err != nil {
 		return err
@@ -327,7 +350,10 @@ func validateConfig(config Config) error {
 	if err != nil {
 		return err
 	}
-	return validateDatabase(validate, config.Database)
+	if err := validateDatabase(validate, config.Database); err != nil {
+		return err
+	}
+	return validate.Struct(config.LLM)
 }
 
 func validateDatabase(validate *validator.Validate, database *DatabaseConfig) error {

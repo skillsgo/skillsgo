@@ -23,6 +23,8 @@ type Repository struct {
 	RepositoryPath string `json:"repository_path,omitempty"`
 	// RepositoryID holds the value of the "repository_id" field.
 	RepositoryID string `json:"repository_id,omitempty"`
+	// Description holds the value of the "description" field.
+	Description string `json:"description,omitempty"`
 	// Stars holds the value of the "stars" field.
 	Stars int64 `json:"stars,omitempty"`
 	// SourceMetadataEtag holds the value of the "source_metadata_etag" field.
@@ -66,7 +68,7 @@ func (*Repository) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case repository.FieldID, repository.FieldStars:
 			values[i] = new(sql.NullInt64)
-		case repository.FieldSourceHost, repository.FieldRepositoryPath, repository.FieldRepositoryID, repository.FieldSourceMetadataEtag:
+		case repository.FieldSourceHost, repository.FieldRepositoryPath, repository.FieldRepositoryID, repository.FieldDescription, repository.FieldSourceMetadataEtag:
 			values[i] = new(sql.NullString)
 		case repository.FieldSourceMetadataCheckedAt, repository.FieldSourceMetadataRetryAt, repository.FieldCreatedAt, repository.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -108,6 +110,12 @@ func (_m *Repository) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field repository_id", values[i])
 			} else if value.Valid {
 				_m.RepositoryID = value.String
+			}
+		case repository.FieldDescription:
+			if value, ok := values[i].(*sql.NullString); !ok {
+				return fmt.Errorf("unexpected type %T for field description", values[i])
+			} else if value.Valid {
+				_m.Description = value.String
 			}
 		case repository.FieldStars:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
@@ -196,6 +204,9 @@ func (_m *Repository) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("repository_id=")
 	builder.WriteString(_m.RepositoryID)
+	builder.WriteString(", ")
+	builder.WriteString("description=")
+	builder.WriteString(_m.Description)
 	builder.WriteString(", ")
 	builder.WriteString("stars=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Stars))

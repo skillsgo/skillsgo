@@ -9,6 +9,9 @@ import (
 // InstallEvent is the predicate function for installevent builders.
 type InstallEvent func(*sql.Selector)
 
+// LocalizedDescription is the predicate function for localizeddescription builders.
+type LocalizedDescription func(*sql.Selector)
+
 // Repository is the predicate function for repository builders.
 type Repository func(*sql.Selector)
 

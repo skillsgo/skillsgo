@@ -70,6 +70,11 @@ func RepositoryID(v string) predicate.Repository {
 	return predicate.Repository(sql.FieldEQ(FieldRepositoryID, v))
 }
 
+// Description applies equality check predicate on the "description" field. It's identical to DescriptionEQ.
+func Description(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldEQ(FieldDescription, v))
+}
+
 // Stars applies equality check predicate on the "stars" field. It's identical to StarsEQ.
 func Stars(v int64) predicate.Repository {
 	return predicate.Repository(sql.FieldEQ(FieldStars, v))
@@ -293,6 +298,71 @@ func RepositoryIDEqualFold(v string) predicate.Repository {
 // RepositoryIDContainsFold applies the ContainsFold predicate on the "repository_id" field.
 func RepositoryIDContainsFold(v string) predicate.Repository {
 	return predicate.Repository(sql.FieldContainsFold(FieldRepositoryID, v))
+}
+
+// DescriptionEQ applies the EQ predicate on the "description" field.
+func DescriptionEQ(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldEQ(FieldDescription, v))
+}
+
+// DescriptionNEQ applies the NEQ predicate on the "description" field.
+func DescriptionNEQ(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldNEQ(FieldDescription, v))
+}
+
+// DescriptionIn applies the In predicate on the "description" field.
+func DescriptionIn(vs ...string) predicate.Repository {
+	return predicate.Repository(sql.FieldIn(FieldDescription, vs...))
+}
+
+// DescriptionNotIn applies the NotIn predicate on the "description" field.
+func DescriptionNotIn(vs ...string) predicate.Repository {
+	return predicate.Repository(sql.FieldNotIn(FieldDescription, vs...))
+}
+
+// DescriptionGT applies the GT predicate on the "description" field.
+func DescriptionGT(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldGT(FieldDescription, v))
+}
+
+// DescriptionGTE applies the GTE predicate on the "description" field.
+func DescriptionGTE(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldGTE(FieldDescription, v))
+}
+
+// DescriptionLT applies the LT predicate on the "description" field.
+func DescriptionLT(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldLT(FieldDescription, v))
+}
+
+// DescriptionLTE applies the LTE predicate on the "description" field.
+func DescriptionLTE(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldLTE(FieldDescription, v))
+}
+
+// DescriptionContains applies the Contains predicate on the "description" field.
+func DescriptionContains(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldContains(FieldDescription, v))
+}
+
+// DescriptionHasPrefix applies the HasPrefix predicate on the "description" field.
+func DescriptionHasPrefix(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldHasPrefix(FieldDescription, v))
+}
+
+// DescriptionHasSuffix applies the HasSuffix predicate on the "description" field.
+func DescriptionHasSuffix(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldHasSuffix(FieldDescription, v))
+}
+
+// DescriptionEqualFold applies the EqualFold predicate on the "description" field.
+func DescriptionEqualFold(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldEqualFold(FieldDescription, v))
+}
+
+// DescriptionContainsFold applies the ContainsFold predicate on the "description" field.
+func DescriptionContainsFold(v string) predicate.Repository {
+	return predicate.Repository(sql.FieldContainsFold(FieldDescription, v))
 }
 
 // StarsEQ applies the EQ predicate on the "stars" field.

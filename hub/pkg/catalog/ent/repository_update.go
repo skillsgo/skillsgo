@@ -71,6 +71,20 @@ func (_u *RepositoryUpdate) SetNillableRepositoryID(v *string) *RepositoryUpdate
 	return _u
 }
 
+// SetDescription sets the "description" field.
+func (_u *RepositoryUpdate) SetDescription(v string) *RepositoryUpdate {
+	_u.mutation.SetDescription(v)
+	return _u
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_u *RepositoryUpdate) SetNillableDescription(v *string) *RepositoryUpdate {
+	if v != nil {
+		_u.SetDescription(*v)
+	}
+	return _u
+}
+
 // SetStars sets the "stars" field.
 func (_u *RepositoryUpdate) SetStars(v int64) *RepositoryUpdate {
 	_u.mutation.ResetStars()
@@ -290,6 +304,9 @@ func (_u *RepositoryUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 	if value, ok := _u.mutation.RepositoryID(); ok {
 		_spec.SetField(repository.FieldRepositoryID, field.TypeString, value)
 	}
+	if value, ok := _u.mutation.Description(); ok {
+		_spec.SetField(repository.FieldDescription, field.TypeString, value)
+	}
 	if value, ok := _u.mutation.Stars(); ok {
 		_spec.SetField(repository.FieldStars, field.TypeInt64, value)
 	}
@@ -423,6 +440,20 @@ func (_u *RepositoryUpdateOne) SetRepositoryID(v string) *RepositoryUpdateOne {
 func (_u *RepositoryUpdateOne) SetNillableRepositoryID(v *string) *RepositoryUpdateOne {
 	if v != nil {
 		_u.SetRepositoryID(*v)
+	}
+	return _u
+}
+
+// SetDescription sets the "description" field.
+func (_u *RepositoryUpdateOne) SetDescription(v string) *RepositoryUpdateOne {
+	_u.mutation.SetDescription(v)
+	return _u
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_u *RepositoryUpdateOne) SetNillableDescription(v *string) *RepositoryUpdateOne {
+	if v != nil {
+		_u.SetDescription(*v)
 	}
 	return _u
 }
@@ -675,6 +706,9 @@ func (_u *RepositoryUpdateOne) sqlSave(ctx context.Context) (_node *Repository, 
 	}
 	if value, ok := _u.mutation.RepositoryID(); ok {
 		_spec.SetField(repository.FieldRepositoryID, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Description(); ok {
+		_spec.SetField(repository.FieldDescription, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Stars(); ok {
 		_spec.SetField(repository.FieldStars, field.TypeInt64, value)

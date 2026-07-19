@@ -14,6 +14,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -106,12 +107,94 @@ type Repository struct {
 	SourceHost              string     `db:"source_host" json:"sourceHost"`
 	RepositoryPath          string     `db:"repository_path" json:"repositoryPath"`
 	RepositoryID            string     `db:"repository_id" json:"id"`
+	Description             string     `db:"description" json:"description"`
 	Stars                   int64      `db:"stars" json:"stars"`
 	SourceMetadataETag      string     `db:"source_metadata_etag" json:"-"`
 	SourceMetadataCheckedAt *time.Time `db:"source_metadata_checked_at" json:"-"`
 	SourceMetadataRetryAt   *time.Time `db:"source_metadata_retry_at" json:"-"`
 	CreatedAt               time.Time  `db:"created_at" json:"createdAt"`
 	UpdatedAt               time.Time  `db:"updated_at" json:"updatedAt"`
+}
+
+const (
+	LocalizedRepository = "repository"
+	LocalizedSkill      = "skill"
+)
+
+// TranslationCandidate is one source description whose persisted translation is absent or stale.
+type TranslationCandidate struct {
+	ResourceKind  string `db:"resource_kind"`
+	ResourceID    string `db:"resource_id"`
+	Description   string `db:"description"`
+	SourceDigest  string `db:"source_digest"`
+	PromptVersion string `db:"prompt_version"`
+}
+
+// LocalizedDescription is Hub-owned display/search enrichment and never artifact content.
+type LocalizedDescription struct {
+	ResourceKind  string
+	ResourceID    string
+	Locale        string
+	Description   string
+	SourceDigest  string
+	PromptVersion string
+}
+
+func DescriptionDigest(description string) string {
+	return fmt.Sprintf("sha256:%x", sha256.Sum256([]byte(strings.TrimSpace(description))))
+}
+
+func (c *Catalog) TranslationCandidates(ctx context.Context, locale, promptVersion string, limit int) ([]TranslationCandidate, error) {
+	if limit <= 0 || limit > 500 {
+		limit = 100
+	}
+	var rows []TranslationCandidate
+	query := `SELECT 'repository' AS resource_kind, r.repository_id AS resource_id, r.description,
+		COALESCE(ld.source_digest, '') AS source_digest, COALESCE(ld.prompt_version, '') AS prompt_version
+		FROM repositories r LEFT JOIN localized_descriptions ld
+		ON ld.resource_kind = 'repository' AND ld.resource_id = r.repository_id AND ld.locale = ?
+		WHERE trim(r.description) <> ''
+		UNION ALL
+		SELECT 'skill', s.skill_id, s.description, COALESCE(ld.source_digest, ''), COALESCE(ld.prompt_version, '')
+		FROM skills s LEFT JOIN localized_descriptions ld
+		ON ld.resource_kind = 'skill' AND ld.resource_id = s.skill_id AND ld.locale = ?
+		WHERE trim(s.description) <> ''
+		ORDER BY resource_kind, resource_id`
+	if err := c.db.SelectContext(ctx, &rows, c.db.Rebind(query), locale, locale); err != nil {
+		return nil, err
+	}
+	candidates := make([]TranslationCandidate, 0, limit)
+	for _, row := range rows {
+		if row.SourceDigest == DescriptionDigest(row.Description) && row.PromptVersion == promptVersion {
+			continue
+		}
+		candidates = append(candidates, row)
+		if len(candidates) == limit {
+			break
+		}
+	}
+	return candidates, nil
+}
+
+func (c *Catalog) UpsertLocalizedDescription(ctx context.Context, item LocalizedDescription) error {
+	_, err := c.db.ExecContext(ctx, c.db.Rebind(`INSERT INTO localized_descriptions
+		(resource_kind, resource_id, locale, description, source_digest, prompt_version, created_at, updated_at)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+		ON CONFLICT(resource_kind, resource_id, locale) DO UPDATE SET
+		description = excluded.description, source_digest = excluded.source_digest,
+		prompt_version = excluded.prompt_version, updated_at = excluded.updated_at`),
+		item.ResourceKind, item.ResourceID, item.Locale, item.Description, item.SourceDigest, item.PromptVersion, time.Now().UTC(), time.Now().UTC())
+	return err
+}
+
+func (c *Catalog) LocalizedDescription(ctx context.Context, resourceKind, resourceID, locale string) (string, bool, error) {
+	var description string
+	err := c.db.GetContext(ctx, &description, c.db.Rebind(`SELECT description FROM localized_descriptions
+		WHERE resource_kind = ? AND resource_id = ? AND locale = ?`), resourceKind, resourceID, locale)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	return description, err == nil, err
 }
 
 type SkillVersion struct {
@@ -516,12 +599,12 @@ ORDER BY CASE WHEN s.skill_path = '' THEN 0 ELSE 1 END, s.skill_id ASC`
 	return members, nil
 }
 
-func (c *Catalog) UpdateRepositorySourceMetadata(ctx context.Context, repositoryID string, stars int64, etag string, checkedAt *time.Time, retryAt *time.Time) error {
+func (c *Catalog) UpdateRepositorySourceMetadata(ctx context.Context, repositoryID, description string, stars int64, etag string, checkedAt *time.Time, retryAt *time.Time) error {
 	if stars < 0 {
 		return fmt.Errorf("repository stars cannot be negative")
 	}
 	update := c.orm.Repository.Update().Where(entrepository.RepositoryIDEQ(repositoryID)).
-		SetStars(stars).SetSourceMetadataEtag(etag)
+		SetDescription(description).SetStars(stars).SetSourceMetadataEtag(etag)
 	if checkedAt != nil {
 		update.SetSourceMetadataCheckedAt(*checkedAt)
 	}
@@ -732,6 +815,33 @@ LEFT JOIN skill_stats AS st ON st.skill_id = s.id`
 	return skills, err
 }
 
+// SearchLocalized searches original and Hub-owned localized descriptions while preserving canonical identities.
+func (c *Catalog) SearchLocalized(ctx context.Context, query, locale string, limit, offset int) ([]RankedSkill, error) {
+	locale = strings.TrimSpace(locale)
+	if locale == "" {
+		return c.Search(ctx, query, limit, offset)
+	}
+	limit = normalizeQueryLimit(limit)
+	if offset < 0 {
+		offset = 0
+	}
+	like := "%" + strings.ToLower(strings.TrimSpace(query)) + "%"
+	statement := `SELECT s.id, s.repository_id, s.skill_id, s.name,
+		COALESCE(ls.description, s.description) AS description,
+		s.source_host, s.repository, s.skill_path, s.latest_version, r.stars AS stars,
+		s.verified, s.created_at, s.updated_at, COALESCE(st.total_installs, 0) AS installs, 0 AS change
+		FROM skills s JOIN repositories r ON r.id = s.repository_id
+		LEFT JOIN skill_stats st ON st.skill_id = s.id
+		LEFT JOIN localized_descriptions ls ON ls.resource_kind = 'skill' AND ls.resource_id = s.skill_id AND ls.locale = ?
+		LEFT JOIN localized_descriptions lr ON lr.resource_kind = 'repository' AND lr.resource_id = r.repository_id AND lr.locale = ?
+		WHERE lower(s.name) LIKE ? OR lower(s.description) LIKE ? OR lower(s.skill_id) LIKE ?
+		OR lower(COALESCE(ls.description, '')) LIKE ? OR lower(COALESCE(lr.description, '')) LIKE ?
+		ORDER BY s.verified DESC, s.name ASC LIMIT ? OFFSET ?`
+	var skills []RankedSkill
+	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(statement), locale, locale, like, like, like, like, like, limit, offset)
+	return skills, err
+}
+
 func skillFromEnt(entity *catalogent.Skill) *Skill {
 	return &Skill{RowID: entity.ID, RepositoryRowID: entity.RepositoryID, SkillID: entity.SkillID, Name: entity.Name, Description: entity.Description,
 		SourceHost: entity.SourceHost, Repository: entity.Repository, SkillPath: entity.SkillPath,
@@ -742,7 +852,7 @@ func skillFromEnt(entity *catalogent.Skill) *Skill {
 func repositoryFromEnt(entity *catalogent.Repository) *Repository {
 	return &Repository{
 		RowID: entity.ID, SourceHost: entity.SourceHost, RepositoryPath: entity.RepositoryPath,
-		RepositoryID: entity.RepositoryID, Stars: entity.Stars, SourceMetadataETag: entity.SourceMetadataEtag,
+		RepositoryID: entity.RepositoryID, Description: entity.Description, Stars: entity.Stars, SourceMetadataETag: entity.SourceMetadataEtag,
 		SourceMetadataCheckedAt: entity.SourceMetadataCheckedAt, SourceMetadataRetryAt: entity.SourceMetadataRetryAt,
 		CreatedAt: entity.CreatedAt, UpdatedAt: entity.UpdatedAt,
 	}

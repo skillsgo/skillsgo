@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Ent schema fields and indexes for normalized Source Repository identity.
- * [OUTPUT]: Defines the repositories registry with normalized identity, shared GitHub metadata cache state, and owning Skill edges.
+ * [OUTPUT]: Defines the repositories registry with normalized identity, shared provider description/popularity cache state, and owning Skill edges.
  * [POS]: Serves as the authoritative ORM schema for repository-level discovery and publication ownership.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -23,6 +23,7 @@ func (Repository) Fields() []ent.Field {
 		field.String("source_host").NotEmpty(),
 		field.String("repository_path").NotEmpty(),
 		field.String("repository_id").NotEmpty(),
+		field.String("description").Default(""),
 		field.Int64("stars").Default(0),
 		field.String("source_metadata_etag").Optional(),
 		field.Time("source_metadata_checked_at").Optional().Nillable(),

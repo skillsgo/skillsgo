@@ -34,12 +34,38 @@ var (
 			},
 		},
 	}
+	// LocalizedDescriptionsColumns holds the columns for the "localized_descriptions" table.
+	LocalizedDescriptionsColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "resource_kind", Type: field.TypeString},
+		{Name: "resource_id", Type: field.TypeString},
+		{Name: "locale", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString},
+		{Name: "source_digest", Type: field.TypeString},
+		{Name: "prompt_version", Type: field.TypeString},
+		{Name: "created_at", Type: field.TypeTime},
+		{Name: "updated_at", Type: field.TypeTime},
+	}
+	// LocalizedDescriptionsTable holds the schema information for the "localized_descriptions" table.
+	LocalizedDescriptionsTable = &schema.Table{
+		Name:       "localized_descriptions",
+		Columns:    LocalizedDescriptionsColumns,
+		PrimaryKey: []*schema.Column{LocalizedDescriptionsColumns[0]},
+		Indexes: []*schema.Index{
+			{
+				Name:    "localizeddescription_resource_kind_resource_id_locale",
+				Unique:  true,
+				Columns: []*schema.Column{LocalizedDescriptionsColumns[1], LocalizedDescriptionsColumns[2], LocalizedDescriptionsColumns[3]},
+			},
+		},
+	}
 	// RepositoriesColumns holds the columns for the "repositories" table.
 	RepositoriesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
 		{Name: "source_host", Type: field.TypeString},
 		{Name: "repository_path", Type: field.TypeString},
 		{Name: "repository_id", Type: field.TypeString},
+		{Name: "description", Type: field.TypeString, Default: ""},
 		{Name: "stars", Type: field.TypeInt64, Default: 0},
 		{Name: "source_metadata_etag", Type: field.TypeString, Nullable: true},
 		{Name: "source_metadata_checked_at", Type: field.TypeTime, Nullable: true},
@@ -200,6 +226,7 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		SkillInstallEventsTable,
+		LocalizedDescriptionsTable,
 		RepositoriesTable,
 		SkillRiskAssessmentsTable,
 		SkillsTable,

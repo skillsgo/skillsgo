@@ -23,6 +23,8 @@ make build
 go run ./cmd/skillsgo-hub -config_file=./config.dev.toml
 ```
 
+The repository-level `make dev` runs this workspace through Air. Air owns Hub rebuild and restart while Process Compose owns cross-workspace ordering and lifecycle.
+
 Use a narrower `gofmt` target when unrelated working-tree changes are present.
 
 ## Workspace Map
@@ -33,7 +35,8 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `bin/skillsgo-hub` | Ignored local development binary produced by `make build`; release artifacts remain under `dist/`. |
 | `internal/` | Hub-private integration helpers that are not public packages. |
 | `pkg/` | Hub domain modules, source resolution, storage, search, protocol, and telemetry behavior. |
-| `pkg/config/` and `config.dev.toml` | Configuration model, environment-variable binding, and local development defaults. |
+| `pkg/translation/` | Optional OpenAI-compatible presentation-description translation worker. |
+| `pkg/config/`, `config.dev.toml`, and `.air.toml` | Configuration model, environment-variable binding, local development defaults, and Hub hot reload. |
 | `e2etests/` and `test/` | End-to-end and cross-package behavior verification. |
 | `scripts/` | Operational and CI utilities; nested manifests define independent F2 workspaces. |
 | `docs/` | Hub protocol, operations, and inherited historical material. |

@@ -1,12 +1,14 @@
 /*
- * [INPUT]: Depends on temporary Git repositories, the Skill ID parser, repository caching, and Git resolution behavior.
- * [OUTPUT]: Specifies shared repository caching, batch-version identity, nested Skill resolution, refresh, tag listing, and concurrent access behavior.
+ * [INPUT]: Depends on temporary Git repositories, the Skill ID parser, repository caching, Git resolution, and SkillsGo-owned artifact ZIP assembly.
+ * [OUTPUT]: Specifies shared repository caching, batch-version identity including v2+ tags without Go Module suffixes, nested Skill archives, refresh, tag listing, and concurrent access behavior.
  * [POS]: Serves as the repository integration contract for the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package skill
 
 import (
+	"archive/zip"
+	"bytes"
 	"context"
 	"encoding/json"
 	"io"
@@ -270,6 +272,38 @@ func TestRepositoryDiscoveryUsesTagAsSharedBatchVersionAndTreeAsMemberIdentity(t
 		trees[treeSHA] = struct{}{}
 	}
 	require.Len(t, trees, 2, "each Skill directory must retain its own tree identity")
+}
+
+func TestRepositoryDiscoveryPackagesV2WithoutGoModulePathSuffix(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	runGit(t, f.work, "tag", "v2.2.10")
+	runGit(t, f.work, "push", "origin", "--tags")
+
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v2.2.10")
+	require.NoError(t, err)
+	require.Equal(t, "v2.2.10", snapshot.Version)
+	require.Len(t, snapshot.Members, 2)
+	for _, member := range snapshot.Members {
+		archive, readErr := io.ReadAll(member.Version.Zip)
+		require.NoError(t, readErr)
+		require.NoError(t, member.Version.Zip.Close())
+		reader, openErr := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+		require.NoError(t, openErr)
+		prefix := member.SkillID + "@v2.2.10/"
+		require.NotEmpty(t, reader.File)
+		require.Contains(t, fileNames(reader.File), prefix+"SKILL.md")
+		for _, file := range reader.File {
+			require.True(t, strings.HasPrefix(file.Name, prefix), file.Name)
+		}
+	}
+}
+
+func fileNames(files []*zip.File) []string {
+	names := make([]string, 0, len(files))
+	for _, file := range files {
+		names = append(names, file.Name)
+	}
+	return names
 }
 
 func TestRepositoryDiscoveryFallsBackToHeadPseudoVersionSharedByAllMembers(t *testing.T) {

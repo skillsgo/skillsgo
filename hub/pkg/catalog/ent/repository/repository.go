@@ -20,6 +20,8 @@ const (
 	FieldRepositoryPath = "repository_path"
 	// FieldRepositoryID holds the string denoting the repository_id field in the database.
 	FieldRepositoryID = "repository_id"
+	// FieldDescription holds the string denoting the description field in the database.
+	FieldDescription = "description"
 	// FieldStars holds the string denoting the stars field in the database.
 	FieldStars = "stars"
 	// FieldSourceMetadataEtag holds the string denoting the source_metadata_etag field in the database.
@@ -51,6 +53,7 @@ var Columns = []string{
 	FieldSourceHost,
 	FieldRepositoryPath,
 	FieldRepositoryID,
+	FieldDescription,
 	FieldStars,
 	FieldSourceMetadataEtag,
 	FieldSourceMetadataCheckedAt,
@@ -76,6 +79,8 @@ var (
 	RepositoryPathValidator func(string) error
 	// RepositoryIDValidator is a validator for the "repository_id" field. It is called by the builders before save.
 	RepositoryIDValidator func(string) error
+	// DefaultDescription holds the default value on creation for the "description" field.
+	DefaultDescription string
 	// DefaultStars holds the default value on creation for the "stars" field.
 	DefaultStars int64
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
@@ -107,6 +112,11 @@ func ByRepositoryPath(opts ...sql.OrderTermOption) OrderOption {
 // ByRepositoryID orders the results by the repository_id field.
 func ByRepositoryID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRepositoryID, opts...).ToFunc()
+}
+
+// ByDescription orders the results by the description field.
+func ByDescription(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDescription, opts...).ToFunc()
 }
 
 // ByStars orders the results by the stars field.

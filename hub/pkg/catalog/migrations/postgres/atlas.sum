@@ -1,2 +1,6 @@
-h1:WC96wqpf7y8PG94ZTGpYxmxBGbvEUdQTKJIUOV33jag=
+h1:CzZpOCFeMFw1d7UGbiYAJmZzuQtkkQlJGLsvW/c+K/g=
 202607180001_initial.sql h1:1OPoDjcD5kKHUPK9pvGTfQs9OxIeIhE8NpdIMQr7mzM=
+202607180002_repository_description.sql h1:QVXDfca5y5oVdg6UAdU3bKAVns8stZtZ0x9uK7aIJkI=
+202607180003_refresh_repository_description.sql h1:1OmjbusQpceJpGHpGSk9T6Kvgf3JbrJt1uGpoSiIhb0=
+202607180004_backfill_repository_description.sql h1:p21F+5n8i6s+AkdgE/DMjKPbKLuwIz/DgDasafybx8I=
+202607190001_localized_descriptions.sql h1:aWYF5s87k4hr/9H30F0wvL3J3vMAis2WGTlXGljIz7Y=
