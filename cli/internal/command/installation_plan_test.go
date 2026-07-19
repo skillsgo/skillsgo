@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with a fixture Hub, hostile explicit project path, test Agent, and temporary Store/Workspace boundaries.
- * [OUTPUT]: Specifies direct execution JSON, refreshed trusted-risk gates, exact cached versions, explicit hostile target preservation, Manifest and Sum persistence, and identical skips.
+ * [OUTPUT]: Specifies direct execution JSON, refreshed trusted-risk gates, exact cached versions, explicit hostile target preservation, shared target Receipt/Manifest/Sum persistence, and identical skips.
  * [POS]: Serves as executable App-facing contract coverage for direct multi-location installation mutations.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -83,6 +83,12 @@ func TestExplicitInstallationExecutesAndSkipsExactTargets(t *testing.T) {
 	require.Equal(t, []string{"test-agent"}, manifest.Skills[skillID].Agents)
 	require.Equal(t, version, manifest.Skills[skillID].Ref)
 	for _, declarationRoot := range []string{projectRoot, filepath.Join(home, ".skillsgo")} {
+		receipts, loadErr := project.LoadInstallationReceipts(declarationRoot)
+		require.NoError(t, loadErr)
+		require.Len(t, receipts, 1)
+		require.Equal(t, skillID, receipts[0].SourceSkillID)
+		require.Equal(t, skillID, receipts[0].ArtifactSkillID)
+		require.Equal(t, version, receipts[0].Version)
 		sumBytes, readErr := os.ReadFile(filepath.Join(declarationRoot, "skillsgo.sum"))
 		require.NoError(t, readErr)
 		sumText := string(sumBytes)

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with an isolated HOME, the current skills.sh user lock, and one externally copied Skill under the test Agent root.
- * [OUTPUT]: Specifies provider-aware and record-isolated lock-authoritative Batch Takeover, content-preserving Store capture, normal declaration/receipt state, managed inventory, captured repair, and alias-safe removal through the public CLI seam.
+ * [OUTPUT]: Specifies scope-isolated, provider-aware, and record-isolated lock-authoritative Batch Takeover, content-preserving Store capture, normal declaration/receipt state, managed inventory, captured repair, and alias-safe removal through the public CLI seam.
  * [POS]: Serves as the executable contract for the lock-backed Batch Takeover journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -62,7 +62,7 @@ func TestBatchTakeoverRegistersCurrentUserLockCopyWithoutChangingIt(t *testing.T
 	require.NoError(t, os.WriteFile(filepath.Join(lockRoot, ".skill-lock.json"), lockBytes, 0o600))
 
 	var stdout, stderr bytes.Buffer
-	require.NoError(t, Execute([]string{"takeover", "--yes", "--output", "json"}, &stdout, &stderr))
+	require.NoError(t, Execute([]string{"takeover", "--user", "--yes", "--output", "json"}, &stdout, &stderr))
 	require.Empty(t, stderr.String())
 
 	var result struct {
@@ -139,7 +139,7 @@ func TestBatchTakeoverRegistersCurrentUserLockCopyWithoutChangingIt(t *testing.T
 
 	stdout.Reset()
 	stderr.Reset()
-	require.NoError(t, Execute([]string{"takeover", "--yes", "--output", "json"}, &stdout, &stderr))
+	require.NoError(t, Execute([]string{"takeover", "--user", "--yes", "--output", "json"}, &stdout, &stderr))
 	var repeated takeoverReport
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &repeated))
 	require.Zero(t, repeated.Summary.TakenOver)
@@ -160,6 +160,22 @@ func TestBatchTakeoverReadsCurrentWorkspaceLock(t *testing.T) {
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
 	require.NoError(t, os.MkdirAll(agentHome, 0o755))
+	userTarget := filepath.Join(agentHome, "skills", "user-demo")
+	require.NoError(t, os.MkdirAll(userTarget, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(userTarget, "SKILL.md"), []byte("---\nname: user-demo\ndescription: user copy\n---\n"), 0o644))
+	require.NoError(t, os.MkdirAll(filepath.Join(home, ".agents"), 0o700))
+	userLock, err := json.Marshal(map[string]any{
+		"version": 3,
+		"skills": map[string]any{
+			"user-demo": map[string]any{
+				"source": "acme/user-skills", "sourceType": "github",
+				"sourceUrl": "https://github.com/acme/user-skills.git",
+				"ref":       "main", "skillPath": "skills/user-demo/SKILL.md",
+			},
+		},
+	})
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(home, ".agents", ".skill-lock.json"), userLock, 0o600))
 	target := filepath.Join(workspace, ".test-agent", "skills", "project-demo")
 	require.NoError(t, os.MkdirAll(target, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("---\nname: project-demo\ndescription: workspace copy\n---\n"), 0o644))
@@ -199,6 +215,8 @@ func TestBatchTakeoverReadsCurrentWorkspaceLock(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, receipts, 1)
 	require.Equal(t, target, receipts[0].Path)
+	_, err = project.LoadManifest(project.UserRoot(home))
+	require.ErrorIs(t, err, os.ErrNotExist)
 }
 
 func TestBatchTakeoverKeepsDivergentCopiesIndependentAndDeduplicatesIdenticalBaselines(t *testing.T) {
@@ -229,7 +247,7 @@ func TestBatchTakeoverKeepsDivergentCopiesIndependentAndDeduplicatesIdenticalBas
 	require.NoError(t, os.WriteFile(filepath.Join(stateHome, "skills", ".skill-lock.json"), data, 0o600))
 
 	var stdout, stderr bytes.Buffer
-	require.NoError(t, Execute([]string{"takeover", "--yes", "--output", "json"}, &stdout, &stderr))
+	require.NoError(t, Execute([]string{"takeover", "--user", "--yes", "--output", "json"}, &stdout, &stderr))
 	var result takeoverReport
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
 	require.Equal(t, 2, result.Summary.TakenOver)
@@ -270,7 +288,7 @@ func TestBatchTakeoverKeepsDivergentCopiesIndependentAndDeduplicatesIdenticalBas
 	require.NoError(t, os.WriteFile(filepath.Join(stateHome2, "skills", ".skill-lock.json"), data, 0o600))
 	stdout.Reset()
 	stderr.Reset()
-	require.NoError(t, Execute([]string{"takeover", "--yes", "--output", "json"}, &stdout, &stderr))
+	require.NoError(t, Execute([]string{"takeover", "--user", "--yes", "--output", "json"}, &stdout, &stderr))
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
 	require.Equal(t, 2, result.Summary.TakenOver)
 	require.Len(t, result.Results, 2)
@@ -304,7 +322,7 @@ func TestBatchTakeoverGroupsSymlinkAliasesByPhysicalDirectory(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(home, ".agents", ".skill-lock.json"), data, 0o600))
 
 	var stdout, stderr bytes.Buffer
-	require.NoError(t, Execute([]string{"takeover", "--yes", "--output", "json"}, &stdout, &stderr))
+	require.NoError(t, Execute([]string{"takeover", "--user", "--yes", "--output", "json"}, &stdout, &stderr))
 	var result takeoverReport
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
 	require.Equal(t, 1, result.Summary.TakenOver)
@@ -380,7 +398,7 @@ func TestBatchTakeoverScansKnownAgentDiscoveryRoots(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(home, ".agents", ".skill-lock.json"), data, 0o600))
 
 	var stdout, stderr bytes.Buffer
-	require.NoError(t, Execute([]string{"takeover", "--yes", "--output", "json"}, &stdout, &stderr))
+	require.NoError(t, Execute([]string{"takeover", "--user", "--yes", "--output", "json"}, &stdout, &stderr))
 	var result takeoverReport
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
 	require.Equal(t, 1, result.Summary.TakenOver)
@@ -425,7 +443,7 @@ func TestBatchTakeoverSkipsInvalidMissingAndLockExternalTargetsIndependently(t *
 	require.NoError(t, os.WriteFile(filepath.Join(home, ".agents", ".skill-lock.json"), data, 0o600))
 
 	var stdout, stderr bytes.Buffer
-	require.NoError(t, Execute([]string{"takeover", "--yes", "--output", "json"}, &stdout, &stderr))
+	require.NoError(t, Execute([]string{"takeover", "--user", "--yes", "--output", "json"}, &stdout, &stderr))
 	var result takeoverReport
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
 	require.Equal(t, 1, result.Summary.TakenOver)
@@ -494,11 +512,17 @@ func TestBatchTakeoverHelpAndValidationAreLocalized(t *testing.T) {
 	require.NoError(t, Execute([]string{"--lang", "zh-CN", "takeover", "--help"}, &stdout, &stderr))
 	require.Contains(t, stdout.String(), "登记受支持的现有 skills.sh 安装")
 	require.Contains(t, stdout.String(), "确认批量接管")
+	require.Contains(t, stdout.String(), "包含用户级安装范围")
 
 	stdout.Reset()
 	stderr.Reset()
 	err := Execute([]string{"--lang", "zh-CN", "takeover", "--output", "json"}, &stdout, &stderr)
 	require.EqualError(t, err, "批量接管需要使用 --yes 明确确认")
+
+	stdout.Reset()
+	stderr.Reset()
+	err = Execute([]string{"--lang", "zh-CN", "takeover", "--yes", "--output", "json"}, &stdout, &stderr)
+	require.EqualError(t, err, "批量接管需要使用 --user 或至少一个 --project 指定范围")
 }
 
 func TestBatchTakeoverDoesNotAcceptLegacyLockSchemas(t *testing.T) {
@@ -516,7 +540,7 @@ func TestBatchTakeoverDoesNotAcceptLegacyLockSchemas(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(home, ".agents", ".skill-lock.json"), []byte(`{"version":2,"skills":{"demo":{"source":"acme/skills"}}}`), 0o600))
 
 	var stdout, stderr bytes.Buffer
-	require.NoError(t, Execute([]string{"takeover", "--yes", "--output", "json"}, &stdout, &stderr))
+	require.NoError(t, Execute([]string{"takeover", "--user", "--yes", "--output", "json"}, &stdout, &stderr))
 	var result takeoverReport
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
 	require.Zero(t, result.Summary.TakenOver)

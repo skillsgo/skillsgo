@@ -145,7 +145,7 @@ Repair restores every binding sharing the physical target, preserves declaration
 
 Status: implemented for a modified Codex canonical target by `j16_repair_test.go`.
 
-### J17 — Stop managing while preserving content
+### J17 — Reject removal of unhealthy content
 
 As a user, I want SkillsGo to stop managing a target without deleting its files so that I can keep a manual copy outside SkillsGo lifecycle control.
 

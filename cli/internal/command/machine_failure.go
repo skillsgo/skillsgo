@@ -118,9 +118,11 @@ func classifyMachineFailure(err error) machineFailure {
 			failure.Code = "hub.timeout"
 		case http.StatusTooManyRequests:
 			failure.Code = "hub.rate_limited"
+		case http.StatusBadGateway, http.StatusServiceUnavailable:
+			failure.Code = "hub.unavailable"
 		default:
 			if responseError.StatusCode >= http.StatusInternalServerError {
-				failure.Code = "hub.unavailable"
+				failure.Code = "hub.server_error"
 			} else {
 				failure.Code = "input.invalid"
 				failure.Retryable = false

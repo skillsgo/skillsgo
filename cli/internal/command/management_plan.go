@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on explicit management target JSON, the Agent catalog, Store state, Target Management Plan domain events, and terminal operation reporting.
- * [OUTPUT]: Adapts management preflight JSON plus adaptive Human, JSON, or NDJSON execution at the public command boundary.
- * [POS]: Serves as the executable adapter between Cobra flags and exact-target Remove/Repair/Stop Managing orchestration.
+ * [INPUT]: Depends on flat repeatable target flags, the Agent catalog, Store state, target-operation domain events, and terminal reporting.
+ * [OUTPUT]: Adapts exact remove/repair preflight and execution to Human, JSON, or NDJSON output without accepting JSON target arguments.
+ * [POS]: Serves as the executable adapter shared by the top-level remove and repair commands.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -18,38 +18,31 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func newManageCommand(catalog *agent.Catalog) *cobra.Command {
-	var output string
-	var preflightOnly bool
-	var rawTargets []string
-	cmd := &cobra.Command{
-		Use:   "manage",
-		Short: "Review and manage exact Installation Targets",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runManagementPlan(cmd, catalog, output, preflightOnly, rawTargets)
-		},
-	}
-	cmd.Flags().StringArrayVar(&rawTargets, "target", nil, "explicit management Target JSON; repeatable")
-	cmd.Flags().BoolVar(&preflightOnly, "preflight", false, "review safe target actions without changing files")
-	cmd.Flags().StringVar(&output, "output", "human", "output format: json or ndjson")
-	return cmd
+type exactOperationOptions struct {
+	paths          []string
+	agents         []string
+	projects       []string
+	expectedStates []string
+	output         string
+	preflightOnly  bool
 }
 
-func runManagementPlan(
-	cmd *cobra.Command,
-	catalog *agent.Catalog,
-	output string,
-	preflightOnly bool,
-	rawTargets []string,
-) error {
-	if preflightOnly && output != "json" {
-		return fmt.Errorf("Target Management Plan preflight requires --output json")
+func addExactOperationFlags(cmd *cobra.Command, options *exactOperationOptions) {
+	cmd.Flags().StringArrayVar(&options.paths, "path", nil, "exact Installation Target path; repeatable")
+	cmd.Flags().StringArrayVar(&options.projects, "project", nil, "project root to include in inventory; repeatable")
+	cmd.Flags().StringArrayVar(&options.expectedStates, "expected-state", nil, "reviewed target state paired with --path; repeatable")
+	cmd.Flags().BoolVar(&options.preflightOnly, "preflight", false, "review safe target actions without changing files")
+	cmd.Flags().StringVar(&options.output, "output", "human", "output format: human, json, or ndjson")
+}
+
+func runExactOperation(cmd *cobra.Command, catalog *agent.Catalog, action managementplan.Action, options exactOperationOptions) error {
+	if options.preflightOnly && options.output != "json" {
+		return fmt.Errorf("preflight requires --output json")
 	}
-	if !preflightOnly && output != "human" && output != "json" && output != "ndjson" {
-		return fmt.Errorf("Target Management Plan execution requires --output human, json, or ndjson")
+	if options.output != "human" && options.output != "json" && options.output != "ndjson" {
+		return fmt.Errorf("output must be human, json, or ndjson")
 	}
-	requests, err := managementplan.DecodeTargets(rawTargets)
+	requests, err := managementplan.ResolvePaths(catalog, options.paths, options.agents, options.projects, options.expectedStates, action)
 	if err != nil {
 		return err
 	}
@@ -62,17 +55,31 @@ func runManagementPlan(
 	if err != nil {
 		return err
 	}
-	if preflightOnly {
+	if options.preflightOnly {
 		encoder := json.NewEncoder(cmd.OutOrStdout())
 		encoder.SetIndent("", "  ")
 		return encoder.Encode(preflight)
 	}
-	for _, request := range requests {
-		if request.Action == "" || request.StateToken == "" {
-			return fmt.Errorf("Target Management Plan execution requires reviewed action and stateToken values")
+	for _, item := range preflight.Targets {
+		allowed := false
+		for _, candidate := range item.AllowedActions {
+			allowed = allowed || candidate == action
+		}
+		if !allowed {
+			return fmt.Errorf("action %s is not allowed for target health %s", action, item.Health)
 		}
 	}
-	if output == "ndjson" {
+	if len(options.expectedStates) == 0 {
+		for index := range requests {
+			requests[index].Action = action
+			requests[index].StateToken = preflight.Targets[index].StateToken
+		}
+		preflight, err = managementplan.Build(catalog, storage, requests)
+		if err != nil {
+			return err
+		}
+	}
+	if options.output == "ndjson" {
 		encoder := json.NewEncoder(cmd.OutOrStdout())
 		var streamErr error
 		execution := managementplan.Execute(storage, preflight, func(event managementplan.Progress) {
@@ -88,16 +95,14 @@ func runManagementPlan(
 		}
 		return managementExecutionError(execution)
 	}
-	if output == "human" {
+	if options.output == "human" {
 		ui, err := humanUI(cmd)
 		if err != nil {
 			return err
 		}
 		var execution managementplan.Execution
 		err = ui.Run(cmd.Context(), terminalOperation(appi18n.T("operation.manage"), func(emit func(terminalEvent)) error {
-			execution = managementplan.Execute(storage, preflight, func(progress managementplan.Progress) {
-				emit(managementProgressEvent(progress))
-			})
+			execution = managementplan.Execute(storage, preflight, func(progress managementplan.Progress) { emit(managementProgressEvent(progress)) })
 			return nil
 		}))
 		if err != nil {
@@ -119,7 +124,22 @@ func runManagementPlan(
 
 func managementExecutionError(execution managementplan.Execution) error {
 	if execution.Summary.Failed > 0 {
-		return fmt.Errorf("%d management target(s) failed", execution.Summary.Failed)
+		return fmt.Errorf("%d target(s) failed", execution.Summary.Failed)
 	}
 	return nil
+}
+
+func newRepairCommand(catalog *agent.Catalog) *cobra.Command {
+	var options exactOperationOptions
+	cmd := &cobra.Command{
+		Use:   "repair",
+		Short: "Restore exact unhealthy Installation Targets",
+		Args:  cobra.NoArgs,
+		RunE: func(cmd *cobra.Command, _ []string) error {
+			return runExactOperation(cmd, catalog, managementplan.ActionRepair, options)
+		},
+	}
+	addExactOperationFlags(cmd, &options)
+	cmd.Flags().StringArrayVarP(&options.agents, "agent", "a", nil, "Agent paired with --path; repeatable")
+	return cmd
 }

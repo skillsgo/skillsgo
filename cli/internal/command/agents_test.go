@@ -29,6 +29,10 @@ func TestAgentsJSONExposesCompleteSupportedCatalogAndInstalledTestAgent(t *testi
 	var report agentsReport
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &report))
 	require.Equal(t, agentsSchemaVersion, report.SchemaVersion)
+	require.Equal(t, "skillsgo", report.Product)
+	require.Equal(t, appProtocolVersion, report.AppProtocolVersion)
+	require.NotEmpty(t, report.OS)
+	require.NotEmpty(t, report.Architecture)
 	require.GreaterOrEqual(t, len(report.Agents), 74)
 	var testAgentFound bool
 	for _, status := range report.Agents {

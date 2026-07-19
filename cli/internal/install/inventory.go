@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 
 	"github.com/skillsgo/skillsgo/cli/internal/store"
+	"github.com/skillsgo/skillsgo/cli/internal/trash"
 )
 
 type Installation struct {
@@ -160,13 +161,13 @@ func removeTargetSafely(installation Installation) error {
 	}
 	if installation.Target.Mode == ModeSymlink {
 		if installation.Target.CanonicalPath != "" && filepath.Clean(installation.Target.Path) == filepath.Clean(installation.Target.CanonicalPath) {
-			return os.RemoveAll(installation.Target.Path)
+			return trash.Move(installation.Target.Path)
 		}
 		if info.Mode()&os.ModeSymlink == 0 && installation.Target.CanonicalPath != "" && samePath(installation.Target.Path, installation.Target.CanonicalPath) {
 			return nil
 		}
-		return os.Remove(installation.Target.Path)
+		return trash.Move(installation.Target.Path)
 	}
 	_ = info
-	return os.RemoveAll(installation.Target.Path)
+	return trash.Move(installation.Target.Path)
 }

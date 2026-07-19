@@ -14,7 +14,6 @@ import (
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
-	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/plan"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
@@ -109,15 +108,14 @@ func addWholeRepository(
 		sums = append(sums, project.SumEntry{Path: member.Info.ID, Version: member.Info.Version, Checksum: checksum})
 		prepared = append(prepared, preparedRepositoryMember{artifact: artifact, targets: targets, previous: matching})
 	}
-	if err := project.ValidateVerifiedSums(declarationRoot, sums); err != nil {
-		return err
-	}
-	if err := (infocache.Cache{Root: infocache.DefaultRoot(home)}).Put(reference.SkillID, repository.Info.Version, "repository.info", repository.InfoBytes); err != nil {
-		return err
-	}
 	// Extra Workspace Sum entries are intentionally allowed. Persisting newly
 	// verified hashes before target mutation makes retries safe and fail-closed.
-	if err := project.MergeVerifiedSums(declarationRoot, sums); err != nil {
+	if err := (verifiedWorkspaceResources{
+		sums: sums,
+		infos: []verifiedInfoResource{{
+			resource: reference.SkillID, version: repository.Info.Version, kind: "repository.info", bytes: repository.InfoBytes,
+		}},
+	}).persist(home, []string{declarationRoot}); err != nil {
 		return err
 	}
 	storage := store.Store{Root: store.DefaultRoot(home)}
@@ -258,16 +256,13 @@ func addSelectedRepositorySkills(
 	if len(selections) == 0 {
 		return fmt.Errorf("no Repository Skills were selected")
 	}
-	if err := project.ValidateVerifiedSums(declarationRoot, sums); err != nil {
-		return err
-	}
-	cache := infocache.Cache{Root: infocache.DefaultRoot(home)}
+	infos := make([]verifiedInfoResource, 0, len(resources))
 	for _, resource := range resources {
-		if err := cache.Put(reference.SkillID, resource.Info.Version, "repository.info", resource.InfoBytes); err != nil {
-			return err
-		}
+		infos = append(infos, verifiedInfoResource{
+			resource: reference.SkillID, version: resource.Info.Version, kind: "repository.info", bytes: resource.InfoBytes,
+		})
 	}
-	if err := project.MergeVerifiedSums(declarationRoot, sums); err != nil {
+	if err := (verifiedWorkspaceResources{sums: sums, infos: infos}).persist(home, []string{declarationRoot}); err != nil {
 		return err
 	}
 	storage := store.Store{Root: store.DefaultRoot(home)}

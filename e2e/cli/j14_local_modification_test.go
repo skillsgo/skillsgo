@@ -49,10 +49,8 @@ func TestJ14LocalModification(t *testing.T) {
 		"skillId":     testSkillID,
 		"version":     installed.Version,
 	}
-	requestJSON, err := json.Marshal(request)
-	require.NoError(t, err)
 	preflight := execCLI(t, ctx, container,
-		"manage", "--target", string(requestJSON),
+		"remove", "--path", request["path"].(string), "--agent", "codex", "--project", "/e2e/project",
 		"--preflight", "--output", "json",
 	)
 	require.Equal(t, 0, preflight.exitCode, preflight.output)
@@ -66,16 +64,12 @@ func TestJ14LocalModification(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(preflight.output), &review), preflight.output)
 	require.Len(t, review.Targets, 1)
 	require.Equal(t, "local-modification", review.Targets[0].Health)
-	require.ElementsMatch(t, []string{"repair", "stop-managing"}, review.Targets[0].AllowedActions)
+	require.Equal(t, []string{"repair"}, review.Targets[0].AllowedActions)
 	require.NotEmpty(t, review.Targets[0].StateToken)
 
-	unsafe := mapsClone(request)
-	unsafe["action"] = "remove"
-	unsafe["stateToken"] = review.Targets[0].StateToken
-	unsafeJSON, err := json.Marshal(unsafe)
-	require.NoError(t, err)
 	unsafeRemove := execCLI(t, ctx, container,
-		"manage", "--target", string(unsafeJSON), "--output", "json",
+		"remove", "--path", request["path"].(string), "--agent", "codex", "--project", "/e2e/project",
+		"--expected-state", review.Targets[0].StateToken, "--output", "json",
 	)
 	require.NotEqual(t, 0, unsafeRemove.exitCode)
 	unchanged, err := os.ReadFile(skillPath)
