@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra and the Agent, Hub, Store, project, installation, Installation Plan, Update Plan, Target Management Plan, source, i18n, and terminal UI modules.
- * [OUTPUT]: Provides command.Execute and the complete CLI graph, including recognized machine-mode failure documents, explicit-source Info, adaptive Human UI policy, unified managed/External listing, stable Agent/Library contracts, Installation/Update/Target Management flows with exact External removal, and Local export, for terminal and App callers.
+ * [OUTPUT]: Provides command.Execute and the complete CLI graph, including recognized machine-mode failure documents, explicit-source Info, adaptive Human UI policy, unified managed/External listing, lock-backed Batch Takeover, stable Agent/Library contracts, Installation/Update/Target Management flows with exact External removal, and Local export, for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -82,7 +82,7 @@ func newRootCommand(stdout, stderr io.Writer) (*cobra.Command, error) {
 	root.PersistentFlags().StringVar(&languageOverride, "lang", strings.TrimSpace(os.Getenv("SKILLSGO_LANG")), appi18n.T("flag.lang"))
 	root.PersistentFlags().String("ui", string(terminalui.ModeAuto), appi18n.T("flag.ui"))
 	root.PersistentFlags().String("color", string(terminalui.ColorAuto), appi18n.T("flag.color"))
-	root.AddCommand(newVersionCommand(), newDiagnosticsCommand(), newAgentsCommand(catalog), newInventoryCommand(catalog), newInfoCommand(), newAddCommand(catalog), newInstallCommand(catalog), placeholder("use", "use <package>@<skill>"), newRemoveCommand(catalog), newManageCommand(catalog), newExportCommand(), newListCommand(catalog), placeholder("find", "find [query]"), newUpdateCommand(catalog), placeholder("init", "init [name]"))
+	root.AddCommand(newVersionCommand(), newDiagnosticsCommand(), newAgentsCommand(catalog), newInventoryCommand(catalog), newTakeoverCommand(catalog), newInfoCommand(), newAddCommand(catalog), newInstallCommand(catalog), placeholder("use", "use <package>@<skill>"), newRemoveCommand(catalog), newManageCommand(catalog), newExportCommand(), newListCommand(catalog), placeholder("find", "find [query]"), newUpdateCommand(catalog), placeholder("init", "init [name]"))
 	return root, nil
 }
 

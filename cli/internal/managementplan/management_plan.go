@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on explicit target identities, declaration-derived inventory health, immutable Store entries, Agent adapters, and Workspace metadata.
- * [OUTPUT]: Provides strict Target Management Plan preflight, state-bound managed Remove/Repair/Stop Managing and exact External Installation removal, plus structured per-target progress/results.
+ * [INPUT]: Depends on explicit target identities, declaration-derived inventory health, exact Installation Receipts, immutable Store entries, Agent adapters, and Workspace metadata.
+ * [OUTPUT]: Provides strict Target Management Plan preflight, state-bound alias-safe managed Remove, logical-versus-artifact-aware Repair/Stop Managing and exact External Installation removal, plus structured per-target progress/results.
  * [POS]: Serves as the cleanup and recovery orchestration domain between the public manage command and install/project boundaries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -76,6 +76,7 @@ type Item struct {
 	Diagnostic              string           `json:"diagnostic,omitempty"`
 	AffectedBindings        []Target         `json:"affectedBindings,omitempty"`
 	installation            *install.Installation
+	relatedInstallations    []install.Installation
 }
 
 type Summary struct {
@@ -236,12 +237,21 @@ func Build(catalog *agent.Catalog, storage store.Store, requests []TargetRequest
 		if external {
 			item.AllowedActions = []Action{ActionRemove}
 		} else {
-			installation := install.Installation{Name: entry.Name, SkillID: entry.SkillID, Version: target.Version, Target: install.Target{Agent: target.Agent, Scope: target.Scope, Mode: install.Mode(target.Mode), Path: target.Path, CanonicalPath: target.CanonicalPath}}
-			if stored, getErr := storage.Get(entry.SkillID, target.Version); getErr == nil {
-				installation.StoreRoot, installation.Artifact = stored.Root, stored.Artifact
-				installation.ContentDigest = stored.Receipt.ContentDigest
+			installation, installationErr := managedInstallation(storage, entry, target)
+			if installationErr != nil {
+				return Preflight{}, installationErr
 			}
 			item.installation = &installation
+			for _, candidate := range entry.Targets {
+				if candidate.Mode == inventory.TargetModeExternal {
+					continue
+				}
+				related, relatedErr := managedInstallation(storage, entry, candidate)
+				if relatedErr != nil {
+					return Preflight{}, relatedErr
+				}
+				item.relatedInstallations = append(item.relatedInstallations, related)
+			}
 		}
 		if !external {
 			item.AllowedActions, item.Diagnostic = allowedActions(storage, item)
@@ -278,6 +288,44 @@ func Build(catalog *agent.Catalog, storage store.Store, requests []TargetRequest
 	return preflight, nil
 }
 
+func managedInstallation(storage store.Store, entry inventory.Entry, target inventory.Target) (install.Installation, error) {
+	root := target.ProjectRoot
+	if target.Scope == install.ScopeUser {
+		root = filepath.Dir(storage.Root)
+	}
+	dependencyID := entry.SkillID
+	targetState := ""
+	sourceRef := ""
+	receipts, err := project.LoadInstallationReceipts(root)
+	if err != nil {
+		return install.Installation{}, err
+	}
+	for _, receipt := range receipts {
+		if receipt.SourceSkillID == entry.SkillID && receipt.Version == target.Version &&
+			receipt.Scope == target.Scope && receipt.Agent == target.Agent &&
+			receipt.Mode == install.Mode(target.Mode) && samePath(receipt.Path, target.Path) {
+			dependencyID = receipt.ArtifactSkillID
+			targetState = receipt.TargetState
+			sourceRef = receipt.SourceRef
+			break
+		}
+	}
+	installation := install.Installation{
+		Name: entry.Name, SkillID: entry.SkillID, DependencyID: dependencyID,
+		SourceRef: sourceRef, Version: target.Version, TargetState: targetState,
+		Target: install.Target{
+			Agent: target.Agent, Scope: target.Scope, Mode: install.Mode(target.Mode),
+			Path: target.Path, CanonicalPath: target.CanonicalPath,
+		},
+	}
+	if stored, getErr := storage.Get(dependencyID, target.Version); getErr == nil {
+		installation.StoreRoot, installation.Artifact = stored.Root, stored.Artifact
+		installation.ContentDigest = stored.Receipt.ContentDigest
+		installation.Provenance = stored.Receipt.EffectiveProvenance()
+	}
+	return installation, nil
+}
+
 func findInventoryTarget(report inventory.Report, request TargetRequest) (inventory.Entry, inventory.Target, error) {
 	for _, entry := range report.Entries {
 		if request.Mode == install.Mode("external") {
@@ -306,7 +354,7 @@ func allowedActions(storage store.Store, item Item) ([]Action, string) {
 	actions := []Action{ActionStopManaging}
 	switch item.Health {
 	case inventory.HealthMissing, inventory.HealthReplaced, inventory.HealthLocalModification:
-		if _, err := storage.Get(item.SkillID, item.Version); err == nil {
+		if item.installation != nil && item.installation.Artifact != "" {
 			actions = append([]Action{ActionRepair}, actions...)
 		} else {
 			return actions, "immutable Store artifact is unavailable; Stop Managing preserves the target content"
@@ -429,7 +477,11 @@ func Execute(storage store.Store, preflight Preflight, report func(Progress)) Ex
 	for index, item := range preflight.Targets {
 		execution.Results[index] = Result{Target: item.Target, Name: item.Name, SkillID: item.SkillID, Version: item.Version, Action: item.Action}
 		if item.Action == ActionRepair {
-			key := filepath.Clean(item.Target.Path) + "\x00" + item.SkillID + "\x00" + item.Version
+			dependencyID := item.SkillID
+			if item.installation != nil && item.installation.DependencyID != "" {
+				dependencyID = item.installation.DependencyID
+			}
+			key := filepath.Clean(item.Target.Path) + "\x00" + dependencyID + "\x00" + item.Version
 			if repairGroups[key] == nil {
 				repairOrder = append(repairOrder, key)
 			}
@@ -447,7 +499,11 @@ func Execute(storage store.Store, preflight Preflight, report func(Progress)) Ex
 			emit(index, ProgressStarted)
 		}
 		first := preflight.Targets[indexes[0]]
-		entry, err := storage.Get(first.SkillID, first.Version)
+		dependencyID := first.SkillID
+		if first.installation != nil && first.installation.DependencyID != "" {
+			dependencyID = first.installation.DependencyID
+		}
+		entry, err := storage.Get(dependencyID, first.Version)
 		if err == nil {
 			previous := make([]install.Installation, 0, len(indexes))
 			targets := make([]install.Target, 0, len(indexes))
@@ -456,7 +512,7 @@ func Execute(storage store.Store, preflight Preflight, report func(Progress)) Ex
 				if item.installation != nil {
 					previous = append(previous, *item.installation)
 				}
-				targets = append(targets, install.Target{Agent: item.Target.Agent, Scope: item.Target.Scope, Mode: item.Target.Mode, Path: item.Target.Path})
+				targets = append(targets, install.Target{Agent: item.Target.Agent, Scope: item.Target.Scope, Mode: item.Target.Mode, Path: item.Target.Path, CanonicalPath: item.installation.Target.CanonicalPath})
 			}
 			err = install.ReplaceExplicit(entry, previous, targets)
 		}
@@ -484,7 +540,11 @@ func executeMetadataAction(storage store.Store, item Item) error {
 		if item.installation == nil {
 			return fmt.Errorf("managed Installation is unavailable")
 		}
-		if err := install.RemoveDeclaredInstallations([]install.Installation{*item.installation}, []install.Installation{*item.installation}); err != nil {
+		all := item.relatedInstallations
+		if len(all) == 0 {
+			all = []install.Installation{*item.installation}
+		}
+		if err := install.RemoveDeclaredInstallations([]install.Installation{*item.installation}, all); err != nil {
 			return err
 		}
 		return removeDeclarationBinding(storage, item, *item.installation)

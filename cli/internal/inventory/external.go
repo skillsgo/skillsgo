@@ -30,31 +30,57 @@ func addExternalInstallations(
 	catalog *agent.Catalog,
 ) {
 	definitions := catalog.Installed()
+	userDiscoveryRoots := make([]string, 0)
+	if includeUser {
+		for _, definition := range definitions {
+			if roots, ok := catalog.SkillRoots(definition.ID, agent.ScopeUser, ""); ok {
+				for _, root := range roots.DiscoveryRoots {
+					userDiscoveryRoots = appendPathIfMissing(userDiscoveryRoots, root)
+				}
+			}
+		}
+	}
 	for _, definition := range definitions {
-		if includeUser && definition.UserDir != "" {
-			scanExternalDirectory(
-				entries,
-				accountedTargets,
-				definition.ID,
-				install.ScopeUser,
-				"",
-				definition.UserDir,
-			)
+		if includeUser {
+			if roots, ok := catalog.SkillRoots(definition.ID, agent.ScopeUser, ""); ok {
+				for _, root := range roots.DiscoveryRoots {
+					scanExternalDirectory(entries, accountedTargets, definition.ID, install.ScopeUser, "", root, userDiscoveryRoots)
+				}
+			}
 		}
 		if definition.ProjectDir == "" {
 			continue
 		}
 		for _, projectRoot := range projectRoots {
-			scanExternalDirectory(
-				entries,
-				accountedTargets,
-				definition.ID,
-				install.ScopeProject,
-				projectRoot,
-				filepath.Join(projectRoot, filepath.FromSlash(definition.ProjectDir)),
-			)
+			if roots, ok := catalog.SkillRoots(definition.ID, agent.ScopeProject, projectRoot); ok {
+				allowedRoots := projectScopeDiscoveryRoots(catalog, definitions, projectRoot)
+				for _, root := range roots.DiscoveryRoots {
+					scanExternalDirectory(entries, accountedTargets, definition.ID, install.ScopeProject, projectRoot, root, allowedRoots)
+				}
+			}
 		}
 	}
+}
+
+func projectScopeDiscoveryRoots(catalog *agent.Catalog, definitions []agent.Definition, projectRoot string) []string {
+	result := make([]string, 0)
+	for _, definition := range definitions {
+		if roots, ok := catalog.SkillRoots(definition.ID, agent.ScopeProject, projectRoot); ok {
+			for _, root := range roots.DiscoveryRoots {
+				result = appendPathIfMissing(result, root)
+			}
+		}
+	}
+	return result
+}
+
+func appendPathIfMissing(paths []string, candidate string) []string {
+	for _, existing := range paths {
+		if filepath.Clean(existing) == filepath.Clean(candidate) {
+			return paths
+		}
+	}
+	return append(paths, candidate)
 }
 
 func scanExternalDirectory(
@@ -64,6 +90,7 @@ func scanExternalDirectory(
 	scope install.Scope,
 	projectRoot string,
 	directory string,
+	allowedRoots []string,
 ) {
 	children, err := os.ReadDir(directory)
 	if err != nil {
@@ -72,19 +99,26 @@ func scanExternalDirectory(
 	sort.Slice(children, func(i, j int) bool { return children[i].Name() < children[j].Name() })
 	for _, child := range children {
 		path := filepath.Join(directory, child.Name())
-		if !pathWithin(directory, path) {
+		if !lexicallyWithin(directory, path) {
 			continue
 		}
 		info, err := os.Stat(path)
 		if err != nil || !info.IsDir() {
 			continue
 		}
+		resolvedPath := resolveInventoryPath(path)
+		if !withinOneDiscoveryRoot(resolvedPath, allowedRoots) {
+			continue
+		}
 		manifestPath := filepath.Join(path, "SKILL.md")
-		if !pathWithin(directory, manifestPath) {
+		if !lexicallyWithin(directory, manifestPath) {
 			continue
 		}
 		manifestInfo, err := os.Stat(manifestPath)
 		if err != nil || !manifestInfo.Mode().IsRegular() {
+			continue
+		}
+		if !pathWithin(resolvedPath, resolveInventoryPath(manifestPath)) {
 			continue
 		}
 		key := targetKey(agentID, scope, path)
@@ -107,6 +141,20 @@ func scanExternalDirectory(
 		}
 		accountedTargets[key] = true
 	}
+}
+
+func withinOneDiscoveryRoot(path string, roots []string) bool {
+	for _, root := range roots {
+		if pathWithin(root, path) {
+			return true
+		}
+	}
+	return false
+}
+
+func lexicallyWithin(root, candidate string) bool {
+	relative, err := filepath.Rel(filepath.Clean(root), filepath.Clean(candidate))
+	return err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
 func ensureExternalEntry(entries map[string]*Entry, name, description, path string) *Entry {

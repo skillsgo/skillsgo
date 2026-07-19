@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses temporary immutable artifacts, existing external directories, resolved targets, filesystem modes, and adversarial directory layouts.
- * [OUTPUT]: Specifies shared-path materialization and restoration, projection lifecycle safety, legacy Store-link rejection, content-preserving adoption validation, collision refusal, copy fidelity, and unambiguous Local Modification digests.
+ * [INPUT]: Uses temporary immutable artifacts, resolved targets, filesystem modes, and adversarial directory layouts.
+ * [OUTPUT]: Specifies shared-path materialization and restoration including taken-over copy/alias groups, projection lifecycle safety, legacy Store-link rejection, collision refusal, copy fidelity, and unambiguous Local Modification digests.
  * [POS]: Serves as behavior coverage for the installation materialization boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/stretchr/testify/require"
 )
@@ -185,6 +184,40 @@ func TestRemoveRetainsSharedCanonicalUntilLastBindingIsRemoved(t *testing.T) {
 	}
 }
 
+func TestRemoveRetainsTakenOverCopyUsedBySymlinkBinding(t *testing.T) {
+	root := t.TempDir()
+	artifact := filepath.Join(root, "store", "artifact")
+	physical := filepath.Join(root, "agent-a", "skills", "demo")
+	linked := filepath.Join(root, "agent-b", "skills", "demo")
+	for _, directory := range []string{artifact, physical, filepath.Dir(linked)} {
+		if err := os.MkdirAll(directory, 0o700); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, directory := range []string{artifact, physical} {
+		if err := os.WriteFile(filepath.Join(directory, "SKILL.md"), []byte("demo"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Symlink(physical, linked); err != nil {
+		t.Fatal(err)
+	}
+	state, err := DirectoryDigest(physical)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bindings := []Installation{
+		{Name: "demo", Artifact: artifact, TargetState: state, Target: Target{Agent: "agent-a", Scope: ScopeUser, Mode: ModeCopy, Path: physical}},
+		{Name: "demo", Artifact: artifact, Target: Target{Agent: "agent-b", Scope: ScopeUser, Mode: ModeSymlink, Path: linked, CanonicalPath: physical}},
+	}
+	if err := RemoveDeclaredInstallations(bindings[:1], bindings); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Stat(filepath.Join(linked, "SKILL.md")); err != nil {
+		t.Fatalf("remaining alias lost its taken-over physical content: %v", err)
+	}
+}
+
 func TestRemoveRejectsLegacyAgentLinkDirectlyToStore(t *testing.T) {
 	root := t.TempDir()
 	artifact := filepath.Join(root, "store", "artifact")
@@ -231,43 +264,6 @@ func TestInstallDoesNotOverwriteExistingTarget(t *testing.T) {
 	err := Install(&store.Entry{Root: root, Artifact: artifact}, []Target{{Agent: "codex", Scope: ScopeProject, Mode: ModeSymlink, Path: target}})
 	if err == nil {
 		t.Fatal("expected target conflict")
-	}
-}
-
-func TestAdoptExistingValidatesWithoutReplacingContent(t *testing.T) {
-	root := t.TempDir()
-	artifact := filepath.Join(root, "store", "artifact")
-	target := filepath.Join(root, "external", "demo")
-	if err := os.MkdirAll(artifact, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(target, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	for _, directory := range []string{artifact, target} {
-		if err := os.WriteFile(filepath.Join(directory, "SKILL.md"), []byte("private"), 0o600); err != nil {
-			t.Fatal(err)
-		}
-	}
-	contentDigest, err := hub.ContentDirectoryDigest(artifact)
-	if err != nil {
-		t.Fatal(err)
-	}
-	before, err := DirectoryDigest(target)
-	if err != nil {
-		t.Fatal(err)
-	}
-	entry := &store.Entry{
-		Root: filepath.Dir(artifact), Artifact: artifact,
-		Receipt: store.Receipt{ContentDigest: contentDigest},
-	}
-	adopted := Target{Agent: "codex", Scope: ScopeUser, Mode: ModeCopy, Path: target}
-	if err := AdoptExisting(entry, adopted); err != nil {
-		t.Fatal(err)
-	}
-	after, err := DirectoryDigest(target)
-	if err != nil || after != before {
-		t.Fatalf("adoption changed target content: %s != %s (%v)", after, before, err)
 	}
 }
 

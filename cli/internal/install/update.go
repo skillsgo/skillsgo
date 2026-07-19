@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on a new immutable Store entry, declaration-derived prior Installations, resolved targets, and explicit replacement authority.
- * [OUTPUT]: Provides rollback-capable tracked replacement and explicitly authorized collision/Local Modification replacement.
+ * [INPUT]: Depends on a new immutable Store entry, declaration-derived prior Installations, resolved targets, and optional explicit replacement authority.
+ * [OUTPUT]: Provides rollback-capable tracked replacement with metadata callbacks and explicitly authorized collision/Local Modification replacement.
  * [POS]: Serves as the atomic target-switching boundary beneath update and resolved Installation Plan operations.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -20,6 +20,12 @@ func Replace(entry *store.Entry, previous []Installation, targets []Target) erro
 	return replace(entry, previous, targets, false, nil)
 }
 
+// ReplaceThen retains replacement backups until the higher-level persistence
+// callback succeeds, without relaxing tracked-target integrity checks.
+func ReplaceThen(entry *store.Entry, previous []Installation, targets []Target, after func() error) error {
+	return replace(entry, previous, targets, false, after)
+}
+
 // ReplaceExplicit switches targets after the caller has received an explicit
 // per-target replacement decision. It may replace an untracked path or a
 // tracked target whose contents no longer match its receipt.
@@ -34,10 +40,17 @@ func ReplaceExplicitThen(entry *store.Entry, previous []Installation, targets []
 }
 
 func replace(entry *store.Entry, previous []Installation, targets []Target, explicit bool, after func() error) error {
+	canonicalTargetsOnly := true
+	hasCanonicalTarget := false
 	for _, target := range targets {
 		if target.Mode == ModeSymlink && target.CanonicalPath != "" {
-			return replaceCanonical(entry, previous, targets, explicit, after)
+			hasCanonicalTarget = true
+		} else {
+			canonicalTargetsOnly = false
 		}
+	}
+	if hasCanonicalTarget && canonicalTargetsOnly {
+		return replaceCanonical(entry, previous, targets, explicit, after)
 	}
 	switched := make([]switchAction, 0, len(targets))
 	seen := map[string]bool{}
@@ -50,7 +63,9 @@ func replace(entry *store.Entry, previous []Installation, targets []Target, expl
 		var old Installation
 		tracked := false
 		for _, installation := range previous {
-			if samePath(installation.Target.Path, path) {
+			// A physical target and one of its symlink projections resolve to the
+			// same inode. Receipts identify them by their exact lexical paths.
+			if filepath.Clean(installation.Target.Path) == path {
 				old, tracked = installation, true
 				break
 			}
@@ -101,27 +116,26 @@ func replaceCanonical(entry *store.Entry, previous []Installation, targets []Tar
 			return fmt.Errorf("一次替换不能混用 canonical 或安装模式")
 		}
 	}
-	if info, err := os.Lstat(canonical); err == nil {
-		if info.Mode()&os.ModeSymlink != 0 {
-			if !explicit {
-				return fmt.Errorf("canonical 目标必须是实体目录：%s", canonical)
-			}
-		} else if !info.IsDir() {
-			if !explicit {
-				return fmt.Errorf("canonical 目标不是实体目录：%s", canonical)
-			}
+	canonicalSelected := false
+	for _, target := range targets {
+		if filepath.Clean(target.Path) == canonical {
+			canonicalSelected = true
+			break
 		}
-		if !explicit && info.IsDir() && info.Mode()&os.ModeSymlink == 0 {
-			matched := false
-			for _, old := range previous {
-				if old.Artifact != "" {
-					matched, _ = CopyMatchesArtifact(canonical, old.Artifact)
-					if matched {
-						break
-					}
-				}
-			}
-			if !matched {
+	}
+	canonicalExists := false
+	canonicalRealDirectory := false
+	if info, err := os.Lstat(canonical); err == nil {
+		canonicalExists = true
+		canonicalRealDirectory = info.IsDir() && info.Mode()&os.ModeSymlink == 0
+		if !canonicalRealDirectory && !explicit {
+			return fmt.Errorf("canonical 目标必须是实体目录：%s", canonical)
+		}
+		// An alias-only repair must never rewrite its separately managed
+		// physical target. It may only reuse an exact desired baseline.
+		if canonicalRealDirectory && !canonicalSelected {
+			matched, matchErr := CopyMatchesArtifact(canonical, entry.Artifact)
+			if matchErr != nil || !matched {
 				return fmt.Errorf("拒绝替换已修改的 canonical 目标 %s", canonical)
 			}
 		}
@@ -129,17 +143,23 @@ func replaceCanonical(entry *store.Entry, previous []Installation, targets []Tar
 		return err
 	}
 	backup := canonical + ".skillsgo-backup"
-	_ = os.RemoveAll(backup)
-	if _, err := os.Lstat(canonical); err == nil {
-		if err := os.Rename(canonical, backup); err != nil {
+	canonicalSwitched := canonicalSelected || !canonicalExists || !canonicalRealDirectory
+	if canonicalSwitched {
+		_ = os.RemoveAll(backup)
+		if canonicalExists {
+			if err := os.Rename(canonical, backup); err != nil {
+				return err
+			}
+		}
+		if err := installTarget(entry.Artifact, canonical, ModeCopy); err != nil {
+			_ = os.Rename(backup, canonical)
 			return err
 		}
 	}
-	if err := installTarget(entry.Artifact, canonical, ModeCopy); err != nil {
-		_ = os.Rename(backup, canonical)
-		return err
-	}
 	rollbackCanonical := func() {
+		if !canonicalSwitched {
+			return
+		}
 		_ = os.RemoveAll(canonical)
 		_ = os.Rename(backup, canonical)
 	}
@@ -151,7 +171,7 @@ func replaceCanonical(entry *store.Entry, previous []Installation, targets []Tar
 		rollbackCanonical()
 	}
 	for _, target := range targets {
-		if filepath.Clean(target.Path) == canonical || samePath(target.Path, canonical) {
+		if filepath.Clean(target.Path) == canonical {
 			continue
 		}
 		if info, err := os.Lstat(target.Path); err == nil {
@@ -226,7 +246,10 @@ func replaceCanonical(entry *store.Entry, previous []Installation, targets []Tar
 			return err
 		}
 	}
-	return os.RemoveAll(backup)
+	if canonicalSwitched {
+		return os.RemoveAll(backup)
+	}
+	return nil
 }
 
 func targetPathDesired(path string, targets []Target) bool {
@@ -245,11 +268,15 @@ type switchAction struct {
 
 func replaceTarget(artifact string, target Target, previous Installation, tracked, explicit bool) (switchAction, error) {
 	path := filepath.Clean(target.Path)
+	desiredSource := artifact
+	if target.Mode == ModeSymlink && target.CanonicalPath != "" {
+		desiredSource = target.CanonicalPath
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return switchAction{}, err
 	}
 	if _, err := os.Lstat(path); os.IsNotExist(err) {
-		if err := installTarget(artifact, path, target.Mode); err != nil {
+		if err := installTarget(desiredSource, path, target.Mode); err != nil {
 			return switchAction{}, err
 		}
 		return switchAction{rollback: func() { _ = os.RemoveAll(path) }, commit: func() error { return nil }}, nil
@@ -274,8 +301,27 @@ func replaceTarget(artifact string, target Target, previous Installation, tracke
 		if !filepath.IsAbs(link) {
 			link = filepath.Join(filepath.Dir(path), link)
 		}
-		if !samePath(link, previous.Artifact) {
+		expected := previous.Artifact
+		if previous.Target.CanonicalPath != "" {
+			expected = previous.Target.CanonicalPath
+		}
+		if !samePath(link, expected) {
 			return switchAction{}, fmt.Errorf("拒绝替换已指向其他位置的软链 %s", path)
+		}
+	}
+	if tracked && target.Mode == ModeCopy && !explicit {
+		matched := false
+		if previous.TargetState != "" {
+			actual, err := DirectoryDigest(path)
+			if err != nil {
+				return switchAction{}, err
+			}
+			matched = actual == previous.TargetState
+		} else if previous.Artifact != "" {
+			matched, _ = CopyMatchesArtifact(path, previous.Artifact)
+		}
+		if !matched {
+			return switchAction{}, fmt.Errorf("拒绝替换已修改的复制目标 %s", path)
 		}
 	}
 
@@ -288,7 +334,7 @@ func replaceTarget(artifact string, target Target, previous Installation, tracke
 	if err := os.Rename(path, backup); err != nil {
 		return switchAction{}, err
 	}
-	if err := installTarget(artifact, path, target.Mode); err != nil {
+	if err := installTarget(desiredSource, path, target.Mode); err != nil {
 		_ = os.Rename(backup, path)
 		return switchAction{}, err
 	}

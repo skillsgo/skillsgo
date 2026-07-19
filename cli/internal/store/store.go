@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on validated Skill IDs, enriched immutable Hub Info or Local Skill metadata, ZIP archives, and filesystem containment rules.
- * [OUTPUT]: Provides concurrency-safe confined immutable Store put/get operations, safe extraction, immutable-content checks, Info-named provenance-aware receipts, and refreshable assessment metadata.
+ * [OUTPUT]: Provides concurrency-safe confined immutable Store put/get operations, safe extraction, immutable-content checks, Info-named Hub/Local/captured provenance receipts, and refreshable assessment metadata.
  * [POS]: Serves as the local Content-addressed Store boundary beneath installation and inventory flows.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -28,6 +28,7 @@ var ErrNotFound = fmt.Errorf("Store 条目不存在")
 
 type Receipt struct {
 	SkillID       string     `yaml:"skillId"`
+	SourceSkillID string     `yaml:"sourceSkillId,omitempty"`
 	Version       string     `yaml:"version"`
 	Name          string     `yaml:"name,omitempty"`
 	Provenance    Provenance `yaml:"provenance,omitempty"`
@@ -42,8 +43,9 @@ type Receipt struct {
 type Provenance string
 
 const (
-	ProvenanceHub   Provenance = "hub"
-	ProvenanceLocal Provenance = "local"
+	ProvenanceHub      Provenance = "hub"
+	ProvenanceLocal    Provenance = "local"
+	ProvenanceCaptured Provenance = "captured"
 )
 
 func (receipt Receipt) EffectiveProvenance() Provenance {
@@ -51,6 +53,13 @@ func (receipt Receipt) EffectiveProvenance() Provenance {
 		return ProvenanceHub
 	}
 	return receipt.Provenance
+}
+
+func (receipt Receipt) EffectiveSourceSkillID() string {
+	if receipt.SourceSkillID != "" {
+		return receipt.SourceSkillID
+	}
+	return receipt.SkillID
 }
 
 type Entry struct {
@@ -114,6 +123,10 @@ func (s Store) entryRoot(skillID, version string) (string, error) {
 }
 
 func (s Store) Put(artifact *hub.Artifact) (*Entry, error) {
+	return s.put(artifact, ProvenanceHub, "")
+}
+
+func (s Store) put(artifact *hub.Artifact, provenance Provenance, sourceSkillID string) (*Entry, error) {
 	if !artifact.Info.Risk.Valid() || !strings.HasPrefix(artifact.Info.ContentDigest, "sha256:") {
 		return nil, fmt.Errorf("Hub artifact is missing immutable assessment metadata")
 	}
@@ -128,7 +141,7 @@ func (s Store) Put(artifact *hub.Artifact) (*Entry, error) {
 	}
 	receipt := Receipt{
 		SkillID: artifact.SkillID, Version: artifact.Info.Version, Name: name,
-		Provenance: ProvenanceHub, ContentDigest: artifact.Info.ContentDigest,
+		Provenance: provenance, SourceSkillID: sourceSkillID, ContentDigest: artifact.Info.ContentDigest,
 		Risk: artifact.Info.Risk, Ref: artifact.Info.Ref,
 		CommitSHA: artifact.Info.CommitSHA, TreeSHA: artifact.Info.TreeSHA,
 	}
@@ -269,7 +282,14 @@ func extract(data []byte, prefix, destination string) error {
 		}
 		target := filepath.Join(destination, clean)
 		if file.FileInfo().IsDir() {
-			if err := os.MkdirAll(target, 0o700); err != nil {
+			mode := file.Mode().Perm()
+			if mode == 0 {
+				mode = 0o700
+			}
+			if err := os.MkdirAll(target, mode); err != nil {
+				return err
+			}
+			if err := os.Chmod(target, mode); err != nil {
 				return err
 			}
 			continue

@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on a reviewed external Skill directory, content framing, safe ZIP construction, and an explicit export destination.
- * [OUTPUT]: Imports immutable private Local Skill artifacts into the Store and exports only provenance-confirmed Local Skills without network access.
- * [POS]: Serves as the private Local Skill persistence boundary beside Hub-backed Store ingestion.
+ * [INPUT]: Depends on reviewed existing Skill directories, canonical source identity, content framing, safe ZIP construction, and an explicit export destination.
+ * [OUTPUT]: Imports immutable private Local Skill artifacts, captures stable source/content/filesystem-state-identified takeover baselines with explicit change detection, and exports only Local-provenance entries without network access.
+ * [POS]: Serves as the local and captured Skill persistence boundary beside Hub-backed Store ingestion.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package store
@@ -10,6 +10,10 @@ import (
 	"archive/zip"
 	"bytes"
 	"compress/flate"
+	"crypto/sha256"
+	"encoding/binary"
+	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -20,8 +24,139 @@ import (
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
-	"gopkg.in/yaml.v3"
 )
+
+var ErrCaptureChanged = errors.New("captured Skill changed while reading")
+
+// CaptureExisting imports the exact current bytes of a source-identified Skill
+// as an immutable Store baseline without changing the live target directory.
+func (s Store) CaptureExisting(root, name, skillID, _ string) (*Entry, error) {
+	if err := validateArtifactName(name); err != nil {
+		return nil, err
+	}
+	if err := source.ValidateSkillID(skillID); err != nil {
+		return nil, err
+	}
+	info, err := os.Lstat(root)
+	if err != nil {
+		return nil, err
+	}
+	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
+		return nil, fmt.Errorf("captured Skill requires a real directory")
+	}
+	digest, err := hub.ContentDirectoryDigest(root)
+	if err != nil {
+		return nil, err
+	}
+	stateDigest, err := capturedDirectoryDigest(root)
+	if err != nil {
+		return nil, err
+	}
+	hexDigest := strings.TrimPrefix(digest, "sha256:")
+	sourceDigest := sha256.Sum256([]byte(skillID))
+	artifactSkillID := "captured.skillsgo/" + hex.EncodeToString(sourceDigest[:]) + "/" + hexDigest + "/" + stateDigest + "/" + name
+	version := "captured-" + stateDigest[:12]
+	if existing, getErr := s.Get(artifactSkillID, version); getErr == nil {
+		if existing.Receipt.EffectiveProvenance() != ProvenanceCaptured ||
+			existing.Receipt.EffectiveSourceSkillID() != skillID ||
+			existing.Receipt.ContentDigest != digest {
+			return nil, fmt.Errorf("captured Store baseline identity conflicts with existing entry")
+		}
+		existingState, stateErr := capturedDirectoryDigest(existing.Artifact)
+		if stateErr != nil || existingState != stateDigest {
+			return nil, fmt.Errorf("captured Store baseline state conflicts with existing entry")
+		}
+		return existing, nil
+	}
+	archive, err := archiveDirectory(root, artifactSkillID+"@"+version)
+	if err != nil {
+		return nil, err
+	}
+	afterDigest, err := hub.ContentDirectoryDigest(root)
+	if err != nil || afterDigest != digest {
+		return nil, ErrCaptureChanged
+	}
+	afterStateDigest, err := capturedDirectoryDigest(root)
+	if err != nil || afterStateDigest != stateDigest {
+		return nil, ErrCaptureChanged
+	}
+	if err := hub.VerifyContentDigest(archive, artifactSkillID, version, digest); err != nil {
+		return nil, ErrCaptureChanged
+	}
+	return s.put(&hub.Artifact{
+		SkillID: artifactSkillID,
+		Info: hub.Info{
+			SchemaVersion: 1,
+			Kind:          "Skill",
+			ID:            artifactSkillID,
+			Version:       version,
+			Name:          name,
+			Description:   "Captured existing Skill baseline",
+			Risk:          hub.RiskUnknown,
+			ContentDigest: digest,
+			Ref:           version,
+		},
+		ZIP: archive,
+	}, ProvenanceCaptured, skillID)
+}
+
+// capturedDirectoryDigest binds a captured baseline to the exact regular-file
+// tree that archiveDirectory preserves, including empty directories and modes.
+func capturedDirectoryDigest(root string) (string, error) {
+	hash := sha256.New()
+	_, _ = hash.Write([]byte("skillsgo-captured-directory-v1\x00"))
+	err := filepath.WalkDir(root, func(current string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if current == root {
+			return nil
+		}
+		relative, err := filepath.Rel(root, current)
+		if err != nil {
+			return err
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		kind := byte('f')
+		if entry.IsDir() {
+			kind = 'd'
+		} else if !info.Mode().IsRegular() {
+			return fmt.Errorf("captured Skill contains unsupported file %q", current)
+		}
+		relative = filepath.ToSlash(relative)
+		_, _ = hash.Write([]byte{kind})
+		if err := binary.Write(hash, binary.BigEndian, uint64(len(relative))); err != nil {
+			return err
+		}
+		_, _ = io.WriteString(hash, relative)
+		if err := binary.Write(hash, binary.BigEndian, uint32(info.Mode().Perm())); err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		if err := binary.Write(hash, binary.BigEndian, uint64(info.Size())); err != nil {
+			return err
+		}
+		file, err := os.Open(current)
+		if err != nil {
+			return err
+		}
+		_, copyErr := io.Copy(hash, file)
+		closeErr := file.Close()
+		if copyErr != nil {
+			return copyErr
+		}
+		return closeErr
+	})
+	if err != nil {
+		return "", err
+	}
+	return hex.EncodeToString(hash.Sum(nil)), nil
+}
 
 func (s Store) ImportLocal(root, name string) (*Entry, error) {
 	if err := validateLocalName(name); err != nil {
@@ -51,7 +186,7 @@ func (s Store) ImportLocal(root, name string) (*Entry, error) {
 	if _, err := localManifest(filepath.Join(root, "SKILL.md"), name); err != nil {
 		return nil, err
 	}
-	entry, err := s.Put(&hub.Artifact{
+	return s.put(&hub.Artifact{
 		SkillID: skillID,
 		Info: hub.Info{
 			SchemaVersion: 1, Kind: "Skill", ID: skillID, Version: version,
@@ -59,22 +194,7 @@ func (s Store) ImportLocal(root, name string) (*Entry, error) {
 			Ref: version,
 		},
 		ZIP: archive,
-	})
-	if err != nil {
-		return nil, err
-	}
-	receipt := entry.Receipt
-	receipt.Name = name
-	receipt.Provenance = ProvenanceLocal
-	data, err := yaml.Marshal(receipt)
-	if err != nil {
-		return nil, err
-	}
-	if err := writeFileAtomic(filepath.Join(entry.Root, "receipt.yaml"), data, 0o600); err != nil {
-		return nil, err
-	}
-	entry.Receipt = receipt
-	return entry, nil
+	}, ProvenanceLocal, "")
 }
 
 func (s Store) ExportLocal(skillID, version, destination string) error {
@@ -126,19 +246,29 @@ func archiveDirectory(root, prefix string) ([]byte, error) {
 		if walkErr != nil {
 			return walkErr
 		}
-		if path == root || entry.IsDir() {
+		if path == root {
 			return nil
 		}
 		info, err := entry.Info()
 		if err != nil {
 			return err
 		}
-		if !info.Mode().IsRegular() {
-			return fmt.Errorf("Local Skill contains unsupported file %q", path)
-		}
 		relative, err := filepath.Rel(root, path)
 		if err != nil {
 			return err
+		}
+		if entry.IsDir() {
+			header, err := zip.FileInfoHeader(info)
+			if err != nil {
+				return err
+			}
+			header.Name = filepath.ToSlash(filepath.Join(prefix, relative)) + "/"
+			header.SetModTime(time.Date(1980, time.January, 1, 0, 0, 0, 0, time.UTC))
+			_, err = writer.CreateHeader(header)
+			return err
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("Local Skill contains unsupported file %q", path)
 		}
 		header, err := zip.FileInfoHeader(info)
 		if err != nil {

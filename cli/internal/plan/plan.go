@@ -910,13 +910,28 @@ func updateWorkspace(
 				}
 			}
 		}
-		if err := project.Replace(root, request.Name, requirement, entry.Receipt); err != nil {
+		if _, err := project.CommitInstallations(
+			root,
+			request.Name,
+			entry.Receipt.Ref,
+			requirement,
+			entry.Receipt,
+			[]install.Target{installTarget(target)},
+		); err != nil {
 			return err
 		}
 		skillIDReplaced[root] = true
 		return nil
 	}
-	return project.Upsert(root, request.Name, requirement, entry.Receipt)
+	_, err := project.CommitInstallations(
+		root,
+		request.Name,
+		entry.Receipt.Ref,
+		requirement,
+		entry.Receipt,
+		[]install.Target{installTarget(target)},
+	)
+	return err
 }
 
 func workspaceRequirement(request Request, target Target, immutableVersion string) project.SkillRequirement {
