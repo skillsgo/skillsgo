@@ -41,6 +41,20 @@ func (_c *RepositoryCreate) SetRepositoryID(v string) *RepositoryCreate {
 	return _c
 }
 
+// SetDescription sets the "description" field.
+func (_c *RepositoryCreate) SetDescription(v string) *RepositoryCreate {
+	_c.mutation.SetDescription(v)
+	return _c
+}
+
+// SetNillableDescription sets the "description" field if the given value is not nil.
+func (_c *RepositoryCreate) SetNillableDescription(v *string) *RepositoryCreate {
+	if v != nil {
+		_c.SetDescription(*v)
+	}
+	return _c
+}
+
 // SetStars sets the "stars" field.
 func (_c *RepositoryCreate) SetStars(v int64) *RepositoryCreate {
 	_c.mutation.SetStars(v)
@@ -181,6 +195,10 @@ func (_c *RepositoryCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *RepositoryCreate) defaults() {
+	if _, ok := _c.mutation.Description(); !ok {
+		v := repository.DefaultDescription
+		_c.mutation.SetDescription(v)
+	}
 	if _, ok := _c.mutation.Stars(); !ok {
 		v := repository.DefaultStars
 		_c.mutation.SetStars(v)
@@ -220,6 +238,9 @@ func (_c *RepositoryCreate) check() error {
 		if err := repository.RepositoryIDValidator(v); err != nil {
 			return &ValidationError{Name: "repository_id", err: fmt.Errorf(`ent: validator failed for field "Repository.repository_id": %w`, err)}
 		}
+	}
+	if _, ok := _c.mutation.Description(); !ok {
+		return &ValidationError{Name: "description", err: errors.New(`ent: missing required field "Repository.description"`)}
 	}
 	if _, ok := _c.mutation.Stars(); !ok {
 		return &ValidationError{Name: "stars", err: errors.New(`ent: missing required field "Repository.stars"`)}
@@ -274,6 +295,10 @@ func (_c *RepositoryCreate) createSpec() (*Repository, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.RepositoryID(); ok {
 		_spec.SetField(repository.FieldRepositoryID, field.TypeString, value)
 		_node.RepositoryID = value
+	}
+	if value, ok := _c.mutation.Description(); ok {
+		_spec.SetField(repository.FieldDescription, field.TypeString, value)
+		_node.Description = value
 	}
 	if value, ok := _c.mutation.Stars(); ok {
 		_spec.SetField(repository.FieldStars, field.TypeInt64, value)
@@ -400,6 +425,18 @@ func (u *RepositoryUpsert) SetRepositoryID(v string) *RepositoryUpsert {
 // UpdateRepositoryID sets the "repository_id" field to the value that was provided on create.
 func (u *RepositoryUpsert) UpdateRepositoryID() *RepositoryUpsert {
 	u.SetExcluded(repository.FieldRepositoryID)
+	return u
+}
+
+// SetDescription sets the "description" field.
+func (u *RepositoryUpsert) SetDescription(v string) *RepositoryUpsert {
+	u.Set(repository.FieldDescription, v)
+	return u
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *RepositoryUpsert) UpdateDescription() *RepositoryUpsert {
+	u.SetExcluded(repository.FieldDescription)
 	return u
 }
 
@@ -586,6 +623,20 @@ func (u *RepositoryUpsertOne) SetRepositoryID(v string) *RepositoryUpsertOne {
 func (u *RepositoryUpsertOne) UpdateRepositoryID() *RepositoryUpsertOne {
 	return u.Update(func(s *RepositoryUpsert) {
 		s.UpdateRepositoryID()
+	})
+}
+
+// SetDescription sets the "description" field.
+func (u *RepositoryUpsertOne) SetDescription(v string) *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.SetDescription(v)
+	})
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *RepositoryUpsertOne) UpdateDescription() *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.UpdateDescription()
 	})
 }
 
@@ -954,6 +1005,20 @@ func (u *RepositoryUpsertBulk) SetRepositoryID(v string) *RepositoryUpsertBulk {
 func (u *RepositoryUpsertBulk) UpdateRepositoryID() *RepositoryUpsertBulk {
 	return u.Update(func(s *RepositoryUpsert) {
 		s.UpdateRepositoryID()
+	})
+}
+
+// SetDescription sets the "description" field.
+func (u *RepositoryUpsertBulk) SetDescription(v string) *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.SetDescription(v)
+	})
+}
+
+// UpdateDescription sets the "description" field to the value that was provided on create.
+func (u *RepositoryUpsertBulk) UpdateDescription() *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.UpdateDescription()
 	})
 }
 

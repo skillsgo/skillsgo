@@ -47,6 +47,38 @@ func TestSQLiteCatalogUpsertAndSearch(t *testing.T) {
 	}
 }
 
+func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
+	ctx := context.Background()
+	c, err := Open(ctx, config.DatabaseConfig{Type: "sqlite", DSN: filepath.Join(t.TempDir(), "hub.db"), MaxOpenConns: 1, MaxIdleConns: 1})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, c.Close()) })
+
+	skill := &Skill{SkillID: "github.com/acme/skills/-/review", Name: "review", Description: "Review a change", LatestVersion: "main"}
+	require.NoError(t, c.UpsertSkill(ctx, skill))
+	candidates, err := c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
+	require.NoError(t, err)
+	require.Len(t, candidates, 1)
+	require.Equal(t, LocalizedSkill, candidates[0].ResourceKind)
+
+	require.NoError(t, c.UpsertLocalizedDescription(ctx, LocalizedDescription{
+		ResourceKind: LocalizedSkill, ResourceID: skill.SkillID, Locale: "zh-CN", Description: "审查变更",
+		SourceDigest: DescriptionDigest(skill.Description), PromptVersion: "description-v1",
+	}))
+	localizedResults, err := c.SearchLocalized(ctx, "审查", "zh-CN", 10, 0)
+	require.NoError(t, err)
+	require.Len(t, localizedResults, 1)
+	require.Equal(t, "审查变更", localizedResults[0].Description)
+	candidates, err = c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
+	require.NoError(t, err)
+	require.Empty(t, candidates)
+
+	skill.Description = "Review code changes"
+	require.NoError(t, c.UpsertSkill(ctx, skill))
+	candidates, err = c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
+	require.NoError(t, err)
+	require.Len(t, candidates, 1)
+}
+
 func TestSQLiteCatalogMatchesExactContentAndRanksSourceHints(t *testing.T) {
 	ctx := context.Background()
 	c, err := Open(ctx, config.DatabaseConfig{
@@ -258,11 +290,11 @@ func TestSQLiteMigrationsAreVersionedAndIdempotent(t *testing.T) {
 	c := open()
 	var versions []string
 	require.NoError(t, c.db.SelectContext(ctx, &versions, "SELECT version FROM atlas_schema_revisions ORDER BY version"))
-	require.Equal(t, []string{"202607180001"}, versions)
+	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001"}, versions)
 	require.NoError(t, c.Close())
 
 	c = open()
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	require.NoError(t, c.db.SelectContext(ctx, &versions, "SELECT version FROM atlas_schema_revisions ORDER BY version"))
-	require.Equal(t, []string{"202607180001"}, versions)
+	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001"}, versions)
 }
