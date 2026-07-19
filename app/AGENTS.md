@@ -10,7 +10,7 @@ This map governs the Flutter desktop application workspace. Read it with the roo
 - Runtime: Flutter desktop; macOS is the currently maintained target.
 - Entry points: `lib/main.dart` and `lib/app.dart`
 - Integration seam: `SkillsGateway`
-- Product responsibility: present discovery and Library workflows, collect installation, exact External removal, and export intent, and delegate Hub reads or local mutations to the correct boundary.
+- Product responsibility: gate clean installs through Mandatory Onboarding, present discovery and Library workflows, collect installation, exact External removal, and export intent, and delegate every business read or mutation to the bundled CLI boundary.
 
 ## Commands
 
@@ -33,13 +33,14 @@ flutter build macos --release
 | `lib/ui/` | Screens, navigation, components, design tokens, and interaction state. |
 | `lib/l10n/` | Localization sources and generated localization interfaces. |
 | `test/` | Unit, widget, and adapter contract tests. |
+| `integration_test/` | Rendered macOS journeys orchestrated by `/e2e/app` against real CLI and disposable Hub boundaries. |
 | `macos/` | macOS runner, desktop packaging integration, and the build-time bundled CLI bridge. |
 | `docs/` | App-specific specifications, plans, and decisions. |
 | `THIRD_PARTY_NOTICES.md` | Licenses and attribution for vendored App UI code. |
 
 ## Boundaries
 
-- The App may read public Hub APIs and invoke the SkillsGo CLI through typed adapters.
+- The App invokes the bundled SkillsGo CLI through typed adapters and must not call public Hub APIs directly.
 - The CLI owns local installation, update, removal, target detection, Workspace Manifests, Workspace Sums, and the shared store.
 - The Hub owns public skill metadata, search, rankings, immutable artifacts, and event ingestion.
 - Do not parse human-oriented CLI output. Prefer stable machine-readable output and typed models.

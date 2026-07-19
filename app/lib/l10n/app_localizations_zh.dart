@@ -24,17 +24,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get openSettings => '打开设置';
 
   @override
-  String get cliNeedsAttention => 'SkillsGo CLI 需要处理后才能使用。';
+  String get cliNeedsAttention => 'SkillsGo 的必要组件需要处理。';
 
   @override
-  String get cliMissingBundled => '内置的 SkillsGo CLI 缺失或无法运行。请重新安装 SkillsGo。';
+  String get cliMissingBundled =>
+      'SkillsGo 的必要组件缺失或无法启动。请重新安装 SkillsGo 以恢复该组件。';
 
   @override
-  String get cliDamagedBundled => '内置的 SkillsGo CLI 返回了无效的启动响应。请重新安装 SkillsGo。';
+  String get cliDamagedBundled => 'SkillsGo 的必要组件已损坏。请重新安装 SkillsGo 以恢复该组件。';
 
   @override
   String get cliIncompatibleBundled =>
-      '内置的 SkillsGo CLI 与当前 SkillsGo 版本不兼容。请更新或重新安装应用。';
+      'SkillsGo 的必要组件与当前应用版本不匹配。请更新或重新安装 SkillsGo。';
 
   @override
   String get officialIndex => 'SkillsGo Hub';
@@ -87,45 +88,44 @@ class AppLocalizationsZh extends AppLocalizations {
   String get hotDescription => '按短期安装速度及其变化排列公开 Skill。';
 
   @override
-  String get offlineTitle => '当前处于离线状态';
+  String get offlineTitle => '无法连接到 SkillsGo';
 
   @override
-  String get offlineMessage => 'SkillsGo 无法连接 Hub。请检查网络、代理或 Hub 地址。';
+  String get offlineMessage => '请检查网络连接后重试。如果你使用了代理或自定义服务地址，请前往设置检查。';
 
   @override
   String get searchFailedTitle => '搜索遇到问题';
 
   @override
-  String get validationTitle => '请检查请求';
+  String get validationTitle => '请检查输入内容';
 
   @override
-  String get validationMessage => 'Hub 拒绝了该请求，请检查查询内容后重试。';
+  String get validationMessage => 'SkillsGo 无法处理这项请求。请检查输入内容后重试。';
 
   @override
-  String get serverTitle => 'Hub 暂不可用';
+  String get serverTitle => '服务暂时不可用';
 
   @override
-  String get serverMessage => 'Hub 无法完成该请求，请稍后重试。';
+  String get serverMessage => 'SkillsGo 暂时无法完成这项请求，请稍后重试。';
 
   @override
-  String get timeoutTitle => 'Hub 响应超时';
+  String get timeoutTitle => '等待时间过长';
 
   @override
-  String get timeoutMessage => 'Hub 响应时间过长，请检查连接或重试。';
+  String get timeoutMessage => '服务未能及时响应。请检查网络连接或重试。';
 
   @override
-  String get invalidResponseTitle => 'Hub 响应不受支持';
+  String get invalidResponseTitle => 'SkillsGo 需要更新';
 
   @override
-  String get invalidResponseMessage =>
-      '该 Hub 返回了 SkillsGo 无法读取的响应，请检查其版本与协议兼容性。';
+  String get invalidResponseMessage => '当前版本的 SkillsGo 无法读取服务返回的内容。请更新应用后重试。';
 
   @override
-  String get invalidLocalDataTitle => '本地安装数据无法读取';
+  String get invalidLocalDataTitle => '无法读取已安装的技能';
 
   @override
   String get invalidLocalDataMessage =>
-      'SkillsGo CLI 返回了 App 无法识别的本地安装数据。请更新 CLI，或清理损坏的安装记录后重试。';
+      '部分本地安装信息已损坏或不兼容。请更新或重新安装 SkillsGo 后重试。';
 
   @override
   String get tryAgain => '重试';
@@ -134,7 +134,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get searchEmptyTitle => '搜索，而不是漫无目的地浏览。';
 
   @override
-  String get searchEmptyMessage => '请输入能力、来源或任务，搜索公开 Hub。';
+  String get searchEmptyMessage => '请输入能力、来源或任务，搜索公开技能。';
 
   @override
   String get noSkillsTitle => '没有找到技能';
@@ -173,7 +173,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get collectionEmptyTitle => '该集合中暂无 Skill';
 
   @override
-  String get collectionEmptyMessage => 'Hub 返回了空集合，可在产生新的安装活动后重试。';
+  String get collectionEmptyMessage => '这里暂时没有内容。产生更多安装活动后可以重试。';
 
   @override
   String get loadMore => '加载更多';
@@ -188,7 +188,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get latestCommit => '最新提交';
 
   @override
-  String get installToMoreTargets => '安装到更多目标';
+  String get installToMoreTargets => '安装到更多位置';
 
   @override
   String localTargets(int count) {
@@ -263,13 +263,13 @@ class AppLocalizationsZh extends AppLocalizations {
   String get artifactUnavailableTitle => '制品暂不可用';
 
   @override
-  String get artifactUnavailableMessage => 'Hub 无法提供该不可变制品。你可以重试，或检查其他版本。';
+  String get artifactUnavailableMessage => '当前无法获取这个版本。你可以重试或选择其他版本。';
 
   @override
   String get detailInvalidTitle => '不支持该制品元数据';
 
   @override
-  String get detailInvalidMessage => 'Hub 返回的审计元数据不完整或格式错误。请检查兼容性后重试。';
+  String get detailInvalidMessage => '这个技能的部分信息不完整或无法读取。请更新 SkillsGo 后重试。';
 
   @override
   String get instructionsTab => '技能指令';
@@ -305,12 +305,23 @@ class AppLocalizationsZh extends AppLocalizations {
   String get knownInstallationTargets => '已知安装目标';
 
   @override
-  String targetSummary(String scope, String agent, String version) {
-    return '$scope / $agent · $version';
+  String get installationRange => '已安装范围';
+
+  @override
+  String get targetDetails => '查看目标详情';
+
+  @override
+  String get hideTargetDetails => '收起目标详情';
+
+  @override
+  String installedVersionLabel(String version) {
+    return '版本 $version';
   }
 
   @override
-  String get userScope => '用户范围';
+  String targetSummary(String scope, String agent, String version) {
+    return '$scope / $agent · $version';
+  }
 
   @override
   String get projectScope => '项目';
@@ -349,16 +360,22 @@ class AppLocalizationsZh extends AppLocalizations {
   String get all => '所有';
 
   @override
+  String get allSkills => '全部 Skills';
+
+  @override
   String get updatesOnly => '有更新';
 
   @override
-  String get allAgents => '所有 Agent';
+  String get allAgents => '所有智能体';
 
   @override
   String get allProjects => '所有项目';
 
   @override
   String get specificProject => '指定项目';
+
+  @override
+  String get userScope => '全局安装';
 
   @override
   String get addProject => '添加项目';
@@ -384,13 +401,10 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String emptyProjectTitle(String name) {
-    return '$name 中没有发现技能';
-  }
+  String get emptyProjectTitle => '还没有技能';
 
   @override
-  String get emptyProjectMessage =>
-      '项目不需要是 Git 仓库，也不需要预先存在 SkillsGo 文件。准备好后可安装第一个技能。';
+  String get browseSkills => '浏览技能';
 
   @override
   String get projectMissingTitle => '项目目录不存在';
@@ -436,11 +450,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get libraryNoMatches => '没有匹配的技能';
 
   @override
-  String get libraryNoMatchesMessage => '尝试其他名称、来源、Agent、项目或版本。';
+  String get libraryNoMatchesMessage => '尝试其他名称、来源、智能体、项目或版本。';
 
   @override
   String agentsSummary(int count) {
-    return '$count 个 Agent';
+    return '$count 个智能体';
   }
 
   @override
@@ -523,7 +537,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get remove => '移除';
 
   @override
-  String get manageTargets => '管理目标';
+  String get manageTargets => '管理范围';
 
   @override
   String skillsSelected(int count) {
@@ -532,6 +546,12 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get clearSelection => '清除选择';
+
+  @override
+  String get selectCurrentResults => '选择当前结果';
+
+  @override
+  String get clearCurrentResultSelection => '清除当前结果选择';
 
   @override
   String get manageTargetsTitle => '管理安装目标';
@@ -548,10 +568,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get repairTarget => '修复';
 
   @override
-  String get stopManaging => '停止管理';
-
-  @override
-  String get stopManagingDescription => '移除 SkillsGo 所有权元数据，并保留目标当前内容。';
+  String get confirmRemoveTarget => '确认移除';
 
   @override
   String get applyTargetActions => '执行所选操作';
@@ -579,7 +596,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get localReadFailedMessage =>
-      'SkillsGo 无法读取这个本地安装。请检查目标健康状态和文件访问权限后重试。';
+      'SkillsGo 无法读取这个已安装的技能。请确认其文件夹存在且可以访问，然后重试。';
 
   @override
   String get localConfiguration => 'SKILLSGO 设置';
@@ -591,7 +608,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get general => '个性化';
 
   @override
-  String get agents => 'Agents';
+  String get agents => '智能体';
 
   @override
   String get hub => 'Hub';
@@ -786,13 +803,53 @@ class AppLocalizationsZh extends AppLocalizations {
   String get save => '保存';
 
   @override
+  String get advancedSettings => '高级';
+
+  @override
+  String get remindersSettings => '提醒';
+
+  @override
+  String get remindersSettingsTitle => '提醒设置';
+
+  @override
+  String get remindersSettingsDescription => '选择要接收的提醒。';
+
+  @override
+  String get updateReminderTitle => '更新提醒';
+
+  @override
+  String get updateReminderDescription => '打开“已安装”时检查更新。';
+
+  @override
+  String get securityReminderTitle => '高风险提醒';
+
+  @override
+  String get securityReminderDescription => '发现已安装技能存在高风险或严重风险时提醒。';
+
+  @override
+  String availableUpdatesReminder(int count) {
+    return '$count 个已安装技能有可用更新';
+  }
+
+  @override
+  String get openAvailableUpdates => '打开“有更新”视图，查看并选择需要更新的技能。';
+
+  @override
+  String securityAdvisoriesReminder(int count) {
+    return '$count 个已安装技能需要安全检查';
+  }
+
+  @override
+  String get reviewInstalledSkills => '使用或更新前，请先查看这些技能的风险信息。';
+
+  @override
   String get generalSettingsTitle => '让 SkillsGo 更适合你';
 
   @override
   String get generalSettingsDescription => '界面会自动跟随系统语言、辅助功能和动态效果偏好。';
 
   @override
-  String get agentsSettingsTitle => 'Agent 运行环境';
+  String get agentsSettingsTitle => '智能体运行环境';
 
   @override
   String get hubSettingsTitle => 'Hub 地址';
@@ -838,6 +895,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get riskPolicyTitle => '个人风险策略';
+
+  @override
+  String get riskPolicyDescription => '安全规则会在安装或更新技能时生效。';
 
   @override
   String get confirmHighRisk => '高风险必须额外确认';
@@ -936,26 +996,32 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get agentDetectedDescription => '已检测到 Agent，可在其支持的范围内安装技能。';
-
-  @override
-  String get agentSupportedDescription =>
-      'SkillsGo 已支持，但尚未检测到安装。请先安装该 Agent，或使用项目级目标。';
-
-  @override
-  String agentUserTarget(String path) {
-    return '用户级目标：$path';
+  String installedAgentsTitle(int count) {
+    return '已安装 · $count';
   }
 
   @override
-  String get agentInspectionFailed => 'Agent 检测数据不可用，请重新检测。';
+  String notInstalledAgentsTitle(int count) {
+    return '未安装 · $count';
+  }
 
   @override
-  String get noInstalledAgentsTitle => '未检测到已安装的 Agent';
+  String get notInstalledAgentsDescription => 'SkillsGo 已支持，但尚未在这台 Mac 上检测到。';
+
+  @override
+  String agentDiscoveryRoots(String paths) {
+    return '技能加载路径：$paths';
+  }
+
+  @override
+  String get agentInspectionFailed => '智能体检测数据不可用，请重新检测。';
+
+  @override
+  String get noInstalledAgentsTitle => '未检测到已安装的智能体';
 
   @override
   String get noInstalledAgentsMessage =>
-      '你仍可继续浏览该技能，但当前没有可用安装目标。请先安装一个受支持的 Agent，然后重新检测。';
+      '你仍可继续浏览该技能，但当前没有可用安装目标。请先安装一个受支持的智能体，然后重新检测。';
 
   @override
   String get clearCustomPath => '清除自定义路径';
@@ -965,6 +1031,9 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get privacySummary => '你的搜索记录不会被保存，SkillsGo 也不会保留命令日志。';
+
+  @override
+  String get language => '语言';
 
   @override
   String get personalizationTheme => '主题';
@@ -1129,6 +1198,12 @@ class AppLocalizationsZh extends AppLocalizations {
   String get installationInProgress => '正在安装';
 
   @override
+  String get installationSucceeded => '安装完成';
+
+  @override
+  String get installationSucceededMessage => '技能现在可在所选位置使用。';
+
+  @override
   String get projectUnavailable => '项目不可用';
 
   @override
@@ -1165,7 +1240,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get availableInSelectedProjects => '指定项目';
 
   @override
-  String get usedBy => '用于 Agent';
+  String get usedBy => '用于智能体';
 
   @override
   String get backToTargets => '返回目标选择';
@@ -1214,11 +1289,11 @@ class AppLocalizationsZh extends AppLocalizations {
   String get replaceLocalModification => '放弃本地修改并替换这个目标';
 
   @override
-  String get sharedTargetConflict => '此路径由其他 Agent 目标共享';
+  String get sharedTargetConflict => '此路径由其他智能体目标共享';
 
   @override
   String sharedTargetConflictDescription(String agents) {
-    return '返回目标矩阵并选择所有受影响的 Agent 后再替换：$agents';
+    return '返回目标矩阵并选择所有受影响的智能体后再替换：$agents';
   }
 
   @override
@@ -1296,7 +1371,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get updatePlanTitle => '选择要更新的目标';
 
   @override
-  String get updatePlanDescription => '请选择明确的安装目标；未选择的 Agent 和项目不会改变。';
+  String get updatePlanDescription => '请选择明确的安装目标；未选择的智能体和项目不会改变。';
 
   @override
   String updateTargetsSelected(int selected, int available) {
@@ -1363,50 +1438,47 @@ class AppLocalizationsZh extends AppLocalizations {
   String get targetFailed => '失败';
 
   @override
-  String get targetFailureRetryable => '此目标执行失败，可以重试。';
+  String get targetFailureRetryable => '无法更改此位置，你可以重试。';
 
   @override
-  String get targetFailureNeedsAttention => '重试前需要先处理此目标的问题。';
+  String get targetFailureNeedsAttention => '请先处理此位置的问题，然后重试。';
 
   @override
-  String get installationTargetFailureMessage => '此目标已恢复到先前状态。请检查目标路径后重试。';
+  String get installationTargetFailureMessage => '此位置没有发生更改。请确认文件夹可用后重试。';
 
   @override
   String get workspacePersistenceFailureMessage =>
-      'Workspace Manifest 无法保存，SkillsGo 已恢复此目标。请检查 Workspace 访问权限后重试。';
+      'SkillsGo 无法保存项目设置，因此没有更改此位置。请确认项目文件夹可写后重试。';
 
   @override
-  String get installationStateChangedMessage => '此目标在确认后发生了变化。请重新检查当前状态再重试。';
+  String get installationStateChangedMessage => '此位置在你确认期间发生了变化。请查看最新状态后重试。';
 
   @override
-  String get updateTargetFailureMessage => '此更新目标失败，其他更新不受影响。请重试失败目标。';
+  String get updateTargetFailureMessage => '无法更新此位置，其他位置不受影响。你可以只重试这一项。';
 
   @override
-  String get managementTargetFailureMessage => '此目标操作失败，其他操作不会撤销。请重试失败目标。';
+  String get managementTargetFailureMessage => '无法在此位置完成操作，其他位置不受影响。你可以只重试这一项。';
 
   @override
   String get technicalDetails => '技术详情';
 
   @override
-  String get targetPathExists => '目标路径已有其他内容。';
+  String get targetPathExists => '此位置已有其他内容。';
 
   @override
-  String get targetBlockedByRisk => '当前风险策略已阻止这个目标。';
+  String get targetBlockedByRisk => '当前安全设置阻止了在此位置安装。';
 
   @override
-  String get targetInstallFailed => '无法将技能写入这个目标。';
+  String get targetInstallFailed => '无法在此位置安装技能。';
 
   @override
-  String get targetWorkspaceUpdateFailed => '技能已写入，但无法更新对应的 Workspace 文件。';
+  String get targetWorkspaceUpdateFailed => '技能已经安装，但无法更新项目设置。';
 
   @override
   String get installationPlanFailed => '安装计划无法继续';
 
   @override
   String get installationFailed => '安装未能完成';
-
-  @override
-  String get bringUnderManagement => '纳入管理';
 
   @override
   String get localSource => '本地来源';
@@ -1447,55 +1519,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get batchTakeoverClose => '关闭';
 
   @override
-  String get adoptExternalTitle => '将此外部安装纳入管理';
-
-  @override
-  String get adoptExternalDescription => 'SkillsGo 已按内容匹配该安装。继续前请核对准确来源和不可变版本。';
-
-  @override
-  String get adoptionContentDigest => '内容标识';
-
-  @override
-  String get hubContentMatches => 'Hub 匹配结果';
-
-  @override
-  String hubMatchSource(String source) {
-    return '来源：$source';
-  }
-
-  @override
-  String hubMatchVersion(String version) {
-    return '不可变版本：$version';
-  }
-
-  @override
-  String get associateHub => '关联 Hub';
-
-  @override
-  String get importAsLocal => '导入为本地技能';
-
-  @override
-  String get importAsLocalDescription =>
-      '未找到完全一致的 Hub 记录。此操作会创建一个私有本地技能，不包含发布者或更新源。';
-
-  @override
-  String get adoptionPreservesContent =>
-      '当前安装内容不会被替换。只有在你确认后，SkillsGo 才会记录管理关系。';
-
-  @override
-  String get chooseHubMatch => '请选择一个准确的 Hub 匹配项后继续。';
-
-  @override
-  String get confirmAdoption => '确认关联';
-
-  @override
-  String get confirmLocalImport => '确认本地导入';
-
-  @override
-  String get adoptionFailed => 'SkillsGo 无法将此外部安装纳入管理。';
-
-  @override
-  String get installMoreTargets => '安装到更多目标';
+  String get installMoreTargets => '安装到更多位置';
 
   @override
   String get exportLocalSkill => '导出';
@@ -1517,4 +1541,76 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get detailArchiveSize => 'ZIP 大小';
+
+  @override
+  String get pathLabel => '项目路径';
+
+  @override
+  String get copyProjectPath => '复制项目路径';
+
+  @override
+  String get projectPathCopied => '项目路径已复制';
+
+  @override
+  String get onboardingWelcomeTitle => '欢迎使用 SkillsGo';
+
+  @override
+  String get onboardingWelcomeDescription => '发现、安装和管理所有智能体与项目中的 Skills。';
+
+  @override
+  String get onboardingDetectedAgents => '已检测到的智能体';
+
+  @override
+  String get onboardingNoAgents => '未检测到已安装的智能体，你仍然可以继续。';
+
+  @override
+  String get onboardingNext => '下一步';
+
+  @override
+  String get onboardingProjectsTitle => '添加你的项目';
+
+  @override
+  String get onboardingProjectsDescription => '选择你希望 SkillsGo 管理的项目。';
+
+  @override
+  String get onboardingAddProject => '现在添加';
+
+  @override
+  String get onboardingAddProjectLater => '或者稍后';
+
+  @override
+  String get onboardingStartUsing => '开始使用';
+
+  @override
+  String get onboardingBack => '返回';
+
+  @override
+  String get restartOnboardingTitle => '启动引导';
+
+  @override
+  String get restartOnboardingDescription => '重新查看首次启动引导，不会删除项目、设置或 Skills 数据。';
+
+  @override
+  String get restartOnboardingAction => '重新开始引导';
+
+  @override
+  String get restartOnboardingFailed => '无法重新开始启动引导。';
+
+  @override
+  String get onboardingProjectError => 'SkillsGo 无法从这个目录添加项目。';
+
+  @override
+  String get onboardingProjectsLoadError => 'SkillsGo 无法加载已添加的项目。';
+
+  @override
+  String get onboardingStartupError => 'SkillsGo 无法加载初始设置。';
+
+  @override
+  String get onboardingStateError => 'SkillsGo 无法保存设置进度，请重试。';
+
+  @override
+  String get onboardingCliErrorTitle => 'SkillsGo CLI 需要处理';
+
+  @override
+  String get onboardingCliErrorDescription => '修复内置 CLI 后重试，即可继续。';
 }

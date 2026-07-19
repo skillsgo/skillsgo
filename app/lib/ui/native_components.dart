@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Flutter Material primitives and SkillsGo semantic component tokens.
+ * [INPUT]: Depends on Flutter Material primitives plus SkillsGo semantic component and typography tokens.
  * [OUTPUT]: Provides reusable native desktop buttons including the primary capsule action, cards, dialogs, fields, alerts, skeleton placeholders, progress, toggles, dividers, and tooltips.
  * [POS]: Serves as the Material-only component layer between product screens and Flutter widgets.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -7,6 +7,7 @@
 import 'package:flutter/material.dart';
 
 import 'design_system/skills_component_tokens.dart';
+import 'design_system/skills_typography.dart';
 
 class SkillsSkeletonBox extends StatelessWidget {
   const SkillsSkeletonBox({
@@ -57,6 +58,7 @@ class PrimaryCapsuleButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final components = context.skillsComponents;
+    final textGeometry = labelStyle ?? context.skillsTypography.label;
     return FilledButton(
       onPressed: busy ? null : onPressed,
       style: ButtonStyle(
@@ -81,19 +83,41 @@ class PrimaryCapsuleButton extends StatelessWidget {
         ),
         shape: const WidgetStatePropertyAll(StadiumBorder()),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+        textStyle: WidgetStatePropertyAll(
+          _textGeometryOnly(
+            textGeometry.copyWith(
+              fontWeight: labelStyle?.fontWeight ?? FontWeight.w600,
+              leadingDistribution: TextLeadingDistribution.even,
+            ),
+          ),
+        ),
       ),
       child: busy
           ? const SizedBox.square(
               dimension: 16,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : Text(
-              label,
-              style: labelStyle ?? const TextStyle(fontWeight: FontWeight.w700),
-            ),
+          : Text(label),
     );
   }
 }
+
+TextStyle _textGeometryOnly(TextStyle style) => TextStyle(
+  inherit: style.inherit,
+  fontFamily: style.fontFamily,
+  fontFamilyFallback: style.fontFamilyFallback,
+  fontSize: style.fontSize,
+  fontWeight: style.fontWeight,
+  fontStyle: style.fontStyle,
+  letterSpacing: style.letterSpacing,
+  wordSpacing: style.wordSpacing,
+  textBaseline: style.textBaseline,
+  height: style.height,
+  leadingDistribution: style.leadingDistribution,
+  locale: style.locale,
+  fontFeatures: style.fontFeatures,
+  fontVariations: style.fontVariations,
+);
 
 class SkillsButton extends StatelessWidget {
   const SkillsButton({
@@ -315,16 +339,13 @@ class SkillsCard extends StatelessWidget {
                 children: [
                   if (title != null)
                     DefaultTextStyle.merge(
-                      style: const TextStyle(fontWeight: FontWeight.w600),
+                      style: context.skillsTypography.label,
                       child: title!,
                     ),
                   if (description != null) ...[
                     if (title != null) const SizedBox(height: 5),
                     DefaultTextStyle.merge(
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        height: 1.4,
-                      ),
+                      style: context.skillsTypography.bodySecondary,
                       child: description!,
                     ),
                   ],
@@ -373,12 +394,14 @@ class SkillsCheckbox extends StatelessWidget {
   const SkillsCheckbox({
     super.key,
     required this.value,
+    this.indeterminate = false,
     this.enabled = true,
     this.onChanged,
     this.label,
     this.sublabel,
   });
   final bool value;
+  final bool indeterminate;
   final bool enabled;
   final ValueChanged<bool>? onChanged;
   final Widget? label;
@@ -387,9 +410,10 @@ class SkillsCheckbox extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final checkbox = Checkbox(
-      value: value,
+      value: indeterminate ? null : value,
+      tristate: indeterminate,
       onChanged: enabled && onChanged != null
-          ? (next) => onChanged!(next ?? false)
+          ? (_) => onChanged!(indeterminate ? true : !value)
           : null,
       visualDensity: VisualDensity.compact,
       materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -410,7 +434,9 @@ class SkillsCheckbox extends StatelessWidget {
       return SizedBox.square(dimension: 24, child: Center(child: checkbox));
     }
     return InkWell(
-      onTap: enabled && onChanged != null ? () => onChanged!(!value) : null,
+      onTap: enabled && onChanged != null
+          ? () => onChanged!(indeterminate ? true : !value)
+          : null,
       borderRadius: BorderRadius.circular(8),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -427,9 +453,7 @@ class SkillsCheckbox extends StatelessWidget {
                 if (sublabel != null) ...[
                   const SizedBox(height: 3),
                   DefaultTextStyle.merge(
-                    style: TextStyle(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                    style: context.skillsTypography.bodySecondary,
                     child: sublabel!,
                   ),
                 ],
@@ -490,7 +514,7 @@ class SkillsAlert extends StatelessWidget {
                 children: [
                   if (title != null)
                     DefaultTextStyle.merge(
-                      style: TextStyle(
+                      style: context.skillsTypography.label.copyWith(
                         color: foreground,
                         fontWeight: FontWeight.w600,
                       ),
@@ -596,9 +620,7 @@ class SkillsSwitch extends StatelessWidget {
               if (sublabel != null) ...[
                 const SizedBox(height: 3),
                 DefaultTextStyle.merge(
-                  style: TextStyle(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                  style: context.skillsTypography.bodySecondary,
                   child: sublabel!,
                 ),
               ],
@@ -687,20 +709,13 @@ class SkillsDialog extends StatelessWidget {
                     children: [
                       if (title != null)
                         DefaultTextStyle.merge(
-                          style: const TextStyle(
-                            fontSize: 20,
-                            fontWeight: FontWeight.w600,
-                          ),
+                          style: context.skillsTypography.pageTitle,
                           child: title!,
                         ),
                       if (description != null) ...[
                         const SizedBox(height: 5),
                         DefaultTextStyle.merge(
-                          style: TextStyle(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.onSurfaceVariant,
-                          ),
+                          style: context.skillsTypography.bodySecondary,
                           child: description!,
                         ),
                       ],

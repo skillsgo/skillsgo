@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Flutter Material 3 color generation, Radix Sand primitives, and SkillsGo semantic color tokens.
- * [OUTPUT]: Provides the single theme-building interface for seed-aware Light and Dark SkillsGo themes.
+ * [INPUT]: Depends on Flutter Material 3 color generation, platform-localized system typography, Radix Sand primitives, and SkillsGo semantic color and typography tokens.
+ * [OUTPUT]: Provides the single theme-building interface for seed-aware Light and Dark SkillsGo themes, including inverse-neutral primary actions for near-white Light seeds, with system-font-first semantic typography.
  * [POS]: Serves as the deep theme module that maps stable product semantics onto Flutter Material roles.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,6 +9,7 @@ import 'package:flutter/material.dart';
 import 'radix_palette.dart';
 import 'skills_color_tokens.dart';
 import 'skills_component_tokens.dart';
+import 'skills_typography.dart';
 
 ThemeData buildSkillsTheme(
   Color seed, {
@@ -22,6 +23,17 @@ ThemeData buildSkillsTheme(
   final dark = brightness == Brightness.dark;
   final sand = dark ? SkillsRadixSand.dark : SkillsRadixSand.light;
   final status = dark ? SkillsRadixStatus.dark : SkillsRadixStatus.light;
+  final useInverseNeutralAccent =
+      !dark &&
+      seed.computeLuminance() >= .95 &&
+      HSLColor.fromColor(seed).saturation <= .06;
+  final resolvedAccent = useInverseNeutralAccent
+      ? SkillsRadixSand.light[11]
+      : accentScheme.primary;
+  final resolvedOnAccent = useInverseNeutralAccent
+      ? SkillsRadixSand.light[0]
+      : accentScheme.onPrimary;
+  final accentHoverOverlay = useInverseNeutralAccent ? sand[0] : sand[11];
 
   // Primer Primitives 11.9.0 supplies the semantic model used here:
   // bgColor-default for the main content plane, bgColor-muted for secondary
@@ -42,16 +54,16 @@ ThemeData buildSkillsTheme(
     foregroundSubtle: dark ? sand[9] : sand[8],
     borderDefault: sand[6],
     borderMuted: sand[5],
-    accent: accentScheme.primary,
+    accent: resolvedAccent,
     accentHover: Color.alphaBlend(
-      sand[11].withValues(alpha: .08),
-      accentScheme.primary,
+      accentHoverOverlay.withValues(alpha: .08),
+      resolvedAccent,
     ),
     accentMuted: Color.alphaBlend(
-      accentScheme.primary.withValues(alpha: dark ? .18 : .10),
+      resolvedAccent.withValues(alpha: dark ? .18 : .10),
       sand[1],
     ),
-    onAccent: accentScheme.onPrimary,
+    onAccent: resolvedOnAccent,
     shadow: Colors.black.withValues(alpha: dark ? .42 : .16),
   );
   final components = SkillsComponentTokens(
@@ -106,6 +118,8 @@ ThemeData buildSkillsTheme(
     onSurfaceVariant: tokens.foregroundMuted,
     outline: tokens.borderDefault,
     outlineVariant: tokens.borderMuted,
+    primary: tokens.accent,
+    onPrimary: tokens.onAccent,
     primaryContainer: tokens.accentMuted,
     onPrimaryContainer: tokens.accent,
     inverseSurface: tokens.foregroundDefault,
@@ -114,16 +128,35 @@ ThemeData buildSkillsTheme(
     surfaceTint: Colors.transparent,
   );
 
-  return ThemeData.from(colorScheme: scheme, useMaterial3: true).copyWith(
-    extensions: [tokens, components],
-    textTheme: ThemeData(brightness: brightness).textTheme.apply(
-      fontFamily: '.AppleSystemUIFont',
-      bodyColor: scheme.onSurface,
-      displayColor: scheme.onSurface,
-    ),
-    scaffoldBackgroundColor: tokens.canvas,
-    canvasColor: tokens.canvas,
-    dividerColor: tokens.borderMuted,
-    splashFactory: InkSparkle.splashFactory,
+  final platformTextTheme = ThemeData(brightness: brightness).textTheme.apply(
+    bodyColor: scheme.onSurface,
+    displayColor: scheme.onSurface,
   );
+  final typography = SkillsTypography.fromTheme(platformTextTheme, scheme);
+  final semanticTextTheme = platformTextTheme.copyWith(
+    displayLarge: typography.display,
+    displayMedium: typography.display,
+    displaySmall: typography.pageTitle,
+    headlineLarge: typography.display,
+    headlineMedium: typography.pageTitle,
+    headlineSmall: typography.pageTitle,
+    titleLarge: typography.pageTitle,
+    titleMedium: typography.sectionTitle,
+    titleSmall: typography.label,
+    bodyLarge: typography.body,
+    bodyMedium: typography.bodySecondary,
+    bodySmall: typography.metadata,
+    labelLarge: typography.label,
+    labelMedium: typography.metadata,
+    labelSmall: typography.caption,
+  );
+  final baseTheme = ThemeData.from(colorScheme: scheme, useMaterial3: true)
+      .copyWith(
+        textTheme: semanticTextTheme,
+        scaffoldBackgroundColor: tokens.canvas,
+        canvasColor: tokens.canvas,
+        dividerColor: tokens.borderMuted,
+        splashFactory: InkSparkle.splashFactory,
+      );
+  return baseTheme.copyWith(extensions: [tokens, components, typography]);
 }

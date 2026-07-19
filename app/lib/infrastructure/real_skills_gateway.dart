@@ -1,24 +1,27 @@
 /*
- * [INPUT]: Depends on the bundled CLI process boundary plus legacy Hub HTTP reads pending migration, the local filesystem, the platform directory picker, and SharedPreferences-backed product preferences.
- * [OUTPUT]: Provides typed CLI-backed business operations including versioned machine-failure parsing and Batch Takeover, plus temporary legacy Hub discovery/detail reads, local inspection, project persistence, diagnostics, and appearance/wallpaper settings.
- * [POS]: Serves as the App infrastructure adapter for the CLI-mediated business boundary while temporarily isolating legacy direct Hub reads scheduled for removal.
+ * [INPUT]: Depends on the bundled CLI process boundary for all Hub and local business access, the local filesystem, bounded ProjectIconResolver, the platform single- and multi-directory pickers, and SharedPreferences-backed product preferences.
+ * [OUTPUT]: Provides typed CLI-backed Mandatory Onboarding, locale-aware discovery and detail, installation, scope-explicit Batch Takeover, inspection, atomic multi-project reference persistence with cached asynchronous identity enrichment, diagnostics, and persisted appearance/language/wallpaper/reminder operations with versioned machine-failure parsing.
+ * [POS]: Serves as the App infrastructure adapter that keeps every Hub and local business operation behind the CLI machine boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'dart:math';
+import 'dart:ui' as ui;
 
 import 'package:file_selector/file_selector.dart' as file_selector;
 import 'package:flutter/foundation.dart';
-import 'package:http/http.dart' as http;
 import 'package:path/path.dart' as p;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../domain/skills_gateway.dart';
+import 'project_icon_resolver.dart';
 
 typedef DirectoryPicker = Future<String?> Function({String? initialDirectory});
+typedef DirectoryPathsPicker =
+    Future<List<String>> Function({String? initialDirectory});
 typedef SavePathPicker = Future<String?> Function(String suggestedName);
 typedef ProjectPathInspector =
     Future<({ProjectAccessState state, String? diagnostic})> Function(
@@ -70,20 +73,24 @@ class IoProcessRunner implements ProcessRunner {
           stderr: timedOut ? 'Command timed out.' : stderr,
         );
       }
-      final result = await Process.run(
-        executable,
-        arguments,
-      ).timeout(const Duration(minutes: 2));
+      final process = await Process.start(executable, arguments);
+      final stdoutFuture = process.stdout.transform(utf8.decoder).join();
+      final stderrFuture = process.stderr.transform(utf8.decoder).join();
+      var timedOut = false;
+      late int exitCode;
+      try {
+        exitCode = await process.exitCode.timeout(const Duration(minutes: 2));
+      } on TimeoutException {
+        timedOut = true;
+        process.kill();
+        exitCode = await process.exitCode;
+      }
+      final stdout = await stdoutFuture;
+      final stderr = await stderrFuture;
       return ProcessOutput(
-        exitCode: result.exitCode,
-        stdout: result.stdout.toString(),
-        stderr: result.stderr.toString(),
-      );
-    } on TimeoutException {
-      return const ProcessOutput(
-        exitCode: 124,
-        stdout: '',
-        stderr: 'Command timed out.',
+        exitCode: timedOut ? 124 : exitCode,
+        stdout: stdout,
+        stderr: timedOut ? 'Command timed out.' : stderr,
       );
     } on ProcessException catch (error) {
       return ProcessOutput(exitCode: 127, stdout: '', stderr: error.message);
@@ -466,7 +473,6 @@ TargetManagementAction _targetManagementAction(Object? value) =>
     switch (value) {
       'remove' => TargetManagementAction.remove,
       'repair' => TargetManagementAction.repair,
-      'stop-managing' => TargetManagementAction.stopManaging,
       _ => throw const FormatException(),
     };
 
@@ -481,24 +487,7 @@ String _targetManagementActionValue(TargetManagementAction action) =>
     switch (action) {
       TargetManagementAction.remove => 'remove',
       TargetManagementAction.repair => 'repair',
-      TargetManagementAction.stopManaging => 'stop-managing',
     };
-
-ExternalAdoptionAction _externalAdoptionAction(Object? value) =>
-    switch (value) {
-      'associate-hub' => ExternalAdoptionAction.associateHub,
-      'import-local' => ExternalAdoptionAction.importLocal,
-      _ => throw const FormatException(),
-    };
-
-String _externalAdoptionActionValue(ExternalAdoptionAction action) =>
-    switch (action) {
-      ExternalAdoptionAction.associateHub => 'associate-hub',
-      ExternalAdoptionAction.importLocal => 'import-local',
-    };
-
-bool _isSha256Digest(Object? value) =>
-    value is String && RegExp(r'^sha256:[0-9a-f]{64}$').hasMatch(value);
 
 TargetManagementResult _targetManagementResult(
   Object? raw,
@@ -572,7 +561,7 @@ SkillMetricKind _metricKind(String value) => switch (value) {
 
 class RealSkillsGateway implements SkillsGateway {
   RealSkillsGateway({
-    http.Client? httpClient,
+    Object? httpClient,
     ProcessRunner? processRunner,
     String? initialCliPath,
     String? bundledCliPath,
@@ -583,10 +572,11 @@ class RealSkillsGateway implements SkillsGateway {
     this.discoveryTimeout = const Duration(seconds: 15),
     this.detailTimeout = const Duration(seconds: 20),
     DirectoryPicker? directoryPicker,
+    DirectoryPathsPicker? directoryPathsPicker,
     SavePathPicker? savePathPicker,
     ProjectPathInspector? projectPathInspector,
-  }) : _http = httpClient ?? http.Client(),
-       _runner = processRunner ?? const IoProcessRunner(),
+    this._projectIconResolver = const ProjectIconResolver(),
+  }) : _runner = processRunner ?? const IoProcessRunner(),
        _cliPath = initialCliPath,
        _bundledCliPath =
            bundledCliPath ?? _bundledPathFor(Platform.resolvedExecutable),
@@ -595,6 +585,7 @@ class RealSkillsGateway implements SkillsGateway {
        _hubBase = _originUri(hubBaseUrl),
        _injectedAppVersion = appVersion,
        _directoryPicker = directoryPicker ?? _pickDirectory,
+       _directoryPathsPicker = directoryPathsPicker ?? _pickDirectories,
        _savePathPicker = savePathPicker ?? _pickSavePath,
        _projectPathInspector = projectPathInspector ?? _inspectProjectPath;
 
@@ -603,11 +594,15 @@ class RealSkillsGateway implements SkillsGateway {
   static const _folderThemeKey = 'folder_theme';
   static const _wallpaperKey = 'wallpaper';
   static const _themeModeKey = 'theme_mode';
+  static const _languageKey = 'language';
+  static const _updateReminderKey = 'reminder_update_available';
+  static const _securityReminderKey = 'reminder_security_advisory';
   static const _allowCriticalOverrideKey = 'allow_critical_risk_override';
   static const _addedProjectsKey = 'added_projects_v1';
+  static const _onboardingCompletedKey = 'onboarding_completed_v1';
+  static const _onboardingStepKey = 'onboarding_step_v1';
   static const _startupHandshakeSchemaVersion = 1;
-  static const _appProtocolVersion = 9;
-  final http.Client _http;
+  static const _appProtocolVersion = 10;
   final ProcessRunner _runner;
   final Uri _defaultHubBase;
   Uri _hubBase;
@@ -618,13 +613,21 @@ class RealSkillsGateway implements SkillsGateway {
   final Duration discoveryTimeout;
   final Duration detailTimeout;
   final DirectoryPicker _directoryPicker;
+  final DirectoryPathsPicker _directoryPathsPicker;
   final SavePathPicker _savePathPicker;
   final ProjectPathInspector _projectPathInspector;
+  final ProjectIconResolver _projectIconResolver;
   String? _cliPath;
   bool _hubOriginLoaded = false;
 
   static Future<String?> _pickDirectory({String? initialDirectory}) =>
       file_selector.getDirectoryPath(initialDirectory: initialDirectory);
+
+  static Future<List<String>> _pickDirectories({
+    String? initialDirectory,
+  }) async => (await file_selector.getDirectoryPaths(
+    initialDirectory: initialDirectory,
+  )).whereType<String>().toList(growable: false);
 
   static Future<String?> _pickSavePath(String suggestedName) async =>
       (await file_selector.getSaveLocation(
@@ -796,7 +799,7 @@ class RealSkillsGateway implements SkillsGateway {
   Future<String> loadFolderTheme() async {
     final saved =
         (await SharedPreferences.getInstance()).getString(_folderThemeKey) ??
-        '#514532';
+        '#FFFFFF';
     return const {
           'manila': '#514532',
           'blue': '#294556',
@@ -812,7 +815,7 @@ class RealSkillsGateway implements SkillsGateway {
     final valid = RegExp(r'^#[0-9A-F]{6}$').hasMatch(normalized);
     await (await SharedPreferences.getInstance()).setString(
       _folderThemeKey,
-      valid ? normalized : '#514532',
+      valid ? normalized : '#FFFFFF',
     );
   }
 
@@ -854,9 +857,129 @@ class RealSkillsGateway implements SkillsGateway {
     );
   }
 
+  @override
+  Future<AppLanguage> loadLanguage() async {
+    final saved = (await SharedPreferences.getInstance()).getString(
+      _languageKey,
+    );
+    return AppLanguage.values.firstWhere(
+      (language) => language.name == saved,
+      orElse: () => AppLanguage.system,
+    );
+  }
+
+  @override
+  Future<void> saveLanguage(AppLanguage language) async {
+    await (await SharedPreferences.getInstance()).setString(
+      _languageKey,
+      language.name,
+    );
+  }
+
+  @override
+  Future<ReminderSettings> loadReminderSettings() async {
+    final preferences = await SharedPreferences.getInstance();
+    return ReminderSettings(
+      updateAvailable: preferences.getBool(_updateReminderKey) ?? true,
+      securityAdvisory: preferences.getBool(_securityReminderKey) ?? true,
+    );
+  }
+
+  @override
+  Future<void> saveReminderSettings(ReminderSettings settings) async {
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      preferences.setBool(_updateReminderKey, settings.updateAvailable),
+      preferences.setBool(_securityReminderKey, settings.securityAdvisory),
+    ]);
+  }
+
+  @override
+  Future<OnboardingState> loadOnboardingState() async {
+    final preferences = await SharedPreferences.getInstance();
+    final completed = preferences.getBool(_onboardingCompletedKey);
+    if (completed != null) {
+      return OnboardingState(
+        completed: completed,
+        step: _onboardingStep(preferences.getString(_onboardingStepKey)),
+      );
+    }
+    const legacyKeys = {
+      _customCliKey,
+      _hubOriginKey,
+      _folderThemeKey,
+      _wallpaperKey,
+      _themeModeKey,
+      _languageKey,
+      _updateReminderKey,
+      _securityReminderKey,
+      _allowCriticalOverrideKey,
+      _addedProjectsKey,
+    };
+    if (preferences.getKeys().any(legacyKeys.contains)) {
+      await preferences.setBool(_onboardingCompletedKey, true);
+      return const OnboardingState(
+        completed: true,
+        step: OnboardingStep.projects,
+      );
+    }
+    return const OnboardingState(
+      completed: false,
+      step: OnboardingStep.welcome,
+    );
+  }
+
+  OnboardingStep _onboardingStep(String? saved) =>
+      OnboardingStep.values.firstWhere(
+        (step) => step.name == saved,
+        orElse: () => OnboardingStep.welcome,
+      );
+
+  @override
+  Future<void> saveOnboardingStep(OnboardingStep step) async {
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      preferences.setBool(_onboardingCompletedKey, false),
+      preferences.setString(_onboardingStepKey, step.name),
+    ]);
+  }
+
+  @override
+  Future<void> completeOnboarding() async {
+    await (await SharedPreferences.getInstance()).setBool(
+      _onboardingCompletedKey,
+      true,
+    );
+  }
+
+  @override
+  Future<void> resetOnboarding() async {
+    final preferences = await SharedPreferences.getInstance();
+    await Future.wait([
+      preferences.setBool(_onboardingCompletedKey, false),
+      preferences.setString(_onboardingStepKey, OnboardingStep.welcome.name),
+    ]);
+  }
+
+  Future<String> _contentLocale() async {
+    final language = await loadLanguage();
+    return language.contentTag(
+      ui.PlatformDispatcher.instance.locale.languageCode,
+    );
+  }
+
   String _newProjectID() {
     final bytes = List<int>.generate(12, (_) => Random.secure().nextInt(256));
     return base64UrlEncode(bytes).replaceAll('=', '');
+  }
+
+  Future<String> _canonicalProjectPath(String path) async {
+    final normalized = p.normalize(p.absolute(path));
+    try {
+      return p.normalize(await Directory(normalized).resolveSymbolicLinks());
+    } on FileSystemException {
+      return normalized;
+    }
   }
 
   Future<List<({String id, String name, String path})>>
@@ -921,7 +1044,14 @@ class RealSkillsGateway implements SkillsGateway {
       path: reference.path,
       accessState: access.state,
       diagnostic: access.diagnostic,
+      icon: await _projectIconResolver.cached(reference.id),
     );
+  }
+
+  @override
+  Future<AddedProject> resolveProjectIcon(AddedProject project) async {
+    final icon = await _projectIconResolver.resolve(project);
+    return project.copyWith(icon: icon, clearIcon: icon == null);
   }
 
   @override
@@ -935,22 +1065,58 @@ class RealSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<AddedProject?> addProject() async {
-    final selected = await _directoryPicker();
-    if (selected == null || selected.trim().isEmpty) return null;
-    final path = p.normalize(p.absolute(selected.trim()));
+  Future<List<AddedProject>> addProjects() async {
+    final selected = await _directoryPathsPicker();
+    if (selected.isEmpty) return const [];
     final references = await _loadProjectReferences();
+    final referencesByPath =
+        <String, ({String id, String name, String path})>{};
     for (final reference in references) {
-      if (p.equals(reference.path, path)) return _resolveProject(reference);
+      referencesByPath[await _canonicalProjectPath(reference.path)] = reference;
     }
-    final basename = p.basename(path);
-    final reference = (
-      id: _newProjectID(),
-      name: basename.isEmpty ? path : basename,
-      path: path,
-    );
-    await _saveProjectReferences([...references, reference]);
-    return _resolveProject(reference);
+
+    final selectedReferences = <({String id, String name, String path})>[];
+    final selectedPaths = <String>{};
+    final addedReferences = <({String id, String name, String path})>[];
+    for (final rawPath in selected) {
+      final value = rawPath.trim();
+      if (value.isEmpty) continue;
+      final path = await _canonicalProjectPath(value);
+      if (!selectedPaths.add(path)) continue;
+
+      final entityType = await FileSystemEntity.type(path, followLinks: true);
+      if (entityType != FileSystemEntityType.directory &&
+          entityType != FileSystemEntityType.notFound) {
+        throw const SkillsException(
+          'Only directories can be added as projects.',
+        );
+      }
+
+      final existing = referencesByPath[path];
+      if (existing != null) {
+        selectedReferences.add(existing);
+        continue;
+      }
+
+      final basename = p.basename(path);
+      final reference = (
+        id: _newProjectID(),
+        name: basename.isEmpty ? path : basename,
+        path: path,
+      );
+      referencesByPath[path] = reference;
+      selectedReferences.add(reference);
+      addedReferences.add(reference);
+    }
+
+    if (addedReferences.isNotEmpty) {
+      await _saveProjectReferences([...references, ...addedReferences]);
+    }
+    final projects = <AddedProject>[];
+    for (final reference in selectedReferences) {
+      projects.add(await _resolveProject(reference));
+    }
+    return projects;
   }
 
   @override
@@ -1028,24 +1194,10 @@ class RealSkillsGateway implements SkillsGateway {
       );
     }
     final normalized = base.toString().replaceFirst(RegExp(r'/$'), '');
-    final uri = base
-        .resolve('api/v1/search')
-        .replace(
-          queryParameters: const {'q': 'skillsgo-settings-probe', 'limit': '1'},
-        );
     try {
-      final response = await _http
-          .get(uri)
-          .timeout(const Duration(seconds: 10));
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        return HubStatus(
-          origin: normalized,
-          state: HealthState.unreachable,
-          issue: HubIssue.httpFailure,
-          httpStatus: response.statusCode,
-        );
-      }
-      final decoded = jsonDecode(response.body);
+      final result = await _runCli(['hub', 'check', '--hub', normalized]);
+      if (!result.succeeded) throw _commandFailure(result);
+      final decoded = jsonDecode(result.output.stdout);
       if (decoded is! Map<String, dynamic> || decoded['skills'] is! List) {
         return HubStatus(
           origin: normalized,
@@ -1054,31 +1206,11 @@ class RealSkillsGateway implements SkillsGateway {
         );
       }
       return HubStatus(origin: normalized, state: HealthState.ready);
-    } on SocketException catch (error) {
-      return HubStatus(
-        origin: normalized,
-        state: HealthState.unreachable,
-        issue: HubIssue.connectionFailure,
-        diagnostic: error.message,
-      );
-    } on TimeoutException {
-      return HubStatus(
-        origin: normalized,
-        state: HealthState.unreachable,
-        issue: HubIssue.timeout,
-      );
     } on FormatException {
       return HubStatus(
         origin: normalized,
         state: HealthState.invalid,
         issue: HubIssue.invalidJson,
-      );
-    } on http.ClientException catch (error) {
-      return HubStatus(
-        origin: normalized,
-        state: HealthState.unreachable,
-        issue: HubIssue.connectionFailure,
-        diagnostic: error.message,
       );
     } on Object catch (error) {
       return HubStatus(
@@ -1166,30 +1298,26 @@ class RealSkillsGateway implements SkillsGateway {
       DiscoveryCollection.trending => 'trending',
       DiscoveryCollection.hot => 'hot',
     };
-    final parameters = <String, String>{
-      'limit': '$limit',
-      'offset': '$offset',
-      if (collection == DiscoveryCollection.search) 'q': trimmedQuery,
-      if (collection != DiscoveryCollection.search) 'sort': expectedCollection,
-    };
-    final uri = _hubBase
-        .resolve(
-          collection == DiscoveryCollection.search
-              ? 'api/v1/search'
-              : 'api/v1/skills',
-        )
-        .replace(queryParameters: parameters);
     try {
-      final response = await _http.get(uri).timeout(discoveryTimeout);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        throw SkillsException(
-          'Discovery service returned ${response.statusCode}.',
-          kind: response.statusCode >= 400 && response.statusCode < 500
-              ? SkillsFailureKind.validation
-              : SkillsFailureKind.server,
-        );
-      }
-      final decoded = jsonDecode(response.body);
+      final result = await _runCli([
+        'discover',
+        '--hub',
+        _hubOrigin,
+        '--collection',
+        expectedCollection,
+        '--content-locale',
+        await _contentLocale(),
+        if (collection == DiscoveryCollection.search) ...[
+          '--query',
+          trimmedQuery,
+        ],
+        '--offset',
+        '$offset',
+        '--limit',
+        '$limit',
+      ]);
+      if (!result.succeeded) throw _commandFailure(result);
+      final decoded = jsonDecode(result.output.stdout);
       if (decoded is! Map<String, dynamic> ||
           decoded['collection'] != expectedCollection ||
           decoded['skills'] is! List ||
@@ -1293,23 +1421,6 @@ class RealSkillsGateway implements SkillsGateway {
       );
     } on SkillsException {
       rethrow;
-    } on SocketException {
-      throw const SkillsException(
-        'You appear to be offline.',
-        kind: SkillsFailureKind.offline,
-        isOffline: true,
-      );
-    } on http.ClientException {
-      throw const SkillsException(
-        'The Hub connection failed.',
-        kind: SkillsFailureKind.offline,
-        isOffline: true,
-      );
-    } on TimeoutException {
-      throw const SkillsException(
-        'Discovery timed out. Check your connection.',
-        kind: SkillsFailureKind.timeout,
-      );
     } on FormatException {
       throw const SkillsException(
         'Discovery service returned invalid JSON.',
@@ -1450,31 +1561,17 @@ class RealSkillsGateway implements SkillsGateway {
   @override
   Future<SkillDetail> loadRemoteDetail(SkillSummary skill) async {
     await _ensureHubOrigin();
-    final uri = _hubBase.resolve('api/v1/skills/${skill.id}');
     try {
-      final response = await _http.get(uri).timeout(detailTimeout);
-      if (response.statusCode < 200 || response.statusCode >= 300) {
-        var code = '';
-        try {
-          final error = jsonDecode(response.body);
-          if (error is Map<String, dynamic> && error['code'] is String) {
-            code = error['code'] as String;
-          }
-        } on FormatException {
-          // Status remains authoritative when an error body is not JSON.
-        }
-        throw SkillsException(
-          'Skill detail returned ${response.statusCode}.',
-          kind: switch (code) {
-            'artifact_invalid' => SkillsFailureKind.invalidResponse,
-            'artifact_unavailable' => SkillsFailureKind.artifactUnavailable,
-            _ when response.statusCode >= 400 && response.statusCode < 500 =>
-              SkillsFailureKind.validation,
-            _ => SkillsFailureKind.server,
-          },
-        );
-      }
-      final decoded = jsonDecode(response.body);
+      final result = await _runCli([
+        'detail',
+        skill.id,
+        '--hub',
+        _hubOrigin,
+        '--content-locale',
+        await _contentLocale(),
+      ]);
+      if (!result.succeeded) throw _commandFailure(result);
+      final decoded = jsonDecode(result.output.stdout);
       if (decoded is! Map<String, dynamic>) {
         throw const SkillsException(
           'Skill detail is invalid.',
@@ -1610,23 +1707,6 @@ class RealSkillsGateway implements SkillsGateway {
       );
     } on SkillsException {
       rethrow;
-    } on SocketException {
-      throw const SkillsException(
-        'You appear to be offline.',
-        kind: SkillsFailureKind.offline,
-        isOffline: true,
-      );
-    } on http.ClientException {
-      throw const SkillsException(
-        'The Hub connection failed.',
-        kind: SkillsFailureKind.offline,
-        isOffline: true,
-      );
-    } on TimeoutException {
-      throw const SkillsException(
-        'Skill detail timed out.',
-        kind: SkillsFailureKind.timeout,
-      );
     } on FormatException {
       throw const SkillsException(
         'Skill detail returned invalid JSON.',
@@ -1670,14 +1750,39 @@ class RealSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<AgentCatalog> inspectAgents() async {
-    final result = await _runCli(const ['agents', '--output', 'json']);
+  Future<AgentCatalog> inspectOnboardingAgents() async {
+    final arguments = const ['agents', '--output', 'json'];
+    final output = await _runner.run(_bundledCliPath, arguments);
+    return _parseAgentCatalog(
+      CommandResult(command: [_bundledCliPath, ...arguments], output: output),
+      requireHandshake: true,
+    );
+  }
+
+  @override
+  Future<AgentCatalog> inspectAgents() async =>
+      _parseAgentCatalog(await _runCli(const ['agents', '--output', 'json']));
+
+  AgentCatalog _parseAgentCatalog(
+    CommandResult result, {
+    bool requireHandshake = false,
+  }) {
     if (!result.succeeded) throw _commandFailure(result);
     try {
       final decoded = jsonDecode(result.output.stdout);
       if (decoded is! Map<String, dynamic> ||
           decoded['schemaVersion'] != 1 ||
           decoded['agents'] is! List) {
+        throw const FormatException();
+      }
+      if (requireHandshake &&
+          (decoded['product'] != 'skillsgo' ||
+              decoded['version'] is! String ||
+              (decoded['version'] as String).trim().isEmpty ||
+              decoded['appProtocolVersion'] != _appProtocolVersion ||
+              decoded['os'] != _expectedCliOS ||
+              decoded['architecture'] is! String ||
+              (decoded['architecture'] as String).trim().isEmpty)) {
         throw const FormatException();
       }
       final seen = <String>{};
@@ -1716,12 +1821,24 @@ class RealSkillsGateway implements SkillsGateway {
             if (scopes.contains(InstallationScope.user) != (target != null)) {
               throw const FormatException();
             }
+            final rawDiscoveryRoots = raw['discoveryRoots'];
+            if (rawDiscoveryRoots != null &&
+                (rawDiscoveryRoots is! List ||
+                    rawDiscoveryRoots.any(
+                      (root) => root is! String || root.isEmpty,
+                    ))) {
+              throw const FormatException();
+            }
+            final discoveryRoots = rawDiscoveryRoots == null
+                ? <String>[if (target != null) target.path]
+                : List<String>.unmodifiable(rawDiscoveryRoots.cast<String>());
             return AgentStatus(
               id: raw['id'] as String,
               displayName: raw['displayName'] as String,
               installed: raw['installed'] as bool,
               supportedScopes: scopes,
               userTarget: target,
+              discoveryRoots: discoveryRoots,
             );
           })
           .toList(growable: false);
@@ -1910,22 +2027,39 @@ class RealSkillsGateway implements SkillsGateway {
 
   @override
   Future<BatchTakeoverResult> takeoverExistingSkills({
-    String? projectRoot,
+    required bool includeUser,
+    List<String> projectRoots = const [],
   }) async {
-    final normalizedProject = projectRoot?.trim();
-    if (projectRoot != null && normalizedProject!.isEmpty) {
+    final normalizedProjects = <String>[];
+    final seenProjects = <String>{};
+    for (final projectRoot in projectRoots) {
+      final normalized = projectRoot.trim();
+      if (normalized.isEmpty) {
+        throw const SkillsException(
+          'Batch Takeover Workspace must not be empty.',
+          kind: SkillsFailureKind.validation,
+        );
+      }
+      if (seenProjects.add(normalized)) normalizedProjects.add(normalized);
+    }
+    if (!includeUser && normalizedProjects.isEmpty) {
       throw const SkillsException(
-        'Batch Takeover Workspace must not be empty.',
+        'Batch Takeover requires at least one scope.',
         kind: SkillsFailureKind.validation,
       );
     }
-    final command = await _runCli([
+    final arguments = <String>[
       'takeover',
-      if (normalizedProject != null) ...['--project', normalizedProject],
+      if (includeUser) '--user',
+      for (final projectRoot in normalizedProjects) ...[
+        '--project',
+        projectRoot,
+      ],
       '--yes',
       '--output',
       'json',
-    ]);
+    ];
+    final command = await _runCli(arguments);
     if (!command.succeeded) throw _commandFailure(command);
     try {
       final raw = jsonDecode(command.output.stdout);
@@ -1949,13 +2083,16 @@ class RealSkillsGateway implements SkillsGateway {
       for (final item in raw['results'] as List) {
         if (item is! Map<String, dynamic> ||
             item['status'] is! String ||
-            item['target'] is! Map<String, dynamic>) {
+            item['target'] is! Map<String, dynamic> ||
+            (item['reason'] != null && item['reason'] is! String)) {
           throw const FormatException();
         }
         final target = item['target'] as Map<String, dynamic>;
         if (target['scope'] != 'user' && target['scope'] != 'project' ||
             target['mode'] != 'copy' && target['mode'] != 'symlink' ||
-            target['path'] is! String) {
+            target['path'] is! String ||
+            (target['projectRoot'] != null &&
+                target['projectRoot'] is! String)) {
           throw const FormatException();
         }
         switch (item['status']) {
@@ -2117,248 +2254,6 @@ class RealSkillsGateway implements SkillsGateway {
     ]);
   }
 
-  Map<String, dynamic> _externalAdoptionTarget(
-    InstalledSkill skill,
-    SkillInstallationTarget target, {
-    ExternalAdoptionAction? action,
-    HubContentMatch? match,
-    String? stateToken,
-  }) => {
-    'inventoryKey': skill.inventoryKey,
-    'name': skill.name,
-    'scope': target.scope.name,
-    if (target.scope == InstallationScope.project)
-      'projectRoot': target.projectRoot,
-    'agent': target.agent,
-    'path': target.path,
-    if (action != null) 'action': _externalAdoptionActionValue(action),
-    if (match != null) 'matchSkillId': match.skillId,
-    if (match != null) 'matchVersion': match.immutableVersion,
-    'stateToken': ?stateToken,
-  };
-
-  @override
-  Future<ExternalAdoptionPlan> preflightExternalAdoption(
-    InstalledSkill skill,
-  ) async {
-    if (skill.provenance != LibraryProvenance.external ||
-        skill.targets.length != 1 ||
-        skill.targets.single.mode != InstallationMode.external) {
-      throw const SkillsException(
-        'Adoption requires one exact External Installation.',
-        kind: SkillsFailureKind.validation,
-      );
-    }
-    await _ensureHubOrigin();
-    final sourceTarget = skill.targets.single;
-    final command = await _runCli([
-      'adopt',
-      '--target',
-      jsonEncode(_externalAdoptionTarget(skill, sourceTarget)),
-      '--preflight',
-      '--output',
-      'json',
-      '--hub',
-      _hubOrigin,
-    ]);
-    if (!command.succeeded) throw _commandFailure(command);
-    try {
-      final raw = jsonDecode(command.output.stdout);
-      if (raw is! Map<String, dynamic> ||
-          raw['schemaVersion'] != 1 ||
-          raw['phase'] != 'adoption-preflight' ||
-          raw['inventoryKey'] != skill.inventoryKey ||
-          raw['name'] != skill.name ||
-          !_isSha256Digest(raw['contentDigest']) ||
-          raw['stateToken'] is! String ||
-          (raw['stateToken'] as String).isEmpty ||
-          raw['matches'] is! List ||
-          raw['canImportLocal'] is! bool ||
-          (raw['sourceHint'] != null && raw['sourceHint'] is! String)) {
-        throw const FormatException();
-      }
-      final targetRaw = raw['target'];
-      if (targetRaw is! Map<String, dynamic> ||
-          targetRaw['scope'] != sourceTarget.scope.name ||
-          (targetRaw['projectRoot'] ?? '') != sourceTarget.projectRoot ||
-          targetRaw['agent'] != sourceTarget.agent ||
-          targetRaw['path'] != sourceTarget.path) {
-        throw const FormatException();
-      }
-      final matches = <HubContentMatch>[];
-      final seen = <String>{};
-      for (final candidate in raw['matches'] as List) {
-        if (candidate is! Map<String, dynamic> ||
-            candidate['skillId'] is! String ||
-            (candidate['skillId'] as String).isEmpty ||
-            candidate['name'] is! String ||
-            (candidate['name'] as String).isEmpty ||
-            candidate['source'] is! String ||
-            (candidate['source'] as String).isEmpty ||
-            candidate['skillPath'] is! String ||
-            candidate['immutableVersion'] is! String ||
-            (candidate['immutableVersion'] as String).isEmpty ||
-            candidate['commitSHA'] is! String ||
-            (candidate['commitSHA'] as String).isEmpty ||
-            candidate['treeSHA'] is! String ||
-            (candidate['treeSHA'] as String).isEmpty ||
-            candidate['contentDigest'] != raw['contentDigest']) {
-          throw const FormatException();
-        }
-        final key =
-            '${candidate['skillId']}\u0000${candidate['immutableVersion']}';
-        if (!seen.add(key)) throw const FormatException();
-        matches.add(
-          HubContentMatch(
-            skillId: candidate['skillId'] as String,
-            name: candidate['name'] as String,
-            source: candidate['source'] as String,
-            skillPath: candidate['skillPath'] as String,
-            immutableVersion: candidate['immutableVersion'] as String,
-            commitSHA: candidate['commitSHA'] as String,
-            treeSHA: candidate['treeSHA'] as String,
-            contentDigest: candidate['contentDigest'] as String,
-          ),
-        );
-      }
-      return ExternalAdoptionPlan(
-        inventoryKey: skill.inventoryKey,
-        name: skill.name,
-        target: InstallationPlanTarget(
-          scope: sourceTarget.scope,
-          projectRoot: sourceTarget.projectRoot,
-          agent: sourceTarget.agent,
-          mode: InstallationMode.copy,
-          path: sourceTarget.path,
-        ),
-        contentDigest: raw['contentDigest'] as String,
-        sourceHint: raw['sourceHint'] as String? ?? '',
-        stateToken: raw['stateToken'] as String,
-        matches: List.unmodifiable(matches),
-        canImportLocal: raw['canImportLocal'] as bool,
-      );
-    } on FormatException {
-      throw const SkillsException(
-        'The SkillsGo CLI returned invalid External Adoption Plan JSON.',
-        kind: SkillsFailureKind.invalidResponse,
-      );
-    }
-  }
-
-  @override
-  Future<ExternalAdoptionResult> executeExternalAdoption(
-    ExternalAdoptionPlan plan,
-  ) async {
-    final action = plan.action;
-    final selected = plan.selectedMatch;
-    final reviewedMatch =
-        selected != null &&
-        plan.matches.any(
-          (candidate) =>
-              candidate.skillId == selected.skillId &&
-              candidate.immutableVersion == selected.immutableVersion &&
-              candidate.contentDigest == plan.contentDigest,
-        );
-    if (action == null ||
-        (action == ExternalAdoptionAction.associateHub && !reviewedMatch) ||
-        (action == ExternalAdoptionAction.importLocal &&
-            !plan.canImportLocal)) {
-      throw const SkillsException(
-        'Adoption execution requires an explicitly reviewed action.',
-        kind: SkillsFailureKind.validation,
-      );
-    }
-    final sourceTarget = SkillInstallationTarget(
-      agent: plan.target.agent,
-      scope: plan.target.scope,
-      projectRoot: plan.target.projectRoot,
-      path: plan.target.path,
-      version: '',
-      mode: InstallationMode.external,
-    );
-    final skill = InstalledSkill(
-      inventoryKey: plan.inventoryKey,
-      name: plan.name,
-      path: plan.target.path,
-      agents: [plan.target.agent],
-      targetCount: 1,
-      provenance: LibraryProvenance.external,
-      targets: [sourceTarget],
-    );
-    final arguments = <String>[
-      'adopt',
-      '--target',
-      jsonEncode(
-        _externalAdoptionTarget(
-          skill,
-          sourceTarget,
-          action: action,
-          match: plan.selectedMatch,
-          stateToken: plan.stateToken,
-        ),
-      ),
-      '--output',
-      'json',
-    ];
-    if (action == ExternalAdoptionAction.associateHub) {
-      await _ensureHubOrigin();
-      arguments.addAll(['--hub', _hubOrigin]);
-    }
-    final command = await _runCli(arguments);
-    if (!command.succeeded) throw _commandFailure(command);
-    try {
-      final raw = jsonDecode(command.output.stdout);
-      if (raw is! Map<String, dynamic> ||
-          raw['schemaVersion'] != 1 ||
-          raw['phase'] != 'adoption-execution' ||
-          raw['action'] != _externalAdoptionActionValue(action) ||
-          raw['name'] != plan.name ||
-          raw['skillId'] is! String ||
-          (raw['skillId'] as String).isEmpty ||
-          raw['version'] is! String ||
-          (raw['version'] as String).isEmpty ||
-          raw['contentDigest'] != plan.contentDigest ||
-          raw['provenance'] is! String ||
-          raw['target'] is! Map<String, dynamic>) {
-        throw const FormatException();
-      }
-      final provenance = _libraryProvenance(raw['provenance']);
-      final expectedProvenance = action == ExternalAdoptionAction.importLocal
-          ? LibraryProvenance.local
-          : LibraryProvenance.hub;
-      if (provenance != expectedProvenance) throw const FormatException();
-      if (action == ExternalAdoptionAction.associateHub &&
-          (raw['skillId'] != selected!.skillId ||
-              raw['version'] != selected.immutableVersion)) {
-        throw const FormatException();
-      }
-      if (action == ExternalAdoptionAction.importLocal &&
-          (!(raw['skillId'] as String).startsWith('local.skillsgo/') ||
-              !(raw['version'] as String).startsWith('local-'))) {
-        throw const FormatException();
-      }
-      final target = _installationPlanTarget({
-        ...raw['target'] as Map<String, dynamic>,
-        'mode': 'copy',
-      });
-      if (!_samePlanTarget(target, plan.target)) throw const FormatException();
-      return ExternalAdoptionResult(
-        action: _externalAdoptionAction(raw['action']),
-        name: plan.name,
-        skillId: raw['skillId'] as String,
-        version: raw['version'] as String,
-        provenance: provenance,
-        contentDigest: plan.contentDigest,
-        target: target,
-      );
-    } on FormatException {
-      throw const SkillsException(
-        'The SkillsGo CLI returned invalid External Adoption Result JSON.',
-        kind: SkillsFailureKind.invalidResponse,
-      );
-    }
-  }
-
   @override
   Future<CommandResult?> exportLocalSkill(InstalledSkill skill) async {
     if (skill.provenance != LibraryProvenance.local || skill.targets.isEmpty) {
@@ -2410,24 +2305,6 @@ class RealSkillsGateway implements SkillsGateway {
     return result;
   }
 
-  String _managementTargetArgument(
-    String skillId,
-    SkillInstallationTarget target, {
-    TargetManagementAction? action,
-    String? stateToken,
-  }) => jsonEncode({
-    'scope': target.scope.name,
-    if (target.scope == InstallationScope.project)
-      'projectRoot': target.projectRoot,
-    'agent': target.agent,
-    'mode': target.mode.name,
-    'path': target.path,
-    'skillId': skillId,
-    'version': target.version,
-    if (action != null) 'action': _targetManagementActionValue(action),
-    'stateToken': ?stateToken,
-  });
-
   @override
   Future<TargetManagementPlan> preflightTargetManagement(
     InstalledSkill skill,
@@ -2451,12 +2328,12 @@ class RealSkillsGateway implements SkillsGateway {
         kind: SkillsFailureKind.validation,
       );
     }
-    final arguments = <String>['manage'];
+    final arguments = <String>['remove'];
     for (final target in targets) {
-      arguments.addAll([
-        '--target',
-        _managementTargetArgument(skill.skillId, target),
-      ]);
+      arguments.addAll(['--path', target.path, '--agent', target.agent]);
+      if (target.scope == InstallationScope.project) {
+        arguments.addAll(['--project', target.projectRoot]);
+      }
     }
     arguments.addAll(['--preflight', '--output', 'json']);
     final command = await _runCli(arguments);
@@ -2514,10 +2391,8 @@ class RealSkillsGateway implements SkillsGateway {
                 (allowedActions.length != 1 ||
                     allowedActions.single != TargetManagementAction.remove)) ||
             (health != InstallationHealth.healthy &&
-                (allowedActions.contains(TargetManagementAction.remove) ||
-                    !allowedActions.contains(
-                      TargetManagementAction.stopManaging,
-                    )))) {
+                (allowedActions.length != 1 ||
+                    allowedActions.single != TargetManagementAction.repair))) {
           throw const FormatException();
         }
         items.add(
@@ -2558,13 +2433,11 @@ class RealSkillsGateway implements SkillsGateway {
       final summary = TargetManagementPlanSummary(
         removable: _strictNonNegativeInt(rawSummary['removable']),
         repairable: _strictNonNegativeInt(rawSummary['repairable']),
-        stoppable: _strictNonNegativeInt(rawSummary['stoppable']),
       );
       int count(TargetManagementAction action) =>
           items.where((item) => item.allowedActions.contains(action)).length;
       if (summary.removable != count(TargetManagementAction.remove) ||
-          summary.repairable != count(TargetManagementAction.repair) ||
-          summary.stoppable != count(TargetManagementAction.stopManaging)) {
+          summary.repairable != count(TargetManagementAction.repair)) {
         throw const FormatException();
       }
       return TargetManagementPlan(
@@ -2584,6 +2457,76 @@ class RealSkillsGateway implements SkillsGateway {
     TargetManagementPlan plan, {
     void Function(TargetManagementProgress progress)? onProgress,
   }) async {
+    final groups = <TargetManagementAction, List<TargetManagementPlanItem>>{};
+    for (final item in plan.targets) {
+      final action = item.action;
+      if (action == null) {
+        throw const SkillsException(
+          'Target Management execution requires explicit reviewed actions.',
+          kind: SkillsFailureKind.validation,
+        );
+      }
+      groups.putIfAbsent(action, () => []).add(item);
+    }
+    final results = <TargetManagementResult>[];
+    var sequence = 0;
+    for (final entry in groups.entries) {
+      final batch = TargetManagementPlan(
+        targets: List.unmodifiable(entry.value),
+        summary: TargetManagementPlanSummary(
+          removable: entry.key == TargetManagementAction.remove
+              ? entry.value.length
+              : 0,
+          repairable: entry.key == TargetManagementAction.repair
+              ? entry.value.length
+              : 0,
+        ),
+      );
+      final execution = await _executeTargetManagementBatch(
+        batch,
+        onProgress: onProgress == null
+            ? null
+            : (progress) => onProgress(
+                TargetManagementProgress(
+                  sequence: ++sequence,
+                  target: progress.target,
+                  name: progress.name,
+                  skillId: progress.skillId,
+                  version: progress.version,
+                  action: progress.action,
+                  state: progress.state,
+                  result: progress.result,
+                ),
+              ),
+      );
+      results.addAll(execution.results);
+    }
+    final ordered = <TargetManagementResult>[
+      for (final item in plan.targets)
+        results.singleWhere(
+          (result) =>
+              updateTargetKey(result.target) == updateTargetKey(item.target),
+        ),
+    ];
+    return TargetManagementExecution(
+      results: List.unmodifiable(ordered),
+      summary: TargetManagementExecutionSummary(
+        succeeded: ordered
+            .where(
+              (result) => result.outcome == TargetManagementOutcome.succeeded,
+            )
+            .length,
+        failed: ordered
+            .where((result) => result.outcome == TargetManagementOutcome.failed)
+            .length,
+      ),
+    );
+  }
+
+  Future<TargetManagementExecution> _executeTargetManagementBatch(
+    TargetManagementPlan plan, {
+    void Function(TargetManagementProgress progress)? onProgress,
+  }) async {
     if (plan.targets.isEmpty ||
         plan.targets.any(
           (item) =>
@@ -2594,23 +2537,26 @@ class RealSkillsGateway implements SkillsGateway {
         kind: SkillsFailureKind.validation,
       );
     }
-    final arguments = <String>['manage'];
+    final action = plan.targets.first.action!;
+    if (plan.targets.any((item) => item.action != action)) {
+      throw const SkillsException(
+        'Remove and repair targets must be executed in separate CLI calls.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    final arguments = <String>[_targetManagementActionValue(action)];
     for (final item in plan.targets) {
       arguments.addAll([
-        '--target',
-        jsonEncode({
-          'scope': item.target.scope.name,
-          if (item.target.scope == InstallationScope.project)
-            'projectRoot': item.target.projectRoot,
-          'agent': item.target.agent,
-          'mode': item.target.mode.name,
-          'path': item.target.path,
-          'skillId': item.skillId,
-          'version': item.version,
-          'action': _targetManagementActionValue(item.action!),
-          'stateToken': item.stateToken,
-        }),
+        '--path',
+        item.target.path,
+        '--agent',
+        item.target.agent,
+        '--expected-state',
+        item.stateToken,
       ]);
+      if (item.target.scope == InstallationScope.project) {
+        arguments.addAll(['--project', item.target.projectRoot]);
+      }
     }
     arguments.addAll(['--output', 'ndjson']);
     final expected = {
@@ -3271,7 +3217,7 @@ class RealSkillsGateway implements SkillsGateway {
         'input.invalid' => SkillsFailureKind.validation,
         'hub.unavailable' => SkillsFailureKind.offline,
         'hub.timeout' => SkillsFailureKind.timeout,
-        'hub.rate_limited' => SkillsFailureKind.server,
+        'hub.rate_limited' || 'hub.server_error' => SkillsFailureKind.server,
         'protocol.invalid_response' => SkillsFailureKind.invalidResponse,
         'protocol.incompatible' ||
         'local.data_invalid' => SkillsFailureKind.invalidLocalData,

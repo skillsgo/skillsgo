@@ -37,8 +37,8 @@ void main() {
       find.byWidgetPredicate(
         (widget) =>
             widget is Text &&
-            (widget.data?.contains('could not reach the Hub') == true ||
-                widget.data?.contains('无法连接 Hub') == true),
+            (widget.data?.contains('Check your internet connection') == true ||
+                widget.data?.contains('请检查网络连接') == true),
       ),
       timeout: const Duration(seconds: 30),
     );

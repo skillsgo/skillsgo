@@ -94,22 +94,21 @@ MarkdownStyleSheet buildSkillMarkdownStyleSheet(
   SkillMarkdownPresentation presentation = SkillMarkdownPresentation.document,
 }) {
   final scheme = theme.colorScheme;
-  final text = theme.textTheme;
+  final typography = theme.extension<SkillsTypography>()!;
   final isSummary = presentation == SkillMarkdownPresentation.summary;
-  final body = text.bodyMedium!.copyWith(
+  final body = typography.body.copyWith(
     color: isSummary ? scheme.onSurfaceVariant : scheme.onSurface,
     fontSize: isSummary ? 15 : 16,
     height: isSummary ? 1.42 : 1.55,
-    fontWeight: FontWeight.w400,
   );
-  TextStyle heading(double size, FontWeight weight) => TextStyle(
-    color: scheme.onSurface,
-    fontFamily: SkillsTokens.sansFamily,
-    fontSize: size,
-    height: 1.2,
-    fontWeight: weight,
-    letterSpacing: -.2,
-  );
+  TextStyle heading(double size, FontWeight weight) =>
+      typography.sectionTitle.copyWith(
+        color: scheme.onSurface,
+        fontSize: size,
+        height: 1.2,
+        fontWeight: weight,
+        letterSpacing: -.2,
+      );
   return MarkdownStyleSheet.fromTheme(theme).copyWith(
     a: body.copyWith(
       color: scheme.primary,
@@ -136,10 +135,9 @@ MarkdownStyleSheet buildSkillMarkdownStyleSheet(
       color: scheme.onSurfaceVariant,
       decoration: TextDecoration.lineThrough,
     ),
-    code: TextStyle(
+    code: typography.code.copyWith(
       color: scheme.onSurface,
       backgroundColor: scheme.surfaceContainerHighest,
-      fontFamily: SkillsTokens.monoFamily,
       fontSize: 13,
       height: 1.45,
     ),

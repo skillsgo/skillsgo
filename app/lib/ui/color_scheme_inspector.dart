@@ -166,8 +166,7 @@ class _InspectorHeader extends StatelessWidget {
                   const SizedBox(width: 10),
                   Text(
                     '${_hex(seed)} · SkillsGo',
-                    style: const TextStyle(
-                      fontFamily: SkillsTokens.monoFamily,
+                    style: context.skillsTypography.metadata.copyWith(
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -327,10 +326,8 @@ class _ColorRoleCardState extends State<_ColorRoleCard> {
                   copied
                       ? '${l10n.colorSchemeCopied} · ${_hex(role.color)}'
                       : _hex(role.color),
-                  style: TextStyle(
+                  style: context.skillsTypography.metadata.copyWith(
                     color: foreground.withValues(alpha: .82),
-                    fontFamily: SkillsTokens.monoFamily,
-                    fontSize: 12,
                     fontWeight: FontWeight.w600,
                   ),
                 ),

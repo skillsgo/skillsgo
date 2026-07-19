@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings, CLI-backed explicit-source discovery including empty-search GitHub shorthand fallback, discovery/detail parsing including repository product metadata and Hub image URLs, inventory v5 managed/external targets plus derived visibility and Local Modifications, Hub-independent local inspection/project persistence, strict Installation/Update/Target Management contracts including External removal, one-confirmation Batch Takeover, dormant post-MVP External Adoption adapters, Local export, stable CLI availability mapping, versioned machine failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies Mandatory Onboarding persistence, appearance, language, reminder, Hub, and risk settings, CLI-backed explicit-source discovery including empty-search GitHub shorthand fallback, discovery/detail parsing including repository product metadata and Hub image URLs, inventory v5 managed/external targets plus derived visibility and Local Modifications, Hub-independent local inspection and multi-directory project persistence, strict Installation/Update/Target Management contracts including External removal, scope-explicit one-confirmation Batch Takeover, Local export, stable CLI availability mapping, versioned machine failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -17,6 +17,73 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
+
+  test('language settings persist with System as the default', () async {
+    final gateway = RealSkillsGateway();
+    expect(await gateway.loadLanguage(), AppLanguage.system);
+    await gateway.saveLanguage(AppLanguage.simplifiedChinese);
+    expect(await gateway.loadLanguage(), AppLanguage.simplifiedChinese);
+
+    final restored = RealSkillsGateway();
+    expect(await restored.loadLanguage(), AppLanguage.simplifiedChinese);
+  });
+
+  test('unset theme color defaults to white', () async {
+    final gateway = RealSkillsGateway();
+
+    expect(await gateway.loadFolderTheme(), '#FFFFFF');
+  });
+
+  test('reminder settings persist with user-safe defaults', () async {
+    final gateway = RealSkillsGateway();
+    final defaults = await gateway.loadReminderSettings();
+    expect(defaults.updateAvailable, isTrue);
+    expect(defaults.securityAdvisory, isTrue);
+
+    await gateway.saveReminderSettings(
+      const ReminderSettings(updateAvailable: false, securityAdvisory: false),
+    );
+    final restored = await RealSkillsGateway().loadReminderSettings();
+    expect(restored.updateAvailable, isFalse);
+    expect(restored.securityAdvisory, isFalse);
+  });
+
+  test(
+    'selected language is forwarded to CLI as canonical content locale',
+    () async {
+      final runner = _FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"collection":"all_time","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}',
+          stderr: '',
+        );
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/usr/local/bin/skillsgo',
+        hubBaseUrl: 'https://hub.example.test',
+      );
+      await gateway.saveLanguage(AppLanguage.simplifiedChinese);
+
+      await gateway.discover(DiscoveryCollection.ranking);
+
+      final discoverCall = runner.calls.firstWhere(
+        (call) => call.arguments.contains('discover'),
+      );
+      expect(
+        discoverCall.arguments,
+        containsAllInOrder([
+          'discover',
+          '--hub',
+          'https://hub.example.test',
+          '--collection',
+          'all_time',
+          '--content-locale',
+          'zh-Hans',
+        ]),
+      );
+    },
+  );
 
   test('hub settings persist and validate the search protocol', () async {
     SharedPreferences.setMockInitialValues({});
@@ -88,9 +155,11 @@ void main() {
       final root = await Directory.systemTemp.createTemp('skillsgo-projects-');
       addTearDown(() => root.delete(recursive: true));
       final original = Directory('${root.path}/plain project');
+      final second = Directory('${root.path}/second project');
       final relocated = Directory('${root.path}/moved project');
       final unselected = Directory('${root.path}/never selected');
       await original.create();
+      await second.create();
       await relocated.create();
       await unselected.create();
       await File(
@@ -100,7 +169,6 @@ void main() {
       await Directory(
         '${original.path}/.agents/skills',
       ).create(recursive: true);
-      final selections = <String>[original.path, relocated.path];
       final inspected = <String>[];
       Future<({ProjectAccessState state, String? diagnostic})> inspect(
         String path,
@@ -110,31 +178,43 @@ void main() {
       }
 
       final gateway = RealSkillsGateway(
-        directoryPicker: ({initialDirectory}) async => selections.removeAt(0),
+        directoryPathsPicker: ({initialDirectory}) async => [
+          original.path,
+          second.path,
+          original.path,
+        ],
         projectPathInspector: inspect,
       );
-      final added = await gateway.addProject();
-      expect(added, isNotNull);
-      expect(added!.name, 'plain project');
-      expect(inspected, [original.path]);
+      final added = await gateway.addProjects();
+      expect(added.map((project) => project.name), [
+        'plain project',
+        'second project',
+      ]);
+      expect(inspected, added.map((project) => project.path));
       expect(inspected, isNot(contains(unselected.path)));
 
       final restarted = RealSkillsGateway(
         directoryPicker: ({initialDirectory}) async {
-          expect(initialDirectory, original.path);
-          return selections.removeAt(0);
+          expect(initialDirectory, added.first.path);
+          return relocated.path;
         },
         projectPathInspector: inspect,
       );
       final restored = await restarted.loadAddedProjects();
-      expect(restored.single.id, added.id);
-      expect(restored.single.path, original.path);
-      final moved = await restarted.relocateProject(added.id);
-      expect(moved!.id, added.id);
+      expect(restored, hasLength(2));
+      expect(
+        restored.map((project) => project.path),
+        added.map((project) => project.path),
+      );
+      final moved = await restarted.relocateProject(added.first.id);
+      expect(moved!.id, added.first.id);
       expect(moved.path, relocated.path);
 
-      await restarted.removeProject(added.id);
-      expect(await restarted.loadAddedProjects(), isEmpty);
+      await restarted.removeProject(added.first.id);
+      expect(
+        (await restarted.loadAddedProjects()).map((project) => project.path),
+        [added[1].path],
+      );
       expect(
         await File('${original.path}/skillsgo.mod').readAsString(),
         'require (\n)\n',
@@ -149,6 +229,101 @@ void main() {
       );
     },
   );
+
+  test(
+    'Added Projects reject file paths supplied outside the directory picker',
+    () async {
+      final root = await Directory.systemTemp.createTemp(
+        'skillsgo-project-file-',
+      );
+      addTearDown(() => root.delete(recursive: true));
+      final file = File('${root.path}/not-a-project.txt');
+      await file.writeAsString('not a directory');
+      final gateway = RealSkillsGateway(
+        directoryPathsPicker: ({initialDirectory}) async => [file.path],
+      );
+
+      await expectLater(
+        gateway.addProjects(),
+        throwsA(
+          isA<SkillsException>().having(
+            (error) => error.message,
+            'message',
+            'Only directories can be added as projects.',
+          ),
+        ),
+      );
+      expect(await gateway.loadAddedProjects(), isEmpty);
+    },
+  );
+
+  test('Onboarding Agent inspection uses one bundled CLI command', () async {
+    final runner = _FakeProcessRunner()
+      ..result = const ProcessOutput(
+        exitCode: 0,
+        stdout:
+            '{"schemaVersion":1,"product":"skillsgo","version":"test","appProtocolVersion":10,"os":"darwin","architecture":"arm64","agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["user"],"userTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      bundledCliPath: '/Applications/SkillsGo.app/Contents/Resources/skillsgo',
+      expectedCliOS: 'darwin',
+    );
+
+    final agents = await gateway.inspectOnboardingAgents();
+
+    expect(agents.installed.single.id, 'codex');
+    expect(runner.calls, hasLength(1));
+    expect(runner.calls.single.arguments, ['agents', '--output', 'json']);
+
+    runner.result = const ProcessOutput(
+      exitCode: 0,
+      stdout:
+          '{"schemaVersion":1,"product":"skillsgo","version":"old","appProtocolVersion":9,"os":"darwin","architecture":"arm64","agents":[]}',
+      stderr: '',
+    );
+    await expectLater(
+      gateway.inspectOnboardingAgents(),
+      throwsA(
+        isA<SkillsException>().having(
+          (error) => error.kind,
+          'kind',
+          SkillsFailureKind.invalidLocalData,
+        ),
+      ),
+    );
+  });
+
+  test(
+    'existing App state bypasses Mandatory Onboarding after upgrade',
+    () async {
+      SharedPreferences.setMockInitialValues({'folder_theme': '#294556'});
+
+      final state = await RealSkillsGateway().loadOnboardingState();
+
+      expect(state.completed, isTrue);
+    },
+  );
+
+  test('Onboarding reset preserves App data and returns to Welcome', () async {
+    SharedPreferences.setMockInitialValues({
+      'onboarding_completed_v1': true,
+      'onboarding_step_v1': OnboardingStep.projects.name,
+      'added_projects_v1': '[{"id":"one","name":"One","path":"/one"}]',
+      'theme_mode': AppThemeMode.dark.name,
+    });
+    final gateway = RealSkillsGateway();
+
+    await gateway.resetOnboarding();
+
+    expect(
+      await gateway.loadOnboardingState(),
+      const OnboardingState(completed: false, step: OnboardingStep.welcome),
+    );
+    expect(await gateway.loadAddedProjects(), hasLength(1));
+    expect(await gateway.loadThemeMode(), AppThemeMode.dark);
+  });
 
   test('Added Projects retain diagnosable inaccessible states', () async {
     SharedPreferences.setMockInitialValues({});
@@ -172,13 +347,11 @@ void main() {
       ),
     };
     final gateway = RealSkillsGateway(
-      directoryPicker: ({initialDirectory}) async => selections.removeAt(0),
+      directoryPathsPicker: ({initialDirectory}) async => selections,
       projectPathInspector: (path) async => states[path]!,
     );
 
-    for (var index = 0; index < 3; index++) {
-      await gateway.addProject();
-    }
+    await gateway.addProjects();
     final projects = await gateway.loadAddedProjects();
 
     expect(projects.map((project) => project.accessState), [
@@ -1128,6 +1301,30 @@ void main() {
     );
   });
 
+  test('Hub processing failures are not classified as offline', () async {
+    final gateway = RealSkillsGateway(
+      processRunner: _FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 1,
+          stdout:
+              '{"schemaVersion":1,"phase":"error","error":{"code":"hub.server_error","retryable":true,"diagnostic":"Hub returned HTTP 500"}}',
+          stderr: '',
+        ),
+      initialCliPath: '/usr/local/bin/skillsgo',
+    );
+
+    await expectLater(
+      gateway.inspectAgents(),
+      throwsA(
+        isA<SkillsException>()
+            .having((error) => error.kind, 'kind', SkillsFailureKind.server)
+            .having((error) => error.isOffline, 'isOffline', isFalse)
+            .having((error) => error.code, 'code', 'hub.server_error')
+            .having((error) => error.retryable, 'retryable', isTrue),
+      ),
+    );
+  });
+
   test(
     'CLI machine failures tolerate unknown codes and additive fields',
     () async {
@@ -1529,21 +1726,21 @@ void main() {
     runner.result = const ProcessOutput(
       exitCode: 0,
       stdout: r'''
-{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","skillId":"github.com/a/b/-/Test ; $(touch nope)","version":"v1","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1,"repairable":0,"stoppable":0}}
+{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","skillId":"github.com/a/b/-/Test ; $(touch nope)","version":"v1","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1,"repairable":0}}
 ''',
       stderr: '',
     );
     await gateway.preflightTargetManagement(installed, installed.targets);
-    expect(runner.lastArguments!.first, 'manage');
-    expect(runner.lastArguments![1], '--target');
-    expect(jsonDecode(runner.lastArguments![2]), {
-      'scope': 'user',
-      'agent': 'codex',
-      'mode': 'symlink',
-      'path': r'/tmp/Test ; $(touch nope)',
-      'skillId': r'github.com/a/b/-/Test ; $(touch nope)',
-      'version': 'v1',
-    });
+    expect(runner.lastArguments!.first, 'remove');
+    expect(
+      runner.lastArguments,
+      containsAllInOrder([
+        '--path',
+        r'/tmp/Test ; $(touch nope)',
+        '--agent',
+        'codex',
+      ]),
+    );
     expect(
       runner.lastArguments,
       containsAllInOrder(['--preflight', '--output', 'json']),
@@ -1803,145 +2000,13 @@ void main() {
   );
 
   test(
-    'Batch Takeover forwards one optional Workspace and parses aggregate counts',
+    'Batch Takeover forwards explicit User and Workspace scopes and parses aggregate counts',
     () async {
       final runner = _FakeProcessRunner()
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":1,"summary":{"takenOver":1,"skipped":1},"results":[{"skillId":"github.com/acme/skills/-/demo","artifactSkillId":"captured.skillsgo/source/content/demo","version":"captured-content","status":"taken-over","target":{"agent":"codex","scope":"user","mode":"copy","path":"/tmp/demo"}},{"status":"skipped","reason":"missing-target","target":{"scope":"project","projectRoot":"/tmp/Workspace With Spaces","mode":"copy","path":""}}]}',
-          stderr: '',
-        );
-      final gateway = RealSkillsGateway(
-        processRunner: runner,
-        initialCliPath: '/bin/skillsgo',
-      );
-
-      final result = await gateway.takeoverExistingSkills(
-        projectRoot: '/tmp/Workspace With Spaces',
-      );
-
-      expect(result.takenOver, 1);
-      expect(result.skipped, 1);
-      expect(runner.lastArguments, [
-        'takeover',
-        '--project',
-        '/tmp/Workspace With Spaces',
-        '--yes',
-        '--output',
-        'json',
-      ]);
-      expect(runner.lastArguments, isNot(contains('--hub')));
-    },
-  );
-
-  test(
-    'External adoption preserves exact target arguments and reviewed Hub identity',
-    () async {
-      const path = '/tmp/external demo';
-      const installed = InstalledSkill(
-        inventoryKey: 'external:abc',
-        name: 'External Demo',
-        path: path,
-        agents: ['codex'],
-        targetCount: 1,
-        provenance: LibraryProvenance.external,
-        targets: [
-          SkillInstallationTarget(
-            agent: 'codex',
-            scope: InstallationScope.user,
-            path: path,
-            version: '',
-            mode: InstallationMode.external,
-          ),
-        ],
-      );
-      final runner = _FakeProcessRunner()
-        ..responses.addAll(const [
-          ProcessOutput(
-            exitCode: 0,
-            stdout:
-                '{"schemaVersion":1,"phase":"adoption-preflight","inventoryKey":"external:abc","name":"External Demo","target":{"scope":"user","agent":"codex","path":"/tmp/external demo"},"contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","sourceHint":"github.com/acme/skills","stateToken":"sha256:state","matches":[{"skillId":"github.com/acme/skills/-/demo","name":"Demo","source":"github.com/acme/skills","skillPath":"demo","immutableVersion":"sha256:version","commitSHA":"commit","treeSHA":"tree","contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}],"canImportLocal":true}',
-            stderr: '',
-          ),
-          ProcessOutput(
-            exitCode: 0,
-            stdout:
-                '{"schemaVersion":1,"phase":"adoption-execution","action":"associate-hub","name":"External Demo","skillId":"github.com/acme/skills/-/demo","version":"sha256:version","provenance":"hub","contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","target":{"scope":"user","agent":"codex","path":"/tmp/external demo"}}',
-            stderr: '',
-          ),
-        ]);
-      final gateway = RealSkillsGateway(
-        processRunner: runner,
-        initialCliPath: '/bin/skillsgo',
-        hubBaseUrl: 'https://hub.example/base',
-      );
-
-      final preflight = await gateway.preflightExternalAdoption(installed);
-      expect(preflight.matches.single.source, 'github.com/acme/skills');
-      expect(preflight.matches.single.immutableVersion, 'sha256:version');
-      expect(runner.lastArguments, [
-        'adopt',
-        '--target',
-        jsonEncode({
-          'inventoryKey': 'external:abc',
-          'name': 'External Demo',
-          'scope': 'user',
-          'agent': 'codex',
-          'path': path,
-        }),
-        '--preflight',
-        '--output',
-        'json',
-        '--hub',
-        'https://hub.example/base',
-      ]);
-
-      final result = await gateway.executeExternalAdoption(
-        preflight.selectHubMatch(preflight.matches.single),
-      );
-
-      expect(result.provenance, LibraryProvenance.hub);
-      expect(result.skillId, 'github.com/acme/skills/-/demo');
-      expect(jsonDecode(runner.lastArguments![2]), {
-        'inventoryKey': 'external:abc',
-        'name': 'External Demo',
-        'scope': 'user',
-        'agent': 'codex',
-        'path': path,
-        'action': 'associate-hub',
-        'matchSkillId': 'github.com/acme/skills/-/demo',
-        'matchVersion': 'sha256:version',
-        'stateToken': 'sha256:state',
-      });
-      expect(runner.lastArguments, contains('https://hub.example/base'));
-    },
-  );
-
-  test(
-    'Local import execution has no Hub argument and rejects human output',
-    () async {
-      const target = InstallationPlanTarget(
-        scope: InstallationScope.user,
-        agent: 'codex',
-        mode: InstallationMode.copy,
-        path: '/tmp/private',
-      );
-      const plan = ExternalAdoptionPlan(
-        inventoryKey: 'external:private',
-        name: 'Private',
-        target: target,
-        contentDigest:
-            'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-        stateToken: 'sha256:state',
-        matches: [],
-        canImportLocal: true,
-      );
-      final runner = _FakeProcessRunner()
-        ..result = const ProcessOutput(
-          exitCode: 0,
-          stdout:
-              '{"schemaVersion":1,"phase":"adoption-execution","action":"import-local","name":"Private","skillId":"local.skillsgo/abc/Private","version":"local-abc","provenance":"local","contentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","target":{"scope":"user","agent":"codex","path":"/tmp/private"}}',
+              '{"schemaVersion":1,"summary":{"takenOver":2,"skipped":1},"results":[{"skillId":"github.com/acme/skills/-/demo","artifactSkillId":"captured.skillsgo/source/content/demo","version":"captured-content","status":"taken-over","target":{"agent":"codex","scope":"user","mode":"copy","path":"/tmp/demo"}},{"skillId":"github.com/acme/skills/-/project-demo","artifactSkillId":"captured.skillsgo/source/project/project-demo","version":"captured-project","status":"taken-over","target":{"agent":"claude-code","scope":"project","projectRoot":"/tmp/Workspace With Spaces","mode":"copy","path":"/tmp/Workspace With Spaces/.claude/skills/demo"}},{"status":"skipped","reason":"missing-target","target":{"scope":"project","projectRoot":"/tmp/Workspace With Spaces","mode":"copy","path":""}}]}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -1950,37 +2015,28 @@ void main() {
         hubBaseUrl: 'https://must-not-be-used.example',
       );
 
-      final result = await gateway.executeExternalAdoption(
-        plan.selectLocalImport(),
+      final result = await gateway.takeoverExistingSkills(
+        includeUser: true,
+        projectRoots: const [
+          '/tmp/Workspace With Spaces',
+          '/tmp/Second Workspace',
+        ],
       );
 
-      expect(result.provenance, LibraryProvenance.local);
+      expect(result.takenOver, 2);
+      expect(result.skipped, 1);
+      expect(runner.lastArguments, [
+        'takeover',
+        '--user',
+        '--project',
+        '/tmp/Workspace With Spaces',
+        '--project',
+        '/tmp/Second Workspace',
+        '--yes',
+        '--output',
+        'json',
+      ]);
       expect(runner.lastArguments, isNot(contains('--hub')));
-      expect(jsonDecode(runner.lastArguments![2]), {
-        'inventoryKey': 'external:private',
-        'name': 'Private',
-        'scope': 'user',
-        'agent': 'codex',
-        'path': '/tmp/private',
-        'action': 'import-local',
-        'stateToken': 'sha256:state',
-      });
-
-      runner.result = const ProcessOutput(
-        exitCode: 0,
-        stdout: 'Imported successfully.',
-        stderr: '',
-      );
-      await expectLater(
-        gateway.executeExternalAdoption(plan.selectLocalImport()),
-        throwsA(
-          isA<SkillsException>().having(
-            (error) => error.kind,
-            'kind',
-            SkillsFailureKind.invalidResponse,
-          ),
-        ),
-      );
     },
   );
 
@@ -2089,7 +2145,7 @@ void main() {
           ProcessOutput(
             exitCode: 0,
             stdout: '''
-{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1,"repairable":0,"stoppable":0}}
+{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1,"repairable":0}}
 ''',
             stderr: '',
           ),
@@ -2128,17 +2184,18 @@ void main() {
       expect(progress.map((event) => event.sequence), [1, 2]);
       expect(execution.summary.succeeded, 1);
       expect(execution.results.single.action, TargetManagementAction.remove);
-      expect(runner.lastArguments!.first, 'manage');
-      expect(jsonDecode(runner.lastArguments![2]), {
-        'scope': 'user',
-        'agent': 'codex',
-        'mode': 'symlink',
-        'path': '/tmp/Test',
-        'skillId': skillId,
-        'version': 'v1',
-        'action': 'remove',
-        'stateToken': 'sha256:state',
-      });
+      expect(runner.lastArguments!.first, 'remove');
+      expect(
+        runner.lastArguments,
+        containsAllInOrder([
+          '--path',
+          '/tmp/Test',
+          '--agent',
+          'codex',
+          '--expected-state',
+          'sha256:state',
+        ]),
+      );
       expect(runner.lastArguments, containsAll(['--output', 'ndjson']));
 
       runner.result = const ProcessOutput(

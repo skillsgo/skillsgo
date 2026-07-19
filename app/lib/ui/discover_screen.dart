@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the app_shell library for Flutter UI primitives, Riverpod Discover state, installation flows, localization, and shared components.
- * [OUTPUT]: Provides the Discover destination, route-local UI lifecycle state, catalog search, Repository source headers, detail transitions, and installation entry points.
+ * [OUTPUT]: Provides the Discover destination, route-local desktop pull-to-refresh and automatic pagination behavior, catalog search, Repository source headers, detail transitions, and installation entry points.
  * [POS]: Serves as the Discover feature view module split from the desktop shell while sharing its private library contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -166,20 +166,27 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
     DiscoverRoute route, {
     required bool reset,
     String? query,
+    bool preserveResults = false,
   }) async {
     final uiState = routeUiStates[route]!;
-    if (reset && uiState.scrollController.hasClients) {
+    if (reset && !preserveResults && uiState.scrollController.hasClients) {
       uiState.scrollController.jumpTo(0);
     }
     await ref
         .read(discoverProvider.notifier)
-        .load(route, reset: reset, query: query ?? controller.text.trim());
+        .load(
+          route,
+          reset: reset,
+          query: query ?? controller.text.trim(),
+          preserveResults: preserveResults,
+        );
   }
 
   Future<void> _installFromCard(
     InstallLocationMenuPresenter present,
-    SkillSummary skill,
-  ) async {
+    SkillSummary skill, {
+    InstallLocationAction preferredAction = InstallLocationAction.currentSkill,
+  }) async {
     final operation = ref.read(installOperationProvider(skill.id));
     if (operation.operating) return;
     try {
@@ -192,7 +199,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
         InstallLocationMenuRequest.loading(
           summary: skill,
           loader: () async {
-            final catalogFuture = widget.gateway.inspectAgents();
+            final catalogFuture = ref
+                .read(agentCatalogProvider.notifier)
+                .ensureLoaded();
             final projectsFuture = widget.gateway.loadAddedProjects();
             final riskPolicyFuture = widget.gateway.loadRiskPolicy();
             detail = await widget.gateway.loadRemoteDetail(skill);
@@ -219,6 +228,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
               projects: projects,
               repositorySkills: repositorySkills,
               repositorySkillsFuture: repositorySkillsFuture,
+              preferredAction: preferredAction,
               onProjectAdded: (project) {
                 final index = projects.indexWhere(
                   (item) => item.id == project.id,
@@ -270,13 +280,6 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
             }
             if (mounted) {
               ref.invalidate(libraryProvider);
-              await _loadRoute(
-                selectedRoute,
-                reset: true,
-                query: selectedRoute == DiscoverRoute.search
-                    ? controller.text.trim()
-                    : null,
-              );
             }
             return const InstallLocationSubmission.success();
           } on Object catch (error) {
@@ -342,66 +345,63 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
           ),
         },
         child: SkillsContentFrame(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
+          child: Stack(
+            key: const Key('discover-body-stack'),
+            fit: StackFit.expand,
             children: [
-              _discoverLeaderboardHeader(discoverState),
-              Expanded(
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    Offstage(
-                      offstage: selectedSkill != null && !detailTransitioning,
-                      child: IgnorePointer(
-                        ignoring: selectedSkill != null,
-                        child: ExcludeFocus(
-                          excluding: selectedSkill != null,
-                          child: KeyedSubtree(
-                            key: const ValueKey('discover-list-motion'),
-                            child: _discoverPage(),
-                          ),
-                        ),
+              Offstage(
+                offstage: selectedSkill != null && !detailTransitioning,
+                child: IgnorePointer(
+                  ignoring: selectedSkill != null,
+                  child: ExcludeFocus(
+                    excluding: selectedSkill != null,
+                    child: KeyedSubtree(
+                      key: const ValueKey('discover-list-motion'),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _discoverLeaderboardHeader(discoverState),
+                          Expanded(child: _discoverPage()),
+                        ],
                       ),
                     ),
-                    if (selectedSkill != null)
-                      KeyedSubtree(
-                        key: const ValueKey('discover-detail-motion'),
-                        child: SlideTransition(
-                          position: disableAnimations
-                              ? const AlwaysStoppedAnimation(Offset.zero)
-                              : Tween<Offset>(
-                                  begin: const Offset(1, 0),
-                                  end: Offset.zero,
-                                ).animate(
-                                  CurvedAnimation(
-                                    parent: detailTransition,
-                                    curve: Curves.easeOutCubic,
-                                    reverseCurve: Curves.easeOutCubic,
-                                  ),
-                                ),
-                          child: ColoredBox(
-                            color: Theme.of(
-                              context,
-                            ).colorScheme.surfaceContainerHighest,
-                            child: _RemoteDetailScreen(
-                              key: ValueKey(
-                                'discover-detail-${selectedSkill!.id}',
-                              ),
-                              gateway: widget.gateway,
-                              skill: selectedSkill!,
-                              operation: ref.read(
-                                installOperationProvider(selectedSkill!.id),
-                              ),
-                              openPlanOnLoad: openPlanOnDetailLoad,
-                              onBack: _closeDetail,
-                              onViewLibrary: _viewLibrary,
-                            ),
-                          ),
-                        ),
-                      ),
-                  ],
+                  ),
                 ),
               ),
+              if (selectedSkill != null)
+                KeyedSubtree(
+                  key: const ValueKey('discover-detail-motion'),
+                  child: SlideTransition(
+                    position: disableAnimations
+                        ? const AlwaysStoppedAnimation(Offset.zero)
+                        : Tween<Offset>(
+                            begin: const Offset(1, 0),
+                            end: Offset.zero,
+                          ).animate(
+                            CurvedAnimation(
+                              parent: detailTransition,
+                              curve: Curves.easeOutCubic,
+                              reverseCurve: Curves.easeOutCubic,
+                            ),
+                          ),
+                    child: ColoredBox(
+                      color: Theme.of(
+                        context,
+                      ).colorScheme.surfaceContainerHighest,
+                      child: _RemoteDetailScreen(
+                        key: ValueKey('discover-detail-${selectedSkill!.id}'),
+                        gateway: widget.gateway,
+                        skill: selectedSkill!,
+                        operation: ref.read(
+                          installOperationProvider(selectedSkill!.id),
+                        ),
+                        openPlanOnLoad: openPlanOnDetailLoad,
+                        onBack: _closeDetail,
+                        onViewLibrary: _viewLibrary,
+                      ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -415,17 +415,6 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
       builder: (context, constraints) => Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          _DiscoverHeaderReveal(
-            key: const Key('discover-leaderboard-title-motion'),
-            visible: !hasQuery,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                SkillsEditorialTitle(context.l10n.skillsLeaderboard),
-                const SizedBox(height: 12),
-              ],
-            ),
-          ),
           SkillSearchField(
             key: const Key('skill-search-input'),
             controller: controller,
@@ -492,7 +481,9 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
         ? _gitSourceLabel(submittedQuery)
         : null;
     if (state.loading && state.results == null) {
-      return _discoverLoading(uiState, title);
+      return source == null
+          ? _discoverLoading(uiState, title)
+          : _repositoryParsing(uiState);
     }
     if (state.error != null && state.results == null) {
       final copy = _failureCopy(context, state.error!);
@@ -562,7 +553,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
         ),
       );
     }
-    final showMore = state.nextOffset != null || state.loadingMore;
+    final showMore = state.loadingMore || state.paginationError != null;
     return LayoutBuilder(
       builder: (context, constraints) {
         final columns = constraints.maxWidth >= 1080
@@ -570,80 +561,131 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
             : constraints.maxWidth >= 680
             ? 2
             : 1;
-        return CustomScrollView(
-          key: ValueKey(
-            route == DiscoverRoute.search
-                ? 'discover-results'
-                : 'discover-results-${route.name}',
-          ),
+        return _DesktopDiscoverScroller(
           controller: uiState.scrollController,
-          slivers: [
-            if (title != null) _discoverTitleSliver(title),
-            if (source != null)
-              _sourceContextSliver(source, state.results!, state.repository),
-            SliverGrid(
-              gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: columns,
-                mainAxisExtent: 170,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-              ),
-              delegate: SliverChildBuilderDelegate((context, index) {
-                final skill = state.results![index];
-                final cardFocus = uiState.focusNodeFor(skill.id);
-                return SkillCard(
-                  skill: skill,
-                  focusNode: cardFocus,
-                  onTap: () => _openDetail(skill, cardFocus),
-                  onInstall: (present) =>
-                      unawaited(_installFromCard(present, skill)),
-                );
-              }, childCount: state.results!.length),
+          refreshing: state.refreshing,
+          refreshError: state.refreshError == null
+              ? null
+              : _failureCopy(context, state.refreshError!).message,
+          canLoadMore:
+              state.nextOffset != null &&
+              !state.loading &&
+              !state.refreshing &&
+              !state.loadingMore,
+          onRefresh: () => _loadRoute(
+            route,
+            reset: true,
+            preserveResults: true,
+            query: state.query,
+          ),
+          onLoadMore: () => _loadRoute(route, reset: false),
+          child: CustomScrollView(
+            key: ValueKey(
+              route == DiscoverRoute.search
+                  ? 'discover-results'
+                  : 'discover-results-${route.name}',
             ),
-            if (showMore)
-              SliverToBoxAdapter(
-                child: Padding(
-                  padding: const EdgeInsets.only(top: 18, bottom: 4),
-                  child: state.error != null
-                      ? Column(
-                          children: [
-                            Text(
-                              _failureCopy(context, state.error!).message,
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                            ),
-                            const SizedBox(height: 10),
-                            SkillsButton.outline(
-                              onPressed: () => _loadRoute(route, reset: false),
-                              child: Text(context.l10n.tryAgain),
-                            ),
-                          ],
-                        )
-                      : Center(
-                          child: SkillsButton.outline(
-                            enabled: !state.loadingMore,
-                            onPressed: () => _loadRoute(route, reset: false),
-                            child: state.loadingMore
-                                ? const SizedBox.square(
-                                    dimension: 16,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                    ),
-                                  )
-                                : Text(context.l10n.loadMore),
-                          ),
-                        ),
+            controller: uiState.scrollController,
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
+            slivers: [
+              if (title != null) _discoverTitleSliver(title),
+              if (source != null)
+                _sourceContextSliver(source, state.results!, state.repository),
+              SliverGrid(
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: columns,
+                  mainAxisExtent: 170,
+                  crossAxisSpacing: 16,
+                  mainAxisSpacing: 16,
                 ),
+                delegate: SliverChildBuilderDelegate((context, index) {
+                  final skill = state.results![index];
+                  final cardFocus = uiState.focusNodeFor(skill.id);
+                  return SkillCard(
+                    skill: skill,
+                    focusNode: cardFocus,
+                    onTap: () => _openDetail(skill, cardFocus),
+                    onInstall: (present) =>
+                        unawaited(_installFromCard(present, skill)),
+                  );
+                }, childCount: state.results!.length),
               ),
-          ],
+              if (showMore)
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.only(top: 18, bottom: 4),
+                    child: state.paginationError != null
+                        ? Column(
+                            children: [
+                              Text(
+                                _failureCopy(
+                                  context,
+                                  state.paginationError!,
+                                ).message,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Theme.of(
+                                    context,
+                                  ).colorScheme.onSurfaceVariant,
+                                ),
+                              ),
+                              const SizedBox(height: 10),
+                              SkillsButton.outline(
+                                onPressed: () =>
+                                    _loadRoute(route, reset: false),
+                                child: Text(context.l10n.tryAgain),
+                              ),
+                            ],
+                          )
+                        : const Center(
+                            child: SkillsLoadingShape(
+                              key: Key('discover-pagination-loading'),
+                              size: 30,
+                              variant: SkillsLoadingVariant.progressiveDots,
+                            ),
+                          ),
+                  ),
+                ),
+            ],
+          ),
         );
       },
     );
   }
+
+  Widget _repositoryParsing(_DiscoveryRouteUiState state) => Semantics(
+    liveRegion: true,
+    label: context.l10n.repositoryParsing,
+    child: CustomScrollView(
+      key: const ValueKey('discover-repository-loading'),
+      controller: state.scrollController,
+      slivers: [
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: Align(
+            alignment: const Alignment(0, -0.16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const ExcludeSemantics(child: SkillsRepositoryLoadingShape()),
+                const SizedBox(height: 18),
+                Text(
+                  context.l10n.repositoryParsing,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 
   Widget _discoverLoading(_DiscoveryRouteUiState state, String? title) =>
       LayoutBuilder(
@@ -728,6 +770,11 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
           source: source,
           skills: skills,
           repository: repository,
+          onInstallAll: (present) => _installFromCard(
+            present,
+            skills.first,
+            preferredAction: InstallLocationAction.repositorySkills,
+          ),
         ),
       ),
     ),
@@ -822,11 +869,13 @@ class _RepositorySourceHeader extends StatelessWidget {
   const _RepositorySourceHeader({
     required this.source,
     required this.skills,
+    required this.onInstallAll,
     this.repository,
   });
 
   final String source;
   final List<SkillSummary> skills;
+  final ValueChanged<InstallLocationMenuPresenter> onInstallAll;
   final RepositorySummary? repository;
 
   @override
@@ -923,24 +972,25 @@ class _RepositorySourceHeader extends StatelessWidget {
                   _repositoryVersionLabel(context, version),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  style: context.skillsTypography.caption.copyWith(
                     color: scheme.onSurfaceVariant,
-                    fontFamily: SkillsTokens.monoFamily,
-                    fontSize: 11,
                     fontWeight: FontWeight.w500,
                   ),
                 ),
               ),
             const SizedBox(height: 28),
-            PrimaryCapsuleButton(
-              label: context.l10n.installAll,
-              height: 28,
-              horizontalPadding: 9,
-              labelStyle: const TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w400,
+            InstallLocationMenuAnchor(
+              builder: (context, present) => PrimaryCapsuleButton(
+                key: const Key('repository-install-all'),
+                label: context.l10n.installAll,
+                height: 40,
+                horizontalPadding: 18,
+                labelStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w400,
+                ),
+                onPressed: () => onInstallAll(present),
               ),
-              onPressed: () {},
             ),
           ],
         ),
@@ -1051,11 +1101,8 @@ class _DiscoverLeaderboardTabsState extends State<_DiscoverLeaderboardTabs>
       (DiscoverRoute.trending, context.l10n.trending),
       (DiscoverRoute.hot, context.l10n.hot),
     ];
-    const textStyle = TextStyle(
-      fontFamily: SkillsTokens.monoFamily,
-      fontSize: 14,
+    final textStyle = context.skillsTypography.bodySecondary.copyWith(
       height: 20 / 14,
-      fontWeight: FontWeight.w400,
     );
     final textDirection = Directionality.of(context);
     final textScaler = MediaQuery.textScalerOf(context);
@@ -1123,7 +1170,7 @@ class _DiscoverLeaderboardTabsState extends State<_DiscoverLeaderboardTabs>
                           }
                           return scheme.onSurfaceVariant;
                         }),
-                        textStyle: const WidgetStatePropertyAll(textStyle),
+                        textStyle: WidgetStatePropertyAll(textStyle),
                       ),
                       child: Text(tabs[index].$2),
                     ),
@@ -1310,5 +1357,234 @@ class _DiscoveryRouteUiState {
     for (final node in focusNodes.values) {
       node.dispose();
     }
+  }
+}
+
+class _DesktopDiscoverScroller extends StatefulWidget {
+  const _DesktopDiscoverScroller({
+    required this.controller,
+    required this.refreshing,
+    required this.canLoadMore,
+    required this.onRefresh,
+    required this.onLoadMore,
+    required this.child,
+    this.refreshError,
+  });
+
+  final ScrollController controller;
+  final bool refreshing;
+  final bool canLoadMore;
+  final Future<void> Function() onRefresh;
+  final Future<void> Function() onLoadMore;
+  final Widget child;
+  final String? refreshError;
+
+  @override
+  State<_DesktopDiscoverScroller> createState() =>
+      _DesktopDiscoverScrollerState();
+}
+
+class _DesktopDiscoverScrollerState extends State<_DesktopDiscoverScroller> {
+  static const _refreshThreshold = 44.0;
+  static const _paginationThreshold = 560.0;
+  static const _minimumRefreshVisibility = Duration(milliseconds: 400);
+
+  double _pullExtent = 0;
+  bool _refreshGestureActive = false;
+  bool _refreshRequestActive = false;
+  bool _loadMoreScheduled = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleUnderfilledPagination();
+  }
+
+  @override
+  void didUpdateWidget(_DesktopDiscoverScroller oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!widget.canLoadMore) _loadMoreScheduled = false;
+    if (widget.canLoadMore && !oldWidget.canLoadMore) {
+      _scheduleUnderfilledPagination();
+    }
+  }
+
+  void _scheduleUnderfilledPagination() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !widget.canLoadMore || _loadMoreScheduled) return;
+      if (!widget.controller.hasClients ||
+          widget.controller.position.extentAfter > _paginationThreshold) {
+        return;
+      }
+      _requestNextPage();
+    });
+  }
+
+  void _requestNextPage() {
+    if (!widget.canLoadMore || _loadMoreScheduled) return;
+    _loadMoreScheduled = true;
+    unawaited(widget.onLoadMore());
+  }
+
+  Future<void> _beginRefresh() async {
+    if (widget.refreshing || _refreshRequestActive) return;
+    final startedAt = DateTime.now();
+    _refreshRequestActive = true;
+    setState(() {
+      _refreshGestureActive = false;
+      _pullExtent = _refreshThreshold;
+    });
+    await widget.onRefresh();
+    final remaining =
+        _minimumRefreshVisibility - DateTime.now().difference(startedAt);
+    if (remaining > Duration.zero) await Future<void>.delayed(remaining);
+    if (!mounted) return;
+    if (widget.controller.hasClients) {
+      final position = widget.controller.position;
+      if (position.pixels < position.minScrollExtent) {
+        widget.controller.jumpTo(position.minScrollExtent);
+      }
+    }
+    setState(() {
+      _refreshRequestActive = false;
+      _refreshGestureActive = false;
+      _pullExtent = 0;
+    });
+  }
+
+  bool _handleScrollNotification(ScrollNotification notification) {
+    if (notification.metrics.axis != Axis.vertical) return false;
+    if (notification.metrics.extentAfter < _paginationThreshold) {
+      _requestNextPage();
+    }
+    if (widget.refreshing || _refreshRequestActive) return false;
+
+    if (notification is ScrollUpdateNotification &&
+        notification.metrics.pixels < notification.metrics.minScrollExtent) {
+      setState(() {
+        _refreshGestureActive = true;
+        final nextExtent =
+            ((notification.metrics.minScrollExtent -
+                        notification.metrics.pixels) *
+                    .72)
+                .clamp(0, _refreshThreshold + 18);
+        final nextExtentValue = nextExtent.toDouble();
+        if (nextExtentValue > _pullExtent) _pullExtent = nextExtentValue;
+      });
+      if (_pullExtent >= _refreshThreshold) unawaited(_beginRefresh());
+    } else if (notification is OverscrollNotification &&
+        notification.overscroll < 0 &&
+        notification.metrics.pixels <= notification.metrics.minScrollExtent) {
+      setState(() {
+        _refreshGestureActive = true;
+        _pullExtent = (_pullExtent + -notification.overscroll * .48).clamp(
+          0,
+          _refreshThreshold + 18,
+        );
+      });
+      if (_pullExtent >= _refreshThreshold) unawaited(_beginRefresh());
+    } else if ((notification is ScrollEndNotification ||
+            notification is UserScrollNotification &&
+                notification.direction == ScrollDirection.idle) &&
+        _refreshGestureActive) {
+      if (_pullExtent >= _refreshThreshold) {
+        unawaited(_beginRefresh());
+      } else {
+        setState(() {
+          _refreshGestureActive = false;
+          _pullExtent = 0;
+        });
+      }
+    }
+    return false;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final refreshActive = widget.refreshing || _refreshRequestActive;
+    final visibleExtent = refreshActive ? _refreshThreshold : _pullExtent;
+    final pullProgress = (visibleExtent / _refreshThreshold).clamp(0.0, 1.0);
+    final offset = visibleExtent * 1.18;
+    return NotificationListener<ScrollNotification>(
+      onNotification: _handleScrollNotification,
+      child: Stack(
+        clipBehavior: Clip.hardEdge,
+        children: [
+          TweenAnimationBuilder<double>(
+            tween: Tween(end: offset),
+            duration: reduceMotion
+                ? Duration.zero
+                : const Duration(milliseconds: 220),
+            curve: Curves.easeOutBack,
+            builder: (context, value, child) =>
+                Transform.translate(offset: Offset(0, value), child: child),
+            child: widget.child,
+          ),
+          Positioned(
+            key: const Key('discover-refresh-loading'),
+            top: 7,
+            left: 0,
+            right: 0,
+            child: IgnorePointer(
+              child: ExcludeSemantics(
+                excluding: visibleExtent == 0,
+                child: Semantics(
+                  liveRegion: refreshActive,
+                  label: MaterialLocalizations.of(
+                    context,
+                  ).refreshIndicatorSemanticLabel,
+                  child: Center(
+                    child: AnimatedOpacity(
+                      key: const Key('discover-refresh-opacity'),
+                      opacity: pullProgress,
+                      duration: reduceMotion
+                          ? Duration.zero
+                          : const Duration(milliseconds: 140),
+                      curve: Curves.easeOut,
+                      child: TickerMode(
+                        enabled: !reduceMotion && visibleExtent > 0,
+                        child: SkillsLoadingShape(
+                          size: 34,
+                          progress: refreshActive ? null : pullProgress,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (!refreshActive &&
+              visibleExtent == 0 &&
+              widget.refreshError != null)
+            Positioned(
+              top: 8,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: Container(
+                  key: const Key('discover-refresh-error'),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 7,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    widget.refreshError!,
+                    style: TextStyle(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      fontSize: 12,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
   }
 }

@@ -4,12 +4,12 @@ This document defines navigation, core journeys, page states, and interaction bo
 
 ## Product Principles
 
-1. **Useful before configured**: open Discover immediately instead of forcing first-run setup.
+1. **Orient before entry**: require a short, resumable first-launch Onboarding before exposing the main destinations on a clean installation.
 2. **Inventory reflects the machine**: include both SkillsGo-managed targets and External Installations discovered in Agent directories.
 3. **Skill is the primary object**: aggregate the Library by logical Skill; location, Agent, and version belong to Installation Targets.
 4. **Mutations are explicit**: show the exact targets affected before install, update, or removal.
 5. **Multi-target is not a fake transaction**: commit targets independently and retain successful targets after partial failure.
-6. **Projects require authorization**: inspect only projects explicitly added by the user.
+6. **Projects require authorization**: inspect only projects explicitly selected by the user.
 7. **The terminal is not a prerequisite**: production App releases bundle a compatible SkillsGo CLI.
 
 ## Information Architecture
@@ -20,7 +20,7 @@ The top-level navigation remains a centered three-item capsule with a white sele
 Discover    Library    Settings
 ```
 
-Each destination displays a Burrow-inspired floating rounded left rail. Project and Agent entries require visible labels instead of icon-only navigation. Each destination keeps its own ambient color and accent.
+Library and Settings display a Burrow-inspired floating rounded left rail. Project entries require visible labels instead of icon-only navigation. Each destination keeps its own ambient color and accent.
 
 ### Discover
 
@@ -39,24 +39,20 @@ Hot
 ### Library
 
 ```text
-All
-User Scope
+All Skills
+Global
 Project A
 Project B
 + Add Project
-────────
-Codex
-Claude Code
-Cursor
 ```
 
-- All aggregates every known location and Agent.
-- User Scope shows only user-level targets.
+- All Skills aggregates every known location and Agent.
+- Global is the user-facing label for User Scope and shows only user-level targets.
 - Projects include only directories explicitly added by the user.
-- The entries after the divider include every Installed Agent, even when an Agent has zero Skills.
-- Project and Agent entries are mutually exclusive navigation destinations. Only one rail item is selected at a time; they do not form an intersection filter.
+- The content toolbar keeps search, update status, and an Agent multi-select separate from location navigation. Every Installed Agent remains available even when it has zero Skills.
+- One location route and any Agent subset may be combined. The project dropdown is removed so the rail is the only location-navigation control.
 - Long names stay on one line, truncate, and reveal the full name and path on hover.
-- Dynamic entries may scroll, while All and Add Project remain easy to reach.
+- Dynamic project entries may scroll, while All Skills and Global remain at the top and Add Project stays pinned at the bottom.
 
 ### Settings
 
@@ -80,20 +76,22 @@ About
 
 ```mermaid
 flowchart LR
-    A["Launch SkillsGo"] --> B["Check bundled CLI, Hub, and Installed Agents in parallel"]
-    B --> C["Open Discover / Search"]
-    C --> D{"Any supported Agent target?"}
-    D -->|Yes| E["Direct installation is available"]
-    D -->|No| F["Discovery remains available"]
-    B --> G{"Hub available?"}
-    G -->|No| H["Discover shows offline state; Library remains available"]
+    A["Launch clean installation"] --> B["Welcome: introduce the Skills Store and list Installed Agents"]
+    B --> C["Projects: add a directory or continue"]
+    C --> D{"Any project added?"}
+    D -->|Yes| E["Open Library / All"]
+    D -->|No| F["Open Discover / Search"]
 ```
 
-First launch requires no account, project, or external CLI. Health checks must not delay the window:
+Clean installations must complete the two-step Mandatory Onboarding before entering Discover, Library, or Settings. Existing users upgrading from an earlier version are treated as complete when existing App state proves prior use.
 
-- A bundled CLI failure provides retry and diagnostics.
-- A supported Agent remains an installation target even when its application is not currently installed; SkillsGo creates the target directory when needed.
-- While the Hub is offline, the Library, local details, projects, and Agent views remain available.
+- Welcome uses one bundled-CLI read to render the complete Installed Agent set without per-Agent progress or Skill counts.
+- Welcome performs no Skill scan and starts no background migration.
+- Projects permits repeated manual additions before completion.
+- Additions persist immediately. Closing and reopening resumes Onboarding at the Projects step without losing added projects.
+- The Stepper finish action always reads **Start Using SkillsGo**. It permanently completes Onboarding whether or not the user added a project.
+- A bundled CLI failure provides retry and diagnostics because the App cannot establish a valid local boundary without it.
+- Hub health is not part of Onboarding and cannot block local setup.
 
 ## Journey 1: Discover and Install a Skill
 
@@ -125,11 +123,11 @@ Back navigation restores the exact originating list state instead of returning t
 
 ### Select Installation Targets
 
-The installation sheet uses a location-by-Agent matrix. Rows include User Scope and every Added Project; columns include every supported Agent. Installed Agents are selected by default; supported but uninstalled Agents remain available explicitly.
+The installation sheet uses a location-by-Agent matrix. Rows include Global, the user-facing label for User Scope, and every Added Project; columns include every supported Agent. Installed Agents are selected by default; supported but uninstalled Agents remain available explicitly.
 
 | Location | Codex | Claude Code | Cursor |
 | --- | ---: | ---: | ---: |
-| User Scope | ✓ |  | ✓ |
+| Global | ✓ |  | ✓ |
 | Project A | ✓ | ✓ |  |
 | Project B |  | ✓ |  |
 
@@ -157,7 +155,7 @@ Each Installation Target commits independently. The result groups success, skipp
 ```text
 5 targets installed, 1 failed
 
-✓ User Scope / Codex
+✓ Global / Codex
 ✓ Project A / Codex
 ✓ Project A / Claude Code
 …
@@ -197,12 +195,14 @@ row actions.
 
 ### View Semantics
 
-- **All**: every Library Entry.
-- **User Scope**: entries with at least one user-level target; detail opens with user-level targets as the current context.
+- **All Skills**: every Library Entry.
+- **Global**: entries with at least one user-level target; detail opens with user-level targets as the current context.
 - **Project A**: every Skill used by any Agent in the project; an empty project prompts the user to install its first Skill.
-- **Codex**: every Skill with at least one Codex target across all locations; an empty Agent prompts discovery.
+- **Codex filter**: within the selected location, every Skill with at least one Codex target; an empty result prompts discovery.
 
-Changing the rail selection replaces the current view and never retains a project-and-Agent intersection. Search within the list filters only the current view by name, description, and source.
+Batch Takeover uses the selected location as its complete scope boundary. All Skills scans User Scope and every accessible Added Project, Global scans only User Scope, and a Project route scans only that Project. It never silently adds another location to the requested batch.
+
+Changing the rail selection replaces the current location while retaining search, update status, and Agent filters. Search within the list filters only the resulting view by name, description, and source.
 
 ## Journey 3: Manage an Installed Skill
 
@@ -210,7 +210,7 @@ Installed detail presents the Skill first and lists the relevant targets:
 
 | Location | Agent | Version | Type | State |
 | --- | --- | --- | --- | --- |
-| User Scope | Codex | v1.4 | Hub | Current |
+| Global | Codex | v1.4 | Hub | Current |
 | Project A | Codex | v1.2 | Hub | Update available |
 | Project A | Claude Code | v1.2 | Hub | Update available |
 | Project B | Cursor | local-1 | Local | No online updates |
@@ -292,9 +292,8 @@ Suggested logical routes:
 /discover/skill/:skillId
 
 /library/all
-/library/user
+/library/global
 /library/project/:projectId
-/library/agent/:agentId
 /library/skill/:libraryEntryId
 
 /settings/general

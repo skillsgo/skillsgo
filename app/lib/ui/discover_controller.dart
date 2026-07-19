@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Riverpod, SkillsGateway discovery contracts, and the App-scoped Gateway provider.
- * [OUTPUT]: Provides immutable per-route discovery and Repository-summary caches plus race-safe search, initial-load, and pagination actions.
+ * [OUTPUT]: Provides immutable per-route discovery and Repository-summary caches plus query-bound, race-safe initial-load, locale reload, refresh, and pagination actions.
  * [POS]: Serves as the Discover journey's business-state boundary; scroll, focus, and transitions remain widget-owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,18 +16,26 @@ class DiscoverRouteState {
     this.results,
     this.repository,
     this.error,
+    this.refreshError,
+    this.paginationError,
     this.nextOffset,
+    this.query = '',
     this.generation = 0,
     this.loading = false,
+    this.refreshing = false,
     this.loadingMore = false,
   });
 
   final List<SkillSummary>? results;
   final RepositorySummary? repository;
   final Object? error;
+  final Object? refreshError;
+  final Object? paginationError;
   final int? nextOffset;
+  final String query;
   final int generation;
   final bool loading;
+  final bool refreshing;
   final bool loadingMore;
 
   DiscoverRouteState copyWith({
@@ -37,18 +45,30 @@ class DiscoverRouteState {
     bool clearRepository = false,
     Object? error,
     bool clearError = false,
+    Object? refreshError,
+    bool clearRefreshError = false,
+    Object? paginationError,
+    bool clearPaginationError = false,
     int? nextOffset,
     bool clearNextOffset = false,
+    String? query,
     int? generation,
     bool? loading,
+    bool? refreshing,
     bool? loadingMore,
   }) => DiscoverRouteState(
     results: clearResults ? null : results ?? this.results,
     repository: clearRepository ? null : repository ?? this.repository,
     error: clearError ? null : error ?? this.error,
+    refreshError: clearRefreshError ? null : refreshError ?? this.refreshError,
+    paginationError: clearPaginationError
+        ? null
+        : paginationError ?? this.paginationError,
     nextOffset: clearNextOffset ? null : nextOffset ?? this.nextOffset,
+    query: query ?? this.query,
     generation: generation ?? this.generation,
     loading: loading ?? this.loading,
+    refreshing: refreshing ?? this.refreshing,
     loadingMore: loadingMore ?? this.loadingMore,
   );
 }
@@ -85,31 +105,61 @@ class DiscoverController extends Notifier<DiscoverState> {
     );
   }
 
+  Future<void> reloadLocalizedContent() async {
+    final loadedRoutes = [
+      for (final entry in state.routes.entries)
+        if (entry.value.results != null)
+          (route: entry.key, query: entry.value.query),
+    ];
+    await Future.wait([
+      for (final entry in loadedRoutes)
+        load(
+          entry.route,
+          reset: true,
+          query: entry.query,
+          preserveResults: true,
+        ),
+    ]);
+  }
+
   Future<void> load(
     DiscoverRoute route, {
     required bool reset,
     String query = '',
+    bool preserveResults = false,
   }) async {
     final current = state.routes[route]!;
+    if (!reset &&
+        (current.loading || current.refreshing || current.loadingMore)) {
+      return;
+    }
+    if (reset && preserveResults && (current.loading || current.refreshing)) {
+      return;
+    }
     final nextOffset = reset ? 0 : current.nextOffset;
     if (nextOffset == null) return;
     final generation = reset ? current.generation + 1 : current.generation;
+    final requestQuery = reset ? query : current.query;
     state = state.replace(
       route,
       current.copyWith(
         clearError: true,
-        clearResults: reset,
-        clearRepository: reset,
+        clearRefreshError: true,
+        clearPaginationError: true,
+        clearResults: reset && !preserveResults,
+        clearRepository: reset && !preserveResults,
         clearNextOffset: reset,
+        query: requestQuery,
         generation: generation,
-        loading: reset,
+        loading: reset && !preserveResults,
+        refreshing: reset && preserveResults,
         loadingMore: !reset,
       ),
     );
     try {
       final page = await _gateway.discover(
         _collectionForRoute(route),
-        query: query,
+        query: requestQuery,
         offset: nextOffset,
       );
       final latest = state.routes[route]!;
@@ -117,11 +167,14 @@ class DiscoverController extends Notifier<DiscoverState> {
       state = state.replace(
         route,
         latest.copyWith(
-          results: reset ? page.skills : [...?latest.results, ...page.skills],
+          results: reset
+              ? page.skills
+              : _appendUnique(latest.results ?? const [], page.skills),
           repository: reset ? page.repository : latest.repository,
           nextOffset: page.nextOffset,
           clearNextOffset: page.nextOffset == null,
           loading: false,
+          refreshing: false,
           loadingMore: false,
         ),
       );
@@ -130,10 +183,25 @@ class DiscoverController extends Notifier<DiscoverState> {
       if (generation != latest.generation) return;
       state = state.replace(
         route,
-        latest.copyWith(error: error, loading: false, loadingMore: false),
+        latest.copyWith(
+          error: reset && !preserveResults ? error : null,
+          refreshError: reset && preserveResults ? error : null,
+          paginationError: !reset ? error : null,
+          loading: false,
+          refreshing: false,
+          loadingMore: false,
+        ),
       );
     }
   }
+}
+
+List<SkillSummary> _appendUnique(
+  List<SkillSummary> current,
+  List<SkillSummary> incoming,
+) {
+  final seen = current.map((skill) => skill.id).toSet();
+  return [...current, ...incoming.where((skill) => seen.add(skill.id))];
 }
 
 DiscoveryCollection _collectionForRoute(DiscoverRoute route) => switch (route) {

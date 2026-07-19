@@ -25,6 +25,8 @@ class BloomColorPickerStyle {
     this.pillBackgroundColor = const Color(0xFFFFFFFF),
     this.pillTextColor = const Color(0xFF1A1A1A),
     this.iconColor = const Color(0xFF8A8A8A),
+    this.iconStrokeWidth = 1.8,
+    this.closedBorderWidth = 3,
     this.textStyle,
     this.animationDuration = const Duration(milliseconds: 500),
     this.animationCurve = Curves.easeOutCubic, // Smooth ease-out feel
@@ -54,6 +56,12 @@ class BloomColorPickerStyle {
   /// The color of the edit icon in the pill.
   final Color iconColor;
 
+  /// Stroke width for the closed-state edit icon.
+  final double iconStrokeWidth;
+
+  /// Border width around the closed-state color indicator.
+  final double closedBorderWidth;
+
   /// Custom text style for the hex code pill. If null, a default style is used.
   final TextStyle? textStyle;
 
@@ -77,6 +85,8 @@ class BloomColorPickerStyle {
     Color? pillBackgroundColor,
     Color? pillTextColor,
     Color? iconColor,
+    double? iconStrokeWidth,
+    double? closedBorderWidth,
     TextStyle? textStyle,
     Duration? animationDuration,
     Curve? animationCurve,
@@ -91,6 +101,8 @@ class BloomColorPickerStyle {
       pillBackgroundColor: pillBackgroundColor ?? this.pillBackgroundColor,
       pillTextColor: pillTextColor ?? this.pillTextColor,
       iconColor: iconColor ?? this.iconColor,
+      iconStrokeWidth: iconStrokeWidth ?? this.iconStrokeWidth,
+      closedBorderWidth: closedBorderWidth ?? this.closedBorderWidth,
       textStyle: textStyle ?? this.textStyle,
       animationDuration: animationDuration ?? this.animationDuration,
       animationCurve: animationCurve ?? this.animationCurve,

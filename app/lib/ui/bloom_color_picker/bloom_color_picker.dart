@@ -497,7 +497,10 @@ class _BloomColorPickerState extends State<BloomColorPicker>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 color: _currentColor,
-                border: Border.all(color: Colors.white, width: 3.0),
+                border: Border.all(
+                  color: Colors.white,
+                  width: widget.style.closedBorderWidth,
+                ),
               ),
             ),
           ),
@@ -653,7 +656,7 @@ class _BloomColorPickerState extends State<BloomColorPicker>
                           child: HugeIcon(
                             icon: HugeIcons.strokeRoundedEdit02,
                             size: 16,
-                            strokeWidth: 1.8,
+                            strokeWidth: widget.style.iconStrokeWidth,
                             color: widget.style.iconColor,
                           ),
                         ),

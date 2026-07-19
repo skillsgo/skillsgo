@@ -1,13 +1,16 @@
 /*
- * [INPUT]: Uses SkillsGoApp, shared navigation primitives, Loading Animation Widget and Portal Labs indicators, the vendored named-preset Bloom color picker, and a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
- * [OUTPUT]: Specifies startup, persistent primary folder navigation, aligned editorial destination frames, leaderboard-style discovery search and tabs, opaque directional discovery/detail transitions, detail product metadata, discovery/detail recovery, outage-resilient Hub/Local/External Library views including visible Batch Takeover progress, projects, Agents, Settings, anchored installation-location selection, Installation/Update/Target Management journeys including External removal, offline retry, Local install-more/export, exact-target recovery, focus, accessibility, and mutations.
+ * [INPUT]: Uses SkillsGoApp, shared navigation primitives, Loading Animation Widget, Portal Labs indicators, the vendored subscription switch and named-preset Bloom color picker, and a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
+ * [OUTPUT]: Specifies Mandatory Onboarding including multi-directory project addition, startup, persistent primary folder navigation, aligned editorial destination frames, leaderboard-style discovery search and tabs, opaque directional discovery/detail transitions, detail product metadata, discovery/detail recovery, outage-resilient Hub/Local/External Library views, fixed All/Global navigation and section dividers with compact independently scrollable Projects and a slim scrollbar, concise project-empty recovery to Discover, Agent filtering, reduced-motion-aware Settings secondary-body entrances, anchored installation-location selection, Installation/Update/Target Management journeys including External removal and location-scoped Batch Takeover progress, offline retry, Local install-more/export, exact-target recovery, focus, accessibility, and mutations.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
-import 'dart:ui' show PointerDeviceKind, Tristate;
+import 'dart:math' as math;
+import 'dart:ui' show BoxHeightStyle, PointerDeviceKind, Tristate;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart' show RenderParagraph;
 import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -17,12 +20,325 @@ import 'package:skillsgo/ui/bloom_color_picker/bloom_color_picker.dart';
 import 'package:skillsgo/ui/brand.dart';
 import 'package:skillsgo/app.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
+import 'package:skillsgo/ui/agent_logo.dart';
 import 'package:skillsgo/ui/brand_theme_presets.dart';
 import 'package:skillsgo/ui/native_components.dart';
 import 'package:skillsgo/ui/nested_navigation.dart';
 import 'package:skillsgo/ui/primary_folder_shell.dart';
+import 'package:skillsgo/ui/subscription_segmented_switch.dart';
 
 void main() {
+  testWidgets(
+    'clean installation completes two-step Mandatory Onboarding before Library',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final gateway = FakeSkillsGateway(
+        onboardingState: const OnboardingState(
+          completed: false,
+          step: OnboardingStep.welcome,
+        ),
+        agentNames: const ['codex', 'claude-code'],
+        projectsToAdd: const [
+          AddedProject(
+            id: 'project-a',
+            name: 'Project A',
+            path: '/work/project-a',
+            accessState: ProjectAccessState.accessible,
+          ),
+          AddedProject(
+            id: 'project-b',
+            name: 'Project B',
+            path: '/work/project-b',
+            accessState: ProjectAccessState.accessible,
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Welcome to SkillsGo'), findsOneWidget);
+      expect(find.byKey(const Key('onboarding-skillsgo-logo')), findsOneWidget);
+      expect(find.text('Codex'), findsOneWidget);
+      expect(find.text('Claude Code'), findsOneWidget);
+      expect(find.text('Discover'), findsNothing);
+      expect(gateway.projectLoads, 0);
+
+      await tester.tap(find.text('Next'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add your projects'), findsOneWidget);
+      expect(find.text('Add now'), findsOneWidget);
+      expect(find.textContaining('skills.sh'), findsNothing);
+      expect(find.text('Start Using SkillsGo'), findsOneWidget);
+
+      await tester.tap(find.text('Add now'));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const ValueKey('onboarding-project-project-a')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const ValueKey('onboarding-project-project-b')),
+        findsOneWidget,
+      );
+      expect(find.text('Start Using SkillsGo'), findsOneWidget);
+
+      await tester.tap(find.text('Start Using SkillsGo'));
+      await tester.pumpAndSettle();
+
+      expect(gateway.onboardingCompletions, 1);
+      expect(find.text('local-skill'), findsOneWidget);
+    },
+  );
+
+  testWidgets('Onboarding startup errors remain retryable', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final gateway = FakeSkillsGateway(
+      onboardingState: const OnboardingState(
+        completed: false,
+        step: OnboardingStep.welcome,
+      ),
+      onboardingLoadErrors: [StateError('preferences unavailable')],
+    );
+
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+
+    expect(find.text('SkillsGo could not load setup.'), findsOneWidget);
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(find.text('Welcome to SkillsGo'), findsOneWidget);
+  });
+
+  testWidgets(
+    'Onboarding project strip exposes hover removal without deleting files',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final gateway = FakeSkillsGateway(
+        onboardingState: const OnboardingState(
+          completed: false,
+          step: OnboardingStep.projects,
+        ),
+        addedProjects: const [
+          AddedProject(
+            id: 'project-a',
+            name: 'Project A',
+            path: '/work/project-a',
+            accessState: ProjectAccessState.accessible,
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+
+      final project = find.byKey(
+        const ValueKey('onboarding-project-project-a'),
+      );
+      final remove = find.byKey(
+        const ValueKey('onboarding-remove-project-project-a'),
+      );
+      expect(project, findsOneWidget);
+      expect(find.text('1 project added'), findsNothing);
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      await mouse.addPointer();
+      await mouse.moveTo(tester.getCenter(project));
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(remove, findsOneWidget);
+
+      await tester.tap(remove);
+      await tester.pumpAndSettle();
+      expect(project, findsNothing);
+      expect(gateway.projects, isEmpty);
+    },
+  );
+
+  testWidgets('Mandatory Onboarding primary actions support the keyboard', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final gateway = FakeSkillsGateway(
+      onboardingState: const OnboardingState(
+        completed: false,
+        step: OnboardingStep.welcome,
+      ),
+    );
+
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(find.text('Add your projects'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowLeft);
+    await tester.pumpAndSettle();
+    expect(find.text('Welcome to SkillsGo'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(gateway.onboardingCompletions, 1);
+    expect(find.text('Discover'), findsOneWidget);
+  });
+
+  testWidgets(
+    'Onboarding persists the next step before exposing its final action',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final saved = Completer<void>();
+      final gateway = FakeSkillsGateway(
+        onboardingState: const OnboardingState(
+          completed: false,
+          step: OnboardingStep.welcome,
+        ),
+        onboardingStepSaveCompleter: saved,
+      );
+
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Next'));
+      await tester.pump();
+
+      expect(find.text('Welcome to SkillsGo'), findsOneWidget);
+      expect(find.text('Start Using SkillsGo'), findsNothing);
+      saved.complete();
+      await tester.pumpAndSettle();
+      expect(find.text('Start Using SkillsGo'), findsOneWidget);
+    },
+  );
+
+  testWidgets(
+    'Onboarding waits for projects before enabling its final action',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      final projects = Completer<List<AddedProject>>();
+      final gateway = FakeSkillsGateway(
+        onboardingState: const OnboardingState(
+          completed: false,
+          step: OnboardingStep.projects,
+        ),
+        projectLoadCompleter: projects,
+      );
+
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pump();
+
+      expect(find.bySemanticsLabel('Loading…'), findsOneWidget);
+      await tester.tap(find.text('Start Using SkillsGo'));
+      await tester.pump();
+      expect(gateway.onboardingCompletions, 0);
+
+      projects.complete(const []);
+      await tester.pumpAndSettle();
+      expect(find.text('Add now'), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    },
+  );
+
+  testWidgets('subscription switch preserves its sliding selection motion', (
+    tester,
+  ) async {
+    var selected = 0;
+    await tester.pumpWidget(
+      MaterialApp(
+        home: Center(
+          child: SubscriptionSegmentedSwitch(
+            options: const [
+              SubscriptionSwitchOption(
+                label: 'All',
+                icon: HugeIcons.strokeRoundedLayers01,
+              ),
+              SubscriptionSwitchOption(
+                label: 'Updates',
+                icon: HugeIcons.strokeRoundedArrowReloadVertical,
+              ),
+            ],
+            selectedIndex: selected,
+            onChanged: (value) => selected = value,
+          ),
+        ),
+      ),
+    );
+
+    final thumb = find.byKey(const Key('subscription-switch-thumb'));
+    final thumbSize = tester.getSize(thumb);
+    final switchSize = tester.getSize(find.byType(SubscriptionSegmentedSwitch));
+    expect(thumbSize.height, 28);
+    expect(thumbSize.width * 2 + 8, switchSize.width);
+    final start = tester.getTopLeft(thumb).dx;
+    await tester.tap(find.text('Updates'));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    final midway = tester.getTopLeft(thumb).dx;
+    var furthest = midway;
+    var passedTarget = false;
+    var rebounded = false;
+    final target = start + thumbSize.width;
+    for (var frame = 0; frame < 50; frame++) {
+      await tester.pump(const Duration(milliseconds: 16));
+      final position = tester.getTopLeft(thumb).dx;
+      furthest = math.max(furthest, position);
+      if (position > target + .1) passedTarget = true;
+      if (passedTarget && position < target - .1) rebounded = true;
+    }
+
+    expect(selected, 1);
+    expect(midway, greaterThan(start));
+    expect(midway, lessThan(target));
+    expect(furthest, greaterThan(target));
+    expect(furthest, lessThanOrEqualTo(target + 2.51));
+    expect(rebounded, isTrue);
+  });
+
+  testWidgets('subscription switch adapts its width to localized labels', (
+    tester,
+  ) async {
+    Future<double> pumpSwitch(List<String> labels) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Center(
+            child: SubscriptionSegmentedSwitch(
+              options: [
+                SubscriptionSwitchOption(
+                  label: labels[0],
+                  icon: HugeIcons.strokeRoundedLayers01,
+                ),
+                SubscriptionSwitchOption(
+                  label: labels[1],
+                  icon: HugeIcons.strokeRoundedArrowReloadVertical,
+                ),
+              ],
+              selectedIndex: 0,
+              onChanged: (_) {},
+            ),
+          ),
+        ),
+      );
+      return tester.getSize(find.byType(SubscriptionSegmentedSwitch)).width;
+    }
+
+    final compactWidth = await pumpSwitch(['All', 'Updates']);
+    final localizedWidth = await pumpSwitch(['全部已安装项目', '存在可用更新的项目']);
+
+    expect(localizedWidth, greaterThan(compactWidth));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('pull-progress ink drop keeps its animation ticker enabled', (
     tester,
   ) async {
@@ -50,12 +366,15 @@ void main() {
     ];
     addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
 
-    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
+    await tester.pumpWidget(
+      SkillsGoApp(gateway: FakeSkillsGateway(language: AppLanguage.system)),
+    );
     await tester.pumpAndSettle();
 
     expect(find.text('发现'), findsOneWidget);
     expect(find.text('已安装'), findsOneWidget);
-    expect(find.text('多会一点，总是好的。'), findsOneWidget);
+    expect(find.text('多会一点，总是好的。'), findsNothing);
+    expect(find.text('搜索技能或粘贴 Git 链接…'), findsOneWidget);
 
     for (final route in const {
       '排行': '历史排行',
@@ -66,6 +385,11 @@ void main() {
       await tester.pumpAndSettle();
       expect(_isSemanticallySelected(tester, route.key), isTrue);
     }
+
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    expect(find.text('搜索已安装技能'), findsOneWidget);
+    expect(find.text('搜索技能或粘贴 Git 链接…'), findsNothing);
 
     await tester.tap(find.byKey(const Key('primary-destination-settings')));
     await tester.pumpAndSettle();
@@ -78,6 +402,40 @@ void main() {
     expect(localizedPresets, containsAll(['GitHub', 'levels.fyi', 'Figma']));
   });
 
+  testWidgets('compact primary capsule optically centers its Chinese label', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(
+          installed: false,
+          language: AppLanguage.simplifiedChinese,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final button = find.widgetWithText(PrimaryCapsuleButton, '安装').first;
+    final label = find.descendant(of: button, matching: find.text('安装'));
+    final paragraph = tester.renderObject<RenderParagraph>(label);
+    final glyphBox = paragraph
+        .getBoxesForSelection(
+          const TextSelection(baseOffset: 0, extentOffset: 2),
+          boxHeightStyle: BoxHeightStyle.tight,
+        )
+        .single
+        .toRect()
+        .shift(tester.getTopLeft(label));
+
+    expect(
+      glyphBox.center.dy,
+      closeTo(tester.getCenter(button).dy, .5),
+      reason: 'The painted Chinese glyphs should sit in the capsule center.',
+    );
+  });
+
   testWidgets('localizes missing bundled CLI recovery guidance', (
     tester,
   ) async {
@@ -88,15 +446,52 @@ void main() {
     addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
 
     await tester.pumpWidget(
-      SkillsGoApp(gateway: FakeSkillsGateway(cliReady: false)),
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(
+          cliReady: false,
+          language: AppLanguage.system,
+        ),
+      ),
     );
     await tester.pumpAndSettle();
 
     expect(
-      find.text('内置的 SkillsGo CLI 缺失或无法运行。请重新安装 SkillsGo。'),
+      find.text('SkillsGo 的必要组件缺失或无法启动。请重新安装 SkillsGo 以恢复该组件。'),
       findsOneWidget,
     );
     expect(find.text('raw process diagnostic'), findsNothing);
+  });
+
+  testWidgets('Settings changes and persists the application language', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway();
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    final discoveryCallsBeforeLanguageChange = gateway.collections.length;
+    await tester.tap(find.byKey(const Key('language-picker')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('简体中文').last);
+    await tester.pumpAndSettle();
+
+    expect(gateway.language, AppLanguage.simplifiedChinese);
+    expect(
+      gateway.collections.length,
+      greaterThan(discoveryCallsBeforeLanguageChange),
+    );
+    expect(find.text('语言'), findsOneWidget);
+    expect(find.text('设置'), findsWidgets);
+
+    await tester.tap(find.byKey(const Key('language-picker')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('English').last);
+    await tester.pumpAndSettle();
+    expect(gateway.language, AppLanguage.english);
+    expect(find.text('Language'), findsOneWidget);
   });
 
   testWidgets('primary Folder persists across every primary destination', (
@@ -169,6 +564,14 @@ void main() {
     await tester.pumpAndSettle();
     expect(_shellBrightness(tester), Brightness.dark);
     expect(gateway.themeMode, AppThemeMode.system);
+    expect(
+      tester.getSize(find.byKey(const ValueKey('discrete-tab-Light'))),
+      const Size.square(36),
+    );
+    expect(
+      tester.getSize(find.byKey(const ValueKey('discrete-tab-Dark'))),
+      const Size.square(36),
+    );
 
     await tester.tap(find.byKey(const ValueKey('discrete-tab-Light')));
     await tester.pumpAndSettle();
@@ -486,7 +889,7 @@ void main() {
     );
     expect(loading.style.transitionDuration, const Duration(milliseconds: 800));
     expect(loading.style.enableHaptics, isFalse);
-    expect(loading.style.shapes, hasLength(2));
+    expect(loading.style.shapes, hasLength(7));
 
     pendingSearch.complete(FakeSkillsGateway._defaultSearchResults);
     await tester.pumpAndSettle();
@@ -717,48 +1120,36 @@ void main() {
     await tester.tap(find.text('Ranking'));
     await tester.pumpAndSettle();
 
-    expect(find.text('It’s nice to know a little more.'), findsOneWidget);
+    expect(find.text('It’s nice to know a little more.'), findsNothing);
+    expect(find.byKey(const Key('skill-search-input')), findsOneWidget);
     await tester.drag(
       find.byKey(const ValueKey('discover-results-ranking')),
       const Offset(0, -500),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('It’s nice to know a little more.'), findsOneWidget);
+    expect(find.byKey(const Key('skill-search-input')), findsOneWidget);
     expect(find.text('Ranked 6'), findsOneWidget);
   });
 
-  testWidgets('Discover and Library share the editorial content frame', (
+  testWidgets('Discover and Library begin on the same toolbar row', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
     await tester.pumpAndSettle();
 
-    final discoverTitle = find
-        .text('It’s nice to know a little more.')
-        .hitTestable();
-    final discoverOrigin = tester.getTopLeft(discoverTitle);
-    final discoverText = tester.widget<Text>(discoverTitle);
-
-    expect(discoverText.style?.fontFamily, SkillsTokens.monoFamily);
-    expect(discoverText.style?.fontSize, 20);
-    expect(discoverText.style?.fontWeight, FontWeight.w200);
-    expect(discoverText.style?.height, 28 / 20);
+    final discoverSearch = find.byKey(const Key('skill-search-input'));
+    final discoverOrigin = tester.getTopLeft(discoverSearch);
+    expect(find.text('It’s nice to know a little more.'), findsNothing);
 
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
 
-    final libraryTitle = find.text('What you know is all here.').hitTestable();
-    final libraryOrigin = tester.getTopLeft(libraryTitle);
-    final libraryText = tester.widget<Text>(libraryTitle);
-
-    expect(libraryOrigin.dx, discoverOrigin.dx);
+    final librarySearch = find.byKey(const Key('library-search'));
+    final libraryOrigin = tester.getTopLeft(librarySearch);
+    expect(find.text('What you know is all here.'), findsNothing);
     expect(libraryOrigin.dy, discoverOrigin.dy);
-    expect(libraryText.style?.fontFamily, discoverText.style?.fontFamily);
-    expect(libraryText.style?.fontSize, discoverText.style?.fontSize);
-    expect(libraryText.style?.fontWeight, discoverText.style?.fontWeight);
-    expect(libraryText.style?.height, discoverText.style?.height);
   });
 
   testWidgets('Discover pagination appends the next stable page', (
@@ -832,7 +1223,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('Alpha'), findsOneWidget);
-    expect(find.textContaining('too long to respond'), findsOneWidget);
+    expect(find.textContaining('did not respond in time'), findsOneWidget);
     expect(find.text('Try again'), findsOneWidget);
     expect(find.text('raw'), findsNothing);
   });
@@ -1006,6 +1397,45 @@ void main() {
     },
   );
 
+  testWidgets(
+    'installation selector headings share a foreground across themes and seeds',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 850));
+      for (final themeMode in [AppThemeMode.light, AppThemeMode.dark]) {
+        for (final seed in ['#FFFFFF', '#5865F2']) {
+          final gateway = FakeSkillsGateway(
+            installed: false,
+            agentNames: const ['codex', 'claude-code'],
+            folderTheme: seed,
+            themeMode: themeMode,
+          );
+          await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+          await tester.pumpAndSettle();
+
+          final card = find.byType(SkillCard).first;
+          await tester.tap(
+            find.descendant(of: card, matching: find.text('Install')),
+          );
+          await tester.pumpAndSettle();
+
+          final installTitle = tester.renderObject<RenderParagraph>(
+            find.text('Install Flutter Pro to'),
+          );
+          final agentsTitle = tester.renderObject<RenderParagraph>(
+            find.text('For Agents'),
+          );
+          expect(
+            installTitle.text.style?.color,
+            agentsTitle.text.style?.color,
+            reason: '$themeMode with $seed seed',
+          );
+          await tester.pumpWidget(const SizedBox.shrink());
+          await tester.pump();
+        }
+      }
+    },
+  );
+
   testWidgets('card installation opens a skeleton before detail resolves', (
     tester,
   ) async {
@@ -1063,7 +1493,7 @@ void main() {
       expect(find.text('Install Flutter Pro to'), findsOneWidget);
       expect(find.text('Installation could not be completed'), findsOneWidget);
       expect(
-        find.textContaining('local installation data the App cannot read'),
+        find.textContaining('local installation information is damaged'),
         findsOneWidget,
       );
       expect(find.byKey(const Key('detail-back')), findsNothing);
@@ -1097,19 +1527,11 @@ void main() {
       find.byKey(const Key('detail-description-markdown')),
       findsOneWidget,
     );
-    expect(
-      tester
-          .getSize(find.byKey(const Key('detail-description-markdown')))
-          .height,
-      68,
+    final summary = tester.widget<Text>(
+      find.byKey(const Key('detail-description-markdown')),
     );
-    expect(
-      find.descendant(
-        of: find.byKey(const Key('detail-description-markdown')),
-        matching: find.byType(Markdown),
-      ),
-      findsOneWidget,
-    );
+    expect(summary.maxLines, 3);
+    expect(summary.overflow, TextOverflow.ellipsis);
     expect(
       find.text(FakeSkillsGateway.defaultRemoteDetail.description),
       findsOneWidget,
@@ -1118,6 +1540,15 @@ void main() {
     expect(find.byKey(const Key('detail-scroll-view')), findsOneWidget);
     expect(find.byKey(const Key('detail-compact-identity')), findsNothing);
     expect(find.byKey(const Key('detail-hero-install')), findsOneWidget);
+    expect(
+      tester
+          .widget<PrimaryCapsuleButton>(
+            find.byKey(const Key('detail-hero-install')),
+          )
+          .onPressed,
+      isNotNull,
+    );
+    expect(gateway.agentInspections, 1);
     expect(find.text('Installs'), findsOneWidget);
     expect(find.text('1.2K'), findsOneWidget);
     expect(find.text('example/skills'), findsOneWidget);
@@ -1149,7 +1580,15 @@ void main() {
       find.textContaining('does not certify artifact safety'),
       findsNothing,
     );
-    expect(find.text('User Scope / codex · v1.2.3'), findsOneWidget);
+    expect(find.byKey(const Key('installation-scope-panel')), findsOneWidget);
+    expect(find.text('Global'), findsOneWidget);
+    expect(
+      find.byWidgetPredicate(
+        (widget) => widget is AgentLogo && widget.agentId == 'codex',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('v1.2.3'), findsOneWidget);
 
     expect(find.text('Snapshot files'), findsNothing);
     expect(find.text('references/guide.md'), findsNothing);
@@ -1246,6 +1685,9 @@ void main() {
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 900));
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     const projectA = AddedProject(
       id: 'project-a',
       name: 'Project A',
@@ -1258,11 +1700,17 @@ void main() {
       path: '/work/project-b',
       accessState: ProjectAccessState.accessible,
     );
+    const projectC = AddedProject(
+      id: 'project-c',
+      name: 'Project C',
+      path: '/work/project-c',
+      accessState: ProjectAccessState.accessible,
+    );
     final gateway = FakeSkillsGateway(
       installed: false,
       agentNames: const ['codex', 'claude-code'],
       addedProjects: const [projectA],
-      projectToAdd: projectB,
+      projectsToAdd: const [projectB, projectC],
     );
     await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
@@ -1272,25 +1720,35 @@ void main() {
     await tester.tap(find.text('Flutter Pro'));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Install'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    for (var frame = 0; frame < 24; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
 
-    await tester.tap(find.byType(Radio<InstallationScope>).at(1));
-    await tester.pumpAndSettle();
+    await tester.tap(find.text('Selected projects'));
+    for (var frame = 0; frame < 24; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
     expect(find.text('0 projects · 2 Agents'), findsOneWidget);
 
     await tester.tap(find.text('Add Project'));
-    await tester.pumpAndSettle();
+    await tester.pump();
+    for (var frame = 0; frame < 24; frame++) {
+      await tester.pump(const Duration(milliseconds: 50));
+    }
     expect(find.text('Project B'), findsOneWidget);
+    expect(find.text('Project C'), findsOneWidget);
 
     await tester.tap(
       find.ancestor(of: find.text('Project A'), matching: find.byType(InkWell)),
     );
-    await tester.pumpAndSettle();
-    expect(find.text('2 projects · 2 Agents'), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.text('3 projects · 2 Agents'), findsOneWidget);
     await tester.tap(
       find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
     );
-    await tester.pumpAndSettle();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 800));
 
     expect(
       gateway.lastPlanSelections
@@ -1304,9 +1762,68 @@ void main() {
         'project:/work/project-a:claude-code',
         'project:/work/project-b:codex',
         'project:/work/project-b:claude-code',
+        'project:/work/project-c:codex',
+        'project:/work/project-c:claude-code',
       ],
     );
     expect(gateway.installCalls, 1);
+  });
+
+  testWidgets('installation selector does not expose installed target status', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    final gateway = FakeSkillsGateway(installed: true);
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.enterText(_searchInput(), 'installed-target-status');
+    await tester.testTextInput.receiveAction(TextInputAction.search);
+    await tester.pumpAndSettle();
+    final card = find.byType(SkillCard).first;
+    final cardTopBeforeInstall = tester.getTopLeft(card).dy;
+    await tester.tap(find.text('Install').first);
+    await tester.pumpAndSettle();
+    final discoveryRequestsBeforeInstall = gateway.collections.length;
+
+    expect(find.text('Installed'), findsNothing);
+    final confirm = find.widgetWithText(
+      PrimaryCapsuleButton,
+      'Confirm Installation',
+    );
+    expect(tester.widget<PrimaryCapsuleButton>(confirm).onPressed, isNotNull);
+    await tester.tap(confirm);
+    await tester.pumpAndSettle();
+    expect(gateway.lastPlanSelections, hasLength(1));
+    expect(gateway.lastPlanSelections.single.agent, 'codex');
+    expect(gateway.lastPlanSelections.single.scope, InstallationScope.user);
+    expect(gateway.installCalls, 1);
+    expect(gateway.collections, hasLength(discoveryRequestsBeforeInstall));
+    expect(tester.getTopLeft(card).dy, cardTopBeforeInstall);
+    expect(find.text('Installation complete'), findsOneWidget);
+    expect(
+      find.text('The Skill is now available in the selected locations.'),
+      findsOneWidget,
+    );
+    final successTextContext = tester.element(
+      find.text('Installation complete'),
+    );
+    expect(
+      tester.widget<Text>(find.text('Installation complete')).style?.fontWeight,
+      FontWeight.w500,
+    );
+    expect(
+      tester
+          .widget<Text>(
+            find.text('The Skill is now available in the selected locations.'),
+          )
+          .style
+          ?.fontWeight,
+      FontWeight.w400,
+    );
+    expect(
+      DefaultTextStyle.of(successTextContext).style.decoration,
+      isNot(TextDecoration.underline),
+    );
   });
 
   testWidgets(
@@ -1410,6 +1927,13 @@ void main() {
           kind: SkillsFailureKind.artifactUnavailable,
         ),
       ],
+      updateCheckErrors: const [
+        SkillsException(
+          'Update check is offline',
+          kind: SkillsFailureKind.offline,
+          isOffline: true,
+        ),
+      ],
     );
     await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
@@ -1445,7 +1969,7 @@ void main() {
     await tester.tap(find.text('Flutter Pro'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Hub unavailable'), findsOneWidget);
+    expect(find.text('Service temporarily unavailable'), findsOneWidget);
     await tester.tap(find.byKey(const Key('detail-back')));
     await tester.pumpAndSettle();
 
@@ -1503,6 +2027,10 @@ void main() {
             path: '/Users/test/.codex/skills',
             exists: true,
           ),
+          discoveryRoots: [
+            '/Users/test/.codex/skills',
+            '/Users/test/.agents/skills',
+          ],
         ),
         AgentStatus(
           id: 'cursor',
@@ -1603,15 +2131,15 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text('No Skills in this collection'), findsOneWidget);
-    expect(find.textContaining('empty collection'), findsOneWidget);
+    expect(find.textContaining('nothing here yet'), findsOneWidget);
   });
 
   for (final failure in const {
-    SkillsFailureKind.validation: 'Check this request',
-    SkillsFailureKind.server: 'Hub unavailable',
-    SkillsFailureKind.timeout: 'Hub timed out',
-    SkillsFailureKind.offline: 'You’re offline',
-    SkillsFailureKind.invalidResponse: 'Hub response unsupported',
+    SkillsFailureKind.validation: 'Check what you entered',
+    SkillsFailureKind.server: 'Service temporarily unavailable',
+    SkillsFailureKind.timeout: 'This is taking too long',
+    SkillsFailureKind.offline: 'Can’t connect to SkillsGo',
+    SkillsFailureKind.invalidResponse: 'SkillsGo needs an update',
   }.entries) {
     testWidgets('Discover localizes ${failure.key.name} failures', (
       tester,
@@ -1662,10 +2190,10 @@ void main() {
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
 
-    expect(find.text('All'), findsOneWidget);
+    expect(find.text('All Skills'), findsOneWidget);
     expect(find.text('All Agents'), findsOneWidget);
-    expect(find.text('All Projects'), findsWidgets);
-    expect(find.text('Add Project'), findsOneWidget);
+    expect(find.text('Global'), findsOneWidget);
+    expect(find.byKey(const Key('library-add-project')), findsOneWidget);
     await tester.tap(find.byKey(const Key('library-agent-filter')));
     await tester.pumpAndSettle();
     await tester.tap(find.text('Codex'));
@@ -1674,12 +2202,11 @@ void main() {
     await tester.tap(find.byKey(const Key('primary-destination-settings')));
     await tester.pumpAndSettle();
     expect(find.text('Personalize'), findsWidgets);
+    expect(find.text('Advanced'), findsOneWidget);
     expect(find.text('Agents'), findsOneWidget);
-    expect(find.text('Hub'), findsOneWidget);
-    expect(find.text('Installation Policy'), findsOneWidget);
-    expect(find.text('Storage'), findsOneWidget);
-    expect(find.text('About'), findsOneWidget);
-    await tester.tap(find.text('Hub'));
+    expect(find.text('Storage'), findsNothing);
+    expect(find.text('About'), findsNothing);
+    await tester.tap(find.text('Agents'));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key('primary-destination-discover')));
@@ -1696,7 +2223,7 @@ void main() {
 
     await tester.tap(find.byKey(const Key('primary-destination-settings')));
     await tester.pumpAndSettle();
-    expect(_isSemanticallySelected(tester, 'Hub'), isTrue);
+    expect(_isSemanticallySelected(tester, 'Agents'), isTrue);
 
     await tester.tap(find.byKey(const Key('primary-destination-discover')));
     await tester.pumpAndSettle();
@@ -1841,10 +2368,61 @@ void main() {
 
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
+    expect(find.bySemanticsLabel('Add Project'), findsOneWidget);
     await tester.tap(find.byKey(const Key('library-agent-filter')));
     await tester.pumpAndSettle();
     expect(find.bySemanticsLabel(longAgent), findsWidgets);
     expect(find.byTooltip(longAgent), findsOneWidget);
+  });
+
+  testWidgets('Library Agent filter supports compact multi-selection', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(
+          agentNames: const ['codex', 'claude-code', 'github-copilot'],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('All Agents'), findsOneWidget);
+    expect(
+      tester.getSize(find.byKey(const Key('library-agent-filter'))).width,
+      168,
+    );
+    await tester.tap(find.byKey(const Key('library-agent-filter')));
+    await tester.pumpAndSettle();
+    expect(
+      tester.getSize(find.bySemanticsLabel('Github Copilot').first).width,
+      greaterThan(168),
+    );
+    await tester.tap(find.text('Codex'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Claude Code'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('× 2'), findsNothing);
+    final summaryLogos = find.descendant(
+      of: find.byKey(const Key('library-agent-filter')),
+      matching: find.byWidgetPredicate(
+        (widget) => widget is AgentLogo && widget.size == 17,
+      ),
+    );
+    expect(summaryLogos, findsNWidgets(2));
+    expect(
+      tester.getTopLeft(summaryLogos.at(1)).dx -
+          tester.getTopLeft(summaryLogos.at(0)).dx,
+      23,
+    );
+    expect(find.text('Github Copilot'), findsOneWidget);
+    await tester.tap(find.text('All Agents'));
+    await tester.pumpAndSettle();
+    expect(find.text('All Agents'), findsOneWidget);
   });
 
   testWidgets('an overflowing Agent filter remains scrollable', (tester) async {
@@ -1870,7 +2448,7 @@ void main() {
 
     expect(find.text('Agent 19').hitTestable(), findsOneWidget);
     expect(
-      find.text('What you know is all here.').hitTestable(),
+      find.byKey(const Key('library-search')).hitTestable(),
       findsOneWidget,
     );
   });
@@ -1912,8 +2490,8 @@ void main() {
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Local installation data unreadable'), findsOneWidget);
-    expect(find.text('Hub response unsupported'), findsNothing);
+    expect(find.text('Can’t read an installed skill'), findsOneWidget);
+    expect(find.text('SkillsGo needs an update'), findsNothing);
   });
 
   testWidgets('Library refresh retains the last valid inventory', (
@@ -1954,6 +2532,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('Codex'));
     await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('library-agent-filter')));
+    await tester.pumpAndSettle();
     expect(find.text('Codex'), findsOneWidget);
 
     agents.clear();
@@ -1988,7 +2568,7 @@ void main() {
     expect(find.text('No skills installed yet'), findsOneWidget);
   });
 
-  testWidgets('Library exposes Added Projects through one project filter', (
+  testWidgets('Library exposes Global and Added Projects in a location rail', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
@@ -2002,10 +2582,324 @@ void main() {
           accessState: ProjectAccessState.accessible,
         ),
       ],
-      projectToAdd: const AddedProject(
-        id: 'bravo',
-        name: 'Project Bravo',
-        path: '/work/bravo',
+      projectsToAdd: const [
+        AddedProject(
+          id: 'bravo',
+          name: 'Project Bravo',
+          path: '/work/bravo',
+          accessState: ProjectAccessState.accessible,
+        ),
+        AddedProject(
+          id: 'charlie',
+          name: 'Project Charlie',
+          path: '/work/charlie',
+          accessState: ProjectAccessState.accessible,
+        ),
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('All Skills'), findsOneWidget);
+    expect(find.text('Global'), findsOneWidget);
+    expect(_libraryLocation('Project Alpha'), findsOneWidget);
+    expect(find.byKey(const Key('library-project-filter')), findsNothing);
+    final projectScroll = find.byKey(const Key('side-rail-scroll'));
+    final projectScrollbar = tester.widget<Scrollbar>(
+      find.byKey(const Key('side-rail-scrollbar')),
+    );
+    expect(projectScrollbar.thickness, 2);
+    expect(projectScrollbar.radius, const Radius.circular(999));
+    expect(
+      find.descendant(
+        of: projectScroll,
+        matching: _libraryLocation('All Skills'),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(of: projectScroll, matching: _libraryLocation('Global')),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: projectScroll,
+        matching: _libraryLocation('Project Alpha'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      find.descendant(
+        of: projectScroll,
+        matching: find.byKey(const ValueKey('side-rail-header-divider')),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: projectScroll,
+        matching: find.byKey(const ValueKey('side-rail-footer-divider')),
+      ),
+      findsNothing,
+    );
+    expect(
+      find.descendant(
+        of: projectScroll,
+        matching: find.byKey(const Key('library-add-project')),
+      ),
+      findsNothing,
+    );
+
+    await tester.tap(_libraryLocation('Project Alpha'));
+    await tester.pumpAndSettle();
+    expect(find.text('No Skills yet'), findsOneWidget);
+    expect(find.text('Browse Skills'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('library-add-project')));
+    await tester.pumpAndSettle();
+    expect(find.text('Project Bravo'), findsWidgets);
+    expect(find.text('Project Charlie'), findsWidgets);
+    expect(find.text('No skills installed yet'), findsOneWidget);
+  });
+
+  testWidgets('Library project rail avoids duplicate macOS scrollbars', (
+    tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    try {
+      await tester.binding.setSurfaceSize(const Size(1200, 620));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final projects = List.generate(
+        16,
+        (index) => AddedProject(
+          id: 'project-$index',
+          name: 'Project $index',
+          path: '/work/project-$index',
+          accessState: ProjectAccessState.accessible,
+        ),
+      );
+
+      await tester.pumpWidget(
+        SkillsGoApp(
+          gateway: FakeSkillsGateway(installed: false, addedProjects: projects),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('primary-destination-library')));
+      await tester.pumpAndSettle();
+
+      final explicitScrollbar = find.byKey(const Key('side-rail-scrollbar'));
+      expect(explicitScrollbar, findsOneWidget);
+      expect(
+        find.descendant(
+          of: explicitScrollbar,
+          matching: find.byType(Scrollbar),
+        ),
+        findsNothing,
+      );
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
+  });
+
+  testWidgets('empty Added Project links directly to Discover', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(
+          installed: false,
+          addedProjects: const [
+            AddedProject(
+              id: 'alpha',
+              name: 'Project Alpha',
+              path: '/work/alpha',
+              accessState: ProjectAccessState.accessible,
+            ),
+          ],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    await tester.tap(_libraryLocation('Project Alpha'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('No Skills yet'), findsOneWidget);
+    expect(find.text('No Skills found in Project Alpha'), findsNothing);
+    expect(
+      find.text(
+        'This project does not need Git or SkillsGo files. '
+        'Install its first Skill when you are ready.',
+      ),
+      findsNothing,
+    );
+
+    await tester.tap(find.text('Browse Skills'));
+    await tester.pumpAndSettle();
+
+    expect(_isSemanticallySelected(tester, 'Discover'), isTrue);
+  });
+
+  testWidgets('Library scrolls only the Added Project list', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 620));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final projects = List.generate(
+      16,
+      (index) => AddedProject(
+        id: 'project-$index',
+        name: 'Project ${index.toString().padLeft(2, '0')}',
+        path: '/work/project-$index',
+        accessState: ProjectAccessState.accessible,
+      ),
+    );
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(installed: false, addedProjects: projects),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+
+    final allSkills = _libraryLocation('All Skills');
+    final global = _libraryLocation('Global');
+    final addProject = find.byKey(const Key('library-add-project'));
+    final firstProject = _libraryLocation('Project 00');
+    final scroll = find.byKey(const Key('side-rail-scroll'));
+    final headerDivider = find.byKey(
+      const ValueKey('side-rail-header-divider'),
+    );
+    final footerDivider = find.byKey(
+      const ValueKey('side-rail-footer-divider'),
+    );
+    final allSkillsTop = tester.getTopLeft(allSkills);
+    final globalTop = tester.getTopLeft(global);
+    final addProjectTop = tester.getTopLeft(addProject);
+    final headerDividerTop = tester.getTopLeft(headerDivider);
+    final footerDividerTop = tester.getTopLeft(footerDivider);
+    final firstProjectTop = tester.getTopLeft(firstProject);
+    final allSkillsButton = find
+        .ancestor(of: allSkills, matching: find.byType(TextButton))
+        .first;
+    final firstProjectButton = find
+        .ancestor(of: firstProject, matching: find.byType(TextButton))
+        .first;
+
+    expect(tester.getSize(allSkillsButton).height, 44);
+    expect(tester.getSize(firstProjectButton).height, 38);
+    expect(tester.getSize(addProject).height, 44);
+
+    await tester.tap(firstProject);
+    await tester.pumpAndSettle();
+    final indicator = find.byKey(const ValueKey('rail-indicator'));
+    expect(tester.getSize(indicator).height, 34);
+    expect(
+      tester.getSize(indicator).width,
+      tester.getSize(firstProjectButton).width - 8,
+    );
+
+    await tester.drag(scroll, const Offset(0, -260));
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(allSkills), allSkillsTop);
+    expect(tester.getTopLeft(global), globalTop);
+    expect(tester.getTopLeft(addProject), addProjectTop);
+    expect(tester.getTopLeft(headerDivider), headerDividerTop);
+    expect(tester.getTopLeft(footerDivider), footerDividerTop);
+    expect(tester.getTopLeft(firstProject).dy, lessThan(firstProjectTop.dy));
+  });
+
+  testWidgets('Library location rail filters Global and Project targets', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    const project = AddedProject(
+      id: 'alpha',
+      name: 'Project Alpha',
+      path: '/work/alpha',
+      accessState: ProjectAccessState.accessible,
+    );
+    const globalSkill = InstalledSkill(
+      inventoryKey: 'global-skill',
+      name: 'global-skill',
+      path: '/Users/test/.codex/skills/global-skill',
+      agents: ['codex'],
+      targetCount: 1,
+      targets: [
+        SkillInstallationTarget(
+          agent: 'codex',
+          scope: InstallationScope.user,
+          path: '/Users/test/.codex/skills/global-skill',
+          version: 'v1',
+        ),
+      ],
+    );
+    const projectSkill = InstalledSkill(
+      inventoryKey: 'project-skill',
+      name: 'project-skill',
+      path: '/work/alpha/.agents/skills/project-skill',
+      agents: ['codex'],
+      targetCount: 1,
+      projects: ['/work/alpha'],
+      targets: [
+        SkillInstallationTarget(
+          agent: 'codex',
+          scope: InstallationScope.project,
+          projectRoot: '/work/alpha',
+          path: '/work/alpha/.agents/skills/project-skill',
+          version: 'v1',
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(
+          installed: false,
+          addedProjects: const [project],
+          libraryEntries: const [globalSkill, projectSkill],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('global-skill'), findsOneWidget);
+    expect(find.text('project-skill'), findsOneWidget);
+
+    await tester.tap(_libraryLocation('Global'));
+    await tester.pumpAndSettle();
+    expect(find.text('global-skill'), findsOneWidget);
+    expect(find.text('project-skill'), findsNothing);
+
+    await tester.tap(_libraryLocation('Project Alpha'));
+    await tester.pumpAndSettle();
+    expect(find.text('global-skill'), findsNothing);
+    expect(find.text('project-skill'), findsOneWidget);
+  });
+
+  testWidgets('inaccessible Project stays visible and supports Relocate', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      addedProjects: const [
+        AddedProject(
+          id: 'stable-id',
+          name: 'Moved Project',
+          path: '/Volumes/offline/project',
+          accessState: ProjectAccessState.missing,
+          diagnostic: 'volume offline',
+        ),
+      ],
+      projectToRelocate: const AddedProject(
+        id: 'stable-id',
+        name: 'Moved Project',
+        path: '/work/project',
         accessState: ProjectAccessState.accessible,
       ),
     );
@@ -2013,68 +2907,21 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
-
-    expect(find.text('All Projects'), findsOneWidget);
-    await tester.tap(find.byKey(const Key('library-project-filter')));
-    await tester.pumpAndSettle();
-    expect(find.text('Project Alpha'), findsOneWidget);
-    await tester.tapAt(const Offset(10, 10));
+    await tester.tap(_libraryLocation('Moved Project — unavailable'));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Add Project'));
+    expect(find.text('Project directory is missing'), findsOneWidget);
+    expect(find.textContaining('/Volumes/offline/project'), findsOneWidget);
+    expect(find.textContaining('volume offline'), findsNothing);
+    await tester.tap(find.text('Relocate').last);
     await tester.pumpAndSettle();
-    expect(find.text('Project Bravo'), findsWidgets);
-    expect(find.text('No Skills found in Project Bravo'), findsOneWidget);
+    expect(find.text('No Skills yet'), findsOneWidget);
+    expect(find.text('Browse Skills'), findsOneWidget);
+    expect(gateway.projects.single.id, 'stable-id');
+    expect(gateway.projects.single.path, '/work/project');
+
+    expect(find.text('Remove from List'), findsNothing);
   });
-
-  testWidgets(
-    'inaccessible Project stays visible and supports Relocate/remove',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1200, 800));
-      final gateway = FakeSkillsGateway(
-        installed: false,
-        addedProjects: const [
-          AddedProject(
-            id: 'stable-id',
-            name: 'Moved Project',
-            path: '/Volumes/offline/project',
-            accessState: ProjectAccessState.missing,
-            diagnostic: 'volume offline',
-          ),
-        ],
-        projectToRelocate: const AddedProject(
-          id: 'stable-id',
-          name: 'Moved Project',
-          path: '/work/project',
-          accessState: ProjectAccessState.accessible,
-        ),
-      );
-      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('primary-destination-library')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('library-project-filter')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Moved Project — unavailable'));
-      await tester.pumpAndSettle();
-
-      expect(find.text('Project directory is missing'), findsOneWidget);
-      expect(find.textContaining('/Volumes/offline/project'), findsOneWidget);
-      expect(find.textContaining('volume offline'), findsNothing);
-      await tester.tap(find.text('Relocate').last);
-      await tester.pumpAndSettle();
-      expect(find.text('No Skills found in Moved Project'), findsOneWidget);
-      expect(gateway.projects.single.id, 'stable-id');
-      expect(gateway.projects.single.path, '/work/project');
-
-      await tester.tap(find.text('Remove from List').first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Remove from List').last);
-      await tester.pumpAndSettle();
-      expect(gateway.projects, isEmpty);
-      expect(find.text('Moved Project'), findsNothing);
-    },
-  );
 
   testWidgets(
     'Hub outage never empties the selected Project or local Agent views',
@@ -2135,31 +2982,22 @@ void main() {
             isOffline: true,
           ),
         ],
+        reminderSettings: const ReminderSettings(
+          updateAvailable: true,
+          securityAdvisory: false,
+        ),
       );
       await tester.pumpWidget(SkillsGoApp(gateway: gateway));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('primary-destination-library')));
       await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('library-project-filter')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Project Alpha'));
+      await tester.tap(_libraryLocation('Project Alpha'));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Check updates'));
-      await tester.pumpAndSettle();
-      expect(find.text('You’re offline'), findsOneWidget);
+      expect(find.text('Can’t connect to SkillsGo'), findsOneWidget);
       expect(find.text('hub-demo'), findsOneWidget);
-      expect(find.text('Remove from List'), findsOneWidget);
 
-      await tester.tap(find.text('Check updates'));
-      await tester.pumpAndSettle();
-      expect(find.text('You’re offline'), findsNothing);
-      expect(find.text('UPDATE'), findsNothing);
-      expect(find.text('Remove from List'), findsOneWidget);
-
-      await tester.tap(find.byKey(const Key('library-project-filter')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('All Projects').last);
+      await tester.tap(_libraryLocation('All Skills'));
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('library-agent-filter')));
       await tester.pumpAndSettle();
@@ -2259,25 +3097,107 @@ void main() {
       expect(find.text('Version divergence'), findsNothing);
       expect(find.text('/Users/test/.codex/skills/demo'), findsNothing);
       expect(find.byTooltip('Codex'), findsOneWidget);
-      expect(find.byTooltip('Claude Code'), findsOneWidget);
+      expect(find.byTooltip('Claude Code'), findsNothing);
+      expect(_libraryLocation('Project Alpha'), findsOneWidget);
+      expect(_libraryLocation('Project Beta'), findsOneWidget);
+      expect(
+        find.byKey(const Key('library-scope-project-alpha')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('library-scope-project-beta')),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .getTopLeft(find.byKey(const Key('library-scope-project-alpha')))
+            .dx,
+        greaterThan(tester.getTopLeft(find.text('demo').first).dx),
+      );
+      final projectHover = await tester.createGesture(
+        kind: PointerDeviceKind.mouse,
+      );
+      await projectHover.addPointer(
+        location: tester.getCenter(
+          find.byKey(const Key('library-scope-project-alpha')),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(find.text('/work/alpha'), findsOneWidget);
+      expect(find.text('Claude Code'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('copy-project-path-alpha')));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 150));
+      expect(
+        find.byKey(const Key('copy-project-path-copied-alpha')),
+        findsOneWidget,
+      );
+      await projectHover.moveTo(tester.getCenter(find.text('Claude Code')));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text('/work/alpha'), findsOneWidget);
+      expect(find.text('Claude Code'), findsOneWidget);
+      await projectHover.moveTo(const Offset(10, 10));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 240));
+      await tester.pumpAndSettle();
+      expect(find.text('/work/alpha'), findsNothing);
+      expect(find.text('Claude Code'), findsNothing);
+      await projectHover.removePointer();
       await tester.tap(find.byKey(const Key('library-agent-filter')));
       await tester.pumpAndSettle();
       expect(find.text('Cursor'), findsOneWidget);
       await tester.tapAt(const Offset(10, 10));
       await tester.pumpAndSettle();
 
-      await tester.tap(find.byKey(const Key('library-project-filter')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Project Alpha'));
+      await tester.tap(_libraryLocation('Project Alpha'));
       await tester.pumpAndSettle();
       expect(find.text('Version divergence'), findsNothing);
       await tester.tap(find.text('demo').first);
+      await tester.pump();
+      final openingDetail = tester.widget<SlideTransition>(
+        find.byKey(const Key('library-detail-surface')),
+      );
+      expect(openingDetail.position.value.dx, greaterThan(0));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('library-detail-surface')), findsOneWidget);
+      expect(find.byKey(const Key('installation-scope-panel')), findsOneWidget);
+      await tester.tap(
+        find.byKey(const Key('installation-scope-toggle-project:/work/alpha')),
+      );
+      await tester.tap(find.byKey(const Key('installation-scope-toggle-user')));
       await tester.pumpAndSettle();
       expect(find.text('/work/alpha/.claude/skills/demo'), findsWidgets);
       expect(find.text('/Users/test/.codex/skills/demo'), findsWidgets);
+      expect(
+        find.byKey(const Key('installed-detail-compact-identity')),
+        findsNothing,
+      );
+      await tester.binding.setSurfaceSize(const Size(1200, 500));
+      await tester.pumpAndSettle();
+      await tester.drag(
+        find.byKey(const Key('installed-detail-scroll-view')),
+        const Offset(0, -320),
+      );
+      await tester.pumpAndSettle();
+      expect(
+        find.byKey(const Key('installed-detail-compact-identity')),
+        findsOneWidget,
+      );
       await tester.tap(find.byTooltip('Back to Library'));
       await tester.pumpAndSettle();
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      await tester.pumpAndSettle();
 
+      final librarySearch = tester.widget<SkillSearchField>(
+        find.byKey(const Key('library-search')),
+      );
+      expect(librarySearch.appearance, SkillSearchAppearance.leaderboard);
+      expect(find.byKey(const Key('library-update-filter')), findsOneWidget);
+      expect(find.byType(SubscriptionSegmentedSwitch), findsOneWidget);
+      expect(find.text('Add Project'), findsOneWidget);
+      expect(find.text('Check updates'), findsNothing);
+      expect(find.text('Refresh'), findsNothing);
       await tester.enterText(_librarySearchInput(), 'not-present');
       await tester.pumpAndSettle();
       expect(find.text('No matching Skills'), findsOneWidget);
@@ -2326,8 +3246,12 @@ void main() {
       await tester.tap(find.text('demo').first);
       await tester.pumpAndSettle();
 
-      expect(find.text(path), findsWidgets);
-      expect(find.text('Target missing'), findsWidgets);
+      expect(find.text(path), findsNothing);
+      expect(find.text('Target missing'), findsNothing);
+      await tester.tap(find.byKey(const Key('installation-scope-toggle-user')));
+      await tester.pumpAndSettle();
+      expect(find.text(path), findsOneWidget);
+      expect(find.text('Target missing'), findsOneWidget);
       expect(find.text('Can’t read this Skill'), findsOneWidget);
     },
   );
@@ -2477,6 +3401,104 @@ void main() {
     },
   );
 
+  testWidgets('Library select-all follows the current filtered results', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    InstalledSkill entry(String name) => InstalledSkill(
+      inventoryKey: 'hub:github.com/example/skills/-/$name',
+      name: name,
+      skillId: 'github.com/example/skills/-/$name',
+      path: '/Users/test/.codex/skills/$name',
+      agents: const ['codex'],
+      targetCount: 1,
+      versions: const ['v1'],
+      targets: [
+        SkillInstallationTarget(
+          agent: 'codex',
+          scope: InstallationScope.user,
+          path: '/Users/test/.codex/skills/$name',
+          version: 'v1',
+        ),
+      ],
+    );
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(
+          libraryEntries: [entry('alpha'), entry('demo')],
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+
+    const selectAllKey = Key('library-select-visible');
+    expect(
+      tester.widget<SkillsCheckbox>(find.byKey(selectAllKey)).value,
+      isFalse,
+    );
+    expect(
+      tester.getCenter(find.byKey(selectAllKey)).dy,
+      closeTo(
+        tester.getCenter(find.byKey(const Key('search-visual-icon'))).dy + 2,
+        1,
+      ),
+    );
+    expect(
+      tester.getCenter(find.byKey(selectAllKey)).dx,
+      closeTo(
+        tester
+            .getCenter(
+              find.byKey(
+                const ValueKey(
+                  'library-select-hub:github.com/example/skills/-/demo',
+                ),
+              ),
+            )
+            .dx,
+        1,
+      ),
+    );
+    await tester.tap(
+      find.byKey(
+        const ValueKey('library-select-hub:github.com/example/skills/-/demo'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<SkillsCheckbox>(find.byKey(selectAllKey)).indeterminate,
+      isTrue,
+    );
+
+    await tester.tap(find.byKey(selectAllKey));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<SkillsCheckbox>(find.byKey(selectAllKey)).value,
+      isTrue,
+    );
+    expect(find.text('2 selected'), findsOneWidget);
+
+    final search = find.descendant(
+      of: find.byKey(const Key('library-search')),
+      matching: find.byType(TextField),
+    );
+    await tester.enterText(search, 'demo');
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<SkillsCheckbox>(find.byKey(selectAllKey)).value,
+      isTrue,
+    );
+
+    await tester.tap(find.byKey(selectAllKey));
+    await tester.pumpAndSettle();
+    expect(
+      tester.widget<SkillsCheckbox>(find.byKey(selectAllKey)).value,
+      isFalse,
+    );
+    expect(find.text('1 selected'), findsOneWidget);
+  });
+
   testWidgets('Target Management removes only the selected healthy target', (
     tester,
   ) async {
@@ -2550,82 +3572,64 @@ void main() {
     expect(gateway.libraryEntries!.single.targets.single.agent, 'claude-code');
   });
 
-  testWidgets(
-    'unhealthy targets offer Repair or Stop Managing without Remove',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1400, 900));
-      final gateway = FakeSkillsGateway(
-        libraryEntries: const [
-          InstalledSkill(
-            inventoryKey: 'hub:github.com/example/skills/-/demo',
-            name: 'demo',
-            skillId: 'github.com/example/skills/-/demo',
-            path: '/Users/test/.codex/skills/demo',
-            agents: ['codex', 'claude-code'],
-            targetCount: 2,
-            versions: ['v1'],
-            health: InstallationHealth.localModification,
-            targets: [
-              SkillInstallationTarget(
-                agent: 'codex',
-                scope: InstallationScope.user,
-                path: '/Users/test/.codex/skills/demo',
-                version: 'v1',
-              ),
-              SkillInstallationTarget(
-                agent: 'claude-code',
-                scope: InstallationScope.project,
-                projectRoot: '/work/demo',
-                path: '/work/demo/.claude/skills/demo',
-                version: 'v1',
-                mode: InstallationMode.copy,
-                health: InstallationHealth.localModification,
-              ),
-            ],
-          ),
-        ],
-      );
-      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('primary-destination-library')));
-      await tester.pumpAndSettle();
-      await tester.tap(
-        find.byKey(
-          const ValueKey('library-select-hub:github.com/example/skills/-/demo'),
+  testWidgets('unhealthy targets offer Repair without Remove', (tester) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    final gateway = FakeSkillsGateway(
+      libraryEntries: const [
+        InstalledSkill(
+          inventoryKey: 'hub:github.com/example/skills/-/demo',
+          name: 'demo',
+          skillId: 'github.com/example/skills/-/demo',
+          path: '/Users/test/.codex/skills/demo',
+          agents: ['codex', 'claude-code'],
+          targetCount: 2,
+          versions: ['v1'],
+          health: InstallationHealth.localModification,
+          targets: [
+            SkillInstallationTarget(
+              agent: 'codex',
+              scope: InstallationScope.user,
+              path: '/Users/test/.codex/skills/demo',
+              version: 'v1',
+            ),
+            SkillInstallationTarget(
+              agent: 'claude-code',
+              scope: InstallationScope.project,
+              projectRoot: '/work/demo',
+              path: '/work/demo/.claude/skills/demo',
+              version: 'v1',
+              mode: InstallationMode.copy,
+              health: InstallationHealth.localModification,
+            ),
+          ],
         ),
-      );
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('library-manage-selected')));
-      await tester.pumpAndSettle();
+      ],
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.byKey(
+        const ValueKey('library-select-hub:github.com/example/skills/-/demo'),
+      ),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('library-manage-selected')));
+    await tester.pumpAndSettle();
 
-      expect(find.text('Repair'), findsOneWidget);
-      expect(find.text('Stop Managing'), findsOneWidget);
-      expect(
-        find.descendant(
-          of: find.byType(SkillsDialog),
-          matching: find.byType(SkillsCheckbox),
-        ),
-        findsOneWidget,
-      );
-      await tester.tap(find.text('Stop Managing'));
-      await tester.pumpAndSettle();
-      expect(
-        find.text('Current target content will be preserved.'),
-        findsOneWidget,
-      );
-      expect(find.textContaining('skillsgo.mod'), findsOneWidget);
-      await tester.tap(find.text('Apply selected actions'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Close'));
-      await tester.pumpAndSettle();
-
-      expect(
-        gateway.managementTargetHistory.single.values.single,
-        TargetManagementAction.stopManaging,
-      );
-      expect(gateway.libraryEntries!.single.targets.single.agent, 'codex');
-    },
-  );
+    expect(find.text('Repair'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byType(SkillsDialog),
+        matching: find.byType(SkillsCheckbox),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(find.text('Repair'));
+    await tester.pumpAndSettle();
+    expect(find.text('Stop Managing'), findsNothing);
+  });
 
   testWidgets('Repair restores an unhealthy managed target', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 900));
@@ -2745,19 +3749,125 @@ void main() {
     );
     await tester.tap(find.text('external-demo').first);
     await tester.pumpAndSettle();
-    expect(find.text(path), findsWidgets);
-    expect(find.text('scripts/run.sh'), findsOneWidget);
-    expect(find.text('Risk unknown'), findsOneWidget);
-    expect(find.textContaining('scripts or executable content'), findsNothing);
-    await tester.tap(find.text('scripts/run.sh'));
+    expect(find.byKey(const Key('installed-detail-back')), findsOneWidget);
+    expect(
+      find.byKey(const Key('installed-detail-skill-avatar')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('installed-detail-scroll-view')),
+      findsOneWidget,
+    );
+    expect(
+      find.byKey(const Key('installed-detail-instructions')),
+      findsOneWidget,
+    );
+    expect(find.text(path), findsNothing);
+    await tester.tap(find.byTooltip('Show target details'));
     await tester.pumpAndSettle();
-    expect(find.text('#!/bin/sh'), findsOneWidget);
+    expect(find.text(path), findsOneWidget);
+    expect(find.text('scripts/run.sh'), findsNothing);
+    expect(find.text('Risk unknown'), findsNothing);
+    expect(find.textContaining('scripts or executable content'), findsNothing);
 
     await tester.tap(find.byTooltip('Back to Library'));
     await tester.pumpAndSettle();
     expect(find.text('external-demo'), findsWidgets);
     expect(find.text('External installation'), findsWidgets);
   });
+
+  testWidgets(
+    'Library Batch Takeover follows All, Global, and Project locations',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 900));
+      const path = '/Users/test/.codex/skills/external-demo';
+      const alpha = AddedProject(
+        id: 'alpha',
+        name: 'Alpha',
+        description: '',
+        path: '/work/alpha',
+        accessState: ProjectAccessState.accessible,
+      );
+      const beta = AddedProject(
+        id: 'beta',
+        name: 'Beta',
+        description: '',
+        path: '/work/beta',
+        accessState: ProjectAccessState.accessible,
+      );
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        addedProjects: const [alpha, beta],
+        libraryEntries: const [
+          InstalledSkill(
+            inventoryKey: 'external:abc',
+            name: 'external-demo',
+            path: path,
+            agents: ['codex'],
+            targetCount: 1,
+            provenance: LibraryProvenance.external,
+            targets: [
+              SkillInstallationTarget(
+                agent: 'codex',
+                scope: InstallationScope.user,
+                path: path,
+                version: '',
+                mode: InstallationMode.external,
+              ),
+            ],
+          ),
+        ],
+        takeoverResult: const BatchTakeoverResult(takenOver: 2, skipped: 1),
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('primary-destination-library')));
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.byKey(const Key('library-batch-takeover')));
+      await tester.pumpAndSettle();
+      expect(gateway.takeoverRequests, isEmpty);
+      expect(find.text('Take over existing skills?'), findsOneWidget);
+      await tester.tap(find.text('Cancel'));
+      await tester.pumpAndSettle();
+      expect(gateway.takeoverRequests, isEmpty);
+
+      await tester.tap(find.byKey(const Key('library-batch-takeover')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Take over'));
+      await tester.pumpAndSettle();
+
+      expect(gateway.takeoverRequests, hasLength(1));
+      expect(gateway.takeoverRequests.single.includeUser, isTrue);
+      expect(gateway.takeoverRequests.single.projectRoots, [
+        '/work/alpha',
+        '/work/beta',
+      ]);
+      expect(find.text('2 skills taken over, 1 skipped.'), findsOneWidget);
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(_libraryLocation('Global'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('library-batch-takeover')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Take over'));
+      await tester.pumpAndSettle();
+      expect(gateway.takeoverRequests.last.includeUser, isTrue);
+      expect(gateway.takeoverRequests.last.projectRoots, isEmpty);
+      await tester.tap(find.text('Close'));
+      await tester.pumpAndSettle();
+
+      await tester.tap(_libraryLocation('Alpha'));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('library-batch-takeover')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Take over'));
+      await tester.pumpAndSettle();
+      expect(gateway.takeoverRequests.last.includeUser, isFalse);
+      expect(gateway.takeoverRequests.last.projectRoots, ['/work/alpha']);
+    },
+  );
 
   testWidgets('Library Batch Takeover publishes next-frame progress', (
     tester,
@@ -2792,15 +3902,98 @@ void main() {
     expect(find.text('1 skills taken over, 0 skipped.'), findsOneWidget);
   });
 
-  testWidgets(
-    'External adoption reviews an exact Hub source and requires confirmation',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1400, 900));
-      const path = '/Users/test/.codex/skills/external-demo';
-      const entry = InstalledSkill(
-        inventoryKey: 'external:abc',
-        name: 'external-demo',
-        path: path,
+  testWidgets('installed detail presents provenance-specific actions', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1500, 900));
+
+    Future<void> open(InstalledSkill entry, {UpdateState? updateState}) async {
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pumpAndSettle();
+      await tester.pumpWidget(
+        SkillsGoApp(
+          gateway: FakeSkillsGateway(
+            installed: false,
+            libraryEntries: [entry],
+            updateState: updateState ?? UpdateState.available,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('primary-destination-library')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(entry.name).first);
+      await tester.pumpAndSettle();
+    }
+
+    const target = SkillInstallationTarget(
+      agent: 'codex',
+      scope: InstallationScope.user,
+      path: '/Users/test/.codex/skills/action-demo',
+      version: 'v1',
+    );
+    const hub = InstalledSkill(
+      inventoryKey: 'hub:github.com/test/skills/-/action-demo',
+      name: 'action-demo',
+      path: '/Users/test/.codex/skills/action-demo',
+      agents: ['codex'],
+      targetCount: 1,
+      skillId: 'github.com/test/skills/-/action-demo',
+      versions: ['v1'],
+      targets: [target],
+    );
+    await open(hub);
+    expect(find.text('Update'), findsOneWidget);
+    expect(find.text('Install in more locations'), findsOneWidget);
+    await tester.tap(find.byTooltip('Show target details'));
+    await tester.pumpAndSettle();
+    expect(
+      find.byKey(
+        const ValueKey(
+          'remove-installation-target-/Users/test/.codex/skills/action-demo',
+        ),
+      ),
+      findsOneWidget,
+    );
+    await tester.tap(
+      find.byKey(
+        const ValueKey(
+          'remove-installation-target-/Users/test/.codex/skills/action-demo',
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text('Confirm remove'), findsOneWidget);
+    expect(find.text('Manage installation targets'), findsNothing);
+    await tester.tap(find.text('Cancel'));
+    await tester.pumpAndSettle();
+
+    await open(hub, updateState: UpdateState.upToDate);
+    expect(find.text('UP TO DATE'), findsNothing);
+    expect(find.text('Update'), findsNothing);
+
+    await open(
+      const InstalledSkill(
+        inventoryKey: 'local:action-demo',
+        name: 'local-action-demo',
+        path: '/Users/test/.codex/skills/local-action-demo',
+        agents: ['codex'],
+        targetCount: 1,
+        skillId: 'local.skillsgo/action-demo',
+        provenance: LibraryProvenance.local,
+        versions: ['v1'],
+        targets: [target],
+      ),
+    );
+    expect(find.text('Manage scope'), findsNothing);
+    expect(find.byKey(const Key('installation-scope-panel')), findsOneWidget);
+    expect(find.text('Export'), findsOneWidget);
+
+    await open(
+      const InstalledSkill(
+        inventoryKey: 'external:action-demo',
+        name: 'external-action-demo',
+        path: '/Users/test/.codex/skills/external-action-demo',
         agents: ['codex'],
         targetCount: 1,
         provenance: LibraryProvenance.external,
@@ -2808,187 +4001,88 @@ void main() {
           SkillInstallationTarget(
             agent: 'codex',
             scope: InstallationScope.user,
-            path: path,
+            path: '/Users/test/.codex/skills/external-action-demo',
             version: '',
             mode: InstallationMode.external,
           ),
         ],
-      );
-      const match = HubContentMatch(
-        skillId: 'github.com/acme/skills/-/external-demo',
-        name: 'Hub Demo',
-        source: 'github.com/acme/skills',
-        immutableVersion: 'sha256:immutable-version',
-        commitSHA: 'commit',
-        treeSHA: 'tree',
-        contentDigest: 'sha256:external-content',
-      );
-      final gateway = FakeSkillsGateway(
-        installed: false,
-        libraryEntries: const [entry],
-        adoptionMatches: const [match],
-      );
-      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('primary-destination-library')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('external-demo').first);
-      await tester.pumpAndSettle();
+      ),
+    );
+    expect(find.text('Manage installation'), findsOneWidget);
+    expect(find.text('Remove'), findsOneWidget);
+  });
 
-      await tester.tap(find.text('Bring under management'));
-      await tester.pumpAndSettle();
-      expect(find.text('Source: github.com/acme/skills'), findsOneWidget);
-      expect(
-        find.text('Immutable version: sha256:immutable-version'),
-        findsOneWidget,
-      );
-      expect(
-        find.textContaining(
-          'current installation content will not be replaced',
+  testWidgets('installed Hub detail stays local-first through Hub failure', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1500, 900));
+    final gateway = FakeSkillsGateway(
+      detailErrors: const [
+        SkillsException(
+          'Hub is offline',
+          kind: SkillsFailureKind.offline,
+          isOffline: true,
         ),
-        findsOneWidget,
-      );
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(gateway.adoptionHistory, isEmpty);
-
-      await tester.tap(find.text('Bring under management'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Hub Demo'));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Confirm association'));
-      await tester.pumpAndSettle();
-
-      expect(gateway.adoptionHistory, [ExternalAdoptionAction.associateHub]);
-      expect(find.text('Hub managed'), findsOneWidget);
-      expect(find.text('Bring under management'), findsNothing);
-    },
-    skip: true,
-  );
-
-  testWidgets(
-    'External adoption keeps local detail open while Hub matching is offline',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1400, 900));
-      const path = '/Users/test/.codex/skills/offline-external';
-      final gateway = FakeSkillsGateway(
-        installed: false,
-        libraryEntries: const [
-          InstalledSkill(
-            inventoryKey: 'external:offline',
-            name: 'offline-external',
-            path: path,
-            agents: ['codex'],
-            targetCount: 1,
-            provenance: LibraryProvenance.external,
-            targets: [
-              SkillInstallationTarget(
-                agent: 'codex',
-                scope: InstallationScope.user,
-                path: path,
-                version: '',
-                mode: InstallationMode.external,
-              ),
-            ],
+      ],
+      localDetail: const SkillDetail(
+        name: 'local-skill',
+        source: 'Local cache',
+        markdown: '# Available offline',
+        immutableVersion: 'v1',
+        files: [SkillFile(path: 'SKILL.md', contents: '# Available offline')],
+        installationTargets: [
+          SkillInstallationTarget(
+            agent: 'codex',
+            scope: InstallationScope.user,
+            path: '/tmp/local-skill',
+            version: 'v1',
           ),
         ],
-        localDetail: const SkillDetail(
-          name: 'offline-external',
-          source: 'External',
-          markdown: '# Still available offline',
-          files: [
-            SkillFile(path: 'SKILL.md', contents: '# Still available offline'),
-          ],
-        ),
-        adoptionErrors: const [
-          SkillsException(
-            'localized stderr is not a machine contract',
-            kind: SkillsFailureKind.offline,
-            isOffline: true,
-          ),
-        ],
-      );
-      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('primary-destination-library')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('offline-external').first);
-      await tester.pumpAndSettle();
+      ),
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('local-skill').first);
+    await tester.pumpAndSettle();
 
-      await tester.tap(find.text('Bring under management'));
-      await tester.pumpAndSettle();
-      expect(find.text('You’re offline'), findsOneWidget);
-      expect(find.text(path), findsWidgets);
-      expect(find.text('External installation'), findsOneWidget);
-      expect(find.text('Bring under management'), findsOneWidget);
+    expect(find.text('Available offline'), findsOneWidget);
+    expect(find.byKey(const Key('installation-scope-panel')), findsOneWidget);
+    expect(find.text('Service temporarily unavailable'), findsNothing);
+    expect(find.text('Can’t connect to SkillsGo'), findsNothing);
+    expect(find.text('CHECK FAILED'), findsNothing);
+  });
 
-      await tester.tap(find.text('Bring under management'));
-      await tester.pumpAndSettle();
-      expect(find.text('Import as Local Skill'), findsWidgets);
-      await tester.tap(find.text('Cancel'));
-      await tester.pumpAndSettle();
-      expect(find.text(path), findsWidgets);
-      expect(find.text('External installation'), findsOneWidget);
-      expect(find.text('Bring under management'), findsOneWidget);
-    },
-    skip: true,
-  );
+  testWidgets('Hub enrichment preserves installed-detail geometry', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1500, 900));
+    final remote = Completer<SkillDetail>();
+    final gateway = FakeSkillsGateway(detailCompleter: remote);
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('local-skill').first);
+    await tester.pump();
+    await tester.pump();
 
-  testWidgets(
-    'Unmatched External installation imports as Local and can be exported',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1400, 900));
-      const path = '/Users/test/.codex/skills/private-demo';
-      final gateway = FakeSkillsGateway(
-        installed: false,
-        libraryEntries: const [
-          InstalledSkill(
-            inventoryKey: 'external:private',
-            name: 'private-demo',
-            path: path,
-            agents: ['codex'],
-            targetCount: 1,
-            provenance: LibraryProvenance.external,
-            targets: [
-              SkillInstallationTarget(
-                agent: 'codex',
-                scope: InstallationScope.user,
-                path: path,
-                version: '',
-                mode: InstallationMode.external,
-              ),
-            ],
-          ),
-        ],
-      );
-      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byKey(const Key('primary-destination-library')));
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('private-demo').first);
-      await tester.pumpAndSettle();
-      await tester.tap(find.text('Bring under management'));
-      await tester.pumpAndSettle();
+    expect(find.text('Local'), findsOneWidget);
+    expect(find.byKey(const Key('installation-scope-panel')), findsOneWidget);
+    final scopeBefore = tester
+        .getTopLeft(find.byKey(const Key('installation-scope-panel')))
+        .dy;
 
-      expect(find.text('Import as Local Skill'), findsWidgets);
-      expect(
-        find.textContaining('no publisher or update source'),
-        findsOneWidget,
-      );
-      await tester.tap(find.text('Confirm Local import'));
-      await tester.pumpAndSettle();
+    remote.complete(FakeSkillsGateway.defaultRemoteDetail);
+    await tester.pumpAndSettle();
 
-      expect(gateway.adoptionHistory, [ExternalAdoptionAction.importLocal]);
-      expect(find.text('Local managed'), findsOneWidget);
-      expect(find.text('Update'), findsNothing);
-      expect(find.text('Install more'), findsOneWidget);
-      await tester.tap(find.text('Export'));
-      await tester.pumpAndSettle();
-      expect(gateway.exportCalls, 1);
-      expect(find.text('Command completed'), findsOneWidget);
-    },
-    skip: true,
-  );
+    expect(find.text('Build reliable Flutter products.'), findsOneWidget);
+    final scopeAfter = tester
+        .getTopLeft(find.byKey(const Key('installation-scope-panel')))
+        .dy;
+    expect(scopeAfter, scopeBefore);
+  });
 
   testWidgets('Local Skill installs to one more exact Agent target', (
     tester,
@@ -3056,7 +4150,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('private-demo').first);
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Install more'));
+    await tester.tap(find.text('Install in more locations'));
     await tester.pumpAndSettle();
 
     expect(find.text('Installed'), findsOneWidget);
@@ -3067,7 +4161,7 @@ void main() {
 
     expect(gateway.executionSelectionHistory.single.single.agent, 'cursor');
     expect(gateway.libraryEntries!.single.agents, ['codex', 'cursor']);
-    expect(find.text('User Scope / Cursor · local-abc'), findsOneWidget);
+    expect(find.text('Global / Cursor · local-abc'), findsOneWidget);
   });
 
   testWidgets('leaderboard tabs change selection without moving layout', (
@@ -3091,7 +4185,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(indicator).dx, closeTo(rankingX, 0.01));
     expect(_isSemanticallySelected(tester, 'Ranking'), isTrue);
-    expect(find.text('It’s nice to know a little more.'), findsOneWidget);
+    expect(find.text('It’s nice to know a little more.'), findsNothing);
     expect(find.byKey(const Key('discovery-options-mode')), findsOneWidget);
   });
 
@@ -3150,13 +4244,66 @@ void main() {
       ),
       '/custom/skills',
     );
+    await tester.ensureVisible(find.text('Save & detect'));
     await tester.tap(find.text('Save & detect'));
     await tester.pumpAndSettle();
 
     expect(gateway.savedPath, '/custom/skills');
   });
 
-  testWidgets('Settings routes expose distinct operational content', (
+  testWidgets('Settings secondary body enters with a short depth motion', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Reminders'));
+    await tester.pump();
+
+    final body = find.byKey(const Key('skills-destination-body'));
+    final fade = tester.widget<FadeTransition>(body);
+    final slide = fade.child! as SlideTransition;
+    final scale = slide.child! as ScaleTransition;
+    expect(find.byKey(const Key('update-reminder-label')), findsOneWidget);
+    expect(fade.opacity.value, closeTo(.86, .001));
+    expect(slide.position.value.dy, closeTo(.012, .001));
+    expect(scale.scale.value, closeTo(.985, .001));
+
+    await tester.pump(const Duration(milliseconds: 90));
+    expect(fade.opacity.value, inExclusiveRange(.86, 1));
+    expect(scale.scale.value, inExclusiveRange(.985, 1));
+
+    await tester.pumpAndSettle();
+    expect(fade.opacity.value, 1);
+    expect(slide.position.value, Offset.zero);
+    expect(scale.scale.value, 1);
+  });
+
+  testWidgets('Settings secondary body skips motion when animations are off', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    tester.platformDispatcher.accessibilityFeaturesTestValue =
+        const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await tester.pumpWidget(SkillsGoApp(gateway: FakeSkillsGateway()));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Reminders'));
+    await tester.pump();
+
+    final body = find.byKey(const Key('skills-destination-body'));
+    expect(body, findsOneWidget);
+    expect(tester.widget(body), isA<KeyedSubtree>());
+    expect(find.byKey(const Key('update-reminder-label')), findsOneWidget);
+  });
+
+  testWidgets('Settings keeps infrequent controls behind one advanced route', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
@@ -3172,32 +4319,85 @@ void main() {
     );
     expect(
       find.descendant(of: settingsRail, matching: find.byType(HugeIcon)),
-      findsNWidgets(7),
+      findsNWidgets(4),
     );
-    await tester.tap(find.text('Hub'));
+    await tester.tap(find.text('Reminders'));
+    await tester.pumpAndSettle();
+    expect(find.text('Reminder settings'), findsNothing);
+    expect(find.text('Choose which reminders to receive.'), findsNothing);
+    final updateReminderLabel = tester.widget<Text>(
+      find.byKey(const Key('update-reminder-label')),
+    );
+    final securityReminderLabel = tester.widget<Text>(
+      find.byKey(const Key('security-reminder-label')),
+    );
+    expect(
+      updateReminderLabel.textSpan!.toPlainText(),
+      'Update reminders  Check for updates when Library opens.',
+    );
+    expect(
+      securityReminderLabel.textSpan!.toPlainText(),
+      'High-risk alerts  Notify you of new High or Critical risks in installed skills.',
+    );
+    expect(updateReminderLabel.maxLines, 1);
+    expect(securityReminderLabel.maxLines, 1);
+    expect(find.byKey(const Key('update-reminder')), findsOneWidget);
+    expect(find.byKey(const Key('security-reminder')), findsOneWidget);
+    await tester.tap(find.text('Advanced'));
     await tester.pumpAndSettle();
     expect(find.text('Hub Origin'), findsOneWidget);
+    expect(find.text('Personal risk policy'), findsOneWidget);
     expect(find.text('Theme'), findsNothing);
+    expect(find.text('Storage'), findsNothing);
+    expect(find.text('Color Scheme'), findsNothing);
+    expect(find.text('About'), findsNothing);
+  });
 
-    await tester.tap(find.text('Storage'));
-    await tester.pumpAndSettle();
-    expect(find.text('/Users/test/.skillsgo/store'), findsOneWidget);
-    expect(find.text('Readable'), findsOneWidget);
+  testWidgets(
+    'Advanced Settings can restart Onboarding without clearing data',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      final gateway = FakeSkillsGateway();
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('Color Scheme'));
-    await tester.pumpAndSettle();
-    expect(find.text('Generated Material color roles'), findsOneWidget);
-    expect(find.text('primaryFixedDim'), findsOneWidget);
-    expect(find.text('surfaceContainerHighest'), findsOneWidget);
-    expect(find.text('inversePrimary'), findsOneWidget);
-    expect(find.text('onErrorContainer'), findsOneWidget);
+      await tester.tap(find.byKey(const Key('primary-destination-settings')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text('Advanced'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key('restart-onboarding')));
+      await tester.tap(find.byKey(const Key('restart-onboarding')));
+      await tester.pumpAndSettle();
 
-    await tester.tap(find.text('About'));
+      expect(gateway.onboardingResets, 1);
+      expect(find.text('Welcome to SkillsGo'), findsOneWidget);
+    },
+  );
+
+  testWidgets('reminder settings persist and drive the Library update prompt', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    final gateway = FakeSkillsGateway(
+      reminderSettings: const ReminderSettings(),
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
-    expect(find.text('App version'), findsOneWidget);
-    expect(find.text('1.0.0'), findsOneWidget);
-    expect(find.text('Bundled CLI version'), findsOneWidget);
-    expect(find.text('Compatible'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key('library-update-reminder')), findsOneWidget);
+    await tester.tap(find.byKey(const Key('library-update-reminder')));
+    await tester.pumpAndSettle();
+    expect(find.text('Updates'), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Reminders'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('update-reminder')));
+    await tester.pumpAndSettle();
+    expect(gateway.reminderSettings.updateAvailable, isFalse);
   });
 
   testWidgets('Agents settings separates detected and supported Agents', (
@@ -3215,6 +4415,10 @@ void main() {
             path: '/Users/test/.codex/skills',
             exists: true,
           ),
+          discoveryRoots: [
+            '/Users/test/.codex/skills',
+            '/Users/test/.agents/skills',
+          ],
         ),
         AgentStatus(
           id: 'cursor',
@@ -3235,12 +4439,15 @@ void main() {
     await tester.tap(find.text('Agents'));
     await tester.pumpAndSettle();
 
-    expect(find.text('1 installed · 2 supported'), findsOneWidget);
     expect(find.text('Codex'), findsOneWidget);
     expect(find.text('Cursor'), findsOneWidget);
-    expect(find.text('Installed'), findsOneWidget);
-    expect(find.text('Supported'), findsOneWidget);
+    expect(find.text('Installed · 1'), findsOneWidget);
+    expect(find.text('Not installed · 1'), findsOneWidget);
+    expect(find.byKey(const Key('installed-agents-group')), findsOneWidget);
+    expect(find.byKey(const Key('not-installed-agents-group')), findsOneWidget);
+    expect(find.byType(AgentLogo), findsNWidgets(2));
     expect(find.textContaining('/Users/test/.codex/skills'), findsOneWidget);
+    expect(find.textContaining('/Users/test/.agents/skills'), findsOneWidget);
   });
 
   testWidgets('Agent inspection failure keeps detection retry actionable', (
@@ -3268,7 +4475,7 @@ void main() {
     expect(gateway.agentInspections, inspectionsBeforeRetry + 1);
   });
 
-  testWidgets('About distinguishes a missing CLI from incompatibility', (
+  testWidgets('Agents exposes CLI recovery when the runtime is missing', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
@@ -3278,13 +4485,13 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('primary-destination-settings')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('About'));
+    await tester.tap(find.text('Agents'));
     await tester.pumpAndSettle();
 
     expect(find.text('MISSING'), findsOneWidget);
     expect(find.text('INCOMPATIBLE'), findsNothing);
     expect(
-      find.textContaining('bundled SkillsGo CLI is missing'),
+      find.textContaining('required SkillsGo component is missing'),
       findsWidgets,
     );
   });
@@ -3298,7 +4505,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('primary-destination-settings')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Hub'));
+    await tester.tap(find.text('Advanced'));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -3330,7 +4537,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('primary-destination-settings')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Hub'));
+    await tester.tap(find.text('Advanced'));
     await tester.pumpAndSettle();
 
     await tester.enterText(
@@ -3359,7 +4566,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(find.byKey(const Key('primary-destination-settings')));
       await tester.pumpAndSettle();
-      await tester.tap(find.text('Installation Policy'));
+      await tester.tap(find.text('Advanced'));
       await tester.pumpAndSettle();
 
       expect(find.text('Require confirmation for High risk'), findsOneWidget);
@@ -3533,7 +4740,7 @@ void main() {
     expect(find.text('Retry 1 Failed Update'), findsOneWidget);
     expect(
       find.text(
-        'This update target failed without stopping unrelated updates. Retry the failed target.',
+        'This location could not be updated. Other locations were not affected, so you can retry only this one.',
       ),
       findsOneWidget,
     );
@@ -3585,7 +4792,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.text('local-skill'));
     await tester.pumpAndSettle();
-    expect(find.text('User Scope / Codex · v1'), findsOneWidget);
+    expect(find.text('Global / Codex · v1'), findsOneWidget);
 
     await tester.tap(find.text('Update'));
     await tester.pumpAndSettle();
@@ -3594,7 +4801,7 @@ void main() {
     await tester.tap(find.text('Close'));
     await tester.pumpAndSettle();
 
-    expect(find.text('User Scope / Codex · v2'), findsOneWidget);
+    expect(find.text('Global / Codex · v2'), findsOneWidget);
   });
 
   testWidgets(
@@ -3646,6 +4853,12 @@ void main() {
 
 class FakeSkillsGateway implements SkillsGateway {
   FakeSkillsGateway({
+    this.onboardingState = const OnboardingState(
+      completed: true,
+      step: OnboardingStep.projects,
+    ),
+    List<Object> onboardingLoadErrors = const [],
+    this.onboardingStepSaveCompleter,
     this.cliReady = true,
     this.installed = true,
     this.searchCompleter,
@@ -3657,7 +4870,9 @@ class FakeSkillsGateway implements SkillsGateway {
     this.agentInspectionError,
     this.libraryError,
     List<AddedProject> addedProjects = const [],
-    this.projectToAdd,
+    this.projectLoadCompleter,
+    AddedProject? projectToAdd,
+    List<AddedProject>? projectsToAdd,
     this.projectToRelocate,
     List<InstalledSkill>? libraryEntries,
     this.localDetailError,
@@ -3665,6 +4880,7 @@ class FakeSkillsGateway implements SkillsGateway {
     this.hubOrigin = 'https://hub.skillsgo.ai',
     this.folderTheme = 'manila',
     this.themeMode = AppThemeMode.system,
+    this.language = AppLanguage.english,
     this.wallpaper = AppWallpaper.sun,
     this.hubTestState = HealthState.ready,
     this.storageStatus = const StorageStatus(
@@ -3684,10 +4900,14 @@ class FakeSkillsGateway implements SkillsGateway {
     this.installFailures = const [],
     List<SkillsException> installPlanErrors = const [],
     this.updateFailures = const [],
-    this.adoptionMatches = const [],
     List<SkillsException> updateCheckErrors = const [],
-    List<SkillsException> adoptionErrors = const [],
+    this.updateState = UpdateState.available,
+    this.takeoverResult = const BatchTakeoverResult(takenOver: 0, skipped: 0),
     this.takeoverCompleter,
+    this.reminderSettings = const ReminderSettings(
+      updateAvailable: false,
+      securityAdvisory: false,
+    ),
   }) : searchResults = searchResults ?? _defaultSearchResults,
        remoteDetail =
            remoteDetail ??
@@ -3697,10 +4917,19 @@ class FakeSkillsGateway implements SkillsGateway {
        detailErrors = List.of(detailErrors),
        installPlanErrors = List.of(installPlanErrors),
        updateCheckErrors = List.of(updateCheckErrors),
-       adoptionErrors = List.of(adoptionErrors),
        discoveryCompleters = List.of(discoveryCompleters),
        libraryEntries = libraryEntries == null ? null : List.of(libraryEntries),
+       onboardingLoadErrors = List.of(onboardingLoadErrors),
+       projectsToAdd = List.of(
+         projectsToAdd ??
+             (projectToAdd == null ? const [] : <AddedProject>[projectToAdd]),
+       ),
        projects = List.of(addedProjects);
+  OnboardingState onboardingState;
+  final List<Object> onboardingLoadErrors;
+  final Completer<void>? onboardingStepSaveCompleter;
+  int onboardingCompletions = 0;
+  int onboardingResets = 0;
   final bool cliReady;
   final Completer<List<SkillSummary>>? searchCompleter;
   final Completer<CommandResult>? installCompleter;
@@ -3710,15 +4939,18 @@ class FakeSkillsGateway implements SkillsGateway {
   final List<AgentStatus>? agentStatuses;
   final SkillsException? agentInspectionError;
   final SkillsException? libraryError;
-  final AddedProject? projectToAdd;
+  final List<AddedProject> projectsToAdd;
   final AddedProject? projectToRelocate;
+  final Completer<List<AddedProject>>? projectLoadCompleter;
   List<InstalledSkill>? libraryEntries;
   final SkillsException? localDetailError;
   final SkillDetail? localDetail;
   final List<AddedProject> projects;
+  int projectLoads = 0;
   String hubOrigin;
   String folderTheme;
   AppThemeMode themeMode;
+  AppLanguage language;
   AppWallpaper wallpaper;
   final HealthState hubTestState;
   PersonalRiskPolicy riskPolicy;
@@ -3734,21 +4966,55 @@ class FakeSkillsGateway implements SkillsGateway {
   final List<Set<String>> installFailures;
   final List<SkillsException> installPlanErrors;
   final List<Set<String>> updateFailures;
-  final List<HubContentMatch> adoptionMatches;
   final List<SkillsException> updateCheckErrors;
-  final List<SkillsException> adoptionErrors;
+  final UpdateState updateState;
+  final BatchTakeoverResult takeoverResult;
   final Completer<BatchTakeoverResult>? takeoverCompleter;
+  ReminderSettings reminderSettings;
   bool installed;
   final queries = <String>[];
   final collections = <DiscoveryCollection>[];
   final requestedOffsets = <int>[];
   int installCalls = 0;
+
+  @override
+  Future<OnboardingState> loadOnboardingState() async {
+    if (onboardingLoadErrors.isNotEmpty) {
+      throw onboardingLoadErrors.removeAt(0);
+    }
+    return onboardingState;
+  }
+
+  @override
+  Future<void> saveOnboardingStep(OnboardingStep step) async {
+    await onboardingStepSaveCompleter?.future;
+    onboardingState = OnboardingState(completed: false, step: step);
+  }
+
+  @override
+  Future<void> completeOnboarding() async {
+    onboardingCompletions++;
+    onboardingState = OnboardingState(
+      completed: true,
+      step: onboardingState.step,
+    );
+  }
+
+  @override
+  Future<void> resetOnboarding() async {
+    onboardingResets++;
+    onboardingState = const OnboardingState(
+      completed: false,
+      step: OnboardingStep.welcome,
+    );
+  }
+
   int updateCalls = 0;
   List<InstallationTargetSelection> lastPlanSelections = const [];
   final executionSelectionHistory = <List<InstallationTargetSelection>>[];
   final updateTargetHistory = <List<String>>[];
   final managementTargetHistory = <Map<String, TargetManagementAction>>[];
-  final adoptionHistory = <ExternalAdoptionAction>[];
+  final takeoverRequests = <({bool includeUser, List<String> projectRoots})>[];
   int exportCalls = 0;
   int detailLoads = 0;
   int agentInspections = 0;
@@ -3845,6 +5111,21 @@ class FakeSkillsGateway implements SkillsGateway {
 
   @override
   Future<void> saveThemeMode(AppThemeMode mode) async => themeMode = mode;
+
+  @override
+  Future<AppLanguage> loadLanguage() async => language;
+
+  @override
+  Future<void> saveLanguage(AppLanguage value) async => language = value;
+
+  @override
+  Future<ReminderSettings> loadReminderSettings() async => reminderSettings;
+
+  @override
+  Future<void> saveReminderSettings(ReminderSettings value) async {
+    reminderSettings = value;
+  }
+
   @override
   Future<String> loadHubOrigin() async => hubOrigin;
   @override
@@ -3935,13 +5216,8 @@ class FakeSkillsGateway implements SkillsGateway {
                     ),
                   ]
                 : const []);
-
   @override
-  Future<BatchTakeoverResult> takeoverExistingSkills({
-    String? projectRoot,
-  }) async =>
-      takeoverCompleter?.future ??
-      const BatchTakeoverResult(takenOver: 0, skipped: 0);
+  Future<AgentCatalog> inspectOnboardingAgents() => inspectAgents();
 
   @override
   Future<AgentCatalog> inspectAgents() async {
@@ -3979,14 +5255,22 @@ class FakeSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<List<AddedProject>> loadAddedProjects() async => List.of(projects);
+  Future<List<AddedProject>> loadAddedProjects() async {
+    projectLoads++;
+    return await projectLoadCompleter?.future ?? List.of(projects);
+  }
+
   @override
-  Future<AddedProject?> addProject() async {
-    final project = projectToAdd;
-    if (project != null && !projects.any((item) => item.id == project.id)) {
-      projects.add(project);
+  Future<AddedProject> resolveProjectIcon(AddedProject project) async =>
+      project;
+  @override
+  Future<List<AddedProject>> addProjects() async {
+    for (final project in projectsToAdd) {
+      if (!projects.any((item) => item.id == project.id)) {
+        projects.add(project);
+      }
     }
-    return project;
+    return List.of(projectsToAdd);
   }
 
   @override
@@ -4027,7 +5311,7 @@ class FakeSkillsGateway implements SkillsGateway {
     return {
       for (final skill in skills)
         (skill.inventoryKey.isEmpty ? skill.name : skill.inventoryKey):
-            UpdateState.available,
+            updateState,
     };
   }
 
@@ -4158,71 +5442,16 @@ class FakeSkillsGateway implements SkillsGateway {
   }
 
   @override
-  Future<ExternalAdoptionPlan> preflightExternalAdoption(
-    InstalledSkill skill,
-  ) async {
-    if (adoptionErrors.isNotEmpty) throw adoptionErrors.removeAt(0);
-    final target = skill.targets.single;
-    return ExternalAdoptionPlan(
-      inventoryKey: skill.inventoryKey,
-      name: skill.name,
-      target: InstallationPlanTarget(
-        scope: target.scope,
-        projectRoot: target.projectRoot,
-        agent: target.agent,
-        mode: InstallationMode.copy,
-        path: target.path,
-      ),
-      contentDigest: 'sha256:external-content',
-      sourceHint: '',
-      stateToken: 'sha256:external-state',
-      matches: adoptionMatches,
-      canImportLocal: true,
-    );
-  }
-
-  @override
-  Future<ExternalAdoptionResult> executeExternalAdoption(
-    ExternalAdoptionPlan plan,
-  ) async {
-    final action = plan.action!;
-    adoptionHistory.add(action);
-    final match = plan.selectedMatch;
-    final provenance = action == ExternalAdoptionAction.importLocal
-        ? LibraryProvenance.local
-        : LibraryProvenance.hub;
-    final coordinate = match?.skillId ?? 'local.skillsgo/content/${plan.name}';
-    final version = match?.immutableVersion ?? 'local-content';
-    final managedTarget = SkillInstallationTarget(
-      agent: plan.target.agent,
-      scope: plan.target.scope,
-      projectRoot: plan.target.projectRoot,
-      path: plan.target.path,
-      version: version,
-      mode: InstallationMode.copy,
-    );
-    libraryEntries = [
-      InstalledSkill(
-        inventoryKey: '${provenance.name}:$coordinate',
-        name: plan.name,
-        path: plan.target.path,
-        agents: [plan.target.agent],
-        targetCount: 1,
-        skillId: coordinate,
-        provenance: provenance,
-        versions: [version],
-        targets: [managedTarget],
-      ),
-    ];
-    return ExternalAdoptionResult(
-      action: action,
-      name: plan.name,
-      skillId: coordinate,
-      version: version,
-      provenance: provenance,
-      contentDigest: plan.contentDigest,
-      target: plan.target,
-    );
+  Future<BatchTakeoverResult> takeoverExistingSkills({
+    required bool includeUser,
+    List<String> projectRoots = const [],
+  }) async {
+    takeoverRequests.add((
+      includeUser: includeUser,
+      projectRoots: List.unmodifiable(projectRoots),
+    ));
+    if (takeoverCompleter != null) return takeoverCompleter!.future;
+    return takeoverResult;
   }
 
   @override
@@ -4252,10 +5481,7 @@ class FakeSkillsGateway implements SkillsGateway {
           health: target.health,
           allowedActions: target.health == InstallationHealth.healthy
               ? const [TargetManagementAction.remove]
-              : const [
-                  TargetManagementAction.repair,
-                  TargetManagementAction.stopManaging,
-                ],
+              : const [TargetManagementAction.repair],
           stateToken: 'manage-${target.agent}-${target.path}',
           workspaceMetadataChange: target.scope == InstallationScope.project,
         ),
@@ -4273,13 +5499,6 @@ class FakeSkillsGateway implements SkillsGateway {
             .where(
               (item) =>
                   item.allowedActions.contains(TargetManagementAction.repair),
-            )
-            .length,
-        stoppable: items
-            .where(
-              (item) => item.allowedActions.contains(
-                TargetManagementAction.stopManaging,
-              ),
             )
             .length,
       ),
@@ -4341,8 +5560,7 @@ class FakeSkillsGateway implements SkillsGateway {
           for (final target in skill.targets) {
             final key = installedUpdateTargetKey(target);
             final action = actions[key];
-            if (action == TargetManagementAction.remove ||
-                action == TargetManagementAction.stopManaging) {
+            if (action == TargetManagementAction.remove) {
               continue;
             }
             if (action == TargetManagementAction.repair) {
@@ -4564,6 +5782,11 @@ Finder _searchInput() => find.descendant(
 Finder _librarySearchInput() => find.descendant(
   of: find.byKey(const Key('library-search')),
   matching: find.byType(EditableText),
+);
+
+Finder _libraryLocation(String label) => find.descendant(
+  of: find.byKey(const Key('library-location-rail')),
+  matching: find.text(label),
 );
 
 bool _isSemanticallySelected(WidgetTester tester, String label) {

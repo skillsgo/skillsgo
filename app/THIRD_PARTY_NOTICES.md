@@ -56,14 +56,22 @@ https://github.com/lobehub/lobe-icons
 Atlassian Design:
 https://atlassian.design/foundations/logos
 
+## Circle Flags
+
+The language identity assets in `assets/language-flags/` are sourced from
+[HatScripts Circle Flags](https://github.com/HatScripts/circle-flags),
+released under the MIT License.
+
 ## Portal Labs
 
 `lib/ui/primary_folder_shell.dart` is derived from the Folder Tabs component,
 `lib/ui/bloom_color_picker/` vendors and modifies Bloom Color Picker, and
 `lib/ui/discrete_tabs/` vendors and modifies Discrete Tabs. The
 `lib/ui/install_location_island/` component is derived from and substantially
-adapts Todo List Interaction for installation location selection. These
-components originate from
+adapts Todo List Interaction for installation location selection, and
+`lib/ui/stacked_toast.dart` vendors and modifies Stacked Toast Interaction.
+These components originate from the same package. The App also consumes Portal
+Labs' Loading Shapes component for Repository parsing. Source:
 [lportals/portal_labs](https://github.com/lportals/portal_labs).
 
 MIT License
@@ -87,3 +95,38 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
+
+## Loading Animation Widget
+
+The Discover refresh and automatic-pagination indicators use
+[`loading_animation_widget`](https://pub.dev/packages/loading_animation_widget).
+
+BSD 3-Clause License
+
+Copyright (c) 2021, Watery Desert
+All rights reserved.
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice, this
+   list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+3. Neither the name of the copyright holder nor the names of its contributors
+   may be used to endorse or promote products derived from this software
+   without specific prior written permission.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE
+FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR
+SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER
+CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY,
+OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
+OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.

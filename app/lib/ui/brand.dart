@@ -1,28 +1,26 @@
 /*
- * [INPUT]: Depends on SkillsGateway discovery models, localized copy, the SkillsGo design-system interface, Flutter Material rendering, HugeIcons, the bundled solar-starfield background asset, native components, and the shared installation MenuAnchor.
- * [OUTPUT]: Exports SkillsGo theme and semantic color interfaces and provides the full-window photographic background behind Folder, typography/status tokens, controls, Hub-image-backed discovery cards, anchored installation actions, status elements, and viewport-safe empty states.
+ * [INPUT]: Depends on SkillsGateway discovery models, localized copy, the SkillsGo design-system interface, Flutter Material rendering, HugeIcons, Loading Animation Widget indicators, Portal Labs Loading Shapes, the bundled solar-starfield background asset, native components, and the shared installation MenuAnchor.
+ * [OUTPUT]: Exports SkillsGo theme and semantic color interfaces and provides the full-window photographic background behind Folder, typography/status tokens, context-aware search controls, theme-aware refresh, pagination, and Repository-parsing loading adapters, placeholder-safe Hub-image-backed discovery cards, anchored installation actions, status elements, and viewport-safe empty states with optional supporting copy.
  * [POS]: Serves as the thin branded presentation layer over the SkillsGo design system and native Flutter Material behavior.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
 import 'package:hugeicons/hugeicons.dart';
+import 'package:loading_animation_widget/loading_animation_widget.dart';
+import 'package:portal_labs/portal_labs.dart' as portal;
 
 import '../domain/skills_gateway.dart';
 import '../l10n/app_localizations.dart';
 import 'design_system/skills_color_tokens.dart';
 import 'design_system/skills_component_tokens.dart';
+import 'design_system/skills_typography.dart';
 import 'install_location_popover.dart';
 import 'native_components.dart';
 
 export 'design_system/skills_color_tokens.dart';
 export 'design_system/skills_component_tokens.dart';
 export 'design_system/skills_theme.dart';
-
-abstract final class SkillsTokens {
-  static const sansFamily = '.AppleSystemUIFont';
-  static const monoFamily = 'SF Mono';
-  static const serifFamily = 'New York';
-}
+export 'design_system/skills_typography.dart';
 
 class SkillsBackground extends StatelessWidget {
   const SkillsBackground({
@@ -85,15 +83,76 @@ class SkillsEditorialTitle extends StatelessWidget {
   final String text;
 
   @override
-  Widget build(BuildContext context) => Text(
-    text,
-    style: const TextStyle(
-      fontFamily: SkillsTokens.monoFamily,
-      fontSize: 20,
-      height: 28 / 20,
-      fontWeight: FontWeight.w200,
-    ),
-  );
+  Widget build(BuildContext context) =>
+      Text(text, style: context.skillsTypography.pageTitle);
+}
+
+enum SkillsLoadingVariant { inkDrop, progressiveDots }
+
+class SkillsLoadingShape extends StatelessWidget {
+  const SkillsLoadingShape({
+    super.key,
+    this.size = 32,
+    this.color,
+    this.progress,
+    this.variant = SkillsLoadingVariant.inkDrop,
+  });
+
+  final double size;
+  final Color? color;
+  final double? progress;
+  final SkillsLoadingVariant variant;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    final animate = !reduceMotion;
+    final indicatorColor = color ?? Theme.of(context).colorScheme.primary;
+    return TickerMode(
+      enabled: animate,
+      child: switch (variant) {
+        SkillsLoadingVariant.inkDrop => LoadingAnimationWidget.inkDrop(
+          key: const Key('skills-loading-ink-drop'),
+          color: indicatorColor,
+          size: size,
+        ),
+        SkillsLoadingVariant.progressiveDots =>
+          LoadingAnimationWidget.progressiveDots(
+            key: const Key('skills-loading-progressive-dots'),
+            color: indicatorColor,
+            size: size,
+          ),
+      },
+    );
+  }
+}
+
+class SkillsRepositoryLoadingShape extends StatelessWidget {
+  const SkillsRepositoryLoadingShape({super.key, this.size = 56, this.color});
+
+  final double size;
+  final Color? color;
+
+  @override
+  Widget build(BuildContext context) {
+    final reduceMotion = MediaQuery.disableAnimationsOf(context);
+    return TickerMode(
+      enabled: !reduceMotion,
+      child: portal.LoadingShapes(
+        key: const Key('portal-repository-loading-shape'),
+        isLoading: !reduceMotion,
+        style: portal.LoadingShapesStyle(
+          size: size,
+          color: color ?? Theme.of(context).colorScheme.primary,
+          transitionDuration: const Duration(milliseconds: 800),
+          baseRotationSpeed: 0.007,
+          boostRotationSpeed: 0.02,
+          enableHaptics: false,
+          pauseDuration: const Duration(milliseconds: 160),
+        ),
+      ),
+    );
+  }
 }
 
 class GlassCard extends StatelessWidget {
@@ -128,9 +187,7 @@ class SectionEyebrow extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Text(
     text.toUpperCase(),
-    style: TextStyle(
-      fontFamily: SkillsTokens.monoFamily,
-      fontSize: 11,
+    style: context.skillsTypography.caption.copyWith(
       fontWeight: FontWeight.w700,
       letterSpacing: 1.1,
       color: color ?? Theme.of(context).colorScheme.onSurfaceVariant,
@@ -169,8 +226,7 @@ class StatusChip extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: TextStyle(
-          fontFamily: SkillsTokens.monoFamily,
+        style: context.skillsTypography.caption.copyWith(
           fontSize: 10,
           color: resolvedColor,
         ),
@@ -235,6 +291,8 @@ class SecondaryCapsuleButton extends StatelessWidget {
 
 enum SkillSearchAppearance { capsule, leaderboard }
 
+const skillSearchLeaderboardContentAlignment = .5;
+
 class SearchVisualIcon extends StatelessWidget {
   const SearchVisualIcon({
     super.key,
@@ -273,6 +331,7 @@ class SkillSearchField extends StatelessWidget {
     this.height,
     this.appearance = SkillSearchAppearance.capsule,
     this.showShortcutHint = false,
+    this.hintText,
   });
   final TextEditingController controller;
   final FocusNode focusNode;
@@ -286,12 +345,14 @@ class SkillSearchField extends StatelessWidget {
   final double? height;
   final SkillSearchAppearance appearance;
   final bool showShortcutHint;
+  final String? hintText;
 
   @override
   Widget build(BuildContext context) {
     final l10n = AppLocalizations.of(context);
+    final searchLabel = hintText ?? l10n.searchSkills;
     return Semantics(
-      label: l10n.searchSkills,
+      label: searchLabel,
       textField: true,
       child: SizedBox(
         key: const Key('skill-search'),
@@ -303,7 +364,7 @@ class SkillSearchField extends StatelessWidget {
             final components = context.skillsComponents;
             final value = controller.value;
             if (appearance == SkillSearchAppearance.leaderboard) {
-              const contentAlignment = 0.5;
+              const contentAlignment = skillSearchLeaderboardContentAlignment;
               final showSparkles =
                   value.text.contains(' ') && value.text.trim().length >= 2;
               final reduceMotion = MediaQuery.disableAnimationsOf(context);
@@ -332,11 +393,8 @@ class SkillSearchField extends StatelessWidget {
                     y: contentAlignment,
                   ),
                   cursorColor: scheme.onSurface,
-                  style: TextStyle(
+                  style: context.skillsTypography.bodySecondary.copyWith(
                     color: scheme.onSurface,
-                    fontFamily: SkillsTokens.monoFamily,
-                    fontSize: 14,
-                    fontWeight: FontWeight.w400,
                   ),
                   decoration: InputDecoration(
                     isDense: true,
@@ -377,12 +435,9 @@ class SkillSearchField extends StatelessWidget {
                         ],
                       ),
                     ),
-                    hintText: l10n.searchSkills,
-                    hintStyle: TextStyle(
+                    hintText: searchLabel,
+                    hintStyle: context.skillsTypography.bodySecondary.copyWith(
                       color: scheme.textTertiary,
-                      fontFamily: SkillsTokens.monoFamily,
-                      fontSize: 14,
-                      fontWeight: FontWeight.w400,
                     ),
                     suffixIconConstraints: const BoxConstraints.tightFor(
                       width: 32,
@@ -472,14 +527,13 @@ class SkillSearchField extends StatelessWidget {
                               ),
                               child: Text(
                                 '⌘ F',
-                                style: TextStyle(
-                                  color: scheme.onSurfaceVariant,
-                                  fontFamily: SkillsTokens.monoFamily,
-                                  fontSize: 12,
-                                  fontWeight: FontWeight.w500,
-                                  letterSpacing: 0.2,
-                                  height: 1,
-                                ),
+                                style: context.skillsTypography.metadata
+                                    .copyWith(
+                                      color: scheme.onSurfaceVariant,
+                                      fontWeight: FontWeight.w500,
+                                      letterSpacing: 0.2,
+                                      height: 1,
+                                    ),
                               ),
                             ),
                           )
@@ -525,10 +579,9 @@ class SkillSearchField extends StatelessWidget {
                 onSubmitted: onSubmitted,
                 textInputAction: TextInputAction.search,
                 cursorColor: foreground,
-                style: TextStyle(
+                style: context.skillsTypography.body.copyWith(
                   color: foreground,
                   fontSize: compact ? 14 : 17,
-                  fontWeight: FontWeight.w300,
                 ),
                 decoration: InputDecoration(
                   isDense: true,
@@ -536,10 +589,9 @@ class SkillSearchField extends StatelessWidget {
                   fillColor: active
                       ? components.searchActive
                       : components.searchRest,
-                  hintText: l10n.searchSkills,
-                  hintStyle: TextStyle(
+                  hintText: searchLabel,
+                  hintStyle: context.skillsTypography.body.copyWith(
                     color: scheme.textTertiary,
-                    fontWeight: FontWeight.w300,
                   ),
                   prefixIconConstraints: const BoxConstraints(
                     minWidth: 42,
@@ -685,8 +737,7 @@ class _SkillCardState extends State<SkillCard> {
                                   widget.skill.name,
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 15,
+                                  style: context.skillsTypography.body.copyWith(
                                     fontWeight: FontWeight.w500,
                                     letterSpacing: -.08,
                                   ),
@@ -696,11 +747,8 @@ class _SkillCardState extends State<SkillCard> {
                                   _repositoryLabel(widget.skill.source),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    color: scheme.textTertiary,
-                                    fontFamily: SkillsTokens.monoFamily,
-                                    fontSize: 11,
-                                  ),
+                                  style: context.skillsTypography.caption
+                                      .copyWith(color: scheme.textTertiary),
                                 ),
                               ],
                             ),
@@ -713,11 +761,12 @@ class _SkillCardState extends State<SkillCard> {
                           widget.skill.description,
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
-                          style: TextStyle(
-                            color: scheme.textSecondary,
-                            fontSize: 13,
-                            height: 1.42,
-                          ),
+                          style: context.skillsTypography.bodySecondary
+                              .copyWith(
+                                color: scheme.textSecondary,
+                                fontSize: 13,
+                                height: 1.42,
+                              ),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -728,9 +777,8 @@ class _SkillCardState extends State<SkillCard> {
                               _metricLabel(context, widget.skill),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
+                              style: context.skillsTypography.metadata.copyWith(
                                 color: scheme.textSecondary,
-                                fontSize: 12,
                                 fontFeatures: [FontFeature.tabularFigures()],
                               ),
                             ),
@@ -741,10 +789,7 @@ class _SkillCardState extends State<SkillCard> {
                               label: l10n.install,
                               height: 28,
                               horizontalPadding: 9,
-                              labelStyle: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w400,
-                              ),
+                              labelStyle: context.skillsTypography.metadata,
                               onPressed: () => widget.onInstall(present),
                             ),
                           ),
@@ -813,6 +858,12 @@ class _RepositoryAvatarState extends State<RepositoryAvatar> {
               width: widget.size,
               height: widget.size,
               fit: BoxFit.cover,
+              loadingBuilder: (context, child, progress) => progress == null
+                  ? child
+                  : _RepositoryAvatarFallback(
+                      source: widget.source,
+                      size: widget.size,
+                    ),
               errorBuilder: (_, _, _) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (mounted && !imageFailed) {
@@ -887,14 +938,9 @@ class SkillGlyph extends StatelessWidget {
 }
 
 class EmptyState extends StatelessWidget {
-  const EmptyState({
-    super.key,
-    required this.title,
-    required this.message,
-    this.action,
-  });
+  const EmptyState({super.key, required this.title, this.message, this.action});
   final String title;
-  final String message;
+  final String? message;
   final Widget? action;
 
   @override
@@ -909,21 +955,16 @@ class EmptyState extends StatelessWidget {
             Text(
               title,
               textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontFamily: SkillsTokens.serifFamily,
-                fontSize: 28,
-                fontWeight: FontWeight.w600,
-              ),
+              style: context.skillsTypography.display.copyWith(fontSize: 28),
             ),
-            const SizedBox(height: 10),
-            Text(
-              message,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-                height: 1.5,
+            if (message?.trim().isNotEmpty ?? false) ...[
+              const SizedBox(height: 10),
+              Text(
+                message!,
+                textAlign: TextAlign.center,
+                style: context.skillsTypography.body.copyWith(height: 1.5),
               ),
-            ),
+            ],
             if (action != null) ...[const SizedBox(height: 20), action!],
           ],
         ),
