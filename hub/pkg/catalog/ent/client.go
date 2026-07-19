@@ -16,6 +16,7 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/installevent"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/localizeddescription"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/riskassessment"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
@@ -31,6 +32,8 @@ type Client struct {
 	Schema *migrate.Schema
 	// InstallEvent is the client for interacting with the InstallEvent builders.
 	InstallEvent *InstallEventClient
+	// LocalizedDescription is the client for interacting with the LocalizedDescription builders.
+	LocalizedDescription *LocalizedDescriptionClient
 	// Repository is the client for interacting with the Repository builders.
 	Repository *RepositoryClient
 	// RiskAssessment is the client for interacting with the RiskAssessment builders.
@@ -55,6 +58,7 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.InstallEvent = NewInstallEventClient(c.config)
+	c.LocalizedDescription = NewLocalizedDescriptionClient(c.config)
 	c.Repository = NewRepositoryClient(c.config)
 	c.RiskAssessment = NewRiskAssessmentClient(c.config)
 	c.Skill = NewSkillClient(c.config)
@@ -151,15 +155,16 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:             ctx,
-		config:          cfg,
-		InstallEvent:    NewInstallEventClient(cfg),
-		Repository:      NewRepositoryClient(cfg),
-		RiskAssessment:  NewRiskAssessmentClient(cfg),
-		Skill:           NewSkillClient(cfg),
-		SkillHourlyStat: NewSkillHourlyStatClient(cfg),
-		SkillStat:       NewSkillStatClient(cfg),
-		SkillVersion:    NewSkillVersionClient(cfg),
+		ctx:                  ctx,
+		config:               cfg,
+		InstallEvent:         NewInstallEventClient(cfg),
+		LocalizedDescription: NewLocalizedDescriptionClient(cfg),
+		Repository:           NewRepositoryClient(cfg),
+		RiskAssessment:       NewRiskAssessmentClient(cfg),
+		Skill:                NewSkillClient(cfg),
+		SkillHourlyStat:      NewSkillHourlyStatClient(cfg),
+		SkillStat:            NewSkillStatClient(cfg),
+		SkillVersion:         NewSkillVersionClient(cfg),
 	}, nil
 }
 
@@ -177,15 +182,16 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:             ctx,
-		config:          cfg,
-		InstallEvent:    NewInstallEventClient(cfg),
-		Repository:      NewRepositoryClient(cfg),
-		RiskAssessment:  NewRiskAssessmentClient(cfg),
-		Skill:           NewSkillClient(cfg),
-		SkillHourlyStat: NewSkillHourlyStatClient(cfg),
-		SkillStat:       NewSkillStatClient(cfg),
-		SkillVersion:    NewSkillVersionClient(cfg),
+		ctx:                  ctx,
+		config:               cfg,
+		InstallEvent:         NewInstallEventClient(cfg),
+		LocalizedDescription: NewLocalizedDescriptionClient(cfg),
+		Repository:           NewRepositoryClient(cfg),
+		RiskAssessment:       NewRiskAssessmentClient(cfg),
+		Skill:                NewSkillClient(cfg),
+		SkillHourlyStat:      NewSkillHourlyStatClient(cfg),
+		SkillStat:            NewSkillStatClient(cfg),
+		SkillVersion:         NewSkillVersionClient(cfg),
 	}, nil
 }
 
@@ -215,8 +221,8 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	for _, n := range []interface{ Use(...Hook) }{
-		c.InstallEvent, c.Repository, c.RiskAssessment, c.Skill, c.SkillHourlyStat,
-		c.SkillStat, c.SkillVersion,
+		c.InstallEvent, c.LocalizedDescription, c.Repository, c.RiskAssessment, c.Skill,
+		c.SkillHourlyStat, c.SkillStat, c.SkillVersion,
 	} {
 		n.Use(hooks...)
 	}
@@ -226,8 +232,8 @@ func (c *Client) Use(hooks ...Hook) {
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.InstallEvent, c.Repository, c.RiskAssessment, c.Skill, c.SkillHourlyStat,
-		c.SkillStat, c.SkillVersion,
+		c.InstallEvent, c.LocalizedDescription, c.Repository, c.RiskAssessment, c.Skill,
+		c.SkillHourlyStat, c.SkillStat, c.SkillVersion,
 	} {
 		n.Intercept(interceptors...)
 	}
@@ -238,6 +244,8 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
 	case *InstallEventMutation:
 		return c.InstallEvent.mutate(ctx, m)
+	case *LocalizedDescriptionMutation:
+		return c.LocalizedDescription.mutate(ctx, m)
 	case *RepositoryMutation:
 		return c.Repository.mutate(ctx, m)
 	case *RiskAssessmentMutation:
@@ -401,6 +409,139 @@ func (c *InstallEventClient) mutate(ctx context.Context, m *InstallEventMutation
 		return (&InstallEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown InstallEvent mutation op: %q", m.Op())
+	}
+}
+
+// LocalizedDescriptionClient is a client for the LocalizedDescription schema.
+type LocalizedDescriptionClient struct {
+	config
+}
+
+// NewLocalizedDescriptionClient returns a client for the LocalizedDescription from the given config.
+func NewLocalizedDescriptionClient(c config) *LocalizedDescriptionClient {
+	return &LocalizedDescriptionClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `localizeddescription.Hooks(f(g(h())))`.
+func (c *LocalizedDescriptionClient) Use(hooks ...Hook) {
+	c.hooks.LocalizedDescription = append(c.hooks.LocalizedDescription, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `localizeddescription.Intercept(f(g(h())))`.
+func (c *LocalizedDescriptionClient) Intercept(interceptors ...Interceptor) {
+	c.inters.LocalizedDescription = append(c.inters.LocalizedDescription, interceptors...)
+}
+
+// Create returns a builder for creating a LocalizedDescription entity.
+func (c *LocalizedDescriptionClient) Create() *LocalizedDescriptionCreate {
+	mutation := newLocalizedDescriptionMutation(c.config, OpCreate)
+	return &LocalizedDescriptionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of LocalizedDescription entities.
+func (c *LocalizedDescriptionClient) CreateBulk(builders ...*LocalizedDescriptionCreate) *LocalizedDescriptionCreateBulk {
+	return &LocalizedDescriptionCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *LocalizedDescriptionClient) MapCreateBulk(slice any, setFunc func(*LocalizedDescriptionCreate, int)) *LocalizedDescriptionCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &LocalizedDescriptionCreateBulk{err: fmt.Errorf("calling to LocalizedDescriptionClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*LocalizedDescriptionCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &LocalizedDescriptionCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for LocalizedDescription.
+func (c *LocalizedDescriptionClient) Update() *LocalizedDescriptionUpdate {
+	mutation := newLocalizedDescriptionMutation(c.config, OpUpdate)
+	return &LocalizedDescriptionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *LocalizedDescriptionClient) UpdateOne(_m *LocalizedDescription) *LocalizedDescriptionUpdateOne {
+	mutation := newLocalizedDescriptionMutation(c.config, OpUpdateOne, withLocalizedDescription(_m))
+	return &LocalizedDescriptionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *LocalizedDescriptionClient) UpdateOneID(id int64) *LocalizedDescriptionUpdateOne {
+	mutation := newLocalizedDescriptionMutation(c.config, OpUpdateOne, withLocalizedDescriptionID(id))
+	return &LocalizedDescriptionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for LocalizedDescription.
+func (c *LocalizedDescriptionClient) Delete() *LocalizedDescriptionDelete {
+	mutation := newLocalizedDescriptionMutation(c.config, OpDelete)
+	return &LocalizedDescriptionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *LocalizedDescriptionClient) DeleteOne(_m *LocalizedDescription) *LocalizedDescriptionDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *LocalizedDescriptionClient) DeleteOneID(id int64) *LocalizedDescriptionDeleteOne {
+	builder := c.Delete().Where(localizeddescription.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &LocalizedDescriptionDeleteOne{builder}
+}
+
+// Query returns a query builder for LocalizedDescription.
+func (c *LocalizedDescriptionClient) Query() *LocalizedDescriptionQuery {
+	return &LocalizedDescriptionQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeLocalizedDescription},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a LocalizedDescription entity by its id.
+func (c *LocalizedDescriptionClient) Get(ctx context.Context, id int64) (*LocalizedDescription, error) {
+	return c.Query().Where(localizeddescription.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *LocalizedDescriptionClient) GetX(ctx context.Context, id int64) *LocalizedDescription {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// Hooks returns the client hooks.
+func (c *LocalizedDescriptionClient) Hooks() []Hook {
+	return c.hooks.LocalizedDescription
+}
+
+// Interceptors returns the client interceptors.
+func (c *LocalizedDescriptionClient) Interceptors() []Interceptor {
+	return c.inters.LocalizedDescription
+}
+
+func (c *LocalizedDescriptionClient) mutate(ctx context.Context, m *LocalizedDescriptionMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&LocalizedDescriptionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&LocalizedDescriptionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&LocalizedDescriptionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&LocalizedDescriptionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown LocalizedDescription mutation op: %q", m.Op())
 	}
 }
 
@@ -1349,11 +1490,11 @@ func (c *SkillVersionClient) mutate(ctx context.Context, m *SkillVersionMutation
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		InstallEvent, Repository, RiskAssessment, Skill, SkillHourlyStat, SkillStat,
-		SkillVersion []ent.Hook
+		InstallEvent, LocalizedDescription, Repository, RiskAssessment, Skill,
+		SkillHourlyStat, SkillStat, SkillVersion []ent.Hook
 	}
 	inters struct {
-		InstallEvent, Repository, RiskAssessment, Skill, SkillHourlyStat, SkillStat,
-		SkillVersion []ent.Interceptor
+		InstallEvent, LocalizedDescription, Repository, RiskAssessment, Skill,
+		SkillHourlyStat, SkillStat, SkillVersion []ent.Interceptor
 	}
 )

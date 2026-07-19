@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Repository Catalog cache state, GitHub's conditional REST resource, an optional bearer token, and bounded HTTP requests.
- * [OUTPUT]: Provides Repository-scoped Stars with TTL, ETag revalidation, Singleflight refresh, rate-limit backoff, and safe failure diagnostics.
+ * [OUTPUT]: Provides Repository-scoped provider descriptions and Stars with TTL, ETag revalidation, Singleflight refresh, rate-limit backoff, and safe failure diagnostics.
  * [POS]: Serves as the cached external source-metadata adapter; artifact and discovery requests remain usable when it fails.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -29,6 +29,7 @@ const (
 )
 
 type repositoryMetadata struct {
+	Description string
 	Stars       int64
 	ETag        string
 	NotModified bool
@@ -122,15 +123,15 @@ func (c *repositoryMetadataCache) Read(ctx context.Context, sourceHost, reposito
 	upstream, supported := c.sources[normalizedHost]
 	if !supported {
 		logSourceMetadataCache(ctx, repositoryID, "unsupported")
-		return repositoryMetadata{Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
+		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
 	}
 	if repositoryMetadataFresh(stored, now, c.ttl) {
 		logSourceMetadataCache(ctx, repositoryID, "hit")
-		return repositoryMetadata{Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
+		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
 	}
 	if repositoryMetadataRetryBlocked(stored, now) {
 		logSourceMetadataCache(ctx, repositoryID, "retry_blocked")
-		return repositoryMetadata{Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
+		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
 	}
 	value, err, _ := c.refresh.Do(repositoryID, func() (any, error) {
 		current, readErr := c.catalog.Repository(ctx, repositoryID)
@@ -140,22 +141,26 @@ func (c *repositoryMetadataCache) Read(ctx context.Context, sourceHost, reposito
 		now = c.now().UTC()
 		if repositoryMetadataFresh(current, now, c.ttl) || repositoryMetadataRetryBlocked(current, now) {
 			logSourceMetadataCache(ctx, repositoryID, "singleflight_hit")
-			return repositoryMetadata{Stars: current.Stars, ETag: current.SourceMetadataETag}, nil
+			return repositoryMetadata{Description: current.Description, Stars: current.Stars, ETag: current.SourceMetadataETag}, nil
 		}
-		result, upstreamErr := upstream.Read(ctx, sourceHost, repository, current.SourceMetadataETag)
+		etag := current.SourceMetadataETag
+		if current.Description == "" {
+			etag = ""
+		}
+		result, upstreamErr := upstream.Read(ctx, sourceHost, repository, etag)
 		if upstreamErr != nil {
 			if retryAt := githubMetadataRetryAt(upstreamErr, now); retryAt != nil {
-				if updateErr := c.catalog.UpdateRepositorySourceMetadata(ctx, repositoryID, current.Stars, current.SourceMetadataETag, current.SourceMetadataCheckedAt, retryAt); updateErr != nil {
+				if updateErr := c.catalog.UpdateRepositorySourceMetadata(ctx, repositoryID, current.Description, current.Stars, current.SourceMetadataETag, current.SourceMetadataCheckedAt, retryAt); updateErr != nil {
 					return nil, fmt.Errorf("persist github metadata retry window: %w", updateErr)
 				}
 			}
 			return nil, upstreamErr
 		}
-		stars, etag := result.Stars, result.ETag
+		description, stars, etag := result.Description, result.Stars, result.ETag
 		if result.NotModified {
-			stars, etag = current.Stars, current.SourceMetadataETag
+			description, stars, etag = current.Description, current.Stars, current.SourceMetadataETag
 		}
-		if err := c.catalog.UpdateRepositorySourceMetadata(ctx, repositoryID, stars, etag, &now, nil); err != nil {
+		if err := c.catalog.UpdateRepositorySourceMetadata(ctx, repositoryID, description, stars, etag, &now, nil); err != nil {
 			return nil, err
 		}
 		cacheResult := "refreshed"
@@ -163,10 +168,10 @@ func (c *repositoryMetadataCache) Read(ctx context.Context, sourceHost, reposito
 			cacheResult = "revalidated"
 		}
 		logSourceMetadataCache(ctx, repositoryID, cacheResult)
-		return repositoryMetadata{Stars: stars, ETag: etag}, nil
+		return repositoryMetadata{Description: description, Stars: stars, ETag: etag}, nil
 	})
 	if err != nil {
-		return repositoryMetadata{Stars: stored.Stars, ETag: stored.SourceMetadataETag}, err
+		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, err
 	}
 	return value.(repositoryMetadata), nil
 }
@@ -242,8 +247,9 @@ func (r *githubRepositoryMetadataReader) Read(
 		return repositoryMetadata{}, newGitHubMetadataHTTPError(response, r.token != "", duration)
 	}
 	var payload struct {
-		Stars int64  `json:"stargazers_count"`
-		URL   string `json:"html_url"`
+		Description string `json:"description"`
+		Stars       int64  `json:"stargazers_count"`
+		URL         string `json:"html_url"`
 	}
 	if err := json.NewDecoder(response.Body).Decode(&payload); err != nil {
 		return repositoryMetadata{}, err
@@ -254,7 +260,7 @@ func (r *githubRepositoryMetadataReader) Read(
 	if parsed, err := url.Parse(payload.URL); err != nil || parsed.Host != "github.com" {
 		return repositoryMetadata{}, fmt.Errorf("github repository metadata returned an invalid repository URL")
 	}
-	return repositoryMetadata{Stars: payload.Stars, ETag: response.Header.Get("ETag")}, nil
+	return repositoryMetadata{Description: strings.TrimSpace(payload.Description), Stars: payload.Stars, ETag: response.Header.Get("ETag")}, nil
 }
 
 func githubMetadataRetryAt(err error, now time.Time) *time.Time {

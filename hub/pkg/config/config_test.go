@@ -38,7 +38,7 @@ func setTestHome(t *testing.T) string {
 func compareConfigs(parsedConf *Config, expConf *Config, t *testing.T, ignoreTypes ...any) {
 	t.Helper()
 	opts := cmpopts.IgnoreTypes(append([]any{Index{}, DatabaseConfig{}}, ignoreTypes...)...)
-	ignoreDatabase := cmpopts.IgnoreFields(Config{}, "Database")
+	ignoreDatabase := cmpopts.IgnoreFields(Config{}, "Database", "LLM")
 	eq := cmp.Equal(parsedConf, expConf, opts, ignoreDatabase)
 	if !eq {
 		diff := cmp.Diff(parsedConf, expConf, opts, ignoreDatabase)
@@ -79,6 +79,20 @@ func TestPortDefaultsCorrectly(t *testing.T) {
 	if conf.Port != expPort {
 		t.Errorf("Port was incorrect. Got: %s, want: %s", conf.Port, expPort)
 	}
+}
+
+func TestLLMEnvironmentOverrides(t *testing.T) {
+	setTestHome(t)
+	t.Setenv("SKILLSGO_HUB_LLM_BASE_URL", "https://llm.example/v1")
+	t.Setenv("SKILLSGO_HUB_LLM_API_KEY", "test-key")
+	t.Setenv("SKILLSGO_HUB_LLM_MODEL", "test-model")
+	t.Setenv("SKILLSGO_HUB_LLM_TRANSLATION_LOCALES", "ja-JP,fr-FR")
+	config := defaultConfig()
+	require.NoError(t, envOverride(config))
+	require.True(t, config.LLM.Enabled())
+	require.Equal(t, "https://llm.example/v1", config.LLM.BaseURL)
+	require.Equal(t, "test-model", config.LLM.Model)
+	require.Equal(t, []string{"ja-JP", "fr-FR"}, config.LLM.TranslationLocales)
 }
 
 func TestEnvOverrides(t *testing.T) {

@@ -24,6 +24,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	skillerrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
+	"github.com/skillsgo/skillsgo/hub/pkg/presentation"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 )
 
@@ -60,28 +61,29 @@ type discoveryMetric struct {
 }
 
 type skillDetailResponse struct {
-	SkillID              string               `json:"id"`
-	Name                 string               `json:"name"`
-	Description          string               `json:"description"`
-	Source               string               `json:"source"`
-	Repository           string               `json:"repository"`
-	ImageURL             *string              `json:"imageUrl"`
-	Installs             int64                `json:"installs"`
-	Stars                int64                `json:"stars"`
-	SourceUpdatedAt      time.Time            `json:"sourceUpdatedAt"`
-	ArchiveSize          int64                `json:"archiveSize"`
-	RequestedVersion     string               `json:"requestedVersion"`
-	ImmutableVersion     string               `json:"immutableVersion"`
-	CommitSHA            string               `json:"commitSHA"`
-	TreeSHA              string               `json:"treeSHA"`
-	SourceRef            string               `json:"sourceRef"`
-	ContentDigest        string               `json:"contentDigest"`
-	Instructions         string               `json:"instructions"`
-	TrustLevel           string               `json:"trustLevel"`
-	RiskAssessment       audit.RiskAssessment `json:"riskAssessment"`
-	Files                []audit.File         `json:"files"`
-	HasExecutableContent bool                 `json:"hasExecutableContent"`
-	ExecutableFiles      []string             `json:"executableFiles"`
+	SkillID               string               `json:"id"`
+	Name                  string               `json:"name"`
+	Description           string               `json:"description"`
+	Source                string               `json:"source"`
+	Repository            string               `json:"repository"`
+	RepositoryDescription string               `json:"repositoryDescription"`
+	ImageURL              *string              `json:"imageUrl"`
+	Installs              int64                `json:"installs"`
+	Stars                 int64                `json:"stars"`
+	SourceUpdatedAt       time.Time            `json:"sourceUpdatedAt"`
+	ArchiveSize           int64                `json:"archiveSize"`
+	RequestedVersion      string               `json:"requestedVersion"`
+	ImmutableVersion      string               `json:"immutableVersion"`
+	CommitSHA             string               `json:"commitSHA"`
+	TreeSHA               string               `json:"treeSHA"`
+	SourceRef             string               `json:"sourceRef"`
+	ContentDigest         string               `json:"contentDigest"`
+	Instructions          string               `json:"instructions"`
+	TrustLevel            string               `json:"trustLevel"`
+	RiskAssessment        audit.RiskAssessment `json:"riskAssessment"`
+	Files                 []audit.File         `json:"files"`
+	HasExecutableContent  bool                 `json:"hasExecutableContent"`
+	ExecutableFiles       []string             `json:"executableFiles"`
 }
 
 type contentMatchesResponse struct {
@@ -216,10 +218,11 @@ func searchSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 		if query == "" || len([]rune(query)) > 200 {
 			return writeAPIError(c, fiber.StatusBadRequest, "q must contain 1 to 200 characters")
 		}
-		skills, err := metadata.Search(c.Context(), query, limit+1, offset)
+		skills, err := metadata.SearchLocalized(c.Context(), query, presentationLocale(c), limit+1, offset)
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.search", fiber.StatusInternalServerError, "internal_error", "search failed", err)
 		}
+		localizeRankedSkills(c.Context(), metadata, presentationLocale(c), skills)
 		return writeJSON(c, fiber.StatusOK, discoveryResponse("search", "all_time_installs", skills, limit, offset))
 	}
 }
@@ -241,6 +244,7 @@ func listSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.ranked_skills", fiber.StatusInternalServerError, "internal_error", "list failed", err)
 		}
+		localizeRankedSkills(c.Context(), metadata, presentationLocale(c), skills)
 		metricKind := map[string]string{
 			"all_time": "all_time_installs",
 			"trending": "installs_24h",
@@ -334,12 +338,25 @@ func skillDetailHandler(
 		if skill.Verified {
 			trustLevel = "community_verified"
 		}
+		repositoryDescription := ""
 		if repositories != nil {
 			if source, sourceErr := repositories.Read(c.Context(), skill.SourceHost, skill.Repository); sourceErr != nil {
 				logBestEffortFailure(c, "repository.read_metadata", skill.SkillID, sourceErr)
 			} else {
 				skill.Stars = source.Stars
+				repositoryDescription = source.Description
 			}
+		}
+		locale := presentationLocale(c)
+		if localized, ok, localizedErr := metadata.LocalizedDescription(c.Context(), catalog.LocalizedSkill, skill.SkillID, locale); localizedErr != nil {
+			logBestEffortFailure(c, "catalog.localize_skill", skill.SkillID, localizedErr)
+		} else if ok {
+			skill.Description = localized
+		}
+		if localized, ok, localizedErr := metadata.LocalizedDescription(c.Context(), catalog.LocalizedRepository, skill.Repository, locale); localizedErr != nil {
+			logBestEffortFailure(c, "catalog.localize_repository", skill.SkillID, localizedErr)
+		} else if ok {
+			repositoryDescription = localized
 		}
 		installs, err := metadata.TotalInstalls(c.Context(), skill.RowID)
 		if err != nil {
@@ -348,7 +365,8 @@ func skillDetailHandler(
 		return writeJSON(c, fiber.StatusOK, skillDetailResponse{
 			SkillID: skill.SkillID, Name: skill.Name, Description: skill.Description,
 			Source: skill.SourceHost + "/" + skill.Repository, Repository: skill.SourceHost + "/" + skill.Repository,
-			Installs: installs, Stars: skill.Stars, SourceUpdatedAt: version.CommitTime,
+			RepositoryDescription: repositoryDescription,
+			Installs:              installs, Stars: skill.Stars, SourceUpdatedAt: version.CommitTime,
 			ArchiveSize: version.ArchiveSize, RequestedVersion: skill.LatestVersion,
 			ImageURL:         skillImageURL(skill.SourceHost, skill.Repository),
 			ImmutableVersion: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA,
@@ -357,6 +375,26 @@ func skillDetailHandler(
 			Files: analysis.Files, HasExecutableContent: analysis.HasExecutableContent,
 			ExecutableFiles: analysis.ExecutableFiles,
 		})
+	}
+}
+
+func presentationLocale(c fiber.Ctx) string {
+	locale, err := presentation.CanonicalLocale(c.Query("locale"))
+	if err != nil || len(locale) > 35 {
+		return ""
+	}
+	return locale
+}
+
+func localizeRankedSkills(ctx context.Context, metadata *catalog.Catalog, locale string, skills []catalog.RankedSkill) {
+	if locale == "" {
+		return
+	}
+	for index := range skills {
+		localized, ok, err := metadata.LocalizedDescription(ctx, catalog.LocalizedSkill, skills[index].SkillID, locale)
+		if err == nil && ok {
+			skills[index].Description = localized
+		}
 	}
 }
 
@@ -372,7 +410,7 @@ func skillImageURL(sourceHost, repository string) *string {
 		Scheme:   "https",
 		Host:     "github.com",
 		Path:     "/" + owner + ".png",
-		RawQuery: "size=72",
+		RawQuery: "size=256",
 	}).String()
 	return &image
 }

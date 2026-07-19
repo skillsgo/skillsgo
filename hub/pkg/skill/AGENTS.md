@@ -11,7 +11,7 @@
 - `go_vcs_lister.go`, `upstream_lister.go`: expose upstream version discovery over the repository resolver.
 - `latest_test.go`: specifies stable-first semantic-version selection shared by lazy latest resolution.
 - `filter.go`, `filterRule.go`, `filter_rule.go`, `filter_test.go`: preserve inherited source filtering behavior.
-- `zip_compression.go`, `zip_compression_test.go`, `zip_read_closer.go`, `zip_read_closer_test.go`: provide deterministic archive compression and bounded ZIP readers.
+- `zip_compression.go`, `zip_compression_test.go`, `zip_read_closer.go`, `zip_read_closer_test.go`: assemble bounded deterministic SkillsGo artifacts from Git without Go Module path semantics, preserve safe archive identity, and provide bounded ZIP readers.
 - `all_test.go`: provides shared package-level test setup.
 
 ## Architectural Boundary

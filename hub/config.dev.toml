@@ -1,4 +1,8 @@
-# [INPUT]: Depends on the build, deployment, or runtime values declared in config.dev.toml.\n# [OUTPUT]: Provides the SkillsGo Hub or monorepo configuration defined by config.dev.toml.\n# [POS]: Serves as maintained configuration in the renamed SkillsGo Hub workspace or its repository integration.\n# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md\n# This is an example configuration with all supported properties explicitly set
+# [INPUT]: Depends on local Hub runtime defaults and environment-variable overrides.
+# [OUTPUT]: Provides the complete development configuration for the SkillsGo Hub.
+# [POS]: Serves as the maintained local runtime configuration in the Hub workspace.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+# This is an example configuration with all supported properties explicitly set
 # Most properties can be overridden with environment variables specified in this file
 # Most properties also have defaults (mentioned in this file) if they are not set in either the config file or the corresponding environment variable
 
@@ -287,6 +291,18 @@ IndexType = "none"
     MaxOpenConns = 1
     MaxIdleConns = 1
     ConnMaxLifetime = 0
+
+# Optional OpenAI-compatible LLM used only for Repository and Skill description translation.
+# An empty APIKey disables the worker. For local development, prefer the
+# SKILLSGO_HUB_LLM_API_KEY environment variable instead of storing a secret here.
+[LLM]
+    BaseURL = "https://api.deepseek.com"
+    APIKey = ""
+    Model = "deepseek-v4-flash"
+    TranslationLocales = ["zh-Hans"]
+    TranslationInterval = 900
+    TranslationBatch = 100
+    PromptVersion = "description-v1"
 
 # ShutdownTimeout sets the timeout (in seconds) for open connections when shutting down
 # (via SIGINT or SIGTERM). Connections still open after the timeout will be dropped.

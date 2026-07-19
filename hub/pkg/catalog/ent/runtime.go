@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/installevent"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/localizeddescription"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/riskassessment"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/schema"
@@ -25,6 +26,38 @@ func init() {
 	installeventDescReceivedAt := installeventFields[7].Descriptor()
 	// installevent.DefaultReceivedAt holds the default value on creation for the received_at field.
 	installevent.DefaultReceivedAt = installeventDescReceivedAt.Default.(func() time.Time)
+	localizeddescriptionFields := schema.LocalizedDescription{}.Fields()
+	_ = localizeddescriptionFields
+	// localizeddescriptionDescResourceKind is the schema descriptor for resource_kind field.
+	localizeddescriptionDescResourceKind := localizeddescriptionFields[1].Descriptor()
+	// localizeddescription.ResourceKindValidator is a validator for the "resource_kind" field. It is called by the builders before save.
+	localizeddescription.ResourceKindValidator = localizeddescriptionDescResourceKind.Validators[0].(func(string) error)
+	// localizeddescriptionDescResourceID is the schema descriptor for resource_id field.
+	localizeddescriptionDescResourceID := localizeddescriptionFields[2].Descriptor()
+	// localizeddescription.ResourceIDValidator is a validator for the "resource_id" field. It is called by the builders before save.
+	localizeddescription.ResourceIDValidator = localizeddescriptionDescResourceID.Validators[0].(func(string) error)
+	// localizeddescriptionDescLocale is the schema descriptor for locale field.
+	localizeddescriptionDescLocale := localizeddescriptionFields[3].Descriptor()
+	// localizeddescription.LocaleValidator is a validator for the "locale" field. It is called by the builders before save.
+	localizeddescription.LocaleValidator = localizeddescriptionDescLocale.Validators[0].(func(string) error)
+	// localizeddescriptionDescSourceDigest is the schema descriptor for source_digest field.
+	localizeddescriptionDescSourceDigest := localizeddescriptionFields[5].Descriptor()
+	// localizeddescription.SourceDigestValidator is a validator for the "source_digest" field. It is called by the builders before save.
+	localizeddescription.SourceDigestValidator = localizeddescriptionDescSourceDigest.Validators[0].(func(string) error)
+	// localizeddescriptionDescPromptVersion is the schema descriptor for prompt_version field.
+	localizeddescriptionDescPromptVersion := localizeddescriptionFields[6].Descriptor()
+	// localizeddescription.PromptVersionValidator is a validator for the "prompt_version" field. It is called by the builders before save.
+	localizeddescription.PromptVersionValidator = localizeddescriptionDescPromptVersion.Validators[0].(func(string) error)
+	// localizeddescriptionDescCreatedAt is the schema descriptor for created_at field.
+	localizeddescriptionDescCreatedAt := localizeddescriptionFields[7].Descriptor()
+	// localizeddescription.DefaultCreatedAt holds the default value on creation for the created_at field.
+	localizeddescription.DefaultCreatedAt = localizeddescriptionDescCreatedAt.Default.(func() time.Time)
+	// localizeddescriptionDescUpdatedAt is the schema descriptor for updated_at field.
+	localizeddescriptionDescUpdatedAt := localizeddescriptionFields[8].Descriptor()
+	// localizeddescription.DefaultUpdatedAt holds the default value on creation for the updated_at field.
+	localizeddescription.DefaultUpdatedAt = localizeddescriptionDescUpdatedAt.Default.(func() time.Time)
+	// localizeddescription.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
+	localizeddescription.UpdateDefaultUpdatedAt = localizeddescriptionDescUpdatedAt.UpdateDefault.(func() time.Time)
 	repositoryFields := schema.Repository{}.Fields()
 	_ = repositoryFields
 	// repositoryDescSourceHost is the schema descriptor for source_host field.
@@ -39,16 +72,20 @@ func init() {
 	repositoryDescRepositoryID := repositoryFields[3].Descriptor()
 	// repository.RepositoryIDValidator is a validator for the "repository_id" field. It is called by the builders before save.
 	repository.RepositoryIDValidator = repositoryDescRepositoryID.Validators[0].(func(string) error)
+	// repositoryDescDescription is the schema descriptor for description field.
+	repositoryDescDescription := repositoryFields[4].Descriptor()
+	// repository.DefaultDescription holds the default value on creation for the description field.
+	repository.DefaultDescription = repositoryDescDescription.Default.(string)
 	// repositoryDescStars is the schema descriptor for stars field.
-	repositoryDescStars := repositoryFields[4].Descriptor()
+	repositoryDescStars := repositoryFields[5].Descriptor()
 	// repository.DefaultStars holds the default value on creation for the stars field.
 	repository.DefaultStars = repositoryDescStars.Default.(int64)
 	// repositoryDescCreatedAt is the schema descriptor for created_at field.
-	repositoryDescCreatedAt := repositoryFields[8].Descriptor()
+	repositoryDescCreatedAt := repositoryFields[9].Descriptor()
 	// repository.DefaultCreatedAt holds the default value on creation for the created_at field.
 	repository.DefaultCreatedAt = repositoryDescCreatedAt.Default.(func() time.Time)
 	// repositoryDescUpdatedAt is the schema descriptor for updated_at field.
-	repositoryDescUpdatedAt := repositoryFields[9].Descriptor()
+	repositoryDescUpdatedAt := repositoryFields[10].Descriptor()
 	// repository.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	repository.DefaultUpdatedAt = repositoryDescUpdatedAt.Default.(func() time.Time)
 	// repository.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

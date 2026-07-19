@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the skill package imports and contracts declared in this file.
- * [OUTPUT]: Provides bounded shared Git repository synchronization, revision resolution, repository-owned Skill discovery that excludes hidden installation directories, and correlated Git transport diagnostics.
- * [POS]: Serves as maintained source in the skill package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on canonical Skill IDs, Git command execution, semantic and pseudo-version helpers, the shared repository cache, manifest validation, and SkillsGo artifact assembly.
+ * [OUTPUT]: Provides bounded shared Git synchronization, immutable revision resolution, repository-owned Skill discovery excluding hidden installation directories, and source-identity metadata for product-owned artifacts.
+ * [POS]: Serves as the Git source resolver and Repository snapshot coordinator in the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package skill
@@ -25,7 +25,6 @@ import (
 	"github.com/spf13/afero"
 	modmodule "golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
-	modzip "golang.org/x/mod/zip"
 )
 
 func (g *gitFetcher) downloadWithGit(ctx context.Context, _ string, artifactDir, skillPath, revision string, resolution *Resolution) (artifactFiles, error) {
@@ -82,19 +81,7 @@ func (g *gitFetcher) downloadWithGit(ctx context.Context, _ string, artifactDir,
 		return artifactFiles{}, errors.E(op, err)
 	}
 	zipPath := filepath.Join(artifactDir, version+".zip")
-	zipFile, err := g.fs.Create(zipPath)
-	if err != nil {
-		return artifactFiles{}, errors.E(op, err)
-	}
-	zipErr := modzip.CreateFromVCS(zipFile, modmodule.Version{Path: skillPath, Version: version}, repoDir, hash, subdir)
-	closeErr := zipFile.Close()
-	if zipErr != nil {
-		return artifactFiles{}, errors.E(op, zipErr)
-	}
-	if closeErr != nil {
-		return artifactFiles{}, errors.E(op, closeErr)
-	}
-	if err := recompressZipBest(g.fs, zipPath); err != nil {
+	if err := createSkillZipFromVCS(ctx, g.fs, zipPath, skillPath, version, repoDir, hash, subdir); err != nil {
 		return artifactFiles{}, errors.E(op, err)
 	}
 
