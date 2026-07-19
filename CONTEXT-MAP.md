@@ -12,9 +12,8 @@ This file is the semantic context index. Structural routing is defined by the ro
 
 ## Relationships
 
-- **App → Hub**: reads search, ranking, detail, risk, and immutable artifact metadata.
-- **App → CLI**: invokes the bundled CLI through stable JSON contracts for local discovery and mutations.
-- **CLI → Hub**: resolves versions, downloads verified artifacts, and optionally reports anonymous install events.
+- **App → CLI**: invokes the bundled CLI through stable JSON or NDJSON contracts for every business read and mutation, including Hub-backed discovery and detail journeys.
+- **CLI → Hub**: resolves versions, downloads verified artifacts, forwards presentation locale for discovery/detail reads, and optionally reports anonymous install events.
 - **CLI → Agent targets**: projects Store artifacts into user-level and Workspace-level Agent directories.
 
 Cross-context decisions belong in `docs/adr/`. Context-specific decisions belong in the owning context's `docs/adr/` directory.
