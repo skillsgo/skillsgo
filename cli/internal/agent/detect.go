@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the resolved Agent Catalog and read-only filesystem/package signals.
- * [OUTPUT]: Provides installed-Agent detection plus stable status records with supported scopes and user-target diagnostics.
+ * [OUTPUT]: Provides installed-Agent detection plus stable status records with supported scopes, user-target diagnostics, and user-level Skill loading paths.
  * [POS]: Serves as the read-only Agent environment inspection boundary consumed by CLI machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -32,6 +32,7 @@ type Status struct {
 	Installed       bool        `json:"installed"`
 	SupportedScopes []Scope     `json:"supportedScopes"`
 	UserTarget      *UserTarget `json:"userTarget"`
+	DiscoveryRoots  []string    `json:"discoveryRoots"`
 }
 
 func exists(path string) bool {
@@ -140,9 +141,14 @@ func (c *Catalog) Statuses() []Status {
 			scopes = append(scopes, ScopeUser)
 			target = &UserTarget{Path: definition.UserDir, Exists: exists(definition.UserDir)}
 		}
+		discoveryRoots := make([]string, 0)
+		if roots, ok := c.SkillRoots(definition.ID, ScopeUser, ""); ok {
+			discoveryRoots = append(discoveryRoots, roots.DiscoveryRoots...)
+		}
 		statuses = append(statuses, Status{
 			ID: definition.ID, DisplayName: definition.Display,
-			Installed: c.DetectInstalled(definition.ID), SupportedScopes: scopes, UserTarget: target,
+			Installed: c.DetectInstalled(definition.ID), SupportedScopes: scopes,
+			UserTarget: target, DiscoveryRoots: discoveryRoots,
 		})
 	}
 	return statuses

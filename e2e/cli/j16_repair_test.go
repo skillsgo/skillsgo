@@ -49,10 +49,8 @@ func TestJ16Repair(t *testing.T) {
 		"skillId":     testSkillID,
 		"version":     installed.Version,
 	}
-	requestJSON, err := json.Marshal(request)
-	require.NoError(t, err)
 	preflight := execCLI(t, ctx, container,
-		"manage", "--target", string(requestJSON),
+		"repair", "--path", request["path"].(string), "--agent", "codex", "--project", "/e2e/project",
 		"--preflight", "--output", "json",
 	)
 	require.Equal(t, 0, preflight.exitCode, preflight.output)
@@ -66,16 +64,12 @@ func TestJ16Repair(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(preflight.output), &review), preflight.output)
 	require.Len(t, review.Targets, 1)
 	require.Equal(t, "local-modification", review.Targets[0].Health)
-	require.ElementsMatch(t, []string{"repair", "stop-managing"}, review.Targets[0].AllowedActions)
+	require.Equal(t, []string{"repair"}, review.Targets[0].AllowedActions)
 	require.NotEmpty(t, review.Targets[0].StateToken)
 
-	repair := mapsClone(request)
-	repair["action"] = "repair"
-	repair["stateToken"] = review.Targets[0].StateToken
-	repairJSON, err := json.Marshal(repair)
-	require.NoError(t, err)
 	repaired := execCLI(t, ctx, container,
-		"manage", "--target", string(repairJSON), "--output", "json",
+		"repair", "--path", request["path"].(string), "--agent", "codex", "--project", "/e2e/project",
+		"--expected-state", review.Targets[0].StateToken, "--output", "json",
 	)
 	require.Equal(t, 0, repaired.exitCode, repaired.output)
 	restored, err := os.ReadFile(skillPath)

@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on explicit target identities, declaration-derived inventory health, exact Installation Receipts, immutable Store entries, Agent adapters, and Workspace metadata.
- * [OUTPUT]: Provides strict Target Management Plan preflight, state-bound alias-safe managed Remove, logical-versus-artifact-aware Repair/Stop Managing and exact External Installation removal, plus structured per-target progress/results.
- * [POS]: Serves as the cleanup and recovery orchestration domain between the public manage command and install/project boundaries.
+ * [OUTPUT]: Provides strict target-operation preflight, physical-alias-safe managed Remove, logical-versus-artifact-aware Repair, exact External Installation removal, and structured per-target progress/results.
+ * [POS]: Serves as the cleanup and recovery orchestration domain between top-level remove/repair commands and install/project boundaries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package managementplan
@@ -23,6 +23,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
+	"github.com/skillsgo/skillsgo/cli/internal/trash"
 )
 
 const SchemaVersion = 1
@@ -32,9 +33,8 @@ type Outcome string
 type ProgressState string
 
 const (
-	ActionRemove       Action = "remove"
-	ActionRepair       Action = "repair"
-	ActionStopManaging Action = "stop-managing"
+	ActionRemove Action = "remove"
+	ActionRepair Action = "repair"
 
 	OutcomeSucceeded Outcome = "succeeded"
 	OutcomeFailed    Outcome = "failed"
@@ -82,7 +82,6 @@ type Item struct {
 type Summary struct {
 	Removable  int `json:"removable"`
 	Repairable int `json:"repairable"`
-	Stoppable  int `json:"stoppable"`
 }
 
 type Preflight struct {
@@ -151,7 +150,7 @@ func DecodeTargets(values []string) ([]TargetRequest, error) {
 		requests = append(requests, request)
 	}
 	if len(requests) == 0 {
-		return nil, fmt.Errorf("a Target Management Plan requires at least one explicit target")
+		return nil, fmt.Errorf("a target operation requires at least one explicit target")
 	}
 	return requests, nil
 }
@@ -187,7 +186,7 @@ func validateRequest(request TargetRequest) error {
 			return err
 		}
 	}
-	if request.Action != "" && request.Action != ActionRemove && request.Action != ActionRepair && request.Action != ActionStopManaging {
+	if request.Action != "" && request.Action != ActionRemove && request.Action != ActionRepair {
 		return fmt.Errorf("unsupported action %q", request.Action)
 	}
 	if request.Action != "" && request.StateToken == "" {
@@ -197,6 +196,55 @@ func validateRequest(request TargetRequest) error {
 		return fmt.Errorf("stateToken requires action")
 	}
 	return nil
+}
+
+// ResolvePaths converts repeatable flat CLI values into exact inventory-backed
+// requests. Agent and state values, when present, are positional peers of paths.
+func ResolvePaths(catalog *agent.Catalog, paths, agents, projects, states []string, action Action) ([]TargetRequest, error) {
+	if len(paths) == 0 {
+		return nil, fmt.Errorf("at least one --path is required")
+	}
+	if len(agents) != 0 && len(agents) != len(paths) {
+		return nil, fmt.Errorf("--agent must be omitted or repeated once per --path")
+	}
+	if len(states) != 0 && len(states) != len(paths) {
+		return nil, fmt.Errorf("--expected-state must be omitted or repeated once per --path")
+	}
+	report, err := inventory.Build(inventory.Options{IncludeUser: true, Projects: projects, Catalog: catalog})
+	if err != nil {
+		return nil, err
+	}
+	requests := make([]TargetRequest, 0, len(paths))
+	for index, path := range paths {
+		agentID := ""
+		if len(agents) > 0 {
+			agentID = agents[index]
+		}
+		matches := make([]TargetRequest, 0, 1)
+		for _, entry := range report.Entries {
+			for _, target := range entry.Targets {
+				if !samePath(target.Path, path) || (agentID != "" && target.Agent != agentID) {
+					continue
+				}
+				request := TargetRequest{Scope: target.Scope, ProjectRoot: target.ProjectRoot, Agent: target.Agent, Mode: install.Mode(target.Mode), Path: target.Path, SkillID: entry.SkillID, Version: target.Version}
+				if entry.Provenance == inventory.ProvenanceExternal {
+					request.Mode, request.SkillID, request.Version = install.Mode("external"), "", ""
+				}
+				if len(states) > 0 {
+					request.Action, request.StateToken = action, states[index]
+				}
+				matches = append(matches, request)
+			}
+		}
+		if len(matches) == 0 {
+			return nil, fmt.Errorf("Installation Target not found: %s", path)
+		}
+		if len(matches) > 1 {
+			return nil, fmt.Errorf("Installation Target is ambiguous; repeat --agent with --path %s", path)
+		}
+		requests = append(requests, matches[0])
+	}
+	return requests, nil
 }
 
 func Build(catalog *agent.Catalog, storage store.Store, requests []TargetRequest) (Preflight, error) {
@@ -265,7 +313,7 @@ func Build(catalog *agent.Catalog, storage store.Store, requests []TargetRequest
 				return Preflight{}, fmt.Errorf("action %s is not allowed for target health %s", request.Action, item.Health)
 			}
 			if request.StateToken != item.StateToken {
-				return Preflight{}, fmt.Errorf("Target Management Plan state changed for %s", request.Path)
+				return Preflight{}, fmt.Errorf("target operation state changed for %s", request.Path)
 			}
 			item.Action = request.Action
 		}
@@ -275,8 +323,6 @@ func Build(catalog *agent.Catalog, storage store.Store, requests []TargetRequest
 				preflight.Summary.Removable++
 			case ActionRepair:
 				preflight.Summary.Repairable++
-			case ActionStopManaging:
-				preflight.Summary.Stoppable++
 			}
 		}
 		preflight.Targets = append(preflight.Targets, item)
@@ -351,16 +397,15 @@ func allowedActions(storage store.Store, item Item) ([]Action, string) {
 	if item.Health == inventory.HealthHealthy {
 		return []Action{ActionRemove}, ""
 	}
-	actions := []Action{ActionStopManaging}
 	switch item.Health {
 	case inventory.HealthMissing, inventory.HealthReplaced, inventory.HealthLocalModification:
 		if item.installation != nil && item.installation.Artifact != "" {
-			actions = append([]Action{ActionRepair}, actions...)
+			return []Action{ActionRepair}, ""
 		} else {
-			return actions, "immutable Store artifact is unavailable; Stop Managing preserves the target content"
+			return nil, "immutable Store artifact is unavailable; the target cannot be repaired"
 		}
 	}
-	return actions, ""
+	return nil, "target health does not permit removal or repair"
 }
 
 func managementStateToken(storeRoot string, item Item) (string, error) {
@@ -535,7 +580,7 @@ func executeMetadataAction(storage store.Store, item Item) error {
 	switch item.Action {
 	case ActionRemove:
 		if item.Target.Mode == install.Mode("external") {
-			return os.RemoveAll(item.Target.Path)
+			return trash.Move(item.Target.Path)
 		}
 		if item.installation == nil {
 			return fmt.Errorf("managed Installation is unavailable")
@@ -548,9 +593,6 @@ func executeMetadataAction(storage store.Store, item Item) error {
 			return err
 		}
 		return removeDeclarationBinding(storage, item, *item.installation)
-	case ActionStopManaging:
-		binding := install.Installation{Name: item.Name, SkillID: item.SkillID, Version: item.Version, Target: install.Target{Agent: item.Target.Agent, Scope: item.Target.Scope, Mode: item.Target.Mode, Path: item.Target.Path}}
-		return removeDeclarationBinding(storage, item, binding)
 	default:
 		return fmt.Errorf("unsupported management action %q", item.Action)
 	}

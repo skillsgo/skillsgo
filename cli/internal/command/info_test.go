@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with a fixture Hub serving Repository latest/list/info resources and canonical source coordinates.
- * [OUTPUT]: Specifies direct read-only Repository and nested Skill Info JSON, lazy latest resolution, exact Skill lookup, and structured Hub failure output in machine mode.
+ * [OUTPUT]: Specifies direct read-only Repository and nested Skill Info JSON including provider Repository descriptions, lazy latest resolution, exact Skill lookup, and structured Hub failure output in machine mode.
  * [POS]: Serves as the public CLI behavior contract for explicit-source discovery consumed by the App.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -38,7 +38,7 @@ func TestInfoRepositoryUsesLazyLatestAndDoesNotWriteLocalState(t *testing.T) {
 			_, _ = writer.Write(repositoryInfo)
 		case "/api/v1/skills/" + repositoryID, "/api/v1/skills/" + repositoryID + "/-/tools/demo":
 			id := strings.TrimPrefix(request.URL.Path, "/api/v1/skills/")
-			_, _ = fmt.Fprintf(writer, `{"id":%q,"imageUrl":"https://github.com/example.png?size=72","installs":12,"stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, id)
+			_, _ = fmt.Fprintf(writer, `{"id":%q,"imageUrl":"https://github.com/example.png?size=72","repositoryDescription":"A collection of Agent Skills.","installs":12,"stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, id)
 		default:
 			http.NotFound(writer, request)
 		}
@@ -68,6 +68,9 @@ func TestInfoRepositoryUsesLazyLatestAndDoesNotWriteLocalState(t *testing.T) {
 	}
 	if result.ID != repositoryID || result.Version != version || len(result.Skills) != len(members) {
 		t.Fatalf("unexpected Repository Info: %#v", result)
+	}
+	if result.Description != "A collection of Agent Skills." {
+		t.Fatalf("Repository About description was not preserved: %#v", result)
 	}
 	if result.Skills[0].ImageURL == nil || result.Skills[0].Installs != 12 || result.Skills[0].Stars != 34 || result.Skills[0].RiskAssessment != hub.RiskLow {
 		t.Fatalf("Repository Skill is not card-ready: %#v", result.Skills[0])
@@ -184,6 +187,7 @@ func TestInfoClassifiesStableMachineHubFailures(t *testing.T) {
 		{name: "invalid input", status: http.StatusNotFound, code: "input.invalid", exitCode: ExitFailure},
 		{name: "rate limited", status: http.StatusTooManyRequests, code: "hub.rate_limited", retryable: true, exitCode: ExitTemporary, requestID: "request-rate"},
 		{name: "gateway timeout", status: http.StatusGatewayTimeout, code: "hub.timeout", retryable: true, exitCode: ExitTemporary},
+		{name: "internal server error", status: http.StatusInternalServerError, code: "hub.server_error", retryable: true, exitCode: ExitFailure},
 		{name: "unavailable", status: http.StatusServiceUnavailable, code: "hub.unavailable", retryable: true, exitCode: ExitUnavailable},
 	}
 	for _, testCase := range testCases {

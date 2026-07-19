@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a configured Hub origin, canonical Skill IDs, Hub-owned selector resolution, exact content-match responses, and enriched immutable Info/ZIP protocol responses.
- * [OUTPUT]: Provides delegated selector resolution, validated content-identity matching, immutable artifact fetch with optional byte progress, normalized Skill metadata, Hub-bound Risk and Content Digest metadata, and typed HTTP or malformed-protocol failures.
+ * [OUTPUT]: Provides delegated selector resolution, strict product JSON reads, validated content-identity matching, immutable artifact fetch with optional byte progress, normalized Skill metadata, Hub-bound Risk and Content Digest metadata, and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -96,12 +96,13 @@ type ContentMatch struct {
 }
 
 type SkillProductMetadata struct {
-	ID             string  `json:"id"`
-	ImageURL       *string `json:"imageUrl"`
-	Installs       int64   `json:"installs"`
-	Stars          int64   `json:"stars"`
-	TrustLevel     string  `json:"trustLevel"`
-	RiskAssessment struct {
+	ID                    string  `json:"id"`
+	ImageURL              *string `json:"imageUrl"`
+	Installs              int64   `json:"installs"`
+	Stars                 int64   `json:"stars"`
+	RepositoryDescription string  `json:"repositoryDescription"`
+	TrustLevel            string  `json:"trustLevel"`
+	RiskAssessment        struct {
 		Level Risk `json:"level"`
 	} `json:"riskAssessment"`
 }
@@ -331,6 +332,62 @@ func (c *Client) SkillProduct(ctx context.Context, skillID string) (SkillProduct
 		return SkillProductMetadata{}, fmt.Errorf("Hub returned mismatched Skill product metadata for %s", skillID)
 	}
 	return metadata, nil
+}
+
+func (c *Client) readProductJSON(ctx context.Context, path string, query url.Values) (json.RawMessage, error) {
+	if !strings.HasPrefix(path, "/api/v1/") || strings.Contains(path, "..") {
+		return nil, fmt.Errorf("invalid Hub product path")
+	}
+	endpoint := c.baseURL + path
+	if len(query) > 0 {
+		endpoint += "?" + query.Encode()
+	}
+	var document json.RawMessage
+	if err := c.getJSON(ctx, endpoint, &document); err != nil {
+		return nil, err
+	}
+	if !json.Valid(document) || len(document) == 0 {
+		return nil, fmt.Errorf("Hub returned invalid JSON")
+	}
+	return document, nil
+}
+
+func (c *Client) Discover(ctx context.Context, collection, search string, offset, limit int) (json.RawMessage, error) {
+	return c.DiscoverLocalized(ctx, collection, search, "", offset, limit)
+}
+
+func (c *Client) DiscoverLocalized(ctx context.Context, collection, search, locale string, offset, limit int) (json.RawMessage, error) {
+	query := url.Values{"offset": {fmt.Sprint(offset)}, "limit": {fmt.Sprint(limit)}}
+	if strings.TrimSpace(locale) != "" {
+		query.Set("locale", strings.TrimSpace(locale))
+	}
+	path := "/api/v1/skills"
+	if collection == "search" {
+		path = "/api/v1/search"
+		query.Set("q", search)
+	} else {
+		query.Set("sort", collection)
+	}
+	return c.readProductJSON(ctx, path, query)
+}
+
+func (c *Client) Detail(ctx context.Context, skillID string) (json.RawMessage, error) {
+	return c.DetailLocalized(ctx, skillID, "")
+}
+
+func (c *Client) DetailLocalized(ctx context.Context, skillID, locale string) (json.RawMessage, error) {
+	if err := source.ValidateSkillID(skillID); err != nil {
+		return nil, err
+	}
+	query := url.Values{}
+	if strings.TrimSpace(locale) != "" {
+		query.Set("locale", strings.TrimSpace(locale))
+	}
+	return c.readProductJSON(ctx, "/api/v1/skills/"+skillID, query)
+}
+
+func (c *Client) Check(ctx context.Context) (json.RawMessage, error) {
+	return c.Discover(ctx, "search", "skillsgo-settings-probe", 0, 1)
 }
 
 func (c *Client) MatchContent(ctx context.Context, contentDigest, sourceHint string) ([]ContentMatch, error) {

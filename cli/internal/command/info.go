@@ -36,13 +36,14 @@ type repositoryInfoView struct {
 	Time          time.Time       `json:"Time"`
 	Ref           string          `json:"Ref"`
 	CommitSHA     string          `json:"CommitSHA"`
+	Description   string          `json:"Description"`
 	Skills        []skillInfoView `json:"Skills"`
 }
 
-func productSkillInfo(ctx context.Context, client *hub.Client, info hub.Info) (skillInfoView, error) {
+func productSkillInfo(ctx context.Context, client *hub.Client, info hub.Info) (skillInfoView, string, error) {
 	metadata, err := client.SkillProduct(ctx, info.ID)
 	if err != nil {
-		return skillInfoView{}, err
+		return skillInfoView{}, "", err
 	}
 	risk := metadata.RiskAssessment.Level
 	if risk == "" {
@@ -51,7 +52,7 @@ func productSkillInfo(ctx context.Context, client *hub.Client, info hub.Info) (s
 	return skillInfoView{
 		Info: info, ImageURL: metadata.ImageURL, Installs: metadata.Installs,
 		Stars: metadata.Stars, TrustLevel: metadata.TrustLevel, RiskAssessment: risk,
-	}, nil
+	}, metadata.RepositoryDescription, nil
 }
 
 func newInfoCommand() *cobra.Command {
@@ -81,7 +82,7 @@ func newInfoCommand() *cobra.Command {
 				if resolveErr != nil {
 					return resolveErr
 				}
-				view, productErr := productSkillInfo(cmd.Context(), client, info)
+				view, _, productErr := productSkillInfo(cmd.Context(), client, info)
 				if productErr != nil {
 					return productErr
 				}
@@ -104,9 +105,12 @@ func newInfoCommand() *cobra.Command {
 					CommitSHA: resource.Info.CommitSHA, Skills: make([]skillInfoView, 0, len(resource.Members)),
 				}
 				for _, member := range resource.Members {
-					skillView, productErr := productSkillInfo(cmd.Context(), client, member.Info)
+					skillView, description, productErr := productSkillInfo(cmd.Context(), client, member.Info)
 					if productErr != nil {
 						return productErr
+					}
+					if view.Description == "" {
+						view.Description = description
 					}
 					view.Skills = append(view.Skills, skillView)
 				}
