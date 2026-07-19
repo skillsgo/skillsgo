@@ -1,0 +1,47 @@
+# [INPUT]: Depends on Process Compose, the Hub Air configuration, CLI build target, Flutter macOS runtime, and port 3000 readiness.
+# [OUTPUT]: Declares the ordered, observable local development topology for Hub, CLI, and App processes.
+# [POS]: Serves as the repository-owned process orchestration contract consumed by scripts/dev.sh.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+
+version: "0.5"
+ordered_shutdown: true
+
+processes:
+  hub:
+    command: "${SKILLSGO_AIR_BIN} -c .air.toml"
+    working_dir: "./hub"
+    environment:
+      - "SKILLSGO_HUB_LOG_LEVEL=debug"
+    availability:
+      restart: exit_on_failure
+    ready_log_line: "Server started on:"
+
+  cli:
+    command: "make build"
+    working_dir: "./cli"
+    availability:
+      restart: exit_on_failure
+
+  app:
+    command: "flutter run -d macos --pid-file=/tmp/skillsgo-flutter.pid"
+    working_dir: "./app"
+    environment:
+      - "SKILLSGO_CLI_PATH=${PWD}/cli/bin/skillsgo"
+    is_tty: true
+    availability:
+      restart: on_failure
+      backoff_seconds: 1
+      exit_on_end: true
+    depends_on:
+      hub:
+        condition: process_log_ready
+      cli:
+        condition: process_completed_successfully
+
+  app-reload:
+    command: "./scripts/watch-flutter.sh"
+    availability:
+      restart: exit_on_failure
+    depends_on:
+      app:
+        condition: process_started

@@ -1,13 +1,20 @@
+# [INPUT]: Depends on local editor, environment, build, coverage, and Codex design-artifact conventions.
+# [OUTPUT]: Excludes non-source workspace files and generated local artifacts from Git tracking.
+# [POS]: Serves as the repository-wide boundary between maintained source and disposable developer output.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+
 # Monorepo-local files
 .DS_Store
 .idea/
 .vscode/
 *.iml
+.codex-artifacts/
 
 # Local environment
 .env
 .env.*
 !.env.example
+hub/.env.local
 
 # Shared build and coverage output
 coverage/
