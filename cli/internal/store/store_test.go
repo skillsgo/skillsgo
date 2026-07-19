@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Exercises Store put/get with immutable Hub and Local Skill artifacts, conflicting archives, explicit exports, and hostile Skill IDs.
- * [OUTPUT]: Specifies concurrent idempotent Hub/local storage, private export, risk-only assessment refresh, local-tamper/content/archive digest conflicts, ZIP-slip defense, root containment, and exact retrieval.
+ * [INPUT]: Exercises Store put/get with immutable Hub, Local, and captured Skill artifacts, conflicting archives, explicit exports, and hostile Skill IDs.
+ * [OUTPUT]: Specifies concurrent idempotent Hub/local/captured storage, full source/content/filesystem-state identity, private export, risk-only assessment refresh, local-tamper/content/archive digest conflicts, ZIP-slip defense, root containment, and exact retrieval.
  * [POS]: Serves as behavior coverage for the Content-addressed Store boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,6 +9,8 @@ package store
 import (
 	"archive/zip"
 	"bytes"
+	"crypto/sha256"
+	"encoding/hex"
 	"os"
 	"path/filepath"
 	"strings"
@@ -42,6 +44,72 @@ func TestPutExtractsArtifactAndIsIdempotent(t *testing.T) {
 	}
 	if !bytes.HasPrefix(info, []byte("{")) {
 		t.Fatalf("info.json is not JSON: %q", info)
+	}
+}
+
+func TestCaptureExistingUsesFullSourceAndCompleteContentDigests(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "references"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte("skill"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "references", "notes.md"), []byte("first"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	storage := Store{Root: filepath.Join(t.TempDir(), "store")}
+	sourceSkillID := "github.com/example/skills/-/demo"
+	first, err := storage.CaptureExisting(root, "demo", sourceSkillID, "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sourceDigest := sha256.Sum256([]byte(sourceSkillID))
+	if !strings.Contains(first.Receipt.SkillID, "/"+hex.EncodeToString(sourceDigest[:])+"/") {
+		t.Fatalf("captured identity does not contain the full source digest: %s", first.Receipt.SkillID)
+	}
+	if err := os.WriteFile(filepath.Join(root, "references", "notes.md"), []byte("second"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	second, err := storage.CaptureExisting(root, "demo", sourceSkillID, "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Receipt.SkillID == second.Receipt.SkillID || first.Receipt.ContentDigest == second.Receipt.ContentDigest {
+		t.Fatal("changing a nested Skill file must produce a different captured baseline")
+	}
+}
+
+func TestCaptureExistingDistinguishesModesAndEmptyDirectories(t *testing.T) {
+	storage := Store{Root: filepath.Join(t.TempDir(), "store")}
+	makeSkill := func(mode os.FileMode, empty bool) string {
+		root := t.TempDir()
+		if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte("same bytes"), mode); err != nil {
+			t.Fatal(err)
+		}
+		if empty {
+			if err := os.Mkdir(filepath.Join(root, "empty"), 0o711); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return root
+	}
+	first, err := storage.CaptureExisting(makeSkill(0o600, false), "demo", "github.com/acme/skills/-/demo", "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := storage.CaptureExisting(makeSkill(0o700, true), "demo", "github.com/acme/skills/-/demo", "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Receipt.ContentDigest != second.Receipt.ContentDigest {
+		t.Fatal("Hub content digest should normalize modes and empty directories")
+	}
+	if first.Receipt.SkillID == second.Receipt.SkillID {
+		t.Fatal("captured identity must preserve modes and empty directories")
+	}
+	if info, err := os.Stat(filepath.Join(second.Artifact, "empty")); err != nil || !info.IsDir() || info.Mode().Perm() != 0o711 {
+		t.Fatalf("captured artifact lost empty directory state: info=%v err=%v", info, err)
 	}
 }
 

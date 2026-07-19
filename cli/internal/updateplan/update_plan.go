@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on exact managed Installation identities, Store receipts, canonical Workspace Manifest declarations, Hub resolution, and safe target replacement.
- * [OUTPUT]: Provides strict Update Plan decoding, per-target resolution, pinned-target exclusion, shared-binding grouping, Workspace Manifest previews/reconciliation, state-bound execution, and structured progress/results.
+ * [OUTPUT]: Provides strict Update Plan decoding, logical-versus-artifact identity resolution, pinned-target exclusion, shared-binding grouping, Workspace Manifest previews/reconciliation, transactional state-bound execution, and structured progress/results.
  * [POS]: Serves as the update orchestration domain between the public update command and Hub/Store/install/project boundaries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -220,14 +220,28 @@ func Build(
 ) (Preflight, error) {
 	installations := make([]install.Installation, 0, len(requests))
 	for _, request := range requests {
-		entry, err := storage.Get(request.SkillID, request.Version)
+		dependencyID, targetReceipt, err := targetReceiptIdentity(filepath.Dir(storage.Root), request)
+		if err != nil {
+			return Preflight{}, err
+		}
+		entry, err := storage.Get(dependencyID, request.Version)
 		if err != nil {
 			return Preflight{}, fmt.Errorf("managed Store artifact not found for %s: %w", request.Path, err)
 		}
+		target := install.Target{Agent: request.Agent, Scope: request.Scope, Mode: request.Mode, Path: request.Path}
+		sourceRef := ""
+		targetState := ""
+		if targetReceipt != nil {
+			target.CanonicalPath = targetReceipt.CanonicalPath
+			sourceRef = targetReceipt.SourceRef
+			targetState = targetReceipt.TargetState
+		}
 		installations = append(installations, install.Installation{
-			Name: entry.Receipt.Name, SkillID: request.SkillID, Version: request.Version,
-			StoreRoot: entry.Root, Artifact: entry.Artifact, ContentDigest: entry.Receipt.ContentDigest,
-			Target: install.Target{Agent: request.Agent, Scope: request.Scope, Mode: request.Mode, Path: request.Path},
+			Name: entry.Receipt.Name, SkillID: request.SkillID, DependencyID: dependencyID,
+			SourceRef: sourceRef, Version: request.Version,
+			StoreRoot: entry.Root, Artifact: entry.Artifact, SHA256: entry.Receipt.SHA256,
+			ContentDigest: entry.Receipt.ContentDigest, TargetState: targetState,
+			Provenance: entry.Receipt.EffectiveProvenance(), Target: target,
 		})
 	}
 	preflight := Preflight{
@@ -257,7 +271,7 @@ func Build(
 	if err := validateCompleteWorkspaceBindings(requests, matched); err != nil {
 		return Preflight{}, err
 	}
-	if err := validateCompleteUserBindings(filepath.Dir(storage.Root), requests); err != nil {
+	if err := validateCompleteUserBindings(filepath.Dir(storage.Root), requests, matched); err != nil {
 		return Preflight{}, err
 	}
 	for index, request := range requests {
@@ -301,6 +315,9 @@ func Build(
 	for index := range preflight.Targets {
 		for _, candidate := range preflight.Targets {
 			if samePath(candidate.Target.Path, preflight.Targets[index].Target.Path) ||
+				(candidate.Target.Scope == install.ScopeUser &&
+					preflight.Targets[index].Target.Scope == install.ScopeUser &&
+					effectiveDependencyID(candidate.installation) == effectiveDependencyID(preflight.Targets[index].installation)) ||
 				(candidate.Target.Scope == install.ScopeProject &&
 					preflight.Targets[index].Target.Scope == install.ScopeProject &&
 					samePath(candidate.Target.ProjectRoot, preflight.Targets[index].Target.ProjectRoot) &&
@@ -318,7 +335,7 @@ func Build(
 	return preflight, nil
 }
 
-func validateCompleteUserBindings(root string, requests []TargetRequest) error {
+func validateCompleteUserBindings(root string, requests []TargetRequest, selected []install.Installation) error {
 	manifest, err := project.LoadManifest(root)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -327,19 +344,22 @@ func validateCompleteUserBindings(root string, requests []TargetRequest) error {
 		return err
 	}
 	checked := map[string]bool{}
-	for _, request := range requests {
-		if request.Scope != install.ScopeUser || checked[request.SkillID] {
+	for index, request := range requests {
+		dependencyID := effectiveDependencyID(selected[index])
+		if request.Scope != install.ScopeUser || checked[dependencyID] {
 			continue
 		}
-		checked[request.SkillID] = true
-		_, requirement, ok := manifest.Dependency(request.SkillID)
+		checked[dependencyID] = true
+		_, requirement, ok := manifest.Dependency(dependencyID)
 		if !ok {
 			return fmt.Errorf("user dependencies are missing Skill %q", request.SkillID)
 		}
 		for _, agentID := range requirement.Agents {
 			found := false
-			for _, candidate := range requests {
-				if candidate.Scope == install.ScopeUser && candidate.SkillID == request.SkillID && candidate.Agent == agentID {
+			for candidateIndex, candidate := range requests {
+				if candidate.Scope == install.ScopeUser &&
+					effectiveDependencyID(selected[candidateIndex]) == dependencyID &&
+					candidate.Agent == agentID {
 					found = true
 					break
 				}
@@ -359,7 +379,7 @@ func buildItem(
 	request TargetRequest,
 	installation install.Installation,
 ) (Item, error) {
-	entry, err := storage.Get(installation.SkillID, installation.Version)
+	entry, err := storage.Get(effectiveDependencyID(installation), installation.Version)
 	if err != nil {
 		return Item{}, err
 	}
@@ -431,7 +451,7 @@ func sourceReference(
 		if err != nil {
 			return "", false, "", err
 		}
-		_, requirement, ok := manifest.Dependency(installation.SkillID)
+		_, requirement, ok := manifest.Dependency(effectiveDependencyID(installation))
 		if !ok {
 			return "", false, "", fmt.Errorf("skillsgo.mod is missing Skill %q", installation.Name)
 		}
@@ -439,10 +459,19 @@ func sourceReference(
 			return "", false, "", fmt.Errorf("skillsgo.mod does not declare Agent %q", request.Agent)
 		}
 		ref := requirement.Ref
+		if installation.Provenance == store.ProvenanceCaptured && installation.SourceRef != "" {
+			ref = installation.SourceRef
+		}
 		if ref == "" {
 			ref = "main"
 		}
+		if installation.Provenance == store.ProvenanceCaptured {
+			return normalizeCapturedReference(ref), capturedReferenceIsFixed(ref), requirement.Ref, nil
+		}
 		return ref, isFixedReference(ref, receipt), requirement.Ref, nil
+	}
+	if installation.Provenance == store.ProvenanceCaptured && installation.SourceRef != "" {
+		return normalizeCapturedReference(installation.SourceRef), capturedReferenceIsFixed(installation.SourceRef), "", nil
 	}
 	ref := receipt.Ref
 	if strings.HasPrefix(ref, "refs/heads/") {
@@ -456,6 +485,21 @@ func sourceReference(
 		return receipt.CommitSHA, true, "", nil
 	}
 	return ref, isFixedReference(ref, receipt), "", nil
+}
+
+func normalizeCapturedReference(reference string) string {
+	return strings.TrimPrefix(strings.TrimPrefix(reference, "refs/heads/"), "refs/tags/")
+}
+
+func capturedReferenceIsFixed(reference string) bool {
+	if strings.HasPrefix(reference, "refs/tags/") {
+		return true
+	}
+	if strings.HasPrefix(reference, "refs/heads/") {
+		return false
+	}
+	reference = normalizeCapturedReference(reference)
+	return pseudoVersionReference.MatchString(reference) || hexadecimalReference.MatchString(reference)
 }
 
 var hexadecimalReference = regexp.MustCompile(`^[0-9a-fA-F]{7,64}$`)
@@ -560,7 +604,7 @@ func Execute(
 			execution.Results[index].Error = &TargetError{Code: "update.target_failed", Retryable: true, Diagnostic: item.Diagnostic}
 			emit(index, ProgressFinished)
 		case ActionUpdate:
-			key := filepath.Clean(item.Target.Path) + "\x00" + item.SkillID + "\x00" + item.ToVersion
+			key := "user\x00" + effectiveDependencyID(item.installation) + "\x00" + item.SkillID + "\x00" + item.ToVersion
 			if item.Target.Scope == install.ScopeProject {
 				key = "project\x00" + filepath.Clean(item.Target.ProjectRoot) + "\x00" + item.Name + "\x00" + item.SkillID + "\x00" + item.ToVersion
 			}
@@ -585,8 +629,9 @@ func Execute(
 		}
 		var entry *store.Entry
 		var mutationErr error
+		persistenceFailed := false
 		if reconcileOnly {
-			entry, mutationErr = storage.Get(first.SkillID, first.ToVersion)
+			entry, mutationErr = storage.Get(effectiveDependencyID(first.installation), first.ToVersion)
 		} else {
 			var artifact *hub.Artifact
 			artifact, mutationErr = client.Fetch(ctx, first.SkillID, first.ToVersion)
@@ -597,51 +642,51 @@ func Execute(
 				entry, mutationErr = storage.Put(artifact)
 			}
 		}
-		if mutationErr == nil && !reconcileOnly {
-			previous := make([]install.Installation, 0, len(indexes))
-			targets := make([]install.Target, 0, len(indexes))
-			for _, index := range indexes {
-				previous = append(previous, preflight.Targets[index].installation)
-				targets = append(targets, preflight.Targets[index].installation.Target)
+		previous := make([]install.Installation, 0, len(indexes))
+		targets := make([]install.Target, 0, len(indexes))
+		for _, index := range indexes {
+			previous = append(previous, preflight.Targets[index].installation)
+			targets = append(targets, preflight.Targets[index].installation.Target)
+		}
+		persist := func() error {
+			root := filepath.Dir(storage.Root)
+			if first.Target.Scope == install.ScopeProject {
+				root = first.Target.ProjectRoot
 			}
-			mutationErr = install.Replace(entry, previous, targets)
+			requirement := project.SkillRequirement{
+				Source: first.SkillID, Ref: entry.Receipt.Version,
+				Mode: targets[0].Mode,
+			}
+			_, err := project.ReplaceCommittedInstallations(
+				root, first.Name, first.SourceRef, requirement,
+				entry.Receipt, targets, previous,
+			)
+			if err != nil {
+				persistenceFailed = true
+			}
+			return err
+		}
+		if mutationErr == nil {
+			if reconcileOnly {
+				mutationErr = persist()
+			} else {
+				mutationErr = install.ReplaceThen(entry, previous, targets, persist)
+			}
 		}
 		if mutationErr != nil {
 			for _, index := range indexes {
 				execution.Results[index].Outcome = OutcomeFailed
-				execution.Results[index].Error = &TargetError{Code: "update.target_failed", Retryable: true, Diagnostic: mutationErr.Error()}
+				code := "update.target_failed"
+				if persistenceFailed {
+					code = "workspace.persistence_failed"
+				}
+				execution.Results[index].Error = &TargetError{Code: code, Retryable: true, Diagnostic: mutationErr.Error()}
 				emit(index, ProgressFinished)
 			}
 			continue
 		}
-		lockErrors := map[string]error{}
 		for _, index := range indexes {
-			item := preflight.Targets[index]
-			if item.Target.Scope != install.ScopeProject {
-				continue
-			}
-			lockKey := filepath.Clean(item.Target.ProjectRoot) + "\x00" + item.Name
-			if _, checked := lockErrors[lockKey]; checked {
-				continue
-			}
-			manifest, loadErr := project.LoadManifest(item.Target.ProjectRoot)
-			if loadErr != nil {
-				lockErrors[lockKey] = loadErr
-				continue
-			}
-			requirement := manifest.Skills[entry.Receipt.SkillID]
-			requirement.Ref = entry.Receipt.Version
-			lockErrors[lockKey] = project.UpsertManifestRequirement(item.Target.ProjectRoot, entry.Receipt.SkillID, requirement, false)
-		}
-		for _, index := range indexes {
-			item := preflight.Targets[index]
-			lockErr := lockErrors[filepath.Clean(item.Target.ProjectRoot)+"\x00"+item.Name]
-			if item.Target.Scope == install.ScopeProject && lockErr != nil {
-				execution.Results[index].Outcome = OutcomeFailed
-				execution.Results[index].Error = &TargetError{Code: "workspace.persistence_failed", Retryable: true, Diagnostic: lockErr.Error()}
-			} else {
-				execution.Results[index].Outcome = OutcomeSucceeded
-			}
+			execution.Results[index].Outcome = OutcomeSucceeded
 			emit(index, ProgressFinished)
 		}
 	}
@@ -670,6 +715,36 @@ func findInstallation(installations []install.Installation, request TargetReques
 		}
 	}
 	return install.Installation{}, fmt.Errorf("managed Installation Target not found: %s", request.Path)
+}
+
+func targetReceiptIdentity(userRoot string, request TargetRequest) (string, *project.InstallationReceipt, error) {
+	root := userRoot
+	if request.Scope == install.ScopeProject {
+		root = request.ProjectRoot
+	}
+	receipts, err := project.LoadInstallationReceipts(root)
+	if err != nil {
+		return "", nil, err
+	}
+	for index := range receipts {
+		receipt := &receipts[index]
+		if receipt.SourceSkillID == request.SkillID &&
+			receipt.Version == request.Version &&
+			receipt.Scope == request.Scope &&
+			receipt.Agent == request.Agent &&
+			receipt.Mode == request.Mode &&
+			samePath(receipt.Path, request.Path) {
+			return receipt.ArtifactSkillID, receipt, nil
+		}
+	}
+	return request.SkillID, nil, nil
+}
+
+func effectiveDependencyID(installation install.Installation) string {
+	if installation.DependencyID != "" {
+		return installation.DependencyID
+	}
+	return installation.SkillID
 }
 
 func validateCompletePhysicalBindings(
@@ -724,7 +799,8 @@ func validateCompleteWorkspaceBindings(
 		if err != nil {
 			return err
 		}
-		_, requirement, ok := manifest.Dependency(chosen.SkillID)
+		dependencyID := effectiveDependencyID(chosen)
+		_, requirement, ok := manifest.Dependency(dependencyID)
 		if !ok {
 			return fmt.Errorf("skillsgo.mod is missing Skill %q", chosen.Name)
 		}
@@ -736,7 +812,7 @@ func validateCompleteWorkspaceBindings(
 					samePath(candidateRequest.ProjectRoot, request.ProjectRoot) &&
 					candidate.Target.Agent == agentID &&
 					candidate.Name == chosen.Name &&
-					candidate.SkillID == chosen.SkillID {
+					effectiveDependencyID(candidate) == dependencyID {
 					found = true
 					break
 				}

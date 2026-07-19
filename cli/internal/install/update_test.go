@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses temporary old/new Store artifacts, canonical directories, Agent projections, and injected target collisions.
- * [OUTPUT]: Specifies atomic canonical replacement, explicit legacy Store-link migration, projection preservation, rollback after partial failure, and identical-entry idempotence.
+ * [OUTPUT]: Specifies atomic canonical and mixed copy/alias replacement, explicit legacy Store-link migration, projection preservation, Local Modification protection, rollback after partial failure, and identical-entry idempotence.
  * [POS]: Serves as filesystem transaction coverage for the installation update boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -126,6 +126,57 @@ func TestReplaceExplicitMigratesLegacyStoreDirectLinks(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(projection, "SKILL.md")); err != nil {
 		t.Fatalf("migrated projection cannot read artifact: %v", err)
+	}
+}
+
+func TestReplaceUpdatesMixedPhysicalCopyAndAlias(t *testing.T) {
+	root := t.TempDir()
+	oldEntry := updateTestEntry(t, filepath.Join(root, "old"))
+	newEntry := updateTestEntry(t, filepath.Join(root, "new"))
+	physical := filepath.Join(root, "home", ".agents", "skills", "demo")
+	alias := filepath.Join(root, "home", ".codex", "skills", "demo")
+	copyTarget := Target{Agent: "agents", Scope: ScopeUser, Mode: ModeCopy, Path: physical}
+	aliasTarget := Target{Agent: "codex", Scope: ScopeUser, Mode: ModeSymlink, Path: alias, CanonicalPath: physical}
+	if err := Install(oldEntry, []Target{copyTarget, aliasTarget}); err != nil {
+		t.Fatal(err)
+	}
+	baseline, err := DirectoryDigest(physical)
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := []Installation{
+		{Name: "demo", Artifact: oldEntry.Artifact, TargetState: baseline, Target: copyTarget},
+		{Name: "demo", Artifact: oldEntry.Artifact, Target: aliasTarget},
+	}
+	if err := Replace(newEntry, previous, []Target{copyTarget, aliasTarget}); err != nil {
+		t.Fatal(err)
+	}
+	if matches, err := CopyMatchesArtifact(physical, newEntry.Artifact); err != nil || !matches {
+		t.Fatalf("physical copy did not update: matches=%v err=%v", matches, err)
+	}
+	if resolved, err := filepath.EvalSymlinks(alias); err != nil || !samePath(resolved, physical) {
+		t.Fatalf("alias no longer points to physical copy: resolved=%s err=%v", resolved, err)
+	}
+}
+
+func TestReplaceExplicitAliasRepairPreservesModifiedCanonical(t *testing.T) {
+	root := t.TempDir()
+	entry := updateTestEntry(t, filepath.Join(root, "store"))
+	canonical := filepath.Join(root, "home", ".agents", "skills", "demo")
+	alias := filepath.Join(root, "home", ".codex", "skills", "demo")
+	if err := copyDirectory(entry.Artifact, canonical); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(canonical, "notes.txt"), []byte("user data"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	target := Target{Agent: "codex", Scope: ScopeUser, Mode: ModeSymlink, Path: alias, CanonicalPath: canonical}
+	previous := []Installation{{Name: "demo", Artifact: entry.Artifact, Target: target}}
+	if err := ReplaceExplicit(entry, previous, []Target{target}); err == nil {
+		t.Fatal("expected modified canonical to block alias repair")
+	}
+	if data, err := os.ReadFile(filepath.Join(canonical, "notes.txt")); err != nil || string(data) != "user data" {
+		t.Fatalf("modified canonical was not preserved: data=%q err=%v", data, err)
 	}
 }
 

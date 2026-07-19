@@ -367,7 +367,11 @@ func reconciledProjectHealth(installation install.Installation, workspace worksp
 	if !workspace.valid {
 		return HealthWorkspaceUnreadable
 	}
-	_, requirement, declared := workspace.manifest.Dependency(installation.SkillID)
+	dependency := installation.DependencyID
+	if dependency == "" {
+		dependency = installation.SkillID
+	}
+	_, requirement, declared := workspace.manifest.Dependency(dependency)
 	if !declared {
 		return HealthUndeclared
 	}
@@ -387,11 +391,25 @@ func reconciledProjectHealth(installation install.Installation, workspace worksp
 }
 
 func managedTargetPathExpected(catalog *agent.Catalog, installation install.Installation, projectRoot string) bool {
-	expected, ok := expectedTargetPath(catalog, installation.Target.Agent, installation.Target.Scope, projectRoot, installation.Name)
+	agentID := installation.Target.Agent
+	if strings.HasPrefix(agentID, "eve:") {
+		agentID = "eve"
+	}
+	scope := agent.ScopeUser
+	if installation.Target.Scope == install.ScopeProject {
+		scope = agent.ScopeProject
+	}
+	roots, ok := catalog.SkillRoots(agentID, scope, projectRoot)
 	if !ok {
 		return false
 	}
-	return resolveInventoryPath(expected) == resolveInventoryPath(installation.Target.Path)
+	for _, root := range roots.DiscoveryRoots {
+		expected := filepath.Join(root, installation.Name)
+		if resolveInventoryPath(expected) == resolveInventoryPath(installation.Target.Path) || filepath.Clean(expected) == filepath.Clean(installation.Target.Path) {
+			return true
+		}
+	}
+	return false
 }
 
 func managedTargetHealth(installation install.Installation, pathExpected bool) Health {

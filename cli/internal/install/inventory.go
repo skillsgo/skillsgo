@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on declaration-derived Installation records and live filesystem bindings.
- * [OUTPUT]: Provides safe exact-target removal with shared-binding, parent-alias, and Local Modification protection.
- * [POS]: Serves as the filesystem-removal boundary used by declaration-driven mutations.
+ * [OUTPUT]: Provides declaration-derived Installation identity/state records plus safe exact-target removal with shared-binding, parent-alias, and Local Modification protection.
+ * [POS]: Serves as the managed Installation record and filesystem-removal boundary used by declaration-driven mutations.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package install
@@ -17,6 +17,8 @@ import (
 type Installation struct {
 	Name          string           `json:"name"`
 	SkillID       string           `json:"skillId"`
+	DependencyID  string           `json:"-"`
+	SourceRef     string           `json:"-"`
 	Version       string           `json:"version"`
 	StoreRoot     string           `json:"storeRoot"`
 	Artifact      string           `json:"artifact"`
@@ -36,7 +38,13 @@ func RemoveDeclaredInstallations(selected, all []Installation) error {
 		removedPaths := map[string]bool{}
 		for _, installation := range selected {
 			path := filepath.Clean(installation.Target.Path)
-			isCanonical := installation.Target.CanonicalPath != "" && path == filepath.Clean(installation.Target.CanonicalPath)
+			isCanonical := false
+			if installation.Target.CanonicalPath != "" {
+				if info, err := os.Lstat(path); err == nil && info.Mode()&os.ModeSymlink == 0 {
+					isCanonical = samePath(path, installation.Target.CanonicalPath)
+				}
+			}
+			ownsPhysicalContent := installation.Target.Mode == ModeCopy || isCanonical
 			if isCanonical != canonicalPass {
 				continue
 			}
@@ -48,8 +56,8 @@ func RemoveDeclaredInstallations(selected, all []Installation) error {
 				candidatePath := filepath.Clean(candidate.Target.Path)
 				candidateKey := candidate.Target.Agent + "\x00" + candidatePath
 				samePhysicalTarget := candidatePath == path
-				if isCanonical && candidate.Target.CanonicalPath != "" {
-					samePhysicalTarget = filepath.Clean(candidate.Target.CanonicalPath) == path
+				if ownsPhysicalContent && candidate.Target.CanonicalPath != "" {
+					samePhysicalTarget = samePhysicalTarget || samePath(candidate.Target.CanonicalPath, path)
 				}
 				if samePhysicalTarget && !selectedTargets[candidateKey] {
 					usedByUnselected = true

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Skill/Repository IDs, immutable resource versions, verified bytes, and filesystem atomicity.
- * [OUTPUT]: Provides Go-shaped Workspace Sum parsing, h1 hashing and verification, historical-entry retention, and locked deterministic updates.
+ * [OUTPUT]: Provides Go-shaped Workspace Sum parsing, h1 hashing and verification, historical-entry retention, and shared-transaction-locked deterministic updates.
  * [POS]: Serves as the integrity-only persistence boundary beside the editable Workspace Manifest.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -119,6 +119,12 @@ func (sum WorkspaceSum) Verify(expected SumEntry) error {
 }
 
 func MergeVerifiedSums(root string, verified []SumEntry) error {
+	return withInstallationMetadataLock(root, func() error {
+		return mergeVerifiedSumsUnlocked(root, verified)
+	})
+}
+
+func mergeVerifiedSumsUnlocked(root string, verified []SumEntry) error {
 	if len(verified) == 0 {
 		return nil
 	}
