@@ -12,21 +12,21 @@ The current App assumes a user-level Codex installation, requires an externally 
 
 ## Solution
 
-Build the Personal desktop experience around three stable top-level destinations: Discover, Library, and Settings. Each destination receives a Burrow-inspired floating left rail and retains its own navigation state.
+Build the Personal desktop experience around three stable top-level destinations: Discover, Library, and Settings. Library and Settings use the same Burrow-inspired floating left-rail shell and retain their own navigation state.
 
-Discover provides Search, Ranking, Trending, and Hot views backed by the SkillsGo Hub. Library provides mutually exclusive All, User Scope, Added Project, and Installed Agent views. It aggregates all Installation Targets under one logical Library Entry while preserving Version Divergence and exposing External Installations.
+Discover provides Search, Ranking, Trending, and Hot views backed by the SkillsGo Hub. Library provides All Skills, Global, and one location route per Added Project in its left rail. Agent selection remains a combinable multi-select filter in the content toolbar. The Library aggregates all Installation Targets under one logical Library Entry while preserving Version Divergence and exposing External Installations.
 
 Installing a Skill opens an Installation Plan represented as a multi-location by multi-Agent matrix. Users may select any set of cells. The bundled SkillsGo CLI validates and executes the explicit targets, returns structured per-target outcomes, retains successful targets after partial failure, and supports retrying failed targets.
 
-Projects are added only through explicit directory selection. External Installations remain inspectable but read-only until the user associates them with an immutable Hub artifact or imports them as a Local Skill. Production App releases bundle a compatible SkillsGo CLI, so terminal setup is never a prerequisite for the GUI.
+Clean installations first complete the two-step Mandatory Onboarding defined in `mandatory-onboarding.md`. Projects are added through explicit directory selection. External Installations remain inspectable but read-only until the user associates them with an immutable Hub artifact or imports them as a Local Skill. Production App releases bundle a compatible SkillsGo CLI, so terminal setup is never a prerequisite for the GUI.
 
 ## User Stories
 
-1. As a new Personal User, I want the App to open directly to Discover, so that I can understand its value without completing setup.
+1. As a new Personal User, I want a short mandatory introduction and project choice before entering the App, so that SkillsGo starts with an explicit local management boundary.
 2. As a new Personal User, I want the App to use a bundled SkillsGo CLI, so that I do not need to install terminal tooling first.
 3. As a returning Personal User, I want Discover, Library, and Settings to remain the stable top-level destinations, so that the product stays predictable as features grow.
-4. As a desktop user, I want each top-level destination to have a visible left rail, so that its deeper capabilities remain one click away.
-5. As a desktop user, I want project and Agent names to remain visible in the rail, so that I do not need to memorize icons.
+4. As a desktop user, I want Library and Settings to share a visible left-rail shell, so that their deeper capabilities remain one click away without forcing the same navigation pattern onto Discover.
+5. As a desktop user, I want project names visible in the rail and Agent names visible in the filter, so that I do not need to memorize icons.
 6. As a desktop user, I want long rail labels to truncate and reveal their complete values on hover, so that the layout remains compact without hiding information.
 7. As a desktop user, I want dynamic rail content to scroll, so that many projects or Agents do not make navigation unusable.
 8. As a user switching between top-level destinations, I want each destination to retain its subpage, query, scroll position, and input state, so that navigation does not destroy my work.
@@ -51,7 +51,7 @@ Projects are added only through explicit directory selection. External Installat
 27. As a user viewing an already installed Skill, I want its current Installation Targets and versions visible in remote detail, so that discovery connects to local state.
 28. As a keyboard user, I want search, results, detail, and actions to expose clear focus order and focus styling, so that I can complete discovery without a mouse.
 29. As a user installing a Skill, I want an Installation Plan matrix, so that locations and Agents are explicit before any files change.
-30. As a user with several projects, I want User Scope and every Added Project to appear as matrix rows, so that I can install across locations in one operation.
+30. As a user with several projects, I want Global and every Added Project to appear as matrix rows, so that I can install across locations in one operation.
 31. As a user with several Agents, I want every Installed Agent to appear as a matrix column, so that I can target all available Agent environments.
 32. As a user creating a plan, I want to select individual cells, so that I can choose an arbitrary set of targets.
 33. As a user creating a broad plan, I want to select a complete row or column, so that common multi-target operations remain fast.
@@ -69,11 +69,11 @@ Projects are added only through explicit directory selection. External Installat
 45. As a user after partial failure, I want to retry only failed targets, so that recovery is efficient and predictable.
 46. As a user after installation, I want an explicit View in Library action without forced navigation, so that I control the next step.
 47. As a Personal User, I want one All view of every known Skill, so that I can understand my complete local inventory.
-48. As a Personal User, I want a User Scope view, so that user-level Agent capabilities are easy to isolate.
+48. As a Personal User, I want a Global view, so that user-level Agent capabilities are easy to isolate without exposing scope terminology in navigation.
 49. As a project user, I want one rail entry per Added Project, so that project-specific inventories are one click away.
-50. As a multi-Agent user, I want one rail entry per Installed Agent, so that I can inspect everything available to that Agent across locations.
-51. As a user of an Agent with zero Skills, I want its rail entry to remain visible, so that the App can guide me to install its first Skill.
-52. As a Library user, I want project and Agent entries to be mutually exclusive, so that one rail selection always has one clear meaning.
+50. As a multi-Agent user, I want every Installed Agent available in a multi-select filter, so that I can inspect Agent coverage within All Skills, Global, or one project.
+51. As a user of an Agent with zero Skills, I want it to remain available in the Agent filter, so that the App can guide me to install its first Skill.
+52. As a Library user, I want location navigation and Agent filtering to remain separate, so that I can combine one location with any useful Agent subset without duplicate controls.
 53. As a Library user, I want search within the current view, so that I can narrow a large inventory without changing navigation semantics.
 54. As a Library user, I want one Library Entry per logical Skill, so that installing a Skill in many places does not flood the list.
 55. As a Library user, I want compact, selectable rows with Skill identity and Agent coverage, so that I can scan a large inventory without card chrome.
@@ -86,7 +86,7 @@ Projects are added only through explicit directory selection. External Installat
 62. As a user with a fixed commit target, I want it excluded from misleading update prompts when it has no movable reference, so that pinning remains meaningful.
 63. As a user removing a Skill, I want to choose exact targets, so that other Agents and projects remain unchanged.
 64. As a user removing the last active target, I want Store cleanup to honor remaining Workspace Manifest references, so that restore remains possible.
-65. As a user with an unhealthy target, I want repair or stop-managing actions, so that SkillsGo never deletes an unexpected filesystem object automatically.
+65. As a user with an unhealthy target, I want an explicit repair action and no destructive remove action, so that SkillsGo never deletes an unexpected filesystem object automatically.
 66. As a user with an existing Skill installed by another tool, I want it shown as an External Installation, so that the Library reflects the machine rather than only SkillsGo receipts.
 67. As a user inspecting an External Installation, I want to read its instructions, files, and risk, so that unmanaged does not mean invisible.
 68. As a user with an External Installation, I want update and repair disabled while exact-path removal remains available, so that SkillsGo never claims ownership silently.
@@ -98,7 +98,7 @@ For GitHub `owner/repository` shorthand, ordinary search retains precedence. The
 71. As a user with custom content, I want to import an unmatched External Installation as a Local Skill, so that my own Skills can use the same management workflow.
 72. As a Local Skill user, I want to install it elsewhere, export it, or remove it, so that local content remains useful without being published.
 73. As a Local Skill author, I want import to remain local, so that adoption never publishes private content to a Hub.
-74. As a project user, I want to add a project through the operating-system directory picker, so that access is explicit.
+74. As a project user, I want to add one or more projects through an operating-system picker that accepts only directories, so that access is explicit and batch setup is efficient.
 75. As a project user, I want a project to work without Git or existing SkillsGo files, so that local workspaces are not excluded.
 76. As a project user, I want SkillsGo to read the Workspace Manifest, Workspace Manifest, and known Agent Skill directories, so that declared and actual inventory can be reconciled.
 77. As a project user, I want projects restored after App restart, so that navigation remains stable.
@@ -108,7 +108,7 @@ For GitHub `owner/repository` shorthand, ordinary search retains precedence. The
 81. As a privacy-conscious user, I want SkillsGo to avoid scanning the disk for projects, so that only explicitly selected directories are inspected.
 82. As a user with no Installed Agent, I want discovery to remain available, so that I can evaluate Skills before configuring an Agent.
 83. As a user with no Installed Agent, I want the installation sheet to explain the empty matrix and link to Agent guidance, so that the next step is clear.
-84. As an offline user, I want Library, projects, Agent views, and local detail to remain usable, so that local management does not depend on Hub availability.
+84. As an offline user, I want Library, projects, Agent-filtered views, and local detail to remain usable, so that local management does not depend on Hub availability.
 85. As a user configuring the product, I want separate General, Agents, Hub, Installation Policy, Storage, and About settings, so that unrelated concerns do not accumulate on one page.
 86. As a user of a self-hosted Hub, I want to configure and test a custom Hub Origin, so that the App is not locked to the official deployment.
 87. As a user diagnosing the App, I want the App and bundled CLI versions visible together, so that compatibility problems are actionable.
@@ -121,9 +121,9 @@ For GitHub `owner/repository` shorthand, ordinary search retains precedence. The
 ## Implementation Decisions
 
 - Keep Discover, Library, and Settings as the only top-level destinations. Use the existing white selected capsule and spring movement while preserving reduced-motion behavior.
-- Add one floating rounded left rail per top-level destination. Rail items use visible labels; the rail is not an icon-only clone of Burrow.
+- Use the shared floating rounded left-rail shell for Library and Settings. Rail items use visible labels; the rail is not an icon-only clone of Burrow. Discover keeps its compact collection navigation above the result surface.
 - Discover rail order is Search, Ranking, Trending, and Hot. Search is the initial route.
-- Library rail order is All, User Scope, Added Projects, Add Project, divider, and every Installed Agent. Location and Agent entries are mutually exclusive rather than combinable filters.
+- Library rail order is All Skills, Global, and every Added Project. All Skills and Global remain fixed at the top, only the Added Project list scrolls, and Add Project remains pinned at the bottom. Fixed dividers separate the scrollable project list from both the leading destinations and footer action; neither divider moves with project scrolling. The project list uses one slim, rounded desktop scrollbar that does not compete with project labels or selected capsules; the platform must not add a second hover scrollbar. Added Project rows use a compact desktop density while the fixed destinations and Add Project retain their larger navigation targets. The toolbar owns search, update status, and a combinable Agent multi-select; it does not repeat project selection. An empty Added Project uses a concise, project-name-independent title and a Browse Skills action that returns to Discover without setup guidance.
 - Settings rail order is General, Agents, Hub, Installation Policy, Storage, and About.
 - Preserve each top-level destination's last subroute, search input, scroll position, and in-flight operations for the current session. Detail navigation carries an explicit origin so Back restores the source view.
 - Production App packages a platform-compatible SkillsGo CLI and verifies its availability and compatibility at startup. The bundled executable is not installed into the user's system `PATH`.
@@ -134,6 +134,7 @@ For GitHub `owner/repository` shorthand, ordinary search retains precedence. The
 - Add a stable CLI inventory contract that accepts User Scope plus an explicit list of Added Project roots. It returns the public Skill ID when known, an inventory key, provenance, versions, and every Installation Target with scope, project, Agent, path, mode, receipt state, and health.
 - Inventory scans known Agent directories only. Project scanning is restricted to Added Projects passed by the App and never expands into general disk discovery.
 - Aggregate Hub Skills by stable Skill ID, Local Skills by inventory key, and leave External Installations without a managed Skill ID distinct even when names match.
+- The Add Project journey uses the operating system's multi-directory picker. Files are not selectable; canonical duplicate directories are retained only once, and one batch persists all newly selected project references together.
 - Persist the Added Project list as App state using stable directory references appropriate to the desktop platform. Removing an Added Project deletes only the reference.
 - Model an Installation Plan as one Skill artifact plus an explicit list of location-and-Agent targets. Row and column selection are UI shortcuts that produce exact cells before execution.
 - The CLI preflights every target before mutation and returns target-specific actions such as create, replace, skip, conflict, or blocked-by-risk.
@@ -156,7 +157,7 @@ For GitHub `owner/repository` shorthand, ordinary search retains precedence. The
 - A good test asserts behavior visible at an executable or user boundary: rendered navigation, stable JSON, HTTP responses, explicit filesystem effects, and recoverable errors. Tests must not depend on private Widget structure, Cobra helper functions, SQL query text, or implementation call counts.
 - The App uses `SkillsGateway` as its primary seam. Widget tests drive a fake Gateway through complete journeys and assert visible states and user actions.
 - Extend the existing high-level App journey coverage to include top-level and rail navigation, state restoration, all four Discover views, Skill detail origin restoration, Installation Plan matrix selection, per-target results, Library aggregation, Version Divergence, External Installation adoption, project lifecycle, offline behavior, and accessibility semantics.
-- Gateway contract tests use controlled HTTP clients and process runners to verify Hub and CLI schemas, non-success status handling, malformed responses, timeout behavior, and error translation.
+- Gateway contract tests use controlled process runners to verify CLI schemas, non-success exit handling, malformed responses, timeout behavior, and error translation; Hub HTTP behavior is tested behind the CLI Hub adapter rather than through an App HTTP client.
 - The CLI uses its root `Execute` entry point as the primary seam. Tests provide arguments, stdout, stderr, temporary home and project directories, and controlled Hub HTTP servers.
 - Extend CLI command-flow tests to cover Installed Agent discovery, inventory reconciliation, explicit multi-target plans, row and column expansion results, collisions, Local Modifications, per-target partial failure, retry, project Manifest changes, External Installation import, and stable structured output.
 - Lower-level Store, Agent Adapter, target, and project tests remain appropriate only for deterministic algorithms or safety invariants that are difficult to isolate through the command boundary.

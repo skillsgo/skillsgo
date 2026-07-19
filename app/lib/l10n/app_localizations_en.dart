@@ -24,19 +24,20 @@ class AppLocalizationsEn extends AppLocalizations {
   String get openSettings => 'Open Settings';
 
   @override
-  String get cliNeedsAttention => 'The SkillsGo CLI needs attention.';
+  String get cliNeedsAttention =>
+      'A required SkillsGo component needs attention.';
 
   @override
   String get cliMissingBundled =>
-      'The bundled SkillsGo CLI is missing or cannot run. Reinstall SkillsGo.';
+      'A required SkillsGo component is missing or cannot start. Reinstall SkillsGo to restore it.';
 
   @override
   String get cliDamagedBundled =>
-      'The bundled SkillsGo CLI returned an invalid startup response. Reinstall SkillsGo.';
+      'A required SkillsGo component is damaged. Reinstall SkillsGo to restore it.';
 
   @override
   String get cliIncompatibleBundled =>
-      'The bundled SkillsGo CLI is incompatible with this version of SkillsGo. Update or reinstall the app.';
+      'A required SkillsGo component does not match this app version. Update or reinstall SkillsGo.';
 
   @override
   String get officialIndex => 'SkillsGo Hub';
@@ -92,49 +93,49 @@ class AppLocalizationsEn extends AppLocalizations {
       'Public Skills ordered by short-term installation velocity and change.';
 
   @override
-  String get offlineTitle => 'You’re offline';
+  String get offlineTitle => 'Can’t connect to SkillsGo';
 
   @override
   String get offlineMessage =>
-      'SkillsGo could not reach the Hub. Check your network, proxy, or Hub Origin.';
+      'Check your internet connection and try again. If you use a proxy or custom service address, review it in Settings.';
 
   @override
   String get searchFailedTitle => 'Search stumbled';
 
   @override
-  String get validationTitle => 'Check this request';
+  String get validationTitle => 'Check what you entered';
 
   @override
   String get validationMessage =>
-      'The Hub rejected the request. Review the query and try again.';
+      'SkillsGo couldn’t use this request. Review what you entered and try again.';
 
   @override
-  String get serverTitle => 'Hub unavailable';
+  String get serverTitle => 'Service temporarily unavailable';
 
   @override
   String get serverMessage =>
-      'The Hub could not complete this request. Try again in a moment.';
+      'SkillsGo can’t complete this request right now. Try again in a moment.';
 
   @override
-  String get timeoutTitle => 'Hub timed out';
+  String get timeoutTitle => 'This is taking too long';
 
   @override
   String get timeoutMessage =>
-      'The Hub took too long to respond. Check the connection or try again.';
+      'The service did not respond in time. Check your connection or try again.';
 
   @override
-  String get invalidResponseTitle => 'Hub response unsupported';
+  String get invalidResponseTitle => 'SkillsGo needs an update';
 
   @override
   String get invalidResponseMessage =>
-      'This Hub returned a response SkillsGo cannot read. Check its version and protocol compatibility.';
+      'This response cannot be read by your version of SkillsGo. Update the app, then try again.';
 
   @override
-  String get invalidLocalDataTitle => 'Local installation data unreadable';
+  String get invalidLocalDataTitle => 'Can’t read an installed skill';
 
   @override
   String get invalidLocalDataMessage =>
-      'The SkillsGo CLI returned local installation data the App cannot read. Update the CLI or remove damaged installation records, then try again.';
+      'Some local installation information is damaged or incompatible. Update or reinstall SkillsGo, then try again.';
 
   @override
   String get tryAgain => 'Try again';
@@ -144,7 +145,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get searchEmptyMessage =>
-      'Enter a capability, source, or task to search the public Hub.';
+      'Enter a capability, source, or task to search public skills.';
 
   @override
   String get noSkillsTitle => 'No skills found';
@@ -196,7 +197,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get collectionEmptyMessage =>
-      'The Hub returned an empty collection. Try again after new install activity is recorded.';
+      'There’s nothing here yet. Try again after more installation activity.';
 
   @override
   String get loadMore => 'Load more';
@@ -211,7 +212,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get latestCommit => 'Latest commit';
 
   @override
-  String get installToMoreTargets => 'Install to More Targets';
+  String get installToMoreTargets => 'Install in More Locations';
 
   @override
   String localTargets(int count) {
@@ -287,14 +288,14 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get artifactUnavailableMessage =>
-      'The Hub could not provide this immutable artifact. Retry now or inspect another version.';
+      'This version is not available right now. Try again or choose another version.';
 
   @override
   String get detailInvalidTitle => 'Artifact metadata unsupported';
 
   @override
   String get detailInvalidMessage =>
-      'The Hub returned incomplete or malformed audit metadata. Retry after checking Hub compatibility.';
+      'Some details for this skill are incomplete or cannot be read. Update SkillsGo, then try again.';
 
   @override
   String get instructionsTab => 'Instructions';
@@ -330,12 +331,23 @@ class AppLocalizationsEn extends AppLocalizations {
   String get knownInstallationTargets => 'Known installation targets';
 
   @override
-  String targetSummary(String scope, String agent, String version) {
-    return '$scope / $agent · $version';
+  String get installationRange => 'Installed scope';
+
+  @override
+  String get targetDetails => 'Show target details';
+
+  @override
+  String get hideTargetDetails => 'Hide target details';
+
+  @override
+  String installedVersionLabel(String version) {
+    return 'Version $version';
   }
 
   @override
-  String get userScope => 'User Scope';
+  String targetSummary(String scope, String agent, String version) {
+    return '$scope / $agent · $version';
+  }
 
   @override
   String get projectScope => 'Project';
@@ -375,6 +387,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get all => 'All';
 
   @override
+  String get allSkills => 'All Skills';
+
+  @override
   String get updatesOnly => 'Updates';
 
   @override
@@ -385,6 +400,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get specificProject => 'Project';
+
+  @override
+  String get userScope => 'Global';
 
   @override
   String get addProject => 'Add Project';
@@ -410,13 +428,10 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String emptyProjectTitle(String name) {
-    return 'No Skills found in $name';
-  }
+  String get emptyProjectTitle => 'No Skills yet';
 
   @override
-  String get emptyProjectMessage =>
-      'This project does not need Git or SkillsGo files. Install its first Skill when you are ready.';
+  String get browseSkills => 'Browse Skills';
 
   @override
   String get projectMissingTitle => 'Project directory is missing';
@@ -553,7 +568,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get remove => 'Remove';
 
   @override
-  String get manageTargets => 'Manage targets';
+  String get manageTargets => 'Manage scope';
 
   @override
   String skillsSelected(int count) {
@@ -562,6 +577,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get clearSelection => 'Clear selection';
+
+  @override
+  String get selectCurrentResults => 'Select current results';
+
+  @override
+  String get clearCurrentResultSelection => 'Clear current result selection';
 
   @override
   String get manageTargetsTitle => 'Manage installation targets';
@@ -579,11 +600,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get repairTarget => 'Repair';
 
   @override
-  String get stopManaging => 'Stop Managing';
-
-  @override
-  String get stopManagingDescription =>
-      'Removes SkillsGo ownership metadata and preserves the current target content.';
+  String get confirmRemoveTarget => 'Confirm remove';
 
   @override
   String get applyTargetActions => 'Apply selected actions';
@@ -612,7 +629,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get localReadFailedMessage =>
-      'SkillsGo could not read this local installation. Check the target health and filesystem access, then retry.';
+      'SkillsGo could not read this installed skill. Check that its folder is available and accessible, then try again.';
 
   @override
   String get localConfiguration => 'SKILLSGO SETTINGS';
@@ -840,6 +857,51 @@ class AppLocalizationsEn extends AppLocalizations {
   String get save => 'Save';
 
   @override
+  String get advancedSettings => 'Advanced';
+
+  @override
+  String get remindersSettings => 'Reminders';
+
+  @override
+  String get remindersSettingsTitle => 'Reminder settings';
+
+  @override
+  String get remindersSettingsDescription =>
+      'Choose which reminders to receive.';
+
+  @override
+  String get updateReminderTitle => 'Update reminders';
+
+  @override
+  String get updateReminderDescription =>
+      'Check for updates when Library opens.';
+
+  @override
+  String get securityReminderTitle => 'High-risk alerts';
+
+  @override
+  String get securityReminderDescription =>
+      'Notify you of new High or Critical risks in installed skills.';
+
+  @override
+  String availableUpdatesReminder(int count) {
+    return '$count installed skills have updates';
+  }
+
+  @override
+  String get openAvailableUpdates =>
+      'Open the available-updates view to review and update them.';
+
+  @override
+  String securityAdvisoriesReminder(int count) {
+    return '$count installed skills need a security review';
+  }
+
+  @override
+  String get reviewInstalledSkills =>
+      'Review their risk information before using or updating them.';
+
+  @override
   String get generalSettingsTitle => 'Make SkillsGo yours';
 
   @override
@@ -897,6 +959,10 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get riskPolicyTitle => 'Personal risk policy';
+
+  @override
+  String get riskPolicyDescription =>
+      'Safety rules apply when you install or update a skill.';
 
   @override
   String get confirmHighRisk => 'Require confirmation for High risk';
@@ -1002,16 +1068,22 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get agentDetectedDescription =>
-      'Agent installation detected. Skills can target its supported scopes.';
+  String installedAgentsTitle(int count) {
+    return 'Installed · $count';
+  }
 
   @override
-  String get agentSupportedDescription =>
-      'Supported, but no installation signal was found. Install the Agent or use a project target.';
+  String notInstalledAgentsTitle(int count) {
+    return 'Not installed · $count';
+  }
 
   @override
-  String agentUserTarget(String path) {
-    return 'User target: $path';
+  String get notInstalledAgentsDescription =>
+      'Supported by SkillsGo, but not detected on this Mac.';
+
+  @override
+  String agentDiscoveryRoots(String paths) {
+    return 'Skill loading paths: $paths';
   }
 
   @override
@@ -1034,6 +1106,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get privacySummary =>
       'Your searches aren’t saved, and SkillsGo doesn’t keep command logs.';
+
+  @override
+  String get language => 'Language';
 
   @override
   String get personalizationTheme => 'Theme';
@@ -1199,6 +1274,13 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get installationInProgress => 'Installation in progress';
+
+  @override
+  String get installationSucceeded => 'Installation complete';
+
+  @override
+  String get installationSucceededMessage =>
+      'The Skill is now available in the selected locations.';
 
   @override
   String get projectUnavailable => 'Project unavailable';
@@ -1457,59 +1539,57 @@ class AppLocalizationsEn extends AppLocalizations {
   String get targetFailed => 'Failed';
 
   @override
-  String get targetFailureRetryable => 'This target failed. You can retry it.';
+  String get targetFailureRetryable =>
+      'This location could not be changed. You can try again.';
 
   @override
   String get targetFailureNeedsAttention =>
-      'This target needs attention before you retry.';
+      'This location needs your attention before you try again.';
 
   @override
   String get installationTargetFailureMessage =>
-      'The target was restored to its previous state. Check its path, then retry.';
+      'Nothing was changed at this location. Check that the folder is available and try again.';
 
   @override
   String get workspacePersistenceFailureMessage =>
-      'SkillsGo restored this target because the Workspace Manifest could not be saved. Check Workspace access, then retry.';
+      'Nothing was changed because SkillsGo could not save the project settings. Check that the project folder is writable and try again.';
 
   @override
   String get installationStateChangedMessage =>
-      'This target changed after review. Review the current state before retrying.';
+      'This location changed while you were reviewing it. Review the latest state before trying again.';
 
   @override
   String get updateTargetFailureMessage =>
-      'This update target failed without stopping unrelated updates. Retry the failed target.';
+      'This location could not be updated. Other locations were not affected, so you can retry only this one.';
 
   @override
   String get managementTargetFailureMessage =>
-      'This target action failed without undoing unrelated actions. Retry the failed target.';
+      'This action could not be completed here. Other locations were not affected, so you can retry only this one.';
 
   @override
   String get technicalDetails => 'Technical details';
 
   @override
   String get targetPathExists =>
-      'Another item already exists at this target path.';
+      'Another item already exists at this location.';
 
   @override
   String get targetBlockedByRisk =>
-      'This target was blocked by the current risk policy.';
+      'Your current safety settings blocked installation at this location.';
 
   @override
   String get targetInstallFailed =>
-      'The Skill could not be written to this target.';
+      'The skill could not be installed at this location.';
 
   @override
   String get targetWorkspaceUpdateFailed =>
-      'The Skill was written, but its Workspace files could not be updated.';
+      'The skill was installed, but the project settings could not be updated.';
 
   @override
   String get installationPlanFailed => 'Installation plan could not continue';
 
   @override
   String get installationFailed => 'Installation could not be completed';
-
-  @override
-  String get bringUnderManagement => 'Bring under management';
 
   @override
   String get localSource => 'Local source';
@@ -1550,57 +1630,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get batchTakeoverClose => 'Close';
 
   @override
-  String get adoptExternalTitle => 'Bring this installation under management';
-
-  @override
-  String get adoptExternalDescription =>
-      'SkillsGo matched the installation by content. Review the exact source and immutable version before continuing.';
-
-  @override
-  String get adoptionContentDigest => 'Content identity';
-
-  @override
-  String get hubContentMatches => 'Hub matches';
-
-  @override
-  String hubMatchSource(String source) {
-    return 'Source: $source';
-  }
-
-  @override
-  String hubMatchVersion(String version) {
-    return 'Immutable version: $version';
-  }
-
-  @override
-  String get associateHub => 'Associate with Hub';
-
-  @override
-  String get importAsLocal => 'Import as Local Skill';
-
-  @override
-  String get importAsLocalDescription =>
-      'No exact Hub match was found. This creates a private Local Skill with no publisher or update source.';
-
-  @override
-  String get adoptionPreservesContent =>
-      'The current installation content will not be replaced. SkillsGo only records ownership after your confirmation.';
-
-  @override
-  String get chooseHubMatch => 'Select an exact Hub match to continue.';
-
-  @override
-  String get confirmAdoption => 'Confirm association';
-
-  @override
-  String get confirmLocalImport => 'Confirm Local import';
-
-  @override
-  String get adoptionFailed =>
-      'SkillsGo could not bring this installation under management.';
-
-  @override
-  String get installMoreTargets => 'Install more';
+  String get installMoreTargets => 'Install in more locations';
 
   @override
   String get exportLocalSkill => 'Export';
@@ -1623,4 +1653,85 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get detailArchiveSize => 'ZIP Size';
+
+  @override
+  String get pathLabel => 'Project path';
+
+  @override
+  String get copyProjectPath => 'Copy project path';
+
+  @override
+  String get projectPathCopied => 'Project path copied';
+
+  @override
+  String get onboardingWelcomeTitle => 'Welcome to SkillsGo';
+
+  @override
+  String get onboardingWelcomeDescription =>
+      'Discover, install, and manage Skills across your Agents and projects.';
+
+  @override
+  String get onboardingDetectedAgents => 'Detected Agents';
+
+  @override
+  String get onboardingNoAgents =>
+      'No installed Agents detected. You can still continue.';
+
+  @override
+  String get onboardingNext => 'Next';
+
+  @override
+  String get onboardingProjectsTitle => 'Add your projects';
+
+  @override
+  String get onboardingProjectsDescription =>
+      'Choose the projects you want SkillsGo to manage.';
+
+  @override
+  String get onboardingAddProject => 'Add now';
+
+  @override
+  String get onboardingAddProjectLater => 'or later';
+
+  @override
+  String get onboardingStartUsing => 'Start Using SkillsGo';
+
+  @override
+  String get onboardingBack => 'Back';
+
+  @override
+  String get restartOnboardingTitle => 'Onboarding';
+
+  @override
+  String get restartOnboardingDescription =>
+      'View the first-launch guide again without removing projects, settings, or Skills data.';
+
+  @override
+  String get restartOnboardingAction => 'Restart Onboarding';
+
+  @override
+  String get restartOnboardingFailed =>
+      'SkillsGo could not restart Onboarding.';
+
+  @override
+  String get onboardingProjectError =>
+      'SkillsGo could not add projects from this directory.';
+
+  @override
+  String get onboardingProjectsLoadError =>
+      'SkillsGo could not load your added projects.';
+
+  @override
+  String get onboardingStartupError => 'SkillsGo could not load setup.';
+
+  @override
+  String get onboardingStateError =>
+      'SkillsGo could not save your setup progress. Try again.';
+
+  @override
+  String get onboardingCliErrorTitle => 'SkillsGo CLI needs attention';
+
+  @override
+  String get onboardingCliErrorDescription =>
+      'Repair the bundled CLI, then retry to continue.';
 }

@@ -6,6 +6,13 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 
 ## Product Scope
 
+### Onboarding
+
+- Require a two-step Mandatory Onboarding on clean installations before exposing the main destinations.
+- Introduce SkillsGo as the user's Agent Skills Store and list Installed Agents without per-Agent progress or Skill counts.
+- Let the user add projects manually or continue without project setup.
+- Resume interrupted Onboarding without losing projects that were already added.
+
 ### Discover
 
 - Search public Skills.
@@ -16,7 +23,7 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 ### Library
 
 - Aggregate Skills across User Scope, Added Projects, and Installed Agents.
-- Provide mutually exclusive All, User Scope, project, and Agent views in the left rail.
+- Provide All Skills, Global, and Added Project routes in the Library left rail, with a combinable Agent multi-select in the toolbar.
 - Show every Installed Agent, including Agents with zero Skills.
 - Include both SkillsGo-managed targets and External Installations discovered on disk.
 - Aggregate all targets for one logical Skill while allowing different targets to retain different versions.
@@ -25,7 +32,7 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 
 ### Projects
 
-- Add a project only through an explicit directory selection.
+- Add a project through explicit directory selection.
 - Do not require the directory to be a Git repository or to contain existing SkillsGo files.
 - Read `skillsgo.mod`, `skillsgo.sum`, and project Agent Skill directories.
 - Removing a project from the rail only stops tracking it; it never deletes project content.
@@ -60,8 +67,8 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 
 ## Integration Boundaries
 
-- The App reads Hub search, ranking, detail, and immutable artifact protocols directly.
-- The App invokes stable JSON commands on the bundled SkillsGo CLI for local discovery and mutations.
+- The App invokes stable JSON or NDJSON commands on the bundled SkillsGo CLI for every business read and mutation, including Hub-backed search, ranking, detail, and immutable artifact metadata.
+- The bundled CLI is the App's only business-integration boundary; the App never calls a Hub directly.
 - The App never parses human-oriented CLI output and never constructs commands through a shell string.
 - A standalone CLI remains available to terminal users; the production App does not require a prior CLI install or configured `PATH`.
 - Users may configure a self-hosted Hub and all downloaded content remains digest-verified.
@@ -70,8 +77,8 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 ## Experience Constraints
 
 - Keep Discover, Library, and Settings as the three top-level destinations.
-- Use a Burrow-inspired floating rounded left rail with visible project and Agent labels.
-- Do not introduce a blocking first-run wizard.
+- Use a Burrow-inspired floating rounded left rail with visible project labels and keep visible Agent labels in the Library filter.
+- Gate clean installations on the short Mandatory Onboarding; do not show it to existing users after upgrade.
 - Preserve each top-level destination's subpage, scroll position, and running operations across navigation.
 - Show concise progress and results by default, with expandable diagnostics.
 - Follow system language, reduced-motion, and reduced-transparency preferences.
@@ -79,14 +86,15 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 
 ## Acceptance Criteria
 
-1. A clean desktop installation can launch and use its bundled CLI without an external executable.
-2. The App detects and displays every Installed Agent, including Agents with zero Skills.
-3. A user can explicitly add projects and restore the project list after restart.
-4. Discover supports Search, Ranking, Trending, and Hot views with complete Skill detail.
-5. A user can install one Skill to multiple locations and multiple Agents through the matrix.
-6. Multi-target operations return per-target results and allow failed targets to be retried.
-7. The Library aggregates by logical Skill and displays targets, scopes, and Version Divergence.
-8. The App detects External Installations and can associate or import them after confirmation.
-9. A user can check, update, and remove selected targets without changing unselected targets.
-10. Hub outages, inaccessible projects, unhealthy targets, and CLI failures all have recoverable states.
-11. Automated tests cover the core CLI JSON contracts, aggregation behavior, Installation Plans, and primary Flutter journeys.
+1. A clean desktop installation completes the two-step Mandatory Onboarding with the bundled CLI and no external executable.
+2. Welcome displays the complete Installed Agent set without per-Agent progress, Skill counts, or a background Skill scan.
+3. A user can add projects manually or continue without project setup.
+4. Added projects persist immediately and survive restart during Onboarding.
+5. Discover supports Search, Ranking, Trending, and Hot views with complete Skill detail.
+6. A user can install one Skill to multiple locations and multiple Agents through the matrix.
+7. Multi-target operations return per-target results and allow failed targets to be retried.
+8. The Library aggregates by logical Skill and displays targets, scopes, and Version Divergence.
+9. The App detects External Installations and can associate or import them after confirmation.
+10. A user can check, update, and remove selected targets without changing unselected targets.
+11. Hub outages, inaccessible projects, unhealthy targets, and CLI failures all have recoverable states.
+12. Automated tests cover Onboarding, core CLI JSON contracts, aggregation behavior, Installation Plans, and primary Flutter journeys.

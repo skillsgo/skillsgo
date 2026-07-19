@@ -131,25 +131,25 @@ abstract class AppLocalizations {
   /// No description provided for @cliNeedsAttention.
   ///
   /// In en, this message translates to:
-  /// **'The SkillsGo CLI needs attention.'**
+  /// **'A required SkillsGo component needs attention.'**
   String get cliNeedsAttention;
 
   /// No description provided for @cliMissingBundled.
   ///
   /// In en, this message translates to:
-  /// **'The bundled SkillsGo CLI is missing or cannot run. Reinstall SkillsGo.'**
+  /// **'A required SkillsGo component is missing or cannot start. Reinstall SkillsGo to restore it.'**
   String get cliMissingBundled;
 
   /// No description provided for @cliDamagedBundled.
   ///
   /// In en, this message translates to:
-  /// **'The bundled SkillsGo CLI returned an invalid startup response. Reinstall SkillsGo.'**
+  /// **'A required SkillsGo component is damaged. Reinstall SkillsGo to restore it.'**
   String get cliDamagedBundled;
 
   /// No description provided for @cliIncompatibleBundled.
   ///
   /// In en, this message translates to:
-  /// **'The bundled SkillsGo CLI is incompatible with this version of SkillsGo. Update or reinstall the app.'**
+  /// **'A required SkillsGo component does not match this app version. Update or reinstall SkillsGo.'**
   String get cliIncompatibleBundled;
 
   /// No description provided for @officialIndex.
@@ -251,13 +251,13 @@ abstract class AppLocalizations {
   /// No description provided for @offlineTitle.
   ///
   /// In en, this message translates to:
-  /// **'You’re offline'**
+  /// **'Can’t connect to SkillsGo'**
   String get offlineTitle;
 
   /// No description provided for @offlineMessage.
   ///
   /// In en, this message translates to:
-  /// **'SkillsGo could not reach the Hub. Check your network, proxy, or Hub Origin.'**
+  /// **'Check your internet connection and try again. If you use a proxy or custom service address, review it in Settings.'**
   String get offlineMessage;
 
   /// No description provided for @searchFailedTitle.
@@ -269,61 +269,61 @@ abstract class AppLocalizations {
   /// No description provided for @validationTitle.
   ///
   /// In en, this message translates to:
-  /// **'Check this request'**
+  /// **'Check what you entered'**
   String get validationTitle;
 
   /// No description provided for @validationMessage.
   ///
   /// In en, this message translates to:
-  /// **'The Hub rejected the request. Review the query and try again.'**
+  /// **'SkillsGo couldn’t use this request. Review what you entered and try again.'**
   String get validationMessage;
 
   /// No description provided for @serverTitle.
   ///
   /// In en, this message translates to:
-  /// **'Hub unavailable'**
+  /// **'Service temporarily unavailable'**
   String get serverTitle;
 
   /// No description provided for @serverMessage.
   ///
   /// In en, this message translates to:
-  /// **'The Hub could not complete this request. Try again in a moment.'**
+  /// **'SkillsGo can’t complete this request right now. Try again in a moment.'**
   String get serverMessage;
 
   /// No description provided for @timeoutTitle.
   ///
   /// In en, this message translates to:
-  /// **'Hub timed out'**
+  /// **'This is taking too long'**
   String get timeoutTitle;
 
   /// No description provided for @timeoutMessage.
   ///
   /// In en, this message translates to:
-  /// **'The Hub took too long to respond. Check the connection or try again.'**
+  /// **'The service did not respond in time. Check your connection or try again.'**
   String get timeoutMessage;
 
   /// No description provided for @invalidResponseTitle.
   ///
   /// In en, this message translates to:
-  /// **'Hub response unsupported'**
+  /// **'SkillsGo needs an update'**
   String get invalidResponseTitle;
 
   /// No description provided for @invalidResponseMessage.
   ///
   /// In en, this message translates to:
-  /// **'This Hub returned a response SkillsGo cannot read. Check its version and protocol compatibility.'**
+  /// **'This response cannot be read by your version of SkillsGo. Update the app, then try again.'**
   String get invalidResponseMessage;
 
   /// No description provided for @invalidLocalDataTitle.
   ///
   /// In en, this message translates to:
-  /// **'Local installation data unreadable'**
+  /// **'Can’t read an installed skill'**
   String get invalidLocalDataTitle;
 
   /// No description provided for @invalidLocalDataMessage.
   ///
   /// In en, this message translates to:
-  /// **'The SkillsGo CLI returned local installation data the App cannot read. Update the CLI or remove damaged installation records, then try again.'**
+  /// **'Some local installation information is damaged or incompatible. Update or reinstall SkillsGo, then try again.'**
   String get invalidLocalDataMessage;
 
   /// No description provided for @tryAgain.
@@ -341,7 +341,7 @@ abstract class AppLocalizations {
   /// No description provided for @searchEmptyMessage.
   ///
   /// In en, this message translates to:
-  /// **'Enter a capability, source, or task to search the public Hub.'**
+  /// **'Enter a capability, source, or task to search public skills.'**
   String get searchEmptyMessage;
 
   /// No description provided for @noSkillsTitle.
@@ -407,7 +407,7 @@ abstract class AppLocalizations {
   /// No description provided for @collectionEmptyMessage.
   ///
   /// In en, this message translates to:
-  /// **'The Hub returned an empty collection. Try again after new install activity is recorded.'**
+  /// **'There’s nothing here yet. Try again after more installation activity.'**
   String get collectionEmptyMessage;
 
   /// No description provided for @loadMore.
@@ -437,7 +437,7 @@ abstract class AppLocalizations {
   /// No description provided for @installToMoreTargets.
   ///
   /// In en, this message translates to:
-  /// **'Install to More Targets'**
+  /// **'Install in More Locations'**
   String get installToMoreTargets;
 
   /// No description provided for @localTargets.
@@ -563,7 +563,7 @@ abstract class AppLocalizations {
   /// No description provided for @artifactUnavailableMessage.
   ///
   /// In en, this message translates to:
-  /// **'The Hub could not provide this immutable artifact. Retry now or inspect another version.'**
+  /// **'This version is not available right now. Try again or choose another version.'**
   String get artifactUnavailableMessage;
 
   /// No description provided for @detailInvalidTitle.
@@ -575,7 +575,7 @@ abstract class AppLocalizations {
   /// No description provided for @detailInvalidMessage.
   ///
   /// In en, this message translates to:
-  /// **'The Hub returned incomplete or malformed audit metadata. Retry after checking Hub compatibility.'**
+  /// **'Some details for this skill are incomplete or cannot be read. Update SkillsGo, then try again.'**
   String get detailInvalidMessage;
 
   /// No description provided for @instructionsTab.
@@ -626,17 +626,35 @@ abstract class AppLocalizations {
   /// **'Known installation targets'**
   String get knownInstallationTargets;
 
+  /// No description provided for @installationRange.
+  ///
+  /// In en, this message translates to:
+  /// **'Installed scope'**
+  String get installationRange;
+
+  /// No description provided for @targetDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Show target details'**
+  String get targetDetails;
+
+  /// No description provided for @hideTargetDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Hide target details'**
+  String get hideTargetDetails;
+
+  /// No description provided for @installedVersionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version}'**
+  String installedVersionLabel(String version);
+
   /// No description provided for @targetSummary.
   ///
   /// In en, this message translates to:
   /// **'{scope} / {agent} · {version}'**
   String targetSummary(String scope, String agent, String version);
-
-  /// No description provided for @userScope.
-  ///
-  /// In en, this message translates to:
-  /// **'User Scope'**
-  String get userScope;
 
   /// No description provided for @projectScope.
   ///
@@ -710,6 +728,12 @@ abstract class AppLocalizations {
   /// **'All'**
   String get all;
 
+  /// No description provided for @allSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'All Skills'**
+  String get allSkills;
+
   /// No description provided for @updatesOnly.
   ///
   /// In en, this message translates to:
@@ -733,6 +757,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Project'**
   String get specificProject;
+
+  /// No description provided for @userScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Global'**
+  String get userScope;
 
   /// No description provided for @addProject.
   ///
@@ -773,14 +803,14 @@ abstract class AppLocalizations {
   /// No description provided for @emptyProjectTitle.
   ///
   /// In en, this message translates to:
-  /// **'No Skills found in {name}'**
-  String emptyProjectTitle(String name);
+  /// **'No Skills yet'**
+  String get emptyProjectTitle;
 
-  /// No description provided for @emptyProjectMessage.
+  /// No description provided for @browseSkills.
   ///
   /// In en, this message translates to:
-  /// **'This project does not need Git or SkillsGo files. Install its first Skill when you are ready.'**
-  String get emptyProjectMessage;
+  /// **'Browse Skills'**
+  String get browseSkills;
 
   /// No description provided for @projectMissingTitle.
   ///
@@ -1031,7 +1061,7 @@ abstract class AppLocalizations {
   /// No description provided for @manageTargets.
   ///
   /// In en, this message translates to:
-  /// **'Manage targets'**
+  /// **'Manage scope'**
   String get manageTargets;
 
   /// No description provided for @skillsSelected.
@@ -1045,6 +1075,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Clear selection'**
   String get clearSelection;
+
+  /// No description provided for @selectCurrentResults.
+  ///
+  /// In en, this message translates to:
+  /// **'Select current results'**
+  String get selectCurrentResults;
+
+  /// No description provided for @clearCurrentResultSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear current result selection'**
+  String get clearCurrentResultSelection;
 
   /// No description provided for @manageTargetsTitle.
   ///
@@ -1070,17 +1112,11 @@ abstract class AppLocalizations {
   /// **'Repair'**
   String get repairTarget;
 
-  /// No description provided for @stopManaging.
+  /// No description provided for @confirmRemoveTarget.
   ///
   /// In en, this message translates to:
-  /// **'Stop Managing'**
-  String get stopManaging;
-
-  /// No description provided for @stopManagingDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Removes SkillsGo ownership metadata and preserves the current target content.'**
-  String get stopManagingDescription;
+  /// **'Confirm remove'**
+  String get confirmRemoveTarget;
 
   /// No description provided for @applyTargetActions.
   ///
@@ -1127,7 +1163,7 @@ abstract class AppLocalizations {
   /// No description provided for @localReadFailedMessage.
   ///
   /// In en, this message translates to:
-  /// **'SkillsGo could not read this local installation. Check the target health and filesystem access, then retry.'**
+  /// **'SkillsGo could not read this installed skill. Check that its folder is available and accessible, then try again.'**
   String get localReadFailedMessage;
 
   /// No description provided for @localConfiguration.
@@ -1502,6 +1538,78 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get save;
 
+  /// No description provided for @advancedSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Advanced'**
+  String get advancedSettings;
+
+  /// No description provided for @remindersSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminders'**
+  String get remindersSettings;
+
+  /// No description provided for @remindersSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Reminder settings'**
+  String get remindersSettingsTitle;
+
+  /// No description provided for @remindersSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose which reminders to receive.'**
+  String get remindersSettingsDescription;
+
+  /// No description provided for @updateReminderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update reminders'**
+  String get updateReminderTitle;
+
+  /// No description provided for @updateReminderDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates when Library opens.'**
+  String get updateReminderDescription;
+
+  /// No description provided for @securityReminderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'High-risk alerts'**
+  String get securityReminderTitle;
+
+  /// No description provided for @securityReminderDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Notify you of new High or Critical risks in installed skills.'**
+  String get securityReminderDescription;
+
+  /// No description provided for @availableUpdatesReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} installed skills have updates'**
+  String availableUpdatesReminder(int count);
+
+  /// No description provided for @openAvailableUpdates.
+  ///
+  /// In en, this message translates to:
+  /// **'Open the available-updates view to review and update them.'**
+  String get openAvailableUpdates;
+
+  /// No description provided for @securityAdvisoriesReminder.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} installed skills need a security review'**
+  String securityAdvisoriesReminder(int count);
+
+  /// No description provided for @reviewInstalledSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'Review their risk information before using or updating them.'**
+  String get reviewInstalledSkills;
+
   /// No description provided for @generalSettingsTitle.
   ///
   /// In en, this message translates to:
@@ -1603,6 +1711,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Personal risk policy'**
   String get riskPolicyTitle;
+
+  /// No description provided for @riskPolicyDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Safety rules apply when you install or update a skill.'**
+  String get riskPolicyDescription;
 
   /// No description provided for @confirmHighRisk.
   ///
@@ -1790,23 +1904,29 @@ abstract class AppLocalizations {
   /// **'{installed} installed · {supported} supported'**
   String agentCatalogSummary(int installed, int supported);
 
-  /// No description provided for @agentDetectedDescription.
+  /// No description provided for @installedAgentsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Agent installation detected. Skills can target its supported scopes.'**
-  String get agentDetectedDescription;
+  /// **'Installed · {count}'**
+  String installedAgentsTitle(int count);
 
-  /// No description provided for @agentSupportedDescription.
+  /// No description provided for @notInstalledAgentsTitle.
   ///
   /// In en, this message translates to:
-  /// **'Supported, but no installation signal was found. Install the Agent or use a project target.'**
-  String get agentSupportedDescription;
+  /// **'Not installed · {count}'**
+  String notInstalledAgentsTitle(int count);
 
-  /// No description provided for @agentUserTarget.
+  /// No description provided for @notInstalledAgentsDescription.
   ///
   /// In en, this message translates to:
-  /// **'User target: {path}'**
-  String agentUserTarget(String path);
+  /// **'Supported by SkillsGo, but not detected on this Mac.'**
+  String get notInstalledAgentsDescription;
+
+  /// No description provided for @agentDiscoveryRoots.
+  ///
+  /// In en, this message translates to:
+  /// **'Skill loading paths: {paths}'**
+  String agentDiscoveryRoots(String paths);
 
   /// No description provided for @agentInspectionFailed.
   ///
@@ -1843,6 +1963,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Your searches aren’t saved, and SkillsGo doesn’t keep command logs.'**
   String get privacySummary;
+
+  /// No description provided for @language.
+  ///
+  /// In en, this message translates to:
+  /// **'Language'**
+  String get language;
 
   /// No description provided for @personalizationTheme.
   ///
@@ -2149,6 +2275,18 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Installation in progress'**
   String get installationInProgress;
+
+  /// No description provided for @installationSucceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation complete'**
+  String get installationSucceeded;
+
+  /// No description provided for @installationSucceededMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'The Skill is now available in the selected locations.'**
+  String get installationSucceededMessage;
 
   /// No description provided for @projectUnavailable.
   ///
@@ -2549,43 +2687,43 @@ abstract class AppLocalizations {
   /// No description provided for @targetFailureRetryable.
   ///
   /// In en, this message translates to:
-  /// **'This target failed. You can retry it.'**
+  /// **'This location could not be changed. You can try again.'**
   String get targetFailureRetryable;
 
   /// No description provided for @targetFailureNeedsAttention.
   ///
   /// In en, this message translates to:
-  /// **'This target needs attention before you retry.'**
+  /// **'This location needs your attention before you try again.'**
   String get targetFailureNeedsAttention;
 
   /// No description provided for @installationTargetFailureMessage.
   ///
   /// In en, this message translates to:
-  /// **'The target was restored to its previous state. Check its path, then retry.'**
+  /// **'Nothing was changed at this location. Check that the folder is available and try again.'**
   String get installationTargetFailureMessage;
 
   /// No description provided for @workspacePersistenceFailureMessage.
   ///
   /// In en, this message translates to:
-  /// **'SkillsGo restored this target because the Workspace Manifest could not be saved. Check Workspace access, then retry.'**
+  /// **'Nothing was changed because SkillsGo could not save the project settings. Check that the project folder is writable and try again.'**
   String get workspacePersistenceFailureMessage;
 
   /// No description provided for @installationStateChangedMessage.
   ///
   /// In en, this message translates to:
-  /// **'This target changed after review. Review the current state before retrying.'**
+  /// **'This location changed while you were reviewing it. Review the latest state before trying again.'**
   String get installationStateChangedMessage;
 
   /// No description provided for @updateTargetFailureMessage.
   ///
   /// In en, this message translates to:
-  /// **'This update target failed without stopping unrelated updates. Retry the failed target.'**
+  /// **'This location could not be updated. Other locations were not affected, so you can retry only this one.'**
   String get updateTargetFailureMessage;
 
   /// No description provided for @managementTargetFailureMessage.
   ///
   /// In en, this message translates to:
-  /// **'This target action failed without undoing unrelated actions. Retry the failed target.'**
+  /// **'This action could not be completed here. Other locations were not affected, so you can retry only this one.'**
   String get managementTargetFailureMessage;
 
   /// No description provided for @technicalDetails.
@@ -2597,25 +2735,25 @@ abstract class AppLocalizations {
   /// No description provided for @targetPathExists.
   ///
   /// In en, this message translates to:
-  /// **'Another item already exists at this target path.'**
+  /// **'Another item already exists at this location.'**
   String get targetPathExists;
 
   /// No description provided for @targetBlockedByRisk.
   ///
   /// In en, this message translates to:
-  /// **'This target was blocked by the current risk policy.'**
+  /// **'Your current safety settings blocked installation at this location.'**
   String get targetBlockedByRisk;
 
   /// No description provided for @targetInstallFailed.
   ///
   /// In en, this message translates to:
-  /// **'The Skill could not be written to this target.'**
+  /// **'The skill could not be installed at this location.'**
   String get targetInstallFailed;
 
   /// No description provided for @targetWorkspaceUpdateFailed.
   ///
   /// In en, this message translates to:
-  /// **'The Skill was written, but its Workspace files could not be updated.'**
+  /// **'The skill was installed, but the project settings could not be updated.'**
   String get targetWorkspaceUpdateFailed;
 
   /// No description provided for @installationPlanFailed.
@@ -2629,12 +2767,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Installation could not be completed'**
   String get installationFailed;
-
-  /// No description provided for @bringUnderManagement.
-  ///
-  /// In en, this message translates to:
-  /// **'Bring under management'**
-  String get bringUnderManagement;
 
   /// No description provided for @localSource.
   ///
@@ -2702,94 +2834,10 @@ abstract class AppLocalizations {
   /// **'Close'**
   String get batchTakeoverClose;
 
-  /// No description provided for @adoptExternalTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Bring this installation under management'**
-  String get adoptExternalTitle;
-
-  /// No description provided for @adoptExternalDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'SkillsGo matched the installation by content. Review the exact source and immutable version before continuing.'**
-  String get adoptExternalDescription;
-
-  /// No description provided for @adoptionContentDigest.
-  ///
-  /// In en, this message translates to:
-  /// **'Content identity'**
-  String get adoptionContentDigest;
-
-  /// No description provided for @hubContentMatches.
-  ///
-  /// In en, this message translates to:
-  /// **'Hub matches'**
-  String get hubContentMatches;
-
-  /// No description provided for @hubMatchSource.
-  ///
-  /// In en, this message translates to:
-  /// **'Source: {source}'**
-  String hubMatchSource(String source);
-
-  /// No description provided for @hubMatchVersion.
-  ///
-  /// In en, this message translates to:
-  /// **'Immutable version: {version}'**
-  String hubMatchVersion(String version);
-
-  /// No description provided for @associateHub.
-  ///
-  /// In en, this message translates to:
-  /// **'Associate with Hub'**
-  String get associateHub;
-
-  /// No description provided for @importAsLocal.
-  ///
-  /// In en, this message translates to:
-  /// **'Import as Local Skill'**
-  String get importAsLocal;
-
-  /// No description provided for @importAsLocalDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'No exact Hub match was found. This creates a private Local Skill with no publisher or update source.'**
-  String get importAsLocalDescription;
-
-  /// No description provided for @adoptionPreservesContent.
-  ///
-  /// In en, this message translates to:
-  /// **'The current installation content will not be replaced. SkillsGo only records ownership after your confirmation.'**
-  String get adoptionPreservesContent;
-
-  /// No description provided for @chooseHubMatch.
-  ///
-  /// In en, this message translates to:
-  /// **'Select an exact Hub match to continue.'**
-  String get chooseHubMatch;
-
-  /// No description provided for @confirmAdoption.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm association'**
-  String get confirmAdoption;
-
-  /// No description provided for @confirmLocalImport.
-  ///
-  /// In en, this message translates to:
-  /// **'Confirm Local import'**
-  String get confirmLocalImport;
-
-  /// No description provided for @adoptionFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'SkillsGo could not bring this installation under management.'**
-  String get adoptionFailed;
-
   /// No description provided for @installMoreTargets.
   ///
   /// In en, this message translates to:
-  /// **'Install more'**
+  /// **'Install in more locations'**
   String get installMoreTargets;
 
   /// No description provided for @exportLocalSkill.
@@ -2833,6 +2881,150 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ZIP Size'**
   String get detailArchiveSize;
+
+  /// No description provided for @pathLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Project path'**
+  String get pathLabel;
+
+  /// No description provided for @copyProjectPath.
+  ///
+  /// In en, this message translates to:
+  /// **'Copy project path'**
+  String get copyProjectPath;
+
+  /// No description provided for @projectPathCopied.
+  ///
+  /// In en, this message translates to:
+  /// **'Project path copied'**
+  String get projectPathCopied;
+
+  /// No description provided for @onboardingWelcomeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Welcome to SkillsGo'**
+  String get onboardingWelcomeTitle;
+
+  /// No description provided for @onboardingWelcomeDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Discover, install, and manage Skills across your Agents and projects.'**
+  String get onboardingWelcomeDescription;
+
+  /// No description provided for @onboardingDetectedAgents.
+  ///
+  /// In en, this message translates to:
+  /// **'Detected Agents'**
+  String get onboardingDetectedAgents;
+
+  /// No description provided for @onboardingNoAgents.
+  ///
+  /// In en, this message translates to:
+  /// **'No installed Agents detected. You can still continue.'**
+  String get onboardingNoAgents;
+
+  /// No description provided for @onboardingNext.
+  ///
+  /// In en, this message translates to:
+  /// **'Next'**
+  String get onboardingNext;
+
+  /// No description provided for @onboardingProjectsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Add your projects'**
+  String get onboardingProjectsTitle;
+
+  /// No description provided for @onboardingProjectsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose the projects you want SkillsGo to manage.'**
+  String get onboardingProjectsDescription;
+
+  /// No description provided for @onboardingAddProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Add now'**
+  String get onboardingAddProject;
+
+  /// No description provided for @onboardingAddProjectLater.
+  ///
+  /// In en, this message translates to:
+  /// **'or later'**
+  String get onboardingAddProjectLater;
+
+  /// No description provided for @onboardingStartUsing.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Using SkillsGo'**
+  String get onboardingStartUsing;
+
+  /// No description provided for @onboardingBack.
+  ///
+  /// In en, this message translates to:
+  /// **'Back'**
+  String get onboardingBack;
+
+  /// No description provided for @restartOnboardingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Onboarding'**
+  String get restartOnboardingTitle;
+
+  /// No description provided for @restartOnboardingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'View the first-launch guide again without removing projects, settings, or Skills data.'**
+  String get restartOnboardingDescription;
+
+  /// No description provided for @restartOnboardingAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart Onboarding'**
+  String get restartOnboardingAction;
+
+  /// No description provided for @restartOnboardingFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo could not restart Onboarding.'**
+  String get restartOnboardingFailed;
+
+  /// No description provided for @onboardingProjectError.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo could not add projects from this directory.'**
+  String get onboardingProjectError;
+
+  /// No description provided for @onboardingProjectsLoadError.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo could not load your added projects.'**
+  String get onboardingProjectsLoadError;
+
+  /// No description provided for @onboardingStartupError.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo could not load setup.'**
+  String get onboardingStartupError;
+
+  /// No description provided for @onboardingStateError.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo could not save your setup progress. Try again.'**
+  String get onboardingStateError;
+
+  /// No description provided for @onboardingCliErrorTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo CLI needs attention'**
+  String get onboardingCliErrorTitle;
+
+  /// No description provided for @onboardingCliErrorDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Repair the bundled CLI, then retry to continue.'**
+  String get onboardingCliErrorDescription;
 }
 
 class _AppLocalizationsDelegate

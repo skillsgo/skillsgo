@@ -1,10 +1,11 @@
 /*
- * [INPUT]: Uses the SkillsGo theme module, semantic color extension, and curated brand seeds.
- * [OUTPUT]: Specifies stable Folder hierarchy, seed-independent neutral surfaces, seed-dependent accents, and readable semantic pairs.
+ * [INPUT]: Uses the SkillsGo theme module, semantic color and typography extensions, and curated brand seeds.
+ * [OUTPUT]: Specifies stable Folder hierarchy, system-font-first readable typography, seed-independent neutral surfaces, seed-dependent accents including the near-white inverse primary action, and readable semantic pairs.
  * [POS]: Serves as the focused contract suite for the SkillsGo design-system interface.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsgo/ui/brand.dart';
 import 'package:skillsgo/ui/design_system/radix_palette.dart';
@@ -67,6 +68,63 @@ void main() {
     expect(purpleColors.folderBody, greenColors.folderBody);
     expect(purpleColors.surfaceDefault, greenColors.surfaceDefault);
   });
+
+  test('near-white Light seeds use a warm inverse primary action', () {
+    final theme = buildSkillsTheme(
+      const Color(0xFFFFFFFF),
+      brightness: Brightness.light,
+    );
+    final components = theme.extension<SkillsComponentTokens>()!;
+
+    expect(components.primaryRest, const Color(0xFF21201C));
+    expect(components.primaryRest, isNot(Colors.black));
+    expect(components.primaryForeground, const Color(0xFFFDFDFC));
+    expect(theme.colorScheme.primary, components.primaryRest);
+    expect(theme.colorScheme.onPrimary, components.primaryForeground);
+    expect(components.primaryHover, isNot(components.primaryRest));
+    expect(
+      _contrastRatio(components.primaryRest, components.primaryForeground),
+      greaterThanOrEqualTo(4.5),
+    );
+  });
+
+  for (final platform in [
+    TargetPlatform.macOS,
+    TargetPlatform.windows,
+    TargetPlatform.linux,
+  ]) {
+    test('$platform typography inherits the Flutter platform font', () {
+      debugDefaultTargetPlatformOverride = platform;
+      try {
+        final platformFont = ThemeData().textTheme.bodyMedium?.fontFamily;
+        final theme = buildSkillsTheme(const Color(0xFF5865F2));
+        final typography = theme.extension<SkillsTypography>()!;
+        final styles = [
+          typography.display,
+          typography.pageTitle,
+          typography.sectionTitle,
+          typography.body,
+          typography.bodySecondary,
+          typography.label,
+          typography.metadata,
+          typography.caption,
+          typography.code,
+        ];
+
+        for (final style in styles) {
+          expect(style.fontFamily, platformFont);
+          expect(style.fontWeight!.value, greaterThanOrEqualTo(400));
+        }
+        expect(theme.textTheme.headlineLarge, typography.display);
+        expect(theme.textTheme.titleMedium, typography.sectionTitle);
+        expect(theme.textTheme.bodyLarge, typography.body);
+        expect(theme.textTheme.bodySmall, typography.metadata);
+        expect(theme.textTheme.labelLarge, typography.label);
+      } finally {
+        debugDefaultTargetPlatformOverride = null;
+      }
+    });
+  }
 
   test('component tokens preserve Primer state progression', () {
     for (final brightness in Brightness.values) {
@@ -158,6 +216,38 @@ void main() {
       expect(
         _contrastRatio(hoverBackground!, hoverForeground!),
         greaterThanOrEqualTo(4.5),
+      );
+    });
+
+    testWidgets('$brightness capsule labels inherit button state colors', (
+      tester,
+    ) async {
+      final theme = buildSkillsTheme(
+        const Color(0xFF3FCF8E),
+        brightness: brightness,
+      );
+      final components = theme.extension<SkillsComponentTokens>()!;
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: theme,
+          home: Scaffold(
+            body: Column(
+              children: [
+                PrimaryCapsuleButton(label: 'Enabled', onPressed: () {}),
+                const PrimaryCapsuleButton(label: 'Disabled', onPressed: null),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        DefaultTextStyle.of(tester.element(find.text('Enabled'))).style.color,
+        components.primaryForeground,
+      );
+      expect(
+        DefaultTextStyle.of(tester.element(find.text('Disabled'))).style.color,
+        components.controlForegroundDisabled,
       );
     });
   }

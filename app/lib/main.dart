@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter desktop bindings, macOS window integration, Marionette debug instrumentation, build mode, and the real SkillsGateway.
- * [OUTPUT]: Starts the SkillsGo desktop process with a local Debug Hub or official Release Hub and exposes debug-only navigation measurements.
+ * [OUTPUT]: Starts the SkillsGo desktop process through main or the integration-test-safe runSkillsGoApp entry, with a build-injectable Hub and debug navigation measurements.
  * [POS]: Serves as the Flutter workspace process entry point and platform initialization boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,8 +13,15 @@ import 'package:window_manager/window_manager.dart';
 import 'app.dart';
 import 'infrastructure/real_skills_gateway.dart';
 
-Future<void> main() async {
-  if (kDebugMode) {
+const _debugHubBaseUrl = String.fromEnvironment(
+  'SKILLSGO_HUB_URL',
+  defaultValue: 'http://127.0.0.1:3000',
+);
+
+Future<void> main() => runSkillsGoApp();
+
+Future<void> runSkillsGoApp({bool initializeBinding = true}) async {
+  if (initializeBinding && kDebugMode) {
     MarionetteBinding.ensureInitialized();
     registerMarionetteExtension(
       name: 'skillsgo.measureNavigation',
@@ -22,7 +29,7 @@ Future<void> main() async {
       callback: (_) async =>
           MarionetteExtensionResult.success({'elements': _measureNavigation()}),
     );
-  } else {
+  } else if (initializeBinding) {
     WidgetsFlutterBinding.ensureInitialized();
   }
 
@@ -46,9 +53,7 @@ Future<void> main() async {
   runApp(
     SkillsGoApp(
       gateway: RealSkillsGateway(
-        hubBaseUrl: kDebugMode
-            ? 'http://127.0.0.1:3000'
-            : 'https://hub.skillsgo.ai',
+        hubBaseUrl: kDebugMode ? _debugHubBaseUrl : 'https://hub.skillsgo.ai',
       ),
     ),
   );

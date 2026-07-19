@@ -1,7 +1,7 @@
 /*
  * Derived from Portal Labs Todo List Interaction, Copyright (c) 2026 Luis Portal, MIT License.
  * See /app/THIRD_PARTY_NOTICES.md for the complete attribution and license text.
- * [INPUT]: Depends on Flutter Material, HugeIcons, physics, semantics, a caller-provided scope selector, optional row-leading identities, and an isolated inner scroll position.
+ * [INPUT]: Depends on Flutter Material, HugeIcons, SkillsGo semantic typography, physics, semantics, a caller-provided scope selector, optional row-leading identities, and an isolated inner scroll position.
  * [OUTPUT]: Provides a controlled installation-location Island with a composable header, compact identified rows, collapsible groups, animated rows, clipped rounded corners, and Portal Labs visual structure.
  * [POS]: Serves as the vendored Portal Labs interaction adapted from Todo semantics to SkillsGo installation targets.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -9,6 +9,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/physics.dart';
 import 'package:hugeicons/hugeicons.dart';
+
+import '../design_system/skills_typography.dart';
 
 @immutable
 class InstallLocationIslandItem {
@@ -356,7 +358,7 @@ class _IslandItem extends StatelessWidget {
                   ),
                   child: item.selected
                       ? HugeIcon(
-                          icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+                          icon: HugeIcons.strokeRoundedTick01,
                           size: 12,
                           strokeWidth: 1.8,
                           color: style.selectedForegroundColor,
@@ -397,10 +399,8 @@ class _IslandItem extends StatelessWidget {
                         Text(
                           item.inlineStatusText!,
                           maxLines: 1,
-                          style: TextStyle(
+                          style: context.skillsTypography.caption.copyWith(
                             color: style.secondaryTextColor,
-                            fontSize: 11,
-                            fontWeight: FontWeight.w300,
                           ),
                         ),
                       ],

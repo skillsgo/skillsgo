@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Receives localized rail items, selected values, destination content, SkillsGo component tokens, and reduced-motion preferences.
- * [OUTPUT]: Renders the shared theme-tinted glass desktop side rail with accessible, stateful selection motion.
+ * [INPUT]: Receives localized fixed and scrollable rail items with standard or compact density, selected values, destination content and optional transition identity, SkillsGo component tokens, and reduced-motion preferences.
+ * [OUTPUT]: Renders the shared desktop rail/content layout with optional short depth entrance, plus the theme-tinted glass side rail with accessible density-aware selection motion, optional fixed leading destinations and section dividers, an independently scrollable item region with one slim desktop scrollbar, and an optional pinned footer action.
  * [POS]: Defines the reusable nested-navigation surface shared by Discover, Library, and Settings.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,44 +12,129 @@ import 'package:hugeicons/hugeicons.dart';
 
 import 'brand.dart';
 
+const _standardRailItemExtent = 44.0;
+const _compactRailItemExtent = 38.0;
+
 class SkillsRailItem<T> {
   const SkillsRailItem({
     required this.value,
     required this.label,
-    this.dividerBefore = false,
+    this.compact = false,
     this.icon,
     this.leading,
   });
 
   final T value;
   final String label;
-  final bool dividerBefore;
+  final bool compact;
   final List<List<dynamic>>? icon;
   final Widget? leading;
 }
 
-class SkillsDestinationLayout extends StatelessWidget {
+class SkillsDestinationLayout extends StatefulWidget {
   const SkillsDestinationLayout({
     super.key,
     required this.rail,
     required this.child,
+    this.bodyTransitionKey,
   });
 
   final Widget rail;
   final Widget child;
+  final Object? bodyTransitionKey;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.fromLTRB(20, 26, 28, 24),
-    child: Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        SizedBox(width: 184, child: rail),
-        const SizedBox(width: 24),
-        Expanded(child: child),
-      ],
-    ),
-  );
+  State<SkillsDestinationLayout> createState() =>
+      _SkillsDestinationLayoutState();
+}
+
+class _SkillsDestinationLayoutState extends State<SkillsDestinationLayout>
+    with SingleTickerProviderStateMixin {
+  static const _transitionDuration = Duration(milliseconds: 180);
+  late final AnimationController _bodyEntrance;
+
+  @override
+  void initState() {
+    super.initState();
+    _bodyEntrance = AnimationController(
+      vsync: this,
+      duration: _transitionDuration,
+      value: 1,
+    );
+  }
+
+  @override
+  void didUpdateWidget(covariant SkillsDestinationLayout oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.bodyTransitionKey == null ||
+        oldWidget.bodyTransitionKey == widget.bodyTransitionKey) {
+      return;
+    }
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _bodyEntrance.value = 1;
+      return;
+    }
+    _bodyEntrance.forward(from: 0);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _bodyEntrance.value = 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    _bodyEntrance.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final body = _buildBody(context);
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 26, 28, 24),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(width: 184, child: widget.rail),
+          const SizedBox(width: 24),
+          Expanded(child: body),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
+    if (widget.bodyTransitionKey == null ||
+        MediaQuery.disableAnimationsOf(context)) {
+      return KeyedSubtree(
+        key: const Key('skills-destination-body'),
+        child: widget.child,
+      );
+    }
+    final curved = CurvedAnimation(
+      parent: _bodyEntrance,
+      curve: Curves.easeOutCubic,
+    );
+    return FadeTransition(
+      key: const Key('skills-destination-body'),
+      opacity: Tween<double>(begin: .86, end: 1).animate(curved),
+      child: SlideTransition(
+        position: Tween<Offset>(
+          begin: const Offset(0, .012),
+          end: Offset.zero,
+        ).animate(curved),
+        child: ScaleTransition(
+          scale: Tween<double>(begin: .985, end: 1).animate(curved),
+          alignment: Alignment.center,
+          child: widget.child,
+        ),
+      ),
+    );
+  }
 }
 
 class SkillsSideRail<T> extends StatefulWidget {
@@ -59,14 +144,20 @@ class SkillsSideRail<T> extends StatefulWidget {
     required this.items,
     required this.selected,
     required this.onSelected,
+    this.fixedItems = const [],
+    this.sectionDividers = false,
     this.header,
+    this.footer,
   });
 
   final String semanticLabel;
+  final List<SkillsRailItem<T>> fixedItems;
   final List<SkillsRailItem<T>> items;
+  final bool sectionDividers;
   final T? selected;
   final ValueChanged<T> onSelected;
   final Widget? header;
+  final Widget? footer;
 
   @override
   State<SkillsSideRail<T>> createState() => _SkillsSideRailState<T>();
@@ -74,8 +165,7 @@ class SkillsSideRail<T> extends StatefulWidget {
 
 class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
     with SingleTickerProviderStateMixin {
-  static const _itemExtent = 44.0;
-  static const _separatorExtent = 12.0;
+  static const _sectionDividerExtent = 12.0;
   late final AnimationController _position;
   final _scrollController = ScrollController();
   final _focusNodes = <T, FocusNode>{};
@@ -85,22 +175,28 @@ class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
     () => FocusNode(debugLabel: 'Skills rail: $value'),
   );
 
+  List<SkillsRailItem<T>> get _allItems => [
+    ...widget.fixedItems,
+    ...widget.items,
+  ];
+
   int get _selectedIndex =>
-      widget.items.indexWhere((item) => item.value == widget.selected);
+      _allItems.indexWhere((item) => item.value == widget.selected);
 
   @override
   void initState() {
     super.initState();
+    final selectedIndex = _selectedIndex;
     _position = AnimationController.unbounded(
       vsync: this,
-      value: _selectedIndex.clamp(0, widget.items.length - 1).toDouble(),
+      value: selectedIndex < 0 ? 0 : selectedIndex.toDouble(),
     )..addListener(_rebuild);
   }
 
   @override
   void didUpdateWidget(covariant SkillsSideRail<T> oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final currentValues = widget.items.map((item) => item.value).toSet();
+    final currentValues = _allItems.map((item) => item.value).toSet();
     var restoreFocus = false;
     for (final value
         in _focusNodes.keys
@@ -150,13 +246,7 @@ class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
 
   @override
   Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
     final components = context.skillsComponents;
-    final contentHeight = widget.items.fold<double>(
-      0,
-      (height, item) =>
-          height + _itemExtent + (item.dividerBefore ? _separatorExtent : 0),
-    );
     return Semantics(
       container: true,
       label: widget.semanticLabel,
@@ -192,88 +282,63 @@ class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
                     Expanded(
                       child: FocusTraversalGroup(
                         policy: OrderedTraversalPolicy(),
-                        child: Scrollbar(
-                          controller: _scrollController,
-                          thumbVisibility: widget.items.length > 10,
-                          child: SingleChildScrollView(
-                            key: const ValueKey('side-rail-scroll'),
-                            controller: _scrollController,
-                            child: SizedBox(
-                              height: contentHeight,
-                              child: Stack(
-                                children: [
-                                  if (_selectedIndex >= 0)
-                                    Positioned(
-                                      key: const ValueKey('rail-indicator'),
-                                      left: 0,
-                                      right: 0,
-                                      top:
-                                          _animatedItemTop(_position.value) + 2,
-                                      height: _itemExtent - 4,
-                                      child: DecoratedBox(
-                                        decoration: BoxDecoration(
-                                          color: components.navigationSelected,
-                                          borderRadius: BorderRadius.all(
-                                            Radius.circular(999),
-                                          ),
-                                          boxShadow: [
-                                            BoxShadow(
-                                              color: Color(0x29000000),
-                                              blurRadius: 6,
-                                              offset: Offset(0, 2),
-                                            ),
-                                          ],
-                                        ),
+                        child: Column(
+                          children: [
+                            if (widget.fixedItems.isNotEmpty)
+                              SizedBox(
+                                height: _contentHeight(widget.fixedItems),
+                                child: _itemStack(
+                                  context,
+                                  items: widget.fixedItems,
+                                  globalOffset: 0,
+                                ),
+                              ),
+                            if (widget.sectionDividers &&
+                                widget.fixedItems.isNotEmpty)
+                              _sectionDivider(
+                                context,
+                                key: const ValueKey('side-rail-header-divider'),
+                              ),
+                            Expanded(
+                              child: Scrollbar(
+                                key: const ValueKey('side-rail-scrollbar'),
+                                controller: _scrollController,
+                                thumbVisibility: widget.items.length > 10,
+                                thickness: 2,
+                                radius: const Radius.circular(999),
+                                child: ScrollConfiguration(
+                                  behavior: ScrollConfiguration.of(
+                                    context,
+                                  ).copyWith(scrollbars: false),
+                                  child: SingleChildScrollView(
+                                    key: const ValueKey('side-rail-scroll'),
+                                    controller: _scrollController,
+                                    child: SizedBox(
+                                      height: _contentHeight(widget.items),
+                                      child: _itemStack(
+                                        context,
+                                        items: widget.items,
+                                        globalOffset: widget.fixedItems.length,
                                       ),
                                     ),
-                                  for (
-                                    var index = 0;
-                                    index < widget.items.length;
-                                    index++
-                                  )
-                                    if (widget.items[index].dividerBefore)
-                                      Positioned(
-                                        left: 8,
-                                        right: 8,
-                                        top: _itemTop(index) - _separatorExtent,
-                                        height: _separatorExtent,
-                                        child: Divider(
-                                          height: _separatorExtent,
-                                          color: scheme.onSurface.withValues(
-                                            alpha: .1,
-                                          ),
-                                        ),
-                                      ),
-                                  for (
-                                    var index = 0;
-                                    index < widget.items.length;
-                                    index++
-                                  )
-                                    Positioned(
-                                      left: 0,
-                                      right: 0,
-                                      top: _itemTop(index),
-                                      height: _itemExtent,
-                                      child: _RailButton<T>(
-                                        item: widget.items[index],
-                                        focusNode: _focusNode(
-                                          widget.items[index].value,
-                                        ),
-                                        selected:
-                                            widget.items[index].value ==
-                                            widget.selected,
-                                        onPressed: () => widget.onSelected(
-                                          widget.items[index].value,
-                                        ),
-                                      ),
-                                    ),
-                                ],
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
+                          ],
                         ),
                       ),
                     ),
+                    if (widget.footer != null) ...[
+                      if (widget.sectionDividers)
+                        _sectionDivider(
+                          context,
+                          key: const ValueKey('side-rail-footer-divider'),
+                        )
+                      else
+                        const SizedBox(height: 8),
+                      widget.footer!,
+                    ],
                   ],
                 ),
               ),
@@ -284,23 +349,92 @@ class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
     );
   }
 
-  double _itemTop(int index) {
+  Widget _itemStack(
+    BuildContext context, {
+    required List<SkillsRailItem<T>> items,
+    required int globalOffset,
+  }) {
+    final components = context.skillsComponents;
+    final selectedInSection =
+        _selectedIndex >= globalOffset &&
+        _selectedIndex < globalOffset + items.length;
+    final selectedItem = selectedInSection
+        ? items[_selectedIndex - globalOffset]
+        : null;
+    final compactSelection = selectedItem?.compact ?? false;
+    return Stack(
+      children: [
+        if (selectedInSection)
+          Positioned(
+            key: const ValueKey('rail-indicator'),
+            left: compactSelection ? 4 : 0,
+            right: compactSelection ? 4 : 0,
+            top: _animatedItemTop(items, _position.value - globalOffset) + 2,
+            height: _itemExtent(selectedItem!) - 4,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                color: components.navigationSelected,
+                borderRadius: const BorderRadius.all(Radius.circular(999)),
+                boxShadow: [
+                  BoxShadow(
+                    color: compactSelection
+                        ? const Color(0x1F000000)
+                        : const Color(0x29000000),
+                    blurRadius: compactSelection ? 4 : 6,
+                    offset: Offset(0, compactSelection ? 1 : 2),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        for (var index = 0; index < items.length; index++)
+          Positioned(
+            left: 0,
+            right: 0,
+            top: _itemTop(items, index),
+            height: _itemExtent(items[index]),
+            child: _RailButton<T>(
+              item: items[index],
+              focusNode: _focusNode(items[index].value),
+              selected: items[index].value == widget.selected,
+              onPressed: () => widget.onSelected(items[index].value),
+            ),
+          ),
+      ],
+    );
+  }
+
+  double _contentHeight(List<SkillsRailItem<T>> items) =>
+      items.fold<double>(0, (height, item) => height + _itemExtent(item));
+
+  Widget _sectionDivider(BuildContext context, {required Key key}) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 8),
+    child: Divider(
+      key: key,
+      height: _sectionDividerExtent,
+      color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .1),
+    ),
+  );
+
+  double _itemExtent(SkillsRailItem<T> item) =>
+      item.compact ? _compactRailItemExtent : _standardRailItemExtent;
+
+  double _itemTop(List<SkillsRailItem<T>> items, int index) {
     var top = 0.0;
     for (var current = 0; current <= index; current++) {
-      if (widget.items[current].dividerBefore) top += _separatorExtent;
-      if (current < index) top += _itemExtent;
+      if (current < index) top += _itemExtent(items[current]);
     }
     return top;
   }
 
-  double _animatedItemTop(double position) {
-    if (widget.items.length <= 1) return _itemTop(0);
-    final clamped = position.clamp(0.0, widget.items.length - 1.0);
+  double _animatedItemTop(List<SkillsRailItem<T>> items, double position) {
+    if (items.length <= 1) return _itemTop(items, 0);
+    final clamped = position.clamp(0.0, items.length - 1.0);
     final lower = clamped.floor();
     final upper = clamped.ceil();
-    if (lower == upper) return _itemTop(lower);
-    return _itemTop(lower) +
-        (_itemTop(upper) - _itemTop(lower)) * (clamped - lower);
+    if (lower == upper) return _itemTop(items, lower);
+    return _itemTop(items, lower) +
+        (_itemTop(items, upper) - _itemTop(items, lower)) * (clamped - lower);
   }
 }
 
@@ -323,6 +457,11 @@ class _RailButton<T> extends StatelessWidget {
     final foreground = selected
         ? context.skillsComponents.navigationSelectedForeground
         : scheme.onSurfaceVariant;
+    final horizontalPadding = item.compact ? 12.0 : 14.0;
+    final leadingGap = item.compact ? 8.0 : 10.0;
+    final itemExtent = item.compact
+        ? _compactRailItemExtent
+        : _standardRailItemExtent;
     return Semantics(
       selected: selected,
       button: true,
@@ -335,15 +474,11 @@ class _RailButton<T> extends StatelessWidget {
               foregroundColor: foreground,
               backgroundColor: Colors.transparent,
               shape: const StadiumBorder(),
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              minimumSize: const Size.fromHeight(44),
+              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
+              minimumSize: Size.fromHeight(itemExtent),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
               alignment: Alignment.centerLeft,
-              textStyle: const TextStyle(
-                fontFamily: SkillsTokens.sansFamily,
-                fontSize: 14,
-                fontWeight: FontWeight.w300,
-              ),
+              textStyle: context.skillsTypography.bodySecondary,
             ).copyWith(
               overlayColor: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.pressed)) {
@@ -360,7 +495,7 @@ class _RailButton<T> extends StatelessWidget {
           children: [
             if (item.leading != null) ...[
               item.leading!,
-              const SizedBox(width: 10),
+              SizedBox(width: leadingGap),
             ] else if (item.icon != null) ...[
               HugeIcon(
                 icon: item.icon!,
@@ -368,7 +503,7 @@ class _RailButton<T> extends StatelessWidget {
                 strokeWidth: 1.5,
                 color: foreground,
               ),
-              const SizedBox(width: 10),
+              SizedBox(width: leadingGap),
             ],
             Expanded(
               child: Text(

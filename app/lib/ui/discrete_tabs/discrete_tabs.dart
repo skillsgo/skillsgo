@@ -32,6 +32,11 @@ class DiscreteTabsStyle {
     required this.shadowColor,
     this.border,
     this.borderRadius = const BorderRadius.all(Radius.circular(999)),
+    this.height = 44,
+    this.horizontalPadding = 12,
+    this.iconStrokeWidth = 1.8,
+    this.selectedScale = 1.08,
+    this.selectedLabelWeight = FontWeight.w700,
   });
 
   final Color backgroundColor;
@@ -40,6 +45,11 @@ class DiscreteTabsStyle {
   final Color shadowColor;
   final BoxBorder? border;
   final BorderRadiusGeometry borderRadius;
+  final double height;
+  final double horizontalPadding;
+  final double iconStrokeWidth;
+  final double selectedScale;
+  final FontWeight selectedLabelWeight;
 }
 
 class DiscreteTabs extends StatefulWidget {
@@ -158,8 +168,10 @@ class _DiscreteTabItem extends StatelessWidget {
           child: AnimatedContainer(
             duration: duration,
             curve: reduceMotion ? Curves.linear : Curves.easeOutBack,
-            height: 44,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            height: style.height,
+            padding: EdgeInsets.symmetric(
+              horizontal: style.horizontalPadding,
+            ),
             decoration: BoxDecoration(
               color: selected
                   ? style.activeBackgroundColor
@@ -178,13 +190,13 @@ class _DiscreteTabItem extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 AnimatedScale(
-                  scale: selected ? 1.08 : 1,
+                  scale: selected ? style.selectedScale : 1,
                   duration: duration,
                   curve: reduceMotion ? Curves.linear : Curves.easeOutBack,
                   child: HugeIcon(
                     icon: tab.icon,
                     size: 20,
-                    strokeWidth: 1.8,
+                    strokeWidth: style.iconStrokeWidth,
                     color: selected ? tab.activeColor : style.inactiveIconColor,
                   ),
                 ),
@@ -197,7 +209,7 @@ class _DiscreteTabItem extends StatelessWidget {
                                   tab.label,
                                   style: TextStyle(
                                     fontSize: 14,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: style.selectedLabelWeight,
                                     letterSpacing: -.5,
                                     color: tab.activeColor,
                                   ),
@@ -228,7 +240,7 @@ class _DiscreteTabItem extends StatelessWidget {
                                       text: tab.label,
                                       style: TextStyle(
                                         fontSize: 14,
-                                        fontWeight: FontWeight.w700,
+                                        fontWeight: style.selectedLabelWeight,
                                         letterSpacing: -.5,
                                         color: tab.activeColor,
                                       ),

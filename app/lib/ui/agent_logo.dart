@@ -32,6 +32,7 @@ class AgentLogo extends StatelessWidget {
     'trae' || 'trae-cn' => 'assets/agent-logos/trae.svg',
     'warp' => 'assets/agent-logos/warp.svg',
     'windsurf' => 'assets/agent-logos/windsurf.svg',
+    'workbuddy' => 'assets/agent-logos/workbuddy.svg',
     'zed' => 'assets/agent-logos/zed.svg',
     'openclaw' => 'assets/agent-logos/openclaw.svg',
     'amp' => 'assets/agent-logos/amp.svg',

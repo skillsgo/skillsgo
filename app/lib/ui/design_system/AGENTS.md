@@ -6,7 +6,8 @@
 - `radix_palette.dart`: provides the source-pinned Radix Colors 3.0.0 Sand neutral scales plus status Container, Solid, and Foreground tones used by SkillsGo themes.
 - `skills_color_tokens.dart`: records the Primer Primitives 11.9.0 provenance and defines Primer-inspired semantic color roles, including the Folder hierarchy, as a Flutter `ThemeExtension`.
 - `skills_component_tokens.dart`: maps Primer 11.9.0 control, button, card, overlay, side-navigation, and focus state conventions into reusable SkillsGo component tokens.
-- `skills_theme.dart`: builds the complete SkillsGo `ThemeData`, deriving only accent roles from the user seed and mapping stable product tokens into Material 3 roles.
+- `skills_typography.dart`: defines the system-font-first semantic type roles used across localized UI without binding SkillsGo to a platform-specific font family.
+- `skills_theme.dart`: builds the complete SkillsGo `ThemeData`, deriving accent roles from the user seed, resolving near-white Light seeds to an inverse warm-neutral primary action, and mapping stable product color, component, and typography tokens into Material 3 roles.
 
 ## Architectural Boundary
 

@@ -1,22 +1,14 @@
 /*
- * [INPUT]: Depends on the app_shell library for Flutter UI primitives, HugeIcons, appearance callbacks, gateway settings operations, localization, and shared components.
- * [OUTPUT]: Provides the Settings destination, nested routes, appearance controls, Agent inspection, Hub origin, storage, risk policy, and About views.
- * [POS]: Serves as the complete Settings feature view module split from the desktop shell while sharing its private library contracts.
+ * [INPUT]: Depends on the app_shell library for Flutter UI primitives, HugeIcons, appearance callbacks, gateway settings operations, localization, shared components, and secondary-body entrance motion.
+ * [OUTPUT]: Provides a focused, flat Settings destination with short depth entrances between secondary routes, personalization, reminder preferences, Agent detection and recovery, plus infrequent Hub, risk, and Onboarding re-entry controls.
+ * [POS]: Serves as the user-facing Settings feature, keeping diagnostics conditional and developer inspection out of ordinary navigation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of 'app_shell.dart';
 
-enum _SettingsRoute {
-  general,
-  agents,
-  hub,
-  installationPolicy,
-  storage,
-  colorScheme,
-  about,
-}
+enum _SettingsRoute { general, reminders, agents, advanced }
 
-class SettingsScreen extends StatefulWidget {
+class SettingsScreen extends ConsumerStatefulWidget {
   const SettingsScreen({
     super.key,
     required this.gateway,
@@ -24,21 +16,27 @@ class SettingsScreen extends StatefulWidget {
     required this.onFolderThemeChanged,
     required this.themeMode,
     required this.onThemeModeChanged,
+    required this.language,
+    required this.onLanguageChanged,
     required this.wallpaper,
     required this.onWallpaperChanged,
+    required this.onRestartOnboarding,
   });
   final SkillsGateway gateway;
   final String folderTheme;
   final ValueChanged<Color> onFolderThemeChanged;
   final AppThemeMode themeMode;
   final ValueChanged<AppThemeMode> onThemeModeChanged;
+  final AppLanguage language;
+  final ValueChanged<AppLanguage> onLanguageChanged;
   final AppWallpaper wallpaper;
   final ValueChanged<AppWallpaper> onWallpaperChanged;
+  final Future<void> Function() onRestartOnboarding;
   @override
-  State<SettingsScreen> createState() => _SettingsScreenState();
+  ConsumerState<SettingsScreen> createState() => _SettingsScreenState();
 }
 
-class _SettingsScreenState extends State<SettingsScreen>
+class _SettingsScreenState extends ConsumerState<SettingsScreen>
     with SingleTickerProviderStateMixin {
   final controller = TextEditingController();
   final hubController = TextEditingController();
@@ -51,14 +49,14 @@ class _SettingsScreenState extends State<SettingsScreen>
   CliStatus? status;
   HubStatus? hubStatus;
   PersonalRiskPolicy? riskPolicy;
-  StorageStatus? storageStatus;
-  String? appVersion;
+  ReminderSettings reminderSettings = const ReminderSettings();
   bool detecting = true;
   bool loadingSettings = true;
   bool testingHub = false;
+  bool restartingOnboarding = false;
   String? notice;
-  AgentCatalog? agentCatalog;
-  Object? agentInspectionError;
+  AgentCatalog? get agentCatalog => ref.watch(agentCatalogProvider).catalog;
+  Object? get agentInspectionError => ref.watch(agentCatalogProvider).error;
 
   @override
   void initState() {
@@ -119,55 +117,51 @@ class _SettingsScreenState extends State<SettingsScreen>
     final values = await Future.wait([
       widget.gateway.loadHubOrigin(),
       widget.gateway.loadRiskPolicy(),
-      widget.gateway.loadAppVersion(),
+      widget.gateway.loadReminderSettings(),
     ]);
     if (!mounted) return;
     hubController.text = values[0] as String;
     riskPolicy = values[1] as PersonalRiskPolicy;
-    appVersion = values[2] as String;
+    reminderSettings = values[2] as ReminderSettings;
     await detect();
     if (!mounted) return;
-    final inspectedStorage = await widget.gateway.inspectStorage();
-    if (!mounted) return;
-    setState(() {
-      storageStatus = inspectedStorage;
-      loadingSettings = false;
-    });
+    setState(() => loadingSettings = false);
   }
 
-  Future<void> detect() async {
+  Future<void> detect({bool refreshCatalog = false}) async {
     if (!mounted) return;
     setState(() => detecting = true);
     final detected = await widget.gateway.detectCli(
       customPath: controller.text,
     );
-    AgentCatalog? inspected;
-    Object? inspectionError;
     if (detected.isReady) {
       try {
-        inspected = await widget.gateway.inspectAgents();
-      } on Object catch (caught) {
-        inspectionError = caught;
+        final controller = ref.read(agentCatalogProvider.notifier);
+        if (refreshCatalog) {
+          await controller.refresh();
+        } else {
+          await controller.ensureLoaded();
+        }
+      } on Object {
+        // Shared state preserves the last valid catalog and exposes the error.
       }
     }
     if (!mounted) return;
     setState(() {
       status = detected;
-      agentCatalog = inspected;
-      agentInspectionError = inspectionError;
       detecting = false;
     });
   }
 
   Future<void> save() async {
     await widget.gateway.saveCustomCliPath(controller.text);
-    await detect();
+    await detect(refreshCatalog: true);
   }
 
   Future<void> clear() async {
     controller.clear();
     await widget.gateway.saveCustomCliPath(null);
-    await detect();
+    await detect(refreshCatalog: true);
   }
 
   Future<HubStatus?> testHub() async {
@@ -238,9 +232,16 @@ class _SettingsScreenState extends State<SettingsScreen>
     }
   }
 
-  Future<void> refreshStorage() async {
-    final inspected = await widget.gateway.inspectStorage();
-    if (mounted) setState(() => storageStatus = inspected);
+  Future<void> _setUpdateReminder(bool value) async {
+    final updated = reminderSettings.copyWith(updateAvailable: value);
+    await widget.gateway.saveReminderSettings(updated);
+    if (mounted) setState(() => reminderSettings = updated);
+  }
+
+  Future<void> _setSecurityReminder(bool value) async {
+    final updated = reminderSettings.copyWith(securityAdvisory: value);
+    await widget.gateway.saveReminderSettings(updated);
+    if (mounted) setState(() => reminderSettings = updated);
   }
 
   void _selectRoute(_SettingsRoute route) {
@@ -263,6 +264,7 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   @override
   Widget build(BuildContext context) => SkillsDestinationLayout(
+    bodyTransitionKey: selectedRoute,
     rail: SkillsSideRail<_SettingsRoute>(
       semanticLabel: context.l10n.settingsNavigation,
       selected: selectedRoute,
@@ -274,34 +276,19 @@ class _SettingsScreenState extends State<SettingsScreen>
           icon: HugeIcons.strokeRoundedCustomize,
         ),
         SkillsRailItem(
+          value: _SettingsRoute.reminders,
+          label: context.l10n.remindersSettings,
+          icon: HugeIcons.strokeRoundedNotification02,
+        ),
+        SkillsRailItem(
           value: _SettingsRoute.agents,
           label: context.l10n.agents,
           icon: HugeIcons.strokeRoundedRobot01,
         ),
         SkillsRailItem(
-          value: _SettingsRoute.hub,
-          label: context.l10n.hub,
-          icon: HugeIcons.strokeRoundedPackageProcess,
-        ),
-        SkillsRailItem(
-          value: _SettingsRoute.installationPolicy,
-          label: context.l10n.installationPolicy,
-          icon: HugeIcons.strokeRoundedShield01,
-        ),
-        SkillsRailItem(
-          value: _SettingsRoute.storage,
-          label: context.l10n.storage,
-          icon: HugeIcons.strokeRoundedDatabase02,
-        ),
-        SkillsRailItem(
-          value: _SettingsRoute.colorScheme,
-          label: context.l10n.colorScheme,
-          icon: HugeIcons.strokeRoundedColorPicker,
-        ),
-        SkillsRailItem(
-          value: _SettingsRoute.about,
-          label: context.l10n.about,
-          icon: HugeIcons.strokeRoundedInformationCircle,
+          value: _SettingsRoute.advanced,
+          label: context.l10n.advancedSettings,
+          icon: HugeIcons.strokeRoundedSettings02,
         ),
       ],
     ),
@@ -312,16 +299,8 @@ class _SettingsScreenState extends State<SettingsScreen>
 
   Widget _settingsPage() => ListView(
     controller: scrollController,
+    padding: const EdgeInsets.only(top: 12),
     children: [
-      Text(
-        _routeTitle(),
-        style: const TextStyle(
-          fontFamily: SkillsTokens.serifFamily,
-          fontSize: 36,
-          fontWeight: FontWeight.w200,
-        ),
-      ),
-      const SizedBox(height: 22),
       if (notice != null) ...[
         Text(
           notice!,
@@ -331,34 +310,160 @@ class _SettingsScreenState extends State<SettingsScreen>
       ],
       switch (selectedRoute) {
         _SettingsRoute.general => _generalSettings(),
+        _SettingsRoute.reminders => _reminderSettings(),
         _SettingsRoute.agents => _agentSettings(),
-        _SettingsRoute.hub => _hubSettings(),
-        _SettingsRoute.installationPolicy => _policySettings(),
-        _SettingsRoute.storage => _storageSettings(),
-        _SettingsRoute.colorScheme => ColorSchemeInspector(
-          seed: _AppShellState._folderThemeColor(widget.folderTheme),
-        ),
-        _SettingsRoute.about => _aboutSettings(),
+        _SettingsRoute.advanced => _advancedSettings(),
       },
     ],
   );
 
-  String _routeTitle() => switch (selectedRoute) {
-    _SettingsRoute.general => context.l10n.general,
-    _SettingsRoute.agents => context.l10n.agents,
-    _SettingsRoute.hub => context.l10n.hub,
-    _SettingsRoute.installationPolicy => context.l10n.installationPolicy,
-    _SettingsRoute.storage => context.l10n.storage,
-    _SettingsRoute.colorScheme => context.l10n.colorScheme,
-    _SettingsRoute.about => context.l10n.about,
-  };
+  Widget _reminderSettings() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      SkillsSwitch(
+        key: const Key('update-reminder'),
+        value: reminderSettings.updateAvailable,
+        onChanged: _setUpdateReminder,
+        label: _inlineReminderLabel(
+          key: const Key('update-reminder-label'),
+          title: context.l10n.updateReminderTitle,
+          description: context.l10n.updateReminderDescription,
+        ),
+      ),
+      const SizedBox(height: 18),
+      SkillsSeparator.horizontal(
+        color: Theme.of(context).colorScheme.outlineVariant,
+      ),
+      const SizedBox(height: 18),
+      SkillsSwitch(
+        key: const Key('security-reminder'),
+        value: reminderSettings.securityAdvisory,
+        onChanged: _setSecurityReminder,
+        label: _inlineReminderLabel(
+          key: const Key('security-reminder-label'),
+          title: context.l10n.securityReminderTitle,
+          description: context.l10n.securityReminderDescription,
+        ),
+      ),
+    ],
+  );
+
+  Widget _inlineReminderLabel({
+    required Key key,
+    required String title,
+    required String description,
+  }) => Text.rich(
+    key: key,
+    TextSpan(
+      children: [
+        TextSpan(
+          text: title,
+          style: context.skillsTypography.body.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        TextSpan(
+          text: '  $description',
+          style: context.skillsTypography.bodySecondary,
+        ),
+      ],
+    ),
+    maxLines: 1,
+    overflow: TextOverflow.ellipsis,
+  );
+
+  Widget _settingsHeading(String title, String description) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Text(
+        title,
+        style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 8),
+      Text(
+        description,
+        style: TextStyle(
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+          height: 1.45,
+        ),
+      ),
+    ],
+  );
+
+  Widget _advancedSettings() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _hubSettings(),
+      const SizedBox(height: 28),
+      SkillsSeparator.horizontal(
+        color: Theme.of(context).colorScheme.outlineVariant,
+      ),
+      const SizedBox(height: 24),
+      _policySettings(),
+      const SizedBox(height: 28),
+      SkillsSeparator.horizontal(
+        color: Theme.of(context).colorScheme.outlineVariant,
+      ),
+      const SizedBox(height: 24),
+      _onboardingSettings(),
+    ],
+  );
+
+  Widget _onboardingSettings() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _settingsHeading(
+        context.l10n.restartOnboardingTitle,
+        context.l10n.restartOnboardingDescription,
+      ),
+      const SizedBox(height: 18),
+      SkillsButton.outline(
+        key: const Key('restart-onboarding'),
+        enabled: !restartingOnboarding,
+        onPressed: () => unawaited(_restartOnboarding()),
+        child: Text(
+          restartingOnboarding
+              ? context.l10n.loading
+              : context.l10n.restartOnboardingAction,
+        ),
+      ),
+    ],
+  );
+
+  Future<void> _restartOnboarding() async {
+    setState(() => restartingOnboarding = true);
+    try {
+      await widget.onRestartOnboarding();
+    } on Object {
+      if (!mounted) return;
+      setState(() {
+        restartingOnboarding = false;
+        notice = context.l10n.restartOnboardingFailed;
+      });
+    }
+  }
 
   Widget _generalSettings() => Column(
     crossAxisAlignment: CrossAxisAlignment.start,
     children: [
       Text(
+        context.l10n.language,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+      ),
+      const SizedBox(height: 12),
+      _LanguageSingleSelect(
+        key: const Key('language-picker'),
+        selected: widget.language,
+        onChanged: widget.onLanguageChanged,
+      ),
+      const SizedBox(height: 24),
+      SkillsSeparator.horizontal(
+        color: Theme.of(context).colorScheme.outlineVariant,
+      ),
+      const SizedBox(height: 20),
+      Text(
         context.l10n.personalizationTheme,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
       const SizedBox(height: 18),
       _themeControls(),
@@ -369,7 +474,7 @@ class _SettingsScreenState extends State<SettingsScreen>
       const SizedBox(height: 20),
       Text(
         context.l10n.wallpaper,
-        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
       const SizedBox(height: 12),
       _wallpaperPicker(),
@@ -392,7 +497,16 @@ class _SettingsScreenState extends State<SettingsScreen>
             presets: localizedBrandThemePresets(context.l10n),
             style: BloomColorPickerStyle(
               alignment: BloomColorPickerAlignment.circleLeft,
+              closedRadius: 18,
+              closedBorderWidth: 2,
               hapticFeedback: false,
+              iconStrokeWidth: 1.5,
+              textStyle: TextStyle(
+                color: Theme.of(context).colorScheme.onSurface,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+                letterSpacing: .3,
+              ),
               pillBackgroundColor: Theme.of(
                 context,
               ).colorScheme.surfaceContainerHighest,
@@ -443,7 +557,7 @@ class _SettingsScreenState extends State<SettingsScreen>
     label,
     style: TextStyle(
       fontSize: 13,
-      fontWeight: FontWeight.w500,
+      fontWeight: FontWeight.w400,
       color: Theme.of(context).colorScheme.onSurfaceVariant,
     ),
   );
@@ -516,11 +630,8 @@ class _SettingsScreenState extends State<SettingsScreen>
                                   maxLines: 1,
                                   textAlign: TextAlign.right,
                                   overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    color: Color(0xFFFFFFFF),
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w300,
-                                  ),
+                                  style: context.skillsTypography.caption
+                                      .copyWith(color: Color(0xFFFFFFFF)),
                                 ),
                               ),
                             ],
@@ -541,7 +652,7 @@ class _SettingsScreenState extends State<SettingsScreen>
                   child: DecoratedBox(
                     decoration: BoxDecoration(
                       borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: scheme.primary, width: 2),
+                      border: Border.all(color: scheme.primary, width: 1.5),
                     ),
                   ),
                 ),
@@ -592,6 +703,11 @@ class _SettingsScreenState extends State<SettingsScreen>
         ),
       ],
       style: DiscreteTabsStyle(
+        height: 36,
+        horizontalPadding: 8,
+        iconStrokeWidth: 1.5,
+        selectedLabelWeight: FontWeight.w500,
+        selectedScale: 1,
         backgroundColor: scheme.surfaceContainerHigh,
         activeBackgroundColor: scheme.primaryContainer,
         inactiveIconColor: scheme.onSurfaceVariant,
@@ -601,37 +717,41 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Widget _agentSettings() {
-    final cliCard = SkillsCard(
-      width: double.infinity,
-      title: Row(
-        children: [
-          Expanded(child: Text(context.l10n.agentsSettingsTitle)),
-          if (detecting)
-            const SizedBox.square(
-              dimension: 18,
-              child: CircularProgressIndicator(strokeWidth: 2),
-            )
-          else
-            StatusChip(
-              label: status?.isReady == true
-                  ? context.l10n.ready
-                  : _cliAvailabilityLabel(context, status?.availability),
-              color: status?.isReady == true
-                  ? context.skillsComponents.statusSuccess
-                  : context.skillsComponents.statusAttention,
-            ),
-        ],
-      ),
-      description: Text(
-        status?.isReady == true
-            ? '${status!.path} · v${status!.version}'
-            : status == null
-            ? context.l10n.detecting
-            : _cliStatusMessage(context, status!),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 16),
-        child: Column(
+    final cliSection = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Row(
+          children: [
+            Expanded(child: Text(context.l10n.agentsSettingsTitle)),
+            if (detecting)
+              const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
+            else
+              StatusChip(
+                label: status?.isReady == true
+                    ? context.l10n.ready
+                    : _cliAvailabilityLabel(context, status?.availability),
+                color: status?.isReady == true
+                    ? context.skillsComponents.statusSuccess
+                    : context.skillsComponents.statusAttention,
+              ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        Text(
+          status?.isReady == true
+              ? '${status!.path} · v${status!.version}'
+              : status == null
+              ? context.l10n.detecting
+              : _cliStatusMessage(context, status!),
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
+        ),
+        const SizedBox(height: 16),
+        Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (!kReleaseMode) ...[
@@ -667,17 +787,17 @@ class _SettingsScreenState extends State<SettingsScreen>
             ),
           ],
         ),
-      ),
+      ],
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        cliCard,
+        cliSection,
         if (agentInspectionError != null) ...[
           const SizedBox(height: 14),
-          SkillsCard(
-            width: double.infinity,
-            description: Text(context.l10n.agentInspectionFailed),
+          Text(
+            context.l10n.agentInspectionFailed,
+            style: TextStyle(color: context.skillsComponents.statusAttention),
           ),
         ],
         if (agentCatalog != null) ...[
@@ -689,197 +809,332 @@ class _SettingsScreenState extends State<SettingsScreen>
   }
 
   Widget _agentCatalogCard(AgentCatalog catalog) {
-    final agents = [...catalog.agents]
-      ..sort((left, right) {
-        if (left.installed != right.installed) return left.installed ? -1 : 1;
-        return left.displayName.compareTo(right.displayName);
-      });
-    return SkillsCard(
-      width: double.infinity,
-      title: Text(
-        context.l10n.agentCatalogSummary(
-          catalog.installed.length,
-          catalog.agents.length,
+    final installed = catalog.agents.where((agent) => agent.installed).toList()
+      ..sort((left, right) => left.displayName.compareTo(right.displayName));
+    final notInstalled =
+        catalog.agents.where((agent) => !agent.installed).toList()..sort(
+          (left, right) => left.displayName.compareTo(right.displayName),
+        );
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        const SizedBox(height: 12),
+        SkillsSeparator.horizontal(
+          color: Theme.of(context).colorScheme.outlineVariant,
         ),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 12),
-        child: Column(
-          children: [
-            for (var index = 0; index < agents.length; index++) ...[
-              _AgentStatusRow(status: agents[index]),
-              if (index != agents.length - 1)
-                SkillsSeparator.horizontal(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                ),
-            ],
-          ],
+        const SizedBox(height: 22),
+        _agentGroup(
+          key: const Key('installed-agents-group'),
+          title: context.l10n.installedAgentsTitle(installed.length),
+          agents: installed,
         ),
-      ),
+        const SizedBox(height: 28),
+        SkillsSeparator.horizontal(
+          color: Theme.of(context).colorScheme.outlineVariant,
+        ),
+        const SizedBox(height: 22),
+        _agentGroup(
+          key: const Key('not-installed-agents-group'),
+          title: context.l10n.notInstalledAgentsTitle(notInstalled.length),
+          description: context.l10n.notInstalledAgentsDescription,
+          agents: notInstalled,
+        ),
+      ],
     );
   }
 
-  Widget _hubSettings() => SkillsCard(
-    width: double.infinity,
-    title: Text(context.l10n.hubSettingsTitle),
-    description: Text(context.l10n.hubSettingsDescription),
-    child: Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SkillsInput(
-            key: const Key('hub-origin'),
-            controller: hubController,
-            placeholder: const Text('https://hub.example.com'),
-          ),
-          const SizedBox(height: 12),
-          Wrap(
-            spacing: 10,
-            runSpacing: 10,
-            children: [
-              SkillsButton(
-                enabled: !testingHub,
-                onPressed: saveHub,
-                child: Text(context.l10n.saveOrigin),
-              ),
-              SkillsButton.outline(
-                enabled: !testingHub,
-                onPressed: testHub,
-                child: Text(context.l10n.testConnection),
-              ),
-              SkillsButton.outline(
-                enabled: !testingHub,
-                onPressed: resetHub,
-                child: Text(context.l10n.resetDefault),
-              ),
-            ],
-          ),
-          if (hubStatus != null) ...[
-            const SizedBox(height: 14),
-            Text(
-              hubStatus!.isReady
-                  ? context.l10n.connectionReady
-                  : '${context.l10n.connectionFailed}: ${_hubStatusMessage(context, hubStatus!)}',
-              style: TextStyle(
-                color: hubStatus!.isReady
-                    ? context.skillsComponents.statusSuccess
-                    : context.skillsComponents.statusAttention,
-              ),
-            ),
-          ],
-        ],
+  Widget _agentGroup({
+    required Key key,
+    required String title,
+    String? description,
+    required List<AgentStatus> agents,
+  }) => Column(
+    key: key,
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      Text(
+        title,
+        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
       ),
-    ),
-  );
-
-  Widget _policySettings() => SkillsCard(
-    width: double.infinity,
-    title: Text(context.l10n.riskPolicyTitle),
-    child: Padding(
-      padding: const EdgeInsets.only(top: 12),
-      child: Column(
-        children: [
-          SkillsSwitch(
-            value: true,
-            enabled: false,
-            label: Text(context.l10n.confirmHighRisk),
-            sublabel: Text(context.l10n.confirmHighRiskDescription),
+      if (description != null) ...[
+        const SizedBox(height: 6),
+        Text(
+          description,
+          style: TextStyle(
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+            height: 1.4,
           ),
-          const SizedBox(height: 14),
-          SkillsSwitch(
-            key: const Key('critical-risk-override'),
-            value: riskPolicy?.allowCriticalOverride ?? false,
-            onChanged: setCriticalOverride,
-            label: Text(context.l10n.allowCriticalOverride),
-            sublabel: Text(context.l10n.allowCriticalOverrideDescription),
-          ),
-        ],
-      ),
-    ),
-  );
-
-  Widget _storageSettings() {
-    final storage = storageStatus!;
-    final label = switch (storage.state) {
-      HealthState.ready => context.l10n.storageHealthy,
-      HealthState.notInitialized => context.l10n.storageNotInitialized,
-      _ => context.l10n.storageUnavailable,
-    };
-    return SkillsCard(
-      width: double.infinity,
-      title: Text(context.l10n.storageSettingsTitle),
-      description: Text(
-        storage.path.isEmpty
-            ? context.l10n.storagePathUnavailable
-            : storage.path,
-      ),
-      footer: SkillsButton.outline(
-        onPressed: refreshStorage,
-        child: Text(context.l10n.refresh),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.only(top: 16),
-        child: Row(
-          children: [
-            StatusChip(
-              label: label,
-              color: storage.state == HealthState.ready
-                  ? context.skillsComponents.statusSuccess
-                  : context.skillsComponents.statusAttention,
-            ),
-            const SizedBox(width: 12),
-            Expanded(child: Text(_storageStatusMessage(context, storage))),
-          ],
         ),
-      ),
-    );
-  }
+      ],
+      const SizedBox(height: 10),
+      for (var index = 0; index < agents.length; index++) ...[
+        _AgentStatusRow(status: agents[index]),
+        if (index != agents.length - 1)
+          SkillsSeparator.horizontal(
+            color: Theme.of(context).colorScheme.outlineVariant,
+          ),
+      ],
+    ],
+  );
 
-  Widget _aboutSettings() => SkillsCard(
-    width: double.infinity,
-    title: Text(context.l10n.aboutSettingsTitle),
-    child: Padding(
-      padding: const EdgeInsets.only(top: 16),
-      child: Column(
+  Widget _hubSettings() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: [
+      _settingsHeading(
+        context.l10n.hubSettingsTitle,
+        context.l10n.hubSettingsDescription,
+      ),
+      const SizedBox(height: 18),
+      SkillsInput(
+        key: const Key('hub-origin'),
+        controller: hubController,
+        placeholder: const Text('https://hub.example.com'),
+      ),
+      const SizedBox(height: 12),
+      Wrap(
+        spacing: 10,
+        runSpacing: 10,
         children: [
-          _versionRow(context.l10n.appVersion, appVersion ?? '—'),
-          const SizedBox(height: 12),
-          _versionRow(context.l10n.cliVersion, status?.version ?? '—'),
-          const SizedBox(height: 12),
-          StatusChip(
-            label: status == null
-                ? context.l10n.detecting
-                : status!.isReady
-                ? context.l10n.compatible
-                : _cliAvailabilityLabel(context, status!.availability),
-            color: status?.isReady == true
+          SkillsButton(
+            enabled: !testingHub,
+            onPressed: saveHub,
+            child: Text(context.l10n.saveOrigin),
+          ),
+          SkillsButton.outline(
+            enabled: !testingHub,
+            onPressed: testHub,
+            child: Text(context.l10n.testConnection),
+          ),
+          SkillsButton.outline(
+            enabled: !testingHub,
+            onPressed: resetHub,
+            child: Text(context.l10n.resetDefault),
+          ),
+        ],
+      ),
+      if (hubStatus != null) ...[
+        const SizedBox(height: 14),
+        Text(
+          hubStatus!.isReady
+              ? context.l10n.connectionReady
+              : '${context.l10n.connectionFailed}: ${_hubStatusMessage(context, hubStatus!)}',
+          style: TextStyle(
+            color: hubStatus!.isReady
                 ? context.skillsComponents.statusSuccess
                 : context.skillsComponents.statusAttention,
           ),
-          if (status != null && !status!.isReady) ...[
-            const SizedBox(height: 12),
-            Text(
-              _cliStatusMessage(context, status!),
-              style: TextStyle(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-          ],
-        ],
-      ),
-    ),
+        ),
+      ],
+    ],
   );
 
-  Widget _versionRow(String label, String version) => Row(
+  Widget _policySettings() => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
-      Expanded(child: Text(label)),
-      SelectableText(
-        version,
-        style: const TextStyle(fontFamily: SkillsTokens.monoFamily),
+      _settingsHeading(
+        context.l10n.riskPolicyTitle,
+        context.l10n.riskPolicyDescription,
+      ),
+      const SizedBox(height: 18),
+      SkillsSwitch(
+        value: true,
+        enabled: false,
+        label: Text(context.l10n.confirmHighRisk),
+        sublabel: Text(context.l10n.confirmHighRiskDescription),
+      ),
+      const SizedBox(height: 14),
+      SkillsSwitch(
+        key: const Key('critical-risk-override'),
+        value: riskPolicy?.allowCriticalOverride ?? false,
+        onChanged: setCriticalOverride,
+        label: Text(context.l10n.allowCriticalOverride),
+        sublabel: Text(context.l10n.allowCriticalOverrideDescription),
       ),
     ],
   );
+}
+
+class _LanguageSingleSelect extends StatefulWidget {
+  const _LanguageSingleSelect({
+    super.key,
+    required this.selected,
+    required this.onChanged,
+  });
+
+  final AppLanguage selected;
+  final ValueChanged<AppLanguage> onChanged;
+
+  @override
+  State<_LanguageSingleSelect> createState() => _LanguageSingleSelectState();
+}
+
+class _LanguageSingleSelectState extends State<_LanguageSingleSelect> {
+  final controller = MultiSelectController<AppLanguage>();
+  bool syncing = false;
+
+  String _label(AppLanguage language) => language == AppLanguage.system
+      ? context.l10n.followSystem
+      : language.nativeName!;
+
+  List<DropdownItem<AppLanguage>> get items => [
+    for (final language in AppLanguage.values)
+      DropdownItem(
+        label: _label(language),
+        value: language,
+        selected: language == widget.selected,
+      ),
+  ];
+
+  @override
+  void didUpdateWidget(covariant _LanguageSingleSelect oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.selected != widget.selected) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || controller.isDisposed) return;
+        syncing = true;
+        controller.setItems(items);
+        syncing = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final colors = context.skillsColors;
+    return Semantics(
+      label: '${context.l10n.language}: ${_label(widget.selected)}',
+      button: true,
+      excludeSemantics: true,
+      child: SizedBox(
+        width: 184,
+        height: 36,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            MultiDropdown<AppLanguage>(
+              controller: controller,
+              items: items,
+              singleSelect: true,
+              fieldDecoration: FieldDecoration(
+                hintText: '',
+                showClearIcon: false,
+                animateSuffixIcon: false,
+                padding: EdgeInsets.zero,
+                backgroundColor: Colors.transparent,
+                border: InputBorder.none,
+                focusedBorder: InputBorder.none,
+                suffixIcon: null,
+              ),
+              dropdownDecoration: DropdownDecoration(
+                backgroundColor: colors.surfaceMuted,
+                elevation: 5,
+                maxHeight: 240,
+                marginTop: 6,
+                borderRadius: BorderRadius.circular(14),
+                listPadding: const EdgeInsets.symmetric(vertical: 6),
+                animationDuration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 180),
+                animationCurve: Curves.easeOutCubic,
+              ),
+              itemBuilder: (item, index, onTap) => Semantics(
+                label: item.label,
+                button: true,
+                selected: item.selected,
+                child: ExcludeSemantics(
+                  child: InkWell(
+                    onTap: onTap,
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 9,
+                      ),
+                      child: Row(
+                        children: [
+                          LanguageIdentityIcon(language: item.value, size: 20),
+                          const SizedBox(width: 10),
+                          Expanded(child: Text(item.label)),
+                          AnimatedOpacity(
+                            opacity: item.selected ? 1 : 0,
+                            duration: MediaQuery.disableAnimationsOf(context)
+                                ? Duration.zero
+                                : const Duration(milliseconds: 120),
+                            child: const HugeIcon(
+                              icon: HugeIcons.strokeRoundedTick01,
+                              size: 18,
+                              strokeWidth: 1.8,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              selectedItemBuilder: (_) => const SizedBox.shrink(),
+              onSelectionChange: (values) {
+                if (syncing || values.isEmpty) return;
+                widget.onChanged(values.first);
+              },
+            ),
+            IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: colors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: colors.borderMuted),
+                ),
+              ),
+            ),
+            Positioned.fill(
+              right: 24,
+              child: IgnorePointer(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: Row(
+                    children: [
+                      LanguageIdentityIcon(language: widget.selected, size: 20),
+                      const SizedBox(width: 7),
+                      Expanded(
+                        child: Text(
+                          _label(widget.selected),
+                          overflow: TextOverflow.ellipsis,
+                          maxLines: 1,
+                          style: const TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            PositionedDirectional(
+              end: 10,
+              top: 11.5,
+              child: IgnorePointer(
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedArrowDown01,
+                  size: 13,
+                  strokeWidth: 1.4,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 class _AgentStatusRow extends StatelessWidget {
@@ -889,69 +1144,46 @@ class _AgentStatusRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(vertical: 12),
-    child: Column(
+    padding: const EdgeInsets.symmetric(vertical: 14),
+    child: Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: Text(
+        Padding(
+          padding: const EdgeInsets.only(top: 2),
+          child: AgentLogo(
+            agentId: status.id,
+            displayName: status.displayName,
+            size: 30,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
                 status.displayName,
-                style: const TextStyle(fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
               ),
-            ),
-            StatusChip(
-              label: status.installed
-                  ? context.l10n.agentInstalled
-                  : context.l10n.agentSupported,
-              color: status.installed
-                  ? context.skillsComponents.statusSuccess
-                  : Theme.of(
+              if (status.discoveryRoots.isNotEmpty) ...[
+                const SizedBox(height: 5),
+                SelectableText(
+                  context.l10n.agentDiscoveryRoots(
+                    status.discoveryRoots.join('  '),
+                  ),
+                  style: context.skillsTypography.caption.copyWith(
+                    color: Theme.of(
                       context,
                     ).colorScheme.onSurfaceVariant.withValues(alpha: .72),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        Wrap(
-          spacing: 6,
-          runSpacing: 6,
-          children: status.supportedScopes
-              .map(
-                (scope) => StatusChip(
-                  label: switch (scope) {
-                    InstallationScope.user => context.l10n.userScope,
-                    InstallationScope.project => context.l10n.projectScope,
-                  },
-                  color: context.skillsComponents.statusAccent,
+                  ),
                 ),
-              )
-              .toList(growable: false),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          status.installed
-              ? context.l10n.agentDetectedDescription
-              : context.l10n.agentSupportedDescription,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-            height: 1.4,
+              ],
+            ],
           ),
         ),
-        if (status.userTarget != null) ...[
-          const SizedBox(height: 5),
-          SelectableText(
-            context.l10n.agentUserTarget(status.userTarget!.path),
-            style: TextStyle(
-              fontFamily: SkillsTokens.monoFamily,
-              fontSize: 11,
-              color: Theme.of(
-                context,
-              ).colorScheme.onSurfaceVariant.withValues(alpha: .72),
-            ),
-          ),
-        ],
       ],
     ),
   );

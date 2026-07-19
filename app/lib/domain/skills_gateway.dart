@@ -1,10 +1,14 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery metadata including Repository source summaries and Hub image URLs, auditable artifacts, unified Hub/Local/External Library entries, managed targets, derived Agent visibility, explicit Installation/Update/Target Management/External Adoption and Batch Takeover flows, Local export, project references, Agent inspection, CLI machine failures, Hub and typed appearance/wallpaper settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for Mandatory Onboarding, discovery metadata including Repository source summaries and Hub image URLs, auditable artifacts, unified Hub/Local/External Library entries, managed targets, derived Agent visibility, batch Added Project selection with asynchronously resolved identities, explicit Installation/Update/Remove/Repair and scope-explicit Batch Takeover flows, Local export, Agent inspection, CLI machine failures, Hub and typed appearance/language/wallpaper/reminder settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'dart:async';
+
+import 'presentation_language.dart';
+
+export 'presentation_language.dart';
 
 enum CliAvailability { ready, missing, incompatible }
 
@@ -53,11 +57,9 @@ enum UpdatePlanAction { update, current, pinned, failed }
 
 enum UpdateTargetOutcome { succeeded, skipped, failed }
 
-enum TargetManagementAction { remove, repair, stopManaging }
+enum TargetManagementAction { remove, repair }
 
 enum TargetManagementOutcome { succeeded, failed }
-
-enum ExternalAdoptionAction { associateHub, importLocal }
 
 enum InstallationHealth {
   healthy,
@@ -74,6 +76,8 @@ enum InstallationHealth {
 enum LibraryProvenance { hub, local, external }
 
 enum ProjectAccessState { accessible, missing, permissionDenied, inaccessible }
+
+enum OnboardingStep { welcome, projects }
 
 enum SkillMetricKind { allTimeInstalls, installs24h, hotVelocity }
 
@@ -114,6 +118,22 @@ class PersonalRiskPolicy {
 
   final bool confirmHighRisk;
   final bool allowCriticalOverride;
+}
+
+class ReminderSettings {
+  const ReminderSettings({
+    this.updateAvailable = true,
+    this.securityAdvisory = true,
+  });
+
+  final bool updateAvailable;
+  final bool securityAdvisory;
+
+  ReminderSettings copyWith({bool? updateAvailable, bool? securityAdvisory}) =>
+      ReminderSettings(
+        updateAvailable: updateAvailable ?? this.updateAvailable,
+        securityAdvisory: securityAdvisory ?? this.securityAdvisory,
+      );
 }
 
 class StorageStatus {
@@ -595,12 +615,10 @@ class TargetManagementPlanSummary {
   const TargetManagementPlanSummary({
     required this.removable,
     required this.repairable,
-    required this.stoppable,
   });
 
   final int removable;
   final int repairable;
-  final int stoppable;
 }
 
 class TargetManagementPlan {
@@ -629,9 +647,6 @@ class TargetManagementPlan {
             .length,
         repairable: selected
             .where((item) => item.action == TargetManagementAction.repair)
-            .length,
-        stoppable: selected
-            .where((item) => item.action == TargetManagementAction.stopManaging)
             .length,
       ),
     );
@@ -700,100 +715,6 @@ class TargetManagementProgress {
   final TargetManagementResult? result;
 }
 
-class HubContentMatch {
-  const HubContentMatch({
-    required this.skillId,
-    required this.name,
-    required this.source,
-    required this.immutableVersion,
-    required this.commitSHA,
-    required this.treeSHA,
-    required this.contentDigest,
-    this.skillPath = '',
-  });
-
-  final String skillId;
-  final String name;
-  final String source;
-  final String skillPath;
-  final String immutableVersion;
-  final String commitSHA;
-  final String treeSHA;
-  final String contentDigest;
-}
-
-class ExternalAdoptionPlan {
-  const ExternalAdoptionPlan({
-    required this.inventoryKey,
-    required this.name,
-    required this.target,
-    required this.contentDigest,
-    required this.stateToken,
-    required this.matches,
-    required this.canImportLocal,
-    this.sourceHint = '',
-    this.action,
-    this.selectedMatch,
-  });
-
-  final String inventoryKey;
-  final String name;
-  final InstallationPlanTarget target;
-  final String contentDigest;
-  final String sourceHint;
-  final String stateToken;
-  final List<HubContentMatch> matches;
-  final bool canImportLocal;
-  final ExternalAdoptionAction? action;
-  final HubContentMatch? selectedMatch;
-
-  ExternalAdoptionPlan selectHubMatch(HubContentMatch match) =>
-      ExternalAdoptionPlan(
-        inventoryKey: inventoryKey,
-        name: name,
-        target: target,
-        contentDigest: contentDigest,
-        sourceHint: sourceHint,
-        stateToken: stateToken,
-        matches: matches,
-        canImportLocal: canImportLocal,
-        action: ExternalAdoptionAction.associateHub,
-        selectedMatch: match,
-      );
-
-  ExternalAdoptionPlan selectLocalImport() => ExternalAdoptionPlan(
-    inventoryKey: inventoryKey,
-    name: name,
-    target: target,
-    contentDigest: contentDigest,
-    sourceHint: sourceHint,
-    stateToken: stateToken,
-    matches: matches,
-    canImportLocal: canImportLocal,
-    action: ExternalAdoptionAction.importLocal,
-  );
-}
-
-class ExternalAdoptionResult {
-  const ExternalAdoptionResult({
-    required this.action,
-    required this.name,
-    required this.skillId,
-    required this.version,
-    required this.provenance,
-    required this.contentDigest,
-    required this.target,
-  });
-
-  final ExternalAdoptionAction action;
-  final String name;
-  final String skillId;
-  final String version;
-  final LibraryProvenance provenance;
-  final String contentDigest;
-  final InstallationPlanTarget target;
-}
-
 class BatchTakeoverResult {
   const BatchTakeoverResult({required this.takenOver, required this.skipped});
 
@@ -815,6 +736,7 @@ class AgentStatus {
     required this.installed,
     required this.supportedScopes,
     this.userTarget,
+    this.discoveryRoots = const [],
   });
 
   final String id;
@@ -822,6 +744,7 @@ class AgentStatus {
   final bool installed;
   final List<InstallationScope> supportedScopes;
   final AgentUserTarget? userTarget;
+  final List<String> discoveryRoots;
 }
 
 class AgentCatalog {
@@ -834,6 +757,22 @@ class AgentCatalog {
       agents.where((agent) => agent.installed).toList(growable: false);
 }
 
+class OnboardingState {
+  const OnboardingState({required this.completed, required this.step});
+
+  final bool completed;
+  final OnboardingStep step;
+
+  @override
+  bool operator ==(Object other) =>
+      other is OnboardingState &&
+      other.completed == completed &&
+      other.step == step;
+
+  @override
+  int get hashCode => Object.hash(completed, step);
+}
+
 class AddedProject {
   const AddedProject({
     required this.id,
@@ -842,6 +781,7 @@ class AddedProject {
     required this.path,
     required this.accessState,
     this.diagnostic,
+    this.icon,
   });
 
   final String id;
@@ -850,8 +790,27 @@ class AddedProject {
   final String path;
   final ProjectAccessState accessState;
   final String? diagnostic;
+  final ProjectIcon? icon;
 
   bool get isAccessible => accessState == ProjectAccessState.accessible;
+
+  AddedProject copyWith({ProjectIcon? icon, bool clearIcon = false}) =>
+      AddedProject(
+        id: id,
+        name: name,
+        description: description,
+        path: path,
+        accessState: accessState,
+        diagnostic: diagnostic,
+        icon: clearIcon ? null : icon ?? this.icon,
+      );
+}
+
+class ProjectIcon {
+  const ProjectIcon({required this.path, required this.sourceFingerprint});
+
+  final String path;
+  final String sourceFingerprint;
 }
 
 class SkillDetail {
@@ -1081,6 +1040,10 @@ class SkillsException implements Exception {
 }
 
 abstract interface class SkillsGateway {
+  Future<OnboardingState> loadOnboardingState();
+  Future<void> saveOnboardingStep(OnboardingStep step);
+  Future<void> completeOnboarding();
+  Future<void> resetOnboarding();
   Future<CliStatus> detectCli({String? customPath});
   Future<void> saveCustomCliPath(String? path);
   Future<String?> loadCustomCliPath();
@@ -1093,6 +1056,10 @@ abstract interface class SkillsGateway {
   Future<void> saveWallpaper(AppWallpaper wallpaper);
   Future<AppThemeMode> loadThemeMode();
   Future<void> saveThemeMode(AppThemeMode mode);
+  Future<AppLanguage> loadLanguage();
+  Future<void> saveLanguage(AppLanguage language);
+  Future<ReminderSettings> loadReminderSettings();
+  Future<void> saveReminderSettings(ReminderSettings settings);
   Future<HubStatus> testHubOrigin(String origin);
   Future<PersonalRiskPolicy> loadRiskPolicy();
   Future<void> saveRiskPolicy(PersonalRiskPolicy policy);
@@ -1105,15 +1072,20 @@ abstract interface class SkillsGateway {
     int limit = 20,
   });
   Future<SkillDetail> loadRemoteDetail(SkillSummary skill);
+  Future<AgentCatalog> inspectOnboardingAgents();
   Future<AgentCatalog> inspectAgents();
   Future<List<AddedProject>> loadAddedProjects();
-  Future<AddedProject?> addProject();
+  Future<AddedProject> resolveProjectIcon(AddedProject project);
+  Future<List<AddedProject>> addProjects();
   Future<AddedProject?> relocateProject(String id);
   Future<void> removeProject(String id);
   Future<List<InstalledSkill>> listInstalled({
     List<AddedProject> projects = const [],
   });
-  Future<BatchTakeoverResult> takeoverExistingSkills({String? projectRoot});
+  Future<BatchTakeoverResult> takeoverExistingSkills({
+    required bool includeUser,
+    List<String> projectRoots = const [],
+  });
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill);
   Future<CommandResult> install(SkillSummary skill);
   Future<TargetManagementPlan> preflightTargetManagement(
@@ -1131,10 +1103,6 @@ abstract interface class SkillsGateway {
     TargetManagementPlan plan, {
     void Function(TargetManagementProgress progress)? onProgress,
   });
-  Future<ExternalAdoptionPlan> preflightExternalAdoption(InstalledSkill skill);
-  Future<ExternalAdoptionResult> executeExternalAdoption(
-    ExternalAdoptionPlan plan,
-  );
   Future<CommandResult?> exportLocalSkill(InstalledSkill skill);
   Future<UpdatePlan> preflightUpdate(
     InstalledSkill skill,

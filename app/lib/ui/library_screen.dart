@@ -1,22 +1,51 @@
 /*
- * [INPUT]: Depends on the app_shell library for Flutter UI primitives, HugeIcons, Riverpod Library state, gateway mutations, localization, and shared operation dialogs.
- * [OUTPUT]: Provides the unified Library destination, one-confirmation Batch Takeover with next-frame progress and aggregate results, cold/stale loading UI, composable update, project and Agent filtering, exact External removal, Local detail, export, and installation-target views.
+ * [INPUT]: Depends on the app_shell library for Flutter UI primitives and top-level navigation, HugeIcons, multi_dropdown, the shared destination rail, ProjectIdentityIcon, Riverpod Library state, gateway mutations, localization, and shared operation dialogs.
+ * [OUTPUT]: Provides the unified Library destination with fixed All and Global navigation, fixed header/footer section dividers, an independently scrollable compact Added Project rail, a pinned multi-directory Add Project action, a concise project-empty path to Discover, location-scoped one-confirmation Batch Takeover with next-frame progress and aggregate results, reminder-aware update and safety summaries, cold/stale loading UI, composable update, multi-Agent filtering, compact target-derived installation scope with hover details, animated Local detail with a sticky compact toolbar, exact External removal, export, and installation-target views.
  * [POS]: Serves as the complete Library feature view module split from the desktop shell while sharing its private library contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of 'app_shell.dart';
 
+enum _LibraryLocationKind { all, global, project }
+
+class _LibraryLocationRoute {
+  const _LibraryLocationRoute._(this.kind, [this.projectId]);
+
+  static const all = _LibraryLocationRoute._(_LibraryLocationKind.all);
+  static const global = _LibraryLocationRoute._(_LibraryLocationKind.global);
+
+  factory _LibraryLocationRoute.project(String projectId) =>
+      _LibraryLocationRoute._(_LibraryLocationKind.project, projectId);
+
+  final _LibraryLocationKind kind;
+  final String? projectId;
+
+  @override
+  bool operator ==(Object other) =>
+      other is _LibraryLocationRoute &&
+      other.kind == kind &&
+      other.projectId == projectId;
+
+  @override
+  int get hashCode => Object.hash(kind, projectId);
+}
+
 class LibraryScreen extends ConsumerStatefulWidget {
-  const LibraryScreen({super.key, required this.gateway});
+  const LibraryScreen({
+    super.key,
+    required this.gateway,
+    required this.onBrowseSkills,
+  });
   final SkillsGateway gateway;
+  final VoidCallback onBrowseSkills;
   @override
   ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
 }
 
-class _LibraryScreenState extends ConsumerState<LibraryScreen> {
+class _LibraryScreenState extends ConsumerState<LibraryScreen>
+    with SingleTickerProviderStateMixin {
   Object? actionError;
   bool checking = false;
-  bool takingOver = false;
   Object? updateCheckError;
   Map<String, UpdateState> updates = const {};
   CommandResult? result;
@@ -26,16 +55,29 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   final librarySearchFocusNode = FocusNode();
   final selectedSkillKeys = <String>{};
   bool updatesOnly = false;
-  String? selectedAgent;
-  String? selectedProjectId;
+  final selectedAgents = <String>{};
+  _LibraryLocationRoute selectedLocation = _LibraryLocationRoute.all;
+  bool addingProject = false;
+  bool takingOver = false;
+  InstalledSkill? selectedDetailSkill;
+  ReminderSettings? reminderSettings;
+  bool _reminderInitializationStarted = false;
+  bool detailTransitioning = false;
+  late final AnimationController detailTransition;
 
   @override
   void initState() {
     super.initState();
+    detailTransition = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 230),
+      reverseDuration: const Duration(milliseconds: 200),
+    );
   }
 
   @override
   void dispose() {
+    detailTransition.dispose();
     scrollController.dispose();
     librarySearchController.dispose();
     librarySearchFocusNode.dispose();
@@ -66,11 +108,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           .map(_librarySelectionKey)
           .toSet();
       selectedSkillKeys.removeWhere((key) => !currentKeys.contains(key));
-      if (selectedAgent != null && !_agents.contains(selectedAgent)) {
-        selectedAgent = null;
-      }
-      if (selectedProjectId != null && _selectedProject == null) {
-        selectedProjectId = null;
+      selectedAgents.removeWhere((agent) => !_agents.contains(agent));
+      if (selectedLocation.kind == _LibraryLocationKind.project &&
+          _selectedProject == null) {
+        selectedLocation = _LibraryLocationRoute.all;
       }
     });
   }
@@ -89,6 +130,20 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         selectedSkillKeys.add(key);
       } else {
         selectedSkillKeys.remove(key);
+      }
+    });
+  }
+
+  void _toggleVisibleSelection(
+    List<InstalledSkill> visibleSkills,
+    bool selected,
+  ) {
+    setState(() {
+      final visibleKeys = visibleSkills.map(_librarySelectionKey);
+      if (selected) {
+        selectedSkillKeys.addAll(visibleKeys);
+      } else {
+        selectedSkillKeys.removeAll(visibleKeys);
       }
     });
   }
@@ -116,7 +171,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 
   AddedProject? get _selectedProject {
-    final id = selectedProjectId;
+    final id = selectedLocation.projectId;
     if (id == null) return null;
     for (final project in projects) {
       if (project.id == id) return project;
@@ -124,19 +179,58 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     return null;
   }
 
-  Future<void> _addProject() async {
+  Future<void> _relocateProject(AddedProject project) async {
     try {
-      final project = await widget.gateway.addProject();
-      if (project == null || !mounted) return;
-      setState(() => selectedProjectId = project.id);
+      final relocated = await widget.gateway.relocateProject(project.id);
+      if (relocated == null || !mounted) return;
       await load();
     } on Object catch (caught) {
       if (mounted) setState(() => actionError = caught);
     }
   }
 
+  Future<void> _addProject() async {
+    if (addingProject) return;
+    setState(() {
+      addingProject = true;
+      actionError = null;
+    });
+    try {
+      final addedProjects = await widget.gateway.addProjects();
+      if (addedProjects.isEmpty || !mounted) return;
+      await load();
+      if (!mounted) return;
+      setState(() {
+        selectedLocation =
+            addedProjects.length == 1 &&
+                projects.any((item) => item.id == addedProjects.single.id)
+            ? _LibraryLocationRoute.project(addedProjects.single.id)
+            : _LibraryLocationRoute.all;
+      });
+    } on Object catch (caught) {
+      if (mounted) setState(() => actionError = caught);
+    } finally {
+      if (mounted) setState(() => addingProject = false);
+    }
+  }
+
   Future<void> _takeoverExistingSkills() async {
     if (takingOver) return;
+    final selectedProject = _selectedProject;
+    if (selectedLocation.kind == _LibraryLocationKind.project &&
+        selectedProject == null) {
+      return;
+    }
+    final includeUser = selectedLocation.kind != _LibraryLocationKind.project;
+    final projectRoots = switch (selectedLocation.kind) {
+      _LibraryLocationKind.all =>
+        projects
+            .where((project) => project.isAccessible)
+            .map((project) => project.path)
+            .toList(growable: false),
+      _LibraryLocationKind.global => const <String>[],
+      _LibraryLocationKind.project => [selectedProject!.path],
+    };
     final confirmed = await showSkillsDialog<bool>(
       context: context,
       builder: (context) => SkillsDialog(
@@ -161,7 +255,8 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     });
     try {
       final takeover = await widget.gateway.takeoverExistingSkills(
-        projectRoot: _selectedProject?.path,
+        includeUser: includeUser,
+        projectRoots: projectRoots,
       );
       await load();
       if (!mounted) return;
@@ -190,31 +285,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
     }
   }
 
-  Future<void> _relocateProject(AddedProject project) async {
-    try {
-      final relocated = await widget.gateway.relocateProject(project.id);
-      if (relocated == null || !mounted) return;
-      await load();
-    } on Object catch (caught) {
-      if (mounted) setState(() => actionError = caught);
-    }
-  }
-
-  Future<void> _removeProject(AddedProject project) async {
-    final confirmed = await _confirmCommand(
-      context,
-      title: context.l10n.removeProjectTitle(project.name),
-      description: context.l10n.removeProjectDescription,
-      facts: [project.path],
-      confirmLabel: context.l10n.removeFromList,
-    );
-    if (!confirmed || !mounted) return;
-    await widget.gateway.removeProject(project.id);
-    if (!mounted) return;
-    setState(() => selectedProjectId = null);
-    await load();
-  }
-
   Future<void> checkUpdates() async {
     if (skills == null || checking) return;
     setState(() {
@@ -237,6 +307,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       };
     }
     if (mounted) setState(() => checking = false);
+  }
+
+  Future<void> _initializeReminders() async {
+    final settings = await widget.gateway.loadReminderSettings();
+    if (!mounted) return;
+    setState(() => reminderSettings = settings);
+    if (settings.updateAvailable) await checkUpdates();
   }
 
   Future<void> update(InstalledSkill skill) async {
@@ -292,16 +369,39 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   }
 
   Future<void> _openDetail(InstalledSkill skill) async {
-    final appTheme = Theme.of(context);
-    final removed = await Navigator.of(context).push<bool>(
-      MaterialPageRoute(
-        builder: (_) => Theme(
-          data: appTheme,
-          child: LocalDetailScreen(gateway: widget.gateway, skill: skill),
-        ),
-      ),
-    );
-    if (removed == true) await load();
+    setState(() {
+      selectedDetailSkill = skill;
+      detailTransitioning = true;
+    });
+    if (MediaQuery.disableAnimationsOf(context)) {
+      detailTransition.value = 1;
+    } else {
+      await detailTransition.forward(from: 0);
+    }
+    if (!mounted || selectedDetailSkill?.inventoryKey != skill.inventoryKey) {
+      return;
+    }
+    setState(() => detailTransitioning = false);
+  }
+
+  Future<void> _closeDetail() async {
+    if (selectedDetailSkill == null) return;
+    setState(() => detailTransitioning = true);
+    if (MediaQuery.disableAnimationsOf(context)) {
+      detailTransition.value = 0;
+    } else {
+      await detailTransition.reverse();
+    }
+    if (!mounted) return;
+    setState(() {
+      selectedDetailSkill = null;
+      detailTransitioning = false;
+    });
+  }
+
+  Future<void> _closeRemovedDetail() async {
+    await _closeDetail();
+    await load();
   }
 
   List<String> get _agents {
@@ -316,10 +416,6 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
         );
     return values;
   }
-
-  bool get _hasUpdateableSkills => (skills ?? const <InstalledSkill>[]).any(
-    (skill) => skill.provenance == LibraryProvenance.hub,
-  );
 
   String _agentLabel(String agent) {
     for (final status in agentCatalog?.agents ?? const <AgentStatus>[]) {
@@ -340,8 +436,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
           updates[_libraryUpdateKey(skill)] != UpdateState.available) {
         continue;
       }
-      if (selectedAgent != null &&
-          !skill.targets.any((target) => target.agent == selectedAgent)) {
+      if (selectedAgents.isNotEmpty &&
+          !skill.targets.any(
+            (target) => selectedAgents.contains(target.agent),
+          )) {
+        continue;
+      }
+      if (selectedLocation.kind == _LibraryLocationKind.global &&
+          !skill.targets.any(
+            (target) => target.scope == InstallationScope.user,
+          )) {
         continue;
       }
       final project = _selectedProject;
@@ -369,41 +473,203 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   @override
   Widget build(BuildContext context) {
     ref.watch(libraryProvider);
+    if (skills != null && !_reminderInitializationStarted) {
+      _reminderInitializationStarted = true;
+      unawaited(_initializeReminders());
+    }
     final selected = _selectedSkills;
+    final visibleSkills = _visibleSkills;
+    final visibleSelectedCount = visibleSkills
+        .where(
+          (skill) => selectedSkillKeys.contains(_librarySelectionKey(skill)),
+        )
+        .length;
+    final allVisibleSelected =
+        visibleSkills.isNotEmpty &&
+        visibleSelectedCount == visibleSkills.length;
+    final someVisibleSelected = visibleSelectedCount > 0 && !allVisibleSelected;
     final updateableSelected = selected.where(
       (skill) => updates[_libraryUpdateKey(skill)] == UpdateState.available,
     );
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
-    return SkillsContentFrame(
+    final detailSkill = selectedDetailSkill;
+    final availableUpdateCount = updates.values
+        .where((state) => state == UpdateState.available)
+        .length;
+    final securityAdvisoryCount = (skills ?? const <InstalledSkill>[])
+        .where(
+          (skill) =>
+              skill.riskAssessment == SkillRiskAssessment.high ||
+              skill.riskAssessment == SkillRiskAssessment.critical,
+        )
+        .length;
+    return SkillsDestinationLayout(
+      rail: SkillsSideRail<_LibraryLocationRoute>(
+        key: const Key('library-location-rail'),
+        semanticLabel: context.l10n.libraryNavigation,
+        selected: selectedLocation,
+        onSelected: (location) => setState(() => selectedLocation = location),
+        sectionDividers: true,
+        fixedItems: [
+          SkillsRailItem(
+            value: _LibraryLocationRoute.all,
+            label: context.l10n.allSkills,
+            icon: HugeIcons.strokeRoundedLayers01,
+          ),
+          SkillsRailItem(
+            value: _LibraryLocationRoute.global,
+            label: context.l10n.userScope,
+            icon: HugeIcons.strokeRoundedUser,
+          ),
+        ],
+        items: [
+          for (var index = 0; index < projects.length; index++)
+            SkillsRailItem(
+              value: _LibraryLocationRoute.project(projects[index].id),
+              label: projects[index].isAccessible
+                  ? projects[index].name
+                  : context.l10n.projectRailUnavailable(projects[index].name),
+              compact: true,
+              leading: ProjectIdentityIcon(project: projects[index], size: 18),
+            ),
+        ],
+        footer: _LibraryAddProjectAction(
+          adding: addingProject,
+          onPressed: () => unawaited(_addProject()),
+        ),
+      ),
       child: Stack(
+        fit: StackFit.expand,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SkillsEditorialTitle(context.l10n.yourLibrary),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Flexible(
-                    child: Wrap(
-                      alignment: WrapAlignment.end,
-                      spacing: 10,
-                      runSpacing: 8,
-                      children: [
-                        SecondaryCapsuleButton(
-                          key: const Key('library-add-project'),
-                          label: context.l10n.addProject,
-                          icon: HugeIcons.strokeRoundedFolderAdd,
-                          onPressed: _addProject,
+          Offstage(
+            offstage: detailSkill != null && !detailTransitioning,
+            child: IgnorePointer(
+              ignoring: detailSkill != null,
+              child: ExcludeFocus(
+                excluding: detailSkill != null,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    if (reminderSettings?.updateAvailable == true &&
+                        availableUpdateCount > 0) ...[
+                      const SizedBox(height: 14),
+                      InkWell(
+                        key: const Key('library-update-reminder'),
+                        borderRadius: BorderRadius.circular(12),
+                        onTap: () => setState(() => updatesOnly = true),
+                        child: SkillsAlert(
+                          icon: const HugeIcon(
+                            icon: HugeIcons.strokeRoundedDownload04,
+                            strokeWidth: 1.8,
+                          ),
+                          title: Text(
+                            context.l10n.availableUpdatesReminder(
+                              availableUpdateCount,
+                            ),
+                          ),
+                          description: Text(context.l10n.openAvailableUpdates),
                         ),
+                      ),
+                    ],
+                    if (reminderSettings?.securityAdvisory == true &&
+                        securityAdvisoryCount > 0) ...[
+                      const SizedBox(height: 14),
+                      SkillsAlert.destructive(
+                        icon: const HugeIcon(
+                          icon: HugeIcons.strokeRoundedAlert02,
+                          strokeWidth: 1.8,
+                        ),
+                        title: Text(
+                          context.l10n.securityAdvisoriesReminder(
+                            securityAdvisoryCount,
+                          ),
+                        ),
+                        description: Text(context.l10n.reviewInstalledSkills),
+                      ),
+                    ],
+                    if (result != null) ...[
+                      const SizedBox(height: 14),
+                      OperationPanel(result: result!),
+                    ],
+                    if (error != null && skills != null) ...[
+                      const SizedBox(height: 14),
+                      SkillsAlert(
+                        icon: const HugeIcon(
+                          icon: HugeIcons.strokeRoundedRefreshCwOff,
+                          strokeWidth: 1.8,
+                        ),
+                        title: Text(_failureCopy(context, error!).title),
+                        description: Text(
+                          _failureCopy(context, error!).message,
+                        ),
+                      ),
+                    ],
+                    if (updateCheckError != null) ...[
+                      const SizedBox(height: 14),
+                      SkillsAlert(
+                        icon: const HugeIcon(
+                          icon: HugeIcons.strokeRoundedCloudOff,
+                          strokeWidth: 1.8,
+                        ),
+                        title: Text(
+                          _failureCopy(context, updateCheckError!).title,
+                        ),
+                        description: Text(
+                          _failureCopy(context, updateCheckError!).message,
+                        ),
+                      ),
+                    ],
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Padding(
+                          padding: const EdgeInsets.only(left: 11),
+                          child: SizedBox(
+                            width: 44,
+                            height: 45,
+                            child: Align(
+                              alignment: const Alignment(
+                                0,
+                                skillSearchLeaderboardContentAlignment,
+                              ),
+                              child: Transform.translate(
+                                offset: const Offset(0, 2),
+                                child: Tooltip(
+                                  message: allVisibleSelected
+                                      ? context.l10n.clearCurrentResultSelection
+                                      : context.l10n.selectCurrentResults,
+                                  child: SkillsCheckbox(
+                                    key: const Key('library-select-visible'),
+                                    value: allVisibleSelected,
+                                    indeterminate: someVisibleSelected,
+                                    enabled: visibleSkills.isNotEmpty,
+                                    onChanged: (value) =>
+                                        _toggleVisibleSelection(
+                                          visibleSkills,
+                                          value,
+                                        ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: SkillSearchField(
+                            key: const Key('library-search'),
+                            controller: librarySearchController,
+                            focusNode: librarySearchFocusNode,
+                            onSubmitted: (_) {},
+                            onCleared: () =>
+                                setState(librarySearchController.clear),
+                            onChanged: (_) => setState(() {}),
+                            height: 45,
+                            appearance: SkillSearchAppearance.leaderboard,
+                            hintText: context.l10n.searchLibrary,
+                          ),
+                        ),
+                        const SizedBox(width: 4),
                         SecondaryCapsuleButton(
                           key: const Key('library-batch-takeover'),
                           label: takingOver
@@ -412,148 +678,34 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                           icon: HugeIcons.strokeRoundedFolderTransfer,
                           onPressed: takingOver
                               ? null
-                              : _takeoverExistingSkills,
+                              : () => unawaited(_takeoverExistingSkills()),
                         ),
-                        if (_selectedProject != null) ...[
-                          SecondaryCapsuleButton(
-                            label: context.l10n.relocateProject,
-                            icon: HugeIcons.strokeRoundedFolderMoveTo,
-                            onPressed: () =>
-                                _relocateProject(_selectedProject!),
-                          ),
-                          SecondaryCapsuleButton(
-                            label: context.l10n.removeFromList,
-                            icon: HugeIcons.strokeRoundedRemoveCircle,
-                            onPressed: () => _removeProject(_selectedProject!),
-                          ),
-                        ],
-                        SecondaryCapsuleButton(
-                          label: checking
-                              ? context.l10n.checking
-                              : context.l10n.checkUpdates,
-                          icon: HugeIcons.strokeRoundedArrowReloadHorizontal,
-                          onPressed: checking || !_hasUpdateableSkills
-                              ? null
-                              : checkUpdates,
+                        const SizedBox(width: 4),
+                        _LibraryScopeToggle(
+                          updatesOnly: updatesOnly,
+                          onChanged: (value) =>
+                              setState(() => updatesOnly = value),
                         ),
-                        SecondaryCapsuleButton(
-                          label: context.l10n.refresh,
-                          icon: HugeIcons.strokeRoundedRefresh,
-                          onPressed: loading ? null : load,
+                        const SizedBox(width: 4),
+                        _LibraryAgentMultiFilter(
+                          key: const Key('library-agent-filter'),
+                          agents: _agents,
+                          selectedAgents: selectedAgents,
+                          agentLabel: _agentLabel,
+                          onChanged: (agents) => setState(() {
+                            selectedAgents
+                              ..clear()
+                              ..addAll(agents);
+                          }),
                         ),
                       ],
                     ),
-                  ),
-                ],
-              ),
-              if (result != null) ...[
-                const SizedBox(height: 14),
-                OperationPanel(result: result!),
-              ],
-              if (error != null && skills != null) ...[
-                const SizedBox(height: 14),
-                SkillsAlert(
-                  icon: const HugeIcon(
-                    icon: HugeIcons.strokeRoundedRefreshCwOff,
-                    strokeWidth: 1.8,
-                  ),
-                  title: Text(_failureCopy(context, error!).title),
-                  description: Text(_failureCopy(context, error!).message),
+                    const SizedBox(height: 20),
+                    Expanded(child: _body()),
+                  ],
                 ),
-              ],
-              if (updateCheckError != null) ...[
-                const SizedBox(height: 14),
-                SkillsAlert(
-                  icon: const HugeIcon(
-                    icon: HugeIcons.strokeRoundedCloudOff,
-                    strokeWidth: 1.8,
-                  ),
-                  title: Text(_failureCopy(context, updateCheckError!).title),
-                  description: Text(
-                    _failureCopy(context, updateCheckError!).message,
-                  ),
-                ),
-              ],
-              const SizedBox(height: 14),
-              Row(
-                children: [
-                  Expanded(
-                    child: SkillsInput(
-                      key: const Key('library-search'),
-                      controller: librarySearchController,
-                      focusNode: librarySearchFocusNode,
-                      onChanged: (_) => setState(() {}),
-                      leading: HugeIcon(
-                        icon: HugeIcons.strokeRoundedSearch01,
-                        strokeWidth: 1.8,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                      placeholder: Text(context.l10n.searchLibrary),
-                      placeholderStyle: TextStyle(
-                        color: Theme.of(
-                          context,
-                        ).colorScheme.onSurfaceVariant.withValues(alpha: .72),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  _LibraryScopeToggle(
-                    updatesOnly: updatesOnly,
-                    onChanged: (value) => setState(() => updatesOnly = value),
-                  ),
-                  const SizedBox(width: 10),
-                  _LibraryFilterMenu(
-                    key: const Key('library-agent-filter'),
-                    label: selectedAgent == null
-                        ? context.l10n.allAgents
-                        : _agentLabel(selectedAgent!),
-                    icon: HugeIcons.strokeRoundedRobot01,
-                    entries: [
-                      _LibraryFilterEntry(
-                        value: null,
-                        label: context.l10n.allAgents,
-                      ),
-                      for (final agent in _agents)
-                        _LibraryFilterEntry(
-                          value: agent,
-                          label: _agentLabel(agent),
-                        ),
-                    ],
-                    selected: selectedAgent,
-                    onSelected: (value) =>
-                        setState(() => selectedAgent = value),
-                  ),
-                  const SizedBox(width: 10),
-                  _LibraryFilterMenu(
-                    key: const Key('library-project-filter'),
-                    label: _selectedProject == null
-                        ? context.l10n.allProjects
-                        : _selectedProject!.name,
-                    icon: HugeIcons.strokeRoundedFolderOpen,
-                    entries: [
-                      _LibraryFilterEntry(
-                        value: null,
-                        label: context.l10n.allProjects,
-                      ),
-                      for (final project in projects)
-                        _LibraryFilterEntry(
-                          value: project.id,
-                          label: project.isAccessible
-                              ? project.name
-                              : context.l10n.projectRailUnavailable(
-                                  project.name,
-                                ),
-                        ),
-                    ],
-                    selected: selectedProjectId,
-                    onSelected: (value) =>
-                        setState(() => selectedProjectId = value),
-                  ),
-                ],
               ),
-              const SizedBox(height: 20),
-              Expanded(child: _body()),
-            ],
+            ),
           ),
           Positioned(
             left: 24,
@@ -588,6 +740,35 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
               ),
             ),
           ),
+          if (detailSkill != null)
+            SlideTransition(
+              key: const Key('library-detail-surface'),
+              position: disableAnimations
+                  ? const AlwaysStoppedAnimation(Offset.zero)
+                  : Tween<Offset>(
+                      begin: const Offset(1, 0),
+                      end: Offset.zero,
+                    ).animate(
+                      CurvedAnimation(
+                        parent: detailTransition,
+                        curve: Curves.easeOutCubic,
+                        reverseCurve: Curves.easeOutCubic,
+                      ),
+                    ),
+              child: ColoredBox(
+                color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                child: LocalDetailScreen(
+                  gateway: widget.gateway,
+                  skill: detailSkill,
+                  projects: projects,
+                  initialUpdateState:
+                      updates[_libraryUpdateKey(detailSkill)] ??
+                      UpdateState.unknown,
+                  onBack: () => unawaited(_closeDetail()),
+                  onRemoved: _closeRemovedDetail,
+                ),
+              ),
+            ),
         ],
       ),
     );
@@ -651,8 +832,11 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       }
       if (project != null) {
         return EmptyState(
-          title: context.l10n.emptyProjectTitle(project.name),
-          message: context.l10n.emptyProjectMessage,
+          title: context.l10n.emptyProjectTitle,
+          action: PrimaryCapsuleButton(
+            label: context.l10n.browseSkills,
+            onPressed: widget.onBrowseSkills,
+          ),
         );
       }
       return EmptyState(
@@ -788,9 +972,9 @@ class _InstalledSkillGroup extends StatelessWidget {
                   group.label,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
+                  style: context.skillsTypography.display.copyWith(
                     fontSize: 28,
-                    fontWeight: FontWeight.w200,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
@@ -915,13 +1099,11 @@ class _InstalledSkillRow extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(width: 16),
-                ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 220),
-                  child: _LibraryCoverageIcons(
+                Expanded(
+                  child: _LibraryInstallationScopeSummary(
                     skill: skill,
-                    projects: const [],
+                    projects: projects,
                     agentLabel: agentLabel,
-                    includeProjects: false,
                   ),
                 ),
               ],
@@ -931,6 +1113,431 @@ class _InstalledSkillRow extends StatelessWidget {
       ),
     );
   }
+}
+
+class _LibraryInstallationScopeSummary extends StatelessWidget {
+  const _LibraryInstallationScopeSummary({
+    required this.skill,
+    required this.projects,
+    required this.agentLabel,
+  });
+
+  final InstalledSkill skill;
+  final List<AddedProject> projects;
+  final String Function(String) agentLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final groups = _installationScopeGroups(skill, projects);
+    if (groups.isEmpty) return const SizedBox.shrink();
+    final user = groups.where((group) => group.project == null).firstOrNull;
+    final projectGroups = groups
+        .where((group) => group.project != null)
+        .toList(growable: false);
+    return Semantics(
+      label: groups.map((group) => group.semanticLabel(agentLabel)).join(', '),
+      excludeSemantics: true,
+      child: SizedBox(
+        height: 39,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: 18,
+              child: Align(
+                alignment: AlignmentDirectional.centerEnd,
+                child: user == null
+                    ? const SizedBox.shrink()
+                    : _ScopeAgentRow(
+                        agents: user.agents,
+                        agentLabel: agentLabel,
+                      ),
+              ),
+            ),
+            const SizedBox(height: 3),
+            SizedBox(
+              height: 18,
+              child: _ProjectScopeLine(
+                groups: projectGroups,
+                agentLabel: agentLabel,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ProjectScopeLine extends StatelessWidget {
+  const _ProjectScopeLine({required this.groups, required this.agentLabel});
+
+  final List<_InstallationScopeGroup> groups;
+  final String Function(String) agentLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    if (groups.isEmpty) return const SizedBox.shrink();
+    final visible = groups.take(2).toList(growable: false);
+    final hidden = groups.length - visible.length;
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.end,
+      children: [
+        for (var index = 0; index < visible.length; index++) ...[
+          if (index > 0)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 8),
+              child: VerticalDivider(
+                width: 1,
+                thickness: 1,
+                color: scheme.outlineVariant,
+              ),
+            ),
+          Flexible(
+            child: _ProjectScopeSegment(
+              group: visible[index],
+              agentLabel: agentLabel,
+            ),
+          ),
+        ],
+        if (hidden > 0) ...[
+          const SizedBox(width: 7),
+          Text(
+            '+$hidden',
+            style: TextStyle(color: scheme.onSurfaceVariant, fontSize: 11),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _ProjectScopeSegment extends StatelessWidget {
+  const _ProjectScopeSegment({required this.group, required this.agentLabel});
+
+  final _InstallationScopeGroup group;
+  final String Function(String) agentLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    final project = group.project!;
+    return _ProjectScopePopover(
+      project: project,
+      agents: group.agents,
+      agentLabel: agentLabel,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ProjectIdentityIcon(project: project, size: 16),
+          const SizedBox(width: 5),
+          Flexible(
+            child: Text(
+              project.name,
+              key: ValueKey('library-scope-project-${project.id}'),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+                fontSize: 11,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _ScopeAgentRow extends StatelessWidget {
+  const _ScopeAgentRow({required this.agents, required this.agentLabel});
+
+  final List<String> agents;
+  final String Function(String) agentLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    const size = 18.0;
+    const gap = 5.0;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final visibleCount = constraints.maxWidth.isFinite
+            ? math.max(
+                1,
+                math.min(
+                  agents.length,
+                  ((constraints.maxWidth - 30 + gap) / (size + gap)).floor(),
+                ),
+              )
+            : agents.length;
+        final hiddenCount = agents.length - visibleCount;
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            for (var index = 0; index < visibleCount; index++) ...[
+              if (index > 0) const SizedBox(width: gap),
+              Tooltip(
+                message: agentLabel(agents[index]),
+                child: AgentLogo(
+                  agentId: agents[index],
+                  displayName: agentLabel(agents[index]),
+                  size: size,
+                ),
+              ),
+            ],
+            if (hiddenCount > 0) ...[
+              const SizedBox(width: 7),
+              Text(
+                '+$hiddenCount',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  fontSize: 11,
+                ),
+              ),
+            ],
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _ProjectScopePopover extends StatelessWidget {
+  const _ProjectScopePopover({
+    required this.project,
+    required this.agents,
+    required this.agentLabel,
+    required this.child,
+  });
+
+  final AddedProject project;
+  final List<String> agents;
+  final String Function(String) agentLabel;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return JustTooltip(
+      direction: TooltipDirection.bottom,
+      alignment: TooltipAlignment.endTargetCenter,
+      offset: 6,
+      screenMargin: 16,
+      enableTap: false,
+      enableHover: true,
+      interactive: true,
+      waitDuration: const Duration(milliseconds: 80),
+      animation: MediaQuery.disableAnimationsOf(context)
+          ? TooltipAnimation.none
+          : TooltipAnimation.fade,
+      animationDuration: const Duration(milliseconds: 100),
+      theme: JustTooltipTheme(
+        backgroundColor: context.skillsComponents.controlRest,
+        borderRadius: BorderRadius.circular(10),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        borderColor: context.skillsComponents.controlBorder,
+        borderWidth: 1,
+        textStyle: TextStyle(color: scheme.onSurface),
+        elevation: 0,
+        boxShadow: [
+          BoxShadow(
+            color: scheme.shadow.withValues(alpha: 0.18),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
+        showArrow: true,
+        arrowBaseWidth: 12,
+        arrowLength: 6,
+      ),
+      tooltipBuilder: (_) => ConstrainedBox(
+        constraints: BoxConstraints(
+          maxWidth: math.min(380, MediaQuery.sizeOf(context).width - 52),
+          maxHeight: 280,
+        ),
+        child: IntrinsicWidth(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                context.l10n.pathLabel,
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 3),
+              _CopyableProjectPath(project: project),
+              const SizedBox(height: 8),
+              Text(
+                context.l10n.agents,
+                style: TextStyle(
+                  color: scheme.onSurfaceVariant,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              const SizedBox(height: 4),
+              for (final agent in agents)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      AgentLogo(
+                        agentId: agent,
+                        displayName: agentLabel(agent),
+                        size: 18,
+                      ),
+                      const SizedBox(width: 7),
+                      Text(
+                        agentLabel(agent),
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+class _CopyableProjectPath extends StatefulWidget {
+  const _CopyableProjectPath({required this.project});
+
+  final AddedProject project;
+
+  @override
+  State<_CopyableProjectPath> createState() => _CopyableProjectPathState();
+}
+
+class _CopyableProjectPathState extends State<_CopyableProjectPath> {
+  Timer? _feedbackTimer;
+  bool _copied = false;
+
+  Future<void> _copy() async {
+    _feedbackTimer?.cancel();
+    setState(() => _copied = true);
+    _feedbackTimer = Timer(const Duration(milliseconds: 1400), () {
+      if (mounted) setState(() => _copied = false);
+    });
+    await Clipboard.setData(ClipboardData(text: widget.project.path));
+  }
+
+  @override
+  void dispose() {
+    _feedbackTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final disableAnimations = MediaQuery.disableAnimationsOf(context);
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.center,
+      children: [
+        Flexible(
+          child: Text(
+            widget.project.path,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),
+          ),
+        ),
+        const SizedBox(width: 5),
+        IconButton(
+          key: ValueKey(
+            _copied
+                ? 'copy-project-path-copied-${widget.project.id}'
+                : 'copy-project-path-${widget.project.id}',
+          ),
+          tooltip: _copied
+              ? context.l10n.projectPathCopied
+              : context.l10n.copyProjectPath,
+          visualDensity: VisualDensity.compact,
+          constraints: const BoxConstraints.tightFor(width: 26, height: 26),
+          padding: EdgeInsets.zero,
+          onPressed: _copy,
+          icon: AnimatedSwitcher(
+            duration: disableAnimations
+                ? Duration.zero
+                : const Duration(milliseconds: 140),
+            switchInCurve: Curves.easeOutBack,
+            switchOutCurve: Curves.easeOut,
+            transitionBuilder: (child, animation) => FadeTransition(
+              opacity: animation,
+              child: ScaleTransition(scale: animation, child: child),
+            ),
+            child: HugeIcon(
+              key: ValueKey(_copied),
+              icon: _copied
+                  ? HugeIcons.strokeRoundedCopyCheck
+                  : HugeIcons.strokeRoundedCopy01,
+              size: 15,
+              strokeWidth: 1.7,
+              color: _copied ? scheme.primary : scheme.onSurfaceVariant,
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class _InstallationScopeGroup {
+  const _InstallationScopeGroup({required this.project, required this.agents});
+
+  final AddedProject? project;
+  final List<String> agents;
+
+  String semanticLabel(String Function(String) agentLabel) =>
+      '${project?.name ?? 'User scope'}: ${agents.map(agentLabel).join(', ')}';
+}
+
+List<_InstallationScopeGroup> _installationScopeGroups(
+  InstalledSkill skill,
+  List<AddedProject> projects,
+) {
+  final userAgents = <String>{};
+  final projectAgents = <String, Set<String>>{};
+  for (final target in skill.targets) {
+    if (target.scope == InstallationScope.user) {
+      userAgents.add(target.agent);
+    } else {
+      projectAgents
+          .putIfAbsent(target.projectRoot, () => <String>{})
+          .add(target.agent);
+    }
+  }
+  AddedProject projectFor(String root) =>
+      projects.where((project) => project.path == root).firstOrNull ??
+      AddedProject(
+        id: root,
+        name: p.basename(root),
+        path: root,
+        accessState: ProjectAccessState.inaccessible,
+      );
+  return [
+    if (userAgents.isNotEmpty)
+      _InstallationScopeGroup(
+        project: null,
+        agents: userAgents.toList(growable: false),
+      ),
+    for (final entry in projectAgents.entries)
+      _InstallationScopeGroup(
+        project: projectFor(entry.key),
+        agents: entry.value.toList(growable: false),
+      ),
+  ];
 }
 
 String _librarySelectionKey(InstalledSkill skill) => skill.inventoryKey.isEmpty
@@ -1194,103 +1801,6 @@ String _installedSourceLabel(BuildContext context, InstalledSkill skill) {
   return separator < 0 ? skill.skillId : skill.skillId.substring(0, separator);
 }
 
-class _LibraryCoverageIcons extends StatelessWidget {
-  const _LibraryCoverageIcons({
-    required this.skill,
-    required this.projects,
-    required this.agentLabel,
-    this.includeProjects = true,
-  });
-
-  final InstalledSkill skill;
-  final List<AddedProject> projects;
-  final String Function(String) agentLabel;
-  final bool includeProjects;
-
-  @override
-  Widget build(BuildContext context) {
-    final items = <Widget>[
-      for (final agent in skill.agents)
-        _CoverageBadge(
-          tooltip: agentLabel(agent),
-          semanticLabel: agentLabel(agent),
-          child: AgentLogo(
-            agentId: agent,
-            displayName: agentLabel(agent),
-            size: 17,
-          ),
-        ),
-      if (includeProjects)
-        for (final root in skill.projects)
-          _CoverageBadge(
-            tooltip: _projectName(root),
-            semanticLabel: _projectName(root),
-            child: Text(
-              _projectInitials(_projectName(root)),
-              style: const TextStyle(fontSize: 9, fontWeight: FontWeight.w600),
-            ),
-          ),
-    ];
-    return Wrap(
-      spacing: 4,
-      runSpacing: 4,
-      alignment: WrapAlignment.end,
-      children: items,
-    );
-  }
-
-  String _projectName(String root) {
-    for (final project in projects) {
-      if (project.path == root) return project.name;
-    }
-    return p.basename(root);
-  }
-}
-
-class _CoverageBadge extends StatelessWidget {
-  const _CoverageBadge({
-    required this.tooltip,
-    required this.semanticLabel,
-    required this.child,
-  });
-
-  final String tooltip;
-  final String semanticLabel;
-  final Widget child;
-
-  @override
-  Widget build(BuildContext context) => Tooltip(
-    message: tooltip,
-    child: Semantics(
-      label: semanticLabel,
-      child: Container(
-        width: 26,
-        height: 26,
-        alignment: Alignment.center,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-          borderRadius: BorderRadius.circular(7),
-        ),
-        child: child,
-      ),
-    ),
-  );
-}
-
-String _projectInitials(String name) {
-  final words = name
-      .trim()
-      .split(RegExp(r'[\s_-]+'))
-      .where((word) => word.isNotEmpty)
-      .toList(growable: false);
-  if (words.isEmpty) return '?';
-  if (words.length == 1) {
-    return words.first.characters.take(2).toString().toUpperCase();
-  }
-  return '${words.first.characters.first}${words.last.characters.first}'
-      .toUpperCase();
-}
-
 class _LibraryScopeToggle extends StatelessWidget {
   const _LibraryScopeToggle({
     required this.updatesOnly,
@@ -1301,61 +1811,481 @@ class _LibraryScopeToggle extends StatelessWidget {
   final ValueChanged<bool> onChanged;
 
   @override
-  Widget build(BuildContext context) => SegmentedButton<bool>(
-    key: const Key('library-update-filter'),
-    segments: [
-      ButtonSegment(value: false, label: Text(context.l10n.all)),
-      ButtonSegment(value: true, label: Text(context.l10n.updatesOnly)),
-    ],
-    selected: {updatesOnly},
-    showSelectedIcon: false,
-    onSelectionChanged: (selection) => onChanged(selection.single),
+  Widget build(BuildContext context) {
+    return SubscriptionSegmentedSwitch(
+      key: const Key('library-update-filter'),
+      options: [
+        SubscriptionSwitchOption(
+          label: context.l10n.all,
+          icon: HugeIcons.strokeRoundedLayers01,
+        ),
+        SubscriptionSwitchOption(
+          label: context.l10n.updatesOnly,
+          icon: HugeIcons.strokeRoundedArrowReloadVertical,
+        ),
+      ],
+      selectedIndex: updatesOnly ? 1 : 0,
+      onChanged: (index) => onChanged(index == 1),
+    );
+  }
+}
+
+class _LibraryAddProjectAction extends StatelessWidget {
+  const _LibraryAddProjectAction({
+    required this.adding,
+    required this.onPressed,
+  });
+
+  final bool adding;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final foreground = Theme.of(context).colorScheme.onSurfaceVariant;
+    return SizedBox(
+      width: double.infinity,
+      height: 44,
+      child: TextButton(
+        key: const Key('library-add-project'),
+        onPressed: adding ? null : onPressed,
+        style: TextButton.styleFrom(
+          foregroundColor: foreground,
+          shape: const StadiumBorder(),
+          padding: const EdgeInsets.symmetric(horizontal: 14),
+          alignment: Alignment.centerLeft,
+          textStyle: context.skillsTypography.bodySecondary,
+        ),
+        child: Row(
+          children: [
+            if (adding)
+              const SizedBox.square(
+                dimension: 18,
+                child: CircularProgressIndicator(strokeWidth: 1.6),
+              )
+            else
+              HugeIcon(
+                icon: HugeIcons.strokeRoundedFolderAdd,
+                size: 18,
+                strokeWidth: 1.5,
+                color: foreground,
+              ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                context.l10n.addProject,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _LibraryAgentMultiFilter extends StatefulWidget {
+  const _LibraryAgentMultiFilter({
+    super.key,
+    required this.agents,
+    required this.selectedAgents,
+    required this.agentLabel,
+    required this.onChanged,
+  });
+
+  final List<String> agents;
+  final Set<String> selectedAgents;
+  final String Function(String) agentLabel;
+  final ValueChanged<Set<String>> onChanged;
+
+  @override
+  State<_LibraryAgentMultiFilter> createState() =>
+      _LibraryAgentMultiFilterState();
+}
+
+class _LibraryAgentMultiFilterState extends State<_LibraryAgentMultiFilter> {
+  final controller = MultiSelectController<String>();
+  bool syncing = false;
+
+  List<DropdownItem<String>> get items => [
+    for (final agent in widget.agents)
+      DropdownItem(
+        label: widget.agentLabel(agent),
+        value: agent,
+        selected: widget.selectedAgents.contains(agent),
+      ),
+  ];
+
+  @override
+  void didUpdateWidget(covariant _LibraryAgentMultiFilter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!listEquals(oldWidget.agents, widget.agents) ||
+        !setEquals(oldWidget.selectedAgents, widget.selectedAgents)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || controller.isDisposed) return;
+        syncing = true;
+        controller.setItems(items);
+        syncing = false;
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  void _showAllAgents() {
+    controller
+      ..clearAll()
+      ..closeDropdown();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final colors = context.skillsColors;
+    final labelStyle = const TextStyle(fontSize: 14);
+    final textScaler = MediaQuery.textScalerOf(context);
+    final textDirection = Directionality.of(context);
+    final widestLabel = items.fold<double>(0, (width, item) {
+      final painter = TextPainter(
+        text: TextSpan(text: item.label, style: labelStyle),
+        textScaler: textScaler,
+        textDirection: textDirection,
+        maxLines: 1,
+      )..layout();
+      return math.max(width, painter.width);
+    });
+    final dropdownWidth = (widestLabel + 76).clamp(190.0, 280.0);
+    final semanticLabel = widget.selectedAgents.isEmpty
+        ? context.l10n.allAgents
+        : widget.selectedAgents.length == 1
+        ? widget.agentLabel(widget.selectedAgents.first)
+        : '× ${widget.selectedAgents.length}';
+    return Semantics(
+      label: semanticLabel,
+      button: true,
+      excludeSemantics: true,
+      child: SizedBox(
+        width: 168,
+        height: 36,
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            ClipRect(
+              child: OverflowBox(
+                alignment: AlignmentDirectional.centerStart,
+                minWidth: dropdownWidth,
+                maxWidth: dropdownWidth,
+                child: MultiDropdown<String>(
+                  controller: controller,
+                  items: items,
+                  closeOnBackButton: false,
+                  fieldDecoration: FieldDecoration(
+                    hintText: '',
+                    showClearIcon: false,
+                    animateSuffixIcon: false,
+                    padding: EdgeInsets.zero,
+                    backgroundColor: colors.surfaceMuted.withValues(alpha: 0),
+                    border: InputBorder.none,
+                    focusedBorder: InputBorder.none,
+                    suffixIcon: null,
+                  ),
+                  dropdownDecoration: DropdownDecoration(
+                    backgroundColor: colors.surfaceMuted,
+                    elevation: 5,
+                    maxHeight: 360,
+                    marginTop: 6,
+                    borderRadius: BorderRadius.circular(14),
+                    listPadding: const EdgeInsets.symmetric(vertical: 6),
+                    header: _AgentFilterAllRow(
+                      selected: widget.selectedAgents.isEmpty,
+                      onPressed: _showAllAgents,
+                    ),
+                    noItemsFoundText: context.l10n.noInstalledAgentsTitle,
+                    animationDuration: MediaQuery.disableAnimationsOf(context)
+                        ? Duration.zero
+                        : const Duration(milliseconds: 180),
+                    animationCurve: Curves.easeOutCubic,
+                  ),
+                  itemBuilder: (item, index, onTap) => _AgentFilterOptionRow(
+                    agent: item.value,
+                    label: item.label,
+                    selected: item.selected,
+                    onPressed: onTap,
+                  ),
+                  selectedItemBuilder: (_) => const SizedBox.shrink(),
+                  chipDecoration: const ChipDecoration(
+                    padding: EdgeInsets.zero,
+                    spacing: 0,
+                    runSpacing: 0,
+                  ),
+                  onSelectionChange: (values) {
+                    if (syncing) return;
+                    widget.onChanged(values.toSet());
+                  },
+                ),
+              ),
+            ),
+            IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  color: colors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(999),
+                  border: Border.all(color: colors.borderMuted),
+                ),
+              ),
+            ),
+            Positioned.fill(
+              right: 24,
+              child: IgnorePointer(
+                child: Padding(
+                  padding: const EdgeInsets.only(left: 12),
+                  child: Align(
+                    alignment: AlignmentDirectional.centerStart,
+                    child: _AgentFilterSummary(
+                      selectedAgents: widget.selectedAgents,
+                      agentLabel: widget.agentLabel,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            PositionedDirectional(
+              end: 10,
+              top: 11.5,
+              child: IgnorePointer(
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedArrowDown01,
+                  size: 13,
+                  strokeWidth: 1.4,
+                  color: scheme.onSurfaceVariant,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _AgentFilterSummary extends StatelessWidget {
+  const _AgentFilterSummary({
+    required this.selectedAgents,
+    required this.agentLabel,
+  });
+
+  final Set<String> selectedAgents;
+  final String Function(String) agentLabel;
+
+  @override
+  Widget build(BuildContext context) {
+    if (selectedAgents.isEmpty) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const HugeIcon(
+            icon: HugeIcons.strokeRoundedRobot01,
+            size: 16,
+            strokeWidth: 1.8,
+          ),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              context.l10n.allAgents,
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      );
+    }
+    if (selectedAgents.length == 1) {
+      final agent = selectedAgents.first;
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          AgentLogo(agentId: agent, displayName: agentLabel(agent), size: 17),
+          const SizedBox(width: 7),
+          Flexible(
+            child: Text(
+              agentLabel(agent),
+              overflow: TextOverflow.ellipsis,
+              maxLines: 1,
+              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+            ),
+          ),
+        ],
+      );
+    }
+    const countStyle = TextStyle(fontSize: 13, fontWeight: FontWeight.w600);
+    final countLabel = '× ${selectedAgents.length}';
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        const logoSize = 17.0;
+        const logoGap = 6.0;
+        final expandedLogoWidth =
+            selectedAgents.length * logoSize +
+            (selectedAgents.length - 1) * logoGap;
+        if (expandedLogoWidth <= constraints.maxWidth) {
+          return _AgentLogoStrip(
+            agents: selectedAgents.toList(),
+            step: logoSize + logoGap,
+          );
+        }
+        final countPainter = TextPainter(
+          text: TextSpan(text: countLabel, style: countStyle),
+          textScaler: MediaQuery.textScalerOf(context),
+          textDirection: Directionality.of(context),
+          maxLines: 1,
+        )..layout();
+        final availableForLogos = constraints.maxWidth - countPainter.width - 7;
+        final visibleCount = availableForLogos < 17
+            ? 1
+            : (1 + ((availableForLogos - 17) / 10).floor()).clamp(
+                1,
+                selectedAgents.length,
+              );
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _AgentLogoStrip(
+              agents: selectedAgents.take(visibleCount).toList(),
+              step: 10,
+            ),
+            const SizedBox(width: 7),
+            Text(countLabel, style: countStyle),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _AgentLogoStrip extends StatelessWidget {
+  const _AgentLogoStrip({required this.agents, required this.step});
+
+  final List<String> agents;
+  final double step;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 17 + (agents.length - 1) * step,
+    height: 19,
+    child: Stack(
+      children: [
+        for (var index = 0; index < agents.length; index++)
+          PositionedDirectional(
+            start: index * step,
+            child: DecoratedBox(
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(color: context.skillsColors.surfaceMuted),
+              ),
+              child: AgentLogo(
+                agentId: agents[index],
+                displayName: agents[index],
+                size: 17,
+              ),
+            ),
+          ),
+      ],
+    ),
   );
 }
 
-class _LibraryFilterEntry {
-  const _LibraryFilterEntry({required this.value, required this.label});
+class _AgentFilterAllRow extends StatelessWidget {
+  const _AgentFilterAllRow({required this.selected, required this.onPressed});
 
-  final String? value;
-  final String label;
-}
-
-class _LibraryFilterMenu extends StatelessWidget {
-  const _LibraryFilterMenu({
-    super.key,
-    required this.label,
-    required this.icon,
-    required this.entries,
-    required this.selected,
-    required this.onSelected,
-  });
-
-  final String label;
-  final List<List<dynamic>> icon;
-  final List<_LibraryFilterEntry> entries;
-  final String? selected;
-  final ValueChanged<String?> onSelected;
+  final bool selected;
+  final VoidCallback onPressed;
 
   @override
-  Widget build(BuildContext context) => MenuAnchor(
-    menuChildren: [
-      for (final entry in entries)
-        MenuItemButton(
-          leadingIcon: entry.value == selected
-              ? const HugeIcon(
-                  icon: HugeIcons.strokeRoundedCheckmarkCircle02,
+  Widget build(BuildContext context) => Semantics(
+    label: context.l10n.allAgents,
+    button: true,
+    selected: selected,
+    child: ExcludeSemantics(
+      child: InkWell(
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          child: Row(
+            children: [
+              const HugeIcon(
+                icon: HugeIcons.strokeRoundedRobot01,
+                size: 18,
+                strokeWidth: 1.8,
+              ),
+              const SizedBox(width: 10),
+              Expanded(child: Text(context.l10n.allAgents)),
+              if (selected)
+                const HugeIcon(
+                  icon: HugeIcons.strokeRoundedTick01,
                   size: 18,
                   strokeWidth: 1.8,
-                )
-              : const SizedBox(width: 18),
-          onPressed: () => onSelected(entry.value),
-          child: Text(entry.label),
+                ),
+            ],
+          ),
         ),
-    ],
-    builder: (context, controller, child) => SecondaryCapsuleButton(
-      label: label,
-      icon: icon,
-      onPressed: controller.isOpen ? controller.close : controller.open,
+      ),
+    ),
+  );
+}
+
+class _AgentFilterOptionRow extends StatelessWidget {
+  const _AgentFilterOptionRow({
+    required this.agent,
+    required this.label,
+    required this.selected,
+    required this.onPressed,
+  });
+
+  final String agent;
+  final String label;
+  final bool selected;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: label,
+    button: true,
+    selected: selected,
+    child: ExcludeSemantics(
+      child: InkWell(
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          child: Row(
+            children: [
+              AgentLogo(agentId: agent, displayName: label, size: 20),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 1,
+                ),
+              ),
+              AnimatedOpacity(
+                opacity: selected ? 1 : 0,
+                duration: MediaQuery.disableAnimationsOf(context)
+                    ? Duration.zero
+                    : const Duration(milliseconds: 120),
+                child: const HugeIcon(
+                  icon: HugeIcons.strokeRoundedTick01,
+                  size: 18,
+                  strokeWidth: 1.8,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     ),
   );
 }
@@ -1398,256 +2328,121 @@ class _LibrarySkeleton extends StatelessWidget {
   );
 }
 
-class _ExternalAdoptionDialog extends StatefulWidget {
-  const _ExternalAdoptionDialog({required this.gateway, required this.plan});
-
-  final SkillsGateway gateway;
-  final ExternalAdoptionPlan plan;
-
-  @override
-  State<_ExternalAdoptionDialog> createState() =>
-      _ExternalAdoptionDialogState();
-}
-
-class _ExternalAdoptionDialogState extends State<_ExternalAdoptionDialog> {
-  HubContentMatch? selectedMatch;
-  bool operating = false;
-  Object? error;
-
-  ExternalAdoptionPlan? get selectedPlan {
-    final match = selectedMatch;
-    if (match != null) return widget.plan.selectHubMatch(match);
-    if (widget.plan.matches.isEmpty && widget.plan.canImportLocal) {
-      return widget.plan.selectLocalImport();
-    }
-    return null;
-  }
-
-  Future<void> execute() async {
-    final plan = selectedPlan;
-    if (operating || plan == null) return;
-    setState(() {
-      operating = true;
-      error = null;
-    });
-    try {
-      final result = await widget.gateway.executeExternalAdoption(plan);
-      if (mounted) Navigator.pop(context, result);
-    } catch (caught) {
-      if (mounted) {
-        setState(() {
-          operating = false;
-          error = caught;
-        });
-      }
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final hasMatches = widget.plan.matches.isNotEmpty;
-    return SkillsDialog(
-      constraints: const BoxConstraints(maxWidth: 760, maxHeight: 700),
-      title: Text(context.l10n.adoptExternalTitle),
-      description: Text(context.l10n.adoptExternalDescription),
-      actions: [
-        SkillsButton.outline(
-          enabled: !operating,
-          onPressed: () => Navigator.pop(context),
-          child: Text(context.l10n.cancel),
-        ),
-        SkillsButton(
-          enabled: !operating && selectedPlan != null,
-          onPressed: execute,
-          child: operating
-              ? const SizedBox(width: 42, child: SkillsProgress(minHeight: 4))
-              : Text(
-                  hasMatches
-                      ? context.l10n.confirmAdoption
-                      : context.l10n.confirmLocalImport,
-                ),
-        ),
-      ],
-      child: SizedBox(
-        width: 680,
-        height: 470,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            SkillsCard(
-              width: double.infinity,
-              title: Text(context.l10n.adoptionContentDigest),
-              description: SelectableText(
-                widget.plan.contentDigest,
-                style: const TextStyle(
-                  fontFamily: SkillsTokens.monoFamily,
-                  fontSize: 12,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            SkillsAlert(
-              icon: const HugeIcon(
-                icon: HugeIcons.strokeRoundedLock,
-                strokeWidth: 1.8,
-              ),
-              description: Text(context.l10n.adoptionPreservesContent),
-            ),
-            if (error != null) ...[
-              const SizedBox(height: 10),
-              SkillsAlert.destructive(
-                icon: const HugeIcon(
-                  icon: HugeIcons.strokeRoundedAlertCircle,
-                  strokeWidth: 1.8,
-                ),
-                title: Text(context.l10n.adoptionFailed),
-                description: Text(_failureCopy(context, error!).message),
-              ),
-            ],
-            const SizedBox(height: 14),
-            Text(
-              hasMatches
-                  ? context.l10n.hubContentMatches
-                  : context.l10n.importAsLocal,
-              style: const TextStyle(fontWeight: FontWeight.w700),
-            ),
-            const SizedBox(height: 8),
-            Expanded(
-              child: hasMatches
-                  ? ListView.separated(
-                      itemCount: widget.plan.matches.length,
-                      separatorBuilder: (_, _) => const SizedBox(height: 8),
-                      itemBuilder: (context, index) {
-                        final match = widget.plan.matches[index];
-                        final selected = identical(selectedMatch, match);
-                        return SkillsButton.outline(
-                          width: double.infinity,
-                          height: 86,
-                          onPressed: operating
-                              ? null
-                              : () => setState(() => selectedMatch = match),
-                          child: Row(
-                            children: [
-                              HugeIcon(
-                                icon: selected
-                                    ? HugeIcons.strokeRoundedRadioButton
-                                    : HugeIcons.strokeRoundedCircle,
-                                strokeWidth: 1.8,
-                                color: selected
-                                    ? context.skillsComponents.statusAccent
-                                    : Theme.of(
-                                        context,
-                                      ).colorScheme.onSurfaceVariant,
-                              ),
-                              const SizedBox(width: 12),
-                              SizedBox(
-                                width: 560,
-                                child: Column(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      match.name,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    Text(
-                                      context.l10n.hubMatchSource(match.source),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    Text(
-                                      context.l10n.hubMatchVersion(
-                                        match.immutableVersion,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                      style: const TextStyle(
-                                        fontFamily: SkillsTokens.monoFamily,
-                                        fontSize: 12,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    )
-                  : SkillsCard(
-                      width: double.infinity,
-                      title: Text(context.l10n.importAsLocal),
-                      description: Text(context.l10n.importAsLocalDescription),
-                      footer: Text(
-                        context.l10n.exportLocalSkillDescription,
-                        style: TextStyle(
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ),
-            ),
-            if (hasMatches && selectedMatch == null)
-              Text(
-                context.l10n.chooseHubMatch,
-                style: TextStyle(
-                  color: Theme.of(context).colorScheme.onSurfaceVariant,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class LocalDetailScreen extends StatefulWidget {
+class LocalDetailScreen extends ConsumerStatefulWidget {
   const LocalDetailScreen({
     super.key,
     required this.gateway,
     required this.skill,
+    required this.projects,
+    required this.initialUpdateState,
+    required this.onBack,
+    required this.onRemoved,
   });
   final SkillsGateway gateway;
   final InstalledSkill skill;
+  final List<AddedProject> projects;
+  final UpdateState initialUpdateState;
+  final VoidCallback onBack;
+  final Future<void> Function() onRemoved;
   @override
-  State<LocalDetailScreen> createState() => _LocalDetailScreenState();
+  ConsumerState<LocalDetailScreen> createState() => _LocalDetailScreenState();
 }
 
-class _LocalDetailScreenState extends State<LocalDetailScreen> {
+class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
+  final detailScrollController = ScrollController();
   late InstalledSkill skill;
   SkillDetail? detail;
+  SkillDetail? remoteIdentity;
+  late UpdateState updateState;
   Object? error;
-  String? selectedFilePath;
   bool managing = false;
   bool updating = false;
-  bool adopting = false;
   bool installingMore = false;
   bool exporting = false;
   CommandResult? result;
   @override
   void initState() {
     super.initState();
+    detailScrollController.addListener(_detailScrollChanged);
     skill = widget.skill;
+    updateState = widget.initialUpdateState;
     unawaited(load());
+    if (skill.provenance == LibraryProvenance.hub &&
+        updateState != UpdateState.available &&
+        updateState != UpdateState.upToDate) {
+      unawaited(_checkUpdateState());
+    }
+  }
+
+  void _detailScrollChanged() {
+    if (mounted) setState(() {});
+  }
+
+  @override
+  void dispose() {
+    detailScrollController
+      ..removeListener(_detailScrollChanged)
+      ..dispose();
+    super.dispose();
+  }
+
+  Future<void> _checkUpdateState() async {
+    if (skill.provenance != LibraryProvenance.hub) return;
+    if (mounted) setState(() => updateState = UpdateState.checking);
+    try {
+      final states = await widget.gateway.checkUpdates([skill]);
+      if (!mounted) return;
+      setState(
+        () => updateState =
+            states[_libraryUpdateKey(skill)] ?? UpdateState.failed,
+      );
+    } on Object {
+      if (mounted) setState(() => updateState = UpdateState.failed);
+    }
   }
 
   Future<void> load() async {
     setState(() {
       error = null;
-      selectedFilePath = null;
     });
     try {
       detail = await widget.gateway.loadLocalDetail(skill);
+      if (mounted) setState(() {});
+      unawaited(_loadRemoteIdentity());
     } catch (caught) {
       error = caught;
     }
     if (mounted) setState(() {});
   }
 
-  Future<void> manage() async {
+  Future<void> _loadRemoteIdentity() async {
+    if (skill.provenance != LibraryProvenance.hub || skill.skillId.isEmpty) {
+      return;
+    }
+    try {
+      final value = await widget.gateway.loadRemoteDetail(
+        SkillSummary(
+          id: skill.skillId,
+          installName: skill.name,
+          name: skill.name,
+          source: skill.skillId,
+          installs: 0,
+          latestVersion: skill.versions.firstOrNull ?? '',
+          description: skill.description,
+          riskAssessment: skill.riskAssessment,
+          localTargetCount: skill.targetCount,
+        ),
+      );
+      if (mounted) setState(() => remoteIdentity = value);
+    } on Object {
+      // Local content remains usable when optional Hub identity is unavailable.
+    }
+  }
+
+  Future<void> manage([
+    SkillInstallationTarget? target,
+    TargetManagementAction? initialAction,
+  ]) async {
     if (managing) return;
     setState(() {
       managing = true;
@@ -1656,16 +2451,20 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
     try {
       final plan = await widget.gateway.preflightTargetManagement(
         skill,
-        skill.targets,
+        target == null ? skill.targets : [target],
       );
       if (!mounted) return;
       final execution = await showSkillsDialog<TargetManagementExecution>(
         context: context,
         barrierDismissible: false,
-        builder: (context) =>
-            _TargetManagementDialog(gateway: widget.gateway, plan: plan),
+        builder: (context) => _TargetManagementDialog(
+          gateway: widget.gateway,
+          plan: plan,
+          initialAction: initialAction,
+        ),
       );
       if (execution != null && execution.summary.succeeded > 0) {
+        unawaited(ref.read(agentCatalogProvider.notifier).refreshSilently());
         final projects = await widget.gateway.loadAddedProjects();
         final entries = await widget.gateway.listInstalled(projects: projects);
         final refreshed = entries.where(
@@ -1673,7 +2472,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
         );
         if (!mounted) return;
         if (refreshed.isEmpty) {
-          Navigator.pop(context, true);
+          await widget.onRemoved();
           return;
         }
         skill = refreshed.first;
@@ -1683,6 +2482,40 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
       result = _exceptionResult(caught);
     }
     if (mounted) setState(() => managing = false);
+  }
+
+  Future<void> manageTargetInline(
+    SkillInstallationTarget target,
+    TargetManagementAction action,
+  ) async {
+    if (managing) return;
+    setState(() {
+      managing = true;
+      result = null;
+    });
+    try {
+      await _executeInlineTargetAction(
+        gateway: widget.gateway,
+        skill: skill,
+        target: target,
+        action: action,
+      );
+      unawaited(ref.read(agentCatalogProvider.notifier).refreshSilently());
+      final projects = await widget.gateway.loadAddedProjects();
+      final entries = await widget.gateway.listInstalled(projects: projects);
+      final refreshed = entries.where(
+        (entry) => entry.inventoryKey == skill.inventoryKey,
+      );
+      if (!mounted) return;
+      if (refreshed.isEmpty) {
+        await widget.onRemoved();
+        return;
+      }
+      skill = refreshed.first;
+      await load();
+    } finally {
+      if (mounted) setState(() => managing = false);
+    }
   }
 
   Future<void> update() async {
@@ -1704,6 +2537,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
         ),
       );
       if (execution != null && execution.summary.succeeded > 0) {
+        unawaited(ref.read(agentCatalogProvider.notifier).refreshSilently());
         final projects = await widget.gateway.loadAddedProjects();
         final entries = await widget.gateway.listInstalled(projects: projects);
         final refreshed = entries.where(
@@ -1712,39 +2546,13 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
         if (refreshed.isNotEmpty) {
           skill = refreshed.first;
           await load();
+          await _checkUpdateState();
         }
       }
     } catch (caught) {
       result = _exceptionResult(caught);
     }
     if (mounted) setState(() => updating = false);
-  }
-
-  Future<void> adopt() async {
-    if (adopting || skill.provenance != LibraryProvenance.external) return;
-    setState(() {
-      adopting = true;
-      result = null;
-    });
-    try {
-      final plan = await widget.gateway.preflightExternalAdoption(skill);
-      if (!mounted) return;
-      final adopted = await showSkillsDialog<ExternalAdoptionResult>(
-        context: context,
-        barrierDismissible: false,
-        builder: (context) =>
-            _ExternalAdoptionDialog(gateway: widget.gateway, plan: plan),
-      );
-      if (adopted != null) {
-        await _refreshManagedSkill(
-          skillId: adopted.skillId,
-          targetPath: adopted.target.path,
-        );
-      }
-    } catch (caught) {
-      result = _exceptionResult(caught);
-    }
-    if (mounted) setState(() => adopting = false);
   }
 
   Future<void> installMore(InstallLocationMenuPresenter present) async {
@@ -1761,7 +2569,7 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
     final operation = InstallOperationController();
     try {
       final values = await Future.wait([
-        widget.gateway.inspectAgents(),
+        ref.read(agentCatalogProvider.notifier).ensureLoaded(),
         widget.gateway.loadAddedProjects(),
         widget.gateway.loadRiskPolicy(),
       ]);
@@ -1813,6 +2621,9 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
               );
             }
             await _refreshManagedSkill(skillId: skill.skillId);
+            unawaited(
+              ref.read(agentCatalogProvider.notifier).refreshSilently(),
+            );
             return const InstallLocationSubmission.success();
           } on Object catch (error) {
             if (!mounted) {
@@ -1866,367 +2677,251 @@ class _LocalDetailScreenState extends State<LocalDetailScreen> {
     await load();
   }
 
-  @override
-  Widget build(BuildContext context) => Scaffold(
-    backgroundColor: Theme.of(context).colorScheme.surface,
-    body: SafeArea(
-      child: Padding(
-        padding: const EdgeInsets.all(28),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                IconButton(
-                  tooltip: context.l10n.backToLibrary,
-                  onPressed: () => Navigator.pop(context),
-                  icon: const HugeIcon(
-                    icon: HugeIcons.strokeRoundedArrowLeft01,
-                    strokeWidth: 1.8,
-                  ),
-                ),
-                const SizedBox(width: 8),
-                SkillGlyph(name: skill.name),
-                const SizedBox(width: 14),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        skill.name,
-                        style: const TextStyle(
-                          fontFamily: SkillsTokens.serifFamily,
-                          fontSize: 30,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      SelectableText(
-                        skill.path,
-                        style: TextStyle(
-                          fontFamily: SkillsTokens.monoFamily,
-                          color: Theme.of(context).colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                _libraryProvenanceChip(context, skill.provenance),
-                const SizedBox(width: 8),
-                SkillRiskChip(risk: skill.riskAssessment),
-                const SizedBox(width: 8),
-                if (skill.provenance == LibraryProvenance.external) ...[
-                  SecondaryCapsuleButton(
-                    label: context.l10n.remove,
-                    icon: HugeIcons.strokeRoundedDelete02,
-                    onPressed: managing ? null : manage,
-                  ),
-                ] else ...[
-                  if (skill.provenance == LibraryProvenance.hub) ...[
-                    SecondaryCapsuleButton(
-                      label: context.l10n.update,
-                      icon: HugeIcons.strokeRoundedArrowReloadHorizontal,
-                      onPressed: updating || managing ? null : update,
-                    ),
-                    const SizedBox(width: 8),
-                  ],
-                  Tooltip(
-                    message: context.l10n.manageTargets,
-                    child: Semantics(
-                      label: context.l10n.manageTargets,
-                      button: true,
-                      child: SkillsButton.ghost(
-                        width: 38,
-                        height: 38,
-                        padding: EdgeInsets.zero,
-                        enabled: !managing && !installingMore && !updating,
-                        onPressed: manage,
-                        child: const HugeIcon(
-                          icon: HugeIcons.strokeRoundedSettings02,
-                          size: 18,
-                          strokeWidth: 1.8,
-                        ),
-                      ),
-                    ),
-                  ),
-                  if (detail?.immutableVersion.isNotEmpty ?? false) ...[
-                    const SizedBox(width: 8),
-                    InstallLocationMenuAnchor(
-                      builder: (context, present) => SecondaryCapsuleButton(
-                        label: context.l10n.installMoreTargets,
-                        icon: HugeIcons.strokeRoundedCopy01,
-                        onPressed: installingMore || managing || updating
-                            ? null
-                            : () => installMore(present),
-                      ),
-                    ),
-                  ],
-                  if (skill.provenance == LibraryProvenance.local) ...[
-                    const SizedBox(width: 8),
-                    SecondaryCapsuleButton(
-                      label: context.l10n.exportLocalSkill,
-                      icon: HugeIcons.strokeRoundedShare08,
-                      onPressed: exporting ? null : exportLocal,
-                    ),
-                  ],
-                ],
-              ],
-            ),
-            const SizedBox(height: 20),
-            if (result != null) ...[
-              OperationPanel(result: result!),
-              const SizedBox(height: 14),
-            ],
-            Expanded(
-              child: Column(
-                children: [
-                  _InstallationTargetsPanel(skill: skill),
-                  const SizedBox(height: 14),
-                  if (detail?.hasExecutableContent ?? false) ...[
-                    _RiskNotice(detail: detail!),
-                    const SizedBox(height: 14),
-                  ],
-                  Expanded(
-                    child: error != null
-                        ? EmptyState(
-                            title: context.l10n.localReadFailed,
-                            message: context.l10n.localReadFailedMessage,
-                            action: PrimaryCapsuleButton(
-                              label: context.l10n.retry,
-                              onPressed: load,
-                            ),
-                          )
-                        : detail == null
-                        ? const Center(child: CircularProgressIndicator())
-                        : _LocalSkillDocuments(
-                            detail: detail!,
-                            selectedFilePath: selectedFilePath,
-                            onSelected: (path) =>
-                                setState(() => selectedFilePath = path),
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+  Widget _actions() => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (skill.provenance == LibraryProvenance.external) ...[
+        SecondaryCapsuleButton(
+          label: context.l10n.remove,
+          icon: HugeIcons.strokeRoundedDelete02,
+          onPressed: managing ? null : manage,
         ),
-      ),
-    ),
-  );
-}
-
-class _InstallationTargetsPanel extends StatelessWidget {
-  const _InstallationTargetsPanel({required this.skill});
-
-  final InstalledSkill skill;
-
-  @override
-  Widget build(BuildContext context) => GlassCard(
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          context.l10n.knownInstallationTargets,
-          style: const TextStyle(fontWeight: FontWeight.w700),
-        ),
-        const SizedBox(height: 12),
-        for (final (index, target) in skill.targets.indexed) ...[
-          if (index > 0)
-            SkillsSeparator.horizontal(
-              color: Theme.of(context).colorScheme.outlineVariant,
+      ] else ...[
+        if (skill.provenance == LibraryProvenance.hub &&
+            updateState == UpdateState.available) ...[
+          SecondaryCapsuleButton(
+            label: context.l10n.update,
+            icon: HugeIcons.strokeRoundedArrowReloadHorizontal,
+            onPressed: updating || managing ? null : update,
+          ),
+          const SizedBox(width: 8),
+        ],
+        if (detail?.immutableVersion.isNotEmpty ?? false) ...[
+          InstallLocationMenuAnchor(
+            builder: (context, present) => PrimaryCapsuleButton(
+              label: context.l10n.installMoreTargets,
+              height: 40,
+              horizontalPadding: 18,
+              labelStyle: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+              ),
+              onPressed: installingMore || managing || updating
+                  ? null
+                  : () => installMore(present),
+              busy: installingMore,
             ),
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      context.l10n.targetSummary(
-                        target.scope == InstallationScope.user
-                            ? context.l10n.userScope
-                            : context.l10n.projectScope,
-                        _agentDisplayLabel(target.agent),
-                        target.version.isEmpty
-                            ? context.l10n.unversioned
-                            : target.version,
-                      ),
-                      style: const TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 4),
-                    SelectableText(
-                      target.path,
-                      style: TextStyle(
-                        fontFamily: SkillsTokens.monoFamily,
-                        fontSize: 11,
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 12),
-              StatusChip(
-                label: _installationModeLabel(context, target.mode),
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-              const SizedBox(width: 7),
-              _installationHealthChip(context, target.health),
-            ],
+          ),
+        ],
+        if (skill.provenance == LibraryProvenance.local) ...[
+          const SizedBox(width: 8),
+          SecondaryCapsuleButton(
+            label: context.l10n.exportLocalSkill,
+            icon: HugeIcons.strokeRoundedShare08,
+            onPressed: exporting ? null : exportLocal,
           ),
         ],
       ],
-    ),
+    ],
   );
-}
 
-class _LocalSkillDocuments extends StatelessWidget {
-  const _LocalSkillDocuments({
-    required this.detail,
-    required this.selectedFilePath,
-    required this.onSelected,
-  });
-
-  final SkillDetail detail;
-  final String? selectedFilePath;
-  final ValueChanged<String?> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final supportingFiles = detail.files
-        .where((file) => file.kind != 'instructions' && file.path != 'SKILL.md')
-        .toList(growable: false);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 3,
-          child: GlassCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  selectedFilePath ?? context.l10n.instructionsTab,
-                  style: const TextStyle(fontWeight: FontWeight.w700),
+  Widget _detailToolbar() {
+    final scheme = Theme.of(context).colorScheme;
+    final offset = detailScrollController.hasClients
+        ? detailScrollController.offset
+        : 0.0;
+    final materialProgress = ((offset - 12) / 52).clamp(0.0, 1.0);
+    final compactProgress = ((offset - 72) / 56).clamp(0.0, 1.0);
+    final source =
+        remoteIdentity?.source ??
+        (skill.skillId.isNotEmpty ? skill.skillId : skill.name);
+    return SizedBox(
+      key: const Key('installed-detail-sticky-toolbar'),
+      height: 72,
+      child: Stack(
+        children: [
+          Positioned.fill(
+            child: ShaderMask(
+              blendMode: BlendMode.dstIn,
+              shaderCallback: (bounds) => const LinearGradient(
+                colors: [
+                  Colors.transparent,
+                  Colors.white,
+                  Colors.white,
+                  Colors.transparent,
+                ],
+                stops: [0, .04, .96, 1],
+              ).createShader(bounds),
+              child: ShaderMask(
+                blendMode: BlendMode.dstIn,
+                shaderCallback: (bounds) => const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    Colors.white,
+                    Colors.white,
+                    Colors.transparent,
+                  ],
+                  stops: [0, .16, .68, 1],
+                ).createShader(bounds),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(
+                    sigmaX: 22 * materialProgress,
+                    sigmaY: 22 * materialProgress,
+                  ),
+                  child: ColoredBox(
+                    color: scheme.surface.withValues(
+                      alpha: .62 * materialProgress,
+                    ),
+                  ),
                 ),
-                const SizedBox(height: 12),
-                Expanded(child: _document(context)),
-              ],
+              ),
             ),
           ),
-        ),
-        const SizedBox(width: 14),
-        SizedBox(
-          width: 260,
-          child: GlassCard(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+          SizedBox(
+            height: 56,
+            child: Row(
               children: [
-                SectionEyebrow(context.l10n.supportingFiles),
-                const SizedBox(height: 10),
-                SkillsButton.ghost(
-                  width: double.infinity,
-                  mainAxisAlignment: MainAxisAlignment.start,
-                  backgroundColor: selectedFilePath == null
-                      ? Theme.of(context).colorScheme.surfaceContainer
-                      : null,
-                  onPressed: () => onSelected(null),
-                  child: Text(context.l10n.instructionsTab),
+                Semantics(
+                  label: context.l10n.backToLibrary,
+                  button: true,
+                  child: Material(
+                    color: scheme.surfaceContainerHigh.withValues(alpha: .82),
+                    elevation: 3,
+                    shadowColor: scheme.shadow.withValues(alpha: .28),
+                    shape: const CircleBorder(),
+                    clipBehavior: Clip.antiAlias,
+                    child: IconButton(
+                      key: const Key('installed-detail-back'),
+                      tooltip: context.l10n.backToLibrary,
+                      onPressed: widget.onBack,
+                      style: IconButton.styleFrom(
+                        foregroundColor: scheme.onSurface,
+                        fixedSize: const Size.square(40),
+                        minimumSize: const Size.square(40),
+                        padding: EdgeInsets.zero,
+                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                      ),
+                      icon: HugeIcon(
+                        icon: HugeIcons.strokeRoundedLessThan,
+                        size: 20,
+                        strokeWidth: 1.8,
+                        color: scheme.onSurface,
+                      ),
+                    ),
+                  ),
                 ),
-                SkillsSeparator.horizontal(
-                  color: Theme.of(context).colorScheme.outlineVariant,
-                ),
-                Expanded(
-                  child: ListView(
-                    children: supportingFiles
-                        .map(
-                          (file) => Padding(
-                            padding: const EdgeInsets.only(bottom: 4),
-                            child: SkillsButton.ghost(
-                              width: double.infinity,
-                              mainAxisAlignment: MainAxisAlignment.start,
-                              backgroundColor: selectedFilePath == file.path
-                                  ? Theme.of(
-                                      context,
-                                    ).colorScheme.surfaceContainer
-                                  : null,
-                              onPressed: () => onSelected(file.path),
-                              leading: HugeIcon(
-                                icon: file.executable
-                                    ? HugeIcons.strokeRoundedFileTerminal
-                                    : file.binary
-                                    ? HugeIcons.strokeRoundedBinaryCode
-                                    : HugeIcons.strokeRoundedFile02,
-                                size: 15,
-                                strokeWidth: 1.8,
-                                color: file.executable
-                                    ? context.skillsComponents.statusAttention
-                                    : Theme.of(context)
-                                          .colorScheme
-                                          .onSurfaceVariant
-                                          .withValues(alpha: .72),
-                              ),
-                              child: Flexible(
-                                child: Text(
-                                  file.path,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontFamily: SkillsTokens.monoFamily,
-                                    fontSize: 11,
-                                  ),
+                if (compactProgress > 0) ...[
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Opacity(
+                      key: const Key('installed-detail-compact-identity'),
+                      opacity: compactProgress,
+                      child: IgnorePointer(
+                        ignoring: compactProgress < .95,
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            RepositoryAvatar(
+                              source: source,
+                              imageUrl: remoteIdentity?.imageUrl,
+                              size: 26,
+                              borderRadius: 7,
+                            ),
+                            const SizedBox(width: 9),
+                            Flexible(
+                              child: Text(
+                                skill.name,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
                                 ),
                               ),
                             ),
-                          ),
-                        )
-                        .toList(growable: false),
+                          ],
+                        ),
+                      ),
+                    ),
                   ),
-                ),
+                ] else
+                  const Spacer(),
+                if (compactProgress > 0)
+                  Opacity(
+                    key: const Key('installed-detail-compact-actions'),
+                    opacity: compactProgress,
+                    child: IgnorePointer(
+                      ignoring: compactProgress < .95,
+                      child: _actions(),
+                    ),
+                  ),
+                const SizedBox(width: 4),
               ],
             ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  Widget _document(BuildContext context) {
-    if (selectedFilePath == null) {
-      return SkillMarkdownView(data: detail.markdown);
-    }
-    final file = detail.files.firstWhere(
-      (candidate) => candidate.path == selectedFilePath,
-    );
-    if (file.binary || file.contents.isEmpty) {
-      return Center(
-        child: Text(
-          context.l10n.fileContentUnavailable,
-          style: TextStyle(
-            color: Theme.of(context).colorScheme.onSurfaceVariant,
-          ),
-        ),
-      );
-    }
-    final content = file.path.toLowerCase().endsWith('.md')
-        ? SkillMarkdownView(data: file.contents)
-        : SingleChildScrollView(
-            child: SelectableText(
-              file.contents,
-              style: const TextStyle(fontFamily: SkillsTokens.monoFamily),
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
+    body: Padding(
+      padding: const EdgeInsets.only(left: 4, right: 4, bottom: 4),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          _SkillDetailPageBody(
+            scrollKey: const Key('installed-detail-scroll-view'),
+            controller: detailScrollController,
+            hero: _SkillDetailHero(
+              name: skill.name,
+              source:
+                  remoteIdentity?.source ??
+                  (skill.skillId.isNotEmpty ? skill.skillId : skill.name),
+              description: remoteIdentity?.description ?? skill.description,
+              imageUrl: remoteIdentity?.imageUrl,
+              avatarKey: const Key('installed-detail-skill-avatar'),
+              actions: _actions(),
             ),
-          );
-    if (!file.truncated) return content;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          context.l10n.fileContentTruncated,
-          style: TextStyle(color: context.skillsComponents.statusAttention),
-        ),
-        const SizedBox(height: 8),
-        Expanded(child: content),
-      ],
-    );
-  }
+            contextArea: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (result != null) ...[
+                  OperationPanel(result: result!),
+                  const SizedBox(height: 14),
+                ],
+                _InstallationScopePanel(
+                  targets: skill.targets,
+                  projects: widget.projects,
+                  onManageTarget: manageTargetInline,
+                ),
+              ],
+            ),
+            document: error != null
+                ? EmptyState(
+                    title: context.l10n.localReadFailed,
+                    message: context.l10n.localReadFailedMessage,
+                    action: PrimaryCapsuleButton(
+                      label: context.l10n.retry,
+                      onPressed: load,
+                    ),
+                  )
+                : detail == null
+                ? const SkillsSkeletonBox(height: 280, borderRadius: 14)
+                : SkillMarkdownView(
+                    key: const Key('installed-detail-instructions'),
+                    data: detail!.markdown,
+                    scrollable: false,
+                    stripFrontMatter: true,
+                  ),
+          ),
+          Align(alignment: Alignment.topCenter, child: _detailToolbar()),
+        ],
+      ),
+    ),
+  );
 }
