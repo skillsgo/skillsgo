@@ -169,6 +169,7 @@ A new code is justified only when App or automation callers require a different 
 | `hub.unavailable` | true | Retry a Hub-dependent operation later. |
 | `hub.timeout` | true | Retry after a dependency timeout. |
 | `hub.rate_limited` | true | Retry according to Hub availability guidance. |
+| `hub.server_error` | true | Retry after the reachable Hub failed to process the request. |
 | `protocol.invalid_response` | true | Retry or diagnose a malformed dependency response. |
 | `protocol.incompatible` | false | Upgrade the incompatible caller, CLI, or dependency. |
 | `local.data_invalid` | false | Repair or inspect untrusted local SkillsGo state. |

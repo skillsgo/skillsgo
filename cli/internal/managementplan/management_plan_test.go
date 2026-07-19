@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Uses hostile Target Management JSON plus real Remove, Repair, Stop Managing, and External removal failure boundaries.
+ * [INPUT]: Uses hostile target JSON plus real Remove, Repair, and External removal failure boundaries.
  * [OUTPUT]: Specifies strict decoding, action/token pairing, nested action-family failures, and mixed independent outcomes.
- * [POS]: Serves as focused validation coverage beneath the public manage command contract.
+ * [POS]: Serves as focused validation coverage beneath the top-level remove and repair command contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package managementplan
@@ -44,10 +44,6 @@ func TestExecutePublishesNestedFailureForEveryManagementActionFamily(t *testing.
 		{
 			name: "repair",
 			item: Item{Target: Target{Scope: install.ScopeUser, Mode: install.ModeCopy, Path: "/missing"}, SkillID: "github.com/example/skills/-/demo", Version: "v1", Action: ActionRepair},
-		},
-		{
-			name: "stop managing",
-			item: Item{Target: Target{Scope: install.ScopeProject, ProjectRoot: "\x00", Mode: install.ModeCopy, Path: "/missing"}, Action: ActionStopManaging},
 		},
 		{
 			name: "external removal",

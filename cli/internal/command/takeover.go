@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the current skills.sh user lock, unified External inventory, captured Store baselines, and canonical user declarations.
- * [OUTPUT]: Exposes the versioned lock-backed Batch Takeover machine operation with target-preserving partial results.
+ * [INPUT]: Depends on explicitly selected skills.sh user and Workspace locks, unified External inventory, captured Store baselines, and canonical declarations.
+ * [OUTPUT]: Exposes the versioned, scope-explicit lock-backed Batch Takeover machine operation with target-preserving partial results.
  * [POS]: Serves as the public CLI orchestration boundary for registering existing copies without Hub access or target materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -71,7 +71,7 @@ type takeoverReport struct {
 
 func newTakeoverCommand(catalog *agent.Catalog) *cobra.Command {
 	var output string
-	var yes bool
+	var includeUser, yes bool
 	var projects []string
 	cmd := &cobra.Command{
 		Use:   "takeover",
@@ -84,7 +84,10 @@ func newTakeoverCommand(catalog *agent.Catalog) *cobra.Command {
 			if output != "json" {
 				return fmt.Errorf("%s", appi18n.T("takeover.error.output"))
 			}
-			report, err := runLockTakeover(catalog, projects)
+			if !includeUser && len(projects) == 0 {
+				return fmt.Errorf("%s", appi18n.T("takeover.error.scope"))
+			}
+			report, err := runLockTakeover(catalog, includeUser, projects)
 			if err != nil {
 				return err
 			}
@@ -94,20 +97,25 @@ func newTakeoverCommand(catalog *agent.Catalog) *cobra.Command {
 		},
 	}
 	cmd.Flags().BoolVar(&yes, "yes", false, appi18n.T("takeover.flag.confirm"))
+	cmd.Flags().BoolVar(&includeUser, "user", false, appi18n.T("takeover.flag.user"))
 	cmd.Flags().StringArrayVar(&projects, "project", nil, appi18n.T("takeover.flag.project"))
 	cmd.Flags().StringVar(&output, "output", "human", appi18n.T("takeover.flag.output"))
 	return cmd
 }
 
-func runLockTakeover(catalog *agent.Catalog, projectRoots []string) (takeoverReport, error) {
+func runLockTakeover(catalog *agent.Catalog, includeUser bool, projectRoots []string) (takeoverReport, error) {
 	report := takeoverReport{SchemaVersion: takeoverSchemaVersion, Results: []takeoverResult{}}
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return report, err
 	}
-	userLock, userLockSupported, err := readSkillsShUserLock(home)
-	if err != nil {
-		return report, err
+	userLock := map[string]skillsShUserLockRecord{}
+	userLockSupported := true
+	if includeUser {
+		userLock, userLockSupported, err = readSkillsShUserLock(home)
+		if err != nil {
+			return report, err
+		}
 	}
 	workspaceLocks := map[string]map[string]skillsShUserLockRecord{}
 	workspaceLockSupported := map[string]bool{}
@@ -123,7 +131,7 @@ func runLockTakeover(catalog *agent.Catalog, projectRoots []string) (takeoverRep
 		workspaceLocks[filepath.Clean(root)] = locked
 		workspaceLockSupported[filepath.Clean(root)] = supported
 	}
-	current, err := inventory.Build(inventory.Options{IncludeUser: true, Projects: projectRoots, Catalog: catalog})
+	current, err := inventory.Build(inventory.Options{IncludeUser: includeUser, Projects: projectRoots, Catalog: catalog})
 	if err != nil {
 		return report, err
 	}
@@ -300,7 +308,9 @@ func runLockTakeover(catalog *agent.Catalog, projectRoots []string) (takeoverRep
 			report.Summary.Skipped++
 		}
 	}
-	appendMissing(project.UserRoot(home), install.ScopeUser, userLock)
+	if includeUser {
+		appendMissing(project.UserRoot(home), install.ScopeUser, userLock)
+	}
 	for root, locked := range workspaceLocks {
 		appendMissing(root, install.ScopeProject, locked)
 	}

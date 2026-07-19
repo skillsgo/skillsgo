@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 )
 
 type Definition struct {
@@ -58,7 +59,7 @@ type CatalogOption func(map[string]Definition)
 
 // WithDefinition adds an explicit Agent definition to a Catalog. It is useful
 // for isolated tests and private integrations without changing the official
-// skills-sh-compatible Agent set.
+// supported Agent set.
 func WithDefinition(definition Definition) CatalogOption {
 	return func(definitions map[string]Definition) {
 		definitions[definition.ID] = definition
@@ -101,6 +102,8 @@ func NewCatalog(paths Paths, options ...CatalogOption) *Catalog {
 			base = envHome("HERMES_HOME", filepath.Join(paths.Home, ".hermes"))
 		case "autohand":
 			base = envHome("AUTOHAND_HOME", filepath.Join(paths.Home, ".autohand"))
+		case "workbuddy":
+			base = workBuddyHome(paths.Home)
 		case "none":
 			base = ""
 		}
@@ -124,6 +127,15 @@ func envHome(key, fallback string) string {
 		return value
 	}
 	return fallback
+}
+
+func workBuddyHome(home string) string {
+	for _, key := range []string{"WORKBUDDY_CONFIG_DIR", "CODEBUDDY_CONFIG_DIR"} {
+		if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+			return value
+		}
+	}
+	return filepath.Join(home, ".workbuddy")
 }
 
 func (c *Catalog) Get(id string) (Definition, bool) { value, ok := c.definitions[id]; return value, ok }
@@ -163,7 +175,7 @@ func (c *Catalog) SkillRoots(id string, scope Scope, projectRoot string) (SkillR
 
 func discoveryVerification(id string, scope Scope) DiscoveryVerification {
 	switch id {
-	case "codex", "claude-code", "cursor", "opencode", "openclaw":
+	case "codex", "claude-code", "cursor", "opencode", "openclaw", "qclaw", "workbuddy":
 		return DiscoveryVerified
 	case "hermes-agent":
 		if scope == ScopeUser {
@@ -201,6 +213,8 @@ func additionalDiscoveryRoots(id string, scope Scope, paths Paths, projectRoot s
 		return []string{shared, filepath.Join(paths.Home, ".claude", "skills")}
 	case "openclaw":
 		return []string{shared}
+	case "workbuddy":
+		return []string{filepath.Join(workBuddyHome(paths.Home), "connectors", "skills")}
 	default:
 		return nil
 	}
@@ -284,6 +298,7 @@ var rawCatalog = []rawDefinition{
 	{"openhands", "OpenHands", ".openhands/skills", "home", ".openhands/skills"},
 	{"ona", "Ona", ".ona/skills", "home", ".ona/skills"},
 	{"pi", "Pi", ".pi/skills", "home", ".pi/agent/skills"},
+	{"qclaw", "QClaw", "", "home", ".qclaw/skills"},
 	{"qoder", "Qoder", ".qoder/skills", "home", ".qoder/skills"},
 	{"qoder-cn", "Qoder CN", ".qoder/skills", "home", ".qoder-cn/skills"},
 	{"qwen-code", "Qwen Code", ".qwen/skills", "home", ".qwen/skills"},
@@ -298,6 +313,7 @@ var rawCatalog = []rawDefinition{
 	{"trae-cn", "Trae CN", ".trae/skills", "home", ".trae-cn/skills"},
 	{"warp", "Warp", ".agents/skills", "home", ".agents/skills"},
 	{"windsurf", "Windsurf", ".windsurf/skills", "home", ".codeium/windsurf/skills"},
+	{"workbuddy", "WorkBuddy", ".codebuddy/skills", "workbuddy", "skills"},
 	{"zed", "Zed", ".agents/skills", "home", ".agents/skills"},
 	{"zcode", "ZCode", ".zcode/skills", "home", ".zcode/skills"},
 	{"zencoder", "Zencoder", ".zencoder/skills", "home", ".zencoder/skills"},

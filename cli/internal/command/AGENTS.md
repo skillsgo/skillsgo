@@ -15,16 +15,18 @@
 - `agents_test.go`: specifies the stable App-facing Agent discovery machine contract.
 - `info.go`: exposes direct, read-only Repository or Skill JSON with immutable source identity plus provider-neutral Hub product metadata, including Repository descriptions required by App cards.
 - `info_test.go`: specifies lazy latest resolution, Repository description preservation, exact Repository-batch member selection, stable JSON, missing-member failure, and the no-local-write boundary.
+- `product_reads.go`: exposes `discover`, `detail`, and `hub check` as deep read-only App machine contracts, including optional description locale forwarding, while hiding Hub routes and query parameters behind CLI domain language.
+- `product_reads_test.go`: specifies domain-to-Hub translation through Execute and rejects raw or unknown discovery collections.
 - `export.go`: exports one private Local Skill artifact with machine confirmation or adaptive Human progress, without Hub access.
 - `inventory.go`: adapts the managed/external inventory domain report into stable JSON and grouped adaptive Human output.
 - `inventory_test.go`: specifies Skill ID aggregation, External inventory-key separation, read-only inspection, target health, Workspace reconciliation, and the explicit-project privacy boundary.
-- `takeover.go`: groups and registers current skills.sh user/Workspace lock-backed External copies as verified captured Store baselines plus exact target Receipt and declaration state without Hub access or target materialization.
-- `takeover_test.go`: specifies user, XDG, Workspace, provider-aware and record-isolated lock parsing, divergent-copy, identical-baseline, safe-alias, partial-success, schema, localization, idempotency, target-byte preservation, and managed-inventory Batch Takeover behavior through `Execute`.
+- `takeover.go`: groups and registers explicitly selected skills.sh user/Workspace lock-backed External copies as verified captured Store baselines plus exact target Receipt and declaration state without Hub access or target materialization.
+- `takeover_test.go`: specifies explicit User/Workspace scope isolation, XDG, provider-aware and record-isolated lock parsing, divergent-copy, identical-baseline, safe-alias, partial-success, schema, localization, idempotency, target-byte preservation, and managed-inventory Batch Takeover behavior through `Execute`.
 - `list_test.go`: specifies that global listing uses unified inventory and includes externally installed Agent Skills.
 - `installation_plan.go`: adapts strict repeated target JSON, resolves Hub artifacts or existing private Local Store artifacts, persists verified Repository/Skill integrity for every declaration root, refreshes cached immutable assessments, maps `--yes` to automatic replacement, and emits direct Human or JSON execution results.
 - `installation_plan_test.go`: specifies explicit multi-location/Agent plans, complete Workspace Manifest/Sum persistence, refreshed trusted-risk gates, state-bound resolutions, skip behavior, hostile structured inputs, partial failure retention, and per-target NDJSON through `Execute`.
-- `management_plan.go`: adapts strict repeated exact-target JSON into Target Management Plan preflight JSON and adaptive Human, JSON, or NDJSON execution progress/results.
-- `management_plan_test.go`: specifies exact managed and External removal, unsafe-remove blocking, Repair, content-preserving Stop Managing, Workspace ownership cleanup, Store retention, and complete JSON/NDJSON failure documents before non-zero `Execute` results.
+- `management_plan.go`: adapts repeatable flat exact-target flags into top-level Remove/Repair preflight JSON and adaptive Human, JSON, or NDJSON execution progress/results.
+- `management_plan_test.go`: specifies exact managed and External removal, unsafe-remove blocking, Repair, Workspace ownership cleanup, Store retention, and complete JSON/NDJSON failure documents before non-zero `Execute` results.
 - `update_plan.go`: adapts explicit target Update Plan preflight JSON and adaptive Human, JSON, or NDJSON execution progress/results, returning process failure when any structured target result fails.
 - `update_plan_test.go`: specifies pinned canonical Workspace requirements plus complete JSON/NDJSON nested failure documents before non-zero `Execute` results.
 - `version.go`: serves the human version output and versioned App startup handshake.

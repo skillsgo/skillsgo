@@ -33,8 +33,8 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/command/` | CLI command graph, argument handling, and orchestration. |
 | `internal/i18n/` | Locale detection and user-facing CLI messages. |
 | `internal/install/` | Add, update, remove, copy-digest, explicit replacement, and materialization behavior. |
-| `internal/inventory/` | Read-only managed and External Library reconciliation across Workspace Manifests, known Agent paths, Store artifacts, Local Modifications, and derived Agent visibility. |
-| `internal/managementplan/` | Exact-target managed Remove/Repair/Stop Managing and External Remove preflight, reviewed-state binding, and target-specific execution. |
+| `internal/inventory/` | Read-only managed and External Library reconciliation across Workspace Manifests, exact target receipts, known Agent Discovery Roots, Store artifacts, Local Modifications, and derived Agent visibility. |
+| `internal/managementplan/` | Exact-target managed Remove/Repair and External Remove preflight, reviewed-state binding, and target-specific execution. |
 | `internal/plan/` | Process-local installation preparation, conflict/risk validation, Workspace Manifest mutation, and target-specific execution. |
 | `internal/project/` | Canonical direct requirements in Go-like `skillsgo.mod`, integrity-only `skillsgo.sum`, and exact local Installation Receipts for project and `~/.skillsgo` user scopes. |
 | `internal/infocache/` | Exact immutable Repository and Skill Info bytes used for checksum-verified offline restore. |
@@ -42,6 +42,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/source/` | Skill ID parsing and source reference normalization. |
 | `internal/store/` | User-level shared Hub/Local/captured immutable artifact cache, private Local import/export, and verified takeover baselines. |
 | `internal/terminalui/` | Human terminal documents, automatic Interactive/Plain selection, responsive styling, and live operation progress. |
+| `internal/trash/` | Cross-platform recoverable disposal of user-owned installation content through the desktop Trash or Recycle Bin. |
 | `internal/updateplan/` | Exact-target update checks, immutable-reference classification, Workspace Manifest previews, and partial update execution. |
 
 ## Boundaries

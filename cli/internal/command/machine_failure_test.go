@@ -71,18 +71,11 @@ func TestNDJSONProgressIsFollowedByFinalFailureDocument(t *testing.T) {
 		t.Fatal(err)
 	}
 	target := install.Target{Agent: "test-agent", Scope: install.ScopeUser, Mode: install.Mode("external"), Path: externalPath}
-	preflight := managementPreflight(t, target, "", "", "")
-	body, err := json.Marshal(map[string]any{
-		"scope": target.Scope, "agent": target.Agent, "mode": target.Mode,
-		"path": target.Path, "action": "remove", "stateToken": preflight.StateToken,
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
+	preflight := managementPreflight(t, "remove", target, "")
 
 	stdout := &failSecondWrite{}
 	var stderr bytes.Buffer
-	err = Execute([]string{"manage", "--target", string(body), "--output", "ndjson"}, stdout, &stderr)
+	err := Execute([]string{"remove", "--path", target.Path, "--agent", target.Agent, "--expected-state", preflight.StateToken, "--output", "ndjson"}, stdout, &stderr)
 	if err == nil {
 		t.Fatal("expected transient output failure")
 	}

@@ -9,6 +9,7 @@ package command
 import (
 	"encoding/json"
 	"fmt"
+	"runtime"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
@@ -19,8 +20,13 @@ import (
 const agentsSchemaVersion = 1
 
 type agentsReport struct {
-	SchemaVersion int            `json:"schemaVersion"`
-	Agents        []agent.Status `json:"agents"`
+	SchemaVersion      int            `json:"schemaVersion"`
+	Product            string         `json:"product"`
+	Version            string         `json:"version"`
+	AppProtocolVersion int            `json:"appProtocolVersion"`
+	OS                 string         `json:"os"`
+	Architecture       string         `json:"architecture"`
+	Agents             []agent.Status `json:"agents"`
 }
 
 func newAgentsCommand(catalog *agent.Catalog) *cobra.Command {
@@ -30,7 +36,15 @@ func newAgentsCommand(catalog *agent.Catalog) *cobra.Command {
 		Short: appi18n.T("agents.short"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			report := agentsReport{SchemaVersion: agentsSchemaVersion, Agents: catalog.Statuses()}
+			report := agentsReport{
+				SchemaVersion:      agentsSchemaVersion,
+				Product:            "skillsgo",
+				Version:            version,
+				AppProtocolVersion: appProtocolVersion,
+				OS:                 runtime.GOOS,
+				Architecture:       runtime.GOARCH,
+				Agents:             catalog.Statuses(),
+			}
 			switch output {
 			case "json":
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(report)

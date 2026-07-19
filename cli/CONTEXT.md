@@ -12,6 +12,18 @@ _Avoid_: external prerequisite CLI, App-native engine, `skills` CLI fork
 A stable process result used when a Hub-dependent command cannot reach its Hub (`69`) or times out temporarily (`75`). The App classifies these codes without parsing localized stderr; all local-only commands remain independent of Hub availability.
 _Avoid_: stderr text matching, empty Library fallback, localized machine protocol
 
+**SkillsGo Machine Protocol**:
+The public, versioned JSON or NDJSON interface used by the App, CI/CD, and developer automation. Its stable error codes and structured fields are language-neutral; localized Human output and stderr diagnostics are not part of this interface.
+_Avoid_: App-private protocol, localized JSON output, stderr parsing
+
+**Presentation Locale Forwarding**:
+The CLI's transport of an explicit, canonical BCP 47 content-language preference between App or developer requests and Hub discovery/detail APIs. It normalizes platform-style separators and casing, selects display and search projections only, and never participates in artifact resolution, verification, or installation.
+_Avoid_: localized machine protocol, artifact locale, translated installation
+
+**Installation Target Group**:
+The set of requested Installation Targets that share one physical mutation and compensation scope. A group succeeds or rolls back atomically, while unrelated groups in the same Installation Request may complete independently.
+_Avoid_: globally atomic Installation Request, independent shared-path targets
+
 **Agent Adapter**:
 The definition and detection rules that describe how one Agent discovers user-level and Workspace-level Skills.
 _Avoid_: hard-coded Agent path, generic plugin adapter
@@ -69,7 +81,7 @@ The local record that connects a Store artifact to one installation target and r
 _Avoid_: Workspace Manifest, Workspace Sum, Hub metadata
 
 **Batch Takeover**:
-One explicit operation that registers supported-lock-backed existing content through the same verified Store, Installation Receipt, health, update, repair, and removal semantics as a successful CLI copy installation. It scans the current Workspace and user skills.sh lock files plus known Agent Skill directories. A supported, accurately normalizable lock entry is trusted as the Skill's source identity without Hub matching, while its normalized Content Digest and complete recoverable filesystem-state digest create the captured Store baseline. Each distinct physical directory becomes its own target without rewriting it, only identical content and filesystem state deduplicate in the Content-addressed Store, symlink aliases share one physical target group, and every lock-external or invalid candidate is skipped independently.
+One explicit operation that registers supported-lock-backed existing content through the same verified Store, Installation Receipt, health, update, repair, and removal semantics as a successful CLI copy installation. Its machine request explicitly selects User Scope, one or more Workspace Scopes, or both; it scans only those scopes' skills.sh locks and known Agent Skill directories. A supported, accurately normalizable lock entry is trusted as the Skill's source identity without Hub matching, while its normalized Content Digest and complete recoverable filesystem-state digest create the captured Store baseline. Each distinct physical directory becomes its own target without rewriting it, only identical content and filesystem state deduplicate in the Content-addressed Store, symlink aliases share one physical target group, and every lock-external or invalid candidate is skipped independently.
 _Avoid_: separate adoption lifecycle, per-Skill adoption, lock content verification, target overwrite, copy normalization, unmatched Local import
 
 **External Removal**:
@@ -92,14 +104,10 @@ _Avoid_: Hub version, automatically merged change
 A state-bound operation over exact managed Installation Targets. Canonical Workspace requirements are pinned; following a movable branch or `latest` requires another explicit add. Workspace Manifest changes are previewed, and each target produces an independent result.
 _Avoid_: name-only global update, implicit project mutation, localized-output parsing
 
-**Target Management Plan**:
-A state-bound operation that assigns an explicit Remove, Repair, or Stop Managing action to exact managed Installation Targets. Unselected targets remain unchanged, unsafe destructive removal is rejected, and every selected target produces its own result.
+**Target Operation**:
+A state-bound top-level Remove or Repair operation over exact managed Installation Targets. Unselected targets remain unchanged, unsafe destructive removal is rejected, and every selected target produces its own result.
 _Avoid_: name-only removal, whole-Skill deletion, implicit cleanup
 
 **Repair**:
 An explicit recovery action that restores an unhealthy managed Installation Target from its immutable Store artifact. Repair replaces Local Modifications only after review and includes every Agent binding that shares the physical target.
 _Avoid_: automatic healing, background overwrite
-
-**Stop Managing**:
-A content-preserving action that removes a Skill's user/project declaration without deleting the filesystem object at the target path.
-_Avoid_: remove, uninstall, delete target
