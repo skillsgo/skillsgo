@@ -26,11 +26,12 @@ Do not add non-English documentation. When modifying an existing document, leave
 skillsgo/
 ├── app/       Flutter desktop App and user experience
 ├── cli/       Go CLI and local Skill execution engine
-├── hub/  Go Hub, artifact protocol, search, and ranking
+├── hub/       Go Hub, artifact protocol, search, and ranking
+├── e2e/       Split CLI/Hub container and App desktop end-to-end workspaces
 └── docs/      Cross-context decisions, agent configuration, and standards
 ```
 
-- The App reads the Hub and invokes the bundled CLI through stable machine contracts.
+- The App invokes the bundled CLI through stable machine contracts and never calls the Hub directly; the CLI is the App's only business-integration boundary.
 - The CLI owns local filesystem mutations, Agent Adapters, the Content-addressed Store, Installation Targets, Workspace Manifests, and Workspace Locks.
 - The Hub owns public Skill identity, immutable artifacts, metadata, search, ranking, and install-event aggregation.
 - `CONTEXT-MAP.md` and the context glossaries define domain language. GEB maps define structural ownership. Neither substitutes for the other.
@@ -38,10 +39,11 @@ skillsgo/
 ## Toolchain
 
 - Root validation entry: `make test`.
-- Unified macOS development entry: `make dev`; it starts the local Hub with debug logging, builds the development CLI, and runs the Flutter App on macOS with save-triggered Hot Reload while preserving Flutter's manual terminal controls.
+- Unified macOS development entry: `make dev`; Process Compose supervises the topology, Air owns Hub rebuild/restart, the CLI is built before App startup, and `flutter run` owns App Hot Reload and terminal controls.
 - App: Flutter; use `flutter analyze` and `flutter test` from `app/`.
 - CLI: Go; use `gofmt` and `go test ./...` from `cli/`.
 - Hub: Go; use `gofmt` and `go test ./...` from `hub/`.
+- E2E: use `make test-e2e-cli` for containerized CLI+Hub journeys, `make test-e2e-app` for macOS desktop App+CLI+Hub journeys, or `make test-e2e` for both.
 - Prefer the highest existing behavior seam: `SkillsGateway` for App journeys, the CLI root execution entry for CLI behavior, and the HTTP Router for Hub behavior.
 - Do not parse human-oriented CLI output in the App. Do not invoke local commands through shell-string interpolation.
 
