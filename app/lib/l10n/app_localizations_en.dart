@@ -1523,6 +1523,33 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get batchTakeoverAction => 'Take over existing skills';
+
+  @override
+  String get batchTakeoverPending => 'Taking over skills…';
+
+  @override
+  String get batchTakeoverTitle => 'Take over existing skills?';
+
+  @override
+  String get batchTakeoverDescription =>
+      'SkillsGo will register supported skills.sh installations without changing their current files. Unsupported or unsafe items will be skipped.';
+
+  @override
+  String get batchTakeoverConfirm => 'Take over';
+
+  @override
+  String get batchTakeoverResultTitle => 'Takeover complete';
+
+  @override
+  String batchTakeoverSummary(int takenOver, int skipped) {
+    return '$takenOver skills taken over, $skipped skipped.';
+  }
+
+  @override
+  String get batchTakeoverClose => 'Close';
+
+  @override
   String get adoptExternalTitle => 'Bring this installation under management';
 
   @override

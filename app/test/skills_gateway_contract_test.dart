@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGateway with controlled HTTP, process, preferences, and temporary-filesystem boundaries.
- * [OUTPUT]: Specifies settings, CLI-backed explicit-source discovery including empty-search GitHub shorthand fallback, discovery/detail parsing including repository product metadata and Hub image URLs, inventory v5 managed/external targets plus derived visibility and Local Modifications, Hub-independent local inspection/project persistence, strict Installation/Update/Target Management contracts including External removal, dormant post-MVP External Adoption adapters, Local export, stable CLI availability mapping, versioned machine failures, storage health, argument safety, and CLI handshake behavior.
+ * [OUTPUT]: Specifies settings, CLI-backed explicit-source discovery including empty-search GitHub shorthand fallback, discovery/detail parsing including repository product metadata and Hub image URLs, inventory v5 managed/external targets plus derived visibility and Local Modifications, Hub-independent local inspection/project persistence, strict Installation/Update/Target Management contracts including External removal, one-confirmation Batch Takeover, dormant post-MVP External Adoption adapters, Local export, stable CLI availability mapping, versioned machine failures, storage health, argument safety, and CLI handshake behavior.
  * [POS]: Serves as the App integration-contract suite at the highest non-Widget orchestration seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -1799,6 +1799,39 @@ void main() {
       for (final file in [skillFile, script, notes, large]) {
         expect(await file.readAsBytes(), before[file.path]);
       }
+    },
+  );
+
+  test(
+    'Batch Takeover forwards one optional Workspace and parses aggregate counts',
+    () async {
+      final runner = _FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":1,"summary":{"takenOver":1,"skipped":1},"results":[{"skillId":"github.com/acme/skills/-/demo","artifactSkillId":"captured.skillsgo/source/content/demo","version":"captured-content","status":"taken-over","target":{"agent":"codex","scope":"user","mode":"copy","path":"/tmp/demo"}},{"status":"skipped","reason":"missing-target","target":{"scope":"project","projectRoot":"/tmp/Workspace With Spaces","mode":"copy","path":""}}]}',
+          stderr: '',
+        );
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/bin/skillsgo',
+      );
+
+      final result = await gateway.takeoverExistingSkills(
+        projectRoot: '/tmp/Workspace With Spaces',
+      );
+
+      expect(result.takenOver, 1);
+      expect(result.skipped, 1);
+      expect(runner.lastArguments, [
+        'takeover',
+        '--project',
+        '/tmp/Workspace With Spaces',
+        '--yes',
+        '--output',
+        'json',
+      ]);
+      expect(runner.lastArguments, isNot(contains('--hub')));
     },
   );
 

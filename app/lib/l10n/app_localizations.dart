@@ -2654,6 +2654,54 @@ abstract class AppLocalizations {
   /// **'+{count} more locations'**
   String moreCoverage(int count);
 
+  /// No description provided for @batchTakeoverAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Take over existing skills'**
+  String get batchTakeoverAction;
+
+  /// No description provided for @batchTakeoverPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Taking over skills…'**
+  String get batchTakeoverPending;
+
+  /// No description provided for @batchTakeoverTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Take over existing skills?'**
+  String get batchTakeoverTitle;
+
+  /// No description provided for @batchTakeoverDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo will register supported skills.sh installations without changing their current files. Unsupported or unsafe items will be skipped.'**
+  String get batchTakeoverDescription;
+
+  /// No description provided for @batchTakeoverConfirm.
+  ///
+  /// In en, this message translates to:
+  /// **'Take over'**
+  String get batchTakeoverConfirm;
+
+  /// No description provided for @batchTakeoverResultTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Takeover complete'**
+  String get batchTakeoverResultTitle;
+
+  /// No description provided for @batchTakeoverSummary.
+  ///
+  /// In en, this message translates to:
+  /// **'{takenOver} skills taken over, {skipped} skipped.'**
+  String batchTakeoverSummary(int takenOver, int skipped);
+
+  /// No description provided for @batchTakeoverClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get batchTakeoverClose;
+
   /// No description provided for @adoptExternalTitle.
   ///
   /// In en, this message translates to:

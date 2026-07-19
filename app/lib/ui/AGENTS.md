@@ -11,7 +11,7 @@
 - `install_operation_controller.dart`: owns immutable per-Skill direct installation execution and error state through a Riverpod family.
 - `installation_flows.dart`: renders remote Skill detail plus direct confirmed Installation, Update, Target Management, risk, progress, result, and retry flows as an `app_shell.dart` library part.
 - `library_controller.dart`: owns immutable Library content plus initial-load, stale-refresh, and load-error transitions through Riverpod.
-- `library_screen.dart`: renders the unified, full-width Library journey with composable update, Agent, and project filters, Added Projects, exact External removal, Local detail, export, and installation targets as an `app_shell.dart` library part.
+- `library_screen.dart`: renders the unified, full-width Library journey with one-confirmation Batch Takeover and visible pending state, composable update, Agent, and project filters, Added Projects, exact External removal, Local detail, export, and installation targets as an `app_shell.dart` library part.
 - `agent_logo.dart`: centralizes Agent ID-to-SVG identity mapping and the themed initial fallback shared by installation and Library navigation.
 - `bloom_color_picker/`: vendors and extends Portal Labs' MIT-licensed Bloom interaction with explicit named brand presets and desktop hover labels.
 - `discrete_tabs/`: vendors and adapts Portal Labs' MIT-licensed bounce-expanding, shimmer-label pill tabs for Discover collections and appearance-mode selection.

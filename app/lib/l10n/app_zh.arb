@@ -499,6 +499,20 @@
   "noDescriptionAvailable": "暂无描述",
   "moreCoverage": "另外 {count} 个安装位置",
   "@moreCoverage": {"placeholders": {"count": {"type": "int"}}},
+  "batchTakeoverAction": "接管现有技能",
+  "batchTakeoverPending": "正在接管技能…",
+  "batchTakeoverTitle": "接管现有技能？",
+  "batchTakeoverDescription": "SkillsGo 会登记受支持的 skills.sh 安装，不会修改当前文件；不受支持或不安全的项目将被跳过。",
+  "batchTakeoverConfirm": "接管",
+  "batchTakeoverResultTitle": "接管完成",
+  "batchTakeoverSummary": "已接管 {takenOver} 个技能，跳过 {skipped} 个。",
+  "@batchTakeoverSummary": {
+    "placeholders": {
+      "takenOver": {"type": "int"},
+      "skipped": {"type": "int"}
+    }
+  },
+  "batchTakeoverClose": "关闭",
   "adoptExternalTitle": "将此外部安装纳入管理",
   "adoptExternalDescription": "SkillsGo 已按内容匹配该安装。继续前请核对准确来源和不可变版本。",
   "adoptionContentDigest": "内容标识",

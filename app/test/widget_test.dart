@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, shared navigation primitives, Loading Animation Widget and Portal Labs indicators, the vendored named-preset Bloom color picker, and a controllable SkillsGateway fake plus locale, motion, focus, and keyboard settings.
- * [OUTPUT]: Specifies startup, persistent primary folder navigation, aligned editorial destination frames, leaderboard-style discovery search and tabs, opaque directional discovery/detail transitions, detail product metadata, discovery/detail recovery, outage-resilient Hub/Local/External Library views, projects, Agents, Settings, anchored installation-location selection, Installation/Update/Target Management journeys including External removal, offline retry, Local install-more/export, exact-target recovery, focus, accessibility, and mutations.
+ * [OUTPUT]: Specifies startup, persistent primary folder navigation, aligned editorial destination frames, leaderboard-style discovery search and tabs, opaque directional discovery/detail transitions, detail product metadata, discovery/detail recovery, outage-resilient Hub/Local/External Library views including visible Batch Takeover progress, projects, Agents, Settings, anchored installation-location selection, Installation/Update/Target Management journeys including External removal, offline retry, Local install-more/export, exact-target recovery, focus, accessibility, and mutations.
  * [POS]: Serves as the highest App behavior suite at the rendered desktop interface seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -2759,6 +2759,39 @@ void main() {
     expect(find.text('External installation'), findsWidgets);
   });
 
+  testWidgets('Library Batch Takeover publishes next-frame progress', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    final takeover = Completer<BatchTakeoverResult>();
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      takeoverCompleter: takeover,
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('library-batch-takeover')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Take over'));
+    await tester.pump();
+
+    expect(find.text('Taking over skills…'), findsOneWidget);
+    final pendingButton = tester.widget<SecondaryCapsuleButton>(
+      find.byKey(const Key('library-batch-takeover')),
+    );
+    expect(pendingButton.onPressed, isNull);
+    expect(
+      find.byKey(const Key('primary-destination-settings')),
+      findsOneWidget,
+    );
+
+    takeover.complete(const BatchTakeoverResult(takenOver: 1, skipped: 0));
+    await tester.pumpAndSettle();
+    expect(find.text('1 skills taken over, 0 skipped.'), findsOneWidget);
+  });
+
   testWidgets(
     'External adoption reviews an exact Hub source and requires confirmation',
     (tester) async {
@@ -3654,6 +3687,7 @@ class FakeSkillsGateway implements SkillsGateway {
     this.adoptionMatches = const [],
     List<SkillsException> updateCheckErrors = const [],
     List<SkillsException> adoptionErrors = const [],
+    this.takeoverCompleter,
   }) : searchResults = searchResults ?? _defaultSearchResults,
        remoteDetail =
            remoteDetail ??
@@ -3703,6 +3737,7 @@ class FakeSkillsGateway implements SkillsGateway {
   final List<HubContentMatch> adoptionMatches;
   final List<SkillsException> updateCheckErrors;
   final List<SkillsException> adoptionErrors;
+  final Completer<BatchTakeoverResult>? takeoverCompleter;
   bool installed;
   final queries = <String>[];
   final collections = <DiscoveryCollection>[];
@@ -3900,6 +3935,14 @@ class FakeSkillsGateway implements SkillsGateway {
                     ),
                   ]
                 : const []);
+
+  @override
+  Future<BatchTakeoverResult> takeoverExistingSkills({
+    String? projectRoot,
+  }) async =>
+      takeoverCompleter?.future ??
+      const BatchTakeoverResult(takenOver: 0, skipped: 0);
+
   @override
   Future<AgentCatalog> inspectAgents() async {
     agentInspections++;

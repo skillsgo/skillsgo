@@ -52,6 +52,10 @@ _Avoid_: Installation Target, enabled toggle, persisted `visibleTo`
 The App's direct request to install one immutable Skill into explicit location-and-Agent selections. The CLI may prepare concrete actions internally for safety, but that preparation is process-local and is not an App protocol or a second user review step.
 _Avoid_: second installation selector, user-facing review ceremony
 
+**Batch Takeover**:
+The user's one confirmation to register currently discovered, supported-lock-backed External Installations as already-completed SkillsGo copy installations without changing their files. Skills recorded by a supported skills.sh lock trust that source identity; normalized content plus recoverable filesystem state create the captured Store baseline. Each distinct current copy becomes a normal managed Installation Target, lock-external or invalid Skills are skipped, and takeover never synchronizes one copy over another.
+_Avoid_: special adopted state, per-Skill adoption, implicit takeover, content normalization, unmatched Local import
+
 **Target Result**:
 The success, skipped, conflict, or failure outcome for one target in a multi-target operation. Successful targets remain installed when another target fails, and failed targets can be retried independently.
 _Avoid_: global transaction result, all-or-nothing install
@@ -81,7 +85,7 @@ A reviewed, state-bound deletion for one exact External Installation. SkillsGo s
 _Avoid_: name-based claim, automatic import, reinstall
 
 **Local Skill**:
-A managed Skill created by importing an External Installation that does not match a Hub artifact. It can be installed elsewhere, exported, or removed, but has no online update source and is not published by importing it.
+A managed Skill created by an explicit private import. Batch Takeover never converts a skipped External Installation into a Local Skill. It can be installed elsewhere, exported, or removed, but has no online update source and is not published by importing it.
 _Avoid_: published Skill, Hub artifact, unmanaged installation
 
 **Version Divergence**:
