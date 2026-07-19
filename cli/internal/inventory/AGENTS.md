@@ -6,7 +6,7 @@
 - `inventory.go`: reconciles user/project declarations, locks, Store artifacts, local manifest descriptions, known Agent target paths, target health, copy-mode Local Modifications, and Discovery-Root-derived visibility into the inventory v5 Library report.
 - `health_test.go`: specifies canonical and Agent-projection health classification, including legacy Store-direct links and damaged filesystem states.
 - `visibility_test.go`: specifies Discovery-Root-derived Agent visibility without introducing managed targets or persisted visibility state.
-- `external.go`: discovers path-identified External Installations and their manifest names/descriptions through read-only scans of installed Agents' known directories and explicit project roots.
+- `external.go`: discovers path-identified External Installations and safe physical aliases through read-only scans of installed Agents' known Discovery Roots and explicit project roots.
 
 ## Architectural Boundary
 

@@ -68,13 +68,17 @@ _Avoid_: `~/.agents` ownership database, per-Agent manifest
 The local record that connects a Store artifact to one installation target and records the source, version, mode, path, and installation time.
 _Avoid_: Workspace Manifest, Workspace Sum, Hub metadata
 
+**Batch Takeover**:
+One explicit operation that registers supported-lock-backed existing content through the same verified Store, Installation Receipt, health, update, repair, and removal semantics as a successful CLI copy installation. It scans the current Workspace and user skills.sh lock files plus known Agent Skill directories. A supported, accurately normalizable lock entry is trusted as the Skill's source identity without Hub matching, while its normalized Content Digest and complete recoverable filesystem-state digest create the captured Store baseline. Each distinct physical directory becomes its own target without rewriting it, only identical content and filesystem state deduplicate in the Content-addressed Store, symlink aliases share one physical target group, and every lock-external or invalid candidate is skipped independently.
+_Avoid_: separate adoption lifecycle, per-Skill adoption, lock content verification, target overwrite, copy normalization, unmatched Local import
+
 **External Removal**:
 The explicit, state-bound deletion of one exact External Installation discovered under a known Agent Skill directory. It never creates a receipt, changes a Workspace declaration, or infers source ownership.
 _Avoid_: name-only deletion, implicit adoption, managed uninstall
 
 **Local Skill Artifact**:
-An immutable private Store artifact imported from unmatched local content. It has a `local.skillsgo` Skill ID and immutable local version, can be projected to more Installation Targets or exported, and has no Hub update or publication source.
-_Avoid_: Hub artifact, temporary target copy, published Skill
+An immutable private Store artifact created through a separate explicit local import. It has a `local.skillsgo` Skill ID and immutable local version, can be projected to more Installation Targets or exported, and is never created implicitly when Batch Takeover skips an External Installation.
+_Avoid_: Hub artifact, temporary target copy, takeover fallback
 
 **Active Skill Binding**:
 The rule that one physical target path can expose only one Skill artifact at a time, even when multiple Agent Adapters reference that path. `add --yes` treats the user's install confirmation as replacement authority for same-name targets and updates the shared binding in place; SkillsGo never invents a suffix to make colliding names coexist.

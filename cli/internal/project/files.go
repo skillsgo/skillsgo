@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on canonical immutable dependency coordinates, resolved versions, desired Agent IDs, installation modes, and Go module-file syntax validation.
- * [OUTPUT]: Provides the editable skillsgo.mod declaration, nearest-root discovery, and atomic requirement replacement or Agent-binding removal.
+ * [INPUT]: Depends on canonical immutable dependency coordinates, resolved versions, desired Agent IDs, exact Installation Receipts, and Go module-file syntax validation.
+ * [OUTPUT]: Provides the editable skillsgo.mod declaration, nearest-root discovery, shared-lock requirement replacement, and crash-recoverable receipt-aware Agent-binding removal.
  * [POS]: Serves as the sole portable desired-state boundary for project and user scopes; resolution integrity belongs to skillsgo.sum.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -191,27 +191,45 @@ func parseAgents(raw string) ([]string, error) {
 }
 
 func UpsertManifestRequirement(root, dependency string, requirement SkillRequirement, mergeAgents bool) error {
-	return mutateManifest(root, func(manifest *Manifest) {
+	return mutateManifest(root, upsertManifestMutation(dependency, requirement, mergeAgents))
+}
+
+func upsertManifestMutation(dependency string, requirement SkillRequirement, mergeAgents bool) func(*Manifest) {
+	return func(manifest *Manifest) {
 		if existing, ok := manifest.Skills[dependency]; ok && mergeAgents {
 			requirement.Agents = mergeAgentIDs(existing.Agents, requirement.Agents)
 		}
 		requirement.Source = dependency
 		manifest.Skills[dependency] = requirement
-	})
+	}
 }
 
 func ReplaceManifestBindings(root, dependency string, requirement SkillRequirement, mergeAgents bool, removed []install.Installation) error {
-	return mutateManifest(root, func(manifest *Manifest) {
+	return mutateManifest(root, replaceManifestBindingsMutation(dependency, requirement, mergeAgents, removed))
+}
+
+func replaceManifestBindingsUnlocked(root, dependency string, requirement SkillRequirement, mergeAgents bool, removed []install.Installation) error {
+	return mutateManifestUnlocked(root, replaceManifestBindingsMutation(dependency, requirement, mergeAgents, removed))
+}
+
+func replaceManifestBindingsMutation(dependency string, requirement SkillRequirement, mergeAgents bool, removed []install.Installation) func(*Manifest) {
+	return func(manifest *Manifest) {
 		if existing, ok := manifest.Skills[dependency]; ok && mergeAgents {
 			requirement.Agents = mergeAgentIDs(existing.Agents, requirement.Agents)
 		}
 		requirement.Source = dependency
 		manifest.Skills[dependency] = requirement
 		removeBindingsFromManifest(manifest, removed)
-	})
+	}
 }
 
 func mutateManifest(root string, mutation func(*Manifest)) error {
+	return withInstallationMetadataLock(root, func() error {
+		return mutateManifestUnlocked(root, mutation)
+	})
+}
+
+func mutateManifestUnlocked(root string, mutation func(*Manifest)) error {
 	if err := os.MkdirAll(root, 0o700); err != nil {
 		return err
 	}
@@ -254,24 +272,91 @@ func Replace(root, _ string, requirement SkillRequirement, receipt store.Receipt
 }
 
 func persistReceiptRequirement(root string, requirement SkillRequirement, receipt store.Receipt, mergeAgents bool) error {
+	return withInstallationMetadataLock(root, func() error {
+		return persistReceiptRequirementUnlocked(root, requirement, receipt, mergeAgents)
+	})
+}
+
+func persistReceiptRequirementUnlocked(root string, requirement SkillRequirement, receipt store.Receipt, mergeAgents bool) error {
 	if receipt.SkillID == "" || receipt.Version == "" {
 		return fmt.Errorf("immutable Store receipt identity is required")
 	}
 	requirement.Source = receipt.SkillID
 	requirement.Ref = receipt.Version
-	return UpsertManifestRequirement(root, receipt.SkillID, requirement, mergeAgents)
+	return mutateManifestUnlocked(root, upsertManifestMutation(receipt.SkillID, requirement, mergeAgents))
 }
 
 func RemoveBindings(root string, removed []install.Installation) error {
-	if _, err := os.Stat(filepath.Join(root, manifestName)); os.IsNotExist(err) {
+	if len(removed) == 0 {
 		return nil
 	}
-	return mutateManifest(root, func(manifest *Manifest) { removeBindingsFromManifest(manifest, removed) })
+	return withInstallationMetadataLock(root, func() error {
+		receipts, err := loadInstallationReceiptsUnlocked(root)
+		if err != nil {
+			return err
+		}
+		removedReceipt := map[string]bool{}
+		for _, installation := range removed {
+			removedReceipt[installation.Target.Agent+"\x00"+filepath.Clean(installation.Target.Path)] = true
+		}
+		manifestRemoved := make([]install.Installation, 0, len(removed))
+		for _, installation := range removed {
+			dependency := installation.DependencyID
+			if dependency == "" {
+				dependency = installation.SkillID
+			}
+			bindingStillPresent := false
+			for _, receipt := range receipts {
+				key := receipt.Agent + "\x00" + filepath.Clean(receipt.Path)
+				if !removedReceipt[key] && receipt.ArtifactSkillID == dependency && receipt.Agent == installation.Target.Agent {
+					bindingStillPresent = true
+					break
+				}
+			}
+			if !bindingStillPresent {
+				manifestRemoved = append(manifestRemoved, installation)
+			}
+		}
+		snapshots, err := receiptSnapshotsForRemoved(root, receipts, removed)
+		if err != nil {
+			return err
+		}
+		if _, err := os.Stat(filepath.Join(root, manifestName)); err == nil {
+			manifestSnapshot, snapshotErr := snapshotMetadataFile(filepath.Join(root, manifestName))
+			if snapshotErr != nil {
+				return snapshotErr
+			}
+			snapshots = append(snapshots, manifestSnapshot)
+		} else if !os.IsNotExist(err) {
+			return err
+		}
+		if len(snapshots) == 0 {
+			return nil
+		}
+		journal, err := beginMetadataTransaction(root, snapshots)
+		if err != nil {
+			return err
+		}
+		fail := func(cause error) error { return abortMetadataTransaction(journal, snapshots, cause) }
+		if _, err := os.Stat(filepath.Join(root, manifestName)); err == nil {
+			if err := mutateManifestUnlocked(root, func(manifest *Manifest) { removeBindingsFromManifest(manifest, manifestRemoved) }); err != nil {
+				return fail(err)
+			}
+		}
+		if err := removeInstallationReceiptsUnlocked(root, removed); err != nil {
+			return fail(err)
+		}
+		return os.Remove(journal)
+	})
 }
 
 func removeBindingsFromManifest(manifest *Manifest, removed []install.Installation) {
 	for _, installation := range removed {
-		requirement, ok := manifest.Skills[installation.SkillID]
+		dependency := installation.DependencyID
+		if dependency == "" {
+			dependency = installation.SkillID
+		}
+		requirement, ok := manifest.Skills[dependency]
 		if !ok {
 			continue
 		}
@@ -282,10 +367,10 @@ func removeBindingsFromManifest(manifest *Manifest, removed []install.Installati
 			}
 		}
 		if len(remaining) == 0 {
-			delete(manifest.Skills, installation.SkillID)
+			delete(manifest.Skills, dependency)
 		} else {
 			requirement.Agents = remaining
-			manifest.Skills[installation.SkillID] = requirement
+			manifest.Skills[dependency] = requirement
 		}
 	}
 }

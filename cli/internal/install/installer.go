@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable Store entries, resolved Agent targets, and filesystem metadata.
- * [OUTPUT]: Provides rollback-capable canonical materialization plus alias-aware Agent symlink/copy projection, content-preserving existing-target validation, and stable filesystem digests.
+ * [OUTPUT]: Provides rollback-capable canonical materialization plus alias-aware Agent symlink/copy projection and stable filesystem digests.
  * [POS]: Serves as the low-level materialization boundary used by Installation Plans and legacy CLI flows.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,7 +16,6 @@ import (
 	"os"
 	"path/filepath"
 
-	hubclient "github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
 
@@ -110,25 +109,6 @@ func ensureCanonical(artifact, canonical string) error {
 	}
 	if !matches {
 		return fmt.Errorf("canonical 目标已存在且内容不同：%s", canonical)
-	}
-	return nil
-}
-
-// AdoptExisting validates an exact external directory before its declaration
-// is added without replacing, rewriting, or relinking its current content.
-func AdoptExisting(entry *store.Entry, target Target) error {
-	if target.Mode != ModeCopy {
-		return fmt.Errorf("existing targets can be adopted only in copy mode")
-	}
-	info, err := os.Lstat(target.Path)
-	if err != nil {
-		return err
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("existing target must be a real directory")
-	}
-	if err := hubclient.VerifyContentDirectory(target.Path, entry.Receipt.ContentDigest); err != nil {
-		return fmt.Errorf("existing target content does not match reviewed artifact: %w", err)
 	}
 	return nil
 }
