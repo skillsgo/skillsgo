@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the app_shell library for Flutter UI primitives, HugeIcons, Riverpod Library state, gateway mutations, localization, and shared operation dialogs.
- * [OUTPUT]: Provides the unified Library destination, cold/stale loading UI, composable update, project, and Agent filtering, exact External removal, Local detail, export, and installation-target views.
+ * [OUTPUT]: Provides the unified Library destination, one-confirmation Batch Takeover with next-frame progress and aggregate results, cold/stale loading UI, composable update, project and Agent filtering, exact External removal, Local detail, export, and installation-target views.
  * [POS]: Serves as the complete Library feature view module split from the desktop shell while sharing its private library contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,6 +16,7 @@ class LibraryScreen extends ConsumerStatefulWidget {
 class _LibraryScreenState extends ConsumerState<LibraryScreen> {
   Object? actionError;
   bool checking = false;
+  bool takingOver = false;
   Object? updateCheckError;
   Map<String, UpdateState> updates = const {};
   CommandResult? result;
@@ -131,6 +132,61 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
       await load();
     } on Object catch (caught) {
       if (mounted) setState(() => actionError = caught);
+    }
+  }
+
+  Future<void> _takeoverExistingSkills() async {
+    if (takingOver) return;
+    final confirmed = await showSkillsDialog<bool>(
+      context: context,
+      builder: (context) => SkillsDialog(
+        title: Text(context.l10n.batchTakeoverTitle),
+        description: Text(context.l10n.batchTakeoverDescription),
+        actions: [
+          SkillsButton.outline(
+            onPressed: () => Navigator.pop(context, false),
+            child: Text(context.l10n.cancel),
+          ),
+          SkillsButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text(context.l10n.batchTakeoverConfirm),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+    setState(() {
+      takingOver = true;
+      actionError = null;
+    });
+    try {
+      final takeover = await widget.gateway.takeoverExistingSkills(
+        projectRoot: _selectedProject?.path,
+      );
+      await load();
+      if (!mounted) return;
+      await showSkillsDialog<void>(
+        context: context,
+        builder: (context) => SkillsDialog(
+          title: Text(context.l10n.batchTakeoverResultTitle),
+          description: Text(
+            context.l10n.batchTakeoverSummary(
+              takeover.takenOver,
+              takeover.skipped,
+            ),
+          ),
+          actions: [
+            SkillsButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text(context.l10n.batchTakeoverClose),
+            ),
+          ],
+        ),
+      );
+    } on Object catch (caught) {
+      if (mounted) setState(() => actionError = caught);
+    } finally {
+      if (mounted) setState(() => takingOver = false);
     }
   }
 
@@ -347,6 +403,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen> {
                           label: context.l10n.addProject,
                           icon: HugeIcons.strokeRoundedFolderAdd,
                           onPressed: _addProject,
+                        ),
+                        SecondaryCapsuleButton(
+                          key: const Key('library-batch-takeover'),
+                          label: takingOver
+                              ? context.l10n.batchTakeoverPending
+                              : context.l10n.batchTakeoverAction,
+                          icon: HugeIcons.strokeRoundedFolderTransfer,
+                          onPressed: takingOver
+                              ? null
+                              : _takeoverExistingSkills,
                         ),
                         if (_selectedProject != null) ...[
                           SecondaryCapsuleButton(

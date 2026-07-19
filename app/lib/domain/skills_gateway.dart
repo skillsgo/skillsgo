@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart core types and asynchronous result primitives.
- * [OUTPUT]: Defines App contracts for discovery metadata including Repository source summaries and Hub image URLs, auditable artifacts, unified Hub/Local/External Library entries, managed targets, derived Agent visibility, explicit Installation/Update/Target Management/External Adoption flows, Local export, project references, Agent inspection, CLI machine failures, Hub and typed appearance/wallpaper settings, risk policy, storage health, and operations.
+ * [OUTPUT]: Defines App contracts for discovery metadata including Repository source summaries and Hub image URLs, auditable artifacts, unified Hub/Local/External Library entries, managed targets, derived Agent visibility, explicit Installation/Update/Target Management/External Adoption and Batch Takeover flows, Local export, project references, Agent inspection, CLI machine failures, Hub and typed appearance/wallpaper settings, risk policy, storage health, and operations.
  * [POS]: Serves as the domain boundary shared by UI journeys, production infrastructure, and contract fakes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -794,6 +794,13 @@ class ExternalAdoptionResult {
   final InstallationPlanTarget target;
 }
 
+class BatchTakeoverResult {
+  const BatchTakeoverResult({required this.takenOver, required this.skipped});
+
+  final int takenOver;
+  final int skipped;
+}
+
 class AgentUserTarget {
   const AgentUserTarget({required this.path, required this.exists});
 
@@ -1106,6 +1113,7 @@ abstract interface class SkillsGateway {
   Future<List<InstalledSkill>> listInstalled({
     List<AddedProject> projects = const [],
   });
+  Future<BatchTakeoverResult> takeoverExistingSkills({String? projectRoot});
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill);
   Future<CommandResult> install(SkillSummary skill);
   Future<TargetManagementPlan> preflightTargetManagement(

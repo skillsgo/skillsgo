@@ -506,6 +506,20 @@
   "noDescriptionAvailable": "No description available",
   "moreCoverage": "+{count} more locations",
   "@moreCoverage": {"placeholders": {"count": {"type": "int"}}},
+  "batchTakeoverAction": "Take over existing skills",
+  "batchTakeoverPending": "Taking over skills…",
+  "batchTakeoverTitle": "Take over existing skills?",
+  "batchTakeoverDescription": "SkillsGo will register supported skills.sh installations without changing their current files. Unsupported or unsafe items will be skipped.",
+  "batchTakeoverConfirm": "Take over",
+  "batchTakeoverResultTitle": "Takeover complete",
+  "batchTakeoverSummary": "{takenOver} skills taken over, {skipped} skipped.",
+  "@batchTakeoverSummary": {
+    "placeholders": {
+      "takenOver": {"type": "int"},
+      "skipped": {"type": "int"}
+    }
+  },
+  "batchTakeoverClose": "Close",
   "adoptExternalTitle": "Bring this installation under management",
   "adoptExternalDescription": "SkillsGo matched the installation by content. Review the exact source and immutable version before continuing.",
   "adoptionContentDigest": "Content identity",

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the bundled CLI process boundary plus legacy Hub HTTP reads pending migration, the local filesystem, the platform directory picker, and SharedPreferences-backed product preferences.
- * [OUTPUT]: Provides typed CLI-backed business operations including versioned machine-failure parsing, plus temporary legacy Hub discovery/detail reads, local inspection, project persistence, diagnostics, and appearance/wallpaper settings.
+ * [OUTPUT]: Provides typed CLI-backed business operations including versioned machine-failure parsing and Batch Takeover, plus temporary legacy Hub discovery/detail reads, local inspection, project persistence, diagnostics, and appearance/wallpaper settings.
  * [POS]: Serves as the App infrastructure adapter for the CLI-mediated business boundary while temporarily isolating legacy direct Hub reads scheduled for removal.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -1903,6 +1903,88 @@ class RealSkillsGateway implements SkillsGateway {
     } on FormatException {
       throw const SkillsException(
         'The SkillsGo CLI returned invalid inventory JSON.',
+        kind: SkillsFailureKind.invalidLocalData,
+      );
+    }
+  }
+
+  @override
+  Future<BatchTakeoverResult> takeoverExistingSkills({
+    String? projectRoot,
+  }) async {
+    final normalizedProject = projectRoot?.trim();
+    if (projectRoot != null && normalizedProject!.isEmpty) {
+      throw const SkillsException(
+        'Batch Takeover Workspace must not be empty.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    final command = await _runCli([
+      'takeover',
+      if (normalizedProject != null) ...['--project', normalizedProject],
+      '--yes',
+      '--output',
+      'json',
+    ]);
+    if (!command.succeeded) throw _commandFailure(command);
+    try {
+      final raw = jsonDecode(command.output.stdout);
+      if (raw is! Map<String, dynamic> ||
+          raw['schemaVersion'] != 1 ||
+          raw['summary'] is! Map<String, dynamic> ||
+          raw['results'] is! List) {
+        throw const FormatException();
+      }
+      final summary = raw['summary'] as Map<String, dynamic>;
+      final takenOver = summary['takenOver'];
+      final skipped = summary['skipped'];
+      if (takenOver is! int ||
+          takenOver < 0 ||
+          skipped is! int ||
+          skipped < 0) {
+        throw const FormatException();
+      }
+      var actualTakenOver = 0;
+      var actualSkipped = 0;
+      for (final item in raw['results'] as List) {
+        if (item is! Map<String, dynamic> ||
+            item['status'] is! String ||
+            item['target'] is! Map<String, dynamic>) {
+          throw const FormatException();
+        }
+        final target = item['target'] as Map<String, dynamic>;
+        if (target['scope'] != 'user' && target['scope'] != 'project' ||
+            target['mode'] != 'copy' && target['mode'] != 'symlink' ||
+            target['path'] is! String) {
+          throw const FormatException();
+        }
+        switch (item['status']) {
+          case 'taken-over':
+            if (item['skillId'] is! String ||
+                (item['skillId'] as String).isEmpty ||
+                item['version'] is! String ||
+                (item['version'] as String).isEmpty ||
+                (target['path'] as String).isEmpty) {
+              throw const FormatException();
+            }
+            actualTakenOver++;
+          case 'skipped':
+            if (item['reason'] is! String ||
+                (item['reason'] as String).isEmpty) {
+              throw const FormatException();
+            }
+            actualSkipped++;
+          default:
+            throw const FormatException();
+        }
+      }
+      if (actualTakenOver != takenOver || actualSkipped != skipped) {
+        throw const FormatException();
+      }
+      return BatchTakeoverResult(takenOver: takenOver, skipped: skipped);
+    } on FormatException {
+      throw const SkillsException(
+        'The SkillsGo CLI returned invalid Batch Takeover JSON.',
         kind: SkillsFailureKind.invalidLocalData,
       );
     }

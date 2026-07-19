@@ -1420,6 +1420,33 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
+  String get batchTakeoverAction => '接管现有技能';
+
+  @override
+  String get batchTakeoverPending => '正在接管技能…';
+
+  @override
+  String get batchTakeoverTitle => '接管现有技能？';
+
+  @override
+  String get batchTakeoverDescription =>
+      'SkillsGo 会登记受支持的 skills.sh 安装，不会修改当前文件；不受支持或不安全的项目将被跳过。';
+
+  @override
+  String get batchTakeoverConfirm => '接管';
+
+  @override
+  String get batchTakeoverResultTitle => '接管完成';
+
+  @override
+  String batchTakeoverSummary(int takenOver, int skipped) {
+    return '已接管 $takenOver 个技能，跳过 $skipped 个。';
+  }
+
+  @override
+  String get batchTakeoverClose => '关闭';
+
+  @override
   String get adoptExternalTitle => '将此外部安装纳入管理';
 
   @override
