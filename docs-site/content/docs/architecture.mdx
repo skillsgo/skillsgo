@@ -1,0 +1,27 @@
+---
+title: Architecture
+description: Learn how the App, CLI, Hub, and Agent targets divide responsibilities.
+---
+
+# Architecture
+
+SkillsGo is a monorepo with three product contexts and one public documentation workspace.
+
+| Context | Responsibility |
+| --- | --- |
+| Desktop App | User experience, navigation, discovery, and installation journeys |
+| CLI | Local filesystem mutations, installation plans, manifests, locks, and Agent adapters |
+| Hub | Public Skill identity, immutable artifacts, metadata, search, ranking, and install events |
+| Docs site | Public product and developer documentation |
+
+## Integration direction
+
+The App never calls the Hub directly. It invokes the bundled CLI through stable machine-readable contracts. The CLI resolves public information and artifacts from the Hub, then projects managed content into Agent-specific targets.
+
+```text
+App --JSON/NDJSON--> CLI --HTTP--> Hub
+                       |
+                       +---------> Store and Agent targets
+```
+
+This boundary keeps local mutation policy in one engine and prevents the graphical and terminal experiences from developing incompatible installation behavior.

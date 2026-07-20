@@ -27,6 +27,7 @@ skillsgo/
 ├── app/       Flutter desktop App and user experience
 ├── cli/       Go CLI and local Skill execution engine
 ├── hub/       Go Hub, artifact protocol, search, and ranking
+├── docs-site/ Fumadocs public documentation built as static assets
 ├── e2e/       Split CLI/Hub container and App desktop end-to-end workspaces
 └── docs/      Cross-context decisions, agent configuration, and standards
 ```
@@ -39,10 +40,11 @@ skillsgo/
 ## Toolchain
 
 - Root validation entry: `make test`.
-- Unified macOS development entry: `make dev`; Process Compose supervises the topology, Air owns Hub rebuild/restart, the CLI is built before App startup, and `flutter run` owns App Hot Reload and terminal controls.
+- Unified macOS development entry: `make dev`; startup removes stale development processes owned by the current checkout, Process Compose supervises the topology, Air owns Hub rebuild/restart, the CLI is built before App startup, and `flutter run` owns App Hot Reload and terminal controls.
 - App: Flutter; use `flutter analyze` and `flutter test` from `app/`.
 - CLI: Go; use `gofmt` and `go test ./...` from `cli/`.
 - Hub: Go; use `gofmt` and `go test ./...` from `hub/`.
+- Docs site: Node.js 22+, pnpm, TanStack Start, Vite, Fumadocs, and MDX; use `pnpm typecheck` and `pnpm build` from `docs-site/`.
 - E2E: use `make test-e2e-cli` for containerized CLI+Hub journeys, `make test-e2e-app` for macOS desktop App+CLI+Hub journeys, or `make test-e2e` for both.
 - Prefer the highest existing behavior seam: `SkillsGateway` for App journeys, the CLI root execution entry for CLI behavior, and the HTTP Router for Hub behavior.
 - Do not parse human-oriented CLI output in the App. Do not invoke local commands through shell-string interpolation.
@@ -74,8 +76,8 @@ Code is the executable representation; documentation is the semantic representat
 | Level | Name | SkillsGo anchor | Responsibility |
 | --- | --- | --- | --- |
 | F0 | Repo Constitution | `/AGENTS.md` | Repository-wide routing, architecture, toolchain, language, and protocol |
-| F1 | Domain Map | `app/AGENTS.md`, `cli/AGENTS.md`, `hub/AGENTS.md`, standards maps | Domain boundaries, workspace index, and cross-context rules |
-| F2 | Workspace Map | Every maintained `pubspec.yaml` or `go.mod` workspace | Runtime, entry points, commands, dependencies, exports, and top-level layout |
+| F1 | Domain Map | `app/AGENTS.md`, `cli/AGENTS.md`, `hub/AGENTS.md`, `docs-site/AGENTS.md`, standards maps | Domain boundaries, workspace index, and cross-context rules |
+| F2 | Workspace Map | Every maintained `pubspec.yaml`, `go.mod`, or standalone `package.json` workspace | Runtime, entry points, commands, dependencies, exports, and top-level layout |
 | F3 | Module Map | Stable multi-file source-module directories | Member inventory, local dependency direction, and invariants |
 | F4 | File Contract | Header of semantic source or configuration files | INPUT, OUTPUT, and POS contract |
 
@@ -85,10 +87,11 @@ F2 is determined by a build manifest, not directory depth. In this repository:
 - `cli/go.mod` defines the CLI Go module.
 - `hub/go.mod` defines the Hub Go module.
 - `hub/scripts/liveness_probe/go.mod` defines a nested utility Go module.
+- `docs-site/package.json` defines the public documentation Node.js workspace.
 
 `hub/docs/themes/hugo-theme-relearn/go.mod` belongs to a vendored upstream documentation theme. It is explicitly exempt from SkillsGo F2 mapping and F4 maintenance.
 
-Because each top-level product domain currently contains one primary workspace, `app/AGENTS.md`, `cli/AGENTS.md`, and `hub/AGENTS.md` intentionally serve as both F1 and F2 maps. Split them only when a domain gains multiple independently maintained workspaces.
+Because each top-level product domain currently contains one primary workspace, `app/AGENTS.md`, `cli/AGENTS.md`, `hub/AGENTS.md`, and `docs-site/AGENTS.md` intentionally serve as both F1 and F2 maps. Split them only when a domain gains multiple independently maintained workspaces.
 
 ### F3 Module Map Template
 

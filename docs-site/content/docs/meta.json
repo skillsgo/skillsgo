@@ -1,0 +1,11 @@
+{
+  "title": "SkillsGo",
+  "pages": [
+    "index",
+    "getting-started",
+    "architecture",
+    "cli",
+    "desktop-app",
+    "hub"
+  ]
+}
