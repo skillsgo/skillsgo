@@ -305,6 +305,32 @@ As an App or automation user installing to independent targets, I want one targe
 
 Status: implemented with schema 3, one committed Codex Project target, one failed Codex User target, nested `installation.target_failed`, and non-zero process status by `j39_installation_partial_failure_test.go`.
 
+## Existing Installation Management Journeys
+
+### J40 — Manage an existing locked Skill without rewriting user files
+
+As a user who installed a Skill through a compatible lockfile, I want SkillsGo to adopt the exact local content in place so that management metadata becomes complete without replacing or normalizing my files.
+
+Preflight reports one eligible Skill without writing Store, Manifest, Sum, or Receipt state. Confirmation preserves file bytes and modes, persists the complete content-addressed Store and Workspace metadata, exposes the Skill as managed inventory, and makes the next scan report zero eligible Skills.
+
+Status: implemented through the released CLI and observable filesystem state by `j40_takeover_existing_skill_test.go`.
+
+### J41 — Preserve edits made after takeover confirmation
+
+As a user whose editor or Agent changes a Skill while takeover is starting, I want the confirmed plan to reject only that stale candidate so that newer local work is never overwritten or recorded under the wrong digest.
+
+Two candidates are confirmed, one changes before execution, and the result commits the unchanged Skill while skipping the edited Skill with `target-changed`. The edited bytes remain intact, its management metadata remains absent, and the next scan reports exactly that one eligible Skill.
+
+Status: implemented through the released CLI and observable filesystem state by `j41_takeover_changed_skill_test.go`.
+
+### J42 — Recover takeover after an unexpected process exit
+
+As a user whose App or machine stops during takeover, I want the next operation to recover the interrupted metadata transaction so that no partial management state hides or corrupts my existing Skill.
+
+The journey sends `SIGKILL` after the transaction journal appears, then verifies that inventory still exposes the Skill as external, the next scan still reports one eligible Skill, and a retry recovers and commits complete Store, Manifest, Sum, and Receipt state. The journal is removed and the final scan reports zero eligible Skills.
+
+Status: implemented with a real released-CLI process interruption by `j42_takeover_interrupted_commit_test.go`.
+
 ## GitHub Issue #27 User-Story Coverage Index
 
 The numbered user stories in #27 are release-reviewed through these black-box journeys:

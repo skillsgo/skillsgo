@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Agent Catalog path resolution and installation target scopes/modes.
- * [OUTPUT]: Specifies canonical and projected target paths for project and user installations.
+ * [OUTPUT]: Specifies path-safe Skill-name validation plus canonical and projected target paths for project and user installations.
  * [POS]: Serves as target-path contract coverage for the installation module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -56,4 +56,11 @@ func TestResolveInjectedTestAgent(t *testing.T) {
 	userTargets, err := ResolveTargets(catalog, []string{"test-agent"}, ScopeUser, ModeCopy, project, "demo")
 	require.NoError(t, err)
 	require.Equal(t, filepath.Join(home, ".test-agent", "skills", "demo"), userTargets[0].Path)
+}
+
+func TestValidateSkillNameAllowsXAndZeroButRejectsPathCharacters(t *testing.T) {
+	require.NoError(t, ValidateSkillName("project-existing-0x"))
+	for _, name := range []string{"nested/demo", `nested\demo`, "nul\x00name", ".", ".."} {
+		require.Error(t, ValidateSkillName(name), name)
+	}
 }

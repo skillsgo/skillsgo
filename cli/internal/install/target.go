@@ -122,7 +122,7 @@ func ResolveTargets(catalog *agent.Catalog, ids []string, scope Scope, mode Mode
 
 func ValidateSkillName(name string) error {
 	if name == "" || name == "." || name == ".." ||
-		name != filepath.Base(name) || strings.ContainsAny(name, `/\\\x00`) {
+		name != filepath.Base(name) || strings.ContainsAny(name, "/\\\x00") {
 		return fmt.Errorf("invalid Skill name %q", name)
 	}
 	return nil

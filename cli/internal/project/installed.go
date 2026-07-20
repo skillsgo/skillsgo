@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on canonical Workspace Manifest declarations, exact target Installation Receipts, immutable Repository Info cache, the Agent Catalog, Store receipts, and the live filesystem.
- * [OUTPUT]: Provides exact-receipt-first derivation of concrete managed Installation records for one project or user declaration root.
+ * [INPUT]: Depends on transaction-consistent Workspace Manifest and exact target Installation Receipt snapshots, immutable Repository Info cache, the Agent Catalog, Store receipts, and the live filesystem.
+ * [OUTPUT]: Provides crash-recovered, exact-receipt-first derivation of concrete managed Installation records for one project or user declaration root.
  * [POS]: Serves as the declaration-to-filesystem reconciliation seam used by CLI listing and mutation plans.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,7 +21,7 @@ import (
 )
 
 func Installed(root string, catalog *agent.Catalog, scope install.Scope, storeRoot string) ([]install.Installation, error) {
-	manifest, err := LoadManifest(root)
+	manifest, targetReceipts, err := loadInstalledMetadata(root)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return nil, nil
@@ -30,10 +30,6 @@ func Installed(root string, catalog *agent.Catalog, scope install.Scope, storeRo
 	}
 	storage := store.Store{Root: storeRoot}
 	cache := infocache.Cache{Root: filepath.Join(filepath.Dir(storeRoot), "info")}
-	targetReceipts, err := LoadInstallationReceipts(root)
-	if err != nil {
-		return nil, err
-	}
 	installations := make([]install.Installation, 0)
 	for dependency, requirement := range manifest.Skills {
 		entries := make([]*store.Entry, 0, 1)
@@ -99,6 +95,33 @@ func Installed(root string, catalog *agent.Catalog, scope install.Scope, storeRo
 		return filepath.Clean(installations[i].Target.Path) < filepath.Clean(installations[j].Target.Path)
 	})
 	return installations, nil
+}
+
+func loadInstalledMetadata(root string) (Manifest, []InstallationReceipt, error) {
+	if err := fileExists(filepath.Join(root, manifestName)); err != nil {
+		return Manifest{}, nil, err
+	}
+	stateRoot := installationReceiptsRoot(root)
+	if err := os.MkdirAll(stateRoot, 0o700); err != nil {
+		return Manifest{}, nil, err
+	}
+	unlock, err := acquireFileLock(filepath.Join(stateRoot, ".installations.lock"))
+	if err != nil {
+		return Manifest{}, nil, err
+	}
+	defer unlock()
+	if err := recoverMetadataTransaction(root); err != nil {
+		return Manifest{}, nil, err
+	}
+	manifest, err := LoadManifest(root)
+	if err != nil {
+		return Manifest{}, nil, err
+	}
+	receipts, err := loadInstallationReceiptsUnlocked(root)
+	if err != nil {
+		return Manifest{}, nil, err
+	}
+	return manifest, receipts, nil
 }
 
 func targetsFromInstallationReceipts(receipts []InstallationReceipt, dependency string, requirement SkillRequirement, scope install.Scope) []install.Target {
