@@ -1,48 +1,31 @@
 /*
- * [INPUT]: Depends on an exact Workspace-owned lock path, process identity, and filesystem create-exclusive semantics.
- * [OUTPUT]: Provides bounded cross-process exclusion with stale-lock recovery for Workspace persistence mutations.
- * [POS]: Serves as the shared lock primitive beneath Manifest and Workspace Sum writers.
+ * [INPUT]: Depends on an exact Workspace-owned lock path, context deadlines, and gofrs/flock operating-system locks.
+ * [OUTPUT]: Provides bounded cross-process exclusion whose ownership is released automatically when a process exits.
+ * [POS]: Serves as the shared lock primitive beneath Manifest, Workspace Sum, Installation Receipt, and metadata-transaction readers and writers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package project
 
 import (
+	"context"
 	"fmt"
-	"os"
 	"time"
+
+	"github.com/gofrs/flock"
 )
 
-const (
-	fileLockTimeout = 10 * time.Second
-	fileLockStale   = time.Minute
-)
+const fileLockTimeout = 10 * time.Second
 
 func acquireFileLock(path string) (func(), error) {
-	deadline := time.Now().Add(fileLockTimeout)
-	for {
-		lock, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-		if err == nil {
-			if _, writeErr := fmt.Fprintf(lock, "%d\n", os.Getpid()); writeErr != nil {
-				_ = lock.Close()
-				_ = os.Remove(path)
-				return nil, writeErr
-			}
-			if closeErr := lock.Close(); closeErr != nil {
-				_ = os.Remove(path)
-				return nil, closeErr
-			}
-			return func() { _ = os.Remove(path) }, nil
-		}
-		if !os.IsExist(err) {
-			return nil, err
-		}
-		if info, statErr := os.Stat(path); statErr == nil && time.Since(info.ModTime()) > fileLockStale {
-			_ = os.Remove(path)
-			continue
-		}
-		if time.Now().After(deadline) {
-			return nil, fmt.Errorf("timed out waiting for file lock %s", path)
-		}
-		time.Sleep(10 * time.Millisecond)
+	lock := flock.New(path, flock.SetPermissions(0o600))
+	ctx, cancel := context.WithTimeout(context.Background(), fileLockTimeout)
+	defer cancel()
+	locked, err := lock.TryLockContext(ctx, 10*time.Millisecond)
+	if err != nil {
+		return nil, fmt.Errorf("acquire file lock %s: %w", path, err)
 	}
+	if !locked {
+		return nil, fmt.Errorf("timed out waiting for file lock %s", path)
+	}
+	return func() { _ = lock.Unlock() }, nil
 }
