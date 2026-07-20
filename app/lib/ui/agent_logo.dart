@@ -40,7 +40,6 @@ class AgentLogo extends StatelessWidget {
     'astrbot' => 'assets/agent-logos/astrbot.svg',
     'autohand-code' => 'assets/agent-logos/autohand-code.svg',
     'augment' => 'assets/agent-logos/augment.svg',
-    'bob' => 'assets/agent-logos/ibm-bob.svg',
     'codearts-agent' => 'assets/agent-logos/huawei-cloud.svg',
     'codebuddy' => 'assets/agent-logos/codebuddy.svg',
     'command-code' => 'assets/agent-logos/command-code.svg',

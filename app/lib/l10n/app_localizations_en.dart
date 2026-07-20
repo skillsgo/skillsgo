@@ -1603,27 +1603,43 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get batchTakeoverAction => 'Take over existing skills';
+  String get batchTakeoverAction => 'Manage existing skills';
 
   @override
-  String get batchTakeoverPending => 'Taking over skills…';
+  String batchTakeoverActionCount(int count) {
+    return 'Manage ($count)';
+  }
 
   @override
-  String get batchTakeoverTitle => 'Take over existing skills?';
+  String get batchTakeoverChecking => 'Checking existing skills…';
+
+  @override
+  String get batchTakeoverRetry => 'Check manageable skills again';
+
+  @override
+  String batchTakeoverEligibleCount(int count) {
+    return '$count can be managed';
+  }
+
+  @override
+  String get batchTakeoverPending => 'Adding skills to management…';
+
+  @override
+  String get batchTakeoverTitle => 'Manage existing skills with SkillsGo?';
 
   @override
   String get batchTakeoverDescription =>
-      'SkillsGo will register supported skills.sh installations without changing their current files. Unsupported or unsafe items will be skipped.';
+      'SkillsGo will add local management records without moving, overwriting, or uploading skill files. Unsupported or changed items will be skipped.';
 
   @override
-  String get batchTakeoverConfirm => 'Take over';
+  String get batchTakeoverConfirm => 'Add to management';
 
   @override
-  String get batchTakeoverResultTitle => 'Takeover complete';
+  String get batchTakeoverResultTitle => 'Skills added to management';
 
   @override
   String batchTakeoverSummary(int takenOver, int skipped) {
-    return '$takenOver skills taken over, $skipped skipped.';
+    return '$takenOver skills added to management, $skipped skipped.';
   }
 
   @override

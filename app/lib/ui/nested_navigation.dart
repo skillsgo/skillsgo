@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Receives localized fixed and scrollable rail items with standard or compact density, selected values, destination content and optional transition identity, SkillsGo component tokens, and reduced-motion preferences.
- * [OUTPUT]: Renders the shared desktop rail/content layout with optional short depth entrance, plus the theme-tinted glass side rail with accessible density-aware selection motion, optional fixed leading destinations and section dividers, an independently scrollable item region with one slim desktop scrollbar, and an optional pinned footer action.
+ * [INPUT]: Receives localized fixed and scrollable rail items with optional exact count badges, standard or compact density, selected values, destination content and optional transition identity, SkillsGo component tokens, and reduced-motion preferences.
+ * [OUTPUT]: Renders the shared desktop rail/content layout with optional short depth entrance, plus the theme-tinted glass side rail with accessible density-aware selection motion and counts, optional fixed leading destinations and section dividers, an independently scrollable item region with one slim desktop scrollbar, and an optional pinned footer action.
  * [POS]: Defines the reusable nested-navigation surface shared by Discover, Library, and Settings.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,8 @@ import 'package:hugeicons/hugeicons.dart';
 
 import 'brand.dart';
 
+part 'navigation/rail_button.dart';
+
 const _standardRailItemExtent = 44.0;
 const _compactRailItemExtent = 38.0;
 
@@ -22,6 +24,8 @@ class SkillsRailItem<T> {
     this.compact = false,
     this.icon,
     this.leading,
+    this.count,
+    this.countLabel,
   });
 
   final T value;
@@ -29,6 +33,8 @@ class SkillsRailItem<T> {
   final bool compact;
   final List<List<dynamic>>? icon;
   final Widget? leading;
+  final int? count;
+  final String? countLabel;
 }
 
 class SkillsDestinationLayout extends StatefulWidget {
@@ -435,87 +441,5 @@ class _SkillsSideRailState<T> extends State<SkillsSideRail<T>>
     if (lower == upper) return _itemTop(items, lower);
     return _itemTop(items, lower) +
         (_itemTop(items, upper) - _itemTop(items, lower)) * (clamped - lower);
-  }
-}
-
-class _RailButton<T> extends StatelessWidget {
-  const _RailButton({
-    required this.item,
-    required this.focusNode,
-    required this.selected,
-    required this.onPressed,
-  });
-
-  final SkillsRailItem<T> item;
-  final FocusNode focusNode;
-  final bool selected;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final scheme = Theme.of(context).colorScheme;
-    final foreground = selected
-        ? context.skillsComponents.navigationSelectedForeground
-        : scheme.onSurfaceVariant;
-    final horizontalPadding = item.compact ? 12.0 : 14.0;
-    final leadingGap = item.compact ? 8.0 : 10.0;
-    final itemExtent = item.compact
-        ? _compactRailItemExtent
-        : _standardRailItemExtent;
-    return Semantics(
-      selected: selected,
-      button: true,
-      label: item.label,
-      child: TextButton(
-        focusNode: focusNode,
-        onPressed: onPressed,
-        style:
-            TextButton.styleFrom(
-              foregroundColor: foreground,
-              backgroundColor: Colors.transparent,
-              shape: const StadiumBorder(),
-              padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
-              minimumSize: Size.fromHeight(itemExtent),
-              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              alignment: Alignment.centerLeft,
-              textStyle: context.skillsTypography.bodySecondary,
-            ).copyWith(
-              overlayColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.pressed)) {
-                  return foreground.withValues(alpha: .12);
-                }
-                if (states.contains(WidgetState.hovered) ||
-                    states.contains(WidgetState.focused)) {
-                  return foreground.withValues(alpha: .08);
-                }
-                return Colors.transparent;
-              }),
-            ),
-        child: Row(
-          children: [
-            if (item.leading != null) ...[
-              item.leading!,
-              SizedBox(width: leadingGap),
-            ] else if (item.icon != null) ...[
-              HugeIcon(
-                icon: item.icon!,
-                size: 18,
-                strokeWidth: 1.5,
-                color: foreground,
-              ),
-              SizedBox(width: leadingGap),
-            ],
-            Expanded(
-              child: Text(
-                item.label,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                softWrap: false,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

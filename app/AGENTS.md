@@ -29,7 +29,7 @@ flutter build macos --release
 | Path | Responsibility |
 | --- | --- |
 | `lib/domain/` | Product concepts and application-facing models. |
-| `lib/infrastructure/` | Hub and CLI adapters, process execution, and persistence integration. |
+| `lib/infrastructure/` | Bundled CLI adapter, structured process execution, platform integration, and preference persistence. |
 | `lib/ui/` | Screens, navigation, components, design tokens, and interaction state. |
 | `lib/l10n/` | Localization sources and generated localization interfaces. |
 | `test/` | Unit, widget, and adapter contract tests. |
@@ -53,7 +53,7 @@ flutter build macos --release
 - Use Flutter Material 3 primitives as the default foundation for controls, overlays, forms, feedback, semantics, and platform behavior.
 - Use HugeIcons `strokeRounded` icons for every authored App icon. Do not introduce Flutter Material `Icons.*`, Cupertino icons, or another icon family in App UI; preserve Material components while supplying HugeIcons widgets through their icon slots. Prefer a semantic HugeIcons glyph over a merely similar shape, and keep neighboring icon size and stroke weight consistent.
 - Build the application palette through the SkillsGo Design System: Primer-inspired semantic roles over Radix neutral scales, with Material 3 acting as the component adapter and the user seed controlling interaction accents.
-- Keep recurring Material composition behind the reusable native component layer; build custom widgets only for product-specific interactions such as the stateful destination rail, folder shell, or installation matrix.
+- Keep recurring Material composition behind the reusable native component layer; build custom widgets only for product-specific interactions such as the stateful destination rail, folder shell, or anchored installation-location selector.
 - Do not introduce a second component theme system. Product-specific colors may remain explicit only when they communicate stable status or brand meaning.
 
 ## Theme Policy

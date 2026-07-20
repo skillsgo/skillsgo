@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Riverpod, the App-scoped SkillsGateway provider, and typed update plan, progress, and execution contracts.
+ * [INPUT]: Depends on Riverpod, the App-scoped SkillsGateway provider, Library Inventory reconciliation, and typed update plan, progress, and execution contracts.
  * [OUTPUT]: Provides immutable per-Skill Update operation state plus execute and failed-target retry actions.
  * [POS]: Serves as the Update mutation state machine while dialogs retain only ephemeral target selection state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../domain/skills_gateway.dart';
 import 'app_providers.dart';
+import 'library_controller.dart';
 
 class UpdateOperationState {
   UpdateOperationState({
@@ -109,18 +110,16 @@ class UpdateOperationController extends Notifier<UpdateOperationState> {
         .toSet();
     state = state.copyWith(operating: true, clearError: true);
     try {
-      final projects = await _gateway.loadAddedProjects();
-      final entries = await _gateway.listInstalled(projects: projects);
-      final refreshed = entries.where(
-        (entry) => entry.inventoryKey == skill.inventoryKey,
-      );
-      if (refreshed.isEmpty) {
+      final refreshed = await ref
+          .read(libraryProvider.notifier)
+          .refreshEntry(LibraryEntryQuery.byInventoryKey(skill.inventoryKey));
+      final refreshedSkill = refreshed.entry;
+      if (refreshedSkill == null) {
         throw const SkillsException(
           'The failed Update Targets are no longer installed.',
           kind: SkillsFailureKind.validation,
         );
       }
-      final refreshedSkill = refreshed.first;
       final failedTargets = refreshedSkill.targets
           .where((target) => failed.contains(installedUpdateTargetKey(target)))
           .toList(growable: false);

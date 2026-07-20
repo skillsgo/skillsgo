@@ -70,8 +70,10 @@ released under the MIT License.
 `lib/ui/install_location_island/` component is derived from and substantially
 adapts Todo List Interaction for installation location selection, and
 `lib/ui/stacked_toast.dart` vendors and modifies Stacked Toast Interaction.
-These components originate from the same package. The App also consumes Portal
-Labs' Loading Shapes component for Repository parsing. Source:
+`lib/ui/onboarding_screen.dart` consumes Premium Progress Stepper,
+`lib/ui/subscription_segmented_switch.dart` adapts Subscription Pricing Picker,
+and the App consumes Loading Shapes for Repository parsing. These components
+originate from the same package. Source:
 [lportals/portal_labs](https://github.com/lportals/portal_labs).
 
 MIT License

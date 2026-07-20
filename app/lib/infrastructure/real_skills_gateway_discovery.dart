@@ -1,0 +1,451 @@
+/*
+ * [INPUT]: Depends on the shared gateway state, content locale, CLI execution, strict machine codecs, and discovery domain models.
+ * [OUTPUT]: Provides locale-aware Search/Ranking/Trending/Hot discovery, explicit-source fallback, and remote Skill detail loading.
+ * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+part of 'real_skills_gateway.dart';
+
+mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
+  @override
+  Future<DiscoveryPage> discover(
+    DiscoveryCollection collection, {
+    String query = '',
+    int offset = 0,
+    int limit = 20,
+  }) async {
+    final trimmedQuery = query.trim();
+    if (collection == DiscoveryCollection.search && trimmedQuery.isEmpty) {
+      throw const SkillsException(
+        'Search query is required.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    await _ensureHubOrigin();
+    if (collection == DiscoveryCollection.search &&
+        _looksLikeExplicitSkillSource(trimmedQuery)) {
+      return _discoverExplicitSource(trimmedQuery);
+    }
+    final expectedCollection = switch (collection) {
+      DiscoveryCollection.search => 'search',
+      DiscoveryCollection.ranking => 'all_time',
+      DiscoveryCollection.trending => 'trending',
+      DiscoveryCollection.hot => 'hot',
+    };
+    try {
+      final result = await _runCli([
+        'discover',
+        '--hub',
+        _hubOrigin,
+        '--collection',
+        expectedCollection,
+        '--content-locale',
+        await _contentLocale(),
+        if (collection == DiscoveryCollection.search) ...[
+          '--query',
+          trimmedQuery,
+        ],
+        '--offset',
+        '$offset',
+        '--limit',
+        '$limit',
+      ]);
+      if (!result.succeeded) throw _commandFailure(result);
+      final decoded = jsonDecode(result.output.stdout);
+      if (decoded is! Map<String, dynamic> ||
+          decoded['collection'] != expectedCollection ||
+          decoded['skills'] is! List ||
+          decoded['page'] is! Map<String, dynamic>) {
+        throw const SkillsException(
+          'Discovery service returned an invalid response.',
+          kind: SkillsFailureKind.invalidResponse,
+        );
+      }
+      final page = decoded['page'] as Map<String, dynamic>;
+      final nextRaw = page['nextOffset'];
+      if (page['limit'] is! num ||
+          page['offset'] is! num ||
+          (nextRaw != null && nextRaw is! num)) {
+        throw const SkillsException(
+          'Discovery pagination is invalid.',
+          kind: SkillsFailureKind.invalidResponse,
+        );
+      }
+      final rawSkills = decoded['skills'] as List;
+      if (collection == DiscoveryCollection.search &&
+          offset == 0 &&
+          rawSkills.isEmpty &&
+          _looksLikeGitHubRepositoryShorthand(trimmedQuery)) {
+        return _discoverExplicitSource('github.com/$trimmedQuery');
+      }
+      final installedCounts = <String, int>{};
+      try {
+        final installed = await listInstalled(
+          projects: await loadAddedProjects(),
+        );
+        for (final skill in installed) {
+          if (skill.skillId.isNotEmpty) {
+            installedCounts[skill.skillId] = skill.targetCount;
+          }
+        }
+      } on Object {
+        // Discovery remains available when local CLI inventory is unavailable.
+      }
+      final skills = rawSkills
+          .map((raw) {
+            if (raw is! Map<String, dynamic>) {
+              throw const SkillsException(
+                'Invalid discovery result.',
+                kind: SkillsFailureKind.invalidResponse,
+              );
+            }
+            final source = raw['source'];
+            final installName =
+                raw['skillPath'] is String &&
+                    (raw['skillPath'] as String).isNotEmpty
+                ? p.basename(raw['skillPath'] as String)
+                : raw['name'];
+            final id = raw['id'];
+            final name = raw['name'];
+            final description = raw['description'];
+            final version = raw['latestVersion'];
+            final metric = raw['metric'];
+            if (source is! String ||
+                installName is! String ||
+                id is! String ||
+                name is! String ||
+                description is! String ||
+                version is! String ||
+                metric is! Map<String, dynamic> ||
+                metric['kind'] is! String ||
+                metric['value'] is! num ||
+                metric['change'] is! num) {
+              throw const SkillsException(
+                'Discovery result is missing required fields.',
+                kind: SkillsFailureKind.invalidResponse,
+              );
+            }
+            final imageUrl = raw['imageUrl'];
+            if (imageUrl != null && imageUrl is! String) {
+              throw const SkillsException(
+                'Discovery image URL is invalid.',
+                kind: SkillsFailureKind.invalidResponse,
+              );
+            }
+            return SkillSummary(
+              id: id,
+              installName: installName,
+              name: name,
+              source: source,
+              imageUrl: imageUrl as String?,
+              description: description,
+              installs: (metric['value'] as num).toInt(),
+              latestVersion: version,
+              trustLevel: _trustLevel(raw['trustLevel']),
+              riskAssessment: _riskAssessment(raw['riskAssessment']),
+              metricKind: _metricKind(metric['kind'] as String),
+              metricChange: (metric['change'] as num).toInt(),
+              localTargetCount: installedCounts[id] ?? 0,
+            );
+          })
+          .toList(growable: false);
+      return DiscoveryPage(
+        skills: skills,
+        nextOffset: nextRaw == null ? null : (nextRaw as num).toInt(),
+      );
+    } on SkillsException {
+      rethrow;
+    } on FormatException {
+      throw const SkillsException(
+        'Discovery service returned invalid JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
+  }
+
+  static bool _looksLikeExplicitSkillSource(String query) {
+    final value = query.trim();
+    if (value.contains('://') || value.startsWith('git@')) return true;
+    if (value.contains(RegExp(r'\s'))) return false;
+    final coordinate = value.split('@').first;
+    final segments = coordinate.split('/');
+    return segments.length >= 3 && segments.first.contains('.');
+  }
+
+  static bool _looksLikeGitHubRepositoryShorthand(String query) =>
+      RegExp(r'^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$').hasMatch(query);
+
+  Future<DiscoveryPage> _discoverExplicitSource(String source) async {
+    final result = await _runCli([
+      'info',
+      source,
+      '--hub',
+      _hubOrigin,
+      '--output',
+      'json',
+    ]);
+    if (!result.succeeded) throw _commandFailure(result);
+    try {
+      final decoded = jsonDecode(result.output.stdout);
+      if (decoded is! Map<String, dynamic> ||
+          decoded['SchemaVersion'] != 1 ||
+          decoded['Kind'] is! String) {
+        throw const FormatException('Invalid SkillsGo Info response.');
+      }
+      final rawSkills = switch (decoded['Kind']) {
+        'Skill' => <Object?>[decoded],
+        'Repository' when decoded['Skills'] is List =>
+          decoded['Skills'] as List,
+        _ => throw const FormatException('Unknown SkillsGo Info kind.'),
+      };
+      final installedCounts = <String, int>{};
+      try {
+        final installed = await listInstalled(
+          projects: await loadAddedProjects(),
+        );
+        for (final skill in installed) {
+          if (skill.skillId.isNotEmpty) {
+            installedCounts[skill.skillId] = skill.targetCount;
+          }
+        }
+      } on Object {
+        // Explicit-source discovery remains useful without local inventory.
+      }
+      final skills = rawSkills
+          .map((raw) {
+            if (raw is! Map<String, dynamic>) {
+              throw const FormatException('Invalid Skill Info member.');
+            }
+            final id = raw['ID'];
+            final name = raw['Name'];
+            final description = raw['Description'];
+            final version = raw['Version'];
+            final installs = raw['Installs'];
+            if (id is! String ||
+                name is! String ||
+                description is! String ||
+                version is! String ||
+                installs is! num) {
+              throw const FormatException('Incomplete Skill Info member.');
+            }
+            final imageURL = raw['ImageURL'];
+            if (imageURL != null && imageURL is! String) {
+              throw const FormatException('Invalid Skill Info image URL.');
+            }
+            final repository = id.split('/-/').first;
+            return SkillSummary(
+              id: id,
+              installName: name,
+              name: name,
+              source: repository,
+              imageUrl: imageURL as String?,
+              description: description,
+              installs: installs.toInt(),
+              latestVersion: version,
+              trustLevel: _trustLevel(raw['TrustLevel']),
+              riskAssessment: _riskAssessment(raw['RiskAssessment']),
+              localTargetCount: installedCounts[id] ?? 0,
+            );
+          })
+          .toList(growable: false);
+      final firstSkill = rawSkills.isEmpty ? null : rawSkills.first;
+      final firstSkillMap = firstSkill is Map<String, dynamic>
+          ? firstSkill
+          : null;
+      final repositoryID = decoded['Kind'] == 'Repository'
+          ? decoded['ID']
+          : skills.isEmpty
+          ? null
+          : skills.first.source;
+      final repositoryTime = decoded['Time'];
+      return DiscoveryPage(
+        skills: skills,
+        repository: repositoryID is String
+            ? RepositorySummary(
+                id: repositoryID,
+                imageUrl: firstSkillMap?['ImageURL'] as String?,
+                description: decoded['Description'] is String
+                    ? decoded['Description'] as String
+                    : '',
+                stars: firstSkillMap?['Stars'] is num
+                    ? (firstSkillMap!['Stars'] as num).toInt()
+                    : 0,
+                latestVersion: decoded['Version'] is String
+                    ? decoded['Version'] as String
+                    : skills.isEmpty
+                    ? ''
+                    : skills.first.latestVersion,
+                updatedAt: repositoryTime is String
+                    ? DateTime.tryParse(repositoryTime)
+                    : null,
+                license: decoded['License'] is String
+                    ? decoded['License'] as String
+                    : null,
+              )
+            : null,
+      );
+    } on FormatException {
+      throw const SkillsException(
+        'SkillsGo Info returned invalid JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
+  }
+
+  @override
+  Future<SkillDetail> loadRemoteDetail(SkillSummary skill) async {
+    await _ensureHubOrigin();
+    try {
+      final result = await _runCli([
+        'detail',
+        skill.id,
+        '--hub',
+        _hubOrigin,
+        '--content-locale',
+        await _contentLocale(),
+      ]);
+      if (!result.succeeded) throw _commandFailure(result);
+      final decoded = jsonDecode(result.output.stdout);
+      if (decoded is! Map<String, dynamic>) {
+        throw const SkillsException(
+          'Skill detail is invalid.',
+          kind: SkillsFailureKind.invalidResponse,
+        );
+      }
+      const requiredStrings = [
+        'id',
+        'name',
+        'description',
+        'source',
+        'repository',
+        'requestedVersion',
+        'immutableVersion',
+        'commitSHA',
+        'treeSHA',
+        'sourceRef',
+        'contentDigest',
+        'instructions',
+        'trustLevel',
+      ];
+      if (requiredStrings.any((field) => decoded[field] is! String) ||
+          (decoded['imageUrl'] != null && decoded['imageUrl'] is! String) ||
+          decoded['installs'] is! num ||
+          decoded['stars'] is! num ||
+          decoded['sourceUpdatedAt'] is! String ||
+          decoded['archiveSize'] is! num ||
+          decoded['id'] != skill.id ||
+          decoded['riskAssessment'] is! Map<String, dynamic> ||
+          decoded['files'] is! List ||
+          decoded['hasExecutableContent'] is! bool ||
+          decoded['executableFiles'] is! List) {
+        throw const SkillsException(
+          'Skill detail is missing required fields.',
+          kind: SkillsFailureKind.invalidResponse,
+        );
+      }
+      final risk = decoded['riskAssessment'] as Map<String, dynamic>;
+      if (risk['level'] is! String ||
+          risk['scannerVersion'] is! String ||
+          risk['evidence'] is! List) {
+        throw const SkillsException(
+          'Skill Risk Assessment is invalid.',
+          kind: SkillsFailureKind.invalidResponse,
+        );
+      }
+      final evidence = (risk['evidence'] as List)
+          .map((raw) {
+            if (raw is! Map<String, dynamic> ||
+                raw['code'] is! String ||
+                raw['path'] is! String) {
+              throw const SkillsException(
+                'Skill risk evidence is invalid.',
+                kind: SkillsFailureKind.invalidResponse,
+              );
+            }
+            return SkillRiskEvidence(
+              code: raw['code'] as String,
+              path: raw['path'] as String,
+            );
+          })
+          .toList(growable: false);
+      final files = (decoded['files'] as List)
+          .map((raw) {
+            if (raw is! Map<String, dynamic> ||
+                raw['path'] is! String ||
+                raw['size'] is! num ||
+                raw['kind'] is! String ||
+                raw['executable'] is! bool ||
+                raw['binary'] is! bool ||
+                raw['truncated'] is! bool ||
+                (raw['content'] != null && raw['content'] is! String)) {
+              throw const SkillsException(
+                'Skill file inventory is invalid.',
+                kind: SkillsFailureKind.invalidResponse,
+              );
+            }
+            return SkillFile(
+              path: raw['path'] as String,
+              contents: raw['content'] as String? ?? '',
+              size: (raw['size'] as num).toInt(),
+              kind: raw['kind'] as String,
+              executable: raw['executable'] as bool,
+              binary: raw['binary'] as bool,
+              truncated: raw['truncated'] as bool,
+            );
+          })
+          .toList(growable: false);
+      if ((decoded['executableFiles'] as List).any((path) => path is! String)) {
+        throw const SkillsException(
+          'Executable file signals are invalid.',
+          kind: SkillsFailureKind.invalidResponse,
+        );
+      }
+      var installationTargets = <SkillInstallationTarget>[];
+      try {
+        final installed = await listInstalled(
+          projects: await loadAddedProjects(),
+        );
+        installationTargets = installed
+            .where((entry) => entry.skillId == skill.id)
+            .expand((entry) => entry.targets)
+            .toList(growable: false);
+      } on Object {
+        // Remote artifact inspection stays available without local CLI state.
+      }
+      return SkillDetail(
+        name: decoded['name'] as String,
+        source: decoded['source'] as String,
+        markdown: decoded['instructions'] as String,
+        files: files,
+        imageUrl: decoded['imageUrl'] as String?,
+        installs: (decoded['installs'] as num).toInt(),
+        repository: decoded['repository'] as String,
+        stars: (decoded['stars'] as num).toInt(),
+        sourceUpdatedAt: DateTime.parse(
+          decoded['sourceUpdatedAt'] as String,
+        ).toLocal(),
+        archiveSize: (decoded['archiveSize'] as num).toInt(),
+        description: decoded['description'] as String,
+        requestedVersion: decoded['requestedVersion'] as String,
+        immutableVersion: decoded['immutableVersion'] as String,
+        commitSHA: decoded['commitSHA'] as String,
+        treeSHA: decoded['treeSHA'] as String,
+        sourceRef: decoded['sourceRef'] as String,
+        contentDigest: decoded['contentDigest'] as String,
+        trustLevel: _trustLevel(decoded['trustLevel']),
+        riskAssessment: _riskAssessment(risk['level']),
+        riskScannerVersion: risk['scannerVersion'] as String,
+        riskEvidence: evidence,
+        installationTargets: installationTargets,
+        hubExecutableSignal: decoded['hasExecutableContent'] as bool,
+      );
+    } on SkillsException {
+      rethrow;
+    } on FormatException {
+      throw const SkillsException(
+        'Skill detail returned invalid JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
+  }
+}

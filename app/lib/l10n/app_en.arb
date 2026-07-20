@@ -531,13 +531,27 @@
   "noDescriptionAvailable": "No description available",
   "moreCoverage": "+{count} more locations",
   "@moreCoverage": {"placeholders": {"count": {"type": "int"}}},
-  "batchTakeoverAction": "Take over existing skills",
-  "batchTakeoverPending": "Taking over skills…",
-  "batchTakeoverTitle": "Take over existing skills?",
-  "batchTakeoverDescription": "SkillsGo will register supported skills.sh installations without changing their current files. Unsupported or unsafe items will be skipped.",
-  "batchTakeoverConfirm": "Take over",
-  "batchTakeoverResultTitle": "Takeover complete",
-  "batchTakeoverSummary": "{takenOver} skills taken over, {skipped} skipped.",
+  "batchTakeoverAction": "Manage existing skills",
+  "batchTakeoverActionCount": "Manage ({count})",
+  "@batchTakeoverActionCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "batchTakeoverChecking": "Checking existing skills…",
+  "batchTakeoverRetry": "Check manageable skills again",
+  "batchTakeoverEligibleCount": "{count} can be managed",
+  "@batchTakeoverEligibleCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "batchTakeoverPending": "Adding skills to management…",
+  "batchTakeoverTitle": "Manage existing skills with SkillsGo?",
+  "batchTakeoverDescription": "SkillsGo will add local management records without moving, overwriting, or uploading skill files. Unsupported or changed items will be skipped.",
+  "batchTakeoverConfirm": "Add to management",
+  "batchTakeoverResultTitle": "Skills added to management",
+  "batchTakeoverSummary": "{takenOver} skills added to management, {skipped} skipped.",
   "@batchTakeoverSummary": {
     "placeholders": {
       "takenOver": {"type": "int"},

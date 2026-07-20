@@ -524,13 +524,27 @@
   "noDescriptionAvailable": "暂无描述",
   "moreCoverage": "另外 {count} 个安装位置",
   "@moreCoverage": {"placeholders": {"count": {"type": "int"}}},
-  "batchTakeoverAction": "接管现有技能",
-  "batchTakeoverPending": "正在接管技能…",
-  "batchTakeoverTitle": "接管现有技能？",
-  "batchTakeoverDescription": "SkillsGo 会登记受支持的 skills.sh 安装，不会修改当前文件；不受支持或不安全的项目将被跳过。",
-  "batchTakeoverConfirm": "接管",
-  "batchTakeoverResultTitle": "接管完成",
-  "batchTakeoverSummary": "已接管 {takenOver} 个技能，跳过 {skipped} 个。",
+  "batchTakeoverAction": "纳入 SkillsGo 管理",
+  "batchTakeoverActionCount": "纳入管理（{count}）",
+  "@batchTakeoverActionCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "batchTakeoverChecking": "正在检查可纳入的技能…",
+  "batchTakeoverRetry": "重新检查可纳入技能",
+  "batchTakeoverEligibleCount": "{count} 个可纳入管理",
+  "@batchTakeoverEligibleCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "batchTakeoverPending": "正在纳入管理…",
+  "batchTakeoverTitle": "将现有技能纳入 SkillsGo 管理？",
+  "batchTakeoverDescription": "SkillsGo 只会创建本地管理记录，不会移动、覆盖或上传技能文件；不支持或确认后发生变化的项目将被跳过。",
+  "batchTakeoverConfirm": "纳入管理",
+  "batchTakeoverResultTitle": "已纳入管理",
+  "batchTakeoverSummary": "已纳入管理 {takenOver} 个技能，跳过 {skipped} 个。",
   "@batchTakeoverSummary": {
     "placeholders": {
       "takenOver": {"type": "int"},

@@ -1,4 +1,4 @@
-# [INPUT]: Depends on the Flutter SDK and declared packages for desktop UI, localization, persistence, HTTP, and platform integration.
+# [INPUT]: Depends on the Flutter SDK and declared packages for desktop UI, localization, persistence, natural ordering, process-backed integration, and platform services.
 # [OUTPUT]: Defines the skillsgo package identity, build version, dependency graph, and Flutter generation settings.
 # [POS]: Serves as the F2 build manifest and package boundary for the SkillsGo desktop App workspace.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -37,14 +37,11 @@ dependencies:
   flutter_localizations:
     sdk: flutter
   flutter_riverpod: ^3.3.2
+  collection: ^1.19.1
   intl: ^0.20.2
 
-  # The following adds the Cupertino Icons font to your application.
-  # Use with the CupertinoIcons class for iOS style icons.
-  cupertino_icons: ^1.0.8
   macos_window_utils: ^1.9.1
   window_manager: ^0.5.2
-  http: ^1.6.0
   flutter_markdown_plus: ^1.0.12
   shared_preferences: ^2.5.5
   just_tooltip: ^0.4.4

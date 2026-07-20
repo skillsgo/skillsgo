@@ -2789,43 +2789,67 @@ abstract class AppLocalizations {
   /// No description provided for @batchTakeoverAction.
   ///
   /// In en, this message translates to:
-  /// **'Take over existing skills'**
+  /// **'Manage existing skills'**
   String get batchTakeoverAction;
+
+  /// No description provided for @batchTakeoverActionCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage ({count})'**
+  String batchTakeoverActionCount(int count);
+
+  /// No description provided for @batchTakeoverChecking.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking existing skills…'**
+  String get batchTakeoverChecking;
+
+  /// No description provided for @batchTakeoverRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Check manageable skills again'**
+  String get batchTakeoverRetry;
+
+  /// No description provided for @batchTakeoverEligibleCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} can be managed'**
+  String batchTakeoverEligibleCount(int count);
 
   /// No description provided for @batchTakeoverPending.
   ///
   /// In en, this message translates to:
-  /// **'Taking over skills…'**
+  /// **'Adding skills to management…'**
   String get batchTakeoverPending;
 
   /// No description provided for @batchTakeoverTitle.
   ///
   /// In en, this message translates to:
-  /// **'Take over existing skills?'**
+  /// **'Manage existing skills with SkillsGo?'**
   String get batchTakeoverTitle;
 
   /// No description provided for @batchTakeoverDescription.
   ///
   /// In en, this message translates to:
-  /// **'SkillsGo will register supported skills.sh installations without changing their current files. Unsupported or unsafe items will be skipped.'**
+  /// **'SkillsGo will add local management records without moving, overwriting, or uploading skill files. Unsupported or changed items will be skipped.'**
   String get batchTakeoverDescription;
 
   /// No description provided for @batchTakeoverConfirm.
   ///
   /// In en, this message translates to:
-  /// **'Take over'**
+  /// **'Add to management'**
   String get batchTakeoverConfirm;
 
   /// No description provided for @batchTakeoverResultTitle.
   ///
   /// In en, this message translates to:
-  /// **'Takeover complete'**
+  /// **'Skills added to management'**
   String get batchTakeoverResultTitle;
 
   /// No description provided for @batchTakeoverSummary.
   ///
   /// In en, this message translates to:
-  /// **'{takenOver} skills taken over, {skipped} skipped.'**
+  /// **'{takenOver} skills added to management, {skipped} skipped.'**
   String batchTakeoverSummary(int takenOver, int skipped);
 
   /// No description provided for @batchTakeoverClose.

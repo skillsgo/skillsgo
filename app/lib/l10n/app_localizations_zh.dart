@@ -1492,27 +1492,43 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get batchTakeoverAction => '接管现有技能';
+  String get batchTakeoverAction => '纳入 SkillsGo 管理';
 
   @override
-  String get batchTakeoverPending => '正在接管技能…';
+  String batchTakeoverActionCount(int count) {
+    return '纳入管理（$count）';
+  }
 
   @override
-  String get batchTakeoverTitle => '接管现有技能？';
+  String get batchTakeoverChecking => '正在检查可纳入的技能…';
+
+  @override
+  String get batchTakeoverRetry => '重新检查可纳入技能';
+
+  @override
+  String batchTakeoverEligibleCount(int count) {
+    return '$count 个可纳入管理';
+  }
+
+  @override
+  String get batchTakeoverPending => '正在纳入管理…';
+
+  @override
+  String get batchTakeoverTitle => '将现有技能纳入 SkillsGo 管理？';
 
   @override
   String get batchTakeoverDescription =>
-      'SkillsGo 会登记受支持的 skills.sh 安装，不会修改当前文件；不受支持或不安全的项目将被跳过。';
+      'SkillsGo 只会创建本地管理记录，不会移动、覆盖或上传技能文件；不支持或确认后发生变化的项目将被跳过。';
 
   @override
-  String get batchTakeoverConfirm => '接管';
+  String get batchTakeoverConfirm => '纳入管理';
 
   @override
-  String get batchTakeoverResultTitle => '接管完成';
+  String get batchTakeoverResultTitle => '已纳入管理';
 
   @override
   String batchTakeoverSummary(int takenOver, int skipped) {
-    return '已接管 $takenOver 个技能，跳过 $skipped 个。';
+    return '已纳入管理 $takenOver 个技能，跳过 $skipped 个。';
   }
 
   @override

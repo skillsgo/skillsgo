@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Riverpod, SkillsGateway Agent inspection, and a periodic foreground-safe refresh cadence.
- * [OUTPUT]: Provides App-scoped stale-while-revalidate AgentCatalog state, single-flight loading, and explicit mutation refresh.
+ * [OUTPUT]: Provides App-scoped stale-while-revalidate AgentCatalog state, lifecycle-safe single-flight loading, and explicit mutation refresh.
  * [POS]: Serves as the single local Agent capability source shared by Discover, Library, Settings, and installation flows.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -86,18 +86,26 @@ class AgentCatalogController extends Notifier<AgentCatalogState> {
     final current = _inFlight;
     if (current != null) return current;
     state = state.copyWith(refreshing: true, clearError: true);
-    final request = _gateway.inspectAgents();
+    final request = _completeRefresh();
     _inFlight = request;
-    return request
-        .then((catalog) {
-          _lastSuccessAt = DateTime.now();
-          state = AgentCatalogState(catalog: catalog);
-          return catalog;
-        })
-        .catchError((Object error) {
-          state = state.copyWith(refreshing: false, error: error);
-          throw error;
-        })
-        .whenComplete(() => _inFlight = null);
+    return request;
+  }
+
+  Future<AgentCatalog> _completeRefresh() async {
+    try {
+      final catalog = await _gateway.inspectAgents();
+      if (ref.mounted) {
+        _lastSuccessAt = DateTime.now();
+        state = AgentCatalogState(catalog: catalog);
+      }
+      return catalog;
+    } catch (error, stackTrace) {
+      if (ref.mounted) {
+        state = state.copyWith(refreshing: false, error: error);
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    } finally {
+      _inFlight = null;
+    }
   }
 }
