@@ -168,13 +168,11 @@ PathPrefix = ""
 # Env override: SKILLSGO_HUB_NETRC_PATH
 NETRCPath = ""
 
-# GithubToken can be used instead of a NETRCPath to authenticate
-# the proxy to your own private repos on github. This makes it
-# easier for users and for platforms like GAE to only be provided
-# a Github token instead of a .netrc file. Internally, the proxy
-# just create a .netrc file for you.
-# Env override: SKILLSGO_HUB_GITHUB_TOKEN
-GithubToken = ""
+# GithubTokens configures a sticky failover pool for GitHub REST API and Git
+# operations. A successful token remains active until an authentication,
+# authorization, rate-limit, or Git transport failure selects the next token.
+# Env override: SKILLSGO_HUB_GITHUB_TOKENS (comma, semicolon, or newline-delimited)
+GithubTokens = []
 
 # HGRCPath tells you where the .hgrc path initially resides.
 # This is so that you can mount the .hgrc file to a secret location

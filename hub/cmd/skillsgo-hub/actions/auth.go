@@ -1,3 +1,9 @@
+/*
+ * [INPUT]: Depends on operator-provided netrc or hgrc files and the current user's home directory.
+ * [OUTPUT]: Provides secure installation and platform-correct naming of explicit Git and Mercurial authentication files.
+ * [POS]: Serves as the external authentication-file bootstrap helper for Hub startup; configured GitHub tokens bypass process-wide netrc files.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
 package actions
 
 import (
@@ -34,21 +40,6 @@ func initializeAuthFile(path string) error {
 		return fmt.Errorf("writing to auth file: %w", err)
 	}
 
-	return nil
-}
-
-// netrcFromToken takes a github token and creates a .netrc
-// file for you, overriding whatever might be already there.
-func netrcFromToken(tok string) error {
-	fileContent := fmt.Sprintf("machine github.com login %s\n", tok)
-	hdir, err := homedir.Dir()
-	if err != nil {
-		return fmt.Errorf("getting homedir: %w", err)
-	}
-	rcp := filepath.Join(hdir, getNETRCFilename())
-	if err := os.WriteFile(rcp, []byte(fileContent), 0o600); err != nil {
-		return fmt.Errorf("writing to netrc file: %w", err)
-	}
 	return nil
 }
 

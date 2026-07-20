@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the config package imports and contracts declared in this file.
- * [OUTPUT]: Specifies the config package behavior covered by config_test.go.
+ * [OUTPUT]: Specifies Hub configuration including multi-token GitHub authentication behavior.
  * [POS]: Serves as test coverage for the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,6 +14,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/BurntSushi/toml"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/kelseyhightower/envconfig"
@@ -93,6 +94,49 @@ func TestLLMEnvironmentOverrides(t *testing.T) {
 	require.Equal(t, "https://llm.example/v1", config.LLM.BaseURL)
 	require.Equal(t, "test-model", config.LLM.Model)
 	require.Equal(t, []string{"ja-JP", "fr-FR"}, config.LLM.TranslationLocales)
+}
+
+func TestGitHubTokenConfigurationCompatibility(t *testing.T) {
+	tests := []struct {
+		name string
+		conf Config
+		want []string
+	}{
+		{name: "anonymous", conf: Config{}, want: nil},
+		{
+			name: "multiple tokens are trimmed and deduplicated",
+			conf: Config{GithubTokens: TokenList{" token-a ", "", "token-b", "token-a"}},
+			want: []string{"token-a", "token-b"},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.want, tc.conf.GitHubTokens())
+		})
+	}
+}
+
+func TestGitHubTokensEnvironmentDecode(t *testing.T) {
+	var tokens TokenList
+	require.NoError(t, tokens.Decode(" token-a,token-b ; token-c\ntoken-d "))
+	require.Equal(t, TokenList{"token-a", "token-b", "token-c", "token-d"}, tokens)
+}
+
+func TestGitHubTokensTOMLDecode(t *testing.T) {
+	var decoded struct {
+		GithubTokens TokenList
+	}
+	_, err := toml.Decode(`GithubTokens = ["token-a", "token-b"]`, &decoded)
+	require.NoError(t, err)
+	require.Equal(t, TokenList{"token-a", "token-b"}, decoded.GithubTokens)
+}
+
+func TestGitHubTokensEnvironmentOverride(t *testing.T) {
+	setTestHome(t)
+	t.Setenv("SKILLSGO_HUB_GITHUB_TOKENS", "token-a, token-b, token-a")
+	conf := defaultConfig()
+	require.NoError(t, envOverride(conf))
+	require.Equal(t, []string{"token-a", "token-b"}, conf.GitHubTokens())
 }
 
 func TestEnvOverrides(t *testing.T) {
@@ -309,6 +353,7 @@ func TestParseExampleConfig(t *testing.T) {
 
 	expConf := &Config{
 		Environment:       "development",
+		GithubTokens:      TokenList{},
 		LogLevel:          "debug",
 		LogFormat:         "plain",
 		SkillFetchWorkers: 10,

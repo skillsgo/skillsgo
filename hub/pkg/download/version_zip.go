@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the download package imports and contracts declared in this file.
- * [OUTPUT]: Provides the download package behavior implemented by version_zip.go.
- * [POS]: Serves as maintained source in the download package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on parsed artifact coordinates, Protocol ZIP resolution, redirect policy, streaming metadata, and movable-query cache protection.
+ * [OUTPUT]: Streams ZIP artifacts for canonical versions and non-cacheable movable revision queries, including HEAD metadata.
+ * [POS]: Serves as the ZIP HTTP boundary in the artifact download protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package download
@@ -27,6 +27,7 @@ func ZipHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handle
 			lggr.SystemErr(err)
 			return c.SendStatus(errors.Kind(err))
 		}
+		protectMovableVersionResponse(c, ver)
 		zip, err := dp.Zip(c.Context(), mod, ver)
 		if err != nil {
 			severityLevel := errors.Expect(err, errors.KindNotFound, errors.KindRedirect)
