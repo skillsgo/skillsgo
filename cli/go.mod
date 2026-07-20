@@ -1,4 +1,4 @@
-// [INPUT]: Depends on the Go toolchain plus Cobra, localization, YAML, stable Bubble Tea/Bubbles/Lip Gloss terminal rendering, terminal detection, and test libraries.
+// [INPUT]: Depends on the Go toolchain plus Cobra, localization, YAML, stable Bubble Tea/Bubbles/Lip Gloss terminal rendering, operating-system file locking, terminal detection, and test libraries.
 // [OUTPUT]: Defines the reproducible SkillsGo CLI module dependency graph.
 // [POS]: Serves as the F2 build manifest for the CLI workspace.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -11,6 +11,7 @@ require (
 	github.com/charmbracelet/bubbles v0.21.0
 	github.com/charmbracelet/bubbletea v1.3.10
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/gofrs/flock v0.13.0
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/spf13/cobra v1.10.2
 	github.com/stretchr/testify v1.11.1
@@ -29,6 +30,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/erikgeiser/coninput v0.0.0-20211004153227-1c3628e74d0f // indirect
 	github.com/inconshreveable/mousetrap v1.1.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
 	github.com/lucasb-eyer/go-colorful v1.2.0 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mattn/go-localereader v0.0.1 // indirect
@@ -38,6 +40,7 @@ require (
 	github.com/muesli/termenv v0.16.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/rivo/uniseg v0.4.7 // indirect
+	github.com/rogpeppe/go-internal v1.15.0 // indirect
 	github.com/spf13/pflag v1.0.9 // indirect
 	github.com/xo/terminfo v0.0.0-20220910002029-abceb7e1c41e // indirect
 	golang.org/x/sys v0.47.0 // indirect

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses temporary Workspace roots, canonical immutable requirements, and Store receipts.
- * [OUTPUT]: Specifies manifest-only root discovery, compact dependency persistence, concurrent Agent merging, crash recovery, atomic replacement, and receipt-aware alias binding removal.
+ * [OUTPUT]: Specifies manifest-only root discovery, compact dependency persistence, concurrent Agent merging, crash recovery before consistent metadata reads, atomic replacement, and receipt-aware alias binding removal.
  * [POS]: Serves as focused persistence coverage for the concurrency-safe Workspace Manifest boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -17,6 +17,7 @@ import (
 
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
+	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )
 
@@ -219,6 +220,30 @@ func TestLoadInstallationReceiptsRecoversInterruptedMetadataTransaction(t *testi
 	if _, err := os.Stat(journal); !os.IsNotExist(err) {
 		t.Fatalf("transaction journal survived successful recovery: %v", err)
 	}
+}
+
+func TestLoadInstalledMetadataRecoversBeforeReadingTheSnapshot(t *testing.T) {
+	root := t.TempDir()
+	manifestPath := filepath.Join(root, manifestName)
+	oldID := "github.com/acme/old"
+	newID := "github.com/acme/new"
+	requirement := func(skillID string) []byte {
+		return []byte("require " + skillID + " v1.0.0 [codex]\n")
+	}
+	require.NoError(t, os.WriteFile(manifestPath, requirement(oldID), 0o600))
+	manifestSnapshot, err := snapshotMetadataFile(manifestPath)
+	require.NoError(t, err)
+	_, err = beginMetadataTransaction(root, []metadataFileSnapshot{manifestSnapshot})
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(manifestPath, requirement(newID), 0o600))
+
+	manifest, receipts, err := loadInstalledMetadata(root)
+	require.NoError(t, err)
+	require.Empty(t, receipts)
+	_, _, hasOld := manifest.Dependency(oldID)
+	_, _, hasNew := manifest.Dependency(newID)
+	require.True(t, hasOld)
+	require.False(t, hasNew)
 }
 
 func TestConcurrentManifestWriterWaitsForTransactionRollback(t *testing.T) {
