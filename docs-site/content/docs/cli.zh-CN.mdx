@@ -1,0 +1,27 @@
+---
+title: CLI
+description: 使用 SkillsGo 命令行与本地执行引擎。
+---
+
+# SkillsGo CLI
+
+CLI 既是终端界面，也是桌面应用使用的本地执行引擎。
+
+## 职责
+
+- 解析公共 Skill 版本和已验证制品。
+- 维护内容寻址 Store。
+- 规划并执行安装变更。
+- 将 Skills 投射到用户级和工作区级 Agent 目标。
+- 维护工作区清单和锁，确保结果可复现。
+- 为机器消费者输出稳定的 JSON 或 NDJSON 契约。
+
+## 开发验证
+
+在仓库根目录运行：
+
+```bash
+make test-cli
+```
+
+修改 CLI 后，请在 `cli` 工作区运行 `gofmt` 和完整的 Go 测试套件。

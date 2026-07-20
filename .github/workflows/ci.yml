@@ -1,4 +1,8 @@
-# [INPUT]: Depends on the build, deployment, or runtime values declared in ci.yml.\n# [OUTPUT]: Provides the SkillsGo Hub or monorepo configuration defined by ci.yml.\n# [POS]: Serves as maintained configuration in the renamed SkillsGo Hub workspace or its repository integration.\n# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md\nname: Continuous Integration
+# [INPUT]: Depends on the Go, Flutter, Node.js, pnpm, and workspace validation commands used by SkillsGo.
+# [OUTPUT]: Validates and builds the CLI, Hub, App, and public documentation site on pushes and pull requests.
+# [POS]: Serves as the repository-wide continuous integration workflow.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+name: Continuous Integration
 
 on:
   push:
@@ -87,3 +91,29 @@ jobs:
 
       - name: Test
         run: flutter test
+
+  docs-site:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docs-site
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: 22
+
+      - name: Enable pnpm
+        run: corepack enable
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Type-check content and routes
+        run: pnpm typecheck
+
+      - name: Build prerendered site
+        run: pnpm build

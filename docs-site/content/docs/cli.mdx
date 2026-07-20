@@ -1,0 +1,27 @@
+---
+title: CLI
+description: Use the SkillsGo command line and local execution engine.
+---
+
+# SkillsGo CLI
+
+The CLI is both a terminal interface and the local execution engine used by the desktop App.
+
+## Responsibilities
+
+- Resolve public Skill versions and verified artifacts.
+- Maintain the content-addressed Store.
+- Plan and execute installation changes.
+- Project Skills into user-level and workspace-level Agent targets.
+- Maintain workspace manifests and locks for reproducibility.
+- Produce stable JSON or NDJSON contracts for machine consumers.
+
+## Development validation
+
+From the repository root:
+
+```bash
+make test-cli
+```
+
+For CLI changes, run `gofmt` and the complete Go test suite from the `cli` workspace.

@@ -1,0 +1,24 @@
+---
+title: SkillsGo 文档
+description: 通过开放生态发现、安装和管理 Agent Skills。
+---
+
+# SkillsGo 文档
+
+SkillsGo 是一个用于发现和管理 Agent Skills 的开放生态。它连接桌面应用、本地 CLI 和公共 Hub，同时让用户始终掌控本地文件系统。
+
+## 选择你的路径
+
+- **安装第一个 Skill：** 从[快速开始](/zh-CN/docs/getting-started)入手。
+- **自动化本地工作流：** 阅读 [CLI 指南](/zh-CN/docs/cli)。
+- **理解整个系统：** 阅读[架构](/zh-CN/docs/architecture)。
+- **运行公共服务：** 查看 [Hub 概览](/zh-CN/docs/hub)。
+
+## 核心原则
+
+桌面应用通过内置 CLI 完成所有业务集成。CLI 负责本地变更，并与 Hub 通信以发现公共内容和获取不可变制品。
+
+```text
+桌面应用 -> SkillsGo CLI -> SkillsGo Hub
+                         \-> 本地 Agent 目标
+```

@@ -1,0 +1,23 @@
+---
+title: 桌面应用
+description: 了解 Flutter 桌面客户端及其与 CLI 的关系。
+---
+
+# 桌面应用
+
+SkillsGo 桌面应用提供发现、技能库、项目、Agent 和安装计划等工作流。
+
+## 运行时边界
+
+App 通过稳定的机器契约调用内置 CLI。它不会重复实现本地安装逻辑，也不会直接调用 Hub。
+
+## 开发验证
+
+在仓库根目录运行：
+
+```bash
+make analyze-app
+make test-app
+```
+
+Flutter 负责桌面 UI，CLI 则始终是唯一的业务集成边界。

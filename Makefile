@@ -1,14 +1,17 @@
-# [INPUT]: Depends on scripts/dev.sh plus the App, CLI, and Hub workspace build and validation entry points.
-# [OUTPUT]: Provides the unified macOS development session plus repository-level local builds, unit tests, split CLI/App E2E tests, analysis, and formatting commands.
+# [INPUT]: Depends on scripts/dev.sh plus the App, CLI, Hub, and docs-site workspace build and validation entry points.
+# [OUTPUT]: Provides the unified macOS development session plus repository-level local builds, unit tests, docs validation, split CLI/App E2E tests, analysis, and formatting commands.
 # [POS]: Serves as the monorepo task entry point and delegates product-specific work to each workspace.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
-.PHONY: dev build build-cli build-hub test test-app test-cli test-hub test-e2e test-e2e-cli test-e2e-app analyze-app format-cli format-hub
+.PHONY: dev dev-docs build build-cli build-hub build-docs test test-app test-cli test-hub test-docs test-e2e test-e2e-cli test-e2e-app analyze-app format-cli format-hub
 
 dev:
 	./scripts/dev.sh
 
-build: build-cli build-hub
+dev-docs:
+	cd docs-site && pnpm dev
+
+build: build-cli build-hub build-docs
 
 build-cli:
 	$(MAKE) -C cli build
@@ -16,7 +19,10 @@ build-cli:
 build-hub:
 	$(MAKE) -C hub build
 
-test: test-hub test-cli test-app
+build-docs:
+	cd docs-site && pnpm build
+
+test: test-hub test-cli test-app test-docs
 
 test-hub:
 	cd hub && go test ./...
@@ -26,6 +32,9 @@ test-app:
 
 test-cli:
 	cd cli && go test ./...
+
+test-docs:
+	cd docs-site && pnpm typecheck
 
 test-e2e: test-e2e-cli test-e2e-app
 
