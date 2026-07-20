@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on explicitly selected skills.sh user and Workspace locks, unified External inventory, bounded ephemeral preflight plans, captured Store baselines, and canonical declarations.
- * [OUTPUT]: Exposes versioned read-only Batch Takeover preflight plus lock-identity- and filesystem-state-bound execution with exact per-location counts and target-preserving partial results.
+ * [OUTPUT]: Exposes versioned read-only Batch Takeover preflight with safe Skill identity previews plus lock-identity- and filesystem-state-bound execution with exact per-location counts and named target-preserving partial results.
  * [POS]: Serves as the public CLI orchestration boundary for authorizing and registering existing copies without Hub access or target materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -30,7 +30,7 @@ import (
 )
 
 const (
-	takeoverSchemaVersion     = 2
+	takeoverSchemaVersion     = 3
 	takeoverPlanSchemaVersion = 3
 )
 
@@ -92,6 +92,13 @@ type takeoverProjectCount struct {
 	Eligible    int    `json:"eligible"`
 }
 
+type takeoverPreview struct {
+	Name        string        `json:"name"`
+	SkillID     string        `json:"skillId"`
+	Scope       install.Scope `json:"scope"`
+	ProjectRoot string        `json:"projectRoot,omitempty"`
+}
+
 type takeoverPreflightReport struct {
 	SchemaVersion int    `json:"schemaVersion"`
 	PlanID        string `json:"planId"`
@@ -103,9 +110,11 @@ type takeoverPreflightReport struct {
 		User     takeoverScopeCount     `json:"user"`
 		Projects []takeoverProjectCount `json:"projects"`
 	} `json:"scopes"`
+	Previews []takeoverPreview `json:"previews"`
 }
 
 type takeoverResult struct {
+	Name            string           `json:"name"`
 	SkillID         string           `json:"skillId,omitempty"`
 	ArtifactSkillID string           `json:"artifactSkillId,omitempty"`
 	Version         string           `json:"version,omitempty"`
@@ -210,6 +219,7 @@ func preflightLockTakeover(catalog *agent.Catalog, includeUser bool, projectRoot
 		return report, err
 	}
 	report.PlanID = planID
+	report.Previews = make([]takeoverPreview, 0, len(candidates))
 	report.Summary.Skipped = len(skipped)
 	userEligible := 0
 	projectEligible := map[string]int{}
@@ -217,7 +227,12 @@ func preflightLockTakeover(catalog *agent.Catalog, includeUser bool, projectRoot
 		projectEligible[root] = 0
 	}
 	for _, candidate := range candidates {
-		if candidate.Targets[0].Scope == install.ScopeUser {
+		target := candidate.Targets[0]
+		report.Previews = append(report.Previews, takeoverPreview{
+			Name: candidate.Name, SkillID: candidate.SkillID,
+			Scope: target.Scope, ProjectRoot: target.ProjectRoot,
+		})
+		if target.Scope == install.ScopeUser {
 			userEligible++
 			continue
 		}
@@ -272,7 +287,7 @@ func executeLockTakeover(catalog *agent.Catalog, planID string, includeUser bool
 		if !takeoverCandidateSelected(expected, includeUser, roots) {
 			continue
 		}
-		result := takeoverResult{Status: "skipped", Target: expected.Targets[0], Targets: expected.Targets}
+		result := takeoverResult{Name: expected.Name, SkillID: expected.SkillID, Status: "skipped", Target: expected.Targets[0], Targets: expected.Targets}
 		candidate, ok := currentByKey[takeoverCandidateKey(expected)]
 		if !ok || candidate.StateDigest != expected.StateDigest {
 			result.Reason = "target-changed"
@@ -431,7 +446,7 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 				})
 				machineTargets = append(machineTargets, takeoverTarget{Agent: target.Agent, Scope: target.Scope, ProjectRoot: target.ProjectRoot, Mode: mode, Path: target.Path, CanonicalPath: canonicalPath})
 			}
-			result := takeoverResult{Status: "skipped", Target: machineTargets[0], Targets: machineTargets}
+			result := takeoverResult{Name: skill.Name, Status: "skipped", Target: machineTargets[0], Targets: machineTargets}
 			lockKey := skill.Name
 			record, ok := locked[lockKey]
 			if !ok {
@@ -508,7 +523,7 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 				projectRoot = root
 			}
 			skipped = append(skipped, takeoverResult{
-				Status: "skipped", Reason: "missing-target",
+				Name: name, Status: "skipped", Reason: "missing-target",
 				Target: takeoverTarget{Scope: scope, ProjectRoot: projectRoot, Mode: install.ModeCopy, Path: ""},
 			})
 		}

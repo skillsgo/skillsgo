@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on arbitrary public Git HTTP(S) URLs, GitHub shorthand, source-or-selector@query syntax, private Local Skill IDs, and the explicit `/-/` Repository boundary.
- * [OUTPUT]: Provides normalized case-folded Repository references with case-preserving nested Skill paths plus reusable path-safe Skill ID and single-segment query validation.
+ * [INPUT]: Depends on arbitrary public Git HTTP(S) URLs, equivalent GitHub owner/repo and github/owner/repo aliases, source-or-selector@query syntax, private Local Skill IDs, and the explicit `/-/` Repository boundary.
+ * [OUTPUT]: Provides one canonical github.com identity for GitHub aliases, normalized case-folded Repository references with case-preserving nested Skill paths, and reusable path-safe Skill ID/query validation.
  * [POS]: Serves as the CLI Skill ID normalization boundary used before Hub and Store access.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -61,18 +61,25 @@ func Parse(raw string) (Reference, error) {
 	}
 
 	parts := splitPath(raw)
+	if len(parts) >= 3 && strings.EqualFold(parts[0], "github") {
+		return checkedGitHubReference(parts[1:], requestedVersion)
+	}
 	if len(parts) >= 2 && !strings.Contains(parts[0], ".") && parts[0] != "localhost" {
-		skillID := "github.com/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
-		if len(parts) > 2 {
-			skillID += "/-/" + strings.Join(parts[2:], "/")
-		}
-		return checkedReference(skillID, requestedVersion)
+		return checkedGitHubReference(parts, requestedVersion)
 	}
 	if len(parts) < 2 {
 		return Reference{}, fmt.Errorf("source must be a full Git host coordinate or GitHub owner/repo shorthand")
 	}
 	parts[len(parts)-1] = strings.TrimSuffix(parts[len(parts)-1], ".git")
 	return checkedReference(strings.Join(parts, "/"), requestedVersion)
+}
+
+func checkedGitHubReference(parts []string, version string) (Reference, error) {
+	skillID := "github.com/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
+	if len(parts) > 2 {
+		skillID += "/-/" + strings.Join(parts[2:], "/")
+	}
+	return checkedReference(skillID, version)
 }
 
 func ValidateSkillID(skillID string) error {

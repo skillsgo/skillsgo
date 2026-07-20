@@ -41,6 +41,8 @@ abstract interface class SkillsGateway {
   Future<void> saveLanguage(AppLanguage language);
   Future<ReminderSettings> loadReminderSettings();
   Future<void> saveReminderSettings(ReminderSettings settings);
+  Future<bool> loadBatchTakeoverPromptSeen();
+  Future<void> markBatchTakeoverPromptSeen();
   Future<HubStatus> testHubOrigin(String origin);
   Future<PersonalRiskPolicy> loadRiskPolicy();
   Future<void> saveRiskPolicy(PersonalRiskPolicy policy);

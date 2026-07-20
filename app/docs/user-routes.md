@@ -58,13 +58,15 @@ Project B
 
 ```text
 General
+Reminders
 Agents
 Advanced
 ```
 
-- **General**: language, appearance, folder theme, wallpaper, and reminder preferences.
+- **General**: language, appearance, folder theme, and wallpaper.
+- **Reminders**: update and high-risk notification preferences.
 - **Agents**: detection state, paths, re-detection, and adapter guidance.
-- **Advanced**: official or self-hosted Hub Origin health, bundled CLI recovery and developer override, storage status, Critical-risk policy, and restarting Onboarding without deleting data.
+- **Advanced**: official or self-hosted Hub Origin health, bundled CLI recovery and developer override, storage status, Critical-risk policy, restarting Onboarding without deleting data, and an explicit local Library refresh as the final action.
 
 ## First Launch
 
@@ -181,7 +183,7 @@ row actions.
 - **Project A**: every Skill used by any Agent in the project; an empty project prompts the user to install its first Skill.
 - **Codex filter**: within the selected location, every Skill with at least one Codex target; an empty result prompts discovery.
 
-Batch Takeover uses the selected location as its complete scope boundary. All Skills scans User Scope and every accessible Added Project, Global scans only User Scope, and a Project route scans only that Project. An independent preflight displays the exact eligible count beside every location and on the current action. It never silently adds another location to the requested batch.
+Batch Takeover uses the selected location as its complete scope boundary. All Skills scans User Scope and every accessible Added Project, Global scans only User Scope, and a Project route scans only that Project. An independent preflight displays the exact eligible count on the current action and beside accessible Project routes; the fixed All Skills and Global rail labels remain unadorned. It never silently adds another location to the requested batch.
 
 Changing the rail selection replaces the current location while retaining search, update status, and Agent filters. Search within the list filters only the resulting view by name, description, and source.
 
@@ -228,10 +230,12 @@ Primary actions include:
 
 An item found in an Agent directory without a SkillsGo receipt appears as an External Installation. Users may inspect it and may remove its exact path after reviewed confirmation. It cannot be updated or repaired while External.
 
+The first time an active Library view finishes preflight with at least one eligible item, the App presents one localized Before/After introduction. The interactive Before scene uses representative Skill names from the selected location and never renders more Skills than the plan's exact eligible count; the stable After scene explains the resulting managed Library. The prompt does not appear while Library is offstage, and reduced-motion users receive the same deterministic layout without physics. Confirming or explicitly skipping completes this one-time introduction. Skip preserves the counted Manage existing skills action so the user can start the same selected-location journey later without another automatic interruption.
+
 Batch Takeover performs the following journey within the currently selected Library location:
 
 1. Preflight External copies reported by the CLI across User Scope and every accessible Added Project without changing Agent targets or authoritative SkillsGo metadata.
-2. Accept only copies backed by a supported external lock with trusted source identity, then show exact All, Global, and per-Project eligible counts from one state-bound plan.
+2. Accept only copies backed by a supported external lock with trusted source identity, then expose exact All, Global, and per-Project eligible counts from one state-bound plan through the selected-location action and Project rail entries.
 3. Confirm only the currently selected location and execute that subset of the same plan.
 4. Revalidate each authorized copy, capture its complete current content digest as its Store baseline, and register it as a normal managed Installation Target without modifying its files.
 5. Skip unmatched, invalid, unsupported-lock, missing, or post-preflight-changed copies independently and report their target-specific reasons; never include newly appeared copies without another preflight.

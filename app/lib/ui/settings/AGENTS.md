@@ -3,8 +3,8 @@
 
 ## Members
 
-- `settings_screen_core.dart`: owns settings-route state, lifecycle, and secondary-body composition.
-- `settings_sections.dart`: renders the General, Agents, and Advanced route structure.
+- `settings_screen_core.dart`: owns settings-route state, lifecycle, local Library refresh feedback, and secondary-body composition.
+- `settings_sections.dart`: renders the General, Reminders, Agents, and Advanced route structure, including Onboarding re-entry and the final local Library refresh action.
 - `appearance_settings.dart`: renders folder theme, appearance mode, wallpaper, and related controls.
 - `integration_settings.dart`: renders CLI, Hub Origin, storage, reminders, and recovery controls.
 - `language_selector.dart`: renders and persists Presentation Locale selection.

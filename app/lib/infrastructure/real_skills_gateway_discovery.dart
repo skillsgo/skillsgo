@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, content locale, CLI execution, strict machine codecs, and discovery domain models.
- * [OUTPUT]: Provides locale-aware Search/Ranking/Trending/Hot discovery, explicit-source fallback, and remote Skill detail loading.
+ * [OUTPUT]: Provides locale-aware Search/Ranking/Trending/Hot discovery, direct explicit-source routing for GitHub aliases and Git coordinates, and remote Skill detail loading.
  * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -72,12 +72,6 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         );
       }
       final rawSkills = decoded['skills'] as List;
-      if (collection == DiscoveryCollection.search &&
-          offset == 0 &&
-          rawSkills.isEmpty &&
-          _looksLikeGitHubRepositoryShorthand(trimmedQuery)) {
-        return _discoverExplicitSource('github.com/$trimmedQuery');
-      }
       final installedCounts = <String, int>{};
       try {
         final installed = await listInstalled(
@@ -168,12 +162,12 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     if (value.contains('://') || value.startsWith('git@')) return true;
     if (value.contains(RegExp(r'\s'))) return false;
     final coordinate = value.split('@').first;
-    final segments = coordinate.split('/');
-    return segments.length >= 3 && segments.first.contains('.');
+    final segments = coordinate
+        .split('/')
+        .where((segment) => segment.isNotEmpty)
+        .toList(growable: false);
+    return segments.length >= 2;
   }
-
-  static bool _looksLikeGitHubRepositoryShorthand(String query) =>
-      RegExp(r'^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$').hasMatch(query);
 
   Future<DiscoveryPage> _discoverExplicitSource(String source) async {
     final result = await _runCli([

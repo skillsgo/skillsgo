@@ -7,8 +7,8 @@
 - `io_process_runner.dart`: executes the bundled CLI with structured arguments, bounded runtime, optional stdout events, and typed output.
 - `real_skills_gateway_codec.dart`: owns strict machine-protocol decoding, argument encoding, schema validation, and bounded local Skill inspection.
 - `real_skills_gateway_cli.dart`: owns bundled CLI detection, startup handshake validation, developer override persistence, and command execution.
-- `real_skills_gateway_preferences.dart`: owns App preferences, Mandatory Onboarding state, Added Project references, Hub origin, risk policy, and storage diagnostics.
-- `real_skills_gateway_discovery.dart`: owns locale-aware discovery, explicit-source fallback, and remote Skill detail decoding.
+- `real_skills_gateway_preferences.dart`: owns App preferences, Mandatory Onboarding state, one-time Batch Takeover introduction state, Added Project references, Hub origin, risk policy, and storage diagnostics.
+- `real_skills_gateway_discovery.dart`: owns locale-aware discovery, direct explicit-source classification for equivalent GitHub aliases and Git coordinates, and remote Skill detail decoding.
 - `real_skills_gateway_inventory.dart`: owns Agent inspection, local Library inventory, exact Batch Takeover planning and scope-bound execution, and local Skill detail.
 - `real_skills_gateway_installation.dart`: owns Installation Request execution, compatibility installation, and Local Skill export.
 - `real_skills_gateway_execution.dart`: owns shared affected-binding integrity and ordered NDJSON progress/final-payload execution envelopes for target mutations.

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies External installation removal plus exact location counts and plan-bound Batch Takeover behavior.
+ * [INPUT]: Uses SkillsGoApp, rendered Flutter, Archive Folder and HugeIcons widgets, and the controllable SkillsGateway test double.
+ * [OUTPUT]: Specifies External installation removal, exact location counts, source-backed takeover preview avatars, localized/reduced-motion storytelling, and plan-bound Batch Takeover behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,12 +8,21 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:hugeicons/hugeicons.dart';
 import 'package:skillsgo/app.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
+import 'package:skillsgo/ui/archive_folder/archive_folder.dart';
+import 'package:skillsgo/ui/archive_folder/archive_item.dart';
 import 'package:skillsgo/ui/brand.dart';
 
 import 'support/fake_skills_gateway.dart';
 import 'support/widget_test_helpers.dart';
+
+Future<void> _showTakeoverDialog(WidgetTester tester) async {
+  await tester.tap(find.byKey(const Key('library-batch-takeover')));
+  await tester.pump();
+  await tester.pump(const Duration(milliseconds: 750));
+}
 
 void main() {
   testWidgets('External Installation stays visible and exposes exact removal', (
@@ -161,14 +170,8 @@ void main() {
       await tester.pumpAndSettle();
 
       final rail = find.byKey(const Key('library-location-rail'));
-      expect(
-        find.descendant(of: rail, matching: find.text('6')),
-        findsOneWidget,
-      );
-      expect(
-        find.descendant(of: rail, matching: find.text('2')),
-        findsOneWidget,
-      );
+      expect(find.descendant(of: rail, matching: find.text('6')), findsNothing);
+      expect(find.descendant(of: rail, matching: find.text('2')), findsNothing);
       expect(
         find.descendant(of: rail, matching: find.text('3')),
         findsOneWidget,
@@ -177,21 +180,32 @@ void main() {
         find.descendant(of: rail, matching: find.text('1')),
         findsOneWidget,
       );
+      expect(
+        find.descendant(of: rail, matching: find.byType(Badge)),
+        findsNothing,
+      );
       expect(find.text('Manage (6)'), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('library-batch-takeover')));
-      await tester.pumpAndSettle();
+      await _showTakeoverDialog(tester);
       expect(gateway.takeoverRequests, isEmpty);
       expect(
-        find.text('Manage existing skills with SkillsGo?'),
+        find.text('Turn scattered skills into one clear Library'),
         findsOneWidget,
       );
-      await tester.tap(find.text('Cancel'));
+      expect(find.text('Scattered across Agents'), findsNothing);
+      expect(find.text('BEFORE'), findsNothing);
+      expect(find.text('Drag to feel the disorder'), findsNothing);
+      expect(find.text('SkillsGo Library'), findsOneWidget);
+      expect(find.text('external-demo'), findsWidgets);
+      expect(
+        find.byKey(const Key('batch-takeover-preservation-note')),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('Not now'));
       await tester.pumpAndSettle();
       expect(gateway.takeoverRequests, isEmpty);
 
-      await tester.tap(find.byKey(const Key('library-batch-takeover')));
-      await tester.pumpAndSettle();
+      await _showTakeoverDialog(tester);
       await tester.tap(find.text('Add to management'));
       await tester.pumpAndSettle();
 
@@ -211,8 +225,7 @@ void main() {
       await tester.tap(libraryLocation('Global'));
       await tester.pumpAndSettle();
       expect(find.text('Manage (2)'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('library-batch-takeover')));
-      await tester.pumpAndSettle();
+      await _showTakeoverDialog(tester);
       await tester.tap(find.text('Add to management'));
       await tester.pumpAndSettle();
       expect(
@@ -225,8 +238,7 @@ void main() {
       await tester.tap(libraryLocation('Alpha'));
       await tester.pumpAndSettle();
       expect(find.text('Manage (3)'), findsOneWidget);
-      await tester.tap(find.byKey(const Key('library-batch-takeover')));
-      await tester.pumpAndSettle();
+      await _showTakeoverDialog(tester);
       await tester.tap(find.text('Add to management'));
       await tester.pumpAndSettle();
       expect(
@@ -250,12 +262,55 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('library-batch-takeover')));
-    await tester.pumpAndSettle();
+    await _showTakeoverDialog(tester);
+    final leftCard = find
+        .descendant(
+          of: find.byKey(const Key('batch-takeover-collision-field')),
+          matching: find.byType(ArchiveItem),
+        )
+        .first;
+    final leftCardBeforeRightToggle = tester.getCenter(leftCard);
+    tester
+        .widget<ArchiveFolder>(
+          find.byKey(const Key('batch-takeover-after-folder')),
+        )
+        .onToggle!(true);
+    await tester.pump();
+    expect(tester.getCenter(leftCard), leftCardBeforeRightToggle);
     await tester.tap(find.text('Add to management'));
     await tester.pump();
 
-    expect(find.text('Adding skills to management…'), findsOneWidget);
+    expect(
+      find.descendant(
+        of: find.byKey(const Key('batch-takeover-confirm')),
+        matching: find.text('Adding skills to management…'),
+      ),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<ArchiveFolder>(
+            find.byKey(const Key('batch-takeover-archive-folder')),
+          )
+          .isOpen,
+      isTrue,
+    );
+    expect(
+      tester
+          .widget<ArchiveFolder>(
+            find.byKey(const Key('batch-takeover-archive-folder')),
+          )
+          .toggleEnabled,
+      isFalse,
+    );
+    expect(
+      tester
+          .widget<ArchiveFolder>(
+            find.byKey(const Key('batch-takeover-after-folder')),
+          )
+          .isOpen,
+      isTrue,
+    );
     final pendingButton = tester.widget<SecondaryCapsuleButton>(
       find.byKey(const Key('library-batch-takeover')),
     );
@@ -272,4 +327,398 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'Batch Takeover moves only real successes and leaves skipped skills pending',
+    (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await tester.binding.setSurfaceSize(const Size(1400, 900));
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        takeoverPlan: const BatchTakeoverPlan(
+          id: 'result-plan',
+          allEligibleCount: 3,
+          userEligibleCount: 3,
+          previews: [
+            BatchTakeoverPreview(
+              name: 'alpha-skill',
+              skillId: 'github.com/acme/skills/-/alpha',
+              scope: InstallationScope.user,
+            ),
+            BatchTakeoverPreview(
+              name: 'beta-skill',
+              skillId: 'github.com/acme/skills/-/beta',
+              scope: InstallationScope.user,
+            ),
+            BatchTakeoverPreview(
+              name: 'changed-skill',
+              skillId: 'github.com/acme/skills/-/changed',
+              scope: InstallationScope.user,
+            ),
+          ],
+        ),
+        takeoverResult: const BatchTakeoverResult(
+          takenOver: 2,
+          skipped: 1,
+          items: [
+            BatchTakeoverItemResult(
+              name: 'alpha-skill',
+              skillId: 'github.com/acme/skills/-/alpha',
+              status: BatchTakeoverItemStatus.takenOver,
+            ),
+            BatchTakeoverItemResult(
+              name: 'beta-skill',
+              skillId: 'github.com/acme/skills/-/beta',
+              status: BatchTakeoverItemStatus.takenOver,
+            ),
+            BatchTakeoverItemResult(
+              name: 'changed-skill',
+              skillId: 'github.com/acme/skills/-/changed',
+              status: BatchTakeoverItemStatus.skipped,
+              reason: 'target-changed',
+            ),
+          ],
+        ),
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('primary-destination-library')));
+      await tester.pumpAndSettle();
+      await _showTakeoverDialog(tester);
+
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('batch-takeover-managed-grid')),
+          matching: find.byType(ArchiveItem),
+        ),
+        findsNothing,
+      );
+      await tester.tap(find.byKey(const Key('batch-takeover-confirm')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('batch-takeover-managed-grid')),
+          matching: find.byType(ArchiveItem),
+        ),
+        findsNWidgets(2),
+      );
+      final itemSemantics = tester
+          .widgetList<Semantics>(find.byType(Semantics))
+          .map((widget) => widget.properties.label)
+          .whereType<String>()
+          .toSet();
+      expect(itemSemantics, contains('alpha-skill is managed by SkillsGo'));
+      expect(itemSemantics, contains('beta-skill is managed by SkillsGo'));
+      expect(find.text('changed-skill'), findsOneWidget);
+      expect(
+        find.text('2 skills added to management, 1 skipped.'),
+        findsOneWidget,
+      );
+    },
+  );
+
+  testWidgets('Batch Takeover failure stays in the dialog and offers retry', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1400, 900));
+    final takeover = Completer<BatchTakeoverResult>();
+    final gateway = FakeSkillsGateway(
+      installed: false,
+      takeoverCompleter: takeover,
+    );
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
+    await tester.pumpAndSettle();
+    await _showTakeoverDialog(tester);
+    await tester.tap(find.byKey(const Key('batch-takeover-confirm')));
+    await tester.pump();
+    takeover.completeError(
+      const SkillsException(
+        'interrupted',
+        kind: SkillsFailureKind.invalidLocalData,
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('batch-takeover-dialog')), findsOneWidget);
+    expect(find.text('Retry'), findsOneWidget);
+    expect(
+      find.text(
+        'Some local installation information is damaged or incompatible. Update or reinstall SkillsGo, then try again.',
+      ),
+      findsOneWidget,
+    );
+    expect(find.text('Managed by SkillsGo'), findsNothing);
+    final plansBeforeRetry = gateway.takeoverPlanRequests.length;
+    await tester.tap(find.text('Retry'));
+    await tester.pumpAndSettle();
+    expect(gateway.takeoverPlanRequests, hasLength(plansBeforeRetry + 1));
+    expect(find.byKey(const Key('batch-takeover-dialog')), findsOneWidget);
+  });
+
+  testWidgets(
+    'Chinese takeover story remains stable when animations are disabled',
+    (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue =
+          const FakeAccessibilityFeatures(disableAnimations: true);
+      addTearDown(
+        tester.platformDispatcher.clearAccessibilityFeaturesTestValue,
+      );
+      await tester.binding.setSurfaceSize(const Size(1200, 800));
+      const path = '/Users/test/.codex/skills/my-review';
+      await tester.pumpWidget(
+        SkillsGoApp(
+          gateway: FakeSkillsGateway(
+            installed: false,
+            language: AppLanguage.simplifiedChinese,
+            libraryEntries: const [
+              InstalledSkill(
+                inventoryKey: 'external:my-review',
+                name: 'my-review',
+                path: path,
+                agents: ['codex'],
+                targetCount: 1,
+                provenance: LibraryProvenance.external,
+                targets: [
+                  SkillInstallationTarget(
+                    agent: 'codex',
+                    scope: InstallationScope.user,
+                    path: path,
+                    version: '',
+                    mode: InstallationMode.external,
+                  ),
+                ],
+              ),
+            ],
+            takeoverPlan: BatchTakeoverPlan(
+              id: 'reduced-motion-plan',
+              allEligibleCount: 15,
+              userEligibleCount: 15,
+              previews: [
+                BatchTakeoverPreview(
+                  name: 'acme-first',
+                  skillId: 'github.com/acme/skills/-/first',
+                  scope: InstallationScope.user,
+                ),
+                BatchTakeoverPreview(
+                  name: 'acme-second',
+                  skillId: 'github.com/acme/skills/-/second',
+                  scope: InstallationScope.user,
+                ),
+                BatchTakeoverPreview(
+                  name: 'other-first',
+                  skillId: 'github.com/other/toolbox/-/first',
+                  scope: InstallationScope.user,
+                ),
+                for (var index = 3; index <= 14; index++)
+                  BatchTakeoverPreview(
+                    name: 'acme-$index',
+                    skillId: 'github.com/acme/skills/-/$index',
+                    scope: InstallationScope.user,
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('primary-destination-library')));
+      await tester.pumpAndSettle();
+      await _showTakeoverDialog(tester);
+
+      final leftFolder = tester.widget<ArchiveFolder>(
+        find.byKey(const Key('batch-takeover-archive-folder')),
+      );
+      expect(leftFolder.isOpen, isFalse);
+      expect(leftFolder.toggleEnabled, isTrue);
+      leftFolder.onToggle!(true);
+      await tester.pump();
+      expect(
+        tester
+            .widget<ArchiveFolder>(
+              find.byKey(const Key('batch-takeover-archive-folder')),
+            )
+            .isOpen,
+        isTrue,
+      );
+      expect(
+        tester
+            .widget<ArchiveFolder>(
+              find.byKey(const Key('batch-takeover-after-folder')),
+            )
+            .toggleEnabled,
+        isTrue,
+      );
+
+      expect(find.text('把散落的技能，整理成一个清晰的 Library'), findsOneWidget);
+      expect(find.text('散落在不同智能体中'), findsNothing);
+      expect(find.text('纳入前'), findsNothing);
+      expect(find.text('拖动一下，感受混乱'), findsNothing);
+      expect(find.text('不知道装在哪'), findsOneWidget);
+      expect(find.text('不知道是不是最新'), findsOneWidget);
+      expect(find.text('坏了无法恢复'), findsOneWidget);
+      expect(find.text('多个项目版本不一致'), findsOneWidget);
+      expect(
+        find.byKey(const Key('batch-takeover-archive-folder')),
+        findsOneWidget,
+      );
+      final folderOffset = tester.widget<Transform>(
+        find.byKey(const Key('batch-takeover-folder-offset')),
+      );
+      expect(folderOffset.transform.getTranslation().y, -24);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('batch-takeover-collision-field')),
+          matching: find.byType(RepositoryAvatar),
+        ),
+        findsNWidgets(8),
+      );
+      final collisionLabels = tester
+          .widgetList<Text>(
+            find.descendant(
+              of: find.byKey(const Key('batch-takeover-collision-field')),
+              matching: find.byType(Text),
+            ),
+          )
+          .map((text) => text.data)
+          .whereType<String>()
+          .where(
+            (text) => const {
+              'acme-first',
+              'acme-second',
+              'other-first',
+            }.contains(text),
+          )
+          .toList();
+      expect(collisionLabels.take(3), [
+        'acme-first',
+        'other-first',
+        'acme-second',
+      ]);
+      expect(
+        find.byKey(const Key('batch-takeover-archive-skill-0')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(const Key('batch-takeover-archive-skill-5')),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('batch-takeover-archive-skill-0')),
+          matching: find.text('acme-8'),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('acme-14'), findsNothing);
+      expect(
+        find.byKey(const Key('batch-takeover-archive-more')),
+        findsOneWidget,
+      );
+      expect(find.text('另外 1 个'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byKey(const Key('batch-takeover-archive-more')),
+          matching: find.byType(HugeIcon),
+        ),
+        findsOneWidget,
+      );
+      expect(find.text('SkillsGo Library'), findsOneWidget);
+      expect(find.text('位置清晰'), findsOneWidget);
+      expect(find.text('更新可见'), findsOneWidget);
+      expect(find.text('随时恢复'), findsOneWidget);
+      expect(find.text('版本明确'), findsOneWidget);
+      expect(
+        find.byKey(const Key('batch-takeover-after-folder')),
+        findsOneWidget,
+      );
+      expect(
+        tester.getSize(find.byKey(const Key('batch-takeover-archive-folder'))),
+        tester.getSize(find.byKey(const Key('batch-takeover-after-folder'))),
+      );
+      expect(
+        tester
+            .widget<ArchiveFolder>(
+              find.byKey(const Key('batch-takeover-after-folder')),
+            )
+            .style
+            .folderColor,
+        const Color(0xff0082f4),
+      );
+      expect(find.text('暂时跳过'), findsOneWidget);
+      expect(find.text('commit-helper'), findsNothing);
+      expect(
+        find.text('原文件、原路径和现有用法全部保留。SkillsGo 只会补全本地管理记录。'),
+        findsOneWidget,
+      );
+      expect(find.text('暂时跳过后，仍可随时在 Library 点击「纳入管理」。'), findsOneWidget);
+      expect(
+        find.byKey(const Key('batch-takeover-collision-field')),
+        findsOneWidget,
+      );
+      expect(
+        tester
+            .getSemantics(find.byKey(const Key('batch-takeover-before')))
+            .label,
+        '纳入管理前，现有技能装在哪里、是不是最新、损坏后如何恢复，以及不同项目间的版本是否一致，都缺少清晰状态。',
+      );
+    },
+  );
+
+  testWidgets(
+    'takeover introduction opens only after entering Library and never repeats after skip',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 900));
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        batchTakeoverPromptSeen: false,
+        takeoverPlan: const BatchTakeoverPlan(
+          id: 'automatic-plan',
+          allEligibleCount: 2,
+          userEligibleCount: 2,
+        ),
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Turn scattered skills into one clear Library'),
+        findsNothing,
+      );
+      await tester.tap(find.byKey(const Key('primary-destination-library')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text('Turn scattered skills into one clear Library'),
+        findsOneWidget,
+      );
+      expect(gateway.takeoverRequests, isEmpty);
+      await tester.tap(find.text('Not now'));
+      await tester.pumpAndSettle();
+      expect(gateway.batchTakeoverPromptSeen, isTrue);
+      expect(gateway.batchTakeoverPromptCompletions, 1);
+
+      await tester.tap(find.byKey(const Key('primary-destination-discover')));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('primary-destination-library')));
+      await tester.pumpAndSettle();
+      expect(
+        find.text('Turn scattered skills into one clear Library'),
+        findsNothing,
+      );
+      expect(find.text('Manage (2)'), findsOneWidget);
+
+      await _showTakeoverDialog(tester);
+      expect(
+        find.text('Turn scattered skills into one clear Library'),
+        findsOneWidget,
+      );
+    },
+  );
 }

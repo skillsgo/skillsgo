@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Library journey library, Riverpod Library state, navigation routes, selection state, and shared layout widgets.
- * [OUTPUT]: Provides the public LibraryScreen, route-local state ownership, lifecycle, filtering getters, exact takeover-count navigation, and root desktop rendering.
+ * [OUTPUT]: Provides the public LibraryScreen, route-local state ownership, lifecycle, one-time takeover-introduction state, filtering getters, selected-scope and project takeover counts, and root desktop rendering.
  * [POS]: Serves as the state-owning core of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -60,6 +60,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   _LibraryLocationRoute selectedLocation = _LibraryLocationRoute.all;
   bool addingProject = false;
   bool takingOver = false;
+  bool takeoverPromptPreferenceLoaded = false;
+  bool takeoverPromptSeen = false;
+  bool takeoverPromptScheduled = false;
   InstalledSkill? selectedDetailSkill;
   ReminderSettings? reminderSettings;
   bool _reminderInitializationStarted = false;
@@ -74,6 +77,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       duration: const Duration(milliseconds: 230),
       reverseDuration: const Duration(milliseconds: 200),
     );
+    unawaited(_initializeTakeoverPrompt());
   }
 
   @override
@@ -121,6 +125,9 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   @override
   Widget build(BuildContext context) {
     ref.watch(libraryProvider);
+    ref.listen(libraryProvider, (_, next) {
+      if (next.value != null) _reconcileLibraryState();
+    });
     if (skills != null && !_reminderInitializationStarted) {
       _reminderInitializationStarted = true;
       unawaited(_initializeReminders());
@@ -155,6 +162,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     final planning = _library.value?.takeoverPlanning ?? false;
     final planError = _library.value?.takeoverPlanError;
     final takeoverEligible = _currentTakeoverEligible;
+    _scheduleAutomaticTakeoverPrompt(takeoverEligible);
     final String takeoverActionLabel;
     final VoidCallback? takeoverAction;
     if (takingOver) {
@@ -182,44 +190,16 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         selected: selectedLocation,
         onSelected: (location) => setState(() => selectedLocation = location),
         sectionDividers: true,
-        header: Align(
-          alignment: Alignment.centerRight,
-          child: IconButton(
-            key: const Key('library-refresh'),
-            tooltip: context.l10n.refresh,
-            onPressed: loading ? null : () => unawaited(load()),
-            visualDensity: VisualDensity.compact,
-            constraints: const BoxConstraints.tightFor(width: 36, height: 36),
-            padding: EdgeInsets.zero,
-            icon: const HugeIcon(
-              icon: HugeIcons.strokeRoundedRefresh,
-              size: 17,
-              strokeWidth: 1.8,
-            ),
-          ),
-        ),
         fixedItems: [
           SkillsRailItem(
             value: _LibraryLocationRoute.all,
             label: context.l10n.allSkills,
             icon: HugeIcons.strokeRoundedLayers01,
-            count: plan?.allEligibleCount,
-            countLabel: plan == null
-                ? null
-                : context.l10n.batchTakeoverEligibleCount(
-                    plan.allEligibleCount,
-                  ),
           ),
           SkillsRailItem(
             value: _LibraryLocationRoute.global,
             label: context.l10n.userScope,
             icon: HugeIcons.strokeRoundedUser,
-            count: plan?.userEligibleCount,
-            countLabel: plan == null
-                ? null
-                : context.l10n.batchTakeoverEligibleCount(
-                    plan.userEligibleCount,
-                  ),
           ),
         ],
         items: [

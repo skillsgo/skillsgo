@@ -542,7 +542,54 @@
   "batchTakeoverPending": "正在纳入管理…",
   "batchTakeoverTitle": "将现有技能纳入 SkillsGo 管理？",
   "batchTakeoverDescription": "SkillsGo 只会创建本地管理记录，不会移动、覆盖或上传技能文件；不支持或确认后发生变化的项目将被跳过。",
+  "batchTakeoverStoryTitle": "把散落的技能，整理成一个清晰的 Library",
+  "batchTakeoverStoryDescription": "SkillsGo 在当前位置发现 {count} 个可以纳入管理的现有技能。",
+  "@batchTakeoverStoryDescription": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "batchTakeoverBeforeSemantics": "纳入管理前，现有技能装在哪里、是不是最新、损坏后如何恢复，以及不同项目间的版本是否一致，都缺少清晰状态。",
+  "batchTakeoverPainLocation": "不知道装在哪",
+  "batchTakeoverPainFreshness": "不知道是不是最新",
+  "batchTakeoverPainRecovery": "坏了无法恢复",
+  "batchTakeoverPainVersionDrift": "多个项目版本不一致",
+  "batchTakeoverFolderTitle": "现有 Skills",
+  "batchTakeoverFolderSubtitle": "状态不清晰",
+  "batchTakeoverAfterLabel": "纳入后",
+  "batchTakeoverAfterTitle": "一个清晰的 Library",
+  "batchTakeoverLibraryTitle": "SkillsGo Library",
+  "batchTakeoverBenefitLocation": "位置清晰",
+  "batchTakeoverBenefitFreshness": "更新可见",
+  "batchTakeoverBenefitRecovery": "随时恢复",
+  "batchTakeoverBenefitVersions": "版本明确",
+  "batchTakeoverManagedSection": "SkillsGo 管理中",
+  "batchTakeoverPendingSection": "待纳入",
+  "batchTakeoverItemManaged": "{name} 已纳入 SkillsGo 管理",
+  "@batchTakeoverItemManaged": {"placeholders": {"name": {"type": "String"}}},
+  "batchTakeoverItemSkipped": "{name} 未能纳入管理",
+  "@batchTakeoverItemSkipped": {"placeholders": {"name": {"type": "String"}}},
+  "batchTakeoverItemPending": "{name} 等待纳入管理",
+  "@batchTakeoverItemPending": {"placeholders": {"name": {"type": "String"}}},
+  "batchTakeoverAfterSemantics": "纳入管理后，{count} 个技能会整理到同一个 Library 中，并显示清晰的管理状态。",
+  "@batchTakeoverAfterSemantics": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "batchTakeoverMoreSkills": "另外 {count} 个",
+  "@batchTakeoverMoreSkills": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "batchTakeoverTransitionSemantics": "将这些现有技能纳入 SkillsGo 管理。",
+  "batchTakeoverTransitionLabel": "整理",
+  "batchTakeoverPreservation": "原文件、原路径和现有用法全部保留。SkillsGo 只会补全本地管理记录。",
+  "batchTakeoverLaterHint": "暂时跳过后，仍可随时在 Library 点击「纳入管理」。",
+  "batchTakeoverSkip": "暂时跳过",
   "batchTakeoverConfirm": "纳入管理",
+  "batchTakeoverExecutionRetry": "重试纳入",
   "batchTakeoverResultTitle": "已纳入管理",
   "batchTakeoverSummary": "已纳入管理 {takenOver} 个技能，跳过 {skipped} 个。",
   "@batchTakeoverSummary": {
@@ -578,6 +625,12 @@
   "restartOnboardingDescription": "重新查看首次启动引导，不会删除项目、设置或 Skills 数据。",
   "restartOnboardingAction": "重新开始引导",
   "restartOnboardingFailed": "无法重新开始启动引导。",
+  "libraryRefreshSettingsTitle": "刷新本地技能库",
+  "libraryRefreshSettingsDescription": "重新扫描已安装 Skills、已添加项目、智能体，以及可纳入管理的外部 Skills。此操作不会安装、更新或移除任何内容。",
+  "libraryRefreshSettingsAction": "刷新技能库",
+  "libraryRefreshSettingsPending": "正在刷新技能库…",
+  "libraryRefreshSettingsSuccess": "本地技能库已刷新。",
+  "libraryRefreshSettingsFailed": "SkillsGo 无法刷新本地技能库。",
   "onboardingProjectError": "SkillsGo 无法从这个目录添加项目。",
   "onboardingProjectsLoadError": "SkillsGo 无法加载已添加的项目。",
   "onboardingStartupError": "SkillsGo 无法加载初始设置。",

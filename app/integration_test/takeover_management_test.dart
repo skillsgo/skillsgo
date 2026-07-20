@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the rendered App, its bundled CLI, isolated user/project Agent roots, supported skills.sh locks, and SharedPreferences-backed Added Projects.
- * [OUTPUT]: Verifies exact All/User/Project takeover counts, scoped confirmation, complete metadata persistence, preserved Skill bytes, and post-success rescans.
+ * [OUTPUT]: Verifies exact All/User/Project takeover counts, localized Before/After confirmation, scoped execution, complete metadata persistence, preserved Skill bytes, and post-success rescans.
  * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -75,6 +75,7 @@ void main() {
 
       await _pumpUntilTakeoverCount(tester, 2);
       expect(_railCountLabel(2), findsOneWidget);
+      await _dismissAutomaticTakeoverStory(tester);
 
       await tester.tap(_railButton(find.text('takeover-project')));
       await _pumpUntilTakeoverCount(tester, 1);
@@ -113,6 +114,24 @@ void main() {
     },
     timeout: const Timeout(Duration(minutes: 3)),
   );
+}
+
+Future<void> _dismissAutomaticTakeoverStory(WidgetTester tester) async {
+  final storyTitle = find.byWidgetPredicate(
+    (widget) =>
+        widget is Text &&
+        (widget.data == 'Turn scattered skills into one clear Library' ||
+            widget.data == '把散落的技能，整理成一个清晰的 Library'),
+  );
+  await _pumpUntil(tester, storyTitle);
+  final skipLabel = find.byWidgetPredicate(
+    (widget) =>
+        widget is Text && (widget.data == 'Not now' || widget.data == '暂时跳过'),
+  );
+  await tester.tap(
+    find.ancestor(of: skipLabel, matching: find.byType(OutlinedButton)).first,
+  );
+  await _pumpUntilGone(tester, storyTitle);
 }
 
 Map<String, Object> _lockRecord(String skillPath) => {
@@ -171,8 +190,8 @@ Future<void> _executeTakeover(
     find.byWidgetPredicate(
       (widget) =>
           widget is Text &&
-          (widget.data == 'Manage existing skills with SkillsGo?' ||
-              widget.data == '将现有技能纳入 SkillsGo 管理？'),
+          (widget.data == 'Turn scattered skills into one clear Library' ||
+              widget.data == '把散落的技能，整理成一个清晰的 Library'),
     ),
   );
   final confirmLabel = find.byWidgetPredicate(
@@ -230,4 +249,12 @@ Future<void> _pumpUntil(WidgetTester tester, Finder finder) async {
     findsWidgets,
     reason: 'Rendered takeover labels: $takeoverLabels',
   );
+}
+
+Future<void> _pumpUntilGone(WidgetTester tester, Finder finder) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 5));
+  while (finder.evaluate().isNotEmpty && DateTime.now().isBefore(deadline)) {
+    await tester.pump(const Duration(milliseconds: 100));
+  }
+  expect(finder, findsNothing);
 }

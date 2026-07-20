@@ -1632,7 +1632,124 @@ class AppLocalizationsEn extends AppLocalizations {
       'SkillsGo will add local management records without moving, overwriting, or uploading skill files. Unsupported or changed items will be skipped.';
 
   @override
+  String get batchTakeoverStoryTitle =>
+      'Turn scattered skills into one clear Library';
+
+  @override
+  String batchTakeoverStoryDescription(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count existing skills',
+      one: '1 existing skill',
+    );
+    return 'SkillsGo found $_temp0 it can manage in this location.';
+  }
+
+  @override
+  String get batchTakeoverBeforeSemantics =>
+      'Before management, it is unclear where existing skills are installed, whether they are current, how to recover them, or whether projects use the same version.';
+
+  @override
+  String get batchTakeoverPainLocation => 'Unknown install location';
+
+  @override
+  String get batchTakeoverPainFreshness => 'Unknown update status';
+
+  @override
+  String get batchTakeoverPainRecovery => 'No recovery when broken';
+
+  @override
+  String get batchTakeoverPainVersionDrift =>
+      'Different versions across projects';
+
+  @override
+  String get batchTakeoverFolderTitle => 'Existing Skills';
+
+  @override
+  String get batchTakeoverFolderSubtitle => 'Unclear status';
+
+  @override
+  String get batchTakeoverAfterLabel => 'AFTER';
+
+  @override
+  String get batchTakeoverAfterTitle => 'One clear Library';
+
+  @override
+  String get batchTakeoverLibraryTitle => 'SkillsGo Library';
+
+  @override
+  String get batchTakeoverBenefitLocation => 'Clear locations';
+
+  @override
+  String get batchTakeoverBenefitFreshness => 'Updates visible';
+
+  @override
+  String get batchTakeoverBenefitRecovery => 'Easy recovery';
+
+  @override
+  String get batchTakeoverBenefitVersions => 'Versions clear';
+
+  @override
+  String get batchTakeoverManagedSection => 'Managed by SkillsGo';
+
+  @override
+  String get batchTakeoverPendingSection => 'Waiting to be managed';
+
+  @override
+  String batchTakeoverItemManaged(String name) {
+    return '$name is managed by SkillsGo';
+  }
+
+  @override
+  String batchTakeoverItemSkipped(String name) {
+    return '$name could not be added to management';
+  }
+
+  @override
+  String batchTakeoverItemPending(String name) {
+    return '$name is waiting to be managed';
+  }
+
+  @override
+  String batchTakeoverAfterSemantics(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count skills are',
+      one: '1 skill is',
+    );
+    return 'After management, $_temp0 organized in one Library with a clear managed status.';
+  }
+
+  @override
+  String batchTakeoverMoreSkills(int count) {
+    return '+$count more';
+  }
+
+  @override
+  String get batchTakeoverTransitionSemantics =>
+      'Add these existing skills to SkillsGo management.';
+
+  @override
+  String get batchTakeoverTransitionLabel => 'ORGANIZE';
+
+  @override
+  String get batchTakeoverPreservation =>
+      'Your files, paths, and current workflows stay exactly where they are. SkillsGo only completes its local management records.';
+
+  @override
+  String get batchTakeoverLaterHint =>
+      'If you skip, you can use Manage existing skills from Library anytime.';
+
+  @override
+  String get batchTakeoverSkip => 'Not now';
+
+  @override
   String get batchTakeoverConfirm => 'Add to management';
+
+  @override
+  String get batchTakeoverExecutionRetry => 'Retry';
 
   @override
   String get batchTakeoverResultTitle => 'Skills added to management';
@@ -1728,6 +1845,26 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get restartOnboardingFailed =>
       'SkillsGo could not restart Onboarding.';
+
+  @override
+  String get libraryRefreshSettingsTitle => 'Refresh local Library';
+
+  @override
+  String get libraryRefreshSettingsDescription =>
+      'Rescan installed Skills, Added Projects, Agents, and external Skills that can be managed. This does not install, update, or remove anything.';
+
+  @override
+  String get libraryRefreshSettingsAction => 'Refresh Library';
+
+  @override
+  String get libraryRefreshSettingsPending => 'Refreshing Library…';
+
+  @override
+  String get libraryRefreshSettingsSuccess => 'Local Library refreshed.';
+
+  @override
+  String get libraryRefreshSettingsFailed =>
+      'SkillsGo could not refresh the local Library.';
 
   @override
   String get onboardingProjectError =>
