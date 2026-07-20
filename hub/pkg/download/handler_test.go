@@ -1,14 +1,16 @@
 /*
- * [INPUT]: Depends on the download package imports and contracts declared in this file.
- * [OUTPUT]: Specifies the download package behavior covered by handler_test.go.
- * [POS]: Serves as test coverage for the download package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on Fiber routing, successful and redirected artifact protocols, canonical versions, and movable revision queries.
+ * [OUTPUT]: Specifies protocol namespacing, redirect behavior, and no-store protection for movable Info and ZIP responses.
+ * [POS]: Serves as the public artifact HTTP routing contract for the download package.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package download
 
 import (
 	"context"
+	"io"
 	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/gofiber/fiber/v3"
@@ -66,8 +68,72 @@ func TestArtifactProtocolIsNamespacedUnderMod(t *testing.T) {
 	}
 }
 
+func TestMovableVersionResponsesDisableHTTPCaching(t *testing.T) {
+	r := fiber.New()
+	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	const noCache = "no-cache, no-store, must-revalidate"
+	for _, requestCase := range []struct {
+		method string
+		path   string
+	}{
+		{http.MethodGet, "/mod/github.com/skillsgo/skillsgo/@v/main.info"},
+		{http.MethodGet, "/mod/github.com/skillsgo/skillsgo/@v/main.zip"},
+		{http.MethodHead, "/mod/github.com/skillsgo/skillsgo/@v/main.zip"},
+		{http.MethodGet, "/mod/github.com/skillsgo/skillsgo/@v/abcdef123456.info"},
+	} {
+		request, err := http.NewRequest(requestCase.method, requestCase.path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response, err := r.Test(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if response.StatusCode != http.StatusOK {
+			t.Fatalf("%s %s returned %d", requestCase.method, requestCase.path, response.StatusCode)
+		}
+		if got := response.Header.Get("Cache-Control"); got != noCache {
+			t.Fatalf("%s %s Cache-Control = %q, want %q", requestCase.method, requestCase.path, got, noCache)
+		}
+	}
+}
+
+func TestCanonicalVersionInfoKeepsExistingCachePolicy(t *testing.T) {
+	r := fiber.New()
+	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	for _, path := range []string{
+		"/mod/github.com/skillsgo/skillsgo/@v/v1.2.3.info",
+		"/mod/github.com/skillsgo/skillsgo/@v/v1.2.4-0.20260720120000-abcdef123456.info",
+	} {
+		request, err := http.NewRequest(http.MethodGet, path, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response, err := r.Test(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := response.Header.Get("Cache-Control"); got != "" {
+			t.Fatalf("%s Cache-Control = %q, want existing empty policy", path, got)
+		}
+	}
+}
+
 type mockProtocol struct {
 	Protocol
+}
+
+type successfulProtocol struct {
+	Protocol
+}
+
+func (p *successfulProtocol) Info(context.Context, string, string) ([]byte, error) {
+	return []byte(`{"Version":"v1.0.0"}`), nil
+}
+
+func (p *successfulProtocol) Zip(context.Context, string, string) (storage.SizeReadCloser, error) {
+	const archive = "zip"
+	return storage.NewSizer(io.NopCloser(strings.NewReader(archive)), int64(len(archive))), nil
 }
 
 func (mp *mockProtocol) Info(ctx context.Context, mod, ver string) ([]byte, error) {

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Repository Catalog cache state, GitHub's conditional REST resource, an optional bearer token, and bounded HTTP requests.
- * [OUTPUT]: Provides Repository-scoped provider descriptions and Stars with TTL, ETag revalidation, Singleflight refresh, rate-limit backoff, and safe failure diagnostics.
+ * [INPUT]: Depends on Repository Catalog cache state, GitHub's conditional REST resource, an optional bearer-token pool, and bounded HTTP requests.
+ * [OUTPUT]: Provides Repository-scoped provider descriptions and Stars with TTL, ETag revalidation, Singleflight refresh, sticky GitHub-token failover, rate-limit backoff, and safe failure diagnostics.
  * [POS]: Serves as the cached external source-metadata adapter; artifact and discovery requests remain usable when it fails.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,6 +16,7 @@ import (
 	"net/url"
 	"strconv"
 	"strings"
+	"sync/atomic"
 	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
@@ -54,7 +55,8 @@ type repositoryMetadataCache struct {
 
 type githubRepositoryMetadataReader struct {
 	client *http.Client
-	token  string
+	tokens []string
+	active atomic.Uint64
 }
 
 type githubMetadataHTTPError struct {
@@ -95,11 +97,35 @@ func (e *githubMetadataHTTPError) LogFields() map[string]any {
 	}
 }
 
-func newGitHubRepositoryMetadataReader(token string) repositoryMetadataSource {
+func newGitHubRepositoryMetadataReader(tokens []string) repositoryMetadataSource {
 	return &githubRepositoryMetadataReader{
 		client: &http.Client{Timeout: 4 * time.Second},
-		token:  strings.TrimSpace(token),
+		tokens: normalizedGitHubTokens(tokens),
 	}
+}
+
+func normalizedGitHubTokens(candidates []string) []string {
+	seen := make(map[string]struct{}, len(candidates))
+	tokens := make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		token := strings.TrimSpace(candidate)
+		if token == "" {
+			continue
+		}
+		if _, exists := seen[token]; exists {
+			continue
+		}
+		seen[token] = struct{}{}
+		tokens = append(tokens, token)
+	}
+	return tokens
+}
+
+func (r *githubRepositoryMetadataReader) tokenAt(start, offset uint64) string {
+	if len(r.tokens) == 0 {
+		return ""
+	}
+	return r.tokens[(start+offset)%uint64(len(r.tokens))]
 }
 
 func (r *githubRepositoryMetadataReader) Host() string { return "github.com" }
@@ -201,6 +227,37 @@ func (r *githubRepositoryMetadataReader) Read(
 	if !strings.EqualFold(sourceHost, "github.com") {
 		return repositoryMetadata{}, fmt.Errorf("unsupported repository host %q", sourceHost)
 	}
+	attempts := len(r.tokens)
+	if attempts == 0 {
+		attempts = 1
+	}
+	var result repositoryMetadata
+	var err error
+	start := r.active.Load()
+	for offset := range attempts {
+		token := r.tokenAt(start, uint64(offset))
+		result, err = r.readWithToken(ctx, sourceHost, repository, etag, token)
+		if err == nil {
+			if offset > 0 {
+				r.active.CompareAndSwap(start, start+uint64(offset))
+			}
+			return result, nil
+		}
+		var upstream *githubMetadataHTTPError
+		if !errors.As(err, &upstream) || !githubTokenFailoverStatus(upstream.statusCode) {
+			return repositoryMetadata{}, err
+		}
+	}
+	return repositoryMetadata{}, err
+}
+
+func (r *githubRepositoryMetadataReader) readWithToken(
+	ctx context.Context,
+	sourceHost string,
+	repository string,
+	etag string,
+	token string,
+) (repositoryMetadata, error) {
 	endpoint := "https://api.github.com/repos/" + strings.TrimPrefix(repository, "/")
 	request, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {
@@ -209,8 +266,8 @@ func (r *githubRepositoryMetadataReader) Read(
 	request.Header.Set("Accept", "application/vnd.github+json")
 	request.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 	request.Header.Set("User-Agent", "SkillsGo-Hub")
-	if r.token != "" {
-		request.Header.Set("Authorization", "Bearer "+r.token)
+	if token != "" {
+		request.Header.Set("Authorization", "Bearer "+token)
 	}
 	if etag != "" {
 		request.Header.Set("If-None-Match", etag)
@@ -244,7 +301,7 @@ func (r *githubRepositoryMetadataReader) Read(
 		return repositoryMetadata{ETag: etag, NotModified: true}, nil
 	}
 	if response.StatusCode < 200 || response.StatusCode >= 300 {
-		return repositoryMetadata{}, newGitHubMetadataHTTPError(response, r.token != "", duration)
+		return repositoryMetadata{}, newGitHubMetadataHTTPError(response, token != "", duration)
 	}
 	var payload struct {
 		Description string `json:"description"`
@@ -261,6 +318,10 @@ func (r *githubRepositoryMetadataReader) Read(
 		return repositoryMetadata{}, fmt.Errorf("github repository metadata returned an invalid repository URL")
 	}
 	return repositoryMetadata{Description: strings.TrimSpace(payload.Description), Stars: payload.Stars, ETag: response.Header.Get("ETag")}, nil
+}
+
+func githubTokenFailoverStatus(statusCode int) bool {
+	return statusCode == http.StatusUnauthorized || statusCode == http.StatusForbidden || statusCode == http.StatusTooManyRequests
 }
 
 func githubMetadataRetryAt(err error, now time.Time) *time.Time {

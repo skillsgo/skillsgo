@@ -18,8 +18,10 @@ The Hub implements a demand-driven, Go Module Proxy-shaped protocol:
 - Repository and nested-Skill resources use `/mod/{coordinate}/@v/list`, `/mod/{coordinate}/@latest`, `/mod/{coordinate}/@v/{query}.info`, and `/mod/{coordinate}/@v/{version}.zip`.
 - Repository Info embeds the complete Skill Info for every valid member observed at one commit. There is no Repository aggregate ZIP.
 - Exact semantic-version Info requests bypass mutable catalog freshness and materialize the requested tag directly on a miss.
-- `latest` prefers the highest stable semantic version, then the highest prerelease. When no semantic tag exists, it resolves the remote default branch once to a pseudo-version.
-- Branches and commits resolve through `.info` to a canonical semantic or pseudo-version. Clients persist only that immutable result.
+- `latest` prefers the highest stable canonical semantic-version Tag, then the highest canonical prerelease Tag. Noncanonical or non-SemVer Tags are ignored. When no canonical semantic Tag exists, it resolves the remote default branch once to a pseudo-version.
+- Branches and commits resolve through `.info` to a canonical semantic or pseudo-version. A semantic-looking branch cannot impersonate a published Tag. An untagged revision uses the highest canonical semantic-version Tag among its Git ancestors as the pseudo-version base, following Go's pseudo-version ordering; it uses the `v0.0.0` form when no ancestor Tag exists. Clients persist only that immutable result.
+- Exact pseudo-version requests validate the canonical commit suffix, commit timestamp, and optional ancestor base Tag before publication. A pseudo-version generated before its commit gains a canonical Tag remains resolvable under its original immutable identity.
+- Info and ZIP responses addressed by a non-canonical query such as `main`, another branch, or a commit prefix use `Cache-Control: no-cache, no-store, must-revalidate`; exact canonical semantic and pseudo-version requests retain the immutable resource identity and their existing cache policy.
 
 There is no dedicated refresh endpoint, webhook requirement, mandatory private refresher, or Hub-specific publish operation. Optional warming uses ordinary List, Latest, Info, or CLI add requests.
 

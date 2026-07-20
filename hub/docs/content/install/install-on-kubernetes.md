@@ -122,10 +122,10 @@ helm install athens gomods/athens-proxy --namespace athens \
 
 For more information, see [Managing Compute Resources for Containers](https://kubernetes.io/docs/concepts/configuration/manage-compute-resources-container/) in the Kubernetes documentation.
 
-### Give Athens access to private repositories via Github Token (Optional)
+### Give SkillsGo access to GitHub with tokens (Optional)
 
 1. Create a token at https://github.com/settings/tokens
-2. Provide the token to the Athens proxy either through the [config.toml](https://github.com/gomods/athens/blob/main/config.dev.toml) file (the `GithubToken` field) or by setting the `SKILLSGO_HUB_GITHUB_TOKEN` environment variable.
+2. Set `GithubTokens` to a TOML array or use the comma-, semicolon-, or newline-delimited `SKILLSGO_HUB_GITHUB_TOKENS` environment variable. GitHub REST and Git operations keep using the current token while it succeeds, then try the remaining tokens in order and retain the first successful replacement. Credentials are scoped to each Git process instead of rewriting the process-wide `.netrc` file.
 
 ### Storage Providers
 
@@ -308,4 +308,3 @@ helm install athens gomods/athens-proxy --namespace athens \
 ## Further Links
 
 - [Athens as-a Service on Kubernetes (for GitLab)](https://medium.com/gitconnected/athens-go-proxy-as-a-service-on-kubernetes-8fb1f5fa320d)
-

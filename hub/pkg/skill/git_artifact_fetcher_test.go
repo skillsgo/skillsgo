@@ -1,13 +1,16 @@
 /*
- * [INPUT]: Depends on the skill package imports and contracts declared in this file.
- * [OUTPUT]: Specifies the skill package behavior covered by git_artifact_fetcher_test.go.
+ * [INPUT]: Depends on Git-backed Skill fetching, filesystem fixtures, and injected Git transport outcomes.
+ * [OUTPUT]: Specifies artifact fetching, repository cache paths, and sticky GitHub-token failover behavior.
  * [POS]: Serves as test coverage for the skill package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package skill
 
 import (
+	"context"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -24,6 +27,51 @@ func (s *SkillSuite) TestNewFetcher() {
 	r.NoError(err)
 	_, ok := fetcher.(*gitFetcher)
 	r.True(ok)
+}
+
+func TestGitTransportFailsOverAndKeepsReplacement(t *testing.T) {
+	fetcher, err := NewFetcherWithGitHubTokens(t.TempDir(), afero.NewOsFs(), []string{"token-a", "token-b", "token-c"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	gitFetcher := fetcher.(*gitFetcher)
+	var credentials []string
+	gitFetcher.runGitCommand = func(_ context.Context, _ string, _ []string, environment []string) ([]byte, error) {
+		credential := environmentValue(environment, "GIT_CONFIG_VALUE_0")
+		credentials = append(credentials, credential)
+		if credential == gitAuthorization("token-a") {
+			return []byte("authentication failed"), fmt.Errorf("exit status 128")
+		}
+		return nil, nil
+	}
+
+	_, err = gitFetcher.runGitTransport(t.Context(), "", true, "fetch")
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = gitFetcher.runGitTransport(t.Context(), "", true, "fetch")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []string{gitAuthorization("token-a"), gitAuthorization("token-b"), gitAuthorization("token-b")}
+	if fmt.Sprint(credentials) != fmt.Sprint(want) {
+		t.Fatalf("credentials = %v, want %v", credentials, want)
+	}
+}
+
+func environmentValue(environment []string, key string) string {
+	prefix := key + "="
+	for _, entry := range environment {
+		if len(entry) >= len(prefix) && entry[:len(prefix)] == prefix {
+			return entry[len(prefix):]
+		}
+	}
+	return ""
+}
+
+func gitAuthorization(token string) string {
+	credential := base64.StdEncoding.EncodeToString([]byte("x-access-token:" + token))
+	return "Authorization: Basic " + credential
 }
 
 func (s *SkillSuite) TestVCSListerSharesFetcherRepositoryCache() {

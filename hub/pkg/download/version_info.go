@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the download package imports and contracts declared in this file.
- * [OUTPUT]: Provides the download package behavior implemented by version_info.go.
- * [POS]: Serves as maintained source in the download package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on parsed artifact coordinates, Protocol Info resolution, redirect policy, and movable-query cache protection.
+ * [OUTPUT]: Serves JSON Info for canonical versions and non-cacheable movable revision queries.
+ * [POS]: Serves as the Info HTTP boundary in the artifact download protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package download
@@ -26,6 +26,7 @@ func InfoHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handl
 			lggr.SystemErr(err)
 			return c.SendStatus(errors.Kind(err))
 		}
+		protectMovableVersionResponse(c, ver)
 		info, err := dp.Info(c.Context(), mod, ver)
 		if err != nil {
 			severityLevel := errors.Expect(err, errors.KindNotFound, errors.KindRedirect)

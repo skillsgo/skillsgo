@@ -57,7 +57,7 @@ func main() {
 		"database_type":          databaseType,
 		"download_mode":          conf.DownloadMode,
 		"environment":            conf.Environment,
-		"github_auth_configured": conf.GithubToken != "" || conf.NETRCPath != "",
+		"github_auth_configured": len(conf.GitHubTokens()) > 0 || conf.NETRCPath != "",
 		"index_type":             conf.IndexType,
 		"log_format":             conf.LogFormat,
 		"log_level":              conf.LogLevel,

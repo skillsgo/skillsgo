@@ -83,7 +83,7 @@ func addProxyRoutesWithCatalog(
 	// 4. The plain stash.New just takes a request from upstream and saves it into storage.
 	fs := afero.NewOsFs()
 
-	skillFetcher, err := skill.NewFetcher(c.SkillCacheDir, fs)
+	skillFetcher, err := skill.NewFetcherWithGitHubTokens(c.SkillCacheDir, fs, c.GitHubTokens())
 	if err != nil {
 		return err
 	}
@@ -124,7 +124,7 @@ func addProxyRoutesWithCatalog(
 			r,
 			metadata,
 			dp,
-			newRepositoryMetadataCache(metadata, newGitHubRepositoryMetadataReader(c.GithubToken)),
+			newRepositoryMetadataCache(metadata, newGitHubRepositoryMetadataReader(c.GitHubTokens())),
 		)
 	}
 

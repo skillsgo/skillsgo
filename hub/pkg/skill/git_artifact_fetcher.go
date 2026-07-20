@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the skill package imports and contracts declared in this file.
- * [OUTPUT]: Provides the skill package behavior implemented by git_artifact_fetcher.go.
+ * [INPUT]: Depends on filesystem-backed repository caches, Git source resolution, artifact packaging, and optional GitHub credentials.
+ * [OUTPUT]: Provides Git-backed Skill fetching with an optional sticky GitHub-token failover pool.
  * [POS]: Serves as maintained source in the skill package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,6 +14,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync/atomic"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
@@ -23,10 +24,13 @@ import (
 )
 
 type gitFetcher struct {
-	fs       afero.Fs
-	cacheDir string
-	syncs    singleflight.Group
-	cloneURL func(SkillID) string
+	fs            afero.Fs
+	cacheDir      string
+	syncs         singleflight.Group
+	cloneURL      func(SkillID) string
+	githubTokens  []string
+	activeToken   atomic.Uint64
+	runGitCommand func(context.Context, string, []string, []string) ([]byte, error)
 }
 
 type artifactFiles struct {
@@ -38,6 +42,12 @@ type artifactFiles struct {
 
 // NewFetcher creates a Skill fetcher backed by Git.
 func NewFetcher(cacheDir string, fs afero.Fs) (Fetcher, error) {
+	return NewFetcherWithGitHubTokens(cacheDir, fs, nil)
+}
+
+// NewFetcherWithGitHubTokens creates a Git-backed Skill fetcher whose GitHub
+// transport retries the next token after a failed fetch or clone.
+func NewFetcherWithGitHubTokens(cacheDir string, fs afero.Fs, tokens []string) (Fetcher, error) {
 	if cacheDir == "" {
 		var err error
 		cacheDir, err = os.MkdirTemp("", "skillsgo-cache-")
@@ -49,10 +59,29 @@ func NewFetcher(cacheDir string, fs afero.Fs) (Fetcher, error) {
 		return nil, err
 	}
 	return &gitFetcher{
-		fs:       fs,
-		cacheDir: cacheDir,
-		cloneURL: func(skillID SkillID) string { return skillID.RepositoryURL() },
+		fs:            fs,
+		cacheDir:      cacheDir,
+		cloneURL:      func(skillID SkillID) string { return skillID.RepositoryURL() },
+		githubTokens:  normalizedTokens(tokens),
+		runGitCommand: runGitCommand,
 	}, nil
+}
+
+func normalizedTokens(candidates []string) []string {
+	seen := make(map[string]struct{}, len(candidates))
+	tokens := make([]string, 0, len(candidates))
+	for _, candidate := range candidates {
+		token := strings.TrimSpace(candidate)
+		if token == "" {
+			continue
+		}
+		if _, exists := seen[token]; exists {
+			continue
+		}
+		seen[token] = struct{}{}
+		tokens = append(tokens, token)
+	}
+	return tokens
 }
 
 // Fetch resolves and downloads an immutable Skill version from Git.

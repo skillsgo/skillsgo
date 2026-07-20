@@ -17,7 +17,7 @@ A public version-control repository registered with the Hub under a canonical, c
 _Avoid_: Skill ID, repository URL spelling, refresh schedule
 
 **Version Query**:
-A semantic version, `latest`, branch, or commit supplied to an Info request. The response always names a canonical immutable semantic or pseudo-version; clients persist that result rather than the movable query.
+A canonical semantic version, `latest`, branch, or commit supplied to an Info request. A semantic-looking branch cannot impersonate a published Tag. The response always names a canonical immutable semantic or pseudo-version; clients persist that result rather than the movable query. HTTP responses addressed by non-canonical movable queries disable intermediary caching so repeating `main` or another branch observes a newly resolved commit, while exact canonical-version resources retain their separate cache policy.
 _Avoid_: refresh command, subscription, raw transport URL
 
 **Repository Publication**:
@@ -25,7 +25,7 @@ The atomic visibility change that publishes every repository-owned Skill observe
 _Avoid_: Repository Batch table, repository ZIP, all-or-nothing source validation
 
 **Repository Batch Version**:
-The canonical immutable version shared by Repository Info and every Skill Info member observed at one source commit. `latest` selects the highest stable semantic-version tag, or resolves the default-branch HEAD to a commit-based pseudo-version when no stable tag exists. A member's Git Tree SHA identifies that Skill directory's content for change detection; it never replaces the shared batch version or the pseudo-version's commit suffix.
+The canonical immutable version shared by Repository Info and every Skill Info member observed at one source commit. `latest` selects the highest stable canonical semantic-version Tag, falls back to the highest canonical prerelease Tag, or resolves the default-branch HEAD to a commit-based pseudo-version when no canonical semantic Tag exists. An untagged revision derives its pseudo-version base from the highest canonical semantic-version Tag among its ancestors, so the pseudo-version sorts above that base and below the next tagged version; without an ancestor Tag, it uses the `v0.0.0` form. Exact pseudo-version requests must authenticate their canonical 12-character commit suffix, commit timestamp, and optional ancestor base Tag while preserving a historically generated no-Tag pseudo-version if that commit is tagged later. A member's Git Tree SHA identifies that Skill directory's content for change detection; it never replaces the shared batch version or the pseudo-version's commit suffix.
 _Avoid_: per-Skill pseudo-version, Tree-SHA version suffix, mutable `latest` in persisted dependencies
 
 **Published Version**:

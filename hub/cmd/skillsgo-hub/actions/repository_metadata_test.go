@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Repository metadata cache, GitHub adapter, temporary Catalog, and representative HTTP failure responses.
- * [OUTPUT]: Verifies Repository-scoped About description, Stars, TTL/ETag/rate-limit caching plus safe GitHub authentication, permission, and rate-limit diagnostics.
+ * [OUTPUT]: Verifies Repository-scoped About description, Stars, TTL/ETag/rate-limit caching, sticky GitHub-token failover, permission, and rate-limit diagnostics.
  * [POS]: Serves as the operational diagnostics contract for the best-effort GitHub metadata dependency.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -45,6 +45,60 @@ func TestGitHubMetadataReaderUsesConditionalRequest(t *testing.T) {
 	require.NoError(t, err)
 	require.True(t, result.NotModified)
 	require.Equal(t, `"repo-v1"`, result.ETag)
+}
+
+func TestGitHubMetadataReaderKeepsSuccessfulToken(t *testing.T) {
+	var mu sync.Mutex
+	var authorizations []string
+	reader := newGitHubRepositoryMetadataReader([]string{"token-a", "token-b", "token-c"}).(*githubRepositoryMetadataReader)
+	reader.client = &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		mu.Lock()
+		authorizations = append(authorizations, request.Header.Get("Authorization"))
+		mu.Unlock()
+		return githubMetadataSuccessResponse(), nil
+	})}
+
+	for range 3 {
+		_, err := reader.Read(t.Context(), "github.com", "acme/skills", "")
+		require.NoError(t, err)
+	}
+	require.Equal(t, []string{"Bearer token-a", "Bearer token-a", "Bearer token-a"}, authorizations)
+}
+
+func TestGitHubMetadataReaderFailsOverAndKeepsReplacement(t *testing.T) {
+	var authorizations []string
+	var mu sync.Mutex
+	reader := newGitHubRepositoryMetadataReader([]string{"token-a", "token-b", "token-c"}).(*githubRepositoryMetadataReader)
+	reader.client = &http.Client{Transport: roundTripFunc(func(request *http.Request) (*http.Response, error) {
+		mu.Lock()
+		authorization := request.Header.Get("Authorization")
+		authorizations = append(authorizations, authorization)
+		mu.Unlock()
+		if authorization == "Bearer token-a" {
+			return &http.Response{
+				StatusCode: http.StatusUnauthorized, Status: "401 Unauthorized",
+				Header: make(http.Header), Body: io.NopCloser(strings.NewReader(`{"message":"Bad credentials"}`)),
+			}, nil
+		}
+		return githubMetadataSuccessResponse(), nil
+	})}
+
+	for range 2 {
+		_, err := reader.Read(t.Context(), "github.com", "acme/skills", "")
+		require.NoError(t, err)
+	}
+	require.Equal(t, []string{"Bearer token-a", "Bearer token-b", "Bearer token-b"}, authorizations)
+}
+
+func githubMetadataSuccessResponse() *http.Response {
+	return &http.Response{
+		StatusCode: http.StatusOK,
+		Status:     "200 OK",
+		Header:     make(http.Header),
+		Body: io.NopCloser(strings.NewReader(
+			`{"description":"","stargazers_count":0,"html_url":"https://github.com/acme/skills"}`,
+		)),
+	}
 }
 
 type recordingMetadataSource struct {
