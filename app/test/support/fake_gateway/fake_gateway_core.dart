@@ -127,6 +127,7 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
       updateAvailable: false,
       securityAdvisory: false,
     ),
+    this.batchTakeoverPromptSeen = true,
   }) : searchResults = searchResults ?? defaultSearchResults,
        remoteDetail =
            remoteDetail ??
@@ -193,6 +194,8 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
   final Completer<BatchTakeoverPlan>? takeoverPlanCompleter;
   final Completer<BatchTakeoverResult>? takeoverCompleter;
   ReminderSettings reminderSettings;
+  bool batchTakeoverPromptSeen;
+  int batchTakeoverPromptCompletions = 0;
   bool installed;
   final queries = <String>[];
   final collections = <DiscoveryCollection>[];
@@ -229,6 +232,15 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
       completed: false,
       step: OnboardingStep.welcome,
     );
+  }
+
+  @override
+  Future<bool> loadBatchTakeoverPromptSeen() async => batchTakeoverPromptSeen;
+
+  @override
+  Future<void> markBatchTakeoverPromptSeen() async {
+    batchTakeoverPromptSeen = true;
+    batchTakeoverPromptCompletions++;
   }
 
   int updateCalls = 0;

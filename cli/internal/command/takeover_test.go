@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with an isolated HOME, the current skills.sh user lock, and one externally copied Skill under the test Agent root.
- * [OUTPUT]: Specifies non-authoritative-write preflight, exact location counts, complete lock-identity and target-state revalidation, bounded and validated plans, scope-isolated lock-authoritative Batch Takeover, content-preserving Store capture, normal declaration/receipt state, managed inventory, captured repair, and alias-safe removal through the public CLI seam.
+ * [OUTPUT]: Specifies non-authoritative-write preflight, exact location counts, complete lock-identity and target-state revalidation, bounded and validated plans, scope-isolated lock-authoritative Batch Takeover, named partial results, content-preserving Store capture, normal declaration/receipt state, managed inventory, captured repair, and alias-safe removal through the public CLI seam.
  * [POS]: Serves as the executable contract for the lock-backed Batch Takeover journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -92,6 +92,7 @@ func TestBatchTakeoverRegistersCurrentUserLockCopyWithoutChangingIt(t *testing.T
 			Skipped   int `json:"skipped"`
 		} `json:"summary"`
 		Results []struct {
+			Name            string `json:"name"`
 			SkillID         string `json:"skillId"`
 			ArtifactSkillID string `json:"artifactSkillId"`
 			Version         string `json:"version"`
@@ -109,6 +110,7 @@ func TestBatchTakeoverRegistersCurrentUserLockCopyWithoutChangingIt(t *testing.T
 	require.Equal(t, 1, result.Summary.TakenOver)
 	require.Zero(t, result.Summary.Skipped)
 	require.Len(t, result.Results, 1)
+	require.Equal(t, "demo", result.Results[0].Name)
 	require.Equal(t, "taken-over", result.Results[0].Status)
 	require.Equal(t, "github.com/acme/skills/-/skills/demo", result.Results[0].SkillID)
 	require.Equal(t, "test-agent", result.Results[0].Target.Agent)
@@ -522,6 +524,10 @@ func TestBatchTakeoverPreflightReportsExactLocationCountsWithoutManagementWrites
 	require.Equal(t, 2, preview.Summary.Eligible)
 	require.Equal(t, 1, preview.Scopes.User.Eligible)
 	require.Equal(t, []takeoverProjectCount{{ProjectRoot: workspace, Eligible: 1}}, preview.Scopes.Projects)
+	require.ElementsMatch(t, []takeoverPreview{
+		{Name: "user-demo", SkillID: "github.com/acme/user/-/skills/user-demo", Scope: install.ScopeUser},
+		{Name: "project-demo", SkillID: "github.com/acme/project/-/skills/project-demo", Scope: install.ScopeProject, ProjectRoot: workspace},
+	}, preview.Previews)
 	require.NoDirExists(t, store.DefaultRoot(home))
 	require.NoDirExists(t, filepath.Join(project.UserRoot(home), "receipts"))
 	require.NoFileExists(t, filepath.Join(project.UserRoot(home), "skillsgo.sum"))

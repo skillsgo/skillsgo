@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the bundled CLI process boundary for all Hub and local business access, the local filesystem, bounded ProjectIconResolver, the platform single- and multi-directory pickers, and SharedPreferences-backed product preferences.
- * [OUTPUT]: Provides typed CLI-backed Mandatory Onboarding, locale-aware discovery and detail, installation, scope-explicit Batch Takeover, inspection, atomic multi-project reference persistence with cached asynchronous identity enrichment, diagnostics, and persisted appearance/language/wallpaper/reminder operations with versioned machine-failure parsing.
+ * [OUTPUT]: Provides typed CLI-backed Mandatory Onboarding, locale-aware discovery and detail, installation, scope-explicit Batch Takeover, inspection, atomic multi-project reference persistence with cached asynchronous identity enrichment, diagnostics, and persisted appearance/language/wallpaper/reminder/takeover-introduction operations with versioned machine-failure parsing.
  * [POS]: Serves as the App infrastructure adapter that keeps every Hub and local business operation behind the CLI machine boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -48,6 +48,7 @@ const _themeModeKey = 'theme_mode';
 const _languageKey = 'language';
 const _updateReminderKey = 'reminder_update_available';
 const _securityReminderKey = 'reminder_security_advisory';
+const _batchTakeoverPromptSeenKey = 'batch_takeover_prompt_seen_v1';
 const _allowCriticalOverrideKey = 'allow_critical_risk_override';
 const _addedProjectsKey = 'added_projects_v1';
 const _onboardingCompletedKey = 'onboarding_completed_v1';

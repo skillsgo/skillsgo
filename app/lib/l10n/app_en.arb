@@ -549,7 +549,54 @@
   "batchTakeoverPending": "Adding skills to management…",
   "batchTakeoverTitle": "Manage existing skills with SkillsGo?",
   "batchTakeoverDescription": "SkillsGo will add local management records without moving, overwriting, or uploading skill files. Unsupported or changed items will be skipped.",
+  "batchTakeoverStoryTitle": "Turn scattered skills into one clear Library",
+  "batchTakeoverStoryDescription": "SkillsGo found {count, plural, =1{1 existing skill} other{{count} existing skills}} it can manage in this location.",
+  "@batchTakeoverStoryDescription": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "batchTakeoverBeforeSemantics": "Before management, it is unclear where existing skills are installed, whether they are current, how to recover them, or whether projects use the same version.",
+  "batchTakeoverPainLocation": "Unknown install location",
+  "batchTakeoverPainFreshness": "Unknown update status",
+  "batchTakeoverPainRecovery": "No recovery when broken",
+  "batchTakeoverPainVersionDrift": "Different versions across projects",
+  "batchTakeoverFolderTitle": "Existing Skills",
+  "batchTakeoverFolderSubtitle": "Unclear status",
+  "batchTakeoverAfterLabel": "AFTER",
+  "batchTakeoverAfterTitle": "One clear Library",
+  "batchTakeoverLibraryTitle": "SkillsGo Library",
+  "batchTakeoverBenefitLocation": "Clear locations",
+  "batchTakeoverBenefitFreshness": "Updates visible",
+  "batchTakeoverBenefitRecovery": "Easy recovery",
+  "batchTakeoverBenefitVersions": "Versions clear",
+  "batchTakeoverManagedSection": "Managed by SkillsGo",
+  "batchTakeoverPendingSection": "Waiting to be managed",
+  "batchTakeoverItemManaged": "{name} is managed by SkillsGo",
+  "@batchTakeoverItemManaged": {"placeholders": {"name": {"type": "String"}}},
+  "batchTakeoverItemSkipped": "{name} could not be added to management",
+  "@batchTakeoverItemSkipped": {"placeholders": {"name": {"type": "String"}}},
+  "batchTakeoverItemPending": "{name} is waiting to be managed",
+  "@batchTakeoverItemPending": {"placeholders": {"name": {"type": "String"}}},
+  "batchTakeoverAfterSemantics": "After management, {count, plural, =1{1 skill is} other{{count} skills are}} organized in one Library with a clear managed status.",
+  "@batchTakeoverAfterSemantics": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "batchTakeoverMoreSkills": "+{count} more",
+  "@batchTakeoverMoreSkills": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "batchTakeoverTransitionSemantics": "Add these existing skills to SkillsGo management.",
+  "batchTakeoverTransitionLabel": "ORGANIZE",
+  "batchTakeoverPreservation": "Your files, paths, and current workflows stay exactly where they are. SkillsGo only completes its local management records.",
+  "batchTakeoverLaterHint": "If you skip, you can use Manage existing skills from Library anytime.",
+  "batchTakeoverSkip": "Not now",
   "batchTakeoverConfirm": "Add to management",
+  "batchTakeoverExecutionRetry": "Retry",
   "batchTakeoverResultTitle": "Skills added to management",
   "batchTakeoverSummary": "{takenOver} skills added to management, {skipped} skipped.",
   "@batchTakeoverSummary": {
@@ -585,6 +632,12 @@
   "restartOnboardingDescription": "View the first-launch guide again without removing projects, settings, or Skills data.",
   "restartOnboardingAction": "Restart Onboarding",
   "restartOnboardingFailed": "SkillsGo could not restart Onboarding.",
+  "libraryRefreshSettingsTitle": "Refresh local Library",
+  "libraryRefreshSettingsDescription": "Rescan installed Skills, Added Projects, Agents, and external Skills that can be managed. This does not install, update, or remove anything.",
+  "libraryRefreshSettingsAction": "Refresh Library",
+  "libraryRefreshSettingsPending": "Refreshing Library…",
+  "libraryRefreshSettingsSuccess": "Local Library refreshed.",
+  "libraryRefreshSettingsFailed": "SkillsGo could not refresh the local Library.",
   "onboardingProjectError": "SkillsGo could not add projects from this directory.",
   "onboardingProjectsLoadError": "SkillsGo could not load your added projects.",
   "onboardingStartupError": "SkillsGo could not load setup.",

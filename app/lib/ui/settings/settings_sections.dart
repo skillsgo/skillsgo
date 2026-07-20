@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on SettingsScreen state, localized headings, reminder values, onboarding reset state, and shared setting controls.
- * [OUTPUT]: Provides route content selection, reminder controls, reusable headings, Advanced settings, and Mandatory Onboarding reset UI.
+ * [INPUT]: Depends on SettingsScreen state, localized headings, reminder values, onboarding reset and Library refresh state, and shared setting controls.
+ * [OUTPUT]: Provides route content selection, reminder controls, reusable headings, Advanced settings, Mandatory Onboarding reset UI, and the explicit local Library refresh action.
  * [POS]: Serves as the general section composition of the Settings journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -116,6 +116,12 @@ extension _SettingsSections on _SettingsScreenState {
       ),
       const SizedBox(height: 24),
       _onboardingSettings(),
+      const SizedBox(height: 28),
+      SkillsSeparator.horizontal(
+        color: Theme.of(context).colorScheme.outlineVariant,
+      ),
+      const SizedBox(height: 24),
+      _libraryRefreshSettings(),
     ],
   );
 
@@ -151,5 +157,55 @@ extension _SettingsSections on _SettingsScreenState {
         notice = context.l10n.restartOnboardingFailed;
       });
     }
+  }
+
+  Widget _libraryRefreshSettings() => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      _settingsHeading(
+        context.l10n.libraryRefreshSettingsTitle,
+        context.l10n.libraryRefreshSettingsDescription,
+      ),
+      const SizedBox(height: 18),
+      SkillsButton.outline(
+        key: const Key('refresh-local-library'),
+        enabled: !refreshingLibrary,
+        onPressed: () => unawaited(_refreshLocalLibrary()),
+        child: Text(
+          refreshingLibrary
+              ? context.l10n.libraryRefreshSettingsPending
+              : context.l10n.libraryRefreshSettingsAction,
+        ),
+      ),
+      if (libraryRefreshSucceeded case final succeeded?) ...[
+        const SizedBox(height: 12),
+        Text(
+          succeeded
+              ? context.l10n.libraryRefreshSettingsSuccess
+              : context.l10n.libraryRefreshSettingsFailed,
+          style: TextStyle(
+            color: succeeded
+                ? context.skillsComponents.statusSuccess
+                : context.skillsComponents.statusAttention,
+          ),
+        ),
+      ],
+    ],
+  );
+
+  Future<void> _refreshLocalLibrary() async {
+    if (refreshingLibrary) return;
+    updateState(() {
+      refreshingLibrary = true;
+      libraryRefreshSucceeded = null;
+    });
+    await ref.read(libraryProvider.notifier).refresh();
+    if (!mounted) return;
+    final refreshed = ref.read(libraryProvider);
+    final failed = refreshed.hasError || refreshed.value?.refreshError != null;
+    updateState(() {
+      refreshingLibrary = false;
+      libraryRefreshSucceeded = !failed;
+    });
   }
 }

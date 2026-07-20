@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared nested-navigation library, SkillsRailItem values and optional exact counts, selection state, compact density, and Flutter Material interaction primitives.
- * [OUTPUT]: Provides the private animated, accessible rail button with an optional count badge used by SkillsSideRail.
+ * [OUTPUT]: Provides the private animated, accessible rail button with an optional inline count capsule used by SkillsSideRail.
  * [POS]: Serves as the per-destination row presentation segment of nested navigation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

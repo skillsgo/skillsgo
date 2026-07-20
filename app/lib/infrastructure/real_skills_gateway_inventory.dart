@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, strict inventory codecs, local filesystem inspection, and Library domain models.
- * [OUTPUT]: Provides Agent catalogs, unified local inventory, exact Batch Takeover planning and scope-bound execution, local Skill detail, and shared structured CLI invocation.
+ * [OUTPUT]: Provides Agent catalogs, unified local inventory, exact Batch Takeover planning with safe identity previews and named scope-bound execution results, local Skill detail, and shared structured CLI invocation.
  * [POS]: Serves as the offline-capable local inventory capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -304,7 +304,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
     try {
       final raw = jsonDecode(command.output.stdout);
       if (raw is! Map<String, dynamic> ||
-          raw['schemaVersion'] != 2 ||
+          raw['schemaVersion'] != 3 ||
           raw['planId'] is! String ||
           (raw['planId'] as String).isEmpty ||
           raw['summary'] is! Map<String, dynamic> ||
@@ -315,6 +315,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
       final eligible = summary['eligible'];
       final skipped = summary['skipped'];
       final scopes = raw['scopes'] as Map<String, dynamic>;
+      final previewItems = raw['previews'];
       final user = scopes['user'];
       final projects = scopes['projects'];
       if (eligible is! int ||
@@ -324,7 +325,8 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
           user is! Map<String, dynamic> ||
           user['eligible'] is! int ||
           (user['eligible'] as int) < 0 ||
-          projects is! List) {
+          projects is! List ||
+          previewItems is! List) {
         throw const FormatException();
       }
       final eligibleCountByProjectRoot = <String, int>{};
@@ -346,6 +348,25 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
           )) {
         throw const FormatException();
       }
+      final previews = <BatchTakeoverPreview>[];
+      for (final item in previewItems) {
+        if (item is! Map<String, dynamic> ||
+            item['name'] is! String ||
+            (item['name'] as String).trim().isEmpty ||
+            item['skillId'] is! String ||
+            item['scope'] is! String ||
+            (item['projectRoot'] != null && item['projectRoot'] is! String)) {
+          throw const FormatException();
+        }
+        previews.add(
+          BatchTakeoverPreview(
+            name: item['name'] as String,
+            skillId: item['skillId'] as String,
+            scope: _installationScope(item['scope']),
+            projectRoot: item['projectRoot'] as String? ?? '',
+          ),
+        );
+      }
       return BatchTakeoverPlan(
         id: raw['planId'] as String,
         allEligibleCount: eligible,
@@ -353,6 +374,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
         eligibleCountByProjectRoot: Map.unmodifiable(
           eligibleCountByProjectRoot,
         ),
+        previews: List.unmodifiable(previews),
       );
     } on FormatException {
       throw const SkillsException(
@@ -409,7 +431,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
     try {
       final raw = jsonDecode(command.output.stdout);
       if (raw is! Map<String, dynamic> ||
-          raw['schemaVersion'] != 2 ||
+          raw['schemaVersion'] != 3 ||
           raw['summary'] is! Map<String, dynamic> ||
           raw['results'] is! List) {
         throw const FormatException();
@@ -425,8 +447,11 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
       }
       var actualTakenOver = 0;
       var actualSkipped = 0;
+      final items = <BatchTakeoverItemResult>[];
       for (final item in raw['results'] as List) {
         if (item is! Map<String, dynamic> ||
+            item['name'] is! String ||
+            (item['name'] as String).trim().isEmpty ||
             item['status'] is! String ||
             item['target'] is! Map<String, dynamic> ||
             (item['reason'] != null && item['reason'] is! String)) {
@@ -450,12 +475,27 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
               throw const FormatException();
             }
             actualTakenOver++;
+            items.add(
+              BatchTakeoverItemResult(
+                name: item['name'] as String,
+                skillId: item['skillId'] as String,
+                status: BatchTakeoverItemStatus.takenOver,
+              ),
+            );
           case 'skipped':
             if (item['reason'] is! String ||
                 (item['reason'] as String).isEmpty) {
               throw const FormatException();
             }
             actualSkipped++;
+            items.add(
+              BatchTakeoverItemResult(
+                name: item['name'] as String,
+                skillId: item['skillId'] as String? ?? '',
+                status: BatchTakeoverItemStatus.skipped,
+                reason: item['reason'] as String,
+              ),
+            );
           default:
             throw const FormatException();
         }
@@ -463,7 +503,11 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
       if (actualTakenOver != takenOver || actualSkipped != skipped) {
         throw const FormatException();
       }
-      return BatchTakeoverResult(takenOver: takenOver, skipped: skipped);
+      return BatchTakeoverResult(
+        takenOver: takenOver,
+        skipped: skipped,
+        items: List.unmodifiable(items),
+      );
     } on FormatException {
       throw const SkillsException(
         'The SkillsGo CLI returned invalid Batch Takeover JSON.',

@@ -1521,7 +1521,108 @@ class AppLocalizationsZh extends AppLocalizations {
       'SkillsGo 只会创建本地管理记录，不会移动、覆盖或上传技能文件；不支持或确认后发生变化的项目将被跳过。';
 
   @override
+  String get batchTakeoverStoryTitle => '把散落的技能，整理成一个清晰的 Library';
+
+  @override
+  String batchTakeoverStoryDescription(int count) {
+    return 'SkillsGo 在当前位置发现 $count 个可以纳入管理的现有技能。';
+  }
+
+  @override
+  String get batchTakeoverBeforeSemantics =>
+      '纳入管理前，现有技能装在哪里、是不是最新、损坏后如何恢复，以及不同项目间的版本是否一致，都缺少清晰状态。';
+
+  @override
+  String get batchTakeoverPainLocation => '不知道装在哪';
+
+  @override
+  String get batchTakeoverPainFreshness => '不知道是不是最新';
+
+  @override
+  String get batchTakeoverPainRecovery => '坏了无法恢复';
+
+  @override
+  String get batchTakeoverPainVersionDrift => '多个项目版本不一致';
+
+  @override
+  String get batchTakeoverFolderTitle => '现有 Skills';
+
+  @override
+  String get batchTakeoverFolderSubtitle => '状态不清晰';
+
+  @override
+  String get batchTakeoverAfterLabel => '纳入后';
+
+  @override
+  String get batchTakeoverAfterTitle => '一个清晰的 Library';
+
+  @override
+  String get batchTakeoverLibraryTitle => 'SkillsGo Library';
+
+  @override
+  String get batchTakeoverBenefitLocation => '位置清晰';
+
+  @override
+  String get batchTakeoverBenefitFreshness => '更新可见';
+
+  @override
+  String get batchTakeoverBenefitRecovery => '随时恢复';
+
+  @override
+  String get batchTakeoverBenefitVersions => '版本明确';
+
+  @override
+  String get batchTakeoverManagedSection => 'SkillsGo 管理中';
+
+  @override
+  String get batchTakeoverPendingSection => '待纳入';
+
+  @override
+  String batchTakeoverItemManaged(String name) {
+    return '$name 已纳入 SkillsGo 管理';
+  }
+
+  @override
+  String batchTakeoverItemSkipped(String name) {
+    return '$name 未能纳入管理';
+  }
+
+  @override
+  String batchTakeoverItemPending(String name) {
+    return '$name 等待纳入管理';
+  }
+
+  @override
+  String batchTakeoverAfterSemantics(int count) {
+    return '纳入管理后，$count 个技能会整理到同一个 Library 中，并显示清晰的管理状态。';
+  }
+
+  @override
+  String batchTakeoverMoreSkills(int count) {
+    return '另外 $count 个';
+  }
+
+  @override
+  String get batchTakeoverTransitionSemantics => '将这些现有技能纳入 SkillsGo 管理。';
+
+  @override
+  String get batchTakeoverTransitionLabel => '整理';
+
+  @override
+  String get batchTakeoverPreservation =>
+      '原文件、原路径和现有用法全部保留。SkillsGo 只会补全本地管理记录。';
+
+  @override
+  String get batchTakeoverLaterHint => '暂时跳过后，仍可随时在 Library 点击「纳入管理」。';
+
+  @override
+  String get batchTakeoverSkip => '暂时跳过';
+
+  @override
   String get batchTakeoverConfirm => '纳入管理';
+
+  @override
+  String get batchTakeoverExecutionRetry => '重试纳入';
 
   @override
   String get batchTakeoverResultTitle => '已纳入管理';
@@ -1611,6 +1712,25 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get restartOnboardingFailed => '无法重新开始启动引导。';
+
+  @override
+  String get libraryRefreshSettingsTitle => '刷新本地技能库';
+
+  @override
+  String get libraryRefreshSettingsDescription =>
+      '重新扫描已安装 Skills、已添加项目、智能体，以及可纳入管理的外部 Skills。此操作不会安装、更新或移除任何内容。';
+
+  @override
+  String get libraryRefreshSettingsAction => '刷新技能库';
+
+  @override
+  String get libraryRefreshSettingsPending => '正在刷新技能库…';
+
+  @override
+  String get libraryRefreshSettingsSuccess => '本地技能库已刷新。';
+
+  @override
+  String get libraryRefreshSettingsFailed => 'SkillsGo 无法刷新本地技能库。';
 
   @override
   String get onboardingProjectError => 'SkillsGo 无法从这个目录添加项目。';

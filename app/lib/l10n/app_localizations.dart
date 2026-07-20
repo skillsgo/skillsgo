@@ -2834,11 +2834,185 @@ abstract class AppLocalizations {
   /// **'SkillsGo will add local management records without moving, overwriting, or uploading skill files. Unsupported or changed items will be skipped.'**
   String get batchTakeoverDescription;
 
+  /// No description provided for @batchTakeoverStoryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn scattered skills into one clear Library'**
+  String get batchTakeoverStoryTitle;
+
+  /// No description provided for @batchTakeoverStoryDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo found {count, plural, =1{1 existing skill} other{{count} existing skills}} it can manage in this location.'**
+  String batchTakeoverStoryDescription(int count);
+
+  /// No description provided for @batchTakeoverBeforeSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Before management, it is unclear where existing skills are installed, whether they are current, how to recover them, or whether projects use the same version.'**
+  String get batchTakeoverBeforeSemantics;
+
+  /// No description provided for @batchTakeoverPainLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown install location'**
+  String get batchTakeoverPainLocation;
+
+  /// No description provided for @batchTakeoverPainFreshness.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown update status'**
+  String get batchTakeoverPainFreshness;
+
+  /// No description provided for @batchTakeoverPainRecovery.
+  ///
+  /// In en, this message translates to:
+  /// **'No recovery when broken'**
+  String get batchTakeoverPainRecovery;
+
+  /// No description provided for @batchTakeoverPainVersionDrift.
+  ///
+  /// In en, this message translates to:
+  /// **'Different versions across projects'**
+  String get batchTakeoverPainVersionDrift;
+
+  /// No description provided for @batchTakeoverFolderTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Existing Skills'**
+  String get batchTakeoverFolderTitle;
+
+  /// No description provided for @batchTakeoverFolderSubtitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Unclear status'**
+  String get batchTakeoverFolderSubtitle;
+
+  /// No description provided for @batchTakeoverAfterLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'AFTER'**
+  String get batchTakeoverAfterLabel;
+
+  /// No description provided for @batchTakeoverAfterTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'One clear Library'**
+  String get batchTakeoverAfterTitle;
+
+  /// No description provided for @batchTakeoverLibraryTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo Library'**
+  String get batchTakeoverLibraryTitle;
+
+  /// No description provided for @batchTakeoverBenefitLocation.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear locations'**
+  String get batchTakeoverBenefitLocation;
+
+  /// No description provided for @batchTakeoverBenefitFreshness.
+  ///
+  /// In en, this message translates to:
+  /// **'Updates visible'**
+  String get batchTakeoverBenefitFreshness;
+
+  /// No description provided for @batchTakeoverBenefitRecovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Easy recovery'**
+  String get batchTakeoverBenefitRecovery;
+
+  /// No description provided for @batchTakeoverBenefitVersions.
+  ///
+  /// In en, this message translates to:
+  /// **'Versions clear'**
+  String get batchTakeoverBenefitVersions;
+
+  /// No description provided for @batchTakeoverManagedSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed by SkillsGo'**
+  String get batchTakeoverManagedSection;
+
+  /// No description provided for @batchTakeoverPendingSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting to be managed'**
+  String get batchTakeoverPendingSection;
+
+  /// No description provided for @batchTakeoverItemManaged.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is managed by SkillsGo'**
+  String batchTakeoverItemManaged(String name);
+
+  /// No description provided for @batchTakeoverItemSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} could not be added to management'**
+  String batchTakeoverItemSkipped(String name);
+
+  /// No description provided for @batchTakeoverItemPending.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is waiting to be managed'**
+  String batchTakeoverItemPending(String name);
+
+  /// No description provided for @batchTakeoverAfterSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'After management, {count, plural, =1{1 skill is} other{{count} skills are}} organized in one Library with a clear managed status.'**
+  String batchTakeoverAfterSemantics(int count);
+
+  /// No description provided for @batchTakeoverMoreSkills.
+  ///
+  /// In en, this message translates to:
+  /// **'+{count} more'**
+  String batchTakeoverMoreSkills(int count);
+
+  /// No description provided for @batchTakeoverTransitionSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Add these existing skills to SkillsGo management.'**
+  String get batchTakeoverTransitionSemantics;
+
+  /// No description provided for @batchTakeoverTransitionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'ORGANIZE'**
+  String get batchTakeoverTransitionLabel;
+
+  /// No description provided for @batchTakeoverPreservation.
+  ///
+  /// In en, this message translates to:
+  /// **'Your files, paths, and current workflows stay exactly where they are. SkillsGo only completes its local management records.'**
+  String get batchTakeoverPreservation;
+
+  /// No description provided for @batchTakeoverLaterHint.
+  ///
+  /// In en, this message translates to:
+  /// **'If you skip, you can use Manage existing skills from Library anytime.'**
+  String get batchTakeoverLaterHint;
+
+  /// No description provided for @batchTakeoverSkip.
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get batchTakeoverSkip;
+
   /// No description provided for @batchTakeoverConfirm.
   ///
   /// In en, this message translates to:
   /// **'Add to management'**
   String get batchTakeoverConfirm;
+
+  /// No description provided for @batchTakeoverExecutionRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry'**
+  String get batchTakeoverExecutionRetry;
 
   /// No description provided for @batchTakeoverResultTitle.
   ///
@@ -3013,6 +3187,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'SkillsGo could not restart Onboarding.'**
   String get restartOnboardingFailed;
+
+  /// No description provided for @libraryRefreshSettingsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh local Library'**
+  String get libraryRefreshSettingsTitle;
+
+  /// No description provided for @libraryRefreshSettingsDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Rescan installed Skills, Added Projects, Agents, and external Skills that can be managed. This does not install, update, or remove anything.'**
+  String get libraryRefreshSettingsDescription;
+
+  /// No description provided for @libraryRefreshSettingsAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh Library'**
+  String get libraryRefreshSettingsAction;
+
+  /// No description provided for @libraryRefreshSettingsPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing Library…'**
+  String get libraryRefreshSettingsPending;
+
+  /// No description provided for @libraryRefreshSettingsSuccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Local Library refreshed.'**
+  String get libraryRefreshSettingsSuccess;
+
+  /// No description provided for @libraryRefreshSettingsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'SkillsGo could not refresh the local Library.'**
+  String get libraryRefreshSettingsFailed;
 
   /// No description provided for @onboardingProjectError.
   ///

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on LibraryScreen state, SkillsGateway operations, reviewed update/management dialogs, Batch Takeover, reminders, and navigation animation.
- * [OUTPUT]: Provides Library loading, selection, Added Project, plan-authorized Batch Takeover, update, target-management, and detail-transition actions.
+ * [INPUT]: Depends on LibraryScreen state, SkillsGateway operations, reviewed update/management dialogs, the localized Batch Takeover story, reminders, and navigation animation.
+ * [OUTPUT]: Provides Library loading, shared-refresh state reconciliation, selection, Added Project, one-time automatic takeover introduction, representative illustration data, dialog-bound plan-authorized Batch Takeover execution, update, target-management, and detail-transition actions.
  * [POS]: Serves as the mutation and orchestration implementation of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,14 +11,27 @@ extension _LibraryActions on _LibraryScreenState {
     if (actionError != null) updateState(() => actionError = null);
     await ref.read(libraryProvider.notifier).refresh();
     if (!mounted) return;
+    _reconcileLibraryState();
+  }
+
+  void _reconcileLibraryState() {
+    if (!mounted) return;
+    final currentKeys = (skills ?? const <InstalledSkill>[])
+        .map(_librarySelectionKey)
+        .toSet();
+    final removedSkillKeys = selectedSkillKeys.difference(currentKeys);
+    final availableAgents = _agents.toSet();
+    final removedAgents = selectedAgents.difference(availableAgents);
+    final resetLocation =
+        selectedLocation.kind == _LibraryLocationKind.project &&
+        _selectedProject == null;
+    if (removedSkillKeys.isEmpty && removedAgents.isEmpty && !resetLocation) {
+      return;
+    }
     updateState(() {
-      final currentKeys = (skills ?? const <InstalledSkill>[])
-          .map(_librarySelectionKey)
-          .toSet();
-      selectedSkillKeys.removeWhere((key) => !currentKeys.contains(key));
-      selectedAgents.removeWhere((agent) => !_agents.contains(agent));
-      if (selectedLocation.kind == _LibraryLocationKind.project &&
-          _selectedProject == null) {
+      selectedSkillKeys.removeAll(removedSkillKeys);
+      selectedAgents.removeAll(removedAgents);
+      if (resetLocation) {
         selectedLocation = _LibraryLocationRoute.all;
       }
     });
@@ -122,63 +135,115 @@ extension _LibraryActions on _LibraryScreenState {
     }
   }
 
-  Future<void> _executeBatchTakeover() async {
+  Future<void> _initializeTakeoverPrompt() async {
+    try {
+      final seen = await widget.gateway.loadBatchTakeoverPromptSeen();
+      if (!mounted) return;
+      updateState(() {
+        takeoverPromptSeen = seen;
+        takeoverPromptPreferenceLoaded = true;
+      });
+    } on Object {
+      if (!mounted) return;
+      updateState(() {
+        takeoverPromptSeen = true;
+        takeoverPromptPreferenceLoaded = true;
+      });
+    }
+  }
+
+  void _scheduleAutomaticTakeoverPrompt(int? eligible) {
+    if (!TickerMode.valuesOf(context).enabled ||
+        !takeoverPromptPreferenceLoaded ||
+        takeoverPromptSeen ||
+        takeoverPromptScheduled ||
+        takingOver ||
+        selectedDetailSkill != null ||
+        eligible == null ||
+        eligible == 0) {
+      return;
+    }
+    takeoverPromptScheduled = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      unawaited(_executeBatchTakeover(automatic: true));
+    });
+  }
+
+  Future<void> _markTakeoverPromptSeen() async {
+    if (takeoverPromptSeen) return;
+    updateState(() => takeoverPromptSeen = true);
+    try {
+      await widget.gateway.markBatchTakeoverPromptSeen();
+    } on Object {
+      // The explicit takeover decision must not depend on preference storage.
+    }
+  }
+
+  Future<void> _executeBatchTakeover({bool automatic = false}) async {
     if (takingOver) return;
     final plan = takeoverPlan;
     final scope = _currentTakeoverScope;
     final eligible = _currentTakeoverEligible;
     if (plan == null || scope == null || eligible == null || eligible == 0) {
+      if (automatic) takeoverPromptScheduled = false;
       return;
     }
-    final confirmed = await showSkillsDialog<bool>(
+    var activePlan = plan;
+    var executionAttempts = 0;
+    final outcome = await showSkillsDialog<_BatchTakeoverDialogOutcome>(
       context: context,
-      builder: (context) => SkillsDialog(
-        title: Text(context.l10n.batchTakeoverTitle),
-        description: Text(context.l10n.batchTakeoverDescription),
-        actions: [
-          SkillsButton.outline(
-            onPressed: () => Navigator.pop(context, false),
-            child: Text(context.l10n.cancel),
-          ),
-          SkillsButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text(context.l10n.batchTakeoverConfirm),
-          ),
-        ],
+      barrierDismissible: false,
+      builder: (context) => _BatchTakeoverDialog(
+        eligibleCount: eligible,
+        skillPreviews: _takeoverPreviews,
+        onConfirm: () async {
+          if (executionAttempts > 0) {
+            activePlan = await widget.gateway.planBatchTakeover(
+              projectRoots: projects
+                  .where((project) => project.isAccessible)
+                  .map((project) => project.path)
+                  .toList(growable: false),
+            );
+          }
+          executionAttempts++;
+          updateState(() {
+            takingOver = true;
+            actionError = null;
+          });
+          try {
+            final result = await widget.gateway.executeBatchTakeover(
+              activePlan,
+              scope,
+            );
+            await load();
+            return result;
+          } finally {
+            if (mounted) updateState(() => takingOver = false);
+          }
+        },
       ),
     );
-    if (confirmed != true || !mounted) return;
-    updateState(() {
-      takingOver = true;
-      actionError = null;
-    });
-    try {
-      final takeover = await widget.gateway.executeBatchTakeover(plan, scope);
-      await load();
-      if (!mounted) return;
-      await showSkillsDialog<void>(
-        context: context,
-        builder: (context) => SkillsDialog(
-          title: Text(context.l10n.batchTakeoverResultTitle),
-          description: Text(
-            context.l10n.batchTakeoverSummary(
-              takeover.takenOver,
-              takeover.skipped,
-            ),
-          ),
-          actions: [
-            SkillsButton(
-              onPressed: () => Navigator.pop(context),
-              child: Text(context.l10n.batchTakeoverClose),
-            ),
-          ],
-        ),
-      );
-    } on Object catch (caught) {
-      if (mounted) updateState(() => actionError = caught);
-    } finally {
-      if (mounted) updateState(() => takingOver = false);
+    if (automatic && outcome != null) {
+      await _markTakeoverPromptSeen();
     }
+    takeoverPromptScheduled = automatic && outcome == null;
+  }
+
+  List<BatchTakeoverPreview> get _takeoverPreviews {
+    final location = selectedLocation;
+    final plan = takeoverPlan;
+    if (plan == null) return const [];
+    return plan.previews
+        .where((preview) {
+          if (location.kind == _LibraryLocationKind.all) return true;
+          if (location.kind == _LibraryLocationKind.global) {
+            return preview.scope == InstallationScope.user;
+          }
+          return _selectedProject != null &&
+              preview.projectRoot == _selectedProject!.path;
+        })
+        .toList(growable: false);
   }
 
   Future<void> checkUpdates() async {

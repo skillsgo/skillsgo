@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, SharedPreferences, directory pickers, project inspection, App locale, and Hub health CLI command.
- * [OUTPUT]: Provides appearance, language, reminder, onboarding, Added Project, Hub origin, risk policy, storage, and App-version persistence operations.
+ * [OUTPUT]: Provides appearance, language, reminder, one-time takeover-introduction, onboarding, Added Project, Hub origin, risk policy, storage, and App-version persistence operations.
  * [POS]: Serves as the local preference and project-reference capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -104,6 +104,21 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
       preferences.setBool(_updateReminderKey, settings.updateAvailable),
       preferences.setBool(_securityReminderKey, settings.securityAdvisory),
     ]);
+  }
+
+  @override
+  Future<bool> loadBatchTakeoverPromptSeen() async =>
+      (await SharedPreferences.getInstance()).getBool(
+        _batchTakeoverPromptSeenKey,
+      ) ??
+      false;
+
+  @override
+  Future<void> markBatchTakeoverPromptSeen() async {
+    await (await SharedPreferences.getInstance()).setBool(
+      _batchTakeoverPromptSeenKey,
+      true,
+    );
   }
 
   @override

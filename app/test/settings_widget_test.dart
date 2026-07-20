@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Settings navigation, motion, CLI, reminder, Agent, Hub Origin, and risk-policy behavior.
+ * [OUTPUT]: Specifies Settings navigation, motion, CLI, reminder, Agent, Hub Origin, risk-policy, and local Library refresh behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -228,6 +228,37 @@ void main() {
       expect(find.text('Welcome to SkillsGo'), findsOneWidget);
     },
   );
+
+  testWidgets('Advanced Settings ends with the local Library refresh', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 1200));
+    final gateway = FakeSkillsGateway();
+    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+
+    final refresh = find.byKey(const Key('refresh-local-library'));
+    final restart = find.byKey(const Key('restart-onboarding'));
+    expect(refresh, findsOneWidget);
+    expect(
+      tester.getTopLeft(refresh).dy,
+      greaterThan(tester.getTopLeft(restart).dy),
+    );
+    final projectLoads = gateway.projectLoads;
+    final agentInspections = gateway.agentInspections;
+
+    await tester.tap(refresh);
+    await tester.pumpAndSettle();
+
+    expect(gateway.projectLoads, projectLoads + 1);
+    expect(gateway.agentInspections, agentInspections + 1);
+    expect(find.text('Local Library refreshed.'), findsOneWidget);
+  });
 
   testWidgets('reminder settings persist and drive the Library update prompt', (
     tester,

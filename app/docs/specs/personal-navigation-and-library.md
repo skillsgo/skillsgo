@@ -103,7 +103,7 @@ Clean installations first complete the two-step Mandatory Onboarding defined in 
 70. As a user reviewing a Hub match, I want source and version confirmed before association, so that content is not replaced by assumption.
 71. As a user pasting an explicit Git source, I want the App to resolve it through the bundled CLI and render the returned Repository members or single Skill with the existing discovery cards, so that uncataloged public sources remain installable without direct App-to-Hub protocol coupling.
 
-For GitHub `owner/repository` shorthand, ordinary search retains precedence. The App retries the value as `github.com/owner/repository` through the CLI only when the first search page is empty; an existing catalog match is always preserved.
+GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/repository`, and HTTPS URL forms are equivalent explicit-source inputs. The App sends each form directly to the CLI, which normalizes it to the canonical `github.com/owner/repository` identity before Hub resolution; these inputs do not run keyword search first.
 71. As a user with custom content, I want to import an unmatched External Installation as a Local Skill, so that my own Skills can use the same management workflow.
 72. As a Local Skill user, I want to install it elsewhere, export it, or remove it, so that local content remains useful without being published.
 73. As a Local Skill author, I want import to remain local, so that adoption never publishes private content to a Hub.
@@ -126,6 +126,7 @@ For GitHub `owner/repository` shorthand, ordinary search retains precedence. The
 90. As a maintainer, I want App-to-CLI communication to use stable structured contracts, so that localized human output never breaks the GUI.
 91. As a maintainer, I want every operation result associated with an explicit Installation Target, so that partial failure and retry are deterministic.
 92. As an international contributor, I want repository documentation, specifications, ADRs, and issue content in English, so that collaboration is not language-gated.
+93. As a user with manageable existing Skills, I want one localized and truthful Before/After introduction only after Library preflight succeeds, so that I understand the value before choosing once and can still use the counted manual action after skipping.
 
 ## Implementation Decisions
 
@@ -133,7 +134,8 @@ For GitHub `owner/repository` shorthand, ordinary search retains precedence. The
 - Use the shared floating rounded left-rail shell for Library and Settings. Rail items use visible labels; the rail is not an icon-only clone of Burrow. Discover keeps its compact collection navigation above the result surface.
 - Discover rail order is Search, Ranking, Trending, and Hot. Search is the initial route.
 - Library rail order is All Skills, Global, and every Added Project. All Skills and Global remain fixed at the top, only the Added Project list scrolls, and Add Project remains pinned at the bottom. Fixed dividers separate the scrollable project list from both the leading destinations and footer action; neither divider moves with project scrolling. The project list uses one slim, rounded desktop scrollbar that does not compete with project labels or selected capsules; the platform must not add a second hover scrollbar. Added Project rows use a compact desktop density while the fixed destinations and Add Project retain their larger navigation targets. The toolbar owns search, update status, and a combinable Agent multi-select; it does not repeat project selection. An empty Added Project uses a concise, project-name-independent title and a Browse Skills action that returns to Discover without setup guidance.
-- Settings rail order is General, Agents, Hub, Installation Policy, Storage, and About.
+- Present the first eligible Batch Takeover plan in the active Library as a one-time, persisted Before/After introduction. Keep the illustration count-bound, localized, accessible, reduced-motion-aware, and separate from authorization; both Confirm and Skip complete the introduction, while the existing counted action remains the permanent manual entry.
+- Settings rail order is General, Reminders, Agents, and Advanced. Advanced ends with an explicit local Library refresh that rescans local inventory without mutating installations.
 - Preserve each top-level destination's last subroute, search input, scroll position, and in-flight operations for the current session. Detail navigation carries an explicit origin so Back restores the source view.
 - Production App packages a platform-compatible SkillsGo CLI and verifies its availability and compatibility at startup. The bundled executable is not installed into the user's system `PATH`.
 - Keep the App's highest test and orchestration seam as `SkillsGateway`. UI code receives domain objects and operations rather than directly invoking HTTP, processes, or the filesystem.

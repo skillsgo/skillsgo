@@ -60,7 +60,7 @@ void main() {
   testWidgets('Library refresh retains the last valid inventory', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.binding.setSurfaceSize(const Size(1200, 1200));
     final gateway = FakeSkillsGateway();
     await tester.pumpWidget(SkillsGoApp(gateway: gateway));
     await tester.pumpAndSettle();
@@ -70,7 +70,13 @@ void main() {
 
     final refresh = Completer<List<InstalledSkill>>();
     gateway.libraryCompleter = refresh;
-    await tester.tap(find.byKey(const Key('library-refresh')));
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('refresh-local-library')));
+    await tester.pump();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pump();
 
     expect(find.text('local-skill'), findsOneWidget);
@@ -83,7 +89,7 @@ void main() {
   testWidgets('Library clears an Agent filter when that Agent disappears', (
     tester,
   ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.binding.setSurfaceSize(const Size(1200, 1200));
     final agents = <String>['codex'];
     await tester.pumpWidget(
       SkillsGoApp(gateway: FakeSkillsGateway(agentNames: agents)),
@@ -100,7 +106,13 @@ void main() {
     expect(find.text('Codex'), findsOneWidget);
 
     agents.clear();
-    await tester.tap(find.byKey(const Key('library-refresh')));
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Advanced'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('refresh-local-library')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
 
     expect(find.text('Codex'), findsNothing);
@@ -326,6 +338,8 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('primary-destination-library')));
     await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key('library-refresh')), findsNothing);
 
     final allSkills = libraryLocation('All Skills');
     final global = libraryLocation('Global');

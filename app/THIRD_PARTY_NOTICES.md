@@ -65,6 +65,7 @@ released under the MIT License.
 ## Portal Labs
 
 `lib/ui/primary_folder_shell.dart` is derived from the Folder Tabs component,
+`lib/ui/physics_collision_field.dart` vendors and modifies Physics Collision Card,
 `lib/ui/bloom_color_picker/` vendors and modifies Bloom Color Picker, and
 `lib/ui/discrete_tabs/` vendors and modifies Discrete Tabs. The
 `lib/ui/install_location_island/` component is derived from and substantially

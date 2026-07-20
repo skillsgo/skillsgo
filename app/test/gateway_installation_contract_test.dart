@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses controlled CLI arguments and responses, temporary local Skill trees, file pickers, and the production SkillsGateway adapter.
- * [OUTPUT]: Specifies hostile-argument safety, direct installation, local detail, External inspection, exact Batch Takeover planning and scope-bound execution, and Local export contracts.
+ * [OUTPUT]: Specifies hostile-argument safety, direct installation, local detail, External inspection, exact Batch Takeover planning and named scope-bound execution results, and Local export contracts.
  * [POS]: Serves as the Installation Request and local Skill contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -376,7 +376,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":2,"planId":"plan-123","summary":{"eligible":4,"skipped":1},"scopes":{"user":{"eligible":1},"projects":[{"projectRoot":"/tmp/Workspace With Spaces","eligible":2},{"projectRoot":"/tmp/Second Workspace","eligible":1}]}}',
+            '{"schemaVersion":3,"planId":"plan-123","summary":{"eligible":4,"skipped":1},"scopes":{"user":{"eligible":1},"projects":[{"projectRoot":"/tmp/Workspace With Spaces","eligible":2},{"projectRoot":"/tmp/Second Workspace","eligible":1}]},"previews":[{"name":"demo","skillId":"github.com/acme/skills/-/demo","scope":"user"}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -395,6 +395,7 @@ void main() {
     expect(result.id, 'plan-123');
     expect(result.allEligibleCount, 4);
     expect(result.userEligibleCount, 1);
+    expect(result.previews.single.skillId, 'github.com/acme/skills/-/demo');
     expect(result.eligibleForProject('/tmp/Workspace With Spaces'), 2);
     expect(result.eligibleForProject('/tmp/Second Workspace'), 1);
     expect(runner.lastArguments, [
@@ -416,7 +417,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":2,"summary":{"takenOver":2,"skipped":1},"results":[{"skillId":"github.com/acme/skills/-/demo","artifactSkillId":"captured.skillsgo/source/content/demo","version":"captured-content","status":"taken-over","target":{"agent":"codex","scope":"user","mode":"copy","path":"/tmp/demo"}},{"skillId":"github.com/acme/skills/-/project-demo","artifactSkillId":"captured.skillsgo/source/project/project-demo","version":"captured-project","status":"taken-over","target":{"agent":"claude-code","scope":"project","projectRoot":"/tmp/Workspace With Spaces","mode":"copy","path":"/tmp/Workspace With Spaces/.claude/skills/demo"}},{"status":"skipped","reason":"missing-target","target":{"scope":"project","projectRoot":"/tmp/Workspace With Spaces","mode":"copy","path":""}}]}',
+            '{"schemaVersion":3,"summary":{"takenOver":2,"skipped":1},"results":[{"name":"demo","skillId":"github.com/acme/skills/-/demo","artifactSkillId":"captured.skillsgo/source/content/demo","version":"captured-content","status":"taken-over","target":{"agent":"codex","scope":"user","mode":"copy","path":"/tmp/demo"}},{"name":"project-demo","skillId":"github.com/acme/skills/-/project-demo","artifactSkillId":"captured.skillsgo/source/project/project-demo","version":"captured-project","status":"taken-over","target":{"agent":"claude-code","scope":"project","projectRoot":"/tmp/Workspace With Spaces","mode":"copy","path":"/tmp/Workspace With Spaces/.claude/skills/demo"}},{"name":"missing-demo","status":"skipped","reason":"missing-target","target":{"scope":"project","projectRoot":"/tmp/Workspace With Spaces","mode":"copy","path":""}}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -440,6 +441,11 @@ void main() {
 
     expect(result.takenOver, 2);
     expect(result.skipped, 1);
+    expect(result.items.map((item) => (item.name, item.status)), [
+      ('demo', BatchTakeoverItemStatus.takenOver),
+      ('project-demo', BatchTakeoverItemStatus.takenOver),
+      ('missing-demo', BatchTakeoverItemStatus.skipped),
+    ]);
     expect(runner.lastArguments, [
       'takeover',
       '--plan',

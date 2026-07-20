@@ -1,6 +1,6 @@
 #!/bin/sh
 # [INPUT]: Depends on git plus a writable disposable /e2e directory.
-# [OUTPUT]: Creates deterministic local Git remotes for Repository discovery, version, history, selector, and invalid-candidate journeys.
+# [OUTPUT]: Creates deterministic local Git remotes for Repository discovery, version, ancestor-based pseudo-version, movable-branch refresh, history, selector, and invalid-candidate journeys.
 # [POS]: Serves as the source-host fixture boundary for cross-product Repository E2E tests.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 set -eu
@@ -88,6 +88,20 @@ new_repo untagged
 untagged="$work_root/untagged"
 skill "$untagged/skills/head" head-skill "Untagged default branch."
 commit_push "$untagged" "untagged head"
+
+new_repo tagged-ahead
+tagged_ahead="$work_root/tagged-ahead"
+skill "$tagged_ahead/skills/head" tagged-head-skill "Tagged base."
+commit_push "$tagged_ahead" "tagged base"
+git -C "$tagged_ahead" tag v1.0.0
+git -C "$tagged_ahead" push origin v1.0.0 >/dev/null
+skill "$tagged_ahead/skills/head" tagged-head-skill "Untagged descendant."
+commit_push "$tagged_ahead" "untagged descendant"
+
+new_repo movable
+movable="$work_root/movable"
+skill "$movable/skills/head" movable-head-skill "Movable C1."
+commit_push "$movable" "movable C1"
 
 new_repo duplicate
 duplicate="$work_root/duplicate"

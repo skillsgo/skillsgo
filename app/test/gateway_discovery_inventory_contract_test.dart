@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses controlled CLI discovery and inventory responses plus the production SkillsGateway adapter.
- * [OUTPUT]: Specifies public discovery, explicit Git source, unified inventory, Agent catalog, visibility, and schema validation contracts.
+ * [INPUT]: Uses controlled CLI discovery and inventory responses plus the production SkillsGateway adapter and equivalent GitHub source aliases.
+ * [OUTPUT]: Specifies public discovery including the four-row empty-input matrix, direct explicit-source routing for GitHub aliases, unified inventory, Agent catalog, visibility, and schema validation contracts.
  * [POS]: Serves as the discovery and local inventory contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -64,6 +64,87 @@ void main() {
     expect(installed.single.targetCount, 2);
   });
 
+  test(
+    'empty-input discovery matrix preserves browse and search semantics',
+    () async {
+      final tests =
+          <
+            ({
+              String name,
+              DiscoveryCollection collection,
+              String? wireCollection,
+            })
+          >[
+            (
+              name: 'empty search is rejected',
+              collection: DiscoveryCollection.search,
+              wireCollection: null,
+            ),
+            (
+              name: 'ranking browses without a query',
+              collection: DiscoveryCollection.ranking,
+              wireCollection: 'all_time',
+            ),
+            (
+              name: 'trending browses without a query',
+              collection: DiscoveryCollection.trending,
+              wireCollection: 'trending',
+            ),
+            (
+              name: 'hot browses without a query',
+              collection: DiscoveryCollection.hot,
+              wireCollection: 'hot',
+            ),
+          ];
+
+      expect(tests, hasLength(4));
+      for (final tc in tests) {
+        final runner = FakeProcessRunner();
+        if (tc.wireCollection != null) {
+          runner.responses.addAll([
+            ProcessOutput(
+              exitCode: 0,
+              stdout:
+                  '{"collection":"${tc.wireCollection}","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}',
+              stderr: '',
+            ),
+            const ProcessOutput(
+              exitCode: 0,
+              stdout: '{"schemaVersion":5,"entries":[]}',
+              stderr: '',
+            ),
+          ]);
+        }
+        final gateway = RealSkillsGateway(
+          processRunner: runner,
+          initialCliPath: '/usr/local/bin/skillsgo',
+          hubBaseUrl: 'https://hub.example.test',
+        );
+
+        if (tc.wireCollection == null) {
+          await expectLater(
+            gateway.discover(tc.collection),
+            throwsA(
+              isA<SkillsException>().having(
+                (error) => error.kind,
+                'kind',
+                SkillsFailureKind.validation,
+              ),
+            ),
+            reason: tc.name,
+          );
+          expect(runner.calls, isEmpty, reason: tc.name);
+          continue;
+        }
+
+        final page = await gateway.discover(tc.collection);
+        expect(page.skills, isEmpty, reason: tc.name);
+        expect(runner.calls.first.arguments, contains(tc.wireCollection));
+        expect(runner.calls.first.arguments, isNot(contains('--query')));
+      }
+    },
+  );
+
   test('explicit Git source discovery goes through CLI info', () async {
     final runner = FakeProcessRunner()
       ..responses.addAll([
@@ -110,6 +191,53 @@ void main() {
       '--output',
       'json',
     ]);
+  });
+
+  test('GitHub aliases all bypass keyword search and use CLI info', () async {
+    const repositoryInfo =
+        '{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/owner/repo","Version":"v0.0.0-20260720120000-abcdef123456","Time":"2026-07-20T12:00:00Z","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/owner/repo/-/skills/demo","Version":"v0.0.0-20260720120000-abcdef123456","Name":"demo","Description":"Demo Skill","Installs":0,"Stars":0,"TrustLevel":"unverified","RiskAssessment":"unknown","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","TreeSHA":"tree","ContentDigest":"sha256:digest","ArchiveSize":12}]}';
+    for (final source in const [
+      'owner/repo@main',
+      'github/owner/repo@main',
+      'github.com/owner/repo@main',
+      'https://github.com/owner/repo@main',
+    ]) {
+      final runner = FakeProcessRunner()
+        ..responses.addAll(const [
+          ProcessOutput(exitCode: 0, stdout: repositoryInfo, stderr: ''),
+          ProcessOutput(
+            exitCode: 0,
+            stdout: '{"schemaVersion":5,"entries":[]}',
+            stderr: '',
+          ),
+        ]);
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/usr/local/bin/skillsgo',
+        hubBaseUrl: 'https://hub.example.test',
+      );
+
+      final page = await gateway.discover(
+        DiscoveryCollection.search,
+        query: source,
+      );
+
+      expect(page.repository?.id, 'github.com/owner/repo', reason: source);
+      expect(page.skills.single.id, 'github.com/owner/repo/-/skills/demo');
+      expect(runner.calls.first.arguments, [
+        'info',
+        source,
+        '--hub',
+        'https://hub.example.test',
+        '--output',
+        'json',
+      ]);
+      expect(
+        runner.calls.any((call) => call.arguments.contains('discover')),
+        isFalse,
+        reason: source,
+      );
+    }
   });
 
   test('listInstalled parses unified inventory for explicit locations', () async {

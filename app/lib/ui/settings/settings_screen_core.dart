@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the Settings journey library, SkillsGateway, appearance state, Agent catalog, Hub/risk/onboarding operations, and route navigation.
- * [OUTPUT]: Provides the public SettingsScreen plus lifecycle, persistence actions, route state, wallpaper animation, and root layout.
+ * [INPUT]: Depends on the Settings journey library, SkillsGateway, appearance state, Agent and Library controllers, Hub/risk/onboarding operations, and route navigation.
+ * [OUTPUT]: Provides the public SettingsScreen plus lifecycle, persistence actions, Library-refresh feedback state, route state, wallpaper animation, and root layout.
  * [POS]: Serves as the state-owning core of the Settings journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -56,6 +56,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen>
   bool loadingSettings = true;
   bool testingHub = false;
   bool restartingOnboarding = false;
+  bool refreshingLibrary = false;
+  bool? libraryRefreshSucceeded;
   String? notice;
   AgentCatalog? get agentCatalog => ref.watch(agentCatalogProvider).catalog;
   Object? get agentInspectionError => ref.watch(agentCatalogProvider).error;

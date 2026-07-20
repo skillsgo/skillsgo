@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on discovery audit models, installation targets, and shared Library, project, Agent, onboarding, health, trust, and risk vocabulary.
- * [OUTPUT]: Provides Agent catalogs, Added Projects, onboarding state, unified Library entries, local/remote Skill detail, and Batch Takeover scope/plan/result values.
+ * [OUTPUT]: Provides Agent catalogs, Added Projects, onboarding state, unified Library entries, local/remote Skill detail, and Batch Takeover scope/plan/preview plus named per-item result values.
  * [POS]: Serves as the focused local Library and inventory model module shared by onboarding, Library journeys, and CLI decoding.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,10 +9,31 @@ import 'installation_models.dart';
 import 'system_models.dart';
 
 class BatchTakeoverResult {
-  const BatchTakeoverResult({required this.takenOver, required this.skipped});
+  const BatchTakeoverResult({
+    required this.takenOver,
+    required this.skipped,
+    this.items = const [],
+  });
 
   final int takenOver;
   final int skipped;
+  final List<BatchTakeoverItemResult> items;
+}
+
+enum BatchTakeoverItemStatus { takenOver, skipped }
+
+class BatchTakeoverItemResult {
+  const BatchTakeoverItemResult({
+    required this.name,
+    required this.skillId,
+    required this.status,
+    this.reason = '',
+  });
+
+  final String name;
+  final String skillId;
+  final BatchTakeoverItemStatus status;
+  final String reason;
 }
 
 enum BatchTakeoverScopeKind { all, user, project }
@@ -36,12 +57,14 @@ class BatchTakeoverPlan {
     required this.allEligibleCount,
     required this.userEligibleCount,
     this.eligibleCountByProjectRoot = const {},
+    this.previews = const [],
   });
 
   final String id;
   final int allEligibleCount;
   final int userEligibleCount;
   final Map<String, int> eligibleCountByProjectRoot;
+  final List<BatchTakeoverPreview> previews;
 
   int eligibleCount(BatchTakeoverScope scope) => switch (scope.kind) {
     BatchTakeoverScopeKind.all => allEligibleCount,
@@ -51,6 +74,20 @@ class BatchTakeoverPlan {
 
   int eligibleForProject(String projectRoot) =>
       eligibleCountByProjectRoot[projectRoot] ?? 0;
+}
+
+class BatchTakeoverPreview {
+  const BatchTakeoverPreview({
+    required this.name,
+    required this.skillId,
+    required this.scope,
+    this.projectRoot = '',
+  });
+
+  final String name;
+  final String skillId;
+  final InstallationScope scope;
+  final String projectRoot;
 }
 
 class AgentUserTarget {

@@ -19,6 +19,6 @@ This workspace owns macOS desktop journeys that drive the rendered Flutter App a
 
 - `app/integration_test/machine_failure_recovery_test.dart`: routes a rendered explicit-source request through the bundled CLI to an unreachable Hub and verifies App-owned localized recovery without raw diagnostics.
 - `app/integration_test/repository_install_all_test.dart`: searches a public GitHub Repository through the disposable Hub and verifies that the repository-wide action opens the rendered installation-location surface backed by the real CLI catalog.
-- `app/integration_test/takeover_management_test.dart`: manages supported existing user and Added Project Skills through rendered location menus, verifies exact counts before and after each scoped action, and preserves the original files while the bundled CLI persists complete management metadata.
+- `app/integration_test/takeover_management_test.dart`: dismisses the one-time rendered takeover introduction, then manages supported existing user and Added Project Skills through location menus, verifies exact counts before and after each scoped action, and preserves the original files while the bundled CLI persists complete management metadata.
 
 [PROTOCOL]: Update this map when App E2E runtime, entry points, or isolation rules change.

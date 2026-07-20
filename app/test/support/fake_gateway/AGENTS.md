@@ -3,7 +3,7 @@
 
 ## Members
 
-- `fake_gateway_core.dart`: owns constructor controls, shared scenario state, onboarding, projects, and canonical fixtures.
+- `fake_gateway_core.dart`: owns constructor controls, shared scenario state, onboarding, one-time takeover-introduction preferences, projects, and canonical fixtures.
 - `fake_gateway_system.dart`: implements CLI detection, discovery, remote detail, and system status behavior.
 - `fake_gateway_inventory.dart`: implements installed inventory, local detail, and update-state inspection behavior.
 - `fake_gateway_installation.dart`: implements installation planning, execution, and Local export behavior.

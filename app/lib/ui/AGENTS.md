@@ -28,6 +28,8 @@
 - `onboarding_screen.dart` and `onboarding/`: expose the blocking two-step clean-install journey while hiding welcome, Agent inventory, project selection, and project-row rendering.
 - `native_components.dart` and `native/`: expose the Material-only desktop component layer while partitioning buttons/loading, cards/selection, and feedback/input controls.
 - `primary_folder_shell.dart`: adapts Portal Labs' MIT-licensed FolderTabs shape and spring motion into an accessible, full-height SkillsGo shell that preserves destination page state.
+- `physics_collision_field.dart`: vendors and adapts Portal Labs' Physics Collision Card into a deterministic, reduced-motion-aware interaction primitive for explanatory product scenes.
+- `archive_folder/`: vendors Portal Labs' Archive Folder, ArchiveItem, and style, adding structured front copy, an arbitrary front-surface child slot, and opt-in fixed label geometry for interactive product content.
 - `project_identity_icon.dart`: renders cached high-confidence Added Project icons with deterministic project-name monogram fallback across project selectors.
 - `settings_screen.dart` and `settings/`: expose personalization, reminders, Agent detection/recovery, integration, and advanced settings as one independent screen library.
 - `target_management_controller.dart`: owns immutable Target Management execution, progress, result, and error state through an auto-disposed Riverpod family.

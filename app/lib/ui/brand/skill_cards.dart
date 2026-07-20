@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Skill discovery summaries, installation presenters, repository identity, trust/risk chips, hover state, and localized copy.
- * [OUTPUT]: Provides interactive Skill cards, repository avatars with network fallback, and repository identity formatting.
+ * [OUTPUT]: Provides interactive Skill cards, repository avatars with optional caller-fixed fallback colors, and repository identity formatting.
  * [POS]: Serves as the discovery-card segment of the SkillsGo brand library.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -164,11 +164,15 @@ class RepositoryAvatar extends StatefulWidget {
     this.imageUrl,
     this.size = 36,
     this.borderRadius = 8,
+    this.backgroundColor,
+    this.fallbackForegroundColor,
   });
   final String source;
   final String? imageUrl;
   final double size;
   final double borderRadius;
+  final Color? backgroundColor;
+  final Color? fallbackForegroundColor;
 
   @override
   State<RepositoryAvatar> createState() => _RepositoryAvatarState();
@@ -196,13 +200,19 @@ class _RepositoryAvatarState extends State<RepositoryAvatar> {
       alignment: Alignment.center,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: imageUrl == null
-            ? scheme.secondaryContainer
-            : scheme.surfaceContainerHighest,
+        color:
+            widget.backgroundColor ??
+            (imageUrl == null
+                ? scheme.secondaryContainer
+                : scheme.surfaceContainerHighest),
         borderRadius: BorderRadius.circular(widget.borderRadius),
       ),
       child: imageUrl == null
-          ? _RepositoryAvatarFallback(source: widget.source, size: widget.size)
+          ? _RepositoryAvatarFallback(
+              source: widget.source,
+              size: widget.size,
+              foregroundColor: widget.fallbackForegroundColor,
+            )
           : Image.network(
               imageUrl,
               width: widget.size,
@@ -213,6 +223,7 @@ class _RepositoryAvatarState extends State<RepositoryAvatar> {
                   : _RepositoryAvatarFallback(
                       source: widget.source,
                       size: widget.size,
+                      foregroundColor: widget.fallbackForegroundColor,
                     ),
               errorBuilder: (_, _, _) {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -223,6 +234,7 @@ class _RepositoryAvatarState extends State<RepositoryAvatar> {
                 return _RepositoryAvatarFallback(
                   source: widget.source,
                   size: widget.size,
+                  foregroundColor: widget.fallbackForegroundColor,
                 );
               },
             ),
@@ -231,9 +243,14 @@ class _RepositoryAvatarState extends State<RepositoryAvatar> {
 }
 
 class _RepositoryAvatarFallback extends StatelessWidget {
-  const _RepositoryAvatarFallback({required this.source, required this.size});
+  const _RepositoryAvatarFallback({
+    required this.source,
+    required this.size,
+    this.foregroundColor,
+  });
   final String source;
   final double size;
+  final Color? foregroundColor;
 
   @override
   Widget build(BuildContext context) => Text(
@@ -241,7 +258,8 @@ class _RepositoryAvatarFallback extends StatelessWidget {
       source,
     ).substring(0, _repositoryOwner(source).length.clamp(0, 2)).toUpperCase(),
     style: TextStyle(
-      color: Theme.of(context).colorScheme.onSecondaryContainer,
+      color:
+          foregroundColor ?? Theme.of(context).colorScheme.onSecondaryContainer,
       fontWeight: FontWeight.w700,
       fontSize: (size * .34).clamp(12, 32),
     ),

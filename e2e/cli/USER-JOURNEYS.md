@@ -235,7 +235,7 @@ Status: implemented through a human HTTPS source, one inherited selector, one re
 
 As a CLI user, I want omitted queries to prefer the highest stable tag, fall back to the highest prerelease, and resolve an untagged default branch once to a pseudo-version.
 
-Status: implemented against deterministic tagged, prerelease-only, and untagged Git remotes by `j28_repository_version_selection_test.go`.
+Status: implemented against deterministic tagged, prerelease-only, untagged, and tagged-with-untagged-descendant Git remotes, including Go-compatible ancestor-based pseudo-version generation, by `j28_repository_version_selection_test.go`.
 
 ### J29 — Preserve disappeared Skill history
 
@@ -331,6 +331,22 @@ The journey sends `SIGKILL` after the transaction journal appears, then verifies
 
 Status: implemented with a real released-CLI process interruption by `j42_takeover_interrupted_commit_test.go`.
 
+### J43 — Re-resolve a movable query after the remote branch advances
+
+As a user who installed a Repository from `main` at C1, I want a later explicit `main` search to observe C2 without silently changing my installed version.
+
+The repeated movable Info request bypasses HTTP caches, resolves the refreshed remote-tracking branch to a new pseudo-version, returns C2 content, and leaves the Workspace Manifest pinned to C1 until a separate confirmed installation occurs.
+
+Status: implemented with a deterministic local Repository advanced from C1 to C2 during the running scenario by `j43_movable_query_refresh_test.go`.
+
+### J44 — Preserve versions when an untagged Repository starts publishing tags
+
+As a user who previously resolved C1 as F1 before a Repository published tags, I want that immutable version to remain available after C1 becomes V1 and the default branch advances to C2.
+
+The old F1 still resolves to C1, omitted/latest resolution selects V1 at C1, and an explicit `main` query resolves C2 as the ancestor-based F2 without rewriting either historical identity.
+
+Status: implemented through released CLI Info requests against a deterministic Repository transitioned from untagged C1 to tagged V1 and then advanced to C2 by `j44_no_tag_to_tag_transition_test.go`.
+
 ## GitHub Issue #27 User-Story Coverage Index
 
 The numbered user stories in #27 are release-reviewed through these black-box journeys:
@@ -355,3 +371,5 @@ The numbered user stories in #27 are release-reviewed through these black-box jo
 | 41: display identity versus escaped HTTP path | J34 |
 | 42: explicit SkillsGo protocol divergence and future-resource isolation | J32, J35 |
 | 43: `skillsgo.mod`, Agent target restoration, and `/mod` versus `/api/v1` separation | J36 |
+| Movable query refresh and installed-version separation | J43 |
+| Untagged F1 preservation after V1 publication and C2 advance | J44 |
