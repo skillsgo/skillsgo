@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Riverpod, SkillsGateway discovery contracts, and the App-scoped Gateway provider.
- * [OUTPUT]: Provides immutable per-route discovery and Repository-summary caches plus query-bound, race-safe initial-load, locale reload, refresh, and pagination actions.
+ * [OUTPUT]: Provides immutable per-route discovery and Repository-summary caches plus query-bound, race-safe, lifecycle-safe initial-load, locale reload, refresh, and pagination actions.
  * [POS]: Serves as the Discover journey's business-state boundary; scroll, focus, and transitions remain widget-owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -162,6 +162,7 @@ class DiscoverController extends Notifier<DiscoverState> {
         query: requestQuery,
         offset: nextOffset,
       );
+      if (!ref.mounted) return;
       final latest = state.routes[route]!;
       if (generation != latest.generation) return;
       state = state.replace(
@@ -179,6 +180,7 @@ class DiscoverController extends Notifier<DiscoverState> {
         ),
       );
     } catch (error) {
+      if (!ref.mounted) return;
       final latest = state.routes[route]!;
       if (generation != latest.generation) return;
       state = state.replace(

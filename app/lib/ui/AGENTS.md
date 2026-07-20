@@ -3,32 +3,33 @@
 
 ## Members
 
-- `app_shell.dart`: gates clean installs through Mandatory Onboarding, then composes the desktop shell, primary destination navigation, App-scoped appearance state, CLI recovery banner, and shared UI helpers consumed by the split feature parts.
+- `app_shell.dart`: gates clean installs through Mandatory Onboarding, then composes the desktop shell, primary destination navigation, App-scoped appearance state, and CLI recovery banner.
+- `ui_support.dart`: centralizes localized failure copy, status labels, target identities, folder-theme conversion, and small operation-result primitives shared by independent journey libraries.
 - `app_providers.dart`: defines the application-scoped Riverpod dependency boundary for `SkillsGateway`.
-- `agent_catalog_controller.dart`: owns the App-scoped stale-while-revalidate Agent catalog, periodic refresh, single-flight loading, and mutation invalidation.
+- `agent_catalog_controller.dart`: owns the App-scoped stale-while-revalidate Agent catalog, periodic refresh, lifecycle-safe single-flight loading, and mutation invalidation.
 - `appearance_controller.dart`: owns immutable App appearance and language settings plus their optimistic persistence through Riverpod.
 - `discover_controller.dart`: owns immutable, race-safe Discover route and Repository-summary caches, search, locale reload, loading, errors, and pagination through Riverpod.
-- `discover_screen.dart`: renders the Discover destination with leaderboard-style search, collection tabs, metadata-rich Repository source headers, route-local results, detail transitions, and installation entry points as an `app_shell.dart` library part.
-- `install_operation_controller.dart`: owns immutable per-Skill direct installation execution and error state through a Riverpod family.
-- `installation_flows.dart`: renders remote Skill detail plus direct confirmed Installation, Update, Target Management, risk, progress, result, and retry flows as an `app_shell.dart` library part.
-- `library_controller.dart`: owns immutable Library content plus initial-load, stale-refresh, and load-error transitions through Riverpod.
-- `library_screen.dart`: renders the unified Library journey with fixed All and Global locations, fixed header/footer section dividers, an independently scrollable compact Added Project rail, pinned multi-directory project addition, a concise project-empty route back to Discover, combinable Agent filtering, location-scoped one-confirmation Batch Takeover with next-frame progress, persisted update and safety reminders, exact External removal, Local detail, export, and installation targets as an `app_shell.dart` library part.
+- `discover_screen.dart` and `discover/`: expose the Discover destination while hiding leaderboard search, collection rendering, navigation recovery, desktop refresh, and Repository identity behind one screen library.
+- `install_operation_controller.dart`: owns the compact Installation Request interface, per-Skill and Repository-member sequencing, aggregate execution success, and error state through a Riverpod family.
+- `installation_flows.dart` and `installation/`: expose remote detail, installation selection, Update, Target Management, progress, result, and retry surfaces as one independent journey library.
+- `library_controller.dart`: owns immutable Library content, stable Entry queries, targeted post-mutation reconciliation, initial-load, stale-refresh, independent Batch Takeover planning, and load-error transitions through Riverpod.
+- `library_screen.dart` and `library/`: expose the unified Library journey while hiding inventory rendering, filters, selection state, local detail, exact External removal, Batch Takeover, export, and target actions behind one screen library.
 - `language_identity_icon.dart`: centralizes presentation-language identity, locally vendored Circle Flags asset mapping, and the system-language fallback shared by language selectors.
 - `agent_logo.dart`: centralizes Agent ID-to-SVG identity mapping and the themed initial fallback shared by installation and Library navigation.
 - `bloom_color_picker/`: vendors and extends Portal Labs' MIT-licensed Bloom interaction with explicit named brand presets and desktop hover labels.
 - `discrete_tabs/`: vendors and adapts Portal Labs' MIT-licensed bounce-expanding, shimmer-label pill tabs for Discover collections and appearance-mode selection.
 - `design_system/`: owns the Primer-inspired semantic token interface, Radix Sand spatial primitives, Folder hierarchy, and Material 3 adapter that derives only interaction accents from the persisted seed.
-- `brand.dart`: defines the full-window photographic background behind Folder, typography, and stable status roles; exports the SkillsGo design-system interface; and composes native Flutter primitives with reusable discovery cards, trust/risk indicators, fields, status elements, and action-ready empty states with optional supporting copy.
+- `brand.dart` and `brand/`: expose SkillsGo visual foundations and reusable Skill cards, search, feedback, trust, risk, and empty-state primitives.
 - `brand_theme_presets.dart`: owns the fixed, source-traceable Simple Icons palette used to seed user-selected desktop themes.
-- `color_scheme_inspector.dart`: retains the standalone developer inspector for generated Material 3 ColorScheme roles; it is intentionally not routed into user Settings.
-- `install_location_popover.dart`: provides the shared anchored user-level/project-level installation selector, including batch directory addition, used by discovery cards and Skill detail.
+- `color_scheme_inspector.dart` and `color_inspector/`: retain the standalone developer inspector for generated Material 3 roles; it is intentionally not routed into user Settings.
+- `install_location_popover.dart` and `install_location/`: expose the shared anchored installation selector while hiding menu anchoring, async loading, scope selection, and location cards.
 - `install_location_island/`: vendors and adapts Portal Labs' Todo List Interaction into the composable installation scope, project, and Agent selector.
-- `nested_navigation.dart`: renders the shared accessible side rail with standard and compact item densities, optional fixed leading destinations and section dividers, an independently scrollable item region with one slim desktop scrollbar, selected capsule motion, an optional pinned footer action, desktop rail/content layout, and opt-in reduced-motion-aware depth entrances for secondary bodies.
-- `onboarding_screen.dart`: renders and persists the blocking two-step clean-install welcome, complete Agent inventory, and batch project-addition journey using Portal Labs PremiumProgressStepper.
-- `native_components.dart`: provides the Material-only desktop component layer for buttons, cards, dialogs, fields, alerts, progress, toggles, dividers, and tooltips.
+- `nested_navigation.dart` and `navigation/`: render the accessible side rail, item densities, fixed sections, selected capsule motion, desktop layout, and reduced-motion-aware secondary-body entrances.
+- `onboarding_screen.dart` and `onboarding/`: expose the blocking two-step clean-install journey while hiding welcome, Agent inventory, project selection, and project-row rendering.
+- `native_components.dart` and `native/`: expose the Material-only desktop component layer while partitioning buttons/loading, cards/selection, and feedback/input controls.
 - `primary_folder_shell.dart`: adapts Portal Labs' MIT-licensed FolderTabs shape and spring motion into an accessible, full-height SkillsGo shell that preserves destination page state.
 - `project_identity_icon.dart`: renders cached high-confidence Added Project icons with deterministic project-name monogram fallback across project selectors.
-- `settings_screen.dart`: renders flat personalization, reminder, Agent detection/recovery, and advanced settings with short depth entrances between its secondary routes as an `app_shell.dart` library part.
+- `settings_screen.dart` and `settings/`: expose personalization, reminders, Agent detection/recovery, integration, and advanced settings as one independent screen library.
 - `target_management_controller.dart`: owns immutable Target Management execution, progress, result, and error state through an auto-disposed Riverpod family.
 - `update_operation_controller.dart`: owns immutable per-Skill Update execution, progress, result, error, and failed-target retry state through Riverpod.
 - `skill_markdown_view.dart`: centralizes selectable Skill Markdown rendering, Material 3 semantic styling, document spacing, tables, code, quotations, and safe external links.

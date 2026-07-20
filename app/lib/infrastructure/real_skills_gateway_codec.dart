@@ -1,0 +1,468 @@
+/*
+ * [INPUT]: Depends on the shared RealSkillsGateway library, Dart JSON/filesystem primitives, and App domain models.
+ * [OUTPUT]: Provides private strict CLI decoders, argument encoders, local Skill inspection, and schema invariants.
+ * [POS]: Serves as the machine-protocol codec implementation inside the RealSkillsGateway adapter.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+part of 'real_skills_gateway.dart';
+
+SkillTrustLevel _trustLevel(Object? value) => switch (value) {
+  'unverified' => SkillTrustLevel.unverified,
+  'community_verified' => SkillTrustLevel.communityVerified,
+  'publisher_verified' => SkillTrustLevel.publisherVerified,
+  'official' => SkillTrustLevel.official,
+  'warned' => SkillTrustLevel.warned,
+  'delisted' => SkillTrustLevel.delisted,
+  _ => throw const SkillsException(
+    'Discovery Trust Level is invalid.',
+    kind: SkillsFailureKind.invalidResponse,
+  ),
+};
+
+SkillRiskAssessment _riskAssessment(Object? value) => switch (value) {
+  'unknown' => SkillRiskAssessment.unknown,
+  'low' => SkillRiskAssessment.low,
+  'medium' => SkillRiskAssessment.medium,
+  'high' => SkillRiskAssessment.high,
+  'critical' => SkillRiskAssessment.critical,
+  _ => throw const SkillsException(
+    'Discovery Risk Assessment is invalid.',
+    kind: SkillsFailureKind.invalidResponse,
+  ),
+};
+
+InstallationScope _installationScope(Object? value) => switch (value) {
+  'user' => InstallationScope.user,
+  'project' => InstallationScope.project,
+  _ => throw const FormatException('Unknown installation scope.'),
+};
+
+InstallationMode _installationMode(Object? value) => switch (value) {
+  'symlink' => InstallationMode.symlink,
+  'copy' => InstallationMode.copy,
+  'external' => InstallationMode.external,
+  _ => throw const FormatException('Unknown installation mode.'),
+};
+
+InstallationPlanAction _installationPlanAction(Object? value) =>
+    switch (value) {
+      'create' => InstallationPlanAction.create,
+      'replace' => InstallationPlanAction.replace,
+      'skip' => InstallationPlanAction.skip,
+      'conflict' => InstallationPlanAction.conflict,
+      'blocked-by-risk' => InstallationPlanAction.blockedByRisk,
+      _ => throw const FormatException('Unknown Installation Plan action.'),
+    };
+
+InstallationTargetOutcome _installationTargetOutcome(Object? value) =>
+    switch (value) {
+      'succeeded' => InstallationTargetOutcome.succeeded,
+      'skipped' => InstallationTargetOutcome.skipped,
+      'conflict' => InstallationTargetOutcome.conflict,
+      'failed' => InstallationTargetOutcome.failed,
+      _ => throw const FormatException('Unknown Installation Target outcome.'),
+    };
+
+InstallationHealth _installationHealth(Object? value) => switch (value) {
+  'healthy' => InstallationHealth.healthy,
+  'missing' => InstallationHealth.missing,
+  'replaced' => InstallationHealth.replaced,
+  'local-modification' => InstallationHealth.localModification,
+  'unreadable' => InstallationHealth.unreadable,
+  'undeclared' => InstallationHealth.undeclared,
+  'workspace-unreadable' => InstallationHealth.workspaceUnreadable,
+  'lock-mismatch' => InstallationHealth.lockMismatch,
+  'unexpected-path' => InstallationHealth.unexpectedPath,
+  _ => throw const FormatException('Unknown installation health.'),
+};
+
+LibraryProvenance _libraryProvenance(Object? value) => switch (value) {
+  'hub' => LibraryProvenance.hub,
+  'local' => LibraryProvenance.local,
+  'external' => LibraryProvenance.external,
+  _ => throw const FormatException('Unknown Library provenance.'),
+};
+
+DiscoveryVerification _discoveryVerification(Object? value) => switch (value) {
+  'verified' => DiscoveryVerification.verified,
+  'unverified' => DiscoveryVerification.unverified,
+  _ => throw const FormatException('Unknown discovery verification.'),
+};
+
+int _localTargetReadRank(SkillInstallationTarget target) {
+  if (target.health == InstallationHealth.healthy) return 0;
+  return 1;
+}
+
+const _localFilePreviewLimit = 256 * 1024;
+const _inventorySchemaVersion = 5;
+const _installationPlanSchemaVersion = 3;
+
+bool _looksExecutablePath(String path) {
+  final lower = path.toLowerCase();
+  const extensions = [
+    '.sh',
+    '.bash',
+    '.zsh',
+    '.fish',
+    '.ps1',
+    '.bat',
+    '.cmd',
+    '.exe',
+    '.js',
+    '.mjs',
+    '.py',
+    '.rb',
+  ];
+  return lower.contains('/scripts/') || extensions.any(lower.endsWith);
+}
+
+Future<List<SkillFile>> _inspectLocalFiles(String root) async {
+  final files = await Directory(root)
+      .list(recursive: true, followLinks: false)
+      .where((entity) => entity is File)
+      .cast<File>()
+      .toList();
+  files.sort((left, right) => left.path.compareTo(right.path));
+  final result = <SkillFile>[];
+  for (final file in files) {
+    final relative = p.relative(file.path, from: root);
+    final stat = await file.stat();
+    var contents = '';
+    var binary = false;
+    final truncated = stat.size > _localFilePreviewLimit;
+    final bytes = await file
+        .openRead(0, min(stat.size, _localFilePreviewLimit))
+        .fold<List<int>>(<int>[], (buffer, chunk) => buffer..addAll(chunk));
+    if (bytes.contains(0)) {
+      binary = true;
+    } else {
+      try {
+        contents = utf8.decode(bytes, allowMalformed: truncated);
+      } on FormatException {
+        binary = true;
+      }
+    }
+    result.add(
+      SkillFile(
+        path: relative,
+        contents: contents,
+        size: stat.size,
+        kind: relative == 'SKILL.md' ? 'instructions' : 'supporting',
+        executable:
+            _looksExecutablePath(relative) ||
+            (!Platform.isWindows && stat.mode & 0x49 != 0),
+        binary: binary,
+        truncated: truncated,
+      ),
+    );
+  }
+  return List.unmodifiable(result);
+}
+
+List<String> _strictStringList(Object? value) {
+  if (value is! List || value.any((item) => item is! String || item.isEmpty)) {
+    throw const FormatException('Expected a string list.');
+  }
+  final result = value.cast<String>().toList(growable: false);
+  if (result.toSet().length != result.length) {
+    throw const FormatException('String lists must not contain duplicates.');
+  }
+  return result;
+}
+
+bool _sameStringSet(List<String> left, Iterable<String> right) {
+  final rightSet = right.toSet();
+  return left.length == rightSet.length && left.every(rightSet.contains);
+}
+
+int _strictNonNegativeInt(Object? value) {
+  if (value is! int || value < 0) throw const FormatException();
+  return value;
+}
+
+InstallationPlanTarget _installationPlanTarget(
+  Object? raw, {
+  bool allowExternal = false,
+}) {
+  if (raw is! Map<String, dynamic> ||
+      raw['agent'] is! String ||
+      (raw['agent'] as String).isEmpty ||
+      raw['path'] is! String ||
+      (raw['path'] as String).isEmpty ||
+      (raw['projectRoot'] != null && raw['projectRoot'] is! String)) {
+    throw const FormatException();
+  }
+  final scope = _installationScope(raw['scope']);
+  final mode = _installationMode(raw['mode']);
+  final projectRoot = raw['projectRoot'] as String? ?? '';
+  if ((!allowExternal && mode == InstallationMode.external) ||
+      (scope == InstallationScope.user && projectRoot.isNotEmpty) ||
+      (scope == InstallationScope.project && projectRoot.isEmpty)) {
+    throw const FormatException();
+  }
+  return InstallationPlanTarget(
+    scope: scope,
+    projectRoot: projectRoot,
+    agent: raw['agent'] as String,
+    mode: mode,
+    path: raw['path'] as String,
+  );
+}
+
+bool _samePlanTarget(
+  InstallationPlanTarget left,
+  InstallationPlanTarget right,
+) =>
+    left.scope == right.scope &&
+    left.projectRoot == right.projectRoot &&
+    left.agent == right.agent &&
+    left.mode == right.mode &&
+    left.path == right.path;
+
+InstallationExecution _directInstallationExecution(
+  Object? raw,
+  SkillSummary skill,
+  String immutableVersion,
+  List<InstallationTargetSelection> selections,
+) {
+  if (raw is! Map<String, dynamic> ||
+      raw['schemaVersion'] != _installationPlanSchemaVersion ||
+      raw['phase'] != 'execution' ||
+      raw['artifact'] is! Map<String, dynamic> ||
+      raw['results'] is! List ||
+      raw['summary'] is! Map<String, dynamic>) {
+    throw const FormatException();
+  }
+  final artifact = raw['artifact'] as Map<String, dynamic>;
+  if (artifact['source'] != skill.id ||
+      artifact['skillId'] != skill.id ||
+      artifact['version'] != immutableVersion ||
+      artifact['name'] != skill.installName) {
+    throw const FormatException();
+  }
+  final rawResults = raw['results'] as List;
+  if (rawResults.length != selections.length) throw const FormatException();
+  final results = <InstallationTargetResult>[];
+  for (var index = 0; index < rawResults.length; index++) {
+    final result = rawResults[index];
+    if (result is! Map<String, dynamic>) throw const FormatException();
+    final target = _installationPlanTarget(result['target']);
+    final selection = selections[index];
+    if (target.scope != selection.scope ||
+        target.projectRoot != selection.projectRoot ||
+        target.agent != selection.agent ||
+        target.mode != selection.mode) {
+      throw const FormatException();
+    }
+    final action = _installationPlanAction(result['action']);
+    final outcome = _installationTargetOutcome(result['outcome']);
+    if (result.containsKey('errorCode') || result.containsKey('diagnostic')) {
+      throw const FormatException();
+    }
+    final error = _targetFailure(result['error']);
+    if ((outcome == InstallationTargetOutcome.succeeded ||
+            outcome == InstallationTargetOutcome.skipped) &&
+        error != null) {
+      throw const FormatException();
+    }
+    if ((outcome == InstallationTargetOutcome.conflict ||
+            outcome == InstallationTargetOutcome.failed) &&
+        error == null) {
+      throw const FormatException();
+    }
+    results.add(
+      InstallationTargetResult(
+        target: target,
+        action: action,
+        outcome: outcome,
+        error: error,
+      ),
+    );
+  }
+  final rawSummary = raw['summary'] as Map<String, dynamic>;
+  final summary = InstallationExecutionSummary(
+    succeeded: _strictNonNegativeInt(rawSummary['succeeded']),
+    skipped: _strictNonNegativeInt(rawSummary['skipped']),
+    conflict: _strictNonNegativeInt(rawSummary['conflict']),
+    failed: _strictNonNegativeInt(rawSummary['failed']),
+  );
+  final outcomeCounts = {
+    for (final outcome in InstallationTargetOutcome.values)
+      outcome: results.where((result) => result.outcome == outcome).length,
+  };
+  if (summary.succeeded != outcomeCounts[InstallationTargetOutcome.succeeded] ||
+      summary.skipped != outcomeCounts[InstallationTargetOutcome.skipped] ||
+      summary.conflict != outcomeCounts[InstallationTargetOutcome.conflict] ||
+      summary.failed != outcomeCounts[InstallationTargetOutcome.failed]) {
+    throw const FormatException();
+  }
+  return InstallationExecution(
+    skillId: skill.id,
+    version: immutableVersion,
+    name: skill.installName,
+    results: List.unmodifiable(results),
+    summary: summary,
+  );
+}
+
+UpdatePlanAction _updatePlanAction(Object? value) => switch (value) {
+  'update' => UpdatePlanAction.update,
+  'current' => UpdatePlanAction.current,
+  'pinned' => UpdatePlanAction.pinned,
+  'failed' => UpdatePlanAction.failed,
+  _ => throw const FormatException(),
+};
+
+UpdateTargetOutcome _updateTargetOutcome(Object? value) => switch (value) {
+  'succeeded' => UpdateTargetOutcome.succeeded,
+  'skipped' => UpdateTargetOutcome.skipped,
+  'failed' => UpdateTargetOutcome.failed,
+  _ => throw const FormatException(),
+};
+
+TargetFailure? _targetFailure(Object? raw) {
+  if (raw == null) return null;
+  if (raw is! Map<String, dynamic> ||
+      raw['code'] is! String ||
+      (raw['code'] as String).isEmpty ||
+      raw['retryable'] is! bool ||
+      (raw['details'] != null && raw['details'] is! Map<String, dynamic>) ||
+      (raw['requestId'] != null && raw['requestId'] is! String) ||
+      (raw['diagnostic'] != null && raw['diagnostic'] is! String)) {
+    throw const FormatException();
+  }
+  return TargetFailure(
+    code: raw['code'] as String,
+    retryable: raw['retryable'] as bool,
+    details: Map<String, Object?>.unmodifiable(
+      raw['details'] as Map<String, dynamic>? ?? const {},
+    ),
+    requestId: raw['requestId'] as String? ?? '',
+    diagnostic: raw['diagnostic'] as String? ?? '',
+  );
+}
+
+UpdateTargetResult _updateTargetResult(Object? raw, UpdatePlanItem expected) {
+  if (raw is! Map<String, dynamic> ||
+      raw['name'] != expected.name ||
+      raw['skillId'] != expected.skillId ||
+      raw['fromVersion'] != expected.fromVersion ||
+      raw['toVersion'] != expected.toVersion ||
+      raw.containsKey('errorCode') ||
+      raw.containsKey('diagnostic')) {
+    throw const FormatException();
+  }
+  final target = _installationPlanTarget(
+    raw['target'],
+    allowExternal: expected.target.mode == InstallationMode.external,
+  );
+  if (!_samePlanTarget(target, expected.target)) throw const FormatException();
+  final outcome = _updateTargetOutcome(raw['outcome']);
+  final error = _targetFailure(raw['error']);
+  if (outcome == UpdateTargetOutcome.failed && error == null) {
+    throw const FormatException();
+  }
+  if (outcome != UpdateTargetOutcome.failed && error != null) {
+    throw const FormatException();
+  }
+  return UpdateTargetResult(
+    target: target,
+    name: expected.name,
+    skillId: expected.skillId,
+    fromVersion: expected.fromVersion,
+    toVersion: expected.toVersion,
+    outcome: outcome,
+    error: error,
+  );
+}
+
+TargetManagementAction _targetManagementAction(Object? value) =>
+    switch (value) {
+      'remove' => TargetManagementAction.remove,
+      'repair' => TargetManagementAction.repair,
+      _ => throw const FormatException(),
+    };
+
+TargetManagementOutcome _targetManagementOutcome(Object? value) =>
+    switch (value) {
+      'succeeded' => TargetManagementOutcome.succeeded,
+      'failed' => TargetManagementOutcome.failed,
+      _ => throw const FormatException(),
+    };
+
+String _targetManagementActionValue(TargetManagementAction action) =>
+    switch (action) {
+      TargetManagementAction.remove => 'remove',
+      TargetManagementAction.repair => 'repair',
+    };
+
+TargetManagementResult _targetManagementResult(
+  Object? raw,
+  TargetManagementPlanItem expected,
+) {
+  if (raw is! Map<String, dynamic> ||
+      raw['name'] != expected.name ||
+      raw['skillId'] != expected.skillId ||
+      raw['version'] != expected.version ||
+      raw['action'] != _targetManagementActionValue(expected.action!) ||
+      raw.containsKey('errorCode') ||
+      raw.containsKey('diagnostic')) {
+    throw const FormatException();
+  }
+  final target = _installationPlanTarget(
+    raw['target'],
+    allowExternal: expected.target.mode == InstallationMode.external,
+  );
+  if (!_samePlanTarget(target, expected.target)) throw const FormatException();
+  final outcome = _targetManagementOutcome(raw['outcome']);
+  final error = _targetFailure(raw['error']);
+  if (outcome == TargetManagementOutcome.failed && error == null) {
+    throw const FormatException();
+  }
+  if (outcome == TargetManagementOutcome.succeeded && error != null) {
+    throw const FormatException();
+  }
+  return TargetManagementResult(
+    target: target,
+    name: expected.name,
+    skillId: expected.skillId,
+    version: expected.version,
+    action: expected.action!,
+    outcome: outcome,
+    error: error,
+  );
+}
+
+String _installedSkillUpdateKey(InstalledSkill skill) =>
+    skill.inventoryKey.isEmpty ? skill.name : skill.inventoryKey;
+
+String _scopeValue(InstallationScope scope) => switch (scope) {
+  InstallationScope.user => 'user',
+  InstallationScope.project => 'project',
+};
+
+String _modeValue(InstallationMode mode) => switch (mode) {
+  InstallationMode.symlink => 'symlink',
+  InstallationMode.copy => 'copy',
+  InstallationMode.external => throw const FormatException(
+    'External mode cannot enter an Installation Plan.',
+  ),
+};
+
+String _targetArgument(InstallationTargetSelection selection) => jsonEncode({
+  'scope': _scopeValue(selection.scope),
+  if (selection.projectRoot.isNotEmpty) 'projectRoot': selection.projectRoot,
+  'agent': selection.agent,
+  'mode': _modeValue(selection.mode),
+});
+
+SkillMetricKind _metricKind(String value) => switch (value) {
+  'all_time_installs' => SkillMetricKind.allTimeInstalls,
+  'installs_24h' => SkillMetricKind.installs24h,
+  'hot_velocity' => SkillMetricKind.hotVelocity,
+  _ => throw const SkillsException(
+    'Discovery metric is invalid.',
+    kind: SkillsFailureKind.invalidResponse,
+  ),
+};

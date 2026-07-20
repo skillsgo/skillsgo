@@ -1,8 +1,17 @@
 ---
-status: ready-for-agent
+status: superseded
+superseded_by:
+  - ../../CONTEXT.md
+  - ../mvp.md
+  - ../user-routes.md
 ---
 
 # SkillsGo Personal Navigation and Unified Library
+
+This proposal records the original matrix-plan and External Adoption design. It
+is no longer an implementation source: the current domain language, direct
+Installation Request, Batch Takeover, and shipped navigation are defined by the
+documents listed in `superseded_by`.
 
 ## Problem Statement
 

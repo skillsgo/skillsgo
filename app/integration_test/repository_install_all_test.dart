@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Flutter integration_test, the real SkillsGo App entry point, a disposable Hub, the built CLI, and public GitHub repository resolution.
+ * [INPUT]: Depends on Flutter integration_test, the real SkillsGo App entry point, isolated onboarding preferences, a disposable Hub, the built CLI, and public GitHub repository resolution.
  * [OUTPUT]: Verifies repository search, the repository-wide installation surface, bundled-CLI execution, and isolated installed filesystem state.
  * [POS]: Serves as the first black-box macOS App-plus-CLI-plus-Hub journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -9,6 +9,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:integration_test/integration_test.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skillsgo/main.dart' as skillsgo;
 import 'package:window_manager/window_manager.dart';
 
@@ -18,6 +19,8 @@ void main() {
   testWidgets(
     'repository search opens install-all location selection',
     (tester) async {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool('onboarding_completed_v1', true);
       await skillsgo.runSkillsGoApp(initializeBinding: false);
       await windowManager.setSize(const Size(1400, 960));
       await windowManager.center();

@@ -18,7 +18,7 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 - Search public Skills.
 - Browse all-time, latest-24-hour Trending, and Hot rankings.
 - Inspect version, source, `SKILL.md`, files, risks, and installation guidance.
-- Create an Installation Plan from either a result card or Skill detail.
+- Create a direct Installation Request with explicit location-and-Agent targets from either a result card or Skill detail.
 
 ### Library
 
@@ -28,7 +28,7 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 - Include both SkillsGo-managed targets and External Installations discovered on disk.
 - Aggregate all targets for one logical Skill while allowing different targets to retain different versions.
 - Check for updates and update, remove, repair, or retry selected targets.
-- Associate an External Installation with a Hub artifact or import it as a Local Skill.
+- Batch-take over supported-lock-backed External Installations without changing their files, and remove one exact External target after confirmation.
 
 ### Projects
 
@@ -40,19 +40,16 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 ### Installation
 
 - Bundle and invoke a matching SkillsGo CLI with the production App.
-- Use a multi-location by multi-Agent matrix to select explicit Installation Targets.
-- Permit any set of cells in one Installation Plan.
+- Select explicit user or Added Project locations and Installed Agents in one Installation Request.
+- Let the CLI prepare concrete actions internally without introducing a second user-facing review ceremony.
 - Commit each target independently, retain successful results after partial failure, and retry failed targets.
 - Return stable per-target JSON for installation, update, removal, and repair.
 
 ### Settings
 
-- General: language and motion preferences.
+- General: language, appearance, folder theme, wallpaper, and reminders.
 - Agents: detection state, paths, and re-detection.
-- Hub: official or self-hosted Origin and connectivity.
-- Installation policy: symlink or copy, conflicts, risk confirmation, and anonymous install telemetry.
-- Storage: Store path, disk usage, and safe cleanup.
-- About: App, bundled CLI, updates, licenses, and privacy.
+- Advanced: Hub Origin connectivity, CLI override and recovery, storage status, Critical-risk policy, and restartable Onboarding.
 
 ## Explicitly Out of Scope
 
@@ -62,7 +59,7 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 - Scanning the whole disk for projects.
 - Automatically publishing Local Skills to a Hub.
 - Silently making Skill versions uniform across projects.
-- Updating or repairing an External Installation. Exact-path removal remains available without adoption.
+- Updating or repairing an External Installation. Exact-path removal and supported-lock-backed Batch Takeover remain available.
 - Pretending that mutations across multiple filesystem locations are one global transaction.
 
 ## Integration Boundaries
@@ -91,10 +88,10 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 3. A user can add projects manually or continue without project setup.
 4. Added projects persist immediately and survive restart during Onboarding.
 5. Discover supports Search, Ranking, Trending, and Hot views with complete Skill detail.
-6. A user can install one Skill to multiple locations and multiple Agents through the matrix.
+6. A user can install one Skill to explicit locations and Installed Agents through one direct request.
 7. Multi-target operations return per-target results and allow failed targets to be retried.
 8. The Library aggregates by logical Skill and displays targets, scopes, and Version Divergence.
-9. The App detects External Installations and can associate or import them after confirmation.
+9. The App detects External Installations, can batch-take over supported-lock-backed copies, and can remove one exact External target after confirmation.
 10. A user can check, update, and remove selected targets without changing unselected targets.
 11. Hub outages, inaccessible projects, unhealthy targets, and CLI failures all have recoverable states.
-12. Automated tests cover Onboarding, core CLI JSON contracts, aggregation behavior, Installation Plans, and primary Flutter journeys.
+12. Automated tests cover Onboarding, core CLI machine contracts, aggregation behavior, Installation Requests, and primary Flutter journeys.

@@ -14,37 +14,42 @@ import 'package:window_manager/window_manager.dart';
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
-  testWidgets('bundled CLI failure renders App-owned recovery', (tester) async {
-    final preferences = await SharedPreferences.getInstance();
-    await preferences.setString('hub_origin', 'http://127.0.0.1:1');
-    addTearDown(() => preferences.remove('hub_origin'));
+  testWidgets(
+    'bundled CLI failure renders App-owned recovery',
+    (tester) async {
+      final preferences = await SharedPreferences.getInstance();
+      await preferences.setString('hub_origin', 'http://127.0.0.1:1');
+      addTearDown(() => preferences.remove('hub_origin'));
 
-    await skillsgo.runSkillsGoApp(initializeBinding: false);
-    await windowManager.setSize(const Size(1400, 960));
-    await windowManager.center();
-    await tester.pumpAndSettle(const Duration(seconds: 2));
+      await skillsgo.runSkillsGoApp(initializeBinding: false);
+      await windowManager.setSize(const Size(1400, 960));
+      await windowManager.center();
 
-    final search = find.byKey(const Key('skill-search-input'));
-    expect(search, findsOneWidget);
-    await tester.enterText(
-      search,
-      'https://github.com/vercel-labs/agent-skills',
-    );
-    await tester.testTextInput.receiveAction(TextInputAction.search);
+      final search = find.byKey(const Key('skill-search-input'));
+      await _pumpUntil(tester, search, timeout: const Duration(seconds: 30));
+      expect(search, findsOneWidget);
+      await tester.enterText(
+        search,
+        'https://github.com/vercel-labs/agent-skills',
+      );
+      await tester.testTextInput.receiveAction(TextInputAction.search);
 
-    await _pumpUntil(
-      tester,
-      find.byWidgetPredicate(
-        (widget) =>
-            widget is Text &&
-            (widget.data?.contains('Check your internet connection') == true ||
-                widget.data?.contains('请检查网络连接') == true),
-      ),
-      timeout: const Duration(seconds: 30),
-    );
-    expect(find.textContaining('connection refused'), findsNothing);
-    expect(find.textContaining('dial tcp'), findsNothing);
-  }, timeout: const Timeout(Duration(minutes: 1)));
+      await _pumpUntil(
+        tester,
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              (widget.data?.contains('Check your internet connection') ==
+                      true ||
+                  widget.data?.contains('请检查网络连接') == true),
+        ),
+        timeout: const Duration(seconds: 30),
+      );
+      expect(find.textContaining('connection refused'), findsNothing);
+      expect(find.textContaining('dial tcp'), findsNothing);
+    },
+    timeout: const Timeout(Duration(minutes: 1)),
+  );
 }
 
 Future<void> _pumpUntil(

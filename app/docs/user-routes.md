@@ -59,18 +59,12 @@ Project B
 ```text
 General
 Agents
-Hub
-Installation Policy
-Storage
-About
+Advanced
 ```
 
-- **General**: follow-system language, explicit language override, startup behavior, reduced motion, and reduced transparency.
+- **General**: language, appearance, folder theme, wallpaper, and reminder preferences.
 - **Agents**: detection state, paths, re-detection, and adapter guidance.
-- **Hub**: official or self-hosted Origin, connection health, and reset to default.
-- **Installation Policy**: symlink or copy defaults, conflict handling, risk confirmation, and install telemetry.
-- **Storage**: Store path, disk usage, reveal in file manager, and safe pruning of unreferenced artifacts.
-- **About**: App and bundled CLI versions, updates, repositories, licenses, and privacy.
+- **Advanced**: official or self-hosted Hub Origin health, bundled CLI recovery and developer override, storage status, Critical-risk policy, and restarting Onboarding without deleting data.
 
 ## First Launch
 
@@ -123,30 +117,17 @@ Back navigation restores the exact originating list state instead of returning t
 
 ### Select Installation Targets
 
-The installation sheet uses a location-by-Agent matrix. Rows include Global, the user-facing label for User Scope, and every Added Project; columns include every supported Agent. Installed Agents are selected by default; supported but uninstalled Agents remain available explicitly.
+The installation sheet exposes Global and every Added Project as explicit locations, then lists the Installed Agents available for each chosen location. Supported but undetected Agents are not selectable.
 
-| Location | Codex | Claude Code | Cursor |
-| --- | ---: | ---: | ---: |
-| Global | ✓ |  | ✓ |
-| Project A | ✓ | ✓ |  |
-| Project B |  | ✓ |  |
-
-- Select individual cells, a complete row, or a complete column.
-- Create only explicitly selected cells; never generate an automatic Cartesian product from two independent multi-selects.
+- Select one or more explicit location-and-Agent targets.
+- Create only the submitted target selections; never infer extra locations or Agents.
 - An existing target at the same version displays Installed and cannot be duplicated.
-- A different version, same-name different source, or Local Modification displays a conflict on that cell.
-- Add Project is available inside the sheet and the new project immediately becomes a row.
-- The App may remember the previous matrix selection, but every operation still displays the complete plan.
+- A different version, same-name different source, or Local Modification produces an explicit conflict or confirmation state.
+- Add Project is available inside the sheet and the new project immediately becomes a selectable location.
 
-### Preflight and Confirmation
+### Confirmation
 
-Before execution, show:
-
-- artifact version and source;
-- counts for create, replace, skip, conflict, and risky targets;
-- Workspace Manifests that will change;
-- the selected resolution for each conflict;
-- any additional High or Critical risk confirmation.
+The App submits one direct Installation Request. The CLI may prepare concrete actions internally, but that preparation is process-local and does not become a second user-facing review step. The App adds only the confirmation required by the configured High or Critical risk policy and reports target-specific results.
 
 ### Execution and Result
 
@@ -200,7 +181,7 @@ row actions.
 - **Project A**: every Skill used by any Agent in the project; an empty project prompts the user to install its first Skill.
 - **Codex filter**: within the selected location, every Skill with at least one Codex target; an empty result prompts discovery.
 
-Batch Takeover uses the selected location as its complete scope boundary. All Skills scans User Scope and every accessible Added Project, Global scans only User Scope, and a Project route scans only that Project. It never silently adds another location to the requested batch.
+Batch Takeover uses the selected location as its complete scope boundary. All Skills scans User Scope and every accessible Added Project, Global scans only User Scope, and a Project route scans only that Project. An independent preflight displays the exact eligible count beside every location and on the current action. It never silently adds another location to the requested batch.
 
 Changing the rail selection replaces the current location while retaining search, update status, and Agent filters. Search within the list filters only the resulting view by name, description, and source.
 
@@ -229,7 +210,7 @@ Primary actions include:
 
 - Resolve the update source and available version for every managed target.
 - Permit projects to retain different versions.
-- Require explicit target selection in the matrix.
+- Require explicit target selection in the reviewed Update Plan.
 - Update a project's Workspace Manifest after confirmation.
 - Do not label a fixed commit without a movable reference as updateable.
 - Exclude External Installations and Local Skills without online sources from Hub updates.
@@ -243,20 +224,19 @@ Primary actions include:
 - Removing the final target does not immediately prune Store content still referenced by a recoverable Workspace Manifest.
 - Allow exact-path External Installation removal after reviewed confirmation; do not require or perform adoption.
 
-## Journey 4: Adopt an External Installation
+## Journey 4: Take Over External Installations
 
-An item found in an Agent directory without an Installation Receipt appears as an External Installation. Users may inspect its `SKILL.md`, files, and risk, but update and removal remain disabled.
+An item found in an Agent directory without a SkillsGo receipt appears as an External Installation. Users may inspect it and may remove its exact path after reviewed confirmation. It cannot be updated or repaired while External.
 
-Bring Under Management performs the following journey:
+Batch Takeover performs the following journey within the currently selected Library location:
 
-1. Compute the current content digest.
-2. Attempt to match an immutable Hub artifact.
-3. If matched, show source and version and ask the user to confirm the association.
-4. If unmatched, allow import as a Local Skill.
-5. Store the Local Skill so it can be installed elsewhere, exported, or removed without gaining an online update source.
-6. Never publish content to the Hub as a side effect of import.
+1. Preflight External copies reported by the CLI across User Scope and every accessible Added Project without changing Agent targets or authoritative SkillsGo metadata.
+2. Accept only copies backed by a supported external lock with trusted source identity, then show exact All, Global, and per-Project eligible counts from one state-bound plan.
+3. Confirm only the currently selected location and execute that subset of the same plan.
+4. Revalidate each authorized copy, capture its complete current content digest as its Store baseline, and register it as a normal managed Installation Target without modifying its files.
+5. Skip unmatched, invalid, unsupported-lock, missing, or post-preflight-changed copies independently and report their target-specific reasons; never include newly appeared copies without another preflight.
 
-Import preserves current content and never replaces an External Installation with a Hub version without explicit confirmation.
+Local import remains a separate explicit journey and never happens as an implicit Batch Takeover fallback.
 
 ## Journey 5: Add and Manage a Project
 
@@ -264,7 +244,7 @@ Add Project performs the following journey:
 
 1. Select one directory through the operating-system file picker.
 2. Grant and persist explicit access to that directory.
-3. Read the Workspace Manifest and Workspace Manifest when present.
+3. Read the Workspace Manifest and Workspace Sum when present.
 4. Inspect known Agent Skill directories inside the project.
 5. Merge managed targets and External Installations.
 6. Pin the project in the left rail and open its view.
@@ -298,10 +278,7 @@ Suggested logical routes:
 
 /settings/general
 /settings/agents
-/settings/hub
-/settings/install
-/settings/storage
-/settings/about
+/settings/advanced
 ```
 
 ## Required Page States
@@ -313,24 +290,12 @@ Suggested logical routes:
 | No Added Project | Keep Add Project visible without fake placeholder projects |
 | Empty project | Prompt installation of the project's first Skill |
 | Agent with zero Skills | Keep the Agent entry and prompt discovery |
-| External Installation | Allow inspection and exact-path removal; disable update, repair, and adoption |
+| External Installation | Allow inspection, exact-path removal, and explicit scoped Batch Takeover; disable update and repair until managed |
 | Version Divergence | Display versions and targets without treating it as an error |
 | Partial failure | Retain successes, show per-target causes, and retry failures |
 | Manually replaced target | Mark unhealthy; do not delete automatically; offer repair or stop managing |
 | Inaccessible project | Keep the entry and offer Relocate or Remove from List |
 
-## Gap Between Current Implementation and Target Journey
+## Implemented Contract Posture
 
-The current App is a validation build with one Discover page, user-level Codex installation, and a global list. Before implementing the target UI, stabilize these App-to-CLI JSON contracts:
-
-1. list every Agent Adapter and detection state;
-2. read unified inventory across User Scope and Added Projects;
-3. detect and identify External Installations;
-4. return Library Entries with their Installation Targets;
-5. execute a multi-location, multi-Agent Installation Plan with per-target results;
-6. adopt an External Installation as a Hub Skill or Local Skill;
-7. check, update, remove, repair, and retry selected targets;
-8. read Ranking, Trending, and Hot Hub collections;
-9. bundle and validate the matching CLI in each App release.
-
-The UI must not reconstruct inventory or operation results by parsing human-oriented CLI text while these contracts are being built.
+The App uses versioned CLI machine contracts for Agent inspection, unified local inventory, public discovery, immutable detail, direct Installation Requests, scoped Batch Takeover, exact target management, and Update Plans. The UI does not call the Hub directly, parse human-oriented CLI text, or reconstruct mutation results from filesystem guesses.

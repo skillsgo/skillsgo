@@ -65,7 +65,7 @@ The App's direct request to install one immutable Skill into explicit location-a
 _Avoid_: second installation selector, user-facing review ceremony
 
 **Batch Takeover**:
-The user's one confirmation to register currently discovered, supported-lock-backed External Installations as already-completed SkillsGo copy installations without changing their files. The selected Library location is the complete scope boundary: All Skills includes User Scope plus every accessible Added Project, Global includes only User Scope, and one Project includes only that Workspace Scope. Skills recorded by a supported skills.sh lock trust that source identity and use their complete current Content Digest to create a captured Store baseline. Each distinct current copy becomes a normal managed Installation Target, lock-external or invalid Skills are skipped, and takeover never synchronizes one copy over another.
+The user's one confirmation to execute a state-bound Batch Takeover Plan for supported-lock-backed External Installations as already-completed SkillsGo copy installations without changing their files. The selected Library location is the complete scope: All Skills includes User Scope plus every accessible Added Project, Global includes only User Scope, and one Project includes only that Workspace Scope. Library planning is independent of the primary inventory and supplies the exact eligible count for every location before confirmation; one eligible item is one physical Skill group within one declaration scope, so the All count and execution result use the same additive unit. Skills recorded by a supported skills.sh lock trust that source identity and use their complete current Content Digest to create a captured Store baseline. Each distinct unchanged copy becomes a normal managed Installation Target, lock-external, invalid, missing, or post-plan-changed Skills are skipped independently, newly appeared copies require another plan, and takeover never synchronizes one copy over another.
 _Avoid_: special adopted state, per-Skill adoption, implicit takeover, content normalization, unmatched Local import
 
 **Target Result**:
@@ -85,7 +85,7 @@ An explicit action offered for recoverable unhealthy managed targets. It restore
 _Avoid_: automatic repair, silent overwrite
 
 **External Installation**:
-A Skill found in an Installed Agent's directory without a SkillsGo installation receipt. The Library can inspect it and explicitly move its exact target to the system Trash, but cannot update it until the user imports or associates it.
+A Skill found in an Installed Agent's directory without a SkillsGo installation receipt. The Library can inspect it and explicitly move its exact target to the system Trash, but cannot update it until a supported-lock-backed copy is registered through Batch Takeover or the user completes a separate explicit managed installation or Local import.
 _Avoid_: broken Skill, unknown Skill, managed installation
 
 **External Removal Plan**:

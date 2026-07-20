@@ -1,38 +1,76 @@
 /*
- * [INPUT]: Depends on Flutter foundation, Riverpod legacy migration support, and the direct SkillsGateway installation contract.
- * [OUTPUT]: Provides immutable per-Skill direct installation operation state and one confirmed install action.
- * [POS]: Serves as the installation operation state boundary while dialogs retain ephemeral selection and confirmation state.
+ * [INPUT]: Depends on Flutter foundation, Riverpod legacy migration support, the App-scoped Gateway provider, and direct SkillsGateway installation contracts.
+ * [OUTPUT]: Provides a compact InstallationRequest interface plus immutable per-Skill sequencing, Repository-member resolution, execution aggregation, success classification, and error state.
+ * [POS]: Serves as the deep Installation Request module while selectors retain only ephemeral location choices and presentation feedback.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/legacy.dart';
 
 import '../domain/skills_gateway.dart';
+import 'app_providers.dart';
+
+class InstallationRequest {
+  const InstallationRequest.skill(
+    this._skill,
+    this._immutableVersion, {
+    required this.selections,
+    required this.riskPolicy,
+  }) : _repositorySkills = const [];
+
+  const InstallationRequest.repository(
+    this._repositorySkills, {
+    required this.selections,
+    required this.riskPolicy,
+  }) : _skill = null,
+       _immutableVersion = null;
+
+  final SkillSummary? _skill;
+  final String? _immutableVersion;
+  final List<SkillSummary> _repositorySkills;
+  final List<InstallationTargetSelection> selections;
+  final PersonalRiskPolicy riskPolicy;
+
+  bool get isRepository => _repositorySkills.isNotEmpty;
+}
 
 class InstallOperationState {
   const InstallOperationState({
     this.operating = false,
-    this.execution,
+    this.executions = const [],
     this.error,
   });
 
   final bool operating;
-  final InstallationExecution? execution;
+  final List<InstallationExecution> executions;
   final Object? error;
+
+  InstallationExecution? get execution =>
+      executions.isEmpty ? null : executions.last;
+
+  bool get succeeded =>
+      error == null &&
+      executions.isNotEmpty &&
+      executions.every((execution) => execution.hasSuccess);
 }
 
 final installOperationProvider =
     ChangeNotifierProvider.family<InstallOperationController, String>(
-      (ref, installName) => InstallOperationController(),
+      (ref, installName) =>
+          InstallOperationController(ref.read(skillsGatewayProvider)),
     );
 
 class InstallOperationController extends ChangeNotifier {
+  InstallOperationController(this._gateway);
+
+  final SkillsGateway _gateway;
   InstallOperationState _state = const InstallOperationState();
   bool _disposed = false;
 
   InstallOperationState get state => _state;
   bool get operating => _state.operating;
   InstallationExecution? get execution => _state.execution;
+  List<InstallationExecution> get executions => _state.executions;
   Object? get error => _state.error;
 
   void _replace(InstallOperationState next) {
@@ -40,29 +78,72 @@ class InstallOperationController extends ChangeNotifier {
     if (!_disposed) notifyListeners();
   }
 
-  Future<InstallationExecution?> installTargets(
-    SkillsGateway gateway,
-    SkillSummary skill,
-    String immutableVersion,
-    List<InstallationTargetSelection> selections, {
-    bool confirmRisk = false,
-    bool allowCritical = false,
-  }) async {
-    if (operating) return execution;
+  Future<InstallOperationState> submit(InstallationRequest request) async {
+    if (operating) return state;
     _replace(const InstallOperationState(operating: true));
+    final executions = <InstallationExecution>[];
     try {
-      final nextExecution = await gateway.installTargets(
-        skill,
-        immutableVersion,
-        selections,
-        confirmRisk: confirmRisk,
-        allowCritical: allowCritical,
+      if (request.selections.isEmpty) {
+        throw const SkillsException(
+          'Installation requires at least one explicit target.',
+          kind: SkillsFailureKind.validation,
+        );
+      }
+      final resolved = <({SkillSummary skill, String immutableVersion})>[];
+      if (request.isRepository) {
+        for (final skill in request._repositorySkills) {
+          final detail = await _gateway.loadRemoteDetail(skill);
+          resolved.add((
+            skill: skill,
+            immutableVersion: detail.immutableVersion,
+          ));
+        }
+      } else {
+        final skill = request._skill;
+        final immutableVersion = request._immutableVersion;
+        if (skill == null ||
+            immutableVersion == null ||
+            immutableVersion.isEmpty) {
+          throw const SkillsException(
+            'Installation requires an immutable Skill version.',
+            kind: SkillsFailureKind.validation,
+          );
+        }
+        resolved.add((skill: skill, immutableVersion: immutableVersion));
+      }
+      if (resolved.isEmpty) {
+        throw const SkillsException(
+          'Installation requires at least one Skill.',
+          kind: SkillsFailureKind.validation,
+        );
+      }
+      for (final item in resolved) {
+        executions.add(
+          await _gateway.installTargets(
+            item.skill,
+            item.immutableVersion,
+            request.selections,
+            confirmRisk: true,
+            allowCritical: request.riskPolicy.allowCriticalOverride,
+          ),
+        );
+      }
+      final failed = executions.any((execution) => !execution.hasSuccess);
+      _replace(
+        InstallOperationState(
+          executions: List.unmodifiable(executions),
+          error: failed ? StateError('Installation failed.') : null,
+        ),
       );
-      _replace(InstallOperationState(execution: nextExecution));
     } catch (caught) {
-      _replace(InstallOperationState(error: caught));
+      _replace(
+        InstallOperationState(
+          executions: List.unmodifiable(executions),
+          error: caught,
+        ),
+      );
     }
-    return execution;
+    return state;
   }
 
   @override
