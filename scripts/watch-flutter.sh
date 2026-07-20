@@ -13,7 +13,8 @@ readonly reload_stamp="$(mktemp "${TMPDIR:-/tmp}/skillsgo-flutter-reload.XXXXXX"
 cleanup() {
   rm -f "${reload_stamp}" "${flutter_pid_file}"
 }
-trap cleanup EXIT INT TERM
+trap cleanup EXIT
+trap 'exit 0' INT TERM
 
 while true; do
   if find "${root_dir}/app/lib" "${root_dir}/app/assets" \

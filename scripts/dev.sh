@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on process-compose, Air, process-compose.yaml, and the App, CLI, and Hub workspace development commands.
-# [OUTPUT]: Validates the local development toolchain and delegates the complete development session to Process Compose.
-# [POS]: Serves as the thin, stable adapter behind the repository-level make dev command; process lifecycle belongs to Process Compose.
+# [INPUT]: Depends on cleanup-dev.sh, process-compose, Air, process-compose.yaml, and the App, CLI, and Hub workspace development commands.
+# [OUTPUT]: Removes stale checkout-owned processes, validates the local development toolchain, and starts the complete Process Compose session.
+# [POS]: Serves as the stable adapter behind make dev; startup cleanup is repository-owned and active-session lifecycle belongs to Process Compose.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
 set -euo pipefail
@@ -23,8 +23,10 @@ else
   exit 1
 fi
 
+"${root_dir}/scripts/cleanup-dev.sh"
+
 if lsof -nP -iTCP:3000 -sTCP:LISTEN >/dev/null 2>&1; then
-  echo "Port 3000 is already in use. Stop the existing Hub or make dev session first." >&2
+  echo "Port 3000 is already in use by a process outside this SkillsGo checkout." >&2
   exit 1
 fi
 
