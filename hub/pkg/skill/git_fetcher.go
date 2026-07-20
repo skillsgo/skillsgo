@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on canonical Skill IDs, Git command execution, semantic and pseudo-version helpers, the shared repository cache, manifest validation, and SkillsGo artifact assembly.
- * [OUTPUT]: Provides bounded shared Git synchronization, immutable revision resolution, repository-owned Skill discovery excluding hidden installation directories, and source-identity metadata for product-owned artifacts.
+ * [INPUT]: Depends on canonical Skill IDs, Git commit and ancestor-tag inspection, semantic and pseudo-version helpers, the shared repository cache, optional GitHub-token failover, manifest validation, and SkillsGo artifact assembly.
+ * [OUTPUT]: Provides bounded shared Git synchronization with per-process GitHub credential failover, Go-compatible ancestor-based immutable revision resolution, repository-owned Skill discovery, and source-identity metadata.
  * [POS]: Serves as the Git source resolver and Repository snapshot coordinator in the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,6 +8,7 @@ package skill
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -251,12 +252,10 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 			}).Warnf("repository git synchronization failed")
 			return nil, errors.E(op, err)
 		}
+		githubSource := strings.EqualFold(strings.SplitN(skillID.Repository, "/", 2)[0], "github.com")
 		if isGitRepository(repoDir) {
 			fetchStarted := time.Now()
-			fetch := exec.CommandContext(ctx, "git", "-c", "http.followRedirects=false", "fetch", "--prune", "--tags", "origin")
-			fetch.Dir = repoDir
-			fetch.Env = os.Environ()
-			if output, err := fetch.CombinedOutput(); err == nil {
+			if output, err := g.runGitTransport(ctx, repoDir, githubSource, "-c", "http.followRedirects=false", "fetch", "--prune", "--tags", "origin"); err == nil {
 				entry.WithFields(map[string]any{
 					"duration_ms": time.Since(fetchStarted).Milliseconds(),
 					"git_phase":   "fetch",
@@ -312,9 +311,7 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 		defer os.RemoveAll(tmpDir)
 		cloneDir := filepath.Join(tmpDir, "repository")
 		cloneStarted := time.Now()
-		clone := exec.CommandContext(ctx, "git", "-c", "http.followRedirects=false", "clone", "--filter=blob:none", "--no-checkout", cloneURL, cloneDir)
-		clone.Env = os.Environ()
-		if output, err := clone.CombinedOutput(); err != nil {
+		if output, err := g.runGitTransport(ctx, "", githubSource, "-c", "http.followRedirects=false", "clone", "--filter=blob:none", "--no-checkout", cloneURL, cloneDir); err != nil {
 			diagnostic := gitTransportDiagnostic(output)
 			entry.WithFields(map[string]any{
 				"duration_ms": time.Since(cloneStarted).Milliseconds(),
@@ -340,6 +337,57 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 		return nil, g.writeRepositoryMetadata(repoDir, skillID)
 	})
 	return err
+}
+
+func (g *gitFetcher) runGitTransport(ctx context.Context, dir string, githubSource bool, args ...string) ([]byte, error) {
+	attempts := 1
+	if githubSource && len(g.githubTokens) > 0 {
+		attempts = len(g.githubTokens)
+	}
+	start := g.activeToken.Load()
+	var output []byte
+	var err error
+	for offset := range attempts {
+		environment := os.Environ()
+		if githubSource && len(g.githubTokens) > 0 {
+			index := (start + uint64(offset)) % uint64(len(g.githubTokens))
+			environment = gitHubTokenEnvironment(environment, g.githubTokens[index])
+		}
+		output, err = g.runGitCommand(ctx, dir, args, environment)
+		if err == nil {
+			if offset > 0 {
+				g.activeToken.CompareAndSwap(start, start+uint64(offset))
+			}
+			return output, nil
+		}
+		if ctx.Err() != nil {
+			return output, ctx.Err()
+		}
+	}
+	return output, err
+}
+
+func runGitCommand(ctx context.Context, dir string, args []string, environment []string) ([]byte, error) {
+	cmd := exec.CommandContext(ctx, "git", args...)
+	cmd.Dir = dir
+	cmd.Env = environment
+	return cmd.CombinedOutput()
+}
+
+func gitHubTokenEnvironment(environment []string, token string) []string {
+	filtered := make([]string, 0, len(environment)+3)
+	for _, entry := range environment {
+		if strings.HasPrefix(entry, "GIT_CONFIG_COUNT=") || strings.HasPrefix(entry, "GIT_CONFIG_KEY_0=") || strings.HasPrefix(entry, "GIT_CONFIG_VALUE_0=") {
+			continue
+		}
+		filtered = append(filtered, entry)
+	}
+	credential := base64.StdEncoding.EncodeToString([]byte("x-access-token:" + token))
+	return append(filtered,
+		"GIT_CONFIG_COUNT=1",
+		"GIT_CONFIG_KEY_0=http.https://github.com/.extraHeader",
+		"GIT_CONFIG_VALUE_0=Authorization: Basic "+credential,
+	)
 }
 
 func gitTransportDiagnostic(output []byte) string {
@@ -438,7 +486,7 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, re
 		}
 		versions := make([]string, 0)
 		for _, tag := range strings.Fields(tagOutput) {
-			if semver.IsValid(tag) {
+			if isCanonicalSemanticVersion(tag) {
 				versions = append(versions, tag)
 			}
 		}
@@ -457,7 +505,7 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, re
 		if pseudoRevision, err := modmodule.PseudoVersionRev(revision); err == nil {
 			resolvedRevision = pseudoRevision
 		}
-	} else if !semver.IsValid(revision) {
+	} else if !isCanonicalSemanticVersion(revision) {
 		// A no-checkout cache keeps its local default branch at the clone-time
 		// commit. Resolve branch names through the refreshed remote-tracking ref.
 		remoteRevision := "refs/remotes/origin/" + revision
@@ -475,22 +523,26 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, re
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
+	if modmodule.IsPseudoVersion(revision) {
+		if err := validatePseudoVersion(ctx, repoDir, revision, commitSHA, commitTime); err != nil {
+			return nil, errors.E(op, err, errors.S(skillID.String()), errors.V(revision), errors.KindBadRequest)
+		}
+	}
 	version := revision
 	ref := revision
-	if !semver.IsValid(version) {
+	if !isCanonicalSemanticVersion(version) {
 		tagOutput, tagErr := gitOutput(ctx, repoDir, "tag", "--points-at", commitSHA)
 		if tagErr != nil {
 			return nil, errors.E(op, tagErr)
 		}
-		if taggedVersion := latestSemanticVersion(strings.Fields(tagOutput)); taggedVersion != "" {
+		if taggedVersion := highestSemanticVersion(strings.Fields(tagOutput)); taggedVersion != "" {
 			version = taggedVersion
 			ref = "refs/tags/" + taggedVersion
 		} else {
-			shortHash := commitSHA
-			if len(shortHash) > 12 {
-				shortHash = shortHash[:12]
+			version, err = pseudoVersionForCommit(ctx, repoDir, commitSHA, commitTime)
+			if err != nil {
+				return nil, errors.E(op, err)
 			}
-			version = modmodule.PseudoVersion("v0", "", commitTime, shortHash)
 			if resolvedRevision != "refs/remotes/origin/"+revision {
 				ref = commitSHA
 			} else {
@@ -520,11 +572,59 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, re
 	}, nil
 }
 
+func validatePseudoVersion(ctx context.Context, repoDir, version, commitSHA string, commitTime time.Time) error {
+	revision, err := modmodule.PseudoVersionRev(version)
+	if err != nil {
+		return fmt.Errorf("invalid pseudo-version %q: %w", version, err)
+	}
+	expectedRevision := commitSHA
+	if len(expectedRevision) > 12 {
+		expectedRevision = expectedRevision[:12]
+	}
+	if revision != expectedRevision {
+		return fmt.Errorf("invalid pseudo-version %q: commit suffix must be %s", version, expectedRevision)
+	}
+
+	versionTime, err := modmodule.PseudoVersionTime(version)
+	if err != nil {
+		return fmt.Errorf("invalid pseudo-version %q: %w", version, err)
+	}
+	if !versionTime.Equal(commitTime.Truncate(time.Second)) {
+		return fmt.Errorf("invalid pseudo-version %q: timestamp must be %s", version, commitTime.UTC().Format(modmodule.PseudoVersionTimestampFormat))
+	}
+
+	base, err := modmodule.PseudoVersionBase(version)
+	if err != nil {
+		return fmt.Errorf("invalid pseudo-version %q: %w", version, err)
+	}
+	if base == "" {
+		if semver.Major(version) != "v0" {
+			return fmt.Errorf("invalid pseudo-version %q: a version without a preceding Tag must use major v0", version)
+		}
+		return nil
+	}
+
+	baseCommit, err := gitOutput(ctx, repoDir, "rev-parse", "refs/tags/"+base+"^{commit}")
+	if err != nil {
+		return fmt.Errorf("invalid pseudo-version %q: preceding Tag %s was not found", version, base)
+	}
+	if baseCommit == commitSHA {
+		return fmt.Errorf("invalid pseudo-version %q: commit already has canonical Tag %s", version, base)
+	}
+	ancestor := exec.CommandContext(ctx, "git", "merge-base", "--is-ancestor", baseCommit, commitSHA)
+	ancestor.Dir = repoDir
+	ancestor.Env = os.Environ()
+	if err := ancestor.Run(); err != nil {
+		return fmt.Errorf("invalid pseudo-version %q: commit is not a descendant of preceding Tag %s", version, base)
+	}
+	return nil
+}
+
 func latestSemanticVersion(versions []string) string {
 	stable := ""
 	prerelease := ""
 	for _, version := range versions {
-		if !semver.IsValid(version) {
+		if !isCanonicalSemanticVersion(version) {
 			continue
 		}
 		if semver.Prerelease(version) == "" {
@@ -539,6 +639,37 @@ func latestSemanticVersion(versions []string) string {
 		return stable
 	}
 	return prerelease
+}
+
+func highestSemanticVersion(versions []string) string {
+	highest := ""
+	for _, version := range versions {
+		if isCanonicalSemanticVersion(version) && (highest == "" || semver.Compare(version, highest) > 0) {
+			highest = version
+		}
+	}
+	return highest
+}
+
+func isCanonicalSemanticVersion(version string) bool {
+	return semver.IsValid(version) && semver.Canonical(version) == version
+}
+
+func pseudoVersionForCommit(ctx context.Context, repoDir, commitSHA string, commitTime time.Time) (string, error) {
+	tagOutput, err := gitOutput(ctx, repoDir, "tag", "--merged", commitSHA)
+	if err != nil {
+		return "", err
+	}
+	base := highestSemanticVersion(strings.Fields(tagOutput))
+	major := semver.Major(base)
+	if major == "" {
+		major = "v0"
+	}
+	shortHash := commitSHA
+	if len(shortHash) > 12 {
+		shortHash = shortHash[:12]
+	}
+	return modmodule.PseudoVersion(major, base, commitTime, shortHash), nil
 }
 
 func gitOutput(ctx context.Context, repoDir string, args ...string) (string, error) {

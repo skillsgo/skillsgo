@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the skill package imports and contracts declared in this file.
- * [OUTPUT]: Provides the skill package behavior implemented by go_vcs_lister.go.
- * [POS]: Serves as maintained source in the skill package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on the shared Git repository cache, canonical semantic Tag selection, ancestor-based pseudo-version generation, bounded timeouts, and storage revision metadata.
+ * [OUTPUT]: Provides TTL-cached upstream canonical Repository Tag catalogs and their stable-first latest immutable revision.
+ * [POS]: Serves as the upstream version-listing adapter between Git source resolution and the Hub download protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package skill
@@ -18,7 +18,6 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
-	modmodule "golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 )
 
@@ -101,7 +100,7 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 		}
 		versions := make([]string, 0)
 		for _, tag := range strings.Fields(tagOutput) {
-			if semver.IsValid(tag) {
+			if isCanonicalSemanticVersion(tag) {
 				versions = append(versions, tag)
 			}
 		}
@@ -126,12 +125,11 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
-		short := hash
-		if len(short) > 12 {
-			short = short[:12]
-		}
 		if version == "" {
-			version = modmodule.PseudoVersion("v0", "", commitTime, short)
+			version, err = pseudoVersionForCommit(timeoutCtx, repoDir, hash, commitTime)
+			if err != nil {
+				return nil, errors.E(op, err)
+			}
 		}
 
 		return listSFResp{

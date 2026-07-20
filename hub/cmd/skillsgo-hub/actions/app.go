@@ -41,14 +41,12 @@ func newFiberApp() *fiber.App {
 // when the server is shutting down (to flush and stop exporters), and an error.
 func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 	noop := func() {}
-	if conf.GithubToken != "" {
+	githubTokens := conf.GitHubTokens()
+	if len(githubTokens) > 0 {
 		if conf.NETRCPath != "" {
-			return nil, noop, fmt.Errorf("cannot provide both GithubToken and NETRCPath")
+			return nil, noop, fmt.Errorf("cannot provide both GitHub tokens and NETRCPath")
 		}
 
-		if err := netrcFromToken(conf.GithubToken); err != nil {
-			return nil, noop, fmt.Errorf("creating netrc from token: %w", err)
-		}
 	}
 
 	// mount .netrc to home dir

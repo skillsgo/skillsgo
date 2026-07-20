@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the config package imports and contracts declared in this file.
- * [OUTPUT]: Provides the config package behavior implemented by config.go.
+ * [INPUT]: Depends on TOML, environment decoding, Hub defaults, validation, and nested storage, database, presentation, and authentication settings.
+ * [OUTPUT]: Provides validated Hub configuration including normalized multi-token GitHub authentication.
  * [POS]: Serves as maintained source in the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -54,7 +54,7 @@ type Config struct {
 	ValidatorHook         string    `envconfig:"SKILLSGO_HUB_PROXY_VALIDATOR"`
 	PathPrefix            string    `envconfig:"SKILLSGO_HUB_PATH_PREFIX"`
 	NETRCPath             string    `envconfig:"SKILLSGO_HUB_NETRC_PATH"`
-	GithubToken           string    `envconfig:"SKILLSGO_HUB_GITHUB_TOKEN"`
+	GithubTokens          TokenList `envconfig:"SKILLSGO_HUB_GITHUB_TOKENS"`
 	HGRCPath              string    `envconfig:"SKILLSGO_HUB_HGRC_PATH"`
 	TLSCertFile           string    `envconfig:"SKILLSGO_HUB_TLSCERT_FILE"`
 	TLSKeyFile            string    `envconfig:"SKILLSGO_HUB_TLSKEY_FILE"`
@@ -76,6 +76,24 @@ type Config struct {
 // EnvList is a list of key-value environment
 // variables that are passed to the Go command.
 type EnvList []string
+
+// TokenList supports TOML arrays and comma, semicolon, or newline-delimited
+// environment overrides.
+type TokenList []string
+
+// Decode implements envconfig.Decoder for SKILLSGO_HUB_GITHUB_TOKENS.
+func (tokens *TokenList) Decode(value string) error {
+	decoded := strings.FieldsFunc(value, func(r rune) bool {
+		return r == ',' || r == ';' || r == '\n' || r == '\r'
+	})
+	*tokens = (*tokens)[:0]
+	for _, token := range decoded {
+		if trimmed := strings.TrimSpace(token); trimmed != "" {
+			*tokens = append(*tokens, trimmed)
+		}
+	}
+	return nil
+}
 
 // HasKey returns whether a key-value entry
 // is present by only checking the left of
@@ -154,6 +172,7 @@ func Load(configFile string) (*Config, error) {
 func defaultConfig() *Config {
 	return &Config{
 		Environment:           "development",
+		GithubTokens:          TokenList{},
 		SkillFetchWorkers:     10,
 		ProtocolWorkers:       30,
 		LogLevel:              "debug",
@@ -240,6 +259,27 @@ func (c *Config) BasicAuth() (user, pass string, ok bool) {
 	pass = c.BasicAuthPass
 	ok = user != "" && pass != ""
 	return user, pass, ok
+}
+
+// GitHubTokens returns the configured token pool in stable, deduplicated order.
+func (c *Config) GitHubTokens() []string {
+	seen := make(map[string]struct{}, len(c.GithubTokens))
+	tokens := make([]string, 0, len(c.GithubTokens))
+	for _, candidate := range c.GithubTokens {
+		token := strings.TrimSpace(candidate)
+		if token == "" {
+			continue
+		}
+		if _, exists := seen[token]; exists {
+			continue
+		}
+		seen[token] = struct{}{}
+		tokens = append(tokens, token)
+	}
+	if len(tokens) == 0 {
+		return nil
+	}
+	return tokens
 }
 
 // FilterOff returns true if the FilterFile is empty.

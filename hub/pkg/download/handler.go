@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber routing, download Protocol handlers, request-scoped logging, and cache-control middleware.
- * [OUTPUT]: Registers the native Fiber routes for the immutable artifact download protocol.
+ * [INPUT]: Depends on Fiber routing, download Protocol handlers, request-scoped logging, semantic-version validation, and cache-control middleware.
+ * [OUTPUT]: Registers the native Fiber routes and provides movable-query HTTP cache protection for the artifact download protocol.
  * [POS]: Serves as the HTTP routing boundary for the Hub download package.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,7 +14,10 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/middleware"
+	"golang.org/x/mod/semver"
 )
+
+const movableVersionCacheControl = "no-cache, no-store, must-revalidate"
 
 // ProtocolHandler is a function that takes all that it needs to return
 // a ready-to-go http handler that serves up cmd/go's download protocol.
@@ -54,6 +57,12 @@ func RegisterHandlers(r fiber.Router, opts *HandlerOpts) {
 	zipHandler := LogEntryHandler(ZipHandler, opts)
 	r.Get("/mod/+/@v/:version.zip", zipHandler)
 	r.Head("/mod/+/@v/:version.zip", zipHandler)
+}
+
+func protectMovableVersionResponse(c fiber.Ctx, version string) {
+	if !semver.IsValid(version) {
+		c.Set(fiber.HeaderCacheControl, movableVersionCacheControl)
+	}
 }
 
 func getRedirectURL(base, downloadPath string) (string, error) {

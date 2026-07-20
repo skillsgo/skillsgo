@@ -1,4 +1,8 @@
-# [INPUT]: Depends on the build, deployment, or runtime values declared in config.dev.toml.\n# [OUTPUT]: Provides the SkillsGo Hub or monorepo configuration defined by config.dev.toml.\n# [POS]: Serves as maintained configuration in the renamed SkillsGo Hub workspace or its repository integration.\n# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md\n# This is an example configuration with all supported properties explicitly set
+# [INPUT]: Depends on local Hub runtime defaults and environment-variable overrides.
+# [OUTPUT]: Provides the complete development configuration fixture for Hub configuration tests.
+# [POS]: Serves as the maintained configuration fixture in the Hub config package.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+# This is an example configuration with all supported properties explicitly set
 # Most properties can be overridden with environment variables specified in this file
 # Most properties also have defaults (mentioned in this file) if they are not set in either the config file or the corresponding environment variable
 
@@ -164,13 +168,11 @@ PathPrefix = ""
 # Env override: SKILLSGO_HUB_NETRC_PATH
 NETRCPath = ""
 
-# GithubToken can be used instead of a NETRCPath to authenticate
-# the proxy to your own private repos on github. This makes it
-# easier for users and for platforms like GAE to only be provided
-# a Github token instead of a .netrc file. Internally, the proxy
-# just create a .netrc file for you.
-# Env override: SKILLSGO_HUB_GITHUB_TOKEN
-GithubToken = ""
+# GithubTokens configures a sticky failover pool for GitHub REST API and Git
+# operations. A successful token remains active until an authentication,
+# authorization, rate-limit, or Git transport failure selects the next token.
+# Env override: SKILLSGO_HUB_GITHUB_TOKENS (comma, semicolon, or newline-delimited)
+GithubTokens = []
 
 # HGRCPath tells you where the .hgrc path initially resides.
 # This is so that you can mount the .hgrc file to a secret location

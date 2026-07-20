@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on temporary Git repositories, the Skill ID parser, repository caching, Git resolution, and SkillsGo-owned artifact ZIP assembly.
- * [OUTPUT]: Specifies shared repository caching, batch-version identity including v2+ tags without Go Module suffixes, nested Skill archives, refresh, tag listing, and concurrent access behavior.
+ * [OUTPUT]: Specifies shared repository caching, Go-compatible ancestor-based pseudo-versions, batch-version identity including v2+ tags without Go Module suffixes, nested Skill archives, refresh, tag listing, and concurrent access behavior.
  * [POS]: Serves as the repository integration contract for the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -151,6 +151,64 @@ func TestRevisionResolutionCanonicalizesTagsAndUntaggedCommits(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "v1.1.0", taggedExact.Version)
 	require.Equal(t, "refs/tags/v1.1.0", taggedExact.Ref)
+}
+
+func TestRevisionResolutionBasesPseudoVersionOnHighestAncestorTag(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	f.writeSkill(t, ".", "repo", "untagged descendant")
+	f.commit(t, "untagged descendant")
+	runGit(t, f.work, "push", "origin", "HEAD")
+
+	commit := strings.TrimSpace(runGit(t, f.work, "rev-parse", "HEAD"))
+	commitTime, err := gitCommitTime(t.Context(), f.work, commit)
+	require.NoError(t, err)
+	resolved, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
+	require.NoError(t, err)
+
+	require.Equal(t, module.PseudoVersion("v1", "v1.0.0", commitTime, commit[:12]), resolved.Version)
+	require.Equal(t, "v1.0.1-0", resolved.Version[:len("v1.0.1-0")])
+	require.Equal(t, commit, resolved.CommitSHA)
+}
+
+func TestRevisionResolutionUsesHighestTagAtCommitWhileLatestPrefersStable(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	runGit(t, f.work, "tag", "v2.0.0-beta.1")
+	runGit(t, f.work, "push", "origin", "--tags")
+
+	branch, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
+	require.NoError(t, err)
+	require.Equal(t, "v2.0.0-beta.1", branch.Version)
+	require.Equal(t, "refs/tags/v2.0.0-beta.1", branch.Ref)
+
+	latest, err := f.fetcher.Resolve(t.Context(), f.skillID, "latest")
+	require.NoError(t, err)
+	require.Equal(t, "v1.0.0", latest.Version)
+	require.Equal(t, "refs/tags/v1.0.0", latest.Ref)
+}
+
+func TestPseudoVersionRemainsResolvableAfterItsCommitIsTagged(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	runGit(t, f.work, "tag", "-d", "v1.0.0")
+	runGit(t, f.work, "push", "origin", ":refs/tags/v1.0.0")
+
+	beforeTag, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(beforeTag.Version, "v0.0.0-"), beforeTag.Version)
+
+	runGit(t, f.work, "tag", "v1.0.0")
+	runGit(t, f.work, "push", "origin", "v1.0.0")
+	pinned, err := f.fetcher.Resolve(t.Context(), f.skillID, beforeTag.Version)
+	require.NoError(t, err)
+	require.Equal(t, beforeTag.Version, pinned.Version)
+	require.Equal(t, beforeTag.CommitSHA, pinned.CommitSHA)
+
+	f.writeSkill(t, ".", "repo", "after tag")
+	f.commit(t, "after tag")
+	runGit(t, f.work, "push", "origin", "HEAD")
+	afterTag, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
+	require.NoError(t, err)
+	require.True(t, strings.HasPrefix(afterTag.Version, "v1.0.1-0."), afterTag.Version)
+	require.NotEqual(t, beforeTag.CommitSHA, afterTag.CommitSHA)
 }
 
 func TestRepositoryTagCatalogUsesInjectedClockForFreshAndStaleTTL(t *testing.T) {
