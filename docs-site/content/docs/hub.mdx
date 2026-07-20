@@ -1,0 +1,26 @@
+---
+title: Hub
+description: Understand public Skill discovery, identity, artifacts, and ranking.
+---
+
+# SkillsGo Hub
+
+The Hub is the public distribution context for SkillsGo.
+
+## Responsibilities
+
+- Resolve public Skill sources into immutable artifacts.
+- Maintain canonical public Skill identities and metadata.
+- Serve search and ranking results.
+- Provide verified artifact downloads.
+- Aggregate optional anonymous install events.
+
+## Development validation
+
+From the repository root:
+
+```bash
+make test-hub
+```
+
+The Hub does not own local installation targets, workspace manifests, or filesystem mutation policy; those responsibilities belong to the CLI.

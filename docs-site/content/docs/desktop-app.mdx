@@ -1,0 +1,23 @@
+---
+title: Desktop App
+description: Explore the Flutter desktop client and its relationship with the CLI.
+---
+
+# Desktop App
+
+The SkillsGo desktop App provides discovery, library, project, Agent, and installation-plan workflows.
+
+## Runtime boundary
+
+The App invokes the bundled CLI through stable machine contracts. It does not duplicate local installation logic and does not call the Hub directly.
+
+## Development validation
+
+From the repository root:
+
+```bash
+make analyze-app
+make test-app
+```
+
+Flutter owns the desktop UI, while the CLI remains the only business-integration boundary.

@@ -1,0 +1,31 @@
+/*
+ * [INPUT]: Depends on Tailwind CSS and Fumadocs UI's neutral theme and component preset.
+ * [OUTPUT]: Provides the global documentation stylesheet and SkillsGo presentation tokens.
+ * [POS]: Serves as the single CSS entry imported by the TanStack root route.
+ * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+ */
+@import 'tailwindcss';
+@import 'fumadocs-ui/css/neutral.css';
+@import 'fumadocs-ui/css/preset.css';
+
+:root {
+  --sg-ink: #111827;
+  --sg-accent: #2563eb;
+  --sg-wash: #eff6ff;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0 !important;
+  --removed-body-scroll-bar-size: 0 !important;
+}
+
+.sg-hero-grid {
+  background-image:
+    linear-gradient(to right, color-mix(in srgb, var(--sg-accent) 8%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in srgb, var(--sg-accent) 8%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px;
+}

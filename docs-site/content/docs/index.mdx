@@ -1,0 +1,24 @@
+---
+title: SkillsGo Documentation
+description: Discover, install, and manage Agent Skills through an open ecosystem.
+---
+
+# SkillsGo Documentation
+
+SkillsGo is an open ecosystem for discovering and managing Agent Skills. It combines a desktop App, a local CLI, and a public Hub without hiding local filesystem ownership from the user.
+
+## Choose your path
+
+- **Install your first Skill:** start with [Getting started](/en/docs/getting-started).
+- **Automate local workflows:** use the [CLI guide](/en/docs/cli).
+- **Understand the system:** read [Architecture](/en/docs/architecture).
+- **Operate the public service:** review the [Hub overview](/en/docs/hub).
+
+## Core principle
+
+The desktop App delegates all business integration to the bundled CLI. The CLI owns local mutations and communicates with the Hub for public discovery and immutable artifacts.
+
+```text
+Desktop App -> SkillsGo CLI -> SkillsGo Hub
+                         \-> Local Agent targets
+```
