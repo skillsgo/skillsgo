@@ -114,4 +114,41 @@ export function createHandler({ env = process.env, fetchImpl = fetch } = {}) {
   };
 }
 
-export default createHandler();
+async function nodeBody(request) {
+  if (request.body !== undefined) {
+    if (typeof request.body === "string" || Buffer.isBuffer(request.body)) return request.body;
+    return JSON.stringify(request.body);
+  }
+  const chunks = [];
+  for await (const chunk of request) chunks.push(chunk);
+  return Buffer.concat(chunks);
+}
+
+async function toWebRequest(request) {
+  const headers = new Headers();
+  for (const [name, value] of Object.entries(request.headers ?? {})) {
+    if (Array.isArray(value)) {
+      for (const item of value) headers.append(name, item);
+    } else if (value !== undefined) {
+      headers.set(name, value);
+    }
+  }
+  const method = request.method ?? "GET";
+  return new Request(`https://${headers.get("host") ?? "skillssh.vercel.app"}${request.url ?? "/"}`, {
+    method,
+    headers,
+    body: method === "GET" || method === "HEAD" ? undefined : await nodeBody(request),
+  });
+}
+
+export function createNodeHandler(options) {
+  const webHandler = createHandler(options);
+  return async function nodeHandler(request, response) {
+    const result = await webHandler(await toWebRequest(request));
+    response.statusCode = result.status;
+    for (const [name, value] of result.headers) response.setHeader(name, value);
+    response.end(await result.text());
+  };
+}
+
+export default createNodeHandler();

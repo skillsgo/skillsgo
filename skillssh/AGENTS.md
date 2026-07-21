@@ -5,6 +5,7 @@
 
 - `api/skills.mjs`: authenticated Vercel Function that validates Hub requests and fetches bounded pages from the skills.sh leaderboard API.
 - `api/skills.test.mjs`: Node.js contract tests for authentication, validation, upstream forwarding, and failure handling.
+- `.gitignore`: excludes Vercel linkage and local credentials from source control.
 - `vercel.json`: Vercel Function deployment configuration.
 
 ## Architectural Boundary
