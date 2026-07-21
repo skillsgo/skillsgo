@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses controlled CLI plan, progress, and result streams plus the production SkillsGateway adapter.
- * [OUTPUT]: Specifies reviewed Target Operation Plan and Update Plan parsing, execution, progress, retry, and update-state contracts.
+ * [OUTPUT]: Specifies reviewed Target Operation Plan and Update Plan parsing, execution, progress, retry, and Catalog-only batch update-state contracts.
  * [POS]: Serves as the target-management and update contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -137,12 +137,12 @@ void main() {
     },
   );
 
-  test('update check uses explicit target Update Plan JSON', () async {
+  test('update check uses one Catalog-only batch CLI request', () async {
     final runner = FakeProcessRunner()
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout: '''
-{"schemaVersion":1,"phase":"update-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","sourceRef":"main","fromVersion":"v1","toVersion":"v2","action":"update","stateToken":"sha256:state","workspaceManifestChange":false}],"workspaceManifestChanges":[],"summary":{"update":1,"current":0,"pinned":0,"failed":0}}
+{"schemaVersion":1,"phase":"update-check","items":[{"key":"hub:github.com/example/skills/-/test","skillId":"github.com/example/skills/-/test","versions":["v1"],"latestVersion":"v2","status":"update_available"}]}
 ''',
         stderr: '',
       );
@@ -174,21 +174,23 @@ void main() {
       states['hub:github.com/example/skills/-/test'],
       UpdateState.available,
     );
-    expect(runner.lastArguments!.first, 'update');
+    expect(runner.calls, hasLength(1));
+    expect(runner.lastArguments!.take(2), ['updates', 'check']);
     expect(
       runner.lastArguments,
-      containsAllInOrder(['--target', isA<String>()]),
+      containsAllInOrder(['--installed', isA<String>()]),
     );
-    final target = jsonDecode(runner.lastArguments![2]) as Map<String, dynamic>;
-    expect(target, {
-      'scope': 'user',
-      'agent': 'codex',
-      'mode': 'symlink',
-      'path': '/tmp/Test',
+    final installedIndex = runner.lastArguments!.indexOf('--installed');
+    final installed =
+        jsonDecode(runner.lastArguments![installedIndex + 1])
+            as Map<String, dynamic>;
+    expect(installed, {
+      'key': 'hub:github.com/example/skills/-/test',
       'skillId': 'github.com/example/skills/-/test',
-      'version': 'v1',
+      'versions': ['v1'],
     });
-    expect(runner.lastArguments, containsAll(['--preflight', 'json']));
+    expect(runner.lastArguments, isNot(contains('--preflight')));
+    expect(runner.lastArguments, isNot(contains('--target')));
   });
 
   test('update execution parses only versioned target NDJSON', () async {

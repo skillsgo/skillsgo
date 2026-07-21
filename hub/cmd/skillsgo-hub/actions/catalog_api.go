@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, immutable artifact protocol, ZIP audit boundary, request validation, and UTC ranking windows.
- * [OUTPUT]: Provides stable public APIs plus correlated private diagnostics for internal and best-effort dependency failures.
+ * [OUTPUT]: Provides stable public discovery, Catalog-only batch update, content-match, detail, and event APIs plus correlated private diagnostics for internal and best-effort dependency failures.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -25,6 +25,7 @@ import (
 	skillerrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/presentation"
+	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 )
 
@@ -92,6 +93,22 @@ type contentMatchesResponse struct {
 	Matches       []contentMatch `json:"matches"`
 }
 
+type catalogUpdateCheckRequest struct {
+	SchemaVersion int      `json:"schemaVersion"`
+	SkillIDs      []string `json:"skillIds"`
+}
+
+type catalogUpdateCheckItem struct {
+	SkillID       string `json:"skillId"`
+	LatestVersion string `json:"latestVersion,omitempty"`
+	Status        string `json:"status"`
+}
+
+type catalogUpdateCheckResponse struct {
+	SchemaVersion int                      `json:"schemaVersion"`
+	Items         []catalogUpdateCheckItem `json:"items"`
+}
+
 type contentMatch struct {
 	SkillID          string `json:"skillId"`
 	Name             string `json:"name"`
@@ -126,8 +143,44 @@ func registerCatalogAPIRoutes(
 	r.Get("/api/v1/search", searchSkillsHandler(metadata))
 	r.Get("/api/v1/skills", listSkillsHandler(metadata))
 	r.Get("/api/v1/matches", contentMatchesHandler(metadata))
+	r.Post("/api/v1/updates/check", catalogUpdateCheckHandler(metadata))
 	r.Get("/api/v1/skills/+", skillDetailHandler(metadata, artifacts, repositories))
 	r.Post("/api/v1/events/install", installEventHandler(metadata))
+}
+
+func catalogUpdateCheckHandler(metadata *catalog.Catalog) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		var request catalogUpdateCheckRequest
+		if err := json.Unmarshal(c.Body(), &request); err != nil || request.SchemaVersion != 1 || len(request.SkillIDs) > 1000 {
+			return writeAPIError(c, fiber.StatusBadRequest, "invalid update-check request")
+		}
+		seen := make(map[string]bool, len(request.SkillIDs))
+		for _, skillID := range request.SkillIDs {
+			parsed, parseErr := skill.ParseSkillID(skillID)
+			if parseErr != nil || parsed.String() != skillID || seen[skillID] {
+				return writeAPIError(c, fiber.StatusBadRequest, "invalid or duplicate Skill ID")
+			}
+			seen[skillID] = true
+		}
+		stored, err := metadata.SkillsByID(c.Context(), request.SkillIDs)
+		if err != nil {
+			return writeInternalAPIError(c, "catalog.update_check", fiber.StatusInternalServerError, "internal_error", "update check failed", err)
+		}
+		byID := make(map[string]catalog.Skill, len(stored))
+		for _, item := range stored {
+			byID[item.SkillID] = item
+		}
+		response := catalogUpdateCheckResponse{SchemaVersion: 1, Items: make([]catalogUpdateCheckItem, 0, len(request.SkillIDs))}
+		for _, skillID := range request.SkillIDs {
+			item, ok := byID[skillID]
+			if !ok || item.LatestVersion == "" {
+				response.Items = append(response.Items, catalogUpdateCheckItem{SkillID: skillID, Status: "unsupported"})
+				continue
+			}
+			response.Items = append(response.Items, catalogUpdateCheckItem{SkillID: skillID, LatestVersion: item.LatestVersion, Status: "available"})
+		}
+		return writeJSON(c, fiber.StatusOK, response)
+	}
 }
 
 func contentMatchesHandler(metadata *catalog.Catalog) fiber.Handler {

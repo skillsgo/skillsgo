@@ -81,6 +81,9 @@ class _SkillCardState extends State<SkillCard> {
                               children: [
                                 Text(
                                   widget.skill.name,
+                                  textDirection: contentTextDirection(
+                                    widget.skill.name,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: context.skillsTypography.body.copyWith(
@@ -91,6 +94,9 @@ class _SkillCardState extends State<SkillCard> {
                                 const SizedBox(height: 2),
                                 Text(
                                   _repositoryLabel(widget.skill.source),
+                                  textDirection: contentTextDirection(
+                                    widget.skill.source,
+                                  ),
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: context.skillsTypography.caption
@@ -105,6 +111,9 @@ class _SkillCardState extends State<SkillCard> {
                       Expanded(
                         child: Text(
                           widget.skill.description,
+                          textDirection: contentTextDirection(
+                            widget.skill.description,
+                          ),
                           maxLines: 3,
                           overflow: TextOverflow.ellipsis,
                           style: context.skillsTypography.bodySecondary

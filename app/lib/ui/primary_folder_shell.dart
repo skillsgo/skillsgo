@@ -1,8 +1,8 @@
 /*
  * Derived from Portal Labs FolderTabs, Copyright (c) 2026 Luis Portal, MIT License.
  * See /app/THIRD_PARTY_NOTICES.md for the complete attribution and license text.
- * [INPUT]: Depends on Flutter painting, focus, semantics, haptics, and physics APIs plus typed SkillsGo destinations.
- * [OUTPUT]: Provides a persistent full-height primary folder shell with accessible tabs and an always-mounted child.
+ * [INPUT]: Depends on Flutter painting, focus, semantics, haptics, physics, and ambient text-direction APIs plus typed SkillsGo destinations.
+ * [OUTPUT]: Provides a persistent full-height primary folder shell with direction-aware accessible tabs and an always-mounted child.
  * [POS]: Serves as the top-level primary navigation surface without owning or recreating destination page state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -123,6 +123,9 @@ class _SkillsPrimaryFolderState<T> extends State<SkillsPrimaryFolder<T>>
   Widget build(BuildContext context) => LayoutBuilder(
     builder: (context, constraints) {
       final tabWidth = constraints.maxWidth / widget.tabs.length;
+      final rightToLeft = Directionality.of(context) == TextDirection.rtl;
+      double visualIndex(double logicalIndex) =>
+          rightToLeft ? widget.tabs.length - 1 - logicalIndex : logicalIndex;
       return CustomPaint(
         key: const ValueKey('primary-folder-shell'),
         painter: _FolderPainter(
@@ -133,8 +136,8 @@ class _SkillsPrimaryFolderState<T> extends State<SkillsPrimaryFolder<T>>
           tabBorderRadius: widget.style.tabBorderRadius,
           tabHeight: widget.style.tabHeight,
           tabCurveWidth: widget.style.tabCurveWidth,
-          animatedIndex: animatedIndex,
-          selectedIndex: selectedIndex,
+          animatedIndex: visualIndex(animatedIndex),
+          selectedIndex: visualIndex(selectedIndex.toDouble()).round(),
           tabCount: widget.tabs.length,
           shadows: widget.style.shadows,
         ),
@@ -147,7 +150,7 @@ class _SkillsPrimaryFolderState<T> extends State<SkillsPrimaryFolder<T>>
                 children: [
                   for (var index = 0; index < widget.tabs.length; index++)
                     Positioned(
-                      left: tabWidth * index,
+                      left: tabWidth * visualIndex(index.toDouble()),
                       top: 0,
                       bottom: 0,
                       width: tabWidth,

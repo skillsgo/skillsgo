@@ -252,11 +252,14 @@ class _IslandGroupState extends State<_IslandGroup>
                           ),
                         ),
                       ),
-                      child: HugeIcon(
-                        icon: HugeIcons.strokeRoundedArrowRight01,
-                        size: 22,
-                        strokeWidth: 1.8,
-                        color: widget.style.textColor,
+                      child: Transform.flip(
+                        flipX: Directionality.of(context) == TextDirection.rtl,
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedArrowRight01,
+                          size: 22,
+                          strokeWidth: 1.8,
+                          color: widget.style.textColor,
+                        ),
                       ),
                     ),
                     const SizedBox(width: 3),

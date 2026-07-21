@@ -17,7 +17,7 @@ The rule that every App business operation, including public discovery and detai
 _Avoid_: direct Hub client, App Hub adapter
 
 **Presentation Locale**:
-The user's persisted App language choice, resolved from System, English, or Simplified Chinese into the stable BCP 47 content tags `en` or `zh-Hans` for discovery and detail. It may select author-maintained or Hub-enriched display text but never changes the Skill artifact installed or executed.
+The user's persisted App language choice, resolved from System or any supported UI locale. Hub discovery and detail currently receive the stable content tags `en`, `zh-Hans`, or `zh-Hant`; UI locales without matching Hub content fall back to `en`. Presentation Locale may select author-maintained or Hub-enriched display text but never changes the Skill artifact installed or executed.
 _Avoid_: artifact language, installation locale, translated Skill
 
 **Offline Local Management**:

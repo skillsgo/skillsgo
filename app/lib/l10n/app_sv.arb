@@ -1,0 +1,1088 @@
+{
+  "@@locale": "sv",
+  "discover": "Upptäcka",
+  "discoverSkills": "Det är bra att veta lite mer.",
+  "library": "Bibliotek",
+  "settings": "Inställningar",
+  "openSettings": "Öppna Inställningar",
+  "cliNeedsAttention": "En nödvändig SkillsGo-komponent behöver åtgärdas.",
+  "cliMissingBundled": "En obligatorisk SkillsGo-komponent saknas eller kan inte startas. Installera om SkillsGo för att återställa den.",
+  "cliDamagedBundled": "En nödvändig SkillsGo-komponent är skadad. Installera om SkillsGo för att återställa den.",
+  "cliIncompatibleBundled": "En obligatorisk SkillsGo-komponent matchar inte denna appversion. Uppdatera eller installera om SkillsGo.",
+  "officialIndex": "SkillsGo Hub",
+  "discoverTitle": "Hitta en skill för ditt nästa drag.",
+  "skillsLeaderboard": "Det är bra att veta lite mer.",
+  "searchResultsFor": "Resultat för “{query}”",
+  "@searchResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchSkills": "Sök i skills eller klistra in en Git-länk...",
+  "search": "Söka",
+  "ranking": "Ranking",
+  "trending": "Trendigt",
+  "hot": "Varm",
+  "discoverNavigation": "Upptäck navigering",
+  "allTimeRanking": "Alla tiders ranking",
+  "trendingNow": "Trender under de senaste 24 timmarna",
+  "hotNow": "Hett just nu",
+  "allTimeDescription": "Offentliga Skills sorterade efter totalt antal godkända installationer.",
+  "trendingDescription": "Offentliga Skills sorterade efter godkända installationer under de senaste 24 timmarna.",
+  "hotDescription": "Offentliga Skills sorterade efter den senaste installationstakten och dess förändring.",
+  "offlineTitle": "Kan inte ansluta till SkillsGo",
+  "offlineMessage": "Kontrollera din internetanslutning och försök igen. Om du använder en proxy- eller anpassad tjänstadress, granska den i Inställningar.",
+  "searchFailedTitle": "Sökningen misslyckades",
+  "validationTitle": "Kontrollera vad du skrivit in",
+  "validationMessage": "SkillsGo kunde inte använda denna begäran. Granska vad du angav och försök igen.",
+  "serverTitle": "Tjänsten är tillfälligt otillgänglig",
+  "serverMessage": "SkillsGo kan inte slutföra denna begäran just nu. Försök igen om ett ögonblick.",
+  "timeoutTitle": "Det här tar för lång tid",
+  "timeoutMessage": "Tjänsten svarade inte i tid. Kontrollera din anslutning eller försök igen.",
+  "invalidResponseTitle": "SkillsGo behöver en uppdatering",
+  "invalidResponseMessage": "Detta svar kan inte läsas av din version av SkillsGo. Uppdatera appen och försök sedan igen.",
+  "invalidLocalDataTitle": "Kan inte läsa en installerad skill",
+  "invalidLocalDataMessage": "Viss lokal installationsinformation är skadad eller inkompatibel. Uppdatera eller installera om SkillsGo och försök sedan igen.",
+  "tryAgain": "Försök igen",
+  "searchEmptyTitle": "Sök, rulla inte.",
+  "searchEmptyMessage": "Ange en förmåga, källa eller uppgift för att söka offentliga skills.",
+  "noSkillsTitle": "Ingen skills hittades",
+  "noSkillsMessage": "Prova en bredare fras eller kontrollera stavningen.",
+  "focusSearch": "Fokus sökning",
+  "skillsFromLink": "Skills från denna länk",
+  "skillCount": "{count, plural, =1{1 skill} other{{count} skills}}",
+  "@skillCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceResultsSummary": "{count, plural, =1{1 skill från {source}} other{{count} skills från {source}}}",
+  "@sourceResultsSummary": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceSearchEmptyTitle": "Denna länk är redo att inspekteras",
+  "sourceSearchEmptyMessage": "{source} finns inte i de aktuella sökresultaten. SkillsGo kan inspektera länken direkt i nästa steg.",
+  "@sourceSearchEmptyMessage": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "inspectSource": "Se skills i denna länk",
+  "collectionEmptyTitle": "Ingen Skills i denna samling",
+  "collectionEmptyMessage": "Det finns inget här ännu. Försök igen efter mer installationsaktivitet.",
+  "loadMore": "Ladda mer",
+  "install": "Installera",
+  "installAll": "Installera alla skills",
+  "latestCommit": "Senaste commit",
+  "installToMoreTargets": "Installera på fler platser",
+  "localTargets": "{count} lokala mål",
+  "@localTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allTimeMetric": "{count} installationer genom tiderna",
+  "@allTimeMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "trendingMetric": "{count} installerar / 24h",
+  "@trendingMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hotMetric": "{value} denna timme · {change}",
+  "@hotMetric": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "trustUnverified": "Ej verifierad",
+  "trustCommunityVerified": "Gemenskapen verifierad",
+  "trustPublisherVerified": "Utgivare verifierad",
+  "trustOfficial": "Officiell",
+  "trustWarned": "Varnade",
+  "trustDelisted": "Avnoterad",
+  "riskUnknown": "Risk okänd",
+  "riskLow": "Låg risk",
+  "riskMedium": "Medium risk",
+  "riskHigh": "Hög risk",
+  "riskCritical": "Kritisk risk",
+  "openSkill": "Öppna {name}",
+  "@openSkill": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installs": "{count} installeras",
+  "@installs": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "detailFailedTitle": "Det gick inte att ladda denna Skill",
+  "detailLoading": "Laddar granskningsbar Skill-detalj",
+  "artifactUnavailableTitle": "Artefakt inte tillgänglig",
+  "artifactUnavailableMessage": "Denna version är inte tillgänglig just nu. Försök igen eller välj en annan version.",
+  "detailInvalidTitle": "Artefaktmetadata stöds inte",
+  "detailInvalidMessage": "Vissa detaljer för denna skill är ofullständiga eller kan inte läsas. Uppdatera SkillsGo och försök sedan igen.",
+  "instructionsTab": "Instruktioner",
+  "manifestTab": "Manifestera",
+  "immutableVersionLabel": "Oföränderlig {version}",
+  "@immutableVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "commitIdentity": "Beslut {sha}",
+  "@commitIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "treeIdentity": "Träd {sha}",
+  "@treeIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "contentIdentity": "Innehåll {digest}",
+  "@contentIdentity": {
+    "placeholders": {
+      "digest": {
+        "type": "String"
+      }
+    }
+  },
+  "trustDoesNotProveSafety": "Utgivarens förtroende verifierar ägande eller underhåll; den intygar inte artefaktsäkerhet. Risk bedöms separat för denna oföränderliga version.",
+  "knownInstallationTargets": "Kända installationsmål",
+  "installationRange": "Installerad omfattning",
+  "targetDetails": "Visa måldetaljer",
+  "hideTargetDetails": "Dölj måldetaljer",
+  "installedVersionLabel": "Version {version}",
+  "@installedVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "targetSummary": "{scope} / {agent} · {version}",
+  "@targetSummary": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "agent": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "projectScope": "Projekt",
+  "fileContentUnavailable": "Binär eller otillgänglig förhandsvisning",
+  "fileContentTruncated": "Förhandsvisning trunkerad av Hub säkerhetsgräns.",
+  "retry": "Försöka igen",
+  "backToSearch": "Tillbaka till sökning",
+  "installForCodex": "Installera för Codex",
+  "cliNotDetected": "skills (ej upptäckt)",
+  "snapshotFiles": "Snapshot-filer",
+  "globalCodex": "Globalt · Codex",
+  "yourLibrary": "Allt du vet finns här.",
+  "libraryNavigation": "Biblioteksnavigering",
+  "all": "Alla",
+  "allSkills": "Alla Skills",
+  "updatesOnly": "Uppdateringar",
+  "allAgents": "Alla Agents",
+  "allProjects": "Alla projekt",
+  "specificProject": "Projekt",
+  "userScope": "Global",
+  "addProject": "Lägg till projekt",
+  "relocateProject": "Förflytta",
+  "removeFromList": "Ta bort från listan",
+  "removeProjectTitle": "Ta bort {name} från SkillsGo?",
+  "@removeProjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeProjectDescription": "Endast appreferensen kommer att tas bort. SkillsGo kommer inte att ändra eller ta bort några filer i den här katalogen.",
+  "projectRailUnavailable": "{name} — ej tillgänglig",
+  "@projectRailUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyProjectTitle": "Ingen Skills än",
+  "browseSkills": "Bläddra i Skills",
+  "projectMissingTitle": "Projektkatalog saknas",
+  "projectMissingMessage": "Katalogen kan ha flyttats eller dess volym kan vara offline. Flytta den eller ta bort endast dess appreferens.",
+  "projectPermissionTitle": "Projekttillstånd krävs",
+  "projectPermissionMessage": "SkillsGo kan inte inspektera denna valda rot. Ge åtkomst genom att flytta den via katalogväljaren.",
+  "projectInaccessibleTitle": "Projektkatalogen är otillgänglig",
+  "projectInaccessibleMessage": "SkillsGo behöll denna projektreferens. Kontrollera sökvägen eller volymen och flytta den sedan.",
+  "checking": "Kontroll…",
+  "checkUpdates": "Kontrollera uppdateringar",
+  "refresh": "Uppdatera",
+  "libraryUnavailable": "Biblioteket är inte tillgängligt",
+  "libraryEmpty": "Ingen skills installerad än",
+  "libraryEmptyMessage": "Installera en Skill från Discover så visas den här.",
+  "searchLibrary": "Sök installerade skills",
+  "libraryNoMatches": "Ingen matchande Skills",
+  "libraryNoMatchesMessage": "Prova ett annat namn, källa, Agent, projekt eller version.",
+  "agentsSummary": "{count} Agents",
+  "@agentsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsSummary": "{count}-projekt",
+  "@projectsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionsSummary": "{count} versioner",
+  "@versionsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubManaged": "Hub hanteras",
+  "localManaged": "Lokalt skött",
+  "externalInstallation": "Extern installation",
+  "readOnly": "Endast läs",
+  "unversioned": "Oversionerad",
+  "supportingFiles": "Stödfiler",
+  "versionDivergence": "Versionsavvikelse",
+  "healthHealthy": "Hälsosam",
+  "healthMissing": "Mål saknas",
+  "healthReplaced": "Mål bytt",
+  "healthLocalModification": "Lokal modifiering",
+  "healthUnreadable": "Mål oläsligt",
+  "healthUndeclared": "Ej deklarerad",
+  "healthWorkspaceUnreadable": "Arbetsytans tillstånd oläsligt",
+  "healthLockMismatch": "Låset matchar inte",
+  "healthUnexpectedPath": "Oväntad målväg",
+  "modeSymlink": "Symbollänk",
+  "modeCopy": "Kopiera",
+  "modeExternal": "Extern",
+  "notLinked": "EJ LÄNKAD",
+  "update": "Uppdatera",
+  "backToLibrary": "Tillbaka till biblioteket",
+  "remove": "Ta bort",
+  "manageTargets": "Hantera omfattning",
+  "skillsSelected": "{count} valt",
+  "@skillsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "Rensa val",
+  "selectCurrentResults": "Select aktuella resultat",
+  "clearCurrentResultSelection": "Rensa aktuellt resultatval",
+  "manageTargetsTitle": "Hantera installationsmål",
+  "manageTargetsDescription": "Välj en exakt åtgärd för varje mål. Omarkerade mål kommer inte att ändras.",
+  "targetActionsSelected": "{selected} av {total} mål valda",
+  "@targetActionsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "repairTarget": "Reparera",
+  "confirmRemoveTarget": "Bekräfta borttagning",
+  "applyTargetActions": "Tillämpa valda åtgärder",
+  "managementProgressTitle": "Tillämpa målåtgärder",
+  "managementResultsTitle": "Mål åtgärdsresultat",
+  "managementResultSummary": "{succeeded} lyckades, {failed} misslyckades",
+  "@managementResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceOwnershipChanges": "Utvalda projektåtgärder kommer att uppdatera skillsgo.mod och skillsgo.sum.",
+  "targetContentPreserved": "Aktuellt målinnehåll kommer att bevaras.",
+  "localReadFailed": "Kan inte läsa detta Skill",
+  "localReadFailedMessage": "SkillsGo kunde inte läsa denna installerade skill. Kontrollera att dess folder är tillgänglig och tillgänglig och försök sedan igen.",
+  "localConfiguration": "SKILLSGO INSTÄLLNINGAR",
+  "settingsNavigation": "Inställningarnavigering",
+  "general": "Personifiera",
+  "agents": "Agents",
+  "hub": "Hub",
+  "installationPolicy": "Installationspolicy",
+  "storage": "Lagring",
+  "colorScheme": "Färgschema",
+  "about": "Om",
+  "colorSchemeInspectorTitle": "Genererade Material färgroller",
+  "skillsColorTokensTitle": "SkillsGo semantiska färger",
+  "skillsColorTokensDescription": "Produktfärger byggda från Radix Sand och organiserade med Primer semantik, med Folder som en dedikerad rumslig hierarki.",
+  "colorSchemeInspectorDescription": "Förhandsgranska alla icke-utfasade ColorScheme-token som genereras från det aktuella fröet. Klicka på en färg för att kopiera dess HEX-värde.",
+  "colorSchemePairPreview": "Semantiska par",
+  "colorSchemePairPreviewDescription": "Förgrunds- och bakgrundsroller renderade tillsammans för att exponera kontrast och hierarki.",
+  "colorSchemeComponentPreview": "Komponentförhandsgranskning",
+  "colorSchemeComponentPreviewDescription": "Representativa Material-kontroller renderade med detta exakta förhandsgranskningsschema.",
+  "colorSchemeSampleTitle": "Skill korttitel",
+  "colorSchemeSampleBody": "Sekundär kopia använder onSurfaceVariant.",
+  "colorSchemeCopied": "Kopierade",
+  "colorSchemeSampleGlyphs": "Aa 123",
+  "colorSchemeGroupPrimary": "Primär",
+  "colorSchemeGroupPrimaryDescription": "Primär betoning, containrar och fasta accentroller.",
+  "colorSchemeGroupSecondary": "Sekundär",
+  "colorSchemeGroupSecondaryDescription": "Stödande betoning och fasta biroller.",
+  "colorSchemeGroupTertiary": "Tertiär",
+  "colorSchemeGroupTertiaryDescription": "Kontrasterande accenter och fasta tertiära roller.",
+  "colorSchemeGroupSurface": "Yta",
+  "colorSchemeGroupSurfaceDescription": "Sida-, behållare-, höjd- och förgrundshierarki.",
+  "colorSchemeGroupUtility": "Outline & Utility",
+  "colorSchemeGroupUtilityDescription": "Gränser, skuggor, scrims och omvända ytor.",
+  "colorSchemeGroupError": "Fel",
+  "colorSchemeGroupErrorDescription": "Felåtgärder, meddelanden och behållare.",
+  "colorSchemeUsagePrimary": "Primära handlingar, fokus och accenter med hög tonvikt.",
+  "colorSchemeUsageSecondary": "Stödjande handlingar och accenter med medium betoning.",
+  "colorSchemeUsageTertiary": "Kontrasterande accenter som kompletterar primär och sekundär.",
+  "colorSchemeUsageContentOn": "Text och ikoner visas på {token}.",
+  "@colorSchemeUsageContentOn": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageContainer": "{family}-behållare med lägre tonvikt för urval och accenter.",
+  "@colorSchemeUsageContainer": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixed": "Ljusstyrkeoberoende fast {family}-behållare.",
+  "@colorSchemeUsageFixed": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedDim": "Dimmerad ljusstyrkeoberoende fast {family}-behållare.",
+  "@colorSchemeUsageFixedDim": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedContent": "Hög tonvikt på den fasta {family}-behållaren.",
+  "@colorSchemeUsageFixedContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedVariantContent": "Lägre tonvikt på den fasta {family}-behållaren.",
+  "@colorSchemeUsageFixedVariantContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageSurface": "Bassida och storregionyta.",
+  "colorSchemeUsageSurfaceDim": "Nedtonad basyta används vid mörkaste yttonen.",
+  "colorSchemeUsageSurfaceBright": "Ljus basyta som används vid den lättaste yttonen.",
+  "colorSchemeUsageSurfaceElevation": "{level} ytbehållarförhöjning.",
+  "@colorSchemeUsageSurfaceElevation": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeElevationLowest": "lägst",
+  "colorSchemeElevationLow": "låg",
+  "colorSchemeElevationDefault": "standard",
+  "colorSchemeElevationHigh": "hög",
+  "colorSchemeElevationHighest": "högsta",
+  "colorSchemeUsageOnSurface": "Primär text och ikoner visas på ytor.",
+  "colorSchemeUsageOnSurfaceVariant": "Sekundär text, etiketter och dämpade ikoner på ytor.",
+  "colorSchemeUsageSurfaceTint": "Material höjdton härledd från primär.",
+  "colorSchemeUsageOutline": "Framträdande gränser och fokuserade komponentkonturer.",
+  "colorSchemeUsageOutlineVariant": "Subtila gränser, separatorer och konturer med låg tonvikt.",
+  "colorSchemeUsageShadow": "Skuggfärg för förhöjda ytor.",
+  "colorSchemeUsageScrim": "Modal överlagring används för att tona ned bakgrundsinnehåll.",
+  "colorSchemeUsageInverseSurface": "Yta med omvänd ljus och mörk betoning.",
+  "colorSchemeUsageInversePrimary": "Primär accent visas på en omvänd yta.",
+  "colorSchemeUsageError": "Felåtgärder, status och återkoppling med hög vikt.",
+  "save": "Spara",
+  "advancedSettings": "Avancerad",
+  "remindersSettings": "Påminnelser",
+  "remindersSettingsTitle": "Påminnelseinställningar",
+  "remindersSettingsDescription": "Välj vilka påminnelser du vill ta emot.",
+  "updateReminderTitle": "Uppdatera påminnelser",
+  "updateReminderDescription": "Sök efter uppdateringar när biblioteket öppnas.",
+  "securityReminderTitle": "Högriskvarningar",
+  "securityReminderDescription": "Meddela dig om nya Höga eller Kritiska risker i installerade skills.",
+  "availableUpdatesReminder": "{count} installerad skills har uppdateringar",
+  "@availableUpdatesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openAvailableUpdates": "Öppna vyn för tillgängliga uppdateringar för att granska och uppdatera dem.",
+  "securityAdvisoriesReminder": "{count} installerad skills behöver en säkerhetsgranskning",
+  "@securityAdvisoriesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewInstalledSkills": "Granska deras riskinformation innan du använder eller uppdaterar dem.",
+  "generalSettingsTitle": "Gör SkillsGo till din",
+  "generalSettingsDescription": "Gränssnittet följer dina systemspråk, tillgänglighet och rörelsepreferenser.",
+  "agentsSettingsTitle": "Agent körtid",
+  "hubSettingsTitle": "Hub Ursprung",
+  "hubSettingsDescription": "Använd den officiella Hub eller ett HTTP(S) självhostat ursprung som implementerar samma SkillsGo-protokoll.",
+  "testConnection": "Testa anslutningen",
+  "saveOrigin": "Spara Origin",
+  "resetDefault": "Återställ till standard",
+  "connectionReady": "Anslutning klar",
+  "connectionFailed": "Anslutningen misslyckades",
+  "hubInvalidOrigin": "Ange ett giltigt HTTP(S)-ursprung utan inloggningsuppgifter, en fråga eller ett fragment.",
+  "hubHttpFailure": "Hub returnerade HTTP {status}. Kontrollera ursprungs- och serverkonfigurationen.",
+  "@hubHttpFailure": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "hubInvalidProtocol": "Servern returnerade inte sökprotokollet SkillsGo Hub.",
+  "hubInvalidJson": "Hub returnerade ogiltig JSON.",
+  "hubConnectionFailure": "Kunde inte nå Hub. Kontrollera ursprungs-, nätverks-, proxy- och TLS-konfigurationen.",
+  "hubConnectionTimeout": "Hub-anslutningen tog timeout. Kontrollera nätverket eller försök igen.",
+  "riskPolicyTitle": "Personlig riskpolicy",
+  "riskPolicyDescription": "Säkerhetsregler gäller när du installerar eller uppdaterar en skill.",
+  "confirmHighRisk": "Kräv bekräftelse för Hög risk",
+  "confirmHighRiskDescription": "Högriskartefakter kräver alltid en ytterligare bekräftelse innan installation.",
+  "allowCriticalOverride": "Tillåt en explicit åsidosättande av kritisk risk",
+  "allowCriticalOverrideDescription": "Artefakter med kritiska risker förblir blockerade som standard. Aktivera detta endast för att avslöja en separat manuell åsidosättning.",
+  "storageSettingsTitle": "Innehållsadresserad butik",
+  "storageHealthy": "Läsbar",
+  "storageNotInitialized": "Inte initierad",
+  "storageUnavailable": "Inte tillgänglig",
+  "storagePathUnavailable": "Lagringssökväg otillgänglig tills CLI-diagnostiken är klar.",
+  "storageHealthyDescription": "CLI kan läsa butiken utan att ändra dess innehåll.",
+  "storageNotInitializedDescription": "Butiken finns inte ännu och skapades inte av den här kontrollen.",
+  "storageUnavailableDescription": "CLI kan inte läsa butiken. Kontrollera dess behörigheter och överordnade katalog.",
+  "storageInvalidResponse": "Den medföljande CLI returnerade ett diagnostiksvar som inte stöds.",
+  "aboutSettingsTitle": "Produktkompatibilitet",
+  "appVersion": "Appversion",
+  "cliVersion": "Medföljande CLI-version",
+  "compatible": "Kompatibel",
+  "hubOriginSaved": "Hub Ursprung sparat och tillämpat.",
+  "policySaved": "Installationspolicyn har sparats.",
+  "officialCli": "SkillsGo CLI",
+  "ready": "REDO",
+  "unknown": "OKÄND",
+  "missing": "SAKNAD",
+  "incompatible": "OFÖRENLIG",
+  "detecting": "Upptäcker...",
+  "customCliPath": "Anpassad körbar sökväg",
+  "saveAndDetect": "Spara och upptäck",
+  "detectAgain": "Upptäck igen",
+  "agentInstalled": "Installerad",
+  "agentSupported": "Stöds",
+  "agentCatalogSummary": "{installed} installerad · {supported} stöds",
+  "@agentCatalogSummary": {
+    "placeholders": {
+      "installed": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "int"
+      }
+    }
+  },
+  "installedAgentsTitle": "Installerad · {count}",
+  "@installedAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsTitle": "Ej installerat · {count}",
+  "@notInstalledAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsDescription": "Stöds av SkillsGo, men detekteras inte på denna Mac.",
+  "agentDiscoveryRoots": "Skill laddningsvägar: {paths}",
+  "@agentDiscoveryRoots": {
+    "placeholders": {
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+  "agentInspectionFailed": "Agent-detekteringsdata är inte tillgänglig. Kör detektering igen.",
+  "noInstalledAgentsTitle": "Ingen installerad Agents upptäckt",
+  "noInstalledAgentsMessage": "Du kan fortsätta bläddra i denna Skill, men det finns inget installationsmål än. Installera en Agent som stöds och kör sedan upptäckt igen.",
+  "clearCustomPath": "Rensa anpassad sökväg",
+  "privacyProvenance": "Sekretess och härkomst",
+  "privacySummary": "Dina sökningar sparas inte och SkillsGo för inte kommandologgar.",
+  "language": "Språk",
+  "personalizationTheme": "Tema",
+  "folderColorTheme": "Tema färg",
+  "folderColorThemeDescription": "Välj en färg du gillar. SkillsGo kommer att bygga en koordinerad gränssnittspalett runt den.",
+  "brandNameNeteaseCloudMusic": "NetEase Cloud Music",
+  "brandNameRaspberryPi": "Raspberry Pi",
+  "brandNameChinaEasternAirlines": "China Eastern Airlines",
+  "brandNameNvidia": "NVIDIA",
+  "brandNameTaobao": "Taobao",
+  "brandNameBitcoin": "Bitcoin",
+  "appearanceMode": "Läge",
+  "appearanceModeDescription": "Följ ditt systemutseende, eller använd alltid ett ljust eller mörkt tema.",
+  "followSystem": "System",
+  "lightMode": "Ljus",
+  "darkMode": "Mörk",
+  "wallpaper": "Tapet",
+  "wallpaperDescription": "Välj en himmelsk bakgrund. Ditt val visas omedelbart bakom Folder.",
+  "wallpaperSun": "Sol",
+  "wallpaperMercury": "Merkurius",
+  "wallpaperVenus": "Venus",
+  "wallpaperEarth": "Jorden",
+  "wallpaperMars": "Mars",
+  "wallpaperJupiter": "Jupiter",
+  "wallpaperSaturn": "Saturnus",
+  "wallpaperUranus": "Uranus",
+  "wallpaperNeptune": "Neptunus",
+  "wallpaperPluto": "Pluto",
+  "wallpaperMoon": "Måne",
+  "folderThemeChoice": "{theme} Folder tema",
+  "@folderThemeChoice": {
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyAffiliation": "Anonym installationstelemetri styrs av SkillsGo-inställningar. SkillsGo är inte ansluten till OpenAI eller Codex.",
+  "commandCompleted": "Kommandot avslutat",
+  "commandFailed": "Kommandot misslyckades",
+  "commandExit": "Avsluta {code} · expandera för denna sessions logg",
+  "@commandExit": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "command": "Kommando",
+  "cancel": "Avbryt",
+  "updateUnknown": "OKÄND",
+  "updateChecking": "KONTROLL",
+  "upToDate": "UPPDATERAD",
+  "updateAvailable": "UPPDATERA",
+  "updateUnavailable": "INTE TILLGÄNGLIG",
+  "updateCheckFailed": "KONTROLL MISSLYCKADES",
+  "installSkill": "Installera Skill",
+  "installLocationTitle": "Ställ in installationsplats",
+  "userLevel": "Användarnivå",
+  "projectLevel": "Projektnivå",
+  "projects": "Projekt",
+  "loading": "Belastning…",
+  "repositoryParsing": "Parsar arkivet...",
+  "userInstallSummary": "Tillgänglig för {agents} Agents på användarnivå",
+  "@userInstallSummary": {
+    "placeholders": {
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "projectInstallSummary": "{projects}-projekt · {agents} Agents",
+  "@projectInstallSummary": {
+    "placeholders": {
+      "projects": {
+        "type": "int"
+      },
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "installationResults": "Installationsresultat",
+  "installationInProgress": "Installation pågår",
+  "installationSucceeded": "Installationen är klar",
+  "installationSucceededMessage": "Skill är nu tillgänglig på de valda platserna.",
+  "projectUnavailable": "Projektet är inte tillgängligt",
+  "installedCell": "Installerad",
+  "unsupportedCell": "Inte tillgänglig",
+  "confirmInstall": "Bekräfta installationen",
+  "installAllRepositorySkills": "Installera hela arkivet skills ({count})",
+  "installAllSkillsTo": "Installera alla skills till",
+  "@installAllRepositorySkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installRepositorySkills": "Installera alla {repository} skills ({count})",
+  "@installRepositorySkills": {
+    "placeholders": {
+      "repository": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installSkillTo": "Installera {skill} till",
+  "@installSkillTo": {
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
+  },
+  "availableInAllProjects": "Alla projekt",
+  "availableInSelectedProjects": "Utvalda projekt",
+  "usedBy": "För Agents",
+  "backToTargets": "Tillbaka till mål",
+  "stayHere": "Stanna här",
+  "viewInLibrary": "Visa i biblioteket",
+  "planCreateCount": "{count} skapa",
+  "@planCreateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planSkipCount": "{count} hoppa över",
+  "@planSkipCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planReplaceCount": "{count} byt ut",
+  "@planReplaceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planConflictCount": "{count} konflikt",
+  "@planConflictCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRiskCount": "{count} risk blockerad",
+  "@planRiskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "refreshInstallationPlan": "Tillämpa resolutioner",
+  "replaceVersionConflict": "Ersätt den installerade versionen vid detta mål",
+  "replaceSkillIdCollision": "Byt ut de olika Skill ID vid detta mål",
+  "replaceLocalModification": "Släng lokala ändringar och ersätt detta mål",
+  "sharedTargetConflict": "Den här sökvägen delas av other Agent-mål",
+  "sharedTargetConflictDescription": "Återgå till målmatrisen och select alla berörda Agent innan du byter ut: {agents}",
+  "@sharedTargetConflictDescription": {
+    "placeholders": {
+      "agents": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceConflictingTarget": "Byt ut det motstridiga målet",
+  "confirmHighRiskArtifact": "Bekräftelse av högriskartefakter",
+  "confirmCriticalRiskArtifact": "Bekräftelse av åsidosättande av kritisk risk",
+  "confirmRiskForSelectedTargets": "Jag granskade artefaktfilerna och accepterar denna risk för de valda målen",
+  "criticalRiskBlocked": "Installation med kritiska risker är blockerad",
+  "criticalRiskOverrideDisabled": "Aktivera den explicita åsidosättningen av kritisk risk i Inställningar innan den här planen kan fortsätta.",
+  "workspaceManifestChanges": "Workspace Manifest förändringar",
+  "noWorkspaceManifestChanges": "Inga Workspace Manifest-filer kommer att ändras.",
+  "lockVersionChange": "{from} → {to}",
+  "@lockVersionChange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "notPresent": "inte närvarande",
+  "planActionCreate": "Skapa",
+  "planActionReplace": "Ersätta",
+  "planActionSkip": "Hoppa",
+  "planActionConflict": "Konflikt",
+  "planActionBlockedByRisk": "Blockerad av risk",
+  "installationResultSummary": "{succeeded}-mål installerade, {failed} misslyckades",
+  "@installationResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "installationProgressTitle": "Installation pågår",
+  "installationProgressSummary": "{finished} av {total} mål klara",
+  "@installationProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "targetWaiting": "Väntan",
+  "targetRunning": "Installerar",
+  "retryFailedTargets": "{count, plural, =1{Försök 1 misslyckat mål igen} other{Försök igen {count} misslyckade mål}}",
+  "@retryFailedTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updatePlanTitle": "Select mål att uppdatera",
+  "updatePlanDescription": "Välj exakta installationsmål. Omarkerad Agents och projekt förblir oförändrade.",
+  "updateTargetsSelected": "{selected} av {available} uppdateringsbara mål har valts",
+  "@updateTargetsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "updateVersionChange": "{fromVersion} → {toVersion}",
+  "@updateVersionChange": {
+    "placeholders": {
+      "fromVersion": {
+        "type": "String"
+      },
+      "toVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceReference": "Källhänvisning: {reference}",
+  "@sourceReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "fixedVersionTarget": "Fäst — ingen rörlig referens",
+  "currentVersionTarget": "Uppdaterad",
+  "updateCheckTargetFailed": "Uppdateringskontrollen misslyckades",
+  "reconcileWorkspaceManifestTarget": "Reparera arbetsyta manifest",
+  "updateSelectedTargets": "Uppdatera valda mål",
+  "updateProgressTitle": "Uppdatering av mål",
+  "updateResultsTitle": "Uppdatera resultat",
+  "updateProgressSummary": "{finished} av {total} mål klara",
+  "@updateProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "retryFailedUpdates": "{count, plural, =1{Försök 1 misslyckad uppdatering igen} other{Försök igen {count} misslyckade uppdateringar}}",
+  "@retryFailedUpdates": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpdateableTargets": "Inget valt mål har en tillgänglig uppdatering.",
+  "closeUpdatePlan": "Nära",
+  "targetSucceeded": "Installerad",
+  "targetSkipped": "Hoppade över",
+  "targetConflict": "Konflikt",
+  "targetFailed": "Misslyckades",
+  "targetFailureRetryable": "Denna plats kunde inte ändras. Du kan försöka igen.",
+  "targetFailureNeedsAttention": "Den här platsen behöver din uppmärksamhet innan du försöker igen.",
+  "installationTargetFailureMessage": "Ingenting ändrades på denna plats. Kontrollera att folder är tillgänglig och försök igen.",
+  "workspacePersistenceFailureMessage": "Ingenting ändrades eftersom SkillsGo inte kunde spara projektinställningarna. Kontrollera att projektet folder är skrivbart och försök igen.",
+  "installationStateChangedMessage": "Den här platsen ändrades medan du granskade den. Granska det senaste tillståndet innan du försöker igen.",
+  "updateTargetFailureMessage": "Den här platsen kunde inte uppdateras. Other-platser påverkades inte, så du kan bara försöka igen.",
+  "managementTargetFailureMessage": "Denna åtgärd kunde inte slutföras här. Other-platser påverkades inte, så du kan bara försöka igen.",
+  "technicalDetails": "Tekniska detaljer",
+  "targetPathExists": "Ett annat objekt finns redan på den här platsen.",
+  "targetBlockedByRisk": "Dina nuvarande säkerhetsinställningar blockerade installationen på den här platsen.",
+  "targetInstallFailed": "skill kunde inte installeras på den här platsen.",
+  "targetWorkspaceUpdateFailed": "skill installerades, men projektinställningarna kunde inte uppdateras.",
+  "installationPlanFailed": "Installationsplanen kunde inte fortsätta",
+  "installationFailed": "Installationen kunde inte slutföras",
+  "localSource": "Lokal källa",
+  "noDescriptionAvailable": "Ingen beskrivning tillgänglig",
+  "moreCoverage": "+{count} fler platser",
+  "@moreCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverAction": "Hantera befintliga skills",
+  "batchTakeoverActionCount": "Hantera ({count})",
+  "@batchTakeoverActionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverChecking": "Kontrollerar befintliga skills...",
+  "batchTakeoverRetry": "Kontrollera hanterbara skills igen",
+  "batchTakeoverEligibleCount": "{count} kan hanteras",
+  "@batchTakeoverEligibleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPending": "Lägger till skills i hanteringen...",
+  "batchTakeoverTitle": "Hantera befintliga skills med SkillsGo?",
+  "batchTakeoverDescription": "SkillsGo kommer att lägga till lokala hanteringsposter utan att flytta, skriva över eller ladda upp skill-filer. Objekt som inte stöds eller ändras kommer att hoppas över.",
+  "batchTakeoverStoryTitle": "Förvandla spridda skills till ett enkelt bibliotek",
+  "batchTakeoverStoryDescription": "SkillsGo hittade {count, plural, =1{1 befintlig skill} other{{count} befintlig skills}} som den kan hantera på den här platsen.",
+  "@batchTakeoverStoryDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverBeforeSemantics": "Före hanteringen är det oklart var befintliga skills är installerade, om de är aktuella, hur man återställer dem eller om projekt använder samma version.",
+  "batchTakeoverPainLocation": "Okänd installationsplats",
+  "batchTakeoverPainFreshness": "Okänd uppdateringsstatus",
+  "batchTakeoverPainRecovery": "Ingen återhämtning när den är bruten",
+  "batchTakeoverPainVersionDrift": "Olika versioner över projekt",
+  "batchTakeoverFolderTitle": "Befintlig Skills",
+  "batchTakeoverFolderSubtitle": "Oklart status",
+  "batchTakeoverAfterLabel": "EFTER",
+  "batchTakeoverAfterTitle": "Ett tydligt bibliotek",
+  "batchTakeoverLibraryTitle": "SkillsGo bibliotek",
+  "batchTakeoverBenefitLocation": "Rensa platser",
+  "batchTakeoverBenefitFreshness": "Uppdateringar synliga",
+  "batchTakeoverBenefitRecovery": "Enkel återhämtning",
+  "batchTakeoverBenefitVersions": "Versioner tydliga",
+  "batchTakeoverManagedSection": "Drivs av SkillsGo",
+  "batchTakeoverPendingSection": "I avvaktan på",
+  "batchTakeoverItemManaged": "{name} hanteras av SkillsGo",
+  "@batchTakeoverItemManaged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemSkipped": "{name} kunde inte läggas till i hanteringen",
+  "@batchTakeoverItemSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemPending": "{name} väntar på att bli hanterad",
+  "@batchTakeoverItemPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverAfterSemantics": "Efter hantering, {count, plural, =1{1 skill är} other{{count} skills är}} organiserade i ett bibliotek med en tydlig hanterad status.",
+  "@batchTakeoverAfterSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverMoreSkills": "+{count} mer",
+  "@batchTakeoverMoreSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverTransitionSemantics": "Lägg till dessa befintliga skills till SkillsGo-hantering.",
+  "batchTakeoverTransitionLabel": "ORGANISERA",
+  "batchTakeoverStatusTitle": "Ledningsstatus",
+  "batchTakeoverStatusManaged": "Hanterade",
+  "batchTakeoverStatusProgress": "Organisera",
+  "batchTakeoverStatusSkipped": "Hoppade över",
+  "batchTakeoverStatusFilesStay": "Skill-filer stannar på sina ursprungliga platser",
+  "batchTakeoverBoardSemantics": "Skills är ordnade i kompletta rader och spelas in av SkillsGo utan att flytta sina filer.",
+  "batchTakeoverBoardComplete": "FARAN ÖVER",
+  "batchTakeoverBoardPartial": "KOMPLETT",
+  "batchTakeoverStatusTotal": "Total",
+  "batchTakeoverQueueComplete": "Inga skills väntar",
+  "batchTakeoverQueueWaiting": "Efter verifieringen visas Skills här",
+  "batchTakeoverNextLabel": "NÄSTA",
+  "batchTakeoverFillerCount": "{count, plural, =1{1 SkillsGo arrangörsblock} other{{count} SkillsGo arrangörsblock}} slutför de sista raderna",
+  "@batchTakeoverFillerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPreservation": "Dina filer, sökvägar och nuvarande arbetsflöden stannar precis där de är. SkillsGo kompletterar endast sina lokala förvaltningsposter.",
+  "batchTakeoverLaterHint": "Om du hoppar över kan du när som helst använda Hantera befintliga skills från biblioteket.",
+  "batchTakeoverSkip": "Inte nu",
+  "batchTakeoverConfirm": "Lägg till i hanteringen",
+  "batchTakeoverExecutionRetry": "Försöka igen",
+  "batchTakeoverResultTitle": "Skills har lagts till i ledningen",
+  "batchTakeoverSummary": "{takenOver} skills lades till i ledningen, {skipped} hoppade över.",
+  "@batchTakeoverSummary": {
+    "placeholders": {
+      "takenOver": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverClose": "Stäng",
+  "installMoreTargets": "Installera på fler platser",
+  "exportLocalSkill": "Exportera",
+  "exportLocalSkillDescription": "Exportera denna lokala Skill som ett bärbart ZIP-arkiv.",
+  "detailInstalls": "Installerar",
+  "detailRepository": "Förvar",
+  "detailStars": "Stjärnor",
+  "detailUpdated": "Uppdaterad",
+  "detailArchiveSize": "ZIP-storlek",
+  "pathLabel": "Projektväg",
+  "copyProjectPath": "Kopiera projektsökväg",
+  "projectPathCopied": "Projektsökvägen kopierad",
+  "onboardingWelcomeTitle": "Välkommen till SkillsGo",
+  "onboardingWelcomeDescription": "Upptäck, installera och hantera Skills över dina Agents och projekt.",
+  "onboardingDetectedAgents": "Detekterade Agents",
+  "onboardingNoAgents": "Ingen installerad Agents upptäckt. Du kan fortfarande fortsätta.",
+  "onboardingNext": "Nästa",
+  "onboardingProjectsTitle": "Lägg till dina projekt",
+  "onboardingProjectsDescription": "Välj de projekt du vill att SkillsGo ska hantera.",
+  "onboardingAddProject": "Lägg till nu",
+  "onboardingAddProjectLater": "eller senare",
+  "onboardingStartUsing": "Börja använda SkillsGo",
+  "onboardingBack": "Tillbaka",
+  "restartOnboardingTitle": "Onboarding",
+  "restartOnboardingDescription": "Se första-lanseringsguiden igen utan att ta bort projekt, inställningar eller Skills-data.",
+  "restartOnboardingAction": "Starta om Onboarding",
+  "restartOnboardingFailed": "SkillsGo kunde inte starta om Onboarding.",
+  "libraryRefreshSettingsTitle": "Uppdatera det lokala biblioteket",
+  "libraryRefreshSettingsDescription": "Skanna om installerade Skills, Added Projects, Agents och externa Skills som kan hanteras. Detta installerar, uppdaterar eller tar inte bort någonting.",
+  "libraryRefreshSettingsAction": "Uppdatera biblioteket",
+  "libraryRefreshSettingsPending": "Uppdaterar biblioteket...",
+  "libraryRefreshSettingsSuccess": "Lokalbiblioteket uppdaterat.",
+  "libraryRefreshSettingsFailed": "SkillsGo kunde inte uppdatera det lokala biblioteket.",
+  "onboardingProjectError": "SkillsGo kunde inte lägga till projekt från den här katalogen.",
+  "onboardingProjectsLoadError": "SkillsGo kunde inte ladda dina tillagda projekt.",
+  "onboardingStartupError": "SkillsGo kunde inte ladda inställningen.",
+  "onboardingStateError": "SkillsGo kunde inte spara dina installationsförlopp. Försök igen.",
+  "onboardingCliErrorTitle": "SkillsGo CLI behöver uppmärksamhet",
+  "onboardingCliErrorDescription": "Reparera den medföljande CLI och försök sedan igen för att fortsätta."
+}

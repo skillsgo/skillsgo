@@ -1,0 +1,1088 @@
+{
+  "@@locale": "ms",
+  "discover": "Temui",
+  "discoverSkills": "Ia bagus untuk mengetahui sedikit lagi.",
+  "library": "Perpustakaan",
+  "settings": "tetapan",
+  "openSettings": "Buka Tetapan",
+  "cliNeedsAttention": "Komponen SkillsGo yang diperlukan memerlukan perhatian.",
+  "cliMissingBundled": "Komponen SkillsGo yang diperlukan tiada atau tidak boleh dimulakan. Pasang semula SkillsGo untuk memulihkannya.",
+  "cliDamagedBundled": "Komponen SkillsGo yang diperlukan telah rosak. Pasang semula SkillsGo untuk memulihkannya.",
+  "cliIncompatibleBundled": "Komponen SkillsGo yang diperlukan tidak sepadan dengan versi apl ini. Kemas kini atau pasang semula SkillsGo.",
+  "officialIndex": "Hab SkillsGo",
+  "discoverTitle": "Cari kemahiran untuk langkah seterusnya.",
+  "skillsLeaderboard": "Ia bagus untuk mengetahui sedikit lagi.",
+  "searchResultsFor": "Keputusan untuk “{query}”",
+  "@searchResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchSkills": "Kemahiran carian atau tampal pautan Git…",
+  "search": "Cari",
+  "ranking": "Kedudukan",
+  "trending": "Trending",
+  "hot": "panas",
+  "discoverNavigation": "Temui navigasi",
+  "allTimeRanking": "Kedudukan sepanjang masa",
+  "trendingNow": "Sohor kini dalam 24 jam yang lalu",
+  "hotNow": "Panas sekarang",
+  "allTimeDescription": "Kemahiran Awam dipesan mengikut pemasangan yang diterima sepanjang masa.",
+  "trendingDescription": "Kemahiran Awam dipesan mengikut pemasangan yang diterima semasa tetingkap 24 jam terkini.",
+  "hotDescription": "Kemahiran Awam dipesan mengikut halaju dan perubahan pemasangan jangka pendek.",
+  "offlineTitle": "Tidak dapat menyambung ke SkillsGo",
+  "offlineMessage": "Semak sambungan internet anda dan cuba lagi. Jika anda menggunakan proksi atau alamat perkhidmatan tersuai, semaknya dalam Tetapan.",
+  "searchFailedTitle": "Carian mengalami masalah",
+  "validationTitle": "Semak apa yang anda masukkan",
+  "validationMessage": "SkillsGo tidak dapat menggunakan permintaan ini. Semak perkara yang anda masukkan dan cuba lagi.",
+  "serverTitle": "Perkhidmatan tidak tersedia buat sementara waktu",
+  "serverMessage": "SkillsGo tidak dapat melengkapkan permintaan ini sekarang. Cuba lagi sebentar lagi.",
+  "timeoutTitle": "Ini mengambil masa terlalu lama",
+  "timeoutMessage": "Perkhidmatan tidak bertindak balas dalam masa. Semak sambungan anda atau cuba lagi.",
+  "invalidResponseTitle": "SkillsGo memerlukan kemas kini",
+  "invalidResponseMessage": "Respons ini tidak boleh dibaca oleh versi SkillsGo anda. Kemas kini apl, kemudian cuba lagi.",
+  "invalidLocalDataTitle": "Tidak dapat membaca kemahiran yang dipasang",
+  "invalidLocalDataMessage": "Sesetengah maklumat pemasangan tempatan rosak atau tidak serasi. Kemas kini atau pasang semula SkillsGo, kemudian cuba lagi.",
+  "tryAgain": "Cuba lagi",
+  "searchEmptyTitle": "Cari, jangan tatal.",
+  "searchEmptyMessage": "Masukkan keupayaan, sumber atau tugasan untuk mencari kemahiran awam.",
+  "noSkillsTitle": "Tiada kemahiran ditemui",
+  "noSkillsMessage": "Cuba frasa yang lebih luas atau semak ejaan.",
+  "focusSearch": "Fokus carian",
+  "skillsFromLink": "Kemahiran dari pautan ini",
+  "skillCount": "{count, plural, =1{1 kemahiran} other{{count} kemahiran}}",
+  "@skillCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceResultsSummary": "{count, plural, =1{1 kemahiran daripada {source}} other{{count} kemahiran daripada {source}}}",
+  "@sourceResultsSummary": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceSearchEmptyTitle": "Pautan ini sedia untuk diperiksa",
+  "sourceSearchEmptyMessage": "{source} tiada dalam hasil carian semasa. SkillsGo boleh memeriksa pautan terus dalam langkah seterusnya.",
+  "@sourceSearchEmptyMessage": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "inspectSource": "Lihat kemahiran dalam pautan ini",
+  "collectionEmptyTitle": "Tiada Kemahiran dalam koleksi ini",
+  "collectionEmptyMessage": "Belum ada apa-apa di sini. Cuba lagi selepas lebih banyak aktiviti pemasangan.",
+  "loadMore": "Muatkan lagi",
+  "install": "Pasang",
+  "installAll": "Pasang semua kemahiran",
+  "latestCommit": "Komitmen terkini",
+  "installToMoreTargets": "Pasang di Lebih Banyak Lokasi",
+  "localTargets": "{count} sasaran tempatan",
+  "@localTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allTimeMetric": "{count} pemasangan sepanjang masa",
+  "@allTimeMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "trendingMetric": "{count} pemasangan / 24j",
+  "@trendingMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hotMetric": "{value} jam ini · {change}",
+  "@hotMetric": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "trustUnverified": "Tidak disahkan",
+  "trustCommunityVerified": "Komuniti disahkan",
+  "trustPublisherVerified": "Penerbit disahkan",
+  "trustOfficial": "rasmi",
+  "trustWarned": "Diberi amaran",
+  "trustDelisted": "dinyahsenarai",
+  "riskUnknown": "Risiko tidak diketahui",
+  "riskLow": "Risiko rendah",
+  "riskMedium": "Risiko sederhana",
+  "riskHigh": "berisiko tinggi",
+  "riskCritical": "Risiko kritikal",
+  "openSkill": "Buka {name}",
+  "@openSkill": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installs": "{count} pemasangan",
+  "@installs": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "detailFailedTitle": "Tidak dapat memuatkan Kemahiran ini",
+  "detailLoading": "Memuatkan butiran Kemahiran yang boleh diaudit",
+  "artifactUnavailableTitle": "Artifak tidak tersedia",
+  "artifactUnavailableMessage": "Versi ini tidak tersedia sekarang. Cuba lagi atau pilih versi lain.",
+  "detailInvalidTitle": "Metadata artifak tidak disokong",
+  "detailInvalidMessage": "Beberapa butiran untuk kemahiran ini tidak lengkap atau tidak boleh dibaca. Kemas kini SkillsGo, kemudian cuba lagi.",
+  "instructionsTab": "Arahan",
+  "manifestTab": "Manifest",
+  "immutableVersionLabel": "Tidak boleh ubah {version}",
+  "@immutableVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "commitIdentity": "Komit {sha}",
+  "@commitIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "treeIdentity": "Pokok {sha}",
+  "@treeIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "contentIdentity": "Kandungan {digest}",
+  "@contentIdentity": {
+    "placeholders": {
+      "digest": {
+        "type": "String"
+      }
+    }
+  },
+  "trustDoesNotProveSafety": "Amanah penerbit mengesahkan pemilikan atau penyelenggaraan; ia tidak memperakui keselamatan artifak. Risiko dinilai secara berasingan untuk versi tidak berubah ini.",
+  "knownInstallationTargets": "Sasaran pemasangan yang diketahui",
+  "installationRange": "Skop yang dipasang",
+  "targetDetails": "Tunjukkan butiran sasaran",
+  "hideTargetDetails": "Sembunyikan butiran sasaran",
+  "installedVersionLabel": "Versi {version}",
+  "@installedVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "targetSummary": "{scope} / {agent} · {version}",
+  "@targetSummary": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "agent": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "projectScope": "Projek",
+  "fileContentUnavailable": "Pratonton binari atau tidak tersedia",
+  "fileContentTruncated": "Pratonton dipenggal oleh had keselamatan Hub.",
+  "retry": "Cuba semula",
+  "backToSearch": "Kembali ke carian",
+  "installForCodex": "Pasang untuk Codex",
+  "cliNotDetected": "kemahiran (tidak dikesan)",
+  "snapshotFiles": "Fail syot kilat",
+  "globalCodex": "Global · Codex",
+  "yourLibrary": "Apa yang anda tahu semuanya ada di sini.",
+  "libraryNavigation": "Navigasi perpustakaan",
+  "all": "Semua",
+  "allSkills": "Semua Kemahiran",
+  "updatesOnly": "Kemas kini",
+  "allAgents": "Semua Agen",
+  "allProjects": "Semua Projek",
+  "specificProject": "Projek",
+  "userScope": "Global",
+  "addProject": "Tambah Projek",
+  "relocateProject": "Berpindah",
+  "removeFromList": "Alih keluar daripada Senarai",
+  "removeProjectTitle": "Alih keluar {name} daripada SkillsGo?",
+  "@removeProjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeProjectDescription": "Hanya rujukan Apl akan dialih keluar. SkillsGo tidak akan menukar atau memadam sebarang fail dalam direktori ini.",
+  "projectRailUnavailable": "{name} — tidak tersedia",
+  "@projectRailUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyProjectTitle": "Belum ada Kemahiran",
+  "browseSkills": "Kemahiran Layari",
+  "projectMissingTitle": "Direktori projek tiada",
+  "projectMissingMessage": "Direktori mungkin telah berpindah atau volumnya mungkin di luar talian. Letakkan semula atau alih keluar hanya rujukan Aplnya.",
+  "projectPermissionTitle": "Kebenaran projek diperlukan",
+  "projectPermissionMessage": "SkillsGo tidak boleh memeriksa akar yang dipilih ini. Berikan akses dengan memindahkannya melalui pemilih direktori.",
+  "projectInaccessibleTitle": "Direktori projek tidak boleh diakses",
+  "projectInaccessibleMessage": "SkillsGo menyimpan rujukan projek ini. Semak laluan atau kelantangan, kemudian letakkannya semula.",
+  "checking": "Menyemak…",
+  "checkUpdates": "Semak kemas kini",
+  "refresh": "Segarkan semula",
+  "libraryUnavailable": "Perpustakaan tidak tersedia",
+  "libraryEmpty": "Tiada kemahiran dipasang lagi",
+  "libraryEmptyMessage": "Pasang Kemahiran daripada Discover dan ia akan dipaparkan di sini.",
+  "searchLibrary": "Cari kemahiran yang dipasang",
+  "libraryNoMatches": "Tiada Kemahiran yang sepadan",
+  "libraryNoMatchesMessage": "Cuba nama, sumber, Ejen, projek atau versi lain.",
+  "agentsSummary": "{count} Ejen",
+  "@agentsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsSummary": "{count} projek",
+  "@projectsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionsSummary": "Versi {count}.",
+  "@versionsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubManaged": "Hab diuruskan",
+  "localManaged": "Diurus tempatan",
+  "externalInstallation": "Pemasangan luaran",
+  "readOnly": "Baca sahaja",
+  "unversioned": "Tidak versi",
+  "supportingFiles": "Fail sokongan",
+  "versionDivergence": "Perbezaan versi",
+  "healthHealthy": "Sihat",
+  "healthMissing": "Sasaran hilang",
+  "healthReplaced": "Sasaran diganti",
+  "healthLocalModification": "Pengubahsuaian Tempatan",
+  "healthUnreadable": "Sasaran tidak boleh dibaca",
+  "healthUndeclared": "Tidak diisytiharkan",
+  "healthWorkspaceUnreadable": "Keadaan ruang kerja tidak boleh dibaca",
+  "healthLockMismatch": "Kunci tidak sepadan",
+  "healthUnexpectedPath": "Laluan sasaran yang tidak dijangka",
+  "modeSymlink": "Symlink",
+  "modeCopy": "salin",
+  "modeExternal": "Luaran",
+  "notLinked": "TIDAK BERKAITAN",
+  "update": "Kemas kini",
+  "backToLibrary": "Kembali ke Perpustakaan",
+  "remove": "Alih keluar",
+  "manageTargets": "Urus skop",
+  "skillsSelected": "{count} dipilih",
+  "@skillsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "Kosongkan pilihan",
+  "selectCurrentResults": "Pilih hasil semasa",
+  "clearCurrentResultSelection": "Kosongkan pemilihan hasil semasa",
+  "manageTargetsTitle": "Uruskan sasaran pemasangan",
+  "manageTargetsDescription": "Pilih tindakan yang tepat untuk setiap sasaran. Sasaran yang tidak dipilih tidak akan berubah.",
+  "targetActionsSelected": "{selected} daripada {total} sasaran dipilih",
+  "@targetActionsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "repairTarget": "baiki",
+  "confirmRemoveTarget": "Sahkan alih keluar",
+  "applyTargetActions": "Gunakan tindakan yang dipilih",
+  "managementProgressTitle": "Mengaplikasikan tindakan sasaran",
+  "managementResultsTitle": "Hasil tindakan sasaran",
+  "managementResultSummary": "{succeeded} berjaya, {failed} gagal",
+  "@managementResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceOwnershipChanges": "Tindakan projek yang dipilih akan mengemas kini SkillsGo.mod dan SkillsGo.sum.",
+  "targetContentPreserved": "Kandungan sasaran semasa akan dikekalkan.",
+  "localReadFailed": "Tidak boleh membaca Kemahiran ini",
+  "localReadFailedMessage": "SkillsGo tidak dapat membaca kemahiran yang dipasang ini. Semak sama ada foldernya tersedia dan boleh diakses, kemudian cuba lagi.",
+  "localConfiguration": "TETAPAN SkillsGo",
+  "settingsNavigation": "Navigasi tetapan",
+  "general": "Peribadikan",
+  "agents": "ejen",
+  "hub": "Hab",
+  "installationPolicy": "Dasar Pemasangan",
+  "storage": "Penyimpanan",
+  "colorScheme": "Skim Warna",
+  "about": "Tentang",
+  "colorSchemeInspectorTitle": "Peranan warna Bahan Dijana",
+  "skillsColorTokensTitle": "Warna semantik SkillsGo",
+  "skillsColorTokensDescription": "Warna produk yang dibina daripada Pasir Radix dan disusun dengan semantik Primer, dengan Folder sebagai hierarki spatial khusus.",
+  "colorSchemeInspectorDescription": "Pratonton setiap token ColorScheme yang tidak ditamatkan yang dijana daripada benih semasa. Klik warna untuk menyalin nilai HEXnya.",
+  "colorSchemePairPreview": "Pasangan semantik",
+  "colorSchemePairPreviewDescription": "Peranan latar depan dan latar belakang diberikan bersama untuk mendedahkan kontras dan hierarki.",
+  "colorSchemeComponentPreview": "Pratonton komponen",
+  "colorSchemeComponentPreviewDescription": "Kawalan Bahan Perwakilan yang diberikan dengan skema pratonton tepat ini.",
+  "colorSchemeSampleTitle": "Tajuk kad kemahiran",
+  "colorSchemeSampleBody": "Salinan sekunder menggunakan onSurfaceVariant.",
+  "colorSchemeCopied": "disalin",
+  "colorSchemeSampleGlyphs": "Aa 123",
+  "colorSchemeGroupPrimary": "utama",
+  "colorSchemeGroupPrimaryDescription": "Penekanan utama, bekas dan peranan aksen tetap.",
+  "colorSchemeGroupSecondary": "Menengah",
+  "colorSchemeGroupSecondaryDescription": "Penekanan sokongan dan peranan sekunder tetap.",
+  "colorSchemeGroupTertiary": "Tertiari",
+  "colorSchemeGroupTertiaryDescription": "Aksen kontras dan peranan tertiari tetap.",
+  "colorSchemeGroupSurface": "Permukaan",
+  "colorSchemeGroupSurfaceDescription": "Halaman, bekas, ketinggian dan hierarki latar depan.",
+  "colorSchemeGroupUtility": "Rangka & Utiliti",
+  "colorSchemeGroupUtilityDescription": "Sempadan, bayang-bayang, scrim, dan permukaan songsang.",
+  "colorSchemeGroupError": "ralat",
+  "colorSchemeGroupErrorDescription": "Tindakan ralat, mesej dan bekas.",
+  "colorSchemeUsagePrimary": "Tindakan utama, fokus dan aksen penekanan tinggi.",
+  "colorSchemeUsageSecondary": "Tindakan sokongan dan aksen penekanan sederhana.",
+  "colorSchemeUsageTertiary": "Aksen kontras yang melengkapi primer dan sekunder.",
+  "colorSchemeUsageContentOn": "Teks dan ikon dipaparkan pada {token}.",
+  "@colorSchemeUsageContentOn": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageContainer": "Bekas penekanan rendah {family} untuk pemilihan dan aksen.",
+  "@colorSchemeUsageContainer": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixed": "Bekas tetap {family} bebas kecerahan.",
+  "@colorSchemeUsageFixed": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedDim": "Bekas tetap {family} bebas kecerahan malap.",
+  "@colorSchemeUsageFixedDim": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedContent": "Kandungan penekanan tinggi pada bekas {family} tetap.",
+  "@colorSchemeUsageFixedContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedVariantContent": "Kandungan penekanan yang lebih rendah pada bekas {family} tetap.",
+  "@colorSchemeUsageFixedVariantContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageSurface": "Halaman asas dan permukaan wilayah besar.",
+  "colorSchemeUsageSurfaceDim": "Permukaan dasar malap digunakan pada ton permukaan paling gelap.",
+  "colorSchemeUsageSurfaceBright": "Permukaan asas terang digunakan pada ton permukaan paling terang.",
+  "colorSchemeUsageSurfaceElevation": "Ketinggian bekas permukaan {level}.",
+  "@colorSchemeUsageSurfaceElevation": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeElevationLowest": "paling rendah",
+  "colorSchemeElevationLow": "rendah",
+  "colorSchemeElevationDefault": "lalai",
+  "colorSchemeElevationHigh": "tinggi",
+  "colorSchemeElevationHighest": "tertinggi",
+  "colorSchemeUsageOnSurface": "Teks dan ikon utama dipaparkan pada permukaan.",
+  "colorSchemeUsageOnSurfaceVariant": "Teks sekunder, label dan ikon lemah pada permukaan.",
+  "colorSchemeUsageSurfaceTint": "Warna ketinggian bahan diperoleh daripada primer.",
+  "colorSchemeUsageOutline": "Sempadan yang menonjol dan garis besar komponen yang difokuskan.",
+  "colorSchemeUsageOutlineVariant": "Sempadan halus, pemisah dan garis besar penekanan rendah.",
+  "colorSchemeUsageShadow": "Warna bayang-bayang jatuh untuk permukaan tinggi.",
+  "colorSchemeUsageScrim": "Tindanan modal digunakan untuk tidak menekankan kandungan latar belakang.",
+  "colorSchemeUsageInverseSurface": "Permukaan dengan cahaya terbalik dan penekanan gelap.",
+  "colorSchemeUsageInversePrimary": "Aksen utama dipaparkan pada permukaan songsang.",
+  "colorSchemeUsageError": "Tindakan ralat, status dan maklum balas penekanan tinggi.",
+  "save": "Jimat",
+  "advancedSettings": "Maju",
+  "remindersSettings": "Peringatan",
+  "remindersSettingsTitle": "Tetapan peringatan",
+  "remindersSettingsDescription": "Pilih peringatan yang akan diterima.",
+  "updateReminderTitle": "Kemas kini peringatan",
+  "updateReminderDescription": "Semak kemas kini apabila Perpustakaan dibuka.",
+  "securityReminderTitle": "Makluman berisiko tinggi",
+  "securityReminderDescription": "Beritahu anda tentang risiko Tinggi atau Kritikal baharu dalam kemahiran yang dipasang.",
+  "availableUpdatesReminder": "Kemahiran yang dipasang {count} mempunyai kemas kini",
+  "@availableUpdatesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openAvailableUpdates": "Buka paparan kemas kini tersedia untuk menyemak dan mengemas kininya.",
+  "securityAdvisoriesReminder": "Kemahiran yang dipasang {count} memerlukan semakan keselamatan",
+  "@securityAdvisoriesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewInstalledSkills": "Semak maklumat risiko mereka sebelum menggunakan atau mengemas kininya.",
+  "generalSettingsTitle": "Jadikan SkillsGo milik anda",
+  "generalSettingsDescription": "Antara muka mengikut bahasa sistem anda, kebolehcapaian dan pilihan gerakan.",
+  "agentsSettingsTitle": "Masa jalan ejen",
+  "hubSettingsTitle": "Asal Hab",
+  "hubSettingsDescription": "Gunakan Hab rasmi atau asal hos sendiri HTTP(S) yang melaksanakan protokol SkillsGo yang sama.",
+  "testConnection": "Uji sambungan",
+  "saveOrigin": "Simpan Asal",
+  "resetDefault": "Tetapkan semula kepada lalai",
+  "connectionReady": "Sambungan sedia",
+  "connectionFailed": "Sambungan gagal",
+  "hubInvalidOrigin": "Masukkan Asal HTTP(S) yang sah tanpa bukti kelayakan, pertanyaan atau serpihan.",
+  "hubHttpFailure": "Hab mengembalikan HTTP {status}. Semak konfigurasi Asal dan pelayan.",
+  "@hubHttpFailure": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "hubInvalidProtocol": "Pelayan tidak mengembalikan protokol carian SkillsGo Hub.",
+  "hubInvalidJson": "Hab mengembalikan JSON yang tidak sah.",
+  "hubConnectionFailure": "Tidak dapat sampai ke Hab. Semak konfigurasi Asal, rangkaian, proksi dan TLS.",
+  "hubConnectionTimeout": "Sambungan Hub tamat masa. Semak rangkaian atau cuba lagi.",
+  "riskPolicyTitle": "Polisi risiko peribadi",
+  "riskPolicyDescription": "Peraturan keselamatan digunakan apabila anda memasang atau mengemas kini kemahiran.",
+  "confirmHighRisk": "Memerlukan pengesahan untuk Risiko Tinggi",
+  "confirmHighRiskDescription": "Artifak berisiko tinggi sentiasa memerlukan pengesahan tambahan sebelum pemasangan.",
+  "allowCriticalOverride": "Benarkan penggantian risiko Kritikal yang jelas",
+  "allowCriticalOverrideDescription": "Artifak berisiko kritikal kekal disekat secara lalai. Dayakan ini hanya untuk mendedahkan penggantian manual yang berasingan.",
+  "storageSettingsTitle": "Storan beralamat kandungan",
+  "storageHealthy": "Boleh dibaca",
+  "storageNotInitialized": "Tidak dimulakan",
+  "storageUnavailable": "Tidak tersedia",
+  "storagePathUnavailable": "Laluan storan belum tersedia sehingga diagnostik CLI selesai.",
+  "storageHealthyDescription": "CLI boleh membaca storan tanpa mengubah kandungannya.",
+  "storageNotInitializedDescription": "Storan belum wujud lagi dan tidak dicipta oleh semakan ini.",
+  "storageUnavailableDescription": "CLI tidak boleh membaca storan. Semak kebenaran dan direktori induknya.",
+  "storageInvalidResponse": "CLI terbina dalam mengembalikan respons diagnostik yang tidak disokong.",
+  "aboutSettingsTitle": "Keserasian produk",
+  "appVersion": "Versi apl",
+  "cliVersion": "Versi CLI terbina dalam",
+  "compatible": "serasi",
+  "hubOriginSaved": "Hub Origin disimpan dan digunakan.",
+  "policySaved": "Dasar pemasangan disimpan.",
+  "officialCli": "SkillsGo CLI",
+  "ready": "SEDIA",
+  "unknown": "TIDAK DIKENALI",
+  "missing": "HILANG",
+  "incompatible": "TIDAK SESUAI",
+  "detecting": "Mengesan…",
+  "customCliPath": "Laluan boleh laku tersuai",
+  "saveAndDetect": "Simpan & kesan",
+  "detectAgain": "Kesan semula",
+  "agentInstalled": "Dipasang",
+  "agentSupported": "Disokong",
+  "agentCatalogSummary": "{installed} dipasang · {supported} disokong",
+  "@agentCatalogSummary": {
+    "placeholders": {
+      "installed": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "int"
+      }
+    }
+  },
+  "installedAgentsTitle": "Dipasang · {count}",
+  "@installedAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsTitle": "Tidak dipasang · {count}",
+  "@notInstalledAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsDescription": "Disokong oleh SkillsGo, tetapi tidak dikesan pada Mac ini.",
+  "agentDiscoveryRoots": "Laluan pemuatan kemahiran: {paths}",
+  "@agentDiscoveryRoots": {
+    "placeholders": {
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+  "agentInspectionFailed": "Data pengesanan ejen tidak tersedia. Jalankan pengesanan sekali lagi.",
+  "noInstalledAgentsTitle": "Tiada Ejen dipasang dikesan",
+  "noInstalledAgentsMessage": "Anda boleh terus menyemak imbas Kemahiran ini, tetapi tiada sasaran pemasangan lagi. Pasang Ejen yang disokong, kemudian jalankan pengesanan sekali lagi.",
+  "clearCustomPath": "Kosongkan laluan tersuai",
+  "privacyProvenance": "Privasi & asal",
+  "privacySummary": "Carian anda tidak disimpan dan SkillsGo tidak menyimpan log arahan.",
+  "language": "Bahasa",
+  "personalizationTheme": "Tema",
+  "folderColorTheme": "Warna tema",
+  "folderColorThemeDescription": "Pilih warna yang anda suka. SkillsGo akan membina palet antara muka yang diselaraskan di sekelilingnya.",
+  "brandNameNeteaseCloudMusic": "Muzik Awan NetEase",
+  "brandNameRaspberryPi": "Raspberry Pi",
+  "brandNameChinaEasternAirlines": "Syarikat Penerbangan China Eastern",
+  "brandNameNvidia": "NVIDIA",
+  "brandNameTaobao": "Taobao",
+  "brandNameBitcoin": "Bitcoin",
+  "appearanceMode": "Mod",
+  "appearanceModeDescription": "Ikuti penampilan sistem anda atau sentiasa gunakan tema terang atau gelap.",
+  "followSystem": "Sistem",
+  "lightMode": "Cahaya",
+  "darkMode": "Gelap",
+  "wallpaper": "Kertas dinding",
+  "wallpaperDescription": "Pilih latar belakang cakerawala. Pilihan anda muncul serta-merta di belakang Folder.",
+  "wallpaperSun": "Matahari",
+  "wallpaperMercury": "Merkuri",
+  "wallpaperVenus": "Zuhrah",
+  "wallpaperEarth": "Bumi",
+  "wallpaperMars": "Marikh",
+  "wallpaperJupiter": "Musytari",
+  "wallpaperSaturn": "Zuhal",
+  "wallpaperUranus": "Uranus",
+  "wallpaperNeptune": "Neptun",
+  "wallpaperPluto": "Pluto",
+  "wallpaperMoon": "Bulan",
+  "folderThemeChoice": "{theme} Tema folder",
+  "@folderThemeChoice": {
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyAffiliation": "Telemetri pemasangan tanpa nama dikawal oleh tetapan SkillsGo. SkillsGo tidak bergabung dengan OpenAI atau Codex.",
+  "commandCompleted": "Perintah selesai",
+  "commandFailed": "Perintah gagal",
+  "commandExit": "Keluar {code} · kembangkan untuk log sesi ini",
+  "@commandExit": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "command": "Perintah",
+  "cancel": "Batal",
+  "updateUnknown": "TIDAK DIKENALI",
+  "updateChecking": "MENYEMAK",
+  "upToDate": "TERKINI",
+  "updateAvailable": "KEMASKINI",
+  "updateUnavailable": "TIDAK TERSEDIA",
+  "updateCheckFailed": "SEMAK GAGAL",
+  "installSkill": "Pasang Kemahiran",
+  "installLocationTitle": "Tetapkan lokasi pemasangan",
+  "userLevel": "Tahap Pengguna",
+  "projectLevel": "Tahap Projek",
+  "projects": "Projek",
+  "loading": "Memuatkan…",
+  "repositoryParsing": "Menghuraikan Repositori…",
+  "userInstallSummary": "Tersedia kepada Ejen {agents} di peringkat pengguna",
+  "@userInstallSummary": {
+    "placeholders": {
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "projectInstallSummary": "{projects} projek · {agents} Ejen",
+  "@projectInstallSummary": {
+    "placeholders": {
+      "projects": {
+        "type": "int"
+      },
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "installationResults": "Hasil pemasangan",
+  "installationInProgress": "Pemasangan sedang dijalankan",
+  "installationSucceeded": "Pemasangan selesai",
+  "installationSucceededMessage": "Skill kini tersedia di lokasi yang dipilih.",
+  "projectUnavailable": "Projek tidak tersedia",
+  "installedCell": "Dipasang",
+  "unsupportedCell": "Tidak tersedia",
+  "confirmInstall": "Sahkan Pemasangan",
+  "installAllRepositorySkills": "Pasang semua kemahiran repositori ({count})",
+  "installAllSkillsTo": "Pasang semua kemahiran untuk",
+  "@installAllRepositorySkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installRepositorySkills": "Pasang semua kemahiran {repository} ({count})",
+  "@installRepositorySkills": {
+    "placeholders": {
+      "repository": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installSkillTo": "Pasang {skill} ke",
+  "@installSkillTo": {
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
+  },
+  "availableInAllProjects": "Semua projek",
+  "availableInSelectedProjects": "Projek terpilih",
+  "usedBy": "Untuk Ejen",
+  "backToTargets": "Kembali ke Sasaran",
+  "stayHere": "Tinggal Di Sini",
+  "viewInLibrary": "Lihat dalam Perpustakaan",
+  "planCreateCount": "{count} buat",
+  "@planCreateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planSkipCount": "{count} langkau",
+  "@planSkipCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planReplaceCount": "{count} ganti",
+  "@planReplaceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planConflictCount": "{count} konflik",
+  "@planConflictCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRiskCount": "{count} risiko disekat",
+  "@planRiskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "refreshInstallationPlan": "Gunakan Resolusi",
+  "replaceVersionConflict": "Gantikan versi yang dipasang pada sasaran ini",
+  "replaceSkillIdCollision": "Gantikan ID Kemahiran yang berbeza pada sasaran ini",
+  "replaceLocalModification": "Buang Pengubahsuaian Tempatan dan gantikan sasaran ini",
+  "sharedTargetConflict": "Laluan ini dikongsi oleh sasaran Ejen lain",
+  "sharedTargetConflictDescription": "Kembali ke matriks sasaran dan pilih setiap Ejen yang terjejas sebelum menggantikan: {agents}",
+  "@sharedTargetConflictDescription": {
+    "placeholders": {
+      "agents": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceConflictingTarget": "Gantikan sasaran yang bercanggah",
+  "confirmHighRiskArtifact": "Pengesahan artifak berisiko tinggi",
+  "confirmCriticalRiskArtifact": "Pengesahan menimpa risiko kritikal",
+  "confirmRiskForSelectedTargets": "Saya menyemak fail artifak dan menerima risiko ini untuk sasaran yang dipilih",
+  "criticalRiskBlocked": "Pemasangan berisiko kritikal disekat",
+  "criticalRiskOverrideDisabled": "Dayakan penggantian Risiko Kritikal yang eksplisit dalam Tetapan sebelum pelan ini boleh diteruskan.",
+  "workspaceManifestChanges": "Perubahan Manifes Ruang Kerja",
+  "noWorkspaceManifestChanges": "Tiada fail Manifes Ruang Kerja akan berubah.",
+  "lockVersionChange": "{from} → {to}",
+  "@lockVersionChange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "notPresent": "tidak hadir",
+  "planActionCreate": "Buat",
+  "planActionReplace": "Gantikan",
+  "planActionSkip": "Langkau",
+  "planActionConflict": "Konflik",
+  "planActionBlockedByRisk": "Disekat oleh risiko",
+  "installationResultSummary": "{succeeded} sasaran dipasang, {failed} gagal",
+  "@installationResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "installationProgressTitle": "Pemasangan sedang dijalankan",
+  "installationProgressSummary": "{finished} daripada {total} sasaran selesai",
+  "@installationProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "targetWaiting": "Menunggu",
+  "targetRunning": "Memasang",
+  "retryFailedTargets": "{count, plural, =1{Cuba semula 1 sasaran yang gagal} other{Cuba semula {count} sasaran yang gagal}}",
+  "@retryFailedTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updatePlanTitle": "Pilih sasaran untuk dikemas kini",
+  "updatePlanDescription": "Pilih Sasaran Pemasangan yang tepat. Ejen dan projek yang tidak dipilih kekal tidak berubah.",
+  "updateTargetsSelected": "{selected} daripada {available} sasaran boleh dikemas kini dipilih",
+  "@updateTargetsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "updateVersionChange": "{fromVersion} → {toVersion}",
+  "@updateVersionChange": {
+    "placeholders": {
+      "fromVersion": {
+        "type": "String"
+      },
+      "toVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceReference": "Rujukan sumber: {reference}",
+  "@sourceReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "fixedVersionTarget": "Disemat — tiada rujukan boleh alih",
+  "currentVersionTarget": "Terkini",
+  "updateCheckTargetFailed": "Semakan kemas kini gagal",
+  "reconcileWorkspaceManifestTarget": "Membaiki manifes ruang kerja",
+  "updateSelectedTargets": "Kemas kini sasaran yang dipilih",
+  "updateProgressTitle": "Mengemas kini sasaran",
+  "updateResultsTitle": "Kemas kini keputusan",
+  "updateProgressSummary": "{finished} daripada {total} sasaran selesai",
+  "@updateProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "retryFailedUpdates": "{count, plural, =1{Cuba semula 1 kemas kini yang gagal} other{Cuba semula {count} kemas kini yang gagal}}",
+  "@retryFailedUpdates": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpdateableTargets": "Tiada sasaran yang dipilih mempunyai kemas kini yang tersedia.",
+  "closeUpdatePlan": "tutup",
+  "targetSucceeded": "Dipasang",
+  "targetSkipped": "Dilangkau",
+  "targetConflict": "Konflik",
+  "targetFailed": "gagal",
+  "targetFailureRetryable": "Lokasi ini tidak boleh ditukar. Anda boleh mencuba lagi.",
+  "targetFailureNeedsAttention": "Lokasi ini memerlukan perhatian anda sebelum anda mencuba lagi.",
+  "installationTargetFailureMessage": "Tiada apa-apa yang diubah di lokasi ini. Semak sama ada folder itu tersedia dan cuba lagi.",
+  "workspacePersistenceFailureMessage": "Tiada apa-apa yang diubah kerana SkillsGo tidak dapat menyimpan tetapan projek. Semak sama ada folder projek boleh ditulis dan cuba lagi.",
+  "installationStateChangedMessage": "Lokasi ini berubah semasa anda menyemaknya. Semak keadaan terkini sebelum mencuba lagi.",
+  "updateTargetFailureMessage": "Lokasi ini tidak dapat dikemas kini. Lokasi lain tidak terjejas, jadi anda boleh mencuba semula yang ini sahaja.",
+  "managementTargetFailureMessage": "Tindakan ini tidak dapat diselesaikan di sini. Lokasi lain tidak terjejas, jadi anda boleh mencuba semula yang ini sahaja.",
+  "technicalDetails": "Butiran teknikal",
+  "targetPathExists": "Item lain sudah wujud di lokasi ini.",
+  "targetBlockedByRisk": "Tetapan keselamatan semasa anda menyekat pemasangan di lokasi ini.",
+  "targetInstallFailed": "Kemahiran tidak dapat dipasang di lokasi ini.",
+  "targetWorkspaceUpdateFailed": "Kemahiran telah dipasang, tetapi tetapan projek tidak dapat dikemas kini.",
+  "installationPlanFailed": "Pelan pemasangan tidak dapat diteruskan",
+  "installationFailed": "Pemasangan tidak dapat diselesaikan",
+  "localSource": "Sumber tempatan",
+  "noDescriptionAvailable": "Tiada penerangan tersedia",
+  "moreCoverage": "+{count} lagi lokasi",
+  "@moreCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverAction": "Mengurus kemahiran sedia ada",
+  "batchTakeoverActionCount": "Urus ({count})",
+  "@batchTakeoverActionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverChecking": "Menyemak kemahiran sedia ada…",
+  "batchTakeoverRetry": "Semak kemahiran terurus sekali lagi",
+  "batchTakeoverEligibleCount": "{count} boleh diurus",
+  "@batchTakeoverEligibleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPending": "Menambah kemahiran kepada pengurusan…",
+  "batchTakeoverTitle": "Urus kemahiran sedia ada dengan SkillsGo?",
+  "batchTakeoverDescription": "SkillsGo akan menambah rekod pengurusan tempatan tanpa mengalihkan, menulis ganti atau memuat naik fail kemahiran. Item yang tidak disokong atau ditukar akan dilangkau.",
+  "batchTakeoverStoryTitle": "Ubah kemahiran bertaburan menjadi satu Perpustakaan yang jelas",
+  "batchTakeoverStoryDescription": "SkillsGo menemui {count, plural, =1{1 kemahiran sedia ada} other{{count} kemahiran sedia ada}} ia boleh mengurus di lokasi ini.",
+  "@batchTakeoverStoryDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverBeforeSemantics": "Sebelum pengurusan, tidak jelas di mana kemahiran sedia ada dipasang, sama ada kemahiran semasa, cara memulihkannya atau sama ada projek menggunakan versi yang sama.",
+  "batchTakeoverPainLocation": "Lokasi pemasangan tidak diketahui",
+  "batchTakeoverPainFreshness": "Status kemas kini tidak diketahui",
+  "batchTakeoverPainRecovery": "Tiada pemulihan apabila patah",
+  "batchTakeoverPainVersionDrift": "Versi berbeza merentas projek",
+  "batchTakeoverFolderTitle": "Kemahiran Sedia Ada",
+  "batchTakeoverFolderSubtitle": "Status tidak jelas",
+  "batchTakeoverAfterLabel": "SELEPAS",
+  "batchTakeoverAfterTitle": "Satu Perpustakaan yang jelas",
+  "batchTakeoverLibraryTitle": "Perpustakaan SkillsGo",
+  "batchTakeoverBenefitLocation": "Kosongkan lokasi",
+  "batchTakeoverBenefitFreshness": "Kemas kini kelihatan",
+  "batchTakeoverBenefitRecovery": "Pemulihan yang mudah",
+  "batchTakeoverBenefitVersions": "Versi jelas",
+  "batchTakeoverManagedSection": "Diuruskan oleh SkillsGo",
+  "batchTakeoverPendingSection": "Belum selesai",
+  "batchTakeoverItemManaged": "{name} diurus oleh SkillsGo",
+  "@batchTakeoverItemManaged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemSkipped": "{name} tidak dapat ditambahkan pada pengurusan",
+  "@batchTakeoverItemSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemPending": "{name} sedang menunggu untuk diurus",
+  "@batchTakeoverItemPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverAfterSemantics": "Selepas pengurusan, {count, plural, =1{1 kemahiran ialah} other{{count} kemahiran}} disusun dalam satu Perpustakaan dengan status terurus yang jelas.",
+  "@batchTakeoverAfterSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverMoreSkills": "+{count} lagi",
+  "@batchTakeoverMoreSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverTransitionSemantics": "Tambahkan kemahiran sedia ada ini pada pengurusan SkillsGo.",
+  "batchTakeoverTransitionLabel": "ATURKAN",
+  "batchTakeoverStatusTitle": "Status pengurusan",
+  "batchTakeoverStatusManaged": "Terurus",
+  "batchTakeoverStatusProgress": "Menganjur",
+  "batchTakeoverStatusSkipped": "Dilangkau",
+  "batchTakeoverStatusFilesStay": "Fail kemahiran kekal di lokasi asalnya",
+  "batchTakeoverBoardSemantics": "Kemahiran disusun ke dalam baris yang lengkap dan direkodkan oleh SkillsGo tanpa mengalihkan failnya.",
+  "batchTakeoverBoardComplete": "SEMUA JELAS",
+  "batchTakeoverBoardPartial": "LENGKAP",
+  "batchTakeoverStatusTotal": "Jumlah",
+  "batchTakeoverQueueComplete": "Tiada kemahiran menunggu",
+  "batchTakeoverQueueWaiting": "Kemahiran akan berpindah ke sini selepas pengesahan",
+  "batchTakeoverNextLabel": "SETERUSNYA",
+  "batchTakeoverFillerCount": "{count, plural, =1{1 blok penganjur SkillsGo} other{{count} blok penganjur SkillsGo}} lengkapkan baris terakhir",
+  "@batchTakeoverFillerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPreservation": "Fail, laluan dan aliran kerja semasa anda kekal di tempatnya. SkillsGo hanya melengkapkan rekod pengurusan tempatannya.",
+  "batchTakeoverLaterHint": "Jika anda melangkau, anda boleh menggunakan Urus kemahiran sedia ada daripada Perpustakaan pada bila-bila masa.",
+  "batchTakeoverSkip": "bukan sekarang",
+  "batchTakeoverConfirm": "Tambahkan pada pengurusan",
+  "batchTakeoverExecutionRetry": "Cuba semula",
+  "batchTakeoverResultTitle": "Kemahiran ditambah kepada pengurusan",
+  "batchTakeoverSummary": "Kemahiran {takenOver} ditambahkan pada pengurusan, {skipped} dilangkau.",
+  "@batchTakeoverSummary": {
+    "placeholders": {
+      "takenOver": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverClose": "tutup",
+  "installMoreTargets": "Pasang di lebih banyak lokasi",
+  "exportLocalSkill": "Eksport",
+  "exportLocalSkillDescription": "Eksport Kemahiran Tempatan ini sebagai arkib ZIP mudah alih.",
+  "detailInstalls": "Pemasangan",
+  "detailRepository": "Repositori",
+  "detailStars": "Bintang",
+  "detailUpdated": "dikemas kini",
+  "detailArchiveSize": "Saiz ZIP",
+  "pathLabel": "Laluan projek",
+  "copyProjectPath": "Salin laluan projek",
+  "projectPathCopied": "Laluan projek disalin",
+  "onboardingWelcomeTitle": "Selamat datang ke SkillsGo",
+  "onboardingWelcomeDescription": "Temui, pasang dan urus Kemahiran merentas Ejen dan projek anda.",
+  "onboardingDetectedAgents": "Ejen Dikesan",
+  "onboardingNoAgents": "Tiada Ejen dipasang dikesan. Anda masih boleh meneruskan.",
+  "onboardingNext": "Seterusnya",
+  "onboardingProjectsTitle": "Tambah projek anda",
+  "onboardingProjectsDescription": "Pilih projek yang anda mahu SkillsGo uruskan.",
+  "onboardingAddProject": "Tambah sekarang",
+  "onboardingAddProjectLater": "atau kemudian",
+  "onboardingStartUsing": "Mula Menggunakan SkillsGo",
+  "onboardingBack": "belakang",
+  "restartOnboardingTitle": "Onboarding",
+  "restartOnboardingDescription": "Lihat panduan pelancaran pertama sekali lagi tanpa mengalih keluar projek, tetapan atau data Kemahiran.",
+  "restartOnboardingAction": "Mulakan semula Onboarding",
+  "restartOnboardingFailed": "SkillsGo tidak dapat memulakan semula Onboarding.",
+  "libraryRefreshSettingsTitle": "Muat semula Perpustakaan tempatan",
+  "libraryRefreshSettingsDescription": "Imbas semula Kemahiran yang dipasang, Projek Ditambah, Ejen dan Kemahiran luaran yang boleh diurus. Ini tidak memasang, mengemas kini atau mengalih keluar apa-apa.",
+  "libraryRefreshSettingsAction": "Muat semula Perpustakaan",
+  "libraryRefreshSettingsPending": "Menyegarkan Pustaka…",
+  "libraryRefreshSettingsSuccess": "Perpustakaan Tempatan disegarkan.",
+  "libraryRefreshSettingsFailed": "SkillsGo tidak dapat memuat semula Perpustakaan tempatan.",
+  "onboardingProjectError": "SkillsGo tidak dapat menambah projek daripada direktori ini.",
+  "onboardingProjectsLoadError": "SkillsGo tidak dapat memuatkan projek tambahan anda.",
+  "onboardingStartupError": "SkillsGo tidak dapat memuatkan persediaan.",
+  "onboardingStateError": "SkillsGo tidak dapat menyimpan kemajuan persediaan anda. Cuba lagi.",
+  "onboardingCliErrorTitle": "SkillsGo CLI memerlukan perhatian",
+  "onboardingCliErrorDescription": "Baiki CLI terbina dalam, kemudian cuba semula untuk meneruskan."
+}

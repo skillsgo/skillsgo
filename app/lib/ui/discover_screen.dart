@@ -15,6 +15,7 @@ import 'package:hugeicons/hugeicons.dart';
 
 import '../domain/skills_gateway.dart';
 import 'agent_catalog_controller.dart';
+import 'bidirectional_content.dart';
 import 'brand.dart';
 import 'discover_controller.dart';
 import 'install_location_popover.dart';

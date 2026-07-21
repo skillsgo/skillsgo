@@ -16,6 +16,7 @@ import 'package:path/path.dart' as p;
 import '../domain/skills_gateway.dart';
 import 'agent_catalog_controller.dart';
 import 'agent_logo.dart';
+import 'bidirectional_content.dart';
 import 'brand.dart';
 import 'install_location_popover.dart';
 import 'install_operation_controller.dart';

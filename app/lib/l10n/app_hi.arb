@@ -1,0 +1,1088 @@
+{
+  "@@locale": "hi",
+  "discover": "खोजें",
+  "discoverSkills": "थोड़ा और जानना अच्छा है.",
+  "library": "पुस्तकालय",
+  "settings": "सेटिंग्स",
+  "openSettings": "सेटिंग्स खोलें",
+  "cliNeedsAttention": "एक आवश्यक SkillsGo घटक पर ध्यान देने की आवश्यकता है।",
+  "cliMissingBundled": "एक आवश्यक SkillsGo घटक गुम है या प्रारंभ नहीं हो सकता है। इसे पुनर्स्थापित करने के लिए SkillsGo को पुनर्स्थापित करें।",
+  "cliDamagedBundled": "एक आवश्यक SkillsGo घटक क्षतिग्रस्त है। इसे पुनर्स्थापित करने के लिए SkillsGo को पुनर्स्थापित करें।",
+  "cliIncompatibleBundled": "एक आवश्यक SkillsGo घटक इस ऐप संस्करण से मेल नहीं खाता है। SkillsGo को अद्यतन या पुनः स्थापित करें।",
+  "officialIndex": "SkillsGo Hub",
+  "discoverTitle": "अपने अगले कदम के लिए एक कौशल खोजें।",
+  "skillsLeaderboard": "थोड़ा और जानना अच्छा है.",
+  "searchResultsFor": "\"{query}\" के लिए परिणाम",
+  "@searchResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchSkills": "कौशल खोजें या Git लिंक पेस्ट करें...",
+  "search": "खोजें",
+  "ranking": "रैंकिंग",
+  "trending": "ट्रेंडिंग",
+  "hot": "गरम",
+  "discoverNavigation": "नेविगेशन खोजें",
+  "allTimeRanking": "सर्वकालिक रैंकिंग",
+  "trendingNow": "पिछले 24 घंटों में ट्रेंड कर रहा है",
+  "hotNow": "अभी गर्मी है",
+  "allTimeDescription": "सार्वजनिक Skills को हर समय स्वीकृत इंस्टॉल द्वारा ऑर्डर किया गया।",
+  "trendingDescription": "सार्वजनिक Skills को नवीनतम 24-घंटे की विंडो के दौरान स्वीकृत इंस्टॉल द्वारा ऑर्डर किया गया।",
+  "hotDescription": "सार्वजनिक Skills को अल्पकालिक स्थापना वेग और परिवर्तन द्वारा आदेश दिया गया।",
+  "offlineTitle": "SkillsGo से कनेक्ट नहीं हो सकता",
+  "offlineMessage": "अपना इंटरनेट कनेक्शन जांचें और पुनः प्रयास करें। यदि आप प्रॉक्सी या कस्टम सेवा पते का उपयोग करते हैं, तो सेटिंग्स में इसकी समीक्षा करें।",
+  "searchFailedTitle": "खोज लड़खड़ा गई",
+  "validationTitle": "जांचें कि आपने क्या दर्ज किया है",
+  "validationMessage": "SkillsGo इस अनुरोध का उपयोग नहीं कर सका। आपने जो दर्ज किया है उसकी समीक्षा करें और पुनः प्रयास करें।",
+  "serverTitle": "सेवा अस्थायी रूप से अनुपलब्ध है",
+  "serverMessage": "SkillsGo अभी इस अनुरोध को पूरा नहीं कर सकता। थोड़ी देर में पुनः प्रयास करें.",
+  "timeoutTitle": "इसमें बहुत अधिक समय लग रहा है",
+  "timeoutMessage": "सेवा ने समय पर प्रतिक्रिया नहीं दी. अपना कनेक्शन जाँचें या पुनः प्रयास करें।",
+  "invalidResponseTitle": "SkillsGo को अपडेट की आवश्यकता है",
+  "invalidResponseMessage": "यह प्रतिक्रिया आपके SkillsGo के संस्करण द्वारा नहीं पढ़ी जा सकती। ऐप को अपडेट करें, फिर पुनः प्रयास करें।",
+  "invalidLocalDataTitle": "किसी स्थापित कौशल को नहीं पढ़ सकता",
+  "invalidLocalDataMessage": "कुछ स्थानीय स्थापना जानकारी क्षतिग्रस्त या असंगत है। SkillsGo को अद्यतन या पुनः स्थापित करें, फिर पुनः प्रयास करें।",
+  "tryAgain": "पुनः प्रयास करें",
+  "searchEmptyTitle": "खोजें, स्क्रॉल न करें.",
+  "searchEmptyMessage": "सार्वजनिक कौशल खोजने के लिए कोई क्षमता, स्रोत या कार्य दर्ज करें।",
+  "noSkillsTitle": "कोई कौशल नहीं मिला",
+  "noSkillsMessage": "एक व्यापक वाक्यांश आज़माएँ या वर्तनी जाँचें।",
+  "focusSearch": "फोकस खोज",
+  "skillsFromLink": "इस लिंक से Skills",
+  "skillCount": "{count, plural, =1{1 Skill} other{{count} Skills}}",
+  "@skillCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceResultsSummary": "{count, plural, =1{{source} से 1 Skill} other{{source} से {count} Skills}}",
+  "@sourceResultsSummary": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceSearchEmptyTitle": "यह लिंक निरीक्षण के लिए तैयार है",
+  "sourceSearchEmptyMessage": "{source} वर्तमान खोज परिणामों में नहीं है। SkillsGo सीधे अगले चरण में लिंक का निरीक्षण कर सकता है।",
+  "@sourceSearchEmptyMessage": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "inspectSource": "इस लिंक में कौशल देखें",
+  "collectionEmptyTitle": "इस संग्रह में कोई Skills नहीं है",
+  "collectionEmptyMessage": "यहां अभी तक कुछ भी नहीं है. अधिक इंस्टॉलेशन गतिविधि के बाद पुनः प्रयास करें।",
+  "loadMore": "और अधिक लोड करें",
+  "install": "स्थापित करें",
+  "installAll": "सभी कौशल स्थापित करें",
+  "latestCommit": "नवीनतम प्रतिबद्धता",
+  "installToMoreTargets": "अधिक स्थानों पर स्थापित करें",
+  "localTargets": "{count} स्थानीय लक्ष्य",
+  "@localTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allTimeMetric": "{count} सर्वकालिक इंस्टॉल",
+  "@allTimeMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "trendingMetric": "{count} इंस्टॉल / 24 घंटे",
+  "@trendingMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hotMetric": "{value} इस घंटे · {change}",
+  "@hotMetric": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "trustUnverified": "असत्यापित",
+  "trustCommunityVerified": "समुदाय सत्यापित",
+  "trustPublisherVerified": "प्रकाशक सत्यापित",
+  "trustOfficial": "आधिकारिक",
+  "trustWarned": "चेतावनी दी",
+  "trustDelisted": "असूचीबद्ध",
+  "riskUnknown": "जोखिम अज्ञात",
+  "riskLow": "कम जोखिम",
+  "riskMedium": "मध्यम जोखिम",
+  "riskHigh": "उच्च जोखिम",
+  "riskCritical": "गंभीर जोखिम",
+  "openSkill": "{name} खोलें",
+  "@openSkill": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installs": "{count} स्थापित करता है",
+  "@installs": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "detailFailedTitle": "इस Skill को लोड नहीं किया जा सका",
+  "detailLoading": "ऑडिट योग्य Skill विवरण लोड हो रहा है",
+  "artifactUnavailableTitle": "आर्टिफ़ैक्ट उपलब्ध नहीं है",
+  "artifactUnavailableMessage": "यह संस्करण अभी उपलब्ध नहीं है. पुनः प्रयास करें या कोई अन्य संस्करण चुनें.",
+  "detailInvalidTitle": "आर्टिफ़ैक्ट मेटाडेटा समर्थित नहीं है",
+  "detailInvalidMessage": "इस कौशल के कुछ विवरण अधूरे हैं या पढ़े नहीं जा सकते। SkillsGo को अपडेट करें, फिर पुनः प्रयास करें।",
+  "instructionsTab": "अनुदेश",
+  "manifestTab": "मैनिफ़ेस्ट",
+  "immutableVersionLabel": "अपरिवर्तनीय {version}",
+  "@immutableVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "commitIdentity": "{sha} प्रतिबद्ध करें",
+  "@commitIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "treeIdentity": "पेड़ {sha}",
+  "@treeIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "contentIdentity": "सामग्री {digest}",
+  "@contentIdentity": {
+    "placeholders": {
+      "digest": {
+        "type": "String"
+      }
+    }
+  },
+  "trustDoesNotProveSafety": "प्रकाशक ट्रस्ट स्वामित्व या रखरखाव की पुष्टि करता है; यह आर्टिफैक्ट सुरक्षा को प्रमाणित नहीं करता है। इस अपरिवर्तनीय संस्करण के लिए जोखिम का मूल्यांकन अलग से किया जाता है।",
+  "knownInstallationTargets": "ज्ञात स्थापना लक्ष्य",
+  "installationRange": "स्थापित दायरा",
+  "targetDetails": "लक्ष्य विवरण दिखाएँ",
+  "hideTargetDetails": "लक्ष्य विवरण छिपाएँ",
+  "installedVersionLabel": "संस्करण {version}",
+  "@installedVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "targetSummary": "{scope} / {agent} · {version}",
+  "@targetSummary": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "agent": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "projectScope": "प्रोजेक्ट",
+  "fileContentUnavailable": "बाइनरी या अनुपलब्ध पूर्वावलोकन",
+  "fileContentTruncated": "पूर्वावलोकन को Hub सुरक्षा सीमा द्वारा छोटा कर दिया गया।",
+  "retry": "पुनः प्रयास करें",
+  "backToSearch": "खोज पर वापस जाएँ",
+  "installForCodex": "Codex के लिए इंस्टॉल करें",
+  "cliNotDetected": "कौशल (पता नहीं चला)",
+  "snapshotFiles": "स्नैपशॉट फ़ाइलें",
+  "globalCodex": "वैश्विक · Codex",
+  "yourLibrary": "आप जो जानते हैं वह सब यहाँ है।",
+  "libraryNavigation": "लाइब्रेरी नेविगेशन",
+  "all": "सब",
+  "allSkills": "सभी Skills",
+  "updatesOnly": "अद्यतन",
+  "allAgents": "सभी Agents",
+  "allProjects": "सभी परियोजनाएँ",
+  "specificProject": "प्रोजेक्ट",
+  "userScope": "वैश्विक",
+  "addProject": "प्रोजेक्ट जोड़ें",
+  "relocateProject": "स्थानांतरित करें",
+  "removeFromList": "सूची से हटाएँ",
+  "removeProjectTitle": "SkillsGo से {name} हटाएं?",
+  "@removeProjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeProjectDescription": "केवल ऐप संदर्भ हटा दिया जाएगा. SkillsGo इस निर्देशिका में किसी भी फाइल को बदलेगा या हटाएगा नहीं।",
+  "projectRailUnavailable": "{name} - अनुपलब्ध",
+  "@projectRailUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyProjectTitle": "अभी तक कोई Skills नहीं है",
+  "browseSkills": "Skills ब्राउज़ करें",
+  "projectMissingTitle": "प्रोजेक्ट निर्देशिका अनुपलब्ध है",
+  "projectMissingMessage": "हो सकता है कि निर्देशिका स्थानांतरित हो गई हो या उसका वॉल्यूम ऑफ़लाइन हो। इसे स्थानांतरित करें या केवल इसके ऐप संदर्भ को हटा दें।",
+  "projectPermissionTitle": "प्रोजेक्ट की अनुमति आवश्यक है",
+  "projectPermissionMessage": "SkillsGo इस चयनित रूट का निरीक्षण नहीं कर सकता। इसे निर्देशिका पिकर के माध्यम से स्थानांतरित करके पहुंच प्रदान करें।",
+  "projectInaccessibleTitle": "प्रोजेक्ट निर्देशिका पहुंच योग्य नहीं है",
+  "projectInaccessibleMessage": "SkillsGo ने इस प्रोजेक्ट का संदर्भ रखा। पथ या आयतन की जाँच करें, फिर उसे स्थानांतरित करें।",
+  "checking": "जाँच हो रही है...",
+  "checkUpdates": "अपडेट जांचें",
+  "refresh": "ताज़ा करें",
+  "libraryUnavailable": "लाइब्रेरी अनुपलब्ध",
+  "libraryEmpty": "अभी तक कोई कौशल स्थापित नहीं किया गया है",
+  "libraryEmptyMessage": "डिस्कवर से एक Skill इंस्टॉल करें और यह यहां दिखाई देगा।",
+  "searchLibrary": "स्थापित कौशल खोजें",
+  "libraryNoMatches": "कोई मिलान नहीं Skills",
+  "libraryNoMatchesMessage": "कोई भिन्न नाम, स्रोत, Agent, प्रोजेक्ट या संस्करण आज़माएँ।",
+  "agentsSummary": "{count} Agents",
+  "@agentsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsSummary": "{count} परियोजनाएं",
+  "@projectsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionsSummary": "{count} संस्करण",
+  "@versionsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubManaged": "Hub प्रबंधित",
+  "localManaged": "स्थानीय प्रबंधित",
+  "externalInstallation": "बाहरी स्थापना",
+  "readOnly": "केवल पढ़ें",
+  "unversioned": "असंक्रमित",
+  "supportingFiles": "सहायक फ़ाइलें",
+  "versionDivergence": "संस्करण विचलन",
+  "healthHealthy": "स्वस्थ",
+  "healthMissing": "लक्ष्य चूक गया",
+  "healthReplaced": "लक्ष्य बदला गया",
+  "healthLocalModification": "स्थानीय संशोधन",
+  "healthUnreadable": "लक्ष्य अपठनीय",
+  "healthUndeclared": "घोषित नहीं किया गया",
+  "healthWorkspaceUnreadable": "कार्यस्थान स्थिति अपठनीय",
+  "healthLockMismatch": "लॉक बेमेल",
+  "healthUnexpectedPath": "अप्रत्याशित लक्ष्य पथ",
+  "modeSymlink": "सिमलिंक",
+  "modeCopy": "प्रतिलिपि",
+  "modeExternal": "बाहरी",
+  "notLinked": "लिंक नहीं किया गया",
+  "update": "अद्यतन करें",
+  "backToLibrary": "लाइब्रेरी को लौटें",
+  "remove": "हटाओ",
+  "manageTargets": "दायरा प्रबंधित करें",
+  "skillsSelected": "{count} चयनित",
+  "@skillsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "स्पष्ट चयन",
+  "selectCurrentResults": "वर्तमान परिणाम चुनें",
+  "clearCurrentResultSelection": "वर्तमान परिणाम चयन साफ़ करें",
+  "manageTargetsTitle": "स्थापना लक्ष्य प्रबंधित करें",
+  "manageTargetsDescription": "प्रत्येक लक्ष्य के लिए एक सटीक कार्रवाई चुनें. अचयनित लक्ष्य नहीं बदलेंगे.",
+  "targetActionsSelected": "{total} लक्ष्यों में से {selected} चयनित",
+  "@targetActionsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "repairTarget": "मरम्मत",
+  "confirmRemoveTarget": "हटाने की पुष्टि करें",
+  "applyTargetActions": "चयनित क्रियाएँ लागू करें",
+  "managementProgressTitle": "लक्ष्य क्रियाएँ लागू करना",
+  "managementResultsTitle": "लक्ष्य कार्रवाई परिणाम",
+  "managementResultSummary": "{succeeded} सफल हुआ, {failed} विफल रहा",
+  "@managementResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceOwnershipChanges": "चयनित प्रोजेक्ट क्रियाएँ skillsgo.mod और skillsgo.sum को अद्यतन करेंगी।",
+  "targetContentPreserved": "वर्तमान लक्ष्य सामग्री संरक्षित की जाएगी.",
+  "localReadFailed": "यह Skill नहीं पढ़ सकता",
+  "localReadFailedMessage": "SkillsGo इस स्थापित कौशल को नहीं पढ़ सका। जांचें कि उसका फ़ोल्डर उपलब्ध और पहुंच योग्य है, फिर पुनः प्रयास करें।",
+  "localConfiguration": "स्किल्सगो सेटिंग्स",
+  "settingsNavigation": "सेटिंग नेविगेशन",
+  "general": "वैयक्तिकृत करें",
+  "agents": "Agents",
+  "hub": "Hub",
+  "installationPolicy": "स्थापना नीति",
+  "storage": "भंडारण",
+  "colorScheme": "रंग योजना",
+  "about": "के बारे में",
+  "colorSchemeInspectorTitle": "Material रंग भूमिकाएँ उत्पन्न की गईं",
+  "skillsColorTokensTitle": "SkillsGo अर्थपूर्ण रंग",
+  "skillsColorTokensDescription": "उत्पाद रंग Radix Sand से निर्मित और Primer शब्दार्थ के साथ व्यवस्थित, Folder के साथ एक समर्पित स्थानिक पदानुक्रम के रूप में।",
+  "colorSchemeInspectorDescription": "वर्तमान बीज से उत्पन्न प्रत्येक गैर-बहिष्कृत ColorScheme टोकन का पूर्वावलोकन करें। किसी रंग का HEX मान कॉपी करने के लिए उस पर क्लिक करें।",
+  "colorSchemePairPreview": "शब्दार्थ युग्म",
+  "colorSchemePairPreviewDescription": "विरोधाभास और पदानुक्रम को उजागर करने के लिए अग्रभूमि और पृष्ठभूमि भूमिकाओं को एक साथ प्रस्तुत किया गया।",
+  "colorSchemeComponentPreview": "घटक पूर्वावलोकन",
+  "colorSchemeComponentPreviewDescription": "इस सटीक पूर्वावलोकन योजना के साथ प्रतिनिधि Material नियंत्रण प्रदान किए गए।",
+  "colorSchemeSampleTitle": "Skill कार्ड शीर्षक",
+  "colorSchemeSampleBody": "द्वितीयक प्रतिलिपि onSurfaceVariant का उपयोग करती है।",
+  "colorSchemeCopied": "नकल की गई",
+  "colorSchemeSampleGlyphs": "आ 123",
+  "colorSchemeGroupPrimary": "प्राथमिक",
+  "colorSchemeGroupPrimaryDescription": "प्राथमिक जोर, कंटेनर, और निश्चित उच्चारण भूमिकाएँ।",
+  "colorSchemeGroupSecondary": "माध्यमिक",
+  "colorSchemeGroupSecondaryDescription": "सहायक जोर और निश्चित माध्यमिक भूमिकाएँ।",
+  "colorSchemeGroupTertiary": "तृतीयक",
+  "colorSchemeGroupTertiaryDescription": "विरोधाभासी उच्चारण और निश्चित तृतीयक भूमिकाएँ।",
+  "colorSchemeGroupSurface": "सतह",
+  "colorSchemeGroupSurfaceDescription": "पृष्ठ, कंटेनर, ऊंचाई और अग्रभूमि पदानुक्रम।",
+  "colorSchemeGroupUtility": "रूपरेखा एवं उपयोगिता",
+  "colorSchemeGroupUtilityDescription": "सीमाएँ, छायाएँ, स्क्रिम और उलटी सतहें।",
+  "colorSchemeGroupError": "त्रुटि",
+  "colorSchemeGroupErrorDescription": "त्रुटि क्रियाएँ, संदेश और कंटेनर।",
+  "colorSchemeUsagePrimary": "प्राथमिक क्रियाएँ, फोकस, और उच्च-जोर वाले उच्चारण।",
+  "colorSchemeUsageSecondary": "सहायक क्रियाएं और मध्यम-जोर वाले उच्चारण।",
+  "colorSchemeUsageTertiary": "विरोधाभासी लहजे जो प्राथमिक और माध्यमिक के पूरक हैं।",
+  "colorSchemeUsageContentOn": "{token} पर प्रदर्शित टेक्स्ट और आइकन।",
+  "@colorSchemeUsageContentOn": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageContainer": "चयन और उच्चारण के लिए कम जोर वाला {family} कंटेनर।",
+  "@colorSchemeUsageContainer": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixed": "चमक-स्वतंत्र निश्चित {family} कंटेनर।",
+  "@colorSchemeUsageFixed": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedDim": "मंद चमक-स्वतंत्र निश्चित {family} कंटेनर।",
+  "@colorSchemeUsageFixedDim": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedContent": "निश्चित {family} कंटेनर पर उच्च-जोर सामग्री।",
+  "@colorSchemeUsageFixedContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedVariantContent": "निश्चित {family} कंटेनर पर कम जोर वाली सामग्री।",
+  "@colorSchemeUsageFixedVariantContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageSurface": "आधार पृष्ठ और बड़े क्षेत्र की सतह।",
+  "colorSchemeUsageSurfaceDim": "सबसे गहरे रंग की सतह पर मंद आधार सतह का उपयोग किया जाता है।",
+  "colorSchemeUsageSurfaceBright": "चमकदार आधार सतह का उपयोग सबसे हल्के सतह टोन पर किया जाता है।",
+  "colorSchemeUsageSurfaceElevation": "{level} सतह-कंटेनर ऊंचाई।",
+  "@colorSchemeUsageSurfaceElevation": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeElevationLowest": "सबसे कम",
+  "colorSchemeElevationLow": "कम",
+  "colorSchemeElevationDefault": "डिफ़ॉल्ट",
+  "colorSchemeElevationHigh": "उच्च",
+  "colorSchemeElevationHighest": "उच्चतम",
+  "colorSchemeUsageOnSurface": "प्राथमिक पाठ और चिह्न सतहों पर प्रदर्शित होते हैं।",
+  "colorSchemeUsageOnSurfaceVariant": "द्वितीयक पाठ, लेबल, और सतहों पर दबे हुए चिह्न।",
+  "colorSchemeUsageSurfaceTint": "Material एलिवेशन टिंट प्राथमिक से प्राप्त हुआ।",
+  "colorSchemeUsageOutline": "प्रमुख सीमाएँ और केंद्रित घटक रूपरेखाएँ।",
+  "colorSchemeUsageOutlineVariant": "सूक्ष्म सीमाएँ, विभाजक, और कम-जोर वाली रूपरेखाएँ।",
+  "colorSchemeUsageShadow": "ऊंची सतहों के लिए ड्रॉप-शैडो रंग।",
+  "colorSchemeUsageScrim": "मोडल ओवरले का उपयोग पृष्ठभूमि सामग्री पर ज़ोर कम करने के लिए किया जाता है।",
+  "colorSchemeUsageInverseSurface": "उल्टे प्रकाश और अंधेरे जोर के साथ सतह।",
+  "colorSchemeUsageInversePrimary": "प्राथमिक उच्चारण उलटी सतह पर प्रदर्शित होता है।",
+  "colorSchemeUsageError": "त्रुटि क्रियाएं, स्थिति और उच्च-जोर वाली प्रतिक्रिया।",
+  "save": "सहेजें",
+  "advancedSettings": "उन्नत",
+  "remindersSettings": "अनुस्मारक",
+  "remindersSettingsTitle": "अनुस्मारक सेटिंग्स",
+  "remindersSettingsDescription": "चुनें कि कौन सा अनुस्मारक प्राप्त करना है।",
+  "updateReminderTitle": "अनुस्मारक अद्यतन करें",
+  "updateReminderDescription": "लाइब्रेरी खुलने पर अपडेट की जाँच करें।",
+  "securityReminderTitle": "उच्च जोखिम वाले अलर्ट",
+  "securityReminderDescription": "स्थापित कौशल में नए उच्च या गंभीर जोखिमों के बारे में आपको सूचित करें।",
+  "availableUpdatesReminder": "{count} स्थापित कौशल में अद्यतन हैं",
+  "@availableUpdatesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openAvailableUpdates": "उनकी समीक्षा और अद्यतन करने के लिए उपलब्ध-अद्यतन दृश्य खोलें।",
+  "securityAdvisoriesReminder": "{count} स्थापित कौशल को सुरक्षा समीक्षा की आवश्यकता है",
+  "@securityAdvisoriesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewInstalledSkills": "उनका उपयोग करने या अद्यतन करने से पहले उनकी जोखिम संबंधी जानकारी की समीक्षा करें।",
+  "generalSettingsTitle": "SkillsGo को अपना बनाएं",
+  "generalSettingsDescription": "इंटरफ़ेस आपके सिस्टम की भाषा, पहुंच और गति प्राथमिकताओं का अनुसरण करता है।",
+  "agentsSettingsTitle": "Agent रनटाइम",
+  "hubSettingsTitle": "Hub उत्पत्ति",
+  "hubSettingsDescription": "आधिकारिक Hub या HTTP(S) स्व-होस्टेड मूल का उपयोग करें जो समान SkillsGo प्रोटोकॉल लागू करता है।",
+  "testConnection": "कनेक्शन का परीक्षण करें",
+  "saveOrigin": "उत्पत्ति सहेजें",
+  "resetDefault": "डिफ़ॉल्ट पर रीसेट करें",
+  "connectionReady": "कनेक्शन तैयार",
+  "connectionFailed": "कनेक्शन विफल",
+  "hubInvalidOrigin": "क्रेडेंशियल्स, क्वेरी या खंड के बिना एक वैध HTTP(S) उत्पत्ति दर्ज करें।",
+  "hubHttpFailure": "Hub ने HTTP {status} लौटा दिया। उत्पत्ति और सर्वर कॉन्फ़िगरेशन की जाँच करें।",
+  "@hubHttpFailure": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "hubInvalidProtocol": "सर्वर ने SkillsGo Hub खोज प्रोटोकॉल वापस नहीं किया।",
+  "hubInvalidJson": "Hub ने अमान्य JSON लौटाया।",
+  "hubConnectionFailure": "Hub तक नहीं पहुंच सका. उत्पत्ति, नेटवर्क, प्रॉक्सी और TLS कॉन्फ़िगरेशन की जाँच करें।",
+  "hubConnectionTimeout": "Hub कनेक्शन का समय समाप्त हो गया। नेटवर्क जाँचें या पुनः प्रयास करें।",
+  "riskPolicyTitle": "व्यक्तिगत जोखिम नीति",
+  "riskPolicyDescription": "जब आप कोई कौशल स्थापित या अद्यतन करते हैं तो सुरक्षा नियम लागू होते हैं।",
+  "confirmHighRisk": "उच्च जोखिम के लिए पुष्टि की आवश्यकता है",
+  "confirmHighRiskDescription": "उच्च जोखिम वाली कलाकृतियों को हमेशा स्थापना से पहले अतिरिक्त पुष्टि की आवश्यकता होती है।",
+  "allowCriticalOverride": "स्पष्ट क्रिटिकल-जोखिम ओवरराइड की अनुमति दें",
+  "allowCriticalOverrideDescription": "गंभीर-जोखिम वाली कलाकृतियाँ डिफ़ॉल्ट रूप से अवरुद्ध रहती हैं। इसे केवल एक अलग मैन्युअल ओवरराइड को उजागर करने के लिए सक्षम करें।",
+  "storageSettingsTitle": "सामग्री-संबोधित Store",
+  "storageHealthy": "पठनीय",
+  "storageNotInitialized": "प्रारंभ नहीं किया गया",
+  "storageUnavailable": "अनुपलब्ध",
+  "storagePathUnavailable": "CLI डायग्नोस्टिक्स तैयार होने तक Store पथ अनुपलब्ध है।",
+  "storageHealthyDescription": "CLI अपनी सामग्री को बदले बिना Store को पढ़ सकता है।",
+  "storageNotInitializedDescription": "Store अभी तक मौजूद नहीं है और इस चेक द्वारा नहीं बनाया गया था।",
+  "storageUnavailableDescription": "CLI Store को नहीं पढ़ सकता है। इसकी अनुमतियाँ और मूल निर्देशिका जाँचें।",
+  "storageInvalidResponse": "बंडल किए गए CLI ने एक असमर्थित निदान प्रतिक्रिया लौटा दी।",
+  "aboutSettingsTitle": "उत्पाद अनुकूलता",
+  "appVersion": "ऐप संस्करण",
+  "cliVersion": "बंडल CLI संस्करण",
+  "compatible": "संगत",
+  "hubOriginSaved": "Hub उत्पत्ति सहेजी गई और लागू की गई।",
+  "policySaved": "स्थापना नीति सहेजी गई.",
+  "officialCli": "SkillsGo CLI",
+  "ready": "तैयार",
+  "unknown": "अज्ञात",
+  "missing": "लापता",
+  "incompatible": "असंगत",
+  "detecting": "पता लगाया जा रहा है...",
+  "customCliPath": "कस्टम निष्पादन योग्य पथ",
+  "saveAndDetect": "सहेजें और पता लगाएं",
+  "detectAgain": "फिर से पता लगाएं",
+  "agentInstalled": "स्थापित",
+  "agentSupported": "समर्थित",
+  "agentCatalogSummary": "{installed} स्थापित · {supported} समर्थित",
+  "@agentCatalogSummary": {
+    "placeholders": {
+      "installed": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "int"
+      }
+    }
+  },
+  "installedAgentsTitle": "स्थापित · {count}",
+  "@installedAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsTitle": "स्थापित नहीं है · {count}",
+  "@notInstalledAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsDescription": "SkillsGo द्वारा समर्थित, लेकिन इस Mac पर पता नहीं चला।",
+  "agentDiscoveryRoots": "Skill लोडिंग पथ: {paths}",
+  "@agentDiscoveryRoots": {
+    "placeholders": {
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+  "agentInspectionFailed": "Agent डिटेक्शन डेटा उपलब्ध नहीं है। पुनः पता लगाना चलाएँ।",
+  "noInstalledAgentsTitle": "कोई स्थापित Agents नहीं पाया गया",
+  "noInstalledAgentsMessage": "आप इस Skill को ब्राउज़ करना जारी रख सकते हैं, लेकिन अभी तक कोई इंस्टॉलेशन लक्ष्य नहीं है। समर्थित Agent स्थापित करें, फिर दोबारा डिटेक्शन चलाएँ।",
+  "clearCustomPath": "कस्टम पथ साफ़ करें",
+  "privacyProvenance": "गोपनीयता और उद्गम",
+  "privacySummary": "आपकी खोजें सहेजी नहीं गई हैं, और SkillsGo कमांड लॉग नहीं रखता है।",
+  "language": "भाषा",
+  "personalizationTheme": "थीम",
+  "folderColorTheme": "थीम रंग",
+  "folderColorThemeDescription": "वह रंग चुनें जो आपको पसंद हो. SkillsGo इसके चारों ओर एक समन्वित इंटरफ़ेस पैलेट का निर्माण करेगा।",
+  "brandNameNeteaseCloudMusic": "NetEase Cloud Music",
+  "brandNameRaspberryPi": "Raspberry Pi",
+  "brandNameChinaEasternAirlines": "China Eastern Airlines",
+  "brandNameNvidia": "NVIDIA",
+  "brandNameTaobao": "Taobao",
+  "brandNameBitcoin": "Bitcoin",
+  "appearanceMode": "मोड",
+  "appearanceModeDescription": "अपने सिस्टम की उपस्थिति का पालन करें, या हमेशा हल्के या गहरे रंग की थीम का उपयोग करें।",
+  "followSystem": "सिस्टम",
+  "lightMode": "रोशनी",
+  "darkMode": "अंधेरा",
+  "wallpaper": "वॉलपेपर",
+  "wallpaperDescription": "एक दिव्य पृष्ठभूमि चुनें. आपका चयन Folder के ठीक पीछे दिखाई देता है।",
+  "wallpaperSun": "रवि",
+  "wallpaperMercury": "बुध",
+  "wallpaperVenus": "शुक्र",
+  "wallpaperEarth": "पृथ्वी",
+  "wallpaperMars": "मंगल",
+  "wallpaperJupiter": "बृहस्पति",
+  "wallpaperSaturn": "शनि",
+  "wallpaperUranus": "यूरेनस",
+  "wallpaperNeptune": "नेपच्यून",
+  "wallpaperPluto": "प्लूटो",
+  "wallpaperMoon": "चाँद",
+  "folderThemeChoice": "{theme} Folder थीम",
+  "@folderThemeChoice": {
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyAffiliation": "अनाम इंस्टॉलेशन टेलीमेट्री को SkillsGo सेटिंग्स द्वारा नियंत्रित किया जाता है। SkillsGo OpenAI या Codex से संबद्ध नहीं है।",
+  "commandCompleted": "आदेश पूरा हुआ",
+  "commandFailed": "आदेश विफल रहा",
+  "commandExit": "{code} से बाहर निकलें · इस सत्र के लॉग के लिए विस्तार करें",
+  "@commandExit": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "command": "आदेश",
+  "cancel": "रद्द करें",
+  "updateUnknown": "अज्ञात",
+  "updateChecking": "जाँच हो रही है",
+  "upToDate": "अद्यतन",
+  "updateAvailable": "अद्यतन करें",
+  "updateUnavailable": "अनुपलब्ध",
+  "updateCheckFailed": "जाँच विफल",
+  "installSkill": "Skill स्थापित करें",
+  "installLocationTitle": "स्थापना स्थान निर्धारित करें",
+  "userLevel": "उपयोगकर्ता स्तर",
+  "projectLevel": "परियोजना स्तर",
+  "projects": "परियोजनाएं",
+  "loading": "लोड हो रहा है...",
+  "repositoryParsing": "पार्सिंग रिपॉजिटरी…",
+  "userInstallSummary": "उपयोगकर्ता स्तर पर {agents} Agents के लिए उपलब्ध है",
+  "@userInstallSummary": {
+    "placeholders": {
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "projectInstallSummary": "{projects} परियोजनाएं · {agents} Agents",
+  "@projectInstallSummary": {
+    "placeholders": {
+      "projects": {
+        "type": "int"
+      },
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "installationResults": "स्थापना परिणाम",
+  "installationInProgress": "स्थापना प्रगति पर है",
+  "installationSucceeded": "स्थापना पूर्ण",
+  "installationSucceededMessage": "Skill अब चयनित स्थानों पर उपलब्ध है।",
+  "projectUnavailable": "प्रोजेक्ट अनुपलब्ध",
+  "installedCell": "स्थापित",
+  "unsupportedCell": "अनुपलब्ध",
+  "confirmInstall": "स्थापना की पुष्टि करें",
+  "installAllRepositorySkills": "सभी रिपॉजिटरी कौशल स्थापित करें ({count})",
+  "installAllSkillsTo": "सभी कौशल स्थापित करें",
+  "@installAllRepositorySkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installRepositorySkills": "सभी {repository} कौशल स्थापित करें ({count})",
+  "@installRepositorySkills": {
+    "placeholders": {
+      "repository": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installSkillTo": "{skill} को स्थापित करें",
+  "@installSkillTo": {
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
+  },
+  "availableInAllProjects": "सभी परियोजनाएँ",
+  "availableInSelectedProjects": "चयनित परियोजनाएँ",
+  "usedBy": "Agents के लिए",
+  "backToTargets": "लक्ष्य पर वापस जाएँ",
+  "stayHere": "यहीं रहो",
+  "viewInLibrary": "लाइब्रेरी में देखें",
+  "planCreateCount": "{count} बनाएं",
+  "@planCreateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planSkipCount": "{count} छोड़ें",
+  "@planSkipCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planReplaceCount": "{count} बदलें",
+  "@planReplaceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planConflictCount": "{count} संघर्ष",
+  "@planConflictCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRiskCount": "{count} जोखिम अवरुद्ध",
+  "@planRiskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "refreshInstallationPlan": "संकल्प लागू करें",
+  "replaceVersionConflict": "इस लक्ष्य पर स्थापित संस्करण को बदलें",
+  "replaceSkillIdCollision": "इस लक्ष्य पर भिन्न Skill आईडी बदलें",
+  "replaceLocalModification": "स्थानीय संशोधनों को त्यागें और इस लक्ष्य को बदलें",
+  "sharedTargetConflict": "यह पथ अन्य Agent लक्ष्यों द्वारा साझा किया गया है",
+  "sharedTargetConflictDescription": "लक्ष्य मैट्रिक्स पर लौटें और प्रतिस्थापित करने से पहले प्रत्येक प्रभावित Agent का चयन करें: {agents}",
+  "@sharedTargetConflictDescription": {
+    "placeholders": {
+      "agents": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceConflictingTarget": "परस्पर विरोधी लक्ष्य बदलें",
+  "confirmHighRiskArtifact": "उच्च जोखिम वाली कलाकृतियों की पुष्टि",
+  "confirmCriticalRiskArtifact": "गंभीर-जोखिम ओवरराइड पुष्टिकरण",
+  "confirmRiskForSelectedTargets": "मैंने आर्टिफैक्ट फ़ाइलों की समीक्षा की और चयनित लक्ष्यों के लिए इस जोखिम को स्वीकार किया",
+  "criticalRiskBlocked": "गंभीर-जोखिम स्थापना अवरुद्ध है",
+  "criticalRiskOverrideDisabled": "इस योजना को जारी रखने से पहले सेटिंग्स में स्पष्ट क्रिटिकल-रिस्क ओवरराइड सक्षम करें।",
+  "workspaceManifestChanges": "Workspace Manifest परिवर्तन",
+  "noWorkspaceManifestChanges": "कोई Workspace Manifest फ़ाइलें नहीं बदलेंगी.",
+  "lockVersionChange": "{from} → {to}",
+  "@lockVersionChange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "notPresent": "मौजूद नहीं",
+  "planActionCreate": "बनाएँ",
+  "planActionReplace": "बदलें",
+  "planActionSkip": "छोड़ें",
+  "planActionConflict": "संघर्ष",
+  "planActionBlockedByRisk": "जोखिम से अवरुद्ध",
+  "installationResultSummary": "{succeeded} लक्ष्य स्थापित, {failed} विफल",
+  "@installationResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "installationProgressTitle": "स्थापना प्रगति पर है",
+  "installationProgressSummary": "{total} में से {finished} लक्ष्य समाप्त",
+  "@installationProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "targetWaiting": "इंतज़ार कर रहा हूँ",
+  "targetRunning": "स्थापित करना",
+  "retryFailedTargets": "{count, plural, =1{1 विफल लक्ष्य फिर आज़माएँ} other{{count} विफल लक्ष्य फिर आज़माएँ}}",
+  "@retryFailedTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updatePlanTitle": "अद्यतन करने के लिए लक्ष्य चुनें",
+  "updatePlanDescription": "सटीक स्थापना लक्ष्य चुनें. अचयनित Agents और प्रोजेक्ट अपरिवर्तित रहेंगे।",
+  "updateTargetsSelected": "{available} में से {selected} अद्यतन योग्य लक्ष्य चयनित",
+  "@updateTargetsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "updateVersionChange": "{fromVersion} → {toVersion}",
+  "@updateVersionChange": {
+    "placeholders": {
+      "fromVersion": {
+        "type": "String"
+      },
+      "toVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceReference": "स्रोत संदर्भ: {reference}",
+  "@sourceReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "fixedVersionTarget": "पिन किया गया - कोई चल संदर्भ नहीं",
+  "currentVersionTarget": "अप टू डेट",
+  "updateCheckTargetFailed": "अद्यतन जांच विफल रही",
+  "reconcileWorkspaceManifestTarget": "Workspace Manifest की मरम्मत करें",
+  "updateSelectedTargets": "चयनित लक्ष्य अद्यतन करें",
+  "updateProgressTitle": "लक्ष्य अद्यतन किया जा रहा है",
+  "updateResultsTitle": "परिणाम अद्यतन करें",
+  "updateProgressSummary": "{total} में से {finished} लक्ष्य समाप्त",
+  "@updateProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "retryFailedUpdates": "{count, plural, =1{1 विफल अपडेट फिर आज़माएँ} other{{count} विफल अपडेट फिर आज़माएँ}}",
+  "@retryFailedUpdates": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpdateableTargets": "किसी भी चयनित लक्ष्य के लिए अद्यतन उपलब्ध नहीं है।",
+  "closeUpdatePlan": "बंद करें",
+  "targetSucceeded": "स्थापित",
+  "targetSkipped": "छोड़ दिया गया",
+  "targetConflict": "संघर्ष",
+  "targetFailed": "असफल",
+  "targetFailureRetryable": "यह स्थान बदला नहीं जा सका. आप पुनः प्रयास कर सकते हैं.",
+  "targetFailureNeedsAttention": "दोबारा प्रयास करने से पहले इस स्थान पर आपका ध्यान चाहिए।",
+  "installationTargetFailureMessage": "इस स्थान पर कुछ भी नहीं बदला गया. जांचें कि फ़ोल्डर उपलब्ध है और पुनः प्रयास करें।",
+  "workspacePersistenceFailureMessage": "कुछ भी नहीं बदला गया क्योंकि SkillsGo प्रोजेक्ट सेटिंग्स को सहेज नहीं सका। जांचें कि प्रोजेक्ट फ़ोल्डर लिखने योग्य है और पुनः प्रयास करें।",
+  "installationStateChangedMessage": "जब आप इसकी समीक्षा कर रहे थे तो यह स्थान बदल गया। दोबारा प्रयास करने से पहले नवीनतम स्थिति की समीक्षा करें।",
+  "updateTargetFailureMessage": "यह स्थान अद्यतन नहीं किया जा सका. अन्य स्थान प्रभावित नहीं हुए, इसलिए आप केवल इसी स्थान पर पुनः प्रयास कर सकते हैं।",
+  "managementTargetFailureMessage": "यहां यह कार्रवाई पूरी नहीं हो सकी. अन्य स्थान प्रभावित नहीं हुए, इसलिए आप केवल इसी स्थान पर पुनः प्रयास कर सकते हैं।",
+  "technicalDetails": "तकनीकी विवरण",
+  "targetPathExists": "इस स्थान पर एक अन्य वस्तु पहले से मौजूद है.",
+  "targetBlockedByRisk": "आपकी वर्तमान सुरक्षा सेटिंग्स ने इस स्थान पर इंस्टॉलेशन को अवरुद्ध कर दिया है।",
+  "targetInstallFailed": "इस स्थान पर कौशल स्थापित नहीं किया जा सका.",
+  "targetWorkspaceUpdateFailed": "कौशल स्थापित किया गया था, लेकिन प्रोजेक्ट सेटिंग्स अद्यतन नहीं की जा सकीं।",
+  "installationPlanFailed": "स्थापना योजना जारी नहीं रह सकी",
+  "installationFailed": "स्थापना पूर्ण नहीं हो सकी",
+  "localSource": "स्थानीय स्रोत",
+  "noDescriptionAvailable": "कोई विवरण उपलब्ध नहीं है",
+  "moreCoverage": "+{count} अधिक स्थान",
+  "@moreCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverAction": "मौजूदा कौशल प्रबंधित करें",
+  "batchTakeoverActionCount": "प्रबंधित करें ({count})",
+  "@batchTakeoverActionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverChecking": "मौजूदा कौशल की जाँच हो रही है...",
+  "batchTakeoverRetry": "प्रबंधनीय कौशल फिर से जाँचें",
+  "batchTakeoverEligibleCount": "{count} को प्रबंधित किया जा सकता है",
+  "@batchTakeoverEligibleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPending": "प्रबंधन में कौशल जोड़ना...",
+  "batchTakeoverTitle": "SkillsGo के साथ मौजूदा कौशल प्रबंधित करें?",
+  "batchTakeoverDescription": "SkillsGo कौशल फ़ाइलों को स्थानांतरित किए बिना, ओवरराइट किए या अपलोड किए बिना स्थानीय प्रबंधन रिकॉर्ड जोड़ देगा। असमर्थित या परिवर्तित आइटम छोड़ दिए जाएंगे.",
+  "batchTakeoverStoryTitle": "बिखरे हुए कौशल को एक स्पष्ट पुस्तकालय में बदलें",
+  "batchTakeoverStoryDescription": "SkillsGo को इस स्थान पर {count, plural, =1{1 मौजूदा Skill} other{{count} मौजूदा Skills}} मिलीं जिन्हें वह प्रबंधित कर सकता है।",
+  "@batchTakeoverStoryDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverBeforeSemantics": "प्रबंधन से पहले, यह स्पष्ट नहीं है कि मौजूदा कौशल कहां स्थापित किए गए हैं, क्या वे वर्तमान हैं, उन्हें कैसे पुनर्प्राप्त किया जाए, या क्या परियोजनाएं समान संस्करण का उपयोग करती हैं।",
+  "batchTakeoverPainLocation": "अज्ञात इंस्टॉल स्थान",
+  "batchTakeoverPainFreshness": "अज्ञात अद्यतन स्थिति",
+  "batchTakeoverPainRecovery": "टूटने पर कोई पुनर्प्राप्ति नहीं",
+  "batchTakeoverPainVersionDrift": "सभी परियोजनाओं में विभिन्न संस्करण",
+  "batchTakeoverFolderTitle": "मौजूदा Skills",
+  "batchTakeoverFolderSubtitle": "अस्पष्ट स्थिति",
+  "batchTakeoverAfterLabel": "बाद में",
+  "batchTakeoverAfterTitle": "एक स्पष्ट पुस्तकालय",
+  "batchTakeoverLibraryTitle": "SkillsGo लाइब्रेरी",
+  "batchTakeoverBenefitLocation": "स्थान साफ़ करें",
+  "batchTakeoverBenefitFreshness": "अद्यतन दृश्यमान",
+  "batchTakeoverBenefitRecovery": "आसान पुनर्प्राप्ति",
+  "batchTakeoverBenefitVersions": "संस्करण स्पष्ट",
+  "batchTakeoverManagedSection": "SkillsGo द्वारा प्रबंधित",
+  "batchTakeoverPendingSection": "लंबित",
+  "batchTakeoverItemManaged": "{name} का प्रबंधन SkillsGo द्वारा किया जाता है",
+  "@batchTakeoverItemManaged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemSkipped": "{name} को प्रबंधन में नहीं जोड़ा जा सका",
+  "@batchTakeoverItemSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemPending": "{name} प्रबंधित होने की प्रतीक्षा कर रहा है",
+  "@batchTakeoverItemPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverAfterSemantics": "प्रबंधन के बाद, {count, plural, =1{1 Skill} other{{count} Skills}} स्पष्ट प्रबंधित स्थिति वाली एक Library में व्यवस्थित हैं।",
+  "@batchTakeoverAfterSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverMoreSkills": "+{count} और अधिक",
+  "@batchTakeoverMoreSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverTransitionSemantics": "इन मौजूदा कौशलों को SkillsGo प्रबंधन में जोड़ें।",
+  "batchTakeoverTransitionLabel": "व्यवस्थित करें",
+  "batchTakeoverStatusTitle": "प्रबंधन की स्थिति",
+  "batchTakeoverStatusManaged": "प्रबंधित",
+  "batchTakeoverStatusProgress": "आयोजन",
+  "batchTakeoverStatusSkipped": "छोड़ दिया गया",
+  "batchTakeoverStatusFilesStay": "Skill फ़ाइलें अपने मूल स्थान पर रहती हैं",
+  "batchTakeoverBoardSemantics": "Skills को पूरी पंक्तियों में व्यवस्थित किया गया है और उनकी फ़ाइलों को स्थानांतरित किए बिना SkillsGo द्वारा रिकॉर्ड किया गया है।",
+  "batchTakeoverBoardComplete": "सब साफ़",
+  "batchTakeoverBoardPartial": "पूर्ण",
+  "batchTakeoverStatusTotal": "कुल",
+  "batchTakeoverQueueComplete": "कोई कौशल इंतजार नहीं कर रहा है",
+  "batchTakeoverQueueWaiting": "सत्यापन के बाद Skills यहाँ दिखाई देंगे",
+  "batchTakeoverNextLabel": "अगला",
+  "batchTakeoverFillerCount": "{count, plural, =1{1 SkillsGo आयोजक ब्लॉक} other{{count} SkillsGo आयोजक ब्लॉक}} अंतिम पंक्तियाँ पूरी करते हैं।",
+  "@batchTakeoverFillerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPreservation": "आपकी फ़ाइलें, पथ और वर्तमान वर्कफ़्लो बिल्कुल वहीं रहते हैं जहाँ वे हैं। SkillsGo केवल अपने स्थानीय प्रबंधन रिकॉर्ड को पूरा करता है।",
+  "batchTakeoverLaterHint": "यदि आप छोड़ते हैं, तो आप किसी भी समय लाइब्रेरी से मौजूदा कौशल प्रबंधित करें का उपयोग कर सकते हैं।",
+  "batchTakeoverSkip": "अभी नहीं",
+  "batchTakeoverConfirm": "प्रबंधन में जोड़ें",
+  "batchTakeoverExecutionRetry": "पुनः प्रयास करें",
+  "batchTakeoverResultTitle": "Skills को प्रबंधन में जोड़ा गया",
+  "batchTakeoverSummary": "{takenOver} कौशल को प्रबंधन में जोड़ा गया, {skipped} को छोड़ दिया गया।",
+  "@batchTakeoverSummary": {
+    "placeholders": {
+      "takenOver": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverClose": "बंद करें",
+  "installMoreTargets": "अधिक स्थानों पर स्थापित करें",
+  "exportLocalSkill": "निर्यात करें",
+  "exportLocalSkillDescription": "इस स्थानीय Skill को पोर्टेबल ZIP संग्रह के रूप में निर्यात करें।",
+  "detailInstalls": "स्थापित करता है",
+  "detailRepository": "भण्डार",
+  "detailStars": "सितारे",
+  "detailUpdated": "अद्यतन किया गया",
+  "detailArchiveSize": "ZIP आकार",
+  "pathLabel": "प्रोजेक्ट पथ",
+  "copyProjectPath": "प्रोजेक्ट पथ कॉपी करें",
+  "projectPathCopied": "प्रोजेक्ट पथ की प्रतिलिपि बनाई गई",
+  "onboardingWelcomeTitle": "SkillsGo में आपका स्वागत है",
+  "onboardingWelcomeDescription": "अपने Agents और प्रोजेक्ट्स में Skills खोजें, इंस्टॉल करें और प्रबंधित करें।",
+  "onboardingDetectedAgents": "पहचाने गए Agents",
+  "onboardingNoAgents": "कोई इंस्टॉल किया गया Agent नहीं मिला। आप फिर भी जारी रख सकते हैं।",
+  "onboardingNext": "अगला",
+  "onboardingProjectsTitle": "अपने प्रोजेक्ट जोड़ें",
+  "onboardingProjectsDescription": "वे प्रोजेक्ट चुनें जिन्हें आप SkillsGo प्रबंधित करना चाहते हैं।",
+  "onboardingAddProject": "अभी जोड़ें",
+  "onboardingAddProjectLater": "या बाद में",
+  "onboardingStartUsing": "SkillsGo का उपयोग प्रारंभ करें",
+  "onboardingBack": "वापस",
+  "restartOnboardingTitle": "जहाज पर चढ़ना",
+  "restartOnboardingDescription": "प्रोजेक्ट, सेटिंग्स या Skills डेटा को हटाए बिना पहली-लॉन्च गाइड को दोबारा देखें।",
+  "restartOnboardingAction": "ऑनबोर्डिंग पुनः प्रारंभ करें",
+  "restartOnboardingFailed": "SkillsGo ऑनबोर्डिंग पुनः आरंभ नहीं कर सका।",
+  "libraryRefreshSettingsTitle": "स्थानीय लाइब्रेरी को ताज़ा करें",
+  "libraryRefreshSettingsDescription": "स्थापित Skills, जोड़े गए प्रोजेक्ट, Agents और बाहरी Skills को पुनः स्कैन करें जिन्हें प्रबंधित किया जा सकता है। यह कुछ भी इंस्टॉल, अपडेट या हटाता नहीं है।",
+  "libraryRefreshSettingsAction": "लाइब्रेरी ताज़ा करें",
+  "libraryRefreshSettingsPending": "लाइब्रेरी ताज़ा हो रही है...",
+  "libraryRefreshSettingsSuccess": "स्थानीय पुस्तकालय को ताज़ा किया गया।",
+  "libraryRefreshSettingsFailed": "SkillsGo स्थानीय लाइब्रेरी को ताज़ा नहीं कर सका।",
+  "onboardingProjectError": "SkillsGo इस निर्देशिका से प्रोजेक्ट नहीं जोड़ सका।",
+  "onboardingProjectsLoadError": "SkillsGo आपके जोड़े गए प्रोजेक्ट लोड नहीं कर सका।",
+  "onboardingStartupError": "SkillsGo सेटअप लोड नहीं कर सका.",
+  "onboardingStateError": "SkillsGo आपकी सेटअप प्रगति को सहेज नहीं सका। पुनः प्रयास करें।",
+  "onboardingCliErrorTitle": "SkillsGo CLI पर ध्यान देने की जरूरत है",
+  "onboardingCliErrorDescription": "बंडल किए गए CLI की मरम्मत करें, फिर जारी रखने के लिए पुनः प्रयास करें।"
+}

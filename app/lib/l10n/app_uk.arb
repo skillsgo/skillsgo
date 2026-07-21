@@ -1,0 +1,1088 @@
+{
+  "@@locale": "uk",
+  "discover": "Відкрийте для себе",
+  "discoverSkills": "Приємно знати трохи більше.",
+  "library": "Бібліотека",
+  "settings": "Налаштування",
+  "openSettings": "Відкрийте налаштування",
+  "cliNeedsAttention": "Необхідний компонент SkillsGo потребує уваги.",
+  "cliMissingBundled": "Потрібний компонент SkillsGo відсутній або не запускається. Перевстановіть SkillsGo, щоб відновити його.",
+  "cliDamagedBundled": "Потрібний компонент SkillsGo пошкоджено. Перевстановіть SkillsGo, щоб відновити його.",
+  "cliIncompatibleBundled": "Необхідний компонент SkillsGo не відповідає цій версії програми. Оновіть або перевстановіть SkillsGo.",
+  "officialIndex": "SkillsGo Hub",
+  "discoverTitle": "Знайдіть навик для свого наступного кроку.",
+  "skillsLeaderboard": "Приємно знати трохи більше.",
+  "searchResultsFor": "Результати для “{query}”",
+  "@searchResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchSkills": "Шукайте навички або вставте посилання Git…",
+  "search": "Пошук",
+  "ranking": "Рейтинг",
+  "trending": "В тренді",
+  "hot": "Гаряче",
+  "discoverNavigation": "Відкрийте для себе навігацію",
+  "allTimeRanking": "Рейтинг за весь час",
+  "trendingNow": "Популярні за останні 24 години",
+  "hotNow": "Гаряче прямо зараз",
+  "allTimeDescription": "Загальнодоступний Skills, упорядкований за прийнятими встановленнями за весь час.",
+  "trendingDescription": "Загальнодоступний Skills, упорядкований за прийнятими встановленнями протягом останнього 24-годинного вікна.",
+  "hotDescription": "Загальнодоступний Skills, упорядкований за швидкістю короткочасного встановлення та зміною.",
+  "offlineTitle": "Не вдається підключитися до SkillsGo",
+  "offlineMessage": "Перевірте підключення до Інтернету та повторіть спробу. Якщо ви використовуєте проксі-сервер або спеціальну адресу служби, перегляньте її в налаштуваннях.",
+  "searchFailedTitle": "Пошук спіткнувся",
+  "validationTitle": "Перевірте, що ви ввели",
+  "validationMessage": "SkillsGo не зміг скористатися цим запитом. Перегляньте введене та повторіть спробу.",
+  "serverTitle": "Послуга тимчасово недоступна",
+  "serverMessage": "SkillsGo зараз не може виконати цей запит. Повторіть спробу за мить.",
+  "timeoutTitle": "Це триває надто довго",
+  "timeoutMessage": "Служба не відповіла вчасно. Перевірте підключення або повторіть спробу.",
+  "invalidResponseTitle": "SkillsGo потребує оновлення",
+  "invalidResponseMessage": "Ця відповідь не може бути прочитана вашою версією SkillsGo. Оновіть додаток і повторіть спробу.",
+  "invalidLocalDataTitle": "Не вдається прочитати встановлений навик",
+  "invalidLocalDataMessage": "Деякі відомості про локальне встановлення пошкоджені або несумісні. Оновіть або перевстановіть SkillsGo, а потім повторіть спробу.",
+  "tryAgain": "Спробуйте знову",
+  "searchEmptyTitle": "Шукайте, не прокручуйте.",
+  "searchEmptyMessage": "Введіть можливість, джерело або завдання для пошуку публічних навичок.",
+  "noSkillsTitle": "Навички не знайдено",
+  "noSkillsMessage": "Спробуйте ширшу фразу або перевірте правопис.",
+  "focusSearch": "Пошук по фокусу",
+  "skillsFromLink": "Skills за цим посиланням",
+  "skillCount": "{count, plural, one{{count} Skill} few{{count} Skill} many{{count} Skill} other{{count} Skill}}",
+  "@skillCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceResultsSummary": "{count, plural, one{{count} Skill із {source}} few{{count} Skill із {source}} many{{count} Skill із {source}} other{{count} Skill із {source}}}",
+  "@sourceResultsSummary": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceSearchEmptyTitle": "Це посилання готове до перевірки",
+  "sourceSearchEmptyMessage": "{source} немає в поточних результатах пошуку. SkillsGo може перевірити посилання безпосередньо на наступному кроці.",
+  "@sourceSearchEmptyMessage": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "inspectSource": "Перегляньте навички за цим посиланням",
+  "collectionEmptyTitle": "У цій колекції немає Skills",
+  "collectionEmptyMessage": "Тут ще нічого немає. Повторіть спробу після встановлення.",
+  "loadMore": "Завантажте більше",
+  "install": "встановити",
+  "installAll": "Встановити всі навички",
+  "latestCommit": "Останній комміт",
+  "installToMoreTargets": "Встановити в інших місцях",
+  "localTargets": "{count} локальні цілі",
+  "@localTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allTimeMetric": "{count} встановлень за весь час",
+  "@allTimeMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "trendingMetric": "{count} встановлюється / 24 год",
+  "@trendingMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hotMetric": "{value} цієї години · {change}",
+  "@hotMetric": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "trustUnverified": "Неперевірений",
+  "trustCommunityVerified": "Перевірено спільнотою",
+  "trustPublisherVerified": "Видавець перевірений",
+  "trustOfficial": "Офіційний",
+  "trustWarned": "Попереджений",
+  "trustDelisted": "Вилучено зі списку",
+  "riskUnknown": "Ризик невідомий",
+  "riskLow": "Низький ризик",
+  "riskMedium": "Середній ризик",
+  "riskHigh": "Високий ризик",
+  "riskCritical": "Критичний ризик",
+  "openSkill": "Відкрийте {name}",
+  "@openSkill": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installs": "Встановлюється {count}",
+  "@installs": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "detailFailedTitle": "Не вдалося завантажити цей Skill",
+  "detailLoading": "Завантаження перевірених деталей Skill",
+  "artifactUnavailableTitle": "Артефакт недоступний",
+  "artifactUnavailableMessage": "Ця версія зараз недоступна. Повторіть спробу або виберіть іншу версію.",
+  "detailInvalidTitle": "Метадані артефакту не підтримуються",
+  "detailInvalidMessage": "Деякі деталі цієї навички неповні або їх неможливо прочитати. Оновіть SkillsGo і повторіть спробу.",
+  "instructionsTab": "Інструкції",
+  "manifestTab": "Маніфест",
+  "immutableVersionLabel": "Незмінний {version}",
+  "@immutableVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "commitIdentity": "Здійснити {sha}",
+  "@commitIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "treeIdentity": "Дерево {sha}",
+  "@treeIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "contentIdentity": "Вміст {digest}",
+  "@contentIdentity": {
+    "placeholders": {
+      "digest": {
+        "type": "String"
+      }
+    }
+  },
+  "trustDoesNotProveSafety": "Довіра видавця підтверджує право власності чи обслуговування; це не засвідчує безпеку артефакту. Ризик оцінюється окремо для цієї незмінної версії.",
+  "knownInstallationTargets": "Відомі цілі установки",
+  "installationRange": "Встановлений приціл",
+  "targetDetails": "Показати деталі мети",
+  "hideTargetDetails": "Приховати цільові деталі",
+  "installedVersionLabel": "Версія {version}",
+  "@installedVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "targetSummary": "{scope} / {agent} · {version}",
+  "@targetSummary": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "agent": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "projectScope": "Проект",
+  "fileContentUnavailable": "Двійковий або недоступний попередній перегляд",
+  "fileContentTruncated": "Попередній перегляд скорочено обмеженням безпеки Hub.",
+  "retry": "Повторіть спробу",
+  "backToSearch": "Назад до пошуку",
+  "installForCodex": "Встановити для Codex",
+  "cliNotDetected": "навички (не виявлено)",
+  "snapshotFiles": "Файли знімків",
+  "globalCodex": "Глобальний · Codex",
+  "yourLibrary": "Усе, що ви знаєте, тут.",
+  "libraryNavigation": "Навігація по бібліотеці",
+  "all": "все",
+  "allSkills": "Всі Skills",
+  "updatesOnly": "Оновлення",
+  "allAgents": "Всі Agents",
+  "allProjects": "Всі проекти",
+  "specificProject": "Проект",
+  "userScope": "Глобальний",
+  "addProject": "Додати проект",
+  "relocateProject": "Переїзд",
+  "removeFromList": "Видалити зі списку",
+  "removeProjectTitle": "Видалити {name} з SkillsGo?",
+  "@removeProjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeProjectDescription": "Буде видалено лише посилання на додаток. SkillsGo не змінюватиме та не видалятиме жодних файлів у цьому каталозі.",
+  "projectRailUnavailable": "{name} — недоступний",
+  "@projectRailUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyProjectTitle": "Ще немає Skills",
+  "browseSkills": "Перегляньте Skills",
+  "projectMissingTitle": "Відсутній каталог проекту",
+  "projectMissingMessage": "Можливо, каталог переміщено або його том не в мережі. Перемістіть його або видаліть лише посилання на додаток.",
+  "projectPermissionTitle": "Потрібен дозвіл на проект",
+  "projectPermissionMessage": "SkillsGo не може перевірити цей вибраний корінь. Надайте доступ, перемістивши його за допомогою засобу вибору каталогу.",
+  "projectInaccessibleTitle": "Каталог проекту недоступний",
+  "projectInaccessibleMessage": "SkillsGo зберіг посилання на цей проект. Перевірте шлях або том, а потім перемістіть його.",
+  "checking": "Перевірка…",
+  "checkUpdates": "Перевірте оновлення",
+  "refresh": "Оновити",
+  "libraryUnavailable": "Бібліотека недоступна",
+  "libraryEmpty": "Навички ще не встановлено",
+  "libraryEmptyMessage": "Установіть Skill із Discover, і він з’явиться тут.",
+  "searchLibrary": "Пошук встановлених навичок",
+  "libraryNoMatches": "Немає збігів Skills",
+  "libraryNoMatchesMessage": "Спробуйте іншу назву, джерело, Agent, проект або версію.",
+  "agentsSummary": "{count} Agents",
+  "@agentsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsSummary": "Проекти {count}",
+  "@projectsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionsSummary": "Версії {count}",
+  "@versionsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubManaged": "Hub вдалося",
+  "localManaged": "Місцеве управління",
+  "externalInstallation": "Зовнішній монтаж",
+  "readOnly": "Тільки для читання",
+  "unversioned": "Без версій",
+  "supportingFiles": "Допоміжні файли",
+  "versionDivergence": "Розбіжність версій",
+  "healthHealthy": "Здоровий",
+  "healthMissing": "Ціль відсутня",
+  "healthReplaced": "Ціль замінено",
+  "healthLocalModification": "Локальна модифікація",
+  "healthUnreadable": "Ціль нечитабельна",
+  "healthUndeclared": "Не оголошено",
+  "healthWorkspaceUnreadable": "Стан робочої області не читається",
+  "healthLockMismatch": "Невідповідність блокування",
+  "healthUnexpectedPath": "Неочікуваний цільовий шлях",
+  "modeSymlink": "Символьне посилання",
+  "modeCopy": "Копія",
+  "modeExternal": "зовнішній",
+  "notLinked": "НЕ ПОВ'ЯЗАНО",
+  "update": "оновлення",
+  "backToLibrary": "Назад до бібліотеки",
+  "remove": "видалити",
+  "manageTargets": "Керувати обсягом",
+  "skillsSelected": "Вибрано {count}",
+  "@skillsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "Очистити вибір",
+  "selectCurrentResults": "Виберіть поточні результати",
+  "clearCurrentResultSelection": "Очистити поточний вибір результату",
+  "manageTargetsTitle": "Керуйте цілями встановлення",
+  "manageTargetsDescription": "Виберіть точну дію для кожної цілі. Невибрані цілі не зміняться.",
+  "targetActionsSelected": "Вибрано {selected} із {total} цілей",
+  "@targetActionsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "repairTarget": "Ремонт",
+  "confirmRemoveTarget": "Підтвердити видалення",
+  "applyTargetActions": "Застосувати вибрані дії",
+  "managementProgressTitle": "Застосування цільових дій",
+  "managementResultsTitle": "Цільові результати дії",
+  "managementResultSummary": "{succeeded} вдалося, {failed} не вдалося",
+  "@managementResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceOwnershipChanges": "Вибрані дії проекту оновлять skillsgo.mod і skillsgo.sum.",
+  "targetContentPreserved": "Поточний цільовий вміст буде збережено.",
+  "localReadFailed": "Не можу прочитати цей Skill",
+  "localReadFailedMessage": "SkillsGo не зміг прочитати цей встановлений навик. Переконайтеся, що його папка доступна та доступна, а потім повторіть спробу.",
+  "localConfiguration": "НАЛАШТУВАННЯ SKILLSGO",
+  "settingsNavigation": "Налаштування навігації",
+  "general": "Персоналізація",
+  "agents": "Agents",
+  "hub": "Hub",
+  "installationPolicy": "Політика встановлення",
+  "storage": "Зберігання",
+  "colorScheme": "Колірна схема",
+  "about": "про",
+  "colorSchemeInspectorTitle": "Згенеровані кольорові ролі Material",
+  "skillsColorTokensTitle": "SkillsGo семантичні кольори",
+  "skillsColorTokensDescription": "Кольори продукту, створені з Radix Sand і організовані за семантикою Primer, із Folder як спеціальною просторовою ієрархією.",
+  "colorSchemeInspectorDescription": "Попередній перегляд кожного токена ColorScheme, створеного з поточного початкового числа, який не підтримується. Клацніть колір, щоб скопіювати його значення HEX.",
+  "colorSchemePairPreview": "Смислові пари",
+  "colorSchemePairPreviewDescription": "Ролі переднього плану та фону відтворюються разом, щоб відобразити контраст та ієрархію.",
+  "colorSchemeComponentPreview": "Попередній перегляд компонентів",
+  "colorSchemeComponentPreviewDescription": "Репрезентативні елементи керування Material, відтворені за цією точною схемою попереднього перегляду.",
+  "colorSchemeSampleTitle": "Назва картки Skill",
+  "colorSchemeSampleBody": "Вторинна копія використовує onSurfaceVariant.",
+  "colorSchemeCopied": "Скопійовано",
+  "colorSchemeSampleGlyphs": "Aa 123",
+  "colorSchemeGroupPrimary": "Первинний",
+  "colorSchemeGroupPrimaryDescription": "Основний наголос, контейнери та фіксовані ролі акценту.",
+  "colorSchemeGroupSecondary": "Вторинний",
+  "colorSchemeGroupSecondaryDescription": "Допоміжні акценти та фіксовані другорядні ролі.",
+  "colorSchemeGroupTertiary": "Третинний",
+  "colorSchemeGroupTertiaryDescription": "Контрастні акценти та фіксовані третьорядні ролі.",
+  "colorSchemeGroupSurface": "Поверхня",
+  "colorSchemeGroupSurfaceDescription": "Сторінка, контейнер, висота та ієрархія переднього плану.",
+  "colorSchemeGroupUtility": "Структура та утиліта",
+  "colorSchemeGroupUtilityDescription": "Межі, тіні, борти та зворотні поверхні.",
+  "colorSchemeGroupError": "Помилка",
+  "colorSchemeGroupErrorDescription": "Дії щодо помилок, повідомлення та контейнери.",
+  "colorSchemeUsagePrimary": "Основні дії, фокус і сильні акценти.",
+  "colorSchemeUsageSecondary": "Допоміжні дії та середні акценти.",
+  "colorSchemeUsageTertiary": "Контрастні акценти, які доповнюють головне і другорядне.",
+  "colorSchemeUsageContentOn": "Текст і значки, що відображаються на {token}.",
+  "@colorSchemeUsageContentOn": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageContainer": "Контейнер {family} з нижнім акцентом для виділення та акцентів.",
+  "@colorSchemeUsageContainer": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixed": "Незалежний від яскравості фіксований контейнер {family}.",
+  "@colorSchemeUsageFixed": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedDim": "Затемнений незалежний від яскравості фіксований контейнер {family}.",
+  "@colorSchemeUsageFixedDim": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedContent": "Високий акцент вмісту на фіксованому контейнері {family}.",
+  "@colorSchemeUsageFixedContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedVariantContent": "Вміст із меншим акцентом на фіксованому контейнері {family}.",
+  "@colorSchemeUsageFixedVariantContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageSurface": "Базова сторінка та поверхня великої області.",
+  "colorSchemeUsageSurfaceDim": "Затемнена базова поверхня використовується з найтемнішим тоном поверхні.",
+  "colorSchemeUsageSurfaceBright": "Яскрава базова поверхня використовується з найсвітлішим тоном поверхні.",
+  "colorSchemeUsageSurfaceElevation": "Висота надводного контейнера {level}.",
+  "@colorSchemeUsageSurfaceElevation": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeElevationLowest": "найнижчий",
+  "colorSchemeElevationLow": "низький",
+  "colorSchemeElevationDefault": "за замовчуванням",
+  "colorSchemeElevationHigh": "висока",
+  "colorSchemeElevationHighest": "найвищий",
+  "colorSchemeUsageOnSurface": "Основний текст і значки, що відображаються на поверхнях.",
+  "colorSchemeUsageOnSurfaceVariant": "Додатковий текст, мітки та приглушені значки на поверхнях.",
+  "colorSchemeUsageSurfaceTint": "Відтінок висоти Material, отриманий від основного.",
+  "colorSchemeUsageOutline": "Чіткі межі та чіткі контури компонентів.",
+  "colorSchemeUsageOutlineVariant": "Тонкі межі, роздільники та слабкі контури.",
+  "colorSchemeUsageShadow": "Тіньовий колір для високих поверхонь.",
+  "colorSchemeUsageScrim": "Модальне накладання, яке використовується для зменшення акценту фонового вмісту.",
+  "colorSchemeUsageInverseSurface": "Поверхня зі зворотним світлим і темним акцентом.",
+  "colorSchemeUsageInversePrimary": "Основний акцент, винесений на виворітну поверхню.",
+  "colorSchemeUsageError": "Дії щодо помилок, статус і зворотний зв’язок з великим акцентом.",
+  "save": "зберегти",
+  "advancedSettings": "Просунутий",
+  "remindersSettings": "Нагадування",
+  "remindersSettingsTitle": "Налаштування нагадувань",
+  "remindersSettingsDescription": "Виберіть, які нагадування отримувати.",
+  "updateReminderTitle": "Оновити нагадування",
+  "updateReminderDescription": "Перевірте наявність оновлень, коли відкриється бібліотека.",
+  "securityReminderTitle": "Сповіщення про високий ризик",
+  "securityReminderDescription": "Сповіщати вас про нові високий або критичний ризик у встановлених навичках.",
+  "availableUpdatesReminder": "Установлені навички {count} мають оновлення",
+  "@availableUpdatesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openAvailableUpdates": "Відкрийте вікно доступних оновлень, щоб переглянути й оновити їх.",
+  "securityAdvisoriesReminder": "Установлені навички {count} потребують перевірки безпеки",
+  "@securityAdvisoriesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewInstalledSkills": "Перегляньте інформацію про ризики перед їх використанням або оновленням.",
+  "generalSettingsTitle": "Зробіть SkillsGo своїм",
+  "generalSettingsDescription": "Інтерфейс відповідає системній мові, доступності та налаштуванням руху.",
+  "agentsSettingsTitle": "Час виконання Agent",
+  "hubSettingsTitle": "Hub Походження",
+  "hubSettingsDescription": "Використовуйте офіційне джерело Hub або HTTP(S), яке реалізує той самий протокол SkillsGo.",
+  "testConnection": "Тестове підключення",
+  "saveOrigin": "Зберегти походження",
+  "resetDefault": "Скинути до замовчування",
+  "connectionReady": "Підключення готове",
+  "connectionFailed": "Помилка підключення",
+  "hubInvalidOrigin": "Введіть дійсне джерело HTTP(S) без облікових даних, запиту чи фрагмента.",
+  "hubHttpFailure": "Hub повернув HTTP {status}. Перевірте джерело та конфігурацію сервера.",
+  "@hubHttpFailure": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "hubInvalidProtocol": "Сервер не повернув протокол пошуку SkillsGo Hub.",
+  "hubInvalidJson": "Hub повернув недійсний JSON.",
+  "hubConnectionFailure": "Не вдалося зв’язатися з Hub. Перевірте налаштування Origin, мережі, проксі та TLS.",
+  "hubConnectionTimeout": "Час очікування підключення Hub минув. Перевірте мережу або повторіть спробу.",
+  "riskPolicyTitle": "Політика персональних ризиків",
+  "riskPolicyDescription": "Правила безпеки застосовуються під час встановлення або оновлення навичок.",
+  "confirmHighRisk": "Вимагати підтвердження для високого ризику",
+  "confirmHighRiskDescription": "Артефакти високого ризику завжди вимагають додаткового підтвердження перед встановленням.",
+  "allowCriticalOverride": "Дозволити явне перевизначення критичного ризику",
+  "allowCriticalOverrideDescription": "Артефакти критичного ризику залишаються заблокованими за умовчанням. Увімкніть це лише для надання окремої ручної перевизначення.",
+  "storageSettingsTitle": "Змістово-адресований Store",
+  "storageHealthy": "Читабельний",
+  "storageNotInitialized": "Не ініціалізовано",
+  "storageUnavailable": "Недоступний",
+  "storagePathUnavailable": "Шлях Store недоступний, доки не буде готова діагностика CLI.",
+  "storageHealthyDescription": "CLI може читати Store без зміни його вмісту.",
+  "storageNotInitializedDescription": "Store ще не існує і не був створений цією перевіркою.",
+  "storageUnavailableDescription": "CLI не може читати Store. Перевірте його дозволи та батьківський каталог.",
+  "storageInvalidResponse": "Збірник CLI повернув непідтримувану діагностичну відповідь.",
+  "aboutSettingsTitle": "Сумісність продукту",
+  "appVersion": "Версія програми",
+  "cliVersion": "Версія CLI в комплекті",
+  "compatible": "сумісний",
+  "hubOriginSaved": "Hub Початок збережено та застосовано.",
+  "policySaved": "Політику встановлення збережено.",
+  "officialCli": "SkillsGo CLI",
+  "ready": "ГОТОВИЙ",
+  "unknown": "НЕВІДОМО",
+  "missing": "ВІДСУТИЙ",
+  "incompatible": "НЕСУМІСНИЙ",
+  "detecting": "Виявлення…",
+  "customCliPath": "Настроюваний шлях до виконуваного файлу",
+  "saveAndDetect": "Зберегти й виявити",
+  "detectAgain": "Виявити знову",
+  "agentInstalled": "встановлено",
+  "agentSupported": "Підтримується",
+  "agentCatalogSummary": "Встановлено: {installed} · підтримується: {supported}",
+  "@agentCatalogSummary": {
+    "placeholders": {
+      "installed": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "int"
+      }
+    }
+  },
+  "installedAgentsTitle": "Встановлено · {count}",
+  "@installedAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsTitle": "Не встановлено · {count}",
+  "@notInstalledAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsDescription": "Підтримується SkillsGo, але не виявлено на цьому Mac.",
+  "agentDiscoveryRoots": "Шляхи завантаження Skill: {paths}",
+  "@agentDiscoveryRoots": {
+    "placeholders": {
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+  "agentInspectionFailed": "Дані виявлення Agent недоступні. Запустіть виявлення знову.",
+  "noInstalledAgentsTitle": "Не виявлено встановлених Agents",
+  "noInstalledAgentsMessage": "Ви можете й далі переглядати цей Skill, але цілі встановлення ще немає. Встановіть підтримуваний Agent і запустіть виявлення знову.",
+  "clearCustomPath": "Очистити власний шлях",
+  "privacyProvenance": "Конфіденційність і походження",
+  "privacySummary": "Ваші пошукові запити не зберігаються, а SkillsGo не веде журнали команд.",
+  "language": "Мова",
+  "personalizationTheme": "Тема",
+  "folderColorTheme": "Колір теми",
+  "folderColorThemeDescription": "Виберіть колір теми папок SkillsGo.",
+  "brandNameNeteaseCloudMusic": "NetEase Cloud Music",
+  "brandNameRaspberryPi": "Raspberry Pi",
+  "brandNameChinaEasternAirlines": "China Eastern Airlines",
+  "brandNameNvidia": "NVIDIA",
+  "brandNameTaobao": "Taobao",
+  "brandNameBitcoin": "Bitcoin",
+  "appearanceMode": "Режим",
+  "appearanceModeDescription": "Виберіть світлий, темний або системний режим оформлення.",
+  "followSystem": "Як у системі",
+  "lightMode": "світло",
+  "darkMode": "Темний",
+  "wallpaper": "Шпалери",
+  "wallpaperDescription": "Виберіть фоновий світ для SkillsGo.",
+  "wallpaperSun": "сонце",
+  "wallpaperMercury": "Меркурій",
+  "wallpaperVenus": "Венера",
+  "wallpaperEarth": "земля",
+  "wallpaperMars": "Марс",
+  "wallpaperJupiter": "Юпітер",
+  "wallpaperSaturn": "Сатурн",
+  "wallpaperUranus": "Уран",
+  "wallpaperNeptune": "Нептун",
+  "wallpaperPluto": "Плутон",
+  "wallpaperMoon": "Місяць",
+  "folderThemeChoice": "Тема папок: {theme}",
+  "@folderThemeChoice": {
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyAffiliation": "SkillsGo не пов’язаний із постачальниками Agent або джерел.",
+  "commandCompleted": "Команда виконана",
+  "commandFailed": "Помилка команди",
+  "commandExit": "Команда завершилася з кодом {code}",
+  "@commandExit": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "command": "Команда",
+  "cancel": "Скасувати",
+  "updateUnknown": "НЕВІДОМО",
+  "updateChecking": "ПЕРЕВІРКА",
+  "upToDate": "АКТУАЛЬНО",
+  "updateAvailable": "ОНОВЛЕННЯ",
+  "updateUnavailable": "НЕДОСТУПНИЙ",
+  "updateCheckFailed": "ПЕРЕВІРКА ПОМИЛАСЯ",
+  "installSkill": "Встановіть Skill",
+  "installLocationTitle": "Виберіть місце встановлення",
+  "userLevel": "Рівень користувача",
+  "projectLevel": "Рівень проекту",
+  "projects": "Проекти",
+  "loading": "Завантаження…",
+  "repositoryParsing": "Розбір сховища…",
+  "userInstallSummary": "Встановити глобально для {agents}",
+  "@userInstallSummary": {
+    "placeholders": {
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "projectInstallSummary": "{projects} проєктів · {agents} Agents",
+  "@projectInstallSummary": {
+    "placeholders": {
+      "projects": {
+        "type": "int"
+      },
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "installationResults": "Результати установки",
+  "installationInProgress": "Триває встановлення",
+  "installationSucceeded": "Встановлення завершено",
+  "installationSucceededMessage": "Skill установлено у вибраних місцях.",
+  "projectUnavailable": "Проект недоступний",
+  "installedCell": "встановлено",
+  "unsupportedCell": "Недоступний",
+  "confirmInstall": "Підтвердити встановлення",
+  "installAllRepositorySkills": "Встановити всі навички сховища ({count})",
+  "installAllSkillsTo": "Встановити всі навички для",
+  "@installAllRepositorySkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installRepositorySkills": "Встановити всі навички {repository} ({count})",
+  "@installRepositorySkills": {
+    "placeholders": {
+      "repository": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installSkillTo": "Встановіть {skill} в",
+  "@installSkillTo": {
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
+  },
+  "availableInAllProjects": "Всі проекти",
+  "availableInSelectedProjects": "Вибрані проекти",
+  "usedBy": "Для Agents",
+  "backToTargets": "Назад до цілей",
+  "stayHere": "Залишайся тут",
+  "viewInLibrary": "Переглянути в бібліотеці",
+  "planCreateCount": "{count} створити",
+  "@planCreateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planSkipCount": "{count} пропустити",
+  "@planSkipCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planReplaceCount": "{count} замінити",
+  "@planReplaceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planConflictCount": "Конфлікт {count}",
+  "@planConflictCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRiskCount": "Ризик {count} заблоковано",
+  "@planRiskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "refreshInstallationPlan": "Застосувати резолюції",
+  "replaceVersionConflict": "Замініть встановлену версію на цій цілі",
+  "replaceSkillIdCollision": "Замініть інший ідентифікатор Skill у цій цілі",
+  "replaceLocalModification": "Відмовтеся від локальних змін і замініть цю ціль",
+  "sharedTargetConflict": "Цей шлях спільний для інших цілей Agent",
+  "sharedTargetConflictDescription": "Поверніться до цільової матриці та виберіть кожен уражений Agent перед заміною: {agents}",
+  "@sharedTargetConflictDescription": {
+    "placeholders": {
+      "agents": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceConflictingTarget": "Замініть конфліктну ціль",
+  "confirmHighRiskArtifact": "Підтвердження артефакту високого ризику",
+  "confirmCriticalRiskArtifact": "Підтвердження перевизначення критичного ризику",
+  "confirmRiskForSelectedTargets": "Я переглянув файли артефактів і приймаю цей ризик для вибраних цілей",
+  "criticalRiskBlocked": "Інсталяцію критичного ризику заблоковано",
+  "criticalRiskOverrideDisabled": "Увімкніть явне перевизначення критичного ризику в налаштуваннях, перш ніж цей план можна буде продовжити.",
+  "workspaceManifestChanges": "Зміни Workspace Manifest",
+  "noWorkspaceManifestChanges": "Файли Workspace Manifest не зміняться.",
+  "lockVersionChange": "{from} → {to}",
+  "@lockVersionChange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "notPresent": "немає",
+  "planActionCreate": "Створити",
+  "planActionReplace": "Замінити",
+  "planActionSkip": "Пропустити",
+  "planActionConflict": "Конфлікт",
+  "planActionBlockedByRisk": "Заблокований ризиком",
+  "installationResultSummary": "Цілі {succeeded} установлено, {failed} не вдалося",
+  "@installationResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "installationProgressTitle": "Триває встановлення",
+  "installationProgressSummary": "{finished} з {total} цілей завершено",
+  "@installationProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "targetWaiting": "Очікування",
+  "targetRunning": "Встановлення",
+  "retryFailedTargets": "{count, plural, one{Повторити {count} невдалу ціль} few{Повторити {count} невдалі цілі} many{Повторити {count} невдалих цілей} other{Повторити {count} невдалої цілі}}",
+  "@retryFailedTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updatePlanTitle": "Виберіть цілі для оновлення",
+  "updatePlanDescription": "Виберіть точні цілі встановлення. Невибрані Agents і проекти залишаються без змін.",
+  "updateTargetsSelected": "Вибрано {selected} з {available} оновлюваних цілей",
+  "@updateTargetsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "updateVersionChange": "{fromVersion} → {toVersion}",
+  "@updateVersionChange": {
+    "placeholders": {
+      "fromVersion": {
+        "type": "String"
+      },
+      "toVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceReference": "Посилання на джерело: {reference}",
+  "@sourceReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "fixedVersionTarget": "Закріплено — немає рухомого посилання",
+  "currentVersionTarget": "В актуальному стані",
+  "updateCheckTargetFailed": "Не вдалося перевірити оновлення",
+  "reconcileWorkspaceManifestTarget": "Маніфест робочої області ремонту",
+  "updateSelectedTargets": "Оновити вибрані цілі",
+  "updateProgressTitle": "Оновлення цілей",
+  "updateResultsTitle": "Оновити результати",
+  "updateProgressSummary": "{finished} з {total} цілей завершено",
+  "@updateProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "retryFailedUpdates": "{count, plural, one{Повторити {count} невдале оновлення} few{Повторити {count} невдалі оновлення} many{Повторити {count} невдалих оновлень} other{Повторити {count} невдалого оновлення}}",
+  "@retryFailedUpdates": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpdateableTargets": "Жодна вибрана ціль не має доступного оновлення.",
+  "closeUpdatePlan": "Закрити",
+  "targetSucceeded": "встановлено",
+  "targetSkipped": "Пропущено",
+  "targetConflict": "Конфлікт",
+  "targetFailed": "Не вдалося",
+  "targetFailureRetryable": "Це місце не можна змінити. Ви можете спробувати ще раз.",
+  "targetFailureNeedsAttention": "Це місце потребує вашої уваги, перш ніж повторити спробу.",
+  "installationTargetFailureMessage": "У цьому місці нічого не змінено. Переконайтеся, що папка доступна, і повторіть спробу.",
+  "workspacePersistenceFailureMessage": "Нічого не було змінено, оскільки SkillsGo не зміг зберегти налаштування проекту. Перевірте, чи доступна для запису папка проекту, і повторіть спробу.",
+  "installationStateChangedMessage": "Це місце змінилося, поки ви його переглядали. Перегляньте останній стан перед повторною спробою.",
+  "updateTargetFailureMessage": "Це місце не вдалося оновити. Інші місця не вплинули, тому ви можете повторити спробу лише в цьому.",
+  "managementTargetFailureMessage": "Цю дію не вдалося завершити тут. Інші місця не вплинули, тому ви можете повторити спробу лише в цьому.",
+  "technicalDetails": "Технічні деталі",
+  "targetPathExists": "У цьому місці вже існує інший елемент.",
+  "targetBlockedByRisk": "Ваші поточні налаштування безпеки заблокували встановлення в цьому місці.",
+  "targetInstallFailed": "Не вдалося встановити навик у цьому місці.",
+  "targetWorkspaceUpdateFailed": "Навички встановлено, але не вдалося оновити налаштування проекту.",
+  "installationPlanFailed": "План встановлення не вдалося продовжити",
+  "installationFailed": "Не вдалося завершити встановлення",
+  "localSource": "Місцеве джерело",
+  "noDescriptionAvailable": "Немає опису",
+  "moreCoverage": "+{count} більше місць",
+  "@moreCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverAction": "Керуйте наявними навичками",
+  "batchTakeoverActionCount": "Керувати ({count})",
+  "@batchTakeoverActionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverChecking": "Перевірка наявних навичок…",
+  "batchTakeoverRetry": "Ще раз перевірте керовані навички",
+  "batchTakeoverEligibleCount": "{count} можна керувати",
+  "@batchTakeoverEligibleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPending": "Додавання навичок до управління…",
+  "batchTakeoverTitle": "Керувати наявними навичками за допомогою SkillsGo?",
+  "batchTakeoverDescription": "SkillsGo додасть локальні записи керування без переміщення, перезапису або завантаження файлів навичок. Непідтримувані або змінені елементи будуть пропущені.",
+  "batchTakeoverStoryTitle": "Перетворіть розрізнені навички в одну чітку бібліотеку",
+  "batchTakeoverStoryDescription": "SkillsGo знайшов тут {count, plural, one{{count} наявний Skill} few{{count} наявні Skill} many{{count} наявних Skill} other{{count} наявного Skill}}, якими можна керувати.",
+  "@batchTakeoverStoryDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverBeforeSemantics": "Перед керівництвом незрозуміло, де встановлено наявні навички, чи вони актуальні, як їх відновити, чи проекти використовують ту саму версію.",
+  "batchTakeoverPainLocation": "Невідоме місце встановлення",
+  "batchTakeoverPainFreshness": "Невідомий статус оновлення",
+  "batchTakeoverPainRecovery": "Немає відновлення при поломці",
+  "batchTakeoverPainVersionDrift": "Різні версії для проектів",
+  "batchTakeoverFolderTitle": "Існуючий Skills",
+  "batchTakeoverFolderSubtitle": "Незрозумілий статус",
+  "batchTakeoverAfterLabel": "ПІСЛЯ",
+  "batchTakeoverAfterTitle": "Одна чітка бібліотека",
+  "batchTakeoverLibraryTitle": "Бібліотека SkillsGo",
+  "batchTakeoverBenefitLocation": "Очистити локації",
+  "batchTakeoverBenefitFreshness": "Оновлення видно",
+  "batchTakeoverBenefitRecovery": "Легке відновлення",
+  "batchTakeoverBenefitVersions": "Версії зрозумілі",
+  "batchTakeoverManagedSection": "Керується SkillsGo",
+  "batchTakeoverPendingSection": "В очікуванні",
+  "batchTakeoverItemManaged": "{name} управляється SkillsGo",
+  "@batchTakeoverItemManaged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemSkipped": "{name} не вдалося додати до керування",
+  "@batchTakeoverItemSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemPending": "{name} чекає на керування",
+  "@batchTakeoverItemPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverAfterSemantics": "Після додавання {count, plural, one{{count} Skill упорядковано} few{{count} Skill упорядковано} many{{count} Skill упорядковано} other{{count} Skill упорядковано}} в одній Library зі зрозумілим статусом керування.",
+  "@batchTakeoverAfterSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverMoreSkills": "+{count} більше",
+  "@batchTakeoverMoreSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverTransitionSemantics": "Додайте ці наявні навички до управління SkillsGo.",
+  "batchTakeoverTransitionLabel": "ОРГАНІЗУЙТЕ",
+  "batchTakeoverStatusTitle": "Статус управління",
+  "batchTakeoverStatusManaged": "Керований",
+  "batchTakeoverStatusProgress": "Організація",
+  "batchTakeoverStatusSkipped": "Пропущено",
+  "batchTakeoverStatusFilesStay": "Файли Skill залишаються у вихідних місцях",
+  "batchTakeoverBoardSemantics": "Skills впорядковуються в повні ряди та записуються SkillsGo без переміщення файлів.",
+  "batchTakeoverBoardComplete": "ВСЕ ЯСНО",
+  "batchTakeoverBoardPartial": "ЗАВЕРШЕНО",
+  "batchTakeoverStatusTotal": "Всього",
+  "batchTakeoverQueueComplete": "Ніякі навички не чекають",
+  "batchTakeoverQueueWaiting": "Після перевірки Skills з’являться тут",
+  "batchTakeoverNextLabel": "ДАЛІ",
+  "batchTakeoverFillerCount": "{count, plural, one{{count} блок-органайзер SkillsGo} few{{count} блоки-органайзери SkillsGo} many{{count} блоків-органайзерів SkillsGo} other{{count} блока-органайзера SkillsGo}} завершують останні рядки.",
+  "@batchTakeoverFillerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPreservation": "Ваші файли, шляхи та поточні робочі процеси залишаються там, де вони є. SkillsGo лише завершує свої локальні записи керування.",
+  "batchTakeoverLaterHint": "Якщо ви пропустите, ви зможете будь-коли скористатися пунктом керування наявними навичками з бібліотеки.",
+  "batchTakeoverSkip": "Не зараз",
+  "batchTakeoverConfirm": "Додати до управління",
+  "batchTakeoverExecutionRetry": "Повторіть спробу",
+  "batchTakeoverResultTitle": "Skills додано до керування",
+  "batchTakeoverSummary": "Навички {takenOver} додано до керування, {skipped} пропущено.",
+  "@batchTakeoverSummary": {
+    "placeholders": {
+      "takenOver": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverClose": "Закрити",
+  "installMoreTargets": "Встановити в інших місцях",
+  "exportLocalSkill": "Експорт",
+  "exportLocalSkillDescription": "Експортуйте цей локальний Skill як портативний архів ZIP.",
+  "detailInstalls": "Встановлює",
+  "detailRepository": "Репозиторій",
+  "detailStars": "Зірки",
+  "detailUpdated": "Оновлено",
+  "detailArchiveSize": "Розмір ZIP",
+  "pathLabel": "Шлях проекту",
+  "copyProjectPath": "Копіювати шлях проекту",
+  "projectPathCopied": "Шлях проекту скопійовано",
+  "onboardingWelcomeTitle": "Ласкаво просимо до SkillsGo",
+  "onboardingWelcomeDescription": "Знаходьте, встановлюйте та керуйте Skills у своїх Agents і проектах.",
+  "onboardingDetectedAgents": "Виявлено Agents",
+  "onboardingNoAgents": "Не виявлено встановленого Agents. Ви все ще можете продовжувати.",
+  "onboardingNext": "Далі",
+  "onboardingProjectsTitle": "Додайте свої проекти",
+  "onboardingProjectsDescription": "Виберіть проекти, якими SkillsGo має керувати.",
+  "onboardingAddProject": "Додайте зараз",
+  "onboardingAddProjectLater": "або пізніше",
+  "onboardingStartUsing": "Почніть використовувати SkillsGo",
+  "onboardingBack": "Назад",
+  "restartOnboardingTitle": "Онбордінг",
+  "restartOnboardingDescription": "Знову перегляньте посібник із першого запуску, не видаляючи проекти, налаштування чи дані Skills.",
+  "restartOnboardingAction": "Перезапустіть Onboarding",
+  "restartOnboardingFailed": "SkillsGo не вдалося перезапустити Onboarding.",
+  "libraryRefreshSettingsTitle": "Оновіть локальну бібліотеку",
+  "libraryRefreshSettingsDescription": "Перескануйте встановлений Skills, додані проекти, Agents і зовнішній Skills, якими можна керувати. Це не інсталює, не оновлює та не видаляє нічого.",
+  "libraryRefreshSettingsAction": "Оновити бібліотеку",
+  "libraryRefreshSettingsPending": "Оновлення бібліотеки…",
+  "libraryRefreshSettingsSuccess": "Оновлено місцеву бібліотеку.",
+  "libraryRefreshSettingsFailed": "SkillsGo не вдалося оновити локальну бібліотеку.",
+  "onboardingProjectError": "SkillsGo не вдалося додати проекти з цього каталогу.",
+  "onboardingProjectsLoadError": "SkillsGo не вдалося завантажити ваші додані проекти.",
+  "onboardingStartupError": "SkillsGo не вдалося завантажити налаштування.",
+  "onboardingStateError": "SkillsGo не вдалося зберегти хід налаштування. Спробуйте знову.",
+  "onboardingCliErrorTitle": "SkillsGo CLI потребує уваги",
+  "onboardingCliErrorDescription": "Відремонтуйте CLI, а потім повторіть спробу, щоб продовжити."
+}

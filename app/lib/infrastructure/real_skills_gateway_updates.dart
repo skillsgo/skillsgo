@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, update codecs, reviewed Update Plans, and progress callbacks.
- * [OUTPUT]: Provides target-specific update preflight, execution, failed-target progress, and Library update-state checks.
+ * [OUTPUT]: Provides target-specific update preflight and execution, failed-target progress, and one Catalog-only batch Library update-state check.
  * [POS]: Serves as the Update Plan capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -390,34 +390,84 @@ mixin _RealSkillsGatewayUpdates
   Future<Map<String, UpdateState>> checkUpdates(
     List<InstalledSkill> skills,
   ) async {
-    final states = <String, UpdateState>{};
-    Object? failure;
-    await Future.wait([
+    final states = {
       for (final skill in skills)
-        () async {
-          final key = _installedSkillUpdateKey(skill);
-          if (skill.provenance != LibraryProvenance.hub) {
-            states[key] = UpdateState.unsupported;
-            return;
-          }
-          try {
-            final plan = await preflightUpdate(skill, skill.targets);
-            if (plan.summary.update > 0) {
-              states[key] = UpdateState.available;
-            } else if (plan.summary.failed > 0) {
-              states[key] = UpdateState.failed;
-            } else if (plan.summary.current > 0) {
-              states[key] = UpdateState.upToDate;
-            } else {
-              states[key] = UpdateState.unsupported;
-            }
-          } catch (caught) {
-            states[key] = UpdateState.failed;
-            failure ??= caught;
-          }
-        }(),
-    ]);
-    if (failure != null) throw failure!;
+        _installedSkillUpdateKey(skill): UpdateState.unsupported,
+    };
+    final candidates =
+        <({String key, String skillId, List<String> versions})>[];
+    for (final skill in skills) {
+      if (skill.provenance != LibraryProvenance.hub || skill.skillId.isEmpty) {
+        continue;
+      }
+      final versions =
+          skill.targets
+              .map((target) => target.version.trim())
+              .where((version) => version.isNotEmpty)
+              .toSet()
+              .toList(growable: false)
+            ..sort();
+      if (versions.isEmpty) continue;
+      candidates.add((
+        key: _installedSkillUpdateKey(skill),
+        skillId: skill.skillId,
+        versions: versions,
+      ));
+    }
+    if (candidates.isEmpty) return states;
+
+    await _ensureHubOrigin();
+    final arguments = <String>[
+      'updates',
+      'check',
+      '--output',
+      'json',
+      '--hub',
+      _hubOrigin,
+      for (final candidate in candidates) ...[
+        '--installed',
+        jsonEncode({
+          'key': candidate.key,
+          'skillId': candidate.skillId,
+          'versions': candidate.versions,
+        }),
+      ],
+    ];
+    final command = await _runCli(arguments);
+    if (!command.succeeded) throw _commandFailure(command);
+    try {
+      final decoded = jsonDecode(command.output.stdout);
+      if (decoded is! Map<String, dynamic> ||
+          decoded['schemaVersion'] != 1 ||
+          decoded['phase'] != 'update-check' ||
+          decoded['items'] is! List ||
+          (decoded['items'] as List).length != candidates.length) {
+        throw const FormatException();
+      }
+      final expected = {for (final candidate in candidates) candidate.key};
+      for (final raw in decoded['items'] as List) {
+        if (raw is! Map<String, dynamic> ||
+            raw['key'] is! String ||
+            raw['skillId'] is! String ||
+            raw['versions'] is! List ||
+            raw['status'] is! String ||
+            !expected.remove(raw['key'])) {
+          throw const FormatException();
+        }
+        states[raw['key'] as String] = switch (raw['status']) {
+          'current' => UpdateState.upToDate,
+          'update_available' => UpdateState.available,
+          'unsupported' => UpdateState.unsupported,
+          _ => throw const FormatException(),
+        };
+      }
+      if (expected.isNotEmpty) throw const FormatException();
+    } on FormatException {
+      throw const SkillsException(
+        'The SkillsGo CLI returned invalid Update Check JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
     return states;
   }
 }

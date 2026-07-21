@@ -133,11 +133,14 @@ extension _LocalDetailRendering on _LocalDetailScreenState {
                         padding: EdgeInsets.zero,
                         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       ),
-                      icon: HugeIcon(
-                        icon: HugeIcons.strokeRoundedLessThan,
-                        size: 20,
-                        strokeWidth: 1.8,
-                        color: scheme.onSurface,
+                      icon: Transform.flip(
+                        flipX: Directionality.of(context) == TextDirection.rtl,
+                        child: HugeIcon(
+                          icon: HugeIcons.strokeRoundedLessThan,
+                          size: 20,
+                          strokeWidth: 1.8,
+                          color: scheme.onSurface,
+                        ),
                       ),
                     ),
                   ),
@@ -163,6 +166,7 @@ extension _LocalDetailRendering on _LocalDetailScreenState {
                             Flexible(
                               child: Text(
                                 skill.name,
+                                textDirection: contentTextDirection(skill.name),
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
                                 style: const TextStyle(

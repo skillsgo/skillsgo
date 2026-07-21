@@ -365,7 +365,7 @@ class _LibraryAddProjectAction extends StatelessWidget {
           foregroundColor: foreground,
           shape: const StadiumBorder(),
           padding: const EdgeInsets.symmetric(horizontal: 14),
-          alignment: Alignment.centerLeft,
+          alignment: AlignmentDirectional.centerStart,
           textStyle: context.skillsTypography.bodySecondary,
         ),
         child: Row(

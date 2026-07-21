@@ -1,0 +1,1036 @@
+{
+  "@@locale": "zh_Hant_TW",
+  "discover": "發現",
+  "discoverSkills": "多會一點，總是好的。",
+  "library": "已安裝",
+  "settings": "設定",
+  "openSettings": "開啟設定",
+  "cliNeedsAttention": "SkillsGo 的必要元件需要處理。",
+  "cliMissingBundled": "SkillsGo 的必要元件缺失或無法啟動。請重新安裝 SkillsGo 以恢復該元件。",
+  "cliDamagedBundled": "SkillsGo 的必要元件已損壞。請重新安裝 SkillsGo 以恢復該元件。",
+  "cliIncompatibleBundled": "必要的 SkillsGo 元件與目前的應用程式版本不相容。請更新或重新安裝 SkillsGo。",
+  "officialIndex": "SkillsGo Hub",
+  "discoverTitle": "找到下一步所需的技能。",
+  "skillsLeaderboard": "多會一點，總是好的。",
+  "searchResultsFor": "“{query}”的搜尋結果",
+  "searchSkills": "搜尋技能或貼上 Git 連結…",
+  "search": "搜尋",
+  "ranking": "排行",
+  "trending": "趨勢",
+  "hot": "熱門",
+  "discoverNavigation": "發現導航",
+  "allTimeRanking": "歷史排行",
+  "trendingNow": "最近 24 小時趨勢",
+  "hotNow": "當前熱門",
+  "allTimeDescription": "按歷史累計有效安裝量排列公開 Skill。",
+  "trendingDescription": "按最近 24 小時內的有效安裝量排列公開 Skill。",
+  "hotDescription": "按短期安裝速度及其變化排列公開 Skill。",
+  "offlineTitle": "無法連線到 SkillsGo",
+  "offlineMessage": "請檢查網路連線後重試。如果你使用了代理或自定義服務地址，請前往設定檢查。",
+  "searchFailedTitle": "搜尋遇到問題",
+  "validationTitle": "請檢查輸入內容",
+  "validationMessage": "SkillsGo 無法處理這項請求。請檢查輸入內容後重試。",
+  "serverTitle": "服務暫時不可用",
+  "serverMessage": "SkillsGo 暫時無法完成這項請求，請稍後重試。",
+  "timeoutTitle": "等待時間過長",
+  "timeoutMessage": "服務未能及時響應。請檢查網路連線或重試。",
+  "invalidResponseTitle": "SkillsGo 需要更新",
+  "invalidResponseMessage": "當前版本的 SkillsGo 無法讀取服務返回的內容。請更新應用後重試。",
+  "invalidLocalDataTitle": "無法讀取已安裝的技能",
+  "invalidLocalDataMessage": "部分本地安裝資訊已損壞或不相容。請更新或重新安裝 SkillsGo 後重試。",
+  "tryAgain": "重試",
+  "searchEmptyTitle": "搜尋，而不是漫無目的地瀏覽。",
+  "searchEmptyMessage": "請輸入能力、來源或任務，搜尋公開技能。",
+  "noSkillsTitle": "沒有找到技能",
+  "noSkillsMessage": "請嘗試更寬泛的關鍵詞或檢查拼寫。",
+  "focusSearch": "回到搜尋框",
+  "skillsFromLink": "這個連結中的技能",
+  "skillCount": "{count} 個技能",
+  "sourceResultsSummary": "來自 {source} 的 {count} 個技能",
+  "sourceSearchEmptyTitle": "可以檢視這個連結",
+  "sourceSearchEmptyMessage": "當前搜尋結果中沒有 {source}。下一步 SkillsGo 可以直接檢視這個連結中的技能。",
+  "inspectSource": "檢視連結中的技能",
+  "collectionEmptyTitle": "該集合中暫無 Skill",
+  "collectionEmptyMessage": "這裡暫時沒有內容。產生更多安裝活動後可以重試。",
+  "loadMore": "載入更多",
+  "install": "安裝",
+  "installAll": "安裝所有技能",
+  "latestCommit": "最新提交",
+  "installToMoreTargets": "安裝到更多位置",
+  "localTargets": "{count} 個本地目標",
+  "@localTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allTimeMetric": "歷史安裝 {count} 次",
+  "@allTimeMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "trendingMetric": "24 小時安裝 {count} 次",
+  "@trendingMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hotMetric": "本小時 {value} · 變化 {change}",
+  "@hotMetric": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "trustUnverified": "未驗證",
+  "trustCommunityVerified": "社群驗證",
+  "trustPublisherVerified": "釋出者驗證",
+  "trustOfficial": "官方",
+  "trustWarned": "已警告",
+  "trustDelisted": "已下架",
+  "riskUnknown": "風險未知",
+  "riskLow": "低風險",
+  "riskMedium": "中風險",
+  "riskHigh": "高風險",
+  "riskCritical": "嚴重風險",
+  "openSkill": "開啟 {name}",
+  "installs": "{count} 次安裝",
+  "detailFailedTitle": "無法載入此技能",
+  "detailLoading": "正在載入可審計的技能詳情",
+  "artifactUnavailableTitle": "製品暫不可用",
+  "artifactUnavailableMessage": "當前無法獲取這個版本。你可以重試或選擇其他版本。",
+  "detailInvalidTitle": "不支援該製品後設資料",
+  "detailInvalidMessage": "這個技能的部分資訊不完整或無法讀取。請更新 SkillsGo 後重試。",
+  "instructionsTab": "技能指令",
+  "manifestTab": "Manifest",
+  "immutableVersionLabel": "不可變版本 {version}",
+  "@immutableVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "commitIdentity": "Commit {sha}",
+  "@commitIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "treeIdentity": "目錄樹 {sha}",
+  "@treeIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "contentIdentity": "內容 {digest}",
+  "@contentIdentity": {
+    "placeholders": {
+      "digest": {
+        "type": "String"
+      }
+    }
+  },
+  "trustDoesNotProveSafety": "釋出者可信度只驗證所有權或維護關係，並不證明製品安全。風險會針對該不可變版本單獨評估。",
+  "knownInstallationTargets": "已知安裝目標",
+  "installationRange": "已安裝範圍",
+  "targetDetails": "檢視目標詳情",
+  "hideTargetDetails": "收起目標詳情",
+  "installedVersionLabel": "版本 {version}",
+  "@installedVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "targetSummary": "{scope} / {agent} · {version}",
+  "@targetSummary": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "agent": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "projectScope": "專案",
+  "fileContentUnavailable": "二進位制檔案或無法預覽",
+  "fileContentTruncated": "Hub 已按安全大小限制截斷預覽。",
+  "retry": "重試",
+  "backToSearch": "返回搜尋",
+  "installForCodex": "安裝到 Codex",
+  "cliNotDetected": "skills（未偵測到）",
+  "snapshotFiles": "快照檔案",
+  "globalCodex": "全域性 · Codex",
+  "yourLibrary": "已經會的，都在這裡。",
+  "libraryNavigation": "已安裝技能導航",
+  "all": "所有",
+  "allSkills": "全部 Skills",
+  "updatesOnly": "有更新",
+  "allAgents": "所有智慧體",
+  "allProjects": "所有專案",
+  "specificProject": "指定專案",
+  "userScope": "全域性安裝",
+  "addProject": "新增專案",
+  "relocateProject": "重新定位",
+  "removeFromList": "從列表移除",
+  "removeProjectTitle": "從 SkillsGo 移除 {name}？",
+  "@removeProjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeProjectDescription": "只會移除 App 中的引用。SkillsGo 不會修改或刪除該目錄中的任何檔案。",
+  "projectRailUnavailable": "{name} — 不可用",
+  "@projectRailUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyProjectTitle": "還沒有技能",
+  "browseSkills": "瀏覽技能",
+  "projectMissingTitle": "專案目錄不存在",
+  "projectMissingMessage": "目錄可能已移動，或所在磁碟暫時離線。你可以重新定位，或僅移除 App 引用。",
+  "projectPermissionTitle": "需要專案資料夾權限",
+  "projectPermissionMessage": "SkillsGo 無法檢查所選的根目錄。請透過資料夾選擇器重新選取該目錄並授予存取權限。",
+  "projectInaccessibleTitle": "專案目錄無法訪問",
+  "projectInaccessibleMessage": "SkillsGo 已保留該專案引用。請檢查路徑或磁碟，然後重新定位。",
+  "checking": "正在檢查…",
+  "checkUpdates": "檢查更新",
+  "refresh": "重新整理",
+  "libraryUnavailable": "已安裝技能暫不可用",
+  "libraryEmpty": "還沒有安裝技能",
+  "libraryEmptyMessage": "從“發現”安裝技能後，它會顯示在這裡。",
+  "searchLibrary": "搜尋已安裝技能",
+  "libraryNoMatches": "沒有匹配的技能",
+  "libraryNoMatchesMessage": "嘗試其他名稱、來源、智慧體、專案或版本。",
+  "agentsSummary": "{count} 個智慧體",
+  "@agentsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsSummary": "{count} 個專案",
+  "@projectsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionsSummary": "{count} 個版本",
+  "@versionsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubManaged": "Hub 託管",
+  "localManaged": "本地託管",
+  "externalInstallation": "外部安裝",
+  "readOnly": "只讀",
+  "unversioned": "無版本資訊",
+  "supportingFiles": "支援檔案",
+  "versionDivergence": "多版本並存",
+  "healthHealthy": "狀態正常",
+  "healthMissing": "目標已缺失",
+  "healthReplaced": "目標已被替換",
+  "healthLocalModification": "存在本地修改",
+  "healthUnreadable": "目標不可讀取",
+  "healthUndeclared": "未在專案中宣告",
+  "healthWorkspaceUnreadable": "專案宣告不可讀取",
+  "healthLockMismatch": "鎖檔案不匹配",
+  "healthUnexpectedPath": "目標路徑異常",
+  "modeSymlink": "軟連結",
+  "modeCopy": "複製",
+  "modeExternal": "外部",
+  "notLinked": "未連線",
+  "update": "更新",
+  "backToLibrary": "返回已安裝技能",
+  "remove": "移除",
+  "manageTargets": "管理範圍",
+  "skillsSelected": "已選擇 {count} 項",
+  "@skillsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "清除選擇",
+  "selectCurrentResults": "選擇當前結果",
+  "clearCurrentResultSelection": "清除當前結果選擇",
+  "manageTargetsTitle": "管理安裝目標",
+  "manageTargetsDescription": "為每個目標選擇精確操作；未選擇的目標不會改變。",
+  "targetActionsSelected": "已選擇 {selected}/{total} 個目標",
+  "@targetActionsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "repairTarget": "修復",
+  "confirmRemoveTarget": "確認移除",
+  "applyTargetActions": "執行所選操作",
+  "managementProgressTitle": "正在執行目標操作",
+  "managementResultsTitle": "目標操作結果",
+  "managementResultSummary": "{succeeded} 個成功，{failed} 個失敗",
+  "@managementResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceOwnershipChanges": "所選專案操作將更新 skillsgo.mod 和 skillsgo.sum。",
+  "targetContentPreserved": "目標當前內容會被保留。",
+  "localReadFailed": "無法讀取此技能",
+  "localReadFailedMessage": "SkillsGo 無法讀取這個已安裝的技能。請確認其資料夾存在且可以訪問，然後重試。",
+  "localConfiguration": "SKILLSGO 設定",
+  "settingsNavigation": "設定導航",
+  "general": "個性化",
+  "agents": "智慧體",
+  "hub": "Hub",
+  "installationPolicy": "安裝策略",
+  "storage": "儲存",
+  "colorScheme": "顏色預覽",
+  "about": "關於",
+  "colorSchemeInspectorTitle": "Material 生成色彩角色",
+  "skillsColorTokensTitle": "SkillsGo 語義顏色",
+  "skillsColorTokensDescription": "由 Radix Sand 色階構建、採用 Primer 語義組織的產品顏色；Folder 是獨立的空間層級。",
+  "colorSchemeInspectorDescription": "展示當前種子色生成的所有非廢棄 ColorScheme Token。點選色塊即可複製 HEX。",
+  "colorSchemePairPreview": "語義顏色組合",
+  "colorSchemePairPreviewDescription": "將前景色和背景色放在一起渲染，直接檢查對比度與資訊層級。",
+  "colorSchemeComponentPreview": "元件實景",
+  "colorSchemeComponentPreviewDescription": "使用當前預覽 Scheme 渲染典型 Material 控制元件。",
+  "colorSchemeSampleTitle": "技能卡片標題",
+  "colorSchemeSampleBody": "輔助說明使用 onSurfaceVariant。",
+  "colorSchemeCopied": "已複製",
+  "colorSchemeSampleGlyphs": "字 Aa 123",
+  "colorSchemeGroupPrimary": "主色",
+  "colorSchemeGroupPrimaryDescription": "主要強調、容器與固定主色角色。",
+  "colorSchemeGroupSecondary": "輔色",
+  "colorSchemeGroupSecondaryDescription": "輔助強調與固定輔色角色。",
+  "colorSchemeGroupTertiary": "第三色",
+  "colorSchemeGroupTertiaryDescription": "與主色、輔色形成對比的補充強調色。",
+  "colorSchemeGroupSurface": "表面",
+  "colorSchemeGroupSurfaceDescription": "頁面、容器、層級與前景內容的顏色體系。",
+  "colorSchemeGroupUtility": "輪廓與輔助",
+  "colorSchemeGroupUtilityDescription": "邊界、陰影、遮罩和反色表面角色。",
+  "colorSchemeGroupError": "錯誤",
+  "colorSchemeGroupErrorDescription": "錯誤操作、訊息和容器角色。",
+  "colorSchemeUsagePrimary": "主要操作、焦點和高強調裝飾。",
+  "colorSchemeUsageSecondary": "輔助操作和中等強調裝飾。",
+  "colorSchemeUsageTertiary": "補充主色與輔色的對比強調色。",
+  "colorSchemeUsageContentOn": "顯示在 {token} 上的文字和圖示。",
+  "@colorSchemeUsageContentOn": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageContainer": "用於選中態與強調的低強調 {family} 容器。",
+  "@colorSchemeUsageContainer": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixed": "不隨明暗模式變化的固定 {family} 容器。",
+  "@colorSchemeUsageFixed": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedDim": "較暗的固定 {family} 容器，不隨明暗模式變化。",
+  "@colorSchemeUsageFixedDim": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedContent": "固定 {family} 容器上的高強調內容。",
+  "@colorSchemeUsageFixedContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedVariantContent": "固定 {family} 容器上的低強調內容。",
+  "@colorSchemeUsageFixedVariantContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageSurface": "頁面和大型區域的基礎表面。",
+  "colorSchemeUsageSurfaceDim": "表面色階中較暗的基礎表面。",
+  "colorSchemeUsageSurfaceBright": "表面色階中較亮的基礎表面。",
+  "colorSchemeUsageSurfaceElevation": "{level} 層級的表面容器。",
+  "@colorSchemeUsageSurfaceElevation": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeElevationLowest": "最低",
+  "colorSchemeElevationLow": "較低",
+  "colorSchemeElevationDefault": "預設",
+  "colorSchemeElevationHigh": "較高",
+  "colorSchemeElevationHighest": "最高",
+  "colorSchemeUsageOnSurface": "表面上的主要文字和圖示。",
+  "colorSchemeUsageOnSurfaceVariant": "表面上的次要文字、標籤和弱化圖示。",
+  "colorSchemeUsageSurfaceTint": "從主色生成的 Material 層級著色。",
+  "colorSchemeUsageOutline": "醒目的邊界和獲得焦點的元件輪廓。",
+  "colorSchemeUsageOutlineVariant": "細微邊界、分隔線和低強調輪廓。",
+  "colorSchemeUsageShadow": "懸浮表面的投影顏色。",
+  "colorSchemeUsageScrim": "用於弱化背景內容的模態遮罩。",
+  "colorSchemeUsageInverseSurface": "明暗強調反轉的表面。",
+  "colorSchemeUsageInversePrimary": "顯示在反色表面上的主色強調。",
+  "colorSchemeUsageError": "錯誤操作、狀態與高強調反饋。",
+  "save": "儲存",
+  "advancedSettings": "高階",
+  "remindersSettings": "提醒",
+  "remindersSettingsTitle": "提醒設定",
+  "remindersSettingsDescription": "選擇要接收的提醒。",
+  "updateReminderTitle": "更新提醒",
+  "updateReminderDescription": "開啟“已安裝”時檢查更新。",
+  "securityReminderTitle": "高風險提醒",
+  "securityReminderDescription": "發現已安裝技能存在高風險或嚴重風險時提醒。",
+  "availableUpdatesReminder": "{count} 個已安裝技能有可用更新",
+  "@availableUpdatesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openAvailableUpdates": "開啟“有更新”檢視，檢視並選擇需要更新的技能。",
+  "securityAdvisoriesReminder": "{count} 個已安裝技能需要安全檢查",
+  "@securityAdvisoriesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewInstalledSkills": "使用或更新前，請先檢視這些技能的風險資訊。",
+  "generalSettingsTitle": "讓 SkillsGo 更適合你",
+  "generalSettingsDescription": "介面會自動跟隨系統語言、輔助功能和動態效果偏好。",
+  "agentsSettingsTitle": "智慧體執行環境",
+  "hubSettingsTitle": "Hub 地址",
+  "hubSettingsDescription": "使用官方 Hub，或實現相同 SkillsGo 協議的 HTTP(S) 自託管地址。",
+  "testConnection": "測試連線",
+  "saveOrigin": "儲存地址",
+  "resetDefault": "恢復預設",
+  "connectionReady": "連線正常",
+  "connectionFailed": "連線失敗",
+  "hubInvalidOrigin": "請輸入不含賬號密碼、查詢引數或片段的有效 HTTP(S) 地址。",
+  "hubHttpFailure": "Hub 傳回 HTTP {status}。請檢查 Hub 位址與伺服器設定。",
+  "@hubHttpFailure": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "hubInvalidProtocol": "伺服器未傳回 SkillsGo Hub 搜尋協定。",
+  "hubInvalidJson": "Hub 返回了無效 JSON。",
+  "hubConnectionFailure": "無法連線至 Hub。請檢查 Hub 位址、網路、Proxy 與 TLS 設定。",
+  "hubConnectionTimeout": "Hub 連線超時。請檢查網路或重試。",
+  "riskPolicyTitle": "個人風險策略",
+  "riskPolicyDescription": "安全規則會在安裝或更新技能時生效。",
+  "confirmHighRisk": "高風險必須額外確認",
+  "confirmHighRiskDescription": "安裝高風險製品前始終要求一次額外確認。",
+  "allowCriticalOverride": "允許顯式覆蓋嚴重風險阻止",
+  "allowCriticalOverrideDescription": "嚴重風險製品預設保持阻止。啟用後僅提供單獨的手動覆蓋入口。",
+  "storageSettingsTitle": "內容定址 Store",
+  "storageHealthy": "可讀取",
+  "storageNotInitialized": "尚未初始化",
+  "storageUnavailable": "不可用",
+  "storagePathUnavailable": "CLI 診斷就緒後才能顯示 Store 路徑。",
+  "storageHealthyDescription": "CLI 可以讀取 Store，且本次檢查不會修改其中內容。",
+  "storageNotInitializedDescription": "Store 尚不存在，本次檢查沒有建立它。",
+  "storageUnavailableDescription": "CLI 無法讀取 Store。請檢查目錄權限及其上層目錄。",
+  "storageInvalidResponse": "內建 CLI 傳回不支援的診斷回應。",
+  "aboutSettingsTitle": "產品相容性",
+  "appVersion": "App 版本",
+  "cliVersion": "內建 CLI 版本",
+  "compatible": "相容",
+  "hubOriginSaved": "Hub 地址已儲存並立即應用。",
+  "policySaved": "安裝策略已儲存。",
+  "officialCli": "SkillsGo CLI",
+  "ready": "就緒",
+  "unknown": "未知",
+  "missing": "缺失",
+  "incompatible": "版本不相容",
+  "detecting": "正在偵測…",
+  "customCliPath": "自定義可執行檔案路徑",
+  "saveAndDetect": "儲存並偵測",
+  "detectAgain": "重新偵測",
+  "agentInstalled": "已安裝",
+  "agentSupported": "已支援",
+  "agentCatalogSummary": "已安裝 {installed} 個 · 支援 {supported} 個",
+  "@agentCatalogSummary": {
+    "placeholders": {
+      "installed": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "int"
+      }
+    }
+  },
+  "installedAgentsTitle": "已安裝 · {count}",
+  "@installedAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsTitle": "未安裝 · {count}",
+  "@notInstalledAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsDescription": "SkillsGo 已支援，但尚未在這臺 Mac 上偵測到。",
+  "agentDiscoveryRoots": "技能載入路徑：{paths}",
+  "@agentDiscoveryRoots": {
+    "placeholders": {
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+  "agentInspectionFailed": "智慧體偵測資料不可用，請重新偵測。",
+  "noInstalledAgentsTitle": "未偵測到已安裝的智慧體",
+  "noInstalledAgentsMessage": "你仍可繼續瀏覽該技能，但當前沒有可用安裝目標。請先安裝一個受支援的智慧體，然後重新偵測。",
+  "clearCustomPath": "清除自定義路徑",
+  "privacyProvenance": "隱私與來源說明",
+  "privacySummary": "你的搜尋記錄不會被儲存，SkillsGo 也不會保留命令日誌。",
+  "language": "語言",
+  "personalizationTheme": "主題",
+  "folderColorTheme": "主題色",
+  "folderColorThemeDescription": "挑一個喜歡的顏色，SkillsGo 會自動生成協調的介面配色。",
+  "brandNameNeteaseCloudMusic": "網易雲音樂",
+  "brandNameRaspberryPi": "樹莓派",
+  "brandNameChinaEasternAirlines": "中國東方航空",
+  "brandNameNvidia": "英偉達",
+  "brandNameTaobao": "淘寶",
+  "brandNameBitcoin": "比特幣",
+  "appearanceMode": "模式",
+  "appearanceModeDescription": "跟隨系統外觀，或始終使用淺色或深色主題。",
+  "followSystem": "跟隨系統",
+  "lightMode": "淺色",
+  "darkMode": "深色",
+  "wallpaper": "桌布",
+  "wallpaperDescription": "選擇一張天體背景，設定後會立即顯示在 Folder 後方。",
+  "wallpaperSun": "太陽",
+  "wallpaperMercury": "水星",
+  "wallpaperVenus": "金星",
+  "wallpaperEarth": "地球",
+  "wallpaperMars": "火星",
+  "wallpaperJupiter": "木星",
+  "wallpaperSaturn": "土星",
+  "wallpaperUranus": "天王星",
+  "wallpaperNeptune": "海王星",
+  "wallpaperPluto": "冥王星",
+  "wallpaperMoon": "月球",
+  "folderThemeChoice": "{theme} Folder 主題",
+  "@folderThemeChoice": {
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyAffiliation": "匿名安裝遙測由 SkillsGo 設定控制。SkillsGo 與 OpenAI 或 Codex 不存在官方隸屬關係。",
+  "commandCompleted": "命令執行完成",
+  "commandFailed": "命令執行失敗",
+  "commandExit": "退出碼 {code} · 展開檢視本次會話日誌",
+  "command": "命令",
+  "cancel": "取消",
+  "updateUnknown": "未知",
+  "updateChecking": "檢查中",
+  "upToDate": "已是最新",
+  "updateAvailable": "可更新",
+  "updateUnavailable": "無法檢查",
+  "updateCheckFailed": "檢查失敗",
+  "installSkill": "安裝技能",
+  "installLocationTitle": "設定技能安裝位置",
+  "userLevel": "使用者級別",
+  "projectLevel": "專案級別",
+  "projects": "專案",
+  "loading": "正在載入…",
+  "repositoryParsing": "正在解析 Repository…",
+  "userInstallSummary": "將在使用者級別供 {agents} 個智慧體使用",
+  "@userInstallSummary": {
+    "placeholders": {
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "projectInstallSummary": "{projects} 個專案 · {agents} 個智慧體",
+  "@projectInstallSummary": {
+    "placeholders": {
+      "projects": {
+        "type": "int"
+      },
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "installationResults": "安裝結果",
+  "installationInProgress": "正在安裝",
+  "installationSucceeded": "安裝完成",
+  "installationSucceededMessage": "技能現在可在所選位置使用。",
+  "projectUnavailable": "專案不可用",
+  "installedCell": "已安裝",
+  "unsupportedCell": "不可用",
+  "confirmInstall": "確認安裝",
+  "installAllRepositorySkills": "安裝倉庫所有技能（{count}）",
+  "installAllSkillsTo": "安裝所有技能到",
+  "@installAllRepositorySkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installRepositorySkills": "安裝 {repository} 全部技能（{count}）",
+  "@installRepositorySkills": {
+    "placeholders": {
+      "repository": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installSkillTo": "安裝 {skill} 到",
+  "@installSkillTo": {
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
+  },
+  "availableInAllProjects": "所有專案",
+  "availableInSelectedProjects": "指定專案",
+  "usedBy": "用於智慧體",
+  "backToTargets": "返回目標選擇",
+  "stayHere": "留在這裡",
+  "viewInLibrary": "檢視已安裝技能",
+  "planCreateCount": "建立 {count} 個",
+  "@planCreateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planSkipCount": "跳過 {count} 個",
+  "@planSkipCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planReplaceCount": "替換 {count} 個",
+  "@planReplaceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planConflictCount": "衝突 {count} 個",
+  "@planConflictCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRiskCount": "風險阻止 {count} 個",
+  "@planRiskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "refreshInstallationPlan": "應用解決方案",
+  "replaceVersionConflict": "替換這個目標中已安裝的版本",
+  "replaceSkillIdCollision": "替換這個目標中的不同 Skill ID",
+  "replaceLocalModification": "放棄本地修改並替換這個目標",
+  "sharedTargetConflict": "此路徑由其他智慧體目標共享",
+  "sharedTargetConflictDescription": "返回目標矩陣並選擇所有受影響的智慧體後再替換：{agents}",
+  "@sharedTargetConflictDescription": {
+    "placeholders": {
+      "agents": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceConflictingTarget": "替換衝突目標",
+  "confirmHighRiskArtifact": "確認高風險製品",
+  "confirmCriticalRiskArtifact": "確認覆蓋嚴重風險",
+  "confirmRiskForSelectedTargets": "我已檢查製品檔案，並接受在所選目標中安裝此風險製品",
+  "criticalRiskBlocked": "嚴重風險安裝已被阻止",
+  "criticalRiskOverrideDisabled": "請先在設定中啟用顯式的嚴重風險覆蓋策略，才能繼續此計劃。",
+  "workspaceManifestChanges": "Workspace Manifest 變更",
+  "noWorkspaceManifestChanges": "不會修改 Workspace Manifest 檔案。",
+  "lockVersionChange": "{from} → {to}",
+  "@lockVersionChange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "notPresent": "尚不存在",
+  "planActionCreate": "建立",
+  "planActionReplace": "替換",
+  "planActionSkip": "跳過",
+  "planActionConflict": "衝突",
+  "planActionBlockedByRisk": "因風險阻止",
+  "installationResultSummary": "已安裝 {succeeded} 個目標，{failed} 個失敗",
+  "@installationResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "installationProgressTitle": "正在安裝",
+  "installationProgressSummary": "已完成 {finished}/{total} 個目標",
+  "@installationProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "targetWaiting": "等待中",
+  "targetRunning": "正在安裝",
+  "retryFailedTargets": "重試 {count} 個失敗目標",
+  "@retryFailedTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updatePlanTitle": "選擇要更新的目標",
+  "updatePlanDescription": "請選擇明確的安裝目標；未選擇的智慧體和專案不會改變。",
+  "updateTargetsSelected": "已選擇 {selected}/{available} 個可更新目標",
+  "@updateTargetsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "updateVersionChange": "{fromVersion} → {toVersion}",
+  "@updateVersionChange": {
+    "placeholders": {
+      "fromVersion": {
+        "type": "String"
+      },
+      "toVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceReference": "來源引用：{reference}",
+  "@sourceReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "fixedVersionTarget": "已固定——沒有可移動引用",
+  "currentVersionTarget": "已是最新版本",
+  "updateCheckTargetFailed": "更新檢查失敗",
+  "reconcileWorkspaceManifestTarget": "修復工作區清單",
+  "updateSelectedTargets": "更新所選目標",
+  "updateProgressTitle": "正在更新目標",
+  "updateResultsTitle": "更新結果",
+  "updateProgressSummary": "已完成 {finished}/{total} 個目標",
+  "@updateProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "retryFailedUpdates": "重試 {count} 個失敗更新",
+  "@retryFailedUpdates": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpdateableTargets": "所選目標沒有可用更新。",
+  "closeUpdatePlan": "關閉",
+  "targetSucceeded": "已安裝",
+  "targetSkipped": "已跳過",
+  "targetConflict": "衝突",
+  "targetFailed": "失敗",
+  "targetFailureRetryable": "無法更改此位置，你可以重試。",
+  "targetFailureNeedsAttention": "請先處理此位置的問題，然後重試。",
+  "installationTargetFailureMessage": "此位置沒有發生更改。請確認資料夾可用後重試。",
+  "workspacePersistenceFailureMessage": "SkillsGo 無法儲存專案設定，因此沒有更改此位置。請確認專案資料夾可寫後重試。",
+  "installationStateChangedMessage": "此位置在你確認期間發生了變化。請檢視最新狀態後重試。",
+  "updateTargetFailureMessage": "無法更新此位置，其他位置不受影響。你可以只重試這一項。",
+  "managementTargetFailureMessage": "無法在此位置完成操作，其他位置不受影響。你可以只重試這一項。",
+  "technicalDetails": "技術詳情",
+  "targetPathExists": "此位置已有其他內容。",
+  "targetBlockedByRisk": "當前安全設定阻止了在此位置安裝。",
+  "targetInstallFailed": "無法在此位置安裝技能。",
+  "targetWorkspaceUpdateFailed": "技能已經安裝，但無法更新專案設定。",
+  "installationPlanFailed": "安裝計劃無法繼續",
+  "installationFailed": "安裝未能完成",
+  "localSource": "本地來源",
+  "noDescriptionAvailable": "暫無描述",
+  "moreCoverage": "另外 {count} 個安裝位置",
+  "@moreCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverAction": "納入 SkillsGo 管理",
+  "batchTakeoverActionCount": "納入管理（{count}）",
+  "@batchTakeoverActionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverChecking": "正在檢查可納入的技能…",
+  "batchTakeoverRetry": "重新檢查可納入技能",
+  "batchTakeoverEligibleCount": "{count} 個可納入管理",
+  "@batchTakeoverEligibleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPending": "正在納入管理…",
+  "batchTakeoverTitle": "將現有技能納入 SkillsGo 管理？",
+  "batchTakeoverDescription": "SkillsGo 可以為受支援鎖定檔記錄的現有複製安裝建立管理記錄，不會移動或覆寫其檔案。不支援或確認後已變更的項目將會略過。",
+  "batchTakeoverStoryTitle": "把散落的技能，整理成一個清晰的 Library",
+  "batchTakeoverStoryDescription": "SkillsGo 在當前位置發現 {count} 個可以納入管理的現有技能。",
+  "@batchTakeoverStoryDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverBeforeSemantics": "納入管理前，現有技能裝在哪裡、是不是最新、損壞後如何恢復，以及不同專案間的版本是否一致，都缺少清晰狀態。",
+  "batchTakeoverPainLocation": "不知道裝在哪",
+  "batchTakeoverPainFreshness": "不知道是不是最新",
+  "batchTakeoverPainRecovery": "壞了無法恢復",
+  "batchTakeoverPainVersionDrift": "多個專案版本不一致",
+  "batchTakeoverFolderTitle": "現有 Skills",
+  "batchTakeoverFolderSubtitle": "狀態不清晰",
+  "batchTakeoverAfterLabel": "納入後",
+  "batchTakeoverAfterTitle": "一個清晰的 Library",
+  "batchTakeoverLibraryTitle": "SkillsGo Library",
+  "batchTakeoverBenefitLocation": "位置清晰",
+  "batchTakeoverBenefitFreshness": "更新可見",
+  "batchTakeoverBenefitRecovery": "隨時恢復",
+  "batchTakeoverBenefitVersions": "版本明確",
+  "batchTakeoverManagedSection": "SkillsGo 管理中",
+  "batchTakeoverPendingSection": "待納入",
+  "batchTakeoverItemManaged": "{name} 已納入 SkillsGo 管理",
+  "@batchTakeoverItemManaged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemSkipped": "{name} 未能納入管理",
+  "@batchTakeoverItemSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemPending": "{name} 等待納入管理",
+  "@batchTakeoverItemPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverAfterSemantics": "納入管理後，{count} 個技能會整理到同一個 Library 中，並顯示清晰的管理狀態。",
+  "@batchTakeoverAfterSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverMoreSkills": "另外 {count} 個",
+  "@batchTakeoverMoreSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverTransitionSemantics": "將這些現有技能納入 SkillsGo 管理。",
+  "batchTakeoverTransitionLabel": "整理",
+  "batchTakeoverStatusTitle": "納入狀態",
+  "batchTakeoverStatusManaged": "已納入",
+  "batchTakeoverStatusProgress": "正在整理",
+  "batchTakeoverStatusSkipped": "已跳過",
+  "batchTakeoverStatusFilesStay": "技能檔案保留在原來的位置",
+  "batchTakeoverBoardSemantics": "技能會排列成完整的行並由 SkillsGo 建立管理記錄，原檔案不會移動。",
+  "batchTakeoverBoardComplete": "全部整理",
+  "batchTakeoverBoardPartial": "整理完成",
+  "batchTakeoverStatusTotal": "總計",
+  "batchTakeoverQueueComplete": "沒有待納入的技能",
+  "batchTakeoverQueueWaiting": "驗證完成後，技能會從這裡開始整理",
+  "batchTakeoverNextLabel": "NEXT",
+  "batchTakeoverFillerCount": "使用 {count} 個 SkillsGo 整理塊補全最後幾行",
+  "@batchTakeoverFillerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPreservation": "原檔案、原路徑和現有用法全部保留。SkillsGo 只會補全本地管理記錄。",
+  "batchTakeoverLaterHint": "暫時跳過後，仍可隨時在 Library 點選「納入管理」。",
+  "batchTakeoverSkip": "暫時跳過",
+  "batchTakeoverConfirm": "納入管理",
+  "batchTakeoverExecutionRetry": "重試納入",
+  "batchTakeoverResultTitle": "已納入管理",
+  "batchTakeoverSummary": "已納入管理 {takenOver} 個技能，跳過 {skipped} 個。",
+  "@batchTakeoverSummary": {
+    "placeholders": {
+      "takenOver": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverClose": "關閉",
+  "installMoreTargets": "安裝到更多位置",
+  "exportLocalSkill": "匯出",
+  "exportLocalSkillDescription": "將這個本地技能匯出為可移植的 ZIP 歸檔。",
+  "detailInstalls": "安裝量",
+  "detailRepository": "倉庫",
+  "detailStars": "星標",
+  "detailUpdated": "最近更新",
+  "detailArchiveSize": "ZIP 大小",
+  "pathLabel": "專案路徑",
+  "copyProjectPath": "複製專案路徑",
+  "projectPathCopied": "專案路徑已複製",
+  "onboardingWelcomeTitle": "歡迎使用 SkillsGo",
+  "onboardingWelcomeDescription": "發現、安裝和管理所有智慧體與專案中的 Skills。",
+  "onboardingDetectedAgents": "已偵測到的智慧體",
+  "onboardingNoAgents": "未偵測到已安裝的智慧體，你仍然可以繼續。",
+  "onboardingNext": "下一步",
+  "onboardingProjectsTitle": "新增你的專案",
+  "onboardingProjectsDescription": "選擇你希望 SkillsGo 管理的專案。",
+  "onboardingAddProject": "現在新增",
+  "onboardingAddProjectLater": "或者稍後",
+  "onboardingStartUsing": "開始使用",
+  "onboardingBack": "返回",
+  "restartOnboardingTitle": "啟動引導",
+  "restartOnboardingDescription": "重新檢視首次啟動引導，不會刪除專案、設定或 Skills 資料。",
+  "restartOnboardingAction": "重新開始引導",
+  "restartOnboardingFailed": "無法重新開始啟動引導。",
+  "libraryRefreshSettingsTitle": "重新整理本地技能庫",
+  "libraryRefreshSettingsDescription": "重新掃描已安裝 Skills、已新增專案、智慧體，以及可納入管理的外部 Skills。此操作不會安裝、更新或移除任何內容。",
+  "libraryRefreshSettingsAction": "重新整理技能庫",
+  "libraryRefreshSettingsPending": "正在重新整理技能庫…",
+  "libraryRefreshSettingsSuccess": "本地技能庫已重新整理。",
+  "libraryRefreshSettingsFailed": "SkillsGo 無法重新整理本地技能庫。",
+  "onboardingProjectError": "SkillsGo 無法從這個目錄新增專案。",
+  "onboardingProjectsLoadError": "SkillsGo 無法載入已新增的專案。",
+  "onboardingStartupError": "SkillsGo 無法載入初始設定。",
+  "onboardingStateError": "SkillsGo 無法儲存設定進度，請重試。",
+  "onboardingCliErrorTitle": "SkillsGo CLI 需要處理",
+  "onboardingCliErrorDescription": "修復內建 CLI 後重試，即可繼續。"
+}

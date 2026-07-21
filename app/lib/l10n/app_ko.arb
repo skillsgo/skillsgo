@@ -1,0 +1,1088 @@
+{
+  "@@locale": "ko",
+  "discover": "발견하다",
+  "discoverSkills": "조금 더 알아가는 것이 좋습니다.",
+  "library": "도서관",
+  "settings": "설정",
+  "openSettings": "설정 열기",
+  "cliNeedsAttention": "필수 SkillsGo 구성요소에 주의가 필요합니다.",
+  "cliMissingBundled": "필수 SkillsGo 구성 요소가 없거나 시작할 수 없습니다. 복원하려면 SkillsGo를 다시 설치하세요.",
+  "cliDamagedBundled": "필수 SkillsGo 구성 요소가 손상되었습니다. 복원하려면 SkillsGo를 다시 설치하세요.",
+  "cliIncompatibleBundled": "필수 SkillsGo 구성 요소가 이 앱 버전과 일치하지 않습니다. SkillsGo를 업데이트하거나 다시 설치하세요.",
+  "officialIndex": "SkillsGo 허브",
+  "discoverTitle": "다음 행동에 필요한 기술을 찾아보세요.",
+  "skillsLeaderboard": "조금 더 알아가는 것이 좋습니다.",
+  "searchResultsFor": "“{query}”에 대한 결과",
+  "@searchResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchSkills": "스킬을 검색하거나 Git 링크를 붙여넣으세요…",
+  "search": "검색",
+  "ranking": "순위",
+  "trending": "인기 급상승",
+  "hot": "뜨거운",
+  "discoverNavigation": "탐색 탐색",
+  "allTimeRanking": "역대 순위",
+  "trendingNow": "지난 24시간 동안의 추세",
+  "hotNow": "지금 핫해요",
+  "allTimeDescription": "퍼블릭 스킬은 항상 승인된 설치 순으로 정렬됩니다.",
+  "trendingDescription": "최근 24시간 동안 집계된 유효 설치 수를 기준으로 공개 스킬을 정렬합니다.",
+  "hotDescription": "단기 설치 증가 속도와 변화량을 기준으로 공개 스킬을 정렬합니다.",
+  "offlineTitle": "SkillsGo에 연결할 수 없습니다",
+  "offlineMessage": "인터넷 연결을 확인하고 다시 시도하세요. 프록시 또는 맞춤 서비스 주소를 사용하는 경우 설정에서 검토하세요.",
+  "searchFailedTitle": "검색이 중단되었습니다.",
+  "validationTitle": "입력한 내용을 확인하세요.",
+  "validationMessage": "SkillsGo는 이 요청을 사용할 수 없습니다. 입력한 내용을 검토하고 다시 시도하세요.",
+  "serverTitle": "일시적으로 서비스를 이용할 수 없습니다",
+  "serverMessage": "SkillsGo는 현재 이 요청을 완료할 수 없습니다. 잠시 후에 다시 시도해 보세요.",
+  "timeoutTitle": "너무 오래 걸리네요",
+  "timeoutMessage": "서비스가 제 시간에 응답하지 않았습니다. 연결을 확인하거나 다시 시도하세요.",
+  "invalidResponseTitle": "SkillsGo에 업데이트가 필요합니다",
+  "invalidResponseMessage": "현재 SkillsGo 버전에서는 이 응답을 읽을 수 없습니다. 앱을 업데이트한 후 다시 시도해 보세요.",
+  "invalidLocalDataTitle": "설치된 스킬을 읽을 수 없습니다",
+  "invalidLocalDataMessage": "일부 로컬 설치 정보가 손상되었거나 호환되지 않습니다. SkillsGo를 업데이트하거나 다시 설치한 후 다시 시도하세요.",
+  "tryAgain": "다시 시도하세요",
+  "searchEmptyTitle": "검색하세요. 스크롤하지 마세요.",
+  "searchEmptyMessage": "공개 스킬을 검색하려면 기능, 소스 또는 태스크를 입력하세요.",
+  "noSkillsTitle": "기술을 찾을 수 없습니다.",
+  "noSkillsMessage": "더 폭넓은 문구를 사용하거나 철자를 확인하세요.",
+  "focusSearch": "집중검색",
+  "skillsFromLink": "이 링크의 스킬",
+  "skillCount": "{count, plural, =1{1 스킬} other{{count} 스킬}}",
+  "@skillCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceResultsSummary": "{count, plural, =1{{source}의 스킬 1개} other{{source}의 스킬 {count}개}}",
+  "@sourceResultsSummary": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceSearchEmptyTitle": "이 링크를 검사할 준비가 되었습니다.",
+  "sourceSearchEmptyMessage": "{source}은(는) 현재 검색결과에 없습니다. SkillsGo는 다음 단계에서 링크를 직접 검사할 수 있습니다.",
+  "@sourceSearchEmptyMessage": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "inspectSource": "이 링크에서 스킬 보기",
+  "collectionEmptyTitle": "이 컬렉션에는 기술이 없습니다",
+  "collectionEmptyMessage": "아직 아무것도 없습니다. 추가 설치 작업을 수행한 후 다시 시도하십시오.",
+  "loadMore": "더 로드하기",
+  "install": "설치",
+  "installAll": "모든 스킬을 설치하세요",
+  "latestCommit": "최신 커밋",
+  "installToMoreTargets": "더 많은 위치에 설치",
+  "localTargets": "{count} 로컬 대상",
+  "@localTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allTimeMetric": "{count} 전체 설치 수",
+  "@allTimeMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "trendingMetric": "{count} 설치/24시간",
+  "@trendingMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hotMetric": "이번 시간에는 {value} · {change}",
+  "@hotMetric": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "trustUnverified": "확인되지 않음",
+  "trustCommunityVerified": "커뮤니티 인증됨",
+  "trustPublisherVerified": "게시자 확인됨",
+  "trustOfficial": "공식",
+  "trustWarned": "경고함",
+  "trustDelisted": "상장폐지",
+  "riskUnknown": "알 수 없는 위험",
+  "riskLow": "낮은 위험",
+  "riskMedium": "중간 위험",
+  "riskHigh": "고위험",
+  "riskCritical": "심각한 위험",
+  "openSkill": "{name} 열기",
+  "@openSkill": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installs": "{count} 설치",
+  "@installs": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "detailFailedTitle": "이 스킬을 로드할 수 없습니다.",
+  "detailLoading": "감사 가능한 기술 세부정보 로드 중",
+  "artifactUnavailableTitle": "유물을 사용할 수 없습니다",
+  "artifactUnavailableMessage": "이 버전은 현재 사용할 수 없습니다. 다시 시도하거나 다른 버전을 선택하세요.",
+  "detailInvalidTitle": "아티팩트 메타데이터가 지원되지 않습니다.",
+  "detailInvalidMessage": "이 기술에 대한 일부 세부 정보가 불완전하거나 읽을 수 없습니다. SkillsGo를 업데이트한 후 다시 시도하세요.",
+  "instructionsTab": "지침",
+  "manifestTab": "매니페스트",
+  "immutableVersionLabel": "불변 {version}",
+  "@immutableVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "commitIdentity": "{sha} 커밋",
+  "@commitIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "treeIdentity": "나무 {sha}",
+  "@treeIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "contentIdentity": "콘텐츠 {digest}",
+  "@contentIdentity": {
+    "placeholders": {
+      "digest": {
+        "type": "String"
+      }
+    }
+  },
+  "trustDoesNotProveSafety": "게시자 신뢰는 소유권 또는 유지 관리를 확인합니다. 아티팩트 안전성을 인증하지는 않습니다. 이 변경 불가능한 버전에 대해서는 위험이 별도로 평가됩니다.",
+  "knownInstallationTargets": "알려진 설치 대상",
+  "installationRange": "설치된 범위",
+  "targetDetails": "대상 세부정보 표시",
+  "hideTargetDetails": "대상 세부정보 숨기기",
+  "installedVersionLabel": "버전 {version}",
+  "@installedVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "targetSummary": "{scope} / {agent} · {version}",
+  "@targetSummary": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "agent": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "projectScope": "프로젝트",
+  "fileContentUnavailable": "바이너리 또는 사용할 수 없는 미리보기",
+  "fileContentTruncated": "허브 안전 한도에 따라 미리보기가 잘렸습니다.",
+  "retry": "재시도",
+  "backToSearch": "검색으로 돌아가기",
+  "installForCodex": "Codex용으로 설치",
+  "cliNotDetected": "기술(감지되지 않음)",
+  "snapshotFiles": "스냅샷 파일",
+  "globalCodex": "글로벌 · 코덱스",
+  "yourLibrary": "당신이 아는 모든 것이 여기에 있습니다.",
+  "libraryNavigation": "도서관 탐색",
+  "all": "모두",
+  "allSkills": "모든 기술",
+  "updatesOnly": "업데이트",
+  "allAgents": "모든 에이전트",
+  "allProjects": "모든 프로젝트",
+  "specificProject": "프로젝트",
+  "userScope": "글로벌",
+  "addProject": "프로젝트 추가",
+  "relocateProject": "재배치",
+  "removeFromList": "목록에서 제거",
+  "removeProjectTitle": "SkillsGo에서 {name}을(를) 제거하시겠습니까?",
+  "@removeProjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeProjectDescription": "앱 참조만 제거됩니다. SkillsGo는 이 디렉터리의 어떤 파일도 변경하거나 삭제하지 않습니다.",
+  "projectRailUnavailable": "{name} — 사용할 수 없음",
+  "@projectRailUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyProjectTitle": "아직 기술이 없습니다",
+  "browseSkills": "기술 찾아보기",
+  "projectMissingTitle": "프로젝트 디렉터리가 누락되었습니다.",
+  "projectMissingMessage": "디렉터리가 이동되었거나 해당 볼륨이 오프라인 상태일 수 있습니다. 위치를 바꾸거나 앱 참조만 제거하세요.",
+  "projectPermissionTitle": "프로젝트 권한이 필요합니다",
+  "projectPermissionMessage": "SkillsGo는 선택한 루트를 검사할 수 없습니다. 디렉터리 선택기를 통해 위치를 변경하여 액세스 권한을 부여하세요.",
+  "projectInaccessibleTitle": "프로젝트 디렉터리에 액세스할 수 없습니다.",
+  "projectInaccessibleMessage": "SkillsGo는 이 프로젝트 참조를 유지했습니다. 경로나 볼륨을 확인한 후 재배치하세요.",
+  "checking": "확인 중…",
+  "checkUpdates": "업데이트 확인",
+  "refresh": "새로고침",
+  "libraryUnavailable": "도서관을 이용할 수 없습니다",
+  "libraryEmpty": "아직 설치된 스킬이 없습니다.",
+  "libraryEmptyMessage": "Discover에서 스킬을 설치하면 여기에 표시됩니다.",
+  "searchLibrary": "설치된 스킬 검색",
+  "libraryNoMatches": "일치하는 기술이 없습니다.",
+  "libraryNoMatchesMessage": "다른 이름, 소스, 에이전트, 프로젝트 또는 버전을 사용해 보세요.",
+  "agentsSummary": "{count} 에이전트",
+  "@agentsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsSummary": "{count} 프로젝트",
+  "@projectsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionsSummary": "{count} 버전",
+  "@versionsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubManaged": "허브 관리",
+  "localManaged": "로컬 관리",
+  "externalInstallation": "외부 설치",
+  "readOnly": "읽기 전용",
+  "unversioned": "버전이 지정되지 않음",
+  "supportingFiles": "지원 파일",
+  "versionDivergence": "버전 차이",
+  "healthHealthy": "건강한",
+  "healthMissing": "타겟 누락",
+  "healthReplaced": "대상이 교체됨",
+  "healthLocalModification": "로컬 수정",
+  "healthUnreadable": "대상을 읽을 수 없음",
+  "healthUndeclared": "선언되지 않음",
+  "healthWorkspaceUnreadable": "작업공간 상태를 읽을 수 없음",
+  "healthLockMismatch": "잠금 불일치",
+  "healthUnexpectedPath": "예상치 못한 대상 경로",
+  "modeSymlink": "심링크",
+  "modeCopy": "복사",
+  "modeExternal": "외부",
+  "notLinked": "연결되지 않음",
+  "update": "업데이트",
+  "backToLibrary": "도서관으로 돌아가기",
+  "remove": "제거",
+  "manageTargets": "범위 관리",
+  "skillsSelected": "{count} 선택됨",
+  "@skillsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "선택 취소",
+  "selectCurrentResults": "현재 결과 선택",
+  "clearCurrentResultSelection": "현재 결과 선택 지우기",
+  "manageTargetsTitle": "설치 대상 관리",
+  "manageTargetsDescription": "각 대상에 대해 정확한 조치를 선택하십시오. 선택하지 않은 대상은 변경되지 않습니다.",
+  "targetActionsSelected": "{total}개 타겟 중 {selected}개 선택됨",
+  "@targetActionsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "repairTarget": "수리",
+  "confirmRemoveTarget": "제거 확인",
+  "applyTargetActions": "선택한 작업 적용",
+  "managementProgressTitle": "타겟 액션 적용",
+  "managementResultsTitle": "목표 조치 결과",
+  "managementResultSummary": "{succeeded} 성공, {failed} 실패",
+  "@managementResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceOwnershipChanges": "선택한 프로젝트 작업은 Skillgo.mod 및 Skillgo.sum을 업데이트합니다.",
+  "targetContentPreserved": "현재 대상 콘텐츠는 보존됩니다.",
+  "localReadFailed": "이 스킬을 읽을 수 없습니다",
+  "localReadFailedMessage": "SkillsGo가 설치된 이 스킬을 읽을 수 없습니다. 해당 폴더가 사용 가능하고 액세스 가능한지 확인한 후 다시 시도하세요.",
+  "localConfiguration": "기술이동 설정",
+  "settingsNavigation": "설정 탐색",
+  "general": "개인화",
+  "agents": "에이전트",
+  "hub": "허브",
+  "installationPolicy": "설치 정책",
+  "storage": "저장",
+  "colorScheme": "색 구성표",
+  "about": "소개",
+  "colorSchemeInspectorTitle": "생성된 머티리얼 색상 역할",
+  "skillsColorTokensTitle": "SkillsGo 의미 색상",
+  "skillsColorTokensDescription": "Radix Sand로 구축된 제품 색상은 Primer 의미 체계로 구성되었으며 폴더는 전용 공간 계층 구조입니다.",
+  "colorSchemeInspectorDescription": "현재 시드에서 생성된 더 이상 사용되지 않는 모든 ColorScheme 토큰을 미리 봅니다. 색상을 클릭하면 HEX 값이 복사됩니다.",
+  "colorSchemePairPreview": "의미 쌍",
+  "colorSchemePairPreviewDescription": "대비와 계층 구조를 노출하기 위해 함께 렌더링되는 전경 및 배경 역할입니다.",
+  "colorSchemeComponentPreview": "구성요소 미리보기",
+  "colorSchemeComponentPreviewDescription": "이 정확한 미리보기 구성표로 렌더링된 대표적인 머티리얼 컨트롤입니다.",
+  "colorSchemeSampleTitle": "스킬 카드 제목",
+  "colorSchemeSampleBody": "보조 복사본은 onSurfaceVariant를 사용합니다.",
+  "colorSchemeCopied": "복사됨",
+  "colorSchemeSampleGlyphs": "아아 123",
+  "colorSchemeGroupPrimary": "기본",
+  "colorSchemeGroupPrimaryDescription": "기본 강조, 컨테이너 및 고정 악센트 역할.",
+  "colorSchemeGroupSecondary": "보조",
+  "colorSchemeGroupSecondaryDescription": "강조 및 고정된 보조 역할을 지원합니다.",
+  "colorSchemeGroupTertiary": "3차",
+  "colorSchemeGroupTertiaryDescription": "대조되는 악센트와 고정된 3차 역할.",
+  "colorSchemeGroupSurface": "표면",
+  "colorSchemeGroupSurfaceDescription": "페이지, 컨테이너, 고도 및 전경 계층 구조.",
+  "colorSchemeGroupUtility": "개요 및 유틸리티",
+  "colorSchemeGroupUtilityDescription": "경계, 그림자, 스크림 및 반전 표면.",
+  "colorSchemeGroupError": "오류",
+  "colorSchemeGroupErrorDescription": "오류 작업, 메시지 및 컨테이너.",
+  "colorSchemeUsagePrimary": "기본 동작, 초점 및 강조된 악센트입니다.",
+  "colorSchemeUsageSecondary": "지원 작업 및 중간 강조 악센트.",
+  "colorSchemeUsageTertiary": "기본 및 보조를 보완하는 대조 액센트.",
+  "colorSchemeUsageContentOn": "{token}에 표시된 텍스트 및 아이콘.",
+  "@colorSchemeUsageContentOn": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageContainer": "선택 및 악센트에 대한 낮은 강조 {family} 컨테이너입니다.",
+  "@colorSchemeUsageContainer": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixed": "밝기에 독립적인 고정 {family} 컨테이너.",
+  "@colorSchemeUsageFixed": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedDim": "어두워진 밝기와 무관한 고정 {family} 컨테이너.",
+  "@colorSchemeUsageFixedDim": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedContent": "고정된 {family} 컨테이너의 높은 강조 콘텐츠입니다.",
+  "@colorSchemeUsageFixedContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedVariantContent": "고정된 {family} 컨테이너의 낮은 강조 콘텐츠입니다.",
+  "@colorSchemeUsageFixedVariantContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageSurface": "기본 페이지 및 넓은 영역 표면.",
+  "colorSchemeUsageSurfaceDim": "가장 어두운 표면 톤에 사용되는 희미한 기본 표면.",
+  "colorSchemeUsageSurfaceBright": "가장 밝은 표면 톤에 사용되는 밝은 베이스 표면입니다.",
+  "colorSchemeUsageSurfaceElevation": "{level} 표면 컨테이너 표고입니다.",
+  "@colorSchemeUsageSurfaceElevation": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeElevationLowest": "가장 낮은",
+  "colorSchemeElevationLow": "낮음",
+  "colorSchemeElevationDefault": "기본값",
+  "colorSchemeElevationHigh": "높다",
+  "colorSchemeElevationHighest": "최고",
+  "colorSchemeUsageOnSurface": "표면에 표시되는 기본 텍스트 및 아이콘.",
+  "colorSchemeUsageOnSurfaceVariant": "표면의 보조 텍스트, 라벨 및 부드러운 아이콘.",
+  "colorSchemeUsageSurfaceTint": "기본에서 파생된 머티리얼 고도 색조입니다.",
+  "colorSchemeUsageOutline": "눈에 띄는 경계와 집중된 구성 요소 개요.",
+  "colorSchemeUsageOutlineVariant": "미묘한 경계, 구분 기호 및 낮은 강조 윤곽선.",
+  "colorSchemeUsageShadow": "높은 표면에 대한 그림자 색상입니다.",
+  "colorSchemeUsageScrim": "배경 콘텐츠의 강조를 줄이는 데 사용되는 모달 오버레이입니다.",
+  "colorSchemeUsageInverseSurface": "밝은 부분과 어두운 부분이 반전된 표면입니다.",
+  "colorSchemeUsageInversePrimary": "반대 표면에 기본 악센트가 표시됩니다.",
+  "colorSchemeUsageError": "오류 작업, 상태 및 강조된 피드백.",
+  "save": "저장",
+  "advancedSettings": "고급",
+  "remindersSettings": "알림",
+  "remindersSettingsTitle": "알림 설정",
+  "remindersSettingsDescription": "어떤 알림을 받을지 선택하세요.",
+  "updateReminderTitle": "알림 업데이트",
+  "updateReminderDescription": "라이브러리가 열리면 업데이트를 확인하세요.",
+  "securityReminderTitle": "고위험 경고",
+  "securityReminderDescription": "설치된 기술에 새로운 높음 또는 심각 위험이 있음을 알려줍니다.",
+  "availableUpdatesReminder": "{count} 설치된 스킬이 업데이트되었습니다.",
+  "@availableUpdatesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openAvailableUpdates": "사용 가능한 업데이트 보기를 열어 검토하고 업데이트하세요.",
+  "securityAdvisoriesReminder": "{count} 설치된 기술에는 보안 검토가 필요합니다.",
+  "@securityAdvisoriesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewInstalledSkills": "사용하거나 업데이트하기 전에 위험 정보를 검토하십시오.",
+  "generalSettingsTitle": "기술을 당신의 것으로 만드세요",
+  "generalSettingsDescription": "인터페이스는 시스템 언어, 접근성 및 동작 기본 설정을 따릅니다.",
+  "agentsSettingsTitle": "에이전트 런타임",
+  "hubSettingsTitle": "허브 원산지",
+  "hubSettingsDescription": "동일한 SkillsGo 프로토콜을 구현하는 공식 허브 또는 HTTP(S) 자체 호스팅 원본을 사용하세요.",
+  "testConnection": "테스트 연결",
+  "saveOrigin": "원산지 저장",
+  "resetDefault": "기본값으로 재설정",
+  "connectionReady": "연결 준비됨",
+  "connectionFailed": "연결 실패",
+  "hubInvalidOrigin": "사용자 인증 정보, 쿼리 또는 조각 없이 유효한 HTTP(S) 원본을 입력하세요.",
+  "hubHttpFailure": "허브가 HTTP {status}를 반환했습니다. 원본 및 서버 구성을 확인하세요.",
+  "@hubHttpFailure": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "hubInvalidProtocol": "서버가 SkillsGo Hub 검색 프로토콜을 반환하지 않았습니다.",
+  "hubInvalidJson": "허브가 잘못된 JSON을 반환했습니다.",
+  "hubConnectionFailure": "허브에 연결할 수 없습니다. 원본, 네트워크, 프록시, TLS 구성을 확인하세요.",
+  "hubConnectionTimeout": "허브 연결 시간이 초과되었습니다. 네트워크를 확인하거나 다시 시도하세요.",
+  "riskPolicyTitle": "개인 위험 정책",
+  "riskPolicyDescription": "스킬을 설치하거나 업데이트할 때 안전 규칙이 적용됩니다.",
+  "confirmHighRisk": "고위험에 대한 확인 필요",
+  "confirmHighRiskDescription": "고위험 아티팩트는 설치 전 항상 추가 확인이 필요합니다.",
+  "allowCriticalOverride": "명시적인 위험 위험 재정의 허용",
+  "allowCriticalOverrideDescription": "심각한 위험 아티팩트는 기본적으로 차단된 상태로 유지됩니다. 별도의 수동 재정의를 노출하려는 경우에만 이 옵션을 활성화하세요.",
+  "storageSettingsTitle": "콘텐츠 주소 지정 저장소",
+  "storageHealthy": "읽을 수 있음",
+  "storageNotInitialized": "초기화되지 않음",
+  "storageUnavailable": "이용 불가",
+  "storagePathUnavailable": "CLI 진단이 준비될 때까지 저장 경로를 사용할 수 없습니다.",
+  "storageHealthyDescription": "CLI는 내용을 변경하지 않고도 Store를 읽을 수 있습니다.",
+  "storageNotInitializedDescription": "스토어가 아직 존재하지 않으며 이 확인으로 생성되지 않았습니다.",
+  "storageUnavailableDescription": "CLI가 저장소를 읽을 수 없습니다. 권한과 상위 디렉터리를 확인하세요.",
+  "storageInvalidResponse": "번들 CLI가 지원되지 않는 진단 응답을 반환했습니다.",
+  "aboutSettingsTitle": "제품 호환성",
+  "appVersion": "앱 버전",
+  "cliVersion": "번들 CLI 버전",
+  "compatible": "호환 가능",
+  "hubOriginSaved": "Hub Origin이 저장되고 적용되었습니다.",
+  "policySaved": "설치 정책이 저장되었습니다.",
+  "officialCli": "SkillsGo CLI",
+  "ready": "준비",
+  "unknown": "알 수 없음",
+  "missing": "누락",
+  "incompatible": "호환되지 않음",
+  "detecting": "감지 중…",
+  "customCliPath": "사용자 정의 실행 파일 경로",
+  "saveAndDetect": "저장 및 감지",
+  "detectAgain": "다시 감지",
+  "agentInstalled": "설치됨",
+  "agentSupported": "지원됨",
+  "agentCatalogSummary": "{installed} 설치됨 · {supported} 지원됨",
+  "@agentCatalogSummary": {
+    "placeholders": {
+      "installed": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "int"
+      }
+    }
+  },
+  "installedAgentsTitle": "설치됨 · {count}",
+  "@installedAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsTitle": "설치되지 않음 · {count}",
+  "@notInstalledAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsDescription": "SkillsGo에서 지원되지만 이 Mac에서는 감지되지 않습니다.",
+  "agentDiscoveryRoots": "스킬 로딩 경로: {paths}",
+  "@agentDiscoveryRoots": {
+    "placeholders": {
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+  "agentInspectionFailed": "에이전트 감지 데이터를 사용할 수 없습니다. 감지를 다시 실행하십시오.",
+  "noInstalledAgentsTitle": "설치된 에이전트가 감지되지 않았습니다.",
+  "noInstalledAgentsMessage": "이 스킬을 계속 탐색할 수 있지만 아직 설치 대상이 없습니다. 지원되는 에이전트를 설치한 후 검색을 다시 실행하세요.",
+  "clearCustomPath": "맞춤 경로 지우기",
+  "privacyProvenance": "개인정보 보호 및 출처",
+  "privacySummary": "검색 내용은 저장되지 않으며 SkillsGo는 명령 로그를 보관하지 않습니다.",
+  "language": "언어",
+  "personalizationTheme": "테마",
+  "folderColorTheme": "테마 색상",
+  "folderColorThemeDescription": "좋아하는 색상을 선택하세요. SkillsGo는 이를 중심으로 조정된 인터페이스 팔레트를 구축합니다.",
+  "brandNameNeteaseCloudMusic": "NetEase 클라우드 음악",
+  "brandNameRaspberryPi": "라즈베리 파이",
+  "brandNameChinaEasternAirlines": "중국동방항공",
+  "brandNameNvidia": "엔비디아",
+  "brandNameTaobao": "타오바오",
+  "brandNameBitcoin": "비트코인",
+  "appearanceMode": "모드",
+  "appearanceModeDescription": "시스템 모양을 따르거나 항상 밝거나 어두운 테마를 사용하십시오.",
+  "followSystem": "시스템",
+  "lightMode": "빛",
+  "darkMode": "어둠",
+  "wallpaper": "바탕화면",
+  "wallpaperDescription": "천체 배경을 선택하세요. 선택 항목은 폴더 바로 뒤에 나타납니다.",
+  "wallpaperSun": "태양",
+  "wallpaperMercury": "수성",
+  "wallpaperVenus": "비너스",
+  "wallpaperEarth": "지구",
+  "wallpaperMars": "화성",
+  "wallpaperJupiter": "목성",
+  "wallpaperSaturn": "토성",
+  "wallpaperUranus": "천왕성",
+  "wallpaperNeptune": "해왕성",
+  "wallpaperPluto": "명왕성",
+  "wallpaperMoon": "달",
+  "folderThemeChoice": "{theme} 폴더 테마",
+  "@folderThemeChoice": {
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyAffiliation": "익명 설치 원격 측정은 SkillsGo 설정에 의해 제어됩니다. SkillsGo는 OpenAI 또는 Codex와 제휴하지 않습니다.",
+  "commandCompleted": "명령 완료",
+  "commandFailed": "명령이 실패했습니다.",
+  "commandExit": "{code} 종료 · 이 세션의 로그를 보려면 확장하세요.",
+  "@commandExit": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "command": "명령",
+  "cancel": "취소",
+  "updateUnknown": "알 수 없음",
+  "updateChecking": "확인 중",
+  "upToDate": "최신",
+  "updateAvailable": "업데이트",
+  "updateUnavailable": "이용할 수 없음",
+  "updateCheckFailed": "확인 실패",
+  "installSkill": "스킬 설치",
+  "installLocationTitle": "설치 위치 설정",
+  "userLevel": "사용자 수준",
+  "projectLevel": "프로젝트 수준",
+  "projects": "프로젝트",
+  "loading": "로드 중…",
+  "repositoryParsing": "파싱 저장소…",
+  "userInstallSummary": "사용자 수준의 {agents} 에이전트가 사용할 수 있습니다.",
+  "@userInstallSummary": {
+    "placeholders": {
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "projectInstallSummary": "{projects} 프로젝트 · {agents} 에이전트",
+  "@projectInstallSummary": {
+    "placeholders": {
+      "projects": {
+        "type": "int"
+      },
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "installationResults": "설치 결과",
+  "installationInProgress": "설치 진행 중",
+  "installationSucceeded": "설치 완료",
+  "installationSucceededMessage": "이제 선택한 위치에서 스킬을 사용할 수 있습니다.",
+  "projectUnavailable": "프로젝트를 사용할 수 없음",
+  "installedCell": "설치됨",
+  "unsupportedCell": "이용 불가",
+  "confirmInstall": "설치 확인",
+  "installAllRepositorySkills": "모든 저장소 기술 설치({count})",
+  "installAllSkillsTo": "모든 스킬을 설치하세요.",
+  "@installAllRepositorySkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installRepositorySkills": "모든 {repository} 스킬 설치 ({count})",
+  "@installRepositorySkills": {
+    "placeholders": {
+      "repository": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installSkillTo": "다음에 {skill}를 설치합니다.",
+  "@installSkillTo": {
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
+  },
+  "availableInAllProjects": "모든 프로젝트",
+  "availableInSelectedProjects": "선정된 프로젝트",
+  "usedBy": "에이전트의 경우",
+  "backToTargets": "대상으로 돌아가기",
+  "stayHere": "여기에 머물러 라.",
+  "viewInLibrary": "라이브러리에서 보기",
+  "planCreateCount": "{count} 생성",
+  "@planCreateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planSkipCount": "{count} 건너뛰기",
+  "@planSkipCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planReplaceCount": "{count} 교체",
+  "@planReplaceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planConflictCount": "{count} 충돌",
+  "@planConflictCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRiskCount": "{count} 위험이 차단되었습니다.",
+  "@planRiskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "refreshInstallationPlan": "결의안 적용",
+  "replaceVersionConflict": "이 대상에 설치된 버전을 교체하세요.",
+  "replaceSkillIdCollision": "이 대상에서 다른 스킬 ID를 교체하세요.",
+  "replaceLocalModification": "로컬 수정 사항을 삭제하고 이 대상을 교체합니다.",
+  "sharedTargetConflict": "이 경로는 다른 Agent 대상과 공유됩니다.",
+  "sharedTargetConflictDescription": "교체하기 전에 대상 매트릭스로 돌아가서 영향을 받는 모든 에이전트를 선택하세요: {agents}",
+  "@sharedTargetConflictDescription": {
+    "placeholders": {
+      "agents": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceConflictingTarget": "충돌하는 대상 교체",
+  "confirmHighRiskArtifact": "고위험 유물 확인",
+  "confirmCriticalRiskArtifact": "심각한 위험 재정의 확인",
+  "confirmRiskForSelectedTargets": "아티팩트 파일을 검토하고 선택한 대상에 대해 이 위험을 수락했습니다.",
+  "criticalRiskBlocked": "심각한 위험이 있는 설치가 차단되었습니다.",
+  "criticalRiskOverrideDisabled": "이 계획을 계속하려면 설정에서 명시적인 위험-위험 재정의를 활성화하세요.",
+  "workspaceManifestChanges": "작업공간 매니페스트 변경",
+  "noWorkspaceManifestChanges": "작업공간 매니페스트 파일은 변경되지 않습니다.",
+  "lockVersionChange": "{from} → {to}",
+  "@lockVersionChange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "notPresent": "존재하지 않음",
+  "planActionCreate": "만들기",
+  "planActionReplace": "바꾸기",
+  "planActionSkip": "건너뛰기",
+  "planActionConflict": "갈등",
+  "planActionBlockedByRisk": "위험으로 인해 차단됨",
+  "installationResultSummary": "{succeeded} 대상이 설치되었지만 {failed}이(가) 실패했습니다.",
+  "@installationResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "installationProgressTitle": "설치 진행 중",
+  "installationProgressSummary": "{total}개 목표 중 {finished}개 완료됨",
+  "@installationProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "targetWaiting": "대기 중",
+  "targetRunning": "설치 중",
+  "retryFailedTargets": "{count, plural, =1{실패한 대상 1개 다시 시도} other{실패한 대상 {count}개 다시 시도}}",
+  "@retryFailedTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updatePlanTitle": "업데이트할 대상 선택",
+  "updatePlanDescription": "정확한 설치 대상을 선택하세요. 선택하지 않은 에이전트 및 프로젝트는 변경되지 않은 상태로 유지됩니다.",
+  "updateTargetsSelected": "업데이트 가능한 대상 {available}개 중 {selected}개가 선택됨",
+  "@updateTargetsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "updateVersionChange": "{fromVersion} → {toVersion}",
+  "@updateVersionChange": {
+    "placeholders": {
+      "fromVersion": {
+        "type": "String"
+      },
+      "toVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceReference": "소스 참조: {reference}",
+  "@sourceReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "fixedVersionTarget": "고정됨 - 이동 가능한 참조 없음",
+  "currentVersionTarget": "최신",
+  "updateCheckTargetFailed": "업데이트 확인 실패",
+  "reconcileWorkspaceManifestTarget": "작업공간 매니페스트 복구",
+  "updateSelectedTargets": "선택한 대상 업데이트",
+  "updateProgressTitle": "대상 업데이트 중",
+  "updateResultsTitle": "결과 업데이트",
+  "updateProgressSummary": "{total}개 목표 중 {finished}개 완료됨",
+  "@updateProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "retryFailedUpdates": "{count, plural, =1{실패한 업데이트 1개 다시 시도} other{실패한 업데이트 {count}개 다시 시도}}",
+  "@retryFailedUpdates": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpdateableTargets": "선택한 대상에 사용 가능한 업데이트가 없습니다.",
+  "closeUpdatePlan": "닫기",
+  "targetSucceeded": "설치됨",
+  "targetSkipped": "건너뛰었습니다.",
+  "targetConflict": "갈등",
+  "targetFailed": "실패",
+  "targetFailureRetryable": "이 위치는 변경할 수 없습니다. 다시 시도해 보세요.",
+  "targetFailureNeedsAttention": "다시 시도하기 전에 이 위치에 주의가 필요합니다.",
+  "installationTargetFailureMessage": "이 위치에서는 아무것도 변경되지 않았습니다. 폴더가 사용 가능한지 확인하고 다시 시도하십시오.",
+  "workspacePersistenceFailureMessage": "SkillsGo가 프로젝트 설정을 저장할 수 없기 때문에 변경된 사항이 없습니다. 프로젝트 폴더에 쓰기 가능한지 확인하고 다시 시도하세요.",
+  "installationStateChangedMessage": "검토하는 동안 위치가 변경되었습니다. 다시 시도하기 전에 최신 상태를 검토하세요.",
+  "updateTargetFailureMessage": "이 위치를 업데이트할 수 없습니다. 다른 위치는 영향을 받지 않았으므로 이 위치만 다시 시도할 수 있습니다.",
+  "managementTargetFailureMessage": "여기서는 이 작업을 완료할 수 없습니다. 다른 위치는 영향을 받지 않았으므로 이 위치만 다시 시도할 수 있습니다.",
+  "technicalDetails": "기술적인 세부사항",
+  "targetPathExists": "이 위치에 다른 항목이 이미 존재합니다.",
+  "targetBlockedByRisk": "현재 안전 설정으로 인해 이 위치에 설치가 차단되었습니다.",
+  "targetInstallFailed": "이 위치에는 스킬을 설치할 수 없습니다.",
+  "targetWorkspaceUpdateFailed": "스킬이 설치되었지만 프로젝트 설정을 업데이트할 수 없습니다.",
+  "installationPlanFailed": "설치 계획을 계속할 수 없습니다.",
+  "installationFailed": "설치를 완료할 수 없습니다.",
+  "localSource": "로컬 소스",
+  "noDescriptionAvailable": "설명이 없습니다.",
+  "moreCoverage": "+{count}개 위치 더보기",
+  "@moreCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverAction": "기존 기술 관리",
+  "batchTakeoverActionCount": "관리하다({count})",
+  "@batchTakeoverActionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverChecking": "기존 스킬 확인 중…",
+  "batchTakeoverRetry": "관리할 수 있는 스킬 다시 확인",
+  "batchTakeoverEligibleCount": "{count}을(를) 관리할 수 있습니다",
+  "@batchTakeoverEligibleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPending": "경영에 기술을 더하다…",
+  "batchTakeoverTitle": "기존 스킬을 SkillsGo에서 관리하시겠습니까?",
+  "batchTakeoverDescription": "SkillsGo는 스킬 파일을 이동하거나 덮어쓰거나 업로드하지 않고 로컬 관리 기록을 추가합니다. 지원되지 않거나 변경된 항목은 건너뜁니다.",
+  "batchTakeoverStoryTitle": "흩어져 있는 스킬을 하나의 명확한 라이브러리로 전환",
+  "batchTakeoverStoryDescription": "SkillsGo가 이 위치에서 관리할 수 있는 {count, plural, =1{1개의 기존 기술} other{{count}개의 기존 기술}}을 찾았습니다.",
+  "@batchTakeoverStoryDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverBeforeSemantics": "관리하기 전에는 기존 기술이 어디에 설치되어 있는지, 현재 기술인지, 복구 방법 또는 프로젝트가 동일한 버전을 사용하는지 여부가 불분명합니다.",
+  "batchTakeoverPainLocation": "알 수 없는 설치 위치",
+  "batchTakeoverPainFreshness": "알 수 없는 업데이트 상태",
+  "batchTakeoverPainRecovery": "파손시 복구불가",
+  "batchTakeoverPainVersionDrift": "프로젝트 전반에 걸쳐 다양한 버전",
+  "batchTakeoverFolderTitle": "기존 스킬",
+  "batchTakeoverFolderSubtitle": "불분명한 상태",
+  "batchTakeoverAfterLabel": "이후",
+  "batchTakeoverAfterTitle": "하나의 명확한 라이브러리",
+  "batchTakeoverLibraryTitle": "SkillsGo 라이브러리",
+  "batchTakeoverBenefitLocation": "위치 지우기",
+  "batchTakeoverBenefitFreshness": "업데이트 표시",
+  "batchTakeoverBenefitRecovery": "쉬운 복구",
+  "batchTakeoverBenefitVersions": "버전이 지워졌습니다.",
+  "batchTakeoverManagedSection": "SkillsGo에서 관리함",
+  "batchTakeoverPendingSection": "보류 중",
+  "batchTakeoverItemManaged": "{name}은 SkillsGo에서 관리합니다.",
+  "@batchTakeoverItemManaged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemSkipped": "{name}을(를) 관리에 추가할 수 없습니다.",
+  "@batchTakeoverItemSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemPending": "{name}이(가) 관리 대기 중입니다.",
+  "@batchTakeoverItemPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverAfterSemantics": "관리 후, {count, plural, =1{1개의 스킬은} other{{count} 스킬은}} 명확한 관리 상태로 하나의 라이브러리에 정리됩니다.",
+  "@batchTakeoverAfterSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverMoreSkills": "+{count}개 더보기",
+  "@batchTakeoverMoreSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverTransitionSemantics": "SkillsGo 관리에 이러한 기존 기술을 추가합니다.",
+  "batchTakeoverTransitionLabel": "정리",
+  "batchTakeoverStatusTitle": "관리현황",
+  "batchTakeoverStatusManaged": "관리됨",
+  "batchTakeoverStatusProgress": "정리",
+  "batchTakeoverStatusSkipped": "건너뛰었습니다.",
+  "batchTakeoverStatusFilesStay": "기술 파일은 원래 위치에 유지됩니다.",
+  "batchTakeoverBoardSemantics": "스킬은 파일을 이동하지 않고도 완전한 행으로 정렬되고 SkillsGo에 의해 기록됩니다.",
+  "batchTakeoverBoardComplete": "올 클리어",
+  "batchTakeoverBoardPartial": "완료",
+  "batchTakeoverStatusTotal": "합계",
+  "batchTakeoverQueueComplete": "어떤 기술도 기다리고 있지 않습니다",
+  "batchTakeoverQueueWaiting": "스킬은 검증 후 여기로 이동됩니다.",
+  "batchTakeoverNextLabel": "다음",
+  "batchTakeoverFillerCount": "{count, plural, =1{1 SkillsGo 오거나이저 블록} other{{count} SkillsGo 오거나이저 블록}} 마지막 행 완성",
+  "@batchTakeoverFillerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPreservation": "파일, 경로 및 현재 워크플로는 현재 위치에 그대로 유지됩니다. SkillsGo는 로컬 관리 기록만 완료합니다.",
+  "batchTakeoverLaterHint": "건너뛰면 언제든지 라이브러리에서 기존 스킬 관리를 사용할 수 있습니다.",
+  "batchTakeoverSkip": "지금은 아님",
+  "batchTakeoverConfirm": "관리에 추가",
+  "batchTakeoverExecutionRetry": "재시도",
+  "batchTakeoverResultTitle": "관리에 추가된 기술",
+  "batchTakeoverSummary": "관리에 {takenOver} 기술이 추가되었으며, {skipped}이(가) 건너뛰었습니다.",
+  "@batchTakeoverSummary": {
+    "placeholders": {
+      "takenOver": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverClose": "닫기",
+  "installMoreTargets": "더 많은 위치에 설치",
+  "exportLocalSkill": "수출",
+  "exportLocalSkillDescription": "이 로컬 스킬을 휴대용 ZIP 아카이브로 내보냅니다.",
+  "detailInstalls": "설치",
+  "detailRepository": "저장소",
+  "detailStars": "별",
+  "detailUpdated": "업데이트됨",
+  "detailArchiveSize": "우편번호 크기",
+  "pathLabel": "프로젝트 경로",
+  "copyProjectPath": "프로젝트 경로 복사",
+  "projectPathCopied": "프로젝트 경로가 복사되었습니다.",
+  "onboardingWelcomeTitle": "SkillsGo에 오신 것을 환영합니다",
+  "onboardingWelcomeDescription": "에이전트와 프로젝트 전체에서 스킬을 검색, 설치 및 관리하세요.",
+  "onboardingDetectedAgents": "탐지된 에이전트",
+  "onboardingNoAgents": "설치된 에이전트가 감지되지 않았습니다. 계속할 수 있습니다.",
+  "onboardingNext": "다음",
+  "onboardingProjectsTitle": "프로젝트 추가",
+  "onboardingProjectsDescription": "SkillsGo에서 관리할 프로젝트를 선택하세요.",
+  "onboardingAddProject": "지금 추가",
+  "onboardingAddProjectLater": "또는 나중에",
+  "onboardingStartUsing": "SkillsGo 사용 시작",
+  "onboardingBack": "뒤로",
+  "restartOnboardingTitle": "온보딩",
+  "restartOnboardingDescription": "프로젝트, 설정 또는 기술 데이터를 제거하지 않고 첫 실행 가이드를 다시 확인하세요.",
+  "restartOnboardingAction": "온보딩 다시 시작",
+  "restartOnboardingFailed": "SkillsGo가 온보딩을 다시 시작할 수 없습니다.",
+  "libraryRefreshSettingsTitle": "로컬 라이브러리 새로 고침",
+  "libraryRefreshSettingsDescription": "설치된 스킬, 추가된 프로젝트, 에이전트 및 관리할 수 있는 외부 스킬을 다시 검색합니다. 이는 아무것도 설치, 업데이트 또는 제거하지 않습니다.",
+  "libraryRefreshSettingsAction": "라이브러리 새로 고침",
+  "libraryRefreshSettingsPending": "상쾌한 도서관…",
+  "libraryRefreshSettingsSuccess": "로컬 라이브러리가 새로 고쳐졌습니다.",
+  "libraryRefreshSettingsFailed": "SkillsGo가 로컬 라이브러리를 새로 고칠 수 없습니다.",
+  "onboardingProjectError": "SkillsGo가 이 디렉터리에서 프로젝트를 추가할 수 없습니다.",
+  "onboardingProjectsLoadError": "SkillsGo가 추가된 프로젝트를 로드할 수 없습니다.",
+  "onboardingStartupError": "SkillsGo가 설정을 로드할 수 없습니다.",
+  "onboardingStateError": "SkillsGo가 설정 진행 상황을 저장할 수 없습니다. 다시 시도해 보세요.",
+  "onboardingCliErrorTitle": "SkillsGo CLI에 주의가 필요합니다",
+  "onboardingCliErrorDescription": "번들 CLI를 복구한 후 다시 시도하여 계속하십시오."
+}

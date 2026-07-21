@@ -147,11 +147,14 @@ class _InstalledAddProjectPreview extends StatelessWidget {
             children: [
               Text(l10n.library, style: context.skillsTypography.label),
               const SizedBox(width: 7),
-              HugeIcon(
-                icon: HugeIcons.strokeRoundedArrowRight01,
-                size: 13,
-                strokeWidth: 1.6,
-                color: colors.foregroundMuted,
+              Transform.flip(
+                flipX: Directionality.of(context) == TextDirection.rtl,
+                child: HugeIcon(
+                  icon: HugeIcons.strokeRoundedArrowRight01,
+                  size: 13,
+                  strokeWidth: 1.6,
+                  color: colors.foregroundMuted,
+                ),
               ),
               const SizedBox(width: 7),
               HugeIcon(
@@ -191,7 +194,7 @@ class _OnboardingProjectStrip extends StatelessWidget {
     duration: MediaQuery.disableAnimationsOf(context)
         ? Duration.zero
         : const Duration(milliseconds: 160),
-    alignment: Alignment.centerLeft,
+    alignment: AlignmentDirectional.centerStart,
     child: LayoutBuilder(
       builder: (context, constraints) {
         const columns = 5;

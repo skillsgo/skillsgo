@@ -142,7 +142,10 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     if (event is! KeyDownEvent) {
       return KeyEventResult.ignored;
     }
-    if (event.logicalKey == LogicalKeyboardKey.arrowLeft &&
+    final backKey = Directionality.of(context) == TextDirection.rtl
+        ? LogicalKeyboardKey.arrowRight
+        : LogicalKeyboardKey.arrowLeft;
+    if (event.logicalKey == backKey &&
         !_busy &&
         _currentStep == OnboardingStep.projects.index) {
       unawaited(_changeStep(OnboardingStep.welcome.index));

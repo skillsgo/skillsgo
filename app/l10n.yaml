@@ -1,4 +1,9 @@
+# [INPUT]: Depends on the English ARB catalog as the localization template and all locale-specific ARB catalogs under lib/l10n.
+# [OUTPUT]: Configures nullable-safe Flutter localization generation and generated-file handling for intentional Unicode bidi controls.
+# [POS]: Serves as the App workspace localization generator configuration.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 arb-dir: lib/l10n
 template-arb-file: app_en.arb
 output-localization-file: app_localizations.dart
 nullable-getter: false
+header: "// ignore_for_file: text_direction_code_point_in_literal, text_direction_code_point_in_comment"

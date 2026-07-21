@@ -185,8 +185,12 @@ extension _LibraryActions on _LibraryScreenState {
     final plan = takeoverPlan;
     final scope = _currentTakeoverScope;
     final eligible = _currentTakeoverEligible;
-    if (plan == null || scope == null || eligible == null || eligible == 0) {
+    if (plan == null || scope == null || eligible == null) {
       if (automatic) takeoverPromptScheduled = false;
+      return;
+    }
+    if (automatic && eligible == 0) {
+      takeoverPromptScheduled = false;
       return;
     }
     updateState(() {

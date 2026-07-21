@@ -494,13 +494,16 @@ class _ArchiveFolderState extends State<ArchiveFolder>
     final double p = _animation.value;
     final double r = widget.style.borderRadius;
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    final direction = Directionality.of(context) == TextDirection.rtl
+        ? -1.0
+        : 1.0;
 
     return Transform(
       transform: Matrix4.identity()
         ..setEntry(3, 2, 0.001)
-        ..rotateY(0.02 + p * 0.85)
+        ..rotateY(direction * (0.02 + p * 0.85))
         ..scaleByDouble(1.0 + p * 0.015, 1.0 + p * 0.015, 1.0, 1.0),
-      alignment: Alignment.centerLeft,
+      alignment: AlignmentDirectional.centerStart,
       child: Container(
         key: const Key('archive-folder-front-flap'),
         width: _bodyWidth,

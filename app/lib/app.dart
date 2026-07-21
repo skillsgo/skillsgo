@@ -42,6 +42,7 @@ class _SkillsGoMaterialApp extends ConsumerWidget {
         : Locale.fromSubtags(
             languageCode: localeParts.languageCode,
             scriptCode: localeParts.scriptCode,
+            countryCode: localeParts.countryCode,
           );
     return MaterialApp(
       debugShowCheckedModeBanner: false,

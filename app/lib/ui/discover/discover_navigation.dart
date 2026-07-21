@@ -104,7 +104,7 @@ class _DiscoverLeaderboardTabsState extends State<_DiscoverLeaderboardTabs>
           (values[lower + 1] - values[lower]) * (position - lower);
     }
 
-    final indicatorLeft = interpolate(offsets, _position.value);
+    final indicatorStart = interpolate(offsets, _position.value);
     final indicatorWidth = interpolate(widths, _position.value);
     return Semantics(
       container: true,
@@ -157,9 +157,9 @@ class _DiscoverLeaderboardTabsState extends State<_DiscoverLeaderboardTabs>
                 ],
               ],
             ),
-            Positioned(
+            PositionedDirectional(
               key: const Key('discover-tab-indicator'),
-              left: indicatorLeft,
+              start: indicatorStart,
               bottom: 0,
               width: indicatorWidth,
               height: 2,
