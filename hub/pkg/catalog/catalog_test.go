@@ -122,8 +122,8 @@ func TestSQLiteCatalogRankingsHaveDistinctSemantics(t *testing.T) {
 	require.NoError(t, c.UpsertSkill(ctx, b))
 	now := time.Date(2026, time.July, 15, 10, 30, 0, 0, time.UTC)
 	timestamps := map[*Skill][]time.Time{
-		a: {now.Add(-5 * time.Minute), now.Add(-15 * time.Minute), now.Add(-24 * time.Hour), now.Add(-48 * time.Hour), now.Add(-49 * time.Hour)},
-		b: {now.Add(-time.Hour), now.Add(-70 * time.Minute), now.Add(-80 * time.Minute)},
+		a: {now.Add(-5 * time.Minute), now.Add(-15 * time.Minute), now.Add(-25 * time.Minute), now.Add(-24 * time.Hour), now.Add(-48 * time.Hour), now.Add(-49 * time.Hour)},
+		b: {now.Add(-time.Hour), now.Add(-70 * time.Minute), now.Add(-80 * time.Minute), now.Add(-90 * time.Minute)},
 	}
 	sequence := 0
 	for skill, occurred := range timestamps {
@@ -142,18 +142,66 @@ func TestSQLiteCatalogRankingsHaveDistinctSemantics(t *testing.T) {
 	allTime, err := c.RankedSkills(ctx, "all_time", 10, 0, now)
 	require.NoError(t, err)
 	require.Equal(t, "a", allTime[0].Name)
-	require.Equal(t, int64(5), allTime[0].Installs)
+	require.Equal(t, int64(6), allTime[0].Installs)
 
 	trending, err := c.RankedSkills(ctx, "trending", 10, 0, now)
 	require.NoError(t, err)
 	require.Equal(t, "b", trending[0].Name)
-	require.Equal(t, int64(3), trending[0].Installs)
+	require.Equal(t, int64(4), trending[0].Installs)
 
 	hot, err := c.RankedSkills(ctx, "hot", 10, 0, now)
 	require.NoError(t, err)
 	require.Equal(t, "a", hot[0].Name)
-	require.Equal(t, int64(2), hot[0].Installs)
-	require.Equal(t, int64(1), hot[0].Change)
+	require.Equal(t, int64(3), hot[0].Installs)
+	require.Equal(t, int64(3), hot[0].Change)
+	require.Len(t, hot, 1)
+}
+
+func TestSQLiteHotRankingUsesNormalizedGrowthAndMinimumVolume(t *testing.T) {
+	ctx := context.Background()
+	c, err := Open(ctx, config.DatabaseConfig{
+		Type: "sqlite", DSN: filepath.Join(t.TempDir(), "hub.db"),
+		MaxOpenConns: 1, MaxIdleConns: 1,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, c.Close()) })
+
+	now := time.Date(2026, time.July, 21, 12, 30, 0, 0, time.UTC)
+	surge := &Skill{SkillID: "github.com/acme/skills/-/surge", Name: "surge", LatestVersion: "main"}
+	volume := &Skill{SkillID: "github.com/acme/skills/-/volume", Name: "volume", LatestVersion: "main"}
+	noise := &Skill{SkillID: "github.com/acme/skills/-/noise", Name: "noise", LatestVersion: "main"}
+	for _, skill := range []*Skill{surge, volume, noise} {
+		require.NoError(t, c.UpsertSkill(ctx, skill))
+	}
+
+	sequence := 0
+	record := func(skill *Skill, count int, at time.Time) {
+		t.Helper()
+		for range count {
+			sequence++
+			inserted, recordErr := c.RecordInstall(ctx, InstallEvent{
+				EventID: fmt.Sprintf("019f7d90-e1dd-77e3-b259-%012d", sequence),
+				SkillID: skill.SkillID, Version: "main", Agents: []string{"codex"},
+				Scope: "user", CLIVersion: "0.1.0", OccurredAt: at,
+			})
+			require.NoError(t, recordErr)
+			require.True(t, inserted)
+		}
+	}
+	record(surge, 6, now.Add(-30*time.Minute))
+	record(surge, 24, now.Add(-2*time.Hour))
+	record(volume, 10, now.Add(-30*time.Minute))
+	record(volume, 240, now.Add(-2*time.Hour))
+	record(noise, 2, now.Add(-30*time.Minute))
+
+	hot, err := c.RankedSkills(ctx, "hot", 10, 0, now)
+	require.NoError(t, err)
+	require.Len(t, hot, 2)
+	require.Equal(t, "surge", hot[0].Name)
+	require.Equal(t, int64(6), hot[0].Installs)
+	require.Equal(t, int64(5), hot[0].Change)
+	require.Equal(t, "volume", hot[1].Name)
+	require.Equal(t, int64(0), hot[1].Change)
 }
 
 func TestRecordInstallIsIdempotent(t *testing.T) {
@@ -290,11 +338,11 @@ func TestSQLiteMigrationsAreVersionedAndIdempotent(t *testing.T) {
 	c := open()
 	var versions []string
 	require.NoError(t, c.db.SelectContext(ctx, &versions, "SELECT version FROM atlas_schema_revisions ORDER BY version"))
-	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001"}, versions)
+	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001", "202607210001"}, versions)
 	require.NoError(t, c.Close())
 
 	c = open()
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	require.NoError(t, c.db.SelectContext(ctx, &versions, "SELECT version FROM atlas_schema_revisions ORDER BY version"))
-	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001"}, versions)
+	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001", "202607210001"}, versions)
 }
