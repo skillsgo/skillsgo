@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Ent entities, SQLx for dialect-specific discovery queries, versioned Atlas SQL migrations, Hub database configuration, and canonical Skill IDs.
- * [OUTPUT]: Provides persistent searchable Skill and repository metadata, Repository-scoped GitHub cache state, immutable versions with commit time and ZIP size, exact content-identity matching, append-only risk assessments, install aggregation, pagination, and distinct rankings on SQLite/PostgreSQL.
+ * [OUTPUT]: Provides persistent searchable Skill and repository metadata, batch Catalog-only latest-version reads, Repository-scoped GitHub cache state, immutable versions with commit time and ZIP size, exact content-identity matching, append-only risk assessments, install aggregation, pagination, and distinct rankings on SQLite/PostgreSQL.
  * [POS]: Serves as the Hub discovery data boundary while artifact bytes remain owned by storage packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -636,6 +636,25 @@ func (c *Catalog) Skill(ctx context.Context, skillID string) (*Skill, error) {
 	err := c.db.GetContext(ctx, &stored, c.db.Rebind(`SELECT s.*, r.stars AS stars
 FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id WHERE s.skill_id = ?`), skillID)
 	return &stored, err
+}
+
+// SkillsByID reads the current Catalog projection for a bounded set of public
+// Skill identities. It deliberately performs no artifact or source resolution.
+func (c *Catalog) SkillsByID(ctx context.Context, skillIDs []string) ([]Skill, error) {
+	if len(skillIDs) == 0 {
+		return []Skill{}, nil
+	}
+	query, args, err := sqlx.In(`SELECT s.*, r.stars AS stars
+FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
+WHERE s.skill_id IN (?)`, skillIDs)
+	if err != nil {
+		return nil, err
+	}
+	var stored []Skill
+	if err := c.db.SelectContext(ctx, &stored, c.db.Rebind(query), args...); err != nil {
+		return nil, err
+	}
+	return stored, nil
 }
 
 // SkillPublishedVersions returns the immutable semantic versions at which a

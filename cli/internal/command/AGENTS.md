@@ -17,6 +17,7 @@
 - `info_test.go`: specifies lazy latest resolution, Repository description preservation, exact Repository-batch member selection, stable JSON, missing-member failure, and the no-local-write boundary.
 - `product_reads.go`: exposes `discover`, `detail`, and `hub check` as deep read-only App machine contracts, including optional description locale forwarding, while hiding Hub routes and query parameters behind CLI domain language.
 - `product_reads_test.go`: specifies domain-to-Hub translation through Execute and rejects raw or unknown discovery collections.
+- `catalog_update_check.go`, `catalog_update_check_test.go`: expose and specify one bounded read-only App machine command that compares installed Library-entry versions with independently built Hub Catalog versions without invoking artifact or Repository resolution.
 - `export.go`: exports one private Local Skill artifact with machine confirmation or adaptive Human progress, without Hub access.
 - `inventory.go`: adapts the managed/external inventory domain report into stable JSON and grouped adaptive Human output.
 - `inventory_test.go`: specifies Skill ID aggregation, External inventory-key separation, read-only inspection, target health, Workspace reconciliation, and the explicit-project privacy boundary.
