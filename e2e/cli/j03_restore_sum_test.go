@@ -21,7 +21,7 @@ func TestJ03RestoreSum(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testSkillID+"@main",
+		"add", testSkillID+"@"+testSkillVersion,
 		"--agent", "codex",
 		"--copy",
 		"--yes",
@@ -57,9 +57,9 @@ func TestJ03RestoreSum(t *testing.T) {
 		Name    string `json:"name"`
 		Version string `json:"version"`
 		Targets int    `json:"targets"`
-	}{{Name: "ask-matt", Version: installed.Version, Targets: 1}}, restored)
+	}{{Name: "alpha", Version: installed.Version, Targets: 1}}, restored)
 
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt", "SKILL.md"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
 	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Store, "artifact", "SKILL.md"))
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
@@ -70,6 +70,6 @@ func TestJ03RestoreSum(t *testing.T) {
 	require.NoError(t, os.MkdirAll(nested, 0o755))
 	nestedRestore := execCLIFrom(t, ctx, container, "/e2e/project/packages/demo", "install", "--output", "json")
 	require.Equal(t, 0, nestedRestore.exitCode, nestedRestore.output)
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt", "SKILL.md"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
 	require.NoFileExists(t, filepath.Join(nested, "skillsgo.mod"))
 }

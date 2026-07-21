@@ -59,7 +59,7 @@ As a user installing an assessed Skill, I want High and Critical risk policy to 
 
 An unconfirmed command leaves no local mutation. The exact reviewed immutable artifact succeeds only with the required confirmation flags, and a changed artifact requires a new decision.
 
-Status: implemented for both High and Critical policy branches by `j06_risk_confirmation_test.go`.
+Status: implemented against the SkillsGo-owned `e2e-risk-skills` public fixture for a real High assessment by `j06_risk_confirmation_test.go`; the complete High/Critical flag matrix remains specified at the CLI installation-flow seam.
 
 ### J07 — Re-resolve a movable Skill reference explicitly
 
@@ -67,15 +67,15 @@ As a user who previously selected a branch, I want an explicit `add ...@branch` 
 
 The target, Store receipt, canonical resolved version, digest, commit identity, and Sum are updated together. The branch name is never persisted, and historical Sum entries remain valid evidence.
 
-Status: implemented from a known old commit to an explicit re-resolution of `main` by `j07_update_movable_test.go`.
+Status: implemented against the public anonymous, intentionally untagged `skillsgo/e2e-moving-skills` fixture from its known C1 commit to an explicit re-resolution of `main` at C2 by `j07_update_movable_test.go`.
 
-### J08 — Preserve pinned installations during update
+### J08 — Update a fixed installation only after explicit review
 
-As a user who selected a tag or fixed commit, I want normal update checks to leave that installation pinned so that reproducibility is not silently broken.
+As a user who originally selected a tag or fixed commit, I want SkillsGo to show a newer Catalog version without changing my files until I explicitly review and confirm the Update Plan.
 
-The CLI reports no movable update, does not rewrite the Workspace Manifest or Sum, and does not replace the Agent target.
+Preflight reads the independently built Catalog and remains read-only. Confirmed execution fetches the exact reviewed immutable version and commits the Agent target, Manifest, and Sum together.
 
-Status: implemented for an exact commit through Update Plan preflight by `j08_preserve_pin_test.go`.
+Status: implemented from deterministic v1.0.0 to v1.1.0 through Update Plan preflight and execution by `j08_explicit_fixed_version_update_test.go`.
 
 ## P1 — Core Multi-Target Journeys
 
@@ -347,6 +347,14 @@ The old F1 still resolves to C1, omitted/latest resolution selects V1 at C1, and
 
 Status: implemented through released CLI Info requests against a deterministic Repository transitioned from untagged C1 to tagged V1 and then advanced to C2 by `j44_no_tag_to_tag_transition_test.go`.
 
+### J45 — Check many installed Skills from Catalog without reaching GitHub
+
+As an App or terminal user with many installed Skills, I want one update check to compare local immutable versions with the independently built Hub Catalog so that checking remains fast and available without contacting every source Repository.
+
+The journey builds the Catalog from the SkillsGo-owned public versioned fixture, disables GitHub access, checks 80 installed entries through one CLI invocation, and receives 80 update-available results for the Catalog's latest immutable version.
+
+Status: implemented against the released CLI and Hub by `j45_catalog_only_batch_update_check_test.go`.
+
 ## GitHub Issue #27 User-Story Coverage Index
 
 The numbered user stories in #27 are release-reviewed through these black-box journeys:
@@ -373,3 +381,4 @@ The numbered user stories in #27 are release-reviewed through these black-box jo
 | 43: `skillsgo.mod`, Agent target restoration, and `/mod` versus `/api/v1` separation | J36 |
 | Movable query refresh and installed-version separation | J43 |
 | Untagged F1 preservation after V1 publication and C2 advance | J44 |
+| Catalog-only update checking after GitHub becomes unavailable | J45 |

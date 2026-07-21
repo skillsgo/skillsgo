@@ -21,7 +21,7 @@ func TestJ05CorruptedDownload(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testSkillID+"@main",
+		"add", testSkillID+"@"+testSkillVersion,
 		"--agent", "codex",
 		"--copy",
 		"--yes",
@@ -49,7 +49,7 @@ func TestJ05CorruptedDownload(t *testing.T) {
 	restore := execCLI(t, ctx, container, "install", "--output", "json")
 	require.NotEqual(t, 0, restore.exitCode, "corrupted Hub artifact unexpectedly restored: %s", restore.output)
 
-	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt"))
+	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha"))
 	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.Store))
 	manifestAfter, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)

@@ -159,6 +159,32 @@ func TestReplaceUpdatesMixedPhysicalCopyAndAlias(t *testing.T) {
 	}
 }
 
+func TestReplaceUpdatesTrackedCanonicalThroughSelectedAlias(t *testing.T) {
+	root := t.TempDir()
+	oldEntry := updateTestEntry(t, filepath.Join(root, "old"))
+	newEntry := updateTestEntry(t, filepath.Join(root, "new"))
+	canonical := filepath.Join(root, "home", ".agents", "skills", "demo")
+	alias := filepath.Join(root, "home", ".codex", "skills", "demo")
+	target := Target{Agent: "codex", Scope: ScopeUser, Mode: ModeSymlink, Path: alias, CanonicalPath: canonical}
+	if err := Install(oldEntry, []Target{target}); err != nil {
+		t.Fatal(err)
+	}
+	baseline, err := DirectoryDigest(canonical)
+	if err != nil {
+		t.Fatal(err)
+	}
+	previous := []Installation{{Name: "demo", Artifact: oldEntry.Artifact, TargetState: baseline, Target: target}}
+	if err := Replace(newEntry, previous, []Target{target}); err != nil {
+		t.Fatal(err)
+	}
+	if matches, err := CopyMatchesArtifact(canonical, newEntry.Artifact); err != nil || !matches {
+		t.Fatalf("canonical did not update through selected alias: matches=%v err=%v", matches, err)
+	}
+	if resolved, err := filepath.EvalSymlinks(alias); err != nil || !samePath(resolved, canonical) {
+		t.Fatalf("alias no longer points to canonical: resolved=%s err=%v", resolved, err)
+	}
+}
+
 func TestReplaceExplicitAliasRepairPreservesModifiedCanonical(t *testing.T) {
 	root := t.TempDir()
 	entry := updateTestEntry(t, filepath.Join(root, "store"))

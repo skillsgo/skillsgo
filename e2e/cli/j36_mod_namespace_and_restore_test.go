@@ -22,7 +22,7 @@ func TestJ36ModNamespaceAndRestore(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testSkillID+"@main",
+		"add", testSkillID+"@"+testSkillVersion,
 		"--agent", "codex",
 		"--agent", "claude-code",
 		"--yes",
@@ -64,8 +64,8 @@ func TestJ36ModNamespaceAndRestore(t *testing.T) {
 	require.Equal(t, 0, removeTargets.exitCode, removeTargets.output)
 	restore := execCLI(t, ctx, container, "install", "--output", "json")
 	require.Equal(t, 0, restore.exitCode, restore.output)
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt", "SKILL.md"))
-	claudeTarget := filepath.Join(sandboxRoot, "project", ".claude", "skills", "ask-matt")
+	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
+	claudeTarget := filepath.Join(sandboxRoot, "project", ".claude", "skills", "alpha")
 	claudeInfo, err := os.Lstat(claudeTarget)
 	require.NoError(t, err)
 	require.NotZero(t, claudeInfo.Mode()&os.ModeSymlink)

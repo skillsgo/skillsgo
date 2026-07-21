@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on exact managed Installation identities, Store receipts, canonical Workspace Manifest declarations, Hub resolution, and safe target replacement.
- * [OUTPUT]: Provides strict Update Plan decoding, logical-versus-artifact identity resolution, pinned-target exclusion, shared-binding grouping, Workspace Manifest previews/reconciliation, transactional state-bound execution, and structured progress/results.
+ * [INPUT]: Depends on exact managed Installation identities, Store receipts, canonical Workspace Manifest declarations, Catalog-only latest versions, immutable Hub artifacts, and safe target replacement.
+ * [OUTPUT]: Provides strict Update Plan decoding, Catalog-bound immutable update selection, shared-binding grouping, Workspace Manifest previews/reconciliation, transactional state-bound execution, and structured progress/results.
  * [POS]: Serves as the update orchestration domain between the public update command and Hub/Store/install/project boundaries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -25,6 +25,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
+	"golang.org/x/mod/semver"
 )
 
 const SchemaVersion = 1
@@ -152,7 +153,7 @@ type Progress struct {
 }
 
 type Hub interface {
-	Resolve(context.Context, string, string) (hub.Info, error)
+	CatalogUpdates(context.Context, []string) ([]hub.CatalogUpdateItem, error)
 	Fetch(context.Context, string, string) (*hub.Artifact, error)
 }
 
@@ -224,7 +225,11 @@ func Build(
 		if err != nil {
 			return Preflight{}, err
 		}
-		entry, err := storage.Get(dependencyID, request.Version)
+		artifactSkillID := request.SkillID
+		if targetReceipt != nil && targetReceipt.ArtifactSkillID != "" {
+			artifactSkillID = targetReceipt.ArtifactSkillID
+		}
+		entry, err := storage.Get(artifactSkillID, request.Version)
 		if err != nil {
 			return Preflight{}, fmt.Errorf("managed Store artifact not found for %s: %w", request.Path, err)
 		}
@@ -274,9 +279,22 @@ func Build(
 	if err := validateCompleteUserBindings(filepath.Dir(storage.Root), requests, matched); err != nil {
 		return Preflight{}, err
 	}
+	skillIDs := make([]string, 0, len(requests))
+	seenSkillIDs := map[string]bool{}
+	for _, request := range requests {
+		if !seenSkillIDs[request.SkillID] {
+			seenSkillIDs[request.SkillID] = true
+			skillIDs = append(skillIDs, request.SkillID)
+		}
+	}
+	catalogItems, catalogErr := client.CatalogUpdates(ctx, skillIDs)
+	catalogBySkillID := make(map[string]hub.CatalogUpdateItem, len(catalogItems))
+	for _, item := range catalogItems {
+		catalogBySkillID[item.SkillID] = item
+	}
 	for index, request := range requests {
 		installation := matched[index]
-		item, err := buildItem(ctx, client, storage, request, installation)
+		item, err := buildItem(storage, request, installation, catalogBySkillID[request.SkillID], catalogErr)
 		if err != nil {
 			return Preflight{}, err
 		}
@@ -373,17 +391,17 @@ func validateCompleteUserBindings(root string, requests []TargetRequest, selecte
 }
 
 func buildItem(
-	ctx context.Context,
-	client Hub,
 	storage store.Store,
 	request TargetRequest,
 	installation install.Installation,
+	catalogItem hub.CatalogUpdateItem,
+	catalogErr error,
 ) (Item, error) {
-	entry, err := storage.Get(effectiveDependencyID(installation), installation.Version)
+	entry, err := storage.Get(artifactStoreID(installation), installation.Version)
 	if err != nil {
 		return Item{}, err
 	}
-	reference, fixed, workspaceManifestFrom, err := sourceReference(request, installation, entry.Receipt)
+	reference, _, workspaceManifestFrom, err := sourceReference(request, installation, entry.Receipt)
 	if err != nil {
 		return Item{}, err
 	}
@@ -406,24 +424,27 @@ func buildItem(
 		ToVersion: installation.Version, StateToken: stateToken,
 		installation: installation, workspaceManifestFrom: workspaceManifestFrom,
 	}
-	if fixed {
-		item.Action = ActionPinned
-		item.ReasonCode = "fixed-commit"
-		return item, nil
-	}
-	info, err := client.Resolve(ctx, installation.SkillID, reference)
-	if err != nil {
+	if catalogErr != nil {
 		item.Action = ActionFailed
-		item.ReasonCode = "resolve-failed"
-		item.Diagnostic = err.Error()
+		item.ReasonCode = "catalog-unavailable"
+		item.Diagnostic = catalogErr.Error()
 		return item, nil
 	}
-	item.ToVersion = info.Version
+	if catalogItem.Status != "available" || catalogItem.LatestVersion == "" {
+		item.Action = ActionFailed
+		item.ReasonCode = "catalog-unsupported"
+		item.Diagnostic = "Skill is not available in the Hub Catalog"
+		return item, nil
+	}
+	item.ToVersion = catalogItem.LatestVersion
+	if semver.IsValid(installation.Version) && semver.IsValid(item.ToVersion) && semver.Compare(item.ToVersion, installation.Version) < 0 {
+		item.ToVersion = installation.Version
+	}
 	if request.Scope == install.ScopeProject {
 		switch {
-		case info.Version == installation.Version && workspaceManifestFrom == installation.Version:
+		case item.ToVersion == installation.Version && workspaceManifestFrom == installation.Version:
 			item.Action = ActionCurrent
-		case info.Version == installation.Version:
+		case item.ToVersion == installation.Version:
 			item.Action = ActionUpdate
 			item.ReasonCode = reasonWorkspaceManifestReconcile
 			item.WorkspaceManifestChange = true
@@ -433,7 +454,7 @@ func buildItem(
 			item.Action = ActionUpdate
 			item.WorkspaceManifestChange = true
 		}
-	} else if info.Version == installation.Version {
+	} else if item.ToVersion == installation.Version {
 		item.Action = ActionCurrent
 	} else {
 		item.Action = ActionUpdate
@@ -631,7 +652,7 @@ func Execute(
 		var mutationErr error
 		persistenceFailed := false
 		if reconcileOnly {
-			entry, mutationErr = storage.Get(effectiveDependencyID(first.installation), first.ToVersion)
+			entry, mutationErr = storage.Get(artifactStoreID(first.installation), first.ToVersion)
 		} else {
 			var artifact *hub.Artifact
 			artifact, mutationErr = client.Fetch(ctx, first.SkillID, first.ToVersion)
@@ -728,7 +749,7 @@ func targetReceiptIdentity(userRoot string, request TargetRequest) (string, *pro
 	}
 	for index := range receipts {
 		receipt := &receipts[index]
-		if receipt.SourceSkillID == request.SkillID &&
+		if (receipt.SourceSkillID == request.SkillID || receipt.ArtifactSkillID == request.SkillID) &&
 			receipt.Version == request.Version &&
 			receipt.Scope == request.Scope &&
 			receipt.Agent == request.Agent &&
@@ -743,6 +764,13 @@ func targetReceiptIdentity(userRoot string, request TargetRequest) (string, *pro
 func effectiveDependencyID(installation install.Installation) string {
 	if installation.DependencyID != "" {
 		return installation.DependencyID
+	}
+	return installation.SkillID
+}
+
+func artifactStoreID(installation install.Installation) string {
+	if installation.Provenance == store.ProvenanceCaptured {
+		return effectiveDependencyID(installation)
 	}
 	return installation.SkillID
 }
