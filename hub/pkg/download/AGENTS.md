@@ -3,7 +3,7 @@
 
 ## Members
 
-- `protocol.go`, `handler.go`, and version-specific handlers: expose `/mod`-namespaced List, Latest, Info, and Skill ZIP routes over composable storage and source protocols, disable HTTP caching for non-canonical movable version queries, and retain structured cache and dispatch observability.
+- `protocol.go`, `handler.go`, and version-specific handlers: expose `/mod`-namespaced List, Latest, Info, and Skill ZIP routes over composable storage and source protocols, redirect canonical immutable ZIPs to a configured artifact origin after materialization, disable HTTP caching for non-canonical movable version queries, and retain structured cache and dispatch observability.
 - `addons/` and `mode/`: wrap protocol execution with concurrency control and synchronous or redirect delivery policy.
 - `*_test.go`: specify the public HTTP and Protocol contracts, including version listing, caching, fallback, and artifact delivery.
 

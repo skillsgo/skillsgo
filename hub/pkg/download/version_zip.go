@@ -10,9 +10,11 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
+	"golang.org/x/mod/semver"
 )
 
 // PathVersionZip URL.
@@ -44,6 +46,17 @@ func ZipHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handle
 			return c.SendStatus(errors.Kind(err))
 		}
 		defer func() { _ = zip.Close() }()
+		if semver.IsValid(ver) && df.URL(mod) != "" {
+			artifactURL, redirectErr := getRedirectURL(
+				df.URL(mod),
+				config.PackageVersionedName(mod, ver, "zip"),
+			)
+			if redirectErr != nil {
+				lggr.SystemErr(redirectErr)
+				return c.SendStatus(errors.Kind(redirectErr))
+			}
+			return c.Redirect().Status(errors.KindRedirect).To(artifactURL)
+		}
 
 		c.Set(fiber.HeaderContentType, "application/zip")
 		size := zip.Size()
