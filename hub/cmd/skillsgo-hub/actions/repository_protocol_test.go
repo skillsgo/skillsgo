@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the Hub Router with an empty Catalog/storage pair and a counted Repository snapshot source double.
- * [OUTPUT]: Specifies cold exact-version publication, one-snapshot multi-Skill discovery, immutable cache reuse, correlated publication logs, and self-contained Repository Info.
+ * [OUTPUT]: Specifies cold direct-Skill and Repository exact-version publication, one-snapshot multi-Skill discovery, immediate member visibility, immutable cache reuse, correlated publication logs, and self-contained Repository Info.
  * [POS]: Serves as public Router acceptance coverage for demand-driven Repository materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -227,6 +227,11 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 	download.RegisterHandlers(router, &download.HandlerOpts{
 		Protocol: protocol, Logger: logger, DownloadFile: &mode.DownloadFile{Mode: mode.Sync},
 	})
+	directMemberID := repository + "/-/skills/find-skills"
+	directRecorder := httptest.NewRecorder()
+	serveFiber(t, router, directRecorder, httptest.NewRequest(http.MethodGet, "/mod/"+directMemberID+"/@v/"+version+".info", nil))
+	require.Equal(t, http.StatusOK, directRecorder.Code, directRecorder.Body.String())
+	require.Contains(t, directRecorder.Body.String(), `"ID":"`+directMemberID+`"`)
 
 	for attempt := 0; attempt < 2; attempt++ {
 		recorder := httptest.NewRecorder()
