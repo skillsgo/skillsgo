@@ -21,7 +21,7 @@ func TestJ19ImmutableReuse(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testSkillID+"@main",
+		"add", testSkillID+"@"+testSkillVersion,
 		"--agent", "codex",
 		"--yes",
 		"--confirm-risk",
@@ -57,8 +57,8 @@ func TestJ19ImmutableReuse(t *testing.T) {
 		"--output", "json",
 	)
 	require.Equal(t, 0, secondTarget.exitCode, secondTarget.output)
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt", "SKILL.md"))
-	claudeInfo, err := os.Lstat(filepath.Join(sandboxRoot, "project", ".claude", "skills", "ask-matt"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
+	claudeInfo, err := os.Lstat(filepath.Join(sandboxRoot, "project", ".claude", "skills", "alpha"))
 	require.NoError(t, err)
 	require.NotZero(t, claudeInfo.Mode()&os.ModeSymlink)
 	require.DirExists(t, containerPathOnHost(t, sandboxRoot, installed.Store))

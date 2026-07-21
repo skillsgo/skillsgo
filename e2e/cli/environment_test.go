@@ -8,7 +8,6 @@ package e2e_test
 
 import (
 	"context"
-	"encoding/json"
 	"io"
 	"io/fs"
 	"os"
@@ -25,16 +24,20 @@ import (
 )
 
 const (
-	testSkillID            = "github.com/mattpocock/skills/-/skills/engineering/ask-matt"
-	testOldCommit          = "66898f60e8c744e269f8ce06c2b2b99ce7660d5f"
-	testReplacementSkillID = "github.com/vercel-labs/skills/-/skills/find-skills"
-	testMismatchedNameID   = "github.com/vercel-labs/agent-skills/-/skills/react-best-practices"
-	testMismatchedName     = "vercel-react-best-practices"
+	testSkillID            = "github.com/skillsgo/e2e-versioned-skills/-/skills/alpha"
+	testSkillVersion       = "v1.3.0"
+	testReplacementSkillID = "github.com/skillsgo/e2e-moving-skills/-/skills/head"
+	testReplacementCommit  = "cb2a36cac150fddb10946df1b7808c9c7c3300ca"
+	testMismatchedNameID   = "github.com/skillsgo/e2e-versioned-skills/-/skills/directory-label"
+	testMismatchedName     = "manifest-label"
+	testResourcefulSkillID = "github.com/skillsgo/e2e-versioned-skills/-/skills/resourceful"
 )
 
 var testRepositorySkillIDs = []string{
+	testSkillID,
 	testMismatchedNameID,
-	"github.com/vercel-labs/agent-skills/-/skills/web-design-guidelines",
+	testResourcefulSkillID,
+	"github.com/skillsgo/e2e-versioned-skills/-/skills/nested/general/ideation/naming",
 }
 
 type addResponse struct {
@@ -176,11 +179,10 @@ func findArtifactFile(t *testing.T, root, skillID, suffix string) string {
 	return findSingleFile(t, artifactRoot, suffix)
 }
 
-func resetLocalInstallation(t *testing.T, sandboxRoot string) {
+func resetLocalInstallation(t *testing.T, ctx context.Context, container testcontainers.Container) {
 	t.Helper()
-	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "home", ".skillsgo", "store")))
-	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "project")))
-	require.NoError(t, os.MkdirAll(filepath.Join(sandboxRoot, "project"), 0o755))
+	result := execInContainer(t, ctx, container, "sh", "-c", "rm -rf /e2e/home/.skillsgo/store /e2e/home/.skillsgo/info /e2e/project && mkdir -p /e2e/project")
+	require.Equal(t, 0, result.exitCode, result.output)
 }
 
 func requireNoLocalInstallation(t *testing.T, sandboxRoot string) {
@@ -189,18 +191,6 @@ func requireNoLocalInstallation(t *testing.T, sandboxRoot string) {
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
-}
-
-func rewriteJSONField(t *testing.T, path, field string, value any) {
-	t.Helper()
-	data, err := os.ReadFile(path)
-	require.NoError(t, err)
-	var document map[string]any
-	require.NoError(t, json.Unmarshal(data, &document))
-	document[field] = value
-	updated, err := json.Marshal(document)
-	require.NoError(t, err)
-	require.NoError(t, os.WriteFile(path, updated, 0o600))
 }
 
 func mapsClone(source map[string]any) map[string]any {

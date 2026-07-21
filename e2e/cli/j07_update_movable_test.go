@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the disposable E2E environment and public CLI, Hub, JSON, and filesystem contracts.
- * [OUTPUT]: Provides black-box coverage that an explicit re-add re-resolves a movable branch while persisted state remains canonical.
+ * [INPUT]: Depends on the public anonymous skillsgo/e2e-moving-skills no-tag Repository and the released CLI, Hub, JSON, and filesystem contracts.
+ * [OUTPUT]: Provides real-GitHub black-box coverage that an explicit re-add advances from historical C1 to main C2 while persisted state remains canonical.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -19,9 +19,11 @@ import (
 func TestJ07UpdateMovable(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
+	skillID := "github.com/skillsgo/e2e-moving-skills/-/skills/head"
+	oldCommit := "b05bf0fdab1f51a8d916f62b6e912a88bb844348"
 
 	oldAdd := execCLI(t, ctx, container,
-		"add", testSkillID+"@"+testOldCommit,
+		"add", skillID+"@"+oldCommit,
 		"--agent", "codex",
 		"--copy",
 		"--yes",
@@ -41,11 +43,14 @@ func TestJ07UpdateMovable(t *testing.T) {
 	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo.sum")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	targetPath := filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt", "SKILL.md")
+	targetPath := filepath.Join(sandboxRoot, "project", ".agents", "skills", "moving-head", "SKILL.md")
 	require.FileExists(t, targetPath)
+	beforeContent, err := os.ReadFile(targetPath)
+	require.NoError(t, err)
+	require.Contains(t, string(beforeContent), "State C1.")
 
 	update := execCLI(t, ctx, container,
-		"add", testSkillID+"@main",
+		"add", skillID+"@main",
 		"--agent", "codex",
 		"--copy",
 		"--replace",
@@ -60,6 +65,9 @@ func TestJ07UpdateMovable(t *testing.T) {
 	require.NotEqual(t, oldInstalled.Version, refreshed.Version)
 
 	require.FileExists(t, targetPath)
+	afterContent, err := os.ReadFile(targetPath)
+	require.NoError(t, err)
+	require.Contains(t, string(afterContent), "State C2")
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 	require.NotEqual(t, sumBefore, sumAfter)

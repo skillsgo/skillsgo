@@ -111,31 +111,45 @@ func replace(entry *store.Entry, previous []Installation, targets []Target, expl
 
 func replaceCanonical(entry *store.Entry, previous []Installation, targets []Target, explicit bool, after func() error) error {
 	canonical := filepath.Clean(targets[0].CanonicalPath)
+	canonicalSelected := false
 	for _, target := range targets {
 		if target.Mode != ModeSymlink || filepath.Clean(target.CanonicalPath) != canonical {
 			return fmt.Errorf("一次替换不能混用 canonical 或安装模式")
 		}
-	}
-	canonicalSelected := false
-	for _, target := range targets {
 		if filepath.Clean(target.Path) == canonical {
 			canonicalSelected = true
-			break
 		}
 	}
 	canonicalExists := false
 	canonicalRealDirectory := false
+	canonicalMatchesDesired := false
 	if info, err := os.Lstat(canonical); err == nil {
 		canonicalExists = true
 		canonicalRealDirectory = info.IsDir() && info.Mode()&os.ModeSymlink == 0
 		if !canonicalRealDirectory && !explicit {
 			return fmt.Errorf("canonical 目标必须是实体目录：%s", canonical)
 		}
-		// An alias-only repair must never rewrite its separately managed
-		// physical target. It may only reuse an exact desired baseline.
-		if canonicalRealDirectory && !canonicalSelected {
-			matched, matchErr := CopyMatchesArtifact(canonical, entry.Artifact)
-			if matchErr != nil || !matched {
+		if canonicalRealDirectory {
+			canonicalMatchesDesired, _ = CopyMatchesArtifact(canonical, entry.Artifact)
+			if explicit && !canonicalSelected && !canonicalMatchesDesired {
+				return fmt.Errorf("拒绝替换已修改的 canonical 目标 %s", canonical)
+			}
+			trackedBaseline := false
+			for _, installation := range previous {
+				if filepath.Clean(installation.Target.CanonicalPath) != canonical {
+					continue
+				}
+				trackedBaseline = true
+				matched := false
+				if installation.Artifact != "" {
+					matched, _ = CopyMatchesArtifact(canonical, installation.Artifact)
+				}
+				if !matched && !canonicalMatchesDesired && !explicit {
+					return fmt.Errorf("拒绝替换已修改的 canonical 目标 %s", canonical)
+				}
+				break
+			}
+			if !trackedBaseline && !canonicalMatchesDesired && !explicit {
 				return fmt.Errorf("拒绝替换已修改的 canonical 目标 %s", canonical)
 			}
 		}
@@ -143,7 +157,7 @@ func replaceCanonical(entry *store.Entry, previous []Installation, targets []Tar
 		return err
 	}
 	backup := canonical + ".skillsgo-backup"
-	canonicalSwitched := canonicalSelected || !canonicalExists || !canonicalRealDirectory
+	canonicalSwitched := !canonicalExists || !canonicalRealDirectory || !canonicalMatchesDesired
 	if canonicalSwitched {
 		_ = os.RemoveAll(backup)
 		if canonicalExists {

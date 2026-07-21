@@ -21,7 +21,7 @@ func TestJ01InstallWorkspace(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testSkillID+"@main",
+		"add", testSkillID+"@"+testSkillVersion,
 		"--agent", "codex",
 		"--copy",
 		"--yes",
@@ -40,10 +40,10 @@ func TestJ01InstallWorkspace(t *testing.T) {
 	require.Len(t, installed.Targets, 1)
 	require.Equal(t, "codex", installed.Targets[0].Agent)
 	require.Equal(t, "copy", installed.Targets[0].Mode)
-	require.Equal(t, "/e2e/project/.agents/skills/ask-matt", installed.Targets[0].Path)
+	require.Equal(t, "/e2e/project/.agents/skills/alpha", installed.Targets[0].Path)
 	require.True(t, strings.HasPrefix(installed.Store, "/e2e/home/.skillsgo/store/"), "Store path escaped the isolated home: %s", installed.Store)
 
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt", "SKILL.md"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
 	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Store, "artifact", "SKILL.md"))

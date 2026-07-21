@@ -18,10 +18,10 @@ import (
 func TestJ23UpdateFailureIsNonZeroAndAtomic(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
-	add := execCLI(t, ctx, container, "add", testSkillID+"@main", "--agent", "codex", "--copy", "--yes", "--confirm-risk", "--allow-critical", "--output", "json")
+	add := execCLI(t, ctx, container, "add", testSkillID+"@"+testSkillVersion, "--agent", "codex", "--copy", "--yes", "--confirm-risk", "--allow-critical", "--output", "json")
 	require.Equal(t, 0, add.exitCode, add.output)
 	paths := []string{
-		filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt", "SKILL.md"),
+		filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"),
 		filepath.Join(sandboxRoot, "project", "skillsgo.mod"),
 		filepath.Join(sandboxRoot, "project", "skillsgo.sum"),
 	}
@@ -32,7 +32,7 @@ func TestJ23UpdateFailureIsNonZeroAndAtomic(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	result := execCLI(t, ctx, container, "update", "ask-matt", "--hub", "http://127.0.0.1:1", "--yes", "--output", "json")
+	result := execCLI(t, ctx, container, "update", "alpha", "--hub", "http://127.0.0.1:1", "--yes", "--output", "json")
 	require.NotEqual(t, 0, result.exitCode, result.output)
 	for index, path := range paths {
 		after, err := os.ReadFile(path)

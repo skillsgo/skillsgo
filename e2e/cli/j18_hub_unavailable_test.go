@@ -18,7 +18,7 @@ func TestJ18HubUnavailable(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	result := execCLI(t, ctx, container,
-		"add", testSkillID+"@main",
+		"add", testSkillID+"@"+testSkillVersion,
 		"--agent", "codex",
 		"--copy",
 		"--yes",

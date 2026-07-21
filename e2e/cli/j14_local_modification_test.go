@@ -21,7 +21,7 @@ func TestJ14LocalModification(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testSkillID+"@main",
+		"add", testSkillID+"@"+testSkillVersion,
 		"--agent", "codex",
 		"--copy",
 		"--yes",
@@ -33,7 +33,7 @@ func TestJ14LocalModification(t *testing.T) {
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 
-	targetPath := filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt")
+	targetPath := filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha")
 	skillPath := filepath.Join(targetPath, "SKILL.md")
 	original, err := os.ReadFile(skillPath)
 	require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestJ14LocalModification(t *testing.T) {
 		"projectRoot": "/e2e/project",
 		"agent":       "codex",
 		"mode":        "symlink",
-		"path":        "/e2e/project/.agents/skills/ask-matt",
+		"path":        "/e2e/project/.agents/skills/alpha",
 		"skillId":     testSkillID,
 		"version":     installed.Version,
 	}

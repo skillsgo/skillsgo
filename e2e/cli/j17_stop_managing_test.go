@@ -18,14 +18,14 @@ import (
 func TestJ17UnhealthyTargetCannotBeRemoved(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
-	add := execCLI(t, ctx, container, "add", testSkillID+"@main", "--agent", "codex", "--copy", "--yes", "--confirm-risk", "--allow-critical", "--output", "json")
+	add := execCLI(t, ctx, container, "add", testSkillID+"@"+testSkillVersion, "--agent", "codex", "--copy", "--yes", "--confirm-risk", "--allow-critical", "--output", "json")
 	require.Equal(t, 0, add.exitCode, add.output)
-	targetPath := filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt")
+	targetPath := filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha")
 	skillPath := filepath.Join(targetPath, "SKILL.md")
 	const localChange = "keep this modified content\n"
 	require.NoError(t, os.WriteFile(skillPath, []byte(localChange), 0o600))
 
-	removed := execCLI(t, ctx, container, "remove", "--path", "/e2e/project/.agents/skills/ask-matt", "--agent", "codex", "--project", "/e2e/project", "--output", "json")
+	removed := execCLI(t, ctx, container, "remove", "--path", "/e2e/project/.agents/skills/alpha", "--agent", "codex", "--project", "/e2e/project", "--output", "json")
 	require.NotEqual(t, 0, removed.exitCode)
 	contents, err := os.ReadFile(skillPath)
 	require.NoError(t, err)

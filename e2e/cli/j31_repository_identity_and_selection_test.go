@@ -29,7 +29,7 @@ func TestJ31RepositoryIdentityAndSelection(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(manifest), collection+"/-/skills/alpha v1.0.0")
 
-	resetLocalInstallation(t, sandboxRoot)
+	resetLocalInstallation(t, ctx, container)
 	rootOnly := execCLI(t, ctx, container,
 		"add", "https://"+collection+"@v1.0.0", "--skill", "root-suite",
 		"--agent", "codex", "--copy", "--yes", "--output", "json",

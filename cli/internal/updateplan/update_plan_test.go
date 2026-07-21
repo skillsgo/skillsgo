@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses hostile explicit Update Target JSON, stored immutable artifacts, and independent Workspace/user execution groups at the Update Plan domain boundary.
- * [OUTPUT]: Specifies strict decoding, source-reference classification, captured-to-Hub metadata replacement, nested failures, Workspace persistence failure, and unrelated group continuation.
+ * [OUTPUT]: Specifies strict decoding, Catalog version-update decisions, source-reference classification, captured-to-Hub metadata replacement, nested failures, Workspace persistence failure, and unrelated group continuation.
  * [POS]: Serves as focused validation coverage beneath the public update command contract.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -79,15 +79,61 @@ func TestExecuteContinuesAfterWorkspacePersistenceFailure(t *testing.T) {
 type updateTestHub struct {
 	info           hub.Info
 	artifact       *hub.Artifact
-	resolvedID     string
-	resolvedRef    string
+	catalogSkillID string
 	fetchedID      string
 	fetchedVersion string
 }
 
-func (client *updateTestHub) Resolve(_ context.Context, skillID, ref string) (hub.Info, error) {
-	client.resolvedID, client.resolvedRef = skillID, ref
-	return client.info, nil
+func TestCatalogVersionUpdateMatrix(t *testing.T) {
+	tests := []struct {
+		name      string
+		installed string
+		latest    string
+		want      Action
+		wantTo    string
+	}{
+		{name: "older stable updates", installed: "v1.0.0", latest: "v1.1.0", want: ActionUpdate, wantTo: "v1.1.0"},
+		{name: "older major updates", installed: "v1.9.9", latest: "v2.0.0", want: ActionUpdate, wantTo: "v2.0.0"},
+		{name: "same stable is current", installed: "v1.1.0", latest: "v1.1.0", want: ActionCurrent, wantTo: "v1.1.0"},
+		{name: "stale Catalog cannot downgrade stable", installed: "v1.2.0", latest: "v1.1.0", want: ActionCurrent, wantTo: "v1.2.0"},
+		{name: "prerelease updates to stable", installed: "v1.1.0-beta.1", latest: "v1.1.0", want: ActionUpdate, wantTo: "v1.1.0"},
+		{name: "older prerelease updates", installed: "v1.1.0-beta.1", latest: "v1.1.0-beta.2", want: ActionUpdate, wantTo: "v1.1.0-beta.2"},
+		{name: "next minor prerelease advances", installed: "v1.1.0", latest: "v1.2.0-beta.1", want: ActionUpdate, wantTo: "v1.2.0-beta.1"},
+		{name: "no-tag pseudo-version advances", installed: "v0.0.0-20260721090000-b05bf0fdab1f", latest: "v0.0.0-20260721091121-cb2a36cac150", want: ActionUpdate, wantTo: "v0.0.0-20260721091121-cb2a36cac150"},
+		{name: "same pseudo-version is current", installed: "v0.0.0-20260721091121-cb2a36cac150", latest: "v0.0.0-20260721091121-cb2a36cac150", want: ActionCurrent, wantTo: "v0.0.0-20260721091121-cb2a36cac150"},
+		{name: "stale Catalog cannot rewind pseudo-version", installed: "v0.0.0-20260721091121-cb2a36cac150", latest: "v0.0.0-20260721090000-b05bf0fdab1f", want: ActionCurrent, wantTo: "v0.0.0-20260721091121-cb2a36cac150"},
+		{name: "historical no-tag version can become first tag", installed: "v0.0.0-20260721090000-b05bf0fdab1f", latest: "v1.0.0", want: ActionUpdate, wantTo: "v1.0.0"},
+		{name: "tagged descendant pseudo-version advances", installed: "v1.0.0", latest: "v1.0.1-0.20260721091121-cb2a36cac150", want: ActionUpdate, wantTo: "v1.0.1-0.20260721091121-cb2a36cac150"},
+	}
+
+	require.Len(t, tests, 12, "Catalog update matrix row count")
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			home := t.TempDir()
+			storage := store.Store{Root: store.DefaultRoot(home)}
+			skillID := "github.com/example/skills/-/demo"
+			installedArtifact := updateTestArtifact(t, skillID, tc.installed, "installed")
+			_, err := storage.Put(installedArtifact)
+			require.NoError(t, err)
+			target := filepath.Join(home, ".codex", "skills", "demo")
+			require.NoError(t, os.MkdirAll(target, 0o700))
+			require.NoError(t, os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("installed"), 0o600))
+			client := &updateTestHub{info: hub.Info{Version: tc.latest}}
+
+			preflight, err := Build(context.Background(), client, storage, []TargetRequest{{
+				Scope: install.ScopeUser, Agent: "codex", Mode: install.ModeCopy, Path: target,
+				SkillID: skillID, Version: tc.installed,
+			}})
+			require.NoError(t, err)
+			require.Equal(t, tc.want, preflight.Targets[0].Action)
+			require.Equal(t, tc.wantTo, preflight.Targets[0].ToVersion)
+		})
+	}
+}
+
+func (client *updateTestHub) CatalogUpdates(_ context.Context, skillIDs []string) ([]hub.CatalogUpdateItem, error) {
+	client.catalogSkillID = skillIDs[0]
+	return []hub.CatalogUpdateItem{{SkillID: skillIDs[0], LatestVersion: client.info.Version, Status: "available"}}, nil
 }
 
 func (client *updateTestHub) Fetch(_ context.Context, skillID, version string) (*hub.Artifact, error) {
@@ -131,8 +177,7 @@ func TestCapturedInstallationUpdatesThroughLogicalIdentityAndReplacesMetadata(t 
 	require.NoError(t, err)
 	require.Equal(t, ActionUpdate, preflight.Targets[0].Action)
 	require.Len(t, preflight.Targets[0].AffectedBindings, 2)
-	require.Equal(t, logicalID, client.resolvedID)
-	require.Equal(t, "latest", client.resolvedRef)
+	require.Equal(t, logicalID, client.catalogSkillID)
 
 	execution := Execute(context.Background(), client, storage, preflight, nil)
 	require.Equal(t, ResultSummary{Succeeded: 2}, execution.Summary)
