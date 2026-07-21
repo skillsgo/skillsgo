@@ -2,9 +2,9 @@
 // +build e2etests
 
 /*
- * [INPUT]: Depends on the e2etests package imports and contracts declared in this file.
- * [OUTPUT]: Provides the e2etests package behavior implemented by run_athens.go.
- * [POS]: Serves as maintained source in the e2etests package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on a suite-private Hub origin, isolated runtime environment, context lifetime, and Hub source workspace.
+ * [OUTPUT]: Builds and starts one suite-owned Hub process and waits for readiness without killing unrelated development processes.
+ * [POS]: Serves as the process lifecycle adapter beneath the isolated build-tag Hub acceptance suite.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 
@@ -36,16 +36,7 @@ func buildAthens(goBin, destPath string, env []string) (string, error) {
 	return target, nil
 }
 
-func stopAthens() error {
-	cmd := exec.Command("pkill", "skillsgo-hub")
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("Failed to stop athens: %v - %s", err, string(output))
-	}
-	return err
-}
-
-func runAthensAndWait(ctx context.Context, athensBin string, env []string) error {
+func runAthensAndWait(ctx context.Context, athensBin string, env []string, hubOrigin string) error {
 	cmd := exec.CommandContext(ctx, athensBin)
 	cmd.Env = env
 
@@ -60,7 +51,7 @@ func runAthensAndWait(ctx context.Context, athensBin string, env []string) error
 	for {
 		select {
 		case <-ticker.C:
-			resp, err := http.Get("http://localhost:3000/readyz")
+			resp, err := http.Get(hubOrigin + "/readyz")
 			if err == nil && resp.StatusCode == http.StatusOK {
 				resp.Body.Close()
 				return nil

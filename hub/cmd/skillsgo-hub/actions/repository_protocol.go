@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on request-scoped logging, canonical bare Repository IDs, immutable per-Skill Info resources, and Catalog Repository/version membership.
- * [OUTPUT]: Provides self-contained immutable Repository Info plus Repository publication-cache decisions while preserving per-Skill ZIP delivery.
+ * [OUTPUT]: Provides self-contained immutable Repository Info plus cold/warm Repository publication decisions while making newly published per-Skill Info and ZIP immediately visible.
  * [POS]: Serves as the Repository aggregation protocol decorator outside enriched per-Skill Catalog behavior.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -222,10 +222,10 @@ func (p *repositoryInfoProtocol) ensurePublished(ctx context.Context, repository
 		}
 	} else {
 		logRepositoryPublicationLookup(ctx, repositoryID, version, "hit")
-		members, err = p.metadata.RepositoryVersionMembers(ctx, repositoryID, canonicalVersion)
-		if err != nil {
-			return "", err
-		}
+	}
+	members, err = p.metadata.RepositoryVersionMembers(ctx, repositoryID, canonicalVersion)
+	if err != nil {
+		return "", err
 	}
 	for _, member := range members {
 		if member.SkillID == resourceID {
