@@ -113,5 +113,5 @@ The ordering of public Skills by install events during the latest 24-hour window
 _Avoid_: all-time ranking
 
 **Hot Ranking**:
-The ordering of public Skills by short-term installation velocity and its change from the comparison period.
+The ordering of public Skills with at least three accepted installs during the latest rolling hour by standardized growth above their preceding 24-hour hourly baseline. The public metric reports rolling-hour installs and their integer change from that baseline; the normalized score is ordering-only.
 _Avoid_: editorial recommendation, trending alias

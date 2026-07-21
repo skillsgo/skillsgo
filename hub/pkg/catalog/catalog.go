@@ -428,6 +428,9 @@ func (c *Catalog) RankedSkills(ctx context.Context, sort string, limit, offset i
 	if offset < 0 {
 		offset = 0
 	}
+	if sort == "hot" {
+		return c.hotRankedSkills(ctx, limit, offset, now)
+	}
 	var installs, change, order string
 	var args []any
 	switch sort {
@@ -436,11 +439,6 @@ func (c *Catalog) RankedSkills(ctx context.Context, sort string, limit, offset i
 	case "trending":
 		installs, change, order = "COALESCE(SUM(CASE WHEN hs.bucket > ? THEN hs.installs ELSE 0 END), 0)", "0", "installs DESC, s.name ASC"
 		args = append(args, now.UTC().Add(-24*time.Hour).Truncate(time.Hour))
-	case "hot":
-		installs = "COALESCE(SUM(CASE WHEN hs.bucket = ? THEN hs.installs ELSE 0 END), 0)"
-		change = installs + " - COALESCE(SUM(CASE WHEN hs.bucket = ? THEN hs.installs ELSE 0 END), 0)"
-		order = "change DESC, installs DESC, s.name ASC"
-		args = append(args, now.UTC().Truncate(time.Hour), now.UTC().Truncate(time.Hour), now.UTC().Add(-24*time.Hour).Truncate(time.Hour))
 	default:
 		return nil, fmt.Errorf("unsupported ranking %q", sort)
 	}
@@ -450,6 +448,39 @@ LEFT JOIN skill_stats AS st ON st.skill_id = s.id
 LEFT JOIN skill_hourly_stats AS hs ON hs.skill_id = s.id
 GROUP BY s.id, r.stars, st.total_installs ORDER BY ` + order + ` LIMIT ? OFFSET ?`
 	args = append(args, limit, offset)
+	var skills []RankedSkill
+	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(query), args...)
+	return skills, err
+}
+
+// hotRankedSkills orders Skills by statistically unusual short-term adoption,
+// rather than allowing raw install volume to duplicate the Trending ranking.
+func (c *Catalog) hotRankedSkills(ctx context.Context, limit, offset int, now time.Time) ([]RankedSkill, error) {
+	now = now.UTC()
+	query := `WITH hot_stats AS (
+	SELECT skill_id,
+	SUM(CASE WHEN occurred_at > ? AND occurred_at <= ? THEN 1 ELSE 0 END) AS recent_installs,
+	SUM(CASE WHEN occurred_at > ? AND occurred_at <= ? THEN 1 ELSE 0 END) AS baseline_installs
+	FROM skill_install_events
+	WHERE occurred_at > ? AND occurred_at <= ?
+	GROUP BY skill_id
+)
+SELECT s.*, r.stars AS stars, COALESCE(h.recent_installs, 0) AS installs,
+	COALESCE(h.recent_installs, 0) - COALESCE(h.baseline_installs, 0) / 24 AS change
+FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
+LEFT JOIN hot_stats AS h ON h.skill_id = s.id
+WHERE COALESCE(h.recent_installs, 0) >= 3
+ORDER BY
+	(COALESCE(h.recent_installs, 0) - COALESCE(h.baseline_installs, 0) / 24.0) /
+		sqrt(COALESCE(h.baseline_installs, 0) / 24.0 + 1) DESC,
+	installs DESC, s.name ASC
+LIMIT ? OFFSET ?`
+	args := []any{
+		now.Add(-time.Hour), now,
+		now.Add(-25 * time.Hour), now.Add(-time.Hour),
+		now.Add(-25 * time.Hour), now,
+		limit, offset,
+	}
 	var skills []RankedSkill
 	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(query), args...)
 	return skills, err
