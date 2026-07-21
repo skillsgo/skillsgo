@@ -5,6 +5,8 @@
 
 - `catalog.go`: exposes the Catalog API, uses Ent for entity persistence, owns Repository-scoped source-metadata cache state, and provides dialect-specific discovery, install aggregation, pagination, and ranking queries.
 - `migrations.go`: executes embedded, checksummed, ordered Atlas SQL migrations and serializes PostgreSQL migration runs.
+- `provider_sync.go`: owns database-time leases, fencing tokens, complete crawl snapshots, page checkpoints, and external counter observations.
+- `provider_sync_test.go`: verifies stale-writer rejection and takeover cleanup at the database fencing boundary.
 - `migrations/`: contains reviewed, checksummed migrations per database, including the pre-release baseline, Repository metadata evolution, and database-specific full-text search resources.
 - `migrate/main.go`: authors named Ent/Atlas schema diffs against disposable development databases.
 - `ent/schema/`: defines the authoritative Ent entity model, including presentation-only localized descriptions; generated siblings under `ent/` are reproducible build output.

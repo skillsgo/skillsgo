@@ -618,3 +618,15 @@ ShutdownTimeout = 60
         [Index.Postgres.Params]
             connect_timeout = "30s"
             sslmode = "disable"
+
+# Optional skills.sh all-time counter ingestion through the Vercel bridge.
+# URL or Token left empty disables the worker. Store the shared token only in
+# SKILLSGO_BRIDGE_TOKEN, never in this file.
+[SkillsSH]
+    URL = ""
+    Token = ""
+    Interval = 600
+    LeaseSeconds = 120
+    PageCount = 10
+    PerPage = 500
+    RequestTimeout = 60

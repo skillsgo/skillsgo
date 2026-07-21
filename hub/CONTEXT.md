@@ -115,3 +115,7 @@ _Avoid_: all-time ranking
 **Hot Ranking**:
 The ordering of public Skills with at least three accepted installs during the latest rolling hour by standardized growth above their preceding 24-hour hourly baseline. The public metric reports rolling-hour installs and their integer change from that baseline; the normalized score is ordering-only.
 _Avoid_: editorial recommendation, trending alias
+
+**Provider Counter Observation**:
+One cumulative install counter observed from an external provider during a complete, fenced crawl. It preserves provider provenance and may support later projection, but it is never an accepted install event.
+_Avoid_: exact install event, deduplicated cross-provider total

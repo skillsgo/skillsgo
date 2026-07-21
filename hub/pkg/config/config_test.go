@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the config package imports and contracts declared in this file.
- * [OUTPUT]: Specifies Hub configuration including multi-token GitHub authentication behavior.
+ * [OUTPUT]: Specifies Hub configuration including multi-token GitHub authentication and skills.sh synchronization behavior.
  * [POS]: Serves as test coverage for the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -168,6 +168,7 @@ func TestEnvOverrides(t *testing.T) {
 		SingleFlight:     &SingleFlight{},
 		RobotsFile:       "robots.txt",
 		Index:            &Index{},
+		SkillsSH:         &SkillsSHConfig{},
 		SkillCacheDir:    filepath.Join(home, ".skillsgo", "hub", "cache"),
 	}
 
@@ -175,13 +176,31 @@ func TestEnvOverrides(t *testing.T) {
 	for k, v := range envVars {
 		t.Setenv(k, v)
 	}
-	conf := &Config{}
+	conf := &Config{SkillsSH: &SkillsSHConfig{}}
 	err := envOverride(conf)
 	if err != nil {
 		t.Fatalf("Env override failed: %v", err)
 	}
 
 	compareConfigs(conf, expConf, t, Storage{}, SingleFlight{})
+}
+
+func TestSkillsSHEnvironmentOverrides(t *testing.T) {
+	setTestHome(t)
+	t.Setenv("SKILLSGO_HUB_SKILLSSH_URL", "https://bridge.example/api/skills")
+	t.Setenv("SKILLSGO_BRIDGE_TOKEN", "shared-secret")
+	t.Setenv("SKILLSGO_HUB_SKILLSSH_INTERVAL", "900")
+	t.Setenv("SKILLSGO_HUB_SKILLSSH_LEASE_SECONDS", "180")
+	t.Setenv("SKILLSGO_HUB_SKILLSSH_PAGE_COUNT", "8")
+	t.Setenv("SKILLSGO_HUB_SKILLSSH_PER_PAGE", "400")
+	t.Setenv("SKILLSGO_HUB_SKILLSSH_REQUEST_TIMEOUT", "45")
+	conf := defaultConfig()
+	require.NoError(t, envOverride(conf))
+	require.Equal(t, &SkillsSHConfig{
+		URL: "https://bridge.example/api/skills", Token: "shared-secret", Interval: 900,
+		LeaseSeconds: 180, PageCount: 8, PerPage: 400, RequestTimeout: 45,
+	}, conf.SkillsSH)
+	require.True(t, conf.SkillsSH.Enabled())
 }
 
 func TestEnvOverridesPreservingPort(t *testing.T) {
@@ -384,7 +403,10 @@ func TestParseExampleConfig(t *testing.T) {
 		ShutdownTimeout:       60,
 		StashTimeout:          600,
 		Index:                 &Index{},
-		SkillCacheDir:         filepath.Join(home, ".skillsgo", "hub", "cache"),
+		SkillsSH: &SkillsSHConfig{
+			Interval: 600, LeaseSeconds: 120, PageCount: 10, PerPage: 500, RequestTimeout: 60,
+		},
+		SkillCacheDir: filepath.Join(home, ".skillsgo", "hub", "cache"),
 	}
 
 	absPath, err := filepath.Abs(testConfigFile(t))

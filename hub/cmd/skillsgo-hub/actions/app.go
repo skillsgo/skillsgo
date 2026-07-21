@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber, Hub configuration, middleware, observability, storage, and Catalog assembly.
- * [OUTPUT]: Provides the native Fiber Hub application plus lifecycle cleanup.
+ * [INPUT]: Depends on Fiber, Hub configuration, middleware, observability, storage, Catalog assembly, and background workers.
+ * [OUTPUT]: Provides the native Fiber Hub application plus coordinated lifecycle cleanup.
  * [POS]: Serves as the Fiber server and middleware composition root for the Hub actions module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,6 +21,7 @@ import (
 	mw "github.com/skillsgo/skillsgo/hub/pkg/middleware"
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
+	"github.com/skillsgo/skillsgo/hub/pkg/skillssh"
 	"github.com/skillsgo/skillsgo/hub/pkg/translation"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
@@ -160,11 +161,11 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 		return nil, cleanup, fmt.Errorf("opening metadata catalog: %w", err)
 	}
 	exporterCleanup := cleanup
-	translationCleanup := noop
+	backgroundCleanup := noop
 	var metadataOnce sync.Once
 	cleanup = func() {
 		metadataOnce.Do(func() {
-			translationCleanup()
+			backgroundCleanup()
 			_ = metadata.Close()
 		})
 		exporterCleanup()
@@ -177,9 +178,9 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 	if err := addProxyRoutesWithCatalog(proxyRouter, store, logger, conf, metadata); err != nil {
 		return nil, cleanup, fmt.Errorf("adding proxy routes: %w", err)
 	}
+	workerCtx, cancelWorkers := context.WithCancel(context.Background())
+	var workerWG sync.WaitGroup
 	if conf.LLM.Enabled() {
-		workerCtx, cancelWorker := context.WithCancel(context.Background())
-		var workerWG sync.WaitGroup
 		translator := translation.NewOpenAITranslator(conf.LLM.BaseURL, conf.LLM.APIKey, conf.LLM.Model)
 		for _, locale := range conf.LLM.TranslationLocales {
 			worker := translation.NewWorker(
@@ -192,12 +193,19 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 				worker.Run(workerCtx)
 			}()
 		}
-		translationCleanup = func() {
-			cancelWorker()
-			workerWG.Wait()
-		}
 		logger.Infof("description translation enabled with model %s for locales %s", conf.LLM.Model, strings.Join(conf.LLM.TranslationLocales, ","))
 	}
+	if conf.SkillsSH.Enabled() {
+		bridge := skillssh.NewClient(conf.SkillsSH.URL, conf.SkillsSH.Token, time.Duration(conf.SkillsSH.RequestTimeout)*time.Second)
+		worker := skillssh.NewWorker(metadata, bridge, logger,
+			time.Duration(conf.SkillsSH.Interval)*time.Second,
+			time.Duration(conf.SkillsSH.LeaseSeconds)*time.Second,
+			conf.SkillsSH.PageCount, conf.SkillsSH.PerPage)
+		workerWG.Add(1)
+		go func() { defer workerWG.Done(); worker.Run(workerCtx) }()
+		logger.Infof("skills.sh synchronization enabled with %d second interval", conf.SkillsSH.Interval)
+	}
+	backgroundCleanup = func() { cancelWorkers(); workerWG.Wait() }
 
 	return r, cleanup, nil
 }

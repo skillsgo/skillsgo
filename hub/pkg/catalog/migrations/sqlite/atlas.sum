@@ -1,7 +1,8 @@
-h1:UDpp+lx8gdO2UCJ9dsN59+auO1ru35boJBKjMbPUJTQ=
+h1:k1JiNv2ZEu3vd3SE/4peTHLi+I/ebepCwqKDNf0y1NI=
 202607180001_initial.sql h1:p2BQG739vRoS7rwhVABk2q9MKAIRPpNEPAmd/nSJyYs=
 202607180002_repository_description.sql h1:XwQevvsPSynDVmyN6KK/KbYtkGfolXxTKFfnpFuBkXg=
 202607180003_refresh_repository_description.sql h1:jl6e8mv9UXCHL1xFeYuM5Fa3/9UnIAw4LoG45CuS/Jg=
 202607180004_backfill_repository_description.sql h1:QlF/go4X8gCefBp+/vScdHOVmvfgEZNBMPIwxkPpUEc=
 202607190001_localized_descriptions.sql h1:/kvITifh0tBzt65NDccaTwPikH8+pGxY/rn2znZVyJY=
 202607210001_install_event_time_index.sql h1:Hu7dTkzSPWkm2cuhl7VLeB48ByRSHCMLkh9tEzsKhdk=
+202607210002_provider_sync.sql h1:f36nRMMNNs6G8exTYxZ4B/CZh3EneIzAjrRzn3/tQW4=
