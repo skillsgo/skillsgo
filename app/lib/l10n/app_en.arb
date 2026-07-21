@@ -571,7 +571,7 @@
   "batchTakeoverBenefitRecovery": "Easy recovery",
   "batchTakeoverBenefitVersions": "Versions clear",
   "batchTakeoverManagedSection": "Managed by SkillsGo",
-  "batchTakeoverPendingSection": "Waiting to be managed",
+  "batchTakeoverPendingSection": "Pending",
   "batchTakeoverItemManaged": "{name} is managed by SkillsGo",
   "@batchTakeoverItemManaged": {"placeholders": {"name": {"type": "String"}}},
   "batchTakeoverItemSkipped": "{name} could not be added to management",
@@ -592,6 +592,24 @@
   },
   "batchTakeoverTransitionSemantics": "Add these existing skills to SkillsGo management.",
   "batchTakeoverTransitionLabel": "ORGANIZE",
+  "batchTakeoverStatusTitle": "Management status",
+  "batchTakeoverStatusManaged": "Managed",
+  "batchTakeoverStatusProgress": "Organizing",
+  "batchTakeoverStatusSkipped": "Skipped",
+  "batchTakeoverStatusFilesStay": "Skill files stay in their original locations",
+  "batchTakeoverBoardSemantics": "Skills are arranged into complete rows and recorded by SkillsGo without moving their files.",
+  "batchTakeoverBoardComplete": "ALL CLEAR",
+  "batchTakeoverBoardPartial": "COMPLETE",
+  "batchTakeoverStatusTotal": "Total",
+  "batchTakeoverQueueComplete": "No skills are waiting",
+  "batchTakeoverQueueWaiting": "Skills will move here after verification",
+  "batchTakeoverNextLabel": "NEXT",
+  "batchTakeoverFillerCount": "{count, plural, =1{1 SkillsGo organizer block} other{{count} SkillsGo organizer blocks}} complete the final rows",
+  "@batchTakeoverFillerCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "batchTakeoverPreservation": "Your files, paths, and current workflows stay exactly where they are. SkillsGo only completes its local management records.",
   "batchTakeoverLaterHint": "If you skip, you can use Manage existing skills from Library anytime.",
   "batchTakeoverSkip": "Not now",

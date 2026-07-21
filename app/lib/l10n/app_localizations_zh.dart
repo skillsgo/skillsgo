@@ -1609,6 +1609,48 @@ class AppLocalizationsZh extends AppLocalizations {
   String get batchTakeoverTransitionLabel => '整理';
 
   @override
+  String get batchTakeoverStatusTitle => '纳入状态';
+
+  @override
+  String get batchTakeoverStatusManaged => '已纳入';
+
+  @override
+  String get batchTakeoverStatusProgress => '正在整理';
+
+  @override
+  String get batchTakeoverStatusSkipped => '已跳过';
+
+  @override
+  String get batchTakeoverStatusFilesStay => '技能文件保留在原来的位置';
+
+  @override
+  String get batchTakeoverBoardSemantics =>
+      '技能会排列成完整的行并由 SkillsGo 建立管理记录，原文件不会移动。';
+
+  @override
+  String get batchTakeoverBoardComplete => '全部整理';
+
+  @override
+  String get batchTakeoverBoardPartial => '整理完成';
+
+  @override
+  String get batchTakeoverStatusTotal => '总计';
+
+  @override
+  String get batchTakeoverQueueComplete => '没有待纳入的技能';
+
+  @override
+  String get batchTakeoverQueueWaiting => '验证完成后，技能会从这里开始整理';
+
+  @override
+  String get batchTakeoverNextLabel => 'NEXT';
+
+  @override
+  String batchTakeoverFillerCount(int count) {
+    return '使用 $count 个 SkillsGo 整理块补全最后几行';
+  }
+
+  @override
   String get batchTakeoverPreservation =>
       '原文件、原路径和现有用法全部保留。SkillsGo 只会补全本地管理记录。';
 

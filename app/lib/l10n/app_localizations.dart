@@ -2939,7 +2939,7 @@ abstract class AppLocalizations {
   /// No description provided for @batchTakeoverPendingSection.
   ///
   /// In en, this message translates to:
-  /// **'Waiting to be managed'**
+  /// **'Pending'**
   String get batchTakeoverPendingSection;
 
   /// No description provided for @batchTakeoverItemManaged.
@@ -2983,6 +2983,84 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'ORGANIZE'**
   String get batchTakeoverTransitionLabel;
+
+  /// No description provided for @batchTakeoverStatusTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Management status'**
+  String get batchTakeoverStatusTitle;
+
+  /// No description provided for @batchTakeoverStatusManaged.
+  ///
+  /// In en, this message translates to:
+  /// **'Managed'**
+  String get batchTakeoverStatusManaged;
+
+  /// No description provided for @batchTakeoverStatusProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Organizing'**
+  String get batchTakeoverStatusProgress;
+
+  /// No description provided for @batchTakeoverStatusSkipped.
+  ///
+  /// In en, this message translates to:
+  /// **'Skipped'**
+  String get batchTakeoverStatusSkipped;
+
+  /// No description provided for @batchTakeoverStatusFilesStay.
+  ///
+  /// In en, this message translates to:
+  /// **'Skill files stay in their original locations'**
+  String get batchTakeoverStatusFilesStay;
+
+  /// No description provided for @batchTakeoverBoardSemantics.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills are arranged into complete rows and recorded by SkillsGo without moving their files.'**
+  String get batchTakeoverBoardSemantics;
+
+  /// No description provided for @batchTakeoverBoardComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'ALL CLEAR'**
+  String get batchTakeoverBoardComplete;
+
+  /// No description provided for @batchTakeoverBoardPartial.
+  ///
+  /// In en, this message translates to:
+  /// **'COMPLETE'**
+  String get batchTakeoverBoardPartial;
+
+  /// No description provided for @batchTakeoverStatusTotal.
+  ///
+  /// In en, this message translates to:
+  /// **'Total'**
+  String get batchTakeoverStatusTotal;
+
+  /// No description provided for @batchTakeoverQueueComplete.
+  ///
+  /// In en, this message translates to:
+  /// **'No skills are waiting'**
+  String get batchTakeoverQueueComplete;
+
+  /// No description provided for @batchTakeoverQueueWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Skills will move here after verification'**
+  String get batchTakeoverQueueWaiting;
+
+  /// No description provided for @batchTakeoverNextLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'NEXT'**
+  String get batchTakeoverNextLabel;
+
+  /// No description provided for @batchTakeoverFillerCount.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{1 SkillsGo organizer block} other{{count} SkillsGo organizer blocks}} complete the final rows'**
+  String batchTakeoverFillerCount(int count);
 
   /// No description provided for @batchTakeoverPreservation.
   ///

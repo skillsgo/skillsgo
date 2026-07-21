@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on LibraryScreen state, SkillsGateway operations, reviewed update/management dialogs, the localized Batch Takeover story, reminders, and navigation animation.
- * [OUTPUT]: Provides Library loading, shared-refresh state reconciliation, selection, Added Project, one-time automatic takeover introduction, representative illustration data, dialog-bound plan-authorized Batch Takeover execution, update, target-management, and detail-transition actions.
+ * [OUTPUT]: Provides Library loading, shared-refresh state reconciliation, selection, Added Project, one-time automatic takeover introduction, representative illustration data, inline-console plan-authorized Batch Takeover execution, update, target-management, and detail-transition actions.
  * [POS]: Serves as the mutation and orchestration implementation of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -181,7 +181,7 @@ extension _LibraryActions on _LibraryScreenState {
   }
 
   Future<void> _executeBatchTakeover({bool automatic = false}) async {
-    if (takingOver) return;
+    if (takingOver || takeoverConsoleVisible) return;
     final plan = takeoverPlan;
     final scope = _currentTakeoverScope;
     final eligible = _currentTakeoverEligible;
@@ -189,45 +189,59 @@ extension _LibraryActions on _LibraryScreenState {
       if (automatic) takeoverPromptScheduled = false;
       return;
     }
-    var activePlan = plan;
-    var executionAttempts = 0;
-    final outcome = await showSkillsDialog<_BatchTakeoverDialogOutcome>(
-      context: context,
-      barrierDismissible: false,
-      builder: (context) => _BatchTakeoverDialog(
-        eligibleCount: eligible,
-        skillPreviews: _takeoverPreviews,
-        onConfirm: () async {
-          if (executionAttempts > 0) {
-            activePlan = await widget.gateway.planBatchTakeover(
-              projectRoots: projects
-                  .where((project) => project.isAccessible)
-                  .map((project) => project.path)
-                  .toList(growable: false),
-            );
-          }
-          executionAttempts++;
-          updateState(() {
-            takingOver = true;
-            actionError = null;
-          });
-          try {
-            final result = await widget.gateway.executeBatchTakeover(
-              activePlan,
-              scope,
-            );
-            await load();
-            return result;
-          } finally {
-            if (mounted) updateState(() => takingOver = false);
-          }
-        },
-      ),
-    );
-    if (automatic && outcome != null) {
-      await _markTakeoverPromptSeen();
+    updateState(() {
+      takeoverConsoleVisible = true;
+      takeoverConsoleAutomatic = automatic;
+      activeTakeoverPlan = plan;
+      activeTakeoverScope = scope;
+      activeTakeoverEligible = eligible;
+      activeTakeoverPreviews = _takeoverPreviews;
+      takeoverExecutionAttempts = 0;
+    });
+  }
+
+  Future<BatchTakeoverResult> _confirmActiveBatchTakeover() async {
+    var plan = activeTakeoverPlan;
+    final scope = activeTakeoverScope;
+    if (plan == null || scope == null) {
+      throw StateError('The active Batch Takeover plan is unavailable.');
     }
-    takeoverPromptScheduled = automatic && outcome == null;
+    if (takeoverExecutionAttempts > 0) {
+      plan = await widget.gateway.planBatchTakeover(
+        projectRoots: projects
+            .where((project) => project.isAccessible)
+            .map((project) => project.path)
+            .toList(growable: false),
+      );
+      activeTakeoverPlan = plan;
+    }
+    takeoverExecutionAttempts++;
+    updateState(() {
+      takingOver = true;
+      actionError = null;
+    });
+    try {
+      final result = await widget.gateway.executeBatchTakeover(plan, scope);
+      await load();
+      return result;
+    } finally {
+      if (mounted) updateState(() => takingOver = false);
+    }
+  }
+
+  Future<void> _finishBatchTakeover(_BatchTakeoverDialogOutcome outcome) async {
+    final automatic = takeoverConsoleAutomatic;
+    updateState(() {
+      takeoverConsoleVisible = false;
+      takeoverConsoleAutomatic = false;
+      activeTakeoverPlan = null;
+      activeTakeoverScope = null;
+      activeTakeoverEligible = 0;
+      activeTakeoverPreviews = const [];
+      takeoverExecutionAttempts = 0;
+    });
+    if (automatic) await _markTakeoverPromptSeen();
+    takeoverPromptScheduled = false;
   }
 
   List<BatchTakeoverPreview> get _takeoverPreviews {

@@ -24,12 +24,12 @@
 - `color_scheme_inspector.dart` and `color_inspector/`: retain the standalone developer inspector for generated Material 3 roles; it is intentionally not routed into user Settings.
 - `install_location_popover.dart` and `install_location/`: expose the shared anchored installation selector while hiding menu anchoring, async loading, scope selection, and location cards.
 - `install_location_island/`: vendors and adapts Portal Labs' Todo List Interaction into the composable installation scope, project, and Agent selector.
-- `nested_navigation.dart` and `navigation/`: render the accessible side rail, item densities, fixed sections, selected capsule motion, desktop layout, and reduced-motion-aware secondary-body entrances.
+- `nested_navigation.dart` and `navigation/`: render the accessible side rail, item densities, fixed sections, selected capsule motion, desktop layout, destination-wide foreground surfaces, and reduced-motion-aware secondary-body entrances.
 - `onboarding_screen.dart` and `onboarding/`: expose the blocking two-step clean-install journey while hiding welcome, Agent inventory, project selection, and project-row rendering.
 - `native_components.dart` and `native/`: expose the Material-only desktop component layer while partitioning buttons/loading, cards/selection, and feedback/input controls.
 - `primary_folder_shell.dart`: adapts Portal Labs' MIT-licensed FolderTabs shape and spring motion into an accessible, full-height SkillsGo shell that preserves destination page state.
 - `physics_collision_field.dart`: vendors and adapts Portal Labs' Physics Collision Card into a deterministic, reduced-motion-aware interaction primitive for explanatory product scenes.
-- `archive_folder/`: vendors Portal Labs' Archive Folder, ArchiveItem, and style, adding structured front copy, an arbitrary front-surface child slot, and opt-in fixed label geometry for interactive product content.
+- `archive_folder/`: vendors Portal Labs' Archive Folder, ArchiveItem, and style, adding structured front copy, an arbitrary front-surface child slot, and opt-in fixed label geometry for reusable product content.
 - `project_identity_icon.dart`: renders cached high-confidence Added Project icons with deterministic project-name monogram fallback across project selectors.
 - `settings_screen.dart` and `settings/`: expose personalization, reminders, Agent detection/recovery, integration, and advanced settings as one independent screen library.
 - `target_management_controller.dart`: owns immutable Target Management execution, progress, result, and error state through an auto-disposed Riverpod family.
