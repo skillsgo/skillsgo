@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Library journey library, Riverpod Library state, navigation routes, selection state, and shared layout widgets.
- * [OUTPUT]: Provides the public LibraryScreen, route-local state ownership, lifecycle, one-time takeover-introduction state, filtering getters, selected-scope and project takeover counts, and root desktop rendering.
+ * [OUTPUT]: Provides the public LibraryScreen, route-local state ownership, lifecycle, one-time takeover-introduction and inline-console state, filtering getters, selected-scope and project takeover counts, and root desktop rendering.
  * [POS]: Serves as the state-owning core of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -60,6 +60,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   _LibraryLocationRoute selectedLocation = _LibraryLocationRoute.all;
   bool addingProject = false;
   bool takingOver = false;
+  bool takeoverConsoleVisible = false;
+  bool takeoverConsoleAutomatic = false;
+  BatchTakeoverPlan? activeTakeoverPlan;
+  BatchTakeoverScope? activeTakeoverScope;
+  int activeTakeoverEligible = 0;
+  List<BatchTakeoverPreview> activeTakeoverPreviews = const [];
+  int takeoverExecutionAttempts = 0;
   bool takeoverPromptPreferenceLoaded = false;
   bool takeoverPromptSeen = false;
   bool takeoverPromptScheduled = false;
@@ -184,6 +191,14 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
           : () => unawaited(_executeBatchTakeover());
     }
     return SkillsDestinationLayout(
+      foreground: takeoverConsoleVisible
+          ? _BatchTakeoverConsole(
+              eligibleCount: activeTakeoverEligible,
+              skillPreviews: activeTakeoverPreviews,
+              onConfirm: _confirmActiveBatchTakeover,
+              onExit: _finishBatchTakeover,
+            )
+          : null,
       rail: SkillsSideRail<_LibraryLocationRoute>(
         key: const Key('library-location-rail'),
         semanticLabel: context.l10n.libraryNavigation,

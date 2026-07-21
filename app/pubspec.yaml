@@ -85,7 +85,13 @@ flutter:
     - assets/agent-logos/
     - assets/backgrounds/
     - assets/branding/
+    - assets/fonts/OFL-Silkscreen.txt
     - assets/language-flags/
+
+  fonts:
+    - family: TakeoverPixel
+      fonts:
+        - asset: assets/fonts/Silkscreen-Regular.ttf
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

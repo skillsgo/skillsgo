@@ -585,6 +585,24 @@
   },
   "batchTakeoverTransitionSemantics": "将这些现有技能纳入 SkillsGo 管理。",
   "batchTakeoverTransitionLabel": "整理",
+  "batchTakeoverStatusTitle": "纳入状态",
+  "batchTakeoverStatusManaged": "已纳入",
+  "batchTakeoverStatusProgress": "正在整理",
+  "batchTakeoverStatusSkipped": "已跳过",
+  "batchTakeoverStatusFilesStay": "技能文件保留在原来的位置",
+  "batchTakeoverBoardSemantics": "技能会排列成完整的行并由 SkillsGo 建立管理记录，原文件不会移动。",
+  "batchTakeoverBoardComplete": "全部整理",
+  "batchTakeoverBoardPartial": "整理完成",
+  "batchTakeoverStatusTotal": "总计",
+  "batchTakeoverQueueComplete": "没有待纳入的技能",
+  "batchTakeoverQueueWaiting": "验证完成后，技能会从这里开始整理",
+  "batchTakeoverNextLabel": "NEXT",
+  "batchTakeoverFillerCount": "使用 {count} 个 SkillsGo 整理块补全最后几行",
+  "@batchTakeoverFillerCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
   "batchTakeoverPreservation": "原文件、原路径和现有用法全部保留。SkillsGo 只会补全本地管理记录。",
   "batchTakeoverLaterHint": "暂时跳过后，仍可随时在 Library 点击「纳入管理」。",
   "batchTakeoverSkip": "暂时跳过",

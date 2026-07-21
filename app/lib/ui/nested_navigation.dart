@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Receives localized fixed and scrollable rail items with optional exact count badges, standard or compact density, selected values, destination content and optional transition identity, SkillsGo component tokens, and reduced-motion preferences.
- * [OUTPUT]: Renders the shared desktop rail/content layout with optional short depth entrance, plus the theme-tinted glass side rail with accessible density-aware selection motion and counts, optional fixed leading destinations and section dividers, an independently scrollable item region with one slim desktop scrollbar, and an optional pinned footer action.
+ * [INPUT]: Receives localized fixed and scrollable rail items with optional exact count badges, standard or compact density, selected values, destination content, an optional destination-wide foreground, optional transition identity, SkillsGo component tokens, and reduced-motion preferences.
+ * [OUTPUT]: Renders the shared desktop rail/content layout with optional short depth entrance and a destination-wide foreground layer, plus the theme-tinted glass side rail with accessible density-aware selection motion and counts, optional fixed leading destinations and section dividers, an independently scrollable item region with one slim desktop scrollbar, and an optional pinned footer action.
  * [POS]: Defines the reusable nested-navigation surface shared by Discover, Library, and Settings.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -42,11 +42,13 @@ class SkillsDestinationLayout extends StatefulWidget {
     super.key,
     required this.rail,
     required this.child,
+    this.foreground,
     this.bodyTransitionKey,
   });
 
   final Widget rail;
   final Widget child;
+  final Widget? foreground;
   final Object? bodyTransitionKey;
 
   @override
@@ -100,16 +102,23 @@ class _SkillsDestinationLayoutState extends State<SkillsDestinationLayout>
   @override
   Widget build(BuildContext context) {
     final body = _buildBody(context);
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 26, 28, 24),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          SizedBox(width: 184, child: widget.rail),
-          const SizedBox(width: 24),
-          Expanded(child: body),
-        ],
-      ),
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 26, 28, 24),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              SizedBox(width: 184, child: widget.rail),
+              const SizedBox(width: 24),
+              Expanded(child: body),
+            ],
+          ),
+        ),
+        if (widget.foreground case final foreground?)
+          Positioned.fill(child: foreground),
+      ],
     );
   }
 

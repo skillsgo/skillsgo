@@ -1694,7 +1694,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get batchTakeoverManagedSection => 'Managed by SkillsGo';
 
   @override
-  String get batchTakeoverPendingSection => 'Waiting to be managed';
+  String get batchTakeoverPendingSection => 'Pending';
 
   @override
   String batchTakeoverItemManaged(String name) {
@@ -1733,6 +1733,56 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get batchTakeoverTransitionLabel => 'ORGANIZE';
+
+  @override
+  String get batchTakeoverStatusTitle => 'Management status';
+
+  @override
+  String get batchTakeoverStatusManaged => 'Managed';
+
+  @override
+  String get batchTakeoverStatusProgress => 'Organizing';
+
+  @override
+  String get batchTakeoverStatusSkipped => 'Skipped';
+
+  @override
+  String get batchTakeoverStatusFilesStay =>
+      'Skill files stay in their original locations';
+
+  @override
+  String get batchTakeoverBoardSemantics =>
+      'Skills are arranged into complete rows and recorded by SkillsGo without moving their files.';
+
+  @override
+  String get batchTakeoverBoardComplete => 'ALL CLEAR';
+
+  @override
+  String get batchTakeoverBoardPartial => 'COMPLETE';
+
+  @override
+  String get batchTakeoverStatusTotal => 'Total';
+
+  @override
+  String get batchTakeoverQueueComplete => 'No skills are waiting';
+
+  @override
+  String get batchTakeoverQueueWaiting =>
+      'Skills will move here after verification';
+
+  @override
+  String get batchTakeoverNextLabel => 'NEXT';
+
+  @override
+  String batchTakeoverFillerCount(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count SkillsGo organizer blocks',
+      one: '1 SkillsGo organizer block',
+    );
+    return '$_temp0 complete the final rows';
+  }
 
   @override
   String get batchTakeoverPreservation =>
