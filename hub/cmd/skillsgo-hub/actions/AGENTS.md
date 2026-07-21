@@ -3,7 +3,7 @@
 
 ## Members
 
-- `app.go`, `app_test.go`: assemble the native Fiber application, middleware lifecycle, and top-level wiring coverage.
+- `app.go`, `app_test.go`: assemble the native Fiber application, middleware lifecycle, background workers, and top-level wiring coverage.
 - `app_proxy.go`, `app_proxy_test.go`: compose source, storage, Catalog, discovery/detail, and immutable artifact protocol routes through Fiber and cover integration behavior.
 - `auth.go`, `basicauth.go`, `basicauth_test.go`: install explicit Git/Mercurial authentication files and configure HTTP Basic Auth behavior; GitHub token pools remain scoped to individual Git processes.
 - `catalog.go`: wires Catalog lifecycle and dependencies into the service.
