@@ -7,7 +7,7 @@
 
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createHandler } from "./skills.mjs";
+import { createHandler, createNodeHandler } from "./skills.mjs";
 
 const endpoint = "https://bridge.example/api/skills";
 const env = { SKILLSGO_BRIDGE_TOKEN: "bridge-secret", VERCEL_OIDC_TOKEN: "oidc-token" };
@@ -84,4 +84,36 @@ test("does not expose upstream exception details", async () => {
   })(request({}));
   assert.equal(response.status, 502);
   assert.deepEqual(await response.json(), { error: "upstream_unavailable" });
+});
+
+test("adapts the Vercel Node request and response contract", async () => {
+  const headers = new Map();
+  let payload = "";
+  const response = {
+    statusCode: 0,
+    setHeader: (name, value) => headers.set(name, value),
+    end: (body) => {
+      payload = body;
+    },
+  };
+  const fetchImpl = async () => Response.json({ data: [], pagination: { page: 0, hasMore: false } });
+
+  await createNodeHandler({ env, fetchImpl })(
+    {
+      method: "POST",
+      url: "/api/skills",
+      headers: {
+        host: "bridge.example",
+        authorization: "Bearer bridge-secret",
+        "content-type": "application/json",
+        "x-vercel-oidc-token": "request-oidc-token",
+      },
+      body: { view: "all-time", pageCount: 1, perPage: 1 },
+    },
+    response,
+  );
+
+  assert.equal(response.statusCode, 200);
+  assert.match(headers.get("content-type"), /^application\/json/);
+  assert.equal(JSON.parse(payload).pages[0].status, 200);
 });
