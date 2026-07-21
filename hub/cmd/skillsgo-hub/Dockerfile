@@ -1,11 +1,15 @@
-# [INPUT]: Depends on the build, deployment, or runtime values declared in Dockerfile.\n# [OUTPUT]: Provides the SkillsGo Hub or monorepo configuration defined by Dockerfile.\n# [POS]: Serves as maintained configuration in the renamed SkillsGo Hub workspace or its repository integration.\n# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md\n# Links to compare against to ensure we have all VCS's setup in this build
+# [INPUT]: Depends on the Hub Go module, Alpine runtime packages, and the target build architecture.
+# [OUTPUT]: Produces the multi-architecture SkillsGo Hub container image and runtime command.
+# [POS]: Serves as the production container build for the Hub service and GHCR publication workflow.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+# Links to compare against to ensure we have all VCS's setup in this build
 # https://github.com/docker-library/buildpack-deps/blob/1845b3f918f69b4c97912b0d4d68a5658458e84f/stretch/scm/Dockerfile
 # https://github.com/golang/go/blob/f082dbfd4f23b0c95ee1de5c2b091dad2ff6d930/src/cmd/go/internal/get/vcs.go#L90
 #
 # You can override the Go version used to build the image.
 # See project Makefile if using make.
 # See docker --build-arg if building directly.
-ARG GOLANG_VERSION=1.26.2
+ARG GOLANG_VERSION=1.26.4
 
 FROM golang:${GOLANG_VERSION}-alpine AS builder
 
