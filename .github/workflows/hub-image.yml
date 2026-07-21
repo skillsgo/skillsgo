@@ -1,0 +1,69 @@
+# [INPUT]: Depends on the Hub Dockerfile, GitHub Container Registry, and GitHub-native package credentials.
+# [OUTPUT]: Publishes public multi-architecture Hub snapshot images for main and immutable commit tags.
+# [POS]: Serves as the open-source continuous container delivery workflow consumed by Railway.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+name: Hub Container Snapshot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - hub/**
+      - .github/workflows/hub-image.yml
+  workflow_dispatch:
+
+concurrency:
+  group: hub-container-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  publish:
+    name: Publish GHCR image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Resolve image metadata
+        id: meta
+        uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6
+        with:
+          images: ghcr.io/skillsgo/hub
+          tags: |
+            type=raw,value=main
+            type=sha,prefix=sha-,format=short
+          labels: |
+            org.opencontainers.image.title=SkillsGo Hub
+            org.opencontainers.image.description=Open-source discovery and artifact service for SkillsGo
+            org.opencontainers.image.source=https://github.com/skillsgo/skillsgo
+
+      - name: Build and publish
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: hub
+          file: hub/cmd/skillsgo-hub/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          build-args: |
+            VERSION=sha-${{ github.sha }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
