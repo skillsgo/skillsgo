@@ -9,7 +9,7 @@
 - `0004-separate-module-and-api-surfaces.md`: separates Go-like artifact distribution under `/mod`, product APIs under `/api/v1`, and portable local intent in `skillsgo.mod`.
 - `0005-route-app-through-cli-and-stabilize-machine-failures.md`: makes the CLI the App's only business-integration boundary and establishes the minimal public machine-failure contract for App and automation callers.
 - `0006-trust-skills-sh-locks-for-batch-takeover.md`: defines exact location-count preflight, bounded lock-identity- and state-bound scope authorization, trusted source identity for skills.sh lock entries, captured content/filesystem-state baselines, and independent skipping for changed or remaining External Installations.
-- `0007-host-documentation-as-cloudflare-static-site.md`: establishes the independent Fumadocs workspace and Cloudflare static deployment boundary so public documentation does not load the Railway Hub origin.
+- `0007-host-public-web-on-cloudflare.md`: establishes the independent SkillsGo Web workspace and Cloudflare deployment boundary for product, Hub discovery, and documentation pages.
 
 ## Architectural Boundary
 

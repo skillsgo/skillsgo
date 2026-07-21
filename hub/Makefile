@@ -1,4 +1,8 @@
-# [INPUT]: Depends on the build, deployment, or runtime values declared in Makefile.\n# [OUTPUT]: Provides the SkillsGo Hub or monorepo configuration defined by Makefile.\n# [POS]: Serves as maintained configuration in the renamed SkillsGo Hub workspace or its repository integration.\n# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md\nVERSION = "unset"
+# [INPUT]: Depends on Go tooling, Docker, and repository scripts for Hub build, test, and development workflows.
+# [OUTPUT]: Provides maintained build, test, image, and local-development targets for the SkillsGo Hub.
+# [POS]: Serves as the Hub workspace command entry point alongside the repository-level Makefile.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+VERSION = "unset"
 DATE=$(shell date -u +%Y-%m-%d-%H:%M:%S-%Z)
 
 GOLANGCI_LINT_VERSION=v2.11.4
@@ -38,14 +42,6 @@ run-docker:
 .PHONY: run-docker-teardown
 run-docker-teardown:
 	docker-compose -p athensdockerdev down
-
-.PHONY: docs
-docs: ## build the docs docker image
-	docker build -t gomods/hugo -f docs/Dockerfile .
-
-.PHONY: docs-docker
-docs-docker: ## run the docs docker image
-	docker run -it --rm --name hugo-server -p 1313:1313 -v ${PWD}/docs:/src:cached gomods/hugo
 
 .PHONY: setup-dev-env
 setup-dev-env:

@@ -1,0 +1,13 @@
+// [INPUT]: Depends on the prerendered TanStack Start output under dist/client.
+// [OUTPUT]: Deploys the public SkillsGo Web surface as Cloudflare Workers Static Assets.
+// [POS]: Serves as the CDN deployment boundary for product, Hub discovery, and documentation pages.
+// [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "skillsgo-web",
+  "compatibility_date": "2026-07-20",
+  "assets": {
+    "directory": "./dist/client",
+    "not_found_handling": "single-page-application"
+  }
+}

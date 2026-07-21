@@ -1,0 +1,55 @@
+{
+  "name": "@skillsgo/web",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "packageManager": "pnpm@10.33.2",
+  "scripts": {
+    "dev": "vite dev",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "serve dist/client",
+    "deploy": "pnpm run build && wrangler deploy",
+    "content": "fumadocs-mdx",
+    "routes": "tsr generate",
+    "typecheck": "fumadocs-mdx && tsr generate && tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
+  },
+  "dependencies": {
+    "@fumadocs/language": "0.2.1",
+    "@orama/orama": "3.1.18",
+    "@orama/tokenizers": "3.1.18",
+    "@tanstack/react-router": "1.170.18",
+    "@tanstack/react-start": "1.168.32",
+    "@tanstack/start-static-server-functions": "1.167.19",
+    "fumadocs-core": "16.11.5",
+    "fumadocs-mdx": "15.2.0",
+    "fumadocs-ui": "16.11.5",
+    "react": "19.2.7",
+    "react-dom": "19.2.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "4.3.3",
+    "@tanstack/router-cli": "1.167.21",
+    "@types/mdx": "2.0.14",
+    "@types/node": "26.1.1",
+    "@types/react": "19.2.17",
+    "@types/react-dom": "19.2.3",
+    "@vitejs/plugin-react": "6.0.3",
+    "serve": "14.2.6",
+    "tailwindcss": "4.3.3",
+    "typescript": "6.0.3",
+    "vite": "8.1.5",
+    "wrangler": "4.112.0"
+  }
+}
