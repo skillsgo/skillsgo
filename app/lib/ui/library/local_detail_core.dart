@@ -262,7 +262,7 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
             InstallationSubmissionRequest(
               choice: choice,
               skill: summary,
-              immutableVersion: currentDetail.immutableVersion,
+              immutableVersion: summary.latestVersion,
               repositorySkills: [summary],
               riskPolicy: values[2] as PersonalRiskPolicy,
             ),

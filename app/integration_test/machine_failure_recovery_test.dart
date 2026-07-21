@@ -30,7 +30,7 @@ void main() {
       expect(search, findsOneWidget);
       await tester.enterText(
         search,
-        'https://github.com/vercel-labs/agent-skills',
+        'https://github.com/skillsgo/e2e-versioned-skills',
       );
       await tester.testTextInput.receiveAction(TextInputAction.search);
 

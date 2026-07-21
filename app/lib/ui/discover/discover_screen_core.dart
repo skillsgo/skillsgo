@@ -249,7 +249,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
             InstallationSubmissionRequest(
               choice: choice,
               skill: skill,
-              immutableVersion: detail.immutableVersion,
+              immutableVersion: skill.latestVersion,
               repositorySkills: repositorySkills,
               riskPolicy: riskPolicy,
             ),

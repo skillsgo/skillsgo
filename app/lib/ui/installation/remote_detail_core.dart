@@ -141,7 +141,7 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
           InstallationSubmissionRequest(
             choice: choice,
             skill: widget.skill,
-            immutableVersion: detail!.immutableVersion,
+            immutableVersion: widget.skill.latestVersion,
             repositorySkills: repositorySkills,
             riskPolicy: riskPolicy,
           ),
