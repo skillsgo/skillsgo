@@ -11,6 +11,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 )
 
@@ -100,15 +101,20 @@ func (c *Catalog) StoreProviderPage(ctx context.Context, lease ProviderLease, cr
 		if err := requireAffected(result); err != nil {
 			return err
 		}
-		for _, item := range observations {
-			_, err = tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO provider_skill_observations
-				(crawl_id, skill_id, source, slug, installs, observed_at, fencing_token)
-				VALUES (?, ?, ?, ?, ?, ?, ?)
-				ON CONFLICT(crawl_id, skill_id) DO UPDATE SET source = excluded.source, slug = excluded.slug,
-				installs = excluded.installs, observed_at = excluded.observed_at, fencing_token = excluded.fencing_token`),
-				crawlID, item.SkillID, item.Source, item.Slug, item.Installs, observedAt.UTC(), lease.FencingToken)
-			if err != nil {
-				return fmt.Errorf("store provider observation: %w", err)
+		if len(observations) > 0 {
+			values := make([]string, 0, len(observations))
+			arguments := make([]any, 0, len(observations)*7)
+			for _, item := range observations {
+				values = append(values, "(?, ?, ?, ?, ?, ?, ?)")
+				arguments = append(arguments, crawlID, item.SkillID, item.Source, item.Slug, item.Installs, observedAt.UTC(), lease.FencingToken)
+			}
+			query := `INSERT INTO provider_skill_observations
+				(crawl_id, skill_id, source, slug, installs, observed_at, fencing_token) VALUES ` +
+				strings.Join(values, ",") + ` ON CONFLICT(crawl_id, skill_id) DO UPDATE SET
+				source = excluded.source, slug = excluded.slug, installs = excluded.installs,
+				observed_at = excluded.observed_at, fencing_token = excluded.fencing_token`
+			if _, err := tx.ExecContext(ctx, c.db.Rebind(query), arguments...); err != nil {
+				return fmt.Errorf("store provider observations: %w", err)
 			}
 		}
 		result, err = tx.ExecContext(ctx, c.db.Rebind(`UPDATE provider_crawls SET expected_pages = ?,
