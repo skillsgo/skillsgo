@@ -605,3 +605,17 @@ ShutdownTimeout = 60
         [Index.Postgres.Params]
             connect_timeout = "30s"
             sslmode = "disable"
+
+[SkillsSH]
+    # URL points to the protected stateless skills.sh bridge. Empty disables synchronization.
+    # Env override: SKILLSGO_HUB_SKILLSSH_URL
+    URL = ""
+    # Token is shared only by Hub and the bridge.
+    # Env override: SKILLSGO_BRIDGE_TOKEN
+    Token = ""
+    # Interval is the all-time crawl cadence in seconds.
+    Interval = 600
+    LeaseSeconds = 120
+    PageCount = 10
+    PerPage = 500
+    RequestTimeout = 60

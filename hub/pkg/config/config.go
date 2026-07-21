@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on TOML, environment decoding, Hub defaults, validation, and nested storage, database, presentation, and authentication settings.
- * [OUTPUT]: Provides validated Hub configuration including normalized multi-token GitHub authentication.
+ * [OUTPUT]: Provides validated Hub configuration including GitHub authentication, optional translation, and skills.sh synchronization.
  * [POS]: Serves as maintained source in the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -71,6 +71,7 @@ type Config struct {
 	Index                 *Index
 	Database              *DatabaseConfig
 	LLM                   *LLMConfig
+	SkillsSH              *SkillsSHConfig
 }
 
 // EnvList is a list of key-value environment
@@ -248,6 +249,9 @@ func defaultConfig() *Config {
 			BaseURL: "https://api.deepseek.com", Model: "deepseek-v4-flash",
 			TranslationLocales: []string{"zh-Hans"}, TranslationInterval: 900,
 			TranslationBatch: 100, PromptVersion: "description-v1",
+		},
+		SkillsSH: &SkillsSHConfig{
+			Interval: 600, LeaseSeconds: 120, PageCount: 10, PerPage: 500, RequestTimeout: 60,
 		},
 	}
 }
