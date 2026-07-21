@@ -18,6 +18,8 @@ import (
 	artifactUploader "github.com/skillsgo/skillsgo/hub/pkg/storage/artifact"
 )
 
+const immutableArtifactCacheControl = "public, max-age=31536000, immutable"
+
 // Save implements the (github.com/skillsgo/skillsgo/hub/pkg/storage).Saver interface.
 func (s *Storage) Save(ctx context.Context, module, version string, zip io.Reader, zipMD5, info []byte) error {
 	const op errors.Op = "s3.Save"
@@ -39,10 +41,11 @@ func (s *Storage) upload(ctx context.Context, path, contentType string, stream i
 	defer span.End()
 
 	upParams := &transfermanager.UploadObjectInput{
-		Bucket:      aws.String(s.bucket),
-		Key:         aws.String(path),
-		Body:        stream,
-		ContentType: aws.String(contentType),
+		Bucket:       aws.String(s.bucket),
+		Key:          aws.String(path),
+		Body:         stream,
+		ContentType:  aws.String(contentType),
+		CacheControl: aws.String(immutableArtifactCacheControl),
 	}
 
 	if _, err := s.uploader.UploadObject(ctx, upParams); err != nil {
