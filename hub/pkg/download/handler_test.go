@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber routing, successful and redirected artifact protocols, canonical versions, and movable revision queries.
- * [OUTPUT]: Specifies protocol namespacing, redirect behavior, and no-store protection for movable Info and ZIP responses.
+ * [OUTPUT]: Specifies protocol namespacing, external immutable ZIP delivery, redirect behavior, and no-store protection for movable Info and ZIP responses.
  * [POS]: Serves as the public artifact HTTP routing contract for the download package.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -70,7 +70,14 @@ func TestArtifactProtocolIsNamespacedUnderMod(t *testing.T) {
 
 func TestMovableVersionResponsesDisableHTTPCaching(t *testing.T) {
 	r := fiber.New()
-	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	RegisterHandlers(r, &HandlerOpts{
+		Protocol: &successfulProtocol{},
+		Logger:   log.NoOpLogger(),
+		DownloadFile: &mode.DownloadFile{
+			Mode:        mode.Sync,
+			DownloadURL: "https://files.skillsgo.ai",
+		},
+	})
 	const noCache = "no-cache, no-store, must-revalidate"
 	for _, requestCase := range []struct {
 		method string
@@ -115,6 +122,36 @@ func TestCanonicalVersionInfoKeepsExistingCachePolicy(t *testing.T) {
 		}
 		if got := response.Header.Get("Cache-Control"); got != "" {
 			t.Fatalf("%s Cache-Control = %q, want existing empty policy", path, got)
+		}
+	}
+}
+
+func TestCanonicalVersionZipRedirectsToArtifactOrigin(t *testing.T) {
+	r := fiber.New()
+	RegisterHandlers(r, &HandlerOpts{
+		Protocol: &successfulProtocol{},
+		Logger:   log.NoOpLogger(),
+		DownloadFile: &mode.DownloadFile{
+			Mode:        mode.Sync,
+			DownloadURL: "https://files.skillsgo.ai",
+		},
+	})
+
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		request, err := http.NewRequest(method, "/mod/github.com/skillsgo/skillsgo/-/skills/example/@v/v1.2.3.zip", nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response, err := r.Test(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if response.StatusCode != http.StatusMovedPermanently {
+			t.Fatalf("%s returned %d, want 301", method, response.StatusCode)
+		}
+		const expected = "https://files.skillsgo.ai/github.com/skillsgo/skillsgo/-/skills/example/@v/v1.2.3.zip"
+		if got := response.Header.Get("Location"); got != expected {
+			t.Fatalf("%s Location = %q, want %q", method, got, expected)
 		}
 	}
 }
