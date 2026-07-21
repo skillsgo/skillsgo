@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Installation journey library, domain detail models, InstallOperationController, localized status copy, and SkillsGo presentation primitives.
- * [OUTPUT]: Provides shared failure details, card skeletons, Repository enumeration, one presentation-facing Installation submission seam, completion feedback, Skill hero, and detail-page layout.
+ * [OUTPUT]: Provides shared failure details, card skeletons, exact-version Repository enumeration, one presentation-facing Installation submission seam, completion feedback, Skill hero, and detail-page layout.
  * [POS]: Serves as the reusable detail and Installation Request presentation primitives.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -104,7 +104,7 @@ Future<List<SkillSummary>> loadRepositorySkills(
     while (true) {
       final page = await gateway.discover(
         DiscoveryCollection.search,
-        query: repository,
+        query: '$repository@${current.latestVersion}',
         offset: offset,
         limit: 100,
       );

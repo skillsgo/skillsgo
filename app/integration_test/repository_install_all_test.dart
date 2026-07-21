@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Flutter integration_test, the real SkillsGo App entry point, isolated onboarding preferences, a disposable Hub, the built CLI, and public GitHub repository resolution.
+ * [INPUT]: Depends on Flutter integration_test, the real SkillsGo App entry point, isolated onboarding preferences, a disposable Hub, the built CLI, and the SkillsGo-owned public versioned fixture Repository.
  * [OUTPUT]: Verifies repository search, the repository-wide installation surface, bundled-CLI execution, and isolated installed filesystem state.
  * [POS]: Serves as the first black-box macOS App-plus-CLI-plus-Hub journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -30,7 +30,7 @@ void main() {
       expect(search, findsOneWidget);
       await tester.enterText(
         search,
-        'https://github.com/vercel-labs/agent-skills',
+        'https://github.com/skillsgo/e2e-versioned-skills@v1.2.0',
       );
       await tester.testTextInput.receiveAction(TextInputAction.search);
 
@@ -39,7 +39,7 @@ void main() {
         find.byKey(const Key('repository-install-all')),
         timeout: const Duration(minutes: 2),
       );
-      expect(find.text('vercel-labs / agent-skills'), findsOneWidget);
+      expect(find.text('skillsgo / e2e-versioned-skills'), findsOneWidget);
 
       await tester.tap(find.byKey(const Key('repository-install-all')));
       await _pumpUntil(
@@ -59,46 +59,71 @@ void main() {
             (widget.data == 'Install all skills' || widget.data == '安装所有技能'),
       );
       expect(installAllLabels, findsWidgets);
-      final installButton = tester.widget<FilledButton>(
-        find
-            .ancestor(
-              of: installAllLabels.last,
-              matching: find.byType(FilledButton),
-            )
-            .first,
-      );
+      final installButtonFinder = find
+          .ancestor(
+            of: installAllLabels.last,
+            matching: find.byType(FilledButton),
+          )
+          .first;
+      await _pumpUntilEnabledButton(tester, installButtonFinder);
+      final installButton = tester.widget<FilledButton>(installButtonFinder);
       expect(installButton.onPressed, isNotNull);
       installButton.onPressed!();
       await tester.pump();
       await _pumpUntilInstalled(tester);
+      await _pumpUntilGone(
+        tester,
+        find.byWidgetPredicate(
+          (widget) =>
+              widget is Text &&
+              (widget.data == 'Install all skills to' ||
+                  widget.data == '安装所有技能到'),
+        ),
+      );
 
       final sandbox = Platform.environment['SKILLSGO_E2E_SANDBOX'];
       expect(sandbox, isNotNull);
       final home = Directory('$sandbox/home');
-      expect(File('${home.path}/.skillsgo/skillsgo.mod').existsSync(), isTrue);
+      final manifest = File('${home.path}/.skillsgo/skillsgo.mod');
+      expect(manifest.existsSync(), isTrue);
       expect(File('${home.path}/.skillsgo/skillsgo.sum').existsSync(), isTrue);
       expect(
-        File(
-          '${home.path}/.agents/skills/vercel-composition-patterns/SKILL.md',
-        ).existsSync(),
-        isTrue,
+        manifest.readAsStringSync(),
+        allOf(contains('/-/skills/alpha'), contains('/-/skills/resourceful')),
       );
       expect(
-        Link(
-          '$sandbox/test-agent/skills/vercel-composition-patterns',
+        File(
+          '${home.path}/.agents/skills/resourceful/references/guide.md',
         ).existsSync(),
         isTrue,
       );
+      expect(Link('$sandbox/test-agent/skills/alpha').existsSync(), isTrue);
     },
     timeout: const Timeout(Duration(minutes: 4)),
   );
 }
 
+Future<void> _pumpUntilEnabledButton(WidgetTester tester, Finder finder) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 30));
+  while (DateTime.now().isBefore(deadline)) {
+    final buttons = tester.widgetList<FilledButton>(finder);
+    if (buttons.isNotEmpty && buttons.first.onPressed != null) return;
+    await tester.pump(const Duration(milliseconds: 250));
+  }
+  expect(tester.widget<FilledButton>(finder).onPressed, isNotNull);
+}
+
+Future<void> _pumpUntilGone(WidgetTester tester, Finder finder) async {
+  final deadline = DateTime.now().add(const Duration(seconds: 30));
+  while (finder.evaluate().isNotEmpty && DateTime.now().isBefore(deadline)) {
+    await tester.pump(const Duration(milliseconds: 250));
+  }
+  expect(finder, findsNothing);
+}
+
 Future<void> _pumpUntilInstalled(WidgetTester tester) async {
   final sandbox = Platform.environment['SKILLSGO_E2E_SANDBOX']!;
-  final installed = File(
-    '$sandbox/home/.agents/skills/vercel-composition-patterns/SKILL.md',
-  );
+  final installed = File('$sandbox/home/.agents/skills/alpha/SKILL.md');
   final deadline = DateTime.now().add(const Duration(minutes: 2));
   while (!installed.existsSync() && DateTime.now().isBefore(deadline)) {
     await tester.pump(const Duration(milliseconds: 250));

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the deep Installation Request controller with a controllable SkillsGateway test double.
- * [OUTPUT]: Specifies single-Skill success, all-target failure classification, Repository sequencing, and exception capture.
+ * [OUTPUT]: Specifies single-Skill success, all-target failure classification, Repository snapshot-version sequencing without detail re-resolution, and exception capture.
  * [POS]: Serves as the controller-level regression suite for installation orchestration independently of rendered selectors.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -69,6 +69,7 @@ void main() {
         name: 'Dart Pro',
         source: 'example/skills',
         installs: 42,
+        latestVersion: 'v1.2.0',
       );
       final gateway = FakeSkillsGateway();
       final controller = InstallOperationController(gateway);
@@ -88,7 +89,8 @@ void main() {
         defaultSearchResults.first.id,
         second.id,
       ]);
-      expect(gateway.detailLoads, 2);
+      expect(state.executions.map((item) => item.version), ['main', 'v1.2.0']);
+      expect(gateway.detailLoads, 0);
       expect(gateway.installCalls, 2);
     },
   );

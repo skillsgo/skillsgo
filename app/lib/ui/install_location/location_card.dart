@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Agent catalogs, Added Projects, exact existing targets, project icon resolution, install actions, target selections, and submission feedback.
- * [OUTPUT]: Provides the stateful location, project, Agent, repository-action, duplicate-target exclusion, validation, and submission card.
+ * [OUTPUT]: Provides the stateful location, project, Agent, repository-action loading gate, duplicate-target exclusion, validation, and submission card.
  * [POS]: Serves as the selection and submission owner of the anchored Installation Request selector.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -296,7 +296,7 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
                 height: 36,
                 horizontalPadding: 18,
                 labelStyle: const TextStyle(fontWeight: FontWeight.w400),
-                onPressed: canInstall
+                onPressed: canInstall && !repositorySkillsLoading
                     ? () => widget.onSubmit(
                         InstallLocationChoice(
                           selections: selections,

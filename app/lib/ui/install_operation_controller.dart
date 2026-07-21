@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter foundation, Riverpod legacy migration support, the App-scoped Gateway provider, and direct SkillsGateway installation contracts.
- * [OUTPUT]: Provides a compact InstallationRequest interface plus immutable per-Skill sequencing, Repository-member resolution, execution aggregation, success classification, and error state.
+ * [OUTPUT]: Provides a compact InstallationRequest interface plus discovery-snapshot version preservation, immutable per-Skill sequencing, execution aggregation, success classification, and error state.
  * [POS]: Serves as the deep Installation Request module while selectors retain only ephemeral location choices and presentation feedback.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -92,11 +92,7 @@ class InstallOperationController extends ChangeNotifier {
       final resolved = <({SkillSummary skill, String immutableVersion})>[];
       if (request.isRepository) {
         for (final skill in request._repositorySkills) {
-          final detail = await _gateway.loadRemoteDetail(skill);
-          resolved.add((
-            skill: skill,
-            immutableVersion: detail.immutableVersion,
-          ));
+          resolved.add((skill: skill, immutableVersion: skill.latestVersion));
         }
       } else {
         final skill = request._skill;
