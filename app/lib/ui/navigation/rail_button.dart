@@ -47,7 +47,7 @@ class _RailButton<T> extends StatelessWidget {
               padding: EdgeInsets.symmetric(horizontal: horizontalPadding),
               minimumSize: Size.fromHeight(itemExtent),
               tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              alignment: Alignment.centerLeft,
+              alignment: AlignmentDirectional.centerStart,
               textStyle: context.skillsTypography.bodySecondary,
             ).copyWith(
               overlayColor: WidgetStateProperty.resolveWith((states) {

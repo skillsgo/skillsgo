@@ -106,7 +106,7 @@ class _SkillsDestinationLayoutState extends State<SkillsDestinationLayout>
       fit: StackFit.expand,
       children: [
         Padding(
-          padding: const EdgeInsets.fromLTRB(20, 26, 28, 24),
+          padding: const EdgeInsetsDirectional.fromSTEB(20, 26, 28, 24),
           child: Row(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [

@@ -227,14 +227,17 @@ class _InstallationScopePanelState extends State<InstallationScopePanel> {
             ),
           ),
           AnimatedSize(
-            alignment: Alignment.topLeft,
+            alignment: AlignmentDirectional.topStart,
             duration: MediaQuery.disableAnimationsOf(context)
                 ? Duration.zero
                 : const Duration(milliseconds: 180),
             curve: Curves.easeOutCubic,
             child: expanded
                 ? Padding(
-                    padding: const EdgeInsets.only(left: 36, top: 6),
+                    padding: const EdgeInsetsDirectional.only(
+                      start: 36,
+                      top: 6,
+                    ),
                     child: Column(
                       children: [
                         for (final target in group.targets)

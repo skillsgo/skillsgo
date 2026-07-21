@@ -186,7 +186,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       takeoverActionLabel = context.l10n.batchTakeoverActionCount(
         takeoverEligible ?? 0,
       );
-      takeoverAction = takeoverEligible == null || takeoverEligible == 0
+      takeoverAction = takeoverEligible == null
           ? null
           : () => unawaited(_executeBatchTakeover());
     }
@@ -194,6 +194,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
       foreground: takeoverConsoleVisible
           ? _BatchTakeoverConsole(
               eligibleCount: activeTakeoverEligible,
+              initiallyCompleted: activeTakeoverEligible == 0,
               skillPreviews: activeTakeoverPreviews,
               onConfirm: _confirmActiveBatchTakeover,
               onExit: _finishBatchTakeover,
@@ -324,7 +325,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         Padding(
-                          padding: const EdgeInsets.only(left: 11),
+                          padding: const EdgeInsetsDirectional.only(start: 11),
                           child: SizedBox(
                             width: 44,
                             height: 45,

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Library screen library, current-theme design tokens, repository avatars, localized takeover copy, and caller-provided preflight identities plus exact CLI transaction results.
- * [OUTPUT]: Provides a responsive floating hardware-console Batch Takeover surface whose deterministic Tetris story ends with four localized LED pain-point pieces, a self-clearing managed board, an in-board settlement, physical controls, retry, and reduced-motion behavior.
+ * [OUTPUT]: Provides a responsive modal hardware-console Batch Takeover surface with an input-blocking dismissible scrim, symmetric entrance and exit motion, a deterministic Tetris story ending with four localized LED pain-point pieces, a self-clearing managed board, an in-board settlement, physical controls, retry, and reduced-motion behavior.
  * [POS]: Serves as the visual product-story and truthful post-transaction feedback module of the Library Batch Takeover journey while delegated callbacks retain mutation ownership.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -306,12 +306,14 @@ class _TakeoverVisualPiece {
 class _BatchTakeoverConsole extends StatefulWidget {
   const _BatchTakeoverConsole({
     required this.eligibleCount,
+    required this.initiallyCompleted,
     required this.skillPreviews,
     required this.onConfirm,
     required this.onExit,
   });
 
   final int eligibleCount;
+  final bool initiallyCompleted;
   final List<BatchTakeoverPreview> skillPreviews;
   final Future<BatchTakeoverResult> Function() onConfirm;
   final Future<void> Function(_BatchTakeoverDialogOutcome outcome) onExit;
@@ -322,14 +324,26 @@ class _BatchTakeoverConsole extends StatefulWidget {
 
 class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
     with SingleTickerProviderStateMixin {
+  final _modalOverlay = OverlayPortalController();
   AnimationController? _revealController;
   bool _executing = false;
+  bool _exiting = false;
   bool _completed = false;
   Object? _error;
   BatchTakeoverResult? _result;
   List<_TakeoverVisualPiece> _pieces = const [];
   int _settledCount = 0;
   bool _clearing = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _modalOverlay.show();
+    if (widget.initiallyCompleted) {
+      _completed = true;
+      _result = const BatchTakeoverResult(takenOver: 0, skipped: 0);
+    }
+  }
 
   @override
   void dispose() {
@@ -429,6 +443,8 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
   }
 
   Future<void> _exit(_BatchTakeoverDialogOutcome outcome) async {
+    if (_exiting || _executing) return;
+    setState(() => _exiting = true);
     final revealController = _revealController;
     if (revealController != null) {
       await revealController.reverse();
@@ -440,60 +456,111 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
   @override
   Widget build(BuildContext context) {
     final front = _buildFrontConsole(context);
-    if (MediaQuery.disableAnimationsOf(context)) return front;
+    if (MediaQuery.disableAnimationsOf(context)) {
+      return _buildModalPortal(
+        _buildModalLayer(context, console: front, progress: 1),
+      );
+    }
     final revealController = _revealController ??= AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
     )..forward();
     final back = _buildBackConsole(context);
-    return AnimatedBuilder(
-      animation: revealController,
-      builder: (context, _) {
-        final riseProgress = const Interval(
-          0,
-          .3,
-          curve: Curves.easeOutCubic,
-        ).transform(revealController.value);
-        final flipProgress = const Interval(
-          .3,
-          1,
-          curve: Curves.easeInOutCubic,
-        ).transform(revealController.value);
-        final angle = -math.pi * (1 - flipProgress);
-        final verticalOffset = 48 * (1 - riseProgress);
-        final frontFacing = math.cos(angle) >= 0;
-        final face = frontFacing
-            ? front
-            : Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.rotationY(math.pi),
-                child: back,
-              );
-        final scale =
-            .96 + .04 * flipProgress - .04 * math.sin(math.pi * flipProgress);
-        final opacity = Curves.easeOut.transform(
-          math.min(1, revealController.value / .18),
-        );
-        return IgnorePointer(
-          ignoring: revealController.isAnimating,
-          child: Opacity(
-            opacity: opacity,
-            child: Transform.translate(
-              offset: Offset(0, verticalOffset),
-              child: Transform.scale(
-                scale: scale,
-                child: Transform(
+    return _buildModalPortal(
+      AnimatedBuilder(
+        animation: revealController,
+        builder: (context, _) {
+          final riseProgress = const Interval(
+            0,
+            .3,
+            curve: Curves.easeOutCubic,
+          ).transform(revealController.value);
+          final flipProgress = const Interval(
+            .3,
+            1,
+            curve: Curves.easeInOutCubic,
+          ).transform(revealController.value);
+          final angle = -math.pi * (1 - flipProgress);
+          final verticalOffset = 48 * (1 - riseProgress);
+          final frontFacing = math.cos(angle) >= 0;
+          final face = frontFacing
+              ? front
+              : Transform(
                   alignment: Alignment.center,
-                  transform: Matrix4.identity()
-                    ..setEntry(3, 2, .0011)
-                    ..rotateY(angle),
-                  child: face,
+                  transform: Matrix4.rotationY(math.pi),
+                  child: back,
+                );
+          final scale =
+              .96 + .04 * flipProgress - .04 * math.sin(math.pi * flipProgress);
+          final opacity = Curves.easeOut.transform(
+            math.min(1, revealController.value / .18),
+          );
+          return _buildModalLayer(
+            context,
+            progress: opacity,
+            console: AbsorbPointer(
+              absorbing: revealController.isAnimating,
+              child: Opacity(
+                opacity: opacity,
+                child: Transform.translate(
+                  offset: Offset(0, verticalOffset),
+                  child: Transform.scale(
+                    scale: scale,
+                    child: Transform(
+                      alignment: Alignment.center,
+                      transform: Matrix4.identity()
+                        ..setEntry(3, 2, .0011)
+                        ..rotateY(angle),
+                      child: face,
+                    ),
+                  ),
                 ),
               ),
             ),
-          ),
-        );
-      },
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildModalPortal(Widget modal) {
+    return OverlayPortal.targetsRootOverlay(
+      controller: _modalOverlay,
+      overlayChildBuilder: (context) => Positioned.fill(child: modal),
+      child: const SizedBox.shrink(),
+    );
+  }
+
+  Widget _buildModalLayer(
+    BuildContext context, {
+    required Widget console,
+    required double progress,
+  }) {
+    final canDismiss = !_executing && !_exiting;
+    return Stack(
+      key: const Key('batch-takeover-modal'),
+      fit: StackFit.expand,
+      children: [
+        ModalBarrier(
+          key: const Key('batch-takeover-modal-barrier'),
+          color: Colors.black.withValues(alpha: .36 * progress),
+          dismissible: canDismiss,
+          onDismiss: canDismiss
+              ? () => unawaited(
+                  _exit(
+                    _completed
+                        ? _BatchTakeoverDialogOutcome.completed
+                        : _BatchTakeoverDialogOutcome.skipped,
+                  ),
+                )
+              : null,
+          semanticsLabel: _completed
+              ? context.l10n.batchTakeoverClose
+              : context.l10n.batchTakeoverSkip,
+          barrierSemanticsDismissible: canDismiss,
+        ),
+        console,
+      ],
     );
   }
 
@@ -1346,7 +1413,14 @@ class _TakeoverSettlementScreen extends StatelessWidget {
                     label: context.l10n.batchTakeoverStatusTotal,
                     value: eligibleCount,
                   ),
-                  const Spacer(flex: 2),
+                  const SizedBox(height: 18),
+                  Container(
+                    height: 1,
+                    color: _takeoverLcdGrid.withValues(alpha: .72),
+                  ),
+                  const SizedBox(height: 14),
+                  const _TakeoverBenefitSummary(),
+                  const Spacer(),
                   const _TakeoverClearedRowsTrace(),
                 ],
               ),
@@ -1356,6 +1430,82 @@ class _TakeoverSettlementScreen extends StatelessWidget {
       ),
     );
   }
+}
+
+class _TakeoverBenefitSummary extends StatelessWidget {
+  const _TakeoverBenefitSummary();
+
+  @override
+  Widget build(BuildContext context) {
+    final benefits = [
+      context.l10n.batchTakeoverBenefitLocation,
+      context.l10n.batchTakeoverBenefitFreshness,
+      context.l10n.batchTakeoverBenefitRecovery,
+      context.l10n.batchTakeoverBenefitVersions,
+    ];
+    return Column(
+      children: [
+        for (var index = 0; index < benefits.length; index++) ...[
+          _TakeoverBenefitRow(label: benefits[index]),
+          if (index < benefits.length - 1) const SizedBox(height: 8),
+        ],
+      ],
+    );
+  }
+}
+
+class _TakeoverBenefitRow extends StatelessWidget {
+  const _TakeoverBenefitRow({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Expanded(
+        child: Text(
+          label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: context.skillsTypography.caption.copyWith(
+            color: _takeoverLcdInk,
+            fontFamily: 'TakeoverPixel',
+            fontSize: 9,
+            letterSpacing: .2,
+          ),
+        ),
+      ),
+      const SizedBox(width: 8),
+      const SizedBox(
+        width: 12,
+        height: 12,
+        child: CustomPaint(painter: _TakeoverPixelCheckPainter()),
+      ),
+    ],
+  );
+}
+
+class _TakeoverPixelCheckPainter extends CustomPainter {
+  const _TakeoverPixelCheckPainter();
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = _takeoverLcdInk
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.square
+      ..style = PaintingStyle.stroke;
+    canvas.drawPath(
+      Path()
+        ..moveTo(size.width * .12, size.height * .54)
+        ..lineTo(size.width * .4, size.height * .82)
+        ..lineTo(size.width * .9, size.height * .18),
+      paint,
+    );
+  }
+
+  @override
+  bool shouldRepaint(_TakeoverPixelCheckPainter oldDelegate) => false;
 }
 
 class _TakeoverSettlementStat extends StatelessWidget {

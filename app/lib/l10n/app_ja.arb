@@ -1,0 +1,1088 @@
+{
+  "@@locale": "ja",
+  "discover": "発見する",
+  "discoverSkills": "もう少し詳しく知ることができてよかったです。",
+  "library": "図書館",
+  "settings": "設定",
+  "openSettings": "設定を開く",
+  "cliNeedsAttention": "必須の SkillsGo コンポーネントには注意が必要です。",
+  "cliMissingBundled": "SkillsGo の必須コンポーネントが見つからないか、起動できません。復元するには SkillsGo を再インストールしてください。",
+  "cliDamagedBundled": "SkillsGo の必須コンポーネントが破損しています。復元するには SkillsGo を再インストールしてください。",
+  "cliIncompatibleBundled": "SkillsGo の必須コンポーネントがこのアプリのバージョンと一致しません。SkillsGo を更新するか、再インストールしてください。",
+  "officialIndex": "SkillsGo ハブ",
+  "discoverTitle": "次の動きのためのスキルを見つけてください。",
+  "skillsLeaderboard": "もう少し詳しく知ることができてよかったです。",
+  "searchResultsFor": "「{query}」の結果",
+  "@searchResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchSkills": "スキルを検索するか、Git リンクを貼り付けます…",
+  "search": "検索",
+  "ranking": "ランキング",
+  "trending": "トレンド",
+  "hot": "ホット",
+  "discoverNavigation": "ナビゲーションを発見する",
+  "allTimeRanking": "歴代ランキング",
+  "trendingNow": "過去 24 時間のトレンド",
+  "hotNow": "今熱いです",
+  "allTimeDescription": "公開スキルは、全期間にわたって受け入れられたインストール数によって並べられます。",
+  "trendingDescription": "最新の 24 時間枠内に承認されたインストールによって注文されたパブリック スキル。",
+  "hotDescription": "パブリック スキルは、短期的なインストール速度と変化によって並べられます。",
+  "offlineTitle": "SkillsGo に接続できません",
+  "offlineMessage": "インターネット接続を確認して、もう一度試してください。プロキシまたはカスタム サービス アドレスを使用する場合は、[設定] で確認してください。",
+  "searchFailedTitle": "検索中に問題が発生しました",
+  "validationTitle": "入力した内容を確認してください",
+  "validationMessage": "SkillsGo はこのリクエストを使用できませんでした。入力した内容を確認して、再試行してください。",
+  "serverTitle": "サービスが一時的に利用できなくなります",
+  "serverMessage": "SkillsGo は現在このリクエストを完了できません。しばらくしてからもう一度試してください。",
+  "timeoutTitle": "時間がかかりすぎます",
+  "timeoutMessage": "サービスは時間内に応答しませんでした。接続を確認するか、もう一度試してください。",
+  "invalidResponseTitle": "SkillsGo にはアップデートが必要です",
+  "invalidResponseMessage": "この応答は、お使いのバージョンの SkillsGo では読み取ることができません。アプリを更新してから、もう一度お試しください。",
+  "invalidLocalDataTitle": "インストールされているスキルを読み取れません",
+  "invalidLocalDataMessage": "一部のローカル インストール情報が破損しているか、互換性がありません。 SkillsGo を更新または再インストールして、もう一度試してください。",
+  "tryAgain": "もう一度試してください",
+  "searchEmptyTitle": "スクロールせずに検索してください。",
+  "searchEmptyMessage": "機能、ソース、またはタスクを入力して公開スキルを検索します。",
+  "noSkillsTitle": "スキルが見つかりません",
+  "noSkillsMessage": "より幅広いフレーズを試すか、スペルを確認してください。",
+  "focusSearch": "フォーカス検索",
+  "skillsFromLink": "スキルはこちらのリンクから",
+  "skillCount": "{count, plural, =1{1 スキル} other{{count} スキル}}",
+  "@skillCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceResultsSummary": "{count, plural, =1{{source} のスキル 1 個} other{{source} のスキル {count} 個}}",
+  "@sourceResultsSummary": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceSearchEmptyTitle": "このリンクは検査する準備ができています",
+  "sourceSearchEmptyMessage": "{source} は現在の検索結果にありません。 SkillsGo は、次のステップでリンクを直接検査できます。",
+  "@sourceSearchEmptyMessage": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "inspectSource": "このリンクでスキルを表示",
+  "collectionEmptyTitle": "このコレクションにはスキルがありません",
+  "collectionEmptyMessage": "ここにはまだ何もありません。さらにインストール作業を行った後、再試行してください。",
+  "loadMore": "さらにロードする",
+  "install": "インストール",
+  "installAll": "すべてのスキルをインストールする",
+  "latestCommit": "最新のコミット",
+  "installToMoreTargets": "より多くの場所に設置",
+  "localTargets": "{count} 個のローカル ターゲット",
+  "@localTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allTimeMetric": "{count} 回の常時インストール数",
+  "@allTimeMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "trendingMetric": "{count} のインストール数 / 24 時間",
+  "@trendingMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hotMetric": "この時間 {value} · {change}",
+  "@hotMetric": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "trustUnverified": "未検証",
+  "trustCommunityVerified": "コミュニティが検証済み",
+  "trustPublisherVerified": "発行者が確認済み",
+  "trustOfficial": "公式",
+  "trustWarned": "警告",
+  "trustDelisted": "上場廃止",
+  "riskUnknown": "リスクは不明",
+  "riskLow": "低リスク",
+  "riskMedium": "中リスク",
+  "riskHigh": "高リスク",
+  "riskCritical": "重大なリスク",
+  "openSkill": "{name} を開く",
+  "@openSkill": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installs": "インストール数 {count}",
+  "@installs": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "detailFailedTitle": "このスキルをロードできませんでした",
+  "detailLoading": "監査可能なスキルの詳細をロードしています",
+  "artifactUnavailableTitle": "アーティファクトが利用不可",
+  "artifactUnavailableMessage": "このバージョンは現在利用できません。もう一度試すか、別のバージョンを選択してください。",
+  "detailInvalidTitle": "アーティファクトメタデータはサポートされていません",
+  "detailInvalidMessage": "このスキルの詳細の一部が不完全であるか、読み取ることができません。 SkillsGo を更新して、もう一度お試しください。",
+  "instructionsTab": "指示",
+  "manifestTab": "マニフェスト",
+  "immutableVersionLabel": "不変の {version}",
+  "@immutableVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "commitIdentity": "{sha}をコミット",
+  "@commitIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "treeIdentity": "ツリー {sha}",
+  "@treeIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "contentIdentity": "コンテンツ {digest}",
+  "@contentIdentity": {
+    "placeholders": {
+      "digest": {
+        "type": "String"
+      }
+    }
+  },
+  "trustDoesNotProveSafety": "発行者の信頼により、所有権またはメンテナンスが検証されます。アーティファクトの安全性を保証するものではありません。この不変バージョンのリスクは個別に評価されます。",
+  "knownInstallationTargets": "既知のインストール対象",
+  "installationRange": "設置範囲",
+  "targetDetails": "ターゲットの詳細を表示",
+  "hideTargetDetails": "ターゲットの詳細を非表示にする",
+  "installedVersionLabel": "バージョン {version}",
+  "@installedVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "targetSummary": "{scope} / {agent} · {version}",
+  "@targetSummary": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "agent": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "projectScope": "プロジェクト",
+  "fileContentUnavailable": "バイナリまたは使用できないプレビュー",
+  "fileContentTruncated": "プレビューはハブの安全制限によって切り詰められます。",
+  "retry": "再試行",
+  "backToSearch": "検索に戻る",
+  "installForCodex": "コーデックス用にインストールする",
+  "cliNotDetected": "スキル（検出されません）",
+  "snapshotFiles": "スナップショットファイル",
+  "globalCodex": "グローバル・コーデックス",
+  "yourLibrary": "あなたが知っていることはすべてここにあります。",
+  "libraryNavigation": "図書館のナビゲーション",
+  "all": "すべて",
+  "allSkills": "すべてのスキル",
+  "updatesOnly": "アップデート",
+  "allAgents": "すべてのエージェント",
+  "allProjects": "すべてのプロジェクト",
+  "specificProject": "プロジェクト",
+  "userScope": "グローバル",
+  "addProject": "プロジェクトの追加",
+  "relocateProject": "移転する",
+  "removeFromList": "リストから削除",
+  "removeProjectTitle": "{name} を SkillsGo から削除しますか?",
+  "@removeProjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeProjectDescription": "アプリ参照のみが削除されます。 SkillsGo は、このディレクトリ内のファイルを変更または削除しません。",
+  "projectRailUnavailable": "{name} — 利用不可",
+  "@projectRailUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyProjectTitle": "まだスキルがありません",
+  "browseSkills": "スキルを参照する",
+  "projectMissingTitle": "プロジェクトディレクトリがありません",
+  "projectMissingMessage": "ディレクトリが移動したか、そのボリュームがオフラインになっている可能性があります。再配置するか、App 参照のみを削除します。",
+  "projectPermissionTitle": "プロジェクトの許可が必要です",
+  "projectPermissionMessage": "SkillsGo は選択したルートを確認できません。ディレクトリ選択画面でもう一度このフォルダーを選択し、アクセスを許可してください。",
+  "projectInaccessibleTitle": "プロジェクトディレクトリにアクセスできません",
+  "projectInaccessibleMessage": "SkillsGo はこのプロジェクト参照を保管していました。パスまたはボリュームを確認し、再配置してください。",
+  "checking": "確認中…",
+  "checkUpdates": "アップデートを確認する",
+  "refresh": "リフレッシュ",
+  "libraryUnavailable": "図書館は利用できません",
+  "libraryEmpty": "まだスキルがインストールされていません",
+  "libraryEmptyMessage": "Discover からスキルをインストールすると、ここに表示されます。",
+  "searchLibrary": "インストールされているスキルを検索する",
+  "libraryNoMatches": "一致するスキルがありません",
+  "libraryNoMatchesMessage": "別の名前、ソース、エージェント、プロジェクト、またはバージョンを試してください。",
+  "agentsSummary": "{count} エージェント",
+  "@agentsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsSummary": "{count} プロジェクト",
+  "@projectsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionsSummary": "{count} バージョン",
+  "@versionsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubManaged": "ハブ管理",
+  "localManaged": "ローカル管理",
+  "externalInstallation": "外部設置",
+  "readOnly": "読み取り専用",
+  "unversioned": "バージョン管理されていない",
+  "supportingFiles": "サポートファイル",
+  "versionDivergence": "バージョンの相違",
+  "healthHealthy": "健康",
+  "healthMissing": "ターゲットが見つかりません",
+  "healthReplaced": "ターゲットが交換されました",
+  "healthLocalModification": "ローカルな変更",
+  "healthUnreadable": "ターゲットを読み取れません",
+  "healthUndeclared": "宣言されていない",
+  "healthWorkspaceUnreadable": "ワークスペースの状態を読み取ることができません",
+  "healthLockMismatch": "ロックの不一致",
+  "healthUnexpectedPath": "予期しないターゲット パス",
+  "modeSymlink": "シンボリックリンク",
+  "modeCopy": "コピー",
+  "modeExternal": "外部",
+  "notLinked": "リンクされていません",
+  "update": "アップデート",
+  "backToLibrary": "ライブラリに戻る",
+  "remove": "削除",
+  "manageTargets": "スコープの管理",
+  "skillsSelected": "{count} が選択されました",
+  "@skillsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "選択をクリア",
+  "selectCurrentResults": "現在の結果を選択してください",
+  "clearCurrentResultSelection": "現在の結果の選択をクリアします",
+  "manageTargetsTitle": "インストールターゲットの管理",
+  "manageTargetsDescription": "ターゲットごとに正確なアクションを選択してください。選択されていないターゲットは変更されません。",
+  "targetActionsSelected": "{total} 個中 {selected} 個のターゲットが選択されました",
+  "@targetActionsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "repairTarget": "修理",
+  "confirmRemoveTarget": "削除の確認",
+  "applyTargetActions": "選択したアクションを適用する",
+  "managementProgressTitle": "ターゲットアクションの適用",
+  "managementResultsTitle": "目標行動結果",
+  "managementResultSummary": "{succeeded} は成功しました、{failed} は失敗しました",
+  "@managementResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceOwnershipChanges": "選択したプロジェクト アクションにより、skillgo.mod と skillgo.sum が更新されます。",
+  "targetContentPreserved": "現在のターゲット コンテンツは保持されます。",
+  "localReadFailed": "このスキルを読み取れません",
+  "localReadFailedMessage": "SkillsGo は、このインストールされたスキルを読み取ることができませんでした。そのフォルダーが使用可能でアクセス可能であることを確認してから、再試行してください。",
+  "localConfiguration": "スキルゴー設定",
+  "settingsNavigation": "設定ナビゲーション",
+  "general": "パーソナライズ",
+  "agents": "エージェント",
+  "hub": "ハブ",
+  "installationPolicy": "インストールポリシー",
+  "storage": "ストレージ",
+  "colorScheme": "カラースキーム",
+  "about": "について",
+  "colorSchemeInspectorTitle": "生成されたマテリアルの色の役割",
+  "skillsColorTokensTitle": "SkillsGo セマンティック カラー",
+  "skillsColorTokensDescription": "製品の色は Radix Sand から構築され、専用の空間階層としてのフォルダーを使用して Primer セマンティクスで編成されます。",
+  "colorSchemeInspectorDescription": "現在のシードから生成された非推奨でない ColorScheme トークンをすべてプレビューします。色をクリックして、その HEX 値をコピーします。",
+  "colorSchemePairPreview": "セマンティックペア",
+  "colorSchemePairPreviewDescription": "前景と背景の役割を一緒にレンダリングして、コントラストと階層を明らかにします。",
+  "colorSchemeComponentPreview": "コンポーネントのプレビュー",
+  "colorSchemeComponentPreviewDescription": "この正確なプレビュー スキームを使用してレンダリングされた代表的なマテリアル コントロール。",
+  "colorSchemeSampleTitle": "スキルカードのタイトル",
+  "colorSchemeSampleBody": "セカンダリ コピーは onSurfaceVariant を使用します。",
+  "colorSchemeCopied": "コピーされました",
+  "colorSchemeSampleGlyphs": "ああ123",
+  "colorSchemeGroupPrimary": "プライマリー",
+  "colorSchemeGroupPrimaryDescription": "主な強調、コンテナ、および固定アクセントの役割。",
+  "colorSchemeGroupSecondary": "二次",
+  "colorSchemeGroupSecondaryDescription": "サポートの強調と固定の二次的な役割。",
+  "colorSchemeGroupTertiary": "三次",
+  "colorSchemeGroupTertiaryDescription": "対照的なアクセントと固定された三次的な役割。",
+  "colorSchemeGroupSurface": "表面",
+  "colorSchemeGroupSurfaceDescription": "ページ、コンテナ、立面図、および前景階層。",
+  "colorSchemeGroupUtility": "概要とユーティリティ",
+  "colorSchemeGroupUtilityDescription": "境界、シャドウ、スクリム、および反転サーフェス。",
+  "colorSchemeGroupError": "エラー",
+  "colorSchemeGroupErrorDescription": "エラーアクション、メッセージ、コンテナ。",
+  "colorSchemeUsagePrimary": "主なアクション、焦点、および強調されたアクセント。",
+  "colorSchemeUsageSecondary": "サポートアクションと中程度の強調のアクセント。",
+  "colorSchemeUsageTertiary": "プライマリとセカンダリを補完する対照的なアクセント。",
+  "colorSchemeUsageContentOn": "{token} に表示されるテキストとアイコン。",
+  "@colorSchemeUsageContentOn": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageContainer": "選択範囲とアクセント用の低強調 {family} コンテナ。",
+  "@colorSchemeUsageContainer": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixed": "明るさに依存しない固定の {family} コンテナ。",
+  "@colorSchemeUsageFixed": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedDim": "薄暗くなった明るさに依存しない固定の {family} コンテナ。",
+  "@colorSchemeUsageFixedDim": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedContent": "固定された {family} コンテナ上の重点コンテンツ。",
+  "@colorSchemeUsageFixedContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedVariantContent": "固定された {family} コンテナーの低強調コンテンツ。",
+  "@colorSchemeUsageFixedVariantContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageSurface": "ベースページと広い領域の表面。",
+  "colorSchemeUsageSurfaceDim": "最も暗い表面色調で使用される薄暗いベース表面。",
+  "colorSchemeUsageSurfaceBright": "最も明るい表面色調で使用される明るいベース表面。",
+  "colorSchemeUsageSurfaceElevation": "{level} サーフェス コンテナの標高。",
+  "@colorSchemeUsageSurfaceElevation": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeElevationLowest": "最低の",
+  "colorSchemeElevationLow": "低い",
+  "colorSchemeElevationDefault": "デフォルト",
+  "colorSchemeElevationHigh": "高い",
+  "colorSchemeElevationHighest": "最高の",
+  "colorSchemeUsageOnSurface": "表面に表示される主要なテキストとアイコン。",
+  "colorSchemeUsageOnSurfaceVariant": "表面上の二次的なテキスト、ラベル、控えめなアイコン。",
+  "colorSchemeUsageSurfaceTint": "プライマリから派生したマテリアル標高の色合い。",
+  "colorSchemeUsageOutline": "顕著な境界と焦点を当てたコンポーネントの輪郭。",
+  "colorSchemeUsageOutlineVariant": "微妙な境界線、区切り線、強調度の低い輪郭。",
+  "colorSchemeUsageShadow": "盛り上がったサーフェスのドロップ シャドウ カラー。",
+  "colorSchemeUsageScrim": "背景コンテンツを強調しないようにするために使用されるモーダル オーバーレイ。",
+  "colorSchemeUsageInverseSurface": "明暗を反転した表面。",
+  "colorSchemeUsageInversePrimary": "主要なアクセントが裏面に表示されます。",
+  "colorSchemeUsageError": "エラーアクション、ステータス、および強調されたフィードバック。",
+  "save": "保存",
+  "advancedSettings": "上級者向け",
+  "remindersSettings": "リマインダー",
+  "remindersSettingsTitle": "リマインダー設定",
+  "remindersSettingsDescription": "受信するリマインダーを選択します。",
+  "updateReminderTitle": "リマインダーを更新する",
+  "updateReminderDescription": "ライブラリが開いたら更新を確認してください。",
+  "securityReminderTitle": "高リスクのアラート",
+  "securityReminderDescription": "インストールされているスキルの新たな高リスクまたは重大リスクを通知します。",
+  "availableUpdatesReminder": "{count} にインストールされているスキルが更新されました",
+  "@availableUpdatesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openAvailableUpdates": "利用可能な更新ビューを開いて確認し、更新します。",
+  "securityAdvisoriesReminder": "{count} にインストールされているスキルにはセキュリティレビューが必要です",
+  "@securityAdvisoriesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewInstalledSkills": "使用または更新する前に、リスク情報を確認してください。",
+  "generalSettingsTitle": "スキルを自分のものにする",
+  "generalSettingsDescription": "インターフェイスは、システム言語、アクセシビリティ、およびモーションの設定に従います。",
+  "agentsSettingsTitle": "エージェントのランタイム",
+  "hubSettingsTitle": "ハブの原点",
+  "hubSettingsDescription": "公式ハブ、または同じ SkillsGo プロトコルを実装する HTTP(S) セルフホスト型オリジンを使用します。",
+  "testConnection": "テスト接続",
+  "saveOrigin": "原点の保存",
+  "resetDefault": "デフォルトにリセットする",
+  "connectionReady": "接続準備完了",
+  "connectionFailed": "接続に失敗しました",
+  "hubInvalidOrigin": "認証情報、クエリ、またはフラグメントを含まない有効な HTTP(S) オリジンを入力します。",
+  "hubHttpFailure": "ハブが HTTP {status} を返しました。オリジンとサーバーの構成を確認してください。",
+  "@hubHttpFailure": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "hubInvalidProtocol": "サーバーは SkillsGo Hub 検索プロトコルを返しませんでした。",
+  "hubInvalidJson": "ハブが無効な JSON を返しました。",
+  "hubConnectionFailure": "ハブに到達できませんでした。オリジン、ネットワーク、プロキシ、および TLS 構成を確認します。",
+  "hubConnectionTimeout": "ハブ接続がタイムアウトしました。ネットワークを確認するか、もう一度試してください。",
+  "riskPolicyTitle": "個人リスクポリシー",
+  "riskPolicyDescription": "スキルをインストールまたは更新するときに、安全ルールが適用されます。",
+  "confirmHighRisk": "高リスクの場合は確認が必要",
+  "confirmHighRiskDescription": "リスクの高いアーティファクトについては、インストール前に必ず追加の確認が必要です。",
+  "allowCriticalOverride": "クリティカルリスクの明示的なオーバーライドを許可する",
+  "allowCriticalOverrideDescription": "クリティカルリスクのアーティファクトはデフォルトでブロックされたままになります。これを有効にするのは、個別の手動オーバーライドを公開する場合のみです。",
+  "storageSettingsTitle": "コンテンツアドレス型ストア",
+  "storageHealthy": "読みやすい",
+  "storageNotInitialized": "初期化されていません",
+  "storageUnavailable": "利用不可",
+  "storagePathUnavailable": "CLI 診断が準備できるまで、ストア パスは使用できません。",
+  "storageHealthyDescription": "CLI は、内容を変更せずにストアを読み取ることができます。",
+  "storageNotInitializedDescription": "ストアはまだ存在せず、このチェックによって作成されていません。",
+  "storageUnavailableDescription": "CLI はストアを読み取ることができません。権限と親ディレクトリを確認してください。",
+  "storageInvalidResponse": "バンドルされた CLI がサポートされていない診断応答を返しました。",
+  "aboutSettingsTitle": "製品の互換性",
+  "appVersion": "アプリのバージョン",
+  "cliVersion": "バンドルされた CLI バージョン",
+  "compatible": "互換性のある",
+  "hubOriginSaved": "ハブの原点が保存され、適用されました。",
+  "policySaved": "インストールポリシーが保存されました。",
+  "officialCli": "SkillsGo CLI",
+  "ready": "準備完了",
+  "unknown": "不明",
+  "missing": "行方不明",
+  "incompatible": "互換性がありません",
+  "detecting": "検出中…",
+  "customCliPath": "カスタム実行可能パス",
+  "saveAndDetect": "保存と検出",
+  "detectAgain": "再検出",
+  "agentInstalled": "インストール済み",
+  "agentSupported": "サポートされています",
+  "agentCatalogSummary": "{installed} がインストールされています · {supported} がサポートされています",
+  "@agentCatalogSummary": {
+    "placeholders": {
+      "installed": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "int"
+      }
+    }
+  },
+  "installedAgentsTitle": "インストール済み · {count}",
+  "@installedAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsTitle": "インストールされていません · {count}",
+  "@notInstalledAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsDescription": "SkillsGo でサポートされていますが、この Mac では検出されません。",
+  "agentDiscoveryRoots": "スキル読み込みパス: {paths}",
+  "@agentDiscoveryRoots": {
+    "placeholders": {
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+  "agentInspectionFailed": "エージェント検出データは利用できません。検出を再度実行します。",
+  "noInstalledAgentsTitle": "インストールされているエージェントが検出されませんでした",
+  "noInstalledAgentsMessage": "このスキルを参照し続けることはできますが、インストール対象はまだありません。サポートされているエージェントをインストールしてから、検出を再度実行します。",
+  "clearCustomPath": "カスタムパスをクリアする",
+  "privacyProvenance": "プライバシーと出所",
+  "privacySummary": "検索は保存されず、SkillsGo はコマンド ログを保存しません。",
+  "language": "言語",
+  "personalizationTheme": "テーマ",
+  "folderColorTheme": "テーマカラー",
+  "folderColorThemeDescription": "好きな色を選んでください。 SkillsGo は、それを中心に調整されたインターフェイス パレットを構築します。",
+  "brandNameNeteaseCloudMusic": "NetEase クラウド ミュージック",
+  "brandNameRaspberryPi": "ラズベリーパイ",
+  "brandNameChinaEasternAirlines": "中国東方航空",
+  "brandNameNvidia": "エヌビディア",
+  "brandNameTaobao": "タオバオ",
+  "brandNameBitcoin": "ビットコイン",
+  "appearanceMode": "モード",
+  "appearanceModeDescription": "システムの外観に従うか、常に明るいテーマまたは暗いテーマを使用してください。",
+  "followSystem": "システム",
+  "lightMode": "ライト",
+  "darkMode": "暗い",
+  "wallpaper": "壁紙",
+  "wallpaperDescription": "天体の背景を選択します。選択した内容は、「フォルダー」のすぐ後ろに表示されます。",
+  "wallpaperSun": "太陽",
+  "wallpaperMercury": "水星",
+  "wallpaperVenus": "金星",
+  "wallpaperEarth": "地球",
+  "wallpaperMars": "火星",
+  "wallpaperJupiter": "ジュピター",
+  "wallpaperSaturn": "土星",
+  "wallpaperUranus": "天王星",
+  "wallpaperNeptune": "ネプチューン",
+  "wallpaperPluto": "冥王星",
+  "wallpaperMoon": "月",
+  "folderThemeChoice": "{theme} フォルダーのテーマ",
+  "@folderThemeChoice": {
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyAffiliation": "匿名インストール テレメトリは、SkillsGo 設定によって制御されます。 SkillsGo は OpenAI または Codex とは提携していません。",
+  "commandCompleted": "コマンドが完了しました",
+  "commandFailed": "コマンドが失敗しました",
+  "commandExit": "{code} を終了します · このセッションのログを展開します",
+  "@commandExit": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "command": "コマンド",
+  "cancel": "キャンセル",
+  "updateUnknown": "不明",
+  "updateChecking": "チェック中",
+  "upToDate": "最新の状態",
+  "updateAvailable": "更新",
+  "updateUnavailable": "利用不可",
+  "updateCheckFailed": "チェックに失敗しました",
+  "installSkill": "スキルのインストール",
+  "installLocationTitle": "設置場所を設定する",
+  "userLevel": "ユーザーレベル",
+  "projectLevel": "プロジェクトレベル",
+  "projects": "プロジェクト",
+  "loading": "読み込み中…",
+  "repositoryParsing": "リポジトリを解析中…",
+  "userInstallSummary": "ユーザーレベルで {agents} エージェントが利用可能",
+  "@userInstallSummary": {
+    "placeholders": {
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "projectInstallSummary": "{projects} プロジェクト · {agents} エージェント",
+  "@projectInstallSummary": {
+    "placeholders": {
+      "projects": {
+        "type": "int"
+      },
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "installationResults": "導入実績",
+  "installationInProgress": "インストール中です",
+  "installationSucceeded": "インストール完了",
+  "installationSucceededMessage": "スキルは選択した場所で利用できるようになりました。",
+  "projectUnavailable": "プロジェクトが利用できません",
+  "installedCell": "インストール済み",
+  "unsupportedCell": "利用不可",
+  "confirmInstall": "インストールの確認",
+  "installAllRepositorySkills": "すべてのリポジトリ スキル ({count}) をインストールします",
+  "installAllSkillsTo": "すべてのスキルをインストールする",
+  "@installAllRepositorySkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installRepositorySkills": "すべての {repository} スキル ({count}) をインストールします",
+  "@installRepositorySkills": {
+    "placeholders": {
+      "repository": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installSkillTo": "{skill} をインストールする",
+  "@installSkillTo": {
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
+  },
+  "availableInAllProjects": "すべてのプロジェクト",
+  "availableInSelectedProjects": "選択されたプロジェクト",
+  "usedBy": "エージェント向け",
+  "backToTargets": "ターゲットに戻る",
+  "stayHere": "ここにいてください",
+  "viewInLibrary": "ライブラリで見る",
+  "planCreateCount": "{count} 作成",
+  "@planCreateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planSkipCount": "{count}スキップ",
+  "@planSkipCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planReplaceCount": "{count} を置き換えます",
+  "@planReplaceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planConflictCount": "{count} の競合",
+  "@planConflictCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRiskCount": "{count} のリスクがブロックされました",
+  "@planRiskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "refreshInstallationPlan": "解決策を適用する",
+  "replaceVersionConflict": "このターゲットにインストールされているバージョンを置き換えます",
+  "replaceSkillIdCollision": "このターゲットの別のスキル ID を置き換えます",
+  "replaceLocalModification": "ローカルの変更を破棄し、このターゲットを置き換えます",
+  "sharedTargetConflict": "このパスは他のエージェント ターゲットによって共有されます",
+  "sharedTargetConflictDescription": "ターゲット マトリックスに戻り、置換する前に影響を受けるすべてのエージェントを選択します: {agents}",
+  "@sharedTargetConflictDescription": {
+    "placeholders": {
+      "agents": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceConflictingTarget": "競合するターゲットを置き換える",
+  "confirmHighRiskArtifact": "高リスクアーティファクトの確認",
+  "confirmCriticalRiskArtifact": "クリティカルリスクの上書き確認",
+  "confirmRiskForSelectedTargets": "アーティファクト ファイルを確認し、選択したターゲットについてはこのリスクを受け入れます",
+  "criticalRiskBlocked": "重大なリスクのあるインストールはブロックされます",
+  "criticalRiskOverrideDisabled": "このプランを続行する前に、設定で明示的な重大リスクの上書きを有効にしてください。",
+  "workspaceManifestChanges": "ワークスペースマニフェストの変更",
+  "noWorkspaceManifestChanges": "ワークスペース マニフェスト ファイルは変更されません。",
+  "lockVersionChange": "{from} → {to}",
+  "@lockVersionChange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "notPresent": "存在しません",
+  "planActionCreate": "作成",
+  "planActionReplace": "交換する",
+  "planActionSkip": "スキップ",
+  "planActionConflict": "紛争",
+  "planActionBlockedByRisk": "リスクによりブロックされています",
+  "installationResultSummary": "{succeeded} ターゲットがインストールされましたが、{failed} は失敗しました",
+  "@installationResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "installationProgressTitle": "インストール中です",
+  "installationProgressSummary": "{total} 個中 {finished} 個のターゲットが完了しました",
+  "@installationProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "targetWaiting": "待っています",
+  "targetRunning": "インストール中",
+  "retryFailedTargets": "{count, plural, =1{失敗したターゲット 1 件を再試行} other{失敗したターゲット {count} 件を再試行}}",
+  "@retryFailedTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updatePlanTitle": "更新するターゲットを選択してください",
+  "updatePlanDescription": "正確なインストール ターゲットを選択します。選択されていないエージェントとプロジェクトは変更されません。",
+  "updateTargetsSelected": "{available} 個の更新可能なターゲットのうち {selected} 個が選択されました",
+  "@updateTargetsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "updateVersionChange": "{fromVersion} → {toVersion}",
+  "@updateVersionChange": {
+    "placeholders": {
+      "fromVersion": {
+        "type": "String"
+      },
+      "toVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceReference": "ソース参照: {reference}",
+  "@sourceReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "fixedVersionTarget": "固定 - 移動可能な参照なし",
+  "currentVersionTarget": "最新の状態",
+  "updateCheckTargetFailed": "更新チェックに失敗しました",
+  "reconcileWorkspaceManifestTarget": "ワークスペースマニフェストを修復する",
+  "updateSelectedTargets": "選択したターゲットを更新する",
+  "updateProgressTitle": "ターゲットの更新",
+  "updateResultsTitle": "結果を更新する",
+  "updateProgressSummary": "{total} 個中 {finished} 個のターゲットが完了しました",
+  "@updateProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "retryFailedUpdates": "{count, plural, =1{失敗した更新 1 件を再試行} other{失敗した更新 {count} 件を再試行}}",
+  "@retryFailedUpdates": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpdateableTargets": "選択したターゲットには利用可能なアップデートがありません。",
+  "closeUpdatePlan": "閉じる",
+  "targetSucceeded": "インストール済み",
+  "targetSkipped": "スキップされました",
+  "targetConflict": "紛争",
+  "targetFailed": "失敗しました",
+  "targetFailureRetryable": "この場所は変更できませんでした。もう一度試すことができます。",
+  "targetFailureNeedsAttention": "再試行する前に、この場所に注意する必要があります。",
+  "installationTargetFailureMessage": "この場所では何も変更されませんでした。フォルダーが使用可能であることを確認して、再試行してください。",
+  "workspacePersistenceFailureMessage": "SkillsGo がプロジェクト設定を保存できなかったため、何も変更されませんでした。プロジェクト フォルダーが書き込み可能であることを確認して、再試行してください。",
+  "installationStateChangedMessage": "この場所はレビュー中に変更されました。再試行する前に、最新の状態を確認してください。",
+  "updateTargetFailureMessage": "この場所は更新できませんでした。他の場所は影響を受けなかったので、この場所のみを再試行できます。",
+  "managementTargetFailureMessage": "このアクションはここでは完了できませんでした。他の場所は影響を受けなかったので、この場所のみを再試行できます。",
+  "technicalDetails": "技術的な詳細",
+  "targetPathExists": "この場所には別のアイテムがすでに存在します。",
+  "targetBlockedByRisk": "現在の安全設定により、この場所へのインストールがブロックされました。",
+  "targetInstallFailed": "スキルをこの場所にインストールできませんでした。",
+  "targetWorkspaceUpdateFailed": "スキルはインストールされましたが、プロジェクト設定を更新できませんでした。",
+  "installationPlanFailed": "インストール計画を続行できませんでした",
+  "installationFailed": "インストールを完了できませんでした",
+  "localSource": "地元の情報源",
+  "noDescriptionAvailable": "説明がありません",
+  "moreCoverage": "+{count} か所以上の場所",
+  "@moreCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverAction": "既存のスキルを管理する",
+  "batchTakeoverActionCount": "管理 ({count})",
+  "@batchTakeoverActionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverChecking": "既存のスキルを確認しています…",
+  "batchTakeoverRetry": "管理に追加できるスキルを再確認",
+  "batchTakeoverEligibleCount": "{count}は管理可能です",
+  "@batchTakeoverEligibleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPending": "マネジメントにスキルを加える…",
+  "batchTakeoverTitle": "SkillsGo で既存のスキルを管理しますか?",
+  "batchTakeoverDescription": "SkillsGo は、スキル ファイルの移動、上書き、アップロードを行わずに、ローカル管理レコードを追加します。サポートされていない項目や変更された項目はスキップされます。",
+  "batchTakeoverStoryTitle": "分散したスキルを 1 つの明確なライブラリにまとめる",
+  "batchTakeoverStoryDescription": "SkillsGo は、この場所で管理できる {count, plural, =1{1 個の既存スキル} other{{count} 個の既存スキル}} を見つけました。",
+  "@batchTakeoverStoryDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverBeforeSemantics": "管理する前は、既存のスキルがどこにインストールされているか、最新のものであるか、回復方法、プロジェクトが同じバージョンを使用しているかどうかが不明瞭です。",
+  "batchTakeoverPainLocation": "不明なインストール場所",
+  "batchTakeoverPainFreshness": "不明なアップデートステータス",
+  "batchTakeoverPainRecovery": "壊れたら回復しない",
+  "batchTakeoverPainVersionDrift": "プロジェクト間で異なるバージョン",
+  "batchTakeoverFolderTitle": "既存のスキル",
+  "batchTakeoverFolderSubtitle": "不明なステータス",
+  "batchTakeoverAfterLabel": "後",
+  "batchTakeoverAfterTitle": "クリアライブラリー 1 つ",
+  "batchTakeoverLibraryTitle": "SkillsGo ライブラリ",
+  "batchTakeoverBenefitLocation": "場所をクリアする",
+  "batchTakeoverBenefitFreshness": "更新が表示されます",
+  "batchTakeoverBenefitRecovery": "簡単な回復",
+  "batchTakeoverBenefitVersions": "バージョンクリア",
+  "batchTakeoverManagedSection": "SkillsGo が管理",
+  "batchTakeoverPendingSection": "保留中",
+  "batchTakeoverItemManaged": "{name} は SkillsGo によって管理されています",
+  "@batchTakeoverItemManaged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemSkipped": "{name} を管理に追加できませんでした",
+  "@batchTakeoverItemSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemPending": "{name} は管理を待っています",
+  "@batchTakeoverItemPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverAfterSemantics": "管理後、{count, plural, =1{1 つのスキルは} other{{count} のスキルは}} が 1 つのライブラリに整理され、管理ステータスが明確になります。",
+  "@batchTakeoverAfterSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverMoreSkills": "+{count}以上",
+  "@batchTakeoverMoreSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverTransitionSemantics": "これらの既存のスキルを SkillsGo 管理に追加します。",
+  "batchTakeoverTransitionLabel": "整理する",
+  "batchTakeoverStatusTitle": "管理状況",
+  "batchTakeoverStatusManaged": "管理された",
+  "batchTakeoverStatusProgress": "整理する",
+  "batchTakeoverStatusSkipped": "スキップされました",
+  "batchTakeoverStatusFilesStay": "スキルファイルは元の場所に残ります",
+  "batchTakeoverBoardSemantics": "スキルは完全な行に配置され、ファイルを移動せずに SkillsGo によって記録されます。",
+  "batchTakeoverBoardComplete": "オールクリア",
+  "batchTakeoverBoardPartial": "完了",
+  "batchTakeoverStatusTotal": "合計",
+  "batchTakeoverQueueComplete": "待っているスキルはありません",
+  "batchTakeoverQueueWaiting": "スキルは検証後にここに移動します",
+  "batchTakeoverNextLabel": "次へ",
+  "batchTakeoverFillerCount": "{count, plural, =1{1 SkillsGo オーガナイザー ブロック} other{{count} SkillsGo オーガナイザー ブロック}} で最後の行を完成させます",
+  "@batchTakeoverFillerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPreservation": "ファイル、パス、および現在のワークフローは、正確な場所に残ります。 SkillsGo はローカル管理記録のみを完了します。",
+  "batchTakeoverLaterHint": "スキップした場合は、いつでも「ライブラリ」から「既存のスキルの管理」を使用できます。",
+  "batchTakeoverSkip": "今ではありません",
+  "batchTakeoverConfirm": "管理に追加",
+  "batchTakeoverExecutionRetry": "再試行",
+  "batchTakeoverResultTitle": "マネジメントにスキルを追加",
+  "batchTakeoverSummary": "{takenOver} スキルが管理に追加され、{skipped} はスキップされました。",
+  "@batchTakeoverSummary": {
+    "placeholders": {
+      "takenOver": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverClose": "閉じる",
+  "installMoreTargets": "より多くの場所にインストールする",
+  "exportLocalSkill": "エクスポート",
+  "exportLocalSkillDescription": "このローカル スキルをポータブルな ZIP アーカイブとしてエクスポートします。",
+  "detailInstalls": "インストール",
+  "detailRepository": "リポジトリ",
+  "detailStars": "スター",
+  "detailUpdated": "更新されました",
+  "detailArchiveSize": "郵便番号サイズ",
+  "pathLabel": "プロジェクトパス",
+  "copyProjectPath": "プロジェクトパスをコピーする",
+  "projectPathCopied": "プロジェクトパスがコピーされました",
+  "onboardingWelcomeTitle": "SkillsGo へようこそ",
+  "onboardingWelcomeDescription": "エージェントとプロジェクト全体でスキルを検出、インストール、管理します。",
+  "onboardingDetectedAgents": "検出されたエージェント",
+  "onboardingNoAgents": "インストールされているエージェントが検出されませんでした。引き続き続行できます。",
+  "onboardingNext": "次へ",
+  "onboardingProjectsTitle": "プロジェクトを追加する",
+  "onboardingProjectsDescription": "SkillsGo で管理するプロジェクトを選択します。",
+  "onboardingAddProject": "今すぐ追加",
+  "onboardingAddProjectLater": "以降",
+  "onboardingStartUsing": "SkillsGo の使用を開始する",
+  "onboardingBack": "戻る",
+  "restartOnboardingTitle": "オンボーディング",
+  "restartOnboardingDescription": "プロジェクト、設定、またはスキル データを削除せずに、初回起動ガイドを再度表示します。",
+  "restartOnboardingAction": "オンボーディングを再開する",
+  "restartOnboardingFailed": "SkillsGo はオンボーディングを再開できませんでした。",
+  "libraryRefreshSettingsTitle": "ローカルライブラリを更新する",
+  "libraryRefreshSettingsDescription": "インストールされているスキル、追加されたプロジェクト、エージェント、および管理可能な外部スキルを再スキャンします。これにより、何もインストール、更新、削除されません。",
+  "libraryRefreshSettingsAction": "ライブラリを更新する",
+  "libraryRefreshSettingsPending": "リフレッシュライブラリ…",
+  "libraryRefreshSettingsSuccess": "ローカルライブラリが更新されました。",
+  "libraryRefreshSettingsFailed": "SkillsGo はローカル ライブラリを更新できませんでした。",
+  "onboardingProjectError": "SkillsGo は、このディレクトリからプロジェクトを追加できませんでした。",
+  "onboardingProjectsLoadError": "SkillsGo は追加されたプロジェクトを読み込むことができませんでした。",
+  "onboardingStartupError": "SkillsGo はセットアップをロードできませんでした。",
+  "onboardingStateError": "SkillsGo はセットアップの進行状況を保存できませんでした。もう一度やり直してください。",
+  "onboardingCliErrorTitle": "SkillsGo CLI には注意が必要です",
+  "onboardingCliErrorDescription": "バンドルされた CLI を修復してから、再試行して続行してください。"
+}

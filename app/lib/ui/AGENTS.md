@@ -5,6 +5,7 @@
 
 - `app_shell.dart`: gates clean installs through Mandatory Onboarding, then composes the desktop shell, primary destination navigation, App-scoped appearance state, and CLI recovery banner.
 - `ui_support.dart`: centralizes localized failure copy, status labels, target identities, folder-theme conversion, and small operation-result primitives shared by independent journey libraries.
+- `bidirectional_content.dart`: detects the direction of independently authored content embedded in localized UI.
 - `app_providers.dart`: defines the application-scoped Riverpod dependency boundary for `SkillsGateway`.
 - `agent_catalog_controller.dart`: owns the App-scoped stale-while-revalidate Agent catalog, periodic refresh, lifecycle-safe single-flight loading, and mutation invalidation.
 - `appearance_controller.dart`: owns immutable App appearance and language settings plus their optimistic persistence through Riverpod.

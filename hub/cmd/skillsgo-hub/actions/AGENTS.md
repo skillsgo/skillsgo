@@ -7,7 +7,7 @@
 - `app_proxy.go`, `app_proxy_test.go`: compose source, storage, Catalog, discovery/detail, and immutable artifact protocol routes through Fiber and cover integration behavior.
 - `auth.go`, `basicauth.go`, `basicauth_test.go`: install explicit Git/Mercurial authentication files and configure HTTP Basic Auth behavior; GitHub token pools remain scoped to individual Git processes.
 - `catalog.go`: wires Catalog lifecycle and dependencies into the service.
-- `catalog_api.go`, `catalog_api_test.go`: define and specify the stable public discovery, exact content-match, auditable artifact detail, pagination, ranking, and install-event JSON contract against SQLite while retaining correlated private diagnostics for safe public failures.
+- `catalog_api.go`, `catalog_api_test.go`: define and specify the stable public discovery, Catalog-only batch update checks, exact content-match, auditable artifact detail, pagination, ranking, and install-event JSON contract against SQLite while retaining correlated private diagnostics for safe public failures.
 - `catalog_postgres_integration_test.go`: verifies pagination and empty discovery response parity through the same HTTP router against PostgreSQL.
 - `catalog_protocol.go`, `catalog_protocol_test.go`: index immutable artifact metadata and bind audited Risk plus Content Digest to exact Info responses.
 - `repository_protocol.go`: aggregates exact flat per-Skill Info into self-contained immutable Repository Info with one shared Ref, Commit SHA, and batch version on bare coordinates, and reports publication-cache decisions.

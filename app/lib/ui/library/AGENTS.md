@@ -8,7 +8,7 @@
 - `library_filters.dart`: renders location, Agent, provenance, and search filters.
 - `library_selection.dart`: owns filtered selection, select-all, batch actions, and toolbar motion.
 - `library_actions.dart`: coordinates refresh, project, plan-authorized takeover, export, update, and target actions.
-- `batch_takeover_presentation.dart`: renders the localized floating hardware-console Batch Takeover surface whose deterministic Tetris story places confirmed skills before four distinct LED pain-point pieces, clears every planned row, and resolves to an in-board settlement while preserving retry and reduced-motion behavior.
+- `batch_takeover_presentation.dart`: renders the localized modal hardware-console Batch Takeover surface with input isolation, symmetric dismissal motion, a deterministic Tetris story that places confirmed skills before four distinct LED pain-point pieces, complete planned-row clearing, in-board settlement, retry, and reduced-motion behavior.
 - `installed_skill_groups.dart`: groups logical Skills and their location-aware targets.
 - `installed_skill_rows.dart`: renders installed entries, provenance, diagnostics, and row actions.
 - `local_detail_core.dart`: owns local-detail loading, retry, target operations, and enrichment lifecycle.

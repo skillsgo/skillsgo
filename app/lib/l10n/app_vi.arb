@@ -1,0 +1,1088 @@
+{
+  "@@locale": "vi",
+  "discover": "Khám phá",
+  "discoverSkills": "Thật vui khi biết thêm một chút.",
+  "library": "Thư viện",
+  "settings": "Cài đặt",
+  "openSettings": "Mở cài đặt",
+  "cliNeedsAttention": "Một thành phần SkillsGo bắt buộc cần được chú ý.",
+  "cliMissingBundled": "Thành phần SkillsGo bắt buộc bị thiếu hoặc không thể khởi động. Cài đặt lại SkillsGo để khôi phục nó.",
+  "cliDamagedBundled": "Thành phần SkillsGo bắt buộc bị hỏng. Cài đặt lại SkillsGo để khôi phục nó.",
+  "cliIncompatibleBundled": "Thành phần SkillsGo bắt buộc không khớp với phiên bản ứng dụng này. Cập nhật hoặc cài đặt lại SkillsGo.",
+  "officialIndex": "SkillsGo Hub",
+  "discoverTitle": "Tìm một kỹ năng cho bước đi tiếp theo của bạn.",
+  "skillsLeaderboard": "Thật vui khi biết thêm một chút.",
+  "searchResultsFor": "Kết quả cho “{query}”",
+  "@searchResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchSkills": "Tìm kiếm kỹ năng hoặc dán liên kết Git…",
+  "search": "Tìm kiếm",
+  "ranking": "Xếp hạng",
+  "trending": "Xu hướng",
+  "hot": "Nóng",
+  "discoverNavigation": "Khám phá điều hướng",
+  "allTimeRanking": "Xếp hạng mọi thời đại",
+  "trendingNow": "Xu hướng trong 24 giờ qua",
+  "hotNow": "Nóng ngay bây giờ",
+  "allTimeDescription": "Kỹ năng công cộng được sắp xếp theo số lượt cài đặt được chấp nhận mọi lúc.",
+  "trendingDescription": "Kỹ năng công cộng được sắp xếp theo số lượt cài đặt được chấp nhận trong khoảng thời gian 24 giờ mới nhất.",
+  "hotDescription": "Kỹ năng công cộng được sắp xếp theo tốc độ cài đặt và thay đổi ngắn hạn.",
+  "offlineTitle": "Không thể kết nối với SkillsGo",
+  "offlineMessage": "Hãy kiểm tra kết nối Internet của bạn và thử lại. Nếu bạn sử dụng địa chỉ proxy hoặc dịch vụ tùy chỉnh, hãy xem lại địa chỉ đó trong Cài đặt.",
+  "searchFailedTitle": "Đã xảy ra sự cố khi tìm kiếm",
+  "validationTitle": "Kiểm tra những gì bạn đã nhập",
+  "validationMessage": "SkillsGo không thể sử dụng yêu cầu này. Xem lại những gì bạn đã nhập và thử lại.",
+  "serverTitle": "Dịch vụ tạm thời không có",
+  "serverMessage": "SkillsGo không thể hoàn thành yêu cầu này ngay bây giờ. Hãy thử lại sau giây lát.",
+  "timeoutTitle": "Việc này mất quá nhiều thời gian",
+  "timeoutMessage": "Dịch vụ đã không phản hồi kịp thời. Hãy kiểm tra kết nối của bạn hoặc thử lại.",
+  "invalidResponseTitle": "SkillsGo cần cập nhật",
+  "invalidResponseMessage": "Phiên bản SkillsGo của bạn không thể đọc được phản hồi này. Hãy cập nhật ứng dụng rồi thử lại.",
+  "invalidLocalDataTitle": "Không thể đọc kỹ năng đã cài đặt",
+  "invalidLocalDataMessage": "Một số thông tin cài đặt cục bộ bị hỏng hoặc không tương thích. Hãy cập nhật hoặc cài đặt lại SkillsGo rồi thử lại.",
+  "tryAgain": "Thử lại",
+  "searchEmptyTitle": "Tìm kiếm, đừng cuộn.",
+  "searchEmptyMessage": "Nhập khả năng, nguồn hoặc nhiệm vụ để tìm kiếm các kỹ năng công cộng.",
+  "noSkillsTitle": "Không tìm thấy kỹ năng nào",
+  "noSkillsMessage": "Hãy thử một cụm từ rộng hơn hoặc kiểm tra chính tả.",
+  "focusSearch": "Tìm kiếm tập trung",
+  "skillsFromLink": "Kỹ năng từ liên kết này",
+  "skillCount": "{count, plural, =1{1 kỹ năng} other{{count} kỹ năng}}",
+  "@skillCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceResultsSummary": "{count, plural, =1{1 kỹ năng từ {source}} other{{count} kỹ năng từ {source}}}",
+  "@sourceResultsSummary": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceSearchEmptyTitle": "Liên kết này đã sẵn sàng để kiểm tra",
+  "sourceSearchEmptyMessage": "{source} không có trong kết quả tìm kiếm hiện tại. SkillsGo có thể kiểm tra liên kết trực tiếp trong bước tiếp theo.",
+  "@sourceSearchEmptyMessage": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "inspectSource": "Xem kỹ năng tại liên kết này",
+  "collectionEmptyTitle": "Không có kỹ năng nào trong bộ sưu tập này",
+  "collectionEmptyMessage": "Không có gì ở đây cả. Hãy thử lại sau khi thực hiện thêm hoạt động cài đặt.",
+  "loadMore": "Tải thêm",
+  "install": "cài đặt",
+  "installAll": "Cài đặt tất cả các kỹ năng",
+  "latestCommit": "Cam kết mới nhất",
+  "installToMoreTargets": "Cài đặt ở nhiều vị trí hơn",
+  "localTargets": "{count} mục tiêu cục bộ",
+  "@localTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allTimeMetric": "{count} lượt cài đặt mọi thời đại",
+  "@allTimeMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "trendingMetric": "{count} lượt cài đặt / 24h",
+  "@trendingMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hotMetric": "{value} giờ này · {change}",
+  "@hotMetric": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "trustUnverified": "Chưa được xác minh",
+  "trustCommunityVerified": "Cộng đồng đã xác minh",
+  "trustPublisherVerified": "Đã xác minh nhà xuất bản",
+  "trustOfficial": "chính thức",
+  "trustWarned": "Đã cảnh báo",
+  "trustDelisted": "Đã hủy niêm yết",
+  "riskUnknown": "Rủi ro không xác định",
+  "riskLow": "Rủi ro thấp",
+  "riskMedium": "Rủi ro trung bình",
+  "riskHigh": "Rủi ro cao",
+  "riskCritical": "Rủi ro nghiêm trọng",
+  "openSkill": "Mở {name}",
+  "@openSkill": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installs": "{count} lượt cài đặt",
+  "@installs": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "detailFailedTitle": "Không thể tải Kỹ năng này",
+  "detailLoading": "Đang tải chi tiết Kỹ năng có thể kiểm tra",
+  "artifactUnavailableTitle": "Hiện vật không có sẵn",
+  "artifactUnavailableMessage": "Phiên bản này hiện không có sẵn. Hãy thử lại hoặc chọn phiên bản khác.",
+  "detailInvalidTitle": "Siêu dữ liệu cấu phần không được hỗ trợ",
+  "detailInvalidMessage": "Một số chi tiết về kỹ năng này không đầy đủ hoặc không thể đọc được. Hãy cập nhật SkillsGo rồi thử lại.",
+  "instructionsTab": "Hướng dẫn",
+  "manifestTab": "Bản kê khai",
+  "immutableVersionLabel": "Bất biến {version}",
+  "@immutableVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "commitIdentity": "Cam kết {sha}",
+  "@commitIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "treeIdentity": "Cây {sha}",
+  "@treeIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "contentIdentity": "Nội dung {digest}",
+  "@contentIdentity": {
+    "placeholders": {
+      "digest": {
+        "type": "String"
+      }
+    }
+  },
+  "trustDoesNotProveSafety": "Sự tin cậy của nhà xuất bản xác minh quyền sở hữu hoặc bảo trì; nó không chứng nhận an toàn tạo tác. Rủi ro được đánh giá riêng cho phiên bản bất biến này.",
+  "knownInstallationTargets": "Mục tiêu cài đặt đã biết",
+  "installationRange": "Phạm vi cài đặt",
+  "targetDetails": "Hiển thị chi tiết mục tiêu",
+  "hideTargetDetails": "Ẩn chi tiết mục tiêu",
+  "installedVersionLabel": "Phiên bản {version}",
+  "@installedVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "targetSummary": "{scope} / {agent} · {version}",
+  "@targetSummary": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "agent": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "projectScope": "dự án",
+  "fileContentUnavailable": "Xem trước nhị phân hoặc không có sẵn",
+  "fileContentTruncated": "Bản xem trước bị cắt bớt theo giới hạn an toàn của Hub.",
+  "retry": "Thử lại",
+  "backToSearch": "Quay lại tìm kiếm",
+  "installForCodex": "Cài đặt cho Codex",
+  "cliNotDetected": "kỹ năng (không được phát hiện)",
+  "snapshotFiles": "Tệp ảnh chụp nhanh",
+  "globalCodex": "Toàn cầu · Codex",
+  "yourLibrary": "Những gì bạn biết là tất cả ở đây.",
+  "libraryNavigation": "Điều hướng thư viện",
+  "all": "Tất cả",
+  "allSkills": "Tất cả kỹ năng",
+  "updatesOnly": "Cập nhật",
+  "allAgents": "Tất cả Agent",
+  "allProjects": "Tất cả dự án",
+  "specificProject": "dự án",
+  "userScope": "Toàn cầu",
+  "addProject": "Thêm dự án",
+  "relocateProject": "di dời",
+  "removeFromList": "Xóa khỏi danh sách",
+  "removeProjectTitle": "Xóa {name} khỏi SkillsGo?",
+  "@removeProjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeProjectDescription": "Chỉ có tham chiếu Ứng dụng sẽ bị xóa. SkillsGo sẽ không thay đổi hoặc xóa bất kỳ tệp nào trong thư mục này.",
+  "projectRailUnavailable": "{name} — không có sẵn",
+  "@projectRailUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyProjectTitle": "Chưa có kỹ năng",
+  "browseSkills": "Duyệt kỹ năng",
+  "projectMissingTitle": "Thư mục dự án bị thiếu",
+  "projectMissingMessage": "Thư mục có thể đã di chuyển hoặc ổ đĩa của nó có thể ngoại tuyến. Di dời nó hoặc chỉ xóa tham chiếu Ứng dụng của nó.",
+  "projectPermissionTitle": "Cần có sự cho phép của dự án",
+  "projectPermissionMessage": "SkillsGo không thể kiểm tra gốc đã chọn này. Cấp quyền truy cập bằng cách di chuyển nó thông qua bộ chọn thư mục.",
+  "projectInaccessibleTitle": "Thư mục dự án không thể truy cập được",
+  "projectInaccessibleMessage": "SkillsGo đã lưu giữ tài liệu tham khảo về dự án này. Kiểm tra đường dẫn hoặc ổ đĩa, sau đó di chuyển nó.",
+  "checking": "Đang kiểm tra…",
+  "checkUpdates": "Kiểm tra cập nhật",
+  "refresh": "Làm mới",
+  "libraryUnavailable": "Thư viện không có sẵn",
+  "libraryEmpty": "Chưa cài đặt kỹ năng nào",
+  "libraryEmptyMessage": "Cài đặt Kỹ năng từ Khám phá và nó sẽ xuất hiện ở đây.",
+  "searchLibrary": "Tìm kiếm các kỹ năng đã cài đặt",
+  "libraryNoMatches": "Không có kỹ năng phù hợp",
+  "libraryNoMatchesMessage": "Hãy thử tên, nguồn, Agent, dự án hoặc phiên bản khác.",
+  "agentsSummary": "{count} Agent",
+  "@agentsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsSummary": "dự án {count}",
+  "@projectsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionsSummary": "Phiên bản {count}",
+  "@versionsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubManaged": "Trung tâm được quản lý",
+  "localManaged": "Được quản lý cục bộ",
+  "externalInstallation": "Cài đặt bên ngoài",
+  "readOnly": "Chỉ đọc",
+  "unversioned": "Không phiên bản",
+  "supportingFiles": "Các tập tin hỗ trợ",
+  "versionDivergence": "Phiên bản phân kỳ",
+  "healthHealthy": "khỏe mạnh",
+  "healthMissing": "Thiếu mục tiêu",
+  "healthReplaced": "Đã thay thế mục tiêu",
+  "healthLocalModification": "Sửa đổi cục bộ",
+  "healthUnreadable": "Mục tiêu không thể đọc được",
+  "healthUndeclared": "Không khai báo",
+  "healthWorkspaceUnreadable": "Trạng thái không gian làm việc không thể đọc được",
+  "healthLockMismatch": "Khóa không khớp",
+  "healthUnexpectedPath": "Đường dẫn mục tiêu không mong đợi",
+  "modeSymlink": "Liên kết tượng trưng",
+  "modeCopy": "Sao chép",
+  "modeExternal": "Bên ngoài",
+  "notLinked": "KHÔNG LIÊN KẾT",
+  "update": "cập nhật",
+  "backToLibrary": "Quay lại Thư viện",
+  "remove": "Xóa",
+  "manageTargets": "Quản lý phạm vi",
+  "skillsSelected": "đã chọn {count}",
+  "@skillsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "Xóa lựa chọn",
+  "selectCurrentResults": "Chọn kết quả hiện tại",
+  "clearCurrentResultSelection": "Xóa lựa chọn kết quả hiện tại",
+  "manageTargetsTitle": "Quản lý mục tiêu cài đặt",
+  "manageTargetsDescription": "Chọn một hành động chính xác cho từng mục tiêu. Các mục tiêu không được chọn sẽ không thay đổi.",
+  "targetActionsSelected": "Đã chọn {selected} trong số {total} mục tiêu",
+  "@targetActionsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "repairTarget": "sửa chữa",
+  "confirmRemoveTarget": "Xác nhận xóa",
+  "applyTargetActions": "Áp dụng các hành động đã chọn",
+  "managementProgressTitle": "Áp dụng các hành động mục tiêu",
+  "managementResultsTitle": "Kết quả hành động mục tiêu",
+  "managementResultSummary": "{succeeded} đã thành công, {failed} không thành công",
+  "@managementResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceOwnershipChanges": "Các hành động dự án được chọn sẽ cập nhật SkillsGo.mod và SkillsGo.sum.",
+  "targetContentPreserved": "Nội dung mục tiêu hiện tại sẽ được giữ nguyên.",
+  "localReadFailed": "Không thể đọc kỹ năng này",
+  "localReadFailedMessage": "SkillsGo không thể đọc được kỹ năng đã cài đặt này. Kiểm tra xem thư mục của nó có sẵn và có thể truy cập được không, sau đó thử lại.",
+  "localConfiguration": "CÀI ĐẶT KỸ NĂNG GO",
+  "settingsNavigation": "Điều hướng cài đặt",
+  "general": "Cá nhân hóa",
+  "agents": "Agent",
+  "hub": "trung tâm",
+  "installationPolicy": "Chính sách cài đặt",
+  "storage": "Lưu trữ",
+  "colorScheme": "Phối màu",
+  "about": "Giới thiệu",
+  "colorSchemeInspectorTitle": "Vai trò màu Vật liệu đã tạo",
+  "skillsColorTokensTitle": "Màu sắc ngữ nghĩa của SkillsGo",
+  "skillsColorTokensDescription": "Màu sắc sản phẩm được xây dựng từ Radix Sand và được sắp xếp theo ngữ nghĩa Primer, với Thư mục là hệ thống phân cấp không gian chuyên dụng.",
+  "colorSchemeInspectorDescription": "Xem trước mọi mã thông báo ColorScheme không được dùng nữa được tạo từ hạt giống hiện tại. Bấm vào một màu để sao chép giá trị HEX của nó.",
+  "colorSchemePairPreview": "Cặp ngữ nghĩa",
+  "colorSchemePairPreviewDescription": "Vai trò tiền cảnh và hậu cảnh được hiển thị cùng nhau để thể hiện độ tương phản và phân cấp.",
+  "colorSchemeComponentPreview": "Xem trước thành phần",
+  "colorSchemeComponentPreviewDescription": "Các điều khiển Vật liệu đại diện được hiển thị với sơ đồ xem trước chính xác này.",
+  "colorSchemeSampleTitle": "Tiêu đề thẻ kỹ năng",
+  "colorSchemeSampleBody": "Bản sao phụ sử dụng onSurfaceVariant.",
+  "colorSchemeCopied": "Đã sao chép",
+  "colorSchemeSampleGlyphs": "Aa 123",
+  "colorSchemeGroupPrimary": "Chính",
+  "colorSchemeGroupPrimaryDescription": "Điểm nhấn chính, vùng chứa và vai trò giọng cố định.",
+  "colorSchemeGroupSecondary": "Trung học",
+  "colorSchemeGroupSecondaryDescription": "Hỗ trợ nhấn mạnh và cố định vai trò thứ yếu.",
+  "colorSchemeGroupTertiary": "cấp ba",
+  "colorSchemeGroupTertiaryDescription": "Các điểm nhấn tương phản và các vai trò cấp ba cố định.",
+  "colorSchemeGroupSurface": "bề mặt",
+  "colorSchemeGroupSurfaceDescription": "Phân cấp trang, vùng chứa, độ cao và tiền cảnh.",
+  "colorSchemeGroupUtility": "Phác thảo & Tiện ích",
+  "colorSchemeGroupUtilityDescription": "Ranh giới, bóng, đường viền và bề mặt nghịch đảo.",
+  "colorSchemeGroupError": "Lỗi",
+  "colorSchemeGroupErrorDescription": "Hành động lỗi, thông báo và vùng chứa.",
+  "colorSchemeUsagePrimary": "Hành động chính, trọng tâm và điểm nhấn mạnh.",
+  "colorSchemeUsageSecondary": "Hành động hỗ trợ và nhấn mạnh vừa phải.",
+  "colorSchemeUsageTertiary": "Các điểm nhấn tương phản bổ sung cho chính và phụ.",
+  "colorSchemeUsageContentOn": "Văn bản và biểu tượng hiển thị trên {token}.",
+  "@colorSchemeUsageContentOn": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageContainer": "Vùng chứa {family} được nhấn mạnh thấp hơn cho các vùng chọn và dấu.",
+  "@colorSchemeUsageContainer": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixed": "Vùng chứa {family} cố định không phụ thuộc vào độ sáng.",
+  "@colorSchemeUsageFixed": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedDim": "Vùng chứa {family} cố định không phụ thuộc vào độ sáng bị mờ.",
+  "@colorSchemeUsageFixedDim": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedContent": "Nội dung được nhấn mạnh trên vùng chứa {family} cố định.",
+  "@colorSchemeUsageFixedContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedVariantContent": "Nội dung được nhấn mạnh thấp hơn trên vùng chứa {family} cố định.",
+  "@colorSchemeUsageFixedVariantContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageSurface": "Trang cơ sở và bề mặt vùng lớn.",
+  "colorSchemeUsageSurfaceDim": "Bề mặt đế mờ được sử dụng ở tông màu bề mặt tối nhất.",
+  "colorSchemeUsageSurfaceBright": "Bề mặt đế sáng được sử dụng ở tông màu bề mặt nhẹ nhất.",
+  "colorSchemeUsageSurfaceElevation": "Độ cao của vùng chứa bề mặt {level}.",
+  "@colorSchemeUsageSurfaceElevation": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeElevationLowest": "thấp nhất",
+  "colorSchemeElevationLow": "thấp",
+  "colorSchemeElevationDefault": "mặc định",
+  "colorSchemeElevationHigh": "cao",
+  "colorSchemeElevationHighest": "cao nhất",
+  "colorSchemeUsageOnSurface": "Văn bản và biểu tượng chính hiển thị trên bề mặt.",
+  "colorSchemeUsageOnSurfaceVariant": "Văn bản phụ, nhãn và biểu tượng chìm trên bề mặt.",
+  "colorSchemeUsageSurfaceTint": "Chất liệu độ cao màu có nguồn gốc từ sơ cấp.",
+  "colorSchemeUsageOutline": "Ranh giới nổi bật và phác thảo thành phần tập trung.",
+  "colorSchemeUsageOutlineVariant": "Ranh giới tinh tế, dấu phân cách và đường viền ít nhấn mạnh.",
+  "colorSchemeUsageShadow": "Màu bóng đổ cho bề mặt trên cao.",
+  "colorSchemeUsageScrim": "Lớp phủ phương thức được sử dụng để làm nổi bật nội dung nền.",
+  "colorSchemeUsageInverseSurface": "Bề mặt với điểm nhấn sáng và tối đảo ngược.",
+  "colorSchemeUsageInversePrimary": "Giọng chính hiển thị trên một bề mặt nghịch đảo.",
+  "colorSchemeUsageError": "Hành động lỗi, trạng thái và phản hồi có mức độ nhấn mạnh cao.",
+  "save": "Lưu",
+  "advancedSettings": "Nâng cao",
+  "remindersSettings": "Lời nhắc",
+  "remindersSettingsTitle": "Cài đặt lời nhắc",
+  "remindersSettingsDescription": "Chọn lời nhắc sẽ nhận.",
+  "updateReminderTitle": "Cập nhật lời nhắc",
+  "updateReminderDescription": "Kiểm tra các bản cập nhật khi Thư viện mở ra.",
+  "securityReminderTitle": "Cảnh báo rủi ro cao",
+  "securityReminderDescription": "Thông báo cho bạn về rủi ro Cao hoặc Nghiêm trọng mới trong các kỹ năng đã cài đặt.",
+  "availableUpdatesReminder": "Các kỹ năng đã cài đặt của {count} đã có bản cập nhật",
+  "@availableUpdatesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openAvailableUpdates": "Mở chế độ xem các bản cập nhật có sẵn để xem lại và cập nhật chúng.",
+  "securityAdvisoriesReminder": "Các kỹ năng đã cài đặt {count} cần được xem xét bảo mật",
+  "@securityAdvisoriesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewInstalledSkills": "Xem lại thông tin rủi ro của họ trước khi sử dụng hoặc cập nhật chúng.",
+  "generalSettingsTitle": "Biến SkillsGo thành của bạn",
+  "generalSettingsDescription": "Giao diện tuân theo ngôn ngữ hệ thống, khả năng truy cập và tùy chọn chuyển động của bạn.",
+  "agentsSettingsTitle": "Môi trường chạy Agent",
+  "hubSettingsTitle": "Nguồn gốc trung tâm",
+  "hubSettingsDescription": "Sử dụng Hub chính thức hoặc nguồn gốc tự lưu trữ HTTP(S) triển khai cùng giao thức SkillsGo.",
+  "testConnection": "Kiểm tra kết nối",
+  "saveOrigin": "Lưu nguồn gốc",
+  "resetDefault": "Đặt lại về mặc định",
+  "connectionReady": "Kết nối đã sẵn sàng",
+  "connectionFailed": "Kết nối không thành công",
+  "hubInvalidOrigin": "Nhập Nguồn gốc HTTP(S) hợp lệ mà không có thông tin xác thực, truy vấn hoặc đoạn.",
+  "hubHttpFailure": "Hub trả về HTTP {status}. Kiểm tra cấu hình Origin và server.",
+  "@hubHttpFailure": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "hubInvalidProtocol": "Máy chủ không trả về giao thức tìm kiếm SkillsGo Hub.",
+  "hubInvalidJson": "Hub trả về JSON không hợp lệ.",
+  "hubConnectionFailure": "Không thể đến được Hub. Kiểm tra cấu hình Origin, mạng, proxy và TLS.",
+  "hubConnectionTimeout": "Kết nối Hub đã hết thời gian chờ. Hãy kiểm tra mạng hoặc thử lại.",
+  "riskPolicyTitle": "Chính sách rủi ro cá nhân",
+  "riskPolicyDescription": "Các quy tắc an toàn được áp dụng khi bạn cài đặt hoặc cập nhật một kỹ năng.",
+  "confirmHighRisk": "Yêu cầu xác nhận vì rủi ro cao",
+  "confirmHighRiskDescription": "Các hiện vật có nguy cơ cao luôn yêu cầu xác nhận bổ sung trước khi cài đặt.",
+  "allowCriticalOverride": "Cho phép ghi đè rủi ro nghiêm trọng rõ ràng",
+  "allowCriticalOverrideDescription": "Các tạo phẩm có nguy cơ nghiêm trọng vẫn bị chặn theo mặc định. Chỉ bật tính năng này để hiển thị ghi đè thủ công riêng biệt.",
+  "storageSettingsTitle": "Kho lưu trữ định địa chỉ theo nội dung",
+  "storageHealthy": "Có thể đọc được",
+  "storageNotInitialized": "Chưa khởi tạo",
+  "storageUnavailable": "Không có sẵn",
+  "storagePathUnavailable": "Đường dẫn lưu trữ không khả dụng cho đến khi chẩn đoán CLI sẵn sàng.",
+  "storageHealthyDescription": "CLI có thể đọc Store mà không thay đổi nội dung của nó.",
+  "storageNotInitializedDescription": "Cửa hàng chưa tồn tại và không được tạo bằng lần kiểm tra này.",
+  "storageUnavailableDescription": "CLI không thể đọc kho lưu trữ. Hãy kiểm tra quyền truy cập và thư mục cha.",
+  "storageInvalidResponse": "CLI đi kèm trả về phản hồi chẩn đoán không được hỗ trợ.",
+  "aboutSettingsTitle": "Khả năng tương thích của sản phẩm",
+  "appVersion": "Phiên bản ứng dụng",
+  "cliVersion": "Phiên bản CLI đi kèm",
+  "compatible": "Tương thích",
+  "hubOriginSaved": "Hub Origin đã được lưu và áp dụng.",
+  "policySaved": "Đã lưu chính sách cài đặt.",
+  "officialCli": "SkillsGo CLI",
+  "ready": "SẴN SÀNG",
+  "unknown": "KHÔNG XÁC ĐỊNH",
+  "missing": "THIẾU",
+  "incompatible": "KHÔNG TƯƠNG THÍCH",
+  "detecting": "Đang phát hiện…",
+  "customCliPath": "Đường dẫn thực thi tùy chỉnh",
+  "saveAndDetect": "Lưu và phát hiện",
+  "detectAgain": "Phát hiện lại",
+  "agentInstalled": "Đã cài đặt",
+  "agentSupported": "Được hỗ trợ",
+  "agentCatalogSummary": "Đã cài đặt {installed} · Đã hỗ trợ {supported}",
+  "@agentCatalogSummary": {
+    "placeholders": {
+      "installed": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "int"
+      }
+    }
+  },
+  "installedAgentsTitle": "Đã cài đặt · {count}",
+  "@installedAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsTitle": "Chưa được cài đặt · {count}",
+  "@notInstalledAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsDescription": "Được hỗ trợ bởi SkillsGo nhưng không được phát hiện trên máy Mac này.",
+  "agentDiscoveryRoots": "Đường dẫn tải kỹ năng: {paths}",
+  "@agentDiscoveryRoots": {
+    "placeholders": {
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+  "agentInspectionFailed": "Dữ liệu phát hiện tác nhân không có sẵn. Chạy lại phát hiện.",
+  "noInstalledAgentsTitle": "Không phát hiện thấy Tác nhân đã cài đặt nào",
+  "noInstalledAgentsMessage": "Bạn có thể tiếp tục duyệt Kỹ năng này nhưng chưa có mục tiêu cài đặt. Cài đặt Tác nhân được hỗ trợ, sau đó chạy lại tính năng phát hiện.",
+  "clearCustomPath": "Xóa đường dẫn tùy chỉnh",
+  "privacyProvenance": "Quyền riêng tư và xuất xứ",
+  "privacySummary": "Các tìm kiếm của bạn không được lưu và SkillsGo không lưu giữ nhật ký lệnh.",
+  "language": "Ngôn ngữ",
+  "personalizationTheme": "chủ đề",
+  "folderColorTheme": "Màu chủ đề",
+  "folderColorThemeDescription": "Chọn một màu bạn thích. SkillsGo sẽ xây dựng một bảng giao diện phối hợp xung quanh nó.",
+  "brandNameNeteaseCloudMusic": "Nhạc đám mây NetEase",
+  "brandNameRaspberryPi": "Raspberry Pi",
+  "brandNameChinaEasternAirlines": "Hãng hàng không Phương Đông Trung Quốc",
+  "brandNameNvidia": "NVIDIA",
+  "brandNameTaobao": "taobao",
+  "brandNameBitcoin": "bitcoin",
+  "appearanceMode": "Chế độ",
+  "appearanceModeDescription": "Theo dõi giao diện hệ thống của bạn hoặc luôn sử dụng chủ đề sáng hoặc tối.",
+  "followSystem": "Hệ thống",
+  "lightMode": "Ánh sáng",
+  "darkMode": "Tối",
+  "wallpaper": "Hình nền",
+  "wallpaperDescription": "Chọn một nền thiên thể. Lựa chọn của bạn xuất hiện ngay sau Thư mục.",
+  "wallpaperSun": "mặt trời",
+  "wallpaperMercury": "Thủy ngân",
+  "wallpaperVenus": "Sao Kim",
+  "wallpaperEarth": "trái đất",
+  "wallpaperMars": "Sao Hỏa",
+  "wallpaperJupiter": "Sao Mộc",
+  "wallpaperSaturn": "Sao Thổ",
+  "wallpaperUranus": "Sao Thiên Vương",
+  "wallpaperNeptune": "Sao Hải Vương",
+  "wallpaperPluto": "Sao Diêm Vương",
+  "wallpaperMoon": "mặt trăng",
+  "folderThemeChoice": "Chủ đề thư mục {theme}",
+  "@folderThemeChoice": {
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyAffiliation": "Đo từ xa cài đặt ẩn danh được kiểm soát bởi cài đặt SkillsGo. SkillsGo không liên kết với OpenAI hoặc Codex.",
+  "commandCompleted": "Lệnh hoàn thành",
+  "commandFailed": "Lệnh không thành công",
+  "commandExit": "Thoát {code} · mở rộng cho nhật ký của phiên này",
+  "@commandExit": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "command": "Lệnh",
+  "cancel": "Hủy bỏ",
+  "updateUnknown": "KHÔNG XÁC ĐỊNH",
+  "updateChecking": "KIỂM TRA",
+  "upToDate": "CẬP NHẬT",
+  "updateAvailable": "CẬP NHẬT",
+  "updateUnavailable": "KHÔNG CÓ SẴN",
+  "updateCheckFailed": "KIỂM TRA THẤT BẠI",
+  "installSkill": "Cài đặt kỹ năng",
+  "installLocationTitle": "Đặt vị trí cài đặt",
+  "userLevel": "Cấp độ người dùng",
+  "projectLevel": "Cấp độ dự án",
+  "projects": "Dự án",
+  "loading": "Đang tải…",
+  "repositoryParsing": "Đang phân tích kho lưu trữ…",
+  "userInstallSummary": "Có sẵn cho Agent {agents} ở cấp độ người dùng",
+  "@userInstallSummary": {
+    "placeholders": {
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "projectInstallSummary": "Dự án {projects} · Agent {agents}",
+  "@projectInstallSummary": {
+    "placeholders": {
+      "projects": {
+        "type": "int"
+      },
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "installationResults": "Kết quả cài đặt",
+  "installationInProgress": "Đang tiến hành cài đặt",
+  "installationSucceeded": "Cài đặt hoàn tất",
+  "installationSucceededMessage": "Kỹ năng hiện có sẵn ở các địa điểm đã chọn.",
+  "projectUnavailable": "Dự án không có sẵn",
+  "installedCell": "Đã cài đặt",
+  "unsupportedCell": "Không có sẵn",
+  "confirmInstall": "Xác nhận cài đặt",
+  "installAllRepositorySkills": "Cài đặt tất cả các kỹ năng kho lưu trữ ({count})",
+  "installAllSkillsTo": "Cài đặt tất cả các kỹ năng để",
+  "@installAllRepositorySkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installRepositorySkills": "Cài đặt tất cả kỹ năng {repository} ({count})",
+  "@installRepositorySkills": {
+    "placeholders": {
+      "repository": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installSkillTo": "Cài đặt {skill} vào",
+  "@installSkillTo": {
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
+  },
+  "availableInAllProjects": "Tất cả dự án",
+  "availableInSelectedProjects": "Dự án đã chọn",
+  "usedBy": "Dành cho Agent",
+  "backToTargets": "Quay lại mục tiêu",
+  "stayHere": "Ở lại đây",
+  "viewInLibrary": "Xem trong Thư viện",
+  "planCreateCount": "tạo {count}",
+  "@planCreateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planSkipCount": "bỏ qua {count}",
+  "@planSkipCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planReplaceCount": "{count} thay thế",
+  "@planReplaceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planConflictCount": "xung đột {count}",
+  "@planConflictCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRiskCount": "Đã chặn rủi ro {count}",
+  "@planRiskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "refreshInstallationPlan": "Áp dụng Nghị quyết",
+  "replaceVersionConflict": "Thay thế phiên bản đã cài đặt tại mục tiêu này",
+  "replaceSkillIdCollision": "Thay thế ID kỹ năng khác tại mục tiêu này",
+  "replaceLocalModification": "Loại bỏ Sửa đổi cục bộ và thay thế mục tiêu này",
+  "sharedTargetConflict": "Đường dẫn này được chia sẻ bởi các mục tiêu Agent khác",
+  "sharedTargetConflictDescription": "Quay lại ma trận đích và chọn mọi Tác nhân bị ảnh hưởng trước khi thay thế: {agents}",
+  "@sharedTargetConflictDescription": {
+    "placeholders": {
+      "agents": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceConflictingTarget": "Thay thế mục tiêu xung đột",
+  "confirmHighRiskArtifact": "Xác nhận hiện vật có nguy cơ cao",
+  "confirmCriticalRiskArtifact": "Xác nhận ghi đè rủi ro nghiêm trọng",
+  "confirmRiskForSelectedTargets": "Tôi đã xem lại các tệp giả tạo và chấp nhận rủi ro này cho các mục tiêu đã chọn",
+  "criticalRiskBlocked": "Cài đặt có nguy cơ nghiêm trọng bị chặn",
+  "criticalRiskOverrideDisabled": "Bật ghi đè rủi ro nghiêm trọng rõ ràng trong Cài đặt trước khi kế hoạch này có thể tiếp tục.",
+  "workspaceManifestChanges": "Các thay đổi của Bản kê khai vùng làm việc",
+  "noWorkspaceManifestChanges": "Không có tệp kê khai không gian làm việc nào sẽ thay đổi.",
+  "lockVersionChange": "{from} → {to}",
+  "@lockVersionChange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "notPresent": "không có mặt",
+  "planActionCreate": "Tạo",
+  "planActionReplace": "Thay thế",
+  "planActionSkip": "Bỏ qua",
+  "planActionConflict": "Xung đột",
+  "planActionBlockedByRisk": "Bị chặn bởi rủi ro",
+  "installationResultSummary": "Đã cài đặt mục tiêu {succeeded}, {failed} không thành công",
+  "@installationResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "installationProgressTitle": "Đang tiến hành cài đặt",
+  "installationProgressSummary": "Đã hoàn thành {finished} trong số {total} mục tiêu",
+  "@installationProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "targetWaiting": "Đang chờ",
+  "targetRunning": "Đang cài đặt",
+  "retryFailedTargets": "{count, plural, =1{Thử lại 1 mục tiêu bị lỗi} other{Thử lại {count} mục tiêu bị lỗi}}",
+  "@retryFailedTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updatePlanTitle": "Chọn mục tiêu để cập nhật",
+  "updatePlanDescription": "Chọn mục tiêu cài đặt chính xác. Agent và dự án không được chọn vẫn không thay đổi.",
+  "updateTargetsSelected": "Đã chọn {selected} trong số {available} mục tiêu có thể cập nhật",
+  "@updateTargetsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "updateVersionChange": "{fromVersion} → {toVersion}",
+  "@updateVersionChange": {
+    "placeholders": {
+      "fromVersion": {
+        "type": "String"
+      },
+      "toVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceReference": "Nguồn tham khảo: {reference}",
+  "@sourceReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "fixedVersionTarget": "Đã ghim - không có tài liệu tham khảo có thể di chuyển",
+  "currentVersionTarget": "Cập nhật",
+  "updateCheckTargetFailed": "Kiểm tra cập nhật không thành công",
+  "reconcileWorkspaceManifestTarget": "Sửa chữa bảng kê khai không gian làm việc",
+  "updateSelectedTargets": "Cập nhật các mục tiêu đã chọn",
+  "updateProgressTitle": "Cập nhật mục tiêu",
+  "updateResultsTitle": "Cập nhật kết quả",
+  "updateProgressSummary": "Đã hoàn thành {finished} trong số {total} mục tiêu",
+  "@updateProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "retryFailedUpdates": "{count, plural, =1{Thử lại 1 bản cập nhật bị lỗi} other{Thử lại {count} bản cập nhật bị lỗi}}",
+  "@retryFailedUpdates": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpdateableTargets": "Không có mục tiêu được chọn nào có bản cập nhật sẵn có.",
+  "closeUpdatePlan": "Đóng",
+  "targetSucceeded": "Đã cài đặt",
+  "targetSkipped": "Đã bỏ qua",
+  "targetConflict": "Xung đột",
+  "targetFailed": "thất bại",
+  "targetFailureRetryable": "Vị trí này không thể thay đổi. Bạn có thể thử lại.",
+  "targetFailureNeedsAttention": "Vị trí này cần bạn chú ý trước khi thử lại.",
+  "installationTargetFailureMessage": "Không có gì thay đổi ở vị trí này. Kiểm tra xem thư mục có sẵn không và thử lại.",
+  "workspacePersistenceFailureMessage": "Không có gì thay đổi vì SkillsGo không thể lưu cài đặt dự án. Kiểm tra xem thư mục dự án có thể ghi được không và thử lại.",
+  "installationStateChangedMessage": "Vị trí này đã thay đổi trong khi bạn đang xem xét nó. Xem lại trạng thái mới nhất trước khi thử lại.",
+  "updateTargetFailureMessage": "Không thể cập nhật vị trí này. Các vị trí khác không bị ảnh hưởng nên bạn chỉ có thể thử lại vị trí này.",
+  "managementTargetFailureMessage": "Hành động này không thể hoàn tất ở đây. Các vị trí khác không bị ảnh hưởng nên bạn chỉ có thể thử lại vị trí này.",
+  "technicalDetails": "Chi tiết kỹ thuật",
+  "targetPathExists": "Một mặt hàng khác đã tồn tại ở vị trí này.",
+  "targetBlockedByRisk": "Cài đặt an toàn hiện tại của bạn đã chặn cài đặt tại vị trí này.",
+  "targetInstallFailed": "Không thể cài đặt kỹ năng này ở vị trí này.",
+  "targetWorkspaceUpdateFailed": "Kỹ năng đã được cài đặt nhưng không thể cập nhật cài đặt dự án.",
+  "installationPlanFailed": "Kế hoạch cài đặt không thể tiếp tục",
+  "installationFailed": "Không thể hoàn tất cài đặt",
+  "localSource": "Nguồn địa phương",
+  "noDescriptionAvailable": "Không có mô tả nào",
+  "moreCoverage": "+{count} địa điểm khác",
+  "@moreCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverAction": "Quản lý các kỹ năng hiện có",
+  "batchTakeoverActionCount": "Quản lý ({count})",
+  "@batchTakeoverActionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverChecking": "Kiểm tra các kỹ năng hiện có…",
+  "batchTakeoverRetry": "Kiểm tra lại kỹ năng quản lý",
+  "batchTakeoverEligibleCount": "{count} có thể được quản lý",
+  "@batchTakeoverEligibleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPending": "Bổ sung kỹ năng quản lý…",
+  "batchTakeoverTitle": "Quản lý các kỹ năng hiện có với SkillsGo?",
+  "batchTakeoverDescription": "SkillsGo sẽ thêm hồ sơ quản lý cục bộ mà không cần di chuyển, ghi đè hoặc tải lên tệp kỹ năng. Các mục không được hỗ trợ hoặc thay đổi sẽ bị bỏ qua.",
+  "batchTakeoverStoryTitle": "Biến các kỹ năng rải rác thành một Thư viện rõ ràng",
+  "batchTakeoverStoryDescription": "SkillsGo đã tìm thấy {count, plural, =1{1 kỹ năng hiện có} other{{count} kỹ năng hiện có}} mà nó có thể quản lý ở vị trí này.",
+  "@batchTakeoverStoryDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverBeforeSemantics": "Trước khi quản lý, không rõ các kỹ năng hiện có được cài đặt ở đâu, liệu chúng có hiện hành hay không, cách khôi phục chúng hoặc liệu các dự án có sử dụng cùng một phiên bản hay không.",
+  "batchTakeoverPainLocation": "Vị trí cài đặt không xác định",
+  "batchTakeoverPainFreshness": "Trạng thái cập nhật không xác định",
+  "batchTakeoverPainRecovery": "Không phục hồi được khi bị hỏng",
+  "batchTakeoverPainVersionDrift": "Các phiên bản khác nhau giữa các dự án",
+  "batchTakeoverFolderTitle": "Kỹ năng hiện có",
+  "batchTakeoverFolderSubtitle": "Trạng thái không rõ ràng",
+  "batchTakeoverAfterLabel": "SAU",
+  "batchTakeoverAfterTitle": "Một thư viện rõ ràng",
+  "batchTakeoverLibraryTitle": "Thư viện SkillsGo",
+  "batchTakeoverBenefitLocation": "Xóa vị trí",
+  "batchTakeoverBenefitFreshness": "Cập nhật hiển thị",
+  "batchTakeoverBenefitRecovery": "Phục hồi dễ dàng",
+  "batchTakeoverBenefitVersions": "Phiên bản rõ ràng",
+  "batchTakeoverManagedSection": "Được quản lý bởi SkillsGo",
+  "batchTakeoverPendingSection": "Đang chờ xử lý",
+  "batchTakeoverItemManaged": "{name} do SkillsGo quản lý",
+  "@batchTakeoverItemManaged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemSkipped": "Không thể thêm {name} vào quản lý",
+  "@batchTakeoverItemSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemPending": "{name} đang chờ được quản lý",
+  "@batchTakeoverItemPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverAfterSemantics": "Sau khi quản lý, {count, plural, =1{1 kỹ năng là} other{{count} kỹ năng}} được sắp xếp trong một Thư viện với trạng thái được quản lý rõ ràng.",
+  "@batchTakeoverAfterSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverMoreSkills": "+{count} khác",
+  "@batchTakeoverMoreSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverTransitionSemantics": "Thêm những kỹ năng hiện có này vào quản lý SkillsGo.",
+  "batchTakeoverTransitionLabel": "TỔ CHỨC",
+  "batchTakeoverStatusTitle": "Tình trạng quản lý",
+  "batchTakeoverStatusManaged": "Được quản lý",
+  "batchTakeoverStatusProgress": "Tổ chức",
+  "batchTakeoverStatusSkipped": "Đã bỏ qua",
+  "batchTakeoverStatusFilesStay": "Các tệp kỹ năng vẫn ở vị trí ban đầu",
+  "batchTakeoverBoardSemantics": "Các kỹ năng được sắp xếp thành các hàng hoàn chỉnh và được SkillsGo ghi lại mà không cần di chuyển tập tin của chúng.",
+  "batchTakeoverBoardComplete": "TẤT CẢ RÕ RÀNG",
+  "batchTakeoverBoardPartial": "HOÀN THÀNH",
+  "batchTakeoverStatusTotal": "Tổng cộng",
+  "batchTakeoverQueueComplete": "Không có kỹ năng đang chờ đợi",
+  "batchTakeoverQueueWaiting": "Kỹ năng sẽ chuyển đến đây sau khi xác minh",
+  "batchTakeoverNextLabel": "TIẾP THEO",
+  "batchTakeoverFillerCount": "{count, plural, =1{1 khối tổ chức SkillsGo} other{{count} khối tổ chức SkillsGo}} hoàn thành các hàng cuối cùng",
+  "@batchTakeoverFillerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPreservation": "Các tệp, đường dẫn và quy trình làm việc hiện tại của bạn vẫn giữ nguyên vị trí của chúng. SkillsGo chỉ hoàn thành bản ghi quản lý cục bộ của mình.",
+  "batchTakeoverLaterHint": "Nếu bỏ qua, bạn có thể sử dụng Quản lý các kỹ năng hiện có từ Thư viện bất cứ lúc nào.",
+  "batchTakeoverSkip": "Không phải bây giờ",
+  "batchTakeoverConfirm": "Thêm vào quản lý",
+  "batchTakeoverExecutionRetry": "Thử lại",
+  "batchTakeoverResultTitle": "Kỹ năng bổ sung vào quản lý",
+  "batchTakeoverSummary": "Đã thêm kỹ năng {takenOver} vào quản lý, {skipped} bị bỏ qua.",
+  "@batchTakeoverSummary": {
+    "placeholders": {
+      "takenOver": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverClose": "Đóng",
+  "installMoreTargets": "Cài đặt ở nhiều vị trí hơn",
+  "exportLocalSkill": "Xuất khẩu",
+  "exportLocalSkillDescription": "Xuất Kỹ năng cục bộ này dưới dạng kho lưu trữ ZIP di động.",
+  "detailInstalls": "Số lượt cài đặt",
+  "detailRepository": "Kho lưu trữ",
+  "detailStars": "Ngôi sao",
+  "detailUpdated": "Đã cập nhật",
+  "detailArchiveSize": "Kích thước ZIP",
+  "pathLabel": "Đường dẫn dự án",
+  "copyProjectPath": "Sao chép đường dẫn dự án",
+  "projectPathCopied": "Đã sao chép đường dẫn dự án",
+  "onboardingWelcomeTitle": "Chào mừng đến với SkillsGo",
+  "onboardingWelcomeDescription": "Khám phá, cài đặt và quản lý Kỹ năng trên các Agent và dự án của bạn.",
+  "onboardingDetectedAgents": "Agent đã phát hiện",
+  "onboardingNoAgents": "Không phát hiện thấy Tác nhân đã cài đặt nào. Bạn vẫn có thể tiếp tục.",
+  "onboardingNext": "Tiếp theo",
+  "onboardingProjectsTitle": "Thêm dự án của bạn",
+  "onboardingProjectsDescription": "Chọn các dự án bạn muốn SkillsGo quản lý.",
+  "onboardingAddProject": "Thêm ngay bây giờ",
+  "onboardingAddProjectLater": "hoặc muộn hơn",
+  "onboardingStartUsing": "Bắt đầu sử dụng SkillsGo",
+  "onboardingBack": "Quay lại",
+  "restartOnboardingTitle": "Giới thiệu",
+  "restartOnboardingDescription": "Xem lại hướng dẫn khởi chạy lần đầu mà không xóa dữ liệu dự án, cài đặt hoặc Kỹ năng.",
+  "restartOnboardingAction": "Khởi động lại quá trình giới thiệu",
+  "restartOnboardingFailed": "SkillsGo không thể khởi động lại quá trình giới thiệu.",
+  "libraryRefreshSettingsTitle": "Làm mới Thư viện cục bộ",
+  "libraryRefreshSettingsDescription": "Quét lại các Kỹ năng đã cài đặt, Dự án đã thêm, Agent và các Kỹ năng bên ngoài có thể được quản lý. Điều này không cài đặt, cập nhật hoặc xóa bất cứ điều gì.",
+  "libraryRefreshSettingsAction": "Làm mới thư viện",
+  "libraryRefreshSettingsPending": "Đang làm mới thư viện…",
+  "libraryRefreshSettingsSuccess": "Thư viện cục bộ được làm mới.",
+  "libraryRefreshSettingsFailed": "SkillsGo không thể làm mới Thư viện cục bộ.",
+  "onboardingProjectError": "SkillsGo không thể thêm dự án từ thư mục này.",
+  "onboardingProjectsLoadError": "SkillsGo không thể tải các dự án đã thêm của bạn.",
+  "onboardingStartupError": "SkillsGo không thể tải thiết lập.",
+  "onboardingStateError": "SkillsGo không thể lưu tiến trình thiết lập của bạn. Hãy thử lại.",
+  "onboardingCliErrorTitle": "SkillsGo CLI cần được quan tâm",
+  "onboardingCliErrorDescription": "Hãy sửa CLI đi kèm rồi thử lại để tiếp tục."
+}

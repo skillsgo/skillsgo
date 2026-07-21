@@ -1,0 +1,1088 @@
+{
+  "@@locale": "th",
+  "discover": "ค้นพบ",
+  "discoverSkills": "เป็นเรื่องดีที่ได้ทราบข้อมูลเพิ่มเติมอีกเล็กน้อย",
+  "library": "ห้องสมุด",
+  "settings": "การตั้งค่า",
+  "openSettings": "เปิดการตั้งค่า",
+  "cliNeedsAttention": "คอมโพเนนต์ SkillsGo ที่จำเป็นจำเป็นต้องได้รับการดูแล",
+  "cliMissingBundled": "ส่วนประกอบ SkillsGo ที่จำเป็นหายไปหรือไม่สามารถเริ่มต้นได้ ติดตั้ง SkillsGo อีกครั้งเพื่อกู้คืน",
+  "cliDamagedBundled": "ส่วนประกอบ SkillsGo ที่จำเป็นเสียหาย ติดตั้ง SkillsGo อีกครั้งเพื่อกู้คืน",
+  "cliIncompatibleBundled": "คอมโพเนนต์ SkillsGo ที่จำเป็นไม่ตรงกับเวอร์ชันแอปนี้ อัปเดตหรือติดตั้ง SkillsGo ใหม่",
+  "officialIndex": "SkillsGo Hub",
+  "discoverTitle": "ค้นหาทักษะสำหรับการเคลื่อนไหวครั้งต่อไปของคุณ",
+  "skillsLeaderboard": "เป็นเรื่องดีที่ได้ทราบข้อมูลเพิ่มเติมอีกเล็กน้อย",
+  "searchResultsFor": "ผลลัพธ์สำหรับ “{query}”",
+  "@searchResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchSkills": "ค้นหาทักษะหรือวางลิงก์ Git...",
+  "search": "ค้นหา",
+  "ranking": "การจัดอันดับ",
+  "trending": "กำลังมาแรง",
+  "hot": "ร้อน",
+  "discoverNavigation": "ค้นพบการนำทาง",
+  "allTimeRanking": "อันดับตลอดกาล",
+  "trendingNow": "กำลังมาแรงใน 24 ชั่วโมงที่ผ่านมา",
+  "hotNow": "ร้อนแรงตอนนี้",
+  "allTimeDescription": "ทักษะสาธารณะได้รับคำสั่งจากการติดตั้งที่ยอมรับตลอดเวลา",
+  "trendingDescription": "ทักษะสาธารณะเรียงลำดับตามการติดตั้งที่ยอมรับในช่วงกรอบเวลา 24 ชั่วโมงล่าสุด",
+  "hotDescription": "ทักษะสาธารณะได้รับคำสั่งจากความเร็วและการเปลี่ยนแปลงการติดตั้งระยะสั้น",
+  "offlineTitle": "ไม่สามารถเชื่อมต่อกับ SkillsGo",
+  "offlineMessage": "ตรวจสอบการเชื่อมต่ออินเทอร์เน็ตของคุณแล้วลองอีกครั้ง หากคุณใช้พร็อกซีหรือที่อยู่บริการที่กำหนดเอง ให้ตรวจสอบในการตั้งค่า",
+  "searchFailedTitle": "การค้นหาสะดุด",
+  "validationTitle": "ตรวจสอบสิ่งที่คุณป้อน",
+  "validationMessage": "SkillsGo ไม่สามารถใช้คำขอนี้ได้ ตรวจสอบสิ่งที่คุณป้อนแล้วลองอีกครั้ง",
+  "serverTitle": "ไม่สามารถให้บริการได้ชั่วคราว",
+  "serverMessage": "SkillsGo ไม่สามารถดำเนินการตามคำขอนี้ได้ในขณะนี้ โปรดลองอีกครั้งในอีกสักครู่",
+  "timeoutTitle": "การดำเนินการนี้ใช้เวลานานเกินไป",
+  "timeoutMessage": "บริการไม่ตอบสนองทันเวลา ตรวจสอบการเชื่อมต่อของคุณหรือลองอีกครั้ง",
+  "invalidResponseTitle": "SkillsGo ต้องการการอัปเดต",
+  "invalidResponseMessage": "SkillsGo เวอร์ชันของคุณไม่สามารถอ่านคำตอบนี้ได้ อัปเดตแอปแล้วลองอีกครั้ง",
+  "invalidLocalDataTitle": "ไม่สามารถอ่านทักษะที่ติดตั้งไว้ได้",
+  "invalidLocalDataMessage": "ข้อมูลการติดตั้งในเครื่องบางส่วนเสียหายหรือเข้ากันไม่ได้ อัปเดตหรือติดตั้ง SkillsGo ใหม่ แล้วลองอีกครั้ง",
+  "tryAgain": "ลองอีกครั้ง",
+  "searchEmptyTitle": "ค้นหา ไม่ต้องเลื่อน",
+  "searchEmptyMessage": "ป้อนความสามารถ แหล่งที่มา หรืองานเพื่อค้นหาทักษะสาธารณะ",
+  "noSkillsTitle": "ไม่พบทักษะ",
+  "noSkillsMessage": "ลองใช้วลีที่กว้างขึ้นหรือตรวจสอบการสะกด",
+  "focusSearch": "มุ่งเน้นการค้นหา",
+  "skillsFromLink": "ความสามารถจากลิงค์นี้ครับ",
+  "skillCount": "{count, plural, =1{1 ทักษะ} other{{count} ทักษะ}}",
+  "@skillCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceResultsSummary": "{count, plural, =1{1 ทักษะจาก {source}} other{{count} ทักษะจาก {source}}}",
+  "@sourceResultsSummary": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceSearchEmptyTitle": "ลิงค์นี้พร้อมตรวจสอบแล้ว",
+  "sourceSearchEmptyMessage": "{source} ไม่ได้อยู่ในผลการค้นหาปัจจุบัน SkillsGo สามารถตรวจสอบลิงก์ได้โดยตรงในขั้นตอนถัดไป",
+  "@sourceSearchEmptyMessage": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "inspectSource": "ดูทักษะได้ในลิงค์นี้",
+  "collectionEmptyTitle": "ไม่มีทักษะในคอลเลกชันนี้",
+  "collectionEmptyMessage": "ยังไม่มีอะไรที่นี่ ลองอีกครั้งหลังจากมีกิจกรรมการติดตั้งเพิ่มเติม",
+  "loadMore": "โหลดเพิ่ม",
+  "install": "ติดตั้ง",
+  "installAll": "ติดตั้งทักษะทั้งหมด",
+  "latestCommit": "การกระทำล่าสุด",
+  "installToMoreTargets": "ติดตั้งในตำแหน่งเพิ่มเติม",
+  "localTargets": "เป้าหมายท้องถิ่น {count}",
+  "@localTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allTimeMetric": "การติดตั้ง {count} ตลอดเวลา",
+  "@allTimeMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "trendingMetric": "การติดตั้ง {count} / 24 ชม",
+  "@trendingMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hotMetric": "{value} ชั่วโมงนี้ · {change}",
+  "@hotMetric": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "trustUnverified": "ไม่ได้รับการยืนยัน",
+  "trustCommunityVerified": "ชุมชนได้รับการตรวจสอบแล้ว",
+  "trustPublisherVerified": "ตรวจสอบผู้จัดพิมพ์แล้ว",
+  "trustOfficial": "เป็นทางการ",
+  "trustWarned": "เตือนแล้ว",
+  "trustDelisted": "เพิกถอน",
+  "riskUnknown": "ไม่ทราบความเสี่ยง",
+  "riskLow": "ความเสี่ยงต่ำ",
+  "riskMedium": "ความเสี่ยงปานกลาง",
+  "riskHigh": "มีความเสี่ยงสูง",
+  "riskCritical": "ความเสี่ยงที่สำคัญ",
+  "openSkill": "เปิด {name}",
+  "@openSkill": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installs": "การติดตั้ง {count}",
+  "@installs": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "detailFailedTitle": "ไม่สามารถโหลดทักษะนี้ได้",
+  "detailLoading": "กำลังโหลดรายละเอียดทักษะที่ตรวจสอบได้",
+  "artifactUnavailableTitle": "อาร์ติแฟกต์ไม่พร้อมใช้งาน",
+  "artifactUnavailableMessage": "เวอร์ชันนี้ไม่มีจำหน่ายในขณะนี้ ลองอีกครั้งหรือเลือกเวอร์ชันอื่น",
+  "detailInvalidTitle": "ไม่รองรับข้อมูลเมตาของอาร์ติแฟกต์",
+  "detailInvalidMessage": "รายละเอียดบางอย่างสำหรับทักษะนี้ไม่สมบูรณ์หรือไม่สามารถอ่านได้ อัปเดต SkillsGo แล้วลองอีกครั้ง",
+  "instructionsTab": "คำแนะนำ",
+  "manifestTab": "ประจักษ์",
+  "immutableVersionLabel": "{version} ไม่เปลี่ยนรูป",
+  "@immutableVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "commitIdentity": "คอมมิต {sha}",
+  "@commitIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "treeIdentity": "ต้นไม้ {sha}",
+  "@treeIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "contentIdentity": "เนื้อหา {digest}",
+  "@contentIdentity": {
+    "placeholders": {
+      "digest": {
+        "type": "String"
+      }
+    }
+  },
+  "trustDoesNotProveSafety": "ความน่าเชื่อถือของผู้จัดพิมพ์ยืนยันความเป็นเจ้าของหรือการบำรุงรักษา มันไม่ได้รับรองความปลอดภัยของสิ่งประดิษฐ์ ความเสี่ยงได้รับการประเมินแยกต่างหากสำหรับเวอร์ชันที่ไม่เปลี่ยนรูปแบบนี้",
+  "knownInstallationTargets": "เป้าหมายการติดตั้งที่ทราบ",
+  "installationRange": "ขอบเขตที่ติดตั้ง",
+  "targetDetails": "แสดงรายละเอียดเป้าหมาย",
+  "hideTargetDetails": "ซ่อนรายละเอียดเป้าหมาย",
+  "installedVersionLabel": "เวอร์ชัน {version}",
+  "@installedVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "targetSummary": "{scope} / {agent} · {version}",
+  "@targetSummary": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "agent": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "projectScope": "โครงการ",
+  "fileContentUnavailable": "การแสดงตัวอย่างแบบไบนารีหรือไม่พร้อมใช้งาน",
+  "fileContentTruncated": "การแสดงตัวอย่างถูกตัดทอนด้วยขีดจำกัดความปลอดภัยของ Hub",
+  "retry": "ลองอีกครั้ง",
+  "backToSearch": "กลับไปค้นหา",
+  "installForCodex": "ติดตั้งสำหรับ Codex",
+  "cliNotDetected": "ทักษะ (ตรวจไม่พบ)",
+  "snapshotFiles": "ไฟล์สแนปชอต",
+  "globalCodex": "ทั่วโลก · Codex",
+  "yourLibrary": "สิ่งที่คุณรู้อยู่ที่นี่ทั้งหมด",
+  "libraryNavigation": "การนำทางห้องสมุด",
+  "all": "ทั้งหมด",
+  "allSkills": "ทักษะทั้งหมด",
+  "updatesOnly": "อัพเดท",
+  "allAgents": "Agent ทั้งหมด",
+  "allProjects": "โครงการทั้งหมด",
+  "specificProject": "โครงการ",
+  "userScope": "ทั่วโลก",
+  "addProject": "เพิ่มโครงการ",
+  "relocateProject": "ย้ายที่อยู่",
+  "removeFromList": "ลบออกจากรายการ",
+  "removeProjectTitle": "ลบ {name} ออกจาก SkillsGo หรือไม่",
+  "@removeProjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeProjectDescription": "เฉพาะการอ้างอิงแอปเท่านั้นที่จะถูกลบออก SkillsGo จะไม่เปลี่ยนแปลงหรือลบไฟล์ใดๆ ในไดเร็กทอรีนี้",
+  "projectRailUnavailable": "{name} — ไม่พร้อมใช้งาน",
+  "@projectRailUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyProjectTitle": "ยังไม่มีทักษะ.",
+  "browseSkills": "เรียกดูทักษะ",
+  "projectMissingTitle": "ไดเรกทอรีโครงการหายไป",
+  "projectMissingMessage": "ไดเร็กทอรีอาจถูกย้ายหรือโวลุ่มของไดเร็กทอรีอาจออฟไลน์ ย้ายตำแหน่งหรือลบเฉพาะการอ้างอิงแอปเท่านั้น",
+  "projectPermissionTitle": "ต้องได้รับอนุญาตจากโครงการ",
+  "projectPermissionMessage": "SkillsGo ไม่สามารถตรวจสอบรูทที่เลือกนี้ได้ ให้สิทธิ์การเข้าถึงโดยการย้ายตำแหน่งผ่านตัวเลือกไดเรกทอรี",
+  "projectInaccessibleTitle": "ไม่สามารถเข้าถึงไดเรกทอรีโครงการได้",
+  "projectInaccessibleMessage": "SkillsGo เก็บการอ้างอิงโครงการนี้ไว้ ตรวจสอบเส้นทางหรือโวลุ่ม แล้วย้ายตำแหน่ง",
+  "checking": "กำลังตรวจสอบ...",
+  "checkUpdates": "ตรวจสอบการอัปเดต",
+  "refresh": "รีเฟรช",
+  "libraryUnavailable": "ห้องสมุดไม่พร้อมใช้งาน",
+  "libraryEmpty": "ยังไม่มีการติดตั้งทักษะ",
+  "libraryEmptyMessage": "ติดตั้งทักษะจาก Discover และทักษะจะปรากฏที่นี่",
+  "searchLibrary": "ค้นหาทักษะที่ติดตั้ง",
+  "libraryNoMatches": "ไม่มีทักษะที่ตรงกัน",
+  "libraryNoMatchesMessage": "ลองใช้ชื่อ แหล่งที่มา Agent โปรเจ็กต์ หรือเวอร์ชันอื่น",
+  "agentsSummary": "Agent {count} รายการ",
+  "@agentsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsSummary": "{count} โปรเจ็กต์",
+  "@projectsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionsSummary": "เวอร์ชัน {count}",
+  "@versionsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubManaged": "ฮับได้รับการจัดการ",
+  "localManaged": "มีการจัดการในท้องถิ่น",
+  "externalInstallation": "การติดตั้งภายนอก",
+  "readOnly": "อ่านอย่างเดียว",
+  "unversioned": "ไม่เปลี่ยนแปลง",
+  "supportingFiles": "รองรับไฟล์",
+  "versionDivergence": "ความแตกต่างของเวอร์ชัน",
+  "healthHealthy": "ดีต่อสุขภาพ",
+  "healthMissing": "เป้าหมายหายไป",
+  "healthReplaced": "เป้าหมายถูกแทนที่",
+  "healthLocalModification": "การปรับเปลี่ยนท้องถิ่น",
+  "healthUnreadable": "เป้าหมายไม่สามารถอ่านได้",
+  "healthUndeclared": "ไม่ได้ประกาศ",
+  "healthWorkspaceUnreadable": "สถานะพื้นที่ทำงานไม่สามารถอ่านได้",
+  "healthLockMismatch": "ล็อคไม่ตรงกัน",
+  "healthUnexpectedPath": "เส้นทางเป้าหมายที่ไม่คาดคิด",
+  "modeSymlink": "ซิมลิงค์",
+  "modeCopy": "คัดลอก",
+  "modeExternal": "ภายนอก",
+  "notLinked": "ไม่ได้เชื่อมโยง",
+  "update": "อัปเดต",
+  "backToLibrary": "กลับไปที่ห้องสมุด",
+  "remove": "ลบ",
+  "manageTargets": "จัดการขอบเขต",
+  "skillsSelected": "เลือก {count} แล้ว",
+  "@skillsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "ล้างการเลือก",
+  "selectCurrentResults": "เลือกผลลัพธ์ปัจจุบัน",
+  "clearCurrentResultSelection": "ล้างการเลือกผลลัพธ์ปัจจุบัน",
+  "manageTargetsTitle": "จัดการเป้าหมายการติดตั้ง",
+  "manageTargetsDescription": "เลือกการดำเนินการที่แน่นอนสำหรับแต่ละเป้าหมาย เป้าหมายที่ไม่ได้เลือกจะไม่เปลี่ยนแปลง",
+  "targetActionsSelected": "เลือก {selected} จาก {total} เป้าหมายแล้ว",
+  "@targetActionsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "repairTarget": "ซ่อม",
+  "confirmRemoveTarget": "ยืนยันการลบ",
+  "applyTargetActions": "ใช้การกระทำที่เลือก",
+  "managementProgressTitle": "การใช้การดำเนินการตามเป้าหมาย",
+  "managementResultsTitle": "ผลลัพธ์การกระทำตามเป้าหมาย",
+  "managementResultSummary": "{succeeded} สำเร็จ {failed} ล้มเหลว",
+  "@managementResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceOwnershipChanges": "การดำเนินการของโปรเจ็กต์ที่เลือกจะอัปเดต Skillgo.mod และ Skillgo.sum",
+  "targetContentPreserved": "เนื้อหาเป้าหมายปัจจุบันจะถูกเก็บรักษาไว้",
+  "localReadFailed": "ไม่สามารถอ่านทักษะนี้ได้",
+  "localReadFailedMessage": "SkillsGo ไม่สามารถอ่านทักษะที่ติดตั้งนี้ได้ ตรวจสอบว่าโฟลเดอร์พร้อมใช้งานและเข้าถึงได้ จากนั้นลองอีกครั้ง",
+  "localConfiguration": "การตั้งค่าทักษะ GO",
+  "settingsNavigation": "การนำทางการตั้งค่า",
+  "general": "ปรับแต่ง",
+  "agents": "Agent",
+  "hub": "ฮับ",
+  "installationPolicy": "นโยบายการติดตั้ง",
+  "storage": "ที่เก็บของ",
+  "colorScheme": "โครงร่างสี",
+  "about": "เกี่ยวกับ",
+  "colorSchemeInspectorTitle": "บทบาทสีวัสดุที่สร้างขึ้น",
+  "skillsColorTokensTitle": "SkillsGo ความหมายสี",
+  "skillsColorTokensDescription": "สีของผลิตภัณฑ์ที่สร้างจาก Radix Sand และจัดระเบียบด้วยความหมายของ Primer โดยมีโฟลเดอร์เป็นลำดับชั้นเชิงพื้นที่โดยเฉพาะ",
+  "colorSchemeInspectorDescription": "ดูตัวอย่างโทเค็น ColorScheme ที่ไม่สนับสนุนทุกอันที่สร้างจากข้อมูลเริ่มต้นปัจจุบัน คลิกสีเพื่อคัดลอกค่า HEX",
+  "colorSchemePairPreview": "คู่ความหมาย",
+  "colorSchemePairPreviewDescription": "บทบาทเบื้องหน้าและเบื้องหลังถูกแสดงผลร่วมกันเพื่อแสดงความแตกต่างและลำดับชั้น",
+  "colorSchemeComponentPreview": "การแสดงตัวอย่างส่วนประกอบ",
+  "colorSchemeComponentPreviewDescription": "การควบคุมวัสดุที่เป็นAgentแสดงผลด้วยรูปแบบการแสดงตัวอย่างที่แน่นอนนี้",
+  "colorSchemeSampleTitle": "ชื่อการ์ดทักษะ",
+  "colorSchemeSampleBody": "สำเนารองใช้ onSurfaceVariant",
+  "colorSchemeCopied": "คัดลอกแล้ว",
+  "colorSchemeSampleGlyphs": "อ๊า 123",
+  "colorSchemeGroupPrimary": "ประถมศึกษา",
+  "colorSchemeGroupPrimaryDescription": "การเน้นหลัก คอนเทนเนอร์ และบทบาทการเน้นเสียงคงที่",
+  "colorSchemeGroupSecondary": "รอง",
+  "colorSchemeGroupSecondaryDescription": "สนับสนุนการเน้นย้ำและกำหนดบทบาทรอง",
+  "colorSchemeGroupTertiary": "ระดับอุดมศึกษา",
+  "colorSchemeGroupTertiaryDescription": "สำเนียงที่ตัดกันและบทบาทระดับอุดมศึกษาคงที่",
+  "colorSchemeGroupSurface": "พื้นผิว",
+  "colorSchemeGroupSurfaceDescription": "หน้า คอนเทนเนอร์ ระดับความสูง และลำดับชั้นเบื้องหน้า",
+  "colorSchemeGroupUtility": "โครงร่างและยูทิลิตี้",
+  "colorSchemeGroupUtilityDescription": "ขอบเขต เงา รอยขีด และพื้นผิวผกผัน",
+  "colorSchemeGroupError": "เกิดข้อผิดพลาด",
+  "colorSchemeGroupErrorDescription": "การดำเนินการที่มีข้อผิดพลาด ข้อความ และคอนเทนเนอร์",
+  "colorSchemeUsagePrimary": "การกระทำหลัก การเน้น และการเน้นเสียงเน้นสูง",
+  "colorSchemeUsageSecondary": "การกระทำสนับสนุนและการเน้นเสียงกลาง",
+  "colorSchemeUsageTertiary": "สำเนียงที่ตัดกันซึ่งเสริมหลักและรอง",
+  "colorSchemeUsageContentOn": "ข้อความและไอคอนที่แสดงบน {token}",
+  "@colorSchemeUsageContentOn": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageContainer": "คอนเทนเนอร์เน้นล่าง {family} สำหรับการเลือกและการเน้นเสียง",
+  "@colorSchemeUsageContainer": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixed": "คอนเทนเนอร์ {family} คงที่ที่ไม่ขึ้นกับความสว่าง",
+  "@colorSchemeUsageFixed": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedDim": "คอนเทนเนอร์ {family} แบบคงที่ที่ไม่ขึ้นกับความสว่างแบบหรี่แสง",
+  "@colorSchemeUsageFixedDim": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedContent": "เนื้อหาที่มีการเน้นย้ำสูงในคอนเทนเนอร์ {family} แบบคงที่",
+  "@colorSchemeUsageFixedContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedVariantContent": "เนื้อหาที่เน้นล่างในคอนเทนเนอร์ {family} แบบคงที่",
+  "@colorSchemeUsageFixedVariantContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageSurface": "หน้าฐานและพื้นผิวบริเวณขนาดใหญ่",
+  "colorSchemeUsageSurfaceDim": "พื้นผิวฐานแบบหรี่แสงจะใช้ในโทนสีพื้นผิวที่มืดที่สุด",
+  "colorSchemeUsageSurfaceBright": "พื้นผิวฐานสว่างใช้โทนสีพื้นผิวที่เบาที่สุด",
+  "colorSchemeUsageSurfaceElevation": "{level} ระดับความสูงของพื้นผิวคอนเทนเนอร์",
+  "@colorSchemeUsageSurfaceElevation": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeElevationLowest": "ต่ำสุด",
+  "colorSchemeElevationLow": "ต่ำ",
+  "colorSchemeElevationDefault": "ค่าเริ่มต้น",
+  "colorSchemeElevationHigh": "สูง",
+  "colorSchemeElevationHighest": "สูงสุด",
+  "colorSchemeUsageOnSurface": "ข้อความหลักและไอคอนที่แสดงบนพื้นผิว",
+  "colorSchemeUsageOnSurfaceVariant": "ข้อความรอง ป้ายกำกับ และไอคอนที่ถูกลดทอนลงบนพื้นผิว",
+  "colorSchemeUsageSurfaceTint": "สีระดับความสูงของวัสดุที่ได้มาจากสีหลัก",
+  "colorSchemeUsageOutline": "ขอบเขตที่โดดเด่นและโครงร่างองค์ประกอบที่เน้น",
+  "colorSchemeUsageOutlineVariant": "ขอบเขตที่ละเอียดอ่อน ตัวคั่น และโครงร่างที่เน้นต่ำ",
+  "colorSchemeUsageShadow": "สีหยดเงาสำหรับพื้นผิวยกระดับ",
+  "colorSchemeUsageScrim": "การซ้อนทับแบบโมดอลใช้เพื่อยกเลิกการเน้นเนื้อหาพื้นหลัง",
+  "colorSchemeUsageInverseSurface": "พื้นผิวที่มีการเน้นแสงกลับด้านและเน้นความมืด",
+  "colorSchemeUsageInversePrimary": "สำเนียงหลักที่แสดงบนพื้นผิวผกผัน",
+  "colorSchemeUsageError": "การดำเนินการที่มีข้อผิดพลาด สถานะ และการตอบรับที่มีการเน้นย้ำสูง",
+  "save": "บันทึก",
+  "advancedSettings": "ขั้นสูง",
+  "remindersSettings": "การแจ้งเตือน",
+  "remindersSettingsTitle": "การตั้งค่าการเตือนความจำ",
+  "remindersSettingsDescription": "เลือกการแจ้งเตือนที่ต้องการรับ",
+  "updateReminderTitle": "อัปเดตการแจ้งเตือน",
+  "updateReminderDescription": "ตรวจสอบการอัปเดตเมื่อ Library เปิดขึ้น",
+  "securityReminderTitle": "การแจ้งเตือนที่มีความเสี่ยงสูง",
+  "securityReminderDescription": "แจ้งให้คุณทราบถึงความเสี่ยงสูงหรือวิกฤตใหม่ในทักษะที่ติดตั้ง",
+  "availableUpdatesReminder": "ทักษะที่ติดตั้ง {count} มีการอัปเดต",
+  "@availableUpdatesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openAvailableUpdates": "เปิดมุมมองการอัปเดตที่มีอยู่เพื่อตรวจสอบและอัปเดต",
+  "securityAdvisoriesReminder": "ทักษะที่ติดตั้ง {count} จำเป็นต้องมีการตรวจสอบความปลอดภัย",
+  "@securityAdvisoriesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewInstalledSkills": "ตรวจสอบข้อมูลความเสี่ยงก่อนที่จะใช้หรืออัปเดต",
+  "generalSettingsTitle": "ทำให้ทักษะเป็นของคุณ",
+  "generalSettingsDescription": "อินเทอร์เฟซเป็นไปตามภาษาของระบบ การเข้าถึง และการตั้งค่าการเคลื่อนไหวของคุณ",
+  "agentsSettingsTitle": "สภาพแวดล้อมรันไทม์ของ Agent",
+  "hubSettingsTitle": "แหล่งกำเนิดฮับ",
+  "hubSettingsDescription": "ใช้ฮับอย่างเป็นทางการหรือต้นทาง HTTP(S) ที่โฮสต์เองซึ่งใช้โปรโตคอล SkillsGo เดียวกัน",
+  "testConnection": "ทดสอบการเชื่อมต่อ",
+  "saveOrigin": "บันทึกแหล่งกำเนิดสินค้า",
+  "resetDefault": "รีเซ็ตเป็นค่าเริ่มต้น",
+  "connectionReady": "การเชื่อมต่อพร้อมแล้ว",
+  "connectionFailed": "การเชื่อมต่อล้มเหลว",
+  "hubInvalidOrigin": "ป้อนต้นทาง HTTP(S) ที่ถูกต้องโดยไม่มีข้อมูลรับรอง คำค้นหา หรือส่วนย่อย",
+  "hubHttpFailure": "ฮับส่งคืน HTTP {status} ตรวจสอบการกำหนดค่า Origin และเซิร์ฟเวอร์",
+  "@hubHttpFailure": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "hubInvalidProtocol": "เซิร์ฟเวอร์ไม่ได้ส่งคืนโปรโตคอลการค้นหา SkillsGo Hub",
+  "hubInvalidJson": "Hub ส่งคืน JSON ที่ไม่ถูกต้อง",
+  "hubConnectionFailure": "ไม่สามารถเข้าถึงฮับได้ ตรวจสอบการกำหนดค่า Origin, เครือข่าย, พร็อกซี และ TLS",
+  "hubConnectionTimeout": "การเชื่อมต่อฮับหมดเวลา ตรวจสอบเครือข่ายหรือลองอีกครั้ง",
+  "riskPolicyTitle": "นโยบายความเสี่ยงส่วนบุคคล",
+  "riskPolicyDescription": "กฎความปลอดภัยจะมีผลเมื่อคุณติดตั้งหรืออัปเดตทักษะ",
+  "confirmHighRisk": "ต้องมีการยืนยันความเสี่ยงสูง",
+  "confirmHighRiskDescription": "อาร์ติแฟกต์ที่มีความเสี่ยงสูงจำเป็นต้องได้รับการยืนยันเพิ่มเติมก่อนการติดตั้งเสมอ",
+  "allowCriticalOverride": "อนุญาตให้แทนที่ความเสี่ยงที่สำคัญอย่างชัดเจน",
+  "allowCriticalOverrideDescription": "อาร์ติแฟกต์ที่มีความเสี่ยงวิกฤตยังคงถูกบล็อกโดยค่าเริ่มต้น เปิดใช้งานสิ่งนี้เพื่อแสดงการแทนที่ด้วยตนเองแยกต่างหากเท่านั้น",
+  "storageSettingsTitle": "ที่เก็บข้อมูลแบบระบุตำแหน่งด้วยเนื้อหา",
+  "storageHealthy": "อ่านได้",
+  "storageNotInitialized": "ไม่ได้เตรียมใช้งาน",
+  "storageUnavailable": "ไม่พร้อมใช้งาน",
+  "storagePathUnavailable": "เส้นทางที่เก็บข้อมูลจะยังไม่พร้อมใช้งานจนกว่าการวินิจฉัย CLI จะเสร็จสิ้น",
+  "storageHealthyDescription": "CLI สามารถอ่าน Store ได้โดยไม่ต้องเปลี่ยนเนื้อหา",
+  "storageNotInitializedDescription": "Store ยังไม่มีอยู่และไม่ได้ถูกสร้างขึ้นโดยเช็คนี้",
+  "storageUnavailableDescription": "CLI ไม่สามารถอ่าน Store ได้ ตรวจสอบสิทธิ์และไดเรกทอรีหลัก",
+  "storageInvalidResponse": "CLI ที่ให้มาส่งคืนการตอบสนองการวินิจฉัยที่ไม่รองรับ",
+  "aboutSettingsTitle": "ความเข้ากันได้ของผลิตภัณฑ์",
+  "appVersion": "เวอร์ชันแอป",
+  "cliVersion": "เวอร์ชัน CLI ที่แถมมา",
+  "compatible": "เข้ากันได้",
+  "hubOriginSaved": "Hub Origin บันทึกและนำไปใช้แล้ว",
+  "policySaved": "บันทึกนโยบายการติดตั้งแล้ว",
+  "officialCli": "SkillsGo CLI",
+  "ready": "พร้อม",
+  "unknown": "ไม่ทราบ",
+  "missing": "หายไป",
+  "incompatible": "เข้ากันไม่ได้",
+  "detecting": "กำลังตรวจจับ...",
+  "customCliPath": "เส้นทางปฏิบัติการแบบกำหนดเอง",
+  "saveAndDetect": "บันทึกและตรวจจับ",
+  "detectAgain": "ตรวจพบอีกครั้ง",
+  "agentInstalled": "ติดตั้งแล้ว",
+  "agentSupported": "รองรับ",
+  "agentCatalogSummary": "ติดตั้ง {installed} แล้ว · รองรับ {supported} แล้ว",
+  "@agentCatalogSummary": {
+    "placeholders": {
+      "installed": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "int"
+      }
+    }
+  },
+  "installedAgentsTitle": "ติดตั้งแล้ว · {count}",
+  "@installedAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsTitle": "ไม่ได้ติดตั้ง · {count}",
+  "@notInstalledAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsDescription": "รองรับโดย SkillsGo แต่ตรวจไม่พบบน Mac เครื่องนี้",
+  "agentDiscoveryRoots": "เส้นทางการโหลดทักษะ: {paths}",
+  "@agentDiscoveryRoots": {
+    "placeholders": {
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+  "agentInspectionFailed": "ข้อมูลการตรวจจับAgentไม่พร้อมใช้งาน เรียกใช้การตรวจจับอีกครั้ง",
+  "noInstalledAgentsTitle": "ไม่พบ Agent ที่ติดตั้งไว้",
+  "noInstalledAgentsMessage": "คุณสามารถเรียกดูทักษะนี้ต่อไปได้ แต่ยังไม่มีเป้าหมายการติดตั้ง ติดตั้ง Agent ที่รองรับ จากนั้นเรียกใช้การตรวจจับอีกครั้ง",
+  "clearCustomPath": "ล้างเส้นทางที่กำหนดเอง",
+  "privacyProvenance": "ความเป็นส่วนตัวและที่มา",
+  "privacySummary": "การค้นหาของคุณไม่ได้รับการบันทึก และ SkillsGo จะไม่เก็บบันทึกคำสั่ง",
+  "language": "ภาษา",
+  "personalizationTheme": "ธีม",
+  "folderColorTheme": "สีของธีม",
+  "folderColorThemeDescription": "เลือกสีที่คุณชอบ SkillsGo จะสร้างจานสีอินเทอร์เฟซที่มีการประสานงานรอบๆ",
+  "brandNameNeteaseCloudMusic": "NetEase คลาวด์มิวสิค",
+  "brandNameRaspberryPi": "ราสเบอร์รี่ปี่",
+  "brandNameChinaEasternAirlines": "ไชนาอีสเทิร์นแอร์ไลน์",
+  "brandNameNvidia": "NVIDIA",
+  "brandNameTaobao": "เถาเป่า",
+  "brandNameBitcoin": "บิทคอยน์",
+  "appearanceMode": "โหมด",
+  "appearanceModeDescription": "ปฏิบัติตามลักษณะที่ปรากฏของระบบของคุณ หรือใช้ธีมสีอ่อนหรือสีเข้มเสมอ",
+  "followSystem": "ระบบ",
+  "lightMode": "เบา",
+  "darkMode": "มืด",
+  "wallpaper": "วอลล์เปเปอร์",
+  "wallpaperDescription": "เลือกพื้นหลังท้องฟ้า การเลือกของคุณจะปรากฏด้านหลังโฟลเดอร์ทันที",
+  "wallpaperSun": "อาทิตย์",
+  "wallpaperMercury": "สารปรอท",
+  "wallpaperVenus": "ดาวศุกร์",
+  "wallpaperEarth": "โลก",
+  "wallpaperMars": "ดาวอังคาร",
+  "wallpaperJupiter": "ดาวพฤหัสบดี",
+  "wallpaperSaturn": "ดาวเสาร์",
+  "wallpaperUranus": "ดาวยูเรนัส",
+  "wallpaperNeptune": "ดาวเนปจูน",
+  "wallpaperPluto": "ดาวพลูโต",
+  "wallpaperMoon": "ดวงจันทร์",
+  "folderThemeChoice": "{theme} ธีมโฟลเดอร์",
+  "@folderThemeChoice": {
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyAffiliation": "การวัดและส่งข้อมูลทางไกลสำหรับการติดตั้งแบบไม่ระบุชื่อจะถูกควบคุมโดยการตั้งค่า SkillsGo SkillsGo ไม่มีส่วนเกี่ยวข้องกับ OpenAI หรือ Codex",
+  "commandCompleted": "คำสั่งเสร็จสิ้น",
+  "commandFailed": "คำสั่งล้มเหลว",
+  "commandExit": "ออกจาก {code} · ขยายบันทึกของเซสชันนี้",
+  "@commandExit": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "command": "คำสั่ง",
+  "cancel": "ยกเลิก",
+  "updateUnknown": "ไม่ทราบ",
+  "updateChecking": "กำลังตรวจสอบ",
+  "upToDate": "ถึงวันที่",
+  "updateAvailable": "อัปเดต",
+  "updateUnavailable": "ไม่สามารถใช้ได้",
+  "updateCheckFailed": "การตรวจสอบล้มเหลว",
+  "installSkill": "ติดตั้งทักษะ",
+  "installLocationTitle": "กำหนดตำแหน่งการติดตั้ง",
+  "userLevel": "ระดับผู้ใช้",
+  "projectLevel": "ระดับโครงการ",
+  "projects": "โครงการ",
+  "loading": "กำลังโหลด...",
+  "repositoryParsing": "กำลังแยกวิเคราะห์ที่เก็บ...",
+  "userInstallSummary": "ใช้ได้กับAgent {agents} ในระดับผู้ใช้",
+  "@userInstallSummary": {
+    "placeholders": {
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "projectInstallSummary": "โปรเจ็กต์ {projects} · Agent {agents}",
+  "@projectInstallSummary": {
+    "placeholders": {
+      "projects": {
+        "type": "int"
+      },
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "installationResults": "ผลการติดตั้ง",
+  "installationInProgress": "อยู่ระหว่างดำเนินการติดตั้ง",
+  "installationSucceeded": "การติดตั้งเสร็จสมบูรณ์",
+  "installationSucceededMessage": "ขณะนี้ทักษะพร้อมใช้งานแล้วในสถานที่ที่เลือก",
+  "projectUnavailable": "โครงการไม่พร้อมใช้งาน",
+  "installedCell": "ติดตั้งแล้ว",
+  "unsupportedCell": "ไม่พร้อมใช้งาน",
+  "confirmInstall": "ยืนยันการติดตั้ง",
+  "installAllRepositorySkills": "ติดตั้งทักษะพื้นที่เก็บข้อมูลทั้งหมด ({count})",
+  "installAllSkillsTo": "ติดตั้งทักษะทั้งหมดเพื่อ",
+  "@installAllRepositorySkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installRepositorySkills": "ติดตั้งทักษะ {repository} ทั้งหมด ({count})",
+  "@installRepositorySkills": {
+    "placeholders": {
+      "repository": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installSkillTo": "ติดตั้ง {skill} ไปที่",
+  "@installSkillTo": {
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
+  },
+  "availableInAllProjects": "ทุกโครงการ",
+  "availableInSelectedProjects": "โครงการที่เลือก",
+  "usedBy": "สำหรับAgent",
+  "backToTargets": "กลับสู่เป้าหมาย",
+  "stayHere": "อยู่ที่นี่",
+  "viewInLibrary": "ดูในห้องสมุด",
+  "planCreateCount": "{count} สร้าง",
+  "@planCreateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planSkipCount": "{count} ข้ามไป",
+  "@planSkipCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planReplaceCount": "แทนที่ {count}",
+  "@planReplaceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planConflictCount": "{count} ขัดแย้งกัน",
+  "@planConflictCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRiskCount": "ความเสี่ยง {count} ถูกบล็อก",
+  "@planRiskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "refreshInstallationPlan": "ใช้มติ",
+  "replaceVersionConflict": "แทนที่เวอร์ชันที่ติดตั้งไว้ที่เป้าหมายนี้",
+  "replaceSkillIdCollision": "แทนที่ ID ทักษะอื่นที่เป้าหมายนี้",
+  "replaceLocalModification": "ละทิ้งการปรับเปลี่ยนในเครื่องและแทนที่เป้าหมายนี้",
+  "sharedTargetConflict": "เส้นทางนี้ถูกใช้ร่วมกันโดยเป้าหมายAgentอื่นๆ",
+  "sharedTargetConflictDescription": "กลับไปที่เมทริกซ์เป้าหมายและเลือกเอเจนต์ที่ได้รับผลกระทบทั้งหมดก่อนที่จะเปลี่ยน: {agents}",
+  "@sharedTargetConflictDescription": {
+    "placeholders": {
+      "agents": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceConflictingTarget": "แทนที่เป้าหมายที่ขัดแย้งกัน",
+  "confirmHighRiskArtifact": "การยืนยันสิ่งประดิษฐ์ที่มีความเสี่ยงสูง",
+  "confirmCriticalRiskArtifact": "การยืนยันการแทนที่ความเสี่ยงที่สำคัญ",
+  "confirmRiskForSelectedTargets": "ฉันตรวจสอบไฟล์อาร์ติแฟกต์แล้วและยอมรับความเสี่ยงนี้สำหรับเป้าหมายที่เลือก",
+  "criticalRiskBlocked": "การติดตั้งที่มีความเสี่ยงร้ายแรงถูกบล็อก",
+  "criticalRiskOverrideDisabled": "เปิดใช้การแทนที่ความเสี่ยงร้ายแรงอย่างชัดเจนในการตั้งค่าก่อนที่แผนนี้จะดำเนินการต่อได้",
+  "workspaceManifestChanges": "การเปลี่ยนแปลงรายการพื้นที่ทำงาน",
+  "noWorkspaceManifestChanges": "ไฟล์ Workspace Manifest จะไม่มีการเปลี่ยนแปลง",
+  "lockVersionChange": "{from} → {to}",
+  "@lockVersionChange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "notPresent": "ไม่อยู่",
+  "planActionCreate": "สร้าง",
+  "planActionReplace": "แทนที่",
+  "planActionSkip": "ข้าม",
+  "planActionConflict": "ความขัดแย้ง",
+  "planActionBlockedByRisk": "ถูกปิดกั้นด้วยความเสี่ยง",
+  "installationResultSummary": "ติดตั้งเป้าหมาย {succeeded} แล้ว {failed} ล้มเหลว",
+  "@installationResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "installationProgressTitle": "อยู่ระหว่างดำเนินการติดตั้ง",
+  "installationProgressSummary": "เป้าหมาย {finished} จาก {total} เสร็จสิ้นแล้ว",
+  "@installationProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "targetWaiting": "กำลังรอ",
+  "targetRunning": "กำลังติดตั้ง",
+  "retryFailedTargets": "{count, plural, =1{ลองอีกครั้งสำหรับเป้าหมายที่ล้มเหลว 1 รายการ} other{ลองอีกครั้งสำหรับเป้าหมายที่ล้มเหลว {count} รายการ}}",
+  "@retryFailedTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updatePlanTitle": "เลือกเป้าหมายที่จะอัปเดต",
+  "updatePlanDescription": "เลือกเป้าหมายการติดตั้งที่แน่นอน Agentและโปรเจ็กต์ที่ไม่ได้เลือกยังคงไม่เปลี่ยนแปลง",
+  "updateTargetsSelected": "เลือกเป้าหมายที่อัปเดตได้ {selected} จาก {available} รายการ",
+  "@updateTargetsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "updateVersionChange": "{fromVersion} → {toVersion}",
+  "@updateVersionChange": {
+    "placeholders": {
+      "fromVersion": {
+        "type": "String"
+      },
+      "toVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceReference": "การอ้างอิงแหล่งที่มา: {reference}",
+  "@sourceReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "fixedVersionTarget": "ปักหมุด — ไม่มีการอ้างอิงที่สามารถเคลื่อนย้ายได้",
+  "currentVersionTarget": "ถึงวันที่",
+  "updateCheckTargetFailed": "การตรวจสอบการอัปเดตล้มเหลว",
+  "reconcileWorkspaceManifestTarget": "รายการซ่อมแซมพื้นที่ทำงาน",
+  "updateSelectedTargets": "อัปเดตเป้าหมายที่เลือก",
+  "updateProgressTitle": "กำลังอัปเดตเป้าหมาย",
+  "updateResultsTitle": "อัพเดทผลลัพธ์",
+  "updateProgressSummary": "เป้าหมาย {finished} จาก {total} เสร็จสิ้นแล้ว",
+  "@updateProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "retryFailedUpdates": "{count, plural, =1{ลองอีกครั้งสำหรับการอัปเดตที่ล้มเหลว 1 รายการ} other{ลองอีกครั้งสำหรับการอัปเดตที่ล้มเหลว {count} รายการ}}",
+  "@retryFailedUpdates": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpdateableTargets": "ไม่มีเป้าหมายที่เลือกมีการอัปเดตที่พร้อมใช้งาน",
+  "closeUpdatePlan": "ปิด",
+  "targetSucceeded": "ติดตั้งแล้ว",
+  "targetSkipped": "ข้ามไป",
+  "targetConflict": "ความขัดแย้ง",
+  "targetFailed": "ล้มเหลว",
+  "targetFailureRetryable": "ไม่สามารถเปลี่ยนสถานที่นี้ได้ คุณสามารถลองอีกครั้ง",
+  "targetFailureNeedsAttention": "ตำแหน่งนี้ต้องการความสนใจของคุณก่อนที่จะลองอีกครั้ง",
+  "installationTargetFailureMessage": "ไม่มีอะไรเปลี่ยนแปลง ณ ตำแหน่งนี้ ตรวจสอบว่าโฟลเดอร์พร้อมใช้งานแล้วลองอีกครั้ง",
+  "workspacePersistenceFailureMessage": "ไม่มีการเปลี่ยนแปลงเนื่องจาก SkillsGo ไม่สามารถบันทึกการตั้งค่าโครงการได้ ตรวจสอบว่าโฟลเดอร์โปรเจ็กต์สามารถเขียนได้แล้วลองอีกครั้ง",
+  "installationStateChangedMessage": "สถานที่นี้มีการเปลี่ยนแปลงในขณะที่คุณกำลังตรวจสอบ ตรวจสอบสถานะล่าสุดก่อนที่จะลองอีกครั้ง",
+  "updateTargetFailureMessage": "ไม่สามารถอัปเดตตำแหน่งนี้ได้ ตำแหน่งอื่นๆ ไม่ได้รับผลกระทบ ดังนั้นคุณจึงลองใหม่ได้เฉพาะตำแหน่งนี้เท่านั้น",
+  "managementTargetFailureMessage": "ไม่สามารถดำเนินการนี้ให้เสร็จสิ้นได้ที่นี่ ตำแหน่งอื่นๆ ไม่ได้รับผลกระทบ ดังนั้นคุณจึงลองใหม่ได้เฉพาะตำแหน่งนี้เท่านั้น",
+  "technicalDetails": "รายละเอียดทางเทคนิค",
+  "targetPathExists": "มีรายการอื่นอยู่แล้วที่ตำแหน่งนี้",
+  "targetBlockedByRisk": "การตั้งค่าความปลอดภัยปัจจุบันของคุณบล็อกการติดตั้งที่ตำแหน่งนี้",
+  "targetInstallFailed": "ไม่สามารถติดตั้งทักษะได้ที่ตำแหน่งนี้",
+  "targetWorkspaceUpdateFailed": "ติดตั้งทักษะแล้ว แต่ไม่สามารถอัปเดตการตั้งค่าโครงการได้",
+  "installationPlanFailed": "แผนการติดตั้งไม่สามารถดำเนินการต่อได้",
+  "installationFailed": "ไม่สามารถติดตั้งให้เสร็จสิ้นได้",
+  "localSource": "แหล่งที่มาในท้องถิ่น",
+  "noDescriptionAvailable": "ไม่มีคำอธิบาย",
+  "moreCoverage": "อีก +{count} ตำแหน่ง",
+  "@moreCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverAction": "จัดการทักษะที่มีอยู่",
+  "batchTakeoverActionCount": "จัดการ ({count})",
+  "@batchTakeoverActionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverChecking": "กำลังตรวจสอบทักษะที่มีอยู่...",
+  "batchTakeoverRetry": "ตรวจสอบ Skill ที่สามารถนำมาจัดการได้อีกครั้ง",
+  "batchTakeoverEligibleCount": "สามารถจัดการ {count} ได้",
+  "@batchTakeoverEligibleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPending": "เพิ่มทักษะการบริหารจัดการ...",
+  "batchTakeoverTitle": "จัดการทักษะที่มีอยู่ด้วย SkillsGo?",
+  "batchTakeoverDescription": "SkillsGo จะเพิ่มบันทึกการจัดการในพื้นที่โดยไม่ต้องย้าย เขียนทับ หรืออัปโหลดไฟล์ทักษะ รายการที่ไม่รองรับหรือเปลี่ยนแปลงจะถูกข้ามไป",
+  "batchTakeoverStoryTitle": "เปลี่ยนทักษะที่กระจัดกระจายให้เป็นห้องสมุดที่ชัดเจน",
+  "batchTakeoverStoryDescription": "SkillsGo พบ {count, plural, =1{1 ทักษะที่มีอยู่} other{{count} ทักษะที่มีอยู่}} ที่สามารถจัดการได้ในตำแหน่งนี้",
+  "@batchTakeoverStoryDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverBeforeSemantics": "ก่อนการจัดการ ยังไม่ชัดเจนว่าทักษะที่มีอยู่ถูกติดตั้งไว้ที่ใด ไม่ว่าจะเป็นทักษะปัจจุบัน วิธีการกู้คืน หรือว่าโครงการใช้เวอร์ชันเดียวกันหรือไม่",
+  "batchTakeoverPainLocation": "ตำแหน่งการติดตั้งที่ไม่รู้จัก",
+  "batchTakeoverPainFreshness": "สถานะการอัปเดตที่ไม่รู้จัก",
+  "batchTakeoverPainRecovery": "กู้คืนไม่ได้เมื่อเกิดความเสียหาย",
+  "batchTakeoverPainVersionDrift": "เวอร์ชันต่างๆ ทั่วทั้งโครงการ",
+  "batchTakeoverFolderTitle": "ทักษะที่มีอยู่",
+  "batchTakeoverFolderSubtitle": "สถานะไม่ชัดเจน",
+  "batchTakeoverAfterLabel": "หลังจากนั้น",
+  "batchTakeoverAfterTitle": "ห้องสมุดที่ชัดเจนแห่งหนึ่ง",
+  "batchTakeoverLibraryTitle": "ห้องสมุด SkillsGo",
+  "batchTakeoverBenefitLocation": "เคลียร์สถานที่",
+  "batchTakeoverBenefitFreshness": "การอัปเดตที่มองเห็นได้",
+  "batchTakeoverBenefitRecovery": "ฟื้นตัวได้ง่าย",
+  "batchTakeoverBenefitVersions": "เวอร์ชันที่ชัดเจน",
+  "batchTakeoverManagedSection": "จัดการดูแลโดย SkillsGo",
+  "batchTakeoverPendingSection": "รอดำเนินการ",
+  "batchTakeoverItemManaged": "{name} จัดการโดย SkillsGo",
+  "@batchTakeoverItemManaged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemSkipped": "ไม่สามารถเพิ่ม {name} ในการจัดการได้",
+  "@batchTakeoverItemSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemPending": "{name} กำลังรอการจัดการ",
+  "@batchTakeoverItemPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverAfterSemantics": "หลังจากการจัดการ {count, plural, =1{1 ทักษะคือ} other{{count} ทักษะเป็น}} ได้รับการจัดระเบียบในไลบรารีเดียวโดยมีสถานะการจัดการที่ชัดเจน",
+  "@batchTakeoverAfterSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverMoreSkills": "อีก +{count}",
+  "@batchTakeoverMoreSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverTransitionSemantics": "เพิ่มทักษะที่มีอยู่เหล่านี้ให้กับการจัดการ SkillsGo",
+  "batchTakeoverTransitionLabel": "จัดระเบียบ",
+  "batchTakeoverStatusTitle": "สถานะการจัดการ",
+  "batchTakeoverStatusManaged": "จัดการ",
+  "batchTakeoverStatusProgress": "การจัดระเบียบ",
+  "batchTakeoverStatusSkipped": "ข้ามไป",
+  "batchTakeoverStatusFilesStay": "ไฟล์ทักษะจะยังคงอยู่ในตำแหน่งเดิม",
+  "batchTakeoverBoardSemantics": "ทักษะจะถูกจัดเรียงเป็นแถวที่สมบูรณ์และบันทึกโดย SkillsGo โดยไม่ต้องย้ายไฟล์",
+  "batchTakeoverBoardComplete": "ชัดเจนทั้งหมด",
+  "batchTakeoverBoardPartial": "เสร็จสมบูรณ์",
+  "batchTakeoverStatusTotal": "รวม",
+  "batchTakeoverQueueComplete": "ไม่มีทักษะใดรออยู่",
+  "batchTakeoverQueueWaiting": "ทักษะจะย้ายมาที่นี่หลังจากการตรวจสอบแล้ว",
+  "batchTakeoverNextLabel": "ถัดไป",
+  "batchTakeoverFillerCount": "{count, plural, =1{1 บล็อกตัวจัดการ SkillsGo} other{{count} บล็อกตัวจัดการ SkillsGo}} กรอกแถวสุดท้าย",
+  "@batchTakeoverFillerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPreservation": "ไฟล์ เส้นทาง และเวิร์กโฟลว์ปัจจุบันของคุณจะยังคงอยู่ในตำแหน่งเดิม SkillsGo จัดทำบันทึกการจัดการในพื้นที่ให้เสร็จสิ้นเท่านั้น",
+  "batchTakeoverLaterHint": "หากคุณข้าม คุณสามารถใช้จัดการทักษะที่มีอยู่จากห้องสมุดได้ตลอดเวลา",
+  "batchTakeoverSkip": "ไม่ใช่ตอนนี้",
+  "batchTakeoverConfirm": "เพิ่มไปยังการจัดการ",
+  "batchTakeoverExecutionRetry": "ลองอีกครั้ง",
+  "batchTakeoverResultTitle": "เพิ่มทักษะในการบริหารจัดการ",
+  "batchTakeoverSummary": "เพิ่มทักษะ {takenOver} ในการจัดการแล้ว, {skipped} ข้ามไป",
+  "@batchTakeoverSummary": {
+    "placeholders": {
+      "takenOver": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverClose": "ปิด",
+  "installMoreTargets": "ติดตั้งในสถานที่เพิ่มเติม",
+  "exportLocalSkill": "ส่งออก",
+  "exportLocalSkillDescription": "ส่งออกทักษะท้องถิ่นนี้เป็นไฟล์ ZIP แบบพกพา",
+  "detailInstalls": "การติดตั้ง",
+  "detailRepository": "พื้นที่เก็บข้อมูล",
+  "detailStars": "ดาว",
+  "detailUpdated": "อัปเดตแล้ว",
+  "detailArchiveSize": "ขนาดไปรษณีย์",
+  "pathLabel": "เส้นทางโครงการ",
+  "copyProjectPath": "คัดลอกเส้นทางโครงการ",
+  "projectPathCopied": "คัดลอกเส้นทางโครงการแล้ว",
+  "onboardingWelcomeTitle": "ยินดีต้อนรับสู่ SkillsGo",
+  "onboardingWelcomeDescription": "ค้นหา ติดตั้ง และจัดการทักษะทั่วทั้งAgentและโปรเจ็กต์ของคุณ",
+  "onboardingDetectedAgents": "Agent ที่ตรวจพบ",
+  "onboardingNoAgents": "ไม่พบ Agent ที่ติดตั้งไว้ คุณยังสามารถดำเนินการต่อได้",
+  "onboardingNext": "ถัดไป",
+  "onboardingProjectsTitle": "เพิ่มโครงการของคุณ",
+  "onboardingProjectsDescription": "เลือกโปรเจ็กต์ที่คุณต้องการให้ SkillsGo จัดการ",
+  "onboardingAddProject": "เพิ่มตอนนี้",
+  "onboardingAddProjectLater": "หรือหลังจากนั้น",
+  "onboardingStartUsing": "เริ่มใช้ SkillsGo",
+  "onboardingBack": "กลับ",
+  "restartOnboardingTitle": "การเริ่มต้นใช้งาน",
+  "restartOnboardingDescription": "ดูคู่มือการเปิดตัวครั้งแรกอีกครั้งโดยไม่ต้องลบโปรเจ็กต์ การตั้งค่า หรือข้อมูลทักษะ",
+  "restartOnboardingAction": "รีสตาร์ทการเริ่มต้นใช้งาน",
+  "restartOnboardingFailed": "SkillsGo ไม่สามารถเริ่มต้นการเริ่มต้นใช้งานใหม่ได้",
+  "libraryRefreshSettingsTitle": "รีเฟรชห้องสมุดท้องถิ่น",
+  "libraryRefreshSettingsDescription": "สแกนทักษะที่ติดตั้ง โปรเจ็กต์ที่เพิ่มเข้ามา Agent และทักษะภายนอกที่สามารถจัดการได้อีกครั้ง การดำเนินการนี้ไม่ได้ติดตั้ง อัปเดต หรือลบสิ่งใดๆ",
+  "libraryRefreshSettingsAction": "รีเฟรชไลบรารี",
+  "libraryRefreshSettingsPending": "กำลังรีเฟรชห้องสมุด…",
+  "libraryRefreshSettingsSuccess": "รีเฟรชห้องสมุดท้องถิ่นแล้ว",
+  "libraryRefreshSettingsFailed": "SkillsGo ไม่สามารถรีเฟรชห้องสมุดท้องถิ่นได้",
+  "onboardingProjectError": "SkillsGo ไม่สามารถเพิ่มโครงการจากไดเรกทอรีนี้ได้",
+  "onboardingProjectsLoadError": "SkillsGo ไม่สามารถโหลดโครงการที่เพิ่มของคุณ",
+  "onboardingStartupError": "SkillsGo ไม่สามารถโหลดการตั้งค่าได้",
+  "onboardingStateError": "SkillsGo ไม่สามารถบันทึกความคืบหน้าในการตั้งค่าของคุณได้ ลองอีกครั้ง",
+  "onboardingCliErrorTitle": "SkillsGo CLI ต้องการความสนใจ",
+  "onboardingCliErrorDescription": "ซ่อมแซม CLI ที่ให้มา จากนั้นลองดำเนินการต่ออีกครั้ง"
+}

@@ -152,6 +152,11 @@ class _SubscriptionSegmentedSwitchState
       return value;
     }
 
+    double visualPosition(double value) {
+      final logical = displayPosition(value);
+      return textDirection == TextDirection.rtl ? 1 - logical : logical;
+    }
+
     return Semantics(
       container: true,
       label: '${widget.options[0].label}, ${widget.options[1].label}',
@@ -172,7 +177,7 @@ class _SubscriptionSegmentedSwitchState
                 alignment: Alignment.lerp(
                   Alignment.centerLeft,
                   Alignment.centerRight,
-                  displayPosition(_positionController.value),
+                  visualPosition(_positionController.value),
                 )!,
                 child: child,
               ),

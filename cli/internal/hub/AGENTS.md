@@ -3,7 +3,7 @@
 
 ## Members
 
-- `client.go`: delegates version selectors to the Hub `/mod` surface, consumes flat self-contained Repository/Skill Info, forwards optional presentation locales for discovery/detail, validates strict provider-neutral `/api/v1` JSON reads for App machine commands, downloads verified ZIP responses with optional byte progress, resolves exact content matches, and exposes typed HTTP failures from a configured SkillsGo Hub.
+- `client.go`: delegates version selectors to the Hub `/mod` surface, consumes flat self-contained Repository/Skill Info, forwards optional presentation locales for discovery/detail, validates strict provider-neutral `/api/v1` JSON reads including Catalog-only batch latest-version checks for App machine commands, downloads verified ZIP responses with optional byte progress, resolves exact content matches, and exposes typed HTTP failures from a configured SkillsGo Hub.
 - `artifact_digest.go`: recomputes the Hub-compatible normalized Content Digest from ZIP or extracted directories and binds Info to exact artifact files.
 - `artifact_digest_test.go`: specifies golden deterministic digest acceptance and mismatch rejection.
 - `client_test.go`: specifies source-hint request encoding and strict content-match response validation.

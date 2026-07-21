@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the Hub HTTP router with a temporary SQLite Catalog and deterministic public requests.
- * [OUTPUT]: Specifies public API contracts plus correlated, redacted private diagnostics for internal failures.
+ * [OUTPUT]: Specifies public API contracts including Catalog-only batch update checks plus correlated, redacted private diagnostics for internal failures.
  * [POS]: Serves as executable public HTTP contract coverage for Hub discovery clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -209,6 +209,26 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, "unknown", response.Skills[0].RiskAssessment)
 	require.Equal(t, "all_time_installs", response.Skills[0].Metric.Kind)
 	require.Equal(t, "github.com/mattpocock/skills", response.Skills[0].Repository)
+}
+
+func TestCatalogUpdateCheckReadsOnlyCatalogAndPreservesRequestOrder(t *testing.T) {
+	r, c := testCatalogAPI(t)
+	known := &catalog.Skill{
+		SkillID: "github.com/example/skills/-/review", Name: "review",
+		SourceHost: "github.com", Repository: "example/skills", LatestVersion: "v1.3.0",
+	}
+	require.NoError(t, c.UpsertSkill(context.Background(), known))
+	body := `{"schemaVersion":1,"skillIds":["github.com/example/skills/-/missing","github.com/example/skills/-/review"]}`
+	recorder := httptest.NewRecorder()
+	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodPost, "/api/v1/updates/check", strings.NewReader(body)))
+	require.Equal(t, http.StatusOK, recorder.Code)
+	var response catalogUpdateCheckResponse
+	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&response))
+	require.Equal(t, 1, response.SchemaVersion)
+	require.Equal(t, []catalogUpdateCheckItem{
+		{SkillID: "github.com/example/skills/-/missing", Status: "unsupported"},
+		{SkillID: known.SkillID, LatestVersion: "v1.3.0", Status: "available"},
+	}, response.Items)
 }
 
 func TestSkillImageURLSupportsGitHubOnly(t *testing.T) {

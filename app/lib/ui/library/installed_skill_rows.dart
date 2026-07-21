@@ -34,8 +34,8 @@ class _InstalledSkillRow extends StatelessWidget {
             : const Duration(milliseconds: 120),
         decoration: BoxDecoration(
           color: selected ? scheme.surfaceContainer : Colors.transparent,
-          border: Border(
-            left: BorderSide(
+          border: BorderDirectional(
+            start: BorderSide(
               color: selected ? scheme.primary : Colors.transparent,
               width: 3,
             ),
@@ -44,7 +44,7 @@ class _InstalledSkillRow extends StatelessWidget {
         child: InkWell(
           onTap: onOpen,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(8, 8, 10, 8),
+            padding: const EdgeInsetsDirectional.fromSTEB(8, 8, 10, 8),
             child: Row(
               children: [
                 SizedBox(
@@ -62,6 +62,7 @@ class _InstalledSkillRow extends StatelessWidget {
                     children: [
                       Text(
                         skill.name,
+                        textDirection: contentTextDirection(skill.name),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: const TextStyle(
@@ -78,6 +79,15 @@ class _InstalledSkillRow extends StatelessWidget {
                                 projects,
                               )
                             : skill.description.trim(),
+                        textDirection: contentTextDirection(
+                          skill.description.trim().isEmpty
+                              ? _installationCoverageLabel(
+                                  context,
+                                  skill,
+                                  projects,
+                                )
+                              : skill.description.trim(),
+                        ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
@@ -225,6 +235,7 @@ class _ProjectScopeSegment extends StatelessWidget {
           Flexible(
             child: Text(
               project.name,
+              textDirection: contentTextDirection(project.name),
               key: ValueKey('library-scope-project-${project.id}'),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -439,6 +450,7 @@ class _CopyableProjectPathState extends State<_CopyableProjectPath> {
         Flexible(
           child: Text(
             widget.project.path,
+            textDirection: TextDirection.ltr,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600),

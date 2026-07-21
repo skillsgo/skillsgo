@@ -92,7 +92,7 @@ class _InstalledSkillGroup extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(left: 11, bottom: 9),
+          padding: const EdgeInsetsDirectional.only(start: 11, bottom: 9),
           child: Row(
             children: [
               SizedBox(

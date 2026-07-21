@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on flutter_markdown_plus, Material 3 ThemeData, url_launcher, and SkillsGo typography tokens.
- * [OUTPUT]: Provides the single theme-aware, selectable, link-safe Markdown reader used by every Skill document surface.
+ * [INPUT]: Depends on flutter_markdown_plus, Material 3 ThemeData, url_launcher, SkillsGo typography tokens, and shared bidirectional-content detection.
+ * [OUTPUT]: Provides the single theme-aware, direction-aware, selectable, link-safe Markdown reader used by every Skill document surface.
  * [POS]: Serves as the App UI boundary around third-party Markdown parsing and rendering.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,6 +9,7 @@ import 'package:flutter_markdown_plus/flutter_markdown_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'brand.dart';
+import 'bidirectional_content.dart';
 
 class SkillMarkdownView extends StatelessWidget {
   const SkillMarkdownView({
@@ -32,6 +33,7 @@ class SkillMarkdownView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final markdown = stripFrontMatter ? withoutYamlFrontMatter(data) : data;
+    final markdownDirection = contentTextDirection(markdown);
     if (!scrollable) {
       final body = Padding(
         padding: padding,
@@ -41,35 +43,46 @@ class SkillMarkdownView extends StatelessWidget {
           styleSheet: buildSkillMarkdownStyleSheet(
             theme,
             presentation: presentation,
+            textDirection: markdownDirection,
           ),
           onTapLink: (_, href, _) => _openExternalLink(href),
         ),
       );
-      if (maxHeight == null) return body;
+      if (maxHeight == null) {
+        return Directionality(textDirection: markdownDirection, child: body);
+      }
       return SizedBox(
         height: maxHeight,
-        child: Markdown(
-          data: markdown,
-          selectable: true,
-          padding: padding,
-          physics: const ClampingScrollPhysics(),
-          styleSheet: buildSkillMarkdownStyleSheet(
-            theme,
-            presentation: presentation,
+        child: Directionality(
+          textDirection: contentTextDirection(markdown),
+          child: Markdown(
+            data: markdown,
+            selectable: true,
+            padding: padding,
+            physics: const ClampingScrollPhysics(),
+            styleSheet: buildSkillMarkdownStyleSheet(
+              theme,
+              presentation: presentation,
+              textDirection: markdownDirection,
+            ),
+            onTapLink: (_, href, _) => _openExternalLink(href),
           ),
-          onTapLink: (_, href, _) => _openExternalLink(href),
         ),
       );
     }
-    return Markdown(
-      data: markdown,
-      selectable: true,
-      padding: padding,
-      styleSheet: buildSkillMarkdownStyleSheet(
-        theme,
-        presentation: presentation,
+    return Directionality(
+      textDirection: markdownDirection,
+      child: Markdown(
+        data: markdown,
+        selectable: true,
+        padding: padding,
+        styleSheet: buildSkillMarkdownStyleSheet(
+          theme,
+          presentation: presentation,
+          textDirection: markdownDirection,
+        ),
+        onTapLink: (_, href, _) => _openExternalLink(href),
       ),
-      onTapLink: (_, href, _) => _openExternalLink(href),
     );
   }
 }
@@ -92,6 +105,7 @@ String withoutYamlFrontMatter(String markdown) {
 MarkdownStyleSheet buildSkillMarkdownStyleSheet(
   ThemeData theme, {
   SkillMarkdownPresentation presentation = SkillMarkdownPresentation.document,
+  TextDirection textDirection = TextDirection.ltr,
 }) {
   final scheme = theme.colorScheme;
   final typography = theme.extension<SkillsTypography>()!;
@@ -146,7 +160,9 @@ MarkdownStyleSheet buildSkillMarkdownStyleSheet(
     blockquoteDecoration: BoxDecoration(
       color: scheme.surfaceContainerHigh,
       borderRadius: BorderRadius.circular(10),
-      border: Border(left: BorderSide(color: scheme.primary, width: 3)),
+      border: BorderDirectional(
+        start: BorderSide(color: scheme.primary, width: 3),
+      ),
     ),
     codeblockPadding: const EdgeInsets.all(14),
     codeblockDecoration: BoxDecoration(
@@ -155,7 +171,9 @@ MarkdownStyleSheet buildSkillMarkdownStyleSheet(
     ),
     listBullet: body.copyWith(color: scheme.primary),
     listIndent: 24,
-    listBulletPadding: const EdgeInsets.only(right: 8),
+    listBulletPadding: textDirection == TextDirection.rtl
+        ? const EdgeInsets.only(left: 8)
+        : const EdgeInsets.only(right: 8),
     tableHead: body.copyWith(fontWeight: FontWeight.w700),
     tableBody: body.copyWith(fontSize: 14),
     tableBorder: TableBorder.all(color: scheme.outlineVariant),

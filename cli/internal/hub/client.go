@@ -1,12 +1,13 @@
 /*
  * [INPUT]: Depends on a configured Hub origin, canonical Skill IDs, Hub-owned selector resolution, exact content-match responses, and enriched immutable Info/ZIP protocol responses.
- * [OUTPUT]: Provides delegated selector resolution, strict product JSON reads, validated content-identity matching, immutable artifact fetch with optional byte progress, normalized Skill metadata, Hub-bound Risk and Content Digest metadata, and typed HTTP or malformed-protocol failures.
+ * [OUTPUT]: Provides delegated selector resolution, strict product JSON reads, Catalog-only batch latest-version reads, validated content-identity matching, immutable artifact fetch with optional byte progress, normalized Skill metadata, Hub-bound Risk and Content Digest metadata, and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package hub
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -122,6 +123,17 @@ type contentMatchesResponse struct {
 	SchemaVersion int            `json:"schemaVersion"`
 	ContentDigest string         `json:"contentDigest"`
 	Matches       []ContentMatch `json:"matches"`
+}
+
+type CatalogUpdateItem struct {
+	SkillID       string `json:"skillId"`
+	LatestVersion string `json:"latestVersion,omitempty"`
+	Status        string `json:"status"`
+}
+
+type catalogUpdateResponse struct {
+	SchemaVersion int                 `json:"schemaVersion"`
+	Items         []CatalogUpdateItem `json:"items"`
 }
 
 type Client struct {
@@ -414,6 +426,43 @@ func (c *Client) MatchContent(ctx context.Context, contentDigest, sourceHint str
 		seen[key] = true
 	}
 	return response.Matches, nil
+}
+
+func (c *Client) CatalogUpdates(ctx context.Context, skillIDs []string) ([]CatalogUpdateItem, error) {
+	requestBody, err := json.Marshal(struct {
+		SchemaVersion int      `json:"schemaVersion"`
+		SkillIDs      []string `json:"skillIds"`
+	}{SchemaVersion: 1, SkillIDs: skillIDs})
+	if err != nil {
+		return nil, err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/updates/check", bytes.NewReader(requestBody))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	response, err := c.http.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("请求 Hub: %w", err)
+	}
+	defer response.Body.Close()
+	body, err := io.ReadAll(io.LimitReader(response.Body, 4<<20))
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, &HTTPError{StatusCode: response.StatusCode, Body: strings.TrimSpace(string(body)), RequestID: response.Header.Get("Athens-Request-ID")}
+	}
+	var decoded catalogUpdateResponse
+	if json.Unmarshal(body, &decoded) != nil || decoded.SchemaVersion != 1 || len(decoded.Items) != len(skillIDs) {
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Catalog update response")}
+	}
+	for index, item := range decoded.Items {
+		if item.SkillID != skillIDs[index] || (item.Status != "available" && item.Status != "unsupported") || (item.Status == "available" && item.LatestVersion == "") {
+			return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Catalog update item")}
+		}
+	}
+	return decoded.Items, nil
 }
 
 func validateAssessedInfo(skillID, requestedVersion string, info Info) error {

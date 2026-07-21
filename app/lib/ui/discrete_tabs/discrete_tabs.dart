@@ -169,9 +169,7 @@ class _DiscreteTabItem extends StatelessWidget {
             duration: duration,
             curve: reduceMotion ? Curves.linear : Curves.easeOutBack,
             height: style.height,
-            padding: EdgeInsets.symmetric(
-              horizontal: style.horizontalPadding,
-            ),
+            padding: EdgeInsets.symmetric(horizontal: style.horizontalPadding),
             decoration: BoxDecoration(
               color: selected
                   ? style.activeBackgroundColor
@@ -204,7 +202,9 @@ class _DiscreteTabItem extends StatelessWidget {
                   child: reduceMotion
                       ? selected
                             ? Padding(
-                                padding: const EdgeInsets.only(left: 6),
+                                padding: const EdgeInsetsDirectional.only(
+                                  start: 6,
+                                ),
                                 child: Text(
                                   tab.label,
                                   style: TextStyle(
@@ -219,7 +219,7 @@ class _DiscreteTabItem extends StatelessWidget {
                       : AnimatedSize(
                           duration: duration,
                           curve: Curves.easeOutBack,
-                          alignment: Alignment.centerLeft,
+                          alignment: AlignmentDirectional.centerStart,
                           child: selected
                               ? TweenAnimationBuilder<double>(
                                   tween: Tween(begin: 0, end: 1),
@@ -235,7 +235,9 @@ class _DiscreteTabItem extends StatelessWidget {
                                     ),
                                   ),
                                   child: Padding(
-                                    padding: const EdgeInsets.only(left: 6),
+                                    padding: const EdgeInsetsDirectional.only(
+                                      start: 6,
+                                    ),
                                     child: ShimmerText(
                                       text: tab.label,
                                       style: TextStyle(

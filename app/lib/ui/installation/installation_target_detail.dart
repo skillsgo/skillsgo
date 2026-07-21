@@ -104,6 +104,7 @@ class _InstallationTargetDetailState extends State<_InstallationTargetDetail> {
                 children: [
                   Text(
                     agentDisplayLabel(widget.target.agent),
+                    textDirection: contentTextDirection(widget.target.agent),
                     style: context.skillsTypography.bodySecondary,
                   ),
                   const SizedBox(width: 10),
@@ -112,6 +113,7 @@ class _InstallationTargetDetailState extends State<_InstallationTargetDetail> {
                       message: widget.target.path,
                       child: Text(
                         widget.target.path,
+                        textDirection: TextDirection.ltr,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: context.skillsTypography.caption.copyWith(
@@ -142,7 +144,7 @@ class _InstallationTargetDetailState extends State<_InstallationTargetDetail> {
                   child: SizeTransition(
                     sizeFactor: animation,
                     axis: Axis.horizontal,
-                    alignment: Alignment.centerRight,
+                    alignment: AlignmentDirectional.centerEnd,
                     child: child,
                   ),
                 ),
@@ -198,10 +200,14 @@ class _InstallationTargetDetailState extends State<_InstallationTargetDetail> {
         ),
         if (actionError != null)
           Padding(
-            padding: const EdgeInsets.only(left: 34, top: 4, right: 18),
+            padding: const EdgeInsetsDirectional.only(
+              start: 34,
+              top: 4,
+              end: 18,
+            ),
             child: Text(
               failureCopy(context, actionError!).message,
-              textAlign: TextAlign.right,
+              textAlign: TextAlign.end,
               style: TextStyle(
                 color: context.skillsComponents.statusDanger,
                 fontSize: 11,

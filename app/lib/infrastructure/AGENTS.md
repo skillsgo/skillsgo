@@ -13,7 +13,7 @@
 - `real_skills_gateway_installation.dart`: owns Installation Request execution, compatibility installation, and Local Skill export.
 - `real_skills_gateway_execution.dart`: owns shared affected-binding integrity and ordered NDJSON progress/final-payload execution envelopes for target mutations.
 - `real_skills_gateway_target_management.dart`: owns reviewed Remove and Repair preflight, execution, and progress translation.
-- `real_skills_gateway_updates.dart`: owns reviewed update preflight, execution, progress translation, and update checks.
+- `real_skills_gateway_updates.dart`: owns reviewed update preflight, execution, progress translation, and one Catalog-only batch update check across the current Library.
 - `real_skills_gateway_failures.dart`: owns versioned machine-failure and process-exit translation.
 - `project_icon_resolver.dart`: resolves and caches bounded, safe Added Project identity assets with deterministic fallback.
 

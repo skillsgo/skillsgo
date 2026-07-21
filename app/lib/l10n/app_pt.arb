@@ -1,0 +1,1088 @@
+{
+  "@@locale": "pt",
+  "discover": "Descubra",
+  "discoverSkills": "É bom saber um pouco mais.",
+  "library": "Biblioteca",
+  "settings": "Configurações",
+  "openSettings": "Abra Configurações",
+  "cliNeedsAttention": "Um componente SkillsGo necessário precisa de atenção.",
+  "cliMissingBundled": "Um componente SkillsGo necessário está faltando ou não pode ser iniciado. Reinstale o SkillsGo para restaurá-lo.",
+  "cliDamagedBundled": "Um componente SkillsGo necessário está danificado. Reinstale o SkillsGo para restaurá-lo.",
+  "cliIncompatibleBundled": "Um componente SkillsGo necessário não corresponde a esta versão do aplicativo. Atualize ou reinstale o SkillsGo.",
+  "officialIndex": "SkillsGo Hub",
+  "discoverTitle": "Encontre uma habilidade para seu próximo movimento.",
+  "skillsLeaderboard": "É bom saber um pouco mais.",
+  "searchResultsFor": "Resultados para “{query}”",
+  "@searchResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchSkills": "Pesquise habilidades ou cole um link Git…",
+  "search": "Pesquisar",
+  "ranking": "Classificação",
+  "trending": "Tendências",
+  "hot": "Quente",
+  "discoverNavigation": "Descubra a navegação",
+  "allTimeRanking": "Classificação de todos os tempos",
+  "trendingNow": "Tendências nas últimas 24 horas",
+  "hotNow": "Quente agora",
+  "allTimeDescription": "Skills público ordenado por instalações aceitas em todos os tempos.",
+  "trendingDescription": "Skills público ordenado por instalações aceitas durante a última janela de 24 horas.",
+  "hotDescription": "Skills público ordenado por velocidade e alteração de instalação de curto prazo.",
+  "offlineTitle": "Não é possível conectar ao SkillsGo",
+  "offlineMessage": "Verifique sua conexão com a Internet e tente novamente. Se você usa um proxy ou endereço de serviço personalizado, revise-o em Configurações.",
+  "searchFailedTitle": "Pesquisa tropeçou",
+  "validationTitle": "Verifique o que você digitou",
+  "validationMessage": "SkillsGo não pôde usar esta solicitação. Revise o que você digitou e tente novamente.",
+  "serverTitle": "Serviço temporariamente indisponível",
+  "serverMessage": "SkillsGo não pode concluir esta solicitação no momento. Tente novamente em alguns instantes.",
+  "timeoutTitle": "Isso está demorando muito",
+  "timeoutMessage": "O serviço não respondeu a tempo. Verifique sua conexão ou tente novamente.",
+  "invalidResponseTitle": "SkillsGo precisa de uma atualização",
+  "invalidResponseMessage": "Esta resposta não pode ser lida pela sua versão do SkillsGo. Atualize o aplicativo e tente novamente.",
+  "invalidLocalDataTitle": "Não consigo ler uma habilidade instalada",
+  "invalidLocalDataMessage": "Algumas informações de instalação local estão danificadas ou incompatíveis. Atualize ou reinstale o SkillsGo e tente novamente.",
+  "tryAgain": "Tente novamente",
+  "searchEmptyTitle": "Pesquise, não role.",
+  "searchEmptyMessage": "Insira uma capacidade, origem ou tarefa para pesquisar habilidades públicas.",
+  "noSkillsTitle": "Nenhuma habilidade encontrada",
+  "noSkillsMessage": "Experimente uma frase mais ampla ou verifique a ortografia.",
+  "focusSearch": "Pesquisa de foco",
+  "skillsFromLink": "Skills deste link",
+  "skillCount": "{count, plural, =1{1 Skill} other{{count} Skills}}",
+  "@skillCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceResultsSummary": "{count, plural, =1{1 Skill de {source}} other{{count} Skills de {source}}}",
+  "@sourceResultsSummary": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceSearchEmptyTitle": "Este link está pronto para inspecionar",
+  "sourceSearchEmptyMessage": "{source} não está nos resultados da pesquisa atual. SkillsGo pode inspecionar o link diretamente na próxima etapa.",
+  "@sourceSearchEmptyMessage": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "inspectSource": "Veja as habilidades neste link",
+  "collectionEmptyTitle": "Não há Skills nesta coleção",
+  "collectionEmptyMessage": "Não há nada aqui ainda. Tente novamente após mais atividades de instalação.",
+  "loadMore": "Carregar mais",
+  "install": "Instalar",
+  "installAll": "Instale todas as habilidades",
+  "latestCommit": "Último commit",
+  "installToMoreTargets": "Instale em mais locais",
+  "localTargets": "Destinos locais {count}",
+  "@localTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allTimeMetric": "Instalações {count} de todos os tempos",
+  "@allTimeMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "trendingMetric": "Instalações {count} / 24h",
+  "@trendingMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hotMetric": "{value} esta hora · {change}",
+  "@hotMetric": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "trustUnverified": "Não verificado",
+  "trustCommunityVerified": "Comunidade verificada",
+  "trustPublisherVerified": "Editor verificado",
+  "trustOfficial": "Oficial",
+  "trustWarned": "Avisado",
+  "trustDelisted": "Removido",
+  "riskUnknown": "Risco desconhecido",
+  "riskLow": "Baixo risco",
+  "riskMedium": "Risco médio",
+  "riskHigh": "Alto risco",
+  "riskCritical": "Risco crítico",
+  "openSkill": "Abra {name}",
+  "@openSkill": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installs": "Instalações {count}",
+  "@installs": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "detailFailedTitle": "Não foi possível carregar este Skill",
+  "detailLoading": "Carregando detalhes Skill auditáveis",
+  "artifactUnavailableTitle": "Artefato indisponível",
+  "artifactUnavailableMessage": "Esta versão não está disponível no momento. Tente novamente ou escolha outra versão.",
+  "detailInvalidTitle": "Metadados de artefato não suportados",
+  "detailInvalidMessage": "Alguns detalhes desta habilidade estão incompletos ou não podem ser lidos. Atualize o SkillsGo e tente novamente.",
+  "instructionsTab": "Instruções",
+  "manifestTab": "Manifest",
+  "immutableVersionLabel": "{version} imutável",
+  "@immutableVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "commitIdentity": "Confirmar {sha}",
+  "@commitIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "treeIdentity": "Árvore {sha}",
+  "@treeIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "contentIdentity": "Conteúdo {digest}",
+  "@contentIdentity": {
+    "placeholders": {
+      "digest": {
+        "type": "String"
+      }
+    }
+  },
+  "trustDoesNotProveSafety": "A confiança do editor verifica a propriedade ou manutenção; não certifica a segurança do artefato. O risco é avaliado separadamente para esta versão imutável.",
+  "knownInstallationTargets": "Destinos de instalação conhecidos",
+  "installationRange": "Escopo instalado",
+  "targetDetails": "Mostrar detalhes do alvo",
+  "hideTargetDetails": "Ocultar detalhes do alvo",
+  "installedVersionLabel": "Versão {version}",
+  "@installedVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "targetSummary": "{scope} / {agent} · {version}",
+  "@targetSummary": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "agent": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "projectScope": "Projeto",
+  "fileContentUnavailable": "Visualização binária ou indisponível",
+  "fileContentTruncated": "Visualização truncada pelo limite de segurança Hub.",
+  "retry": "Tentar novamente",
+  "backToSearch": "Voltar à pesquisa",
+  "installForCodex": "Instalar para Codex",
+  "cliNotDetected": "habilidades (não detectadas)",
+  "snapshotFiles": "Arquivos de instantâneo",
+  "globalCodex": "Global · Codex",
+  "yourLibrary": "O que você sabe está tudo aqui.",
+  "libraryNavigation": "Navegação na biblioteca",
+  "all": "Todos",
+  "allSkills": "Todos Skills",
+  "updatesOnly": "Atualizações",
+  "allAgents": "Todos Agents",
+  "allProjects": "Todos os projetos",
+  "specificProject": "Projeto",
+  "userScope": "Globais",
+  "addProject": "Adicionar projeto",
+  "relocateProject": "Realocar",
+  "removeFromList": "Remover da lista",
+  "removeProjectTitle": "Remover {name} do SkillsGo?",
+  "@removeProjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeProjectDescription": "Apenas a referência do aplicativo será removida. SkillsGo não alterará ou excluirá nenhum arquivo neste diretório.",
+  "projectRailUnavailable": "{name} – indisponível",
+  "@projectRailUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyProjectTitle": "Ainda não há Skills",
+  "browseSkills": "Navegar Skills",
+  "projectMissingTitle": "O diretório do projeto está faltando",
+  "projectMissingMessage": "O diretório pode ter sido movido ou seu volume pode estar offline. Realoque-o ou remova apenas a referência do aplicativo.",
+  "projectPermissionTitle": "A permissão do projeto é necessária",
+  "projectPermissionMessage": "SkillsGo não pode inspecionar esta raiz selecionada. Conceda acesso realocando-o por meio do seletor de diretório.",
+  "projectInaccessibleTitle": "O diretório do projeto está inacessível",
+  "projectInaccessibleMessage": "SkillsGo manteve esta referência de projeto. Verifique o caminho ou volume e realoque-o.",
+  "checking": "Verificando…",
+  "checkUpdates": "Verifique as atualizações",
+  "refresh": "Atualizar",
+  "libraryUnavailable": "Biblioteca indisponível",
+  "libraryEmpty": "Nenhuma habilidade instalada ainda",
+  "libraryEmptyMessage": "Instale um Skill do Discover e ele aparecerá aqui.",
+  "searchLibrary": "Pesquise habilidades instaladas",
+  "libraryNoMatches": "Nenhuma correspondência Skills",
+  "libraryNoMatchesMessage": "Experimente um nome, fonte, Agent, projeto ou versão diferente.",
+  "agentsSummary": "{count} Agents",
+  "@agentsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsSummary": "Projetos {count}",
+  "@projectsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionsSummary": "Versões {count}",
+  "@versionsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubManaged": "Hub gerenciado",
+  "localManaged": "Gerenciado localmente",
+  "externalInstallation": "Instalação externa",
+  "readOnly": "Somente leitura",
+  "unversioned": "Não versionado",
+  "supportingFiles": "Arquivos de suporte",
+  "versionDivergence": "Divergência de versão",
+  "healthHealthy": "Saudável",
+  "healthMissing": "Alvo ausente",
+  "healthReplaced": "Alvo substituído",
+  "healthLocalModification": "Modificação Local",
+  "healthUnreadable": "Alvo ilegível",
+  "healthUndeclared": "Não declarado",
+  "healthWorkspaceUnreadable": "Estado do espaço de trabalho ilegível",
+  "healthLockMismatch": "Incompatibilidade de bloqueio",
+  "healthUnexpectedPath": "Caminho de destino inesperado",
+  "modeSymlink": "Link simbólico",
+  "modeCopy": "Copiar",
+  "modeExternal": "Externo",
+  "notLinked": "NÃO VINCULADO",
+  "update": "Atualizar",
+  "backToLibrary": "Voltar para a biblioteca",
+  "remove": "Remover",
+  "manageTargets": "Gerenciar escopo",
+  "skillsSelected": "{count} selecionado",
+  "@skillsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "Limpar seleção",
+  "selectCurrentResults": "Selecione os resultados atuais",
+  "clearCurrentResultSelection": "Limpar seleção de resultados atual",
+  "manageTargetsTitle": "Gerenciar destinos de instalação",
+  "manageTargetsDescription": "Escolha uma ação exata para cada alvo. Os alvos não selecionados não serão alterados.",
+  "targetActionsSelected": "{selected} dos alvos {total} selecionados",
+  "@targetActionsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "repairTarget": "Reparar",
+  "confirmRemoveTarget": "Confirmar remoção",
+  "applyTargetActions": "Aplicar ações selecionadas",
+  "managementProgressTitle": "Aplicando ações direcionadas",
+  "managementResultsTitle": "Resultados da ação alvo",
+  "managementResultSummary": "{succeeded} foi bem-sucedido, {failed} falhou",
+  "@managementResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceOwnershipChanges": "As ações do projeto selecionadas atualizarão skillsgo.mod e skillsgo.sum.",
+  "targetContentPreserved": "O conteúdo de destino atual será preservado.",
+  "localReadFailed": "Não consigo ler este Skill",
+  "localReadFailedMessage": "SkillsGo não conseguiu ler esta habilidade instalada. Verifique se a pasta está disponível e acessível e tente novamente.",
+  "localConfiguration": "CONFIGURAÇÕES DE HABILIDADES",
+  "settingsNavigation": "Navegação nas configurações",
+  "general": "Personalizar",
+  "agents": "Agents",
+  "hub": "Hub",
+  "installationPolicy": "Política de instalação",
+  "storage": "Armazenamento",
+  "colorScheme": "Esquema de cores",
+  "about": "Sobre",
+  "colorSchemeInspectorTitle": "Funções de cores Material geradas",
+  "skillsColorTokensTitle": "Cores semânticas SkillsGo",
+  "skillsColorTokensDescription": "Cores de produtos criadas a partir de Radix Sand e organizadas com semântica Primer, com Folder como uma hierarquia espacial dedicada.",
+  "colorSchemeInspectorDescription": "Visualize cada token ColorScheme não obsoleto gerado a partir da semente atual. Clique em uma cor para copiar seu valor HEX.",
+  "colorSchemePairPreview": "Pares semânticos",
+  "colorSchemePairPreviewDescription": "Funções de primeiro e segundo plano renderizadas juntas para expor contraste e hierarquia.",
+  "colorSchemeComponentPreview": "Visualização do componente",
+  "colorSchemeComponentPreviewDescription": "Controles Material representativos renderizados com este esquema de visualização exato.",
+  "colorSchemeSampleTitle": "Título do cartão Skill",
+  "colorSchemeSampleBody": "A cópia secundária usa onSurfaceVariant.",
+  "colorSchemeCopied": "Copiado",
+  "colorSchemeSampleGlyphs": "Aa 123",
+  "colorSchemeGroupPrimary": "Primário",
+  "colorSchemeGroupPrimaryDescription": "Ênfase primária, contêineres e papéis de acento fixos.",
+  "colorSchemeGroupSecondary": "Secundário",
+  "colorSchemeGroupSecondaryDescription": "Ênfase de apoio e papéis secundários fixos.",
+  "colorSchemeGroupTertiary": "Terciário",
+  "colorSchemeGroupTertiaryDescription": "Sotaques contrastantes e papéis terciários fixos.",
+  "colorSchemeGroupSurface": "Superfície",
+  "colorSchemeGroupSurfaceDescription": "Hierarquia de página, contêiner, elevação e primeiro plano.",
+  "colorSchemeGroupUtility": "Esboço e Utilidade",
+  "colorSchemeGroupUtilityDescription": "Limites, sombras, telas e superfícies inversas.",
+  "colorSchemeGroupError": "Erro",
+  "colorSchemeGroupErrorDescription": "Ações de erro, mensagens e contêineres.",
+  "colorSchemeUsagePrimary": "Ações primárias, foco e acentos de alta ênfase.",
+  "colorSchemeUsageSecondary": "Ações de apoio e acentos de ênfase média.",
+  "colorSchemeUsageTertiary": "Acentos contrastantes que complementam o primário e o secundário.",
+  "colorSchemeUsageContentOn": "Texto e ícones exibidos no {token}.",
+  "@colorSchemeUsageContentOn": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageContainer": "Recipiente {family} de menor ênfase para seleções e acentos.",
+  "@colorSchemeUsageContainer": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixed": "Recipiente {family} fixo independente de brilho.",
+  "@colorSchemeUsageFixed": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedDim": "Recipiente {family} fixo independente de brilho esmaecido.",
+  "@colorSchemeUsageFixedDim": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedContent": "Conteúdo de alta ênfase no contêiner {family} fixo.",
+  "@colorSchemeUsageFixedContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedVariantContent": "Conteúdo com menor ênfase no contêiner {family} fixo.",
+  "@colorSchemeUsageFixedVariantContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageSurface": "Página base e superfície de região grande.",
+  "colorSchemeUsageSurfaceDim": "Superfície de base escurecida usada no tom de superfície mais escuro.",
+  "colorSchemeUsageSurfaceBright": "Superfície de base brilhante usada no tom de superfície mais claro.",
+  "colorSchemeUsageSurfaceElevation": "A elevação do contêiner de superfície {level}.",
+  "@colorSchemeUsageSurfaceElevation": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeElevationLowest": "mais baixo",
+  "colorSchemeElevationLow": "baixo",
+  "colorSchemeElevationDefault": "padrão",
+  "colorSchemeElevationHigh": "alto",
+  "colorSchemeElevationHighest": "mais alto",
+  "colorSchemeUsageOnSurface": "Texto primário e ícones exibidos em superfícies.",
+  "colorSchemeUsageOnSurfaceVariant": "Texto secundário, rótulos e ícones suaves nas superfícies.",
+  "colorSchemeUsageSurfaceTint": "Matiz de elevação Material derivado do primário.",
+  "colorSchemeUsageOutline": "Limites proeminentes e contornos de componentes focados.",
+  "colorSchemeUsageOutlineVariant": "Limites sutis, separadores e contornos de baixa ênfase.",
+  "colorSchemeUsageShadow": "Cor de sombra projetada para superfícies elevadas.",
+  "colorSchemeUsageScrim": "Sobreposição modal usada para tirar a ênfase do conteúdo de fundo.",
+  "colorSchemeUsageInverseSurface": "Superfície com ênfase invertida em claro e escuro.",
+  "colorSchemeUsageInversePrimary": "Acento primário exibido em uma superfície inversa.",
+  "colorSchemeUsageError": "Ações de erro, status e feedback de alta ênfase.",
+  "save": "Salvar",
+  "advancedSettings": "Avançado",
+  "remindersSettings": "Lembretes",
+  "remindersSettingsTitle": "Configurações de lembrete",
+  "remindersSettingsDescription": "Escolha quais lembretes receber.",
+  "updateReminderTitle": "Atualizar lembretes",
+  "updateReminderDescription": "Verifique se há atualizações quando a Biblioteca for aberta.",
+  "securityReminderTitle": "Alertas de alto risco",
+  "securityReminderDescription": "Notificá-lo sobre novos riscos Altos ou Críticos nas habilidades instaladas.",
+  "availableUpdatesReminder": "As habilidades instaladas do {count} têm atualizações",
+  "@availableUpdatesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openAvailableUpdates": "Abra a visualização de atualizações disponíveis para revisá-las e atualizá-las.",
+  "securityAdvisoriesReminder": "As habilidades instaladas do {count} precisam de uma revisão de segurança",
+  "@securityAdvisoriesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewInstalledSkills": "Revise suas informações de risco antes de usá-las ou atualizá-las.",
+  "generalSettingsTitle": "Faça do SkillsGo seu",
+  "generalSettingsDescription": "A interface segue o idioma do sistema, acessibilidade e preferências de movimento.",
+  "agentsSettingsTitle": "Tempo de execução Agent",
+  "hubSettingsTitle": "Origem Hub",
+  "hubSettingsDescription": "Use o Hub oficial ou uma origem auto-hospedada HTTP(S) que implemente o mesmo protocolo SkillsGo.",
+  "testConnection": "Conexão de teste",
+  "saveOrigin": "Salvar origem",
+  "resetDefault": "Redefinir para o padrão",
+  "connectionReady": "Conexão pronta",
+  "connectionFailed": "Falha na conexão",
+  "hubInvalidOrigin": "Insira uma origem HTTP(S) válida sem credenciais, uma consulta ou um fragmento.",
+  "hubHttpFailure": "Hub retornou HTTP {status}. Verifique a origem e a configuração do servidor.",
+  "@hubHttpFailure": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "hubInvalidProtocol": "O servidor não retornou o protocolo de pesquisa SkillsGo Hub.",
+  "hubInvalidJson": "O Hub retornou JSON inválido.",
+  "hubConnectionFailure": "Não foi possível acessar o Hub. Verifique a configuração de origem, rede, proxy e TLS.",
+  "hubConnectionTimeout": "A conexão Hub expirou. Verifique a rede ou tente novamente.",
+  "riskPolicyTitle": "Política de risco pessoal",
+  "riskPolicyDescription": "As regras de segurança se aplicam quando você instala ou atualiza uma habilidade.",
+  "confirmHighRisk": "Exigir confirmação para alto risco",
+  "confirmHighRiskDescription": "Artefatos de alto risco sempre exigem confirmação adicional antes da instalação.",
+  "allowCriticalOverride": "Permitir uma substituição explícita de risco crítico",
+  "allowCriticalOverrideDescription": "Os artefatos de risco crítico permanecem bloqueados por padrão. Habilite isto apenas para expor uma substituição manual separada.",
+  "storageSettingsTitle": "Store endereçado ao conteúdo",
+  "storageHealthy": "Legível",
+  "storageNotInitialized": "Não inicializado",
+  "storageUnavailable": "Indisponível",
+  "storagePathUnavailable": "Caminho Store indisponível até que o diagnóstico CLI esteja pronto.",
+  "storageHealthyDescription": "O CLI pode ler o Store sem alterar seu conteúdo.",
+  "storageNotInitializedDescription": "O Store ainda não existe e não foi criado por esta verificação.",
+  "storageUnavailableDescription": "O CLI não consegue ler o Store. Verifique suas permissões e diretório pai.",
+  "storageInvalidResponse": "O CLI incluído retornou uma resposta de diagnóstico não suportada.",
+  "aboutSettingsTitle": "Compatibilidade do produto",
+  "appVersion": "Versão do aplicativo",
+  "cliVersion": "Versão CLI empacotada",
+  "compatible": "Compatível",
+  "hubOriginSaved": "Hub Origin salva e aplicada.",
+  "policySaved": "Política de instalação salva.",
+  "officialCli": "SkillsGo CLI",
+  "ready": "PRONTO",
+  "unknown": "DESCONHECIDO",
+  "missing": "FALTANDO",
+  "incompatible": "INCOMPATÍVEL",
+  "detecting": "Detectando…",
+  "customCliPath": "Caminho executável personalizado",
+  "saveAndDetect": "Salvar e detectar",
+  "detectAgain": "Detectar novamente",
+  "agentInstalled": "Instalado",
+  "agentSupported": "Suportado",
+  "agentCatalogSummary": "{installed} instalado · {supported} compatível",
+  "@agentCatalogSummary": {
+    "placeholders": {
+      "installed": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "int"
+      }
+    }
+  },
+  "installedAgentsTitle": "Instalado · {count}",
+  "@installedAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsTitle": "Não instalado · {count}",
+  "@notInstalledAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsDescription": "Compatível com SkillsGo, mas não detectado neste Mac.",
+  "agentDiscoveryRoots": "Caminhos de carregamento Skill: {paths}",
+  "@agentDiscoveryRoots": {
+    "placeholders": {
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+  "agentInspectionFailed": "Os dados de detecção Agent não estão disponíveis. Execute a detecção novamente.",
+  "noInstalledAgentsTitle": "Nenhum Agents instalado detectado",
+  "noInstalledAgentsMessage": "Você pode continuar navegando neste Skill, mas ainda não há um alvo de instalação. Instale um Agent compatível e execute a detecção novamente.",
+  "clearCustomPath": "Limpar caminho personalizado",
+  "privacyProvenance": "Privacidade e proveniência",
+  "privacySummary": "Suas pesquisas não são salvas e o SkillsGo não mantém registros de comandos.",
+  "language": "Idioma",
+  "personalizationTheme": "Tema",
+  "folderColorTheme": "Cor do tema",
+  "folderColorThemeDescription": "Escolha uma cor que você gosta. SkillsGo construirá uma paleta de interface coordenada em torno dele.",
+  "brandNameNeteaseCloudMusic": "NetEase Cloud Music",
+  "brandNameRaspberryPi": "Raspberry Pi",
+  "brandNameChinaEasternAirlines": "China Eastern Airlines",
+  "brandNameNvidia": "NVIDIA",
+  "brandNameTaobao": "Taobao",
+  "brandNameBitcoin": "Bitcoin",
+  "appearanceMode": "Modo",
+  "appearanceModeDescription": "Siga a aparência do seu sistema ou use sempre um tema claro ou escuro.",
+  "followSystem": "Sistema",
+  "lightMode": "Luz",
+  "darkMode": "Escuro",
+  "wallpaper": "Papel de parede",
+  "wallpaperDescription": "Escolha um fundo celestial. Sua seleção aparece imediatamente atrás de Folder.",
+  "wallpaperSun": "Sol",
+  "wallpaperMercury": "Mercúrio",
+  "wallpaperVenus": "Vênus",
+  "wallpaperEarth": "Terra",
+  "wallpaperMars": "Marte",
+  "wallpaperJupiter": "Júpiter",
+  "wallpaperSaturn": "Saturno",
+  "wallpaperUranus": "Urano",
+  "wallpaperNeptune": "Netuno",
+  "wallpaperPluto": "Plutão",
+  "wallpaperMoon": "Lua",
+  "folderThemeChoice": "Tema {theme} Folder",
+  "@folderThemeChoice": {
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyAffiliation": "A telemetria de instalação anônima é controlada pelas configurações do SkillsGo. SkillsGo não é afiliado a OpenAI ou Codex.",
+  "commandCompleted": "Comando concluído",
+  "commandFailed": "Falha no comando",
+  "commandExit": "Saia do {code} · expanda para o log desta sessão",
+  "@commandExit": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "command": "Comando",
+  "cancel": "Cancelar",
+  "updateUnknown": "DESCONHECIDO",
+  "updateChecking": "VERIFICAÇÃO",
+  "upToDate": "ATUALIZADO",
+  "updateAvailable": "ATUALIZAÇÃO",
+  "updateUnavailable": "INDISPONÍVEL",
+  "updateCheckFailed": "VERIFICAÇÃO FALHA",
+  "installSkill": "Instale Skill",
+  "installLocationTitle": "Definir local de instalação",
+  "userLevel": "Nível de usuário",
+  "projectLevel": "Nível do projeto",
+  "projects": "Projetos",
+  "loading": "Carregando…",
+  "repositoryParsing": "Analisando Repositório…",
+  "userInstallSummary": "Disponível para {agents} Agents em nível de usuário",
+  "@userInstallSummary": {
+    "placeholders": {
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "projectInstallSummary": "Projetos {projects} · {agents} Agents",
+  "@projectInstallSummary": {
+    "placeholders": {
+      "projects": {
+        "type": "int"
+      },
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "installationResults": "Resultados da instalação",
+  "installationInProgress": "Instalação em andamento",
+  "installationSucceeded": "Instalação concluída",
+  "installationSucceededMessage": "O Skill agora está disponível nos locais selecionados.",
+  "projectUnavailable": "Projeto indisponível",
+  "installedCell": "Instalado",
+  "unsupportedCell": "Indisponível",
+  "confirmInstall": "Confirme a instalação",
+  "installAllRepositorySkills": "Instale todas as habilidades do repositório ({count})",
+  "installAllSkillsTo": "Instale todas as habilidades para",
+  "@installAllRepositorySkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installRepositorySkills": "Instale todas as habilidades {repository} ({count})",
+  "@installRepositorySkills": {
+    "placeholders": {
+      "repository": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installSkillTo": "Instale {skill} para",
+  "@installSkillTo": {
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
+  },
+  "availableInAllProjects": "Todos os projetos",
+  "availableInSelectedProjects": "Projetos selecionados",
+  "usedBy": "Para Agents",
+  "backToTargets": "Voltar aos alvos",
+  "stayHere": "Fique aqui",
+  "viewInLibrary": "Ver na biblioteca",
+  "planCreateCount": "{count} criar",
+  "@planCreateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planSkipCount": "{count} pular",
+  "@planSkipCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planReplaceCount": "Substituição {count}",
+  "@planReplaceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planConflictCount": "Conflito {count}",
+  "@planConflictCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRiskCount": "Risco {count} bloqueado",
+  "@planRiskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "refreshInstallationPlan": "Aplicar resoluções",
+  "replaceVersionConflict": "Substitua a versão instalada neste destino",
+  "replaceSkillIdCollision": "Substitua o ID Skill diferente neste destino",
+  "replaceLocalModification": "Descarte as modificações locais e substitua este alvo",
+  "sharedTargetConflict": "Este caminho é compartilhado por outros alvos Agent",
+  "sharedTargetConflictDescription": "Retorne à matriz de destino e selecione cada Agent afetado antes de substituir: {agents}",
+  "@sharedTargetConflictDescription": {
+    "placeholders": {
+      "agents": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceConflictingTarget": "Substitua o alvo conflitante",
+  "confirmHighRiskArtifact": "Confirmação de artefato de alto risco",
+  "confirmCriticalRiskArtifact": "Confirmação de substituição de risco crítico",
+  "confirmRiskForSelectedTargets": "Analisei os arquivos do artefato e aceito esse risco para os alvos selecionados",
+  "criticalRiskBlocked": "A instalação de risco crítico está bloqueada",
+  "criticalRiskOverrideDisabled": "Habilite a substituição explícita de risco crítico em Configurações antes que este plano possa continuar.",
+  "workspaceManifestChanges": "Mudanças no Workspace Manifest",
+  "noWorkspaceManifestChanges": "Nenhum arquivo Workspace Manifest será alterado.",
+  "lockVersionChange": "{from} → {to}",
+  "@lockVersionChange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "notPresent": "não presente",
+  "planActionCreate": "Criar",
+  "planActionReplace": "Substituir",
+  "planActionSkip": "Pular",
+  "planActionConflict": "Conflito",
+  "planActionBlockedByRisk": "Bloqueado por risco",
+  "installationResultSummary": "Destinos {succeeded} instalados, {failed} falhou",
+  "@installationResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "installationProgressTitle": "Instalação em andamento",
+  "installationProgressSummary": "{finished} dos alvos {total} concluídos",
+  "@installationProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "targetWaiting": "Esperando",
+  "targetRunning": "Instalando",
+  "retryFailedTargets": "{count, plural, =1{Tentar novamente 1 destino com falha} other{Tentar novamente {count} destinos com falha}}",
+  "@retryFailedTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updatePlanTitle": "Selecione alvos para atualizar",
+  "updatePlanDescription": "Escolha os alvos de instalação exatos. Agents e projetos não selecionados permanecem inalterados.",
+  "updateTargetsSelected": "{selected} de destinos atualizáveis {available} selecionados",
+  "@updateTargetsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "updateVersionChange": "{fromVersion} → {toVersion}",
+  "@updateVersionChange": {
+    "placeholders": {
+      "fromVersion": {
+        "type": "String"
+      },
+      "toVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceReference": "Referência da fonte: {reference}",
+  "@sourceReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "fixedVersionTarget": "Fixado – sem referência móvel",
+  "currentVersionTarget": "Atualizado",
+  "updateCheckTargetFailed": "Falha na verificação de atualização",
+  "reconcileWorkspaceManifestTarget": "Reparar manifesto do espaço de trabalho",
+  "updateSelectedTargets": "Atualizar alvos selecionados",
+  "updateProgressTitle": "Atualizando metas",
+  "updateResultsTitle": "Atualizar resultados",
+  "updateProgressSummary": "{finished} dos alvos {total} concluídos",
+  "@updateProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "retryFailedUpdates": "{count, plural, =1{Tentar novamente 1 atualização com falha} other{Tentar novamente {count} atualizações com falha}}",
+  "@retryFailedUpdates": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpdateableTargets": "Nenhum destino selecionado tem uma atualização disponível.",
+  "closeUpdatePlan": "Fechar",
+  "targetSucceeded": "Instalado",
+  "targetSkipped": "Ignorado",
+  "targetConflict": "Conflito",
+  "targetFailed": "Falha",
+  "targetFailureRetryable": "Este local não pôde ser alterado. Você pode tentar novamente.",
+  "targetFailureNeedsAttention": "Este local precisa da sua atenção antes de tentar novamente.",
+  "installationTargetFailureMessage": "Nada foi alterado neste local. Verifique se a pasta está disponível e tente novamente.",
+  "workspacePersistenceFailureMessage": "Nada foi alterado porque o SkillsGo não conseguiu salvar as configurações do projeto. Verifique se a pasta do projeto é gravável e tente novamente.",
+  "installationStateChangedMessage": "Este local mudou enquanto você o revisava. Revise o estado mais recente antes de tentar novamente.",
+  "updateTargetFailureMessage": "Este local não pôde ser atualizado. Outros locais não foram afetados, então você pode tentar novamente apenas este.",
+  "managementTargetFailureMessage": "Esta ação não pôde ser concluída aqui. Outros locais não foram afetados, então você pode tentar novamente apenas este.",
+  "technicalDetails": "Detalhes técnicos",
+  "targetPathExists": "Outro item já existe neste local.",
+  "targetBlockedByRisk": "Suas configurações de segurança atuais bloquearam a instalação neste local.",
+  "targetInstallFailed": "A habilidade não pôde ser instalada neste local.",
+  "targetWorkspaceUpdateFailed": "A habilidade foi instalada, mas não foi possível atualizar as configurações do projeto.",
+  "installationPlanFailed": "O plano de instalação não pôde continuar",
+  "installationFailed": "Não foi possível concluir a instalação",
+  "localSource": "Fonte local",
+  "noDescriptionAvailable": "Nenhuma descrição disponível",
+  "moreCoverage": "+{count} mais locais",
+  "@moreCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverAction": "Gerenciar habilidades existentes",
+  "batchTakeoverActionCount": "Gerenciar ({count})",
+  "@batchTakeoverActionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverChecking": "Verificando as habilidades existentes…",
+  "batchTakeoverRetry": "Verifique as habilidades gerenciáveis novamente",
+  "batchTakeoverEligibleCount": "{count} pode ser gerenciado",
+  "@batchTakeoverEligibleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPending": "Adicionando habilidades à gestão…",
+  "batchTakeoverTitle": "Gerenciar habilidades existentes com SkillsGo?",
+  "batchTakeoverDescription": "SkillsGo adicionará registros de gerenciamento local sem mover, substituir ou fazer upload de arquivos de habilidades. Itens não suportados ou alterados serão ignorados.",
+  "batchTakeoverStoryTitle": "Transforme habilidades dispersas em uma biblioteca clara",
+  "batchTakeoverStoryDescription": "O SkillsGo encontrou {count, plural, =1{1 Skill existente} other{{count} Skills existentes}} que pode gerenciar neste local.",
+  "@batchTakeoverStoryDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverBeforeSemantics": "Antes da gestão, não está claro onde as habilidades existentes estão instaladas, se são atuais, como recuperá-las ou se os projetos utilizam a mesma versão.",
+  "batchTakeoverPainLocation": "Local de instalação desconhecido",
+  "batchTakeoverPainFreshness": "Status de atualização desconhecido",
+  "batchTakeoverPainRecovery": "Sem recuperação quando quebrado",
+  "batchTakeoverPainVersionDrift": "Versões diferentes entre projetos",
+  "batchTakeoverFolderTitle": "Skills existente",
+  "batchTakeoverFolderSubtitle": "Estado pouco claro",
+  "batchTakeoverAfterLabel": "DEPOIS",
+  "batchTakeoverAfterTitle": "Uma biblioteca clara",
+  "batchTakeoverLibraryTitle": "Biblioteca SkillsGo",
+  "batchTakeoverBenefitLocation": "Limpar locais",
+  "batchTakeoverBenefitFreshness": "Atualizações visíveis",
+  "batchTakeoverBenefitRecovery": "Recuperação fácil",
+  "batchTakeoverBenefitVersions": "Versões claras",
+  "batchTakeoverManagedSection": "Gerenciado por SkillsGo",
+  "batchTakeoverPendingSection": "Pendente",
+  "batchTakeoverItemManaged": "{name} é gerenciado por SkillsGo",
+  "@batchTakeoverItemManaged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemSkipped": "{name} não pôde ser adicionado ao gerenciamento",
+  "@batchTakeoverItemSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemPending": "{name} está aguardando para ser gerenciado",
+  "@batchTakeoverItemPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverAfterSemantics": "Após o gerenciamento, {count, plural, =1{1 Skill fica organizado} other{{count} Skills ficam organizados}} em uma única Library com um status de gerenciamento claro.",
+  "@batchTakeoverAfterSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverMoreSkills": "+{count} mais",
+  "@batchTakeoverMoreSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverTransitionSemantics": "Adicione essas habilidades existentes ao gerenciamento SkillsGo.",
+  "batchTakeoverTransitionLabel": "ORGANIZAR",
+  "batchTakeoverStatusTitle": "Status de gerenciamento",
+  "batchTakeoverStatusManaged": "Gerenciado",
+  "batchTakeoverStatusProgress": "Organizando",
+  "batchTakeoverStatusSkipped": "Ignorado",
+  "batchTakeoverStatusFilesStay": "Os arquivos Skill permanecem em seus locais originais",
+  "batchTakeoverBoardSemantics": "Skills são organizados em linhas completas e gravados pelo SkillsGo sem mover seus arquivos.",
+  "batchTakeoverBoardComplete": "TUDO CLARO",
+  "batchTakeoverBoardPartial": "COMPLETO",
+  "batchTakeoverStatusTotal": "Total",
+  "batchTakeoverQueueComplete": "Nenhuma habilidade está esperando",
+  "batchTakeoverQueueWaiting": "Os Skills aparecerão aqui após a verificação",
+  "batchTakeoverNextLabel": "PRÓXIMO",
+  "batchTakeoverFillerCount": "{count, plural, =1{1 bloco organizador do SkillsGo} other{{count} blocos organizadores do SkillsGo}} completam as linhas finais.",
+  "@batchTakeoverFillerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPreservation": "Seus arquivos, caminhos e fluxos de trabalho atuais permanecem exatamente onde estão. SkillsGo apenas completa seus registros de gerenciamento local.",
+  "batchTakeoverLaterHint": "Se você pular, poderá usar Gerenciar habilidades existentes na Biblioteca a qualquer momento.",
+  "batchTakeoverSkip": "Agora não",
+  "batchTakeoverConfirm": "Adicionar ao gerenciamento",
+  "batchTakeoverExecutionRetry": "Tentar novamente",
+  "batchTakeoverResultTitle": "Skills adicionados ao gerenciamento",
+  "batchTakeoverSummary": "Habilidades {takenOver} adicionadas ao gerenciamento, {skipped} ignoradas.",
+  "@batchTakeoverSummary": {
+    "placeholders": {
+      "takenOver": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverClose": "Fechar",
+  "installMoreTargets": "Instale em mais locais",
+  "exportLocalSkill": "Exportar",
+  "exportLocalSkillDescription": "Exporte este Skill local como um arquivo ZIP portátil.",
+  "detailInstalls": "Instalações",
+  "detailRepository": "Repositório",
+  "detailStars": "Estrelas",
+  "detailUpdated": "Atualizado",
+  "detailArchiveSize": "Tamanho ZIP",
+  "pathLabel": "Caminho do projeto",
+  "copyProjectPath": "Copiar caminho do projeto",
+  "projectPathCopied": "Caminho do projeto copiado",
+  "onboardingWelcomeTitle": "Bem-vindo ao SkillsGo",
+  "onboardingWelcomeDescription": "Descubra, instale e gerencie Skills nos seus Agents e projetos.",
+  "onboardingDetectedAgents": "Agents detectados",
+  "onboardingNoAgents": "Nenhum Agent instalado foi detectado. Você ainda pode continuar.",
+  "onboardingNext": "Próximo",
+  "onboardingProjectsTitle": "Adicione seus projetos",
+  "onboardingProjectsDescription": "Escolha os projetos que você deseja que o SkillsGo gerencie.",
+  "onboardingAddProject": "Adicionar agora",
+  "onboardingAddProjectLater": "ou mais tarde",
+  "onboardingStartUsing": "Comece a usar SkillsGo",
+  "onboardingBack": "Voltar",
+  "restartOnboardingTitle": "Integração",
+  "restartOnboardingDescription": "Visualize o guia de primeira inicialização novamente sem remover projetos, configurações ou dados Skills.",
+  "restartOnboardingAction": "Reinicie a integração",
+  "restartOnboardingFailed": "O SkillsGo não conseguiu reiniciar a configuração inicial.",
+  "libraryRefreshSettingsTitle": "Atualizar biblioteca local",
+  "libraryRefreshSettingsDescription": "Verifique novamente os Skills instalados, os projetos adicionados, os Agents e os Skills externos que podem ser gerenciados. Isso não instala, atualiza nem remove nada.",
+  "libraryRefreshSettingsAction": "Atualizar biblioteca",
+  "libraryRefreshSettingsPending": "Atualizando Biblioteca…",
+  "libraryRefreshSettingsSuccess": "Biblioteca local atualizada.",
+  "libraryRefreshSettingsFailed": "SkillsGo não pôde atualizar a biblioteca local.",
+  "onboardingProjectError": "SkillsGo não pôde adicionar projetos deste diretório.",
+  "onboardingProjectsLoadError": "SkillsGo não pôde carregar seus projetos adicionados.",
+  "onboardingStartupError": "SkillsGo não pôde carregar a configuração.",
+  "onboardingStateError": "SkillsGo não conseguiu salvar seu progresso de configuração. Tente novamente.",
+  "onboardingCliErrorTitle": "SkillsGo CLI precisa de atenção",
+  "onboardingCliErrorDescription": "Repare o CLI incluído e tente continuar novamente."
+}

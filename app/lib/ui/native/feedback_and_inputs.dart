@@ -272,7 +272,7 @@ class SkillsDialog extends StatelessWidget {
             if (actions.isNotEmpty) ...[
               const SizedBox(height: 18),
               Align(
-                alignment: Alignment.centerRight,
+                alignment: AlignmentDirectional.centerEnd,
                 child: Wrap(spacing: 10, runSpacing: 10, children: actions),
               ),
             ],

@@ -65,6 +65,23 @@ void main() {
     expect(localizedPresets, containsAll(['GitHub', 'levels.fyi', 'Figma']));
   });
 
+  testWidgets('follows an Arabic system locale and renders right to left', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    tester.binding.platformDispatcher.localesTestValue = const [Locale('ar')];
+    addTearDown(tester.binding.platformDispatcher.clearLocalesTestValue);
+
+    await tester.pumpWidget(
+      SkillsGoApp(gateway: FakeSkillsGateway(language: AppLanguage.system)),
+    );
+    await tester.pumpAndSettle();
+
+    final discover = find.text('اكتشف');
+    expect(discover, findsOneWidget);
+    expect(Directionality.of(tester.element(discover)), TextDirection.rtl);
+  });
+
   testWidgets('compact primary capsule optically centers its Chinese label', (
     tester,
   ) async {
@@ -155,6 +172,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(gateway.language, AppLanguage.english);
     expect(find.text('Language'), findsOneWidget);
+  });
+
+  testWidgets('language menu keeps long native names on one line', (
+    tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 800));
+    await tester.pumpWidget(
+      SkillsGoApp(
+        gateway: FakeSkillsGateway(language: AppLanguage.portugueseBrazil),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pumpAndSettle();
+    final portuguese = tester.widget<Text>(find.text('Português (Brasil)'));
+    expect(portuguese.maxLines, 1);
+    expect(portuguese.overflow, TextOverflow.ellipsis);
+    expect(
+      tester.getSize(find.text('Português (Brasil)')).height,
+      lessThan(24),
+    );
+    expect(tester.getSize(find.byKey(const Key('language-picker'))).width, 232);
   });
 
   testWidgets('primary Folder persists across every primary destination', (

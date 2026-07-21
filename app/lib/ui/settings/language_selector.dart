@@ -65,7 +65,7 @@ class _LanguageSingleSelectState extends State<_LanguageSingleSelect> {
       button: true,
       excludeSemantics: true,
       child: SizedBox(
-        width: 184,
+        width: 232,
         height: 36,
         child: Stack(
           fit: StackFit.expand,
@@ -112,7 +112,13 @@ class _LanguageSingleSelectState extends State<_LanguageSingleSelect> {
                         children: [
                           LanguageIdentityIcon(language: item.value, size: 20),
                           const SizedBox(width: 10),
-                          Expanded(child: Text(item.label)),
+                          Expanded(
+                            child: Text(
+                              item.label,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
                           AnimatedOpacity(
                             opacity: item.selected ? 1 : 0,
                             duration: MediaQuery.disableAnimationsOf(context)
@@ -145,11 +151,14 @@ class _LanguageSingleSelectState extends State<_LanguageSingleSelect> {
                 ),
               ),
             ),
-            Positioned.fill(
-              right: 24,
+            PositionedDirectional(
+              start: 0,
+              top: 0,
+              bottom: 0,
+              end: 24,
               child: IgnorePointer(
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 12),
+                  padding: const EdgeInsetsDirectional.only(start: 12),
                   child: Row(
                     children: [
                       LanguageIdentityIcon(language: widget.selected, size: 20),

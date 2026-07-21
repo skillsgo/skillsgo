@@ -281,6 +281,7 @@ class SkillDetailHero extends StatelessWidget {
                     Expanded(
                       child: Text(
                         name,
+                        textDirection: contentTextDirection(name),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: context.skillsTypography.display,
@@ -294,6 +295,7 @@ class SkillDetailHero extends StatelessWidget {
                 if (description.trim().isNotEmpty)
                   Text(
                     description.trim(),
+                    textDirection: contentTextDirection(description),
                     key: descriptionKey,
                     maxLines: 3,
                     overflow: TextOverflow.ellipsis,

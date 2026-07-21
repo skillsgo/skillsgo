@@ -1,0 +1,1088 @@
+{
+  "@@locale": "tr",
+  "discover": "Keşfet",
+  "discoverSkills": "Biraz daha fazlasını bilmek güzel.",
+  "library": "Kütüphane",
+  "settings": "Ayarlar",
+  "openSettings": "Ayarları Aç",
+  "cliNeedsAttention": "Gerekli bir SkillsGo bileşeniyle ilgilenilmesi gerekiyor.",
+  "cliMissingBundled": "Gerekli bir SkillsGo bileşeni eksik veya başlatılamıyor. Geri yüklemek için SkillsGo'yi yeniden yükleyin.",
+  "cliDamagedBundled": "Gerekli bir SkillsGo bileşeni hasarlı. Geri yüklemek için SkillsGo'yi yeniden yükleyin.",
+  "cliIncompatibleBundled": "Gerekli bir SkillsGo bileşeni bu uygulama sürümüyle eşleşmiyor. SkillsGo'yi güncelleyin veya yeniden yükleyin.",
+  "officialIndex": "SkillsGo Hub",
+  "discoverTitle": "Bir sonraki hamleniz için bir beceri bulun.",
+  "skillsLeaderboard": "Biraz daha fazlasını bilmek güzel.",
+  "searchResultsFor": "“{query}” için sonuçlar",
+  "@searchResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchSkills": "Becerileri arayın veya bir Git bağlantısını yapıştırın…",
+  "search": "Ara",
+  "ranking": "Sıralama",
+  "trending": "Trend olan",
+  "hot": "Sıcak",
+  "discoverNavigation": "Navigasyonu keşfedin",
+  "allTimeRanking": "Tüm zamanların sıralaması",
+  "trendingNow": "Son 24 saatte trend",
+  "hotNow": "Şu anda sıcak",
+  "allTimeDescription": "Tüm zamanlardaki kabul edilen yüklemelere göre sıralanan genel Skills.",
+  "trendingDescription": "Genel Skills, son 24 saatlik zaman aralığında kabul edilen yüklemelere göre sıralanmıştır.",
+  "hotDescription": "Kısa süreli kurulum hızı ve değişimine göre sıralanan genel Skills.",
+  "offlineTitle": "SkillsGo'ye bağlanılamıyor",
+  "offlineMessage": "İnternet bağlantınızı kontrol edip tekrar deneyin. Proxy veya özel hizmet adresi kullanıyorsanız bunu Ayarlar'da inceleyin.",
+  "searchFailedTitle": "Arama tökezledi",
+  "validationTitle": "Ne girdiğinizi kontrol edin",
+  "validationMessage": "SkillsGo bu isteği kullanamadı. Girdiğiniz bilgileri gözden geçirin ve tekrar deneyin.",
+  "serverTitle": "Hizmet geçici olarak kullanılamıyor",
+  "serverMessage": "SkillsGo bu isteği şu anda tamamlayamıyor. Birazdan tekrar deneyin.",
+  "timeoutTitle": "Bu çok uzun sürüyor",
+  "timeoutMessage": "Hizmet zamanında yanıt vermedi. Bağlantınızı kontrol edin veya tekrar deneyin.",
+  "invalidResponseTitle": "SkillsGo'nin güncellenmesi gerekiyor",
+  "invalidResponseMessage": "Bu yanıt SkillsGo sürümünüz tarafından okunamıyor. Uygulamayı güncelleyin ve tekrar deneyin.",
+  "invalidLocalDataTitle": "Yüklü bir beceri okunamıyor",
+  "invalidLocalDataMessage": "Bazı yerel kurulum bilgileri hasarlı veya uyumsuz. SkillsGo'yi güncelleyin veya yeniden yükleyin, ardından tekrar deneyin.",
+  "tryAgain": "Tekrar dene",
+  "searchEmptyTitle": "Arayın, kaydırmayın.",
+  "searchEmptyMessage": "Genel becerileri aramak için bir yetenek, kaynak veya görev girin.",
+  "noSkillsTitle": "Hiçbir beceri bulunamadı",
+  "noSkillsMessage": "Daha geniş bir ifade deneyin veya yazımı kontrol edin.",
+  "focusSearch": "Aramaya odaklan",
+  "skillsFromLink": "Bu bağlantıdan Skills",
+  "skillCount": "{count, plural, =1{1 Skill} other{{count} Skills}}",
+  "@skillCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceResultsSummary": "{count, plural, =1{{source} kaynağından 1 Skill} other{{source} kaynağından {count} Skills}}",
+  "@sourceResultsSummary": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceSearchEmptyTitle": "Bu bağlantı incelemeye hazır",
+  "sourceSearchEmptyMessage": "{source} mevcut arama sonuçlarında yok. SkillsGo bir sonraki adımda bağlantıyı doğrudan inceleyebilir.",
+  "@sourceSearchEmptyMessage": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "inspectSource": "Bu bağlantıdaki becerileri görüntüleyin",
+  "collectionEmptyTitle": "Bu koleksiyonda Skills yok",
+  "collectionEmptyMessage": "Burada henüz hiçbir şey yok. Daha fazla kurulum etkinliğinden sonra tekrar deneyin.",
+  "loadMore": "Daha fazlasını yükle",
+  "install": "Yükle",
+  "installAll": "Tüm becerileri yükle",
+  "latestCommit": "En son taahhüt",
+  "installToMoreTargets": "Daha Fazla Konumda Kurulum",
+  "localTargets": "{count} yerel hedefler",
+  "@localTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allTimeMetric": "{count} tüm zamanların yüklemeleri",
+  "@allTimeMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "trendingMetric": "{count} yükleme / 24 saat",
+  "@trendingMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hotMetric": "{value} bu saat · {change}",
+  "@hotMetric": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "trustUnverified": "Doğrulanmamış",
+  "trustCommunityVerified": "Topluluk doğrulandı",
+  "trustPublisherVerified": "Yayıncı doğrulandı",
+  "trustOfficial": "Resmi",
+  "trustWarned": "Uyarıldı",
+  "trustDelisted": "Listeden kaldırıldı",
+  "riskUnknown": "Bilinmeyen risk",
+  "riskLow": "Düşük risk",
+  "riskMedium": "Orta risk",
+  "riskHigh": "Yüksek risk",
+  "riskCritical": "Kritik risk",
+  "openSkill": "{name}'yi açın",
+  "@openSkill": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installs": "{count} yüklemeleri",
+  "@installs": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "detailFailedTitle": "Bu Skill yüklenemedi",
+  "detailLoading": "Denetlenebilir Skill ayrıntısı yükleniyor",
+  "artifactUnavailableTitle": "Artifact kullanılamıyor",
+  "artifactUnavailableMessage": "Bu sürüm şu anda mevcut değil. Tekrar deneyin veya başka bir sürüm seçin.",
+  "detailInvalidTitle": "Artifact meta verileri desteklenmiyor",
+  "detailInvalidMessage": "Bu beceriye ilişkin bazı ayrıntılar eksik veya okunamıyor. SkillsGo'yi güncelleyin ve tekrar deneyin.",
+  "instructionsTab": "Talimatlar",
+  "manifestTab": "manifest",
+  "immutableVersionLabel": "Değişmez {version}",
+  "@immutableVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "commitIdentity": "{sha}'yi taahhüt et",
+  "@commitIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "treeIdentity": "Ağaç {sha}",
+  "@treeIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "contentIdentity": "İçerik {digest}",
+  "@contentIdentity": {
+    "placeholders": {
+      "digest": {
+        "type": "String"
+      }
+    }
+  },
+  "trustDoesNotProveSafety": "Yayıncı güveni, sahipliği veya bakımı doğrular; eser güvenliğini onaylamaz. Bu değişmez versiyon için risk ayrı ayrı değerlendirilir.",
+  "knownInstallationTargets": "Bilinen kurulum hedefleri",
+  "installationRange": "Yüklü kapsam",
+  "targetDetails": "Hedef ayrıntılarını göster",
+  "hideTargetDetails": "Hedef ayrıntılarını gizle",
+  "installedVersionLabel": "Sürüm {version}",
+  "@installedVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "targetSummary": "{scope} / {agent} · {version}",
+  "@targetSummary": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "agent": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "projectScope": "Proje",
+  "fileContentUnavailable": "İkili veya kullanılamayan önizleme",
+  "fileContentTruncated": "Önizleme Hub güvenlik sınırı nedeniyle kesildi.",
+  "retry": "Yeniden dene",
+  "backToSearch": "Aramaya geri dön",
+  "installForCodex": "Codex için yükleyin",
+  "cliNotDetected": "beceriler (algılanmadı)",
+  "snapshotFiles": "Anlık görüntü dosyaları",
+  "globalCodex": "Küresel · Codex",
+  "yourLibrary": "Bildiklerinin hepsi burada.",
+  "libraryNavigation": "Kütüphanede gezinme",
+  "all": "Hepsi",
+  "allSkills": "Hepsi Skills",
+  "updatesOnly": "Güncellemeler",
+  "allAgents": "Hepsi Agents",
+  "allProjects": "Tüm Projeler",
+  "specificProject": "Proje",
+  "userScope": "Küresel",
+  "addProject": "Proje Ekle",
+  "relocateProject": "Yerini değiştir",
+  "removeFromList": "Listeden Kaldır",
+  "removeProjectTitle": "{name}, SkillsGo'den kaldırılsın mı?",
+  "@removeProjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeProjectDescription": "Yalnızca Uygulama referansı kaldırılacaktır. SkillsGo bu dizindeki hiçbir dosyayı değiştirmez veya silmez.",
+  "projectRailUnavailable": "{name} — kullanılamıyor",
+  "@projectRailUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyProjectTitle": "Henüz Skills yok",
+  "browseSkills": "Skills'ye göz atın",
+  "projectMissingTitle": "Proje dizini eksik",
+  "projectMissingMessage": "Dizin taşınmış olabilir veya birimi çevrimdışı olabilir. Konumunu değiştirin veya yalnızca Uygulama referansını kaldırın.",
+  "projectPermissionTitle": "Proje izni gerekli",
+  "projectPermissionMessage": "SkillsGo bu seçilen kökü inceleyemiyor. Dizin seçici aracılığıyla yerini değiştirerek erişim izni verin.",
+  "projectInaccessibleTitle": "Proje dizinine erişilemiyor",
+  "projectInaccessibleMessage": "SkillsGo bu proje referansını korudu. Yolu veya birimi kontrol edin ve ardından yerini değiştirin.",
+  "checking": "Kontrol ediliyor…",
+  "checkUpdates": "Güncellemeleri kontrol edin",
+  "refresh": "Yenile",
+  "libraryUnavailable": "Kütüphane kullanılamıyor",
+  "libraryEmpty": "Henüz hiçbir beceri yüklenmedi",
+  "libraryEmptyMessage": "Discover'dan bir Skill yükleyin, burada görünecektir.",
+  "searchLibrary": "Yüklü becerileri arayın",
+  "libraryNoMatches": "Eşleşen yok Skills",
+  "libraryNoMatchesMessage": "Farklı bir ad, kaynak, Agent, proje veya sürüm deneyin.",
+  "agentsSummary": "{count} Agents",
+  "@agentsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsSummary": "{count} projeleri",
+  "@projectsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionsSummary": "{count} versiyonları",
+  "@versionsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubManaged": "Hub yönetildi",
+  "localManaged": "Yerel olarak yönetilen",
+  "externalInstallation": "Harici kurulum",
+  "readOnly": "Salt okunur",
+  "unversioned": "Sürümü değiştirilmemiş",
+  "supportingFiles": "Destekleyici dosyalar",
+  "versionDivergence": "Sürüm farklılığı",
+  "healthHealthy": "Sağlıklı",
+  "healthMissing": "Hedef eksik",
+  "healthReplaced": "Hedef değiştirildi",
+  "healthLocalModification": "Yerel Değişiklik",
+  "healthUnreadable": "Hedef okunamıyor",
+  "healthUndeclared": "Beyan edilmedi",
+  "healthWorkspaceUnreadable": "Çalışma alanı durumu okunamıyor",
+  "healthLockMismatch": "Kilit uyuşmazlığı",
+  "healthUnexpectedPath": "Beklenmeyen hedef yolu",
+  "modeSymlink": "Sembolik bağlantı",
+  "modeCopy": "Kopyala",
+  "modeExternal": "Harici",
+  "notLinked": "BAĞLANTILI DEĞİL",
+  "update": "Güncelleme",
+  "backToLibrary": "Kütüphaneye Geri Dön",
+  "remove": "Kaldır",
+  "manageTargets": "Kapsamı yönet",
+  "skillsSelected": "{count} seçildi",
+  "@skillsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "Seçimi temizle",
+  "selectCurrentResults": "Mevcut sonuçları seç",
+  "clearCurrentResultSelection": "Geçerli sonuç seçimini temizle",
+  "manageTargetsTitle": "Kurulum hedeflerini yönetin",
+  "manageTargetsDescription": "Her hedef için tam bir eylem seçin. Seçilmeyen hedefler değişmeyecektir.",
+  "targetActionsSelected": "{total} hedeflerinden {selected} seçildi",
+  "@targetActionsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "repairTarget": "Onarım",
+  "confirmRemoveTarget": "Kaldırmayı onayla",
+  "applyTargetActions": "Seçili eylemleri uygula",
+  "managementProgressTitle": "Hedef eylemleri uygulama",
+  "managementResultsTitle": "Hedef eylem sonuçları",
+  "managementResultSummary": "{succeeded} başarılı oldu, {failed} başarısız oldu",
+  "@managementResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceOwnershipChanges": "Seçilen proje eylemleri skillsgo.mod ve skillsgo.sum'yi güncelleyecektir.",
+  "targetContentPreserved": "Mevcut hedef içerik korunacaktır.",
+  "localReadFailed": "Bu Skill okunamıyor",
+  "localReadFailedMessage": "SkillsGo bu yüklü beceriyi okuyamadı. Klasörünün kullanılabilir ve erişilebilir olduğundan emin olun ve tekrar deneyin.",
+  "localConfiguration": "SKILLSGO AYARLARI",
+  "settingsNavigation": "Ayarlarda gezinme",
+  "general": "Kişiselleştir",
+  "agents": "Agents",
+  "hub": "Hub",
+  "installationPolicy": "Kurulum Politikası",
+  "storage": "Depolama",
+  "colorScheme": "Renk Şeması",
+  "about": "Hakkında",
+  "colorSchemeInspectorTitle": "Oluşturulan Material renk rolleri",
+  "skillsColorTokensTitle": "SkillsGo anlamsal renkler",
+  "skillsColorTokensDescription": "Radix Sand'den oluşturulan ve Primer anlambilimiyle düzenlenen ve özel bir uzamsal hiyerarşi olarak Folder ile düzenlenen ürün renkleri.",
+  "colorSchemeInspectorDescription": "Geçerli tohumdan oluşturulan, kullanımdan kaldırılmamış her ColorScheme belirtecinin ön izlemesini yapın. HEX değerini kopyalamak için bir renge tıklayın.",
+  "colorSchemePairPreview": "Anlamsal çiftler",
+  "colorSchemePairPreviewDescription": "Karşıtlık ve hiyerarşiyi ortaya çıkarmak için ön plan ve arka plan rolleri bir araya getirildi.",
+  "colorSchemeComponentPreview": "Bileşen önizlemesi",
+  "colorSchemeComponentPreviewDescription": "Tam olarak bu önizleme şemasıyla oluşturulan temsili Material kontrolleri.",
+  "colorSchemeSampleTitle": "Skill kart başlığı",
+  "colorSchemeSampleBody": "İkincil kopya onSurfaceVariant'yi kullanır.",
+  "colorSchemeCopied": "Kopyalandı",
+  "colorSchemeSampleGlyphs": "Aa 123",
+  "colorSchemeGroupPrimary": "Birincil",
+  "colorSchemeGroupPrimaryDescription": "Birincil vurgu, kapsayıcılar ve sabit vurgu rolleri.",
+  "colorSchemeGroupSecondary": "İkincil",
+  "colorSchemeGroupSecondaryDescription": "Destekleyici vurgu ve sabit ikincil roller.",
+  "colorSchemeGroupTertiary": "Üçüncül",
+  "colorSchemeGroupTertiaryDescription": "Zıt vurgular ve sabit üçüncül roller.",
+  "colorSchemeGroupSurface": "Yüzey",
+  "colorSchemeGroupSurfaceDescription": "Sayfa, kapsayıcı, yükseklik ve ön plan hiyerarşisi.",
+  "colorSchemeGroupUtility": "Taslak ve Yardımcı Program",
+  "colorSchemeGroupUtilityDescription": "Sınırlar, gölgeler, ince kumaşlar ve ters yüzeyler.",
+  "colorSchemeGroupError": "Hata",
+  "colorSchemeGroupErrorDescription": "Hata eylemleri, mesajlar ve kapsayıcılar.",
+  "colorSchemeUsagePrimary": "Birincil eylemler, odak ve yüksek vurgulu vurgular.",
+  "colorSchemeUsageSecondary": "Destekleyici eylemler ve orta vurgulu vurgular.",
+  "colorSchemeUsageTertiary": "Birincil ve ikincilleri tamamlayan zıt vurgular.",
+  "colorSchemeUsageContentOn": "{token}'de görüntülenen metin ve simgeler.",
+  "@colorSchemeUsageContentOn": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageContainer": "Seçimler ve vurgular için daha az vurgulu {family} kapsayıcı.",
+  "@colorSchemeUsageContainer": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixed": "Parlaklıktan bağımsız sabit {family} konteyner.",
+  "@colorSchemeUsageFixed": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedDim": "Kısılmış parlaklıktan bağımsız sabit {family} kabı.",
+  "@colorSchemeUsageFixedDim": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedContent": "Sabit {family} kapsayıcısında yüksek vurgulu içerik.",
+  "@colorSchemeUsageFixedContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedVariantContent": "Sabit {family} kapsayıcısında daha az vurgulanan içerik.",
+  "@colorSchemeUsageFixedVariantContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageSurface": "Temel sayfa ve geniş bölge yüzeyi.",
+  "colorSchemeUsageSurfaceDim": "En koyu yüzey tonunda kullanılan dimlenmiş taban yüzeyi.",
+  "colorSchemeUsageSurfaceBright": "En açık yüzey tonunda kullanılan parlak taban yüzeyi.",
+  "colorSchemeUsageSurfaceElevation": "{level} yüzey konteyneri yüksekliği.",
+  "@colorSchemeUsageSurfaceElevation": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeElevationLowest": "en düşük",
+  "colorSchemeElevationLow": "düşük",
+  "colorSchemeElevationDefault": "varsayılan",
+  "colorSchemeElevationHigh": "yüksek",
+  "colorSchemeElevationHighest": "en yüksek",
+  "colorSchemeUsageOnSurface": "Yüzeylerde görüntülenen birincil metin ve simgeler.",
+  "colorSchemeUsageOnSurfaceVariant": "Yüzeylerde ikincil metin, etiketler ve bastırılmış simgeler.",
+  "colorSchemeUsageSurfaceTint": "Birincilden türetilen Material yükseklik tonu.",
+  "colorSchemeUsageOutline": "Belirgin sınırlar ve odaklanmış bileşen ana hatları.",
+  "colorSchemeUsageOutlineVariant": "İnce sınırlar, ayırıcılar ve az vurgulu ana hatlar.",
+  "colorSchemeUsageShadow": "Yükseltilmiş yüzeyler için alt gölge rengi.",
+  "colorSchemeUsageScrim": "Arka plan içeriğinin vurgusunu kaldırmak için kullanılan modal yer paylaşımı.",
+  "colorSchemeUsageInverseSurface": "Ters açık ve koyu vurgulu yüzey.",
+  "colorSchemeUsageInversePrimary": "Ters bir yüzeyde görüntülenen birincil vurgu.",
+  "colorSchemeUsageError": "Hata eylemleri, durum ve yüksek vurgulu geri bildirim.",
+  "save": "Kaydet",
+  "advancedSettings": "Gelişmiş",
+  "remindersSettings": "Hatırlatıcılar",
+  "remindersSettingsTitle": "Hatırlatıcı ayarları",
+  "remindersSettingsDescription": "Hangi hatırlatıcıların alınacağını seçin.",
+  "updateReminderTitle": "Hatırlatıcıları güncelle",
+  "updateReminderDescription": "Kütüphane açıldığında güncellemeleri kontrol edin.",
+  "securityReminderTitle": "Yüksek risk uyarıları",
+  "securityReminderDescription": "Kurulu becerilerdeki yeni Yüksek veya Kritik riskleri size bildirir.",
+  "availableUpdatesReminder": "{count} yüklü becerilerin güncellemeleri var",
+  "@availableUpdatesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openAvailableUpdates": "Bunları incelemek ve güncellemek için mevcut güncellemeler görünümünü açın.",
+  "securityAdvisoriesReminder": "{count} yüklü becerilerin güvenlik incelemesine ihtiyacı var",
+  "@securityAdvisoriesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewInstalledSkills": "Kullanmadan veya güncellemeden önce risk bilgilerini gözden geçirin.",
+  "generalSettingsTitle": "SkillsGo'yi kendinize ait yapın",
+  "generalSettingsDescription": "Arayüz sistem dilinizi, erişilebilirliğinizi ve hareket tercihlerinizi takip eder.",
+  "agentsSettingsTitle": "Agent çalışma zamanı",
+  "hubSettingsTitle": "Hub Menşei",
+  "hubSettingsDescription": "Aynı SkillsGo protokolünü uygulayan resmi Hub veya şirket içinde barındırılan HTTP(S) kaynağını kullanın.",
+  "testConnection": "Bağlantıyı test edin",
+  "saveOrigin": "Menşei Kaydet",
+  "resetDefault": "Varsayılana sıfırla",
+  "connectionReady": "Bağlantı hazır",
+  "connectionFailed": "Bağlantı başarısız oldu",
+  "hubInvalidOrigin": "Kimlik bilgileri, sorgu veya parça olmadan geçerli bir HTTP(S) Kaynağı girin.",
+  "hubHttpFailure": "Hub, HTTP {status}'yi döndürdü. Origin ve sunucu yapılandırmasını kontrol edin.",
+  "@hubHttpFailure": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "hubInvalidProtocol": "Sunucu SkillsGo Hub arama protokolünü döndürmedi.",
+  "hubInvalidJson": "Hub geçersiz JSON döndürdü.",
+  "hubConnectionFailure": "Hub'ye ulaşılamadı. Kaynak, ağ, proxy ve TLS yapılandırmasını kontrol edin.",
+  "hubConnectionTimeout": "Hub bağlantısı zaman aşımına uğradı. Ağı kontrol edin veya tekrar deneyin.",
+  "riskPolicyTitle": "Kişisel risk politikası",
+  "riskPolicyDescription": "Bir beceriyi yüklediğinizde veya güncellediğinizde güvenlik kuralları geçerlidir.",
+  "confirmHighRisk": "Yüksek risk için onay gerektir",
+  "confirmHighRiskDescription": "Yüksek riskli eserler, kurulumdan önce her zaman ek bir onay gerektirir.",
+  "allowCriticalOverride": "Açık bir Kritik risk geçersiz kılmaya izin ver",
+  "allowCriticalOverrideDescription": "Kritik risk yapıları varsayılan olarak engellenmiş durumda kalır. Bunu yalnızca ayrı bir manuel geçersiz kılmayı ortaya çıkarmak için etkinleştirin.",
+  "storageSettingsTitle": "İçerik adresli Store",
+  "storageHealthy": "Okunabilir",
+  "storageNotInitialized": "Başlatılmadı",
+  "storageUnavailable": "Kullanılamıyor",
+  "storagePathUnavailable": "CLI tanılamaları hazır olana kadar Store yolu kullanılamaz.",
+  "storageHealthyDescription": "CLI, içeriğini değiştirmeden Store'yi okuyabilir.",
+  "storageNotInitializedDescription": "Store henüz mevcut değil ve bu kontrolle oluşturulmadı.",
+  "storageUnavailableDescription": "CLI, Store'yi okuyamıyor. İzinlerini ve ana dizinini kontrol edin.",
+  "storageInvalidResponse": "Birlikte verilen CLI, desteklenmeyen bir tanılama yanıtı döndürdü.",
+  "aboutSettingsTitle": "Ürün uyumluluğu",
+  "appVersion": "Uygulama sürümü",
+  "cliVersion": "Birlikte verilen CLI sürümü",
+  "compatible": "Uyumlu",
+  "hubOriginSaved": "Hub Kaynak kaydedildi ve uygulandı.",
+  "policySaved": "Kurulum politikası kaydedildi.",
+  "officialCli": "SkillsGo CLI",
+  "ready": "HAZIR",
+  "unknown": "BİLİNMİYOR",
+  "missing": "KAYIP",
+  "incompatible": "UYUMSUZ",
+  "detecting": "Algılanıyor…",
+  "customCliPath": "Özel yürütülebilir yol",
+  "saveAndDetect": "Kaydet ve algıla",
+  "detectAgain": "Tekrar tespit et",
+  "agentInstalled": "Yüklendi",
+  "agentSupported": "Destekleniyor",
+  "agentCatalogSummary": "{installed} yüklü · {supported} destekleniyor",
+  "@agentCatalogSummary": {
+    "placeholders": {
+      "installed": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "int"
+      }
+    }
+  },
+  "installedAgentsTitle": "Yüklendi · {count}",
+  "@installedAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsTitle": "Kurulu değil · {count}",
+  "@notInstalledAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsDescription": "SkillsGo tarafından destekleniyor ancak bu Mac'te algılanmıyor.",
+  "agentDiscoveryRoots": "Skill yükleme yolları: {paths}",
+  "@agentDiscoveryRoots": {
+    "placeholders": {
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+  "agentInspectionFailed": "Agent algılama verileri mevcut değil. Algılamayı yeniden çalıştırın.",
+  "noInstalledAgentsTitle": "Yüklü Agents algılanmadı",
+  "noInstalledAgentsMessage": "Bu Skill'ye göz atmaya devam edebilirsiniz ancak henüz bir kurulum hedefi yok. Desteklenen bir Agent yükleyin, ardından algılamayı yeniden çalıştırın.",
+  "clearCustomPath": "Özel yolu temizle",
+  "privacyProvenance": "Gizlilik ve menşe",
+  "privacySummary": "Aramalarınız kaydedilmez ve SkillsGo komut günlüklerini tutmaz.",
+  "language": "Dil",
+  "personalizationTheme": "Tema",
+  "folderColorTheme": "Tema rengi",
+  "folderColorThemeDescription": "Beğendiğiniz bir rengi seçin. SkillsGo bunun etrafında koordineli bir arayüz paleti oluşturacaktır.",
+  "brandNameNeteaseCloudMusic": "NetEase Cloud Music",
+  "brandNameRaspberryPi": "Raspberry Pi",
+  "brandNameChinaEasternAirlines": "China Eastern Airlines",
+  "brandNameNvidia": "NVIDIA",
+  "brandNameTaobao": "Taobao",
+  "brandNameBitcoin": "Bitcoin",
+  "appearanceMode": "Mod",
+  "appearanceModeDescription": "Sisteminizin görünümünü takip edin veya her zaman açık veya koyu bir tema kullanın.",
+  "followSystem": "Sistem",
+  "lightMode": "Işık",
+  "darkMode": "Karanlık",
+  "wallpaper": "Duvar kağıdı",
+  "wallpaperDescription": "Göksel bir arka plan seçin. Seçiminiz Folder'nin hemen arkasında görünür.",
+  "wallpaperSun": "Güneş",
+  "wallpaperMercury": "Merkür",
+  "wallpaperVenus": "Venüs",
+  "wallpaperEarth": "Dünya",
+  "wallpaperMars": "Mars",
+  "wallpaperJupiter": "Jüpiter",
+  "wallpaperSaturn": "Satürn",
+  "wallpaperUranus": "Uranüs",
+  "wallpaperNeptune": "Neptün",
+  "wallpaperPluto": "Plüton",
+  "wallpaperMoon": "Ay",
+  "folderThemeChoice": "{theme} Folder teması",
+  "@folderThemeChoice": {
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyAffiliation": "Anonim kurulum telemetrisi SkillsGo ayarlarıyla kontrol edilir. SkillsGo, OpenAI veya Codex'ye bağlı değildir.",
+  "commandCompleted": "Komut tamamlandı",
+  "commandFailed": "Komut başarısız oldu",
+  "commandExit": "{code}'den çıkın · bu oturumun günlüğünü genişletin",
+  "@commandExit": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "command": "Komut",
+  "cancel": "İptal",
+  "updateUnknown": "BİLİNMİYOR",
+  "updateChecking": "KONTROL EDİLİYOR",
+  "upToDate": "GÜNCEL",
+  "updateAvailable": "GÜNCELLEME",
+  "updateUnavailable": "MEVCUT DEĞİL",
+  "updateCheckFailed": "KONTROL BAŞARISIZ",
+  "installSkill": "Skill'yi yükleyin",
+  "installLocationTitle": "Kurulum konumunu ayarlayın",
+  "userLevel": "Kullanıcı Seviyesi",
+  "projectLevel": "Proje Düzeyi",
+  "projects": "Projeler",
+  "loading": "Yükleniyor…",
+  "repositoryParsing": "Depo ayrıştırılıyor…",
+  "userInstallSummary": "Kullanıcı düzeyinde {agents} Agents için kullanılabilir",
+  "@userInstallSummary": {
+    "placeholders": {
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "projectInstallSummary": "{projects} projeleri · {agents} Agents",
+  "@projectInstallSummary": {
+    "placeholders": {
+      "projects": {
+        "type": "int"
+      },
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "installationResults": "Kurulum sonuçları",
+  "installationInProgress": "Kurulum devam ediyor",
+  "installationSucceeded": "Kurulum tamamlandı",
+  "installationSucceededMessage": "Skill artık seçilen konumlarda mevcuttur.",
+  "projectUnavailable": "Proje kullanılamıyor",
+  "installedCell": "Yüklendi",
+  "unsupportedCell": "Kullanılamıyor",
+  "confirmInstall": "Kurulumu Onaylayın",
+  "installAllRepositorySkills": "Tüm depo becerilerini yükleyin ({count})",
+  "installAllSkillsTo": "Tüm becerileri yükleyin",
+  "@installAllRepositorySkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installRepositorySkills": "Tüm {repository} becerilerini yükleyin ({count})",
+  "@installRepositorySkills": {
+    "placeholders": {
+      "repository": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installSkillTo": "{skill}'yi şuraya yükleyin:",
+  "@installSkillTo": {
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
+  },
+  "availableInAllProjects": "Tüm projeler",
+  "availableInSelectedProjects": "Seçilen projeler",
+  "usedBy": "Agents için",
+  "backToTargets": "Hedeflere Geri Dön",
+  "stayHere": "Burada kal",
+  "viewInLibrary": "Kütüphanede Görüntüle",
+  "planCreateCount": "{count} oluştur",
+  "@planCreateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planSkipCount": "{count} atla",
+  "@planSkipCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planReplaceCount": "{count} değiştirin",
+  "@planReplaceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planConflictCount": "{count} çakışması",
+  "@planConflictCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRiskCount": "{count} riski engellendi",
+  "@planRiskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "refreshInstallationPlan": "Çözümleri Uygula",
+  "replaceVersionConflict": "Bu hedefte yüklü sürümü değiştirin",
+  "replaceSkillIdCollision": "Bu hedefteki farklı Skill kimliğini değiştirin",
+  "replaceLocalModification": "Yerel Değişiklikleri atın ve bu hedefi değiştirin",
+  "sharedTargetConflict": "Bu yol diğer Agent hedefleri tarafından paylaşılıyor",
+  "sharedTargetConflictDescription": "Hedef matrise dönün ve değiştirmeden önce etkilenen her Agent'yi seçin: {agents}",
+  "@sharedTargetConflictDescription": {
+    "placeholders": {
+      "agents": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceConflictingTarget": "Çakışan hedefi değiştirin",
+  "confirmHighRiskArtifact": "Yüksek riskli artefakt onayı",
+  "confirmCriticalRiskArtifact": "Kritik riski geçersiz kılma onayı",
+  "confirmRiskForSelectedTargets": "Yapıt dosyalarını inceledim ve seçilen hedefler için bu riski kabul ettim",
+  "criticalRiskBlocked": "Kritik riskli kurulum engellendi",
+  "criticalRiskOverrideDisabled": "Bu planın devam edebilmesi için Ayarlar'da açık Kritik risk geçersiz kılma özelliğini etkinleştirin.",
+  "workspaceManifestChanges": "Workspace Manifest değişiklikleri",
+  "noWorkspaceManifestChanges": "Hiçbir Workspace Manifest dosyası değişmeyecek.",
+  "lockVersionChange": "{from} → {to}",
+  "@lockVersionChange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "notPresent": "mevcut değil",
+  "planActionCreate": "Oluştur",
+  "planActionReplace": "Değiştir",
+  "planActionSkip": "Atla",
+  "planActionConflict": "Çatışma",
+  "planActionBlockedByRisk": "Risk nedeniyle engellendi",
+  "installationResultSummary": "{succeeded} hedefleri kuruldu, {failed} başarısız oldu",
+  "@installationResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "installationProgressTitle": "Kurulum devam ediyor",
+  "installationProgressSummary": "{total} hedeflerinden {finished} tamamlandı",
+  "@installationProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "targetWaiting": "Bekliyor",
+  "targetRunning": "Kurulum",
+  "retryFailedTargets": "{count, plural, =1{Başarısız 1 hedefi yeniden dene} other{Başarısız {count} hedefi yeniden dene}}",
+  "@retryFailedTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updatePlanTitle": "Güncellenecek hedefleri seçin",
+  "updatePlanDescription": "Kesin Kurulum Hedeflerini seçin. Seçili olmayan Agents ve projeler değişmeden kalır.",
+  "updateTargetsSelected": "{available} güncellenebilir hedeflerinden {selected} seçildi",
+  "@updateTargetsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "updateVersionChange": "{fromVersion} → {toVersion}",
+  "@updateVersionChange": {
+    "placeholders": {
+      "fromVersion": {
+        "type": "String"
+      },
+      "toVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceReference": "Kaynak referansı: {reference}",
+  "@sourceReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "fixedVersionTarget": "Sabitlendi — taşınabilir referans yok",
+  "currentVersionTarget": "güncel",
+  "updateCheckTargetFailed": "Güncelleme kontrolü başarısız oldu",
+  "reconcileWorkspaceManifestTarget": "Çalışma alanı bildirimini onar",
+  "updateSelectedTargets": "Seçilen hedefleri güncelle",
+  "updateProgressTitle": "Hedefler güncelleniyor",
+  "updateResultsTitle": "Sonuçları güncelle",
+  "updateProgressSummary": "{total} hedeflerinden {finished} tamamlandı",
+  "@updateProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "retryFailedUpdates": "{count, plural, =1{Başarısız 1 güncellemeyi yeniden dene} other{Başarısız {count} güncellemeyi yeniden dene}}",
+  "@retryFailedUpdates": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpdateableTargets": "Seçilen hiçbir hedefin kullanılabilir bir güncellemesi yok.",
+  "closeUpdatePlan": "Kapat",
+  "targetSucceeded": "Yüklendi",
+  "targetSkipped": "Atlandı",
+  "targetConflict": "Çatışma",
+  "targetFailed": "Başarısız",
+  "targetFailureRetryable": "Bu konum değiştirilemedi. Tekrar deneyebilirsiniz.",
+  "targetFailureNeedsAttention": "Tekrar denemeden önce bu konumla ilgilenmeniz gerekiyor.",
+  "installationTargetFailureMessage": "Bu konumda hiçbir şey değişmedi. Klasörün mevcut olup olmadığını kontrol edin ve tekrar deneyin.",
+  "workspacePersistenceFailureMessage": "SkillsGo proje ayarlarını kaydedemediğinden hiçbir şey değişmedi. Proje klasörünün yazılabilir olup olmadığını kontrol edin ve tekrar deneyin.",
+  "installationStateChangedMessage": "Siz incelerken bu konum değişti. Tekrar denemeden önce son durumu inceleyin.",
+  "updateTargetFailureMessage": "Bu konum güncellenemedi. Diğer konumlar etkilenmediğinden yalnızca bunu yeniden deneyebilirsiniz.",
+  "managementTargetFailureMessage": "Bu işlem burada tamamlanamadı. Diğer konumlar etkilenmediğinden yalnızca bunu yeniden deneyebilirsiniz.",
+  "technicalDetails": "Teknik detaylar",
+  "targetPathExists": "Bu konumda başka bir öğe zaten mevcut.",
+  "targetBlockedByRisk": "Mevcut güvenlik ayarlarınız bu konuma kurulumu engelledi.",
+  "targetInstallFailed": "Beceri bu konuma yüklenemedi.",
+  "targetWorkspaceUpdateFailed": "Beceri yüklendi ancak proje ayarları güncellenemedi.",
+  "installationPlanFailed": "Kurulum planı devam edemedi",
+  "installationFailed": "Kurulum tamamlanamadı",
+  "localSource": "Yerel kaynak",
+  "noDescriptionAvailable": "Açıklama mevcut değil",
+  "moreCoverage": "+{count} daha fazla konum",
+  "@moreCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverAction": "Mevcut becerileri yönetin",
+  "batchTakeoverActionCount": "Yönet ({count})",
+  "@batchTakeoverActionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverChecking": "Mevcut beceriler kontrol ediliyor…",
+  "batchTakeoverRetry": "Yönetilebilir becerileri tekrar kontrol edin",
+  "batchTakeoverEligibleCount": "{count} yönetilebilir",
+  "@batchTakeoverEligibleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPending": "Yönetime beceriler katmak…",
+  "batchTakeoverTitle": "SkillsGo ile mevcut becerilerinizi yönetin mi?",
+  "batchTakeoverDescription": "SkillsGo, beceri dosyalarını taşımadan, üzerine yazmadan veya yüklemeden yerel yönetim kayıtlarını ekleyecektir. Desteklenmeyen veya değiştirilen öğeler atlanacaktır.",
+  "batchTakeoverStoryTitle": "Dağınık becerileri tek bir temiz Kitaplığa dönüştürün",
+  "batchTakeoverStoryDescription": "SkillsGo bu konumda yönetebileceği {count, plural, =1{1 mevcut Skill} other{{count} mevcut Skills}} buldu.",
+  "@batchTakeoverStoryDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverBeforeSemantics": "Yönetimden önce mevcut becerilerin nereye yüklendiği, güncel olup olmadığı, nasıl kurtarılacağı veya projelerin aynı sürümü kullanıp kullanmadığı belirsizdir.",
+  "batchTakeoverPainLocation": "Bilinmeyen yükleme konumu",
+  "batchTakeoverPainFreshness": "Bilinmeyen güncelleme durumu",
+  "batchTakeoverPainRecovery": "Kırıldığında iyileşme yok",
+  "batchTakeoverPainVersionDrift": "Projeler arasında farklı versiyonlar",
+  "batchTakeoverFolderTitle": "Mevcut Skills",
+  "batchTakeoverFolderSubtitle": "Belirsiz durum",
+  "batchTakeoverAfterLabel": "SONRA",
+  "batchTakeoverAfterTitle": "Temiz bir Kütüphane",
+  "batchTakeoverLibraryTitle": "SkillsGo Kütüphanesi",
+  "batchTakeoverBenefitLocation": "Konumları temizle",
+  "batchTakeoverBenefitFreshness": "Güncellemeler görünüyor",
+  "batchTakeoverBenefitRecovery": "Kolay kurtarma",
+  "batchTakeoverBenefitVersions": "Sürümler temiz",
+  "batchTakeoverManagedSection": "SkillsGo tarafından yönetilmektedir",
+  "batchTakeoverPendingSection": "Beklemede",
+  "batchTakeoverItemManaged": "{name}, SkillsGo tarafından yönetilmektedir",
+  "@batchTakeoverItemManaged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemSkipped": "{name} yönetime eklenemedi",
+  "@batchTakeoverItemSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemPending": "{name} yönetilmeyi bekliyor",
+  "@batchTakeoverItemPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverAfterSemantics": "Yönetimden sonra {count, plural, =1{1 Skill} other{{count} Skills}}, yönetim durumu açıkça görülen tek bir Library içinde düzenlenir.",
+  "@batchTakeoverAfterSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverMoreSkills": "+{count} daha fazla",
+  "@batchTakeoverMoreSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverTransitionSemantics": "Bu mevcut becerileri SkillsGo yönetimine ekleyin.",
+  "batchTakeoverTransitionLabel": "ORGANİZE EDİN",
+  "batchTakeoverStatusTitle": "Yönetim durumu",
+  "batchTakeoverStatusManaged": "Yönetilen",
+  "batchTakeoverStatusProgress": "Düzenleme",
+  "batchTakeoverStatusSkipped": "Atlandı",
+  "batchTakeoverStatusFilesStay": "Skill dosyaları orijinal konumlarında kalır",
+  "batchTakeoverBoardSemantics": "Skills, tam satırlar halinde düzenlenir ve dosyaları taşınmadan SkillsGo tarafından kaydedilir.",
+  "batchTakeoverBoardComplete": "HEPSİ TEMİZ",
+  "batchTakeoverBoardPartial": "TAMAMLANDI",
+  "batchTakeoverStatusTotal": "Toplam",
+  "batchTakeoverQueueComplete": "Hiçbir beceri beklemiyor",
+  "batchTakeoverQueueWaiting": "Doğrulamadan sonra Skill’ler burada görünecek",
+  "batchTakeoverNextLabel": "SONRAKİ",
+  "batchTakeoverFillerCount": "{count, plural, =1{1 SkillsGo düzenleyici bloğu} other{{count} SkillsGo düzenleyici bloğu}} son satırları tamamlar.",
+  "@batchTakeoverFillerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPreservation": "Dosyalarınız, yollarınız ve mevcut iş akışlarınız tam olarak oldukları yerde kalır. SkillsGo yalnızca yerel yönetim kayıtlarını tamamlar.",
+  "batchTakeoverLaterHint": "Atlarsanız istediğiniz zaman Kitaplık'taki Mevcut becerileri yönet seçeneğini kullanabilirsiniz.",
+  "batchTakeoverSkip": "Şimdi değil",
+  "batchTakeoverConfirm": "Yönetime ekle",
+  "batchTakeoverExecutionRetry": "Yeniden dene",
+  "batchTakeoverResultTitle": "Skill’ler yönetime eklendi",
+  "batchTakeoverSummary": "Yönetime {takenOver} becerileri eklendi, {skipped} atlandı.",
+  "@batchTakeoverSummary": {
+    "placeholders": {
+      "takenOver": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverClose": "Kapat",
+  "installMoreTargets": "Daha fazla konuma yükleyin",
+  "exportLocalSkill": "İhracat",
+  "exportLocalSkillDescription": "Bu Yerel Skill'yi taşınabilir bir ZIP arşivi olarak dışa aktarın.",
+  "detailInstalls": "Yüklemeler",
+  "detailRepository": "Depo",
+  "detailStars": "Yıldızlar",
+  "detailUpdated": "Güncellendi",
+  "detailArchiveSize": "ZIP Boyutu",
+  "pathLabel": "Proje yolu",
+  "copyProjectPath": "Proje yolunu kopyala",
+  "projectPathCopied": "Proje yolu kopyalandı",
+  "onboardingWelcomeTitle": "SkillsGo'ye hoş geldiniz",
+  "onboardingWelcomeDescription": "Agent’larınız ve projeleriniz genelinde Skill’leri keşfedin, yükleyin ve yönetin.",
+  "onboardingDetectedAgents": "Algılanan Agents",
+  "onboardingNoAgents": "Yüklü bir Agent algılanmadı. Yine de devam edebilirsiniz.",
+  "onboardingNext": "Sonraki",
+  "onboardingProjectsTitle": "Projelerinizi ekleyin",
+  "onboardingProjectsDescription": "SkillsGo'nin yönetmesini istediğiniz projeleri seçin.",
+  "onboardingAddProject": "Şimdi ekle",
+  "onboardingAddProjectLater": "veya daha sonra",
+  "onboardingStartUsing": "SkillsGo'yi Kullanmaya Başlayın",
+  "onboardingBack": "Geri",
+  "restartOnboardingTitle": "İlk katılım",
+  "restartOnboardingDescription": "Projeleri, ayarları veya Skills verilerini kaldırmadan ilk lansman kılavuzunu yeniden görüntüleyin.",
+  "restartOnboardingAction": "İlk Katılımı Yeniden Başlatın",
+  "restartOnboardingFailed": "SkillsGo ilk kurulumu yeniden başlatamadı.",
+  "libraryRefreshSettingsTitle": "Yerel Kitaplığı yenile",
+  "libraryRefreshSettingsDescription": "Yüklü Skills, Eklenen Projeler, Agents ve yönetilebilen harici Skills'yi yeniden tarayın. Bu hiçbir şeyi yüklemez, güncellemez veya kaldırmaz.",
+  "libraryRefreshSettingsAction": "Kitaplığı Yenile",
+  "libraryRefreshSettingsPending": "Kütüphane yenileniyor…",
+  "libraryRefreshSettingsSuccess": "Yerel Kütüphane yenilendi.",
+  "libraryRefreshSettingsFailed": "SkillsGo yerel Kitaplığı yenileyemedi.",
+  "onboardingProjectError": "SkillsGo bu dizinden proje ekleyemedi.",
+  "onboardingProjectsLoadError": "SkillsGo eklediğiniz projelerinizi yükleyemedi.",
+  "onboardingStartupError": "SkillsGo kurulumu yükleyemedi.",
+  "onboardingStateError": "SkillsGo kurulum ilerlemenizi kaydedemedi. Tekrar deneyin.",
+  "onboardingCliErrorTitle": "SkillsGo CLI'nin ilgilenilmesi gerekiyor",
+  "onboardingCliErrorDescription": "Birlikte verilen CLI'yi onarın ve devam etmeyi yeniden deneyin."
+}

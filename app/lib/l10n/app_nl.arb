@@ -1,0 +1,1088 @@
+{
+  "@@locale": "nl",
+  "discover": "Ontdekken",
+  "discoverSkills": "Het is leuk om iets meer te weten.",
+  "library": "Bibliotheek",
+  "settings": "Instellingen",
+  "openSettings": "Instellingen openen",
+  "cliNeedsAttention": "Een vereist SkillsGo-onderdeel heeft aandacht nodig.",
+  "cliMissingBundled": "Een vereist SkillsGo-onderdeel ontbreekt of kan niet starten. Installeer SkillsGo opnieuw om het te herstellen.",
+  "cliDamagedBundled": "Een vereist SkillsGo-onderdeel is beschadigd. Installeer SkillsGo opnieuw om het te herstellen.",
+  "cliIncompatibleBundled": "Een vereist SkillsGo-onderdeel komt niet overeen met deze app-versie. Update of installeer SkillsGo opnieuw.",
+  "officialIndex": "SkillsGo Hub",
+  "discoverTitle": "Zoek een skill voor uw volgende zet.",
+  "skillsLeaderboard": "Het is leuk om iets meer te weten.",
+  "searchResultsFor": "Resultaten voor “{query}”",
+  "@searchResultsFor": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "searchSkills": "Zoek in skills of plak een Git-link...",
+  "search": "Zoekopdracht",
+  "ranking": "Ranglijst",
+  "trending": "Populair",
+  "hot": "Heet",
+  "discoverNavigation": "Ontdek navigatie",
+  "allTimeRanking": "Ranglijst aller tijden",
+  "trendingNow": "Trends van de afgelopen 24 uur",
+  "hotNow": "Heet op dit moment",
+  "allTimeDescription": "Openbare Skills, gesorteerd op het totale aantal geaccepteerde installaties.",
+  "trendingDescription": "Openbare Skills, gesorteerd op geaccepteerde installaties in de afgelopen 24 uur.",
+  "hotDescription": "Openbare Skills, gesorteerd op recente installatiesnelheid en verandering.",
+  "offlineTitle": "Kan geen verbinding maken met SkillsGo",
+  "offlineMessage": "Controleer uw internetverbinding en probeer het opnieuw. Als u een proxy of een aangepast serviceadres gebruikt, controleert u dit in Instellingen.",
+  "searchFailedTitle": "Zoeken mislukt",
+  "validationTitle": "Controleer wat je hebt ingevoerd",
+  "validationMessage": "SkillsGo kan dit verzoek niet gebruiken. Controleer wat u heeft ingevoerd en probeer het opnieuw.",
+  "serverTitle": "Dienst tijdelijk niet beschikbaar",
+  "serverMessage": "SkillsGo kan dit verzoek momenteel niet voltooien. Probeer het zo nog eens.",
+  "timeoutTitle": "Dit duurt te lang",
+  "timeoutMessage": "De dienst reageerde niet op tijd. Controleer uw verbinding of probeer het opnieuw.",
+  "invalidResponseTitle": "SkillsGo heeft een update nodig",
+  "invalidResponseMessage": "Dit antwoord kan niet worden gelezen door uw versie van SkillsGo. Update de app en probeer het opnieuw.",
+  "invalidLocalDataTitle": "Kan een geïnstalleerde skill niet lezen",
+  "invalidLocalDataMessage": "Sommige lokale installatie-informatie is beschadigd of incompatibel. Update of installeer SkillsGo opnieuw en probeer het opnieuw.",
+  "tryAgain": "Probeer het opnieuw",
+  "searchEmptyTitle": "Zoeken, niet scrollen.",
+  "searchEmptyMessage": "Voer een mogelijkheid, bron of taak in om in openbare skills te zoeken.",
+  "noSkillsTitle": "Geen skills gevonden",
+  "noSkillsMessage": "Probeer een bredere zin of controleer de spelling.",
+  "focusSearch": "Focus zoeken",
+  "skillsFromLink": "Skills via deze link",
+  "skillCount": "{count, plural, =1{1 skill} other{{count} skills}}",
+  "@skillCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceResultsSummary": "{count, plural, =1{1 skill uit {source}} other{{count} skills uit {source}}}",
+  "@sourceResultsSummary": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "sourceSearchEmptyTitle": "Deze link is klaar om te inspecteren",
+  "sourceSearchEmptyMessage": "{source} staat niet in de huidige zoekresultaten. SkillsGo kan de link in de volgende stap direct inspecteren.",
+  "@sourceSearchEmptyMessage": {
+    "placeholders": {
+      "source": {
+        "type": "String"
+      }
+    }
+  },
+  "inspectSource": "Bekijk skills via deze link",
+  "collectionEmptyTitle": "Geen Skills in deze collectie",
+  "collectionEmptyMessage": "Er is hier nog niets. Probeer het opnieuw na meer installatieactiviteit.",
+  "loadMore": "Laad meer",
+  "install": "Installeren",
+  "installAll": "Installeer alle skills",
+  "latestCommit": "Laatste toezegging",
+  "installToMoreTargets": "Installeer op meer locaties",
+  "localTargets": "{count} lokale doelen",
+  "@localTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "allTimeMetric": "{count}-installaties aller tijden",
+  "@allTimeMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "trendingMetric": "{count}-installaties / 24 uur",
+  "@trendingMetric": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "hotMetric": "{value} dit uur · {change}",
+  "@hotMetric": {
+    "placeholders": {
+      "value": {
+        "type": "String"
+      },
+      "change": {
+        "type": "String"
+      }
+    }
+  },
+  "trustUnverified": "Niet geverifieerd",
+  "trustCommunityVerified": "Gemeenschap geverifieerd",
+  "trustPublisherVerified": "Uitgever geverifieerd",
+  "trustOfficial": "Officieel",
+  "trustWarned": "Gewaarschuwd",
+  "trustDelisted": "Verwijderd",
+  "riskUnknown": "Risico onbekend",
+  "riskLow": "Laag risico",
+  "riskMedium": "Middelmatig risico",
+  "riskHigh": "Hoog risico",
+  "riskCritical": "Kritiek risico",
+  "openSkill": "Open {name}",
+  "@openSkill": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "installs": "{count}-installaties",
+  "@installs": {
+    "placeholders": {
+      "count": {
+        "type": "String"
+      }
+    }
+  },
+  "detailFailedTitle": "Kan deze Skill niet laden",
+  "detailLoading": "Controleerbaar Skill-detail laden",
+  "artifactUnavailableTitle": "Artefact niet beschikbaar",
+  "artifactUnavailableMessage": "Deze versie is momenteel niet beschikbaar. Probeer het opnieuw of kies een andere versie.",
+  "detailInvalidTitle": "Metagegevens van artefacten worden niet ondersteund",
+  "detailInvalidMessage": "Sommige gegevens voor deze skill zijn onvolledig of kunnen niet worden gelezen. Update SkillsGo en probeer het opnieuw.",
+  "instructionsTab": "Instructies",
+  "manifestTab": "Manifest",
+  "immutableVersionLabel": "Onveranderlijk {version}",
+  "@immutableVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "commitIdentity": "{sha} vastleggen",
+  "@commitIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "treeIdentity": "Boom {sha}",
+  "@treeIdentity": {
+    "placeholders": {
+      "sha": {
+        "type": "String"
+      }
+    }
+  },
+  "contentIdentity": "Inhoud {digest}",
+  "@contentIdentity": {
+    "placeholders": {
+      "digest": {
+        "type": "String"
+      }
+    }
+  },
+  "trustDoesNotProveSafety": "Uitgeversvertrouwen verifieert eigendom of onderhoud; het certificeert de veiligheid van artefacten niet. Voor deze onveranderlijke versie wordt het risico afzonderlijk beoordeeld.",
+  "knownInstallationTargets": "Bekende installatiedoelen",
+  "installationRange": "Geïnstalleerd bereik",
+  "targetDetails": "Toon doeldetails",
+  "hideTargetDetails": "Doeldetails verbergen",
+  "installedVersionLabel": "Versie {version}",
+  "@installedVersionLabel": {
+    "placeholders": {
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "targetSummary": "{scope} / {agent} · {version}",
+  "@targetSummary": {
+    "placeholders": {
+      "scope": {
+        "type": "String"
+      },
+      "agent": {
+        "type": "String"
+      },
+      "version": {
+        "type": "String"
+      }
+    }
+  },
+  "projectScope": "Project",
+  "fileContentUnavailable": "Binair of niet-beschikbaar voorbeeld",
+  "fileContentTruncated": "Voorbeeld afgekapt door de Hub-veiligheidslimiet.",
+  "retry": "Opnieuw proberen",
+  "backToSearch": "Terug naar zoeken",
+  "installForCodex": "Installeren voor Codex",
+  "cliNotDetected": "skills (niet gedetecteerd)",
+  "snapshotFiles": "Momentopnamebestanden",
+  "globalCodex": "Globaal · Codex",
+  "yourLibrary": "Wat je weet is hier allemaal.",
+  "libraryNavigation": "Bibliotheeknavigatie",
+  "all": "Alle",
+  "allSkills": "Alle Skills",
+  "updatesOnly": "Updates",
+  "allAgents": "Alle Agents",
+  "allProjects": "Alle projecten",
+  "specificProject": "Project",
+  "userScope": "Globaal",
+  "addProject": "Project toevoegen",
+  "relocateProject": "Verhuizen",
+  "removeFromList": "Verwijderen uit lijst",
+  "removeProjectTitle": "{name} verwijderen uit SkillsGo?",
+  "@removeProjectTitle": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "removeProjectDescription": "Alleen de app-referentie wordt verwijderd. SkillsGo zal geen bestanden in deze map wijzigen of verwijderen.",
+  "projectRailUnavailable": "{name} — niet beschikbaar",
+  "@projectRailUnavailable": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "emptyProjectTitle": "Nog geen Skills",
+  "browseSkills": "Blader door Skills",
+  "projectMissingTitle": "Projectmap ontbreekt",
+  "projectMissingMessage": "De map is mogelijk verplaatst of het volume ervan is mogelijk offline. Verplaats het of verwijder alleen de app-referentie.",
+  "projectPermissionTitle": "Projectvergunning is vereist",
+  "projectPermissionMessage": "SkillsGo kan deze geselecteerde root niet inspecteren. Verleen toegang door deze te verplaatsen via de directorykiezer.",
+  "projectInaccessibleTitle": "Projectdirectory is niet toegankelijk",
+  "projectInaccessibleMessage": "SkillsGo heeft deze projectreferentie behouden. Controleer het pad of volume en verplaats het vervolgens.",
+  "checking": "Controleren…",
+  "checkUpdates": "Controleer updates",
+  "refresh": "Vernieuwen",
+  "libraryUnavailable": "Bibliotheek niet beschikbaar",
+  "libraryEmpty": "Nog geen skills geïnstalleerd",
+  "libraryEmptyMessage": "Installeer een Skill van Discover en deze zal hier verschijnen.",
+  "searchLibrary": "Zoek naar geïnstalleerde skills",
+  "libraryNoMatches": "Geen overeenkomende Skills",
+  "libraryNoMatchesMessage": "Probeer een andere naam, bron, Agent, project of versie.",
+  "agentsSummary": "{count} Agents",
+  "@agentsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "projectsSummary": "{count}-projecten",
+  "@projectsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "versionsSummary": "{count}-versies",
+  "@versionsSummary": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "hubManaged": "Hub beheerd",
+  "localManaged": "Lokaal beheerd",
+  "externalInstallation": "Externe installatie",
+  "readOnly": "Alleen lezen",
+  "unversioned": "Geen versiebeheer",
+  "supportingFiles": "Ondersteunende bestanden",
+  "versionDivergence": "Versie-divergentie",
+  "healthHealthy": "Gezond",
+  "healthMissing": "Doel ontbreekt",
+  "healthReplaced": "Doel vervangen",
+  "healthLocalModification": "Lokale wijziging",
+  "healthUnreadable": "Doel onleesbaar",
+  "healthUndeclared": "Niet verklaard",
+  "healthWorkspaceUnreadable": "Werkruimtestatus onleesbaar",
+  "healthLockMismatch": "Niet-overeenkomende vergrendeling",
+  "healthUnexpectedPath": "Onverwacht doelpad",
+  "modeSymlink": "Symlink",
+  "modeCopy": "Kopiëren",
+  "modeExternal": "Extern",
+  "notLinked": "NIET GEKOPPELD",
+  "update": "Update",
+  "backToLibrary": "Terug naar Bibliotheek",
+  "remove": "Verwijderen",
+  "manageTargets": "Beheer bereik",
+  "skillsSelected": "{count} geselecteerd",
+  "@skillsSelected": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "clearSelection": "Duidelijke selectie",
+  "selectCurrentResults": "Select huidige resultaten",
+  "clearCurrentResultSelection": "Wis huidige resultaatselectie",
+  "manageTargetsTitle": "Beheer installatiedoelen",
+  "manageTargetsDescription": "Kies een exacte actie voor elk doelwit. Niet-geselecteerde doelen veranderen niet.",
+  "targetActionsSelected": "{selected} van {total} doelen geselecteerd",
+  "@targetActionsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "repairTarget": "Reparatie",
+  "confirmRemoveTarget": "Bevestig verwijderen",
+  "applyTargetActions": "Pas geselecteerde acties toe",
+  "managementProgressTitle": "Doelacties toepassen",
+  "managementResultsTitle": "Doelactieresultaten",
+  "managementResultSummary": "{succeeded} geslaagd, {failed} mislukt",
+  "@managementResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "workspaceOwnershipChanges": "Geselecteerde projectacties zullen skillsgo.mod en skillsgo.sum bijwerken.",
+  "targetContentPreserved": "De huidige doelinhoud blijft behouden.",
+  "localReadFailed": "Kan deze Skill niet lezen",
+  "localReadFailedMessage": "SkillsGo kon deze geïnstalleerde skill niet lezen. Controleer of de folder beschikbaar en toegankelijk is en probeer het vervolgens opnieuw.",
+  "localConfiguration": "SKILLSGO INSTELLINGEN",
+  "settingsNavigation": "Navigatie instellingen",
+  "general": "Personaliseer",
+  "agents": "Agents",
+  "hub": "Hub",
+  "installationPolicy": "Installatiebeleid",
+  "storage": "Opslag",
+  "colorScheme": "Kleurenschema",
+  "about": "Over",
+  "colorSchemeInspectorTitle": "Gegenereerde Material-kleurrollen",
+  "skillsColorTokensTitle": "SkillsGo semantische kleuren",
+  "skillsColorTokensDescription": "Productkleuren opgebouwd uit Radix Sand en georganiseerd met Primer-semantiek, met Folder als een speciale ruimtelijke hiërarchie.",
+  "colorSchemeInspectorDescription": "Bekijk een voorbeeld van elk niet-verouderd ColorScheme-token dat is gegenereerd op basis van de huidige Seed. Klik op een kleur om de HEX-waarde ervan te kopiëren.",
+  "colorSchemePairPreview": "Semantische paren",
+  "colorSchemePairPreviewDescription": "Voorgrond- en achtergrondrollen worden samen weergegeven om contrast en hiërarchie bloot te leggen.",
+  "colorSchemeComponentPreview": "Componentvoorbeeld",
+  "colorSchemeComponentPreviewDescription": "Representatieve Material-besturingselementen weergegeven met dit exacte voorbeeldschema.",
+  "colorSchemeSampleTitle": "Skill-kaarttitel",
+  "colorSchemeSampleBody": "Secundaire kopie maakt gebruik van onSurfaceVariant.",
+  "colorSchemeCopied": "Gekopieerd",
+  "colorSchemeSampleGlyphs": "Aa 123",
+  "colorSchemeGroupPrimary": "Primair",
+  "colorSchemeGroupPrimaryDescription": "Primaire nadruk, containers en rollen met vaste accenten.",
+  "colorSchemeGroupSecondary": "Secundair",
+  "colorSchemeGroupSecondaryDescription": "Ondersteunende nadruk en vaste nevenrollen.",
+  "colorSchemeGroupTertiary": "Tertiair",
+  "colorSchemeGroupTertiaryDescription": "Contrasterende accenten en vaste tertiaire rollen.",
+  "colorSchemeGroupSurface": "Oppervlak",
+  "colorSchemeGroupSurfaceDescription": "Pagina-, container-, hoogte- en voorgrondhiërarchie.",
+  "colorSchemeGroupUtility": "Overzicht en bruikbaarheid",
+  "colorSchemeGroupUtilityDescription": "Grenzen, schaduwen, gaasdoeken en omgekeerde oppervlakken.",
+  "colorSchemeGroupError": "Fout",
+  "colorSchemeGroupErrorDescription": "Foutacties, berichten en containers.",
+  "colorSchemeUsagePrimary": "Primaire acties, focus en accenten met hoge nadruk.",
+  "colorSchemeUsageSecondary": "Ondersteunende acties en accenten met gemiddelde nadruk.",
+  "colorSchemeUsageTertiary": "Contrasterende accenten die primair en secundair aanvullen.",
+  "colorSchemeUsageContentOn": "Tekst en pictogrammen weergegeven op {token}.",
+  "@colorSchemeUsageContentOn": {
+    "placeholders": {
+      "token": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageContainer": "{family}-container met lagere nadruk voor selecties en accenten.",
+  "@colorSchemeUsageContainer": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixed": "Helderheidsonafhankelijke vaste {family}-container.",
+  "@colorSchemeUsageFixed": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedDim": "Gedimde helderheidsonafhankelijke vaste {family}-container.",
+  "@colorSchemeUsageFixedDim": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedContent": "Inhoud met hoge nadruk op de vaste {family}-container.",
+  "@colorSchemeUsageFixedContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageFixedVariantContent": "Inhoud met minder nadruk op de vaste {family}-container.",
+  "@colorSchemeUsageFixedVariantContent": {
+    "placeholders": {
+      "family": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeUsageSurface": "Basispagina en groot oppervlak.",
+  "colorSchemeUsageSurfaceDim": "Gedimd basisoppervlak gebruikt in de donkerste oppervlaktetint.",
+  "colorSchemeUsageSurfaceBright": "Helder basisoppervlak gebruikt in de lichtste oppervlaktetint.",
+  "colorSchemeUsageSurfaceElevation": "De {level}-oppervlaktecontainerverhoging.",
+  "@colorSchemeUsageSurfaceElevation": {
+    "placeholders": {
+      "level": {
+        "type": "String"
+      }
+    }
+  },
+  "colorSchemeElevationLowest": "laagste",
+  "colorSchemeElevationLow": "laag",
+  "colorSchemeElevationDefault": "standaard",
+  "colorSchemeElevationHigh": "hoog",
+  "colorSchemeElevationHighest": "hoogste",
+  "colorSchemeUsageOnSurface": "Primaire tekst en pictogrammen weergegeven op oppervlakken.",
+  "colorSchemeUsageOnSurfaceVariant": "Secundaire tekst, labels en ingetogen pictogrammen op oppervlakken.",
+  "colorSchemeUsageSurfaceTint": "Material elevatietint afgeleid van primair.",
+  "colorSchemeUsageOutline": "Duidelijke grenzen en gerichte componentcontouren.",
+  "colorSchemeUsageOutlineVariant": "Subtiele grenzen, scheidingslijnen en contouren met weinig nadruk.",
+  "colorSchemeUsageShadow": "Slagschaduwkleur voor verhoogde oppervlakken.",
+  "colorSchemeUsageScrim": "Modale overlay die wordt gebruikt om achtergrondinhoud minder te benadrukken.",
+  "colorSchemeUsageInverseSurface": "Oppervlak met omgekeerde lichte en donkere accenten.",
+  "colorSchemeUsageInversePrimary": "Primair accent weergegeven op een omgekeerd oppervlak.",
+  "colorSchemeUsageError": "Foutacties, status en feedback met hoge nadruk.",
+  "save": "Redden",
+  "advancedSettings": "Geavanceerd",
+  "remindersSettings": "Herinneringen",
+  "remindersSettingsTitle": "Herinneringsinstellingen",
+  "remindersSettingsDescription": "Kies welke herinneringen u wilt ontvangen.",
+  "updateReminderTitle": "Herinneringen bijwerken",
+  "updateReminderDescription": "Controleer op updates wanneer de bibliotheek wordt geopend.",
+  "securityReminderTitle": "Waarschuwingen met hoog risico",
+  "securityReminderDescription": "Houdt u op de hoogte van nieuwe hoge of kritieke risico's in geïnstalleerde skills.",
+  "availableUpdatesReminder": "{count} geïnstalleerd skills heeft updates",
+  "@availableUpdatesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "openAvailableUpdates": "Open de weergave met beschikbare updates om ze te bekijken en bij te werken.",
+  "securityAdvisoriesReminder": "{count} geïnstalleerd skills heeft een beveiligingsbeoordeling nodig",
+  "@securityAdvisoriesReminder": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "reviewInstalledSkills": "Controleer hun risico-informatie voordat u deze gebruikt of bijwerkt.",
+  "generalSettingsTitle": "Maak SkillsGo van jou",
+  "generalSettingsDescription": "De interface volgt uw systeemtaal, toegankelijkheid en bewegingsvoorkeuren.",
+  "agentsSettingsTitle": "Agent-runtime",
+  "hubSettingsTitle": "Hub Oorsprong",
+  "hubSettingsDescription": "Gebruik de officiële Hub of een zelf-gehoste HTTP(S)-oorsprong die hetzelfde SkillsGo-protocol implementeert.",
+  "testConnection": "Verbinding testen",
+  "saveOrigin": "Bewaar oorsprong",
+  "resetDefault": "Resetten naar standaard",
+  "connectionReady": "Verbinding gereed",
+  "connectionFailed": "Verbinding mislukt",
+  "hubInvalidOrigin": "Voer een geldige HTTP(S)-oorsprong in zonder inloggegevens, een query of een fragment.",
+  "hubHttpFailure": "Hub heeft HTTP {status} geretourneerd. Controleer de Origin- en serverconfiguratie.",
+  "@hubHttpFailure": {
+    "placeholders": {
+      "status": {
+        "type": "int"
+      }
+    }
+  },
+  "hubInvalidProtocol": "De server heeft het zoekprotocol SkillsGo Hub niet geretourneerd.",
+  "hubInvalidJson": "De Hub heeft een ongeldige JSON geretourneerd.",
+  "hubConnectionFailure": "Kon de Hub niet bereiken. Controleer de Origin-, netwerk-, proxy- en TLS-configuratie.",
+  "hubConnectionTimeout": "Er is een time-out opgetreden bij de Hub-verbinding. Controleer het netwerk of probeer het opnieuw.",
+  "riskPolicyTitle": "Persoonlijk risicobeleid",
+  "riskPolicyDescription": "Bij het installeren of updaten van een skill zijn veiligheidsregels van toepassing.",
+  "confirmHighRisk": "Bevestiging vereist voor Hoog risico",
+  "confirmHighRiskDescription": "Voor artefacten met een hoog risico is vóór de installatie altijd een aanvullende bevestiging vereist.",
+  "allowCriticalOverride": "Sta een expliciete overschrijving van kritieke risico's toe",
+  "allowCriticalOverrideDescription": "Artefacten met een kritiek risico blijven standaard geblokkeerd. Schakel dit alleen in om een ​​afzonderlijke handmatige overschrijving beschikbaar te maken.",
+  "storageSettingsTitle": "Op inhoud gerichte winkel",
+  "storageHealthy": "Leesbaar",
+  "storageNotInitialized": "Niet geïnitialiseerd",
+  "storageUnavailable": "Niet beschikbaar",
+  "storagePathUnavailable": "Winkelpad niet beschikbaar totdat de CLI-diagnostiek gereed is.",
+  "storageHealthyDescription": "De CLI kan de Store lezen zonder de inhoud ervan te wijzigen.",
+  "storageNotInitializedDescription": "De Store bestaat nog niet en is door deze controle niet aangemaakt.",
+  "storageUnavailableDescription": "De CLI kan de Store niet lezen. Controleer de machtigingen en de bovenliggende map.",
+  "storageInvalidResponse": "De gebundelde CLI retourneerde een niet-ondersteund diagnostisch antwoord.",
+  "aboutSettingsTitle": "Productcompatibiliteit",
+  "appVersion": "App-versie",
+  "cliVersion": "Gebundelde CLI-versie",
+  "compatible": "Verenigbaar",
+  "hubOriginSaved": "Hub Oorsprong opgeslagen en toegepast.",
+  "policySaved": "Installatiebeleid opgeslagen.",
+  "officialCli": "SkillsGo CLI",
+  "ready": "KLAAR",
+  "unknown": "ONBEKEND",
+  "missing": "VERMIST",
+  "incompatible": "ONVERENIGBAAR",
+  "detecting": "Detecteren…",
+  "customCliPath": "Aangepast uitvoerbaar pad",
+  "saveAndDetect": "Opslaan en detecteren",
+  "detectAgain": "Opnieuw detecteren",
+  "agentInstalled": "Geïnstalleerd",
+  "agentSupported": "Ondersteund",
+  "agentCatalogSummary": "{installed} geïnstalleerd · {supported} ondersteund",
+  "@agentCatalogSummary": {
+    "placeholders": {
+      "installed": {
+        "type": "int"
+      },
+      "supported": {
+        "type": "int"
+      }
+    }
+  },
+  "installedAgentsTitle": "Geïnstalleerd · {count}",
+  "@installedAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsTitle": "Niet geïnstalleerd · {count}",
+  "@notInstalledAgentsTitle": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "notInstalledAgentsDescription": "Ondersteund door SkillsGo, maar niet gedetecteerd op deze Mac.",
+  "agentDiscoveryRoots": "Skill laadpaden: {paths}",
+  "@agentDiscoveryRoots": {
+    "placeholders": {
+      "paths": {
+        "type": "String"
+      }
+    }
+  },
+  "agentInspectionFailed": "Agent-detectiegegevens zijn niet beschikbaar. Voer de detectie opnieuw uit.",
+  "noInstalledAgentsTitle": "Geen geïnstalleerde Agents gedetecteerd",
+  "noInstalledAgentsMessage": "U kunt door deze Skill blijven bladeren, maar er is nog geen installatiedoel. Installeer een ondersteunde Agent en voer de detectie opnieuw uit.",
+  "clearCustomPath": "Aangepast pad wissen",
+  "privacyProvenance": "Privacy & herkomst",
+  "privacySummary": "Uw zoekopdrachten worden niet opgeslagen en SkillsGo houdt geen opdrachtlogboeken bij.",
+  "language": "Taal",
+  "personalizationTheme": "Thema",
+  "folderColorTheme": "Thema kleur",
+  "folderColorThemeDescription": "Kies een kleur die je mooi vindt. SkillsGo zal er een gecoördineerd interfacepalet omheen bouwen.",
+  "brandNameNeteaseCloudMusic": "NetEase Cloud-muziek",
+  "brandNameRaspberryPi": "Framboos Pi",
+  "brandNameChinaEasternAirlines": "China Eastern Airlines",
+  "brandNameNvidia": "NVIDIA",
+  "brandNameTaobao": "Taobao",
+  "brandNameBitcoin": "Bitcoin",
+  "appearanceMode": "Modus",
+  "appearanceModeDescription": "Volg het uiterlijk van uw systeem of gebruik altijd een licht of donker thema.",
+  "followSystem": "Systeem",
+  "lightMode": "Licht",
+  "darkMode": "Donker",
+  "wallpaper": "Behang",
+  "wallpaperDescription": "Kies een hemelse achtergrond. Uw selectie verschijnt direct achter Folder.",
+  "wallpaperSun": "Zon",
+  "wallpaperMercury": "Kwik",
+  "wallpaperVenus": "Venus",
+  "wallpaperEarth": "Aarde",
+  "wallpaperMars": "Mars",
+  "wallpaperJupiter": "Jupiter",
+  "wallpaperSaturn": "Saturnus",
+  "wallpaperUranus": "Uranus",
+  "wallpaperNeptune": "Neptunus",
+  "wallpaperPluto": "Pluto",
+  "wallpaperMoon": "Maan",
+  "folderThemeChoice": "{theme} Folder-thema",
+  "@folderThemeChoice": {
+    "placeholders": {
+      "theme": {
+        "type": "String"
+      }
+    }
+  },
+  "privacyAffiliation": "Anonieme installatietelemetrie wordt beheerd door de SkillsGo-instellingen. SkillsGo is niet aangesloten bij OpenAI of Codex.",
+  "commandCompleted": "Commando voltooid",
+  "commandFailed": "Commando mislukt",
+  "commandExit": "Sluit {code} af · vouw uit voor het logboek van deze sessie",
+  "@commandExit": {
+    "placeholders": {
+      "code": {
+        "type": "int"
+      }
+    }
+  },
+  "command": "Commando",
+  "cancel": "Annuleren",
+  "updateUnknown": "ONBEKEND",
+  "updateChecking": "CONTROLEREN",
+  "upToDate": "UP-TO-DATE",
+  "updateAvailable": "UPDATE",
+  "updateUnavailable": "NIET BESCHIKBAAR",
+  "updateCheckFailed": "CONTROLE MISLUKT",
+  "installSkill": "Installeer Skill",
+  "installLocationTitle": "Installatielocatie instellen",
+  "userLevel": "Gebruikersniveau",
+  "projectLevel": "Projectniveau",
+  "projects": "Projecten",
+  "loading": "Laden…",
+  "repositoryParsing": "Repository parseren…",
+  "userInstallSummary": "Beschikbaar voor {agents} Agents op gebruikersniveau",
+  "@userInstallSummary": {
+    "placeholders": {
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "projectInstallSummary": "{projects}-projecten · {agents} Agents",
+  "@projectInstallSummary": {
+    "placeholders": {
+      "projects": {
+        "type": "int"
+      },
+      "agents": {
+        "type": "int"
+      }
+    }
+  },
+  "installationResults": "Installatieresultaten",
+  "installationInProgress": "Installatie wordt uitgevoerd",
+  "installationSucceeded": "Installatie voltooid",
+  "installationSucceededMessage": "De Skill is nu beschikbaar op de geselecteerde locaties.",
+  "projectUnavailable": "Project niet beschikbaar",
+  "installedCell": "Geïnstalleerd",
+  "unsupportedCell": "Niet beschikbaar",
+  "confirmInstall": "Bevestig de installatie",
+  "installAllRepositorySkills": "Installeer alle repository skills ({count})",
+  "installAllSkillsTo": "Installeer alle skills op",
+  "@installAllRepositorySkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installRepositorySkills": "Installeer alle {repository} skills ({count})",
+  "@installRepositorySkills": {
+    "placeholders": {
+      "repository": {
+        "type": "String"
+      },
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "installSkillTo": "Installeer {skill} op",
+  "@installSkillTo": {
+    "placeholders": {
+      "skill": {
+        "type": "String"
+      }
+    }
+  },
+  "availableInAllProjects": "Alle projecten",
+  "availableInSelectedProjects": "Geselecteerde projecten",
+  "usedBy": "Voor Agents",
+  "backToTargets": "Terug naar Doelen",
+  "stayHere": "Blijf hier",
+  "viewInLibrary": "Bekijk in Bibliotheek",
+  "planCreateCount": "{count} maken",
+  "@planCreateCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planSkipCount": "{count} overslaan",
+  "@planSkipCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planReplaceCount": "{count} vervangen",
+  "@planReplaceCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planConflictCount": "{count}-conflict",
+  "@planConflictCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "planRiskCount": "{count}-risico geblokkeerd",
+  "@planRiskCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "refreshInstallationPlan": "Resoluties toepassen",
+  "replaceVersionConflict": "Vervang de geïnstalleerde versie op dit doel",
+  "replaceSkillIdCollision": "Vervang de verschillende Skill ID op dit doel",
+  "replaceLocalModification": "Gooi lokale wijzigingen weg en vervang dit doel",
+  "sharedTargetConflict": "Dit pad wordt gedeeld door other Agent-doelen",
+  "sharedTargetConflictDescription": "Keer terug naar de doelmatrix en select elke betrokken Agent voordat u deze vervangt: {agents}",
+  "@sharedTargetConflictDescription": {
+    "placeholders": {
+      "agents": {
+        "type": "String"
+      }
+    }
+  },
+  "replaceConflictingTarget": "Vervang het conflicterende doel",
+  "confirmHighRiskArtifact": "Bevestiging van artefacten met hoog risico",
+  "confirmCriticalRiskArtifact": "Bevestiging van overschrijven van kritiek risico",
+  "confirmRiskForSelectedTargets": "Ik heb de artefactbestanden beoordeeld en accepteer dit risico voor de geselecteerde doelen",
+  "criticalRiskBlocked": "Installatie met een kritiek risico is geblokkeerd",
+  "criticalRiskOverrideDisabled": "Schakel de expliciete overschrijving van kritieke risico's in Instellingen in voordat dit plan kan worden voortgezet.",
+  "workspaceManifestChanges": "Werkruimte Duidelijke veranderingen",
+  "noWorkspaceManifestChanges": "Er worden geen Workspace Manifest-bestanden gewijzigd.",
+  "lockVersionChange": "{from} → {to}",
+  "@lockVersionChange": {
+    "placeholders": {
+      "from": {
+        "type": "String"
+      },
+      "to": {
+        "type": "String"
+      }
+    }
+  },
+  "notPresent": "niet aanwezig",
+  "planActionCreate": "Creëren",
+  "planActionReplace": "Vervangen",
+  "planActionSkip": "Overslaan",
+  "planActionConflict": "Conflict",
+  "planActionBlockedByRisk": "Geblokkeerd door risico",
+  "installationResultSummary": "{succeeded}-doelen geïnstalleerd, {failed} mislukt",
+  "@installationResultSummary": {
+    "placeholders": {
+      "succeeded": {
+        "type": "int"
+      },
+      "failed": {
+        "type": "int"
+      }
+    }
+  },
+  "installationProgressTitle": "Installatie wordt uitgevoerd",
+  "installationProgressSummary": "{finished} van {total}-doelen voltooid",
+  "@installationProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "targetWaiting": "Wachten",
+  "targetRunning": "Installeren",
+  "retryFailedTargets": "{count, plural, =1{1 mislukt doel opnieuw proberen} other{{count} opnieuw proberen mislukte doelen}}",
+  "@retryFailedTargets": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "updatePlanTitle": "Select-doelen om te updaten",
+  "updatePlanDescription": "Kies exacte installatiedoelen. Niet-geselecteerde Agents en projecten blijven ongewijzigd.",
+  "updateTargetsSelected": "{selected} van {available}-bijwerkbare doelen geselecteerd",
+  "@updateTargetsSelected": {
+    "placeholders": {
+      "selected": {
+        "type": "int"
+      },
+      "available": {
+        "type": "int"
+      }
+    }
+  },
+  "updateVersionChange": "{fromVersion} → {toVersion}",
+  "@updateVersionChange": {
+    "placeholders": {
+      "fromVersion": {
+        "type": "String"
+      },
+      "toVersion": {
+        "type": "String"
+      }
+    }
+  },
+  "sourceReference": "Bronreferentie: {reference}",
+  "@sourceReference": {
+    "placeholders": {
+      "reference": {
+        "type": "String"
+      }
+    }
+  },
+  "fixedVersionTarget": "Vastgezet - geen verplaatsbare referentie",
+  "currentVersionTarget": "Up-to-date",
+  "updateCheckTargetFailed": "Updatecontrole mislukt",
+  "reconcileWorkspaceManifestTarget": "Werkruimtemanifest repareren",
+  "updateSelectedTargets": "Geselecteerde doelen bijwerken",
+  "updateProgressTitle": "Doelen bijwerken",
+  "updateResultsTitle": "Resultaten bijwerken",
+  "updateProgressSummary": "{finished} van {total}-doelen voltooid",
+  "@updateProgressSummary": {
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "retryFailedUpdates": "{count, plural, =1{1 keer opnieuw proberen, mislukte update} other{{count} opnieuw proberen, mislukte updates}}",
+  "@retryFailedUpdates": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "noUpdateableTargets": "Voor geen enkel geselecteerd doel is een update beschikbaar.",
+  "closeUpdatePlan": "Dichtbij",
+  "targetSucceeded": "Geïnstalleerd",
+  "targetSkipped": "Overgeslagen",
+  "targetConflict": "Conflict",
+  "targetFailed": "Mislukt",
+  "targetFailureRetryable": "Deze locatie kon niet worden gewijzigd. Je kunt het opnieuw proberen.",
+  "targetFailureNeedsAttention": "Deze locatie heeft uw aandacht nodig voordat u het opnieuw probeert.",
+  "installationTargetFailureMessage": "Op deze locatie is niets veranderd. Controleer of de folder beschikbaar is en probeer het opnieuw.",
+  "workspacePersistenceFailureMessage": "Er is niets gewijzigd omdat SkillsGo de projectinstellingen niet kon opslaan. Controleer of het project folder schrijfbaar is en probeer het opnieuw.",
+  "installationStateChangedMessage": "Deze locatie is gewijzigd terwijl u deze beoordeelde. Controleer de laatste status voordat u het opnieuw probeert.",
+  "updateTargetFailureMessage": "Deze locatie kan niet worden bijgewerkt. Other-locaties zijn niet beïnvloed, dus u kunt alleen deze opnieuw proberen.",
+  "managementTargetFailureMessage": "Deze actie kan hier niet worden voltooid. Other-locaties zijn niet beïnvloed, dus u kunt alleen deze opnieuw proberen.",
+  "technicalDetails": "Technische details",
+  "targetPathExists": "Er bestaat al een ander item op deze locatie.",
+  "targetBlockedByRisk": "Uw huidige veiligheidsinstellingen hebben de installatie op deze locatie geblokkeerd.",
+  "targetInstallFailed": "De skill kon op deze locatie niet worden geïnstalleerd.",
+  "targetWorkspaceUpdateFailed": "De skill is geïnstalleerd, maar de projectinstellingen kunnen niet worden bijgewerkt.",
+  "installationPlanFailed": "Installatieplan kon niet doorgaan",
+  "installationFailed": "De installatie kon niet worden voltooid",
+  "localSource": "Lokale bron",
+  "noDescriptionAvailable": "Geen beschrijving beschikbaar",
+  "moreCoverage": "+{count} meer locaties",
+  "@moreCoverage": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverAction": "Beheer bestaande skills",
+  "batchTakeoverActionCount": "Beheren ({count})",
+  "@batchTakeoverActionCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverChecking": "Bestaande skills controleren…",
+  "batchTakeoverRetry": "Controleer de beheersbare skills opnieuw",
+  "batchTakeoverEligibleCount": "{count} kan worden beheerd",
+  "@batchTakeoverEligibleCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPending": "skills toevoegen aan beheer...",
+  "batchTakeoverTitle": "Bestaande skills beheren met SkillsGo?",
+  "batchTakeoverDescription": "SkillsGo voegt lokale beheerrecords toe zonder skill-bestanden te verplaatsen, overschrijven of uploaden. Niet-ondersteunde of gewijzigde items worden overgeslagen.",
+  "batchTakeoverStoryTitle": "Verander verspreide skills in één overzichtelijke bibliotheek",
+  "batchTakeoverStoryDescription": "SkillsGo heeft {count, plural, =1{1 bestaande skill} other{{count} bestaande skills}} gevonden die hij op deze locatie kan beheren.",
+  "@batchTakeoverStoryDescription": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverBeforeSemantics": "Voor het management is het onduidelijk waar bestaande skills zijn geïnstalleerd, of ze actueel zijn, hoe ze kunnen worden hersteld en of projecten dezelfde versie gebruiken.",
+  "batchTakeoverPainLocation": "Onbekende installatielocatie",
+  "batchTakeoverPainFreshness": "Onbekende updatestatus",
+  "batchTakeoverPainRecovery": "Geen herstel bij breuk",
+  "batchTakeoverPainVersionDrift": "Verschillende versies voor projecten",
+  "batchTakeoverFolderTitle": "Bestaande Skills",
+  "batchTakeoverFolderSubtitle": "Onduidelijke status",
+  "batchTakeoverAfterLabel": "NA",
+  "batchTakeoverAfterTitle": "Eén duidelijke bibliotheek",
+  "batchTakeoverLibraryTitle": "SkillsGo-bibliotheek",
+  "batchTakeoverBenefitLocation": "Duidelijke locaties",
+  "batchTakeoverBenefitFreshness": "Updates zichtbaar",
+  "batchTakeoverBenefitRecovery": "Gemakkelijk herstel",
+  "batchTakeoverBenefitVersions": "Versies duidelijk",
+  "batchTakeoverManagedSection": "Beheerd door SkillsGo",
+  "batchTakeoverPendingSection": "In behandeling",
+  "batchTakeoverItemManaged": "{name} wordt beheerd door SkillsGo",
+  "@batchTakeoverItemManaged": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemSkipped": "{name} kan niet worden toegevoegd aan het beheer",
+  "@batchTakeoverItemSkipped": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverItemPending": "{name} wacht op beheer",
+  "@batchTakeoverItemPending": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "batchTakeoverAfterSemantics": "Na beheer is {count, plural, =1{1 skill is} other{{count} skills zijn}} georganiseerd in één bibliotheek met een duidelijke beheerde status.",
+  "@batchTakeoverAfterSemantics": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverMoreSkills": "+{count} meer",
+  "@batchTakeoverMoreSkills": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverTransitionSemantics": "Voeg deze bestaande skills toe aan het SkillsGo-beheer.",
+  "batchTakeoverTransitionLabel": "ORGANISEREN",
+  "batchTakeoverStatusTitle": "Beheerstatus",
+  "batchTakeoverStatusManaged": "Beheerd",
+  "batchTakeoverStatusProgress": "Organiseren",
+  "batchTakeoverStatusSkipped": "Overgeslagen",
+  "batchTakeoverStatusFilesStay": "Skill-bestanden blijven op hun oorspronkelijke locatie",
+  "batchTakeoverBoardSemantics": "Skills worden in volledige rijen gerangschikt en opgenomen door SkillsGo zonder de bestanden te verplaatsen.",
+  "batchTakeoverBoardComplete": "ALLES DUIDELIJK",
+  "batchTakeoverBoardPartial": "COMPLEET",
+  "batchTakeoverStatusTotal": "Totaal",
+  "batchTakeoverQueueComplete": "Er wachten geen skills",
+  "batchTakeoverQueueWaiting": "Na verificatie worden de Skills hier weergegeven",
+  "batchTakeoverNextLabel": "VOLGENDE",
+  "batchTakeoverFillerCount": "{count, plural, =1{1 SkillsGo organisatorblok} other{{count} SkillsGo organisatorblokken}} voltooi de laatste rijen",
+  "@batchTakeoverFillerCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverPreservation": "Uw bestanden, paden en huidige workflows blijven precies waar ze zijn. SkillsGo vult alleen de lokale managementadministratie in.",
+  "batchTakeoverLaterHint": "Als u dit overslaat, kunt u op elk gewenst moment Bestaande skills vanuit Bibliotheek beheren gebruiken.",
+  "batchTakeoverSkip": "Niet nu",
+  "batchTakeoverConfirm": "Voeg toe aan beheer",
+  "batchTakeoverExecutionRetry": "Opnieuw proberen",
+  "batchTakeoverResultTitle": "Skills toegevoegd aan beheer",
+  "batchTakeoverSummary": "{takenOver} skills toegevoegd aan beheer, {skipped} overgeslagen.",
+  "@batchTakeoverSummary": {
+    "placeholders": {
+      "takenOver": {
+        "type": "int"
+      },
+      "skipped": {
+        "type": "int"
+      }
+    }
+  },
+  "batchTakeoverClose": "Sluiten",
+  "installMoreTargets": "Installeer op meer locaties",
+  "exportLocalSkill": "Exporteren",
+  "exportLocalSkillDescription": "Exporteer deze lokale Skill als een draagbaar ZIP-archief.",
+  "detailInstalls": "Installaties",
+  "detailRepository": "Opslagplaats",
+  "detailStars": "Sterren",
+  "detailUpdated": "Bijgewerkt",
+  "detailArchiveSize": "ZIP-formaat",
+  "pathLabel": "Projectpad",
+  "copyProjectPath": "Kopieer het projectpad",
+  "projectPathCopied": "Projectpad gekopieerd",
+  "onboardingWelcomeTitle": "Welkom bij SkillsGo",
+  "onboardingWelcomeDescription": "Ontdek, installeer en beheer Skills voor uw Agents en projecten.",
+  "onboardingDetectedAgents": "Agents gedetecteerd",
+  "onboardingNoAgents": "Geen geïnstalleerde Agents gedetecteerd. Je kunt nog steeds doorgaan.",
+  "onboardingNext": "Volgende",
+  "onboardingProjectsTitle": "Voeg uw projecten toe",
+  "onboardingProjectsDescription": "Kies de projecten die u door SkillsGo wilt laten beheren.",
+  "onboardingAddProject": "Voeg nu toe",
+  "onboardingAddProjectLater": "of later",
+  "onboardingStartUsing": "Begin met het gebruik van SkillsGo",
+  "onboardingBack": "Rug",
+  "restartOnboardingTitle": "Aan boord",
+  "restartOnboardingDescription": "Bekijk de eerste lanceringshandleiding opnieuw zonder projecten, instellingen of Skills-gegevens te verwijderen.",
+  "restartOnboardingAction": "Start de onboarding opnieuw",
+  "restartOnboardingFailed": "SkillsGo kan de onboarding niet opnieuw starten.",
+  "libraryRefreshSettingsTitle": "Vernieuw de lokale bibliotheek",
+  "libraryRefreshSettingsDescription": "Scan de geïnstalleerde Skills, toegevoegde projecten, Agents en externe Skills die kunnen worden beheerd opnieuw. Hiermee wordt niets geïnstalleerd, bijgewerkt of verwijderd.",
+  "libraryRefreshSettingsAction": "Bibliotheek vernieuwen",
+  "libraryRefreshSettingsPending": "Bibliotheek vernieuwen...",
+  "libraryRefreshSettingsSuccess": "Lokale bibliotheek vernieuwd.",
+  "libraryRefreshSettingsFailed": "SkillsGo kan de lokale bibliotheek niet vernieuwen.",
+  "onboardingProjectError": "SkillsGo kan geen projecten uit deze map toevoegen.",
+  "onboardingProjectsLoadError": "SkillsGo kan uw toegevoegde projecten niet laden.",
+  "onboardingStartupError": "SkillsGo kan de installatie niet laden.",
+  "onboardingStateError": "SkillsGo kan uw installatievoortgang niet opslaan. Probeer het opnieuw.",
+  "onboardingCliErrorTitle": "SkillsGo CLI heeft aandacht nodig",
+  "onboardingCliErrorDescription": "Repareer de gebundelde CLI en probeer opnieuw door te gaan."
+}

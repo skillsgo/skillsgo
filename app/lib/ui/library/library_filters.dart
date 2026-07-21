@@ -160,11 +160,14 @@ class _LibraryAgentMultiFilterState extends State<_LibraryAgentMultiFilter> {
                 ),
               ),
             ),
-            Positioned.fill(
-              right: 24,
+            PositionedDirectional(
+              start: 0,
+              top: 0,
+              bottom: 0,
+              end: 24,
               child: IgnorePointer(
                 child: Padding(
-                  padding: const EdgeInsets.only(left: 12),
+                  padding: const EdgeInsetsDirectional.only(start: 12),
                   child: Align(
                     alignment: AlignmentDirectional.centerStart,
                     child: _AgentFilterSummary(

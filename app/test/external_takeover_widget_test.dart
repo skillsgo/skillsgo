@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies External installation removal, exact location counts, the physical back-to-front console reveal, source-backed inline Tetris takeover identities, complete scrollable NEXT queues, localized/reduced-motion storytelling, and plan-bound Batch Takeover behavior.
+ * [OUTPUT]: Specifies External installation removal, exact location counts, modal input isolation and scrim dismissal, the physical back-to-front console reveal, source-backed inline Tetris takeover identities, complete scrollable NEXT queues, localized/reduced-motion storytelling, and plan-bound Batch Takeover behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -232,6 +232,20 @@ void main() {
         find.byKey(const Key('batch-takeover-preservation-note')),
         findsNothing,
       );
+      expect(
+        find.byKey(const Key('batch-takeover-modal-barrier')),
+        findsOneWidget,
+      );
+
+      // Clicking a destination behind the console dismisses the modal without
+      // allowing the underlying navigation target to receive the same click.
+      await tester.tap(find.byKey(const Key('primary-destination-discover')));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key('batch-takeover-dialog')), findsNothing);
+      expect(find.byKey(const Key('library-location-rail')), findsOneWidget);
+      expect(gateway.takeoverRequests, isEmpty);
+
+      await _showTakeoverDialog(tester);
       await tester.tap(find.text('Not now'));
       await tester.pump();
       expect(find.byKey(const Key('batch-takeover-dialog')), findsOneWidget);
@@ -332,6 +346,10 @@ void main() {
       find.byKey(const Key('primary-destination-settings')),
       findsOneWidget,
     );
+    await tester.tap(find.byKey(const Key('primary-destination-settings')));
+    await tester.pump();
+    expect(find.byKey(const Key('batch-takeover-dialog')), findsOneWidget);
+    expect(find.byKey(const Key('library-location-rail')), findsOneWidget);
 
     takeover.complete(const BatchTakeoverResult(takenOver: 1, skipped: 0));
     await tester.pumpAndSettle();
@@ -340,6 +358,43 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets(
+    'Manage zero remains available and opens the completed state without mutation',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 900));
+      final gateway = FakeSkillsGateway(
+        installed: false,
+        takeoverPlan: const BatchTakeoverPlan(
+          id: 'complete-plan',
+          allEligibleCount: 0,
+          userEligibleCount: 0,
+        ),
+      );
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('primary-destination-library')));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Manage (0)'), findsOneWidget);
+      final action = tester.widget<SecondaryCapsuleButton>(
+        find.byKey(const Key('library-batch-takeover')),
+      );
+      expect(action.onPressed, isNotNull);
+
+      await tester.tap(find.byKey(const Key('library-batch-takeover')));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.byKey(const Key('batch-takeover-board-complete')),
+        findsOneWidget,
+      );
+      expect(find.text('ALL CLEAR'), findsOneWidget);
+      expect(find.byKey(const Key('batch-takeover-confirm')), findsNothing);
+      expect(find.byKey(const Key('batch-takeover-close')), findsOneWidget);
+      expect(gateway.takeoverRequests, isEmpty);
+    },
+  );
 
   testWidgets(
     'Batch Takeover moves only real successes and leaves skipped skills pending',
@@ -417,6 +472,10 @@ void main() {
       expect(find.text('beta skill'), findsNothing);
       expect(find.text('changed skill'), findsNothing);
       expect(find.text('COMPLETE'), findsOneWidget);
+      expect(find.text('Clear locations'), findsOneWidget);
+      expect(find.text('Updates visible'), findsOneWidget);
+      expect(find.text('Easy recovery'), findsOneWidget);
+      expect(find.text('Versions clear'), findsOneWidget);
       expect(
         find.byKey(const Key('batch-takeover-pending-queue')),
         findsOneWidget,

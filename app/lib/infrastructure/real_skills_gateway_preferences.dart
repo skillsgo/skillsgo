@@ -192,7 +192,7 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
   Future<String> _contentLocale() async {
     final language = await loadLanguage();
     return language.contentTag(
-      ui.PlatformDispatcher.instance.locale.languageCode,
+      ui.PlatformDispatcher.instance.locale.toLanguageTag(),
     );
   }
 

@@ -53,6 +53,7 @@ class _RepositorySourceHeader extends StatelessWidget {
             children: [
               Text(
                 _repositorySourceLabel(source),
+                textDirection: contentTextDirection(source),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -65,6 +66,7 @@ class _RepositorySourceHeader extends StatelessWidget {
                 const SizedBox(height: 6),
                 Text(
                   description,
+                  textDirection: contentTextDirection(description),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
@@ -85,6 +87,7 @@ class _RepositorySourceHeader extends StatelessWidget {
                       Text('·', style: TextStyle(color: scheme.outline)),
                     Text(
                       metadata[index],
+                      textDirection: contentTextDirection(metadata[index]),
                       style: TextStyle(
                         color: scheme.onSurfaceVariant,
                         fontSize: 12,

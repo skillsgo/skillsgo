@@ -60,7 +60,9 @@ extension _AppearanceSettings on _SettingsScreenState {
             onColorChanged: widget.onFolderThemeChanged,
             presets: localizedBrandThemePresets(context.l10n),
             style: BloomColorPickerStyle(
-              alignment: BloomColorPickerAlignment.circleLeft,
+              alignment: Directionality.of(context) == TextDirection.rtl
+                  ? BloomColorPickerAlignment.circleRight
+                  : BloomColorPickerAlignment.circleLeft,
               closedRadius: 18,
               closedBorderWidth: 2,
               hapticFeedback: false,
@@ -112,7 +114,10 @@ extension _AppearanceSettings on _SettingsScreenState {
       const SizedBox(height: 12),
       SizedBox(
         height: 48,
-        child: Align(alignment: Alignment.centerLeft, child: control),
+        child: Align(
+          alignment: AlignmentDirectional.centerStart,
+          child: control,
+        ),
       ),
     ],
   );
@@ -192,7 +197,7 @@ extension _AppearanceSettings on _SettingsScreenState {
                                 child: Text(
                                   _wallpaperLabel(wallpaper),
                                   maxLines: 1,
-                                  textAlign: TextAlign.right,
+                                  textAlign: TextAlign.end,
                                   overflow: TextOverflow.ellipsis,
                                   style: context.skillsTypography.caption
                                       .copyWith(color: Color(0xFFFFFFFF)),
@@ -206,9 +211,9 @@ extension _AppearanceSettings on _SettingsScreenState {
                   );
                 },
               ),
-              Positioned(
+              PositionedDirectional(
                 key: const Key('wallpaper-selection-indicator'),
-                left: coordinate.dx * (tileWidth + spacing),
+                start: coordinate.dx * (tileWidth + spacing),
                 top: coordinate.dy * (tileHeight + spacing),
                 width: tileWidth,
                 height: tileHeight,
