@@ -1,7 +1,5 @@
 # Welcome To Athens, Gophers!
 
-![Athens Banner](./docs/static/banner.png)
-
 [![Build Status](https://github.com/gomods/athens/actions/workflows/ci.yml/badge.svg)](https://github.com/gomods/athens/actions/workflows/ci.yml?query=branch%3Amain)
 [![GoDoc](https://godoc.org/github.com/gomods/athens?status.svg)](https://godoc.org/github.com/gomods/athens)
 [![Go Report Card](https://goreportcard.com/badge/github.com/gomods/athens)](https://goreportcard.com/report/github.com/gomods/athens)

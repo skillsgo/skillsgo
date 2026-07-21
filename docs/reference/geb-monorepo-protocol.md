@@ -13,7 +13,7 @@ A single-package repository can often use project, module, and file documentatio
 SkillsGo boundaries are semantic rather than depth-based:
 
 - `app/`, `cli/`, and `hub/` define product and runtime domains.
-- `pubspec.yaml` and `go.mod` define buildable and testable workspaces.
+- `pubspec.yaml`, `go.mod`, and standalone `package.json` manifests define buildable and testable workspaces.
 - stable multi-file source directories define modules.
 - source headers define individual file contracts.
 
@@ -25,7 +25,7 @@ The protocol therefore uses five levels.
 | --- | --- | --- | --- | --- |
 | F0 | Repo Constitution | root `AGENTS.md` | Global routing, architecture, tools, language, and workflow | Top-level domain, delivery, or global workflow changes |
 | F1 | Domain Map | Domain `AGENTS.md` files | Domain boundary, workspace index, and cross-context rules | Workspace or domain responsibility changes |
-| F2 | Workspace Map | Every maintained `pubspec.yaml` or `go.mod` root | Runtime, public entry, commands, dependencies, and top-level structure | Entry, dependency, runtime, script, export, or delivery changes |
+| F2 | Workspace Map | Every maintained `pubspec.yaml`, `go.mod`, or standalone `package.json` root | Runtime, public entry, commands, dependencies, and top-level structure | Entry, dependency, runtime, script, export, or delivery changes |
 | F3 | Module Map | Stable multi-file module directory | Member inventory, dependency direction, and local invariants | File membership, responsibility, or local interface changes |
 | F4 | File Contract | Semantic file header | INPUT, OUTPUT, and POS | Dependency, surface, role, or consumer changes |
 
@@ -37,10 +37,9 @@ F2 is always selected from the nearest build manifest, never from an assumed dir
 - `cli/go.mod`: standalone and bundled CLI workspace.
 - `hub/go.mod`: Hub service workspace.
 - `hub/scripts/liveness_probe/go.mod`: nested CI liveness utility workspace.
+- `web/package.json`: public product, Hub, and documentation Node.js workspace.
 
-`hub/docs/themes/hugo-theme-relearn/go.mod` is part of a vendored upstream documentation theme, not a maintained SkillsGo workspace. It is exempt from F2 and F4 maintenance unless ownership is intentionally brought into the repository.
-
-A future nested `go.mod` or `pubspec.yaml` creates another F2 boundary even when it sits inside an existing F1 domain.
+A future nested `go.mod`, `pubspec.yaml`, or standalone `package.json` creates another F2 boundary even when it sits inside an existing F1 domain.
 
 ## F0: Repo Constitution
 

@@ -39,7 +39,6 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `pkg/config/`, `config.dev.toml`, and `.air.toml` | Configuration model, environment-variable binding, local development defaults, and Hub hot reload. |
 | `e2etests/` and `test/` | End-to-end and cross-package behavior verification. |
 | `scripts/` | Operational and CI utilities; nested manifests define independent F2 workspaces. |
-| `docs/` | Hub protocol, operations, and inherited historical material. |
 | `charts/` | Kubernetes packaging inherited from the Hub deployment surface. |
 
 ## Boundaries
@@ -49,7 +48,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 - Public endpoints must use readable Skill IDs and stable response contracts.
 - Preserve immutable version semantics, commit identity, tree identity, and deterministic archive output.
 - Treat Athens-derived names and documents as legacy seams. When maintained code is touched, use SkillsGo terminology without erasing useful provenance.
-- `docs/themes/`, vendored dependencies, generated files, fixtures, and imported upstream assets are not maintained semantic modules.
+- Vendored dependencies, generated files, fixtures, and imported upstream assets are not maintained semantic modules.
 
 ## Nested Workspace Routing
 

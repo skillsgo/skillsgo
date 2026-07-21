@@ -1,6 +1,6 @@
 # SkillsGo
 
-SkillsGo is an open ecosystem for discovering and managing Agent Skills. The monorepo contains a Flutter desktop App, a Go CLI, a Go Hub, and a public documentation site.
+SkillsGo is an open ecosystem for discovering and managing Agent Skills. The monorepo contains a Flutter desktop App, a Go CLI, a Go Hub, and a public Web surface.
 
 ## Repository Layout
 
@@ -9,7 +9,7 @@ skillsgo/
 ├── app/       Flutter desktop client
 ├── cli/       SkillsGo command-line client and local execution engine
 ├── hub/       Public Skill Hub service
-└── docs-site/ Fumadocs public documentation site
+└── web/       Public product, Hub, and documentation Web surface
 ```
 
 ## Local Development
@@ -32,12 +32,21 @@ Run all configured checks:
 make test
 ```
 
-Run the documentation site locally:
+Run the public Web surface locally:
 
 ```bash
-cd docs-site
+cd web
 pnpm install
 pnpm dev
 ```
 
-The product contexts and documentation surface use independent toolchains while evolving in one Git repository. Read [`CONTEXT-MAP.md`](CONTEXT-MAP.md) before changing domain behavior.
+The product contexts and public Web surface use independent toolchains while evolving in one Git repository. Read [`CONTEXT-MAP.md`](CONTEXT-MAP.md) before changing domain behavior.
+
+## License
+
+SkillsGo is licensed under the [Apache License 2.0](LICENSE).
+
+The Hub contains code derived from [Athens](https://github.com/gomods/athens),
+which remains subject to the Athens MIT License and attribution notices. See
+[`NOTICE`](NOTICE) and
+[`THIRD_PARTY_LICENSES/ATHENS-LICENSE`](THIRD_PARTY_LICENSES/ATHENS-LICENSE).
