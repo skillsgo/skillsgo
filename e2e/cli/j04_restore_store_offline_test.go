@@ -21,7 +21,7 @@ func TestJ04RestoreStoreOffline(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testSkillID+"@main",
+		"add", testSkillID+"@"+testSkillVersion,
 		"--agent", "codex",
 		"--copy",
 		"--yes",
@@ -58,11 +58,11 @@ func TestJ04RestoreStoreOffline(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal([]byte(restore.output), &restored), restore.output)
 	require.Len(t, restored, 1)
-	require.Equal(t, "ask-matt", restored[0].Name)
+	require.Equal(t, "alpha", restored[0].Name)
 	require.Equal(t, installed.Version, restored[0].Version)
 	require.Equal(t, 1, restored[0].Targets)
 
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt", "SKILL.md"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
 	require.FileExists(t, storeArtifact)
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)

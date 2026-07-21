@@ -21,7 +21,7 @@ func TestJ12RepositoryInstall(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	repositoryAdd := execCLI(t, ctx, container,
-		"add", "github.com/vercel-labs/agent-skills@main",
+		"add", "github.com/skillsgo/e2e-versioned-skills@v1.3.0",
 		"--agent", "codex",
 		"--copy",
 		"--yes",
@@ -32,12 +32,12 @@ func TestJ12RepositoryInstall(t *testing.T) {
 	require.Equal(t, 0, repositoryAdd.exitCode, repositoryAdd.output)
 
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", testMismatchedName, "SKILL.md"))
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "web-design-guidelines", "SKILL.md"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "resourceful", "SKILL.md"))
 	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 	require.NoError(t, err)
 	sumFile, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
 	require.NoError(t, err)
-	require.Contains(t, string(manifest), "github.com/vercel-labs/agent-skills ")
+	require.Contains(t, string(manifest), "github.com/skillsgo/e2e-versioned-skills ")
 	for _, skillID := range testRepositorySkillIDs {
 		require.NotContains(t, string(manifest), skillID+" ")
 		require.Contains(t, string(sumFile), skillID+" ")
@@ -49,7 +49,7 @@ func TestJ12ManifestNameIndependentFromSourceDirectory(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testMismatchedNameID+"@main",
+		"add", testMismatchedNameID+"@v1.3.0",
 		"--agent", "codex",
 		"--copy",
 		"--yes",
@@ -61,7 +61,7 @@ func TestJ12ManifestNameIndependentFromSourceDirectory(t *testing.T) {
 
 	installed := filepath.Join(sandboxRoot, "project", ".agents", "skills", testMismatchedName)
 	require.FileExists(t, filepath.Join(installed, "SKILL.md"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "react-best-practices", "SKILL.md"))
+	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "directory-label", "SKILL.md"))
 	sumFile, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
 	require.NoError(t, err)
 	require.Contains(t, string(sumFile), testMismatchedNameID+" ")

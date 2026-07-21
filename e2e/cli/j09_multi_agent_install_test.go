@@ -21,7 +21,7 @@ func TestJ09MultiAgentInstall(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testSkillID+"@main",
+		"add", testSkillID+"@"+testSkillVersion,
 		"--agent", "codex",
 		"--agent", "claude-code",
 		"--yes",
@@ -34,15 +34,15 @@ func TestJ09MultiAgentInstall(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 	require.Len(t, installed.Targets, 2)
 
-	canonical := filepath.Join(sandboxRoot, "project", ".agents", "skills", "ask-matt")
-	claudeTarget := filepath.Join(sandboxRoot, "project", ".claude", "skills", "ask-matt")
+	canonical := filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha")
+	claudeTarget := filepath.Join(sandboxRoot, "project", ".claude", "skills", "alpha")
 	require.FileExists(t, filepath.Join(canonical, "SKILL.md"))
 	claudeInfo, err := os.Lstat(claudeTarget)
 	require.NoError(t, err)
 	require.NotZero(t, claudeInfo.Mode()&os.ModeSymlink)
 	claudeLink, err := os.Readlink(claudeTarget)
 	require.NoError(t, err)
-	require.Equal(t, "../../.agents/skills/ask-matt", claudeLink)
+	require.Equal(t, "../../.agents/skills/alpha", claudeLink)
 	require.Equal(t, canonical, filepath.Clean(filepath.Join(filepath.Dir(claudeTarget), claudeLink)))
 
 }

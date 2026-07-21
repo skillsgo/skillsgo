@@ -20,7 +20,7 @@ func TestJ11UserScope(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testSkillID+"@main",
+		"add", testSkillID+"@"+testSkillVersion,
 		"--agent", "codex",
 		"--global",
 		"--copy",
@@ -34,16 +34,16 @@ func TestJ11UserScope(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 	require.Equal(t, "user", installed.Scope)
 	require.Len(t, installed.Targets, 1)
-	require.Equal(t, "/e2e/home/.codex/skills/ask-matt", installed.Targets[0].Path)
+	require.Equal(t, "/e2e/home/.codex/skills/alpha", installed.Targets[0].Path)
 
-	userTarget := filepath.Join(sandboxRoot, "home", ".codex", "skills", "ask-matt")
+	userTarget := filepath.Join(sandboxRoot, "home", ".codex", "skills", "alpha")
 	require.FileExists(t, filepath.Join(userTarget, "SKILL.md"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo.mod"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo.sum"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 
 	remove := execCLI(t, ctx, container,
-		"remove", "ask-matt",
+		"remove", "alpha",
 		"--agent", "codex",
 		"--global",
 		"--yes",
@@ -58,8 +58,8 @@ func TestJ11UserScope(t *testing.T) {
 func TestJ11AgentSpecificHomeOverride(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
-	result := execInContainer(t, ctx, container, "sh", "-c", "cd /e2e/project && HERMES_HOME=/e2e/custom-hermes exec /usr/local/bin/skillsgo add '"+testSkillID+"@main' --agent hermes-agent --global --copy --yes --confirm-risk --allow-critical --output json")
+	result := execInContainer(t, ctx, container, "sh", "-c", "cd /e2e/project && HERMES_HOME=/e2e/custom-hermes exec /usr/local/bin/skillsgo add '"+testSkillID+"@"+testSkillVersion+"' --agent hermes-agent --global --copy --yes --confirm-risk --allow-critical --output json")
 	require.Equal(t, 0, result.exitCode, result.output)
-	require.FileExists(t, filepath.Join(sandboxRoot, "custom-hermes", "skills", "ask-matt", "SKILL.md"))
-	require.NoDirExists(t, filepath.Join(sandboxRoot, "home", ".hermes", "skills", "ask-matt"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "custom-hermes", "skills", "alpha", "SKILL.md"))
+	require.NoDirExists(t, filepath.Join(sandboxRoot, "home", ".hermes", "skills", "alpha"))
 }

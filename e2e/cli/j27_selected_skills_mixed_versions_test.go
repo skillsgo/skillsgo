@@ -39,7 +39,7 @@ func TestJ27SelectedSkillsMixedVersions(t *testing.T) {
 	require.Contains(t, string(manifest), "fixtures.test/group/subgroup/mixed/-/skills/beta v1.1.0")
 	require.NotContains(t, string(manifest), "fixtures.test/group/subgroup/mixed:")
 
-	resetLocalInstallation(t, sandboxRoot)
+	resetLocalInstallation(t, ctx, container)
 	branch := execCLI(t, ctx, container,
 		"add", "https://fixtures.test/group/subgroup/mixed", "--skill", "alpha@main",
 		"--agent", "codex", "--copy", "--yes", "--output", "json",
@@ -49,7 +49,7 @@ func TestJ27SelectedSkillsMixedVersions(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(branchSkill), "Alpha v2.")
 
-	resetLocalInstallation(t, sandboxRoot)
+	resetLocalInstallation(t, ctx, container)
 	commit := execInContainer(t, ctx, container, "git", "--git-dir=/e2e/git/group/subgroup/mixed", "rev-parse", "v1.0.0^{commit}")
 	require.Equal(t, 0, commit.exitCode, commit.output)
 	pinned := execCLI(t, ctx, container,
