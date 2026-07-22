@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, Installation Request codecs, file save picker, and discovery/Library models.
- * [OUTPUT]: Provides direct multi-target installation, compatibility single-target installation, and Local Skill export.
+ * [OUTPUT]: Provides Repository Vendor installation grouped by declaration scope, compatibility single-target installation, and Local Skill export.
  * [POS]: Serves as the Installation Request capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -22,36 +22,65 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
       );
     }
     await _ensureHubOrigin();
-    final arguments = <String>['add', skill.id, '--skill', skill.installName];
+    final repositoryID = skill.id.split('/-/').first;
+    final memberPath = skill.id.contains('/-/')
+        ? skill.id.split('/-/').last
+        : '.';
+    final groups = <String, List<InstallationTargetSelection>>{};
     for (final selection in selections) {
-      arguments.addAll(['--target', _targetArgument(selection)]);
+      final key = '${selection.scope.name}\u0000${selection.projectRoot}';
+      groups.putIfAbsent(key, () => []).add(selection);
     }
-    arguments.addAll([
-      '--version',
-      immutableVersion,
-      if (confirmRisk) '--confirm-risk',
-      if (allowCritical) '--allow-critical',
-      '--yes',
-      '--output',
-      'json',
-      '--hub',
-      _hubOrigin,
-    ]);
-    final command = await _runCli(arguments);
-    try {
-      return _directInstallationExecution(
-        jsonDecode(command.output.stdout),
-        skill,
-        immutableVersion,
-        selections,
-      );
-    } on FormatException {
+    final results = <InstallationTargetResult>[];
+    for (final group in groups.values) {
+      final first = group.first;
+      final arguments = <String>[
+        'add',
+        '$repositoryID@$immutableVersion',
+        '--skill',
+        memberPath,
+        for (final selection in group) ...['--agent', selection.agent],
+        if (first.scope == InstallationScope.user) '--global',
+        if (first.scope == InstallationScope.project) ...[
+          '--project',
+          first.projectRoot,
+        ],
+        '--yes',
+        '--output',
+        'json',
+        '--hub',
+        _hubOrigin,
+      ];
+      final command = await _runCli(arguments);
       if (!command.succeeded) throw _commandFailure(command);
-      throw const SkillsException(
-        'The SkillsGo CLI returned invalid Installation Result JSON.',
-        kind: SkillsFailureKind.invalidResponse,
-      );
+      try {
+        results.addAll(
+          _repositoryInstallationResults(
+            jsonDecode(command.output.stdout),
+            skill,
+            immutableVersion,
+            group,
+          ),
+        );
+      } on FormatException {
+        throw const SkillsException(
+          'The SkillsGo CLI returned invalid Repository Installation JSON.',
+          kind: SkillsFailureKind.invalidResponse,
+        );
+      }
     }
+    return InstallationExecution(
+      skillId: skill.id,
+      version: immutableVersion,
+      name: skill.installName,
+      results: List.unmodifiable(results),
+      summary: InstallationExecutionSummary(
+        succeeded: results.length,
+        skipped: 0,
+        conflict: 0,
+        failed: 0,
+      ),
+    );
   }
 
   @override
@@ -59,9 +88,9 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
     await _ensureHubOrigin();
     return _runCli([
       'add',
-      skill.id,
+      '${skill.id.split('/-/').first}@${skill.latestVersion}',
       '--skill',
-      skill.installName,
+      skill.id.contains('/-/') ? skill.id.split('/-/').last : '.',
       '--global',
       '--agent',
       'codex',

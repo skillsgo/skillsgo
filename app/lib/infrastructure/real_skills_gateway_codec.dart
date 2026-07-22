@@ -44,25 +44,6 @@ InstallationMode _installationMode(Object? value) => switch (value) {
   _ => throw const FormatException('Unknown installation mode.'),
 };
 
-InstallationPlanAction _installationPlanAction(Object? value) =>
-    switch (value) {
-      'create' => InstallationPlanAction.create,
-      'replace' => InstallationPlanAction.replace,
-      'skip' => InstallationPlanAction.skip,
-      'conflict' => InstallationPlanAction.conflict,
-      'blocked-by-risk' => InstallationPlanAction.blockedByRisk,
-      _ => throw const FormatException('Unknown Installation Plan action.'),
-    };
-
-InstallationTargetOutcome _installationTargetOutcome(Object? value) =>
-    switch (value) {
-      'succeeded' => InstallationTargetOutcome.succeeded,
-      'skipped' => InstallationTargetOutcome.skipped,
-      'conflict' => InstallationTargetOutcome.conflict,
-      'failed' => InstallationTargetOutcome.failed,
-      _ => throw const FormatException('Unknown Installation Target outcome.'),
-    };
-
 InstallationHealth _installationHealth(Object? value) => switch (value) {
   'healthy' => InstallationHealth.healthy,
   'missing' => InstallationHealth.missing,
@@ -96,7 +77,6 @@ int _localTargetReadRank(SkillInstallationTarget target) {
 
 const _localFilePreviewLimit = 256 * 1024;
 const _inventorySchemaVersion = 5;
-const _installationPlanSchemaVersion = 3;
 
 bool _looksExecutablePath(String path) {
   final lower = path.toLowerCase();
@@ -220,90 +200,73 @@ bool _samePlanTarget(
     left.mode == right.mode &&
     left.path == right.path;
 
-InstallationExecution _directInstallationExecution(
+List<InstallationTargetResult> _repositoryInstallationResults(
   Object? raw,
   SkillSummary skill,
   String immutableVersion,
   List<InstallationTargetSelection> selections,
 ) {
   if (raw is! Map<String, dynamic> ||
-      raw['schemaVersion'] != _installationPlanSchemaVersion ||
-      raw['phase'] != 'execution' ||
-      raw['artifact'] is! Map<String, dynamic> ||
-      raw['results'] is! List ||
-      raw['summary'] is! Map<String, dynamic>) {
+      raw['schemaVersion'] != 1 ||
+      raw['phase'] != 'repository-install' ||
+      raw['repository'] != skill.id.split('/-/').first ||
+      raw['version'] != immutableVersion ||
+      raw['sum'] is! String ||
+      (raw['sum'] as String).isEmpty ||
+      raw['vendor'] is! String ||
+      (raw['vendor'] as String).isEmpty ||
+      raw['skills'] is! List ||
+      raw['agents'] is! List ||
+      raw['projections'] is! List ||
+      raw['workspace'] is! Map<String, dynamic>) {
     throw const FormatException();
   }
-  final artifact = raw['artifact'] as Map<String, dynamic>;
-  if (artifact['source'] != skill.id ||
-      artifact['skillId'] != skill.id ||
-      artifact['version'] != immutableVersion ||
-      artifact['name'] != skill.installName) {
+  final expectedMember = skill.id.contains('/-/')
+      ? skill.id.split('/-/').last
+      : '.';
+  if (!_strictStringList(raw['skills']).contains(expectedMember) ||
+      !_sameStringSet(
+        _strictStringList(raw['agents']),
+        selections.map((selection) => selection.agent),
+      )) {
     throw const FormatException();
   }
-  final rawResults = raw['results'] as List;
-  if (rawResults.length != selections.length) throw const FormatException();
-  final results = <InstallationTargetResult>[];
-  for (var index = 0; index < rawResults.length; index++) {
-    final result = rawResults[index];
-    if (result is! Map<String, dynamic>) throw const FormatException();
-    final target = _installationPlanTarget(result['target']);
-    final selection = selections[index];
-    if (target.scope != selection.scope ||
-        target.projectRoot != selection.projectRoot ||
-        target.agent != selection.agent ||
-        target.mode != selection.mode) {
-      throw const FormatException();
-    }
-    final action = _installationPlanAction(result['action']);
-    final outcome = _installationTargetOutcome(result['outcome']);
-    if (result.containsKey('errorCode') || result.containsKey('diagnostic')) {
-      throw const FormatException();
-    }
-    final error = _targetFailure(result['error']);
-    if ((outcome == InstallationTargetOutcome.succeeded ||
-            outcome == InstallationTargetOutcome.skipped) &&
-        error != null) {
-      throw const FormatException();
-    }
-    if ((outcome == InstallationTargetOutcome.conflict ||
-            outcome == InstallationTargetOutcome.failed) &&
-        error == null) {
-      throw const FormatException();
-    }
-    results.add(
-      InstallationTargetResult(
-        target: target,
-        action: action,
-        outcome: outcome,
-        error: error,
-      ),
-    );
-  }
-  final rawSummary = raw['summary'] as Map<String, dynamic>;
-  final summary = InstallationExecutionSummary(
-    succeeded: _strictNonNegativeInt(rawSummary['succeeded']),
-    skipped: _strictNonNegativeInt(rawSummary['skipped']),
-    conflict: _strictNonNegativeInt(rawSummary['conflict']),
-    failed: _strictNonNegativeInt(rawSummary['failed']),
-  );
-  final outcomeCounts = {
-    for (final outcome in InstallationTargetOutcome.values)
-      outcome: results.where((result) => result.outcome == outcome).length,
-  };
-  if (summary.succeeded != outcomeCounts[InstallationTargetOutcome.succeeded] ||
-      summary.skipped != outcomeCounts[InstallationTargetOutcome.skipped] ||
-      summary.conflict != outcomeCounts[InstallationTargetOutcome.conflict] ||
-      summary.failed != outcomeCounts[InstallationTargetOutcome.failed]) {
+  final workspace = raw['workspace'] as Map<String, dynamic>;
+  if (workspace['manifest'] is! String ||
+      !(workspace['manifest'] as String).endsWith('skillsgo.yaml') ||
+      workspace['lock'] is! String ||
+      !(workspace['lock'] as String).endsWith('skillsgo.lock')) {
     throw const FormatException();
   }
-  return InstallationExecution(
-    skillId: skill.id,
-    version: immutableVersion,
-    name: skill.installName,
-    results: List.unmodifiable(results),
-    summary: summary,
-  );
+  final pathsByAgent = <String, String>{};
+  for (final rawProjection in raw['projections'] as List) {
+    if (rawProjection is! Map<String, dynamic> ||
+        rawProjection['path'] is! String ||
+        (rawProjection['path'] as String).isEmpty) {
+      throw const FormatException();
+    }
+    for (final agent in _strictStringList(rawProjection['agents'])) {
+      if (pathsByAgent.containsKey(agent)) throw const FormatException();
+      pathsByAgent[agent] = rawProjection['path'] as String;
+    }
+  }
+  return selections
+      .map((selection) {
+        final path = pathsByAgent[selection.agent];
+        if (path == null) throw const FormatException();
+        return InstallationTargetResult(
+          target: InstallationPlanTarget(
+            scope: selection.scope,
+            projectRoot: selection.projectRoot,
+            agent: selection.agent,
+            mode: selection.mode,
+            path: path,
+          ),
+          action: InstallationPlanAction.create,
+          outcome: InstallationTargetOutcome.succeeded,
+        );
+      })
+      .toList(growable: false);
 }
 
 UpdatePlanAction _updatePlanAction(Object? value) => switch (value) {
@@ -436,26 +399,6 @@ TargetManagementResult _targetManagementResult(
 
 String _installedSkillUpdateKey(InstalledSkill skill) =>
     skill.inventoryKey.isEmpty ? skill.name : skill.inventoryKey;
-
-String _scopeValue(InstallationScope scope) => switch (scope) {
-  InstallationScope.user => 'user',
-  InstallationScope.project => 'project',
-};
-
-String _modeValue(InstallationMode mode) => switch (mode) {
-  InstallationMode.symlink => 'symlink',
-  InstallationMode.copy => 'copy',
-  InstallationMode.external => throw const FormatException(
-    'External mode cannot enter an Installation Plan.',
-  ),
-};
-
-String _targetArgument(InstallationTargetSelection selection) => jsonEncode({
-  'scope': _scopeValue(selection.scope),
-  if (selection.projectRoot.isNotEmpty) 'projectRoot': selection.projectRoot,
-  'agent': selection.agent,
-  'mode': _modeValue(selection.mode),
-});
 
 SkillMetricKind _metricKind(String value) => switch (value) {
   'all_time_installs' => SkillMetricKind.allTimeInstalls,
