@@ -5,7 +5,7 @@ This domain owns black-box release journeys across SkillsGo product boundaries.
 
 ## Workspaces
 
-- `cli/`: Linux container journeys spanning the released CLI, Hub, public HTTP/JSON contracts, and isolated filesystem state.
+- `cli/`: Linux container journeys spanning the released CLI, Hub, external Cloud contract process, public HTTP/JSON contracts, and isolated filesystem state.
 - `app/`: macOS desktop journeys spanning the real Flutter App, released CLI process, disposable Hub, and isolated Agent/project state.
 
 ## Commands
