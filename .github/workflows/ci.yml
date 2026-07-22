@@ -21,9 +21,13 @@ permissions:
 
 jobs:
   protocol:
-    name: Protocol
+    name: Protocol (Go ${{ matrix.go }})
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.25.12', '1.26.5']
     steps:
       - name: Checkout
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
@@ -31,10 +35,15 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version-file: protocol/go.mod
+          go-version: ${{ matrix.go }}
           cache-dependency-path: |
             protocol/go.sum
-            go.work.sum
+
+      - name: Create compatibility workspace
+        run: |
+          cd "$RUNNER_TEMP"
+          go work init "$GITHUB_WORKSPACE/protocol"
+          echo "GOWORK=$RUNNER_TEMP/go.work" >> "$GITHUB_ENV"
 
       - name: Check formatting
         run: test -z "$(gofmt -l protocol)"
@@ -43,9 +52,13 @@ jobs:
         run: make test-protocol
 
   cli:
-    name: CLI
+    name: CLI (Go ${{ matrix.go }})
     runs-on: ubuntu-24.04
     timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ['1.25.12', '1.26.5']
     defaults:
       run:
         working-directory: cli
@@ -56,11 +69,17 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version-file: cli/go.mod
+          go-version: ${{ matrix.go }}
           cache-dependency-path: |
             cli/go.sum
             protocol/go.sum
-            go.work.sum
+
+      - name: Create compatibility workspace
+        run: |
+          cd "$RUNNER_TEMP"
+          go work init "$GITHUB_WORKSPACE/cli"
+          go work edit -replace github.com/skillsgo/skillsgo/protocol="$GITHUB_WORKSPACE/protocol"
+          echo "GOWORK=$RUNNER_TEMP/go.work" >> "$GITHUB_ENV"
 
       - name: Download dependencies
         run: go mod download
@@ -91,7 +110,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version-file: hub/go.mod
+          go-version: '1.26.5'
           cache-dependency-path: |
             hub/go.sum
             protocol/go.sum
@@ -181,7 +200,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version-file: e2e/cli/go.mod
+          go-version: '1.26.5'
           cache-dependency-path: e2e/cli/go.sum
 
       - name: Run cross-product journeys
@@ -198,7 +217,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
-          go-version-file: hub/go.mod
+          go-version: '1.26.5'
           cache-dependency-path: |
             cli/go.sum
             hub/go.sum

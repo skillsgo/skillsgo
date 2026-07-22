@@ -4,7 +4,7 @@
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 module github.com/skillsgo/skillsgo/cli
 
-go 1.26.0
+go 1.25.0
 
 require (
 	github.com/Xuanwo/go-locale v1.1.3
