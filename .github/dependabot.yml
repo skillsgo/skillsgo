@@ -1,21 +1,53 @@
-# [INPUT]: Depends on the build, deployment, or runtime values declared in dependabot.yml.\n# [OUTPUT]: Provides the SkillsGo Hub or monorepo configuration defined by dependabot.yml.\n# [POS]: Serves as maintained configuration in the renamed SkillsGo Hub workspace or its repository integration.\n# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md\nversion: 2
+# [INPUT]: Depends on every maintained GitHub Actions, Go, Flutter, and npm dependency manifest in the monorepo.
+# [OUTPUT]: Schedules bounded weekly dependency update proposals for all maintained workspaces.
+# [POS]: Serves as the repository-wide automated dependency maintenance policy.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+version: 2
 updates:
   - package-ecosystem: github-actions
     directory: /
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: gomod
+    directory: /protocol
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
 
   - package-ecosystem: gomod
     directory: /hub
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: gomod
+    directory: /hub/scripts/liveness_probe
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
 
   - package-ecosystem: gomod
     directory: /cli
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: gomod
+    directory: /e2e/cli
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5
 
   - package-ecosystem: pub
     directory: /app
     schedule:
       interval: weekly
+    open-pull-requests-limit: 5
+
+  - package-ecosystem: npm
+    directory: /web
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 5

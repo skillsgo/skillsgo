@@ -14,6 +14,8 @@ SkillsGo maintains the Flutter desktop App and Go Hub in one repository while pr
 
 The standalone CLI now exists as a third release unit. Its final public release automation is intentionally deferred until the bundled-App contract stabilizes; production App builds compile a matching CLI from the same commit.
 
+The dependency-light `protocol/` Go module is a shared source and compatibility unit for CLI and Hub builds, not an independently shipped product. Repository development resolves it through `go.work`; independently released Go modules must declare an explicit compatible Protocol module version.
+
 ## Release Units
 
 | Unit | Source | Tag | Version source | Production artifacts |
@@ -43,26 +45,30 @@ hub/v0.1.0
 
 ## Pull Request CI
 
-Every pull request runs the currently supported checks for App, CLI, and Hub. Workflow-level path filters are avoided while the repository is small so required checks never remain pending because a workflow was skipped.
+Every pull request and merge-queue candidate runs the complete maintained validation suite. Workflow-level path filters are avoided while the repository is small so required checks never remain pending because a workflow was skipped. Repository rulesets require only the stable `Continuous Integration / Required` aggregate job; leaf jobs remain independently visible for diagnosis.
 
 ```text
+Protocol  → gofmt + tests + statement-coverage contract
 App       → flutter analyze + flutter test
-CLI       → gofmt + go test
-Hub  → gofmt + go test -race + hub build
+CLI       → gofmt + go vet + go test -race + CLI build
+Hub       → gofmt + go vet + go test -race + Hub build
+Web       → frozen install + typecheck + production build
+CLI E2E   → isolated Linux container journeys across CLI and Hub
+App E2E   → rendered macOS journeys across App, bundled CLI, and native Hub
 ```
 
-CI receives read-only repository permissions. Third-party actions are pinned to full commit SHAs and updated through Dependabot.
+CI receives read-only repository permissions, cancels only superseded pull-request runs, and never cancels main or merge-queue validation. Third-party actions are pinned to full commit SHAs and updated through Dependabot.
 
 ## Hub Snapshots
 
-Hub changes on `main`, or a manual dispatch, publish temporary images:
+A successful complete CI run on `main`, or an explicit manual dispatch, publishes temporary multi-architecture images from the exact validated commit:
 
 ```text
 ghcr.io/skillsgo/hub:main
 ghcr.io/skillsgo/hub:sha-<short-sha>
 ```
 
-Snapshots never create GitHub Releases and never write `latest`.
+Snapshots never create GitHub Releases and never write `latest`. They attach OCI SBOM and provenance metadata plus a GitHub build-provenance attestation; deployment consumers should prefer the immutable commit tag or image digest over `main`.
 
 ## Hub Production Release
 

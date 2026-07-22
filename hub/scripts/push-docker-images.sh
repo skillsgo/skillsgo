@@ -1,5 +1,8 @@
 #!/bin/bash
-# [INPUT]: Depends on the build, deployment, or runtime values declared in push-docker-images.sh.\n# [OUTPUT]: Provides the SkillsGo Hub or monorepo configuration defined by push-docker-images.sh.\n# [POS]: Serves as maintained configuration in the renamed SkillsGo Hub workspace or its repository integration.\n# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md\n
+# [INPUT]: Depends on Git release metadata, the repository Go workspace, and authenticated Docker registry access.
+# [OUTPUT]: Builds and publishes immutable plus channel-tagged SkillsGo Hub container images.
+# [POS]: Serves as the legacy command-line publication adapter for the Hub production Dockerfile.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 # Push our docker images to a hub
 set -xeuo pipefail
 
@@ -23,9 +26,9 @@ if [[ "${MUTABLE_TAG:-}" == "" ]]; then
     fi
 fi
 
-REPO_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )/.." >/dev/null && pwd )/"
+REPO_ROOT="$( cd "$( dirname "${BASH_SOURCE[0]}" )/../.." >/dev/null && pwd )/"
 
-docker build --build-arg VERSION=${VERSION} -t ${REGISTRY}skillsgo-hub:${VERSION} -f ${REPO_DIR}cmd/skillsgo-hub/Dockerfile ${REPO_DIR}
+docker build --build-arg VERSION=${VERSION} -t ${REGISTRY}skillsgo-hub:${VERSION} -f ${REPO_ROOT}hub/cmd/skillsgo-hub/Dockerfile ${REPO_ROOT}
 
 # Apply the mutable tag to the immutable version
 docker tag ${REGISTRY}skillsgo-hub:${VERSION} ${REGISTRY}skillsgo-hub:${MUTABLE_TAG}
