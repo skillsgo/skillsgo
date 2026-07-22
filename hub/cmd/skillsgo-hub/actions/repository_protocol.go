@@ -18,7 +18,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
-	"golang.org/x/mod/semver"
+	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 )
 
 func withRepositoryInfo(protocol download.Protocol, metadata *catalog.Catalog, materializers ...repositoryMaterializer) download.Protocol {
@@ -104,23 +104,7 @@ func (p *repositoryInfoProtocol) Latest(ctx context.Context, resourceID string) 
 }
 
 func latestListedVersion(versions []string) string {
-	stable, prerelease := "", ""
-	for _, version := range versions {
-		if !semver.IsValid(version) {
-			continue
-		}
-		if semver.Prerelease(version) == "" {
-			if stable == "" || semver.Compare(version, stable) > 0 {
-				stable = version
-			}
-		} else if prerelease == "" || semver.Compare(version, prerelease) > 0 {
-			prerelease = version
-		}
-	}
-	if stable != "" {
-		return stable
-	}
-	return prerelease
+	return protocolversion.LatestPublished(versions)
 }
 
 func (p *repositoryInfoProtocol) Info(ctx context.Context, resourceID, version string) ([]byte, error) {

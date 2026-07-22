@@ -16,11 +16,11 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
+	protocolmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	"gopkg.in/yaml.v3"
 )
 
@@ -196,7 +196,7 @@ func (s Store) put(artifact *hub.Artifact, provenance Provenance, sourceSkillID 
 }
 
 func validateArtifactName(name string) error {
-	if len(name) > 64 || !regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`).MatchString(name) {
+	if !protocolmanifest.ValidName(name) {
 		return fmt.Errorf("invalid Hub artifact Info Skill name %q", name)
 	}
 	return nil
