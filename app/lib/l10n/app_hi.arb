@@ -360,7 +360,7 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "चयनित प्रोजेक्ट क्रियाएँ skillsgo.mod और skillsgo.sum को अद्यतन करेंगी।",
+  "workspaceOwnershipChanges": "चयनित प्रोजेक्ट क्रियाएँ skillsgo.yaml और skillsgo.lock को अद्यतन करेंगी।",
   "targetContentPreserved": "वर्तमान लक्ष्य सामग्री संरक्षित की जाएगी.",
   "localReadFailed": "यह Skill नहीं पढ़ सकता",
   "localReadFailedMessage": "SkillsGo इस स्थापित कौशल को नहीं पढ़ सका। जांचें कि उसका फ़ोल्डर उपलब्ध और पहुंच योग्य है, फिर पुनः प्रयास करें।",

@@ -174,7 +174,7 @@ mixin _RealSkillsGatewayUpdates
             fromVersion.isEmpty ||
             toVersion.isEmpty ||
             p.normalize(path) !=
-                p.normalize(p.join(projectRoot, 'skillsgo.mod')) ||
+                p.normalize(p.join(projectRoot, 'skillsgo.yaml')) ||
             !matchesItem ||
             !changeKeys.add(key)) {
           throw const FormatException();

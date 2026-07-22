@@ -1194,7 +1194,7 @@ abstract class AppLocalizations {
   /// No description provided for @workspaceOwnershipChanges.
   ///
   /// In en, this message translates to:
-  /// **'Selected project actions will update skillsgo.mod and skillsgo.sum.'**
+  /// **'Selected project actions will update skillsgo.yaml and skillsgo.lock.'**
   String get workspaceOwnershipChanges;
 
   /// No description provided for @targetContentPreserved.

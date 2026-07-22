@@ -128,9 +128,11 @@ void main() {
       await relocated.create();
       await unselected.create();
       await File(
-        '${original.path}/skillsgo.mod',
-      ).writeAsString('require (\n)\n');
-      await File('${original.path}/skillsgo.sum').writeAsString('keep');
+        '${original.path}/skillsgo.yaml',
+      ).writeAsString('dependencies: {}\n');
+      await File(
+        '${original.path}/skillsgo.lock',
+      ).writeAsString('dependencies: {}\n');
       await Directory(
         '${original.path}/.agents/skills',
       ).create(recursive: true);
@@ -193,12 +195,12 @@ void main() {
         [added[1].path],
       );
       expect(
-        await File('${original.path}/skillsgo.mod').readAsString(),
-        'require (\n)\n',
+        await File('${original.path}/skillsgo.yaml').readAsString(),
+        'dependencies: {}\n',
       );
       expect(
-        await File('${original.path}/skillsgo.sum').readAsString(),
-        'keep',
+        await File('${original.path}/skillsgo.lock').readAsString(),
+        'dependencies: {}\n',
       );
       expect(
         await Directory('${original.path}/.agents/skills').exists(),
