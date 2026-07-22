@@ -193,11 +193,8 @@ Future<void> _executeTakeover(
   );
   final close = find.byKey(const Key('batch-takeover-close'));
   await tester.tap(close);
-  final deadline = DateTime.now().add(const Duration(seconds: 5));
-  while (close.evaluate().isNotEmpty && DateTime.now().isBefore(deadline)) {
-    await tester.pump(const Duration(milliseconds: 100));
-  }
-  expect(close, findsNothing);
+  await tester.pumpAndSettle();
+  expect(find.byKey(const Key('batch-takeover-modal')), findsNothing);
 }
 
 Future<void> _pumpUntilTakeoverCount(WidgetTester tester, int count) =>
