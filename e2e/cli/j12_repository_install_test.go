@@ -10,7 +10,6 @@ import (
 	"context"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -19,55 +18,59 @@ import (
 func TestJ12RepositoryInstall(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
+	repositoryID := "fixtures.test/group/subgroup/collection"
+	version := "v1.0.0"
 
 	repositoryAdd := execCLI(t, ctx, container,
-		"add", "github.com/skillsgo/e2e-versioned-skills@v1.3.0",
+		"add", "https://"+repositoryID+"@"+version,
 		"--agent", "codex",
-		"--copy",
-		"--yes",
-		"--confirm-risk",
-		"--allow-critical",
 		"--output", "json",
 	)
 	require.Equal(t, 0, repositoryAdd.exitCode, repositoryAdd.output)
 
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", testMismatchedName, "SKILL.md"))
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "resourceful", "SKILL.md"))
-	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
-	require.NoError(t, err)
-	sumFile, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
-	require.NoError(t, err)
-	require.Contains(t, string(manifest), "github.com/skillsgo/e2e-versioned-skills ")
-	for _, skillID := range testRepositorySkillIDs {
-		require.NotContains(t, string(manifest), skillID+" ")
-		require.Contains(t, string(sumFile), skillID+" ")
+	coordinate := filepath.Join("fixtures.test", "group", "subgroup", "collection@v1.0.0")
+	vendor := filepath.Join(sandboxRoot, "project", ".skillsgo", "vendor", coordinate)
+	projection := filepath.Join(sandboxRoot, "project", ".agents", "skills", coordinate)
+	for _, relativeSkillPath := range []string{".", "skills/alpha", "skills/beta", "skills/CamelCase", "skills/general/ideation/naming"} {
+		require.FileExists(t, filepath.Join(vendor, filepath.FromSlash(relativeSkillPath), "SKILL.md"))
+		require.FileExists(t, filepath.Join(projection, filepath.FromSlash(relativeSkillPath), "SKILL.md"))
 	}
+	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	require.NoError(t, err)
+	lock, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
+	require.NoError(t, err)
+	require.Contains(t, string(manifest), repositoryID+":")
+	require.Contains(t, string(manifest), "version: "+version)
+	require.Contains(t, string(manifest), "- .")
+	require.Contains(t, string(manifest), "skills/alpha")
+	require.Contains(t, string(manifest), "skills/beta")
+	require.Contains(t, string(manifest), "skills/CamelCase")
+	require.Contains(t, string(manifest), "skills/general/ideation/naming")
+	require.Contains(t, string(manifest), "- codex")
+	require.Contains(t, string(lock), repositoryID+":")
+	require.Contains(t, string(lock), "version: "+version)
+	require.Contains(t, string(lock), "sum: h1:")
 }
 
 func TestJ12ManifestNameIndependentFromSourceDirectory(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
+	repositoryID := "fixtures.test/group/subgroup/collection"
+	version := "v1.0.0"
 
 	add := execCLI(t, ctx, container,
-		"add", testMismatchedNameID+"@v1.3.0",
+		"add", "https://"+repositoryID+"/-/skills/CamelCase@"+version,
 		"--agent", "codex",
-		"--copy",
-		"--yes",
-		"--confirm-risk",
-		"--allow-critical",
 		"--output", "json",
 	)
 	require.Equal(t, 0, add.exitCode, add.output)
 
-	installed := filepath.Join(sandboxRoot, "project", ".agents", "skills", testMismatchedName)
+	installed := filepath.Join(sandboxRoot, "project", ".agents", "skills", "fixtures.test", "group", "subgroup", "collection@v1.0.0", "skills", "CamelCase")
 	require.FileExists(t, filepath.Join(installed, "SKILL.md"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "directory-label", "SKILL.md"))
-	sumFile, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
+	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "camel-case", "SKILL.md"))
+	lock, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
 	require.NoError(t, err)
-	require.Contains(t, string(sumFile), testMismatchedNameID+" ")
-	for _, line := range strings.Split(strings.TrimSpace(string(sumFile)), "\n") {
-		require.Len(t, strings.Fields(line), 3, "Workspace Sum line must use Go-shaped grammar: %q", line)
-	}
+	require.Contains(t, string(lock), "sum: h1:")
 
 	require.NoError(t, os.RemoveAll(installed))
 	restore := execCLI(t, ctx, container,
