@@ -10,7 +10,7 @@
 - `args.go`: normalizes compatible multi-value flag syntax before Cobra parses arguments.
 - `diagnostics.go`: exposes versioned, read-only local Store health for App integration and adaptive terminal diagnostics.
 - `diagnostics_test.go`: specifies Store diagnostics schema, readability states, and non-mutating inspection.
-- `cache.go`, `cache_test.go`: expose and specify dry-run-by-default, grace-bounded, reference-aware Hub CAS object garbage collection through the public Execute seam.
+- `cache.go`, `cache_test.go`: expose and specify exact immutable verified cache warming without target installation plus dry-run-by-default, grace-bounded, reference-aware Hub CAS object garbage collection through the public Execute seam.
 - `exit_code.go`, `exit_code_test.go`: classify wrapped Hub availability and timeout failures into stable process exit codes consumed by the App without parsing stderr.
 - `agents.go`: exposes complete supported and installed Agent discovery through versioned JSON and grouped adaptive Human output.
 - `agents_test.go`: specifies the stable App-facing Agent discovery machine contract.
@@ -22,6 +22,7 @@
 - `export.go`: exports one private Local Skill artifact with machine confirmation or adaptive Human progress, without Hub access.
 - `inventory.go`: adapts the managed/external inventory domain report into stable JSON and grouped adaptive Human output.
 - `inventory_test.go`: specifies Skill ID aggregation, External inventory-key separation, read-only inspection, target health, Workspace reconciliation, and the explicit-project privacy boundary.
+- `verification.go`, `verification_test.go`: expose and specify read-only reconciled installation verification plus direct declaration/target explanations through `verify` and `why`.
 - `takeover.go`: preflights explicitly selected skills.sh user/Workspace lock-backed External copies into a bounded, expiring, lock-identity- and filesystem-state-bound plan with exact per-location counts, then registers authorized unchanged candidates as captured Store baselines plus exact target Receipt and declaration state, returning named per-item outcomes without Hub access or target materialization.
 - `takeover_test.go`: specifies read-only preflight, plan-bound execution, exact User/Workspace counts, scope isolation, XDG, provider-aware and record-isolated lock parsing, lock-ref changes, malformed and bounded ephemeral plans, divergent-copy, identical-baseline, safe-alias, partial-success, schema, localization, idempotency, target-byte preservation, and managed-inventory Batch Takeover behavior through `Execute`.
 - `list_test.go`: specifies that global listing uses unified inventory and includes externally installed Agent Skills.
