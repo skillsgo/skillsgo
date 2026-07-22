@@ -125,6 +125,19 @@ void main() {
         timeout: const Duration(minutes: 2),
       );
 
+      final retryFailed = _textEither(
+        'Retry 1 Failed Update',
+        '重试 1 个失败更新',
+      );
+      if (retryFailed.evaluate().isNotEmpty) {
+        await tester.tap(retryFailed);
+        await _pumpUntilGone(
+          tester,
+          retryFailed,
+          timeout: const Duration(minutes: 2),
+        );
+      }
+
       final technicalDetails = _textEither(
         'Technical details',
         '技术详情',
@@ -144,6 +157,7 @@ void main() {
       expect(
         alpha.readAsStringSync(),
         contains('Version 1.3.0 fixture content.'),
+        reason: resultText,
       );
       expect(
         manifest.readAsStringSync(),
