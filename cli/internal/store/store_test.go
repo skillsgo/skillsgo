@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Exercises Store put/get with immutable Hub, Local, and captured Skill artifacts, conflicting archives, explicit exports, and hostile Skill IDs.
- * [OUTPUT]: Specifies concurrent idempotent Hub/local/captured storage, full source/content/filesystem-state identity, private export, risk-only assessment refresh, local-tamper/content/archive digest conflicts, ZIP-slip defense, root containment, and exact retrieval.
+ * [OUTPUT]: Specifies concurrent idempotent Hub/local/captured storage, cross-coordinate CAS deduplication, full source/content/filesystem-state identity, private export, risk-only assessment refresh, local-tamper/content/archive digest conflicts, reference confinement, ZIP-slip defense, root containment, and exact retrieval.
  * [POS]: Serves as behavior coverage for the Content-addressed Store boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -44,6 +44,138 @@ func TestPutExtractsArtifactAndIsIdempotent(t *testing.T) {
 	}
 	if !bytes.HasPrefix(info, []byte("{")) {
 		t.Fatalf("info.json is not JSON: %q", info)
+	}
+}
+
+func TestHubArtifactsDeduplicateAcrossCoordinates(t *testing.T) {
+	storage := Store{Root: t.TempDir()}
+	firstArtifact := testArtifact(t, map[string]string{"SKILL.md": "same", "notes.txt": "content"})
+	secondArtifact := testArtifact(t, map[string]string{"SKILL.md": "same", "notes.txt": "content"})
+	secondArtifact.SkillID = "github.com/another/repository/-/demo"
+	secondArtifact.Info.ID = secondArtifact.SkillID
+	secondArtifact.Info.Version = "v2.0.0"
+	secondArtifact.ZIP = testArchive(t, secondArtifact.SkillID, secondArtifact.Info.Version, map[string]string{"SKILL.md": "same", "notes.txt": "content"})
+	secondSum, err := hub.Sum(secondArtifact.ZIP, secondArtifact.SkillID, secondArtifact.Info.Version)
+	if err != nil {
+		t.Fatal(err)
+	}
+	secondArtifact.Info.Sum = secondSum
+	if secondSum != firstArtifact.Info.Sum {
+		t.Fatalf("Skill-relative content should share h1: %s != %s", secondSum, firstArtifact.Info.Sum)
+	}
+
+	first, err := storage.Put(firstArtifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := storage.Put(secondArtifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Root == second.Root {
+		t.Fatal("distinct coordinates must retain distinct metadata roots")
+	}
+	if first.Artifact != second.Artifact {
+		t.Fatalf("identical Hub content and envelope did not share an object: %q != %q", first.Artifact, second.Artifact)
+	}
+	if !strings.Contains(first.Artifact, filepath.Join(objectDirectory, "h1")) {
+		t.Fatalf("artifact is not stored beneath the CAS object root: %q", first.Artifact)
+	}
+	if _, err := os.Stat(filepath.Join(first.Root, "artifact")); !os.IsNotExist(err) {
+		t.Fatalf("coordinate root unexpectedly duplicated artifact bytes: %v", err)
+	}
+	if reference, err := readObjectReference(filepath.Join(first.Root, objectReferenceFile)); err != nil || reference == "" {
+		t.Fatalf("coordinate object reference: %q, %v", reference, err)
+	}
+}
+
+func TestGetRejectsEscapingObjectReference(t *testing.T) {
+	storage := Store{Root: t.TempDir()}
+	artifact := testArtifact(t, map[string]string{"SKILL.md": "demo"})
+	entry, err := storage.Put(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(entry.Root, objectReferenceFile), []byte("../../escape\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := storage.Get(artifact.SkillID, artifact.Info.Version); err == nil || !strings.Contains(err.Error(), "invalid Store object reference") {
+		t.Fatalf("escaping reference error: %v", err)
+	}
+}
+
+func TestGCPreviewsThenRemovesOnlyGraceAgedOrphanObjects(t *testing.T) {
+	storage := Store{Root: t.TempDir()}
+	artifact := testArtifact(t, map[string]string{"SKILL.md": "orphan", "notes.txt": "bytes"})
+	entry, err := storage.Put(artifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.RemoveAll(entry.Root); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	old := now.Add(-2 * time.Hour)
+	if err := os.Chtimes(entry.Artifact, old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	preview, err := storage.GC(GCOptions{DryRun: true, GracePeriod: time.Hour, Now: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if preview.Eligible != 1 || preview.Removed != 0 || len(preview.Items) != 1 || preview.Items[0].Removed {
+		t.Fatalf("unexpected GC preview: %#v", preview)
+	}
+	if _, err := os.Stat(entry.Artifact); err != nil {
+		t.Fatalf("dry-run removed object: %v", err)
+	}
+
+	applied, err := storage.GC(GCOptions{GracePeriod: time.Hour, Now: now})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if applied.Eligible != 1 || applied.Removed != 1 || applied.ReclaimedBytes <= 0 || !applied.Items[0].Removed {
+		t.Fatalf("unexpected applied GC: %#v", applied)
+	}
+	if _, err := os.Stat(entry.Artifact); !os.IsNotExist(err) {
+		t.Fatalf("orphan object still exists: %v", err)
+	}
+}
+
+func TestGCPreservesSharedLiveObjectsAndRequiresApplyGrace(t *testing.T) {
+	storage := Store{Root: t.TempDir()}
+	firstArtifact := testArtifact(t, map[string]string{"SKILL.md": "shared"})
+	secondArtifact := testArtifact(t, map[string]string{"SKILL.md": "shared"})
+	secondArtifact.SkillID = "github.com/another/repository/-/shared"
+	secondArtifact.Info.ID = secondArtifact.SkillID
+	secondArtifact.Info.Version = "v2.0.0"
+	secondArtifact.ZIP = testArchive(t, secondArtifact.SkillID, secondArtifact.Info.Version, map[string]string{"SKILL.md": "shared"})
+	secondArtifact.Info.Sum, _ = hub.Sum(secondArtifact.ZIP, secondArtifact.SkillID, secondArtifact.Info.Version)
+	first, err := storage.Put(firstArtifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := storage.Put(secondArtifact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Artifact != second.Artifact {
+		t.Fatal("fixture did not share one CAS object")
+	}
+	if err := os.RemoveAll(first.Root); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-2 * time.Hour)
+	if err := os.Chtimes(second.Artifact, old, old); err != nil {
+		t.Fatal(err)
+	}
+	report, err := storage.GC(GCOptions{DryRun: true, GracePeriod: time.Hour})
+	if err != nil || report.Eligible != 0 || report.Referenced != 1 {
+		t.Fatalf("live shared object report=%#v err=%v", report, err)
+	}
+	if _, err := storage.GC(GCOptions{GracePeriod: 0}); err == nil || !strings.Contains(err.Error(), "at least") {
+		t.Fatalf("unsafe apply grace error: %v", err)
 	}
 }
 
