@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the rendered App, its bundled CLI, isolated user/project Agent roots, supported skills.sh locks, and SharedPreferences-backed Added Projects.
- * [OUTPUT]: Verifies exact All/User/Project takeover counts, localized Before/After confirmation, scoped execution, complete metadata persistence, preserved Skill bytes, and post-success rescans.
+ * [OUTPUT]: Verifies exact All/User/Project takeover counts, the takeover story and localized completion state, scoped execution, complete metadata persistence, preserved Skill bytes, and post-success rescans.
  * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -177,23 +177,10 @@ Future<void> _executeTakeover(
   await tester.ensureVisible(takeoverAction);
   await tester.tap(takeoverAction);
   await _pumpUntil(tester, find.byKey(const Key('batch-takeover-dialog')));
-  await _pumpUntil(
-    tester,
-    find.byWidgetPredicate(
-      (widget) =>
-          widget is Text &&
-          (widget.data == 'Turn scattered skills into one clear Library' ||
-              widget.data == '把散落的技能，整理成一个清晰的 Library'),
-    ),
-  );
-  final confirmLabel = find.byWidgetPredicate(
-    (widget) =>
-        widget is Text &&
-        (widget.data == 'Add to management' || widget.data == '纳入管理'),
-  );
-  await tester.tap(
-    find.ancestor(of: confirmLabel, matching: find.byType(FilledButton)).first,
-  );
+  expect(find.byKey(const Key('batch-takeover-tetris-story')), findsOneWidget);
+  final confirm = find.byKey(const Key('batch-takeover-confirm'));
+  expect(confirm, findsOneWidget);
+  await tester.tap(confirm);
   await _pumpUntil(
     tester,
     find.byWidgetPredicate(
@@ -204,19 +191,13 @@ Future<void> _executeTakeover(
               widget.data == '已纳入管理 $takenOver 个技能，跳过 $skipped 个。'),
     ),
   );
-  final closeLabel = find.byWidgetPredicate(
-    (widget) =>
-        widget is Text && (widget.data == 'Close' || widget.data == '关闭'),
-  );
-  await tester.tap(
-    find.ancestor(of: closeLabel, matching: find.byType(FilledButton)).first,
-  );
+  final close = find.byKey(const Key('batch-takeover-close'));
+  await tester.tap(close);
   final deadline = DateTime.now().add(const Duration(seconds: 5));
-  while (closeLabel.evaluate().isNotEmpty &&
-      DateTime.now().isBefore(deadline)) {
+  while (close.evaluate().isNotEmpty && DateTime.now().isBefore(deadline)) {
     await tester.pump(const Duration(milliseconds: 100));
   }
-  expect(closeLabel, findsNothing);
+  expect(close, findsNothing);
 }
 
 Future<void> _pumpUntilTakeoverCount(WidgetTester tester, int count) =>
