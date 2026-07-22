@@ -628,23 +628,25 @@ func (c *Catalog) RankedSkills(ctx context.Context, sort string, limit, offset i
 	if sort == "hot" {
 		return c.hotRankedSkills(ctx, limit, offset, now)
 	}
-	var installs, change, order string
+	var query string
 	var args []any
 	switch sort {
 	case "", "all_time":
-		installs, change, order = "COALESCE(st.total_installs, 0)", "0", "installs DESC, s.name ASC"
+		query = `SELECT s.*, r.stars AS stars, COALESCE(st.total_installs, 0) AS installs, 0 AS change
+FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
+LEFT JOIN skill_stats AS st ON st.skill_id = s.id
+WHERE s.discoverable = TRUE
+ORDER BY installs DESC, s.name ASC LIMIT ? OFFSET ?`
 	case "trending":
-		installs, change, order = "COALESCE(SUM(CASE WHEN hs.bucket > ? THEN hs.installs ELSE 0 END), 0)", "0", "installs DESC, s.name ASC"
+		query = `SELECT s.*, r.stars AS stars, COALESCE(SUM(hs.installs), 0) AS installs, 0 AS change
+FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
+LEFT JOIN skill_hourly_stats AS hs ON hs.skill_id = s.id AND hs.bucket > ?
+WHERE s.discoverable = TRUE
+GROUP BY s.id, r.stars ORDER BY installs DESC, s.name ASC LIMIT ? OFFSET ?`
 		args = append(args, now.UTC().Add(-24*time.Hour).Truncate(time.Hour))
 	default:
 		return nil, fmt.Errorf("unsupported ranking %q", sort)
 	}
-	query := `SELECT s.*, r.stars AS stars, ` + installs + ` AS installs, ` + change + ` AS change
-FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
-LEFT JOIN skill_stats AS st ON st.skill_id = s.id
-LEFT JOIN skill_hourly_stats AS hs ON hs.skill_id = s.id
-WHERE s.discoverable = TRUE
-GROUP BY s.id, r.stars, st.total_installs ORDER BY ` + order + ` LIMIT ? OFFSET ?`
 	args = append(args, limit, offset)
 	var skills []RankedSkill
 	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(query), args...)
@@ -657,10 +659,10 @@ func (c *Catalog) hotRankedSkills(ctx context.Context, limit, offset int, now ti
 	now = now.UTC()
 	query := `WITH hot_stats AS (
 	SELECT skill_id,
-	SUM(CASE WHEN occurred_at > ? AND occurred_at <= ? THEN 1 ELSE 0 END) AS recent_installs,
-	SUM(CASE WHEN occurred_at > ? AND occurred_at <= ? THEN 1 ELSE 0 END) AS baseline_installs
-	FROM skill_install_events
-	WHERE occurred_at > ? AND occurred_at <= ?
+	SUM(CASE WHEN bucket > ? AND bucket <= ? THEN installs ELSE 0 END) AS recent_installs,
+	SUM(CASE WHEN bucket > ? AND bucket <= ? THEN installs ELSE 0 END) AS baseline_installs
+	FROM skill_hourly_stats
+	WHERE bucket > ? AND bucket <= ?
 	GROUP BY skill_id
 )
 SELECT s.*, r.stars AS stars, COALESCE(h.recent_installs, 0) AS installs,
@@ -674,9 +676,9 @@ ORDER BY
 	installs DESC, s.name ASC
 LIMIT ? OFFSET ?`
 	args := []any{
-		now.Add(-time.Hour), now,
-		now.Add(-25 * time.Hour), now.Add(-time.Hour),
-		now.Add(-25 * time.Hour), now,
+		now.Add(-time.Hour).Truncate(time.Hour), now.Truncate(time.Hour),
+		now.Add(-25 * time.Hour).Truncate(time.Hour), now.Add(-time.Hour).Truncate(time.Hour),
+		now.Add(-25 * time.Hour).Truncate(time.Hour), now.Truncate(time.Hour),
 		limit, offset,
 	}
 	var skills []RankedSkill

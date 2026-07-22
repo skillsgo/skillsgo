@@ -271,6 +271,9 @@ IndexType = "none"
     MaxIdleConns = 1
     ConnMaxLifetime = 0
 
+# River partitions this total worker budget across source (60%), default (20%),
+# and maintenance (20%) queues when Database.Type is postgres. The minimum is 3.
+# Env override: SKILLSGO_HUB_TASK_QUEUE_MAX_WORKERS
 [TaskQueue]
     MaxWorkers = 10
 

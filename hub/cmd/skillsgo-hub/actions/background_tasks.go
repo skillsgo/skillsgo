@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on typed River jobs and domain services assembled by the actions composition root.
- * [OUTPUT]: Defines first-class observable job args, stable kinds, uniqueness fields, retry limits, schedules, and domain-handler adapters.
+ * [INPUT]: Depends on typed River jobs, source/maintenance queue classes, and domain services assembled by the actions composition root.
+ * [OUTPUT]: Defines first-class observable job args, stable kinds, workload placement, uniqueness fields, retry limits, schedules, and domain-handler adapters.
  * [POS]: Serves as the business-job wiring boundary between HTTP-facing services and River transport.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -58,7 +58,7 @@ func registerArtifactStashJob(runtime *taskqueue.Runtime, stasher stash.Stasher)
 
 func enqueueArtifactStash(runtime *taskqueue.Runtime) func(context.Context, string, string) error {
 	return func(ctx context.Context, skillID, version string) error {
-		return runtime.Enqueue(ctx, artifactStashArgs{SkillID: skillID, Version: version}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8})
+		return runtime.Enqueue(ctx, artifactStashArgs{SkillID: skillID, Version: version}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource})
 	}
 }
 
@@ -80,5 +80,5 @@ func enqueueRepositoryPrewarm(ctx context.Context, runtime *taskqueue.Runtime, r
 	if query == "" {
 		query = "head"
 	}
-	return runtime.Enqueue(ctx, repositoryPublicationPrewarmArgs{RepositoryID: repositoryID, Query: query}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8})
+	return runtime.Enqueue(ctx, repositoryPublicationPrewarmArgs{RepositoryID: repositoryID, Query: query}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource})
 }
