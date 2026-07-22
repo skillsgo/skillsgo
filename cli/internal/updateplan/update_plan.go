@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on exact managed Installation identities, Store receipts, canonical Workspace Manifest declarations, Catalog-only latest versions, immutable Hub artifacts, and safe target replacement.
+ * [INPUT]: Depends on strict shared machine-input decoding, exact managed Installation identities, Store receipts, canonical Workspace Manifest declarations, Catalog-only latest versions, immutable Hub artifacts, and safe target replacement.
  * [OUTPUT]: Provides strict Update Plan decoding, Catalog-bound immutable update selection, shared-binding grouping, Workspace Manifest previews/reconciliation, transactional state-bound execution, and structured progress/results.
  * [POS]: Serves as the update orchestration domain between the public update command and Hub/Store/install/project boundaries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -7,17 +7,14 @@
 package updateplan
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
-	"regexp"
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
@@ -25,6 +22,8 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
+	"github.com/skillsgo/skillsgo/cli/internal/strictjson"
+	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 )
 
@@ -158,21 +157,9 @@ type Hub interface {
 }
 
 func DecodeTargets(values []string) ([]TargetRequest, error) {
-	requests := make([]TargetRequest, 0, len(values))
-	for index, value := range values {
-		decoder := json.NewDecoder(bytes.NewBufferString(value))
-		decoder.DisallowUnknownFields()
-		var request TargetRequest
-		if err := decoder.Decode(&request); err != nil {
-			return nil, fmt.Errorf("invalid update target %d: %w", index+1, err)
-		}
-		if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-			return nil, fmt.Errorf("invalid update target %d: expected one JSON object", index+1)
-		}
-		if err := validateRequest(request); err != nil {
-			return nil, fmt.Errorf("invalid update target %d: %w", index+1, err)
-		}
-		requests = append(requests, request)
+	requests, err := strictjson.DecodeMany(values, "invalid update target", validateRequest)
+	if err != nil {
+		return nil, err
 	}
 	if len(requests) == 0 {
 		return nil, fmt.Errorf("an Update Plan requires at least one explicit target")
@@ -532,14 +519,11 @@ func capturedReferenceIsFixed(reference string) bool {
 		return false
 	}
 	reference = normalizeCapturedReference(reference)
-	return pseudoVersionReference.MatchString(reference) || hexadecimalReference.MatchString(reference)
+	return module.IsPseudoVersion(reference) || isHexadecimalReference(reference)
 }
 
-var hexadecimalReference = regexp.MustCompile(`^[0-9a-fA-F]{7,64}$`)
-var pseudoVersionReference = regexp.MustCompile(`^v[0-9]+\.(?:0\.0-|[0-9]+\.[0-9]+-(?:[^+]*\.)?0\.)[0-9]{14}-[A-Za-z0-9]+(?:\+incompatible)?$`)
-
 func isFixedReference(reference string, receipt store.Receipt) bool {
-	if pseudoVersionReference.MatchString(reference) {
+	if module.IsPseudoVersion(reference) {
 		return true
 	}
 	if receipt.Ref == "refs/heads/"+reference {
@@ -550,8 +534,20 @@ func isFixedReference(reference string, receipt store.Receipt) bool {
 }
 
 func isCommitReference(reference, commitSHA string) bool {
-	return hexadecimalReference.MatchString(reference) &&
+	return isHexadecimalReference(reference) &&
 		(commitSHA == "" || strings.HasPrefix(commitSHA, reference) || strings.HasPrefix(reference, commitSHA))
+}
+
+func isHexadecimalReference(reference string) bool {
+	if len(reference) < 7 || len(reference) > 64 {
+		return false
+	}
+	for _, character := range reference {
+		if (character < '0' || character > '9') && (character < 'a' || character > 'f') && (character < 'A' || character > 'F') {
+			return false
+		}
+	}
+	return true
 }
 
 func updateStateToken(

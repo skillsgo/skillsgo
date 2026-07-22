@@ -42,6 +42,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/hub/` | Client for the public SkillsGo Hub protocol and normalized artifact-integrity verification. |
 | `internal/source/` | Skill ID parsing and source reference normalization. |
 | `internal/store/` | User-level shared Hub/Local/captured immutable artifact cache, private Local import/export, and verified takeover baselines. |
+| `internal/strictjson/` | Shared strict decoding for repeated machine-input JSON object lists at CLI Plan boundaries. |
 | `internal/terminalui/` | Human terminal documents, automatic Interactive/Plain selection, responsive styling, and live operation progress. |
 | `internal/trash/` | Cross-platform recoverable disposal of user-owned installation content through the desktop Trash or Recycle Bin. |
 | `internal/updateplan/` | Exact-target update checks, immutable-reference classification, Workspace Manifest previews, and partial update execution. |

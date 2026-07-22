@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on one immutable Store entry, an installed Agent Catalog, explicit location-and-Agent requests, user/project declarations, and Workspace state.
+ * [INPUT]: Depends on one immutable Store entry, an installed Agent Catalog, strict shared machine-input decoding, explicit location-and-Agent requests, user/project declarations, and Workspace state.
  * [OUTPUT]: Provides strict target decoding, shared immutable-risk authorization, affirmative collision/Local Modification replacement, immutable Workspace Manifest previews, optional reviewed conflicts, and resilient target-specific progress/results.
  * [POS]: Serves as the domain orchestration layer between the add command and lower-level install/project mutation modules.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -9,9 +9,7 @@ package plan
 import (
 	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -22,6 +20,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
+	"github.com/skillsgo/skillsgo/cli/internal/strictjson"
 )
 
 const SchemaVersion = 3
@@ -175,20 +174,7 @@ type Progress struct {
 }
 
 func DecodeTargets(values []string) ([]TargetRequest, error) {
-	requests := make([]TargetRequest, 0, len(values))
-	for index, value := range values {
-		decoder := json.NewDecoder(strings.NewReader(value))
-		decoder.DisallowUnknownFields()
-		var request TargetRequest
-		if err := decoder.Decode(&request); err != nil {
-			return nil, fmt.Errorf("decode --target %d: %w", index+1, err)
-		}
-		if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-			return nil, fmt.Errorf("decode --target %d: expected one JSON object", index+1)
-		}
-		requests = append(requests, request)
-	}
-	return requests, nil
+	return strictjson.DecodeMany[TargetRequest](values, "decode --target", nil)
 }
 
 func Build(catalog *agent.Catalog, entry *store.Entry, storeRoot string, request Request) (Preflight, error) {
