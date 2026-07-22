@@ -17,12 +17,16 @@ A public version-control repository registered with the Hub under a canonical, c
 _Avoid_: Skill ID, repository URL spelling, refresh schedule
 
 **Version Query**:
-One of the explicit movable selectors `head` and `release`, or an exact canonical immutable semantic/pseudo-version. `head` resolves the Repository default branch; `release` chooses the highest stable canonical semantic-version Tag and falls back to the highest canonical pre-release. The ambiguous `latest`, arbitrary branch names, commit hashes, and version ranges are rejected at the public protocol boundary. Selector responses are non-cacheable and always name the immutable version that clients persist.
-_Avoid_: `latest`, raw branch, version range, refresh subscription, raw transport URL
+An add-time Git revision such as a canonical semantic Tag, branch name, or commit hash, or an exact canonical immutable semantic/pseudo-version. A movable revision resolves once to a commit and immutable version; only that immutable version is persisted and accepted by exact Repository Proxy resources. The ambiguous `latest` and version ranges are rejected.
+_Avoid_: persisted branch, `latest`, version range, refresh subscription, raw transport URL
+
+**Repository Proxy**:
+The Go-proxy-shaped immutable distribution surface rooted directly at the Artifact Origin. A Repository resource uses `/<escaped-repository-id>/@v/...` without a product namespace prefix; `/api/v1` remains reserved for product APIs and takes routing precedence.
+_Avoid_: `/mod`, product API, Skill ZIP endpoint
 
 **Repository Publication**:
-The atomic visibility change that publishes every repository-owned Skill observed at one repository tag and commit. A `SKILL.md` beneath a hidden directory is treated as installed consumer state rather than a repository publication candidate. Invalid or missing visible candidates are omitted without blocking other valid Skills; no partial set of accepted Skill versions becomes visible.
-_Avoid_: Repository Batch table, repository ZIP, all-or-nothing source validation
+The atomic visibility change that publishes one immutable Repository Release, its complete accepted Skill membership, one Repository ZIP, and one Repository Sum for a resolved source commit. A `SKILL.md` beneath a hidden directory is treated as installed consumer state rather than a publication candidate; no partial accepted membership becomes visible.
+_Avoid_: per-Skill publication, Repository Batch table, all-or-nothing source validation
 
 **Repository History Backfill**:
 An authenticated Hub administration operation that accepts one or more Source Repositories and incrementally publishes every canonical semantic-version Tag without changing demand-driven installation behavior. Each Repository owns an independent durable run that commits valid versions and retains diagnosable partial failures.
@@ -49,27 +53,27 @@ An immutable Skill version declared by a canonical semantic-version Git tag. The
 _Avoid_: GitHub Release, mutable branch head, npm-style publish event
 
 **Revision Resolution**:
-An explicit resolution of `head`, `release`, or an exact canonical semantic/pseudo-version to one immutable commit and canonical version. `head` may advance between requests, but each response names an immutable version that never advances. Raw branches and commits are not public selectors.
-_Avoid_: branch subscription, arbitrary branch selector, raw commit selector, mutable artifact
+An explicit add-time resolution of a semantic Tag, branch, commit hash, or exact canonical semantic/pseudo-version to one immutable commit and canonical version. Branches may advance between requests, but each result names an immutable version that never advances; install and exact artifact reads never resolve the movable input again.
+_Avoid_: branch subscription, persisted branch, mutable artifact
 
 **Skill ID**:
 The public canonical identity of a logical Skill, such as `github.com/owner/repository/-/skills/example`. A source or path move creates a new Skill ID; verified migration is an explicit relationship between the old and new IDs rather than hidden identity continuity.
 _Avoid_: Skill Identity, Skill Coordinate, opaque database ID, name-only lookup
 
 **Skill Info**:
-The single immutable structured metadata resource for one Skill version. It contains canonical identity and version, normalized `SKILL.md` frontmatter, flat `Ref`, `CommitSHA`, and `TreeSHA` source fields, Sum, and Archive Size. Mutable Risk/audit evidence is explicitly excluded and belongs to a downstream assessment resource. Source URL and subdirectory are derived from the Skill ID rather than repeated in an Origin object. The original `SKILL.md` remains authoritative inside the ZIP.
-_Avoid_: separate artifact manifest, nested Origin object, repeated source URL, mutable branch response
+The immutable member metadata for one Skill observed in a Repository Release. It contains canonical Skill identity, Repository ID and version, source-relative path, normalized `SKILL.md` frontmatter, and source tree identity, but no independent ZIP, archive size, or artifact Sum. Mutable Risk/audit evidence is excluded and belongs to a downstream assessment resource.
+_Avoid_: Skill artifact, Skill ZIP, Skill Sum, mutable branch response
 
 **Repository Info**:
-The immutable metadata resource for one Repository version and commit, embedding the complete Skill Info records for every valid root or nested Skill observed in that source snapshot.
-_Avoid_: editorial member list, Repository ZIP, persisted expansion graph
+The immutable metadata resource for one Repository version and commit, including Repository Sum, archive size, and the complete ordered Skill Info membership observed in that source snapshot.
+_Avoid_: editorial member list, per-Skill artifact manifest, persisted expansion graph
 
-**Immutable Skill Artifact**:
-The installable file set for one Skill at one resolved source commit. A branch such as `main` is a movable reference that resolves to an immutable artifact before download and caching.
-_Avoid_: live repository directory, mutable cache entry
+**Repository Artifact**:
+The complete safe Git-tracked regular-file tree for one immutable Repository Version, distributed as one ZIP and authenticated by one Repository Sum. Skills are selectable members of this artifact rather than independently archived artifacts.
+_Avoid_: Skill artifact, live repository directory, mutable cache entry
 
 **Source Presentation**:
-Author-maintained Repository or Skill description found in source metadata or a localized source document. It may be displayed and indexed but never replaces the canonical `SKILL.md` in an Immutable Skill Artifact.
+Author-maintained Repository or Skill description found in source metadata or a localized source document. It may be displayed and indexed but never replaces the canonical `SKILL.md` member in a Repository Artifact.
 _Avoid_: localized README body, translated instructions, generated Skill
 
 **Hub Enrichment**:
@@ -85,7 +89,7 @@ One auditable analysis attempt over a specific immutable source revision, analyz
 _Avoid_: cron result, mutable translation row, artifact scan
 
 **Sum**:
-The deterministic Go-compatible `h1:` identity of a normalized Skill artifact. It hashes sorted relative file paths and contents after removing the archive's `<skillId>@<version>/` root, so archive compression and public coordinates do not change Content Match identity.
+The deterministic Go-compatible `h1:` identity of a normalized Repository Artifact. It uses Go `dirhash.Hash1` over sorted relative file paths and contents after removing the archive's `<repositoryId>@<version>/` root, so archive compression and public coordinates do not change content identity.
 _Avoid_: archive hash, Git tree SHA
 
 **Content Match**:
@@ -117,5 +121,5 @@ The source commit time of an immutable Skill version. It describes when the serv
 _Avoid_: Hub update time, cache refresh time, repository API updated_at
 
 **Archive Size**:
-The exact byte length of the deterministic ZIP artifact served by the Hub for one immutable Skill version.
+The exact byte length of the deterministic Repository ZIP served by the Hub for one immutable Repository Version.
 _Avoid_: extracted directory size, source repository size, transport-compressed response size
