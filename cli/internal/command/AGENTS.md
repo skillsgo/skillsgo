@@ -36,9 +36,9 @@
 - `version.go`: serves the human version output and versioned App startup handshake.
 - `args_test.go`: covers public argument normalization and environment-gated test Agent behavior.
 - `i18n_test.go`: covers localized root and Local export command help.
-- `install_flow_test.go`: exercises Repository and selected-Skill installation, canonical Workspace Manifest pinning after query resolution, update, and restoration through `Execute`.
-- `repository_add.go`: orchestrates whole-Repository Info selection, checksum verification, Store admission, all-member Agent projection, and one atomic target/Receipt/Sum/Manifest transaction with explicit replacement authority.
-- `repository_add_test.go`: specifies Repository selector matching and per-selector Version Query precedence.
+- `install_flow_test.go`: retains the migration inventory of existing installation, update, and restoration journeys that must be adapted to Repository Vendor architecture.
+- `repository_add.go`: orchestrates one root Repository Info/ZIP download, explicit member/Agent selection, Scope Vendor/Projection preparation, paired YAML/Lock persistence, idempotency, and rollback.
+- `repository_add_test.go`, `repository_vendor_test.go`: specify Repository selector matching plus the public exact-version Workspace Vendor journey.
 - `workspace_integrity.go`: validates complete immutable resource evidence before atomically extending every destination Workspace Sum and publishing exact Info Cache entries for all installation entry points.
 - `workspace_restore.go`: restores exact direct requirements from Workspace Sum, immutable Info Cache, Store, and current Agent roots without a lockfile.
 - `version_test.go`: specifies CLI identity and App protocol compatibility through `Execute`.

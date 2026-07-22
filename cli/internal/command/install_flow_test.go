@@ -303,17 +303,9 @@ func commandTestSum(t *testing.T, data []byte, skillID, version string) string {
 
 func commandTestRepositoryInfo(t *testing.T, repositoryID, version, commit string, members ...hub.Info) []byte {
 	t.Helper()
-	rawMembers := make([]json.RawMessage, 0, len(members))
-	for _, member := range members {
-		encoded, err := json.Marshal(member)
-		if err != nil {
-			t.Fatal(err)
-		}
-		rawMembers = append(rawMembers, encoded)
-	}
 	encoded, err := json.Marshal(hub.RepositoryInfo{
 		SchemaVersion: 1, Kind: "Repository", ID: repositoryID, Version: version,
-		Time: time.Unix(1, 0).UTC(), Ref: members[0].Ref, CommitSHA: commit, Skills: rawMembers,
+		Time: time.Unix(1, 0).UTC(), Ref: members[0].Ref, CommitSHA: commit, Skills: members,
 	})
 	if err != nil {
 		t.Fatal(err)

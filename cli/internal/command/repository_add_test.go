@@ -16,10 +16,10 @@ import (
 func TestSelectRepositoryMemberMatrix(t *testing.T) {
 	repository := "gitlab.example.com/group/subgroup/repo"
 	members := []hub.RepositoryMember{
-		{Info: hub.Info{ID: repository, Name: "root"}},
-		{Info: hub.Info{ID: repository + "/-/skills/alpha", Name: "shared"}},
-		{Info: hub.Info{ID: repository + "/-/other/beta", Name: "shared"}},
-		{Info: hub.Info{ID: repository + "/-/tools/gamma", Name: "gamma"}},
+		{Info: hub.Info{ID: repository, RepositoryID: repository, Path: ".", Name: "root"}},
+		{Info: hub.Info{ID: repository + "/-/skills/alpha", RepositoryID: repository, Path: "skills/alpha", Name: "shared"}},
+		{Info: hub.Info{ID: repository + "/-/other/beta", RepositoryID: repository, Path: "other/beta", Name: "shared"}},
+		{Info: hub.Info{ID: repository + "/-/tools/gamma", RepositoryID: repository, Path: "tools/gamma", Name: "gamma"}},
 	}
 	for _, selector := range []string{repository + "/-/tools/gamma", "tools/gamma", "gamma"} {
 		member, err := selectRepositoryMember(repository, selector, members)
@@ -44,8 +44,9 @@ func TestParseRepositorySelectorQueryPrecedence(t *testing.T) {
 	if err != nil || selector != "find-skills" || query != "release" {
 		t.Fatalf("override = %q, %q, %v", selector, query, err)
 	}
-	if _, _, err := parseRepositorySelector("find-skills@main", "v1.2.3"); err == nil {
-		t.Fatal("ambiguous branch query succeeded")
+	selector, query, err = parseRepositorySelector("find-skills@main", "v1.2.3")
+	if err != nil || selector != "find-skills" || query != "main" {
+		t.Fatalf("branch override = %q, %q, %v", selector, query, err)
 	}
 	selector, query, err = parseRepositorySelector("find-skills", "v1.2.3")
 	if err != nil || selector != "find-skills" || query != "v1.2.3" {
