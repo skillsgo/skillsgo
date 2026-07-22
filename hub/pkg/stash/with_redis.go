@@ -123,8 +123,6 @@ func getRedisClusterClientOptions(endpoint, password string) (*redis.ClusterOpti
 // WithRedisLock returns a distributed singleflight
 // using a redis cluster. If it cannot connect, it will return an error.
 func WithRedisLock(l RedisLogger, endpoint, password string, cluster bool, checker storage.Checker, lockConfig *config.RedisLockConfig) (Wrapper, error) {
-	redis.SetLogger(l)
-
 	const op errors.Op = "stash.WithRedisLock"
 
 	var client redis.UniversalClient
@@ -151,6 +149,7 @@ func WithRedisLock(l RedisLogger, endpoint, password string, cluster bool, check
 		_ = client.Close()
 		return nil, errors.E(op, err)
 	}
+	redis.SetLogger(l)
 
 	return func(s Stasher) Stasher {
 		return &redisLock{client, s, checker, lockOptions}
