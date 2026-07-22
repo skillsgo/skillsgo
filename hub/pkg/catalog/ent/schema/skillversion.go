@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on Ent schema fields and indexes for immutable artifact version metadata.
- * [OUTPUT]: Defines immutable Skill version identity plus source commit time and deterministic ZIP size.
- * [POS]: Serves as the authoritative ORM schema for immutable Skill version identities.
+ * [INPUT]: Depends on Ent schema fields and indexes for immutable Repository publication membership.
+ * [OUTPUT]: Defines immutable Skill membership identity, Repository-relative path, source tree, and commit time.
+ * [POS]: Serves as the authoritative ORM schema for Skill members of Repository releases; it owns no artifact digest or ZIP size.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package schema
@@ -24,9 +24,8 @@ func (SkillVersion) Fields() []ent.Field {
 		field.String("version").NotEmpty(),
 		field.String("commit_sha").NotEmpty(),
 		field.String("tree_sha").NotEmpty(),
-		field.String("sum").NotEmpty(),
+		field.String("relative_path").NotEmpty(),
 		field.Time("commit_time"),
-		field.Int64("archive_size").Default(0),
 		field.Time("created_at").Default(time.Now),
 	}
 }

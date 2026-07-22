@@ -229,7 +229,7 @@ func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID,
 		published = append(published, catalog.PublishedSkill{
 			Skill: catalog.Skill{SkillID: member.SkillID, Name: member.Manifest.Name, Description: member.Manifest.Description, LatestVersion: snapshot.Version},
 			Version: catalog.SkillVersion{Version: snapshot.Version, CommitSHA: snapshot.CommitSHA, TreeSHA: member.TreeSHA,
-				Sum: snapshot.Sum, CommitTime: snapshot.CommitTime, ArchiveSize: snapshot.ArchiveSize},
+				RelativePath: member.Path, CommitTime: snapshot.CommitTime},
 		})
 	}
 	releaseInfo, err := json.Marshal(release)

@@ -373,15 +373,30 @@ func skillDetailHandler(
 		if artifacts == nil {
 			return writeAPIErrorCode(c, fiber.StatusServiceUnavailable, "artifact_unavailable", "artifact service unavailable")
 		}
-		infoBytes, err := artifacts.Info(c.Context(), skill.SkillID, skill.LatestVersion)
+		version, err := metadata.SkillLatestPublishedVersion(c.Context(), skill.SkillID)
+		if err != nil {
+			return writeInternalAPIError(c, "catalog.skill_version", fiber.StatusInternalServerError, "internal_error", "detail failed", err)
+		}
+		repositoryID := skill.SourceHost + "/" + skill.Repository
+		infoBytes, err := artifacts.Info(c.Context(), repositoryID, version.Version)
 		if err != nil {
 			return writeArtifactReadError(c, "artifact.info", err)
 		}
-		var info catalogArtifactInfo
-		if json.Unmarshal(infoBytes, &info) != nil || info.Version == "" || info.CommitSHA == "" || info.TreeSHA == "" {
+		var info protocolapi.RepositoryInfo
+		if json.Unmarshal(infoBytes, &info) != nil || info.ID != repositoryID || info.Version != version.Version || info.CommitSHA == "" || info.TreeSHA == "" {
 			return writeInternalAPIError(c, "artifact.decode_info", fiber.StatusBadGateway, "artifact_invalid", "artifact info is invalid", errors.New("artifact info is missing immutable identity fields"))
 		}
-		archive, err := artifacts.Zip(c.Context(), skill.SkillID, info.Version)
+		var member *protocolapi.SkillInfo
+		for index := range info.Skills {
+			if info.Skills[index].ID == skill.SkillID && info.Skills[index].Path == version.RelativePath {
+				member = &info.Skills[index]
+				break
+			}
+		}
+		if member == nil {
+			return writeInternalAPIError(c, "artifact.member_info", fiber.StatusBadGateway, "artifact_invalid", "artifact info is invalid", errors.New("Repository Info does not contain the Catalog member"))
+		}
+		archive, err := artifacts.Zip(c.Context(), repositoryID, info.Version)
 		if err != nil {
 			return writeArtifactReadError(c, "artifact.zip", err)
 		}
@@ -390,22 +405,12 @@ func skillDetailHandler(
 		if err != nil {
 			return writeInternalAPIError(c, "artifact.read_archive", fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid", err)
 		}
-		analysis, err := audit.AnalyzeArtifact(archiveBytes, skill.SkillID, info.Version)
+		analysis, err := audit.AnalyzeRepositoryMember(archiveBytes, repositoryID, info.Version, version.RelativePath)
 		if err != nil {
 			return writeInternalAPIError(c, "artifact.audit", fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid", err)
 		}
-		version, err := metadata.RecordSkillVersion(c.Context(), skill.SkillID, catalog.SkillVersion{
-			Version: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA, Sum: analysis.Sum,
-			CommitTime: info.Time, ArchiveSize: archiveSize,
-		})
-		if err != nil {
-			return writeInternalAPIError(c, "catalog.record_skill_version", fiber.StatusInternalServerError, "internal_error", "artifact metadata failed", err)
-		}
-		evidence, _ := json.Marshal(analysis.Risk.Evidence)
-		if _, err := metadata.AppendRiskAssessment(c.Context(), version.RowID, catalog.RiskAssessment{
-			Level: analysis.Risk.Level, ScannerVersion: analysis.Risk.ScannerVersion, Evidence: string(evidence),
-		}); err != nil {
-			return writeInternalAPIError(c, "catalog.append_risk_assessment", fiber.StatusInternalServerError, "internal_error", "risk assessment failed", err)
+		if analysis.Sum != info.Sum || archiveSize != info.ArchiveSize {
+			return writeInternalAPIError(c, "artifact.identity", fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid", errors.New("Repository ZIP does not match immutable Info"))
 		}
 		trustLevel := "unverified"
 		if skill.Verified {
@@ -436,9 +441,9 @@ func skillDetailHandler(
 			Source: skill.SourceHost + "/" + skill.Repository, Repository: skill.SourceHost + "/" + skill.Repository,
 			RepositoryDescription: repositoryDescription,
 			Stars:                 skill.Stars, SourceUpdatedAt: version.CommitTime,
-			ArchiveSize: version.ArchiveSize, RequestedVersion: skill.LatestVersion,
+			ArchiveSize: archiveSize, RequestedVersion: skill.LatestVersion,
 			ImageURL:         skillImageURL(skill.SourceHost, skill.Repository),
-			ImmutableVersion: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA,
+			ImmutableVersion: info.Version, CommitSHA: info.CommitSHA, TreeSHA: member.TreeSHA,
 			SourceRef: info.Ref, Sum: analysis.Sum,
 			Instructions: analysis.Instructions, TrustLevel: trustLevel, RiskAssessment: analysis.Risk,
 			Files: analysis.Files, HasExecutableContent: analysis.HasExecutableContent,

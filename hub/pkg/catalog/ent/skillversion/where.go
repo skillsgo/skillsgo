@@ -75,19 +75,14 @@ func TreeSha(v string) predicate.SkillVersion {
 	return predicate.SkillVersion(sql.FieldEQ(FieldTreeSha, v))
 }
 
-// Sum applies equality check predicate on the "sum" field. It's identical to SumEQ.
-func Sum(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldEQ(FieldSum, v))
+// RelativePath applies equality check predicate on the "relative_path" field. It's identical to RelativePathEQ.
+func RelativePath(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldEQ(FieldRelativePath, v))
 }
 
 // CommitTime applies equality check predicate on the "commit_time" field. It's identical to CommitTimeEQ.
 func CommitTime(v time.Time) predicate.SkillVersion {
 	return predicate.SkillVersion(sql.FieldEQ(FieldCommitTime, v))
-}
-
-// ArchiveSize applies equality check predicate on the "archive_size" field. It's identical to ArchiveSizeEQ.
-func ArchiveSize(v int64) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldEQ(FieldArchiveSize, v))
 }
 
 // CreatedAt applies equality check predicate on the "created_at" field. It's identical to CreatedAtEQ.
@@ -310,69 +305,69 @@ func TreeShaContainsFold(v string) predicate.SkillVersion {
 	return predicate.SkillVersion(sql.FieldContainsFold(FieldTreeSha, v))
 }
 
-// SumEQ applies the EQ predicate on the "sum" field.
-func SumEQ(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldEQ(FieldSum, v))
+// RelativePathEQ applies the EQ predicate on the "relative_path" field.
+func RelativePathEQ(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldEQ(FieldRelativePath, v))
 }
 
-// SumNEQ applies the NEQ predicate on the "sum" field.
-func SumNEQ(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldNEQ(FieldSum, v))
+// RelativePathNEQ applies the NEQ predicate on the "relative_path" field.
+func RelativePathNEQ(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldNEQ(FieldRelativePath, v))
 }
 
-// SumIn applies the In predicate on the "sum" field.
-func SumIn(vs ...string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldIn(FieldSum, vs...))
+// RelativePathIn applies the In predicate on the "relative_path" field.
+func RelativePathIn(vs ...string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldIn(FieldRelativePath, vs...))
 }
 
-// SumNotIn applies the NotIn predicate on the "sum" field.
-func SumNotIn(vs ...string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldNotIn(FieldSum, vs...))
+// RelativePathNotIn applies the NotIn predicate on the "relative_path" field.
+func RelativePathNotIn(vs ...string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldNotIn(FieldRelativePath, vs...))
 }
 
-// SumGT applies the GT predicate on the "sum" field.
-func SumGT(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldGT(FieldSum, v))
+// RelativePathGT applies the GT predicate on the "relative_path" field.
+func RelativePathGT(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldGT(FieldRelativePath, v))
 }
 
-// SumGTE applies the GTE predicate on the "sum" field.
-func SumGTE(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldGTE(FieldSum, v))
+// RelativePathGTE applies the GTE predicate on the "relative_path" field.
+func RelativePathGTE(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldGTE(FieldRelativePath, v))
 }
 
-// SumLT applies the LT predicate on the "sum" field.
-func SumLT(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldLT(FieldSum, v))
+// RelativePathLT applies the LT predicate on the "relative_path" field.
+func RelativePathLT(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldLT(FieldRelativePath, v))
 }
 
-// SumLTE applies the LTE predicate on the "sum" field.
-func SumLTE(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldLTE(FieldSum, v))
+// RelativePathLTE applies the LTE predicate on the "relative_path" field.
+func RelativePathLTE(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldLTE(FieldRelativePath, v))
 }
 
-// SumContains applies the Contains predicate on the "sum" field.
-func SumContains(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldContains(FieldSum, v))
+// RelativePathContains applies the Contains predicate on the "relative_path" field.
+func RelativePathContains(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldContains(FieldRelativePath, v))
 }
 
-// SumHasPrefix applies the HasPrefix predicate on the "sum" field.
-func SumHasPrefix(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldHasPrefix(FieldSum, v))
+// RelativePathHasPrefix applies the HasPrefix predicate on the "relative_path" field.
+func RelativePathHasPrefix(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldHasPrefix(FieldRelativePath, v))
 }
 
-// SumHasSuffix applies the HasSuffix predicate on the "sum" field.
-func SumHasSuffix(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldHasSuffix(FieldSum, v))
+// RelativePathHasSuffix applies the HasSuffix predicate on the "relative_path" field.
+func RelativePathHasSuffix(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldHasSuffix(FieldRelativePath, v))
 }
 
-// SumEqualFold applies the EqualFold predicate on the "sum" field.
-func SumEqualFold(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldEqualFold(FieldSum, v))
+// RelativePathEqualFold applies the EqualFold predicate on the "relative_path" field.
+func RelativePathEqualFold(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldEqualFold(FieldRelativePath, v))
 }
 
-// SumContainsFold applies the ContainsFold predicate on the "sum" field.
-func SumContainsFold(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldContainsFold(FieldSum, v))
+// RelativePathContainsFold applies the ContainsFold predicate on the "relative_path" field.
+func RelativePathContainsFold(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldContainsFold(FieldRelativePath, v))
 }
 
 // CommitTimeEQ applies the EQ predicate on the "commit_time" field.
@@ -413,46 +408,6 @@ func CommitTimeLT(v time.Time) predicate.SkillVersion {
 // CommitTimeLTE applies the LTE predicate on the "commit_time" field.
 func CommitTimeLTE(v time.Time) predicate.SkillVersion {
 	return predicate.SkillVersion(sql.FieldLTE(FieldCommitTime, v))
-}
-
-// ArchiveSizeEQ applies the EQ predicate on the "archive_size" field.
-func ArchiveSizeEQ(v int64) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldEQ(FieldArchiveSize, v))
-}
-
-// ArchiveSizeNEQ applies the NEQ predicate on the "archive_size" field.
-func ArchiveSizeNEQ(v int64) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldNEQ(FieldArchiveSize, v))
-}
-
-// ArchiveSizeIn applies the In predicate on the "archive_size" field.
-func ArchiveSizeIn(vs ...int64) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldIn(FieldArchiveSize, vs...))
-}
-
-// ArchiveSizeNotIn applies the NotIn predicate on the "archive_size" field.
-func ArchiveSizeNotIn(vs ...int64) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldNotIn(FieldArchiveSize, vs...))
-}
-
-// ArchiveSizeGT applies the GT predicate on the "archive_size" field.
-func ArchiveSizeGT(v int64) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldGT(FieldArchiveSize, v))
-}
-
-// ArchiveSizeGTE applies the GTE predicate on the "archive_size" field.
-func ArchiveSizeGTE(v int64) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldGTE(FieldArchiveSize, v))
-}
-
-// ArchiveSizeLT applies the LT predicate on the "archive_size" field.
-func ArchiveSizeLT(v int64) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldLT(FieldArchiveSize, v))
-}
-
-// ArchiveSizeLTE applies the LTE predicate on the "archive_size" field.
-func ArchiveSizeLTE(v int64) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldLTE(FieldArchiveSize, v))
 }
 
 // CreatedAtEQ applies the EQ predicate on the "created_at" field.

@@ -38,9 +38,8 @@ CREATE TABLE skill_versions (
   version TEXT NOT NULL,
   commit_sha TEXT NOT NULL,
   tree_sha TEXT NOT NULL,
-  content_digest TEXT NOT NULL,
+  relative_path TEXT NOT NULL,
   commit_time TIMESTAMPTZ NOT NULL DEFAULT '0001-01-01 00:00:00+00:00',
-  archive_size BIGINT NOT NULL DEFAULT 0,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   UNIQUE(skill_id, version)
 );

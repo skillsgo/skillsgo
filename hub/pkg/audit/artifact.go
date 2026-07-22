@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable ZIP bytes, canonical Skill IDs, and resolved artifact versions.
- * [OUTPUT]: Provides bounded duplicate-safe artifact inspection with compression-independent content identity, real instructions, file metadata/content, executable signals, and deterministic risk evidence.
+ * [OUTPUT]: Provides bounded duplicate-safe Repository and legacy root-member inspection with compression-independent content identity, member instructions, file metadata/content, executable signals, and deterministic risk evidence.
  * [POS]: Serves as the artifact-analysis boundary between Hub storage bytes and public audit metadata.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -69,6 +69,30 @@ var binaryExtensions = map[string]bool{
 }
 
 func AnalyzeArtifact(data []byte, skillID, version string) (*Result, error) {
+	return analyze(data, func(visit protocolartifact.VisitFunc) (string, error) {
+		return protocolartifact.WalkContent(data, skillID, version, visit)
+	}, "")
+}
+
+// AnalyzeRepositoryMember validates the complete Repository Artifact while
+// projecting one immutable Skill member for detail and enrichment reads.
+func AnalyzeRepositoryMember(data []byte, repositoryID, version, relativePath string) (*Result, error) {
+	memberPrefix := ""
+	if relativePath != "." {
+		memberPrefix = strings.TrimSuffix(relativePath, "/") + "/"
+	}
+	return analyze(data, func(visit protocolartifact.VisitFunc) (string, error) {
+		return protocolartifact.WalkRepository(data, repositoryID, version, func(entry protocolartifact.Entry) error {
+			if entry.Directory || !strings.HasPrefix(entry.Path, memberPrefix) {
+				return nil
+			}
+			entry.Path = strings.TrimPrefix(entry.Path, memberPrefix)
+			return visit(entry)
+		})
+	}, relativePath)
+}
+
+func analyze(_ []byte, walk func(protocolartifact.VisitFunc) (string, error), memberPath string) (*Result, error) {
 	result := &Result{
 		Files:           make([]File, 0),
 		ExecutableFiles: make([]string, 0),
@@ -77,7 +101,7 @@ func AnalyzeArtifact(data []byte, skillID, version string) (*Result, error) {
 		},
 	}
 	textBudget := maxTotalTextBytes
-	digest, err := protocolartifact.WalkContent(data, skillID, version, func(entry protocolartifact.Entry) error {
+	digest, err := walk(func(entry protocolartifact.Entry) error {
 		if entry.Directory {
 			return nil
 		}
@@ -141,7 +165,7 @@ func AnalyzeArtifact(data []byte, skillID, version string) (*Result, error) {
 		return nil, err
 	}
 	if result.Instructions == "" {
-		return nil, fmt.Errorf("artifact does not contain SKILL.md")
+		return nil, fmt.Errorf("artifact does not contain SKILL.md for member %q", memberPath)
 	}
 	result.Sum = digest
 	result.Risk.ArtifactSum = result.Sum

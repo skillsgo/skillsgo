@@ -141,16 +141,12 @@ func init() {
 	skillversionDescTreeSha := skillversionFields[4].Descriptor()
 	// skillversion.TreeShaValidator is a validator for the "tree_sha" field. It is called by the builders before save.
 	skillversion.TreeShaValidator = skillversionDescTreeSha.Validators[0].(func(string) error)
-	// skillversionDescSum is the schema descriptor for sum field.
-	skillversionDescSum := skillversionFields[5].Descriptor()
-	// skillversion.SumValidator is a validator for the "sum" field. It is called by the builders before save.
-	skillversion.SumValidator = skillversionDescSum.Validators[0].(func(string) error)
-	// skillversionDescArchiveSize is the schema descriptor for archive_size field.
-	skillversionDescArchiveSize := skillversionFields[7].Descriptor()
-	// skillversion.DefaultArchiveSize holds the default value on creation for the archive_size field.
-	skillversion.DefaultArchiveSize = skillversionDescArchiveSize.Default.(int64)
+	// skillversionDescRelativePath is the schema descriptor for relative_path field.
+	skillversionDescRelativePath := skillversionFields[5].Descriptor()
+	// skillversion.RelativePathValidator is a validator for the "relative_path" field. It is called by the builders before save.
+	skillversion.RelativePathValidator = skillversionDescRelativePath.Validators[0].(func(string) error)
 	// skillversionDescCreatedAt is the schema descriptor for created_at field.
-	skillversionDescCreatedAt := skillversionFields[8].Descriptor()
+	skillversionDescCreatedAt := skillversionFields[7].Descriptor()
 	// skillversion.DefaultCreatedAt holds the default value on creation for the created_at field.
 	skillversion.DefaultCreatedAt = skillversionDescCreatedAt.Default.(func() time.Time)
 }

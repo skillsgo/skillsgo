@@ -3,13 +3,13 @@
 
 ## Members
 
-- `catalog.go`: exposes the Catalog API, uses Ent for entity persistence, owns the shared pgx pool in PostgreSQL mode, owns Repository-scoped source-metadata cache state, and provides visibility-aware search, immutable versions, content matching, and pagination.
+- `catalog.go`: exposes the Catalog API, uses Ent for entity persistence, owns the shared pgx pool in PostgreSQL mode, owns Repository-scoped source-metadata cache state, and provides visibility-aware search, immutable Repository Releases, ordered Skill membership, Repository-Sum content matching, and pagination.
 - `backfill.go`: owns durable Repository Backfill Run business state, active-work deduplication, heartbeat recovery for running work, River-aware orphan reconciliation candidates for queued work, state transitions, bounded diagnostics, exact-publication commit checks, and atomic PostgreSQL Run-plus-River enqueue scopes.
 - `migrations.go`: executes embedded, checksummed, ordered Atlas SQL migrations and serializes PostgreSQL migration runs.
 - `migrations/`: contains reviewed, checksummed migrations per database, including the pre-release baseline, Historical Publication visibility, Backfill Run state, Repository metadata evolution, the destructive legacy-history reset for the h1 Sum cutover, and database-specific full-text search resources.
 - `migrate/main.go`: authors named Ent/Atlas schema diffs against disposable development databases.
 - `pgxent/`: adapts caller-owned native pgx transactions to generated Ent clients so domain writes and River enqueueing can share one transaction; application code must enter through `Catalog.WithPostgresTx` or `Catalog.WithPostgresTxOptions` rather than constructing transaction ownership ad hoc.
-- `ent/schema/`: defines the authoritative Ent entity model, including presentation-only localized descriptions; generated siblings under `ent/` are reproducible build output.
+- `ent/schema/`: defines the authoritative Ent entity model, including presentation-only localized descriptions and Skill membership versions with Repository-relative paths but no duplicated artifact fields; generated siblings under `ent/` are reproducible build output.
 - `catalog_test.go`: specifies the SQLite behavior contract, including migration history, canonical Skill IDs, exact content matching, downstream assessment persistence, search fields, and pagination.
 - `postgres_integration_test.go`: verifies search and downstream assessment persistence against an opt-in real PostgreSQL service.
 

@@ -178,7 +178,7 @@ func (p *catalogProtocol) index(ctx context.Context, skillID string, infoBytes [
 	}
 	if _, err := p.metadata.RecordSkillVersion(ctx, skillID, catalog.SkillVersion{
 		Version: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA,
-		Sum: info.Sum, CommitTime: info.Time, ArchiveSize: info.ArchiveSize,
+		RelativePath: ".", CommitTime: info.Time,
 	}); err != nil {
 		return fmt.Errorf("record Skill version metadata: %w", err)
 	}

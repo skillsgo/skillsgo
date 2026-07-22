@@ -9,15 +9,29 @@ package catalog
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
+	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	"github.com/stretchr/testify/require"
 	_ "modernc.org/sqlite"
 )
+
+func publishTestRepository(t *testing.T, c *Catalog, repositoryID, version, commitSHA, sum string, visibility PublicationVisibility, candidates []PublishedSkill) {
+	t.Helper()
+	members := make([]protocolapi.SkillInfo, 0, len(candidates))
+	for _, candidate := range candidates {
+		members = append(members, protocolapi.SkillInfo{ID: candidate.Skill.SkillID, RepositoryID: repositoryID, Path: candidate.Version.RelativePath, Version: version, CommitSHA: commitSHA, TreeSHA: candidate.Version.TreeSHA, Name: candidate.Skill.Name, Description: candidate.Skill.Description})
+	}
+	encoded, err := json.Marshal(protocolapi.RepositoryInfo{ID: repositoryID, Version: version, CommitSHA: commitSHA, TreeSHA: "repository-tree", Sum: sum, ArchiveSize: 1024, Skills: members})
+	require.NoError(t, err)
+	require.NoError(t, c.PublishRepositoryReleaseWithVisibility(t.Context(), repositoryID, candidates, visibility, encoded))
+}
 
 func TestSQLiteCatalogUpsertAndSearch(t *testing.T) {
 	ctx := context.Background()
@@ -99,13 +113,9 @@ func TestSQLiteCatalogMatchesExactContentAndRanksSourceHints(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	digest := "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 	for _, skillID := range []string{"github.com/alpha/skills/-/demo", "github.com/acme/skills/-/demo"} {
-		require.NoError(t, c.UpsertSkill(ctx, &Skill{
-			SkillID: skillID, Name: "demo", Description: "Demo", LatestVersion: "v1",
-		}))
-		_, err := c.RecordSkillVersion(ctx, skillID, SkillVersion{
-			Version: "v1", CommitSHA: skillID + "-commit", TreeSHA: skillID + "-tree", Sum: digest,
-		})
-		require.NoError(t, err)
+		repositoryID := strings.Split(skillID, "/-/")[0]
+		candidate := PublishedSkill{Skill: Skill{SkillID: skillID, Name: "demo", Description: "Demo"}, Version: SkillVersion{Version: "v1", CommitSHA: skillID + "-commit", TreeSHA: skillID + "-tree", RelativePath: "demo"}}
+		publishTestRepository(t, c, repositoryID, "v1", candidate.Version.CommitSHA, digest, CurrentPublication, []PublishedSkill{candidate})
 	}
 	matches, err := c.MatchContent(ctx, digest, "github.com/acme/skills", 20)
 	require.NoError(t, err)
@@ -140,19 +150,19 @@ func TestArtifactVersionsAreImmutableAndRiskAssessmentsAreAppendOnly(t *testing.
 	require.NoError(t, c.UpsertSkill(ctx, skill))
 
 	version, err := c.RecordSkillVersion(ctx, skill.SkillID, SkillVersion{
-		Version: "v1.0.0", CommitSHA: "commit-a", TreeSHA: "tree-a", Sum: "sha256:artifact-a",
-		CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), ArchiveSize: 4096,
+		Version: "v1.0.0", CommitSHA: "commit-a", TreeSHA: "tree-a", RelativePath: "demo",
+		CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC),
 	})
 	require.NoError(t, err)
 	require.NotZero(t, version.RowID)
-	require.Equal(t, int64(4096), version.ArchiveSize)
+	require.Equal(t, "demo", version.RelativePath)
 	require.Equal(t, time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), version.CommitTime)
 	same, err := c.RecordSkillVersion(ctx, skill.SkillID, *version)
 	require.NoError(t, err)
 	require.Equal(t, version.RowID, same.RowID)
 
 	_, err = c.RecordSkillVersion(ctx, skill.SkillID, SkillVersion{
-		Version: "v1.0.0", CommitSHA: "commit-b", TreeSHA: "tree-a", Sum: "sha256:artifact-a",
+		Version: "v1.0.0", CommitSHA: "commit-b", TreeSHA: "tree-a", RelativePath: "demo",
 	})
 	require.ErrorContains(t, err, "immutable Skill version conflict")
 
@@ -193,10 +203,10 @@ func TestRepositoryPublicationKeepsIndependentSkillLatestHistory(t *testing.T) {
 			candidates = append(candidates, PublishedSkill{
 				Skill: Skill{SkillID: skillID, Name: fmt.Sprintf("member-%d", index), Description: "History fixture"},
 				Version: SkillVersion{Version: version, CommitSHA: commit, TreeSHA: fmt.Sprintf("tree-%s-%d", version, index),
-					Sum: fmt.Sprintf("sha256:%064d", index+1), CommitTime: time.Now().UTC(), ArchiveSize: 10},
+					RelativePath: fmt.Sprintf("member-%d", index), CommitTime: time.Now().UTC()},
 			})
 		}
-		require.NoError(t, c.PublishRepositoryVersion(ctx, repository, candidates))
+		publishTestRepository(t, c, repository, version, commit, "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CurrentPublication, candidates)
 	}
 
 	publish("v1.0.0", "commit-v1", repository, member)
@@ -223,16 +233,16 @@ func TestRepositoryPublicationMarkerExcludesStandaloneSkillIndexing(t *testing.T
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	repository, version := "github.com/acme/marker", "v1.0.0"
 	require.NoError(t, c.UpsertSkill(ctx, &Skill{SkillID: repository, Name: "marker", Description: "Standalone", LatestVersion: version}))
-	_, err = c.RecordSkillVersion(ctx, repository, SkillVersion{Version: version, CommitSHA: "commit", TreeSHA: "tree", Sum: "sha256:standalone"})
+	_, err = c.RecordSkillVersion(ctx, repository, SkillVersion{Version: version, CommitSHA: "commit", TreeSHA: "tree", RelativePath: "."})
 	require.NoError(t, err)
 	exists, err := c.RepositoryPublicationExists(ctx, repository, version)
 	require.NoError(t, err)
 	require.False(t, exists, "standalone protocol indexing is not a complete Repository Publication")
 
-	require.NoError(t, c.PublishRepositoryVersionWithVisibility(ctx, repository, []PublishedSkill{{
+	publishTestRepository(t, c, repository, version, "commit", "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", HistoricalPublication, []PublishedSkill{{
 		Skill:   Skill{SkillID: repository, Name: "marker", Description: "Standalone"},
-		Version: SkillVersion{Version: version, CommitSHA: "commit", TreeSHA: "tree", Sum: "sha256:standalone"},
-	}}, HistoricalPublication))
+		Version: SkillVersion{Version: version, CommitSHA: "commit", TreeSHA: "tree", RelativePath: "."},
+	}})
 	exists, err = c.RepositoryPublicationExists(ctx, repository, version)
 	require.NoError(t, err)
 	require.True(t, exists)

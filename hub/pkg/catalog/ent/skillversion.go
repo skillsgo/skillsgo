@@ -26,12 +26,10 @@ type SkillVersion struct {
 	CommitSha string `json:"commit_sha,omitempty"`
 	// TreeSha holds the value of the "tree_sha" field.
 	TreeSha string `json:"tree_sha,omitempty"`
-	// Sum holds the value of the "sum" field.
-	Sum string `json:"sum,omitempty"`
+	// RelativePath holds the value of the "relative_path" field.
+	RelativePath string `json:"relative_path,omitempty"`
 	// CommitTime holds the value of the "commit_time" field.
 	CommitTime time.Time `json:"commit_time,omitempty"`
-	// ArchiveSize holds the value of the "archive_size" field.
-	ArchiveSize int64 `json:"archive_size,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
 	CreatedAt time.Time `json:"created_at,omitempty"`
 	// Edges holds the relations/edges for other nodes in the graph.
@@ -76,9 +74,9 @@ func (*SkillVersion) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case skillversion.FieldID, skillversion.FieldSkillID, skillversion.FieldArchiveSize:
+		case skillversion.FieldID, skillversion.FieldSkillID:
 			values[i] = new(sql.NullInt64)
-		case skillversion.FieldVersion, skillversion.FieldCommitSha, skillversion.FieldTreeSha, skillversion.FieldSum:
+		case skillversion.FieldVersion, skillversion.FieldCommitSha, skillversion.FieldTreeSha, skillversion.FieldRelativePath:
 			values[i] = new(sql.NullString)
 		case skillversion.FieldCommitTime, skillversion.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -127,23 +125,17 @@ func (_m *SkillVersion) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.TreeSha = value.String
 			}
-		case skillversion.FieldSum:
+		case skillversion.FieldRelativePath:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field sum", values[i])
+				return fmt.Errorf("unexpected type %T for field relative_path", values[i])
 			} else if value.Valid {
-				_m.Sum = value.String
+				_m.RelativePath = value.String
 			}
 		case skillversion.FieldCommitTime:
 			if value, ok := values[i].(*sql.NullTime); !ok {
 				return fmt.Errorf("unexpected type %T for field commit_time", values[i])
 			} else if value.Valid {
 				_m.CommitTime = value.Time
-			}
-		case skillversion.FieldArchiveSize:
-			if value, ok := values[i].(*sql.NullInt64); !ok {
-				return fmt.Errorf("unexpected type %T for field archive_size", values[i])
-			} else if value.Valid {
-				_m.ArchiveSize = value.Int64
 			}
 		case skillversion.FieldCreatedAt:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -209,14 +201,11 @@ func (_m *SkillVersion) String() string {
 	builder.WriteString("tree_sha=")
 	builder.WriteString(_m.TreeSha)
 	builder.WriteString(", ")
-	builder.WriteString("sum=")
-	builder.WriteString(_m.Sum)
+	builder.WriteString("relative_path=")
+	builder.WriteString(_m.RelativePath)
 	builder.WriteString(", ")
 	builder.WriteString("commit_time=")
 	builder.WriteString(_m.CommitTime.Format(time.ANSIC))
-	builder.WriteString(", ")
-	builder.WriteString("archive_size=")
-	builder.WriteString(fmt.Sprintf("%v", _m.ArchiveSize))
 	builder.WriteString(", ")
 	builder.WriteString("created_at=")
 	builder.WriteString(_m.CreatedAt.Format(time.ANSIC))

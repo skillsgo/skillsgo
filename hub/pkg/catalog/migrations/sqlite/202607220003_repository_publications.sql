@@ -1,5 +1,5 @@
 -- [INPUT]: Depends on Repository and Skill version metadata plus Historical Publication visibility.
--- [OUTPUT]: Adds one immutable completion marker per fully committed Repository Publication.
+-- [OUTPUT]: Adds one immutable artifact identity and completion marker per fully committed Repository Publication.
 -- [POS]: Serves as the SQLite idempotency boundary distinguishing complete Repository publication from standalone Skill indexing.
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 CREATE TABLE repository_publications (
@@ -7,6 +7,8 @@ CREATE TABLE repository_publications (
     version TEXT NOT NULL,
     commit_sha TEXT NOT NULL,
     visibility TEXT NOT NULL CHECK (visibility IN ('current', 'historical')),
+    sum TEXT NOT NULL,
+    archive_size INTEGER NOT NULL,
     created_at TIMESTAMP NOT NULL,
     PRIMARY KEY (repository_id, version)
 );
