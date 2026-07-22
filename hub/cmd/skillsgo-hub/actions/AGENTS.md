@@ -4,7 +4,7 @@
 ## Members
 
 - `app.go`, `app_test.go`, `app_postgres_integration_test.go`: assemble and verify the native Fiber application, River or synchronous task runtime, periodic business tasks, PostgreSQL boot/restart with queued-job recovery, middleware lifecycle, and top-level wiring.
-- `background_tasks.go`, `background_tasks_test.go`: define and verify first-class River JobArgs, stable observable kinds, source/maintenance workload placement, payload validation, uniqueness fields, retry limits, and domain-handler adapters for artifact stash, Repository metadata/prewarm, translation, and skills.sh synchronization.
+- `background_tasks.go`, `background_tasks_test.go`: define and verify first-class River JobArgs, stable observable kinds, source/maintenance workload placement, payload validation, uniqueness fields, retry limits, and domain-handler adapters for artifact stash, Repository metadata/prewarm, and translation.
 - `app_proxy.go`, `app_proxy_test.go`: compose source, storage, Catalog, discovery/detail, and immutable artifact protocol routes through Fiber and cover integration behavior.
 - `basicauth.go`, `basicauth_test.go`, `admin_auth_test.go`: configure global versus administration-scoped HTTP Basic Auth behavior; source publication remains credential-free while GitHub tokens are metadata-API-only.
 - `catalog.go`: wires Catalog lifecycle and dependencies into the service.

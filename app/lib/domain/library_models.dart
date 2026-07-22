@@ -188,7 +188,6 @@ class SkillDetail {
     required this.markdown,
     required this.files,
     this.imageUrl,
-    this.installs = 0,
     this.repository = '',
     this.stars = 0,
     this.sourceUpdatedAt,
@@ -213,7 +212,6 @@ class SkillDetail {
   final String markdown;
   final List<SkillFile> files;
   final String? imageUrl;
-  final int installs;
   final String repository;
   final int stars;
   final DateTime? sourceUpdatedAt;

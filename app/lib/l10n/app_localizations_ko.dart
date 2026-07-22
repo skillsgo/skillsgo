@@ -1760,9 +1760,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get exportLocalSkillDescription => '이 로컬 스킬을 휴대용 ZIP 아카이브로 내보냅니다.';
 
   @override
-  String get detailInstalls => '설치';
-
-  @override
   String get detailRepository => '저장소';
 
   @override

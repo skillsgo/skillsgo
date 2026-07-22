@@ -1840,9 +1840,6 @@ class AppLocalizationsPl extends AppLocalizations {
       'Wyeksportuj to lokalne Skill jako przenośne archiwum ZIP.';
 
   @override
-  String get detailInstalls => 'Instaluje';
-
-  @override
   String get detailRepository => 'Magazyn';
 
   @override

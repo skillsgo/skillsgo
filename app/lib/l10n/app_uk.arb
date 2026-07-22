@@ -1050,7 +1050,6 @@
   "installMoreTargets": "Встановити в інших місцях",
   "exportLocalSkill": "Експорт",
   "exportLocalSkillDescription": "Експортуйте цей локальний Skill як портативний архів ZIP.",
-  "detailInstalls": "Встановлює",
   "detailRepository": "Репозиторій",
   "detailStars": "Зірки",
   "detailUpdated": "Оновлено",

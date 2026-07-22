@@ -1829,9 +1829,6 @@ class AppLocalizationsMs extends AppLocalizations {
       'Eksport Kemahiran Tempatan ini sebagai arkib ZIP mudah alih.';
 
   @override
-  String get detailInstalls => 'Pemasangan';
-
-  @override
   String get detailRepository => 'Repositori';
 
   @override

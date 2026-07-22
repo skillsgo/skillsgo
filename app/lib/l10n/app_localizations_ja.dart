@@ -1766,9 +1766,6 @@ class AppLocalizationsJa extends AppLocalizations {
       'このローカル スキルをポータブルな ZIP アーカイブとしてエクスポートします。';
 
   @override
-  String get detailInstalls => 'インストール';
-
-  @override
   String get detailRepository => 'リポジトリ';
 
   @override

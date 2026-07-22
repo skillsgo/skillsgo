@@ -3177,12 +3177,6 @@ abstract class AppLocalizations {
   /// **'Export this Local Skill as a portable ZIP archive.'**
   String get exportLocalSkillDescription;
 
-  /// No description provided for @detailInstalls.
-  ///
-  /// In en, this message translates to:
-  /// **'Installs'**
-  String get detailInstalls;
-
   /// No description provided for @detailRepository.
   ///
   /// In en, this message translates to:

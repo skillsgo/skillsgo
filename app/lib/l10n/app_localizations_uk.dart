@@ -1841,9 +1841,6 @@ class AppLocalizationsUk extends AppLocalizations {
       'Експортуйте цей локальний Skill як портативний архів ZIP.';
 
   @override
-  String get detailInstalls => 'Встановлює';
-
-  @override
   String get detailRepository => 'Репозиторій';
 
   @override

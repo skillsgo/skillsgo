@@ -23,7 +23,7 @@ The current App assumes a user-level Codex installation, requires an externally 
 
 Build the Personal desktop experience around three stable top-level destinations: Discover, Library, and Settings. Library and Settings use the same Burrow-inspired floating left-rail shell and retain their own navigation state.
 
-Discover provides Search, Ranking, Trending, and Hot views backed by the SkillsGo Hub. Library provides All Skills, Global, and one location route per Added Project in its left rail. Agent selection remains a combinable multi-select filter in the content toolbar. The Library aggregates all Installation Targets under one logical Library Entry while preserving Version Divergence and exposing External Installations.
+Discover provides Hub-backed Search plus Cloud-backed Ranking, Trending, and Hot views. Library provides All Skills, Global, and one location route per Added Project in its left rail. Agent selection remains a combinable multi-select filter in the content toolbar. The Library aggregates all Installation Targets under one logical Library Entry while preserving Version Divergence and exposing External Installations.
 
 Installing a Skill opens an Installation Plan represented as a multi-location by multi-Agent matrix. Users may select any set of cells. The bundled SkillsGo CLI validates and executes the explicit targets, returns structured per-target outcomes, retains successful targets after partial failure, and supports retrying failed targets.
 
@@ -172,8 +172,8 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 - The CLI uses its root `Execute` entry point as the primary seam. Tests provide arguments, stdout, stderr, temporary home and project directories, and controlled Hub HTTP servers.
 - Extend CLI command-flow tests to cover Installed Agent discovery, inventory reconciliation, explicit multi-target plans, row and column expansion results, collisions, Local Modifications, per-target partial failure, retry, project Manifest changes, External Installation import, and stable structured output.
 - Lower-level Store, Agent Adapter, target, and project tests remain appropriate only for deterministic algorithms or safety invariants that are difficult to isolate through the command boundary.
-- The Hub uses its HTTP Router as the primary seam. Tests exercise Search, Ranking, Trending, Hot, detail, immutable metadata, pagination, empty arrays, validation, and idempotent install events through HTTP requests.
-- Hub HTTP tests run against SQLite for fast coverage. Existing PostgreSQL integration coverage verifies database portability for catalog and ranking behavior.
+- The Hub HTTP Router tests Search, detail, immutable metadata, pagination, empty arrays, and validation. The independent Cloud service tests Ranking, Trending, Hot, pagination, and idempotent install events through the shared public Protocol conformance suite.
+- Hub HTTP tests verify catalog behavior across SQLite and PostgreSQL. Private Cloud tests verify its independent SQLite statistics database and ranking projections.
 - Add contract fixtures shared conceptually across App, CLI, and Hub so field names, enum values, and versioned protocol behavior cannot drift. Fixtures test public JSON rather than language-specific internal types.
 - Test partial failure with at least one writable target and one failing target, then assert the writable target remains installed and the failed target alone can be retried.
 - Test that a same-name different-identity Skill is never merged or overwritten without explicit replacement.
@@ -203,7 +203,7 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 
 ## Further Notes
 
-- The existing Hub already exposes Search and the three ranking sort modes, but the App currently consumes only Search.
+- The Hub exposes Search and Skill hydration. In Cloud mode the App reads ordered ranking IDs and metrics directly from Cloud, then hydrates their authoritative Skill cards through the CLI-mediated Hub boundary.
 - The existing CLI already models many Agent Adapters, User Scope, Workspace Scope, the Content-addressed Store, Installation Receipts, Workspace Manifests, and Workspace Manifests. The missing work is primarily stable high-level discovery, reconciliation, and multi-target operation contracts.
 - The current App Gateway is intentionally narrow and Codex-oriented. Expanding that seam should precede the nested navigation implementation so UI code is not built on temporary parsing logic.
 - The original external `skills` CLI and `skills.sh` MVP specification is superseded. System ADR-0001 establishes the bundled SkillsGo CLI as the production architecture.

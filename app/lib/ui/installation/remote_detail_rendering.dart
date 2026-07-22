@@ -320,10 +320,6 @@ extension _RemoteDetailRendering on RemoteDetailScreenState {
       ),
       (label: context.l10n.detailStars, value: _compactCount(value.stars)),
       (
-        label: context.l10n.detailInstalls,
-        value: _compactCount(value.installs),
-      ),
-      (
         label: context.l10n.detailUpdated,
         value: _shortDate(value.sourceUpdatedAt),
       ),

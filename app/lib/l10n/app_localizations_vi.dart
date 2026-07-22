@@ -1831,9 +1831,6 @@ class AppLocalizationsVi extends AppLocalizations {
       'Xuất Kỹ năng cục bộ này dưới dạng kho lưu trữ ZIP di động.';
 
   @override
-  String get detailInstalls => 'Số lượt cài đặt';
-
-  @override
   String get detailRepository => 'Kho lưu trữ';
 
   @override

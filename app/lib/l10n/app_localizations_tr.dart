@@ -1827,9 +1827,6 @@ class AppLocalizationsTr extends AppLocalizations {
       'Bu Yerel Skill\'yi taşınabilir bir ZIP arşivi olarak dışa aktarın.';
 
   @override
-  String get detailInstalls => 'Yüklemeler';
-
-  @override
   String get detailRepository => 'Depo';
 
   @override

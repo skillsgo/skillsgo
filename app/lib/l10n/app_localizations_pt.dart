@@ -1836,9 +1836,6 @@ class AppLocalizationsPt extends AppLocalizations {
       'Exporte este Skill local como um arquivo ZIP portátil.';
 
   @override
-  String get detailInstalls => 'Instalações';
-
-  @override
   String get detailRepository => 'Repositório';
 
   @override

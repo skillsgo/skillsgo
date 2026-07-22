@@ -1050,7 +1050,6 @@
   "installMoreTargets": "Установить в большем количестве мест",
   "exportLocalSkill": "Экспорт",
   "exportLocalSkillDescription": "Экспортируйте этот локальный Skill как портативный архив ZIP.",
-  "detailInstalls": "Устанавливает",
   "detailRepository": "Репозиторий",
   "detailStars": "Звезды",
   "detailUpdated": "Обновлено",

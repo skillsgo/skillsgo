@@ -627,7 +627,6 @@
   "installMoreTargets": "Install in more locations",
   "exportLocalSkill": "Export",
   "exportLocalSkillDescription": "Export this Local Skill as a portable ZIP archive.",
-  "detailInstalls": "Installs",
   "detailRepository": "Repository",
   "detailStars": "Stars",
   "detailUpdated": "Updated",

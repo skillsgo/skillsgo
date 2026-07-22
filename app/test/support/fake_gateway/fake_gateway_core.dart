@@ -21,7 +21,6 @@ final defaultRemoteDetail = SkillDetail(
   name: 'Flutter Pro',
   source: 'example/skills',
   repository: 'github.com/example/skills',
-  installs: 1200,
   stars: 12800,
   sourceUpdatedAt: DateTime.utc(2026, 7, 15),
   archiveSize: 24576,

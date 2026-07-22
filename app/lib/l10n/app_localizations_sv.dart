@@ -1829,9 +1829,6 @@ class AppLocalizationsSv extends AppLocalizations {
       'Exportera denna lokala Skill som ett bärbart ZIP-arkiv.';
 
   @override
-  String get detailInstalls => 'Installerar';
-
-  @override
   String get detailRepository => 'Förvar';
 
   @override
