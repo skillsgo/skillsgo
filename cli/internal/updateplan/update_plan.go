@@ -50,15 +50,16 @@ const (
 )
 
 type TargetRequest struct {
-	Scope       install.Scope `json:"scope"`
-	ProjectRoot string        `json:"projectRoot,omitempty"`
-	Agent       string        `json:"agent"`
-	Mode        install.Mode  `json:"mode"`
-	Path        string        `json:"path"`
-	SkillID     string        `json:"skillId"`
-	Version     string        `json:"version"`
-	ToVersion   string        `json:"toVersion,omitempty"`
-	StateToken  string        `json:"stateToken,omitempty"`
+	Scope            install.Scope `json:"scope"`
+	ProjectRoot      string        `json:"projectRoot,omitempty"`
+	Agent            string        `json:"agent"`
+	Mode             install.Mode  `json:"mode"`
+	Path             string        `json:"path"`
+	SkillID          string        `json:"skillId"`
+	Version          string        `json:"version"`
+	CandidateVersion string        `json:"candidateVersion,omitempty"`
+	ToVersion        string        `json:"toVersion,omitempty"`
+	StateToken       string        `json:"stateToken,omitempty"`
 }
 
 type Target struct {
@@ -188,6 +189,14 @@ func validateRequest(request TargetRequest) error {
 	}
 	if err := source.ValidateVersion(request.Version); err != nil {
 		return err
+	}
+	if request.CandidateVersion != "" {
+		if err := source.ValidateVersion(request.CandidateVersion); err != nil {
+			return err
+		}
+		if request.ToVersion != "" || request.StateToken != "" {
+			return fmt.Errorf("candidateVersion is valid only for preflight")
+		}
 	}
 	if request.ToVersion != "" {
 		if err := source.ValidateVersion(request.ToVersion); err != nil {
@@ -417,14 +426,20 @@ func buildItem(
 		item.Diagnostic = catalogErr.Error()
 		return item, nil
 	}
-	if fixed && reference != "head" && reference != "release" {
+	requestedVersion := request.CandidateVersion
+	if request.ToVersion != "" {
+		requestedVersion = request.ToVersion
+	}
+	if fixed && reference != "head" && reference != "release" && requestedVersion == "" {
 		item.Action = ActionPinned
 		item.ReasonCode = "immutable-version"
 		return item, nil
 	}
-	candidateVersion := catalogItem.HeadVersion
-	if reference == "release" {
+	candidateVersion := requestedVersion
+	if candidateVersion == "" && reference == "release" {
 		candidateVersion = catalogItem.ReleaseVersion
+	} else if candidateVersion == "" {
+		candidateVersion = catalogItem.HeadVersion
 	}
 	if catalogItem.Status != "available" || candidateVersion == "" {
 		item.Action = ActionFailed

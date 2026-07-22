@@ -142,7 +142,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout: '''
-{"schemaVersion":1,"phase":"update-check","items":[{"key":"hub:github.com/example/skills/-/test","skillId":"github.com/example/skills/-/test","versions":["v1"],"latestVersion":"v2","status":"update_available"}]}
+{"schemaVersion":1,"phase":"update-check","items":[{"key":"hub:github.com/example/skills/-/test","skillId":"github.com/example/skills/-/test","versions":["v1"],"releaseVersion":"v2","releaseStatus":"update_available","status":"update_available"}]}
 ''',
         stderr: '',
       );
@@ -171,9 +171,10 @@ void main() {
     ]);
 
     expect(
-      states['hub:github.com/example/skills/-/test'],
+      states['hub:github.com/example/skills/-/test']?.state,
       UpdateState.available,
     );
+    expect(states['hub:github.com/example/skills/-/test']?.toVersion, 'v2');
     expect(runner.calls, hasLength(1));
     expect(runner.lastArguments!.take(2), ['updates', 'check']);
     expect(

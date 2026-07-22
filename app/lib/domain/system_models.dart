@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends only on Dart asynchronous primitives.
- * [OUTPUT]: Provides shared status enums, App preferences, CLI process contracts, command results, and typed Skills failures.
+ * [OUTPUT]: Provides shared status enums, update availability, App preferences, CLI process contracts, command results, and typed Skills failures.
  * [POS]: Serves as the cross-journey system vocabulary used by focused App domain modules and infrastructure adapters.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,6 +11,13 @@ enum CliAvailability { ready, missing, incompatible }
 enum CliIssue { missing, damaged, incompatible }
 
 enum UpdateState { unknown, checking, upToDate, available, unsupported, failed }
+
+class UpdateAvailability {
+  const UpdateAvailability({required this.state, this.toVersion = ''});
+
+  final UpdateState state;
+  final String toVersion;
+}
 
 enum HealthState { ready, notInitialized, unreachable, invalid }
 

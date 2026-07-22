@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, update codecs, reviewed Update Plans, and progress callbacks.
- * [OUTPUT]: Provides target-specific update preflight and execution, failed-target progress, and one Catalog-only batch Library update-state check.
+ * [OUTPUT]: Provides exact-candidate target update preflight and execution, failed-target progress, and one Catalog-only batch Library update-availability check.
  * [POS]: Serves as the Update Plan capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,6 +11,7 @@ mixin _RealSkillsGatewayUpdates
   String _updateTargetArgument(
     String skillId,
     SkillInstallationTarget target, {
+    String? candidateVersion,
     String? toVersion,
     String? stateToken,
   }) => jsonEncode({
@@ -22,6 +23,7 @@ mixin _RealSkillsGatewayUpdates
     'path': target.path,
     'skillId': skillId,
     'version': target.version,
+    'candidateVersion': ?candidateVersion,
     'toVersion': ?toVersion,
     'stateToken': ?stateToken,
   });
@@ -29,8 +31,9 @@ mixin _RealSkillsGatewayUpdates
   @override
   Future<UpdatePlan> preflightUpdate(
     InstalledSkill skill,
-    List<SkillInstallationTarget> targets,
-  ) async {
+    List<SkillInstallationTarget> targets, {
+    String? toVersion,
+  }) async {
     if (skill.provenance != LibraryProvenance.hub ||
         skill.skillId.isEmpty ||
         targets.isEmpty ||
@@ -51,7 +54,11 @@ mixin _RealSkillsGatewayUpdates
     for (final target in targets) {
       arguments.addAll([
         '--target',
-        _updateTargetArgument(skill.skillId, target),
+        _updateTargetArgument(
+          skill.skillId,
+          target,
+          candidateVersion: toVersion,
+        ),
       ]);
     }
     arguments.addAll(['--preflight', '--output', 'json', '--hub', _hubOrigin]);
@@ -387,12 +394,14 @@ mixin _RealSkillsGatewayUpdates
   }
 
   @override
-  Future<Map<String, UpdateState>> checkUpdates(
+  Future<Map<String, UpdateAvailability>> checkUpdates(
     List<InstalledSkill> skills,
   ) async {
     final states = {
       for (final skill in skills)
-        _installedSkillUpdateKey(skill): UpdateState.unsupported,
+        _installedSkillUpdateKey(skill): const UpdateAvailability(
+          state: UpdateState.unsupported,
+        ),
     };
     final candidates =
         <({String key, String skillId, List<String> versions})>[];
@@ -454,12 +463,30 @@ mixin _RealSkillsGatewayUpdates
             !expected.remove(raw['key'])) {
           throw const FormatException();
         }
-        states[raw['key'] as String] = switch (raw['status']) {
-          'current' => UpdateState.upToDate,
-          'update_available' => UpdateState.available,
-          'unsupported' => UpdateState.unsupported,
-          _ => throw const FormatException(),
-        };
+        final releaseVersion = raw['releaseVersion'];
+        final headVersion = raw['headVersion'];
+        final releaseStatus = raw['releaseStatus'];
+        final headStatus = raw['headStatus'];
+        if ((releaseVersion != null && releaseVersion is! String) ||
+            (headVersion != null && headVersion is! String) ||
+            (releaseStatus != null && releaseStatus is! String) ||
+            (headStatus != null && headStatus is! String)) {
+          throw const FormatException();
+        }
+        final toVersion = releaseStatus == 'update_available'
+            ? releaseVersion as String? ?? ''
+            : headStatus == 'update_available'
+            ? headVersion as String? ?? ''
+            : '';
+        states[raw['key'] as String] = UpdateAvailability(
+          state: switch (raw['status']) {
+            'current' => UpdateState.upToDate,
+            'update_available' => UpdateState.available,
+            'unsupported' => UpdateState.unsupported,
+            _ => throw const FormatException(),
+          },
+          toVersion: toVersion,
+        );
       }
       if (expected.isNotEmpty) throw const FormatException();
     } on FormatException {

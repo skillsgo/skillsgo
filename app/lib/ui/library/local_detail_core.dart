@@ -71,8 +71,8 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
       final states = await widget.gateway.checkUpdates([skill]);
       if (!mounted) return;
       setState(
-        () =>
-            updateState = states[libraryUpdateKey(skill)] ?? UpdateState.failed,
+        () => updateState =
+            states[libraryUpdateKey(skill)]?.state ?? UpdateState.failed,
       );
     } on Object {
       if (mounted) setState(() => updateState = UpdateState.failed);
