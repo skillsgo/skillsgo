@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on macOS Flutter desktop support, Go, curl, Ruby, the App workspace with its CLI bundling phase, and optionally Docker for the alternate Hub runtime.
-# [OUTPUT]: Launches a disposable real Hub process and runs each selected App journey with its bundled Darwin CLI inside an independent redirected temporary macOS home.
+# [INPUT]: Depends on macOS Flutter desktop support, Go, curl, Ruby, the App workspace with its CLI bundling phase, isolated Hub database/cache/storage paths, and optionally Docker for the alternate Hub runtime.
+# [OUTPUT]: Launches a fully disposable real Hub process and runs each selected App journey with its bundled Darwin CLI inside an independent redirected temporary macOS home.
 # [POS]: Serves as the isolated lifecycle and execution adapter behind make test-e2e-app.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -62,6 +62,7 @@ case "${hub_runtime}" in
     )
     SKILLSGO_HUB_PORT="127.0.0.1:${hub_port}" \
     SKILLSGO_HUB_CACHE_DIR="${run_dir}/hub/cache" \
+    SKILLSGO_HUB_DATABASE_DSN="${run_dir}/hub/catalog.db" \
     SKILLSGO_HUB_STORAGE_TYPE=disk \
     SKILLSGO_HUB_DISK_STORAGE_ROOT="${run_dir}/hub/storage" \
     SKILLSGO_HUB_LOG_LEVEL=info \
@@ -82,6 +83,7 @@ case "${hub_runtime}" in
       --mount "type=bind,source=${run_dir}/hub,target=/e2e/hub" \
       --env SKILLSGO_HUB_PORT=:3000 \
       --env SKILLSGO_HUB_CACHE_DIR=/e2e/hub/cache \
+      --env SKILLSGO_HUB_DATABASE_DSN=/e2e/hub/catalog.db \
       --env SKILLSGO_HUB_STORAGE_TYPE=disk \
       --env SKILLSGO_HUB_DISK_STORAGE_ROOT=/e2e/hub/storage \
       --env SKILLSGO_HUB_LOG_LEVEL=info \
