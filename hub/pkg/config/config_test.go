@@ -400,13 +400,15 @@ func TestParseExampleConfig(t *testing.T) {
 	}
 
 	expConf := &Config{
-		Environment:       "development",
-		GithubTokens:      TokenList{},
-		LogLevel:          "debug",
-		LogFormat:         "plain",
-		SkillFetchWorkers: 10,
-		ProtocolWorkers:   30,
-		CloudRuntime:      "none",
+		Environment:             "development",
+		GithubTokens:            TokenList{},
+		LogLevel:                "debug",
+		LogFormat:               "plain",
+		SkillFetchWorkers:       10,
+		RepositoryCacheTTL:      604800,
+		RepositoryCacheMaxBytes: 10 << 30,
+		ProtocolWorkers:         30,
+		CloudRuntime:            "none",
 		TimeoutConf: TimeoutConf{
 			Timeout: 300,
 		},
@@ -451,12 +453,14 @@ func TestParseExampleConfig(t *testing.T) {
 
 func getEnvMap(config *Config) map[string]string {
 	envVars := map[string]string{
-		"SKILLSGO_HUB_ENVIRONMENT":         config.Environment,
-		"SKILLSGO_HUB_SKILL_FETCH_WORKERS": strconv.Itoa(config.SkillFetchWorkers),
-		"SKILLSGO_HUB_PROTOCOL_WORKERS":    strconv.Itoa(config.ProtocolWorkers),
-		"SKILLSGO_HUB_LOG_LEVEL":           config.LogLevel,
-		"SKILLSGO_HUB_CLOUD_RUNTIME":       config.CloudRuntime,
-		"SKILLSGO_HUB_TIMEOUT":             strconv.Itoa(config.Timeout),
+		"SKILLSGO_HUB_ENVIRONMENT":                config.Environment,
+		"SKILLSGO_HUB_SKILL_FETCH_WORKERS":        strconv.Itoa(config.SkillFetchWorkers),
+		"SKILLSGO_HUB_REPOSITORY_CACHE_TTL":       strconv.Itoa(config.RepositoryCacheTTL),
+		"SKILLSGO_HUB_REPOSITORY_CACHE_MAX_BYTES": strconv.FormatInt(config.RepositoryCacheMaxBytes, 10),
+		"SKILLSGO_HUB_PROTOCOL_WORKERS":           strconv.Itoa(config.ProtocolWorkers),
+		"SKILLSGO_HUB_LOG_LEVEL":                  config.LogLevel,
+		"SKILLSGO_HUB_CLOUD_RUNTIME":              config.CloudRuntime,
+		"SKILLSGO_HUB_TIMEOUT":                    strconv.Itoa(config.Timeout),
 	}
 
 	envVars["SKILLSGO_HUB_STORAGE_TYPE"] = config.StorageType

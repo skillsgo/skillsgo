@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the shared Git repository cache, canonical semantic Tag selection, ancestor-based pseudo-version generation, bounded timeouts, and storage revision metadata.
+ * [INPUT]: Depends on the leased shared Git repository cache, canonical semantic Tag selection, ancestor-based pseudo-version generation, bounded timeouts, and storage revision metadata.
  * [OUTPUT]: Provides TTL-cached upstream canonical Repository Tag catalogs, per-Tag commit identities, and their stable-first latest immutable revision.
  * [POS]: Serves as the upstream version-listing adapter between Git source resolution and the Hub download protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -60,6 +60,11 @@ func (l *vcsLister) ListRepositoryTags(ctx context.Context, repositoryID string)
 	if err != nil || parsed.SkillPath != "." || parsed.String() != repositoryID {
 		return nil, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
 	}
+	release, err := l.repositories.acquireRepository(parsed.Repository)
+	if err != nil {
+		return nil, err
+	}
+	defer release()
 	if _, _, err := l.List(ctx, repositoryID); err != nil {
 		return nil, err
 	}
@@ -84,6 +89,11 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 	if err != nil {
 		return nil, nil, errors.E(op, err, errors.KindNotFound)
 	}
+	release, err := l.repositories.acquireRepository(skillID.Repository)
+	if err != nil {
+		return nil, nil, errors.E(op, err)
+	}
+	defer release()
 	l.mu.Lock()
 	cached, ok := l.catalogs[skillID.Repository]
 	if ok && l.now().Before(cached.expires) {

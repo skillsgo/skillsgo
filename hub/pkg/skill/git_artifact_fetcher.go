@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on filesystem-backed collision-safe repository caches, credential-free controlled non-interactive Git source resolution, and artifact packaging.
- * [OUTPUT]: Provides public-only Git-backed Skill fetching with a controlled credential-free Git environment.
+ * [INPUT]: Depends on filesystem-backed collision-safe repository caches, bounded cache lifecycle policy, credential-free controlled non-interactive Git source resolution, and artifact packaging.
+ * [OUTPUT]: Provides public-only Git-backed Skill fetching with a controlled credential-free Git environment and concurrency-safe repository leases.
  * [POS]: Serves as maintained source in the skill package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,6 +15,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
@@ -29,6 +31,14 @@ type gitFetcher struct {
 	syncs         singleflight.Group
 	cloneURL      func(SkillID) string
 	runGitCommand func(context.Context, string, []string, []string) ([]byte, error)
+	cacheTTL      time.Duration
+	cacheMaxBytes int64
+	now           func() time.Time
+	cleanupEvery  time.Duration
+	lastCleanup   time.Time
+	cleanupMu     sync.Mutex
+	lifecycleMu   sync.Mutex
+	activeRepos   map[string]int
 }
 
 type artifactFiles struct {
@@ -38,8 +48,20 @@ type artifactFiles struct {
 	Zip     string
 }
 
+// FetcherOption configures the Git-backed Skill fetcher.
+type FetcherOption func(*gitFetcher)
+
+// WithRepositoryCachePolicy configures expiration and the aggregate on-disk
+// repository cache quota. Non-positive values disable the corresponding rule.
+func WithRepositoryCachePolicy(ttl time.Duration, maxBytes int64) FetcherOption {
+	return func(fetcher *gitFetcher) {
+		fetcher.cacheTTL = ttl
+		fetcher.cacheMaxBytes = maxBytes
+	}
+}
+
 // NewFetcher creates a Skill fetcher backed by Git.
-func NewFetcher(cacheDir string, fs afero.Fs) (Fetcher, error) {
+func NewFetcher(cacheDir string, fs afero.Fs, options ...FetcherOption) (Fetcher, error) {
 	if cacheDir == "" {
 		var err error
 		cacheDir, err = os.MkdirTemp("", "skillsgo-cache-")
@@ -50,12 +72,21 @@ func NewFetcher(cacheDir string, fs afero.Fs) (Fetcher, error) {
 	if err := fs.MkdirAll(cacheDir, 0o700); err != nil {
 		return nil, err
 	}
-	return &gitFetcher{
+	fetcher := &gitFetcher{
 		fs:            fs,
 		cacheDir:      cacheDir,
 		cloneURL:      func(skillID SkillID) string { return skillID.RepositoryURL() },
 		runGitCommand: runGitCommand,
-	}, nil
+		cacheTTL:      7 * 24 * time.Hour,
+		cacheMaxBytes: 10 << 30,
+		now:           time.Now,
+		cleanupEvery:  5 * time.Minute,
+		activeRepos:   map[string]int{},
+	}
+	for _, option := range options {
+		option(fetcher)
+	}
+	return fetcher, nil
 }
 
 // Fetch resolves and downloads an immutable Skill version from Git.
@@ -72,6 +103,15 @@ func (g *gitFetcher) fetch(ctx context.Context, skillPath, revision string, reso
 	const op errors.Op = "gitFetcher.Fetch"
 	ctx, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
+	skillID, err := ParseSkillID(skillPath)
+	if err != nil {
+		return nil, errors.E(op, err, errors.KindNotFound)
+	}
+	release, err := g.acquireRepository(skillID.Repository)
+	if err != nil {
+		return nil, errors.E(op, err)
+	}
+	defer release()
 
 	// Create an isolated workspace that is removed when the returned ZIP closes.
 	workspace, err := afero.TempDir(g.fs, g.cacheDir, "artifacts-")

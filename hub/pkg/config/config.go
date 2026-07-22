@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on TOML, environment decoding, Hub defaults, validation, and nested storage, database, presentation, and authentication settings.
- * [OUTPUT]: Provides validated Hub configuration including global and administration Basic Auth, GitHub authentication, task execution, optional translation, and skills.sh synchronization.
+ * [OUTPUT]: Provides validated Hub configuration including global and administration Basic Auth, bounded Git repository cache policy, GitHub authentication, task execution, optional translation, and skills.sh synchronization.
  * [POS]: Serves as maintained source in the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -29,49 +29,51 @@ const defaultConfigFile = "skillsgo-hub.toml"
 type Config struct {
 	TimeoutConf
 
-	Environment           string    `envconfig:"SKILLSGO_HUB_ENVIRONMENT" validate:"required"`
-	SkillFetchWorkers     int       `envconfig:"SKILLSGO_HUB_SKILL_FETCH_WORKERS"           validate:"required"`
-	SkillCacheDir         string    `ignored:"true"`
-	ProtocolWorkers       int       `envconfig:"SKILLSGO_HUB_PROTOCOL_WORKERS"        validate:"required"`
-	LogLevel              string    `envconfig:"SKILLSGO_HUB_LOG_LEVEL"               validate:"required"`
-	LogFormat             string    `envconfig:"SKILLSGO_HUB_LOG_FORMAT"              validate:"oneof='' 'json' 'plain'"`
-	CloudRuntime          string    `envconfig:"SKILLSGO_HUB_CLOUD_RUNTIME"           validate:"required_without=LogFormat"`
-	EnablePprof           bool      `envconfig:"SKILLSGO_HUB_ENABLE_PPROF"`
-	PprofPort             string    `envconfig:"SKILLSGO_HUB_PPROF_PORT"`
-	FilterFile            string    `envconfig:"SKILLSGO_HUB_FILTER_FILE"`
-	TraceExporterURL      string    `envconfig:"SKILLSGO_HUB_TRACE_EXPORTER_URL"`
-	TraceExporter         string    `envconfig:"SKILLSGO_HUB_TRACE_EXPORTER"`
-	TraceSamplingFraction float64   `envconfig:"SKILLSGO_HUB_TRACE_SAMPLING_FRACTION"`
-	StatsExporter         string    `envconfig:"SKILLSGO_HUB_STATS_EXPORTER"`
-	StorageType           string    `envconfig:"SKILLSGO_HUB_STORAGE_TYPE"            validate:"required"`
-	Port                  string    `envconfig:"SKILLSGO_HUB_PORT"`
-	UnixSocket            string    `envconfig:"SKILLSGO_HUB_UNIX_SOCKET"`
-	BasicAuthUser         string    `envconfig:"SKILLSGO_HUB_BASIC_AUTH_USER"`
-	BasicAuthPass         string    `envconfig:"SKILLSGO_HUB_BASIC_AUTH_PASS"`
-	AdminAuthUser         string    `envconfig:"SKILLSGO_HUB_ADMIN_AUTH_USER"`
-	AdminAuthPass         string    `envconfig:"SKILLSGO_HUB_ADMIN_AUTH_PASS"`
-	HomeTemplatePath      string    `envconfig:"SKILLSGO_HUB_HOME_TEMPLATE_PATH"`
-	ForceSSL              bool      `envconfig:"SKILLSGO_HUB_FORCE_SSL"`
-	ValidatorHook         string    `envconfig:"SKILLSGO_HUB_PROXY_VALIDATOR"`
-	PathPrefix            string    `envconfig:"SKILLSGO_HUB_PATH_PREFIX"`
-	GithubTokens          TokenList `envconfig:"SKILLSGO_HUB_GITHUB_TOKENS"`
-	TLSCertFile           string    `envconfig:"SKILLSGO_HUB_TLSCERT_FILE"`
-	TLSKeyFile            string    `envconfig:"SKILLSGO_HUB_TLSKEY_FILE"`
-	DownloadMode          mode.Mode `envconfig:"SKILLSGO_HUB_DOWNLOAD_MODE"`
-	DownloadURL           string    `envconfig:"SKILLSGO_HUB_DOWNLOAD_URL"`
-	NetworkMode           string    `envconfig:"SKILLSGO_HUB_NETWORK_MODE"            validate:"oneof=strict offline fallback"`
-	SingleFlightType      string    `envconfig:"SKILLSGO_HUB_SINGLE_FLIGHT_TYPE"`
-	RobotsFile            string    `envconfig:"SKILLSGO_HUB_ROBOTS_FILE"`
-	IndexType             string    `envconfig:"SKILLSGO_HUB_INDEX_TYPE"`
-	ShutdownTimeout       int       `envconfig:"SKILLSGO_HUB_SHUTDOWN_TIMEOUT"        validate:"min=0"`
-	StashTimeout          int       `envconfig:"SKILLSGO_HUB_STASH_TIMEOUT"`
-	SingleFlight          *SingleFlight
-	Storage               *Storage
-	Index                 *Index
-	Database              *DatabaseConfig
-	TaskQueue             *TaskQueueConfig
-	LLM                   *LLMConfig
-	SkillsSH              *SkillsSHConfig
+	Environment             string    `envconfig:"SKILLSGO_HUB_ENVIRONMENT" validate:"required"`
+	SkillFetchWorkers       int       `envconfig:"SKILLSGO_HUB_SKILL_FETCH_WORKERS"           validate:"required"`
+	SkillCacheDir           string    `ignored:"true"`
+	RepositoryCacheTTL      int       `envconfig:"SKILLSGO_HUB_REPOSITORY_CACHE_TTL" validate:"min=0"`
+	RepositoryCacheMaxBytes int64     `envconfig:"SKILLSGO_HUB_REPOSITORY_CACHE_MAX_BYTES" validate:"min=0"`
+	ProtocolWorkers         int       `envconfig:"SKILLSGO_HUB_PROTOCOL_WORKERS"        validate:"required"`
+	LogLevel                string    `envconfig:"SKILLSGO_HUB_LOG_LEVEL"               validate:"required"`
+	LogFormat               string    `envconfig:"SKILLSGO_HUB_LOG_FORMAT"              validate:"oneof='' 'json' 'plain'"`
+	CloudRuntime            string    `envconfig:"SKILLSGO_HUB_CLOUD_RUNTIME"           validate:"required_without=LogFormat"`
+	EnablePprof             bool      `envconfig:"SKILLSGO_HUB_ENABLE_PPROF"`
+	PprofPort               string    `envconfig:"SKILLSGO_HUB_PPROF_PORT"`
+	FilterFile              string    `envconfig:"SKILLSGO_HUB_FILTER_FILE"`
+	TraceExporterURL        string    `envconfig:"SKILLSGO_HUB_TRACE_EXPORTER_URL"`
+	TraceExporter           string    `envconfig:"SKILLSGO_HUB_TRACE_EXPORTER"`
+	TraceSamplingFraction   float64   `envconfig:"SKILLSGO_HUB_TRACE_SAMPLING_FRACTION"`
+	StatsExporter           string    `envconfig:"SKILLSGO_HUB_STATS_EXPORTER"`
+	StorageType             string    `envconfig:"SKILLSGO_HUB_STORAGE_TYPE"            validate:"required"`
+	Port                    string    `envconfig:"SKILLSGO_HUB_PORT"`
+	UnixSocket              string    `envconfig:"SKILLSGO_HUB_UNIX_SOCKET"`
+	BasicAuthUser           string    `envconfig:"SKILLSGO_HUB_BASIC_AUTH_USER"`
+	BasicAuthPass           string    `envconfig:"SKILLSGO_HUB_BASIC_AUTH_PASS"`
+	AdminAuthUser           string    `envconfig:"SKILLSGO_HUB_ADMIN_AUTH_USER"`
+	AdminAuthPass           string    `envconfig:"SKILLSGO_HUB_ADMIN_AUTH_PASS"`
+	HomeTemplatePath        string    `envconfig:"SKILLSGO_HUB_HOME_TEMPLATE_PATH"`
+	ForceSSL                bool      `envconfig:"SKILLSGO_HUB_FORCE_SSL"`
+	ValidatorHook           string    `envconfig:"SKILLSGO_HUB_PROXY_VALIDATOR"`
+	PathPrefix              string    `envconfig:"SKILLSGO_HUB_PATH_PREFIX"`
+	GithubTokens            TokenList `envconfig:"SKILLSGO_HUB_GITHUB_TOKENS"`
+	TLSCertFile             string    `envconfig:"SKILLSGO_HUB_TLSCERT_FILE"`
+	TLSKeyFile              string    `envconfig:"SKILLSGO_HUB_TLSKEY_FILE"`
+	DownloadMode            mode.Mode `envconfig:"SKILLSGO_HUB_DOWNLOAD_MODE"`
+	DownloadURL             string    `envconfig:"SKILLSGO_HUB_DOWNLOAD_URL"`
+	NetworkMode             string    `envconfig:"SKILLSGO_HUB_NETWORK_MODE"            validate:"oneof=strict offline fallback"`
+	SingleFlightType        string    `envconfig:"SKILLSGO_HUB_SINGLE_FLIGHT_TYPE"`
+	RobotsFile              string    `envconfig:"SKILLSGO_HUB_ROBOTS_FILE"`
+	IndexType               string    `envconfig:"SKILLSGO_HUB_INDEX_TYPE"`
+	ShutdownTimeout         int       `envconfig:"SKILLSGO_HUB_SHUTDOWN_TIMEOUT"        validate:"min=0"`
+	StashTimeout            int       `envconfig:"SKILLSGO_HUB_STASH_TIMEOUT"`
+	SingleFlight            *SingleFlight
+	Storage                 *Storage
+	Index                   *Index
+	Database                *DatabaseConfig
+	TaskQueue               *TaskQueueConfig
+	LLM                     *LLMConfig
+	SkillsSH                *SkillsSHConfig
 }
 
 // EnvList is a list of key-value environment
@@ -172,30 +174,32 @@ func Load(configFile string) (*Config, error) {
 
 func defaultConfig() *Config {
 	return &Config{
-		Environment:           "development",
-		GithubTokens:          TokenList{},
-		SkillFetchWorkers:     10,
-		ProtocolWorkers:       30,
-		LogLevel:              "debug",
-		LogFormat:             "plain",
-		CloudRuntime:          "none",
-		EnablePprof:           false,
-		PprofPort:             ":3001",
-		StatsExporter:         "prometheus",
-		TimeoutConf:           TimeoutConf{Timeout: 300},
-		HomeTemplatePath:      "/var/lib/skillsgo/home.html",
-		StorageType:           "disk",
-		Port:                  ":3000",
-		SingleFlightType:      "memory",
-		TraceExporterURL:      "http://localhost:4317",
-		TraceSamplingFraction: 1.0,
-		DownloadMode:          "sync",
-		DownloadURL:           "",
-		NetworkMode:           "strict",
-		RobotsFile:            "robots.txt",
-		IndexType:             "none",
-		ShutdownTimeout:       60,
-		StashTimeout:          600,
+		Environment:             "development",
+		GithubTokens:            TokenList{},
+		SkillFetchWorkers:       10,
+		RepositoryCacheTTL:      604800,
+		RepositoryCacheMaxBytes: 10 << 30,
+		ProtocolWorkers:         30,
+		LogLevel:                "debug",
+		LogFormat:               "plain",
+		CloudRuntime:            "none",
+		EnablePprof:             false,
+		PprofPort:               ":3001",
+		StatsExporter:           "prometheus",
+		TimeoutConf:             TimeoutConf{Timeout: 300},
+		HomeTemplatePath:        "/var/lib/skillsgo/home.html",
+		StorageType:             "disk",
+		Port:                    ":3000",
+		SingleFlightType:        "memory",
+		TraceExporterURL:        "http://localhost:4317",
+		TraceSamplingFraction:   1.0,
+		DownloadMode:            "sync",
+		DownloadURL:             "",
+		NetworkMode:             "strict",
+		RobotsFile:              "robots.txt",
+		IndexType:               "none",
+		ShutdownTimeout:         60,
+		StashTimeout:            600,
 		Storage: &Storage{
 			Disk: &DiskConfig{},
 		},

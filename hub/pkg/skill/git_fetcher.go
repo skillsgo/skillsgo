@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on canonical Skill IDs, Git commit and ancestor-tag inspection, semantic and pseudo-version helpers, the shared repository cache, credential-free controlled Git transport, manifest validation, and SkillsGo artifact assembly.
- * [OUTPUT]: Provides bounded public-only Git synchronization, Go-compatible ancestor-based immutable revision resolution, repository-owned Skill discovery, and source-identity metadata.
+ * [INPUT]: Depends on canonical Skill IDs, Git commit and ancestor-tag inspection, semantic and pseudo-version helpers, the leased lifecycle-managed repository cache, credential-free controlled Git transport, manifest validation, and SkillsGo artifact assembly.
+ * [OUTPUT]: Provides bounded public-only Git synchronization, throttled cache maintenance, Go-compatible ancestor-based immutable revision resolution, repository-owned Skill discovery, and source-identity metadata.
  * [POS]: Serves as the Git source resolver and Repository snapshot coordinator in the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -117,6 +117,11 @@ func (g *gitFetcher) Resolve(ctx context.Context, skillPath, revision string) (*
 	if err != nil {
 		return nil, errors.E(op, err, errors.KindNotFound)
 	}
+	release, err := g.acquireRepository(skillID.Repository)
+	if err != nil {
+		return nil, errors.E(op, err)
+	}
+	defer release()
 	if err := g.syncRepository(ctx, skillID); err != nil {
 		return nil, err
 	}
@@ -135,6 +140,11 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revis
 	if err != nil || repository.SkillPath != "." || repository.String() != repositoryID {
 		return nil, errors.E(op, fmt.Errorf("invalid canonical Repository ID %q", repositoryID), errors.KindBadRequest)
 	}
+	release, err := g.acquireRepository(repository.Repository)
+	if err != nil {
+		return nil, errors.E(op, err)
+	}
+	defer release()
 	if err := g.syncRepository(ctx, repository); err != nil {
 		return nil, err
 	}
@@ -235,6 +245,9 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 			"source_host":   strings.SplitN(skillID.Repository, "/", 2)[0],
 		})
 		entry.Debugf("repository git synchronization started")
+		if err := g.maybeCleanupRepositoryCache(); err != nil {
+			entry.WithFields(map[string]any{"error": err.Error()}).Warnf("repository cache cleanup failed")
+		}
 		repoDir, err := g.repositoryDir(skillID.Repository)
 		if err != nil {
 			return nil, errors.E(op, err)
@@ -462,7 +475,7 @@ func (g *gitFetcher) writeRepositoryMetadata(repoDir string, skillID SkillID) er
 	data, err := json.MarshalIndent(repositoryMetadata{
 		Repository: skillID.Repository,
 		URL:        skillID.RepositoryURL(),
-		UpdatedAt:  time.Now().UTC(),
+		UpdatedAt:  g.now().UTC(),
 	}, "", "  ")
 	if err != nil {
 		return err

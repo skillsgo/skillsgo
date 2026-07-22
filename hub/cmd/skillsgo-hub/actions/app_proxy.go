@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
@@ -94,7 +95,11 @@ func addProxyRoutesWithCatalog(
 	// Public Hub publication is intentionally credential-free. GitHub tokens
 	// are reserved for metadata APIs and must never expand the set of source
 	// Repositories whose contents can become public artifacts.
-	skillFetcher, err := skill.NewFetcher(c.SkillCacheDir, fs)
+	skillFetcher, err := skill.NewFetcher(
+		c.SkillCacheDir,
+		fs,
+		skill.WithRepositoryCachePolicy(time.Duration(c.RepositoryCacheTTL)*time.Second, c.RepositoryCacheMaxBytes),
+	)
 	if err != nil {
 		return err
 	}
