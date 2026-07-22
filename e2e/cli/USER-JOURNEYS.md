@@ -363,6 +363,14 @@ The journey passes `--yes`, preserves the pre-existing external target, and veri
 
 Status: implemented with the deterministic multi-Skill collection Repository and default symlink mode by `j46_repository_add_atomicity_test.go`.
 
+### J47 — Warm and inspect immutable local cache state
+
+As a user preparing an offline or repeatable environment, I want to download and verify one exact immutable Skill without installing it, then understand and verify the installation after I explicitly add it.
+
+The journey warms the exact artifact into the Store without creating a target or Workspace declaration, installs the cached coordinate, observes direct declaration/target evidence through `why`, verifies healthy state, modifies the copy-mode target, and receives a failing `verify` result without any repair or mutation.
+
+Status: implemented through the released CLI and Hub plus observable Store and Workspace state by `j47_cache_and_inspection_test.go`.
+
 ## GitHub Issue #27 User-Story Coverage Index
 
 The numbered user stories in #27 are release-reviewed through these black-box journeys:
@@ -391,3 +399,4 @@ The numbered user stories in #27 are release-reviewed through these black-box jo
 | Untagged F1 preservation after V1 publication and C2 advance | J44 |
 | Repository-fresh batched head/release update checking | J45 |
 | Whole-Repository installation atomicity | J46 |
+| Exact cache warming and local integrity inspection | J47 |
