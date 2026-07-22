@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on validated Skill IDs, immutable Hub Info or Local Skill metadata, shared validated ZIP traversal, and filesystem containment rules.
- * [OUTPUT]: Provides concurrency-safe confined Store put/get operations, collision-safe canonical extraction, read-only immutable artifacts, integrity checks, provenance receipts, and separately refreshable assessment metadata.
+ * [OUTPUT]: Provides concurrency-safe confined coordinate put/get operations, cross-coordinate Hub CAS objects, collision-safe extraction, read-only immutable artifacts, integrity checks, provenance receipts, and separately refreshable assessment metadata.
  * [POS]: Serves as the local Content-addressed Store boundary beneath installation and inventory flows.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -88,7 +88,10 @@ func (s Store) Get(skillID, version string) (*Entry, error) {
 	if !receipt.Risk.Valid() || !hub.ValidSum(receipt.Sum) {
 		return nil, fmt.Errorf("Store entry is missing immutable assessment metadata")
 	}
-	artifact := filepath.Join(root, "artifact")
+	artifact, err := s.referencedArtifactRoot(root)
+	if err != nil {
+		return nil, err
+	}
 	if info, err := os.Stat(filepath.Join(artifact, "SKILL.md")); err != nil || !info.Mode().IsRegular() {
 		if err == nil {
 			err = fmt.Errorf("不是普通文件")
@@ -177,11 +180,17 @@ func (s Store) put(artifact *hub.Artifact, provenance Provenance, sourceSkillID 
 		return nil, err
 	}
 	defer os.RemoveAll(temp)
-	if err := extract(artifact.ZIP, artifact.SkillID, artifact.Info.Version, filepath.Join(temp, "artifact")); err != nil {
+	temporaryArtifact := filepath.Join(temp, "artifact")
+	if err := extract(artifact.ZIP, artifact.SkillID, artifact.Info.Version, temporaryArtifact); err != nil {
 		return nil, err
 	}
 	if provenance == ProvenanceHub {
-		if err := makeArtifactReadOnly(filepath.Join(temp, "artifact")); err != nil {
+		var objectKey string
+		artifactRoot, objectKey, err = s.publishHubObject(temporaryArtifact, receipt.Sum)
+		if err != nil {
+			return nil, err
+		}
+		if err := os.WriteFile(filepath.Join(temp, objectReferenceFile), []byte(objectKey+"\n"), 0o600); err != nil {
 			return nil, err
 		}
 	}

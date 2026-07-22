@@ -3,28 +3,29 @@
 
 ## Members
 
-- `root.go`: constructs the public Cobra command graph, exposes the `Execute` behavior seam, emits recognized machine-mode failures, adapts unified inventory into `list`, and reports legacy Human operations through terminal UI documents/events.
+- `root.go`: constructs the public Cobra command graph, exposes the `Execute` behavior seam, emits recognized machine-mode failures, adapts unified inventory into `list`, wires safe cache lifecycle commands, and reports legacy Human operations through terminal UI documents/events.
 - `machine_failure.go`: translates wrapped command failures into the minimal versioned JSON or NDJSON machine document without making stderr a parsing contract.
 - `machine_failure_test.go`: specifies early JSON and NDJSON failure documents through the public `Execute` seam.
 - `terminal_ui.go`: resolves inherited Human UI/color policy into the shared terminal presentation Adapter.
 - `args.go`: normalizes compatible multi-value flag syntax before Cobra parses arguments.
 - `diagnostics.go`: exposes versioned, read-only local Store health for App integration and adaptive terminal diagnostics.
 - `diagnostics_test.go`: specifies Store diagnostics schema, readability states, and non-mutating inspection.
+- `cache.go`, `cache_test.go`: expose and specify dry-run-by-default, grace-bounded, reference-aware Hub CAS object garbage collection through the public Execute seam.
 - `exit_code.go`, `exit_code_test.go`: classify wrapped Hub availability and timeout failures into stable process exit codes consumed by the App without parsing stderr.
 - `agents.go`: exposes complete supported and installed Agent discovery through versioned JSON and grouped adaptive Human output.
 - `agents_test.go`: specifies the stable App-facing Agent discovery machine contract.
 - `info.go`: exposes direct, read-only Repository or Skill JSON with immutable source identity plus provider-neutral Hub product metadata, including Repository descriptions required by App cards.
-- `info_test.go`: specifies lazy latest resolution, Repository description preservation, exact Repository-batch member selection, stable JSON, missing-member failure, and the no-local-write boundary.
+- `info_test.go`: specifies explicit head/release resolution, Repository description preservation, exact Repository-batch member selection, stable JSON, missing-member failure, and the no-local-write boundary.
 - `product_reads.go`: exposes `discover`, `detail`, and `hub check` as deep read-only App machine contracts, including optional description locale forwarding, while hiding Hub routes and query parameters behind CLI domain language.
 - `product_reads_test.go`: specifies domain-to-Hub translation through Execute and rejects raw or unknown discovery collections.
-- `catalog_update_check.go`, `catalog_update_check_test.go`: expose and specify one bounded read-only App machine command that compares installed Library-entry versions with independently built Hub Catalog versions without invoking artifact or Repository resolution.
+- `catalog_update_check.go`, `catalog_update_check_test.go`: expose and specify one bounded read-only App machine command that compares installed Library-entry versions with Repository-fresh head/release candidates resolved once per Repository.
 - `export.go`: exports one private Local Skill artifact with machine confirmation or adaptive Human progress, without Hub access.
 - `inventory.go`: adapts the managed/external inventory domain report into stable JSON and grouped adaptive Human output.
 - `inventory_test.go`: specifies Skill ID aggregation, External inventory-key separation, read-only inspection, target health, Workspace reconciliation, and the explicit-project privacy boundary.
 - `takeover.go`: preflights explicitly selected skills.sh user/Workspace lock-backed External copies into a bounded, expiring, lock-identity- and filesystem-state-bound plan with exact per-location counts, then registers authorized unchanged candidates as captured Store baselines plus exact target Receipt and declaration state, returning named per-item outcomes without Hub access or target materialization.
 - `takeover_test.go`: specifies read-only preflight, plan-bound execution, exact User/Workspace counts, scope isolation, XDG, provider-aware and record-isolated lock parsing, lock-ref changes, malformed and bounded ephemeral plans, divergent-copy, identical-baseline, safe-alias, partial-success, schema, localization, idempotency, target-byte preservation, and managed-inventory Batch Takeover behavior through `Execute`.
 - `list_test.go`: specifies that global listing uses unified inventory and includes externally installed Agent Skills.
-- `installation_plan.go`: adapts strict repeated target JSON, resolves Hub artifacts or existing private Local Store artifacts, persists verified Repository/Skill integrity for every declaration root, refreshes cached immutable assessments, maps `--yes` to automatic replacement, and emits direct Human or JSON execution results.
+- `installation_plan.go`: adapts strict repeated target JSON, resolves Hub artifacts or existing private Local Store artifacts, persists verified Repository/Skill integrity for every declaration root, refreshes cached immutable assessments, keeps confirmation separate from explicit replacement authority, and emits direct Human or JSON execution results.
 - `installation_plan_test.go`: specifies explicit multi-location/Agent plans, complete Workspace Manifest/Sum persistence, refreshed trusted-risk gates, state-bound resolutions, skip behavior, hostile structured inputs, partial failure retention, and per-target NDJSON through `Execute`.
 - `management_plan.go`: adapts repeatable flat exact-target flags into top-level Remove/Repair preflight JSON and adaptive Human, JSON, or NDJSON execution progress/results.
 - `management_plan_test.go`: specifies exact managed and External removal, unsafe-remove blocking, Repair, Workspace ownership cleanup, Store retention, and complete JSON/NDJSON failure documents before non-zero `Execute` results.
@@ -34,7 +35,7 @@
 - `args_test.go`: covers public argument normalization and environment-gated test Agent behavior.
 - `i18n_test.go`: covers localized root and Local export command help.
 - `install_flow_test.go`: exercises Repository and selected-Skill installation, canonical Workspace Manifest pinning after query resolution, update, and restoration through `Execute`.
-- `repository_add.go`: orchestrates whole-Repository Info selection, checksum verification, Store admission, Agent projection, and one-requirement Manifest persistence.
+- `repository_add.go`: orchestrates whole-Repository Info selection, checksum verification, Store admission, all-member Agent projection, and one atomic target/Receipt/Sum/Manifest transaction with explicit replacement authority.
 - `repository_add_test.go`: specifies Repository selector matching and per-selector Version Query precedence.
 - `workspace_integrity.go`: validates complete immutable resource evidence before atomically extending every destination Workspace Sum and publishing exact Info Cache entries for all installation entry points.
 - `workspace_restore.go`: restores exact direct requirements from Workspace Sum, immutable Info Cache, Store, and current Agent roots without a lockfile.
