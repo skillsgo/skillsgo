@@ -52,7 +52,7 @@ func TestJ11UserScope(t *testing.T) {
 	)
 	require.Equal(t, 0, remove.exitCode, remove.output)
 	require.NoDirExists(t, userTarget)
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Store, "artifact", "SKILL.md"))
+	require.FileExists(t, storeArtifactPath(t, sandboxRoot, installed.Store, "SKILL.md"))
 }
 
 func TestJ11AgentSpecificHomeOverride(t *testing.T) {

@@ -61,5 +61,5 @@ func TestJ10RemoveOneBinding(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(manifest), "codex")
 	require.NotContains(t, string(manifest), "claude-code")
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Store, "artifact", "SKILL.md"))
+	require.FileExists(t, storeArtifactPath(t, sandboxRoot, installed.Store, "SKILL.md"))
 }
