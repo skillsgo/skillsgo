@@ -276,6 +276,15 @@ void main() {
         find.byKey(const Key('batch-takeover-board-complete')),
         findsOneWidget,
       );
+      final statLeft = tester
+          .getTopLeft(find.byKey(const Key('batch-takeover-stat-value')).first)
+          .dx;
+      final checkLeft = tester
+          .getTopLeft(
+            find.byKey(const Key('batch-takeover-benefit-check')).first,
+          )
+          .dx;
+      expect(statLeft, checkLeft);
       await tester.tap(find.text('Close'));
       await tester.pumpAndSettle();
 

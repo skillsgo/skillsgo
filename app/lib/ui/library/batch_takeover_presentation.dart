@@ -1477,12 +1477,28 @@ class _TakeoverBenefitRow extends StatelessWidget {
         ),
       ),
       const SizedBox(width: 8),
-      const SizedBox(
-        width: 12,
-        height: 12,
-        child: CustomPaint(painter: _TakeoverPixelCheckPainter()),
+      const _TakeoverSettlementTrailingSlot(
+        child: SizedBox(
+          key: Key('batch-takeover-benefit-check'),
+          width: 12,
+          height: 12,
+          child: CustomPaint(painter: _TakeoverPixelCheckPainter()),
+        ),
       ),
     ],
+  );
+}
+
+class _TakeoverSettlementTrailingSlot extends StatelessWidget {
+  const _TakeoverSettlementTrailingSlot({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 28,
+    height: 12,
+    child: Align(alignment: Alignment.centerLeft, child: child),
   );
 }
 
@@ -1529,7 +1545,13 @@ class _TakeoverSettlementStat extends StatelessWidget {
           ),
         ),
       ),
-      _TakeoverLcdNumber('$value', color: _takeoverLcdInk),
+      _TakeoverSettlementTrailingSlot(
+        child: _TakeoverLcdNumber(
+          '$value',
+          key: const Key('batch-takeover-stat-value'),
+          color: _takeoverLcdInk,
+        ),
+      ),
     ],
   );
 }
@@ -1798,7 +1820,7 @@ class _TakeoverStatusItem extends StatelessWidget {
 }
 
 class _TakeoverLcdNumber extends StatelessWidget {
-  const _TakeoverLcdNumber(this.value, {required this.color});
+  const _TakeoverLcdNumber(this.value, {super.key, required this.color});
 
   final String value;
   final Color color;
