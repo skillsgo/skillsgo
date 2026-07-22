@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on temporary Git repositories, the Skill ID parser, repository caching, Git resolution, and SkillsGo-owned artifact ZIP assembly.
- * [OUTPUT]: Specifies shared repository caching, Go-compatible ancestor-based pseudo-versions, batch-version identity including v2+ tags without Go Module suffixes, nested Skill archives, refresh, tag listing, and concurrent access behavior.
+ * [INPUT]: Depends on temporary Git repositories, the Skill ID parser, repository cache leases and lifecycle policy, Git resolution, and SkillsGo-owned artifact ZIP assembly.
+ * [OUTPUT]: Specifies shared repository caching, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, batch-version identity including v2+ tags without Go Module suffixes, nested Skill archives, refresh, tag listing, and concurrent access behavior.
  * [POS]: Serves as the repository integration contract for the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -250,6 +250,53 @@ func TestRepositoryCacheIsSharedBySkillsInOneRepository(t *testing.T) {
 	entries, err := os.ReadDir(filepath.Join(f.cache, "repositories", "github.com"))
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
+}
+
+func TestRepositoryCacheCleanupRemovesExpiredInactiveRepository(t *testing.T) {
+	root := t.TempDir()
+	fetcher, err := NewFetcher(root, afero.NewOsFs(), WithRepositoryCachePolicy(time.Hour, 0))
+	require.NoError(t, err)
+	g := fetcher.(*gitFetcher)
+	now := time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)
+	g.now = func() time.Time { return now }
+	dir := writeRepositoryCacheFixture(t, g, "github.com/acme/expired", now.Add(-2*time.Hour), 32)
+
+	require.NoError(t, g.cleanupRepositoryCache())
+	_, err = os.Stat(dir)
+	require.ErrorIs(t, err, os.ErrNotExist)
+}
+
+func TestRepositoryCacheCleanupUsesLRUQuotaAndProtectsActiveRepository(t *testing.T) {
+	root := t.TempDir()
+	fetcher, err := NewFetcher(root, afero.NewOsFs(), WithRepositoryCachePolicy(0, 80))
+	require.NoError(t, err)
+	g := fetcher.(*gitFetcher)
+	now := time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)
+	g.now = func() time.Time { return now }
+	activeDir := writeRepositoryCacheFixture(t, g, "github.com/acme/active", now.Add(-3*time.Hour), 64)
+	oldDir := writeRepositoryCacheFixture(t, g, "github.com/acme/old", now.Add(-2*time.Hour), 64)
+	newDir := writeRepositoryCacheFixture(t, g, "github.com/acme/new", now.Add(-time.Hour), 64)
+	release, err := g.acquireRepository("github.com/acme/active")
+	require.NoError(t, err)
+	defer release()
+
+	require.NoError(t, g.cleanupRepositoryCache())
+	require.DirExists(t, activeDir)
+	require.NoDirExists(t, oldDir)
+	require.NoDirExists(t, newDir, "quota remains exceeded after preserving the active mirror")
+}
+
+func writeRepositoryCacheFixture(t *testing.T, g *gitFetcher, repository string, updatedAt time.Time, bytes int) string {
+	t.Helper()
+	dir, err := g.repositoryDir(repository)
+	require.NoError(t, err)
+	require.NoError(t, os.MkdirAll(dir, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "objects.pack"), make([]byte, bytes), 0o644))
+	metadata, err := json.Marshal(repositoryMetadata{Repository: repository, URL: "https://" + repository, UpdatedAt: updatedAt})
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(filepath.Join(dir, "metadata.json"), metadata, 0o644))
+	require.NoError(t, os.Chtimes(filepath.Join(dir, "metadata.json"), updatedAt, updatedAt))
+	return dir
 }
 
 func TestRepositoryDiscoverySkipsInvalidCandidatesWithoutBlockingValidSiblings(t *testing.T) {
