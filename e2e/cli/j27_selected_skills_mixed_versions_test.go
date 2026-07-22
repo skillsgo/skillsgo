@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the disposable E2E environment and public repeated --skill Version Query contract.
- * [OUTPUT]: Provides black-box coverage for human Repository URLs, inherited selector versions, and per-Skill version overrides.
+ * [OUTPUT]: Provides black-box coverage for human Repository URLs, inherited exact versions, and per-Skill exact or head overrides.
  * [POS]: Serves as the mixed selected-member installation journey in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -40,24 +40,23 @@ func TestJ27SelectedSkillsMixedVersions(t *testing.T) {
 	require.NotContains(t, string(manifest), "fixtures.test/group/subgroup/mixed:")
 
 	resetLocalInstallation(t, ctx, container)
-	branch := execCLI(t, ctx, container,
-		"add", "https://fixtures.test/group/subgroup/mixed", "--skill", "alpha@main",
+	head := execCLI(t, ctx, container,
+		"add", "https://fixtures.test/group/subgroup/mixed", "--skill", "alpha@head",
 		"--agent", "codex", "--copy", "--yes", "--output", "json",
 	)
-	require.Equal(t, 0, branch.exitCode, branch.output)
-	branchSkill, err := os.ReadFile(filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
+	require.Equal(t, 0, head.exitCode, head.output)
+	headSkill, err := os.ReadFile(filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
 	require.NoError(t, err)
-	require.Contains(t, string(branchSkill), "Alpha v2.")
+	require.Contains(t, string(headSkill), "Alpha v2.")
 
 	resetLocalInstallation(t, ctx, container)
 	commit := execInContainer(t, ctx, container, "git", "--git-dir=/e2e/git/group/subgroup/mixed", "rev-parse", "v1.0.0^{commit}")
 	require.Equal(t, 0, commit.exitCode, commit.output)
-	pinned := execCLI(t, ctx, container,
+	rejected := execCLI(t, ctx, container,
 		"add", "https://fixtures.test/group/subgroup/mixed", "--skill", "alpha@"+strings.TrimSpace(commit.output),
 		"--agent", "codex", "--copy", "--yes", "--output", "json",
 	)
-	require.Equal(t, 0, pinned.exitCode, pinned.output)
-	pinnedSkill, err := os.ReadFile(filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
-	require.NoError(t, err)
-	require.Contains(t, string(pinnedSkill), "Alpha v1.")
+	require.NotEqual(t, 0, rejected.exitCode, rejected.output)
+	require.Contains(t, rejected.output, "head")
+	require.Contains(t, rejected.output, "release")
 }

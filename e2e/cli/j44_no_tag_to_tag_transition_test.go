@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the mutable no-tag Repository fixture, public CLI Info resolution, Git tag publication, and a later default-branch commit.
- * [OUTPUT]: Provides black-box coverage that F1 remains immutable after V1 tags C1, latest selects V1, and main at C2 selects an ancestor-based F2.
+ * [OUTPUT]: Provides black-box coverage that F1 remains immutable after V1 tags C1, release selects V1, and head at C2 selects an ancestor-based F2.
  * [POS]: Serves as the no-tag-to-tag Repository lifecycle journey across Git, Hub, and CLI version queries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -35,7 +35,7 @@ func TestJ44NoTagToTagTransition(t *testing.T) {
 		return info
 	}
 
-	f1 := infoFor(t, source+"@main")
+	f1 := infoFor(t, source+"@head")
 	require.True(t, strings.HasPrefix(f1.Version, "v0.0.0-"), f1.Version)
 	require.Contains(t, f1.Version, f1.CommitSHA[:12])
 
@@ -59,8 +59,8 @@ func TestJ44NoTagToTagTransition(t *testing.T) {
 		wantCommit string
 	}{
 		{name: "old F1 remains C1", query: f1.Version, want: f1.Version, wantCommit: f1.CommitSHA},
-		{name: "latest selects V1 at C1", query: "latest", want: "v1.0.0", wantCommit: f1.CommitSHA},
-		{name: "main selects F2 at C2", query: "main", want: "F2"},
+		{name: "release selects V1 at C1", query: "release", want: "v1.0.0", wantCommit: f1.CommitSHA},
+		{name: "head selects F2 at C2", query: "head", want: "F2"},
 	}
 	require.Len(t, tests, 3, "transition lifecycle query row count")
 	for _, tc := range tests {

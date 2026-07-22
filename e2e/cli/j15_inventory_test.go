@@ -25,8 +25,9 @@ func TestJ15Inventory(t *testing.T) {
 	require.NoError(t, os.MkdirAll(targetPath, 0o700))
 	require.NoError(t, os.WriteFile(skillPath, []byte("---\nname: ask-matt\n---\n"), 0o600))
 
+	managedSkillID := "fixtures.test/group/subgroup/collection/-/skills/alpha"
 	managedAdd := execCLI(t, ctx, container,
-		"add", testReplacementSkillID+"@"+testReplacementCommit,
+		"add", managedSkillID+"@v1.0.0",
 		"--agent", "codex",
 		"--copy",
 		"--yes",
@@ -74,7 +75,7 @@ func TestJ15Inventory(t *testing.T) {
 	require.Equal(t, "external", entries["ask-matt"].Provenance)
 	require.Empty(t, entries["ask-matt"].SkillID)
 	require.Equal(t, "/e2e/project/.agents/skills/ask-matt", entries["ask-matt"].Path)
-	require.Equal(t, "hub", entries["moving-head"].Provenance)
-	require.Equal(t, testReplacementSkillID, entries["moving-head"].SkillID)
-	require.Equal(t, "healthy", entries["moving-head"].Health)
+	require.Equal(t, "hub", entries["alpha"].Provenance)
+	require.Equal(t, managedSkillID, entries["alpha"].SkillID)
+	require.Equal(t, "healthy", entries["alpha"].Health)
 }
