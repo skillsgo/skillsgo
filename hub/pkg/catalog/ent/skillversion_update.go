@@ -86,16 +86,16 @@ func (_u *SkillVersionUpdate) SetNillableTreeSha(v *string) *SkillVersionUpdate 
 	return _u
 }
 
-// SetSum sets the "sum" field.
-func (_u *SkillVersionUpdate) SetSum(v string) *SkillVersionUpdate {
-	_u.mutation.SetSum(v)
+// SetRelativePath sets the "relative_path" field.
+func (_u *SkillVersionUpdate) SetRelativePath(v string) *SkillVersionUpdate {
+	_u.mutation.SetRelativePath(v)
 	return _u
 }
 
-// SetNillableSum sets the "sum" field if the given value is not nil.
-func (_u *SkillVersionUpdate) SetNillableSum(v *string) *SkillVersionUpdate {
+// SetNillableRelativePath sets the "relative_path" field if the given value is not nil.
+func (_u *SkillVersionUpdate) SetNillableRelativePath(v *string) *SkillVersionUpdate {
 	if v != nil {
-		_u.SetSum(*v)
+		_u.SetRelativePath(*v)
 	}
 	return _u
 }
@@ -111,27 +111,6 @@ func (_u *SkillVersionUpdate) SetNillableCommitTime(v *time.Time) *SkillVersionU
 	if v != nil {
 		_u.SetCommitTime(*v)
 	}
-	return _u
-}
-
-// SetArchiveSize sets the "archive_size" field.
-func (_u *SkillVersionUpdate) SetArchiveSize(v int64) *SkillVersionUpdate {
-	_u.mutation.ResetArchiveSize()
-	_u.mutation.SetArchiveSize(v)
-	return _u
-}
-
-// SetNillableArchiveSize sets the "archive_size" field if the given value is not nil.
-func (_u *SkillVersionUpdate) SetNillableArchiveSize(v *int64) *SkillVersionUpdate {
-	if v != nil {
-		_u.SetArchiveSize(*v)
-	}
-	return _u
-}
-
-// AddArchiveSize adds value to the "archive_size" field.
-func (_u *SkillVersionUpdate) AddArchiveSize(v int64) *SkillVersionUpdate {
-	_u.mutation.AddArchiveSize(v)
 	return _u
 }
 
@@ -245,9 +224,9 @@ func (_u *SkillVersionUpdate) check() error {
 			return &ValidationError{Name: "tree_sha", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.tree_sha": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Sum(); ok {
-		if err := skillversion.SumValidator(v); err != nil {
-			return &ValidationError{Name: "sum", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.sum": %w`, err)}
+	if v, ok := _u.mutation.RelativePath(); ok {
+		if err := skillversion.RelativePathValidator(v); err != nil {
+			return &ValidationError{Name: "relative_path", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.relative_path": %w`, err)}
 		}
 	}
 	if _u.mutation.SkillCleared() && len(_u.mutation.SkillIDs()) > 0 {
@@ -277,17 +256,11 @@ func (_u *SkillVersionUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if value, ok := _u.mutation.TreeSha(); ok {
 		_spec.SetField(skillversion.FieldTreeSha, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.Sum(); ok {
-		_spec.SetField(skillversion.FieldSum, field.TypeString, value)
+	if value, ok := _u.mutation.RelativePath(); ok {
+		_spec.SetField(skillversion.FieldRelativePath, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.CommitTime(); ok {
 		_spec.SetField(skillversion.FieldCommitTime, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.ArchiveSize(); ok {
-		_spec.SetField(skillversion.FieldArchiveSize, field.TypeInt64, value)
-	}
-	if value, ok := _u.mutation.AddedArchiveSize(); ok {
-		_spec.AddField(skillversion.FieldArchiveSize, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(skillversion.FieldCreatedAt, field.TypeTime, value)
@@ -442,16 +415,16 @@ func (_u *SkillVersionUpdateOne) SetNillableTreeSha(v *string) *SkillVersionUpda
 	return _u
 }
 
-// SetSum sets the "sum" field.
-func (_u *SkillVersionUpdateOne) SetSum(v string) *SkillVersionUpdateOne {
-	_u.mutation.SetSum(v)
+// SetRelativePath sets the "relative_path" field.
+func (_u *SkillVersionUpdateOne) SetRelativePath(v string) *SkillVersionUpdateOne {
+	_u.mutation.SetRelativePath(v)
 	return _u
 }
 
-// SetNillableSum sets the "sum" field if the given value is not nil.
-func (_u *SkillVersionUpdateOne) SetNillableSum(v *string) *SkillVersionUpdateOne {
+// SetNillableRelativePath sets the "relative_path" field if the given value is not nil.
+func (_u *SkillVersionUpdateOne) SetNillableRelativePath(v *string) *SkillVersionUpdateOne {
 	if v != nil {
-		_u.SetSum(*v)
+		_u.SetRelativePath(*v)
 	}
 	return _u
 }
@@ -467,27 +440,6 @@ func (_u *SkillVersionUpdateOne) SetNillableCommitTime(v *time.Time) *SkillVersi
 	if v != nil {
 		_u.SetCommitTime(*v)
 	}
-	return _u
-}
-
-// SetArchiveSize sets the "archive_size" field.
-func (_u *SkillVersionUpdateOne) SetArchiveSize(v int64) *SkillVersionUpdateOne {
-	_u.mutation.ResetArchiveSize()
-	_u.mutation.SetArchiveSize(v)
-	return _u
-}
-
-// SetNillableArchiveSize sets the "archive_size" field if the given value is not nil.
-func (_u *SkillVersionUpdateOne) SetNillableArchiveSize(v *int64) *SkillVersionUpdateOne {
-	if v != nil {
-		_u.SetArchiveSize(*v)
-	}
-	return _u
-}
-
-// AddArchiveSize adds value to the "archive_size" field.
-func (_u *SkillVersionUpdateOne) AddArchiveSize(v int64) *SkillVersionUpdateOne {
-	_u.mutation.AddArchiveSize(v)
 	return _u
 }
 
@@ -614,9 +566,9 @@ func (_u *SkillVersionUpdateOne) check() error {
 			return &ValidationError{Name: "tree_sha", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.tree_sha": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.Sum(); ok {
-		if err := skillversion.SumValidator(v); err != nil {
-			return &ValidationError{Name: "sum", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.sum": %w`, err)}
+	if v, ok := _u.mutation.RelativePath(); ok {
+		if err := skillversion.RelativePathValidator(v); err != nil {
+			return &ValidationError{Name: "relative_path", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.relative_path": %w`, err)}
 		}
 	}
 	if _u.mutation.SkillCleared() && len(_u.mutation.SkillIDs()) > 0 {
@@ -663,17 +615,11 @@ func (_u *SkillVersionUpdateOne) sqlSave(ctx context.Context) (_node *SkillVersi
 	if value, ok := _u.mutation.TreeSha(); ok {
 		_spec.SetField(skillversion.FieldTreeSha, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.Sum(); ok {
-		_spec.SetField(skillversion.FieldSum, field.TypeString, value)
+	if value, ok := _u.mutation.RelativePath(); ok {
+		_spec.SetField(skillversion.FieldRelativePath, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.CommitTime(); ok {
 		_spec.SetField(skillversion.FieldCommitTime, field.TypeTime, value)
-	}
-	if value, ok := _u.mutation.ArchiveSize(); ok {
-		_spec.SetField(skillversion.FieldArchiveSize, field.TypeInt64, value)
-	}
-	if value, ok := _u.mutation.AddedArchiveSize(); ok {
-		_spec.AddField(skillversion.FieldArchiveSize, field.TypeInt64, value)
 	}
 	if value, ok := _u.mutation.CreatedAt(); ok {
 		_spec.SetField(skillversion.FieldCreatedAt, field.TypeTime, value)
