@@ -69,13 +69,15 @@ void main() {
       await windowManager.setSize(const Size(1400, 960));
       await windowManager.center();
       await tester.pumpAndSettle(const Duration(seconds: 2));
-      await tester.tap(
-        find.byKey(const ValueKey('primary-destination-library')),
+      final libraryDestination = find.byKey(
+        const ValueKey('primary-destination-library'),
       );
+      await _pumpUntil(tester, libraryDestination);
+      await tester.tap(libraryDestination);
 
       await _pumpUntilTakeoverCount(tester, 2);
-      await _pumpUntil(tester, _railCountLabel(2));
-      expect(_railCountLabel(2), findsOneWidget);
+      await _pumpUntil(tester, _projectRailCount('takeover-project', 1));
+      expect(_projectRailCount('takeover-project', 1), findsOneWidget);
       await _dismissAutomaticTakeoverStory(tester);
 
       await tester.tap(_railButton(find.text('takeover-project')));
@@ -94,14 +96,13 @@ void main() {
         File('${projectTarget.path}/SKILL.md').readAsBytesSync(),
         projectSkillBytes,
       );
-      await _pumpUntil(tester, _railCountLabel(0));
-      expect(_railCountLabel(0), findsOneWidget);
-      expect(_railCountLabel(1), findsNWidgets(2));
+      await _pumpUntil(tester, _projectRailCount('takeover-project', 0));
+      expect(_projectRailCount('takeover-project', 0), findsOneWidget);
 
       await tester.tap(_railButton(_globalRailLabel()));
       await _pumpUntilTakeoverCount(tester, 1);
       await _executeTakeover(tester, takenOver: 1, skipped: 0);
-      await _pumpUntil(tester, _railCountLabel(0));
+      await _pumpUntilTakeoverCount(tester, 0);
       expect(File('$sandbox/home/.skillsgo/skillsgo.mod').existsSync(), isTrue);
       expect(File('$sandbox/home/.skillsgo/skillsgo.sum').existsSync(), isTrue);
       expect(
@@ -111,7 +112,8 @@ void main() {
 
       await tester.tap(_railButton(_allSkillsRailLabel()));
       await _pumpUntilTakeoverCount(tester, 0);
-      expect(_railCountLabel(0), findsNWidgets(3));
+      expect(_takeoverCount(0), findsOneWidget);
+      expect(_projectRailCount('takeover-project', 0), findsOneWidget);
     },
     timeout: const Timeout(Duration(minutes: 3)),
   );
@@ -159,8 +161,8 @@ Finder _takeoverCount(int count) => find.descendant(
   ),
 );
 
-Finder _railCountLabel(int count) => find.descendant(
-  of: find.byKey(const Key('library-location-rail')),
+Finder _projectRailCount(String projectName, int count) => find.descendant(
+  of: _railButton(find.text(projectName)),
   matching: find.byWidgetPredicate(
     (widget) => widget is Text && widget.data == '$count',
   ),
