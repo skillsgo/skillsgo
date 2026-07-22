@@ -44,13 +44,13 @@ _Avoid_: managed binding, manifest field, receipt, cached visibility database
 An Agent environment detected on the current machine through its Agent Adapter. Detection is independent of whether the Agent currently has any Skills.
 _Avoid_: active Agent, Agent with Skills
 
-**Content-addressed Store**:
-The user-level immutable artifact cache used for integrity verification and recovery. User Scope and every Workspace Scope share one Store; installation first materializes one physical canonical copy under the scope's `.agents/skills`, then projects Agent-specific symlinks or explicit copies. Agents never link directly to Store artifacts.
-_Avoid_: Agent Skill directory, project-local cache
+**Scope Vendor**:
+The authoritative ordinary-file copy of a verified Repository Artifact within one installation scope. Workspace Scope stores Vendor under `.skillsgo/vendor`; User Scope stores it under `~/.skillsgo/vendor`. Version one does not share a Store across scopes or use symlinks.
+_Avoid_: shared Store, Agent Skill directory, mutable working copy
 
-**Installation Target**:
-One Agent-facing projection of a scope-local canonical Skill into a specific Agent, scope, and target path. The target is the canonical directory itself when the Agent uses `.agents/skills`; otherwise it is normally a symlink to that canonical directory or an explicit copy. Multiple installation targets may reference the same canonical content and each target has its own health and operation result.
-_Avoid_: Skill copy, Skill identity
+**Repository Projection**:
+The deterministic ordinary-file installation view generated for one Scope, Agent, and Repository Version. It preserves the Repository layout but retains `SKILL.md` only for selected members, so shared runtime files remain available without exposing unselected Skills.
+_Avoid_: symlink, independent Skill artifact, editable fork
 
 **User Scope**:
 The installation scope that projects Skills into an Agent's user-level Skill directory for the current operating-system user.
@@ -61,44 +61,44 @@ The installation scope rooted at a user-selected local directory. A Workspace do
 _Avoid_: repository-only scope, independent project Store
 
 **Workspace Manifest**:
-The editable `skillsgo.mod` declaration whose `require` entries use `require ID version [agents] [mode]`. The mode is optional and defaults to `symlink`; explicit `copy` is serialized. Public add accepts `head`, `release`, or an exact immutable version, but always persists the resolved immutable version. The ambiguous `latest`, arbitrary branch names, commit hashes, and ranges are rejected.
-_Avoid_: lock file, installation receipt
+The editable strict-YAML `skillsgo.yaml` declaration. Its `dependencies` mapping is keyed by Repository ID and requires one immutable version, a non-empty explicit Skill-path list, and a non-empty explicit Agent list; `"."` denotes the root Skill. Add may resolve a Tag, branch, or commit, but persists only the immutable result. There is no schema version or installation mode.
+_Avoid_: `skillsgo.mod`, lock file, installation receipt
 
-**Workspace Sum**:
-The generated `skillsgo.sum` integrity ledger. Each three-field line binds one canonical resource path and immutable version to an `h1:` checksum. Repository Info uses a `/repository.info` version suffix; historical lines may remain and never decide membership, ownership, or deployment.
-_Avoid_: dependency lock, installation list, deployment graph
+**Dependency Lock**:
+The generated strict-YAML `skillsgo.lock` record whose `dependencies` mapping binds each declared Repository ID to its immutable version and Go-compatible Repository `h1:`. It does not repeat selected Skills or Agents and never persists movable revision input.
+_Avoid_: `skillsgo.sum`, editable manifest, installation receipt
 
 **Immutable Info Cache**:
-The user-local cache of exact Skill Info and Repository Info response bytes. Cache entries are identity checked and crash-safe; Workspace Sum verifies their trusted bytes, while a checksum without cached content cannot restore anything offline.
+The user-local cache of exact Skill Info and Repository Info response bytes. Cache entries are identity checked and crash-safe; Dependency Lock verifies Repository artifact identity, while a checksum without cached content cannot restore anything offline.
 _Avoid_: mutable resolution cache, membership database, Workspace state
 
 **User Declaration Root**:
-The `~/.skillsgo` directory that owns user-scope `skillsgo.mod`, `skillsgo.sum`, the immutable Info Cache, and the shared Store. Agent-specific directories remain derived installation targets rather than SkillsGo state roots.
+The `~/.skillsgo` directory that owns user-scope `skillsgo.yaml`, `skillsgo.lock`, and `vendor`. Agent-specific directories remain derived Repository Projections rather than SkillsGo state roots.
 _Avoid_: `~/.agents` ownership database, per-Agent manifest
 
 **Installation Receipt**:
-The local record that connects a Store artifact to one installation target and records the source, version, mode, path, and installation time.
-_Avoid_: Workspace Manifest, Workspace Sum, Hub metadata
+The local record that connects one Scope Vendor to one Repository Projection and records Repository identity, version, selected members, Agent, target path, expected projection state, and installation time.
+_Avoid_: Workspace Manifest, Dependency Lock, Hub metadata
 
 **Batch Takeover**:
-One explicit two-phase operation that first validates supported-lock-backed existing content and returns an ephemeral state-bound plan plus exact All/User/per-Workspace eligible counts, then registers a confirmed scope subset through the same verified Store, Installation Receipt, health, update, repair, and removal semantics as a successful CLI copy installation. One eligible item is one physical Skill group within one declaration scope, making the All count additive across User and Workspace scopes and identical to the execution result's success unit. Preflight does not mutate Agent targets or authoritative SkillsGo metadata. Its machine request explicitly selects User Scope, one or more Workspace Scopes, or both; it scans only those scopes' skills.sh locks and known Agent Skill directories. A supported, accurately normalizable lock entry is trusted as the Skill's source identity without Hub matching, while its normalized Sum and complete recoverable filesystem-state digest create the captured Store baseline. Each distinct physical directory becomes its own target without rewriting it, only identical content and filesystem state deduplicate in the Content-addressed Store, symlink aliases share one physical target group, and every lock-external, invalid, missing, or post-preflight-changed candidate is skipped independently.
-_Avoid_: separate adoption lifecycle, per-Skill adoption, lock content verification, target overwrite, copy normalization, unmatched Local import
+A previously designed adoption operation for supported skills.sh installations. It is outside the Repository-Vendor first release and must be redesigned around Repository identity, Dependency Lock, Scope Vendor, and Repository Projection before it can be enabled; legacy per-Skill Store capture is not retained as a compatibility path.
+_Avoid_: first-release install path, legacy Store compatibility, implicit local import
 
 **External Removal**:
 The explicit, state-bound deletion of one exact External Installation discovered under a known Agent Skill directory. It never creates a receipt, changes a Workspace declaration, or infers source ownership.
 _Avoid_: name-only deletion, implicit adoption, managed uninstall
 
 **Local Skill Artifact**:
-An immutable private Store artifact created through a separate explicit local import. It has a `local.skillsgo` Skill ID and immutable local version, can be projected to more Installation Targets or exported, and is never created implicitly when Batch Takeover skips an External Installation.
-_Avoid_: Hub artifact, temporary target copy, takeover fallback
+A previously designed private per-Skill import artifact. It is outside the Repository-Vendor first release and requires a separate future decision because the first release distributes and locks only Repository Artifacts.
+_Avoid_: Repository Artifact, first-release dependency, takeover fallback
 
 **Active Skill Binding**:
-The rule that one physical target path can expose only one Skill artifact at a time, even when multiple Agent Adapters reference that path. `add --yes` treats the user's install confirmation as replacement authority for same-name targets and updates the shared binding in place; SkillsGo never invents a suffix to make colliding names coexist.
+The rule that one physical Agent target path can expose only one selected Skill at a time, even when multiple Repository Projections could produce the same discovered name. SkillsGo never invents a suffix to make colliding names coexist.
 _Avoid_: automatic rename, same-path coexistence
 
 **Local Modification**:
-A difference between a copy-mode installation target and its source artifact. Interactive management and repair expose this state for deliberate recovery, while an affirmative `add --yes` may replace the target so installation succeeds; future backup support is expected to provide post-install recovery.
-_Avoid_: Hub version, automatically merged change
+A difference between a Repository Projection and the deterministic view derived from its authoritative Scope Vendor and selected members. Version-one install reports the conflict and never overwrites or absorbs the changed files; the user decides how to preserve or remove them.
+_Avoid_: fork, automatically merged change, silent repair
 
 **Update Plan**:
 A state-bound operation over exact managed Installation Targets. Canonical Workspace requirements are pinned; resolving `head` or `release` again requires another explicit add. Workspace Manifest changes are previewed, and each target produces an independent result.
@@ -109,5 +109,5 @@ A state-bound top-level Remove or Repair operation over exact managed Installati
 _Avoid_: name-only removal, whole-Skill deletion, implicit cleanup
 
 **Repair**:
-An explicit recovery action that restores an unhealthy managed Installation Target from its immutable Store artifact. Repair replaces Local Modifications only after review and includes every Agent binding that shares the physical target.
-_Avoid_: automatic healing, background overwrite
+An explicit future recovery action for an unhealthy Repository Projection. Version-one install does not act as Repair: any Local Modification is reported without overwrite, and the user must first resolve or remove the conflicting projection.
+_Avoid_: automatic healing, background overwrite, install overwrite

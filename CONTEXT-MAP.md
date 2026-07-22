@@ -15,7 +15,7 @@ This file is the semantic context index. Structural routing is defined by the ro
 
 - **App → CLI**: invokes the bundled CLI through stable JSON or NDJSON contracts for every business read and mutation, including Hub-backed discovery and detail journeys.
 - **CLI → Hub**: resolves versions, downloads verified artifacts, forwards presentation locale for discovery/detail reads, and optionally reports anonymous install events.
-- **CLI → Agent targets**: projects Store artifacts into user-level and Workspace-level Agent directories.
+- **CLI → Agent targets**: vendors verified Repository Versions within user or Workspace scope and generates deterministic per-Agent Repository Projections that expose only selected Skills.
 - **Web → Hub**: presents indexable public discovery pages and consumes Hub APIs without owning public Skill identity, search, ranking, or artifacts.
 - **Web → App / CLI / Hub**: explains their public contracts and workflows but does not import runtime code or redefine domain language.
 

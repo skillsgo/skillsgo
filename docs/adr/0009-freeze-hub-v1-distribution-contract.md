@@ -1,8 +1,10 @@
 ---
-status: accepted
+status: superseded by ADR-0010
 ---
 
 # Freeze the Hub v1 distribution contract
+
+This decision was superseded before public launch by ADR-0010, which moves immutable artifacts, sums, downloads, and local vendoring from individual Skills to Repository Versions. The historical text below records the rejected Skill-artifact design.
 
 ## Context
 

@@ -2,7 +2,9 @@
 
 ## Status
 
-Accepted.
+Superseded by ADR-0010 before public launch.
+
+ADR-0010 retains `/api/v1` for product APIs but makes the Artifact Origin itself the Repository Proxy Base, removes the `/mod` namespace, and replaces `skillsgo.mod`/`skillsgo.sum` with `skillsgo.yaml`/`skillsgo.lock`. The historical text below records the rejected design.
 
 ## Context
 
