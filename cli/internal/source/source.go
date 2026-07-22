@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	protocolskillid "github.com/skillsgo/skillsgo/protocol/skillid"
 )
 
 type Reference struct {
@@ -83,6 +85,16 @@ func checkedGitHubReference(parts []string, version string) (Reference, error) {
 }
 
 func ValidateSkillID(skillID string) error {
+	if !strings.HasPrefix(skillID, "local.skillsgo/") {
+		parsed, err := protocolskillid.Parse(skillID)
+		if err != nil {
+			return err
+		}
+		if parsed.String() != skillID {
+			return fmt.Errorf("non-canonical Skill ID %q", skillID)
+		}
+		return nil
+	}
 	if skillID == "" || strings.ContainsAny(skillID, "\\\x00") {
 		return fmt.Errorf("invalid Skill ID %q", skillID)
 	}

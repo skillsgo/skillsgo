@@ -23,6 +23,7 @@ import (
 
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
+	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 	"github.com/spf13/afero"
 	modmodule "golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
@@ -34,7 +35,7 @@ func (g *gitFetcher) downloadWithGit(ctx context.Context, _ string, artifactDir,
 	if err != nil {
 		return artifactFiles{}, errors.E(op, err, errors.KindNotFound)
 	}
-	subdir := skillID.repositorySubdir()
+	subdir := skillID.RepositorySubdir()
 	repoDir, err := g.repositoryDir(skillID.Repository)
 	if err != nil {
 		return artifactFiles{}, errors.E(op, err)
@@ -553,7 +554,7 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, re
 		ref = "refs/tags/" + revision
 	}
 	treeRevision := commitSHA + "^{tree}"
-	if subdir := skillID.repositorySubdir(); subdir != "" {
+	if subdir := skillID.RepositorySubdir(); subdir != "" {
 		treeRevision = commitSHA + ":" + subdir
 	}
 	treeSHA, err := gitOutput(ctx, repoDir, "rev-parse", treeRevision)
@@ -621,24 +622,7 @@ func validatePseudoVersion(ctx context.Context, repoDir, version, commitSHA stri
 }
 
 func latestSemanticVersion(versions []string) string {
-	stable := ""
-	prerelease := ""
-	for _, version := range versions {
-		if !isCanonicalSemanticVersion(version) {
-			continue
-		}
-		if semver.Prerelease(version) == "" {
-			if stable == "" || semver.Compare(version, stable) > 0 {
-				stable = version
-			}
-		} else if prerelease == "" || semver.Compare(version, prerelease) > 0 {
-			prerelease = version
-		}
-	}
-	if stable != "" {
-		return stable
-	}
-	return prerelease
+	return protocolversion.LatestCanonicalPublished(versions)
 }
 
 func highestSemanticVersion(versions []string) string {

@@ -3,8 +3,8 @@
 
 ## Members
 
-- `id.go`, `id_test.go`: define canonical public Skill ID parsing, formatting, repository addressing, and hostile-input rejection.
-- `manifest.go`, `manifest_test.go`: extract and validate `SKILL.md` frontmatter, names, descriptions, and instruction bodies.
+- `id.go`, `id_test.go`: adapt the shared Protocol public Skill ID grammar to Hub source-resolution call sites and specify Hub-supported repository constraints.
+- `manifest.go`, `manifest_test.go`: adapt shared Protocol `SKILL.md` extraction and validation to Hub source publication.
 - `fetcher.go`: defines source resolution, immutable artifact fetch, Repository snapshot discovery, and upstream version-listing contracts.
 - `git_fetcher.go`, `git_helpers.go`, `repository_cache_test.go`: resolve Git revisions with ancestor-tag-based pseudo-version ordering, scan one Repository commit for repository-owned Skill candidates while excluding hidden installation directories, enforce public-host/redirect/disk boundaries, apply sticky per-process GitHub-token failover, share repository snapshots safely across root and nested Skills, and emit bounded correlated Git transport diagnostics.
 - `git_artifact_fetcher.go`, `git_artifact_fetcher_test.go`: configure Git-backed fetching and GitHub credential pools, assemble immutable Skill artifacts from resolved Git trees, and validate source metadata.
@@ -16,6 +16,6 @@
 
 ## Architectural Boundary
 
-This module owns public Skill ID parsing, source revision resolution, source-frontmatter validation, bounded Git transport, and immutable artifact assembly. Private-address Git hosts require the explicit `SKILLSGO_ALLOW_PRIVATE_GIT_HOSTS` operator opt-in. It must not persist Catalog metadata, render HTTP responses, install local targets, or infer App presentation state.
+This module owns source revision resolution, Hub publication decisions, bounded Git transport, and immutable artifact assembly. Shared public Skill ID and manifest grammar belong to the Protocol workspace. Private-address Git hosts require the explicit `SKILLSGO_ALLOW_PRIVATE_GIT_HOSTS` operator opt-in. It must not persist Catalog metadata, render HTTP responses, install local targets, or infer App presentation state.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

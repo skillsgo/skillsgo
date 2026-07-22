@@ -18,43 +18,22 @@ import (
 	"time"
 
 	"github.com/skillsgo/skillsgo/cli/internal/source"
+	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
+	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 	modmodule "golang.org/x/mod/module"
 	modsemver "golang.org/x/mod/semver"
 )
 
-type Info struct {
-	SchemaVersion int               `json:"SchemaVersion" yaml:"schemaVersion"`
-	Kind          string            `json:"Kind" yaml:"kind"`
-	ID            string            `json:"ID" yaml:"id"`
-	Version       string            `json:"Version" yaml:"version"`
-	Time          time.Time         `json:"Time" yaml:"time"`
-	Ref           string            `json:"Ref" yaml:"ref"`
-	CommitSHA     string            `json:"CommitSHA" yaml:"commitSHA"`
-	TreeSHA       string            `json:"TreeSHA" yaml:"treeSHA"`
-	Name          string            `json:"Name" yaml:"name"`
-	Description   string            `json:"Description" yaml:"description"`
-	License       string            `json:"License,omitempty" yaml:"license,omitempty"`
-	Compatibility string            `json:"Compatibility,omitempty" yaml:"compatibility,omitempty"`
-	AllowedTools  string            `json:"AllowedTools,omitempty" yaml:"allowedTools,omitempty"`
-	Metadata      map[string]string `json:"Metadata,omitempty" yaml:"metadata,omitempty"`
-	Risk          Risk              `json:"Risk" yaml:"risk"`
-	ContentDigest string            `json:"ContentDigest" yaml:"contentDigest"`
-	ArchiveSize   int64             `json:"ArchiveSize" yaml:"archiveSize"`
-}
-
-type Risk string
+type Info = protocolapi.SkillInfo
+type Risk = protocolapi.Risk
 
 const (
-	RiskUnknown  Risk = "unknown"
-	RiskLow      Risk = "low"
-	RiskMedium   Risk = "medium"
-	RiskHigh     Risk = "high"
-	RiskCritical Risk = "critical"
+	RiskUnknown  = protocolapi.RiskUnknown
+	RiskLow      = protocolapi.RiskLow
+	RiskMedium   = protocolapi.RiskMedium
+	RiskHigh     = protocolapi.RiskHigh
+	RiskCritical = protocolapi.RiskCritical
 )
-
-func (r Risk) Valid() bool {
-	return r == RiskUnknown || r == RiskLow || r == RiskMedium || r == RiskHigh || r == RiskCritical
-}
 
 type Artifact struct {
 	SkillID   string
@@ -63,16 +42,7 @@ type Artifact struct {
 	ZIP       []byte
 }
 
-type RepositoryInfo struct {
-	SchemaVersion int               `json:"SchemaVersion"`
-	Kind          string            `json:"Kind"`
-	ID            string            `json:"ID"`
-	Version       string            `json:"Version"`
-	Time          time.Time         `json:"Time"`
-	Ref           string            `json:"Ref"`
-	CommitSHA     string            `json:"CommitSHA"`
-	Skills        []json.RawMessage `json:"Skills"`
-}
+type RepositoryInfo = protocolapi.RepositoryInfo
 
 type RepositoryResource struct {
 	Info      RepositoryInfo
@@ -85,16 +55,7 @@ type RepositoryMember struct {
 	InfoBytes []byte
 }
 
-type ContentMatch struct {
-	SkillID          string `json:"skillId"`
-	Name             string `json:"name"`
-	Source           string `json:"source"`
-	SkillPath        string `json:"skillPath"`
-	ImmutableVersion string `json:"immutableVersion"`
-	CommitSHA        string `json:"commitSHA"`
-	TreeSHA          string `json:"treeSHA"`
-	ContentDigest    string `json:"contentDigest"`
-}
+type ContentMatch = protocolapi.ContentMatch
 
 type SkillProductMetadata struct {
 	ID                    string  `json:"id"`
@@ -119,22 +80,11 @@ type skillsResponse struct {
 	Skills []SkillSummary `json:"skills"`
 }
 
-type contentMatchesResponse struct {
-	SchemaVersion int            `json:"schemaVersion"`
-	ContentDigest string         `json:"contentDigest"`
-	Matches       []ContentMatch `json:"matches"`
-}
+type contentMatchesResponse = protocolapi.ContentMatchesResponse
 
-type CatalogUpdateItem struct {
-	SkillID       string `json:"skillId"`
-	LatestVersion string `json:"latestVersion,omitempty"`
-	Status        string `json:"status"`
-}
+type CatalogUpdateItem = protocolapi.CatalogUpdateCheckItem
 
-type catalogUpdateResponse struct {
-	SchemaVersion int                 `json:"schemaVersion"`
-	Items         []CatalogUpdateItem `json:"items"`
-}
+type catalogUpdateResponse = protocolapi.CatalogUpdateCheckResponse
 
 type Client struct {
 	baseURL string
@@ -224,23 +174,7 @@ func (c *Client) Versions(ctx context.Context, resourceID string) ([]string, err
 }
 
 func latestVersion(versions []string) string {
-	stable, prerelease := "", ""
-	for _, version := range versions {
-		if !modsemver.IsValid(version) || modmodule.IsPseudoVersion(version) {
-			continue
-		}
-		if modsemver.Prerelease(version) == "" {
-			if stable == "" || modsemver.Compare(version, stable) > 0 {
-				stable = version
-			}
-		} else if prerelease == "" || modsemver.Compare(version, prerelease) > 0 {
-			prerelease = version
-		}
-	}
-	if stable != "" {
-		return stable
-	}
-	return prerelease
+	return protocolversion.LatestPublished(versions)
 }
 
 func ParseRepositoryInfo(repositoryID string, infoBytes []byte) (*RepositoryResource, error) {

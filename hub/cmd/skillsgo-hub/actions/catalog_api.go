@@ -27,6 +27,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/presentation"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
+	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 )
 
 type skillsResponse struct {
@@ -87,38 +88,11 @@ type skillDetailResponse struct {
 	ExecutableFiles       []string             `json:"executableFiles"`
 }
 
-type contentMatchesResponse struct {
-	SchemaVersion int            `json:"schemaVersion"`
-	ContentDigest string         `json:"contentDigest"`
-	Matches       []contentMatch `json:"matches"`
-}
-
-type catalogUpdateCheckRequest struct {
-	SchemaVersion int      `json:"schemaVersion"`
-	SkillIDs      []string `json:"skillIds"`
-}
-
-type catalogUpdateCheckItem struct {
-	SkillID       string `json:"skillId"`
-	LatestVersion string `json:"latestVersion,omitempty"`
-	Status        string `json:"status"`
-}
-
-type catalogUpdateCheckResponse struct {
-	SchemaVersion int                      `json:"schemaVersion"`
-	Items         []catalogUpdateCheckItem `json:"items"`
-}
-
-type contentMatch struct {
-	SkillID          string `json:"skillId"`
-	Name             string `json:"name"`
-	Source           string `json:"source"`
-	SkillPath        string `json:"skillPath"`
-	ImmutableVersion string `json:"immutableVersion"`
-	CommitSHA        string `json:"commitSHA"`
-	TreeSHA          string `json:"treeSHA"`
-	ContentDigest    string `json:"contentDigest"`
-}
+type contentMatchesResponse = protocolapi.ContentMatchesResponse
+type catalogUpdateCheckRequest = protocolapi.CatalogUpdateCheckRequest
+type catalogUpdateCheckItem = protocolapi.CatalogUpdateCheckItem
+type catalogUpdateCheckResponse = protocolapi.CatalogUpdateCheckResponse
+type contentMatch = protocolapi.ContentMatch
 
 type artifactReader interface {
 	Info(context.Context, string, string) ([]byte, error)

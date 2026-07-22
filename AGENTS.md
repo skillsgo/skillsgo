@@ -8,6 +8,8 @@ Before changing any file under `cli/**`, read `cli/AGENTS.md`.
 
 Before changing any file under `hub/**`, read `hub/AGENTS.md`. When the path is inside a nested Go module, also read that module's nearest `AGENTS.md`.
 
+Before changing any file under `protocol/**`, read `protocol/AGENTS.md`.
+
 Before changing reusable standards under `docs/reference/**`, read `docs/reference/AGENTS.md`.
 
 Before changing cross-context decisions under `docs/adr/**`, read `docs/adr/AGENTS.md`.
@@ -24,6 +26,7 @@ Do not add non-English documentation. When modifying an existing document, leave
 
 ```text
 skillsgo/
+├── protocol/  Shared executable Go contracts for CLI and Hub
 ├── app/       Flutter desktop App and user experience
 ├── cli/       Go CLI and local Skill execution engine
 ├── hub/       Go Hub, artifact protocol, search, and ranking
@@ -35,6 +38,7 @@ skillsgo/
 - The App invokes the bundled CLI through stable machine contracts and never calls the Hub directly; the CLI is the App's only business-integration boundary.
 - The CLI owns local filesystem mutations, Agent Adapters, the Content-addressed Store, Installation Targets, Workspace Manifests, and Workspace Locks.
 - The Hub owns public Skill identity, immutable artifacts, metadata, search, ranking, and install-event aggregation.
+- The Protocol workspace owns dependency-light executable contracts that the CLI and Hub must interpret identically; it owns no transport or product orchestration.
 - `CONTEXT-MAP.md` and the context glossaries define domain language. GEB maps define structural ownership. Neither substitutes for the other.
 
 ## Toolchain
@@ -44,6 +48,7 @@ skillsgo/
 - App: Flutter; use `flutter analyze` and `flutter test` from `app/`.
 - CLI: Go; use `gofmt` and `go test ./...` from `cli/`.
 - Hub: Go; use `gofmt` and `go test ./...` from `hub/`.
+- Protocol: Go; use `gofmt` and `go test ./...` from `protocol/`.
 - Web: Node.js 22+, pnpm, TanStack Start, Vite, Fumadocs, and MDX; use `pnpm typecheck` and `pnpm build` from `web/`.
 - E2E: use `make test-e2e-cli` for containerized CLI+Hub journeys, `make test-e2e-app` for macOS desktop App+CLI+Hub journeys, or `make test-e2e` for both.
 - Prefer the highest existing behavior seam: `SkillsGateway` for App journeys, the CLI root execution entry for CLI behavior, and the HTTP Router for Hub behavior.
@@ -88,8 +93,9 @@ F2 is determined by a build manifest, not directory depth. In this repository:
 - `hub/go.mod` defines the Hub Go module.
 - `hub/scripts/liveness_probe/go.mod` defines a nested utility Go module.
 - `web/package.json` defines the public Web workspace.
+- `protocol/go.mod` defines the shared Protocol Go module.
 
-Because each top-level product domain currently contains one primary workspace, `app/AGENTS.md`, `cli/AGENTS.md`, `hub/AGENTS.md`, and `web/AGENTS.md` intentionally serve as both F1 and F2 maps. Split them only when a domain gains multiple independently maintained workspaces.
+Because each top-level product or protocol domain currently contains one primary workspace, `app/AGENTS.md`, `cli/AGENTS.md`, `hub/AGENTS.md`, `web/AGENTS.md`, and `protocol/AGENTS.md` intentionally serve as both F1 and F2 maps. Split them only when a domain gains multiple independently maintained workspaces.
 
 ### F3 Module Map Template
 

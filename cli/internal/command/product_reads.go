@@ -8,33 +8,17 @@ package command
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
+	protocollocale "github.com/skillsgo/skillsgo/protocol/locale"
 	"github.com/spf13/cobra"
 )
 
 func canonicalContentLocale(value string) (string, error) {
-	value = strings.ReplaceAll(strings.TrimSpace(value), "_", "-")
 	if value == "" {
 		return "", nil
 	}
-	parts := strings.Split(value, "-")
-	if len(parts) > 3 || len(parts[0]) < 2 || len(parts[0]) > 8 {
-		return "", fmt.Errorf("invalid content locale")
-	}
-	parts[0] = strings.ToLower(parts[0])
-	for index := 1; index < len(parts); index++ {
-		part := parts[index]
-		if len(part) == 4 {
-			parts[index] = strings.ToUpper(part[:1]) + strings.ToLower(part[1:])
-		} else if len(part) == 2 || len(part) == 3 {
-			parts[index] = strings.ToUpper(part)
-		} else {
-			return "", fmt.Errorf("invalid content locale")
-		}
-	}
-	return strings.Join(parts, "-"), nil
+	return protocollocale.Canonical(value)
 }
 
 func writeProductDocument(cmd *cobra.Command, document []byte) error {
