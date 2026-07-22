@@ -102,6 +102,56 @@ func TestWalkContentPropagatesVisitorFailure(t *testing.T) {
 	}
 }
 
+func TestWalkContentVisitsDirectoriesAndRejectsTreeShapeConflicts(t *testing.T) {
+	archive := makeZIP(t,
+		zipEntry{"example@v1/SKILL.md", "instructions", false, zip.Store},
+		zipEntry{"example@v1/docs", "", true, zip.Store},
+	)
+	visitedDirectory := false
+	_, err := WalkContent(archive, "example", "v1", func(entry Entry) error {
+		if entry.Directory {
+			visitedDirectory = entry.Path == "docs" && entry.Contents == nil && entry.Size == 0
+			return errors.New("directory inspection failed")
+		}
+		return nil
+	})
+	if !visitedDirectory || err == nil || !strings.Contains(err.Error(), `visit artifact directory "docs": directory inspection failed`) {
+		t.Fatalf("directory visit=%v error=%v", visitedDirectory, err)
+	}
+
+	for _, test := range []struct {
+		name     string
+		entries  []zipEntry
+		contains string
+	}{
+		{
+			name: "directory and file portable collision",
+			entries: []zipEntry{
+				{"example@v1/SKILL.md", "instructions", false, zip.Store},
+				{"example@v1/Docs", "file", false, zip.Store},
+				{"example@v1/docs", "", true, zip.Store},
+			},
+			contains: "collide on portable filesystems",
+		},
+		{
+			name: "file used as parent directory",
+			entries: []zipEntry{
+				{"example@v1/SKILL.md", "instructions", false, zip.Store},
+				{"example@v1/a", "file", false, zip.Store},
+				{"example@v1/a/b", "child", false, zip.Store},
+			},
+			contains: "conflicts with parent file",
+		},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := Sum(makeZIP(t, test.entries...), "example", "v1")
+			if err == nil || !strings.Contains(err.Error(), test.contains) {
+				t.Fatalf("error %v, want %q", err, test.contains)
+			}
+		})
+	}
+}
+
 func TestSumRejectsMalformedAndUnsafeArchives(t *testing.T) {
 	valid := zipEntry{"example@v1/SKILL.md", "ok", false, zip.Store}
 	tests := []struct {
@@ -111,10 +161,14 @@ func TestSumRejectsMalformedAndUnsafeArchives(t *testing.T) {
 	}{
 		{"empty", nil, "size must be"}, {"not zip", []byte("not-a-zip"), "open artifact"},
 		{"wrong prefix", makeZIP(t, zipEntry{"other@v1/SKILL.md", "ok", false, zip.Store}), "outside expected prefix"},
-		{"absolute path", makeZIP(t, valid, zipEntry{"example@v1//etc/passwd", "x", false, zip.Store}), "invalid or duplicate path"},
-		{"backslash", makeZIP(t, valid, zipEntry{"example@v1/a\\b", "x", false, zip.Store}), "invalid or duplicate path"},
-		{"dot segment", makeZIP(t, valid, zipEntry{"example@v1/a/../b", "x", false, zip.Store}), "invalid or duplicate path"},
-		{"duplicate", makeZIP(t, valid, valid), "invalid or duplicate path"},
+		{"absolute path", makeZIP(t, valid, zipEntry{"example@v1//etc/passwd", "x", false, zip.Store}), "invalid relative path"},
+		{"backslash", makeZIP(t, valid, zipEntry{"example@v1/a\\b", "x", false, zip.Store}), "invalid relative path"},
+		{"dot segment", makeZIP(t, valid, zipEntry{"example@v1/a/../b", "x", false, zip.Store}), "invalid relative path"},
+		{"duplicate", makeZIP(t, valid, valid), "collide on portable filesystems"},
+		{"Windows reserved", makeZIP(t, valid, zipEntry{"example@v1/CON.txt", "x", false, zip.Store}), "not portable"},
+		{"Windows trailing space", makeZIP(t, valid, zipEntry{"example@v1/name ", "x", false, zip.Store}), "trailing space"},
+		{"portable case collision", makeZIP(t, valid, zipEntry{"example@v1/Readme.md", "x", false, zip.Store}, zipEntry{"example@v1/README.md", "y", false, zip.Store}), "collide on portable filesystems"},
+		{"Unicode fold collision", makeZIP(t, valid, zipEntry{"example@v1/K.txt", "x", false, zip.Store}, zipEntry{"example@v1/K.txt", "y", false, zip.Store}), "collide on portable filesystems"},
 		{"missing manifest", makeZIP(t, zipEntry{"example@v1/a.txt", "x", false, zip.Store}), "does not contain SKILL.md"},
 	}
 	for _, test := range tests {
@@ -128,6 +182,43 @@ func TestSumRejectsMalformedAndUnsafeArchives(t *testing.T) {
 	oversized := make([]byte, MaxArchiveBytes+1)
 	if _, err := Sum(oversized, "example", "v1"); err == nil {
 		t.Fatal("expected archive-size rejection")
+	}
+}
+
+func TestSumRejectsIrregularModes(t *testing.T) {
+	makeModeZIP := func(mode os.FileMode) []byte {
+		var buffer bytes.Buffer
+		writer := zip.NewWriter(&buffer)
+		manifest, err := writer.Create("example@v1/SKILL.md")
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = io.WriteString(manifest, "instructions")
+		header := &zip.FileHeader{Name: "example@v1/tool", Method: zip.Store}
+		header.SetMode(mode)
+		entry, err := writer.CreateHeader(header)
+		if err != nil {
+			t.Fatal(err)
+		}
+		_, _ = io.WriteString(entry, "tool")
+		if err := writer.Close(); err != nil {
+			t.Fatal(err)
+		}
+		return buffer.Bytes()
+	}
+	for _, test := range []struct {
+		name     string
+		mode     os.FileMode
+		contains string
+	}{
+		{"symlink", os.ModeSymlink | 0o777, "not a regular file"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := Sum(makeModeZIP(test.mode), "example", "v1")
+			if err == nil || !strings.Contains(err.Error(), test.contains) {
+				t.Fatalf("error %v, want %q", err, test.contains)
+			}
+		})
 	}
 }
 
@@ -228,6 +319,19 @@ func TestDirectorySumRejectsFileCountBoundary(t *testing.T) {
 	}
 }
 
+func TestDirectorySumRejectsNonPortablePath(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte("ok"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "trailing "), []byte("bad"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := DirectorySum(root); err == nil || !strings.Contains(err.Error(), "invalid path") {
+		t.Fatalf("portable path error: %v", err)
+	}
+}
+
 func TestReadEntryRejectsUnsupportedCompressionCorruptionAndSizeMismatch(t *testing.T) {
 	archive := makeZIP(t, zipEntry{"example@v1/SKILL.md", "instructions", false, zip.Store})
 	reader, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
@@ -292,6 +396,9 @@ func (writer *failWriter) Write(data []byte) (int, error) {
 }
 
 func TestWriteHash1ContentPropagatesWriteFailure(t *testing.T) {
+	if err := writeHash1Content(io.Discard, "bad\nname", []byte("x")); err == nil {
+		t.Fatal("expected newline rejection")
+	}
 	for _, limit := range []int{0, 1, 20} {
 		writer := &failWriter{remaining: limit}
 		if err := writeHash1Content(writer, "a", []byte("x")); err == nil {

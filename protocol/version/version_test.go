@@ -8,6 +8,23 @@ package version
 
 import "testing"
 
+func TestIsImmutable(t *testing.T) {
+	for _, test := range []struct {
+		version string
+		want    bool
+	}{
+		{"v1.2.3", true},
+		{"v0.0.0-20260722120000-abcdef123456", true},
+		{"v1", false},
+		{"head", false},
+		{"latest", false},
+	} {
+		if got := IsImmutable(test.version); got != test.want {
+			t.Fatalf("IsImmutable(%q) = %v, want %v", test.version, got, test.want)
+		}
+	}
+}
+
 func TestLatestPublishedScenarioMatrix(t *testing.T) {
 	pseudo := "v1.0.1-0.20260101000000-abcdef123456"
 	tests := []struct {
