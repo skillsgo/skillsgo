@@ -20,6 +20,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/skillsgo/skillsgo/hub/pkg/download"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	"gopkg.in/yaml.v3"
 )
 
@@ -33,6 +34,7 @@ type catalogProtocol struct {
 }
 
 type suppressCatalogIndexKey struct{}
+type suppressArtifactAuditKey struct{}
 
 func withoutCatalogIndex(ctx context.Context) context.Context {
 	return context.WithValue(ctx, suppressCatalogIndexKey{}, true)
@@ -40,6 +42,15 @@ func withoutCatalogIndex(ctx context.Context) context.Context {
 
 func shouldIndexCatalog(ctx context.Context) bool {
 	suppressed, _ := ctx.Value(suppressCatalogIndexKey{}).(bool)
+	return !suppressed
+}
+
+func withoutArtifactAudit(ctx context.Context) context.Context {
+	return context.WithValue(ctx, suppressArtifactAuditKey{}, true)
+}
+
+func shouldAuditArtifact(ctx context.Context) bool {
+	suppressed, _ := ctx.Value(suppressArtifactAuditKey{}).(bool)
 	return !suppressed
 }
 
@@ -102,16 +113,27 @@ func (p *catalogProtocol) bindAssessment(ctx context.Context, skillID string, in
 	if metadata.Name == "" || metadata.Description == "" {
 		return nil, fmt.Errorf("decode Skill metadata for Info: name and description are required")
 	}
-	analysis, err := audit.AnalyzeArtifact(archiveBytes, skillID, info.Version)
-	if err != nil {
-		return nil, fmt.Errorf("assess Skill archive: %w", err)
+	contentDigest := ""
+	risk := "unknown"
+	if shouldAuditArtifact(ctx) {
+		analysis, err := audit.AnalyzeArtifact(archiveBytes, skillID, info.Version)
+		if err != nil {
+			return nil, fmt.Errorf("assess Skill archive: %w", err)
+		}
+		contentDigest = analysis.ContentDigest
+		risk = analysis.Risk.Level
+	} else {
+		contentDigest, err = protocolartifact.ContentDigest(archiveBytes, skillID, info.Version)
+		if err != nil {
+			return nil, fmt.Errorf("fingerprint Skill archive: %w", err)
+		}
 	}
 	var response map[string]any
 	if err := json.Unmarshal(infoBytes, &response); err != nil {
 		return nil, fmt.Errorf("decode Skill info response: %w", err)
 	}
-	response["Risk"] = analysis.Risk.Level
-	response["ContentDigest"] = analysis.ContentDigest
+	response["Risk"] = risk
+	response["ContentDigest"] = contentDigest
 	response["SchemaVersion"] = 1
 	response["Kind"] = "Skill"
 	response["ID"] = skillID
@@ -169,6 +191,13 @@ func (p *catalogProtocol) index(ctx context.Context, skillID string, infoBytes [
 	}
 	if info.Version == "" {
 		return fmt.Errorf("decode Skill info for catalog: Version is required")
+	}
+	known, err := p.metadata.SkillVersionExists(ctx, skillID, info.Version)
+	if err != nil {
+		return fmt.Errorf("check existing Skill version metadata: %w", err)
+	}
+	if known {
+		return nil
 	}
 	var metadata struct {
 		Name        string `json:"Name"`

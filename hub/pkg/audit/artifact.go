@@ -7,12 +7,10 @@
 package audit
 
 import (
-	"archive/zip"
 	"bytes"
-	"crypto/sha256"
 	"fmt"
+	"os"
 	"path"
-	"sort"
 	"strings"
 	"unicode/utf8"
 
@@ -25,8 +23,6 @@ const (
 	maxFileContentBytes = 256 << 10
 	maxInstructions     = 1 << 20
 	maxTotalTextBytes   = 2 << 20
-	maxUncompressed     = protocolartifact.MaxUncompressedBytes
-	maxFiles            = protocolartifact.MaxFiles
 )
 
 type File struct {
@@ -73,59 +69,16 @@ var binaryExtensions = map[string]bool{
 }
 
 func AnalyzeArtifact(data []byte, skillID, version string) (*Result, error) {
-	if len(data) == 0 || len(data) > MaxArchiveBytes {
-		return nil, fmt.Errorf("artifact archive size must be between 1 and %d bytes", MaxArchiveBytes)
-	}
-	reader, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
-	if err != nil {
-		return nil, fmt.Errorf("open artifact archive: %w", err)
-	}
-	if len(reader.File) > maxFiles {
-		return nil, fmt.Errorf("artifact contains more than %d files", maxFiles)
-	}
-	prefix := skillID + "@" + version + "/"
-	entries := append([]*zip.File(nil), reader.File...)
-	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
-	var uncompressed uint64
-	for _, entry := range entries {
-		if entry.FileInfo().IsDir() {
-			continue
-		}
-		if entry.UncompressedSize64 > maxUncompressed || uncompressed > maxUncompressed-entry.UncompressedSize64 {
-			return nil, fmt.Errorf("artifact expands beyond %d bytes", maxUncompressed)
-		}
-		uncompressed += entry.UncompressedSize64
-	}
-
 	result := &Result{
-		Files:           make([]File, 0, len(entries)),
+		Files:           make([]File, 0),
 		ExecutableFiles: make([]string, 0),
 		Risk: RiskAssessment{
 			Level: "unknown", ScannerVersion: ScannerVersion, Evidence: make([]Evidence, 0),
 		},
 	}
 	textBudget := maxTotalTextBytes
-	contentHash := sha256.New()
-	seenPaths := make(map[string]bool, len(entries))
-	for _, entry := range entries {
-		if entry.FileInfo().IsDir() {
-			continue
-		}
-		if !strings.HasPrefix(entry.Name, prefix) {
-			return nil, fmt.Errorf("artifact file %q is outside expected prefix %q", entry.Name, prefix)
-		}
-		relative := strings.TrimPrefix(entry.Name, prefix)
-		if !protocolartifact.ValidRelativePath(relative) || seenPaths[relative] {
-			return nil, fmt.Errorf("artifact file has invalid or duplicate path %q", relative)
-		}
-		seenPaths[relative] = true
-		contents, err := protocolartifact.ReadEntry(entry)
-		if err != nil {
-			return nil, fmt.Errorf("read artifact file %q: %w", relative, err)
-		}
-		if err := protocolartifact.WriteDigestEntry(contentHash, relative, contents); err != nil {
-			return nil, fmt.Errorf("hash artifact file %q: %w", relative, err)
-		}
+	digest, err := protocolartifact.WalkContent(data, skillID, version, func(entry protocolartifact.Entry) error {
+		relative, contents := entry.Path, entry.Contents
 		readLimit := maxFileContentBytes
 		if relative == "SKILL.md" {
 			readLimit = maxInstructions
@@ -137,7 +90,7 @@ func AnalyzeArtifact(data []byte, skillID, version string) (*Result, error) {
 		}
 		binaryByExtension := binaryExtensions[strings.ToLower(path.Ext(relative))]
 		binary := binaryByExtension || !utf8.Valid(visibleContents) || bytes.IndexByte(visibleContents, 0) >= 0
-		executable := isExecutable(entry, relative)
+		executable := isExecutable(entry.Mode, relative)
 		kind := "text"
 		if relative == "SKILL.md" {
 			kind = "instructions"
@@ -157,13 +110,13 @@ func AnalyzeArtifact(data []byte, skillID, version string) (*Result, error) {
 			textBudget -= allowed
 		}
 		file := File{
-			Path: relative, Size: int64(entry.UncompressedSize64), Kind: kind,
+			Path: relative, Size: entry.Size, Kind: kind,
 			Executable: executable, Binary: binary, Content: content, Truncated: truncated,
 		}
 		result.Files = append(result.Files, file)
 		if relative == "SKILL.md" {
 			if binary || truncated || content == "" {
-				return nil, fmt.Errorf("SKILL.md must be complete UTF-8 text")
+				return fmt.Errorf("SKILL.md must be complete UTF-8 text")
 			}
 			result.Instructions = content
 		}
@@ -179,18 +132,22 @@ func AnalyzeArtifact(data []byte, skillID, version string) (*Result, error) {
 			}
 			result.Risk.Evidence = append(result.Risk.Evidence, Evidence{Code: code, Path: relative})
 		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	if result.Instructions == "" {
 		return nil, fmt.Errorf("artifact does not contain SKILL.md")
 	}
-	result.ContentDigest = fmt.Sprintf("sha256:%x", contentHash.Sum(nil))
+	result.ContentDigest = digest
 	result.Risk.ArtifactDigest = result.ContentDigest
 	return result, nil
 }
 
-func isExecutable(entry *zip.File, relative string) bool {
+func isExecutable(mode os.FileMode, relative string) bool {
 	extension := strings.ToLower(path.Ext(relative))
-	return entry.Mode()&0o111 != 0 || scriptExtensions[extension] || binaryExtensions[extension] ||
+	return mode&0o111 != 0 || scriptExtensions[extension] || binaryExtensions[extension] ||
 		strings.HasPrefix(strings.ToLower(relative), "scripts/") ||
 		strings.Contains(strings.ToLower(relative), "/scripts/")
 }

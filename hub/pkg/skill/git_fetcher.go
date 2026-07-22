@@ -256,7 +256,8 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 		githubSource := strings.EqualFold(strings.SplitN(skillID.Repository, "/", 2)[0], "github.com")
 		if isGitRepository(repoDir) {
 			fetchStarted := time.Now()
-			if output, err := g.runGitTransport(ctx, repoDir, githubSource, "-c", "http.followRedirects=false", "fetch", "--prune", "--tags", "origin"); err == nil {
+			if output, err := g.runGitTransport(ctx, repoDir, githubSource, "-c", "http.followRedirects=false", "fetch", "--prune", "origin",
+				"+refs/heads/*:refs/remotes/origin/*", "+refs/tags/*:refs/skillsgo/upstream-tags/*"); err == nil {
 				entry.WithFields(map[string]any{
 					"duration_ms": time.Since(fetchStarted).Milliseconds(),
 					"git_phase":   "fetch",
@@ -491,6 +492,14 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, re
 				versions = append(versions, tag)
 			}
 		}
+		upstreamOutput, upstreamErr := gitOutput(ctx, repoDir, "for-each-ref", "--format=%(refname:strip=3)", "refs/skillsgo/upstream-tags")
+		if upstreamErr == nil {
+			for _, tag := range strings.Fields(upstreamOutput) {
+				if isCanonicalSemanticVersion(tag) {
+					versions = append(versions, tag)
+				}
+			}
+		}
 		if selected := latestSemanticVersion(versions); selected != "" {
 			revision = selected
 		} else {
@@ -506,7 +515,9 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, re
 		if pseudoRevision, err := modmodule.PseudoVersionRev(revision); err == nil {
 			resolvedRevision = pseudoRevision
 		}
-	} else if !isCanonicalSemanticVersion(revision) {
+	} else if isCanonicalSemanticVersion(revision) {
+		resolvedRevision = semanticTagRef(ctx, repoDir, revision)
+	} else {
 		// A no-checkout cache keeps its local default branch at the clone-time
 		// commit. Resolve branch names through the refreshed remote-tracking ref.
 		remoteRevision := "refs/remotes/origin/" + revision
@@ -605,7 +616,7 @@ func validatePseudoVersion(ctx context.Context, repoDir, version, commitSHA stri
 		return nil
 	}
 
-	baseCommit, err := gitOutput(ctx, repoDir, "rev-parse", "refs/tags/"+base+"^{commit}")
+	baseCommit, err := gitOutput(ctx, repoDir, "rev-parse", semanticTagRef(ctx, repoDir, base)+"^{commit}")
 	if err != nil {
 		return fmt.Errorf("invalid pseudo-version %q: preceding Tag %s was not found", version, base)
 	}
@@ -619,6 +630,14 @@ func validatePseudoVersion(ctx context.Context, repoDir, version, commitSHA stri
 		return fmt.Errorf("invalid pseudo-version %q: commit is not a descendant of preceding Tag %s", version, base)
 	}
 	return nil
+}
+
+func semanticTagRef(ctx context.Context, repoDir, version string) string {
+	upstream := "refs/skillsgo/upstream-tags/" + version
+	if _, err := gitOutput(ctx, repoDir, "rev-parse", "--verify", upstream); err == nil {
+		return upstream
+	}
+	return "refs/tags/" + version
 }
 
 func latestSemanticVersion(versions []string) string {

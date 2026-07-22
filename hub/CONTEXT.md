@@ -24,6 +24,22 @@ _Avoid_: refresh command, subscription, raw transport URL
 The atomic visibility change that publishes every repository-owned Skill observed at one repository tag and commit. A `SKILL.md` beneath a hidden directory is treated as installed consumer state rather than a repository publication candidate. Invalid or missing visible candidates are omitted without blocking other valid Skills; no partial set of accepted Skill versions becomes visible.
 _Avoid_: Repository Batch table, repository ZIP, all-or-nothing source validation
 
+**Repository History Backfill**:
+An authenticated Hub administration operation that accepts one or more Source Repositories and incrementally publishes every canonical semantic-version Tag without changing demand-driven installation behavior. Each Repository owns an independent durable run that commits valid versions and retains diagnosable partial failures.
+_Avoid_: add option, commit crawl, branch subscription, automatic repository refresh
+
+**Backfill Request**:
+A bounded administration request that validates and submits a duplicate-free set of Source Repositories while preserving one independent Backfill Run and result per Repository.
+_Avoid_: Backfill Run, atomic multi-repository import, combined repository status
+
+**Backfill Run**:
+One durable, deduplicated attempt to publish unprocessed and previously failed semantic-version Tags for a Source Repository. Its business status is queued, running, complete, or complete with errors and is independent of River's transport state.
+_Avoid_: River job, atomic repository import, installation request
+
+**Historical Publication**:
+An immutable Repository Publication created by Repository History Backfill that remains downloadable and eligible for Content Match without making a Skill absent from the current publication visible in discovery or rankings.
+_Avoid_: current catalog entry, archived metadata, resurrected Skill
+
 **Repository Batch Version**:
 The canonical immutable version shared by Repository Info and every Skill Info member observed at one source commit. `latest` selects the highest stable canonical semantic-version Tag, falls back to the highest canonical prerelease Tag, or resolves the default-branch HEAD to a commit-based pseudo-version when no canonical semantic Tag exists. An untagged revision derives its pseudo-version base from the highest canonical semantic-version Tag among its ancestors, so the pseudo-version sorts above that base and below the next tagged version; without an ancestor Tag, it uses the `v0.0.0` form. Exact pseudo-version requests must authenticate their canonical 12-character commit suffix, commit timestamp, and optional ancestor base Tag while preserving a historically generated no-Tag pseudo-version if that commit is tagged later. A member's Git Tree SHA identifies that Skill directory's content for change detection; it never replaces the shared batch version or the pseudo-version's commit suffix.
 _Avoid_: per-Skill pseudo-version, Tree-SHA version suffix, mutable `latest` in persisted dependencies
@@ -117,5 +133,5 @@ The ordering of public Skills with at least three accepted installs during the l
 _Avoid_: editorial recommendation, trending alias
 
 **Provider Counter Observation**:
-One cumulative install counter observed from an external provider during a complete, fenced crawl. It preserves provider provenance and may support later projection, but it is never an accepted install event.
+One cumulative install counter observed from an external provider during a complete, generation-fenced crawl. It preserves provider provenance and may support later projection, but it is never an accepted install event.
 _Avoid_: exact install event, deduplicated cross-provider total

@@ -11,7 +11,6 @@ type SkillsSHConfig struct {
 	URL            string `envconfig:"SKILLSGO_HUB_SKILLSSH_URL" validate:"omitempty,url"`
 	Token          string `envconfig:"SKILLSGO_BRIDGE_TOKEN"`
 	Interval       int    `envconfig:"SKILLSGO_HUB_SKILLSSH_INTERVAL" validate:"min=60"`
-	LeaseSeconds   int    `envconfig:"SKILLSGO_HUB_SKILLSSH_LEASE_SECONDS" validate:"min=30"`
 	PageCount      int    `envconfig:"SKILLSGO_HUB_SKILLSSH_PAGE_COUNT" validate:"min=1,max=10"`
 	PerPage        int    `envconfig:"SKILLSGO_HUB_SKILLSSH_PER_PAGE" validate:"min=1,max=500"`
 	RequestTimeout int    `envconfig:"SKILLSGO_HUB_SKILLSSH_REQUEST_TIMEOUT" validate:"min=5"`

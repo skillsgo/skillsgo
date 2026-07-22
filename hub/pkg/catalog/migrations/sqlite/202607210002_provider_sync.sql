@@ -1,10 +1,3 @@
-CREATE TABLE provider_sync_leases (
-  job_name TEXT PRIMARY KEY,
-  owner_id TEXT NOT NULL,
-  fencing_token INTEGER NOT NULL DEFAULT 0,
-  lease_expires_at TIMESTAMP NOT NULL,
-  heartbeat_at TIMESTAMP NOT NULL
-);
 CREATE TABLE provider_crawls (
   crawl_id TEXT PRIMARY KEY,
   provider TEXT NOT NULL,
@@ -21,7 +14,6 @@ CREATE TABLE provider_crawls (
 CREATE TABLE provider_crawl_pages (
   crawl_id TEXT NOT NULL REFERENCES provider_crawls(crawl_id) ON DELETE CASCADE,
   page INTEGER NOT NULL,
-  fencing_token INTEGER NOT NULL,
   observed_at TIMESTAMP NOT NULL,
   PRIMARY KEY(crawl_id, page)
 );
@@ -32,6 +24,5 @@ CREATE TABLE provider_skill_observations (
   slug TEXT NOT NULL,
   installs INTEGER NOT NULL CHECK (installs >= 0),
   observed_at TIMESTAMP NOT NULL,
-  fencing_token INTEGER NOT NULL,
   PRIMARY KEY(crawl_id, skill_id)
 );

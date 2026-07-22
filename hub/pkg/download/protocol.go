@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the download package imports and contracts declared in this file.
- * [OUTPUT]: Provides storage-first artifact protocol behavior with cache and download-mode telemetry.
+ * [INPUT]: Depends on storage, source listing, synchronous stashing, and a durable asynchronous stash submitter.
+ * [OUTPUT]: Provides storage-first artifact protocol behavior with cache, durable async dispatch, and download-mode telemetry.
  * [POS]: Serves as the observable storage/source orchestration layer in the artifact download protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -49,6 +49,7 @@ type Opts struct {
 	Lister       skill.UpstreamLister
 	DownloadFile *mode.DownloadFile
 	NetworkMode  string
+	AsyncStash   func(context.Context, string, string) error
 }
 
 // NetworkMode constants.
@@ -67,7 +68,7 @@ func New(opts *Opts, wrappers ...Wrapper) Protocol {
 	if opts.DownloadFile == nil {
 		opts.DownloadFile = &mode.DownloadFile{Mode: mode.Sync}
 	}
-	var p Protocol = &protocol{opts.DownloadFile, opts.Storage, opts.Stasher, opts.Lister, opts.NetworkMode}
+	var p Protocol = &protocol{opts.DownloadFile, opts.Storage, opts.Stasher, opts.Lister, opts.NetworkMode, opts.AsyncStash}
 	for _, w := range wrappers {
 		p = w(p)
 	}
@@ -81,6 +82,7 @@ type protocol struct {
 	stasher     stash.Stasher
 	lister      skill.UpstreamLister
 	networkMode string
+	asyncStash  func(context.Context, string, string) error
 }
 
 func (p *protocol) List(ctx context.Context, mod string) ([]string, error) {
@@ -260,12 +262,22 @@ func (p *protocol) processDownload(ctx context.Context, mod, ver string, f func(
 		}
 		return f(newVer)
 	case mode.Async:
-		go func() { _, _ = p.stasher.Stash(ctx, mod, ver) }()
+		if p.asyncStash == nil {
+			return errors.E(op, "async stash dispatcher is not configured")
+		}
+		if err := p.asyncStash(ctx, mod, ver); err != nil {
+			return errors.E(op, err)
+		}
 		return errors.E(op, "async: module not found", errors.KindNotFound)
 	case mode.Redirect:
 		return errors.E(op, "redirect", errors.KindRedirect)
 	case mode.AsyncRedirect:
-		go func() { _, _ = p.stasher.Stash(ctx, mod, ver) }()
+		if p.asyncStash == nil {
+			return errors.E(op, "async stash dispatcher is not configured")
+		}
+		if err := p.asyncStash(ctx, mod, ver); err != nil {
+			return errors.E(op, err)
+		}
 		return errors.E(op, "async_redirect: module not found", errors.KindRedirect)
 	case mode.None:
 		return errors.E(op, "none", errors.KindNotFound)

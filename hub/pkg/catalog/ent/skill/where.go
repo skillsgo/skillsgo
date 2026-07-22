@@ -95,6 +95,11 @@ func LatestVersion(v string) predicate.Skill {
 	return predicate.Skill(sql.FieldEQ(FieldLatestVersion, v))
 }
 
+// Discoverable applies equality check predicate on the "discoverable" field. It's identical to DiscoverableEQ.
+func Discoverable(v bool) predicate.Skill {
+	return predicate.Skill(sql.FieldEQ(FieldDiscoverable, v))
+}
+
 // Verified applies equality check predicate on the "verified" field. It's identical to VerifiedEQ.
 func Verified(v bool) predicate.Skill {
 	return predicate.Skill(sql.FieldEQ(FieldVerified, v))
@@ -583,6 +588,16 @@ func LatestVersionEqualFold(v string) predicate.Skill {
 // LatestVersionContainsFold applies the ContainsFold predicate on the "latest_version" field.
 func LatestVersionContainsFold(v string) predicate.Skill {
 	return predicate.Skill(sql.FieldContainsFold(FieldLatestVersion, v))
+}
+
+// DiscoverableEQ applies the EQ predicate on the "discoverable" field.
+func DiscoverableEQ(v bool) predicate.Skill {
+	return predicate.Skill(sql.FieldEQ(FieldDiscoverable, v))
+}
+
+// DiscoverableNEQ applies the NEQ predicate on the "discoverable" field.
+func DiscoverableNEQ(v bool) predicate.Skill {
+	return predicate.Skill(sql.FieldNEQ(FieldDiscoverable, v))
 }
 
 // VerifiedEQ applies the EQ predicate on the "verified" field.

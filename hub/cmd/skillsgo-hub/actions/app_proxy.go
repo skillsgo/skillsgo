@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Hub configuration, storage, Catalog, source fetchers, protocol pools, and HTTP routing.
- * [OUTPUT]: Assembles health, index, repository-enriched discovery/detail, and immutable artifact protocol routes with shared middleware layers.
+ * [OUTPUT]: Assembles health, index, Repository-enriched discovery/detail, immutable artifact protocol routes, and authenticated Backfill administration with shared task infrastructure.
  * [POS]: Serves as the Hub service-composition boundary joining source resolution, storage, metadata, and public HTTP handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -27,6 +27,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/stash"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
+	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
 	"github.com/spf13/afero"
 )
 
@@ -36,7 +37,7 @@ func addProxyRoutes(
 	l *log.Logger,
 	c *config.Config,
 ) error {
-	return addProxyRoutesWithCatalog(r, s, l, c, nil)
+	return addProxyRoutesWithCatalog(r, s, l, c, nil, nil, nil, false)
 }
 
 func addProxyRoutesWithCatalog(
@@ -45,7 +46,13 @@ func addProxyRoutesWithCatalog(
 	l *log.Logger,
 	c *config.Config,
 	metadata *catalog.Catalog,
+	taskRuntime *taskqueue.Runtime,
+	adminRouter fiber.Router,
+	adminEnabled bool,
 ) error {
+	if taskRuntime == nil {
+		taskRuntime = taskqueue.NewSynchronous()
+	}
 	r.Get("/", proxyHomeHandler(c))
 	r.Get("/healthz", healthHandler)
 	r.Get("/readyz", getReadinessHandler(s))
@@ -98,6 +105,9 @@ func addProxyRoutesWithCatalog(
 		return err
 	}
 	st := stash.New(skillFetcher, s, indexer, c.StashTimeoutDuration(), stash.WithPool(c.SkillFetchWorkers), withSingleFlight)
+	if err := registerArtifactStashJob(taskRuntime, st); err != nil {
+		return fmt.Errorf("register artifact stash task: %w", err)
+	}
 
 	df, err := mode.NewFile(c.DownloadMode, c.DownloadURL)
 	if err != nil {
@@ -110,6 +120,7 @@ func addProxyRoutesWithCatalog(
 		Lister:       lister,
 		DownloadFile: df,
 		NetworkMode:  c.NetworkMode,
+		AsyncStash:   enqueueArtifactStash(taskRuntime),
 	}
 
 	dp := download.New(dpOpts, addons.WithPool(c.ProtocolWorkers))
@@ -119,12 +130,30 @@ func addProxyRoutesWithCatalog(
 		if !ok {
 			return fmt.Errorf("configured Skill fetcher does not support Repository discovery")
 		}
-		dp = withRepositoryInfo(dp, metadata, newRepositoryPublisher(repositoryFetcher, s, dp, metadata))
+		publisher := newRepositoryPublisher(repositoryFetcher, s, dp, metadata)
+		if err := registerRepositoryPrewarmJob(taskRuntime, publisher); err != nil {
+			return fmt.Errorf("register repository prewarm task: %w", err)
+		}
+		dp = withRepositoryInfo(dp, metadata, publisher)
+		metadataCache := newQueuedRepositoryMetadataCache(metadata, taskRuntime, newGitHubRepositoryMetadataReader(c.GitHubTokens()))
+		if err := metadataCache.RegisterTask(); err != nil {
+			return fmt.Errorf("register repository metadata task: %w", err)
+		}
+		if adminEnabled {
+			if metadata.PostgresPool() == nil {
+				return fmt.Errorf("Repository Backfill administration requires PostgreSQL")
+			}
+			backfills := newRepositoryBackfillService(metadata, taskRuntime, lister, publisher, l)
+			if err := backfills.Register(); err != nil {
+				return fmt.Errorf("register Repository Backfill task: %w", err)
+			}
+			registerRepositoryBackfillRoutes(adminRouter, backfills)
+		}
 		registerCatalogAPIRoutes(
 			r,
 			metadata,
 			dp,
-			newRepositoryMetadataCache(metadata, newGitHubRepositoryMetadataReader(c.GitHubTokens())),
+			metadataCache,
 		)
 	}
 

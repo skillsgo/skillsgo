@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared Git repository cache, canonical semantic Tag selection, ancestor-based pseudo-version generation, bounded timeouts, and storage revision metadata.
- * [OUTPUT]: Provides TTL-cached upstream canonical Repository Tag catalogs and their stable-first latest immutable revision.
+ * [OUTPUT]: Provides TTL-cached upstream canonical Repository Tag catalogs, per-Tag commit identities, and their stable-first latest immutable revision.
  * [POS]: Serves as the upstream version-listing adapter between Git source resolution and the Hub download protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -39,7 +39,7 @@ type tagCatalog struct {
 
 // NewVCSLister creates an UpstreamLister that shares the Fetcher's persistent
 // Git repository cache.
-func NewVCSLister(fetcher Fetcher, timeout time.Duration) (UpstreamLister, error) {
+func NewVCSLister(fetcher Fetcher, timeout time.Duration) (RepositoryVersionLister, error) {
 	repositories, ok := fetcher.(*gitFetcher)
 	if !ok {
 		return nil, fmt.Errorf("VCS lister requires the Git-backed Skill fetcher")
@@ -53,6 +53,52 @@ func NewVCSLister(fetcher Fetcher, timeout time.Duration) (UpstreamLister, error
 		ttl = parsed
 	}
 	return &vcsLister{repositories: repositories, timeout: timeout, ttl: ttl, now: time.Now, catalogs: map[string]tagCatalog{}}, nil
+}
+
+func (l *vcsLister) ListRepositoryTags(ctx context.Context, repositoryID string) ([]RepositoryTag, error) {
+	parsed, err := ParseSkillID(repositoryID)
+	if err != nil || parsed.SkillPath != "." || parsed.String() != repositoryID {
+		return nil, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
+	}
+	repoDir, err := l.repositories.repositoryDir(parsed.Repository)
+	if err != nil {
+		return nil, err
+	}
+	timeoutCtx, cancel := context.WithTimeout(ctx, l.timeout)
+	defer cancel()
+	if !isGitRepository(repoDir) {
+		if err := l.repositories.syncRepository(timeoutCtx, parsed); err != nil {
+			return nil, err
+		}
+	}
+	githubSource := strings.EqualFold(strings.SplitN(parsed.Repository, "/", 2)[0], "github.com")
+	output, err := l.repositories.runGitTransport(timeoutCtx, repoDir, githubSource,
+		"-c", "http.followRedirects=false", "ls-remote", "--tags", "origin")
+	if err != nil {
+		return nil, errors.E("vcsLister.ListRepositoryTags", fmt.Errorf("git ls-remote failed: %s", gitTransportDiagnostic(output)))
+	}
+	tagsByVersion := make(map[string]RepositoryTag)
+	for _, line := range strings.Split(string(output), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 2 || !strings.HasPrefix(fields[1], "refs/tags/") {
+			continue
+		}
+		version := strings.TrimPrefix(fields[1], "refs/tags/")
+		peeled := strings.HasSuffix(version, "^{}")
+		version = strings.TrimSuffix(version, "^{}")
+		if !isCanonicalSemanticVersion(version) {
+			continue
+		}
+		if current, exists := tagsByVersion[version]; !exists || peeled || current.CommitSHA == "" {
+			tagsByVersion[version] = RepositoryTag{Version: version, CommitSHA: fields[0]}
+		}
+	}
+	tags := make([]RepositoryTag, 0, len(tagsByVersion))
+	for _, tag := range tagsByVersion {
+		tags = append(tags, tag)
+	}
+	sort.Slice(tags, func(i, j int) bool { return semver.Compare(tags[i].Version, tags[j].Version) < 0 })
+	return tags, nil
 }
 
 type listSFResp struct {

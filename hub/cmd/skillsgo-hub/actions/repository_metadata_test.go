@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Repository metadata cache, GitHub adapter, temporary Catalog, and representative HTTP failure responses.
- * [OUTPUT]: Verifies Repository-scoped About description, Stars, TTL/ETag/rate-limit caching, sticky GitHub-token failover, permission, and rate-limit diagnostics.
+ * [OUTPUT]: Verifies Repository-scoped stale-while-revalidate submission, About description, Stars, TTL/ETag/rate-limit caching, token failover, and safe diagnostics.
  * [POS]: Serves as the operational diagnostics contract for the best-effort GitHub metadata dependency.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
+	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
 	"github.com/stretchr/testify/require"
 )
 
@@ -152,6 +153,36 @@ func TestRepositoryMetadataCacheSingleflightCoalescesConcurrentRefresh(t *testin
 		require.NoError(t, err)
 	}
 	require.Equal(t, 1, source.calls)
+}
+
+func TestRepositoryMetadataCacheQueuesRefreshAndPrewarm(t *testing.T) {
+	_, metadata := testCatalogAPI(t)
+	require.NoError(t, metadata.UpsertSkill(t.Context(), &catalog.Skill{
+		SkillID: "github.com/acme/skills/-/demo", Name: "demo", LatestVersion: "v1.0.0",
+	}))
+	runtime := taskqueue.NewSynchronous()
+	prewarmed := make(chan struct{}, 1)
+	require.NoError(t, taskqueue.Register(runtime, func(context.Context, repositoryPublicationPrewarmArgs) error {
+		prewarmed <- struct{}{}
+		return nil
+	}))
+	source := &recordingMetadataSource{results: []metadataSourceResult{{metadata: repositoryMetadata{
+		Description: "Agent Skills from Acme.", Stars: 42, ETag: `"repo-v1"`,
+	}}}}
+	cache := newQueuedRepositoryMetadataCache(metadata, runtime, source)
+	require.NoError(t, cache.RegisterTask())
+
+	stale, err := cache.Read(t.Context(), "github.com", "acme/skills")
+	require.NoError(t, err)
+	require.Zero(t, stale.Stars)
+	stored, err := metadata.Repository(t.Context(), "github.com/acme/skills")
+	require.NoError(t, err)
+	require.Equal(t, int64(42), stored.Stars)
+	select {
+	case <-prewarmed:
+	default:
+		t.Fatal("repository prewarm was not submitted")
+	}
 }
 
 func TestRepositoryMetadataCacheSharesStarsAndRevalidatesWithETag(t *testing.T) {

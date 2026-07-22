@@ -1,32 +1,25 @@
 /*
- * [INPUT]: Depends on a skills.sh bridge client, fenced Catalog lease/store operations, schedule timing, cancellation, and logging.
- * [OUTPUT]: Provides a multi-instance-safe periodic all-time counter crawl with heartbeat renewal and complete-only publication.
- * [POS]: Serves as the Hub background orchestration boundary for skills.sh provider observations.
+ * [INPUT]: Depends on a skills.sh bridge client, crawl-generation-fenced Catalog operations, River task timing, and logging.
+ * [OUTPUT]: Provides one retryable, generation-fenced all-time counter crawl with complete-only publication.
+ * [POS]: Serves as the domain handler invoked by River for skills.sh provider observations.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package skillssh
 
 import (
 	"context"
-	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math"
-	"os"
 	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 )
 
-const jobName = "skillssh-all-time-sync"
-
 type Store interface {
-	AcquireProviderLease(context.Context, string, string, time.Duration) (catalog.ProviderLease, bool, error)
-	RenewProviderLease(context.Context, catalog.ProviderLease, time.Duration) error
-	BeginProviderCrawl(context.Context, catalog.ProviderLease, string, string, time.Time) error
-	StoreProviderPage(context.Context, catalog.ProviderLease, string, int, int, time.Time, []catalog.ProviderObservation) error
-	CompleteProviderCrawl(context.Context, catalog.ProviderLease, string) error
+	BeginProviderCrawl(context.Context, string, string, time.Time) (catalog.ProviderCrawlFence, bool, error)
+	StoreProviderPage(context.Context, catalog.ProviderCrawlFence, int, int, time.Time, []catalog.ProviderObservation) error
+	CompleteProviderCrawl(context.Context, catalog.ProviderCrawlFence) error
 }
 
 type Fetcher interface {
@@ -42,86 +35,38 @@ type Worker struct {
 	store     Store
 	fetcher   Fetcher
 	logger    Logger
-	ownerID   string
 	interval  time.Duration
-	leaseTTL  time.Duration
 	pageCount int
 	perPage   int
 }
 
-func NewWorker(store Store, fetcher Fetcher, logger Logger, interval, leaseTTL time.Duration, pageCount, perPage int) *Worker {
-	host, _ := os.Hostname()
-	return &Worker{store: store, fetcher: fetcher, logger: logger, ownerID: host + "-" + randomID(), interval: interval, leaseTTL: leaseTTL, pageCount: pageCount, perPage: perPage}
+func NewWorker(store Store, fetcher Fetcher, logger Logger, interval time.Duration, pageCount, perPage int) *Worker {
+	return &Worker{store: store, fetcher: fetcher, logger: logger, interval: interval, pageCount: pageCount, perPage: perPage}
 }
 
-func (w *Worker) Run(ctx context.Context) {
-	w.runOnce(ctx, time.Now().UTC())
-	ticker := time.NewTicker(w.interval)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		case now := <-ticker.C:
-			w.runOnce(ctx, now.UTC())
-		}
-	}
-}
-
-func (w *Worker) runOnce(ctx context.Context, now time.Time) {
-	lease, acquired, err := w.store.AcquireProviderLease(ctx, jobName, w.ownerID, w.leaseTTL)
-	if err != nil {
-		w.logger.Warnf("skills.sh lease acquisition failed: %v", err)
-		return
-	}
-	if !acquired {
-		return
-	}
+// RunOnce executes one fenced crawl. A non-nil error asks River to retry.
+func (w *Worker) RunOnce(ctx context.Context, now time.Time) error {
 	window := now.Truncate(w.interval)
 	crawlID := fmt.Sprintf("skillssh-%s", window.Format("20060102T150405Z"))
-	if err := w.store.BeginProviderCrawl(ctx, lease, crawlID, "skills.sh", window); err != nil {
-		w.logger.Warnf("skills.sh crawl start failed: %v", err)
-		return
+	fence, started, err := w.store.BeginProviderCrawl(ctx, crawlID, "skills.sh", window)
+	if err != nil {
+		return fmt.Errorf("begin skills.sh crawl: %w", err)
 	}
-	crawlCtx, cancel := context.WithCancel(ctx)
-	defer cancel()
-	heartbeatDone := make(chan error, 1)
-	go w.heartbeat(crawlCtx, cancel, lease, heartbeatDone)
-	err = w.crawl(crawlCtx, lease, crawlID)
-	cancel()
-	heartbeatErr := <-heartbeatDone
-	if err == nil && heartbeatErr != nil {
-		err = heartbeatErr
+	if !started {
+		return nil
 	}
+	err = w.crawl(ctx, fence)
 	if err == nil {
-		err = w.store.CompleteProviderCrawl(ctx, lease, crawlID)
+		err = w.store.CompleteProviderCrawl(ctx, fence)
 	}
 	if err != nil {
-		w.logger.Warnf("skills.sh crawl %s failed: %v", crawlID, err)
-		return
+		return fmt.Errorf("skills.sh crawl %s: %w", crawlID, err)
 	}
 	w.logger.Infof("skills.sh crawl %s completed", crawlID)
+	return nil
 }
 
-func (w *Worker) heartbeat(ctx context.Context, cancel context.CancelFunc, lease catalog.ProviderLease, done chan<- error) {
-	ticker := time.NewTicker(w.leaseTTL / 3)
-	defer ticker.Stop()
-	for {
-		select {
-		case <-ctx.Done():
-			done <- nil
-			return
-		case <-ticker.C:
-			if err := w.store.RenewProviderLease(ctx, lease, w.leaseTTL); err != nil {
-				cancel()
-				done <- err
-				return
-			}
-		}
-	}
-}
-
-func (w *Worker) crawl(ctx context.Context, lease catalog.ProviderLease, crawlID string) error {
+func (w *Worker) crawl(ctx context.Context, fence catalog.ProviderCrawlFence) error {
 	start := 0
 	expected := 0
 	for expected == 0 || start < expected {
@@ -144,17 +89,11 @@ func (w *Worker) crawl(ctx context.Context, lease catalog.ProviderLease, crawlID
 			for _, item := range page.Data {
 				items = append(items, catalog.ProviderObservation{SkillID: item.ID, Source: item.Source, Slug: item.Slug, Installs: item.Installs})
 			}
-			if err := w.store.StoreProviderPage(ctx, lease, crawlID, page.Page, expected, observedAt, items); err != nil {
+			if err := w.store.StoreProviderPage(ctx, fence, page.Page, expected, observedAt, items); err != nil {
 				return err
 			}
 		}
 		start += len(pages)
 	}
 	return nil
-}
-
-func randomID() string {
-	var value [8]byte
-	_, _ = rand.Read(value[:])
-	return hex.EncodeToString(value[:])
 }
