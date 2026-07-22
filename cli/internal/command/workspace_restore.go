@@ -15,6 +15,7 @@ import (
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
+	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/scopevendor"
 )
@@ -77,25 +78,29 @@ func ensureOneRepository(ctx context.Context, root string, userScope bool, catal
 		vendorRoot, agentScope = filepath.Join(root, "vendor"), agent.ScopeUser
 	}
 	vendor := scopevendor.CoordinatePath(vendorRoot, repositoryID, dependency.Version)
-	archive, members, restored := []byte(nil), append([]string(nil), dependency.Skills...), false
+	infoRoot := filepath.Join(root, ".skillsgo", "info")
+	if userScope {
+		infoRoot = filepath.Join(root, "info")
+	}
+	cache := infocache.Cache{Root: infoRoot}
+	infoBytes, infoErr := cache.Get(repositoryID, dependency.Version, "repository.info")
+	var resource *hub.RepositoryResource
+	if infoErr == nil {
+		resource, infoErr = hub.ParseRepositoryInfo(repositoryID, infoBytes)
+	}
+	archive, restored := []byte(nil), false
 	if _, err := os.Lstat(vendor); os.IsNotExist(err) {
-		resource, fetchErr := client.FetchRepositoryWithProgress(ctx, repositoryID, dependency.Version, nil)
+		fetched, fetchErr := client.FetchRepositoryWithProgress(ctx, repositoryID, dependency.Version, nil)
 		if fetchErr != nil {
 			return "", vendor, fmt.Errorf("restore exact Repository %s@%s: %w", repositoryID, dependency.Version, fetchErr)
 		}
+		resource = fetched
 		if resource.Info.Version != dependency.Version || resource.Info.Sum != locked.Sum {
 			return "", vendor, fmt.Errorf("exact Repository %s@%s conflicts with skillsgo.lock", repositoryID, dependency.Version)
 		}
-		archive, members = resource.ZIP, make([]string, 0, len(resource.Members))
-		available := make(map[string]bool, len(resource.Members))
-		for _, member := range resource.Members {
-			members = append(members, member.Info.Path)
-			available[member.Info.Path] = true
-		}
-		for _, selected := range dependency.Skills {
-			if !available[selected] {
-				return "", vendor, fmt.Errorf("Repository release does not contain selected Skill %q", selected)
-			}
+		archive = resource.ZIP
+		if err := cache.Put(repositoryID, dependency.Version, "repository.info", resource.InfoBytes); err != nil {
+			return "", vendor, err
 		}
 		restored = true
 	} else if err != nil {
@@ -105,6 +110,22 @@ func ensureOneRepository(ctx context.Context, root string, userScope bool, catal
 		archive, readErr = scopevendor.ReadVerifiedVendor(vendorRoot, repositoryID, dependency.Version, locked.Sum)
 		if readErr != nil {
 			return "", vendor, readErr
+		}
+	}
+	if resource == nil {
+		if infoErr != nil {
+			return "", vendor, fmt.Errorf("read immutable Repository Info for offline projection: %w", infoErr)
+		}
+	}
+	members := make([]string, 0, len(resource.Members))
+	available := make(map[string]bool, len(resource.Members))
+	for _, member := range resource.Members {
+		members = append(members, member.Info.Path)
+		available[member.Info.Path] = true
+	}
+	for _, selected := range dependency.Skills {
+		if !available[selected] {
+			return "", vendor, fmt.Errorf("Repository release does not contain selected Skill %q", selected)
 		}
 	}
 	projections, err := repositoryProjections(catalog, dependency.Agents, nil, nil, dependency.Skills, agentScope, root)

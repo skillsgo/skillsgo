@@ -4,7 +4,7 @@
 ## Members
 
 - `transaction.go`: verifies and prepares one complete Repository Artifact as an ordinary-file Scope Vendor plus deterministic per-Agent Repository Projections, baseline-checks controlled replacements/removals including complete dependency deletion, then commits, finalizes, or rolls back owned paths.
-- `vendor.go`: verifies an authoritative coordinate Vendor against its locked Repository Sum and reconstructs the canonical Repository ZIP for offline projection changes without inferring publication membership.
+- `vendor.go`: verifies an authoritative coordinate Vendor against its locked Repository Sum, reconstructs the canonical Repository ZIP, and read-only compares selected-member Projections against immutable membership without inferring publication membership.
 - `transaction_test.go`: specifies full-tree Vendor retention, root/nested selective visibility, ordinary-file portability, idempotency, baseline-guarded replacement, Local Modification refusal, finalization, and rollback.
 
 ## Architectural Boundary
