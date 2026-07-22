@@ -366,7 +366,14 @@ func (c *Client) Check(ctx context.Context) (json.RawMessage, error) {
 }
 
 func (c *Client) HubInfo(ctx context.Context) (json.RawMessage, error) {
-	return c.readProductJSON(ctx, "/api/v1/info", nil)
+	var document json.RawMessage
+	if err := c.getJSON(ctx, c.baseURL+"/info", &document); err != nil {
+		return nil, err
+	}
+	if !json.Valid(document) || len(document) == 0 {
+		return nil, fmt.Errorf("Hub returned invalid JSON")
+	}
+	return document, nil
 }
 
 func (c *Client) MatchContent(ctx context.Context, sum, sourceHint string) ([]ContentMatch, error) {

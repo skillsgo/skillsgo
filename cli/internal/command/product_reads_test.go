@@ -65,7 +65,7 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 		requests[0] != "GET /api/v1/search?limit=4&offset=1&q=responsive+layout" ||
 		requests[1] != "GET /api/v1/skills/github.com/example/skills/-/demo" ||
 		requests[2] != `POST /api/v1/skills/batch {"skillIds":["github.com/example/skills/-/one","github.com/example/skills/-/two"]}` ||
-		requests[3] != "GET /api/v1/info" ||
+		requests[3] != "GET /info" ||
 		!strings.HasPrefix(requests[4], "GET /api/v1/search?") {
 		t.Fatalf("unexpected requests %v", requests)
 	}
