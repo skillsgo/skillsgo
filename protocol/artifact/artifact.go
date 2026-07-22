@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable SkillsGo ZIP bytes, extracted regular-file directories, and canonical artifact identity.
- * [OUTPUT]: Provides shared artifact limits, safe relative-path validation, normalized Content Digest calculation, and declared-digest verification.
+ * [OUTPUT]: Provides shared artifact limits, safe relative-path validation, one-pass normalized ZIP traversal, Content Digest calculation, and declared-digest verification.
  * [POS]: Serves as the executable artifact-format contract shared by Hub producers and CLI consumers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -27,6 +27,18 @@ const (
 	MaxUncompressedBytes = 64 << 20
 )
 
+// Entry is one validated regular file in normalized artifact-path order.
+type Entry struct {
+	Path     string
+	Contents []byte
+	Mode     os.FileMode
+	Size     int64
+}
+
+// VisitFunc observes each validated artifact file while its Content Digest is
+// calculated. Contents are owned by the call and must not be retained.
+type VisitFunc func(Entry) error
+
 func ValidRelativePath(value string) bool {
 	return value != "" && value != "." && !strings.HasPrefix(value, "/") &&
 		!strings.Contains(value, "\\") && path.Clean(value) == value &&
@@ -42,6 +54,12 @@ func ValidContentDigest(value string) bool {
 }
 
 func ContentDigest(data []byte, skillID, version string) (string, error) {
+	return WalkContent(data, skillID, version, nil)
+}
+
+// WalkContent validates and reads an artifact exactly once, visits files in
+// normalized path order, and returns the Content Digest over the same entries.
+func WalkContent(data []byte, skillID, version string, visit VisitFunc) (string, error) {
 	if len(data) == 0 || len(data) > MaxArchiveBytes {
 		return "", fmt.Errorf("artifact archive size must be between 1 and %d bytes", MaxArchiveBytes)
 	}
@@ -78,6 +96,11 @@ func ContentDigest(data []byte, skillID, version string) (string, error) {
 		}
 		if err := WriteDigestEntry(hash, relative, contents); err != nil {
 			return "", err
+		}
+		if visit != nil {
+			if err := visit(Entry{Path: relative, Contents: contents, Mode: entry.Mode(), Size: int64(entry.UncompressedSize64)}); err != nil {
+				return "", fmt.Errorf("visit artifact file %q: %w", relative, err)
+			}
 		}
 	}
 	if !seen["SKILL.md"] {

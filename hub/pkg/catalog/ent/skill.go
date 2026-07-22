@@ -34,6 +34,8 @@ type Skill struct {
 	SkillPath string `json:"skill_path,omitempty"`
 	// LatestVersion holds the value of the "latest_version" field.
 	LatestVersion string `json:"latest_version,omitempty"`
+	// Discoverable holds the value of the "discoverable" field.
+	Discoverable bool `json:"discoverable,omitempty"`
 	// Verified holds the value of the "verified" field.
 	Verified bool `json:"verified,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
@@ -104,7 +106,7 @@ func (*Skill) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case skill.FieldVerified:
+		case skill.FieldDiscoverable, skill.FieldVerified:
 			values[i] = new(sql.NullBool)
 		case skill.FieldID, skill.FieldRepositoryID:
 			values[i] = new(sql.NullInt64)
@@ -180,6 +182,12 @@ func (_m *Skill) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field latest_version", values[i])
 			} else if value.Valid {
 				_m.LatestVersion = value.String
+			}
+		case skill.FieldDiscoverable:
+			if value, ok := values[i].(*sql.NullBool); !ok {
+				return fmt.Errorf("unexpected type %T for field discoverable", values[i])
+			} else if value.Valid {
+				_m.Discoverable = value.Bool
 			}
 		case skill.FieldVerified:
 			if value, ok := values[i].(*sql.NullBool); !ok {
@@ -278,6 +286,9 @@ func (_m *Skill) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("latest_version=")
 	builder.WriteString(_m.LatestVersion)
+	builder.WriteString(", ")
+	builder.WriteString("discoverable=")
+	builder.WriteString(fmt.Sprintf("%v", _m.Discoverable))
 	builder.WriteString(", ")
 	builder.WriteString("verified=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Verified))

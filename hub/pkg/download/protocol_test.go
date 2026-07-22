@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the download package imports and contracts declared in this file.
- * [OUTPUT]: Specifies the download package behavior covered by protocol_test.go.
+ * [OUTPUT]: Specifies synchronous downloads, durable asynchronous submission, failure propagation, and cache behavior.
  * [POS]: Serves as test coverage for the download package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	stderrors "errors"
 	"io"
 	"path/filepath"
 	"strings"
@@ -323,7 +324,7 @@ func TestDownloadProtocol(t *testing.T) {
 	}
 	mp := &mockFetcher{}
 	st := stash.New(mp, s, nop.New(), 10*time.Minute)
-	dp := New(&Opts{s, st, nil, nil, Strict})
+	dp := New(&Opts{s, st, nil, nil, Strict, nil})
 	ctx := t.Context()
 
 	var eg errgroup.Group
@@ -374,7 +375,7 @@ func TestDownloadProtocolWhenFetchFails(t *testing.T) {
 	}
 	mp := &notFoundFetcher{}
 	st := stash.New(mp, s, nop.New(), 10*time.Minute)
-	dp := New(&Opts{s, st, nil, nil, Strict})
+	dp := New(&Opts{s, st, nil, nil, Strict, nil})
 	_, err = dp.Info(t.Context(), fakeMod.mod, fakeMod.ver)
 	if err != nil {
 		t.Errorf("Download protocol should succeed, instead it gave error %s \n", err)
@@ -388,6 +389,10 @@ func TestAsyncRedirect(t *testing.T) {
 	dp := New(&Opts{
 		Stasher: ms,
 		Storage: s,
+		AsyncStash: func(ctx context.Context, mod, ver string) error {
+			go func() { _, _ = ms.Stash(ctx, mod, ver) }()
+			return nil
+		},
 		DownloadFile: &mode.DownloadFile{
 			Mode:        mode.Async,
 			DownloadURL: "https://gomods.io",
@@ -402,6 +407,19 @@ func TestAsyncRedirect(t *testing.T) {
 	info, err := dp.Info(t.Context(), mod, ver)
 	require.NoError(t, err)
 	require.Equal(t, string(info), "info", "expected async fetch to be successful")
+}
+
+func TestAsyncDownloadReturnsSubmissionFailure(t *testing.T) {
+	s, err := mem.NewStorage()
+	require.NoError(t, err)
+	wantErr := stderrors.New("task queue unavailable")
+	dp := New(&Opts{
+		Storage:      s,
+		DownloadFile: &mode.DownloadFile{Mode: mode.Async},
+		AsyncStash:   func(context.Context, string, string) error { return wantErr },
+	})
+	_, err = dp.Info(t.Context(), "github.com/acme/skills/-/demo", "v1.0.0")
+	require.ErrorIs(t, err, wantErr)
 }
 
 type mockStasher struct {

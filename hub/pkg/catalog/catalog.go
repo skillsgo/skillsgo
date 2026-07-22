@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Ent entities, SQLx for dialect-specific discovery queries, versioned Atlas SQL migrations, Hub database configuration, and canonical Skill IDs.
- * [OUTPUT]: Provides persistent searchable Skill and repository metadata, batch Catalog-only latest-version reads, Repository-scoped GitHub cache state, immutable versions with commit time and ZIP size, exact content-identity matching, append-only risk assessments, install aggregation, pagination, and distinct rankings on SQLite/PostgreSQL.
+ * [INPUT]: Depends on Ent entities, SQLx for dialect-specific discovery queries, pgx stdlib for shared PostgreSQL pooling, versioned Atlas SQL migrations, Hub database configuration, and canonical Skill IDs.
+ * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, native pgx transaction scopes for atomic Ent/River work, immutable versions, exact content matching, current-only discovery/ranking, source cache state, risk evidence, and install aggregation on SQLite/PostgreSQL.
  * [POS]: Serves as the Hub discovery data boundary while artifact bytes remain owned by storage packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -24,13 +24,16 @@ import (
 
 	"entgo.io/ent/dialect"
 	entsql "entgo.io/ent/dialect/sql"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5/stdlib"
 	"github.com/jmoiron/sqlx"
-	_ "github.com/lib/pq"
 	catalogent "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent"
 	entrepository "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	entriskassessment "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/riskassessment"
 	entskill "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
 	entskillversion "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/pgxent"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	skillpkg "github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"golang.org/x/mod/module"
@@ -49,10 +52,12 @@ type Catalog struct {
 	db      *sqlx.DB
 	orm     *catalogent.Client
 	dialect Dialect
+	pgxPool *pgxpool.Pool
 }
 
 func Open(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 	var sqlDB *sql.DB
+	var pgxPool *pgxpool.Pool
 	var driverName, entDialect string
 	switch Dialect(cfg.Type) {
 	case SQLite:
@@ -63,8 +68,24 @@ func Open(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 		driverName, entDialect = "sqlite", dialect.SQLite
 		sqlDB, _ = sql.Open(driverName, dsn)
 	case Postgres:
-		driverName, entDialect = "postgres", dialect.Postgres
-		sqlDB, _ = sql.Open(driverName, cfg.DSN)
+		driverName, entDialect = "pgx", dialect.Postgres
+		poolConfig, err := pgxpool.ParseConfig(cfg.DSN)
+		if err != nil {
+			return nil, fmt.Errorf("parse metadata database DSN: %w", err)
+		}
+		poolConfig.MaxConns = int32(cfg.MaxOpenConns)
+		if cfg.ConnMaxLifetime > 0 {
+			poolConfig.MaxConnLifetime = time.Duration(cfg.ConnMaxLifetime) * time.Second
+		}
+		pgxPool, err = pgxpool.NewWithConfig(ctx, poolConfig)
+		if err != nil {
+			return nil, fmt.Errorf("create metadata database pool: %w", err)
+		}
+		if err := pgxPool.Ping(ctx); err != nil {
+			pgxPool.Close()
+			return nil, fmt.Errorf("connect metadata database pool: %w", err)
+		}
+		sqlDB = stdlib.OpenDBFromPool(pgxPool)
 	default:
 		return nil, fmt.Errorf("unsupported database type %q", cfg.Type)
 	}
@@ -73,18 +94,69 @@ func Open(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 	sqlDB.SetConnMaxLifetime(time.Duration(cfg.ConnMaxLifetime) * time.Second)
 	if err := sqlDB.PingContext(ctx); err != nil {
 		_ = sqlDB.Close()
+		if pgxPool != nil {
+			pgxPool.Close()
+		}
 		return nil, fmt.Errorf("connect metadata database: %w", err)
 	}
 	driver := entsql.OpenDB(entDialect, sqlDB)
-	c := &Catalog{db: sqlx.NewDb(sqlDB, driverName), orm: catalogent.NewClient(catalogent.Driver(driver)), dialect: Dialect(cfg.Type)}
+	c := &Catalog{db: sqlx.NewDb(sqlDB, driverName), orm: catalogent.NewClient(catalogent.Driver(driver)), dialect: Dialect(cfg.Type), pgxPool: pgxPool}
 	if err := c.Migrate(ctx); err != nil {
 		_ = c.orm.Close()
+		if c.pgxPool != nil {
+			c.pgxPool.Close()
+		}
 		return nil, err
 	}
 	return c, nil
 }
 
-func (c *Catalog) Close() error { return c.orm.Close() }
+func (c *Catalog) Close() error {
+	err := c.orm.Close()
+	if c.pgxPool != nil {
+		c.pgxPool.Close()
+	}
+	return err
+}
+
+// PostgresPool returns the shared native PostgreSQL pool used by Catalog.
+// It is nil for SQLite catalogs and remains owned by Catalog.
+func (c *Catalog) PostgresPool() *pgxpool.Pool { return c.pgxPool }
+
+// WithPostgresTx runs fn with a generated Ent client and the exact native pgx
+// transaction that can also be passed to River InsertTx. The callback must not
+// commit, roll back, or close either argument.
+func (c *Catalog) WithPostgresTx(ctx context.Context, fn func(*catalogent.Client, pgx.Tx) error) error {
+	return c.WithPostgresTxOptions(ctx, pgx.TxOptions{}, fn)
+}
+
+// WithPostgresTxOptions is WithPostgresTx with explicit pgx transaction options.
+func (c *Catalog) WithPostgresTxOptions(ctx context.Context, opts pgx.TxOptions, fn func(*catalogent.Client, pgx.Tx) error) error {
+	if c.pgxPool == nil {
+		return errors.New("native PostgreSQL transactions are unavailable for this Catalog dialect")
+	}
+	if fn == nil {
+		return errors.New("PostgreSQL transaction callback is required")
+	}
+	tx, err := c.pgxPool.BeginTx(ctx, opts)
+	if err != nil {
+		return fmt.Errorf("begin PostgreSQL transaction: %w", err)
+	}
+	// pgx documents Rollback as safe after Commit. Keeping it unconditional
+	// also releases the transaction on panic and testing/runtime Goexit paths.
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	txClient, err := pgxent.NewClient(tx)
+	if err != nil {
+		return errors.Join(err, tx.Rollback(context.Background()))
+	}
+	if err := fn(txClient, tx); err != nil {
+		return errors.Join(err, tx.Rollback(context.Background()))
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("commit PostgreSQL transaction: %w", err)
+	}
+	return nil
+}
 
 type Skill struct {
 	RowID           int64     `db:"id" json:"-"`
@@ -96,6 +168,7 @@ type Skill struct {
 	Repository      string    `db:"repository" json:"repository"`
 	SkillPath       string    `db:"skill_path" json:"skillPath"`
 	LatestVersion   string    `db:"latest_version" json:"latestVersion"`
+	Discoverable    bool      `db:"discoverable" json:"-"`
 	Stars           int64     `db:"stars" json:"stars"`
 	Verified        bool      `db:"verified" json:"verified"`
 	CreatedAt       time.Time `db:"created_at" json:"createdAt"`
@@ -158,7 +231,7 @@ func (c *Catalog) TranslationCandidates(ctx context.Context, locale, promptVersi
 		SELECT 'skill', s.skill_id, s.description, COALESCE(ld.source_digest, ''), COALESCE(ld.prompt_version, '')
 		FROM skills s LEFT JOIN localized_descriptions ld
 		ON ld.resource_kind = 'skill' AND ld.resource_id = s.skill_id AND ld.locale = ?
-		WHERE trim(s.description) <> ''
+		WHERE trim(s.description) <> '' AND s.discoverable = TRUE
 		ORDER BY resource_kind, resource_id`
 	if err := c.db.SelectContext(ctx, &rows, c.db.Rebind(query), locale, locale); err != nil {
 		return nil, err
@@ -225,10 +298,24 @@ type PublishedSkill struct {
 	Version SkillVersion
 }
 
+type PublicationVisibility string
+
+const (
+	CurrentPublication    PublicationVisibility = "current"
+	HistoricalPublication PublicationVisibility = "historical"
+)
+
 // PublishRepositoryVersion exposes a complete Repository member set in one transaction.
 // Existing immutable versions are accepted only when the complete set and every
 // source/content identity field are byte-for-byte equivalent at the model boundary.
 func (c *Catalog) PublishRepositoryVersion(ctx context.Context, repositoryID string, candidates []PublishedSkill) error {
+	return c.PublishRepositoryVersionWithVisibility(ctx, repositoryID, candidates, CurrentPublication)
+}
+
+func (c *Catalog) PublishRepositoryVersionWithVisibility(ctx context.Context, repositoryID string, candidates []PublishedSkill, visibility PublicationVisibility) error {
+	if visibility != CurrentPublication && visibility != HistoricalPublication {
+		return fmt.Errorf("unsupported Repository publication visibility %q", visibility)
+	}
 	parsedRepository, err := skillpkg.ParseSkillID(repositoryID)
 	if err != nil || parsedRepository.SkillPath != "." || parsedRepository.String() != repositoryID {
 		return fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
@@ -256,30 +343,57 @@ func (c *Catalog) PublishRepositoryVersion(ctx context.Context, repositoryID str
 	}
 	defer func() { _ = tx.Rollback() }()
 	existing := make([]RepositoryVersionMember, 0)
+	var publicationCount int
+	if err := tx.GetContext(ctx, &publicationCount, c.db.Rebind(`SELECT COUNT(*) FROM repository_publications rp
+		JOIN repositories r ON r.id = rp.repository_id WHERE r.repository_id = ? AND rp.version = ?`), repositoryID, version); err != nil {
+		return err
+	}
 	query := `SELECT s.skill_id, sv.version, sv.commit_sha, sv.tree_sha, sv.content_digest, sv.commit_time, sv.archive_size
 FROM repositories AS r JOIN skills AS s ON s.repository_id = r.id
-JOIN skill_versions AS sv ON sv.skill_id = s.id
-WHERE r.repository_id = ? AND sv.version = ? ORDER BY s.skill_id ASC`
+JOIN skill_versions AS sv ON sv.skill_id = s.id`
+	if publicationCount > 0 {
+		query += ` JOIN repository_publication_members rpm
+		ON rpm.repository_id = r.id AND rpm.version = sv.version AND rpm.skill_id = s.id`
+	}
+	query += ` WHERE r.repository_id = ? AND sv.version = ? ORDER BY s.skill_id ASC`
 	if err := tx.SelectContext(ctx, &existing, c.db.Rebind(query), repositoryID, version); err != nil {
 		return err
 	}
-	if len(existing) > 0 {
+	byCandidateID := make(map[string]PublishedSkill, len(candidates))
+	for _, candidate := range candidates {
+		byCandidateID[candidate.Skill.SkillID] = candidate
+	}
+	for _, member := range existing {
+		candidate, relevant := byCandidateID[member.SkillID]
+		if !relevant && publicationCount == 0 {
+			continue
+		}
+		if !relevant || member.CommitSHA != candidate.Version.CommitSHA || member.TreeSHA != candidate.Version.TreeSHA ||
+			member.ContentDigest != candidate.Version.ContentDigest || !member.CommitTime.Equal(candidate.Version.CommitTime) ||
+			member.ArchiveSize != candidate.Version.ArchiveSize {
+			return fmt.Errorf("immutable Repository version conflict for %s@%s", repositoryID, version)
+		}
+	}
+	if publicationCount > 0 {
 		if len(existing) != len(candidates) {
 			return fmt.Errorf("immutable Repository version conflict for %s@%s", repositoryID, version)
 		}
-		byID := make(map[string]RepositoryVersionMember, len(existing))
-		for _, member := range existing {
-			byID[member.SkillID] = member
-		}
-		for _, candidate := range candidates {
-			member, ok := byID[candidate.Skill.SkillID]
-			if !ok || member.CommitSHA != candidate.Version.CommitSHA || member.TreeSHA != candidate.Version.TreeSHA ||
-				member.ContentDigest != candidate.Version.ContentDigest || !member.CommitTime.Equal(candidate.Version.CommitTime) ||
-				member.ArchiveSize != candidate.Version.ArchiveSize {
-				return fmt.Errorf("immutable Repository version conflict for %s@%s", repositoryID, version)
+		if visibility == CurrentPublication {
+			now := time.Now().UTC()
+			if _, err := tx.ExecContext(ctx, c.db.Rebind(`UPDATE skills SET discoverable = FALSE, updated_at = ?
+				WHERE repository_id = (SELECT id FROM repositories WHERE repository_id = ?)`), now, repositoryID); err != nil {
+				return err
+			}
+			for _, candidate := range candidates {
+				if _, err := tx.ExecContext(ctx, c.db.Rebind("UPDATE skills SET discoverable = TRUE, updated_at = ? WHERE skill_id = ?"), now, candidate.Skill.SkillID); err != nil {
+					return err
+				}
 			}
 		}
-		return nil
+		if err := recordRepositoryPublication(ctx, c, tx, repositoryID, version, commitSHA, visibility, candidates, time.Now().UTC()); err != nil {
+			return err
+		}
+		return tx.Commit()
 	}
 	now := time.Now().UTC()
 	parts := strings.SplitN(repositoryID, "/", 2)
@@ -291,6 +405,11 @@ ON CONFLICT (repository_id) DO UPDATE SET updated_at = excluded.updated_at`), pa
 	var repositoryRowID int64
 	if err := tx.GetContext(ctx, &repositoryRowID, c.db.Rebind("SELECT id FROM repositories WHERE repository_id = ?"), repositoryID); err != nil {
 		return err
+	}
+	if visibility == CurrentPublication {
+		if _, err := tx.ExecContext(ctx, c.db.Rebind("UPDATE skills SET discoverable = FALSE, updated_at = ? WHERE repository_id = ?"), now, repositoryRowID); err != nil {
+			return err
+		}
 	}
 	for _, candidate := range candidates {
 		parsedSkill, _ := skillpkg.ParseSkillID(candidate.Skill.SkillID)
@@ -307,14 +426,19 @@ ON CONFLICT (repository_id) DO UPDATE SET updated_at = excluded.updated_at`), pa
 		if latestErr == nil {
 			latestVersion = preferredLatestVersion(currentLatest, version)
 		}
-		if _, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO skills
-(repository_id, skill_id, name, description, source_host, repository, skill_path, latest_version, verified, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+		discoverable := visibility == CurrentPublication
+		if visibility == HistoricalPublication && latestErr == nil {
+			if _, err := tx.ExecContext(ctx, c.db.Rebind("UPDATE skills SET updated_at = ? WHERE skill_id = ?"), now, candidate.Skill.SkillID); err != nil {
+				return err
+			}
+		} else if _, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO skills
+(repository_id, skill_id, name, description, source_host, repository, skill_path, latest_version, discoverable, verified, created_at, updated_at)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT (skill_id) DO UPDATE SET repository_id = excluded.repository_id, name = excluded.name,
 description = excluded.description, source_host = excluded.source_host, repository = excluded.repository,
-skill_path = excluded.skill_path, latest_version = excluded.latest_version, updated_at = excluded.updated_at`),
+skill_path = excluded.skill_path, latest_version = excluded.latest_version, discoverable = TRUE, updated_at = excluded.updated_at`),
 			repositoryRowID, candidate.Skill.SkillID, candidate.Skill.Name, candidate.Skill.Description,
-			parts[0], parts[1], skillPath, latestVersion, candidate.Skill.Verified, now, now); err != nil {
+			parts[0], parts[1], skillPath, latestVersion, discoverable, candidate.Skill.Verified, now, now); err != nil {
 			return err
 		}
 		var skillRowID int64
@@ -327,13 +451,39 @@ skill_path = excluded.skill_path, latest_version = excluded.latest_version, upda
 		}
 		if _, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO skill_versions
 (skill_id, version, commit_sha, tree_sha, content_digest, commit_time, archive_size, created_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?)`), skillRowID, version, candidate.Version.CommitSHA,
+VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+ON CONFLICT(skill_id, version) DO NOTHING`), skillRowID, version, candidate.Version.CommitSHA,
 			candidate.Version.TreeSHA, candidate.Version.ContentDigest, candidate.Version.CommitTime,
 			candidate.Version.ArchiveSize, createdAt); err != nil {
 			return err
 		}
 	}
+	if err := recordRepositoryPublication(ctx, c, tx, repositoryID, version, commitSHA, visibility, candidates, now); err != nil {
+		return err
+	}
 	return tx.Commit()
+}
+
+func recordRepositoryPublication(ctx context.Context, c *Catalog, tx *sqlx.Tx, repositoryID, version, commitSHA string, visibility PublicationVisibility, candidates []PublishedSkill, createdAt time.Time) error {
+	_, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO repository_publications
+		(repository_id, version, commit_sha, visibility, created_at)
+		SELECT id, ?, ?, ?, ? FROM repositories WHERE repository_id = ?
+		ON CONFLICT(repository_id, version) DO UPDATE SET
+		visibility = CASE WHEN excluded.visibility = 'current' THEN 'current' ELSE repository_publications.visibility END`),
+		version, commitSHA, visibility, createdAt, repositoryID)
+	if err != nil {
+		return err
+	}
+	for _, candidate := range candidates {
+		if _, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO repository_publication_members
+			(repository_id, version, skill_id)
+			SELECT r.id, ?, s.id FROM repositories r JOIN skills s ON s.repository_id = r.id
+			WHERE r.repository_id = ? AND s.skill_id = ?
+			ON CONFLICT(repository_id, version, skill_id) DO NOTHING`), version, repositoryID, candidate.Skill.SkillID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func preferredLatestVersion(current, candidate string) string {
@@ -446,6 +596,7 @@ func (c *Catalog) RankedSkills(ctx context.Context, sort string, limit, offset i
 FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
 LEFT JOIN skill_stats AS st ON st.skill_id = s.id
 LEFT JOIN skill_hourly_stats AS hs ON hs.skill_id = s.id
+WHERE s.discoverable = TRUE
 GROUP BY s.id, r.stars, st.total_installs ORDER BY ` + order + ` LIMIT ? OFFSET ?`
 	args = append(args, limit, offset)
 	var skills []RankedSkill
@@ -469,7 +620,7 @@ SELECT s.*, r.stars AS stars, COALESCE(h.recent_installs, 0) AS installs,
 	COALESCE(h.recent_installs, 0) - COALESCE(h.baseline_installs, 0) / 24 AS change
 FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
 LEFT JOIN hot_stats AS h ON h.skill_id = s.id
-WHERE COALESCE(h.recent_installs, 0) >= 3
+WHERE s.discoverable = TRUE AND COALESCE(h.recent_installs, 0) >= 3
 ORDER BY
 	(COALESCE(h.recent_installs, 0) - COALESCE(h.baseline_installs, 0) / 24.0) /
 		sqrt(COALESCE(h.baseline_installs, 0) / 24.0 + 1) DESC,
@@ -616,12 +767,21 @@ func (c *Catalog) RepositoryVersionMembers(ctx context.Context, repositoryID, ve
 	if err != nil || parsed.SkillPath != "." || parsed.String() != repositoryID {
 		return nil, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
 	}
+	var publicationCount int
+	if err := c.db.GetContext(ctx, &publicationCount, c.db.Rebind(`SELECT COUNT(*) FROM repository_publications rp
+		JOIN repositories r ON r.id = rp.repository_id WHERE r.repository_id = ? AND rp.version = ?`), repositoryID, version); err != nil {
+		return nil, err
+	}
 	statement := `SELECT s.skill_id, sv.version, sv.commit_sha, sv.tree_sha,
 sv.content_digest, sv.commit_time, sv.archive_size
 FROM repositories AS r
 JOIN skills AS s ON s.repository_id = r.id
-JOIN skill_versions AS sv ON sv.skill_id = s.id
-WHERE r.repository_id = ? AND sv.version = ?
+JOIN skill_versions AS sv ON sv.skill_id = s.id`
+	if publicationCount > 0 {
+		statement += ` JOIN repository_publication_members AS rpm
+		ON rpm.repository_id = r.id AND rpm.skill_id = s.id AND rpm.version = sv.version`
+	}
+	statement += ` WHERE r.repository_id = ? AND sv.version = ?
 ORDER BY CASE WHEN s.skill_path = '' THEN 0 ELSE 1 END, s.skill_id ASC`
 	members := make([]RepositoryVersionMember, 0)
 	if err := c.db.SelectContext(ctx, &members, c.db.Rebind(statement), repositoryID, version); err != nil {
@@ -665,7 +825,8 @@ func (c *Catalog) TotalInstalls(ctx context.Context, rowID int64) (int64, error)
 func (c *Catalog) Skill(ctx context.Context, skillID string) (*Skill, error) {
 	var stored Skill
 	err := c.db.GetContext(ctx, &stored, c.db.Rebind(`SELECT s.*, r.stars AS stars
-FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id WHERE s.skill_id = ?`), skillID)
+FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
+WHERE s.skill_id = ? AND s.discoverable = TRUE`), skillID)
 	return &stored, err
 }
 
@@ -677,7 +838,7 @@ func (c *Catalog) SkillsByID(ctx context.Context, skillIDs []string) ([]Skill, e
 	}
 	query, args, err := sqlx.In(`SELECT s.*, r.stars AS stars
 FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
-WHERE s.skill_id IN (?)`, skillIDs)
+WHERE s.skill_id IN (?) AND s.discoverable = TRUE`, skillIDs)
 	if err != nil {
 		return nil, err
 	}
@@ -707,6 +868,16 @@ WHERE s.skill_id = ? ORDER BY sv.version ASC`
 	}
 	sort.Slice(filtered, func(i, j int) bool { return semver.Compare(filtered[i], filtered[j]) < 0 })
 	return filtered, nil
+}
+
+// SkillVersionExists reports whether immutable metadata already owns the exact
+// artifact identity. Protocol reads use it to avoid turning a Historical
+// Publication back into current discovery state merely because it was downloaded.
+func (c *Catalog) SkillVersionExists(ctx context.Context, skillID, version string) (bool, error) {
+	var count int
+	err := c.db.GetContext(ctx, &count, c.db.Rebind(`SELECT COUNT(*) FROM skills s
+		JOIN skill_versions sv ON sv.skill_id = s.id WHERE s.skill_id = ? AND sv.version = ?`), skillID, version)
+	return count > 0, err
 }
 
 // SkillLatestPublishedVersion returns the latest version selected for one
@@ -825,7 +996,7 @@ func (c *Catalog) Skills(ctx context.Context, limit, offset int) ([]Skill, error
 	var skills []Skill
 	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(`SELECT s.*, r.stars AS stars
 FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
-ORDER BY s.verified DESC, s.name ASC LIMIT ? OFFSET ?`), limit, offset)
+WHERE s.discoverable = TRUE ORDER BY s.verified DESC, s.name ASC LIMIT ? OFFSET ?`), limit, offset)
 	return skills, err
 }
 
@@ -841,24 +1012,27 @@ FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
 LEFT JOIN skill_stats AS st ON st.skill_id = s.id`
 	args := make([]any, 0, 5)
 	order := "s.verified DESC, s.name ASC"
+	predicates := []string{"s.discoverable = TRUE"}
 	if query != "" {
 		if c.dialect == SQLite && len([]rune(query)) >= 3 {
 			match := `"` + strings.ReplaceAll(query, `"`, `""`) + `"`
-			statement += " JOIN skills_fts AS f ON f.rowid = s.id WHERE skills_fts MATCH ?"
+			statement += " JOIN skills_fts AS f ON f.rowid = s.id"
+			predicates = append(predicates, "skills_fts MATCH ?")
 			args = append(args, match)
 			order = "bm25(skills_fts), s.verified DESC, s.name ASC"
 		} else if c.dialect == Postgres {
 			text := "s.name || ' ' || s.description || ' ' || s.skill_id"
-			statement += " WHERE (" + text + ") ILIKE ?"
+			predicates = append(predicates, "("+text+") ILIKE ?")
 			args = append(args, "%"+query+"%")
 			order = "similarity(" + text + ", ?) DESC, s.verified DESC, s.name ASC"
 			args = append(args, query)
 		} else {
 			like := "%" + strings.ToLower(query) + "%"
-			statement += " WHERE lower(name) LIKE ? OR lower(description) LIKE ? OR lower(skill_id) LIKE ?"
+			predicates = append(predicates, "(lower(name) LIKE ? OR lower(description) LIKE ? OR lower(skill_id) LIKE ?)")
 			args = append(args, like, like, like)
 		}
 	}
+	statement += " WHERE " + strings.Join(predicates, " AND ")
 	statement += " ORDER BY " + order + " LIMIT ? OFFSET ?"
 	args = append(args, limit, offset)
 	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(statement), args...)
@@ -878,14 +1052,14 @@ func (c *Catalog) SearchLocalized(ctx context.Context, query, locale string, lim
 	like := "%" + strings.ToLower(strings.TrimSpace(query)) + "%"
 	statement := `SELECT s.id, s.repository_id, s.skill_id, s.name,
 		COALESCE(ls.description, s.description) AS description,
-		s.source_host, s.repository, s.skill_path, s.latest_version, r.stars AS stars,
+			s.source_host, s.repository, s.skill_path, s.latest_version, s.discoverable, r.stars AS stars,
 		s.verified, s.created_at, s.updated_at, COALESCE(st.total_installs, 0) AS installs, 0 AS change
 		FROM skills s JOIN repositories r ON r.id = s.repository_id
 		LEFT JOIN skill_stats st ON st.skill_id = s.id
 		LEFT JOIN localized_descriptions ls ON ls.resource_kind = 'skill' AND ls.resource_id = s.skill_id AND ls.locale = ?
 		LEFT JOIN localized_descriptions lr ON lr.resource_kind = 'repository' AND lr.resource_id = r.repository_id AND lr.locale = ?
-		WHERE lower(s.name) LIKE ? OR lower(s.description) LIKE ? OR lower(s.skill_id) LIKE ?
-		OR lower(COALESCE(ls.description, '')) LIKE ? OR lower(COALESCE(lr.description, '')) LIKE ?
+			WHERE s.discoverable = TRUE AND (lower(s.name) LIKE ? OR lower(s.description) LIKE ? OR lower(s.skill_id) LIKE ?
+			OR lower(COALESCE(ls.description, '')) LIKE ? OR lower(COALESCE(lr.description, '')) LIKE ?)
 		ORDER BY s.verified DESC, s.name ASC LIMIT ? OFFSET ?`
 	var skills []RankedSkill
 	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(statement), locale, locale, like, like, like, like, like, limit, offset)
@@ -895,7 +1069,7 @@ func (c *Catalog) SearchLocalized(ctx context.Context, query, locale string, lim
 func skillFromEnt(entity *catalogent.Skill) *Skill {
 	return &Skill{RowID: entity.ID, RepositoryRowID: entity.RepositoryID, SkillID: entity.SkillID, Name: entity.Name, Description: entity.Description,
 		SourceHost: entity.SourceHost, Repository: entity.Repository, SkillPath: entity.SkillPath,
-		LatestVersion: entity.LatestVersion, Verified: entity.Verified,
+		LatestVersion: entity.LatestVersion, Discoverable: entity.Discoverable, Verified: entity.Verified,
 		CreatedAt: entity.CreatedAt, UpdatedAt: entity.UpdatedAt}
 }
 

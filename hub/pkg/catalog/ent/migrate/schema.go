@@ -125,6 +125,7 @@ var (
 		{Name: "repository", Type: field.TypeString},
 		{Name: "skill_path", Type: field.TypeString},
 		{Name: "latest_version", Type: field.TypeString},
+		{Name: "discoverable", Type: field.TypeBool, Default: true},
 		{Name: "verified", Type: field.TypeBool, Default: false},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
@@ -138,7 +139,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "skills_repositories_skills",
-				Columns:    []*schema.Column{SkillsColumns[11]},
+				Columns:    []*schema.Column{SkillsColumns[12]},
 				RefColumns: []*schema.Column{RepositoriesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},

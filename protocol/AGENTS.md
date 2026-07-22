@@ -14,7 +14,7 @@ This map governs the dependency-light Go protocol workspace shared by the CLI an
 
 | Path | Responsibility |
 | --- | --- |
-| `artifact/` | Immutable artifact limits, safe paths, normalized Content Digests, and ZIP inspection. |
+| `artifact/` | Immutable artifact limits, safe paths, one-pass normalized ZIP traversal, and Content Digests shared by producers and consumers. |
 | `api/` | Public CLI-to-Hub JSON DTOs, schema constants, statuses, and risk levels. |
 | `locale/` | Canonical presentation-locale normalization. |
 | `skillid/` | Canonical public Hub Skill ID parsing and formatting. |

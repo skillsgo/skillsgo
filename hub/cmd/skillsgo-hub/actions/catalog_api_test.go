@@ -211,6 +211,34 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, "github.com/mattpocock/skills", response.Skills[0].Repository)
 }
 
+func TestHistoricalPublicationMatchesContentWithoutEnteringDiscovery(t *testing.T) {
+	router, metadata := testCatalogAPI(t)
+	repositoryID := "github.com/example/history"
+	skillID := repositoryID + "/-/skills/retired"
+	digest := "sha256:" + strings.Repeat("a", 64)
+	require.NoError(t, metadata.PublishRepositoryVersionWithVisibility(t.Context(), repositoryID, []catalog.PublishedSkill{{
+		Skill: catalog.Skill{SkillID: skillID, Name: "retired", Description: "Historical only capability"},
+		Version: catalog.SkillVersion{Version: "v1.0.0", CommitSHA: "commit-v1", TreeSHA: "tree-v1",
+			ContentDigest: digest, CommitTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), ArchiveSize: 10},
+	}}, catalog.HistoricalPublication))
+
+	search := httptest.NewRecorder()
+	serveFiber(t, router, search, httptest.NewRequest(http.MethodGet, "/api/v1/search?q=retired", nil))
+	require.Equal(t, http.StatusOK, search.Code)
+	var searchBody skillsResponse
+	require.NoError(t, json.NewDecoder(search.Body).Decode(&searchBody))
+	require.Empty(t, searchBody.Skills)
+
+	matches := httptest.NewRecorder()
+	serveFiber(t, router, matches, httptest.NewRequest(http.MethodGet, "/api/v1/matches?contentDigest="+url.QueryEscape(digest), nil))
+	require.Equal(t, http.StatusOK, matches.Code)
+	var matchBody contentMatchesResponse
+	require.NoError(t, json.NewDecoder(matches.Body).Decode(&matchBody))
+	require.Len(t, matchBody.Matches, 1)
+	require.Equal(t, skillID, matchBody.Matches[0].SkillID)
+	require.Equal(t, "v1.0.0", matchBody.Matches[0].ImmutableVersion)
+}
+
 func TestCatalogUpdateCheckReadsOnlyCatalogAndPreservesRequestOrder(t *testing.T) {
 	r, c := testCatalogAPI(t)
 	known := &catalog.Skill{

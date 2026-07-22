@@ -10,6 +10,7 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5" //nolint:gosec
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -170,8 +171,10 @@ func TestMovedTagConflictsBeforeStoredArtifactsChange(t *testing.T) {
 	require.NoError(t, err)
 	original, err := backend.Info(t.Context(), repository, version)
 	require.NoError(t, err)
+	require.NoError(t, publisher.VerifyHistorical(t.Context(), repository, version, "commit-one"))
 
 	commit = "commit-two"
+	require.ErrorContains(t, publisher.VerifyHistorical(t.Context(), repository, version, "commit-one"), "immutable Repository version conflict")
 	_, err = publisher.Materialize(t.Context(), repository, version)
 	require.ErrorContains(t, err, "immutable Repository version conflict")
 	retained, err := backend.Info(t.Context(), repository, version)
@@ -185,6 +188,41 @@ func (f *countedRepositoryFetcher) DiscoverRepository(context.Context, string, s
 		time.Sleep(f.delay)
 	}
 	return f.snapshot(), nil
+}
+
+func TestHistoricalPublisherRetainsExactZIPWithoutDiscovery(t *testing.T) {
+	repository, version := "github.com/example/history-zip", "v1.0.0"
+	archive := catalogProtocolTestZIPNamed(t, repository, version, "history-zip", "Retained history.", "")
+	fetcher := &countedRepositoryFetcher{snapshot: func() *skill.RepositorySnapshot {
+		info, err := json.Marshal(map[string]any{
+			"Version": version, "Time": "2026-07-15T00:00:00Z", "VCS": "git",
+			"URL": "https://github.com/example/history-zip", "Ref": "refs/tags/v1.0.0",
+			"CommitSHA": "history-commit", "TreeSHA": "history-tree",
+		})
+		require.NoError(t, err)
+		digest := md5.Sum(archive) //nolint:gosec
+		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "history-commit",
+			CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Members: []skill.RepositoryMember{{
+				SkillID: repository, Version: &storage.Version{Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version},
+			}}}
+	}}
+	backend, err := mem.NewStorage()
+	require.NoError(t, err)
+	_, metadata := testCatalogAPI(t)
+	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
+	protocol := withCatalog(raw, metadata)
+	publisher := newRepositoryPublisher(fetcher, backend, protocol, metadata)
+	_, err = publisher.MaterializeHistorical(t.Context(), repository, version)
+	require.NoError(t, err)
+
+	retained, err := protocol.Zip(t.Context(), repository, version)
+	require.NoError(t, err)
+	defer retained.Close()
+	actual, err := io.ReadAll(retained)
+	require.NoError(t, err)
+	require.Equal(t, archive, actual)
+	_, err = metadata.Skill(t.Context(), repository)
+	require.ErrorIs(t, err, sql.ErrNoRows)
 }
 
 func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testing.T) {
@@ -450,7 +488,7 @@ func TestMissingRepositoryRevisionUsesShortBoundedNegativeCache(t *testing.T) {
 	_, metadata := testCatalogAPI(t)
 	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
 	skills := withCatalog(raw, metadata)
-	publisher := newRepositoryPublisher(fetcher, backend, skills, metadata).(*repositoryPublisher)
+	publisher := newRepositoryPublisher(fetcher, backend, skills, metadata)
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	publisher.now = func() time.Time { return now }
 	protocol := withRepositoryInfo(skills, metadata, publisher)
