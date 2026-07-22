@@ -605,10 +605,10 @@ func placeholder(name, use string, aliases ...string) *cobra.Command {
 }
 
 type addOptions struct {
-	global, copy, yes, list, fullDepth, replace bool
-	riskConfirmed, allowCritical                bool
-	agents, skills, subagents, targets          []string
-	metadata, output, hubURL, artifactVersion   string
+	global, copy, yes, list, fullDepth, replace            bool
+	riskConfirmed, allowCritical                           bool
+	agents, skills, subagents, targets                     []string
+	metadata, output, hubURL, artifactVersion, projectRoot string
 }
 
 func newAddCommand(catalog *agent.Catalog) *cobra.Command {
@@ -618,6 +618,9 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 		Aliases: []string{"a"},
 		Args:    cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if options.global && options.projectRoot != "" {
+				return fmt.Errorf("--global and --project are mutually exclusive")
+			}
 			if len(options.targets) > 0 {
 				return runExplicitInstallationPlan(cmd, catalog, args[0], options)
 			}
@@ -660,6 +663,12 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			if options.projectRoot != "" {
+				cwd, err = filepath.Abs(options.projectRoot)
+				if err != nil {
+					return fmt.Errorf("resolve project root: %w", err)
+				}
+			}
 			reference, err := source.Parse(args[0])
 			if err != nil {
 				return err
@@ -679,6 +688,7 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 	}
 	flags := cmd.Flags()
 	flags.BoolVarP(&options.global, "global", "g", false, appi18n.T("flag.global.add"))
+	flags.StringVar(&options.projectRoot, "project", "", "install into an explicit project root")
 	flags.StringArrayVarP(&options.agents, "agent", "a", nil, appi18n.T("flag.agent.add"))
 	flags.StringArrayVarP(&options.skills, "skill", "s", nil, appi18n.T("flag.skill"))
 	flags.BoolVarP(&options.list, "list", "l", false, appi18n.T("flag.list"))

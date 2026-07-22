@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on one canonical Repository input, root Repository Proxy Info/ZIP, explicit Skill/Agent selection, strict Workspace state, Agent Adapter roots, and Scope Vendor transactions.
- * [OUTPUT]: Provides exact Repository add for Workspace or User scope with one verified download, ordinary-file Vendor/Projections, paired YAML/Lock persistence, idempotency, and failure rollback.
+ * [OUTPUT]: Provides exact Repository add for Workspace or User scope with one verified download, ordinary-file Vendor/Projections, paired YAML/Lock persistence, idempotency, failure rollback, and a stable Repository-install machine result.
  * [POS]: Serves as the Repository installation orchestration slice behind the public `skillsgo add` command.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -115,16 +115,33 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 			reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{SkillID: member.Info.ID, Version: resource.Info.Version, Agents: dependency.Agents, Scope: scope})
 		}
 	}
-	type result struct {
-		Repository string   `json:"repository"`
-		Version    string   `json:"version"`
-		Sum        string   `json:"sum"`
-		Skills     []string `json:"skills"`
-		Agents     []string `json:"agents"`
-		Vendor     string   `json:"vendor"`
+	type projectionResult struct {
+		Agents []string `json:"agents"`
+		Path   string   `json:"path"`
 	}
-	response := result{Repository: reference.SkillID, Version: resource.Info.Version, Sum: resource.Info.Sum,
-		Skills: dependency.Skills, Agents: dependency.Agents, Vendor: scopevendor.CoordinatePath(vendorRoot, reference.SkillID, resource.Info.Version)}
+	type workspaceResult struct {
+		Manifest string `json:"manifest"`
+		Lock     string `json:"lock"`
+	}
+	type result struct {
+		SchemaVersion int                `json:"schemaVersion"`
+		Phase         string             `json:"phase"`
+		Repository    string             `json:"repository"`
+		Version       string             `json:"version"`
+		Sum           string             `json:"sum"`
+		Skills        []string           `json:"skills"`
+		Agents        []string           `json:"agents"`
+		Vendor        string             `json:"vendor"`
+		Projections   []projectionResult `json:"projections"`
+		Workspace     workspaceResult    `json:"workspace"`
+	}
+	projectionResults := make([]projectionResult, 0, len(projections))
+	for _, projection := range projections {
+		projectionResults = append(projectionResults, projectionResult{Agents: strings.Split(projection.Agent, ","), Path: scopevendor.CoordinatePath(projection.Root, reference.SkillID, resource.Info.Version)})
+	}
+	response := result{SchemaVersion: 1, Phase: "repository-install", Repository: reference.SkillID, Version: resource.Info.Version, Sum: resource.Info.Sum,
+		Skills: dependency.Skills, Agents: dependency.Agents, Vendor: scopevendor.CoordinatePath(vendorRoot, reference.SkillID, resource.Info.Version), Projections: projectionResults,
+		Workspace: workspaceResult{Manifest: filepath.Join(declarationRoot, project.WorkspaceManifestName), Lock: filepath.Join(declarationRoot, project.DependencyLockName)}}
 	if options.output == "json" {
 		return json.NewEncoder(cmd.OutOrStdout()).Encode(response)
 	}
