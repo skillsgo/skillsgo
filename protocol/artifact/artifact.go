@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on immutable SkillsGo ZIP bytes, extracted regular-file directories, and canonical artifact identity.
- * [OUTPUT]: Provides shared artifact limits, portable collision-safe path validation, canonical mode checks, one-pass normalized ZIP traversal, Sum calculation, and declared-digest verification.
- * [POS]: Serves as the executable artifact-format contract shared by Hub producers and CLI consumers.
+ * [INPUT]: Depends on immutable Repository file inventories and ZIP bytes, extracted regular-file directories, and canonical Repository identity.
+ * [OUTPUT]: Provides deterministic Repository ZIP construction, shared limits, portable collision-safe paths, canonical modes, one-pass traversal, and Go-compatible Sum calculation.
+ * [POS]: Serves as the executable Repository Artifact format contract shared by Hub producers and CLI consumers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package artifact
@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/base64"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -18,6 +19,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 	"unicode/utf8"
 
 	"golang.org/x/mod/module"
@@ -80,9 +82,96 @@ func Sum(data []byte, skillID, version string) (string, error) {
 	return WalkContent(data, skillID, version, nil)
 }
 
+// BuildRepository serializes one complete validated Repository file inventory
+// beneath the canonical <repositoryID>@<version>/ ZIP prefix.
+func BuildRepository(repositoryID, version string, files []Entry) ([]byte, error) {
+	if repositoryID == "" || version == "" {
+		return nil, errors.New("Repository Artifact identity and version are required")
+	}
+	if len(files) == 0 || len(files) > MaxFiles {
+		return nil, fmt.Errorf("Repository Artifact file count must be between 1 and %d", MaxFiles)
+	}
+	files = append([]Entry(nil), files...)
+	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
+	var total uint64
+	for _, file := range files {
+		if file.Directory {
+			return nil, fmt.Errorf("Repository Artifact input %q is a directory; only regular files are accepted", file.Path)
+		}
+		size := uint64(len(file.Contents))
+		if size > MaxUncompressedBytes || total > MaxUncompressedBytes-size {
+			return nil, fmt.Errorf("Repository Artifact exceeds %d bytes", MaxUncompressedBytes)
+		}
+		total += size
+	}
+
+	var buffer bytes.Buffer
+	writer := zip.NewWriter(&buffer)
+	prefix := repositoryID + "@" + version + "/"
+	for _, file := range files {
+		header := &zip.FileHeader{Name: prefix + file.Path, Method: zip.Deflate}
+		header.Modified = time.Date(1980, time.January, 1, 0, 0, 0, 0, time.UTC)
+		mode, err := canonicalRegularMode(file.Mode)
+		if err != nil {
+			_ = writer.Close()
+			return nil, fmt.Errorf("Repository Artifact file %q: %w", file.Path, err)
+		}
+		header.SetMode(mode)
+		entry, err := writer.CreateHeader(header)
+		if err != nil {
+			_ = writer.Close()
+			return nil, fmt.Errorf("create Repository Artifact file %q: %w", file.Path, err)
+		}
+		if _, err := entry.Write(file.Contents); err != nil {
+			_ = writer.Close()
+			return nil, fmt.Errorf("write Repository Artifact file %q: %w", file.Path, err)
+		}
+	}
+	if err := writer.Close(); err != nil {
+		return nil, fmt.Errorf("close Repository Artifact ZIP: %w", err)
+	}
+	if buffer.Len() > MaxArchiveBytes {
+		return nil, fmt.Errorf("Repository Artifact archive exceeds %d bytes", MaxArchiveBytes)
+	}
+	archive := buffer.Bytes()
+	if _, err := RepositorySum(archive, repositoryID, version); err != nil {
+		return nil, err
+	}
+	return archive, nil
+}
+
+func canonicalRegularMode(mode os.FileMode) (os.FileMode, error) {
+	if mode == 0 {
+		return 0o644, nil
+	}
+	if mode&os.ModeType != 0 {
+		return 0, errors.New("mode is not regular")
+	}
+	if mode.Perm()&0o111 != 0 {
+		return 0o755, nil
+	}
+	return 0o644, nil
+}
+
+// RepositorySum validates an immutable Repository ZIP and returns the Sum over
+// all prefix-free regular files in the Repository Artifact.
+func RepositorySum(data []byte, repositoryID, version string) (string, error) {
+	return WalkRepository(data, repositoryID, version, nil)
+}
+
+// WalkRepository validates and reads one complete Repository Artifact exactly
+// once, visits entries in normalized path order, and returns its Sum.
+func WalkRepository(data []byte, repositoryID, version string, visit VisitFunc) (string, error) {
+	return walkContent(data, repositoryID, version, visit, false)
+}
+
 // WalkContent validates and reads an artifact exactly once, visits files in
 // normalized path order, and returns the Sum over the same entries.
 func WalkContent(data []byte, skillID, version string, visit VisitFunc) (string, error) {
+	return walkContent(data, skillID, version, visit, true)
+}
+
+func walkContent(data []byte, artifactID, version string, visit VisitFunc, requireRootSkill bool) (string, error) {
 	if len(data) == 0 || len(data) > MaxArchiveBytes {
 		return "", fmt.Errorf("artifact archive size must be between 1 and %d bytes", MaxArchiveBytes)
 	}
@@ -99,8 +188,9 @@ func WalkContent(data []byte, skillID, version string, visit VisitFunc) (string,
 		path      string
 		directory bool
 	}
-	prefix, hash, seen := skillID+"@"+version+"/", sha256.New(), map[string]seenPath{}
+	prefix, hash, seen := artifactID+"@"+version+"/", sha256.New(), map[string]seenPath{}
 	var total uint64
+	hasSkill := false
 	for _, entry := range entries {
 		if !strings.HasPrefix(entry.Name, prefix) {
 			return "", fmt.Errorf("artifact file %q is outside expected prefix %q", entry.Name, prefix)
@@ -146,6 +236,9 @@ func WalkContent(data []byte, skillID, version string, visit VisitFunc) (string,
 			}
 		}
 		seen[collisionKey] = seenPath{path: relative}
+		if path.Base(relative) == "SKILL.md" {
+			hasSkill = true
+		}
 		if entry.UncompressedSize64 > MaxUncompressedBytes || total > MaxUncompressedBytes-entry.UncompressedSize64 {
 			return "", fmt.Errorf("artifact expands beyond %d bytes", MaxUncompressedBytes)
 		}
@@ -163,14 +256,28 @@ func WalkContent(data []byte, skillID, version string, visit VisitFunc) (string,
 			}
 		}
 	}
-	manifestKey, _ := PortablePathKey("SKILL.md")
-	if manifest, exists := seen[manifestKey]; !exists || manifest.path != "SKILL.md" || manifest.directory {
-		return "", fmt.Errorf("artifact does not contain SKILL.md")
+	if requireRootSkill {
+		manifestKey, _ := PortablePathKey("SKILL.md")
+		if manifest, exists := seen[manifestKey]; !exists || manifest.path != "SKILL.md" || manifest.directory {
+			return "", fmt.Errorf("artifact does not contain SKILL.md")
+		}
+	} else if !hasSkill {
+		return "", fmt.Errorf("Repository Artifact does not contain a SKILL.md member")
 	}
 	return "h1:" + base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
 }
 
 func DirectorySum(root string) (string, error) {
+	return directorySum(root, true)
+}
+
+// RepositoryDirectorySum calculates the Repository Sum for an extracted
+// Repository Artifact whose Skill members may be rooted or nested.
+func RepositoryDirectorySum(root string) (string, error) {
+	return directorySum(root, false)
+}
+
+func directorySum(root string, requireRootSkill bool) (string, error) {
 	root, err := filepath.Abs(root)
 	if err != nil {
 		return "", err
@@ -178,6 +285,7 @@ func DirectorySum(root string) (string, error) {
 	paths := make([]string, 0)
 	seen := make(map[string]string)
 	var total uint64
+	hasSkill := false
 	err = filepath.WalkDir(root, func(current string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
@@ -205,6 +313,9 @@ func DirectorySum(root string) (string, error) {
 			return fmt.Errorf("artifact paths %q and %q collide on portable filesystems", previous, relative)
 		}
 		seen[collisionKey] = relative
+		if path.Base(relative) == "SKILL.md" {
+			hasSkill = true
+		}
 		size := uint64(info.Size())
 		if size > MaxUncompressedBytes || total > MaxUncompressedBytes-size {
 			return fmt.Errorf("artifact exceeds %d bytes", MaxUncompressedBytes)
@@ -233,8 +344,12 @@ func DirectorySum(root string) (string, error) {
 			return "", err
 		}
 	}
-	if info, err := os.Stat(filepath.Join(root, "SKILL.md")); err != nil || !info.Mode().IsRegular() {
-		return "", fmt.Errorf("artifact does not contain a regular SKILL.md")
+	if requireRootSkill {
+		if info, err := os.Stat(filepath.Join(root, "SKILL.md")); err != nil || !info.Mode().IsRegular() {
+			return "", fmt.Errorf("artifact does not contain a regular SKILL.md")
+		}
+	} else if !hasSkill {
+		return "", fmt.Errorf("Repository Artifact does not contain a SKILL.md member")
 	}
 	return "h1:" + base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
 }

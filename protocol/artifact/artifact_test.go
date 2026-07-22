@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses deterministic, malformed, adversarial, and resource-boundary ZIP/directory fixtures plus failing writers.
- * [OUTPUT]: Specifies Sum stability, ZIP/directory parity, safe paths, bounded resource use, required manifests, and framing failures.
+ * [INPUT]: Uses deterministic, malformed, adversarial, and resource-boundary Repository ZIP/directory fixtures plus the upstream Go dirhash implementation.
+ * [OUTPUT]: Specifies Repository build/verification, Go Hash1 parity, ZIP/directory parity, safe paths, bounded resource use, Skill membership, and framing failures.
  * [POS]: Serves as exhaustive compatibility and hostile-input coverage shared transitively by Hub and CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,6 +16,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"golang.org/x/mod/sumdb/dirhash"
 )
 
 type zipEntry struct {
@@ -47,6 +49,95 @@ func makeZIP(t *testing.T, entries ...zipEntry) []byte {
 		t.Fatal(err)
 	}
 	return buffer.Bytes()
+}
+
+func TestRepositoryArtifactBuildAndSumMatchGoDirhashWithoutRootSkill(t *testing.T) {
+	files := []Entry{
+		{Path: "README.md", Contents: []byte("repository")},
+		{Path: "bin/tool", Contents: []byte("#!/bin/sh\n"), Mode: 0o755},
+		{Path: "skills/review/SKILL.md", Contents: []byte("review instructions")},
+	}
+	archive, err := BuildRepository("github.com/example/suite", "v1.2.3", files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	got, err := RepositorySum(archive, "github.com/example/suite", "v1.2.3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := dirhash.Hash1(
+		[]string{"README.md", "bin/tool", "skills/review/SKILL.md"},
+		func(name string) (io.ReadCloser, error) {
+			for _, file := range files {
+				if file.Path == name {
+					return io.NopCloser(bytes.NewReader(file.Contents)), nil
+				}
+			}
+			return nil, os.ErrNotExist
+		},
+	)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatalf("RepositorySum() = %q, Go dirhash.Hash1() = %q", got, want)
+	}
+
+	var visited []string
+	walked, err := WalkRepository(archive, "github.com/example/suite", "v1.2.3", func(entry Entry) error {
+		if !entry.Directory {
+			visited = append(visited, entry.Path)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if walked != got {
+		t.Fatalf("WalkRepository() = %q, RepositorySum() = %q", walked, got)
+	}
+	if got, want := strings.Join(visited, ","), "README.md,bin/tool,skills/review/SKILL.md"; got != want {
+		t.Fatalf("visited %q, want %q", got, want)
+	}
+}
+
+func TestRepositoryArtifactDirectoryParityAndDeterministicEnvelope(t *testing.T) {
+	root := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(root, "skills", "review"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "README.md"), []byte("repository"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "skills", "review", "SKILL.md"), []byte("review"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	want, err := RepositoryDirectorySum(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files := []Entry{
+		{Path: "skills/review/SKILL.md", Contents: []byte("review")},
+		{Path: "README.md", Contents: []byte("repository")},
+	}
+	first, err := BuildRepository("github.com/example/suite", "v1.2.3", files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := BuildRepository("github.com/example/suite", "v1.2.3", files)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !bytes.Equal(first, second) {
+		t.Fatal("BuildRepository produced different bytes for the same inventory")
+	}
+	got, err := RepositorySum(first, "github.com/example/suite", "v1.2.3")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got != want {
+		t.Fatalf("RepositorySum() = %q, RepositoryDirectorySum() = %q", got, want)
+	}
 }
 
 func TestSumGoldenAndArchiveEncodingIndependence(t *testing.T) {
