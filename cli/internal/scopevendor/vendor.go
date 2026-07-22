@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a coordinate Scope Vendor directory, its locked Repository identity/version/Sum, and the shared Repository Artifact format.
- * [OUTPUT]: Verifies an ordinary-file Vendor and reconstructs its canonical Repository ZIP for offline projection changes without inferring publication membership from arbitrary SKILL.md files.
+ * [OUTPUT]: Verifies an ordinary-file Vendor, reconstructs its canonical Repository ZIP, and compares deterministic selected-member Projections without inferring publication membership from arbitrary SKILL.md files.
  * [POS]: Serves as the trusted local read boundary from authoritative Scope Vendor back into projection transactions.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -65,4 +65,38 @@ func ReadVerifiedVendor(vendorRoot, repositoryID, version, expectedSum string) (
 		return nil, fmt.Errorf("rebuilt Scope Vendor Sum mismatch for %s@%s", repositoryID, version)
 	}
 	return archive, nil
+}
+
+// VerifyProjection compares an existing Repository Projection with the exact
+// projection derived from verified artifact bytes and immutable membership.
+func VerifyProjection(root, repositoryID, version string, archive []byte, members, selected []string) error {
+	memberSet, err := validateMembers(members)
+	if err != nil {
+		return err
+	}
+	selectedSet, err := validateSelection(selected, memberSet)
+	if err != nil {
+		return err
+	}
+	target := CoordinatePath(root, repositoryID, version)
+	expected, err := materialize(archive, repositoryID, version, target, func(path string) bool {
+		member, isManifest := memberForManifest(path, memberSet)
+		return !isManifest || (member != "" && selectedSet[member])
+	})
+	if err != nil {
+		return err
+	}
+	defer os.RemoveAll(expected)
+	expectedDigest, err := treeDigest(expected)
+	if err != nil {
+		return err
+	}
+	actualDigest, err := treeDigest(target)
+	if err != nil {
+		return err
+	}
+	if actualDigest != expectedDigest {
+		return fmt.Errorf("Repository Projection Local Modification for %s@%s", repositoryID, version)
+	}
+	return nil
 }
