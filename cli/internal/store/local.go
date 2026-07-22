@@ -44,7 +44,7 @@ func (s Store) CaptureExisting(root, name, skillID, _ string) (*Entry, error) {
 	if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
 		return nil, fmt.Errorf("captured Skill requires a real directory")
 	}
-	digest, err := hub.ContentDirectoryDigest(root)
+	digest, err := hub.DirectorySum(root)
 	if err != nil {
 		return nil, err
 	}
@@ -52,14 +52,14 @@ func (s Store) CaptureExisting(root, name, skillID, _ string) (*Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	hexDigest := strings.TrimPrefix(digest, "sha256:")
+	hexDigest := sumKey(digest)
 	sourceDigest := sha256.Sum256([]byte(skillID))
 	artifactSkillID := "captured.skillsgo/" + hex.EncodeToString(sourceDigest[:]) + "/" + hexDigest + "/" + stateDigest + "/" + name
 	version := "captured-" + stateDigest[:12]
 	if existing, getErr := s.Get(artifactSkillID, version); getErr == nil {
 		if existing.Receipt.EffectiveProvenance() != ProvenanceCaptured ||
 			existing.Receipt.EffectiveSourceSkillID() != skillID ||
-			existing.Receipt.ContentDigest != digest {
+			existing.Receipt.Sum != digest {
 			return nil, fmt.Errorf("captured Store baseline identity conflicts with existing entry")
 		}
 		existingState, stateErr := capturedDirectoryDigest(existing.Artifact)
@@ -72,7 +72,7 @@ func (s Store) CaptureExisting(root, name, skillID, _ string) (*Entry, error) {
 	if err != nil {
 		return nil, err
 	}
-	afterDigest, err := hub.ContentDirectoryDigest(root)
+	afterDigest, err := hub.DirectorySum(root)
 	if err != nil || afterDigest != digest {
 		return nil, ErrCaptureChanged
 	}
@@ -80,7 +80,7 @@ func (s Store) CaptureExisting(root, name, skillID, _ string) (*Entry, error) {
 	if err != nil || afterStateDigest != stateDigest {
 		return nil, ErrCaptureChanged
 	}
-	if err := hub.VerifyContentDigest(archive, artifactSkillID, version, digest); err != nil {
+	if err := hub.VerifySum(archive, artifactSkillID, version, digest); err != nil {
 		return nil, ErrCaptureChanged
 	}
 	return s.put(&hub.Artifact{
@@ -93,11 +93,16 @@ func (s Store) CaptureExisting(root, name, skillID, _ string) (*Entry, error) {
 			Name:          name,
 			Description:   "Captured existing Skill baseline",
 			Risk:          hub.RiskUnknown,
-			ContentDigest: digest,
+			Sum:           digest,
 			Ref:           version,
 		},
 		ZIP: archive,
 	}, ProvenanceCaptured, skillID)
+}
+
+func sumKey(sum string) string {
+	digest := sha256.Sum256([]byte(sum))
+	return hex.EncodeToString(digest[:])
 }
 
 // capturedDirectoryDigest binds a captured baseline to the exact regular-file
@@ -169,11 +174,11 @@ func (s Store) ImportLocal(root, name string) (*Entry, error) {
 	if !info.IsDir() {
 		return nil, fmt.Errorf("Local Skill import requires a real directory")
 	}
-	digest, err := hub.ContentDirectoryDigest(root)
+	digest, err := hub.DirectorySum(root)
 	if err != nil {
 		return nil, err
 	}
-	hexDigest := strings.TrimPrefix(digest, "sha256:")
+	hexDigest := sumKey(digest)
 	skillID := "local.skillsgo/" + hexDigest + "/" + name
 	version := "local-" + hexDigest[:12]
 	if err := source.ValidateSkillID(skillID); err != nil {
@@ -190,7 +195,7 @@ func (s Store) ImportLocal(root, name string) (*Entry, error) {
 		SkillID: skillID,
 		Info: hub.Info{
 			SchemaVersion: 1, Kind: "Skill", ID: skillID, Version: version,
-			Name: name, Description: "Private local Skill", Risk: hub.RiskUnknown, ContentDigest: digest,
+			Name: name, Description: "Private local Skill", Risk: hub.RiskUnknown, Sum: digest,
 			Ref: version,
 		},
 		ZIP: archive,

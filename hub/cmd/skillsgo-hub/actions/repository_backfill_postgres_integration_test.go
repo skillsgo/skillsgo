@@ -175,7 +175,7 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	require.Equal(t, http.StatusOK, infoResponse.StatusCode)
 	var info catalogArtifactInfo
 	require.NoError(t, json.NewDecoder(infoResponse.Body).Decode(&info))
-	require.NotEmpty(t, info.ContentDigest)
+	require.NotEmpty(t, info.Sum)
 	zipResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/mod/"+repositoryID+"/@v/v1.0.0.zip", nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, zipResponse.StatusCode)
@@ -187,7 +187,7 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	var searchBody skillsResponse
 	require.NoError(t, json.NewDecoder(searchResponse.Body).Decode(&searchBody))
 	require.Empty(t, searchBody.Skills)
-	matchResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/matches?contentDigest="+info.ContentDigest, nil))
+	matchResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/matches?sum="+info.Sum, nil))
 	require.NoError(t, err)
 	var matchBody contentMatchesResponse
 	require.NoError(t, json.NewDecoder(matchResponse.Body).Decode(&matchBody))

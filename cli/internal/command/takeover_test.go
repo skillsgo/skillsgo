@@ -57,7 +57,7 @@ func TestBatchTakeoverRegistersCurrentUserLockCopyWithoutChangingIt(t *testing.T
 		0o644,
 	))
 	require.NoError(t, os.WriteFile(filepath.Join(target, "scripts", "run.sh"), []byte("#!/bin/sh\necho demo\n"), 0o755))
-	beforeDigest, err := hub.ContentDirectoryDigest(target)
+	beforeDigest, err := hub.DirectorySum(target)
 	require.NoError(t, err)
 
 	lockRoot := filepath.Join(home, ".agents")
@@ -118,7 +118,7 @@ func TestBatchTakeoverRegistersCurrentUserLockCopyWithoutChangingIt(t *testing.T
 	require.Equal(t, install.ModeCopy, result.Results[0].Target.Mode)
 	require.Equal(t, target, result.Results[0].Target.Path)
 
-	afterDigest, err := hub.ContentDirectoryDigest(target)
+	afterDigest, err := hub.DirectorySum(target)
 	require.NoError(t, err)
 	require.Equal(t, beforeDigest, afterDigest)
 
@@ -130,7 +130,7 @@ func TestBatchTakeoverRegistersCurrentUserLockCopyWithoutChangingIt(t *testing.T
 
 	entry, err := (store.Store{Root: store.DefaultRoot(home)}).Get(result.Results[0].ArtifactSkillID, result.Results[0].Version)
 	require.NoError(t, err)
-	require.Equal(t, beforeDigest, entry.Receipt.ContentDigest)
+	require.Equal(t, beforeDigest, entry.Receipt.Sum)
 	require.Equal(t, result.Results[0].SkillID, entry.Receipt.SourceSkillID)
 	require.Equal(t, store.Provenance("captured"), entry.Receipt.EffectiveProvenance())
 	receipts, err := project.LoadInstallationReceipts(project.UserRoot(home))
@@ -169,7 +169,7 @@ func TestBatchTakeoverRegistersCurrentUserLockCopyWithoutChangingIt(t *testing.T
 
 	require.NoError(t, os.WriteFile(filepath.Join(target, "scripts", "run.sh"), []byte("modified"), 0o755))
 	executeTakenOverTarget(t, home, result.Results[0].SkillID, result.Results[0].Version, "test-agent", install.ModeCopy, target, managementplan.ActionRepair)
-	repairedDigest, err := hub.ContentDirectoryDigest(target)
+	repairedDigest, err := hub.DirectorySum(target)
 	require.NoError(t, err)
 	require.Equal(t, beforeDigest, repairedDigest)
 }
@@ -201,7 +201,7 @@ func TestBatchTakeoverReadsCurrentWorkspaceLock(t *testing.T) {
 	target := filepath.Join(workspace, ".test-agent", "skills", "project-demo")
 	require.NoError(t, os.MkdirAll(target, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("---\nname: project-demo\ndescription: workspace copy\n---\n"), 0o644))
-	before, err := hub.ContentDirectoryDigest(target)
+	before, err := hub.DirectorySum(target)
 	require.NoError(t, err)
 	lock := map[string]any{
 		"version": 1,
@@ -227,7 +227,7 @@ func TestBatchTakeoverReadsCurrentWorkspaceLock(t *testing.T) {
 	require.Len(t, result.Results, 1)
 	require.Equal(t, install.ScopeProject, result.Results[0].Target.Scope)
 	require.Equal(t, "github.com/acme/workspace-skills/-/skills/project-demo", result.Results[0].SkillID)
-	after, err := hub.ContentDirectoryDigest(target)
+	after, err := hub.DirectorySum(target)
 	require.NoError(t, err)
 	require.Equal(t, before, after)
 	manifest, err := project.LoadManifest(workspace)
@@ -450,9 +450,9 @@ func TestBatchTakeoverSkipsInvalidMissingAndLockExternalTargetsIndependently(t *
 	validPath := writeSkill("valid")
 	invalidPath := writeSkill("invalid")
 	externalPath := writeSkill("external")
-	beforeInvalid, err := hub.ContentDirectoryDigest(invalidPath)
+	beforeInvalid, err := hub.DirectorySum(invalidPath)
 	require.NoError(t, err)
-	beforeExternal, err := hub.ContentDirectoryDigest(externalPath)
+	beforeExternal, err := hub.DirectorySum(externalPath)
 	require.NoError(t, err)
 	lock := map[string]any{"version": 3, "skills": map[string]any{
 		"valid":   map[string]any{"source": "acme/skills", "sourceType": "github", "sourceUrl": "https://github.com/acme/skills.git", "skillPath": "skills/valid/SKILL.md", "skillFolderHash": "valid"},
@@ -479,9 +479,9 @@ func TestBatchTakeoverSkipsInvalidMissingAndLockExternalTargetsIndependently(t *
 	require.Equal(t, 1, reasons["not-in-supported-lock"])
 	_, err = os.Stat(validPath)
 	require.NoError(t, err)
-	afterInvalid, err := hub.ContentDirectoryDigest(invalidPath)
+	afterInvalid, err := hub.DirectorySum(invalidPath)
 	require.NoError(t, err)
-	afterExternal, err := hub.ContentDirectoryDigest(externalPath)
+	afterExternal, err := hub.DirectorySum(externalPath)
 	require.NoError(t, err)
 	require.Equal(t, beforeInvalid, afterInvalid)
 	require.Equal(t, beforeExternal, afterExternal)
@@ -769,7 +769,7 @@ func TestBatchTakeoverDoesNotAcceptLegacyLockSchemas(t *testing.T) {
 	target := filepath.Join(agentHome, "skills", "demo")
 	require.NoError(t, os.MkdirAll(target, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("---\nname: demo\ndescription: legacy\n---\n"), 0o644))
-	before, err := hub.ContentDirectoryDigest(target)
+	before, err := hub.DirectorySum(target)
 	require.NoError(t, err)
 	require.NoError(t, os.MkdirAll(filepath.Join(home, ".agents"), 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(home, ".agents", ".skill-lock.json"), []byte(`{"version":2,"skills":{"demo":{"source":"acme/skills"}}}`), 0o600))
@@ -781,7 +781,7 @@ func TestBatchTakeoverDoesNotAcceptLegacyLockSchemas(t *testing.T) {
 	require.Zero(t, result.Summary.TakenOver)
 	require.Equal(t, 1, result.Summary.Skipped)
 	require.Equal(t, "unsupported-lock", result.Results[0].Reason)
-	after, err := hub.ContentDirectoryDigest(target)
+	after, err := hub.DirectorySum(target)
 	require.NoError(t, err)
 	require.Equal(t, before, after)
 	_, err = project.LoadManifest(project.UserRoot(home))

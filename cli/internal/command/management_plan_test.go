@@ -75,7 +75,7 @@ func TestManageCommandIsRemoved(t *testing.T) {
 func updatePlanTestStoreEntry(t *testing.T, storage store.Store, skillID, version, requestedRef, commitSHA string) *store.Entry {
 	t.Helper()
 	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": version})
-	entry, err := storage.Put(&hub.Artifact{SkillID: skillID, Info: hub.Info{SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: "demo", Description: "test", Version: version, Risk: hub.RiskLow, ContentDigest: commandTestContentDigest(t, zipData, skillID, version), ArchiveSize: int64(len(zipData)), Ref: "refs/heads/" + requestedRef, CommitSHA: commitSHA, TreeSHA: "tree-" + commitSHA}, ZIP: zipData})
+	entry, err := storage.Put(&hub.Artifact{SkillID: skillID, Info: hub.Info{SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: "demo", Description: "test", Version: version, Risk: hub.RiskLow, Sum: commandTestSum(t, zipData, skillID, version), ArchiveSize: int64(len(zipData)), Ref: "refs/heads/" + requestedRef, CommitSHA: commitSHA, TreeSHA: "tree-" + commitSHA}, ZIP: zipData})
 	require.NoError(t, err)
 	return entry
 }

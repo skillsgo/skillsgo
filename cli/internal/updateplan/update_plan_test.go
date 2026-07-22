@@ -222,11 +222,11 @@ func updateTestArtifact(t *testing.T, skillID, version, body string) *hub.Artifa
 	_, err = file.Write([]byte(body))
 	require.NoError(t, err)
 	require.NoError(t, writer.Close())
-	digest, err := hub.ContentDigest(archive.Bytes(), skillID, version)
+	digest, err := hub.Sum(archive.Bytes(), skillID, version)
 	require.NoError(t, err)
 	return &hub.Artifact{SkillID: skillID, Info: hub.Info{
 		SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: "demo", Description: "test", Version: version,
-		Risk: hub.RiskLow, ContentDigest: digest, ArchiveSize: int64(archive.Len()), Ref: "refs/heads/main", CommitSHA: "new", TreeSHA: "tree-new",
+		Risk: hub.RiskLow, Sum: digest, ArchiveSize: int64(archive.Len()), Ref: "refs/heads/main", CommitSHA: "new", TreeSHA: "tree-new",
 	}, ZIP: archive.Bytes()}
 }
 

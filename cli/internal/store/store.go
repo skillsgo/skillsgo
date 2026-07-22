@@ -33,7 +33,7 @@ type Receipt struct {
 	Name          string     `yaml:"name,omitempty"`
 	Provenance    Provenance `yaml:"provenance,omitempty"`
 	SHA256        string     `yaml:"sha256"`
-	ContentDigest string     `yaml:"contentDigest"`
+	Sum           string     `yaml:"sum"`
 	Risk          hub.Risk   `yaml:"risk"`
 	Ref           string     `yaml:"ref,omitempty"`
 	CommitSHA     string     `yaml:"commitSHA,omitempty"`
@@ -87,7 +87,7 @@ func (s Store) Get(skillID, version string) (*Entry, error) {
 	if receipt.SkillID != skillID || receipt.Version != version {
 		return nil, fmt.Errorf("Store 条目身份不匹配：期望 %s@%s，得到 %s@%s", skillID, version, receipt.SkillID, receipt.Version)
 	}
-	if !receipt.Risk.Valid() || !strings.HasPrefix(receipt.ContentDigest, "sha256:") {
+	if !receipt.Risk.Valid() || !hub.ValidSum(receipt.Sum) {
 		return nil, fmt.Errorf("Store entry is missing immutable assessment metadata")
 	}
 	artifact := filepath.Join(root, "artifact")
@@ -97,7 +97,7 @@ func (s Store) Get(skillID, version string) (*Entry, error) {
 		}
 		return nil, fmt.Errorf("Store 条目缺少有效 SKILL.md: %w", err)
 	}
-	if err := hub.VerifyContentDirectory(artifact, receipt.ContentDigest); err != nil {
+	if err := hub.VerifyDirectorySum(artifact, receipt.Sum); err != nil {
 		return nil, fmt.Errorf("Store artifact integrity check failed: %w", err)
 	}
 	return &Entry{Root: root, Artifact: artifact, Receipt: receipt}, nil
@@ -127,11 +127,11 @@ func (s Store) Put(artifact *hub.Artifact) (*Entry, error) {
 }
 
 func (s Store) put(artifact *hub.Artifact, provenance Provenance, sourceSkillID string) (*Entry, error) {
-	if !artifact.Info.Risk.Valid() || !strings.HasPrefix(artifact.Info.ContentDigest, "sha256:") {
+	if !artifact.Info.Risk.Valid() || !hub.ValidSum(artifact.Info.Sum) {
 		return nil, fmt.Errorf("Hub artifact is missing immutable assessment metadata")
 	}
-	if err := hub.VerifyContentDigest(
-		artifact.ZIP, artifact.SkillID, artifact.Info.Version, artifact.Info.ContentDigest,
+	if err := hub.VerifySum(
+		artifact.ZIP, artifact.SkillID, artifact.Info.Version, artifact.Info.Sum,
 	); err != nil {
 		return nil, err
 	}
@@ -141,7 +141,7 @@ func (s Store) put(artifact *hub.Artifact, provenance Provenance, sourceSkillID 
 	}
 	receipt := Receipt{
 		SkillID: artifact.SkillID, Version: artifact.Info.Version, Name: name,
-		Provenance: provenance, SourceSkillID: sourceSkillID, ContentDigest: artifact.Info.ContentDigest,
+		Provenance: provenance, SourceSkillID: sourceSkillID, Sum: artifact.Info.Sum,
 		Risk: artifact.Info.Risk, Ref: artifact.Info.Ref,
 		CommitSHA: artifact.Info.CommitSHA, TreeSHA: artifact.Info.TreeSHA,
 	}
@@ -205,17 +205,17 @@ func validateArtifactName(name string) error {
 // RefreshAssessment updates risk metadata for an already cached immutable
 // artifact without changing its content, provenance, or files.
 func (s Store) RefreshAssessment(skillID, version string, info hub.Info) (*Entry, error) {
-	if info.Version != version || !info.Risk.Valid() || !strings.HasPrefix(info.ContentDigest, "sha256:") {
+	if info.Version != version || !info.Risk.Valid() || !hub.ValidSum(info.Sum) {
 		return nil, fmt.Errorf("Hub returned incomplete assessed Info for %s@%s", skillID, version)
 	}
 	entry, err := s.Get(skillID, version)
 	if err != nil {
 		return nil, err
 	}
-	if entry.Receipt.ContentDigest != info.ContentDigest {
+	if entry.Receipt.Sum != info.Sum {
 		return nil, fmt.Errorf(
-			"immutable Content Digest changed for %s@%s: %s != %s",
-			skillID, version, entry.Receipt.ContentDigest, info.ContentDigest,
+			"immutable Sum changed for %s@%s: %s != %s",
+			skillID, version, entry.Receipt.Sum, info.Sum,
 		)
 	}
 	if entry.Receipt.Ref != info.Ref || entry.Receipt.CommitSHA != info.CommitSHA || entry.Receipt.TreeSHA != info.TreeSHA {

@@ -86,16 +86,16 @@ func (_u *SkillVersionUpdate) SetNillableTreeSha(v *string) *SkillVersionUpdate 
 	return _u
 }
 
-// SetContentDigest sets the "content_digest" field.
-func (_u *SkillVersionUpdate) SetContentDigest(v string) *SkillVersionUpdate {
-	_u.mutation.SetContentDigest(v)
+// SetSum sets the "sum" field.
+func (_u *SkillVersionUpdate) SetSum(v string) *SkillVersionUpdate {
+	_u.mutation.SetSum(v)
 	return _u
 }
 
-// SetNillableContentDigest sets the "content_digest" field if the given value is not nil.
-func (_u *SkillVersionUpdate) SetNillableContentDigest(v *string) *SkillVersionUpdate {
+// SetNillableSum sets the "sum" field if the given value is not nil.
+func (_u *SkillVersionUpdate) SetNillableSum(v *string) *SkillVersionUpdate {
 	if v != nil {
-		_u.SetContentDigest(*v)
+		_u.SetSum(*v)
 	}
 	return _u
 }
@@ -245,9 +245,9 @@ func (_u *SkillVersionUpdate) check() error {
 			return &ValidationError{Name: "tree_sha", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.tree_sha": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.ContentDigest(); ok {
-		if err := skillversion.ContentDigestValidator(v); err != nil {
-			return &ValidationError{Name: "content_digest", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.content_digest": %w`, err)}
+	if v, ok := _u.mutation.Sum(); ok {
+		if err := skillversion.SumValidator(v); err != nil {
+			return &ValidationError{Name: "sum", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.sum": %w`, err)}
 		}
 	}
 	if _u.mutation.SkillCleared() && len(_u.mutation.SkillIDs()) > 0 {
@@ -277,8 +277,8 @@ func (_u *SkillVersionUpdate) sqlSave(ctx context.Context) (_node int, err error
 	if value, ok := _u.mutation.TreeSha(); ok {
 		_spec.SetField(skillversion.FieldTreeSha, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.ContentDigest(); ok {
-		_spec.SetField(skillversion.FieldContentDigest, field.TypeString, value)
+	if value, ok := _u.mutation.Sum(); ok {
+		_spec.SetField(skillversion.FieldSum, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.CommitTime(); ok {
 		_spec.SetField(skillversion.FieldCommitTime, field.TypeTime, value)
@@ -442,16 +442,16 @@ func (_u *SkillVersionUpdateOne) SetNillableTreeSha(v *string) *SkillVersionUpda
 	return _u
 }
 
-// SetContentDigest sets the "content_digest" field.
-func (_u *SkillVersionUpdateOne) SetContentDigest(v string) *SkillVersionUpdateOne {
-	_u.mutation.SetContentDigest(v)
+// SetSum sets the "sum" field.
+func (_u *SkillVersionUpdateOne) SetSum(v string) *SkillVersionUpdateOne {
+	_u.mutation.SetSum(v)
 	return _u
 }
 
-// SetNillableContentDigest sets the "content_digest" field if the given value is not nil.
-func (_u *SkillVersionUpdateOne) SetNillableContentDigest(v *string) *SkillVersionUpdateOne {
+// SetNillableSum sets the "sum" field if the given value is not nil.
+func (_u *SkillVersionUpdateOne) SetNillableSum(v *string) *SkillVersionUpdateOne {
 	if v != nil {
-		_u.SetContentDigest(*v)
+		_u.SetSum(*v)
 	}
 	return _u
 }
@@ -614,9 +614,9 @@ func (_u *SkillVersionUpdateOne) check() error {
 			return &ValidationError{Name: "tree_sha", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.tree_sha": %w`, err)}
 		}
 	}
-	if v, ok := _u.mutation.ContentDigest(); ok {
-		if err := skillversion.ContentDigestValidator(v); err != nil {
-			return &ValidationError{Name: "content_digest", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.content_digest": %w`, err)}
+	if v, ok := _u.mutation.Sum(); ok {
+		if err := skillversion.SumValidator(v); err != nil {
+			return &ValidationError{Name: "sum", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.sum": %w`, err)}
 		}
 	}
 	if _u.mutation.SkillCleared() && len(_u.mutation.SkillIDs()) > 0 {
@@ -663,8 +663,8 @@ func (_u *SkillVersionUpdateOne) sqlSave(ctx context.Context) (_node *SkillVersi
 	if value, ok := _u.mutation.TreeSha(); ok {
 		_spec.SetField(skillversion.FieldTreeSha, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.ContentDigest(); ok {
-		_spec.SetField(skillversion.FieldContentDigest, field.TypeString, value)
+	if value, ok := _u.mutation.Sum(); ok {
+		_spec.SetField(skillversion.FieldSum, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.CommitTime(); ok {
 		_spec.SetField(skillversion.FieldCommitTime, field.TypeTime, value)

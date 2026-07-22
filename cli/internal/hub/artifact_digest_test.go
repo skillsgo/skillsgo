@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses in-memory immutable Skill ZIP archives and declared Hub Content Digests.
+ * [INPUT]: Uses in-memory immutable Skill ZIP archives and declared Hub Sums.
  * [OUTPUT]: Specifies golden, compression-independent digest computation and mismatch rejection at the CLI Hub boundary.
  * [POS]: Serves as executable integrity coverage for artifacts before Store persistence or installation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-func TestVerifyContentDigestBindsInfoToExactArtifactFiles(t *testing.T) {
+func TestVerifySumBindsInfoToExactArtifactFiles(t *testing.T) {
 	skillID, version := "github.com/example/skills/-/demo", "v1"
 	var buffer bytes.Buffer
 	writer := zip.NewWriter(&buffer)
@@ -27,17 +27,17 @@ func TestVerifyContentDigestBindsInfoToExactArtifactFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	digest, err := ContentDigest(buffer.Bytes(), skillID, version)
+	digest, err := Sum(buffer.Bytes(), skillID, version)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if digest != "sha256:bf005aa0d71df7bbcdc3bbd01138efd6274f8cef648cf74a2a17528bfaa54399" {
+	if digest != "h1:ndA9lw9XWrLHtS/j9kdqTow/oXIaG8R7tm7tnAzh3/Y=" {
 		t.Fatalf("Hub digest framing changed: %s", digest)
 	}
-	if err := VerifyContentDigest(buffer.Bytes(), skillID, version, digest); err != nil {
+	if err := VerifySum(buffer.Bytes(), skillID, version, digest); err != nil {
 		t.Fatalf("expected matching digest: %v", err)
 	}
-	if err := VerifyContentDigest(buffer.Bytes(), skillID, version, "sha256:different"); err == nil {
+	if err := VerifySum(buffer.Bytes(), skillID, version, "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="); err == nil {
 		t.Fatal("expected mismatched artifact rejection")
 	}
 }
@@ -45,7 +45,7 @@ func TestVerifyContentDigestBindsInfoToExactArtifactFiles(t *testing.T) {
 func TestValidateAssessedInfoRejectsHostileResolvedVersion(t *testing.T) {
 	info := Info{
 		Version: "v1?download=1", Risk: RiskLow,
-		ContentDigest: "sha256:bf005aa0d71df7bbcdc3bbd01138efd6274f8cef648cf74a2a17528bfaa54399",
+		Sum: "h1:ndA9lw9XWrLHtS/j9kdqTow/oXIaG8R7tm7tnAzh3/Y=",
 	}
 	if err := validateAssessedInfo("github.com/example/skills/-/demo", "main", info); err == nil {
 		t.Fatal("expected hostile Hub version rejection")

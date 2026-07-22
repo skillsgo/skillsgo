@@ -49,7 +49,7 @@ type SkillInfo struct {
 	AllowedTools  string            `json:"AllowedTools,omitempty" yaml:"allowedTools,omitempty"`
 	Metadata      map[string]string `json:"Metadata,omitempty" yaml:"metadata,omitempty"`
 	Risk          Risk              `json:"Risk" yaml:"risk"`
-	ContentDigest string            `json:"ContentDigest" yaml:"contentDigest"`
+	Sum           string            `json:"Sum" yaml:"sum"`
 	ArchiveSize   int64             `json:"ArchiveSize" yaml:"archiveSize"`
 }
 type RepositoryInfo struct {
@@ -70,11 +70,11 @@ type ContentMatch struct {
 	ImmutableVersion string `json:"immutableVersion"`
 	CommitSHA        string `json:"commitSHA"`
 	TreeSHA          string `json:"treeSHA"`
-	ContentDigest    string `json:"contentDigest"`
+	Sum              string `json:"sum"`
 }
 type ContentMatchesResponse struct {
 	SchemaVersion int            `json:"schemaVersion"`
-	ContentDigest string         `json:"contentDigest"`
+	Sum           string         `json:"sum"`
 	Matches       []ContentMatch `json:"matches"`
 }
 type CatalogUpdateCheckRequest struct {

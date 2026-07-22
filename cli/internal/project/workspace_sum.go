@@ -10,7 +10,6 @@ import (
 	"bufio"
 	"crypto/sha256"
 	"encoding/base64"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"os"
@@ -19,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/source"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 )
 
 const (
@@ -48,16 +48,11 @@ func H1(data []byte) string {
 	return "h1:" + base64.StdEncoding.EncodeToString(digest[:])
 }
 
-func ContentH1(contentDigest string) (string, error) {
-	encoded, ok := strings.CutPrefix(contentDigest, "sha256:")
-	if !ok {
-		return "", fmt.Errorf("unsupported content digest %q", contentDigest)
+func ContentH1(sum string) (string, error) {
+	if !protocolartifact.ValidSum(sum) {
+		return "", fmt.Errorf("invalid h1 sum %q", sum)
 	}
-	digest, err := hex.DecodeString(encoded)
-	if err != nil || len(digest) != sha256.Size {
-		return "", fmt.Errorf("invalid SHA-256 content digest %q", contentDigest)
-	}
-	return "h1:" + base64.StdEncoding.EncodeToString(digest), nil
+	return sum, nil
 }
 
 func LoadWorkspaceSum(root string) (WorkspaceSum, error) {

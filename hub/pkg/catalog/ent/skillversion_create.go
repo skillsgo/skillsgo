@@ -48,9 +48,9 @@ func (_c *SkillVersionCreate) SetTreeSha(v string) *SkillVersionCreate {
 	return _c
 }
 
-// SetContentDigest sets the "content_digest" field.
-func (_c *SkillVersionCreate) SetContentDigest(v string) *SkillVersionCreate {
-	_c.mutation.SetContentDigest(v)
+// SetSum sets the "sum" field.
+func (_c *SkillVersionCreate) SetSum(v string) *SkillVersionCreate {
+	_c.mutation.SetSum(v)
 	return _c
 }
 
@@ -188,12 +188,12 @@ func (_c *SkillVersionCreate) check() error {
 			return &ValidationError{Name: "tree_sha", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.tree_sha": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.ContentDigest(); !ok {
-		return &ValidationError{Name: "content_digest", err: errors.New(`ent: missing required field "SkillVersion.content_digest"`)}
+	if _, ok := _c.mutation.Sum(); !ok {
+		return &ValidationError{Name: "sum", err: errors.New(`ent: missing required field "SkillVersion.sum"`)}
 	}
-	if v, ok := _c.mutation.ContentDigest(); ok {
-		if err := skillversion.ContentDigestValidator(v); err != nil {
-			return &ValidationError{Name: "content_digest", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.content_digest": %w`, err)}
+	if v, ok := _c.mutation.Sum(); ok {
+		if err := skillversion.SumValidator(v); err != nil {
+			return &ValidationError{Name: "sum", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.sum": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.CommitTime(); !ok {
@@ -253,9 +253,9 @@ func (_c *SkillVersionCreate) createSpec() (*SkillVersion, *sqlgraph.CreateSpec)
 		_spec.SetField(skillversion.FieldTreeSha, field.TypeString, value)
 		_node.TreeSha = value
 	}
-	if value, ok := _c.mutation.ContentDigest(); ok {
-		_spec.SetField(skillversion.FieldContentDigest, field.TypeString, value)
-		_node.ContentDigest = value
+	if value, ok := _c.mutation.Sum(); ok {
+		_spec.SetField(skillversion.FieldSum, field.TypeString, value)
+		_node.Sum = value
 	}
 	if value, ok := _c.mutation.CommitTime(); ok {
 		_spec.SetField(skillversion.FieldCommitTime, field.TypeTime, value)
@@ -402,15 +402,15 @@ func (u *SkillVersionUpsert) UpdateTreeSha() *SkillVersionUpsert {
 	return u
 }
 
-// SetContentDigest sets the "content_digest" field.
-func (u *SkillVersionUpsert) SetContentDigest(v string) *SkillVersionUpsert {
-	u.Set(skillversion.FieldContentDigest, v)
+// SetSum sets the "sum" field.
+func (u *SkillVersionUpsert) SetSum(v string) *SkillVersionUpsert {
+	u.Set(skillversion.FieldSum, v)
 	return u
 }
 
-// UpdateContentDigest sets the "content_digest" field to the value that was provided on create.
-func (u *SkillVersionUpsert) UpdateContentDigest() *SkillVersionUpsert {
-	u.SetExcluded(skillversion.FieldContentDigest)
+// UpdateSum sets the "sum" field to the value that was provided on create.
+func (u *SkillVersionUpsert) UpdateSum() *SkillVersionUpsert {
+	u.SetExcluded(skillversion.FieldSum)
 	return u
 }
 
@@ -560,17 +560,17 @@ func (u *SkillVersionUpsertOne) UpdateTreeSha() *SkillVersionUpsertOne {
 	})
 }
 
-// SetContentDigest sets the "content_digest" field.
-func (u *SkillVersionUpsertOne) SetContentDigest(v string) *SkillVersionUpsertOne {
+// SetSum sets the "sum" field.
+func (u *SkillVersionUpsertOne) SetSum(v string) *SkillVersionUpsertOne {
 	return u.Update(func(s *SkillVersionUpsert) {
-		s.SetContentDigest(v)
+		s.SetSum(v)
 	})
 }
 
-// UpdateContentDigest sets the "content_digest" field to the value that was provided on create.
-func (u *SkillVersionUpsertOne) UpdateContentDigest() *SkillVersionUpsertOne {
+// UpdateSum sets the "sum" field to the value that was provided on create.
+func (u *SkillVersionUpsertOne) UpdateSum() *SkillVersionUpsertOne {
 	return u.Update(func(s *SkillVersionUpsert) {
-		s.UpdateContentDigest()
+		s.UpdateSum()
 	})
 }
 
@@ -893,17 +893,17 @@ func (u *SkillVersionUpsertBulk) UpdateTreeSha() *SkillVersionUpsertBulk {
 	})
 }
 
-// SetContentDigest sets the "content_digest" field.
-func (u *SkillVersionUpsertBulk) SetContentDigest(v string) *SkillVersionUpsertBulk {
+// SetSum sets the "sum" field.
+func (u *SkillVersionUpsertBulk) SetSum(v string) *SkillVersionUpsertBulk {
 	return u.Update(func(s *SkillVersionUpsert) {
-		s.SetContentDigest(v)
+		s.SetSum(v)
 	})
 }
 
-// UpdateContentDigest sets the "content_digest" field to the value that was provided on create.
-func (u *SkillVersionUpsertBulk) UpdateContentDigest() *SkillVersionUpsertBulk {
+// UpdateSum sets the "sum" field to the value that was provided on create.
+func (u *SkillVersionUpsertBulk) UpdateSum() *SkillVersionUpsertBulk {
 	return u.Update(func(s *SkillVersionUpsert) {
-		s.UpdateContentDigest()
+		s.UpdateSum()
 	})
 }
 

@@ -147,7 +147,7 @@ func TestRemoveBindingsKeepsAgentWhileAnotherExactReceiptRemains(t *testing.T) {
 	if err := UpsertManifestRequirement(root, skillID, SkillRequirement{Ref: "v1.0.0", Agents: []string{"cursor"}}, false); err != nil {
 		t.Fatal(err)
 	}
-	first := InstallationReceipt{SchemaVersion: 1, SourceSkillID: skillID, ArtifactSkillID: skillID, Version: "v1.0.0", Name: "demo", Provenance: store.ProvenanceHub, ContentDigest: "sha256:baseline", Agent: "cursor", Scope: install.ScopeUser, Mode: install.ModeSymlink, Path: filepath.Join(root, ".cursor", "skills", "demo"), TargetState: "first", InstalledAt: time.Now().UTC()}
+	first := InstallationReceipt{SchemaVersion: 1, SourceSkillID: skillID, ArtifactSkillID: skillID, Version: "v1.0.0", Name: "demo", Provenance: store.ProvenanceHub, Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Agent: "cursor", Scope: install.ScopeUser, Mode: install.ModeSymlink, Path: filepath.Join(root, ".cursor", "skills", "demo"), TargetState: "first", InstalledAt: time.Now().UTC()}
 	second := first
 	second.Path = filepath.Join(root, ".agents", "skills", "demo")
 	second.TargetState = "second"

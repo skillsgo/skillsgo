@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable artifact protocol reads, Catalog metadata, ZIP audit analysis, and normalized SKILL.md frontmatter.
- * [OUTPUT]: Provides a protocol decorator that indexes resolved Skills and enriches exact Info with normalized install metadata, Risk, Content Digest, and Archive Size.
+ * [OUTPUT]: Provides a protocol decorator that indexes resolved Skills and enriches exact Info with normalized install metadata, Risk, Sum, and Archive Size.
  * [POS]: Serves as the Hub distribution boundary connecting source artifacts, immutable assessment, and public protocol bytes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -55,14 +55,14 @@ func shouldAuditArtifact(ctx context.Context) bool {
 }
 
 type catalogArtifactInfo struct {
-	Version       string    `json:"Version"`
-	Time          time.Time `json:"Time"`
-	Ref           string    `json:"Ref"`
-	CommitSHA     string    `json:"CommitSHA"`
-	TreeSHA       string    `json:"TreeSHA"`
-	Risk          string    `json:"Risk"`
-	ContentDigest string    `json:"ContentDigest"`
-	ArchiveSize   int64     `json:"ArchiveSize"`
+	Version     string    `json:"Version"`
+	Time        time.Time `json:"Time"`
+	Ref         string    `json:"Ref"`
+	CommitSHA   string    `json:"CommitSHA"`
+	TreeSHA     string    `json:"TreeSHA"`
+	Risk        string    `json:"Risk"`
+	Sum         string    `json:"Sum"`
+	ArchiveSize int64     `json:"ArchiveSize"`
 }
 
 type skillFrontmatter struct {
@@ -113,17 +113,17 @@ func (p *catalogProtocol) bindAssessment(ctx context.Context, skillID string, in
 	if metadata.Name == "" || metadata.Description == "" {
 		return nil, fmt.Errorf("decode Skill metadata for Info: name and description are required")
 	}
-	contentDigest := ""
+	sum := ""
 	risk := "unknown"
 	if shouldAuditArtifact(ctx) {
 		analysis, err := audit.AnalyzeArtifact(archiveBytes, skillID, info.Version)
 		if err != nil {
 			return nil, fmt.Errorf("assess Skill archive: %w", err)
 		}
-		contentDigest = analysis.ContentDigest
+		sum = analysis.Sum
 		risk = analysis.Risk.Level
 	} else {
-		contentDigest, err = protocolartifact.ContentDigest(archiveBytes, skillID, info.Version)
+		sum, err = protocolartifact.Sum(archiveBytes, skillID, info.Version)
 		if err != nil {
 			return nil, fmt.Errorf("fingerprint Skill archive: %w", err)
 		}
@@ -133,7 +133,7 @@ func (p *catalogProtocol) bindAssessment(ctx context.Context, skillID string, in
 		return nil, fmt.Errorf("decode Skill info response: %w", err)
 	}
 	response["Risk"] = risk
-	response["ContentDigest"] = contentDigest
+	response["Sum"] = sum
 	response["SchemaVersion"] = 1
 	response["Kind"] = "Skill"
 	response["ID"] = skillID
@@ -216,7 +216,7 @@ func (p *catalogProtocol) index(ctx context.Context, skillID string, infoBytes [
 	}
 	if _, err := p.metadata.RecordSkillVersion(ctx, skillID, catalog.SkillVersion{
 		Version: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA,
-		ContentDigest: info.ContentDigest, CommitTime: info.Time, ArchiveSize: info.ArchiveSize,
+		Sum: info.Sum, CommitTime: info.Time, ArchiveSize: info.ArchiveSize,
 	}); err != nil {
 		return fmt.Errorf("record Skill version metadata: %w", err)
 	}
