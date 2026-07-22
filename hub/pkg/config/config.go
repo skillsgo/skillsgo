@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on TOML, environment decoding, Hub defaults, validation, and nested storage, database, presentation, and authentication settings.
- * [OUTPUT]: Provides validated Hub configuration including GitHub authentication, optional translation, and skills.sh synchronization.
+ * [OUTPUT]: Provides validated Hub configuration including global and administration Basic Auth, GitHub authentication, task execution, optional translation, and skills.sh synchronization.
  * [POS]: Serves as maintained source in the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -49,6 +49,8 @@ type Config struct {
 	UnixSocket            string    `envconfig:"SKILLSGO_HUB_UNIX_SOCKET"`
 	BasicAuthUser         string    `envconfig:"SKILLSGO_HUB_BASIC_AUTH_USER"`
 	BasicAuthPass         string    `envconfig:"SKILLSGO_HUB_BASIC_AUTH_PASS"`
+	AdminAuthUser         string    `envconfig:"SKILLSGO_HUB_ADMIN_AUTH_USER"`
+	AdminAuthPass         string    `envconfig:"SKILLSGO_HUB_ADMIN_AUTH_PASS"`
 	HomeTemplatePath      string    `envconfig:"SKILLSGO_HUB_HOME_TEMPLATE_PATH"`
 	ForceSSL              bool      `envconfig:"SKILLSGO_HUB_FORCE_SSL"`
 	ValidatorHook         string    `envconfig:"SKILLSGO_HUB_PROXY_VALIDATOR"`
@@ -70,6 +72,7 @@ type Config struct {
 	Storage               *Storage
 	Index                 *Index
 	Database              *DatabaseConfig
+	TaskQueue             *TaskQueueConfig
 	LLM                   *LLMConfig
 	SkillsSH              *SkillsSHConfig
 }
@@ -245,13 +248,14 @@ func defaultConfig() *Config {
 			MaxIdleConns:    1,
 			ConnMaxLifetime: 0,
 		},
+		TaskQueue: &TaskQueueConfig{MaxWorkers: 10},
 		LLM: &LLMConfig{
 			BaseURL: "https://api.deepseek.com", Model: "deepseek-v4-flash",
 			TranslationLocales: []string{"zh-Hans"}, TranslationInterval: 900,
 			TranslationBatch: 100, PromptVersion: "description-v1",
 		},
 		SkillsSH: &SkillsSHConfig{
-			Interval: 600, LeaseSeconds: 120, PageCount: 10, PerPage: 500, RequestTimeout: 60,
+			Interval: 600, PageCount: 10, PerPage: 500, RequestTimeout: 60,
 		},
 	}
 }
@@ -261,6 +265,14 @@ func defaultConfig() *Config {
 func (c *Config) BasicAuth() (user, pass string, ok bool) {
 	user = c.BasicAuthUser
 	pass = c.BasicAuthPass
+	ok = user != "" && pass != ""
+	return user, pass, ok
+}
+
+// AdminAuth returns the credentials scoped to Hub administration routes.
+func (c *Config) AdminAuth() (user, pass string, ok bool) {
+	user = c.AdminAuthUser
+	pass = c.AdminAuthPass
 	ok = user != "" && pass != ""
 	return user, pass, ok
 }
@@ -382,7 +394,7 @@ func ensurePortFormat(s string) string {
 
 func validateConfig(config Config) error {
 	validate := validator.New()
-	err := validate.StructExcept(config, "Storage", "Index", "Database")
+	err := validate.StructExcept(config, "Storage", "Index", "Database", "TaskQueue")
 	if err != nil {
 		return err
 	}
@@ -397,7 +409,26 @@ func validateConfig(config Config) error {
 	if err := validateDatabase(validate, config.Database); err != nil {
 		return err
 	}
+	if err := validateCredentialPair("global Basic Auth", config.BasicAuthUser, config.BasicAuthPass); err != nil {
+		return err
+	}
+	if err := validateCredentialPair("Admin Basic Auth", config.AdminAuthUser, config.AdminAuthPass); err != nil {
+		return err
+	}
+	if config.TaskQueue == nil {
+		return fmt.Errorf("task queue configuration is required")
+	}
+	if err := validate.Struct(config.TaskQueue); err != nil {
+		return err
+	}
 	return validate.Struct(config.LLM)
+}
+
+func validateCredentialPair(name, user, pass string) error {
+	if (user == "") != (pass == "") {
+		return fmt.Errorf("%s user and password must be configured together", name)
+	}
+	return nil
 }
 
 func validateDatabase(validate *validator.Validate, database *DatabaseConfig) error {

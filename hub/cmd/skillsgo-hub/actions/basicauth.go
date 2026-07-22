@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber authorization headers and constant-time credential comparison.
- * [OUTPUT]: Provides native Fiber Basic Auth middleware with probe exclusions.
+ * [INPUT]: Depends on Fiber authorization headers, validated Hub global/Admin credentials, structured logging, and constant-time credential comparison.
+ * [OUTPUT]: Provides native Fiber Basic Auth middleware plus global-or-scoped administration route assembly with probe exclusions.
  * [POS]: Serves as the optional access-control layer in Hub application assembly.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,6 +13,8 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/skillsgo/skillsgo/hub/pkg/config"
+	"github.com/skillsgo/skillsgo/hub/pkg/log"
 )
 
 // basicAuthExcludedPaths is a regular expression that matches paths that should not be protected by HTTP basic authentication.
@@ -26,6 +28,22 @@ func basicAuth(user, pass string) fiber.Handler {
 		}
 		return c.Next()
 	}
+}
+
+func configureAdministrationAuthentication(r fiber.Router, conf *config.Config, logger *log.Logger) (fiber.Router, bool) {
+	globalUser, globalPass, global := conf.BasicAuth()
+	adminUser, adminPass, admin := conf.AdminAuth()
+	if global {
+		r.Use(basicAuth(globalUser, globalPass))
+		if admin {
+			logger.Warnf("Admin Basic Auth credentials are ignored because global Basic Auth is configured")
+		}
+		return r.Group("/api/v1/admin"), true
+	}
+	if admin {
+		return r.Group("/api/v1/admin", basicAuth(adminUser, adminPass)), true
+	}
+	return nil, false
 }
 
 func checkAuth(header, user, pass string) bool {

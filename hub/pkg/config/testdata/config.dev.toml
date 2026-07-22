@@ -139,6 +139,10 @@ BasicAuthUser = ""
 # Env override: SKILLSGO_HUB_BASIC_AUTH_PASS
 BasicAuthPass = ""
 
+AdminAuthUser = ""
+
+AdminAuthPass = ""
+
 # A path on disk to a Go HTML template to be used on the homepage
 # Env override: SKILLSGO_HUB_HOME_TEMPLATE_PATH
 HomeTemplatePath = "/var/lib/athens/home.html"
@@ -289,6 +293,9 @@ IndexType = "none"
     MaxOpenConns = 1
     MaxIdleConns = 1
     ConnMaxLifetime = 0
+
+[TaskQueue]
+    MaxWorkers = 10
 
 # ShutdownTimeout sets the timeout (in seconds) for open connections when shutting down
 # (via SIGINT or SIGTERM). Connections still open after the timeout will be dropped.
@@ -615,7 +622,6 @@ ShutdownTimeout = 60
     Token = ""
     # Interval is the all-time crawl cadence in seconds.
     Interval = 600
-    LeaseSeconds = 120
     PageCount = 10
     PerPage = 500
     RequestTimeout = 60

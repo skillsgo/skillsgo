@@ -74,6 +74,20 @@ func (_c *SkillCreate) SetLatestVersion(v string) *SkillCreate {
 	return _c
 }
 
+// SetDiscoverable sets the "discoverable" field.
+func (_c *SkillCreate) SetDiscoverable(v bool) *SkillCreate {
+	_c.mutation.SetDiscoverable(v)
+	return _c
+}
+
+// SetNillableDiscoverable sets the "discoverable" field if the given value is not nil.
+func (_c *SkillCreate) SetNillableDiscoverable(v *bool) *SkillCreate {
+	if v != nil {
+		_c.SetDiscoverable(*v)
+	}
+	return _c
+}
+
 // SetVerified sets the "verified" field.
 func (_c *SkillCreate) SetVerified(v bool) *SkillCreate {
 	_c.mutation.SetVerified(v)
@@ -213,6 +227,10 @@ func (_c *SkillCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *SkillCreate) defaults() {
+	if _, ok := _c.mutation.Discoverable(); !ok {
+		v := skill.DefaultDiscoverable
+		_c.mutation.SetDiscoverable(v)
+	}
 	if _, ok := _c.mutation.Verified(); !ok {
 		v := skill.DefaultVerified
 		_c.mutation.SetVerified(v)
@@ -257,6 +275,9 @@ func (_c *SkillCreate) check() error {
 	}
 	if _, ok := _c.mutation.LatestVersion(); !ok {
 		return &ValidationError{Name: "latest_version", err: errors.New(`ent: missing required field "Skill.latest_version"`)}
+	}
+	if _, ok := _c.mutation.Discoverable(); !ok {
+		return &ValidationError{Name: "discoverable", err: errors.New(`ent: missing required field "Skill.discoverable"`)}
 	}
 	if _, ok := _c.mutation.Verified(); !ok {
 		return &ValidationError{Name: "verified", err: errors.New(`ent: missing required field "Skill.verified"`)}
@@ -330,6 +351,10 @@ func (_c *SkillCreate) createSpec() (*Skill, *sqlgraph.CreateSpec) {
 	if value, ok := _c.mutation.LatestVersion(); ok {
 		_spec.SetField(skill.FieldLatestVersion, field.TypeString, value)
 		_node.LatestVersion = value
+	}
+	if value, ok := _c.mutation.Discoverable(); ok {
+		_spec.SetField(skill.FieldDiscoverable, field.TypeBool, value)
+		_node.Discoverable = value
 	}
 	if value, ok := _c.mutation.Verified(); ok {
 		_spec.SetField(skill.FieldVerified, field.TypeBool, value)
@@ -556,6 +581,18 @@ func (u *SkillUpsert) UpdateLatestVersion() *SkillUpsert {
 	return u
 }
 
+// SetDiscoverable sets the "discoverable" field.
+func (u *SkillUpsert) SetDiscoverable(v bool) *SkillUpsert {
+	u.Set(skill.FieldDiscoverable, v)
+	return u
+}
+
+// UpdateDiscoverable sets the "discoverable" field to the value that was provided on create.
+func (u *SkillUpsert) UpdateDiscoverable() *SkillUpsert {
+	u.SetExcluded(skill.FieldDiscoverable)
+	return u
+}
+
 // SetVerified sets the "verified" field.
 func (u *SkillUpsert) SetVerified(v bool) *SkillUpsert {
 	u.Set(skill.FieldVerified, v)
@@ -749,6 +786,20 @@ func (u *SkillUpsertOne) SetLatestVersion(v string) *SkillUpsertOne {
 func (u *SkillUpsertOne) UpdateLatestVersion() *SkillUpsertOne {
 	return u.Update(func(s *SkillUpsert) {
 		s.UpdateLatestVersion()
+	})
+}
+
+// SetDiscoverable sets the "discoverable" field.
+func (u *SkillUpsertOne) SetDiscoverable(v bool) *SkillUpsertOne {
+	return u.Update(func(s *SkillUpsert) {
+		s.SetDiscoverable(v)
+	})
+}
+
+// UpdateDiscoverable sets the "discoverable" field to the value that was provided on create.
+func (u *SkillUpsertOne) UpdateDiscoverable() *SkillUpsertOne {
+	return u.Update(func(s *SkillUpsert) {
+		s.UpdateDiscoverable()
 	})
 }
 
@@ -1117,6 +1168,20 @@ func (u *SkillUpsertBulk) SetLatestVersion(v string) *SkillUpsertBulk {
 func (u *SkillUpsertBulk) UpdateLatestVersion() *SkillUpsertBulk {
 	return u.Update(func(s *SkillUpsert) {
 		s.UpdateLatestVersion()
+	})
+}
+
+// SetDiscoverable sets the "discoverable" field.
+func (u *SkillUpsertBulk) SetDiscoverable(v bool) *SkillUpsertBulk {
+	return u.Update(func(s *SkillUpsert) {
+		s.SetDiscoverable(v)
+	})
+}
+
+// UpdateDiscoverable sets the "discoverable" field to the value that was provided on create.
+func (u *SkillUpsertBulk) UpdateDiscoverable() *SkillUpsertBulk {
+	return u.Update(func(s *SkillUpsert) {
+		s.UpdateDiscoverable()
 	})
 }
 

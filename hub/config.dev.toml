@@ -139,6 +139,13 @@ BasicAuthUser = ""
 # Env override: SKILLSGO_HUB_BASIC_AUTH_PASS
 BasicAuthPass = ""
 
+# Optional Basic Auth credentials scoped to /api/v1/admin/** when global Basic Auth is disabled.
+# Env override: SKILLSGO_HUB_ADMIN_AUTH_USER
+AdminAuthUser = ""
+
+# Env override: SKILLSGO_HUB_ADMIN_AUTH_PASS
+AdminAuthPass = ""
+
 # A path on disk to a Go HTML template to be used on the homepage
 # Env override: SKILLSGO_HUB_HOME_TEMPLATE_PATH
 HomeTemplatePath = "/var/lib/athens/home.html"
@@ -289,6 +296,11 @@ IndexType = "none"
     MaxOpenConns = 1
     MaxIdleConns = 1
     ConnMaxLifetime = 0
+
+# River uses this worker capacity when Database.Type is postgres. SQLite local
+# development executes registered tasks synchronously without durable retries.
+[TaskQueue]
+    MaxWorkers = 10
 
 # Optional OpenAI-compatible LLM used only for Repository and Skill description translation.
 # An empty APIKey disables the worker. For local development, prefer the
@@ -626,7 +638,6 @@ ShutdownTimeout = 60
     URL = ""
     Token = ""
     Interval = 600
-    LeaseSeconds = 120
     PageCount = 10
     PerPage = 500
     RequestTimeout = 60

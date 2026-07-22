@@ -144,6 +144,20 @@ func (_u *SkillUpdate) SetNillableLatestVersion(v *string) *SkillUpdate {
 	return _u
 }
 
+// SetDiscoverable sets the "discoverable" field.
+func (_u *SkillUpdate) SetDiscoverable(v bool) *SkillUpdate {
+	_u.mutation.SetDiscoverable(v)
+	return _u
+}
+
+// SetNillableDiscoverable sets the "discoverable" field if the given value is not nil.
+func (_u *SkillUpdate) SetNillableDiscoverable(v *bool) *SkillUpdate {
+	if v != nil {
+		_u.SetDiscoverable(*v)
+	}
+	return _u
+}
+
 // SetVerified sets the "verified" field.
 func (_u *SkillUpdate) SetVerified(v bool) *SkillUpdate {
 	_u.mutation.SetVerified(v)
@@ -389,6 +403,9 @@ func (_u *SkillUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	}
 	if value, ok := _u.mutation.LatestVersion(); ok {
 		_spec.SetField(skill.FieldLatestVersion, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Discoverable(); ok {
+		_spec.SetField(skill.FieldDiscoverable, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Verified(); ok {
 		_spec.SetField(skill.FieldVerified, field.TypeBool, value)
@@ -695,6 +712,20 @@ func (_u *SkillUpdateOne) SetNillableLatestVersion(v *string) *SkillUpdateOne {
 	return _u
 }
 
+// SetDiscoverable sets the "discoverable" field.
+func (_u *SkillUpdateOne) SetDiscoverable(v bool) *SkillUpdateOne {
+	_u.mutation.SetDiscoverable(v)
+	return _u
+}
+
+// SetNillableDiscoverable sets the "discoverable" field if the given value is not nil.
+func (_u *SkillUpdateOne) SetNillableDiscoverable(v *bool) *SkillUpdateOne {
+	if v != nil {
+		_u.SetDiscoverable(*v)
+	}
+	return _u
+}
+
 // SetVerified sets the "verified" field.
 func (_u *SkillUpdateOne) SetVerified(v bool) *SkillUpdateOne {
 	_u.mutation.SetVerified(v)
@@ -970,6 +1001,9 @@ func (_u *SkillUpdateOne) sqlSave(ctx context.Context) (_node *Skill, err error)
 	}
 	if value, ok := _u.mutation.LatestVersion(); ok {
 		_spec.SetField(skill.FieldLatestVersion, field.TypeString, value)
+	}
+	if value, ok := _u.mutation.Discoverable(); ok {
+		_spec.SetField(skill.FieldDiscoverable, field.TypeBool, value)
 	}
 	if value, ok := _u.mutation.Verified(); ok {
 		_spec.SetField(skill.FieldVerified, field.TypeBool, value)

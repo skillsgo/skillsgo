@@ -26,6 +26,10 @@ type repositoryMaterializer interface {
 	Materialize(ctx context.Context, repositoryID, query string) (string, error)
 }
 
+type historicalRepositoryMaterializer interface {
+	MaterializeHistorical(ctx context.Context, repositoryID, query string) (string, error)
+}
+
 type repositoryPublisher struct {
 	fetcher     skill.RepositoryFetcher
 	storage     storage.Backend
@@ -45,13 +49,36 @@ type negativePublication struct {
 	err     error
 }
 
-func newRepositoryPublisher(fetcher skill.RepositoryFetcher, backend storage.Backend, protocol download.Protocol, metadata *catalog.Catalog) repositoryMaterializer {
+func newRepositoryPublisher(fetcher skill.RepositoryFetcher, backend storage.Backend, protocol download.Protocol, metadata *catalog.Catalog) *repositoryPublisher {
 	return &repositoryPublisher{fetcher: fetcher, storage: backend, protocol: protocol, metadata: metadata, upstream: make(chan struct{}, 8), negative: make(map[string]negativePublication), now: time.Now, negativeTTL: 10 * time.Second}
 }
 
 func (p *repositoryPublisher) Materialize(ctx context.Context, repositoryID, query string) (string, error) {
+	return p.materializePublication(ctx, repositoryID, query, catalog.CurrentPublication)
+}
+
+func (p *repositoryPublisher) MaterializeHistorical(ctx context.Context, repositoryID, query string) (string, error) {
+	return p.materializePublication(ctx, repositoryID, query, catalog.HistoricalPublication)
+}
+
+func (p *repositoryPublisher) VerifyHistorical(ctx context.Context, repositoryID, query, expectedCommitSHA string) error {
+	snapshot, err := p.fetcher.DiscoverRepository(ctx, repositoryID, query)
+	if err != nil {
+		return err
+	}
+	defer closeRepositorySnapshot(snapshot)
+	if snapshot.RepositoryID != repositoryID || snapshot.Version != query || snapshot.CommitSHA == "" {
+		return fmt.Errorf("Repository source returned an invalid snapshot for %s@%s", repositoryID, query)
+	}
+	if snapshot.CommitSHA != expectedCommitSHA {
+		return fmt.Errorf("immutable Repository version conflict for %s@%s", repositoryID, query)
+	}
+	return nil
+}
+
+func (p *repositoryPublisher) materializePublication(ctx context.Context, repositoryID, query string, visibility catalog.PublicationVisibility) (string, error) {
 	started := time.Now()
-	key := "publish:" + repositoryID + "@" + query
+	key := "publish:" + string(visibility) + ":" + repositoryID + "@" + query
 	entry := log.EntryFromContext(ctx).WithFields(map[string]any{
 		"component":     "repository_publisher",
 		"repository_id": repositoryID,
@@ -83,7 +110,7 @@ func (p *repositoryPublisher) Materialize(ctx context.Context, repositoryID, que
 			entry.Warnf("repository publication upstream capacity exhausted")
 			return "", huberrors.E("repositoryPublisher.Materialize", "upstream Repository resolution is at capacity", huberrors.KindRateLimit)
 		}
-		version, materializeErr := p.materialize(workCtx, repositoryID, query)
+		version, materializeErr := p.materialize(workCtx, repositoryID, query, visibility)
 		if materializeErr != nil && huberrors.IsNotFoundErr(materializeErr) {
 			p.mu.Lock()
 			p.negative[key] = negativePublication{expires: p.now().Add(p.negativeTTL), err: materializeErr}
@@ -120,7 +147,7 @@ func (p *repositoryPublisher) Materialize(ctx context.Context, repositoryID, que
 	}
 }
 
-func (p *repositoryPublisher) materialize(ctx context.Context, repositoryID, query string) (string, error) {
+func (p *repositoryPublisher) materialize(ctx context.Context, repositoryID, query string, visibility catalog.PublicationVisibility) (string, error) {
 	started := time.Now()
 	snapshot, err := p.fetcher.DiscoverRepository(ctx, repositoryID, query)
 	if err != nil {
@@ -138,9 +165,9 @@ func (p *repositoryPublisher) materialize(ctx context.Context, repositoryID, que
 		"version":       snapshot.Version,
 	}).Debugf("repository snapshot discovered")
 	invoked := false
-	result, err, _ := p.commit.Do("commit:"+repositoryID+"@"+snapshot.Version, func() (any, error) {
+	result, err, _ := p.commit.Do("commit:"+string(visibility)+":"+repositoryID+"@"+snapshot.Version, func() (any, error) {
 		invoked = true
-		return p.publishSnapshot(ctx, repositoryID, query, snapshot)
+		return p.publishSnapshot(ctx, repositoryID, query, snapshot, visibility)
 	})
 	if !invoked {
 		closeRepositorySnapshot(snapshot)
@@ -151,7 +178,7 @@ func (p *repositoryPublisher) materialize(ctx context.Context, repositoryID, que
 	return result.(string), nil
 }
 
-func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID, query string, snapshot *skill.RepositorySnapshot) (string, error) {
+func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID, query string, snapshot *skill.RepositorySnapshot, visibility catalog.PublicationVisibility) (string, error) {
 	memberIDs := make([]string, 0, len(snapshot.Members))
 	stored := make(map[string]bool, len(snapshot.Members))
 	newlyStored := make([]string, 0, len(snapshot.Members))
@@ -204,7 +231,11 @@ func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID,
 	}
 	published := make([]catalog.PublishedSkill, 0, len(memberIDs))
 	for _, memberID := range memberIDs {
-		assessed, err := p.protocol.Info(withoutCatalogIndex(ctx), memberID, snapshot.Version)
+		publicationCtx := withoutCatalogIndex(ctx)
+		if visibility == catalog.HistoricalPublication {
+			publicationCtx = withoutArtifactAudit(publicationCtx)
+		}
+		assessed, err := p.protocol.Info(publicationCtx, memberID, snapshot.Version)
 		if err != nil {
 			return "", err
 		}
@@ -227,7 +258,7 @@ func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID,
 				ContentDigest: info.ContentDigest, CommitTime: info.Time, ArchiveSize: info.ArchiveSize},
 		})
 	}
-	if err := p.metadata.PublishRepositoryVersion(ctx, repositoryID, published); err != nil {
+	if err := p.metadata.PublishRepositoryVersionWithVisibility(ctx, repositoryID, published, visibility); err != nil {
 		return "", err
 	}
 	publicationCommitted = true

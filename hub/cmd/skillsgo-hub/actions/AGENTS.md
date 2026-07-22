@@ -3,16 +3,18 @@
 
 ## Members
 
-- `app.go`, `app_test.go`: assemble the native Fiber application, middleware lifecycle, background workers, and top-level wiring coverage.
+- `app.go`, `app_test.go`, `app_postgres_integration_test.go`: assemble and verify the native Fiber application, River or synchronous task runtime, periodic business tasks, PostgreSQL boot/restart with queued-job recovery, middleware lifecycle, and top-level wiring.
+- `background_tasks.go`, `background_tasks_test.go`: define and verify first-class River JobArgs, stable observable kinds, payload validation, uniqueness fields, retry limits, and domain-handler adapters for artifact stash, Repository metadata/prewarm, translation, and skills.sh synchronization.
 - `app_proxy.go`, `app_proxy_test.go`: compose source, storage, Catalog, discovery/detail, and immutable artifact protocol routes through Fiber and cover integration behavior.
-- `auth.go`, `basicauth.go`, `basicauth_test.go`: install explicit Git/Mercurial authentication files and configure HTTP Basic Auth behavior; GitHub token pools remain scoped to individual Git processes.
+- `auth.go`, `basicauth.go`, `basicauth_test.go`, `admin_auth_test.go`: install explicit Git/Mercurial authentication files and configure global versus administration-scoped HTTP Basic Auth behavior; GitHub token pools remain scoped to individual Git processes.
 - `catalog.go`: wires Catalog lifecycle and dependencies into the service.
-- `catalog_api.go`, `catalog_api_test.go`: define and specify the stable public discovery, Catalog-only batch update checks, exact content-match, auditable artifact detail, pagination, ranking, and install-event JSON contract against SQLite while retaining correlated private diagnostics for safe public failures.
+- `catalog_api.go`, `catalog_api_test.go`: expose stable public discovery, shared Protocol batch-update and content-match DTOs, auditable artifact detail, pagination, ranking, and install-event JSON behavior against SQLite while retaining correlated private diagnostics for safe public failures.
 - `catalog_postgres_integration_test.go`: verifies pagination and empty discovery response parity through the same HTTP router against PostgreSQL.
 - `catalog_protocol.go`, `catalog_protocol_test.go`: index immutable artifact metadata and bind audited Risk plus Content Digest to exact Info responses.
 - `repository_protocol.go`: aggregates exact flat per-Skill Info into self-contained immutable Repository Info with one shared Ref, Commit SHA, and batch version on bare coordinates, and reports publication-cache decisions.
 - `repository_publisher.go`: coordinates and logs cold one-snapshot Repository discovery, immutable conflict preflight, bounded/negative-cached upstream work, rollback, and transactional Catalog visibility.
-- `repository_metadata.go`, `repository_metadata_test.go`: route Repository About descriptions and popularity metadata by source host, share TTL/ETag/Singleflight/stale/backoff state through the Catalog, and implement sticky GitHub-token failover plus safe diagnostics without making artifact availability depend on a provider API.
+- `repository_backfill.go`, `repository_backfill_test.go`, `repository_backfill_postgres_integration_test.go`: validate and expose bounded administration Backfill batches, persist one independent Run per Repository, execute deterministic semantic-version history through River, retain bounded diagnostics, and verify transactional restart/multi-instance behavior.
+- `repository_metadata.go`, `repository_metadata_test.go`: route Repository About descriptions and popularity metadata by source host, serve stale Catalog state while submitting durable refresh and prewarm work, share TTL/ETag/Singleflight/backoff state, and implement sticky GitHub-token failover plus safe diagnostics without making request availability depend on a provider API.
 - `health.go`, `readiness.go`: expose service health and readiness probes.
 - `home.go`, `robots.go`, `version.go`: serve the human landing, crawler policy, and service version surfaces.
 - `index.go`, `index_test.go`: assemble the configured module index behavior.
@@ -20,6 +22,6 @@
 
 ## Architectural Boundary
 
-This module owns native Fiber HTTP/service composition and stable public protocol serialization. It delegates metadata behavior to `pkg/catalog`, immutable artifacts to protocol/storage packages, and configuration to `pkg/config`; it must not duplicate their domain logic, expose database-specific response shapes, or introduce standard-library handler adapters inside the application request path.
+This module owns native Fiber HTTP/service composition and stable public protocol serialization. Shared wire DTOs belong to `/protocol/api`; this module delegates metadata behavior to `pkg/catalog`, immutable artifacts to Protocol/storage packages, and configuration to `pkg/config`. It must not duplicate their domain logic, expose database-specific response shapes, or introduce standard-library handler adapters inside the application request path.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

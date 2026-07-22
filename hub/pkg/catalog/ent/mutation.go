@@ -3143,6 +3143,7 @@ type SkillMutation struct {
 	repository               *string
 	skill_path               *string
 	latest_version           *string
+	discoverable             *bool
 	verified                 *bool
 	created_at               *time.Time
 	updated_at               *time.Time
@@ -3555,6 +3556,42 @@ func (m *SkillMutation) ResetLatestVersion() {
 	m.latest_version = nil
 }
 
+// SetDiscoverable sets the "discoverable" field.
+func (m *SkillMutation) SetDiscoverable(b bool) {
+	m.discoverable = &b
+}
+
+// Discoverable returns the value of the "discoverable" field in the mutation.
+func (m *SkillMutation) Discoverable() (r bool, exists bool) {
+	v := m.discoverable
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldDiscoverable returns the old "discoverable" field's value of the Skill entity.
+// If the Skill object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *SkillMutation) OldDiscoverable(ctx context.Context) (v bool, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldDiscoverable is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldDiscoverable requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldDiscoverable: %w", err)
+	}
+	return oldValue.Discoverable, nil
+}
+
+// ResetDiscoverable resets all changes to the "discoverable" field.
+func (m *SkillMutation) ResetDiscoverable() {
+	m.discoverable = nil
+}
+
 // SetVerified sets the "verified" field.
 func (m *SkillMutation) SetVerified(b bool) {
 	m.verified = &b
@@ -3899,7 +3936,7 @@ func (m *SkillMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SkillMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 12)
 	if m.skill_id != nil {
 		fields = append(fields, skill.FieldSkillID)
 	}
@@ -3923,6 +3960,9 @@ func (m *SkillMutation) Fields() []string {
 	}
 	if m.latest_version != nil {
 		fields = append(fields, skill.FieldLatestVersion)
+	}
+	if m.discoverable != nil {
+		fields = append(fields, skill.FieldDiscoverable)
 	}
 	if m.verified != nil {
 		fields = append(fields, skill.FieldVerified)
@@ -3957,6 +3997,8 @@ func (m *SkillMutation) Field(name string) (ent.Value, bool) {
 		return m.SkillPath()
 	case skill.FieldLatestVersion:
 		return m.LatestVersion()
+	case skill.FieldDiscoverable:
+		return m.Discoverable()
 	case skill.FieldVerified:
 		return m.Verified()
 	case skill.FieldCreatedAt:
@@ -3988,6 +4030,8 @@ func (m *SkillMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldSkillPath(ctx)
 	case skill.FieldLatestVersion:
 		return m.OldLatestVersion(ctx)
+	case skill.FieldDiscoverable:
+		return m.OldDiscoverable(ctx)
 	case skill.FieldVerified:
 		return m.OldVerified(ctx)
 	case skill.FieldCreatedAt:
@@ -4058,6 +4102,13 @@ func (m *SkillMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetLatestVersion(v)
+		return nil
+	case skill.FieldDiscoverable:
+		v, ok := value.(bool)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetDiscoverable(v)
 		return nil
 	case skill.FieldVerified:
 		v, ok := value.(bool)
@@ -4155,6 +4206,9 @@ func (m *SkillMutation) ResetField(name string) error {
 		return nil
 	case skill.FieldLatestVersion:
 		m.ResetLatestVersion()
+		return nil
+	case skill.FieldDiscoverable:
+		m.ResetDiscoverable()
 		return nil
 	case skill.FieldVerified:
 		m.ResetVerified()

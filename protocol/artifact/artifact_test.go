@@ -63,6 +63,44 @@ func TestContentDigestGoldenAndArchiveEncodingIndependence(t *testing.T) {
 	}
 }
 
+func TestWalkContentVisitsNormalizedFilesAndReturnsTheSameDigest(t *testing.T) {
+	archive := makeZIP(t,
+		zipEntry{"example@v1/z.txt", "z", false, zip.Store},
+		zipEntry{"example@v1/SKILL.md", "instructions", false, zip.Store},
+	)
+	var visited []string
+	digest, err := WalkContent(archive, "example", "v1", func(entry Entry) error {
+		visited = append(visited, entry.Path+":"+string(entry.Contents))
+		if entry.Size != int64(len(entry.Contents)) {
+			t.Fatalf("entry size %d != %d", entry.Size, len(entry.Contents))
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want, err := ContentDigest(archive, "example", "v1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if digest != want {
+		t.Fatalf("walk digest %s != content digest %s", digest, want)
+	}
+	if got, want := strings.Join(visited, ","), "SKILL.md:instructions,z.txt:z"; got != want {
+		t.Fatalf("visited %q, want %q", got, want)
+	}
+}
+
+func TestWalkContentPropagatesVisitorFailure(t *testing.T) {
+	archive := makeZIP(t, zipEntry{"example@v1/SKILL.md", "instructions", false, zip.Store})
+	_, err := WalkContent(archive, "example", "v1", func(Entry) error {
+		return errors.New("inspection failed")
+	})
+	if err == nil || !strings.Contains(err.Error(), `visit artifact file "SKILL.md": inspection failed`) {
+		t.Fatalf("visitor error: %v", err)
+	}
+}
+
 func TestContentDigestRejectsMalformedAndUnsafeArchives(t *testing.T) {
 	valid := zipEntry{"example@v1/SKILL.md", "ok", false, zip.Store}
 	tests := []struct {

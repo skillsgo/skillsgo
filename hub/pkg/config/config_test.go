@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the config package imports and contracts declared in this file.
- * [OUTPUT]: Specifies Hub configuration including multi-token GitHub authentication and skills.sh synchronization behavior.
+ * [OUTPUT]: Specifies Hub configuration including multi-token GitHub authentication, task execution, and skills.sh synchronization behavior.
  * [POS]: Serves as test coverage for the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -39,7 +39,7 @@ func setTestHome(t *testing.T) string {
 func compareConfigs(parsedConf *Config, expConf *Config, t *testing.T, ignoreTypes ...any) {
 	t.Helper()
 	opts := cmpopts.IgnoreTypes(append([]any{Index{}, DatabaseConfig{}}, ignoreTypes...)...)
-	ignoreDatabase := cmpopts.IgnoreFields(Config{}, "Database", "LLM")
+	ignoreDatabase := cmpopts.IgnoreFields(Config{}, "Database", "TaskQueue", "LLM")
 	eq := cmp.Equal(parsedConf, expConf, opts, ignoreDatabase)
 	if !eq {
 		diff := cmp.Diff(parsedConf, expConf, opts, ignoreDatabase)
@@ -139,6 +139,25 @@ func TestGitHubTokensEnvironmentOverride(t *testing.T) {
 	require.Equal(t, []string{"token-a", "token-b"}, conf.GitHubTokens())
 }
 
+func TestValidateConfigRejectsPartialBasicAuthCredentials(t *testing.T) {
+	tests := []struct {
+		name   string
+		mutate func(*Config)
+	}{
+		{name: "global user only", mutate: func(c *Config) { c.BasicAuthUser = "user" }},
+		{name: "global password only", mutate: func(c *Config) { c.BasicAuthPass = "pass" }},
+		{name: "admin user only", mutate: func(c *Config) { c.AdminAuthUser = "user" }},
+		{name: "admin password only", mutate: func(c *Config) { c.AdminAuthPass = "pass" }},
+	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			conf := defaultConfig()
+			test.mutate(conf)
+			require.Error(t, validateConfig(*conf))
+		})
+	}
+}
+
 func TestEnvOverrides(t *testing.T) {
 	os.Clearenv()
 	home := setTestHome(t)
@@ -190,7 +209,6 @@ func TestSkillsSHEnvironmentOverrides(t *testing.T) {
 	t.Setenv("SKILLSGO_HUB_SKILLSSH_URL", "https://bridge.example/api/skills")
 	t.Setenv("SKILLSGO_BRIDGE_TOKEN", "shared-secret")
 	t.Setenv("SKILLSGO_HUB_SKILLSSH_INTERVAL", "900")
-	t.Setenv("SKILLSGO_HUB_SKILLSSH_LEASE_SECONDS", "180")
 	t.Setenv("SKILLSGO_HUB_SKILLSSH_PAGE_COUNT", "8")
 	t.Setenv("SKILLSGO_HUB_SKILLSSH_PER_PAGE", "400")
 	t.Setenv("SKILLSGO_HUB_SKILLSSH_REQUEST_TIMEOUT", "45")
@@ -198,9 +216,17 @@ func TestSkillsSHEnvironmentOverrides(t *testing.T) {
 	require.NoError(t, envOverride(conf))
 	require.Equal(t, &SkillsSHConfig{
 		URL: "https://bridge.example/api/skills", Token: "shared-secret", Interval: 900,
-		LeaseSeconds: 180, PageCount: 8, PerPage: 400, RequestTimeout: 45,
+		PageCount: 8, PerPage: 400, RequestTimeout: 45,
 	}, conf.SkillsSH)
 	require.True(t, conf.SkillsSH.Enabled())
+}
+
+func TestTaskQueueEnvironmentOverride(t *testing.T) {
+	setTestHome(t)
+	t.Setenv("SKILLSGO_HUB_TASK_QUEUE_MAX_WORKERS", "24")
+	conf := defaultConfig()
+	require.NoError(t, envOverride(conf))
+	require.Equal(t, 24, conf.TaskQueue.MaxWorkers)
 }
 
 func TestEnvOverridesPreservingPort(t *testing.T) {
@@ -404,7 +430,7 @@ func TestParseExampleConfig(t *testing.T) {
 		StashTimeout:          600,
 		Index:                 &Index{},
 		SkillsSH: &SkillsSHConfig{
-			Interval: 600, LeaseSeconds: 120, PageCount: 10, PerPage: 500, RequestTimeout: 60,
+			Interval: 600, PageCount: 10, PerPage: 500, RequestTimeout: 60,
 		},
 		SkillCacheDir: filepath.Join(home, ".skillsgo", "hub", "cache"),
 	}
@@ -438,6 +464,8 @@ func getEnvMap(config *Config) map[string]string {
 	envVars["SKILLSGO_HUB_PPROF_PORT"] = config.PprofPort
 	envVars["SKILLSGO_HUB_BASIC_AUTH_USER"] = config.BasicAuthUser
 	envVars["SKILLSGO_HUB_BASIC_AUTH_PASS"] = config.BasicAuthPass
+	envVars["SKILLSGO_HUB_ADMIN_AUTH_USER"] = config.AdminAuthUser
+	envVars["SKILLSGO_HUB_ADMIN_AUTH_PASS"] = config.AdminAuthPass
 	envVars["SKILLSGO_HUB_FORCE_SSL"] = strconv.FormatBool(config.ForceSSL)
 	envVars["SKILLSGO_HUB_HOME_TEMPLATE_PATH"] = config.HomeTemplatePath
 	envVars["SKILLSGO_HUB_PROXY_VALIDATOR"] = config.ValidatorHook

@@ -118,16 +118,20 @@ func init() {
 	skillDescSkillID := skillFields[1].Descriptor()
 	// skill.SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
 	skill.SkillIDValidator = skillDescSkillID.Validators[0].(func(string) error)
+	// skillDescDiscoverable is the schema descriptor for discoverable field.
+	skillDescDiscoverable := skillFields[9].Descriptor()
+	// skill.DefaultDiscoverable holds the default value on creation for the discoverable field.
+	skill.DefaultDiscoverable = skillDescDiscoverable.Default.(bool)
 	// skillDescVerified is the schema descriptor for verified field.
-	skillDescVerified := skillFields[9].Descriptor()
+	skillDescVerified := skillFields[10].Descriptor()
 	// skill.DefaultVerified holds the default value on creation for the verified field.
 	skill.DefaultVerified = skillDescVerified.Default.(bool)
 	// skillDescCreatedAt is the schema descriptor for created_at field.
-	skillDescCreatedAt := skillFields[10].Descriptor()
+	skillDescCreatedAt := skillFields[11].Descriptor()
 	// skill.DefaultCreatedAt holds the default value on creation for the created_at field.
 	skill.DefaultCreatedAt = skillDescCreatedAt.Default.(func() time.Time)
 	// skillDescUpdatedAt is the schema descriptor for updated_at field.
-	skillDescUpdatedAt := skillFields[11].Descriptor()
+	skillDescUpdatedAt := skillFields[12].Descriptor()
 	// skill.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	skill.DefaultUpdatedAt = skillDescUpdatedAt.Default.(func() time.Time)
 	// skill.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

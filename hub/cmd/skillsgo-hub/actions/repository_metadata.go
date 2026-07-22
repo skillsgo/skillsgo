@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on Repository Catalog cache state, GitHub's conditional REST resource, an optional bearer-token pool, and bounded HTTP requests.
- * [OUTPUT]: Provides Repository-scoped provider descriptions and Stars with TTL, ETag revalidation, Singleflight refresh, sticky GitHub-token failover, rate-limit backoff, and safe failure diagnostics.
- * [POS]: Serves as the cached external source-metadata adapter; artifact and discovery requests remain usable when it fails.
+ * [INPUT]: Depends on Repository Catalog cache state, GitHub's conditional REST resource, the Hub task runtime, an optional bearer-token pool, and bounded HTTP requests.
+ * [OUTPUT]: Provides stale-while-revalidate Repository descriptions and Stars with durable refresh, TTL, ETag, token failover, and rate-limit backoff.
+ * [POS]: Serves as the cached source-metadata adapter and River task handler; request availability never depends on the provider API.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -21,6 +21,7 @@ import (
 
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
+	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -51,6 +52,7 @@ type repositoryMetadataCache struct {
 	ttl     time.Duration
 	now     func() time.Time
 	refresh singleflight.Group
+	tasks   *taskqueue.Runtime
 }
 
 type githubRepositoryMetadataReader struct {
@@ -131,11 +133,19 @@ func (r *githubRepositoryMetadataReader) tokenAt(start, offset uint64) string {
 func (r *githubRepositoryMetadataReader) Host() string { return "github.com" }
 
 func newRepositoryMetadataCache(metadata *catalog.Catalog, sources ...repositoryMetadataSource) repositoryMetadataReader {
+	return newRepositoryMetadataCacheWithRuntime(metadata, nil, sources...)
+}
+
+func newQueuedRepositoryMetadataCache(metadata *catalog.Catalog, tasks *taskqueue.Runtime, sources ...repositoryMetadataSource) *repositoryMetadataCache {
+	return newRepositoryMetadataCacheWithRuntime(metadata, tasks, sources...)
+}
+
+func newRepositoryMetadataCacheWithRuntime(metadata *catalog.Catalog, tasks *taskqueue.Runtime, sources ...repositoryMetadataSource) *repositoryMetadataCache {
 	byHost := make(map[string]repositoryMetadataSource, len(sources))
 	for _, source := range sources {
 		byHost[strings.ToLower(strings.TrimSpace(source.Host()))] = source
 	}
-	return &repositoryMetadataCache{catalog: metadata, sources: byHost, ttl: sourceMetadataTTL, now: time.Now}
+	return &repositoryMetadataCache{catalog: metadata, sources: byHost, ttl: sourceMetadataTTL, now: time.Now, tasks: tasks}
 }
 
 func (c *repositoryMetadataCache) Read(ctx context.Context, sourceHost, repository string) (repositoryMetadata, error) {
@@ -146,7 +156,7 @@ func (c *repositoryMetadataCache) Read(ctx context.Context, sourceHost, reposito
 		return repositoryMetadata{}, err
 	}
 	now := c.now().UTC()
-	upstream, supported := c.sources[normalizedHost]
+	_, supported := c.sources[normalizedHost]
 	if !supported {
 		logSourceMetadataCache(ctx, repositoryID, "unsupported")
 		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
@@ -159,12 +169,52 @@ func (c *repositoryMetadataCache) Read(ctx context.Context, sourceHost, reposito
 		logSourceMetadataCache(ctx, repositoryID, "retry_blocked")
 		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
 	}
+	if c.tasks != nil {
+		if err := c.tasks.Enqueue(ctx, repositorySourceMetadataRefreshArgs{RepositoryID: repositoryID}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8}); err != nil {
+			log.EntryFromContext(ctx).WithFields(map[string]any{
+				"error": err.Error(), "repository_id": repositoryID,
+			}).Warnf("repository metadata refresh submission failed")
+		}
+		if err := enqueueRepositoryPrewarm(ctx, c.tasks, repositoryID, "latest"); err != nil {
+			log.EntryFromContext(ctx).WithFields(map[string]any{
+				"error": err.Error(), "repository_id": repositoryID,
+			}).Warnf("repository prewarm submission failed")
+		}
+		logSourceMetadataCache(ctx, repositoryID, "stale_queued")
+		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
+	}
+	return c.refreshNow(ctx, normalizedHost, strings.Trim(repository, "/"), repositoryID, stored)
+}
+
+func (c *repositoryMetadataCache) RegisterTask() error {
+	if c.tasks == nil {
+		return fmt.Errorf("repository metadata task runtime is required")
+	}
+	return taskqueue.Register(c.tasks, func(ctx context.Context, args repositorySourceMetadataRefreshArgs) error {
+		parts := strings.SplitN(args.RepositoryID, "/", 2)
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			return fmt.Errorf("invalid repository id %q", args.RepositoryID)
+		}
+		stored, err := c.catalog.Repository(ctx, args.RepositoryID)
+		if err != nil {
+			return err
+		}
+		_, err = c.refreshNow(ctx, parts[0], parts[1], args.RepositoryID, stored)
+		return err
+	})
+}
+
+func (c *repositoryMetadataCache) refreshNow(ctx context.Context, normalizedHost, repository, repositoryID string, stored *catalog.Repository) (repositoryMetadata, error) {
+	upstream, supported := c.sources[normalizedHost]
+	if !supported {
+		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
+	}
 	value, err, _ := c.refresh.Do(repositoryID, func() (any, error) {
 		current, readErr := c.catalog.Repository(ctx, repositoryID)
 		if readErr != nil {
 			return nil, readErr
 		}
-		now = c.now().UTC()
+		now := c.now().UTC()
 		if repositoryMetadataFresh(current, now, c.ttl) || repositoryMetadataRetryBlocked(current, now) {
 			logSourceMetadataCache(ctx, repositoryID, "singleflight_hit")
 			return repositoryMetadata{Description: current.Description, Stars: current.Stars, ETag: current.SourceMetadataETag}, nil
@@ -173,7 +223,7 @@ func (c *repositoryMetadataCache) Read(ctx context.Context, sourceHost, reposito
 		if current.Description == "" {
 			etag = ""
 		}
-		result, upstreamErr := upstream.Read(ctx, sourceHost, repository, etag)
+		result, upstreamErr := upstream.Read(ctx, normalizedHost, repository, etag)
 		if upstreamErr != nil {
 			if retryAt := githubMetadataRetryAt(upstreamErr, now); retryAt != nil {
 				if updateErr := c.catalog.UpdateRepositorySourceMetadata(ctx, repositoryID, current.Description, current.Stars, current.SourceMetadataETag, current.SourceMetadataCheckedAt, retryAt); updateErr != nil {

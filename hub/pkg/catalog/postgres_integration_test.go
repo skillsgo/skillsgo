@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the shared Catalog contract against an opt-in Testcontainers PostgreSQL service.
- * [OUTPUT]: Specifies PostgreSQL parity for discovery, immutable versions, append-only risk evidence, install aggregation, and rankings.
+ * [OUTPUT]: Specifies shared pgx pooling plus PostgreSQL parity for discovery, immutable versions, append-only risk evidence, install aggregation, and rankings.
  * [POS]: Serves as real-PostgreSQL integration coverage for the Hub discovery metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -42,6 +42,7 @@ func TestPostgresCatalog(t *testing.T) {
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
+	require.NotNil(t, c.PostgresPool())
 
 	skill := &Skill{SkillID: "github.com/op7418/guizang-ppt-skill", Name: "guizang-ppt", Description: "Create presentation slides", LatestVersion: "main"}
 	for _, item := range []*Skill{

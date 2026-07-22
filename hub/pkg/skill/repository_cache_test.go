@@ -503,10 +503,39 @@ func TestVCSListerUsesRepositoryCache(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, []string{"v1.0.0"}, versions)
 	require.Equal(t, "v1.0.0", revision.Version)
+	tags, err := lister.ListRepositoryTags(t.Context(), f.skillID)
+	require.NoError(t, err)
+	require.Len(t, tags, 1)
+	resolved, err := f.fetcher.Resolve(t.Context(), f.skillID, "v1.0.0")
+	require.NoError(t, err)
+	require.Equal(t, RepositoryTag{Version: "v1.0.0", CommitSHA: resolved.CommitSHA}, tags[0])
 
 	repositoryDir, err := f.fetcher.repositoryDir(f.skillID)
 	require.NoError(t, err)
 	require.True(t, isGitRepository(repositoryDir))
+}
+
+func TestRepositoryTagListerObservesMovedTagWithoutClobberingCache(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	lister, err := NewVCSLister(f.fetcher, 10*time.Second)
+	require.NoError(t, err)
+	initial, err := lister.ListRepositoryTags(t.Context(), f.skillID)
+	require.NoError(t, err)
+	require.Len(t, initial, 1)
+
+	f.writeSkill(t, ".", "repo", "moved tag")
+	f.commit(t, "move tag")
+	movedCommit := strings.TrimSpace(runGit(t, f.work, "rev-parse", "HEAD"))
+	runGit(t, f.work, "tag", "-f", "v1.0.0")
+	runGit(t, f.work, "push", "--force", "origin", "refs/tags/v1.0.0")
+	tags, err := lister.ListRepositoryTags(t.Context(), f.skillID)
+	require.NoError(t, err)
+	require.Equal(t, []RepositoryTag{{Version: "v1.0.0", CommitSHA: movedCommit}}, tags)
+
+	resolved, err := f.fetcher.Resolve(t.Context(), f.skillID, "v1.0.0")
+	require.NoError(t, err)
+	require.Equal(t, movedCommit, resolved.CommitSHA)
+	require.NotEqual(t, initial[0].CommitSHA, resolved.CommitSHA)
 }
 
 func TestNoTagLatestObservesRemoteDefaultBranchAndReturnsPseudoVersion(t *testing.T) {

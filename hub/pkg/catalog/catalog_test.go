@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Catalog with temporary SQLite databases and deterministic install-event timestamps.
- * [OUTPUT]: Specifies versioned migration history, canonical Skill/version product metadata persistence, exact digest matching with source-hint ranking, append-only risk assessments, searchable fields, pagination, and distinct ranking semantics.
+ * [OUTPUT]: Specifies versioned migration history, PostgreSQL-only native transaction rejection, canonical Skill/version product metadata persistence, exact digest matching with source-hint ranking, append-only risk assessments, searchable fields, pagination, and distinct ranking semantics.
  * [POS]: Serves as SQLite contract coverage for the Hub discovery metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,6 +8,7 @@ package catalog
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -45,6 +46,17 @@ func TestSQLiteCatalogUpsertAndSearch(t *testing.T) {
 		require.Equal(t, got.SkillID, results[0].SkillID)
 		require.Equal(t, int64(0), results[0].Installs)
 	}
+}
+
+func TestSQLiteCatalogRejectsNativePostgresTransaction(t *testing.T) {
+	c, err := Open(t.Context(), config.DatabaseConfig{
+		Type: "sqlite", DSN: filepath.Join(t.TempDir(), "hub.db"), MaxOpenConns: 1, MaxIdleConns: 1,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, c.Close()) })
+
+	err = c.WithPostgresTx(t.Context(), nil)
+	require.EqualError(t, err, "native PostgreSQL transactions are unavailable for this Catalog dialect")
 }
 
 func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
@@ -307,6 +319,8 @@ func TestRepositoryPublicationKeepsIndependentSkillLatestHistory(t *testing.T) {
 
 	publish("v1.0.0", "commit-v1", repository, member)
 	publish("v2.0.0", "commit-v2", repository)
+	_, err = c.Skill(ctx, member)
+	require.ErrorIs(t, err, sql.ErrNoRows, "a Skill removed from the current Repository publication must leave discovery")
 	require.Equal(t, []string{"v1.0.0", "v2.0.0"}, mustPublishedVersions(t, c, repository), "unchanged members still receive every Repository publication version")
 	latest, err := c.SkillLatestPublishedVersion(ctx, member)
 	require.NoError(t, err)
@@ -318,6 +332,62 @@ func TestRepositoryPublicationKeepsIndependentSkillLatestHistory(t *testing.T) {
 	latest, err = c.SkillLatestPublishedVersion(ctx, member)
 	require.NoError(t, err)
 	require.Equal(t, "v1.0.0", latest.Version)
+}
+
+func TestRepositoryPublicationMarkerExcludesStandaloneSkillIndexing(t *testing.T) {
+	ctx := t.Context()
+	c, err := Open(ctx, config.DatabaseConfig{Type: "sqlite", DSN: filepath.Join(t.TempDir(), "hub.db"), MaxOpenConns: 1, MaxIdleConns: 1})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, c.Close()) })
+	repository, version := "github.com/acme/marker", "v1.0.0"
+	require.NoError(t, c.UpsertSkill(ctx, &Skill{SkillID: repository, Name: "marker", Description: "Standalone", LatestVersion: version}))
+	_, err = c.RecordSkillVersion(ctx, repository, SkillVersion{Version: version, CommitSHA: "commit", TreeSHA: "tree", ContentDigest: "sha256:standalone"})
+	require.NoError(t, err)
+	exists, err := c.RepositoryPublicationExists(ctx, repository, version)
+	require.NoError(t, err)
+	require.False(t, exists, "standalone protocol indexing is not a complete Repository Publication")
+
+	require.NoError(t, c.PublishRepositoryVersionWithVisibility(ctx, repository, []PublishedSkill{{
+		Skill:   Skill{SkillID: repository, Name: "marker", Description: "Standalone"},
+		Version: SkillVersion{Version: version, CommitSHA: "commit", TreeSHA: "tree", ContentDigest: "sha256:standalone"},
+	}}, HistoricalPublication))
+	exists, err = c.RepositoryPublicationExists(ctx, repository, version)
+	require.NoError(t, err)
+	require.True(t, exists)
+}
+
+func TestExpireStaleBackfillRunsRecoversAbandonedActiveState(t *testing.T) {
+	ctx := t.Context()
+	c, err := Open(ctx, config.DatabaseConfig{Type: "sqlite", DSN: filepath.Join(t.TempDir(), "hub.db"), MaxOpenConns: 1, MaxIdleConns: 1})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, c.Close()) })
+	old := time.Now().UTC().Add(-3 * time.Hour)
+	_, err = c.db.ExecContext(ctx, `INSERT INTO repository_backfill_runs
+		(id, repository_id, status, error_count, diagnostics, created_at, updated_at)
+		VALUES (?, ?, ?, 0, '[]', ?, ?)`, "run-stale", "github.com/acme/stale", BackfillRunning, old, old)
+	require.NoError(t, err)
+	_, err = c.db.ExecContext(ctx, `INSERT INTO repository_backfill_runs
+		(id, repository_id, status, error_count, diagnostics, created_at, updated_at)
+		VALUES (?, ?, ?, 0, '[]', ?, ?)`, "run-queued", "github.com/acme/queued", BackfillQueued, old, old)
+	require.NoError(t, err)
+	expired, err := c.ExpireStaleBackfillRuns(ctx, time.Now().UTC().Add(-2*time.Hour))
+	require.NoError(t, err)
+	require.Equal(t, int64(1), expired)
+	run, err := c.LatestBackfillRun(ctx, "github.com/acme/stale")
+	require.NoError(t, err)
+	require.Equal(t, BackfillCompleteWithErrors, run.Status)
+	require.Equal(t, []string{"repository: execution_expired"}, run.Diagnostics)
+	queued, err := c.LatestBackfillRun(ctx, "github.com/acme/queued")
+	require.NoError(t, err)
+	require.Equal(t, BackfillQueued, queued.Status, "durably queued River work must not be expired before it is claimed")
+	staleQueued, err := c.StaleQueuedBackfillRuns(ctx, time.Now().UTC().Add(-2*time.Hour), 100)
+	require.NoError(t, err)
+	require.Len(t, staleQueued, 1)
+	require.Equal(t, queued.ID, staleQueued[0].ID)
+	require.NoError(t, c.ExpireQueuedBackfillRun(ctx, queued.ID))
+	queued, err = c.LatestBackfillRun(ctx, "github.com/acme/queued")
+	require.NoError(t, err)
+	require.Equal(t, BackfillCompleteWithErrors, queued.Status)
 }
 
 func mustPublishedVersions(t *testing.T, c *Catalog, skillID string) []string {
@@ -338,11 +408,11 @@ func TestSQLiteMigrationsAreVersionedAndIdempotent(t *testing.T) {
 	c := open()
 	var versions []string
 	require.NoError(t, c.db.SelectContext(ctx, &versions, "SELECT version FROM atlas_schema_revisions ORDER BY version"))
-	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001", "202607210001", "202607210002"}, versions)
+	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001", "202607210001", "202607210002", "202607220001", "202607220002", "202607220003"}, versions)
 	require.NoError(t, c.Close())
 
 	c = open()
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	require.NoError(t, c.db.SelectContext(ctx, &versions, "SELECT version FROM atlas_schema_revisions ORDER BY version"))
-	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001", "202607210001", "202607210002"}, versions)
+	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001", "202607210001", "202607210002", "202607220001", "202607220002", "202607220003"}, versions)
 }

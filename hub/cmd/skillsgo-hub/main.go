@@ -67,6 +67,8 @@ func main() {
 		"skill_fetch_workers":    conf.SkillFetchWorkers,
 		"stats_exporter":         conf.StatsExporter,
 		"storage_type":           conf.StorageType,
+		"task_queue_backend":     map[bool]string{true: "river", false: "synchronous"}[databaseType == "postgres"],
+		"task_queue_workers":     conf.TaskQueue.MaxWorkers,
 		"tls_configured":         conf.TLSCertFile != "" && conf.TLSKeyFile != "",
 		"trace_exporter":         conf.TraceExporter,
 	}).Infof("hub runtime configured")

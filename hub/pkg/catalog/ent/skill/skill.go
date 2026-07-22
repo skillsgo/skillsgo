@@ -30,6 +30,8 @@ const (
 	FieldSkillPath = "skill_path"
 	// FieldLatestVersion holds the string denoting the latest_version field in the database.
 	FieldLatestVersion = "latest_version"
+	// FieldDiscoverable holds the string denoting the discoverable field in the database.
+	FieldDiscoverable = "discoverable"
 	// FieldVerified holds the string denoting the verified field in the database.
 	FieldVerified = "verified"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
@@ -89,6 +91,7 @@ var Columns = []string{
 	FieldRepository,
 	FieldSkillPath,
 	FieldLatestVersion,
+	FieldDiscoverable,
 	FieldVerified,
 	FieldCreatedAt,
 	FieldUpdatedAt,
@@ -107,6 +110,8 @@ func ValidColumn(column string) bool {
 var (
 	// SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
 	SkillIDValidator func(string) error
+	// DefaultDiscoverable holds the default value on creation for the "discoverable" field.
+	DefaultDiscoverable bool
 	// DefaultVerified holds the default value on creation for the "verified" field.
 	DefaultVerified bool
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
@@ -163,6 +168,11 @@ func BySkillPath(opts ...sql.OrderTermOption) OrderOption {
 // ByLatestVersion orders the results by the latest_version field.
 func ByLatestVersion(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldLatestVersion, opts...).ToFunc()
+}
+
+// ByDiscoverable orders the results by the discoverable field.
+func ByDiscoverable(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldDiscoverable, opts...).ToFunc()
 }
 
 // ByVerified orders the results by the verified field.

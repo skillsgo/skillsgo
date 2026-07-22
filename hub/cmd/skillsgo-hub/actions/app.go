@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Fiber, Hub configuration, middleware, observability, storage, Catalog assembly, and background workers.
+ * [INPUT]: Depends on Fiber, Hub configuration, middleware, observability, storage, Catalog assembly, River task execution, and background workers.
  * [OUTPUT]: Provides the native Fiber Hub application plus coordinated lifecycle cleanup.
  * [POS]: Serves as the Fiber server and middleware composition root for the Hub actions module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -22,6 +22,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/skillssh"
+	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
 	"github.com/skillsgo/skillsgo/hub/pkg/translation"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
 	"go.opentelemetry.io/otel"
@@ -88,6 +89,10 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 		r.Get("/", healthHandler)
 		subRouter = r.Group(prefix)
 	}
+	var proxyRouter fiber.Router = r
+	if subRouter != nil {
+		proxyRouter = subRouter
+	}
 
 	// RegisterExporter will register an exporter where we will export our traces to.
 	// The error from the RegisterExporter would be nil if the tracer was specified by
@@ -127,10 +132,7 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 		})
 	}
 
-	user, pass, ok := conf.BasicAuth()
-	if ok {
-		r.Use(basicAuth(user, pass))
-	}
+	adminRouter, adminEnabled := configureAdministrationAuthentication(proxyRouter, conf, logger)
 
 	if !conf.FilterOff() {
 		mf, err := skill.NewFilter(conf.FilterFile)
@@ -171,27 +173,43 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 		exporterCleanup()
 	}
 
-	var proxyRouter fiber.Router = r
-	if subRouter != nil {
-		proxyRouter = subRouter
+	workerCtx, cancelWorkers := context.WithCancel(context.Background())
+	taskRuntime := taskqueue.NewSynchronous()
+	if pool := metadata.PostgresPool(); pool != nil {
+		taskRuntime, err = taskqueue.NewRiver(workerCtx, pool, conf.TaskQueue.MaxWorkers)
+		if err != nil {
+			cancelWorkers()
+			return nil, cleanup, fmt.Errorf("creating task runtime: %w", err)
+		}
 	}
-	if err := addProxyRoutesWithCatalog(proxyRouter, store, logger, conf, metadata); err != nil {
+	if err := addProxyRoutesWithCatalog(proxyRouter, store, logger, conf, metadata, taskRuntime, adminRouter, adminEnabled); err != nil {
+		cancelWorkers()
 		return nil, cleanup, fmt.Errorf("adding proxy routes: %w", err)
 	}
-	workerCtx, cancelWorkers := context.WithCancel(context.Background())
-	var workerWG sync.WaitGroup
 	if conf.LLM.Enabled() {
 		translator := translation.NewOpenAITranslator(conf.LLM.BaseURL, conf.LLM.APIKey, conf.LLM.Model)
+		translationWorkers := make(map[string]*translation.Worker, len(conf.LLM.TranslationLocales))
 		for _, locale := range conf.LLM.TranslationLocales {
-			worker := translation.NewWorker(
+			translationWorkers[locale] = translation.NewWorker(
 				metadata, translator, logger, locale, conf.LLM.PromptVersion,
-				conf.LLM.TranslationBatch, time.Duration(conf.LLM.TranslationInterval)*time.Second,
+				conf.LLM.TranslationBatch,
 			)
-			workerWG.Add(1)
-			go func() {
-				defer workerWG.Done()
-				worker.Run(workerCtx)
-			}()
+		}
+		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, args descriptionTranslationBatchArgs) error {
+			worker, ok := translationWorkers[args.Locale]
+			if !ok {
+				return fmt.Errorf("description translation locale %q is not configured", args.Locale)
+			}
+			return worker.RunOnce(ctx)
+		}); err != nil {
+			cancelWorkers()
+			return nil, cleanup, fmt.Errorf("register description translation job: %w", err)
+		}
+		for _, locale := range conf.LLM.TranslationLocales {
+			if err := taskRuntime.Every(descriptionTranslationBatchArgs{Locale: locale}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8}, time.Duration(conf.LLM.TranslationInterval)*time.Second, true); err != nil {
+				cancelWorkers()
+				return nil, cleanup, fmt.Errorf("register description translation job for %s: %w", locale, err)
+			}
 		}
 		logger.Infof("description translation enabled with model %s for locales %s", conf.LLM.Model, strings.Join(conf.LLM.TranslationLocales, ","))
 	}
@@ -199,13 +217,31 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 		bridge := skillssh.NewClient(conf.SkillsSH.URL, conf.SkillsSH.Token, time.Duration(conf.SkillsSH.RequestTimeout)*time.Second)
 		worker := skillssh.NewWorker(metadata, bridge, logger,
 			time.Duration(conf.SkillsSH.Interval)*time.Second,
-			time.Duration(conf.SkillsSH.LeaseSeconds)*time.Second,
 			conf.SkillsSH.PageCount, conf.SkillsSH.PerPage)
-		workerWG.Add(1)
-		go func() { defer workerWG.Done(); worker.Run(workerCtx) }()
+		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, _ skillsSHProviderSyncArgs) error {
+			return worker.RunOnce(ctx, time.Now().UTC())
+		}); err != nil {
+			cancelWorkers()
+			return nil, cleanup, fmt.Errorf("register skills.sh job: %w", err)
+		}
+		if err := taskRuntime.Every(skillsSHProviderSyncArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8}, time.Duration(conf.SkillsSH.Interval)*time.Second, true); err != nil {
+			cancelWorkers()
+			return nil, cleanup, fmt.Errorf("schedule skills.sh job: %w", err)
+		}
 		logger.Infof("skills.sh synchronization enabled with %d second interval", conf.SkillsSH.Interval)
 	}
-	backgroundCleanup = func() { cancelWorkers(); workerWG.Wait() }
+	if err := taskRuntime.Start(workerCtx); err != nil {
+		cancelWorkers()
+		return nil, cleanup, fmt.Errorf("starting task runtime: %w", err)
+	}
+	backgroundCleanup = func() {
+		stopCtx, cancelStop := context.WithTimeout(context.Background(), time.Duration(conf.ShutdownTimeout)*time.Second)
+		if err := taskRuntime.Stop(stopCtx); err != nil {
+			logger.Infof("task runtime shutdown incomplete: %v", err)
+		}
+		cancelStop()
+		cancelWorkers()
+	}
 
 	return r, cleanup, nil
 }
