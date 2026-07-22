@@ -177,6 +177,7 @@ Future<void> _executeTakeover(
   await tester.ensureVisible(takeoverAction);
   await tester.tap(takeoverAction);
   await _pumpUntil(tester, find.byKey(const Key('batch-takeover-dialog')));
+  await tester.pumpAndSettle();
   expect(find.byKey(const Key('batch-takeover-tetris-story')), findsOneWidget);
   final confirm = find.byKey(const Key('batch-takeover-confirm'));
   expect(confirm, findsOneWidget);
