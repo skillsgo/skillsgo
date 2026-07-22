@@ -28,7 +28,7 @@ func TestInfoRoute(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			app := newFiberApp()
 			registerInfoRoute(app, &test.conf)
-			response, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/info", nil))
+			response, err := app.Test(httptest.NewRequest(http.MethodGet, "/info", nil))
 			require.NoError(t, err)
 			body, err := io.ReadAll(response.Body)
 			require.NoError(t, err)
