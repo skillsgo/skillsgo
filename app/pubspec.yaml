@@ -47,7 +47,7 @@ dependencies:
   just_tooltip: ^0.4.4
   path: ^1.9.1
   marionette_flutter: ^0.6.0
-  package_info_plus: ^10.2.0
+  package_info_plus: ^10.2.1
   file_selector: ^1.1.0
   hugeicons: ^1.1.7
   flutter_svg: ^2.2.3
