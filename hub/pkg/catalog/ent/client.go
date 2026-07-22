@@ -15,13 +15,10 @@ import (
 	"entgo.io/ent/dialect"
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/installevent"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/localizeddescription"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/riskassessment"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillhourlystat"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillstat"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
 )
 
@@ -30,8 +27,6 @@ type Client struct {
 	config
 	// Schema is the client for creating, migrating and dropping schema.
 	Schema *migrate.Schema
-	// InstallEvent is the client for interacting with the InstallEvent builders.
-	InstallEvent *InstallEventClient
 	// LocalizedDescription is the client for interacting with the LocalizedDescription builders.
 	LocalizedDescription *LocalizedDescriptionClient
 	// Repository is the client for interacting with the Repository builders.
@@ -40,10 +35,6 @@ type Client struct {
 	RiskAssessment *RiskAssessmentClient
 	// Skill is the client for interacting with the Skill builders.
 	Skill *SkillClient
-	// SkillHourlyStat is the client for interacting with the SkillHourlyStat builders.
-	SkillHourlyStat *SkillHourlyStatClient
-	// SkillStat is the client for interacting with the SkillStat builders.
-	SkillStat *SkillStatClient
 	// SkillVersion is the client for interacting with the SkillVersion builders.
 	SkillVersion *SkillVersionClient
 }
@@ -57,13 +48,10 @@ func NewClient(opts ...Option) *Client {
 
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
-	c.InstallEvent = NewInstallEventClient(c.config)
 	c.LocalizedDescription = NewLocalizedDescriptionClient(c.config)
 	c.Repository = NewRepositoryClient(c.config)
 	c.RiskAssessment = NewRiskAssessmentClient(c.config)
 	c.Skill = NewSkillClient(c.config)
-	c.SkillHourlyStat = NewSkillHourlyStatClient(c.config)
-	c.SkillStat = NewSkillStatClient(c.config)
 	c.SkillVersion = NewSkillVersionClient(c.config)
 }
 
@@ -157,13 +145,10 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	return &Tx{
 		ctx:                  ctx,
 		config:               cfg,
-		InstallEvent:         NewInstallEventClient(cfg),
 		LocalizedDescription: NewLocalizedDescriptionClient(cfg),
 		Repository:           NewRepositoryClient(cfg),
 		RiskAssessment:       NewRiskAssessmentClient(cfg),
 		Skill:                NewSkillClient(cfg),
-		SkillHourlyStat:      NewSkillHourlyStatClient(cfg),
-		SkillStat:            NewSkillStatClient(cfg),
 		SkillVersion:         NewSkillVersionClient(cfg),
 	}, nil
 }
@@ -184,13 +169,10 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	return &Tx{
 		ctx:                  ctx,
 		config:               cfg,
-		InstallEvent:         NewInstallEventClient(cfg),
 		LocalizedDescription: NewLocalizedDescriptionClient(cfg),
 		Repository:           NewRepositoryClient(cfg),
 		RiskAssessment:       NewRiskAssessmentClient(cfg),
 		Skill:                NewSkillClient(cfg),
-		SkillHourlyStat:      NewSkillHourlyStatClient(cfg),
-		SkillStat:            NewSkillStatClient(cfg),
 		SkillVersion:         NewSkillVersionClient(cfg),
 	}, nil
 }
@@ -198,7 +180,7 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 // Debug returns a new debug-client. It's used to get verbose logging on specific operations.
 //
 //	client.Debug().
-//		InstallEvent.
+//		LocalizedDescription.
 //		Query().
 //		Count(ctx)
 func (c *Client) Debug() *Client {
@@ -220,30 +202,26 @@ func (c *Client) Close() error {
 // Use adds the mutation hooks to all the entity clients.
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
-	for _, n := range []interface{ Use(...Hook) }{
-		c.InstallEvent, c.LocalizedDescription, c.Repository, c.RiskAssessment, c.Skill,
-		c.SkillHourlyStat, c.SkillStat, c.SkillVersion,
-	} {
-		n.Use(hooks...)
-	}
+	c.LocalizedDescription.Use(hooks...)
+	c.Repository.Use(hooks...)
+	c.RiskAssessment.Use(hooks...)
+	c.Skill.Use(hooks...)
+	c.SkillVersion.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
 // In order to add interceptors to a specific client, call: `client.Node.Intercept(...)`.
 func (c *Client) Intercept(interceptors ...Interceptor) {
-	for _, n := range []interface{ Intercept(...Interceptor) }{
-		c.InstallEvent, c.LocalizedDescription, c.Repository, c.RiskAssessment, c.Skill,
-		c.SkillHourlyStat, c.SkillStat, c.SkillVersion,
-	} {
-		n.Intercept(interceptors...)
-	}
+	c.LocalizedDescription.Intercept(interceptors...)
+	c.Repository.Intercept(interceptors...)
+	c.RiskAssessment.Intercept(interceptors...)
+	c.Skill.Intercept(interceptors...)
+	c.SkillVersion.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
 func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 	switch m := m.(type) {
-	case *InstallEventMutation:
-		return c.InstallEvent.mutate(ctx, m)
 	case *LocalizedDescriptionMutation:
 		return c.LocalizedDescription.mutate(ctx, m)
 	case *RepositoryMutation:
@@ -252,163 +230,10 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.RiskAssessment.mutate(ctx, m)
 	case *SkillMutation:
 		return c.Skill.mutate(ctx, m)
-	case *SkillHourlyStatMutation:
-		return c.SkillHourlyStat.mutate(ctx, m)
-	case *SkillStatMutation:
-		return c.SkillStat.mutate(ctx, m)
 	case *SkillVersionMutation:
 		return c.SkillVersion.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
-	}
-}
-
-// InstallEventClient is a client for the InstallEvent schema.
-type InstallEventClient struct {
-	config
-}
-
-// NewInstallEventClient returns a client for the InstallEvent from the given config.
-func NewInstallEventClient(c config) *InstallEventClient {
-	return &InstallEventClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `installevent.Hooks(f(g(h())))`.
-func (c *InstallEventClient) Use(hooks ...Hook) {
-	c.hooks.InstallEvent = append(c.hooks.InstallEvent, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `installevent.Intercept(f(g(h())))`.
-func (c *InstallEventClient) Intercept(interceptors ...Interceptor) {
-	c.inters.InstallEvent = append(c.inters.InstallEvent, interceptors...)
-}
-
-// Create returns a builder for creating a InstallEvent entity.
-func (c *InstallEventClient) Create() *InstallEventCreate {
-	mutation := newInstallEventMutation(c.config, OpCreate)
-	return &InstallEventCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of InstallEvent entities.
-func (c *InstallEventClient) CreateBulk(builders ...*InstallEventCreate) *InstallEventCreateBulk {
-	return &InstallEventCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *InstallEventClient) MapCreateBulk(slice any, setFunc func(*InstallEventCreate, int)) *InstallEventCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &InstallEventCreateBulk{err: fmt.Errorf("calling to InstallEventClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*InstallEventCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &InstallEventCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for InstallEvent.
-func (c *InstallEventClient) Update() *InstallEventUpdate {
-	mutation := newInstallEventMutation(c.config, OpUpdate)
-	return &InstallEventUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *InstallEventClient) UpdateOne(_m *InstallEvent) *InstallEventUpdateOne {
-	mutation := newInstallEventMutation(c.config, OpUpdateOne, withInstallEvent(_m))
-	return &InstallEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *InstallEventClient) UpdateOneID(id string) *InstallEventUpdateOne {
-	mutation := newInstallEventMutation(c.config, OpUpdateOne, withInstallEventID(id))
-	return &InstallEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for InstallEvent.
-func (c *InstallEventClient) Delete() *InstallEventDelete {
-	mutation := newInstallEventMutation(c.config, OpDelete)
-	return &InstallEventDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *InstallEventClient) DeleteOne(_m *InstallEvent) *InstallEventDeleteOne {
-	return c.DeleteOneID(_m.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *InstallEventClient) DeleteOneID(id string) *InstallEventDeleteOne {
-	builder := c.Delete().Where(installevent.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &InstallEventDeleteOne{builder}
-}
-
-// Query returns a query builder for InstallEvent.
-func (c *InstallEventClient) Query() *InstallEventQuery {
-	return &InstallEventQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeInstallEvent},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a InstallEvent entity by its id.
-func (c *InstallEventClient) Get(ctx context.Context, id string) (*InstallEvent, error) {
-	return c.Query().Where(installevent.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *InstallEventClient) GetX(ctx context.Context, id string) *InstallEvent {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// QuerySkill queries the skill edge of a InstallEvent.
-func (c *InstallEventClient) QuerySkill(_m *InstallEvent) *SkillQuery {
-	query := (&SkillClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(installevent.Table, installevent.FieldID, id),
-			sqlgraph.To(skill.Table, skill.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, installevent.SkillTable, installevent.SkillColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// Hooks returns the client hooks.
-func (c *InstallEventClient) Hooks() []Hook {
-	return c.hooks.InstallEvent
-}
-
-// Interceptors returns the client interceptors.
-func (c *InstallEventClient) Interceptors() []Interceptor {
-	return c.inters.InstallEvent
-}
-
-func (c *InstallEventClient) mutate(ctx context.Context, m *InstallEventMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&InstallEventCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&InstallEventUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&InstallEventUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&InstallEventDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown InstallEvent mutation op: %q", m.Op())
 	}
 }
 
@@ -983,38 +808,6 @@ func (c *SkillClient) QueryVersions(_m *Skill) *SkillVersionQuery {
 	return query
 }
 
-// QueryInstallEvents queries the install_events edge of a Skill.
-func (c *SkillClient) QueryInstallEvents(_m *Skill) *InstallEventQuery {
-	query := (&InstallEventClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skill.Table, skill.FieldID, id),
-			sqlgraph.To(installevent.Table, installevent.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, skill.InstallEventsTable, skill.InstallEventsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryHourlyStats queries the hourly_stats edge of a Skill.
-func (c *SkillClient) QueryHourlyStats(_m *Skill) *SkillHourlyStatQuery {
-	query := (&SkillHourlyStatClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skill.Table, skill.FieldID, id),
-			sqlgraph.To(skillhourlystat.Table, skillhourlystat.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, skill.HourlyStatsTable, skill.HourlyStatsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
 // Hooks returns the client hooks.
 func (c *SkillClient) Hooks() []Hook {
 	return c.hooks.Skill
@@ -1037,288 +830,6 @@ func (c *SkillClient) mutate(ctx context.Context, m *SkillMutation) (Value, erro
 		return (&SkillDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
 		return nil, fmt.Errorf("ent: unknown Skill mutation op: %q", m.Op())
-	}
-}
-
-// SkillHourlyStatClient is a client for the SkillHourlyStat schema.
-type SkillHourlyStatClient struct {
-	config
-}
-
-// NewSkillHourlyStatClient returns a client for the SkillHourlyStat from the given config.
-func NewSkillHourlyStatClient(c config) *SkillHourlyStatClient {
-	return &SkillHourlyStatClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `skillhourlystat.Hooks(f(g(h())))`.
-func (c *SkillHourlyStatClient) Use(hooks ...Hook) {
-	c.hooks.SkillHourlyStat = append(c.hooks.SkillHourlyStat, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `skillhourlystat.Intercept(f(g(h())))`.
-func (c *SkillHourlyStatClient) Intercept(interceptors ...Interceptor) {
-	c.inters.SkillHourlyStat = append(c.inters.SkillHourlyStat, interceptors...)
-}
-
-// Create returns a builder for creating a SkillHourlyStat entity.
-func (c *SkillHourlyStatClient) Create() *SkillHourlyStatCreate {
-	mutation := newSkillHourlyStatMutation(c.config, OpCreate)
-	return &SkillHourlyStatCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of SkillHourlyStat entities.
-func (c *SkillHourlyStatClient) CreateBulk(builders ...*SkillHourlyStatCreate) *SkillHourlyStatCreateBulk {
-	return &SkillHourlyStatCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *SkillHourlyStatClient) MapCreateBulk(slice any, setFunc func(*SkillHourlyStatCreate, int)) *SkillHourlyStatCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &SkillHourlyStatCreateBulk{err: fmt.Errorf("calling to SkillHourlyStatClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*SkillHourlyStatCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &SkillHourlyStatCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for SkillHourlyStat.
-func (c *SkillHourlyStatClient) Update() *SkillHourlyStatUpdate {
-	mutation := newSkillHourlyStatMutation(c.config, OpUpdate)
-	return &SkillHourlyStatUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *SkillHourlyStatClient) UpdateOne(_m *SkillHourlyStat) *SkillHourlyStatUpdateOne {
-	mutation := newSkillHourlyStatMutation(c.config, OpUpdateOne, withSkillHourlyStat(_m))
-	return &SkillHourlyStatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *SkillHourlyStatClient) UpdateOneID(id int64) *SkillHourlyStatUpdateOne {
-	mutation := newSkillHourlyStatMutation(c.config, OpUpdateOne, withSkillHourlyStatID(id))
-	return &SkillHourlyStatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for SkillHourlyStat.
-func (c *SkillHourlyStatClient) Delete() *SkillHourlyStatDelete {
-	mutation := newSkillHourlyStatMutation(c.config, OpDelete)
-	return &SkillHourlyStatDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *SkillHourlyStatClient) DeleteOne(_m *SkillHourlyStat) *SkillHourlyStatDeleteOne {
-	return c.DeleteOneID(_m.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *SkillHourlyStatClient) DeleteOneID(id int64) *SkillHourlyStatDeleteOne {
-	builder := c.Delete().Where(skillhourlystat.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &SkillHourlyStatDeleteOne{builder}
-}
-
-// Query returns a query builder for SkillHourlyStat.
-func (c *SkillHourlyStatClient) Query() *SkillHourlyStatQuery {
-	return &SkillHourlyStatQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeSkillHourlyStat},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a SkillHourlyStat entity by its id.
-func (c *SkillHourlyStatClient) Get(ctx context.Context, id int64) (*SkillHourlyStat, error) {
-	return c.Query().Where(skillhourlystat.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *SkillHourlyStatClient) GetX(ctx context.Context, id int64) *SkillHourlyStat {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// QuerySkill queries the skill edge of a SkillHourlyStat.
-func (c *SkillHourlyStatClient) QuerySkill(_m *SkillHourlyStat) *SkillQuery {
-	query := (&SkillClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skillhourlystat.Table, skillhourlystat.FieldID, id),
-			sqlgraph.To(skill.Table, skill.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, skillhourlystat.SkillTable, skillhourlystat.SkillColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// Hooks returns the client hooks.
-func (c *SkillHourlyStatClient) Hooks() []Hook {
-	return c.hooks.SkillHourlyStat
-}
-
-// Interceptors returns the client interceptors.
-func (c *SkillHourlyStatClient) Interceptors() []Interceptor {
-	return c.inters.SkillHourlyStat
-}
-
-func (c *SkillHourlyStatClient) mutate(ctx context.Context, m *SkillHourlyStatMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&SkillHourlyStatCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&SkillHourlyStatUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&SkillHourlyStatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&SkillHourlyStatDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown SkillHourlyStat mutation op: %q", m.Op())
-	}
-}
-
-// SkillStatClient is a client for the SkillStat schema.
-type SkillStatClient struct {
-	config
-}
-
-// NewSkillStatClient returns a client for the SkillStat from the given config.
-func NewSkillStatClient(c config) *SkillStatClient {
-	return &SkillStatClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `skillstat.Hooks(f(g(h())))`.
-func (c *SkillStatClient) Use(hooks ...Hook) {
-	c.hooks.SkillStat = append(c.hooks.SkillStat, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `skillstat.Intercept(f(g(h())))`.
-func (c *SkillStatClient) Intercept(interceptors ...Interceptor) {
-	c.inters.SkillStat = append(c.inters.SkillStat, interceptors...)
-}
-
-// Create returns a builder for creating a SkillStat entity.
-func (c *SkillStatClient) Create() *SkillStatCreate {
-	mutation := newSkillStatMutation(c.config, OpCreate)
-	return &SkillStatCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of SkillStat entities.
-func (c *SkillStatClient) CreateBulk(builders ...*SkillStatCreate) *SkillStatCreateBulk {
-	return &SkillStatCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *SkillStatClient) MapCreateBulk(slice any, setFunc func(*SkillStatCreate, int)) *SkillStatCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &SkillStatCreateBulk{err: fmt.Errorf("calling to SkillStatClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*SkillStatCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &SkillStatCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for SkillStat.
-func (c *SkillStatClient) Update() *SkillStatUpdate {
-	mutation := newSkillStatMutation(c.config, OpUpdate)
-	return &SkillStatUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *SkillStatClient) UpdateOne(_m *SkillStat) *SkillStatUpdateOne {
-	mutation := newSkillStatMutation(c.config, OpUpdateOne, withSkillStat(_m))
-	return &SkillStatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *SkillStatClient) UpdateOneID(id int64) *SkillStatUpdateOne {
-	mutation := newSkillStatMutation(c.config, OpUpdateOne, withSkillStatID(id))
-	return &SkillStatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for SkillStat.
-func (c *SkillStatClient) Delete() *SkillStatDelete {
-	mutation := newSkillStatMutation(c.config, OpDelete)
-	return &SkillStatDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *SkillStatClient) DeleteOne(_m *SkillStat) *SkillStatDeleteOne {
-	return c.DeleteOneID(_m.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *SkillStatClient) DeleteOneID(id int64) *SkillStatDeleteOne {
-	builder := c.Delete().Where(skillstat.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &SkillStatDeleteOne{builder}
-}
-
-// Query returns a query builder for SkillStat.
-func (c *SkillStatClient) Query() *SkillStatQuery {
-	return &SkillStatQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeSkillStat},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a SkillStat entity by its id.
-func (c *SkillStatClient) Get(ctx context.Context, id int64) (*SkillStat, error) {
-	return c.Query().Where(skillstat.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *SkillStatClient) GetX(ctx context.Context, id int64) *SkillStat {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// Hooks returns the client hooks.
-func (c *SkillStatClient) Hooks() []Hook {
-	return c.hooks.SkillStat
-}
-
-// Interceptors returns the client interceptors.
-func (c *SkillStatClient) Interceptors() []Interceptor {
-	return c.inters.SkillStat
-}
-
-func (c *SkillStatClient) mutate(ctx context.Context, m *SkillStatMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&SkillStatCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&SkillStatUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&SkillStatUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&SkillStatDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown SkillStat mutation op: %q", m.Op())
 	}
 }
 
@@ -1490,11 +1001,10 @@ func (c *SkillVersionClient) mutate(ctx context.Context, m *SkillVersionMutation
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		InstallEvent, LocalizedDescription, Repository, RiskAssessment, Skill,
-		SkillHourlyStat, SkillStat, SkillVersion []ent.Hook
+		LocalizedDescription, Repository, RiskAssessment, Skill, SkillVersion []ent.Hook
 	}
 	inters struct {
-		InstallEvent, LocalizedDescription, Repository, RiskAssessment, Skill,
-		SkillHourlyStat, SkillStat, SkillVersion []ent.Interceptor
+		LocalizedDescription, Repository, RiskAssessment, Skill,
+		SkillVersion []ent.Interceptor
 	}
 )

@@ -11,10 +11,8 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/installevent"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillhourlystat"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
 )
 
@@ -160,36 +158,6 @@ func (_c *SkillCreate) AddVersions(v ...*SkillVersion) *SkillCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddVersionIDs(ids...)
-}
-
-// AddInstallEventIDs adds the "install_events" edge to the InstallEvent entity by IDs.
-func (_c *SkillCreate) AddInstallEventIDs(ids ...string) *SkillCreate {
-	_c.mutation.AddInstallEventIDs(ids...)
-	return _c
-}
-
-// AddInstallEvents adds the "install_events" edges to the InstallEvent entity.
-func (_c *SkillCreate) AddInstallEvents(v ...*InstallEvent) *SkillCreate {
-	ids := make([]string, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddInstallEventIDs(ids...)
-}
-
-// AddHourlyStatIDs adds the "hourly_stats" edge to the SkillHourlyStat entity by IDs.
-func (_c *SkillCreate) AddHourlyStatIDs(ids ...int64) *SkillCreate {
-	_c.mutation.AddHourlyStatIDs(ids...)
-	return _c
-}
-
-// AddHourlyStats adds the "hourly_stats" edges to the SkillHourlyStat entity.
-func (_c *SkillCreate) AddHourlyStats(v ...*SkillHourlyStat) *SkillCreate {
-	ids := make([]int64, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddHourlyStatIDs(ids...)
 }
 
 // Mutation returns the SkillMutation object of the builder.
@@ -394,38 +362,6 @@ func (_c *SkillCreate) createSpec() (*Skill, *sqlgraph.CreateSpec) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(skillversion.FieldID, field.TypeInt64),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.InstallEventsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   skill.InstallEventsTable,
-			Columns: []string{skill.InstallEventsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(installevent.FieldID, field.TypeString),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.HourlyStatsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   skill.HourlyStatsTable,
-			Columns: []string{skill.HourlyStatsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skillhourlystat.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

@@ -21,7 +21,6 @@ import (
 	mw "github.com/skillsgo/skillsgo/hub/pkg/middleware"
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/skillssh"
 	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
 	"github.com/skillsgo/skillsgo/hub/pkg/translation"
 	"go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp"
@@ -73,6 +72,7 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 	if subRouter != nil {
 		proxyRouter = subRouter
 	}
+	registerInfoRoute(proxyRouter, conf)
 
 	// RegisterExporter will register an exporter where we will export our traces to.
 	// The error from the RegisterExporter would be nil if the tracer was specified by
@@ -194,23 +194,6 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 			}
 		}
 		logger.Infof("description translation enabled with model %s for locales %s", conf.LLM.Model, strings.Join(conf.LLM.TranslationLocales, ","))
-	}
-	if conf.SkillsSH.Enabled() {
-		bridge := skillssh.NewClient(conf.SkillsSH.URL, conf.SkillsSH.Token, time.Duration(conf.SkillsSH.RequestTimeout)*time.Second)
-		worker := skillssh.NewWorker(metadata, bridge, logger,
-			time.Duration(conf.SkillsSH.Interval)*time.Second,
-			conf.SkillsSH.PageCount, conf.SkillsSH.PerPage)
-		if err := taskqueue.Register(taskRuntime, func(ctx context.Context, _ skillsSHProviderSyncArgs) error {
-			return worker.RunOnce(ctx, time.Now().UTC())
-		}); err != nil {
-			cancelWorkers()
-			return nil, cleanup, fmt.Errorf("register skills.sh job: %w", err)
-		}
-		if err := taskRuntime.Every(skillsSHProviderSyncArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, time.Duration(conf.SkillsSH.Interval)*time.Second, true); err != nil {
-			cancelWorkers()
-			return nil, cleanup, fmt.Errorf("schedule skills.sh job: %w", err)
-		}
-		logger.Infof("skills.sh synchronization enabled with %d second interval", conf.SkillsSH.Interval)
 	}
 	if err := taskRuntime.Start(workerCtx); err != nil {
 		cancelWorkers()

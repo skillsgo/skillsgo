@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Repository input, self-contained Repository Info, verified per-Skill ZIPs, Workspace integrity persistence, Store materialization, and Agent target resolution.
- * [OUTPUT]: Provides transactionally materialized whole-Repository and selected-member add with exact direct Manifest requirements, Go-shaped checksums, receipts, and automatic Agent projections.
+ * [OUTPUT]: Provides transactionally materialized whole-Repository and selected-member add with exact direct Manifest requirements, Go-shaped checksums, receipts, automatic Agent projections, and best-effort post-commit Cloud facts.
  * [POS]: Serves as the Repository installation orchestration slice behind the public `skillsgo add` command.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -154,6 +154,11 @@ func addWholeRepository(
 		return commitErr
 	}); err != nil {
 		return err
+	}
+	for _, item := range results {
+		reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{
+			SkillID: item.ID, Version: item.Version, Agents: agentIDs, Scope: scope,
+		})
 	}
 	if options.output == "json" {
 		encoder := json.NewEncoder(cmd.OutOrStdout())
@@ -320,6 +325,11 @@ func addSelectedRepositorySkills(
 		return commitErr
 	}); err != nil {
 		return err
+	}
+	for _, item := range installed {
+		reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{
+			SkillID: item.SkillID, Version: item.Version, Agents: agentIDs, Scope: scope,
+		})
 	}
 	if options.output != "json" {
 		for _, item := range installed {

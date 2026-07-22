@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses generated Catalog Ent builders through the pgx adapter against opt-in Testcontainers PostgreSQL.
- * [OUTPUT]: Specifies native pgx transaction commit, rollback, CRUD, relation traversal, dynamic projection, and atomic River visibility.
+ * [OUTPUT]: Specifies native pgx transaction commit, rollback, Skill/Repository CRUD, relation traversal, dynamic projection, and atomic River visibility.
  * [POS]: Serves as real-PostgreSQL conformance coverage for the Ent pgx transaction adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -93,24 +93,6 @@ func TestNativePgxTransactionEntClient(t *testing.T) {
 			return err
 		}
 		require.Equal(t, repo.ID, owner.ID)
-		event, err := client.InstallEvent.Create().
-			SetID("019f855d-0000-7000-8000-000000000001").
-			SetSkillID(skill.ID).
-			SetVersion("v1.0.0").
-			SetAgents(`["codex","claude-code"]`).
-			SetScope("project").
-			SetCliVersion("0.1.0").
-			SetOccurredAt(now).
-			Save(ctx)
-		if err != nil {
-			return err
-		}
-		loadedEvent, err := client.InstallEvent.Get(ctx, event.ID)
-		if err != nil {
-			return err
-		}
-		require.JSONEq(t, `["codex","claude-code"]`, loadedEvent.Agents)
-		require.True(t, now.Equal(loadedEvent.OccurredAt), "timestamp instant should survive pgx scanning")
 		return nil
 	}))
 

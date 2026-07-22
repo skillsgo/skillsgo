@@ -5,14 +5,11 @@ package ent
 import (
 	"time"
 
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/installevent"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/localizeddescription"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/riskassessment"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/schema"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillhourlystat"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillstat"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
 )
 
@@ -20,12 +17,6 @@ import (
 // (default values, validators, hooks and policies) and stitches it
 // to their package variables.
 func init() {
-	installeventFields := schema.InstallEvent{}.Fields()
-	_ = installeventFields
-	// installeventDescReceivedAt is the schema descriptor for received_at field.
-	installeventDescReceivedAt := installeventFields[7].Descriptor()
-	// installevent.DefaultReceivedAt holds the default value on creation for the received_at field.
-	installevent.DefaultReceivedAt = installeventDescReceivedAt.Default.(func() time.Time)
 	localizeddescriptionFields := schema.LocalizedDescription{}.Fields()
 	_ = localizeddescriptionFields
 	// localizeddescriptionDescResourceKind is the schema descriptor for resource_kind field.
@@ -136,18 +127,6 @@ func init() {
 	skill.DefaultUpdatedAt = skillDescUpdatedAt.Default.(func() time.Time)
 	// skill.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	skill.UpdateDefaultUpdatedAt = skillDescUpdatedAt.UpdateDefault.(func() time.Time)
-	skillhourlystatFields := schema.SkillHourlyStat{}.Fields()
-	_ = skillhourlystatFields
-	// skillhourlystatDescInstalls is the schema descriptor for installs field.
-	skillhourlystatDescInstalls := skillhourlystatFields[3].Descriptor()
-	// skillhourlystat.DefaultInstalls holds the default value on creation for the installs field.
-	skillhourlystat.DefaultInstalls = skillhourlystatDescInstalls.Default.(int64)
-	skillstatFields := schema.SkillStat{}.Fields()
-	_ = skillstatFields
-	// skillstatDescTotalInstalls is the schema descriptor for total_installs field.
-	skillstatDescTotalInstalls := skillstatFields[1].Descriptor()
-	// skillstat.DefaultTotalInstalls holds the default value on creation for the total_installs field.
-	skillstat.DefaultTotalInstalls = skillstatDescTotalInstalls.Default.(int64)
 	skillversionFields := schema.SkillVersion{}.Fields()
 	_ = skillversionFields
 	// skillversionDescVersion is the schema descriptor for version field.
