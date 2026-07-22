@@ -4,8 +4,8 @@
 ## Members
 
 - `client.go`: delegates version selectors to the Hub `/mod` surface, consumes shared Protocol Repository/Skill Info and product API DTOs, forwards optional presentation locales for discovery/detail, validates strict provider-neutral `/api/v1` reads, downloads verified ZIP responses with optional byte progress, resolves exact content matches, and exposes typed HTTP failures from a configured SkillsGo Hub.
-- `artifact_digest.go`: binds declared Info to ZIP or extracted-directory bytes through the shared Protocol artifact implementation.
-- `artifact_digest_test.go`: specifies golden deterministic digest acceptance and mismatch rejection.
+- `artifact_digest.go`: binds declared Info to ZIP or extracted-directory bytes through the shared Protocol h1 Sum implementation.
+- `artifact_digest_test.go`: specifies golden deterministic Sum acceptance and mismatch rejection.
 - `client_test.go`: specifies source-hint request encoding and strict content-match response validation.
 
 ## Architectural Boundary
