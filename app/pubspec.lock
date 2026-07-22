@@ -576,10 +576,10 @@ packages:
     dependency: "direct main"
     description:
       name: portal_labs
-      sha256: "26da744921c3a96071a8a326604d3d5b48be85817f2a15726e0be44d675970b8"
+      sha256: "1bf36187cb52119be0baa7ed02e2dc379619360dcaad87eccb06bd57e1e1d2bf"
       url: "https://pub.dev"
     source: hosted
-    version: "0.34.0"
+    version: "0.37.0"
   process:
     dependency: transitive
     description:
