@@ -6,12 +6,12 @@ Accepted.
 
 ## Context
 
-SkillsGo exposes two different public HTTP models: a Go-proxy-inspired immutable artifact protocol and a conventional product API for search, ranking, metadata, and events. Serving artifact coordinates at the Hub root while serving product resources under `/v1` made the boundary implicit. The local portable declaration also used YAML despite already modeling Go-like direct requirements and an integrity-only sum file.
+SkillsGo exposes a Go-proxy-inspired immutable Hub artifact protocol and conventional product APIs. Hub product APIs own search and metadata; the independently deployed SkillsGo Cloud API owns installation events and ranking projections. Serving artifact coordinates at the Hub root while serving product resources under `/v1` made the boundary implicit. The local portable declaration also used YAML despite already modeling Go-like direct requirements and an integrity-only sum file.
 
 ## Decision
 
 - The immutable artifact protocol is rooted at `/mod/{coordinate}` and exposes `@v/list`, `@head`, `@release`, `@v/{version}.info`, and `@v/{version}.zip` below that coordinate. The ambiguous `@latest` spelling is rejected.
-- Product HTTP resources are rooted at `/api/v1`.
+- Hub and Cloud product HTTP resources are independently rooted at `/api/v1`; sharing a prefix does not imply shared deployment, persistence, or ownership.
 - The portable declaration is `skillsgo.mod`; `skillsgo.sum` remains the integrity ledger.
 - `skillsgo.mod` accepts a closed SkillsGo-native `require ID version [agents] [mode]` line and block grammar. Mode defaults to `symlink`; canonical output emits only the non-default `copy` mode:
 

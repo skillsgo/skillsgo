@@ -66,7 +66,6 @@ func TestPostgresCatalog(t *testing.T) {
 	results, err := c.Search(ctx, "presentation", 2, 0)
 	require.NoError(t, err)
 	require.Len(t, results, 2)
-	require.Equal(t, int64(0), results[0].Installs)
 	next, err := c.Search(ctx, "presentation", 2, 2)
 	require.NoError(t, err)
 	require.Len(t, next, 1)

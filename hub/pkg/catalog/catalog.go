@@ -571,8 +571,6 @@ type RiskAssessment struct {
 
 type SearchSkill struct {
 	Skill
-	Installs int64 `db:"installs" json:"installs"`
-	Change   int64 `db:"change" json:"change,omitempty"`
 }
 
 type ContentMatch struct {
@@ -924,7 +922,7 @@ func (c *Catalog) Search(ctx context.Context, query string, limit, offset int) (
 	}
 	query = strings.TrimSpace(query)
 	var skills []SearchSkill
-	statement := `SELECT s.*, r.stars AS stars, 0 AS installs, 0 AS change
+	statement := `SELECT s.*, r.stars AS stars
 FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id`
 	args := make([]any, 0, 5)
 	order := "s.verified DESC, s.name ASC"
@@ -969,7 +967,7 @@ func (c *Catalog) SearchLocalized(ctx context.Context, query, locale string, lim
 	statement := `SELECT s.id, s.repository_id, s.skill_id, s.name,
 		COALESCE(ls.description, s.description) AS description,
 			s.source_host, s.repository, s.skill_path, s.latest_version, s.discoverable, r.stars AS stars,
-		s.verified, s.created_at, s.updated_at, 0 AS installs, 0 AS change
+			s.verified, s.created_at, s.updated_at
 		FROM skills s JOIN repositories r ON r.id = s.repository_id
 		LEFT JOIN localized_descriptions ls ON ls.resource_kind = 'skill' AND ls.resource_id = s.skill_id AND ls.locale = ?
 		LEFT JOIN localized_descriptions lr ON lr.resource_kind = 'repository' AND lr.resource_id = r.repository_id AND lr.locale = ?

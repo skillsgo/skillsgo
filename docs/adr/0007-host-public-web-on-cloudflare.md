@@ -11,7 +11,7 @@ SkillsGo needs one public Web surface for the product landing page, indexable Hu
 
 Create `web/` as an independent Node.js workspace using Fumadocs, MDX, TanStack Start, Vite, React, and Tailwind CSS. It owns the product overview at each locale root, Hub discovery under `/hub`, and documentation under `/docs`. Use TanStack Start prerendering to emit indexable HTML, JavaScript, CSS, Markdown views, LLM indexes, and a static Orama documentation search index under `dist/client`.
 
-Deploy `dist/client` with Cloudflare Workers Static Assets. Prerendered requests are served from Cloudflare storage and cache without reaching the Railway Hub origin. Web may present the App, CLI, and Hub and may consume Hub APIs, but it does not own their domain language or runtime contracts. The Go Hub remains authoritative for public Skill identity, metadata, search, ranking, and immutable artifacts.
+Deploy `dist/client` with Cloudflare Workers Static Assets. Prerendered requests are served from Cloudflare storage and cache without reaching the Railway Hub origin. Web may present the App, CLI, Hub, and Cloud-owned ranking projections and may consume their public APIs, but it does not own their domain language or runtime contracts. The Go Hub remains authoritative for public Skill identity, metadata, search, and immutable artifacts; SkillsGo Cloud remains authoritative for installation events and rankings.
 
 Retire the inherited `hub/docs/` Hugo tree after the independent documentation workspace is established. The Hub workspace does not contain or build a second documentation site.
 

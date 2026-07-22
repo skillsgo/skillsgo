@@ -36,7 +36,7 @@ func TestInfoRepositoryUsesHeadSelectorAndDoesNotWriteLocalState(t *testing.T) {
 			_, _ = writer.Write(repositoryInfo)
 		case "/api/v1/skills/" + repositoryID, "/api/v1/skills/" + repositoryID + "/-/tools/demo":
 			id := strings.TrimPrefix(request.URL.Path, "/api/v1/skills/")
-			_, _ = fmt.Fprintf(writer, `{"id":%q,"imageUrl":"https://github.com/example.png?size=72","repositoryDescription":"A collection of Agent Skills.","installs":12,"stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, id)
+			_, _ = fmt.Fprintf(writer, `{"id":%q,"imageUrl":"https://github.com/example.png?size=72","repositoryDescription":"A collection of Agent Skills.","stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, id)
 		default:
 			http.NotFound(writer, request)
 		}
@@ -70,7 +70,7 @@ func TestInfoRepositoryUsesHeadSelectorAndDoesNotWriteLocalState(t *testing.T) {
 	if result.Description != "A collection of Agent Skills." {
 		t.Fatalf("Repository About description was not preserved: %#v", result)
 	}
-	if result.Skills[0].ImageURL == nil || result.Skills[0].Installs != 12 || result.Skills[0].Stars != 34 || result.Skills[0].RiskAssessment != hub.RiskLow {
+	if result.Skills[0].ImageURL == nil || result.Skills[0].Stars != 34 || result.Skills[0].RiskAssessment != hub.RiskLow {
 		t.Fatalf("Repository Skill is not card-ready: %#v", result.Skills[0])
 	}
 	if strings.Join(requests, "\n") != strings.Join([]string{
@@ -98,7 +98,7 @@ func TestInfoSelectsNestedSkillFromExactRepositoryBatch(t *testing.T) {
 		case "/mod/" + repositoryID + "/-/tools/demo/@v/" + version + ".info":
 			_ = json.NewEncoder(writer).Encode(members[1])
 		case "/api/v1/skills/" + repositoryID + "/-/tools/demo":
-			_, _ = fmt.Fprintf(writer, `{"id":%q,"installs":12,"stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, members[1].ID)
+			_, _ = fmt.Fprintf(writer, `{"id":%q,"stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, members[1].ID)
 		default:
 			http.NotFound(writer, request)
 		}
@@ -116,7 +116,7 @@ func TestInfoSelectsNestedSkillFromExactRepositoryBatch(t *testing.T) {
 	if result.Kind != "Skill" || result.ID != repositoryID+"/-/tools/demo" || result.Version != version {
 		t.Fatalf("unexpected nested Skill result: %#v", result)
 	}
-	if result.Installs != 12 || result.Stars != 34 || result.RiskAssessment != hub.RiskLow {
+	if result.Stars != 34 || result.RiskAssessment != hub.RiskLow {
 		t.Fatalf("nested Skill is not card-ready: %#v", result)
 	}
 

@@ -52,23 +52,16 @@ type collectionPage struct {
 }
 
 type discoverySkill struct {
-	SkillID        string          `json:"id"`
-	Name           string          `json:"name"`
-	Description    string          `json:"description"`
-	Source         string          `json:"source"`
-	Repository     string          `json:"repository"`
-	ImageURL       *string         `json:"imageUrl"`
-	SkillPath      string          `json:"skillPath"`
-	LatestVersion  string          `json:"latestVersion"`
-	TrustLevel     string          `json:"trustLevel"`
-	RiskAssessment string          `json:"riskAssessment"`
-	Metric         discoveryMetric `json:"metric"`
-}
-
-type discoveryMetric struct {
-	Kind   string `json:"kind"`
-	Value  int64  `json:"value"`
-	Change int64  `json:"change"`
+	SkillID        string  `json:"id"`
+	Name           string  `json:"name"`
+	Description    string  `json:"description"`
+	Source         string  `json:"source"`
+	Repository     string  `json:"repository"`
+	ImageURL       *string `json:"imageUrl"`
+	SkillPath      string  `json:"skillPath"`
+	LatestVersion  string  `json:"latestVersion"`
+	TrustLevel     string  `json:"trustLevel"`
+	RiskAssessment string  `json:"riskAssessment"`
 }
 
 type skillDetailResponse struct {
@@ -79,7 +72,6 @@ type skillDetailResponse struct {
 	Repository            string               `json:"repository"`
 	RepositoryDescription string               `json:"repositoryDescription"`
 	ImageURL              *string              `json:"imageUrl"`
-	Installs              int64                `json:"installs"`
 	Stars                 int64                `json:"stars"`
 	SourceUpdatedAt       time.Time            `json:"sourceUpdatedAt"`
 	ArchiveSize           int64                `json:"archiveSize"`
@@ -179,7 +171,6 @@ func skillBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 				Source: item.SourceHost + "/" + item.Repository, Repository: item.SourceHost + "/" + item.Repository,
 				ImageURL: skillImageURL(item.SourceHost, item.Repository), SkillPath: item.SkillPath,
 				LatestVersion: item.LatestVersion, TrustLevel: trust, RiskAssessment: "unknown",
-				Metric: discoveryMetric{Kind: "none"},
 			})
 		}
 		return writeJSON(c, fiber.StatusOK, response)
@@ -334,15 +325,11 @@ func searchSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 			return writeInternalAPIError(c, "catalog.search", fiber.StatusInternalServerError, "internal_error", "search failed", err)
 		}
 		localizeSearchSkills(c.Context(), metadata, presentationLocale(c), skills)
-		for index := range skills {
-			skills[index].Installs = 0
-			skills[index].Change = 0
-		}
-		return writeJSON(c, fiber.StatusOK, discoveryResponse("search", "none", skills, limit, offset))
+		return writeJSON(c, fiber.StatusOK, discoveryResponse("search", skills, limit, offset))
 	}
 }
 
-func discoveryResponse(collection, metricKind string, ranked []catalog.SearchSkill, limit, offset int) skillsResponse {
+func discoveryResponse(collection string, ranked []catalog.SearchSkill, limit, offset int) skillsResponse {
 	nextOffset := (*int)(nil)
 	if len(ranked) > limit {
 		next := offset + limit
@@ -361,7 +348,6 @@ func discoveryResponse(collection, metricKind string, ranked []catalog.SearchSki
 			Repository:    item.SourceHost + "/" + item.Repository,
 			ImageURL:      skillImageURL(item.SourceHost, item.Repository),
 			LatestVersion: item.LatestVersion, TrustLevel: trustLevel, RiskAssessment: "unknown",
-			Metric: discoveryMetric{Kind: metricKind, Value: item.Installs, Change: item.Change},
 		})
 	}
 	return skillsResponse{
@@ -450,7 +436,7 @@ func skillDetailHandler(
 			SkillID: skill.SkillID, Name: skill.Name, Description: skill.Description,
 			Source: skill.SourceHost + "/" + skill.Repository, Repository: skill.SourceHost + "/" + skill.Repository,
 			RepositoryDescription: repositoryDescription,
-			Installs:              0, Stars: skill.Stars, SourceUpdatedAt: version.CommitTime,
+			Stars:                 skill.Stars, SourceUpdatedAt: version.CommitTime,
 			ArchiveSize: version.ArchiveSize, RequestedVersion: skill.LatestVersion,
 			ImageURL:         skillImageURL(skill.SourceHost, skill.Repository),
 			ImmutableVersion: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA,

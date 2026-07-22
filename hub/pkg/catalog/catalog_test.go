@@ -43,7 +43,6 @@ func TestSQLiteCatalogUpsertAndSearch(t *testing.T) {
 		require.NoError(t, searchErr)
 		require.Len(t, results, 1, query)
 		require.Equal(t, got.SkillID, results[0].SkillID)
-		require.Equal(t, int64(0), results[0].Installs)
 	}
 }
 
