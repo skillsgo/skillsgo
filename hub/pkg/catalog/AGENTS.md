@@ -8,7 +8,7 @@
 - `migrations.go`: executes embedded, checksummed, ordered Atlas SQL migrations and serializes PostgreSQL migration runs.
 - `provider_sync.go`: owns crawl-generation fencing tokens, complete crawl snapshots, page checkpoints, and external counter observations beneath River scheduling.
 - `provider_sync_test.go`: verifies stale-generation rejection, takeover cleanup, completed-window idempotency, and complete publication.
-- `migrations/`: contains reviewed, checksummed migrations per database, including the pre-release baseline, Historical Publication visibility, Backfill Run state, Repository metadata evolution, and database-specific full-text search resources.
+- `migrations/`: contains reviewed, checksummed migrations per database, including the pre-release baseline, Historical Publication visibility, Backfill Run state, Repository metadata evolution, the destructive legacy-history reset for the h1 Sum cutover, and database-specific full-text search resources.
 - `migrate/main.go`: authors named Ent/Atlas schema diffs against disposable development databases.
 - `pgxent/`: adapts caller-owned native pgx transactions to generated Ent clients so domain writes and River enqueueing can share one transaction; application code must enter through `Catalog.WithPostgresTx` or `Catalog.WithPostgresTxOptions` rather than constructing transaction ownership ad hoc.
 - `ent/schema/`: defines the authoritative Ent entity model, including presentation-only localized descriptions; generated siblings under `ent/` are reproducible build output.

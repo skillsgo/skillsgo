@@ -57,7 +57,7 @@ The public canonical identity of a logical Skill, such as `github.com/owner/repo
 _Avoid_: Skill Identity, Skill Coordinate, opaque database ID, name-only lookup
 
 **Skill Info**:
-The single immutable structured metadata resource for one Skill version. It contains canonical identity and version, normalized `SKILL.md` frontmatter, and flat `Ref`, `CommitSHA`, and `TreeSHA` source fields alongside Risk, Content Digest, and Archive Size. Source URL and subdirectory are derived from the Skill ID rather than repeated in an Origin object. The original `SKILL.md` remains authoritative inside the ZIP.
+The single immutable structured metadata resource for one Skill version. It contains canonical identity and version, normalized `SKILL.md` frontmatter, and flat `Ref`, `CommitSHA`, and `TreeSHA` source fields alongside Risk, Sum, and Archive Size. Source URL and subdirectory are derived from the Skill ID rather than repeated in an Origin object. The original `SKILL.md` remains authoritative inside the ZIP.
 _Avoid_: separate artifact manifest, nested Origin object, repeated source URL, mutable branch response
 
 **Repository Info**:
@@ -73,7 +73,7 @@ Author-maintained Repository or Skill description found in source metadata or a 
 _Avoid_: localized README body, translated instructions, generated Skill
 
 **Hub Enrichment**:
-Presentation-only Repository Description or Skill Description produced by Hub analysis for one immutable source revision and locale. It belongs to the Hub catalog and may improve discovery or detail views without changing Skill Info, Content Digest, installation, or execution semantics.
+Presentation-only Repository Description or Skill Description produced by Hub analysis for one immutable source revision and locale. It belongs to the Hub catalog and may improve discovery or detail views without changing Skill Info, Sum, installation, or execution semantics.
 _Avoid_: artifact translation, localized Skill version, source rewrite
 
 **Localized Search Document**:
@@ -84,16 +84,16 @@ _Avoid_: localized artifact, translated package, Skill Info
 One auditable analysis attempt over a specific immutable source revision, analyzer identity, prompt revision, and requested locale set. Its outputs become active only after validation and never overwrite historical run evidence.
 _Avoid_: cron result, mutable translation row, artifact scan
 
-**Content Digest**:
-The deterministic SHA-256 identity of a normalized Skill artifact. Archive compression has its own digest and must not change the content identity.
+**Sum**:
+The deterministic Go-compatible `h1:` identity of a normalized Skill artifact. It hashes sorted relative file paths and contents after removing the archive's `<skillId>@<version>/` root, so archive compression and public coordinates do not change Content Match identity.
 _Avoid_: archive hash, Git tree SHA
 
 **Content Match**:
-An exact lookup of immutable Hub artifacts by complete Content Digest, optionally ranked by a source hint. It can support a later reviewed association flow for External Installations that are absent from supported locks, but the current lock-backed Batch Takeover does not call the Hub. It never treats matching metadata as evidence of identity.
+An exact lookup of immutable Hub artifacts by complete Sum, optionally ranked by a source hint. It can support a later reviewed association flow for External Installations that are absent from supported locks, but the current lock-backed Batch Takeover does not call the Hub. It never treats matching metadata as evidence of identity.
 _Avoid_: fuzzy name match, metadata fingerprint, mutable branch lookup, automatic ownership claim
 
 **Hub Origin**:
-The trusted Hub base used to resolve metadata and download an artifact. Clients may use the official service or a self-hosted Origin and still verify content digests.
+The trusted Hub base used to resolve metadata and download an artifact. Clients may use the official service or a self-hosted Origin and still verify sums.
 _Avoid_: Hub account, mirror name
 
 **Trust Level**:
