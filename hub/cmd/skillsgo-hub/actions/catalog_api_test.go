@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the Hub HTTP router with a temporary SQLite Catalog and deterministic public requests.
- * [OUTPUT]: Specifies public API contracts including Catalog-only batch update checks plus correlated, redacted private diagnostics for internal failures.
+ * [OUTPUT]: Specifies public API contracts including Repository-fresh head/release batch update checks plus correlated, redacted private diagnostics for internal failures.
  * [POS]: Serves as executable public HTTP contract coverage for Hub discovery clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -97,16 +98,27 @@ type catalogArtifactStub struct {
 	archive    []byte
 	infoErr    error
 	archiveErr error
+	lists      map[string][]string
+	infos      map[string][]byte
 }
 
-func (s *catalogArtifactStub) Info(context.Context, string, string) ([]byte, error) {
+func (s *catalogArtifactStub) Info(_ context.Context, skillID, version string) ([]byte, error) {
 	if s.infoErr != nil {
 		return nil, s.infoErr
 	}
 	if s.info != nil {
 		return s.info, nil
 	}
+	if s.infos != nil {
+		if info := s.infos[skillID+"@"+version]; info != nil {
+			return info, nil
+		}
+	}
 	return []byte(`{"Version":"v0.0.0-test","Time":"2026-07-15T00:00:00Z","Ref":"refs/heads/main","CommitSHA":"commit-abc","TreeSHA":"tree-def"}`), nil
+}
+
+func (s *catalogArtifactStub) List(_ context.Context, repositoryID string) ([]string, error) {
+	return append([]string(nil), s.lists[repositoryID]...), nil
 }
 
 func (s *catalogArtifactStub) Zip(_ context.Context, skillID, version string) (storage.SizeReadCloser, error) {
@@ -239,13 +251,30 @@ func TestHistoricalPublicationMatchesContentWithoutEnteringDiscovery(t *testing.
 	require.Equal(t, "v1.0.0", matchBody.Matches[0].ImmutableVersion)
 }
 
-func TestCatalogUpdateCheckReadsOnlyCatalogAndPreservesRequestOrder(t *testing.T) {
-	r, c := testCatalogAPI(t)
+func TestCatalogUpdateCheckResolvesEachRepositoryOnceAndPreservesRequestOrder(t *testing.T) {
+	c, err := catalog.Open(context.Background(), config.DatabaseConfig{
+		Type: "sqlite", DSN: filepath.Join(t.TempDir(), "hub.db"), MaxOpenConns: 1, MaxIdleConns: 1,
+	})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	known := &catalog.Skill{
 		SkillID: "github.com/example/skills/-/review", Name: "review",
 		SourceHost: "github.com", Repository: "example/skills", LatestVersion: "v1.3.0",
 	}
 	require.NoError(t, c.UpsertSkill(context.Background(), known))
+	repositoryID := "github.com/example/skills"
+	repositoryInfo := func(version string) []byte {
+		return []byte(fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"commit","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Name":"review","Description":"review"}]}`, repositoryID, version, known.SkillID, version))
+	}
+	artifacts := &catalogArtifactStub{
+		lists: map[string][]string{repositoryID: {"v1.3.0"}},
+		infos: map[string][]byte{
+			repositoryID + "@head":   repositoryInfo("v1.4.0-0.20260722010000-abcdef123456"),
+			repositoryID + "@v1.3.0": repositoryInfo("v1.3.0"),
+		},
+	}
+	r := newFiberApp()
+	registerCatalogAPIRoutes(r, c, artifacts)
 	body := `{"schemaVersion":1,"skillIds":["github.com/example/skills/-/missing","github.com/example/skills/-/review"]}`
 	recorder := httptest.NewRecorder()
 	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodPost, "/api/v1/updates/check", strings.NewReader(body)))
@@ -255,7 +284,7 @@ func TestCatalogUpdateCheckReadsOnlyCatalogAndPreservesRequestOrder(t *testing.T
 	require.Equal(t, 1, response.SchemaVersion)
 	require.Equal(t, []catalogUpdateCheckItem{
 		{SkillID: "github.com/example/skills/-/missing", Status: "unsupported"},
-		{SkillID: known.SkillID, LatestVersion: "v1.3.0", Status: "available"},
+		{SkillID: known.SkillID, HeadVersion: "v1.4.0-0.20260722010000-abcdef123456", ReleaseVersion: "v1.3.0", Status: "available"},
 	}, response.Items)
 }
 

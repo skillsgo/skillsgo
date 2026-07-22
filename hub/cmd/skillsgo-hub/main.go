@@ -54,23 +54,23 @@ func main() {
 		databaseType = conf.Database.Type
 	}
 	logger.WithFields(map[string]any{
-		"database_type":          databaseType,
-		"download_mode":          conf.DownloadMode,
-		"environment":            conf.Environment,
-		"github_auth_configured": len(conf.GitHubTokens()) > 0 || conf.NETRCPath != "",
-		"index_type":             conf.IndexType,
-		"log_format":             conf.LogFormat,
-		"log_level":              conf.LogLevel,
-		"network_mode":           conf.NetworkMode,
-		"protocol_workers":       conf.ProtocolWorkers,
-		"singleflight_type":      conf.SingleFlightType,
-		"skill_fetch_workers":    conf.SkillFetchWorkers,
-		"stats_exporter":         conf.StatsExporter,
-		"storage_type":           conf.StorageType,
-		"task_queue_backend":     map[bool]string{true: "river", false: "synchronous"}[databaseType == "postgres"],
-		"task_queue_workers":     conf.TaskQueue.MaxWorkers,
-		"tls_configured":         conf.TLSCertFile != "" && conf.TLSKeyFile != "",
-		"trace_exporter":         conf.TraceExporter,
+		"database_type":        databaseType,
+		"download_mode":        conf.DownloadMode,
+		"environment":          conf.Environment,
+		"github_metadata_auth": len(conf.GitHubTokens()) > 0,
+		"index_type":           conf.IndexType,
+		"log_format":           conf.LogFormat,
+		"log_level":            conf.LogLevel,
+		"network_mode":         conf.NetworkMode,
+		"protocol_workers":     conf.ProtocolWorkers,
+		"singleflight_type":    conf.SingleFlightType,
+		"skill_fetch_workers":  conf.SkillFetchWorkers,
+		"stats_exporter":       conf.StatsExporter,
+		"storage_type":         conf.StorageType,
+		"task_queue_backend":   map[bool]string{true: "river", false: "synchronous"}[databaseType == "postgres"],
+		"task_queue_workers":   conf.TaskQueue.MaxWorkers,
+		"tls_configured":       conf.TLSCertFile != "" && conf.TLSKeyFile != "",
+		"trace_exporter":       conf.TraceExporter,
 	}).Infof("hub runtime configured")
 
 	// Route the standard library logger's output through our logger at the
@@ -78,11 +78,11 @@ func main() {
 	stdlog.SetOutput(logger.StdLogger(slog.LevelError).Writer())
 	stdlog.SetFlags(stdlog.Flags() &^ (stdlog.Ldate | stdlog.Ltime))
 
-	// Athens shells out to the Go toolchain (go, git, ssh) and relies on an init
+	// SkillsGo shells out to Git and relies on an init
 	// at PID 1 to reap the orphaned subprocesses they leave behind. Running as
 	// PID 1 means there is no init to do that, so warn the operator.
 	if os.Getpid() == 1 {
-		logger.Warnf("Athens is running as PID 1 with no init to reap subprocesses; " +
+		logger.Warnf("SkillsGo Hub is running as PID 1 with no init to reap subprocesses; " +
 			"run it under an init such as tini or `docker/podman run --init` to avoid zombie processes")
 	}
 

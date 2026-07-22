@@ -561,11 +561,11 @@ func TestNestedSkillLatestStopsAtLastPublicationWhereItExists(t *testing.T) {
 	require.Equal(t, "v1.0.0", strings.TrimSpace(recorder.Body.String()))
 
 	recorder = httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+nested+"/@latest", nil))
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+nested+"/@release", nil))
 	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
-	var latest storage.RevInfo
-	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&latest))
-	require.Equal(t, "v1.0.0", latest.Version)
+	var release storage.RevInfo
+	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&release))
+	require.Equal(t, "v1.0.0", release.Version)
 
 	recorder = httptest.NewRecorder()
 	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+nested+"/@v/v1.0.0.zip", nil))

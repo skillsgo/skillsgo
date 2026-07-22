@@ -128,7 +128,7 @@ func TestAnalyzeArtifactRejectsDuplicatePaths(t *testing.T) {
 	})
 
 	_, err := AnalyzeArtifact(data, skillID, version)
-	require.ErrorContains(t, err, "duplicate")
+	require.ErrorContains(t, err, "collide")
 }
 
 func TestAnalyzeArtifactSumGoldenVector(t *testing.T) {

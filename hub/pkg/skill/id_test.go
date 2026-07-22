@@ -34,9 +34,9 @@ func TestParseSkillID(t *testing.T) {
 			want: SkillID{Repository: "gitlab.com/company/platform/ai/skills", SkillPath: "security/code-review"},
 		},
 		{
-			name: "repository identity is case normalized while Skill path is preserved",
+			name: "non-GitHub host is normalized while Repository and Skill paths are preserved",
 			in:   "GitLab.Example.COM/Group/SubGroup/Repo/-/Skills/Find-Skill",
-			want: SkillID{Repository: "gitlab.example.com/group/subgroup/repo", SkillPath: "Skills/Find-Skill"},
+			want: SkillID{Repository: "gitlab.example.com/Group/SubGroup/Repo", SkillPath: "Skills/Find-Skill"},
 		},
 		{
 			name: "repository git suffix",
@@ -53,8 +53,8 @@ func TestParseSkillID(t *testing.T) {
 			canonical := tc.in
 			if tc.name == "repository git suffix" {
 				canonical = "github.com/owner/repo/-/skills/code-review"
-			} else if tc.name == "repository identity is case normalized while Skill path is preserved" {
-				canonical = "gitlab.example.com/group/subgroup/repo/-/Skills/Find-Skill"
+			} else if tc.name == "non-GitHub host is normalized while Repository and Skill paths are preserved" {
+				canonical = "gitlab.example.com/Group/SubGroup/Repo/-/Skills/Find-Skill"
 			}
 			require.Equal(t, canonical, got.String())
 			roundTrip, err := ParseSkillID(got.String())

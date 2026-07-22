@@ -58,13 +58,13 @@ func TestGoDerivedTagAndRevisionAmbiguityMatrix(t *testing.T) {
 		want    string
 		wantErr bool
 	}{
-		{name: "non-SemVer Tag is ignored by latest", prepare: func(t *testing.T, f *localRepositoryFixture) string {
+		{name: "non-SemVer Tag is ignored by head", prepare: func(t *testing.T, f *localRepositoryFixture) string {
 			replaceFixtureTags(t, f, "release")
-			return "latest"
+			return "head"
 		}, want: "pseudo"},
-		{name: "noncanonical short SemVer Tag is ignored by latest", prepare: func(t *testing.T, f *localRepositoryFixture) string {
+		{name: "noncanonical short SemVer Tag is ignored by head", prepare: func(t *testing.T, f *localRepositoryFixture) string {
 			replaceFixtureTags(t, f, "v1.2")
-			return "latest"
+			return "head"
 		}, want: "pseudo"},
 		{name: "revision at multiply tagged commit uses highest SemVer", prepare: func(t *testing.T, f *localRepositoryFixture) string {
 			replaceFixtureTags(t, f, "v1.9.0", "v2.0.0-beta.1")

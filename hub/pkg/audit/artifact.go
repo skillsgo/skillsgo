@@ -78,6 +78,9 @@ func AnalyzeArtifact(data []byte, skillID, version string) (*Result, error) {
 	}
 	textBudget := maxTotalTextBytes
 	digest, err := protocolartifact.WalkContent(data, skillID, version, func(entry protocolartifact.Entry) error {
+		if entry.Directory {
+			return nil
+		}
 		relative, contents := entry.Path, entry.Contents
 		readLimit := maxFileContentBytes
 		if relative == "SKILL.md" {

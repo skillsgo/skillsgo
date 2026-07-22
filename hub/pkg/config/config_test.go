@@ -158,6 +158,12 @@ func TestValidateConfigRejectsPartialBasicAuthCredentials(t *testing.T) {
 	}
 }
 
+func TestValidateConfigRejectsLegacyMinIOStorage(t *testing.T) {
+	conf := defaultConfig()
+	conf.StorageType = "minio"
+	require.ErrorContains(t, validateConfig(*conf), "conditional create semantics")
+}
+
 func TestEnvOverrides(t *testing.T) {
 	os.Clearenv()
 	home := setTestHome(t)
@@ -171,8 +177,7 @@ func TestEnvOverrides(t *testing.T) {
 			Timeout: 30,
 		},
 		StorageType:      "minio",
-		GlobalEndpoint:   "mytikas.gomods.io",
-		HomeTemplatePath: "/tmp/athens/home.html",
+		HomeTemplatePath: "/tmp/skillsgo/home.html",
 		Port:             ":7000",
 		EnablePprof:      false,
 		PprofPort:        ":3001",
@@ -181,8 +186,6 @@ func TestEnvOverrides(t *testing.T) {
 		ForceSSL:         true,
 		ValidatorHook:    "testhook.io",
 		PathPrefix:       "prefix",
-		NETRCPath:        "/test/path/.netrc",
-		HGRCPath:         "/test/path/.hgrc",
 		Storage:          &Storage{},
 		SingleFlight:     &SingleFlight{},
 		RobotsFile:       "robots.txt",
@@ -409,8 +412,7 @@ func TestParseExampleConfig(t *testing.T) {
 		},
 		StorageType:           "memory",
 		NetworkMode:           "strict",
-		GlobalEndpoint:        "http://localhost:3001",
-		HomeTemplatePath:      "/var/lib/athens/home.html",
+		HomeTemplatePath:      "/var/lib/skillsgo/home.html",
 		Port:                  ":3000",
 		EnablePprof:           false,
 		PprofPort:             ":3001",
@@ -458,7 +460,6 @@ func getEnvMap(config *Config) map[string]string {
 	}
 
 	envVars["SKILLSGO_HUB_STORAGE_TYPE"] = config.StorageType
-	envVars["SKILLSGO_HUB_GLOBAL_ENDPOINT"] = config.GlobalEndpoint
 	envVars["SKILLSGO_HUB_PORT"] = config.Port
 	envVars["SKILLSGO_HUB_ENABLE_PPROF"] = strconv.FormatBool(config.EnablePprof)
 	envVars["SKILLSGO_HUB_PPROF_PORT"] = config.PprofPort
@@ -470,8 +471,6 @@ func getEnvMap(config *Config) map[string]string {
 	envVars["SKILLSGO_HUB_HOME_TEMPLATE_PATH"] = config.HomeTemplatePath
 	envVars["SKILLSGO_HUB_PROXY_VALIDATOR"] = config.ValidatorHook
 	envVars["SKILLSGO_HUB_PATH_PREFIX"] = config.PathPrefix
-	envVars["SKILLSGO_HUB_NETRC_PATH"] = config.NETRCPath
-	envVars["SKILLSGO_HUB_HGRC_PATH"] = config.HGRCPath
 	envVars["SKILLSGO_HUB_ROBOTS_FILE"] = config.RobotsFile
 
 	storage := config.Storage

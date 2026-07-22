@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the gcp package imports and contracts declared in this file.
- * [OUTPUT]: Provides the gcp package behavior implemented by saver.go.
+ * [OUTPUT]: Provides generation-preconditioned create-only GCS publication with byte-verified idempotency.
  * [POS]: Serves as maintained source in the gcp package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,6 +16,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
+	pkgstorage "github.com/skillsgo/skillsgo/hub/pkg/storage"
 	googleapi "google.golang.org/api/googleapi"
 )
 
@@ -30,11 +31,11 @@ func (s *Storage) Save(ctx context.Context, module, version string, zip io.Reade
 	const op errors.Op = "gcp.save"
 	ctx, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
-	err := s.save(ctx, module, version, zip, zipMD5, info)
+	_, err := s.PutIfAbsent(ctx, module, version, zip, zipMD5, info)
 	if err != nil {
 		return errors.E(op, err)
 	}
-	return err
+	return nil
 }
 
 // SetStaleThreshold sets the threshold of how long we consider
@@ -43,47 +44,56 @@ func (s *Storage) SetStaleThreshold(threshold time.Duration) {
 	s.staleThreshold = threshold
 }
 
-func (s *Storage) save(ctx context.Context, module, version string, zip io.Reader, zipMD5, info []byte) error {
-	const op errors.Op = "gcp.save"
-	ctx, span := observ.StartSpan(ctx, op.String())
-	defer span.End()
+func (s *Storage) PutIfAbsent(ctx context.Context, module, version string, zip io.Reader, zipMD5, info []byte) (bool, error) {
+	archive, err := pkgstorage.ReadImmutableArchive(zip)
+	if err != nil {
+		return false, err
+	}
+	if matches, exists, matchErr := pkgstorage.ExistingInfoMatches(ctx, s, module, version, info); matchErr != nil {
+		return false, matchErr
+	} else if exists && !matches {
+		return false, pkgstorage.ImmutableConflict(module, version)
+	}
 
+	created := false
 	zipPath := config.PackageVersionedName(module, version, "zip")
-	err := s.upload(ctx, zipPath, zip, zipMD5, true)
-	if err != nil && !errors.Is(err, errors.KindAlreadyExists) {
-		return errors.E(op, err)
+	if err = s.upload(ctx, zipPath, bytes.NewReader(archive), zipMD5); errors.Is(err, errors.KindAlreadyExists) {
+		matches, _, matchErr := pkgstorage.ExistingZIPMatches(ctx, s, module, version, archive)
+		if matchErr != nil {
+			return false, matchErr
+		}
+		if !matches {
+			return false, pkgstorage.ImmutableConflict(module, version)
+		}
+	} else if err != nil {
+		return false, err
+	} else {
+		created = true
 	}
 
 	infoPath := config.PackageVersionedName(module, version, "info")
-	err = s.upload(ctx, infoPath, bytes.NewReader(info), nil, false)
-	if err != nil && !errors.Is(err, errors.KindAlreadyExists) {
-		return errors.E(op, err)
+	if err = s.upload(ctx, infoPath, bytes.NewReader(info), nil); errors.Is(err, errors.KindAlreadyExists) {
+		matches, _, matchErr := pkgstorage.ExistingInfoMatches(ctx, s, module, version, info)
+		if matchErr != nil {
+			return false, matchErr
+		}
+		if !matches {
+			return false, pkgstorage.ImmutableConflict(module, version)
+		}
+	} else if err != nil {
+		return false, err
+	} else {
+		created = true
 	}
-
-	return nil
+	return created, nil
 }
 
-func (s *Storage) upload(ctx context.Context, path string, stream io.Reader, md5 []byte, checkBefore bool) error {
+func (s *Storage) upload(ctx context.Context, path string, stream io.Reader, md5 []byte) error {
 	const op errors.Op = "gcp.upload"
 	ctx, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
 	cancelCtx, cancel := context.WithCancel(ctx)
 	defer cancel()
-
-	if checkBefore {
-		// Check whether the file already exists before uploading.
-		// Note that this is not for preventing the same file from being uploaded multiple times,
-		// but only a small optimization to avoid unnecessary uploads for large files (in particular .zip file).
-		_, err := s.bucket.Object(path).Attrs(cancelCtx)
-		if err == nil {
-			// The file already exists, no need to upload it again.
-			return nil
-		} else if !errors.IsErr(err, storage.ErrObjectNotExist) {
-			// Not expected error, return it.
-			return errors.E(op, err)
-		}
-		// Otherwise, the error is ErrObjectNotExist, so we should upload the file.
-	}
 
 	wc := s.bucket.Object(path).If(storage.Conditions{
 		DoesNotExist: true,

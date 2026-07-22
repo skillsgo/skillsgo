@@ -50,8 +50,8 @@ COPY --from=builder /usr/local/go/go.env /usr/local/go/go.env
 
 RUN chmod 644 /config/config.toml
 
-# Add tini, see https://github.com/gomods/athens/issues/1155 for details.
-RUN apk add --update git git-lfs mercurial openssh-client subversion procps fossil tini tzdata
+# Git over credential-free HTTPS is the only public source transport.
+RUN apk add --no-cache git procps tini tzdata
 
 # Add git-credential-github-app for native integration with GitHub Apps
 RUN if [ "${TARGETARCH}" = "arm64" ]; then ARCH="arm64"; else ARCH="x86_64"; fi \
@@ -59,7 +59,7 @@ RUN if [ "${TARGETARCH}" = "arm64" ]; then ARCH="arm64"; else ARCH="x86_64"; fi 
   && tar xvzf 'git-credential-github-app.tar.gz' git-credential-github-app -C /usr/local/bin \
   && rm git-credential-github-app.tar.gz || true;
 
-ARG USER=athens
+ARG USER=skillsgo
 RUN adduser -D -h /home/$USER $USER
 
 EXPOSE 3000

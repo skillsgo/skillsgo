@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Ent entities, SQLx for dialect-specific discovery queries, pgx stdlib for shared PostgreSQL pooling, versioned Atlas SQL migrations, Hub database configuration, and canonical Skill IDs.
- * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, native pgx transaction scopes for atomic Ent/River work, immutable versions, exact content matching, current-only discovery/ranking, source cache state, risk evidence, and install aggregation on SQLite/PostgreSQL.
+ * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, byte-stable Repository Release Records, native pgx transaction scopes for atomic Ent/River work, immutable versions, exact content matching, current-only discovery/ranking, source cache state, risk evidence, and install aggregation on SQLite/PostgreSQL.
  * [POS]: Serves as the Hub discovery data boundary while artifact bytes remain owned by storage packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -314,6 +314,19 @@ func (c *Catalog) PublishRepositoryVersion(ctx context.Context, repositoryID str
 }
 
 func (c *Catalog) PublishRepositoryVersionWithVisibility(ctx context.Context, repositoryID string, candidates []PublishedSkill, visibility PublicationVisibility) error {
+	return c.publishRepositoryVersionWithVisibility(ctx, repositoryID, candidates, visibility, nil)
+}
+
+// PublishRepositoryReleaseWithVisibility atomically publishes the complete
+// member set and the exact immutable Repository Release Record served by /mod.
+func (c *Catalog) PublishRepositoryReleaseWithVisibility(ctx context.Context, repositoryID string, candidates []PublishedSkill, visibility PublicationVisibility, releaseInfo []byte) error {
+	if len(releaseInfo) == 0 || !json.Valid(releaseInfo) {
+		return fmt.Errorf("Repository publication requires valid immutable release Info")
+	}
+	return c.publishRepositoryVersionWithVisibility(ctx, repositoryID, candidates, visibility, append([]byte(nil), releaseInfo...))
+}
+
+func (c *Catalog) publishRepositoryVersionWithVisibility(ctx context.Context, repositoryID string, candidates []PublishedSkill, visibility PublicationVisibility, releaseInfo []byte) error {
 	if visibility != CurrentPublication && visibility != HistoricalPublication {
 		return fmt.Errorf("unsupported Repository publication visibility %q", visibility)
 	}
@@ -348,6 +361,16 @@ func (c *Catalog) PublishRepositoryVersionWithVisibility(ctx context.Context, re
 	if err := tx.GetContext(ctx, &publicationCount, c.db.Rebind(`SELECT COUNT(*) FROM repository_publications rp
 		JOIN repositories r ON r.id = rp.repository_id WHERE r.repository_id = ? AND rp.version = ?`), repositoryID, version); err != nil {
 		return err
+	}
+	if publicationCount > 0 && len(releaseInfo) > 0 {
+		var existingReleaseInfo []byte
+		if err := tx.GetContext(ctx, &existingReleaseInfo, c.db.Rebind(`SELECT rp.release_info FROM repository_publications rp
+			JOIN repositories r ON r.id = rp.repository_id WHERE r.repository_id = ? AND rp.version = ?`), repositoryID, version); err != nil {
+			return err
+		}
+		if len(existingReleaseInfo) > 0 && !bytes.Equal(existingReleaseInfo, releaseInfo) {
+			return fmt.Errorf("immutable Repository Release Record conflict for %s@%s", repositoryID, version)
+		}
 	}
 	query := `SELECT s.skill_id, sv.version, sv.commit_sha, sv.tree_sha, sv.sum, sv.commit_time, sv.archive_size
 FROM repositories AS r JOIN skills AS s ON s.repository_id = r.id
@@ -391,7 +414,7 @@ JOIN skill_versions AS sv ON sv.skill_id = s.id`
 				}
 			}
 		}
-		if err := recordRepositoryPublication(ctx, c, tx, repositoryID, version, commitSHA, visibility, candidates, time.Now().UTC()); err != nil {
+		if err := recordRepositoryPublication(ctx, c, tx, repositoryID, version, commitSHA, visibility, candidates, releaseInfo, time.Now().UTC()); err != nil {
 			return err
 		}
 		return tx.Commit()
@@ -459,19 +482,23 @@ ON CONFLICT(skill_id, version) DO NOTHING`), skillRowID, version, candidate.Vers
 			return err
 		}
 	}
-	if err := recordRepositoryPublication(ctx, c, tx, repositoryID, version, commitSHA, visibility, candidates, now); err != nil {
+	if err := recordRepositoryPublication(ctx, c, tx, repositoryID, version, commitSHA, visibility, candidates, releaseInfo, now); err != nil {
 		return err
 	}
 	return tx.Commit()
 }
 
-func recordRepositoryPublication(ctx context.Context, c *Catalog, tx *sqlx.Tx, repositoryID, version, commitSHA string, visibility PublicationVisibility, candidates []PublishedSkill, createdAt time.Time) error {
+func recordRepositoryPublication(ctx context.Context, c *Catalog, tx *sqlx.Tx, repositoryID, version, commitSHA string, visibility PublicationVisibility, candidates []PublishedSkill, releaseInfo []byte, createdAt time.Time) error {
+	if releaseInfo == nil {
+		releaseInfo = []byte{}
+	}
 	_, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO repository_publications
-		(repository_id, version, commit_sha, visibility, created_at)
-		SELECT id, ?, ?, ?, ? FROM repositories WHERE repository_id = ?
+		(repository_id, version, commit_sha, visibility, release_info, created_at)
+		SELECT id, ?, ?, ?, ?, ? FROM repositories WHERE repository_id = ?
 		ON CONFLICT(repository_id, version) DO UPDATE SET
-		visibility = CASE WHEN excluded.visibility = 'current' THEN 'current' ELSE repository_publications.visibility END`),
-		version, commitSHA, visibility, createdAt, repositoryID)
+		visibility = CASE WHEN excluded.visibility = 'current' THEN 'current' ELSE repository_publications.visibility END,
+		release_info = CASE WHEN length(repository_publications.release_info) = 0 THEN excluded.release_info ELSE repository_publications.release_info END`),
+		version, commitSHA, visibility, releaseInfo, createdAt, repositoryID)
 	if err != nil {
 		return err
 	}
@@ -485,6 +512,25 @@ func recordRepositoryPublication(ctx context.Context, c *Catalog, tx *sqlx.Tx, r
 		}
 	}
 	return nil
+}
+
+// RepositoryReleaseInfo returns the exact bytes committed with one complete
+// Repository Publication. Empty legacy/test records are reported as absent.
+func (c *Catalog) RepositoryReleaseInfo(ctx context.Context, repositoryID, version string) ([]byte, bool, error) {
+	parsed, err := skillpkg.ParseSkillID(repositoryID)
+	if err != nil || parsed.SkillPath != "." || parsed.String() != repositoryID {
+		return nil, false, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
+	}
+	var encoded []byte
+	err = c.db.GetContext(ctx, &encoded, c.db.Rebind(`SELECT rp.release_info FROM repository_publications rp
+		JOIN repositories r ON r.id = rp.repository_id WHERE r.repository_id = ? AND rp.version = ?`), repositoryID, version)
+	if errors.Is(err, sql.ErrNoRows) || (err == nil && len(encoded) == 0) {
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+	return append([]byte(nil), encoded...), true, nil
 }
 
 func preferredLatestVersion(current, candidate string) string {
