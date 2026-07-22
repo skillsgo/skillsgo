@@ -9,18 +9,6 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent"
 )
 
-// The InstallEventFunc type is an adapter to allow the use of ordinary
-// function as InstallEvent mutator.
-type InstallEventFunc func(context.Context, *ent.InstallEventMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f InstallEventFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.InstallEventMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.InstallEventMutation", m)
-}
-
 // The LocalizedDescriptionFunc type is an adapter to allow the use of ordinary
 // function as LocalizedDescription mutator.
 type LocalizedDescriptionFunc func(context.Context, *ent.LocalizedDescriptionMutation) (ent.Value, error)
@@ -67,30 +55,6 @@ func (f SkillFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SkillMutation", m)
-}
-
-// The SkillHourlyStatFunc type is an adapter to allow the use of ordinary
-// function as SkillHourlyStat mutator.
-type SkillHourlyStatFunc func(context.Context, *ent.SkillHourlyStatMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f SkillHourlyStatFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.SkillHourlyStatMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SkillHourlyStatMutation", m)
-}
-
-// The SkillStatFunc type is an adapter to allow the use of ordinary
-// function as SkillStat mutator.
-type SkillStatFunc func(context.Context, *ent.SkillStatMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f SkillStatFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.SkillStatMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SkillStatMutation", m)
 }
 
 // The SkillVersionFunc type is an adapter to allow the use of ordinary

@@ -13,8 +13,8 @@ The completion-gated first-launch journey that introduces SkillsGo and obtains e
 _Avoid_: optional setup, dismissible project guide, product tour
 
 **CLI-mediated Hub Access**:
-The rule that every App business operation, including public discovery and detail reads, crosses the bundled CLI machine protocol; the App never calls a Hub directly.
-_Avoid_: direct Hub client, App Hub adapter
+The rule that every Hub and local App operation crosses the bundled CLI machine protocol; the App never calls Hub HTTP directly. In Cloud mode the App may call the Cloud origin returned by `skillsgo hub info` for Cloud-owned ranking reads, then hydrate the ordered Skill IDs through CLI-mediated Hub batch reads.
+_Avoid_: direct Hub client, Cloud-owned Skill metadata
 
 **Presentation Locale**:
 The user's persisted App language choice, resolved from System or any supported UI locale. Hub discovery and detail currently receive the stable content tags `en`, `zh-Hans`, or `zh-Hant`; UI locales without matching Hub content fall back to `en`. Presentation Locale may select author-maintained or Hub-enriched display text but never changes the Skill artifact installed or executed.

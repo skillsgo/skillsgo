@@ -42,10 +42,6 @@ type descriptionTranslationBatchArgs struct {
 
 func (descriptionTranslationBatchArgs) Kind() string { return "description_translation_batch" }
 
-type skillsSHProviderSyncArgs struct{}
-
-func (skillsSHProviderSyncArgs) Kind() string { return "skills_sh_provider_sync" }
-
 func registerArtifactStashJob(runtime *taskqueue.Runtime, stasher stash.Stasher) error {
 	return taskqueue.Register(runtime, func(ctx context.Context, args artifactStashArgs) error {
 		if args.SkillID == "" || args.Version == "" {

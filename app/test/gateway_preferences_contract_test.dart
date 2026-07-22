@@ -61,13 +61,13 @@ void main() {
   );
 
   test(
-    'selected language is forwarded to CLI as canonical content locale',
+    'selected language is forwarded to Hub Find as canonical content locale',
     () async {
       final runner = FakeProcessRunner()
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"collection":"all_time","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}',
+              '{"collection":"search","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -77,19 +77,18 @@ void main() {
       );
       await gateway.saveLanguage(AppLanguage.simplifiedChinese);
 
-      await gateway.discover(DiscoveryCollection.ranking);
+      await gateway.discover(DiscoveryCollection.search, query: 'layout');
 
       final discoverCall = runner.calls.firstWhere(
-        (call) => call.arguments.contains('discover'),
+        (call) => call.arguments.contains('find'),
       );
       expect(
         discoverCall.arguments,
         containsAllInOrder([
-          'discover',
+          'find',
+          'layout',
           '--hub',
           'https://hub.example.test',
-          '--collection',
-          'all_time',
           '--content-locale',
           'zh-Hans',
         ]),

@@ -9,31 +9,6 @@ import (
 )
 
 var (
-	// SkillInstallEventsColumns holds the columns for the "skill_install_events" table.
-	SkillInstallEventsColumns = []*schema.Column{
-		{Name: "event_id", Type: field.TypeString},
-		{Name: "version", Type: field.TypeString},
-		{Name: "agents", Type: field.TypeString, SchemaType: map[string]string{"postgres": "jsonb"}},
-		{Name: "scope", Type: field.TypeString},
-		{Name: "cli_version", Type: field.TypeString},
-		{Name: "occurred_at", Type: field.TypeTime},
-		{Name: "received_at", Type: field.TypeTime},
-		{Name: "skill_id", Type: field.TypeInt64},
-	}
-	// SkillInstallEventsTable holds the schema information for the "skill_install_events" table.
-	SkillInstallEventsTable = &schema.Table{
-		Name:       "skill_install_events",
-		Columns:    SkillInstallEventsColumns,
-		PrimaryKey: []*schema.Column{SkillInstallEventsColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "skill_install_events_skills_install_events",
-				Columns:    []*schema.Column{SkillInstallEventsColumns[7]},
-				RefColumns: []*schema.Column{SkillsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
-	}
 	// LocalizedDescriptionsColumns holds the columns for the "localized_descriptions" table.
 	LocalizedDescriptionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -152,45 +127,6 @@ var (
 			},
 		},
 	}
-	// SkillHourlyStatsColumns holds the columns for the "skill_hourly_stats" table.
-	SkillHourlyStatsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt64, Increment: true},
-		{Name: "bucket", Type: field.TypeTime},
-		{Name: "installs", Type: field.TypeInt64, Default: 0},
-		{Name: "skill_id", Type: field.TypeInt64},
-	}
-	// SkillHourlyStatsTable holds the schema information for the "skill_hourly_stats" table.
-	SkillHourlyStatsTable = &schema.Table{
-		Name:       "skill_hourly_stats",
-		Columns:    SkillHourlyStatsColumns,
-		PrimaryKey: []*schema.Column{SkillHourlyStatsColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "skill_hourly_stats_skills_hourly_stats",
-				Columns:    []*schema.Column{SkillHourlyStatsColumns[3]},
-				RefColumns: []*schema.Column{SkillsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
-		Indexes: []*schema.Index{
-			{
-				Name:    "skillhourlystat_skill_id_bucket",
-				Unique:  true,
-				Columns: []*schema.Column{SkillHourlyStatsColumns[3], SkillHourlyStatsColumns[1]},
-			},
-		},
-	}
-	// SkillStatsColumns holds the columns for the "skill_stats" table.
-	SkillStatsColumns = []*schema.Column{
-		{Name: "skill_id", Type: field.TypeInt64, Increment: true},
-		{Name: "total_installs", Type: field.TypeInt64, Default: 0},
-	}
-	// SkillStatsTable holds the schema information for the "skill_stats" table.
-	SkillStatsTable = &schema.Table{
-		Name:       "skill_stats",
-		Columns:    SkillStatsColumns,
-		PrimaryKey: []*schema.Column{SkillStatsColumns[0]},
-	}
 	// SkillVersionsColumns holds the columns for the "skill_versions" table.
 	SkillVersionsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
@@ -226,27 +162,19 @@ var (
 	}
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
-		SkillInstallEventsTable,
 		LocalizedDescriptionsTable,
 		RepositoriesTable,
 		SkillRiskAssessmentsTable,
 		SkillsTable,
-		SkillHourlyStatsTable,
-		SkillStatsTable,
 		SkillVersionsTable,
 	}
 )
 
 func init() {
-	SkillInstallEventsTable.ForeignKeys[0].RefTable = SkillsTable
-	SkillInstallEventsTable.Annotation = &entsql.Annotation{
-		Table: "skill_install_events",
-	}
 	SkillRiskAssessmentsTable.ForeignKeys[0].RefTable = SkillVersionsTable
 	SkillRiskAssessmentsTable.Annotation = &entsql.Annotation{
 		Table: "skill_risk_assessments",
 	}
 	SkillsTable.ForeignKeys[0].RefTable = RepositoriesTable
-	SkillHourlyStatsTable.ForeignKeys[0].RefTable = SkillsTable
 	SkillVersionsTable.ForeignKeys[0].RefTable = SkillsTable
 }

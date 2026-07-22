@@ -77,6 +77,10 @@ mixin FakeGatewaySystem on FakeSkillsGatewayCore {
   );
 
   @override
+  Future<HubRuntime> loadHubRuntime() async =>
+      const HubRuntime(mode: HubMode.selfhost);
+
+  @override
   Future<PersonalRiskPolicy> loadRiskPolicy() async => riskPolicy;
   @override
   Future<void> saveRiskPolicy(PersonalRiskPolicy policy) async {

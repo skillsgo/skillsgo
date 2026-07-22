@@ -104,9 +104,9 @@ _Avoid_: safety score, popularity rank
 An append-only downstream assessment bound to an immutable artifact Sum. It is not part of publication atomicity or immutable Skill Info; re-scanning creates a new assessment rather than overwriting historical evidence.
 _Avoid_: mutable Skill status, trust level
 
-**Install Event**:
-An idempotent, privacy-limited event reporting that a Skill version was installed for a scope and set of Agents. Install events power aggregate ranking without becoming an account activity log.
-_Avoid_: Agent invocation telemetry, user tracking event
+**Cloud Deployment Discovery**:
+The minimal public Hub declaration containing `mode` and, only in Cloud mode, the configured Cloud origin. It selects the independent Cloud data plane without becoming a capability-negotiation protocol.
+_Avoid_: capability matrix, Cloud proxy, shared database
 
 **Repository Popularity**:
 The source repository's current public star count, recorded as contextual discovery metadata. Every Skill in the same repository shares this repository-level signal; it is not a Skill rating.
@@ -119,19 +119,3 @@ _Avoid_: Hub update time, cache refresh time, repository API updated_at
 **Archive Size**:
 The exact byte length of the deterministic ZIP artifact served by the Hub for one immutable Skill version.
 _Avoid_: extracted directory size, source repository size, transport-compressed response size
-
-**All-time Ranking**:
-The ordering of public Skills by total accepted install events.
-_Avoid_: recommendation feed
-
-**Trending Ranking**:
-The ordering of public Skills by install events during the latest 24-hour window.
-_Avoid_: all-time ranking
-
-**Hot Ranking**:
-The ordering of public Skills with at least three accepted installs during the latest rolling hour by standardized growth above their preceding 24-hour hourly baseline. The public metric reports rolling-hour installs and their integer change from that baseline; the normalized score is ordering-only.
-_Avoid_: editorial recommendation, trending alias
-
-**Provider Counter Observation**:
-One cumulative install counter observed from an external provider during a complete, generation-fenced crawl. It preserves provider provenance and may support later projection, but it is never an accepted install event.
-_Avoid_: exact install event, deduplicated cross-provider total

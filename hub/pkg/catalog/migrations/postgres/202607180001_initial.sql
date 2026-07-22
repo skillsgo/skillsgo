@@ -53,24 +53,3 @@ CREATE TABLE skill_risk_assessments (
   fingerprint TEXT NOT NULL,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE TABLE skill_install_events (
-  event_id TEXT PRIMARY KEY,
-  skill_id BIGINT NOT NULL REFERENCES skills(id) ON DELETE CASCADE,
-  version TEXT NOT NULL,
-  agents JSONB NOT NULL,
-  scope TEXT NOT NULL,
-  cli_version TEXT NOT NULL,
-  occurred_at TIMESTAMPTZ NOT NULL,
-  received_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE skill_stats (
-  skill_id BIGINT PRIMARY KEY REFERENCES skills(id) ON DELETE CASCADE,
-  total_installs BIGINT NOT NULL DEFAULT 0
-);
-CREATE TABLE skill_hourly_stats (
-  id BIGSERIAL PRIMARY KEY,
-  skill_id BIGINT NOT NULL REFERENCES skills(id) ON DELETE CASCADE,
-  bucket TIMESTAMPTZ NOT NULL,
-  installs BIGINT NOT NULL DEFAULT 0,
-  UNIQUE(skill_id, bucket)
-);

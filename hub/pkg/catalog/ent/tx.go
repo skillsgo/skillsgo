@@ -12,8 +12,6 @@ import (
 // Tx is a transactional client that is created by calling Client.Tx().
 type Tx struct {
 	config
-	// InstallEvent is the client for interacting with the InstallEvent builders.
-	InstallEvent *InstallEventClient
 	// LocalizedDescription is the client for interacting with the LocalizedDescription builders.
 	LocalizedDescription *LocalizedDescriptionClient
 	// Repository is the client for interacting with the Repository builders.
@@ -22,10 +20,6 @@ type Tx struct {
 	RiskAssessment *RiskAssessmentClient
 	// Skill is the client for interacting with the Skill builders.
 	Skill *SkillClient
-	// SkillHourlyStat is the client for interacting with the SkillHourlyStat builders.
-	SkillHourlyStat *SkillHourlyStatClient
-	// SkillStat is the client for interacting with the SkillStat builders.
-	SkillStat *SkillStatClient
 	// SkillVersion is the client for interacting with the SkillVersion builders.
 	SkillVersion *SkillVersionClient
 
@@ -159,13 +153,10 @@ func (tx *Tx) Client() *Client {
 }
 
 func (tx *Tx) init() {
-	tx.InstallEvent = NewInstallEventClient(tx.config)
 	tx.LocalizedDescription = NewLocalizedDescriptionClient(tx.config)
 	tx.Repository = NewRepositoryClient(tx.config)
 	tx.RiskAssessment = NewRiskAssessmentClient(tx.config)
 	tx.Skill = NewSkillClient(tx.config)
-	tx.SkillHourlyStat = NewSkillHourlyStatClient(tx.config)
-	tx.SkillStat = NewSkillStatClient(tx.config)
 	tx.SkillVersion = NewSkillVersionClient(tx.config)
 }
 
@@ -176,7 +167,7 @@ func (tx *Tx) init() {
 // of them in order to commit or rollback the transaction.
 //
 // If a closed transaction is embedded in one of the generated entities, and the entity
-// applies a query, for example: InstallEvent.QueryXXX(), the query will be executed
+// applies a query, for example: LocalizedDescription.QueryXXX(), the query will be executed
 // through the driver which created this transaction.
 //
 // Note that txDriver is not goroutine safe.

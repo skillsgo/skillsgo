@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a configured Hub origin, canonical Skill IDs, Hub-owned selector resolution, exact content-match responses, bounded immutable Info/ZIP protocol responses, and optional progress reporting.
- * [OUTPUT]: Provides delegated selector resolution, bounded strict product JSON reads, update reads, validated content-identity matching, bounded retrying immutable GETs, normalized Skill metadata, and typed HTTP or malformed-protocol failures.
+ * [OUTPUT]: Provides delegated selector resolution, bounded strict product JSON reads, Hub deployment discovery, update reads, validated content-identity matching, bounded retrying immutable GETs, normalized Skill metadata, and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -323,8 +323,51 @@ func (c *Client) DetailLocalized(ctx context.Context, skillID, locale string) (j
 	return c.readProductJSON(ctx, "/api/v1/skills/"+skillID, query)
 }
 
+func (c *Client) BatchSkills(ctx context.Context, skillIDs []string) (json.RawMessage, error) {
+	if len(skillIDs) == 0 || len(skillIDs) > 100 {
+		return nil, fmt.Errorf("Skill batch must contain 1 to 100 IDs")
+	}
+	for _, skillID := range skillIDs {
+		if err := source.ValidateSkillID(skillID); err != nil {
+			return nil, err
+		}
+	}
+	body, err := json.Marshal(struct {
+		SkillIDs []string `json:"skillIds"`
+	}{SkillIDs: skillIDs})
+	if err != nil {
+		return nil, err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/skills/batch", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	response, err := c.http.Do(request)
+	if err != nil {
+		return nil, fmt.Errorf("请求 Hub: %w", err)
+	}
+	defer response.Body.Close()
+	encoded, err := io.ReadAll(io.LimitReader(response.Body, 4<<20))
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, &HTTPError{StatusCode: response.StatusCode, Body: strings.TrimSpace(string(encoded)), RequestID: response.Header.Get("Athens-Request-ID")}
+	}
+	var document json.RawMessage
+	if json.Unmarshal(encoded, &document) != nil || !json.Valid(document) {
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Skill batch response")}
+	}
+	return document, nil
+}
+
 func (c *Client) Check(ctx context.Context) (json.RawMessage, error) {
 	return c.Discover(ctx, "search", "skillsgo-settings-probe", 0, 1)
+}
+
+func (c *Client) HubInfo(ctx context.Context) (json.RawMessage, error) {
+	return c.readProductJSON(ctx, "/api/v1/info", nil)
 }
 
 func (c *Client) MatchContent(ctx context.Context, sum, sourceHint string) ([]ContentMatch, error) {
