@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on macOS Flutter desktop support, Docker, curl, Ruby, the App workspace with its CLI bundling phase, and maintained desktop journeys.
-# [OUTPUT]: Launches a clean containerized Hub and runs each selected App journey with its bundled Darwin CLI inside an independent redirected temporary macOS home.
+# [INPUT]: Depends on macOS Flutter desktop support, Go, curl, Ruby, the App workspace with its CLI bundling phase, and optionally Docker for the alternate Hub runtime.
+# [OUTPUT]: Launches a disposable real Hub process and runs each selected App journey with its bundled Darwin CLI inside an independent redirected temporary macOS home.
 # [POS]: Serves as the isolated lifecycle and execution adapter behind make test-e2e-app.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -32,6 +32,10 @@ readonly developer_pub_cache="${PUB_CACHE:-${developer_home}/.pub-cache}"
 readonly developer_go_path="$(go env GOPATH)"
 readonly developer_go_mod_cache="$(go env GOMODCACHE)"
 cleanup() {
+  if [[ -n "${hub_pid:-}" ]]; then
+    kill "${hub_pid}" >/dev/null 2>&1 || true
+    wait "${hub_pid}" >/dev/null 2>&1 || true
+  fi
   if [[ -n "${hub_container:-}" ]]; then
     docker rm --force "${hub_container}" >/dev/null 2>&1 || true
   fi
@@ -46,37 +50,69 @@ mkdir -p \
 
 readonly hub_port="$(ruby -rsocket -e 'server = TCPServer.new("127.0.0.1", 0); puts server.addr[1]; server.close')"
 readonly hub_origin="http://127.0.0.1:${hub_port}"
-readonly hub_image="skillsgo-app-e2e-hub:local"
-readonly hub_container="skillsgo-app-e2e-${hub_port}"
+readonly hub_log="${run_dir}/hub.log"
+readonly hub_runtime="${SKILLSGO_E2E_HUB_RUNTIME:-native}"
 
-docker build \
-  --file "${workspace_dir}/Dockerfile" \
-  --tag "${hub_image}" \
-  "${repository_root}" >/dev/null
-docker run \
-  --detach \
-  --name "${hub_container}" \
-  --publish "127.0.0.1:${hub_port}:3000" \
-  --mount "type=bind,source=${run_dir}/hub,target=/e2e/hub" \
-  --env SKILLSGO_HUB_PORT=:3000 \
-  --env SKILLSGO_HUB_CACHE_DIR=/e2e/hub/cache \
-  --env SKILLSGO_HUB_STORAGE_TYPE=disk \
-  --env SKILLSGO_HUB_DISK_STORAGE_ROOT=/e2e/hub/storage \
-  --env SKILLSGO_HUB_LOG_LEVEL=info \
-  "${hub_image}" >/dev/null
+case "${hub_runtime}" in
+  native)
+    readonly hub_binary="${run_dir}/skillsgo-hub"
+    (
+      cd "${repository_root}/hub"
+      CGO_ENABLED=0 go build -trimpath -o "${hub_binary}" ./cmd/skillsgo-hub
+    )
+    SKILLSGO_HUB_PORT="127.0.0.1:${hub_port}" \
+    SKILLSGO_HUB_CACHE_DIR="${run_dir}/hub/cache" \
+    SKILLSGO_HUB_STORAGE_TYPE=disk \
+    SKILLSGO_HUB_DISK_STORAGE_ROOT="${run_dir}/hub/storage" \
+    SKILLSGO_HUB_LOG_LEVEL=info \
+    "${hub_binary}" >"${hub_log}" 2>&1 &
+    readonly hub_pid=$!
+    ;;
+  docker)
+    readonly hub_image="skillsgo-app-e2e-hub:local"
+    readonly hub_container="skillsgo-app-e2e-${hub_port}"
+    docker build \
+      --file "${workspace_dir}/Dockerfile" \
+      --tag "${hub_image}" \
+      "${repository_root}" >/dev/null
+    docker run \
+      --detach \
+      --name "${hub_container}" \
+      --publish "127.0.0.1:${hub_port}:3000" \
+      --mount "type=bind,source=${run_dir}/hub,target=/e2e/hub" \
+      --env SKILLSGO_HUB_PORT=:3000 \
+      --env SKILLSGO_HUB_CACHE_DIR=/e2e/hub/cache \
+      --env SKILLSGO_HUB_STORAGE_TYPE=disk \
+      --env SKILLSGO_HUB_DISK_STORAGE_ROOT=/e2e/hub/storage \
+      --env SKILLSGO_HUB_LOG_LEVEL=info \
+      "${hub_image}" >/dev/null
+    ;;
+  *)
+    echo "Unsupported App E2E Hub runtime: ${hub_runtime}" >&2
+    exit 1
+    ;;
+esac
 
 for _ in {1..120}; do
   if curl --fail --silent "${hub_origin}/readyz" >/dev/null; then
     break
   fi
-  if [[ "$(docker inspect --format '{{.State.Running}}' "${hub_container}" 2>/dev/null || true)" != "true" ]]; then
+  if [[ "${hub_runtime}" == "native" ]] && ! kill -0 "${hub_pid}" 2>/dev/null; then
+    cat "${hub_log}" >&2 || true
+    exit 1
+  fi
+  if [[ "${hub_runtime}" == "docker" ]] && [[ "$(docker inspect --format '{{.State.Running}}' "${hub_container}" 2>/dev/null || true)" != "true" ]]; then
     docker logs "${hub_container}" >&2 || true
     exit 1
   fi
   sleep 0.25
 done
 if ! curl --fail --silent "${hub_origin}/readyz" >/dev/null; then
-  docker logs "${hub_container}" >&2 || true
+  if [[ "${hub_runtime}" == "native" ]]; then
+    cat "${hub_log}" >&2 || true
+  else
+    docker logs "${hub_container}" >&2 || true
+  fi
   echo "Disposable App E2E Hub did not become ready." >&2
   exit 1
 fi

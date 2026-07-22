@@ -524,8 +524,9 @@ class _BatchTakeoverConsoleState extends State<_BatchTakeoverConsole>
   }
 
   Widget _buildModalPortal(Widget modal) {
-    return OverlayPortal.targetsRootOverlay(
+    return OverlayPortal(
       controller: _modalOverlay,
+      overlayLocation: OverlayChildLocation.rootOverlay,
       overlayChildBuilder: (context) => Positioned.fill(child: modal),
       child: const SizedBox.shrink(),
     );

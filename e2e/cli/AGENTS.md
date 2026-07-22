@@ -31,7 +31,7 @@ This workspace owns black-box user-journey tests spanning the released CLI and H
 Run from this directory:
 
 ```bash
-go test -v ./...
+GOWORK=off go test -v -count=1 ./...
 ```
 
 [PROTOCOL]: Update this map when workspace structure, ownership, commands, or boundaries change.

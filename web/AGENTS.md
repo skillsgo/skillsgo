@@ -8,6 +8,7 @@
 - React 19 rendered by TanStack Start through Vite.
 - Fumadocs Core, UI, and MDX provide the documentation shell, content pipeline, and search surface.
 - TanStack Start prerendering emits indexable product, Hub, and documentation pages suitable for CDN hosting.
+- Production prerendering binds its ephemeral Vite preview server to IPv4 loopback so Linux and macOS resolve every internal crawl request to the same listener.
 
 ## Commands
 

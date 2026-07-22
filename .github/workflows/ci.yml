@@ -1,6 +1,6 @@
-# [INPUT]: Depends on the Go, Flutter, Node.js, pnpm, and workspace validation commands used by SkillsGo.
-# [OUTPUT]: Validates and builds the CLI, Hub, App, and public Web surface on pushes and pull requests.
-# [POS]: Serves as the repository-wide continuous integration workflow.
+# [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, and cross-product E2E workspace validation commands.
+# [OUTPUT]: Provides the stable pull-request, merge-queue, and main-branch validation gate for every maintained product boundary.
+# [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration
 
@@ -9,13 +9,43 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  merge_group:
+    types: [checks_requested]
+
+concurrency:
+  group: ci-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
   contents: read
 
 jobs:
+  protocol:
+    name: Protocol
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: protocol/go.mod
+          cache-dependency-path: |
+            protocol/go.sum
+            go.work.sum
+
+      - name: Check formatting
+        run: test -z "$(gofmt -l protocol)"
+
+      - name: Test coverage contract
+        run: make test-protocol
+
   cli:
-    runs-on: ubuntu-latest
+    name: CLI
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: cli
@@ -27,7 +57,10 @@ jobs:
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: cli/go.mod
-          cache-dependency-path: cli/go.sum
+          cache-dependency-path: |
+            cli/go.sum
+            protocol/go.sum
+            go.work.sum
 
       - name: Download dependencies
         run: go mod download
@@ -35,14 +68,19 @@ jobs:
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
 
+      - name: Vet
+        run: go vet ./...
+
       - name: Test
         run: go test -race ./...
 
       - name: Build CLI
-        run: go build -o "$RUNNER_TEMP/skillsgo" ./cmd/skillsgo
+        run: go build -trimpath -o "$RUNNER_TEMP/skillsgo" ./cmd/skillsgo
 
   hub:
-    runs-on: ubuntu-latest
+    name: Hub
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: hub
@@ -54,7 +92,10 @@ jobs:
         uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
         with:
           go-version-file: hub/go.mod
-          cache-dependency-path: hub/go.sum
+          cache-dependency-path: |
+            hub/go.sum
+            protocol/go.sum
+            go.work.sum
 
       - name: Download dependencies
         run: go mod download
@@ -62,14 +103,19 @@ jobs:
       - name: Check formatting
         run: test -z "$(gofmt -l .)"
 
+      - name: Vet
+        run: go vet ./...
+
       - name: Test
         run: go test -race ./...
 
       - name: Build Hub
-        run: go build -o "$RUNNER_TEMP/skillsgo-hub" ./cmd/skillsgo-hub
+        run: go build -trimpath -o "$RUNNER_TEMP/skillsgo-hub" ./cmd/skillsgo-hub
 
   app:
-    runs-on: macos-latest
+    name: App
+    runs-on: macos-15
+    timeout-minutes: 30
     defaults:
       run:
         working-directory: app
@@ -80,6 +126,7 @@ jobs:
       - name: Set up Flutter
         uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
         with:
+          flutter-version: 3.44.6
           channel: stable
           cache: true
 
@@ -93,7 +140,9 @@ jobs:
         run: flutter test
 
   web:
-    runs-on: ubuntu-latest
+    name: Web
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
     defaults:
       run:
         working-directory: web
@@ -117,3 +166,75 @@ jobs:
 
       - name: Build prerendered site
         run: pnpm build
+
+  e2e-cli:
+    name: CLI E2E
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: e2e/cli
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: e2e/cli/go.mod
+          cache-dependency-path: e2e/cli/go.sum
+
+      - name: Run cross-product journeys
+        run: GOWORK=off go test -v -count=1 ./...
+
+  e2e-app:
+    name: App E2E
+    runs-on: macos-15
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+
+      - name: Set up Go
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: hub/go.mod
+          cache-dependency-path: |
+            cli/go.sum
+            hub/go.sum
+            protocol/go.sum
+            go.work.sum
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@1a449444c387b1966244ae4d4f8c696479add0b2 # v2
+        with:
+          flutter-version: 3.44.6
+          channel: stable
+          cache: true
+
+      - name: Install App dependencies
+        working-directory: app
+        run: flutter pub get
+
+      - name: Run rendered desktop journeys
+        env:
+          SKILLSGO_E2E_HUB_RUNTIME: native
+        run: make test-e2e-app
+
+  required:
+    name: Required
+    if: ${{ always() }}
+    needs: [protocol, cli, hub, app, web, e2e-cli, e2e-app]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    env:
+      RESULTS: ${{ join(needs.*.result, ' ') }}
+    steps:
+      - name: Require every maintained boundary
+        run: |
+          for result in ${RESULTS}; do
+            if [[ "${result}" != "success" ]]; then
+              echo "A required validation job finished with: ${result}" >&2
+              exit 1
+            fi
+          done
