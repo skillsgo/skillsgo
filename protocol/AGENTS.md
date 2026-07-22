@@ -14,7 +14,7 @@ This map governs the dependency-light Go protocol workspace shared by SkillsGo p
 
 | Path | Responsibility |
 | --- | --- |
-| `artifact/` | Immutable artifact limits, safe paths, one-pass normalized ZIP traversal, and Sums shared by producers and consumers. |
+| `artifact/` | Repository Artifact construction, immutable limits, safe paths, one-pass normalized ZIP traversal, and Go-compatible Sums shared by producers and consumers. |
 | `api/` | Public CLI-to-Hub JSON DTOs, schema constants, statuses, and risk levels. |
 | `cloud/` | Public Cloud JSON DTOs, endpoint paths, ranking vocabulary, and install-event semantics. |
 | `cloudtest/` | Test-only Cloud HTTP mock and executable conformance verifier; never imported by production packages. |
