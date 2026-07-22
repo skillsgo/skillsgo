@@ -66,10 +66,7 @@ void main() {
         _textEither('Install all skills to', '安装所有技能到'),
         timeout: const Duration(seconds: 30),
       );
-      final installationComplete = _textEither(
-        'Installation complete',
-        '安装完成',
-      );
+      final installationComplete = _textEither('Installation complete', '安装完成');
       await _pumpUntil(
         tester,
         installationComplete,
@@ -121,12 +118,9 @@ void main() {
           ),
         ),
       );
-      await _pumpUntil(
-        tester,
-        find.byKey(const Key('library-update-selected')),
-        timeout: const Duration(seconds: 10),
-      );
-      await tester.tap(find.byKey(const Key('library-update-selected')));
+      final updateSelected = find.byKey(const Key('library-update-selected'));
+      await _pumpUntilEnabledButton(tester, updateSelected);
+      await tester.tap(updateSelected);
       await _pumpUntil(
         tester,
         _textEither('Select targets to update', '选择要更新的目标'),
@@ -139,10 +133,7 @@ void main() {
         timeout: const Duration(minutes: 2),
       );
 
-      final technicalDetails = _textEither(
-        'Technical details',
-        '技术详情',
-      );
+      final technicalDetails = _textEither('Technical details', '技术详情');
       if (technicalDetails.evaluate().isNotEmpty) {
         await tester.ensureVisible(technicalDetails.first);
         await tester.tap(technicalDetails.first);

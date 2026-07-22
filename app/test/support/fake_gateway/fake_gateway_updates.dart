@@ -10,8 +10,9 @@ mixin FakeGatewayUpdates on FakeSkillsGatewayCore {
   @override
   Future<UpdatePlan> preflightUpdate(
     InstalledSkill skill,
-    List<SkillInstallationTarget> targets,
-  ) async {
+    List<SkillInstallationTarget> targets, {
+    String? toVersion,
+  }) async {
     final items = [
       for (final target in targets)
         UpdatePlanItem(
@@ -26,7 +27,7 @@ mixin FakeGatewayUpdates on FakeSkillsGatewayCore {
           skillId: skill.skillId,
           sourceRef: 'main',
           fromVersion: target.version,
-          toVersion: 'v2',
+          toVersion: toVersion ?? 'v2',
           action: UpdatePlanAction.update,
           stateToken: 'state-${target.agent}-${target.path}',
           workspaceManifestChange: target.scope == InstallationScope.project,

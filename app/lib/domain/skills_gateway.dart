@@ -93,11 +93,14 @@ abstract interface class SkillsGateway {
   Future<CommandResult?> exportLocalSkill(InstalledSkill skill);
   Future<UpdatePlan> preflightUpdate(
     InstalledSkill skill,
-    List<SkillInstallationTarget> targets,
-  );
+    List<SkillInstallationTarget> targets, {
+    String? toVersion,
+  });
   Future<UpdateExecution> executeUpdate(
     UpdatePlan plan, {
     void Function(UpdateTargetProgress progress)? onProgress,
   });
-  Future<Map<String, UpdateState>> checkUpdates(List<InstalledSkill> skills);
+  Future<Map<String, UpdateAvailability>> checkUpdates(
+    List<InstalledSkill> skills,
+  );
 }

@@ -82,9 +82,12 @@ func newUpdatesCommand() *cobra.Command {
 					HeadVersion: resolved.HeadVersion, ReleaseVersion: resolved.ReleaseVersion, Status: "unsupported",
 				}
 				if resolved.Status == "available" {
-					item.Status = "available"
 					item.HeadStatus = catalogCandidateStatus(candidate.Versions, resolved.HeadVersion)
 					item.ReleaseStatus = catalogCandidateStatus(candidate.Versions, resolved.ReleaseVersion)
+					item.Status = "current"
+					if item.HeadStatus == "update_available" || item.ReleaseStatus == "update_available" {
+						item.Status = "update_available"
+					}
 				}
 				report.Items = append(report.Items, item)
 			}

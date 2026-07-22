@@ -30,10 +30,17 @@ func TestDecodeTargetsIsStrictAndPreservesHostilePaths(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, path, targets[0].Path)
 	require.Equal(t, install.ScopeProject, targets[0].Scope)
+	candidate, err := DecodeTargets([]string{
+		`{"scope":"user","agent":"codex","mode":"copy","path":"/tmp/demo","skillId":"github.com/example/skills/-/demo","version":"v1.0.0","candidateVersion":"v1.1.0"}`,
+	})
+	require.NoError(t, err)
+	require.Equal(t, "v1.1.0", candidate[0].CandidateVersion)
 
 	_, err = DecodeTargets([]string{`{"scope":"user","agent":"codex","mode":"copy","path":"/tmp/demo","skillId":"github.com/example/skills/-/demo","version":"v1.0.0","extra":true}`})
 	require.Error(t, err)
 	_, err = DecodeTargets([]string{`{"scope":"user","agent":"codex","mode":"copy","path":"/tmp/demo","skillId":"github.com/example/skills/-/demo","version":"v1.0.0"} garbage`})
+	require.Error(t, err)
+	_, err = DecodeTargets([]string{`{"scope":"user","agent":"codex","mode":"copy","path":"/tmp/demo","skillId":"github.com/example/skills/-/demo","version":"v1.0.0","candidateVersion":"v1.1.0","stateToken":"reviewed"}`})
 	require.Error(t, err)
 }
 

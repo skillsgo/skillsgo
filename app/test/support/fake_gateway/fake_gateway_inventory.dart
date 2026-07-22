@@ -126,14 +126,14 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
   }
 
   @override
-  Future<Map<String, UpdateState>> checkUpdates(
+  Future<Map<String, UpdateAvailability>> checkUpdates(
     List<InstalledSkill> skills,
   ) async {
     if (updateCheckErrors.isNotEmpty) throw updateCheckErrors.removeAt(0);
     return {
       for (final skill in skills)
         (skill.inventoryKey.isEmpty ? skill.name : skill.inventoryKey):
-            updateState,
+            UpdateAvailability(state: updateState, toVersion: 'v2'),
     };
   }
 }

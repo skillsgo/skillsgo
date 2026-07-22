@@ -72,7 +72,8 @@ extension _LibraryActions on _LibraryScreenState {
   Future<void> _updateSelectedSkills() async {
     final selected = _selectedSkills
         .where(
-          (skill) => updates[libraryUpdateKey(skill)] == UpdateState.available,
+          (skill) =>
+              updates[libraryUpdateKey(skill)]?.state == UpdateState.available,
         )
         .toList(growable: false);
     for (final skill in selected) {
@@ -271,9 +272,11 @@ extension _LibraryActions on _LibraryScreenState {
       updateCheckError = null;
       updates = {
         for (final skill in skills!)
-          libraryUpdateKey(skill): skill.provenance == LibraryProvenance.hub
-              ? UpdateState.checking
-              : UpdateState.unsupported,
+          libraryUpdateKey(skill): UpdateAvailability(
+            state: skill.provenance == LibraryProvenance.hub
+                ? UpdateState.checking
+                : UpdateState.unsupported,
+          ),
       };
     });
     try {
@@ -282,7 +285,9 @@ extension _LibraryActions on _LibraryScreenState {
       updateCheckError = caught;
       updates = {
         for (final skill in skills!)
-          libraryUpdateKey(skill): UpdateState.failed,
+          libraryUpdateKey(skill): const UpdateAvailability(
+            state: UpdateState.failed,
+          ),
       };
     }
     if (mounted) updateState(() => checking = false);
@@ -300,7 +305,11 @@ extension _LibraryActions on _LibraryScreenState {
     updateState(() => operatingSkills.add(skill.name));
     updateState(() => result = null);
     try {
-      final plan = await widget.gateway.preflightUpdate(skill, skill.targets);
+      final plan = await widget.gateway.preflightUpdate(
+        skill,
+        skill.targets,
+        toVersion: updates[libraryUpdateKey(skill)]?.toVersion,
+      );
       if (!mounted) return;
       final execution = await showSkillsDialog<UpdateExecution>(
         context: context,
@@ -410,7 +419,7 @@ extension _LibraryActions on _LibraryScreenState {
     final visible = <InstalledSkill>[];
     for (final skill in current) {
       if (updatesOnly &&
-          updates[libraryUpdateKey(skill)] != UpdateState.available) {
+          updates[libraryUpdateKey(skill)]?.state != UpdateState.available) {
         continue;
       }
       if (selectedAgents.isNotEmpty &&

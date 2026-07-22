@@ -48,7 +48,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   Object? actionError;
   bool checking = false;
   Object? updateCheckError;
-  Map<String, UpdateState> updates = const {};
+  Map<String, UpdateAvailability> updates = const {};
   CommandResult? result;
   final operatingSkills = <String>{};
   final scrollController = ScrollController();
@@ -151,12 +151,13 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         visibleSelectedCount == visibleSkills.length;
     final someVisibleSelected = visibleSelectedCount > 0 && !allVisibleSelected;
     final updateableSelected = selected.where(
-      (skill) => updates[libraryUpdateKey(skill)] == UpdateState.available,
+      (skill) =>
+          updates[libraryUpdateKey(skill)]?.state == UpdateState.available,
     );
     final disableAnimations = MediaQuery.disableAnimationsOf(context);
     final detailSkill = selectedDetailSkill;
     final availableUpdateCount = updates.values
-        .where((state) => state == UpdateState.available)
+        .where((availability) => availability.state == UpdateState.available)
         .length;
     final securityAdvisoryCount = (skills ?? const <InstalledSkill>[])
         .where(
@@ -462,7 +463,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                   skill: detailSkill,
                   projects: projects,
                   initialUpdateState:
-                      updates[libraryUpdateKey(detailSkill)] ??
+                      updates[libraryUpdateKey(detailSkill)]?.state ??
                       UpdateState.unknown,
                   onBack: () => unawaited(_closeDetail()),
                   onRemoved: _closeRemovedDetail,

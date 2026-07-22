@@ -47,8 +47,8 @@ func TestCatalogUpdateCheckUsesOneProductRequest(t *testing.T) {
 	if json.Unmarshal(stdout.Bytes(), &report) != nil || report.SchemaVersion != 1 || report.Phase != "update-check" || len(report.Items) != 3 {
 		t.Fatalf("unexpected report %s", stdout.String())
 	}
-	if requests != 1 || report.Items[0].HeadStatus != "current" || report.Items[0].ReleaseStatus != "current" ||
-		report.Items[1].HeadStatus != "update_available" || report.Items[1].ReleaseStatus != "update_available" || report.Items[2].Status != "unsupported" {
+	if requests != 1 || report.Items[0].Status != "current" || report.Items[0].HeadStatus != "current" || report.Items[0].ReleaseStatus != "current" ||
+		report.Items[1].Status != "update_available" || report.Items[1].HeadStatus != "update_available" || report.Items[1].ReleaseStatus != "update_available" || report.Items[2].Status != "unsupported" {
 		t.Fatalf("unexpected requests=%d report=%+v", requests, report)
 	}
 }
