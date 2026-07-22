@@ -39,6 +39,9 @@ func TestSkillAndRepositoryInfoJSONContract(t *testing.T) {
 			t.Fatalf("missing wire field %s in %s", field, text)
 		}
 	}
+	if strings.Contains(text, `"Risk"`) {
+		t.Fatalf("mutable Risk serialized into immutable Skill Info: %s", text)
+	}
 	var decoded SkillInfo
 	if err := json.Unmarshal(encoded, &decoded); err != nil {
 		t.Fatal(err)
@@ -80,12 +83,12 @@ func TestCatalogAndContentMatchJSONContract(t *testing.T) {
 	if _, err := json.Marshal(request); err != nil {
 		t.Fatal(err)
 	}
-	updates := CatalogUpdateCheckResponse{SchemaVersion: SchemaVersion, Items: []CatalogUpdateCheckItem{{SkillID: match.SkillID, LatestVersion: "v1.0.0", Status: UpdateAvailable}, {SkillID: "example.com/o/r", Status: UpdateUnsupported}}}
+	updates := CatalogUpdateCheckResponse{SchemaVersion: SchemaVersion, Items: []CatalogUpdateCheckItem{{SkillID: match.SkillID, HeadVersion: "v1.1.0", ReleaseVersion: "v1.0.0", Status: UpdateAvailable}, {SkillID: "example.com/o/r", Status: UpdateUnsupported}}}
 	updateJSON, err := json.Marshal(updates)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(updateJSON), `"latestVersion":"","status":"unsupported"`) {
-		t.Fatalf("empty latestVersion was not omitted: %s", updateJSON)
+	if strings.Contains(string(updateJSON), `"headVersion":""`) || strings.Contains(string(updateJSON), `"releaseVersion":""`) {
+		t.Fatalf("empty update candidates were not omitted: %s", updateJSON)
 	}
 }

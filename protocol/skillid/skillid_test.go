@@ -13,6 +13,7 @@ func TestParseCanonicalForms(t *testing.T) {
 		{"GitHub.com/Owner/Repo.git", "github.com/owner/repo", "github.com/owner/repo", "", "https://github.com/owner/repo"},
 		{"GitHub.com/Owner/Repo.git/-/Skills/Demo", "github.com/owner/repo/-/Skills/Demo", "github.com/owner/repo", "Skills/Demo", "https://github.com/owner/repo"},
 		{"git.example.com/team/platform/repo/-/skill", "git.example.com/team/platform/repo/-/skill", "git.example.com/team/platform/repo", "skill", "https://git.example.com/team/platform/repo"},
+		{"Git.Example.COM/Team/Platform/Repo/-/Skills/Demo", "git.example.com/Team/Platform/Repo/-/Skills/Demo", "git.example.com/Team/Platform/Repo", "Skills/Demo", "https://git.example.com/Team/Platform/Repo"},
 		{"localhost/repo", "localhost/repo", "localhost/repo", "", "https://localhost/repo"},
 	}
 	for _, test := range tests {

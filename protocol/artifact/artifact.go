@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable SkillsGo ZIP bytes, extracted regular-file directories, and canonical artifact identity.
- * [OUTPUT]: Provides shared artifact limits, safe relative-path validation, one-pass normalized ZIP traversal, Sum calculation, and declared-digest verification.
+ * [OUTPUT]: Provides shared artifact limits, portable collision-safe path validation, canonical mode checks, one-pass normalized ZIP traversal, Sum calculation, and declared-digest verification.
  * [POS]: Serves as the executable artifact-format contract shared by Hub producers and CLI consumers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,6 +18,11 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"unicode/utf8"
+
+	"golang.org/x/mod/module"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/unicode/norm"
 )
 
 const (
@@ -26,22 +31,41 @@ const (
 	MaxUncompressedBytes = 64 << 20
 )
 
-// Entry is one validated regular file in normalized artifact-path order.
+// Entry is one validated file or explicit directory in normalized artifact-path order.
 type Entry struct {
-	Path     string
-	Contents []byte
-	Mode     os.FileMode
-	Size     int64
+	Path      string
+	Contents  []byte
+	Mode      os.FileMode
+	Size      int64
+	Directory bool
 }
 
-// VisitFunc observes each validated artifact file while its Sum is
-// calculated. Contents are owned by the call and must not be retained.
+// VisitFunc observes each validated artifact entry while its Sum is
+// calculated. File contents are owned by the call and must not be retained.
 type VisitFunc func(Entry) error
 
 func ValidRelativePath(value string) bool {
-	return value != "" && value != "." && !strings.HasPrefix(value, "/") &&
-		!strings.Contains(value, "\\") && path.Clean(value) == value &&
-		value != ".." && !strings.HasPrefix(value, "../")
+	_, err := PortablePathKey(value)
+	return err == nil
+}
+
+// PortablePathKey validates one artifact-relative path and returns the key
+// used to reject Unicode/case-insensitive filesystem collisions.
+func PortablePathKey(value string) (string, error) {
+	if value == "" || value == "." || !utf8.ValidString(value) || strings.HasPrefix(value, "/") ||
+		strings.Contains(value, "\\") || path.Clean(value) != value ||
+		value == ".." || strings.HasPrefix(value, "../") {
+		return "", fmt.Errorf("invalid relative path %q", value)
+	}
+	if err := module.CheckFilePath(value); err != nil {
+		return "", fmt.Errorf("path %q is not portable: %w", value, err)
+	}
+	for _, segment := range strings.Split(value, "/") {
+		if strings.HasSuffix(segment, " ") {
+			return "", fmt.Errorf("path %q has a Windows-ambiguous trailing space", value)
+		}
+	}
+	return cases.Fold().String(norm.NFC.String(value)), nil
 }
 
 func ValidSum(value string) bool {
@@ -71,20 +95,57 @@ func WalkContent(data []byte, skillID, version string, visit VisitFunc) (string,
 	}
 	entries := append([]*zip.File(nil), reader.File...)
 	sort.Slice(entries, func(i, j int) bool { return entries[i].Name < entries[j].Name })
-	prefix, hash, seen := skillID+"@"+version+"/", sha256.New(), map[string]bool{}
+	type seenPath struct {
+		path      string
+		directory bool
+	}
+	prefix, hash, seen := skillID+"@"+version+"/", sha256.New(), map[string]seenPath{}
 	var total uint64
 	for _, entry := range entries {
-		if entry.FileInfo().IsDir() {
-			continue
-		}
 		if !strings.HasPrefix(entry.Name, prefix) {
 			return "", fmt.Errorf("artifact file %q is outside expected prefix %q", entry.Name, prefix)
 		}
 		relative := strings.TrimPrefix(entry.Name, prefix)
-		if !ValidRelativePath(relative) || seen[relative] {
-			return "", fmt.Errorf("artifact file has invalid or duplicate path %q", relative)
+		if entry.FileInfo().IsDir() {
+			relative = strings.TrimSuffix(relative, "/")
+			if relative == "" {
+				continue
+			}
+			collisionKey, pathErr := PortablePathKey(relative)
+			if pathErr != nil {
+				return "", pathErr
+			}
+			if previous, exists := seen[collisionKey]; exists {
+				return "", fmt.Errorf("artifact paths %q and %q collide on portable filesystems", previous.path, relative)
+			}
+			seen[collisionKey] = seenPath{path: relative, directory: true}
+			if visit != nil {
+				if err := visit(Entry{Path: relative, Mode: entry.Mode(), Directory: true}); err != nil {
+					return "", fmt.Errorf("visit artifact directory %q: %w", relative, err)
+				}
+			}
+			continue
 		}
-		seen[relative] = true
+		if entry.Method != zip.Store && entry.Method != zip.Deflate {
+			return "", fmt.Errorf("artifact file %q uses unsupported compression method %d", relative, entry.Method)
+		}
+		if !entry.Mode().IsRegular() {
+			return "", fmt.Errorf("artifact file %q is not a regular file", relative)
+		}
+		collisionKey, pathErr := PortablePathKey(relative)
+		if pathErr != nil {
+			return "", pathErr
+		}
+		if previous, exists := seen[collisionKey]; exists {
+			return "", fmt.Errorf("artifact paths %q and %q collide on portable filesystems", previous.path, relative)
+		}
+		for parent := path.Dir(relative); parent != "."; parent = path.Dir(parent) {
+			parentKey, _ := PortablePathKey(parent)
+			if previous, exists := seen[parentKey]; exists && !previous.directory {
+				return "", fmt.Errorf("artifact file %q conflicts with parent file %q", relative, previous.path)
+			}
+		}
+		seen[collisionKey] = seenPath{path: relative}
 		if entry.UncompressedSize64 > MaxUncompressedBytes || total > MaxUncompressedBytes-entry.UncompressedSize64 {
 			return "", fmt.Errorf("artifact expands beyond %d bytes", MaxUncompressedBytes)
 		}
@@ -102,7 +163,8 @@ func WalkContent(data []byte, skillID, version string, visit VisitFunc) (string,
 			}
 		}
 	}
-	if !seen["SKILL.md"] {
+	manifestKey, _ := PortablePathKey("SKILL.md")
+	if manifest, exists := seen[manifestKey]; !exists || manifest.path != "SKILL.md" || manifest.directory {
 		return "", fmt.Errorf("artifact does not contain SKILL.md")
 	}
 	return "h1:" + base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
@@ -114,6 +176,7 @@ func DirectorySum(root string) (string, error) {
 		return "", err
 	}
 	paths := make([]string, 0)
+	seen := make(map[string]string)
 	var total uint64
 	err = filepath.WalkDir(root, func(current string, entry os.DirEntry, walkErr error) error {
 		if walkErr != nil {
@@ -134,9 +197,14 @@ func DirectorySum(root string) (string, error) {
 			return err
 		}
 		relative = filepath.ToSlash(relative)
-		if !ValidRelativePath(relative) {
-			return fmt.Errorf("artifact contains invalid path %q", relative)
+		collisionKey, pathErr := PortablePathKey(relative)
+		if pathErr != nil {
+			return fmt.Errorf("artifact contains invalid path %q: %w", relative, pathErr)
 		}
+		if previous, exists := seen[collisionKey]; exists {
+			return fmt.Errorf("artifact paths %q and %q collide on portable filesystems", previous, relative)
+		}
+		seen[collisionKey] = relative
 		size := uint64(info.Size())
 		if size > MaxUncompressedBytes || total > MaxUncompressedBytes-size {
 			return fmt.Errorf("artifact exceeds %d bytes", MaxUncompressedBytes)

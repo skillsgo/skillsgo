@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Go semantic versions and pseudo-version recognition.
- * [OUTPUT]: Provides stable-first selection of the highest canonical published semantic version.
+ * [OUTPUT]: Provides immutable-version recognition and stable-first selection of the highest canonical published semantic version.
  * [POS]: Serves as the shared immutable-version selection rule used by protocol producers and compatibility consumers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,6 +10,10 @@ import (
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 )
+
+func IsImmutable(version string) bool {
+	return semver.IsValid(version) && semver.Canonical(version) == version
+}
 
 func LatestPublished(versions []string) string {
 	return latest(versions, false)
