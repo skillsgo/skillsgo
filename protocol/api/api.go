@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the public SkillsGo Hub JSON schema and immutable artifact metadata.
- * [OUTPUT]: Provides shared schema constants, risk levels, Info resources, content-match DTOs, and Catalog update DTOs.
+ * [OUTPUT]: Provides shared schema constants, immutable Info resources, separate risk vocabulary, content-match DTOs, and update DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -48,9 +48,11 @@ type SkillInfo struct {
 	Compatibility string            `json:"Compatibility,omitempty" yaml:"compatibility,omitempty"`
 	AllowedTools  string            `json:"AllowedTools,omitempty" yaml:"allowedTools,omitempty"`
 	Metadata      map[string]string `json:"Metadata,omitempty" yaml:"metadata,omitempty"`
-	Risk          Risk              `json:"Risk" yaml:"risk"`
-	Sum           string            `json:"Sum" yaml:"sum"`
-	ArchiveSize   int64             `json:"ArchiveSize" yaml:"archiveSize"`
+	// Risk is local mutable projection state and is intentionally excluded
+	// from immutable Skill Info serialization.
+	Risk        Risk   `json:"-" yaml:"-"`
+	Sum         string `json:"Sum" yaml:"sum"`
+	ArchiveSize int64  `json:"ArchiveSize" yaml:"archiveSize"`
 }
 type RepositoryInfo struct {
 	SchemaVersion int               `json:"SchemaVersion"`
@@ -82,9 +84,10 @@ type CatalogUpdateCheckRequest struct {
 	SkillIDs      []string `json:"skillIds"`
 }
 type CatalogUpdateCheckItem struct {
-	SkillID       string `json:"skillId"`
-	LatestVersion string `json:"latestVersion,omitempty"`
-	Status        string `json:"status"`
+	SkillID        string `json:"skillId"`
+	HeadVersion    string `json:"headVersion,omitempty"`
+	ReleaseVersion string `json:"releaseVersion,omitempty"`
+	Status         string `json:"status"`
 }
 type CatalogUpdateCheckResponse struct {
 	SchemaVersion int                      `json:"schemaVersion"`

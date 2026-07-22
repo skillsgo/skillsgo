@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on public repository coordinates and the canonical `/-/` Skill path separator.
- * [OUTPUT]: Provides canonical public Skill ID parsing, formatting, repository URLs, and source-relative paths.
+ * [OUTPUT]: Provides provider-aware canonical public Skill ID parsing, formatting, repository URLs, and source-relative paths.
  * [POS]: Serves as the shared public identity contract beneath CLI source aliases and Hub source resolution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -26,7 +26,7 @@ func Parse(value string) (ID, error) {
 		return ID{}, fmt.Errorf("Skill ID %q contains multiple /-/ boundaries", value)
 	}
 	repository, skillPath, nested := strings.Cut(value, Separator)
-	repository = strings.ToLower(strings.TrimSuffix(repository, ".git"))
+	repository = canonicalRepository(strings.TrimSuffix(repository, ".git"))
 	if err := validatePath(repository); err != nil {
 		return ID{}, fmt.Errorf("invalid Skill repository %q: %w", repository, err)
 	}
@@ -50,6 +50,18 @@ func Parse(value string) (ID, error) {
 		return ID{}, fmt.Errorf("Skill path %q must identify a directory, not SKILL.md", skillPath)
 	}
 	return ID{Repository: repository, SkillPath: skillPath}, nil
+}
+
+func canonicalRepository(repository string) string {
+	host, repositoryPath, found := strings.Cut(repository, "/")
+	if !found {
+		return strings.ToLower(repository)
+	}
+	host = strings.ToLower(host)
+	if host == "github.com" {
+		repositoryPath = strings.ToLower(repositoryPath)
+	}
+	return host + "/" + repositoryPath
 }
 
 func validatePath(value string) error {

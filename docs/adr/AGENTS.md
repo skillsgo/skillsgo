@@ -11,6 +11,7 @@
 - `0006-trust-skills-sh-locks-for-batch-takeover.md`: defines exact location-count preflight, bounded lock-identity- and state-bound scope authorization, trusted source identity for skills.sh lock entries, captured content/filesystem-state baselines, and independent skipping for changed or remaining External Installations.
 - `0007-host-public-web-on-cloudflare.md`: establishes the independent SkillsGo Web workspace and Cloudflare deployment boundary for product, Hub discovery, and documentation pages.
 - `0008-backfill-repository-history.md`: establishes authenticated Hub-admin Repository Backfill, independent asynchronous runs, and historical publication visibility.
+- `0009-freeze-hub-v1-distribution-contract.md`: freezes Hub v1 identity, selection, publication, artifact, Sum, immutable metadata, storage, HTTP, Manifest, and privacy contracts.
 
 ## Architectural Boundary
 
