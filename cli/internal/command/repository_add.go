@@ -82,13 +82,13 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 		dependency.Agents = mergeStrings(existing.Agents, dependency.Agents)
 	}
 
-	projections := make([]scopevendor.Projection, 0, len(dependency.Agents))
-	for _, agentID := range dependency.Agents {
-		roots, ok := catalog.SkillRoots(agentID, agentScope, workspaceRoot)
-		if !ok {
-			return fmt.Errorf("Agent %q does not support the selected installation scope", agentID)
-		}
-		projections = append(projections, scopevendor.Projection{Agent: agentID, Root: roots.ManagedRoot, Selected: dependency.Skills})
+	previousAgents, previousSkills := []string(nil), []string(nil)
+	if exists {
+		previousAgents, previousSkills = existing.Agents, existing.Skills
+	}
+	projections, err := repositoryProjections(catalog, dependency.Agents, previousAgents, previousSkills, dependency.Skills, agentScope, workspaceRoot)
+	if err != nil {
+		return err
 	}
 	transaction, err := scopevendor.Prepare(scopevendor.Options{
 		VendorRoot: vendorRoot, RepositoryID: reference.SkillID, Version: resource.Info.Version,
@@ -105,6 +105,9 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	if err := project.WriteWorkspaceState(declarationRoot, manifest, lock); err != nil {
 		_ = transaction.Rollback()
 		return fmt.Errorf("persist Workspace Repository state: %w", err)
+	}
+	if err := transaction.Finalize(); err != nil {
+		return fmt.Errorf("Repository installation committed but transaction cleanup failed: %w", err)
 	}
 
 	for _, member := range resource.Members {
@@ -127,6 +130,32 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "✓ %s %s (%d Skills, %d Agents)\n", response.Repository, response.Version, len(response.Skills), len(response.Agents))
 	return nil
+}
+
+func repositoryProjections(catalog *agent.Catalog, agentIDs, previousAgents, previousSkills, selected []string, scope agent.Scope, workspaceRoot string) ([]scopevendor.Projection, error) {
+	projections := make([]scopevendor.Projection, 0, len(agentIDs))
+	projectionByRoot := make(map[string]int, len(agentIDs))
+	for _, agentID := range agentIDs {
+		roots, ok := catalog.SkillRoots(agentID, scope, workspaceRoot)
+		if !ok {
+			return nil, fmt.Errorf("Agent %q does not support the selected installation scope", agentID)
+		}
+		rootKey := filepath.Clean(roots.ManagedRoot)
+		if index, shared := projectionByRoot[rootKey]; shared {
+			projections[index].Agent += "," + agentID
+			if containsString(previousAgents, agentID) && projections[index].PreviousSelected == nil {
+				projections[index].PreviousSelected = append([]string(nil), previousSkills...)
+			}
+			continue
+		}
+		projection := scopevendor.Projection{Agent: agentID, Root: rootKey, Selected: selected}
+		if containsString(previousAgents, agentID) {
+			projection.PreviousSelected = append([]string(nil), previousSkills...)
+		}
+		projectionByRoot[rootKey] = len(projections)
+		projections = append(projections, projection)
+	}
+	return projections, nil
 }
 
 func loadWorkspaceState(root string) (project.WorkspaceManifest, project.DependencyLock, error) {
