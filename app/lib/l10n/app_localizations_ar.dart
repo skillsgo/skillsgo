@@ -625,7 +625,7 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get workspaceOwnershipChanges =>
-      'سيتم تحديث إجراءات المشروع المحددة skillsgo.mod وskillsgo.sum.';
+      'سيتم تحديث إجراءات المشروع المحددة skillsgo.yaml وskillsgo.lock.';
 
   @override
   String get targetContentPreserved =>

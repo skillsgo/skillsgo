@@ -360,7 +360,7 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "Geselecteerde projectacties zullen skillsgo.mod en skillsgo.sum bijwerken.",
+  "workspaceOwnershipChanges": "Geselecteerde projectacties zullen skillsgo.yaml en skillsgo.lock bijwerken.",
   "targetContentPreserved": "De huidige doelinhoud blijft behouden.",
   "localReadFailed": "Kan deze Skill niet lezen",
   "localReadFailedMessage": "SkillsGo kon deze geïnstalleerde skill niet lezen. Controleer of de folder beschikbaar en toegankelijk is en probeer het vervolgens opnieuw.",
