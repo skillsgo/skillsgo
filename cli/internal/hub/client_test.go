@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Uses an HTTP test Hub with exact content-match JSON, hostile contract variants, transient GET responses, and deterministic artifact byte streams.
- * [OUTPUT]: Specifies Hub-owned version-selector resolution, source-hint request encoding, strict immutable content-match validation, bounded status retries, and monotonic download progress.
- * [POS]: Serves as public Hub content-match client contract coverage.
+ * [OUTPUT]: Specifies root Repository Proxy selector/exact paths, typed member validation, source-hint encoding, strict content-match validation, bounded status retries, and monotonic download progress.
+ * [POS]: Serves as public Hub transport client contract coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package hub
@@ -77,10 +77,10 @@ func TestRepositoryHeadUsesSelectorThenCanonicalInfo(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requests = append(requests, request.URL.Path)
 		switch request.URL.Path {
-		case "/mod/" + repository + "/@head":
+		case "/" + repository + "/@head":
 			fmt.Fprintf(w, `{"Version":%q,"Time":"2026-07-18T12:00:00Z"}`, version)
-		case "/mod/" + repository + "/@v/" + version + ".info":
-			fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-18T12:00:00Z","CommitSHA":"abcdef1234567890","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Name":"root","Description":"root","Risk":"low","Sum":"h1:%s","ArchiveSize":1,"CommitSHA":"abcdef1234567890","TreeSHA":"tree"}]}`, repository, version, repository, version, strings.Repeat("A", 43)+"=")
+		case "/" + repository + "/@v/" + version + ".info":
+			fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-18T12:00:00Z","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","TreeSHA":"repository-tree","Sum":"h1:%s","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"RepositoryID":%q,"Path":".","Version":%q,"Time":"2026-07-18T12:00:00Z","Ref":"refs/heads/main","Name":"root","Description":"root","CommitSHA":"abcdef1234567890","TreeSHA":"tree"}]}`, repository, version, strings.Repeat("A", 43)+"=", repository, repository, version)
 		default:
 			http.NotFound(w, request)
 		}
@@ -99,30 +99,30 @@ func TestRepositoryHeadUsesSelectorThenCanonicalInfo(t *testing.T) {
 	}
 }
 
-func TestProxyEndpointEscapesSkillPathCase(t *testing.T) {
-	skillID := "github.com/example/skills/-/Skills/Demo"
+func TestProxyEndpointEscapesRepositoryPathCase(t *testing.T) {
+	repositoryID := "github.com/Example/Skills"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		if request.URL.EscapedPath() != "/mod/github.com/example/skills/-/!skills/!demo/@v/v1.2.3.info" {
+		if request.URL.EscapedPath() != "/github.com/!example/!skills/@v/v1.2.3.info" {
 			t.Fatalf("unexpected escaped path %q", request.URL.EscapedPath())
 		}
-		fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":"v1.2.3","Risk":"low","Sum":"h1:%s","CommitSHA":"commit","TreeSHA":"tree"}`, skillID, strings.Repeat("A", 43)+"=")
+		fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"repository-tree","Sum":"h1:%s","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"RepositoryID":%q,"Path":".","Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"tree","Name":"demo","Description":"test"}]}`, repositoryID, strings.Repeat("A", 43)+"=", repositoryID, repositoryID)
 	}))
 	defer server.Close()
 	client, err := New(server.URL, server.Client())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Resolve(t.Context(), skillID, "v1.2.3"); err != nil {
+	if _, err := client.Repository(t.Context(), repositoryID, "v1.2.3"); err != nil {
 		t.Fatal(err)
 	}
 }
 
-func TestResolveUsesVersionQueryInfoDirectly(t *testing.T) {
-	skillID := "github.com/example/skills/-/demo"
+func TestRepositoryUsesExactVersionInfoDirectly(t *testing.T) {
+	repositoryID := "github.com/example/skills"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		switch {
-		case strings.HasSuffix(request.URL.Path, "/~1.5.0.info"):
-			_, _ = w.Write([]byte(`{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/example/skills/-/demo","Name":"demo","Description":"test","Version":"v1.5.19","Risk":"low","Sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"tree"}`))
+		switch request.URL.Path {
+		case "/github.com/example/skills/@v/v1.5.19.info":
+			_, _ = w.Write([]byte(`{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/example/skills","Version":"v1.5.19","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"repository-tree","Sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/example/skills/-/demo","RepositoryID":"github.com/example/skills","Path":"demo","Name":"demo","Description":"test","Version":"v1.5.19","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"tree"}]}`))
 		default:
 			http.NotFound(w, request)
 		}
@@ -132,12 +132,12 @@ func TestResolveUsesVersionQueryInfoDirectly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	info, err := client.Resolve(t.Context(), skillID, "~1.5.0")
+	resource, err := client.Repository(t.Context(), repositoryID, "v1.5.19")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if info.Version != "v1.5.19" {
-		t.Fatalf("unexpected immutable version: %q", info.Version)
+	if resource.Info.Version != "v1.5.19" {
+		t.Fatalf("unexpected immutable version: %q", resource.Info.Version)
 	}
 }
 

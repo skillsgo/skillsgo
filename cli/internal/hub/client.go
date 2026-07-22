@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on a configured Hub origin, canonical Skill IDs, Hub-owned selector resolution, exact content-match responses, bounded immutable Info/ZIP protocol responses, and optional progress reporting.
- * [OUTPUT]: Provides delegated selector resolution, bounded strict product JSON reads, Hub deployment discovery, update reads, validated content-identity matching, bounded retrying immutable GETs, normalized Skill metadata, and typed HTTP or malformed-protocol failures.
+ * [INPUT]: Depends on a configured Hub origin, canonical Repository/Skill IDs, Hub-owned selector resolution, exact content-match responses, typed Repository Info, bounded Repository ZIP responses, and optional progress reporting.
+ * [OUTPUT]: Provides root Repository Proxy resolution/download with identity, membership, size, and h1 validation; bounded product reads; discovery/update reads; and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -50,6 +50,7 @@ type RepositoryResource struct {
 	Info      RepositoryInfo
 	InfoBytes []byte
 	Members   []RepositoryMember
+	ZIP       []byte
 }
 
 type RepositoryMember struct {
@@ -142,6 +143,25 @@ func (c *Client) Repository(ctx context.Context, repositoryID, query string) (*R
 	return ParseRepositoryInfo(repositoryID, infoBytes)
 }
 
+func (c *Client) FetchRepositoryWithProgress(ctx context.Context, repositoryID, query string, progress func(current, total int64)) (*RepositoryResource, error) {
+	resource, err := c.Repository(ctx, repositoryID, query)
+	if err != nil {
+		return nil, err
+	}
+	archive, err := c.getWithProgress(ctx, c.endpoint(repositoryID, resource.Info.Version+".zip"), progress)
+	if err != nil {
+		return nil, err
+	}
+	if resource.Info.ArchiveSize != int64(len(archive)) {
+		return nil, fmt.Errorf("Hub returned an unexpected Repository Archive Size for %s@%s", repositoryID, resource.Info.Version)
+	}
+	if err := VerifyRepositorySum(archive, repositoryID, resource.Info.Version, resource.Info.Sum); err != nil {
+		return nil, err
+	}
+	resource.ZIP = archive
+	return resource, nil
+}
+
 func (c *Client) Versions(ctx context.Context, resourceID string) ([]string, error) {
 	body, err := c.get(ctx, c.endpoint(resourceID, "list"))
 	if err != nil {
@@ -165,7 +185,8 @@ func ParseRepositoryInfo(repositoryID string, infoBytes []byte) (*RepositoryReso
 		return nil, fmt.Errorf("解析 Repository Info: %w", err)
 	}
 	if info.SchemaVersion != 1 || info.Kind != "Repository" || info.ID != repositoryID ||
-		info.Version == "" || info.CommitSHA == "" || len(info.Skills) == 0 {
+		info.Version == "" || info.Ref == "" || info.CommitSHA == "" || info.TreeSHA == "" ||
+		!protocolartifact.ValidSum(info.Sum) || info.ArchiveSize <= 0 || len(info.Skills) == 0 {
 		return nil, fmt.Errorf("Hub returned incomplete Repository Info for %s", repositoryID)
 	}
 	if err := source.ValidateVersion(info.Version); err != nil {
@@ -174,39 +195,28 @@ func ParseRepositoryInfo(repositoryID string, infoBytes []byte) (*RepositoryReso
 	resource := &RepositoryResource{Info: info, InfoBytes: append([]byte(nil), infoBytes...), Members: make([]RepositoryMember, 0, len(info.Skills))}
 	seen := map[string]bool{}
 	prefix := strings.TrimSuffix(repositoryID, "/") + "/-/"
-	for _, raw := range info.Skills {
-		var member Info
-		if err := json.Unmarshal(raw, &member); err != nil {
-			return nil, fmt.Errorf("parse Repository member Info: %w", err)
-		}
+	for _, member := range info.Skills {
 		if member.ID != repositoryID && !strings.HasPrefix(member.ID, prefix) {
 			return nil, fmt.Errorf("Repository Info contains foreign Skill %q", member.ID)
 		}
-		if seen[member.ID] || member.Version != info.Version || member.CommitSHA != info.CommitSHA || member.Ref != info.Ref {
+		if seen[member.ID] || member.RepositoryID != repositoryID || member.Path == "" || member.Version != info.Version || member.CommitSHA != info.CommitSHA || member.Ref != info.Ref {
 			return nil, fmt.Errorf("Repository Info contains inconsistent Skill %q", member.ID)
 		}
 		if err := validateAssessedInfo(member.ID, info.Version, member); err != nil {
 			return nil, err
 		}
 		seen[member.ID] = true
-		resource.Members = append(resource.Members, RepositoryMember{Info: member, InfoBytes: append([]byte(nil), raw...)})
+		memberBytes, err := json.Marshal(member)
+		if err != nil {
+			return nil, fmt.Errorf("encode Repository member Info: %w", err)
+		}
+		resource.Members = append(resource.Members, RepositoryMember{Info: member, InfoBytes: memberBytes})
 	}
 	return resource, nil
 }
 
 func (c *Client) FetchRepositoryMember(ctx context.Context, member RepositoryMember, progress func(current, total int64)) (*Artifact, error) {
-	info := member.Info
-	zipBytes, err := c.getWithProgress(ctx, c.endpoint(info.ID, info.Version+".zip"), progress)
-	if err != nil {
-		return nil, err
-	}
-	if info.ArchiveSize > 0 && info.ArchiveSize != int64(len(zipBytes)) {
-		return nil, fmt.Errorf("Hub returned an unexpected Archive Size for %s@%s", info.ID, info.Version)
-	}
-	if err := VerifySum(zipBytes, info.ID, info.Version, info.Sum); err != nil {
-		return nil, err
-	}
-	return &Artifact{SkillID: info.ID, Info: info, InfoBytes: member.InfoBytes, ZIP: zipBytes}, nil
+	return nil, fmt.Errorf("Skill %s is a Repository member and has no independent ZIP", member.Info.ID)
 }
 
 func (c *Client) FetchWithProgress(ctx context.Context, skillID, requestedVersion string, progress func(current, total int64)) (*Artifact, error) {
@@ -228,17 +238,7 @@ func (c *Client) FetchWithProgress(ctx context.Context, skillID, requestedVersio
 	if err := validateAssessedInfo(skillID, resolvedVersion, info); err != nil {
 		return nil, err
 	}
-	zipBytes, err := c.getWithProgress(ctx, c.endpoint(skillID, info.Version+".zip"), progress)
-	if err != nil {
-		return nil, err
-	}
-	if info.ArchiveSize > 0 && info.ArchiveSize != int64(len(zipBytes)) {
-		return nil, fmt.Errorf("Hub returned an unexpected Archive Size for %s@%s", skillID, info.Version)
-	}
-	if err := VerifySum(zipBytes, skillID, info.Version, info.Sum); err != nil {
-		return nil, err
-	}
-	return &Artifact{SkillID: skillID, Info: info, InfoBytes: infoBytes, ZIP: zipBytes}, nil
+	return nil, fmt.Errorf("Skill %s is a Repository member and has no independent ZIP", skillID)
 }
 
 func (c *Client) Resolve(ctx context.Context, skillID, requestedVersion string) (Info, error) {
@@ -443,7 +443,7 @@ func (c *Client) CatalogUpdates(ctx context.Context, skillIDs []string) ([]Catal
 }
 
 func validateAssessedInfo(skillID, requestedVersion string, info Info) error {
-	if info.Version == "" || (info.Risk != "" && !info.Risk.Valid()) || !ValidSum(info.Sum) || info.ArchiveSize < 0 {
+	if info.Version == "" || info.RepositoryID == "" || info.Path == "" || (info.Risk != "" && !info.Risk.Valid()) {
 		return fmt.Errorf("Hub returned incomplete immutable Info for %s", skillID)
 	}
 	if info.SchemaVersion != 1 {
@@ -472,7 +472,7 @@ func (c *Client) endpoint(skillID, file string) string {
 		escapedID = strings.Trim(skillID, "/")
 	}
 	if file == "list" {
-		return c.baseURL + "/mod/" + escapedID + "/@v/list"
+		return c.baseURL + "/" + escapedID + "/@v/list"
 	}
 	for _, suffix := range []string{".info", ".zip"} {
 		if strings.HasSuffix(file, suffix) {
@@ -484,7 +484,7 @@ func (c *Client) endpoint(skillID, file string) string {
 			break
 		}
 	}
-	return c.baseURL + "/mod/" + escapedID + "/@v/" + file
+	return c.baseURL + "/" + escapedID + "/@v/" + file
 }
 
 func (c *Client) selectorEndpoint(skillID, selector string) string {
@@ -492,7 +492,7 @@ func (c *Client) selectorEndpoint(skillID, selector string) string {
 	if err != nil {
 		escapedID = strings.Trim(skillID, "/")
 	}
-	return c.baseURL + "/mod/" + escapedID + "/@" + selector
+	return c.baseURL + "/" + escapedID + "/@" + selector
 }
 
 func (c *Client) resolveSelector(ctx context.Context, skillID, requested string) (string, error) {

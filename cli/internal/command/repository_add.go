@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on canonical Repository input, self-contained Repository Info, verified per-Skill ZIPs, Workspace integrity persistence, Store materialization, and Agent target resolution.
- * [OUTPUT]: Provides transactionally materialized whole-Repository and selected-member add with exact direct Manifest requirements, Go-shaped checksums, receipts, automatic Agent projections, and best-effort post-commit Cloud facts.
+ * [INPUT]: Depends on one canonical Repository input, root Repository Proxy Info/ZIP, explicit Skill/Agent selection, strict Workspace state, Agent Adapter roots, and Scope Vendor transactions.
+ * [OUTPUT]: Provides exact Repository add for Workspace or User scope with one verified download, ordinary-file Vendor/Projections, paired YAML/Lock persistence, idempotency, and failure rollback.
  * [POS]: Serves as the Repository installation orchestration slice behind the public `skillsgo add` command.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,370 +10,196 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
-	"github.com/skillsgo/skillsgo/cli/internal/plan"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
+	"github.com/skillsgo/skillsgo/cli/internal/scopevendor"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
-	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/spf13/cobra"
 )
 
-type preparedRepositoryMember struct {
-	artifact *hub.Artifact
-	entry    *store.Entry
-	targets  []install.Target
-	previous []install.Installation
-	replace  bool
+func addWholeRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.Reference, agentIDs []string, scope install.Scope, _ install.Mode, workspaceRoot string, options addOptions) error {
+	return addRepository(cmd, catalog, reference, agentIDs, scope, workspaceRoot, options, nil)
 }
 
-type repositorySelection struct {
-	selector string
-	query    string
-	member   hub.RepositoryMember
-	resource *hub.RepositoryResource
-	prepared preparedRepositoryMember
+func addSelectedRepositorySkills(cmd *cobra.Command, catalog *agent.Catalog, reference source.Reference, agentIDs []string, scope install.Scope, _ install.Mode, workspaceRoot string, options addOptions) error {
+	return addRepository(cmd, catalog, reference, agentIDs, scope, workspaceRoot, options, options.skills)
 }
 
-func addWholeRepository(
-	cmd *cobra.Command,
-	catalog *agent.Catalog,
-	reference source.Reference,
-	agentIDs []string,
-	scope install.Scope,
-	mode install.Mode,
-	workspaceRoot string,
-	options addOptions,
-) error {
+func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.Reference, agentIDs []string, scope install.Scope, workspaceRoot string, options addOptions, selectors []string) error {
+	if options.copy || options.replace || len(options.subagents) > 0 {
+		return fmt.Errorf("Repository Vendor installation does not support copy, replace, or subagent modes")
+	}
 	client, err := hub.New(options.hubURL, nil)
 	if err != nil {
 		return err
 	}
-	repository, err := client.Repository(cmd.Context(), reference.SkillID, reference.Version)
+	resource, err := client.FetchRepositoryWithProgress(cmd.Context(), reference.SkillID, reference.Version, nil)
 	if err != nil {
 		return err
 	}
+	selected, err := selectRepositoryPaths(reference.SkillID, selectors, resource.Members)
+	if err != nil {
+		return err
+	}
+	allMembers := make([]string, 0, len(resource.Members))
+	for _, member := range resource.Members {
+		allMembers = append(allMembers, member.Info.Path)
+	}
+	sort.Strings(allMembers)
+
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return err
 	}
 	declarationRoot := workspaceRoot
+	vendorRoot := filepath.Join(workspaceRoot, ".skillsgo", "vendor")
+	agentScope := agent.ScopeProject
 	if scope == install.ScopeUser {
 		declarationRoot = project.UserRoot(home)
+		vendorRoot = filepath.Join(declarationRoot, "vendor")
+		agentScope = agent.ScopeUser
 	}
-	existing, err := project.Installed(declarationRoot, catalog, scope, store.DefaultRoot(home))
+	manifest, lock, err := loadWorkspaceState(declarationRoot)
 	if err != nil {
 		return err
 	}
-	seenNames := map[string]string{}
-	prepared := make([]preparedRepositoryMember, 0, len(repository.Members))
-	sums := []project.SumEntry{{
-		Path: reference.SkillID, Version: repository.Info.Version + "/repository.info",
-		Checksum: project.H1(repository.InfoBytes),
-	}}
-	for _, member := range repository.Members {
-		name := member.Info.Name
-		if err := install.ValidateSkillName(name); err != nil {
-			return fmt.Errorf("Repository member %s has an invalid installation name: %w", member.Info.ID, err)
-		}
-		nameKey := strings.ToLower(name)
-		if previousID, duplicate := seenNames[nameKey]; duplicate {
-			return fmt.Errorf("Repository members %s and %s use duplicate installation name %q", previousID, member.Info.ID, name)
-		}
-		seenNames[nameKey] = member.Info.ID
-		if err := plan.AuthorizeRisk(plan.Risk(member.Info.Risk), options.riskConfirmed, options.allowCritical); err != nil {
-			return err
-		}
-		targets, err := install.ResolveTargetsWithSubagents(catalog, agentIDs, options.subagents, scope, mode, workspaceRoot, name)
-		if err != nil {
-			return err
-		}
-		matching := filterInstallations(existing, nil, map[string]bool{nameKey: true})
-		if !options.replace {
-			for _, installation := range matching {
-				if installation.SkillID != member.Info.ID {
-					return fmt.Errorf("Skill 名称冲突：%q 已来自 %s，不能用 %s 静默覆盖", name, installation.SkillID, member.Info.ID)
-				}
-			}
-		}
-		artifact, err := client.FetchRepositoryMember(cmd.Context(), member, nil)
-		if err != nil {
-			return err
-		}
-		checksum, err := project.ContentH1(member.Info.Sum)
-		if err != nil {
-			return err
-		}
-		sums = append(sums, project.SumEntry{Path: member.Info.ID, Version: member.Info.Version, Checksum: checksum})
-		prepared = append(prepared, preparedRepositoryMember{
-			artifact: artifact, targets: targets, previous: matching,
-			replace: options.replace || len(matching) > 0,
-		})
+	existing, exists := manifest.Dependencies[reference.SkillID]
+	if exists && existing.Version != resource.Info.Version {
+		return fmt.Errorf("Repository %s is already locked at %s; use update instead of add", reference.SkillID, existing.Version)
 	}
-	resources := verifiedWorkspaceResources{
-		sums: sums,
-		infos: []verifiedInfoResource{{
-			resource: reference.SkillID, version: repository.Info.Version, kind: "repository.info", bytes: repository.InfoBytes,
-		}},
+	if locked, ok := lock.Dependencies[reference.SkillID]; ok && (locked.Version != resource.Info.Version || locked.Sum != resource.Info.Sum) {
+		return fmt.Errorf("Dependency Lock conflicts with verified Repository %s@%s", reference.SkillID, resource.Info.Version)
 	}
-	if err := resources.validate(declarationRoot); err != nil {
+	dependency := project.RepositoryDependency{Version: resource.Info.Version, Skills: selected, Agents: agentIDs}
+	if exists {
+		dependency.Skills = mergeStrings(existing.Skills, dependency.Skills)
+		dependency.Agents = mergeStrings(existing.Agents, dependency.Agents)
+	}
+
+	projections := make([]scopevendor.Projection, 0, len(dependency.Agents))
+	for _, agentID := range dependency.Agents {
+		roots, ok := catalog.SkillRoots(agentID, agentScope, workspaceRoot)
+		if !ok {
+			return fmt.Errorf("Agent %q does not support the selected installation scope", agentID)
+		}
+		projections = append(projections, scopevendor.Projection{Agent: agentID, Root: roots.ManagedRoot, Selected: dependency.Skills})
+	}
+	transaction, err := scopevendor.Prepare(scopevendor.Options{
+		VendorRoot: vendorRoot, RepositoryID: reference.SkillID, Version: resource.Info.Version,
+		Archive: resource.ZIP, Sum: resource.Info.Sum, Members: allMembers, Projections: projections,
+	})
+	if err != nil {
 		return err
 	}
-	if err := resources.cacheInfos(home); err != nil {
+	if err := transaction.Commit(); err != nil {
 		return err
 	}
-	storage := store.Store{Root: store.DefaultRoot(home)}
+	manifest.Dependencies[reference.SkillID] = dependency
+	lock.Dependencies[reference.SkillID] = project.LockedRepository{Version: resource.Info.Version, Sum: resource.Info.Sum}
+	if err := project.WriteWorkspaceState(declarationRoot, manifest, lock); err != nil {
+		_ = transaction.Rollback()
+		return fmt.Errorf("persist Workspace Repository state: %w", err)
+	}
+
+	for _, member := range resource.Members {
+		if containsString(dependency.Skills, member.Info.Path) {
+			reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{SkillID: member.Info.ID, Version: resource.Info.Version, Agents: dependency.Agents, Scope: scope})
+		}
+	}
 	type result struct {
-		ID      string `json:"id"`
-		Name    string `json:"name"`
-		Version string `json:"version"`
-		Targets int    `json:"targets"`
+		Repository string   `json:"repository"`
+		Version    string   `json:"version"`
+		Sum        string   `json:"sum"`
+		Skills     []string `json:"skills"`
+		Agents     []string `json:"agents"`
+		Vendor     string   `json:"vendor"`
 	}
-	results := make([]result, 0, len(prepared))
-	commits := make([]project.InstallationCommit, 0, len(prepared))
-	for index := range prepared {
-		member := &prepared[index]
-		entry, err := storage.Put(member.artifact)
-		if err != nil {
-			return err
-		}
-		member.entry = entry
-		commits = append(commits, project.InstallationCommit{
-			DependencyID: reference.SkillID, Name: entry.Receipt.Name, SourceRef: reference.Version,
-			Requirement: project.SkillRequirement{Source: reference.SkillID, Ref: repository.Info.Version, Agents: agentIDs, Mode: mode},
-			Artifact:    entry.Receipt, Targets: member.targets, Previous: member.previous,
-			Replace: member.replace,
-		})
-		results = append(results, result{ID: entry.Receipt.SkillID, Name: entry.Receipt.Name, Version: entry.Receipt.Version, Targets: len(member.targets)})
-	}
-	if err := installPreparedRepositoryMembers(prepared, func() error {
-		_, commitErr := project.CommitInstallationBatch(declarationRoot, commits, sums...)
-		return commitErr
-	}); err != nil {
-		return err
-	}
-	for _, item := range results {
-		reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{
-			SkillID: item.ID, Version: item.Version, Agents: agentIDs, Scope: scope,
-		})
-	}
+	response := result{Repository: reference.SkillID, Version: resource.Info.Version, Sum: resource.Info.Sum,
+		Skills: dependency.Skills, Agents: dependency.Agents, Vendor: scopevendor.CoordinatePath(vendorRoot, reference.SkillID, resource.Info.Version)}
 	if options.output == "json" {
-		encoder := json.NewEncoder(cmd.OutOrStdout())
-		encoder.SetIndent("", "  ")
-		return encoder.Encode(struct {
-			Repository string   `json:"repository"`
-			Version    string   `json:"version"`
-			Members    []result `json:"members"`
-		}{reference.SkillID, repository.Info.Version, results})
+		return json.NewEncoder(cmd.OutOrStdout()).Encode(response)
 	}
-	for _, item := range results {
-		fmt.Fprintf(cmd.OutOrStdout(), "✓ %s %s (%d targets)\n", item.Name, item.Version, item.Targets)
-	}
+	fmt.Fprintf(cmd.OutOrStdout(), "✓ %s %s (%d Skills, %d Agents)\n", response.Repository, response.Version, len(response.Skills), len(response.Agents))
 	return nil
 }
 
-func addSelectedRepositorySkills(
-	cmd *cobra.Command,
-	catalog *agent.Catalog,
-	reference source.Reference,
-	agentIDs []string,
-	scope install.Scope,
-	mode install.Mode,
-	workspaceRoot string,
-	options addOptions,
-) error {
-	client, err := hub.New(options.hubURL, nil)
-	if err != nil {
-		return err
+func loadWorkspaceState(root string) (project.WorkspaceManifest, project.DependencyLock, error) {
+	manifest := project.WorkspaceManifest{Dependencies: map[string]project.RepositoryDependency{}}
+	lock := project.DependencyLock{Dependencies: map[string]project.LockedRepository{}}
+	loadedManifest, manifestErr := project.LoadWorkspaceManifest(root)
+	loadedLock, lockErr := project.LoadDependencyLock(root)
+	switch {
+	case manifestErr == nil && lockErr == nil:
+		return loadedManifest, loadedLock, nil
+	case os.IsNotExist(manifestErr) && os.IsNotExist(lockErr):
+		return manifest, lock, nil
+	case manifestErr != nil && !os.IsNotExist(manifestErr):
+		return manifest, lock, manifestErr
+	case lockErr != nil && !os.IsNotExist(lockErr):
+		return manifest, lock, lockErr
+	default:
+		return manifest, lock, fmt.Errorf("skillsgo.yaml and skillsgo.lock must either both exist or both be absent")
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-	declarationRoot := workspaceRoot
-	if scope == install.ScopeUser {
-		declarationRoot = project.UserRoot(home)
-	}
-	existing, err := project.Installed(declarationRoot, catalog, scope, store.DefaultRoot(home))
-	if err != nil {
-		return err
-	}
-	resources := map[string]*hub.RepositoryResource{}
-	selections := make([]repositorySelection, 0, len(options.skills))
-	sums := make([]project.SumEntry, 0, len(options.skills)*2)
-	seenDependencies := map[string]bool{}
-	seenNames := map[string]string{}
-	for _, rawSelector := range options.skills {
-		selector, query, err := parseRepositorySelector(rawSelector, reference.Version)
-		if err != nil {
-			return err
-		}
-		resource := resources[query]
-		if resource == nil {
-			resource, err = client.Repository(cmd.Context(), reference.SkillID, query)
-			if err != nil {
-				return err
-			}
-			resources[query] = resource
-			resources[resource.Info.Version] = resource
-			sums = append(sums, project.SumEntry{
-				Path: reference.SkillID, Version: resource.Info.Version + "/repository.info",
-				Checksum: project.H1(resource.InfoBytes),
-			})
-		}
-		member, err := selectRepositoryMember(reference.SkillID, selector, resource.Members)
-		if err != nil {
-			return err
-		}
-		if member.Info.ID == reference.SkillID {
-			return fmt.Errorf("selector %q identifies the root Skill; omit --skill to install the whole Repository", selector)
-		}
-		dependencyKey := member.Info.ID + "@" + member.Info.Version
-		if seenDependencies[dependencyKey] {
-			continue
-		}
-		seenDependencies[dependencyKey] = true
-		if err := install.ValidateSkillName(member.Info.Name); err != nil {
-			return fmt.Errorf("Repository member %s has an invalid installation name: %w", member.Info.ID, err)
-		}
-		nameKey := strings.ToLower(member.Info.Name)
-		if previousID, duplicate := seenNames[nameKey]; duplicate {
-			return fmt.Errorf("Repository selections %s and %s use duplicate installation name %q", previousID, member.Info.ID, member.Info.Name)
-		}
-		seenNames[nameKey] = member.Info.ID
-		if err := plan.AuthorizeRisk(plan.Risk(member.Info.Risk), options.riskConfirmed, options.allowCritical); err != nil {
-			return err
-		}
-		targets, err := install.ResolveTargetsWithSubagents(catalog, agentIDs, options.subagents, scope, mode, workspaceRoot, member.Info.Name)
-		if err != nil {
-			return err
-		}
-		matching := filterInstallations(existing, nil, map[string]bool{strings.ToLower(member.Info.Name): true})
-		if !options.replace {
-			for _, installation := range matching {
-				if installation.SkillID != member.Info.ID {
-					return fmt.Errorf("Skill 名称冲突：%q 已来自 %s，不能用 %s 静默覆盖", member.Info.Name, installation.SkillID, member.Info.ID)
-				}
-			}
-		}
-		artifact, err := client.FetchRepositoryMember(cmd.Context(), member, nil)
-		if err != nil {
-			return err
-		}
-		checksum, err := project.ContentH1(member.Info.Sum)
-		if err != nil {
-			return err
-		}
-		sums = append(sums, project.SumEntry{Path: member.Info.ID, Version: member.Info.Version, Checksum: checksum})
-		selections = append(selections, repositorySelection{
-			selector: selector, query: query, member: member, resource: resource,
-			prepared: preparedRepositoryMember{
-				artifact: artifact, targets: targets, previous: matching,
-				replace: options.replace || len(matching) > 0,
-			},
-		})
-	}
-	if len(selections) == 0 {
-		return fmt.Errorf("no Repository Skills were selected")
-	}
-	infos := make([]verifiedInfoResource, 0, len(resources))
-	for _, resource := range resources {
-		infos = append(infos, verifiedInfoResource{
-			resource: reference.SkillID, version: resource.Info.Version, kind: "repository.info", bytes: resource.InfoBytes,
-		})
-	}
-	integrity := verifiedWorkspaceResources{sums: sums, infos: infos}
-	if err := integrity.validate(declarationRoot); err != nil {
-		return err
-	}
-	if err := integrity.cacheInfos(home); err != nil {
-		return err
-	}
-	storage := store.Store{Root: store.DefaultRoot(home)}
-	type installedResult struct {
-		SkillID string           `json:"skillId"`
-		Name    string           `json:"name"`
-		Version string           `json:"version"`
-		Store   string           `json:"store"`
-		Targets []install.Target `json:"targets"`
-	}
-	installed := make([]installedResult, 0, len(selections))
-	commits := make([]project.InstallationCommit, 0, len(selections))
-	preparedMembers := make([]preparedRepositoryMember, 0, len(selections))
-	for index := range selections {
-		selection := &selections[index]
-		entry, err := storage.Put(selection.prepared.artifact)
-		if err != nil {
-			return err
-		}
-		selection.prepared.entry = entry
-		preparedMembers = append(preparedMembers, selection.prepared)
-		commits = append(commits, project.InstallationCommit{
-			DependencyID: selection.member.Info.ID, Name: entry.Receipt.Name, SourceRef: selection.query,
-			Requirement: project.SkillRequirement{Source: selection.member.Info.ID, Ref: selection.member.Info.Version, Agents: agentIDs, Mode: mode},
-			Artifact:    entry.Receipt, Targets: selection.prepared.targets, Previous: selection.prepared.previous,
-			Replace: selection.prepared.replace,
-		})
-		installed = append(installed, installedResult{SkillID: entry.Receipt.SkillID, Name: entry.Receipt.Name,
-			Version: entry.Receipt.Version, Store: entry.Root, Targets: selection.prepared.targets})
-	}
-	if err := installPreparedRepositoryMembers(preparedMembers, func() error {
-		_, commitErr := project.CommitInstallationBatch(declarationRoot, commits, sums...)
-		return commitErr
-	}); err != nil {
-		return err
-	}
-	for _, item := range installed {
-		reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{
-			SkillID: item.SkillID, Version: item.Version, Agents: agentIDs, Scope: scope,
-		})
-	}
-	if options.output != "json" {
-		for _, item := range installed {
-			fmt.Fprintf(cmd.OutOrStdout(), "✓ %s %s (%d targets)\n", item.Name, item.Version, len(item.Targets))
-		}
-	}
-	if options.output == "json" {
-		if len(installed) == 1 {
-			return json.NewEncoder(cmd.OutOrStdout()).Encode(struct {
-				SchemaVersion int              `json:"schemaVersion"`
-				Repository    string           `json:"repository"`
-				SkillID       string           `json:"skillId"`
-				Version       string           `json:"version"`
-				Store         string           `json:"store"`
-				Scope         install.Scope    `json:"scope"`
-				Targets       []install.Target `json:"targets"`
-			}{1, reference.SkillID, installed[0].SkillID, installed[0].Version, installed[0].Store, scope, installed[0].Targets})
-		}
-		return json.NewEncoder(cmd.OutOrStdout()).Encode(struct {
-			SchemaVersion int               `json:"schemaVersion"`
-			Repository    string            `json:"repository"`
-			Members       []installedResult `json:"members"`
-		}{1, reference.SkillID, installed})
-	}
-	return nil
 }
 
-func installPreparedRepositoryMembers(members []preparedRepositoryMember, after func() error) error {
-	var materialize func(int) error
-	materialize = func(index int) error {
-		if index == len(members) {
-			return after()
+func selectRepositoryPaths(repositoryID string, selectors []string, members []hub.RepositoryMember) ([]string, error) {
+	if len(selectors) == 0 {
+		paths := make([]string, 0, len(members))
+		for _, member := range members {
+			paths = append(paths, member.Info.Path)
 		}
-		member := members[index]
-		if member.entry == nil {
-			return fmt.Errorf("Repository member Store entry was not prepared")
-		}
-		next := func() error { return materialize(index + 1) }
-		if member.replace {
-			return install.ReplaceExplicitThen(member.entry, member.previous, member.targets, next)
-		}
-		return install.InstallThen(member.entry, member.targets, next)
+		sort.Strings(paths)
+		return paths, nil
 	}
-	return materialize(0)
+	selected := make([]string, 0, len(selectors))
+	seen := map[string]bool{}
+	for _, raw := range selectors {
+		selector, query, err := parseRepositorySelector(raw, "")
+		if err != nil {
+			return nil, err
+		}
+		if query != "head" {
+			return nil, fmt.Errorf("per-Skill version selectors are unsupported; select the Repository version once")
+		}
+		member, err := selectRepositoryMember(repositoryID, selector, members)
+		if err != nil {
+			return nil, err
+		}
+		if !seen[member.Info.Path] {
+			seen[member.Info.Path] = true
+			selected = append(selected, member.Info.Path)
+		}
+	}
+	sort.Strings(selected)
+	return selected, nil
+}
+
+func mergeStrings(left, right []string) []string {
+	seen := map[string]bool{}
+	result := make([]string, 0, len(left)+len(right))
+	for _, value := range append(append([]string(nil), left...), right...) {
+		if !seen[value] {
+			seen[value] = true
+			result = append(result, value)
+		}
+	}
+	sort.Strings(result)
+	return result
+}
+
+func containsString(values []string, expected string) bool {
+	for _, value := range values {
+		if value == expected {
+			return true
+		}
+	}
+	return false
 }
 
 func parseRepositorySelector(raw, inheritedQuery string) (string, string, error) {
@@ -386,47 +212,27 @@ func parseRepositorySelector(raw, inheritedQuery string) (string, string, error)
 		query = strings.TrimSpace(raw[separator+1:])
 		raw = strings.TrimSpace(raw[:separator])
 	}
-	if raw == "" {
-		return "", "", fmt.Errorf("Skill selector must not be empty")
-	}
-	if strings.ContainsAny(raw, "\\\x00") {
+	if raw == "" || strings.ContainsAny(raw, "\\\x00") {
 		return "", "", fmt.Errorf("invalid Skill selector %q", raw)
 	}
-	for _, segment := range strings.Split(strings.Trim(raw, "/"), "/") {
-		if segment == "." || segment == ".." || segment == "" {
-			return "", "", fmt.Errorf("invalid Skill selector %q", raw)
+	if raw != "." {
+		for _, segment := range strings.Split(strings.Trim(raw, "/"), "/") {
+			if segment == "." || segment == ".." || segment == "" {
+				return "", "", fmt.Errorf("invalid Skill selector %q", raw)
+			}
 		}
 	}
 	if err := source.ValidateVersion(query); err != nil {
-		return "", "", err
-	}
-	if err := source.ValidatePublicVersion(query); err != nil {
 		return "", "", err
 	}
 	return strings.Trim(raw, "/"), query, nil
 }
 
 func selectRepositoryMember(repositoryID, selector string, members []hub.RepositoryMember) (hub.RepositoryMember, error) {
-	prefix := strings.TrimSuffix(repositoryID, "/") + "/-/"
-	canonical := selector
-	if strings.HasPrefix(selector, "/-/") {
-		canonical = repositoryID + selector
-	} else if !strings.Contains(selector, "/-/") && strings.HasPrefix(selector, repositoryID+"/") {
-		canonical = repositoryID + "/-/" + strings.TrimPrefix(selector, repositoryID+"/")
-	}
 	for _, member := range members {
-		if member.Info.ID == canonical {
+		if selector == member.Info.ID || selector == member.Info.Path || (selector == repositoryID && member.Info.Path == ".") {
 			return member, nil
 		}
-	}
-	pathMatches := make([]hub.RepositoryMember, 0, 1)
-	for _, member := range members {
-		if strings.TrimPrefix(member.Info.ID, prefix) == selector {
-			pathMatches = append(pathMatches, member)
-		}
-	}
-	if len(pathMatches) == 1 {
-		return pathMatches[0], nil
 	}
 	nameMatches := make([]hub.RepositoryMember, 0, 1)
 	for _, member := range members {
@@ -440,7 +246,7 @@ func selectRepositoryMember(repositoryID, selector string, members []hub.Reposit
 	if len(nameMatches) > 1 {
 		paths := make([]string, 0, len(nameMatches))
 		for _, member := range nameMatches {
-			paths = append(paths, strings.TrimPrefix(member.Info.ID, prefix))
+			paths = append(paths, member.Info.Path)
 		}
 		return hub.RepositoryMember{}, fmt.Errorf("selector %q is ambiguous; choose a Repository-relative path or canonical Skill ID: %s", selector, strings.Join(paths, ", "))
 	}

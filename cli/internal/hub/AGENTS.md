@@ -3,8 +3,8 @@
 
 ## Members
 
-- `client.go`: delegates version selectors to the Hub `/mod` surface, consumes shared Protocol Repository/Skill Info and product API DTOs, forwards optional presentation locales for discovery/detail, validates strict provider-neutral `/api/v1` reads, downloads verified ZIP responses with optional byte progress, resolves exact content matches, and exposes typed HTTP failures from a configured SkillsGo Hub.
-- `artifact_digest.go`: binds declared Info to ZIP or extracted-directory bytes through the shared Protocol h1 Sum implementation.
+- `client.go`: delegates version selectors to the root Repository Proxy, consumes typed Repository/member Info and product API DTOs, forwards optional presentation locales for discovery/detail, validates strict provider-neutral `/api/v1` reads, downloads bounded Repository ZIP responses with optional byte progress, verifies Repository identity/size/Sum, and exposes typed HTTP failures.
+- `artifact_digest.go`: binds declared Repository Info to Repository ZIP bytes through the shared Go-compatible h1 implementation while retaining legacy digest helpers only until Store consumers are removed.
 - `artifact_digest_test.go`: specifies golden deterministic Sum acceptance and mismatch rejection.
 - `client_test.go`: specifies source-hint request encoding and strict content-match response validation.
 

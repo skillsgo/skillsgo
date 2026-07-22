@@ -50,6 +50,10 @@ type SkillInfo struct {
 	// Risk is local mutable projection state and is intentionally excluded
 	// from immutable Skill Info serialization.
 	Risk Risk `json:"-" yaml:"-"`
+	// Transitional local-only fields keep pre-Repository CLI state readable
+	// while its Store pipeline is removed. They are never part of Hub wire bytes.
+	Sum         string `json:"-" yaml:"-"`
+	ArchiveSize int64  `json:"-" yaml:"-"`
 }
 type RepositoryInfo struct {
 	SchemaVersion int         `json:"SchemaVersion"`

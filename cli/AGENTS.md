@@ -10,7 +10,7 @@ This map governs the Go command-line workspace. Read it with the root constituti
 - Shared dependency: `github.com/skillsgo/skillsgo/protocol` through the repository `go.work` during development.
 - Entry point: `cmd/skillsgo/main.go`
 - Command seam: `command.Execute`
-- Product responsibility: own local Skill mutations, installation targets, canonical Workspace declarations, integrity checksums, immutable Info cache, and shared artifact-store state.
+- Product responsibility: own local Repository Vendor and Agent Projection mutations, canonical Workspace declarations and locks, immutable Info cache, and installation-state inspection.
 
 ## Commands
 
@@ -37,10 +37,11 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/inventory/` | Read-only managed and External Library reconciliation across Workspace Manifests, exact target receipts, known Agent Discovery Roots, Store artifacts, Local Modifications, and derived Agent visibility. |
 | `internal/managementplan/` | Exact-target managed Remove/Repair and External Remove preflight, reviewed-state binding, and target-specific execution. |
 | `internal/plan/` | Process-local installation preparation, conflict/risk validation, Workspace Manifest mutation, and target-specific execution. |
-| `internal/project/` | Canonical direct requirements in Go-like `skillsgo.mod`, integrity-only `skillsgo.sum`, and exact local Installation Receipts for project and `~/.skillsgo` user scopes. |
+| `internal/project/` | Strict Repository dependencies in `skillsgo.yaml`, integrity-only `skillsgo.lock`, their paired transaction, and migration-era local receipt readers. |
 | `internal/infocache/` | Exact immutable Repository and Skill Info bytes used for checksum-verified offline restore. |
-| `internal/hub/` | Client for the public SkillsGo Hub protocol and normalized artifact-integrity verification. |
+| `internal/hub/` | Client for the root Repository Proxy, typed Repository/member Info, bounded Repository ZIP download, and Repository h1 verification. |
 | `internal/source/` | Skill ID parsing and source reference normalization. |
+| `internal/scopevendor/` | Complete ordinary-file Repository Vendor extraction and deterministic per-Agent Repository Projection transactions. |
 | `internal/store/` | User-level shared Hub/Local/captured immutable artifact cache, private Local import/export, and verified takeover baselines. |
 | `internal/strictjson/` | Shared strict decoding for repeated machine-input JSON object lists at CLI Plan boundaries. |
 | `internal/terminalui/` | Human terminal documents, automatic Interactive/Plain selection, responsive styling, and live operation progress. |

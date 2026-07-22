@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on immutable Skill ZIP bytes or extracted Store directories, canonical Skill IDs, resolved versions, and the shared h1 Sum contract.
- * [OUTPUT]: Provides CLI-facing Sum validation and verification over the shared artifact protocol implementation.
- * [POS]: Serves as the CLI integrity boundary binding assessed Info metadata to downloaded and locally cached artifact files.
+ * [INPUT]: Depends on immutable Repository ZIP bytes, migration-era Skill ZIP/Store content, canonical coordinates, resolved versions, and the shared h1 contract.
+ * [OUTPUT]: Provides Repository h1 verification plus transitional Skill/Store digest helpers over the shared artifact implementation.
+ * [POS]: Serves as the CLI integrity boundary binding Repository Info to downloaded artifact bytes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package hub
@@ -20,6 +20,17 @@ func VerifySum(data []byte, skillID, version, expected string) error {
 	}
 	if actual != expected {
 		return fmt.Errorf("Hub Sum mismatch for %s@%s: %s != %s", skillID, version, actual, expected)
+	}
+	return nil
+}
+
+func VerifyRepositorySum(data []byte, repositoryID, version, expected string) error {
+	actual, err := protocolartifact.RepositorySum(data, repositoryID, version)
+	if err != nil {
+		return err
+	}
+	if actual != expected {
+		return fmt.Errorf("Hub Repository Sum mismatch for %s@%s: %s != %s", repositoryID, version, actual, expected)
 	}
 	return nil
 }
