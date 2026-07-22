@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses an HTTP test Hub and the public Execute seam with multiple installed Library-entry versions.
- * [OUTPUT]: Specifies one Catalog-only batch request, ordered current/available/unsupported results, and the absence of `/mod` artifact resolution.
+ * [OUTPUT]: Specifies one Repository-fresh batch request and ordered independent head/release/unsupported results.
  * [POS]: Serves as the acceptance contract for App-triggered update availability checks.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -29,15 +29,15 @@ func TestCatalogUpdateCheckUsesOneProductRequest(t *testing.T) {
 		if json.NewDecoder(request.Body).Decode(&body) != nil || body.SchemaVersion != 1 || len(body.SkillIDs) != 3 {
 			t.Fatalf("unexpected request body %+v", body)
 		}
-		_, _ = w.Write([]byte(`{"schemaVersion":1,"items":[{"skillId":"github.com/acme/skills/-/current","latestVersion":"v1","status":"available"},{"skillId":"github.com/acme/skills/-/review","latestVersion":"v3","status":"available"},{"skillId":"github.com/acme/skills/-/local","status":"unsupported"}]}`))
+		_, _ = w.Write([]byte(`{"schemaVersion":1,"items":[{"skillId":"github.com/acme/skills/-/current","headVersion":"v1.0.0","releaseVersion":"v1.0.0","status":"available"},{"skillId":"github.com/acme/skills/-/review","headVersion":"v3.0.0","releaseVersion":"v2.0.0","status":"available"},{"skillId":"github.com/acme/skills/-/local","status":"unsupported"}]}`))
 	}))
 	defer server.Close()
 
 	var stdout bytes.Buffer
 	err := Execute([]string{
 		"updates", "check", "--hub", server.URL,
-		"--installed", `{"key":"current","skillId":"github.com/acme/skills/-/current","versions":["v1"]}`,
-		"--installed", `{"key":"review","skillId":"github.com/acme/skills/-/review","versions":["v1","v2"]}`,
+		"--installed", `{"key":"current","skillId":"github.com/acme/skills/-/current","versions":["v1.0.0"]}`,
+		"--installed", `{"key":"review","skillId":"github.com/acme/skills/-/review","versions":["v1.0.0","v2.0.0"]}`,
 		"--installed", `{"key":"local","skillId":"github.com/acme/skills/-/local","versions":["captured-1"]}`,
 	}, &stdout, &bytes.Buffer{})
 	if err != nil {
@@ -47,16 +47,18 @@ func TestCatalogUpdateCheckUsesOneProductRequest(t *testing.T) {
 	if json.Unmarshal(stdout.Bytes(), &report) != nil || report.SchemaVersion != 1 || report.Phase != "update-check" || len(report.Items) != 3 {
 		t.Fatalf("unexpected report %s", stdout.String())
 	}
-	if requests != 1 || report.Items[0].Status != "current" || report.Items[1].Status != "update_available" || report.Items[2].Status != "unsupported" {
+	if requests != 1 || report.Items[0].HeadStatus != "current" || report.Items[0].ReleaseStatus != "current" ||
+		report.Items[1].HeadStatus != "update_available" || report.Items[1].ReleaseStatus != "update_available" || report.Items[2].Status != "unsupported" {
 		t.Fatalf("unexpected requests=%d report=%+v", requests, report)
 	}
 }
 
 func TestCatalogUpdateCheckBatchesEightyInstalledSkills(t *testing.T) {
 	type responseItem struct {
-		SkillID       string `json:"skillId"`
-		LatestVersion string `json:"latestVersion"`
-		Status        string `json:"status"`
+		SkillID        string `json:"skillId"`
+		HeadVersion    string `json:"headVersion"`
+		ReleaseVersion string `json:"releaseVersion"`
+		Status         string `json:"status"`
 	}
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
@@ -73,7 +75,7 @@ func TestCatalogUpdateCheckBatchesEightyInstalledSkills(t *testing.T) {
 		}
 		items := make([]responseItem, 0, len(body.SkillIDs))
 		for _, skillID := range body.SkillIDs {
-			items = append(items, responseItem{SkillID: skillID, LatestVersion: "v2", Status: "available"})
+			items = append(items, responseItem{SkillID: skillID, HeadVersion: "v2.0.0", ReleaseVersion: "v2.0.0", Status: "available"})
 		}
 		_ = json.NewEncoder(w).Encode(struct {
 			SchemaVersion int         `json:"schemaVersion"`
@@ -84,7 +86,7 @@ func TestCatalogUpdateCheckBatchesEightyInstalledSkills(t *testing.T) {
 
 	arguments := []string{"updates", "check", "--hub", server.URL}
 	for index := range 80 {
-		arguments = append(arguments, "--installed", fmt.Sprintf(`{"key":"skill-%d","skillId":"github.com/acme/skills/-/skill-%d","versions":["v1"]}`, index, index))
+		arguments = append(arguments, "--installed", fmt.Sprintf(`{"key":"skill-%d","skillId":"github.com/acme/skills/-/skill-%d","versions":["v1.0.0"]}`, index, index))
 	}
 	var stdout bytes.Buffer
 	if err := Execute(arguments, &stdout, &bytes.Buffer{}); err != nil {

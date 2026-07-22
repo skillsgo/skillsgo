@@ -357,7 +357,7 @@ func TestBatchTakeoverGroupsSymlinkAliasesByPhysicalDirectory(t *testing.T) {
 	modes := map[install.Mode]bool{}
 	for _, receipt := range receipts {
 		modes[receipt.Mode] = true
-		require.Equal(t, "latest", receipt.SourceRef)
+		require.Equal(t, "head", receipt.SourceRef)
 	}
 	require.True(t, modes[install.ModeCopy])
 	require.True(t, modes[install.ModeSymlink])

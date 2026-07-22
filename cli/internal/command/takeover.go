@@ -498,7 +498,7 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 			}
 			sourceRef := strings.TrimSpace(record.Ref)
 			if sourceRef == "" {
-				sourceRef = "latest"
+				sourceRef = "head"
 			}
 			candidates = append(candidates, takeoverCandidate{
 				Name: skill.Name, SkillID: skillID, SourceRef: sourceRef,

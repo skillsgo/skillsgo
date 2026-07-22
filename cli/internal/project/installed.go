@@ -54,9 +54,13 @@ func Installed(root string, catalog *agent.Catalog, scope install.Scope, storeRo
 			if err := install.ValidateSkillName(name); err != nil {
 				return nil, err
 			}
-			targets := targetsFromInstallationReceipts(targetReceipts, dependency, requirement, scope)
+			targets := targetsFromInstallationReceipts(targetReceipts, dependency, entry.Receipt.SkillID, entry.Receipt.Version, requirement, scope)
 			if len(targets) == 0 {
-				targets, err = install.ResolveTargets(catalog, requirement.Agents, scope, install.ModeSymlink, root, name)
+				desiredMode := requirement.Mode
+				if desiredMode == "" {
+					desiredMode = install.ModeSymlink
+				}
+				targets, err = install.ResolveTargets(catalog, requirement.Agents, scope, desiredMode, root, name)
 				if err != nil {
 					return nil, err
 				}
@@ -78,7 +82,7 @@ func Installed(root string, catalog *agent.Catalog, scope install.Scope, storeRo
 				installation.Artifact = entry.Artifact
 				installation.Provenance = entry.Receipt.EffectiveProvenance()
 				for _, receipt := range targetReceipts {
-					if receipt.ArtifactSkillID == dependency && receipt.Version == requirement.Ref && receipt.Agent == target.Agent && filepath.Clean(receipt.Path) == filepath.Clean(target.Path) {
+					if receipt.DependencyID == dependency && receipt.ArtifactSkillID == entry.Receipt.SkillID && receipt.Version == entry.Receipt.Version && receipt.Agent == target.Agent && filepath.Clean(receipt.Path) == filepath.Clean(target.Path) {
 						installation.TargetState = receipt.TargetState
 						installation.SourceRef = receipt.SourceRef
 						break
@@ -124,10 +128,10 @@ func loadInstalledMetadata(root string) (Manifest, []InstallationReceipt, error)
 	return manifest, receipts, nil
 }
 
-func targetsFromInstallationReceipts(receipts []InstallationReceipt, dependency string, requirement SkillRequirement, scope install.Scope) []install.Target {
+func targetsFromInstallationReceipts(receipts []InstallationReceipt, dependency, artifactSkillID, artifactVersion string, requirement SkillRequirement, scope install.Scope) []install.Target {
 	targets := make([]install.Target, 0)
 	for _, receipt := range receipts {
-		if receipt.ArtifactSkillID != dependency || receipt.Version != requirement.Ref || receipt.Scope != scope || !containsAgent(requirement.Agents, receipt.Agent) {
+		if receipt.DependencyID != dependency || receipt.ArtifactSkillID != artifactSkillID || receipt.Version != artifactVersion || receipt.Scope != scope || !containsAgent(requirement.Agents, receipt.Agent) {
 			continue
 		}
 		targets = append(targets, install.Target{

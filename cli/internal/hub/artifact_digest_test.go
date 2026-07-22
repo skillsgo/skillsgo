@@ -13,7 +13,7 @@ import (
 )
 
 func TestVerifySumBindsInfoToExactArtifactFiles(t *testing.T) {
-	skillID, version := "github.com/example/skills/-/demo", "v1"
+	skillID, version := "github.com/example/skills/-/demo", "v1.0.0"
 	var buffer bytes.Buffer
 	writer := zip.NewWriter(&buffer)
 	entry, err := writer.Create(skillID + "@" + version + "/SKILL.md")

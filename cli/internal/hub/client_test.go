@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses an HTTP test Hub with exact content-match JSON, hostile contract variants, and deterministic artifact byte streams.
- * [OUTPUT]: Specifies Hub-owned version-selector resolution, source-hint request encoding, strict immutable content-match response validation, and monotonic download progress.
+ * [INPUT]: Uses an HTTP test Hub with exact content-match JSON, hostile contract variants, transient GET responses, and deterministic artifact byte streams.
+ * [OUTPUT]: Specifies Hub-owned version-selector resolution, source-hint request encoding, strict immutable content-match validation, bounded status retries, and monotonic download progress.
  * [POS]: Serves as public Hub content-match client contract coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,8 +12,44 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync/atomic"
 	"testing"
 )
+
+func TestImmutableGETRetriesTransientStatusAndHonorsTerminalStatus(t *testing.T) {
+	var transientRequests atomic.Int32
+	transient := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if transientRequests.Add(1) == 1 {
+			w.Header().Set("Retry-After", "0")
+			http.Error(w, "busy", http.StatusServiceUnavailable)
+			return
+		}
+		_, _ = w.Write([]byte("ready"))
+	}))
+	defer transient.Close()
+	client, err := New(transient.URL, transient.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := client.get(t.Context(), transient.URL+"/artifact")
+	if err != nil || string(body) != "ready" || transientRequests.Load() != 2 {
+		t.Fatalf("unexpected retry result body=%q requests=%d err=%v", body, transientRequests.Load(), err)
+	}
+
+	var terminalRequests atomic.Int32
+	terminal := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		terminalRequests.Add(1)
+		http.NotFound(w, nil)
+	}))
+	defer terminal.Close()
+	client, err = New(terminal.URL, terminal.Client())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := client.get(t.Context(), terminal.URL+"/missing"); err == nil || terminalRequests.Load() != 1 {
+		t.Fatalf("terminal status retried: requests=%d err=%v", terminalRequests.Load(), err)
+	}
+}
 
 func TestProgressReaderReportsMonotonicBytes(t *testing.T) {
 	updates := make([]int64, 0)
@@ -35,15 +71,13 @@ func TestProgressReaderReportsMonotonicBytes(t *testing.T) {
 	}
 }
 
-func TestRepositoryLatestFallbackUsesLatestThenCanonicalInfo(t *testing.T) {
+func TestRepositoryHeadUsesSelectorThenCanonicalInfo(t *testing.T) {
 	repository, version := "github.com/example/untagged", "v0.0.0-20260718120000-abcdef123456"
-	requests := make([]string, 0, 3)
+	requests := make([]string, 0, 2)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requests = append(requests, request.URL.Path)
 		switch request.URL.Path {
-		case "/mod/" + repository + "/@v/list":
-			_, _ = w.Write(nil)
-		case "/mod/" + repository + "/@latest":
+		case "/mod/" + repository + "/@head":
 			fmt.Fprintf(w, `{"Version":%q,"Time":"2026-07-18T12:00:00Z"}`, version)
 		case "/mod/" + repository + "/@v/" + version + ".info":
 			fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-18T12:00:00Z","CommitSHA":"abcdef1234567890","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Name":"root","Description":"root","Risk":"low","Sum":"h1:%s","ArchiveSize":1,"CommitSHA":"abcdef1234567890","TreeSHA":"tree"}]}`, repository, version, repository, version, strings.Repeat("A", 43)+"=")
@@ -56,12 +90,12 @@ func TestRepositoryLatestFallbackUsesLatestThenCanonicalInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resource, err := client.Repository(t.Context(), repository, "latest")
+	resource, err := client.Repository(t.Context(), repository, "head")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resource.Info.Version != version || len(requests) != 3 || !strings.HasSuffix(requests[1], "/@latest") {
-		t.Fatalf("unexpected latest flow: version=%q requests=%v", resource.Info.Version, requests)
+	if resource.Info.Version != version || len(requests) != 2 || !strings.HasSuffix(requests[0], "/@head") {
+		t.Fatalf("unexpected head flow: version=%q requests=%v", resource.Info.Version, requests)
 	}
 }
 
@@ -107,22 +141,13 @@ func TestResolveUsesVersionQueryInfoDirectly(t *testing.T) {
 	}
 }
 
-func TestLatestVersionPrefersStableAndFallsBackToPrerelease(t *testing.T) {
-	if got := latestVersion([]string{"v1.8.0", "v2.0.0-rc.1"}); got != "v1.8.0" {
-		t.Fatalf("latest stable = %q", got)
-	}
-	if got := latestVersion([]string{"v2.0.0-beta.1", "v2.0.0-beta.2"}); got != "v2.0.0-beta.2" {
-		t.Fatalf("latest prerelease = %q", got)
-	}
-}
-
 func TestMatchContentUsesDigestAndSourceHint(t *testing.T) {
 	digest := "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		if request.URL.Path != "/api/v1/matches" || request.URL.Query().Get("sum") != digest || request.URL.Query().Get("sourceHint") != "github.com/acme/skills" {
 			t.Fatalf("unexpected match request: %s", request.URL.String())
 		}
-		_, _ = w.Write([]byte(`{"schemaVersion":1,"sum":"` + digest + `","matches":[{"skillId":"github.com/acme/skills/-/demo","name":"demo","source":"github.com/acme/skills","skillPath":"demo","immutableVersion":"v1","commitSHA":"commit","treeSHA":"tree","sum":"` + digest + `"}]}`))
+		_, _ = w.Write([]byte(`{"schemaVersion":1,"sum":"` + digest + `","matches":[{"skillId":"github.com/acme/skills/-/demo","name":"demo","source":"github.com/acme/skills","skillPath":"demo","immutableVersion":"v1.0.0","commitSHA":"commit","treeSHA":"tree","sum":"` + digest + `"}]}`))
 	}))
 	defer server.Close()
 	client, err := New(server.URL, server.Client())
@@ -133,7 +158,7 @@ func TestMatchContentUsesDigestAndSourceHint(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(matches) != 1 || matches[0].ImmutableVersion != "v1" {
+	if len(matches) != 1 || matches[0].ImmutableVersion != "v1.0.0" {
 		t.Fatalf("unexpected matches: %#v", matches)
 	}
 }
