@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the public SkillsGo versioned fixture Repository, its immutable v1.2.0/v1.3.0 releases, Repository-fresh head/release resolution, and the released `updates check` CLI command.
- * [OUTPUT]: Provides black-box coverage that 80 installed entries receive independent head and release candidates through one batch.
+ * [OUTPUT]: Provides black-box coverage that 80 installed entries receive independent head and release candidates plus the stable aggregate status through one batch.
  * [POS]: Serves as the Repository-fresh update-availability journey across the released CLI and Hub.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -58,6 +58,6 @@ func TestJ45RepositoryFreshBatchUpdateCheck(t *testing.T) {
 		require.Equal(t, "v1.3.0", item.ReleaseVersion)
 		require.Equal(t, "update_available", item.HeadStatus)
 		require.Equal(t, "update_available", item.ReleaseStatus)
-		require.Equal(t, "available", item.Status)
+		require.Equal(t, "update_available", item.Status)
 	}
 }
