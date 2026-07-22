@@ -169,7 +169,14 @@ Future<void> _executeTakeover(
   required int takenOver,
   required int skipped,
 }) async {
-  await tester.tap(find.byKey(const Key('library-batch-takeover')));
+  final takeoverAction = find.descendant(
+    of: find.byKey(const Key('library-batch-takeover')),
+    matching: find.byType(OutlinedButton),
+  );
+  await _pumpUntil(tester, takeoverAction);
+  await tester.ensureVisible(takeoverAction);
+  await tester.tap(takeoverAction);
+  await _pumpUntil(tester, find.byKey(const Key('batch-takeover-dialog')));
   await _pumpUntil(
     tester,
     find.byWidgetPredicate(
