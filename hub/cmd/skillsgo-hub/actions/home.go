@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the actions package imports and contracts declared in this file.
- * [OUTPUT]: Provides the actions package behavior implemented by home.go.
- * [POS]: Serves as maintained source in the actions package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on Hub configuration, request origin data, and an optional operator-provided HTML template.
+ * [OUTPUT]: Serves the SkillsGo Hub landing page with exact-version, head, and release artifact protocol examples.
+ * [POS]: Serves as the human protocol-orientation surface beside machine `/mod` and `/api/v1` routes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -22,7 +22,7 @@ const homepage = `<!DOCTYPE html>
 <html>
 <head>
 	<meta charset="utf-8"></meta>
-	<title>Athens</title>
+	<title>SkillsGo Hub</title>
 	<style>
 		body {
 			font-family: Arial, sans-serif;
@@ -48,39 +48,26 @@ const homepage = `<!DOCTYPE html>
 </head>
 <body>
 	
-	<h1>Welcome to Athens</h1>
+	<h1>SkillsGo Hub</h1>
 
-	<h2>Configuring your client</h2>
-	<pre>GOPROXY={{ .Host }},direct</pre>
-	<h2>How to use the Athens API</h2>
-	<p>Use the <a href="/catalog">catalog</a> endpoint to get a list of all modules in the proxy</p>
+	<h2>Artifact protocol</h2>
+	<p>Use <code>/mod</code> for immutable Skill and Repository resources.</p>
 
 	<h3>List of versions</h3>
-	<p>This endpoint returns a list of versions that Athens knows about for <code>acidburn/htp</code>:</p>
-	<pre>GET {{ .Host }}/mod/github.com/acidburn/htp/@v/list</pre>
+	<p>This endpoint returns published canonical semantic versions:</p>
+	<pre>GET {{ .Host }}/mod/github.com/owner/repository/@v/list</pre>
 
 	<h3>Version info</h3>
 	<p>This endpoint returns information about a specific version of a module:</p>
-	<pre>GET {{ .Host }}/mod/github.com/acidburn/htp/@v/v1.0.0.info</pre>
-	<p>This returns JSON with information about v1.0.0. It looks like this:
-	<pre>{
-	"Name": "v1.0.0",
-	"Short": "v1.0.0",
-	"Version": "v1.0.0",
-	"Time": "1972-07-18T12:34:56Z"
-}</pre>
+	<pre>GET {{ .Host }}/mod/github.com/owner/repository/@v/v1.0.0.info</pre>
 
-	<h3>Skill metadata</h3>
-	<p>This endpoint returns the YAML frontmatter from SKILL.md for a specific version:</p>
-	<pre>name: my-skill\ndescription: Example Skill</pre>
+	<h3>Immutable Skill archive</h3>
+	<pre>GET {{ .Host }}/mod/github.com/owner/repository/-/skills/example/@v/v1.0.0.zip</pre>
 
-	<h3>Module sources</h3>
-	<pre>GET {{ .Host }}/mod/github.com/acidburn/htp/@v/v1.0.0.zip</pre>
-	<p>This is what it sounds like — it sends back a zip file with the source code for the module in version v1.0.0.</p>
-
-	<h3>Latest</h3>
-	<pre>GET {{ .Host }}/mod/github.com/acidburn/htp/@latest</pre>
-	<p>This endpoint returns the latest version of the module. If the version does not exist it should retrieve the hash of latest commit.</p>
+	<h3>Movable selectors</h3>
+	<pre>GET {{ .Host }}/mod/github.com/owner/repository/@head
+GET {{ .Host }}/mod/github.com/owner/repository/@release</pre>
+	<p><code>head</code> resolves the default branch. <code>release</code> resolves the highest stable canonical tag, falling back to a pre-release. The ambiguous <code>latest</code> selector is not supported.</p>
 
 </body>
 </html>

@@ -70,7 +70,7 @@ func TestArtifactStashTaskDispatchesAndPropagatesFailure(t *testing.T) {
 	require.ErrorContains(t, runtime.Enqueue(t.Context(), artifactStashArgs{}, taskqueue.InsertOptions{}), "requires skill_id and version")
 }
 
-func TestRepositoryPrewarmTaskDefaultsToLatestAndPropagatesFailure(t *testing.T) {
+func TestRepositoryPrewarmTaskDefaultsToHeadAndPropagatesFailure(t *testing.T) {
 	wantErr := errors.New("clone failed")
 	materializer := &recordingMaterializer{err: wantErr}
 	runtime := taskqueue.NewSynchronous()
@@ -79,6 +79,6 @@ func TestRepositoryPrewarmTaskDefaultsToLatestAndPropagatesFailure(t *testing.T)
 	err := enqueueRepositoryPrewarm(t.Context(), runtime, "github.com/acme/skills", "")
 	require.ErrorIs(t, err, wantErr)
 	require.Equal(t, "github.com/acme/skills", materializer.repositoryID)
-	require.Equal(t, "latest", materializer.query)
+	require.Equal(t, "head", materializer.query)
 	require.ErrorContains(t, runtime.Enqueue(t.Context(), repositoryPublicationPrewarmArgs{}, taskqueue.InsertOptions{}), "requires repository_id")
 }

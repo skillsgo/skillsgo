@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber routing, successful and redirected artifact protocols, canonical versions, and movable revision queries.
- * [OUTPUT]: Specifies protocol namespacing, external immutable ZIP delivery, redirect behavior, and no-store protection for movable Info and ZIP responses.
+ * [INPUT]: Depends on Fiber routing, successful and redirected artifact protocols, canonical versions, and explicit movable Selectors.
+ * [OUTPUT]: Specifies protocol namespacing, explicit Head/Release Selectors, exact-version enforcement, HTTP method boundaries, external immutable ZIP delivery, redirect behavior, and cache policy.
  * [POS]: Serves as the public artifact HTTP routing contract for the download package.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -68,7 +68,7 @@ func TestArtifactProtocolIsNamespacedUnderMod(t *testing.T) {
 	}
 }
 
-func TestMovableVersionResponsesDisableHTTPCaching(t *testing.T) {
+func TestExactResourceRoutesRejectMovableOrRawRevisionQueries(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{
 		Protocol: &successfulProtocol{},
@@ -78,7 +78,6 @@ func TestMovableVersionResponsesDisableHTTPCaching(t *testing.T) {
 			DownloadURL: "https://files.skillsgo.ai",
 		},
 	})
-	const noCache = "no-cache, no-store, must-revalidate"
 	for _, requestCase := range []struct {
 		method string
 		path   string
@@ -96,16 +95,13 @@ func TestMovableVersionResponsesDisableHTTPCaching(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if response.StatusCode != http.StatusOK {
-			t.Fatalf("%s %s returned %d", requestCase.method, requestCase.path, response.StatusCode)
-		}
-		if got := response.Header.Get("Cache-Control"); got != noCache {
-			t.Fatalf("%s %s Cache-Control = %q, want %q", requestCase.method, requestCase.path, got, noCache)
+		if response.StatusCode != http.StatusBadRequest {
+			t.Fatalf("%s %s returned %d, want 400", requestCase.method, requestCase.path, response.StatusCode)
 		}
 	}
 }
 
-func TestCanonicalVersionInfoKeepsExistingCachePolicy(t *testing.T) {
+func TestCanonicalVersionInfoIsPubliclyImmutable(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
 	for _, path := range []string{
@@ -120,8 +116,86 @@ func TestCanonicalVersionInfoKeepsExistingCachePolicy(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if got := response.Header.Get("Cache-Control"); got != "" {
-			t.Fatalf("%s Cache-Control = %q, want existing empty policy", path, got)
+		if got := response.Header.Get("Cache-Control"); got != immutableVersionCacheControl {
+			t.Fatalf("%s Cache-Control = %q, want %q", path, got, immutableVersionCacheControl)
+		}
+		etag := response.Header.Get("ETag")
+		if etag == "" {
+			t.Fatalf("%s did not return an immutable ETag", path)
+		}
+		conditional, _ := http.NewRequest(http.MethodGet, path, nil)
+		conditional.Header.Set("If-None-Match", etag)
+		notModified, err := r.Test(conditional)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if notModified.StatusCode != http.StatusNotModified || notModified.Header.Get("ETag") != etag {
+			t.Fatalf("%s conditional response status=%d etag=%q", path, notModified.StatusCode, notModified.Header.Get("ETag"))
+		}
+	}
+}
+
+func TestCanonicalVersionZipSupportsConditionalGetAndHead(t *testing.T) {
+	r := fiber.New()
+	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	path := "/mod/github.com/skillsgo/skillsgo/@v/v1.2.3.zip"
+	request, _ := http.NewRequest(http.MethodHead, path, nil)
+	response, err := r.Test(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	etag := response.Header.Get("ETag")
+	if response.StatusCode != http.StatusOK || etag == "" {
+		t.Fatalf("HEAD status=%d etag=%q", response.StatusCode, etag)
+	}
+	conditional, _ := http.NewRequest(http.MethodGet, path, nil)
+	conditional.Header.Set("If-None-Match", etag)
+	notModified, err := r.Test(conditional)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if notModified.StatusCode != http.StatusNotModified || notModified.Header.Get("ETag") != etag {
+		t.Fatalf("conditional ZIP status=%d etag=%q", notModified.StatusCode, notModified.Header.Get("ETag"))
+	}
+}
+
+func TestExplicitSelectorsAndMethodContracts(t *testing.T) {
+	r := fiber.New()
+	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	for _, selector := range []string{"head", "release"} {
+		request, _ := http.NewRequest(http.MethodGet, "/mod/github.com/skillsgo/skillsgo/@"+selector, nil)
+		response, err := r.Test(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if response.StatusCode != http.StatusOK || response.Header.Get("Cache-Control") != movableVersionCacheControl {
+			t.Fatalf("@%s returned status=%d cache=%q", selector, response.StatusCode, response.Header.Get("Cache-Control"))
+		}
+	}
+	legacy, _ := http.NewRequest(http.MethodGet, "/mod/github.com/skillsgo/skillsgo/@latest", nil)
+	legacyResponse, err := r.Test(legacy)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if legacyResponse.StatusCode != http.StatusNotFound {
+		t.Fatalf("legacy @latest returned %d", legacyResponse.StatusCode)
+	}
+	for _, item := range []struct {
+		path  string
+		allow string
+	}{
+		{"/mod/github.com/skillsgo/skillsgo/@v/list", http.MethodGet},
+		{"/mod/github.com/skillsgo/skillsgo/@head", http.MethodGet},
+		{"/mod/github.com/skillsgo/skillsgo/@v/v1.2.3.info", http.MethodGet},
+		{"/mod/github.com/skillsgo/skillsgo/@v/v1.2.3.zip", http.MethodGet + ", " + http.MethodHead},
+	} {
+		request, _ := http.NewRequest(http.MethodPost, item.path, nil)
+		response, err := r.Test(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if response.StatusCode != http.StatusMethodNotAllowed || response.Header.Get("Allow") != item.allow {
+			t.Fatalf("POST %s returned status=%d Allow=%q", item.path, response.StatusCode, response.Header.Get("Allow"))
 		}
 	}
 }
@@ -165,7 +239,11 @@ type successfulProtocol struct {
 }
 
 func (p *successfulProtocol) Info(context.Context, string, string) ([]byte, error) {
-	return []byte(`{"Version":"v1.0.0"}`), nil
+	return []byte(`{"Version":"v1.0.0","Time":"2026-07-22T00:00:00Z"}`), nil
+}
+
+func (p *successfulProtocol) List(context.Context, string) ([]string, error) {
+	return []string{"v1.0.0", "v2.0.0-rc.1"}, nil
 }
 
 func (p *successfulProtocol) Zip(context.Context, string, string) (storage.SizeReadCloser, error) {

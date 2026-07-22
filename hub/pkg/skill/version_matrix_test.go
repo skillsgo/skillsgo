@@ -87,16 +87,16 @@ func TestRepositoryVersionSelectionMatrix(t *testing.T) {
 		selector string
 		want     matrixVersion
 	}{
-		{name: "no tags C1 latest selects F1", timeline: timelineNoTagsC1, selector: "latest", want: matrixF1},
+		{name: "no tags C1 head selects F1", timeline: timelineNoTagsC1, selector: "head", want: matrixF1},
 		{name: "no tags C1 main selects F1", timeline: timelineNoTagsC1, selector: "main", want: matrixF1},
 		{name: "no tags C1 exact F1 remains F1", timeline: timelineNoTagsC1, selector: "F1", want: matrixF1},
-		{name: "no tags C2 latest selects F2", timeline: timelineNoTagsC2, selector: "latest", want: matrixF2},
+		{name: "no tags C2 head selects F2", timeline: timelineNoTagsC2, selector: "head", want: matrixF2},
 		{name: "no tags C2 main selects F2", timeline: timelineNoTagsC2, selector: "main", want: matrixF2},
 		{name: "no tags C2 exact F1 remains F1", timeline: timelineNoTagsC2, selector: "F1", want: matrixF1},
-		{name: "tagged C1 latest selects V1", timeline: timelineTaggedC1, selector: "latest", want: matrixV1},
+		{name: "tagged C1 release selects V1", timeline: timelineTaggedC1, selector: "release", want: matrixV1},
 		{name: "tagged C1 main canonicalizes to V1", timeline: timelineTaggedC1, selector: "main", want: matrixV1},
 		{name: "tagged C1 exact V1 remains V1", timeline: timelineTaggedC1, selector: "V1", want: matrixV1},
-		{name: "transitioned C2 latest stays V1", timeline: timelineTransitionC2, selector: "latest", want: matrixV1},
+		{name: "transitioned C2 release stays V1", timeline: timelineTransitionC2, selector: "release", want: matrixV1},
 		{name: "transitioned C2 main selects F2 based on V1", timeline: timelineTransitionC2, selector: "main", want: matrixF2},
 		{name: "transitioned C2 exact old F1 remains F1", timeline: timelineTransitionC2, selector: "F1", want: matrixF1},
 	}

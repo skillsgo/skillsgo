@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the storage Backend contract, decoded artifact paths, multipart uploads, and standard HTTP transport.
- * [OUTPUT]: Provides the standalone external-storage HTTP handler for list, read, save, and delete operations.
+ * [INPUT]: Depends on the immutable storage Backend contract, decoded artifact paths, bounded multipart uploads, and standard HTTP transport.
+ * [OUTPUT]: Provides the standalone external-storage HTTP handler for list, read, create-only save, and delete operations.
  * [POS]: Serves as the explicit standard-library transport boundary outside the Fiber Hub application.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,13 +16,15 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/paths"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
-	"golang.org/x/mod/zip"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 )
 
-// NewServer takes a storage.Backend implementation of your
-// choice, and returns a new http.Handler that Athens can
-// reach out to for storage operations.
+const maxExternalInfoBytes = 1 << 20
+
+// NewServer exposes one storage.Backend as the authority for external storage operations.
 func NewServer(strg storage.Backend) http.Handler {
+	strg = storage.WithImmutableWrites(strg)
+	immutableSaver := strg.(storage.ImmutableSaver)
 	listHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		skill, err := paths.GetSkill(r.URL.Path)
 		if err != nil {
@@ -70,8 +72,8 @@ func NewServer(strg storage.Backend) http.Handler {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
 		}
-		r.Body = http.MaxBytesReader(w, r.Body, 1<<20)
-		err = r.ParseMultipartForm(zip.MaxZipFile + zip.MaxGoMod)
+		r.Body = http.MaxBytesReader(w, r.Body, protocolartifact.MaxArchiveBytes+maxExternalInfoBytes+(1<<20))
+		err = r.ParseMultipartForm(maxExternalInfoBytes)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
@@ -82,9 +84,13 @@ func NewServer(strg storage.Backend) http.Handler {
 			return
 		}
 		defer func() { _ = infoFile.Close() }()
-		info, err := io.ReadAll(infoFile)
+		info, err := io.ReadAll(io.LimitReader(infoFile, maxExternalInfoBytes+1))
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+		if len(info) == 0 || len(info) > maxExternalInfoBytes {
+			http.Error(w, "invalid Info size", http.StatusBadRequest)
 			return
 		}
 		modZ, _, err := r.FormFile("skill.zip")
@@ -93,11 +99,16 @@ func NewServer(strg storage.Backend) http.Handler {
 			return
 		}
 		defer func() { _ = modZ.Close() }()
-		err = strg.Save(r.Context(), params.Skill, params.Version, modZ, nil, info)
+		created, err := immutableSaver.PutIfAbsent(r.Context(), params.Skill, params.Version, modZ, nil, info)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, err.Error(), errors.Kind(err))
 			return
 		}
+		if created {
+			w.WriteHeader(http.StatusCreated)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
 	})
 
 	deleteHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

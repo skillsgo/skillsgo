@@ -69,7 +69,7 @@ func registerRepositoryPrewarmJob(runtime *taskqueue.Runtime, materializer repos
 		}
 		query := args.Query
 		if query == "" {
-			query = "latest"
+			query = "head"
 		}
 		_, err := materializer.Materialize(ctx, args.RepositoryID, query)
 		return err
@@ -78,7 +78,7 @@ func registerRepositoryPrewarmJob(runtime *taskqueue.Runtime, materializer repos
 
 func enqueueRepositoryPrewarm(ctx context.Context, runtime *taskqueue.Runtime, repositoryID, query string) error {
 	if query == "" {
-		query = "latest"
+		query = "head"
 	}
 	return runtime.Enqueue(ctx, repositoryPublicationPrewarmArgs{RepositoryID: repositoryID, Query: query}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8})
 }

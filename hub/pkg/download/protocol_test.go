@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the download package imports and contracts declared in this file.
- * [OUTPUT]: Specifies synchronous downloads, durable asynchronous submission, failure propagation, and cache behavior.
+ * [OUTPUT]: Specifies synchronous downloads, strict offline misses, durable asynchronous submission, failure propagation, and cache behavior.
  * [POS]: Serves as test coverage for the download package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -223,50 +223,6 @@ func TestConcurrentLists(t *testing.T) {
 	}
 }
 
-type latestTest struct {
-	name string
-	path string
-	info *storage.RevInfo
-	err  bool
-}
-
-var latestTests = []latestTest{
-	{
-		name: "happy path",
-		path: "github.com/athens-artifacts/no-tags",
-		info: &storage.RevInfo{
-			Version: "v0.0.0-20180803171426-1a540c5d67ab",
-			Time:    time.Date(2018, 8, 3, 17, 14, 26, 0, time.UTC),
-		},
-	},
-	{
-		name: "tagged latest",
-		path: "github.com/athens-artifacts/happy-path",
-		info: &storage.RevInfo{
-			Version: "v0.0.3",
-			Time:    time.Date(2018, 8, 3, 17, 16, 0o0, 0, time.UTC),
-		},
-	},
-}
-
-func TestLatest(t *testing.T) {
-	dp := getDP(t)
-	ctx := t.Context()
-
-	for _, tc := range latestTests {
-		t.Run(tc.name, func(t *testing.T) {
-			info, err := dp.Latest(ctx, tc.path)
-			if !tc.err && err != nil {
-				t.Fatal(err)
-			} else if tc.err && err == nil {
-				t.Fatalf("expected %v error but got nil", tc.err)
-			}
-
-			require.EqualValues(t, tc.info, info)
-		})
-	}
-}
-
 type infoTest struct {
 	name    string
 	path    string
@@ -420,6 +376,32 @@ func TestAsyncDownloadReturnsSubmissionFailure(t *testing.T) {
 	})
 	_, err = dp.Info(t.Context(), "github.com/acme/skills/-/demo", "v1.0.0")
 	require.ErrorIs(t, err, wantErr)
+}
+
+func TestOfflineInfoAndZipMissNeverInvokeSourceOrStasher(t *testing.T) {
+	s, err := mem.NewStorage()
+	require.NoError(t, err)
+	called := false
+	dp := New(&Opts{
+		Storage:      s,
+		NetworkMode:  Offline,
+		DownloadFile: &mode.DownloadFile{Mode: mode.Sync},
+		Stasher: stashFunc(func(context.Context, string, string) (string, error) {
+			called = true
+			return "", stderrors.New("must not be called")
+		}),
+	})
+	_, infoErr := dp.Info(t.Context(), "github.com/acme/skills", "v1.0.0")
+	_, zipErr := dp.Zip(t.Context(), "github.com/acme/skills", "v1.0.0")
+	require.Equal(t, errors.KindNotFound, errors.Kind(infoErr))
+	require.Equal(t, errors.KindNotFound, errors.Kind(zipErr))
+	require.False(t, called)
+}
+
+type stashFunc func(context.Context, string, string) (string, error)
+
+func (function stashFunc) Stash(ctx context.Context, module, version string) (string, error) {
+	return function(ctx, module, version)
 }
 
 type mockStasher struct {

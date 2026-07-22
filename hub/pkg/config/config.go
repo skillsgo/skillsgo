@@ -23,7 +23,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/presentation"
 )
 
-const defaultConfigFile = "athens.toml"
+const defaultConfigFile = "skillsgo-hub.toml"
 
 // Config provides configuration values for all components.
 type Config struct {
@@ -44,7 +44,6 @@ type Config struct {
 	TraceSamplingFraction float64   `envconfig:"SKILLSGO_HUB_TRACE_SAMPLING_FRACTION"`
 	StatsExporter         string    `envconfig:"SKILLSGO_HUB_STATS_EXPORTER"`
 	StorageType           string    `envconfig:"SKILLSGO_HUB_STORAGE_TYPE"            validate:"required"`
-	GlobalEndpoint        string    `envconfig:"SKILLSGO_HUB_GLOBAL_ENDPOINT"` // This feature is not yet implemented
 	Port                  string    `envconfig:"SKILLSGO_HUB_PORT"`
 	UnixSocket            string    `envconfig:"SKILLSGO_HUB_UNIX_SOCKET"`
 	BasicAuthUser         string    `envconfig:"SKILLSGO_HUB_BASIC_AUTH_USER"`
@@ -55,9 +54,7 @@ type Config struct {
 	ForceSSL              bool      `envconfig:"SKILLSGO_HUB_FORCE_SSL"`
 	ValidatorHook         string    `envconfig:"SKILLSGO_HUB_PROXY_VALIDATOR"`
 	PathPrefix            string    `envconfig:"SKILLSGO_HUB_PATH_PREFIX"`
-	NETRCPath             string    `envconfig:"SKILLSGO_HUB_NETRC_PATH"`
 	GithubTokens          TokenList `envconfig:"SKILLSGO_HUB_GITHUB_TOKENS"`
-	HGRCPath              string    `envconfig:"SKILLSGO_HUB_HGRC_PATH"`
 	TLSCertFile           string    `envconfig:"SKILLSGO_HUB_TLSCERT_FILE"`
 	TLSKeyFile            string    `envconfig:"SKILLSGO_HUB_TLSKEY_FILE"`
 	DownloadMode          mode.Mode `envconfig:"SKILLSGO_HUB_DOWNLOAD_MODE"`
@@ -186,11 +183,10 @@ func defaultConfig() *Config {
 		PprofPort:             ":3001",
 		StatsExporter:         "prometheus",
 		TimeoutConf:           TimeoutConf{Timeout: 300},
-		HomeTemplatePath:      "/var/lib/athens/home.html",
+		HomeTemplatePath:      "/var/lib/skillsgo/home.html",
 		StorageType:           "disk",
 		Port:                  ":3000",
 		SingleFlightType:      "memory",
-		GlobalEndpoint:        "http://localhost:3001",
 		TraceExporterURL:      "http://localhost:4317",
 		TraceSamplingFraction: 1.0,
 		DownloadMode:          "sync",
@@ -453,7 +449,7 @@ func validateStorage(validate *validator.Validate, storageType string, config *S
 	case "disk":
 		return validate.Struct(config.Disk)
 	case "minio":
-		return validate.Struct(config.Minio)
+		return fmt.Errorf("storage type %q is not supported by Hub v1 because it cannot guarantee conditional create semantics", storageType)
 	case "gcp":
 		return validate.Struct(config.GCP)
 	case "s3":

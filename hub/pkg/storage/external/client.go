@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the external package imports and contracts declared in this file.
- * [OUTPUT]: Provides the external package behavior implemented by client.go.
- * [POS]: Serves as maintained source in the external package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on the external storage HTTP protocol, escaped immutable coordinates, and multipart Info/ZIP streams.
+ * [OUTPUT]: Provides an external Backend client with server-authoritative PutIfAbsent result semantics.
+ * [POS]: Serves as the Hub-side adapter to a single external storage service that owns cross-process publication races.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package external
@@ -75,11 +75,17 @@ func (s *service) Zip(ctx context.Context, mod, ver string) (storage.SizeReadClo
 }
 
 func (s *service) Save(ctx context.Context, mod, ver string, zip io.Reader, zipMD5, info []byte) error {
+	_, err := s.PutIfAbsent(ctx, mod, ver, zip, zipMD5, info)
+	return err
+}
+
+// PutIfAbsent delegates the immutable coordinate decision to the external storage server.
+func (s *service) PutIfAbsent(ctx context.Context, mod, ver string, zip io.Reader, zipMD5, info []byte) (bool, error) {
 	const op errors.Op = "external.Save"
 	var err error
 	mod, err = module.EscapePath(mod)
 	if err != nil {
-		panic(err)
+		return false, errors.E(op, err)
 	}
 	url := s.url + "/" + mod + "/@v/" + ver + ".save"
 	pr, pw := io.Pipe()
@@ -90,19 +96,19 @@ func (s *service) Save(ctx context.Context, mod, ver string, zip io.Reader, zipM
 	}()
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, pr)
 	if err != nil {
-		return errors.E(op, err)
+		return false, errors.E(op, err)
 	}
 	req.Header.Add("Content-Type", mw.FormDataContentType())
 	resp, err := s.c.Do(req)
 	if err != nil {
-		return errors.E(op, err)
+		return false, errors.E(op, err)
 	}
 	defer func() { _ = resp.Body.Close() }()
-	if resp.StatusCode != http.StatusOK {
+	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusCreated {
 		bts, _ := io.ReadAll(resp.Body)
-		return errors.E(op, fmt.Errorf("unexpected status code: %v - body: %s", resp.StatusCode, bts), resp.StatusCode)
+		return false, errors.E(op, fmt.Errorf("unexpected status code: %v - body: %s", resp.StatusCode, bts), resp.StatusCode)
 	}
-	return nil
+	return resp.StatusCode == http.StatusCreated, nil
 }
 
 func (s *service) Delete(ctx context.Context, mod, ver string) error {

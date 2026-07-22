@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the actions package imports and contracts declared in this file.
- * [OUTPUT]: Provides the actions package behavior implemented by storage.go.
- * [POS]: Serves as maintained source in the actions package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on validated Hub storage configuration and backends with native or authoritative immutable writes.
+ * [OUTPUT]: Selects supported Hub v1 storage backends and rejects unsupported storage types.
+ * [POS]: Serves as the runtime storage construction boundary for the Hub process.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -22,7 +22,6 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/fs"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/gcp"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/mem"
-	"github.com/skillsgo/skillsgo/hub/pkg/storage/minio"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/mongo"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/s3"
 	"github.com/spf13/afero"
@@ -53,11 +52,6 @@ func GetStorage(storageType string, storageConfig *config.Storage, timeout time.
 			return nil, errors.E(op, errStr)
 		}
 		return s, nil
-	case "minio":
-		if storageConfig.Minio == nil {
-			return nil, errors.E(op, "Invalid Minio Storage Configuration")
-		}
-		return minio.NewStorage(storageConfig.Minio, timeout)
 	case "gcp":
 		if storageConfig.GCP == nil {
 			return nil, errors.E(op, "Invalid GCP Storage Configuration")
@@ -80,6 +74,8 @@ func GetStorage(storageType string, storageConfig *config.Storage, timeout time.
 			return nil, errors.E(op, "Invalid External Storage Configuration")
 		}
 		return external.NewClient(storageConfig.External.URL, client), nil
+	case "minio":
+		return nil, errors.E(op, "MinIO storage is not supported by Hub v1 because the legacy client cannot provide conditional create semantics")
 	default:
 		return nil, fmt.Errorf("storage type %s is unknown", storageType)
 	}

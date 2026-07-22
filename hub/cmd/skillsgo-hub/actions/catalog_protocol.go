@@ -1,27 +1,24 @@
 /*
- * [INPUT]: Depends on immutable artifact protocol reads, Catalog metadata, ZIP audit analysis, and normalized SKILL.md frontmatter.
- * [OUTPUT]: Provides a protocol decorator that indexes resolved Skills and enriches exact Info with normalized install metadata, Risk, Sum, and Archive Size.
- * [POS]: Serves as the Hub distribution boundary connecting source artifacts, immutable assessment, and public protocol bytes.
+ * [INPUT]: Depends on immutable artifact protocol reads, Catalog metadata, shared bounded ZIP traversal, and normalized SKILL.md frontmatter.
+ * [OUTPUT]: Provides a protocol decorator that persists canonical immutable Skill Info with source metadata, Sum, and Archive Size while indexing separate Catalog projections.
+ * [POS]: Serves as the immutable Info construction seam between source artifacts, publication, and public protocol bytes; mutable assessment stays downstream.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
 
 import (
-	"archive/zip"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
 	"io"
-	"strings"
 	"time"
 
-	"github.com/skillsgo/skillsgo/hub/pkg/audit"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/skillsgo/skillsgo/hub/pkg/download"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
-	"gopkg.in/yaml.v3"
+	protocolmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 )
 
 func withCatalog(protocol download.Protocol, metadata *catalog.Catalog) download.Protocol {
@@ -34,7 +31,6 @@ type catalogProtocol struct {
 }
 
 type suppressCatalogIndexKey struct{}
-type suppressArtifactAuditKey struct{}
 
 func withoutCatalogIndex(ctx context.Context) context.Context {
 	return context.WithValue(ctx, suppressCatalogIndexKey{}, true)
@@ -45,33 +41,14 @@ func shouldIndexCatalog(ctx context.Context) bool {
 	return !suppressed
 }
 
-func withoutArtifactAudit(ctx context.Context) context.Context {
-	return context.WithValue(ctx, suppressArtifactAuditKey{}, true)
-}
-
-func shouldAuditArtifact(ctx context.Context) bool {
-	suppressed, _ := ctx.Value(suppressArtifactAuditKey{}).(bool)
-	return !suppressed
-}
-
 type catalogArtifactInfo struct {
 	Version     string    `json:"Version"`
 	Time        time.Time `json:"Time"`
 	Ref         string    `json:"Ref"`
 	CommitSHA   string    `json:"CommitSHA"`
 	TreeSHA     string    `json:"TreeSHA"`
-	Risk        string    `json:"Risk"`
 	Sum         string    `json:"Sum"`
 	ArchiveSize int64     `json:"ArchiveSize"`
-}
-
-type skillFrontmatter struct {
-	Name          string            `yaml:"name"`
-	Description   string            `yaml:"description"`
-	License       string            `yaml:"license"`
-	Compatibility string            `yaml:"compatibility"`
-	AllowedTools  string            `yaml:"allowed-tools"`
-	Metadata      map[string]string `yaml:"metadata"`
 }
 
 func (p *catalogProtocol) Info(ctx context.Context, skillID, version string) ([]byte, error) {
@@ -79,60 +56,45 @@ func (p *catalogProtocol) Info(ctx context.Context, skillID, version string) ([]
 	if err != nil {
 		return nil, err
 	}
-	assessed, err := p.bindAssessment(ctx, skillID, info, nil)
+	immutable, err := p.bindImmutableInfo(ctx, skillID, info, nil)
 	if err != nil {
 		return nil, err
 	}
 	if shouldIndexCatalog(ctx) {
-		if err := p.index(ctx, skillID, assessed); err != nil {
+		if err := p.index(ctx, skillID, immutable); err != nil {
 			return nil, err
 		}
 	}
-	return assessed, nil
+	return immutable, nil
 }
 
-func (p *catalogProtocol) bindAssessment(ctx context.Context, skillID string, infoBytes, archiveBytes []byte) ([]byte, error) {
+func (p *catalogProtocol) bindImmutableInfo(ctx context.Context, skillID string, infoBytes, archiveBytes []byte) ([]byte, error) {
 	var info catalogArtifactInfo
 	if err := json.Unmarshal(infoBytes, &info); err != nil || info.Version == "" {
-		return nil, fmt.Errorf("decode Skill info for assessment: Version is required")
+		return nil, fmt.Errorf("decode immutable Skill Info: Version is required")
 	}
 	if archiveBytes == nil {
 		archive, err := p.Protocol.Zip(ctx, skillID, info.Version)
 		if err != nil {
-			return nil, fmt.Errorf("read Skill archive for assessment: %w", err)
+			return nil, fmt.Errorf("read Skill archive for immutable Info: %w", err)
 		}
 		archiveBytes, err = readAuditArchive(archive)
 		if err != nil {
 			return nil, err
 		}
 	}
-	metadata, err := metadataFromArchive(archiveBytes)
+	metadata, sum, err := metadataFromArchive(archiveBytes, skillID, info.Version)
 	if err != nil {
 		return nil, err
 	}
 	if metadata.Name == "" || metadata.Description == "" {
 		return nil, fmt.Errorf("decode Skill metadata for Info: name and description are required")
 	}
-	sum := ""
-	risk := "unknown"
-	if shouldAuditArtifact(ctx) {
-		analysis, err := audit.AnalyzeArtifact(archiveBytes, skillID, info.Version)
-		if err != nil {
-			return nil, fmt.Errorf("assess Skill archive: %w", err)
-		}
-		sum = analysis.Sum
-		risk = analysis.Risk.Level
-	} else {
-		sum, err = protocolartifact.Sum(archiveBytes, skillID, info.Version)
-		if err != nil {
-			return nil, fmt.Errorf("fingerprint Skill archive: %w", err)
-		}
-	}
 	var response map[string]any
 	if err := json.Unmarshal(infoBytes, &response); err != nil {
 		return nil, fmt.Errorf("decode Skill info response: %w", err)
 	}
-	response["Risk"] = risk
+	delete(response, "Risk")
 	response["Sum"] = sum
 	response["SchemaVersion"] = 1
 	response["Kind"] = "Skill"
@@ -172,12 +134,12 @@ func (p *catalogProtocol) Zip(ctx context.Context, skillID, version string) (sto
 	if err != nil {
 		return nil, err
 	}
-	assessed, err := p.bindAssessment(ctx, skillID, info, archiveBytes)
+	immutable, err := p.bindImmutableInfo(ctx, skillID, info, archiveBytes)
 	if err != nil {
 		return nil, err
 	}
 	if shouldIndexCatalog(ctx) {
-		if err := p.index(ctx, skillID, assessed); err != nil {
+		if err := p.index(ctx, skillID, immutable); err != nil {
 			return nil, err
 		}
 	}
@@ -223,39 +185,24 @@ func (p *catalogProtocol) index(ctx context.Context, skillID string, infoBytes [
 	return nil
 }
 
-func metadataFromArchive(archiveBytes []byte) (skillFrontmatter, error) {
-	reader, err := zip.NewReader(bytes.NewReader(archiveBytes), int64(len(archiveBytes)))
-	if err != nil {
-		return skillFrontmatter{}, fmt.Errorf("read Skill archive metadata: %w", err)
-	}
-	for _, file := range reader.File {
-		if !strings.HasSuffix(file.Name, "/SKILL.md") {
-			continue
+func metadataFromArchive(archiveBytes []byte, skillID, version string) (protocolmanifest.Manifest, string, error) {
+	var metadata protocolmanifest.Manifest
+	digest, err := protocolartifact.WalkContent(archiveBytes, skillID, version, func(entry protocolartifact.Entry) error {
+		if entry.Directory || entry.Path != "SKILL.md" {
+			return nil
 		}
-		opened, err := file.Open()
+		parsed, err := protocolmanifest.ValidatePublished(entry.Contents)
 		if err != nil {
-			return skillFrontmatter{}, err
+			return err
 		}
-		contents, readErr := io.ReadAll(opened)
-		closeErr := opened.Close()
-		if readErr != nil {
-			return skillFrontmatter{}, readErr
-		}
-		if closeErr != nil {
-			return skillFrontmatter{}, closeErr
-		}
-		parts := bytes.SplitN(contents, []byte("---"), 3)
-		if len(parts) != 3 || len(bytes.TrimSpace(parts[0])) != 0 {
-			return skillFrontmatter{}, fmt.Errorf("SKILL.md is missing YAML frontmatter")
-		}
-		var metadata skillFrontmatter
-		if err := yaml.Unmarshal(parts[1], &metadata); err != nil {
-			return skillFrontmatter{}, fmt.Errorf("decode SKILL.md frontmatter: %w", err)
-		}
-		if metadata.Name == "" || metadata.Description == "" {
-			return skillFrontmatter{}, fmt.Errorf("decode SKILL.md frontmatter: name and description are required")
-		}
-		return metadata, nil
+		metadata = parsed
+		return nil
+	})
+	if err != nil {
+		return protocolmanifest.Manifest{}, "", fmt.Errorf("read Skill archive metadata: %w", err)
 	}
-	return skillFrontmatter{}, fmt.Errorf("Skill archive contains no SKILL.md")
+	if metadata.Name == "" || metadata.Description == "" {
+		return protocolmanifest.Manifest{}, "", fmt.Errorf("decode SKILL.md frontmatter: name and description are required")
+	}
+	return metadata, digest, nil
 }

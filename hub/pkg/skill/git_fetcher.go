@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on canonical Skill IDs, Git commit and ancestor-tag inspection, semantic and pseudo-version helpers, the shared repository cache, optional GitHub-token failover, manifest validation, and SkillsGo artifact assembly.
- * [OUTPUT]: Provides bounded shared Git synchronization with per-process GitHub credential failover, Go-compatible ancestor-based immutable revision resolution, repository-owned Skill discovery, and source-identity metadata.
+ * [INPUT]: Depends on canonical Skill IDs, Git commit and ancestor-tag inspection, semantic and pseudo-version helpers, the shared repository cache, credential-free controlled Git transport, manifest validation, and SkillsGo artifact assembly.
+ * [OUTPUT]: Provides bounded public-only Git synchronization, Go-compatible ancestor-based immutable revision resolution, repository-owned Skill discovery, and source-identity metadata.
  * [POS]: Serves as the Git source resolver and Repository snapshot coordinator in the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,7 +8,6 @@ package skill
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"net"
@@ -253,16 +252,18 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 			}).Warnf("repository git synchronization failed")
 			return nil, errors.E(op, err)
 		}
-		githubSource := strings.EqualFold(strings.SplitN(skillID.Repository, "/", 2)[0], "github.com")
 		if isGitRepository(repoDir) {
 			fetchStarted := time.Now()
-			if output, err := g.runGitTransport(ctx, repoDir, githubSource, "-c", "http.followRedirects=false", "fetch", "--prune", "origin",
+			if output, err := g.runGitTransport(ctx, repoDir, "-c", "http.followRedirects=false", "fetch", "--prune", "origin",
 				"+refs/heads/*:refs/remotes/origin/*", "+refs/tags/*:refs/skillsgo/upstream-tags/*"); err == nil {
 				entry.WithFields(map[string]any{
 					"duration_ms": time.Since(fetchStarted).Milliseconds(),
 					"git_phase":   "fetch",
 					"result":      "success",
 				}).Debugf("repository git transport completed")
+				if err := enforceRepositoryDiskLimit(repoDir); err != nil {
+					return nil, errors.E(op, err, errors.KindBadRequest)
+				}
 				return nil, g.writeRepositoryMetadata(repoDir, skillID)
 			} else if ctx.Err() != nil {
 				entry.WithFields(map[string]any{
@@ -277,7 +278,7 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 				// cache. Reclone only when Git confirms local object corruption.
 				fsck := exec.CommandContext(ctx, "git", "fsck", "--connectivity-only")
 				fsck.Dir = repoDir
-				fsck.Env = os.Environ()
+				fsck.Env = controlledGitEnvironment(os.Environ())
 				if _, fsckErr := fsck.CombinedOutput(); fsckErr == nil {
 					diagnostic := gitTransportDiagnostic(output)
 					entry.WithFields(map[string]any{
@@ -313,7 +314,7 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 		defer os.RemoveAll(tmpDir)
 		cloneDir := filepath.Join(tmpDir, "repository")
 		cloneStarted := time.Now()
-		if output, err := g.runGitTransport(ctx, "", githubSource, "-c", "http.followRedirects=false", "clone", "--filter=blob:none", "--no-checkout", cloneURL, cloneDir); err != nil {
+		if output, err := g.runGitTransport(ctx, "", "-c", "http.followRedirects=false", "clone", "--filter=blob:none", "--no-checkout", "--no-tags", cloneURL, cloneDir); err != nil {
 			diagnostic := gitTransportDiagnostic(output)
 			entry.WithFields(map[string]any{
 				"duration_ms": time.Since(cloneStarted).Milliseconds(),
@@ -330,6 +331,9 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 			"git_phase":   "clone",
 			"result":      "success",
 		}).Debugf("repository git transport completed")
+		if output, err := g.runGitTransport(ctx, cloneDir, "-c", "http.followRedirects=false", "fetch", "--prune", "origin", "+refs/tags/*:refs/skillsgo/upstream-tags/*"); err != nil {
+			return nil, errors.E(op, fmt.Errorf("fetch Repository Tag catalog: %s", gitTransportDiagnostic(output)))
+		}
 		if err := enforceRepositoryDiskLimit(cloneDir); err != nil {
 			return nil, errors.E(op, err, errors.KindBadRequest)
 		}
@@ -341,30 +345,10 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error 
 	return err
 }
 
-func (g *gitFetcher) runGitTransport(ctx context.Context, dir string, githubSource bool, args ...string) ([]byte, error) {
-	attempts := 1
-	if githubSource && len(g.githubTokens) > 0 {
-		attempts = len(g.githubTokens)
-	}
-	start := g.activeToken.Load()
-	var output []byte
-	var err error
-	for offset := range attempts {
-		environment := os.Environ()
-		if githubSource && len(g.githubTokens) > 0 {
-			index := (start + uint64(offset)) % uint64(len(g.githubTokens))
-			environment = gitHubTokenEnvironment(environment, g.githubTokens[index])
-		}
-		output, err = g.runGitCommand(ctx, dir, args, environment)
-		if err == nil {
-			if offset > 0 {
-				g.activeToken.CompareAndSwap(start, start+uint64(offset))
-			}
-			return output, nil
-		}
-		if ctx.Err() != nil {
-			return output, ctx.Err()
-		}
+func (g *gitFetcher) runGitTransport(ctx context.Context, dir string, args ...string) ([]byte, error) {
+	output, err := g.runGitCommand(ctx, dir, args, controlledGitEnvironment(os.Environ()))
+	if err != nil && ctx.Err() != nil {
+		return output, ctx.Err()
 	}
 	return output, err
 }
@@ -376,19 +360,30 @@ func runGitCommand(ctx context.Context, dir string, args []string, environment [
 	return cmd.CombinedOutput()
 }
 
-func gitHubTokenEnvironment(environment []string, token string) []string {
-	filtered := make([]string, 0, len(environment)+3)
+func controlledGitEnvironment(environment []string) []string {
+	blocked := map[string]bool{
+		"GIT_ALLOW_PROTOCOL": true, "GIT_ASKPASS": true, "GIT_CONFIG_COUNT": true,
+		"GIT_CONFIG_GLOBAL": true, "GIT_CONFIG_NOSYSTEM": true,
+		"GIT_PROTOCOL_FROM_USER": true, "GIT_SSH": true, "GIT_SSH_COMMAND": true,
+		"GIT_TERMINAL_PROMPT": true, "GCM_INTERACTIVE": true, "SSH_ASKPASS": true,
+	}
+	filtered := make([]string, 0, len(environment)+8)
 	for _, entry := range environment {
-		if strings.HasPrefix(entry, "GIT_CONFIG_COUNT=") || strings.HasPrefix(entry, "GIT_CONFIG_KEY_0=") || strings.HasPrefix(entry, "GIT_CONFIG_VALUE_0=") {
+		key, _, _ := strings.Cut(entry, "=")
+		if blocked[key] || strings.HasPrefix(key, "GIT_CONFIG_KEY_") || strings.HasPrefix(key, "GIT_CONFIG_VALUE_") {
 			continue
 		}
 		filtered = append(filtered, entry)
 	}
-	credential := base64.StdEncoding.EncodeToString([]byte("x-access-token:" + token))
 	return append(filtered,
-		"GIT_CONFIG_COUNT=1",
-		"GIT_CONFIG_KEY_0=http.https://github.com/.extraHeader",
-		"GIT_CONFIG_VALUE_0=Authorization: Basic "+credential,
+		"GIT_CONFIG_NOSYSTEM=1",
+		"GIT_CONFIG_GLOBAL="+os.DevNull,
+		"GIT_TERMINAL_PROMPT=0",
+		"GCM_INTERACTIVE=Never",
+		"GIT_ASKPASS=/bin/false",
+		"SSH_ASKPASS=/bin/false",
+		"GIT_PROTOCOL_FROM_USER=0",
+		"GIT_ALLOW_PROTOCOL=https:file",
 	)
 }
 
@@ -414,6 +409,9 @@ func validateRepositoryNetworkTarget(ctx context.Context, repositoryID, cloneURL
 	// public-host policy applies to the canonical HTTPS source transport.
 	if !strings.EqualFold(parsed.Hostname(), host) {
 		return nil
+	}
+	if parsed.Scheme != "https" || parsed.User != nil || parsed.Port() != "" {
+		return fmt.Errorf("Repository clone URL must use credential-free HTTPS on the canonical host")
 	}
 	addresses, err := net.DefaultResolver.LookupIPAddr(ctx, host)
 	if err != nil {
@@ -475,40 +473,36 @@ func (g *gitFetcher) writeRepositoryMetadata(repoDir string, skillID SkillID) er
 func isGitRepository(repoDir string) bool {
 	cmd := exec.Command("git", "rev-parse", "--git-dir")
 	cmd.Dir = repoDir
+	cmd.Env = controlledGitEnvironment(os.Environ())
 	return cmd.Run() == nil
 }
 
 func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, revision string) (*Resolution, error) {
 	const op errors.Op = "skill.resolveGitRevision"
 	requestedRevision := revision
-	if revision == "latest" {
-		tagOutput, err := gitOutput(ctx, repoDir, "tag", "--list")
+	switch revision {
+	case "latest":
+		return nil, errors.E(op, "unsupported ambiguous Selector latest; use head or release", errors.KindBadRequest)
+	case "release":
+		tags, err := canonicalRepositoryTags(ctx, repoDir)
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
-		versions := make([]string, 0)
-		for _, tag := range strings.Fields(tagOutput) {
-			if isCanonicalSemanticVersion(tag) {
-				versions = append(versions, tag)
-			}
-		}
-		upstreamOutput, upstreamErr := gitOutput(ctx, repoDir, "for-each-ref", "--format=%(refname:strip=3)", "refs/skillsgo/upstream-tags")
-		if upstreamErr == nil {
-			for _, tag := range strings.Fields(upstreamOutput) {
-				if isCanonicalSemanticVersion(tag) {
-					versions = append(versions, tag)
-				}
-			}
+		versions := make([]string, 0, len(tags))
+		for _, tag := range tags {
+			versions = append(versions, tag.Version)
 		}
 		if selected := latestSemanticVersion(versions); selected != "" {
 			revision = selected
 		} else {
-			defaultRef, err := gitOutput(ctx, repoDir, "symbolic-ref", "refs/remotes/origin/HEAD")
-			if err != nil {
-				return nil, errors.E(op, err)
-			}
-			revision = strings.TrimPrefix(defaultRef, "refs/remotes/origin/")
+			return nil, errors.E(op, "Repository has no canonical semantic release", errors.S(skillID.String()), errors.V(requestedRevision), errors.KindNotFound)
 		}
+	case "head":
+		defaultRef, err := gitOutput(ctx, repoDir, "symbolic-ref", "refs/remotes/origin/HEAD")
+		if err != nil {
+			return nil, errors.E(op, err)
+		}
+		revision = strings.TrimPrefix(defaultRef, "refs/remotes/origin/")
 	}
 	resolvedRevision := revision
 	if semver.IsValid(revision) && modmodule.IsPseudoVersion(revision) {
@@ -543,11 +537,17 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, re
 	version := revision
 	ref := revision
 	if !isCanonicalSemanticVersion(version) {
-		tagOutput, tagErr := gitOutput(ctx, repoDir, "tag", "--points-at", commitSHA)
+		tags, tagErr := canonicalRepositoryTags(ctx, repoDir)
 		if tagErr != nil {
 			return nil, errors.E(op, tagErr)
 		}
-		if taggedVersion := highestSemanticVersion(strings.Fields(tagOutput)); taggedVersion != "" {
+		pointing := make([]string, 0)
+		for _, tag := range tags {
+			if tag.CommitSHA == commitSHA {
+				pointing = append(pointing, tag.Version)
+			}
+		}
+		if taggedVersion := highestSemanticVersion(pointing); taggedVersion != "" {
 			version = taggedVersion
 			ref = "refs/tags/" + taggedVersion
 		} else {
@@ -625,7 +625,7 @@ func validatePseudoVersion(ctx context.Context, repoDir, version, commitSHA stri
 	}
 	ancestor := exec.CommandContext(ctx, "git", "merge-base", "--is-ancestor", baseCommit, commitSHA)
 	ancestor.Dir = repoDir
-	ancestor.Env = os.Environ()
+	ancestor.Env = controlledGitEnvironment(os.Environ())
 	if err := ancestor.Run(); err != nil {
 		return fmt.Errorf("invalid pseudo-version %q: commit is not a descendant of preceding Tag %s", version, base)
 	}
@@ -659,11 +659,23 @@ func isCanonicalSemanticVersion(version string) bool {
 }
 
 func pseudoVersionForCommit(ctx context.Context, repoDir, commitSHA string, commitTime time.Time) (string, error) {
-	tagOutput, err := gitOutput(ctx, repoDir, "tag", "--merged", commitSHA)
+	tags, err := canonicalRepositoryTags(ctx, repoDir)
 	if err != nil {
 		return "", err
 	}
-	base := highestSemanticVersion(strings.Fields(tagOutput))
+	ancestors := make([]string, 0, len(tags))
+	for _, tag := range tags {
+		if tag.CommitSHA == commitSHA {
+			continue
+		}
+		ancestor := exec.CommandContext(ctx, "git", "merge-base", "--is-ancestor", tag.CommitSHA, commitSHA)
+		ancestor.Dir = repoDir
+		ancestor.Env = controlledGitEnvironment(os.Environ())
+		if ancestor.Run() == nil {
+			ancestors = append(ancestors, tag.Version)
+		}
+	}
+	base := highestSemanticVersion(ancestors)
 	major := semver.Major(base)
 	if major == "" {
 		major = "v0"
@@ -678,6 +690,7 @@ func pseudoVersionForCommit(ctx context.Context, repoDir, commitSHA string, comm
 func gitOutput(ctx context.Context, repoDir string, args ...string) (string, error) {
 	cmd := exec.CommandContext(ctx, "git", args...)
 	cmd.Dir = repoDir
+	cmd.Env = controlledGitEnvironment(os.Environ())
 	output, err := cmd.Output()
 	if err != nil {
 		return "", err

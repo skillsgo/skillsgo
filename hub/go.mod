@@ -28,6 +28,7 @@ require (
 	github.com/gobuffalo/envy v1.10.2
 	github.com/gobuffalo/httptest v1.5.2
 	github.com/gofiber/fiber/v3 v3.4.0
+	github.com/gofrs/flock v0.13.0
 	github.com/google/go-cmp v0.7.0
 	github.com/google/uuid v1.6.0
 	github.com/hashicorp/go-multierror v1.1.1
@@ -44,8 +45,8 @@ require (
 	github.com/prometheus/otlptranslator v1.0.0
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/riverqueue/river v0.40.0
-	github.com/skillsgo/skillsgo/protocol v0.0.0
 	github.com/riverqueue/river/riverdriver/riverpgxv5 v0.40.0
+	github.com/skillsgo/skillsgo/protocol v0.0.0
 	github.com/spf13/afero v1.15.0
 	github.com/stretchr/testify v1.11.1
 	github.com/technosophos/moniker v0.0.0-20210218184952-3ea787d3943b

@@ -407,11 +407,11 @@ func TestSQLiteMigrationsAreVersionedAndIdempotent(t *testing.T) {
 	c := open()
 	var versions []string
 	require.NoError(t, c.db.SelectContext(ctx, &versions, "SELECT version FROM atlas_schema_revisions ORDER BY version"))
-	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001", "202607210001", "202607210002", "202607220001", "202607220002", "202607220003", "202607220004"}, versions)
+	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001", "202607210001", "202607210002", "202607220001", "202607220002", "202607220003", "202607220004", "202607220005"}, versions)
 	require.NoError(t, c.Close())
 
 	c = open()
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	require.NoError(t, c.db.SelectContext(ctx, &versions, "SELECT version FROM atlas_schema_revisions ORDER BY version"))
-	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001", "202607210001", "202607210002", "202607220001", "202607220002", "202607220003", "202607220004"}, versions)
+	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001", "202607210001", "202607210002", "202607220001", "202607220002", "202607220003", "202607220004", "202607220005"}, versions)
 }

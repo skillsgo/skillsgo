@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, immutable artifact protocol, ZIP audit boundary, request validation, and UTC ranking windows.
- * [OUTPUT]: Provides stable public discovery, Catalog-only batch update, content-match, detail, and event APIs plus correlated private diagnostics for internal and best-effort dependency failures.
+ * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, freshness-cached Repository artifact resolution, ZIP audit boundary, request validation, and UTC ranking windows.
+ * [OUTPUT]: Provides stable public discovery, Repository-fresh head/release batch update, content-match, detail, and event APIs plus correlated private diagnostics for internal and best-effort dependency failures.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -28,6 +28,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
+	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 )
 
 type skillsResponse struct {
@@ -99,6 +100,16 @@ type artifactReader interface {
 	Zip(context.Context, string, string) (storage.SizeReadCloser, error)
 }
 
+type updateArtifactReader interface {
+	artifactReader
+	List(context.Context, string) ([]string, error)
+}
+
+type repositoryUpdateCandidates struct {
+	head    map[string]string
+	release map[string]string
+}
+
 type errorResponse struct {
 	Error string `json:"error"`
 	Code  string `json:"code"`
@@ -117,12 +128,12 @@ func registerCatalogAPIRoutes(
 	r.Get("/api/v1/search", searchSkillsHandler(metadata))
 	r.Get("/api/v1/skills", listSkillsHandler(metadata))
 	r.Get("/api/v1/matches", contentMatchesHandler(metadata))
-	r.Post("/api/v1/updates/check", catalogUpdateCheckHandler(metadata))
+	r.Post("/api/v1/updates/check", catalogUpdateCheckHandler(metadata, artifacts))
 	r.Get("/api/v1/skills/+", skillDetailHandler(metadata, artifacts, repositories))
 	r.Post("/api/v1/events/install", installEventHandler(metadata))
 }
 
-func catalogUpdateCheckHandler(metadata *catalog.Catalog) fiber.Handler {
+func catalogUpdateCheckHandler(metadata *catalog.Catalog, artifacts artifactReader) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		var request catalogUpdateCheckRequest
 		if err := json.Unmarshal(c.Body(), &request); err != nil || request.SchemaVersion != 1 || len(request.SkillIDs) > 1000 {
@@ -144,17 +155,88 @@ func catalogUpdateCheckHandler(metadata *catalog.Catalog) fiber.Handler {
 		for _, item := range stored {
 			byID[item.SkillID] = item
 		}
-		response := catalogUpdateCheckResponse{SchemaVersion: 1, Items: make([]catalogUpdateCheckItem, 0, len(request.SkillIDs))}
+		resolver, ok := artifacts.(updateArtifactReader)
+		if !ok {
+			return writeInternalAPIError(c, "catalog.update_check", fiber.StatusServiceUnavailable, "resolver_unavailable", "update check unavailable", fmt.Errorf("artifact resolver does not support version listing"))
+		}
+		resolvedRepositories := map[string]repositoryUpdateCandidates{}
 		for _, skillID := range request.SkillIDs {
 			item, ok := byID[skillID]
 			if !ok || item.LatestVersion == "" {
+				continue
+			}
+			parsed, _ := skill.ParseSkillID(skillID)
+			if _, done := resolvedRepositories[parsed.Repository]; done {
+				continue
+			}
+			candidates, resolveErr := resolveRepositoryUpdateCandidates(c.Context(), resolver, parsed.Repository)
+			if resolveErr != nil {
+				return writeInternalAPIError(c, "catalog.update_check", fiber.StatusBadGateway, "resolution_failed", "update check failed", resolveErr)
+			}
+			resolvedRepositories[parsed.Repository] = candidates
+		}
+		response := catalogUpdateCheckResponse{SchemaVersion: 1, Items: make([]catalogUpdateCheckItem, 0, len(request.SkillIDs))}
+		for _, skillID := range request.SkillIDs {
+			if _, ok := byID[skillID]; !ok {
 				response.Items = append(response.Items, catalogUpdateCheckItem{SkillID: skillID, Status: "unsupported"})
 				continue
 			}
-			response.Items = append(response.Items, catalogUpdateCheckItem{SkillID: skillID, LatestVersion: item.LatestVersion, Status: "available"})
+			parsed, _ := skill.ParseSkillID(skillID)
+			candidates := resolvedRepositories[parsed.Repository]
+			headVersion, headOK := candidates.head[skillID]
+			releaseVersion, releaseOK := candidates.release[skillID]
+			if !headOK && !releaseOK {
+				response.Items = append(response.Items, catalogUpdateCheckItem{SkillID: skillID, Status: "unsupported"})
+				continue
+			}
+			response.Items = append(response.Items, catalogUpdateCheckItem{
+				SkillID: skillID, HeadVersion: headVersion, ReleaseVersion: releaseVersion, Status: "available",
+			})
 		}
 		return writeJSON(c, fiber.StatusOK, response)
 	}
+}
+
+func resolveRepositoryUpdateCandidates(ctx context.Context, artifacts updateArtifactReader, repositoryID string) (repositoryUpdateCandidates, error) {
+	result := repositoryUpdateCandidates{head: map[string]string{}, release: map[string]string{}}
+	headInfo, err := artifacts.Info(ctx, repositoryID, "head")
+	if err != nil {
+		return result, err
+	}
+	if err := collectRepositoryMemberVersions(headInfo, result.head); err != nil {
+		return result, err
+	}
+	versions, err := artifacts.List(ctx, repositoryID)
+	if err != nil {
+		return result, err
+	}
+	release := protocolversion.LatestCanonicalPublished(versions)
+	if release == "" {
+		return result, nil
+	}
+	releaseInfo, err := artifacts.Info(ctx, repositoryID, release)
+	if err != nil {
+		return result, err
+	}
+	if err := collectRepositoryMemberVersions(releaseInfo, result.release); err != nil {
+		return result, err
+	}
+	return result, nil
+}
+
+func collectRepositoryMemberVersions(encoded []byte, target map[string]string) error {
+	var repository protocolapi.RepositoryInfo
+	if err := json.Unmarshal(encoded, &repository); err != nil || repository.ID == "" || repository.Version == "" {
+		return fmt.Errorf("invalid Repository Info returned during update resolution")
+	}
+	for _, raw := range repository.Skills {
+		var member protocolapi.SkillInfo
+		if json.Unmarshal(raw, &member) != nil || member.ID == "" || member.Version != repository.Version {
+			return fmt.Errorf("invalid Repository member returned during update resolution")
+		}
+		target[member.ID] = member.Version
+	}
+	return nil
 }
 
 func contentMatchesHandler(metadata *catalog.Catalog) fiber.Handler {
