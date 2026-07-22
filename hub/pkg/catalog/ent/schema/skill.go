@@ -39,8 +39,6 @@ func (Skill) Edges() []ent.Edge {
 	return []ent.Edge{
 		edge.From("source_repository", Repository.Type).Ref("skills").Field("repository_id").Unique().Required(),
 		edge.To("versions", SkillVersion.Type),
-		edge.To("install_events", InstallEvent.Type),
-		edge.To("hourly_stats", SkillHourlyStat.Type),
 	}
 }
 

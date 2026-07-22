@@ -54,13 +54,9 @@ type SkillEdges struct {
 	SourceRepository *Repository `json:"source_repository,omitempty"`
 	// Versions holds the value of the versions edge.
 	Versions []*SkillVersion `json:"versions,omitempty"`
-	// InstallEvents holds the value of the install_events edge.
-	InstallEvents []*InstallEvent `json:"install_events,omitempty"`
-	// HourlyStats holds the value of the hourly_stats edge.
-	HourlyStats []*SkillHourlyStat `json:"hourly_stats,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [4]bool
+	loadedTypes [2]bool
 }
 
 // SourceRepositoryOrErr returns the SourceRepository value or an error if the edge
@@ -81,24 +77,6 @@ func (e SkillEdges) VersionsOrErr() ([]*SkillVersion, error) {
 		return e.Versions, nil
 	}
 	return nil, &NotLoadedError{edge: "versions"}
-}
-
-// InstallEventsOrErr returns the InstallEvents value or an error if the edge
-// was not loaded in eager-loading.
-func (e SkillEdges) InstallEventsOrErr() ([]*InstallEvent, error) {
-	if e.loadedTypes[2] {
-		return e.InstallEvents, nil
-	}
-	return nil, &NotLoadedError{edge: "install_events"}
-}
-
-// HourlyStatsOrErr returns the HourlyStats value or an error if the edge
-// was not loaded in eager-loading.
-func (e SkillEdges) HourlyStatsOrErr() ([]*SkillHourlyStat, error) {
-	if e.loadedTypes[3] {
-		return e.HourlyStats, nil
-	}
-	return nil, &NotLoadedError{edge: "hourly_stats"}
 }
 
 // scanValues returns the types for scanning values from sql.Rows.
@@ -228,16 +206,6 @@ func (_m *Skill) QuerySourceRepository() *RepositoryQuery {
 // QueryVersions queries the "versions" edge of the Skill entity.
 func (_m *Skill) QueryVersions() *SkillVersionQuery {
 	return NewSkillClient(_m.config).QueryVersions(_m)
-}
-
-// QueryInstallEvents queries the "install_events" edge of the Skill entity.
-func (_m *Skill) QueryInstallEvents() *InstallEventQuery {
-	return NewSkillClient(_m.config).QueryInstallEvents(_m)
-}
-
-// QueryHourlyStats queries the "hourly_stats" edge of the Skill entity.
-func (_m *Skill) QueryHourlyStats() *SkillHourlyStatQuery {
-	return NewSkillClient(_m.config).QueryHourlyStats(_m)
 }
 
 // Update returns a builder for updating this Skill.

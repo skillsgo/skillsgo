@@ -12,11 +12,9 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/installevent"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/predicate"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillhourlystat"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
 )
 
@@ -29,8 +27,6 @@ type SkillQuery struct {
 	predicates           []predicate.Skill
 	withSourceRepository *RepositoryQuery
 	withVersions         *SkillVersionQuery
-	withInstallEvents    *InstallEventQuery
-	withHourlyStats      *SkillHourlyStatQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -104,50 +100,6 @@ func (_q *SkillQuery) QueryVersions() *SkillVersionQuery {
 			sqlgraph.From(skill.Table, skill.FieldID, selector),
 			sqlgraph.To(skillversion.Table, skillversion.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, skill.VersionsTable, skill.VersionsColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QueryInstallEvents chains the current query on the "install_events" edge.
-func (_q *SkillQuery) QueryInstallEvents() *InstallEventQuery {
-	query := (&InstallEventClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skill.Table, skill.FieldID, selector),
-			sqlgraph.To(installevent.Table, installevent.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, skill.InstallEventsTable, skill.InstallEventsColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QueryHourlyStats chains the current query on the "hourly_stats" edge.
-func (_q *SkillQuery) QueryHourlyStats() *SkillHourlyStatQuery {
-	query := (&SkillHourlyStatClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skill.Table, skill.FieldID, selector),
-			sqlgraph.To(skillhourlystat.Table, skillhourlystat.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, skill.HourlyStatsTable, skill.HourlyStatsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -349,8 +301,6 @@ func (_q *SkillQuery) Clone() *SkillQuery {
 		predicates:           append([]predicate.Skill{}, _q.predicates...),
 		withSourceRepository: _q.withSourceRepository.Clone(),
 		withVersions:         _q.withVersions.Clone(),
-		withInstallEvents:    _q.withInstallEvents.Clone(),
-		withHourlyStats:      _q.withHourlyStats.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -376,28 +326,6 @@ func (_q *SkillQuery) WithVersions(opts ...func(*SkillVersionQuery)) *SkillQuery
 		opt(query)
 	}
 	_q.withVersions = query
-	return _q
-}
-
-// WithInstallEvents tells the query-builder to eager-load the nodes that are connected to
-// the "install_events" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *SkillQuery) WithInstallEvents(opts ...func(*InstallEventQuery)) *SkillQuery {
-	query := (&InstallEventClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withInstallEvents = query
-	return _q
-}
-
-// WithHourlyStats tells the query-builder to eager-load the nodes that are connected to
-// the "hourly_stats" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *SkillQuery) WithHourlyStats(opts ...func(*SkillHourlyStatQuery)) *SkillQuery {
-	query := (&SkillHourlyStatClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withHourlyStats = query
 	return _q
 }
 
@@ -479,11 +407,9 @@ func (_q *SkillQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Skill,
 	var (
 		nodes       = []*Skill{}
 		_spec       = _q.querySpec()
-		loadedTypes = [4]bool{
+		loadedTypes = [2]bool{
 			_q.withSourceRepository != nil,
 			_q.withVersions != nil,
-			_q.withInstallEvents != nil,
-			_q.withHourlyStats != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -514,20 +440,6 @@ func (_q *SkillQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Skill,
 		if err := _q.loadVersions(ctx, query, nodes,
 			func(n *Skill) { n.Edges.Versions = []*SkillVersion{} },
 			func(n *Skill, e *SkillVersion) { n.Edges.Versions = append(n.Edges.Versions, e) }); err != nil {
-			return nil, err
-		}
-	}
-	if query := _q.withInstallEvents; query != nil {
-		if err := _q.loadInstallEvents(ctx, query, nodes,
-			func(n *Skill) { n.Edges.InstallEvents = []*InstallEvent{} },
-			func(n *Skill, e *InstallEvent) { n.Edges.InstallEvents = append(n.Edges.InstallEvents, e) }); err != nil {
-			return nil, err
-		}
-	}
-	if query := _q.withHourlyStats; query != nil {
-		if err := _q.loadHourlyStats(ctx, query, nodes,
-			func(n *Skill) { n.Edges.HourlyStats = []*SkillHourlyStat{} },
-			func(n *Skill, e *SkillHourlyStat) { n.Edges.HourlyStats = append(n.Edges.HourlyStats, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -578,66 +490,6 @@ func (_q *SkillQuery) loadVersions(ctx context.Context, query *SkillVersionQuery
 	}
 	query.Where(predicate.SkillVersion(func(s *sql.Selector) {
 		s.Where(sql.InValues(s.C(skill.VersionsColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		fk := n.SkillID
-		node, ok := nodeids[fk]
-		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "skill_id" returned %v for node %v`, fk, n.ID)
-		}
-		assign(node, n)
-	}
-	return nil
-}
-func (_q *SkillQuery) loadInstallEvents(ctx context.Context, query *InstallEventQuery, nodes []*Skill, init func(*Skill), assign func(*Skill, *InstallEvent)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int64]*Skill)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-		if init != nil {
-			init(nodes[i])
-		}
-	}
-	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(installevent.FieldSkillID)
-	}
-	query.Where(predicate.InstallEvent(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(skill.InstallEventsColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		fk := n.SkillID
-		node, ok := nodeids[fk]
-		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "skill_id" returned %v for node %v`, fk, n.ID)
-		}
-		assign(node, n)
-	}
-	return nil
-}
-func (_q *SkillQuery) loadHourlyStats(ctx context.Context, query *SkillHourlyStatQuery, nodes []*Skill, init func(*Skill), assign func(*Skill, *SkillHourlyStat)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int64]*Skill)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-		if init != nil {
-			init(nodes[i])
-		}
-	}
-	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(skillhourlystat.FieldSkillID)
-	}
-	query.Where(predicate.SkillHourlyStat(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(skill.HourlyStatsColumn), fks...))
 	}))
 	neighbors, err := query.All(ctx)
 	if err != nil {

@@ -1,12 +1,48 @@
 /*
  * [INPUT]: Depends on the shared gateway state, SharedPreferences, directory pickers, project inspection, App locale, and Hub health CLI command.
- * [OUTPUT]: Provides appearance, language, reminder, one-time takeover-introduction, onboarding, Added Project, Hub origin, risk policy, storage, and App-version persistence operations.
+ * [OUTPUT]: Provides appearance, language, reminder, one-time takeover-introduction, onboarding, Added Project, Hub origin and runtime discovery, risk policy, storage, and App-version persistence operations.
  * [POS]: Serves as the local preference and project-reference capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of 'real_skills_gateway.dart';
 
 mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
+  @override
+  Future<HubRuntime> loadHubRuntime() async {
+    await _ensureHubOrigin();
+    final cached = _hubRuntime;
+    if (cached != null) return cached;
+    final result = await _runCli(['hub', 'info', '--hub', _hubOrigin]);
+    if (!result.succeeded) throw _commandFailure(result);
+    try {
+      final decoded = jsonDecode(result.output.stdout);
+      if (decoded is! Map<String, dynamic> || decoded['mode'] is! String) {
+        throw const FormatException('Invalid Hub info response.');
+      }
+      final mode = switch (decoded['mode']) {
+        'selfhost' => HubMode.selfhost,
+        'cloud' => HubMode.cloud,
+        _ => throw const FormatException('Invalid Hub mode.'),
+      };
+      Uri? cloudOrigin;
+      if (mode == HubMode.cloud) {
+        final rawCloud = decoded['cloud'];
+        if (rawCloud is! String) {
+          throw const FormatException('Cloud origin is missing.');
+        }
+        cloudOrigin = _originUri(rawCloud);
+      } else if (decoded.containsKey('cloud')) {
+        throw const FormatException('Selfhost Hub must not declare Cloud.');
+      }
+      return _hubRuntime = HubRuntime(mode: mode, cloudOrigin: cloudOrigin);
+    } on FormatException catch (error) {
+      throw SkillsException(
+        error.message,
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
+  }
+
   @override
   Future<String> loadFolderTheme() async {
     final saved =
@@ -400,6 +436,7 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
     );
     _hubBase = parsed;
     _hubOriginLoaded = true;
+    _hubRuntime = null;
   }
 
   @override
@@ -408,6 +445,7 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
     await preferences.remove(_hubOriginKey);
     _hubBase = _defaultHubBase;
     _hubOriginLoaded = true;
+    _hubRuntime = null;
   }
 
   @override

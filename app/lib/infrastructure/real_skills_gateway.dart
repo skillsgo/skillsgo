@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the bundled CLI process boundary for all Hub and local business access, the local filesystem, bounded ProjectIconResolver, the platform single- and multi-directory pickers, and SharedPreferences-backed product preferences.
- * [OUTPUT]: Provides typed CLI-backed Mandatory Onboarding, locale-aware discovery and detail, installation, scope-explicit Batch Takeover, inspection, atomic multi-project reference persistence with cached asynchronous identity enrichment, diagnostics, and persisted appearance/language/wallpaper/reminder/takeover-introduction operations with versioned machine-failure parsing.
+ * [INPUT]: Depends on the bundled CLI process boundary for Hub and local business access, the Hub-declared Cloud origin for ranking reads, the local filesystem, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
+ * [OUTPUT]: Provides typed CLI-backed Mandatory Onboarding, Hub search/detail, Cloud ranking composition, installation, scope-explicit Batch Takeover, inspection, atomic multi-project reference persistence with cached asynchronous identity enrichment, diagnostics, and persisted appearance/language/wallpaper/reminder/takeover-introduction operations with versioned machine-failure parsing.
  * [POS]: Serves as the App infrastructure adapter that keeps every Hub and local business operation behind the CLI machine boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -112,6 +112,7 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   final ProjectIconResolver _projectIconResolver;
   String? _cliPath;
   bool _hubOriginLoaded = false;
+  HubRuntime? _hubRuntime;
 
   static Future<String?> _pickDirectory({String? initialDirectory}) =>
       file_selector.getDirectoryPath(initialDirectory: initialDirectory);

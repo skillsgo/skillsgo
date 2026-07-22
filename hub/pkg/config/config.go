@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on TOML, environment decoding, Hub defaults, validation, and nested storage, database, presentation, and authentication settings.
- * [OUTPUT]: Provides validated Hub configuration including global and administration Basic Auth, bounded Git repository cache policy, GitHub authentication, task execution, optional translation, and skills.sh synchronization.
+ * [OUTPUT]: Provides validated Hub configuration including deployment discovery, global and administration Basic Auth, bounded Git repository cache policy, GitHub authentication, task execution, and optional translation.
  * [POS]: Serves as maintained source in the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,6 +9,7 @@ package config
 import (
 	"fmt"
 	"log"
+	"net/url"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -30,6 +31,8 @@ type Config struct {
 	TimeoutConf
 
 	Environment             string    `envconfig:"SKILLSGO_HUB_ENVIRONMENT" validate:"required"`
+	Mode                    string    `envconfig:"SKILLSGO_HUB_MODE" validate:"oneof=selfhost cloud"`
+	CloudOrigin             string    `envconfig:"SKILLSGO_HUB_CLOUD_ORIGIN"`
 	SkillFetchWorkers       int       `envconfig:"SKILLSGO_HUB_SKILL_FETCH_WORKERS"           validate:"required"`
 	SkillCacheDir           string    `ignored:"true"`
 	RepositoryCacheTTL      int       `envconfig:"SKILLSGO_HUB_REPOSITORY_CACHE_TTL" validate:"min=0"`
@@ -73,7 +76,6 @@ type Config struct {
 	Database                *DatabaseConfig
 	TaskQueue               *TaskQueueConfig
 	LLM                     *LLMConfig
-	SkillsSH                *SkillsSHConfig
 }
 
 // EnvList is a list of key-value environment
@@ -175,6 +177,7 @@ func Load(configFile string) (*Config, error) {
 func defaultConfig() *Config {
 	return &Config{
 		Environment:             "development",
+		Mode:                    "selfhost",
 		GithubTokens:            TokenList{},
 		SkillFetchWorkers:       10,
 		RepositoryCacheTTL:      604800,
@@ -253,9 +256,6 @@ func defaultConfig() *Config {
 			BaseURL: "https://api.deepseek.com", Model: "deepseek-v4-flash",
 			TranslationLocales: []string{"zh-Hans"}, TranslationInterval: 900,
 			TranslationBatch: 100, PromptVersion: "description-v1",
-		},
-		SkillsSH: &SkillsSHConfig{
-			Interval: 600, PageCount: 10, PerPage: 500, RequestTimeout: 60,
 		},
 	}
 }
@@ -339,6 +339,9 @@ func envOverride(config *Config) error {
 	if err != nil {
 		return err
 	}
+	if strings.TrimSpace(config.Mode) == "" {
+		config.Mode = "selfhost"
+	}
 	config.SkillCacheDir, err = resolveHubCacheDir(config.SkillCacheDir)
 	if err != nil {
 		return err
@@ -382,7 +385,7 @@ func envOverride(config *Config) error {
 		config.Port = defaultPort
 	}
 	config.Port = ensurePortFormat(config.Port)
-	return nil
+	return validateDeployment(config.Mode, config.CloudOrigin)
 }
 
 func ensurePortFormat(s string) string {
@@ -415,6 +418,9 @@ func validateConfig(config Config) error {
 	if err := validateCredentialPair("Admin Basic Auth", config.AdminAuthUser, config.AdminAuthPass); err != nil {
 		return err
 	}
+	if err := validateDeployment(config.Mode, config.CloudOrigin); err != nil {
+		return err
+	}
 	if config.TaskQueue == nil {
 		return fmt.Errorf("task queue configuration is required")
 	}
@@ -422,6 +428,26 @@ func validateConfig(config Config) error {
 		return err
 	}
 	return validate.Struct(config.LLM)
+}
+
+func validateDeployment(mode, cloudOrigin string) error {
+	if mode == "selfhost" {
+		return nil
+	}
+	if mode != "cloud" {
+		return fmt.Errorf("SKILLSGO_HUB_MODE must be selfhost or cloud")
+	}
+	if strings.TrimSpace(cloudOrigin) == "" {
+		return fmt.Errorf("SKILLSGO_HUB_CLOUD_ORIGIN is required in cloud mode")
+	}
+	parsed, err := url.Parse(cloudOrigin)
+	if err != nil || parsed.Scheme == "" || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" {
+		return fmt.Errorf("SKILLSGO_HUB_CLOUD_ORIGIN must be an absolute HTTP(S) URL")
+	}
+	if parsed.Scheme != "https" && !(parsed.Scheme == "http" && (parsed.Hostname() == "localhost" || parsed.Hostname() == "127.0.0.1" || parsed.Hostname() == "::1")) {
+		return fmt.Errorf("SKILLSGO_HUB_CLOUD_ORIGIN must use HTTPS outside loopback development")
+	}
+	return nil
 }
 
 func validateCredentialPair(name, user, pass string) error {

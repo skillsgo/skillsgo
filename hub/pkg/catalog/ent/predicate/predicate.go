@@ -6,9 +6,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 )
 
-// InstallEvent is the predicate function for installevent builders.
-type InstallEvent func(*sql.Selector)
-
 // LocalizedDescription is the predicate function for localizeddescription builders.
 type LocalizedDescription func(*sql.Selector)
 
@@ -20,12 +17,6 @@ type RiskAssessment func(*sql.Selector)
 
 // Skill is the predicate function for skill builders.
 type Skill func(*sql.Selector)
-
-// SkillHourlyStat is the predicate function for skillhourlystat builders.
-type SkillHourlyStat func(*sql.Selector)
-
-// SkillStat is the predicate function for skillstat builders.
-type SkillStat func(*sql.Selector)
 
 // SkillVersion is the predicate function for skillversion builders.
 type SkillVersion func(*sql.Selector)

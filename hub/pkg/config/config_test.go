@@ -164,11 +164,21 @@ func TestValidateConfigRejectsLegacyMinIOStorage(t *testing.T) {
 	require.ErrorContains(t, validateConfig(*conf), "conditional create semantics")
 }
 
+func TestDeploymentConfiguration(t *testing.T) {
+	require.NoError(t, validateDeployment("selfhost", ""))
+	require.NoError(t, validateDeployment("cloud", "https://cloud.skillsgo.ai/"))
+	require.NoError(t, validateDeployment("cloud", "http://127.0.0.1:3100"))
+	require.Error(t, validateDeployment("cloud", ""))
+	require.Error(t, validateDeployment("cloud", "http://cloud.example.com"))
+	require.Error(t, validateDeployment("invalid", "https://cloud.skillsgo.ai"))
+}
+
 func TestEnvOverrides(t *testing.T) {
 	os.Clearenv()
 	home := setTestHome(t)
 	expConf := &Config{
 		Environment:       "production",
+		Mode:              "selfhost",
 		SkillFetchWorkers: 10,
 		ProtocolWorkers:   10,
 		LogLevel:          "info",
@@ -190,7 +200,6 @@ func TestEnvOverrides(t *testing.T) {
 		SingleFlight:     &SingleFlight{},
 		RobotsFile:       "robots.txt",
 		Index:            &Index{},
-		SkillsSH:         &SkillsSHConfig{},
 		SkillCacheDir:    filepath.Join(home, ".skillsgo", "hub", "cache"),
 	}
 
@@ -198,30 +207,13 @@ func TestEnvOverrides(t *testing.T) {
 	for k, v := range envVars {
 		t.Setenv(k, v)
 	}
-	conf := &Config{SkillsSH: &SkillsSHConfig{}}
+	conf := &Config{}
 	err := envOverride(conf)
 	if err != nil {
 		t.Fatalf("Env override failed: %v", err)
 	}
 
 	compareConfigs(conf, expConf, t, Storage{}, SingleFlight{})
-}
-
-func TestSkillsSHEnvironmentOverrides(t *testing.T) {
-	setTestHome(t)
-	t.Setenv("SKILLSGO_HUB_SKILLSSH_URL", "https://bridge.example/api/skills")
-	t.Setenv("SKILLSGO_BRIDGE_TOKEN", "shared-secret")
-	t.Setenv("SKILLSGO_HUB_SKILLSSH_INTERVAL", "900")
-	t.Setenv("SKILLSGO_HUB_SKILLSSH_PAGE_COUNT", "8")
-	t.Setenv("SKILLSGO_HUB_SKILLSSH_PER_PAGE", "400")
-	t.Setenv("SKILLSGO_HUB_SKILLSSH_REQUEST_TIMEOUT", "45")
-	conf := defaultConfig()
-	require.NoError(t, envOverride(conf))
-	require.Equal(t, &SkillsSHConfig{
-		URL: "https://bridge.example/api/skills", Token: "shared-secret", Interval: 900,
-		PageCount: 8, PerPage: 400, RequestTimeout: 45,
-	}, conf.SkillsSH)
-	require.True(t, conf.SkillsSH.Enabled())
 }
 
 func TestTaskQueueEnvironmentOverride(t *testing.T) {
@@ -401,6 +393,7 @@ func TestParseExampleConfig(t *testing.T) {
 
 	expConf := &Config{
 		Environment:             "development",
+		Mode:                    "selfhost",
 		GithubTokens:            TokenList{},
 		LogLevel:                "debug",
 		LogFormat:               "plain",
@@ -433,10 +426,7 @@ func TestParseExampleConfig(t *testing.T) {
 		ShutdownTimeout:       60,
 		StashTimeout:          600,
 		Index:                 &Index{},
-		SkillsSH: &SkillsSHConfig{
-			Interval: 600, PageCount: 10, PerPage: 500, RequestTimeout: 60,
-		},
-		SkillCacheDir: filepath.Join(home, ".skillsgo", "hub", "cache"),
+		SkillCacheDir:         filepath.Join(home, ".skillsgo", "hub", "cache"),
 	}
 
 	absPath, err := filepath.Abs(testConfigFile(t))
@@ -454,6 +444,7 @@ func TestParseExampleConfig(t *testing.T) {
 func getEnvMap(config *Config) map[string]string {
 	envVars := map[string]string{
 		"SKILLSGO_HUB_ENVIRONMENT":                config.Environment,
+		"SKILLSGO_HUB_MODE":                       config.Mode,
 		"SKILLSGO_HUB_SKILL_FETCH_WORKERS":        strconv.Itoa(config.SkillFetchWorkers),
 		"SKILLSGO_HUB_REPOSITORY_CACHE_TTL":       strconv.Itoa(config.RepositoryCacheTTL),
 		"SKILLSGO_HUB_REPOSITORY_CACHE_MAX_BYTES": strconv.FormatInt(config.RepositoryCacheMaxBytes, 10),

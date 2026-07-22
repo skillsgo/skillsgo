@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, freshness-cached Repository artifact resolution, ZIP audit boundary, request validation, and UTC ranking windows.
- * [OUTPUT]: Provides stable public discovery, Repository-fresh head/release batch update, content-match, detail, and event APIs plus correlated private diagnostics for internal and best-effort dependency failures.
+ * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, freshness-cached Repository artifact resolution, ZIP audit boundary, and request validation.
+ * [OUTPUT]: Provides stable public search, ordered batch Skill-card hydration, Repository-fresh head/release batch update, content-match, and detail APIs plus correlated private diagnostics for internal and best-effort dependency failures.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -35,6 +35,14 @@ type skillsResponse struct {
 	Collection string           `json:"collection"`
 	Skills     []discoverySkill `json:"skills"`
 	Page       collectionPage   `json:"page"`
+}
+
+type skillBatchRequest struct {
+	SkillIDs []string `json:"skillIds"`
+}
+
+type skillBatchResponse struct {
+	Skills []discoverySkill `json:"skills"`
 }
 
 type collectionPage struct {
@@ -126,11 +134,56 @@ func registerCatalogAPIRoutes(
 		repositories = repositoryReaders[0]
 	}
 	r.Get("/api/v1/search", searchSkillsHandler(metadata))
-	r.Get("/api/v1/skills", listSkillsHandler(metadata))
+	r.Post("/api/v1/skills/batch", skillBatchHandler(metadata))
 	r.Get("/api/v1/matches", contentMatchesHandler(metadata))
 	r.Post("/api/v1/updates/check", catalogUpdateCheckHandler(metadata, artifacts))
 	r.Get("/api/v1/skills/+", skillDetailHandler(metadata, artifacts, repositories))
-	r.Post("/api/v1/events/install", installEventHandler(metadata))
+}
+
+func skillBatchHandler(metadata *catalog.Catalog) fiber.Handler {
+	return func(c fiber.Ctx) error {
+		var request skillBatchRequest
+		decoder := json.NewDecoder(strings.NewReader(string(c.Body())))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&request); err != nil || len(request.SkillIDs) == 0 || len(request.SkillIDs) > 100 {
+			return writeAPIError(c, fiber.StatusBadRequest, "skillIds must contain 1 to 100 canonical Skill IDs")
+		}
+		seen := make(map[string]bool, len(request.SkillIDs))
+		for _, skillID := range request.SkillIDs {
+			parsed, err := skill.ParseSkillID(skillID)
+			if err != nil || parsed.String() != skillID || seen[skillID] {
+				return writeAPIError(c, fiber.StatusBadRequest, "skillIds must contain unique canonical Skill IDs")
+			}
+			seen[skillID] = true
+		}
+		stored, err := metadata.SkillsByID(c.Context(), request.SkillIDs)
+		if err != nil {
+			return writeInternalAPIError(c, "catalog.skill_batch", fiber.StatusInternalServerError, "internal_error", "Skill batch failed", err)
+		}
+		byID := make(map[string]catalog.Skill, len(stored))
+		for _, item := range stored {
+			byID[item.SkillID] = item
+		}
+		response := skillBatchResponse{Skills: make([]discoverySkill, 0, len(stored))}
+		for _, skillID := range request.SkillIDs {
+			item, ok := byID[skillID]
+			if !ok {
+				continue
+			}
+			trust := "unverified"
+			if item.Verified {
+				trust = "community_verified"
+			}
+			response.Skills = append(response.Skills, discoverySkill{
+				SkillID: item.SkillID, Name: item.Name, Description: item.Description,
+				Source: item.SourceHost + "/" + item.Repository, Repository: item.SourceHost + "/" + item.Repository,
+				ImageURL: skillImageURL(item.SourceHost, item.Repository), SkillPath: item.SkillPath,
+				LatestVersion: item.LatestVersion, TrustLevel: trust, RiskAssessment: "unknown",
+				Metric: discoveryMetric{Kind: "none"},
+			})
+		}
+		return writeJSON(c, fiber.StatusOK, response)
+	}
 }
 
 func catalogUpdateCheckHandler(metadata *catalog.Catalog, artifacts artifactReader) fiber.Handler {
@@ -266,56 +319,6 @@ func contentMatchesHandler(metadata *catalog.Catalog) fiber.Handler {
 	}
 }
 
-func installEventHandler(metadata *catalog.Catalog) fiber.Handler {
-	return func(c fiber.Ctx) error {
-		if len(c.Body()) > 64<<10 {
-			return writeAPIError(c, fiber.StatusRequestEntityTooLarge, "invalid install event")
-		}
-		decoder := json.NewDecoder(strings.NewReader(string(c.Body())))
-		decoder.DisallowUnknownFields()
-		var event catalog.InstallEvent
-		if err := decoder.Decode(&event); err != nil {
-			return writeAPIError(c, fiber.StatusBadRequest, "invalid install event")
-		}
-		if err := decoder.Decode(&struct{}{}); err != io.EOF {
-			return writeAPIError(c, fiber.StatusBadRequest, "request must contain one JSON object")
-		}
-		if message := validateInstallEvent(event, time.Now().UTC()); message != "" {
-			return writeAPIError(c, fiber.StatusBadRequest, message)
-		}
-		inserted, err := metadata.RecordInstall(c.Context(), event)
-		if errors.Is(err, sql.ErrNoRows) {
-			return writeAPIError(c, fiber.StatusNotFound, "skill not found")
-		}
-		if err != nil {
-			return writeInternalAPIError(c, "catalog.record_install_event", fiber.StatusInternalServerError, "internal_error", "event recording failed", err)
-		}
-		return writeJSON(c, fiber.StatusAccepted, map[string]bool{"accepted": inserted})
-	}
-}
-
-func validateInstallEvent(event catalog.InstallEvent, now time.Time) string {
-	if len(event.EventID) < 16 || len(event.EventID) > 128 {
-		return "eventId must contain 16 to 128 characters"
-	}
-	if strings.TrimSpace(event.SkillID) == "" {
-		return "skill is required"
-	}
-	if strings.TrimSpace(event.Version) == "" {
-		return "version is required"
-	}
-	if event.Scope != "project" && event.Scope != "user" {
-		return "scope must be project or user"
-	}
-	if len(event.Agents) == 0 || len(event.Agents) > 100 {
-		return "agents must contain 1 to 100 entries"
-	}
-	if event.OccurredAt.IsZero() || event.OccurredAt.Before(now.Add(-7*24*time.Hour)) || event.OccurredAt.After(now.Add(10*time.Minute)) {
-		return "occurredAt is outside the accepted time window"
-	}
-	return ""
-}
-
 func searchSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		limit, offset, ok := apiPagination(c)
@@ -330,39 +333,16 @@ func searchSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.search", fiber.StatusInternalServerError, "internal_error", "search failed", err)
 		}
-		localizeRankedSkills(c.Context(), metadata, presentationLocale(c), skills)
-		return writeJSON(c, fiber.StatusOK, discoveryResponse("search", "all_time_installs", skills, limit, offset))
+		localizeSearchSkills(c.Context(), metadata, presentationLocale(c), skills)
+		for index := range skills {
+			skills[index].Installs = 0
+			skills[index].Change = 0
+		}
+		return writeJSON(c, fiber.StatusOK, discoveryResponse("search", "none", skills, limit, offset))
 	}
 }
 
-func listSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
-	return func(c fiber.Ctx) error {
-		limit, offset, ok := apiPagination(c)
-		if !ok {
-			return nil
-		}
-		sort := c.Query("sort")
-		if sort == "" {
-			sort = "all_time"
-		}
-		if sort != "all_time" && sort != "trending" && sort != "hot" {
-			return writeAPIError(c, fiber.StatusBadRequest, "sort must be all_time, trending, or hot")
-		}
-		skills, err := metadata.RankedSkills(c.Context(), sort, limit+1, offset, time.Now().UTC())
-		if err != nil {
-			return writeInternalAPIError(c, "catalog.ranked_skills", fiber.StatusInternalServerError, "internal_error", "list failed", err)
-		}
-		localizeRankedSkills(c.Context(), metadata, presentationLocale(c), skills)
-		metricKind := map[string]string{
-			"all_time": "all_time_installs",
-			"trending": "installs_24h",
-			"hot":      "hot_velocity",
-		}[sort]
-		return writeJSON(c, fiber.StatusOK, discoveryResponse(sort, metricKind, skills, limit, offset))
-	}
-}
-
-func discoveryResponse(collection, metricKind string, ranked []catalog.RankedSkill, limit, offset int) skillsResponse {
+func discoveryResponse(collection, metricKind string, ranked []catalog.SearchSkill, limit, offset int) skillsResponse {
 	nextOffset := (*int)(nil)
 	if len(ranked) > limit {
 		next := offset + limit
@@ -466,15 +446,11 @@ func skillDetailHandler(
 		} else if ok {
 			repositoryDescription = localized
 		}
-		installs, err := metadata.TotalInstalls(c.Context(), skill.RowID)
-		if err != nil {
-			return writeInternalAPIError(c, "catalog.total_installs", fiber.StatusInternalServerError, "internal_error", "install metadata failed", err)
-		}
 		return writeJSON(c, fiber.StatusOK, skillDetailResponse{
 			SkillID: skill.SkillID, Name: skill.Name, Description: skill.Description,
 			Source: skill.SourceHost + "/" + skill.Repository, Repository: skill.SourceHost + "/" + skill.Repository,
 			RepositoryDescription: repositoryDescription,
-			Installs:              installs, Stars: skill.Stars, SourceUpdatedAt: version.CommitTime,
+			Installs:              0, Stars: skill.Stars, SourceUpdatedAt: version.CommitTime,
 			ArchiveSize: version.ArchiveSize, RequestedVersion: skill.LatestVersion,
 			ImageURL:         skillImageURL(skill.SourceHost, skill.Repository),
 			ImmutableVersion: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA,
@@ -494,7 +470,7 @@ func presentationLocale(c fiber.Ctx) string {
 	return locale
 }
 
-func localizeRankedSkills(ctx context.Context, metadata *catalog.Catalog, locale string, skills []catalog.RankedSkill) {
+func localizeSearchSkills(ctx context.Context, metadata *catalog.Catalog, locale string, skills []catalog.SearchSkill) {
 	if locale == "" {
 		return
 	}

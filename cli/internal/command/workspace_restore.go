@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Workspace Manifest requirements, Workspace Sum integrity, immutable Info Cache, Hub exact resources, Store entries, and Agent target resolution.
- * [OUTPUT]: Provides deterministic online or offline Workspace restoration without a dependency lockfile or pre-existing Installation Receipts.
+ * [OUTPUT]: Provides deterministic online or offline Workspace restoration plus successful Skill identity facts without a dependency lockfile or pre-existing Installation Receipts.
  * [POS]: Serves as the Go-first declaration-to-projection orchestration behind `skillsgo install`.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -26,6 +26,8 @@ type restoredSkill struct {
 	Name    string `json:"name"`
 	Version string `json:"version"`
 	Targets int    `json:"targets"`
+	skillID string
+	agents  []string
 }
 
 type restorePackage struct {
@@ -164,7 +166,7 @@ func restoreWorkspace(ctx context.Context, root string, catalog *agent.Catalog, 
 		if installErr := install.Install(entry, targets); installErr != nil {
 			return nil, installErr
 		}
-		results = append(results, restoredSkill{Name: entry.Receipt.Name, Version: entry.Receipt.Version, Targets: len(targets)})
+		results = append(results, restoredSkill{Name: entry.Receipt.Name, Version: entry.Receipt.Version, Targets: len(targets), skillID: entry.Receipt.SkillID, agents: pkg.requirement.Agents})
 	}
 	return results, nil
 }

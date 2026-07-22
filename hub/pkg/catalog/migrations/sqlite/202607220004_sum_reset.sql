@@ -4,7 +4,6 @@
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 DELETE FROM localized_descriptions;
 DELETE FROM repository_backfill_runs;
-DELETE FROM provider_crawls;
 DELETE FROM repositories;
 
 ALTER TABLE skill_versions RENAME COLUMN content_digest TO sum;

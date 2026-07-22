@@ -42,12 +42,6 @@ const (
 	EdgeSourceRepository = "source_repository"
 	// EdgeVersions holds the string denoting the versions edge name in mutations.
 	EdgeVersions = "versions"
-	// EdgeInstallEvents holds the string denoting the install_events edge name in mutations.
-	EdgeInstallEvents = "install_events"
-	// EdgeHourlyStats holds the string denoting the hourly_stats edge name in mutations.
-	EdgeHourlyStats = "hourly_stats"
-	// InstallEventFieldID holds the string denoting the ID field of the InstallEvent.
-	InstallEventFieldID = "event_id"
 	// Table holds the table name of the skill in the database.
 	Table = "skills"
 	// SourceRepositoryTable is the table that holds the source_repository relation/edge.
@@ -64,20 +58,6 @@ const (
 	VersionsInverseTable = "skill_versions"
 	// VersionsColumn is the table column denoting the versions relation/edge.
 	VersionsColumn = "skill_id"
-	// InstallEventsTable is the table that holds the install_events relation/edge.
-	InstallEventsTable = "skill_install_events"
-	// InstallEventsInverseTable is the table name for the InstallEvent entity.
-	// It exists in this package in order to avoid circular dependency with the "installevent" package.
-	InstallEventsInverseTable = "skill_install_events"
-	// InstallEventsColumn is the table column denoting the install_events relation/edge.
-	InstallEventsColumn = "skill_id"
-	// HourlyStatsTable is the table that holds the hourly_stats relation/edge.
-	HourlyStatsTable = "skill_hourly_stats"
-	// HourlyStatsInverseTable is the table name for the SkillHourlyStat entity.
-	// It exists in this package in order to avoid circular dependency with the "skillhourlystat" package.
-	HourlyStatsInverseTable = "skill_hourly_stats"
-	// HourlyStatsColumn is the table column denoting the hourly_stats relation/edge.
-	HourlyStatsColumn = "skill_id"
 )
 
 // Columns holds all SQL columns for skill fields.
@@ -210,34 +190,6 @@ func ByVersions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newVersionsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
-
-// ByInstallEventsCount orders the results by install_events count.
-func ByInstallEventsCount(opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newInstallEventsStep(), opts...)
-	}
-}
-
-// ByInstallEvents orders the results by install_events terms.
-func ByInstallEvents(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newInstallEventsStep(), append([]sql.OrderTerm{term}, terms...)...)
-	}
-}
-
-// ByHourlyStatsCount orders the results by hourly_stats count.
-func ByHourlyStatsCount(opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newHourlyStatsStep(), opts...)
-	}
-}
-
-// ByHourlyStats orders the results by hourly_stats terms.
-func ByHourlyStats(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newHourlyStatsStep(), append([]sql.OrderTerm{term}, terms...)...)
-	}
-}
 func newSourceRepositoryStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
@@ -250,19 +202,5 @@ func newVersionsStep() *sqlgraph.Step {
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(VersionsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, VersionsTable, VersionsColumn),
-	)
-}
-func newInstallEventsStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(InstallEventsInverseTable, InstallEventFieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, InstallEventsTable, InstallEventsColumn),
-	)
-}
-func newHourlyStatsStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(HourlyStatsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, HourlyStatsTable, HourlyStatsColumn),
 	)
 }

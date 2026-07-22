@@ -52,27 +52,6 @@ CREATE TABLE skill_risk_assessments (
   fingerprint TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE TABLE skill_install_events (
-  event_id TEXT PRIMARY KEY,
-  skill_id INTEGER NOT NULL REFERENCES skills(id) ON DELETE CASCADE,
-  version TEXT NOT NULL,
-  agents TEXT NOT NULL,
-  scope TEXT NOT NULL,
-  cli_version TEXT NOT NULL,
-  occurred_at TIMESTAMP NOT NULL,
-  received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-CREATE TABLE skill_stats (
-  skill_id INTEGER PRIMARY KEY REFERENCES skills(id) ON DELETE CASCADE,
-  total_installs INTEGER NOT NULL DEFAULT 0
-);
-CREATE TABLE skill_hourly_stats (
-  id INTEGER PRIMARY KEY AUTOINCREMENT,
-  skill_id INTEGER NOT NULL REFERENCES skills(id) ON DELETE CASCADE,
-  bucket TIMESTAMP NOT NULL,
-  installs INTEGER NOT NULL DEFAULT 0,
-  UNIQUE(skill_id, bucket)
-);
 CREATE VIRTUAL TABLE skills_fts USING fts5(name, description, skill_id, content='skills', content_rowid='id', tokenize='trigram');
 CREATE TRIGGER skills_fts_insert AFTER INSERT ON skills BEGIN
   INSERT INTO skills_fts(rowid,name,description,skill_id) VALUES(new.id,new.name,new.description,new.skill_id);

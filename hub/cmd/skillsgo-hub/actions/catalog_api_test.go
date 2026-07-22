@@ -159,7 +159,6 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.NoError(t, c.UpsertSkill(context.Background(), skill))
 
 	for _, path := range []string{
-		"/api/v1/skills?limit=10",
 		"/api/v1/search?q=engineering",
 	} {
 		recorder := httptest.NewRecorder()
@@ -219,8 +218,18 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, "https://github.com/mattpocock.png?size=256", *response.Skills[0].ImageURL)
 	require.Equal(t, "unverified", response.Skills[0].TrustLevel)
 	require.Equal(t, "unknown", response.Skills[0].RiskAssessment)
-	require.Equal(t, "all_time_installs", response.Skills[0].Metric.Kind)
+	require.Equal(t, "none", response.Skills[0].Metric.Kind)
 	require.Equal(t, "github.com/mattpocock/skills", response.Skills[0].Repository)
+
+	batch := httptest.NewRecorder()
+	batchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/batch", strings.NewReader(`{"skillIds":["`+skill.SkillID+`"]}`))
+	serveFiber(t, r, batch, batchRequest)
+	require.Equal(t, http.StatusOK, batch.Code)
+	var batchBody skillBatchResponse
+	require.NoError(t, json.NewDecoder(batch.Body).Decode(&batchBody))
+	require.Len(t, batchBody.Skills, 1)
+	require.Equal(t, skill.SkillID, batchBody.Skills[0].SkillID)
+	require.Equal(t, "none", batchBody.Skills[0].Metric.Kind)
 }
 
 func TestHistoricalPublicationMatchesContentWithoutEnteringDiscovery(t *testing.T) {
@@ -327,15 +336,12 @@ func TestCatalogAPIDetailReturnsStableArtifactFailures(t *testing.T) {
 	}
 }
 
-func TestCatalogAPICollectionsReturnEmptyArrays(t *testing.T) {
+func TestCatalogAPISearchReturnsEmptyArray(t *testing.T) {
 	r, _ := testCatalogAPI(t)
-	for path, collection := range map[string]string{"/api/v1/search?q=missing": "search", "/api/v1/skills": "all_time"} {
-		recorder := httptest.NewRecorder()
-		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, path, nil))
-
-		require.Equal(t, http.StatusOK, recorder.Code, path)
-		require.JSONEq(t, `{"collection":"`+collection+`","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}`, recorder.Body.String(), path)
-	}
+	recorder := httptest.NewRecorder()
+	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/search?q=missing", nil))
+	require.Equal(t, http.StatusOK, recorder.Code)
+	require.JSONEq(t, `{"collection":"search","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}`, recorder.Body.String())
 }
 
 func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
@@ -371,8 +377,6 @@ func TestCatalogAPIValidationAndNotFound(t *testing.T) {
 		"/api/v1/search":                         http.StatusBadRequest,
 		"/api/v1/search?limit=101":               http.StatusBadRequest,
 		"/api/v1/search?q=valid&offset=invalid":  http.StatusBadRequest,
-		"/api/v1/skills?offset=-1":               http.StatusBadRequest,
-		"/api/v1/skills?sort=popular":            http.StatusBadRequest,
 		"/api/v1/matches?sum=sha256:nope":        http.StatusBadRequest,
 		"/api/v1/skills/github.com/unknown/repo": http.StatusNotFound,
 	} {
@@ -392,21 +396,4 @@ func TestCatalogAPIIsNamespacedUnderAPI(t *testing.T) {
 		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, path, nil))
 		require.Equal(t, http.StatusNotFound, recorder.Code, path)
 	}
-}
-
-func TestInstallEventAPIIsIdempotent(t *testing.T) {
-	r, c := testCatalogAPI(t)
-	skill := &catalog.Skill{SkillID: "github.com/acme/skills", Name: "acme", LatestVersion: "main"}
-	require.NoError(t, c.UpsertSkill(context.Background(), skill))
-	body := `{"eventId":"019f5e99-e1dd-77e3-b259-61e09396d599","skillId":"github.com/acme/skills","version":"main","agents":["codex","claude-code"],"scope":"project","cliVersion":"0.1.0","occurredAt":"` + time.Now().UTC().Format(time.RFC3339Nano) + `"}`
-	for index, accepted := range []string{"true", "false"} {
-		recorder := httptest.NewRecorder()
-		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodPost, "/api/v1/events/install", strings.NewReader(body)))
-		require.Equal(t, http.StatusAccepted, recorder.Code, index)
-		require.Contains(t, recorder.Body.String(), `"accepted":`+accepted)
-	}
-	recorder := httptest.NewRecorder()
-	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/skills?sort=all_time", nil))
-	require.Equal(t, http.StatusOK, recorder.Code)
-	require.Contains(t, recorder.Body.String(), `"kind":"all_time_installs","value":1`)
 }

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the shared gateway state, content locale, CLI execution, strict machine codecs, and discovery domain models.
- * [OUTPUT]: Provides locale-aware Search/Ranking/Trending/Hot discovery, direct explicit-source routing for GitHub aliases and Git coordinates, and remote Skill detail loading.
+ * [INPUT]: Depends on the shared gateway state, Hub runtime discovery, direct Cloud HTTP ranking reads, content locale, CLI Skill reads, strict machine codecs, and discovery domain models.
+ * [OUTPUT]: Provides locale-aware Hub Find search plus Cloud Ranking/Trending/Hot hydration through ordered Hub batch Skill cards, direct explicit-source routing, and remote Skill detail loading.
  * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -33,25 +33,29 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       DiscoveryCollection.hot => 'hot',
     };
     try {
-      final result = await _runCli([
-        'discover',
-        '--hub',
-        _hubOrigin,
-        '--collection',
-        expectedCollection,
-        '--content-locale',
-        await _contentLocale(),
-        if (collection == DiscoveryCollection.search) ...[
-          '--query',
+      final dynamic decoded;
+      if (collection == DiscoveryCollection.search) {
+        final result = await _runCli([
+          'find',
           trimmedQuery,
-        ],
-        '--offset',
-        '$offset',
-        '--limit',
-        '$limit',
-      ]);
-      if (!result.succeeded) throw _commandFailure(result);
-      final decoded = jsonDecode(result.output.stdout);
+          '--hub',
+          _hubOrigin,
+          '--content-locale',
+          await _contentLocale(),
+          '--offset',
+          '$offset',
+          '--limit',
+          '$limit',
+        ]);
+        if (!result.succeeded) throw _commandFailure(result);
+        decoded = jsonDecode(result.output.stdout);
+      } else {
+        decoded = await _loadCloudRanking(
+          expectedCollection,
+          offset: offset,
+          limit: limit,
+        );
+      }
       if (decoded is! Map<String, dynamic> ||
           decoded['collection'] != expectedCollection ||
           decoded['skills'] is! List ||
@@ -154,6 +158,112 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         'Discovery service returned invalid JSON.',
         kind: SkillsFailureKind.invalidResponse,
       );
+    }
+  }
+
+  Future<Map<String, dynamic>> _loadCloudRanking(
+    String collection, {
+    required int offset,
+    required int limit,
+  }) async {
+    final runtime = await loadHubRuntime();
+    final cloud = runtime.cloudOrigin;
+    if (runtime.mode != HubMode.cloud || cloud == null) {
+      throw const SkillsException(
+        'Rankings are available only when the current Hub uses SkillsGo Cloud.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    final uri = cloud.resolve(
+      'api/v1/rankings/$collection?offset=$offset&limit=$limit',
+    );
+    final client = HttpClient();
+    try {
+      final request = await client
+          .getUrl(uri)
+          .timeout(const Duration(seconds: 10));
+      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+      final response = await request.close().timeout(
+        const Duration(seconds: 10),
+      );
+      final body = await utf8.decoder.bind(response).join();
+      if (response.statusCode != HttpStatus.ok) {
+        throw SkillsException(
+          'Cloud ranking request failed with HTTP ${response.statusCode}.',
+          kind: SkillsFailureKind.server,
+        );
+      }
+      final cloudDocument = jsonDecode(body);
+      if (cloudDocument is! Map<String, dynamic> ||
+          cloudDocument['collection'] != collection ||
+          cloudDocument['items'] is! List ||
+          cloudDocument['page'] is! Map<String, dynamic>) {
+        throw const FormatException('Invalid Cloud ranking response.');
+      }
+      final items = cloudDocument['items'] as List;
+      final skillIDs = <String>[];
+      final metrics = <String, Map<String, dynamic>>{};
+      for (final raw in items) {
+        if (raw is! Map<String, dynamic> ||
+            raw['skillId'] is! String ||
+            raw['metric'] is! Map<String, dynamic>) {
+          throw const FormatException('Invalid Cloud ranking item.');
+        }
+        final skillID = raw['skillId'] as String;
+        if (metrics.containsKey(skillID)) {
+          throw const FormatException('Duplicate Cloud ranking Skill.');
+        }
+        skillIDs.add(skillID);
+        metrics[skillID] = raw['metric'] as Map<String, dynamic>;
+      }
+      if (skillIDs.isEmpty) {
+        return {
+          'collection': collection,
+          'skills': <Object>[],
+          'page': cloudDocument['page'],
+        };
+      }
+      final detailResult = await _runCli([
+        'detail',
+        for (final skillID in skillIDs) ...['--skill', skillID],
+        '--hub',
+        _hubOrigin,
+      ]);
+      if (!detailResult.succeeded) throw _commandFailure(detailResult);
+      final hydrated = jsonDecode(detailResult.output.stdout);
+      if (hydrated is! Map<String, dynamic> || hydrated['skills'] is! List) {
+        throw const FormatException('Invalid Hub Skill batch response.');
+      }
+      final byID = <String, Map<String, dynamic>>{};
+      for (final raw in hydrated['skills'] as List) {
+        if (raw is! Map<String, dynamic> || raw['id'] is! String) {
+          throw const FormatException('Invalid Hub Skill card.');
+        }
+        byID[raw['id'] as String] = raw;
+      }
+      final skills = <Map<String, dynamic>>[];
+      for (final skillID in skillIDs) {
+        final skill = byID[skillID];
+        if (skill == null) continue;
+        skills.add({...skill, 'metric': metrics[skillID]});
+      }
+      return {
+        'collection': collection,
+        'skills': skills,
+        'page': cloudDocument['page'],
+      };
+    } on TimeoutException {
+      throw const SkillsException(
+        'Cloud ranking request timed out.',
+        kind: SkillsFailureKind.timeout,
+      );
+    } on SocketException {
+      throw const SkillsException(
+        'Cloud ranking service is unavailable.',
+        kind: SkillsFailureKind.offline,
+      );
+    } finally {
+      client.close(force: true);
     }
   }
 

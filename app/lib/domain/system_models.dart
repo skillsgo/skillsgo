@@ -86,6 +86,17 @@ enum HubIssue {
   timeout,
 }
 
+enum HubMode { selfhost, cloud }
+
+class HubRuntime {
+  const HubRuntime({required this.mode, this.cloudOrigin});
+
+  final HubMode mode;
+  final Uri? cloudOrigin;
+
+  bool get hasCloud => mode == HubMode.cloud && cloudOrigin != null;
+}
+
 class HubStatus {
   const HubStatus({
     required this.origin,

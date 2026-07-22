@@ -14,6 +14,11 @@
 # Env override: SKILLSGO_HUB_ENVIRONMENT
 Environment = "development"
 
+# Mode defaults to selfhost. Cloud mode requires CloudOrigin.
+# Env overrides: SKILLSGO_HUB_MODE and SKILLSGO_HUB_CLOUD_ORIGIN
+Mode = "selfhost"
+CloudOrigin = ""
+
 # SkillFetchWorkers controls how many Skill repositories may be fetched concurrently.
 # Env override: SKILLSGO_HUB_SKILL_FETCH_WORKERS
 SkillFetchWorkers = 10
@@ -611,12 +616,3 @@ ShutdownTimeout = 60
             sslmode = "disable"
 
 # Optional skills.sh all-time counter ingestion through the Vercel bridge.
-# URL or Token left empty disables the worker. Store the shared token only in
-# SKILLSGO_BRIDGE_TOKEN, never in this file.
-[SkillsSH]
-    URL = ""
-    Token = ""
-    Interval = 600
-    PageCount = 10
-    PerPage = 500
-    RequestTimeout = 60

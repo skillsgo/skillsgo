@@ -44,6 +44,7 @@ abstract interface class SkillsGateway {
   Future<bool> loadBatchTakeoverPromptSeen();
   Future<void> markBatchTakeoverPromptSeen();
   Future<HubStatus> testHubOrigin(String origin);
+  Future<HubRuntime> loadHubRuntime();
   Future<PersonalRiskPolicy> loadRiskPolicy();
   Future<void> saveRiskPolicy(PersonalRiskPolicy policy);
   Future<StorageStatus> inspectStorage();

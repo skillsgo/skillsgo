@@ -1,9 +1,12 @@
 /*
- * [INPUT]: Uses controlled CLI discovery and inventory responses plus the production SkillsGateway adapter and equivalent GitHub source aliases.
- * [OUTPUT]: Specifies public discovery including the four-row empty-input matrix, direct explicit-source routing for GitHub aliases, unified inventory, Agent catalog, visibility, and schema validation contracts.
+ * [INPUT]: Uses controlled CLI Hub/Skill reads, an HTTP Cloud ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
+ * [OUTPUT]: Specifies public Find and Cloud-ID/Hub-card collection discovery including the four-row empty-input matrix, direct explicit-source routing, unified inventory, Agent catalog, visibility, and schema validation contracts.
  * [POS]: Serves as the discovery and local inventory contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
+import 'dart:convert';
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
 import 'package:skillsgo/infrastructure/real_skills_gateway.dart';
@@ -13,6 +16,7 @@ import 'support/fake_process_runner.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
+  HttpOverrides.global = null;
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
   test('search returns domain summaries from the official response', () async {
@@ -58,10 +62,71 @@ void main() {
     expect(results.single.riskAssessment, SkillRiskAssessment.low);
     expect(results.single.localTargetCount, 2);
     expect(page.nextOffset, 20);
+    expect(runner.calls.first.arguments, [
+      'find',
+      'responsive',
+      '--hub',
+      'https://hub.skillsgo.ai',
+      '--content-locale',
+      'en',
+      '--offset',
+      '0',
+      '--limit',
+      '20',
+    ]);
 
     final installed = await gateway.listInstalled();
     expect(installed.single.agents, ['codex']);
     expect(installed.single.targetCount, 2);
+  });
+
+  test('Cloud ranking IDs are hydrated by one ordered Hub batch read', () async {
+    final cloud = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+    cloud.listen((request) async {
+      request.response.headers.contentType = ContentType.json;
+      request.response.write(
+        '{"collection":"hot","items":[{"skillId":"github.com/acme/skills/-/demo","metric":{"kind":"hot_velocity","value":8,"change":5}}],"page":{"limit":20,"offset":0,"nextOffset":null}}',
+      );
+      await request.response.close();
+    });
+    final runner = FakeProcessRunner()
+      ..responses.addAll([
+        ProcessOutput(
+          exitCode: 0,
+          stdout: '{"mode":"cloud","cloud":"http://127.0.0.1:${cloud.port}"}',
+          stderr: '',
+        ),
+        const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"skills":[{"id":"github.com/acme/skills/-/demo","source":"github.com/acme/skills","skillPath":"demo","name":"Demo","description":"Demo Skill","latestVersion":"v1.0.0","trustLevel":"unverified","riskAssessment":"unknown","metric":{"kind":"none","value":0,"change":0}}]}',
+          stderr: '',
+        ),
+        const ProcessOutput(
+          exitCode: 0,
+          stdout: '{"schemaVersion":5,"entries":[]}',
+          stderr: '',
+        ),
+      ]);
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/usr/local/bin/skillsgo',
+      hubBaseUrl: 'https://hub.example.test',
+    );
+
+    final page = await gateway.discover(DiscoveryCollection.hot);
+
+    expect(page.skills.single.id, 'github.com/acme/skills/-/demo');
+    expect(page.skills.single.installs, 8);
+    expect(page.skills.single.metricChange, 5);
+    expect(runner.calls[1].arguments, [
+      'detail',
+      '--skill',
+      'github.com/acme/skills/-/demo',
+      '--hub',
+      'https://hub.example.test',
+    ]);
+    await cloud.close(force: true);
   });
 
   test(
@@ -100,17 +165,27 @@ void main() {
       expect(tests, hasLength(4));
       for (final tc in tests) {
         final runner = FakeProcessRunner();
+        HttpServer? cloud;
+        final requestedCloudPaths = <String>[];
         if (tc.wireCollection != null) {
+          cloud = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+          cloud.listen((request) async {
+            requestedCloudPaths.add(request.uri.toString());
+            request.response.headers.contentType = ContentType.json;
+            request.response.write(
+              jsonEncode({
+                'collection': tc.wireCollection,
+                'items': <Object>[],
+                'page': {'limit': 20, 'offset': 0, 'nextOffset': null},
+              }),
+            );
+            await request.response.close();
+          });
           runner.responses.addAll([
             ProcessOutput(
               exitCode: 0,
               stdout:
-                  '{"collection":"${tc.wireCollection}","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}',
-              stderr: '',
-            ),
-            const ProcessOutput(
-              exitCode: 0,
-              stdout: '{"schemaVersion":5,"entries":[]}',
+                  '{"mode":"cloud","cloud":"http://127.0.0.1:${cloud.port}"}',
               stderr: '',
             ),
           ]);
@@ -139,8 +214,16 @@ void main() {
 
         final page = await gateway.discover(tc.collection);
         expect(page.skills, isEmpty, reason: tc.name);
-        expect(runner.calls.first.arguments, contains(tc.wireCollection));
-        expect(runner.calls.first.arguments, isNot(contains('--query')));
+        expect(runner.calls.first.arguments, [
+          'hub',
+          'info',
+          '--hub',
+          'https://hub.example.test',
+        ]);
+        expect(requestedCloudPaths, [
+          '/api/v1/rankings/${tc.wireCollection}?offset=0&limit=20',
+        ]);
+        await cloud?.close(force: true);
       }
     },
   );
@@ -234,6 +317,11 @@ void main() {
       ]);
       expect(
         runner.calls.any((call) => call.arguments.contains('discover')),
+        isFalse,
+        reason: source,
+      );
+      expect(
+        runner.calls.any((call) => call.arguments.contains('find')),
         isFalse,
         reason: source,
       );

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Flutter Material, Riverpod, SkillsGateway, localization delegates, the App shell, and brand tokens.
- * [OUTPUT]: Provides SkillsGoApp, the persisted-language-aware localized desktop application root with the App-scoped Gateway override.
+ * [INPUT]: Depends on Flutter Material, Riverpod, SkillsGateway, startup Hub runtime state, localization delegates, the App shell, and brand tokens.
+ * [OUTPUT]: Provides SkillsGoApp, the persisted-language-aware localized desktop application root with App-scoped Gateway and eager Hub runtime initialization.
  * [POS]: Serves as the App composition boundary between platform startup and product UI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -35,6 +35,7 @@ class _SkillsGoMaterialApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(hubRuntimeProvider);
     final language = ref.watch(appearanceProvider).value?.language;
     final localeParts = language?.explicitUiLocale;
     final locale = localeParts == null

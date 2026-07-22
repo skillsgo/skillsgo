@@ -29,15 +29,15 @@ skillsgo/
 ├── protocol/  Shared executable Go contracts for CLI and Hub
 ├── app/       Flutter desktop App and user experience
 ├── cli/       Go CLI and local Skill execution engine
-├── hub/       Go Hub, artifact protocol, search, and ranking
+├── hub/       Go Hub, artifact protocol, identity, and search
 ├── web/       Public product, Hub, and documentation Web surface
 ├── e2e/       Split CLI/Hub container and App desktop end-to-end workspaces
 └── docs/      Cross-context decisions, agent configuration, and standards
 ```
 
-- The App invokes the bundled CLI through stable machine contracts and never calls the Hub directly; the CLI is the App's only business-integration boundary.
+- The App invokes the bundled CLI for every Hub and local operation. In Cloud mode it may call the independently deployed SkillsGo Cloud origin declared by `skillsgo hub info` for Cloud-owned ranking reads; it never calls Hub HTTP directly.
 - The CLI owns local filesystem mutations, Agent Adapters, the Content-addressed Store, Installation Targets, Workspace Manifests, and Workspace Locks.
-- The Hub owns public Skill identity, immutable artifacts, metadata, search, ranking, and install-event aggregation.
+- The Hub owns public Skill identity, immutable artifacts, metadata, search, and minimal deployment discovery. The separate `skillsgo-cloud` service owns install-event aggregation and rankings in an independent database.
 - The Protocol workspace owns dependency-light executable contracts that the CLI and Hub must interpret identically; it owns no transport or product orchestration.
 - `CONTEXT-MAP.md` and the context glossaries define domain language. GEB maps define structural ownership. Neither substitutes for the other.
 

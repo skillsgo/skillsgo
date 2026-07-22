@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on Ent entities, SQLx for dialect-specific discovery queries, pgx stdlib for shared PostgreSQL pooling, versioned Atlas SQL migrations, Hub database configuration, and canonical Skill IDs.
- * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, byte-stable Repository Release Records, native pgx transaction scopes for atomic Ent/River work, immutable versions, exact content matching, current-only discovery/ranking, source cache state, risk evidence, and install aggregation on SQLite/PostgreSQL.
- * [POS]: Serves as the Hub discovery data boundary while artifact bytes remain owned by storage packages.
+ * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, byte-stable Repository Release Records, native pgx transaction scopes for atomic Ent/River work, immutable versions, exact content matching, current-only search, source cache state, and risk evidence on SQLite/PostgreSQL.
+ * [POS]: Serves as the Hub identity and search data boundary while artifact bytes and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 // Package catalog stores searchable Skill metadata. Artifact bytes are owned by
@@ -569,17 +569,7 @@ type RiskAssessment struct {
 	CreatedAt         time.Time `db:"created_at" json:"createdAt"`
 }
 
-type InstallEvent struct {
-	EventID    string    `json:"eventId"`
-	SkillID    string    `json:"skillId"`
-	Version    string    `json:"version"`
-	Agents     []string  `json:"agents"`
-	Scope      string    `json:"scope"`
-	CLIVersion string    `json:"cliVersion"`
-	OccurredAt time.Time `json:"occurredAt"`
-}
-
-type RankedSkill struct {
+type SearchSkill struct {
 	Skill
 	Installs int64 `db:"installs" json:"installs"`
 	Change   int64 `db:"change" json:"change,omitempty"`
@@ -618,117 +608,6 @@ LIMIT ?`
 	matches := make([]ContentMatch, 0)
 	err := c.db.SelectContext(ctx, &matches, c.db.Rebind(statement), sum, hint, pattern, pattern, limit)
 	return matches, err
-}
-
-func (c *Catalog) RankedSkills(ctx context.Context, sort string, limit, offset int, now time.Time) ([]RankedSkill, error) {
-	limit = normalizeQueryLimit(limit)
-	if offset < 0 {
-		offset = 0
-	}
-	if sort == "hot" {
-		return c.hotRankedSkills(ctx, limit, offset, now)
-	}
-	var query string
-	var args []any
-	switch sort {
-	case "", "all_time":
-		query = `SELECT s.*, r.stars AS stars, COALESCE(st.total_installs, 0) AS installs, 0 AS change
-FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
-LEFT JOIN skill_stats AS st ON st.skill_id = s.id
-WHERE s.discoverable = TRUE
-ORDER BY installs DESC, s.name ASC LIMIT ? OFFSET ?`
-	case "trending":
-		query = `SELECT s.*, r.stars AS stars, COALESCE(SUM(hs.installs), 0) AS installs, 0 AS change
-FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
-LEFT JOIN skill_hourly_stats AS hs ON hs.skill_id = s.id AND hs.bucket > ?
-WHERE s.discoverable = TRUE
-GROUP BY s.id, r.stars ORDER BY installs DESC, s.name ASC LIMIT ? OFFSET ?`
-		args = append(args, now.UTC().Add(-24*time.Hour).Truncate(time.Hour))
-	default:
-		return nil, fmt.Errorf("unsupported ranking %q", sort)
-	}
-	args = append(args, limit, offset)
-	var skills []RankedSkill
-	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(query), args...)
-	return skills, err
-}
-
-// hotRankedSkills orders Skills by statistically unusual short-term adoption,
-// rather than allowing raw install volume to duplicate the Trending ranking.
-func (c *Catalog) hotRankedSkills(ctx context.Context, limit, offset int, now time.Time) ([]RankedSkill, error) {
-	now = now.UTC()
-	query := `WITH hot_stats AS (
-	SELECT skill_id,
-	SUM(CASE WHEN bucket > ? AND bucket <= ? THEN installs ELSE 0 END) AS recent_installs,
-	SUM(CASE WHEN bucket > ? AND bucket <= ? THEN installs ELSE 0 END) AS baseline_installs
-	FROM skill_hourly_stats
-	WHERE bucket > ? AND bucket <= ?
-	GROUP BY skill_id
-)
-SELECT s.*, r.stars AS stars, COALESCE(h.recent_installs, 0) AS installs,
-	COALESCE(h.recent_installs, 0) - COALESCE(h.baseline_installs, 0) / 24 AS change
-FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
-LEFT JOIN hot_stats AS h ON h.skill_id = s.id
-WHERE s.discoverable = TRUE AND COALESCE(h.recent_installs, 0) >= 3
-ORDER BY
-	(COALESCE(h.recent_installs, 0) - COALESCE(h.baseline_installs, 0) / 24.0) /
-		sqrt(COALESCE(h.baseline_installs, 0) / 24.0 + 1) DESC,
-	installs DESC, s.name ASC
-LIMIT ? OFFSET ?`
-	args := []any{
-		now.Add(-time.Hour).Truncate(time.Hour), now.Truncate(time.Hour),
-		now.Add(-25 * time.Hour).Truncate(time.Hour), now.Add(-time.Hour).Truncate(time.Hour),
-		now.Add(-25 * time.Hour).Truncate(time.Hour), now.Truncate(time.Hour),
-		limit, offset,
-	}
-	var skills []RankedSkill
-	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(query), args...)
-	return skills, err
-}
-
-// RecordInstall atomically stores an event and updates its aggregate counters.
-// It returns false when eventID has already been recorded.
-func (c *Catalog) RecordInstall(ctx context.Context, event InstallEvent) (bool, error) {
-	tx, err := c.db.BeginTxx(ctx, nil)
-	if err != nil {
-		return false, err
-	}
-	defer func() { _ = tx.Rollback() }()
-	var rowID int64
-	if err := tx.GetContext(ctx, &rowID, c.db.Rebind("SELECT id FROM skills WHERE skill_id = ?"), event.SkillID); err != nil {
-		return false, err
-	}
-	agents, err := json.Marshal(event.Agents)
-	if err != nil {
-		return false, err
-	}
-	result, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO skill_install_events
-(event_id, skill_id, version, agents, scope, cli_version, occurred_at)
-VALUES (?, ?, ?, ?, ?, ?, ?) ON CONFLICT (event_id) DO NOTHING`),
-		event.EventID, rowID, event.Version, string(agents), event.Scope, event.CLIVersion, event.OccurredAt)
-	if err != nil {
-		return false, err
-	}
-	inserted, err := result.RowsAffected()
-	if err != nil {
-		return false, err
-	}
-	if inserted == 0 {
-		return false, nil
-	}
-	bucket := event.OccurredAt.UTC().Truncate(time.Hour)
-	if _, err = tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO skill_stats (skill_id, total_installs) VALUES (?, 1)
-ON CONFLICT (skill_id) DO UPDATE SET total_installs = skill_stats.total_installs + 1`), rowID); err != nil {
-		return false, err
-	}
-	if _, err = tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO skill_hourly_stats (skill_id, bucket, installs) VALUES (?, ?, 1)
-ON CONFLICT (skill_id, bucket) DO UPDATE SET installs = skill_hourly_stats.installs + 1`), rowID, bucket); err != nil {
-		return false, err
-	}
-	if err = tx.Commit(); err != nil {
-		return false, err
-	}
-	return true, nil
 }
 
 func (c *Catalog) UpsertSkill(ctx context.Context, skill *Skill) error {
@@ -858,17 +737,6 @@ func (c *Catalog) UpdateRepositorySourceMetadata(ctx context.Context, repository
 		return sql.ErrNoRows
 	}
 	return err
-}
-
-func (c *Catalog) TotalInstalls(ctx context.Context, rowID int64) (int64, error) {
-	var total int64
-	err := c.db.GetContext(ctx, &total, c.db.Rebind(
-		`SELECT COALESCE(total_installs, 0) FROM skill_stats WHERE skill_id = ?`,
-	), rowID)
-	if err == sql.ErrNoRows {
-		return 0, nil
-	}
-	return total, err
 }
 
 func (c *Catalog) Skill(ctx context.Context, skillID string) (*Skill, error) {
@@ -1049,16 +917,15 @@ WHERE s.discoverable = TRUE ORDER BY s.verified DESC, s.name ASC LIMIT ? OFFSET 
 	return skills, err
 }
 
-func (c *Catalog) Search(ctx context.Context, query string, limit, offset int) ([]RankedSkill, error) {
+func (c *Catalog) Search(ctx context.Context, query string, limit, offset int) ([]SearchSkill, error) {
 	limit = normalizeQueryLimit(limit)
 	if offset < 0 {
 		offset = 0
 	}
 	query = strings.TrimSpace(query)
-	var skills []RankedSkill
-	statement := `SELECT s.*, r.stars AS stars, COALESCE(st.total_installs, 0) AS installs, 0 AS change
-FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
-LEFT JOIN skill_stats AS st ON st.skill_id = s.id`
+	var skills []SearchSkill
+	statement := `SELECT s.*, r.stars AS stars, 0 AS installs, 0 AS change
+FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id`
 	args := make([]any, 0, 5)
 	order := "s.verified DESC, s.name ASC"
 	predicates := []string{"s.discoverable = TRUE"}
@@ -1089,7 +956,7 @@ LEFT JOIN skill_stats AS st ON st.skill_id = s.id`
 }
 
 // SearchLocalized searches original and Hub-owned localized descriptions while preserving canonical identities.
-func (c *Catalog) SearchLocalized(ctx context.Context, query, locale string, limit, offset int) ([]RankedSkill, error) {
+func (c *Catalog) SearchLocalized(ctx context.Context, query, locale string, limit, offset int) ([]SearchSkill, error) {
 	locale = strings.TrimSpace(locale)
 	if locale == "" {
 		return c.Search(ctx, query, limit, offset)
@@ -1102,15 +969,14 @@ func (c *Catalog) SearchLocalized(ctx context.Context, query, locale string, lim
 	statement := `SELECT s.id, s.repository_id, s.skill_id, s.name,
 		COALESCE(ls.description, s.description) AS description,
 			s.source_host, s.repository, s.skill_path, s.latest_version, s.discoverable, r.stars AS stars,
-		s.verified, s.created_at, s.updated_at, COALESCE(st.total_installs, 0) AS installs, 0 AS change
+		s.verified, s.created_at, s.updated_at, 0 AS installs, 0 AS change
 		FROM skills s JOIN repositories r ON r.id = s.repository_id
-		LEFT JOIN skill_stats st ON st.skill_id = s.id
 		LEFT JOIN localized_descriptions ls ON ls.resource_kind = 'skill' AND ls.resource_id = s.skill_id AND ls.locale = ?
 		LEFT JOIN localized_descriptions lr ON lr.resource_kind = 'repository' AND lr.resource_id = r.repository_id AND lr.locale = ?
 			WHERE s.discoverable = TRUE AND (lower(s.name) LIKE ? OR lower(s.description) LIKE ? OR lower(s.skill_id) LIKE ?
 			OR lower(COALESCE(ls.description, '')) LIKE ? OR lower(COALESCE(lr.description, '')) LIKE ?)
 		ORDER BY s.verified DESC, s.name ASC LIMIT ? OFFSET ?`
-	var skills []RankedSkill
+	var skills []SearchSkill
 	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(statement), locale, locale, like, like, like, like, like, limit, offset)
 	return skills, err
 }

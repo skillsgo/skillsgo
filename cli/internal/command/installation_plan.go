@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on add-command flags, the Agent Catalog, Repository Info, Hub client, provenance-aware Store, Workspace integrity persistence, Installation Plan domain events, and terminal operation reporting.
- * [OUTPUT]: Resolves Hub or private Local artifacts, persists verified Repository/Skill integrity for every declaration root, adapts repeated strict JSON --target arguments, refreshes cached immutable assessments, maps --yes to automatic replacement, and emits direct Human or JSON execution results.
+ * [OUTPUT]: Resolves Hub or private Local artifacts, persists verified Repository/Skill integrity for every declaration root, adapts repeated strict JSON --target arguments, refreshes cached immutable assessments, maps --yes to automatic replacement, emits direct Human or JSON execution results, and publishes best-effort successful Cloud installation facts.
  * [POS]: Serves as the single-call executable adapter for App-driven explicit multi-location, multi-Agent installation mutations.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -17,6 +17,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
+	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/plan"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
@@ -69,6 +70,7 @@ func runExplicitInstallationPlan(cmd *cobra.Command, catalog *agent.Catalog, raw
 			return uiErr
 		}
 		var execution plan.Execution
+		var installedEntry *store.Entry
 		err = ui.Run(cmd.Context(), terminalOperation(appi18n.T("operation.install"), func(emit func(terminalEvent)) error {
 			emit(terminalEvent{Kind: terminalui.EventStarted, ID: "artifact", Label: appi18n.T("operation.download")})
 			resource, loadErr := loadExplicitInstallationResource(cmd, storage, options.hubURL, reference)
@@ -76,6 +78,7 @@ func runExplicitInstallationPlan(cmd *cobra.Command, catalog *agent.Catalog, raw
 				emit(terminalEvent{Kind: terminalui.EventFailed, ID: "artifact", Label: appi18n.T("operation.download"), Detail: loadErr.Error()})
 				return loadErr
 			}
+			installedEntry = resource.entry
 			emit(terminalEvent{Kind: terminalui.EventSucceeded, ID: "artifact", Label: appi18n.T("operation.download"), Detail: resource.entry.Receipt.Version})
 			preflight, buildErr := plan.Build(catalog, resource.entry, storage.Root, request)
 			if buildErr != nil {
@@ -98,6 +101,9 @@ func runExplicitInstallationPlan(cmd *cobra.Command, catalog *agent.Catalog, raw
 			execution.Summary.Succeeded, execution.Summary.Skipped, execution.Summary.Failed,
 		)); err != nil {
 			return err
+		}
+		if execution.Summary.Succeeded > 0 {
+			reportExplicitCloudInstall(cmd, options, installedEntry, targets)
 		}
 		return installationExecutionError(execution)
 	}
@@ -122,7 +128,28 @@ func runExplicitInstallationPlan(cmd *cobra.Command, catalog *agent.Catalog, raw
 	)); err != nil {
 		return err
 	}
+	if execution.Summary.Succeeded > 0 {
+		reportExplicitCloudInstall(cmd, options, resource.entry, targets)
+	}
 	return installationExecutionError(execution)
+}
+
+func reportExplicitCloudInstall(cmd *cobra.Command, options addOptions, entry *store.Entry, targets []plan.TargetRequest) {
+	agents := make([]string, 0, len(targets))
+	seen := map[string]bool{}
+	scope := install.ScopeUser
+	for _, target := range targets {
+		if target.Scope == install.ScopeProject {
+			scope = install.ScopeProject
+		}
+		if !seen[target.Agent] {
+			seen[target.Agent] = true
+			agents = append(agents, target.Agent)
+		}
+	}
+	reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{
+		SkillID: entry.Receipt.SkillID, Version: entry.Receipt.Version, Agents: agents, Scope: scope,
+	})
 }
 
 func installationExecutionError(execution plan.Execution) error {

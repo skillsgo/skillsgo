@@ -24,15 +24,13 @@ func TestBusinessJobKindsAreStableAndDescriptive(t *testing.T) {
 		{"Repository source metadata refresh", repositorySourceMetadataRefreshArgs{}.Kind()},
 		{"Repository publication prewarm", repositoryPublicationPrewarmArgs{}.Kind()},
 		{"description translation batch", descriptionTranslationBatchArgs{}.Kind()},
-		{"skills.sh provider sync", skillsSHProviderSyncArgs{}.Kind()},
 	}
 	require.Equal(t, []string{
 		"artifact_stash",
 		"repository_source_metadata_refresh",
 		"repository_publication_prewarm",
 		"description_translation_batch",
-		"skills_sh_provider_sync",
-	}, []string{tests[0].kind, tests[1].kind, tests[2].kind, tests[3].kind, tests[4].kind})
+	}, []string{tests[0].kind, tests[1].kind, tests[2].kind, tests[3].kind})
 }
 
 type recordingStasher struct {

@@ -1,0 +1,9 @@
+{
+  "eventId": "019f5e99-e1dd-77e3-b259-61e09396d599",
+  "skillId": "github.com/acme/skills/-/demo",
+  "version": "v1.0.0",
+  "agents": ["codex"],
+  "scope": "user",
+  "cliVersion": "0.1.0",
+  "occurredAt": "2026-07-22T12:00:00Z"
+}

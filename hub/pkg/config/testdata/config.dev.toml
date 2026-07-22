@@ -14,6 +14,12 @@
 # Env override: SKILLSGO_HUB_ENVIRONMENT
 Environment = "development"
 
+# Mode declares whether this Hub is self-hosted or connected to SkillsGo Cloud.
+# CloudOrigin is required only for cloud mode.
+# Env overrides: SKILLSGO_HUB_MODE and SKILLSGO_HUB_CLOUD_ORIGIN
+Mode = "selfhost"
+CloudOrigin = ""
+
 # SkillFetchWorkers controls how many Skill repositories may be fetched concurrently.
 # Env override: SKILLSGO_HUB_SKILL_FETCH_WORKERS
 SkillFetchWorkers = 10
@@ -592,16 +598,3 @@ ShutdownTimeout = 60
         [Index.Postgres.Params]
             connect_timeout = "30s"
             sslmode = "disable"
-
-[SkillsSH]
-    # URL points to the protected stateless skills.sh bridge. Empty disables synchronization.
-    # Env override: SKILLSGO_HUB_SKILLSSH_URL
-    URL = ""
-    # Token is shared only by Hub and the bridge.
-    # Env override: SKILLSGO_BRIDGE_TOKEN
-    Token = ""
-    # Interval is the all-time crawl cadence in seconds.
-    Interval = 600
-    PageCount = 10
-    PerPage = 500
-    RequestTimeout = 60

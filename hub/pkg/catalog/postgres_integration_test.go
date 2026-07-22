@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the shared Catalog contract against an opt-in Testcontainers PostgreSQL service.
- * [OUTPUT]: Specifies shared pgx pooling plus PostgreSQL parity for discovery, immutable versions, append-only risk evidence, install aggregation, and rankings.
+ * [OUTPUT]: Specifies shared pgx pooling plus PostgreSQL parity for search, immutable versions, and append-only risk evidence.
  * [POS]: Serves as real-PostgreSQL integration coverage for the Hub discovery metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,7 +10,6 @@ import (
 	"context"
 	"os"
 	"testing"
-	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/stretchr/testify/require"
@@ -71,16 +70,4 @@ func TestPostgresCatalog(t *testing.T) {
 	next, err := c.Search(ctx, "presentation", 2, 2)
 	require.NoError(t, err)
 	require.Len(t, next, 1)
-	for _, eventID := range []string{
-		"019f5e99-e1dd-77e3-b259-61e09396d599",
-		"019f5e99-e1dd-77e3-b259-61e09396d600",
-		"019f5e99-e1dd-77e3-b259-61e09396d601",
-	} {
-		inserted, recordErr := c.RecordInstall(ctx, InstallEvent{EventID: eventID, SkillID: skill.SkillID, Version: "main", Agents: []string{"codex"}, Scope: "project", CLIVersion: "0.1.0", OccurredAt: time.Now().UTC()})
-		require.NoError(t, recordErr)
-		require.True(t, inserted)
-	}
-	ranked, err := c.RankedSkills(ctx, "hot", 10, 0, time.Now().UTC())
-	require.NoError(t, err)
-	require.Equal(t, int64(3), ranked[0].Installs)
 }
