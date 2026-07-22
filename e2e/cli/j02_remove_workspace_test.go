@@ -46,7 +46,7 @@ func TestJ02RemoveWorkspace(t *testing.T) {
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Store, "artifact", "SKILL.md"))
+	require.FileExists(t, storeArtifactPath(t, sandboxRoot, installed.Store, "SKILL.md"))
 
 	remove := execCLI(t, ctx, container,
 		"remove", "alpha",
@@ -57,5 +57,5 @@ func TestJ02RemoveWorkspace(t *testing.T) {
 	)
 	require.Equal(t, 0, remove.exitCode, remove.output)
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha"))
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Store, "artifact", "SKILL.md"), "remove must preserve the immutable Store entry")
+	require.FileExists(t, storeArtifactPath(t, sandboxRoot, installed.Store, "SKILL.md"), "remove must preserve the immutable Store entry")
 }
