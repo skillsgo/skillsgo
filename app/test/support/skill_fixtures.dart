@@ -21,7 +21,7 @@ SkillDetail withoutInstallationTargets(
   commitSHA: detail.commitSHA,
   treeSHA: detail.treeSHA,
   sourceRef: detail.sourceRef,
-  contentDigest: detail.contentDigest,
+  sum: detail.sum,
   trustLevel: detail.trustLevel,
   riskAssessment: riskAssessment ?? detail.riskAssessment,
   riskScannerVersion: detail.riskScannerVersion,

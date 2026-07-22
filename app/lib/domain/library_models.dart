@@ -199,7 +199,7 @@ class SkillDetail {
     this.commitSHA = '',
     this.treeSHA = '',
     this.sourceRef = '',
-    this.contentDigest = '',
+    this.sum = '',
     this.trustLevel = SkillTrustLevel.unverified,
     this.riskAssessment = SkillRiskAssessment.unknown,
     this.riskScannerVersion = '',
@@ -224,7 +224,7 @@ class SkillDetail {
   final String commitSHA;
   final String treeSHA;
   final String sourceRef;
-  final String contentDigest;
+  final String sum;
   final SkillTrustLevel trustLevel;
   final SkillRiskAssessment riskAssessment;
   final String riskScannerVersion;

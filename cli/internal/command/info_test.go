@@ -258,7 +258,7 @@ func TestInfoClassifiesUnsupportedHubSchemaAsIncompatible(t *testing.T) {
 		_ = json.NewEncoder(writer).Encode(hub.Info{
 			SchemaVersion: 2, Kind: "Skill", ID: repositoryID, Version: version,
 			Name: "demo", Description: "test", Risk: hub.RiskLow,
-			ContentDigest: "sha256:" + strings.Repeat("a", 64), ArchiveSize: 1,
+			Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 1,
 		})
 	}))
 	defer server.Close()
@@ -282,13 +282,13 @@ func infoTestMembers(repositoryID, version, commit string) []hub.Info {
 		{
 			SchemaVersion: 1, Kind: "Skill", ID: repositoryID, Version: version,
 			Time: time.Unix(1, 0).UTC(), Name: "root", Description: "Root Skill",
-			Risk: hub.RiskLow, ContentDigest: "sha256:" + strings.Repeat("a", 64), ArchiveSize: 1,
+			Risk: hub.RiskLow, Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 1,
 			Ref: "refs/tags/" + version, CommitSHA: commit, TreeSHA: "root-tree",
 		},
 		{
 			SchemaVersion: 1, Kind: "Skill", ID: repositoryID + "/-/tools/demo", Version: version,
 			Time: time.Unix(1, 0).UTC(), Name: "demo", Description: "Nested Skill",
-			Risk: hub.RiskLow, ContentDigest: "sha256:" + strings.Repeat("b", 64), ArchiveSize: 1,
+			Risk: hub.RiskLow, Sum: "h1:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=", ArchiveSize: 1,
 			Ref: "refs/tags/" + version, CommitSHA: commit, TreeSHA: "nested-tree",
 		},
 	}

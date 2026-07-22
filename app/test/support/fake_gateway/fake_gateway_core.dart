@@ -31,7 +31,7 @@ final defaultRemoteDetail = SkillDetail(
   immutableVersion: 'v1.2.3',
   commitSHA: 'commit-abc',
   treeSHA: 'tree-def',
-  contentDigest: 'sha256:content-digest',
+  sum: 'h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
   trustLevel: SkillTrustLevel.publisherVerified,
   riskAssessment: SkillRiskAssessment.medium,
   riskScannerVersion: 'file-signals/v1',

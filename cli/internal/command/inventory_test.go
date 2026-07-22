@@ -316,7 +316,7 @@ func commandTestStoreEntry(t *testing.T, storage store.Store, skillID, version s
 		Info: hub.Info{
 			SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: "demo", Description: "inventory fixture",
 			Version: version, Risk: hub.RiskLow, ArchiveSize: int64(len(zipData)),
-			ContentDigest: commandTestContentDigest(t, zipData, skillID, version),
+			Sum: commandTestSum(t, zipData, skillID, version),
 		},
 		ZIP: zipData,
 	})

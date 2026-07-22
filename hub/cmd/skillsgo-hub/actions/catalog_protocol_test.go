@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the cataloging Protocol decorator with fixed immutable artifact metadata and temporary Catalog storage.
- * [OUTPUT]: Specifies that only successfully assessed artifact resolution makes Skills discoverable and exact Info responses carry immutable Risk and Content Digest.
+ * [OUTPUT]: Specifies that only successfully assessed artifact resolution makes Skills discoverable and exact Info responses carry immutable Risk and Sum.
  * [POS]: Serves as integration coverage between artifact protocol reads and Hub discovery indexing.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -53,7 +53,7 @@ func TestSkillInfoRouteReturnsCompleteInstallMetadata(t *testing.T) {
 		AllowedTools  string            `json:"AllowedTools"`
 		Metadata      map[string]string `json:"Metadata"`
 		Risk          string            `json:"Risk"`
-		ContentDigest string            `json:"ContentDigest"`
+		Sum           string            `json:"Sum"`
 		ArchiveSize   int64             `json:"ArchiveSize"`
 	}
 	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&info))
@@ -68,7 +68,7 @@ func TestSkillInfoRouteReturnsCompleteInstallMetadata(t *testing.T) {
 	require.Equal(t, "Bash(git:*)", info.AllowedTools)
 	require.Equal(t, map[string]string{"author": "vercel-labs"}, info.Metadata)
 	require.Equal(t, "unknown", info.Risk)
-	require.NotEmpty(t, info.ContentDigest)
+	require.NotEmpty(t, info.Sum)
 	require.Equal(t, int64(len(archive)), info.ArchiveSize)
 }
 
@@ -175,12 +175,12 @@ func TestCatalogProtocolIndexesSuccessfulArtifactResolution(t *testing.T) {
 			data, err := protocol.Info(t.Context(), skillID, "main")
 			require.NoError(t, err)
 			var assessed struct {
-				Risk          string `json:"Risk"`
-				ContentDigest string `json:"ContentDigest"`
+				Risk string `json:"Risk"`
+				Sum  string `json:"Sum"`
 			}
 			require.NoError(t, json.Unmarshal(data, &assessed))
 			require.Equal(t, "unknown", assessed.Risk)
-			require.NotEmpty(t, assessed.ContentDigest)
+			require.NotEmpty(t, assessed.Sum)
 		},
 		"zip": func(t *testing.T, protocol download.Protocol) {
 			archive, err := protocol.Zip(t.Context(), skillID, "main")

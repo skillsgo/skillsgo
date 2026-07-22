@@ -245,7 +245,7 @@ func Build(
 			Name: entry.Receipt.Name, SkillID: request.SkillID, DependencyID: dependencyID,
 			SourceRef: sourceRef, Version: request.Version,
 			StoreRoot: entry.Root, Artifact: entry.Artifact, SHA256: entry.Receipt.SHA256,
-			ContentDigest: entry.Receipt.ContentDigest, TargetState: targetState,
+			Sum: entry.Receipt.Sum, TargetState: targetState,
 			Provenance: entry.Receipt.EffectiveProvenance(), Target: target,
 		})
 	}
@@ -558,7 +558,7 @@ func updateStateToken(
 		SkillID           string         `json:"skillId"`
 		FromVersion       string         `json:"fromVersion"`
 		SHA256            string         `json:"sha256"`
-		ContentDigest     string         `json:"contentDigest"`
+		Sum               string         `json:"sum"`
 		SourceRef         string         `json:"sourceRef"`
 		ProjectRoot       string         `json:"projectRoot"`
 		WorkspaceManifest string         `json:"workspaceManifestVersion,omitempty"`
@@ -566,7 +566,7 @@ func updateStateToken(
 		Filesystem        string         `json:"filesystem"`
 	}{
 		1, installation.Name, installation.SkillID, installation.Version,
-		installation.SHA256, installation.ContentDigest, sourceRef, projectRoot,
+		installation.SHA256, installation.Sum, sourceRef, projectRoot,
 		workspaceManifestVersion,
 		installation.Target, filesystem,
 	})

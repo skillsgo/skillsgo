@@ -564,8 +564,8 @@ func installationTargetMatches(info os.FileInfo, installation install.Installati
 		if !info.IsDir() {
 			return false, nil
 		}
-		if installation.ContentDigest != "" {
-			if err := hubclient.VerifyContentDirectory(installation.Target.Path, installation.ContentDigest); err == nil {
+		if installation.Sum != "" {
+			if err := hubclient.VerifyDirectorySum(installation.Target.Path, installation.Sum); err == nil {
 				return true, nil
 			}
 		}
@@ -619,13 +619,13 @@ func replacementItem(
 }
 
 type replacementBindingState struct {
-	Agent         string        `json:"agent"`
-	Scope         install.Scope `json:"scope"`
-	Mode          install.Mode  `json:"mode"`
-	SkillID       string        `json:"skillId"`
-	Version       string        `json:"version"`
-	SHA256        string        `json:"sha256"`
-	ContentDigest string        `json:"contentDigest"`
+	Agent   string        `json:"agent"`
+	Scope   install.Scope `json:"scope"`
+	Mode    install.Mode  `json:"mode"`
+	SkillID string        `json:"skillId"`
+	Version string        `json:"version"`
+	SHA256  string        `json:"sha256"`
+	Sum     string        `json:"sum"`
 }
 
 func replacementStateToken(target Target, reason string, installations []install.Installation) (string, error) {
@@ -654,7 +654,7 @@ func replacementStateToken(target Target, reason string, installations []install
 		if left.SHA256 != right.SHA256 {
 			return left.SHA256 < right.SHA256
 		}
-		return left.ContentDigest < right.ContentDigest
+		return left.Sum < right.Sum
 	})
 	payload, err := json.Marshal(struct {
 		Version    int                       `json:"version"`

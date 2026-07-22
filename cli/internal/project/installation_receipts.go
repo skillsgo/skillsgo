@@ -36,7 +36,7 @@ type InstallationReceipt struct {
 	Name            string           `yaml:"name"`
 	SourceRef       string           `yaml:"sourceRef,omitempty"`
 	Provenance      store.Provenance `yaml:"provenance"`
-	ContentDigest   string           `yaml:"contentDigest"`
+	Sum             string           `yaml:"sum"`
 	Agent           string           `yaml:"agent"`
 	Scope           install.Scope    `yaml:"scope"`
 	Mode            install.Mode     `yaml:"mode"`
@@ -100,7 +100,7 @@ func commitInstallations(
 	receipts := make([]InstallationReceipt, 0, len(targets))
 	agents := make([]string, 0, len(targets))
 	for _, target := range targets {
-		if contentErr := verifyInstallationTargetContent(target, artifact.ContentDigest); contentErr != nil {
+		if contentErr := verifyInstallationTargetContent(target, artifact.Sum); contentErr != nil {
 			return nil, contentErr
 		}
 		state, stateErr := installationTargetBaseline(target)
@@ -111,7 +111,7 @@ func commitInstallations(
 			SchemaVersion: installationReceiptSchemaVersion,
 			SourceSkillID: artifact.EffectiveSourceSkillID(), ArtifactSkillID: artifact.SkillID,
 			Version: artifact.Version, Name: name, SourceRef: sourceRef,
-			Provenance: artifact.EffectiveProvenance(), ContentDigest: artifact.ContentDigest,
+			Provenance: artifact.EffectiveProvenance(), Sum: artifact.Sum,
 			Agent: target.Agent, Scope: target.Scope, Mode: target.Mode,
 			Path: filepath.Clean(target.Path), CanonicalPath: cleanOptionalPath(target.CanonicalPath),
 			TargetState: state, InstalledAt: now,
@@ -174,7 +174,7 @@ func commitInstallations(
 	if persistErr != nil {
 		return fail(persistErr)
 	}
-	checksum, checksumErr := ContentH1(artifact.ContentDigest)
+	checksum, checksumErr := ContentH1(artifact.Sum)
 	if checksumErr != nil {
 		return fail(checksumErr)
 	}
@@ -192,7 +192,7 @@ func commitInstallations(
 		if stateErr != nil || state != receipt.TargetState {
 			return fail(fmt.Errorf("Installation Target changed during metadata commit: %s", receipt.Path))
 		}
-		if contentErr := verifyInstallationTargetContent(target, artifact.ContentDigest); contentErr != nil {
+		if contentErr := verifyInstallationTargetContent(target, artifact.Sum); contentErr != nil {
 			return fail(contentErr)
 		}
 	}
@@ -202,7 +202,7 @@ func commitInstallations(
 	return receipts, nil
 }
 
-func verifyInstallationTargetContent(target install.Target, contentDigest string) error {
+func verifyInstallationTargetContent(target install.Target, sum string) error {
 	root := target.Path
 	if target.Mode == install.ModeSymlink {
 		resolved, err := filepath.EvalSymlinks(target.Path)
@@ -211,7 +211,7 @@ func verifyInstallationTargetContent(target install.Target, contentDigest string
 		}
 		root = resolved
 	}
-	if err := hub.VerifyContentDirectory(root, contentDigest); err != nil {
+	if err := hub.VerifyDirectorySum(root, sum); err != nil {
 		return fmt.Errorf("Installation Target does not match Store content: %s: %w", target.Path, err)
 	}
 	return nil
@@ -403,7 +403,7 @@ func validateStoreReceiptIdentity(receipt store.Receipt) error {
 		source.ValidateSkillID(receipt.EffectiveSourceSkillID()) != nil ||
 		source.ValidateVersion(receipt.Version) != nil ||
 		receipt.Name == "" || receipt.SHA256 == "" ||
-		!strings.HasPrefix(receipt.ContentDigest, "sha256:") || !receipt.Risk.Valid() {
+		!hub.ValidSum(receipt.Sum) || !receipt.Risk.Valid() {
 		return fmt.Errorf("incomplete Store receipt")
 	}
 	switch receipt.EffectiveProvenance() {
@@ -421,7 +421,7 @@ func validateInstallationReceipt(receipt InstallationReceipt) error {
 		source.ValidateVersion(receipt.Version) != nil ||
 		receipt.Name == "" || receipt.Agent == "" || receipt.Path == "" ||
 		receipt.TargetState == "" || receipt.InstalledAt.IsZero() ||
-		!strings.HasPrefix(receipt.ContentDigest, "sha256:") {
+		!hub.ValidSum(receipt.Sum) {
 		return fmt.Errorf("incomplete Installation Receipt")
 	}
 	if receipt.Scope != install.ScopeUser && receipt.Scope != install.ScopeProject {

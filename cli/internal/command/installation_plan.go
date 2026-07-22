@@ -173,7 +173,7 @@ func loadExplicitInstallationResource(cmd *cobra.Command, storage store.Store, h
 		if getErr != nil {
 			return explicitInstallationResource{}, getErr
 		}
-		checksum, checksumErr := project.ContentH1(member.Info.ContentDigest)
+		checksum, checksumErr := project.ContentH1(member.Info.Sum)
 		if checksumErr != nil {
 			return explicitInstallationResource{}, checksumErr
 		}
@@ -198,7 +198,7 @@ func loadExplicitInstallationResource(cmd *cobra.Command, storage store.Store, h
 	if err != nil {
 		return explicitInstallationResource{}, err
 	}
-	checksum, err := project.ContentH1(artifact.Info.ContentDigest)
+	checksum, err := project.ContentH1(artifact.Info.Sum)
 	if err != nil {
 		return explicitInstallationResource{}, err
 	}

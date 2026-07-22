@@ -36,6 +36,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/pgxent"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	skillpkg "github.com/skillsgo/skillsgo/hub/pkg/skill"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 	_ "modernc.org/sqlite"
@@ -271,25 +272,25 @@ func (c *Catalog) LocalizedDescription(ctx context.Context, resourceKind, resour
 }
 
 type SkillVersion struct {
-	RowID         int64     `db:"id" json:"-"`
-	SkillRowID    int64     `db:"skill_id" json:"-"`
-	Version       string    `db:"version" json:"version"`
-	CommitSHA     string    `db:"commit_sha" json:"commitSHA"`
-	TreeSHA       string    `db:"tree_sha" json:"treeSHA"`
-	ContentDigest string    `db:"content_digest" json:"contentDigest"`
-	CommitTime    time.Time `db:"commit_time" json:"commitTime"`
-	ArchiveSize   int64     `db:"archive_size" json:"archiveSize"`
-	CreatedAt     time.Time `db:"created_at" json:"createdAt"`
+	RowID       int64     `db:"id" json:"-"`
+	SkillRowID  int64     `db:"skill_id" json:"-"`
+	Version     string    `db:"version" json:"version"`
+	CommitSHA   string    `db:"commit_sha" json:"commitSHA"`
+	TreeSHA     string    `db:"tree_sha" json:"treeSHA"`
+	Sum         string    `db:"sum" json:"sum"`
+	CommitTime  time.Time `db:"commit_time" json:"commitTime"`
+	ArchiveSize int64     `db:"archive_size" json:"archiveSize"`
+	CreatedAt   time.Time `db:"created_at" json:"createdAt"`
 }
 
 type RepositoryVersionMember struct {
-	SkillID       string    `db:"skill_id"`
-	Version       string    `db:"version"`
-	CommitSHA     string    `db:"commit_sha"`
-	TreeSHA       string    `db:"tree_sha"`
-	ContentDigest string    `db:"content_digest"`
-	CommitTime    time.Time `db:"commit_time"`
-	ArchiveSize   int64     `db:"archive_size"`
+	SkillID     string    `db:"skill_id"`
+	Version     string    `db:"version"`
+	CommitSHA   string    `db:"commit_sha"`
+	TreeSHA     string    `db:"tree_sha"`
+	Sum         string    `db:"sum"`
+	CommitTime  time.Time `db:"commit_time"`
+	ArchiveSize int64     `db:"archive_size"`
 }
 
 // PublishedSkill is one fully assessed member of an immutable Repository publication.
@@ -332,7 +333,7 @@ func (c *Catalog) PublishRepositoryVersionWithVisibility(ctx context.Context, re
 			return fmt.Errorf("Repository publication contains invalid Skill %q", candidate.Skill.SkillID)
 		}
 		if seen[candidate.Skill.SkillID] || candidate.Version.Version != version || candidate.Version.CommitSHA != commitSHA ||
-			candidate.Version.TreeSHA == "" || candidate.Version.ContentDigest == "" {
+			candidate.Version.TreeSHA == "" || candidate.Version.Sum == "" {
 			return fmt.Errorf("Repository publication contains inconsistent member %q", candidate.Skill.SkillID)
 		}
 		seen[candidate.Skill.SkillID] = true
@@ -348,7 +349,7 @@ func (c *Catalog) PublishRepositoryVersionWithVisibility(ctx context.Context, re
 		JOIN repositories r ON r.id = rp.repository_id WHERE r.repository_id = ? AND rp.version = ?`), repositoryID, version); err != nil {
 		return err
 	}
-	query := `SELECT s.skill_id, sv.version, sv.commit_sha, sv.tree_sha, sv.content_digest, sv.commit_time, sv.archive_size
+	query := `SELECT s.skill_id, sv.version, sv.commit_sha, sv.tree_sha, sv.sum, sv.commit_time, sv.archive_size
 FROM repositories AS r JOIN skills AS s ON s.repository_id = r.id
 JOIN skill_versions AS sv ON sv.skill_id = s.id`
 	if publicationCount > 0 {
@@ -369,7 +370,7 @@ JOIN skill_versions AS sv ON sv.skill_id = s.id`
 			continue
 		}
 		if !relevant || member.CommitSHA != candidate.Version.CommitSHA || member.TreeSHA != candidate.Version.TreeSHA ||
-			member.ContentDigest != candidate.Version.ContentDigest || !member.CommitTime.Equal(candidate.Version.CommitTime) ||
+			member.Sum != candidate.Version.Sum || !member.CommitTime.Equal(candidate.Version.CommitTime) ||
 			member.ArchiveSize != candidate.Version.ArchiveSize {
 			return fmt.Errorf("immutable Repository version conflict for %s@%s", repositoryID, version)
 		}
@@ -450,10 +451,10 @@ skill_path = excluded.skill_path, latest_version = excluded.latest_version, disc
 			createdAt = now
 		}
 		if _, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO skill_versions
-(skill_id, version, commit_sha, tree_sha, content_digest, commit_time, archive_size, created_at)
+(skill_id, version, commit_sha, tree_sha, sum, commit_time, archive_size, created_at)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?)
 ON CONFLICT(skill_id, version) DO NOTHING`), skillRowID, version, candidate.Version.CommitSHA,
-			candidate.Version.TreeSHA, candidate.Version.ContentDigest, candidate.Version.CommitTime,
+			candidate.Version.TreeSHA, candidate.Version.Sum, candidate.Version.CommitTime,
 			candidate.Version.ArchiveSize, createdAt); err != nil {
 			return err
 		}
@@ -539,21 +540,21 @@ type RankedSkill struct {
 }
 
 type ContentMatch struct {
-	SkillID       string    `db:"skill_id" json:"skillId"`
-	Name          string    `db:"name" json:"name"`
-	SourceHost    string    `db:"source_host" json:"sourceHost"`
-	Repository    string    `db:"repository" json:"repository"`
-	SkillPath     string    `db:"skill_path" json:"skillPath"`
-	Version       string    `db:"version" json:"version"`
-	CommitSHA     string    `db:"commit_sha" json:"commitSHA"`
-	TreeSHA       string    `db:"tree_sha" json:"treeSHA"`
-	ContentDigest string    `db:"content_digest" json:"contentDigest"`
-	CreatedAt     time.Time `db:"created_at" json:"createdAt"`
+	SkillID    string    `db:"skill_id" json:"skillId"`
+	Name       string    `db:"name" json:"name"`
+	SourceHost string    `db:"source_host" json:"sourceHost"`
+	Repository string    `db:"repository" json:"repository"`
+	SkillPath  string    `db:"skill_path" json:"skillPath"`
+	Version    string    `db:"version" json:"version"`
+	CommitSHA  string    `db:"commit_sha" json:"commitSHA"`
+	TreeSHA    string    `db:"tree_sha" json:"treeSHA"`
+	Sum        string    `db:"sum" json:"sum"`
+	CreatedAt  time.Time `db:"created_at" json:"createdAt"`
 }
 
-func (c *Catalog) MatchContent(ctx context.Context, contentDigest, sourceHint string, limit int) ([]ContentMatch, error) {
-	if !strings.HasPrefix(contentDigest, "sha256:") {
-		return nil, fmt.Errorf("content digest must use sha256")
+func (c *Catalog) MatchContent(ctx context.Context, sum, sourceHint string, limit int) ([]ContentMatch, error) {
+	if !protocolartifact.ValidSum(sum) {
+		return nil, fmt.Errorf("sum must be a valid h1 sum")
 	}
 	if limit <= 0 || limit > 20 {
 		limit = 20
@@ -561,15 +562,15 @@ func (c *Catalog) MatchContent(ctx context.Context, contentDigest, sourceHint st
 	hint := strings.ToLower(strings.TrimSpace(sourceHint))
 	pattern := "%" + hint + "%"
 	statement := `SELECT s.skill_id, s.name, s.source_host, s.repository, s.skill_path,
-sv.version, sv.commit_sha, sv.tree_sha, sv.content_digest, sv.created_at
+sv.version, sv.commit_sha, sv.tree_sha, sv.sum, sv.created_at
 FROM skill_versions AS sv JOIN skills AS s ON s.id = sv.skill_id
-WHERE sv.content_digest = ?
+WHERE sv.sum = ?
 ORDER BY CASE WHEN ? = '' THEN 0
 WHEN lower(s.skill_id) LIKE ? OR lower(s.source_host || '/' || s.repository) LIKE ? THEN 0 ELSE 1 END,
 CASE WHEN sv.version = s.latest_version THEN 0 ELSE 1 END, sv.created_at DESC, s.skill_id ASC
 LIMIT ?`
 	matches := make([]ContentMatch, 0)
-	err := c.db.SelectContext(ctx, &matches, c.db.Rebind(statement), contentDigest, hint, pattern, pattern, limit)
+	err := c.db.SelectContext(ctx, &matches, c.db.Rebind(statement), sum, hint, pattern, pattern, limit)
 	return matches, err
 }
 
@@ -773,7 +774,7 @@ func (c *Catalog) RepositoryVersionMembers(ctx context.Context, repositoryID, ve
 		return nil, err
 	}
 	statement := `SELECT s.skill_id, sv.version, sv.commit_sha, sv.tree_sha,
-sv.content_digest, sv.commit_time, sv.archive_size
+sv.sum, sv.commit_time, sv.archive_size
 FROM repositories AS r
 JOIN skills AS s ON s.repository_id = r.id
 JOIN skill_versions AS sv ON sv.skill_id = s.id`
@@ -885,7 +886,7 @@ func (c *Catalog) SkillVersionExists(ctx context.Context, skillID, version strin
 // Skill disappears from a later publication.
 func (c *Catalog) SkillLatestPublishedVersion(ctx context.Context, skillID string) (*SkillVersion, error) {
 	statement := `SELECT sv.id, sv.skill_id, sv.version, sv.commit_sha, sv.tree_sha,
-sv.content_digest, sv.commit_time, sv.archive_size, sv.created_at
+sv.sum, sv.commit_time, sv.archive_size, sv.created_at
 FROM skills AS s JOIN skill_versions AS sv ON sv.skill_id = s.id AND sv.version = s.latest_version
 WHERE s.skill_id = ?`
 	var version SkillVersion
@@ -896,8 +897,8 @@ WHERE s.skill_id = ?`
 }
 
 func (c *Catalog) RecordSkillVersion(ctx context.Context, skillID string, candidate SkillVersion) (*SkillVersion, error) {
-	if candidate.Version == "" || candidate.CommitSHA == "" || candidate.TreeSHA == "" || candidate.ContentDigest == "" {
-		return nil, fmt.Errorf("version, commit SHA, tree SHA, and content digest are required")
+	if candidate.Version == "" || candidate.CommitSHA == "" || candidate.TreeSHA == "" || candidate.Sum == "" {
+		return nil, fmt.Errorf("version, commit SHA, tree SHA, and sum are required")
 	}
 	storedSkill, err := c.orm.Skill.Query().Where(entskill.SkillIDEQ(skillID)).Only(ctx)
 	if err != nil {
@@ -910,7 +911,7 @@ func (c *Catalog) RecordSkillVersion(ctx context.Context, skillID string, candid
 		candidate.CreatedAt = time.Now().UTC()
 	}
 	_, err = c.orm.SkillVersion.Create().SetSkillID(rowID).SetVersion(candidate.Version).
-		SetCommitSha(candidate.CommitSHA).SetTreeSha(candidate.TreeSHA).SetContentDigest(candidate.ContentDigest).
+		SetCommitSha(candidate.CommitSHA).SetTreeSha(candidate.TreeSHA).SetSum(candidate.Sum).
 		SetCommitTime(candidate.CommitTime).SetArchiveSize(candidate.ArchiveSize).
 		SetCreatedAt(candidate.CreatedAt).OnConflictColumns(entskillversion.FieldSkillID, entskillversion.FieldVersion).Ignore().ID(ctx)
 	if err != nil {
@@ -938,7 +939,7 @@ func (c *Catalog) RecordSkillVersion(ctx context.Context, skillID string, candid
 	}
 	stored := skillVersionFromEnt(entity)
 	if stored.CommitSHA != candidate.CommitSHA || stored.TreeSHA != candidate.TreeSHA ||
-		stored.ContentDigest != candidate.ContentDigest || !stored.CommitTime.Equal(candidate.CommitTime) ||
+		stored.Sum != candidate.Sum || !stored.CommitTime.Equal(candidate.CommitTime) ||
 		stored.ArchiveSize != candidate.ArchiveSize {
 		return nil, fmt.Errorf("immutable Skill version conflict for %s@%s", skillID, candidate.Version)
 	}
@@ -1084,7 +1085,7 @@ func repositoryFromEnt(entity *catalogent.Repository) *Repository {
 
 func skillVersionFromEnt(entity *catalogent.SkillVersion) *SkillVersion {
 	return &SkillVersion{RowID: entity.ID, SkillRowID: entity.SkillID, Version: entity.Version, CommitSHA: entity.CommitSha,
-		TreeSHA: entity.TreeSha, ContentDigest: entity.ContentDigest, CommitTime: entity.CommitTime,
+		TreeSHA: entity.TreeSha, Sum: entity.Sum, CommitTime: entity.CommitTime,
 		ArchiveSize: entity.ArchiveSize, CreatedAt: entity.CreatedAt}
 }
 

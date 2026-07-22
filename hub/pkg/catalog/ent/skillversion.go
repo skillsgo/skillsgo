@@ -26,8 +26,8 @@ type SkillVersion struct {
 	CommitSha string `json:"commit_sha,omitempty"`
 	// TreeSha holds the value of the "tree_sha" field.
 	TreeSha string `json:"tree_sha,omitempty"`
-	// ContentDigest holds the value of the "content_digest" field.
-	ContentDigest string `json:"content_digest,omitempty"`
+	// Sum holds the value of the "sum" field.
+	Sum string `json:"sum,omitempty"`
 	// CommitTime holds the value of the "commit_time" field.
 	CommitTime time.Time `json:"commit_time,omitempty"`
 	// ArchiveSize holds the value of the "archive_size" field.
@@ -78,7 +78,7 @@ func (*SkillVersion) scanValues(columns []string) ([]any, error) {
 		switch columns[i] {
 		case skillversion.FieldID, skillversion.FieldSkillID, skillversion.FieldArchiveSize:
 			values[i] = new(sql.NullInt64)
-		case skillversion.FieldVersion, skillversion.FieldCommitSha, skillversion.FieldTreeSha, skillversion.FieldContentDigest:
+		case skillversion.FieldVersion, skillversion.FieldCommitSha, skillversion.FieldTreeSha, skillversion.FieldSum:
 			values[i] = new(sql.NullString)
 		case skillversion.FieldCommitTime, skillversion.FieldCreatedAt:
 			values[i] = new(sql.NullTime)
@@ -127,11 +127,11 @@ func (_m *SkillVersion) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.TreeSha = value.String
 			}
-		case skillversion.FieldContentDigest:
+		case skillversion.FieldSum:
 			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field content_digest", values[i])
+				return fmt.Errorf("unexpected type %T for field sum", values[i])
 			} else if value.Valid {
-				_m.ContentDigest = value.String
+				_m.Sum = value.String
 			}
 		case skillversion.FieldCommitTime:
 			if value, ok := values[i].(*sql.NullTime); !ok {
@@ -209,8 +209,8 @@ func (_m *SkillVersion) String() string {
 	builder.WriteString("tree_sha=")
 	builder.WriteString(_m.TreeSha)
 	builder.WriteString(", ")
-	builder.WriteString("content_digest=")
-	builder.WriteString(_m.ContentDigest)
+	builder.WriteString("sum=")
+	builder.WriteString(_m.Sum)
 	builder.WriteString(", ")
 	builder.WriteString("commit_time=")
 	builder.WriteString(_m.CommitTime.Format(time.ANSIC))

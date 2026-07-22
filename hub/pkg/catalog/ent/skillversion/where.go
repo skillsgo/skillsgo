@@ -75,9 +75,9 @@ func TreeSha(v string) predicate.SkillVersion {
 	return predicate.SkillVersion(sql.FieldEQ(FieldTreeSha, v))
 }
 
-// ContentDigest applies equality check predicate on the "content_digest" field. It's identical to ContentDigestEQ.
-func ContentDigest(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldEQ(FieldContentDigest, v))
+// Sum applies equality check predicate on the "sum" field. It's identical to SumEQ.
+func Sum(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldEQ(FieldSum, v))
 }
 
 // CommitTime applies equality check predicate on the "commit_time" field. It's identical to CommitTimeEQ.
@@ -310,69 +310,69 @@ func TreeShaContainsFold(v string) predicate.SkillVersion {
 	return predicate.SkillVersion(sql.FieldContainsFold(FieldTreeSha, v))
 }
 
-// ContentDigestEQ applies the EQ predicate on the "content_digest" field.
-func ContentDigestEQ(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldEQ(FieldContentDigest, v))
+// SumEQ applies the EQ predicate on the "sum" field.
+func SumEQ(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldEQ(FieldSum, v))
 }
 
-// ContentDigestNEQ applies the NEQ predicate on the "content_digest" field.
-func ContentDigestNEQ(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldNEQ(FieldContentDigest, v))
+// SumNEQ applies the NEQ predicate on the "sum" field.
+func SumNEQ(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldNEQ(FieldSum, v))
 }
 
-// ContentDigestIn applies the In predicate on the "content_digest" field.
-func ContentDigestIn(vs ...string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldIn(FieldContentDigest, vs...))
+// SumIn applies the In predicate on the "sum" field.
+func SumIn(vs ...string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldIn(FieldSum, vs...))
 }
 
-// ContentDigestNotIn applies the NotIn predicate on the "content_digest" field.
-func ContentDigestNotIn(vs ...string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldNotIn(FieldContentDigest, vs...))
+// SumNotIn applies the NotIn predicate on the "sum" field.
+func SumNotIn(vs ...string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldNotIn(FieldSum, vs...))
 }
 
-// ContentDigestGT applies the GT predicate on the "content_digest" field.
-func ContentDigestGT(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldGT(FieldContentDigest, v))
+// SumGT applies the GT predicate on the "sum" field.
+func SumGT(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldGT(FieldSum, v))
 }
 
-// ContentDigestGTE applies the GTE predicate on the "content_digest" field.
-func ContentDigestGTE(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldGTE(FieldContentDigest, v))
+// SumGTE applies the GTE predicate on the "sum" field.
+func SumGTE(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldGTE(FieldSum, v))
 }
 
-// ContentDigestLT applies the LT predicate on the "content_digest" field.
-func ContentDigestLT(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldLT(FieldContentDigest, v))
+// SumLT applies the LT predicate on the "sum" field.
+func SumLT(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldLT(FieldSum, v))
 }
 
-// ContentDigestLTE applies the LTE predicate on the "content_digest" field.
-func ContentDigestLTE(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldLTE(FieldContentDigest, v))
+// SumLTE applies the LTE predicate on the "sum" field.
+func SumLTE(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldLTE(FieldSum, v))
 }
 
-// ContentDigestContains applies the Contains predicate on the "content_digest" field.
-func ContentDigestContains(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldContains(FieldContentDigest, v))
+// SumContains applies the Contains predicate on the "sum" field.
+func SumContains(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldContains(FieldSum, v))
 }
 
-// ContentDigestHasPrefix applies the HasPrefix predicate on the "content_digest" field.
-func ContentDigestHasPrefix(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldHasPrefix(FieldContentDigest, v))
+// SumHasPrefix applies the HasPrefix predicate on the "sum" field.
+func SumHasPrefix(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldHasPrefix(FieldSum, v))
 }
 
-// ContentDigestHasSuffix applies the HasSuffix predicate on the "content_digest" field.
-func ContentDigestHasSuffix(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldHasSuffix(FieldContentDigest, v))
+// SumHasSuffix applies the HasSuffix predicate on the "sum" field.
+func SumHasSuffix(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldHasSuffix(FieldSum, v))
 }
 
-// ContentDigestEqualFold applies the EqualFold predicate on the "content_digest" field.
-func ContentDigestEqualFold(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldEqualFold(FieldContentDigest, v))
+// SumEqualFold applies the EqualFold predicate on the "sum" field.
+func SumEqualFold(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldEqualFold(FieldSum, v))
 }
 
-// ContentDigestContainsFold applies the ContainsFold predicate on the "content_digest" field.
-func ContentDigestContainsFold(v string) predicate.SkillVersion {
-	return predicate.SkillVersion(sql.FieldContainsFold(FieldContentDigest, v))
+// SumContainsFold applies the ContainsFold predicate on the "sum" field.
+func SumContainsFold(v string) predicate.SkillVersion {
+	return predicate.SkillVersion(sql.FieldContainsFold(FieldSum, v))
 }
 
 // CommitTimeEQ applies the EQ predicate on the "commit_time" field.

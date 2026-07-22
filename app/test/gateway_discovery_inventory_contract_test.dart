@@ -151,7 +151,7 @@ void main() {
         const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/acme/skills","Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Description":"Skills for product teams.","License":"MIT","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/acme/skills/-/skills/demo","Version":"v1.2.3","Name":"demo","Description":"Demo Skill","ImageURL":"https://github.com/acme.png?size=72","Installs":42,"Stars":7,"TrustLevel":"community_verified","RiskAssessment":"low","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"tree","ContentDigest":"sha256:digest","ArchiveSize":12}]}',
+              '{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/acme/skills","Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Description":"Skills for product teams.","License":"MIT","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/acme/skills/-/skills/demo","Version":"v1.2.3","Name":"demo","Description":"Demo Skill","ImageURL":"https://github.com/acme.png?size=72","Installs":42,"Stars":7,"TrustLevel":"community_verified","RiskAssessment":"low","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"tree","Sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","ArchiveSize":12}]}',
           stderr: '',
         ),
         const ProcessOutput(
@@ -195,7 +195,7 @@ void main() {
 
   test('GitHub aliases all bypass keyword search and use CLI info', () async {
     const repositoryInfo =
-        '{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/owner/repo","Version":"v0.0.0-20260720120000-abcdef123456","Time":"2026-07-20T12:00:00Z","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/owner/repo/-/skills/demo","Version":"v0.0.0-20260720120000-abcdef123456","Name":"demo","Description":"Demo Skill","Installs":0,"Stars":0,"TrustLevel":"unverified","RiskAssessment":"unknown","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","TreeSHA":"tree","ContentDigest":"sha256:digest","ArchiveSize":12}]}';
+        '{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/owner/repo","Version":"v0.0.0-20260720120000-abcdef123456","Time":"2026-07-20T12:00:00Z","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/owner/repo/-/skills/demo","Version":"v0.0.0-20260720120000-abcdef123456","Name":"demo","Description":"Demo Skill","Installs":0,"Stars":0,"TrustLevel":"unverified","RiskAssessment":"unknown","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","TreeSHA":"tree","Sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","ArchiveSize":12}]}';
     for (final source in const [
       'owner/repo@main',
       'github/owner/repo@main',

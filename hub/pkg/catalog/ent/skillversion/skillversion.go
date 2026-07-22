@@ -22,8 +22,8 @@ const (
 	FieldCommitSha = "commit_sha"
 	// FieldTreeSha holds the string denoting the tree_sha field in the database.
 	FieldTreeSha = "tree_sha"
-	// FieldContentDigest holds the string denoting the content_digest field in the database.
-	FieldContentDigest = "content_digest"
+	// FieldSum holds the string denoting the sum field in the database.
+	FieldSum = "sum"
 	// FieldCommitTime holds the string denoting the commit_time field in the database.
 	FieldCommitTime = "commit_time"
 	// FieldArchiveSize holds the string denoting the archive_size field in the database.
@@ -59,7 +59,7 @@ var Columns = []string{
 	FieldVersion,
 	FieldCommitSha,
 	FieldTreeSha,
-	FieldContentDigest,
+	FieldSum,
 	FieldCommitTime,
 	FieldArchiveSize,
 	FieldCreatedAt,
@@ -82,8 +82,8 @@ var (
 	CommitShaValidator func(string) error
 	// TreeShaValidator is a validator for the "tree_sha" field. It is called by the builders before save.
 	TreeShaValidator func(string) error
-	// ContentDigestValidator is a validator for the "content_digest" field. It is called by the builders before save.
-	ContentDigestValidator func(string) error
+	// SumValidator is a validator for the "sum" field. It is called by the builders before save.
+	SumValidator func(string) error
 	// DefaultArchiveSize holds the default value on creation for the "archive_size" field.
 	DefaultArchiveSize int64
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
@@ -118,9 +118,9 @@ func ByTreeSha(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTreeSha, opts...).ToFunc()
 }
 
-// ByContentDigest orders the results by the content_digest field.
-func ByContentDigest(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldContentDigest, opts...).ToFunc()
+// BySum orders the results by the sum field.
+func BySum(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldSum, opts...).ToFunc()
 }
 
 // ByCommitTime orders the results by the commit_time field.
