@@ -237,7 +237,7 @@ Batch Takeover performs the following journey within the currently selected Libr
 1. Preflight External copies reported by the CLI across User Scope and every accessible Added Project without changing Agent targets or authoritative SkillsGo metadata.
 2. Accept only copies backed by a supported external lock with trusted source identity, then expose exact All, Global, and per-Project eligible counts from one state-bound plan through the selected-location action and Project rail entries.
 3. Confirm only the currently selected location and execute that subset of the same plan.
-4. Revalidate each authorized copy, capture its complete current content digest as its Store baseline, and register it as a normal managed Installation Target without modifying its files.
+4. Revalidate each authorized copy, capture its complete current sum as its Store baseline, and register it as a normal managed Installation Target without modifying its files.
 5. Skip unmatched, invalid, unsupported-lock, missing, or post-preflight-changed copies independently and report their target-specific reasons; never include newly appeared copies without another preflight.
 
 Local import remains a separate explicit journey and never happens as an implicit Batch Takeover fallback.

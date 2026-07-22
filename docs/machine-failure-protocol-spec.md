@@ -212,7 +212,7 @@ Each `--target` value is one strict JSON object. Unknown fields and trailing JSO
 App or CI caller
   -> CLI command boundary validates source, version, and exact targets
   -> CLI Hub adapter reads immutable Info and ZIP resources
-  -> CLI verifies artifact identity, archive size, and Content Digest
+  -> CLI verifies artifact identity, archive size, and Sum
   -> Installation Plan builds two independent target groups
   -> Codex User Scope group commits
   -> Claude Code Workspace group materializes

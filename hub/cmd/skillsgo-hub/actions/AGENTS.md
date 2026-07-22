@@ -10,7 +10,7 @@
 - `catalog.go`: wires Catalog lifecycle and dependencies into the service.
 - `catalog_api.go`, `catalog_api_test.go`: expose stable public discovery, shared Protocol batch-update and content-match DTOs, auditable artifact detail, pagination, ranking, and install-event JSON behavior against SQLite while retaining correlated private diagnostics for safe public failures.
 - `catalog_postgres_integration_test.go`: verifies pagination and empty discovery response parity through the same HTTP router against PostgreSQL.
-- `catalog_protocol.go`, `catalog_protocol_test.go`: index immutable artifact metadata and bind audited Risk plus Content Digest to exact Info responses.
+- `catalog_protocol.go`, `catalog_protocol_test.go`: index immutable artifact metadata and bind audited Risk plus Sum to exact Info responses.
 - `repository_protocol.go`: aggregates exact flat per-Skill Info into self-contained immutable Repository Info with one shared Ref, Commit SHA, and batch version on bare coordinates, and reports publication-cache decisions.
 - `repository_publisher.go`: coordinates and logs cold one-snapshot Repository discovery, immutable conflict preflight, bounded/negative-cached upstream work, rollback, and transactional Catalog visibility.
 - `repository_backfill.go`, `repository_backfill_test.go`, `repository_backfill_postgres_integration_test.go`: validate and expose bounded administration Backfill batches, persist one independent Run per Repository, execute deterministic semantic-version history through River, retain bounded diagnostics, and verify transactional restart/multi-instance behavior.
