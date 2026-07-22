@@ -39,7 +39,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/plan/` | Process-local installation preparation, conflict/risk validation, Workspace Manifest mutation, and target-specific execution. |
 | `internal/project/` | Strict Repository dependencies in `skillsgo.yaml`, integrity-only `skillsgo.lock`, their paired transaction, and migration-era local receipt readers. |
 | `internal/infocache/` | Exact immutable Repository and Skill Info bytes used for checksum-verified offline restore. |
-| `internal/hub/` | Client for the root Repository Proxy, typed Repository/member Info, bounded Repository ZIP download, and Repository h1 verification. |
+| `internal/hub/` | Client for add-time product-API Repository resolution followed by exact root Proxy Info/ZIP, typed membership, bounded download, and Repository h1 verification. |
 | `internal/source/` | Skill ID parsing and source reference normalization. |
 | `internal/scopevendor/` | Complete ordinary-file Repository Vendor extraction and deterministic per-Agent Repository Projection transactions. |
 | `internal/store/` | User-level shared Hub/Local/captured immutable artifact cache, private Local import/export, and verified takeover baselines. |

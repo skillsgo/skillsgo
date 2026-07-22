@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on a configured Hub origin, canonical Repository/Skill IDs, Hub-owned selector resolution, exact content-match responses, typed Repository Info, bounded Repository ZIP responses, and optional progress reporting.
- * [OUTPUT]: Provides root Repository Proxy resolution/download with identity, membership, size, and h1 validation; bounded product reads; discovery/update reads; and typed HTTP or malformed-protocol failures.
+ * [INPUT]: Depends on a configured Hub origin, canonical Repository/Skill IDs, typed add-time Selector resolution through the product API, exact root Proxy resources, content-match responses, typed Repository Info, bounded Repository ZIP responses, and optional progress reporting.
+ * [OUTPUT]: Provides two-phase movable-to-immutable Repository resolution/download with identity, membership, size, and h1 validation; direct exact reads; bounded product reads; discovery/update reads; and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -128,19 +128,47 @@ func (c *Client) Fetch(ctx context.Context, skillID, requestedVersion string) (*
 }
 
 func (c *Client) Repository(ctx context.Context, repositoryID, query string) (*RepositoryResource, error) {
-	if query == "" {
-		query = "head"
-	}
-	resolved, err := c.resolveSelector(ctx, repositoryID, query)
+	selector, err := protocolversion.ParseSelector(query)
 	if err != nil {
 		return nil, err
 	}
-	query = resolved
-	infoBytes, err := c.get(ctx, c.endpoint(repositoryID, query+".info"))
+	resolved := selector.Value
+	if selector.Movable() {
+		resolution, resolveErr := c.ResolveRepository(ctx, repositoryID, selector.Value)
+		if resolveErr != nil {
+			return nil, resolveErr
+		}
+		resolved = resolution.Version
+	}
+	infoBytes, err := c.get(ctx, c.endpoint(repositoryID, resolved+".info"))
 	if err != nil {
 		return nil, err
 	}
-	return ParseRepositoryInfo(repositoryID, infoBytes)
+	resource, err := ParseRepositoryInfo(repositoryID, infoBytes)
+	if err != nil {
+		return nil, err
+	}
+	if resource.Info.Version != resolved {
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned Repository Info for unexpected immutable version %s", resource.Info.Version)}
+	}
+	return resource, nil
+}
+
+func (c *Client) ResolveRepository(ctx context.Context, repositoryID, selector string) (protocolapi.RepositoryResolutionResponse, error) {
+	parsed, err := protocolversion.ParseSelector(selector)
+	if err != nil {
+		return protocolapi.RepositoryResolutionResponse{}, err
+	}
+	request := protocolapi.RepositoryResolutionRequest{SchemaVersion: protocolapi.SchemaVersion, RepositoryID: repositoryID, Selector: parsed.Value}
+	var response protocolapi.RepositoryResolutionResponse
+	if err := c.postJSON(ctx, "/api/v1/repository-resolutions", request, &response); err != nil {
+		return response, err
+	}
+	if response.SchemaVersion != protocolapi.SchemaVersion || response.RepositoryID != repositoryID ||
+		!protocolversion.IsImmutable(response.Version) || response.Time.IsZero() || response.Ref == "" || response.CommitSHA == "" {
+		return response, &ProtocolError{Err: fmt.Errorf("Hub returned invalid Repository resolution for %s", repositoryID)}
+	}
+	return response, nil
 }
 
 func (c *Client) FetchRepositoryWithProgress(ctx context.Context, repositoryID, query string, progress func(current, total int64)) (*RepositoryResource, error) {
@@ -516,6 +544,35 @@ func (c *Client) getJSON(ctx context.Context, endpoint string, target any) error
 	body, err := c.get(ctx, endpoint)
 	if err != nil {
 		return err
+	}
+	if err := json.Unmarshal(body, target); err != nil {
+		return &ProtocolError{Err: fmt.Errorf("解析 Hub 响应: %w", err)}
+	}
+	return nil
+}
+
+func (c *Client) postJSON(ctx context.Context, path string, source, target any) error {
+	encoded, err := json.Marshal(source)
+	if err != nil {
+		return err
+	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+path, bytes.NewReader(encoded))
+	if err != nil {
+		return err
+	}
+	request.Header.Set("Content-Type", "application/json")
+	request.Header.Set("Accept", "application/json")
+	response, err := c.http.Do(request)
+	if err != nil {
+		return err
+	}
+	defer response.Body.Close()
+	body, readErr := io.ReadAll(io.LimitReader(response.Body, 1<<20))
+	if readErr != nil {
+		return readErr
+	}
+	if response.StatusCode != http.StatusOK {
+		return &HTTPError{StatusCode: response.StatusCode, Body: strings.TrimSpace(string(body)), RequestID: response.Header.Get("X-Request-ID")}
 	}
 	if err := json.Unmarshal(body, target); err != nil {
 		return &ProtocolError{Err: fmt.Errorf("解析 Hub 响应: %w", err)}

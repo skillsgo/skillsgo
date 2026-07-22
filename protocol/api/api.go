@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the public SkillsGo Hub JSON schema and immutable artifact metadata.
- * [OUTPUT]: Provides shared schema constants, Repository-level artifact Info, Skill member Info without independent artifact identity, separate risk vocabulary, content-match DTOs, and update DTOs.
+ * [OUTPUT]: Provides shared schema constants, add-time Repository resolution DTOs, Repository-level artifact Info, Skill member Info without independent artifact identity, separate risk vocabulary, content-match DTOs, and update DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -67,6 +67,19 @@ type RepositoryInfo struct {
 	Sum           string      `json:"Sum"`
 	ArchiveSize   int64       `json:"ArchiveSize"`
 	Skills        []SkillInfo `json:"Skills"`
+}
+type RepositoryResolutionRequest struct {
+	SchemaVersion int    `json:"schemaVersion"`
+	RepositoryID  string `json:"repositoryId"`
+	Selector      string `json:"selector"`
+}
+type RepositoryResolutionResponse struct {
+	SchemaVersion int       `json:"schemaVersion"`
+	RepositoryID  string    `json:"repositoryId"`
+	Version       string    `json:"version"`
+	Time          time.Time `json:"time"`
+	Ref           string    `json:"ref"`
+	CommitSHA     string    `json:"commitSHA"`
 }
 type ContentMatch struct {
 	SkillID          string `json:"skillId"`
