@@ -47,7 +47,11 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 		selectors = nil
 		for repositoryID, dependency := range manifest.Dependencies {
 			for _, skillPath := range dependency.Skills {
-				selectors = append(selectors, repositoryID+"/-/skills/"+skillPath)
+				selector := repositoryID
+				if skillPath != "." {
+					selector += "/-/skills/" + skillPath
+				}
+				selectors = append(selectors, selector)
 			}
 		}
 	}
@@ -87,22 +91,22 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 			desiredSkills = dependency.Skills
 			desiredAgents = subtractStringSlice(dependency.Agents, selectedAgents)
 		}
-		if len(desiredSkills) == 0 || len(desiredAgents) == 0 {
-			rollback()
-			return true, fmt.Errorf("removing the final Skill or Agent from %s requires removing the Repository dependency", repositoryID)
-		}
+		removeDependency := len(desiredSkills) == 0 || len(desiredAgents) == 0
 		archive, err := scopevendor.ReadVerifiedVendor(vendorRoot, repositoryID, dependency.Version, locked.Sum)
 		if err != nil {
 			rollback()
 			return true, err
 		}
-		projections, err := repositoryProjections(catalog, desiredAgents, dependency.Agents, dependency.Skills, desiredSkills, agentScope, declarationRoot)
-		if err != nil {
-			rollback()
-			return true, err
+		projections := []scopevendor.Projection(nil)
+		if !removeDependency {
+			projections, err = repositoryProjections(catalog, desiredAgents, dependency.Agents, dependency.Skills, desiredSkills, agentScope, declarationRoot)
+			if err != nil {
+				rollback()
+				return true, err
+			}
 		}
 		removedProjections := []scopevendor.Projection(nil)
-		if len(selectedAgents) > 0 {
+		if len(selectedAgents) > 0 || removeDependency {
 			oldProjections, oldErr := repositoryProjections(catalog, dependency.Agents, dependency.Agents, dependency.Skills, dependency.Skills, agentScope, declarationRoot)
 			if oldErr != nil {
 				rollback()
@@ -119,7 +123,7 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 			}
 		}
 		transaction, err := scopevendor.Prepare(scopevendor.Options{VendorRoot: vendorRoot, RepositoryID: repositoryID, Version: dependency.Version,
-			Archive: archive, Sum: locked.Sum, Members: dependency.Skills, Projections: projections, RemovedProjections: removedProjections})
+			Archive: archive, Sum: locked.Sum, Members: dependency.Skills, Projections: projections, RemovedProjections: removedProjections, RemoveVendor: removeDependency})
 		if err != nil {
 			rollback()
 			return true, err
@@ -130,9 +134,14 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 			return true, err
 		}
 		transactions = append(transactions, transaction)
-		dependency.Skills = desiredSkills
-		dependency.Agents = desiredAgents
-		manifest.Dependencies[repositoryID] = dependency
+		if removeDependency {
+			delete(manifest.Dependencies, repositoryID)
+			delete(lock.Dependencies, repositoryID)
+		} else {
+			dependency.Skills = desiredSkills
+			dependency.Agents = desiredAgents
+			manifest.Dependencies[repositoryID] = dependency
+		}
 	}
 	if err := project.WriteWorkspaceState(declarationRoot, manifest, lock); err != nil {
 		rollback()

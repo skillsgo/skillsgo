@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra and the Agent, Hub, Store, project, installation, Installation Plan, Update Plan, target-operation, source, i18n, and terminal UI modules.
- * [OUTPUT]: Provides command.Execute and the complete CLI graph, including recognized machine-mode failure documents, grouped Hub service reads, Repository Vendor member/Agent removal routing, Skill reads, Catalog-only batch update checks, explicit-source Info, adaptive Human UI policy, unified managed/External listing, read-only verify/why inspection, lock-backed Batch Takeover, safe cache lifecycle, stable Agent/Library contracts, best-effort post-install Cloud reporting, legacy exact Remove/Repair flows, and Local export, for terminal and App callers.
+ * [OUTPUT]: Provides command.Execute and the complete CLI graph, including recognized machine-mode failures, conflict-safe Workspace/User Repository install ensure, Vendor member/Agent/dependency removal, grouped Hub reads, Skill reads, Catalog update checks, explicit-source Info, Human UI policy, inventory/inspection, legacy takeover/cache/repair seams pending removal, and Local export, for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -104,35 +104,40 @@ func testAgentOption() agent.CatalogOption {
 
 func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
 	var hubURL, output string
+	var global bool
 	cmd := &cobra.Command{
 		Use:   "install",
 		Short: appi18n.T("install.short"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			cwd, err := os.Getwd()
+			home, err := os.UserHomeDir()
 			if err != nil {
 				return err
 			}
-			if discovered, discoverErr := project.FindRoot(cwd); discoverErr == nil {
-				cwd = discovered
+			root := project.UserRoot(home)
+			if !global {
+				root, err = os.Getwd()
+				if err != nil {
+					return err
+				}
+				if discovered, discoverErr := project.FindWorkspaceRoot(root); discoverErr == nil {
+					root = discovered
+				} else {
+					return discoverErr
+				}
 			}
 			client, err := hub.New(hubURL, nil)
 			if err != nil {
 				return err
 			}
-			results, err := restoreWorkspace(cmd.Context(), cwd, catalog, client)
-			if err != nil {
-				return err
-			}
-			for _, result := range results {
-				reportCloudInstall(cmd.Context(), hubURL, cloudInstallFact{
-					SkillID: result.skillID, Version: result.Version, Agents: result.agents, Scope: install.ScopeProject,
-				})
-			}
+			results, installErr := ensureRepositoryScope(cmd.Context(), root, global, catalog, client)
 			if output == "json" {
 				encoder := json.NewEncoder(cmd.OutOrStdout())
 				encoder.SetIndent("", "  ")
-				return encoder.Encode(results)
+				if err := encoder.Encode(results); err != nil {
+					return err
+				}
+				return installErr
 			}
 			ui, err := humanUI(cmd)
 			if err != nil {
@@ -140,13 +145,21 @@ func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
 			}
 			rows := make([]terminalui.Row, 0, len(results))
 			for _, result := range results {
-				rows = append(rows, terminalui.Row{State: "✓", Primary: result.Name, Secondary: result.Version, Meta: []string{fmt.Sprintf("%d targets", result.Targets)}})
+				state := "✓"
+				if result.Error != "" {
+					state = "!"
+				}
+				rows = append(rows, terminalui.Row{State: state, Primary: result.Repository, Secondary: result.Version, Meta: []string{result.Status}})
 			}
-			return ui.Render(terminalui.Document{Title: strings.TrimSpace(appi18n.F("install.success", len(results))), Sections: []terminalui.Section{{Rows: rows}}})
+			if err := ui.Render(terminalui.Document{Title: strings.TrimSpace(appi18n.F("install.success", len(results))), Sections: []terminalui.Section{{Rows: rows}}}); err != nil {
+				return err
+			}
+			return installErr
 		},
 	}
 	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), appi18n.T("flag.hub"))
 	cmd.Flags().StringVar(&output, "output", "human", appi18n.T("flag.output"))
+	cmd.Flags().BoolVarP(&global, "global", "g", false, appi18n.T("flag.global.add"))
 	return cmd
 }
 

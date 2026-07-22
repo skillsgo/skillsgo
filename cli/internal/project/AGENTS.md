@@ -8,7 +8,7 @@
 - `installation_receipts.go`: atomically records and loads exact target-to-Store Installation Receipts together with Manifest and Workspace Sum installation/replacement commits, using a shared transaction lock and crash-recovery journal.
 - `file_lock.go`: adapts gofrs/flock operating-system locks into bounded cross-process exclusion shared by Workspace persistence writers; process exit releases ownership without PID files or stale-lock heuristics.
 - `workspace_sum.go`: owns the generated, integrity-only `skillsgo.sum` ledger, checksum verification, and locked crash-safe updates.
-- `workspace_yaml.go`: owns strict `skillsgo.yaml` Repository dependency intent, strict `skillsgo.lock` Repository integrity, deterministic normalization, and their paired crash-recoverable publication.
+- `workspace_yaml.go`: owns strict `skillsgo.yaml` Repository dependency intent, strict `skillsgo.lock` integrity, nearest Workspace discovery, exact pair validation, deterministic normalization, and paired crash-recoverable publication.
 - `installed.go`: derives concrete managed installations from one locked, crash-recovered Manifest and Installation Receipt snapshot before reconciling the Store and current Agent paths.
 - `*_test.go`: specifies pure persistence parsing plus behavior exercised through the CLI command seam.
 

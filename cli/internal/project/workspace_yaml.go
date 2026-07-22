@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Repository IDs, immutable versions, explicit Skill paths and Agent IDs, valid Repository h1 Sums, strict YAML nodes, and the shared metadata transaction lock.
- * [OUTPUT]: Provides strict skillsgo.yaml and skillsgo.lock parsing, deterministic normalization, loading, and crash-recoverable paired atomic publication.
+ * [OUTPUT]: Provides strict skillsgo.yaml/skillsgo.lock parsing, nearest YAML-root discovery, exact pair validation, deterministic normalization, loading, and crash-recoverable paired atomic publication.
  * [POS]: Serves as the portable Repository dependency intent and integrity boundary for Workspace and User scopes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -52,6 +52,30 @@ func LoadWorkspaceManifest(root string) (WorkspaceManifest, error) {
 		return WorkspaceManifest{}, err
 	}
 	return ParseWorkspaceManifest(path, data)
+}
+
+func FindWorkspaceRoot(start string) (string, error) {
+	current, err := filepath.Abs(start)
+	if err != nil {
+		return "", err
+	}
+	for {
+		info, statErr := os.Stat(filepath.Join(current, WorkspaceManifestName))
+		if statErr == nil {
+			if !info.Mode().IsRegular() {
+				return "", fmt.Errorf("%s is not a regular file", filepath.Join(current, WorkspaceManifestName))
+			}
+			return current, nil
+		}
+		if !os.IsNotExist(statErr) {
+			return "", statErr
+		}
+		parent := filepath.Dir(current)
+		if parent == current {
+			return "", os.ErrNotExist
+		}
+		current = parent
+	}
 }
 
 func ParseWorkspaceManifest(path string, data []byte) (WorkspaceManifest, error) {
@@ -363,4 +387,8 @@ func validateWorkspaceState(manifest WorkspaceManifest, lock DependencyLock) err
 		}
 	}
 	return nil
+}
+
+func ValidateWorkspaceState(manifest WorkspaceManifest, lock DependencyLock) error {
+	return validateWorkspaceState(manifest, lock)
 }

@@ -195,17 +195,21 @@ func TestRepositoryTransactionRemovesHealthyProjectionWithRollbackAndFinalizatio
 	target := CoordinatePath(agentRoot, repositoryID, version)
 
 	removalOptions := Options{VendorRoot: vendorRoot, RepositoryID: repositoryID, Version: version, Archive: archive, Sum: sum,
-		Members: []string{"."}, RemovedProjections: []Projection{{Agent: "codex", Root: agentRoot, PreviousSelected: []string{"."}}}}
+		Members: []string{"."}, RemovedProjections: []Projection{{Agent: "codex", Root: agentRoot, PreviousSelected: []string{"."}}}, RemoveVendor: true}
+	vendor := CoordinatePath(vendorRoot, repositoryID, version)
 	removal, err := Prepare(removalOptions)
 	require.NoError(t, err)
 	require.NoError(t, removal.Commit())
 	require.NoDirExists(t, target)
+	require.NoDirExists(t, vendor)
 	require.NoError(t, removal.Rollback())
 	require.FileExists(t, filepath.Join(target, "SKILL.md"))
+	require.FileExists(t, filepath.Join(vendor, "SKILL.md"))
 
 	removal, err = Prepare(removalOptions)
 	require.NoError(t, err)
 	require.NoError(t, removal.Commit())
 	require.NoError(t, removal.Finalize())
 	require.NoDirExists(t, target)
+	require.NoDirExists(t, vendor)
 }

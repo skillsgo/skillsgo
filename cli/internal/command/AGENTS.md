@@ -41,7 +41,7 @@
 - `repository_remove.go`: verifies the authoritative local Vendor and atomically removes selected root/nested members from every declared Agent projection without Hub access or Local Modification overwrite.
 - `repository_add_test.go`, `repository_vendor_test.go`: specify Repository selector matching plus the public exact-version Workspace Vendor journey.
 - `workspace_integrity.go`: validates complete immutable resource evidence before atomically extending every destination Workspace Sum and publishing exact Info Cache entries for all installation entry points.
-- `workspace_restore.go`: restores exact direct requirements from Workspace Sum, immutable Info Cache, Store, and current Agent roots without a lockfile.
+- `workspace_restore.go`: performs conflict-safe idempotent Workspace/User ensure from strict YAML/Lock, restoring absent Vendor from exact Proxy resources and absent projections from verified Vendor without selector resolution, update, pruning, or overwrite.
 - `version_test.go`: specifies CLI identity and App protocol compatibility through `Execute`.
 
 ## Architectural Boundary

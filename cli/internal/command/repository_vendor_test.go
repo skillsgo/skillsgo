@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute, an exact root Repository Proxy fixture, a complete Repository Artifact, and temporary Workspace/Agent roots.
- * [OUTPUT]: Specifies exact-version add, root/nested selection expansion, Cartesian multi-Agent projection, and checksum-failure atomicity through YAML/Lock, Scope Vendor, and ordinary-file Agent Projections.
+ * [OUTPUT]: Specifies exact add, selective multi-Agent projection, member/Agent removal, healthy zero-rewrite install, offline projection restoration, Local Modification preservation, User Vendor restoration, and checksum-failure atomicity.
  * [POS]: Serves as the CLI command-seam acceptance test for Repository Vendor installation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -135,6 +135,53 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	require.FileExists(t, filepath.Join(scopevendor.CoordinatePath(filepath.Join(workspace, ".agents", "skills"), repositoryID, version), "SKILL.md"))
 	require.NoDirExists(t, scopevendor.CoordinatePath(filepath.Join(workspace, ".goose", "skills"), repositoryID, version))
 	require.FileExists(t, filepath.Join(vendor, "SKILL.md"))
+
+	codexProjection := scopevendor.CoordinatePath(filepath.Join(workspace, ".agents", "skills"), repositoryID, version)
+	rootManifest := filepath.Join(codexProjection, "SKILL.md")
+	beforeHealthy, err := os.Stat(rootManifest)
+	require.NoError(t, err)
+	output.Reset()
+	require.NoError(t, Execute([]string{"install", "--hub", "http://127.0.0.1:1", "--output", "json"}, &output, &output))
+	afterHealthy, err := os.Stat(rootManifest)
+	require.NoError(t, err)
+	require.Equal(t, beforeHealthy.ModTime(), afterHealthy.ModTime())
+	require.Contains(t, output.String(), `"status": "healthy"`)
+
+	require.NoError(t, os.RemoveAll(vendor))
+	require.NoError(t, os.RemoveAll(codexProjection))
+	output.Reset()
+	require.NoError(t, Execute([]string{"install", "--hub", server.URL, "--output", "json"}, &output, &output))
+	require.FileExists(t, filepath.Join(vendor, "skills", "review", "SKILL.md"))
+	require.FileExists(t, rootManifest)
+	require.Contains(t, output.String(), `"status": "restored"`)
+
+	require.NoError(t, os.RemoveAll(codexProjection))
+	output.Reset()
+	require.NoError(t, Execute([]string{"install", "--hub", "http://127.0.0.1:1", "--output", "json"}, &output, &output))
+	require.FileExists(t, rootManifest)
+	require.Contains(t, output.String(), `"status": "restored"`)
+	require.NoError(t, os.WriteFile(filepath.Join(codexProjection, "README.md"), []byte("user modification"), 0o644))
+	output.Reset()
+	err = Execute([]string{"install", "--hub", "http://127.0.0.1:1", "--output", "json"}, &output, &output)
+	require.ErrorContains(t, err, "Repository installation group")
+	require.Contains(t, output.String(), "Local Modification")
+	modified, err := os.ReadFile(filepath.Join(codexProjection, "README.md"))
+	require.NoError(t, err)
+	require.Equal(t, "user modification", string(modified))
+
+	output.Reset()
+	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--global", "--skill", "skills/design", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output))
+	userRoot := project.UserRoot(home)
+	require.FileExists(t, filepath.Join(userRoot, project.WorkspaceManifestName))
+	require.FileExists(t, filepath.Join(userRoot, project.DependencyLockName))
+	userVendor := scopevendor.CoordinatePath(filepath.Join(userRoot, "vendor"), repositoryID, version)
+	require.FileExists(t, filepath.Join(userVendor, "skills", "review", "SKILL.md"))
+	userProjection := scopevendor.CoordinatePath(filepath.Join(home, ".codex", "skills"), repositoryID, version)
+	require.NoError(t, os.RemoveAll(userProjection))
+	output.Reset()
+	require.NoError(t, Execute([]string{"install", "--global", "--hub", "http://127.0.0.1:1", "--output", "json"}, &output, &output))
+	require.FileExists(t, filepath.Join(userProjection, "skills", "design", "SKILL.md"))
+	require.NoFileExists(t, filepath.Join(userProjection, "skills", "review", "SKILL.md"))
 }
 
 func TestAddRepositorySumMismatchLeavesNoWorkspaceState(t *testing.T) {
