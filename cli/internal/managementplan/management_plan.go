@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on explicit target identities, declaration-derived inventory health, exact Installation Receipts, immutable Store entries, Agent adapters, and Workspace metadata.
+ * [INPUT]: Depends on strict shared machine-input decoding, explicit target identities, declaration-derived inventory health, exact Installation Receipts, immutable Store entries, Agent adapters, and Workspace metadata.
  * [OUTPUT]: Provides strict target-operation preflight, physical-alias-safe managed Remove, logical-versus-artifact-aware Repair, exact External Installation removal, and structured per-target progress/results.
  * [POS]: Serves as the cleanup and recovery orchestration domain between top-level remove/repair commands and install/project boundaries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -7,13 +7,10 @@
 package managementplan
 
 import (
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
@@ -23,6 +20,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
+	"github.com/skillsgo/skillsgo/cli/internal/strictjson"
 	"github.com/skillsgo/skillsgo/cli/internal/trash"
 )
 
@@ -133,21 +131,9 @@ type Progress struct {
 }
 
 func DecodeTargets(values []string) ([]TargetRequest, error) {
-	requests := make([]TargetRequest, 0, len(values))
-	for index, value := range values {
-		decoder := json.NewDecoder(bytes.NewBufferString(value))
-		decoder.DisallowUnknownFields()
-		var request TargetRequest
-		if err := decoder.Decode(&request); err != nil {
-			return nil, fmt.Errorf("invalid management target %d: %w", index+1, err)
-		}
-		if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
-			return nil, fmt.Errorf("invalid management target %d: expected one JSON object", index+1)
-		}
-		if err := validateRequest(request); err != nil {
-			return nil, fmt.Errorf("invalid management target %d: %w", index+1, err)
-		}
-		requests = append(requests, request)
+	requests, err := strictjson.DecodeMany(values, "invalid management target", validateRequest)
+	if err != nil {
+		return nil, err
 	}
 	if len(requests) == 0 {
 		return nil, fmt.Errorf("a target operation requires at least one explicit target")
