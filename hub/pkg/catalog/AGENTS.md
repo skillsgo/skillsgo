@@ -12,8 +12,8 @@
 - `migrate/main.go`: authors named Ent/Atlas schema diffs against disposable development databases.
 - `pgxent/`: adapts caller-owned native pgx transactions to generated Ent clients so domain writes and River enqueueing can share one transaction; application code must enter through `Catalog.WithPostgresTx` or `Catalog.WithPostgresTxOptions` rather than constructing transaction ownership ad hoc.
 - `ent/schema/`: defines the authoritative Ent entity model, including presentation-only localized descriptions; generated siblings under `ent/` are reproducible build output.
-- `catalog_test.go`: specifies the SQLite behavior contract, including migration history, canonical Skill IDs, exact content matching, immutable audit evidence, search fields, pagination, and ranking windows.
-- `postgres_integration_test.go`: verifies discovery, immutable audit persistence, and aggregation parity against an opt-in real PostgreSQL service.
+- `catalog_test.go`: specifies the SQLite behavior contract, including migration history, canonical Skill IDs, exact content matching, downstream assessment persistence, search fields, pagination, and ranking windows.
+- `postgres_integration_test.go`: verifies discovery, downstream assessment persistence, and aggregation parity against an opt-in real PostgreSQL service.
 
 ## Architectural Boundary
 

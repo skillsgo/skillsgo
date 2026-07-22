@@ -6,8 +6,8 @@
 # Most properties can be overridden with environment variables specified in this file
 # Most properties also have defaults (mentioned in this file) if they are not set in either the config file or the corresponding environment variable
 
-# If you put this file where you start Athens from as "athens.toml", athens will use it when starting.
-# You can also start athens with -config_file as command line argument to point out a config file.
+# If you put this file where the Hub starts as "skillsgo-hub.toml", it is loaded automatically.
+# You can also pass -config_file with an explicit path.
 
 # Environment specifies the type of environment to run.
 # Supported values are: 'development' and 'production'. Defaults to "development"
@@ -61,11 +61,6 @@ PprofPort = ":3001"
 
 # The filename for the include exclude filter.
 # Env override: SKILLSGO_HUB_FILTER_FILE
-#
-# To point Athens to an upstream proxy to fetch modules,
-# set GlobalEndpoint to "https://<url_to_upstream>"
-# and also ensure that FilterFile is  set to a fully qualified file name
-# that contains the letter `D` (for "Direct Access") in the first line.
 FilterFile = ""
 
 # The filename for the robots.txt.
@@ -90,7 +85,7 @@ Timeout = 300
 # StashTimeout = 600 # Check that defaults are loaded.
 
 # StorageType sets the type of storage backend the proxy will use.
-# Possible values are memory, disk, mongo, gcp, minio, s3, azureblob, external
+# Possible values are memory, disk, mongo, gcp, s3, azureblob, external
 # Defaults to disk at ~/.skillsgo/hub/storage/artifacts when no config file is supplied
 # Env override: SKILLSGO_HUB_STORAGE_TYPE
 StorageType = "memory"
@@ -111,16 +106,6 @@ Port = ":3000"
 # Defaults to empty (i.e. listen on a TCP port only)
 # Env override: SKILLSGO_HUB_UNIX_SOCKET
 UnixSocket = ""
-
-# The endpoint for an upstream package registry in case of a proxy cache miss
-# NOTE: Currently no registries have been implemented
-# Env override: SKILLSGO_HUB_GLOBAL_ENDPOINT
-#
-# To point Athens to an upstream proxy to fetch modules,
-# set GlobalEndpoint to "https://<url_to_upstream>"
-# and also ensure that FilterFile is set to a fully qualified file name
-# that contains the letter `D` (for "Direct Access") in the first line.
-GlobalEndpoint = "http://localhost:3001"
 
 # BASIC AUTH OPTIONS
 # ==================
@@ -145,7 +130,7 @@ AdminAuthPass = ""
 
 # A path on disk to a Go HTML template to be used on the homepage
 # Env override: SKILLSGO_HUB_HOME_TEMPLATE_PATH
-HomeTemplatePath = "/var/lib/athens/home.html"
+HomeTemplatePath = "/var/lib/skillsgo/home.html"
 
 # Set to true to force an SSL redirect
 # Env override: SKILLSGO_HUB_FORCE_SSL
@@ -163,29 +148,10 @@ ValidatorHook = ""
 # Env override: SKILLSGO_HUB_PATH_PREFIX
 PathPrefix = ""
 
-# NETRCPath tells you where the .netrc path initially resides.
-# This is so that you can mount the .netrc file to a secret location
-# in the fs system and then move it ~/.netrc. In certain deployments
-# like Kubernetes, we can't mount directly to ~ because it would then
-# clean out whatever is already there as part of the image (such as
-# .cache directory in the Go image).
-# Env override: SKILLSGO_HUB_NETRC_PATH
-NETRCPath = ""
-
-# GithubTokens configures a sticky failover pool for GitHub REST API and Git
-# operations. A successful token remains active until an authentication,
-# authorization, rate-limit, or Git transport failure selects the next token.
+# GithubTokens configures a sticky failover pool for GitHub metadata API
+# requests only. Artifact publication never uses these credentials.
 # Env override: SKILLSGO_HUB_GITHUB_TOKENS (comma, semicolon, or newline-delimited)
 GithubTokens = []
-
-# HGRCPath tells you where the .hgrc path initially resides.
-# This is so that you can mount the .hgrc file to a secret location
-# in the fs system and then move it ~/.hgrc. In certain deployments
-# like Kubernetes, we can't mount directly to ~ because it would then
-# clean out whatever is already there as part of the image (such as
-# .cache directory in the Go image).
-# Env override: SKILLSGO_HUB_HGRC_PATH
-HGRCPath = ""
 
 # Tracing is not a requirement for Athens. If the infrastructure is not set up,
 # Athens will keep on running and traces won't be exported.

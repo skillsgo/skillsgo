@@ -95,7 +95,6 @@ type mockDP struct {
 	err      error
 	list     []string
 	info     []byte
-	latest   *storage.RevInfo
 	zip      storage.SizeReadCloser
 	inputMod string
 	inputVer string
@@ -119,14 +118,6 @@ func (m *mockDP) Info(ctx context.Context, mod, ver string) ([]byte, error) {
 		return nil, fmt.Errorf("expected ver input %v but got %v", m.inputVer, ver)
 	}
 	return m.info, m.err
-}
-
-// Latest implements GET /{skill}/@latest
-func (m *mockDP) Latest(ctx context.Context, mod string) (*storage.RevInfo, error) {
-	if m.inputMod != mod {
-		return nil, fmt.Errorf("expected mod input %v but got %v", m.inputMod, mod)
-	}
-	return m.latest, m.err
 }
 
 // Zip implements GET /{skill}/@v/{version}.zip

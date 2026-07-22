@@ -50,6 +50,7 @@ func addProxyRoutesWithCatalog(
 	adminRouter fiber.Router,
 	adminEnabled bool,
 ) error {
+	s = storage.WithImmutableWrites(s)
 	if taskRuntime == nil {
 		taskRuntime = taskqueue.NewSynchronous()
 	}
@@ -90,7 +91,10 @@ func addProxyRoutesWithCatalog(
 	// 4. The plain stash.New just takes a request from upstream and saves it into storage.
 	fs := afero.NewOsFs()
 
-	skillFetcher, err := skill.NewFetcherWithGitHubTokens(c.SkillCacheDir, fs, c.GitHubTokens())
+	// Public Hub publication is intentionally credential-free. GitHub tokens
+	// are reserved for metadata APIs and must never expand the set of source
+	// Repositories whose contents can become public artifacts.
+	skillFetcher, err := skill.NewFetcher(c.SkillCacheDir, fs)
 	if err != nil {
 		return err
 	}

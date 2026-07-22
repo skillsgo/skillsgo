@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on parsed artifact coordinates, Protocol Info resolution, redirect policy, and movable-query cache protection.
- * [OUTPUT]: Serves JSON Info for canonical versions and non-cacheable movable revision queries.
+ * [INPUT]: Depends on parsed artifact coordinates, immutable-version validation, Protocol Info resolution, and redirect policy.
+ * [OUTPUT]: Serves immutable JSON Info only for exact canonical semantic or pseudo-versions.
  * [POS]: Serves as the Info HTTP boundary in the artifact download protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,6 +11,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
+	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 )
 
 // PathVersionInfo URL.
@@ -26,7 +27,13 @@ func InfoHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handl
 			lggr.SystemErr(err)
 			return c.SendStatus(errors.Kind(err))
 		}
+		if !protocolversion.IsImmutable(ver) {
+			return c.Status(fiber.StatusBadRequest).SendString("exact immutable version required; use @head or @release")
+		}
 		protectMovableVersionResponse(c, ver)
+		if immutableNotModified(c, mod, ver, "info") {
+			return c.SendStatus(fiber.StatusNotModified)
+		}
 		info, err := dp.Info(c.Context(), mod, ver)
 		if err != nil {
 			severityLevel := errors.Expect(err, errors.KindNotFound, errors.KindRedirect)

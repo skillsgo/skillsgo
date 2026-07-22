@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Uses the cataloging Protocol decorator with fixed immutable artifact metadata and temporary Catalog storage.
- * [OUTPUT]: Specifies that only successfully assessed artifact resolution makes Skills discoverable and exact Info responses carry immutable Risk and Sum.
- * [POS]: Serves as integration coverage between artifact protocol reads and Hub discovery indexing.
+ * [OUTPUT]: Specifies that only successfully validated artifact resolution makes Skills discoverable and exact Info carries immutable source metadata and Sum but no mutable Risk.
+ * [POS]: Serves as integration coverage between immutable artifact protocol reads and separate Hub discovery indexing.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -52,7 +52,6 @@ func TestSkillInfoRouteReturnsCompleteInstallMetadata(t *testing.T) {
 		Compatibility string            `json:"Compatibility"`
 		AllowedTools  string            `json:"AllowedTools"`
 		Metadata      map[string]string `json:"Metadata"`
-		Risk          string            `json:"Risk"`
 		Sum           string            `json:"Sum"`
 		ArchiveSize   int64             `json:"ArchiveSize"`
 	}
@@ -67,7 +66,7 @@ func TestSkillInfoRouteReturnsCompleteInstallMetadata(t *testing.T) {
 	require.Equal(t, "Requires Git.", info.Compatibility)
 	require.Equal(t, "Bash(git:*)", info.AllowedTools)
 	require.Equal(t, map[string]string{"author": "vercel-labs"}, info.Metadata)
-	require.Equal(t, "unknown", info.Risk)
+	require.NotContains(t, recorder.Body.String(), `"Risk"`)
 	require.NotEmpty(t, info.Sum)
 	require.Equal(t, int64(len(archive)), info.ArchiveSize)
 }
@@ -174,13 +173,12 @@ func TestCatalogProtocolIndexesSuccessfulArtifactResolution(t *testing.T) {
 		"info": func(t *testing.T, protocol download.Protocol) {
 			data, err := protocol.Info(t.Context(), skillID, "main")
 			require.NoError(t, err)
-			var assessed struct {
-				Risk string `json:"Risk"`
-				Sum  string `json:"Sum"`
+			var immutable struct {
+				Sum string `json:"Sum"`
 			}
-			require.NoError(t, json.Unmarshal(data, &assessed))
-			require.Equal(t, "unknown", assessed.Risk)
-			require.NotEmpty(t, assessed.Sum)
+			require.NoError(t, json.Unmarshal(data, &immutable))
+			require.NotContains(t, string(data), `"Risk"`)
+			require.NotEmpty(t, immutable.Sum)
 		},
 		"zip": func(t *testing.T, protocol download.Protocol) {
 			archive, err := protocol.Zip(t.Context(), skillID, "main")
@@ -208,7 +206,7 @@ func TestCatalogProtocolIndexesSuccessfulArtifactResolution(t *testing.T) {
 	}
 }
 
-func TestCatalogProtocolDoesNotIndexWhenAssessmentFails(t *testing.T) {
+func TestCatalogProtocolDoesNotIndexWhenArtifactValidationFails(t *testing.T) {
 	skillID := "github.com/vercel-labs/skills/-/skills/find-skills"
 	entryPoints := map[string]func(t *testing.T, protocol download.Protocol){
 		"info": func(t *testing.T, protocol download.Protocol) {

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on request-scoped structured logging, one resolved Repository snapshot, immutable artifact storage, and enriched per-Skill protocol indexing.
- * [OUTPUT]: Materializes every accepted Repository member and emits a correlated, bounded publication lifecycle without logging credentials or artifact content.
+ * [OUTPUT]: Materializes every accepted Repository member, commits its byte-stable Repository Release Record, and emits a correlated bounded publication lifecycle without logging credentials or artifact content.
  * [POS]: Serves as the observable cold-publication coordinator between Git Repository discovery, artifact storage, and Repository Info visibility.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -19,6 +19,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
+	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -50,6 +51,7 @@ type negativePublication struct {
 }
 
 func newRepositoryPublisher(fetcher skill.RepositoryFetcher, backend storage.Backend, protocol download.Protocol, metadata *catalog.Catalog) *repositoryPublisher {
+	backend = storage.WithImmutableWrites(backend)
 	return &repositoryPublisher{fetcher: fetcher, storage: backend, protocol: protocol, metadata: metadata, upstream: make(chan struct{}, 8), negative: make(map[string]negativePublication), now: time.Now, negativeTTL: 10 * time.Second}
 }
 
@@ -221,21 +223,30 @@ func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID,
 		if stored[member.SkillID] {
 			continue
 		}
-		if err := p.storage.Save(
+		created, err := p.storage.(storage.ImmutableSaver).PutIfAbsent(
 			ctx, member.SkillID, snapshot.Version,
 			member.Version.Zip, member.Version.ZipMD5, member.Version.Info,
-		); err != nil {
+		)
+		if err != nil {
 			return "", err
 		}
-		newlyStored = append(newlyStored, member.SkillID)
+		if created {
+			newlyStored = append(newlyStored, member.SkillID)
+		}
 	}
 	published := make([]catalog.PublishedSkill, 0, len(memberIDs))
+	release := protocolapi.RepositoryInfo{
+		SchemaVersion: protocolapi.SchemaVersion,
+		Kind:          protocolapi.KindRepository,
+		ID:            repositoryID,
+		Version:       snapshot.Version,
+		Time:          snapshot.CommitTime,
+		CommitSHA:     snapshot.CommitSHA,
+		Skills:        make([]json.RawMessage, 0, len(memberIDs)),
+	}
 	for _, memberID := range memberIDs {
 		publicationCtx := withoutCatalogIndex(ctx)
-		if visibility == catalog.HistoricalPublication {
-			publicationCtx = withoutArtifactAudit(publicationCtx)
-		}
-		assessed, err := p.protocol.Info(publicationCtx, memberID, snapshot.Version)
+		immutableInfo, err := p.protocol.Info(publicationCtx, memberID, snapshot.Version)
 		if err != nil {
 			return "", err
 		}
@@ -248,17 +259,31 @@ func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID,
 			ArchiveSize int64     `json:"ArchiveSize"`
 			CommitSHA   string    `json:"CommitSHA"`
 			TreeSHA     string    `json:"TreeSHA"`
+			Ref         string    `json:"Ref"`
 		}
-		if err := json.Unmarshal(assessed, &info); err != nil {
-			return "", fmt.Errorf("decode assessed Repository member: %w", err)
+		if err := json.Unmarshal(immutableInfo, &info); err != nil {
+			return "", fmt.Errorf("decode immutable Repository member Info: %w", err)
 		}
 		published = append(published, catalog.PublishedSkill{
 			Skill: catalog.Skill{SkillID: memberID, Name: info.Name, Description: info.Description, LatestVersion: info.Version},
 			Version: catalog.SkillVersion{Version: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA,
 				Sum: info.Sum, CommitTime: info.Time, ArchiveSize: info.ArchiveSize},
 		})
+		if info.CommitSHA != snapshot.CommitSHA || info.Ref == "" {
+			return "", fmt.Errorf("Repository member Info is inconsistent for %s@%s", repositoryID, snapshot.Version)
+		}
+		if release.Ref == "" {
+			release.Ref = info.Ref
+		} else if release.Ref != info.Ref {
+			return "", fmt.Errorf("Repository member refs are inconsistent for %s@%s", repositoryID, snapshot.Version)
+		}
+		release.Skills = append(release.Skills, json.RawMessage(append([]byte(nil), immutableInfo...)))
 	}
-	if err := p.metadata.PublishRepositoryVersionWithVisibility(ctx, repositoryID, published, visibility); err != nil {
+	releaseInfo, err := json.Marshal(release)
+	if err != nil {
+		return "", fmt.Errorf("encode Repository Release Record: %w", err)
+	}
+	if err := p.metadata.PublishRepositoryReleaseWithVisibility(ctx, repositoryID, published, visibility, releaseInfo); err != nil {
 		return "", err
 	}
 	publicationCommitted = true

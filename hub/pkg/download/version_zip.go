@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on parsed artifact coordinates, Protocol ZIP resolution, redirect policy, streaming metadata, and movable-query cache protection.
- * [OUTPUT]: Streams ZIP artifacts for canonical versions and non-cacheable movable revision queries, including HEAD metadata.
+ * [INPUT]: Depends on parsed artifact coordinates, immutable-version validation, Protocol ZIP resolution, redirect policy, and streaming metadata.
+ * [OUTPUT]: Streams ZIP artifacts only for exact canonical semantic or pseudo-versions, including HEAD metadata.
  * [POS]: Serves as the ZIP HTTP boundary in the artifact download protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,6 +14,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
+	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 	"golang.org/x/mod/semver"
 )
 
@@ -29,7 +30,13 @@ func ZipHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handle
 			lggr.SystemErr(err)
 			return c.SendStatus(errors.Kind(err))
 		}
+		if !protocolversion.IsImmutable(ver) {
+			return c.Status(fiber.StatusBadRequest).SendString("exact immutable version required; use @head or @release")
+		}
 		protectMovableVersionResponse(c, ver)
+		if immutableNotModified(c, mod, ver, "zip") {
+			return c.SendStatus(fiber.StatusNotModified)
+		}
 		zip, err := dp.Zip(c.Context(), mod, ver)
 		if err != nil {
 			severityLevel := errors.Expect(err, errors.KindNotFound, errors.KindRedirect)

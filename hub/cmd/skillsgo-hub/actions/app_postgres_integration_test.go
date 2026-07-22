@@ -53,8 +53,6 @@ func TestPostgresAppStartsServesAndRecoversQueuedJobAfterRestart(t *testing.T) {
 	conf.TraceExporter = ""
 	conf.LLM = nil
 	conf.SkillsSH = nil
-	conf.NETRCPath = ""
-	conf.HGRCPath = ""
 	conf.ForceSSL = false
 
 	metadata, err := catalog.Open(ctx, *conf.Database)

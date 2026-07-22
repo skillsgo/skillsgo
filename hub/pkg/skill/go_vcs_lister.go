@@ -60,45 +60,14 @@ func (l *vcsLister) ListRepositoryTags(ctx context.Context, repositoryID string)
 	if err != nil || parsed.SkillPath != "." || parsed.String() != repositoryID {
 		return nil, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
 	}
+	if _, _, err := l.List(ctx, repositoryID); err != nil {
+		return nil, err
+	}
 	repoDir, err := l.repositories.repositoryDir(parsed.Repository)
 	if err != nil {
 		return nil, err
 	}
-	timeoutCtx, cancel := context.WithTimeout(ctx, l.timeout)
-	defer cancel()
-	if !isGitRepository(repoDir) {
-		if err := l.repositories.syncRepository(timeoutCtx, parsed); err != nil {
-			return nil, err
-		}
-	}
-	githubSource := strings.EqualFold(strings.SplitN(parsed.Repository, "/", 2)[0], "github.com")
-	output, err := l.repositories.runGitTransport(timeoutCtx, repoDir, githubSource,
-		"-c", "http.followRedirects=false", "ls-remote", "--tags", "origin")
-	if err != nil {
-		return nil, errors.E("vcsLister.ListRepositoryTags", fmt.Errorf("git ls-remote failed: %s", gitTransportDiagnostic(output)))
-	}
-	tagsByVersion := make(map[string]RepositoryTag)
-	for _, line := range strings.Split(string(output), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) != 2 || !strings.HasPrefix(fields[1], "refs/tags/") {
-			continue
-		}
-		version := strings.TrimPrefix(fields[1], "refs/tags/")
-		peeled := strings.HasSuffix(version, "^{}")
-		version = strings.TrimSuffix(version, "^{}")
-		if !isCanonicalSemanticVersion(version) {
-			continue
-		}
-		if current, exists := tagsByVersion[version]; !exists || peeled || current.CommitSHA == "" {
-			tagsByVersion[version] = RepositoryTag{Version: version, CommitSHA: fields[0]}
-		}
-	}
-	tags := make([]RepositoryTag, 0, len(tagsByVersion))
-	for _, tag := range tagsByVersion {
-		tags = append(tags, tag)
-	}
-	sort.Slice(tags, func(i, j int) bool { return semver.Compare(tags[i].Version, tags[j].Version) < 0 })
-	return tags, nil
+	return canonicalRepositoryTags(ctx, repoDir)
 }
 
 type listSFResp struct {
@@ -140,23 +109,20 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
-		tagOutput, err := gitOutput(timeoutCtx, repoDir, "tag", "--list")
+		tags, err := canonicalRepositoryTags(timeoutCtx, repoDir)
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
-		versions := make([]string, 0)
-		for _, tag := range strings.Fields(tagOutput) {
-			if isCanonicalSemanticVersion(tag) {
-				versions = append(versions, tag)
-			}
+		versions := make([]string, 0, len(tags))
+		for _, tag := range tags {
+			versions = append(versions, tag.Version)
 		}
-		sort.Slice(versions, func(i, j int) bool { return semver.Compare(versions[i], versions[j]) < 0 })
 
 		version := ""
 		ref := ""
 		if selected := latestSemanticVersion(versions); selected != "" {
 			version = selected
-			ref = "refs/tags/" + version
+			ref = semanticTagRef(timeoutCtx, repoDir, version)
 		} else {
 			ref, err = gitOutput(timeoutCtx, repoDir, "symbolic-ref", "refs/remotes/origin/HEAD")
 			if err != nil {
@@ -201,4 +167,35 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 	l.catalogs[skillID.Repository] = tagCatalog{expires: l.now().Add(l.ttl), rev: *result.rev, versions: append([]string(nil), result.versions...)}
 	l.mu.Unlock()
 	return result.rev, result.versions, nil
+}
+
+// canonicalRepositoryTags returns one deterministic local view of fetched
+// upstream tags, with a local-tag fallback used by repository fixtures.
+func canonicalRepositoryTags(ctx context.Context, repoDir string) ([]RepositoryTag, error) {
+	versions := map[string]bool{}
+	if local, err := gitOutput(ctx, repoDir, "tag", "--list"); err == nil {
+		for _, version := range strings.Fields(local) {
+			if isCanonicalSemanticVersion(version) {
+				versions[version] = true
+			}
+		}
+	}
+	if upstream, err := gitOutput(ctx, repoDir, "for-each-ref", "--format=%(refname:strip=3)", "refs/skillsgo/upstream-tags"); err == nil {
+		for _, version := range strings.Fields(upstream) {
+			if isCanonicalSemanticVersion(version) {
+				versions[version] = true
+			}
+		}
+	}
+	tags := make([]RepositoryTag, 0, len(versions))
+	for version := range versions {
+		ref := semanticTagRef(ctx, repoDir, version)
+		commitSHA, err := gitOutput(ctx, repoDir, "rev-parse", ref+"^{commit}")
+		if err != nil {
+			return nil, fmt.Errorf("resolve Repository Tag %s through %s: %w", version, ref, err)
+		}
+		tags = append(tags, RepositoryTag{Version: version, CommitSHA: commitSHA})
+	}
+	sort.Slice(tags, func(i, j int) bool { return semver.Compare(tags[i].Version, tags[j].Version) < 0 })
+	return tags, nil
 }

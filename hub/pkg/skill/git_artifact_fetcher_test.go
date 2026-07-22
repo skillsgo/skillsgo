@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Git-backed Skill fetching, filesystem fixtures, and injected Git transport outcomes.
- * [OUTPUT]: Specifies artifact fetching, repository cache paths, and sticky GitHub-token failover behavior.
+ * [OUTPUT]: Specifies artifact fetching, repository cache paths, and credential-free controlled Git transport behavior.
  * [POS]: Serves as test coverage for the skill package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,9 +8,7 @@ package skill
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -29,33 +27,26 @@ func (s *SkillSuite) TestNewFetcher() {
 	r.True(ok)
 }
 
-func TestGitTransportFailsOverAndKeepsReplacement(t *testing.T) {
-	fetcher, err := NewFetcherWithGitHubTokens(t.TempDir(), afero.NewOsFs(), []string{"token-a", "token-b", "token-c"})
+func TestGitTransportStripsAmbientCredentials(t *testing.T) {
+	fetcher, err := NewFetcher(t.TempDir(), afero.NewOsFs())
 	if err != nil {
 		t.Fatal(err)
 	}
 	gitFetcher := fetcher.(*gitFetcher)
-	var credentials []string
+	var capturedEnvironment []string
 	gitFetcher.runGitCommand = func(_ context.Context, _ string, _ []string, environment []string) ([]byte, error) {
-		credential := environmentValue(environment, "GIT_CONFIG_VALUE_0")
-		credentials = append(credentials, credential)
-		if credential == gitAuthorization("token-a") {
-			return []byte("authentication failed"), fmt.Errorf("exit status 128")
-		}
+		capturedEnvironment = append([]string(nil), environment...)
 		return nil, nil
 	}
-
-	_, err = gitFetcher.runGitTransport(t.Context(), "", true, "fetch")
+	t.Setenv("GIT_CONFIG_COUNT", "1")
+	t.Setenv("GIT_CONFIG_KEY_0", "http.https://github.com/.extraHeader")
+	t.Setenv("GIT_CONFIG_VALUE_0", "Authorization: Basic secret")
+	_, err = gitFetcher.runGitTransport(t.Context(), "", "fetch")
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = gitFetcher.runGitTransport(t.Context(), "", true, "fetch")
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := []string{gitAuthorization("token-a"), gitAuthorization("token-b"), gitAuthorization("token-b")}
-	if fmt.Sprint(credentials) != fmt.Sprint(want) {
-		t.Fatalf("credentials = %v, want %v", credentials, want)
+	if environmentValue(capturedEnvironment, "GIT_CONFIG_COUNT") != "" || environmentValue(capturedEnvironment, "GIT_CONFIG_VALUE_0") != "" {
+		t.Fatalf("controlled Git environment retained ambient credentials: %v", capturedEnvironment)
 	}
 }
 
@@ -67,11 +58,6 @@ func environmentValue(environment []string, key string) string {
 		}
 	}
 	return ""
-}
-
-func gitAuthorization(token string) string {
-	credential := base64.StdEncoding.EncodeToString([]byte("x-access-token:" + token))
-	return "Authorization: Basic " + credential
 }
 
 func (s *SkillSuite) TestVCSListerSharesFetcherRepositoryCache() {
@@ -89,7 +75,18 @@ func (s *SkillSuite) TestRepositoryDirIsReadableAndCanonical() {
 	r.NoError(err)
 	dir, err := fetcher.(*gitFetcher).repositoryDir("github.com/MattPocock/Skills")
 	r.NoError(err)
-	r.Equal(filepath.Join("/cache", "repositories", "github.com", "mattpocock", "skills"), dir)
+	r.Equal(filepath.Join("/cache", "repositories", "github.com", "ec486835e7090c2af80fe3705ccb0ab885ae215da398e7b733a0ecc044b16416"), dir)
+}
+
+func (s *SkillSuite) TestRepositoryDirKeepsCaseSensitiveRepositoriesDistinct() {
+	r := s.Require()
+	fetcher, err := NewFetcher("/cache", s.fs)
+	r.NoError(err)
+	upper, err := fetcher.(*gitFetcher).repositoryDir("git.example.com/Team/Repo")
+	r.NoError(err)
+	lower, err := fetcher.(*gitFetcher).repositoryDir("git.example.com/team/repo")
+	r.NoError(err)
+	r.NotEqual(upper, lower)
 }
 
 func (s *SkillSuite) TestRepositoryDirRejectsTraversal() {
@@ -201,7 +198,8 @@ func (s *SkillSuite) TestSkillCacheDir() {
 	r.NoError(err)
 
 	r.NotEmpty(dirInfo)
-	repositoryDir := filepath.Join(dir, "repositories", "github.com", "op7418", "guizang-ppt-skill")
+	repositoryDir, err := fetcher.(*gitFetcher).repositoryDir(repoURI)
+	r.NoError(err)
 	repositoryGitDir, err := os.Stat(filepath.Join(repositoryDir, ".git"))
 	r.NoError(err)
 	r.True(repositoryGitDir.IsDir())

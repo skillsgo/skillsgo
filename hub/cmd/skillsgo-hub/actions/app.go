@@ -43,26 +43,6 @@ func newFiberApp() *fiber.App {
 // when the server is shutting down (to flush and stop exporters), and an error.
 func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 	noop := func() {}
-	githubTokens := conf.GitHubTokens()
-	if len(githubTokens) > 0 {
-		if conf.NETRCPath != "" {
-			return nil, noop, fmt.Errorf("cannot provide both GitHub tokens and NETRCPath")
-		}
-
-	}
-
-	// mount .netrc to home dir
-	// to have access to private repos.
-	if err := initializeAuthFile(conf.NETRCPath); err != nil {
-		return nil, noop, fmt.Errorf("initializing auth file from netrc: %w", err)
-	}
-
-	// mount .hgrc to home dir
-	// to have access to private repos.
-	if err := initializeAuthFile(conf.HGRCPath); err != nil {
-		return nil, noop, fmt.Errorf("initializing auth file from hgrc: %w", err)
-	}
-
 	r := newFiberApp()
 	r.Use(mw.WithRequestID, mw.LogEntryMiddleware(logger), mw.RequestLogger)
 	r.Use(func(c fiber.Ctx) error {
@@ -139,7 +119,7 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 		if err != nil {
 			return nil, cleanup, fmt.Errorf("creating new filter: %w", err)
 		}
-		r.Use(mw.NewFilterMiddleware(mf, conf.GlobalEndpoint))
+		r.Use(mw.NewFilterMiddleware(mf, ""))
 	}
 
 	client := &http.Client{

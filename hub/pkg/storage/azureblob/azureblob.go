@@ -176,9 +176,9 @@ func (c *azureBlobStoreClient) DeleteBlob(ctx context.Context, path string) erro
 	return nil
 }
 
-// UploadWithContext uploads a blob to the container.
-func (c *azureBlobStoreClient) UploadWithContext(ctx context.Context, path, contentType string, content io.Reader) error {
-	const op errors.Op = "azureblob.UploadWithContext"
+// CreateWithContext uploads a blob only when the path does not already exist.
+func (c *azureBlobStoreClient) CreateWithContext(ctx context.Context, path, contentType string, content io.Reader) (bool, error) {
+	const op errors.Op = "azureblob.CreateWithContext"
 	ctx, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
 	blobURL := c.containerURL.NewBlockBlobURL(path)
@@ -191,10 +191,15 @@ func (c *azureBlobStoreClient) UploadWithContext(ctx context.Context, path, cont
 		BlobHTTPHeaders: azblob.BlobHTTPHeaders{
 			ContentType: contentType,
 		},
+		AccessConditions: azblob.BlobAccessConditions{ModifiedAccessConditions: azblob.ModifiedAccessConditions{IfNoneMatch: azblob.ETagAny}},
 	}
 	_, err := azblob.UploadStreamToBlockBlob(ctx, content, blobURL, uploadStreamOpts)
 	if err != nil {
-		return errors.E(op, err)
+		var storageErr azblob.StorageError
+		if errors.AsErr(err, &storageErr) && (storageErr.Response().StatusCode == http.StatusConflict || storageErr.Response().StatusCode == http.StatusPreconditionFailed) {
+			return false, nil
+		}
+		return false, errors.E(op, err)
 	}
-	return nil
+	return true, nil
 }

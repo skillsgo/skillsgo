@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on filesystem-backed repository caches, Git source resolution, artifact packaging, and optional GitHub credentials.
- * [OUTPUT]: Provides Git-backed Skill fetching with an optional sticky GitHub-token failover pool.
+ * [INPUT]: Depends on filesystem-backed collision-safe repository caches, credential-free controlled non-interactive Git source resolution, and artifact packaging.
+ * [OUTPUT]: Provides public-only Git-backed Skill fetching with a controlled credential-free Git environment.
  * [POS]: Serves as maintained source in the skill package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,12 +9,12 @@ package skill
 import (
 	"context"
 	"crypto/md5" //nolint:gosec
+	"crypto/sha256"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"sync/atomic"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/observ"
@@ -28,8 +28,6 @@ type gitFetcher struct {
 	cacheDir      string
 	syncs         singleflight.Group
 	cloneURL      func(SkillID) string
-	githubTokens  []string
-	activeToken   atomic.Uint64
 	runGitCommand func(context.Context, string, []string, []string) ([]byte, error)
 }
 
@@ -42,12 +40,6 @@ type artifactFiles struct {
 
 // NewFetcher creates a Skill fetcher backed by Git.
 func NewFetcher(cacheDir string, fs afero.Fs) (Fetcher, error) {
-	return NewFetcherWithGitHubTokens(cacheDir, fs, nil)
-}
-
-// NewFetcherWithGitHubTokens creates a Git-backed Skill fetcher whose GitHub
-// transport retries the next token after a failed fetch or clone.
-func NewFetcherWithGitHubTokens(cacheDir string, fs afero.Fs, tokens []string) (Fetcher, error) {
 	if cacheDir == "" {
 		var err error
 		cacheDir, err = os.MkdirTemp("", "skillsgo-cache-")
@@ -62,26 +54,8 @@ func NewFetcherWithGitHubTokens(cacheDir string, fs afero.Fs, tokens []string) (
 		fs:            fs,
 		cacheDir:      cacheDir,
 		cloneURL:      func(skillID SkillID) string { return skillID.RepositoryURL() },
-		githubTokens:  normalizedTokens(tokens),
 		runGitCommand: runGitCommand,
 	}, nil
-}
-
-func normalizedTokens(candidates []string) []string {
-	seen := make(map[string]struct{}, len(candidates))
-	tokens := make([]string, 0, len(candidates))
-	for _, candidate := range candidates {
-		token := strings.TrimSpace(candidate)
-		if token == "" {
-			continue
-		}
-		if _, exists := seen[token]; exists {
-			continue
-		}
-		seen[token] = struct{}{}
-		tokens = append(tokens, token)
-	}
-	return tokens
 }
 
 // Fetch resolves and downloads an immutable Skill version from Git.
@@ -166,11 +140,14 @@ func (g *gitFetcher) repositoryDir(repository string) (string, error) {
 	if parsed.SkillPath != "." {
 		return "", fmt.Errorf("invalid repository cache path %q: nested Skill ID", repository)
 	}
+	repository = parsed.Repository
 
 	root := filepath.Join(g.cacheDir, "repositories")
-	// GitHub repository IDs are case-insensitive. Lowercasing avoids
-	// duplicate caches on case-sensitive filesystems and collisions on macOS.
-	dir := filepath.Join(root, filepath.FromSlash(strings.ToLower(repository)))
+	host, _, _ := strings.Cut(repository, "/")
+	digest := sha256.Sum256([]byte(repository))
+	// A digest keeps provider-specific case-sensitive paths distinct even on
+	// case-insensitive filesystems while the host prefix remains operable.
+	dir := filepath.Join(root, host, fmt.Sprintf("%x", digest))
 	relative, err := filepath.Rel(root, dir)
 	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 		return "", fmt.Errorf("repository cache path %q escapes cache root", repository)

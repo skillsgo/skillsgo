@@ -20,7 +20,9 @@ func GetSkill(requestPath string) (string, error) {
 	skill = strings.TrimPrefix(skill, "mod/")
 	if i := strings.Index(skill, "/@v/"); i >= 0 {
 		skill = skill[:i]
-	} else if i := strings.Index(skill, "/@latest"); i >= 0 {
+	} else if i := strings.Index(skill, "/@head"); i >= 0 {
+		skill = skill[:i]
+	} else if i := strings.Index(skill, "/@release"); i >= 0 {
 		skill = skill[:i]
 	} else {
 		return "", errors.E(op, "missing skill parameter")
@@ -49,7 +51,7 @@ func GetVersion(requestPath string) (string, error) {
 	if version == "" {
 		return "", errors.E(op, "missing version parameter")
 	}
-	return DecodePath(version)
+	return DecodeVersion(version)
 }
 
 // AllPathParams holds the Skill and version request parameters.

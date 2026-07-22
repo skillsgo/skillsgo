@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on an immutable Git revision, a canonical Skill ID/version prefix, afero storage, and Go ZIP primitives.
- * [OUTPUT]: Provides bounded, deterministic SkillsGo artifact assembly from one Git Skill directory plus best-compression ZIP rewriting without Go Module path semantics.
+ * [INPUT]: Depends on an immutable Git revision, a canonical Skill ID/version prefix, the shared artifact contract, Repository-root LICENSE inheritance, afero storage, and Go ZIP primitives.
+ * [OUTPUT]: Provides bounded, deterministic SkillsGo artifact assembly with portable paths, canonical permission classes, nested root LICENSE inheritance, and best-compression ZIP rewriting.
  * [POS]: Serves as the safe archive boundary between Git source resolution and immutable Hub artifact publication.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,13 +21,14 @@ import (
 	"time"
 	"unicode/utf8"
 
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	"github.com/spf13/afero"
 )
 
 const (
-	maxSkillArchiveBytes        = 64 << 20
-	maxSkillArchiveFiles        = 5000
-	maxSkillArchiveUncompressed = 64 << 20
+	maxSkillArchiveBytes        = protocolartifact.MaxArchiveBytes
+	maxSkillArchiveFiles        = protocolartifact.MaxFiles
+	maxSkillArchiveUncompressed = protocolartifact.MaxUncompressedBytes
 )
 
 type boundedArchiveBuffer struct {
@@ -119,7 +120,11 @@ func createSkillZipFromVCS(
 			_ = destination.Close()
 			return fmt.Errorf("Git archive contains unsafe Skill path %q", relative)
 		}
-		collisionKey := strings.ToLower(relative)
+		collisionKey, err := protocolartifact.PortablePathKey(relative)
+		if err != nil {
+			_ = destination.Close()
+			return fmt.Errorf("Git archive contains unsafe Skill path %q: %w", relative, err)
+		}
 		if previous, exists := seen[collisionKey]; exists {
 			_ = destination.Close()
 			return fmt.Errorf("Git archive contains portable path collision %q and %q", previous, relative)
@@ -142,6 +147,11 @@ func createSkillZipFromVCS(
 		header.Method = zip.Deflate
 		header.Comment = ""
 		header.Extra = nil
+		if file.Mode()&0o111 != 0 {
+			header.SetMode(0o755)
+		} else {
+			header.SetMode(0o644)
+		}
 		writer, err := destination.CreateHeader(&header)
 		if err != nil {
 			_ = destination.Close()
@@ -164,6 +174,31 @@ func createSkillZipFromVCS(
 		}
 		hasManifest = hasManifest || relative == "SKILL.md"
 	}
+	licenseKey, _ := protocolartifact.PortablePathKey("LICENSE")
+	if scope != "" {
+		if _, exists := seen[licenseKey]; !exists {
+			if license, licenseErr := gitFileContent(ctx, repoDir, revision, "LICENSE"); licenseErr == nil {
+				fileCount++
+				if fileCount > maxSkillArchiveFiles || uint64(len(license)) > maxSkillArchiveUncompressed || uncompressed > maxSkillArchiveUncompressed-uint64(len(license)) {
+					_ = destination.Close()
+					return fmt.Errorf("Git Skill archive exceeds shared artifact limits while inheriting Repository LICENSE")
+				}
+				uncompressed += uint64(len(license))
+				header := &zip.FileHeader{Name: prefix + "LICENSE", Method: zip.Deflate}
+				header.SetMode(0o644)
+				writer, createErr := destination.CreateHeader(header)
+				if createErr != nil {
+					_ = destination.Close()
+					return createErr
+				}
+				if _, writeErr := writer.Write(license); writeErr != nil {
+					_ = destination.Close()
+					return writeErr
+				}
+				seen[licenseKey] = "LICENSE"
+			}
+		}
+	}
 	if !hasManifest {
 		_ = destination.Close()
 		return fmt.Errorf("Git Skill archive does not contain SKILL.md")
@@ -176,6 +211,13 @@ func createSkillZipFromVCS(
 	}
 	if err := recompressZipBest(fs, zipPath); err != nil {
 		return err
+	}
+	canonical, err := afero.ReadFile(fs, zipPath)
+	if err != nil {
+		return err
+	}
+	if _, err := protocolartifact.Sum(canonical, skillID, version); err != nil {
+		return fmt.Errorf("validate generated Skill artifact: %w", err)
 	}
 	keepOutput = true
 	return nil
@@ -197,12 +239,11 @@ func skillArchiveRelativePath(name, scope string) (string, bool) {
 }
 
 func validSkillArchivePath(value string) bool {
-	return value != "" && value != "." && value != ".." && utf8.ValidString(value) &&
-		!path.IsAbs(value) && path.Clean(value) == value &&
-		!strings.Contains(value, "\\") && !strings.HasPrefix(value, "../") &&
-		strings.IndexFunc(value, func(character rune) bool {
-			return character < 0x20 || character == 0x7f
-		}) < 0
+	if value == "" || value == "." || value == ".." || !utf8.ValidString(value) || path.IsAbs(value) {
+		return false
+	}
+	_, err := protocolartifact.PortablePathKey(value)
+	return err == nil
 }
 
 // recompressZipBest rewrites a validated SkillsGo artifact ZIP using Deflate's

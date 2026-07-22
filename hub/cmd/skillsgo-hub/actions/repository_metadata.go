@@ -175,7 +175,7 @@ func (c *repositoryMetadataCache) Read(ctx context.Context, sourceHost, reposito
 				"error": err.Error(), "repository_id": repositoryID,
 			}).Warnf("repository metadata refresh submission failed")
 		}
-		if err := enqueueRepositoryPrewarm(ctx, c.tasks, repositoryID, "latest"); err != nil {
+		if err := enqueueRepositoryPrewarm(ctx, c.tasks, repositoryID, "head"); err != nil {
 			log.EntryFromContext(ctx).WithFields(map[string]any{
 				"error": err.Error(), "repository_id": repositoryID,
 			}).Warnf("repository prewarm submission failed")

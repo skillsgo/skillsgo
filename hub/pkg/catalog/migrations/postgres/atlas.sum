@@ -1,4 +1,4 @@
-h1:qnmTQ9bxJIbiYxsvD56+3YOUWV93MSG5pzq4pTgi7bc=
+h1:E2k3wvLQtiLbvTPCklOFfBQ244iQFd6E8xtieF2+qhs=
 202607180001_initial.sql h1:1OPoDjcD5kKHUPK9pvGTfQs9OxIeIhE8NpdIMQr7mzM=
 202607180002_repository_description.sql h1:QVXDfca5y5oVdg6UAdU3bKAVns8stZtZ0x9uK7aIJkI=
 202607180003_refresh_repository_description.sql h1:1OmjbusQpceJpGHpGSk9T6Kvgf3JbrJt1uGpoSiIhb0=
@@ -10,3 +10,4 @@ h1:qnmTQ9bxJIbiYxsvD56+3YOUWV93MSG5pzq4pTgi7bc=
 202607220002_repository_backfill_runs.sql h1:0Bp/kyL5UrnDoMijo7iQLdGuR9bQ163gfJT4bF1RQwI=
 202607220003_repository_publications.sql h1:2r9BNP6dBdtMaGRZN/0leI0+mUiDbGcXOs/xvypFRy0=
 202607220004_sum_reset.sql h1:9ZMWf9iFvc4Q7ECAftUuP47kcSmFMl0AnjoKbzhMUfI=
+202607220005_repository_release_info.sql h1:ZymqaN1IvA32Z90QZwCEYqZ4P2FyxfFj5W2hF5J2PRg=

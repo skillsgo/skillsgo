@@ -1,59 +1,35 @@
 /*
- * [INPUT]: Depends on the paths package imports and contracts declared in this file.
- * [OUTPUT]: Provides the paths package behavior implemented by decode.go.
- * [POS]: Serves as maintained source in the paths package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on Go module path/version escaping rules and encoded Hub artifact coordinates.
+ * [OUTPUT]: Provides canonical module-compatible path and version decoding without a copied cmd/go decoder.
+ * [POS]: Serves as the shared decoding boundary for Hub and external-storage protocol paths.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package paths
 
 import (
 	"fmt"
-	"unicode/utf8"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
+	"golang.org/x/mod/module"
 )
 
 // DecodePath returns the module path of the given safe encoding.
 // It fails if the encoding is invalid or encodes an invalid path.
 func DecodePath(encoding string) (path string, err error) {
 	const op errors.Op = "paths.DecodePath"
-	path, ok := decodeString(encoding)
-	if !ok {
-		return "", errors.E(op, fmt.Sprintf("invalid module path encoding %q", encoding))
+	path, err = module.UnescapePath(encoding)
+	if err != nil {
+		return "", errors.E(op, fmt.Sprintf("invalid module path encoding %q: %v", encoding, err))
 	}
 
 	return path, nil
 }
 
-// Ripped from cmd/go.
-func decodeString(encoding string) (string, bool) {
-	var buf []byte
-
-	bang := false
-	for _, r := range encoding {
-		if r >= utf8.RuneSelf {
-			return "", false
-		}
-		if bang {
-			bang = false
-			if r < 'a' || 'z' < r {
-				return "", false
-			}
-			buf = append(buf, byte(r+'A'-'a'))
-			continue
-		}
-		if r == '!' {
-			bang = true
-			continue
-		}
-		if 'A' <= r && r <= 'Z' {
-			return "", false
-		}
-		//nolint:gosec // Runes larger than a byte are rejected above, so this cast is safe.
-		buf = append(buf, byte(r))
+func DecodeVersion(encoding string) (string, error) {
+	const op errors.Op = "paths.DecodeVersion"
+	version, err := module.UnescapeVersion(encoding)
+	if err != nil {
+		return "", errors.E(op, fmt.Sprintf("invalid module version encoding %q: %v", encoding, err))
 	}
-	if bang {
-		return "", false
-	}
-	return string(buf), true
+	return version, nil
 }

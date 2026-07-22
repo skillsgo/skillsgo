@@ -170,7 +170,7 @@ func TestRevisionResolutionBasesPseudoVersionOnHighestAncestorTag(t *testing.T) 
 	require.Equal(t, commit, resolved.CommitSHA)
 }
 
-func TestRevisionResolutionUsesHighestTagAtCommitWhileLatestPrefersStable(t *testing.T) {
+func TestRevisionResolutionUsesHighestTagAtCommitWhileReleasePrefersStable(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	runGit(t, f.work, "tag", "v2.0.0-beta.1")
 	runGit(t, f.work, "push", "origin", "--tags")
@@ -180,10 +180,10 @@ func TestRevisionResolutionUsesHighestTagAtCommitWhileLatestPrefersStable(t *tes
 	require.Equal(t, "v2.0.0-beta.1", branch.Version)
 	require.Equal(t, "refs/tags/v2.0.0-beta.1", branch.Ref)
 
-	latest, err := f.fetcher.Resolve(t.Context(), f.skillID, "latest")
+	release, err := f.fetcher.Resolve(t.Context(), f.skillID, "release")
 	require.NoError(t, err)
-	require.Equal(t, "v1.0.0", latest.Version)
-	require.Equal(t, "refs/tags/v1.0.0", latest.Ref)
+	require.Equal(t, "v1.0.0", release.Version)
+	require.Equal(t, "refs/tags/v1.0.0", release.Ref)
 }
 
 func TestPseudoVersionRemainsResolvableAfterItsCommitIsTagged(t *testing.T) {
@@ -247,7 +247,7 @@ func TestRepositoryCacheIsSharedBySkillsInOneRepository(t *testing.T) {
 	repositoryDir, err := f.fetcher.repositoryDir(f.skillID)
 	require.NoError(t, err)
 	require.True(t, isGitRepository(repositoryDir))
-	entries, err := os.ReadDir(filepath.Join(f.cache, "repositories", "github.com", "skillsgo-test"))
+	entries, err := os.ReadDir(filepath.Join(f.cache, "repositories", "github.com"))
 	require.NoError(t, err)
 	require.Len(t, entries, 1)
 }
@@ -308,7 +308,7 @@ func TestRepositoryDiscoveryExcludesSkillsInstalledUnderHiddenDirectories(t *tes
 
 func TestRepositoryDiscoveryUsesTagAsSharedBatchVersionAndTreeAsMemberIdentity(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
-	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "latest")
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "release")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		for _, member := range snapshot.Members {
@@ -369,7 +369,7 @@ func TestRepositoryDiscoveryFallsBackToHeadPseudoVersionSharedByAllMembers(t *te
 	runGit(t, f.work, "tag", "-d", "v1.0.0")
 	runGit(t, f.work, "push", "origin", ":refs/tags/v1.0.0")
 
-	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "latest")
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "head")
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		for _, member := range snapshot.Members {
@@ -391,7 +391,7 @@ func TestRepositoryDiscoveryFallsBackToHeadPseudoVersionSharedByAllMembers(t *te
 
 func TestUnrelatedSkillChangeAdvancesBatchWithoutChangingSiblingTree(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
-	first, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "latest")
+	first, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "head")
 	require.NoError(t, err)
 	childID := f.skillID + "/-/skills/child"
 	childTree := ""
@@ -515,10 +515,13 @@ func TestVCSListerUsesRepositoryCache(t *testing.T) {
 	require.True(t, isGitRepository(repositoryDir))
 }
 
-func TestRepositoryTagListerObservesMovedTagWithoutClobberingCache(t *testing.T) {
+func TestRepositoryTagListerObservesMovedTagAfterSharedCatalogExpires(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	lister, err := NewVCSLister(f.fetcher, 10*time.Second)
 	require.NoError(t, err)
+	now := time.Date(2026, 7, 22, 0, 0, 0, 0, time.UTC)
+	concrete := lister.(*vcsLister)
+	concrete.now = func() time.Time { return now }
 	initial, err := lister.ListRepositoryTags(t.Context(), f.skillID)
 	require.NoError(t, err)
 	require.Len(t, initial, 1)
@@ -530,6 +533,10 @@ func TestRepositoryTagListerObservesMovedTagWithoutClobberingCache(t *testing.T)
 	runGit(t, f.work, "push", "--force", "origin", "refs/tags/v1.0.0")
 	tags, err := lister.ListRepositoryTags(t.Context(), f.skillID)
 	require.NoError(t, err)
+	require.Equal(t, initial, tags, "fresh Tag view must stay stable for every consumer")
+	now = now.Add(concrete.ttl + time.Nanosecond)
+	tags, err = lister.ListRepositoryTags(t.Context(), f.skillID)
+	require.NoError(t, err)
 	require.Equal(t, []RepositoryTag{{Version: "v1.0.0", CommitSHA: movedCommit}}, tags)
 
 	resolved, err := f.fetcher.Resolve(t.Context(), f.skillID, "v1.0.0")
@@ -538,7 +545,7 @@ func TestRepositoryTagListerObservesMovedTagWithoutClobberingCache(t *testing.T)
 	require.NotEqual(t, initial[0].CommitSHA, resolved.CommitSHA)
 }
 
-func TestNoTagLatestObservesRemoteDefaultBranchAndReturnsPseudoVersion(t *testing.T) {
+func TestNoTagHeadObservesRemoteDefaultBranchAndReturnsPseudoVersion(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	runGit(t, f.work, "tag", "-d", "v1.0.0")
 	runGit(t, f.work, "push", "origin", ":refs/tags/v1.0.0")
@@ -549,7 +556,7 @@ func TestNoTagLatestObservesRemoteDefaultBranchAndReturnsPseudoVersion(t *testin
 	require.Empty(t, versions)
 	require.True(t, module.IsPseudoVersion(revision.Version), revision.Version)
 
-	resolved, err := f.fetcher.Resolve(t.Context(), f.skillID, "latest")
+	resolved, err := f.fetcher.Resolve(t.Context(), f.skillID, "head")
 	require.NoError(t, err)
 	require.Equal(t, revision.Version, resolved.Version)
 	require.Equal(t, "refs/heads/main", resolved.Ref)

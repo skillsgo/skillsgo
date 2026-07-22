@@ -15,7 +15,6 @@ import (
 
 	ht "github.com/gobuffalo/httptest"
 	"github.com/gofiber/fiber/v3"
-	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/stretchr/testify/require"
 	"github.com/stretchr/testify/suite"
@@ -60,17 +59,12 @@ func Test_FilterMiddleware(t *testing.T) {
 	}
 	defer os.Remove(filter.Name())
 
-	conf, err := config.GetConf(testConfigFile(t))
-	if err != nil {
-		t.Fatalf("Unable to parse config file: %s", err.Error())
-	}
-
 	// Test with a filter file not existing
-	app, err := middlewareFilterApp("nofsfile", conf.GlobalEndpoint)
+	app, err := middlewareFilterApp("nofsfile", "")
 	r.Nil(app, "app should be nil when a file not exisiting")
 	r.Error(err, "Expected error when a file not existing on the filesystem is given")
 
-	app, err = middlewareFilterApp(filter.Name(), conf.GlobalEndpoint)
+	app, err = middlewareFilterApp(filter.Name(), "")
 	r.NoError(err, "app should be successfully created in the test")
 	request := func(path string) *http.Response {
 		resp, testErr := app.Test(mustRequest(t, path))
@@ -78,8 +72,7 @@ func Test_FilterMiddleware(t *testing.T) {
 		return resp
 	}
 	res := request("/mod/github.com/skillsgo/skillsgo/hub/@v/list")
-	r.Equal(http.StatusSeeOther, res.StatusCode)
-	r.Equal(conf.GlobalEndpoint+"/mod/github.com/skillsgo/skillsgo/hub/@v/list", res.Header.Get("Location"))
+	r.Equal(http.StatusBadGateway, res.StatusCode)
 
 	// Excluded, expects a 403
 	res = request("/mod/github.com/athens-artifacts/no-tags/@v/list")

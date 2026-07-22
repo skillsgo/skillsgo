@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber request paths, decoded Skill IDs, and configured filter rules.
- * [OUTPUT]: Provides native Fiber include, exclude, and upstream-redirect filtering.
+ * [INPUT]: Depends on Fiber request paths, decoded Skill IDs, configured filter rules, and an optional upstream endpoint.
+ * [OUTPUT]: Provides include, exclude, and guarded upstream-redirect filtering without local redirect loops.
  * [POS]: Serves as the artifact access-policy middleware in the Hub request stack.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -39,6 +39,9 @@ func NewFilterMiddleware(mf *skill.Filter, upstreamEndpoint string) Middleware {
 			return c.Next()
 		case skill.Direct:
 			// Direct: do not store modules locally, use upstream proxy
+			if strings.TrimSpace(upstreamEndpoint) == "" {
+				return c.Status(fiber.StatusBadGateway).SendString("direct upstream is not configured")
+			}
 			newURL := redirectToUpstreamURL(upstreamEndpoint, &url.URL{Path: requestPath})
 			return c.Redirect().Status(fiber.StatusSeeOther).To(newURL)
 		}

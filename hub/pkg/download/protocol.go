@@ -8,8 +8,6 @@ package download
 
 import (
 	"context"
-	"regexp"
-	"strings"
 	"sync"
 	"time"
 
@@ -21,6 +19,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/stash"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
+	"golang.org/x/mod/module"
 )
 
 // Protocol is the download protocol which mirrors
@@ -31,9 +30,6 @@ type Protocol interface {
 
 	// Info implements GET /{skill}/@v/{version}.info
 	Info(ctx context.Context, mod, ver string) ([]byte, error)
-
-	// Latest implements GET /{skill}/@latest
-	Latest(ctx context.Context, mod string) (*storage.RevInfo, error)
 
 	// Zip implements GET /{skill}/@v/{version}.zip
 	Zip(ctx context.Context, mod, ver string) (storage.SizeReadCloser, error)
@@ -144,57 +140,32 @@ func (p *protocol) List(ctx context.Context, mod string) ([]string, error) {
 	isRepoNotFoundErr := goErr != nil && errors.IsRepoNotFoundErr(goErr)
 	storageEmpty := len(strList) == 0
 	// if storage has no versions, and the repo was deleted/not-found, we know for sure
-	// there are no versions that Athens can serve, so just return an error.
+	// there are no versions that SkillsGo Hub can serve, so return an error.
 	if isRepoNotFoundErr && storageEmpty {
 		return nil, errors.E(op, errors.S(mod), errors.KindNotFound, goErr)
 	}
 
 	strListSemVers := removePseudoVersions(strList)
-	// if the repo does not exist but athens already saved some versions
+	// If the Repository no longer exists but the Hub already saved versions,
 	// return those so that running go get github.com/my/mod gives us the newest saved version
 	// we should only do that if exclusively pseudo-versions have been saved
-	// otherwise @latest would not return the latest stable version but latest commit
+	// retain immutable published history.
 	if isRepoNotFoundErr && len(strListSemVers) == 0 {
 		return strList, nil
 	}
-	// if the repo exists we have to filter out pseudo versions to prevent following scenario:
-	// user does go get github.com/my/mod
-	// there is no sem-ver and so the /list endpoint returns nothing, then /latests gets hit
-	// Athens saves the pseudo version x1
-	// from now on every time user runs go get github.com/my/mod she/he will get pseudo version x1 even if a newer version x2 exists
-	// this is because /list returns non-empty list of versions (x1) and so /latest wont get hit
+	// Public lists contain release Tags only. Pseudo-versions remain addressable
+	// by exact coordinate and through @head resolution.
 	return union(goList, strListSemVers), nil
 }
-
-var pseudoVersionRE = regexp.MustCompile(`^v[0-9]+\.(0\.0-|\d+\.\d+-([^+]*\.)?0\.)\d{14}-[A-Za-z0-9]+(\+incompatible)?$`)
 
 func removePseudoVersions(allVersions []string) []string {
 	var vers []string
 	for _, v := range allVersions {
-		// copied from go cmd https://github.com/golang/go/blob/master/src/cmd/go/internal/modfetch/pseudo.go#L93
-		isPseudoVersion := strings.Count(v, "-") >= 2 && pseudoVersionRE.MatchString(v)
-		if !isPseudoVersion {
+		if !module.IsPseudoVersion(v) {
 			vers = append(vers, v)
 		}
 	}
 	return vers
-}
-
-func (p *protocol) Latest(ctx context.Context, mod string) (*storage.RevInfo, error) {
-	const op errors.Op = "protocol.Latest"
-	ctx, span := observ.StartSpan(ctx, op.String())
-	defer span.End()
-	if p.networkMode == Offline {
-		// Go never pings the /@latest endpoint _first_. It always tries /list and if that
-		// endpoint returns an empty list then it fallsback to calling /@latest.
-		return nil, errors.E(op, "Athens is in offline mode, use /list endpoint", errors.KindNotFound)
-	}
-	lr, _, err := p.lister.List(ctx, mod)
-	if err != nil {
-		return nil, errors.E(op, err)
-	}
-
-	return lr, nil
 }
 
 func (p *protocol) Info(ctx context.Context, mod, ver string) ([]byte, error) {
@@ -245,6 +216,9 @@ func (p *protocol) Zip(ctx context.Context, mod, ver string) (storage.SizeReadCl
 
 func (p *protocol) processDownload(ctx context.Context, mod, ver string, f func(newVer string) error) error {
 	const op errors.Op = "protocol.processDownload"
+	if p.networkMode == Offline {
+		return errors.E(op, "artifact is not available in offline storage", errors.S(mod), errors.V(ver), errors.KindNotFound)
+	}
 	// Create a new context with custom deadline and ditch whatever deadline was passed by the caller.
 	// This is needed so that the async go routines can continue even after the HTTP request is complete (which leads to context cancellation).
 	ctx, cancel := copyContextWithCustomTimeout(ctx, time.Minute*15)

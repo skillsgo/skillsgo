@@ -24,7 +24,7 @@ const PathList = "/mod/{skill:.+}/@v/list"
 func ListHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handler {
 	const op errors.Op = "download.ListHandler"
 	return func(c fiber.Ctx) error {
-		c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
+		c.Set(fiber.HeaderContentType, fiber.MIMETextPlainCharsetUTF8)
 		mod, err := paths.GetSkill(c.Path())
 		if err != nil {
 			lggr.SystemErr(errors.E(op, err))
