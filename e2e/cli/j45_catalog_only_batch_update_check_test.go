@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the public SkillsGo versioned fixture Repository, its immutable v1.2.0/v1.3.0 releases, the Catalog builder path, and the released `updates check` CLI command.
+ * [INPUT]: Depends on the public SkillsGo versioned fixture Repository, its immutable v1.2.0/v1.3.0 releases, privileged harness-only network fault injection, the Catalog builder path, and the released `updates check` CLI command.
  * [OUTPUT]: Provides black-box coverage that 80 installed entries are checked in one Catalog batch after GitHub access is disabled.
  * [POS]: Serves as the App-Store-style update-availability journey across the released CLI and Hub.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -25,7 +25,7 @@ func TestJ45CatalogOnlyBatchUpdateCheck(t *testing.T) {
 	)
 	require.Equal(t, 0, seed.exitCode, seed.output)
 
-	blocked := execInContainer(t, ctx, container, "sh", "-c", "printf '127.0.0.1 github.com\\n' >> /etc/hosts")
+	blocked := execInContainerAsRoot(t, ctx, container, "sh", "-c", "printf '127.0.0.1 github.com\\n' >> /etc/hosts")
 	require.Equal(t, 0, blocked.exitCode, blocked.output)
 
 	arguments := []string{"updates", "check", "--output", "json"}

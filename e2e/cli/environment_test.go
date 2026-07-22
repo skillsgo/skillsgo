@@ -145,6 +145,15 @@ func execInContainer(t *testing.T, ctx context.Context, container testcontainers
 	return commandResult{exitCode: exitCode, output: string(output)}
 }
 
+func execInContainerAsRoot(t *testing.T, ctx context.Context, container testcontainers.Container, command ...string) commandResult {
+	t.Helper()
+	exitCode, reader, err := container.Exec(ctx, command, tcexec.WithUser("0"), tcexec.Multiplexed())
+	require.NoError(t, err)
+	output, err := io.ReadAll(reader)
+	require.NoError(t, err)
+	return commandResult{exitCode: exitCode, output: string(output)}
+}
+
 func hubURL(t *testing.T, ctx context.Context, container testcontainers.Container) string {
 	t.Helper()
 	endpoint, err := container.Endpoint(ctx, "http")

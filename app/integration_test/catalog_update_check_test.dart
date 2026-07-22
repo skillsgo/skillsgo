@@ -66,6 +66,20 @@ void main() {
         _textEither('Install all skills to', '安装所有技能到'),
         timeout: const Duration(seconds: 30),
       );
+      final installationComplete = _textEither(
+        'Installation complete',
+        '安装完成',
+      );
+      await _pumpUntil(
+        tester,
+        installationComplete,
+        timeout: const Duration(minutes: 2),
+      );
+      await _pumpUntilGone(
+        tester,
+        installationComplete,
+        timeout: const Duration(seconds: 30),
+      );
       final manifest = File('$sandbox/home/.skillsgo/skillsgo.mod');
       expect(manifest.readAsStringSync(), contains('v1.2.0'));
 
@@ -121,22 +135,9 @@ void main() {
       await tester.tap(_textEither('Update selected targets', '更新所选目标'));
       await _pumpUntil(
         tester,
-        _textEither('Close', '关闭'),
+        _textEither('Update results', '更新结果'),
         timeout: const Duration(minutes: 2),
       );
-
-      final retryFailed = _textEither(
-        'Retry 1 Failed Update',
-        '重试 1 个失败更新',
-      );
-      if (retryFailed.evaluate().isNotEmpty) {
-        await tester.tap(retryFailed);
-        await _pumpUntilGone(
-          tester,
-          retryFailed,
-          timeout: const Duration(minutes: 2),
-        );
-      }
 
       final technicalDetails = _textEither(
         'Technical details',

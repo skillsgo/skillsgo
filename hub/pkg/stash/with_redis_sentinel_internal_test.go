@@ -1,24 +1,19 @@
 /*
- * [INPUT]: Depends on Sentinel lock initialization, Redis lock configuration, and a lifecycle-independent Redis logger.
- * [OUTPUT]: Verifies Sentinel database propagation reaches client initialization without leaking logs into a completed test.
- * [POS]: Serves as the no-server Sentinel initialization regression test for the stash Redis adapter.
+ * [INPUT]: Depends on the stash package imports and contracts declared in this file.
+ * [OUTPUT]: Specifies the stash package behavior covered by with_redis_sentinel_internal_test.go.
+ * [POS]: Serves as test coverage for the stash package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package stash
 
 import (
-	"context"
 	"testing"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 )
 
-type discardRedisLogger struct{}
-
-func (discardRedisLogger) Printf(context.Context, string, ...any) {}
-
 func TestWithRedisSentinelLock_DBPropagation(t *testing.T) {
-	l := discardRedisLogger{}
+	l := &testingRedisLogger{t: t}
 	endpoints := []string{"127.0.0.1:26379"}
 	master := "mymaster"
 	sentinelPassword := "sentinel-pw"
