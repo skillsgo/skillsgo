@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the deterministic tagged Repository fixture, released CLI Update Plan preflight/execution, Catalog latest-version state, and observable Workspace files.
- * [OUTPUT]: Provides black-box coverage that a fixed installation changes only after explicit reviewed update while preflight remains read-only.
- * [POS]: Serves as the fixed-version App-Store-style update contract in the cross-product E2E workspace.
+ * [INPUT]: Depends on the deterministic tagged Repository fixture, released CLI Update Plan preflight/execution, Repository-fresh head/release state, and observable Workspace files.
+ * [OUTPUT]: Provides black-box coverage that a fixed installation remains pinned even when a newer release exists and preflight stays read-only.
+ * [POS]: Serves as the exact-selector pinning contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package e2e_test
@@ -61,24 +61,12 @@ func TestJ08ExplicitFixedVersionUpdate(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal([]byte(preflight.output), &plan), preflight.output)
 	require.Len(t, plan.Targets, 1)
-	require.Equal(t, "update", plan.Targets[0].Action)
-	require.Equal(t, "v1.1.0", plan.Targets[0].ToVersion)
+	require.Equal(t, "pinned", plan.Targets[0].Action)
+	require.Equal(t, installed.Version, plan.Targets[0].ToVersion)
 	sumAfterPreflight, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	require.Equal(t, sumBefore, sumAfterPreflight, "reviewing a fixed-version update must be read-only")
-
-	targetRequest["toVersion"] = plan.Targets[0].ToVersion
-	targetRequest["stateToken"] = plan.Targets[0].StateToken
-	encodedTarget, err = json.Marshal(targetRequest)
+	require.Equal(t, sumBefore, sumAfterPreflight, "checking a pinned installation must be read-only")
+	pinnedSkill, err := os.ReadFile(filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
 	require.NoError(t, err)
-	executed := execCLI(t, ctx, container,
-		"update", "--target", string(encodedTarget), "--output", "json",
-	)
-	require.Equal(t, 0, executed.exitCode, executed.output)
-	updatedSkill, err := os.ReadFile(filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
-	require.NoError(t, err)
-	require.Contains(t, string(updatedSkill), "Alpha stable")
-	sumAfterUpdate, err := os.ReadFile(sumPath)
-	require.NoError(t, err)
-	require.NotEqual(t, sumBefore, sumAfterUpdate)
+	require.Contains(t, string(pinnedSkill), "Alpha at v1.")
 }

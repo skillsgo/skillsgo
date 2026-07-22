@@ -53,29 +53,29 @@ The command fails with a stable machine result; no valid receipt, Installation T
 
 Status: implemented by corrupting the real Hub disk-cached ZIP in `j05_corrupted_download_test.go`.
 
-### J06 — Enforce immutable risk confirmation
+### J06 — Keep deferred audit outside immutable installation
 
-As a user installing an assessed Skill, I want High and Critical risk policy to require explicit confirmation so that dangerous artifacts cannot be installed by an accidental non-interactive command.
+As a user installing an exact Skill while audit is deferred, I want immutable Info and installation behavior to remain independent of stale or historical risk data.
 
-An unconfirmed command leaves no local mutation. The exact reviewed immutable artifact succeeds only with the required confirmation flags, and a changed artifact requires a new decision.
+Immutable Repository Info contains no Risk field, and an exact verified artifact installs without an audit-confirmation gate. A future audit subsystem must attach mutable assessment data outside these immutable bytes.
 
-Status: implemented against the SkillsGo-owned `e2e-risk-skills` public fixture for a real High assessment by `j06_risk_confirmation_test.go`; the complete High/Critical flag matrix remains specified at the CLI installation-flow seam.
+Status: implemented against the SkillsGo-owned historical `e2e-risk-skills` fixture by `j06_risk_confirmation_test.go`.
 
 ### J07 — Re-resolve a movable Skill reference explicitly
 
-As a user who previously selected a branch, I want an explicit `add ...@branch` to resolve it again while ordinary restore remains immutable.
+As a user who previously selected Repository head, I want an explicit `add ...@head` to resolve it again while ordinary restore remains immutable.
 
-The target, Store receipt, canonical resolved version, digest, commit identity, and Sum are updated together. The branch name is never persisted, and historical Sum entries remain valid evidence.
+The target, Store receipt, canonical resolved version, digest, commit identity, and Sum are updated together. The movable selector is never persisted, and historical Sum entries remain valid evidence.
 
-Status: implemented against the public anonymous, intentionally untagged `skillsgo/e2e-moving-skills` fixture from its known C1 commit to an explicit re-resolution of `main` at C2 by `j07_update_movable_test.go`.
+Status: implemented against a deterministic local Repository advanced from C1 to C2 and explicitly re-resolved through `head` by `j07_update_movable_test.go`.
 
-### J08 — Update a fixed installation only after explicit review
+### J08 — Keep an exact installation pinned
 
-As a user who originally selected a tag or fixed commit, I want SkillsGo to show a newer Catalog version without changing my files until I explicitly review and confirm the Update Plan.
+As a user who selected an exact immutable version, I want update preflight to preserve that pin even when a newer release exists.
 
-Preflight reads the independently built Catalog and remains read-only. Confirmed execution fetches the exact reviewed immutable version and commits the Agent target, Manifest, and Sum together.
+Preflight reports `pinned`, repeats the installed immutable version as its target, and leaves the Agent target, Manifest, and Sum unchanged. Moving to head, release, or another exact version requires an explicit add decision.
 
-Status: implemented from deterministic v1.0.0 to v1.1.0 through Update Plan preflight and execution by `j08_explicit_fixed_version_update_test.go`.
+Status: implemented with deterministic v1.0.0 installed while v1.1.0 exists by `j08_explicit_fixed_version_update_test.go`.
 
 ## P1 — Core Multi-Target Journeys
 
@@ -209,11 +209,11 @@ Direct resolution and explicit immutable re-add succeed for a four-level Skill p
 
 Status: implemented with a deterministic four-level Repository path by `j24_deep_skill_discovery_test.go`.
 
-### J25 — Bind catalog risk to the exact immutable artifact
+### J25 — Expose immutable Catalog identity without deferred audit
 
-As a user reviewing a catalog entry, I want its risk assessment to identify the same Content Digest as the displayed immutable artifact so that stale assessment results cannot masquerade as current.
+As a user reviewing a Catalog entry, I want its immutable version and Sum to remain available while audit is deferred, without mutable assessment data entering the immutable contract.
 
-The detail response exposes one immutable version and a Risk Assessment whose `artifactDigest` exactly equals the response `contentDigest`.
+The detail response exposes one immutable version and non-empty `sum`; its currently empty mutable Risk Assessment does not authenticate the immutable artifact. A future audit response may reference that sum through a separate mutable resource.
 
 Status: implemented through the public Hub detail endpoint by `j25_catalog_audit_consistency_test.go`.
 
@@ -239,7 +239,7 @@ Status: implemented against deterministic tagged, prerelease-only, untagged, and
 
 ### J29 — Preserve disappeared Skill history
 
-As a CLI user, I want a Skill removed from a later Repository tag to remain installable at its older immutable version and remain the nested Skill's independent latest publication.
+As a CLI user, I want a Skill removed from a later Repository tag to remain installable at its older immutable Repository version without inventing a separate per-Skill release pointer.
 
 Status: implemented across v1-present and v1.1-absent Repository snapshots by `j29_repository_history_test.go`.
 
@@ -257,7 +257,7 @@ Status: implemented with multi-level fixture namespaces, canonical/path/name sel
 
 ### J32 — Keep Repository protocol resources immutable
 
-As a protocol consumer, I want list, latest, Info, ZIP, and HEAD routes to expose canonical resources whose published bytes do not change after a source tag moves.
+As a protocol consumer, I want list, head, release, exact Info, exact ZIP, and HTTP HEAD routes to expose canonical resources whose published bytes do not change after a source tag moves.
 
 Status: implemented through public Hub Repository/branch/commit and nested-Skill list/Info/ZIP/HEAD routes, root ZIP presence/absence, repeated byte digests, and a moved source tag by `j32_repository_protocol_immutability_test.go`. Conflict detection for a moved Tag is verified at the Hub Router/publisher boundary, where a forced rematerialization can be injected without relying on private E2E controls.
 
@@ -269,13 +269,13 @@ Status: implemented at the public seam with concurrent Hub HTTP requests, determ
 
 ### J34 — Separate display identity from escaped transport paths
 
-As a protocol consumer, I want normalized Repository identity and case-preserving nested Skill paths to survive Go-style HTTP escaping.
+As a protocol consumer, I want a lower-case host, host-specific Repository-path casing, and case-preserving nested Skill paths to survive Go-style HTTP escaping.
 
-Status: implemented with mixed-case source input, a mixed-case Git tree path, canonical Manifest identity, and a directly requested escaped Info route by `j34_coordinate_case_and_escape_test.go`.
+Status: implemented with an upper-case input host, a mixed-case Git tree path, canonical Manifest identity, and a directly requested escaped Info route by `j34_coordinate_case_and_escape_test.go`.
 
 ### J35 — Populate Catalog lazily without legacy protocol resources
 
-As a Catalog and protocol consumer, I want ordinary demand discovery to publish newly observed Skills while the maintained protocol remains limited to list, latest, Info, and ZIP resources.
+As a Catalog and protocol consumer, I want ordinary demand discovery to publish newly observed Skills while the maintained protocol remains limited to list, head, release, exact Info, and exact ZIP resources.
 
 Status: implemented from an initially absent Skill detail through ordinary add and subsequent Catalog visibility, with explicit absence checks for `@resolve`, `.manifest`, and the future `.skillsgo` resource, by `j35_lazy_catalog_and_protocol_surface_test.go`.
 
@@ -331,9 +331,9 @@ The journey sends `SIGKILL` after the transaction journal appears, then verifies
 
 Status: implemented with a real released-CLI process interruption by `j42_takeover_interrupted_commit_test.go`.
 
-### J43 — Re-resolve a movable query after the remote branch advances
+### J43 — Re-resolve a movable query after the default branch advances
 
-As a user who installed a Repository from `main` at C1, I want a later explicit `main` search to observe C2 without silently changing my installed version.
+As a user who installed a Repository from `head` at C1, I want a later explicit `head` query to observe C2 without silently changing my installed version.
 
 The repeated movable Info request bypasses HTTP caches, resolves the refreshed remote-tracking branch to a new pseudo-version, returns C2 content, and leaves the Workspace Manifest pinned to C1 until a separate confirmed installation occurs.
 
@@ -343,17 +343,25 @@ Status: implemented with a deterministic local Repository advanced from C1 to C2
 
 As a user who previously resolved C1 as F1 before a Repository published tags, I want that immutable version to remain available after C1 becomes V1 and the default branch advances to C2.
 
-The old F1 still resolves to C1, omitted/latest resolution selects V1 at C1, and an explicit `main` query resolves C2 as the ancestor-based F2 without rewriting either historical identity.
+The old F1 still resolves to C1, `release` selects V1 at C1, and an explicit `head` query resolves C2 as the ancestor-based F2 without rewriting either historical identity.
 
 Status: implemented through released CLI Info requests against a deterministic Repository transitioned from untagged C1 to tagged V1 and then advanced to C2 by `j44_no_tag_to_tag_transition_test.go`.
 
-### J45 — Check many installed Skills from Catalog without reaching GitHub
+### J45 — Check many installed Skills against Repository-fresh candidates
 
-As an App or terminal user with many installed Skills, I want one update check to compare local immutable versions with the independently built Hub Catalog so that checking remains fast and available without contacting every source Repository.
+As an App or terminal user with many installed Skills, I want one update check to compare local immutable versions with fresh Repository head and release candidates while resolving each Repository only once.
 
-The journey builds the Catalog from the SkillsGo-owned public versioned fixture, disables GitHub access, checks 80 installed entries through one CLI invocation, and receives 80 update-available results for the Catalog's latest immutable version.
+The journey seeds the Catalog from the SkillsGo-owned public versioned fixture, checks 80 installed entries through one CLI invocation, and receives independent head and release results for every entry.
 
 Status: implemented against the released CLI and Hub by `j45_catalog_only_batch_update_check_test.go`.
+
+### J46 — Roll back a failed whole-Repository add
+
+As a user adding every Skill from one Repository, I want one conflicting member target to abort the complete installation so that the Workspace never records or exposes a partial Repository publication.
+
+The journey passes `--yes`, preserves the pre-existing external target, and verifies that non-interactive confirmation never grants replacement authority: every newly created Agent target, Manifest requirement, Sum entry, and Installation Receipt is absent after failure. Downloaded immutable cache entries may remain because they are not Workspace installation state.
+
+Status: implemented with the deterministic multi-Skill collection Repository and default symlink mode by `j46_repository_add_atomicity_test.go`.
 
 ## GitHub Issue #27 User-Story Coverage Index
 
@@ -362,10 +370,10 @@ The numbered user stories in #27 are release-reviewed through these black-box jo
 | #27 stories | E2E evidence |
 | --- | --- |
 | 1–3: whole Repository, one member, repeated members | J12, J26, J27 |
-| 4–5: default latest and selector-attached versions | J27, J28 |
-| 6–8: branch, commit, and Repository Version Queries | J27, J32 |
+| 4–5: default head and selector-attached versions | J27, J28 |
+| 6–8: explicit head/release, rejected ambiguous selectors, and Repository Version Queries | J27, J28, J32 |
 | 9–10: selector override and inherited query | J27 |
-| 11–12: stable-first and prerelease fallback | J28 |
+| 11–12: release stable-first and prerelease fallback | J28 |
 | 13–14: untagged default branch and canonical movable resolution | J07, J08, J28, J32 |
 | 15–17: uncatalogued discovery, invalid isolation, revision-faithful Info | J12, J26, J29, J30 |
 | 18: disappeared Skill history | J29 |
@@ -379,6 +387,7 @@ The numbered user stories in #27 are release-reviewed through these black-box jo
 | 41: display identity versus escaped HTTP path | J34 |
 | 42: explicit SkillsGo protocol divergence and future-resource isolation | J32, J35 |
 | 43: `skillsgo.mod`, Agent target restoration, and `/mod` versus `/api/v1` separation | J36 |
-| Movable query refresh and installed-version separation | J43 |
+| Movable head refresh and installed-version separation | J43 |
 | Untagged F1 preservation after V1 publication and C2 advance | J44 |
-| Catalog-only update checking after GitHub becomes unavailable | J45 |
+| Repository-fresh batched head/release update checking | J45 |
+| Whole-Repository installation atomicity | J46 |

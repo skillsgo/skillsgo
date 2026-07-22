@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on mixed-case user input, a case-preserving nested Git tree path, public CLI normalization, and Go-escaped Hub routes.
- * [OUTPUT]: Provides black-box coverage for normalized Repository identity and reversible uppercase Skill-path HTTP encoding.
+ * [INPUT]: Depends on mixed-case host input, a case-preserving nested Git tree path, public CLI normalization, and Go-escaped Hub routes.
+ * [OUTPUT]: Provides black-box coverage for lower-case host identity, preserved Repository/Skill path casing, and reversible uppercase Skill-path HTTP encoding.
  * [POS]: Serves as coordinate display-versus-transport identity coverage in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -22,7 +22,7 @@ func TestJ34CoordinateCaseAndEscape(t *testing.T) {
 	require.Equal(t, 0, repositoryInfo.exitCode, repositoryInfo.output)
 	require.Contains(t, repositoryInfo.output, `"ID":"fixtures.test/group/subgroup/collection/-/skills/CamelCase"`)
 	result := execCLI(t, ctx, container,
-		"add", "https://FIXTURES.TEST/GROUP/SUBGROUP/COLLECTION@v1.0.0",
+		"add", "https://FIXTURES.TEST/group/subgroup/collection@v1.0.0",
 		"--skill", "camel-case", "--agent", "codex", "--copy", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, result.exitCode, result.output)

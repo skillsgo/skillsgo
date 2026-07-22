@@ -19,8 +19,8 @@ func TestJ29RepositoryHistory(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 	repository := "fixtures.test/group/subgroup/collection"
 
-	latest := execCLI(t, ctx, container, "add", "https://"+repository+"@v1.1.0", "--agent", "codex", "--copy", "--yes", "--output", "json")
-	require.Equal(t, 0, latest.exitCode, latest.output)
+	current := execCLI(t, ctx, container, "add", "https://"+repository+"@v1.1.0", "--agent", "codex", "--copy", "--yes", "--output", "json")
+	require.Equal(t, 0, current.exitCode, current.output)
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "beta"))
 
@@ -31,7 +31,7 @@ func TestJ29RepositoryHistory(t *testing.T) {
 	require.Equal(t, 0, oldBeta.exitCode, oldBeta.output)
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "beta", "SKILL.md"))
 
-	nestedLatest := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/mod/"+repository+"/-/skills/beta/@latest")
-	require.Equal(t, 0, nestedLatest.exitCode, nestedLatest.output)
-	require.Contains(t, nestedLatest.output, `"Version":"v1.0.0"`)
+	nestedOld := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/mod/"+repository+"/-/skills/beta/@v/v1.0.0.info")
+	require.Equal(t, 0, nestedOld.exitCode, nestedOld.output)
+	require.Contains(t, nestedOld.output, `"Version":"v1.0.0"`)
 }

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the disposable E2E environment and public Hub info, detail, and immutable artifact contracts.
- * [OUTPUT]: Provides black-box coverage that catalog metadata and risk assessment identify the same immutable content digest.
+ * [INPUT]: Depends on the disposable E2E environment and public Hub exact Info, Catalog detail, and immutable artifact contracts.
+ * [OUTPUT]: Provides black-box coverage that Catalog metadata exposes the immutable version and content digest while deferred audit remains outside the response.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestJ25CatalogAuditConsistency(t *testing.T) {
+func TestJ25CatalogImmutableIdentityWithoutAudit(t *testing.T) {
 	ctx := context.Background()
 	container, _ := startEnvironment(t, ctx)
 	add := execCLI(t, ctx, container, "add", testSkillID+"@"+testSkillVersion, "--agent", "codex", "--yes", "--confirm-risk", "--allow-critical", "--output", "json")
@@ -27,13 +27,13 @@ func TestJ25CatalogAuditConsistency(t *testing.T) {
 	require.Equal(t, 0, detail.exitCode, detail.output)
 	var response struct {
 		ImmutableVersion string `json:"immutableVersion"`
-		ContentDigest    string `json:"contentDigest"`
+		Sum              string `json:"sum"`
 		RiskAssessment   struct {
 			ArtifactDigest string `json:"artifactDigest"`
 		} `json:"riskAssessment"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(detail.output), &response), detail.output)
 	require.Equal(t, installed.Version, response.ImmutableVersion)
-	require.NotEmpty(t, response.ContentDigest)
-	require.Equal(t, response.ContentDigest, response.RiskAssessment.ArtifactDigest)
+	require.NotEmpty(t, response.Sum)
+	require.Empty(t, response.RiskAssessment.ArtifactDigest)
 }

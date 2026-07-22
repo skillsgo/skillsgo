@@ -12,7 +12,6 @@ mkdir -p "$fixture_root/group/subgroup" "$work_root"
 git config --global user.email e2e@skillsgo.local
 git config --global user.name "SkillsGo E2E"
 git config --global protocol.file.allow always
-git config --global url.file:///e2e/git/.insteadOf https://fixtures.test/
 
 new_repo() {
   name=$1

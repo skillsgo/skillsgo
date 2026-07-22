@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on a mutable local Git remote, public Repository main Info resolution, released CLI installation, and Workspace Manifest persistence.
- * [OUTPUT]: Provides black-box coverage that repeating an explicit main query observes C2 while an installation pinned at C1 remains unchanged.
+ * [INPUT]: Depends on a mutable local Git remote, public Repository head resolution, released CLI installation, and Workspace Manifest persistence.
+ * [OUTPUT]: Provides black-box coverage that repeating an explicit head query observes C2 while an installation pinned at C1 remains unchanged.
  * [POS]: Serves as the movable-query refresh journey across Git, Hub, CLI, and Workspace state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -20,21 +20,27 @@ func TestJ43MovableQueryRefresh(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
 	repository := "fixtures.test/group/subgroup/movable"
-	mainInfoURL := "http://127.0.0.1:3000/mod/" + repository + "/@v/main.info"
+	baseURL := "http://127.0.0.1:3000/mod/" + repository
+	headInfoURL := baseURL + "/@head"
 
-	firstResponse := execInContainer(t, ctx, container, "wget", "-qO-", mainInfoURL)
+	firstResponse := execInContainer(t, ctx, container, "wget", "-qO-", headInfoURL)
 	require.Equal(t, 0, firstResponse.exitCode, firstResponse.output)
 	var first struct {
-		Version   string `json:"Version"`
-		CommitSHA string `json:"CommitSHA"`
+		Version string `json:"Version"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(firstResponse.output), &first), firstResponse.output)
 	require.NotEmpty(t, first.Version)
-	require.GreaterOrEqual(t, len(first.CommitSHA), 12)
-	require.Contains(t, first.Version, first.CommitSHA[:12])
+	firstExact := execInContainer(t, ctx, container, "wget", "-qO-", baseURL+"/@v/"+first.Version+".info")
+	require.Equal(t, 0, firstExact.exitCode, firstExact.output)
+	var firstInfo struct {
+		CommitSHA string `json:"CommitSHA"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(firstExact.output), &firstInfo), firstExact.output)
+	require.GreaterOrEqual(t, len(firstInfo.CommitSHA), 12)
+	require.Contains(t, first.Version, firstInfo.CommitSHA[:12])
 
 	installed := execCLI(t, ctx, container,
-		"add", "https://"+repository+"@main",
+		"add", "https://"+repository+"@head",
 		"--agent", "codex", "--copy", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, installed.exitCode, installed.output)
@@ -55,21 +61,26 @@ func TestJ43MovableQueryRefresh(t *testing.T) {
 		require.Equal(t, 0, result.exitCode, result.output)
 	}
 
-	secondResponse := execInContainer(t, ctx, container, "wget", "-qO-", mainInfoURL)
+	secondResponse := execInContainer(t, ctx, container, "wget", "-qO-", headInfoURL)
 	require.Equal(t, 0, secondResponse.exitCode, secondResponse.output)
 	var second struct {
-		Version   string `json:"Version"`
-		CommitSHA string `json:"CommitSHA"`
+		Version string `json:"Version"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(secondResponse.output), &second), secondResponse.output)
 	require.NotEmpty(t, second.Version)
-	require.GreaterOrEqual(t, len(second.CommitSHA), 12)
 	require.NotEqual(t, first.Version, second.Version)
-	require.NotEqual(t, first.CommitSHA, second.CommitSHA)
-	require.Contains(t, second.Version, second.CommitSHA[:12])
-	require.Contains(t, secondResponse.output, "Movable C2.")
+	secondExact := execInContainer(t, ctx, container, "wget", "-qO-", baseURL+"/@v/"+second.Version+".info")
+	require.Equal(t, 0, secondExact.exitCode, secondExact.output)
+	var secondInfo struct {
+		CommitSHA string `json:"CommitSHA"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(secondExact.output), &secondInfo), secondExact.output)
+	require.GreaterOrEqual(t, len(secondInfo.CommitSHA), 12)
+	require.NotEqual(t, firstInfo.CommitSHA, secondInfo.CommitSHA)
+	require.Contains(t, second.Version, secondInfo.CommitSHA[:12])
+	require.Contains(t, secondExact.output, "Movable C2.")
 
 	manifestAfter, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
-	require.Equal(t, manifestBefore, manifestAfter, "searching main must not mutate the installed immutable version")
+	require.Equal(t, manifestBefore, manifestAfter, "resolving head must not mutate the installed immutable version")
 }

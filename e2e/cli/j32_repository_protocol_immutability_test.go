@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on deterministic Repository tags plus public Hub list, latest, Info, ZIP, and HEAD routes.
- * [OUTPUT]: Provides black-box coverage for Go-shaped protocol resources and immutable responses after a source tag moves.
+ * [INPUT]: Depends on deterministic Repository tags plus public Hub list, head, release, exact Info, ZIP, and HTTP HEAD routes.
+ * [OUTPUT]: Provides black-box coverage for the exact protocol, rejection of legacy or movable exact routes, and immutable responses after a source tag moves.
  * [POS]: Serves as the Repository wire-protocol immutability journey in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -23,9 +23,14 @@ func TestJ32RepositoryProtocolImmutability(t *testing.T) {
 	list := execInContainer(t, ctx, container, "wget", "-qO-", base+"/@v/list")
 	require.Equal(t, 0, list.exitCode, list.output)
 	require.Equal(t, []string{"v1.0.0", "v1.1.0-beta.1", "v1.1.0"}, strings.Fields(list.output))
-	latest := execInContainer(t, ctx, container, "wget", "-qO-", base+"/@latest")
-	require.Equal(t, 0, latest.exitCode, latest.output)
-	require.Contains(t, latest.output, `"Version":"v1.1.0"`)
+	release := execInContainer(t, ctx, container, "wget", "-qO-", base+"/@release")
+	require.Equal(t, 0, release.exitCode, release.output)
+	require.Contains(t, release.output, `"Version":"v1.1.0"`)
+	headInfo := execInContainer(t, ctx, container, "wget", "-qO-", base+"/@head")
+	require.Equal(t, 0, headInfo.exitCode, headInfo.output)
+	require.Contains(t, headInfo.output, `"Version":"v1.1.0"`)
+	legacyLatest := execInContainer(t, ctx, container, "wget", "-S", "-qO-", base+"/@latest")
+	require.NotEqual(t, 0, legacyLatest.exitCode, legacyLatest.output)
 
 	exact := execInContainer(t, ctx, container, "wget", "-qO-", base+"/@v/v1.0.0.info")
 	require.Equal(t, 0, exact.exitCode, exact.output)
@@ -34,11 +39,9 @@ func TestJ32RepositoryProtocolImmutability(t *testing.T) {
 	commit := execInContainer(t, ctx, container, "git", "--git-dir=/e2e/git/group/subgroup/collection", "rev-parse", "v1.0.0^{commit}")
 	require.Equal(t, 0, commit.exitCode, commit.output)
 	byCommit := execInContainer(t, ctx, container, "wget", "-qO-", base+"/@v/"+strings.TrimSpace(commit.output)+".info")
-	require.Equal(t, 0, byCommit.exitCode, byCommit.output)
-	require.Contains(t, byCommit.output, `"Version":"v1.0.0"`)
+	require.NotEqual(t, 0, byCommit.exitCode, byCommit.output)
 	byBranch := execInContainer(t, ctx, container, "wget", "-qO-", base+"/@v/main.info")
-	require.Equal(t, 0, byBranch.exitCode, byBranch.output)
-	require.Contains(t, byBranch.output, `"Kind":"Repository"`)
+	require.NotEqual(t, 0, byBranch.exitCode, byBranch.output)
 
 	nestedBase := base + "/-/skills/alpha"
 	nestedList := execInContainer(t, ctx, container, "wget", "-qO-", nestedBase+"/@v/list")
