@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on reviewed existing Skill directories, canonical source identity, content framing, safe ZIP construction, and an explicit export destination.
+ * [INPUT]: Depends on reviewed existing Skill directories, canonical source identity, shared envelope-state hashing, content framing, safe ZIP construction, and an explicit export destination.
  * [OUTPUT]: Imports immutable private Local Skill artifacts, captures stable source/content/filesystem-state-identified takeover baselines with explicit change detection, and exports only Local-provenance entries without network access.
  * [POS]: Serves as the local and captured Skill persistence boundary beside Hub-backed Store ingestion.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"compress/flate"
 	"crypto/sha256"
-	"encoding/binary"
 	"encoding/hex"
 	"errors"
 	"fmt"
@@ -108,59 +107,7 @@ func sumKey(sum string) string {
 // capturedDirectoryDigest binds a captured baseline to the exact regular-file
 // tree that archiveDirectory preserves, including empty directories and modes.
 func capturedDirectoryDigest(root string) (string, error) {
-	hash := sha256.New()
-	_, _ = hash.Write([]byte("skillsgo-captured-directory-v1\x00"))
-	err := filepath.WalkDir(root, func(current string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil {
-			return walkErr
-		}
-		if current == root {
-			return nil
-		}
-		relative, err := filepath.Rel(root, current)
-		if err != nil {
-			return err
-		}
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-		kind := byte('f')
-		if entry.IsDir() {
-			kind = 'd'
-		} else if !info.Mode().IsRegular() {
-			return fmt.Errorf("captured Skill contains unsupported file %q", current)
-		}
-		relative = filepath.ToSlash(relative)
-		_, _ = hash.Write([]byte{kind})
-		if err := binary.Write(hash, binary.BigEndian, uint64(len(relative))); err != nil {
-			return err
-		}
-		_, _ = io.WriteString(hash, relative)
-		if err := binary.Write(hash, binary.BigEndian, uint32(info.Mode().Perm())); err != nil {
-			return err
-		}
-		if entry.IsDir() {
-			return nil
-		}
-		if err := binary.Write(hash, binary.BigEndian, uint64(info.Size())); err != nil {
-			return err
-		}
-		file, err := os.Open(current)
-		if err != nil {
-			return err
-		}
-		_, copyErr := io.Copy(hash, file)
-		closeErr := file.Close()
-		if copyErr != nil {
-			return copyErr
-		}
-		return closeErr
-	})
-	if err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(hash.Sum(nil)), nil
+	return directoryEnvelopeDigest(root, "skillsgo-captured-directory-v1\x00")
 }
 
 func (s Store) ImportLocal(root, name string) (*Entry, error) {
