@@ -46,7 +46,7 @@ func TestRepositoryLatestFallbackUsesLatestThenCanonicalInfo(t *testing.T) {
 		case "/mod/" + repository + "/@latest":
 			fmt.Fprintf(w, `{"Version":%q,"Time":"2026-07-18T12:00:00Z"}`, version)
 		case "/mod/" + repository + "/@v/" + version + ".info":
-			fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-18T12:00:00Z","CommitSHA":"abcdef1234567890","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Name":"root","Description":"root","Risk":"low","ContentDigest":"sha256:%s","ArchiveSize":1,"CommitSHA":"abcdef1234567890","TreeSHA":"tree"}]}`, repository, version, repository, version, strings.Repeat("a", 64))
+			fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-18T12:00:00Z","CommitSHA":"abcdef1234567890","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Name":"root","Description":"root","Risk":"low","Sum":"h1:%s","ArchiveSize":1,"CommitSHA":"abcdef1234567890","TreeSHA":"tree"}]}`, repository, version, repository, version, strings.Repeat("A", 43)+"=")
 		default:
 			http.NotFound(w, request)
 		}
@@ -71,7 +71,7 @@ func TestProxyEndpointEscapesSkillPathCase(t *testing.T) {
 		if request.URL.EscapedPath() != "/mod/github.com/example/skills/-/!skills/!demo/@v/v1.2.3.info" {
 			t.Fatalf("unexpected escaped path %q", request.URL.EscapedPath())
 		}
-		fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":"v1.2.3","Risk":"low","ContentDigest":"sha256:%s","CommitSHA":"commit","TreeSHA":"tree"}`, skillID, strings.Repeat("a", 64))
+		fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":"v1.2.3","Risk":"low","Sum":"h1:%s","CommitSHA":"commit","TreeSHA":"tree"}`, skillID, strings.Repeat("A", 43)+"=")
 	}))
 	defer server.Close()
 	client, err := New(server.URL, server.Client())
@@ -88,7 +88,7 @@ func TestResolveUsesVersionQueryInfoDirectly(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		switch {
 		case strings.HasSuffix(request.URL.Path, "/~1.5.0.info"):
-			_, _ = w.Write([]byte(`{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/example/skills/-/demo","Name":"demo","Description":"test","Version":"v1.5.19","Risk":"low","ContentDigest":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"tree"}`))
+			_, _ = w.Write([]byte(`{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/example/skills/-/demo","Name":"demo","Description":"test","Version":"v1.5.19","Risk":"low","Sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"tree"}`))
 		default:
 			http.NotFound(w, request)
 		}
@@ -117,12 +117,12 @@ func TestLatestVersionPrefersStableAndFallsBackToPrerelease(t *testing.T) {
 }
 
 func TestMatchContentUsesDigestAndSourceHint(t *testing.T) {
-	digest := "sha256:" + strings.Repeat("a", 64)
+	digest := "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/api/v1/matches" || request.URL.Query().Get("contentDigest") != digest || request.URL.Query().Get("sourceHint") != "github.com/acme/skills" {
+		if request.URL.Path != "/api/v1/matches" || request.URL.Query().Get("sum") != digest || request.URL.Query().Get("sourceHint") != "github.com/acme/skills" {
 			t.Fatalf("unexpected match request: %s", request.URL.String())
 		}
-		_, _ = w.Write([]byte(`{"schemaVersion":1,"contentDigest":"` + digest + `","matches":[{"skillId":"github.com/acme/skills/-/demo","name":"demo","source":"github.com/acme/skills","skillPath":"demo","immutableVersion":"v1","commitSHA":"commit","treeSHA":"tree","contentDigest":"` + digest + `"}]}`))
+		_, _ = w.Write([]byte(`{"schemaVersion":1,"sum":"` + digest + `","matches":[{"skillId":"github.com/acme/skills/-/demo","name":"demo","source":"github.com/acme/skills","skillPath":"demo","immutableVersion":"v1","commitSHA":"commit","treeSHA":"tree","sum":"` + digest + `"}]}`))
 	}))
 	defer server.Close()
 	client, err := New(server.URL, server.Client())
@@ -139,9 +139,9 @@ func TestMatchContentUsesDigestAndSourceHint(t *testing.T) {
 }
 
 func TestMatchContentRejectsUnboundResponse(t *testing.T) {
-	digest := "sha256:" + strings.Repeat("a", 64)
+	digest := "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		_, _ = w.Write([]byte(`{"schemaVersion":1,"contentDigest":"sha256:` + strings.Repeat("b", 64) + `","matches":[]}`))
+		_, _ = w.Write([]byte(`{"schemaVersion":1,"sum":"sha256:` + strings.Repeat("b", 64) + `","matches":[]}`))
 	}))
 	defer server.Close()
 	client, err := New(server.URL, server.Client())

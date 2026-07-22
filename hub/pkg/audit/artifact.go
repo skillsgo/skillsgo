@@ -43,13 +43,13 @@ type Evidence struct {
 type RiskAssessment struct {
 	Level          string     `json:"level"`
 	ScannerVersion string     `json:"scannerVersion"`
-	ArtifactDigest string     `json:"artifactDigest"`
+	ArtifactSum    string     `json:"artifactSum"`
 	Evidence       []Evidence `json:"evidence"`
 }
 
 type Result struct {
 	Instructions         string         `json:"instructions"`
-	ContentDigest        string         `json:"contentDigest"`
+	Sum                  string         `json:"sum"`
 	Files                []File         `json:"files"`
 	HasExecutableContent bool           `json:"hasExecutableContent"`
 	ExecutableFiles      []string       `json:"executableFiles"`
@@ -140,8 +140,8 @@ func AnalyzeArtifact(data []byte, skillID, version string) (*Result, error) {
 	if result.Instructions == "" {
 		return nil, fmt.Errorf("artifact does not contain SKILL.md")
 	}
-	result.ContentDigest = digest
-	result.Risk.ArtifactDigest = result.ContentDigest
+	result.Sum = digest
+	result.Risk.ArtifactSum = result.Sum
 	return result, nil
 }
 

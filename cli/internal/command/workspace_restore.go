@@ -71,7 +71,7 @@ func restoreWorkspace(ctx context.Context, root string, catalog *agent.Catalog, 
 			}
 			entry, getErr := storage.Get(dependency, requirement.Ref)
 			if getErr == nil {
-				checksum, checksumErr := project.ContentH1(entry.Receipt.ContentDigest)
+				checksum, checksumErr := project.ContentH1(entry.Receipt.Sum)
 				if checksumErr != nil {
 					return nil, checksumErr
 				}
@@ -86,7 +86,7 @@ func restoreWorkspace(ctx context.Context, root string, catalog *agent.Catalog, 
 			if fetchErr != nil {
 				return nil, fmt.Errorf("fetch exact Skill %s@%s: %w", dependency, requirement.Ref, fetchErr)
 			}
-			checksum, checksumErr := project.ContentH1(artifact.Info.ContentDigest)
+			checksum, checksumErr := project.ContentH1(artifact.Info.Sum)
 			if checksumErr != nil {
 				return nil, checksumErr
 			}
@@ -102,7 +102,7 @@ func restoreWorkspace(ctx context.Context, root string, catalog *agent.Catalog, 
 		repositories = append(repositories, resource)
 		for index := range resource.Members {
 			member := resource.Members[index]
-			checksum, checksumErr := project.ContentH1(member.Info.ContentDigest)
+			checksum, checksumErr := project.ContentH1(member.Info.Sum)
 			if checksumErr != nil {
 				return nil, checksumErr
 			}

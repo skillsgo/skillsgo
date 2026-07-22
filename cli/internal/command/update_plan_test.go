@@ -30,7 +30,7 @@ func TestCanonicalWorkspaceRequirementDoesNotFollowMovableRef(t *testing.T) {
 	artifactRoot := filepath.Join(root, "artifact")
 	entry := &store.Entry{Root: filepath.Dir(artifactRoot), Artifact: artifactRoot, Receipt: store.Receipt{
 		SkillID: skillID, Version: version, Name: "demo", Risk: hub.RiskLow,
-		ContentDigest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
 	}}
 	if err := project.Upsert(workspace, "demo", project.SkillRequirement{Agents: []string{"codex"}}, entry.Receipt); err != nil {
 		t.Fatal(err)

@@ -9,7 +9,6 @@ package actions
 import (
 	"context"
 	"database/sql"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -28,6 +27,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 )
 
 type skillsResponse struct {
@@ -79,7 +79,7 @@ type skillDetailResponse struct {
 	CommitSHA             string               `json:"commitSHA"`
 	TreeSHA               string               `json:"treeSHA"`
 	SourceRef             string               `json:"sourceRef"`
-	ContentDigest         string               `json:"contentDigest"`
+	Sum                   string               `json:"sum"`
 	Instructions          string               `json:"instructions"`
 	TrustLevel            string               `json:"trustLevel"`
 	RiskAssessment        audit.RiskAssessment `json:"riskAssessment"`
@@ -159,10 +159,9 @@ func catalogUpdateCheckHandler(metadata *catalog.Catalog) fiber.Handler {
 
 func contentMatchesHandler(metadata *catalog.Catalog) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		digest := strings.TrimSpace(c.Query("contentDigest"))
-		_, digestErr := hex.DecodeString(strings.TrimPrefix(digest, "sha256:"))
-		if len(digest) != len("sha256:")+64 || !strings.HasPrefix(digest, "sha256:") || digestErr != nil {
-			return writeAPIError(c, fiber.StatusBadRequest, "contentDigest must be a sha256 digest")
+		digest := strings.TrimSpace(c.Query("sum"))
+		if !protocolartifact.ValidSum(digest) {
+			return writeAPIError(c, fiber.StatusBadRequest, "sum must be a valid h1 sum")
 		}
 		hint := strings.TrimSpace(c.Query("sourceHint"))
 		if len([]rune(hint)) > 500 {
@@ -172,13 +171,13 @@ func contentMatchesHandler(metadata *catalog.Catalog) fiber.Handler {
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.content_matches", fiber.StatusInternalServerError, "internal_error", "content match failed", err)
 		}
-		response := contentMatchesResponse{SchemaVersion: 1, ContentDigest: digest, Matches: make([]contentMatch, 0, len(matches))}
+		response := contentMatchesResponse{SchemaVersion: 1, Sum: digest, Matches: make([]contentMatch, 0, len(matches))}
 		for _, match := range matches {
 			response.Matches = append(response.Matches, contentMatch{
 				SkillID: match.SkillID, Name: match.Name,
 				Source: match.SourceHost + "/" + match.Repository, SkillPath: match.SkillPath,
 				ImmutableVersion: match.Version, CommitSHA: match.CommitSHA,
-				TreeSHA: match.TreeSHA, ContentDigest: match.ContentDigest,
+				TreeSHA: match.TreeSHA, Sum: match.Sum,
 			})
 		}
 		return writeJSON(c, fiber.StatusOK, response)
@@ -349,7 +348,7 @@ func skillDetailHandler(
 			return writeInternalAPIError(c, "artifact.audit", fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid", err)
 		}
 		version, err := metadata.RecordSkillVersion(c.Context(), skill.SkillID, catalog.SkillVersion{
-			Version: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA, ContentDigest: analysis.ContentDigest,
+			Version: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA, Sum: analysis.Sum,
 			CommitTime: info.Time, ArchiveSize: archiveSize,
 		})
 		if err != nil {
@@ -397,7 +396,7 @@ func skillDetailHandler(
 			ArchiveSize: version.ArchiveSize, RequestedVersion: skill.LatestVersion,
 			ImageURL:         skillImageURL(skill.SourceHost, skill.Repository),
 			ImmutableVersion: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA,
-			SourceRef: info.Ref, ContentDigest: analysis.ContentDigest,
+			SourceRef: info.Ref, Sum: analysis.Sum,
 			Instructions: analysis.Instructions, TrustLevel: trustLevel, RiskAssessment: analysis.Risk,
 			Files: analysis.Files, HasExecutableContent: analysis.HasExecutableContent,
 			ExecutableFiles: analysis.ExecutableFiles,

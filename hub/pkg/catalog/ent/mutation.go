@@ -5284,7 +5284,7 @@ type SkillVersionMutation struct {
 	version                 *string
 	commit_sha              *string
 	tree_sha                *string
-	content_digest          *string
+	sum                     *string
 	commit_time             *time.Time
 	archive_size            *int64
 	addarchive_size         *int64
@@ -5548,40 +5548,40 @@ func (m *SkillVersionMutation) ResetTreeSha() {
 	m.tree_sha = nil
 }
 
-// SetContentDigest sets the "content_digest" field.
-func (m *SkillVersionMutation) SetContentDigest(s string) {
-	m.content_digest = &s
+// SetSum sets the "sum" field.
+func (m *SkillVersionMutation) SetSum(s string) {
+	m.sum = &s
 }
 
-// ContentDigest returns the value of the "content_digest" field in the mutation.
-func (m *SkillVersionMutation) ContentDigest() (r string, exists bool) {
-	v := m.content_digest
+// Sum returns the value of the "sum" field in the mutation.
+func (m *SkillVersionMutation) Sum() (r string, exists bool) {
+	v := m.sum
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldContentDigest returns the old "content_digest" field's value of the SkillVersion entity.
+// OldSum returns the old "sum" field's value of the SkillVersion entity.
 // If the SkillVersion object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillVersionMutation) OldContentDigest(ctx context.Context) (v string, err error) {
+func (m *SkillVersionMutation) OldSum(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldContentDigest is only allowed on UpdateOne operations")
+		return v, errors.New("OldSum is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldContentDigest requires an ID field in the mutation")
+		return v, errors.New("OldSum requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldContentDigest: %w", err)
+		return v, fmt.Errorf("querying old value for OldSum: %w", err)
 	}
-	return oldValue.ContentDigest, nil
+	return oldValue.Sum, nil
 }
 
-// ResetContentDigest resets all changes to the "content_digest" field.
-func (m *SkillVersionMutation) ResetContentDigest() {
-	m.content_digest = nil
+// ResetSum resets all changes to the "sum" field.
+func (m *SkillVersionMutation) ResetSum() {
+	m.sum = nil
 }
 
 // SetCommitTime sets the "commit_time" field.
@@ -5840,8 +5840,8 @@ func (m *SkillVersionMutation) Fields() []string {
 	if m.tree_sha != nil {
 		fields = append(fields, skillversion.FieldTreeSha)
 	}
-	if m.content_digest != nil {
-		fields = append(fields, skillversion.FieldContentDigest)
+	if m.sum != nil {
+		fields = append(fields, skillversion.FieldSum)
 	}
 	if m.commit_time != nil {
 		fields = append(fields, skillversion.FieldCommitTime)
@@ -5868,8 +5868,8 @@ func (m *SkillVersionMutation) Field(name string) (ent.Value, bool) {
 		return m.CommitSha()
 	case skillversion.FieldTreeSha:
 		return m.TreeSha()
-	case skillversion.FieldContentDigest:
-		return m.ContentDigest()
+	case skillversion.FieldSum:
+		return m.Sum()
 	case skillversion.FieldCommitTime:
 		return m.CommitTime()
 	case skillversion.FieldArchiveSize:
@@ -5893,8 +5893,8 @@ func (m *SkillVersionMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldCommitSha(ctx)
 	case skillversion.FieldTreeSha:
 		return m.OldTreeSha(ctx)
-	case skillversion.FieldContentDigest:
-		return m.OldContentDigest(ctx)
+	case skillversion.FieldSum:
+		return m.OldSum(ctx)
 	case skillversion.FieldCommitTime:
 		return m.OldCommitTime(ctx)
 	case skillversion.FieldArchiveSize:
@@ -5938,12 +5938,12 @@ func (m *SkillVersionMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetTreeSha(v)
 		return nil
-	case skillversion.FieldContentDigest:
+	case skillversion.FieldSum:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetContentDigest(v)
+		m.SetSum(v)
 		return nil
 	case skillversion.FieldCommitTime:
 		v, ok := value.(time.Time)
@@ -6042,8 +6042,8 @@ func (m *SkillVersionMutation) ResetField(name string) error {
 	case skillversion.FieldTreeSha:
 		m.ResetTreeSha()
 		return nil
-	case skillversion.FieldContentDigest:
-		m.ResetContentDigest()
+	case skillversion.FieldSum:
+		m.ResetSum()
 		return nil
 	case skillversion.FieldCommitTime:
 		m.ResetCommitTime()

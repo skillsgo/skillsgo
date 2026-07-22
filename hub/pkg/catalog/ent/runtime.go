@@ -162,10 +162,10 @@ func init() {
 	skillversionDescTreeSha := skillversionFields[4].Descriptor()
 	// skillversion.TreeShaValidator is a validator for the "tree_sha" field. It is called by the builders before save.
 	skillversion.TreeShaValidator = skillversionDescTreeSha.Validators[0].(func(string) error)
-	// skillversionDescContentDigest is the schema descriptor for content_digest field.
-	skillversionDescContentDigest := skillversionFields[5].Descriptor()
-	// skillversion.ContentDigestValidator is a validator for the "content_digest" field. It is called by the builders before save.
-	skillversion.ContentDigestValidator = skillversionDescContentDigest.Validators[0].(func(string) error)
+	// skillversionDescSum is the schema descriptor for sum field.
+	skillversionDescSum := skillversionFields[5].Descriptor()
+	// skillversion.SumValidator is a validator for the "sum" field. It is called by the builders before save.
+	skillversion.SumValidator = skillversionDescSum.Validators[0].(func(string) error)
 	// skillversionDescArchiveSize is the schema descriptor for archive_size field.
 	skillversionDescArchiveSize := skillversionFields[7].Descriptor()
 	// skillversion.DefaultArchiveSize holds the default value on creation for the archive_size field.

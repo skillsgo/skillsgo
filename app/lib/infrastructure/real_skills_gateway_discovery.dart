@@ -317,7 +317,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         'commitSHA',
         'treeSHA',
         'sourceRef',
-        'contentDigest',
+        'sum',
         'instructions',
         'trustLevel',
       ];
@@ -425,7 +425,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         commitSHA: decoded['commitSHA'] as String,
         treeSHA: decoded['treeSHA'] as String,
         sourceRef: decoded['sourceRef'] as String,
-        contentDigest: decoded['contentDigest'] as String,
+        sum: decoded['sum'] as String,
         trustLevel: _trustLevel(decoded['trustLevel']),
         riskAssessment: _riskAssessment(risk['level']),
         riskScannerVersion: risk['scannerVersion'] as String,

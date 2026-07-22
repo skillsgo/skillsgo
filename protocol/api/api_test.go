@@ -28,13 +28,13 @@ func TestRiskVocabulary(t *testing.T) {
 
 func TestSkillAndRepositoryInfoJSONContract(t *testing.T) {
 	now := time.Date(2026, 7, 21, 1, 2, 3, 0, time.UTC)
-	skill := SkillInfo{SchemaVersion: SchemaVersion, Kind: KindSkill, ID: "github.com/o/r", Version: "v1.0.0", Time: now, Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "tree", Name: "demo", Description: "Demo", License: "MIT", Compatibility: "Codex", AllowedTools: "Read", Metadata: map[string]string{"owner": "team"}, Risk: RiskLow, ContentDigest: "sha256:" + strings.Repeat("a", 64), ArchiveSize: 42}
+	skill := SkillInfo{SchemaVersion: SchemaVersion, Kind: KindSkill, ID: "github.com/o/r", Version: "v1.0.0", Time: now, Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "tree", Name: "demo", Description: "Demo", License: "MIT", Compatibility: "Codex", AllowedTools: "Read", Metadata: map[string]string{"owner": "team"}, Risk: RiskLow, Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 42}
 	encoded, err := json.Marshal(skill)
 	if err != nil {
 		t.Fatal(err)
 	}
 	text := string(encoded)
-	for _, field := range []string{`"SchemaVersion":1`, `"Kind":"Skill"`, `"AllowedTools":"Read"`, `"ContentDigest":"sha256:`} {
+	for _, field := range []string{`"SchemaVersion":1`, `"Kind":"Skill"`, `"AllowedTools":"Read"`, `"Sum":"h1:`} {
 		if !strings.Contains(text, field) {
 			t.Fatalf("missing wire field %s in %s", field, text)
 		}
@@ -67,8 +67,8 @@ func TestSkillAndRepositoryInfoJSONContract(t *testing.T) {
 }
 
 func TestCatalogAndContentMatchJSONContract(t *testing.T) {
-	match := ContentMatch{SkillID: "github.com/o/r", Name: "demo", Source: "https://github.com/o/r", SkillPath: ".", ImmutableVersion: "v1.0.0", CommitSHA: "commit", TreeSHA: "tree", ContentDigest: "sha256:" + strings.Repeat("b", 64)}
-	response := ContentMatchesResponse{SchemaVersion: SchemaVersion, ContentDigest: match.ContentDigest, Matches: []ContentMatch{match}}
+	match := ContentMatch{SkillID: "github.com/o/r", Name: "demo", Source: "https://github.com/o/r", SkillPath: ".", ImmutableVersion: "v1.0.0", CommitSHA: "commit", TreeSHA: "tree", Sum: "h1:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="}
+	response := ContentMatchesResponse{SchemaVersion: SchemaVersion, Sum: match.Sum, Matches: []ContentMatch{match}}
 	encoded, err := json.Marshal(response)
 	if err != nil {
 		t.Fatal(err)

@@ -73,7 +73,7 @@ func Installed(root string, catalog *agent.Catalog, scope install.Scope, storeRo
 						target.Mode = install.ModeCopy
 					}
 				}
-				installation := install.Installation{Name: name, SkillID: entry.Receipt.EffectiveSourceSkillID(), DependencyID: dependency, Version: entry.Receipt.Version, Target: target, ContentDigest: entry.Receipt.ContentDigest}
+				installation := install.Installation{Name: name, SkillID: entry.Receipt.EffectiveSourceSkillID(), DependencyID: dependency, Version: entry.Receipt.Version, Target: target, Sum: entry.Receipt.Sum}
 				installation.StoreRoot = entry.Root
 				installation.Artifact = entry.Artifact
 				installation.Provenance = entry.Receipt.EffectiveProvenance()

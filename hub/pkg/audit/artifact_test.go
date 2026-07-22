@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses in-memory ZIP fixtures representing immutable Hub Skill artifacts.
- * [OUTPUT]: Specifies bounded duplicate-safe file inspection, golden Content Digests, instruction extraction, executable evidence, and deterministic risk levels.
+ * [OUTPUT]: Specifies bounded duplicate-safe file inspection, golden Sums, instruction extraction, executable evidence, and deterministic risk levels.
  * [POS]: Serves as the behavior contract for the Hub artifact audit boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -29,7 +29,7 @@ func TestAnalyzeArtifactExtractsInspectableFilesAndRiskEvidence(t *testing.T) {
 	require.Contains(t, result.Instructions, "# Real instructions")
 	require.Equal(t, "high", result.Risk.Level)
 	require.Equal(t, ScannerVersion, result.Risk.ScannerVersion)
-	require.Equal(t, result.ContentDigest, result.Risk.ArtifactDigest)
+	require.Equal(t, result.Sum, result.Risk.ArtifactSum)
 	require.ElementsMatch(t, []Evidence{
 		{Code: "script_file", Path: "scripts/run.sh"},
 		{Code: "binary_executable", Path: "bin/helper.exe"},
@@ -92,7 +92,7 @@ func TestAnalyzeArtifactTruncatesLargeSupportingText(t *testing.T) {
 	require.Len(t, result.Files[1].Content, maxFileContentBytes)
 }
 
-func TestAnalyzeArtifactContentDigestIgnoresArchiveCompressionAndEntryOrder(t *testing.T) {
+func TestAnalyzeArtifactSumIgnoresArchiveCompressionAndEntryOrder(t *testing.T) {
 	skillID, version := "github.com/acme/skills/-/demo", "v1.0.0"
 	prefix := skillID + "@" + version + "/"
 	files := []struct {
@@ -113,8 +113,8 @@ func TestAnalyzeArtifactContentDigestIgnoresArchiveCompressionAndEntryOrder(t *t
 	deflatedResult, err := AnalyzeArtifact(deflated, skillID, version)
 	require.NoError(t, err)
 	require.NotEqual(t, stored, deflated)
-	require.Equal(t, storedResult.ContentDigest, deflatedResult.ContentDigest)
-	require.Contains(t, storedResult.ContentDigest, "sha256:")
+	require.Equal(t, storedResult.Sum, deflatedResult.Sum)
+	require.Contains(t, storedResult.Sum, "h1:")
 }
 
 func TestAnalyzeArtifactRejectsDuplicatePaths(t *testing.T) {
@@ -131,7 +131,7 @@ func TestAnalyzeArtifactRejectsDuplicatePaths(t *testing.T) {
 	require.ErrorContains(t, err, "duplicate")
 }
 
-func TestAnalyzeArtifactContentDigestGoldenVector(t *testing.T) {
+func TestAnalyzeArtifactSumGoldenVector(t *testing.T) {
 	skillID, version := "github.com/example/skills/-/demo", "v1"
 	data := auditZIP(t, skillID+"@"+version+"/", map[string][]byte{
 		"SKILL.md": []byte("# Demo\n"),
@@ -139,7 +139,7 @@ func TestAnalyzeArtifactContentDigestGoldenVector(t *testing.T) {
 
 	result, err := AnalyzeArtifact(data, skillID, version)
 	require.NoError(t, err)
-	require.Equal(t, "sha256:bf005aa0d71df7bbcdc3bbd01138efd6274f8cef648cf74a2a17528bfaa54399", result.ContentDigest)
+	require.Equal(t, "h1:ndA9lw9XWrLHtS/j9kdqTow/oXIaG8R7tm7tnAzh3/Y=", result.Sum)
 }
 
 func auditZIP(t *testing.T, prefix string, files map[string][]byte) []byte {

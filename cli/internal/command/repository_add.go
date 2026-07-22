@@ -101,7 +101,7 @@ func addWholeRepository(
 		if err != nil {
 			return err
 		}
-		checksum, err := project.ContentH1(member.Info.ContentDigest)
+		checksum, err := project.ContentH1(member.Info.Sum)
 		if err != nil {
 			return err
 		}
@@ -243,7 +243,7 @@ func addSelectedRepositorySkills(
 		if err != nil {
 			return err
 		}
-		checksum, err := project.ContentH1(member.Info.ContentDigest)
+		checksum, err := project.ContentH1(member.Info.Sum)
 		if err != nil {
 			return err
 		}

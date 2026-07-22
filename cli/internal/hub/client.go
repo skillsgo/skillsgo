@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a configured Hub origin, canonical Skill IDs, Hub-owned selector resolution, exact content-match responses, and enriched immutable Info/ZIP protocol responses.
- * [OUTPUT]: Provides delegated selector resolution, strict product JSON reads, Catalog-only batch latest-version reads, validated content-identity matching, immutable artifact fetch with optional byte progress, normalized Skill metadata, Hub-bound Risk and Content Digest metadata, and typed HTTP or malformed-protocol failures.
+ * [OUTPUT]: Provides delegated selector resolution, strict product JSON reads, Catalog-only batch latest-version reads, validated content-identity matching, immutable artifact fetch with optional byte progress, normalized Skill metadata, Hub-bound Risk and Sum metadata, and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -221,7 +221,7 @@ func (c *Client) FetchRepositoryMember(ctx context.Context, member RepositoryMem
 	if info.ArchiveSize > 0 && info.ArchiveSize != int64(len(zipBytes)) {
 		return nil, fmt.Errorf("Hub returned an unexpected Archive Size for %s@%s", info.ID, info.Version)
 	}
-	if err := VerifyContentDigest(zipBytes, info.ID, info.Version, info.ContentDigest); err != nil {
+	if err := VerifySum(zipBytes, info.ID, info.Version, info.Sum); err != nil {
 		return nil, err
 	}
 	return &Artifact{SkillID: info.ID, Info: info, InfoBytes: member.InfoBytes, ZIP: zipBytes}, nil
@@ -249,7 +249,7 @@ func (c *Client) FetchWithProgress(ctx context.Context, skillID, requestedVersio
 	if info.ArchiveSize > 0 && info.ArchiveSize != int64(len(zipBytes)) {
 		return nil, fmt.Errorf("Hub returned an unexpected Archive Size for %s@%s", skillID, info.Version)
 	}
-	if err := VerifyContentDigest(zipBytes, skillID, info.Version, info.ContentDigest); err != nil {
+	if err := VerifySum(zipBytes, skillID, info.Version, info.Sum); err != nil {
 		return nil, err
 	}
 	return &Artifact{SkillID: skillID, Info: info, InfoBytes: infoBytes, ZIP: zipBytes}, nil
@@ -336,8 +336,8 @@ func (c *Client) Check(ctx context.Context) (json.RawMessage, error) {
 	return c.Discover(ctx, "search", "skillsgo-settings-probe", 0, 1)
 }
 
-func (c *Client) MatchContent(ctx context.Context, contentDigest, sourceHint string) ([]ContentMatch, error) {
-	query := url.Values{"contentDigest": []string{contentDigest}}
+func (c *Client) MatchContent(ctx context.Context, sum, sourceHint string) ([]ContentMatch, error) {
+	query := url.Values{"sum": []string{sum}}
 	if strings.TrimSpace(sourceHint) != "" {
 		query.Set("sourceHint", strings.TrimSpace(sourceHint))
 	}
@@ -345,7 +345,7 @@ func (c *Client) MatchContent(ctx context.Context, contentDigest, sourceHint str
 	if err := c.getJSON(ctx, c.baseURL+"/api/v1/matches?"+query.Encode(), &response); err != nil {
 		return nil, err
 	}
-	if response.SchemaVersion != 1 || response.ContentDigest != contentDigest || response.Matches == nil {
+	if response.SchemaVersion != 1 || response.Sum != sum || response.Matches == nil {
 		return nil, fmt.Errorf("Hub returned an invalid content-match response")
 	}
 	seen := map[string]bool{}
@@ -354,7 +354,7 @@ func (c *Client) MatchContent(ctx context.Context, contentDigest, sourceHint str
 		if source.ValidateSkillID(match.SkillID) != nil ||
 			source.ValidateVersion(match.ImmutableVersion) != nil ||
 			match.Name == "" || match.Source == "" || match.CommitSHA == "" || match.TreeSHA == "" ||
-			match.ContentDigest != contentDigest || seen[key] {
+			match.Sum != sum || seen[key] {
 			return nil, fmt.Errorf("Hub returned an invalid content match")
 		}
 		seen[key] = true
@@ -400,7 +400,7 @@ func (c *Client) CatalogUpdates(ctx context.Context, skillIDs []string) ([]Catal
 }
 
 func validateAssessedInfo(skillID, requestedVersion string, info Info) error {
-	if info.Version == "" || !info.Risk.Valid() || !strings.HasPrefix(info.ContentDigest, "sha256:") || info.ArchiveSize < 0 {
+	if info.Version == "" || !info.Risk.Valid() || !ValidSum(info.Sum) || info.ArchiveSize < 0 {
 		return fmt.Errorf("Hub returned incomplete assessed Info for %s", skillID)
 	}
 	if info.SchemaVersion != 1 {

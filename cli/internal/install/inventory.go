@@ -16,18 +16,18 @@ import (
 )
 
 type Installation struct {
-	Name          string           `json:"name"`
-	SkillID       string           `json:"skillId"`
-	DependencyID  string           `json:"-"`
-	SourceRef     string           `json:"-"`
-	Version       string           `json:"version"`
-	StoreRoot     string           `json:"storeRoot"`
-	Artifact      string           `json:"artifact"`
-	Target        Target           `json:"target"`
-	SHA256        string           `json:"-"`
-	ContentDigest string           `json:"-"`
-	TargetState   string           `json:"-"`
-	Provenance    store.Provenance `json:"-"`
+	Name         string           `json:"name"`
+	SkillID      string           `json:"skillId"`
+	DependencyID string           `json:"-"`
+	SourceRef    string           `json:"-"`
+	Version      string           `json:"version"`
+	StoreRoot    string           `json:"storeRoot"`
+	Artifact     string           `json:"artifact"`
+	Target       Target           `json:"target"`
+	SHA256       string           `json:"-"`
+	Sum          string           `json:"-"`
+	TargetState  string           `json:"-"`
+	Provenance   store.Provenance `json:"-"`
 }
 
 func RemoveDeclaredInstallations(selected, all []Installation) error {

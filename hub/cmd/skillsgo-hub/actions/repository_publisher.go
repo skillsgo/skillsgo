@@ -240,14 +240,14 @@ func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID,
 			return "", err
 		}
 		var info struct {
-			Name          string    `json:"Name"`
-			Description   string    `json:"Description"`
-			Version       string    `json:"Version"`
-			Time          time.Time `json:"Time"`
-			ContentDigest string    `json:"ContentDigest"`
-			ArchiveSize   int64     `json:"ArchiveSize"`
-			CommitSHA     string    `json:"CommitSHA"`
-			TreeSHA       string    `json:"TreeSHA"`
+			Name        string    `json:"Name"`
+			Description string    `json:"Description"`
+			Version     string    `json:"Version"`
+			Time        time.Time `json:"Time"`
+			Sum         string    `json:"Sum"`
+			ArchiveSize int64     `json:"ArchiveSize"`
+			CommitSHA   string    `json:"CommitSHA"`
+			TreeSHA     string    `json:"TreeSHA"`
 		}
 		if err := json.Unmarshal(assessed, &info); err != nil {
 			return "", fmt.Errorf("decode assessed Repository member: %w", err)
@@ -255,7 +255,7 @@ func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID,
 		published = append(published, catalog.PublishedSkill{
 			Skill: catalog.Skill{SkillID: memberID, Name: info.Name, Description: info.Description, LatestVersion: info.Version},
 			Version: catalog.SkillVersion{Version: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA,
-				ContentDigest: info.ContentDigest, CommitTime: info.Time, ArchiveSize: info.ArchiveSize},
+				Sum: info.Sum, CommitTime: info.Time, ArchiveSize: info.ArchiveSize},
 		})
 	}
 	if err := p.metadata.PublishRepositoryVersionWithVisibility(ctx, repositoryID, published, visibility); err != nil {

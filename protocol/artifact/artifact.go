@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable SkillsGo ZIP bytes, extracted regular-file directories, and canonical artifact identity.
- * [OUTPUT]: Provides shared artifact limits, safe relative-path validation, one-pass normalized ZIP traversal, Content Digest calculation, and declared-digest verification.
+ * [OUTPUT]: Provides shared artifact limits, safe relative-path validation, one-pass normalized ZIP traversal, Sum calculation, and declared-digest verification.
  * [POS]: Serves as the executable artifact-format contract shared by Hub producers and CLI consumers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,8 +10,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/sha256"
-	"encoding/binary"
-	"encoding/hex"
+	"encoding/base64"
 	"fmt"
 	"io"
 	"os"
@@ -35,7 +34,7 @@ type Entry struct {
 	Size     int64
 }
 
-// VisitFunc observes each validated artifact file while its Content Digest is
+// VisitFunc observes each validated artifact file while its Sum is
 // calculated. Contents are owned by the call and must not be retained.
 type VisitFunc func(Entry) error
 
@@ -45,20 +44,20 @@ func ValidRelativePath(value string) bool {
 		value != ".." && !strings.HasPrefix(value, "../")
 }
 
-func ValidContentDigest(value string) bool {
-	if len(value) != len("sha256:")+sha256.Size*2 || !strings.HasPrefix(value, "sha256:") {
+func ValidSum(value string) bool {
+	if !strings.HasPrefix(value, "h1:") {
 		return false
 	}
-	_, err := hex.DecodeString(strings.TrimPrefix(value, "sha256:"))
-	return err == nil
+	decoded, err := base64.StdEncoding.DecodeString(strings.TrimPrefix(value, "h1:"))
+	return err == nil && len(decoded) == sha256.Size
 }
 
-func ContentDigest(data []byte, skillID, version string) (string, error) {
+func Sum(data []byte, skillID, version string) (string, error) {
 	return WalkContent(data, skillID, version, nil)
 }
 
 // WalkContent validates and reads an artifact exactly once, visits files in
-// normalized path order, and returns the Content Digest over the same entries.
+// normalized path order, and returns the Sum over the same entries.
 func WalkContent(data []byte, skillID, version string, visit VisitFunc) (string, error) {
 	if len(data) == 0 || len(data) > MaxArchiveBytes {
 		return "", fmt.Errorf("artifact archive size must be between 1 and %d bytes", MaxArchiveBytes)
@@ -94,7 +93,7 @@ func WalkContent(data []byte, skillID, version string, visit VisitFunc) (string,
 		if err != nil {
 			return "", fmt.Errorf("read artifact file %q: %w", relative, err)
 		}
-		if err := WriteDigestEntry(hash, relative, contents); err != nil {
+		if err := writeHash1Content(hash, relative, contents); err != nil {
 			return "", err
 		}
 		if visit != nil {
@@ -106,10 +105,10 @@ func WalkContent(data []byte, skillID, version string, visit VisitFunc) (string,
 	if !seen["SKILL.md"] {
 		return "", fmt.Errorf("artifact does not contain SKILL.md")
 	}
-	return fmt.Sprintf("sha256:%x", hash.Sum(nil)), nil
+	return "h1:" + base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
 }
 
-func DirectoryContentDigest(root string) (string, error) {
+func DirectorySum(root string) (string, error) {
 	root, err := filepath.Abs(root)
 	if err != nil {
 		return "", err
@@ -162,14 +161,14 @@ func DirectoryContentDigest(root string) (string, error) {
 		if len(contents) > MaxUncompressedBytes {
 			return "", fmt.Errorf("file exceeds %d bytes", MaxUncompressedBytes)
 		}
-		if err := WriteDigestEntry(hash, relative, contents); err != nil {
+		if err := writeHash1Content(hash, relative, contents); err != nil {
 			return "", err
 		}
 	}
 	if info, err := os.Stat(filepath.Join(root, "SKILL.md")); err != nil || !info.Mode().IsRegular() {
 		return "", fmt.Errorf("artifact does not contain a regular SKILL.md")
 	}
-	return fmt.Sprintf("sha256:%x", hash.Sum(nil)), nil
+	return "h1:" + base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
 }
 
 func ReadEntry(entry *zip.File) ([]byte, error) {
@@ -190,18 +189,4 @@ func readBounded(reader io.Reader, declaredSize uint64) ([]byte, error) {
 		return nil, fmt.Errorf("uncompressed size does not match archive metadata")
 	}
 	return contents, nil
-}
-
-func WriteDigestEntry(destination io.Writer, relative string, contents []byte) error {
-	if err := binary.Write(destination, binary.BigEndian, uint64(len(relative))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(destination, relative); err != nil {
-		return err
-	}
-	if err := binary.Write(destination, binary.BigEndian, uint64(len(contents))); err != nil {
-		return err
-	}
-	_, err := destination.Write(contents)
-	return err
 }

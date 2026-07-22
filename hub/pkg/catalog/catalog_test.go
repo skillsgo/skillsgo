@@ -11,7 +11,6 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -99,13 +98,13 @@ func TestSQLiteCatalogMatchesExactContentAndRanksSourceHints(t *testing.T) {
 	})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
-	digest := "sha256:" + strings.Repeat("a", 64)
+	digest := "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 	for _, skillID := range []string{"github.com/alpha/skills/-/demo", "github.com/acme/skills/-/demo"} {
 		require.NoError(t, c.UpsertSkill(ctx, &Skill{
 			SkillID: skillID, Name: "demo", Description: "Demo", LatestVersion: "v1",
 		}))
 		_, err := c.RecordSkillVersion(ctx, skillID, SkillVersion{
-			Version: "v1", CommitSHA: skillID + "-commit", TreeSHA: skillID + "-tree", ContentDigest: digest,
+			Version: "v1", CommitSHA: skillID + "-commit", TreeSHA: skillID + "-tree", Sum: digest,
 		})
 		require.NoError(t, err)
 	}
@@ -113,8 +112,8 @@ func TestSQLiteCatalogMatchesExactContentAndRanksSourceHints(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, matches, 2)
 	require.Equal(t, "github.com/acme/skills/-/demo", matches[0].SkillID)
-	require.Equal(t, digest, matches[0].ContentDigest)
-	missing, err := c.MatchContent(ctx, "sha256:"+strings.Repeat("b", 64), "", 20)
+	require.Equal(t, digest, matches[0].Sum)
+	missing, err := c.MatchContent(ctx, "h1:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=", "", 20)
 	require.NoError(t, err)
 	require.Empty(t, missing)
 }
@@ -258,7 +257,7 @@ func TestArtifactVersionsAreImmutableAndRiskAssessmentsAreAppendOnly(t *testing.
 	require.NoError(t, c.UpsertSkill(ctx, skill))
 
 	version, err := c.RecordSkillVersion(ctx, skill.SkillID, SkillVersion{
-		Version: "v1.0.0", CommitSHA: "commit-a", TreeSHA: "tree-a", ContentDigest: "sha256:artifact-a",
+		Version: "v1.0.0", CommitSHA: "commit-a", TreeSHA: "tree-a", Sum: "sha256:artifact-a",
 		CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), ArchiveSize: 4096,
 	})
 	require.NoError(t, err)
@@ -270,7 +269,7 @@ func TestArtifactVersionsAreImmutableAndRiskAssessmentsAreAppendOnly(t *testing.
 	require.Equal(t, version.RowID, same.RowID)
 
 	_, err = c.RecordSkillVersion(ctx, skill.SkillID, SkillVersion{
-		Version: "v1.0.0", CommitSHA: "commit-b", TreeSHA: "tree-a", ContentDigest: "sha256:artifact-a",
+		Version: "v1.0.0", CommitSHA: "commit-b", TreeSHA: "tree-a", Sum: "sha256:artifact-a",
 	})
 	require.ErrorContains(t, err, "immutable Skill version conflict")
 
@@ -311,7 +310,7 @@ func TestRepositoryPublicationKeepsIndependentSkillLatestHistory(t *testing.T) {
 			candidates = append(candidates, PublishedSkill{
 				Skill: Skill{SkillID: skillID, Name: fmt.Sprintf("member-%d", index), Description: "History fixture"},
 				Version: SkillVersion{Version: version, CommitSHA: commit, TreeSHA: fmt.Sprintf("tree-%s-%d", version, index),
-					ContentDigest: fmt.Sprintf("sha256:%064d", index+1), CommitTime: time.Now().UTC(), ArchiveSize: 10},
+					Sum: fmt.Sprintf("sha256:%064d", index+1), CommitTime: time.Now().UTC(), ArchiveSize: 10},
 			})
 		}
 		require.NoError(t, c.PublishRepositoryVersion(ctx, repository, candidates))
@@ -341,7 +340,7 @@ func TestRepositoryPublicationMarkerExcludesStandaloneSkillIndexing(t *testing.T
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	repository, version := "github.com/acme/marker", "v1.0.0"
 	require.NoError(t, c.UpsertSkill(ctx, &Skill{SkillID: repository, Name: "marker", Description: "Standalone", LatestVersion: version}))
-	_, err = c.RecordSkillVersion(ctx, repository, SkillVersion{Version: version, CommitSHA: "commit", TreeSHA: "tree", ContentDigest: "sha256:standalone"})
+	_, err = c.RecordSkillVersion(ctx, repository, SkillVersion{Version: version, CommitSHA: "commit", TreeSHA: "tree", Sum: "sha256:standalone"})
 	require.NoError(t, err)
 	exists, err := c.RepositoryPublicationExists(ctx, repository, version)
 	require.NoError(t, err)
@@ -349,7 +348,7 @@ func TestRepositoryPublicationMarkerExcludesStandaloneSkillIndexing(t *testing.T
 
 	require.NoError(t, c.PublishRepositoryVersionWithVisibility(ctx, repository, []PublishedSkill{{
 		Skill:   Skill{SkillID: repository, Name: "marker", Description: "Standalone"},
-		Version: SkillVersion{Version: version, CommitSHA: "commit", TreeSHA: "tree", ContentDigest: "sha256:standalone"},
+		Version: SkillVersion{Version: version, CommitSHA: "commit", TreeSHA: "tree", Sum: "sha256:standalone"},
 	}}, HistoricalPublication))
 	exists, err = c.RepositoryPublicationExists(ctx, repository, version)
 	require.NoError(t, err)
@@ -408,11 +407,11 @@ func TestSQLiteMigrationsAreVersionedAndIdempotent(t *testing.T) {
 	c := open()
 	var versions []string
 	require.NoError(t, c.db.SelectContext(ctx, &versions, "SELECT version FROM atlas_schema_revisions ORDER BY version"))
-	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001", "202607210001", "202607210002", "202607220001", "202607220002", "202607220003"}, versions)
+	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001", "202607210001", "202607210002", "202607220001", "202607220002", "202607220003", "202607220004"}, versions)
 	require.NoError(t, c.Close())
 
 	c = open()
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	require.NoError(t, c.db.SelectContext(ctx, &versions, "SELECT version FROM atlas_schema_revisions ORDER BY version"))
-	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001", "202607210001", "202607210002", "202607220001", "202607220002", "202607220003"}, versions)
+	require.Equal(t, []string{"202607180001", "202607180002", "202607180003", "202607180004", "202607190001", "202607210001", "202607210002", "202607220001", "202607220002", "202607220003", "202607220004"}, versions)
 }

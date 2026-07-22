@@ -197,7 +197,7 @@ var (
 		{Name: "version", Type: field.TypeString},
 		{Name: "commit_sha", Type: field.TypeString},
 		{Name: "tree_sha", Type: field.TypeString},
-		{Name: "content_digest", Type: field.TypeString},
+		{Name: "sum", Type: field.TypeString},
 		{Name: "commit_time", Type: field.TypeTime},
 		{Name: "archive_size", Type: field.TypeInt64, Default: 0},
 		{Name: "created_at", Type: field.TypeTime},

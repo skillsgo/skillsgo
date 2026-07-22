@@ -47,7 +47,7 @@ func TestPutExtractsArtifactAndIsIdempotent(t *testing.T) {
 	}
 }
 
-func TestCaptureExistingUsesFullSourceAndCompleteContentDigests(t *testing.T) {
+func TestCaptureExistingUsesFullSourceAndCompleteSums(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "references"), 0o700); err != nil {
 		t.Fatal(err)
@@ -75,7 +75,7 @@ func TestCaptureExistingUsesFullSourceAndCompleteContentDigests(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first.Receipt.SkillID == second.Receipt.SkillID || first.Receipt.ContentDigest == second.Receipt.ContentDigest {
+	if first.Receipt.SkillID == second.Receipt.SkillID || first.Receipt.Sum == second.Receipt.Sum {
 		t.Fatal("changing a nested Skill file must produce a different captured baseline")
 	}
 }
@@ -102,8 +102,8 @@ func TestCaptureExistingDistinguishesModesAndEmptyDirectories(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if first.Receipt.ContentDigest != second.Receipt.ContentDigest {
-		t.Fatal("Hub content digest should normalize modes and empty directories")
+	if first.Receipt.Sum != second.Receipt.Sum {
+		t.Fatal("Hub sum should normalize modes and empty directories")
 	}
 	if first.Receipt.SkillID == second.Receipt.SkillID {
 		t.Fatal("captured identity must preserve modes and empty directories")
@@ -155,11 +155,11 @@ func TestPutPersistsInfoNameIndependentFromSkillIDPath(t *testing.T) {
 	artifact.ZIP = testArchive(t, artifact.SkillID, artifact.Info.Version, map[string]string{
 		"SKILL.md": "---\nname: vercel-react-best-practices\ndescription: React guidance.\n---\n# Instructions\n",
 	})
-	digest, err := hub.ContentDigest(artifact.ZIP, artifact.SkillID, artifact.Info.Version)
+	digest, err := hub.Sum(artifact.ZIP, artifact.SkillID, artifact.Info.Version)
 	if err != nil {
 		t.Fatal(err)
 	}
-	artifact.Info.ContentDigest = digest
+	artifact.Info.Sum = digest
 
 	entry, err := (Store{Root: t.TempDir()}).Put(artifact)
 	if err != nil {
@@ -182,7 +182,7 @@ func TestImportAndExportLocalSkillPreservesPrivateContent(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(sourceRoot, "references", "notes.md"), []byte("secret"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	before, err := hub.ContentDirectoryDigest(sourceRoot)
+	before, err := hub.DirectorySum(sourceRoot)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -203,7 +203,7 @@ func TestImportAndExportLocalSkillPreservesPrivateContent(t *testing.T) {
 	if _, err := storage.ImportLocal(sourceRoot, "private-demo"); err != nil {
 		t.Fatalf("content-identical Local import must be idempotent across file timestamps: %v", err)
 	}
-	after, err := hub.ContentDirectoryDigest(sourceRoot)
+	after, err := hub.DirectorySum(sourceRoot)
 	if err != nil || after != before {
 		t.Fatalf("source content changed during import: %s != %s (%v)", after, before, err)
 	}
@@ -272,9 +272,9 @@ func TestPutRefreshesRiskButRejectsChangedContentIdentity(t *testing.T) {
 		t.Fatalf("refreshed assessment was not persisted: %s", loaded.Receipt.Risk)
 	}
 
-	artifact.Info.ContentDigest = "sha256:different-content"
+	artifact.Info.Sum = "sha256:different-content"
 	if _, err := storage.Put(artifact); err == nil {
-		t.Fatal("expected immutable Content Digest mismatch rejection")
+		t.Fatal("expected immutable Sum mismatch rejection")
 	}
 }
 
@@ -374,7 +374,7 @@ func testArtifact(t *testing.T, files map[string]string) *hub.Artifact {
 	t.Helper()
 	skillID, version := "github.com/example/repo/-/skills/demo", "v0.0.0-test"
 	archive := testArchive(t, skillID, version, files)
-	contentDigest, err := hub.ContentDigest(archive, skillID, version)
+	sum, err := hub.Sum(archive, skillID, version)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -382,7 +382,7 @@ func testArtifact(t *testing.T, files map[string]string) *hub.Artifact {
 		SkillID: skillID,
 		Info: hub.Info{
 			SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: "demo", Description: "test",
-			Version: version, Risk: hub.RiskLow, ContentDigest: contentDigest, ArchiveSize: int64(len(archive)),
+			Version: version, Risk: hub.RiskLow, Sum: sum, ArchiveSize: int64(len(archive)),
 		},
 		ZIP: archive,
 	}

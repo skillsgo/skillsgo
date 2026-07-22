@@ -366,7 +366,7 @@ func managedInstallation(storage store.Store, entry inventory.Entry, target inve
 	}
 	if stored, getErr := storage.Get(dependencyID, target.Version); getErr == nil {
 		installation.StoreRoot, installation.Artifact = stored.Root, stored.Artifact
-		installation.ContentDigest = stored.Receipt.ContentDigest
+		installation.Sum = stored.Receipt.Sum
 		installation.Provenance = stored.Receipt.EffectiveProvenance()
 	}
 	return installation, nil

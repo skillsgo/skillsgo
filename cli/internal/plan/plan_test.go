@@ -737,13 +737,13 @@ func testEntryVersion(t *testing.T, root, skillID, version, content string) *sto
 	artifact := filepath.Join(entryRoot, "artifact")
 	require.NoError(t, os.MkdirAll(artifact, 0o700))
 	require.NoError(t, os.WriteFile(filepath.Join(artifact, "SKILL.md"), []byte("# "+content+"\n"), 0o600))
-	contentDigest, err := hub.ContentDirectoryDigest(artifact)
+	sum, err := hub.DirectorySum(artifact)
 	require.NoError(t, err)
 	entry := &store.Entry{
 		Root: entryRoot, Artifact: artifact,
 		Receipt: store.Receipt{
 			SkillID: skillID, Name: "demo", Version: version, SHA256: "sha256-" + version,
-			ContentDigest: contentDigest, Risk: hub.RiskLow,
+			Sum: sum, Risk: hub.RiskLow,
 		},
 	}
 	receipt, err := yaml.Marshal(entry.Receipt)

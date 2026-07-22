@@ -175,7 +175,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, int64(12800), detailBody.Stars)
 	require.Equal(t, time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), detailBody.SourceUpdatedAt)
 	require.Positive(t, detailBody.ArchiveSize)
-	require.Contains(t, detailBody.ContentDigest, "sha256:")
+	require.Contains(t, detailBody.Sum, "h1:")
 	require.Contains(t, detailBody.Instructions, "# Ask Matt")
 	require.Equal(t, "unverified", detailBody.TrustLevel)
 	require.Equal(t, "medium", detailBody.RiskAssessment.Level)
@@ -183,13 +183,13 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Len(t, detailBody.Files, 2)
 
 	matchRecorder := httptest.NewRecorder()
-	matchURL := "/api/v1/matches?contentDigest=" + url.QueryEscape(detailBody.ContentDigest) + "&sourceHint=" + url.QueryEscape("mattpocock/skills")
+	matchURL := "/api/v1/matches?sum=" + url.QueryEscape(detailBody.Sum) + "&sourceHint=" + url.QueryEscape("mattpocock/skills")
 	serveFiber(t, r, matchRecorder, httptest.NewRequest(http.MethodGet, matchURL, nil))
 	require.Equal(t, http.StatusOK, matchRecorder.Code)
 	var matchBody contentMatchesResponse
 	require.NoError(t, json.NewDecoder(matchRecorder.Body).Decode(&matchBody))
 	require.Equal(t, 1, matchBody.SchemaVersion)
-	require.Equal(t, detailBody.ContentDigest, matchBody.ContentDigest)
+	require.Equal(t, detailBody.Sum, matchBody.Sum)
 	require.Len(t, matchBody.Matches, 1)
 	require.Equal(t, skill.SkillID, matchBody.Matches[0].SkillID)
 	require.Equal(t, detailBody.ImmutableVersion, matchBody.Matches[0].ImmutableVersion)
@@ -215,11 +215,11 @@ func TestHistoricalPublicationMatchesContentWithoutEnteringDiscovery(t *testing.
 	router, metadata := testCatalogAPI(t)
 	repositoryID := "github.com/example/history"
 	skillID := repositoryID + "/-/skills/retired"
-	digest := "sha256:" + strings.Repeat("a", 64)
+	digest := "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 	require.NoError(t, metadata.PublishRepositoryVersionWithVisibility(t.Context(), repositoryID, []catalog.PublishedSkill{{
 		Skill: catalog.Skill{SkillID: skillID, Name: "retired", Description: "Historical only capability"},
 		Version: catalog.SkillVersion{Version: "v1.0.0", CommitSHA: "commit-v1", TreeSHA: "tree-v1",
-			ContentDigest: digest, CommitTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), ArchiveSize: 10},
+			Sum: digest, CommitTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), ArchiveSize: 10},
 	}}, catalog.HistoricalPublication))
 
 	search := httptest.NewRecorder()
@@ -230,7 +230,7 @@ func TestHistoricalPublicationMatchesContentWithoutEnteringDiscovery(t *testing.
 	require.Empty(t, searchBody.Skills)
 
 	matches := httptest.NewRecorder()
-	serveFiber(t, router, matches, httptest.NewRequest(http.MethodGet, "/api/v1/matches?contentDigest="+url.QueryEscape(digest), nil))
+	serveFiber(t, router, matches, httptest.NewRequest(http.MethodGet, "/api/v1/matches?sum="+url.QueryEscape(digest), nil))
 	require.Equal(t, http.StatusOK, matches.Code)
 	var matchBody contentMatchesResponse
 	require.NoError(t, json.NewDecoder(matches.Body).Decode(&matchBody))
@@ -339,13 +339,13 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 func TestCatalogAPIValidationAndNotFound(t *testing.T) {
 	r, _ := testCatalogAPI(t)
 	for path, status := range map[string]int{
-		"/api/v1/search":                            http.StatusBadRequest,
-		"/api/v1/search?limit=101":                  http.StatusBadRequest,
-		"/api/v1/search?q=valid&offset=invalid":     http.StatusBadRequest,
-		"/api/v1/skills?offset=-1":                  http.StatusBadRequest,
-		"/api/v1/skills?sort=popular":               http.StatusBadRequest,
-		"/api/v1/matches?contentDigest=sha256:nope": http.StatusBadRequest,
-		"/api/v1/skills/github.com/unknown/repo":    http.StatusNotFound,
+		"/api/v1/search":                         http.StatusBadRequest,
+		"/api/v1/search?limit=101":               http.StatusBadRequest,
+		"/api/v1/search?q=valid&offset=invalid":  http.StatusBadRequest,
+		"/api/v1/skills?offset=-1":               http.StatusBadRequest,
+		"/api/v1/skills?sort=popular":            http.StatusBadRequest,
+		"/api/v1/matches?sum=sha256:nope":        http.StatusBadRequest,
+		"/api/v1/skills/github.com/unknown/repo": http.StatusNotFound,
 	} {
 		recorder := httptest.NewRecorder()
 		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, path, nil))

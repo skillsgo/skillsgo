@@ -24,7 +24,7 @@ func (SkillVersion) Fields() []ent.Field {
 		field.String("version").NotEmpty(),
 		field.String("commit_sha").NotEmpty(),
 		field.String("tree_sha").NotEmpty(),
-		field.String("content_digest").NotEmpty(),
+		field.String("sum").NotEmpty(),
 		field.Time("commit_time"),
 		field.Int64("archive_size").Default(0),
 		field.Time("created_at").Default(time.Now),

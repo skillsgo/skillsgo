@@ -37,18 +37,18 @@ func TestExplicitInstallationExecutesAndSkipsExactTargets(t *testing.T) {
 	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{
 		"SKILL.md": "---\nname: demo\ndescription: exact targets\n---\n",
 	})
-	contentDigest, err := hub.ContentDigest(zipData, skillID, version)
+	sum, err := hub.Sum(zipData, skillID, version)
 	require.NoError(t, err)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
 		case request.URL.Path == "/mod/"+repositoryID+"/@v/"+version+".info":
 			_, _ = writer.Write(commandTestRepositoryInfo(t, repositoryID, version, "abc", hub.Info{
 				SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: "demo", Description: "exact targets",
-				Version: version, Risk: hub.RiskHigh, ContentDigest: contentDigest, ArchiveSize: int64(len(zipData)),
+				Version: version, Risk: hub.RiskHigh, Sum: sum, ArchiveSize: int64(len(zipData)),
 				Ref: "main", CommitSHA: "abc", TreeSHA: "def",
 			}))
 		case strings.HasSuffix(request.URL.Path, ".info"):
-			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"exact targets","Version":%q,"Risk":"high","ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/example/skills","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}`, skillID, version, contentDigest, len(zipData))
+			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"exact targets","Version":%q,"Risk":"high","Sum":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/example/skills","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}`, skillID, version, sum, len(zipData))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 			_, _ = writer.Write(zipData)
 		default:
@@ -113,7 +113,7 @@ func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
 	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{
 		"SKILL.md": "---\nname: demo\ndescription: assessment refresh\n---\n",
 	})
-	contentDigest, err := hub.ContentDigest(zipData, skillID, version)
+	sum, err := hub.Sum(zipData, skillID, version)
 	require.NoError(t, err)
 	risk := "low"
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
@@ -121,11 +121,11 @@ func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
 		case request.URL.Path == "/mod/"+repositoryID+"/@v/"+version+".info":
 			_, _ = writer.Write(commandTestRepositoryInfo(t, repositoryID, version, "abc", hub.Info{
 				SchemaVersion: 1, Kind: "Skill", ID: skillID, Name: "demo", Description: "assessment refresh",
-				Version: version, Risk: hub.Risk(risk), ContentDigest: contentDigest, ArchiveSize: int64(len(zipData)),
+				Version: version, Risk: hub.Risk(risk), Sum: sum, ArchiveSize: int64(len(zipData)),
 				Ref: "main", CommitSHA: "abc", TreeSHA: "def",
 			}))
 		case strings.HasSuffix(request.URL.Path, ".info"):
-			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"assessment refresh","Version":%q,"Risk":%q,"ContentDigest":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/example/skills","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}`, skillID, version, risk, contentDigest, len(zipData))
+			fmt.Fprintf(writer, `{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"assessment refresh","Version":%q,"Risk":%q,"Sum":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/example/skills","Ref":"main","CommitSHA":"abc","TreeSHA":"def"}`, skillID, version, risk, sum, len(zipData))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 			_, _ = writer.Write(zipData)
 		default:
