@@ -37,6 +37,7 @@ type Options struct {
 	Members            []string
 	Projections        []Projection
 	RemovedProjections []Projection
+	RemoveVendor       bool
 }
 
 type preparedPath struct {
@@ -67,7 +68,7 @@ func CoordinatePath(root, repositoryID, version string) string {
 }
 
 func Prepare(options Options) (*Transaction, error) {
-	if options.VendorRoot == "" || len(options.Projections)+len(options.RemovedProjections) == 0 {
+	if options.VendorRoot == "" || (len(options.Projections)+len(options.RemovedProjections) == 0 && !options.RemoveVendor) {
 		return nil, fmt.Errorf("Vendor root and at least one desired or removed Repository Projection are required")
 	}
 	parsed, err := protocolskillid.Parse(options.RepositoryID)
@@ -95,7 +96,12 @@ func Prepare(options Options) (*Transaction, error) {
 	if err != nil {
 		return fail(err)
 	}
-	vendorPath, err := reconcilePreparedPath(vendorTemporary, vendorTarget)
+	var vendorPath preparedPath
+	if options.RemoveVendor {
+		vendorPath, err = reconcileRemoval(vendorTemporary, vendorTarget)
+	} else {
+		vendorPath, err = reconcilePreparedPath(vendorTemporary, vendorTarget)
+	}
 	if err != nil {
 		_ = os.RemoveAll(vendorTemporary)
 		return fail(fmt.Errorf("Scope Vendor Local Modification: %w", err))

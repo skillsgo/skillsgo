@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the released CLI, deterministic Hub fixtures, two independent explicit Installation Target Groups, and one blocked Agent home path.
- * [OUTPUT]: Verifies schema-3 mixed installation results, retention of one committed Project group, one failed User group, and non-zero process status.
+ * [INPUT]: Depends on two independently locked Repository dependencies, verified ordinary-file Vendors, missing projections, one locally modified Vendor, and offline `skillsgo install`.
+ * [OUTPUT]: Proves independent Repository installation groups retain a successful restoration beside one failed Local Modification group and return non-zero status with per-group results.
  * [POS]: Serves as the black-box partial-mutation contract for independent installation groups.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,9 +8,8 @@ package e2e_test
 
 import (
 	"context"
-	"encoding/json"
+	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -19,51 +18,33 @@ import (
 func TestJ39InstallationPartialFailure(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
-	skillID := "fixtures.test/group/subgroup/collection/-/skills/alpha"
-	projectTarget := `{"scope":"project","projectRoot":"/e2e/project","agent":"codex","mode":"copy"}`
-	userTarget := `{"scope":"user","agent":"codex","mode":"symlink"}`
-	require.Equal(t, 0, execInContainer(t, ctx, container, "touch", "/e2e/home/.agents").exitCode)
-
-	result := execInContainer(t, ctx, container,
-		"/usr/local/bin/skillsgo",
-		"add", skillID,
-		"--skill", "alpha",
-		"--target", projectTarget,
-		"--target", userTarget,
-		"--version", "v1.0.0",
-		"--yes",
-		"--output", "json",
-	)
-	require.NotEqual(t, 0, result.exitCode, result.output)
-	start := strings.Index(result.output, "{")
-	require.NotEqual(t, -1, start, result.output)
-	var execution struct {
-		SchemaVersion int    `json:"schemaVersion"`
-		Phase         string `json:"phase"`
-		Results       []struct {
-			Outcome string `json:"outcome"`
-			Error   *struct {
-				Code      string         `json:"code"`
-				Retryable bool           `json:"retryable"`
-				Details   map[string]any `json:"details"`
-			} `json:"error"`
-		} `json:"results"`
-		Summary struct {
-			Succeeded int `json:"succeeded"`
-			Failed    int `json:"failed"`
-		} `json:"summary"`
+	for _, dependency := range []struct{ repository, skill string }{
+		{"collection", "skills/alpha"},
+		{"mixed", "skills/alpha"},
+	} {
+		result := execCLI(t, ctx, container, "add", "https://fixtures.test/group/subgroup/"+dependency.repository+"@v1.0.0", "--skill", dependency.skill, "--agent", "codex", "--output", "json")
+		require.Equal(t, 0, result.exitCode, result.output)
 	}
-	require.NoError(t, json.NewDecoder(strings.NewReader(result.output[start:])).Decode(&execution))
-	require.Equal(t, 3, execution.SchemaVersion)
-	require.Equal(t, "execution", execution.Phase)
-	require.Len(t, execution.Results, 2)
-	require.Equal(t, "succeeded", execution.Results[0].Outcome)
-	require.Nil(t, execution.Results[0].Error)
-	require.Equal(t, "failed", execution.Results[1].Outcome)
-	require.Equal(t, "installation.target_failed", execution.Results[1].Error.Code)
-	require.True(t, execution.Results[1].Error.Retryable)
-	require.Equal(t, 1, execution.Summary.Succeeded)
-	require.Equal(t, 1, execution.Summary.Failed)
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "home", ".codex", "skills", "alpha", "SKILL.md"))
+	collectionCoordinate := filepath.Join("fixtures.test", "group", "subgroup", "collection@v1.0.0")
+	mixedCoordinate := filepath.Join("fixtures.test", "group", "subgroup", "mixed@v1.0.0")
+	collectionProjection := filepath.Join(sandboxRoot, "project", ".agents", "skills", collectionCoordinate)
+	mixedProjection := filepath.Join(sandboxRoot, "project", ".agents", "skills", mixedCoordinate)
+	require.NoError(t, os.RemoveAll(collectionProjection))
+	require.NoError(t, os.RemoveAll(mixedProjection))
+	mixedVendorSkill := filepath.Join(sandboxRoot, "project", ".skillsgo", "vendor", mixedCoordinate, "skills", "alpha", "SKILL.md")
+	const localChange = "locally modified Vendor bytes\n"
+	require.NoError(t, os.WriteFile(mixedVendorSkill, []byte(localChange), 0o644))
+
+	install := execCLI(t, ctx, container, "install", "--hub", "http://127.0.0.1:1", "--output", "json")
+	require.NotEqual(t, 0, install.exitCode, install.output)
+	require.Contains(t, install.output, `"repository": "fixtures.test/group/subgroup/collection"`)
+	require.Contains(t, install.output, `"status": "restored"`)
+	require.Contains(t, install.output, `"repository": "fixtures.test/group/subgroup/mixed"`)
+	require.Contains(t, install.output, `"status": "failed"`)
+	require.Contains(t, install.output, "Local Modification")
+	require.FileExists(t, filepath.Join(collectionProjection, "skills", "alpha", "SKILL.md"))
+	require.NoDirExists(t, mixedProjection)
+	unchanged, err := os.ReadFile(mixedVendorSkill)
+	require.NoError(t, err)
+	require.Equal(t, localChange, string(unchanged))
 }

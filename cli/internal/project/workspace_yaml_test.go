@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses strict YAML documents and temporary Workspace roots at the public Workspace persistence seam.
- * [OUTPUT]: Specifies canonical skillsgo.yaml/skillsgo.lock parsing, validation, deterministic writing, and atomic paired publication.
+ * [OUTPUT]: Specifies canonical skillsgo.yaml/skillsgo.lock parsing, validation, nearest YAML-root discovery, deterministic writing, and atomic paired publication.
  * [POS]: Serves as the executable contract for Repository dependency intent and integrity state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -73,4 +73,25 @@ func TestWriteWorkspaceStatePublishesCanonicalManifestAndLock(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, info.Mode().IsRegular())
 	}
+}
+
+func TestFindWorkspaceRootUsesSkillsgoYAML(t *testing.T) {
+	root := t.TempDir()
+	nested := filepath.Join(root, "nested", "deeper")
+	require.NoError(t, os.MkdirAll(nested, 0o755))
+	require.NoError(t, os.WriteFile(filepath.Join(root, WorkspaceManifestName), []byte("dependencies: {}\n"), 0o644))
+	found, err := FindWorkspaceRoot(nested)
+	require.NoError(t, err)
+	require.Equal(t, root, found)
+}
+
+func TestValidateWorkspaceStateRequiresExactRepositorySet(t *testing.T) {
+	manifest := WorkspaceManifest{Dependencies: map[string]RepositoryDependency{
+		"github.com/example/skills": {Version: "v1.2.3", Skills: []string{"."}, Agents: []string{"codex"}},
+	}}
+	lock := DependencyLock{Dependencies: map[string]LockedRepository{
+		"github.com/example/skills": {Version: "v1.2.3", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},
+		"github.com/example/extra":  {Version: "v1.0.0", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},
+	}}
+	require.ErrorContains(t, ValidateWorkspaceState(manifest, lock), "same Repositories")
 }
