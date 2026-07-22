@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on a configured Hub origin, canonical Skill IDs, Hub-owned selector resolution, exact content-match responses, and enriched immutable Info/ZIP protocol responses.
- * [OUTPUT]: Provides delegated selector resolution, strict product JSON reads, Catalog-only batch latest-version reads, validated content-identity matching, immutable artifact fetch with optional byte progress, normalized Skill metadata, Hub-bound Risk and Sum metadata, and typed HTTP or malformed-protocol failures.
+ * [INPUT]: Depends on a configured Hub origin, canonical Skill IDs, Hub-owned selector resolution, exact content-match responses, bounded immutable Info/ZIP protocol responses, and optional progress reporting.
+ * [OUTPUT]: Provides delegated selector resolution, bounded strict product JSON reads, update reads, validated content-identity matching, bounded retrying immutable GETs, normalized Skill metadata, and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,11 +14,13 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 	modmodule "golang.org/x/mod/module"
 	modsemver "golang.org/x/mod/semver"
@@ -127,28 +129,13 @@ func (c *Client) Fetch(ctx context.Context, skillID, requestedVersion string) (*
 
 func (c *Client) Repository(ctx context.Context, repositoryID, query string) (*RepositoryResource, error) {
 	if query == "" {
-		query = "latest"
+		query = "head"
 	}
-	if query == "latest" {
-		versions, err := c.Versions(ctx, repositoryID)
-		if err != nil {
-			return nil, err
-		}
-		if selected := latestVersion(versions); selected != "" {
-			query = selected
-		} else {
-			var latest struct {
-				Version string `json:"Version"`
-			}
-			if err := c.getJSON(ctx, c.latestEndpoint(repositoryID), &latest); err != nil {
-				return nil, err
-			}
-			if err := source.ValidateVersion(latest.Version); err != nil {
-				return nil, fmt.Errorf("Hub returned invalid latest Repository version for %s: %w", repositoryID, err)
-			}
-			query = latest.Version
-		}
+	resolved, err := c.resolveSelector(ctx, repositoryID, query)
+	if err != nil {
+		return nil, err
 	}
+	query = resolved
 	infoBytes, err := c.get(ctx, c.endpoint(repositoryID, query+".info"))
 	if err != nil {
 		return nil, err
@@ -171,10 +158,6 @@ func (c *Client) Versions(ctx context.Context, resourceID string) ([]string, err
 		versions = append(versions, candidate)
 	}
 	return versions, nil
-}
-
-func latestVersion(versions []string) string {
-	return protocolversion.LatestPublished(versions)
 }
 
 func ParseRepositoryInfo(repositoryID string, infoBytes []byte) (*RepositoryResource, error) {
@@ -229,9 +212,13 @@ func (c *Client) FetchRepositoryMember(ctx context.Context, member RepositoryMem
 
 func (c *Client) FetchWithProgress(ctx context.Context, skillID, requestedVersion string, progress func(current, total int64)) (*Artifact, error) {
 	if requestedVersion == "" {
-		requestedVersion = "latest"
+		requestedVersion = "head"
 	}
-	infoBytes, err := c.get(ctx, c.endpoint(skillID, requestedVersion+".info"))
+	resolvedVersion, err := c.resolveSelector(ctx, skillID, requestedVersion)
+	if err != nil {
+		return nil, err
+	}
+	infoBytes, err := c.get(ctx, c.endpoint(skillID, resolvedVersion+".info"))
 	if err != nil {
 		return nil, err
 	}
@@ -239,7 +226,7 @@ func (c *Client) FetchWithProgress(ctx context.Context, skillID, requestedVersio
 	if err := json.Unmarshal(infoBytes, &info); err != nil {
 		return nil, fmt.Errorf("解析 Hub 响应: %w", err)
 	}
-	if err := validateAssessedInfo(skillID, requestedVersion, info); err != nil {
+	if err := validateAssessedInfo(skillID, resolvedVersion, info); err != nil {
 		return nil, err
 	}
 	zipBytes, err := c.getWithProgress(ctx, c.endpoint(skillID, info.Version+".zip"), progress)
@@ -257,13 +244,17 @@ func (c *Client) FetchWithProgress(ctx context.Context, skillID, requestedVersio
 
 func (c *Client) Resolve(ctx context.Context, skillID, requestedVersion string) (Info, error) {
 	if requestedVersion == "" {
-		requestedVersion = "latest"
+		requestedVersion = "head"
 	}
-	var info Info
-	if err := c.getJSON(ctx, c.endpoint(skillID, requestedVersion+".info"), &info); err != nil {
+	resolvedVersion, err := c.resolveSelector(ctx, skillID, requestedVersion)
+	if err != nil {
 		return Info{}, err
 	}
-	if err := validateAssessedInfo(skillID, requestedVersion, info); err != nil {
+	var info Info
+	if err := c.getJSON(ctx, c.endpoint(skillID, resolvedVersion+".info"), &info); err != nil {
+		return Info{}, err
+	}
+	if err := validateAssessedInfo(skillID, resolvedVersion, info); err != nil {
 		return Info{}, err
 	}
 	return info, nil
@@ -392,7 +383,10 @@ func (c *Client) CatalogUpdates(ctx context.Context, skillIDs []string) ([]Catal
 		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Catalog update response")}
 	}
 	for index, item := range decoded.Items {
-		if item.SkillID != skillIDs[index] || (item.Status != "available" && item.Status != "unsupported") || (item.Status == "available" && item.LatestVersion == "") {
+		if item.SkillID != skillIDs[index] || (item.Status != "available" && item.Status != "unsupported") ||
+			(item.Status == "available" && item.HeadVersion == "" && item.ReleaseVersion == "") ||
+			(item.HeadVersion != "" && !protocolversion.IsImmutable(item.HeadVersion)) ||
+			(item.ReleaseVersion != "" && !protocolversion.IsImmutable(item.ReleaseVersion)) {
 			return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Catalog update item")}
 		}
 	}
@@ -400,19 +394,19 @@ func (c *Client) CatalogUpdates(ctx context.Context, skillIDs []string) ([]Catal
 }
 
 func validateAssessedInfo(skillID, requestedVersion string, info Info) error {
-	if info.Version == "" || !info.Risk.Valid() || !ValidSum(info.Sum) || info.ArchiveSize < 0 {
-		return fmt.Errorf("Hub returned incomplete assessed Info for %s", skillID)
+	if info.Version == "" || (info.Risk != "" && !info.Risk.Valid()) || !ValidSum(info.Sum) || info.ArchiveSize < 0 {
+		return fmt.Errorf("Hub returned incomplete immutable Info for %s", skillID)
 	}
 	if info.SchemaVersion != 1 {
 		return &ProtocolError{Err: fmt.Errorf("Hub returned unsupported Info schema %d for %s", info.SchemaVersion, skillID), Incompatible: true}
 	}
 	if info.Kind != "Skill" || info.ID != skillID || info.Name == "" || info.Description == "" {
-		return fmt.Errorf("Hub returned incomplete assessed Info for %s", skillID)
+		return fmt.Errorf("Hub returned incomplete immutable Info for %s", skillID)
 	}
 	if err := source.ValidateVersion(info.Version); err != nil {
 		return fmt.Errorf("Hub returned an invalid immutable version for %s: %w", skillID, err)
 	}
-	if strings.HasPrefix(requestedVersion, "v") && info.Version != requestedVersion {
+	if protocolversion.IsImmutable(requestedVersion) && info.Version != requestedVersion {
 		return fmt.Errorf(
 			"Hub resolved %s@%s as unexpected immutable version %s",
 			skillID, requestedVersion, info.Version,
@@ -444,12 +438,29 @@ func (c *Client) endpoint(skillID, file string) string {
 	return c.baseURL + "/mod/" + escapedID + "/@v/" + file
 }
 
-func (c *Client) latestEndpoint(skillID string) string {
+func (c *Client) selectorEndpoint(skillID, selector string) string {
 	escapedID, err := modmodule.EscapePath(strings.Trim(skillID, "/"))
 	if err != nil {
 		escapedID = strings.Trim(skillID, "/")
 	}
-	return c.baseURL + "/mod/" + escapedID + "/@latest"
+	return c.baseURL + "/mod/" + escapedID + "/@" + selector
+}
+
+func (c *Client) resolveSelector(ctx context.Context, skillID, requested string) (string, error) {
+	if requested != "head" && requested != "release" {
+		return requested, nil
+	}
+	var resolved struct {
+		Version string    `json:"Version"`
+		Time    time.Time `json:"Time"`
+	}
+	if err := c.getJSON(ctx, c.selectorEndpoint(skillID, requested), &resolved); err != nil {
+		return "", err
+	}
+	if !protocolversion.IsImmutable(resolved.Version) || resolved.Time.IsZero() {
+		return "", &ProtocolError{Err: fmt.Errorf("Hub returned invalid %s Selector result for %s", requested, skillID)}
+	}
+	return resolved.Version, nil
 }
 
 func (c *Client) getJSON(ctx context.Context, endpoint string, target any) error {
@@ -468,13 +479,9 @@ func (c *Client) get(ctx context.Context, endpoint string) ([]byte, error) {
 }
 
 func (c *Client) getWithProgress(ctx context.Context, endpoint string, progress func(current, total int64)) ([]byte, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	resp, err := c.retryingGet(ctx, endpoint)
 	if err != nil {
 		return nil, err
-	}
-	resp, err := c.http.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("请求 Hub: %w", err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
@@ -485,15 +492,76 @@ func (c *Client) getWithProgress(ctx context.Context, endpoint string, progress 
 			RequestID:  resp.Header.Get("Athens-Request-ID"),
 		}
 	}
+	if resp.ContentLength > protocolartifact.MaxArchiveBytes {
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub response exceeds %d bytes", protocolartifact.MaxArchiveBytes)}
+	}
 	reader := io.Reader(resp.Body)
 	if progress != nil {
 		reader = &progressReader{reader: resp.Body, total: resp.ContentLength, progress: progress}
 	}
-	body, err := io.ReadAll(reader)
+	body, err := io.ReadAll(io.LimitReader(reader, protocolartifact.MaxArchiveBytes+1))
 	if err != nil {
 		return nil, err
 	}
+	if len(body) > protocolartifact.MaxArchiveBytes {
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub response exceeds %d bytes", protocolartifact.MaxArchiveBytes)}
+	}
 	return body, nil
+}
+
+func (c *Client) retryingGet(ctx context.Context, endpoint string) (*http.Response, error) {
+	const attempts = 3
+	for attempt := 0; attempt < attempts; attempt++ {
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+		if err != nil {
+			return nil, err
+		}
+		resp, err := c.http.Do(req)
+		if err != nil {
+			return nil, fmt.Errorf("请求 Hub: %w", err)
+		}
+		if !retryableGETStatus(resp.StatusCode) || attempt == attempts-1 {
+			return resp, nil
+		}
+		delay := retryDelay(resp.Header.Get("Retry-After"), attempt)
+		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
+		_ = resp.Body.Close()
+		timer := time.NewTimer(delay)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, ctx.Err()
+		case <-timer.C:
+		}
+	}
+	panic("unreachable")
+}
+
+func retryableGETStatus(status int) bool {
+	return status == http.StatusTooManyRequests || status == http.StatusBadGateway ||
+		status == http.StatusServiceUnavailable || status == http.StatusGatewayTimeout
+}
+
+func retryDelay(header string, attempt int) time.Duration {
+	const maximum = 5 * time.Second
+	if seconds, err := strconv.Atoi(strings.TrimSpace(header)); err == nil && seconds >= 0 {
+		delay := time.Duration(seconds) * time.Second
+		if delay > maximum {
+			return maximum
+		}
+		return delay
+	}
+	if when, err := http.ParseTime(header); err == nil {
+		delay := time.Until(when)
+		if delay < 0 {
+			return 0
+		}
+		if delay > maximum {
+			return maximum
+		}
+		return delay
+	}
+	return time.Duration(attempt+1) * 100 * time.Millisecond
 }
 
 type progressReader struct {

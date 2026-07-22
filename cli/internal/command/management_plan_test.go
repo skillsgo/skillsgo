@@ -28,7 +28,7 @@ func TestTopLevelRemoveUsesFlatExactTargetAndRetainsStore(t *testing.T) {
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
 	skillID := "github.com/example/skills/-/demo"
 	storage := store.Store{Root: store.DefaultRoot(home)}
-	entry := updatePlanTestStoreEntry(t, storage, skillID, "v1", "main", "old")
+	entry := updatePlanTestStoreEntry(t, storage, skillID, "v1.0.0", "main", "old")
 	target := install.Target{Agent: "test-agent", Scope: install.ScopeUser, Mode: install.ModeSymlink, Path: filepath.Join(agentHome, "skills", "demo"), CanonicalPath: filepath.Join(home, ".agents", "skills", "demo")}
 	related := install.Target{Agent: "codex", Scope: install.ScopeUser, Mode: install.ModeSymlink, Path: filepath.Join(home, ".codex", "skills", "demo"), CanonicalPath: target.CanonicalPath}
 	require.NoError(t, install.Install(entry, []install.Target{target, related}))
@@ -51,7 +51,7 @@ func TestTopLevelRepairRestoresLocalModification(t *testing.T) {
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
 	skillID := "github.com/example/skills/-/demo"
 	storage := store.Store{Root: store.DefaultRoot(home)}
-	entry := updatePlanTestStoreEntry(t, storage, skillID, "v1", "main", "old")
+	entry := updatePlanTestStoreEntry(t, storage, skillID, "v1.0.0", "main", "old")
 	target := install.Target{Agent: "test-agent", Scope: install.ScopeUser, Mode: install.ModeCopy, Path: filepath.Join(agentHome, "skills", "demo")}
 	require.NoError(t, install.Install(entry, []install.Target{target}))
 	require.NoError(t, project.Upsert(project.UserRoot(home), "demo", project.SkillRequirement{Source: skillID, Ref: "main", Agents: []string{"test-agent"}}, entry.Receipt))
@@ -63,7 +63,7 @@ func TestTopLevelRepairRestoresLocalModification(t *testing.T) {
 	require.Contains(t, output, `"outcome":"succeeded"`)
 	contents, err := os.ReadFile(filepath.Join(target.Path, "SKILL.md"))
 	require.NoError(t, err)
-	require.Equal(t, "v1", string(contents))
+	require.Equal(t, "v1.0.0", string(contents))
 }
 
 func TestManageCommandIsRemoved(t *testing.T) {

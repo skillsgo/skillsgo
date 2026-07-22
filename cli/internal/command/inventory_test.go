@@ -32,14 +32,14 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	storage := store.Store{Root: store.DefaultRoot(home)}
 	skillID := "github.com/example/skills/-/demo"
 
-	userEntry := commandTestStoreEntry(t, storage, skillID, "v1")
+	userEntry := commandTestStoreEntry(t, storage, skillID, "v1.0.0")
 	require.NoError(t, install.Install(userEntry, []install.Target{{
 		Agent: "test-agent", Scope: install.ScopeUser, Mode: install.ModeSymlink,
 		Path: filepath.Join(userAgentHome, "skills", "demo"), CanonicalPath: filepath.Join(home, ".agents", "skills", "demo"),
 	}}))
 	require.NoError(t, project.Upsert(project.UserRoot(home), "demo", project.SkillRequirement{Source: skillID, Ref: "main", Agents: []string{"test-agent"}}, userEntry.Receipt))
 
-	projectEntry := commandTestStoreEntry(t, storage, skillID, "v2")
+	projectEntry := commandTestStoreEntry(t, storage, skillID, "v2.0.0")
 	selectedTarget := install.Target{
 		Agent: "test-agent", Scope: install.ScopeProject, Mode: install.ModeCopy,
 		Path: filepath.Join(selectedProject, ".test-agent", "skills", "demo"),
@@ -52,7 +52,7 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 		projectEntry.Receipt,
 	))
 
-	hiddenEntry := commandTestStoreEntry(t, storage, "github.com/private/hidden/-/secret", "v1")
+	hiddenEntry := commandTestStoreEntry(t, storage, "github.com/private/hidden/-/secret", "v1.0.0")
 	require.NoError(t, install.Install(hiddenEntry, []install.Target{{
 		Agent: "test-agent", Scope: install.ScopeProject, Mode: install.ModeSymlink,
 		Path: filepath.Join(unselectedProject, ".test-agent", "skills", "secret"), CanonicalPath: filepath.Join(unselectedProject, ".agents", "skills", "secret"),
@@ -79,7 +79,7 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	require.Equal(t, "unknown", string(entry.Risk))
 	require.Equal(t, []string{"test-agent"}, entry.Agents)
 	require.Equal(t, []string{selectedProject}, entry.Projects)
-	require.Equal(t, []string{"v1", "v2"}, entry.Versions)
+	require.Equal(t, []string{"v1.0.0", "v2.0.0"}, entry.Versions)
 	require.True(t, entry.VersionDivergence)
 	require.Equal(t, "healthy", string(entry.Health))
 	require.Len(t, entry.Targets, 2)
@@ -94,7 +94,7 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	require.Empty(t, entry.Targets[0].ProjectRoot)
 	require.Equal(t, selectedProject, entry.Targets[1].ProjectRoot)
 	require.Equal(t, string(install.ModeCopy), string(entry.Targets[1].Mode))
-	require.Equal(t, "v2", entry.Targets[1].Version)
+	require.Equal(t, "v2.0.0", entry.Targets[1].Version)
 	require.NotContains(t, stdout.String(), unselectedProject)
 	require.NotContains(t, stdout.String(), "secret")
 
@@ -123,7 +123,7 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(
 		manifestPath,
-		bytes.ReplaceAll(manifestBytes, []byte("v2"), []byte("v999")),
+		bytes.ReplaceAll(manifestBytes, []byte("v2.0.0"), []byte("v999.0.0")),
 		0o600,
 	))
 	stdout.Reset()
@@ -174,7 +174,7 @@ func TestInventoryJSONReportsDeclaredTargetWithoutReceipt(t *testing.T) {
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", filepath.Join(root, "agent-home"))
 	storage := store.Store{Root: store.DefaultRoot(home)}
 	skillID := "github.com/example/skills/-/declared"
-	entry := commandTestStoreEntry(t, storage, skillID, "v3")
+	entry := commandTestStoreEntry(t, storage, skillID, "v3.0.0")
 	require.NoError(t, os.MkdirAll(projectRoot, 0o755))
 
 	require.NoError(t, project.Upsert(
@@ -197,13 +197,13 @@ func TestInventoryJSONReportsDeclaredTargetWithoutReceipt(t *testing.T) {
 	require.Len(t, report.Entries, 1)
 	require.Equal(t, "hub:"+skillID, report.Entries[0].InventoryKey)
 	require.Equal(t, "missing", string(report.Entries[0].Health))
-	require.Equal(t, []string{"v3"}, report.Entries[0].Versions)
+	require.Equal(t, []string{"v3.0.0"}, report.Entries[0].Versions)
 	require.Len(t, report.Entries[0].Targets, 1)
 	target := report.Entries[0].Targets[0]
 	require.Equal(t, projectRoot, target.ProjectRoot)
 	require.Equal(t, "test-agent", target.Agent)
 	require.Equal(t, filepath.Join(projectRoot, ".test-agent", "skills", "demo"), target.Path)
-	require.Equal(t, string(install.ModeSymlink), string(target.Mode))
+	require.Equal(t, string(install.ModeCopy), string(target.Mode))
 	require.Equal(t, "missing", string(target.Health))
 }
 
@@ -217,7 +217,7 @@ func TestInventoryJSONReportsExternalInstallationsWithoutClaimingOrChangingThem(
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
 	storage := store.Store{Root: store.DefaultRoot(home)}
 
-	managedEntry := commandTestStoreEntry(t, storage, "github.com/example/skills/-/demo", "v4")
+	managedEntry := commandTestStoreEntry(t, storage, "github.com/example/skills/-/demo", "v4.0.0")
 	managedTarget := install.Target{
 		Agent: "test-agent", Scope: install.ScopeProject, Mode: install.ModeCopy,
 		Path: filepath.Join(selectedProject, ".test-agent", "skills", "demo"),

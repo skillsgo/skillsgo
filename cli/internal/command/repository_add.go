@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Repository input, self-contained Repository Info, verified per-Skill ZIPs, Workspace integrity persistence, Store materialization, and Agent target resolution.
- * [OUTPUT]: Provides atomic-preflight whole-Repository add with one direct Manifest requirement, Go-shaped checksums, and automatic Agent projections.
+ * [OUTPUT]: Provides transactionally materialized whole-Repository and selected-member add with exact direct Manifest requirements, Go-shaped checksums, receipts, and automatic Agent projections.
  * [POS]: Serves as the Repository installation orchestration slice behind the public `skillsgo add` command.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -24,8 +24,10 @@ import (
 
 type preparedRepositoryMember struct {
 	artifact *hub.Artifact
+	entry    *store.Entry
 	targets  []install.Target
 	previous []install.Installation
+	replace  bool
 }
 
 type repositorySelection struct {
@@ -90,7 +92,7 @@ func addWholeRepository(
 			return err
 		}
 		matching := filterInstallations(existing, nil, map[string]bool{nameKey: true})
-		if !options.replace && !options.yes {
+		if !options.replace {
 			for _, installation := range matching {
 				if installation.SkillID != member.Info.ID {
 					return fmt.Errorf("Skill 名称冲突：%q 已来自 %s，不能用 %s 静默覆盖", name, installation.SkillID, member.Info.ID)
@@ -106,16 +108,21 @@ func addWholeRepository(
 			return err
 		}
 		sums = append(sums, project.SumEntry{Path: member.Info.ID, Version: member.Info.Version, Checksum: checksum})
-		prepared = append(prepared, preparedRepositoryMember{artifact: artifact, targets: targets, previous: matching})
+		prepared = append(prepared, preparedRepositoryMember{
+			artifact: artifact, targets: targets, previous: matching,
+			replace: options.replace || len(matching) > 0,
+		})
 	}
-	// Extra Workspace Sum entries are intentionally allowed. Persisting newly
-	// verified hashes before target mutation makes retries safe and fail-closed.
-	if err := (verifiedWorkspaceResources{
+	resources := verifiedWorkspaceResources{
 		sums: sums,
 		infos: []verifiedInfoResource{{
 			resource: reference.SkillID, version: repository.Info.Version, kind: "repository.info", bytes: repository.InfoBytes,
 		}},
-	}).persist(home, []string{declarationRoot}); err != nil {
+	}
+	if err := resources.validate(declarationRoot); err != nil {
+		return err
+	}
+	if err := resources.cacheInfos(home); err != nil {
 		return err
 	}
 	storage := store.Store{Root: store.DefaultRoot(home)}
@@ -126,24 +133,26 @@ func addWholeRepository(
 		Targets int    `json:"targets"`
 	}
 	results := make([]result, 0, len(prepared))
-	for _, member := range prepared {
+	commits := make([]project.InstallationCommit, 0, len(prepared))
+	for index := range prepared {
+		member := &prepared[index]
 		entry, err := storage.Put(member.artifact)
 		if err != nil {
 			return err
 		}
-		if options.replace || options.yes {
-			err = install.ReplaceExplicit(entry, member.previous, member.targets)
-		} else {
-			err = install.Install(entry, member.targets)
-		}
-		if err != nil {
-			return err
-		}
+		member.entry = entry
+		commits = append(commits, project.InstallationCommit{
+			DependencyID: reference.SkillID, Name: entry.Receipt.Name, SourceRef: reference.Version,
+			Requirement: project.SkillRequirement{Source: reference.SkillID, Ref: repository.Info.Version, Agents: agentIDs, Mode: mode},
+			Artifact:    entry.Receipt, Targets: member.targets, Previous: member.previous,
+			Replace: member.replace,
+		})
 		results = append(results, result{ID: entry.Receipt.SkillID, Name: entry.Receipt.Name, Version: entry.Receipt.Version, Targets: len(member.targets)})
 	}
-	if err := project.UpsertManifestRequirement(declarationRoot, reference.SkillID, project.SkillRequirement{
-		Source: reference.SkillID, Ref: repository.Info.Version, Agents: agentIDs, Mode: mode,
-	}, true); err != nil {
+	if err := installPreparedRepositoryMembers(prepared, func() error {
+		_, commitErr := project.CommitInstallationBatch(declarationRoot, commits, sums...)
+		return commitErr
+	}); err != nil {
 		return err
 	}
 	if options.output == "json" {
@@ -191,6 +200,7 @@ func addSelectedRepositorySkills(
 	selections := make([]repositorySelection, 0, len(options.skills))
 	sums := make([]project.SumEntry, 0, len(options.skills)*2)
 	seenDependencies := map[string]bool{}
+	seenNames := map[string]string{}
 	for _, rawSelector := range options.skills {
 		selector, query, err := parseRepositorySelector(rawSelector, reference.Version)
 		if err != nil {
@@ -224,6 +234,11 @@ func addSelectedRepositorySkills(
 		if err := install.ValidateSkillName(member.Info.Name); err != nil {
 			return fmt.Errorf("Repository member %s has an invalid installation name: %w", member.Info.ID, err)
 		}
+		nameKey := strings.ToLower(member.Info.Name)
+		if previousID, duplicate := seenNames[nameKey]; duplicate {
+			return fmt.Errorf("Repository selections %s and %s use duplicate installation name %q", previousID, member.Info.ID, member.Info.Name)
+		}
+		seenNames[nameKey] = member.Info.ID
 		if err := plan.AuthorizeRisk(plan.Risk(member.Info.Risk), options.riskConfirmed, options.allowCritical); err != nil {
 			return err
 		}
@@ -232,7 +247,7 @@ func addSelectedRepositorySkills(
 			return err
 		}
 		matching := filterInstallations(existing, nil, map[string]bool{strings.ToLower(member.Info.Name): true})
-		if !options.replace && !options.yes {
+		if !options.replace {
 			for _, installation := range matching {
 				if installation.SkillID != member.Info.ID {
 					return fmt.Errorf("Skill 名称冲突：%q 已来自 %s，不能用 %s 静默覆盖", member.Info.Name, installation.SkillID, member.Info.ID)
@@ -250,7 +265,10 @@ func addSelectedRepositorySkills(
 		sums = append(sums, project.SumEntry{Path: member.Info.ID, Version: member.Info.Version, Checksum: checksum})
 		selections = append(selections, repositorySelection{
 			selector: selector, query: query, member: member, resource: resource,
-			prepared: preparedRepositoryMember{artifact: artifact, targets: targets, previous: matching},
+			prepared: preparedRepositoryMember{
+				artifact: artifact, targets: targets, previous: matching,
+				replace: options.replace || len(matching) > 0,
+			},
 		})
 	}
 	if len(selections) == 0 {
@@ -262,7 +280,11 @@ func addSelectedRepositorySkills(
 			resource: reference.SkillID, version: resource.Info.Version, kind: "repository.info", bytes: resource.InfoBytes,
 		})
 	}
-	if err := (verifiedWorkspaceResources{sums: sums, infos: infos}).persist(home, []string{declarationRoot}); err != nil {
+	integrity := verifiedWorkspaceResources{sums: sums, infos: infos}
+	if err := integrity.validate(declarationRoot); err != nil {
+		return err
+	}
+	if err := integrity.cacheInfos(home); err != nil {
 		return err
 	}
 	storage := store.Store{Root: store.DefaultRoot(home)}
@@ -274,34 +296,34 @@ func addSelectedRepositorySkills(
 		Targets []install.Target `json:"targets"`
 	}
 	installed := make([]installedResult, 0, len(selections))
-	for _, selection := range selections {
+	commits := make([]project.InstallationCommit, 0, len(selections))
+	preparedMembers := make([]preparedRepositoryMember, 0, len(selections))
+	for index := range selections {
+		selection := &selections[index]
 		entry, err := storage.Put(selection.prepared.artifact)
 		if err != nil {
 			return err
 		}
-		if options.replace || options.yes {
-			err = install.ReplaceExplicit(entry, selection.prepared.previous, selection.prepared.targets)
-		} else {
-			err = install.Install(entry, selection.prepared.targets)
-		}
-		if err != nil {
-			return err
-		}
-		obsolete := make([]install.Installation, 0, len(selection.prepared.previous))
-		for _, previous := range selection.prepared.previous {
-			if previous.SkillID != selection.member.Info.ID {
-				obsolete = append(obsolete, previous)
-			}
-		}
-		if err := project.ReplaceManifestBindings(declarationRoot, selection.member.Info.ID, project.SkillRequirement{
-			Source: selection.member.Info.ID, Ref: selection.member.Info.Version, Agents: agentIDs, Mode: mode,
-		}, true, obsolete); err != nil {
-			return err
-		}
+		selection.prepared.entry = entry
+		preparedMembers = append(preparedMembers, selection.prepared)
+		commits = append(commits, project.InstallationCommit{
+			DependencyID: selection.member.Info.ID, Name: entry.Receipt.Name, SourceRef: selection.query,
+			Requirement: project.SkillRequirement{Source: selection.member.Info.ID, Ref: selection.member.Info.Version, Agents: agentIDs, Mode: mode},
+			Artifact:    entry.Receipt, Targets: selection.prepared.targets, Previous: selection.prepared.previous,
+			Replace: selection.prepared.replace,
+		})
 		installed = append(installed, installedResult{SkillID: entry.Receipt.SkillID, Name: entry.Receipt.Name,
 			Version: entry.Receipt.Version, Store: entry.Root, Targets: selection.prepared.targets})
-		if options.output != "json" {
-			fmt.Fprintf(cmd.OutOrStdout(), "✓ %s %s (%d targets)\n", entry.Receipt.Name, entry.Receipt.Version, len(selection.prepared.targets))
+	}
+	if err := installPreparedRepositoryMembers(preparedMembers, func() error {
+		_, commitErr := project.CommitInstallationBatch(declarationRoot, commits, sums...)
+		return commitErr
+	}); err != nil {
+		return err
+	}
+	if options.output != "json" {
+		for _, item := range installed {
+			fmt.Fprintf(cmd.OutOrStdout(), "✓ %s %s (%d targets)\n", item.Name, item.Version, len(item.Targets))
 		}
 	}
 	if options.output == "json" {
@@ -325,11 +347,30 @@ func addSelectedRepositorySkills(
 	return nil
 }
 
+func installPreparedRepositoryMembers(members []preparedRepositoryMember, after func() error) error {
+	var materialize func(int) error
+	materialize = func(index int) error {
+		if index == len(members) {
+			return after()
+		}
+		member := members[index]
+		if member.entry == nil {
+			return fmt.Errorf("Repository member Store entry was not prepared")
+		}
+		next := func() error { return materialize(index + 1) }
+		if member.replace {
+			return install.ReplaceExplicitThen(member.entry, member.previous, member.targets, next)
+		}
+		return install.InstallThen(member.entry, member.targets, next)
+	}
+	return materialize(0)
+}
+
 func parseRepositorySelector(raw, inheritedQuery string) (string, string, error) {
 	raw = strings.TrimSpace(raw)
 	query := inheritedQuery
 	if query == "" {
-		query = "latest"
+		query = "head"
 	}
 	if separator := strings.LastIndex(raw, "@"); separator > strings.LastIndex(raw, "/") {
 		query = strings.TrimSpace(raw[separator+1:])
@@ -347,6 +388,9 @@ func parseRepositorySelector(raw, inheritedQuery string) (string, string, error)
 		}
 	}
 	if err := source.ValidateVersion(query); err != nil {
+		return "", "", err
+	}
+	if err := source.ValidatePublicVersion(query); err != nil {
 		return "", "", err
 	}
 	return strings.Trim(raw, "/"), query, nil

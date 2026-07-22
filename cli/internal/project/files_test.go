@@ -26,18 +26,38 @@ func TestSkillsGoModParsesGoRequireFormsAndAgentExtension(t *testing.T) {
 require github.com/example/root v1.2.3 [codex]
 
 require (
-	github.com/example/repo/-/skills/design v2.0.0 [zed, claude-code, codex]
+	github.com/example/repo/-/skills/design v2.0.0 [zed, claude-code, codex] copy // portable copy
 )
 `))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := manifest.Skills["github.com/example/root"]; got.Ref != "v1.2.3" || strings.Join(got.Agents, ",") != "codex" {
+	if got := manifest.Skills["github.com/example/root"]; got.Ref != "v1.2.3" || strings.Join(got.Agents, ",") != "codex" || got.Mode != install.ModeSymlink {
 		t.Fatalf("root requirement = %#v", got)
 	}
-	if got := manifest.Skills["github.com/example/repo/-/skills/design"]; got.Ref != "v2.0.0" || strings.Join(got.Agents, ",") != "zed,claude-code,codex" {
+	if got := manifest.Skills["github.com/example/repo/-/skills/design"]; got.Ref != "v2.0.0" || strings.Join(got.Agents, ",") != "zed,claude-code,codex" || got.Mode != install.ModeCopy || got.Comment != "portable copy" {
 		t.Fatalf("nested requirement = %#v", got)
 	}
+}
+
+func TestSkillsGoModRejectsMutableAndNonCanonicalVersions(t *testing.T) {
+	for _, version := range []string{"head", "release", "latest", "main", "v1", "v1.2", "^1.0.0"} {
+		t.Run(version, func(t *testing.T) {
+			_, err := parseManifest("skillsgo.mod", []byte("require github.com/example/repo "+version+" [codex]\n"))
+			require.Error(t, err)
+			require.Contains(t, err.Error(), "canonical immutable version")
+		})
+	}
+}
+
+func TestSkillsGoModPreservesCommentsAndCanonicalizesExplicitSymlink(t *testing.T) {
+	root := t.TempDir()
+	manifest := []byte("// team intent\nrequire github.com/example/repo v1.2.3 [codex] symlink // keep current\n")
+	require.NoError(t, os.WriteFile(filepath.Join(root, manifestName), manifest, 0o600))
+	require.NoError(t, UpsertManifestRequirement(root, "github.com/example/other", SkillRequirement{Ref: "v2.0.0", Agents: []string{"zed"}, Mode: install.ModeCopy}, false))
+	data, err := os.ReadFile(filepath.Join(root, manifestName))
+	require.NoError(t, err)
+	require.Equal(t, "// team intent\n\nrequire (\n\tgithub.com/example/other v2.0.0 [zed] copy\n\tgithub.com/example/repo v1.2.3 [codex] // keep current\n)\n", string(data))
 }
 
 func TestSkillsGoModWriterUsesCanonicalRequireBlock(t *testing.T) {
@@ -147,7 +167,7 @@ func TestRemoveBindingsKeepsAgentWhileAnotherExactReceiptRemains(t *testing.T) {
 	if err := UpsertManifestRequirement(root, skillID, SkillRequirement{Ref: "v1.0.0", Agents: []string{"cursor"}}, false); err != nil {
 		t.Fatal(err)
 	}
-	first := InstallationReceipt{SchemaVersion: 1, SourceSkillID: skillID, ArtifactSkillID: skillID, Version: "v1.0.0", Name: "demo", Provenance: store.ProvenanceHub, Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Agent: "cursor", Scope: install.ScopeUser, Mode: install.ModeSymlink, Path: filepath.Join(root, ".cursor", "skills", "demo"), TargetState: "first", InstalledAt: time.Now().UTC()}
+	first := InstallationReceipt{SchemaVersion: installationReceiptSchemaVersion, SourceSkillID: skillID, ArtifactSkillID: skillID, DependencyID: skillID, Version: "v1.0.0", Name: "demo", Provenance: store.ProvenanceHub, Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", Agent: "cursor", Scope: install.ScopeUser, Mode: install.ModeSymlink, Path: filepath.Join(root, ".cursor", "skills", "demo"), TargetState: "first", InstalledAt: time.Now().UTC()}
 	second := first
 	second.Path = filepath.Join(root, ".agents", "skills", "demo")
 	second.TargetState = "second"

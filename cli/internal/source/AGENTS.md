@@ -3,7 +3,7 @@
 
 ## Members
 
-- `source.go`: parses equivalent GitHub `owner/repo`, `github/owner/repo`, canonical host, and URL references plus private Local Skill IDs, preserves explicit selectors, defaults omitted repository versions to `latest`, delegates public Skill ID grammar to Protocol, and validates CLI-only Local IDs and selector segments.
+- `source.go`: parses equivalent GitHub `owner/repo`, `github/owner/repo`, canonical host, and URL references plus private Local Skill IDs, preserves explicit selectors, defaults omitted repository versions to `head`, delegates public Skill ID grammar to Protocol, and validates CLI-only Local IDs and selector segments.
 - `source_test.go`: specifies GitHub alias equivalence, Hub/local Skill ID normalization, and hostile Skill ID/version segment rejection through the public parser and validators.
 
 ## Architectural Boundary

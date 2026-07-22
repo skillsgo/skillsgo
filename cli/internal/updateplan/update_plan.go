@@ -401,7 +401,7 @@ func buildItem(
 	if err != nil {
 		return Item{}, err
 	}
-	reference, _, workspaceManifestFrom, err := sourceReference(request, installation, entry.Receipt)
+	reference, fixed, workspaceManifestFrom, err := sourceReference(request, installation, entry.Receipt)
 	if err != nil {
 		return Item{}, err
 	}
@@ -430,13 +430,22 @@ func buildItem(
 		item.Diagnostic = catalogErr.Error()
 		return item, nil
 	}
-	if catalogItem.Status != "available" || catalogItem.LatestVersion == "" {
+	if fixed && reference != "head" && reference != "release" {
+		item.Action = ActionPinned
+		item.ReasonCode = "immutable-version"
+		return item, nil
+	}
+	candidateVersion := catalogItem.HeadVersion
+	if reference == "release" {
+		candidateVersion = catalogItem.ReleaseVersion
+	}
+	if catalogItem.Status != "available" || candidateVersion == "" {
 		item.Action = ActionFailed
 		item.ReasonCode = "catalog-unsupported"
 		item.Diagnostic = "Skill is not available in the Hub Catalog"
 		return item, nil
 	}
-	item.ToVersion = catalogItem.LatestVersion
+	item.ToVersion = candidateVersion
 	if semver.IsValid(installation.Version) && semver.IsValid(item.ToVersion) && semver.Compare(item.ToVersion, installation.Version) < 0 {
 		item.ToVersion = installation.Version
 	}
@@ -480,7 +489,7 @@ func sourceReference(
 			return "", false, "", fmt.Errorf("skillsgo.mod does not declare Agent %q", request.Agent)
 		}
 		ref := requirement.Ref
-		if installation.Provenance == store.ProvenanceCaptured && installation.SourceRef != "" {
+		if installation.SourceRef != "" {
 			ref = installation.SourceRef
 		}
 		if ref == "" {
@@ -491,8 +500,11 @@ func sourceReference(
 		}
 		return ref, isFixedReference(ref, receipt), requirement.Ref, nil
 	}
-	if installation.Provenance == store.ProvenanceCaptured && installation.SourceRef != "" {
-		return normalizeCapturedReference(installation.SourceRef), capturedReferenceIsFixed(installation.SourceRef), "", nil
+	if installation.SourceRef != "" {
+		if installation.Provenance == store.ProvenanceCaptured {
+			return normalizeCapturedReference(installation.SourceRef), capturedReferenceIsFixed(installation.SourceRef), "", nil
+		}
+		return installation.SourceRef, installation.SourceRef != "head" && installation.SourceRef != "release", "", nil
 	}
 	ref := receipt.Ref
 	if strings.HasPrefix(ref, "refs/heads/") {
