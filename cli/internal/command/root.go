@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra and the Agent, Hub, Store, project, installation, Installation Plan, Update Plan, target-operation, source, i18n, and terminal UI modules.
- * [OUTPUT]: Provides command.Execute and the complete CLI graph, including recognized machine-mode failure documents, grouped Hub service reads, Skill reads, Catalog-only batch update checks, explicit-source Info, adaptive Human UI policy, unified managed/External listing, read-only verify/why inspection, lock-backed Batch Takeover, safe cache lifecycle, stable Agent/Library contracts, best-effort post-install Cloud reporting, top-level Remove/Repair flows with exact External removal, and Local export, for terminal and App callers.
+ * [OUTPUT]: Provides command.Execute and the complete CLI graph, including recognized machine-mode failure documents, grouped Hub service reads, Repository Vendor member/Agent removal routing, Skill reads, Catalog-only batch update checks, explicit-source Info, adaptive Human UI policy, unified managed/External listing, read-only verify/why inspection, lock-backed Batch Takeover, safe cache lifecycle, stable Agent/Library contracts, best-effort post-install Cloud reporting, legacy exact Remove/Repair flows, and Local export, for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -476,6 +476,9 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 			}
 			if len(args) == 0 && !all {
 				return fmt.Errorf("请指定要移除的 Skill，或使用 --all")
+			}
+			if handled, err := tryRemoveRepositoryMembers(cmd, catalog, args, options.agents, options.global, all); handled {
+				return err
 			}
 			names := map[string]bool{}
 			for _, name := range args {

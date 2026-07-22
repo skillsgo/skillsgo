@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute, an exact root Repository Proxy fixture, a complete Repository Artifact, and temporary Workspace/Agent roots.
- * [OUTPUT]: Specifies the public exact-version add journey and checksum-failure atomicity through skillsgo.yaml, skillsgo.lock, Workspace Vendor, and selected ordinary-file Agent Projections.
+ * [OUTPUT]: Specifies exact-version add, root/nested selection expansion, Cartesian multi-Agent projection, and checksum-failure atomicity through YAML/Lock, Scope Vendor, and ordinary-file Agent Projections.
  * [POS]: Serves as the CLI command-seam acceptance test for Repository Vendor installation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -28,6 +28,7 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	repositoryID, version := "github.com/example/skills", "v1.2.3"
 	archive, err := protocolartifact.BuildRepository(repositoryID, version, []protocolartifact.Entry{
 		{Path: "README.md", Contents: []byte("shared"), Mode: 0o644},
+		{Path: "SKILL.md", Contents: []byte("---\nname: root\ndescription: Root.\n---\n# Root\n"), Mode: 0o644},
 		{Path: "skills/design/SKILL.md", Contents: []byte("---\nname: design\ndescription: Design.\n---\n# Design\n"), Mode: 0o644},
 		{Path: "skills/review/SKILL.md", Contents: []byte("---\nname: review\ndescription: Review.\n---\n# Review\n"), Mode: 0o644},
 	})
@@ -39,6 +40,7 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 		SchemaVersion: 1, Kind: protocolapi.KindRepository, ID: repositoryID, Version: version,
 		Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "repository-tree", Sum: sum, ArchiveSize: int64(len(archive)),
 		Skills: []protocolapi.SkillInfo{
+			{SchemaVersion: 1, Kind: protocolapi.KindSkill, ID: repositoryID, RepositoryID: repositoryID, Path: ".", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "tree-root", Name: "root", Description: "Root."},
 			{SchemaVersion: 1, Kind: protocolapi.KindSkill, ID: repositoryID + "/-/skills/design", RepositoryID: repositoryID, Path: "skills/design", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "tree-design", Name: "design", Description: "Design."},
 			{SchemaVersion: 1, Kind: protocolapi.KindSkill, ID: repositoryID + "/-/skills/review", RepositoryID: repositoryID, Path: "skills/review", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "tree-review", Name: "review", Description: "Review."},
 		},
@@ -92,6 +94,47 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	responseInfo, err := os.Stat(response.Vendor)
 	require.NoError(t, err)
 	require.True(t, os.SameFile(expectedInfo, responseInfo))
+
+	output.Reset()
+	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--skill", ".", "--agent", "goose", "--hub", server.URL, "--output", "json"}, &output, &output))
+	manifest, err = project.LoadWorkspaceManifest(workspace)
+	require.NoError(t, err)
+	require.Equal(t, []string{".", "skills/design"}, manifest.Dependencies[repositoryID].Skills)
+	require.Equal(t, []string{"codex", "goose"}, manifest.Dependencies[repositoryID].Agents)
+	for _, agentID := range []string{"codex", "goose"} {
+		projectionRoot := scopevendor.CoordinatePath(filepath.Join(workspace, ".agents", "skills"), repositoryID, version)
+		if agentID == "goose" {
+			projectionRoot = scopevendor.CoordinatePath(filepath.Join(workspace, ".goose", "skills"), repositoryID, version)
+		}
+		require.FileExists(t, filepath.Join(projectionRoot, "SKILL.md"))
+		require.FileExists(t, filepath.Join(projectionRoot, "skills", "design", "SKILL.md"))
+		require.NoFileExists(t, filepath.Join(projectionRoot, "skills", "review", "SKILL.md"))
+		require.FileExists(t, filepath.Join(projectionRoot, "README.md"))
+	}
+
+	output.Reset()
+	require.NoError(t, Execute([]string{"remove", "skills/design"}, &output, &output))
+	manifest, err = project.LoadWorkspaceManifest(workspace)
+	require.NoError(t, err)
+	require.Equal(t, []string{"."}, manifest.Dependencies[repositoryID].Skills)
+	for _, projectionRoot := range []string{
+		scopevendor.CoordinatePath(filepath.Join(workspace, ".agents", "skills"), repositoryID, version),
+		scopevendor.CoordinatePath(filepath.Join(workspace, ".goose", "skills"), repositoryID, version),
+	} {
+		require.FileExists(t, filepath.Join(projectionRoot, "SKILL.md"))
+		require.NoFileExists(t, filepath.Join(projectionRoot, "skills", "design", "SKILL.md"))
+		require.FileExists(t, filepath.Join(projectionRoot, "README.md"))
+	}
+	require.FileExists(t, filepath.Join(vendor, "skills", "design", "SKILL.md"))
+
+	output.Reset()
+	require.NoError(t, Execute([]string{"remove", ".", "--agent", "goose"}, &output, &output))
+	manifest, err = project.LoadWorkspaceManifest(workspace)
+	require.NoError(t, err)
+	require.Equal(t, []string{"codex"}, manifest.Dependencies[repositoryID].Agents)
+	require.FileExists(t, filepath.Join(scopevendor.CoordinatePath(filepath.Join(workspace, ".agents", "skills"), repositoryID, version), "SKILL.md"))
+	require.NoDirExists(t, scopevendor.CoordinatePath(filepath.Join(workspace, ".goose", "skills"), repositoryID, version))
+	require.FileExists(t, filepath.Join(vendor, "SKILL.md"))
 }
 
 func TestAddRepositorySumMismatchLeavesNoWorkspaceState(t *testing.T) {
