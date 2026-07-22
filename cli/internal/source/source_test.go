@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Exercises public source parsing plus Skill ID/version-selector validation with equivalent GitHub aliases, private local, and hostile inputs.
- * [OUTPUT]: Specifies canonical equivalence for owner/repo, github/owner/repo, host, and URL inputs plus private Local Skill IDs and hostile-input rejection.
+ * [INPUT]: Exercises public source parsing plus exact/head/release selector validation with equivalent GitHub aliases, private local, and hostile inputs.
+ * [OUTPUT]: Specifies canonical equivalence for owner/repo, github/owner/repo, host, and URL inputs plus private Local Skill IDs and ambiguous or unsupported-query rejection.
  * [POS]: Serves as behavior coverage for the CLI Skill ID normalization boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,17 +16,17 @@ func TestParseSkillID(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reference.SkillID != "github.com/mattpocock/skills/-/skills/engineering/ask-matt" || reference.Version != "latest" {
+	if reference.SkillID != "github.com/mattpocock/skills/-/skills/engineering/ask-matt" || reference.Version != "head" {
 		t.Fatalf("unexpected reference: %#v", reference)
 	}
 }
 
 func TestParseCanonicalSkillWithVersionSelector(t *testing.T) {
-	reference, err := Parse("github.com/mattpocock/skills/-/handoff@^1.0.8")
+	reference, err := Parse("github.com/mattpocock/skills/-/handoff@v1.0.8")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reference.SkillID != "github.com/mattpocock/skills/-/handoff" || reference.Version != "^1.0.8" {
+	if reference.SkillID != "github.com/mattpocock/skills/-/handoff" || reference.Version != "v1.0.8" {
 		t.Fatalf("unexpected reference: %#v", reference)
 	}
 }
@@ -36,7 +36,7 @@ func TestParseLocalSkillIDWithoutRewritingItAsGitHub(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reference.SkillID != "local.skillsgo/0123456789abcdef/demo" || reference.Version != "latest" {
+	if reference.SkillID != "local.skillsgo/0123456789abcdef/demo" || reference.Version != "head" {
 		t.Fatalf("unexpected local reference: %#v", reference)
 	}
 	if !IsLocalSkillID(reference.SkillID) || IsLocalSkillID("github.com/example/repo") {
@@ -45,11 +45,11 @@ func TestParseLocalSkillIDWithoutRewritingItAsGitHub(t *testing.T) {
 }
 
 func TestParseGitHubTreeURL(t *testing.T) {
-	reference, err := Parse("https://github.com/mattpocock/skills/tree/main/skills/engineering/ask-matt")
+	reference, err := Parse("https://github.com/mattpocock/skills/tree/v1.0.0/skills/engineering/ask-matt")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reference.SkillID != "github.com/mattpocock/skills/-/skills/engineering/ask-matt" || reference.Version != "main" {
+	if reference.SkillID != "github.com/mattpocock/skills/-/skills/engineering/ask-matt" || reference.Version != "v1.0.0" {
 		t.Fatalf("unexpected reference: %#v", reference)
 	}
 }
@@ -57,16 +57,16 @@ func TestParseGitHubTreeURL(t *testing.T) {
 func TestParseRepositorySourceSupportsArbitraryGitHostsAndNamespaceDepth(t *testing.T) {
 	tests := map[string]Reference{
 		"https://gitlab.example.com/group/subgroup/repo": {
-			SkillID: "gitlab.example.com/group/subgroup/repo", Version: "latest",
+			SkillID: "gitlab.example.com/group/subgroup/repo", Version: "head",
 		},
 		"https://gitlab.example.com/group/subgroup/repo.git@v1.2.3": {
 			SkillID: "gitlab.example.com/group/subgroup/repo", Version: "v1.2.3",
 		},
-		"gitlab.example.com/group/subgroup/repo@main": {
-			SkillID: "gitlab.example.com/group/subgroup/repo", Version: "main",
+		"gitlab.example.com/group/subgroup/repo@release": {
+			SkillID: "gitlab.example.com/group/subgroup/repo", Version: "release",
 		},
-		"gitlab.example.com/group/subgroup/repo/-/skills/find-skills@abc123": {
-			SkillID: "gitlab.example.com/group/subgroup/repo/-/skills/find-skills", Version: "abc123",
+		"gitlab.example.com/group/subgroup/repo/-/skills/find-skills@v0.0.0-20260720120000-abcdef123456": {
+			SkillID: "gitlab.example.com/group/subgroup/repo/-/skills/find-skills", Version: "v0.0.0-20260720120000-abcdef123456",
 		},
 	}
 	for input, want := range tests {
@@ -79,6 +79,16 @@ func TestParseRepositorySourceSupportsArbitraryGitHostsAndNamespaceDepth(t *test
 				t.Fatalf("Parse(%q) = %#v, want %#v", input, got, want)
 			}
 		})
+	}
+}
+
+func TestParsePreservesCaseSensitiveRepositoryPathsOutsideGitHub(t *testing.T) {
+	reference, err := Parse("Git.Example.COM/Team/Platform/Repo/-/Skills/Demo@head")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if reference.SkillID != "git.example.com/Team/Platform/Repo/-/Skills/Demo" || reference.Version != "head" {
+		t.Fatalf("unexpected reference: %#v", reference)
 	}
 }
 
@@ -109,7 +119,7 @@ func TestSkillsSHCompatibilityGitHubDotGitURL(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if reference.SkillID != "github.com/owner/repo" || reference.Version != "latest" {
+	if reference.SkillID != "github.com/owner/repo" || reference.Version != "head" {
 		t.Fatalf("unexpected reference: %#v", reference)
 	}
 }
@@ -130,14 +140,14 @@ func TestGitHubInputNormalizationMatrix(t *testing.T) {
 		input string
 		want  Reference
 	}{
-		{name: "repository shorthand defaults latest", input: "owner/repo", want: Reference{SkillID: "github.com/owner/repo", Version: "latest"}},
-		{name: "provider repository defaults latest", input: "github/owner/repo", want: Reference{SkillID: "github.com/owner/repo", Version: "latest"}},
-		{name: "canonical repository defaults latest", input: "github.com/owner/repo", want: Reference{SkillID: "github.com/owner/repo", Version: "latest"}},
-		{name: "URL repository defaults latest", input: "https://github.com/owner/repo", want: Reference{SkillID: "github.com/owner/repo", Version: "latest"}},
-		{name: "repository shorthand preserves branch", input: "owner/repo@main", want: Reference{SkillID: "github.com/owner/repo", Version: "main"}},
-		{name: "provider repository preserves branch", input: "github/owner/repo@main", want: Reference{SkillID: "github.com/owner/repo", Version: "main"}},
-		{name: "canonical repository preserves branch", input: "github.com/owner/repo@main", want: Reference{SkillID: "github.com/owner/repo", Version: "main"}},
-		{name: "URL repository preserves branch", input: "https://github.com/owner/repo@main", want: Reference{SkillID: "github.com/owner/repo", Version: "main"}},
+		{name: "repository shorthand defaults head", input: "owner/repo", want: Reference{SkillID: "github.com/owner/repo", Version: "head"}},
+		{name: "provider repository defaults head", input: "github/owner/repo", want: Reference{SkillID: "github.com/owner/repo", Version: "head"}},
+		{name: "canonical repository defaults head", input: "github.com/owner/repo", want: Reference{SkillID: "github.com/owner/repo", Version: "head"}},
+		{name: "URL repository defaults head", input: "https://github.com/owner/repo", want: Reference{SkillID: "github.com/owner/repo", Version: "head"}},
+		{name: "repository shorthand preserves release", input: "owner/repo@release", want: Reference{SkillID: "github.com/owner/repo", Version: "release"}},
+		{name: "provider repository preserves release", input: "github/owner/repo@release", want: Reference{SkillID: "github.com/owner/repo", Version: "release"}},
+		{name: "canonical repository preserves release", input: "github.com/owner/repo@release", want: Reference{SkillID: "github.com/owner/repo", Version: "release"}},
+		{name: "URL repository preserves release", input: "https://github.com/owner/repo@release", want: Reference{SkillID: "github.com/owner/repo", Version: "release"}},
 		{name: "repository shorthand preserves tag", input: "owner/repo@v1.0.0", want: Reference{SkillID: "github.com/owner/repo", Version: "v1.0.0"}},
 		{name: "provider repository preserves tag", input: "github/owner/repo@v1.0.0", want: Reference{SkillID: "github.com/owner/repo", Version: "v1.0.0"}},
 		{name: "canonical repository preserves tag", input: "github.com/owner/repo@v1.0.0", want: Reference{SkillID: "github.com/owner/repo", Version: "v1.0.0"}},
@@ -146,10 +156,10 @@ func TestGitHubInputNormalizationMatrix(t *testing.T) {
 		{name: "provider repository preserves pseudo-version", input: "github/owner/repo@v0.0.0-20260720120000-abcdef123456", want: Reference{SkillID: "github.com/owner/repo", Version: "v0.0.0-20260720120000-abcdef123456"}},
 		{name: "canonical repository preserves pseudo-version", input: "github.com/owner/repo@v0.0.0-20260720120000-abcdef123456", want: Reference{SkillID: "github.com/owner/repo", Version: "v0.0.0-20260720120000-abcdef123456"}},
 		{name: "URL repository preserves pseudo-version", input: "https://github.com/owner/repo@v0.0.0-20260720120000-abcdef123456", want: Reference{SkillID: "github.com/owner/repo", Version: "v0.0.0-20260720120000-abcdef123456"}},
-		{name: "nested shorthand preserves branch", input: "owner/repo/skills/demo@main", want: Reference{SkillID: "github.com/owner/repo/-/skills/demo", Version: "main"}},
-		{name: "provider nested source preserves branch", input: "github/owner/repo/skills/demo@main", want: Reference{SkillID: "github.com/owner/repo/-/skills/demo", Version: "main"}},
-		{name: "canonical nested source preserves branch", input: "github.com/owner/repo/-/skills/demo@main", want: Reference{SkillID: "github.com/owner/repo/-/skills/demo", Version: "main"}},
-		{name: "tree URL preserves branch", input: "https://github.com/owner/repo/tree/main/skills/demo", want: Reference{SkillID: "github.com/owner/repo/-/skills/demo", Version: "main"}},
+		{name: "nested shorthand preserves head", input: "owner/repo/skills/demo@head", want: Reference{SkillID: "github.com/owner/repo/-/skills/demo", Version: "head"}},
+		{name: "provider nested source preserves head", input: "github/owner/repo/skills/demo@head", want: Reference{SkillID: "github.com/owner/repo/-/skills/demo", Version: "head"}},
+		{name: "canonical nested source preserves head", input: "github.com/owner/repo/-/skills/demo@head", want: Reference{SkillID: "github.com/owner/repo/-/skills/demo", Version: "head"}},
+		{name: "tree URL preserves exact tag", input: "https://github.com/owner/repo/tree/v1.0.0/skills/demo", want: Reference{SkillID: "github.com/owner/repo/-/skills/demo", Version: "v1.0.0"}},
 	}
 
 	if len(tests) != 20 {
@@ -165,6 +175,14 @@ func TestGitHubInputNormalizationMatrix(t *testing.T) {
 				t.Fatalf("Parse(%q) = %#v, want %#v", tc.input, got, tc.want)
 			}
 		})
+	}
+}
+
+func TestParseRejectsUnimplementedMovableQueries(t *testing.T) {
+	for _, input := range []string{"owner/repo@latest", "owner/repo@main", "owner/repo@abc123", "owner/repo@^1.0.0"} {
+		if _, err := Parse(input); err == nil {
+			t.Fatalf("expected unsupported query rejection for %q", input)
+		}
 	}
 }
 
@@ -202,7 +220,7 @@ func TestValidateSkillIDRejectsNonCanonicalSeparators(t *testing.T) {
 }
 
 func TestValidateVersionRejectsRequestAndPathSyntax(t *testing.T) {
-	for _, version := range []string{"", ".", "..", "../../escape", "v1?x", "v1#x", "v1%2fescape", "v1\nnext"} {
+	for _, version := range []string{"", ".", "..", "latest", "../../escape", "v1?x", "v1#x", "v1%2fescape", "v1\nnext"} {
 		if err := ValidateVersion(version); err == nil {
 			t.Fatalf("expected hostile immutable version %q to be rejected", version)
 		}

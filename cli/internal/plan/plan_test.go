@@ -65,7 +65,7 @@ func TestBuildAllowsSupportedAgentThatIsNotInstalled(t *testing.T) {
 	)
 	require.False(t, catalog.DetectInstalled("future-agent"))
 	request := Request{
-		Source: entry.Receipt.SkillID, RequestedRef: "v1", Name: entry.Receipt.Name,
+		Source: entry.Receipt.SkillID, RequestedRef: "v1.0.0", Name: entry.Receipt.Name,
 		Targets: []TargetRequest{{Scope: install.ScopeUser, Agent: "future-agent", Mode: install.ModeCopy}},
 	}
 	prepared, err := Build(catalog, entry, storeRoot, request)
@@ -125,7 +125,7 @@ func TestBuildAndExecuteExplicitTargetsThenSkipIdenticalTargets(t *testing.T) {
 	manifest, err := project.LoadManifest(projectRoot)
 	require.NoError(t, err)
 	require.Equal(t, []string{"test-agent"}, manifest.Skills[entry.Receipt.SkillID].Agents)
-	require.Equal(t, "v1", manifest.Skills[entry.Receipt.SkillID].Ref)
+	require.Equal(t, "v1.0.0", manifest.Skills[entry.Receipt.SkillID].Ref)
 
 	second, err := Build(catalog, entry, storeRoot, request)
 	require.NoError(t, err)
@@ -209,9 +209,9 @@ func TestCreateRollsBackTargetWhenWorkspacePersistenceFails(t *testing.T) {
 			ID: "test-agent", Display: "Test Agent", UserDir: agentHome, ProjectDir: ".agent/skills",
 		}),
 	)
-	entry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v1", "demo")
+	entry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v1.0.0", "demo")
 	request := Request{
-		Source: entry.Receipt.SkillID, RequestedRef: "v1", Name: "demo",
+		Source: entry.Receipt.SkillID, RequestedRef: "v1.0.0", Name: "demo",
 		Targets: []TargetRequest{{Scope: install.ScopeProject, ProjectRoot: projectRoot, Agent: "test-agent", Mode: install.ModeCopy}},
 	}
 	preflight, err := Build(catalog, entry, storeRoot, request)
@@ -241,8 +241,8 @@ func TestReplaceRestoresPreviousTargetWhenWorkspacePersistenceFails(t *testing.T
 			ID: "test-agent", Display: "Test Agent", UserDir: agentHome, ProjectDir: ".agent/skills",
 		}),
 	)
-	oldEntry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v1", "old")
-	newEntry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v2", "new")
+	oldEntry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v1.0.0", "old")
+	newEntry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v2.0.0", "new")
 	request := Request{
 		Source: oldEntry.Receipt.SkillID, RequestedRef: "main", Name: "demo",
 		Targets: []TargetRequest{{Scope: install.ScopeProject, ProjectRoot: projectRoot, Agent: "test-agent", Mode: install.ModeCopy}},
@@ -410,8 +410,8 @@ func TestVersionConflictRequiresExplicitReplacementBeforeAnyMutation(t *testing.
 			UserDir: filepath.Join(agentHome, "skills"), ProjectDir: ".agent/skills",
 		}),
 	)
-	oldEntry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v1", "old")
-	newEntry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v2", "new")
+	oldEntry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v1.0.0", "old")
+	newEntry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v2.0.0", "new")
 	request := Request{
 		Source: "github.com/example/skills/-/demo", RequestedRef: "main", Name: "demo",
 		Targets: []TargetRequest{{Scope: install.ScopeProject, ProjectRoot: projectRoot, Agent: "test-agent", Mode: install.ModeCopy}},
@@ -431,8 +431,8 @@ func TestVersionConflictRequiresExplicitReplacementBeforeAnyMutation(t *testing.
 	require.Equal(t, ActionConflict, conflicted.Targets[0].Action)
 	require.Equal(t, "version-conflict", conflicted.Targets[0].ReasonCode)
 	require.True(t, conflicted.Targets[0].WorkspaceManifestChange)
-	require.Equal(t, "v1", conflicted.WorkspaceManifestChanges[0].FromVersion)
-	require.Equal(t, "v2", conflicted.WorkspaceManifestChanges[0].ToVersion)
+	require.Equal(t, "v1.0.0", conflicted.WorkspaceManifestChanges[0].FromVersion)
+	require.Equal(t, "v2.0.0", conflicted.WorkspaceManifestChanges[0].ToVersion)
 	require.Equal(t, ActionCreate, conflicted.Targets[1].Action)
 	conflictExecution, err := Execute(newEntry, storeRoot, request, conflicted)
 	require.NoError(t, err)
@@ -465,8 +465,8 @@ func TestLocalModificationBlocksSilentReplacement(t *testing.T) {
 			UserDir: filepath.Join(agentHome, "skills"), ProjectDir: ".agent/skills",
 		}),
 	)
-	entry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v1", "original")
-	updatedEntry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v2", "updated")
+	entry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v1.0.0", "original")
+	updatedEntry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/demo", "v2.0.0", "updated")
 	request := Request{
 		Source: entry.Receipt.SkillID, RequestedRef: "main", Name: "demo",
 		Targets: []TargetRequest{{Scope: install.ScopeUser, Agent: "test-agent", Mode: install.ModeCopy}},
@@ -522,8 +522,8 @@ func TestDifferentIdentityNeverMergesWithoutExplicitReplacement(t *testing.T) {
 			UserDir: filepath.Join(agentHome, "skills"), ProjectDir: ".agent/skills",
 		}),
 	)
-	oldEntry := testEntryVersion(t, storeRoot, "github.com/old/skills/-/demo", "v1", "old identity")
-	newEntry := testEntryVersion(t, storeRoot, "github.com/new/skills/-/demo", "v1", "new identity")
+	oldEntry := testEntryVersion(t, storeRoot, "github.com/old/skills/-/demo", "v1.0.0", "old identity")
+	newEntry := testEntryVersion(t, storeRoot, "github.com/new/skills/-/demo", "v1.0.0", "new identity")
 	request := Request{
 		Source: oldEntry.Receipt.SkillID, RequestedRef: "main", Name: "demo",
 		Targets: []TargetRequest{{Scope: install.ScopeUser, Agent: "test-agent", Mode: install.ModeCopy}},
@@ -569,8 +569,8 @@ func TestAutoReplaceOverwritesSameNameSkillWithoutSeparateReview(t *testing.T) {
 			UserDir: filepath.Join(agentHome, "skills"), ProjectDir: ".agent/skills",
 		}),
 	)
-	oldEntry := testEntryVersion(t, storeRoot, "github.com/old/skills/-/demo", "v1", "old identity")
-	newEntry := testEntryVersion(t, storeRoot, "github.com/new/skills/-/demo", "v1", "new identity")
+	oldEntry := testEntryVersion(t, storeRoot, "github.com/old/skills/-/demo", "v1.0.0", "old identity")
+	newEntry := testEntryVersion(t, storeRoot, "github.com/new/skills/-/demo", "v1.0.0", "new identity")
 	request := Request{
 		Source: oldEntry.Receipt.SkillID, RequestedRef: "main", Name: "demo",
 		Targets: []TargetRequest{{Scope: install.ScopeUser, Agent: "test-agent", Mode: install.ModeCopy}},
@@ -614,8 +614,8 @@ func TestIdentityReplacementPreservesAllExplicitProjectAgents(t *testing.T) {
 			ID: "agent-b", Display: "Agent B", UserDir: agentBHome, ProjectDir: ".agents/skills",
 		}),
 	)
-	oldEntry := testEntryVersion(t, storeRoot, "github.com/old/skills/-/demo", "v1", "old identity")
-	newEntry := testEntryVersion(t, storeRoot, "github.com/new/skills/-/demo", "v1", "new identity")
+	oldEntry := testEntryVersion(t, storeRoot, "github.com/old/skills/-/demo", "v1.0.0", "old identity")
+	newEntry := testEntryVersion(t, storeRoot, "github.com/new/skills/-/demo", "v1.0.0", "new identity")
 	request := Request{
 		Source: oldEntry.Receipt.SkillID, RequestedRef: "main", Name: "demo",
 		Targets: []TargetRequest{
@@ -670,7 +670,7 @@ func TestRiskPolicyBlocksMutationUntilExplicitConfirmation(t *testing.T) {
 			UserDir: filepath.Join(agentHome, "skills"), ProjectDir: ".agent/skills",
 		}),
 	)
-	entry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/danger", "v1", "danger")
+	entry := testEntryVersion(t, storeRoot, "github.com/example/skills/-/danger", "v1.0.0", "danger")
 	entry.Receipt.Name = "danger"
 	entry.Receipt.Risk = hub.RiskHigh
 	request := Request{
@@ -728,7 +728,7 @@ func authorizeReplacement(request *TargetRequest, item Item) {
 
 func testEntry(t *testing.T, root string) *store.Entry {
 	t.Helper()
-	return testEntryVersion(t, root, "github.com/example/skills/-/demo", "v1", "Demo")
+	return testEntryVersion(t, root, "github.com/example/skills/-/demo", "v1.0.0", "Demo")
 }
 
 func testEntryVersion(t *testing.T, root, skillID, version, content string) *store.Entry {

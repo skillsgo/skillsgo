@@ -61,7 +61,7 @@ The installation scope rooted at a user-selected local directory. A Workspace do
 _Avoid_: repository-only scope, independent project Store
 
 **Workspace Manifest**:
-The editable `skillsgo.mod` declaration whose `require` entries contain a canonical Skill or repository coordinate, its resolved immutable version, and an optional `[agent, ...]` target list. Installing through a branch, `latest`, or another movable selector records the resulting immutable pseudo-version; following that selector again requires an explicit add request.
+The editable `skillsgo.mod` declaration whose `require` entries use `require ID version [agents] [mode]`. The mode is optional and defaults to `symlink`; explicit `copy` is serialized. Public add accepts `head`, `release`, or an exact immutable version, but always persists the resolved immutable version. The ambiguous `latest`, arbitrary branch names, commit hashes, and ranges are rejected.
 _Avoid_: lock file, installation receipt
 
 **Workspace Sum**:
@@ -101,7 +101,7 @@ A difference between a copy-mode installation target and its source artifact. In
 _Avoid_: Hub version, automatically merged change
 
 **Update Plan**:
-A state-bound operation over exact managed Installation Targets. Canonical Workspace requirements are pinned; following a movable branch or `latest` requires another explicit add. Workspace Manifest changes are previewed, and each target produces an independent result.
+A state-bound operation over exact managed Installation Targets. Canonical Workspace requirements are pinned; resolving `head` or `release` again requires another explicit add. Workspace Manifest changes are previewed, and each target produces an independent result.
 _Avoid_: name-only global update, implicit project mutation, localized-output parsing
 
 **Target Operation**:

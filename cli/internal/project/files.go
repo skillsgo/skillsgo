@@ -1,13 +1,12 @@
 /*
- * [INPUT]: Depends on canonical immutable dependency coordinates, resolved versions, desired Agent IDs, exact Installation Receipts, and Go module-file syntax validation.
- * [OUTPUT]: Provides the editable skillsgo.mod declaration, nearest-root discovery, shared-lock requirement replacement, and crash-recoverable receipt-aware Agent-binding removal.
+ * [INPUT]: Depends on canonical immutable dependency coordinates, resolved versions, desired Agent IDs and modes, exact Installation Receipts, and the native Manifest parser.
+ * [OUTPUT]: Provides nearest-root discovery, deterministic skillsgo.mod publication, shared-lock requirement replacement, and crash-recoverable receipt-aware Agent-binding removal.
  * [POS]: Serves as the sole portable desired-state boundary for project and user scopes; resolution integrity belongs to skillsgo.sum.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package project
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -16,7 +15,6 @@ import (
 
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/store"
-	"golang.org/x/mod/modfile"
 )
 
 const manifestName = "skillsgo.mod"
@@ -25,14 +23,16 @@ const manifestLockName = ".skillsgo.mod.lock"
 func UserRoot(home string) string { return filepath.Join(home, ".skillsgo") }
 
 type Manifest struct {
-	Skills map[string]SkillRequirement
+	Skills   map[string]SkillRequirement
+	Comments []string
 }
 
 type SkillRequirement struct {
-	Source string
-	Ref    string
-	Agents []string
-	Mode   install.Mode
+	Source  string
+	Ref     string
+	Agents  []string
+	Mode    install.Mode
+	Comment string
 }
 
 func FindRoot(start string) (string, error) {
@@ -82,93 +82,7 @@ func LoadManifest(root string) (Manifest, error) {
 }
 
 func parseManifest(path string, data []byte) (Manifest, error) {
-	converted, versionsBySource, agentsBySource, err := convertAgentListsToComments(data)
-	if err != nil {
-		return Manifest{}, fmt.Errorf("parse %s: %w", path, err)
-	}
-	parsed, err := modfile.Parse(path, converted, nil)
-	if err != nil {
-		return Manifest{}, err
-	}
-	if parsed.Module != nil || parsed.Go != nil || parsed.Toolchain != nil || len(parsed.Godebug)+len(parsed.Exclude)+len(parsed.Replace)+len(parsed.Retract)+len(parsed.Tool)+len(parsed.Ignore) > 0 {
-		return Manifest{}, fmt.Errorf("parse %s: skillsgo.mod supports only require directives", path)
-	}
-	manifest := Manifest{Skills: map[string]SkillRequirement{}}
-	for _, required := range parsed.Require {
-		if required.Indirect {
-			return Manifest{}, fmt.Errorf("parse %s: indirect requirements are not supported", path)
-		}
-		if _, exists := manifest.Skills[required.Mod.Path]; exists {
-			return Manifest{}, fmt.Errorf("parse %s: duplicate requirement %q", path, required.Mod.Path)
-		}
-		manifest.Skills[required.Mod.Path] = SkillRequirement{
-			Source: required.Mod.Path,
-			Ref:    versionsBySource[required.Mod.Path],
-			Agents: agentsBySource[required.Mod.Path],
-		}
-	}
-	return manifest, nil
-}
-
-// convertAgentListsToComments keeps parsing aligned with Go's module-file
-// grammar while treating [agent, ...] as a SkillsGo-specific require suffix.
-func convertAgentListsToComments(data []byte) ([]byte, map[string]string, map[string][]string, error) {
-	lines := bytes.Split(data, []byte("\n"))
-	versionsBySource := map[string]string{}
-	agentsBySource := map[string][]string{}
-	inRequireBlock := false
-	for index, raw := range lines {
-		line := string(raw)
-		code := strings.TrimSpace(strings.SplitN(line, "//", 2)[0])
-		if code == "require (" {
-			inRequireBlock = true
-			continue
-		}
-		if inRequireBlock && code == ")" {
-			inRequireBlock = false
-			continue
-		}
-		if code == "" || strings.HasPrefix(code, "//") {
-			continue
-		}
-		body := code
-		if !inRequireBlock {
-			if !strings.HasPrefix(body, "require ") {
-				continue
-			}
-			body = strings.TrimSpace(strings.TrimPrefix(body, "require "))
-		}
-		opening := strings.LastIndex(body, "[")
-		requirementBody := body
-		var agents []string
-		if opening >= 0 {
-			if !strings.HasSuffix(body, "]") {
-				return nil, nil, nil, fmt.Errorf("line %d: invalid Agent list", index+1)
-			}
-			requirementBody = strings.TrimSpace(body[:opening])
-			var err error
-			agents, err = parseAgents(body[opening+1 : len(body)-1])
-			if err != nil {
-				return nil, nil, nil, fmt.Errorf("line %d: %w", index+1, err)
-			}
-		}
-		fields := strings.Fields(requirementBody)
-		if len(fields) != 2 {
-			return nil, nil, nil, fmt.Errorf("line %d: require must contain a coordinate, version, and Agent list", index+1)
-		}
-		if _, exists := agentsBySource[fields[0]]; exists {
-			return nil, nil, nil, fmt.Errorf("line %d: duplicate requirement %q", index+1, fields[0])
-		}
-		versionsBySource[fields[0]] = fields[1]
-		agentsBySource[fields[0]] = agents
-		prefix := line[:strings.Index(line, strings.TrimSpace(line))]
-		if inRequireBlock {
-			lines[index] = []byte(prefix + fields[0] + " v0.0.0")
-		} else {
-			lines[index] = []byte(prefix + "require " + fields[0] + " v0.0.0")
-		}
-	}
-	return bytes.Join(lines, []byte("\n")), versionsBySource, agentsBySource, nil
+	return parseManifestDocument(path, data)
 }
 
 func parseAgents(raw string) ([]string, error) {
@@ -390,12 +304,23 @@ func writeManifestAtomic(path string, manifest Manifest) error {
 	}
 	sort.Strings(dependencies)
 	var data strings.Builder
+	for _, dependency := range dependencies {
+		requirement := manifest.Skills[dependency]
+		if err := validateManifestRequirement(dependency, requirement); err != nil {
+			return err
+		}
+	}
+	for _, comment := range manifest.Comments {
+		data.WriteString("// ")
+		data.WriteString(strings.TrimSpace(strings.TrimPrefix(strings.TrimSpace(comment), "//")))
+		data.WriteString("\n")
+	}
+	if len(manifest.Comments) > 0 {
+		data.WriteString("\n")
+	}
 	data.WriteString("require (\n")
 	for _, dependency := range dependencies {
 		requirement := manifest.Skills[dependency]
-		if strings.TrimSpace(requirement.Ref) == "" {
-			return fmt.Errorf("dependency version must not be empty")
-		}
 		data.WriteString("\t")
 		data.WriteString(dependency)
 		data.WriteString(" ")
@@ -405,12 +330,16 @@ func writeManifestAtomic(path string, manifest Manifest) error {
 			data.WriteString(strings.Join(requirement.Agents, ", "))
 			data.WriteString("]")
 		}
+		if requirement.Mode == install.ModeCopy {
+			data.WriteString(" copy")
+		}
+		if requirement.Comment != "" {
+			data.WriteString(" // ")
+			data.WriteString(strings.TrimSpace(requirement.Comment))
+		}
 		data.WriteString("\n")
 	}
 	data.WriteString(")\n")
-	if _, _, _, err := convertAgentListsToComments([]byte(data.String())); err != nil {
-		return err
-	}
 	temporary, err := os.CreateTemp(filepath.Dir(path), ".skillsgo-mod-")
 	if err != nil {
 		return err

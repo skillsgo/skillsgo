@@ -161,9 +161,7 @@ func loadExplicitInstallationResource(cmd *cobra.Command, storage store.Store, h
 			return explicitInstallationResource{}, selectErr
 		}
 		entry, getErr := storage.Get(member.Info.ID, member.Info.Version)
-		if getErr == nil {
-			entry, getErr = storage.RefreshAssessment(member.Info.ID, member.Info.Version, member.Info)
-		} else if errors.Is(getErr, store.ErrNotFound) {
+		if errors.Is(getErr, store.ErrNotFound) {
 			artifact, fetchErr := client.FetchRepositoryMember(cmd.Context(), member, nil)
 			if fetchErr != nil {
 				return explicitInstallationResource{}, fetchErr

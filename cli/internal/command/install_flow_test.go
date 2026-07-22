@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with fixture Hub artifacts, temporary Store/Workspace roots, and resolved Agent targets.
- * [OUTPUT]: Specifies add/list/remove, canonical Workspace Manifest persistence plus Workspace Sum integrity, Hub-assessed risk gates, affirmative overwrite installation, exact offline and clean-machine multi-Agent/Repository restoration, immutable update, and explicit source replacement command flows.
+ * [OUTPUT]: Specifies add/list/remove, canonical Workspace Manifest persistence plus Workspace Sum integrity, immutable Info without audit coupling, affirmative overwrite installation, exact offline and clean-machine multi-Agent/Repository restoration, immutable update, and explicit source replacement command flows.
  * [POS]: Serves as end-to-end CLI behavior coverage at the public command seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -37,8 +37,8 @@ func TestAddListRemoveFlow(t *testing.T) {
 	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Ref":"main","CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case request.URL.Path == "/mod/"+repository+"/@v/list":
-			fmt.Fprintln(writer, version)
+		case request.URL.Path == "/mod/"+repository+"/@head":
+			fmt.Fprintf(writer, `{"Version":%q,"Time":"2026-01-01T00:00:00Z"}`, version)
 		case request.URL.Path == "/mod/"+repository+"/@v/"+version+".info":
 			_, _ = writer.Write([]byte(repositoryInfo))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
@@ -89,8 +89,8 @@ func TestAddUsesInfoNameIndependentFromSkillIDPath(t *testing.T) {
 	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Ref":"main","CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case request.URL.Path == "/mod/"+repository+"/@v/list":
-			fmt.Fprintln(writer, version)
+		case request.URL.Path == "/mod/"+repository+"/@head":
+			fmt.Fprintf(writer, `{"Version":%q,"Time":"2026-01-01T00:00:00Z"}`, version)
 		case request.URL.Path == "/mod/"+repository+"/@v/"+version+".info":
 			_, _ = writer.Write([]byte(repositoryInfo))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
@@ -135,8 +135,8 @@ func TestAddInstallsFromEnrichedInfoWithoutManifestRequest(t *testing.T) {
 	manifestRequested := false
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case request.URL.Path == "/mod/"+repository+"/@v/list":
-			fmt.Fprintln(writer, version)
+		case request.URL.Path == "/mod/"+repository+"/@head":
+			fmt.Fprintf(writer, `{"Version":%q,"Time":"2026-01-01T00:00:00Z"}`, version)
 		case request.URL.Path == "/mod/"+repository+"/@v/"+version+".info":
 			_, _ = writer.Write([]byte(repositoryInfo))
 		case strings.HasSuffix(request.URL.Path, ".manifest"):
@@ -165,9 +165,8 @@ func TestAddInstallsFromEnrichedInfoWithoutManifestRequest(t *testing.T) {
 	}
 }
 
-func TestAddBranchStoresResolvedImmutableVersionInManifest(t *testing.T) {
+func TestAddHeadStoresResolvedImmutableVersionInManifest(t *testing.T) {
 	skillID, version := "github.com/vercel-labs/skills/-/skills/find-skills", "v0.0.0-20260717100000-777599e1159e"
-	branch := "feature-x"
 	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: find-skills\ndescription: test\n---\n"})
 	sum := commandTestSum(t, zipData, skillID, version)
 	repository := strings.SplitN(skillID, "/-/", 2)[0]
@@ -175,7 +174,9 @@ func TestAddBranchStoresResolvedImmutableVersionInManifest(t *testing.T) {
 	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Ref":"refs/heads/feature-x","CommitSHA":"777599e1159e","Skills":[%s]}`, repository, version, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case request.URL.Path == "/mod/"+repository+"/@v/"+branch+".info":
+		case request.URL.Path == "/mod/"+repository+"/@head":
+			_, _ = writer.Write([]byte(fmt.Sprintf(`{"Version":%q,"Time":"2026-07-17T10:00:00Z"}`, version)))
+		case request.URL.Path == "/mod/"+repository+"/@v/"+version+".info":
 			_, _ = writer.Write([]byte(repositoryInfo))
 		case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
 			_, _ = writer.Write(zipData)
@@ -188,7 +189,7 @@ func TestAddBranchStoresResolvedImmutableVersionInManifest(t *testing.T) {
 	home := filepath.Join(t.TempDir(), "home")
 	t.Setenv("HOME", home)
 	var output bytes.Buffer
-	if err := Execute([]string{"add", skillID + "@" + branch, "--skill", "find-skills", "--agent", "codex", "--global", "--yes", "--hub", server.URL}, &output, &output); err != nil {
+	if err := Execute([]string{"add", skillID + "@head", "--skill", "find-skills", "--agent", "codex", "--global", "--yes", "--hub", server.URL}, &output, &output); err != nil {
 		t.Fatalf("add failed: %v\n%s", err, output.String())
 	}
 	manifest, err := project.LoadManifest(project.UserRoot(home))
@@ -201,21 +202,19 @@ func TestAddBranchStoresResolvedImmutableVersionInManifest(t *testing.T) {
 	}
 }
 
-func TestAddRequiresConfirmationForHubAssessedRisk(t *testing.T) {
+func TestAddIgnoresLegacyRiskEmbeddedInImmutableInfo(t *testing.T) {
 	tests := []struct {
-		name        string
-		risk        hub.Risk
-		flags       []string
-		wantSuccess bool
+		name  string
+		risk  hub.Risk
+		flags []string
 	}{
-		{name: "high risk is blocked without confirmation", risk: hub.RiskHigh},
-		{name: "high risk accepts confirmation", risk: hub.RiskHigh, flags: []string{"--confirm-risk"}, wantSuccess: true},
-		{name: "critical risk remains blocked after confirmation", risk: hub.RiskCritical, flags: []string{"--confirm-risk"}},
-		{name: "critical risk requires explicit override", risk: hub.RiskCritical, flags: []string{"--confirm-risk", "--allow-critical"}, wantSuccess: true},
+		{name: "high risk field is not immutable policy", risk: hub.RiskHigh},
+		{name: "critical risk field is not immutable policy", risk: hub.RiskCritical},
+		{name: "legacy confirmation flags remain harmless", risk: hub.RiskHigh, flags: []string{"--confirm-risk"}},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			skillID, version := "github.com/example/skills/-/skills/risky", "v1"
+			skillID, version := "github.com/example/skills/-/skills/risky", "v1.0.0"
 			zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{"SKILL.md": "---\nname: risky\ndescription: test\n---\n"})
 			sum := commandTestSum(t, zipData, skillID, version)
 			repository := strings.SplitN(skillID, "/-/", 2)[0]
@@ -223,8 +222,8 @@ func TestAddRequiresConfirmationForHubAssessedRisk(t *testing.T) {
 			repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Ref":"main","CommitSHA":"abc","Skills":[%s]}`, repository, version, memberInfo)
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 				switch {
-				case request.URL.Path == "/mod/"+repository+"/@v/list":
-					fmt.Fprintln(writer, version)
+				case request.URL.Path == "/mod/"+repository+"/@head":
+					fmt.Fprintf(writer, `{"Version":%q,"Time":"2026-01-01T00:00:00Z"}`, version)
 				case request.URL.Path == "/mod/"+repository+"/@v/"+version+".info":
 					_, _ = writer.Write([]byte(repositoryInfo))
 				case strings.HasSuffix(request.URL.Path, "/"+version+".zip"):
@@ -241,19 +240,13 @@ func TestAddRequiresConfirmationForHubAssessedRisk(t *testing.T) {
 			arguments = append(arguments, test.flags...)
 			var output bytes.Buffer
 			err := Execute(arguments, &output, &output)
-			if test.wantSuccess && err != nil {
+			if err != nil {
 				t.Fatalf("expected installation success, got %v\n%s", err, output.String())
-			}
-			if !test.wantSuccess && err == nil {
-				t.Fatal("expected assessed risk to block installation")
 			}
 			target := filepath.Join(home, ".codex", "skills", "risky")
 			_, statErr := os.Lstat(target)
-			if test.wantSuccess && statErr != nil {
+			if statErr != nil {
 				t.Fatalf("expected installed target: %v", statErr)
-			}
-			if !test.wantSuccess && !os.IsNotExist(statErr) {
-				t.Fatalf("blocked installation mutated target: %v", statErr)
 			}
 		})
 	}
@@ -571,6 +564,61 @@ func TestAddExactRepositoryUsesInfoAndWritesGoFirstWorkspace(t *testing.T) {
 	assertRestoredInstallationTree(t, projectRoot, []string{"alpha", "root-skill"})
 }
 
+func TestAddExactRepositoryRollsBackEveryMemberWhenLaterTargetFails(t *testing.T) {
+	root := t.TempDir()
+	home, workspace := filepath.Join(root, "home"), filepath.Join(root, "workspace")
+	require.NoError(t, os.MkdirAll(filepath.Join(workspace, ".agents", "skills", "beta"), 0o700))
+	require.NoError(t, os.WriteFile(filepath.Join(workspace, ".agents", "skills", "beta", "external.txt"), []byte("keep"), 0o600))
+	t.Setenv("HOME", home)
+	repository, version := "github.com/example/atomic-bundle", "v1.0.0"
+	type fixture struct {
+		id  string
+		zip []byte
+	}
+	fixtures := make([]fixture, 0, 2)
+	infos := make([]string, 0, 2)
+	for _, name := range []string{"alpha", "beta"} {
+		id := repository + "/-/skills/" + name
+		archive := commandTestZIP(t, id+"@"+version+"/", map[string]string{
+			"SKILL.md": "---\nname: " + name + "\ndescription: atomic Repository member\n---\n",
+		})
+		sum := commandTestSum(t, archive, id, version)
+		infos = append(infos, fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":%q,"Description":"atomic Repository member","Version":%q,"Risk":"low","Sum":%q,"ArchiveSize":%d,"VCS":"git","CommitSHA":"commit","TreeSHA":%q}`, id, name, version, sum, len(archive), "tree-"+name))
+		fixtures = append(fixtures, fixture{id: id, zip: archive})
+	}
+	repositoryInfo := []byte(fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"commit","Skills":[%s]}`, repository, version, strings.Join(infos, ",")))
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		switch request.URL.Path {
+		case "/mod/" + repository + "/@v/" + version + ".info":
+			_, _ = writer.Write(repositoryInfo)
+		default:
+			for _, item := range fixtures {
+				if request.URL.Path == "/mod/"+item.id+"/@v/"+version+".zip" {
+					_, _ = writer.Write(item.zip)
+					return
+				}
+			}
+			http.NotFound(writer, request)
+		}
+	}))
+	defer server.Close()
+	oldCWD, err := os.Getwd()
+	require.NoError(t, err)
+	require.NoError(t, os.Chdir(workspace))
+	defer os.Chdir(oldCWD)
+
+	var output bytes.Buffer
+	err = Execute([]string{"add", repository + "@" + version, "--agent", "codex", "--yes", "--hub", server.URL}, &output, &output)
+	require.Error(t, err)
+	require.NoFileExists(t, filepath.Join(workspace, ".agents", "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, filepath.Join(workspace, ".agents", "skills", "beta", "external.txt"))
+	require.NoFileExists(t, filepath.Join(workspace, "skillsgo.mod"))
+	require.NoFileExists(t, filepath.Join(workspace, "skillsgo.sum"))
+	receipts, receiptErr := project.LoadInstallationReceipts(workspace)
+	require.NoError(t, receiptErr)
+	require.Empty(t, receipts)
+}
+
 func TestAddSelectsRepeatedRepositoryMembersFromOneInfo(t *testing.T) {
 	root := t.TempDir()
 	home, workspace := filepath.Join(root, "home"), filepath.Join(root, "workspace")
@@ -792,11 +840,11 @@ func TestAddReplaceChangesSourceAndRemovesObsoleteAgentBindings(t *testing.T) {
 	}
 	t.Setenv("HOME", home)
 	oldSkillID := "github.com/old/skills/-/skills/demo"
-	oldZIP := commandTestZIP(t, oldSkillID+"@v1/", map[string]string{"SKILL.md": "old"})
+	oldZIP := commandTestZIP(t, oldSkillID+"@v1.0.0/", map[string]string{"SKILL.md": "old"})
 	oldArtifact := &hub.Artifact{
 		SkillID: oldSkillID,
 		Info: hub.Info{SchemaVersion: 1, Kind: "Skill", ID: oldSkillID, Name: "demo", Description: "test",
-			Version: "v1", Risk: hub.RiskLow, Sum: commandTestSum(t, oldZIP, oldSkillID, "v1"), ArchiveSize: int64(len(oldZIP))},
+			Version: "v1.0.0", Risk: hub.RiskLow, Sum: commandTestSum(t, oldZIP, oldSkillID, "v1.0.0"), ArchiveSize: int64(len(oldZIP))},
 		ZIP: oldZIP,
 	}
 	storage := store.Store{Root: store.DefaultRoot(home)}
@@ -814,18 +862,18 @@ func TestAddReplaceChangesSourceAndRemovesObsoleteAgentBindings(t *testing.T) {
 		t.Fatal(err)
 	}
 	newSkillID := "github.com/new/skills/-/skills/demo"
-	newZIP := commandTestZIP(t, newSkillID+"@v2/", map[string]string{"SKILL.md": "new"})
-	newDigest := commandTestSum(t, newZIP, newSkillID, "v2")
+	newZIP := commandTestZIP(t, newSkillID+"@v2.0.0/", map[string]string{"SKILL.md": "new"})
+	newDigest := commandTestSum(t, newZIP, newSkillID, "v2.0.0")
 	newRepository := strings.SplitN(newSkillID, "/-/", 2)[0]
-	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":"v2","Time":"2026-01-02T00:00:00Z","Risk":"low","Sum":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/new/skills","Subdir":"skills/demo","Ref":"main","CommitSHA":"new","TreeSHA":"new-tree"}`, newSkillID, newDigest, len(newZIP))
-	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v2","Ref":"main","CommitSHA":"new","Skills":[%s]}`, newRepository, memberInfo)
+	memberInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Name":"demo","Description":"test","Version":"v2.0.0","Time":"2026-01-02T00:00:00Z","Risk":"low","Sum":%q,"ArchiveSize":%d,"VCS":"git","URL":"https://github.com/new/skills","Subdir":"skills/demo","Ref":"main","CommitSHA":"new","TreeSHA":"new-tree"}`, newSkillID, newDigest, len(newZIP))
+	repositoryInfo := fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v2.0.0","Ref":"main","CommitSHA":"new","Skills":[%s]}`, newRepository, memberInfo)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch {
-		case request.URL.Path == "/mod/"+newRepository+"/@v/list":
-			fmt.Fprintln(writer, "v2")
-		case request.URL.Path == "/mod/"+newRepository+"/@v/v2.info":
+		case request.URL.Path == "/mod/"+newRepository+"/@head":
+			fmt.Fprint(writer, `{"Version":"v2.0.0","Time":"2026-01-02T00:00:00Z"}`)
+		case request.URL.Path == "/mod/"+newRepository+"/@v/v2.0.0.info":
 			_, _ = writer.Write([]byte(repositoryInfo))
-		case strings.HasSuffix(request.URL.Path, "/v2.zip"):
+		case strings.HasSuffix(request.URL.Path, "/v2.0.0.zip"):
 			writer.Write(newZIP)
 		default:
 			http.NotFound(writer, request)

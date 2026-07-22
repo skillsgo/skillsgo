@@ -32,7 +32,7 @@ func TestExplicitInstallationExecutesAndSkipsExactTargets(t *testing.T) {
 	require.NoError(t, os.MkdirAll(projectRoot, 0o700))
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-	skillID, version := "github.com/example/skills/-/demo", "v1"
+	skillID, version := "github.com/example/skills/-/demo", "v1.0.0"
 	repositoryID := "github.com/example/skills"
 	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{
 		"SKILL.md": "---\nname: demo\ndescription: exact targets\n---\n",
@@ -101,14 +101,14 @@ func TestExplicitInstallationExecutesAndSkipsExactTargets(t *testing.T) {
 	require.Equal(t, 2, execution.Summary.Skipped)
 }
 
-func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
+func TestExplicitPlanDoesNotTreatImmutableInfoAsMutableRiskAssessment(t *testing.T) {
 	root := t.TempDir()
 	home := filepath.Join(root, "home")
 	agentHome := filepath.Join(root, "agent-home")
 	require.NoError(t, os.MkdirAll(agentHome, 0o700))
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-	skillID, version := "github.com/example/skills/-/demo", "v1"
+	skillID, version := "github.com/example/skills/-/demo", "v1.0.0"
 	repositoryID := "github.com/example/skills"
 	zipData := commandTestZIP(t, skillID+"@"+version+"/", map[string]string{
 		"SKILL.md": "---\nname: demo\ndescription: assessment refresh\n---\n",
@@ -148,5 +148,5 @@ func TestExplicitPlanRefreshesCachedAssessmentBeforeInstalling(t *testing.T) {
 	require.NoError(t, os.RemoveAll(filepath.Join(agentHome, "skills", "demo")))
 	require.NoError(t, os.RemoveAll(filepath.Join(home, ".agents", "skills", "demo")))
 	risk = "critical"
-	require.Error(t, execute())
+	require.NoError(t, execute())
 }

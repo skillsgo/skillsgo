@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable Store entries, resolved Agent targets, and filesystem metadata.
- * [OUTPUT]: Provides rollback-capable canonical materialization plus alias-aware Agent symlink/copy projection and stable filesystem digests.
+ * [OUTPUT]: Provides rollback-capable writable canonical/copy materialization from read-only Store artifacts plus alias-aware Agent symlink projection and stable filesystem digests.
  * [POS]: Serves as the low-level materialization boundary used by Installation Plans and legacy CLI flows.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -176,7 +176,11 @@ func copyDirectory(source, destination string) error {
 			return err
 		}
 		if entry.IsDir() {
-			return os.MkdirAll(target, info.Mode().Perm())
+			mode := info.Mode().Perm() | 0o200
+			if mode == 0o200 {
+				mode = 0o700
+			}
+			return os.MkdirAll(target, mode)
 		}
 		if !info.Mode().IsRegular() {
 			return fmt.Errorf("制品包含不支持的文件类型 %q", path)
@@ -186,7 +190,11 @@ func copyDirectory(source, destination string) error {
 			return err
 		}
 		defer input.Close()
-		output, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, info.Mode().Perm())
+		mode := info.Mode().Perm() | 0o200
+		if mode == 0o200 {
+			mode = 0o600
+		}
+		output, err := os.OpenFile(target, os.O_CREATE|os.O_EXCL|os.O_WRONLY, mode)
 		if err != nil {
 			return err
 		}
@@ -203,6 +211,10 @@ func copyDirectory(source, destination string) error {
 // paths, permission bits, and regular-file contents. It is used to detect
 // copy-mode Local Modifications from live filesystem state.
 func DirectoryDigest(root string) (string, error) {
+	return directoryDigest(root, false)
+}
+
+func directoryDigest(root string, normalizeOwnerWrite bool) (string, error) {
 	hash := sha256.New()
 	_, _ = hash.Write([]byte("skillsgo-directory-digest-v1\x00"))
 	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
@@ -232,7 +244,11 @@ func DirectoryDigest(root string) (string, error) {
 			return err
 		}
 		_, _ = hash.Write(relativeBytes)
-		if err := binary.Write(hash, binary.BigEndian, uint32(info.Mode().Perm())); err != nil {
+		permissions := info.Mode().Perm()
+		if normalizeOwnerWrite {
+			permissions &^= 0o200
+		}
+		if err := binary.Write(hash, binary.BigEndian, uint32(permissions)); err != nil {
 			return err
 		}
 		if entry.IsDir() {
@@ -263,11 +279,11 @@ func DirectoryDigest(root string) (string, error) {
 
 // CopyMatchesArtifact compares a copy-mode target with its immutable Store artifact.
 func CopyMatchesArtifact(target, artifact string) (bool, error) {
-	targetDigest, err := DirectoryDigest(target)
+	targetDigest, err := directoryDigest(target, true)
 	if err != nil {
 		return false, err
 	}
-	artifactDigest, err := DirectoryDigest(artifact)
+	artifactDigest, err := directoryDigest(artifact, true)
 	if err != nil {
 		return false, err
 	}

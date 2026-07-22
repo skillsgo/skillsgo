@@ -25,15 +25,15 @@ import (
 func TestDecodeTargetsIsStrictAndPreservesHostilePaths(t *testing.T) {
 	path := `/tmp/project ;$(touch never)/skill`
 	targets, err := DecodeTargets([]string{
-		`{"scope":"project","projectRoot":"/tmp/project ;$(touch never)","agent":"codex","mode":"copy","path":"` + path + `","skillId":"github.com/example/skills/-/demo","version":"v1"}`,
+		`{"scope":"project","projectRoot":"/tmp/project ;$(touch never)","agent":"codex","mode":"copy","path":"` + path + `","skillId":"github.com/example/skills/-/demo","version":"v1.0.0"}`,
 	})
 	require.NoError(t, err)
 	require.Equal(t, path, targets[0].Path)
 	require.Equal(t, install.ScopeProject, targets[0].Scope)
 
-	_, err = DecodeTargets([]string{`{"scope":"user","agent":"codex","mode":"copy","path":"/tmp/demo","skillId":"github.com/example/skills/-/demo","version":"v1","extra":true}`})
+	_, err = DecodeTargets([]string{`{"scope":"user","agent":"codex","mode":"copy","path":"/tmp/demo","skillId":"github.com/example/skills/-/demo","version":"v1.0.0","extra":true}`})
 	require.Error(t, err)
-	_, err = DecodeTargets([]string{`{"scope":"user","agent":"codex","mode":"copy","path":"/tmp/demo","skillId":"github.com/example/skills/-/demo","version":"v1"} garbage`})
+	_, err = DecodeTargets([]string{`{"scope":"user","agent":"codex","mode":"copy","path":"/tmp/demo","skillId":"github.com/example/skills/-/demo","version":"v1.0.0"} garbage`})
 	require.Error(t, err)
 }
 
@@ -42,24 +42,24 @@ func TestExecuteContinuesAfterWorkspacePersistenceFailure(t *testing.T) {
 	entry := putUpdateTestEntry(t, storage)
 	userTarget := filepath.Join(t.TempDir(), "already-switched")
 	require.NoError(t, os.MkdirAll(userTarget, 0o700))
-	require.NoError(t, os.WriteFile(filepath.Join(userTarget, "SKILL.md"), []byte("v2"), 0o600))
+	require.NoError(t, os.WriteFile(filepath.Join(userTarget, "SKILL.md"), []byte("v2.0.0"), 0o600))
 	preflight := Preflight{Targets: []Item{
 		{
 			Target: Target{Scope: install.ScopeProject, ProjectRoot: "\x00", Agent: "codex", Mode: install.ModeCopy, Path: "/invalid"},
-			Name:   "demo", SkillID: entry.Receipt.SkillID, FromVersion: "v1", ToVersion: "v2", Action: ActionUpdate, ReasonCode: reasonWorkspaceManifestReconcile,
+			Name:   "demo", SkillID: entry.Receipt.SkillID, FromVersion: "v1.0.0", ToVersion: "v2.0.0", Action: ActionUpdate, ReasonCode: reasonWorkspaceManifestReconcile,
 			SourceRef: "main",
 			installation: install.Installation{
 				Name: "demo", SkillID: entry.Receipt.SkillID, DependencyID: entry.Receipt.SkillID,
-				Version: "v1", Target: install.Target{Scope: install.ScopeProject, Agent: "codex", Mode: install.ModeCopy, Path: "/invalid"},
+				Version: "v1.0.0", Target: install.Target{Scope: install.ScopeProject, Agent: "codex", Mode: install.ModeCopy, Path: "/invalid"},
 			},
 		},
 		{
 			Target: Target{Scope: install.ScopeUser, Agent: "codex", Mode: install.ModeCopy, Path: userTarget},
-			Name:   "demo", SkillID: entry.Receipt.SkillID, FromVersion: "v1", ToVersion: "v2", Action: ActionUpdate, ReasonCode: reasonWorkspaceManifestReconcile,
+			Name:   "demo", SkillID: entry.Receipt.SkillID, FromVersion: "v1.0.0", ToVersion: "v2.0.0", Action: ActionUpdate, ReasonCode: reasonWorkspaceManifestReconcile,
 			SourceRef: "main",
 			installation: install.Installation{
 				Name: "demo", SkillID: entry.Receipt.SkillID, DependencyID: entry.Receipt.SkillID,
-				Version: "v1", Target: install.Target{Scope: install.ScopeUser, Agent: "codex", Mode: install.ModeCopy, Path: userTarget},
+				Version: "v1.0.0", Target: install.Target{Scope: install.ScopeUser, Agent: "codex", Mode: install.ModeCopy, Path: userTarget},
 			},
 		},
 	}}
@@ -133,7 +133,7 @@ func TestCatalogVersionUpdateMatrix(t *testing.T) {
 
 func (client *updateTestHub) CatalogUpdates(_ context.Context, skillIDs []string) ([]hub.CatalogUpdateItem, error) {
 	client.catalogSkillID = skillIDs[0]
-	return []hub.CatalogUpdateItem{{SkillID: skillIDs[0], LatestVersion: client.info.Version, Status: "available"}}, nil
+	return []hub.CatalogUpdateItem{{SkillID: skillIDs[0], HeadVersion: client.info.Version, ReleaseVersion: client.info.Version, Status: "available"}}, nil
 }
 
 func (client *updateTestHub) Fetch(_ context.Context, skillID, version string) (*hub.Artifact, error) {
@@ -164,7 +164,7 @@ func TestCapturedInstallationUpdatesThroughLogicalIdentityAndReplacesMetadata(t 
 	)
 	require.NoError(t, err)
 
-	artifact := updateTestArtifact(t, logicalID, "v2", "updated")
+	artifact := updateTestArtifact(t, logicalID, "v2.0.0", "updated")
 	client := &updateTestHub{info: artifact.Info, artifact: artifact}
 	requests := []TargetRequest{{
 		Scope: install.ScopeUser, Agent: "codex", Mode: install.ModeCopy, Path: target,
@@ -182,7 +182,7 @@ func TestCapturedInstallationUpdatesThroughLogicalIdentityAndReplacesMetadata(t 
 	execution := Execute(context.Background(), client, storage, preflight, nil)
 	require.Equal(t, ResultSummary{Succeeded: 2}, execution.Summary)
 	require.Equal(t, logicalID, client.fetchedID)
-	require.Equal(t, "v2", client.fetchedVersion)
+	require.Equal(t, "v2.0.0", client.fetchedVersion)
 	updated, err := os.ReadFile(filepath.Join(target, "SKILL.md"))
 	require.NoError(t, err)
 	require.Equal(t, "updated", string(updated))
@@ -194,7 +194,7 @@ func TestCapturedInstallationUpdatesThroughLogicalIdentityAndReplacesMetadata(t 
 	require.NoError(t, err)
 	require.Contains(t, manifest.Skills, logicalID)
 	require.NotContains(t, manifest.Skills, captured.Receipt.SkillID)
-	require.Equal(t, "v2", manifest.Skills[logicalID].Ref)
+	require.Equal(t, "v2.0.0", manifest.Skills[logicalID].Ref)
 	require.ElementsMatch(t, []string{"codex", "claude-code"}, manifest.Skills[logicalID].Agents)
 	receipts, err := project.LoadInstallationReceipts(userRoot)
 	require.NoError(t, err)
@@ -207,7 +207,7 @@ func TestCapturedInstallationUpdatesThroughLogicalIdentityAndReplacesMetadata(t 
 
 func putUpdateTestEntry(t *testing.T, storage store.Store) *store.Entry {
 	t.Helper()
-	artifact := updateTestArtifact(t, "github.com/example/skills/-/demo", "v2", "v2")
+	artifact := updateTestArtifact(t, "github.com/example/skills/-/demo", "v2.0.0", "v2.0.0")
 	entry, err := storage.Put(artifact)
 	require.NoError(t, err)
 	return entry
@@ -233,7 +233,7 @@ func updateTestArtifact(t *testing.T, skillID, version, body string) *hub.Artifa
 func TestExecutePublishesNestedTargetFailure(t *testing.T) {
 	execution := Execute(context.Background(), nil, store.Store{}, Preflight{Targets: []Item{{
 		Target: Target{Scope: install.ScopeUser, Agent: "codex", Mode: install.ModeCopy, Path: "/tmp/demo"},
-		Name:   "demo", SkillID: "github.com/example/skills/-/demo", FromVersion: "v1", ToVersion: "v2",
+		Name:   "demo", SkillID: "github.com/example/skills/-/demo", FromVersion: "v1.0.0", ToVersion: "v2.0.0",
 		Action: ActionFailed, ReasonCode: "unresolvable", Diagnostic: "localized or unstable detail",
 	}}}, nil)
 

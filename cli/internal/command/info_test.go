@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses command.Execute with a fixture Hub serving Repository latest/list/info resources and canonical source coordinates.
- * [OUTPUT]: Specifies direct read-only Repository and nested Skill Info JSON including provider Repository descriptions, lazy latest resolution, exact Skill lookup, and structured Hub failure output in machine mode.
+ * [INPUT]: Uses command.Execute with a fixture Hub serving Repository Head Selector and exact Info resources plus canonical source coordinates.
+ * [OUTPUT]: Specifies direct read-only Repository and nested Skill Info JSON including provider Repository descriptions, explicit Head resolution, exact Skill lookup, and structured Hub failure output in machine mode.
  * [POS]: Serves as the public CLI behavior contract for explicit-source discovery consumed by the App.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -20,7 +20,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 )
 
-func TestInfoRepositoryUsesLazyLatestAndDoesNotWriteLocalState(t *testing.T) {
+func TestInfoRepositoryUsesHeadSelectorAndDoesNotWriteLocalState(t *testing.T) {
 	repositoryID := "github.com/example/skills"
 	version := "v0.0.0-20260718120000-abcdef123456"
 	commit := "abcdef1234567890"
@@ -30,9 +30,7 @@ func TestInfoRepositoryUsesLazyLatestAndDoesNotWriteLocalState(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		requests = append(requests, request.URL.Path)
 		switch request.URL.Path {
-		case "/mod/" + repositoryID + "/@v/list":
-			writer.WriteHeader(http.StatusOK)
-		case "/mod/" + repositoryID + "/@latest":
+		case "/mod/" + repositoryID + "/@head":
 			_, _ = fmt.Fprintf(writer, `{"Version":%q,"Time":"2026-07-18T12:00:00Z"}`, version)
 		case "/mod/" + repositoryID + "/@v/" + version + ".info":
 			_, _ = writer.Write(repositoryInfo)
@@ -76,8 +74,7 @@ func TestInfoRepositoryUsesLazyLatestAndDoesNotWriteLocalState(t *testing.T) {
 		t.Fatalf("Repository Skill is not card-ready: %#v", result.Skills[0])
 	}
 	if strings.Join(requests, "\n") != strings.Join([]string{
-		"/mod/" + repositoryID + "/@v/list",
-		"/mod/" + repositoryID + "/@latest",
+		"/mod/" + repositoryID + "/@head",
 		"/mod/" + repositoryID + "/@v/" + version + ".info",
 		"/api/v1/skills/" + repositoryID,
 		"/api/v1/skills/" + repositoryID + "/-/tools/demo",

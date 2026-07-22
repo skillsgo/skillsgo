@@ -62,7 +62,7 @@ func TestUpdatePlanWritesCompleteJSONAndNDJSONBeforeFailure(t *testing.T) {
 			t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
 			skillID := "github.com/example/skills/-/demo"
 			storage := store.Store{Root: store.DefaultRoot(home)}
-			entry := updatePlanTestStoreEntry(t, storage, skillID, "v1", "main", "old")
+			entry := updatePlanTestStoreEntry(t, storage, skillID, "v1.0.0", "main", "old")
 			target := install.Target{Agent: "test-agent", Scope: install.ScopeUser, Mode: install.ModeCopy, Path: filepath.Join(agentHome, "skills", "demo")}
 			require.NoError(t, install.Install(entry, []install.Target{target}))
 			require.NoError(t, project.Upsert(project.UserRoot(home), "demo", project.SkillRequirement{Source: skillID, Ref: "main", Agents: []string{"test-agent"}, Mode: install.ModeCopy}, entry.Receipt))
@@ -73,7 +73,7 @@ func TestUpdatePlanWritesCompleteJSONAndNDJSONBeforeFailure(t *testing.T) {
 			targetJSON := func(toVersion, stateToken string) string {
 				body, err := json.Marshal(map[string]any{
 					"scope": "user", "agent": "test-agent", "mode": "copy", "path": target.Path,
-					"skillId": skillID, "version": "v1", "toVersion": toVersion, "stateToken": stateToken,
+					"skillId": skillID, "version": "v1.0.0", "toVersion": toVersion, "stateToken": stateToken,
 				})
 				require.NoError(t, err)
 				return string(body)

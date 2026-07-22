@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on verified Store receipts, exact resolved Installation Targets, stable target-state digests, and one user or Workspace declaration root.
- * [OUTPUT]: Provides locked, crash-recoverable atomic per-target Installation Receipt, Manifest, and Workspace Sum commits for installation, replacement, loading, and removal.
+ * [OUTPUT]: Provides locked, crash-recoverable atomic single- and multi-artifact Installation Receipt, Manifest, and Workspace Sum commits for installation, replacement, loading, and removal.
  * [POS]: Serves as the local projection ledger connecting immutable Store artifacts to exact managed target paths without replacing portable Manifest intent.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -24,7 +24,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-const installationReceiptSchemaVersion = 1
+const installationReceiptSchemaVersion = 2
 
 const installationTransactionSchemaVersion = 1
 
@@ -32,6 +32,7 @@ type InstallationReceipt struct {
 	SchemaVersion   int              `yaml:"schemaVersion"`
 	SourceSkillID   string           `yaml:"sourceSkillId"`
 	ArtifactSkillID string           `yaml:"artifactSkillId"`
+	DependencyID    string           `yaml:"dependencyId"`
 	Version         string           `yaml:"version"`
 	Name            string           `yaml:"name"`
 	SourceRef       string           `yaml:"sourceRef,omitempty"`
@@ -46,6 +47,21 @@ type InstallationReceipt struct {
 	InstalledAt     time.Time        `yaml:"installedAt"`
 }
 
+// InstallationCommit describes one already-materialized immutable artifact in
+// a larger declaration transaction. DependencyID is the direct Manifest
+// requirement that owns the projection; it may be a Repository ID while the
+// Artifact is one of that Repository's member Skills.
+type InstallationCommit struct {
+	DependencyID string
+	Name         string
+	SourceRef    string
+	Requirement  SkillRequirement
+	Artifact     store.Receipt
+	Targets      []install.Target
+	Previous     []install.Installation
+	Replace      bool
+}
+
 // CommitInstallations records exact targets and portable declaration state as
 // one metadata commit. It never materializes, rewrites, or removes a target.
 func CommitInstallations(
@@ -54,7 +70,10 @@ func CommitInstallations(
 	artifact store.Receipt,
 	targets []install.Target,
 ) ([]InstallationReceipt, error) {
-	return commitInstallations(root, name, sourceRef, requirement, artifact, targets, nil, false)
+	return CommitInstallationBatch(root, []InstallationCommit{{
+		DependencyID: artifact.SkillID, Name: name, SourceRef: sourceRef,
+		Requirement: requirement, Artifact: artifact, Targets: targets,
+	}})
 }
 
 // ReplaceCommittedInstallations atomically replaces prior declaration
@@ -66,22 +85,19 @@ func ReplaceCommittedInstallations(
 	targets []install.Target,
 	previous []install.Installation,
 ) ([]InstallationReceipt, error) {
-	return commitInstallations(root, name, sourceRef, requirement, artifact, targets, previous, true)
+	return CommitInstallationBatch(root, []InstallationCommit{{
+		DependencyID: artifact.SkillID, Name: name, SourceRef: sourceRef,
+		Requirement: requirement, Artifact: artifact, Targets: targets,
+		Previous: previous, Replace: true,
+	}})
 }
 
-func commitInstallations(
-	root, name, sourceRef string,
-	requirement SkillRequirement,
-	artifact store.Receipt,
-	targets []install.Target,
-	previous []install.Installation,
-	replace bool,
-) ([]InstallationReceipt, error) {
-	if len(targets) == 0 {
-		return nil, fmt.Errorf("at least one Installation Target is required")
-	}
-	if err := validateStoreReceiptIdentity(artifact); err != nil {
-		return nil, fmt.Errorf("complete immutable Store receipt identity is required")
+// CommitInstallationBatch records every target projection, direct Manifest
+// requirement, and verified Sum as one crash-recoverable metadata commit. The
+// caller must keep target-level rollback callbacks alive until this returns.
+func CommitInstallationBatch(root string, commits []InstallationCommit, verifiedSums ...SumEntry) ([]InstallationReceipt, error) {
+	if len(commits) == 0 {
+		return nil, fmt.Errorf("at least one Installation commit is required")
 	}
 	stateRoot := installationReceiptsRoot(root)
 	if err := os.MkdirAll(stateRoot, 0o700); err != nil {
@@ -97,52 +113,107 @@ func commitInstallations(
 	}
 
 	now := time.Now().UTC()
-	receipts := make([]InstallationReceipt, 0, len(targets))
-	agents := make([]string, 0, len(targets))
-	for _, target := range targets {
-		if contentErr := verifyInstallationTargetContent(target, artifact.Sum); contentErr != nil {
-			return nil, contentErr
+	receipts := make([]InstallationReceipt, 0)
+	requirements := map[string]SkillRequirement{}
+	removed := make([]install.Installation, 0)
+	for _, commit := range commits {
+		if commit.DependencyID == "" || len(commit.Targets) == 0 {
+			return nil, fmt.Errorf("complete dependency identity and at least one Installation Target are required")
 		}
-		state, stateErr := installationTargetBaseline(target)
-		if stateErr != nil {
-			return nil, stateErr
+		if err := source.ValidateSkillID(commit.DependencyID); err != nil {
+			return nil, fmt.Errorf("invalid Installation dependency: %w", err)
 		}
-		receipts = append(receipts, InstallationReceipt{
-			SchemaVersion: installationReceiptSchemaVersion,
-			SourceSkillID: artifact.EffectiveSourceSkillID(), ArtifactSkillID: artifact.SkillID,
-			Version: artifact.Version, Name: name, SourceRef: sourceRef,
-			Provenance: artifact.EffectiveProvenance(), Sum: artifact.Sum,
-			Agent: target.Agent, Scope: target.Scope, Mode: target.Mode,
-			Path: filepath.Clean(target.Path), CanonicalPath: cleanOptionalPath(target.CanonicalPath),
-			TargetState: state, InstalledAt: now,
+		if err := validateStoreReceiptIdentity(commit.Artifact); err != nil {
+			return nil, fmt.Errorf("complete immutable Store receipt identity is required")
+		}
+		agents := make([]string, 0, len(commit.Targets))
+		for _, target := range commit.Targets {
+			if contentErr := verifyInstallationTargetContent(target, commit.Artifact.Sum); contentErr != nil {
+				return nil, contentErr
+			}
+			state, stateErr := installationTargetBaseline(target)
+			if stateErr != nil {
+				return nil, stateErr
+			}
+			receipts = append(receipts, InstallationReceipt{
+				SchemaVersion: installationReceiptSchemaVersion,
+				SourceSkillID: commit.Artifact.EffectiveSourceSkillID(), ArtifactSkillID: commit.Artifact.SkillID,
+				DependencyID: commit.DependencyID, Version: commit.Artifact.Version,
+				Name: commit.Name, SourceRef: commit.SourceRef,
+				Provenance: commit.Artifact.EffectiveProvenance(), Sum: commit.Artifact.Sum,
+				Agent: target.Agent, Scope: target.Scope, Mode: target.Mode,
+				Path: filepath.Clean(target.Path), CanonicalPath: cleanOptionalPath(target.CanonicalPath),
+				TargetState: state, InstalledAt: now,
+			})
+			agents = mergeAgentIDs(agents, []string{target.Agent})
+		}
+		requirement := commit.Requirement
+		requirement.Source = commit.DependencyID
+		requirement.Agents = mergeAgentIDs(requirements[commit.DependencyID].Agents, agents)
+		requirements[commit.DependencyID] = requirement
+		if commit.Replace {
+			removed = append(removed, commit.Previous...)
+		}
+		checksum, checksumErr := ContentH1(commit.Artifact.Sum)
+		if checksumErr != nil {
+			return nil, checksumErr
+		}
+		verifiedSums = append(verifiedSums, SumEntry{
+			Path: commit.Artifact.SkillID, Version: commit.Artifact.Version, Checksum: checksum,
 		})
-		agents = mergeAgentIDs(agents, []string{target.Agent})
+	}
+	if err := ValidateVerifiedSums(root, verifiedSums); err != nil {
+		return nil, err
 	}
 
-	snapshots := make([]metadataFileSnapshot, 0, len(receipts)+2)
-	for _, receipt := range receipts {
-		path := installationReceiptPath(stateRoot, receipt)
+	snapshots := make([]metadataFileSnapshot, 0, len(receipts)+len(removed)+2)
+	seenSnapshots := map[string]bool{}
+	appendSnapshot := func(path string) error {
+		path = filepath.Clean(path)
+		if seenSnapshots[path] {
+			return nil
+		}
+		seenSnapshots[path] = true
 		snapshot, snapshotErr := snapshotMetadataFile(path)
 		if snapshotErr != nil {
-			return nil, snapshotErr
+			return snapshotErr
 		}
 		snapshots = append(snapshots, snapshot)
+		return nil
 	}
-	manifestSnapshot, snapshotErr := snapshotMetadataFile(filepath.Join(root, manifestName))
-	if snapshotErr != nil {
-		return nil, snapshotErr
+	for _, receipt := range receipts {
+		if err := appendSnapshot(installationReceiptPath(stateRoot, receipt)); err != nil {
+			return nil, err
+		}
 	}
-	sumSnapshot, snapshotErr := snapshotMetadataFile(filepath.Join(root, workspaceSumName))
-	if snapshotErr != nil {
-		return nil, snapshotErr
+	existingReceipts, err := loadInstallationReceiptsUnlocked(root)
+	if err != nil {
+		return nil, err
 	}
-	snapshots = append(snapshots, manifestSnapshot, sumSnapshot)
+	removedSnapshots, err := receiptSnapshotsForRemoved(root, existingReceipts, removed)
+	if err != nil {
+		return nil, err
+	}
+	for _, snapshot := range removedSnapshots {
+		if err := appendSnapshot(snapshot.Path); err != nil {
+			return nil, err
+		}
+	}
+	if err := appendSnapshot(filepath.Join(root, manifestName)); err != nil {
+		return nil, err
+	}
+	if err := appendSnapshot(filepath.Join(root, workspaceSumName)); err != nil {
+		return nil, err
+	}
 	journal, err := beginMetadataTransaction(root, snapshots)
 	if err != nil {
 		return nil, err
 	}
 	fail := func(cause error) ([]InstallationReceipt, error) {
 		return nil, abortMetadataTransaction(journal, snapshots, cause)
+	}
+	if err := removeInstallationReceiptsUnlocked(root, removed); err != nil {
+		return fail(err)
 	}
 	for _, receipt := range receipts {
 		path := installationReceiptPath(stateRoot, receipt)
@@ -154,33 +225,19 @@ func commitInstallations(
 			return fail(writeErr)
 		}
 	}
-	requirement.Agents = agents
-	var persistErr error
-	if replace {
-		removed := make([]install.Installation, 0, len(previous))
-		for _, installation := range previous {
-			dependency := installation.DependencyID
-			if dependency == "" {
-				dependency = installation.SkillID
+	if err := mutateManifestUnlocked(root, func(manifest *Manifest) {
+		removeBindingsFromManifest(manifest, removed)
+		for dependency, requirement := range requirements {
+			if existing, ok := manifest.Skills[dependency]; ok {
+				requirement.Agents = mergeAgentIDs(existing.Agents, requirement.Agents)
 			}
-			if dependency != artifact.SkillID {
-				removed = append(removed, installation)
-			}
+			requirement.Source = dependency
+			manifest.Skills[dependency] = requirement
 		}
-		persistErr = replaceManifestBindingsUnlocked(root, artifact.SkillID, requirement, true, removed)
-	} else {
-		persistErr = persistReceiptRequirementUnlocked(root, requirement, artifact, true)
+	}); err != nil {
+		return fail(err)
 	}
-	if persistErr != nil {
-		return fail(persistErr)
-	}
-	checksum, checksumErr := ContentH1(artifact.Sum)
-	if checksumErr != nil {
-		return fail(checksumErr)
-	}
-	if sumErr := mergeVerifiedSumsUnlocked(root, []SumEntry{{
-		Path: artifact.SkillID, Version: artifact.Version, Checksum: checksum,
-	}}); sumErr != nil {
+	if sumErr := mergeVerifiedSumsUnlocked(root, verifiedSums); sumErr != nil {
 		return fail(sumErr)
 	}
 	for _, receipt := range receipts {
@@ -192,7 +249,7 @@ func commitInstallations(
 		if stateErr != nil || state != receipt.TargetState {
 			return fail(fmt.Errorf("Installation Target changed during metadata commit: %s", receipt.Path))
 		}
-		if contentErr := verifyInstallationTargetContent(target, artifact.Sum); contentErr != nil {
+		if contentErr := verifyInstallationTargetContent(target, receipt.Sum); contentErr != nil {
 			return fail(contentErr)
 		}
 	}
@@ -418,6 +475,7 @@ func validateInstallationReceipt(receipt InstallationReceipt) error {
 	if receipt.SchemaVersion != installationReceiptSchemaVersion ||
 		source.ValidateSkillID(receipt.SourceSkillID) != nil ||
 		source.ValidateSkillID(receipt.ArtifactSkillID) != nil ||
+		source.ValidateSkillID(receipt.DependencyID) != nil ||
 		source.ValidateVersion(receipt.Version) != nil ||
 		receipt.Name == "" || receipt.Agent == "" || receipt.Path == "" ||
 		receipt.TargetState == "" || receipt.InstalledAt.IsZero() ||

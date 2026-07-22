@@ -1,25 +1,23 @@
 /*
- * [INPUT]: Depends on validated Skill IDs, enriched immutable Hub Info or Local Skill metadata, ZIP archives, and filesystem containment rules.
- * [OUTPUT]: Provides concurrency-safe confined immutable Store put/get operations, safe extraction, immutable-content checks, Info-named Hub/Local/captured provenance receipts, and refreshable assessment metadata.
+ * [INPUT]: Depends on validated Skill IDs, immutable Hub Info or Local Skill metadata, shared validated ZIP traversal, and filesystem containment rules.
+ * [OUTPUT]: Provides concurrency-safe confined Store put/get operations, collision-safe canonical extraction, read-only immutable artifacts, integrity checks, provenance receipts, and separately refreshable assessment metadata.
  * [POS]: Serves as the local Content-addressed Store boundary beneath installation and inventory flows.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package store
 
 import (
-	"archive/zip"
-	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	protocolmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	"gopkg.in/yaml.v3"
 )
@@ -127,8 +125,11 @@ func (s Store) Put(artifact *hub.Artifact) (*Entry, error) {
 }
 
 func (s Store) put(artifact *hub.Artifact, provenance Provenance, sourceSkillID string) (*Entry, error) {
+	if artifact.Info.Risk == "" {
+		artifact.Info.Risk = hub.RiskUnknown
+	}
 	if !artifact.Info.Risk.Valid() || !hub.ValidSum(artifact.Info.Sum) {
-		return nil, fmt.Errorf("Hub artifact is missing immutable assessment metadata")
+		return nil, fmt.Errorf("Hub artifact is missing immutable content metadata")
 	}
 	if err := hub.VerifySum(
 		artifact.ZIP, artifact.SkillID, artifact.Info.Version, artifact.Info.Sum,
@@ -176,8 +177,13 @@ func (s Store) put(artifact *hub.Artifact, provenance Provenance, sourceSkillID 
 		return nil, err
 	}
 	defer os.RemoveAll(temp)
-	if err := extract(artifact.ZIP, artifact.SkillID+"@"+artifact.Info.Version+"/", filepath.Join(temp, "artifact")); err != nil {
+	if err := extract(artifact.ZIP, artifact.SkillID, artifact.Info.Version, filepath.Join(temp, "artifact")); err != nil {
 		return nil, err
+	}
+	if provenance == ProvenanceHub {
+		if err := makeArtifactReadOnly(filepath.Join(temp, "artifact")); err != nil {
+			return nil, err
+		}
 	}
 	if err := os.WriteFile(filepath.Join(temp, "info.json"), mustJSON(artifact.Info), 0o600); err != nil {
 		return nil, err
@@ -260,73 +266,61 @@ func writeFileAtomic(path string, data []byte, mode os.FileMode) error {
 	return os.Rename(temporaryPath, path)
 }
 
-func extract(data []byte, prefix, destination string) error {
-	zr, err := zip.NewReader(bytes.NewReader(data), int64(len(data)))
-	if err != nil {
-		return fmt.Errorf("读取 Skill ZIP: %w", err)
-	}
+func extract(data []byte, skillID, version, destination string) error {
 	if err := os.MkdirAll(destination, 0o700); err != nil {
 		return err
 	}
-	for _, file := range zr.File {
-		if !strings.HasPrefix(file.Name, prefix) {
-			return fmt.Errorf("ZIP 文件 %q 不属于预期前缀 %q", file.Name, prefix)
-		}
-		rel := strings.TrimPrefix(file.Name, prefix)
-		if rel == "" {
-			continue
-		}
-		clean := filepath.Clean(filepath.FromSlash(rel))
-		if clean == "." || filepath.IsAbs(clean) || clean == ".." || strings.HasPrefix(clean, ".."+string(filepath.Separator)) {
-			return fmt.Errorf("ZIP 包含不安全路径 %q", file.Name)
-		}
-		target := filepath.Join(destination, clean)
-		if file.FileInfo().IsDir() {
-			mode := file.Mode().Perm()
+	_, err := protocolartifact.WalkContent(data, skillID, version, func(entry protocolartifact.Entry) error {
+		target := filepath.Join(destination, filepath.FromSlash(entry.Path))
+		if entry.Directory {
+			mode := entry.Mode.Perm()
 			if mode == 0 {
 				mode = 0o700
 			}
 			if err := os.MkdirAll(target, mode); err != nil {
 				return err
 			}
-			if err := os.Chmod(target, mode); err != nil {
-				return err
-			}
-			continue
-		}
-		if !file.Mode().IsRegular() {
-			return fmt.Errorf("ZIP 包含不支持的文件类型 %q", file.Name)
+			return os.Chmod(target, mode)
 		}
 		if err := os.MkdirAll(filepath.Dir(target), 0o700); err != nil {
 			return err
 		}
-		source, err := file.Open()
-		if err != nil {
-			return err
-		}
-		mode := file.Mode().Perm()
+		mode := entry.Mode.Perm()
 		if mode == 0 {
-			mode = 0o644
+			mode = 0o600
 		}
-		destinationFile, err := os.OpenFile(target, os.O_CREATE|os.O_WRONLY|os.O_TRUNC, mode)
+		return os.WriteFile(target, entry.Contents, mode)
+	})
+	return err
+}
+
+func makeArtifactReadOnly(root string) error {
+	var directories []string
+	err := filepath.WalkDir(root, func(path string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if entry.IsDir() {
+			directories = append(directories, path)
+			return nil
+		}
+		info, err := entry.Info()
 		if err != nil {
-			source.Close()
 			return err
 		}
-		_, copyErr := io.Copy(destinationFile, source)
-		closeDestErr, closeSourceErr := destinationFile.Close(), source.Close()
-		if copyErr != nil {
-			return copyErr
+		mode := os.FileMode(0o444)
+		if info.Mode()&0o111 != 0 {
+			mode = 0o555
 		}
-		if closeDestErr != nil {
-			return closeDestErr
-		}
-		if closeSourceErr != nil {
-			return closeSourceErr
-		}
+		return os.Chmod(path, mode)
+	})
+	if err != nil {
+		return err
 	}
-	if _, err := os.Stat(filepath.Join(destination, "SKILL.md")); err != nil {
-		return fmt.Errorf("ZIP 缺少根目录 SKILL.md: %w", err)
+	for index := len(directories) - 1; index >= 0; index-- {
+		if err := os.Chmod(directories[index], 0o755); err != nil {
+			return err
+		}
 	}
 	return nil
 }

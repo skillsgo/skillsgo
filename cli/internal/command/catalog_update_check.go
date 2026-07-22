@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on repeated App-supplied installed Skill identities and the Hub client's Catalog-only batch latest-version read.
- * [OUTPUT]: Provides the read-only `updates check` machine command with per-Library-entry current, available, or unsupported results.
+ * [INPUT]: Depends on repeated App-supplied installed Skill identities and the Hub client's Repository-fresh batch head/release read.
+ * [OUTPUT]: Provides the read-only `updates check` machine command with independent head and release status per Library entry.
  * [POS]: Serves as the batch update-availability boundary between the App's local inventory and the independently built Hub Catalog.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -23,11 +23,14 @@ type catalogUpdateCandidate struct {
 }
 
 type catalogUpdateResult struct {
-	Key           string   `json:"key"`
-	SkillID       string   `json:"skillId"`
-	Versions      []string `json:"versions"`
-	LatestVersion string   `json:"latestVersion,omitempty"`
-	Status        string   `json:"status"`
+	Key            string   `json:"key"`
+	SkillID        string   `json:"skillId"`
+	Versions       []string `json:"versions"`
+	HeadVersion    string   `json:"headVersion,omitempty"`
+	ReleaseVersion string   `json:"releaseVersion,omitempty"`
+	HeadStatus     string   `json:"headStatus,omitempty"`
+	ReleaseStatus  string   `json:"releaseStatus,omitempty"`
+	Status         string   `json:"status"`
 }
 
 type catalogUpdateReport struct {
@@ -63,26 +66,25 @@ func newUpdatesCommand() *cobra.Command {
 					skillIDs = append(skillIDs, candidate.SkillID)
 				}
 			}
-			latest, err := client.CatalogUpdates(cmd.Context(), skillIDs)
+			resolvedItems, err := client.CatalogUpdates(cmd.Context(), skillIDs)
 			if err != nil {
 				return err
 			}
 			report := catalogUpdateReport{SchemaVersion: 1, Phase: "update-check", Items: make([]catalogUpdateResult, 0, len(candidates))}
-			latestBySkillID := make(map[string]hub.CatalogUpdateItem, len(latest))
-			for _, item := range latest {
-				latestBySkillID[item.SkillID] = item
+			resolvedBySkillID := make(map[string]hub.CatalogUpdateItem, len(resolvedItems))
+			for _, item := range resolvedItems {
+				resolvedBySkillID[item.SkillID] = item
 			}
 			for _, candidate := range candidates {
-				resolved := latestBySkillID[candidate.SkillID]
-				item := catalogUpdateResult{Key: candidate.Key, SkillID: candidate.SkillID, Versions: candidate.Versions, LatestVersion: resolved.LatestVersion, Status: "unsupported"}
+				resolved := resolvedBySkillID[candidate.SkillID]
+				item := catalogUpdateResult{
+					Key: candidate.Key, SkillID: candidate.SkillID, Versions: candidate.Versions,
+					HeadVersion: resolved.HeadVersion, ReleaseVersion: resolved.ReleaseVersion, Status: "unsupported",
+				}
 				if resolved.Status == "available" {
-					item.Status = "current"
-					for _, version := range candidate.Versions {
-						if version != resolved.LatestVersion {
-							item.Status = "update_available"
-							break
-						}
-					}
+					item.Status = "available"
+					item.HeadStatus = catalogCandidateStatus(candidate.Versions, resolved.HeadVersion)
+					item.ReleaseStatus = catalogCandidateStatus(candidate.Versions, resolved.ReleaseVersion)
 				}
 				report.Items = append(report.Items, item)
 			}
@@ -96,6 +98,18 @@ func newUpdatesCommand() *cobra.Command {
 	check.Flags().StringVar(&output, "output", "json", "machine output format")
 	root.AddCommand(check)
 	return root
+}
+
+func catalogCandidateStatus(installed []string, candidate string) string {
+	if candidate == "" {
+		return "unavailable"
+	}
+	for _, version := range installed {
+		if version != candidate {
+			return "update_available"
+		}
+	}
+	return "current"
 }
 
 func decodeCatalogUpdateCandidates(raw []string) ([]catalogUpdateCandidate, error) {

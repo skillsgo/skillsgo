@@ -3,7 +3,8 @@
 
 ## Members
 
-- `files.go`: owns the editable Go-like `skillsgo.mod` Workspace Manifest, its `[agent, ...]` require extension, atomic requirement/binding mutation, and nearest Workspace-root discovery.
+- `files.go`: owns atomic Workspace requirement/binding mutation, deterministic Manifest publication, and nearest Workspace-root discovery.
+- `manifest_parser.go`: owns the closed SkillsGo-native `require ID version [agents] [mode]` grammar, canonical identity/version validation, comments, and default-symlink semantics.
 - `installation_receipts.go`: atomically records and loads exact target-to-Store Installation Receipts together with Manifest and Workspace Sum installation/replacement commits, using a shared transaction lock and crash-recovery journal.
 - `file_lock.go`: adapts gofrs/flock operating-system locks into bounded cross-process exclusion shared by Workspace persistence writers; process exit releases ownership without PID files or stale-lock heuristics.
 - `workspace_sum.go`: owns the generated, integrity-only `skillsgo.sum` ledger, checksum verification, and locked crash-safe updates.

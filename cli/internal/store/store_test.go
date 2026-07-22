@@ -316,7 +316,14 @@ func TestGetRejectsLocallyModifiedStoreArtifact(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(entry.Artifact, "SKILL.md"), []byte("tampered"), 0o600); err != nil {
+	skillFile := filepath.Join(entry.Artifact, "SKILL.md")
+	if err := os.WriteFile(skillFile, []byte("tampered"), 0o600); err == nil {
+		t.Fatal("expected immutable Hub Store file to reject direct writes")
+	}
+	if err := os.Chmod(skillFile, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(skillFile, []byte("tampered"), 0o600); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := storage.Get(artifact.SkillID, artifact.Info.Version); err == nil {

@@ -40,9 +40,12 @@ func TestSelectRepositoryMemberMatrix(t *testing.T) {
 }
 
 func TestParseRepositorySelectorQueryPrecedence(t *testing.T) {
-	selector, query, err := parseRepositorySelector("find-skills@main", "v1.2.3")
-	if err != nil || selector != "find-skills" || query != "main" {
+	selector, query, err := parseRepositorySelector("find-skills@release", "v1.2.3")
+	if err != nil || selector != "find-skills" || query != "release" {
 		t.Fatalf("override = %q, %q, %v", selector, query, err)
+	}
+	if _, _, err := parseRepositorySelector("find-skills@main", "v1.2.3"); err == nil {
+		t.Fatal("ambiguous branch query succeeded")
 	}
 	selector, query, err = parseRepositorySelector("find-skills", "v1.2.3")
 	if err != nil || selector != "find-skills" || query != "v1.2.3" {

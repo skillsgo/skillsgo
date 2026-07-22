@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on arbitrary public Git HTTP(S) URLs, equivalent GitHub owner/repo and github/owner/repo aliases, source-or-selector@query syntax, private Local Skill IDs, and the explicit `/-/` Repository boundary.
- * [OUTPUT]: Provides one canonical github.com identity for GitHub aliases, normalized case-folded Repository references with case-preserving nested Skill paths, and reusable path-safe Skill ID/query validation.
+ * [OUTPUT]: Provides one canonical github.com identity for GitHub aliases, provider-aware Repository normalization with case-preserving non-GitHub paths, and reusable path-safe Skill ID/query validation.
  * [POS]: Serves as the CLI Skill ID normalization boundary used before Hub and Store access.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,7 @@ import (
 	"strings"
 
 	protocolskillid "github.com/skillsgo/skillsgo/protocol/skillid"
+	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 )
 
 type Reference struct {
@@ -21,7 +22,7 @@ type Reference struct {
 
 func Parse(raw string) (Reference, error) {
 	raw = strings.TrimSpace(raw)
-	requestedVersion := "latest"
+	requestedVersion := "head"
 	if separator := strings.LastIndex(raw, "@"); separator > strings.LastIndex(raw, "/") {
 		requestedVersion = strings.TrimSpace(raw[separator+1:])
 		raw = strings.TrimSpace(raw[:separator])
@@ -49,7 +50,7 @@ func Parse(raw string) (Reference, error) {
 			if len(parts) < 4 || parts[2] != "tree" {
 				return Reference{}, fmt.Errorf("暂不支持 GitHub URL 路径 %q", parsed.Path)
 			}
-			if requestedVersion == "latest" {
+			if requestedVersion == "head" {
 				version = parts[3]
 			}
 			skillID := host + "/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
@@ -143,20 +144,35 @@ func checkedReference(skillID, version string) (Reference, error) {
 	if err := ValidateVersion(version); err != nil {
 		return Reference{}, err
 	}
+	if !IsLocalSkillID(skillID) {
+		if err := ValidatePublicVersion(version); err != nil {
+			return Reference{}, err
+		}
+	}
 	return Reference{SkillID: skillID, Version: version}, nil
 }
 
-func normalizeSkillID(skillID string) string {
-	repository, skillPath, nested := strings.Cut(skillID, "/-/")
-	repository = strings.ToLower(strings.TrimSuffix(repository, ".git"))
-	if nested {
-		return repository + "/-/" + skillPath
+// ValidatePublicVersion accepts only the two explicit movable intents or one
+// canonical immutable semantic/pseudo-version.
+func ValidatePublicVersion(version string) error {
+	if version == "head" || version == "release" || protocolversion.IsImmutable(version) {
+		return nil
 	}
-	return repository
+	return fmt.Errorf("unsupported public version query %q; use head, release, or an exact immutable version", version)
+}
+
+func normalizeSkillID(skillID string) string {
+	if parsed, err := protocolskillid.Parse(skillID); err == nil {
+		return parsed.String()
+	}
+	return skillID
 }
 
 // ValidateVersion confines a source or resolved version to one URL path segment.
 func ValidateVersion(version string) error {
+	if version == "latest" {
+		return fmt.Errorf("ambiguous Selector %q is unsupported; use head or release", version)
+	}
 	if version == "" || version == "." || version == ".." ||
 		strings.ContainsAny(version, "/\\\x00%?#") || containsControl(version) {
 		return fmt.Errorf("invalid source reference %q", version)

@@ -44,10 +44,26 @@ func (resources verifiedWorkspaceResources) persist(home string, declarationRoot
 		return fmt.Errorf("verified Workspace resources require a declaration root")
 	}
 	for _, root := range roots {
-		if err := project.ValidateVerifiedSums(root, resources.sums); err != nil {
+		if err := resources.validate(root); err != nil {
 			return err
 		}
 	}
+	if err := resources.cacheInfos(home); err != nil {
+		return err
+	}
+	for _, root := range roots {
+		if err := project.MergeVerifiedSums(root, resources.sums); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (resources verifiedWorkspaceResources) validate(root string) error {
+	return project.ValidateVerifiedSums(root, resources.sums)
+}
+
+func (resources verifiedWorkspaceResources) cacheInfos(home string) error {
 	cache := infocache.Cache{Root: infocache.DefaultRoot(home)}
 	seenInfos := map[string]bool{}
 	for _, info := range resources.infos {
@@ -57,11 +73,6 @@ func (resources verifiedWorkspaceResources) persist(home string, declarationRoot
 		}
 		seenInfos[key] = true
 		if err := cache.Put(info.resource, info.version, info.kind, info.bytes); err != nil {
-			return err
-		}
-	}
-	for _, root := range roots {
-		if err := project.MergeVerifiedSums(root, resources.sums); err != nil {
 			return err
 		}
 	}
