@@ -1,15 +1,12 @@
 /*
  * [INPUT]: Depends on the public SkillsGo Hub JSON schema and immutable artifact metadata.
- * [OUTPUT]: Provides shared schema constants, immutable Info resources, separate risk vocabulary, content-match DTOs, and update DTOs.
+ * [OUTPUT]: Provides shared schema constants, Repository-level artifact Info, Skill member Info without independent artifact identity, separate risk vocabulary, content-match DTOs, and update DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package api
 
-import (
-	"encoding/json"
-	"time"
-)
+import "time"
 
 const SchemaVersion = 1
 const (
@@ -37,6 +34,8 @@ type SkillInfo struct {
 	SchemaVersion int               `json:"SchemaVersion" yaml:"schemaVersion"`
 	Kind          string            `json:"Kind" yaml:"kind"`
 	ID            string            `json:"ID" yaml:"id"`
+	RepositoryID  string            `json:"RepositoryID" yaml:"repositoryID"`
+	Path          string            `json:"Path" yaml:"path"`
 	Version       string            `json:"Version" yaml:"version"`
 	Time          time.Time         `json:"Time" yaml:"time"`
 	Ref           string            `json:"Ref" yaml:"ref"`
@@ -50,19 +49,20 @@ type SkillInfo struct {
 	Metadata      map[string]string `json:"Metadata,omitempty" yaml:"metadata,omitempty"`
 	// Risk is local mutable projection state and is intentionally excluded
 	// from immutable Skill Info serialization.
-	Risk        Risk   `json:"-" yaml:"-"`
-	Sum         string `json:"Sum" yaml:"sum"`
-	ArchiveSize int64  `json:"ArchiveSize" yaml:"archiveSize"`
+	Risk Risk `json:"-" yaml:"-"`
 }
 type RepositoryInfo struct {
-	SchemaVersion int               `json:"SchemaVersion"`
-	Kind          string            `json:"Kind"`
-	ID            string            `json:"ID"`
-	Version       string            `json:"Version"`
-	Time          time.Time         `json:"Time"`
-	Ref           string            `json:"Ref"`
-	CommitSHA     string            `json:"CommitSHA"`
-	Skills        []json.RawMessage `json:"Skills"`
+	SchemaVersion int         `json:"SchemaVersion"`
+	Kind          string      `json:"Kind"`
+	ID            string      `json:"ID"`
+	Version       string      `json:"Version"`
+	Time          time.Time   `json:"Time"`
+	Ref           string      `json:"Ref"`
+	CommitSHA     string      `json:"CommitSHA"`
+	TreeSHA       string      `json:"TreeSHA"`
+	Sum           string      `json:"Sum"`
+	ArchiveSize   int64       `json:"ArchiveSize"`
+	Skills        []SkillInfo `json:"Skills"`
 }
 type ContentMatch struct {
 	SkillID          string `json:"skillId"`

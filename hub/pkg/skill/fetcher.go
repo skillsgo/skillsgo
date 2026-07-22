@@ -1,16 +1,18 @@
 /*
  * [INPUT]: Depends on the skill package imports and contracts declared in this file.
- * [OUTPUT]: Provides the skill package behavior implemented by fetcher.go.
- * [POS]: Serves as maintained source in the skill package in its renamed SkillsGo Hub or CLI workspace.
+ * [OUTPUT]: Defines source revision, complete Repository Artifact snapshot, validated member metadata, and transitional legacy fetch contracts.
+ * [POS]: Serves as the source boundary between Repository publication orchestration and Git resolution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package skill
 
 import (
 	"context"
+	"io"
 	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
+	protocolmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 )
 
 // Fetcher fetches a Skill from an upstream source.
@@ -47,12 +49,20 @@ type RepositoryFetcher interface {
 type RepositorySnapshot struct {
 	RepositoryID string
 	Version      string
+	Ref          string
 	CommitSHA    string
+	TreeSHA      string
 	CommitTime   time.Time
+	Archive      io.ReadCloser
+	ArchiveMD5   []byte
+	Sum          string
+	ArchiveSize  int64
 	Members      []RepositoryMember
 }
 
 type RepositoryMember struct {
-	SkillID string
-	Version *storage.Version
+	SkillID  string
+	Path     string
+	TreeSHA  string
+	Manifest protocolmanifest.Manifest
 }

@@ -1,13 +1,15 @@
 /*
  * [INPUT]: Depends on parsed artifact coordinates, immutable-version validation, Protocol ZIP resolution, redirect policy, and streaming metadata.
- * [OUTPUT]: Streams ZIP artifacts only for exact canonical semantic or pseudo-versions, including HEAD metadata.
+ * [OUTPUT]: Streams Repository ZIP artifacts only for exact canonical semantic or pseudo-versions and closes underlying resources at EOF, error, HEAD completion, or redirect.
  * [POS]: Serves as the ZIP HTTP boundary in the artifact download protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package download
 
 import (
+	"io"
 	"strconv"
+	"sync"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
@@ -52,8 +54,8 @@ func ZipHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handle
 			}
 			return c.SendStatus(errors.Kind(err))
 		}
-		defer func() { _ = zip.Close() }()
 		if semver.IsValid(ver) && df.URL(mod) != "" {
+			_ = zip.Close()
 			artifactURL, redirectErr := getRedirectURL(
 				df.URL(mod),
 				config.PackageVersionedName(mod, ver, "zip"),
@@ -71,8 +73,23 @@ func ZipHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handle
 			c.Set(fiber.HeaderContentLength, strconv.FormatInt(size, 10))
 		}
 		if c.Method() == fiber.MethodHead {
+			_ = zip.Close()
 			return nil
 		}
-		return c.SendStream(zip)
+		return c.SendStream(&closeAtEndReader{reader: zip, closer: zip})
 	}
+}
+
+type closeAtEndReader struct {
+	reader io.Reader
+	closer io.Closer
+	once   sync.Once
+}
+
+func (reader *closeAtEndReader) Read(buffer []byte) (int, error) {
+	read, err := reader.reader.Read(buffer)
+	if err != nil {
+		reader.once.Do(func() { _ = reader.closer.Close() })
+	}
+	return read, err
 }
