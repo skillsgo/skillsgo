@@ -74,6 +74,7 @@ void main() {
       );
 
       await _pumpUntilTakeoverCount(tester, 2);
+      await _pumpUntil(tester, _railCountLabel(2));
       expect(_railCountLabel(2), findsOneWidget);
       await _dismissAutomaticTakeoverStory(tester);
 
