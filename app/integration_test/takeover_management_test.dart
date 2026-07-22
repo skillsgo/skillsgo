@@ -20,8 +20,6 @@ void main() {
   testWidgets(
     'manages existing skills by location and refreshes exact counts',
     (tester) async {
-      final semantics = tester.ensureSemantics();
-      addTearDown(semantics.dispose);
       final sandbox = Platform.environment['SKILLSGO_E2E_SANDBOX'];
       expect(sandbox, isNotNull);
       final userTarget = Directory('$sandbox/test-agent/skills/user-existing');
@@ -187,7 +185,7 @@ Future<void> _executeTakeover(
   final completed = find.byKey(const Key('batch-takeover-board-complete'));
   await _pumpUntil(tester, completed);
   expect(
-    tester.getSemantics(completed).label,
+    tester.widget<Semantics>(completed).properties.label,
     anyOf(
       '$takenOver skills added to management, $skipped skipped.',
       '已纳入管理 $takenOver 个技能，跳过 $skipped 个。',
