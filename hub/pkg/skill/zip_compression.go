@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on an immutable Git revision, a canonical Skill ID/version prefix, the shared artifact contract, Repository-root LICENSE inheritance, afero storage, and Go ZIP primitives.
- * [OUTPUT]: Provides bounded, deterministic SkillsGo artifact assembly with portable paths, canonical permission classes, nested root LICENSE inheritance, and best-compression ZIP rewriting.
- * [POS]: Serves as the safe archive boundary between Git source resolution and immutable Hub artifact publication.
+ * [INPUT]: Depends on immutable Git revisions, canonical Repository/legacy Skill coordinates, the shared artifact contract, afero storage, and Go ZIP primitives.
+ * [OUTPUT]: Adapts a full Git-tracked regular-file tree into one deterministic Repository Artifact and temporarily retains legacy Skill ZIP assembly until the obsolete stash path is removed.
+ * [POS]: Serves as the safe archive boundary between Git source resolution and immutable Repository publication.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package skill
@@ -11,6 +11,7 @@ import (
 	"bytes"
 	"compress/flate"
 	"context"
+	"crypto/md5" //nolint:gosec -- storage envelope compatibility; h1 is the authenticated content identity.
 	"fmt"
 	"io"
 	"os"
@@ -24,6 +25,59 @@ import (
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	"github.com/spf13/afero"
 )
+
+func createRepositoryArtifact(ctx context.Context, repositoryID, version, repoDir, revision string) ([]byte, []byte, string, error) {
+	args := []string{"-c", "core.autocrlf=input", "-c", "core.eol=lf", "archive", "--format=zip", revision}
+	raw := &boundedArchiveBuffer{}
+	stderr := &bytes.Buffer{}
+	command := exec.CommandContext(ctx, "git", args...)
+	command.Dir = repoDir
+	command.Env = append(os.Environ(), "PWD="+repoDir)
+	command.Stdout = raw
+	command.Stderr = stderr
+	if err := command.Run(); err != nil {
+		if raw.exceeded {
+			return nil, nil, "", fmt.Errorf("Git Repository archive exceeds %d bytes", maxSkillArchiveBytes)
+		}
+		return nil, nil, "", fmt.Errorf("create Git Repository archive: %w: %s", err, strings.TrimSpace(stderr.String()))
+	}
+	source, err := zip.NewReader(bytes.NewReader(raw.Bytes()), int64(raw.Len()))
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("open Git Repository archive: %w", err)
+	}
+	files := make([]protocolartifact.Entry, 0, len(source.File))
+	for _, file := range source.File {
+		if file.FileInfo().IsDir() {
+			continue
+		}
+		if !file.Mode().IsRegular() {
+			return nil, nil, "", fmt.Errorf("Git Repository contains non-regular file %q", file.Name)
+		}
+		reader, err := file.Open()
+		if err != nil {
+			return nil, nil, "", err
+		}
+		contents, readErr := io.ReadAll(reader)
+		closeErr := reader.Close()
+		if readErr != nil {
+			return nil, nil, "", readErr
+		}
+		if closeErr != nil {
+			return nil, nil, "", closeErr
+		}
+		files = append(files, protocolartifact.Entry{Path: strings.TrimSuffix(file.Name, "/"), Contents: contents, Mode: file.Mode(), Size: int64(len(contents))})
+	}
+	archive, err := protocolartifact.BuildRepository(repositoryID, version, files)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("build Repository Artifact: %w", err)
+	}
+	sum, err := protocolartifact.RepositorySum(archive, repositoryID, version)
+	if err != nil {
+		return nil, nil, "", fmt.Errorf("verify Repository Artifact: %w", err)
+	}
+	digest := md5.Sum(archive) //nolint:gosec
+	return archive, digest[:], sum, nil
+}
 
 const (
 	maxSkillArchiveBytes        = protocolartifact.MaxArchiveBytes

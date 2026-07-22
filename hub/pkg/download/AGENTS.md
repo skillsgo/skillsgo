@@ -3,7 +3,7 @@
 
 ## Members
 
-- `protocol.go`, `handler.go`, `immutable_etag.go`, and version-specific handlers: expose `/mod`-namespaced List, explicit Head/Release Selectors, Info, and Skill ZIP routes over composable storage and source protocols, enforce method and conditional-request contracts, submit async/async-redirect cache misses to the durable Hub task runtime, redirect canonical immutable ZIPs to a configured artifact origin after materialization, distinguish immutable and movable HTTP caching, and retain structured cache and dispatch observability.
+- `protocol.go`, `handler.go`, `immutable_etag.go`, and version-specific handlers: expose root Repository Proxy List, explicit Head/Release Selectors, Repository Info, and Repository ZIP routes over composable storage and source protocols, explicitly reject the removed `/mod` namespace, enforce method and conditional-request contracts, stream files with EOF-bound resource closure, redirect canonical immutable ZIPs to a configured artifact origin after materialization, distinguish immutable and movable HTTP caching, and retain structured observability.
 - `addons/` and `mode/`: wrap protocol execution with concurrency control and synchronous or redirect delivery policy.
 - `*_test.go`: specify the public HTTP and Protocol contracts, including version listing, caching, fallback, and artifact delivery.
 

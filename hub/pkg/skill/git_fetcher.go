@@ -7,9 +7,11 @@
 package skill
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/url"
 	"os"
@@ -22,6 +24,7 @@ import (
 
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
+	protocolmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 	"github.com/spf13/afero"
 	modmodule "golang.org/x/mod/module"
@@ -170,16 +173,17 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revis
 	sort.Strings(candidates)
 	snapshot := &RepositorySnapshot{
 		RepositoryID: repositoryID, Version: resolution.Version,
-		CommitSHA: resolution.CommitSHA, CommitTime: resolution.CommitTime,
+		Ref: resolution.Ref, CommitSHA: resolution.CommitSHA, TreeSHA: resolution.TreeSHA, CommitTime: resolution.CommitTime,
 		Members: make([]RepositoryMember, 0, len(candidates)),
 	}
-	closeMembers := func() {
-		for _, member := range snapshot.Members {
-			if member.Version != nil && member.Version.Zip != nil {
-				_ = member.Version.Zip.Close()
-			}
-		}
+	archive, archiveMD5, sum, err := createRepositoryArtifact(ctx, repositoryID, resolution.Version, repoDir, resolution.CommitSHA)
+	if err != nil {
+		return nil, errors.E(op, err)
 	}
+	snapshot.Archive = io.NopCloser(bytes.NewReader(archive))
+	snapshot.ArchiveMD5 = archiveMD5
+	snapshot.Sum = sum
+	snapshot.ArchiveSize = int64(len(archive))
 	for _, candidate := range candidates {
 		directory := filepath.ToSlash(filepath.Dir(candidate))
 		memberID := repositoryID
@@ -193,18 +197,27 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revis
 			err = nil
 		}
 		if err != nil {
-			closeMembers()
 			return nil, errors.E(op, err)
 		}
-		version, fetchErr := g.fetch(ctx, memberID, revision, &memberResolution)
+		manifestSource, fetchErr := gitFileContent(ctx, repoDir, resolution.CommitSHA, candidate)
 		if fetchErr != nil {
-			if errors.Kind(fetchErr) == errors.KindBadRequest || errors.Kind(fetchErr) == errors.KindNotFound {
+			return nil, errors.E(op, fetchErr)
+		}
+		manifestBytes, body, manifestErr := extractManifest(manifestSource)
+		if manifestErr == nil {
+			manifestErr = validateManifest(manifestBytes, body)
+		}
+		if manifestErr != nil {
+			if errors.Kind(manifestErr) == errors.KindBadRequest {
 				continue
 			}
-			closeMembers()
-			return nil, fetchErr
+			continue
 		}
-		snapshot.Members = append(snapshot.Members, RepositoryMember{SkillID: memberID, Version: version})
+		manifest, manifestErr := protocolmanifest.ValidatePublished(manifestSource)
+		if manifestErr != nil {
+			continue
+		}
+		snapshot.Members = append(snapshot.Members, RepositoryMember{SkillID: memberID, Path: directory, TreeSHA: memberResolution.TreeSHA, Manifest: manifest})
 	}
 	if len(snapshot.Members) == 0 {
 		return nil, errors.E(op, errors.S(repositoryID), errors.V(revision), "Repository contains no installable Skills", errors.KindNotFound)

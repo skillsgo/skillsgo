@@ -270,7 +270,7 @@ func TestCatalogUpdateCheckResolvesEachRepositoryOnceAndPreservesRequestOrder(t 
 	require.NoError(t, c.UpsertSkill(context.Background(), known))
 	repositoryID := "github.com/example/skills"
 	repositoryInfo := func(version string) []byte {
-		return []byte(fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"commit","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"Version":%q,"Name":"review","Description":"review"}]}`, repositoryID, version, known.SkillID, version))
+		return []byte(fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"commit","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"RepositoryID":%q,"Path":"review","Version":%q,"Name":"review","Description":"review"}]}`, repositoryID, version, known.SkillID, repositoryID, version))
 	}
 	artifacts := &catalogArtifactStub{
 		lists: map[string][]string{repositoryID: {"v1.3.0"}},

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses every public risk value and representative complete/optional Hub JSON resources.
- * [OUTPUT]: Specifies risk validation, field casing, omission behavior, nested DTOs, and lossless JSON round trips.
+ * [OUTPUT]: Specifies risk validation, Repository-level Sum/archive identity, Skill RepositoryID/path membership, field casing, omission behavior, and lossless JSON round trips.
  * [POS]: Serves as wire-schema compatibility coverage shared by Hub handlers and the CLI client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -28,13 +28,13 @@ func TestRiskVocabulary(t *testing.T) {
 
 func TestSkillAndRepositoryInfoJSONContract(t *testing.T) {
 	now := time.Date(2026, 7, 21, 1, 2, 3, 0, time.UTC)
-	skill := SkillInfo{SchemaVersion: SchemaVersion, Kind: KindSkill, ID: "github.com/o/r", Version: "v1.0.0", Time: now, Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "tree", Name: "demo", Description: "Demo", License: "MIT", Compatibility: "Codex", AllowedTools: "Read", Metadata: map[string]string{"owner": "team"}, Risk: RiskLow, Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 42}
+	skill := SkillInfo{SchemaVersion: SchemaVersion, Kind: KindSkill, ID: "github.com/o/r/-/skills/demo", RepositoryID: "github.com/o/r", Path: "skills/demo", Version: "v1.0.0", Time: now, Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "tree", Name: "demo", Description: "Demo", License: "MIT", Compatibility: "Codex", AllowedTools: "Read", Metadata: map[string]string{"owner": "team"}, Risk: RiskLow}
 	encoded, err := json.Marshal(skill)
 	if err != nil {
 		t.Fatal(err)
 	}
 	text := string(encoded)
-	for _, field := range []string{`"SchemaVersion":1`, `"Kind":"Skill"`, `"AllowedTools":"Read"`, `"Sum":"h1:`} {
+	for _, field := range []string{`"SchemaVersion":1`, `"Kind":"Skill"`, `"RepositoryID":"github.com/o/r"`, `"Path":"skills/demo"`, `"AllowedTools":"Read"`} {
 		if !strings.Contains(text, field) {
 			t.Fatalf("missing wire field %s in %s", field, text)
 		}
@@ -58,7 +58,7 @@ func TestSkillAndRepositoryInfoJSONContract(t *testing.T) {
 			t.Fatalf("omitempty field %s serialized: %s", optional, minimal)
 		}
 	}
-	repository := RepositoryInfo{SchemaVersion: SchemaVersion, Kind: KindRepository, ID: "github.com/o/r", Version: "v1.0.0", Time: now, Ref: "refs/tags/v1.0.0", CommitSHA: "commit", Skills: []json.RawMessage{encoded}}
+	repository := RepositoryInfo{SchemaVersion: SchemaVersion, Kind: KindRepository, ID: "github.com/o/r", Version: "v1.0.0", Time: now, Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "tree", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 42, Skills: []SkillInfo{skill}}
 	repositoryJSON, err := json.Marshal(repository)
 	if err != nil {
 		t.Fatal(err)

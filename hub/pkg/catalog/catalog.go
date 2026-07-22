@@ -318,7 +318,8 @@ func (c *Catalog) PublishRepositoryVersionWithVisibility(ctx context.Context, re
 }
 
 // PublishRepositoryReleaseWithVisibility atomically publishes the complete
-// member set and the exact immutable Repository Release Record served by /mod.
+// member set and the exact immutable Repository Release Record served by the
+// root Repository Proxy.
 func (c *Catalog) PublishRepositoryReleaseWithVisibility(ctx context.Context, repositoryID string, candidates []PublishedSkill, visibility PublicationVisibility, releaseInfo []byte) error {
 	if len(releaseInfo) == 0 || !json.Valid(releaseInfo) {
 		return fmt.Errorf("Repository publication requires valid immutable release Info")
