@@ -371,6 +371,14 @@ The journey warms the exact artifact into the Store without creating a target or
 
 Status: implemented through the released CLI and Hub plus observable Store and Workspace state by `j47_cache_and_inspection_test.go`.
 
+### J48 — Report a committed installation through a Cloud deployment
+
+As a user connected to a Cloud-mode Hub, I want a successful CLI installation to report one anonymous installation fact to the declared Cloud origin without changing the installation result.
+
+The journey starts real CLI and Hub processes plus a separate public-contract Cloud Mock process, verifies `hub info`, installs an immutable fixture Skill, and observes exactly one post-commit event containing the Skill coordinate, version, scope, and Agent.
+
+Status: implemented through released CLI and Hub processes plus the external Cloud Mock boundary by `j48_cloud_install_reporting_test.go`.
+
 ## GitHub Issue #27 User-Story Coverage Index
 
 The numbered user stories in #27 are release-reviewed through these black-box journeys:
