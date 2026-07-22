@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the stash package imports and contracts declared in this file.
- * [OUTPUT]: Provides the stash package behavior implemented by with_redis.go.
- * [POS]: Serves as maintained source in the stash package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on go-redis clients, redislock, Hub lock configuration, storage checks, and observability spans.
+ * [OUTPUT]: Provides Redis client option parsing and distributed singleflight wrappers with failed-initialization cleanup.
+ * [POS]: Serves as the standalone and cluster Redis locking adapter for Hub artifact stashing.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package stash
@@ -142,11 +142,13 @@ func WithRedisLock(l RedisLogger, endpoint, password string, cluster bool, check
 		client = redis.NewClient(options)
 	}
 	if _, err := client.Ping(context.Background()).Result(); err != nil {
+		_ = client.Close()
 		return nil, errors.E(op, err)
 	}
 
 	lockOptions, err := lockOptionsFromConfig(lockConfig)
 	if err != nil {
+		_ = client.Close()
 		return nil, errors.E(op, err)
 	}
 

@@ -1,13 +1,14 @@
 /*
- * [INPUT]: Depends on the disposable E2E environment and public CLI, Hub, JSON, and filesystem contracts.
- * [OUTPUT]: Provides black-box coverage for shared container isolation, command execution, fixtures, and assertions.
- * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
+ * [INPUT]: Depends on Testcontainers, the host runner identity, disposable bind mounts, and public CLI, Hub, JSON, and filesystem contracts.
+ * [OUTPUT]: Provides host-owned container sandboxes plus shared command execution, fixture, and assertion helpers for black-box journeys.
+ * [POS]: Serves as the Linux/macOS container lifecycle and isolation harness for the cross-product CLI E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package e2e_test
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"io/fs"
 	"os"
@@ -72,6 +73,10 @@ func startEnvironment(t *testing.T, ctx context.Context) (testcontainers.Contain
 		testcontainers.WithMounts(
 			testcontainers.BindMount(sandboxRoot, "/e2e"),
 		),
+		testcontainers.CustomizeRequestOption(func(request *testcontainers.GenericContainerRequest) error {
+			request.User = fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid())
+			return nil
+		}),
 		testcontainers.WithEnv(map[string]string{
 			"HOME":                             "/e2e/home",
 			"TMPDIR":                           "/e2e/tmp",
