@@ -37,7 +37,7 @@
 - `args_test.go`: covers public argument normalization and environment-gated test Agent behavior.
 - `i18n_test.go`: covers localized root and Local export command help.
 - `install_flow_test.go`: retains the migration inventory of existing installation, update, and restoration journeys that must be adapted to Repository Vendor architecture.
-- `repository_add.go`: orchestrates one root Repository Info/ZIP download, explicit member/Agent selection, Scope Vendor/Projection preparation, paired YAML/Lock persistence, idempotency, and rollback.
+- `repository_add.go`: orchestrates one root Repository Info/ZIP download, explicit member/Agent/project selection, Scope Vendor/Projection preparation, paired YAML/Lock persistence, idempotency, rollback, and the App-facing Repository-install machine result.
 - `repository_remove.go`: verifies the authoritative local Vendor and atomically removes selected root/nested members from every declared Agent projection without Hub access or Local Modification overwrite.
 - `repository_add_test.go`, `repository_vendor_test.go`: specify Repository selector matching plus the public exact-version Workspace Vendor journey.
 - `workspace_integrity.go`: validates complete immutable resource evidence before atomically extending every destination Workspace Sum and publishing exact Info Cache entries for all installation entry points.

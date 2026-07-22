@@ -55,9 +55,9 @@ void main() {
     );
     expect(runner.lastArguments, [
       'add',
-      r'github.com/a/b/-/test;$(touch nope)',
+      r'github.com/a/b@main',
       '--skill',
-      r"test name';$(touch nope)",
+      r'test;$(touch nope)',
       '--global',
       '--agent',
       'codex',
@@ -124,37 +124,30 @@ void main() {
   });
 
   test(
-    'confirmed target installation invokes add --yes without preflight',
+    'target installation invokes exact Repository Vendor add without a materialization mode',
     () async {
       const skillId = 'github.com/example/skills/-/demo';
-      const target = {
-        'scope': 'user',
-        'agent': 'codex',
-        'mode': 'symlink',
-        'path': '/Users/test/.codex/skills/demo',
-        'canonicalPath': '/Users/test/.agents/skills/demo',
-      };
       final runner = FakeProcessRunner()
         ..result = ProcessOutput(
           exitCode: 0,
           stdout: jsonEncode({
-            'schemaVersion': 3,
-            'phase': 'execution',
-            'artifact': {
-              'source': skillId,
-              'skillId': skillId,
-              'version': 'v1',
-              'name': 'demo',
-              'risk': 'low',
-            },
-            'results': [
-              {'target': target, 'action': 'replace', 'outcome': 'succeeded'},
+            'schemaVersion': 1,
+            'phase': 'repository-install',
+            'repository': 'github.com/example/skills',
+            'version': 'v1',
+            'sum': 'h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
+            'skills': ['demo'],
+            'agents': ['codex'],
+            'vendor': '/Users/test/.skillsgo/vendor/example/v1',
+            'projections': [
+              {
+                'agents': ['codex'],
+                'path': '/Users/test/.codex/skills/example/v1',
+              },
             ],
-            'summary': {
-              'succeeded': 1,
-              'skipped': 0,
-              'conflict': 0,
-              'failed': 0,
+            'workspace': {
+              'manifest': '/Users/test/.skillsgo/skillsgo.yaml',
+              'lock': '/Users/test/.skillsgo/skillsgo.lock',
             },
           }),
           stderr: '',
@@ -183,51 +176,19 @@ void main() {
       expect(runner.lastArguments, contains('--yes'));
       expect(runner.lastArguments, isNot(contains('--preflight')));
       expect(runner.lastArguments, containsAllInOrder(['--output', 'json']));
-      expect(runner.lastArguments, contains('--confirm-risk'));
-
-      runner.result = ProcessOutput(
-        exitCode: 1,
-        stdout: jsonEncode({
-          'schemaVersion': 3,
-          'phase': 'execution',
-          'artifact': {
-            'source': skillId,
-            'skillId': skillId,
-            'version': 'v1',
-            'name': 'demo',
-            'risk': 'low',
-          },
-          'results': [
-            {
-              'target': target,
-              'action': 'replace',
-              'outcome': 'failed',
-              'error': {
-                'code': 'workspace.persistence_failed',
-                'retryable': true,
-                'details': {'path': '/work/project/skillsgo.mod'},
-                'requestId': 'req-install',
-                'diagnostic': 'permission denied',
-              },
-            },
-          ],
-          'summary': {'succeeded': 0, 'skipped': 0, 'conflict': 0, 'failed': 1},
-        }),
-        stderr: '安装失败',
-      );
-      final failed = await gateway.installTargets(skill, 'v1', const [
-        InstallationTargetSelection(
-          scope: InstallationScope.user,
-          agent: 'codex',
-        ),
-      ], confirmRisk: true);
-      expect(failed.results.single.error?.code, 'workspace.persistence_failed');
-      expect(failed.results.single.error?.retryable, isTrue);
-      expect(failed.results.single.error?.requestId, 'req-install');
       expect(
-        failed.results.single.error?.details['path'],
-        '/work/project/skillsgo.mod',
+        runner.lastArguments,
+        containsAllInOrder([
+          'add',
+          'github.com/example/skills@v1',
+          '--skill',
+          'demo',
+        ]),
       );
+      expect(runner.lastArguments, contains('--global'));
+      expect(runner.lastArguments, isNot(contains('--target')));
+      expect(runner.lastArguments, isNot(contains('--version')));
+      expect(runner.lastArguments, isNot(contains('--copy')));
     },
   );
 

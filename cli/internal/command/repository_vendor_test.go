@@ -70,7 +70,7 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	require.NoError(t, os.Chdir(workspace))
 	t.Cleanup(func() { _ = os.Chdir(previous) })
 	var output bytes.Buffer
-	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--skill", "skills/design", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output))
+	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--project", workspace, "--skill", "skills/design", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output))
 
 	manifest, err := project.LoadWorkspaceManifest(workspace)
 	require.NoError(t, err)
@@ -86,9 +86,39 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	require.FileExists(t, filepath.Join(projection, "skills", "design", "SKILL.md"))
 	require.NoFileExists(t, filepath.Join(projection, "skills", "review", "SKILL.md"))
 	var response struct {
-		Vendor string `json:"vendor"`
+		SchemaVersion int    `json:"schemaVersion"`
+		Phase         string `json:"phase"`
+		Repository    string `json:"repository"`
+		Vendor        string `json:"vendor"`
+		Projections   []struct {
+			Agents []string `json:"agents"`
+			Path   string   `json:"path"`
+		} `json:"projections"`
+		Workspace struct {
+			Manifest string `json:"manifest"`
+			Lock     string `json:"lock"`
+		} `json:"workspace"`
 	}
 	require.NoError(t, json.Unmarshal(output.Bytes(), &response))
+	require.Equal(t, 1, response.SchemaVersion)
+	require.Equal(t, "repository-install", response.Phase)
+	require.Equal(t, repositoryID, response.Repository)
+	require.Equal(t, []string{"codex"}, response.Projections[0].Agents)
+	expectedProjectionInfo, err := os.Stat(projection)
+	require.NoError(t, err)
+	responseProjectionInfo, err := os.Stat(response.Projections[0].Path)
+	require.NoError(t, err)
+	require.True(t, os.SameFile(expectedProjectionInfo, responseProjectionInfo))
+	for expected, actual := range map[string]string{
+		filepath.Join(workspace, project.WorkspaceManifestName): response.Workspace.Manifest,
+		filepath.Join(workspace, project.DependencyLockName):    response.Workspace.Lock,
+	} {
+		expectedFile, statErr := os.Stat(expected)
+		require.NoError(t, statErr)
+		actualFile, statErr := os.Stat(actual)
+		require.NoError(t, statErr)
+		require.True(t, os.SameFile(expectedFile, actualFile))
+	}
 	expectedInfo, err := os.Stat(vendor)
 	require.NoError(t, err)
 	responseInfo, err := os.Stat(response.Vendor)
