@@ -50,6 +50,7 @@ func TestRepositoryTransactionVendorsFullTreeAndProjectsSelectedSkills(t *testin
 	require.NoFileExists(t, filepath.Join(projection, ".hidden", "SKILL.md"))
 	require.FileExists(t, filepath.Join(vendor, ".hidden", "SKILL.md"))
 	require.FileExists(t, filepath.Join(projection, "scripts", "shared.sh"))
+	require.NoError(t, VerifyProjection(agentRoot, repositoryID, version, archive, []string{".", "skills/design", "skills/review"}, []string{"skills/design"}))
 	info, err := os.Lstat(filepath.Join(projection, "scripts", "shared.sh"))
 	require.NoError(t, err)
 	require.True(t, info.Mode().IsRegular())
@@ -64,6 +65,7 @@ func TestRepositoryTransactionVendorsFullTreeAndProjectsSelectedSkills(t *testin
 	require.NoError(t, retry.Commit())
 
 	require.NoError(t, os.WriteFile(filepath.Join(projection, "scripts", "shared.sh"), []byte("modified"), 0o755))
+	require.ErrorContains(t, VerifyProjection(agentRoot, repositoryID, version, archive, []string{".", "skills/design", "skills/review"}, []string{"skills/design"}), "Local Modification")
 	_, err = Prepare(Options{
 		VendorRoot: vendorRoot, RepositoryID: repositoryID, Version: version, Archive: archive, Sum: sum,
 		Members:     []string{".", "skills/design", "skills/review"},

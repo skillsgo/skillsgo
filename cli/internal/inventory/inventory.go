@@ -115,16 +115,15 @@ func Build(options Options) (Report, error) {
 	}
 	entries := map[string]*Entry{}
 	accountedTargets := map[string]bool{}
-	type declarationRoot struct {
-		root  string
-		scope install.Scope
-	}
 	roots := make([]declarationRoot, 0, len(projectRoots)+1)
 	if options.IncludeUser {
 		roots = append(roots, declarationRoot{root: project.UserRoot(home), scope: install.ScopeUser})
 	}
 	for _, root := range projectRoots {
 		roots = append(roots, declarationRoot{root: root, scope: install.ScopeProject})
+	}
+	if err := addRepositoryInstallations(entries, accountedTargets, roots, options.Catalog); err != nil {
+		return Report{}, err
 	}
 	for _, declaration := range roots {
 		installations, installedErr := project.Installed(declaration.root, options.Catalog, declaration.scope, store.DefaultRoot(home))

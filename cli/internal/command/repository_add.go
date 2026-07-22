@@ -16,6 +16,7 @@ import (
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
+	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/scopevendor"
@@ -99,6 +100,14 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	}
 	if err := transaction.Commit(); err != nil {
 		return err
+	}
+	infoRoot := filepath.Join(declarationRoot, ".skillsgo", "info")
+	if scope == install.ScopeUser {
+		infoRoot = filepath.Join(declarationRoot, "info")
+	}
+	if err := (infocache.Cache{Root: infoRoot}).Put(reference.SkillID, resource.Info.Version, "repository.info", resource.InfoBytes); err != nil {
+		_ = transaction.Rollback()
+		return fmt.Errorf("persist immutable Repository Info: %w", err)
 	}
 	manifest.Dependencies[reference.SkillID] = dependency
 	lock.Dependencies[reference.SkillID] = project.LockedRepository{Version: resource.Info.Version, Sum: resource.Info.Sum}
