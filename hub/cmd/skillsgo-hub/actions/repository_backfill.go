@@ -94,12 +94,12 @@ func (s *repositoryBackfillService) Register() error {
 	}); err != nil {
 		return err
 	}
-	return s.tasks.Every(repositoryBackfillReconcileArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8}, backfillReconcileEvery, true)
+	return s.tasks.Every(repositoryBackfillReconcileArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, backfillReconcileEvery, true)
 }
 
 func (s *repositoryBackfillService) Submit(ctx context.Context, repositoryID string) (catalog.BackfillRun, bool, error) {
 	return s.metadata.SubmitBackfillRun(ctx, repositoryID, func(ctx context.Context, tx pgx.Tx, run catalog.BackfillRun) error {
-		return s.tasks.EnqueueTx(ctx, tx, repositoryBackfillArgs{RunID: run.ID, RepositoryID: repositoryID}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8})
+		return s.tasks.EnqueueTx(ctx, tx, repositoryBackfillArgs{RunID: run.ID, RepositoryID: repositoryID}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource})
 	})
 }
 

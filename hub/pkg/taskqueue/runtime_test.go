@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on typed synchronous jobs, periodic scheduling, and deterministic handlers.
- * [OUTPUT]: Specifies type-safe registration, dispatch, periodic execution, cancellation, validation, and lifecycle behavior.
+ * [INPUT]: Depends on typed synchronous jobs, workload queue options, periodic scheduling, and deterministic handlers.
+ * [OUTPUT]: Specifies type-safe registration, bounded queue allocation, dispatch, periodic execution, cancellation, validation, and lifecycle behavior.
  * [POS]: Serves as unit coverage for the Hub task queue infrastructure boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -35,6 +35,14 @@ func (blockingArgs) Kind() string { return "blocking" }
 type missingArgs struct{}
 
 func (missingArgs) Kind() string { return "missing" }
+
+func TestBalancedQueueWorkersPreservesTotalBudget(t *testing.T) {
+	queues := BalancedQueueWorkers(10)
+	require.Equal(t, 2, queues[river.QueueDefault])
+	require.Equal(t, 6, queues[QueueSource])
+	require.Equal(t, 2, queues[QueueMaintenance])
+	require.Equal(t, QueueSource, riverInsertOptions(InsertOptions{Queue: QueueSource}).Queue)
+}
 
 func TestSynchronousRuntimeDispatchesTypedJob(t *testing.T) {
 	var received reindexArgs
