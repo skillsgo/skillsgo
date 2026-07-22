@@ -1,5 +1,5 @@
-// [INPUT]: Depends on Go, Testcontainers-Go, and Testify for disposable black-box system tests.
-// [OUTPUT]: Defines the reproducible cross-product end-to-end test dependency graph.
+// [INPUT]: Depends on Go, the public Cloud Protocol, Testcontainers-Go, and Testify for disposable black-box system tests.
+// [OUTPUT]: Defines the reproducible CLI-plus-Hub-plus-Cloud-contract end-to-end test dependency graph.
 // [POS]: Serves as the F2 build manifest for the CLI-plus-Hub e2e workspace.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 module github.com/skillsgo/skillsgo/e2e
@@ -7,9 +7,12 @@ module github.com/skillsgo/skillsgo/e2e
 go 1.25.0
 
 require (
+	github.com/skillsgo/skillsgo/protocol v0.0.0
 	github.com/stretchr/testify v1.11.1
 	github.com/testcontainers/testcontainers-go v0.43.0
 )
+
+replace github.com/skillsgo/skillsgo/protocol => ../../protocol
 
 require (
 	dario.cat/mergo v1.0.2 // indirect

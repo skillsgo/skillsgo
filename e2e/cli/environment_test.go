@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Testcontainers, the host runner identity, disposable bind mounts, and public CLI, Hub, JSON, and filesystem contracts.
- * [OUTPUT]: Provides host-owned container sandboxes plus shared command execution, fixture, coordinate-to-CAS resolution, and assertion helpers for black-box journeys.
+ * [INPUT]: Depends on Testcontainers, the host runner identity, disposable bind mounts, and public CLI, Hub, Cloud, JSON, and filesystem contracts.
+ * [OUTPUT]: Provides host-owned selfhost/Cloud container sandboxes plus shared command execution, fixture, coordinate-to-CAS resolution, and assertion helpers for black-box journeys.
  * [POS]: Serves as the Linux/macOS container lifecycle and isolation harness for the cross-product CLI E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -55,9 +55,40 @@ type addResponse struct {
 }
 
 func startEnvironment(t *testing.T, ctx context.Context) (testcontainers.Container, string) {
+	return startEnvironmentWithEnv(t, ctx, nil)
+}
+
+func startCloudEnvironment(t *testing.T, ctx context.Context) (testcontainers.Container, string) {
+	return startEnvironmentWithEnv(t, ctx, map[string]string{
+		"SKILLSGO_E2E_CLOUD":        "1",
+		"SKILLSGO_HUB_MODE":         "cloud",
+		"SKILLSGO_HUB_CLOUD_ORIGIN": "http://127.0.0.1:3100",
+	})
+}
+
+func startEnvironmentWithEnv(t *testing.T, ctx context.Context, overrides map[string]string) (testcontainers.Container, string) {
 	t.Helper()
 	repositoryRoot := findRepositoryRoot(t)
 	sandboxRoot := t.TempDir()
+	environment := map[string]string{
+		"HOME":                             "/e2e/home",
+		"TMPDIR":                           "/e2e/tmp",
+		"XDG_CONFIG_HOME":                  "/e2e/home/.config",
+		"XDG_CACHE_HOME":                   "/e2e/home/.cache",
+		"XDG_DATA_HOME":                    "/e2e/home/.local/share",
+		"SKILLSGO_HOME":                    "/e2e/home/.skillsgo",
+		"SKILLSGO_HUB_URL":                 "http://127.0.0.1:3000",
+		"SKILLSGO_HUB_PORT":                ":3000",
+		"SKILLSGO_HUB_CACHE_DIR":           "/e2e/hub/cache",
+		"SKILLSGO_HUB_STORAGE_TYPE":        "disk",
+		"SKILLSGO_HUB_DISK_STORAGE_ROOT":   "/e2e/hub/storage",
+		"SKILLSGO_ALLOW_PRIVATE_GIT_HOSTS": "true",
+		"SKILLSGO_LANG":                    "en",
+		"NO_COLOR":                         "1",
+	}
+	for key, value := range overrides {
+		environment[key] = value
+	}
 
 	container, err := testcontainers.Run(
 		ctx,
@@ -77,22 +108,7 @@ func startEnvironment(t *testing.T, ctx context.Context) (testcontainers.Contain
 			request.User = fmt.Sprintf("%d:%d", os.Getuid(), os.Getgid())
 			return nil
 		}),
-		testcontainers.WithEnv(map[string]string{
-			"HOME":                             "/e2e/home",
-			"TMPDIR":                           "/e2e/tmp",
-			"XDG_CONFIG_HOME":                  "/e2e/home/.config",
-			"XDG_CACHE_HOME":                   "/e2e/home/.cache",
-			"XDG_DATA_HOME":                    "/e2e/home/.local/share",
-			"SKILLSGO_HOME":                    "/e2e/home/.skillsgo",
-			"SKILLSGO_HUB_URL":                 "http://127.0.0.1:3000",
-			"SKILLSGO_HUB_PORT":                ":3000",
-			"SKILLSGO_HUB_CACHE_DIR":           "/e2e/hub/cache",
-			"SKILLSGO_HUB_STORAGE_TYPE":        "disk",
-			"SKILLSGO_HUB_DISK_STORAGE_ROOT":   "/e2e/hub/storage",
-			"SKILLSGO_ALLOW_PRIVATE_GIT_HOSTS": "true",
-			"SKILLSGO_LANG":                    "en",
-			"NO_COLOR":                         "1",
-		}),
+		testcontainers.WithEnv(environment),
 		testcontainers.WithWaitStrategy(
 			wait.ForHTTP("/readyz").
 				WithPort("3000/tcp").
