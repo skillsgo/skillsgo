@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on typed River JobArgs, registered Hub job handlers, pgx transactions, and River's PostgreSQL runtime.
- * [OUTPUT]: Provides type-safe registration, terminal finalization, active-job reconciliation lookup, synchronous execution, durable PostgreSQL enqueue/scheduling, and transactional enqueue.
+ * [INPUT]: Depends on typed River JobArgs, registered Hub job handlers, workload queue assignments, pgx transactions, and River's PostgreSQL runtime.
+ * [OUTPUT]: Provides type-safe registration, bounded workload-isolated queue allocation, terminal finalization, active-job reconciliation lookup, synchronous execution, durable PostgreSQL enqueue/scheduling, and transactional enqueue.
  * [POS]: Serves as the Hub infrastructure boundary for observable, retryable, multi-instance-safe background jobs.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -30,6 +30,7 @@ type FailureHandler[T river.JobArgs] func(context.Context, T, error) error
 type InsertOptions struct {
 	Unique      bool
 	MaxAttempts int
+	Queue       string
 }
 
 // RiverOptions controls failure detection for durable workers. Zero values use
@@ -37,6 +38,28 @@ type InsertOptions struct {
 type RiverOptions struct {
 	JobTimeout           time.Duration
 	RescueStuckJobsAfter time.Duration
+	QueueWorkers         map[string]int
+}
+
+const (
+	QueueSource      = "source"
+	QueueMaintenance = "maintenance"
+)
+
+// BalancedQueueWorkers partitions one total worker budget so network-heavy
+// source work cannot starve small maintenance and coordination jobs.
+func BalancedQueueWorkers(total int) map[string]int {
+	if total < 3 {
+		return map[string]int{river.QueueDefault: total}
+	}
+	maintenance := max(1, total/5)
+	defaultWorkers := max(1, total/5)
+	source := total - maintenance - defaultWorkers
+	return map[string]int{
+		river.QueueDefault: defaultWorkers,
+		QueueSource:        source,
+		QueueMaintenance:   maintenance,
+	}
 }
 
 // Runtime dispatches typed jobs either synchronously or through River.
@@ -115,9 +138,20 @@ func NewRiver(ctx context.Context, pool *pgxpool.Pool, maxWorkers int, options .
 	if len(options) > 0 {
 		runtimeOptions = options[0]
 	}
+	queues := runtimeOptions.QueueWorkers
+	if len(queues) == 0 {
+		queues = map[string]int{river.QueueDefault: maxWorkers}
+	}
+	riverQueues := make(map[string]river.QueueConfig, len(queues))
+	for queue, workers := range queues {
+		if workers < 1 {
+			return nil, fmt.Errorf("queue %q workers must be at least 1", queue)
+		}
+		riverQueues[queue] = river.QueueConfig{MaxWorkers: workers}
+	}
 	client, err := river.NewClient(driver, &river.Config{
 		JobTimeout:           runtimeOptions.JobTimeout,
-		Queues:               map[string]river.QueueConfig{river.QueueDefault: {MaxWorkers: maxWorkers}},
+		Queues:               riverQueues,
 		RescueStuckJobsAfter: runtimeOptions.RescueStuckJobsAfter,
 		Workers:              workers,
 	})
@@ -345,7 +379,7 @@ func HasActiveJob[T river.JobArgs](ctx context.Context, runtime *Runtime, args T
 }
 
 func riverInsertOptions(opts InsertOptions) *river.InsertOpts {
-	insertOpts := &river.InsertOpts{MaxAttempts: opts.MaxAttempts}
+	insertOpts := &river.InsertOpts{MaxAttempts: opts.MaxAttempts, Queue: opts.Queue}
 	if opts.Unique {
 		insertOpts.UniqueOpts = river.UniqueOpts{ByArgs: true}
 	}

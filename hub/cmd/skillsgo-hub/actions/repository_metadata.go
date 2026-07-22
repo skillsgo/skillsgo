@@ -170,7 +170,7 @@ func (c *repositoryMetadataCache) Read(ctx context.Context, sourceHost, reposito
 		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
 	}
 	if c.tasks != nil {
-		if err := c.tasks.Enqueue(ctx, repositorySourceMetadataRefreshArgs{RepositoryID: repositoryID}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8}); err != nil {
+		if err := c.tasks.Enqueue(ctx, repositorySourceMetadataRefreshArgs{RepositoryID: repositoryID}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}); err != nil {
 			log.EntryFromContext(ctx).WithFields(map[string]any{
 				"error": err.Error(), "repository_id": repositoryID,
 			}).Warnf("repository metadata refresh submission failed")

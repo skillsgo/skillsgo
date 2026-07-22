@@ -3,7 +3,7 @@
 
 ## Members
 
-- `runtime.go`: defines type-safe River job/finalizer registration, exact active-job lookup for domain reconciliation, pre-start periodic registration, synchronous SQLite-compatible scheduling, configurable failure detection, and PostgreSQL execution without a generic envelope.
+- `runtime.go`: defines type-safe River job/finalizer registration, bounded source/default/maintenance worker allocation, exact active-job lookup for domain reconciliation, pre-start periodic registration, synchronous SQLite-compatible scheduling, configurable failure detection, and PostgreSQL execution without a generic envelope.
 - `runtime_test.go`: verifies typed synchronous dispatch, terminal finalization, periodic cancellation, registration freezing, unknown job rejection, and lifecycle behavior.
 - `postgres_integration_test.go`: verifies River schema migration, periodic execution, transient-failure retry, `MaxAttempts` exhaustion into `discarded`, cross-client uniqueness, durable submission, and execution against opt-in real PostgreSQL.
 - `crash_recovery_integration_test.go`: force-kills a subprocess during handler execution and verifies a replacement River process rescues and re-executes the durable running job.

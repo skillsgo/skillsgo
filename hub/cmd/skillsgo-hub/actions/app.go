@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber, Hub configuration, middleware, observability, storage, Catalog assembly, River task execution, and background workers.
- * [OUTPUT]: Provides the native Fiber Hub application plus coordinated lifecycle cleanup.
+ * [INPUT]: Depends on Fiber, Hub configuration, middleware, observability, storage, Catalog assembly, workload-isolated River task execution, and background workers.
+ * [OUTPUT]: Provides the native Fiber Hub application with bounded task queue allocation plus coordinated lifecycle cleanup.
  * [POS]: Serves as the Fiber server and middleware composition root for the Hub actions module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -156,7 +156,9 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 	workerCtx, cancelWorkers := context.WithCancel(context.Background())
 	taskRuntime := taskqueue.NewSynchronous()
 	if pool := metadata.PostgresPool(); pool != nil {
-		taskRuntime, err = taskqueue.NewRiver(workerCtx, pool, conf.TaskQueue.MaxWorkers)
+		taskRuntime, err = taskqueue.NewRiver(workerCtx, pool, conf.TaskQueue.MaxWorkers, taskqueue.RiverOptions{
+			QueueWorkers: taskqueue.BalancedQueueWorkers(conf.TaskQueue.MaxWorkers),
+		})
 		if err != nil {
 			cancelWorkers()
 			return nil, cleanup, fmt.Errorf("creating task runtime: %w", err)
@@ -186,7 +188,7 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 			return nil, cleanup, fmt.Errorf("register description translation job: %w", err)
 		}
 		for _, locale := range conf.LLM.TranslationLocales {
-			if err := taskRuntime.Every(descriptionTranslationBatchArgs{Locale: locale}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8}, time.Duration(conf.LLM.TranslationInterval)*time.Second, true); err != nil {
+			if err := taskRuntime.Every(descriptionTranslationBatchArgs{Locale: locale}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, time.Duration(conf.LLM.TranslationInterval)*time.Second, true); err != nil {
 				cancelWorkers()
 				return nil, cleanup, fmt.Errorf("register description translation job for %s: %w", locale, err)
 			}
@@ -204,7 +206,7 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 			cancelWorkers()
 			return nil, cleanup, fmt.Errorf("register skills.sh job: %w", err)
 		}
-		if err := taskRuntime.Every(skillsSHProviderSyncArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8}, time.Duration(conf.SkillsSH.Interval)*time.Second, true); err != nil {
+		if err := taskRuntime.Every(skillsSHProviderSyncArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, time.Duration(conf.SkillsSH.Interval)*time.Second, true); err != nil {
 			cancelWorkers()
 			return nil, cleanup, fmt.Errorf("schedule skills.sh job: %w", err)
 		}
