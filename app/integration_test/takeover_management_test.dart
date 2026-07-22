@@ -54,6 +54,7 @@ void main() {
 
       final preferences = await SharedPreferences.getInstance();
       await preferences.setBool('onboarding_completed_v1', true);
+      await preferences.setBool('batch_takeover_prompt_seen_v1', true);
       await preferences.setString(
         'added_projects_v1',
         jsonEncode([
@@ -78,7 +79,6 @@ void main() {
       await _pumpUntilTakeoverCount(tester, 2);
       await _pumpUntil(tester, _projectRailCount('takeover-project', 1));
       expect(_projectRailCount('takeover-project', 1), findsOneWidget);
-      await _dismissAutomaticTakeoverStory(tester);
 
       await tester.tap(_railButton(find.text('takeover-project')));
       await _pumpUntilTakeoverCount(tester, 1);
@@ -117,24 +117,6 @@ void main() {
     },
     timeout: const Timeout(Duration(minutes: 3)),
   );
-}
-
-Future<void> _dismissAutomaticTakeoverStory(WidgetTester tester) async {
-  final storyTitle = find.byWidgetPredicate(
-    (widget) =>
-        widget is Text &&
-        (widget.data == 'Turn scattered skills into one clear Library' ||
-            widget.data == '把散落的技能，整理成一个清晰的 Library'),
-  );
-  await _pumpUntil(tester, storyTitle);
-  final skipLabel = find.byWidgetPredicate(
-    (widget) =>
-        widget is Text && (widget.data == 'Not now' || widget.data == '暂时跳过'),
-  );
-  await tester.tap(
-    find.ancestor(of: skipLabel, matching: find.byType(OutlinedButton)).first,
-  );
-  await _pumpUntilGone(tester, storyTitle);
 }
 
 Map<String, Object> _lockRecord(String skillPath) => {
@@ -252,12 +234,4 @@ Future<void> _pumpUntil(WidgetTester tester, Finder finder) async {
     findsWidgets,
     reason: 'Rendered takeover labels: $takeoverLabels',
   );
-}
-
-Future<void> _pumpUntilGone(WidgetTester tester, Finder finder) async {
-  final deadline = DateTime.now().add(const Duration(seconds: 5));
-  while (finder.evaluate().isNotEmpty && DateTime.now().isBefore(deadline)) {
-    await tester.pump(const Duration(milliseconds: 100));
-  }
-  expect(finder, findsNothing);
 }
