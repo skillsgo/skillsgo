@@ -46,6 +46,6 @@ func TestJ01InstallWorkspace(t *testing.T) {
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Store, "artifact", "SKILL.md"))
+	require.FileExists(t, storeArtifactPath(t, sandboxRoot, installed.Store, "SKILL.md"))
 
 }

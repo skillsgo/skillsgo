@@ -60,7 +60,7 @@ func TestJ03RestoreSum(t *testing.T) {
 	}{{Name: "alpha", Version: installed.Version, Targets: 1}}, restored)
 
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Store, "artifact", "SKILL.md"))
+	require.FileExists(t, storeArtifactPath(t, sandboxRoot, installed.Store, "SKILL.md"))
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 	require.Equal(t, sumBefore, sumAfter, "checksum-backed restoration must not rewrite skillsgo.sum")

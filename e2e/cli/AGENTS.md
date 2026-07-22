@@ -15,7 +15,7 @@ This workspace owns black-box user-journey tests spanning the released CLI and H
 - `entrypoint.sh`: initializes the mounted sandbox and runs the Hub as the container foreground process.
 - `git-fixtures.sh`: creates deterministic local Git remotes reached through the public Repository source path.
 - `git-wrapper.sh`: delegates to system Git while explicitly routing the fixture host to local bare repositories and adding deterministic latency for capacity-only source fixtures.
-- `environment_test.go`: owns disposable container startup, the isolated bind mount, command execution, shared fixtures, and assertion helpers.
+- `environment_test.go`: owns disposable container startup, the isolated bind mount, command execution, shared fixtures, coordinate-to-CAS resolution, and assertion helpers.
 - `j01_*_test.go` through `j47_*_test.go`: each file owns exactly one numbered user-journey contract from `USER-JOURNEYS.md`; support code must remain outside these files.
 - `USER-JOURNEYS.md`: prioritizes real cross-product user stories and their observable acceptance boundaries.
 

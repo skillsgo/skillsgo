@@ -38,7 +38,7 @@ func TestJ04RestoreStoreOffline(t *testing.T) {
 	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo.sum")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	storeArtifact := containerPathOnHost(t, sandboxRoot, installed.Store, "artifact", "SKILL.md")
+	storeArtifact := storeArtifactPath(t, sandboxRoot, installed.Store, "SKILL.md")
 	require.FileExists(t, storeArtifact)
 
 	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "project", ".agents")))

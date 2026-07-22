@@ -26,7 +26,7 @@ func TestJ21PreserveSkillResources(t *testing.T) {
 
 	relative := filepath.Join("references", "guide.md")
 	target := filepath.Join(sandboxRoot, "project", ".agents", "skills", "resourceful", relative)
-	storeFile := containerPathOnHost(t, sandboxRoot, installed.Store, "artifact", relative)
+	storeFile := storeArtifactPath(t, sandboxRoot, installed.Store, relative)
 	require.FileExists(t, target)
 	require.FileExists(t, storeFile)
 	targetBytes, err := os.ReadFile(target)

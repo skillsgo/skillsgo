@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Testcontainers, the host runner identity, disposable bind mounts, and public CLI, Hub, JSON, and filesystem contracts.
- * [OUTPUT]: Provides host-owned container sandboxes plus shared command execution, fixture, and assertion helpers for black-box journeys.
+ * [OUTPUT]: Provides host-owned container sandboxes plus shared command execution, fixture, coordinate-to-CAS resolution, and assertion helpers for black-box journeys.
  * [POS]: Serves as the Linux/macOS container lifecycle and isolation harness for the cross-product CLI E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -168,6 +168,20 @@ func containerPathOnHost(t *testing.T, sandboxRoot, containerPath string, suffix
 	require.NotEqual(t, "..", relative)
 	require.False(t, filepath.IsAbs(relative))
 	return filepath.Join(append([]string{sandboxRoot, relative}, suffix...)...)
+}
+
+func storeArtifactPath(t *testing.T, sandboxRoot, coordinateRoot string, suffix ...string) string {
+	t.Helper()
+	coordinate := containerPathOnHost(t, sandboxRoot, coordinateRoot)
+	referenceBytes, err := os.ReadFile(filepath.Join(coordinate, "object"))
+	require.NoError(t, err)
+	reference := strings.TrimSpace(string(referenceBytes))
+	require.False(t, filepath.IsAbs(reference))
+	require.NotContains(t, reference, "..")
+	parts := strings.Split(reference, "/")
+	require.Len(t, parts, 3)
+	objectRoot := filepath.Join(sandboxRoot, "home", ".skillsgo", "store", ".objects", filepath.FromSlash(reference))
+	return filepath.Join(append([]string{objectRoot}, suffix...)...)
 }
 
 func findSingleFile(t *testing.T, root, suffix string) string {
