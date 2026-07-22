@@ -45,7 +45,7 @@ func TestValidateManifestAgainstAgentSkillsSpecification(t *testing.T) {
 		{
 			name:      "invalid YAML",
 			manifest:  "name: [\ndescription: broken\n",
-			wantError: "invalid SKILL.md frontmatter",
+			wantError: "SKILL.md frontmatter must be a YAML mapping",
 		},
 		{
 			name:      "frontmatter is not mapping",

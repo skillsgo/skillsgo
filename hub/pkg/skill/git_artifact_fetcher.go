@@ -159,8 +159,12 @@ func (g *gitFetcher) fetch(ctx context.Context, skillPath, revision string, reso
 }
 
 func (g *gitFetcher) repositoryDir(repository string) (string, error) {
-	if err := validateSkillIDPath(repository); err != nil {
+	parsed, err := ParseSkillID(repository)
+	if err != nil {
 		return "", fmt.Errorf("invalid repository cache path %q: %w", repository, err)
+	}
+	if parsed.SkillPath != "." {
+		return "", fmt.Errorf("invalid repository cache path %q: nested Skill ID", repository)
 	}
 
 	root := filepath.Join(g.cacheDir, "repositories")

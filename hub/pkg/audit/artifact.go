@@ -10,23 +10,23 @@ import (
 	"archive/zip"
 	"bytes"
 	"crypto/sha256"
-	"encoding/binary"
 	"fmt"
-	"io"
 	"path"
 	"sort"
 	"strings"
 	"unicode/utf8"
+
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 )
 
 const (
 	ScannerVersion      = "file-signals/v1"
-	MaxArchiveBytes     = 64 << 20
+	MaxArchiveBytes     = protocolartifact.MaxArchiveBytes
 	maxFileContentBytes = 256 << 10
 	maxInstructions     = 1 << 20
 	maxTotalTextBytes   = 2 << 20
-	maxUncompressed     = 64 << 20
-	maxFiles            = 5000
+	maxUncompressed     = protocolartifact.MaxUncompressedBytes
+	maxFiles            = protocolartifact.MaxFiles
 )
 
 type File struct {
@@ -115,15 +115,15 @@ func AnalyzeArtifact(data []byte, skillID, version string) (*Result, error) {
 			return nil, fmt.Errorf("artifact file %q is outside expected prefix %q", entry.Name, prefix)
 		}
 		relative := strings.TrimPrefix(entry.Name, prefix)
-		if !validRelativePath(relative) || seenPaths[relative] {
+		if !protocolartifact.ValidRelativePath(relative) || seenPaths[relative] {
 			return nil, fmt.Errorf("artifact file has invalid or duplicate path %q", relative)
 		}
 		seenPaths[relative] = true
-		contents, err := readEntry(entry)
+		contents, err := protocolartifact.ReadEntry(entry)
 		if err != nil {
 			return nil, fmt.Errorf("read artifact file %q: %w", relative, err)
 		}
-		if err := writeDigestEntry(contentHash, relative, contents); err != nil {
+		if err := protocolartifact.WriteDigestEntry(contentHash, relative, contents); err != nil {
 			return nil, fmt.Errorf("hash artifact file %q: %w", relative, err)
 		}
 		readLimit := maxFileContentBytes
@@ -186,42 +186,6 @@ func AnalyzeArtifact(data []byte, skillID, version string) (*Result, error) {
 	result.ContentDigest = fmt.Sprintf("sha256:%x", contentHash.Sum(nil))
 	result.Risk.ArtifactDigest = result.ContentDigest
 	return result, nil
-}
-
-func readEntry(entry *zip.File) ([]byte, error) {
-	reader, err := entry.Open()
-	if err != nil {
-		return nil, err
-	}
-	defer reader.Close()
-	contents, err := io.ReadAll(io.LimitReader(reader, maxUncompressed+1))
-	if err != nil {
-		return nil, err
-	}
-	if len(contents) > maxUncompressed || uint64(len(contents)) != entry.UncompressedSize64 {
-		return nil, fmt.Errorf("uncompressed size does not match archive metadata")
-	}
-	return contents, nil
-}
-
-func writeDigestEntry(destination io.Writer, relative string, contents []byte) error {
-	if err := binary.Write(destination, binary.BigEndian, uint64(len(relative))); err != nil {
-		return err
-	}
-	if _, err := io.WriteString(destination, relative); err != nil {
-		return err
-	}
-	if err := binary.Write(destination, binary.BigEndian, uint64(len(contents))); err != nil {
-		return err
-	}
-	_, err := destination.Write(contents)
-	return err
-}
-
-func validRelativePath(value string) bool {
-	return value != "" && value != "." && !strings.HasPrefix(value, "/") &&
-		!strings.Contains(value, "\\") && path.Clean(value) == value &&
-		value != ".." && !strings.HasPrefix(value, "../")
 }
 
 func isExecutable(entry *zip.File, relative string) bool {

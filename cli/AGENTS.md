@@ -7,6 +7,7 @@ This map governs the Go command-line workspace. Read it with the root constituti
 ## Workspace Identity
 
 - Module: `github.com/skillsgo/skillsgo/cli`
+- Shared dependency: `github.com/skillsgo/skillsgo/protocol` through the repository `go.work` during development.
 - Entry point: `cmd/skillsgo/main.go`
 - Command seam: `command.Execute`
 - Product responsibility: own local Skill mutations, installation targets, canonical Workspace declarations, integrity checksums, immutable Info cache, and shared artifact-store state.

@@ -1,0 +1,13 @@
+// [INPUT]: Depends on the Protocol, CLI, and Hub Go module manifests in this monorepo.
+// [OUTPUT]: Provides local multi-module resolution without module-local replace directives.
+// [POS]: Serves as the repository Go development workspace for shared protocol changes.
+// [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+go 1.26.4
+
+use (
+	./cli
+	./hub
+	./protocol
+)
+
+replace github.com/skillsgo/skillsgo/protocol v0.0.0 => ./protocol

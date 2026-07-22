@@ -7,6 +7,7 @@ This map governs the public Hub service. Read it with the root constitution and 
 ## Workspace Identity
 
 - Module: `github.com/skillsgo/skillsgo/hub`
+- Shared dependency: `github.com/skillsgo/skillsgo/protocol` through the repository `go.work` during development.
 - Entry point: `cmd/skillsgo-hub/main.go`
 - Service assembly: `cmd/skillsgo-hub/actions/`
 - Public seam: the Fiber HTTP router and documented HTTP protocol
