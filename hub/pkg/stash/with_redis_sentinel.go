@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the stash package imports and contracts declared in this file.
- * [OUTPUT]: Provides the stash package behavior implemented by with_redis_sentinel.go.
- * [POS]: Serves as maintained source in the stash package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on go-redis Sentinel failover clients, Hub lock configuration, storage checks, and the shared Redis lock wrapper.
+ * [OUTPUT]: Provides Sentinel-backed distributed singleflight initialization with failed-client cleanup.
+ * [POS]: Serves as the Redis Sentinel locking adapter for Hub artifact stashing.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package stash
@@ -36,11 +36,13 @@ func WithRedisSentinelLock(l RedisLogger, endpoints []string, master, sentinelPa
 	})
 	_, err := client.Ping(context.Background()).Result()
 	if err != nil {
+		_ = client.Close()
 		return nil, errors.E(op, err)
 	}
 
 	lockOptions, err := lockOptionsFromConfig(lockConfig)
 	if err != nil {
+		_ = client.Close()
 		return nil, errors.E(op, err)
 	}
 
