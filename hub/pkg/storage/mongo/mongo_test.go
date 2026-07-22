@@ -124,8 +124,8 @@ func TestQueryKindUnexpectedErrorCases(t *testing.T) {
 	}
 	// In case some docs were inserted into the collection before, using upsert instead.
 	for _, errDoc := range errDocs {
-		filter := bson.D{{"skill", errDoc.Skill}, {"version", errDoc.Version}}
-		update := bson.D{{"$set", bson.D{{"info", errDoc.Info}}}}
+		filter := bson.D{{Key: "skill", Value: errDoc.Skill}, {Key: "version", Value: errDoc.Version}}
+		update := bson.D{{Key: "$set", Value: bson.D{{Key: "info", Value: errDoc.Info}}}}
 		opts := options.UpdateOne().SetUpsert(true).SetBypassDocumentValidation(true)
 		_, err = coll.UpdateOne(t.Context(), filter, update, opts)
 		if err != nil {

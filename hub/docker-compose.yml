@@ -1,9 +1,13 @@
-# [INPUT]: Depends on the build, deployment, or runtime values declared in docker-compose.yml.\n# [OUTPUT]: Provides the SkillsGo Hub or monorepo configuration defined by docker-compose.yml.\n# [POS]: Serves as maintained configuration in the renamed SkillsGo Hub workspace or its repository integration.\n# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md\nversion: '3'
+# [INPUT]: Depends on the repository Go workspace, Hub development services, and container build definitions.
+# [OUTPUT]: Provides the local Hub development, unit-test, and integration-test service topology.
+# [POS]: Serves as the Docker Compose entry point for the Hub workspace and its supporting services.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+version: '3'
 services:
   dev:
     build:
-      context: .
-      dockerfile: cmd/skillsgo-hub/Dockerfile
+      context: ..
+      dockerfile: hub/cmd/skillsgo-hub/Dockerfile
       args:
         GOLANG_VERSION: "1.26.2"
     environment:

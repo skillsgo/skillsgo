@@ -1,32 +1,45 @@
-# [INPUT]: Depends on the Hub Dockerfile, GitHub Container Registry, and GitHub-native package credentials.
-# [OUTPUT]: Publishes public multi-architecture Hub snapshot images for main and immutable commit tags.
-# [POS]: Serves as the open-source continuous container delivery workflow consumed by Railway.
+# [INPUT]: Depends on a successful main-branch Continuous Integration run, the Protocol-aware Hub Dockerfile, GHCR, and GitHub-native package credentials.
+# [OUTPUT]: Publishes public multi-architecture Hub snapshot images for validated main commits with OCI provenance and SBOM metadata.
+# [POS]: Serves as the gated open-source continuous container delivery workflow consumed by Railway.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Hub Container Snapshot
 
 on:
-  push:
+  workflow_run:
+    workflows: [Continuous Integration]
+    types: [completed]
     branches: [main]
-    paths:
-      - hub/**
-      - .github/workflows/hub-image.yml
   workflow_dispatch:
 
 concurrency:
-  group: hub-container-${{ github.ref }}
+  group: hub-container-${{ github.event.workflow_run.head_sha || github.sha }}
   cancel-in-progress: true
 
 permissions:
   contents: read
   packages: write
+  id-token: write
+  attestations: write
 
 jobs:
   publish:
     name: Publish GHCR image
-    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
     steps:
-      - name: Checkout
+      - name: Resolve validated source
+        id: source
+        env:
+          SOURCE_SHA: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          echo "sha=${SOURCE_SHA}" >> "$GITHUB_OUTPUT"
+          echo "short_sha=${SOURCE_SHA:0:7}" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout validated source
         uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+        with:
+          ref: ${{ steps.source.outputs.sha }}
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
@@ -48,22 +61,33 @@ jobs:
           images: ghcr.io/skillsgo/hub
           tags: |
             type=raw,value=main
-            type=sha,prefix=sha-,format=short
+            type=raw,value=sha-${{ steps.source.outputs.short_sha }}
           labels: |
             org.opencontainers.image.title=SkillsGo Hub
             org.opencontainers.image.description=Open-source discovery and artifact service for SkillsGo
             org.opencontainers.image.source=https://github.com/skillsgo/skillsgo
+            org.opencontainers.image.revision=${{ steps.source.outputs.sha }}
 
       - name: Build and publish
+        id: build
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
         with:
-          context: hub
+          context: .
           file: hub/cmd/skillsgo-hub/Dockerfile
           platforms: linux/amd64,linux/arm64
           push: true
           build-args: |
-            VERSION=sha-${{ github.sha }}
+            VERSION=sha-${{ steps.source.outputs.short_sha }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          provenance: mode=max
+          sbom: true
+
+      - name: Attest published image
+        uses: actions/attest-build-provenance@43d14bc2b83dec42d39ecae14e916627a18bb661 # v3
+        with:
+          subject-name: ghcr.io/skillsgo/hub
+          subject-digest: ${{ steps.build.outputs.digest }}
+          push-to-registry: true

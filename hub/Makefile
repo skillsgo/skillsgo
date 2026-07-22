@@ -85,7 +85,7 @@ docker: hub-docker
 
 .PHONY: hub-docker
 hub-docker:
-	docker build -t skillsgo/hub -f cmd/skillsgo-hub/Dockerfile --build-arg GOLANG_VERSION=${GOLANG_VERSION} .
+	docker build -t skillsgo/hub -f hub/cmd/skillsgo-hub/Dockerfile --build-arg GOLANG_VERSION=${GOLANG_VERSION} ..
 
 .PHONY: docker-push
 docker-push:

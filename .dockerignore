@@ -1,8 +1,12 @@
-# [INPUT]: Depends on the root-context e2e image build and the CLI, Hub, and e2e source workspaces.
-# [OUTPUT]: Restricts root Docker build contexts to sources required by cross-product end-to-end tests.
+# [INPUT]: Depends on root-context product and e2e image builds plus the Go workspace, Protocol, CLI, Hub, and e2e sources.
+# [OUTPUT]: Restricts root Docker build contexts to sources required by Protocol-aware product and cross-product end-to-end images.
 # [POS]: Serves as the repository-level Docker context boundary, excluding local binaries, App assets, docs, and VCS state.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 *
+!go.work
+!go.work.sum
+!protocol/
+!protocol/**
 !cli/
 !cli/**
 !hub/

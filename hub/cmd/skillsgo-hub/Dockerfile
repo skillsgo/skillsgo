@@ -1,4 +1,4 @@
-# [INPUT]: Depends on the Hub Go module, Alpine runtime packages, and the target build architecture.
+# [INPUT]: Depends on the repository Go workspace, Protocol and Hub modules, Alpine runtime packages, and the target build architecture.
 # [OUTPUT]: Produces the multi-architecture SkillsGo Hub container image and runtime command.
 # [POS]: Serves as the production container build for the Hub service and GHCR publication workflow.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -21,12 +21,18 @@ ENV GOARCH=${TARGETARCH} \
     CGO_ENABLED=0 \
     GOPROXY="https://proxy.golang.org"
 
-WORKDIR $GOPATH/src/github.com/gomods/athens
+WORKDIR /src
 
-COPY . .
+COPY go.work go.work.sum ./
+COPY cli/go.mod cli/go.sum ./cli/
+COPY hub/go.mod hub/go.sum ./hub/
+COPY protocol/go.mod ./protocol/
+RUN cd hub && go mod download
+COPY hub/ ./hub/
+COPY protocol/ ./protocol/
 
 RUN DATE="$(date -u +%Y-%m-%d-%H:%M:%S-%Z)" && \
-    go build \
+    cd hub && go build \
     -ldflags "-X github.com/skillsgo/skillsgo/hub/pkg/build.version=$VERSION -X github.com/skillsgo/skillsgo/hub/pkg/build.buildDate=$DATE -s -w" \
     -o /bin/skillsgo-hub ./cmd/skillsgo-hub
 
@@ -38,7 +44,7 @@ ENV GOROOT="/usr/local/go" \
     GO111MODULE=on
 
 COPY --from=builder /bin/skillsgo-hub /bin/skillsgo-hub
-COPY --from=builder /go/src/github.com/gomods/athens/config.dev.toml /config/config.toml
+COPY --from=builder /src/hub/config.dev.toml /config/config.toml
 COPY --from=builder /usr/local/go/bin/go /usr/local/go/bin/go
 COPY --from=builder /usr/local/go/go.env /usr/local/go/go.env
 
