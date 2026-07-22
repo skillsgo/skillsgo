@@ -1824,9 +1824,6 @@ class AppLocalizationsHi extends AppLocalizations {
       'इस स्थानीय Skill को पोर्टेबल ZIP संग्रह के रूप में निर्यात करें।';
 
   @override
-  String get detailInstalls => 'स्थापित करता है';
-
-  @override
   String get detailRepository => 'भण्डार';
 
   @override

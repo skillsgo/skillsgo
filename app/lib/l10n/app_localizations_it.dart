@@ -1840,9 +1840,6 @@ class AppLocalizationsIt extends AppLocalizations {
       'Esporta questo Skill locale come archivio ZIP portatile.';
 
   @override
-  String get detailInstalls => 'Installa';
-
-  @override
   String get detailRepository => 'Deposito';
 
   @override

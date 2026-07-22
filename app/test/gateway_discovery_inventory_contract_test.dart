@@ -25,7 +25,7 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"collection":"search","skills":[{"id":"github.com/flutter/skills/-/responsive-layout","source":"github.com/flutter/skills","imageUrl":"https://images.example/flutter.png","skillPath":"responsive-layout","name":"Responsive Layout","description":"Build adaptive Flutter layouts.","latestVersion":"v1.2.3","trustLevel":"community_verified","riskAssessment":"low","metric":{"kind":"all_time_installs","value":1200,"change":0}}],"page":{"limit":20,"offset":0,"nextOffset":20}}',
+              '{"collection":"search","skills":[{"id":"github.com/flutter/skills/-/responsive-layout","source":"github.com/flutter/skills","imageUrl":"https://images.example/flutter.png","skillPath":"responsive-layout","name":"Responsive Layout","description":"Build adaptive Flutter layouts.","latestVersion":"v1.2.3","trustLevel":"community_verified","riskAssessment":"low"}],"page":{"limit":20,"offset":0,"nextOffset":20}}',
           stderr: '',
         ),
         ProcessOutput(
@@ -56,7 +56,7 @@ void main() {
     expect(results.single.source, 'github.com/flutter/skills');
     expect(results.single.imageUrl, 'https://images.example/flutter.png');
     expect(results.single.installName, 'responsive-layout');
-    expect(results.single.installs, 1200);
+    expect(results.single.metricKind, isNull);
     expect(results.single.description, 'Build adaptive Flutter layouts.');
     expect(results.single.trustLevel, SkillTrustLevel.communityVerified);
     expect(results.single.riskAssessment, SkillRiskAssessment.low);
@@ -99,7 +99,7 @@ void main() {
         const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"skills":[{"id":"github.com/acme/skills/-/demo","source":"github.com/acme/skills","skillPath":"demo","name":"Demo","description":"Demo Skill","latestVersion":"v1.0.0","trustLevel":"unverified","riskAssessment":"unknown","metric":{"kind":"none","value":0,"change":0}}]}',
+              '{"skills":[{"id":"github.com/acme/skills/-/demo","source":"github.com/acme/skills","skillPath":"demo","name":"Demo","description":"Demo Skill","latestVersion":"v1.0.0","trustLevel":"unverified","riskAssessment":"unknown"}]}',
           stderr: '',
         ),
         const ProcessOutput(
@@ -234,7 +234,7 @@ void main() {
         const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/acme/skills","Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Description":"Skills for product teams.","License":"MIT","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/acme/skills/-/skills/demo","Version":"v1.2.3","Name":"demo","Description":"Demo Skill","ImageURL":"https://github.com/acme.png?size=72","Installs":42,"Stars":7,"TrustLevel":"community_verified","RiskAssessment":"low","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"tree","Sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","ArchiveSize":12}]}',
+              '{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/acme/skills","Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Description":"Skills for product teams.","License":"MIT","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/acme/skills/-/skills/demo","Version":"v1.2.3","Name":"demo","Description":"Demo Skill","ImageURL":"https://github.com/acme.png?size=72","Stars":7,"TrustLevel":"community_verified","RiskAssessment":"low","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"tree","Sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","ArchiveSize":12}]}',
           stderr: '',
         ),
         const ProcessOutput(
@@ -257,7 +257,7 @@ void main() {
     expect(page.skills, hasLength(1));
     expect(page.skills.single.id, 'github.com/acme/skills/-/skills/demo');
     expect(page.skills.single.imageUrl, 'https://github.com/acme.png?size=72');
-    expect(page.skills.single.installs, 42);
+    expect(page.skills.single.metricKind, isNull);
     expect(page.skills.single.trustLevel, SkillTrustLevel.communityVerified);
     expect(page.skills.single.riskAssessment, SkillRiskAssessment.low);
     expect(page.repository?.id, 'github.com/acme/skills');
@@ -278,7 +278,7 @@ void main() {
 
   test('GitHub aliases all bypass keyword search and use CLI info', () async {
     const repositoryInfo =
-        '{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/owner/repo","Version":"v0.0.0-20260720120000-abcdef123456","Time":"2026-07-20T12:00:00Z","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/owner/repo/-/skills/demo","Version":"v0.0.0-20260720120000-abcdef123456","Name":"demo","Description":"Demo Skill","Installs":0,"Stars":0,"TrustLevel":"unverified","RiskAssessment":"unknown","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","TreeSHA":"tree","Sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","ArchiveSize":12}]}';
+        '{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/owner/repo","Version":"v0.0.0-20260720120000-abcdef123456","Time":"2026-07-20T12:00:00Z","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/owner/repo/-/skills/demo","Version":"v0.0.0-20260720120000-abcdef123456","Name":"demo","Description":"Demo Skill","Stars":0,"TrustLevel":"unverified","RiskAssessment":"unknown","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","TreeSHA":"tree","Sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","ArchiveSize":12}]}';
     for (final source in const [
       'owner/repo@main',
       'github/owner/repo@main',

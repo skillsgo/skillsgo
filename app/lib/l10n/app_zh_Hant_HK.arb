@@ -998,7 +998,6 @@
   "installMoreTargets": "安裝到更多位置",
   "exportLocalSkill": "導出",
   "exportLocalSkillDescription": "將這個本地技能導出為可移植的 ZIP 歸檔。",
-  "detailInstalls": "安裝量",
   "detailRepository": "倉庫",
   "detailStars": "星標",
   "detailUpdated": "最近更新",

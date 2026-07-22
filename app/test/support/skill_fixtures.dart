@@ -14,7 +14,6 @@ SkillDetail withoutInstallationTargets(
   source: detail.source,
   markdown: detail.markdown,
   files: detail.files,
-  installs: detail.installs,
   description: detail.description,
   requestedVersion: detail.requestedVersion,
   immutableVersion: detail.immutableVersion,

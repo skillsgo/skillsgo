@@ -12,13 +12,13 @@ class SkillSummary {
     required this.installName,
     required this.name,
     required this.source,
-    required this.installs,
+    this.installs = 0,
     this.imageUrl,
     this.latestVersion = 'main',
     this.description = '',
     this.trustLevel = SkillTrustLevel.unverified,
     this.riskAssessment = SkillRiskAssessment.unknown,
-    this.metricKind = SkillMetricKind.allTimeInstalls,
+    this.metricKind,
     this.metricChange = 0,
     this.localTargetCount = 0,
   });
@@ -33,7 +33,7 @@ class SkillSummary {
   final String description;
   final SkillTrustLevel trustLevel;
   final SkillRiskAssessment riskAssessment;
-  final SkillMetricKind metricKind;
+  final SkillMetricKind? metricKind;
   final int metricChange;
   final int localTargetCount;
 

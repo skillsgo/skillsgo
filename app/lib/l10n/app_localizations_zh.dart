@@ -1689,9 +1689,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get exportLocalSkillDescription => '将这个本地技能导出为可移植的 ZIP 归档。';
 
   @override
-  String get detailInstalls => '安装量';
-
-  @override
   String get detailRepository => '仓库';
 
   @override
@@ -3475,9 +3472,6 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get exportLocalSkillDescription => '將這個本地技能導出為可移植的 ZIP 歸檔。';
-
-  @override
-  String get detailInstalls => '安裝量';
 
   @override
   String get detailRepository => '倉庫';
@@ -5264,9 +5258,6 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get exportLocalSkillDescription => '將這個本地技能匯出為可移植的 ZIP 歸檔。';
-
-  @override
-  String get detailInstalls => '安裝量';
 
   @override
   String get detailRepository => '倉庫';

@@ -1836,9 +1836,6 @@ class AppLocalizationsId extends AppLocalizations {
       'Ekspor Keterampilan Lokal ini sebagai arsip ZIP portabel.';
 
   @override
-  String get detailInstalls => 'Pemasangan';
-
-  @override
   String get detailRepository => 'Gudang';
 
   @override

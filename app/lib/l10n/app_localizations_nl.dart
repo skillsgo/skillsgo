@@ -1831,9 +1831,6 @@ class AppLocalizationsNl extends AppLocalizations {
       'Exporteer deze lokale Skill als een draagbaar ZIP-archief.';
 
   @override
-  String get detailInstalls => 'Installaties';
-
-  @override
   String get detailRepository => 'Opslagplaats';
 
   @override

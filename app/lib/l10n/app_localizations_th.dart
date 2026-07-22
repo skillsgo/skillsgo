@@ -1822,9 +1822,6 @@ class AppLocalizationsTh extends AppLocalizations {
       'ส่งออกทักษะท้องถิ่นนี้เป็นไฟล์ ZIP แบบพกพา';
 
   @override
-  String get detailInstalls => 'การติดตั้ง';
-
-  @override
   String get detailRepository => 'พื้นที่เก็บข้อมูล';
 
   @override

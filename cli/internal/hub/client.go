@@ -62,7 +62,6 @@ type ContentMatch = protocolapi.ContentMatch
 type SkillProductMetadata struct {
 	ID                    string  `json:"id"`
 	ImageURL              *string `json:"imageUrl"`
-	Installs              int64   `json:"installs"`
 	Stars                 int64   `json:"stars"`
 	RepositoryDescription string  `json:"repositoryDescription"`
 	TrustLevel            string  `json:"trustLevel"`

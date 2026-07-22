@@ -335,8 +335,6 @@ void main() {
       isNotNull,
     );
     expect(gateway.agentInspections, 1);
-    expect(find.text('Installs'), findsOneWidget);
-    expect(find.text('1.2K'), findsOneWidget);
     expect(find.text('example/skills'), findsOneWidget);
     expect(find.text('github.com/example/skills'), findsNothing);
     expect(find.text('12.8K'), findsOneWidget);

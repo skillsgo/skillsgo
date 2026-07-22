@@ -70,6 +70,7 @@ String _metricLabel(BuildContext context, SkillSummary skill) {
   final l10n = AppLocalizations.of(context);
   final value = _compactCount(skill.installs);
   return switch (skill.metricKind) {
+    null => skill.latestVersion,
     SkillMetricKind.allTimeInstalls => l10n.allTimeMetric(value),
     SkillMetricKind.installs24h => l10n.trendingMetric(value),
     SkillMetricKind.hotVelocity => l10n.hotMetric(

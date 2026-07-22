@@ -1050,7 +1050,6 @@
   "installMoreTargets": "Instalar en más ubicaciones",
   "exportLocalSkill": "Exportar",
   "exportLocalSkillDescription": "Exporte este Skill local como un archivo ZIP portátil.",
-  "detailInstalls": "Instalaciones",
   "detailRepository": "Repositorio",
   "detailStars": "estrellas",
   "detailUpdated": "Actualizado",

@@ -1838,9 +1838,6 @@ class AppLocalizationsAr extends AppLocalizations {
       'قم بتصدير Skill المحلي كأرشيف ZIP محمول.';
 
   @override
-  String get detailInstalls => 'عمليات التثبيت';
-
-  @override
   String get detailRepository => 'المستودع';
 
   @override

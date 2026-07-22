@@ -182,7 +182,6 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, "tree-def", detailBody.TreeSHA)
 	require.Equal(t, "refs/heads/main", detailBody.SourceRef)
 	require.Equal(t, "github.com/mattpocock/skills", detailBody.Repository)
-	require.Equal(t, int64(0), detailBody.Installs)
 	require.Equal(t, int64(12800), detailBody.Stars)
 	require.Equal(t, time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), detailBody.SourceUpdatedAt)
 	require.Positive(t, detailBody.ArchiveSize)
@@ -218,7 +217,6 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, "https://github.com/mattpocock.png?size=256", *response.Skills[0].ImageURL)
 	require.Equal(t, "unverified", response.Skills[0].TrustLevel)
 	require.Equal(t, "unknown", response.Skills[0].RiskAssessment)
-	require.Equal(t, "none", response.Skills[0].Metric.Kind)
 	require.Equal(t, "github.com/mattpocock/skills", response.Skills[0].Repository)
 
 	batch := httptest.NewRecorder()
@@ -229,7 +227,6 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.NoError(t, json.NewDecoder(batch.Body).Decode(&batchBody))
 	require.Len(t, batchBody.Skills, 1)
 	require.Equal(t, skill.SkillID, batchBody.Skills[0].SkillID)
-	require.Equal(t, "none", batchBody.Skills[0].Metric.Kind)
 }
 
 func TestHistoricalPublicationMatchesContentWithoutEnteringDiscovery(t *testing.T) {

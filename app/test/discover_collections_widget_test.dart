@@ -296,6 +296,7 @@ void main() {
       source: 'github.com/acme/skills',
       latestVersion: 'v1.2.3',
       installs: 1200,
+      metricKind: SkillMetricKind.allTimeInstalls,
       trustLevel: SkillTrustLevel.communityVerified,
       riskAssessment: SkillRiskAssessment.low,
       localTargetCount: 2,

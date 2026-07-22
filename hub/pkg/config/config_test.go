@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the config package imports and contracts declared in this file.
- * [OUTPUT]: Specifies Hub configuration including multi-token GitHub authentication, task execution, and skills.sh synchronization behavior.
+ * [OUTPUT]: Specifies Hub configuration including deployment discovery, multi-token GitHub authentication, and task execution behavior.
  * [POS]: Serves as test coverage for the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

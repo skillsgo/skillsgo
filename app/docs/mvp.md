@@ -64,7 +64,7 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 
 ## Integration Boundaries
 
-- The App invokes stable JSON or NDJSON commands on the bundled SkillsGo CLI for every business read and mutation, including Hub-backed search, ranking, detail, and immutable artifact metadata.
+- The App invokes stable JSON or NDJSON commands on the bundled SkillsGo CLI for Hub-backed and local operations. In Cloud mode it reads Cloud-owned rankings directly from the origin declared by `skillsgo hub info`, then hydrates Skill metadata through the CLI-mediated Hub boundary.
 - The bundled CLI is the App's only business-integration boundary; the App never calls a Hub directly.
 - The App never parses human-oriented CLI output and never constructs commands through a shell string.
 - A standalone CLI remains available to terminal users; the production App does not require a prior CLI install or configured `PATH`.

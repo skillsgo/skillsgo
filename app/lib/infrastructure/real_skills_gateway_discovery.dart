@@ -107,17 +107,12 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
             final name = raw['name'];
             final description = raw['description'];
             final version = raw['latestVersion'];
-            final metric = raw['metric'];
             if (source is! String ||
                 installName is! String ||
                 id is! String ||
                 name is! String ||
                 description is! String ||
-                version is! String ||
-                metric is! Map<String, dynamic> ||
-                metric['kind'] is! String ||
-                metric['value'] is! num ||
-                metric['change'] is! num) {
+                version is! String) {
               throw const SkillsException(
                 'Discovery result is missing required fields.',
                 kind: SkillsFailureKind.invalidResponse,
@@ -130,6 +125,17 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
                 kind: SkillsFailureKind.invalidResponse,
               );
             }
+            final metric = raw['metric'];
+            if (collection != DiscoveryCollection.search &&
+                (metric is! Map<String, dynamic> ||
+                    metric['kind'] is! String ||
+                    metric['value'] is! num ||
+                    metric['change'] is! num)) {
+              throw const SkillsException(
+                'Cloud ranking result is missing its metric.',
+                kind: SkillsFailureKind.invalidResponse,
+              );
+            }
             return SkillSummary(
               id: id,
               installName: installName,
@@ -137,12 +143,18 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
               source: source,
               imageUrl: imageUrl as String?,
               description: description,
-              installs: (metric['value'] as num).toInt(),
+              installs: metric is Map<String, dynamic>
+                  ? (metric['value'] as num).toInt()
+                  : 0,
               latestVersion: version,
               trustLevel: _trustLevel(raw['trustLevel']),
               riskAssessment: _riskAssessment(raw['riskAssessment']),
-              metricKind: _metricKind(metric['kind'] as String),
-              metricChange: (metric['change'] as num).toInt(),
+              metricKind: metric is Map<String, dynamic>
+                  ? _metricKind(metric['kind'] as String)
+                  : null,
+              metricChange: metric is Map<String, dynamic>
+                  ? (metric['change'] as num).toInt()
+                  : 0,
               localTargetCount: installedCounts[id] ?? 0,
             );
           })
@@ -324,12 +336,10 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
             final name = raw['Name'];
             final description = raw['Description'];
             final version = raw['Version'];
-            final installs = raw['Installs'];
             if (id is! String ||
                 name is! String ||
                 description is! String ||
-                version is! String ||
-                installs is! num) {
+                version is! String) {
               throw const FormatException('Incomplete Skill Info member.');
             }
             final imageURL = raw['ImageURL'];
@@ -344,7 +354,6 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
               source: repository,
               imageUrl: imageURL as String?,
               description: description,
-              installs: installs.toInt(),
               latestVersion: version,
               trustLevel: _trustLevel(raw['TrustLevel']),
               riskAssessment: _riskAssessment(raw['RiskAssessment']),
@@ -433,7 +442,6 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       ];
       if (requiredStrings.any((field) => decoded[field] is! String) ||
           (decoded['imageUrl'] != null && decoded['imageUrl'] is! String) ||
-          decoded['installs'] is! num ||
           decoded['stars'] is! num ||
           decoded['sourceUpdatedAt'] is! String ||
           decoded['archiveSize'] is! num ||
@@ -522,7 +530,6 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         markdown: decoded['instructions'] as String,
         files: files,
         imageUrl: decoded['imageUrl'] as String?,
-        installs: (decoded['installs'] as num).toInt(),
         repository: decoded['repository'] as String,
         stars: (decoded['stars'] as num).toInt(),
         sourceUpdatedAt: DateTime.parse(

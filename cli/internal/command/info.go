@@ -22,7 +22,6 @@ import (
 type skillInfoView struct {
 	hub.Info
 	ImageURL       *string  `json:"ImageURL,omitempty"`
-	Installs       int64    `json:"Installs"`
 	Stars          int64    `json:"Stars"`
 	TrustLevel     string   `json:"TrustLevel"`
 	RiskAssessment hub.Risk `json:"RiskAssessment"`
@@ -50,7 +49,7 @@ func productSkillInfo(ctx context.Context, client *hub.Client, info hub.Info) (s
 		risk = info.Risk
 	}
 	return skillInfoView{
-		Info: info, ImageURL: metadata.ImageURL, Installs: metadata.Installs,
+		Info: info, ImageURL: metadata.ImageURL,
 		Stars: metadata.Stars, TrustLevel: metadata.TrustLevel, RiskAssessment: risk,
 	}, metadata.RepositoryDescription, nil
 }
