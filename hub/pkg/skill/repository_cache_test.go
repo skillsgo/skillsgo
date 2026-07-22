@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on temporary Git repositories, the Skill ID parser, repository cache leases and lifecycle policy, Git resolution, and SkillsGo-owned artifact ZIP assembly.
- * [OUTPUT]: Specifies shared repository caching, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, batch-version identity including v2+ tags without Go Module suffixes, nested Skill archives, refresh, tag listing, and concurrent access behavior.
+ * [OUTPUT]: Specifies shared repository caching, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, batch-version identity including v2+ tags without Go Module suffixes, complete Repository Artifacts, member tree identity, refresh, tag listing, and concurrent access behavior.
  * [POS]: Serves as the repository integration contract for the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -310,13 +310,7 @@ func TestRepositoryDiscoverySkipsInvalidCandidatesWithoutBlockingValidSiblings(t
 
 	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		for _, member := range snapshot.Members {
-			if member.Version != nil && member.Version.Zip != nil {
-				require.NoError(t, member.Version.Zip.Close())
-			}
-		}
-	})
+	t.Cleanup(func() { require.NoError(t, snapshot.Archive.Close()) })
 	ids := make([]string, 0, len(snapshot.Members))
 	for _, member := range snapshot.Members {
 		ids = append(ids, member.SkillID)
@@ -336,13 +330,7 @@ func TestRepositoryDiscoveryExcludesSkillsInstalledUnderHiddenDirectories(t *tes
 
 	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		for _, member := range snapshot.Members {
-			if member.Version != nil && member.Version.Zip != nil {
-				require.NoError(t, member.Version.Zip.Close())
-			}
-		}
-	})
+	t.Cleanup(func() { require.NoError(t, snapshot.Archive.Close()) })
 	ids := make([]string, 0, len(snapshot.Members))
 	for _, member := range snapshot.Members {
 		ids = append(ids, member.SkillID)
@@ -357,24 +345,15 @@ func TestRepositoryDiscoveryUsesTagAsSharedBatchVersionAndTreeAsMemberIdentity(t
 	f := newLocalRepositoryFixture(t)
 	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "release")
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		for _, member := range snapshot.Members {
-			if member.Version != nil && member.Version.Zip != nil {
-				require.NoError(t, member.Version.Zip.Close())
-			}
-		}
-	})
+	t.Cleanup(func() { require.NoError(t, snapshot.Archive.Close()) })
 
 	require.Equal(t, "v1.0.0", snapshot.Version)
 	require.NotEmpty(t, snapshot.CommitSHA)
 	require.Len(t, snapshot.Members, 2)
 	trees := make(map[string]struct{}, len(snapshot.Members))
 	for _, member := range snapshot.Members {
-		version, commitSHA, treeSHA := artifactIdentity(t, member.Version.Info)
-		require.Equal(t, snapshot.Version, version)
-		require.Equal(t, snapshot.CommitSHA, commitSHA)
-		require.NotEmpty(t, treeSHA)
-		trees[treeSHA] = struct{}{}
+		require.NotEmpty(t, member.TreeSHA)
+		trees[member.TreeSHA] = struct{}{}
 	}
 	require.Len(t, trees, 2, "each Skill directory must retain its own tree identity")
 }
@@ -388,18 +367,16 @@ func TestRepositoryDiscoveryPackagesV2WithoutGoModulePathSuffix(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "v2.2.10", snapshot.Version)
 	require.Len(t, snapshot.Members, 2)
-	for _, member := range snapshot.Members {
-		archive, readErr := io.ReadAll(member.Version.Zip)
-		require.NoError(t, readErr)
-		require.NoError(t, member.Version.Zip.Close())
-		reader, openErr := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
-		require.NoError(t, openErr)
-		prefix := member.SkillID + "@v2.2.10/"
-		require.NotEmpty(t, reader.File)
-		require.Contains(t, fileNames(reader.File), prefix+"SKILL.md")
-		for _, file := range reader.File {
-			require.True(t, strings.HasPrefix(file.Name, prefix), file.Name)
-		}
+	archive, readErr := io.ReadAll(snapshot.Archive)
+	require.NoError(t, readErr)
+	require.NoError(t, snapshot.Archive.Close())
+	reader, openErr := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	require.NoError(t, openErr)
+	prefix := f.skillID + "@v2.2.10/"
+	require.Contains(t, fileNames(reader.File), prefix+"SKILL.md")
+	require.Contains(t, fileNames(reader.File), prefix+"skills/child/SKILL.md")
+	for _, file := range reader.File {
+		require.True(t, strings.HasPrefix(file.Name, prefix), file.Name)
 	}
 }
 
@@ -418,21 +395,12 @@ func TestRepositoryDiscoveryFallsBackToHeadPseudoVersionSharedByAllMembers(t *te
 
 	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "head")
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		for _, member := range snapshot.Members {
-			if member.Version != nil && member.Version.Zip != nil {
-				require.NoError(t, member.Version.Zip.Close())
-			}
-		}
-	})
+	t.Cleanup(func() { require.NoError(t, snapshot.Archive.Close()) })
 
 	require.True(t, module.IsPseudoVersion(snapshot.Version), snapshot.Version)
 	require.Contains(t, snapshot.Version, snapshot.CommitSHA[:12])
 	for _, member := range snapshot.Members {
-		version, commitSHA, treeSHA := artifactIdentity(t, member.Version.Info)
-		require.Equal(t, snapshot.Version, version)
-		require.Equal(t, snapshot.CommitSHA, commitSHA)
-		require.NotEmpty(t, treeSHA)
+		require.NotEmpty(t, member.TreeSHA)
 	}
 }
 
@@ -444,12 +412,10 @@ func TestUnrelatedSkillChangeAdvancesBatchWithoutChangingSiblingTree(t *testing.
 	childTree := ""
 	for _, member := range first.Members {
 		if member.SkillID == childID {
-			_, _, childTree = artifactIdentity(t, member.Version.Info)
-		}
-		if member.Version != nil && member.Version.Zip != nil {
-			require.NoError(t, member.Version.Zip.Close())
+			childTree = member.TreeSHA
 		}
 	}
+	require.NoError(t, first.Archive.Close())
 	require.NotEmpty(t, childTree)
 
 	f.writeSkill(t, ".", "repo", "root changed only")
@@ -457,21 +423,13 @@ func TestUnrelatedSkillChangeAdvancesBatchWithoutChangingSiblingTree(t *testing.
 	runGit(t, f.work, "push", "origin", "HEAD")
 	second, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "main")
 	require.NoError(t, err)
-	t.Cleanup(func() {
-		for _, member := range second.Members {
-			if member.Version != nil && member.Version.Zip != nil {
-				require.NoError(t, member.Version.Zip.Close())
-			}
-		}
-	})
+	t.Cleanup(func() { require.NoError(t, second.Archive.Close()) })
 
 	require.NotEqual(t, first.Version, second.Version)
 	require.NotEqual(t, first.CommitSHA, second.CommitSHA)
 	for _, member := range second.Members {
-		version, _, treeSHA := artifactIdentity(t, member.Version.Info)
-		require.Equal(t, second.Version, version)
 		if member.SkillID == childID {
-			require.Equal(t, childTree, treeSHA)
+			require.Equal(t, childTree, member.TreeSHA)
 		}
 	}
 }

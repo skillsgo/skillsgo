@@ -7,9 +7,11 @@
 package actions
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -20,6 +22,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -181,115 +184,85 @@ func (p *repositoryPublisher) materialize(ctx context.Context, repositoryID, que
 }
 
 func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID, query string, snapshot *skill.RepositorySnapshot, visibility catalog.PublicationVisibility) (string, error) {
-	memberIDs := make([]string, 0, len(snapshot.Members))
-	stored := make(map[string]bool, len(snapshot.Members))
-	newlyStored := make([]string, 0, len(snapshot.Members))
-	publicationCommitted := false
-	defer func() {
-		if publicationCommitted {
-			return
-		}
-		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
-		defer cancel()
-		for index := len(newlyStored) - 1; index >= 0; index-- {
-			if err := p.storage.Delete(cleanupCtx, newlyStored[index], snapshot.Version); err != nil {
-				log.EntryFromContext(ctx).WithFields(map[string]any{
-					"repository_id": repositoryID,
-					"skill_id":      newlyStored[index],
-					"version":       snapshot.Version,
-				}).Warnf("repository publication rollback failed: %v", err)
-			}
-		}
-	}()
-	for _, member := range snapshot.Members {
-		if member.Version == nil || member.Version.Semver != snapshot.Version || member.Version.Zip == nil {
-			return "", fmt.Errorf("Repository source returned an invalid member for %s@%s", repositoryID, query)
-		}
-		archive := member.Version.Zip
-		defer func() { _ = archive.Close() }()
-		existingInfo, existingErr := p.storage.Info(ctx, member.SkillID, snapshot.Version)
-		if existingErr == nil {
-			var existing catalogArtifactInfo
-			if json.Unmarshal(existingInfo, &existing) != nil || existing.CommitSHA != snapshot.CommitSHA {
-				return "", fmt.Errorf("immutable Repository version conflict for %s@%s", repositoryID, snapshot.Version)
-			}
-			stored[member.SkillID] = true
-		} else if !huberrors.IsNotFoundErr(existingErr) {
-			return "", existingErr
-		}
-		memberIDs = append(memberIDs, member.SkillID)
+	if snapshot.Archive == nil || snapshot.ArchiveSize <= 0 || snapshot.Sum == "" || snapshot.Ref == "" || snapshot.TreeSHA == "" {
+		return "", fmt.Errorf("Repository source returned an incomplete Artifact for %s@%s", repositoryID, query)
 	}
-	for _, member := range snapshot.Members {
-		if stored[member.SkillID] {
-			continue
-		}
-		created, err := p.storage.(storage.ImmutableSaver).PutIfAbsent(
-			ctx, member.SkillID, snapshot.Version,
-			member.Version.Zip, member.Version.ZipMD5, member.Version.Info,
-		)
-		if err != nil {
-			return "", err
-		}
-		if created {
-			newlyStored = append(newlyStored, member.SkillID)
-		}
+	archive, err := io.ReadAll(io.LimitReader(snapshot.Archive, protocolartifact.MaxArchiveBytes+1))
+	if err != nil {
+		return "", fmt.Errorf("read Repository Artifact: %w", err)
 	}
-	published := make([]catalog.PublishedSkill, 0, len(memberIDs))
+	if int64(len(archive)) != snapshot.ArchiveSize || len(archive) > protocolartifact.MaxArchiveBytes {
+		return "", fmt.Errorf("Repository Artifact size mismatch for %s@%s", repositoryID, snapshot.Version)
+	}
+	if sum, sumErr := protocolartifact.RepositorySum(archive, repositoryID, snapshot.Version); sumErr != nil || sum != snapshot.Sum {
+		return "", fmt.Errorf("Repository Artifact Sum mismatch for %s@%s", repositoryID, snapshot.Version)
+	}
+
+	published := make([]catalog.PublishedSkill, 0, len(snapshot.Members))
 	release := protocolapi.RepositoryInfo{
 		SchemaVersion: protocolapi.SchemaVersion,
 		Kind:          protocolapi.KindRepository,
 		ID:            repositoryID,
 		Version:       snapshot.Version,
 		Time:          snapshot.CommitTime,
+		Ref:           snapshot.Ref,
 		CommitSHA:     snapshot.CommitSHA,
-		Skills:        make([]json.RawMessage, 0, len(memberIDs)),
+		TreeSHA:       snapshot.TreeSHA,
+		Sum:           snapshot.Sum,
+		ArchiveSize:   snapshot.ArchiveSize,
+		Skills:        make([]protocolapi.SkillInfo, 0, len(snapshot.Members)),
 	}
-	for _, memberID := range memberIDs {
-		publicationCtx := withoutCatalogIndex(ctx)
-		immutableInfo, err := p.protocol.Info(publicationCtx, memberID, snapshot.Version)
-		if err != nil {
-			return "", err
+	for _, member := range snapshot.Members {
+		if member.SkillID == "" || member.Path == "" || member.TreeSHA == "" || member.Manifest.Name == "" || member.Manifest.Description == "" {
+			return "", fmt.Errorf("Repository source returned an invalid member for %s@%s", repositoryID, query)
 		}
-		var info struct {
-			Name        string    `json:"Name"`
-			Description string    `json:"Description"`
-			Version     string    `json:"Version"`
-			Time        time.Time `json:"Time"`
-			Sum         string    `json:"Sum"`
-			ArchiveSize int64     `json:"ArchiveSize"`
-			CommitSHA   string    `json:"CommitSHA"`
-			TreeSHA     string    `json:"TreeSHA"`
-			Ref         string    `json:"Ref"`
+		info := protocolapi.SkillInfo{
+			SchemaVersion: protocolapi.SchemaVersion, Kind: protocolapi.KindSkill,
+			ID: member.SkillID, RepositoryID: repositoryID, Path: member.Path,
+			Version: snapshot.Version, Time: snapshot.CommitTime, Ref: snapshot.Ref,
+			CommitSHA: snapshot.CommitSHA, TreeSHA: member.TreeSHA,
+			Name: member.Manifest.Name, Description: member.Manifest.Description,
+			License: member.Manifest.License, Compatibility: member.Manifest.Compatibility,
+			AllowedTools: member.Manifest.AllowedTools, Metadata: member.Manifest.Metadata,
 		}
-		if err := json.Unmarshal(immutableInfo, &info); err != nil {
-			return "", fmt.Errorf("decode immutable Repository member Info: %w", err)
-		}
+		release.Skills = append(release.Skills, info)
 		published = append(published, catalog.PublishedSkill{
-			Skill: catalog.Skill{SkillID: memberID, Name: info.Name, Description: info.Description, LatestVersion: info.Version},
-			Version: catalog.SkillVersion{Version: info.Version, CommitSHA: info.CommitSHA, TreeSHA: info.TreeSHA,
-				Sum: info.Sum, CommitTime: info.Time, ArchiveSize: info.ArchiveSize},
+			Skill: catalog.Skill{SkillID: member.SkillID, Name: member.Manifest.Name, Description: member.Manifest.Description, LatestVersion: snapshot.Version},
+			Version: catalog.SkillVersion{Version: snapshot.Version, CommitSHA: snapshot.CommitSHA, TreeSHA: member.TreeSHA,
+				Sum: snapshot.Sum, CommitTime: snapshot.CommitTime, ArchiveSize: snapshot.ArchiveSize},
 		})
-		if info.CommitSHA != snapshot.CommitSHA || info.Ref == "" {
-			return "", fmt.Errorf("Repository member Info is inconsistent for %s@%s", repositoryID, snapshot.Version)
-		}
-		if release.Ref == "" {
-			release.Ref = info.Ref
-		} else if release.Ref != info.Ref {
-			return "", fmt.Errorf("Repository member refs are inconsistent for %s@%s", repositoryID, snapshot.Version)
-		}
-		release.Skills = append(release.Skills, json.RawMessage(append([]byte(nil), immutableInfo...)))
 	}
 	releaseInfo, err := json.Marshal(release)
 	if err != nil {
-		return "", fmt.Errorf("encode Repository Release Record: %w", err)
+		return "", fmt.Errorf("encode Repository Info: %w", err)
+	}
+
+	created := false
+	publicationCommitted := false
+	defer func() {
+		if publicationCommitted || !created {
+			return
+		}
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
+		defer cancel()
+		if err := p.storage.Delete(cleanupCtx, repositoryID, snapshot.Version); err != nil {
+			log.EntryFromContext(ctx).WithFields(map[string]any{
+				"repository_id": repositoryID, "version": snapshot.Version,
+			}).Warnf("repository publication rollback failed: %v", err)
+		}
+	}()
+	created, err = p.storage.(storage.ImmutableSaver).PutIfAbsent(ctx, repositoryID, snapshot.Version,
+		bytes.NewReader(archive), snapshot.ArchiveMD5, releaseInfo)
+	if err != nil {
+		return "", err
 	}
 	if err := p.metadata.PublishRepositoryReleaseWithVisibility(ctx, repositoryID, published, visibility, releaseInfo); err != nil {
 		return "", err
 	}
 	publicationCommitted = true
 	log.EntryFromContext(ctx).WithFields(map[string]any{
-		"member_count":       len(memberIDs),
-		"new_artifact_count": len(newlyStored),
+		"member_count":       len(snapshot.Members),
+		"new_artifact_count": map[bool]int{true: 1, false: 0}[created],
 		"repository_id":      repositoryID,
 		"version":            snapshot.Version,
 	}).Debugf("repository publication committed")
@@ -300,9 +273,7 @@ func closeRepositorySnapshot(snapshot *skill.RepositorySnapshot) {
 	if snapshot == nil {
 		return
 	}
-	for _, member := range snapshot.Members {
-		if member.Version != nil && member.Version.Zip != nil {
-			_ = member.Version.Zip.Close()
-		}
+	if snapshot.Archive != nil {
+		_ = snapshot.Archive.Close()
 	}
 }

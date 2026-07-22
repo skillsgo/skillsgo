@@ -273,9 +273,8 @@ func collectRepositoryMemberVersions(encoded []byte, target map[string]string) e
 	if err := json.Unmarshal(encoded, &repository); err != nil || repository.ID == "" || repository.Version == "" {
 		return fmt.Errorf("invalid Repository Info returned during update resolution")
 	}
-	for _, raw := range repository.Skills {
-		var member protocolapi.SkillInfo
-		if json.Unmarshal(raw, &member) != nil || member.ID == "" || member.Version != repository.Version {
+	for _, member := range repository.Skills {
+		if member.ID == "" || member.RepositoryID != repository.ID || member.Version != repository.Version {
 			return fmt.Errorf("invalid Repository member returned during update resolution")
 		}
 		target[member.ID] = member.Version

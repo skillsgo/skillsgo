@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the cataloging Protocol decorator with fixed immutable artifact metadata and temporary Catalog storage.
- * [OUTPUT]: Specifies that only successfully validated artifact resolution makes Skills discoverable and exact Info carries immutable source metadata and Sum but no mutable Risk.
+ * [OUTPUT]: Specifies the retained metadata projection seam, rejection of independent Skill artifact routes, and rejection of non-atomic Repository metadata state.
  * [POS]: Serves as integration coverage between immutable artifact protocol reads and separate Hub discovery indexing.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -24,7 +24,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestSkillInfoRouteReturnsCompleteInstallMetadata(t *testing.T) {
+func TestSkillInfoRouteIsNotAnArtifactResource(t *testing.T) {
 	skillID, version := "github.com/vercel-labs/skills/-/skills/find-skills", "v1.2.3"
 	archive := catalogProtocolTestZIP(t, skillID, version)
 	underlying := &fixedArtifactProtocol{
@@ -34,41 +34,13 @@ func TestSkillInfoRouteReturnsCompleteInstallMetadata(t *testing.T) {
 	_, metadata := testCatalogAPI(t)
 	router := newFiberApp()
 	download.RegisterHandlers(router, &download.HandlerOpts{
-		Protocol: withCatalog(underlying, metadata), Logger: log.NoOpLogger(),
+		Protocol: withRepositoryInfo(withCatalog(underlying, metadata), metadata), Logger: log.NoOpLogger(),
 		DownloadFile: &mode.DownloadFile{Mode: mode.Sync},
 	})
 
 	recorder := httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+skillID+"/@v/"+version+".info", nil))
-	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
-	var info struct {
-		SchemaVersion int               `json:"SchemaVersion"`
-		Kind          string            `json:"Kind"`
-		ID            string            `json:"ID"`
-		Version       string            `json:"Version"`
-		Name          string            `json:"Name"`
-		Description   string            `json:"Description"`
-		License       string            `json:"License"`
-		Compatibility string            `json:"Compatibility"`
-		AllowedTools  string            `json:"AllowedTools"`
-		Metadata      map[string]string `json:"Metadata"`
-		Sum           string            `json:"Sum"`
-		ArchiveSize   int64             `json:"ArchiveSize"`
-	}
-	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&info))
-	require.Equal(t, 1, info.SchemaVersion)
-	require.Equal(t, "Skill", info.Kind)
-	require.Equal(t, skillID, info.ID)
-	require.Equal(t, version, info.Version)
-	require.Equal(t, "find-skills", info.Name)
-	require.Equal(t, "Finds useful Agent Skills.", info.Description)
-	require.Equal(t, "MIT", info.License)
-	require.Equal(t, "Requires Git.", info.Compatibility)
-	require.Equal(t, "Bash(git:*)", info.AllowedTools)
-	require.Equal(t, map[string]string{"author": "vercel-labs"}, info.Metadata)
-	require.NotContains(t, recorder.Body.String(), `"Risk"`)
-	require.NotEmpty(t, info.Sum)
-	require.Equal(t, int64(len(archive)), info.ArchiveSize)
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+skillID+"/@v/"+version+".info", nil))
+	require.Equal(t, http.StatusBadRequest, recorder.Code, recorder.Body.String())
 }
 
 type fixedArtifactProtocol struct {
@@ -108,7 +80,7 @@ func (p *repositoryFixtureProtocol) Zip(_ context.Context, skillID, _ string) (s
 	return storage.NewSizer(io.NopCloser(bytes.NewReader(fixture.zip)), int64(len(fixture.zip))), nil
 }
 
-func TestRepositoryInfoRouteEmbedsCompleteImmutableSkillInfo(t *testing.T) {
+func TestRepositoryInfoRejectsMemberRowsWithoutAtomicReleaseRecord(t *testing.T) {
 	repository, version := "github.com/example/skills", "v1.2.3"
 	fixtures := map[string]repositoryFixture{}
 	for _, member := range []struct {
@@ -136,27 +108,8 @@ func TestRepositoryInfoRouteEmbedsCompleteImmutableSkillInfo(t *testing.T) {
 	})
 
 	recorder := httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+repository+"/@v/"+version+".info", nil))
-	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
-	var info struct {
-		SchemaVersion int               `json:"SchemaVersion"`
-		Kind          string            `json:"Kind"`
-		ID            string            `json:"ID"`
-		Version       string            `json:"Version"`
-		Ref           string            `json:"Ref"`
-		CommitSHA     string            `json:"CommitSHA"`
-		Skills        []json.RawMessage `json:"Skills"`
-	}
-	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&info))
-	require.Equal(t, 1, info.SchemaVersion)
-	require.Equal(t, "Repository", info.Kind)
-	require.Equal(t, repository, info.ID)
-	require.Equal(t, version, info.Version)
-	require.Equal(t, "refs/tags/v1.2.3", info.Ref)
-	require.Equal(t, "abc123", info.CommitSHA)
-	require.Len(t, info.Skills, 2)
-	require.Contains(t, string(info.Skills[0])+string(info.Skills[1]), `"Name":"root-skill"`)
-	require.Contains(t, string(info.Skills[0])+string(info.Skills[1]), `"Name":"find-skills"`)
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/"+version+".info", nil))
+	require.Equal(t, http.StatusInternalServerError, recorder.Code, recorder.Body.String())
 }
 
 func (p *fixedArtifactProtocol) Info(context.Context, string, string) ([]byte, error) {

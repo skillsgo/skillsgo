@@ -50,15 +50,20 @@ func RegisterHandlers(r fiber.Router, opts *HandlerOpts) {
 	if opts == nil || opts.Protocol == nil || opts.Logger == nil {
 		panic("absolutely unacceptable handler opts")
 	}
+	// /mod was removed before Hub v1. Reject it explicitly because the root
+	// catch-all would otherwise interpret "mod" as part of a Repository ID.
+	r.All("/mod/*", func(c fiber.Ctx) error {
+		return c.SendStatus(fiber.StatusNotFound)
+	})
 	noCache := middleware.FiberCacheControl(movableVersionCacheControl)
-	registerMethods(r, "/mod/+/@v/list", http.MethodGet, noCache, LogEntryHandler(ListHandler, opts))
-	registerMethods(r, "/mod/+/@head", http.MethodGet, noCache, LogEntryHandler(SelectorHandler("head"), opts))
-	registerMethods(r, "/mod/+/@release", http.MethodGet, noCache, LogEntryHandler(SelectorHandler("release"), opts))
-	registerMethods(r, "/mod/+/@v/:version.info", http.MethodGet, LogEntryHandler(InfoHandler, opts))
+	registerMethods(r, "/+/@v/list", http.MethodGet, noCache, LogEntryHandler(ListHandler, opts))
+	registerMethods(r, "/+/@head", http.MethodGet, noCache, LogEntryHandler(SelectorHandler("head"), opts))
+	registerMethods(r, "/+/@release", http.MethodGet, noCache, LogEntryHandler(SelectorHandler("release"), opts))
+	registerMethods(r, "/+/@v/:version.info", http.MethodGet, LogEntryHandler(InfoHandler, opts))
 	zipHandler := LogEntryHandler(ZipHandler, opts)
-	r.Get("/mod/+/@v/:version.zip", zipHandler)
-	r.Head("/mod/+/@v/:version.zip", zipHandler)
-	r.All("/mod/+/@v/:version.zip", methodNotAllowed(http.MethodGet+", "+http.MethodHead))
+	r.Get("/+/@v/:version.zip", zipHandler)
+	r.Head("/+/@v/:version.zip", zipHandler)
+	r.All("/+/@v/:version.zip", methodNotAllowed(http.MethodGet+", "+http.MethodHead))
 }
 
 func protectMovableVersionResponse(c fiber.Ctx, version string) {

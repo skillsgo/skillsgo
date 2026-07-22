@@ -1,12 +1,13 @@
 /*
  * [INPUT]: Uses the Hub Router with an empty Catalog/storage pair and a counted Repository snapshot source double.
- * [OUTPUT]: Specifies cold direct-Skill and Repository exact-version publication, one-snapshot multi-Skill discovery, immediate member visibility, immutable cache reuse, correlated publication logs, and self-contained Repository Info.
+ * [OUTPUT]: Specifies root Repository exact-version publication, complete nested-only Repository ZIPs, one-snapshot membership, immutable cache reuse, atomic rollback, concurrency controls, historical member sets, and self-contained Repository Info.
  * [POS]: Serves as public Router acceptance coverage for demand-driven Repository materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
 
 import (
+	"archive/zip"
 	"bytes"
 	"context"
 	"crypto/md5" //nolint:gosec
@@ -17,7 +18,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -31,6 +31,8 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/mem"
+	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	"github.com/stretchr/testify/require"
 )
 
@@ -83,7 +85,7 @@ func (f *blockingRepositoryFetcher) DiscoverRepository(ctx context.Context, repo
 	case <-ctx.Done():
 		return nil, ctx.Err()
 	}
-	return f.snapshot(repositoryID, query), nil
+	return completeRepositoryTestSnapshot(f.snapshot(repositoryID, query)), nil
 }
 
 func (p *repositoryDiscoveryProtocol) List(context.Context, string) ([]string, error) {
@@ -96,8 +98,8 @@ func (p *repositoryDiscoveryProtocol) Latest(context.Context, string) (*storage.
 }
 
 func (s *failSecondSaveStorage) Save(ctx context.Context, module, version string, archive io.Reader, archiveMD5, info []byte) error {
-	if s.calls.Add(1) == 2 && s.failed.CompareAndSwap(false, true) {
-		return fmt.Errorf("injected second-member save failure")
+	if s.calls.Add(1) == 1 && s.failed.CompareAndSwap(false, true) {
+		return fmt.Errorf("injected Repository Artifact save failure")
 	}
 	return s.Backend.Save(ctx, module, version, archive, archiveMD5, info)
 }
@@ -118,8 +120,7 @@ func TestRepositoryPublicationFailureExposesNoPartialMemberSet(t *testing.T) {
 				"VCS": "git", "URL": "https://github.com/example/atomic", "Subdir": "", "Ref": "refs/tags/v1.0.0", "CommitSHA": "commit-atomic", "TreeSHA": fmt.Sprintf("tree-%d", index),
 			})
 			require.NoError(t, err)
-			digest := md5.Sum(archive) //nolint:gosec
-			members = append(members, skill.RepositoryMember{SkillID: id, Version: &storage.Version{Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version}})
+			members = append(members, repositoryTestMember(t, id, archive, info))
 		}
 		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "commit-atomic", CommitTime: time.Now().UTC(), Members: members}
 	}}
@@ -131,7 +132,7 @@ func TestRepositoryPublicationFailureExposesNoPartialMemberSet(t *testing.T) {
 	skills := withCatalog(raw, metadata)
 	publisher := newRepositoryPublisher(fetcher, backend, skills, metadata)
 	_, err = publisher.Materialize(t.Context(), repository, version)
-	require.ErrorContains(t, err, "injected second-member save failure")
+	require.ErrorContains(t, err, "injected Repository Artifact save failure")
 	members, err := metadata.RepositoryVersionMembers(t.Context(), repository, version)
 	require.NoError(t, err)
 	require.Empty(t, members, "failed publication must expose no member rows")
@@ -156,10 +157,9 @@ func TestMovedTagConflictsBeforeStoredArtifactsChange(t *testing.T) {
 			"VCS": "git", "URL": "https://github.com/example/immutable", "Ref": "refs/tags/v1.0.0", "CommitSHA": commit, "TreeSHA": "tree-" + commit,
 		})
 		require.NoError(t, err)
-		digest := md5.Sum(archive) //nolint:gosec
-		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: commit, CommitTime: time.Now().UTC(), Members: []skill.RepositoryMember{{
-			SkillID: repository, Version: &storage.Version{Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version},
-		}}}
+		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: commit, CommitTime: time.Now().UTC(), Members: []skill.RepositoryMember{
+			repositoryTestMember(t, repository, archive, info),
+		}}
 	}}
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
@@ -176,7 +176,7 @@ func TestMovedTagConflictsBeforeStoredArtifactsChange(t *testing.T) {
 	commit = "commit-two"
 	require.ErrorContains(t, publisher.VerifyHistorical(t.Context(), repository, version, "commit-one"), "immutable Repository version conflict")
 	_, err = publisher.Materialize(t.Context(), repository, version)
-	require.ErrorContains(t, err, "immutable Repository version conflict")
+	require.ErrorContains(t, err, "immutable artifact conflict")
 	retained, err := backend.Info(t.Context(), repository, version)
 	require.NoError(t, err)
 	require.Equal(t, original, retained)
@@ -187,7 +187,56 @@ func (f *countedRepositoryFetcher) DiscoverRepository(context.Context, string, s
 	if f.delay > 0 {
 		time.Sleep(f.delay)
 	}
-	return f.snapshot(), nil
+	return completeRepositoryTestSnapshot(f.snapshot()), nil
+}
+
+func repositoryTestMember(t *testing.T, skillID string, archive, info []byte) skill.RepositoryMember {
+	t.Helper()
+	var identity struct {
+		Version string `json:"Version"`
+		TreeSHA string `json:"TreeSHA"`
+	}
+	require.NoError(t, json.Unmarshal(info, &identity))
+	manifest, _, err := metadataFromArchive(archive, skillID, identity.Version)
+	require.NoError(t, err)
+	parsed, err := skill.ParseSkillID(skillID)
+	require.NoError(t, err)
+	return skill.RepositoryMember{SkillID: skillID, Path: parsed.SkillPath, TreeSHA: identity.TreeSHA, Manifest: manifest}
+}
+
+func completeRepositoryTestSnapshot(snapshot *skill.RepositorySnapshot) *skill.RepositorySnapshot {
+	if snapshot == nil || snapshot.Archive != nil {
+		return snapshot
+	}
+	files := make([]protocolartifact.Entry, 0, len(snapshot.Members))
+	for _, member := range snapshot.Members {
+		manifestPath := "SKILL.md"
+		if member.Path != "." {
+			manifestPath = member.Path + "/SKILL.md"
+		}
+		contents := []byte(fmt.Sprintf("---\nname: %s\ndescription: %s\n---\n# Test fixture\n", member.Manifest.Name, member.Manifest.Description))
+		files = append(files, protocolartifact.Entry{Path: manifestPath, Contents: contents, Mode: 0o644})
+	}
+	archive, err := protocolartifact.BuildRepository(snapshot.RepositoryID, snapshot.Version, files)
+	if err != nil {
+		panic(err)
+	}
+	sum, err := protocolartifact.RepositorySum(archive, snapshot.RepositoryID, snapshot.Version)
+	if err != nil {
+		panic(err)
+	}
+	digest := md5.Sum(archive) //nolint:gosec
+	snapshot.Archive = io.NopCloser(bytes.NewReader(archive))
+	snapshot.ArchiveMD5 = digest[:]
+	snapshot.ArchiveSize = int64(len(archive))
+	snapshot.Sum = sum
+	if snapshot.Ref == "" {
+		snapshot.Ref = "refs/tags/" + snapshot.Version
+	}
+	if snapshot.TreeSHA == "" {
+		snapshot.TreeSHA = "repository-tree-" + snapshot.CommitSHA
+	}
+	return snapshot
 }
 
 func TestHistoricalPublisherRetainsExactZIPWithoutDiscovery(t *testing.T) {
@@ -200,11 +249,10 @@ func TestHistoricalPublisherRetainsExactZIPWithoutDiscovery(t *testing.T) {
 			"CommitSHA": "history-commit", "TreeSHA": "history-tree",
 		})
 		require.NoError(t, err)
-		digest := md5.Sum(archive) //nolint:gosec
 		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "history-commit",
-			CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Members: []skill.RepositoryMember{{
-				SkillID: repository, Version: &storage.Version{Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version},
-			}}}
+			CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Members: []skill.RepositoryMember{
+				repositoryTestMember(t, repository, archive, info),
+			}}
 	}}
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
@@ -220,7 +268,19 @@ func TestHistoricalPublisherRetainsExactZIPWithoutDiscovery(t *testing.T) {
 	defer retained.Close()
 	actual, err := io.ReadAll(retained)
 	require.NoError(t, err)
-	require.Equal(t, archive, actual)
+	sum, err := protocolartifact.RepositorySum(actual, repository, version)
+	require.NoError(t, err)
+	infoBytes, err := backend.Info(t.Context(), repository, version)
+	require.NoError(t, err)
+	var repositoryInfo protocolapi.RepositoryInfo
+	require.NoError(t, json.Unmarshal(infoBytes, &repositoryInfo))
+	require.Equal(t, repositoryInfo.Sum, sum)
+	second, err := protocol.Zip(t.Context(), repository, version)
+	require.NoError(t, err)
+	defer second.Close()
+	secondBytes, err := io.ReadAll(second)
+	require.NoError(t, err)
+	require.Equal(t, actual, secondBytes)
 	_, err = metadata.Skill(t.Context(), repository)
 	require.ErrorIs(t, err, sql.ErrNoRows)
 }
@@ -239,10 +299,7 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 				"VCS": "git", "URL": "https://github.com/example/skills", "Subdir": item.subdir, "Ref": "refs/tags/v1.2.3", "CommitSHA": "abc123", "TreeSHA": item.tree,
 			})
 			require.NoError(t, err)
-			digest := md5.Sum(archive) //nolint:gosec
-			members = append(members, skill.RepositoryMember{SkillID: item.id, Version: &storage.Version{
-				Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version,
-			}})
+			members = append(members, repositoryTestMember(t, item.id, archive, info))
 		}
 		return &skill.RepositorySnapshot{
 			RepositoryID: repository, Version: version, CommitSHA: "abc123",
@@ -267,15 +324,14 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 	})
 	directMemberID := repository + "/-/skills/find-skills"
 	directRecorder := httptest.NewRecorder()
-	serveFiber(t, router, directRecorder, httptest.NewRequest(http.MethodGet, "/mod/"+directMemberID+"/@v/"+version+".info", nil))
-	require.Equal(t, http.StatusOK, directRecorder.Code, directRecorder.Body.String())
-	require.Contains(t, directRecorder.Body.String(), `"ID":"`+directMemberID+`"`)
+	serveFiber(t, router, directRecorder, httptest.NewRequest(http.MethodGet, "/"+directMemberID+"/@v/"+version+".info", nil))
+	require.Equal(t, http.StatusBadRequest, directRecorder.Code, directRecorder.Body.String())
 
 	for attempt := 0; attempt < 2; attempt++ {
 		recorder := httptest.NewRecorder()
-		serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+repository+"/@v/"+version+".info", nil))
+		serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/"+version+".info", nil))
 		require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
-		var info repositoryInfo
+		var info protocolapi.RepositoryInfo
 		require.NoError(t, json.NewDecoder(recorder.Body).Decode(&info))
 		require.Equal(t, repository, info.ID)
 		require.Equal(t, version, info.Version)
@@ -298,6 +354,54 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 	}
 }
 
+func TestRepositoryWithoutRootSkillPublishesCompleteRepositoryArtifact(t *testing.T) {
+	repository, version := "github.com/example/nested-only", "v1.0.0"
+	nestedID := repository + "/-/skills/design"
+	memberArchive := catalogProtocolTestZIPNamed(t, nestedID, version, "design", "Design guidance.", "")
+	memberInfo, err := json.Marshal(map[string]any{
+		"Version": version, "TreeSHA": "tree-design",
+	})
+	require.NoError(t, err)
+	fetcher := &countedRepositoryFetcher{snapshot: func() *skill.RepositorySnapshot {
+		return &skill.RepositorySnapshot{
+			RepositoryID: repository, Version: version, Ref: "refs/tags/" + version,
+			CommitSHA: "commit-nested", TreeSHA: "tree-repository", CommitTime: time.Now().UTC(),
+			Members: []skill.RepositoryMember{repositoryTestMember(t, nestedID, memberArchive, memberInfo)},
+		}
+	}}
+	backend, err := mem.NewStorage()
+	require.NoError(t, err)
+	_, metadata := testCatalogAPI(t)
+	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
+	protocol := withRepositoryInfo(raw, metadata, newRepositoryPublisher(fetcher, backend, raw, metadata))
+	router := newFiberApp()
+	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+
+	infoRecorder := httptest.NewRecorder()
+	serveFiber(t, router, infoRecorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/"+version+".info", nil))
+	require.Equal(t, http.StatusOK, infoRecorder.Code, infoRecorder.Body.String())
+	var info protocolapi.RepositoryInfo
+	require.NoError(t, json.NewDecoder(infoRecorder.Body).Decode(&info))
+	require.Equal(t, repository, info.ID)
+	require.Len(t, info.Skills, 1)
+	require.Equal(t, nestedID, info.Skills[0].ID)
+	require.Equal(t, "skills/design", info.Skills[0].Path)
+	require.True(t, protocolartifact.ValidSum(info.Sum))
+
+	zipRecorder := httptest.NewRecorder()
+	serveFiber(t, router, zipRecorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/"+version+".zip", nil))
+	require.Equal(t, http.StatusOK, zipRecorder.Code, zipRecorder.Body.String())
+	reader, err := zip.NewReader(bytes.NewReader(zipRecorder.Body.Bytes()), int64(zipRecorder.Body.Len()))
+	require.NoError(t, err)
+	names := make([]string, 0, len(reader.File))
+	for _, file := range reader.File {
+		names = append(names, file.Name)
+	}
+	require.Contains(t, names, repository+"@"+version+"/skills/design/SKILL.md")
+	require.NotContains(t, names, repository+"@"+version+"/SKILL.md")
+	require.Equal(t, int32(1), fetcher.calls.Load())
+}
+
 func TestConcurrentUnknownRepositoryInfoSharesOnePublication(t *testing.T) {
 	repository, version := "github.com/example/concurrent", "v1.0.0"
 	fetcher := &countedRepositoryFetcher{delay: 25 * time.Millisecond, snapshot: func() *skill.RepositorySnapshot {
@@ -307,10 +411,9 @@ func TestConcurrentUnknownRepositoryInfoSharesOnePublication(t *testing.T) {
 			"VCS": "git", "URL": "https://github.com/example/concurrent", "Ref": "refs/tags/v1.0.0", "CommitSHA": "commit-one", "TreeSHA": "tree-one",
 		})
 		require.NoError(t, err)
-		digest := md5.Sum(archive) //nolint:gosec
-		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "commit-one", CommitTime: time.Now().UTC(), Members: []skill.RepositoryMember{{
-			SkillID: repository, Version: &storage.Version{Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version},
-		}}}
+		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "commit-one", CommitTime: time.Now().UTC(), Members: []skill.RepositoryMember{
+			repositoryTestMember(t, repository, archive, info),
+		}}
 	}}
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
@@ -326,7 +429,7 @@ func TestConcurrentUnknownRepositoryInfoSharesOnePublication(t *testing.T) {
 		go func() {
 			defer wait.Done()
 			recorder := httptest.NewRecorder()
-			serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+repository+"/@v/"+version+".info", nil))
+			serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/"+version+".info", nil))
 			require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
 		}()
 	}
@@ -342,10 +445,9 @@ func TestDifferentQueriesResolvingToOneCanonicalVersionShareCommit(t *testing.T)
 			"VCS": "git", "URL": "https://" + repository, "Ref": "refs/tags/" + version, "CommitSHA": "commit-aliases", "TreeSHA": "tree-aliases",
 		})
 		require.NoError(t, err)
-		digest := md5.Sum(archive) //nolint:gosec
-		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "commit-aliases", CommitTime: time.Now().UTC(), Members: []skill.RepositoryMember{{
-			SkillID: repository, Version: &storage.Version{Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version},
-		}}}
+		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "commit-aliases", CommitTime: time.Now().UTC(), Members: []skill.RepositoryMember{
+			repositoryTestMember(t, repository, archive, info),
+		}}
 	}}
 	memory, err := mem.NewStorage()
 	require.NoError(t, err)
@@ -385,11 +487,10 @@ func TestAnonymousRepositoryPublicationReturnsStableOverloadAndReleasesCapacity(
 			"CommitSHA": fmt.Sprintf("commit-%d", index), "TreeSHA": "tree-root",
 		})
 		require.NoError(t, err)
-		digest := md5.Sum(archive) //nolint:gosec
 		snapshots[repository] = &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: fmt.Sprintf("commit-%d", index),
-			CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Members: []skill.RepositoryMember{{
-				SkillID: repository, Version: &storage.Version{Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version},
-			}}}
+			CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Members: []skill.RepositoryMember{
+				repositoryTestMember(t, repository, archive, info),
+			}}
 	}
 	fetcher := &blockingRepositoryFetcher{
 		started: make(chan string, 9), release: make(chan struct{}),
@@ -409,7 +510,7 @@ func TestAnonymousRepositoryPublicationReturnsStableOverloadAndReleasesCapacity(
 	for _, repository := range repositories[:8] {
 		go func(repository string) {
 			recorder := httptest.NewRecorder()
-			serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+repository+"/@v/"+version+".info", nil))
+			serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/"+version+".info", nil))
 			responses <- response{code: recorder.Code}
 		}(repository)
 	}
@@ -421,7 +522,7 @@ func TestAnonymousRepositoryPublicationReturnsStableOverloadAndReleasesCapacity(
 		}
 	}
 	overloaded := httptest.NewRecorder()
-	serveFiber(t, router, overloaded, httptest.NewRequest(http.MethodGet, "/mod/"+repositories[8]+"/@v/"+version+".info", nil))
+	serveFiber(t, router, overloaded, httptest.NewRequest(http.MethodGet, "/"+repositories[8]+"/@v/"+version+".info", nil))
 	require.Equal(t, http.StatusTooManyRequests, overloaded.Code, overloaded.Body.String())
 
 	close(fetcher.release)
@@ -429,7 +530,7 @@ func TestAnonymousRepositoryPublicationReturnsStableOverloadAndReleasesCapacity(
 		require.Equal(t, http.StatusOK, (<-responses).code)
 	}
 	retry := httptest.NewRecorder()
-	serveFiber(t, router, retry, httptest.NewRequest(http.MethodGet, "/mod/"+repositories[8]+"/@v/"+version+".info", nil))
+	serveFiber(t, router, retry, httptest.NewRequest(http.MethodGet, "/"+repositories[8]+"/@v/"+version+".info", nil))
 	require.Equal(t, http.StatusOK, retry.Code, retry.Body.String())
 }
 
@@ -440,11 +541,10 @@ func TestCanceledRepositoryWaiterDoesNotPoisonSharedPublication(t *testing.T) {
 		"VCS": "git", "URL": "https://" + repository, "Ref": "refs/tags/" + version, "CommitSHA": "commit-cancel", "TreeSHA": "tree-cancel",
 	})
 	require.NoError(t, err)
-	digest := md5.Sum(archive) //nolint:gosec
 	snapshot := &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "commit-cancel",
-		CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Members: []skill.RepositoryMember{{
-			SkillID: repository, Version: &storage.Version{Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version},
-		}}}
+		CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Members: []skill.RepositoryMember{
+			repositoryTestMember(t, repository, archive, info),
+		}}
 	fetcher := &blockingRepositoryFetcher{started: make(chan string, 1), release: make(chan struct{}), snapshot: func(string, string) *skill.RepositorySnapshot { return snapshot }}
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
@@ -496,7 +596,7 @@ func TestMissingRepositoryRevisionUsesShortBoundedNegativeCache(t *testing.T) {
 	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
 	request := func(version string) int {
 		recorder := httptest.NewRecorder()
-		serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+repository+"/@v/"+version+".info", nil))
+		serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/"+version+".info", nil))
 		return recorder.Code
 	}
 	require.Equal(t, http.StatusNotFound, request("v1.0.0"))
@@ -509,7 +609,7 @@ func TestMissingRepositoryRevisionUsesShortBoundedNegativeCache(t *testing.T) {
 	require.Equal(t, int32(3), fetcher.calls.Load())
 }
 
-func TestNestedSkillLatestStopsAtLastPublicationWhereItExists(t *testing.T) {
+func TestRepositoryHistoryPreservesExactMemberSetsWithoutSkillArtifactRoutes(t *testing.T) {
 	repository := "github.com/example/history"
 	nested := repository + "/-/skills/nested"
 	publicationVersion := "v1.0.0"
@@ -531,10 +631,7 @@ func TestNestedSkillLatestStopsAtLastPublicationWhereItExists(t *testing.T) {
 				"CommitSHA": "commit-" + version, "TreeSHA": fmt.Sprintf("tree-%s-%d", version, index),
 			})
 			require.NoError(t, err)
-			digest := md5.Sum(archive) //nolint:gosec
-			members = append(members, skill.RepositoryMember{SkillID: id, Version: &storage.Version{
-				Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version,
-			}})
+			members = append(members, repositoryTestMember(t, id, archive, info))
 		}
 		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "commit-" + version,
 			CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Members: members}
@@ -551,26 +648,29 @@ func TestNestedSkillLatestStopsAtLastPublicationWhereItExists(t *testing.T) {
 	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
 
 	recorder := httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+repository+"/@v/v1.0.0.info", nil))
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/v1.0.0.info", nil))
 	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
+	var v1 protocolapi.RepositoryInfo
+	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&v1))
+	require.Len(t, v1.Skills, 2)
 	publicationVersion = "v2.0.0"
 
 	recorder = httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+nested+"/@v/list", nil))
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/v2.0.0.info", nil))
 	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
-	require.Equal(t, "v1.0.0", strings.TrimSpace(recorder.Body.String()))
+	var v2 protocolapi.RepositoryInfo
+	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&v2))
+	require.Len(t, v2.Skills, 1)
+	require.Equal(t, repository, v2.Skills[0].ID)
 
 	recorder = httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+nested+"/@release", nil))
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/v1.0.0.info", nil))
 	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
-	var release storage.RevInfo
-	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&release))
-	require.Equal(t, "v1.0.0", release.Version)
+	var retained protocolapi.RepositoryInfo
+	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&retained))
+	require.Equal(t, v1, retained)
 
 	recorder = httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+nested+"/@v/v1.0.0.zip", nil))
-	require.Equal(t, http.StatusOK, recorder.Code, recorder.Body.String())
-	recorder = httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/mod/"+nested+"/@v/v2.0.0.zip", nil))
-	require.Equal(t, http.StatusNotFound, recorder.Code, recorder.Body.String())
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+nested+"/@v/v1.0.0.zip", nil))
+	require.Equal(t, http.StatusBadRequest, recorder.Code, recorder.Body.String())
 }

@@ -9,7 +9,6 @@ package actions
 import (
 	"bytes"
 	"context"
-	"crypto/md5" //nolint:gosec
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -29,7 +28,6 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/mem"
 	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
 	"github.com/stretchr/testify/require"
@@ -63,16 +61,15 @@ func (f *backfillIntegrationFetcher) DiscoverRepository(_ context.Context, repos
 	}
 	archive := append([]byte(nil), f.archives[version]...)
 	f.mu.Unlock()
-	info, _ := json.Marshal(map[string]any{
-		"Version": version, "Time": "2026-07-15T00:00:00Z", "VCS": "git",
-		"URL": "https://github.com/acme/backfill", "Ref": "refs/tags/" + version,
-		"CommitSHA": "commit-" + version, "TreeSHA": "tree-" + version,
-	})
-	digest := md5.Sum(archive) //nolint:gosec
-	return &skill.RepositorySnapshot{RepositoryID: repositoryID, Version: version, CommitSHA: "commit-" + version,
+	manifest, _, err := metadataFromArchive(archive, repositoryID, version)
+	if err != nil {
+		return nil, err
+	}
+	snapshot := &skill.RepositorySnapshot{RepositoryID: repositoryID, Version: version, CommitSHA: "commit-" + version,
 		CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Members: []skill.RepositoryMember{{
-			SkillID: repositoryID, Version: &storage.Version{Info: info, Zip: io.NopCloser(bytes.NewReader(archive)), ZipMD5: digest[:], Semver: version},
-		}}}, nil
+			SkillID: repositoryID, Path: ".", TreeSHA: "tree-" + version, Manifest: manifest,
+		}}}
+	return completeRepositoryTestSnapshot(snapshot), nil
 }
 
 func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *testing.T) {
@@ -170,13 +167,13 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	var statuses backfillResponse
 	require.NoError(t, json.NewDecoder(statusResponse.Body).Decode(&statuses))
 	require.Equal(t, next.ID, statuses.Results[0].Run.ID)
-	infoResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/mod/"+repositoryID+"/@v/v1.0.0.info", nil))
+	infoResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/"+repositoryID+"/@v/v1.0.0.info", nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, infoResponse.StatusCode)
 	var info catalogArtifactInfo
 	require.NoError(t, json.NewDecoder(infoResponse.Body).Decode(&info))
 	require.NotEmpty(t, info.Sum)
-	zipResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/mod/"+repositoryID+"/@v/v1.0.0.zip", nil))
+	zipResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/"+repositoryID+"/@v/v1.0.0.zip", nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, zipResponse.StatusCode)
 	retainedZIP, err := io.ReadAll(zipResponse.Body)
