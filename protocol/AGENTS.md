@@ -21,7 +21,7 @@ This map governs the dependency-light Go protocol workspace shared by SkillsGo p
 | `locale/` | Canonical presentation-locale normalization. |
 | `skillid/` | Canonical public Hub Skill ID parsing and formatting. |
 | `skillmanifest/` | Shared `SKILL.md` frontmatter parsing and validation. |
-| `version/` | Canonical stable-first semantic-version selection. |
+| `version/` | Canonical immutable versions, stable-first semantic-version selection, and the closed typed add-time Repository Selector grammar. |
 
 ## Architectural Boundary
 

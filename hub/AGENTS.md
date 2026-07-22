@@ -11,7 +11,7 @@ This map governs the public Hub service. Read it with the root constitution and 
 - Entry point: `cmd/skillsgo-hub/main.go`
 - Service assembly: `cmd/skillsgo-hub/actions/`
 - Public seam: the Fiber HTTP router and documented HTTP protocol
-- Product responsibility: resolve public Skill IDs, validate manifests, produce immutable artifacts, serve search and ordered Skill-card hydration, and declare selfhost or Cloud deployment mode.
+- Product responsibility: resolve add-time Repository selectors, validate Skill manifests, publish immutable Repository artifacts/releases, serve search and ordered Skill-card hydration, and declare selfhost or Cloud deployment mode.
 
 ## Commands
 

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Hub configuration, storage, Catalog, source fetchers, protocol pools, and HTTP routing.
- * [OUTPUT]: Assembles health, index, Repository-enriched discovery/detail, immutable artifact protocol routes, and authenticated Backfill administration with shared task infrastructure.
+ * [OUTPUT]: Assembles health, index, Repository-enriched discovery/detail, add-time Repository resolution, immutable root Proxy routes, and authenticated Backfill administration with shared task infrastructure.
  * [POS]: Serves as the Hub service-composition boundary joining source resolution, storage, metadata, and public HTTP handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -134,12 +134,12 @@ func addProxyRoutesWithCatalog(
 
 	dp := download.New(dpOpts, addons.WithPool(c.ProtocolWorkers))
 	if metadata != nil {
-		dp = withCatalog(dp, metadata)
 		repositoryFetcher, ok := skillFetcher.(skill.RepositoryFetcher)
 		if !ok {
 			return fmt.Errorf("configured Skill fetcher does not support Repository discovery")
 		}
 		publisher := newRepositoryPublisher(repositoryFetcher, s, dp, metadata)
+		registerRepositoryResolutionRoute(r, publishedRepositoryResolver{metadata: metadata, materializer: publisher})
 		if err := registerRepositoryPrewarmJob(taskRuntime, publisher); err != nil {
 			return fmt.Errorf("register repository prewarm task: %w", err)
 		}

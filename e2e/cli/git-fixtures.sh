@@ -105,6 +105,21 @@ movable="$work_root/movable"
 skill "$movable/skills/head" movable-head-skill "Movable C1."
 commit_push "$movable" "movable C1"
 
+new_repo branchy
+branchy="$work_root/branchy"
+skill "$branchy/skills/head" branchy "Branch base."
+commit_push "$branchy" "branch base"
+git -C "$branchy" switch -c feature/deep >/dev/null
+skill "$branchy/skills/head" branchy "Feature branch."
+commit_push "$branchy" "feature branch"
+git -C "$branchy" push -u origin feature/deep >/dev/null
+git -C "$branchy" switch main >/dev/null
+
+new_repo commit-select
+commit_select="$work_root/commit-select"
+skill "$commit_select/skills/head" commit-select "Commit selection."
+commit_push "$commit_select" "commit selection"
+
 new_repo duplicate
 duplicate="$work_root/duplicate"
 skill "$duplicate/one" shared "First shared name."

@@ -1,12 +1,13 @@
 /*
  * [INPUT]: Uses an HTTP test Hub with exact content-match JSON, hostile contract variants, transient GET responses, and deterministic artifact byte streams.
- * [OUTPUT]: Specifies root Repository Proxy selector/exact paths, typed member validation, source-hint encoding, strict content-match validation, bounded status retries, and monotonic download progress.
+ * [OUTPUT]: Specifies product-API movable resolution followed by exact root Proxy reads, direct immutable reads, typed member validation, source-hint encoding, strict content-match validation, bounded status retries, and monotonic download progress.
  * [POS]: Serves as public Hub transport client contract coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package hub
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,6 +15,8 @@ import (
 	"strings"
 	"sync/atomic"
 	"testing"
+
+	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 )
 
 func TestImmutableGETRetriesTransientStatusAndHonorsTerminalStatus(t *testing.T) {
@@ -71,14 +74,24 @@ func TestProgressReaderReportsMonotonicBytes(t *testing.T) {
 	}
 }
 
-func TestRepositoryHeadUsesSelectorThenCanonicalInfo(t *testing.T) {
+func TestRepositoryMovableSelectorUsesProductResolutionThenCanonicalInfo(t *testing.T) {
 	repository, version := "github.com/example/untagged", "v0.0.0-20260718120000-abcdef123456"
 	requests := make([]string, 0, 2)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		requests = append(requests, request.URL.Path)
+		requests = append(requests, request.Method+" "+request.URL.Path)
 		switch request.URL.Path {
-		case "/" + repository + "/@head":
-			fmt.Fprintf(w, `{"Version":%q,"Time":"2026-07-18T12:00:00Z"}`, version)
+		case "/api/v1/repository-resolutions":
+			if request.Method != http.MethodPost {
+				t.Fatalf("unexpected resolution method %s", request.Method)
+			}
+			var body protocolapi.RepositoryResolutionRequest
+			if err := json.NewDecoder(request.Body).Decode(&body); err != nil {
+				t.Fatal(err)
+			}
+			if body.RepositoryID != repository || body.Selector != "feature/deep" {
+				t.Fatalf("unexpected resolution request: %#v", body)
+			}
+			fmt.Fprintf(w, `{"schemaVersion":1,"repositoryId":%q,"version":%q,"time":"2026-07-18T12:00:00Z","ref":"refs/heads/feature/deep","commitSHA":"abcdef1234567890"}`, repository, version)
 		case "/" + repository + "/@v/" + version + ".info":
 			fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-18T12:00:00Z","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","TreeSHA":"repository-tree","Sum":"h1:%s","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"RepositoryID":%q,"Path":".","Version":%q,"Time":"2026-07-18T12:00:00Z","Ref":"refs/heads/main","Name":"root","Description":"root","CommitSHA":"abcdef1234567890","TreeSHA":"tree"}]}`, repository, version, strings.Repeat("A", 43)+"=", repository, repository, version)
 		default:
@@ -90,12 +103,12 @@ func TestRepositoryHeadUsesSelectorThenCanonicalInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resource, err := client.Repository(t.Context(), repository, "head")
+	resource, err := client.Repository(t.Context(), repository, "feature/deep")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resource.Info.Version != version || len(requests) != 2 || !strings.HasSuffix(requests[0], "/@head") {
-		t.Fatalf("unexpected head flow: version=%q requests=%v", resource.Info.Version, requests)
+	if resource.Info.Version != version || len(requests) != 2 || requests[0] != "POST /api/v1/repository-resolutions" || !strings.HasSuffix(requests[1], version+".info") {
+		t.Fatalf("unexpected resolution flow: version=%q requests=%v", resource.Info.Version, requests)
 	}
 }
 

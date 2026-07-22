@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on arbitrary public Git HTTP(S) URLs, equivalent GitHub owner/repo and github/owner/repo aliases, source-or-selector@query syntax, private Local Skill IDs, and the explicit `/-/` Repository boundary.
- * [OUTPUT]: Provides one canonical github.com identity for GitHub aliases, provider-aware Repository normalization with case-preserving non-GitHub paths, and reusable path-safe Skill ID/query validation.
+ * [INPUT]: Depends on public Git HTTP(S) URLs, equivalent GitHub aliases, source@Selector syntax including slash-separated branches, private Local Skill IDs, the explicit `/-/` boundary, and the shared typed Selector grammar.
+ * [OUTPUT]: Provides canonical provider-aware Repository/Skill identity, unambiguous selector splitting outside URL authority, and reusable path-safe Skill ID plus add-time Selector validation.
  * [POS]: Serves as the CLI Skill ID normalization boundary used before Hub and Store access.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -23,7 +23,7 @@ type Reference struct {
 func Parse(raw string) (Reference, error) {
 	raw = strings.TrimSpace(raw)
 	requestedVersion := "head"
-	if separator := strings.LastIndex(raw, "@"); separator > strings.LastIndex(raw, "/") {
+	if separator := selectorSeparator(raw); separator >= 0 {
 		requestedVersion = strings.TrimSpace(raw[separator+1:])
 		raw = strings.TrimSpace(raw[:separator])
 	}
@@ -75,6 +75,20 @@ func Parse(raw string) (Reference, error) {
 	}
 	parts[len(parts)-1] = strings.TrimSuffix(parts[len(parts)-1], ".git")
 	return checkedReference(strings.Join(parts, "/"), requestedVersion)
+}
+
+func selectorSeparator(raw string) int {
+	separator := strings.LastIndex(raw, "@")
+	if separator <= 0 {
+		return -1
+	}
+	if scheme := strings.Index(raw, "://"); scheme >= 0 {
+		authorityEnd := strings.Index(raw[scheme+3:], "/")
+		if authorityEnd < 0 || separator < scheme+3+authorityEnd {
+			return -1
+		}
+	}
+	return separator
 }
 
 func checkedGitHubReference(parts []string, version string) (Reference, error) {
@@ -141,13 +155,12 @@ func checkedReference(skillID, version string) (Reference, error) {
 	if err := ValidateSkillID(skillID); err != nil {
 		return Reference{}, err
 	}
-	if err := ValidateVersion(version); err != nil {
-		return Reference{}, err
-	}
-	if !IsLocalSkillID(skillID) {
-		if err := ValidatePublicVersion(version); err != nil {
+	if IsLocalSkillID(skillID) {
+		if err := ValidateVersion(version); err != nil {
 			return Reference{}, err
 		}
+	} else if err := ValidatePublicVersion(version); err != nil {
+		return Reference{}, err
 	}
 	return Reference{SkillID: skillID, Version: version}, nil
 }
@@ -155,10 +168,8 @@ func checkedReference(skillID, version string) (Reference, error) {
 // ValidatePublicVersion accepts only the two explicit movable intents or one
 // canonical immutable semantic/pseudo-version.
 func ValidatePublicVersion(version string) error {
-	if version == "head" || version == "release" || protocolversion.IsImmutable(version) {
-		return nil
-	}
-	return fmt.Errorf("unsupported public version query %q; use head, release, or an exact immutable version", version)
+	_, err := protocolversion.ParseSelector(version)
+	return err
 }
 
 func normalizeSkillID(skillID string) string {

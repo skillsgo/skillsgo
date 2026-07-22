@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Exercises public source parsing plus exact/head/release selector validation with equivalent GitHub aliases, private local, and hostile inputs.
- * [OUTPUT]: Specifies canonical equivalence for owner/repo, github/owner/repo, host, and URL inputs plus private Local Skill IDs and ambiguous or unsupported-query rejection.
+ * [INPUT]: Exercises public source parsing plus immutable/head/release/branch/commit selector validation with equivalent GitHub aliases, private local, and hostile inputs.
+ * [OUTPUT]: Specifies canonical equivalence for owner/repo, github/owner/repo, host, and URL inputs; slash-branch preservation; private Local Skill IDs; and ambiguous/range/hostile rejection.
  * [POS]: Serves as behavior coverage for the CLI Skill ID normalization boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -178,10 +178,25 @@ func TestGitHubInputNormalizationMatrix(t *testing.T) {
 	}
 }
 
-func TestParseRejectsUnimplementedMovableQueries(t *testing.T) {
-	for _, input := range []string{"owner/repo@latest", "owner/repo@main", "owner/repo@abc123", "owner/repo@^1.0.0"} {
+func TestParseRejectsAmbiguousRangeAndMalformedCommitQueries(t *testing.T) {
+	for _, input := range []string{"owner/repo@latest", "owner/repo@abc123", "owner/repo@^1.0.0"} {
 		if _, err := Parse(input); err == nil {
 			t.Fatalf("expected unsupported query rejection for %q", input)
+		}
+	}
+}
+
+func TestParsePreservesSlashSeparatedBranchSelector(t *testing.T) {
+	for _, input := range []string{
+		"https://git.example.com/team/skills@feature/deep-work",
+		"git.example.com/team/skills@feature/deep-work",
+	} {
+		reference, err := Parse(input)
+		if err != nil {
+			t.Fatalf("Parse(%q): %v", input, err)
+		}
+		if reference.SkillID != "git.example.com/team/skills" || reference.Version != "feature/deep-work" {
+			t.Fatalf("unexpected slash-branch reference: %#v", reference)
 		}
 	}
 }
