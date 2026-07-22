@@ -29,6 +29,8 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/middleware"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
+	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	"github.com/stretchr/testify/require"
 )
 
@@ -114,7 +116,15 @@ func (s *catalogArtifactStub) Info(_ context.Context, skillID, version string) (
 			return info, nil
 		}
 	}
-	return []byte(`{"Version":"v0.0.0-test","Time":"2026-07-15T00:00:00Z","Ref":"refs/heads/main","CommitSHA":"commit-abc","TreeSHA":"tree-def"}`), nil
+	repositoryID, immutableVersion := "github.com/mattpocock/skills", "v0.0.0-test"
+	archive := defaultCatalogRepositoryArchive()
+	sum, err := protocolartifact.RepositorySum(archive, repositoryID, immutableVersion)
+	if err != nil {
+		return nil, err
+	}
+	return json.Marshal(protocolapi.RepositoryInfo{SchemaVersion: 1, Kind: "repository", ID: repositoryID, Version: immutableVersion,
+		Time: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Ref: "refs/heads/main", CommitSHA: "commit-abc", TreeSHA: "repository-tree", Sum: sum, ArchiveSize: int64(len(archive)),
+		Skills: []protocolapi.SkillInfo{{SchemaVersion: 1, Kind: "skill", ID: "github.com/mattpocock/skills/-/skills/engineering/ask-matt", RepositoryID: repositoryID, Path: "skills/engineering/ask-matt", Version: immutableVersion, CommitSHA: "commit-abc", TreeSHA: "tree-def", Name: "ask-matt", Description: "Engineering skill router"}}})
 }
 
 func (s *catalogArtifactStub) List(_ context.Context, repositoryID string) ([]string, error) {
@@ -127,12 +137,16 @@ func (s *catalogArtifactStub) Zip(_ context.Context, skillID, version string) (s
 	}
 	data := s.archive
 	if data == nil {
-		data = catalogArtifactZIP(skillID+"@"+version+"/", map[string][]byte{
-			"SKILL.md":       []byte("---\nname: ask-matt\ndescription: Engineering skill router\n---\n# Ask Matt\n"),
-			"scripts/run.sh": []byte("#!/bin/sh\necho demo\n"),
-		})
+		data = defaultCatalogRepositoryArchive()
 	}
 	return storage.NewSizer(io.NopCloser(bytes.NewReader(data)), int64(len(data))), nil
+}
+
+func defaultCatalogRepositoryArchive() []byte {
+	return catalogArtifactZIP("github.com/mattpocock/skills@v0.0.0-test/", map[string][]byte{
+		"skills/engineering/ask-matt/SKILL.md":       []byte("---\nname: ask-matt\ndescription: Engineering skill router\n---\n# Ask Matt\n"),
+		"skills/engineering/ask-matt/scripts/run.sh": []byte("#!/bin/sh\necho demo\n"),
+	})
 }
 
 func catalogArtifactZIP(prefix string, files map[string][]byte) []byte {
@@ -157,6 +171,11 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	r, c := testCatalogAPI(t)
 	skill := &catalog.Skill{SkillID: "github.com/mattpocock/skills/-/skills/engineering/ask-matt", Name: "ask-matt", Description: "Engineering skill router", SourceHost: "github.com", Repository: "mattpocock/skills", LatestVersion: "main"}
 	require.NoError(t, c.UpsertSkill(context.Background(), skill))
+	releaseInfo, err := (&catalogArtifactStub{}).Info(t.Context(), "", "")
+	require.NoError(t, err)
+	require.NoError(t, c.PublishRepositoryReleaseWithVisibility(t.Context(), "github.com/mattpocock/skills", []catalog.PublishedSkill{{
+		Skill: *skill, Version: catalog.SkillVersion{Version: "v0.0.0-test", CommitSHA: "commit-abc", TreeSHA: "tree-def", RelativePath: "skills/engineering/ask-matt", CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC)},
+	}}, catalog.CurrentPublication, releaseInfo))
 
 	for _, path := range []string{
 		"/api/v1/search?q=engineering",
@@ -176,7 +195,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, skill.SkillID, detailBody.SkillID)
 	require.NotNil(t, detailBody.ImageURL)
 	require.Equal(t, "https://github.com/mattpocock.png?size=256", *detailBody.ImageURL)
-	require.Equal(t, "main", detailBody.RequestedVersion)
+	require.Equal(t, "v0.0.0-test", detailBody.RequestedVersion)
 	require.Equal(t, "v0.0.0-test", detailBody.ImmutableVersion)
 	require.Equal(t, "commit-abc", detailBody.CommitSHA)
 	require.Equal(t, "tree-def", detailBody.TreeSHA)
@@ -234,11 +253,15 @@ func TestHistoricalPublicationMatchesContentWithoutEnteringDiscovery(t *testing.
 	repositoryID := "github.com/example/history"
 	skillID := repositoryID + "/-/skills/retired"
 	digest := "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-	require.NoError(t, metadata.PublishRepositoryVersionWithVisibility(t.Context(), repositoryID, []catalog.PublishedSkill{{
+	candidates := []catalog.PublishedSkill{{
 		Skill: catalog.Skill{SkillID: skillID, Name: "retired", Description: "Historical only capability"},
 		Version: catalog.SkillVersion{Version: "v1.0.0", CommitSHA: "commit-v1", TreeSHA: "tree-v1",
-			Sum: digest, CommitTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC), ArchiveSize: 10},
-	}}, catalog.HistoricalPublication))
+			RelativePath: "skills/retired", CommitTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+	}}
+	releaseInfo, err := json.Marshal(protocolapi.RepositoryInfo{ID: repositoryID, Version: "v1.0.0", CommitSHA: "commit-v1", TreeSHA: "repo-tree", Sum: digest, ArchiveSize: 10,
+		Skills: []protocolapi.SkillInfo{{ID: skillID, RepositoryID: repositoryID, Path: "skills/retired", Version: "v1.0.0", CommitSHA: "commit-v1", TreeSHA: "tree-v1", Name: "retired", Description: "Historical only capability"}}})
+	require.NoError(t, err)
+	require.NoError(t, metadata.PublishRepositoryReleaseWithVisibility(t.Context(), repositoryID, candidates, catalog.HistoricalPublication, releaseInfo))
 
 	search := httptest.NewRecorder()
 	serveFiber(t, router, search, httptest.NewRequest(http.MethodGet, "/api/v1/search?q=retired", nil))
@@ -321,6 +344,11 @@ func TestCatalogAPIDetailReturnsStableArtifactFailures(t *testing.T) {
 			t.Cleanup(func() { require.NoError(t, metadata.Close()) })
 			skill := &catalog.Skill{SkillID: "github.com/acme/skills/-/demo", Name: "demo", Description: "Demo", LatestVersion: "main"}
 			require.NoError(t, metadata.UpsertSkill(ctx, skill))
+			fixtureInfo, marshalErr := json.Marshal(protocolapi.RepositoryInfo{ID: "github.com/acme/skills", Version: "v0.0.0-test", CommitSHA: "commit-abc", TreeSHA: "repository-tree", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 1,
+				Skills: []protocolapi.SkillInfo{{ID: skill.SkillID, RepositoryID: "github.com/acme/skills", Path: "demo", Version: "v0.0.0-test", CommitSHA: "commit-abc", TreeSHA: "tree-def", Name: "demo", Description: "Demo"}}})
+			require.NoError(t, marshalErr)
+			require.NoError(t, metadata.PublishRepositoryReleaseWithVisibility(t.Context(), "github.com/acme/skills", []catalog.PublishedSkill{{Skill: *skill,
+				Version: catalog.SkillVersion{Version: "v0.0.0-test", CommitSHA: "commit-abc", TreeSHA: "tree-def", RelativePath: "demo"}}}, catalog.CurrentPublication, fixtureInfo))
 			router := newFiberApp()
 			registerCatalogAPIRoutes(router, metadata, testCase.stub)
 			recorder := httptest.NewRecorder()

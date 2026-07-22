@@ -133,9 +133,8 @@ var (
 		{Name: "version", Type: field.TypeString},
 		{Name: "commit_sha", Type: field.TypeString},
 		{Name: "tree_sha", Type: field.TypeString},
-		{Name: "sum", Type: field.TypeString},
+		{Name: "relative_path", Type: field.TypeString},
 		{Name: "commit_time", Type: field.TypeTime},
-		{Name: "archive_size", Type: field.TypeInt64, Default: 0},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "skill_id", Type: field.TypeInt64},
 	}
@@ -147,7 +146,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "skill_versions_skills_versions",
-				Columns:    []*schema.Column{SkillVersionsColumns[8]},
+				Columns:    []*schema.Column{SkillVersionsColumns[7]},
 				RefColumns: []*schema.Column{SkillsColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -156,7 +155,7 @@ var (
 			{
 				Name:    "skillversion_skill_id_version",
 				Unique:  true,
-				Columns: []*schema.Column{SkillVersionsColumns[8], SkillVersionsColumns[1]},
+				Columns: []*schema.Column{SkillVersionsColumns[7], SkillVersionsColumns[1]},
 			},
 		},
 	}

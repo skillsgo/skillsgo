@@ -22,12 +22,10 @@ const (
 	FieldCommitSha = "commit_sha"
 	// FieldTreeSha holds the string denoting the tree_sha field in the database.
 	FieldTreeSha = "tree_sha"
-	// FieldSum holds the string denoting the sum field in the database.
-	FieldSum = "sum"
+	// FieldRelativePath holds the string denoting the relative_path field in the database.
+	FieldRelativePath = "relative_path"
 	// FieldCommitTime holds the string denoting the commit_time field in the database.
 	FieldCommitTime = "commit_time"
-	// FieldArchiveSize holds the string denoting the archive_size field in the database.
-	FieldArchiveSize = "archive_size"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
 	FieldCreatedAt = "created_at"
 	// EdgeSkill holds the string denoting the skill edge name in mutations.
@@ -59,9 +57,8 @@ var Columns = []string{
 	FieldVersion,
 	FieldCommitSha,
 	FieldTreeSha,
-	FieldSum,
+	FieldRelativePath,
 	FieldCommitTime,
-	FieldArchiveSize,
 	FieldCreatedAt,
 }
 
@@ -82,10 +79,8 @@ var (
 	CommitShaValidator func(string) error
 	// TreeShaValidator is a validator for the "tree_sha" field. It is called by the builders before save.
 	TreeShaValidator func(string) error
-	// SumValidator is a validator for the "sum" field. It is called by the builders before save.
-	SumValidator func(string) error
-	// DefaultArchiveSize holds the default value on creation for the "archive_size" field.
-	DefaultArchiveSize int64
+	// RelativePathValidator is a validator for the "relative_path" field. It is called by the builders before save.
+	RelativePathValidator func(string) error
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
 	DefaultCreatedAt func() time.Time
 )
@@ -118,19 +113,14 @@ func ByTreeSha(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldTreeSha, opts...).ToFunc()
 }
 
-// BySum orders the results by the sum field.
-func BySum(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSum, opts...).ToFunc()
+// ByRelativePath orders the results by the relative_path field.
+func ByRelativePath(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldRelativePath, opts...).ToFunc()
 }
 
 // ByCommitTime orders the results by the commit_time field.
 func ByCommitTime(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldCommitTime, opts...).ToFunc()
-}
-
-// ByArchiveSize orders the results by the archive_size field.
-func ByArchiveSize(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldArchiveSize, opts...).ToFunc()
 }
 
 // ByCreatedAt orders the results by the created_at field.

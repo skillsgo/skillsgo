@@ -52,7 +52,7 @@ func TestPostgresCatalog(t *testing.T) {
 		require.NoError(t, c.UpsertSkill(ctx, item))
 	}
 	version, err := c.RecordSkillVersion(ctx, skill.SkillID, SkillVersion{
-		Version: "v1.0.0", CommitSHA: "commit-a", TreeSHA: "tree-a", Sum: "sha256:artifact-a",
+		Version: "v1.0.0", CommitSHA: "commit-a", TreeSHA: "tree-a", RelativePath: ".",
 	})
 	require.NoError(t, err)
 	assessment, err := c.AppendRiskAssessment(ctx, version.RowID, RiskAssessment{

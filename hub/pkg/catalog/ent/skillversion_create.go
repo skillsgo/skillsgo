@@ -48,29 +48,15 @@ func (_c *SkillVersionCreate) SetTreeSha(v string) *SkillVersionCreate {
 	return _c
 }
 
-// SetSum sets the "sum" field.
-func (_c *SkillVersionCreate) SetSum(v string) *SkillVersionCreate {
-	_c.mutation.SetSum(v)
+// SetRelativePath sets the "relative_path" field.
+func (_c *SkillVersionCreate) SetRelativePath(v string) *SkillVersionCreate {
+	_c.mutation.SetRelativePath(v)
 	return _c
 }
 
 // SetCommitTime sets the "commit_time" field.
 func (_c *SkillVersionCreate) SetCommitTime(v time.Time) *SkillVersionCreate {
 	_c.mutation.SetCommitTime(v)
-	return _c
-}
-
-// SetArchiveSize sets the "archive_size" field.
-func (_c *SkillVersionCreate) SetArchiveSize(v int64) *SkillVersionCreate {
-	_c.mutation.SetArchiveSize(v)
-	return _c
-}
-
-// SetNillableArchiveSize sets the "archive_size" field if the given value is not nil.
-func (_c *SkillVersionCreate) SetNillableArchiveSize(v *int64) *SkillVersionCreate {
-	if v != nil {
-		_c.SetArchiveSize(*v)
-	}
 	return _c
 }
 
@@ -149,10 +135,6 @@ func (_c *SkillVersionCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *SkillVersionCreate) defaults() {
-	if _, ok := _c.mutation.ArchiveSize(); !ok {
-		v := skillversion.DefaultArchiveSize
-		_c.mutation.SetArchiveSize(v)
-	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		v := skillversion.DefaultCreatedAt()
 		_c.mutation.SetCreatedAt(v)
@@ -188,19 +170,16 @@ func (_c *SkillVersionCreate) check() error {
 			return &ValidationError{Name: "tree_sha", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.tree_sha": %w`, err)}
 		}
 	}
-	if _, ok := _c.mutation.Sum(); !ok {
-		return &ValidationError{Name: "sum", err: errors.New(`ent: missing required field "SkillVersion.sum"`)}
+	if _, ok := _c.mutation.RelativePath(); !ok {
+		return &ValidationError{Name: "relative_path", err: errors.New(`ent: missing required field "SkillVersion.relative_path"`)}
 	}
-	if v, ok := _c.mutation.Sum(); ok {
-		if err := skillversion.SumValidator(v); err != nil {
-			return &ValidationError{Name: "sum", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.sum": %w`, err)}
+	if v, ok := _c.mutation.RelativePath(); ok {
+		if err := skillversion.RelativePathValidator(v); err != nil {
+			return &ValidationError{Name: "relative_path", err: fmt.Errorf(`ent: validator failed for field "SkillVersion.relative_path": %w`, err)}
 		}
 	}
 	if _, ok := _c.mutation.CommitTime(); !ok {
 		return &ValidationError{Name: "commit_time", err: errors.New(`ent: missing required field "SkillVersion.commit_time"`)}
-	}
-	if _, ok := _c.mutation.ArchiveSize(); !ok {
-		return &ValidationError{Name: "archive_size", err: errors.New(`ent: missing required field "SkillVersion.archive_size"`)}
 	}
 	if _, ok := _c.mutation.CreatedAt(); !ok {
 		return &ValidationError{Name: "created_at", err: errors.New(`ent: missing required field "SkillVersion.created_at"`)}
@@ -253,17 +232,13 @@ func (_c *SkillVersionCreate) createSpec() (*SkillVersion, *sqlgraph.CreateSpec)
 		_spec.SetField(skillversion.FieldTreeSha, field.TypeString, value)
 		_node.TreeSha = value
 	}
-	if value, ok := _c.mutation.Sum(); ok {
-		_spec.SetField(skillversion.FieldSum, field.TypeString, value)
-		_node.Sum = value
+	if value, ok := _c.mutation.RelativePath(); ok {
+		_spec.SetField(skillversion.FieldRelativePath, field.TypeString, value)
+		_node.RelativePath = value
 	}
 	if value, ok := _c.mutation.CommitTime(); ok {
 		_spec.SetField(skillversion.FieldCommitTime, field.TypeTime, value)
 		_node.CommitTime = value
-	}
-	if value, ok := _c.mutation.ArchiveSize(); ok {
-		_spec.SetField(skillversion.FieldArchiveSize, field.TypeInt64, value)
-		_node.ArchiveSize = value
 	}
 	if value, ok := _c.mutation.CreatedAt(); ok {
 		_spec.SetField(skillversion.FieldCreatedAt, field.TypeTime, value)
@@ -402,15 +377,15 @@ func (u *SkillVersionUpsert) UpdateTreeSha() *SkillVersionUpsert {
 	return u
 }
 
-// SetSum sets the "sum" field.
-func (u *SkillVersionUpsert) SetSum(v string) *SkillVersionUpsert {
-	u.Set(skillversion.FieldSum, v)
+// SetRelativePath sets the "relative_path" field.
+func (u *SkillVersionUpsert) SetRelativePath(v string) *SkillVersionUpsert {
+	u.Set(skillversion.FieldRelativePath, v)
 	return u
 }
 
-// UpdateSum sets the "sum" field to the value that was provided on create.
-func (u *SkillVersionUpsert) UpdateSum() *SkillVersionUpsert {
-	u.SetExcluded(skillversion.FieldSum)
+// UpdateRelativePath sets the "relative_path" field to the value that was provided on create.
+func (u *SkillVersionUpsert) UpdateRelativePath() *SkillVersionUpsert {
+	u.SetExcluded(skillversion.FieldRelativePath)
 	return u
 }
 
@@ -423,24 +398,6 @@ func (u *SkillVersionUpsert) SetCommitTime(v time.Time) *SkillVersionUpsert {
 // UpdateCommitTime sets the "commit_time" field to the value that was provided on create.
 func (u *SkillVersionUpsert) UpdateCommitTime() *SkillVersionUpsert {
 	u.SetExcluded(skillversion.FieldCommitTime)
-	return u
-}
-
-// SetArchiveSize sets the "archive_size" field.
-func (u *SkillVersionUpsert) SetArchiveSize(v int64) *SkillVersionUpsert {
-	u.Set(skillversion.FieldArchiveSize, v)
-	return u
-}
-
-// UpdateArchiveSize sets the "archive_size" field to the value that was provided on create.
-func (u *SkillVersionUpsert) UpdateArchiveSize() *SkillVersionUpsert {
-	u.SetExcluded(skillversion.FieldArchiveSize)
-	return u
-}
-
-// AddArchiveSize adds v to the "archive_size" field.
-func (u *SkillVersionUpsert) AddArchiveSize(v int64) *SkillVersionUpsert {
-	u.Add(skillversion.FieldArchiveSize, v)
 	return u
 }
 
@@ -560,17 +517,17 @@ func (u *SkillVersionUpsertOne) UpdateTreeSha() *SkillVersionUpsertOne {
 	})
 }
 
-// SetSum sets the "sum" field.
-func (u *SkillVersionUpsertOne) SetSum(v string) *SkillVersionUpsertOne {
+// SetRelativePath sets the "relative_path" field.
+func (u *SkillVersionUpsertOne) SetRelativePath(v string) *SkillVersionUpsertOne {
 	return u.Update(func(s *SkillVersionUpsert) {
-		s.SetSum(v)
+		s.SetRelativePath(v)
 	})
 }
 
-// UpdateSum sets the "sum" field to the value that was provided on create.
-func (u *SkillVersionUpsertOne) UpdateSum() *SkillVersionUpsertOne {
+// UpdateRelativePath sets the "relative_path" field to the value that was provided on create.
+func (u *SkillVersionUpsertOne) UpdateRelativePath() *SkillVersionUpsertOne {
 	return u.Update(func(s *SkillVersionUpsert) {
-		s.UpdateSum()
+		s.UpdateRelativePath()
 	})
 }
 
@@ -585,27 +542,6 @@ func (u *SkillVersionUpsertOne) SetCommitTime(v time.Time) *SkillVersionUpsertOn
 func (u *SkillVersionUpsertOne) UpdateCommitTime() *SkillVersionUpsertOne {
 	return u.Update(func(s *SkillVersionUpsert) {
 		s.UpdateCommitTime()
-	})
-}
-
-// SetArchiveSize sets the "archive_size" field.
-func (u *SkillVersionUpsertOne) SetArchiveSize(v int64) *SkillVersionUpsertOne {
-	return u.Update(func(s *SkillVersionUpsert) {
-		s.SetArchiveSize(v)
-	})
-}
-
-// AddArchiveSize adds v to the "archive_size" field.
-func (u *SkillVersionUpsertOne) AddArchiveSize(v int64) *SkillVersionUpsertOne {
-	return u.Update(func(s *SkillVersionUpsert) {
-		s.AddArchiveSize(v)
-	})
-}
-
-// UpdateArchiveSize sets the "archive_size" field to the value that was provided on create.
-func (u *SkillVersionUpsertOne) UpdateArchiveSize() *SkillVersionUpsertOne {
-	return u.Update(func(s *SkillVersionUpsert) {
-		s.UpdateArchiveSize()
 	})
 }
 
@@ -893,17 +829,17 @@ func (u *SkillVersionUpsertBulk) UpdateTreeSha() *SkillVersionUpsertBulk {
 	})
 }
 
-// SetSum sets the "sum" field.
-func (u *SkillVersionUpsertBulk) SetSum(v string) *SkillVersionUpsertBulk {
+// SetRelativePath sets the "relative_path" field.
+func (u *SkillVersionUpsertBulk) SetRelativePath(v string) *SkillVersionUpsertBulk {
 	return u.Update(func(s *SkillVersionUpsert) {
-		s.SetSum(v)
+		s.SetRelativePath(v)
 	})
 }
 
-// UpdateSum sets the "sum" field to the value that was provided on create.
-func (u *SkillVersionUpsertBulk) UpdateSum() *SkillVersionUpsertBulk {
+// UpdateRelativePath sets the "relative_path" field to the value that was provided on create.
+func (u *SkillVersionUpsertBulk) UpdateRelativePath() *SkillVersionUpsertBulk {
 	return u.Update(func(s *SkillVersionUpsert) {
-		s.UpdateSum()
+		s.UpdateRelativePath()
 	})
 }
 
@@ -918,27 +854,6 @@ func (u *SkillVersionUpsertBulk) SetCommitTime(v time.Time) *SkillVersionUpsertB
 func (u *SkillVersionUpsertBulk) UpdateCommitTime() *SkillVersionUpsertBulk {
 	return u.Update(func(s *SkillVersionUpsert) {
 		s.UpdateCommitTime()
-	})
-}
-
-// SetArchiveSize sets the "archive_size" field.
-func (u *SkillVersionUpsertBulk) SetArchiveSize(v int64) *SkillVersionUpsertBulk {
-	return u.Update(func(s *SkillVersionUpsert) {
-		s.SetArchiveSize(v)
-	})
-}
-
-// AddArchiveSize adds v to the "archive_size" field.
-func (u *SkillVersionUpsertBulk) AddArchiveSize(v int64) *SkillVersionUpsertBulk {
-	return u.Update(func(s *SkillVersionUpsert) {
-		s.AddArchiveSize(v)
-	})
-}
-
-// UpdateArchiveSize sets the "archive_size" field to the value that was provided on create.
-func (u *SkillVersionUpsertBulk) UpdateArchiveSize() *SkillVersionUpsertBulk {
-	return u.Update(func(s *SkillVersionUpsert) {
-		s.UpdateArchiveSize()
 	})
 }
 

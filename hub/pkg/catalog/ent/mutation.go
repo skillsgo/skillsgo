@@ -3501,10 +3501,8 @@ type SkillVersionMutation struct {
 	version                 *string
 	commit_sha              *string
 	tree_sha                *string
-	sum                     *string
+	relative_path           *string
 	commit_time             *time.Time
-	archive_size            *int64
-	addarchive_size         *int64
 	created_at              *time.Time
 	clearedFields           map[string]struct{}
 	skill                   *int64
@@ -3765,40 +3763,40 @@ func (m *SkillVersionMutation) ResetTreeSha() {
 	m.tree_sha = nil
 }
 
-// SetSum sets the "sum" field.
-func (m *SkillVersionMutation) SetSum(s string) {
-	m.sum = &s
+// SetRelativePath sets the "relative_path" field.
+func (m *SkillVersionMutation) SetRelativePath(s string) {
+	m.relative_path = &s
 }
 
-// Sum returns the value of the "sum" field in the mutation.
-func (m *SkillVersionMutation) Sum() (r string, exists bool) {
-	v := m.sum
+// RelativePath returns the value of the "relative_path" field in the mutation.
+func (m *SkillVersionMutation) RelativePath() (r string, exists bool) {
+	v := m.relative_path
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldSum returns the old "sum" field's value of the SkillVersion entity.
+// OldRelativePath returns the old "relative_path" field's value of the SkillVersion entity.
 // If the SkillVersion object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillVersionMutation) OldSum(ctx context.Context) (v string, err error) {
+func (m *SkillVersionMutation) OldRelativePath(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSum is only allowed on UpdateOne operations")
+		return v, errors.New("OldRelativePath is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSum requires an ID field in the mutation")
+		return v, errors.New("OldRelativePath requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSum: %w", err)
+		return v, fmt.Errorf("querying old value for OldRelativePath: %w", err)
 	}
-	return oldValue.Sum, nil
+	return oldValue.RelativePath, nil
 }
 
-// ResetSum resets all changes to the "sum" field.
-func (m *SkillVersionMutation) ResetSum() {
-	m.sum = nil
+// ResetRelativePath resets all changes to the "relative_path" field.
+func (m *SkillVersionMutation) ResetRelativePath() {
+	m.relative_path = nil
 }
 
 // SetCommitTime sets the "commit_time" field.
@@ -3835,62 +3833,6 @@ func (m *SkillVersionMutation) OldCommitTime(ctx context.Context) (v time.Time, 
 // ResetCommitTime resets all changes to the "commit_time" field.
 func (m *SkillVersionMutation) ResetCommitTime() {
 	m.commit_time = nil
-}
-
-// SetArchiveSize sets the "archive_size" field.
-func (m *SkillVersionMutation) SetArchiveSize(i int64) {
-	m.archive_size = &i
-	m.addarchive_size = nil
-}
-
-// ArchiveSize returns the value of the "archive_size" field in the mutation.
-func (m *SkillVersionMutation) ArchiveSize() (r int64, exists bool) {
-	v := m.archive_size
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldArchiveSize returns the old "archive_size" field's value of the SkillVersion entity.
-// If the SkillVersion object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillVersionMutation) OldArchiveSize(ctx context.Context) (v int64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldArchiveSize is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldArchiveSize requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldArchiveSize: %w", err)
-	}
-	return oldValue.ArchiveSize, nil
-}
-
-// AddArchiveSize adds i to the "archive_size" field.
-func (m *SkillVersionMutation) AddArchiveSize(i int64) {
-	if m.addarchive_size != nil {
-		*m.addarchive_size += i
-	} else {
-		m.addarchive_size = &i
-	}
-}
-
-// AddedArchiveSize returns the value that was added to the "archive_size" field in this mutation.
-func (m *SkillVersionMutation) AddedArchiveSize() (r int64, exists bool) {
-	v := m.addarchive_size
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// ResetArchiveSize resets all changes to the "archive_size" field.
-func (m *SkillVersionMutation) ResetArchiveSize() {
-	m.archive_size = nil
-	m.addarchive_size = nil
 }
 
 // SetCreatedAt sets the "created_at" field.
@@ -4044,7 +3986,7 @@ func (m *SkillVersionMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SkillVersionMutation) Fields() []string {
-	fields := make([]string, 0, 8)
+	fields := make([]string, 0, 7)
 	if m.skill != nil {
 		fields = append(fields, skillversion.FieldSkillID)
 	}
@@ -4057,14 +3999,11 @@ func (m *SkillVersionMutation) Fields() []string {
 	if m.tree_sha != nil {
 		fields = append(fields, skillversion.FieldTreeSha)
 	}
-	if m.sum != nil {
-		fields = append(fields, skillversion.FieldSum)
+	if m.relative_path != nil {
+		fields = append(fields, skillversion.FieldRelativePath)
 	}
 	if m.commit_time != nil {
 		fields = append(fields, skillversion.FieldCommitTime)
-	}
-	if m.archive_size != nil {
-		fields = append(fields, skillversion.FieldArchiveSize)
 	}
 	if m.created_at != nil {
 		fields = append(fields, skillversion.FieldCreatedAt)
@@ -4085,12 +4024,10 @@ func (m *SkillVersionMutation) Field(name string) (ent.Value, bool) {
 		return m.CommitSha()
 	case skillversion.FieldTreeSha:
 		return m.TreeSha()
-	case skillversion.FieldSum:
-		return m.Sum()
+	case skillversion.FieldRelativePath:
+		return m.RelativePath()
 	case skillversion.FieldCommitTime:
 		return m.CommitTime()
-	case skillversion.FieldArchiveSize:
-		return m.ArchiveSize()
 	case skillversion.FieldCreatedAt:
 		return m.CreatedAt()
 	}
@@ -4110,12 +4047,10 @@ func (m *SkillVersionMutation) OldField(ctx context.Context, name string) (ent.V
 		return m.OldCommitSha(ctx)
 	case skillversion.FieldTreeSha:
 		return m.OldTreeSha(ctx)
-	case skillversion.FieldSum:
-		return m.OldSum(ctx)
+	case skillversion.FieldRelativePath:
+		return m.OldRelativePath(ctx)
 	case skillversion.FieldCommitTime:
 		return m.OldCommitTime(ctx)
-	case skillversion.FieldArchiveSize:
-		return m.OldArchiveSize(ctx)
 	case skillversion.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
@@ -4155,12 +4090,12 @@ func (m *SkillVersionMutation) SetField(name string, value ent.Value) error {
 		}
 		m.SetTreeSha(v)
 		return nil
-	case skillversion.FieldSum:
+	case skillversion.FieldRelativePath:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetSum(v)
+		m.SetRelativePath(v)
 		return nil
 	case skillversion.FieldCommitTime:
 		v, ok := value.(time.Time)
@@ -4168,13 +4103,6 @@ func (m *SkillVersionMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetCommitTime(v)
-		return nil
-	case skillversion.FieldArchiveSize:
-		v, ok := value.(int64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetArchiveSize(v)
 		return nil
 	case skillversion.FieldCreatedAt:
 		v, ok := value.(time.Time)
@@ -4191,9 +4119,6 @@ func (m *SkillVersionMutation) SetField(name string, value ent.Value) error {
 // this mutation.
 func (m *SkillVersionMutation) AddedFields() []string {
 	var fields []string
-	if m.addarchive_size != nil {
-		fields = append(fields, skillversion.FieldArchiveSize)
-	}
 	return fields
 }
 
@@ -4202,8 +4127,6 @@ func (m *SkillVersionMutation) AddedFields() []string {
 // was not set, or was not defined in the schema.
 func (m *SkillVersionMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
-	case skillversion.FieldArchiveSize:
-		return m.AddedArchiveSize()
 	}
 	return nil, false
 }
@@ -4213,13 +4136,6 @@ func (m *SkillVersionMutation) AddedField(name string) (ent.Value, bool) {
 // type.
 func (m *SkillVersionMutation) AddField(name string, value ent.Value) error {
 	switch name {
-	case skillversion.FieldArchiveSize:
-		v, ok := value.(int64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.AddArchiveSize(v)
-		return nil
 	}
 	return fmt.Errorf("unknown SkillVersion numeric field %s", name)
 }
@@ -4259,14 +4175,11 @@ func (m *SkillVersionMutation) ResetField(name string) error {
 	case skillversion.FieldTreeSha:
 		m.ResetTreeSha()
 		return nil
-	case skillversion.FieldSum:
-		m.ResetSum()
+	case skillversion.FieldRelativePath:
+		m.ResetRelativePath()
 		return nil
 	case skillversion.FieldCommitTime:
 		m.ResetCommitTime()
-		return nil
-	case skillversion.FieldArchiveSize:
-		m.ResetArchiveSize()
 		return nil
 	case skillversion.FieldCreatedAt:
 		m.ResetCreatedAt()
