@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, target codecs, reviewed Target Operation Plans, and progress callbacks.
- * [OUTPUT]: Provides Remove/Repair preflight, state-bound execution, batch grouping, target results, and progress translation.
+ * [OUTPUT]: Provides External Installation removal preflight, state-bound execution, target results, and progress translation.
  * [POS]: Serves as the Target Operation Plan capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,16 +14,16 @@ mixin _RealSkillsGatewayTargetManagement
     List<SkillInstallationTarget> targets,
   ) async {
     final external = skill.provenance == LibraryProvenance.external;
-    if ((!external && skill.skillId.isEmpty) ||
+    if (!external ||
         targets.isEmpty ||
         targets.any(
           (target) =>
-              (external ? target.version.isNotEmpty : target.version.isEmpty) ||
+              target.version.isNotEmpty ||
               (target.scope == InstallationScope.project &&
                   target.projectRoot.isEmpty),
         )) {
       throw const SkillsException(
-        'Only exact managed targets or exact External Installation removals can enter a Target Management Plan.',
+        'Only exact External Installation removals can enter a Target Management Plan.',
         kind: SkillsFailureKind.validation,
       );
     }
@@ -71,8 +71,7 @@ mixin _RealSkillsGatewayTargetManagement
             target.projectRoot != expected.projectRoot ||
             target.agent != expected.agent ||
             target.path != expected.path ||
-            (raw['workspaceMetadataChange'] as bool) !=
-                (target.scope == InstallationScope.project && !external)) {
+            raw['workspaceMetadataChange'] as bool) {
           throw const FormatException();
         }
         final health = _installationHealth(raw['health']);
@@ -80,14 +79,9 @@ mixin _RealSkillsGatewayTargetManagement
         final allowedActions = actionValues
             .map(_targetManagementAction)
             .toList(growable: false);
-        if (allowedActions.isEmpty ||
-            allowedActions.toSet().length != allowedActions.length ||
-            (health == InstallationHealth.healthy &&
-                (allowedActions.length != 1 ||
-                    allowedActions.single != TargetManagementAction.remove)) ||
-            (health != InstallationHealth.healthy &&
-                (allowedActions.length != 1 ||
-                    allowedActions.single != TargetManagementAction.repair))) {
+        if (health != InstallationHealth.healthy ||
+            allowedActions.length != 1 ||
+            allowedActions.single != TargetManagementAction.remove) {
           throw const FormatException();
         }
         items.add(
@@ -117,12 +111,8 @@ mixin _RealSkillsGatewayTargetManagement
       final rawSummary = decoded['summary'] as Map<String, dynamic>;
       final summary = TargetManagementPlanSummary(
         removable: _strictNonNegativeInt(rawSummary['removable']),
-        repairable: _strictNonNegativeInt(rawSummary['repairable']),
       );
-      int count(TargetManagementAction action) =>
-          items.where((item) => item.allowedActions.contains(action)).length;
-      if (summary.removable != count(TargetManagementAction.remove) ||
-          summary.repairable != count(TargetManagementAction.repair)) {
+      if (summary.removable != items.length) {
         throw const FormatException();
       }
       return TargetManagementPlan(
@@ -142,7 +132,6 @@ mixin _RealSkillsGatewayTargetManagement
     TargetManagementPlan plan, {
     void Function(TargetManagementProgress progress)? onProgress,
   }) async {
-    final groups = <TargetManagementAction, List<TargetManagementPlanItem>>{};
     for (final item in plan.targets) {
       final action = item.action;
       if (action == null) {
@@ -151,41 +140,15 @@ mixin _RealSkillsGatewayTargetManagement
           kind: SkillsFailureKind.validation,
         );
       }
-      groups.putIfAbsent(action, () => []).add(item);
+      if (action != TargetManagementAction.remove) {
+        throw const FormatException();
+      }
     }
-    final results = <TargetManagementResult>[];
-    var sequence = 0;
-    for (final entry in groups.entries) {
-      final batch = TargetManagementPlan(
-        targets: List.unmodifiable(entry.value),
-        summary: TargetManagementPlanSummary(
-          removable: entry.key == TargetManagementAction.remove
-              ? entry.value.length
-              : 0,
-          repairable: entry.key == TargetManagementAction.repair
-              ? entry.value.length
-              : 0,
-        ),
-      );
-      final execution = await _executeTargetManagementBatch(
-        batch,
-        onProgress: onProgress == null
-            ? null
-            : (progress) => onProgress(
-                TargetManagementProgress(
-                  sequence: ++sequence,
-                  target: progress.target,
-                  name: progress.name,
-                  skillId: progress.skillId,
-                  version: progress.version,
-                  action: progress.action,
-                  state: progress.state,
-                  result: progress.result,
-                ),
-              ),
-      );
-      results.addAll(execution.results);
-    }
+    final execution = await _executeTargetManagementBatch(
+      plan,
+      onProgress: onProgress,
+    );
+    final results = execution.results;
     final ordered = <TargetManagementResult>[
       for (final item in plan.targets)
         results.singleWhere(
@@ -223,12 +186,6 @@ mixin _RealSkillsGatewayTargetManagement
       );
     }
     final action = plan.targets.first.action!;
-    if (plan.targets.any((item) => item.action != action)) {
-      throw const SkillsException(
-        'Remove and repair targets must be executed in separate CLI calls.',
-        kind: SkillsFailureKind.validation,
-      );
-    }
     final arguments = <String>[_targetManagementActionValue(action)];
     for (final item in plan.targets) {
       arguments.addAll([

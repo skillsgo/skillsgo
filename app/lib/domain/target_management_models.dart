@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on installation targets, target failures, shared management enums, and stable target identity keys.
- * [OUTPUT]: Provides reviewed Remove/Repair plans, target results, execution summaries, and progress events.
+ * [OUTPUT]: Provides reviewed exact-path removal plans, target results, execution summaries, and progress events.
  * [POS]: Serves as the focused Target Operation Plan model module used by Library journeys and CLI adapters.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -51,13 +51,9 @@ class TargetManagementPlanItem {
 }
 
 class TargetManagementPlanSummary {
-  const TargetManagementPlanSummary({
-    required this.removable,
-    required this.repairable,
-  });
+  const TargetManagementPlanSummary({required this.removable});
 
   final int removable;
-  final int repairable;
 }
 
 class TargetManagementPlan {
@@ -80,14 +76,7 @@ class TargetManagementPlan {
     }
     return TargetManagementPlan(
       targets: List.unmodifiable(selected),
-      summary: TargetManagementPlanSummary(
-        removable: selected
-            .where((item) => item.action == TargetManagementAction.remove)
-            .length,
-        repairable: selected
-            .where((item) => item.action == TargetManagementAction.repair)
-            .length,
-      ),
+      summary: TargetManagementPlanSummary(removable: selected.length),
     );
   }
 }

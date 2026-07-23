@@ -243,12 +243,7 @@ class _InstallationScopePanelState extends State<InstallationScopePanel> {
                         for (final target in group.targets)
                           _InstallationTargetDetail(
                             target: target,
-                            onRepair: widget.onManageTarget == null
-                                ? null
-                                : () => widget.onManageTarget!(
-                                    target,
-                                    TargetManagementAction.repair,
-                                  ),
+                            onRepair: null,
                             onRemove: widget.onManageTarget == null
                                 ? null
                                 : () => widget.onManageTarget!(
@@ -334,9 +329,6 @@ Future<TargetManagementExecution> executeInlineTargetAction({
   final item = matching.first;
   final actions = <String, TargetManagementAction>{
     updateTargetKey(item.target): action,
-    if (action == TargetManagementAction.repair)
-      for (final binding in item.affectedBindings)
-        updateTargetKey(binding): action,
   };
   final execution = await gateway.executeTargetManagement(
     plan.selectActions(actions),

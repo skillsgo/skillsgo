@@ -21,18 +21,19 @@ void main() {
     () async {
       const skillId = 'github.com/example/skills/-/test';
       const installed = InstalledSkill(
-        inventoryKey: 'hub:$skillId',
+        inventoryKey: 'external:/tmp/Test',
         name: 'Test',
         path: '/tmp/Test',
         agents: ['codex'],
         targetCount: 1,
         skillId: skillId,
+        provenance: LibraryProvenance.external,
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
             scope: InstallationScope.user,
             path: '/tmp/Test',
-            version: 'v1',
+            version: '',
           ),
         ],
       );
@@ -41,16 +42,16 @@ void main() {
           ProcessOutput(
             exitCode: 0,
             stdout: '''
-{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1,"repairable":0}}
+{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1}}
 ''',
             stderr: '',
           ),
           ProcessOutput(
             exitCode: 0,
             stdout: '''
-{"schemaVersion":1,"phase":"management-progress","sequence":1,"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","state":"started"}
-{"schemaVersion":1,"phase":"management-progress","sequence":2,"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","state":"finished","result":{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","outcome":"succeeded"}}
-{"schemaVersion":1,"phase":"management-execution","results":[{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","outcome":"succeeded"}],"summary":{"succeeded":1,"failed":0}}
+{"schemaVersion":1,"phase":"management-progress","sequence":1,"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","state":"started"}
+{"schemaVersion":1,"phase":"management-progress","sequence":2,"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","state":"finished","result":{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","outcome":"succeeded"}}
+{"schemaVersion":1,"phase":"management-execution","results":[{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","outcome":"succeeded"}],"summary":{"succeeded":1,"failed":0}}
 ''',
             stderr: '',
           ),
@@ -97,9 +98,9 @@ void main() {
       runner.result = const ProcessOutput(
         exitCode: 1,
         stdout: '''
-{"schemaVersion":1,"phase":"management-progress","sequence":1,"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","state":"started"}
-{"schemaVersion":1,"phase":"management-progress","sequence":2,"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","state":"finished","result":{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","outcome":"failed","error":{"code":"management.target_failed","retryable":true,"details":{"path":"/tmp/Test"},"diagnostic":"developer detail"}}}
-{"schemaVersion":1,"phase":"management-execution","results":[{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"v1","action":"remove","outcome":"failed","error":{"code":"management.target_failed","retryable":true,"details":{"path":"/tmp/Test"},"diagnostic":"developer detail"}}],"summary":{"succeeded":0,"failed":1}}
+{"schemaVersion":1,"phase":"management-progress","sequence":1,"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","state":"started"}
+{"schemaVersion":1,"phase":"management-progress","sequence":2,"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","state":"finished","result":{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","outcome":"failed","error":{"code":"management.target_failed","retryable":true,"details":{"path":"/tmp/Test"},"diagnostic":"developer detail"}}}
+{"schemaVersion":1,"phase":"management-execution","results":[{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","outcome":"failed","error":{"code":"management.target_failed","retryable":true,"details":{"path":"/tmp/Test"},"diagnostic":"developer detail"}}],"summary":{"succeeded":0,"failed":1}}
 ''',
         stderr: 'localized stderr must not classify',
       );
