@@ -55,11 +55,6 @@ func IDLTE(id int64) predicate.Skill {
 	return predicate.Skill(sql.FieldLTE(FieldID, id))
 }
 
-// SkillID applies equality check predicate on the "skill_id" field. It's identical to SkillIDEQ.
-func SkillID(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldEQ(FieldSkillID, v))
-}
-
 // RepositoryID applies equality check predicate on the "repository_id" field. It's identical to RepositoryIDEQ.
 func RepositoryID(v int64) predicate.Skill {
 	return predicate.Skill(sql.FieldEQ(FieldRepositoryID, v))
@@ -113,71 +108,6 @@ func CreatedAt(v time.Time) predicate.Skill {
 // UpdatedAt applies equality check predicate on the "updated_at" field. It's identical to UpdatedAtEQ.
 func UpdatedAt(v time.Time) predicate.Skill {
 	return predicate.Skill(sql.FieldEQ(FieldUpdatedAt, v))
-}
-
-// SkillIDEQ applies the EQ predicate on the "skill_id" field.
-func SkillIDEQ(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldEQ(FieldSkillID, v))
-}
-
-// SkillIDNEQ applies the NEQ predicate on the "skill_id" field.
-func SkillIDNEQ(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldNEQ(FieldSkillID, v))
-}
-
-// SkillIDIn applies the In predicate on the "skill_id" field.
-func SkillIDIn(vs ...string) predicate.Skill {
-	return predicate.Skill(sql.FieldIn(FieldSkillID, vs...))
-}
-
-// SkillIDNotIn applies the NotIn predicate on the "skill_id" field.
-func SkillIDNotIn(vs ...string) predicate.Skill {
-	return predicate.Skill(sql.FieldNotIn(FieldSkillID, vs...))
-}
-
-// SkillIDGT applies the GT predicate on the "skill_id" field.
-func SkillIDGT(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldGT(FieldSkillID, v))
-}
-
-// SkillIDGTE applies the GTE predicate on the "skill_id" field.
-func SkillIDGTE(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldGTE(FieldSkillID, v))
-}
-
-// SkillIDLT applies the LT predicate on the "skill_id" field.
-func SkillIDLT(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldLT(FieldSkillID, v))
-}
-
-// SkillIDLTE applies the LTE predicate on the "skill_id" field.
-func SkillIDLTE(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldLTE(FieldSkillID, v))
-}
-
-// SkillIDContains applies the Contains predicate on the "skill_id" field.
-func SkillIDContains(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldContains(FieldSkillID, v))
-}
-
-// SkillIDHasPrefix applies the HasPrefix predicate on the "skill_id" field.
-func SkillIDHasPrefix(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldHasPrefix(FieldSkillID, v))
-}
-
-// SkillIDHasSuffix applies the HasSuffix predicate on the "skill_id" field.
-func SkillIDHasSuffix(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldHasSuffix(FieldSkillID, v))
-}
-
-// SkillIDEqualFold applies the EqualFold predicate on the "skill_id" field.
-func SkillIDEqualFold(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldEqualFold(FieldSkillID, v))
-}
-
-// SkillIDContainsFold applies the ContainsFold predicate on the "skill_id" field.
-func SkillIDContainsFold(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldContainsFold(FieldSkillID, v))
 }
 
 // RepositoryIDEQ applies the EQ predicate on the "repository_id" field.

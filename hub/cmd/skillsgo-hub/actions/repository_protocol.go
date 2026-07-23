@@ -90,8 +90,8 @@ func (p *repositoryInfoProtocol) ensurePublished(ctx context.Context, repository
 }
 
 func validateRepositoryResource(repositoryID string) error {
-	parsed, err := skill.ParseSkillID(repositoryID)
-	if err != nil || parsed.String() != repositoryID || parsed.SkillPath != "." {
+	parsed, err := skill.ParseRepositoryID(repositoryID)
+	if err != nil || parsed.String() != repositoryID {
 		return fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
 	}
 	return nil

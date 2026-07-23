@@ -30,20 +30,6 @@ func (_u *SkillUpdate) Where(ps ...predicate.Skill) *SkillUpdate {
 	return _u
 }
 
-// SetSkillID sets the "skill_id" field.
-func (_u *SkillUpdate) SetSkillID(v string) *SkillUpdate {
-	_u.mutation.SetSkillID(v)
-	return _u
-}
-
-// SetNillableSkillID sets the "skill_id" field if the given value is not nil.
-func (_u *SkillUpdate) SetNillableSkillID(v *string) *SkillUpdate {
-	if v != nil {
-		_u.SetSkillID(*v)
-	}
-	return _u
-}
-
 // SetRepositoryID sets the "repository_id" field.
 func (_u *SkillUpdate) SetRepositoryID(v int64) *SkillUpdate {
 	_u.mutation.SetRepositoryID(v)
@@ -286,9 +272,9 @@ func (_u *SkillUpdate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *SkillUpdate) check() error {
-	if v, ok := _u.mutation.SkillID(); ok {
-		if err := skill.SkillIDValidator(v); err != nil {
-			return &ValidationError{Name: "skill_id", err: fmt.Errorf(`ent: validator failed for field "Skill.skill_id": %w`, err)}
+	if v, ok := _u.mutation.Name(); ok {
+		if err := skill.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Skill.name": %w`, err)}
 		}
 	}
 	if _u.mutation.SourceRepositoryCleared() && len(_u.mutation.SourceRepositoryIDs()) > 0 {
@@ -308,9 +294,6 @@ func (_u *SkillUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 				ps[i](selector)
 			}
 		}
-	}
-	if value, ok := _u.mutation.SkillID(); ok {
-		_spec.SetField(skill.FieldSkillID, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(skill.FieldName, field.TypeString, value)
@@ -434,20 +417,6 @@ type SkillUpdateOne struct {
 	fields   []string
 	hooks    []Hook
 	mutation *SkillMutation
-}
-
-// SetSkillID sets the "skill_id" field.
-func (_u *SkillUpdateOne) SetSkillID(v string) *SkillUpdateOne {
-	_u.mutation.SetSkillID(v)
-	return _u
-}
-
-// SetNillableSkillID sets the "skill_id" field if the given value is not nil.
-func (_u *SkillUpdateOne) SetNillableSkillID(v *string) *SkillUpdateOne {
-	if v != nil {
-		_u.SetSkillID(*v)
-	}
-	return _u
 }
 
 // SetRepositoryID sets the "repository_id" field.
@@ -705,9 +674,9 @@ func (_u *SkillUpdateOne) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_u *SkillUpdateOne) check() error {
-	if v, ok := _u.mutation.SkillID(); ok {
-		if err := skill.SkillIDValidator(v); err != nil {
-			return &ValidationError{Name: "skill_id", err: fmt.Errorf(`ent: validator failed for field "Skill.skill_id": %w`, err)}
+	if v, ok := _u.mutation.Name(); ok {
+		if err := skill.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Skill.name": %w`, err)}
 		}
 	}
 	if _u.mutation.SourceRepositoryCleared() && len(_u.mutation.SourceRepositoryIDs()) > 0 {
@@ -744,9 +713,6 @@ func (_u *SkillUpdateOne) sqlSave(ctx context.Context) (_node *Skill, err error)
 				ps[i](selector)
 			}
 		}
-	}
-	if value, ok := _u.mutation.SkillID(); ok {
-		_spec.SetField(skill.FieldSkillID, field.TypeString, value)
 	}
 	if value, ok := _u.mutation.Name(); ok {
 		_spec.SetField(skill.FieldName, field.TypeString, value)

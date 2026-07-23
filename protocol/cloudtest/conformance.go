@@ -29,7 +29,7 @@ func VerifyHandler(t interface {
 	defer server.Close()
 
 	now := time.Now().UTC().Truncate(time.Second)
-	event := cloud.InstallEvent{EventID: fmt.Sprintf("conformance-%d", now.UnixNano()), SkillID: "github.com/skillsgo/conformance/-/fixture", Version: "v1.0.0", Agents: []string{"codex"}, Scope: cloud.ScopeUser, CLIVersion: "conformance", OccurredAt: now}
+	event := cloud.InstallEvent{EventID: fmt.Sprintf("conformance-%d", now.UnixNano()), RepositoryID: "github.com/skillsgo/conformance", SkillName: "fixture", Version: "v1.0.0", Agents: []string{"codex"}, Scope: cloud.ScopeUser, CLIVersion: "conformance", OccurredAt: now}
 	body, err := json.Marshal(event)
 	if err != nil {
 		t.Fatalf("marshal event: %v", err)
@@ -57,7 +57,7 @@ func VerifyHandler(t interface {
 			t.Fatalf("ranking %s returned inconsistent envelope: %#v", kind, ranking)
 		}
 		for _, item := range ranking.Items {
-			if strings.TrimSpace(item.SkillID) == "" || item.Metric.Kind != cloud.MetricForRanking(kind) {
+			if strings.TrimSpace(item.RepositoryID) == "" || strings.TrimSpace(item.SkillName) == "" || item.Metric.Kind != cloud.MetricForRanking(kind) {
 				t.Fatalf("ranking %s returned invalid item: %#v", kind, item)
 			}
 		}

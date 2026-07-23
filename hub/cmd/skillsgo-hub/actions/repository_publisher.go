@@ -211,12 +211,12 @@ func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID,
 		Skills:        make([]protocolapi.SkillInfo, 0, len(snapshot.Members)),
 	}
 	for _, member := range snapshot.Members {
-		if member.SkillID == "" || member.Path == "" || member.TreeSHA == "" || member.Manifest.Name == "" || member.Manifest.Description == "" {
+		if member.Path == "" || member.TreeSHA == "" || member.Manifest.Name == "" || member.Manifest.Description == "" {
 			return "", fmt.Errorf("Repository source returned an invalid member for %s@%s", repositoryID, query)
 		}
 		info := protocolapi.SkillInfo{
 			SchemaVersion: protocolapi.SchemaVersion, Kind: protocolapi.KindSkill,
-			ID: member.SkillID, RepositoryID: repositoryID, Path: member.Path,
+			RepositoryID: repositoryID, SkillPath: member.Path,
 			Version: snapshot.Version, Time: snapshot.CommitTime, Ref: snapshot.Ref,
 			CommitSHA: snapshot.CommitSHA, TreeSHA: member.TreeSHA,
 			Name: member.Manifest.Name, Description: member.Manifest.Description,
@@ -225,7 +225,7 @@ func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID,
 		}
 		release.Skills = append(release.Skills, info)
 		published = append(published, catalog.PublishedSkill{
-			Skill: catalog.Skill{SkillID: member.SkillID, Name: member.Manifest.Name, Description: member.Manifest.Description, LatestVersion: snapshot.Version},
+			Skill: catalog.Skill{RepositoryID: repositoryID, SkillPath: member.Path, Name: member.Manifest.Name, Description: member.Manifest.Description, LatestVersion: snapshot.Version},
 			Version: catalog.SkillVersion{Version: snapshot.Version, CommitSHA: snapshot.CommitSHA, TreeSHA: member.TreeSHA,
 				RelativePath: member.Path, CommitTime: snapshot.CommitTime},
 		})

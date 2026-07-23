@@ -2417,7 +2417,6 @@ type SkillMutation struct {
 	op                       Op
 	typ                      string
 	id                       *int64
-	skill_id                 *string
 	name                     *string
 	description              *string
 	source_host              *string
@@ -2541,42 +2540,6 @@ func (m *SkillMutation) IDs(ctx context.Context) ([]int64, error) {
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
-}
-
-// SetSkillID sets the "skill_id" field.
-func (m *SkillMutation) SetSkillID(s string) {
-	m.skill_id = &s
-}
-
-// SkillID returns the value of the "skill_id" field in the mutation.
-func (m *SkillMutation) SkillID() (r string, exists bool) {
-	v := m.skill_id
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSkillID returns the old "skill_id" field's value of the Skill entity.
-// If the Skill object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillMutation) OldSkillID(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSkillID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSkillID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSkillID: %w", err)
-	}
-	return oldValue.SkillID, nil
-}
-
-// ResetSkillID resets all changes to the "skill_id" field.
-func (m *SkillMutation) ResetSkillID() {
-	m.skill_id = nil
 }
 
 // SetRepositoryID sets the "repository_id" field.
@@ -3103,10 +3066,7 @@ func (m *SkillMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SkillMutation) Fields() []string {
-	fields := make([]string, 0, 12)
-	if m.skill_id != nil {
-		fields = append(fields, skill.FieldSkillID)
-	}
+	fields := make([]string, 0, 11)
 	if m.source_repository != nil {
 		fields = append(fields, skill.FieldRepositoryID)
 	}
@@ -3148,8 +3108,6 @@ func (m *SkillMutation) Fields() []string {
 // schema.
 func (m *SkillMutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case skill.FieldSkillID:
-		return m.SkillID()
 	case skill.FieldRepositoryID:
 		return m.RepositoryID()
 	case skill.FieldName:
@@ -3181,8 +3139,6 @@ func (m *SkillMutation) Field(name string) (ent.Value, bool) {
 // database failed.
 func (m *SkillMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
-	case skill.FieldSkillID:
-		return m.OldSkillID(ctx)
 	case skill.FieldRepositoryID:
 		return m.OldRepositoryID(ctx)
 	case skill.FieldName:
@@ -3214,13 +3170,6 @@ func (m *SkillMutation) OldField(ctx context.Context, name string) (ent.Value, e
 // type.
 func (m *SkillMutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case skill.FieldSkillID:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSkillID(v)
-		return nil
 	case skill.FieldRepositoryID:
 		v, ok := value.(int64)
 		if !ok {
@@ -3350,9 +3299,6 @@ func (m *SkillMutation) ClearField(name string) error {
 // It returns an error if the field is not defined in the schema.
 func (m *SkillMutation) ResetField(name string) error {
 	switch name {
-	case skill.FieldSkillID:
-		m.ResetSkillID()
-		return nil
 	case skill.FieldRepositoryID:
 		m.ResetRepositoryID()
 		return nil

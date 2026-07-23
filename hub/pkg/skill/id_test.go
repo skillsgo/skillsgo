@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Exercises public Skill ID parsing with repository-root, nested, canonical, and hostile values.
- * [OUTPUT]: Specifies reversible Skill ID formatting and invalid source/path rejection.
- * [POS]: Serves as behavior coverage for the Hub Skill ID boundary.
+ * [INPUT]: Uses canonical and hostile public Repository coordinates at the Hub identity seam.
+ * [OUTPUT]: Specifies Repository-only parsing and GitHub provider validation without Skill path syntax.
+ * [POS]: Serves as Hub adapter coverage for the shared Repository ID contract.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package skill
@@ -12,83 +12,21 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParseSkillID(t *testing.T) {
-	tests := []struct {
-		name string
-		in   string
-		want SkillID
-	}{
-		{
-			name: "repository root",
-			in:   "github.com/op7418/guizang-ppt-skill",
-			want: SkillID{Repository: "github.com/op7418/guizang-ppt-skill", SkillPath: "."},
-		},
-		{
-			name: "GitHub monorepo",
-			in:   "github.com/mattpocock/skills/-/skills/engineering/ask-matt",
-			want: SkillID{Repository: "github.com/mattpocock/skills", SkillPath: "skills/engineering/ask-matt"},
-		},
-		{
-			name: "GitLab nested groups",
-			in:   "gitlab.com/company/platform/ai/skills/-/security/code-review",
-			want: SkillID{Repository: "gitlab.com/company/platform/ai/skills", SkillPath: "security/code-review"},
-		},
-		{
-			name: "non-GitHub host is normalized while Repository and Skill paths are preserved",
-			in:   "GitLab.Example.COM/Group/SubGroup/Repo/-/Skills/Find-Skill",
-			want: SkillID{Repository: "gitlab.example.com/Group/SubGroup/Repo", SkillPath: "Skills/Find-Skill"},
-		},
-		{
-			name: "repository git suffix",
-			in:   "github.com/owner/repo.git/-/skills/code-review",
-			want: SkillID{Repository: "github.com/owner/repo", SkillPath: "skills/code-review"},
-		},
-	}
-
-	for _, tc := range tests {
-		t.Run(tc.name, func(t *testing.T) {
-			got, err := ParseSkillID(tc.in)
-			require.NoError(t, err)
-			require.Equal(t, tc.want, got)
-			canonical := tc.in
-			if tc.name == "repository git suffix" {
-				canonical = "github.com/owner/repo/-/skills/code-review"
-			} else if tc.name == "non-GitHub host is normalized while Repository and Skill paths are preserved" {
-				canonical = "gitlab.example.com/Group/SubGroup/Repo/-/Skills/Find-Skill"
-			}
-			require.Equal(t, canonical, got.String())
-			roundTrip, err := ParseSkillID(got.String())
-			require.NoError(t, err)
-			require.Equal(t, got, roundTrip)
-		})
-	}
+func TestParseRepositoryID(t *testing.T) {
+	parsed, err := ParseRepositoryID("Git.Example.COM/Team/Platform/Repo")
+	require.NoError(t, err)
+	require.Equal(t, "git.example.com/Team/Platform/Repo", parsed.String())
 }
 
-func TestParseSkillIDRejectsInvalidSkillIDs(t *testing.T) {
-	tests := []string{
-		"",
-		"github.com",
-		"/github.com/owner/repo",
-		"github.com/owner/repo/",
-		"https://github.com/owner/repo",
-		"github.com/owner/repo?ref=main",
-		"github.com/owner/repo/-/",
-		"github.com/owner/repo/-/skills/../secret",
-		"github.com/owner/repo/-/skills/%2e%2e/secret",
-		"github.com/owner/repo/-/skills//code-review",
-		"github.com/owner/repo/-/skills/code-review/SKILL.md",
-		"github.com/owner/repo/-/skills/code-review/-/nested",
-	}
-
-	for _, input := range tests {
-		t.Run(input, func(t *testing.T) {
-			_, err := ParseSkillID(input)
-			require.Error(t, err)
-		})
-	}
+func TestParseRepositoryIDRejectsLegacyMemberSyntax(t *testing.T) {
+	_, err := ParseRepositoryID("github.com/owner/repo/-/skills/demo")
+	require.Error(t, err)
 }
 
-func TestParseGitHubSkillIDRejectsImplicitSubdirectory(t *testing.T) {
-	_, err := parseGitHubSkillID("github.com/mattpocock/skills/skills/engineering/ask-matt")
-	require.EqualError(t, err, `invalid GitHub repository "github.com/mattpocock/skills/skills/engineering/ask-matt": expected github.com/owner/repo`)
+func TestParseGitHubRepositoryID(t *testing.T) {
+	parsed, err := parseGitHubRepositoryID("github.com/owner/repo")
+	require.NoError(t, err)
+	require.Equal(t, "github.com/owner/repo", parsed.String())
+	_, err = parseGitHubRepositoryID("git.example.com/owner/repo")
+	require.Error(t, err)
 }

@@ -2,7 +2,8 @@
   "collection": "all_time",
   "items": [
     {
-      "skillId": "github.com/acme/skills/-/demo",
+      "repositoryId": "github.com/acme/skills",
+      "skillName": "demo",
       "metric": {
         "kind": "all_time_installs",
         "value": 3,

@@ -28,13 +28,13 @@ func TestRiskVocabulary(t *testing.T) {
 
 func TestSkillAndRepositoryInfoJSONContract(t *testing.T) {
 	now := time.Date(2026, 7, 21, 1, 2, 3, 0, time.UTC)
-	skill := SkillInfo{SchemaVersion: SchemaVersion, Kind: KindSkill, ID: "github.com/o/r/-/skills/demo", RepositoryID: "github.com/o/r", Path: "skills/demo", Version: "v1.0.0", Time: now, Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "tree", Name: "demo", Description: "Demo", License: "MIT", Compatibility: "Codex", AllowedTools: "Read", Metadata: map[string]string{"owner": "team"}, Risk: RiskLow}
+	skill := SkillInfo{SchemaVersion: SchemaVersion, Kind: KindSkill, RepositoryID: "github.com/o/r", SkillPath: "skills/demo", Version: "v1.0.0", Time: now, Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "tree", Name: "demo", Description: "Demo", License: "MIT", Compatibility: "Codex", AllowedTools: "Read", Metadata: map[string]string{"owner": "team"}, Risk: RiskLow}
 	encoded, err := json.Marshal(skill)
 	if err != nil {
 		t.Fatal(err)
 	}
 	text := string(encoded)
-	for _, field := range []string{`"SchemaVersion":1`, `"Kind":"Skill"`, `"RepositoryID":"github.com/o/r"`, `"Path":"skills/demo"`, `"AllowedTools":"Read"`} {
+	for _, field := range []string{`"SchemaVersion":1`, `"Kind":"Skill"`, `"RepositoryID":"github.com/o/r"`, `"SkillPath":"skills/demo"`, `"AllowedTools":"Read"`} {
 		if !strings.Contains(text, field) {
 			t.Fatalf("missing wire field %s in %s", field, text)
 		}
@@ -46,7 +46,7 @@ func TestSkillAndRepositoryInfoJSONContract(t *testing.T) {
 	if err := json.Unmarshal(encoded, &decoded); err != nil {
 		t.Fatal(err)
 	}
-	if decoded.ID != skill.ID || decoded.Time != now || decoded.Metadata["owner"] != "team" {
+	if decoded.RepositoryID != skill.RepositoryID || decoded.Name != skill.Name || decoded.Time != now || decoded.Metadata["owner"] != "team" {
 		t.Fatalf("round trip mismatch: %#v", decoded)
 	}
 	minimal, err := json.Marshal(SkillInfo{})
@@ -70,11 +70,11 @@ func TestSkillAndRepositoryInfoJSONContract(t *testing.T) {
 }
 
 func TestCatalogUpdateJSONContract(t *testing.T) {
-	request := CatalogUpdateCheckRequest{SchemaVersion: SchemaVersion, SkillIDs: []string{"github.com/o/r"}}
+	request := CatalogUpdateCheckRequest{SchemaVersion: SchemaVersion, Skills: []SkillCoordinate{{RepositoryID: "github.com/o/r", Name: "demo"}}}
 	if _, err := json.Marshal(request); err != nil {
 		t.Fatal(err)
 	}
-	updates := CatalogUpdateCheckResponse{SchemaVersion: SchemaVersion, Items: []CatalogUpdateCheckItem{{SkillID: request.SkillIDs[0], HeadVersion: "v1.1.0", ReleaseVersion: "v1.0.0", Status: UpdateAvailable}, {SkillID: "example.com/o/r", Status: UpdateUnsupported}}}
+	updates := CatalogUpdateCheckResponse{SchemaVersion: SchemaVersion, Items: []CatalogUpdateCheckItem{{RepositoryID: request.Skills[0].RepositoryID, Name: request.Skills[0].Name, HeadVersion: "v1.1.0", ReleaseVersion: "v1.0.0", Status: UpdateAvailable}, {RepositoryID: "example.com/o/r", Name: "missing", Status: UpdateUnsupported}}}
 	updateJSON, err := json.Marshal(updates)
 	if err != nil {
 		t.Fatal(err)

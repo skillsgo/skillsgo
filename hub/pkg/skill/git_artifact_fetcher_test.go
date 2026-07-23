@@ -90,5 +90,5 @@ func (s *SkillSuite) TestRepositoryDirRejectsTraversal() {
 	fetcher, err := NewRepositoryFetcher("/cache", s.fs)
 	r.NoError(err)
 	_, err = fetcher.(*gitFetcher).repositoryDir("github.com/owner/../secret")
-	r.EqualError(err, `invalid repository cache path "github.com/owner/../secret": invalid Skill repository "github.com/owner/../secret": path contains non-canonical segment ".."`)
+	r.EqualError(err, `invalid repository cache path "github.com/owner/../secret": invalid GitHub Repository "github.com/owner/../secret": expected github.com/owner/repo`)
 }
