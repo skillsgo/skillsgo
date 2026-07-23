@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on the workspace metadata file lock, exact YAML/Lock paths, filesystem snapshots, and atomic rename.
  * [OUTPUT]: Provides crash-recoverable paired workspace metadata publication with rollback and no Receipt storage.
- * [POS]: Serves as the private transaction primitive beneath skillsgo.yaml and skillsgo.lock.
+ * [POS]: Serves as the private transaction primitive beneath skillsgo.yaml and skillsgo-lock.yaml.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package project

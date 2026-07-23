@@ -37,7 +37,7 @@ func addRepositoryInstallations(entries map[string]*Entry, accounted map[string]
 		for repositoryID, dependency := range manifest.Dependencies {
 			locked, ok := lock.Dependencies[repositoryID]
 			if !ok || locked.Version != dependency.Version {
-				return fmt.Errorf("skillsgo.lock does not match %s@%s", repositoryID, dependency.Version)
+				return fmt.Errorf("skillsgo-lock.yaml does not match %s@%s", repositoryID, dependency.Version)
 			}
 			vendorRoot, infoRoot, agentScope := filepath.Join(declaration.root, ".skillsgo", "vendor"), filepath.Join(declaration.root, ".skillsgo", "info"), agent.ScopeProject
 			projectRoot := declaration.root

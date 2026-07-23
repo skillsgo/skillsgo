@@ -225,7 +225,7 @@ func requireNoLocalInstallation(t *testing.T, sandboxRoot string) {
 	t.Helper()
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
+	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"))
 }
 
 func mapsClone(source map[string]any) map[string]any {

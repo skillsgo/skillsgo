@@ -30,7 +30,7 @@ func TestJ30RepositoryCandidateIsolation(t *testing.T) {
 	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
 	manifestBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
 	require.NoError(t, err)
-	sumBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
+	sumBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"))
 	require.NoError(t, err)
 
 	info := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/"+repository+"/@v/v1.0.0.info")
@@ -47,7 +47,7 @@ func TestJ30RepositoryCandidateIsolation(t *testing.T) {
 	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "invalid"))
 	manifestAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
 	require.NoError(t, err)
-	sumAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
+	sumAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"))
 	require.NoError(t, err)
 	require.Equal(t, manifestBefore, manifestAfter)
 	require.Equal(t, sumBefore, sumAfter)

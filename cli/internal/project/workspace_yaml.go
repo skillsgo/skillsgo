@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Repository IDs, immutable versions, explicit Skill paths and Agent IDs, valid Repository h1 Sums, strict YAML nodes, and the shared metadata transaction lock.
- * [OUTPUT]: Provides strict skillsgo.yaml/skillsgo.lock parsing, nearest YAML-root discovery, atomic paired loading with crash recovery, exact pair validation, deterministic normalization, and paired publication.
+ * [OUTPUT]: Provides strict skillsgo.yaml/skillsgo-lock.yaml parsing, nearest YAML-root discovery, atomic paired loading with crash recovery, exact pair validation, deterministic normalization, and paired publication.
  * [POS]: Serves as the portable Repository dependency intent and integrity boundary for Workspace and User scopes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -23,7 +23,7 @@ import (
 
 const (
 	WorkspaceManifestName = "skillsgo.yaml"
-	DependencyLockName    = "skillsgo.lock"
+	DependencyLockName    = "skillsgo-lock.yaml"
 )
 
 func UserRoot(home string) string { return filepath.Join(home, ".skillsgo") }
@@ -151,7 +151,7 @@ func LoadWorkspaceState(root string) (manifest WorkspaceManifest, lock Dependenc
 		case lockErr != nil && !os.IsNotExist(lockErr):
 			return lockErr
 		default:
-			return fmt.Errorf("skillsgo.yaml and skillsgo.lock must either both exist or both be absent")
+			return fmt.Errorf("skillsgo.yaml and skillsgo-lock.yaml must either both exist or both be absent")
 		}
 	})
 	return manifest, lock, found, err

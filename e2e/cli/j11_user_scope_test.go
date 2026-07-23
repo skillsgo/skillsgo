@@ -30,7 +30,7 @@ func TestJ11UserScope(t *testing.T) {
 	require.NoFileExists(t, filepath.Join(projection, "SKILL.md"))
 	require.FileExists(t, filepath.Join(vendor, "SKILL.md"))
 	require.FileExists(t, filepath.Join(userRoot, "skillsgo.yaml"))
-	require.FileExists(t, filepath.Join(userRoot, "skillsgo.lock"))
+	require.FileExists(t, filepath.Join(userRoot, "skillsgo-lock.yaml"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
 
 	require.NoError(t, os.RemoveAll(projection))

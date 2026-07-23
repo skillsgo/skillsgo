@@ -22,7 +22,7 @@ func TestJ26RepositoryRestoreOffline(t *testing.T) {
 	add := execCLI(t, ctx, container, "add", "https://"+repositoryID+"@"+version, "--agent", "codex", "--output", "json")
 	require.Equal(t, 0, add.exitCode, add.output)
 	manifestPath := filepath.Join(sandboxRoot, "project", "skillsgo.yaml")
-	lockPath := filepath.Join(sandboxRoot, "project", "skillsgo.lock")
+	lockPath := filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml")
 	manifestBefore, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
 	lockBefore, err := os.ReadFile(lockPath)

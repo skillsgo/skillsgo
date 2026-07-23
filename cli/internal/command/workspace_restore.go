@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on a strict matching skillsgo.yaml/skillsgo.lock pair, exact immutable root Proxy resources only when Vendor is absent, verified Scope Vendor, Agent Adapter roots, and deterministic projection transactions.
+ * [INPUT]: Depends on a strict matching skillsgo.yaml/skillsgo-lock.yaml pair, exact immutable root Proxy resources only when Vendor is absent, verified Scope Vendor, Agent Adapter roots, and deterministic projection transactions.
  * [OUTPUT]: Provides conflict-safe idempotent Workspace/User install ensure results, restoring missing Vendor/projections while never resolving selectors, updating versions, pruning extras, or overwriting Local Modifications.
  * [POS]: Serves as the declaration-to-Vendor/Projection orchestration behind `skillsgo install`.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -54,7 +54,7 @@ func ensureRepositoryScope(ctx context.Context, root string, userScope bool, cat
 		result := repositoryInstallResult{Repository: repositoryID, Version: dependency.Version,
 			Skills: append([]string(nil), dependency.Skills...), Agents: append([]string(nil), dependency.Agents...)}
 		if !ok || locked.Version != dependency.Version {
-			result.Status, result.Error = "failed", "skillsgo.lock does not match the Repository dependency"
+			result.Status, result.Error = "failed", "skillsgo-lock.yaml does not match the Repository dependency"
 			results, failures = append(results, result), failures+1
 			continue
 		}
@@ -96,7 +96,7 @@ func ensureOneRepository(ctx context.Context, root string, userScope bool, catal
 		}
 		resource = fetched
 		if resource.Info.Version != dependency.Version || resource.Info.Sum != locked.Sum {
-			return "", vendor, fmt.Errorf("exact Repository %s@%s conflicts with skillsgo.lock", repositoryID, dependency.Version)
+			return "", vendor, fmt.Errorf("exact Repository %s@%s conflicts with skillsgo-lock.yaml", repositoryID, dependency.Version)
 		}
 		archive = resource.ZIP
 		if err := cache.Put(repositoryID, dependency.Version, "repository.info", resource.InfoBytes); err != nil {
