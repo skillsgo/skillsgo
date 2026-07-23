@@ -12,7 +12,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
-	"strings"
 	"testing"
 	"time"
 
@@ -101,30 +100,6 @@ func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
 	candidates, err = c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
 	require.NoError(t, err)
 	require.Len(t, candidates, 1)
-}
-
-func TestSQLiteCatalogMatchesExactContentAndRanksSourceHints(t *testing.T) {
-	ctx := context.Background()
-	c, err := Open(ctx, config.DatabaseConfig{
-		Type: "sqlite", DSN: filepath.Join(t.TempDir(), "hub.db"),
-		MaxOpenConns: 1, MaxIdleConns: 1,
-	})
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, c.Close()) })
-	digest := "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
-	for _, skillID := range []string{"github.com/alpha/skills/-/demo", "github.com/acme/skills/-/demo"} {
-		repositoryID := strings.Split(skillID, "/-/")[0]
-		candidate := PublishedSkill{Skill: Skill{SkillID: skillID, Name: "demo", Description: "Demo"}, Version: SkillVersion{Version: "v1", CommitSHA: skillID + "-commit", TreeSHA: skillID + "-tree", RelativePath: "demo"}}
-		publishTestRepository(t, c, repositoryID, "v1", candidate.Version.CommitSHA, digest, CurrentPublication, []PublishedSkill{candidate})
-	}
-	matches, err := c.MatchContent(ctx, digest, "github.com/acme/skills", 20)
-	require.NoError(t, err)
-	require.Len(t, matches, 2)
-	require.Equal(t, "github.com/acme/skills/-/demo", matches[0].SkillID)
-	require.Equal(t, digest, matches[0].Sum)
-	missing, err := c.MatchContent(ctx, "h1:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=", "", 20)
-	require.NoError(t, err)
-	require.Empty(t, missing)
 }
 
 func TestUpsertSkillRequiresFullHostSkillID(t *testing.T) {

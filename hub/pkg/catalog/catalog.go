@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Ent entities, SQLx for dialect-specific discovery queries, pgx stdlib for shared PostgreSQL pooling, versioned Atlas SQL migrations, Hub database configuration, and canonical Skill IDs.
- * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, byte-stable Repository Release Records, native pgx transaction scopes for atomic Ent/River work, immutable versions, exact content matching, current-only search, source cache state, and risk evidence on SQLite/PostgreSQL.
+ * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, byte-stable Repository Release Records, native pgx transaction scopes for atomic Ent/River work, immutable versions, current-only search, source cache state, and risk evidence on SQLite/PostgreSQL.
  * [POS]: Serves as the Hub identity and search data boundary while artifact bytes and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -37,7 +37,6 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	skillpkg "github.com/skillsgo/skillsgo/hub/pkg/skill"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
-	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 	_ "modernc.org/sqlite"
@@ -563,44 +562,6 @@ type RiskAssessment struct {
 
 type SearchSkill struct {
 	Skill
-}
-
-type ContentMatch struct {
-	SkillID    string    `db:"skill_id" json:"skillId"`
-	Name       string    `db:"name" json:"name"`
-	SourceHost string    `db:"source_host" json:"sourceHost"`
-	Repository string    `db:"repository" json:"repository"`
-	SkillPath  string    `db:"skill_path" json:"skillPath"`
-	Version    string    `db:"version" json:"version"`
-	CommitSHA  string    `db:"commit_sha" json:"commitSHA"`
-	TreeSHA    string    `db:"tree_sha" json:"treeSHA"`
-	Sum        string    `db:"sum" json:"sum"`
-	CreatedAt  time.Time `db:"created_at" json:"createdAt"`
-}
-
-func (c *Catalog) MatchContent(ctx context.Context, sum, sourceHint string, limit int) ([]ContentMatch, error) {
-	if !protocolartifact.ValidSum(sum) {
-		return nil, fmt.Errorf("sum must be a valid h1 sum")
-	}
-	if limit <= 0 || limit > 20 {
-		limit = 20
-	}
-	hint := strings.ToLower(strings.TrimSpace(sourceHint))
-	pattern := "%" + hint + "%"
-	statement := `SELECT s.skill_id, s.name, s.source_host, s.repository, s.skill_path,
-sv.version, sv.commit_sha, sv.tree_sha, rp.sum, sv.created_at
-FROM repository_publications AS rp
-JOIN repository_publication_members AS rpm ON rpm.repository_id = rp.repository_id AND rpm.version = rp.version
-JOIN skill_versions AS sv ON sv.skill_id = rpm.skill_id AND sv.version = rp.version
-JOIN skills AS s ON s.id = sv.skill_id
-WHERE rp.sum = ?
-ORDER BY CASE WHEN ? = '' THEN 0
-WHEN lower(s.skill_id) LIKE ? OR lower(s.source_host || '/' || s.repository) LIKE ? THEN 0 ELSE 1 END,
-CASE WHEN sv.version = s.latest_version THEN 0 ELSE 1 END, sv.created_at DESC, s.skill_id ASC
-LIMIT ?`
-	matches := make([]ContentMatch, 0)
-	err := c.db.SelectContext(ctx, &matches, c.db.Rebind(statement), sum, hint, pattern, pattern, limit)
-	return matches, err
 }
 
 func (c *Catalog) UpsertSkill(ctx context.Context, skill *Skill) error {

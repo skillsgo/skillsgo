@@ -17,7 +17,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -211,18 +210,6 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, []string{"scripts/run.sh"}, detailBody.ExecutableFiles)
 	require.Len(t, detailBody.Files, 2)
 
-	matchRecorder := httptest.NewRecorder()
-	matchURL := "/api/v1/matches?sum=" + url.QueryEscape(detailBody.Sum) + "&sourceHint=" + url.QueryEscape("mattpocock/skills")
-	serveFiber(t, r, matchRecorder, httptest.NewRequest(http.MethodGet, matchURL, nil))
-	require.Equal(t, http.StatusOK, matchRecorder.Code)
-	var matchBody contentMatchesResponse
-	require.NoError(t, json.NewDecoder(matchRecorder.Body).Decode(&matchBody))
-	require.Equal(t, 1, matchBody.SchemaVersion)
-	require.Equal(t, detailBody.Sum, matchBody.Sum)
-	require.Len(t, matchBody.Matches, 1)
-	require.Equal(t, skill.SkillID, matchBody.Matches[0].SkillID)
-	require.Equal(t, detailBody.ImmutableVersion, matchBody.Matches[0].ImmutableVersion)
-
 	recorder := httptest.NewRecorder()
 	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/search?q=engineering", nil))
 	var response skillsResponse
@@ -248,7 +235,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, skill.SkillID, batchBody.Skills[0].SkillID)
 }
 
-func TestHistoricalPublicationMatchesContentWithoutEnteringDiscovery(t *testing.T) {
+func TestHistoricalPublicationDoesNotEnterDiscovery(t *testing.T) {
 	router, metadata := testCatalogAPI(t)
 	repositoryID := "github.com/example/history"
 	skillID := repositoryID + "/-/skills/retired"
@@ -270,14 +257,6 @@ func TestHistoricalPublicationMatchesContentWithoutEnteringDiscovery(t *testing.
 	require.NoError(t, json.NewDecoder(search.Body).Decode(&searchBody))
 	require.Empty(t, searchBody.Skills)
 
-	matches := httptest.NewRecorder()
-	serveFiber(t, router, matches, httptest.NewRequest(http.MethodGet, "/api/v1/matches?sum="+url.QueryEscape(digest), nil))
-	require.Equal(t, http.StatusOK, matches.Code)
-	var matchBody contentMatchesResponse
-	require.NoError(t, json.NewDecoder(matches.Body).Decode(&matchBody))
-	require.Len(t, matchBody.Matches, 1)
-	require.Equal(t, skillID, matchBody.Matches[0].SkillID)
-	require.Equal(t, "v1.0.0", matchBody.Matches[0].ImmutableVersion)
 }
 
 func TestCatalogUpdateCheckResolvesEachRepositoryOnceAndPreservesRequestOrder(t *testing.T) {
@@ -402,7 +381,6 @@ func TestCatalogAPIValidationAndNotFound(t *testing.T) {
 		"/api/v1/search":                         http.StatusBadRequest,
 		"/api/v1/search?limit=101":               http.StatusBadRequest,
 		"/api/v1/search?q=valid&offset=invalid":  http.StatusBadRequest,
-		"/api/v1/matches?sum=sha256:nope":        http.StatusBadRequest,
 		"/api/v1/skills/github.com/unknown/repo": http.StatusNotFound,
 	} {
 		recorder := httptest.NewRecorder()

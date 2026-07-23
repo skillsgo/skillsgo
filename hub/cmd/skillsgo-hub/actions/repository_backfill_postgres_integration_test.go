@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Catalog, two River runtimes, real Repository Publisher/storage/HTTP routes, and an opt-in Testcontainers PostgreSQL service with deterministic source doubles.
- * [OUTPUT]: Verifies atomic persistence, restart/multi-instance execution, incremental retry, retained ZIP download, Content Match inclusion, and discovery exclusion end to end.
+ * [OUTPUT]: Verifies atomic persistence, restart/multi-instance execution, incremental retry, retained ZIP download, and discovery exclusion end to end.
  * [POS]: Serves as the durable PostgreSQL plus River acceptance seam for Repository History Backfill.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -184,12 +184,6 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	var searchBody skillsResponse
 	require.NoError(t, json.NewDecoder(searchResponse.Body).Decode(&searchBody))
 	require.Empty(t, searchBody.Skills)
-	matchResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/matches?sum="+info.Sum, nil))
-	require.NoError(t, err)
-	var matchBody contentMatchesResponse
-	require.NoError(t, json.NewDecoder(matchResponse.Body).Decode(&matchBody))
-	require.Len(t, matchBody.Matches, 2)
-	require.Equal(t, repositoryID, matchBody.Matches[0].SkillID)
 	fetcher.mu.Lock()
 	require.Equal(t, []string{"v1.0.0", "v2.0.0", "v1.0.0"}, fetcher.calls, "terminal retrigger must retry failures and skip successful immutable publications")
 	fetcher.mu.Unlock()

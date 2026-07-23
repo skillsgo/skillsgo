@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on a configured Hub origin, canonical Repository/Skill IDs, typed add-time Selector resolution through the product API, exact root Proxy resources, content-match responses, typed Repository Info, bounded Repository ZIP responses, and optional progress reporting.
+ * [INPUT]: Depends on a configured Hub origin, canonical Repository/Skill IDs, typed add-time Selector resolution through the product API, exact root Proxy resources, typed Repository Info, bounded Repository ZIP responses, and optional progress reporting.
  * [OUTPUT]: Provides two-phase movable-to-immutable Repository resolution/download with identity, membership, size, and h1 validation; direct exact reads; bounded product reads; discovery/update reads; and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -50,8 +50,6 @@ type RepositoryMember struct {
 	InfoBytes []byte
 }
 
-type ContentMatch = protocolapi.ContentMatch
-
 type SkillProductMetadata struct {
 	ID                    string  `json:"id"`
 	ImageURL              *string `json:"imageUrl"`
@@ -73,8 +71,6 @@ type SkillSummary struct {
 type skillsResponse struct {
 	Skills []SkillSummary `json:"skills"`
 }
-
-type contentMatchesResponse = protocolapi.ContentMatchesResponse
 
 type CatalogUpdateItem = protocolapi.CatalogUpdateCheckItem
 
@@ -332,32 +328,6 @@ func (c *Client) HubInfo(ctx context.Context) (json.RawMessage, error) {
 		return nil, fmt.Errorf("Hub returned invalid JSON")
 	}
 	return document, nil
-}
-
-func (c *Client) MatchContent(ctx context.Context, sum, sourceHint string) ([]ContentMatch, error) {
-	query := url.Values{"sum": []string{sum}}
-	if strings.TrimSpace(sourceHint) != "" {
-		query.Set("sourceHint", strings.TrimSpace(sourceHint))
-	}
-	var response contentMatchesResponse
-	if err := c.getJSON(ctx, c.baseURL+"/api/v1/matches?"+query.Encode(), &response); err != nil {
-		return nil, err
-	}
-	if response.SchemaVersion != 1 || response.Sum != sum || response.Matches == nil {
-		return nil, fmt.Errorf("Hub returned an invalid content-match response")
-	}
-	seen := map[string]bool{}
-	for _, match := range response.Matches {
-		key := match.SkillID + "\x00" + match.ImmutableVersion
-		if source.ValidateSkillID(match.SkillID) != nil ||
-			source.ValidateVersion(match.ImmutableVersion) != nil ||
-			match.Name == "" || match.Source == "" || match.CommitSHA == "" || match.TreeSHA == "" ||
-			match.Sum != sum || seen[key] {
-			return nil, fmt.Errorf("Hub returned an invalid content match")
-		}
-		seen[key] = true
-	}
-	return response.Matches, nil
 }
 
 func (c *Client) CatalogUpdates(ctx context.Context, skillIDs []string) ([]CatalogUpdateItem, error) {

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, freshness-cached Repository artifact resolution, ZIP audit boundary, and request validation.
- * [OUTPUT]: Provides stable public search, ordered batch Skill-card hydration, Repository-fresh head/release batch update, content-match, and detail APIs plus correlated private diagnostics for internal and best-effort dependency failures.
+ * [OUTPUT]: Provides stable public search, ordered batch Skill-card hydration, Repository-fresh head/release batch update, and detail APIs plus correlated private diagnostics for internal and best-effort dependency failures.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -27,7 +27,6 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
-	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 )
 
@@ -89,11 +88,9 @@ type skillDetailResponse struct {
 	ExecutableFiles       []string             `json:"executableFiles"`
 }
 
-type contentMatchesResponse = protocolapi.ContentMatchesResponse
 type catalogUpdateCheckRequest = protocolapi.CatalogUpdateCheckRequest
 type catalogUpdateCheckItem = protocolapi.CatalogUpdateCheckItem
 type catalogUpdateCheckResponse = protocolapi.CatalogUpdateCheckResponse
-type contentMatch = protocolapi.ContentMatch
 
 type artifactReader interface {
 	Info(context.Context, string, string) ([]byte, error)
@@ -127,7 +124,6 @@ func registerCatalogAPIRoutes(
 	}
 	r.Get("/api/v1/search", searchSkillsHandler(metadata))
 	r.Post("/api/v1/skills/batch", skillBatchHandler(metadata))
-	r.Get("/api/v1/matches", contentMatchesHandler(metadata))
 	r.Post("/api/v1/updates/check", catalogUpdateCheckHandler(metadata, artifacts))
 	r.Get("/api/v1/skills/+", skillDetailHandler(metadata, artifacts, repositories))
 }
@@ -280,33 +276,6 @@ func collectRepositoryMemberVersions(encoded []byte, target map[string]string) e
 		target[member.ID] = member.Version
 	}
 	return nil
-}
-
-func contentMatchesHandler(metadata *catalog.Catalog) fiber.Handler {
-	return func(c fiber.Ctx) error {
-		digest := strings.TrimSpace(c.Query("sum"))
-		if !protocolartifact.ValidSum(digest) {
-			return writeAPIError(c, fiber.StatusBadRequest, "sum must be a valid h1 sum")
-		}
-		hint := strings.TrimSpace(c.Query("sourceHint"))
-		if len([]rune(hint)) > 500 {
-			return writeAPIError(c, fiber.StatusBadRequest, "sourceHint must contain at most 500 characters")
-		}
-		matches, err := metadata.MatchContent(c.Context(), digest, hint, 20)
-		if err != nil {
-			return writeInternalAPIError(c, "catalog.content_matches", fiber.StatusInternalServerError, "internal_error", "content match failed", err)
-		}
-		response := contentMatchesResponse{SchemaVersion: 1, Sum: digest, Matches: make([]contentMatch, 0, len(matches))}
-		for _, match := range matches {
-			response.Matches = append(response.Matches, contentMatch{
-				SkillID: match.SkillID, Name: match.Name,
-				Source: match.SourceHost + "/" + match.Repository, SkillPath: match.SkillPath,
-				ImmutableVersion: match.Version, CommitSHA: match.CommitSHA,
-				TreeSHA: match.TreeSHA, Sum: match.Sum,
-			})
-		}
-		return writeJSON(c, fiber.StatusOK, response)
-	}
 }
 
 func searchSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
