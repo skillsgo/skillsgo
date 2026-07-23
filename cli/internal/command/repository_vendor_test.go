@@ -70,11 +70,11 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	require.NoError(t, os.Chdir(workspace))
 	t.Cleanup(func() { _ = os.Chdir(previous) })
 	var output bytes.Buffer
-	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--project", workspace, "--skill", "skills/design", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output))
+	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--project", workspace, "--skill", "design", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output))
 
 	manifest, err := project.LoadWorkspaceManifest(workspace)
 	require.NoError(t, err)
-	require.Equal(t, []string{"skills/design"}, manifest.Dependencies[repositoryID].Skills)
+	require.Equal(t, []string{"design"}, manifest.Dependencies[repositoryID].Skills)
 	require.Equal(t, []string{"codex"}, manifest.Dependencies[repositoryID].Agents)
 	lock, err := project.LoadDependencyLock(workspace)
 	require.NoError(t, err)
@@ -135,10 +135,10 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	require.Equal(t, "healthy", string(inventory.Entries[0].Health))
 
 	output.Reset()
-	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--skill", ".", "--agent", "goose", "--hub", server.URL, "--output", "json"}, &output, &output))
+	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--skill", "root", "--agent", "goose", "--hub", server.URL, "--output", "json"}, &output, &output))
 	manifest, err = project.LoadWorkspaceManifest(workspace)
 	require.NoError(t, err)
-	require.Equal(t, []string{".", "skills/design"}, manifest.Dependencies[repositoryID].Skills)
+	require.Equal(t, []string{"design", "root"}, manifest.Dependencies[repositoryID].Skills)
 	require.Equal(t, []string{"codex", "goose"}, manifest.Dependencies[repositoryID].Agents)
 	for _, agentID := range []string{"codex", "goose"} {
 		projectionRoot := scopevendor.CoordinatePath(filepath.Join(workspace, ".agents", "skills"), repositoryID, version)
@@ -152,7 +152,7 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	}
 
 	output.Reset()
-	require.NoError(t, Execute([]string{"remove", "skills/design", "--project", workspace, "--output", "json"}, &output, &output))
+	require.NoError(t, Execute([]string{"remove", "design", "--project", workspace, "--output", "json"}, &output, &output))
 	var removal struct {
 		SchemaVersion int      `json:"schemaVersion"`
 		Phase         string   `json:"phase"`
@@ -162,11 +162,11 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	require.NoError(t, json.Unmarshal(output.Bytes(), &removal))
 	require.Equal(t, 1, removal.SchemaVersion)
 	require.Equal(t, "repository-remove", removal.Phase)
-	require.Equal(t, []string{"skills/design"}, removal.Skills)
+	require.Equal(t, []string{"design"}, removal.Skills)
 	require.Equal(t, "project", removal.Scope)
 	manifest, err = project.LoadWorkspaceManifest(workspace)
 	require.NoError(t, err)
-	require.Equal(t, []string{"."}, manifest.Dependencies[repositoryID].Skills)
+	require.Equal(t, []string{"root"}, manifest.Dependencies[repositoryID].Skills)
 	for _, projectionRoot := range []string{
 		scopevendor.CoordinatePath(filepath.Join(workspace, ".agents", "skills"), repositoryID, version),
 		scopevendor.CoordinatePath(filepath.Join(workspace, ".goose", "skills"), repositoryID, version),
@@ -178,7 +178,7 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	require.FileExists(t, filepath.Join(vendor, "skills", "design", "SKILL.md"))
 
 	output.Reset()
-	require.NoError(t, Execute([]string{"remove", ".", "--agent", "goose"}, &output, &output))
+	require.NoError(t, Execute([]string{"remove", "root", "--agent", "goose"}, &output, &output))
 	manifest, err = project.LoadWorkspaceManifest(workspace)
 	require.NoError(t, err)
 	require.Equal(t, []string{"codex"}, manifest.Dependencies[repositoryID].Agents)
@@ -222,7 +222,7 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	require.Equal(t, "user modification", string(modified))
 
 	output.Reset()
-	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--global", "--skill", "skills/design", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output))
+	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--global", "--skill", "design", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output))
 	userRoot := project.UserRoot(home)
 	require.FileExists(t, filepath.Join(userRoot, project.WorkspaceManifestName))
 	require.FileExists(t, filepath.Join(userRoot, project.DependencyLockName))
@@ -276,7 +276,7 @@ func TestAddRepositorySumMismatchLeavesNoWorkspaceState(t *testing.T) {
 	require.NoError(t, os.Chdir(workspace))
 	t.Cleanup(func() { _ = os.Chdir(previous) })
 	var output bytes.Buffer
-	err = Execute([]string{"add", repositoryID + "@" + version, "--skill", "skills/design", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output)
+	err = Execute([]string{"add", repositoryID + "@" + version, "--skill", "design", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output)
 	require.ErrorContains(t, err, "Repository Sum mismatch")
 
 	require.NoFileExists(t, filepath.Join(workspace, project.WorkspaceManifestName))
@@ -335,7 +335,7 @@ func TestUpdateRepositoryReplacesCoordinateAndPreservesSelections(t *testing.T) 
 	require.NoError(t, os.MkdirAll(workspace, 0o700))
 	t.Setenv("HOME", home)
 	var output bytes.Buffer
-	require.NoError(t, Execute([]string{"add", repositoryID + "@" + oldVersion, "--project", workspace, "--skill", "skills/alpha", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output))
+	require.NoError(t, Execute([]string{"add", repositoryID + "@" + oldVersion, "--project", workspace, "--skill", "alpha", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output))
 
 	output.Reset()
 	require.NoError(t, Execute([]string{"update", repositoryID + "@" + newVersion, "--project", workspace, "--preflight", "--hub", server.URL, "--output", "json"}, &output, &output))
@@ -344,7 +344,7 @@ func TestUpdateRepositoryReplacesCoordinateAndPreservesSelections(t *testing.T) 
 	require.Equal(t, "repository-update-preflight", preflight.Phase)
 	require.Equal(t, oldVersion, preflight.FromVersion)
 	require.Equal(t, newVersion, preflight.ToVersion)
-	require.Equal(t, []string{"skills/alpha"}, preflight.Skills)
+	require.Equal(t, []string{"alpha"}, preflight.Skills)
 	require.Equal(t, []string{"codex"}, preflight.Agents)
 
 	oldVendor := scopevendor.CoordinatePath(filepath.Join(workspace, ".skillsgo", "vendor"), repositoryID, oldVersion)
@@ -366,7 +366,7 @@ func TestUpdateRepositoryReplacesCoordinateAndPreservesSelections(t *testing.T) 
 	manifest, err := project.LoadWorkspaceManifest(workspace)
 	require.NoError(t, err)
 	require.Equal(t, newVersion, manifest.Dependencies[repositoryID].Version)
-	require.Equal(t, []string{"skills/alpha"}, manifest.Dependencies[repositoryID].Skills)
+	require.Equal(t, []string{"alpha"}, manifest.Dependencies[repositoryID].Skills)
 	lock, err := project.LoadDependencyLock(workspace)
 	require.NoError(t, err)
 	require.Equal(t, releases[newVersion].sum, lock.Dependencies[repositoryID].Sum)

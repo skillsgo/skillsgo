@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on strict YAML/Lock state, an h1-verified authoritative Scope Vendor, Agent Adapter roots, and baseline-aware Repository Projection transactions.
- * [OUTPUT]: Removes selected root/nested Repository members from every declared Agent projection atomically and emits a typed machine result without Hub access or Local Modification overwrite.
- * [POS]: Serves as the authoritative managed Repository-member path behind `skillsgo remove`, alongside exact External removal.
+ * [OUTPUT]: Removes selected Repository members by canonical Skill name from every declared Agent projection atomically and emits a typed machine result without Hub access or Local Modification overwrite.
+ * [POS]: Serves as the authoritative managed Repository-member name path behind `skillsgo remove`, alongside exact External removal.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -10,12 +10,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
+	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/scopevendor"
 	"github.com/spf13/cobra"
@@ -46,21 +47,21 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 	if err != nil {
 		return true, err
 	}
+	removals := make(map[string]map[string]bool)
 	if all {
 		selectors = nil
 		for repositoryID, dependency := range manifest.Dependencies {
-			for _, skillPath := range dependency.Skills {
-				selector := repositoryID
-				if skillPath != "." {
-					selector += "/-/skills/" + skillPath
-				}
-				selectors = append(selectors, selector)
+			removals[repositoryID] = make(map[string]bool, len(dependency.Skills))
+			for _, skillName := range dependency.Skills {
+				selectors = append(selectors, skillName)
+				removals[repositoryID][skillName] = true
 			}
 		}
-	}
-	removals, err := resolveRepositoryMemberRemovals(manifest, selectors)
-	if err != nil {
-		return true, err
+	} else {
+		removals, err = resolveRepositoryMemberRemovals(manifest, selectors)
+		if err != nil {
+			return true, err
+		}
 	}
 	transactions := make([]*scopevendor.Transaction, 0, len(removals))
 	rollback := func() {
@@ -100,9 +101,37 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 			rollback()
 			return true, err
 		}
+		infoRoot := filepath.Join(declarationRoot, "info")
+		if !userScope {
+			infoRoot = filepath.Join(declarationRoot, ".skillsgo", "info")
+		}
+		infoBytes, err := (infocache.Cache{Root: infoRoot}).Get(repositoryID, dependency.Version, "repository.info")
+		if err != nil {
+			rollback()
+			return true, err
+		}
+		resource, err := hub.ParseRepositoryInfo(repositoryID, infoBytes)
+		if err != nil {
+			rollback()
+			return true, err
+		}
+		pathsByName := make(map[string]string, len(resource.Members))
+		members := make([]string, 0, len(resource.Members))
+		for _, member := range resource.Members {
+			pathsByName[member.Info.Name] = member.Info.Path
+			members = append(members, member.Info.Path)
+		}
+		toPaths := func(names []string) []string {
+			paths := make([]string, 0, len(names))
+			for _, name := range names {
+				paths = append(paths, pathsByName[name])
+			}
+			return paths
+		}
+		oldPaths, desiredPaths := toPaths(dependency.Skills), toPaths(desiredSkills)
 		projections := []scopevendor.Projection(nil)
 		if !removeDependency {
-			projections, err = repositoryProjections(catalog, desiredAgents, dependency.Agents, dependency.Skills, desiredSkills, agentScope, declarationRoot)
+			projections, err = repositoryProjections(catalog, desiredAgents, dependency.Agents, oldPaths, desiredPaths, agentScope, declarationRoot)
 			if err != nil {
 				rollback()
 				return true, err
@@ -110,7 +139,7 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 		}
 		removedProjections := []scopevendor.Projection(nil)
 		if len(selectedAgents) > 0 || removeDependency {
-			oldProjections, oldErr := repositoryProjections(catalog, dependency.Agents, dependency.Agents, dependency.Skills, dependency.Skills, agentScope, declarationRoot)
+			oldProjections, oldErr := repositoryProjections(catalog, dependency.Agents, dependency.Agents, oldPaths, oldPaths, agentScope, declarationRoot)
 			if oldErr != nil {
 				rollback()
 				return true, oldErr
@@ -121,12 +150,12 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 			}
 			for _, projection := range oldProjections {
 				if !desiredRoots[filepath.Clean(projection.Root)] {
-					removedProjections = append(removedProjections, scopevendor.Projection{Agent: projection.Agent, Root: projection.Root, PreviousSelected: dependency.Skills})
+					removedProjections = append(removedProjections, scopevendor.Projection{Agent: projection.Agent, Root: projection.Root, PreviousSelected: oldPaths})
 				}
 			}
 		}
 		transaction, err := scopevendor.Prepare(scopevendor.Options{VendorRoot: vendorRoot, RepositoryID: repositoryID, Version: dependency.Version,
-			Archive: archive, Sum: locked.Sum, Members: dependency.Skills, Projections: projections, RemovedProjections: removedProjections, RemoveVendor: removeDependency})
+			Archive: archive, Sum: locked.Sum, Members: members, Projections: projections, RemovedProjections: removedProjections, RemoveVendor: removeDependency})
 		if err != nil {
 			rollback()
 			return true, err
@@ -176,16 +205,12 @@ func resolveRepositoryMemberRemovals(manifest project.WorkspaceManifest, selecto
 	removals := make(map[string]map[string]bool)
 	for _, raw := range selectors {
 		raw = strings.TrimSpace(raw)
-		type match struct{ repositoryID, skillPath string }
+		type match struct{ repositoryID, skillName string }
 		matches := make([]match, 0, 1)
 		for repositoryID, dependency := range manifest.Dependencies {
-			for _, skillPath := range dependency.Skills {
-				canonicalID := repositoryID
-				if skillPath != "." {
-					canonicalID += "/-/skills/" + skillPath
-				}
-				if raw == skillPath || raw == canonicalID || (skillPath != "." && strings.EqualFold(raw, path.Base(skillPath))) {
-					matches = append(matches, match{repositoryID: repositoryID, skillPath: skillPath})
+			for _, skillName := range dependency.Skills {
+				if raw == skillName {
+					matches = append(matches, match{repositoryID: repositoryID, skillName: skillName})
 				}
 			}
 		}
@@ -193,13 +218,13 @@ func resolveRepositoryMemberRemovals(manifest project.WorkspaceManifest, selecto
 			return nil, fmt.Errorf("no selected Repository Skill matches %q", raw)
 		}
 		if len(matches) > 1 {
-			return nil, fmt.Errorf("Repository Skill selector %q is ambiguous; use a canonical Skill ID or Repository-relative path", raw)
+			return nil, fmt.Errorf("Repository Skill name %q is ambiguous across dependencies", raw)
 		}
 		matched := matches[0]
 		if removals[matched.repositoryID] == nil {
 			removals[matched.repositoryID] = make(map[string]bool)
 		}
-		removals[matched.repositoryID][matched.skillPath] = true
+		removals[matched.repositoryID][matched.skillName] = true
 	}
 	return removals, nil
 }

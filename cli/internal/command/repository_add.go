@@ -41,7 +41,7 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	if err != nil {
 		return err
 	}
-	selected, err := selectRepositoryPaths(reference.SkillID, selectors, resource.Members)
+	selected, err := selectRepositoryNames(selectors, resource.Members)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,15 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	if exists {
 		previousAgents, previousSkills = existing.Agents, existing.Skills
 	}
-	projections, err := repositoryProjections(catalog, dependency.Agents, previousAgents, previousSkills, dependency.Skills, agentScope, workspaceRoot)
+	previousPaths, err := repositoryPathsForNames(previousSkills, resource.Members)
+	if err != nil {
+		return err
+	}
+	selectedPaths, err := repositoryPathsForNames(dependency.Skills, resource.Members)
+	if err != nil {
+		return err
+	}
+	projections, err := repositoryProjections(catalog, dependency.Agents, previousAgents, previousPaths, selectedPaths, agentScope, workspaceRoot)
 	if err != nil {
 		return err
 	}
@@ -117,7 +125,7 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	}
 
 	for _, member := range resource.Members {
-		if containsString(dependency.Skills, member.Info.Path) {
+		if containsString(dependency.Skills, member.Info.Name) {
 			reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{SkillID: member.Info.ID, Version: resource.Info.Version, Agents: dependency.Agents, Scope: scope})
 		}
 	}
@@ -186,14 +194,14 @@ func loadWorkspaceState(root string) (project.WorkspaceManifest, project.Depende
 	return manifest, lock, err
 }
 
-func selectRepositoryPaths(repositoryID string, selectors []string, members []hub.RepositoryMember) ([]string, error) {
+func selectRepositoryNames(selectors []string, members []hub.RepositoryMember) ([]string, error) {
 	if len(selectors) == 0 {
-		paths := make([]string, 0, len(members))
+		names := make([]string, 0, len(members))
 		for _, member := range members {
-			paths = append(paths, member.Info.Path)
+			names = append(names, member.Info.Name)
 		}
-		sort.Strings(paths)
-		return paths, nil
+		sort.Strings(names)
+		return names, nil
 	}
 	selected := make([]string, 0, len(selectors))
 	seen := map[string]bool{}
@@ -205,13 +213,13 @@ func selectRepositoryPaths(repositoryID string, selectors []string, members []hu
 		if query != "head" {
 			return nil, fmt.Errorf("per-Skill version selectors are unsupported; select the Repository version once")
 		}
-		member, err := selectRepositoryMember(repositoryID, selector, members)
+		member, err := selectRepositoryMember(selector, members)
 		if err != nil {
 			return nil, err
 		}
-		if !seen[member.Info.Path] {
-			seen[member.Info.Path] = true
-			selected = append(selected, member.Info.Path)
+		if !seen[member.Info.Name] {
+			seen[member.Info.Name] = true
+			selected = append(selected, member.Info.Name)
 		}
 	}
 	sort.Strings(selected)
@@ -266,27 +274,28 @@ func parseRepositorySelector(raw, inheritedQuery string) (string, string, error)
 	return strings.Trim(raw, "/"), query, nil
 }
 
-func selectRepositoryMember(repositoryID, selector string, members []hub.RepositoryMember) (hub.RepositoryMember, error) {
+func selectRepositoryMember(selector string, members []hub.RepositoryMember) (hub.RepositoryMember, error) {
 	for _, member := range members {
-		if selector == member.Info.ID || selector == member.Info.Path || (selector == repositoryID && member.Info.Path == ".") {
+		if selector == member.Info.Name {
 			return member, nil
 		}
 	}
-	nameMatches := make([]hub.RepositoryMember, 0, 1)
+	return hub.RepositoryMember{}, fmt.Errorf("Repository does not contain Skill named %q", selector)
+}
+
+func repositoryPathsForNames(names []string, members []hub.RepositoryMember) ([]string, error) {
+	byName := make(map[string]string, len(members))
 	for _, member := range members {
-		if strings.EqualFold(member.Info.Name, selector) {
-			nameMatches = append(nameMatches, member)
+		byName[member.Info.Name] = member.Info.Path
+	}
+	paths := make([]string, 0, len(names))
+	for _, name := range names {
+		path, ok := byName[name]
+		if !ok {
+			return nil, fmt.Errorf("Repository does not contain Skill named %q", name)
 		}
+		paths = append(paths, path)
 	}
-	if len(nameMatches) == 1 {
-		return nameMatches[0], nil
-	}
-	if len(nameMatches) > 1 {
-		paths := make([]string, 0, len(nameMatches))
-		for _, member := range nameMatches {
-			paths = append(paths, member.Info.Path)
-		}
-		return hub.RepositoryMember{}, fmt.Errorf("selector %q is ambiguous; choose a Repository-relative path or canonical Skill ID: %s", selector, strings.Join(paths, ", "))
-	}
-	return hub.RepositoryMember{}, fmt.Errorf("Repository %s has no Skill matching selector %q", repositoryID, selector)
+	sort.Strings(paths)
+	return paths, nil
 }

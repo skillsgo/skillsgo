@@ -144,14 +144,14 @@ func prepareRepositoryUpdate(ctx context.Context, root string, userScope bool, c
 	if resource.Info.Version == dependency.Version {
 		return repositoryUpdateReport{}, nil, fmt.Errorf("Repository %s is already at %s", repositoryID, dependency.Version)
 	}
-	available := make(map[string]bool, len(resource.Members))
+	available := make(map[string]string, len(resource.Members))
 	newMembers := make([]string, 0, len(resource.Members))
 	for _, member := range resource.Members {
-		available[member.Info.Path] = true
+		available[member.Info.Name] = member.Info.Path
 		newMembers = append(newMembers, member.Info.Path)
 	}
 	for _, selected := range dependency.Skills {
-		if !available[selected] {
+		if _, ok := available[selected]; !ok {
 			return repositoryUpdateReport{}, nil, fmt.Errorf("Repository %s@%s no longer contains selected Skill %q", repositoryID, resource.Info.Version, selected)
 		}
 	}
@@ -174,21 +174,29 @@ func prepareRepositoryUpdate(ctx context.Context, root string, userScope bool, c
 		return repositoryUpdateReport{}, nil, err
 	}
 	oldMembers := make([]string, 0, len(oldResource.Members))
+	oldPathsByName := make(map[string]string, len(oldResource.Members))
 	for _, member := range oldResource.Members {
 		oldMembers = append(oldMembers, member.Info.Path)
+		oldPathsByName[member.Info.Name] = member.Info.Path
 	}
 	sort.Strings(oldMembers)
-	oldProjections, err := repositoryProjections(catalog, dependency.Agents, dependency.Agents, dependency.Skills, dependency.Skills, agentScope, root)
+	oldSelected := make([]string, 0, len(dependency.Skills))
+	newSelected := make([]string, 0, len(dependency.Skills))
+	for _, name := range dependency.Skills {
+		oldSelected = append(oldSelected, oldPathsByName[name])
+		newSelected = append(newSelected, available[name])
+	}
+	oldProjections, err := repositoryProjections(catalog, dependency.Agents, dependency.Agents, oldSelected, oldSelected, agentScope, root)
 	if err != nil {
 		return repositoryUpdateReport{}, nil, err
 	}
-	newProjections, err := repositoryProjections(catalog, dependency.Agents, nil, nil, dependency.Skills, agentScope, root)
+	newProjections, err := repositoryProjections(catalog, dependency.Agents, nil, nil, newSelected, agentScope, root)
 	if err != nil {
 		return repositoryUpdateReport{}, nil, err
 	}
 	removed := make([]scopevendor.Projection, 0, len(oldProjections))
 	for _, projection := range oldProjections {
-		removed = append(removed, scopevendor.Projection{Agent: projection.Agent, Root: projection.Root, PreviousSelected: append([]string(nil), dependency.Skills...)})
+		removed = append(removed, scopevendor.Projection{Agent: projection.Agent, Root: projection.Root, PreviousSelected: append([]string(nil), oldSelected...)})
 	}
 	stateToken := repositoryUpdateStateToken(root, repositoryID, dependency, locked, resource.Info.Version, resource.Info.Sum)
 	report := repositoryUpdateReport{SchemaVersion: 1, Repository: repositoryID, FromVersion: dependency.Version, ToVersion: resource.Info.Version,

@@ -54,13 +54,21 @@ func addRepositoryInstallations(entries map[string]*Entry, accounted map[string]
 				return err
 			}
 			members := make([]string, 0, len(resource.Members))
-			memberByPath := make(map[string]hub.RepositoryMember, len(resource.Members))
+			memberByName := make(map[string]hub.RepositoryMember, len(resource.Members))
 			for _, member := range resource.Members {
 				members = append(members, member.Info.Path)
-				memberByPath[member.Info.Path] = member
+				memberByName[member.Info.Name] = member
+			}
+			selectedPaths := make([]string, 0, len(dependency.Skills))
+			for _, selected := range dependency.Skills {
+				member, exists := memberByName[selected]
+				if !exists {
+					return fmt.Errorf("Repository Info does not contain selected Skill %q", selected)
+				}
+				selectedPaths = append(selectedPaths, member.Info.Path)
 			}
 			for _, selected := range dependency.Skills {
-				member, exists := memberByPath[selected]
+				member, exists := memberByName[selected]
 				if !exists {
 					return fmt.Errorf("Repository Info does not contain selected Skill %q", selected)
 				}
@@ -79,11 +87,11 @@ func addRepositoryInstallations(entries map[string]*Entry, accounted map[string]
 					projectionRoot := scopevendor.CoordinatePath(adapterRoots.ManagedRoot, repositoryID, dependency.Version)
 					projectionPath := projectionRoot
 					vendorPath := scopevendor.CoordinatePath(vendorRoot, repositoryID, dependency.Version)
-					if selected != "." {
-						projectionPath = filepath.Join(projectionRoot, filepath.FromSlash(selected))
-						vendorPath = filepath.Join(vendorPath, filepath.FromSlash(selected))
+					if member.Info.Path != "." {
+						projectionPath = filepath.Join(projectionRoot, filepath.FromSlash(member.Info.Path))
+						vendorPath = filepath.Join(vendorPath, filepath.FromSlash(member.Info.Path))
 					}
-					health := repositoryTargetHealth(vendorErr, archive, adapterRoots.ManagedRoot, repositoryID, dependency.Version, members, dependency.Skills)
+					health := repositoryTargetHealth(vendorErr, archive, adapterRoots.ManagedRoot, repositoryID, dependency.Version, members, selectedPaths)
 					entry.Targets = append(entry.Targets, Target{Scope: declaration.scope, ProjectRoot: projectRoot, Agent: agentID,
 						Path: projectionPath, CanonicalPath: vendorPath, Version: dependency.Version, Health: health})
 					entry.Agents = appendUnique(entry.Agents, agentID)

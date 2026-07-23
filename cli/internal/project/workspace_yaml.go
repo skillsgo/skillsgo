@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on canonical Repository IDs, immutable versions, explicit Skill paths and Agent IDs, valid Repository h1 Sums, strict YAML nodes, and the shared metadata transaction lock.
+ * [INPUT]: Depends on canonical Repository IDs, immutable versions, canonical Skill names and Agent IDs, valid Repository h1 Sums, strict YAML nodes, and the shared metadata transaction lock.
  * [OUTPUT]: Provides strict skillsgo.yaml/skillsgo-lock.yaml parsing, nearest YAML-root discovery, atomic paired loading with crash recovery, exact pair validation, deterministic normalization, and paired publication.
  * [POS]: Serves as the portable Repository dependency intent and integrity boundary for Workspace and User scopes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -17,6 +17,7 @@ import (
 
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	protocolskillid "github.com/skillsgo/skillsgo/protocol/skillid"
+	protocolmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 	"gopkg.in/yaml.v3"
 )
@@ -358,19 +359,14 @@ func validateRepositoryDependency(repositoryID string, dependency RepositoryDepe
 		return fmt.Errorf("dependency %q requires non-empty skills and agents", repositoryID)
 	}
 	seenSkills := map[string]bool{}
-	for _, member := range dependency.Skills {
-		key := "."
-		if member != "." {
-			portable, err := protocolartifact.PortablePathKey(member)
-			if err != nil || strings.HasSuffix(member, "/") {
-				return fmt.Errorf("dependency %q contains invalid Skill path %q", repositoryID, member)
-			}
-			key = portable
+	for _, name := range dependency.Skills {
+		if !protocolmanifest.ValidName(name) {
+			return fmt.Errorf("dependency %q contains invalid Skill name %q", repositoryID, name)
 		}
-		if seenSkills[key] {
-			return fmt.Errorf("dependency %q contains duplicate Skill path %q", repositoryID, member)
+		if seenSkills[name] {
+			return fmt.Errorf("dependency %q contains duplicate Skill name %q", repositoryID, name)
 		}
-		seenSkills[key] = true
+		seenSkills[name] = true
 	}
 	seenAgents := map[string]bool{}
 	for _, agentID := range dependency.Agents {

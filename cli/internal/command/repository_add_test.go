@@ -1,13 +1,12 @@
 /*
- * [INPUT]: Uses self-contained Repository member metadata and public selector syntax.
- * [OUTPUT]: Specifies canonical-ID, relative-path, unique-name, root, missing, and ambiguous Repository member selection.
+ * [INPUT]: Uses self-contained Repository member metadata and canonical Skill-name selector syntax.
+ * [OUTPUT]: Specifies name-only Repository member selection, including a root Skill whose name is independent of its path.
  * [POS]: Serves as the focused selection matrix beneath CLI-root Repository installation acceptance tests.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
 
 import (
-	"strings"
 	"testing"
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
@@ -17,23 +16,23 @@ func TestSelectRepositoryMemberMatrix(t *testing.T) {
 	repository := "gitlab.example.com/group/subgroup/repo"
 	members := []hub.RepositoryMember{
 		{Info: hub.Info{ID: repository, RepositoryID: repository, Path: ".", Name: "root"}},
-		{Info: hub.Info{ID: repository + "/-/skills/alpha", RepositoryID: repository, Path: "skills/alpha", Name: "shared"}},
-		{Info: hub.Info{ID: repository + "/-/other/beta", RepositoryID: repository, Path: "other/beta", Name: "shared"}},
+		{Info: hub.Info{ID: repository + "/-/skills/alpha", RepositoryID: repository, Path: "skills/alpha", Name: "alpha"}},
+		{Info: hub.Info{ID: repository + "/-/other/beta", RepositoryID: repository, Path: "other/beta", Name: "beta"}},
 		{Info: hub.Info{ID: repository + "/-/tools/gamma", RepositoryID: repository, Path: "tools/gamma", Name: "gamma"}},
 	}
-	for _, selector := range []string{repository + "/-/tools/gamma", "tools/gamma", "gamma"} {
-		member, err := selectRepositoryMember(repository, selector, members)
+	for _, selector := range []string{"gamma"} {
+		member, err := selectRepositoryMember(selector, members)
 		if err != nil || member.Info.ID != repository+"/-/tools/gamma" {
 			t.Fatalf("selector %q = %#v, %v", selector, member.Info, err)
 		}
 	}
-	if _, err := selectRepositoryMember(repository, "shared", members); err == nil || !strings.Contains(err.Error(), "skills/alpha") || !strings.Contains(err.Error(), "other/beta") {
-		t.Fatalf("ambiguous selector error = %v", err)
+	if _, err := selectRepositoryMember("tools/gamma", members); err == nil {
+		t.Fatal("path selector succeeded")
 	}
-	if _, err := selectRepositoryMember(repository, "missing", members); err == nil {
+	if _, err := selectRepositoryMember("missing", members); err == nil {
 		t.Fatal("missing selector succeeded")
 	}
-	member, err := selectRepositoryMember(repository, repository, members)
+	member, err := selectRepositoryMember("root", members)
 	if err != nil || member.Info.ID != repository {
 		t.Fatalf("root selector = %#v, %v", member.Info, err)
 	}
