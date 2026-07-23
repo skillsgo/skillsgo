@@ -32,10 +32,9 @@ func TestJ48CloudInstallReporting(t *testing.T) {
 	add := execCLI(t, ctx, container,
 		"add", testSkillID+"@"+testSkillVersion,
 		"--agent", "codex",
-		"--copy",
+
 		"--yes",
-		"--confirm-risk",
-		"--allow-critical",
+
 		"--output", "json",
 	)
 	require.Equal(t, 0, add.exitCode, add.output)

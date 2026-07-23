@@ -20,13 +20,11 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
 	targetRoot := filepath.Join(sandboxRoot, "home", ".codex", "skills", "demo")
-	skillBytes := []byte("---\nname: demo\ndescription: existing user skill\n---\n# Demo\n")
-	scriptBytes := []byte("#!/bin/sh\necho unchanged\n")
-	require.NoError(t, os.MkdirAll(filepath.Join(targetRoot, "scripts"), 0o755))
+	skillBytes := []byte("---\nname: alpha\ndescription: Alpha at v1.\n---\n# alpha\n")
+	require.NoError(t, os.MkdirAll(targetRoot, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(targetRoot, "SKILL.md"), skillBytes, 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(targetRoot, "scripts", "run.sh"), scriptBytes, 0o755))
 	writeSkillsShUserLock(t, sandboxRoot, map[string]any{
-		"demo": skillsShLockRecord("skills/demo/SKILL.md"),
+		"demo": skillsShLockRecord("skills/alpha/SKILL.md"),
 	})
 
 	preview := execCLI(t, ctx, container, "takeover", "--preflight", "--user", "--output", "json")
@@ -34,11 +32,11 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 	var plan takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(preview.output), &plan), preview.output)
 	require.Len(t, plan.PlanID, 64)
-	require.Equal(t, 1, plan.Summary.Eligible)
+	require.Equal(t, 1, plan.Summary.Eligible, preview.output)
 	require.Equal(t, 1, plan.Scopes.User.Eligible)
-	require.NoDirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "store"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo.mod"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo.sum"))
+	require.NoDirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "vendor"))
+	require.NoFileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo.yaml"))
+	require.NoFileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo.lock"))
 
 	execution := execCLI(t, ctx, container,
 		"takeover", "--plan", plan.PlanID, "--user", "--yes", "--output", "json",
@@ -46,27 +44,22 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 	require.Equal(t, 0, execution.exitCode, execution.output)
 	var report takeoverExecutionJSON
 	require.NoError(t, json.Unmarshal([]byte(execution.output), &report), execution.output)
-	require.Equal(t, 1, report.Summary.TakenOver)
+	require.Equal(t, 1, report.Summary.TakenOver, execution.output)
 	require.Zero(t, report.Summary.Skipped)
 	require.Len(t, report.Results, 1)
 	require.Equal(t, "taken-over", report.Results[0].Status)
-	require.Equal(t, "github.com/acme/skills/-/skills/demo", report.Results[0].SkillID)
+	require.Equal(t, "fixtures.test/group/subgroup/collection/-/skills/alpha", report.Results[0].SkillID)
 
-	afterSkill, err := os.ReadFile(filepath.Join(targetRoot, "SKILL.md"))
+	require.NoDirExists(t, targetRoot)
+	projection := filepath.Join(sandboxRoot, "home", ".codex", "skills", "fixtures.test", "group", "subgroup", "collection@v1.0.0", "skills", "alpha")
+	afterSkill, err := os.ReadFile(filepath.Join(projection, "SKILL.md"))
 	require.NoError(t, err)
 	require.Equal(t, skillBytes, afterSkill)
-	afterScript, err := os.ReadFile(filepath.Join(targetRoot, "scripts", "run.sh"))
-	require.NoError(t, err)
-	require.Equal(t, scriptBytes, afterScript)
-	scriptInfo, err := os.Stat(filepath.Join(targetRoot, "scripts", "run.sh"))
-	require.NoError(t, err)
-	require.Equal(t, os.FileMode(0o755), scriptInfo.Mode().Perm())
 
 	stateRoot := filepath.Join(sandboxRoot, "home", ".skillsgo")
-	require.DirExists(t, filepath.Join(stateRoot, "store"))
-	require.FileExists(t, filepath.Join(stateRoot, "skillsgo.mod"))
-	require.FileExists(t, filepath.Join(stateRoot, "skillsgo.sum"))
-	findSingleFile(t, filepath.Join(stateRoot, "receipts"), ".yaml")
+	require.DirExists(t, filepath.Join(stateRoot, "vendor"))
+	require.FileExists(t, filepath.Join(stateRoot, "skillsgo.yaml"))
+	require.FileExists(t, filepath.Join(stateRoot, "skillsgo.lock"))
 
 	inventory := execCLI(t, ctx, container, "inventory", "--user", "--output", "json")
 	require.Equal(t, 0, inventory.exitCode, inventory.output)
@@ -79,7 +72,7 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 	}
 	require.NoError(t, json.Unmarshal([]byte(inventory.output), &inventoryReport), inventory.output)
 	require.Len(t, inventoryReport.Entries, 1)
-	require.Equal(t, "demo", inventoryReport.Entries[0].Name)
+	require.Equal(t, "alpha", inventoryReport.Entries[0].Name)
 	require.Equal(t, "hub", inventoryReport.Entries[0].Provenance)
 	require.Equal(t, "healthy", inventoryReport.Entries[0].Health)
 
@@ -121,10 +114,10 @@ type takeoverExecutionJSON struct {
 
 func skillsShLockRecord(skillPath string) map[string]any {
 	return map[string]any{
-		"source":      "acme/skills",
-		"sourceType":  "github",
-		"sourceUrl":   "https://github.com/acme/skills.git",
-		"ref":         "main",
+		"source":      "fixture-collection",
+		"sourceType":  "git",
+		"sourceUrl":   "https://fixtures.test/group/subgroup/collection",
+		"ref":         "v1.0.0",
 		"skillPath":   skillPath,
 		"installedAt": "2026-01-01T00:00:00Z",
 		"updatedAt":   "2026-01-01T00:00:00Z",
