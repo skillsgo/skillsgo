@@ -76,10 +76,6 @@ _Avoid_: mutable resolution cache, membership database, Workspace state
 The `~/.skillsgo` directory that owns user-scope `skillsgo.yaml`, `skillsgo.lock`, and `vendor`. Agent-specific directories remain derived Repository Projections rather than SkillsGo state roots.
 _Avoid_: `~/.agents` ownership database, per-Agent manifest
 
-**Installation Receipt**:
-The local record that connects one Scope Vendor to one Repository Projection and records Repository identity, version, selected members, Agent, target path, expected projection state, and installation time.
-_Avoid_: Workspace Manifest, Dependency Lock, Hub metadata
-
 **Batch Takeover**:
 The explicit adoption of a supported skills.sh External Installation whose lock identifies an exact immutable Repository version and member. Execution verifies the External bytes against that Repository member, installs the complete Repository through the ordinary Dependency/Lock, Scope Vendor, and Repository Projection transaction, and only then moves the superseded External directory to recoverable trash. It never captures a per-Skill Store object or writes a receipt.
 _Avoid_: legacy Store compatibility, implicit local import, mutable selector adoption

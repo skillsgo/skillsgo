@@ -8,7 +8,7 @@
 - `0003-use-public-skill-ids.md`: establishes one canonical public Skill ID, removes the separate Skill Identity concept, and distinguishes public IDs from internal database row IDs.
 - `0004-separate-module-and-api-surfaces.md`: records the superseded `/mod`, `skillsgo.mod`, and `skillsgo.sum` separation design that was replaced before public launch.
 - `0005-route-app-through-cli-and-stabilize-machine-failures.md`: makes the CLI the App's only business-integration boundary and establishes the minimal public machine-failure contract for App and automation callers.
-- `0006-trust-skills-sh-locks-for-batch-takeover.md`: defines exact location-count preflight, bounded lock-identity- and state-bound scope authorization, trusted source identity for skills.sh lock entries, captured content/filesystem-state baselines, and independent skipping for changed or remaining External Installations.
+- `0006-trust-skills-sh-locks-for-batch-takeover.md`: defines exact location-count preflight, state-bound scope authorization, immutable Repository byte verification, ordinary Vendor/Projection takeover, recoverable External cleanup, and independent skipping.
 - `0007-host-public-web-on-cloudflare.md`: establishes the independent SkillsGo Web workspace and Cloudflare deployment boundary for product, Hub discovery, and documentation pages.
 - `0008-backfill-repository-history.md`: establishes authenticated Hub-admin Repository Backfill, independent asynchronous runs, and historical publication visibility.
 - `0009-freeze-hub-v1-distribution-contract.md`: records the superseded per-Skill artifact and installation-mode design that was replaced before public launch.
