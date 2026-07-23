@@ -109,15 +109,15 @@ Future<List<SkillSummary>> loadRepositorySkills(
         limit: 100,
       );
       for (final skill in page.skills) {
-        if (skill.id == repository || skill.id.startsWith('$repository/-/')) {
-          skills[skill.id] = skill;
+        if (skill.repositoryId == repository) {
+          skills[skill.coordinateKey] = skill;
         }
       }
       final next = page.nextOffset;
       if (next == null || next <= offset) break;
       offset = next;
     }
-    skills[current.id] = current;
+    skills[current.coordinateKey] = current;
     final values = skills.values.toList()
       ..sort((left, right) => left.name.compareTo(right.name));
     return values;

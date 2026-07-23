@@ -8,7 +8,7 @@ import 'system_models.dart';
 
 class SkillSummary {
   const SkillSummary({
-    required this.id,
+    required this.repositoryId,
     required this.installName,
     required this.name,
     required this.source,
@@ -23,7 +23,7 @@ class SkillSummary {
     this.localTargetCount = 0,
   });
 
-  final String id;
+  final String repositoryId;
   final String installName;
   final String name;
   final String source;
@@ -38,6 +38,8 @@ class SkillSummary {
   final int localTargetCount;
 
   bool get isInstalled => localTargetCount > 0;
+
+  String get coordinateKey => '$repositoryId:$name';
 }
 
 class RepositorySummary {

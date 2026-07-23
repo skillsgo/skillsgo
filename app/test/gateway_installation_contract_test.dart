@@ -25,19 +25,19 @@ void main() {
       initialCliPath: r'/Applications/Skills Play/$(echo nope)/skillsgo',
     );
     const summary = SkillSummary(
-      id: r'github.com/a/b/-/test;$(touch nope)',
+      repositoryId: r'github.com/a/b',
       installName: r"test name';$(touch nope)",
-      name: 'Test',
-      source: r'github.com/a/b/-/test;$(touch nope)',
+      name: r'test;$(touch nope)',
+      source: r'github.com/a/b',
       installs: 0,
     );
     const installed = InstalledSkill(
-      inventoryKey: r'hub:github.com/a/b/-/Test ; $(touch nope)',
+      inventoryKey: r'hub:github.com/a/b:Test ; $(touch nope)',
       name: r'Test ; $(touch nope)',
       path: r'/tmp/Test ; $(touch nope)',
       agents: ['codex'],
       targetCount: 1,
-      skillId: r'github.com/a/b/-/Test ; $(touch nope)',
+      repositoryId: r'github.com/a/b',
       targets: [
         SkillInstallationTarget(
           agent: 'codex',
@@ -119,7 +119,6 @@ void main() {
       path: r'/tmp/Test ; $(touch nope)',
       agents: ['codex'],
       targetCount: 1,
-      skillId: r'github.com/a/b/-/Test ; $(touch nope)',
       provenance: LibraryProvenance.external,
       targets: [
         SkillInstallationTarget(
@@ -154,7 +153,7 @@ void main() {
   test(
     'target installation invokes exact Repository Vendor add without a materialization mode',
     () async {
-      const skillId = 'github.com/example/skills/-/demo';
+      const repositoryId = 'github.com/example/skills';
       final runner = FakeProcessRunner()
         ..result = ProcessOutput(
           exitCode: 0,
@@ -185,9 +184,9 @@ void main() {
         initialCliPath: '/Applications/SkillsGo.app/skillsgo',
       );
       const skill = SkillSummary(
-        id: skillId,
+        repositoryId: repositoryId,
         installName: 'demo',
-        name: 'Demo',
+        name: 'demo',
         source: 'github.com/example/skills',
         installs: 0,
         latestVersion: 'v1',

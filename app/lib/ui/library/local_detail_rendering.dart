@@ -56,7 +56,7 @@ extension _LocalDetailRendering on _LocalDetailScreenState {
     final compactProgress = ((offset - 72) / 56).clamp(0.0, 1.0);
     final source =
         remoteIdentity?.source ??
-        (skill.skillId.isNotEmpty ? skill.skillId : skill.name);
+        (skill.repositoryId.isNotEmpty ? skill.repositoryId : skill.name);
     return SizedBox(
       key: const Key('installed-detail-sticky-toolbar'),
       height: 72,

@@ -31,7 +31,7 @@ void main() {
     await tester.tap(
       find.byKey(
         const ValueKey(
-          'library-select-hub:github.com/test/skills/-/local-skill',
+          'library-select-hub:github.com/test/skills:local-skill',
         ),
       ),
     );
@@ -53,12 +53,12 @@ void main() {
     final gateway = FakeSkillsGateway(
       libraryEntries: const [
         InstalledSkill(
-          inventoryKey: 'hub:github.com/test/skills/-/local-skill',
+          inventoryKey: 'hub:github.com/test/skills:local-skill',
           name: 'local-skill',
           path: '/tmp/user/local-skill',
           agents: ['codex', 'claude-code'],
           targetCount: 2,
-          skillId: 'github.com/test/skills/-/local-skill',
+          repositoryId: 'github.com/test/skills',
           versions: ['v1'],
           targets: [
             SkillInstallationTarget(
@@ -87,7 +87,7 @@ void main() {
     await tester.tap(
       find.byKey(
         const ValueKey(
-          'library-select-hub:github.com/test/skills/-/local-skill',
+          'library-select-hub:github.com/test/skills:local-skill',
         ),
       ),
     );
@@ -130,12 +130,12 @@ void main() {
       ],
       libraryEntries: const [
         InstalledSkill(
-          inventoryKey: 'hub:github.com/test/skills/-/local-skill',
+          inventoryKey: 'hub:github.com/test/skills:local-skill',
           name: 'local-skill',
           path: '/tmp/user/local-skill',
           agents: ['codex', 'claude-code'],
           targetCount: 2,
-          skillId: 'github.com/test/skills/-/local-skill',
+          repositoryId: 'github.com/test/skills',
           versions: ['v1'],
           targets: [
             SkillInstallationTarget(
@@ -164,7 +164,7 @@ void main() {
     await tester.tap(
       find.byKey(
         const ValueKey(
-          'library-select-hub:github.com/test/skills/-/local-skill',
+          'library-select-hub:github.com/test/skills:local-skill',
         ),
       ),
     );
@@ -205,12 +205,12 @@ void main() {
     final gateway = FakeSkillsGateway(
       libraryEntries: const [
         InstalledSkill(
-          inventoryKey: 'hub:github.com/test/skills/-/local-skill',
+          inventoryKey: 'hub:github.com/test/skills:local-skill',
           name: 'local-skill',
           path: '/tmp/local-skill',
           agents: ['codex'],
           targetCount: 1,
-          skillId: 'github.com/test/skills/-/local-skill',
+          repositoryId: 'github.com/test/skills',
           versions: ['v1'],
           targets: [
             SkillInstallationTarget(

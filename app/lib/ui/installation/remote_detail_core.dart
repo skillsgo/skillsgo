@@ -163,8 +163,9 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
     if (managingTarget) return;
     setState(() => managingTarget = true);
     try {
-      final query = LibraryEntryQuery.bySkill(
-        skillId: widget.skill.id,
+      final query = LibraryEntryQuery.byCoordinate(
+        repositoryId: widget.skill.repositoryId,
+        skillName: widget.skill.name,
         targetPath: target.path,
         agent: target.agent,
       );
@@ -183,7 +184,12 @@ class RemoteDetailScreenState extends ConsumerState<RemoteDetailScreen> {
       );
       final after = await ref
           .read(libraryProvider.notifier)
-          .refreshEntry(LibraryEntryQuery.bySkill(skillId: widget.skill.id));
+          .refreshEntry(
+            LibraryEntryQuery.byCoordinate(
+              repositoryId: widget.skill.repositoryId,
+              skillName: widget.skill.name,
+            ),
+          );
       final refreshed = await widget.gateway.loadRemoteDetail(widget.skill);
       if (!mounted) return;
       setState(() {

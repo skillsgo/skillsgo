@@ -92,8 +92,8 @@ void main() {
         manifest.readAsStringSync(),
         allOf(
           contains('github.com/skillsgo/e2e-versioned-skills:'),
-          contains('skills/alpha'),
-          contains('skills/resourceful'),
+          contains('- alpha'),
+          contains('- resourceful'),
         ),
       );
       expect(

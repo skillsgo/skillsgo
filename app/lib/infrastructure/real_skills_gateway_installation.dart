@@ -22,10 +22,7 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
       );
     }
     await _ensureHubOrigin();
-    final repositoryID = skill.id.split('/-/').first;
-    final memberPath = skill.id.contains('/-/')
-        ? skill.id.split('/-/').last
-        : '.';
+    final repositoryID = skill.repositoryId;
     final groups = <String, List<InstallationTargetSelection>>{};
     for (final selection in selections) {
       final key = '${selection.scope.name}\u0000${selection.projectRoot}';
@@ -38,7 +35,7 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
         'add',
         '$repositoryID@$immutableVersion',
         '--skill',
-        memberPath,
+        skill.name,
         for (final selection in group) ...['--agent', selection.agent],
         if (first.scope == InstallationScope.user) '--global',
         if (first.scope == InstallationScope.project) ...[
@@ -70,7 +67,8 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
       }
     }
     return InstallationExecution(
-      skillId: skill.id,
+      repositoryId: skill.repositoryId,
+      skillName: skill.name,
       version: immutableVersion,
       name: skill.installName,
       results: List.unmodifiable(results),

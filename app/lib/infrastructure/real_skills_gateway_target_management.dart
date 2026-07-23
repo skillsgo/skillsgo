@@ -53,7 +53,7 @@ mixin _RealSkillsGatewayTargetManagement
         final raw = rawTargets[index];
         if (raw is! Map<String, dynamic> ||
             raw['name'] is! String ||
-            raw['skillId'] != skill.skillId ||
+            raw['skillId'] is! String ||
             raw['version'] != targets[index].version ||
             raw['allowedActions'] is! List ||
             raw['stateToken'] is! String ||
@@ -88,7 +88,7 @@ mixin _RealSkillsGatewayTargetManagement
           TargetManagementPlanItem(
             target: target,
             name: raw['name'] as String,
-            skillId: skill.skillId,
+            skillId: raw['skillId'] as String,
             version: expected.version,
             health: health,
             allowedActions: List.unmodifiable(allowedActions),
@@ -131,7 +131,7 @@ mixin _RealSkillsGatewayTargetManagement
     InstalledSkill skill,
     List<SkillInstallationTarget> requested,
   ) {
-    if (skill.skillId.isEmpty ||
+    if (skill.repositoryId.isEmpty ||
         requested.isEmpty ||
         requested.any((target) => target.version.isEmpty)) {
       throw const SkillsException(
@@ -167,12 +167,13 @@ mixin _RealSkillsGatewayTargetManagement
           TargetManagementPlanItem(
             target: planTargets[index],
             name: skill.name,
-            skillId: skill.skillId,
+            skillId: '',
+            repositoryId: skill.repositoryId,
             version: bindings[index].version,
             health: bindings[index].health,
             allowedActions: const [TargetManagementAction.remove],
             stateToken:
-                'repository:${skill.skillId}:${bindings[index].version}',
+                'repository:${skill.repositoryId}:${skill.name}:${bindings[index].version}',
             workspaceMetadataChange: true,
             affectedBindings: List.unmodifiable([
               for (
@@ -253,13 +254,14 @@ mixin _RealSkillsGatewayTargetManagement
             target: item.target,
             name: item.name,
             skillId: item.skillId,
+            repositoryId: item.repositoryId,
             version: item.version,
             action: TargetManagementAction.remove,
             state: InstallationProgressState.started,
           ),
         );
       }
-      final arguments = <String>['remove', first.skillId];
+      final arguments = <String>['remove', first.name];
       if (first.target.scope == InstallationScope.user) {
         arguments.add('--global');
       } else {
@@ -273,7 +275,7 @@ mixin _RealSkillsGatewayTargetManagement
           raw['schemaVersion'] != 1 ||
           raw['phase'] != 'repository-remove' ||
           raw['skills'] is! List ||
-          !(raw['skills'] as List).contains(first.skillId)) {
+          !(raw['skills'] as List).contains(first.name)) {
         throw const SkillsException(
           'The SkillsGo CLI returned invalid Repository removal JSON.',
           kind: SkillsFailureKind.invalidResponse,
@@ -284,6 +286,7 @@ mixin _RealSkillsGatewayTargetManagement
           target: item.target,
           name: item.name,
           skillId: item.skillId,
+          repositoryId: item.repositoryId,
           version: item.version,
           action: TargetManagementAction.remove,
           outcome: TargetManagementOutcome.succeeded,
@@ -396,6 +399,7 @@ mixin _RealSkillsGatewayTargetManagement
               target: target,
               name: item.name,
               skillId: item.skillId,
+              repositoryId: item.repositoryId,
               version: item.version,
               action: item.action!,
               state: state,

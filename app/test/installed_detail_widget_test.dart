@@ -45,12 +45,12 @@ void main() {
       version: 'v1',
     );
     const hub = InstalledSkill(
-      inventoryKey: 'hub:github.com/test/skills/-/action-demo',
+      inventoryKey: 'hub:github.com/test/skills:action-demo',
       name: 'action-demo',
       path: '/Users/test/.codex/skills/action-demo',
       agents: ['codex'],
       targetCount: 1,
-      skillId: 'github.com/test/skills/-/action-demo',
+      repositoryId: 'github.com/test/skills',
       versions: ['v1'],
       targets: [target],
     );

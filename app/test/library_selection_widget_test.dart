@@ -28,12 +28,12 @@ void main() {
         accessState: ProjectAccessState.accessible,
       );
       const hubEntry = InstalledSkill(
-        inventoryKey: 'hub:github.com/acme/skills/-/hub-demo',
+        inventoryKey: 'hub:github.com/acme/skills:hub-demo',
         name: 'hub-demo',
         path: '/work/alpha/.agents/skills/hub-demo',
         agents: ['codex'],
         targetCount: 1,
-        skillId: 'github.com/acme/skills/-/hub-demo',
+        repositoryId: 'github.com/acme/skills',
         projects: ['/work/alpha'],
         versions: ['v1'],
         targets: [
@@ -116,10 +116,10 @@ void main() {
         accessState: ProjectAccessState.accessible,
       );
       const entry = InstalledSkill(
-        inventoryKey: 'hub:github.com/example/skills/-/demo',
+        inventoryKey: 'hub:github.com/example/skills:demo',
         name: 'demo',
         description: 'Coordinates reliable multi-Agent skill workflows.',
-        skillId: 'github.com/example/skills/-/demo',
+        repositoryId: 'github.com/example/skills',
         path: '/Users/test/.codex/skills/demo',
         agents: ['claude-code', 'codex'],
         targetCount: 3,
@@ -304,9 +304,9 @@ void main() {
       await tester.binding.setSurfaceSize(const Size(1200, 800));
       const path = '/missing/.codex/skills/demo';
       const entry = InstalledSkill(
-        inventoryKey: 'hub:github.com/example/skills/-/demo',
+        inventoryKey: 'hub:github.com/example/skills:demo',
         name: 'demo',
-        skillId: 'github.com/example/skills/-/demo',
+        repositoryId: 'github.com/example/skills',
         path: path,
         agents: ['codex'],
         targetCount: 1,
@@ -356,9 +356,9 @@ void main() {
           gateway: FakeSkillsGateway(
             libraryEntries: const [
               InstalledSkill(
-                inventoryKey: 'hub:github.com/example/skills/-/demo',
+                inventoryKey: 'hub:github.com/example/skills:demo',
                 name: 'demo',
-                skillId: 'github.com/example/skills/-/demo',
+                repositoryId: 'github.com/example/skills',
                 path: '/Users/test/.codex/skills/demo',
                 agents: ['codex'],
                 targetCount: 1,
@@ -381,7 +381,7 @@ void main() {
       await tester.pumpAndSettle();
 
       final selection = find.byKey(
-        const ValueKey('library-select-hub:github.com/example/skills/-/demo'),
+        const ValueKey('library-select-hub:github.com/example/skills:demo'),
       );
       const visibleKey = ValueKey('selection-bar-visible');
       await tester.tap(selection);
@@ -442,9 +442,9 @@ void main() {
           gateway: FakeSkillsGateway(
             libraryEntries: const [
               InstalledSkill(
-                inventoryKey: 'hub:github.com/example/skills/-/demo',
+                inventoryKey: 'hub:github.com/example/skills:demo',
                 name: 'demo',
-                skillId: 'github.com/example/skills/-/demo',
+                repositoryId: 'github.com/example/skills',
                 path: '/Users/test/.codex/skills/demo',
                 agents: ['codex'],
                 targetCount: 1,
@@ -467,7 +467,7 @@ void main() {
       await tester.pumpAndSettle();
       await tester.tap(
         find.byKey(
-          const ValueKey('library-select-hub:github.com/example/skills/-/demo'),
+          const ValueKey('library-select-hub:github.com/example/skills:demo'),
         ),
       );
       await tester.pump();

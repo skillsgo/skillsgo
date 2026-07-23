@@ -77,7 +77,11 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
     installed = succeeded > 0;
     final entries = libraryEntries;
     if (entries != null && succeeded > 0) {
-      final index = entries.indexWhere((entry) => entry.skillId == skill.id);
+      final index = entries.indexWhere(
+        (entry) =>
+            entry.repositoryId == skill.repositoryId &&
+            entry.name == skill.name,
+      );
       if (index >= 0) {
         final existing = entries[index];
         final targets = List<SkillInstallationTarget>.of(existing.targets);
@@ -106,7 +110,8 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
       }
     }
     return InstallationExecution(
-      skillId: skill.id,
+      repositoryId: skill.repositoryId,
+      skillName: skill.name,
       version: immutableVersion,
       name: skill.installName,
       results: results,

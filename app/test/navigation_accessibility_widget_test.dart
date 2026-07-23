@@ -27,7 +27,7 @@ void main() {
       searchResults: List.generate(
         30,
         (index) => SkillSummary(
-          id: 'example/skills/skill-$index',
+          repositoryId: 'example/skills/skill-$index',
           installName: 'skill-$index',
           name: 'Skill $index',
           source: 'example/skills',
@@ -71,7 +71,7 @@ void main() {
     expect(find.text('Skill 20'), findsOneWidget);
     expect(
       FocusManager.instance.primaryFocus?.debugLabel,
-      'skill-card-example/skills/skill-20',
+      'skill-card-example/skills/skill-20:Skill 20',
     );
   });
 
@@ -267,7 +267,7 @@ void main() {
       searchResults: List.generate(
         30,
         (index) => SkillSummary(
-          id: 'example/skills/skill-$index',
+          repositoryId: 'example/skills/skill-$index',
           installName: 'skill-$index',
           name: 'Skill $index',
           source: 'example/skills',

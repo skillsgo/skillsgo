@@ -64,7 +64,7 @@ void main() {
     'Repository request resolves and installs every member in order',
     () async {
       const second = SkillSummary(
-        id: 'example/skills/dart-pro',
+        repositoryId: 'example/skills/dart-pro',
         installName: 'dart-pro',
         name: 'Dart Pro',
         source: 'example/skills',
@@ -85,9 +85,9 @@ void main() {
 
       expect(state.succeeded, isTrue);
       expect(state.executions, hasLength(2));
-      expect(state.executions.map((item) => item.skillId), [
-        defaultSearchResults.first.id,
-        second.id,
+      expect(state.executions.map((item) => item.repositoryId), [
+        defaultSearchResults.first.repositoryId,
+        second.repositoryId,
       ]);
       expect(state.executions.map((item) => item.version), ['main', 'v1.2.0']);
       expect(gateway.detailLoads, 0);

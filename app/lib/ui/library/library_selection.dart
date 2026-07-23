@@ -309,9 +309,8 @@ String _installationCoverageLabel(
 }
 
 String _installedSourceLabel(BuildContext context, InstalledSkill skill) {
-  if (skill.skillId.isEmpty) return context.l10n.localSource;
-  final separator = skill.skillId.indexOf('/-/');
-  return separator < 0 ? skill.skillId : skill.skillId.substring(0, separator);
+  if (skill.repositoryId.isEmpty) return context.l10n.localSource;
+  return skill.repositoryId;
 }
 
 class _LibraryScopeToggle extends StatelessWidget {

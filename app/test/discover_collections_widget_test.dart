@@ -289,7 +289,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     const base = SkillSummary(
-      id: 'github.com/acme/skills/-/planner',
+      repositoryId: 'github.com/acme/skills',
       installName: 'planner',
       name: 'Planner',
       description: 'Turn product goals into a concrete execution plan.',
@@ -307,7 +307,7 @@ void main() {
         'trending:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              id: 'github.com/acme/skills/-/planner',
+              repositoryId: 'github.com/acme/skills',
               installName: 'planner',
               name: 'Planner',
               description: 'Turn product goals into a concrete execution plan.',
@@ -321,7 +321,7 @@ void main() {
         'hot:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              id: 'github.com/acme/skills/-/planner',
+              repositoryId: 'github.com/acme/skills',
               installName: 'planner',
               name: 'Planner',
               description: 'Turn product goals into a concrete execution plan.',
@@ -374,7 +374,7 @@ void main() {
           skills: List.generate(
             24,
             (index) => SkillSummary(
-              id: 'example/skills/ranked-$index',
+              repositoryId: 'example/skills/ranked-$index',
               installName: 'ranked-$index',
               name: 'Ranked $index',
               source: 'example/skills',
@@ -430,7 +430,7 @@ void main() {
         'ranking:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              id: 'github.com/acme/a',
+              repositoryId: 'github.com/acme/a',
               installName: 'a',
               name: 'Alpha',
               source: 'github.com/acme/a',
@@ -442,7 +442,7 @@ void main() {
         'ranking:20': DiscoveryPage(
           skills: [
             SkillSummary(
-              id: 'github.com/acme/b',
+              repositoryId: 'github.com/acme/b',
               installName: 'b',
               name: 'Bravo',
               source: 'github.com/acme/b',
@@ -472,7 +472,7 @@ void main() {
         'ranking:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              id: 'github.com/acme/a',
+              repositoryId: 'github.com/acme/a',
               installName: 'a',
               name: 'Alpha',
               source: 'github.com/acme/a',

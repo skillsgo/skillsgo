@@ -93,16 +93,17 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
   }
 
   Future<void> _loadRemoteIdentity() async {
-    if (skill.provenance != LibraryProvenance.hub || skill.skillId.isEmpty) {
+    if (skill.provenance != LibraryProvenance.hub ||
+        skill.repositoryId.isEmpty) {
       return;
     }
     try {
       final value = await widget.gateway.loadRemoteDetail(
         SkillSummary(
-          id: skill.skillId,
+          repositoryId: skill.repositoryId,
           installName: skill.name,
           name: skill.name,
-          source: skill.skillId,
+          source: skill.repositoryId,
           installs: 0,
           latestVersion: skill.versions.firstOrNull ?? '',
           description: skill.description,
@@ -206,11 +207,7 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
       installingMore = true;
       result = null;
     });
-    final operation = ref.read(
-      installOperationProvider(
-        skill.skillId.isEmpty ? skill.inventoryKey : skill.skillId,
-      ),
-    );
+    final operation = ref.read(installOperationProvider(skill.inventoryKey));
     late List<Object> values;
     try {
       values = await Future.wait([
@@ -232,7 +229,7 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
     try {
       var projects = values[1] as List<AddedProject>;
       final summary = SkillSummary(
-        id: skill.skillId,
+        repositoryId: skill.repositoryId,
         installName: skill.name,
         name: skill.name,
         source: currentDetail.source,
@@ -312,7 +309,9 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
               name: skill.name,
               source:
                   remoteIdentity?.source ??
-                  (skill.skillId.isNotEmpty ? skill.skillId : skill.name),
+                  (skill.repositoryId.isNotEmpty
+                      ? skill.repositoryId
+                      : skill.name),
               description: remoteIdentity?.description ?? skill.description,
               imageUrl: remoteIdentity?.imageUrl,
               avatarKey: const Key('installed-detail-skill-avatar'),

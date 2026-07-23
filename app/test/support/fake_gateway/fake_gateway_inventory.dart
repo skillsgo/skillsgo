@@ -17,12 +17,12 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
             (installed
                 ? [
                     InstalledSkill(
-                      inventoryKey: 'hub:github.com/test/skills/-/local-skill',
+                      inventoryKey: 'hub:github.com/test/skills:local-skill',
                       name: 'local-skill',
                       path: '/tmp/local-skill',
                       agents: agentNames,
                       targetCount: agentNames.length,
-                      skillId: 'github.com/test/skills/-/local-skill',
+                      repositoryId: 'github.com/test/skills',
                       versions: const ['v1'],
                       targets: [
                         for (final agent in agentNames)
