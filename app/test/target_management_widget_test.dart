@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Library selection and exact-target removal and repair management behavior.
+ * [OUTPUT]: Specifies Library selection, exact External removal, and modified-target safety behavior.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -119,26 +119,27 @@ void main() {
     final gateway = FakeSkillsGateway(
       libraryEntries: const [
         InstalledSkill(
-          inventoryKey: 'hub:github.com/example/skills/-/demo',
+          inventoryKey: 'external:/Users/test/.codex/skills/demo',
           name: 'demo',
           skillId: 'github.com/example/skills/-/demo',
           path: '/Users/test/.codex/skills/demo',
           agents: ['codex', 'claude-code'],
           targetCount: 2,
-          versions: ['v1'],
+          versions: [],
+          provenance: LibraryProvenance.external,
           targets: [
             SkillInstallationTarget(
               agent: 'codex',
               scope: InstallationScope.user,
               path: '/Users/test/.codex/skills/demo',
-              version: 'v1',
+              version: '',
             ),
             SkillInstallationTarget(
               agent: 'claude-code',
               scope: InstallationScope.project,
               projectRoot: '/work/demo',
               path: '/work/demo/.claude/skills/demo',
-              version: 'v1',
+              version: '',
             ),
           ],
         ),
@@ -151,7 +152,9 @@ void main() {
 
     await tester.tap(
       find.byKey(
-        const ValueKey('library-select-hub:github.com/example/skills/-/demo'),
+        const ValueKey(
+          'library-select-external:/Users/test/.codex/skills/demo',
+        ),
       ),
     );
     await tester.pumpAndSettle();
@@ -230,20 +233,13 @@ void main() {
     await tester.tap(find.byKey(const Key('library-manage-selected')));
     await tester.pumpAndSettle();
 
-    expect(find.text('Repair'), findsOneWidget);
-    expect(
-      find.descendant(
-        of: find.byType(SkillsDialog),
-        matching: find.byType(SkillsCheckbox),
-      ),
-      findsOneWidget,
-    );
-    await tester.tap(find.text('Repair'));
-    await tester.pumpAndSettle();
-    expect(find.text('Stop Managing'), findsNothing);
+    expect(find.text('Repair'), findsNothing);
+    expect(find.byType(SkillsDialog), findsNothing);
   });
 
-  testWidgets('Repair restores an unhealthy managed target', (tester) async {
+  testWidgets('modified managed targets are never overwritten automatically', (
+    tester,
+  ) async {
     await tester.binding.setSurfaceSize(const Size(1400, 900));
     final gateway = FakeSkillsGateway(
       libraryEntries: const [
@@ -280,20 +276,11 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key('library-manage-selected')));
     await tester.pumpAndSettle();
-    await tester.tap(find.text('Repair'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Apply selected actions'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Close'));
-    await tester.pumpAndSettle();
-
-    expect(
-      gateway.managementTargetHistory.single.values.single,
-      TargetManagementAction.repair,
-    );
+    expect(find.text('Repair'), findsNothing);
+    expect(gateway.managementTargetHistory, isEmpty);
     expect(
       gateway.libraryEntries!.single.targets.single.health,
-      InstallationHealth.healthy,
+      InstallationHealth.localModification,
     );
   });
 }

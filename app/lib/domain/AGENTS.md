@@ -8,7 +8,7 @@
 - `discovery_models.dart`: owns public Skill summaries, repository metadata, discovery pages, auditable files, and risk evidence.
 - `installation_models.dart`: owns Installation Request target selection, execution results, failures, and stable target identity.
 - `update_models.dart`: owns reviewed Update Plans, target results, execution summaries, and progress.
-- `target_management_models.dart`: owns reviewed Remove and Repair plans, execution results, and progress.
+- `target_management_models.dart`: owns reviewed External Installation removal plans, execution results, and progress.
 - `library_models.dart`: owns Agent catalogs, Added Projects, onboarding state, Skill detail, unified Library entries, and Batch Takeover scope/plan/result values.
 - `presentation_language.dart`: owns the persisted Presentation Locale value and BCP 47 content tag resolution.
 

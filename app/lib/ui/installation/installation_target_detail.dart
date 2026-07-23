@@ -183,17 +183,6 @@ class _InstallationTargetDetailState extends State<_InstallationTargetDetail> {
                         danger: true,
                       ),
               ),
-            ] else if (widget.onRepair != null) ...[
-              const SizedBox(width: 6),
-              _actionButton(
-                context,
-                key: ValueKey(
-                  'repair-installation-target-${widget.target.path}',
-                ),
-                label: context.l10n.repairTarget,
-                onPressed: () => _run(widget.onRepair),
-                busy: operating,
-              ),
             ],
             const SizedBox(width: 18),
           ],

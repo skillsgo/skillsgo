@@ -58,7 +58,7 @@ enum UpdatePlanAction { update, current, pinned, failed }
 
 enum UpdateTargetOutcome { succeeded, skipped, failed }
 
-enum TargetManagementAction { remove, repair }
+enum TargetManagementAction { remove }
 
 enum TargetManagementOutcome { succeeded, failed }
 

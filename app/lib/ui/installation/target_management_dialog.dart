@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on reviewed Target Operation Plans, Riverpod execution state, progress callbacks, and localized confirmation/results UI.
- * [OUTPUT]: Provides the public Remove/Repair selection, execution, progress, and result dialog.
+ * [OUTPUT]: Provides the public exact-path removal selection, execution, progress, and result dialog.
  * [POS]: Serves as the Target Operation Plan journey inside the Installation module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -35,11 +35,6 @@ class TargetManagementDialogState
     for (final item in widget.plan.targets) {
       if (!item.allowedActions.contains(action)) continue;
       selectedActions[updateTargetKey(item.target)] = action;
-      if (action == TargetManagementAction.repair) {
-        for (final binding in item.affectedBindings) {
-          selectedActions[updateTargetKey(binding)] = action;
-        }
-      }
     }
   }
 
@@ -71,23 +66,9 @@ class TargetManagementDialogState
       final key = updateTargetKey(item.target);
       if (selectedActions[key] == action) {
         selectedActions.remove(key);
-        if (action == TargetManagementAction.repair) {
-          for (final binding in item.affectedBindings) {
-            selectedActions.remove(updateTargetKey(binding));
-          }
-        }
         return;
       }
-      final bindings = action == TargetManagementAction.repair
-          ? item.affectedBindings
-          : const <InstallationPlanTarget>[];
-      if (bindings.isEmpty) {
-        selectedActions[key] = action;
-      } else {
-        for (final binding in bindings) {
-          selectedActions[updateTargetKey(binding)] = action;
-        }
-      }
+      selectedActions[key] = action;
     });
   }
 
@@ -101,17 +82,11 @@ class TargetManagementDialogState
   Widget _applyButton(BuildContext context) {
     final enabled = !operating && selectedActions.isNotEmpty;
     final child = Text(context.l10n.applyTargetActions);
-    final destructive = selectedActions.values.any(
-      (action) => action != TargetManagementAction.repair,
+    return SkillsButton.destructive(
+      enabled: enabled,
+      onPressed: _execute,
+      child: child,
     );
-    if (destructive) {
-      return SkillsButton.destructive(
-        enabled: enabled,
-        onPressed: _execute,
-        child: child,
-      );
-    }
-    return SkillsButton(enabled: enabled, onPressed: _execute, child: child);
   }
 
   @override
@@ -159,9 +134,7 @@ class TargetManagementDialogState
   Widget _selection() {
     final plan = selectedPlan;
     final changesWorkspace = plan.targets.any(
-      (item) =>
-          item.workspaceMetadataChange &&
-          item.action != TargetManagementAction.repair,
+      (item) => item.workspaceMetadataChange,
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -203,9 +176,6 @@ class TargetManagementDialogState
                 final item = widget.plan.targets[index];
                 final key = updateTargetKey(item.target);
                 final selected = selectedActions[key];
-                final removable =
-                    item.allowedActions.length == 1 &&
-                    item.allowedActions.single == TargetManagementAction.remove;
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 11),
                   child: Row(
@@ -243,40 +213,13 @@ class TargetManagementDialogState
                       const SizedBox(width: 12),
                       installationHealthChip(context, item.health),
                       const SizedBox(width: 10),
-                      if (removable)
-                        SkillsCheckbox(
-                          value: selected == TargetManagementAction.remove,
-                          enabled: !operating,
-                          onChanged: (_) => _selectAction(
-                            item,
-                            TargetManagementAction.remove,
-                          ),
-                          label: Text(context.l10n.remove),
-                        )
-                      else
-                        Wrap(
-                          spacing: 7,
-                          children: [
-                            if (item.allowedActions.contains(
-                              TargetManagementAction.repair,
-                            ))
-                              SkillsButton.outline(
-                                size: SkillsButtonSize.sm,
-                                enabled: !operating,
-                                backgroundColor:
-                                    selected == TargetManagementAction.repair
-                                    ? Theme.of(
-                                        context,
-                                      ).colorScheme.surfaceContainer
-                                    : null,
-                                onPressed: () => _selectAction(
-                                  item,
-                                  TargetManagementAction.repair,
-                                ),
-                                child: Text(context.l10n.repairTarget),
-                              ),
-                          ],
-                        ),
+                      SkillsCheckbox(
+                        value: selected == TargetManagementAction.remove,
+                        enabled: !operating,
+                        onChanged: (_) =>
+                            _selectAction(item, TargetManagementAction.remove),
+                        label: Text(context.l10n.remove),
+                      ),
                     ],
                   ),
                 );
@@ -351,5 +294,4 @@ String _managementActionLabel(
   TargetManagementAction action,
 ) => switch (action) {
   TargetManagementAction.remove => context.l10n.remove,
-  TargetManagementAction.repair => context.l10n.repairTarget,
 };

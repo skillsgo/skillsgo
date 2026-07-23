@@ -12,6 +12,13 @@ mixin FakeGatewayTargetManagement on FakeSkillsGatewayCore {
     InstalledSkill skill,
     List<SkillInstallationTarget> targets,
   ) async {
+    if (skill.provenance != LibraryProvenance.external ||
+        targets.any((target) => target.health != InstallationHealth.healthy)) {
+      throw const SkillsException(
+        'Only healthy External Installations support exact-path removal.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
     final items = [
       for (final target in targets)
         TargetManagementPlanItem(
@@ -25,29 +32,14 @@ mixin FakeGatewayTargetManagement on FakeSkillsGatewayCore {
           skillId: skill.skillId,
           version: target.version,
           health: target.health,
-          allowedActions: target.health == InstallationHealth.healthy
-              ? const [TargetManagementAction.remove]
-              : const [TargetManagementAction.repair],
+          allowedActions: const [TargetManagementAction.remove],
           stateToken: 'manage-${target.agent}-${target.path}',
           workspaceMetadataChange: target.scope == InstallationScope.project,
         ),
     ];
     return TargetManagementPlan(
       targets: items,
-      summary: TargetManagementPlanSummary(
-        removable: items
-            .where(
-              (item) =>
-                  item.allowedActions.contains(TargetManagementAction.remove),
-            )
-            .length,
-        repairable: items
-            .where(
-              (item) =>
-                  item.allowedActions.contains(TargetManagementAction.repair),
-            )
-            .length,
-      ),
+      summary: TargetManagementPlanSummary(removable: items.length),
     );
   }
 
@@ -109,20 +101,7 @@ mixin FakeGatewayTargetManagement on FakeSkillsGatewayCore {
             if (action == TargetManagementAction.remove) {
               continue;
             }
-            if (action == TargetManagementAction.repair) {
-              remaining.add(
-                SkillInstallationTarget(
-                  agent: target.agent,
-                  scope: target.scope,
-                  path: target.path,
-                  version: target.version,
-                  projectRoot: target.projectRoot,
-                  health: InstallationHealth.healthy,
-                ),
-              );
-            } else {
-              remaining.add(target);
-            }
+            remaining.add(target);
           }
           return remaining.isEmpty ? null : skill.withTargets(remaining);
         })

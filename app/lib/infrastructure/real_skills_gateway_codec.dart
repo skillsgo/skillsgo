@@ -278,7 +278,6 @@ TargetFailure? _targetFailure(Object? raw) {
 TargetManagementAction _targetManagementAction(Object? value) =>
     switch (value) {
       'remove' => TargetManagementAction.remove,
-      'repair' => TargetManagementAction.repair,
       _ => throw const FormatException(),
     };
 
@@ -292,7 +291,6 @@ TargetManagementOutcome _targetManagementOutcome(Object? value) =>
 String _targetManagementActionValue(TargetManagementAction action) =>
     switch (action) {
       TargetManagementAction.remove => 'remove',
-      TargetManagementAction.repair => 'repair',
     };
 
 TargetManagementResult _targetManagementResult(

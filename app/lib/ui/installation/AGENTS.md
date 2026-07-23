@@ -8,7 +8,7 @@
 - `installation_target_detail.dart`: renders installed-target health, scope, Agent, and version diagnostics.
 - `remote_detail_core.dart`: owns remote-detail lifecycle, loading, retry, and install-operation coordination.
 - `remote_detail_rendering.dart`: renders remote-detail content, failures, risk, and action state.
-- `target_management_dialog.dart`: reviews and executes exact Remove or Repair actions.
+- `target_management_dialog.dart`: reviews and executes exact External Installation removal actions.
 - `update_plan_dialog.dart`: reviews exact update targets and executes target-specific retries.
 
 ## Architectural Boundary
