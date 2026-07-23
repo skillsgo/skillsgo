@@ -16,7 +16,7 @@ import (
 
 func ReadVerifiedVendor(vendorRoot, repositoryID, version, expectedSum string) ([]byte, error) {
 	root := CoordinatePath(vendorRoot, repositoryID, version)
-	actualSum, err := protocolartifact.RepositoryDirectorySum(root)
+	actualSum, err := protocolartifact.RepositoryDirectorySum(root, repositoryID, version)
 	if err != nil {
 		return nil, fmt.Errorf("verify Scope Vendor %s@%s: %w", repositoryID, version, err)
 	}
