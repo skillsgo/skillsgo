@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, Installation Request codecs, file save picker, and discovery/Library models.
- * [OUTPUT]: Provides Repository Vendor installation grouped by declaration scope and compatibility single-target installation.
+ * [OUTPUT]: Provides Repository Vendor installation grouped by declaration scope.
  * [POS]: Serves as the Installation Request capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -81,24 +81,5 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
         failed: 0,
       ),
     );
-  }
-
-  @override
-  Future<CommandResult> install(SkillSummary skill) async {
-    await _ensureHubOrigin();
-    return _runCli([
-      'add',
-      '${skill.id.split('/-/').first}@${skill.latestVersion}',
-      '--skill',
-      skill.id.contains('/-/') ? skill.id.split('/-/').last : '.',
-      '--global',
-      '--agent',
-      'codex',
-      '--yes',
-      '--output',
-      'json',
-      '--hub',
-      _hubOrigin,
-    ]);
   }
 }

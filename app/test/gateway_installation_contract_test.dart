@@ -48,19 +48,30 @@ void main() {
       ],
     );
 
-    await gateway.install(summary);
+    runner.result = const ProcessOutput(
+      exitCode: 0,
+      stdout:
+          r'{"schemaVersion":1,"phase":"repository-install","repository":"github.com/a/b","version":"v1","sum":"h1:test","skills":["test;$(touch nope)"],"agents":["codex"],"vendor":"/tmp/vendor","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skillsgo.yaml","lock":"/tmp/skillsgo.lock"}}',
+      stderr: '',
+    );
+    await gateway.installTargets(summary, 'v1', const [
+      InstallationTargetSelection(
+        agent: 'codex',
+        scope: InstallationScope.user,
+      ),
+    ]);
     expect(
       runner.lastExecutable,
       r'/Applications/Skills Play/$(echo nope)/skillsgo',
     );
     expect(runner.lastArguments, [
       'add',
-      r'github.com/a/b@main',
+      r'github.com/a/b@v1',
       '--skill',
       r'test;$(touch nope)',
-      '--global',
       '--agent',
       'codex',
+      '--global',
       '--yes',
       '--output',
       'json',

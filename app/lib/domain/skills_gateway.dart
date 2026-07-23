@@ -73,7 +73,6 @@ abstract interface class SkillsGateway {
     BatchTakeoverScope scope,
   );
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill);
-  Future<CommandResult> install(SkillSummary skill);
   Future<TargetManagementPlan> preflightTargetManagement(
     InstalledSkill skill,
     List<SkillInstallationTarget> targets,
