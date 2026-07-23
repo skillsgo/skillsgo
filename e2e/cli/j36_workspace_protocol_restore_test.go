@@ -21,7 +21,7 @@ func TestJ36WorkspaceProtocolAndRestore(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testSkillID+"@"+testSkillVersion,
+		"add", testRepositoryID+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 		"--agent", "claude-code",
 		"--yes",
@@ -38,7 +38,7 @@ func TestJ36WorkspaceProtocolAndRestore(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(manifestBefore), installed.Repository+":")
 	require.Contains(t, string(manifestBefore), "version: "+installed.Version)
-	require.Contains(t, string(manifestBefore), "- skills/alpha")
+	require.Contains(t, string(manifestBefore), "- alpha")
 	require.Contains(t, string(manifestBefore), "- claude-code")
 	require.Contains(t, string(manifestBefore), "- codex")
 	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml")
@@ -47,12 +47,12 @@ func TestJ36WorkspaceProtocolAndRestore(t *testing.T) {
 
 	proxyInfo := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/"+installed.Repository+"/@v/"+installed.Version+".info")
 	require.Equal(t, 0, proxyInfo.exitCode, proxyInfo.output)
-	apiDetail := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/skills/"+testSkillID)
+	apiDetail := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/skills/detail?repositoryId="+installed.Repository+"&name="+testSkillName)
 	require.Equal(t, 0, apiDetail.exitCode, apiDetail.output)
 	for _, legacyURL := range []string{
 		"http://127.0.0.1:3000/mod/" + installed.Repository + "/@v/" + installed.Version + ".info",
-		"http://127.0.0.1:3000/" + testSkillID + "/@v/" + installed.Version + ".info",
-		"http://127.0.0.1:3000/v1/skills/" + testSkillID,
+		"http://127.0.0.1:3000/" + installed.Repository + "/-/skills/alpha/@v/" + installed.Version + ".info",
+		"http://127.0.0.1:3000/v1/skills/" + installed.Repository + "/-/skills/alpha",
 	} {
 		legacy := execInContainer(t, ctx, container, "wget", "-S", "-qO-", legacyURL)
 		require.NotEqual(t, 0, legacy.exitCode, legacyURL+" unexpectedly succeeded: "+legacy.output)

@@ -30,7 +30,7 @@ func TestJ29RepositoryHistory(t *testing.T) {
 
 	require.NoError(t, os.MkdirAll(filepath.Join(sandboxRoot, "old-project"), 0o755))
 	oldBeta := execCLIFrom(t, ctx, container, "/e2e/old-project",
-		"add", "https://"+repository+"@v1.0.0", "--skill", "skills/beta",
+		"add", "https://"+repository+"@v1.0.0", "--skill", "beta",
 		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, oldBeta.exitCode, oldBeta.output)
@@ -41,5 +41,6 @@ func TestJ29RepositoryHistory(t *testing.T) {
 	nestedOld := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/"+repository+"/@v/v1.0.0.info")
 	require.Equal(t, 0, nestedOld.exitCode, nestedOld.output)
 	require.Contains(t, nestedOld.output, `"Version":"v1.0.0"`)
-	require.Contains(t, nestedOld.output, repository+"/-/skills/beta")
+	require.Contains(t, nestedOld.output, `"Name":"beta"`)
+	require.Contains(t, nestedOld.output, `"SkillPath":"skills/beta"`)
 }

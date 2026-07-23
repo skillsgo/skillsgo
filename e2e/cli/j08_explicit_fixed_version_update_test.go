@@ -21,11 +21,10 @@ func TestJ08ExplicitFixedVersionUpdate(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 	const (
 		repository = "fixtures.test/group/subgroup/collection"
-		skillID    = repository + "/-/skills/alpha"
 	)
 
 	installedResult := execCLI(t, ctx, container,
-		"add", skillID+"@v1.0.0", "--agent", "codex", "--yes", "--output", "json",
+		"add", repository+"@v1.0.0", "--skill", "alpha", "--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, installedResult.exitCode, installedResult.output)
 	var installed addResponse
@@ -35,7 +34,7 @@ func TestJ08ExplicitFixedVersionUpdate(t *testing.T) {
 	created := execInContainer(t, ctx, container, "mkdir", "-p", seedDirectory)
 	require.Equal(t, 0, created.exitCode, created.output)
 	seedLatest := execCLIFrom(t, ctx, container, seedDirectory,
-		"add", skillID+"@v1.1.0", "--agent", "codex", "--yes", "--output", "json",
+		"add", repository+"@v1.1.0", "--skill", "alpha", "--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, seedLatest.exitCode, seedLatest.output)
 

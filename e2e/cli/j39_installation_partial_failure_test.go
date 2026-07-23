@@ -19,8 +19,8 @@ func TestJ39InstallationPartialFailure(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
 	for _, dependency := range []struct{ repository, skill string }{
-		{"collection", "skills/alpha"},
-		{"mixed", "skills/alpha"},
+		{"collection", "alpha"},
+		{"mixed", "alpha"},
 	} {
 		result := execCLI(t, ctx, container, "add", "https://fixtures.test/group/subgroup/"+dependency.repository+"@v1.0.0", "--skill", dependency.skill, "--agent", "codex", "--output", "json")
 		require.Equal(t, 0, result.exitCode, result.output)

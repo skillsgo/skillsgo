@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the disposable E2E environment and the SkillsGo-owned versioned resourceful Skill artifact.
+ * [INPUT]: Depends on the disposable E2E environment and the SkillsGo-owned versioned Repository Artifact containing a resourceful Skill.
  * [OUTPUT]: Provides black-box coverage that Hub, Scope Vendor, and Agent Projection preserve nested Skill resources.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -19,7 +19,7 @@ import (
 func TestJ21PreserveSkillResources(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
-	result := execCLI(t, ctx, container, "add", testResourcefulSkillID+"@v1.3.0", "--agent", "codex", "--yes", "--output", "json")
+	result := execCLI(t, ctx, container, "add", testRepositoryID+"@v1.3.0", "--skill", testResourcefulSkillName, "--agent", "codex", "--yes", "--output", "json")
 	require.Equal(t, 0, result.exitCode, result.output)
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(result.output), &installed))

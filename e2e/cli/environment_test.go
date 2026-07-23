@@ -25,21 +25,11 @@ import (
 )
 
 const (
-	testSkillID            = "github.com/skillsgo/e2e-versioned-skills/-/skills/alpha"
-	testSkillVersion       = "v1.3.0"
-	testReplacementSkillID = "github.com/skillsgo/e2e-moving-skills/-/skills/head"
-	testReplacementCommit  = "cb2a36cac150fddb10946df1b7808c9c7c3300ca"
-	testMismatchedNameID   = "github.com/skillsgo/e2e-versioned-skills/-/skills/directory-label"
-	testMismatchedName     = "manifest-label"
-	testResourcefulSkillID = "github.com/skillsgo/e2e-versioned-skills/-/skills/resourceful"
+	testRepositoryID         = "github.com/skillsgo/e2e-versioned-skills"
+	testSkillName            = "alpha"
+	testSkillVersion         = "v1.3.0"
+	testResourcefulSkillName = "resourceful"
 )
-
-var testRepositorySkillIDs = []string{
-	testSkillID,
-	testMismatchedNameID,
-	testResourcefulSkillID,
-	"github.com/skillsgo/e2e-versioned-skills/-/skills/nested/general/ideation/naming",
-}
 
 type addResponse struct {
 	SchemaVersion int      `json:"schemaVersion"`

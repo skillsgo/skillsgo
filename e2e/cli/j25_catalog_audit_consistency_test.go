@@ -17,12 +17,12 @@ import (
 func TestJ25CatalogImmutableIdentityWithoutAudit(t *testing.T) {
 	ctx := context.Background()
 	container, _ := startEnvironment(t, ctx)
-	add := execCLI(t, ctx, container, "add", testSkillID+"@"+testSkillVersion, "--agent", "codex", "--yes", "--output", "json")
+	add := execCLI(t, ctx, container, "add", testRepositoryID+"@"+testSkillVersion, "--skill", testSkillName, "--agent", "codex", "--yes", "--output", "json")
 	require.Equal(t, 0, add.exitCode, add.output)
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed))
 
-	endpoint := "http://127.0.0.1:3000/api/v1/skills/" + testSkillID
+	endpoint := "http://127.0.0.1:3000/api/v1/skills/detail?repositoryId=" + testRepositoryID + "&name=" + testSkillName
 	detail := execInContainer(t, ctx, container, "wget", "-qO-", endpoint)
 	require.Equal(t, 0, detail.exitCode, detail.output)
 	var response struct {
