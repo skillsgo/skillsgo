@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on strict YAML/Lock state, an h1-verified authoritative Scope Vendor, Agent Adapter roots, and baseline-aware Repository Projection transactions.
- * [OUTPUT]: Removes selected Repository members by canonical Skill name from every declared Agent projection atomically and emits a typed machine result without Hub access or Local Modification overwrite.
+ * [INPUT]: Depends on strict YAML/Lock state, an h1-verified authoritative Scope Vendor, Agent Adapter roots, baseline-aware Repository Projection transactions, and the Repository mutation coordinator.
+ * [OUTPUT]: Removes selected Repository members by canonical Skill name through one coordinated mutation and emits a typed machine result without Hub access or Local Modification overwrite.
  * [POS]: Serves as the authoritative managed Repository-member name path behind `skillsgo remove`, alongside exact External removal.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,6 +18,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
+	"github.com/skillsgo/skillsgo/cli/internal/repositorymutation"
 	"github.com/skillsgo/skillsgo/cli/internal/scopevendor"
 	"github.com/spf13/cobra"
 )
@@ -63,7 +64,7 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 			return true, err
 		}
 	}
-	transactions := make([]*scopevendor.Transaction, 0, len(removals))
+	transactions := make([]repositorymutation.Transaction, 0, len(removals))
 	rollback := func() {
 		for index := len(transactions) - 1; index >= 0; index-- {
 			_ = transactions[index].Rollback()
@@ -160,11 +161,6 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 			rollback()
 			return true, err
 		}
-		if err := transaction.Commit(); err != nil {
-			_ = transaction.Rollback()
-			rollback()
-			return true, err
-		}
 		transactions = append(transactions, transaction)
 		if removeDependency {
 			delete(manifest.Dependencies, repositoryID)
@@ -175,14 +171,12 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 			manifest.Dependencies[repositoryID] = dependency
 		}
 	}
-	if err := project.WriteWorkspaceState(declarationRoot, manifest, lock); err != nil {
-		rollback()
-		return true, fmt.Errorf("persist Repository member removal: %w", err)
-	}
-	for _, transaction := range transactions {
-		if err := transaction.Finalize(); err != nil {
-			return true, fmt.Errorf("Repository member removal committed but transaction cleanup failed: %w", err)
-		}
+	if err := (repositorymutation.Plan{
+		Transactions: transactions,
+		Workspace:    &repositorymutation.WorkspaceState{Root: declarationRoot, Manifest: manifest, Lock: lock},
+		Operation:    "Repository member removal",
+	}).Commit(); err != nil {
+		return true, err
 	}
 	if output, _ := cmd.Flags().GetString("output"); output == "json" {
 		scope := "project"

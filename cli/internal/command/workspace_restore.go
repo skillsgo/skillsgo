@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on a strict matching skillsgo.yaml/skillsgo-lock.yaml pair, exact immutable root Proxy resources only when Vendor is absent, verified Scope Vendor, Agent Adapter roots, and deterministic projection transactions.
+ * [INPUT]: Depends on a strict matching skillsgo.yaml/skillsgo-lock.yaml pair, exact immutable root Proxy resources only when Vendor is absent, verified Scope Vendor, Agent Adapter roots, deterministic projection transactions, and the Repository mutation coordinator.
  * [OUTPUT]: Provides conflict-safe idempotent Workspace/User install ensure results, restoring missing Vendor/projections while never resolving selectors, updating versions, pruning extras, or overwriting Local Modifications.
  * [POS]: Serves as the declaration-to-Vendor/Projection orchestration behind `skillsgo install`.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -17,6 +17,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
+	"github.com/skillsgo/skillsgo/cli/internal/repositorymutation"
 	"github.com/skillsgo/skillsgo/cli/internal/scopevendor"
 )
 
@@ -147,11 +148,8 @@ func ensureOneRepository(ctx context.Context, root string, userScope bool, catal
 	if err != nil {
 		return "", vendor, err
 	}
-	if err := transaction.Commit(); err != nil {
+	if err := (repositorymutation.Plan{Transactions: []repositorymutation.Transaction{transaction}, Operation: "Repository install"}).Commit(); err != nil {
 		return "", vendor, err
-	}
-	if err := transaction.Finalize(); err != nil {
-		return "", vendor, fmt.Errorf("Repository install committed but cleanup failed: %w", err)
 	}
 	if restored {
 		return "restored", vendor, nil
