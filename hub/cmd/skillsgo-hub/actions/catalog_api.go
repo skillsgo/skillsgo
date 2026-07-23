@@ -168,8 +168,8 @@ func catalogUpdateCheckHandler(metadata *catalog.Catalog, artifacts artifactRead
 				return writeAPIError(c, fiber.StatusBadRequest, "invalid or duplicate Skill coordinate")
 			}
 			seen[key] = true
-			item, err := metadata.SkillByCoordinate(c.Context(), coordinate.RepositoryID, coordinate.Name)
-			if err == nil && item.LatestVersion != "" {
+			_, err := metadata.SkillByCoordinate(c.Context(), coordinate.RepositoryID, coordinate.Name)
+			if err == nil {
 				available[key] = true
 			} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
 				return writeInternalAPIError(c, "catalog.update_check", fiber.StatusInternalServerError, "internal_error", "update check failed", err)
@@ -311,7 +311,7 @@ func skillDetailHandler(
 		if artifacts == nil {
 			return writeAPIErrorCode(c, fiber.StatusServiceUnavailable, "artifact_unavailable", "artifact service unavailable")
 		}
-		version, err := metadata.SkillLatestPublishedVersion(c.Context(), repositoryID, skill.Name)
+		version, err := metadata.CurrentRepositoryReleaseMember(c.Context(), repositoryID, skill.Name)
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.skill_version", fiber.StatusInternalServerError, "internal_error", "detail failed", err)
 		}
@@ -328,7 +328,7 @@ func skillDetailHandler(
 		}
 		var member *protocolapi.SkillInfo
 		for index := range info.Skills {
-			if info.Skills[index].RepositoryID == repositoryID && info.Skills[index].Name == skill.Name && info.Skills[index].SkillPath == version.RelativePath {
+			if info.Skills[index].RepositoryID == repositoryID && info.Skills[index].Name == skill.Name && info.Skills[index].SkillPath == version.SkillPath {
 				member = &info.Skills[index]
 				break
 			}
@@ -345,7 +345,7 @@ func skillDetailHandler(
 		if err != nil {
 			return writeInternalAPIError(c, "artifact.read_archive", fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid", err)
 		}
-		analysis, err := audit.AnalyzeRepositoryMember(archiveBytes, repositoryID, info.Version, version.RelativePath)
+		analysis, err := audit.AnalyzeRepositoryMember(archiveBytes, repositoryID, info.Version, version.SkillPath)
 		if err != nil {
 			return writeInternalAPIError(c, "artifact.audit", fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid", err)
 		}

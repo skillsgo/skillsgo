@@ -10,6 +10,7 @@ import (
 	"entgo.io/ent"
 	"entgo.io/ent/dialect/sql"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repositoryrelease"
 )
 
 // Repository is the model entity for the Repository schema.
@@ -23,6 +24,8 @@ type Repository struct {
 	RepositoryPath string `json:"repository_path,omitempty"`
 	// RepositoryID holds the value of the "repository_id" field.
 	RepositoryID string `json:"repository_id,omitempty"`
+	// CurrentReleaseID holds the value of the "current_release_id" field.
+	CurrentReleaseID *int64 `json:"current_release_id,omitempty"`
 	// Description holds the value of the "description" field.
 	Description string `json:"description,omitempty"`
 	// Stars holds the value of the "stars" field.
@@ -47,9 +50,13 @@ type Repository struct {
 type RepositoryEdges struct {
 	// Skills holds the value of the skills edge.
 	Skills []*Skill `json:"skills,omitempty"`
+	// Releases holds the value of the releases edge.
+	Releases []*RepositoryRelease `json:"releases,omitempty"`
+	// CurrentRelease holds the value of the current_release edge.
+	CurrentRelease *RepositoryRelease `json:"current_release,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [1]bool
+	loadedTypes [3]bool
 }
 
 // SkillsOrErr returns the Skills value or an error if the edge
@@ -61,12 +68,32 @@ func (e RepositoryEdges) SkillsOrErr() ([]*Skill, error) {
 	return nil, &NotLoadedError{edge: "skills"}
 }
 
+// ReleasesOrErr returns the Releases value or an error if the edge
+// was not loaded in eager-loading.
+func (e RepositoryEdges) ReleasesOrErr() ([]*RepositoryRelease, error) {
+	if e.loadedTypes[1] {
+		return e.Releases, nil
+	}
+	return nil, &NotLoadedError{edge: "releases"}
+}
+
+// CurrentReleaseOrErr returns the CurrentRelease value or an error if the edge
+// was not loaded in eager-loading, or loaded but was not found.
+func (e RepositoryEdges) CurrentReleaseOrErr() (*RepositoryRelease, error) {
+	if e.CurrentRelease != nil {
+		return e.CurrentRelease, nil
+	} else if e.loadedTypes[2] {
+		return nil, &NotFoundError{label: repositoryrelease.Label}
+	}
+	return nil, &NotLoadedError{edge: "current_release"}
+}
+
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Repository) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case repository.FieldID, repository.FieldStars:
+		case repository.FieldID, repository.FieldCurrentReleaseID, repository.FieldStars:
 			values[i] = new(sql.NullInt64)
 		case repository.FieldSourceHost, repository.FieldRepositoryPath, repository.FieldRepositoryID, repository.FieldDescription, repository.FieldSourceMetadataEtag:
 			values[i] = new(sql.NullString)
@@ -110,6 +137,13 @@ func (_m *Repository) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field repository_id", values[i])
 			} else if value.Valid {
 				_m.RepositoryID = value.String
+			}
+		case repository.FieldCurrentReleaseID:
+			if value, ok := values[i].(*sql.NullInt64); !ok {
+				return fmt.Errorf("unexpected type %T for field current_release_id", values[i])
+			} else if value.Valid {
+				_m.CurrentReleaseID = new(int64)
+				*_m.CurrentReleaseID = value.Int64
 			}
 		case repository.FieldDescription:
 			if value, ok := values[i].(*sql.NullString); !ok {
@@ -173,6 +207,16 @@ func (_m *Repository) QuerySkills() *SkillQuery {
 	return NewRepositoryClient(_m.config).QuerySkills(_m)
 }
 
+// QueryReleases queries the "releases" edge of the Repository entity.
+func (_m *Repository) QueryReleases() *RepositoryReleaseQuery {
+	return NewRepositoryClient(_m.config).QueryReleases(_m)
+}
+
+// QueryCurrentRelease queries the "current_release" edge of the Repository entity.
+func (_m *Repository) QueryCurrentRelease() *RepositoryReleaseQuery {
+	return NewRepositoryClient(_m.config).QueryCurrentRelease(_m)
+}
+
 // Update returns a builder for updating this Repository.
 // Note that you need to call Repository.Unwrap() before calling this method if this Repository
 // was returned from a transaction, and the transaction was committed or rolled back.
@@ -204,6 +248,11 @@ func (_m *Repository) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("repository_id=")
 	builder.WriteString(_m.RepositoryID)
+	builder.WriteString(", ")
+	if v := _m.CurrentReleaseID; v != nil {
+		builder.WriteString("current_release_id=")
+		builder.WriteString(fmt.Sprintf("%v", *v))
+	}
 	builder.WriteString(", ")
 	builder.WriteString("description=")
 	builder.WriteString(_m.Description)

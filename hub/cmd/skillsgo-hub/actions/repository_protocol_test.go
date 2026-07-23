@@ -129,7 +129,7 @@ func TestRepositoryPublicationFailureExposesNoPartialMemberSet(t *testing.T) {
 	publisher := newRepositoryPublisher(fetcher, backend, metadata)
 	_, err = publisher.Materialize(t.Context(), repository, version)
 	require.ErrorContains(t, err, "injected Repository Artifact save failure")
-	members, err := metadata.RepositoryVersionMembers(t.Context(), repository, version)
+	members, err := metadata.RepositoryReleaseMembers(t.Context(), repository, version)
 	require.NoError(t, err)
 	require.Empty(t, members, "failed publication must expose no member rows")
 	_, storageErr := backend.Info(t.Context(), repository, version)
@@ -137,7 +137,7 @@ func TestRepositoryPublicationFailureExposesNoPartialMemberSet(t *testing.T) {
 
 	_, err = publisher.Materialize(t.Context(), repository, version)
 	require.NoError(t, err)
-	members, err = metadata.RepositoryVersionMembers(t.Context(), repository, version)
+	members, err = metadata.RepositoryReleaseMembers(t.Context(), repository, version)
 	require.NoError(t, err)
 	require.Len(t, members, 2)
 }
@@ -162,7 +162,7 @@ func TestInvalidPublicationAggregateIsRejectedBeforeImmutableStorage(t *testing.
 
 	_, err = publisher.Materialize(t.Context(), repository, version)
 	require.Error(t, err)
-	members, membersErr := metadata.RepositoryVersionMembers(t.Context(), repository, version)
+	members, membersErr := metadata.RepositoryReleaseMembers(t.Context(), repository, version)
 	require.NoError(t, membersErr)
 	require.Empty(t, members, "failed Catalog publication must remain invisible")
 	_, storageErr := backend.Info(t.Context(), repository, version)

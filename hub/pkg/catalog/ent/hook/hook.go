@@ -33,16 +33,28 @@ func (f RepositoryFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, 
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RepositoryMutation", m)
 }
 
-// The RiskAssessmentFunc type is an adapter to allow the use of ordinary
-// function as RiskAssessment mutator.
-type RiskAssessmentFunc func(context.Context, *ent.RiskAssessmentMutation) (ent.Value, error)
+// The RepositoryReleaseFunc type is an adapter to allow the use of ordinary
+// function as RepositoryRelease mutator.
+type RepositoryReleaseFunc func(context.Context, *ent.RepositoryReleaseMutation) (ent.Value, error)
 
 // Mutate calls f(ctx, m).
-func (f RiskAssessmentFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.RiskAssessmentMutation); ok {
+func (f RepositoryReleaseFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.RepositoryReleaseMutation); ok {
 		return f(ctx, mv)
 	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RiskAssessmentMutation", m)
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RepositoryReleaseMutation", m)
+}
+
+// The RepositoryReleaseMemberFunc type is an adapter to allow the use of ordinary
+// function as RepositoryReleaseMember mutator.
+type RepositoryReleaseMemberFunc func(context.Context, *ent.RepositoryReleaseMemberMutation) (ent.Value, error)
+
+// Mutate calls f(ctx, m).
+func (f RepositoryReleaseMemberFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
+	if mv, ok := m.(*ent.RepositoryReleaseMemberMutation); ok {
+		return f(ctx, mv)
+	}
+	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.RepositoryReleaseMemberMutation", m)
 }
 
 // The SkillFunc type is an adapter to allow the use of ordinary
@@ -55,18 +67,6 @@ func (f SkillFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error
 		return f(ctx, mv)
 	}
 	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SkillMutation", m)
-}
-
-// The SkillVersionFunc type is an adapter to allow the use of ordinary
-// function as SkillVersion mutator.
-type SkillVersionFunc func(context.Context, *ent.SkillVersionMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f SkillVersionFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	if mv, ok := m.(*ent.SkillVersionMutation); ok {
-		return f(ctx, mv)
-	}
-	return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.SkillVersionMutation", m)
 }
 
 // Condition is a hook condition function.

@@ -13,7 +13,6 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
 )
 
 // SkillCreate is the builder for creating a Skill entity.
@@ -57,26 +56,6 @@ func (_c *SkillCreate) SetRepository(v string) *SkillCreate {
 // SetSkillPath sets the "skill_path" field.
 func (_c *SkillCreate) SetSkillPath(v string) *SkillCreate {
 	_c.mutation.SetSkillPath(v)
-	return _c
-}
-
-// SetLatestVersion sets the "latest_version" field.
-func (_c *SkillCreate) SetLatestVersion(v string) *SkillCreate {
-	_c.mutation.SetLatestVersion(v)
-	return _c
-}
-
-// SetDiscoverable sets the "discoverable" field.
-func (_c *SkillCreate) SetDiscoverable(v bool) *SkillCreate {
-	_c.mutation.SetDiscoverable(v)
-	return _c
-}
-
-// SetNillableDiscoverable sets the "discoverable" field if the given value is not nil.
-func (_c *SkillCreate) SetNillableDiscoverable(v *bool) *SkillCreate {
-	if v != nil {
-		_c.SetDiscoverable(*v)
-	}
 	return _c
 }
 
@@ -139,21 +118,6 @@ func (_c *SkillCreate) SetSourceRepository(v *Repository) *SkillCreate {
 	return _c.SetSourceRepositoryID(v.ID)
 }
 
-// AddVersionIDs adds the "versions" edge to the SkillVersion entity by IDs.
-func (_c *SkillCreate) AddVersionIDs(ids ...int64) *SkillCreate {
-	_c.mutation.AddVersionIDs(ids...)
-	return _c
-}
-
-// AddVersions adds the "versions" edges to the SkillVersion entity.
-func (_c *SkillCreate) AddVersions(v ...*SkillVersion) *SkillCreate {
-	ids := make([]int64, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _c.AddVersionIDs(ids...)
-}
-
 // Mutation returns the SkillMutation object of the builder.
 func (_c *SkillCreate) Mutation() *SkillMutation {
 	return _c.mutation
@@ -189,10 +153,6 @@ func (_c *SkillCreate) ExecX(ctx context.Context) {
 
 // defaults sets the default values of the builder before save.
 func (_c *SkillCreate) defaults() {
-	if _, ok := _c.mutation.Discoverable(); !ok {
-		v := skill.DefaultDiscoverable
-		_c.mutation.SetDiscoverable(v)
-	}
 	if _, ok := _c.mutation.Verified(); !ok {
 		v := skill.DefaultVerified
 		_c.mutation.SetVerified(v)
@@ -231,12 +191,6 @@ func (_c *SkillCreate) check() error {
 	}
 	if _, ok := _c.mutation.SkillPath(); !ok {
 		return &ValidationError{Name: "skill_path", err: errors.New(`ent: missing required field "Skill.skill_path"`)}
-	}
-	if _, ok := _c.mutation.LatestVersion(); !ok {
-		return &ValidationError{Name: "latest_version", err: errors.New(`ent: missing required field "Skill.latest_version"`)}
-	}
-	if _, ok := _c.mutation.Discoverable(); !ok {
-		return &ValidationError{Name: "discoverable", err: errors.New(`ent: missing required field "Skill.discoverable"`)}
 	}
 	if _, ok := _c.mutation.Verified(); !ok {
 		return &ValidationError{Name: "verified", err: errors.New(`ent: missing required field "Skill.verified"`)}
@@ -303,14 +257,6 @@ func (_c *SkillCreate) createSpec() (*Skill, *sqlgraph.CreateSpec) {
 		_spec.SetField(skill.FieldSkillPath, field.TypeString, value)
 		_node.SkillPath = value
 	}
-	if value, ok := _c.mutation.LatestVersion(); ok {
-		_spec.SetField(skill.FieldLatestVersion, field.TypeString, value)
-		_node.LatestVersion = value
-	}
-	if value, ok := _c.mutation.Discoverable(); ok {
-		_spec.SetField(skill.FieldDiscoverable, field.TypeBool, value)
-		_node.Discoverable = value
-	}
 	if value, ok := _c.mutation.Verified(); ok {
 		_spec.SetField(skill.FieldVerified, field.TypeBool, value)
 		_node.Verified = value
@@ -338,22 +284,6 @@ func (_c *SkillCreate) createSpec() (*Skill, *sqlgraph.CreateSpec) {
 			edge.Target.Nodes = append(edge.Target.Nodes, k)
 		}
 		_node.RepositoryID = nodes[0]
-		_spec.Edges = append(_spec.Edges, edge)
-	}
-	if nodes := _c.mutation.VersionsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   skill.VersionsTable,
-			Columns: []string{skill.VersionsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skillversion.FieldID, field.TypeInt64),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
 	return _node, _spec
@@ -477,30 +407,6 @@ func (u *SkillUpsert) SetSkillPath(v string) *SkillUpsert {
 // UpdateSkillPath sets the "skill_path" field to the value that was provided on create.
 func (u *SkillUpsert) UpdateSkillPath() *SkillUpsert {
 	u.SetExcluded(skill.FieldSkillPath)
-	return u
-}
-
-// SetLatestVersion sets the "latest_version" field.
-func (u *SkillUpsert) SetLatestVersion(v string) *SkillUpsert {
-	u.Set(skill.FieldLatestVersion, v)
-	return u
-}
-
-// UpdateLatestVersion sets the "latest_version" field to the value that was provided on create.
-func (u *SkillUpsert) UpdateLatestVersion() *SkillUpsert {
-	u.SetExcluded(skill.FieldLatestVersion)
-	return u
-}
-
-// SetDiscoverable sets the "discoverable" field.
-func (u *SkillUpsert) SetDiscoverable(v bool) *SkillUpsert {
-	u.Set(skill.FieldDiscoverable, v)
-	return u
-}
-
-// UpdateDiscoverable sets the "discoverable" field to the value that was provided on create.
-func (u *SkillUpsert) UpdateDiscoverable() *SkillUpsert {
-	u.SetExcluded(skill.FieldDiscoverable)
 	return u
 }
 
@@ -669,34 +575,6 @@ func (u *SkillUpsertOne) SetSkillPath(v string) *SkillUpsertOne {
 func (u *SkillUpsertOne) UpdateSkillPath() *SkillUpsertOne {
 	return u.Update(func(s *SkillUpsert) {
 		s.UpdateSkillPath()
-	})
-}
-
-// SetLatestVersion sets the "latest_version" field.
-func (u *SkillUpsertOne) SetLatestVersion(v string) *SkillUpsertOne {
-	return u.Update(func(s *SkillUpsert) {
-		s.SetLatestVersion(v)
-	})
-}
-
-// UpdateLatestVersion sets the "latest_version" field to the value that was provided on create.
-func (u *SkillUpsertOne) UpdateLatestVersion() *SkillUpsertOne {
-	return u.Update(func(s *SkillUpsert) {
-		s.UpdateLatestVersion()
-	})
-}
-
-// SetDiscoverable sets the "discoverable" field.
-func (u *SkillUpsertOne) SetDiscoverable(v bool) *SkillUpsertOne {
-	return u.Update(func(s *SkillUpsert) {
-		s.SetDiscoverable(v)
-	})
-}
-
-// UpdateDiscoverable sets the "discoverable" field to the value that was provided on create.
-func (u *SkillUpsertOne) UpdateDiscoverable() *SkillUpsertOne {
-	return u.Update(func(s *SkillUpsert) {
-		s.UpdateDiscoverable()
 	})
 }
 
@@ -1037,34 +915,6 @@ func (u *SkillUpsertBulk) SetSkillPath(v string) *SkillUpsertBulk {
 func (u *SkillUpsertBulk) UpdateSkillPath() *SkillUpsertBulk {
 	return u.Update(func(s *SkillUpsert) {
 		s.UpdateSkillPath()
-	})
-}
-
-// SetLatestVersion sets the "latest_version" field.
-func (u *SkillUpsertBulk) SetLatestVersion(v string) *SkillUpsertBulk {
-	return u.Update(func(s *SkillUpsert) {
-		s.SetLatestVersion(v)
-	})
-}
-
-// UpdateLatestVersion sets the "latest_version" field to the value that was provided on create.
-func (u *SkillUpsertBulk) UpdateLatestVersion() *SkillUpsertBulk {
-	return u.Update(func(s *SkillUpsert) {
-		s.UpdateLatestVersion()
-	})
-}
-
-// SetDiscoverable sets the "discoverable" field.
-func (u *SkillUpsertBulk) SetDiscoverable(v bool) *SkillUpsertBulk {
-	return u.Update(func(s *SkillUpsert) {
-		s.SetDiscoverable(v)
-	})
-}
-
-// UpdateDiscoverable sets the "discoverable" field to the value that was provided on create.
-func (u *SkillUpsertBulk) UpdateDiscoverable() *SkillUpsertBulk {
-	return u.Update(func(s *SkillUpsert) {
-		s.UpdateDiscoverable()
 	})
 }
 

@@ -14,9 +14,9 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/localizeddescription"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/riskassessment"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repositoryrelease"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repositoryreleasemember"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
 )
 
 // ent aliases to avoid import conflicts in user's code.
@@ -77,11 +77,11 @@ var (
 func checkColumn(t, c string) error {
 	initCheck.Do(func() {
 		columnCheck = sql.NewColumnCheck(map[string]func(string) bool{
-			localizeddescription.Table: localizeddescription.ValidColumn,
-			repository.Table:           repository.ValidColumn,
-			riskassessment.Table:       riskassessment.ValidColumn,
-			skill.Table:                skill.ValidColumn,
-			skillversion.Table:         skillversion.ValidColumn,
+			localizeddescription.Table:    localizeddescription.ValidColumn,
+			repository.Table:              repository.ValidColumn,
+			repositoryrelease.Table:       repositoryrelease.ValidColumn,
+			repositoryreleasemember.Table: repositoryreleasemember.ValidColumn,
+			skill.Table:                   skill.ValidColumn,
 		})
 	})
 	return columnCheck(t, c)

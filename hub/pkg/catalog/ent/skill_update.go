@@ -14,7 +14,6 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/predicate"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
 )
 
 // SkillUpdate is the builder for updating Skill entities.
@@ -114,34 +113,6 @@ func (_u *SkillUpdate) SetNillableSkillPath(v *string) *SkillUpdate {
 	return _u
 }
 
-// SetLatestVersion sets the "latest_version" field.
-func (_u *SkillUpdate) SetLatestVersion(v string) *SkillUpdate {
-	_u.mutation.SetLatestVersion(v)
-	return _u
-}
-
-// SetNillableLatestVersion sets the "latest_version" field if the given value is not nil.
-func (_u *SkillUpdate) SetNillableLatestVersion(v *string) *SkillUpdate {
-	if v != nil {
-		_u.SetLatestVersion(*v)
-	}
-	return _u
-}
-
-// SetDiscoverable sets the "discoverable" field.
-func (_u *SkillUpdate) SetDiscoverable(v bool) *SkillUpdate {
-	_u.mutation.SetDiscoverable(v)
-	return _u
-}
-
-// SetNillableDiscoverable sets the "discoverable" field if the given value is not nil.
-func (_u *SkillUpdate) SetNillableDiscoverable(v *bool) *SkillUpdate {
-	if v != nil {
-		_u.SetDiscoverable(*v)
-	}
-	return _u
-}
-
 // SetVerified sets the "verified" field.
 func (_u *SkillUpdate) SetVerified(v bool) *SkillUpdate {
 	_u.mutation.SetVerified(v)
@@ -187,21 +158,6 @@ func (_u *SkillUpdate) SetSourceRepository(v *Repository) *SkillUpdate {
 	return _u.SetSourceRepositoryID(v.ID)
 }
 
-// AddVersionIDs adds the "versions" edge to the SkillVersion entity by IDs.
-func (_u *SkillUpdate) AddVersionIDs(ids ...int64) *SkillUpdate {
-	_u.mutation.AddVersionIDs(ids...)
-	return _u
-}
-
-// AddVersions adds the "versions" edges to the SkillVersion entity.
-func (_u *SkillUpdate) AddVersions(v ...*SkillVersion) *SkillUpdate {
-	ids := make([]int64, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddVersionIDs(ids...)
-}
-
 // Mutation returns the SkillMutation object of the builder.
 func (_u *SkillUpdate) Mutation() *SkillMutation {
 	return _u.mutation
@@ -211,27 +167,6 @@ func (_u *SkillUpdate) Mutation() *SkillMutation {
 func (_u *SkillUpdate) ClearSourceRepository() *SkillUpdate {
 	_u.mutation.ClearSourceRepository()
 	return _u
-}
-
-// ClearVersions clears all "versions" edges to the SkillVersion entity.
-func (_u *SkillUpdate) ClearVersions() *SkillUpdate {
-	_u.mutation.ClearVersions()
-	return _u
-}
-
-// RemoveVersionIDs removes the "versions" edge to SkillVersion entities by IDs.
-func (_u *SkillUpdate) RemoveVersionIDs(ids ...int64) *SkillUpdate {
-	_u.mutation.RemoveVersionIDs(ids...)
-	return _u
-}
-
-// RemoveVersions removes "versions" edges to SkillVersion entities.
-func (_u *SkillUpdate) RemoveVersions(v ...*SkillVersion) *SkillUpdate {
-	ids := make([]int64, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveVersionIDs(ids...)
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -310,12 +245,6 @@ func (_u *SkillUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 	if value, ok := _u.mutation.SkillPath(); ok {
 		_spec.SetField(skill.FieldSkillPath, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.LatestVersion(); ok {
-		_spec.SetField(skill.FieldLatestVersion, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.Discoverable(); ok {
-		_spec.SetField(skill.FieldDiscoverable, field.TypeBool, value)
-	}
 	if value, ok := _u.mutation.Verified(); ok {
 		_spec.SetField(skill.FieldVerified, field.TypeBool, value)
 	}
@@ -347,51 +276,6 @@ func (_u *SkillUpdate) sqlSave(ctx context.Context) (_node int, err error) {
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(repository.FieldID, field.TypeInt64),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.VersionsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   skill.VersionsTable,
-			Columns: []string{skill.VersionsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skillversion.FieldID, field.TypeInt64),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedVersionsIDs(); len(nodes) > 0 && !_u.mutation.VersionsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   skill.VersionsTable,
-			Columns: []string{skill.VersionsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skillversion.FieldID, field.TypeInt64),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.VersionsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   skill.VersionsTable,
-			Columns: []string{skill.VersionsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skillversion.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {
@@ -503,34 +387,6 @@ func (_u *SkillUpdateOne) SetNillableSkillPath(v *string) *SkillUpdateOne {
 	return _u
 }
 
-// SetLatestVersion sets the "latest_version" field.
-func (_u *SkillUpdateOne) SetLatestVersion(v string) *SkillUpdateOne {
-	_u.mutation.SetLatestVersion(v)
-	return _u
-}
-
-// SetNillableLatestVersion sets the "latest_version" field if the given value is not nil.
-func (_u *SkillUpdateOne) SetNillableLatestVersion(v *string) *SkillUpdateOne {
-	if v != nil {
-		_u.SetLatestVersion(*v)
-	}
-	return _u
-}
-
-// SetDiscoverable sets the "discoverable" field.
-func (_u *SkillUpdateOne) SetDiscoverable(v bool) *SkillUpdateOne {
-	_u.mutation.SetDiscoverable(v)
-	return _u
-}
-
-// SetNillableDiscoverable sets the "discoverable" field if the given value is not nil.
-func (_u *SkillUpdateOne) SetNillableDiscoverable(v *bool) *SkillUpdateOne {
-	if v != nil {
-		_u.SetDiscoverable(*v)
-	}
-	return _u
-}
-
 // SetVerified sets the "verified" field.
 func (_u *SkillUpdateOne) SetVerified(v bool) *SkillUpdateOne {
 	_u.mutation.SetVerified(v)
@@ -576,21 +432,6 @@ func (_u *SkillUpdateOne) SetSourceRepository(v *Repository) *SkillUpdateOne {
 	return _u.SetSourceRepositoryID(v.ID)
 }
 
-// AddVersionIDs adds the "versions" edge to the SkillVersion entity by IDs.
-func (_u *SkillUpdateOne) AddVersionIDs(ids ...int64) *SkillUpdateOne {
-	_u.mutation.AddVersionIDs(ids...)
-	return _u
-}
-
-// AddVersions adds the "versions" edges to the SkillVersion entity.
-func (_u *SkillUpdateOne) AddVersions(v ...*SkillVersion) *SkillUpdateOne {
-	ids := make([]int64, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.AddVersionIDs(ids...)
-}
-
 // Mutation returns the SkillMutation object of the builder.
 func (_u *SkillUpdateOne) Mutation() *SkillMutation {
 	return _u.mutation
@@ -600,27 +441,6 @@ func (_u *SkillUpdateOne) Mutation() *SkillMutation {
 func (_u *SkillUpdateOne) ClearSourceRepository() *SkillUpdateOne {
 	_u.mutation.ClearSourceRepository()
 	return _u
-}
-
-// ClearVersions clears all "versions" edges to the SkillVersion entity.
-func (_u *SkillUpdateOne) ClearVersions() *SkillUpdateOne {
-	_u.mutation.ClearVersions()
-	return _u
-}
-
-// RemoveVersionIDs removes the "versions" edge to SkillVersion entities by IDs.
-func (_u *SkillUpdateOne) RemoveVersionIDs(ids ...int64) *SkillUpdateOne {
-	_u.mutation.RemoveVersionIDs(ids...)
-	return _u
-}
-
-// RemoveVersions removes "versions" edges to SkillVersion entities.
-func (_u *SkillUpdateOne) RemoveVersions(v ...*SkillVersion) *SkillUpdateOne {
-	ids := make([]int64, len(v))
-	for i := range v {
-		ids[i] = v[i].ID
-	}
-	return _u.RemoveVersionIDs(ids...)
 }
 
 // Where appends a list predicates to the SkillUpdate builder.
@@ -729,12 +549,6 @@ func (_u *SkillUpdateOne) sqlSave(ctx context.Context) (_node *Skill, err error)
 	if value, ok := _u.mutation.SkillPath(); ok {
 		_spec.SetField(skill.FieldSkillPath, field.TypeString, value)
 	}
-	if value, ok := _u.mutation.LatestVersion(); ok {
-		_spec.SetField(skill.FieldLatestVersion, field.TypeString, value)
-	}
-	if value, ok := _u.mutation.Discoverable(); ok {
-		_spec.SetField(skill.FieldDiscoverable, field.TypeBool, value)
-	}
 	if value, ok := _u.mutation.Verified(); ok {
 		_spec.SetField(skill.FieldVerified, field.TypeBool, value)
 	}
@@ -766,51 +580,6 @@ func (_u *SkillUpdateOne) sqlSave(ctx context.Context) (_node *Skill, err error)
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(repository.FieldID, field.TypeInt64),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Add = append(_spec.Edges.Add, edge)
-	}
-	if _u.mutation.VersionsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   skill.VersionsTable,
-			Columns: []string{skill.VersionsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skillversion.FieldID, field.TypeInt64),
-			},
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.RemovedVersionsIDs(); len(nodes) > 0 && !_u.mutation.VersionsCleared() {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   skill.VersionsTable,
-			Columns: []string{skill.VersionsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skillversion.FieldID, field.TypeInt64),
-			},
-		}
-		for _, k := range nodes {
-			edge.Target.Nodes = append(edge.Target.Nodes, k)
-		}
-		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
-	}
-	if nodes := _u.mutation.VersionsIDs(); len(nodes) > 0 {
-		edge := &sqlgraph.EdgeSpec{
-			Rel:     sqlgraph.O2M,
-			Inverse: false,
-			Table:   skill.VersionsTable,
-			Columns: []string{skill.VersionsColumn},
-			Bidi:    false,
-			Target: &sqlgraph.EdgeTarget{
-				IDSpec: sqlgraph.NewFieldSpec(skillversion.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

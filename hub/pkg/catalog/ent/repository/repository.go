@@ -20,6 +20,8 @@ const (
 	FieldRepositoryPath = "repository_path"
 	// FieldRepositoryID holds the string denoting the repository_id field in the database.
 	FieldRepositoryID = "repository_id"
+	// FieldCurrentReleaseID holds the string denoting the current_release_id field in the database.
+	FieldCurrentReleaseID = "current_release_id"
 	// FieldDescription holds the string denoting the description field in the database.
 	FieldDescription = "description"
 	// FieldStars holds the string denoting the stars field in the database.
@@ -36,6 +38,10 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeSkills holds the string denoting the skills edge name in mutations.
 	EdgeSkills = "skills"
+	// EdgeReleases holds the string denoting the releases edge name in mutations.
+	EdgeReleases = "releases"
+	// EdgeCurrentRelease holds the string denoting the current_release edge name in mutations.
+	EdgeCurrentRelease = "current_release"
 	// Table holds the table name of the repository in the database.
 	Table = "repositories"
 	// SkillsTable is the table that holds the skills relation/edge.
@@ -45,6 +51,20 @@ const (
 	SkillsInverseTable = "skills"
 	// SkillsColumn is the table column denoting the skills relation/edge.
 	SkillsColumn = "repository_id"
+	// ReleasesTable is the table that holds the releases relation/edge.
+	ReleasesTable = "repository_releases"
+	// ReleasesInverseTable is the table name for the RepositoryRelease entity.
+	// It exists in this package in order to avoid circular dependency with the "repositoryrelease" package.
+	ReleasesInverseTable = "repository_releases"
+	// ReleasesColumn is the table column denoting the releases relation/edge.
+	ReleasesColumn = "repository_id"
+	// CurrentReleaseTable is the table that holds the current_release relation/edge.
+	CurrentReleaseTable = "repositories"
+	// CurrentReleaseInverseTable is the table name for the RepositoryRelease entity.
+	// It exists in this package in order to avoid circular dependency with the "repositoryrelease" package.
+	CurrentReleaseInverseTable = "repository_releases"
+	// CurrentReleaseColumn is the table column denoting the current_release relation/edge.
+	CurrentReleaseColumn = "current_release_id"
 )
 
 // Columns holds all SQL columns for repository fields.
@@ -53,6 +73,7 @@ var Columns = []string{
 	FieldSourceHost,
 	FieldRepositoryPath,
 	FieldRepositoryID,
+	FieldCurrentReleaseID,
 	FieldDescription,
 	FieldStars,
 	FieldSourceMetadataEtag,
@@ -114,6 +135,11 @@ func ByRepositoryID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldRepositoryID, opts...).ToFunc()
 }
 
+// ByCurrentReleaseID orders the results by the current_release_id field.
+func ByCurrentReleaseID(opts ...sql.OrderTermOption) OrderOption {
+	return sql.OrderByField(FieldCurrentReleaseID, opts...).ToFunc()
+}
+
 // ByDescription orders the results by the description field.
 func ByDescription(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldDescription, opts...).ToFunc()
@@ -162,10 +188,45 @@ func BySkills(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
 		sqlgraph.OrderByNeighborTerms(s, newSkillsStep(), append([]sql.OrderTerm{term}, terms...)...)
 	}
 }
+
+// ByReleasesCount orders the results by releases count.
+func ByReleasesCount(opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborsCount(s, newReleasesStep(), opts...)
+	}
+}
+
+// ByReleases orders the results by releases terms.
+func ByReleases(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newReleasesStep(), append([]sql.OrderTerm{term}, terms...)...)
+	}
+}
+
+// ByCurrentReleaseField orders the results by current_release field.
+func ByCurrentReleaseField(field string, opts ...sql.OrderTermOption) OrderOption {
+	return func(s *sql.Selector) {
+		sqlgraph.OrderByNeighborTerms(s, newCurrentReleaseStep(), sql.OrderByField(field, opts...))
+	}
+}
 func newSkillsStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(SkillsInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.O2M, false, SkillsTable, SkillsColumn),
+	)
+}
+func newReleasesStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(ReleasesInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.O2M, false, ReleasesTable, ReleasesColumn),
+	)
+}
+func newCurrentReleaseStep() *sqlgraph.Step {
+	return sqlgraph.NewStep(
+		sqlgraph.From(Table, FieldID),
+		sqlgraph.To(CurrentReleaseInverseTable, FieldID),
+		sqlgraph.Edge(sqlgraph.M2O, false, CurrentReleaseTable, CurrentReleaseColumn),
 	)
 }

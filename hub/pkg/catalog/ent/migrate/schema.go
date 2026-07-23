@@ -3,7 +3,6 @@
 package migrate
 
 import (
-	"entgo.io/ent/dialect/entsql"
 	"entgo.io/ent/dialect/sql/schema"
 	"entgo.io/ent/schema/field"
 )
@@ -47,12 +46,21 @@ var (
 		{Name: "source_metadata_retry_at", Type: field.TypeTime, Nullable: true},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
+		{Name: "current_release_id", Type: field.TypeInt64, Nullable: true},
 	}
 	// RepositoriesTable holds the schema information for the "repositories" table.
 	RepositoriesTable = &schema.Table{
 		Name:       "repositories",
 		Columns:    RepositoriesColumns,
 		PrimaryKey: []*schema.Column{RepositoriesColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "repositories_repository_releases_current_release",
+				Columns:    []*schema.Column{RepositoriesColumns[11]},
+				RefColumns: []*schema.Column{RepositoryReleasesColumns[0]},
+				OnDelete:   schema.SetNull,
+			},
+		},
 		Indexes: []*schema.Index{
 			{
 				Name:    "repository_source_host_repository_path",
@@ -66,27 +74,66 @@ var (
 			},
 		},
 	}
-	// SkillRiskAssessmentsColumns holds the columns for the "skill_risk_assessments" table.
-	SkillRiskAssessmentsColumns = []*schema.Column{
+	// RepositoryReleasesColumns holds the columns for the "repository_releases" table.
+	RepositoryReleasesColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
-		{Name: "level", Type: field.TypeString},
-		{Name: "scanner_version", Type: field.TypeString},
-		{Name: "evidence", Type: field.TypeString, SchemaType: map[string]string{"postgres": "jsonb"}},
-		{Name: "fingerprint", Type: field.TypeString},
+		{Name: "version", Type: field.TypeString},
+		{Name: "commit_sha", Type: field.TypeString},
+		{Name: "tree_sha", Type: field.TypeString},
+		{Name: "sum", Type: field.TypeString},
+		{Name: "archive_size", Type: field.TypeInt64},
+		{Name: "release_info", Type: field.TypeBytes},
+		{Name: "commit_time", Type: field.TypeTime},
 		{Name: "created_at", Type: field.TypeTime},
-		{Name: "skill_version_id", Type: field.TypeInt64},
+		{Name: "repository_id", Type: field.TypeInt64},
 	}
-	// SkillRiskAssessmentsTable holds the schema information for the "skill_risk_assessments" table.
-	SkillRiskAssessmentsTable = &schema.Table{
-		Name:       "skill_risk_assessments",
-		Columns:    SkillRiskAssessmentsColumns,
-		PrimaryKey: []*schema.Column{SkillRiskAssessmentsColumns[0]},
+	// RepositoryReleasesTable holds the schema information for the "repository_releases" table.
+	RepositoryReleasesTable = &schema.Table{
+		Name:       "repository_releases",
+		Columns:    RepositoryReleasesColumns,
+		PrimaryKey: []*schema.Column{RepositoryReleasesColumns[0]},
 		ForeignKeys: []*schema.ForeignKey{
 			{
-				Symbol:     "skill_risk_assessments_skill_versions_risk_assessments",
-				Columns:    []*schema.Column{SkillRiskAssessmentsColumns[6]},
-				RefColumns: []*schema.Column{SkillVersionsColumns[0]},
+				Symbol:     "repository_releases_repositories_releases",
+				Columns:    []*schema.Column{RepositoryReleasesColumns[9]},
+				RefColumns: []*schema.Column{RepositoriesColumns[0]},
 				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "repositoryrelease_repository_id_version",
+				Unique:  true,
+				Columns: []*schema.Column{RepositoryReleasesColumns[9], RepositoryReleasesColumns[1]},
+			},
+		},
+	}
+	// RepositoryReleaseMembersColumns holds the columns for the "repository_release_members" table.
+	RepositoryReleaseMembersColumns = []*schema.Column{
+		{Name: "id", Type: field.TypeInt64, Increment: true},
+		{Name: "name", Type: field.TypeString},
+		{Name: "skill_path", Type: field.TypeString},
+		{Name: "tree_sha", Type: field.TypeString},
+		{Name: "release_id", Type: field.TypeInt64},
+	}
+	// RepositoryReleaseMembersTable holds the schema information for the "repository_release_members" table.
+	RepositoryReleaseMembersTable = &schema.Table{
+		Name:       "repository_release_members",
+		Columns:    RepositoryReleaseMembersColumns,
+		PrimaryKey: []*schema.Column{RepositoryReleaseMembersColumns[0]},
+		ForeignKeys: []*schema.ForeignKey{
+			{
+				Symbol:     "repository_release_members_repository_releases_members",
+				Columns:    []*schema.Column{RepositoryReleaseMembersColumns[4]},
+				RefColumns: []*schema.Column{RepositoryReleasesColumns[0]},
+				OnDelete:   schema.NoAction,
+			},
+		},
+		Indexes: []*schema.Index{
+			{
+				Name:    "repositoryreleasemember_release_id_name",
+				Unique:  true,
+				Columns: []*schema.Column{RepositoryReleaseMembersColumns[4], RepositoryReleaseMembersColumns[1]},
 			},
 		},
 	}
@@ -98,8 +145,6 @@ var (
 		{Name: "source_host", Type: field.TypeString},
 		{Name: "repository", Type: field.TypeString},
 		{Name: "skill_path", Type: field.TypeString},
-		{Name: "latest_version", Type: field.TypeString},
-		{Name: "discoverable", Type: field.TypeBool, Default: true},
 		{Name: "verified", Type: field.TypeBool, Default: false},
 		{Name: "created_at", Type: field.TypeTime},
 		{Name: "updated_at", Type: field.TypeTime},
@@ -113,7 +158,7 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "skills_repositories_skills",
-				Columns:    []*schema.Column{SkillsColumns[11]},
+				Columns:    []*schema.Column{SkillsColumns[9]},
 				RefColumns: []*schema.Column{RepositoriesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
@@ -122,39 +167,7 @@ var (
 			{
 				Name:    "skill_repository_id_name",
 				Unique:  true,
-				Columns: []*schema.Column{SkillsColumns[11], SkillsColumns[1]},
-			},
-		},
-	}
-	// SkillVersionsColumns holds the columns for the "skill_versions" table.
-	SkillVersionsColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt64, Increment: true},
-		{Name: "version", Type: field.TypeString},
-		{Name: "commit_sha", Type: field.TypeString},
-		{Name: "tree_sha", Type: field.TypeString},
-		{Name: "relative_path", Type: field.TypeString},
-		{Name: "commit_time", Type: field.TypeTime},
-		{Name: "created_at", Type: field.TypeTime},
-		{Name: "skill_id", Type: field.TypeInt64},
-	}
-	// SkillVersionsTable holds the schema information for the "skill_versions" table.
-	SkillVersionsTable = &schema.Table{
-		Name:       "skill_versions",
-		Columns:    SkillVersionsColumns,
-		PrimaryKey: []*schema.Column{SkillVersionsColumns[0]},
-		ForeignKeys: []*schema.ForeignKey{
-			{
-				Symbol:     "skill_versions_skills_versions",
-				Columns:    []*schema.Column{SkillVersionsColumns[7]},
-				RefColumns: []*schema.Column{SkillsColumns[0]},
-				OnDelete:   schema.NoAction,
-			},
-		},
-		Indexes: []*schema.Index{
-			{
-				Name:    "skillversion_skill_id_version",
-				Unique:  true,
-				Columns: []*schema.Column{SkillVersionsColumns[7], SkillVersionsColumns[1]},
+				Columns: []*schema.Column{SkillsColumns[9], SkillsColumns[1]},
 			},
 		},
 	}
@@ -162,17 +175,15 @@ var (
 	Tables = []*schema.Table{
 		LocalizedDescriptionsTable,
 		RepositoriesTable,
-		SkillRiskAssessmentsTable,
+		RepositoryReleasesTable,
+		RepositoryReleaseMembersTable,
 		SkillsTable,
-		SkillVersionsTable,
 	}
 )
 
 func init() {
-	SkillRiskAssessmentsTable.ForeignKeys[0].RefTable = SkillVersionsTable
-	SkillRiskAssessmentsTable.Annotation = &entsql.Annotation{
-		Table: "skill_risk_assessments",
-	}
+	RepositoriesTable.ForeignKeys[0].RefTable = RepositoryReleasesTable
+	RepositoryReleasesTable.ForeignKeys[0].RefTable = RepositoriesTable
+	RepositoryReleaseMembersTable.ForeignKeys[0].RefTable = RepositoryReleasesTable
 	SkillsTable.ForeignKeys[0].RefTable = RepositoriesTable
-	SkillVersionsTable.ForeignKeys[0].RefTable = SkillsTable
 }

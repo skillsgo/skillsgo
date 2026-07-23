@@ -173,7 +173,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	releaseInfo, err := (&catalogArtifactStub{}).Info(t.Context(), "", "")
 	require.NoError(t, err)
 	require.NoError(t, c.PublishRepositoryReleaseWithVisibility(t.Context(), "github.com/mattpocock/skills", []catalog.PublishedSkill{{
-		Skill: *skill, Version: catalog.SkillVersion{Version: "v0.0.0-test", CommitSHA: "commit-abc", TreeSHA: "tree-def", RelativePath: "skills/engineering/ask-matt", CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC)},
+		Skill: *skill, Member: catalog.RepositoryReleaseMember{Name: skill.Name, TreeSHA: "tree-def", SkillPath: "skills/engineering/ask-matt", CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC)},
 	}}, catalog.CurrentPublication, releaseInfo))
 
 	for _, path := range []string{
@@ -241,8 +241,8 @@ func TestHistoricalPublicationDoesNotEnterDiscovery(t *testing.T) {
 	digest := "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 	candidates := []catalog.PublishedSkill{{
 		Skill: catalog.Skill{RepositoryID: repositoryID, SkillPath: "skills/retired", Name: "retired", Description: "Historical only capability"},
-		Version: catalog.SkillVersion{Version: "v1.0.0", CommitSHA: "commit-v1", TreeSHA: "tree-v1",
-			RelativePath: "skills/retired", CommitTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
+		Member: catalog.RepositoryReleaseMember{Name: "retired", TreeSHA: "tree-v1",
+			SkillPath: "skills/retired", CommitTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}}
 	releaseInfo, err := json.Marshal(protocolapi.RepositoryInfo{ID: repositoryID, Version: "v1.0.0", CommitSHA: "commit-v1", TreeSHA: "repo-tree", Sum: digest, ArchiveSize: 10,
 		Skills: []protocolapi.SkillInfo{{RepositoryID: repositoryID, SkillPath: "skills/retired", Version: "v1.0.0", CommitSHA: "commit-v1", TreeSHA: "tree-v1", Name: "retired", Description: "Historical only capability"}}})
@@ -326,7 +326,7 @@ func TestCatalogAPIDetailReturnsStableArtifactFailures(t *testing.T) {
 				Skills: []protocolapi.SkillInfo{{RepositoryID: "github.com/acme/skills", SkillPath: "demo", Version: "v0.0.0-test", CommitSHA: "commit-abc", TreeSHA: "tree-def", Name: "demo", Description: "Demo"}}})
 			require.NoError(t, marshalErr)
 			require.NoError(t, metadata.PublishRepositoryReleaseWithVisibility(t.Context(), "github.com/acme/skills", []catalog.PublishedSkill{{Skill: *skill,
-				Version: catalog.SkillVersion{Version: "v0.0.0-test", CommitSHA: "commit-abc", TreeSHA: "tree-def", RelativePath: "demo"}}}, catalog.CurrentPublication, fixtureInfo))
+				Member: catalog.RepositoryReleaseMember{Name: skill.Name, TreeSHA: "tree-def", SkillPath: "demo"}}}, catalog.CurrentPublication, fixtureInfo))
 			router := newFiberApp()
 			registerCatalogAPIRoutes(router, metadata, testCase.stub)
 			recorder := httptest.NewRecorder()

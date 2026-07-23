@@ -12,11 +12,11 @@ type LocalizedDescription func(*sql.Selector)
 // Repository is the predicate function for repository builders.
 type Repository func(*sql.Selector)
 
-// RiskAssessment is the predicate function for riskassessment builders.
-type RiskAssessment func(*sql.Selector)
+// RepositoryRelease is the predicate function for repositoryrelease builders.
+type RepositoryRelease func(*sql.Selector)
+
+// RepositoryReleaseMember is the predicate function for repositoryreleasemember builders.
+type RepositoryReleaseMember func(*sql.Selector)
 
 // Skill is the predicate function for skill builders.
 type Skill func(*sql.Selector)
-
-// SkillVersion is the predicate function for skillversion builders.
-type SkillVersion func(*sql.Selector)
