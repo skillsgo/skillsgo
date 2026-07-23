@@ -309,7 +309,7 @@ Status: implemented with schema 3, one committed Codex Project target, one faile
 
 ### J40 — Manage an existing locked Skill without rewriting user files
 
-As a user who installed a Skill through a compatible lockfile, I want SkillsGo to adopt the exact local content in place so that management metadata becomes complete without replacing or normalizing my files.
+As a user who installed a Skill through a compatible lockfile, I want SkillsGo to verify it against an immutable Repository Artifact, install ordinary managed state, and recoverably retire the External copy.
 
 Preflight reports one eligible Skill without writing Vendor, YAML, or Lock state. Confirmation verifies exact bytes against a published Repository member, writes the User Vendor and coordinate Projection, moves the superseded external copy to recoverable trash, exposes the Skill as managed inventory, and makes the next scan report zero eligible Skills.
 
