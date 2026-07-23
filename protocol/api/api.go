@@ -1,12 +1,17 @@
 /*
- * [INPUT]: Depends on the public SkillsGo Hub JSON schema and immutable artifact metadata.
- * [OUTPUT]: Provides shared schema constants, add-time Repository resolution DTOs, Repository-level artifact Info, Skill member Info without independent artifact identity, separate risk vocabulary, and update DTOs.
+ * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Repository ID plus Skill Name validation.
+ * [OUTPUT]: Provides shared schema constants, add-time Repository resolution DTOs, Repository-level artifact Info, Skill member Info, canonical Skill coordinate behavior, separate risk vocabulary, and update DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package api
 
-import "time"
+import (
+	"time"
+
+	"github.com/skillsgo/skillsgo/protocol/repositoryid"
+	"github.com/skillsgo/skillsgo/protocol/skillmanifest"
+)
 
 const SchemaVersion = 1
 const (
@@ -80,6 +85,16 @@ type SkillCoordinate struct {
 	RepositoryID string `json:"repositoryId"`
 	Name         string `json:"name"`
 }
+
+func (coordinate SkillCoordinate) Valid() bool {
+	parsed, err := repositoryid.Parse(coordinate.RepositoryID)
+	return err == nil && parsed.String() == coordinate.RepositoryID && skillmanifest.ValidName(coordinate.Name)
+}
+
+func (coordinate SkillCoordinate) Key() string {
+	return coordinate.RepositoryID + "\x00" + coordinate.Name
+}
+
 type CatalogUpdateCheckRequest struct {
 	SchemaVersion int               `json:"schemaVersion"`
 	Skills        []SkillCoordinate `json:"skills"`

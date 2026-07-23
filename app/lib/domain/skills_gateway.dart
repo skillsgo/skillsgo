@@ -16,6 +16,7 @@ export 'discovery_models.dart';
 export 'installation_models.dart';
 export 'library_models.dart';
 export 'presentation_language.dart';
+export 'skill_coordinate.dart';
 export 'system_models.dart';
 export 'target_management_models.dart';
 export 'update_models.dart';
