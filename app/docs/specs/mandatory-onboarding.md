@@ -13,7 +13,6 @@ The journey uses Portal Labs `PremiumProgressStepper` with a fixed total of two 
 ## Applicability and Persistence
 
 - Mandatory Onboarding applies only to clean installations.
-- Existing users upgrading from an earlier version are marked complete when existing App preferences or Added Projects prove prior use.
 - The active step and added-project state survive App restart.
 - Projects are persisted immediately when added.
 - Onboarding becomes permanently complete only when the user activates **Start Using SkillsGo** on the second step.

@@ -614,7 +614,7 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get workspaceOwnershipChanges =>
-      'การดำเนินการของโปรเจ็กต์ที่เลือกจะอัปเดต Skillgo.mod และ Skillgo.sum';
+      'การดำเนินการของโปรเจ็กต์ที่เลือกจะอัปเดต skillsgo.yaml และ skillsgo.lock';
 
   @override
   String get targetContentPreserved =>

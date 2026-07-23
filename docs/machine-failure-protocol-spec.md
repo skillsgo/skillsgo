@@ -172,7 +172,7 @@ A new code is justified only when App or automation callers require a different 
 | `hub.server_error` | true | Retry after the reachable Hub failed to process the request. |
 | `protocol.invalid_response` | true | Retry or diagnose a malformed dependency response. |
 | `protocol.incompatible` | false | Upgrade the incompatible caller, CLI, or dependency. |
-| `local.data_invalid` | false | Repair or inspect untrusted local SkillsGo state. |
+| `local.data_invalid` | false | Inspect untrusted local SkillsGo state and resolve it explicitly. |
 | `installation.state_changed` | true | Obtain fresh preflight state before retrying. |
 | `installation.target_failed` | true | Retry one compensated Installation Target Group. |
 | `workspace.persistence_failed` | true | Fix Workspace access if needed, then retry the compensated group. |

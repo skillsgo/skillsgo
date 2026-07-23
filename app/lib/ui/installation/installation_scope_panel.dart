@@ -243,7 +243,6 @@ class _InstallationScopePanelState extends State<InstallationScopePanel> {
                         for (final target in group.targets)
                           _InstallationTargetDetail(
                             target: target,
-                            onRepair: null,
                             onRemove: widget.onManageTarget == null
                                 ? null
                                 : () => widget.onManageTarget!(

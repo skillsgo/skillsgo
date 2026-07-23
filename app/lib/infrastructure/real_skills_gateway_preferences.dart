@@ -45,16 +45,8 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
 
   @override
   Future<String> loadFolderTheme() async {
-    final saved =
-        (await SharedPreferences.getInstance()).getString(_folderThemeKey) ??
+    return (await SharedPreferences.getInstance()).getString(_folderThemeKey) ??
         '#FFFFFF';
-    return const {
-          'manila': '#514532',
-          'blue': '#294556',
-          'sage': '#3D5141',
-          'charcoal': '#292A2B',
-        }[saved] ??
-        saved;
   }
 
   @override
@@ -165,25 +157,6 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
       return OnboardingState(
         completed: completed,
         step: _onboardingStep(preferences.getString(_onboardingStepKey)),
-      );
-    }
-    const legacyKeys = {
-      _customCliKey,
-      _hubOriginKey,
-      _folderThemeKey,
-      _wallpaperKey,
-      _themeModeKey,
-      _languageKey,
-      _updateReminderKey,
-      _securityReminderKey,
-      _allowCriticalOverrideKey,
-      _addedProjectsKey,
-    };
-    if (preferences.getKeys().any(legacyKeys.contains)) {
-      await preferences.setBool(_onboardingCompletedKey, true);
-      return const OnboardingState(
-        completed: true,
-        step: OnboardingStep.projects,
       );
     }
     return const OnboardingState(
