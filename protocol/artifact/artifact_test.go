@@ -140,6 +140,58 @@ func TestRepositoryArtifactDirectoryParityAndDeterministicEnvelope(t *testing.T)
 	}
 }
 
+func TestBuildRepositoryRejectsInvalidInputsAndCanonicalizesModes(t *testing.T) {
+	for _, test := range []struct {
+		name       string
+		repository string
+		version    string
+		files      []Entry
+		contains   string
+	}{
+		{name: "missing identity", version: "v1", files: []Entry{{Path: "SKILL.md"}}, contains: "identity and version"},
+		{name: "missing version", repository: "example.com/repo", files: []Entry{{Path: "SKILL.md"}}, contains: "identity and version"},
+		{name: "empty inventory", repository: "example.com/repo", version: "v1", contains: "file count"},
+		{name: "directory input", repository: "example.com/repo", version: "v1", files: []Entry{{Path: "docs", Directory: true}}, contains: "is a directory"},
+		{name: "irregular mode", repository: "example.com/repo", version: "v1", files: []Entry{{Path: "link", Mode: os.ModeSymlink}}, contains: "mode is not regular"},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := BuildRepository(test.repository, test.version, test.files)
+			if err == nil || !strings.Contains(err.Error(), test.contains) {
+				t.Fatalf("error %v, want %q", err, test.contains)
+			}
+		})
+	}
+	tooMany := make([]Entry, MaxFiles+1)
+	if _, err := BuildRepository("example.com/repo", "v1", tooMany); err == nil || !strings.Contains(err.Error(), "file count") {
+		t.Fatalf("file-count error: %v", err)
+	}
+	tooLarge := make([]byte, MaxUncompressedBytes+1)
+	if _, err := BuildRepository("example.com/repo", "v1", []Entry{{Path: "SKILL.md", Contents: tooLarge}}); err == nil || !strings.Contains(err.Error(), "exceeds") {
+		t.Fatalf("size error: %v", err)
+	}
+
+	archive, err := BuildRepository("example.com/repo", "v1", []Entry{
+		{Path: "SKILL.md", Contents: []byte("skill")},
+		{Path: "default", Contents: []byte("default")},
+		{Path: "executable", Mode: 0o700, Contents: []byte("executable")},
+		{Path: "regular", Mode: 0o600, Contents: []byte("regular")},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantModes := map[string]os.FileMode{"SKILL.md": 0o644, "default": 0o644, "executable": 0o755, "regular": 0o644}
+	for _, file := range reader.File {
+		name := strings.TrimPrefix(file.Name, "example.com/repo@v1/")
+		if want, ok := wantModes[name]; ok && file.Mode().Perm() != want {
+			t.Errorf("%s mode = %o, want %o", name, file.Mode().Perm(), want)
+		}
+	}
+}
+
 func TestSumGoldenAndArchiveEncodingIndependence(t *testing.T) {
 	stored := makeZIP(t, zipEntry{"example@v1.0.0/a.txt", "a", false, zip.Store}, zipEntry{"example@v1.0.0/SKILL.md", "instructions", false, zip.Store}, zipEntry{"example@v1.0.0/empty", "", true, zip.Store})
 	deflated := makeZIP(t, zipEntry{"example@v1.0.0/SKILL.md", "instructions", false, zip.Deflate}, zipEntry{"example@v1.0.0/a.txt", "a", false, zip.Deflate})
@@ -240,6 +292,51 @@ func TestWalkContentVisitsDirectoriesAndRejectsTreeShapeConflicts(t *testing.T) 
 				t.Fatalf("error %v, want %q", err, test.contains)
 			}
 		})
+	}
+}
+
+func TestWalkRepositoryAcceptsRootDirectoryAndRejectsInvalidDirectory(t *testing.T) {
+	archive := makeZIP(t,
+		zipEntry{"example@v1/", "", true, zip.Store},
+		zipEntry{"example@v1/skills/demo/SKILL.md", "demo", false, zip.Store},
+	)
+	if _, err := RepositorySum(archive, "example", "v1"); err != nil {
+		t.Fatalf("root directory entry: %v", err)
+	}
+	invalidDirectory := makeZIP(t,
+		zipEntry{"example@v1/bad ", "", true, zip.Store},
+		zipEntry{"example@v1/SKILL.md", "root", false, zip.Store},
+	)
+	if _, err := RepositorySum(invalidDirectory, "example", "v1"); err == nil {
+		t.Fatal("expected invalid directory path rejection")
+	}
+	noSkill := t.TempDir()
+	if err := os.WriteFile(filepath.Join(noSkill, "README.md"), []byte("readme"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := RepositoryDirectorySum(noSkill); err == nil || !strings.Contains(err.Error(), "SKILL.md member") {
+		t.Fatalf("missing member error: %v", err)
+	}
+	noSkillArchive := makeZIP(t, zipEntry{"example@v1/README.md", "readme", false, zip.Store})
+	if _, err := RepositorySum(noSkillArchive, "example", "v1"); err == nil || !strings.Contains(err.Error(), "SKILL.md member") {
+		t.Fatalf("missing archive member error: %v", err)
+	}
+	corrupt := append([]byte(nil), makeZIP(t, zipEntry{"example@v1/SKILL.md", "root", false, zip.Store})...)
+	central := bytes.Index(corrupt, []byte{'P', 'K', 1, 2})
+	if central < 0 {
+		t.Fatal("missing ZIP central directory")
+	}
+	corrupt[central+16]++
+	if _, err := RepositorySum(corrupt, "example", "v1"); err == nil || !strings.Contains(err.Error(), "read artifact file") {
+		t.Fatalf("corrupt archive error: %v", err)
+	}
+	unsupported := append([]byte(nil), makeZIP(t, zipEntry{"example@v1/SKILL.md", "root", false, zip.Store})...)
+	central = bytes.Index(unsupported, []byte{'P', 'K', 1, 2})
+	local := bytes.Index(unsupported, []byte{'P', 'K', 3, 4})
+	unsupported[local+8], unsupported[local+9] = 99, 0
+	unsupported[central+10], unsupported[central+11] = 99, 0
+	if _, err := RepositorySum(unsupported, "example", "v1"); err == nil || !strings.Contains(err.Error(), "unsupported compression") {
+		t.Fatalf("unsupported compression error: %v", err)
 	}
 }
 
