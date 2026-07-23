@@ -48,16 +48,7 @@ func TestJ07UpdateMovable(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(beforeContent), "Movable C1.")
 
-	work := "/e2e/git-work/movable"
-	for _, command := range [][]string{
-		{"sed", "-i", "s/Movable C1\\./Movable C2./", work + "/skills/head/SKILL.md"},
-		{"git", "-C", work, "add", "."},
-		{"git", "-C", work, "commit", "-m", "movable C2"},
-		{"git", "-C", work, "push", "origin", "main"},
-	} {
-		result := execInContainer(t, ctx, container, command...)
-		require.Equal(t, 0, result.exitCode, result.output)
-	}
+	fixtureRepository(container, "movable").ReplaceAndPublish(t, ctx, "skills/head/SKILL.md", "Movable C1\\.", "Movable C2.", "movable C2")
 
 	preflight := execCLI(t, ctx, container, "update", repository+"@head", "--preflight", "--output", "json")
 	require.Equal(t, 0, preflight.exitCode, preflight.output)

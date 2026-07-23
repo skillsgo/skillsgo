@@ -33,17 +33,7 @@ func TestJ43MovableQueryRefresh(t *testing.T) {
 	require.Contains(t, string(manifestBefore), "version: "+first.Version)
 	require.NotContains(t, string(manifestBefore), "version: head")
 
-	work := "/e2e/git-work/movable"
-	updated := execInContainer(t, ctx, container, "sed", "-i", "s/Movable C1\\./Movable C2./", work+"/skills/head/SKILL.md")
-	require.Equal(t, 0, updated.exitCode, updated.output)
-	for _, command := range [][]string{
-		{"git", "-C", work, "add", "."},
-		{"git", "-C", work, "commit", "-m", "movable C2"},
-		{"git", "-C", work, "push", "origin", "main"},
-	} {
-		result := execInContainer(t, ctx, container, command...)
-		require.Equal(t, 0, result.exitCode, result.output)
-	}
+	fixtureRepository(container, "movable").ReplaceAndPublish(t, ctx, "skills/head/SKILL.md", "Movable C1\\.", "Movable C2.", "movable C2")
 	require.Equal(t, 0, execInContainer(t, ctx, container, "mkdir", "-p", "/e2e/project-c2").exitCode)
 	secondResult := execCLIFrom(t, ctx, container, "/e2e/project-c2", "add", "https://"+repository+"@head", "--agent", "codex", "--output", "json")
 	require.Equal(t, 0, secondResult.exitCode, secondResult.output)
