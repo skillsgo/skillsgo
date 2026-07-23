@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses the public in-memory Cloud mock and reusable conformance verifier.
- * [OUTPUT]: Proves the test double itself satisfies the same public contract required of private implementations.
+ * [INPUT]: Uses the public in-memory Cloud mock and handler- plus executor-based conformance verification.
+ * [OUTPUT]: Proves the test double and framework-neutral execution seam satisfy the same public contract required of private implementations.
  * [POS]: Serves as regression coverage for the shared Cloud testing infrastructure.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,6 +9,7 @@ package cloudtest
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -31,6 +32,15 @@ func TestMockConformance(t *testing.T) {
 	if len(mock.Events()) != 1 {
 		t.Fatalf("idempotent mock recorded %d events", len(mock.Events()))
 	}
+}
+
+func TestMockConformanceThroughExecutor(t *testing.T) {
+	mock := NewMock()
+	VerifyExecutor(t, func(request *http.Request) (*http.Response, error) {
+		recorder := httptest.NewRecorder()
+		mock.Handler().ServeHTTP(recorder, request)
+		return recorder.Result(), nil
+	})
 }
 
 func TestMockRejectsMalformedAndInvalidRequests(t *testing.T) {
@@ -182,4 +192,27 @@ func TestVerifierRejectsRankingEnvelopeMismatch(t *testing.T) {
 		}
 	}()
 	VerifyHandler(panicTestingT{}, mux)
+}
+
+func TestVerifierRejectsExecutorFailures(t *testing.T) {
+	for name, failAt := range map[string]int{"install": 1, "ranking": 3, "invalid ranking": 6} {
+		t.Run(name, func(t *testing.T) {
+			mock := NewMock()
+			calls := 0
+			defer func() {
+				if recover() == nil {
+					t.Fatal("executor failure passed conformance")
+				}
+			}()
+			VerifyExecutor(panicTestingT{}, func(request *http.Request) (*http.Response, error) {
+				calls++
+				if calls == failAt {
+					return nil, errors.New("executor failed")
+				}
+				recorder := httptest.NewRecorder()
+				mock.Handler().ServeHTTP(recorder, request)
+				return recorder.Result(), nil
+			})
+		})
+	}
 }
