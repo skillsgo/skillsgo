@@ -182,22 +182,8 @@ func repositoryProjections(catalog *agent.Catalog, agentIDs, previousAgents, pre
 }
 
 func loadWorkspaceState(root string) (project.WorkspaceManifest, project.DependencyLock, error) {
-	manifest := project.WorkspaceManifest{Dependencies: map[string]project.RepositoryDependency{}}
-	lock := project.DependencyLock{Dependencies: map[string]project.LockedRepository{}}
-	loadedManifest, manifestErr := project.LoadWorkspaceManifest(root)
-	loadedLock, lockErr := project.LoadDependencyLock(root)
-	switch {
-	case manifestErr == nil && lockErr == nil:
-		return loadedManifest, loadedLock, nil
-	case os.IsNotExist(manifestErr) && os.IsNotExist(lockErr):
-		return manifest, lock, nil
-	case manifestErr != nil && !os.IsNotExist(manifestErr):
-		return manifest, lock, manifestErr
-	case lockErr != nil && !os.IsNotExist(lockErr):
-		return manifest, lock, lockErr
-	default:
-		return manifest, lock, fmt.Errorf("skillsgo.yaml and skillsgo.lock must either both exist or both be absent")
-	}
+	manifest, lock, _, err := project.LoadWorkspaceState(root)
+	return manifest, lock, err
 }
 
 func selectRepositoryPaths(repositoryID string, selectors []string, members []hub.RepositoryMember) ([]string, error) {
