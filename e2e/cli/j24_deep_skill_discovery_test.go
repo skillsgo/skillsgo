@@ -8,6 +8,7 @@ package e2e_test
 
 import (
 	"context"
+	"encoding/json"
 	"path/filepath"
 	"testing"
 
@@ -18,10 +19,19 @@ func TestJ24DeepSkillDiscovery(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
 	repository := "fixtures.test/group/subgroup/collection"
-	add := execCLI(t, ctx, container, "add", "https://"+repository+"@v1.0.0", "--skill", "skills/general/ideation/naming", "--agent", "codex", "--copy", "--yes", "--output", "json")
+	add := execCLI(t, ctx, container, "add", "https://"+repository+"@v1.0.0", "--skill", "skills/general/ideation/naming", "--agent", "codex", "--yes", "--output", "json")
 	require.Equal(t, 0, add.exitCode, add.output)
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "naming", "SKILL.md"))
-	update := execCLI(t, ctx, container, "add", "https://"+repository+"@v1.1.0", "--skill", "skills/general/ideation/naming", "--agent", "codex", "--copy", "--yes", "--replace", "--output", "json")
+	var installed addResponse
+	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "general", "ideation", "naming", "SKILL.md"))
+	preflight := execCLI(t, ctx, container, "update", repository+"@v1.1.0", "--preflight", "--output", "json")
+	require.Equal(t, 0, preflight.exitCode, preflight.output)
+	var preview struct {
+		StateToken string `json:"stateToken"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(preflight.output), &preview), preflight.output)
+	update := execCLI(t, ctx, container, "update", repository+"@v1.1.0", "--state-token", preview.StateToken, "--output", "json")
 	require.Equal(t, 0, update.exitCode, update.output)
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "naming", "SKILL.md"))
+	newProjection := filepath.Join(sandboxRoot, "project", ".agents", "skills", filepath.FromSlash(repository)+"@v1.1.0")
+	require.FileExists(t, filepath.Join(newProjection, "skills", "general", "ideation", "naming", "SKILL.md"))
 }

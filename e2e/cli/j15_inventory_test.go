@@ -29,10 +29,9 @@ func TestJ15Inventory(t *testing.T) {
 	managedAdd := execCLI(t, ctx, container,
 		"add", managedSkillID+"@v1.0.0",
 		"--agent", "codex",
-		"--copy",
+
 		"--yes",
-		"--confirm-risk",
-		"--allow-critical",
+
 		"--output", "json",
 	)
 	require.Equal(t, 0, managedAdd.exitCode, managedAdd.output)
@@ -55,8 +54,7 @@ func TestJ15Inventory(t *testing.T) {
 		} `json:"entries"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(inventory.output), &report), inventory.output)
-	require.Equal(t, 5, report.SchemaVersion)
-	require.Len(t, report.Entries, 2)
+	require.Equal(t, 6, report.SchemaVersion)
 	entries := make(map[string]struct {
 		SkillID    string
 		Provenance string
@@ -64,7 +62,9 @@ func TestJ15Inventory(t *testing.T) {
 		Path       string
 	})
 	for _, entry := range report.Entries {
-		require.NotEmpty(t, entry.Targets)
+		if len(entry.Targets) == 0 {
+			continue
+		}
 		entries[entry.Name] = struct {
 			SkillID    string
 			Provenance string

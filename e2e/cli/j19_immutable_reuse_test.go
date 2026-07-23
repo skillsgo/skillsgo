@@ -24,15 +24,14 @@ func TestJ19ImmutableReuse(t *testing.T) {
 		"add", testSkillID+"@"+testSkillVersion,
 		"--agent", "codex",
 		"--yes",
-		"--confirm-risk",
-		"--allow-critical",
+
 		"--output", "json",
 	)
 	require.Equal(t, 0, add.exitCode, add.output)
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 
-	artifactURL := "http://127.0.0.1:3000/mod/" + testSkillID + "/@v/" + installed.Version + ".zip"
+	artifactURL := "http://127.0.0.1:3000/" + installed.Repository + "/@v/" + installed.Version + ".zip"
 	firstDownload := execInContainer(t, ctx, container,
 		"wget", "-qO", "/e2e/artifacts/first.zip", artifactURL,
 	)
@@ -52,14 +51,15 @@ func TestJ19ImmutableReuse(t *testing.T) {
 		"add", testSkillID+"@"+installed.Version,
 		"--agent", "claude-code",
 		"--yes",
-		"--confirm-risk",
-		"--allow-critical",
+
 		"--output", "json",
 	)
 	require.Equal(t, 0, secondTarget.exitCode, secondTarget.output)
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
-	claudeInfo, err := os.Lstat(filepath.Join(sandboxRoot, "project", ".claude", "skills", "alpha"))
-	require.NoError(t, err)
-	require.NotZero(t, claudeInfo.Mode()&os.ModeSymlink)
-	require.DirExists(t, containerPathOnHost(t, sandboxRoot, installed.Store))
+	var expanded addResponse
+	require.NoError(t, json.Unmarshal([]byte(secondTarget.output), &expanded), secondTarget.output)
+	require.Len(t, expanded.Projections, 2)
+	for _, projection := range expanded.Projections {
+		require.FileExists(t, containerPathOnHost(t, sandboxRoot, projection.Path, "skills", "alpha", "SKILL.md"))
+	}
+	require.DirExists(t, containerPathOnHost(t, sandboxRoot, installed.Vendor))
 }

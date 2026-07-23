@@ -8,6 +8,7 @@ package e2e_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -18,12 +19,14 @@ import (
 func TestJ23UpdateFailureIsNonZeroAndAtomic(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
-	add := execCLI(t, ctx, container, "add", testSkillID+"@"+testSkillVersion, "--agent", "codex", "--copy", "--yes", "--confirm-risk", "--allow-critical", "--output", "json")
+	add := execCLI(t, ctx, container, "add", testSkillID+"@"+testSkillVersion, "--agent", "codex", "--yes", "--output", "json")
 	require.Equal(t, 0, add.exitCode, add.output)
+	var installed addResponse
+	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 	paths := []string{
-		filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"),
-		filepath.Join(sandboxRoot, "project", "skillsgo.mod"),
-		filepath.Join(sandboxRoot, "project", "skillsgo.sum"),
+		containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"),
+		filepath.Join(sandboxRoot, "project", "skillsgo.yaml"),
+		filepath.Join(sandboxRoot, "project", "skillsgo.lock"),
 	}
 	before := make([][]byte, len(paths))
 	for index, path := range paths {
@@ -32,7 +35,7 @@ func TestJ23UpdateFailureIsNonZeroAndAtomic(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	result := execCLI(t, ctx, container, "update", "alpha", "--hub", "http://127.0.0.1:1", "--yes", "--output", "json")
+	result := execCLI(t, ctx, container, "update", installed.Repository+"@v1.4.0", "--hub", "http://127.0.0.1:1", "--preflight", "--output", "json")
 	require.NotEqual(t, 0, result.exitCode, result.output)
 	for index, path := range paths {
 		after, err := os.ReadFile(path)
