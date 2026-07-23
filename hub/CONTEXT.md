@@ -41,7 +41,7 @@ One durable, deduplicated attempt to publish unprocessed and previously failed s
 _Avoid_: River job, atomic repository import, installation request
 
 **Historical Publication**:
-An immutable Repository Publication created by Repository History Backfill that remains downloadable and eligible for Content Match without making a Skill absent from the current publication visible in discovery or rankings.
+An immutable Repository Publication created by Repository History Backfill that remains exactly downloadable without making a Skill absent from the current publication visible in discovery or rankings.
 _Avoid_: current catalog entry, archived metadata, resurrected Skill
 
 **Repository Batch Version**:
@@ -89,12 +89,8 @@ One auditable analysis attempt over a specific immutable source revision, analyz
 _Avoid_: cron result, mutable translation row, artifact scan
 
 **Sum**:
-The deterministic Go-compatible `h1:` identity of a normalized Repository Artifact. It uses Go `dirhash.Hash1` over sorted relative file paths and contents after removing the archive's `<repositoryId>@<version>/` root, so archive compression and public coordinates do not change content identity.
+The deterministic Go HashZip-compatible `h1:` identity of a normalized Repository Artifact. It uses Go `dirhash.Hash1` over sorted full ZIP file names and contents, including the `<repositoryId>@<version>/` root. Archive compression and metadata do not affect the result, while Repository identity and immutable version are authenticated as part of the artifact coordinate.
 _Avoid_: archive hash, Git tree SHA
-
-**Content Match**:
-An exact lookup of immutable Hub artifacts by complete Sum, optionally ranked by a source hint. It can support a later reviewed association flow for External Installations that are absent from supported locks, but the current lock-backed Batch Takeover does not call the Hub. It never treats matching metadata as evidence of identity.
-_Avoid_: fuzzy name match, metadata fingerprint, mutable branch lookup, automatic ownership claim
 
 **Hub Origin**:
 The trusted Hub base used to resolve metadata and download an artifact. Clients may use the official service or a self-hosted Origin and still verify sums.
