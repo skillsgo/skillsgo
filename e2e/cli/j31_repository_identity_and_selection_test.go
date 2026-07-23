@@ -22,37 +22,42 @@ func TestJ31RepositoryIdentityAndSelection(t *testing.T) {
 
 	selected := execCLI(t, ctx, container,
 		"add", "https://"+collection+"@v1.0.0", "--skill", collection+"/-/skills/alpha",
-		"--agent", "codex", "--copy", "--yes", "--output", "json",
+		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, selected.exitCode, selected.output)
-	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
+	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
 	require.NoError(t, err)
-	require.Contains(t, string(manifest), collection+"/-/skills/alpha v1.0.0")
+	require.Contains(t, string(manifest), collection+":")
+	require.Contains(t, string(manifest), "version: v1.0.0")
+	require.Contains(t, string(manifest), "- skills/alpha")
 
 	resetLocalInstallation(t, ctx, container)
 	rootOnly := execCLI(t, ctx, container,
 		"add", "https://"+collection+"@v1.0.0", "--skill", "root-suite",
-		"--agent", "codex", "--copy", "--yes", "--output", "json",
+		"--agent", "codex", "--yes", "--output", "json",
 	)
-	require.NotEqual(t, 0, rootOnly.exitCode, rootOnly.output)
-	requireNoLocalInstallation(t, sandboxRoot)
+	require.Equal(t, 0, rootOnly.exitCode, rootOnly.output)
+	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "fixtures.test", "group", "subgroup", "collection@v1.0.0", "SKILL.md"))
+	resetLocalInstallation(t, ctx, container)
 
 	duplicate := "fixtures.test/group/subgroup/duplicate"
 	ambiguous := execCLI(t, ctx, container,
 		"add", "https://"+duplicate+"@v1.0.0", "--skill", "shared",
-		"--agent", "codex", "--copy", "--yes", "--output", "json",
+		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.NotEqual(t, 0, ambiguous.exitCode, ambiguous.output)
 	requireNoLocalInstallation(t, sandboxRoot)
 	disambiguated := execCLI(t, ctx, container,
 		"add", "https://"+duplicate+"@v1.0.0", "--skill", "one",
-		"--agent", "codex", "--copy", "--yes", "--output", "json",
+		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, disambiguated.exitCode, disambiguated.output)
 
-	rootZIP := execInContainer(t, ctx, container, "sh", "-c", "wget -qO /tmp/root.zip http://127.0.0.1:3000/mod/"+collection+"/@v/v1.0.0.zip && unzip -l /tmp/root.zip")
+	rootZIP := execInContainer(t, ctx, container, "sh", "-c", "wget -qO /tmp/root.zip http://127.0.0.1:3000/"+collection+"/@v/v1.0.0.zip && unzip -l /tmp/root.zip")
 	require.Equal(t, 0, rootZIP.exitCode, rootZIP.output)
 	require.Contains(t, rootZIP.output, "SKILL.md")
-	noAggregate := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/mod/fixtures.test/group/subgroup/mixed/@v/v1.0.0.zip")
-	require.NotEqual(t, 0, noAggregate.exitCode, noAggregate.output)
+	aggregate := execInContainer(t, ctx, container, "sh", "-c", "wget -qO /tmp/mixed.zip http://127.0.0.1:3000/fixtures.test/group/subgroup/mixed/@v/v1.0.0.zip && unzip -l /tmp/mixed.zip")
+	require.Equal(t, 0, aggregate.exitCode, aggregate.output)
+	require.Contains(t, aggregate.output, "skills/alpha/SKILL.md")
+	require.Contains(t, aggregate.output, "skills/beta/SKILL.md")
 }

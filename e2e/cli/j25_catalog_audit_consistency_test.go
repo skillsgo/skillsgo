@@ -17,7 +17,7 @@ import (
 func TestJ25CatalogImmutableIdentityWithoutAudit(t *testing.T) {
 	ctx := context.Background()
 	container, _ := startEnvironment(t, ctx)
-	add := execCLI(t, ctx, container, "add", testSkillID+"@"+testSkillVersion, "--agent", "codex", "--yes", "--confirm-risk", "--allow-critical", "--output", "json")
+	add := execCLI(t, ctx, container, "add", testSkillID+"@"+testSkillVersion, "--agent", "codex", "--yes", "--output", "json")
 	require.Equal(t, 0, add.exitCode, add.output)
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed))

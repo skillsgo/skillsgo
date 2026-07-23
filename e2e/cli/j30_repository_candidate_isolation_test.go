@@ -8,6 +8,7 @@ package e2e_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -21,16 +22,18 @@ func TestJ30RepositoryCandidateIsolation(t *testing.T) {
 	repository := "fixtures.test/group/subgroup/collection"
 	valid := execCLI(t, ctx, container,
 		"add", "https://"+repository+"@v1.0.0", "--skill", "alpha",
-		"--agent", "codex", "--copy", "--yes", "--output", "json",
+		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, valid.exitCode, valid.output)
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
-	manifestBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
+	var installed addResponse
+	require.NoError(t, json.Unmarshal([]byte(valid.output), &installed), valid.output)
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
+	manifestBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
 	require.NoError(t, err)
-	sumBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
+	sumBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
 	require.NoError(t, err)
 
-	info := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/mod/"+repository+"/@v/v1.0.0.info")
+	info := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/"+repository+"/@v/v1.0.0.info")
 	require.Equal(t, 0, info.exitCode, info.output)
 	require.Contains(t, info.output, repository+"/-/skills/alpha")
 	require.Contains(t, info.output, repository+"/-/skills/beta")
@@ -38,13 +41,13 @@ func TestJ30RepositoryCandidateIsolation(t *testing.T) {
 
 	invalid := execCLI(t, ctx, container,
 		"add", "https://"+repository+"@v1.0.0", "--skill", "skills/invalid",
-		"--agent", "codex", "--copy", "--yes", "--output", "json",
+		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.NotEqual(t, 0, invalid.exitCode, invalid.output)
-	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "invalid"))
-	manifestAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
+	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "invalid"))
+	manifestAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
 	require.NoError(t, err)
-	sumAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
+	sumAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
 	require.NoError(t, err)
 	require.Equal(t, manifestBefore, manifestAfter)
 	require.Equal(t, sumBefore, sumAfter)

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on deterministic Repository tags plus public Hub list, head, release, exact Info, ZIP, and HTTP HEAD routes.
- * [OUTPUT]: Provides black-box coverage for the exact protocol, rejection of legacy or movable exact routes, and immutable responses after a source tag moves.
+ * [INPUT]: Depends on deterministic Repository tags, the product Resolution API, and public Repository Proxy list, exact Info, ZIP, and HTTP HEAD routes.
+ * [OUTPUT]: Provides black-box coverage for selector/proxy separation, rejection of legacy or movable Proxy routes, and immutable responses after a source tag moves.
  * [POS]: Serves as the Repository wire-protocol immutability journey in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,19 +18,22 @@ func TestJ32RepositoryProtocolImmutability(t *testing.T) {
 	ctx := context.Background()
 	container, _ := startEnvironment(t, ctx)
 	repository := "fixtures.test/group/subgroup/collection"
-	base := "http://127.0.0.1:3000/mod/" + repository
+	base := "http://127.0.0.1:3000/" + repository
 
 	list := execInContainer(t, ctx, container, "wget", "-qO-", base+"/@v/list")
 	require.Equal(t, 0, list.exitCode, list.output)
 	require.Equal(t, []string{"v1.0.0", "v1.1.0-beta.1", "v1.1.0"}, strings.Fields(list.output))
-	release := execInContainer(t, ctx, container, "wget", "-qO-", base+"/@release")
+	resolutionURL := "http://127.0.0.1:3000/api/v1/repository-resolutions"
+	release := execInContainer(t, ctx, container, "wget", "-qO-", "--header=Content-Type: application/json", "--post-data={\"schemaVersion\":1,\"repositoryId\":\""+repository+"\",\"selector\":\"release\"}", resolutionURL)
 	require.Equal(t, 0, release.exitCode, release.output)
-	require.Contains(t, release.output, `"Version":"v1.1.0"`)
-	headInfo := execInContainer(t, ctx, container, "wget", "-qO-", base+"/@head")
+	require.Contains(t, release.output, `"version":"v1.1.0"`)
+	headInfo := execInContainer(t, ctx, container, "wget", "-qO-", "--header=Content-Type: application/json", "--post-data={\"schemaVersion\":1,\"repositoryId\":\""+repository+"\",\"selector\":\"head\"}", resolutionURL)
 	require.Equal(t, 0, headInfo.exitCode, headInfo.output)
-	require.Contains(t, headInfo.output, `"Version":"v1.1.0"`)
-	legacyLatest := execInContainer(t, ctx, container, "wget", "-S", "-qO-", base+"/@latest")
-	require.NotEqual(t, 0, legacyLatest.exitCode, legacyLatest.output)
+	require.Contains(t, headInfo.output, `"version":"`)
+	for _, selector := range []string{"head", "release", "latest"} {
+		removed := execInContainer(t, ctx, container, "wget", "-S", "-qO-", base+"/@"+selector)
+		require.NotEqual(t, 0, removed.exitCode, removed.output)
+	}
 
 	exact := execInContainer(t, ctx, container, "wget", "-qO-", base+"/@v/v1.0.0.info")
 	require.Equal(t, 0, exact.exitCode, exact.output)
@@ -44,20 +47,13 @@ func TestJ32RepositoryProtocolImmutability(t *testing.T) {
 	require.NotEqual(t, 0, byBranch.exitCode, byBranch.output)
 
 	nestedBase := base + "/-/skills/alpha"
-	nestedList := execInContainer(t, ctx, container, "wget", "-qO-", nestedBase+"/@v/list")
-	require.Equal(t, 0, nestedList.exitCode, nestedList.output)
-	require.Equal(t, []string{"v1.0.0", "v1.1.0"}, strings.Fields(nestedList.output), "nested list contains only Repository versions where that Skill was published")
-	nestedInfo := execInContainer(t, ctx, container, "wget", "-qO-", nestedBase+"/@v/v1.0.0.info")
-	require.Equal(t, 0, nestedInfo.exitCode, nestedInfo.output)
-	require.Contains(t, nestedInfo.output, `"ID":"fixtures.test/group/subgroup/collection/-/skills/alpha"`)
-
-	head := execInContainer(t, ctx, container, "wget", "--spider", "-q", base+"/-/skills/alpha/@v/v1.0.0.zip")
-	require.Equal(t, 0, head.exitCode, head.output)
+	for _, suffix := range []string{"/@v/list", "/@v/v1.0.0.info", "/@v/v1.0.0.zip"} {
+		removed := execInContainer(t, ctx, container, "wget", "-qO-", nestedBase+suffix)
+		require.NotEqual(t, 0, removed.exitCode, removed.output)
+	}
 	rootHead := execInContainer(t, ctx, container, "wget", "--spider", "-q", base+"/@v/v1.0.0.zip")
 	require.Equal(t, 0, rootHead.exitCode, rootHead.output)
-	noRootHead := execInContainer(t, ctx, container, "wget", "--spider", "-q", "http://127.0.0.1:3000/mod/fixtures.test/group/subgroup/mixed/@v/v1.0.0.zip")
-	require.NotEqual(t, 0, noRootHead.exitCode, noRootHead.output)
-	zipBefore := execInContainer(t, ctx, container, "sh", "-c", "wget -qO- "+base+"/-/skills/alpha/@v/v1.0.0.zip | sha256sum")
+	zipBefore := execInContainer(t, ctx, container, "sh", "-c", "wget -qO- "+base+"/@v/v1.0.0.zip | sha256sum")
 	require.Equal(t, 0, zipBefore.exitCode, zipBefore.output)
 
 	move := execInContainer(t, ctx, container, "sh", "-c", "git --git-dir=/e2e/git/group/subgroup/collection update-ref refs/tags/v1.0.0 $(git --git-dir=/e2e/git/group/subgroup/collection rev-parse v1.1.0^{commit})")
@@ -65,7 +61,7 @@ func TestJ32RepositoryProtocolImmutability(t *testing.T) {
 	exactAfter := execInContainer(t, ctx, container, "wget", "-qO-", base+"/@v/v1.0.0.info")
 	require.Equal(t, 0, exactAfter.exitCode, exactAfter.output)
 	require.JSONEq(t, exact.output, exactAfter.output)
-	zipAfter := execInContainer(t, ctx, container, "sh", "-c", "wget -qO- "+base+"/-/skills/alpha/@v/v1.0.0.zip | sha256sum")
+	zipAfter := execInContainer(t, ctx, container, "sh", "-c", "wget -qO- "+base+"/@v/v1.0.0.zip | sha256sum")
 	require.Equal(t, 0, zipAfter.exitCode, zipAfter.output)
 	require.Equal(t, zipBefore.output, zipAfter.output)
 }

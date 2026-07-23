@@ -8,6 +8,8 @@ package e2e_test
 
 import (
 	"context"
+	"encoding/json"
+	"os"
 	"path/filepath"
 	"testing"
 
@@ -19,19 +21,25 @@ func TestJ29RepositoryHistory(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 	repository := "fixtures.test/group/subgroup/collection"
 
-	current := execCLI(t, ctx, container, "add", "https://"+repository+"@v1.1.0", "--agent", "codex", "--copy", "--yes", "--output", "json")
+	current := execCLI(t, ctx, container, "add", "https://"+repository+"@v1.1.0", "--agent", "codex", "--yes", "--output", "json")
 	require.Equal(t, 0, current.exitCode, current.output)
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
-	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "beta"))
+	var currentInstall addResponse
+	require.NoError(t, json.Unmarshal([]byte(current.output), &currentInstall), current.output)
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, currentInstall.Projections[0].Path, "skills", "alpha", "SKILL.md"))
+	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, currentInstall.Projections[0].Path, "skills", "beta"))
 
-	oldBeta := execCLI(t, ctx, container,
+	require.NoError(t, os.MkdirAll(filepath.Join(sandboxRoot, "old-project"), 0o755))
+	oldBeta := execCLIFrom(t, ctx, container, "/e2e/old-project",
 		"add", "https://"+repository+"@v1.0.0", "--skill", "skills/beta",
-		"--agent", "codex", "--copy", "--yes", "--output", "json",
+		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, oldBeta.exitCode, oldBeta.output)
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "beta", "SKILL.md"))
+	var oldInstall addResponse
+	require.NoError(t, json.Unmarshal([]byte(oldBeta.output), &oldInstall), oldBeta.output)
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, oldInstall.Projections[0].Path, "skills", "beta", "SKILL.md"))
 
-	nestedOld := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/mod/"+repository+"/-/skills/beta/@v/v1.0.0.info")
+	nestedOld := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/"+repository+"/@v/v1.0.0.info")
 	require.Equal(t, 0, nestedOld.exitCode, nestedOld.output)
 	require.Contains(t, nestedOld.output, `"Version":"v1.0.0"`)
+	require.Contains(t, nestedOld.output, repository+"/-/skills/beta")
 }
