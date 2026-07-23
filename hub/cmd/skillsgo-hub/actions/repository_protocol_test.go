@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the Hub Router with an empty Catalog/storage pair and a counted Repository snapshot source double.
- * [OUTPUT]: Specifies root Repository exact-version publication, complete nested-only Repository ZIPs, one-snapshot membership, immutable cache reuse, atomic rollback, concurrency controls, historical member sets, and self-contained Repository Info.
+ * [OUTPUT]: Specifies root Repository exact-version publication, complete nested-only Repository ZIPs, one-snapshot membership, immutable cache reuse, invisible retry-safe orphans, concurrency controls, historical member sets, and self-contained Repository Info.
  * [POS]: Serves as public Router acceptance coverage for demand-driven Repository materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -140,6 +140,33 @@ func TestRepositoryPublicationFailureExposesNoPartialMemberSet(t *testing.T) {
 	members, err = metadata.RepositoryVersionMembers(t.Context(), repository, version)
 	require.NoError(t, err)
 	require.Len(t, members, 2)
+}
+
+func TestInvalidPublicationAggregateIsRejectedBeforeImmutableStorage(t *testing.T) {
+	repository, version := "github.com/example/orphan", "v1.0.0"
+	fetcher := &countedRepositoryFetcher{snapshot: func() *skill.RepositorySnapshot {
+		manifest, err := parseRepositoryTestManifest(repositoryTestManifest(t, repository, version, "duplicate", "Duplicate fixture.", ""))
+		require.NoError(t, err)
+		return &skill.RepositorySnapshot{
+			RepositoryID: repository, Version: version, Ref: "refs/tags/v1.0.0", CommitSHA: "commit-orphan", TreeSHA: "tree-orphan", CommitTime: time.Now().UTC(),
+			Members: []skill.RepositoryMember{
+				{Name: manifest.Name, Path: "skills/one", TreeSHA: "tree-one", Manifest: manifest},
+				{Name: manifest.Name, Path: "skills/two", TreeSHA: "tree-two", Manifest: manifest},
+			},
+		}
+	}}
+	backend, err := mem.NewStorage()
+	require.NoError(t, err)
+	_, metadata := testCatalogAPI(t)
+	publisher := newRepositoryPublisher(fetcher, backend, metadata)
+
+	_, err = publisher.Materialize(t.Context(), repository, version)
+	require.Error(t, err)
+	members, membersErr := metadata.RepositoryVersionMembers(t.Context(), repository, version)
+	require.NoError(t, membersErr)
+	require.Empty(t, members, "failed Catalog publication must remain invisible")
+	_, storageErr := backend.Info(t.Context(), repository, version)
+	require.Error(t, storageErr, "deterministically invalid aggregate must not occupy the immutable coordinate")
 }
 
 func TestMovedTagConflictsBeforeStoredArtifactsChange(t *testing.T) {

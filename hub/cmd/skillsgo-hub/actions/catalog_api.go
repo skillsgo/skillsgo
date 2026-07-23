@@ -26,8 +26,6 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/presentation"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
-	protocolrepositoryid "github.com/skillsgo/skillsgo/protocol/repositoryid"
-	protocolskillmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 )
 
@@ -41,10 +39,7 @@ type skillBatchRequest struct {
 	Skills []skillCoordinate `json:"skills"`
 }
 
-type skillCoordinate struct {
-	RepositoryID string `json:"repositoryId"`
-	Name         string `json:"name"`
-}
+type skillCoordinate = protocolapi.SkillCoordinate
 
 type skillBatchResponse struct {
 	Skills []discoverySkill `json:"skills"`
@@ -135,6 +130,7 @@ func registerCatalogAPIRoutes(
 }
 
 func skillBatchHandler(metadata *catalog.Catalog) fiber.Handler {
+	projection := skillCardProjection{catalog: metadata}
 	return func(c fiber.Ctx) error {
 		var request skillBatchRequest
 		decoder := json.NewDecoder(strings.NewReader(string(c.Body())))
@@ -143,36 +139,18 @@ func skillBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 			return writeAPIError(c, fiber.StatusBadRequest, "skills must contain 1 to 100 Repository ID and Skill name coordinates")
 		}
 		seen := make(map[string]bool, len(request.Skills))
-		stored := make([]catalog.Skill, 0, len(request.Skills))
 		for _, coordinate := range request.Skills {
-			key := coordinate.RepositoryID + "\x00" + coordinate.Name
-			if !validSkillCoordinate(coordinate.RepositoryID, coordinate.Name) || seen[key] {
+			key := coordinate.Key()
+			if !coordinate.Valid() || seen[key] {
 				return writeAPIError(c, fiber.StatusBadRequest, "skills must contain unique canonical coordinates")
 			}
 			seen[key] = true
-			item, err := metadata.SkillByCoordinate(c.Context(), coordinate.RepositoryID, coordinate.Name)
-			if errors.Is(err, sql.ErrNoRows) {
-				continue
-			}
-			if err != nil {
-				return writeInternalAPIError(c, "catalog.skill_batch", fiber.StatusInternalServerError, "internal_error", "Skill batch failed", err)
-			}
-			stored = append(stored, *item)
 		}
-		response := skillBatchResponse{Skills: make([]discoverySkill, 0, len(stored))}
-		for _, item := range stored {
-			trust := "unverified"
-			if item.Verified {
-				trust = "community_verified"
-			}
-			response.Skills = append(response.Skills, discoverySkill{
-				RepositoryID: item.SourceHost + "/" + item.Repository, Name: item.Name, Description: item.Description,
-				Source: item.SourceHost + "/" + item.Repository, Repository: item.SourceHost + "/" + item.Repository,
-				ImageURL: skillImageURL(item.SourceHost, item.Repository), SkillPath: item.SkillPath,
-				LatestVersion: item.LatestVersion, TrustLevel: trust, RiskAssessment: "unknown",
-			})
+		cards, err := projection.Hydrate(c.Context(), request.Skills)
+		if err != nil {
+			return writeInternalAPIError(c, "catalog.skill_batch", fiber.StatusInternalServerError, "internal_error", "Skill batch failed", err)
 		}
-		return writeJSON(c, fiber.StatusOK, response)
+		return writeJSON(c, fiber.StatusOK, skillBatchResponse{Skills: cards})
 	}
 }
 
@@ -185,8 +163,8 @@ func catalogUpdateCheckHandler(metadata *catalog.Catalog, artifacts artifactRead
 		seen := make(map[string]bool, len(request.Skills))
 		available := make(map[string]bool, len(request.Skills))
 		for _, coordinate := range request.Skills {
-			key := coordinate.RepositoryID + "\x00" + coordinate.Name
-			if !validSkillCoordinate(coordinate.RepositoryID, coordinate.Name) || seen[key] {
+			key := coordinate.Key()
+			if !coordinate.Valid() || seen[key] {
 				return writeAPIError(c, fiber.StatusBadRequest, "invalid or duplicate Skill coordinate")
 			}
 			seen[key] = true
@@ -203,7 +181,7 @@ func catalogUpdateCheckHandler(metadata *catalog.Catalog, artifacts artifactRead
 		}
 		resolvedRepositories := map[string]repositoryUpdateCandidates{}
 		for _, coordinate := range request.Skills {
-			key := coordinate.RepositoryID + "\x00" + coordinate.Name
+			key := coordinate.Key()
 			if !available[key] {
 				continue
 			}
@@ -218,7 +196,7 @@ func catalogUpdateCheckHandler(metadata *catalog.Catalog, artifacts artifactRead
 		}
 		response := catalogUpdateCheckResponse{SchemaVersion: 1, Items: make([]catalogUpdateCheckItem, 0, len(request.Skills))}
 		for _, coordinate := range request.Skills {
-			key := coordinate.RepositoryID + "\x00" + coordinate.Name
+			key := coordinate.Key()
 			if !available[key] {
 				response.Items = append(response.Items, catalogUpdateCheckItem{RepositoryID: coordinate.RepositoryID, Name: coordinate.Name, Status: "unsupported"})
 				continue
@@ -293,32 +271,18 @@ func searchSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.search", fiber.StatusInternalServerError, "internal_error", "search failed", err)
 		}
-		localizeSearchSkills(c.Context(), metadata, presentationLocale(c), skills)
-		return writeJSON(c, fiber.StatusOK, discoveryResponse("search", skills, limit, offset))
+		return writeJSON(c, fiber.StatusOK, discoveryResponse(c.Context(), "search", metadata, presentationLocale(c), skills, limit, offset))
 	}
 }
 
-func discoveryResponse(collection string, ranked []catalog.SearchSkill, limit, offset int) skillsResponse {
+func discoveryResponse(ctx context.Context, collection string, metadata *catalog.Catalog, locale string, ranked []catalog.SearchSkill, limit, offset int) skillsResponse {
 	nextOffset := (*int)(nil)
 	if len(ranked) > limit {
 		next := offset + limit
 		nextOffset = &next
 		ranked = ranked[:limit]
 	}
-	skills := make([]discoverySkill, 0, len(ranked))
-	for _, item := range ranked {
-		trustLevel := "unverified"
-		if item.Verified {
-			trustLevel = "community_verified"
-		}
-		skills = append(skills, discoverySkill{
-			RepositoryID: item.SourceHost + "/" + item.Repository, Name: item.Name, Description: item.Description,
-			Source: item.SourceHost + "/" + item.Repository, SkillPath: item.SkillPath,
-			Repository:    item.SourceHost + "/" + item.Repository,
-			ImageURL:      skillImageURL(item.SourceHost, item.Repository),
-			LatestVersion: item.LatestVersion, TrustLevel: trustLevel, RiskAssessment: "unknown",
-		})
-	}
+	skills := (skillCardProjection{catalog: metadata}).Search(ctx, locale, ranked)
 	return skillsResponse{
 		Collection: collection,
 		Skills:     skills,
@@ -430,8 +394,7 @@ func skillDetailHandler(
 }
 
 func validSkillCoordinate(repositoryID, skillName string) bool {
-	parsed, err := protocolrepositoryid.Parse(repositoryID)
-	return err == nil && parsed.String() == repositoryID && protocolskillmanifest.ValidName(skillName)
+	return (protocolapi.SkillCoordinate{RepositoryID: repositoryID, Name: skillName}).Valid()
 }
 
 func presentationLocale(c fiber.Ctx) string {
