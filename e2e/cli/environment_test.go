@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Testcontainers, the host runner identity, disposable bind mounts, and public CLI, Hub, Cloud, JSON, and filesystem contracts.
- * [OUTPUT]: Provides host-owned selfhost/Cloud container sandboxes plus shared command execution, fixture, Repository artifact lookup, and assertion helpers for black-box journeys.
+ * [INPUT]: Depends on Testcontainers, PostgreSQL, the host runner identity, disposable bind mounts, and public CLI, Hub, Cloud, JSON, and filesystem contracts.
+ * [OUTPUT]: Provides host-owned selfhost/Cloud container sandboxes with isolated PostgreSQL plus shared command execution, fixture, Repository artifact lookup, and assertion helpers for black-box journeys.
  * [POS]: Serves as the Linux/macOS container lifecycle and isolation harness for the cross-product CLI E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,6 +21,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go"
 	tcexec "github.com/testcontainers/testcontainers-go/exec"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
+	"github.com/testcontainers/testcontainers-go/network"
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
@@ -78,6 +80,8 @@ func startEnvironmentWithEnv(t *testing.T, ctx context.Context, overrides map[st
 		"SKILLSGO_HUB_CACHE_DIR":           "/e2e/hub/cache",
 		"SKILLSGO_HUB_STORAGE_TYPE":        "disk",
 		"SKILLSGO_HUB_DISK_STORAGE_ROOT":   "/e2e/hub/storage",
+		"SKILLSGO_HUB_DATABASE_TYPE":       "postgres",
+		"SKILLSGO_HUB_DATABASE_DSN":        "postgres://skillsgo:skillsgo@postgres:5432/skillsgo?sslmode=disable",
 		"SKILLSGO_ALLOW_PRIVATE_GIT_HOSTS": "true",
 		"SKILLSGO_LANG":                    "en",
 		"NO_COLOR":                         "1",
@@ -85,6 +89,15 @@ func startEnvironmentWithEnv(t *testing.T, ctx context.Context, overrides map[st
 	for key, value := range overrides {
 		environment[key] = value
 	}
+	nw, err := network.New(ctx)
+	require.NoError(t, err)
+	testcontainers.CleanupNetwork(t, nw)
+	database, err := postgres.Run(ctx, "postgres:18-alpine",
+		postgres.WithDatabase("skillsgo"), postgres.WithUsername("skillsgo"), postgres.WithPassword("skillsgo"),
+		postgres.BasicWaitStrategies(), network.WithNetwork([]string{"postgres"}, nw),
+	)
+	require.NoError(t, err)
+	testcontainers.CleanupContainer(t, database)
 
 	container, err := testcontainers.Run(
 		ctx,
@@ -105,6 +118,7 @@ func startEnvironmentWithEnv(t *testing.T, ctx context.Context, overrides map[st
 			return nil
 		}),
 		testcontainers.WithEnv(environment),
+		network.WithNetwork([]string{"hub"}, nw),
 		testcontainers.WithWaitStrategy(
 			wait.ForHTTP("/readyz").
 				WithPort("3000/tcp").
