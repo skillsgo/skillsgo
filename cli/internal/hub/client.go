@@ -21,6 +21,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
+	protocolskillmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 	modmodule "golang.org/x/mod/module"
 )
@@ -51,7 +52,8 @@ type RepositoryMember struct {
 }
 
 type SkillProductMetadata struct {
-	ID                    string  `json:"id"`
+	RepositoryID          string  `json:"repositoryId"`
+	Name                  string  `json:"name"`
 	ImageURL              *string `json:"imageUrl"`
 	Stars                 int64   `json:"stars"`
 	RepositoryDescription string  `json:"repositoryDescription"`
@@ -62,7 +64,7 @@ type SkillProductMetadata struct {
 }
 
 type SkillSummary struct {
-	SkillID       string `json:"id"`
+	RepositoryID  string `json:"repositoryId"`
 	Name          string `json:"name"`
 	Repository    string `json:"repository"`
 	LatestVersion string `json:"latestVersion"`
@@ -71,6 +73,8 @@ type SkillSummary struct {
 type skillsResponse struct {
 	Skills []SkillSummary `json:"skills"`
 }
+
+type SkillCoordinate = protocolapi.SkillCoordinate
 
 type CatalogUpdateItem = protocolapi.CatalogUpdateCheckItem
 
@@ -175,6 +179,9 @@ func (c *Client) FetchRepositoryWithProgress(ctx context.Context, repositoryID, 
 }
 
 func ParseRepositoryInfo(repositoryID string, infoBytes []byte) (*RepositoryResource, error) {
+	if err := source.ValidateRepositoryID(repositoryID); err != nil {
+		return nil, err
+	}
 	var info RepositoryInfo
 	if err := json.Unmarshal(infoBytes, &info); err != nil {
 		return nil, &ProtocolError{Err: fmt.Errorf("decode Repository Info: %w", err)}
@@ -191,19 +198,18 @@ func ParseRepositoryInfo(repositoryID string, infoBytes []byte) (*RepositoryReso
 		return nil, fmt.Errorf("Hub returned invalid Repository version for %s: %w", repositoryID, err)
 	}
 	resource := &RepositoryResource{Info: info, InfoBytes: append([]byte(nil), infoBytes...), Members: make([]RepositoryMember, 0, len(info.Skills))}
-	seen := map[string]bool{}
-	prefix := strings.TrimSuffix(repositoryID, "/") + "/-/"
+	seenNames := map[string]bool{}
+	seenPaths := map[string]bool{}
 	for _, member := range info.Skills {
-		if member.ID != repositoryID && !strings.HasPrefix(member.ID, prefix) {
-			return nil, fmt.Errorf("Repository Info contains foreign Skill %q", member.ID)
+		validPath := member.SkillPath == "." || protocolartifact.ValidRelativePath(member.SkillPath)
+		if !protocolskillmanifest.ValidName(member.Name) || !validPath || seenNames[member.Name] || seenPaths[member.SkillPath] || member.RepositoryID != repositoryID || member.Version != info.Version || member.CommitSHA != info.CommitSHA || member.Ref != info.Ref {
+			return nil, fmt.Errorf("Repository Info contains inconsistent Skill %q", member.Name)
 		}
-		if seen[member.ID] || member.RepositoryID != repositoryID || member.Path == "" || member.Version != info.Version || member.CommitSHA != info.CommitSHA || member.Ref != info.Ref {
-			return nil, fmt.Errorf("Repository Info contains inconsistent Skill %q", member.ID)
-		}
-		if err := validateAssessedInfo(member.ID, info.Version, member); err != nil {
+		if err := validateAssessedInfo(repositoryID, member.Name, info.Version, member); err != nil {
 			return nil, err
 		}
-		seen[member.ID] = true
+		seenNames[member.Name] = true
+		seenPaths[member.SkillPath] = true
 		memberBytes, err := json.Marshal(member)
 		if err != nil {
 			return nil, fmt.Errorf("encode Repository member Info: %w", err)
@@ -213,13 +219,14 @@ func ParseRepositoryInfo(repositoryID string, infoBytes []byte) (*RepositoryReso
 	return resource, nil
 }
 
-func (c *Client) SkillProduct(ctx context.Context, skillID string) (SkillProductMetadata, error) {
+func (c *Client) SkillProduct(ctx context.Context, repositoryID, name string) (SkillProductMetadata, error) {
 	var metadata SkillProductMetadata
-	if err := c.getJSON(ctx, c.baseURL+"/api/v1/skills/"+skillID, &metadata); err != nil {
+	query := url.Values{"repositoryId": []string{repositoryID}, "name": []string{name}}
+	if err := c.getJSON(ctx, c.baseURL+"/api/v1/skills/detail?"+query.Encode(), &metadata); err != nil {
 		return SkillProductMetadata{}, err
 	}
-	if metadata.ID != skillID {
-		return SkillProductMetadata{}, fmt.Errorf("Hub returned mismatched Skill product metadata for %s", skillID)
+	if metadata.RepositoryID != repositoryID || metadata.Name != name {
+		return SkillProductMetadata{}, fmt.Errorf("Hub returned mismatched Skill product metadata for %s:%s", repositoryID, name)
 	}
 	return metadata, nil
 }
@@ -261,33 +268,30 @@ func (c *Client) DiscoverLocalized(ctx context.Context, collection, search, loca
 	return c.readProductJSON(ctx, path, query)
 }
 
-func (c *Client) Detail(ctx context.Context, skillID string) (json.RawMessage, error) {
-	return c.DetailLocalized(ctx, skillID, "")
+func (c *Client) Detail(ctx context.Context, repositoryID, name string) (json.RawMessage, error) {
+	return c.DetailLocalized(ctx, repositoryID, name, "")
 }
 
-func (c *Client) DetailLocalized(ctx context.Context, skillID, locale string) (json.RawMessage, error) {
-	if err := source.ValidateSkillID(skillID); err != nil {
-		return nil, err
-	}
-	query := url.Values{}
+func (c *Client) DetailLocalized(ctx context.Context, repositoryID, name, locale string) (json.RawMessage, error) {
+	query := url.Values{"repositoryId": []string{repositoryID}, "name": []string{name}}
 	if strings.TrimSpace(locale) != "" {
 		query.Set("locale", strings.TrimSpace(locale))
 	}
-	return c.readProductJSON(ctx, "/api/v1/skills/"+skillID, query)
+	return c.readProductJSON(ctx, "/api/v1/skills/detail", query)
 }
 
-func (c *Client) BatchSkills(ctx context.Context, skillIDs []string) (json.RawMessage, error) {
-	if len(skillIDs) == 0 || len(skillIDs) > 100 {
-		return nil, fmt.Errorf("Skill batch must contain 1 to 100 IDs")
+func (c *Client) BatchSkills(ctx context.Context, skills []SkillCoordinate) (json.RawMessage, error) {
+	if len(skills) == 0 || len(skills) > 100 {
+		return nil, fmt.Errorf("Skill batch must contain 1 to 100 coordinates")
 	}
-	for _, skillID := range skillIDs {
-		if err := source.ValidateSkillID(skillID); err != nil {
-			return nil, err
+	for _, coordinate := range skills {
+		if err := source.ValidateRepositoryID(coordinate.RepositoryID); err != nil || !protocolskillmanifest.ValidName(coordinate.Name) {
+			return nil, fmt.Errorf("invalid Skill coordinate %q:%q", coordinate.RepositoryID, coordinate.Name)
 		}
 	}
 	body, err := json.Marshal(struct {
-		SkillIDs []string `json:"skillIds"`
-	}{SkillIDs: skillIDs})
+		Skills []SkillCoordinate `json:"skills"`
+	}{Skills: skills})
 	if err != nil {
 		return nil, err
 	}
@@ -330,11 +334,11 @@ func (c *Client) HubInfo(ctx context.Context) (json.RawMessage, error) {
 	return document, nil
 }
 
-func (c *Client) CatalogUpdates(ctx context.Context, skillIDs []string) ([]CatalogUpdateItem, error) {
+func (c *Client) CatalogUpdates(ctx context.Context, skills []SkillCoordinate) ([]CatalogUpdateItem, error) {
 	requestBody, err := json.Marshal(struct {
-		SchemaVersion int      `json:"schemaVersion"`
-		SkillIDs      []string `json:"skillIds"`
-	}{SchemaVersion: 1, SkillIDs: skillIDs})
+		SchemaVersion int               `json:"schemaVersion"`
+		Skills        []SkillCoordinate `json:"skills"`
+	}{SchemaVersion: 1, Skills: skills})
 	if err != nil {
 		return nil, err
 	}
@@ -356,11 +360,11 @@ func (c *Client) CatalogUpdates(ctx context.Context, skillIDs []string) ([]Catal
 		return nil, &HTTPError{StatusCode: response.StatusCode, Body: strings.TrimSpace(string(body)), RequestID: response.Header.Get("Athens-Request-ID")}
 	}
 	var decoded catalogUpdateResponse
-	if json.Unmarshal(body, &decoded) != nil || decoded.SchemaVersion != 1 || len(decoded.Items) != len(skillIDs) {
+	if json.Unmarshal(body, &decoded) != nil || decoded.SchemaVersion != 1 || len(decoded.Items) != len(skills) {
 		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Catalog update response")}
 	}
 	for index, item := range decoded.Items {
-		if item.SkillID != skillIDs[index] || (item.Status != "available" && item.Status != "unsupported") ||
+		if item.RepositoryID != skills[index].RepositoryID || item.Name != skills[index].Name || (item.Status != "available" && item.Status != "unsupported") ||
 			(item.Status == "available" && item.HeadVersion == "" && item.ReleaseVersion == "") ||
 			(item.HeadVersion != "" && !protocolversion.IsImmutable(item.HeadVersion)) ||
 			(item.ReleaseVersion != "" && !protocolversion.IsImmutable(item.ReleaseVersion)) {
@@ -370,23 +374,23 @@ func (c *Client) CatalogUpdates(ctx context.Context, skillIDs []string) ([]Catal
 	return decoded.Items, nil
 }
 
-func validateAssessedInfo(skillID, requestedVersion string, info Info) error {
-	if info.Version == "" || info.RepositoryID == "" || info.Path == "" || (info.Risk != "" && !info.Risk.Valid()) {
-		return fmt.Errorf("Hub returned incomplete immutable Info for %s", skillID)
+func validateAssessedInfo(repositoryID, skillName, requestedVersion string, info Info) error {
+	if info.Version == "" || info.RepositoryID == "" || info.SkillPath == "" || (info.Risk != "" && !info.Risk.Valid()) {
+		return fmt.Errorf("Hub returned incomplete immutable Info for %s:%s", repositoryID, skillName)
 	}
 	if info.SchemaVersion != 1 {
-		return &ProtocolError{Err: fmt.Errorf("Hub returned unsupported Info schema %d for %s", info.SchemaVersion, skillID), Incompatible: true}
+		return &ProtocolError{Err: fmt.Errorf("Hub returned unsupported Info schema %d for %s:%s", info.SchemaVersion, repositoryID, skillName), Incompatible: true}
 	}
-	if info.Kind != "Skill" || info.ID != skillID || info.Name == "" || info.Description == "" {
-		return fmt.Errorf("Hub returned incomplete immutable Info for %s", skillID)
+	if info.Kind != "Skill" || info.RepositoryID != repositoryID || info.Name != skillName || info.Description == "" {
+		return fmt.Errorf("Hub returned incomplete immutable Info for %s:%s", repositoryID, skillName)
 	}
 	if err := source.ValidateVersion(info.Version); err != nil {
-		return fmt.Errorf("Hub returned an invalid immutable version for %s: %w", skillID, err)
+		return fmt.Errorf("Hub returned an invalid immutable version for %s:%s: %w", repositoryID, skillName, err)
 	}
 	if protocolversion.IsImmutable(requestedVersion) && info.Version != requestedVersion {
 		return fmt.Errorf(
 			"Hub resolved %s@%s as unexpected immutable version %s",
-			skillID, requestedVersion, info.Version,
+			repositoryID+":"+skillName, requestedVersion, info.Version,
 		)
 	}
 	return nil

@@ -56,7 +56,7 @@ func addRepositoryInstallations(entries map[string]*Entry, accounted map[string]
 			members := make([]string, 0, len(resource.Members))
 			memberByName := make(map[string]hub.RepositoryMember, len(resource.Members))
 			for _, member := range resource.Members {
-				members = append(members, member.Info.Path)
+				members = append(members, member.Info.SkillPath)
 				memberByName[member.Info.Name] = member
 			}
 			selectedPaths := make([]string, 0, len(dependency.Skills))
@@ -65,15 +65,14 @@ func addRepositoryInstallations(entries map[string]*Entry, accounted map[string]
 				if !exists {
 					return fmt.Errorf("Repository Info does not contain selected Skill %q", selected)
 				}
-				selectedPaths = append(selectedPaths, member.Info.Path)
+				selectedPaths = append(selectedPaths, member.Info.SkillPath)
 			}
 			for _, selected := range dependency.Skills {
 				member, exists := memberByName[selected]
 				if !exists {
 					return fmt.Errorf("Repository Info does not contain selected Skill %q", selected)
 				}
-				skillID := member.Info.ID
-				entry := ensureEntry(entries, member.Info.Name, skillID, ProvenanceHub)
+				entry := ensureEntry(entries, member.Info.Name, repositoryID, ProvenanceHub)
 				entry.Description = member.Info.Description
 				entry.Versions = appendUnique(entry.Versions, dependency.Version)
 				if projectRoot != "" {
@@ -87,9 +86,9 @@ func addRepositoryInstallations(entries map[string]*Entry, accounted map[string]
 					projectionRoot := scopevendor.CoordinatePath(adapterRoots.ManagedRoot, repositoryID, dependency.Version)
 					projectionPath := projectionRoot
 					vendorPath := scopevendor.CoordinatePath(vendorRoot, repositoryID, dependency.Version)
-					if member.Info.Path != "." {
-						projectionPath = filepath.Join(projectionRoot, filepath.FromSlash(member.Info.Path))
-						vendorPath = filepath.Join(vendorPath, filepath.FromSlash(member.Info.Path))
+					if member.Info.SkillPath != "." {
+						projectionPath = filepath.Join(projectionRoot, filepath.FromSlash(member.Info.SkillPath))
+						vendorPath = filepath.Join(vendorPath, filepath.FromSlash(member.Info.SkillPath))
 					}
 					health := repositoryTargetHealth(vendorErr, archive, adapterRoots.ManagedRoot, repositoryID, dependency.Version, members, selectedPaths)
 					entry.Targets = append(entry.Targets, Target{Scope: declaration.scope, ProjectRoot: projectRoot, Agent: agentID,

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on repeated App-supplied installed Skill identities and the Hub client's Repository-fresh batch head/release read.
+ * [INPUT]: Depends on repeated App-supplied Repository ID plus Skill name coordinates and the Hub client's Repository-fresh batch head/release read.
  * [OUTPUT]: Provides the read-only `updates check` machine command with independent head and release status per Library entry.
  * [POS]: Serves as the batch update-availability boundary between the App's local inventory and the independently built Hub Catalog.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -13,18 +13,21 @@ import (
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
+	protocolskillmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	"github.com/spf13/cobra"
 )
 
 type catalogUpdateCandidate struct {
-	Key      string   `json:"key"`
-	SkillID  string   `json:"skillId"`
-	Versions []string `json:"versions"`
+	Key          string   `json:"key"`
+	RepositoryID string   `json:"repositoryId"`
+	Name         string   `json:"name"`
+	Versions     []string `json:"versions"`
 }
 
 type catalogUpdateResult struct {
 	Key            string   `json:"key"`
-	SkillID        string   `json:"skillId"`
+	RepositoryID   string   `json:"repositoryId"`
+	Name           string   `json:"name"`
 	Versions       []string `json:"versions"`
 	HeadVersion    string   `json:"headVersion,omitempty"`
 	ReleaseVersion string   `json:"releaseVersion,omitempty"`
@@ -58,27 +61,28 @@ func newUpdatesCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			skillIDs := make([]string, 0, len(candidates))
-			seenSkillIDs := map[string]bool{}
+			coordinates := make([]hub.SkillCoordinate, 0, len(candidates))
+			seenCoordinates := map[string]bool{}
 			for _, candidate := range candidates {
-				if !seenSkillIDs[candidate.SkillID] {
-					seenSkillIDs[candidate.SkillID] = true
-					skillIDs = append(skillIDs, candidate.SkillID)
+				key := candidate.RepositoryID + "\x00" + candidate.Name
+				if !seenCoordinates[key] {
+					seenCoordinates[key] = true
+					coordinates = append(coordinates, hub.SkillCoordinate{RepositoryID: candidate.RepositoryID, Name: candidate.Name})
 				}
 			}
-			resolvedItems, err := client.CatalogUpdates(cmd.Context(), skillIDs)
+			resolvedItems, err := client.CatalogUpdates(cmd.Context(), coordinates)
 			if err != nil {
 				return err
 			}
 			report := catalogUpdateReport{SchemaVersion: 1, Phase: "update-check", Items: make([]catalogUpdateResult, 0, len(candidates))}
-			resolvedBySkillID := make(map[string]hub.CatalogUpdateItem, len(resolvedItems))
+			resolvedByCoordinate := make(map[string]hub.CatalogUpdateItem, len(resolvedItems))
 			for _, item := range resolvedItems {
-				resolvedBySkillID[item.SkillID] = item
+				resolvedByCoordinate[item.RepositoryID+"\x00"+item.Name] = item
 			}
 			for _, candidate := range candidates {
-				resolved := resolvedBySkillID[candidate.SkillID]
+				resolved := resolvedByCoordinate[candidate.RepositoryID+"\x00"+candidate.Name]
 				item := catalogUpdateResult{
-					Key: candidate.Key, SkillID: candidate.SkillID, Versions: candidate.Versions,
+					Key: candidate.Key, RepositoryID: candidate.RepositoryID, Name: candidate.Name, Versions: candidate.Versions,
 					HeadVersion: resolved.HeadVersion, ReleaseVersion: resolved.ReleaseVersion, Status: "unsupported",
 				}
 				if resolved.Status == "available" {
@@ -123,7 +127,7 @@ func decodeCatalogUpdateCandidates(raw []string) ([]catalogUpdateCandidate, erro
 	seenKeys := map[string]bool{}
 	for _, encoded := range raw {
 		var candidate catalogUpdateCandidate
-		if json.Unmarshal([]byte(encoded), &candidate) != nil || strings.TrimSpace(candidate.Key) == "" || source.ValidateSkillID(candidate.SkillID) != nil || len(candidate.Versions) == 0 || seenKeys[candidate.Key] {
+		if json.Unmarshal([]byte(encoded), &candidate) != nil || strings.TrimSpace(candidate.Key) == "" || source.ValidateRepositoryID(candidate.RepositoryID) != nil || !protocolskillmanifest.ValidName(candidate.Name) || len(candidate.Versions) == 0 || seenKeys[candidate.Key] {
 			return nil, fmt.Errorf("invalid installed Skill update candidate")
 		}
 		seenKeys[candidate.Key] = true

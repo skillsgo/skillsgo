@@ -19,18 +19,18 @@ import (
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
-	"github.com/skillsgo/skillsgo/cli/internal/source"
 )
 
 type cloudInstallFact struct {
-	SkillID string
-	Version string
-	Agents  []string
-	Scope   install.Scope
+	RepositoryID string
+	SkillName    string
+	Version      string
+	Agents       []string
+	Scope        install.Scope
 }
 
 func reportCloudInstall(ctx context.Context, hubURL string, fact cloudInstallFact) {
-	if strings.TrimSpace(fact.SkillID) == "" || source.IsLocalSkillID(fact.SkillID) || strings.TrimSpace(fact.Version) == "" || len(fact.Agents) == 0 {
+	if strings.TrimSpace(fact.RepositoryID) == "" || strings.TrimSpace(fact.SkillName) == "" || strings.TrimSpace(fact.Version) == "" || len(fact.Agents) == 0 {
 		return
 	}
 	reportCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 3*time.Second)
@@ -59,14 +59,15 @@ func reportCloudInstall(ctx context.Context, hubURL string, fact cloudInstallFac
 		return
 	}
 	body, err := json.Marshal(struct {
-		EventID    string    `json:"eventId"`
-		SkillID    string    `json:"skillId"`
-		Version    string    `json:"version"`
-		Agents     []string  `json:"agents"`
-		Scope      string    `json:"scope"`
-		CLIVersion string    `json:"cliVersion"`
-		OccurredAt time.Time `json:"occurredAt"`
-	}{hex.EncodeToString(eventID), fact.SkillID, fact.Version, fact.Agents, string(fact.Scope), version, time.Now().UTC()})
+		EventID      string    `json:"eventId"`
+		RepositoryID string    `json:"repositoryId"`
+		SkillName    string    `json:"skillName"`
+		Version      string    `json:"version"`
+		Agents       []string  `json:"agents"`
+		Scope        string    `json:"scope"`
+		CLIVersion   string    `json:"cliVersion"`
+		OccurredAt   time.Time `json:"occurredAt"`
+	}{hex.EncodeToString(eventID), fact.RepositoryID, fact.SkillName, fact.Version, fact.Agents, string(fact.Scope), version, time.Now().UTC()})
 	if err != nil {
 		return
 	}

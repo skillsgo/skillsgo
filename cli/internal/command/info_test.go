@@ -34,9 +34,8 @@ func TestInfoRepositoryUsesHeadSelectorAndDoesNotWriteLocalState(t *testing.T) {
 			_, _ = fmt.Fprintf(writer, `{"schemaVersion":1,"repositoryId":%q,"selector":"head","version":%q,"time":"2026-07-18T12:00:00Z","ref":"refs/heads/main","commitSha":%q}`, repositoryID, version, commit)
 		case "/" + repositoryID + "/@v/" + version + ".info":
 			_, _ = writer.Write(repositoryInfo)
-		case "/api/v1/skills/" + repositoryID, "/api/v1/skills/" + repositoryID + "/-/tools/demo":
-			id := strings.TrimPrefix(request.URL.Path, "/api/v1/skills/")
-			_, _ = fmt.Fprintf(writer, `{"id":%q,"imageUrl":"https://github.com/example.png?size=72","repositoryDescription":"A collection of Agent Skills.","stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, id)
+		case "/api/v1/skills/detail":
+			_, _ = fmt.Fprintf(writer, `{"repositoryId":%q,"name":%q,"imageUrl":"https://github.com/example.png?size=72","repositoryDescription":"A collection of Agent Skills.","stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, request.URL.Query().Get("repositoryId"), request.URL.Query().Get("name"))
 		default:
 			http.NotFound(writer, request)
 		}
@@ -76,8 +75,8 @@ func TestInfoRepositoryUsesHeadSelectorAndDoesNotWriteLocalState(t *testing.T) {
 	if strings.Join(requests, "\n") != strings.Join([]string{
 		"/api/v1/repository-resolutions",
 		"/" + repositoryID + "/@v/" + version + ".info",
-		"/api/v1/skills/" + repositoryID,
-		"/api/v1/skills/" + repositoryID + "/-/tools/demo",
+		"/api/v1/skills/detail",
+		"/api/v1/skills/detail",
 	}, "\n") {
 		t.Fatalf("unexpected requests: %v", requests)
 	}
@@ -97,8 +96,8 @@ func TestInfoSelectsNestedSkillFromExactRepositoryBatch(t *testing.T) {
 		switch request.URL.Path {
 		case "/" + repositoryID + "/@v/" + version + ".info":
 			_, _ = writer.Write(commandTestRepositoryInfo(t, repositoryID, version, commit, members...))
-		case "/api/v1/skills/" + repositoryID + "/-/tools/demo":
-			_, _ = fmt.Fprintf(writer, `{"id":%q,"stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, members[1].ID)
+		case "/api/v1/skills/detail":
+			_, _ = fmt.Fprintf(writer, `{"repositoryId":%q,"name":"demo","stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, repositoryID)
 		default:
 			http.NotFound(writer, request)
 		}
@@ -106,14 +105,14 @@ func TestInfoSelectsNestedSkillFromExactRepositoryBatch(t *testing.T) {
 	defer server.Close()
 
 	var output bytes.Buffer
-	if err := Execute([]string{"info", repositoryID + "/-/tools/demo@" + version, "--hub", server.URL, "--output=json"}, &output, &output); err != nil {
+	if err := Execute([]string{"info", repositoryID + "@" + version, "--skill", "demo", "--hub", server.URL, "--output=json"}, &output, &output); err != nil {
 		t.Fatalf("info failed: %v\n%s", err, output.String())
 	}
 	var result skillInfoView
 	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if result.Kind != "Skill" || result.ID != repositoryID+"/-/tools/demo" || result.Version != version {
+	if result.Kind != "Skill" || result.RepositoryID != repositoryID || result.Name != "demo" || result.Version != version {
 		t.Fatalf("unexpected nested Skill result: %#v", result)
 	}
 	if result.Stars != 34 || result.RiskAssessment != hub.RiskLow {
@@ -121,7 +120,7 @@ func TestInfoSelectsNestedSkillFromExactRepositoryBatch(t *testing.T) {
 	}
 
 	output.Reset()
-	err := Execute([]string{"info", repositoryID + "/-/missing@" + version, "--hub", server.URL, "--output=json"}, &output, &output)
+	err := Execute([]string{"info", repositoryID + "@" + version, "--skill", "missing", "--hub", server.URL, "--output=json"}, &output, &output)
 	if err == nil {
 		t.Fatalf("expected missing Skill error, got %v", err)
 	}
@@ -273,15 +272,15 @@ func TestInfoClassifiesUnsupportedHubSchemaAsIncompatible(t *testing.T) {
 func infoTestMembers(repositoryID, version, commit string) []hub.Info {
 	return []hub.Info{
 		{
-			SchemaVersion: 1, Kind: "Skill", ID: repositoryID, Version: version,
-			RepositoryID: repositoryID, Path: ".",
+			SchemaVersion: 1, Kind: "Skill", Version: version,
+			RepositoryID: repositoryID, SkillPath: ".",
 			Time: time.Unix(1, 0).UTC(), Name: "root", Description: "Root Skill",
 			Risk: hub.RiskLow,
 			Ref:  "refs/tags/" + version, CommitSHA: commit, TreeSHA: "root-tree",
 		},
 		{
-			SchemaVersion: 1, Kind: "Skill", ID: repositoryID + "/-/tools/demo", Version: version,
-			RepositoryID: repositoryID, Path: "tools/demo",
+			SchemaVersion: 1, Kind: "Skill", Version: version,
+			RepositoryID: repositoryID, SkillPath: "tools/demo",
 			Time: time.Unix(1, 0).UTC(), Name: "demo", Description: "Nested Skill",
 			Risk: hub.RiskLow,
 			Ref:  "refs/tags/" + version, CommitSHA: commit, TreeSHA: "nested-tree",

@@ -15,7 +15,6 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
@@ -62,9 +61,6 @@ func newRepositoryUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 			if reference.Version == "" {
 				return fmt.Errorf("Repository update requires an explicit target version")
 			}
-			if strings.Contains(reference.SkillID, "/-/") {
-				return fmt.Errorf("Repository update requires a root Repository ID")
-			}
 			root, userScope, err := repositoryUpdateRoot(global, projectRoot)
 			if err != nil {
 				return err
@@ -73,7 +69,7 @@ func newRepositoryUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			report, apply, err := prepareRepositoryUpdate(cmd.Context(), root, userScope, catalog, client, reference.SkillID, reference.Version)
+			report, apply, err := prepareRepositoryUpdate(cmd.Context(), root, userScope, catalog, client, reference.RepositoryID, reference.Version)
 			if err != nil {
 				return err
 			}
@@ -147,8 +143,8 @@ func prepareRepositoryUpdate(ctx context.Context, root string, userScope bool, c
 	available := make(map[string]string, len(resource.Members))
 	newMembers := make([]string, 0, len(resource.Members))
 	for _, member := range resource.Members {
-		available[member.Info.Name] = member.Info.Path
-		newMembers = append(newMembers, member.Info.Path)
+		available[member.Info.Name] = member.Info.SkillPath
+		newMembers = append(newMembers, member.Info.SkillPath)
 	}
 	for _, selected := range dependency.Skills {
 		if _, ok := available[selected]; !ok {
@@ -176,8 +172,8 @@ func prepareRepositoryUpdate(ctx context.Context, root string, userScope bool, c
 	oldMembers := make([]string, 0, len(oldResource.Members))
 	oldPathsByName := make(map[string]string, len(oldResource.Members))
 	for _, member := range oldResource.Members {
-		oldMembers = append(oldMembers, member.Info.Path)
-		oldPathsByName[member.Info.Name] = member.Info.Path
+		oldMembers = append(oldMembers, member.Info.SkillPath)
+		oldPathsByName[member.Info.Name] = member.Info.SkillPath
 	}
 	sort.Strings(oldMembers)
 	oldSelected := make([]string, 0, len(dependency.Skills))

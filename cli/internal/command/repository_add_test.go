@@ -15,14 +15,14 @@ import (
 func TestSelectRepositoryMemberMatrix(t *testing.T) {
 	repository := "gitlab.example.com/group/subgroup/repo"
 	members := []hub.RepositoryMember{
-		{Info: hub.Info{ID: repository, RepositoryID: repository, Path: ".", Name: "root"}},
-		{Info: hub.Info{ID: repository + "/-/skills/alpha", RepositoryID: repository, Path: "skills/alpha", Name: "alpha"}},
-		{Info: hub.Info{ID: repository + "/-/other/beta", RepositoryID: repository, Path: "other/beta", Name: "beta"}},
-		{Info: hub.Info{ID: repository + "/-/tools/gamma", RepositoryID: repository, Path: "tools/gamma", Name: "gamma"}},
+		{Info: hub.Info{RepositoryID: repository, SkillPath: ".", Name: "root"}},
+		{Info: hub.Info{RepositoryID: repository, SkillPath: "skills/alpha", Name: "alpha"}},
+		{Info: hub.Info{RepositoryID: repository, SkillPath: "other/beta", Name: "beta"}},
+		{Info: hub.Info{RepositoryID: repository, SkillPath: "tools/gamma", Name: "gamma"}},
 	}
 	for _, selector := range []string{"gamma"} {
 		member, err := selectRepositoryMember(selector, members)
-		if err != nil || member.Info.ID != repository+"/-/tools/gamma" {
+		if err != nil || member.Info.Name != "gamma" {
 			t.Fatalf("selector %q = %#v, %v", selector, member.Info, err)
 		}
 	}
@@ -33,7 +33,7 @@ func TestSelectRepositoryMemberMatrix(t *testing.T) {
 		t.Fatal("missing selector succeeded")
 	}
 	member, err := selectRepositoryMember("root", members)
-	if err != nil || member.Info.ID != repository {
+	if err != nil || member.Info.Name != "root" {
 		t.Fatalf("root selector = %#v, %v", member.Info, err)
 	}
 }

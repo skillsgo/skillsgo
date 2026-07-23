@@ -400,13 +400,6 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if separator := strings.Index(reference.SkillID, "/-/"); separator >= 0 {
-				nestedPath := reference.SkillID[separator+len("/-/"):]
-				reference.SkillID = reference.SkillID[:separator]
-				if len(options.skills) == 0 {
-					options.skills = []string{nestedPath}
-				}
-			}
 			if len(options.skills) > 0 {
 				return addSelectedRepositorySkills(cmd, catalog, reference, agentIDs, scope, cwd, options)
 			}

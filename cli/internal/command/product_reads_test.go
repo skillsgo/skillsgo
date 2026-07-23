@@ -48,8 +48,8 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 
 	for _, args := range [][]string{
 		{"find", "responsive layout", "--offset", "1", "--limit", "4"},
-		{"detail", "github.com/example/skills/-/demo"},
-		{"detail", "--skill", "github.com/example/skills/-/one", "--skill", "github.com/example/skills/-/two"},
+		{"detail", "github.com/example/skills", "demo"},
+		{"detail", "--repository", "github.com/example/skills", "--repository", "github.com/example/skills", "--skill", "one", "--skill", "two"},
 		{"hub", "info"},
 		{"hub", "check"},
 	} {
@@ -63,8 +63,8 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 	}
 	if len(requests) != 5 ||
 		requests[0] != "GET /api/v1/search?limit=4&offset=1&q=responsive+layout" ||
-		requests[1] != "GET /api/v1/skills/github.com/example/skills/-/demo" ||
-		requests[2] != `POST /api/v1/skills/batch {"skillIds":["github.com/example/skills/-/one","github.com/example/skills/-/two"]}` ||
+		requests[1] != "GET /api/v1/skills/detail?name=demo&repositoryId=github.com%2Fexample%2Fskills" ||
+		requests[2] != `POST /api/v1/skills/batch {"skills":[{"repositoryId":"github.com/example/skills","name":"one"},{"repositoryId":"github.com/example/skills","name":"two"}]}` ||
 		requests[3] != "GET /info" ||
 		!strings.HasPrefix(requests[4], "GET /api/v1/search?") {
 		t.Fatalf("unexpected requests %v", requests)

@@ -51,7 +51,7 @@ type Entry struct {
 	InventoryKey      string       `json:"inventoryKey"`
 	Name              string       `json:"name"`
 	Description       string       `json:"description"`
-	SkillID           string       `json:"skillId"`
+	RepositoryID      string       `json:"repositoryId,omitempty"`
 	Provenance        Provenance   `json:"provenance"`
 	Risk              Risk         `json:"risk"`
 	Health            Health       `json:"health"`
@@ -270,13 +270,13 @@ func resolveInventoryPath(path string) string {
 	}
 }
 
-func ensureEntry(entries map[string]*Entry, name, skillID string, provenance Provenance) *Entry {
-	inventoryKey := string(provenance) + ":" + skillID
+func ensureEntry(entries map[string]*Entry, name, repositoryID string, provenance Provenance) *Entry {
+	inventoryKey := string(provenance) + ":" + repositoryID + ":" + name
 	if entry := entries[inventoryKey]; entry != nil {
 		return entry
 	}
 	entry := &Entry{
-		InventoryKey: inventoryKey, Name: name, SkillID: skillID,
+		InventoryKey: inventoryKey, Name: name, RepositoryID: repositoryID,
 		Provenance: provenance, Risk: RiskUnknown, Health: HealthHealthy,
 		Agents: []string{}, Projects: []string{}, Versions: []string{}, Targets: []Target{}, Visibility: []Visibility{},
 	}
