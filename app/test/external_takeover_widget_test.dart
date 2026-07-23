@@ -41,7 +41,6 @@ void main() {
           scope: InstallationScope.user,
           path: path,
           version: '',
-          mode: InstallationMode.external,
         ),
       ],
     );
@@ -148,7 +147,6 @@ void main() {
                 scope: InstallationScope.user,
                 path: path,
                 version: '',
-                mode: InstallationMode.external,
               ),
             ],
           ),
@@ -586,7 +584,6 @@ void main() {
                     scope: InstallationScope.user,
                     path: path,
                     version: '',
-                    mode: InstallationMode.external,
                   ),
                 ],
               ),

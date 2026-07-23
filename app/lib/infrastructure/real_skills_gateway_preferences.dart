@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, SharedPreferences, directory pickers, project inspection, App locale, and Hub health CLI command.
- * [OUTPUT]: Provides appearance, language, reminder, one-time takeover-introduction, onboarding, Added Project, Hub origin and runtime discovery, risk policy, storage, and App-version persistence operations.
+ * [OUTPUT]: Provides appearance, language, reminder, one-time takeover-introduction, onboarding, Added Project, Hub origin and runtime discovery, risk policy, and App-version persistence operations.
  * [POS]: Serves as the local preference and project-reference capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -506,35 +506,6 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
       _allowCriticalOverrideKey,
       policy.allowCriticalOverride,
     );
-  }
-
-  @override
-  Future<StorageStatus> inspectStorage() async {
-    try {
-      final result = await _runCli(const ['diagnostics', '--output', 'json']);
-      if (!result.succeeded) {
-        return const StorageStatus(path: '', state: HealthState.unreachable);
-      }
-      final decoded = jsonDecode(result.output.stdout);
-      if (decoded is! Map<String, dynamic> ||
-          decoded['schemaVersion'] != 1 ||
-          decoded['store'] is! Map<String, dynamic>) {
-        return const StorageStatus(path: '', state: HealthState.invalid);
-      }
-      final store = decoded['store'] as Map<String, dynamic>;
-      if (store['path'] is! String || store['state'] is! String) {
-        return const StorageStatus(path: '', state: HealthState.invalid);
-      }
-      final state = switch (store['state']) {
-        'ready' => HealthState.ready,
-        'not_initialized' => HealthState.notInitialized,
-        'unreadable' => HealthState.unreachable,
-        _ => HealthState.invalid,
-      };
-      return StorageStatus(path: store['path'] as String, state: state);
-    } on Object {
-      return const StorageStatus(path: '', state: HealthState.unreachable);
-    }
   }
 
   @override

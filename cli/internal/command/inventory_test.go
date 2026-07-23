@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with temporary Store receipts, explicit project roots, Workspace files, and the test Agent.
- * [OUTPUT]: Specifies the inventory v5 managed/external target and derived-visibility JSON contract, target reconciliation, Local Modification health, inventory-key separation, read-only inspection, and explicit-root privacy boundary.
+ * [OUTPUT]: Specifies the inventory v6 mode-free managed/external target and derived-visibility JSON contract, target reconciliation, Local Modification health, inventory-key separation, read-only inspection, and explicit-root privacy boundary.
  * [POS]: Serves as executable contract coverage for the App-facing unified Library inventory.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -69,7 +69,8 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 
 	var report inventoryReport
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &report))
-	require.Equal(t, 5, report.SchemaVersion)
+	require.Equal(t, 6, report.SchemaVersion)
+	require.NotContains(t, stdout.String(), `"mode"`)
 	require.Len(t, report.Entries, 1)
 	entry := report.Entries[0]
 	require.Equal(t, "hub:"+skillID, entry.InventoryKey)
@@ -93,7 +94,6 @@ func TestInventoryJSONAggregatesExplicitScopesAndHidesUnselectedProjects(t *test
 	require.Equal(t, "healthy", string(entry.Targets[0].Health))
 	require.Empty(t, entry.Targets[0].ProjectRoot)
 	require.Equal(t, selectedProject, entry.Targets[1].ProjectRoot)
-	require.Equal(t, string(install.ModeCopy), string(entry.Targets[1].Mode))
 	require.Equal(t, "v2.0.0", entry.Targets[1].Version)
 	require.NotContains(t, stdout.String(), unselectedProject)
 	require.NotContains(t, stdout.String(), "secret")
@@ -203,7 +203,6 @@ func TestInventoryJSONReportsDeclaredTargetWithoutReceipt(t *testing.T) {
 	require.Equal(t, projectRoot, target.ProjectRoot)
 	require.Equal(t, "test-agent", target.Agent)
 	require.Equal(t, filepath.Join(projectRoot, ".test-agent", "skills", "demo"), target.Path)
-	require.Equal(t, string(install.ModeCopy), string(target.Mode))
 	require.Equal(t, "missing", string(target.Health))
 }
 
@@ -294,7 +293,6 @@ func TestInventoryJSONReportsExternalInstallationsWithoutClaimingOrChangingThem(
 	require.Equal(t, "healthy", string(external.Health))
 	require.Len(t, external.Targets, 1)
 	require.Equal(t, externalPath, external.Targets[0].Path)
-	require.Equal(t, "external", string(external.Targets[0].Mode))
 	require.Empty(t, external.Targets[0].Version)
 	require.Equal(t, selectedProject, projectExternal.Targets[0].ProjectRoot)
 	require.NotContains(t, stdout.String(), hiddenPath)

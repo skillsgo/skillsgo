@@ -554,12 +554,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get healthUnexpectedPath => 'مسار هدف غير متوقع';
 
   @override
-  String get modeSymlink => 'رابط رمزي';
-
-  @override
-  String get modeCopy => 'نسخ';
-
-  @override
   String get modeExternal => 'خارجي';
 
   @override
@@ -983,9 +977,6 @@ class AppLocalizationsAr extends AppLocalizations {
       'تظل Artifacts ذات المخاطر الحرجة محظورة افتراضيًا. فعّل هذا الخيار فقط لإتاحة تجاوز يدوي منفصل.';
 
   @override
-  String get storageSettingsTitle => 'مخزن موجّه بالمحتوى';
-
-  @override
   String get storageHealthy => 'قابل للقراءة';
 
   @override
@@ -993,22 +984,6 @@ class AppLocalizationsAr extends AppLocalizations {
 
   @override
   String get storageUnavailable => 'غير متاح';
-
-  @override
-  String get storagePathUnavailable =>
-      'لا يتاح مسار Store حتى تجهز بيانات تشخيص CLI.';
-
-  @override
-  String get storageHealthyDescription =>
-      'يمكن لـ CLI قراءة Store دون تغيير محتوياته.';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'لم يُنشأ Store بعد، ولن ينشئه هذا الفحص.';
-
-  @override
-  String get storageUnavailableDescription =>
-      'يتعذر على CLI قراءة Store. تحقق من الأذونات والمجلد الأصل.';
 
   @override
   String get storageInvalidResponse =>

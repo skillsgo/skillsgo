@@ -553,12 +553,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get healthUnexpectedPath => 'Đường dẫn mục tiêu không mong đợi';
 
   @override
-  String get modeSymlink => 'Liên kết tượng trưng';
-
-  @override
-  String get modeCopy => 'Sao chép';
-
-  @override
   String get modeExternal => 'Bên ngoài';
 
   @override
@@ -984,9 +978,6 @@ class AppLocalizationsVi extends AppLocalizations {
       'Các tạo phẩm có nguy cơ nghiêm trọng vẫn bị chặn theo mặc định. Chỉ bật tính năng này để hiển thị ghi đè thủ công riêng biệt.';
 
   @override
-  String get storageSettingsTitle => 'Kho lưu trữ định địa chỉ theo nội dung';
-
-  @override
   String get storageHealthy => 'Có thể đọc được';
 
   @override
@@ -994,22 +985,6 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get storageUnavailable => 'Không có sẵn';
-
-  @override
-  String get storagePathUnavailable =>
-      'Đường dẫn lưu trữ không khả dụng cho đến khi chẩn đoán CLI sẵn sàng.';
-
-  @override
-  String get storageHealthyDescription =>
-      'CLI có thể đọc Store mà không thay đổi nội dung của nó.';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'Cửa hàng chưa tồn tại và không được tạo bằng lần kiểm tra này.';
-
-  @override
-  String get storageUnavailableDescription =>
-      'CLI không thể đọc kho lưu trữ. Hãy kiểm tra quyền truy cập và thư mục cha.';
 
   @override
   String get storageInvalidResponse =>

@@ -552,12 +552,6 @@ class AppLocalizationsPl extends AppLocalizations {
   String get healthUnexpectedPath => 'Nieoczekiwana ścieżka docelowa';
 
   @override
-  String get modeSymlink => 'Dowiązanie symboliczne';
-
-  @override
-  String get modeCopy => 'Kopia';
-
-  @override
   String get modeExternal => 'Zewnętrzny';
 
   @override
@@ -986,9 +980,6 @@ class AppLocalizationsPl extends AppLocalizations {
       'Artefakty związane z ryzykiem krytycznym pozostają domyślnie blokowane. Włącz tę opcję tylko, aby udostępnić oddzielne ręczne nadpisanie.';
 
   @override
-  String get storageSettingsTitle => 'Sklep adresowany do treści';
-
-  @override
   String get storageHealthy => 'Czytelny';
 
   @override
@@ -996,22 +987,6 @@ class AppLocalizationsPl extends AppLocalizations {
 
   @override
   String get storageUnavailable => 'Nie płynny';
-
-  @override
-  String get storagePathUnavailable =>
-      'Ścieżka do przechowywania jest niedostępna do czasu, aż diagnostyka CLI będzie gotowa.';
-
-  @override
-  String get storageHealthyDescription =>
-      'CLI może czytać Sklep bez zmiany jego zawartości.';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'Sklep jeszcze nie istnieje i nie został utworzony w wyniku tej kontroli.';
-
-  @override
-  String get storageUnavailableDescription =>
-      'CLI nie może odczytać Sklepu. Sprawdź jego uprawnienia i katalog nadrzędny.';
 
   @override
   String get storageInvalidResponse =>

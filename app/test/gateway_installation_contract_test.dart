@@ -69,22 +69,22 @@ void main() {
     ]);
     runner.result = const ProcessOutput(
       exitCode: 0,
-      stdout: r'''
-{"schemaVersion":1,"phase":"update-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","skillId":"github.com/a/b/-/Test ; $(touch nope)","sourceRef":"main","fromVersion":"v1","toVersion":"v2","action":"update","stateToken":"sha256:state","workspaceManifestChange":false}],"workspaceManifestChanges":[],"summary":{"update":1,"current":0,"pinned":0,"failed":0}}
-''',
+      stdout:
+          '{"schemaVersion":1,"phase":"repository-update-preflight","repository":"github.com/a/b","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["Test"],"agents":["codex"],"scope":"user","vendor":"/tmp/vendor","stateToken":"state"}\n',
       stderr: '',
     );
-    await gateway.preflightUpdate(installed, installed.targets);
-    expect(runner.lastArguments!.first, 'update');
-    expect(runner.lastArguments![1], '--target');
-    expect(jsonDecode(runner.lastArguments![2]), {
-      'scope': 'user',
-      'agent': 'codex',
-      'mode': 'symlink',
-      'path': r'/tmp/Test ; $(touch nope)',
-      'skillId': r'github.com/a/b/-/Test ; $(touch nope)',
-      'version': 'v1',
-    });
+    await gateway.preflightUpdate(
+      installed,
+      installed.targets,
+      toVersion: 'v2',
+    );
+    expect(runner.lastArguments!.take(3), [
+      'update',
+      'github.com/a/b@v2',
+      '--global',
+    ]);
+    expect(runner.lastArguments, isNot(contains('--target')));
+    expect(runner.lastArguments, isNot(contains('mode')));
     expect(
       runner.lastArguments,
       containsAllInOrder([
@@ -296,7 +296,6 @@ void main() {
             scope: InstallationScope.user,
             path: directory.path,
             version: '',
-            mode: InstallationMode.external,
           ),
         ],
       );
@@ -441,7 +440,6 @@ void main() {
             scope: InstallationScope.user,
             path: '/tmp/private',
             version: 'local-abc',
-            mode: InstallationMode.copy,
           ),
         ],
       );

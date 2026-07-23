@@ -88,8 +88,6 @@ mixin FakeGatewaySystem on FakeSkillsGatewayCore {
   }
 
   @override
-  Future<StorageStatus> inspectStorage() async => storageStatus;
-  @override
   Future<String> loadAppVersion() async => appVersion;
   @override
   Future<DiscoveryPage> discover(

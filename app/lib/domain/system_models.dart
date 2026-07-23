@@ -46,8 +46,6 @@ enum SkillRiskAssessment { unknown, low, medium, high, critical }
 
 enum InstallationScope { user, project }
 
-enum InstallationMode { symlink, copy, external }
-
 enum DiscoveryVerification { verified, unverified }
 
 enum InstallationPlanAction { create, replace, skip, conflict, blockedByRisk }
@@ -148,13 +146,6 @@ class ReminderSettings {
         updateAvailable: updateAvailable ?? this.updateAvailable,
         securityAdvisory: securityAdvisory ?? this.securityAdvisory,
       );
-}
-
-class StorageStatus {
-  const StorageStatus({required this.path, required this.state});
-
-  final String path;
-  final HealthState state;
 }
 
 class CliStatus {

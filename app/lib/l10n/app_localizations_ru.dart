@@ -555,12 +555,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get healthUnexpectedPath => 'Неожиданный целевой путь';
 
   @override
-  String get modeSymlink => 'Симлинк';
-
-  @override
-  String get modeCopy => 'Копировать';
-
-  @override
   String get modeExternal => 'Внешний';
 
   @override
@@ -992,9 +986,6 @@ class AppLocalizationsRu extends AppLocalizations {
       'Артефакты критического риска остаются заблокированными по умолчанию. Включите это только для того, чтобы предоставить отдельное ручное переопределение.';
 
   @override
-  String get storageSettingsTitle => 'Контент-адрес Store';
-
-  @override
   String get storageHealthy => 'Читабельный';
 
   @override
@@ -1002,22 +993,6 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get storageUnavailable => 'Недоступно';
-
-  @override
-  String get storagePathUnavailable =>
-      'Путь Store недоступен, пока не будет готова диагностика CLI.';
-
-  @override
-  String get storageHealthyDescription =>
-      'CLI может читать Store без изменения его содержимого.';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'Store еще не существует и не был создан в ходе этой проверки.';
-
-  @override
-  String get storageUnavailableDescription =>
-      'CLI не может прочитать Store. Проверьте его разрешения и родительский каталог.';
 
   @override
   String get storageInvalidResponse =>

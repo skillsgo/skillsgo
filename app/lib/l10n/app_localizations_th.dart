@@ -552,12 +552,6 @@ class AppLocalizationsTh extends AppLocalizations {
   String get healthUnexpectedPath => 'เส้นทางเป้าหมายที่ไม่คาดคิด';
 
   @override
-  String get modeSymlink => 'ซิมลิงค์';
-
-  @override
-  String get modeCopy => 'คัดลอก';
-
-  @override
   String get modeExternal => 'ภายนอก';
 
   @override
@@ -980,9 +974,6 @@ class AppLocalizationsTh extends AppLocalizations {
       'อาร์ติแฟกต์ที่มีความเสี่ยงวิกฤตยังคงถูกบล็อกโดยค่าเริ่มต้น เปิดใช้งานสิ่งนี้เพื่อแสดงการแทนที่ด้วยตนเองแยกต่างหากเท่านั้น';
 
   @override
-  String get storageSettingsTitle => 'ที่เก็บข้อมูลแบบระบุตำแหน่งด้วยเนื้อหา';
-
-  @override
   String get storageHealthy => 'อ่านได้';
 
   @override
@@ -990,22 +981,6 @@ class AppLocalizationsTh extends AppLocalizations {
 
   @override
   String get storageUnavailable => 'ไม่พร้อมใช้งาน';
-
-  @override
-  String get storagePathUnavailable =>
-      'เส้นทางที่เก็บข้อมูลจะยังไม่พร้อมใช้งานจนกว่าการวินิจฉัย CLI จะเสร็จสิ้น';
-
-  @override
-  String get storageHealthyDescription =>
-      'CLI สามารถอ่าน Store ได้โดยไม่ต้องเปลี่ยนเนื้อหา';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'Store ยังไม่มีอยู่และไม่ได้ถูกสร้างขึ้นโดยเช็คนี้';
-
-  @override
-  String get storageUnavailableDescription =>
-      'CLI ไม่สามารถอ่าน Store ได้ ตรวจสอบสิทธิ์และไดเรกทอรีหลัก';
 
   @override
   String get storageInvalidResponse =>

@@ -47,7 +47,6 @@ abstract interface class SkillsGateway {
   Future<HubRuntime> loadHubRuntime();
   Future<PersonalRiskPolicy> loadRiskPolicy();
   Future<void> saveRiskPolicy(PersonalRiskPolicy policy);
-  Future<StorageStatus> inspectStorage();
   Future<String> loadAppVersion();
   Future<DiscoveryPage> discover(
     DiscoveryCollection collection, {

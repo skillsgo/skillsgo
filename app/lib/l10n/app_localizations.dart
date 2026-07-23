@@ -1065,18 +1065,6 @@ abstract class AppLocalizations {
   /// **'Unexpected target path'**
   String get healthUnexpectedPath;
 
-  /// No description provided for @modeSymlink.
-  ///
-  /// In en, this message translates to:
-  /// **'Symlink'**
-  String get modeSymlink;
-
-  /// No description provided for @modeCopy.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy'**
-  String get modeCopy;
-
   /// No description provided for @modeExternal.
   ///
   /// In en, this message translates to:
@@ -1791,12 +1779,6 @@ abstract class AppLocalizations {
   /// **'Critical-risk artifacts remain blocked by default. Enable this only to expose a separate manual override.'**
   String get allowCriticalOverrideDescription;
 
-  /// No description provided for @storageSettingsTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Content-addressed Store'**
-  String get storageSettingsTitle;
-
   /// No description provided for @storageHealthy.
   ///
   /// In en, this message translates to:
@@ -1814,30 +1796,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unavailable'**
   String get storageUnavailable;
-
-  /// No description provided for @storagePathUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Store path unavailable until CLI diagnostics are ready.'**
-  String get storagePathUnavailable;
-
-  /// No description provided for @storageHealthyDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'The CLI can read the Store without changing its contents.'**
-  String get storageHealthyDescription;
-
-  /// No description provided for @storageNotInitializedDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'The Store does not exist yet and was not created by this check.'**
-  String get storageNotInitializedDescription;
-
-  /// No description provided for @storageUnavailableDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'The CLI cannot read the Store. Check its permissions and parent directory.'**
-  String get storageUnavailableDescription;
 
   /// No description provided for @storageInvalidResponse.
   ///

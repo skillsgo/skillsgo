@@ -555,12 +555,6 @@ class AppLocalizationsUk extends AppLocalizations {
   String get healthUnexpectedPath => 'Неочікуваний цільовий шлях';
 
   @override
-  String get modeSymlink => 'Символьне посилання';
-
-  @override
-  String get modeCopy => 'Копія';
-
-  @override
   String get modeExternal => 'зовнішній';
 
   @override
@@ -988,9 +982,6 @@ class AppLocalizationsUk extends AppLocalizations {
       'Артефакти критичного ризику залишаються заблокованими за умовчанням. Увімкніть це лише для надання окремої ручної перевизначення.';
 
   @override
-  String get storageSettingsTitle => 'Змістово-адресований Store';
-
-  @override
   String get storageHealthy => 'Читабельний';
 
   @override
@@ -998,22 +989,6 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get storageUnavailable => 'Недоступний';
-
-  @override
-  String get storagePathUnavailable =>
-      'Шлях Store недоступний, доки не буде готова діагностика CLI.';
-
-  @override
-  String get storageHealthyDescription =>
-      'CLI може читати Store без зміни його вмісту.';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'Store ще не існує і не був створений цією перевіркою.';
-
-  @override
-  String get storageUnavailableDescription =>
-      'CLI не може читати Store. Перевірте його дозволи та батьківський каталог.';
 
   @override
   String get storageInvalidResponse =>

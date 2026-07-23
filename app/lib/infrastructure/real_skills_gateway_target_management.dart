@@ -18,11 +18,7 @@ mixin _RealSkillsGatewayTargetManagement
         targets.isEmpty ||
         targets.any(
           (target) =>
-              (external
-                  ? target.mode != InstallationMode.external ||
-                        target.version.isNotEmpty
-                  : target.mode == InstallationMode.external ||
-                        target.version.isEmpty) ||
+              (external ? target.version.isNotEmpty : target.version.isEmpty) ||
               (target.scope == InstallationScope.project &&
                   target.projectRoot.isEmpty),
         )) {
@@ -69,15 +65,11 @@ mixin _RealSkillsGatewayTargetManagement
                 raw['affectedBindings'] is! List)) {
           throw const FormatException();
         }
-        final target = _installationPlanTarget(
-          raw['target'],
-          allowExternal: external,
-        );
+        final target = _installationPlanTarget(raw['target']);
         final expected = targets[index];
         if (target.scope != expected.scope ||
             target.projectRoot != expected.projectRoot ||
             target.agent != expected.agent ||
-            target.mode != expected.mode ||
             target.path != expected.path ||
             (raw['workspaceMetadataChange'] as bool) !=
                 (target.scope == InstallationScope.project && !external)) {
@@ -112,7 +104,7 @@ mixin _RealSkillsGatewayTargetManagement
             affectedBindings: List.unmodifiable([
               for (final binding
                   in raw['affectedBindings'] as List? ?? const [])
-                _installationPlanTarget(binding, allowExternal: external),
+                _installationPlanTarget(binding),
             ]),
           ),
         );
@@ -271,10 +263,7 @@ mixin _RealSkillsGatewayTargetManagement
               raw['action'] is! String) {
             throw const FormatException();
           }
-          final target = _installationPlanTarget(
-            raw['target'],
-            allowExternal: true,
-          );
+          final target = _installationPlanTarget(raw['target']);
           final key = updateTargetKey(target);
           final item = expected[key];
           if (item == null ||

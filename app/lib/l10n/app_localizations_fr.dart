@@ -553,12 +553,6 @@ class AppLocalizationsFr extends AppLocalizations {
   String get healthUnexpectedPath => 'Chemin cible inattendu';
 
   @override
-  String get modeSymlink => 'Lien symbolique';
-
-  @override
-  String get modeCopy => 'Copie';
-
-  @override
   String get modeExternal => 'Externe';
 
   @override
@@ -988,9 +982,6 @@ class AppLocalizationsFr extends AppLocalizations {
       'Les artefacts à risque critique restent bloqués par défaut. Activez cette option uniquement pour exposer une commande manuelle distincte.';
 
   @override
-  String get storageSettingsTitle => 'Boutique adressée au contenu';
-
-  @override
   String get storageHealthy => 'Lisible';
 
   @override
@@ -998,22 +989,6 @@ class AppLocalizationsFr extends AppLocalizations {
 
   @override
   String get storageUnavailable => 'Indisponible';
-
-  @override
-  String get storagePathUnavailable =>
-      'Chemin de stockage indisponible jusqu\'à ce que les diagnostics CLI soient prêts.';
-
-  @override
-  String get storageHealthyDescription =>
-      'Le CLI peut lire le Store sans modifier son contenu.';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'Le Store n\'existe pas encore et n\'a pas été créé par cette vérification.';
-
-  @override
-  String get storageUnavailableDescription =>
-      'Le CLI ne peut pas lire le Store. Vérifiez ses autorisations et son répertoire parent.';
 
   @override
   String get storageInvalidResponse =>

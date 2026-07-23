@@ -95,10 +95,6 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
     this.language = AppLanguage.english,
     this.wallpaper = AppWallpaper.sun,
     this.hubTestState = HealthState.ready,
-    this.storageStatus = const StorageStatus(
-      path: '/Users/test/.skillsgo/store',
-      state: HealthState.ready,
-    ),
     this.appVersion = '1.0.0',
     this.discoveryPages = const {},
     List<Completer<DiscoveryPage>> discoveryCompleters = const [],
@@ -175,7 +171,6 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
   final HealthState hubTestState;
   PersonalRiskPolicy riskPolicy;
   final String planConflictReason;
-  final StorageStatus storageStatus;
   final String appVersion;
   final Map<String, DiscoveryPage> discoveryPages;
   final List<Completer<DiscoveryPage>> discoveryCompleters;

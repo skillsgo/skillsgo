@@ -160,17 +160,14 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
                   final scope = _installationScope(target['scope']);
                   final projectRoot = target['projectRoot'] as String? ?? '';
                   final version = target['version'] as String;
-                  final mode = _installationMode(target['mode']);
                   if ((scope == InstallationScope.project &&
                           projectRoot.isEmpty) ||
                       (scope == InstallationScope.user &&
                           projectRoot.isNotEmpty) ||
                       (provenance == LibraryProvenance.external &&
-                          (version.isNotEmpty ||
-                              mode != InstallationMode.external)) ||
+                          version.isNotEmpty) ||
                       (provenance != LibraryProvenance.external &&
-                          (version.isEmpty ||
-                              mode == InstallationMode.external)) ||
+                          version.isEmpty) ||
                       !targetKeys.add(
                         '${target['agent']}\u0000${target['scope']}\u0000${target['path']}',
                       )) {
@@ -182,7 +179,6 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
                     path: target['path'] as String,
                     version: version,
                     projectRoot: projectRoot,
-                    mode: mode,
                     health: _installationHealth(target['health']),
                   );
                 })

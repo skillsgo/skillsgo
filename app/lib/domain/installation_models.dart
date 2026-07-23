@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on shared installation enums and failure vocabulary.
- * [OUTPUT]: Provides installation targets, selections, manifest changes, target results, execution summaries, and target identity keys.
+ * [OUTPUT]: Provides mode-free Repository Projection targets, selections, manifest changes, target results, execution summaries, and target identity keys.
  * [POS]: Serves as the focused Installation Request model module shared by UI journeys, CLI decoding, updates, and target management.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,7 +13,6 @@ class SkillInstallationTarget {
     required this.path,
     required this.version,
     this.projectRoot = '',
-    this.mode = InstallationMode.symlink,
     this.health = InstallationHealth.healthy,
   });
 
@@ -22,7 +21,6 @@ class SkillInstallationTarget {
   final String path;
   final String version;
   final String projectRoot;
-  final InstallationMode mode;
   final InstallationHealth health;
 }
 
@@ -47,20 +45,17 @@ class InstallationTargetSelection {
     required this.scope,
     required this.agent,
     this.projectRoot = '',
-    this.mode = InstallationMode.symlink,
   });
 
   final InstallationScope scope;
   final String projectRoot;
   final String agent;
-  final InstallationMode mode;
 }
 
 class InstallationPlanTarget {
   const InstallationPlanTarget({
     required this.scope,
     required this.agent,
-    required this.mode,
     required this.path,
     this.projectRoot = '',
   });
@@ -68,7 +63,6 @@ class InstallationPlanTarget {
   final InstallationScope scope;
   final String projectRoot;
   final String agent;
-  final InstallationMode mode;
   final String path;
 }
 
@@ -150,26 +144,15 @@ class InstallationExecution {
   bool get hasSuccess => summary.succeeded > 0 || summary.skipped > 0;
 }
 
-String installationTargetKey(InstallationPlanTarget target) => targetPartsKey(
-  target.scope,
-  target.projectRoot,
-  target.agent,
-  target.mode,
-  target.path,
-);
+String installationTargetKey(InstallationPlanTarget target) =>
+    targetPartsKey(target.scope, target.projectRoot, target.agent, target.path);
 
-String installedTargetKey(SkillInstallationTarget target) => targetPartsKey(
-  target.scope,
-  target.projectRoot,
-  target.agent,
-  target.mode,
-  target.path,
-);
+String installedTargetKey(SkillInstallationTarget target) =>
+    targetPartsKey(target.scope, target.projectRoot, target.agent, target.path);
 
 String targetPartsKey(
   InstallationScope scope,
   String projectRoot,
   String agent,
-  InstallationMode mode,
   String path,
-) => '${scope.name}\u0000$projectRoot\u0000$agent\u0000${mode.name}\u0000$path';
+) => '${scope.name}\u0000$projectRoot\u0000$agent\u0000$path';

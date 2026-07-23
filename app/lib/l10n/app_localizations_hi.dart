@@ -550,12 +550,6 @@ class AppLocalizationsHi extends AppLocalizations {
   String get healthUnexpectedPath => 'अप्रत्याशित लक्ष्य पथ';
 
   @override
-  String get modeSymlink => 'सिमलिंक';
-
-  @override
-  String get modeCopy => 'प्रतिलिपि';
-
-  @override
   String get modeExternal => 'बाहरी';
 
   @override
@@ -984,9 +978,6 @@ class AppLocalizationsHi extends AppLocalizations {
       'गंभीर-जोखिम वाली कलाकृतियाँ डिफ़ॉल्ट रूप से अवरुद्ध रहती हैं। इसे केवल एक अलग मैन्युअल ओवरराइड को उजागर करने के लिए सक्षम करें।';
 
   @override
-  String get storageSettingsTitle => 'सामग्री-संबोधित Store';
-
-  @override
   String get storageHealthy => 'पठनीय';
 
   @override
@@ -994,22 +985,6 @@ class AppLocalizationsHi extends AppLocalizations {
 
   @override
   String get storageUnavailable => 'अनुपलब्ध';
-
-  @override
-  String get storagePathUnavailable =>
-      'CLI डायग्नोस्टिक्स तैयार होने तक Store पथ अनुपलब्ध है।';
-
-  @override
-  String get storageHealthyDescription =>
-      'CLI अपनी सामग्री को बदले बिना Store को पढ़ सकता है।';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'Store अभी तक मौजूद नहीं है और इस चेक द्वारा नहीं बनाया गया था।';
-
-  @override
-  String get storageUnavailableDescription =>
-      'CLI Store को नहीं पढ़ सकता है। इसकी अनुमतियाँ और मूल निर्देशिका जाँचें।';
 
   @override
   String get storageInvalidResponse =>

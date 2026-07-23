@@ -41,7 +41,7 @@ flutter build macos --release
 ## Boundaries
 
 - The App invokes the bundled SkillsGo CLI through typed adapters and must not call public Hub APIs directly. In Cloud mode it may call only the Cloud origin declared by `skillsgo hub info` for Cloud-owned reads.
-- The CLI owns local installation, update, removal, target detection, Workspace Manifests, Workspace Sums, and the shared store.
+- The CLI owns local installation, update, removal, target detection, `skillsgo.yaml`, `skillsgo.lock`, Scope Vendors, and Repository Projections.
 - The Hub owns public Skill metadata, search, immutable artifacts, and deployment discovery. SkillsGo Cloud owns install events and rankings in an independent database.
 - Do not parse human-oriented CLI output. Prefer stable machine-readable output and typed models.
 - Hub availability failures must not replace valid local Library inventory or reset the selected Library route; local reads and safe local-only mutations remain independent.

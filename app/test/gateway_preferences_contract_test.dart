@@ -373,7 +373,7 @@ void main() {
           ProcessOutput(
             exitCode: 0,
             stdout: jsonEncode({
-              'schemaVersion': 5,
+              'schemaVersion': 6,
               'entries': [
                 {
                   'inventoryKey': 'external:offline',
@@ -448,15 +448,9 @@ void main() {
     expect(status.issue, HubIssue.connectionFailure);
   });
 
-  test('Personal risk policy and product diagnostics are stable', () async {
+  test('Personal risk policy and product version are stable', () async {
     SharedPreferences.setMockInitialValues({});
-    final runner = FakeProcessRunner()
-      ..result = const ProcessOutput(
-        exitCode: 0,
-        stdout:
-            '{"schemaVersion":1,"store":{"path":"/Users/test/.skillsgo/store","state":"not_initialized"}}',
-        stderr: '',
-      );
+    final runner = FakeProcessRunner();
     final gateway = RealSkillsGateway(
       processRunner: runner,
       initialCliPath: '/Applications/SkillsGo.app/skillsgo',
@@ -470,15 +464,6 @@ void main() {
       const PersonalRiskPolicy(allowCriticalOverride: true),
     );
     expect((await gateway.loadRiskPolicy()).allowCriticalOverride, isTrue);
-    expect((await gateway.inspectStorage()).state, HealthState.notInitialized);
-    expect(runner.lastArguments, ['diagnostics', '--output', 'json']);
-    runner.result = const ProcessOutput(
-      exitCode: 0,
-      stdout:
-          '{"schemaVersion":1,"store":{"path":"/Users/test/.skillsgo/store","state":"ready"}}',
-      stderr: '',
-    );
-    expect((await gateway.inspectStorage()).state, HealthState.ready);
     expect(await gateway.loadAppVersion(), '3.2.1');
   });
 }

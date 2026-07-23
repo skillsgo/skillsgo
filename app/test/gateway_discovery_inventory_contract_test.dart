@@ -31,13 +31,13 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":5,"entries":[{"inventoryKey":"hub:github.com/flutter/skills/-/responsive-layout","name":"Responsive Layout","skillId":"github.com/flutter/skills/-/responsive-layout","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","mode":"copy","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","mode":"copy","version":"v1.2.3","health":"healthy"}]}]}',
+              '{"schemaVersion":6,"entries":[{"inventoryKey":"hub:github.com/flutter/skills/-/responsive-layout","name":"Responsive Layout","skillId":"github.com/flutter/skills/-/responsive-layout","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
           stderr: '',
         ),
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":5,"entries":[{"inventoryKey":"hub:github.com/flutter/skills/-/responsive-layout","name":"Responsive Layout","skillId":"github.com/flutter/skills/-/responsive-layout","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","mode":"copy","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","mode":"copy","version":"v1.2.3","health":"healthy"}]}]}',
+              '{"schemaVersion":6,"entries":[{"inventoryKey":"hub:github.com/flutter/skills/-/responsive-layout","name":"Responsive Layout","skillId":"github.com/flutter/skills/-/responsive-layout","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
           stderr: '',
         ),
       ]);
@@ -104,7 +104,7 @@ void main() {
         ),
         const ProcessOutput(
           exitCode: 0,
-          stdout: '{"schemaVersion":5,"entries":[]}',
+          stdout: '{"schemaVersion":6,"entries":[]}',
           stderr: '',
         ),
       ]);
@@ -239,7 +239,7 @@ void main() {
         ),
         const ProcessOutput(
           exitCode: 0,
-          stdout: '{"schemaVersion":5,"entries":[]}',
+          stdout: '{"schemaVersion":6,"entries":[]}',
           stderr: '',
         ),
       ]);
@@ -290,7 +290,7 @@ void main() {
           ProcessOutput(exitCode: 0, stdout: repositoryInfo, stderr: ''),
           ProcessOutput(
             exitCode: 0,
-            stdout: '{"schemaVersion":5,"entries":[]}',
+            stdout: '{"schemaVersion":6,"entries":[]}',
             stderr: '',
           ),
         ]);
@@ -333,7 +333,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            r'{"schemaVersion":5,"entries":[{"inventoryKey":"hub:github.com/a/b","name":"testing","skillId":"github.com/a/b","provenance":"hub","risk":"unknown","health":"missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"visibility":[{"agent":"codex","scope":"user","paths":["/tmp/testing","/tmp/shared/testing"],"verification":"verified"},{"agent":"opencode","scope":"project","projectRoot":"/work/project;$(touch nope)","paths":["/work/project;$(touch nope)/.agents/skills/testing"],"verification":"unverified"}],"targets":[{"scope":"user","projectRoot":"","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","mode":"symlink","version":"v2.0.0","health":"missing"}]}]}',
+            r'{"schemaVersion":6,"entries":[{"inventoryKey":"hub:github.com/a/b","name":"testing","skillId":"github.com/a/b","provenance":"hub","risk":"unknown","health":"missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"visibility":[{"agent":"codex","scope":"user","paths":["/tmp/testing","/tmp/shared/testing"],"verification":"verified"},{"agent":"opencode","scope":"project","projectRoot":"/work/project;$(touch nope)","paths":["/work/project;$(touch nope)/.agents/skills/testing"],"verification":"unverified"}],"targets":[{"scope":"user","projectRoot":"","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","version":"v2.0.0","health":"missing"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -382,7 +382,6 @@ void main() {
       skills.single.visibility.last.verification,
       DiscoveryVerification.unverified,
     );
-    expect(skills.single.targets.last.mode, InstallationMode.symlink);
     expect(
       skills.single.targets.first.health,
       InstallationHealth.localModification,
@@ -403,7 +402,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":5,"entries":[{"inventoryKey":"hub:github.com/a/b","name":"testing","skillId":"github.com/a/b","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","mode":"copy","version":"v1.0.0","health":"healthy"}]}]}',
+            '{"schemaVersion":6,"entries":[{"inventoryKey":"hub:github.com/a/b","name":"testing","skillId":"github.com/a/b","provenance":"hub","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -442,7 +441,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":5,"entries":[{"inventoryKey":"external:abc","name":"testing","skillId":"","provenance":"external","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/external/testing","mode":"external","version":"","health":"healthy"}]},{"inventoryKey":"hub:github.com/a/b/-/testing","name":"testing","skillId":"github.com/a/b/-/testing","provenance":"hub","risk":"low","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/managed/testing","mode":"copy","version":"v1","health":"healthy"}]}]}',
+            '{"schemaVersion":6,"entries":[{"inventoryKey":"external:abc","name":"testing","skillId":"","provenance":"external","risk":"unknown","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/external/testing","version":"","health":"healthy"}]},{"inventoryKey":"hub:github.com/a/b/-/testing","name":"testing","skillId":"github.com/a/b/-/testing","provenance":"hub","risk":"low","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/managed/testing","version":"v1","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -460,7 +459,6 @@ void main() {
     expect(external.inventoryKey, 'external:abc');
     expect(external.skillId, isEmpty);
     expect(external.versions, isEmpty);
-    expect(external.targets.single.mode, InstallationMode.external);
     expect(external.targets.single.version, isEmpty);
   });
 

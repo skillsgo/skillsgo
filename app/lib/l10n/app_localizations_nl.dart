@@ -552,12 +552,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get healthUnexpectedPath => 'Onverwacht doelpad';
 
   @override
-  String get modeSymlink => 'Symlink';
-
-  @override
-  String get modeCopy => 'Kopiëren';
-
-  @override
   String get modeExternal => 'Extern';
 
   @override
@@ -985,9 +979,6 @@ class AppLocalizationsNl extends AppLocalizations {
       'Artefacten met een kritiek risico blijven standaard geblokkeerd. Schakel dit alleen in om een ​​afzonderlijke handmatige overschrijving beschikbaar te maken.';
 
   @override
-  String get storageSettingsTitle => 'Op inhoud gerichte winkel';
-
-  @override
   String get storageHealthy => 'Leesbaar';
 
   @override
@@ -995,22 +986,6 @@ class AppLocalizationsNl extends AppLocalizations {
 
   @override
   String get storageUnavailable => 'Niet beschikbaar';
-
-  @override
-  String get storagePathUnavailable =>
-      'Winkelpad niet beschikbaar totdat de CLI-diagnostiek gereed is.';
-
-  @override
-  String get storageHealthyDescription =>
-      'De CLI kan de Store lezen zonder de inhoud ervan te wijzigen.';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'De Store bestaat nog niet en is door deze controle niet aangemaakt.';
-
-  @override
-  String get storageUnavailableDescription =>
-      'De CLI kan de Store niet lezen. Controleer de machtigingen en de bovenliggende map.';
 
   @override
   String get storageInvalidResponse =>
