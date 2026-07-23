@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the rendered App, bundled CLI, disposable Hub, isolated Agent state, and immutable v1.2.0/v1.3.0 releases of the SkillsGo-owned public versioned fixture Repository.
- * [OUTPUT]: Verifies that a user installs the older collection, sees Catalog-derived availability, confirms the exact update, persists v1.3.0 transaction metadata, and observes no update on the next check.
+ * [OUTPUT]: Verifies that a user installs the older Repository release, sees Catalog-derived availability, confirms the exact update, persists v1.3.0 YAML/Lock and Vendor state, and observes no update on the next check.
  * [POS]: Serves as the black-box macOS App update lifecycle journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -57,9 +57,12 @@ void main() {
       expect(install.onPressed, isNotNull);
       install.onPressed!();
       await tester.pump();
+      const repository = 'github.com/skillsgo/e2e-versioned-skills';
+      const oldCoordinate = '$repository@v1.2.0';
+      const newCoordinate = '$repository@v1.3.0';
       await _pumpUntilFile(
         tester,
-        File('$sandbox/home/.agents/skills/alpha/SKILL.md'),
+        File('$sandbox/test-agent/skills/$oldCoordinate/skills/alpha/SKILL.md'),
       );
       await _pumpUntilGone(
         tester,
@@ -77,15 +80,13 @@ void main() {
         installationComplete,
         timeout: const Duration(seconds: 30),
       );
-      final manifest = File('$sandbox/home/.skillsgo/skillsgo.mod');
+      final manifest = File('$sandbox/home/.skillsgo/skillsgo.yaml');
       expect(manifest.readAsStringSync(), contains('v1.2.0'));
 
       final client = HttpClient();
       try {
         final request = await client.getUrl(
-          Uri.parse(
-            '$hubOrigin/mod/github.com/skillsgo/e2e-versioned-skills/@v/v1.3.0.info',
-          ),
+          Uri.parse('$hubOrigin/$repository/@v/v1.3.0.info'),
         );
         final response = await request.close();
         await response.drain<void>();
@@ -145,7 +146,9 @@ void main() {
           .whereType<String>()
           .join(' | ');
 
-      final alpha = File('$sandbox/home/.agents/skills/alpha/SKILL.md');
+      final alpha = File(
+        '$sandbox/test-agent/skills/$newCoordinate/skills/alpha/SKILL.md',
+      );
       expect(
         alpha.readAsStringSync(),
         contains('Version 1.3.0 fixture content.'),
@@ -156,7 +159,16 @@ void main() {
         contains('v1.3.0'),
         reason: resultText,
       );
-      expect(File('$sandbox/home/.skillsgo/skillsgo.sum').existsSync(), isTrue);
+      expect(
+        File('$sandbox/home/.skillsgo/skillsgo.lock').existsSync(),
+        isTrue,
+      );
+      expect(
+        File(
+          '$sandbox/home/.skillsgo/vendor/$newCoordinate/skills/alpha/SKILL.md',
+        ).existsSync(),
+        isTrue,
+      );
 
       await tester.tap(_textEither('Close', '关闭'));
       await _pumpUntilGone(
@@ -180,11 +192,17 @@ Finder _textEither(String english, String chinese) => find.byWidgetPredicate(
 );
 
 Future<void> _pumpUntilFile(WidgetTester tester, File file) async {
-  final deadline = DateTime.now().add(const Duration(minutes: 2));
+  final deadline = DateTime.now().add(const Duration(seconds: 45));
   while (!file.existsSync() && DateTime.now().isBefore(deadline)) {
     await tester.pump(const Duration(milliseconds: 250));
   }
-  expect(file.existsSync(), isTrue);
+  expect(
+    file.existsSync(),
+    isTrue,
+    reason:
+        'Expected ${file.path}. Visible UI: '
+        '${tester.widgetList<Text>(find.byType(Text)).map((widget) => widget.data).whereType<String>().join(' | ')}',
+  );
 }
 
 Future<void> _pumpUntilEnabledButton(WidgetTester tester, Finder finder) async {

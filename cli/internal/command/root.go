@@ -83,7 +83,7 @@ func newRootCommand(stdout, stderr io.Writer) (*cobra.Command, error) {
 	root.PersistentFlags().StringVar(&languageOverride, "lang", strings.TrimSpace(os.Getenv("SKILLSGO_LANG")), appi18n.T("flag.lang"))
 	root.PersistentFlags().String("ui", string(terminalui.ModeAuto), appi18n.T("flag.ui"))
 	root.PersistentFlags().String("color", string(terminalui.ColorAuto), appi18n.T("flag.color"))
-	root.AddCommand(newVersionCommand(), newDiagnosticsCommand(), newCacheCommand(), newAgentsCommand(catalog), newInventoryCommand(catalog), newVerifyCommand(catalog), newWhyCommand(catalog), newTakeoverCommand(catalog), newInfoCommand(), newFindCommand(), newDetailCommand(), newHubCommand(), newUpdatesCommand(), newAddCommand(catalog), newInstallCommand(catalog), placeholder("use", "use <package>@<skill>"), newRemoveCommand(catalog), newRepairCommand(catalog), newExportCommand(), newListCommand(catalog), newUpdateCommand(catalog), placeholder("init", "init [name]"))
+	root.AddCommand(newVersionCommand(), newDiagnosticsCommand(), newCacheCommand(), newAgentsCommand(catalog), newInventoryCommand(catalog), newVerifyCommand(catalog), newWhyCommand(catalog), newTakeoverCommand(catalog), newInfoCommand(), newFindCommand(), newDetailCommand(), newHubCommand(), newUpdatesCommand(), newAddCommand(catalog), newInstallCommand(catalog), placeholder("use", "use <package>@<skill>"), newRemoveCommand(catalog), newRepairCommand(catalog), newExportCommand(), newListCommand(catalog), newRepositoryUpdateCommand(catalog), placeholder("init", "init [name]"))
 	return root, nil
 }
 

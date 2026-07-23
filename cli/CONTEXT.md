@@ -101,8 +101,8 @@ A difference between a Repository Projection and the deterministic view derived 
 _Avoid_: fork, automatically merged change, silent repair
 
 **Update Plan**:
-A state-bound operation over exact managed Installation Targets. Canonical Workspace requirements are pinned; resolving `head` or `release` again requires another explicit add. Workspace Manifest changes are previewed, and each target produces an independent result.
-_Avoid_: name-only global update, implicit project mutation, localized-output parsing
+A state-bound operation that replaces one declared Repository coordinate within one Scope. It preserves the dependency's selected Skill paths and Agents, previews the YAML version change, verifies the existing Vendor and every Projection against the old immutable baseline, and refuses Local Modifications. Because version belongs to the Repository, selecting one Library member updates the complete declared Repository dependency and all of its selected-member Projections atomically.
+_Avoid_: per-Skill artifact update, target-by-target partial Repository versions, implicit overwrite, localized-output parsing
 
 **Target Operation**:
 A state-bound top-level Remove or Repair operation over exact managed Installation Targets. Unselected targets remain unchanged, unsafe destructive removal is rejected, and every selected target produces its own result.

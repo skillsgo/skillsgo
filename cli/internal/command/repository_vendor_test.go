@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute, an exact root Repository Proxy fixture, a complete Repository Artifact, and temporary Workspace/Agent roots.
- * [OUTPUT]: Specifies exact add, selective multi-Agent projection, member/Agent removal, healthy zero-rewrite install, offline projection restoration, Local Modification preservation, User Vendor restoration, and checksum-failure atomicity.
+ * [OUTPUT]: Specifies exact add, Repository-level update, selective multi-Agent projection, member/Agent removal, healthy zero-rewrite install, offline projection restoration, Local Modification preservation, User Vendor restoration, and checksum-failure atomicity.
  * [POS]: Serves as the CLI command-seam acceptance test for Repository Vendor installation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -272,4 +272,99 @@ func TestAddRepositorySumMismatchLeavesNoWorkspaceState(t *testing.T) {
 	require.NoFileExists(t, filepath.Join(workspace, project.DependencyLockName))
 	require.NoDirExists(t, filepath.Join(workspace, ".skillsgo", "vendor", "github.com"))
 	require.NoDirExists(t, filepath.Join(workspace, ".agents", "skills", "github.com"))
+}
+
+func TestUpdateRepositoryReplacesCoordinateAndPreservesSelections(t *testing.T) {
+	repositoryID := "github.com/example/skills"
+	oldVersion, newVersion := "v1.2.0", "v1.3.0"
+	type release struct {
+		archive []byte
+		info    []byte
+		sum     string
+	}
+	releases := map[string]release{}
+	for _, version := range []string{oldVersion, newVersion} {
+		archive, err := protocolartifact.BuildRepository(repositoryID, version, []protocolartifact.Entry{
+			{Path: "README.md", Contents: []byte("repository " + version), Mode: 0o644},
+			{Path: "skills/alpha/SKILL.md", Contents: []byte("---\nname: alpha\ndescription: Alpha.\n---\n# " + version + "\n"), Mode: 0o644},
+			{Path: "skills/beta/SKILL.md", Contents: []byte("---\nname: beta\ndescription: Beta.\n---\n# " + version + "\n"), Mode: 0o644},
+		})
+		require.NoError(t, err)
+		sum, err := protocolartifact.RepositorySum(archive, repositoryID, version)
+		require.NoError(t, err)
+		now := time.Date(2026, 7, 23, 0, 0, 0, 0, time.UTC)
+		info, err := json.Marshal(protocolapi.RepositoryInfo{SchemaVersion: 1, Kind: protocolapi.KindRepository, ID: repositoryID, Version: version,
+			Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit-" + version, TreeSHA: "tree-" + version, Sum: sum, ArchiveSize: int64(len(archive)),
+			Skills: []protocolapi.SkillInfo{
+				{SchemaVersion: 1, Kind: protocolapi.KindSkill, ID: repositoryID + "/-/skills/alpha", RepositoryID: repositoryID, Path: "skills/alpha", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit-" + version, TreeSHA: "alpha-" + version, Name: "alpha", Description: "Alpha."},
+				{SchemaVersion: 1, Kind: protocolapi.KindSkill, ID: repositoryID + "/-/skills/beta", RepositoryID: repositoryID, Path: "skills/beta", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit-" + version, TreeSHA: "beta-" + version, Name: "beta", Description: "Beta."},
+			}})
+		require.NoError(t, err)
+		releases[version] = release{archive: archive, info: info, sum: sum}
+	}
+	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
+		for version, item := range releases {
+			switch request.URL.Path {
+			case "/" + repositoryID + "/@v/" + version + ".info":
+				_, _ = writer.Write(item.info)
+				return
+			case "/" + repositoryID + "/@v/" + version + ".zip":
+				writer.Header().Set("Content-Length", fmt.Sprint(len(item.archive)))
+				_, _ = writer.Write(item.archive)
+				return
+			}
+		}
+		http.NotFound(writer, request)
+	}))
+	defer server.Close()
+
+	root := t.TempDir()
+	home, workspace := filepath.Join(root, "home"), filepath.Join(root, "workspace")
+	require.NoError(t, os.MkdirAll(home, 0o700))
+	require.NoError(t, os.MkdirAll(workspace, 0o700))
+	t.Setenv("HOME", home)
+	var output bytes.Buffer
+	require.NoError(t, Execute([]string{"add", repositoryID + "@" + oldVersion, "--project", workspace, "--skill", "skills/alpha", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output))
+
+	output.Reset()
+	require.NoError(t, Execute([]string{"update", repositoryID + "@" + newVersion, "--project", workspace, "--preflight", "--hub", server.URL, "--output", "json"}, &output, &output))
+	var preflight repositoryUpdateReport
+	require.NoError(t, json.Unmarshal(output.Bytes(), &preflight))
+	require.Equal(t, "repository-update-preflight", preflight.Phase)
+	require.Equal(t, oldVersion, preflight.FromVersion)
+	require.Equal(t, newVersion, preflight.ToVersion)
+	require.Equal(t, []string{"skills/alpha"}, preflight.Skills)
+	require.Equal(t, []string{"codex"}, preflight.Agents)
+
+	oldVendor := scopevendor.CoordinatePath(filepath.Join(workspace, ".skillsgo", "vendor"), repositoryID, oldVersion)
+	newVendor := scopevendor.CoordinatePath(filepath.Join(workspace, ".skillsgo", "vendor"), repositoryID, newVersion)
+	oldProjection := scopevendor.CoordinatePath(filepath.Join(workspace, ".agents", "skills"), repositoryID, oldVersion)
+	newProjection := scopevendor.CoordinatePath(filepath.Join(workspace, ".agents", "skills"), repositoryID, newVersion)
+	require.NoError(t, os.WriteFile(filepath.Join(oldProjection, "README.md"), []byte("local edit"), 0o644))
+	output.Reset()
+	updateErr := Execute([]string{"update", repositoryID + "@" + newVersion, "--project", workspace, "--state-token", preflight.StateToken, "--hub", server.URL, "--output", "json"}, &output, &output)
+	require.ErrorContains(t, updateErr, "Local Modification")
+	require.DirExists(t, oldVendor)
+	require.DirExists(t, oldProjection)
+	require.NoDirExists(t, newVendor)
+	require.NoDirExists(t, newProjection)
+	require.NoError(t, os.WriteFile(filepath.Join(oldProjection, "README.md"), []byte("repository "+oldVersion), 0o644))
+
+	output.Reset()
+	require.NoError(t, Execute([]string{"update", repositoryID + "@" + newVersion, "--project", workspace, "--state-token", preflight.StateToken, "--hub", server.URL, "--output", "json"}, &output, &output))
+	manifest, err := project.LoadWorkspaceManifest(workspace)
+	require.NoError(t, err)
+	require.Equal(t, newVersion, manifest.Dependencies[repositoryID].Version)
+	require.Equal(t, []string{"skills/alpha"}, manifest.Dependencies[repositoryID].Skills)
+	lock, err := project.LoadDependencyLock(workspace)
+	require.NoError(t, err)
+	require.Equal(t, releases[newVersion].sum, lock.Dependencies[repositoryID].Sum)
+	require.NoDirExists(t, oldVendor)
+	require.NoDirExists(t, oldProjection)
+	require.FileExists(t, filepath.Join(newVendor, "skills", "beta", "SKILL.md"))
+	require.FileExists(t, filepath.Join(newProjection, "skills", "alpha", "SKILL.md"))
+	require.NoFileExists(t, filepath.Join(newProjection, "skills", "beta", "SKILL.md"))
+	contents, err := os.ReadFile(filepath.Join(newProjection, "skills", "alpha", "SKILL.md"))
+	require.NoError(t, err)
+	require.Contains(t, string(contents), newVersion)
 }

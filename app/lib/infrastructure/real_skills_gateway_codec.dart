@@ -269,21 +269,6 @@ List<InstallationTargetResult> _repositoryInstallationResults(
       .toList(growable: false);
 }
 
-UpdatePlanAction _updatePlanAction(Object? value) => switch (value) {
-  'update' => UpdatePlanAction.update,
-  'current' => UpdatePlanAction.current,
-  'pinned' => UpdatePlanAction.pinned,
-  'failed' => UpdatePlanAction.failed,
-  _ => throw const FormatException(),
-};
-
-UpdateTargetOutcome _updateTargetOutcome(Object? value) => switch (value) {
-  'succeeded' => UpdateTargetOutcome.succeeded,
-  'skipped' => UpdateTargetOutcome.skipped,
-  'failed' => UpdateTargetOutcome.failed,
-  _ => throw const FormatException(),
-};
-
 TargetFailure? _targetFailure(Object? raw) {
   if (raw == null) return null;
   if (raw is! Map<String, dynamic> ||
@@ -303,40 +288,6 @@ TargetFailure? _targetFailure(Object? raw) {
     ),
     requestId: raw['requestId'] as String? ?? '',
     diagnostic: raw['diagnostic'] as String? ?? '',
-  );
-}
-
-UpdateTargetResult _updateTargetResult(Object? raw, UpdatePlanItem expected) {
-  if (raw is! Map<String, dynamic> ||
-      raw['name'] != expected.name ||
-      raw['skillId'] != expected.skillId ||
-      raw['fromVersion'] != expected.fromVersion ||
-      raw['toVersion'] != expected.toVersion ||
-      raw.containsKey('errorCode') ||
-      raw.containsKey('diagnostic')) {
-    throw const FormatException();
-  }
-  final target = _installationPlanTarget(
-    raw['target'],
-    allowExternal: expected.target.mode == InstallationMode.external,
-  );
-  if (!_samePlanTarget(target, expected.target)) throw const FormatException();
-  final outcome = _updateTargetOutcome(raw['outcome']);
-  final error = _targetFailure(raw['error']);
-  if (outcome == UpdateTargetOutcome.failed && error == null) {
-    throw const FormatException();
-  }
-  if (outcome != UpdateTargetOutcome.failed && error != null) {
-    throw const FormatException();
-  }
-  return UpdateTargetResult(
-    target: target,
-    name: expected.name,
-    skillId: expected.skillId,
-    fromVersion: expected.fromVersion,
-    toVersion: expected.toVersion,
-    outcome: outcome,
-    error: error,
   );
 }
 
