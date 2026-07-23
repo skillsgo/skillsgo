@@ -235,6 +235,11 @@ jobs:
         working-directory: app
         run: flutter pub get
 
+      - name: Install native PostgreSQL
+        run: |
+          brew install postgresql@18
+          echo "SKILLSGO_E2E_POSTGRES_BIN_DIR=$(brew --prefix postgresql@18)/bin" >> "$GITHUB_ENV"
+
       - name: Run rendered desktop journeys
         env:
           SKILLSGO_E2E_HUB_RUNTIME: native

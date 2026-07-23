@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on macOS Flutter desktop support, Go, curl, Ruby, Docker-hosted PostgreSQL, the App workspace with its CLI bundling phase, isolated Hub cache/storage paths, and optionally Docker for the alternate Hub runtime.
-# [OUTPUT]: Launches a fully disposable real Hub process and runs each selected App journey with its bundled Darwin CLI inside an independent redirected temporary macOS home.
+# [INPUT]: Depends on macOS Flutter desktop support, Go, curl, Ruby, native PostgreSQL for the default runtime, the App workspace with its CLI bundling phase, isolated Hub cache/storage paths, and optionally Docker for the alternate runtime.
+# [OUTPUT]: Launches disposable native PostgreSQL and Hub processes by default, then runs each selected App journey with its bundled Darwin CLI inside an independent redirected temporary macOS home.
 # [POS]: Serves as the isolated lifecycle and execution adapter behind make test-e2e-app.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -39,6 +39,9 @@ cleanup() {
   if [[ -n "${hub_container:-}" ]]; then
     docker rm --force "${hub_container}" >/dev/null 2>&1 || true
   fi
+  if [[ -n "${postgres_bin_dir:-}" && -d "${run_dir}/postgres" ]]; then
+    "${postgres_bin_dir}/pg_ctl" -D "${run_dir}/postgres" stop --mode=immediate >/dev/null 2>&1 || true
+  fi
   if [[ -n "${postgres_container:-}" ]]; then
     docker rm --force "${postgres_container}" >/dev/null 2>&1 || true
   fi
@@ -56,19 +59,25 @@ readonly hub_origin="http://127.0.0.1:${hub_port}"
 readonly hub_log="${run_dir}/hub.log"
 readonly hub_runtime="${SKILLSGO_E2E_HUB_RUNTIME:-native}"
 readonly postgres_container="skillsgo-app-e2e-postgres-${hub_port}"
-docker run --detach --name "${postgres_container}" --publish 127.0.0.1::5432 \
-  --env POSTGRES_DB=skillsgo --env POSTGRES_USER=skillsgo --env POSTGRES_PASSWORD=skillsgo \
-  postgres:18-alpine >/dev/null
-readonly postgres_port="$(docker port "${postgres_container}" 5432/tcp | sed 's/.*://')"
-for _ in {1..60}; do
-  if docker exec "${postgres_container}" pg_isready -U skillsgo -d skillsgo >/dev/null 2>&1; then break; fi
-  sleep 0.25
-done
-readonly native_database_dsn="postgres://skillsgo:skillsgo@127.0.0.1:${postgres_port}/skillsgo?sslmode=disable"
-readonly docker_database_dsn="postgres://skillsgo:skillsgo@host.docker.internal:${postgres_port}/skillsgo?sslmode=disable"
 
 case "${hub_runtime}" in
   native)
+    if [[ -n "${SKILLSGO_E2E_POSTGRES_BIN_DIR:-}" ]]; then
+      postgres_bin_dir="${SKILLSGO_E2E_POSTGRES_BIN_DIR}"
+    elif command -v pg_config >/dev/null 2>&1 && [[ -x "$(pg_config --bindir)/initdb" && -x "$(pg_config --bindir)/postgres" ]]; then
+      postgres_bin_dir="$(pg_config --bindir)"
+    elif command -v brew >/dev/null 2>&1 && postgres_prefix="$(brew --prefix postgresql@18 2>/dev/null)" && [[ -x "${postgres_prefix}/bin/initdb" ]]; then
+      postgres_bin_dir="${postgres_prefix}/bin"
+    else
+      echo "Native App E2E requires PostgreSQL client and server binaries." >&2
+      exit 1
+    fi
+    readonly postgres_bin_dir
+    readonly postgres_port="$(ruby -rsocket -e 'server = TCPServer.new("127.0.0.1", 0); puts server.addr[1]; server.close')"
+    "${postgres_bin_dir}/initdb" -D "${run_dir}/postgres" -U skillsgo --auth=trust >/dev/null
+    "${postgres_bin_dir}/pg_ctl" -D "${run_dir}/postgres" -l "${run_dir}/postgres.log" -o "-h 127.0.0.1 -p ${postgres_port}" start >/dev/null
+    "${postgres_bin_dir}/createdb" -h 127.0.0.1 -p "${postgres_port}" -U skillsgo skillsgo
+    readonly native_database_dsn="postgres://skillsgo@127.0.0.1:${postgres_port}/skillsgo?sslmode=disable"
     readonly hub_binary="${run_dir}/skillsgo-hub"
     (
       cd "${repository_root}/hub"
@@ -85,6 +94,15 @@ case "${hub_runtime}" in
     readonly hub_pid=$!
     ;;
   docker)
+    docker run --detach --name "${postgres_container}" --publish 127.0.0.1::5432 \
+      --env POSTGRES_DB=skillsgo --env POSTGRES_USER=skillsgo --env POSTGRES_PASSWORD=skillsgo \
+      postgres:18-alpine >/dev/null
+    readonly postgres_port="$(docker port "${postgres_container}" 5432/tcp | sed 's/.*://')"
+    for _ in {1..60}; do
+      if docker exec "${postgres_container}" pg_isready -U skillsgo -d skillsgo >/dev/null 2>&1; then break; fi
+      sleep 0.25
+    done
+    readonly docker_database_dsn="postgres://skillsgo:skillsgo@host.docker.internal:${postgres_port}/skillsgo?sslmode=disable"
     readonly hub_image="skillsgo-app-e2e-hub:local"
     readonly hub_container="skillsgo-app-e2e-${hub_port}"
     docker build \
