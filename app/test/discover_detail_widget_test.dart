@@ -29,7 +29,7 @@ void main() {
           const DiscoveryPage(
             skills: [
               SkillSummary(
-                id: 'github.com/acme/original',
+                repositoryId: 'github.com/acme/original',
                 installName: 'original',
                 name: 'Original',
                 source: 'github.com/acme/original',
@@ -68,7 +68,7 @@ void main() {
         const DiscoveryPage(
           skills: [
             SkillSummary(
-              id: 'github.com/acme/refreshed',
+              repositoryId: 'github.com/acme/refreshed',
               installName: 'refreshed',
               name: 'Refreshed',
               source: 'github.com/acme/refreshed',
@@ -114,7 +114,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     const installedSkill = SkillSummary(
-      id: 'github.com/acme/skills/-/planner',
+      repositoryId: 'github.com/acme/skills',
       installName: 'planner',
       name: 'Planner',
       source: 'github.com/acme/skills',

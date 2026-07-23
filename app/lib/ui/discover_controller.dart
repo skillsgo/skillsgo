@@ -202,8 +202,11 @@ List<SkillSummary> _appendUnique(
   List<SkillSummary> current,
   List<SkillSummary> incoming,
 ) {
-  final seen = current.map((skill) => skill.id).toSet();
-  return [...current, ...incoming.where((skill) => seen.add(skill.id))];
+  final seen = current.map((skill) => skill.coordinateKey).toSet();
+  return [
+    ...current,
+    ...incoming.where((skill) => seen.add(skill.coordinateKey)),
+  ];
 }
 
 DiscoveryCollection _collectionForRoute(DiscoverRoute route) => switch (route) {

@@ -62,28 +62,35 @@ class LibraryContentState {
 class LibraryEntryQuery {
   const LibraryEntryQuery._(
     this._inventoryKey,
-    this._skillId,
+    this._repositoryId,
+    this._skillName,
     this._targetPath,
     this._agent,
   );
 
   factory LibraryEntryQuery.byInventoryKey(String inventoryKey) =>
-      LibraryEntryQuery._(inventoryKey, '', null, null);
+      LibraryEntryQuery._(inventoryKey, '', '', null, null);
 
-  factory LibraryEntryQuery.bySkill({
-    required String skillId,
+  factory LibraryEntryQuery.byCoordinate({
+    required String repositoryId,
+    required String skillName,
     String? targetPath,
     String? agent,
-  }) => LibraryEntryQuery._('', skillId, targetPath, agent);
+  }) => LibraryEntryQuery._('', repositoryId, skillName, targetPath, agent);
 
   final String _inventoryKey;
-  final String _skillId;
+  final String _repositoryId;
+  final String _skillName;
   final String? _targetPath;
   final String? _agent;
 
   bool matches(InstalledSkill entry) {
     if (_inventoryKey.isNotEmpty) return entry.inventoryKey == _inventoryKey;
-    final skillMatches = _skillId.isNotEmpty && entry.skillId == _skillId;
+    final skillMatches =
+        _repositoryId.isNotEmpty &&
+        _skillName.isNotEmpty &&
+        entry.repositoryId == _repositoryId &&
+        entry.name == _skillName;
     final path = _targetPath;
     if (path == null) return skillMatches;
     final targetMatches = entry.targets.any(

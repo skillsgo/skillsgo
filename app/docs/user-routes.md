@@ -159,7 +159,7 @@ The Library merges facts from:
 - Agent Skill directories inside Added Projects;
 - Hub source, version, trust, and risk metadata.
 
-Hub Skills aggregate by stable Skill ID. Local Skills aggregate by inventory key. External Installations without a managed Skill ID must not merge only because their names match.
+Hub Skills aggregate by Repository ID plus canonical Skill Name. Local Skills aggregate by inventory key. External Installations without managed Repository-member identity must not merge only because their names match.
 
 ### Library Rows
 

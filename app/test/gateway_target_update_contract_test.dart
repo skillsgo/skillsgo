@@ -18,12 +18,12 @@ void main() {
 
   test('managed removal uses the Repository member machine protocol', () async {
     const installed = InstalledSkill(
-      inventoryKey: 'hub:github.com/example/skills/-/demo',
+      inventoryKey: 'hub:github.com/example/skills:demo',
       name: 'demo',
       path: '/work/.codex/skills/demo',
       agents: ['codex'],
       targetCount: 1,
-      skillId: 'github.com/example/skills/-/demo',
+      repositoryId: 'github.com/example/skills',
       targets: [
         SkillInstallationTarget(
           agent: 'codex',
@@ -38,7 +38,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":1,"phase":"repository-remove","skills":["github.com/example/skills/-/demo"],"scope":"project"}\n',
+            '{"schemaVersion":1,"phase":"repository-remove","skills":["demo"],"scope":"project"}\n',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -59,7 +59,7 @@ void main() {
     expect(execution.summary.succeeded, 1);
     expect(runner.lastArguments, [
       'remove',
-      'github.com/example/skills/-/demo',
+      'demo',
       '--project',
       '/work',
       '--yes',
@@ -71,14 +71,12 @@ void main() {
   test(
     'Target Management Plans preserve exact targets and parse versioned NDJSON',
     () async {
-      const skillId = 'github.com/example/skills/-/test';
       const installed = InstalledSkill(
         inventoryKey: 'external:/tmp/Test',
         name: 'Test',
         path: '/tmp/Test',
         agents: ['codex'],
         targetCount: 1,
-        skillId: skillId,
         provenance: LibraryProvenance.external,
         targets: [
           SkillInstallationTarget(
@@ -195,7 +193,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout: '''
-{"schemaVersion":1,"phase":"update-check","items":[{"key":"hub:github.com/example/skills/-/test","skillId":"github.com/example/skills/-/test","versions":["v1"],"releaseVersion":"v2","releaseStatus":"update_available","status":"update_available"}]}
+{"schemaVersion":1,"phase":"update-check","items":[{"key":"hub:github.com/example/skills:test","repositoryId":"github.com/example/skills","name":"test","versions":["v1"],"releaseVersion":"v2","releaseStatus":"update_available","status":"update_available"}]}
 ''',
         stderr: '',
       );
@@ -206,12 +204,12 @@ void main() {
 
     final states = await gateway.checkUpdates(const [
       InstalledSkill(
-        inventoryKey: 'hub:github.com/example/skills/-/test',
-        name: 'Test',
+        inventoryKey: 'hub:github.com/example/skills:test',
+        name: 'test',
         path: '/tmp/Test',
         agents: ['codex'],
         targetCount: 1,
-        skillId: 'github.com/example/skills/-/test',
+        repositoryId: 'github.com/example/skills',
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
@@ -224,10 +222,10 @@ void main() {
     ]);
 
     expect(
-      states['hub:github.com/example/skills/-/test']?.state,
+      states['hub:github.com/example/skills:test']?.state,
       UpdateState.available,
     );
-    expect(states['hub:github.com/example/skills/-/test']?.toVersion, 'v2');
+    expect(states['hub:github.com/example/skills:test']?.toVersion, 'v2');
     expect(runner.calls, hasLength(1));
     expect(runner.lastArguments!.take(2), ['updates', 'check']);
     expect(
@@ -239,8 +237,9 @@ void main() {
         jsonDecode(runner.lastArguments![installedIndex + 1])
             as Map<String, dynamic>;
     expect(installed, {
-      'key': 'hub:github.com/example/skills/-/test',
-      'skillId': 'github.com/example/skills/-/test',
+      'key': 'hub:github.com/example/skills:test',
+      'repositoryId': 'github.com/example/skills',
+      'name': 'test',
       'versions': ['v1'],
     });
     expect(runner.lastArguments, isNot(contains('--preflight')));
@@ -268,12 +267,12 @@ void main() {
       initialCliPath: '/bin/skillsgo',
     );
     const installed = InstalledSkill(
-      inventoryKey: 'hub:github.com/example/skills/-/test',
-      name: 'Test',
+      inventoryKey: 'hub:github.com/example/skills:test',
+      name: 'test',
       path: '/tmp/Test',
       agents: ['codex'],
       targetCount: 1,
-      skillId: 'github.com/example/skills/-/test',
+      repositoryId: 'github.com/example/skills',
       targets: [
         SkillInstallationTarget(
           scope: InstallationScope.user,

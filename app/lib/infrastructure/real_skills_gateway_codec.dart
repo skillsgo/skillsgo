@@ -194,7 +194,7 @@ List<InstallationTargetResult> _repositoryInstallationResults(
   if (raw is! Map<String, dynamic> ||
       raw['schemaVersion'] != 1 ||
       raw['phase'] != 'repository-install' ||
-      raw['repository'] != skill.id.split('/-/').first ||
+      raw['repository'] != skill.repositoryId ||
       raw['version'] != immutableVersion ||
       raw['sum'] is! String ||
       (raw['sum'] as String).isEmpty ||
@@ -206,9 +206,7 @@ List<InstallationTargetResult> _repositoryInstallationResults(
       raw['workspace'] is! Map<String, dynamic>) {
     throw const FormatException();
   }
-  final expectedMember = skill.id.contains('/-/')
-      ? skill.id.split('/-/').last
-      : '.';
+  final expectedMember = skill.name;
   if (!_strictStringList(raw['skills']).contains(expectedMember) ||
       !_sameStringSet(
         _strictStringList(raw['agents']),

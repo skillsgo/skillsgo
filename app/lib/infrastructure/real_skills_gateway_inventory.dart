@@ -137,7 +137,8 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
                 raw['name'] is! String ||
                 (raw['name'] as String).isEmpty ||
                 (raw['description'] != null && raw['description'] is! String) ||
-                raw['skillId'] is! String ||
+                (raw['repositoryId'] != null &&
+                    raw['repositoryId'] is! String) ||
                 raw['versionDivergence'] is! bool ||
                 raw['targets'] is! List ||
                 raw['visibility'] is! List) {
@@ -242,12 +243,13 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
               throw const FormatException();
             }
             if (provenance == LibraryProvenance.hub &&
-                ((raw['skillId'] as String).isEmpty ||
-                    raw['inventoryKey'] != 'hub:${raw['skillId']}')) {
+                ((raw['repositoryId'] as String? ?? '').isEmpty ||
+                    raw['inventoryKey'] !=
+                        'hub:${raw['repositoryId']}:${raw['name']}')) {
               throw const FormatException();
             }
             if (provenance == LibraryProvenance.external &&
-                ((raw['skillId'] as String).isNotEmpty ||
+                ((raw['repositoryId'] as String? ?? '').isNotEmpty ||
                     versions.isNotEmpty ||
                     !(raw['inventoryKey'] as String).startsWith('external:'))) {
               throw const FormatException();
@@ -259,7 +261,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
               path: targets.first.path,
               agents: agents,
               targetCount: targets.length,
-              skillId: raw['skillId'] as String,
+              repositoryId: raw['repositoryId'] as String? ?? '',
               targets: targets,
               visibility: visibility,
               provenance: provenance,

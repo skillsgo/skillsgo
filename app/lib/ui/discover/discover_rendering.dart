@@ -200,7 +200,7 @@ extension _DiscoverRendering on _DiscoverScreenState {
                 ),
                 delegate: SliverChildBuilderDelegate((context, index) {
                   final skill = state.results![index];
-                  final cardFocus = uiState.focusNodeFor(skill.id);
+                  final cardFocus = uiState.focusNodeFor(skill.coordinateKey);
                   return SkillCard(
                     skill: skill,
                     focusNode: cardFocus,
@@ -403,7 +403,7 @@ extension _DiscoverRendering on _DiscoverScreenState {
 
   Future<void> _animateDetailOpen(SkillSummary skill) async {
     await detailTransition.forward(from: 0);
-    if (!mounted || selectedSkill?.id != skill.id) return;
+    if (!mounted || selectedSkill?.coordinateKey != skill.coordinateKey) return;
     updateState(() => detailTransitioning = false);
   }
 

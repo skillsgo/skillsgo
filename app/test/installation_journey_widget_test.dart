@@ -354,7 +354,7 @@ void main() {
     expect(find.text('Flutter Pro'), findsOneWidget);
     expect(
       FocusManager.instance.primaryFocus?.debugLabel,
-      'skill-card-example/skills/flutter-pro',
+      'skill-card-example/skills/flutter-pro:Flutter Pro',
     );
   });
 

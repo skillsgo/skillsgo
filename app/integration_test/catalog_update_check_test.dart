@@ -115,7 +115,7 @@ void main() {
       await tester.tap(
         find.byKey(
           const ValueKey(
-            'library-select-hub:github.com/skillsgo/e2e-versioned-skills/-/skills/alpha',
+            'library-select-hub:github.com/skillsgo/e2e-versioned-skills:alpha',
           ),
         ),
       );

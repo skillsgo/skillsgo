@@ -8,7 +8,7 @@ part of '../fake_skills_gateway.dart';
 
 const defaultSearchResults = [
   SkillSummary(
-    id: 'example/skills/flutter-pro',
+    repositoryId: 'example/skills/flutter-pro',
     installName: 'flutter-pro',
     name: 'Flutter Pro',
     source: 'example/skills',

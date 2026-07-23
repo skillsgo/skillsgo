@@ -82,8 +82,9 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
           projects: await loadAddedProjects(),
         );
         for (final skill in installed) {
-          if (skill.skillId.isNotEmpty) {
-            installedCounts[skill.skillId] = skill.targetCount;
+          if (skill.repositoryId.isNotEmpty) {
+            installedCounts['${skill.repositoryId}\u0000${skill.name}'] =
+                skill.targetCount;
           }
         }
       } on Object {
@@ -103,13 +104,13 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
                     (raw['skillPath'] as String).isNotEmpty
                 ? p.basename(raw['skillPath'] as String)
                 : raw['name'];
-            final id = raw['id'];
+            final repositoryId = raw['repositoryId'];
             final name = raw['name'];
             final description = raw['description'];
             final version = raw['latestVersion'];
             if (source is! String ||
                 installName is! String ||
-                id is! String ||
+                repositoryId is! String ||
                 name is! String ||
                 description is! String ||
                 version is! String) {
@@ -137,7 +138,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
               );
             }
             return SkillSummary(
-              id: id,
+              repositoryId: repositoryId,
               installName: installName,
               name: name,
               source: source,
@@ -155,7 +156,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
               metricChange: metric is Map<String, dynamic>
                   ? (metric['change'] as num).toInt()
                   : 0,
-              localTargetCount: installedCounts[id] ?? 0,
+              localTargetCount:
+                  installedCounts['$repositoryId\u0000$name'] ?? 0,
             );
           })
           .toList(growable: false);
@@ -213,22 +215,25 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         throw const FormatException('Invalid Cloud ranking response.');
       }
       final items = cloudDocument['items'] as List;
-      final skillIDs = <String>[];
+      final coordinates = <({String repositoryId, String name})>[];
       final metrics = <String, Map<String, dynamic>>{};
       for (final raw in items) {
         if (raw is! Map<String, dynamic> ||
-            raw['skillId'] is! String ||
+            raw['repositoryId'] is! String ||
+            raw['skillName'] is! String ||
             raw['metric'] is! Map<String, dynamic>) {
           throw const FormatException('Invalid Cloud ranking item.');
         }
-        final skillID = raw['skillId'] as String;
-        if (metrics.containsKey(skillID)) {
+        final repositoryId = raw['repositoryId'] as String;
+        final name = raw['skillName'] as String;
+        final key = '$repositoryId\u0000$name';
+        if (metrics.containsKey(key)) {
           throw const FormatException('Duplicate Cloud ranking Skill.');
         }
-        skillIDs.add(skillID);
-        metrics[skillID] = raw['metric'] as Map<String, dynamic>;
+        coordinates.add((repositoryId: repositoryId, name: name));
+        metrics[key] = raw['metric'] as Map<String, dynamic>;
       }
-      if (skillIDs.isEmpty) {
+      if (coordinates.isEmpty) {
         return {
           'collection': collection,
           'skills': <Object>[],
@@ -237,7 +242,12 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       }
       final detailResult = await _runCli([
         'detail',
-        for (final skillID in skillIDs) ...['--skill', skillID],
+        for (final coordinate in coordinates) ...[
+          '--repository',
+          coordinate.repositoryId,
+          '--skill',
+          coordinate.name,
+        ],
         '--hub',
         _hubOrigin,
       ]);
@@ -246,18 +256,21 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       if (hydrated is! Map<String, dynamic> || hydrated['skills'] is! List) {
         throw const FormatException('Invalid Hub Skill batch response.');
       }
-      final byID = <String, Map<String, dynamic>>{};
+      final byCoordinate = <String, Map<String, dynamic>>{};
       for (final raw in hydrated['skills'] as List) {
-        if (raw is! Map<String, dynamic> || raw['id'] is! String) {
+        if (raw is! Map<String, dynamic> ||
+            raw['repositoryId'] is! String ||
+            raw['name'] is! String) {
           throw const FormatException('Invalid Hub Skill card.');
         }
-        byID[raw['id'] as String] = raw;
+        byCoordinate['${raw['repositoryId']}\u0000${raw['name']}'] = raw;
       }
       final skills = <Map<String, dynamic>>[];
-      for (final skillID in skillIDs) {
-        final skill = byID[skillID];
+      for (final coordinate in coordinates) {
+        final key = '${coordinate.repositoryId}\u0000${coordinate.name}';
+        final skill = byCoordinate[key];
         if (skill == null) continue;
-        skills.add({...skill, 'metric': metrics[skillID]});
+        skills.add({...skill, 'metric': metrics[key]});
       }
       return {
         'collection': collection,
@@ -320,8 +333,9 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
           projects: await loadAddedProjects(),
         );
         for (final skill in installed) {
-          if (skill.skillId.isNotEmpty) {
-            installedCounts[skill.skillId] = skill.targetCount;
+          if (skill.repositoryId.isNotEmpty) {
+            installedCounts['${skill.repositoryId}\u0000${skill.name}'] =
+                skill.targetCount;
           }
         }
       } on Object {
@@ -332,11 +346,11 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
             if (raw is! Map<String, dynamic>) {
               throw const FormatException('Invalid Skill Info member.');
             }
-            final id = raw['ID'];
+            final repositoryId = raw['RepositoryID'];
             final name = raw['Name'];
             final description = raw['Description'];
             final version = raw['Version'];
-            if (id is! String ||
+            if (repositoryId is! String ||
                 name is! String ||
                 description is! String ||
                 version is! String) {
@@ -346,18 +360,18 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
             if (imageURL != null && imageURL is! String) {
               throw const FormatException('Invalid Skill Info image URL.');
             }
-            final repository = id.split('/-/').first;
             return SkillSummary(
-              id: id,
+              repositoryId: repositoryId,
               installName: name,
               name: name,
-              source: repository,
+              source: repositoryId,
               imageUrl: imageURL as String?,
               description: description,
               latestVersion: version,
               trustLevel: _trustLevel(raw['TrustLevel']),
               riskAssessment: _riskAssessment(raw['RiskAssessment']),
-              localTargetCount: installedCounts[id] ?? 0,
+              localTargetCount:
+                  installedCounts['$repositoryId\u0000$name'] ?? 0,
             );
           })
           .toList(growable: false);
@@ -411,7 +425,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     try {
       final result = await _runCli([
         'detail',
-        skill.id,
+        skill.repositoryId,
+        skill.name,
         '--hub',
         _hubOrigin,
         '--content-locale',
@@ -426,7 +441,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         );
       }
       const requiredStrings = [
-        'id',
+        'repositoryId',
         'name',
         'description',
         'source',
@@ -445,7 +460,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
           decoded['stars'] is! num ||
           decoded['sourceUpdatedAt'] is! String ||
           decoded['archiveSize'] is! num ||
-          decoded['id'] != skill.id ||
+          decoded['repositoryId'] != skill.repositoryId ||
+          decoded['name'] != skill.name ||
           decoded['riskAssessment'] is! Map<String, dynamic> ||
           decoded['files'] is! List ||
           decoded['hasExecutableContent'] is! bool ||
@@ -518,7 +534,11 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
           projects: await loadAddedProjects(),
         );
         installationTargets = installed
-            .where((entry) => entry.skillId == skill.id)
+            .where(
+              (entry) =>
+                  entry.repositoryId == skill.repositoryId &&
+                  entry.name == skill.name,
+            )
             .expand((entry) => entry.targets)
             .toList(growable: false);
       } on Object {

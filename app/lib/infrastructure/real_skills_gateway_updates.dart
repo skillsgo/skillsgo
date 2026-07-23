@@ -8,11 +8,6 @@ part of 'real_skills_gateway.dart';
 
 mixin _RealSkillsGatewayUpdates
     on _RealSkillsGatewayCore, _RealSkillsGatewayExecutionSupport {
-  String _repositoryIdOf(String skillId) {
-    final separator = skillId.indexOf('/-/');
-    return separator < 0 ? skillId : skillId.substring(0, separator);
-  }
-
   List<String> _repositoryUpdateScopeArguments(
     InstallationScope scope,
     String projectRoot,
@@ -27,7 +22,7 @@ mixin _RealSkillsGatewayUpdates
     String? toVersion,
   }) async {
     if (skill.provenance != LibraryProvenance.hub ||
-        skill.skillId.isEmpty ||
+        skill.repositoryId.isEmpty ||
         targets.isEmpty ||
         toVersion == null ||
         toVersion.isEmpty ||
@@ -43,7 +38,7 @@ mixin _RealSkillsGatewayUpdates
       );
     }
     await _ensureHubOrigin();
-    final repository = _repositoryIdOf(skill.skillId);
+    final repository = skill.repositoryId;
     try {
       final items = <UpdatePlanItem>[];
       final changes = <WorkspaceManifestChange>[];
@@ -96,7 +91,7 @@ mixin _RealSkillsGatewayUpdates
                 path: installed.path,
               ),
               name: skill.name,
-              skillId: skill.skillId,
+              repositoryId: skill.repositoryId,
               sourceRef: repository,
               fromVersion: installed.version,
               toVersion: toVersion,
@@ -153,7 +148,7 @@ mixin _RealSkillsGatewayUpdates
     final grouped = <String, List<UpdatePlanItem>>{};
     for (final item in plan.targets) {
       final key =
-          '${item.skillId}\u0000${item.target.scope.name}\u0000${item.target.projectRoot}';
+          '${item.repositoryId}\u0000${item.name}\u0000${item.target.scope.name}\u0000${item.target.projectRoot}';
       grouped.putIfAbsent(key, () => []).add(item);
     }
     final results = <UpdateTargetResult>[];
@@ -167,7 +162,7 @@ mixin _RealSkillsGatewayUpdates
               sequence: sequence++,
               target: item.target,
               name: item.name,
-              skillId: item.skillId,
+              repositoryId: item.repositoryId,
               fromVersion: item.fromVersion,
               toVersion: item.toVersion,
               state: InstallationProgressState.started,
@@ -176,14 +171,15 @@ mixin _RealSkillsGatewayUpdates
         }
         if (group.any(
           (item) =>
-              item.skillId != representative.skillId ||
+              item.repositoryId != representative.repositoryId ||
+              item.name != representative.name ||
               item.fromVersion != representative.fromVersion ||
               item.toVersion != representative.toVersion ||
               item.stateToken != representative.stateToken,
         )) {
           throw const FormatException();
         }
-        final repository = _repositoryIdOf(representative.skillId);
+        final repository = representative.repositoryId;
         final command = await _runCli([
           'update',
           '$repository@${representative.toVersion}',
@@ -212,7 +208,7 @@ mixin _RealSkillsGatewayUpdates
           final result = UpdateTargetResult(
             target: item.target,
             name: item.name,
-            skillId: item.skillId,
+            repositoryId: item.repositoryId,
             fromVersion: item.fromVersion,
             toVersion: item.toVersion,
             outcome: UpdateTargetOutcome.succeeded,
@@ -223,7 +219,7 @@ mixin _RealSkillsGatewayUpdates
               sequence: sequence++,
               target: item.target,
               name: item.name,
-              skillId: item.skillId,
+              repositoryId: item.repositoryId,
               fromVersion: item.fromVersion,
               toVersion: item.toVersion,
               state: InstallationProgressState.finished,
@@ -259,9 +255,17 @@ mixin _RealSkillsGatewayUpdates
         ),
     };
     final candidates =
-        <({String key, String skillId, List<String> versions})>[];
+        <
+          ({
+            String key,
+            String repositoryId,
+            String name,
+            List<String> versions,
+          })
+        >[];
     for (final skill in skills) {
-      if (skill.provenance != LibraryProvenance.hub || skill.skillId.isEmpty) {
+      if (skill.provenance != LibraryProvenance.hub ||
+          skill.repositoryId.isEmpty) {
         continue;
       }
       final versions =
@@ -274,7 +278,8 @@ mixin _RealSkillsGatewayUpdates
       if (versions.isEmpty) continue;
       candidates.add((
         key: _installedSkillUpdateKey(skill),
-        skillId: skill.skillId,
+        repositoryId: skill.repositoryId,
+        name: skill.name,
         versions: versions,
       ));
     }
@@ -292,7 +297,8 @@ mixin _RealSkillsGatewayUpdates
         '--installed',
         jsonEncode({
           'key': candidate.key,
-          'skillId': candidate.skillId,
+          'repositoryId': candidate.repositoryId,
+          'name': candidate.name,
           'versions': candidate.versions,
         }),
       ],
@@ -312,7 +318,8 @@ mixin _RealSkillsGatewayUpdates
       for (final raw in decoded['items'] as List) {
         if (raw is! Map<String, dynamic> ||
             raw['key'] is! String ||
-            raw['skillId'] is! String ||
+            raw['repositoryId'] is! String ||
+            raw['name'] is! String ||
             raw['versions'] is! List ||
             raw['status'] is! String ||
             !expected.remove(raw['key'])) {

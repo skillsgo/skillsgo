@@ -128,14 +128,16 @@ class InstallationExecutionSummary {
 
 class InstallationExecution {
   const InstallationExecution({
-    required this.skillId,
+    required this.repositoryId,
+    required this.skillName,
     required this.version,
     required this.name,
     required this.results,
     required this.summary,
   });
 
-  final String skillId;
+  final String repositoryId;
+  final String skillName;
   final String version;
   final String name;
   final List<InstallationTargetResult> results;

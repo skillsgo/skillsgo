@@ -261,7 +261,7 @@ class InstalledSkill {
     required this.agents,
     required this.targetCount,
     this.inventoryKey = '',
-    this.skillId = '',
+    this.repositoryId = '',
     this.targets = const [],
     this.visibility = const [],
     this.provenance = LibraryProvenance.hub,
@@ -278,7 +278,7 @@ class InstalledSkill {
   final List<String> agents;
   final int targetCount;
   final String inventoryKey;
-  final String skillId;
+  final String repositoryId;
   final List<SkillInstallationTarget> targets;
   final List<SkillVisibility> visibility;
   final LibraryProvenance provenance;
@@ -324,7 +324,7 @@ class InstalledSkill {
       path: selectedTargets.first.path,
       agents: (selectedAgents.toList()..sort()),
       targetCount: selectedTargets.length,
-      skillId: skillId,
+      repositoryId: repositoryId,
       targets: List.unmodifiable(selectedTargets),
       visibility: visibility,
       provenance: provenance,

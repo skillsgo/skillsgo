@@ -142,16 +142,16 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 - Expand the Gateway domain around Installed Agents, Added Projects, Library Entries, Installation Targets, Installation Plans, Target Results, External Installations, Local Skills, Version Divergence, and Hub collection pages.
 - Treat the SkillsGo CLI as the only owner of local Skill mutations, Agent Adapter behavior, Repository Dependencies, Workspace Locks, Scope Vendor, and Repository Projections.
 - Add a stable CLI machine contract for Installed Agent discovery. Each result includes canonical Agent ID, display name, installed state, supported scopes, and resolved user-level target information. Human CLI output is not part of the App contract.
-- Add a stable CLI inventory contract that accepts User Scope plus an explicit list of Added Project roots. It returns the public Skill ID when known, an inventory key, provenance, versions, and every target with scope, project, Agent, path, and health.
+- Add a stable CLI inventory contract that accepts User Scope plus an explicit list of Added Project roots. It returns Repository ID plus canonical Skill Name when known, an inventory key, provenance, versions, and every target with scope, project, Agent, path, and health.
 - Inventory scans known Agent directories only. Project scanning is restricted to Added Projects passed by the App and never expands into general disk discovery.
-- Aggregate Hub Skills by stable Skill ID, Local Skills by inventory key, and leave External Installations without a managed Skill ID distinct even when names match.
+- Aggregate Hub Skills by Repository ID plus canonical Skill Name, Local Skills by inventory key, and leave External Installations without managed Repository-member identity distinct even when names match.
 - The Add Project journey uses the operating system's multi-directory picker. Files are not selectable; canonical duplicate directories are retained only once, and one batch persists all newly selected project references together.
 - Persist the Added Project list as App state using stable directory references appropriate to the desktop platform. Removing an Added Project deletes only the reference.
 - Model installation as one immutable Repository transaction plus selected member paths and explicit Agents within one declaration scope.
 - The CLI preflights every target before mutation and returns target-specific actions such as create, replace, skip, conflict, or blocked-by-risk.
 - A Repository transaction atomically commits its Dependency, Lock, Vendor, and Projections. Independent declaration scopes remain independent retry units.
 - Structured operation progress must remain machine-readable. The final result is stable JSON; if streaming progress is introduced, it uses a versioned structured event protocol rather than localized text parsing.
-- Existing identical targets are skipped. Same-name different-Skill-ID collisions, Version Divergence, and Local Modifications require explicit resolutions.
+- Existing identical targets are skipped. Same-name different-source collisions, Version Divergence, and Local Modifications require explicit resolutions.
 - Updating targets resolves each target's own reference and current immutable version. Project updates modify the corresponding Workspace Manifest only after confirmation. Fixed commits without a movable reference do not report an available update.
 - Removing a managed member updates the owning Repository dependency and every affected Agent Projection in that declaration scope. Modified Projections are never overwritten.
 - Detect External Installations by reconciling known Agent directories with declared Repository Projections. Inspection is read-only until takeover.

@@ -10,7 +10,7 @@ This map governs the Flutter desktop application workspace. Read it with the roo
 - Runtime: Flutter desktop; macOS is the currently maintained target.
 - Entry points: `lib/main.dart` and `lib/app.dart`
 - Integration seam: `SkillsGateway`
-- Product responsibility: gate clean installs through Mandatory Onboarding, present discovery and Library workflows, collect Repository installation/update/removal and exact External removal intent, delegate Hub and local operations to the bundled CLI, and compose Cloud ranking IDs with Hub-owned Skill cards.
+- Product responsibility: gate clean installs through Mandatory Onboarding, present discovery and Library workflows, collect Repository installation/update/removal and exact External removal intent, delegate Hub and local operations to the bundled CLI, and compose Cloud Repository-member coordinates with Hub-owned Skill cards.
 
 ## Commands
 
