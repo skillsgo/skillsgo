@@ -67,7 +67,7 @@ func (f *backfillIntegrationFetcher) DiscoverRepository(_ context.Context, repos
 	}
 	snapshot := &skill.RepositorySnapshot{RepositoryID: repositoryID, Version: version, CommitSHA: "commit-" + version,
 		CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Members: []skill.RepositoryMember{{
-			SkillID: repositoryID, Path: ".", TreeSHA: "tree-" + version, Manifest: manifest,
+			Name: manifest.Name, Path: ".", TreeSHA: "tree-" + version, Manifest: manifest,
 		}}}
 	return completeRepositoryTestSnapshot(snapshot), nil
 }

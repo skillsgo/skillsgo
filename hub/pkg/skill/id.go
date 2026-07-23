@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on public source paths and the canonical `/-/` Skill path separator.
- * [OUTPUT]: Provides canonical Skill ID parsing, formatting, repository URLs, and repository-relative source paths.
- * [POS]: Serves as the public Skill ID value boundary for Hub source resolution and Catalog indexing.
+ * [INPUT]: Depends on public host-qualified Repository coordinates.
+ * [OUTPUT]: Provides canonical Repository ID parsing, formatting, and source URLs without member syntax.
+ * [POS]: Serves as the public Repository ID value boundary for Hub source resolution and Catalog indexing.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package skill
@@ -10,29 +10,23 @@ import (
 	"fmt"
 	"strings"
 
-	protocolskillid "github.com/skillsgo/skillsgo/protocol/skillid"
+	protocolrepositoryid "github.com/skillsgo/skillsgo/protocol/repositoryid"
 )
 
-const skillPathSeparator = protocolskillid.Separator
+type RepositoryID = protocolrepositoryid.ID
 
-// SkillID identifies either a repository-root Skill or a Skill in a
-// repository subdirectory. A subdirectory is separated from the repository by
-// the explicit /-/ boundary.
-type SkillID = protocolskillid.ID
-
-// ParseSkillID parses repository or repository/-/skill/path syntax.
-func ParseSkillID(value string) (SkillID, error) {
-	return protocolskillid.Parse(value)
+func ParseRepositoryID(value string) (RepositoryID, error) {
+	return protocolrepositoryid.Parse(value)
 }
 
-func parseGitHubSkillID(value string) (SkillID, error) {
-	skillID, err := ParseSkillID(value)
+func parseGitHubRepositoryID(value string) (RepositoryID, error) {
+	repositoryID, err := ParseRepositoryID(value)
 	if err != nil {
-		return SkillID{}, err
+		return RepositoryID{}, err
 	}
-	parts := strings.Split(skillID.Repository, "/")
+	parts := strings.Split(repositoryID.Repository, "/")
 	if len(parts) != 3 || parts[0] != "github.com" {
-		return SkillID{}, fmt.Errorf("unsupported Skill repository %q", skillID.Repository)
+		return RepositoryID{}, fmt.Errorf("unsupported Repository %q", repositoryID.Repository)
 	}
-	return skillID, nil
+	return repositoryID, nil
 }

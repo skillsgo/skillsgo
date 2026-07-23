@@ -24,12 +24,6 @@ type SkillCreate struct {
 	conflict []sql.ConflictOption
 }
 
-// SetSkillID sets the "skill_id" field.
-func (_c *SkillCreate) SetSkillID(v string) *SkillCreate {
-	_c.mutation.SetSkillID(v)
-	return _c
-}
-
 // SetRepositoryID sets the "repository_id" field.
 func (_c *SkillCreate) SetRepositoryID(v int64) *SkillCreate {
 	_c.mutation.SetRepositoryID(v)
@@ -215,19 +209,16 @@ func (_c *SkillCreate) defaults() {
 
 // check runs all checks and user-defined validators on the builder.
 func (_c *SkillCreate) check() error {
-	if _, ok := _c.mutation.SkillID(); !ok {
-		return &ValidationError{Name: "skill_id", err: errors.New(`ent: missing required field "Skill.skill_id"`)}
-	}
-	if v, ok := _c.mutation.SkillID(); ok {
-		if err := skill.SkillIDValidator(v); err != nil {
-			return &ValidationError{Name: "skill_id", err: fmt.Errorf(`ent: validator failed for field "Skill.skill_id": %w`, err)}
-		}
-	}
 	if _, ok := _c.mutation.RepositoryID(); !ok {
 		return &ValidationError{Name: "repository_id", err: errors.New(`ent: missing required field "Skill.repository_id"`)}
 	}
 	if _, ok := _c.mutation.Name(); !ok {
 		return &ValidationError{Name: "name", err: errors.New(`ent: missing required field "Skill.name"`)}
+	}
+	if v, ok := _c.mutation.Name(); ok {
+		if err := skill.NameValidator(v); err != nil {
+			return &ValidationError{Name: "name", err: fmt.Errorf(`ent: validator failed for field "Skill.name": %w`, err)}
+		}
 	}
 	if _, ok := _c.mutation.Description(); !ok {
 		return &ValidationError{Name: "description", err: errors.New(`ent: missing required field "Skill.description"`)}
@@ -291,10 +282,6 @@ func (_c *SkillCreate) createSpec() (*Skill, *sqlgraph.CreateSpec) {
 	if id, ok := _c.mutation.ID(); ok {
 		_node.ID = id
 		_spec.ID.Value = id
-	}
-	if value, ok := _c.mutation.SkillID(); ok {
-		_spec.SetField(skill.FieldSkillID, field.TypeString, value)
-		_node.SkillID = value
 	}
 	if value, ok := _c.mutation.Name(); ok {
 		_spec.SetField(skill.FieldName, field.TypeString, value)
@@ -376,7 +363,7 @@ func (_c *SkillCreate) createSpec() (*Skill, *sqlgraph.CreateSpec) {
 // of the `INSERT` statement. For example:
 //
 //	client.Skill.Create().
-//		SetSkillID(v).
+//		SetRepositoryID(v).
 //		OnConflict(
 //			// Update the row with the new values
 //			// the was proposed for insertion.
@@ -385,7 +372,7 @@ func (_c *SkillCreate) createSpec() (*Skill, *sqlgraph.CreateSpec) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.SkillUpsert) {
-//			SetSkillID(v+v).
+//			SetRepositoryID(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *SkillCreate) OnConflict(opts ...sql.ConflictOption) *SkillUpsertOne {
@@ -420,18 +407,6 @@ type (
 		*sql.UpdateSet
 	}
 )
-
-// SetSkillID sets the "skill_id" field.
-func (u *SkillUpsert) SetSkillID(v string) *SkillUpsert {
-	u.Set(skill.FieldSkillID, v)
-	return u
-}
-
-// UpdateSkillID sets the "skill_id" field to the value that was provided on create.
-func (u *SkillUpsert) UpdateSkillID() *SkillUpsert {
-	u.SetExcluded(skill.FieldSkillID)
-	return u
-}
 
 // SetRepositoryID sets the "repository_id" field.
 func (u *SkillUpsert) SetRepositoryID(v int64) *SkillUpsert {
@@ -611,20 +586,6 @@ func (u *SkillUpsertOne) Update(set func(*SkillUpsert)) *SkillUpsertOne {
 		set(&SkillUpsert{UpdateSet: update})
 	}))
 	return u
-}
-
-// SetSkillID sets the "skill_id" field.
-func (u *SkillUpsertOne) SetSkillID(v string) *SkillUpsertOne {
-	return u.Update(func(s *SkillUpsert) {
-		s.SetSkillID(v)
-	})
-}
-
-// UpdateSkillID sets the "skill_id" field to the value that was provided on create.
-func (u *SkillUpsertOne) UpdateSkillID() *SkillUpsertOne {
-	return u.Update(func(s *SkillUpsert) {
-		s.UpdateSkillID()
-	})
 }
 
 // SetRepositoryID sets the "repository_id" field.
@@ -916,7 +877,7 @@ func (_c *SkillCreateBulk) ExecX(ctx context.Context) {
 //		// Override some of the fields with custom
 //		// update values.
 //		Update(func(u *ent.SkillUpsert) {
-//			SetSkillID(v+v).
+//			SetRepositoryID(v+v).
 //		}).
 //		Exec(ctx)
 func (_c *SkillCreateBulk) OnConflict(opts ...sql.ConflictOption) *SkillUpsertBulk {
@@ -993,20 +954,6 @@ func (u *SkillUpsertBulk) Update(set func(*SkillUpsert)) *SkillUpsertBulk {
 		set(&SkillUpsert{UpdateSet: update})
 	}))
 	return u
-}
-
-// SetSkillID sets the "skill_id" field.
-func (u *SkillUpsertBulk) SetSkillID(v string) *SkillUpsertBulk {
-	return u.Update(func(s *SkillUpsert) {
-		s.SetSkillID(v)
-	})
-}
-
-// UpdateSkillID sets the "skill_id" field to the value that was provided on create.
-func (u *SkillUpsertBulk) UpdateSkillID() *SkillUpsertBulk {
-	return u.Update(func(s *SkillUpsert) {
-		s.UpdateSkillID()
-	})
 }
 
 // SetRepositoryID sets the "repository_id" field.

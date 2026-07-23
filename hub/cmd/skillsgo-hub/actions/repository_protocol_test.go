@@ -11,7 +11,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5" //nolint:gosec
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -112,14 +111,14 @@ func TestRepositoryPublicationFailureExposesNoPartialMemberSet(t *testing.T) {
 	repository, version := "github.com/example/atomic", "v1.0.0"
 	fetcher := &countedRepositoryFetcher{snapshot: func() *skill.RepositorySnapshot {
 		members := make([]skill.RepositoryMember, 0, 2)
-		for index, id := range []string{repository, repository + "/-/skills/nested"} {
+		for index, memberPath := range []string{".", "skills/nested"} {
 			name := fmt.Sprintf("member-%d", index)
-			archive := repositoryTestManifest(t, id, version, name, "Atomic fixture.", "")
+			archive := repositoryTestManifest(t, repository, version, name, "Atomic fixture.", "")
 			info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
-				"VCS": "git", "URL": "https://github.com/example/atomic", "Subdir": "", "Ref": "refs/tags/v1.0.0", "CommitSHA": "commit-atomic", "TreeSHA": fmt.Sprintf("tree-%d", index),
+				"VCS": "git", "URL": "https://github.com/example/atomic", "Subdir": memberPath, "Ref": "refs/tags/v1.0.0", "CommitSHA": "commit-atomic", "TreeSHA": fmt.Sprintf("tree-%d", index),
 			})
 			require.NoError(t, err)
-			members = append(members, repositoryTestMember(t, id, archive, info))
+			members = append(members, repositoryTestMember(t, memberPath, archive, info))
 		}
 		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "commit-atomic", CommitTime: time.Now().UTC(), Members: members}
 	}}
@@ -133,10 +132,8 @@ func TestRepositoryPublicationFailureExposesNoPartialMemberSet(t *testing.T) {
 	members, err := metadata.RepositoryVersionMembers(t.Context(), repository, version)
 	require.NoError(t, err)
 	require.Empty(t, members, "failed publication must expose no member rows")
-	for _, id := range []string{repository, repository + "/-/skills/nested"} {
-		_, storageErr := backend.Info(t.Context(), id, version)
-		require.Error(t, storageErr, "failed publication must not retain staged artifact %s", id)
-	}
+	_, storageErr := backend.Info(t.Context(), repository, version)
+	require.Error(t, storageErr, "failed publication must not retain the Repository Artifact")
 
 	_, err = publisher.Materialize(t.Context(), repository, version)
 	require.NoError(t, err)
@@ -185,18 +182,23 @@ func (f *countedRepositoryFetcher) DiscoverRepository(context.Context, string, s
 	return completeRepositoryTestSnapshot(f.snapshot()), nil
 }
 
-func repositoryTestMember(t *testing.T, skillID string, archive, info []byte) skill.RepositoryMember {
+func repositoryTestMember(t *testing.T, memberPath string, archive, info []byte) skill.RepositoryMember {
 	t.Helper()
 	var identity struct {
 		Version string `json:"Version"`
 		TreeSHA string `json:"TreeSHA"`
+		Subdir  string `json:"Subdir"`
 	}
 	require.NoError(t, json.Unmarshal(info, &identity))
 	manifest, err := parseRepositoryTestManifest(archive)
 	require.NoError(t, err)
-	parsed, err := skill.ParseSkillID(skillID)
-	require.NoError(t, err)
-	return skill.RepositoryMember{SkillID: skillID, Path: parsed.SkillPath, TreeSHA: identity.TreeSHA, Manifest: manifest}
+	if identity.Subdir != "" {
+		memberPath = identity.Subdir
+	}
+	if memberPath == "" {
+		memberPath = "."
+	}
+	return skill.RepositoryMember{Name: manifest.Name, Path: memberPath, TreeSHA: identity.TreeSHA, Manifest: manifest}
 }
 
 func completeRepositoryTestSnapshot(snapshot *skill.RepositorySnapshot) *skill.RepositorySnapshot {
@@ -276,25 +278,26 @@ func TestHistoricalPublisherRetainsExactZIPWithoutDiscovery(t *testing.T) {
 	secondBytes, err := io.ReadAll(second)
 	require.NoError(t, err)
 	require.Equal(t, actual, secondBytes)
-	_, err = metadata.Skill(t.Context(), repository)
-	require.ErrorIs(t, err, sql.ErrNoRows)
+	discoverable, err := metadata.Skills(t.Context(), 20, 0)
+	require.NoError(t, err)
+	require.Empty(t, discoverable)
 }
 
 func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testing.T) {
 	repository, version := "github.com/example/skills", "v1.2.3"
 	fetcher := &countedRepositoryFetcher{snapshot: func() *skill.RepositorySnapshot {
 		members := make([]skill.RepositoryMember, 0, 2)
-		for _, item := range []struct{ id, name, subdir, tree string }{
-			{id: repository, name: "root-skill", tree: "tree-root"},
-			{id: repository + "/-/skills/find-skills", name: "find-skills", subdir: "skills/find-skills", tree: "tree-find"},
+		for _, item := range []struct{ name, subdir, tree string }{
+			{name: "root-skill", subdir: ".", tree: "tree-root"},
+			{name: "find-skills", subdir: "skills/find-skills", tree: "tree-find"},
 		} {
-			archive := repositoryTestManifest(t, item.id, version, item.name, "Repository member.", "")
+			archive := repositoryTestManifest(t, repository, version, item.name, "Repository member.", "")
 			info, err := json.Marshal(map[string]any{
 				"Version": version, "Time": "2026-07-15T00:00:00Z",
 				"VCS": "git", "URL": "https://github.com/example/skills", "Subdir": item.subdir, "Ref": "refs/tags/v1.2.3", "CommitSHA": "abc123", "TreeSHA": item.tree,
 			})
 			require.NoError(t, err)
-			members = append(members, repositoryTestMember(t, item.id, archive, info))
+			members = append(members, repositoryTestMember(t, item.subdir, archive, info))
 		}
 		return &skill.RepositorySnapshot{
 			RepositoryID: repository, Version: version, CommitSHA: "abc123",
@@ -350,8 +353,7 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 
 func TestRepositoryWithoutRootSkillPublishesCompleteRepositoryArtifact(t *testing.T) {
 	repository, version := "github.com/example/nested-only", "v1.0.0"
-	nestedID := repository + "/-/skills/design"
-	memberArchive := repositoryTestManifest(t, nestedID, version, "design", "Design guidance.", "")
+	memberArchive := repositoryTestManifest(t, repository, version, "design", "Design guidance.", "")
 	memberInfo, err := json.Marshal(map[string]any{
 		"Version": version, "TreeSHA": "tree-design",
 	})
@@ -360,7 +362,7 @@ func TestRepositoryWithoutRootSkillPublishesCompleteRepositoryArtifact(t *testin
 		return &skill.RepositorySnapshot{
 			RepositoryID: repository, Version: version, Ref: "refs/tags/" + version,
 			CommitSHA: "commit-nested", TreeSHA: "tree-repository", CommitTime: time.Now().UTC(),
-			Members: []skill.RepositoryMember{repositoryTestMember(t, nestedID, memberArchive, memberInfo)},
+			Members: []skill.RepositoryMember{repositoryTestMember(t, "skills/design", memberArchive, memberInfo)},
 		}
 	}}
 	backend, err := mem.NewStorage()
@@ -378,8 +380,8 @@ func TestRepositoryWithoutRootSkillPublishesCompleteRepositoryArtifact(t *testin
 	require.NoError(t, json.NewDecoder(infoRecorder.Body).Decode(&info))
 	require.Equal(t, repository, info.ID)
 	require.Len(t, info.Skills, 1)
-	require.Equal(t, nestedID, info.Skills[0].ID)
-	require.Equal(t, "skills/design", info.Skills[0].Path)
+	require.Equal(t, "design", info.Skills[0].Name)
+	require.Equal(t, "skills/design", info.Skills[0].SkillPath)
 	require.True(t, protocolartifact.ValidSum(info.Sum))
 
 	zipRecorder := httptest.NewRecorder()
@@ -598,27 +600,26 @@ func TestMissingRepositoryRevisionUsesShortBoundedNegativeCache(t *testing.T) {
 
 func TestRepositoryHistoryPreservesExactMemberSetsWithoutSkillArtifactRoutes(t *testing.T) {
 	repository := "github.com/example/history"
-	nested := repository + "/-/skills/nested"
 	publicationVersion := "v1.0.0"
 	fetcher := &countedRepositoryFetcher{snapshot: func() *skill.RepositorySnapshot {
 		version := publicationVersion
-		ids := []string{repository}
+		paths := []string{"."}
 		if version == "v1.0.0" {
-			ids = append(ids, nested)
+			paths = append(paths, "skills/nested")
 		}
-		members := make([]skill.RepositoryMember, 0, len(ids))
-		for index, id := range ids {
+		members := make([]skill.RepositoryMember, 0, len(paths))
+		for index, memberPath := range paths {
 			name := "root"
-			if id == nested {
+			if memberPath != "." {
 				name = "nested"
 			}
-			archive := repositoryTestManifest(t, id, version, name, "History fixture.", "")
+			archive := repositoryTestManifest(t, repository, version, name, "History fixture.", "")
 			info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
 				"VCS": "git", "URL": "https://github.com/example/history", "Ref": "refs/tags/" + version,
 				"CommitSHA": "commit-" + version, "TreeSHA": fmt.Sprintf("tree-%s-%d", version, index),
 			})
 			require.NoError(t, err)
-			members = append(members, repositoryTestMember(t, id, archive, info))
+			members = append(members, repositoryTestMember(t, memberPath, archive, info))
 		}
 		return &skill.RepositorySnapshot{RepositoryID: repository, Version: version, CommitSHA: "commit-" + version,
 			CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Members: members}
@@ -647,7 +648,7 @@ func TestRepositoryHistoryPreservesExactMemberSetsWithoutSkillArtifactRoutes(t *
 	var v2 protocolapi.RepositoryInfo
 	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&v2))
 	require.Len(t, v2.Skills, 1)
-	require.Equal(t, repository, v2.Skills[0].ID)
+	require.Equal(t, "root", v2.Skills[0].Name)
 
 	recorder = httptest.NewRecorder()
 	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/v1.0.0.info", nil))
@@ -657,6 +658,7 @@ func TestRepositoryHistoryPreservesExactMemberSetsWithoutSkillArtifactRoutes(t *
 	require.Equal(t, v1, retained)
 
 	recorder = httptest.NewRecorder()
-	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+nested+"/@v/v1.0.0.zip", nil))
+	legacyMemberRoute := repository + "/-/skills/nested"
+	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+legacyMemberRoute+"/@v/v1.0.0.zip", nil))
 	require.Equal(t, http.StatusBadRequest, recorder.Code, recorder.Body.String())
 }

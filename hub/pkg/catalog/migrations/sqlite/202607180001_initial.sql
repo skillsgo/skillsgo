@@ -18,7 +18,6 @@ CREATE TABLE repositories (
 );
 CREATE TABLE skills (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
-  skill_id TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
   source_host TEXT NOT NULL,
@@ -28,7 +27,8 @@ CREATE TABLE skills (
   latest_version TEXT NOT NULL,
   verified BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(repository_id, name)
 );
 CREATE INDEX skills_repository_id ON skills(repository_id);
 CREATE TABLE skill_versions (
@@ -51,17 +51,17 @@ CREATE TABLE skill_risk_assessments (
   fingerprint TEXT NOT NULL,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
-CREATE VIRTUAL TABLE skills_fts USING fts5(name, description, skill_id, content='skills', content_rowid='id', tokenize='trigram');
+CREATE VIRTUAL TABLE skills_fts USING fts5(name, description, content='skills', content_rowid='id', tokenize='trigram');
 CREATE TRIGGER skills_fts_insert AFTER INSERT ON skills BEGIN
-  INSERT INTO skills_fts(rowid,name,description,skill_id) VALUES(new.id,new.name,new.description,new.skill_id);
+  INSERT INTO skills_fts(rowid,name,description) VALUES(new.id,new.name,new.description);
 END;
 GO
 CREATE TRIGGER skills_fts_delete AFTER DELETE ON skills BEGIN
-  INSERT INTO skills_fts(skills_fts,rowid,name,description,skill_id) VALUES('delete',old.id,old.name,old.description,old.skill_id);
+  INSERT INTO skills_fts(skills_fts,rowid,name,description) VALUES('delete',old.id,old.name,old.description);
 END;
 GO
 CREATE TRIGGER skills_fts_update AFTER UPDATE ON skills BEGIN
-  INSERT INTO skills_fts(skills_fts,rowid,name,description,skill_id) VALUES('delete',old.id,old.name,old.description,old.skill_id);
-  INSERT INTO skills_fts(rowid,name,description,skill_id) VALUES(new.id,new.name,new.description,new.skill_id);
+  INSERT INTO skills_fts(skills_fts,rowid,name,description) VALUES('delete',old.id,old.name,old.description);
+  INSERT INTO skills_fts(rowid,name,description) VALUES(new.id,new.name,new.description);
 END;
 GO

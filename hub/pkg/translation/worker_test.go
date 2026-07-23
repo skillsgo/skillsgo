@@ -76,7 +76,7 @@ func (testLogger) Warnf(string, ...any) {}
 
 func TestWorkerPersistsPresentationOnlyDescription(t *testing.T) {
 	store := &workerStore{candidates: []catalog.TranslationCandidate{{
-		ResourceKind: catalog.LocalizedSkill, ResourceID: "github.com/acme/skills/-/review", Description: "Review changes",
+		ResourceKind: catalog.LocalizedSkill, ResourceID: "github.com/acme/skills:review", Description: "Review changes",
 	}}}
 	worker := NewWorker(store, translatorFunc(func(_ context.Context, source, locale string) (string, error) {
 		require.Equal(t, "Review changes", source)
@@ -86,7 +86,7 @@ func TestWorkerPersistsPresentationOnlyDescription(t *testing.T) {
 
 	require.NoError(t, worker.RunOnce(t.Context()))
 	require.Equal(t, []catalog.LocalizedDescription{{
-		ResourceKind: catalog.LocalizedSkill, ResourceID: "github.com/acme/skills/-/review",
+		ResourceKind: catalog.LocalizedSkill, ResourceID: "github.com/acme/skills:review",
 		Locale: "zh-CN", Description: "审查变更",
 		SourceDigest: catalog.DescriptionDigest("Review changes"), PromptVersion: "description-v1",
 	}}, store.saved)

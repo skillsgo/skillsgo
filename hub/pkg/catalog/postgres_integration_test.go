@@ -43,15 +43,15 @@ func TestPostgresCatalog(t *testing.T) {
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	require.NotNil(t, c.PostgresPool())
 
-	skill := &Skill{SkillID: "github.com/op7418/guizang-ppt-skill", Name: "guizang-ppt", Description: "Create presentation slides", LatestVersion: "main"}
+	skill := &Skill{RepositoryID: "github.com/op7418/guizang-ppt-skill", Name: "guizang-ppt", SkillPath: ".", Description: "Create presentation slides", LatestVersion: "main"}
 	for _, item := range []*Skill{
 		skill,
-		{SkillID: "github.com/acme/presentation-a", Name: "presentation-a", Description: "Presentation capability", LatestVersion: "main"},
-		{SkillID: "github.com/acme/presentation-b", Name: "presentation-b", Description: "Presentation capability", LatestVersion: "main"},
+		{RepositoryID: "github.com/acme/presentation-a", Name: "presentation-a", SkillPath: ".", Description: "Presentation capability", LatestVersion: "main"},
+		{RepositoryID: "github.com/acme/presentation-b", Name: "presentation-b", SkillPath: ".", Description: "Presentation capability", LatestVersion: "main"},
 	} {
 		require.NoError(t, c.UpsertSkill(ctx, item))
 	}
-	version, err := c.RecordSkillVersion(ctx, skill.SkillID, SkillVersion{
+	version, err := c.RecordSkillVersion(ctx, skill.RepositoryID, skill.Name, SkillVersion{
 		Version: "v1.0.0", CommitSHA: "commit-a", TreeSHA: "tree-a", RelativePath: ".",
 	})
 	require.NoError(t, err)

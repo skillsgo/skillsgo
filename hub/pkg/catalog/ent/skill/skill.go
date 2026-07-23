@@ -14,8 +14,6 @@ const (
 	Label = "skill"
 	// FieldID holds the string denoting the id field in the database.
 	FieldID = "id"
-	// FieldSkillID holds the string denoting the skill_id field in the database.
-	FieldSkillID = "skill_id"
 	// FieldRepositoryID holds the string denoting the repository_id field in the database.
 	FieldRepositoryID = "repository_id"
 	// FieldName holds the string denoting the name field in the database.
@@ -63,7 +61,6 @@ const (
 // Columns holds all SQL columns for skill fields.
 var Columns = []string{
 	FieldID,
-	FieldSkillID,
 	FieldRepositoryID,
 	FieldName,
 	FieldDescription,
@@ -88,8 +85,8 @@ func ValidColumn(column string) bool {
 }
 
 var (
-	// SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
-	SkillIDValidator func(string) error
+	// NameValidator is a validator for the "name" field. It is called by the builders before save.
+	NameValidator func(string) error
 	// DefaultDiscoverable holds the default value on creation for the "discoverable" field.
 	DefaultDiscoverable bool
 	// DefaultVerified holds the default value on creation for the "verified" field.
@@ -108,11 +105,6 @@ type OrderOption func(*sql.Selector)
 // ByID orders the results by the id field.
 func ByID(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldID, opts...).ToFunc()
-}
-
-// BySkillID orders the results by the skill_id field.
-func BySkillID(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldSkillID, opts...).ToFunc()
 }
 
 // ByRepositoryID orders the results by the repository_id field.

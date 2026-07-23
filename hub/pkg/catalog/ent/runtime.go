@@ -105,24 +105,24 @@ func init() {
 	riskassessment.DefaultCreatedAt = riskassessmentDescCreatedAt.Default.(func() time.Time)
 	skillFields := schema.Skill{}.Fields()
 	_ = skillFields
-	// skillDescSkillID is the schema descriptor for skill_id field.
-	skillDescSkillID := skillFields[1].Descriptor()
-	// skill.SkillIDValidator is a validator for the "skill_id" field. It is called by the builders before save.
-	skill.SkillIDValidator = skillDescSkillID.Validators[0].(func(string) error)
+	// skillDescName is the schema descriptor for name field.
+	skillDescName := skillFields[2].Descriptor()
+	// skill.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	skill.NameValidator = skillDescName.Validators[0].(func(string) error)
 	// skillDescDiscoverable is the schema descriptor for discoverable field.
-	skillDescDiscoverable := skillFields[9].Descriptor()
+	skillDescDiscoverable := skillFields[8].Descriptor()
 	// skill.DefaultDiscoverable holds the default value on creation for the discoverable field.
 	skill.DefaultDiscoverable = skillDescDiscoverable.Default.(bool)
 	// skillDescVerified is the schema descriptor for verified field.
-	skillDescVerified := skillFields[10].Descriptor()
+	skillDescVerified := skillFields[9].Descriptor()
 	// skill.DefaultVerified holds the default value on creation for the verified field.
 	skill.DefaultVerified = skillDescVerified.Default.(bool)
 	// skillDescCreatedAt is the schema descriptor for created_at field.
-	skillDescCreatedAt := skillFields[11].Descriptor()
+	skillDescCreatedAt := skillFields[10].Descriptor()
 	// skill.DefaultCreatedAt holds the default value on creation for the created_at field.
 	skill.DefaultCreatedAt = skillDescCreatedAt.Default.(func() time.Time)
 	// skillDescUpdatedAt is the schema descriptor for updated_at field.
-	skillDescUpdatedAt := skillFields[12].Descriptor()
+	skillDescUpdatedAt := skillFields[11].Descriptor()
 	// skill.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	skill.DefaultUpdatedAt = skillDescUpdatedAt.Default.(func() time.Time)
 	// skill.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.

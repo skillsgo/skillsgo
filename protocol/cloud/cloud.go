@@ -65,17 +65,18 @@ func MetricForRanking(kind RankingKind) MetricKind {
 }
 
 type InstallEvent struct {
-	EventID    string    `json:"eventId"`
-	SkillID    string    `json:"skillId"`
-	Version    string    `json:"version"`
-	Agents     []string  `json:"agents"`
-	Scope      Scope     `json:"scope"`
-	CLIVersion string    `json:"cliVersion"`
-	OccurredAt time.Time `json:"occurredAt"`
+	EventID      string    `json:"eventId"`
+	RepositoryID string    `json:"repositoryId"`
+	SkillName    string    `json:"skillName"`
+	Version      string    `json:"version"`
+	Agents       []string  `json:"agents"`
+	Scope        Scope     `json:"scope"`
+	CLIVersion   string    `json:"cliVersion"`
+	OccurredAt   time.Time `json:"occurredAt"`
 }
 
 func (event InstallEvent) Validate(now time.Time) string {
-	if len(event.EventID) < 16 || len(event.EventID) > 128 || strings.TrimSpace(event.SkillID) == "" || strings.TrimSpace(event.Version) == "" {
+	if len(event.EventID) < 16 || len(event.EventID) > 128 || strings.TrimSpace(event.RepositoryID) == "" || strings.TrimSpace(event.SkillName) == "" || strings.TrimSpace(event.Version) == "" {
 		return "invalid install event identity"
 	}
 	if !event.Scope.Valid() {
@@ -101,8 +102,9 @@ type Metric struct {
 }
 
 type RankingItem struct {
-	SkillID string `json:"skillId"`
-	Metric  Metric `json:"metric"`
+	RepositoryID string `json:"repositoryId"`
+	SkillName    string `json:"skillName"`
+	Metric       Metric `json:"metric"`
 }
 
 type Page struct {

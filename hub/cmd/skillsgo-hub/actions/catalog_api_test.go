@@ -123,7 +123,7 @@ func (s *catalogArtifactStub) Info(_ context.Context, skillID, version string) (
 	}
 	return json.Marshal(protocolapi.RepositoryInfo{SchemaVersion: 1, Kind: "repository", ID: repositoryID, Version: immutableVersion,
 		Time: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Ref: "refs/heads/main", CommitSHA: "commit-abc", TreeSHA: "repository-tree", Sum: sum, ArchiveSize: int64(len(archive)),
-		Skills: []protocolapi.SkillInfo{{SchemaVersion: 1, Kind: "skill", ID: "github.com/mattpocock/skills/-/skills/engineering/ask-matt", RepositoryID: repositoryID, Path: "skills/engineering/ask-matt", Version: immutableVersion, CommitSHA: "commit-abc", TreeSHA: "tree-def", Name: "ask-matt", Description: "Engineering skill router"}}})
+		Skills: []protocolapi.SkillInfo{{SchemaVersion: 1, Kind: "skill", RepositoryID: repositoryID, SkillPath: "skills/engineering/ask-matt", Version: immutableVersion, CommitSHA: "commit-abc", TreeSHA: "tree-def", Name: "ask-matt", Description: "Engineering skill router"}}})
 }
 
 func (s *catalogArtifactStub) List(_ context.Context, repositoryID string) ([]string, error) {
@@ -168,7 +168,7 @@ func catalogArtifactZIP(prefix string, files map[string][]byte) []byte {
 
 func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	r, c := testCatalogAPI(t)
-	skill := &catalog.Skill{SkillID: "github.com/mattpocock/skills/-/skills/engineering/ask-matt", Name: "ask-matt", Description: "Engineering skill router", SourceHost: "github.com", Repository: "mattpocock/skills", LatestVersion: "main"}
+	skill := &catalog.Skill{RepositoryID: "github.com/mattpocock/skills", SkillPath: "skills/engineering/ask-matt", Name: "ask-matt", Description: "Engineering skill router", SourceHost: "github.com", Repository: "mattpocock/skills", LatestVersion: "main"}
 	require.NoError(t, c.UpsertSkill(context.Background(), skill))
 	releaseInfo, err := (&catalogArtifactStub{}).Info(t.Context(), "", "")
 	require.NoError(t, err)
@@ -183,15 +183,15 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, path, nil))
 		require.Equal(t, http.StatusOK, recorder.Code, path)
 		require.Equal(t, "application/json; charset=utf-8", recorder.Header().Get("Content-Type"))
-		require.Contains(t, recorder.Body.String(), `"id":"`+skill.SkillID+`"`)
+		require.Contains(t, recorder.Body.String(), `"repositoryId":"github.com/mattpocock/skills"`)
 	}
 
 	detail := httptest.NewRecorder()
-	serveFiber(t, r, detail, httptest.NewRequest(http.MethodGet, "/api/v1/skills/github.com/mattpocock/skills/-/skills/engineering/ask-matt", nil))
+	serveFiber(t, r, detail, httptest.NewRequest(http.MethodGet, "/api/v1/skills/detail?repositoryId=github.com%2Fmattpocock%2Fskills&name=ask-matt", nil))
 	require.Equal(t, http.StatusOK, detail.Code)
 	var detailBody skillDetailResponse
 	require.NoError(t, json.NewDecoder(detail.Body).Decode(&detailBody))
-	require.Equal(t, skill.SkillID, detailBody.SkillID)
+	require.Equal(t, "github.com/mattpocock/skills", detailBody.RepositoryID)
 	require.NotNil(t, detailBody.ImageURL)
 	require.Equal(t, "https://github.com/mattpocock.png?size=256", *detailBody.ImageURL)
 	require.Equal(t, "v0.0.0-test", detailBody.RequestedVersion)
@@ -226,27 +226,26 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, "github.com/mattpocock/skills", response.Skills[0].Repository)
 
 	batch := httptest.NewRecorder()
-	batchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/batch", strings.NewReader(`{"skillIds":["`+skill.SkillID+`"]}`))
+	batchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/batch", strings.NewReader(`{"skills":[{"repositoryId":"github.com/mattpocock/skills","name":"ask-matt"}]}`))
 	serveFiber(t, r, batch, batchRequest)
 	require.Equal(t, http.StatusOK, batch.Code)
 	var batchBody skillBatchResponse
 	require.NoError(t, json.NewDecoder(batch.Body).Decode(&batchBody))
 	require.Len(t, batchBody.Skills, 1)
-	require.Equal(t, skill.SkillID, batchBody.Skills[0].SkillID)
+	require.Equal(t, "github.com/mattpocock/skills", batchBody.Skills[0].RepositoryID)
 }
 
 func TestHistoricalPublicationDoesNotEnterDiscovery(t *testing.T) {
 	router, metadata := testCatalogAPI(t)
 	repositoryID := "github.com/example/history"
-	skillID := repositoryID + "/-/skills/retired"
 	digest := "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
 	candidates := []catalog.PublishedSkill{{
-		Skill: catalog.Skill{SkillID: skillID, Name: "retired", Description: "Historical only capability"},
+		Skill: catalog.Skill{RepositoryID: repositoryID, SkillPath: "skills/retired", Name: "retired", Description: "Historical only capability"},
 		Version: catalog.SkillVersion{Version: "v1.0.0", CommitSHA: "commit-v1", TreeSHA: "tree-v1",
 			RelativePath: "skills/retired", CommitTime: time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)},
 	}}
 	releaseInfo, err := json.Marshal(protocolapi.RepositoryInfo{ID: repositoryID, Version: "v1.0.0", CommitSHA: "commit-v1", TreeSHA: "repo-tree", Sum: digest, ArchiveSize: 10,
-		Skills: []protocolapi.SkillInfo{{ID: skillID, RepositoryID: repositoryID, Path: "skills/retired", Version: "v1.0.0", CommitSHA: "commit-v1", TreeSHA: "tree-v1", Name: "retired", Description: "Historical only capability"}}})
+		Skills: []protocolapi.SkillInfo{{RepositoryID: repositoryID, SkillPath: "skills/retired", Version: "v1.0.0", CommitSHA: "commit-v1", TreeSHA: "tree-v1", Name: "retired", Description: "Historical only capability"}}})
 	require.NoError(t, err)
 	require.NoError(t, metadata.PublishRepositoryReleaseWithVisibility(t.Context(), repositoryID, candidates, catalog.HistoricalPublication, releaseInfo))
 
@@ -266,13 +265,13 @@ func TestCatalogUpdateCheckResolvesEachRepositoryOnceAndPreservesRequestOrder(t 
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	known := &catalog.Skill{
-		SkillID: "github.com/example/skills/-/review", Name: "review",
+		RepositoryID: "github.com/example/skills", SkillPath: "review", Name: "review",
 		SourceHost: "github.com", Repository: "example/skills", LatestVersion: "v1.3.0",
 	}
 	require.NoError(t, c.UpsertSkill(context.Background(), known))
 	repositoryID := "github.com/example/skills"
 	repositoryInfo := func(version string) []byte {
-		return []byte(fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"commit","Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"RepositoryID":%q,"Path":"review","Version":%q,"Name":"review","Description":"review"}]}`, repositoryID, version, known.SkillID, repositoryID, version))
+		return []byte(fmt.Sprintf(`{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"CommitSHA":"commit","Skills":[{"SchemaVersion":1,"Kind":"Skill","RepositoryID":%q,"SkillPath":"review","Version":%q,"Name":"review","Description":"review"}]}`, repositoryID, version, repositoryID, version))
 	}
 	artifacts := &catalogArtifactStub{
 		lists: map[string][]string{repositoryID: {"v1.3.0"}},
@@ -283,7 +282,7 @@ func TestCatalogUpdateCheckResolvesEachRepositoryOnceAndPreservesRequestOrder(t 
 	}
 	r := newFiberApp()
 	registerCatalogAPIRoutes(r, c, artifacts)
-	body := `{"schemaVersion":1,"skillIds":["github.com/example/skills/-/missing","github.com/example/skills/-/review"]}`
+	body := `{"schemaVersion":1,"skills":[{"repositoryId":"github.com/example/skills","name":"missing"},{"repositoryId":"github.com/example/skills","name":"review"}]}`
 	recorder := httptest.NewRecorder()
 	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodPost, "/api/v1/updates/check", strings.NewReader(body)))
 	require.Equal(t, http.StatusOK, recorder.Code)
@@ -291,8 +290,8 @@ func TestCatalogUpdateCheckResolvesEachRepositoryOnceAndPreservesRequestOrder(t 
 	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&response))
 	require.Equal(t, 1, response.SchemaVersion)
 	require.Equal(t, []catalogUpdateCheckItem{
-		{SkillID: "github.com/example/skills/-/missing", Status: "unsupported"},
-		{SkillID: known.SkillID, HeadVersion: "v1.4.0-0.20260722010000-abcdef123456", ReleaseVersion: "v1.3.0", Status: "available"},
+		{RepositoryID: repositoryID, Name: "missing", Status: "unsupported"},
+		{RepositoryID: repositoryID, Name: "review", HeadVersion: "v1.4.0-0.20260722010000-abcdef123456", ReleaseVersion: "v1.3.0", Status: "available"},
 	}, response.Items)
 }
 
@@ -321,17 +320,17 @@ func TestCatalogAPIDetailReturnsStableArtifactFailures(t *testing.T) {
 			})
 			require.NoError(t, err)
 			t.Cleanup(func() { require.NoError(t, metadata.Close()) })
-			skill := &catalog.Skill{SkillID: "github.com/acme/skills/-/demo", Name: "demo", Description: "Demo", LatestVersion: "main"}
+			skill := &catalog.Skill{RepositoryID: "github.com/acme/skills", SkillPath: "demo", Name: "demo", Description: "Demo", LatestVersion: "main"}
 			require.NoError(t, metadata.UpsertSkill(ctx, skill))
 			fixtureInfo, marshalErr := json.Marshal(protocolapi.RepositoryInfo{ID: "github.com/acme/skills", Version: "v0.0.0-test", CommitSHA: "commit-abc", TreeSHA: "repository-tree", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 1,
-				Skills: []protocolapi.SkillInfo{{ID: skill.SkillID, RepositoryID: "github.com/acme/skills", Path: "demo", Version: "v0.0.0-test", CommitSHA: "commit-abc", TreeSHA: "tree-def", Name: "demo", Description: "Demo"}}})
+				Skills: []protocolapi.SkillInfo{{RepositoryID: "github.com/acme/skills", SkillPath: "demo", Version: "v0.0.0-test", CommitSHA: "commit-abc", TreeSHA: "tree-def", Name: "demo", Description: "Demo"}}})
 			require.NoError(t, marshalErr)
 			require.NoError(t, metadata.PublishRepositoryReleaseWithVisibility(t.Context(), "github.com/acme/skills", []catalog.PublishedSkill{{Skill: *skill,
 				Version: catalog.SkillVersion{Version: "v0.0.0-test", CommitSHA: "commit-abc", TreeSHA: "tree-def", RelativePath: "demo"}}}, catalog.CurrentPublication, fixtureInfo))
 			router := newFiberApp()
 			registerCatalogAPIRoutes(router, metadata, testCase.stub)
 			recorder := httptest.NewRecorder()
-			serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/skills/"+skill.SkillID, nil))
+			serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/skills/detail?repositoryId=github.com%2Facme%2Fskills&name=demo", nil))
 			require.Equal(t, testCase.status, recorder.Code)
 			var body errorResponse
 			require.NoError(t, json.NewDecoder(recorder.Body).Decode(&body))
@@ -352,8 +351,8 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 	r, c := testCatalogAPI(t)
 	for _, name := range []string{"alpha", "bravo", "charlie"} {
 		require.NoError(t, c.UpsertSkill(context.Background(), &catalog.Skill{
-			SkillID: "github.com/acme/skills/-/" + name,
-			Name:    name, Description: "Agent capability", LatestVersion: "main",
+			RepositoryID: "github.com/acme/skills", SkillPath: name,
+			Name: name, Description: "Agent capability", LatestVersion: "main",
 		}))
 	}
 
@@ -378,10 +377,10 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 func TestCatalogAPIValidationAndNotFound(t *testing.T) {
 	r, _ := testCatalogAPI(t)
 	for path, status := range map[string]int{
-		"/api/v1/search":                         http.StatusBadRequest,
-		"/api/v1/search?limit=101":               http.StatusBadRequest,
-		"/api/v1/search?q=valid&offset=invalid":  http.StatusBadRequest,
-		"/api/v1/skills/github.com/unknown/repo": http.StatusNotFound,
+		"/api/v1/search":                        http.StatusBadRequest,
+		"/api/v1/search?limit=101":              http.StatusBadRequest,
+		"/api/v1/search?q=valid&offset=invalid": http.StatusBadRequest,
+		"/api/v1/skills/detail?repositoryId=github.com%2Funknown%2Frepo&name=missing": http.StatusNotFound,
 	} {
 		recorder := httptest.NewRecorder()
 		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, path, nil))

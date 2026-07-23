@@ -18,8 +18,6 @@ type Skill struct {
 	config `json:"-"`
 	// ID of the ent.
 	ID int64 `json:"id,omitempty"`
-	// SkillID holds the value of the "skill_id" field.
-	SkillID string `json:"skill_id,omitempty"`
 	// RepositoryID holds the value of the "repository_id" field.
 	RepositoryID int64 `json:"repository_id,omitempty"`
 	// Name holds the value of the "name" field.
@@ -88,7 +86,7 @@ func (*Skill) scanValues(columns []string) ([]any, error) {
 			values[i] = new(sql.NullBool)
 		case skill.FieldID, skill.FieldRepositoryID:
 			values[i] = new(sql.NullInt64)
-		case skill.FieldSkillID, skill.FieldName, skill.FieldDescription, skill.FieldSourceHost, skill.FieldRepository, skill.FieldSkillPath, skill.FieldLatestVersion:
+		case skill.FieldName, skill.FieldDescription, skill.FieldSourceHost, skill.FieldRepository, skill.FieldSkillPath, skill.FieldLatestVersion:
 			values[i] = new(sql.NullString)
 		case skill.FieldCreatedAt, skill.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -113,12 +111,6 @@ func (_m *Skill) assignValues(columns []string, values []any) error {
 				return fmt.Errorf("unexpected type %T for field id", value)
 			}
 			_m.ID = int64(value.Int64)
-		case skill.FieldSkillID:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field skill_id", values[i])
-			} else if value.Valid {
-				_m.SkillID = value.String
-			}
 		case skill.FieldRepositoryID:
 			if value, ok := values[i].(*sql.NullInt64); !ok {
 				return fmt.Errorf("unexpected type %T for field repository_id", values[i])
@@ -231,9 +223,6 @@ func (_m *Skill) String() string {
 	var builder strings.Builder
 	builder.WriteString("Skill(")
 	builder.WriteString(fmt.Sprintf("id=%v, ", _m.ID))
-	builder.WriteString("skill_id=")
-	builder.WriteString(_m.SkillID)
-	builder.WriteString(", ")
 	builder.WriteString("repository_id=")
 	builder.WriteString(fmt.Sprintf("%v", _m.RepositoryID))
 	builder.WriteString(", ")

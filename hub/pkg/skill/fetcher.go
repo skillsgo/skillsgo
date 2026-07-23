@@ -45,7 +45,6 @@ type RepositorySnapshot struct {
 }
 
 type RepositoryMember struct {
-	SkillID  string
 	Name     string
 	Path     string
 	TreeSHA  string

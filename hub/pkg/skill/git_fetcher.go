@@ -34,7 +34,7 @@ import (
 // packaging the Skill contents.
 func (g *gitFetcher) Resolve(ctx context.Context, skillPath, revision string) (*Resolution, error) {
 	const op errors.Op = "gitFetcher.Resolve"
-	skillID, err := ParseSkillID(skillPath)
+	skillID, err := ParseRepositoryID(skillPath)
 	if err != nil {
 		return nil, errors.E(op, err, errors.KindNotFound)
 	}
@@ -57,8 +57,8 @@ func (g *gitFetcher) Resolve(ctx context.Context, skillPath, revision string) (*
 // selected commit once, and prepares every valid Skill from that snapshot.
 func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revision string) (*RepositorySnapshot, error) {
 	const op errors.Op = "gitFetcher.DiscoverRepository"
-	repository, err := ParseSkillID(repositoryID)
-	if err != nil || repository.SkillPath != "." || repository.String() != repositoryID {
+	repository, err := ParseRepositoryID(repositoryID)
+	if err != nil || repository.String() != repositoryID {
 		return nil, errors.E(op, fmt.Errorf("invalid canonical Repository ID %q", repositoryID), errors.KindBadRequest)
 	}
 	release, err := g.acquireRepository(repository.Repository)
@@ -105,10 +105,6 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revis
 	snapshot.ArchiveSize = int64(len(archive))
 	for _, candidate := range candidates {
 		directory := filepath.ToSlash(filepath.Dir(candidate))
-		memberID := repositoryID
-		if directory != "." {
-			memberID += skillPathSeparator + directory
-		}
 		memberResolution := *resolution
 		memberResolution.TreeSHA, err = gitOutput(ctx, repoDir, "rev-parse", resolution.CommitSHA+":"+directory)
 		if directory == "." {
@@ -140,7 +136,7 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revis
 			return nil, errors.E(op, fmt.Errorf("duplicate Skill name %q at %q and %q", manifest.Name, previousPath, directory), errors.KindBadRequest)
 		}
 		memberNames[manifest.Name] = directory
-		snapshot.Members = append(snapshot.Members, RepositoryMember{SkillID: memberID, Name: manifest.Name, Path: directory, TreeSHA: memberResolution.TreeSHA, Manifest: manifest})
+		snapshot.Members = append(snapshot.Members, RepositoryMember{Name: manifest.Name, Path: directory, TreeSHA: memberResolution.TreeSHA, Manifest: manifest})
 	}
 	if len(snapshot.Members) == 0 {
 		return nil, errors.E(op, errors.S(repositoryID), errors.V(revision), "Repository contains no installable Skills", errors.KindNotFound)
@@ -171,7 +167,7 @@ type repositoryMetadata struct {
 
 // syncRepository creates or refreshes one persistent no-checkout repository.
 // Skills in different subdirectories of the same repository share this cache.
-func (g *gitFetcher) syncRepository(ctx context.Context, skillID SkillID) error {
+func (g *gitFetcher) syncRepository(ctx context.Context, skillID RepositoryID) error {
 	_, err, _ := g.syncs.Do(skillID.Repository, func() (any, error) {
 		const op errors.Op = "gitFetcher.syncRepository"
 		started := time.Now()
@@ -407,7 +403,7 @@ func enforceRepositoryDiskLimit(root string) error {
 	})
 }
 
-func (g *gitFetcher) writeRepositoryMetadata(repoDir string, skillID SkillID) error {
+func (g *gitFetcher) writeRepositoryMetadata(repoDir string, skillID RepositoryID) error {
 	data, err := json.MarshalIndent(repositoryMetadata{
 		Repository: skillID.Repository,
 		URL:        skillID.RepositoryURL(),
@@ -426,7 +422,7 @@ func isGitRepository(repoDir string) bool {
 	return cmd.Run() == nil
 }
 
-func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, revision string) (*Resolution, error) {
+func resolveGitRevision(ctx context.Context, repoDir string, skillID RepositoryID, revision string) (*Resolution, error) {
 	const op errors.Op = "skill.resolveGitRevision"
 	requestedRevision := revision
 	switch revision {
@@ -513,15 +509,9 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID SkillID, re
 	} else if !modmodule.IsPseudoVersion(version) {
 		ref = "refs/tags/" + revision
 	}
-	treeRevision := commitSHA + "^{tree}"
-	if subdir := skillID.RepositorySubdir(); subdir != "" {
-		treeRevision = commitSHA + ":" + subdir
-	}
-	treeSHA, err := gitOutput(ctx, repoDir, "rev-parse", treeRevision)
+	treeSHA, err := gitOutput(ctx, repoDir, "rev-parse", commitSHA+"^{tree}")
 	if err != nil {
-		return nil, errors.E(op,
-			fmt.Sprintf("Skill path %q not found at revision %q", skillID.SkillPath, revision),
-			errors.S(skillID.String()), errors.V(revision), errors.KindNotFound)
+		return nil, errors.E(op, err, errors.S(skillID.String()), errors.V(revision), errors.KindNotFound)
 	}
 	return &Resolution{
 		Requested:  requestedRevision,

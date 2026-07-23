@@ -33,9 +33,8 @@ func (risk Risk) Valid() bool {
 type SkillInfo struct {
 	SchemaVersion int               `json:"SchemaVersion" yaml:"schemaVersion"`
 	Kind          string            `json:"Kind" yaml:"kind"`
-	ID            string            `json:"ID" yaml:"id"`
 	RepositoryID  string            `json:"RepositoryID" yaml:"repositoryID"`
-	Path          string            `json:"Path" yaml:"path"`
+	SkillPath     string            `json:"SkillPath" yaml:"skillPath"`
 	Version       string            `json:"Version" yaml:"version"`
 	Time          time.Time         `json:"Time" yaml:"time"`
 	Ref           string            `json:"Ref" yaml:"ref"`
@@ -77,12 +76,17 @@ type RepositoryResolutionResponse struct {
 	Ref           string    `json:"ref"`
 	CommitSHA     string    `json:"commitSHA"`
 }
+type SkillCoordinate struct {
+	RepositoryID string `json:"repositoryId"`
+	Name         string `json:"name"`
+}
 type CatalogUpdateCheckRequest struct {
-	SchemaVersion int      `json:"schemaVersion"`
-	SkillIDs      []string `json:"skillIds"`
+	SchemaVersion int               `json:"schemaVersion"`
+	Skills        []SkillCoordinate `json:"skills"`
 }
 type CatalogUpdateCheckItem struct {
-	SkillID        string `json:"skillId"`
+	RepositoryID   string `json:"repositoryId"`
+	Name           string `json:"name"`
 	HeadVersion    string `json:"headVersion,omitempty"`
 	ReleaseVersion string `json:"releaseVersion,omitempty"`
 	Status         string `json:"status"`

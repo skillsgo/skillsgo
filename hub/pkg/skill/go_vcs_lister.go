@@ -56,8 +56,8 @@ func NewVCSLister(fetcher RepositoryFetcher, timeout time.Duration) (RepositoryV
 }
 
 func (l *vcsLister) ListRepositoryTags(ctx context.Context, repositoryID string) ([]RepositoryTag, error) {
-	parsed, err := ParseSkillID(repositoryID)
-	if err != nil || parsed.SkillPath != "." || parsed.String() != repositoryID {
+	parsed, err := ParseRepositoryID(repositoryID)
+	if err != nil || parsed.String() != repositoryID {
 		return nil, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
 	}
 	release, err := l.repositories.acquireRepository(parsed.Repository)
@@ -85,7 +85,7 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 	_, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
 
-	skillID, err := ParseSkillID(skillPath)
+	skillID, err := ParseRepositoryID(skillPath)
 	if err != nil {
 		return nil, nil, errors.E(op, err, errors.KindNotFound)
 	}

@@ -3,7 +3,7 @@
 
 ## Members
 
-- `id.go`, `id_test.go`: adapt the shared Protocol public Skill ID grammar to Hub source-resolution call sites and specify Hub-supported repository constraints.
+- `id.go`, `id_test.go`: adapt the shared Protocol public Repository ID grammar to Hub source-resolution call sites and specify Hub-supported repository constraints.
 - `manifest.go`, `manifest_test.go`: adapt shared Protocol `SKILL.md` extraction and validation to Hub source publication.
 - `fetcher.go`: defines source resolution, complete Repository Artifact snapshots, ordered validated Skill membership, and upstream version-listing contracts.
 - `git_fetcher.go`, `git_helpers.go`, `repository_cache.go`, `repository_cache_test.go`: resolve Git revisions with ancestor-tag-based pseudo-version ordering, scan one Repository commit for validated repository-owned Skill members while excluding hidden installation directories, build one complete Repository Artifact, enforce public-host/redirect/disk boundaries, protect active mirrors with process-local leases, reclaim inactive mirrors by TTL and least-recently-used aggregate quota, and emit bounded correlated Git transport diagnostics.
@@ -16,6 +16,6 @@
 
 ## Architectural Boundary
 
-This module owns source revision resolution, Hub publication decisions, bounded Git transport, and immutable artifact assembly. Shared public Skill ID and manifest grammar belong to the Protocol workspace. Private-address Git hosts require the explicit `SKILLSGO_ALLOW_PRIVATE_GIT_HOSTS` operator opt-in. It must not persist Catalog metadata, render HTTP responses, install local targets, or infer App presentation state.
+This module owns source revision resolution, Hub publication decisions, bounded Git transport, and immutable artifact assembly. Shared public Repository ID and Skill manifest grammar belong to the Protocol workspace. Private-address Git hosts require the explicit `SKILLSGO_ALLOW_PRIVATE_GIT_HOSTS` operator opt-in. It must not persist Catalog metadata, render HTTP responses, install local targets, or infer App presentation state.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

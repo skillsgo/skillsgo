@@ -93,7 +93,6 @@ var (
 	// SkillsColumns holds the columns for the "skills" table.
 	SkillsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeInt64, Increment: true},
-		{Name: "skill_id", Type: field.TypeString},
 		{Name: "name", Type: field.TypeString},
 		{Name: "description", Type: field.TypeString},
 		{Name: "source_host", Type: field.TypeString},
@@ -114,16 +113,16 @@ var (
 		ForeignKeys: []*schema.ForeignKey{
 			{
 				Symbol:     "skills_repositories_skills",
-				Columns:    []*schema.Column{SkillsColumns[12]},
+				Columns:    []*schema.Column{SkillsColumns[11]},
 				RefColumns: []*schema.Column{RepositoriesColumns[0]},
 				OnDelete:   schema.NoAction,
 			},
 		},
 		Indexes: []*schema.Index{
 			{
-				Name:    "skill_skill_id",
+				Name:    "skill_repository_id_name",
 				Unique:  true,
-				Columns: []*schema.Column{SkillsColumns[1]},
+				Columns: []*schema.Column{SkillsColumns[11], SkillsColumns[1]},
 			},
 		},
 	}

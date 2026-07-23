@@ -18,7 +18,6 @@ CREATE TABLE repositories (
 );
 CREATE TABLE skills (
   id BIGSERIAL PRIMARY KEY,
-  skill_id TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
   description TEXT NOT NULL,
   source_host TEXT NOT NULL,
@@ -28,10 +27,11 @@ CREATE TABLE skills (
   latest_version TEXT NOT NULL,
   verified BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(repository_id, name)
 );
 CREATE INDEX skills_repository_id ON skills(repository_id);
-CREATE INDEX skills_search_trgm ON skills USING gin ((name || ' ' || description || ' ' || skill_id) gin_trgm_ops);
+CREATE INDEX skills_search_trgm ON skills USING gin ((name || ' ' || description) gin_trgm_ops);
 CREATE TABLE skill_versions (
   id BIGSERIAL PRIMARY KEY,
   skill_id BIGINT NOT NULL REFERENCES skills(id) ON DELETE CASCADE,

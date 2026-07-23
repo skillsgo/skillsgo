@@ -25,7 +25,7 @@ func publishTestRepository(t *testing.T, c *Catalog, repositoryID, version, comm
 	t.Helper()
 	members := make([]protocolapi.SkillInfo, 0, len(candidates))
 	for _, candidate := range candidates {
-		members = append(members, protocolapi.SkillInfo{ID: candidate.Skill.SkillID, RepositoryID: repositoryID, Path: candidate.Version.RelativePath, Version: version, CommitSHA: commitSHA, TreeSHA: candidate.Version.TreeSHA, Name: candidate.Skill.Name, Description: candidate.Skill.Description})
+		members = append(members, protocolapi.SkillInfo{RepositoryID: repositoryID, SkillPath: candidate.Version.RelativePath, Version: version, CommitSHA: commitSHA, TreeSHA: candidate.Version.TreeSHA, Name: candidate.Skill.Name, Description: candidate.Skill.Description})
 	}
 	encoded, err := json.Marshal(protocolapi.RepositoryInfo{ID: repositoryID, Version: version, CommitSHA: commitSHA, TreeSHA: "repository-tree", Sum: sum, ArchiveSize: 1024, Skills: members})
 	require.NoError(t, err)
@@ -41,11 +41,11 @@ func TestSQLiteCatalogUpsertAndSearch(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 
-	skill := &Skill{SkillID: "github.com/mattpocock/skills/-/skills/engineering/ask-matt", Name: "ask-matt", Description: "Route engineering questions", LatestVersion: "main"}
+	skill := &Skill{RepositoryID: "github.com/mattpocock/skills", SkillPath: "skills/engineering/ask-matt", Name: "ask-matt", Description: "Route engineering questions", LatestVersion: "main"}
 	require.NoError(t, c.UpsertSkill(ctx, skill))
 	require.NotZero(t, skill.RowID)
 
-	got, err := c.Skill(ctx, skill.SkillID)
+	got, err := c.SkillByCoordinate(ctx, skill.RepositoryID, skill.Name)
 	require.NoError(t, err)
 	require.Equal(t, "ask-matt", got.Name)
 
@@ -55,7 +55,8 @@ func TestSQLiteCatalogUpsertAndSearch(t *testing.T) {
 		results, searchErr := c.Search(ctx, query, 10, 0)
 		require.NoError(t, searchErr)
 		require.Len(t, results, 1, query)
-		require.Equal(t, got.SkillID, results[0].SkillID)
+		require.Equal(t, got.RepositoryID, results[0].RepositoryID)
+		require.Equal(t, got.Name, results[0].Name)
 	}
 }
 
@@ -76,7 +77,7 @@ func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 
-	skill := &Skill{SkillID: "github.com/acme/skills/-/review", Name: "review", Description: "Review a change", LatestVersion: "main"}
+	skill := &Skill{RepositoryID: "github.com/acme/skills", SkillPath: "review", Name: "review", Description: "Review a change", LatestVersion: "main"}
 	require.NoError(t, c.UpsertSkill(ctx, skill))
 	candidates, err := c.TranslationCandidates(ctx, "zh-CN", "description-v1", 10)
 	require.NoError(t, err)
@@ -84,7 +85,7 @@ func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
 	require.Equal(t, LocalizedSkill, candidates[0].ResourceKind)
 
 	require.NoError(t, c.UpsertLocalizedDescription(ctx, LocalizedDescription{
-		ResourceKind: LocalizedSkill, ResourceID: skill.SkillID, Locale: "zh-CN", Description: "审查变更",
+		ResourceKind: LocalizedSkill, ResourceID: skillResourceID(skill.RepositoryID, skill.Name), Locale: "zh-CN", Description: "审查变更",
 		SourceDigest: DescriptionDigest(skill.Description), PromptVersion: "description-v1",
 	}))
 	localizedResults, err := c.SearchLocalized(ctx, "审查", "zh-CN", 10, 0)
@@ -102,11 +103,11 @@ func TestTranslationCandidatesSkipUnchangedDescriptions(t *testing.T) {
 	require.Len(t, candidates, 1)
 }
 
-func TestUpsertSkillRequiresFullHostSkillID(t *testing.T) {
+func TestUpsertSkillRequiresCanonicalRepositoryID(t *testing.T) {
 	c, err := Open(context.Background(), config.DatabaseConfig{Type: "sqlite", DSN: filepath.Join(t.TempDir(), "hub.db"), MaxOpenConns: 1, MaxIdleConns: 1})
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
-	err = c.UpsertSkill(context.Background(), &Skill{SkillID: "github/acme/skills", Name: "acme", LatestVersion: "main"})
+	err = c.UpsertSkill(context.Background(), &Skill{RepositoryID: "github/acme/skills", Name: "acme", LatestVersion: "main"})
 	require.ErrorContains(t, err, "full host name")
 }
 
@@ -119,12 +120,12 @@ func TestArtifactVersionsAreImmutableAndRiskAssessmentsAreAppendOnly(t *testing.
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	skill := &Skill{
-		SkillID: "github.com/acme/skills/-/demo", Name: "demo",
+		RepositoryID: "github.com/acme/skills", SkillPath: "demo", Name: "demo",
 		Description: "Demo", LatestVersion: "v1.0.0",
 	}
 	require.NoError(t, c.UpsertSkill(ctx, skill))
 
-	version, err := c.RecordSkillVersion(ctx, skill.SkillID, SkillVersion{
+	version, err := c.RecordSkillVersion(ctx, skill.RepositoryID, skill.Name, SkillVersion{
 		Version: "v1.0.0", CommitSHA: "commit-a", TreeSHA: "tree-a", RelativePath: "demo",
 		CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC),
 	})
@@ -132,11 +133,11 @@ func TestArtifactVersionsAreImmutableAndRiskAssessmentsAreAppendOnly(t *testing.
 	require.NotZero(t, version.RowID)
 	require.Equal(t, "demo", version.RelativePath)
 	require.Equal(t, time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), version.CommitTime)
-	same, err := c.RecordSkillVersion(ctx, skill.SkillID, *version)
+	same, err := c.RecordSkillVersion(ctx, skill.RepositoryID, skill.Name, *version)
 	require.NoError(t, err)
 	require.Equal(t, version.RowID, same.RowID)
 
-	_, err = c.RecordSkillVersion(ctx, skill.SkillID, SkillVersion{
+	_, err = c.RecordSkillVersion(ctx, skill.RepositoryID, skill.Name, SkillVersion{
 		Version: "v1.0.0", CommitSHA: "commit-b", TreeSHA: "tree-a", RelativePath: "demo",
 	})
 	require.ErrorContains(t, err, "immutable Skill version conflict")
@@ -171,32 +172,35 @@ func TestRepositoryPublicationKeepsIndependentSkillLatestHistory(t *testing.T) {
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	repository := "github.com/acme/history"
-	member := repository + "/-/skills/member"
-	publish := func(version, commit string, skillIDs ...string) {
-		candidates := make([]PublishedSkill, 0, len(skillIDs))
-		for index, skillID := range skillIDs {
+	publish := func(version, commit string, names ...string) {
+		candidates := make([]PublishedSkill, 0, len(names))
+		for index, name := range names {
+			path := "skills/" + name
+			if name == "root" {
+				path = "."
+			}
 			candidates = append(candidates, PublishedSkill{
-				Skill: Skill{SkillID: skillID, Name: fmt.Sprintf("member-%d", index), Description: "History fixture"},
+				Skill: Skill{RepositoryID: repository, SkillPath: path, Name: name, Description: "History fixture"},
 				Version: SkillVersion{Version: version, CommitSHA: commit, TreeSHA: fmt.Sprintf("tree-%s-%d", version, index),
-					RelativePath: fmt.Sprintf("member-%d", index), CommitTime: time.Now().UTC()},
+					RelativePath: path, CommitTime: time.Now().UTC()},
 			})
 		}
 		publishTestRepository(t, c, repository, version, commit, "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CurrentPublication, candidates)
 	}
 
-	publish("v1.0.0", "commit-v1", repository, member)
-	publish("v2.0.0", "commit-v2", repository)
-	_, err = c.Skill(ctx, member)
+	publish("v1.0.0", "commit-v1", "root", "member")
+	publish("v2.0.0", "commit-v2", "root")
+	_, err = c.SkillByCoordinate(ctx, repository, "member")
 	require.ErrorIs(t, err, sql.ErrNoRows, "a Skill removed from the current Repository publication must leave discovery")
-	require.Equal(t, []string{"v1.0.0", "v2.0.0"}, mustPublishedVersions(t, c, repository), "unchanged members still receive every Repository publication version")
-	latest, err := c.SkillLatestPublishedVersion(ctx, member)
+	require.Equal(t, []string{"v1.0.0", "v2.0.0"}, mustPublishedVersions(t, c, repository, "root"), "unchanged members still receive every Repository publication version")
+	latest, err := c.SkillLatestPublishedVersion(ctx, repository, "member")
 	require.NoError(t, err)
 	require.Equal(t, "v1.0.0", latest.Version)
-	require.Equal(t, []string{"v1.0.0"}, mustPublishedVersions(t, c, member))
+	require.Equal(t, []string{"v1.0.0"}, mustPublishedVersions(t, c, repository, "member"))
 
 	// An older version requested after newer history must not move latest back.
-	publish("v0.9.0", "commit-v0", repository, member)
-	latest, err = c.SkillLatestPublishedVersion(ctx, member)
+	publish("v0.9.0", "commit-v0", "root", "member")
+	latest, err = c.SkillLatestPublishedVersion(ctx, repository, "member")
 	require.NoError(t, err)
 	require.Equal(t, "v1.0.0", latest.Version)
 }
@@ -207,15 +211,15 @@ func TestRepositoryPublicationMarkerExcludesStandaloneSkillIndexing(t *testing.T
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, c.Close()) })
 	repository, version := "github.com/acme/marker", "v1.0.0"
-	require.NoError(t, c.UpsertSkill(ctx, &Skill{SkillID: repository, Name: "marker", Description: "Standalone", LatestVersion: version}))
-	_, err = c.RecordSkillVersion(ctx, repository, SkillVersion{Version: version, CommitSHA: "commit", TreeSHA: "tree", RelativePath: "."})
+	require.NoError(t, c.UpsertSkill(ctx, &Skill{RepositoryID: repository, SkillPath: ".", Name: "marker", Description: "Standalone", LatestVersion: version}))
+	_, err = c.RecordSkillVersion(ctx, repository, "marker", SkillVersion{Version: version, CommitSHA: "commit", TreeSHA: "tree", RelativePath: "."})
 	require.NoError(t, err)
 	exists, err := c.RepositoryPublicationExists(ctx, repository, version)
 	require.NoError(t, err)
 	require.False(t, exists, "standalone protocol indexing is not a complete Repository Publication")
 
 	publishTestRepository(t, c, repository, version, "commit", "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", HistoricalPublication, []PublishedSkill{{
-		Skill:   Skill{SkillID: repository, Name: "marker", Description: "Standalone"},
+		Skill:   Skill{RepositoryID: repository, SkillPath: ".", Name: "marker", Description: "Standalone"},
 		Version: SkillVersion{Version: version, CommitSHA: "commit", TreeSHA: "tree", RelativePath: "."},
 	}})
 	exists, err = c.RepositoryPublicationExists(ctx, repository, version)
@@ -257,9 +261,9 @@ func TestExpireStaleBackfillRunsRecoversAbandonedActiveState(t *testing.T) {
 	require.Equal(t, BackfillCompleteWithErrors, queued.Status)
 }
 
-func mustPublishedVersions(t *testing.T, c *Catalog, skillID string) []string {
+func mustPublishedVersions(t *testing.T, c *Catalog, repositoryID, name string) []string {
 	t.Helper()
-	versions, err := c.SkillPublishedVersions(t.Context(), skillID)
+	versions, err := c.SkillPublishedVersions(t.Context(), repositoryID, name)
 	require.NoError(t, err)
 	return versions
 }

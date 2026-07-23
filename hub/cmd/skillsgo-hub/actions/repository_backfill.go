@@ -286,8 +286,8 @@ func validateBackfillRepositoryIDs(ids []string) ([]string, error) {
 	seen := make(map[string]struct{}, len(ids))
 	result := make([]string, len(ids))
 	for index, repositoryID := range ids {
-		parsed, err := skill.ParseSkillID(repositoryID)
-		if err != nil || parsed.SkillPath != "." || parsed.String() != repositoryID {
+		parsed, err := skill.ParseRepositoryID(repositoryID)
+		if err != nil || parsed.String() != repositoryID {
 			return nil, fmt.Errorf("repositoryIds contains invalid canonical Repository ID %q", repositoryID)
 		}
 		if _, duplicate := seen[repositoryID]; duplicate {

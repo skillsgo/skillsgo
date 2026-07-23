@@ -127,7 +127,7 @@ func (s *recordingMetadataSource) Read(_ context.Context, _, _, etag string) (re
 func TestRepositoryMetadataCacheSingleflightCoalescesConcurrentRefresh(t *testing.T) {
 	_, metadata := testCatalogAPI(t)
 	require.NoError(t, metadata.UpsertSkill(t.Context(), &catalog.Skill{
-		SkillID: "github.com/acme/skills/-/demo", Name: "demo", LatestVersion: "v1.0.0",
+		RepositoryID: "github.com/acme/skills", SkillPath: "demo", Name: "demo", LatestVersion: "v1.0.0",
 	}))
 	source := &recordingMetadataSource{
 		results: []metadataSourceResult{{metadata: repositoryMetadata{Stars: 7, ETag: `"v1"`}}},
@@ -158,7 +158,7 @@ func TestRepositoryMetadataCacheSingleflightCoalescesConcurrentRefresh(t *testin
 func TestRepositoryMetadataCacheQueuesRefreshAndPrewarm(t *testing.T) {
 	_, metadata := testCatalogAPI(t)
 	require.NoError(t, metadata.UpsertSkill(t.Context(), &catalog.Skill{
-		SkillID: "github.com/acme/skills/-/demo", Name: "demo", LatestVersion: "v1.0.0",
+		RepositoryID: "github.com/acme/skills", SkillPath: "demo", Name: "demo", LatestVersion: "v1.0.0",
 	}))
 	runtime := taskqueue.NewSynchronous()
 	prewarmed := make(chan struct{}, 1)
@@ -187,8 +187,8 @@ func TestRepositoryMetadataCacheQueuesRefreshAndPrewarm(t *testing.T) {
 
 func TestRepositoryMetadataCacheSharesStarsAndRevalidatesWithETag(t *testing.T) {
 	_, metadata := testCatalogAPI(t)
-	for _, id := range []string{"github.com/acme/skills/-/skills/a", "github.com/acme/skills/-/skills/b"} {
-		require.NoError(t, metadata.UpsertSkill(t.Context(), &catalog.Skill{SkillID: id, Name: id, LatestVersion: "v1.0.0"}))
+	for _, name := range []string{"a", "b"} {
+		require.NoError(t, metadata.UpsertSkill(t.Context(), &catalog.Skill{RepositoryID: "github.com/acme/skills", SkillPath: "skills/" + name, Name: name, LatestVersion: "v1.0.0"}))
 	}
 	source := &recordingMetadataSource{results: []metadataSourceResult{
 		{metadata: repositoryMetadata{Description: "Agent Skills from Acme.", Stars: 42, ETag: `"repo-v1"`}},
@@ -207,8 +207,8 @@ func TestRepositoryMetadataCacheSharesStarsAndRevalidatesWithETag(t *testing.T) 
 	require.Equal(t, int64(42), second.Stars)
 	require.Equal(t, 1, source.calls)
 
-	for _, id := range []string{"github.com/acme/skills/-/skills/a", "github.com/acme/skills/-/skills/b"} {
-		skill, skillErr := metadata.Skill(t.Context(), id)
+	for _, name := range []string{"a", "b"} {
+		skill, skillErr := metadata.SkillByCoordinate(t.Context(), "github.com/acme/skills", name)
 		require.NoError(t, skillErr)
 		require.Equal(t, int64(42), skill.Stars)
 	}
@@ -225,7 +225,7 @@ func TestRepositoryMetadataCacheSharesStarsAndRevalidatesWithETag(t *testing.T) 
 func TestRepositoryMetadataCacheBlocksRequestsUntilRateLimitReset(t *testing.T) {
 	_, metadata := testCatalogAPI(t)
 	require.NoError(t, metadata.UpsertSkill(t.Context(), &catalog.Skill{
-		SkillID: "github.com/acme/skills/-/demo", Name: "demo", LatestVersion: "v1.0.0",
+		RepositoryID: "github.com/acme/skills", SkillPath: "demo", Name: "demo", LatestVersion: "v1.0.0",
 	}))
 	now := time.Date(2026, time.July, 18, 10, 0, 0, 0, time.UTC)
 	reset := now.Add(time.Hour)
