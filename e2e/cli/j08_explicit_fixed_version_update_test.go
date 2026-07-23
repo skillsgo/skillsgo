@@ -25,7 +25,7 @@ func TestJ08ExplicitFixedVersionUpdate(t *testing.T) {
 	)
 
 	installedResult := execCLI(t, ctx, container,
-		"add", skillID+"@v1.0.0", "--agent", "codex", "--copy", "--yes", "--output", "json",
+		"add", skillID+"@v1.0.0", "--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, installedResult.exitCode, installedResult.output)
 	var installed addResponse
@@ -35,38 +35,19 @@ func TestJ08ExplicitFixedVersionUpdate(t *testing.T) {
 	created := execInContainer(t, ctx, container, "mkdir", "-p", seedDirectory)
 	require.Equal(t, 0, created.exitCode, created.output)
 	seedLatest := execCLIFrom(t, ctx, container, seedDirectory,
-		"add", skillID+"@v1.1.0", "--agent", "codex", "--copy", "--yes", "--output", "json",
+		"add", skillID+"@v1.1.0", "--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, seedLatest.exitCode, seedLatest.output)
 
-	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo.sum")
+	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo.lock")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	targetRequest := map[string]any{
-		"scope": "project", "projectRoot": "/e2e/project", "agent": "codex", "mode": "copy",
-		"path": "/e2e/project/.agents/skills/alpha", "skillId": skillID, "version": installed.Version,
-	}
-	encodedTarget, err := json.Marshal(targetRequest)
-	require.NoError(t, err)
-	preflight := execCLI(t, ctx, container,
-		"update", "--target", string(encodedTarget), "--preflight", "--output", "json",
-	)
-	require.Equal(t, 0, preflight.exitCode, preflight.output)
-	var plan struct {
-		Targets []struct {
-			Action     string `json:"action"`
-			ToVersion  string `json:"toVersion"`
-			StateToken string `json:"stateToken"`
-		} `json:"targets"`
-	}
-	require.NoError(t, json.Unmarshal([]byte(preflight.output), &plan), preflight.output)
-	require.Len(t, plan.Targets, 1)
-	require.Equal(t, "pinned", plan.Targets[0].Action)
-	require.Equal(t, installed.Version, plan.Targets[0].ToVersion)
+	install := execCLI(t, ctx, container, "install", "--output", "json")
+	require.Equal(t, 0, install.exitCode, install.output)
 	sumAfterPreflight, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 	require.Equal(t, sumBefore, sumAfterPreflight, "checking a pinned installation must be read-only")
-	pinnedSkill, err := os.ReadFile(filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha", "SKILL.md"))
+	pinnedSkill, err := os.ReadFile(containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
 	require.NoError(t, err)
 	require.Contains(t, string(pinnedSkill), "Alpha at v1.")
 }

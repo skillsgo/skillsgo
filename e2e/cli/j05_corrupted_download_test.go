@@ -23,10 +23,9 @@ func TestJ05CorruptedDownload(t *testing.T) {
 	add := execCLI(t, ctx, container,
 		"add", testSkillID+"@"+testSkillVersion,
 		"--agent", "codex",
-		"--copy",
+
 		"--yes",
-		"--confirm-risk",
-		"--allow-critical",
+
 		"--output", "json",
 	)
 	require.Equal(t, 0, add.exitCode, add.output)
@@ -34,27 +33,27 @@ func TestJ05CorruptedDownload(t *testing.T) {
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 
-	manifestPath := filepath.Join(sandboxRoot, "project", "skillsgo.mod")
-	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo.sum")
+	manifestPath := filepath.Join(sandboxRoot, "project", "skillsgo.yaml")
+	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo.lock")
 	manifestBefore, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 
-	hubZIP := findArtifactFile(t, filepath.Join(sandboxRoot, "hub", "storage"), testSkillID, ".zip")
+	hubZIP := findArtifactFile(t, filepath.Join(sandboxRoot, "hub", "storage"), installed.Repository, ".zip")
 	require.NoError(t, os.WriteFile(hubZIP, []byte("corrupted e2e artifact"), 0o600))
-	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "home", ".skillsgo", "store")))
+	require.NoError(t, os.RemoveAll(containerPathOnHost(t, sandboxRoot, installed.Vendor)))
 	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "project", ".agents")))
 
 	restore := execCLI(t, ctx, container, "install", "--output", "json")
 	require.NotEqual(t, 0, restore.exitCode, "corrupted Hub artifact unexpectedly restored: %s", restore.output)
 
-	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha"))
-	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.Store))
+	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path))
+	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.Vendor))
 	manifestAfter, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	require.Equal(t, manifestBefore, manifestAfter, "failed restoration must not rewrite skillsgo.mod")
-	require.Equal(t, sumBefore, sumAfter, "failed restoration must not rewrite skillsgo.sum")
+	require.Equal(t, manifestBefore, manifestAfter, "failed restoration must not rewrite skillsgo.yaml")
+	require.Equal(t, sumBefore, sumAfter, "failed restoration must not rewrite skillsgo.lock")
 }

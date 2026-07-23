@@ -25,25 +25,23 @@ func TestJ10RemoveOneBinding(t *testing.T) {
 		"--agent", "codex",
 		"--agent", "claude-code",
 		"--yes",
-		"--confirm-risk",
-		"--allow-critical",
+
 		"--output", "json",
 	)
 	require.Equal(t, 0, add.exitCode, add.output)
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
-	require.Len(t, installed.Targets, 2)
-
-	canonical := filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha")
-	claudeTarget := filepath.Join(sandboxRoot, "project", ".claude", "skills", "alpha")
-	require.FileExists(t, filepath.Join(canonical, "SKILL.md"))
-	claudeInfo, err := os.Lstat(claudeTarget)
-	require.NoError(t, err)
-	require.NotZero(t, claudeInfo.Mode()&os.ModeSymlink)
-	claudeLink, err := os.Readlink(claudeTarget)
-	require.NoError(t, err)
-	require.Equal(t, "../../.agents/skills/alpha", claudeLink)
-	require.Equal(t, canonical, filepath.Clean(filepath.Join(filepath.Dir(claudeTarget), claudeLink)))
+	require.Len(t, installed.Projections, 2)
+	var codexTarget, claudeTarget string
+	for _, projection := range installed.Projections {
+		if projection.Agents[0] == "codex" {
+			codexTarget = containerPathOnHost(t, sandboxRoot, projection.Path)
+		} else if projection.Agents[0] == "claude-code" {
+			claudeTarget = containerPathOnHost(t, sandboxRoot, projection.Path)
+		}
+	}
+	require.FileExists(t, filepath.Join(codexTarget, "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, filepath.Join(claudeTarget, "skills", "alpha", "SKILL.md"))
 
 	removeClaude := execCLI(t, ctx, container,
 		"remove", "alpha",
@@ -53,13 +51,13 @@ func TestJ10RemoveOneBinding(t *testing.T) {
 		"--color", "never",
 	)
 	require.Equal(t, 0, removeClaude.exitCode, removeClaude.output)
-	_, err = os.Lstat(claudeTarget)
+	_, err := os.Lstat(claudeTarget)
 	require.ErrorIs(t, err, os.ErrNotExist)
-	require.FileExists(t, filepath.Join(canonical, "SKILL.md"))
+	require.FileExists(t, filepath.Join(codexTarget, "skills", "alpha", "SKILL.md"))
 
-	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
+	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
 	require.NoError(t, err)
 	require.Contains(t, string(manifest), "codex")
 	require.NotContains(t, string(manifest), "claude-code")
-	require.FileExists(t, storeArtifactPath(t, sandboxRoot, installed.Store, "SKILL.md"))
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Vendor, "skills", "alpha", "SKILL.md"))
 }
