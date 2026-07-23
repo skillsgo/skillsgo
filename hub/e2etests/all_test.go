@@ -2,7 +2,7 @@
 // +build e2etests
 
 /*
- * [INPUT]: Depends on the Hub binary, one suite-private filesystem root, and inherited proxy settings.
+ * [INPUT]: Depends on the Hub binary, Testcontainers PostgreSQL, one suite-private filesystem root, and inherited proxy settings.
  * [OUTPUT]: Provides an isolated build-tag Hub acceptance lifecycle with private Catalog, Storage, source cache, and Go build cache state.
  * [POS]: Serves as the suite bootstrap preventing protocol acceptance tests from observing prior local Hub state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -19,6 +19,8 @@ import (
 
 	"github.com/gobuffalo/envy"
 	"github.com/stretchr/testify/suite"
+	"github.com/testcontainers/testcontainers-go"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
 
 type E2eSuite struct {
@@ -28,6 +30,8 @@ type E2eSuite struct {
 	goPath       string
 	hubOrigin    string
 	stopAthens   context.CancelFunc
+	postgres     testcontainers.Container
+	databaseDSN  string
 }
 
 func (m *E2eSuite) SetupSuite() {
@@ -38,6 +42,11 @@ func (m *E2eSuite) SetupSuite() {
 	}
 
 	m.goBinaryPath = envy.Get("GO_BINARY_PATH", "go")
+	container, err := postgres.Run(context.Background(), "postgres:18-alpine", postgres.WithDatabase("skillsgo"), postgres.WithUsername("skillsgo"), postgres.WithPassword("skillsgo"), postgres.BasicWaitStrategies())
+	m.Require().NoError(err)
+	m.postgres = container
+	m.databaseDSN, err = container.ConnectionString(context.Background(), "sslmode=disable")
+	m.Require().NoError(err)
 
 	athensBin, err := buildAthens(m.goBinaryPath, m.goPath, m.env)
 	if err != nil {
@@ -56,6 +65,9 @@ func (m *E2eSuite) SetupSuite() {
 
 func (m *E2eSuite) TearDownSuite() {
 	m.stopAthens()
+	if m.postgres != nil {
+		m.Require().NoError(m.postgres.Terminate(context.Background()))
+	}
 	chmodR(m.goPath, 0o777)
 	os.RemoveAll(m.goPath)
 }
@@ -73,8 +85,8 @@ func (m *E2eSuite) getEnv(port int) []string {
 		fmt.Sprintf("SKILLSGO_HUB_CACHE_DIR=%s", filepath.Join(m.goPath, "source-cache")),
 		"SKILLSGO_HUB_STORAGE_TYPE=disk",
 		fmt.Sprintf("SKILLSGO_HUB_DISK_STORAGE_ROOT=%s", filepath.Join(m.goPath, "storage")),
-		"SKILLSGO_HUB_DATABASE_TYPE=sqlite",
-		fmt.Sprintf("SKILLSGO_HUB_DATABASE_DSN=%s", filepath.Join(m.goPath, "catalog.db")),
+		"SKILLSGO_HUB_DATABASE_TYPE=postgres",
+		fmt.Sprintf("SKILLSGO_HUB_DATABASE_DSN=%s", m.databaseDSN),
 		fmt.Sprintf("SKILLSGO_HUB_PORT=:%d", port),
 	}
 	for _, name := range []string{"HTTP_PROXY", "HTTPS_PROXY", "ALL_PROXY", "http_proxy", "https_proxy", "all_proxy", "NO_PROXY", "no_proxy"} {

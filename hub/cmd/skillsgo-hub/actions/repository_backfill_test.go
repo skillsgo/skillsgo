@@ -9,9 +9,9 @@ package actions
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -33,7 +33,7 @@ func (backfillAdministrationStub) Submit(_ context.Context, repositoryID string)
 
 func (backfillAdministrationStub) Latest(_ context.Context, repositoryID string) (catalog.BackfillRun, error) {
 	if repositoryID == "github.com/acme/missing" {
-		return catalog.BackfillRun{}, sql.ErrNoRows
+		return catalog.BackfillRun{}, pgx.ErrNoRows
 	}
 	return catalog.BackfillRun{ID: "run-1", RepositoryID: repositoryID, Status: catalog.BackfillComplete}, nil
 }

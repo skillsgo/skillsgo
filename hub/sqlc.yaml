@@ -1,0 +1,29 @@
+# [INPUT]: Depends on the reviewed PostgreSQL Catalog migration history and maintained query files.
+# [OUTPUT]: Generates pgx/v5-native, type-safe Hub Catalog persistence code.
+# [POS]: Serves as the sqlc generation contract for the PostgreSQL-only Hub workspace.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+version: "2"
+sql:
+  - engine: postgresql
+    schema: pkg/catalog/migrations/postgres
+    queries: pkg/catalog/queries
+    gen:
+      go:
+        package: catalogsqlc
+        out: pkg/catalog/catalogsqlc
+        sql_package: pgx/v5
+        emit_interface: true
+        emit_empty_slices: true
+        emit_json_tags: true
+        overrides:
+          - db_type: jsonb
+            go_type: encoding/json.RawMessage
+          - db_type: timestamptz
+            nullable: false
+            go_type: time.Time
+          - db_type: timestamptz
+            nullable: true
+            go_type:
+              import: time
+              type: Time
+              pointer: true

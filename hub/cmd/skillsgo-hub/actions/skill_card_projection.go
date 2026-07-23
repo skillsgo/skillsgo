@@ -8,8 +8,8 @@ package actions
 
 import (
 	"context"
-	"database/sql"
 	"errors"
+	"github.com/jackc/pgx/v5"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
@@ -23,7 +23,7 @@ func (projection skillCardProjection) Hydrate(ctx context.Context, coordinates [
 	cards := make([]discoverySkill, 0, len(coordinates))
 	for _, coordinate := range coordinates {
 		item, err := projection.catalog.SkillByCoordinate(ctx, coordinate.RepositoryID, coordinate.Name)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			continue
 		}
 		if err != nil {

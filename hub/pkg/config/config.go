@@ -192,10 +192,11 @@ func defaultConfig() *Config {
 			Disk: &DiskConfig{},
 		},
 		Database: &DatabaseConfig{
-			Type:            "sqlite",
-			MaxOpenConns:    1,
-			MaxIdleConns:    1,
-			ConnMaxLifetime: 0,
+			Type:            "postgres",
+			DSN:             "postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable",
+			MaxOpenConns:    10,
+			MaxIdleConns:    5,
+			ConnMaxLifetime: 1800,
 		},
 		TaskQueue: &TaskQueueConfig{MaxWorkers: 10},
 		LLM: &LLMConfig{
@@ -293,7 +294,22 @@ func envOverride(config *Config) error {
 		return err
 	}
 	if config.Database == nil {
-		config.Database = &DatabaseConfig{Type: "sqlite", MaxOpenConns: 1, MaxIdleConns: 1}
+		config.Database = &DatabaseConfig{}
+	}
+	if config.Database.Type == "" {
+		config.Database.Type = "postgres"
+	}
+	if config.Database.DSN == "" {
+		config.Database.DSN = "postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable"
+	}
+	if config.Database.MaxOpenConns == 0 {
+		config.Database.MaxOpenConns = 10
+	}
+	if config.Database.MaxIdleConns == 0 {
+		config.Database.MaxIdleConns = 5
+	}
+	if config.Database.ConnMaxLifetime == 0 {
+		config.Database.ConnMaxLifetime = 1800
 	}
 	if config.LLM == nil {
 		config.LLM = defaultConfig().LLM
@@ -424,7 +440,7 @@ func validateDatabase(validate *validator.Validate, database *DatabaseConfig) er
 	if err := validate.Struct(database); err != nil {
 		return err
 	}
-	if database.Type == "postgres" && database.DSN == "" {
+	if database.DSN == "" {
 		return fmt.Errorf("database DSN is required")
 	}
 	return nil

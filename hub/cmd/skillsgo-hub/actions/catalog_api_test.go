@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses the Hub HTTP router with a temporary SQLite Catalog and deterministic public requests.
+ * [INPUT]: Uses the Hub HTTP router with Testcontainers PostgreSQL Catalogs and deterministic public requests.
  * [OUTPUT]: Specifies public API contracts including Repository-fresh head/release batch update checks plus correlated, redacted private diagnostics for internal failures.
  * [POS]: Serves as executable public HTTP contract coverage for Hub discovery clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -17,7 +17,6 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -31,15 +30,33 @@ import (
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	"github.com/stretchr/testify/require"
+	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
+
+func actionTestPostgresDSN(t *testing.T) string {
+	t.Helper()
+	ctx := t.Context()
+	container, err := postgres.Run(ctx, "postgres:18-alpine", postgres.WithDatabase("skillsgo"), postgres.WithUsername("skillsgo"), postgres.WithPassword("skillsgo"), postgres.BasicWaitStrategies())
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, container.Terminate(context.Background())) })
+	dsn, err := container.ConnectionString(ctx, "sslmode=disable")
+	require.NoError(t, err)
+	return dsn
+}
+
+func openActionTestCatalog(t *testing.T) *catalog.Catalog {
+	t.Helper()
+	ctx := t.Context()
+	dsn := actionTestPostgresDSN(t)
+	metadata, err := catalog.Open(ctx, config.DatabaseConfig{Type: "postgres", DSN: dsn, MaxOpenConns: 5, MaxIdleConns: 2})
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
+	return metadata
+}
 
 func testCatalogAPI(t *testing.T) (*fiber.App, *catalog.Catalog) {
 	t.Helper()
-	c, err := catalog.Open(context.Background(), config.DatabaseConfig{
-		Type: "sqlite", DSN: filepath.Join(t.TempDir(), "hub.db"), MaxOpenConns: 1, MaxIdleConns: 1,
-	})
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, c.Close()) })
+	c := openActionTestCatalog(t)
 	r := newFiberApp()
 	registerCatalogAPIRoutes(
 		r,
@@ -259,11 +276,7 @@ func TestHistoricalPublicationDoesNotEnterDiscovery(t *testing.T) {
 }
 
 func TestCatalogUpdateCheckResolvesEachRepositoryOnceAndPreservesRequestOrder(t *testing.T) {
-	c, err := catalog.Open(context.Background(), config.DatabaseConfig{
-		Type: "sqlite", DSN: filepath.Join(t.TempDir(), "hub.db"), MaxOpenConns: 1, MaxIdleConns: 1,
-	})
-	require.NoError(t, err)
-	t.Cleanup(func() { require.NoError(t, c.Close()) })
+	c := openActionTestCatalog(t)
 	known := &catalog.Skill{
 		RepositoryID: "github.com/example/skills", SkillPath: "review", Name: "review",
 		SourceHost: "github.com", Repository: "example/skills", LatestVersion: "v1.3.0",
@@ -315,11 +328,7 @@ func TestCatalogAPIDetailReturnsStableArtifactFailures(t *testing.T) {
 		"unavailable artifact": {stub: &catalogArtifactStub{infoErr: errors.New("upstream unavailable")}, status: http.StatusServiceUnavailable, code: "artifact_unavailable"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			metadata, err := catalog.Open(ctx, config.DatabaseConfig{
-				Type: "sqlite", DSN: filepath.Join(t.TempDir(), "hub.db"), MaxOpenConns: 1, MaxIdleConns: 1,
-			})
-			require.NoError(t, err)
-			t.Cleanup(func() { require.NoError(t, metadata.Close()) })
+			metadata := openActionTestCatalog(t)
 			skill := &catalog.Skill{RepositoryID: "github.com/acme/skills", SkillPath: "demo", Name: "demo", Description: "Demo", LatestVersion: "main"}
 			require.NoError(t, metadata.UpsertSkill(ctx, skill))
 			fixtureInfo, marshalErr := json.Marshal(protocolapi.RepositoryInfo{ID: "github.com/acme/skills", Version: "v0.0.0-test", CommitSHA: "commit-abc", TreeSHA: "repository-tree", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 1,

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on App assembly, default configuration loading, and isolated temporary SQLite databases.
+ * [INPUT]: Depends on App assembly, default configuration loading, and isolated Testcontainers PostgreSQL databases.
  * [OUTPUT]: Specifies top-level application construction and idempotent cleanup without reading user database state.
  * [POS]: Serves as test coverage for the actions package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -10,7 +10,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"path/filepath"
 	"testing"
 
 	"github.com/gofiber/fiber/v3"
@@ -43,7 +42,7 @@ func TestAppReturnsCleanup(t *testing.T) {
 	l := log.NoOpLogger()
 	c, err := config.Load("")
 	require.NoError(t, err)
-	c.Database.DSN = filepath.Join(t.TempDir(), "hub.db")
+	c.Database.DSN = actionTestPostgresDSN(t)
 
 	handler, cleanup, err := App(l, c)
 	require.NoError(t, err)
@@ -58,7 +57,7 @@ func TestAppReturnsCleanupWithExporters(t *testing.T) {
 	l := log.NoOpLogger()
 	c, err := config.Load("")
 	require.NoError(t, err)
-	c.Database.DSN = filepath.Join(t.TempDir(), "hub.db")
+	c.Database.DSN = actionTestPostgresDSN(t)
 	// Exercise the real exporter registration path: OTLP traces (the gRPC
 	// exporter dials lazily, so no collector is needed) and Prometheus metrics.
 	c.TraceExporter = "otlp"

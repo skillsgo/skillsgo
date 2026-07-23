@@ -8,10 +8,10 @@ package actions
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/jackc/pgx/v5"
 	"io"
 	"net/url"
 	"strconv"
@@ -171,7 +171,7 @@ func catalogUpdateCheckHandler(metadata *catalog.Catalog, artifacts artifactRead
 			_, err := metadata.SkillByCoordinate(c.Context(), coordinate.RepositoryID, coordinate.Name)
 			if err == nil {
 				available[key] = true
-			} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
+			} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 				return writeInternalAPIError(c, "catalog.update_check", fiber.StatusInternalServerError, "internal_error", "update check failed", err)
 			}
 		}
@@ -302,7 +302,7 @@ func skillDetailHandler(
 			return writeAPIError(c, fiber.StatusBadRequest, "repositoryId and canonical Skill name are required")
 		}
 		skill, err := metadata.SkillByCoordinate(c.Context(), repositoryID, skillName)
-		if errors.Is(err, sql.ErrNoRows) {
+		if errors.Is(err, pgx.ErrNoRows) {
 			return writeAPIError(c, fiber.StatusNotFound, "skill not found")
 		}
 		if err != nil {

@@ -21,22 +21,10 @@ const (
 )
 
 func resolveHubDatabaseDSN(databaseType, configured string) (string, error) {
-	if configured != "" || databaseType == "postgres" {
-		return configured, nil
+	if databaseType != "postgres" {
+		return "", fmt.Errorf("unsupported Hub database type %q; only postgres is supported", databaseType)
 	}
-	var root string
-	if value := os.Getenv(hubHomeEnv); value != "" {
-		root = value
-	} else if value := os.Getenv(skillsGoHomeEnv); value != "" {
-		root = filepath.Join(value, "hub")
-	} else {
-		home, err := userHomeDir()
-		if err != nil {
-			return "", fmt.Errorf("resolve SkillsGo home directory: %w", err)
-		}
-		root = filepath.Join(home, defaultSkillsGoDirectory, "hub")
-	}
-	return filepath.Join(root, "metadata", "hub.db"), nil
+	return configured, nil
 }
 
 // resolveHubCacheDir applies the Hub directory precedence without

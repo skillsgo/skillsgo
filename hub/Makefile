@@ -51,6 +51,14 @@ setup-dev-env:
 lint:
 	@golangci-lint run ./...
 
+.PHONY: generate
+generate: ## regenerate typed PostgreSQL Catalog queries
+	go tool sqlc generate
+
+.PHONY: check-generated
+check-generated: ## verify committed sqlc output is current
+	go tool sqlc diff
+
 .PHONY: lint-docker
 lint-docker:
 	@docker run -t --rm -v $(CURDIR):/app -w /app golangci/golangci-lint:$(GOLANGCI_LINT_VERSION) golangci-lint run ./...
