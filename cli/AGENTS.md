@@ -33,15 +33,14 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/agent/` | Supported Agent definitions, detection, and installation locations. |
 | `internal/command/` | CLI command graph, argument handling, and orchestration. |
 | `internal/i18n/` | Locale detection and user-facing CLI messages. |
-| `internal/install/` | Add, update, remove, copy-digest, explicit replacement, and materialization behavior. |
+| `internal/install/` | Minimal installation-scope vocabulary and External filesystem state tokens. |
 | `internal/inventory/` | Read-only Repository-managed and External Library reconciliation across YAML/Lock state, Scope Vendors, Repository Projections, known Agent Discovery Roots, Local Modifications, and derived Agent visibility. |
 | `internal/managementplan/` | Exact-target managed Remove/Repair and External Remove preflight, reviewed-state binding, and target-specific execution. |
-| `internal/project/` | Strict Repository dependencies in `skillsgo.yaml`, integrity-only `skillsgo.lock`, their paired transaction, and migration-era local receipt readers. |
+| `internal/project/` | Strict Repository dependencies in `skillsgo.yaml`, integrity-only `skillsgo.lock`, and their paired crash-recoverable transaction. |
 | `internal/infocache/` | Exact immutable Repository and Skill Info bytes used for checksum-verified offline restore. |
 | `internal/hub/` | Client for add-time product-API Repository resolution followed by exact root Proxy Info/ZIP, typed membership, bounded download, and Repository h1 verification. |
 | `internal/source/` | Skill ID parsing and source reference normalization. |
 | `internal/scopevendor/` | Complete ordinary-file Repository Vendor extraction and deterministic per-Agent Repository Projection transactions. |
-| `internal/store/` | User-level shared Hub/Local/captured immutable artifact cache, private Local import/export, and verified takeover baselines. |
 | `internal/strictjson/` | Shared strict decoding for repeated machine-input JSON object lists at CLI Plan boundaries. |
 | `internal/terminalui/` | Human terminal documents, automatic Interactive/Plain selection, responsive styling, and live operation progress. |
 | `internal/trash/` | Cross-platform recoverable disposal of user-owned installation content through the desktop Trash or Recycle Bin. |

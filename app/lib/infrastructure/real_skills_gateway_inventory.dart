@@ -571,7 +571,6 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
           name: skill.name,
           source: switch (skill.provenance) {
             LibraryProvenance.hub => 'Hub',
-            LibraryProvenance.local => 'Local',
             LibraryProvenance.external => 'External',
           },
           markdown: markdown,

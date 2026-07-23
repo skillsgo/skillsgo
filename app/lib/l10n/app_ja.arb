@@ -1041,8 +1041,6 @@
   },
   "batchTakeoverClose": "閉じる",
   "installMoreTargets": "より多くの場所にインストールする",
-  "exportLocalSkill": "エクスポート",
-  "exportLocalSkillDescription": "このローカル スキルをポータブルな ZIP アーカイブとしてエクスポートします。",
   "detailRepository": "リポジトリ",
   "detailStars": "スター",
   "detailUpdated": "更新されました",

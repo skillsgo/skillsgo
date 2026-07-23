@@ -6,7 +6,7 @@
 - `fake_gateway_core.dart`: owns constructor controls, shared scenario state, onboarding, one-time takeover-introduction preferences, projects, and canonical fixtures.
 - `fake_gateway_system.dart`: implements CLI detection, discovery, remote detail, and system status behavior.
 - `fake_gateway_inventory.dart`: implements installed inventory, local detail, and update-state inspection behavior.
-- `fake_gateway_installation.dart`: implements installation planning, execution, and Local export behavior.
+- `fake_gateway_installation.dart`: implements Repository installation planning and execution behavior.
 - `fake_gateway_target_management.dart`: implements exact target management and batch takeover behavior.
 - `fake_gateway_updates.dart`: implements update planning, execution, progress, and failed-target retry behavior.
 

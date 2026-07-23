@@ -1813,13 +1813,6 @@ class AppLocalizationsDe extends AppLocalizations {
   String get installMoreTargets => 'An mehreren Standorten installieren';
 
   @override
-  String get exportLocalSkill => 'Export';
-
-  @override
-  String get exportLocalSkillDescription =>
-      'Exportieren Sie dieses lokale Skill als tragbares ZIP-Archiv.';
-
-  @override
   String get detailRepository => 'Repository';
 
   @override

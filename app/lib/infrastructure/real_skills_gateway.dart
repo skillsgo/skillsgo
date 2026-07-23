@@ -34,7 +34,6 @@ part 'real_skills_gateway_failures.dart';
 typedef DirectoryPicker = Future<String?> Function({String? initialDirectory});
 typedef DirectoryPathsPicker =
     Future<List<String>> Function({String? initialDirectory});
-typedef SavePathPicker = Future<String?> Function(String suggestedName);
 typedef ProjectPathInspector =
     Future<({ProjectAccessState state, String? diagnostic})> Function(
       String path,
@@ -82,7 +81,6 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
     String? appVersion,
     DirectoryPicker? directoryPicker,
     DirectoryPathsPicker? directoryPathsPicker,
-    SavePathPicker? savePathPicker,
     ProjectPathInspector? projectPathInspector,
     this._projectIconResolver = const ProjectIconResolver(),
   }) : _runner = processRunner ?? const IoProcessRunner(),
@@ -95,7 +93,6 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
        _injectedAppVersion = appVersion,
        _directoryPicker = directoryPicker ?? _pickDirectory,
        _directoryPathsPicker = directoryPathsPicker ?? _pickDirectories,
-       _savePathPicker = savePathPicker ?? _pickSavePath,
        _projectPathInspector = projectPathInspector ?? _inspectProjectPath;
 
   final ProcessRunner _runner;
@@ -107,7 +104,6 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   final String? _injectedAppVersion;
   final DirectoryPicker _directoryPicker;
   final DirectoryPathsPicker _directoryPathsPicker;
-  final SavePathPicker _savePathPicker;
   final ProjectPathInspector _projectPathInspector;
   final ProjectIconResolver _projectIconResolver;
   String? _cliPath;
@@ -122,14 +118,6 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
   }) async => (await file_selector.getDirectoryPaths(
     initialDirectory: initialDirectory,
   )).whereType<String>().toList(growable: false);
-
-  static Future<String?> _pickSavePath(String suggestedName) async =>
-      (await file_selector.getSaveLocation(
-        suggestedName: suggestedName,
-        acceptedTypeGroups: const [
-          file_selector.XTypeGroup(label: 'ZIP archive', extensions: ['zip']),
-        ],
-      ))?.path;
 
   static Future<({ProjectAccessState state, String? diagnostic})>
   _inspectProjectPath(String path) async {
@@ -211,7 +199,6 @@ class RealSkillsGateway extends _RealSkillsGatewayCore
     super.appVersion,
     super.directoryPicker,
     super.directoryPathsPicker,
-    super.savePathPicker,
     super.projectPathInspector,
     super.projectIconResolver,
   });

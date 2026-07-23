@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Unified Library grouping, degraded Hub behavior, local detail diagnostics, and selection motion.
+ * [OUTPUT]: Specifies Unified Library grouping, degraded Hub behavior, External detail diagnostics, and selection motion.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -46,28 +46,26 @@ void main() {
           ),
         ],
       );
-      const localEntry = InstalledSkill(
-        inventoryKey: 'local:private',
-        name: 'private-local',
+      const externalEntry = InstalledSkill(
+        inventoryKey: 'external:private',
+        name: 'private-external',
         path: '/Users/test/.codex/skills/private-local',
         agents: ['codex'],
         targetCount: 1,
-        skillId: 'local.skillsgo/abc/private-local',
-        provenance: LibraryProvenance.local,
-        versions: ['local-abc'],
+        provenance: LibraryProvenance.external,
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
             scope: InstallationScope.user,
             path: '/Users/test/.codex/skills/private-local',
-            version: 'local-abc',
+            version: '',
           ),
         ],
       );
       final gateway = FakeSkillsGateway(
         installed: false,
         addedProjects: const [project],
-        libraryEntries: const [hubEntry, localEntry],
+        libraryEntries: const [hubEntry, externalEntry],
         updateCheckErrors: const [
           SkillsException(
             'network unavailable',
@@ -97,7 +95,7 @@ void main() {
       await tester.tap(find.text('Codex'));
       await tester.pumpAndSettle();
       expect(find.text('hub-demo'), findsOneWidget);
-      expect(find.text('private-local'), findsOneWidget);
+      expect(find.text('private-external'), findsOneWidget);
     },
   );
 

@@ -1736,13 +1736,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get installMoreTargets => 'より多くの場所にインストールする';
 
   @override
-  String get exportLocalSkill => 'エクスポート';
-
-  @override
-  String get exportLocalSkillDescription =>
-      'このローカル スキルをポータブルな ZIP アーカイブとしてエクスポートします。';
-
-  @override
   String get detailRepository => 'リポジトリ';
 
   @override

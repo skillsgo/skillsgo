@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses controlled CLI arguments and responses, temporary local Skill trees, file pickers, and the production SkillsGateway adapter.
- * [OUTPUT]: Specifies hostile-argument safety, direct installation, local detail, External inspection, exact Batch Takeover planning and named scope-bound execution results, and Local export contracts.
+ * [OUTPUT]: Specifies hostile-argument safety, direct installation, local detail, External inspection, and exact Batch Takeover planning plus named scope-bound execution results.
  * [POS]: Serves as the Installation Request and local Skill contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -423,83 +423,4 @@ void main() {
       'json',
     ]);
   });
-
-  test(
-    'Local export honors cancellation and exact destination arguments',
-    () async {
-      const local = InstalledSkill(
-        inventoryKey: 'local:abc',
-        name: 'Private Demo',
-        path: '/tmp/private',
-        agents: ['codex'],
-        targetCount: 1,
-        skillId: 'local.skillsgo/abc/Private-Demo',
-        provenance: LibraryProvenance.local,
-        versions: ['local-abc'],
-        targets: [
-          SkillInstallationTarget(
-            agent: 'codex',
-            scope: InstallationScope.user,
-            path: '/tmp/private',
-            version: 'local-abc',
-          ),
-        ],
-      );
-      final cancelledRunner = FakeProcessRunner();
-      final cancelled = RealSkillsGateway(
-        processRunner: cancelledRunner,
-        initialCliPath: '/bin/skillsgo',
-        savePathPicker: (_) async => null,
-      );
-      expect(await cancelled.exportLocalSkill(local), isNull);
-      expect(cancelledRunner.calls, isEmpty);
-
-      final runner = FakeProcessRunner()
-        ..result = const ProcessOutput(
-          exitCode: 0,
-          stdout:
-              '{"schemaVersion":1,"phase":"local-export","skillId":"local.skillsgo/abc/Private-Demo","version":"local-abc","destination":"/tmp/export destination.zip"}',
-          stderr: '',
-        );
-      final gateway = RealSkillsGateway(
-        processRunner: runner,
-        initialCliPath: '/bin/skillsgo',
-        savePathPicker: (name) async {
-          expect(name, 'Private Demo.zip');
-          return '/tmp/export destination.zip';
-        },
-      );
-
-      final result = await gateway.exportLocalSkill(local);
-
-      expect(result?.succeeded, isTrue);
-      expect(runner.lastArguments, [
-        'export',
-        '--skill-id',
-        'local.skillsgo/abc/Private-Demo',
-        '--version',
-        'local-abc',
-        '--destination',
-        '/tmp/export destination.zip',
-        '--output',
-        'json',
-      ]);
-
-      runner.result = const ProcessOutput(
-        exitCode: 0,
-        stdout: 'Exported successfully.',
-        stderr: '',
-      );
-      await expectLater(
-        gateway.exportLocalSkill(local),
-        throwsA(
-          isA<SkillsException>().having(
-            (error) => error.kind,
-            'kind',
-            SkillsFailureKind.invalidResponse,
-          ),
-        ),
-      );
-    },
-  );
 }

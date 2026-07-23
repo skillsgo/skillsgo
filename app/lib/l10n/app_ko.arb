@@ -1041,8 +1041,6 @@
   },
   "batchTakeoverClose": "닫기",
   "installMoreTargets": "더 많은 위치에 설치",
-  "exportLocalSkill": "수출",
-  "exportLocalSkillDescription": "이 로컬 스킬을 휴대용 ZIP 아카이브로 내보냅니다.",
   "detailRepository": "저장소",
   "detailStars": "별",
   "detailUpdated": "업데이트됨",

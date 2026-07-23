@@ -1818,13 +1818,6 @@ class AppLocalizationsRu extends AppLocalizations {
   String get installMoreTargets => 'Установить в большем количестве мест';
 
   @override
-  String get exportLocalSkill => 'Экспорт';
-
-  @override
-  String get exportLocalSkillDescription =>
-      'Экспортируйте этот локальный Skill как портативный архив ZIP.';
-
-  @override
   String get detailRepository => 'Репозиторий';
 
   @override

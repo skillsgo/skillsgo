@@ -3123,18 +3123,6 @@ abstract class AppLocalizations {
   /// **'Install in more locations'**
   String get installMoreTargets;
 
-  /// No description provided for @exportLocalSkill.
-  ///
-  /// In en, this message translates to:
-  /// **'Export'**
-  String get exportLocalSkill;
-
-  /// No description provided for @exportLocalSkillDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'Export this Local Skill as a portable ZIP archive.'**
-  String get exportLocalSkillDescription;
-
   /// No description provided for @detailRepository.
   ///
   /// In en, this message translates to:

@@ -1790,13 +1790,6 @@ class AppLocalizationsTh extends AppLocalizations {
   String get installMoreTargets => 'ติดตั้งในสถานที่เพิ่มเติม';
 
   @override
-  String get exportLocalSkill => 'ส่งออก';
-
-  @override
-  String get exportLocalSkillDescription =>
-      'ส่งออกทักษะท้องถิ่นนี้เป็นไฟล์ ZIP แบบพกพา';
-
-  @override
   String get detailRepository => 'พื้นที่เก็บข้อมูล';
 
   @override

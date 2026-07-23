@@ -1041,8 +1041,6 @@
   },
   "batchTakeoverClose": "Fermer",
   "installMoreTargets": "Installer dans plus d'endroits",
-  "exportLocalSkill": "Exporter",
-  "exportLocalSkillDescription": "Exportez ce Skill local en tant qu'archive ZIP portable.",
   "detailRepository": "Dépôt",
   "detailStars": "Étoiles",
   "detailUpdated": "Mis à jour",

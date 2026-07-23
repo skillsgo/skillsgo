@@ -14,8 +14,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/skillsgo/skillsgo/cli/internal/install"
 )
 
 type failSecondWrite struct {
@@ -70,12 +68,11 @@ func TestNDJSONProgressIsFollowedByFinalFailureDocument(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(externalPath, "SKILL.md"), []byte("---\nname: external-demo\n---\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	target := install.Target{Agent: "test-agent", Scope: install.ScopeUser, Mode: install.Mode("external"), Path: externalPath}
-	preflight := managementPreflight(t, "remove", target, "")
+	preflight := managementPreflight(t, "remove", externalPath, "test-agent", "")
 
 	stdout := &failSecondWrite{}
 	var stderr bytes.Buffer
-	err := Execute([]string{"remove", "--path", target.Path, "--agent", target.Agent, "--expected-state", preflight.StateToken, "--output", "ndjson"}, stdout, &stderr)
+	err := Execute([]string{"remove", "--path", externalPath, "--agent", "test-agent", "--expected-state", preflight.StateToken, "--output", "ndjson"}, stdout, &stderr)
 	if err == nil {
 		t.Fatal("expected transient output failure")
 	}

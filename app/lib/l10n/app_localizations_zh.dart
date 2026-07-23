@@ -1662,12 +1662,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get installMoreTargets => '安装到更多位置';
 
   @override
-  String get exportLocalSkill => '导出';
-
-  @override
-  String get exportLocalSkillDescription => '将这个本地技能导出为可移植的 ZIP 归档。';
-
-  @override
   String get detailRepository => '仓库';
 
   @override
@@ -3424,12 +3418,6 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get installMoreTargets => '安裝到更多位置';
-
-  @override
-  String get exportLocalSkill => '導出';
-
-  @override
-  String get exportLocalSkillDescription => '將這個本地技能導出為可移植的 ZIP 歸檔。';
 
   @override
   String get detailRepository => '倉庫';
@@ -5189,12 +5177,6 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get installMoreTargets => '安裝到更多位置';
-
-  @override
-  String get exportLocalSkill => '匯出';
-
-  @override
-  String get exportLocalSkillDescription => '將這個本地技能匯出為可移植的 ZIP 歸檔。';
 
   @override
   String get detailRepository => '倉庫';

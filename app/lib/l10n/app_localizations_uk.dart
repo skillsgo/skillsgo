@@ -1809,13 +1809,6 @@ class AppLocalizationsUk extends AppLocalizations {
   String get installMoreTargets => 'Встановити в інших місцях';
 
   @override
-  String get exportLocalSkill => 'Експорт';
-
-  @override
-  String get exportLocalSkillDescription =>
-      'Експортуйте цей локальний Skill як портативний архів ZIP.';
-
-  @override
   String get detailRepository => 'Репозиторій';
 
   @override

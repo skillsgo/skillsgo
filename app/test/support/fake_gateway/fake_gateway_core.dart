@@ -245,7 +245,6 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
   final takeoverPlanRequests = <List<String>>[];
   final takeoverRequests =
       <({BatchTakeoverPlan plan, BatchTakeoverScope scope})>[];
-  int exportCalls = 0;
   int detailLoads = 0;
   int agentInspections = 0;
   String? savedPath;

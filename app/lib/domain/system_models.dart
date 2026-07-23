@@ -74,7 +74,7 @@ enum InstallationHealth {
   unexpectedPath,
 }
 
-enum LibraryProvenance { hub, local, external }
+enum LibraryProvenance { hub, external }
 
 enum ProjectAccessState { accessible, missing, permissionDenied, inaccessible }
 
