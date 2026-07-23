@@ -48,20 +48,20 @@ _Avoid_: River job, atomic repository import, installation request
 An immutable Repository Publication created by Repository History Backfill that remains exactly downloadable without making a Skill absent from the current publication visible in discovery or rankings.
 _Avoid_: current catalog entry, archived metadata, resurrected Skill
 
-**Repository Batch Version**:
-The canonical immutable version shared by Repository Info and every Skill Info member observed at one source commit. `release` selects the highest stable canonical semantic-version Tag and falls back to the highest canonical pre-release; `head` resolves the default-branch HEAD to a commit-based pseudo-version. An untagged revision derives its pseudo-version base from the highest canonical semantic-version Tag among its ancestors, so the pseudo-version sorts above that base and below the next tagged version; without an ancestor Tag, it uses the `v0.0.0` form. Exact pseudo-version requests must authenticate their canonical 12-character commit suffix, commit timestamp, and optional ancestor base Tag while preserving a historically generated no-Tag pseudo-version if that commit is tagged later. A member's Git Tree SHA identifies that Skill directory's content for change detection; it never replaces the shared batch version or the pseudo-version's commit suffix.
+**Repository Version**:
+The canonical immutable version of one Repository Release at one source commit. `release` selects the highest stable canonical semantic-version Tag and falls back to the highest canonical pre-release; `head` resolves the default-branch HEAD to a commit-based pseudo-version. An untagged revision derives its pseudo-version base from the highest canonical semantic-version Tag among its ancestors, so the pseudo-version sorts above that base and below the next tagged version; without an ancestor Tag, it uses the `v0.0.0` form. Exact pseudo-version requests must authenticate their canonical 12-character commit suffix, commit timestamp, and optional ancestor base Tag while preserving a historically generated no-Tag pseudo-version if that commit is tagged later. A member's Git Tree SHA identifies that Skill directory's content for change detection; it never becomes an independent member version or replaces the Repository Version's commit suffix.
 _Avoid_: per-Skill pseudo-version, Tree-SHA version suffix, mutable selector in persisted dependencies
 
-**Published Version**:
-An immutable Skill version declared by a canonical semantic-version Git tag. The tag resolves to one commit permanently; moving a previously published tag is a conflict and never overwrites Hub data. A GitHub Release is optional presentation metadata and is not a version signal.
-_Avoid_: GitHub Release, mutable branch head, npm-style publish event
+**Repository Release**:
+An immutable Repository Version, commit, Info, Sum, archive size, and complete Skill membership made atomically visible by Repository Publication. A canonical semantic-version Tag resolves to one commit permanently; moving a previously published Tag is a conflict and never overwrites Hub data. A GitHub Release is optional presentation metadata and is not a version signal.
+_Avoid_: Skill version, GitHub Release, mutable branch head, npm-style publish event
 
 **Revision Resolution**:
 An explicit add-time resolution of a semantic Tag, branch, commit hash, or exact canonical semantic/pseudo-version to one immutable commit and canonical version. Branches may advance between requests, but each result names an immutable version that never advances; install and exact artifact reads never resolve the movable input again.
 _Avoid_: branch subscription, persisted branch, mutable artifact
 
 **Skill Info**:
-The immutable member metadata for one Skill observed in a Repository Release. It contains canonical Skill Name, Repository ID and version, source-relative Skill Path, normalized `SKILL.md` frontmatter, and source tree identity, but no concatenated public Skill ID, independent ZIP, archive size, or artifact Sum. Mutable Risk/audit evidence is excluded and belongs to a downstream assessment resource.
+The immutable member metadata for one Skill observed in a Repository Release. It contains canonical Skill Name, Repository ID and Repository Version, source-relative Skill Path, normalized `SKILL.md` frontmatter, and source tree identity, but no concatenated public Skill ID, independent version, ZIP, archive size, artifact Sum, or mutable assessment evidence.
 _Avoid_: Skill artifact, Skill ZIP, Skill Sum, mutable branch response
 
 **Skill Path**:
@@ -104,10 +104,6 @@ _Avoid_: Hub account, mirror name
 The Hub's statement about source ownership and maintenance, including unverified, community verified, publisher verified, official, warned, and delisted states.
 _Avoid_: safety score, popularity rank
 
-**Risk Assessment**:
-An append-only downstream assessment bound to an immutable artifact Sum. It is not part of publication atomicity or immutable Skill Info; re-scanning creates a new assessment rather than overwriting historical evidence.
-_Avoid_: mutable Skill status, trust level
-
 **Cloud Deployment Discovery**:
 The minimal public Hub declaration containing `mode` and, only in Cloud mode, the configured Cloud origin. It selects the independent Cloud data plane without becoming a capability-negotiation protocol.
 _Avoid_: capability matrix, Cloud proxy, shared database
@@ -117,7 +113,7 @@ The source repository's current public star count, recorded as contextual discov
 _Avoid_: Skill stars, quality score, recommendation score
 
 **Source Updated At**:
-The source commit time of an immutable Skill version. It describes when the served source revision changed, not when the Hub fetched, indexed, or audited it.
+The source commit time of the Repository Release containing a Skill member. It describes when the served source revision changed, not when the Hub fetched or indexed it.
 _Avoid_: Hub update time, cache refresh time, repository API updated_at
 
 **Archive Size**:

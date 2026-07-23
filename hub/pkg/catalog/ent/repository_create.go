@@ -12,6 +12,7 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"entgo.io/ent/schema/field"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repositoryrelease"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
 )
 
@@ -38,6 +39,20 @@ func (_c *RepositoryCreate) SetRepositoryPath(v string) *RepositoryCreate {
 // SetRepositoryID sets the "repository_id" field.
 func (_c *RepositoryCreate) SetRepositoryID(v string) *RepositoryCreate {
 	_c.mutation.SetRepositoryID(v)
+	return _c
+}
+
+// SetCurrentReleaseID sets the "current_release_id" field.
+func (_c *RepositoryCreate) SetCurrentReleaseID(v int64) *RepositoryCreate {
+	_c.mutation.SetCurrentReleaseID(v)
+	return _c
+}
+
+// SetNillableCurrentReleaseID sets the "current_release_id" field if the given value is not nil.
+func (_c *RepositoryCreate) SetNillableCurrentReleaseID(v *int64) *RepositoryCreate {
+	if v != nil {
+		_c.SetCurrentReleaseID(*v)
+	}
 	return _c
 }
 
@@ -158,6 +173,26 @@ func (_c *RepositoryCreate) AddSkills(v ...*Skill) *RepositoryCreate {
 		ids[i] = v[i].ID
 	}
 	return _c.AddSkillIDs(ids...)
+}
+
+// AddReleaseIDs adds the "releases" edge to the RepositoryRelease entity by IDs.
+func (_c *RepositoryCreate) AddReleaseIDs(ids ...int64) *RepositoryCreate {
+	_c.mutation.AddReleaseIDs(ids...)
+	return _c
+}
+
+// AddReleases adds the "releases" edges to the RepositoryRelease entity.
+func (_c *RepositoryCreate) AddReleases(v ...*RepositoryRelease) *RepositoryCreate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _c.AddReleaseIDs(ids...)
+}
+
+// SetCurrentRelease sets the "current_release" edge to the RepositoryRelease entity.
+func (_c *RepositoryCreate) SetCurrentRelease(v *RepositoryRelease) *RepositoryCreate {
+	return _c.SetCurrentReleaseID(v.ID)
 }
 
 // Mutation returns the RepositoryMutation object of the builder.
@@ -340,6 +375,39 @@ func (_c *RepositoryCreate) createSpec() (*Repository, *sqlgraph.CreateSpec) {
 		}
 		_spec.Edges = append(_spec.Edges, edge)
 	}
+	if nodes := _c.mutation.ReleasesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   repository.ReleasesTable,
+			Columns: []string{repository.ReleasesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repositoryrelease.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges = append(_spec.Edges, edge)
+	}
+	if nodes := _c.mutation.CurrentReleaseIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   repository.CurrentReleaseTable,
+			Columns: []string{repository.CurrentReleaseColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repositoryrelease.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_node.CurrentReleaseID = &nodes[0]
+		_spec.Edges = append(_spec.Edges, edge)
+	}
 	return _node, _spec
 }
 
@@ -425,6 +493,24 @@ func (u *RepositoryUpsert) SetRepositoryID(v string) *RepositoryUpsert {
 // UpdateRepositoryID sets the "repository_id" field to the value that was provided on create.
 func (u *RepositoryUpsert) UpdateRepositoryID() *RepositoryUpsert {
 	u.SetExcluded(repository.FieldRepositoryID)
+	return u
+}
+
+// SetCurrentReleaseID sets the "current_release_id" field.
+func (u *RepositoryUpsert) SetCurrentReleaseID(v int64) *RepositoryUpsert {
+	u.Set(repository.FieldCurrentReleaseID, v)
+	return u
+}
+
+// UpdateCurrentReleaseID sets the "current_release_id" field to the value that was provided on create.
+func (u *RepositoryUpsert) UpdateCurrentReleaseID() *RepositoryUpsert {
+	u.SetExcluded(repository.FieldCurrentReleaseID)
+	return u
+}
+
+// ClearCurrentReleaseID clears the value of the "current_release_id" field.
+func (u *RepositoryUpsert) ClearCurrentReleaseID() *RepositoryUpsert {
+	u.SetNull(repository.FieldCurrentReleaseID)
 	return u
 }
 
@@ -623,6 +709,27 @@ func (u *RepositoryUpsertOne) SetRepositoryID(v string) *RepositoryUpsertOne {
 func (u *RepositoryUpsertOne) UpdateRepositoryID() *RepositoryUpsertOne {
 	return u.Update(func(s *RepositoryUpsert) {
 		s.UpdateRepositoryID()
+	})
+}
+
+// SetCurrentReleaseID sets the "current_release_id" field.
+func (u *RepositoryUpsertOne) SetCurrentReleaseID(v int64) *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.SetCurrentReleaseID(v)
+	})
+}
+
+// UpdateCurrentReleaseID sets the "current_release_id" field to the value that was provided on create.
+func (u *RepositoryUpsertOne) UpdateCurrentReleaseID() *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.UpdateCurrentReleaseID()
+	})
+}
+
+// ClearCurrentReleaseID clears the value of the "current_release_id" field.
+func (u *RepositoryUpsertOne) ClearCurrentReleaseID() *RepositoryUpsertOne {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.ClearCurrentReleaseID()
 	})
 }
 
@@ -1005,6 +1112,27 @@ func (u *RepositoryUpsertBulk) SetRepositoryID(v string) *RepositoryUpsertBulk {
 func (u *RepositoryUpsertBulk) UpdateRepositoryID() *RepositoryUpsertBulk {
 	return u.Update(func(s *RepositoryUpsert) {
 		s.UpdateRepositoryID()
+	})
+}
+
+// SetCurrentReleaseID sets the "current_release_id" field.
+func (u *RepositoryUpsertBulk) SetCurrentReleaseID(v int64) *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.SetCurrentReleaseID(v)
+	})
+}
+
+// UpdateCurrentReleaseID sets the "current_release_id" field to the value that was provided on create.
+func (u *RepositoryUpsertBulk) UpdateCurrentReleaseID() *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.UpdateCurrentReleaseID()
+	})
+}
+
+// ClearCurrentReleaseID clears the value of the "current_release_id" field.
+func (u *RepositoryUpsertBulk) ClearCurrentReleaseID() *RepositoryUpsertBulk {
+	return u.Update(func(s *RepositoryUpsert) {
+		s.ClearCurrentReleaseID()
 	})
 }
 

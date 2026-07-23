@@ -16,12 +16,12 @@ type Tx struct {
 	LocalizedDescription *LocalizedDescriptionClient
 	// Repository is the client for interacting with the Repository builders.
 	Repository *RepositoryClient
-	// RiskAssessment is the client for interacting with the RiskAssessment builders.
-	RiskAssessment *RiskAssessmentClient
+	// RepositoryRelease is the client for interacting with the RepositoryRelease builders.
+	RepositoryRelease *RepositoryReleaseClient
+	// RepositoryReleaseMember is the client for interacting with the RepositoryReleaseMember builders.
+	RepositoryReleaseMember *RepositoryReleaseMemberClient
 	// Skill is the client for interacting with the Skill builders.
 	Skill *SkillClient
-	// SkillVersion is the client for interacting with the SkillVersion builders.
-	SkillVersion *SkillVersionClient
 
 	// lazily loaded.
 	client     *Client
@@ -155,9 +155,9 @@ func (tx *Tx) Client() *Client {
 func (tx *Tx) init() {
 	tx.LocalizedDescription = NewLocalizedDescriptionClient(tx.config)
 	tx.Repository = NewRepositoryClient(tx.config)
-	tx.RiskAssessment = NewRiskAssessmentClient(tx.config)
+	tx.RepositoryRelease = NewRepositoryReleaseClient(tx.config)
+	tx.RepositoryReleaseMember = NewRepositoryReleaseMemberClient(tx.config)
 	tx.Skill = NewSkillClient(tx.config)
-	tx.SkillVersion = NewSkillVersionClient(tx.config)
 }
 
 // txDriver wraps the given dialect.Tx with a nop dialect.Driver implementation.

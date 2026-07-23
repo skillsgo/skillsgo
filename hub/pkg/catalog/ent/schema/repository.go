@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Ent schema fields and indexes for normalized Source Repository identity.
- * [OUTPUT]: Defines the repositories registry with normalized identity, shared provider description/popularity cache state, and owning Skill edges.
+ * [OUTPUT]: Defines the repositories registry with normalized identity, shared provider metadata, current Catalog Release pointer, Skills, and immutable Releases.
  * [POS]: Serves as the authoritative ORM schema for repository-level discovery and publication ownership.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -23,6 +23,7 @@ func (Repository) Fields() []ent.Field {
 		field.String("source_host").NotEmpty(),
 		field.String("repository_path").NotEmpty(),
 		field.String("repository_id").NotEmpty(),
+		field.Int64("current_release_id").Optional().Nillable(),
 		field.String("description").Default(""),
 		field.Int64("stars").Default(0),
 		field.String("source_metadata_etag").Optional(),
@@ -34,7 +35,11 @@ func (Repository) Fields() []ent.Field {
 }
 
 func (Repository) Edges() []ent.Edge {
-	return []ent.Edge{edge.To("skills", Skill.Type)}
+	return []ent.Edge{
+		edge.To("skills", Skill.Type),
+		edge.To("releases", RepositoryRelease.Type),
+		edge.To("current_release", RepositoryRelease.Type).Field("current_release_id").Unique(),
+	}
 }
 
 func (Repository) Indexes() []ent.Index {

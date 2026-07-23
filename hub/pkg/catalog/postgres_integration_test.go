@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the shared Catalog contract against an opt-in Testcontainers PostgreSQL service.
- * [OUTPUT]: Specifies shared pgx pooling plus PostgreSQL parity for search, immutable versions, and append-only risk evidence.
+ * [OUTPUT]: Specifies shared pgx pooling plus PostgreSQL parity for search and Repository-owned immutable Releases.
  * [POS]: Serves as real-PostgreSQL integration coverage for the Hub discovery metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -51,18 +51,12 @@ func TestPostgresCatalog(t *testing.T) {
 	} {
 		require.NoError(t, c.UpsertSkill(ctx, item))
 	}
-	version, err := c.RecordSkillVersion(ctx, skill.RepositoryID, skill.Name, SkillVersion{
-		Version: "v1.0.0", CommitSHA: "commit-a", TreeSHA: "tree-a", RelativePath: ".",
-	})
+	publishTestRepository(t, c, skill.RepositoryID, "v1.0.0", "commit-a", "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", CurrentPublication, []PublishedSkill{{
+		Skill: *skill, Member: RepositoryReleaseMember{Name: skill.Name, SkillPath: ".", TreeSHA: "tree-a"},
+	}})
+	member, err := c.CurrentRepositoryReleaseMember(ctx, skill.RepositoryID, skill.Name)
 	require.NoError(t, err)
-	assessment, err := c.AppendRiskAssessment(ctx, version.RowID, RiskAssessment{
-		Level: "medium", ScannerVersion: "file-signals/v1", Evidence: `[{"code":"script_file","path":"scripts/run.sh"}]`,
-	})
-	require.NoError(t, err)
-	require.NotZero(t, assessment.RowID)
-	assessments, err := c.RiskAssessments(ctx, version.RowID)
-	require.NoError(t, err)
-	require.Len(t, assessments, 1)
+	require.Equal(t, "v1.0.0", member.Version)
 	results, err := c.Search(ctx, "presentation", 2, 0)
 	require.NoError(t, err)
 	require.Len(t, results, 2)

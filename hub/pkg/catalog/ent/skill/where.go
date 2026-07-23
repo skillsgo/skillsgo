@@ -85,16 +85,6 @@ func SkillPath(v string) predicate.Skill {
 	return predicate.Skill(sql.FieldEQ(FieldSkillPath, v))
 }
 
-// LatestVersion applies equality check predicate on the "latest_version" field. It's identical to LatestVersionEQ.
-func LatestVersion(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldEQ(FieldLatestVersion, v))
-}
-
-// Discoverable applies equality check predicate on the "discoverable" field. It's identical to DiscoverableEQ.
-func Discoverable(v bool) predicate.Skill {
-	return predicate.Skill(sql.FieldEQ(FieldDiscoverable, v))
-}
-
 // Verified applies equality check predicate on the "verified" field. It's identical to VerifiedEQ.
 func Verified(v bool) predicate.Skill {
 	return predicate.Skill(sql.FieldEQ(FieldVerified, v))
@@ -455,81 +445,6 @@ func SkillPathContainsFold(v string) predicate.Skill {
 	return predicate.Skill(sql.FieldContainsFold(FieldSkillPath, v))
 }
 
-// LatestVersionEQ applies the EQ predicate on the "latest_version" field.
-func LatestVersionEQ(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldEQ(FieldLatestVersion, v))
-}
-
-// LatestVersionNEQ applies the NEQ predicate on the "latest_version" field.
-func LatestVersionNEQ(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldNEQ(FieldLatestVersion, v))
-}
-
-// LatestVersionIn applies the In predicate on the "latest_version" field.
-func LatestVersionIn(vs ...string) predicate.Skill {
-	return predicate.Skill(sql.FieldIn(FieldLatestVersion, vs...))
-}
-
-// LatestVersionNotIn applies the NotIn predicate on the "latest_version" field.
-func LatestVersionNotIn(vs ...string) predicate.Skill {
-	return predicate.Skill(sql.FieldNotIn(FieldLatestVersion, vs...))
-}
-
-// LatestVersionGT applies the GT predicate on the "latest_version" field.
-func LatestVersionGT(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldGT(FieldLatestVersion, v))
-}
-
-// LatestVersionGTE applies the GTE predicate on the "latest_version" field.
-func LatestVersionGTE(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldGTE(FieldLatestVersion, v))
-}
-
-// LatestVersionLT applies the LT predicate on the "latest_version" field.
-func LatestVersionLT(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldLT(FieldLatestVersion, v))
-}
-
-// LatestVersionLTE applies the LTE predicate on the "latest_version" field.
-func LatestVersionLTE(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldLTE(FieldLatestVersion, v))
-}
-
-// LatestVersionContains applies the Contains predicate on the "latest_version" field.
-func LatestVersionContains(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldContains(FieldLatestVersion, v))
-}
-
-// LatestVersionHasPrefix applies the HasPrefix predicate on the "latest_version" field.
-func LatestVersionHasPrefix(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldHasPrefix(FieldLatestVersion, v))
-}
-
-// LatestVersionHasSuffix applies the HasSuffix predicate on the "latest_version" field.
-func LatestVersionHasSuffix(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldHasSuffix(FieldLatestVersion, v))
-}
-
-// LatestVersionEqualFold applies the EqualFold predicate on the "latest_version" field.
-func LatestVersionEqualFold(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldEqualFold(FieldLatestVersion, v))
-}
-
-// LatestVersionContainsFold applies the ContainsFold predicate on the "latest_version" field.
-func LatestVersionContainsFold(v string) predicate.Skill {
-	return predicate.Skill(sql.FieldContainsFold(FieldLatestVersion, v))
-}
-
-// DiscoverableEQ applies the EQ predicate on the "discoverable" field.
-func DiscoverableEQ(v bool) predicate.Skill {
-	return predicate.Skill(sql.FieldEQ(FieldDiscoverable, v))
-}
-
-// DiscoverableNEQ applies the NEQ predicate on the "discoverable" field.
-func DiscoverableNEQ(v bool) predicate.Skill {
-	return predicate.Skill(sql.FieldNEQ(FieldDiscoverable, v))
-}
-
 // VerifiedEQ applies the EQ predicate on the "verified" field.
 func VerifiedEQ(v bool) predicate.Skill {
 	return predicate.Skill(sql.FieldEQ(FieldVerified, v))
@@ -635,29 +550,6 @@ func HasSourceRepository() predicate.Skill {
 func HasSourceRepositoryWith(preds ...predicate.Repository) predicate.Skill {
 	return predicate.Skill(func(s *sql.Selector) {
 		step := newSourceRepositoryStep()
-		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
-			for _, p := range preds {
-				p(s)
-			}
-		})
-	})
-}
-
-// HasVersions applies the HasEdge predicate on the "versions" edge.
-func HasVersions() predicate.Skill {
-	return predicate.Skill(func(s *sql.Selector) {
-		step := sqlgraph.NewStep(
-			sqlgraph.From(Table, FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, VersionsTable, VersionsColumn),
-		)
-		sqlgraph.HasNeighbors(s, step)
-	})
-}
-
-// HasVersionsWith applies the HasEdge predicate on the "versions" edge with a given conditions (other predicates).
-func HasVersionsWith(preds ...predicate.SkillVersion) predicate.Skill {
-	return predicate.Skill(func(s *sql.Selector) {
-		step := newVersionsStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

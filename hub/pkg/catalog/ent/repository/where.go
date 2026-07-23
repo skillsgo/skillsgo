@@ -70,6 +70,11 @@ func RepositoryID(v string) predicate.Repository {
 	return predicate.Repository(sql.FieldEQ(FieldRepositoryID, v))
 }
 
+// CurrentReleaseID applies equality check predicate on the "current_release_id" field. It's identical to CurrentReleaseIDEQ.
+func CurrentReleaseID(v int64) predicate.Repository {
+	return predicate.Repository(sql.FieldEQ(FieldCurrentReleaseID, v))
+}
+
 // Description applies equality check predicate on the "description" field. It's identical to DescriptionEQ.
 func Description(v string) predicate.Repository {
 	return predicate.Repository(sql.FieldEQ(FieldDescription, v))
@@ -298,6 +303,36 @@ func RepositoryIDEqualFold(v string) predicate.Repository {
 // RepositoryIDContainsFold applies the ContainsFold predicate on the "repository_id" field.
 func RepositoryIDContainsFold(v string) predicate.Repository {
 	return predicate.Repository(sql.FieldContainsFold(FieldRepositoryID, v))
+}
+
+// CurrentReleaseIDEQ applies the EQ predicate on the "current_release_id" field.
+func CurrentReleaseIDEQ(v int64) predicate.Repository {
+	return predicate.Repository(sql.FieldEQ(FieldCurrentReleaseID, v))
+}
+
+// CurrentReleaseIDNEQ applies the NEQ predicate on the "current_release_id" field.
+func CurrentReleaseIDNEQ(v int64) predicate.Repository {
+	return predicate.Repository(sql.FieldNEQ(FieldCurrentReleaseID, v))
+}
+
+// CurrentReleaseIDIn applies the In predicate on the "current_release_id" field.
+func CurrentReleaseIDIn(vs ...int64) predicate.Repository {
+	return predicate.Repository(sql.FieldIn(FieldCurrentReleaseID, vs...))
+}
+
+// CurrentReleaseIDNotIn applies the NotIn predicate on the "current_release_id" field.
+func CurrentReleaseIDNotIn(vs ...int64) predicate.Repository {
+	return predicate.Repository(sql.FieldNotIn(FieldCurrentReleaseID, vs...))
+}
+
+// CurrentReleaseIDIsNil applies the IsNil predicate on the "current_release_id" field.
+func CurrentReleaseIDIsNil() predicate.Repository {
+	return predicate.Repository(sql.FieldIsNull(FieldCurrentReleaseID))
+}
+
+// CurrentReleaseIDNotNil applies the NotNil predicate on the "current_release_id" field.
+func CurrentReleaseIDNotNil() predicate.Repository {
+	return predicate.Repository(sql.FieldNotNull(FieldCurrentReleaseID))
 }
 
 // DescriptionEQ applies the EQ predicate on the "description" field.
@@ -675,6 +710,52 @@ func HasSkills() predicate.Repository {
 func HasSkillsWith(preds ...predicate.Skill) predicate.Repository {
 	return predicate.Repository(func(s *sql.Selector) {
 		step := newSkillsStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasReleases applies the HasEdge predicate on the "releases" edge.
+func HasReleases() predicate.Repository {
+	return predicate.Repository(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, ReleasesTable, ReleasesColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasReleasesWith applies the HasEdge predicate on the "releases" edge with a given conditions (other predicates).
+func HasReleasesWith(preds ...predicate.RepositoryRelease) predicate.Repository {
+	return predicate.Repository(func(s *sql.Selector) {
+		step := newReleasesStep()
+		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
+			for _, p := range preds {
+				p(s)
+			}
+		})
+	})
+}
+
+// HasCurrentRelease applies the HasEdge predicate on the "current_release" edge.
+func HasCurrentRelease() predicate.Repository {
+	return predicate.Repository(func(s *sql.Selector) {
+		step := sqlgraph.NewStep(
+			sqlgraph.From(Table, FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, CurrentReleaseTable, CurrentReleaseColumn),
+		)
+		sqlgraph.HasNeighbors(s, step)
+	})
+}
+
+// HasCurrentReleaseWith applies the HasEdge predicate on the "current_release" edge with a given conditions (other predicates).
+func HasCurrentReleaseWith(preds ...predicate.RepositoryRelease) predicate.Repository {
+	return predicate.Repository(func(s *sql.Selector) {
+		step := newCurrentReleaseStep()
 		sqlgraph.HasNeighborsWith(s, step, func(s *sql.Selector) {
 			for _, p := range preds {
 				p(s)

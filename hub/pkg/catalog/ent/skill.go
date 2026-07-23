@@ -30,10 +30,6 @@ type Skill struct {
 	Repository string `json:"repository,omitempty"`
 	// SkillPath holds the value of the "skill_path" field.
 	SkillPath string `json:"skill_path,omitempty"`
-	// LatestVersion holds the value of the "latest_version" field.
-	LatestVersion string `json:"latest_version,omitempty"`
-	// Discoverable holds the value of the "discoverable" field.
-	Discoverable bool `json:"discoverable,omitempty"`
 	// Verified holds the value of the "verified" field.
 	Verified bool `json:"verified,omitempty"`
 	// CreatedAt holds the value of the "created_at" field.
@@ -50,11 +46,9 @@ type Skill struct {
 type SkillEdges struct {
 	// SourceRepository holds the value of the source_repository edge.
 	SourceRepository *Repository `json:"source_repository,omitempty"`
-	// Versions holds the value of the versions edge.
-	Versions []*SkillVersion `json:"versions,omitempty"`
 	// loadedTypes holds the information for reporting if a
 	// type was loaded (or requested) in eager-loading or not.
-	loadedTypes [2]bool
+	loadedTypes [1]bool
 }
 
 // SourceRepositoryOrErr returns the SourceRepository value or an error if the edge
@@ -68,25 +62,16 @@ func (e SkillEdges) SourceRepositoryOrErr() (*Repository, error) {
 	return nil, &NotLoadedError{edge: "source_repository"}
 }
 
-// VersionsOrErr returns the Versions value or an error if the edge
-// was not loaded in eager-loading.
-func (e SkillEdges) VersionsOrErr() ([]*SkillVersion, error) {
-	if e.loadedTypes[1] {
-		return e.Versions, nil
-	}
-	return nil, &NotLoadedError{edge: "versions"}
-}
-
 // scanValues returns the types for scanning values from sql.Rows.
 func (*Skill) scanValues(columns []string) ([]any, error) {
 	values := make([]any, len(columns))
 	for i := range columns {
 		switch columns[i] {
-		case skill.FieldDiscoverable, skill.FieldVerified:
+		case skill.FieldVerified:
 			values[i] = new(sql.NullBool)
 		case skill.FieldID, skill.FieldRepositoryID:
 			values[i] = new(sql.NullInt64)
-		case skill.FieldName, skill.FieldDescription, skill.FieldSourceHost, skill.FieldRepository, skill.FieldSkillPath, skill.FieldLatestVersion:
+		case skill.FieldName, skill.FieldDescription, skill.FieldSourceHost, skill.FieldRepository, skill.FieldSkillPath:
 			values[i] = new(sql.NullString)
 		case skill.FieldCreatedAt, skill.FieldUpdatedAt:
 			values[i] = new(sql.NullTime)
@@ -147,18 +132,6 @@ func (_m *Skill) assignValues(columns []string, values []any) error {
 			} else if value.Valid {
 				_m.SkillPath = value.String
 			}
-		case skill.FieldLatestVersion:
-			if value, ok := values[i].(*sql.NullString); !ok {
-				return fmt.Errorf("unexpected type %T for field latest_version", values[i])
-			} else if value.Valid {
-				_m.LatestVersion = value.String
-			}
-		case skill.FieldDiscoverable:
-			if value, ok := values[i].(*sql.NullBool); !ok {
-				return fmt.Errorf("unexpected type %T for field discoverable", values[i])
-			} else if value.Valid {
-				_m.Discoverable = value.Bool
-			}
 		case skill.FieldVerified:
 			if value, ok := values[i].(*sql.NullBool); !ok {
 				return fmt.Errorf("unexpected type %T for field verified", values[i])
@@ -193,11 +166,6 @@ func (_m *Skill) Value(name string) (ent.Value, error) {
 // QuerySourceRepository queries the "source_repository" edge of the Skill entity.
 func (_m *Skill) QuerySourceRepository() *RepositoryQuery {
 	return NewSkillClient(_m.config).QuerySourceRepository(_m)
-}
-
-// QueryVersions queries the "versions" edge of the Skill entity.
-func (_m *Skill) QueryVersions() *SkillVersionQuery {
-	return NewSkillClient(_m.config).QueryVersions(_m)
 }
 
 // Update returns a builder for updating this Skill.
@@ -240,12 +208,6 @@ func (_m *Skill) String() string {
 	builder.WriteString(", ")
 	builder.WriteString("skill_path=")
 	builder.WriteString(_m.SkillPath)
-	builder.WriteString(", ")
-	builder.WriteString("latest_version=")
-	builder.WriteString(_m.LatestVersion)
-	builder.WriteString(", ")
-	builder.WriteString("discoverable=")
-	builder.WriteString(fmt.Sprintf("%v", _m.Discoverable))
 	builder.WriteString(", ")
 	builder.WriteString("verified=")
 	builder.WriteString(fmt.Sprintf("%v", _m.Verified))

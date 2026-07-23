@@ -14,17 +14,20 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/predicate"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repositoryrelease"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
 )
 
 // RepositoryQuery is the builder for querying Repository entities.
 type RepositoryQuery struct {
 	config
-	ctx        *QueryContext
-	order      []repository.OrderOption
-	inters     []Interceptor
-	predicates []predicate.Repository
-	withSkills *SkillQuery
+	ctx                *QueryContext
+	order              []repository.OrderOption
+	inters             []Interceptor
+	predicates         []predicate.Repository
+	withSkills         *SkillQuery
+	withReleases       *RepositoryReleaseQuery
+	withCurrentRelease *RepositoryReleaseQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -76,6 +79,50 @@ func (_q *RepositoryQuery) QuerySkills() *SkillQuery {
 			sqlgraph.From(repository.Table, repository.FieldID, selector),
 			sqlgraph.To(skill.Table, skill.FieldID),
 			sqlgraph.Edge(sqlgraph.O2M, false, repository.SkillsTable, repository.SkillsColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryReleases chains the current query on the "releases" edge.
+func (_q *RepositoryQuery) QueryReleases() *RepositoryReleaseQuery {
+	query := (&RepositoryReleaseClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(repository.Table, repository.FieldID, selector),
+			sqlgraph.To(repositoryrelease.Table, repositoryrelease.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, repository.ReleasesTable, repository.ReleasesColumn),
+		)
+		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
+		return fromU, nil
+	}
+	return query
+}
+
+// QueryCurrentRelease chains the current query on the "current_release" edge.
+func (_q *RepositoryQuery) QueryCurrentRelease() *RepositoryReleaseQuery {
+	query := (&RepositoryReleaseClient{config: _q.config}).Query()
+	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
+		if err := _q.prepareQuery(ctx); err != nil {
+			return nil, err
+		}
+		selector := _q.sqlQuery(ctx)
+		if err := selector.Err(); err != nil {
+			return nil, err
+		}
+		step := sqlgraph.NewStep(
+			sqlgraph.From(repository.Table, repository.FieldID, selector),
+			sqlgraph.To(repositoryrelease.Table, repositoryrelease.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, repository.CurrentReleaseTable, repository.CurrentReleaseColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -270,12 +317,14 @@ func (_q *RepositoryQuery) Clone() *RepositoryQuery {
 		return nil
 	}
 	return &RepositoryQuery{
-		config:     _q.config,
-		ctx:        _q.ctx.Clone(),
-		order:      append([]repository.OrderOption{}, _q.order...),
-		inters:     append([]Interceptor{}, _q.inters...),
-		predicates: append([]predicate.Repository{}, _q.predicates...),
-		withSkills: _q.withSkills.Clone(),
+		config:             _q.config,
+		ctx:                _q.ctx.Clone(),
+		order:              append([]repository.OrderOption{}, _q.order...),
+		inters:             append([]Interceptor{}, _q.inters...),
+		predicates:         append([]predicate.Repository{}, _q.predicates...),
+		withSkills:         _q.withSkills.Clone(),
+		withReleases:       _q.withReleases.Clone(),
+		withCurrentRelease: _q.withCurrentRelease.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -290,6 +339,28 @@ func (_q *RepositoryQuery) WithSkills(opts ...func(*SkillQuery)) *RepositoryQuer
 		opt(query)
 	}
 	_q.withSkills = query
+	return _q
+}
+
+// WithReleases tells the query-builder to eager-load the nodes that are connected to
+// the "releases" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *RepositoryQuery) WithReleases(opts ...func(*RepositoryReleaseQuery)) *RepositoryQuery {
+	query := (&RepositoryReleaseClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withReleases = query
+	return _q
+}
+
+// WithCurrentRelease tells the query-builder to eager-load the nodes that are connected to
+// the "current_release" edge. The optional arguments are used to configure the query builder of the edge.
+func (_q *RepositoryQuery) WithCurrentRelease(opts ...func(*RepositoryReleaseQuery)) *RepositoryQuery {
+	query := (&RepositoryReleaseClient{config: _q.config}).Query()
+	for _, opt := range opts {
+		opt(query)
+	}
+	_q.withCurrentRelease = query
 	return _q
 }
 
@@ -371,8 +442,10 @@ func (_q *RepositoryQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*R
 	var (
 		nodes       = []*Repository{}
 		_spec       = _q.querySpec()
-		loadedTypes = [1]bool{
+		loadedTypes = [3]bool{
 			_q.withSkills != nil,
+			_q.withReleases != nil,
+			_q.withCurrentRelease != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -397,6 +470,19 @@ func (_q *RepositoryQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*R
 		if err := _q.loadSkills(ctx, query, nodes,
 			func(n *Repository) { n.Edges.Skills = []*Skill{} },
 			func(n *Repository, e *Skill) { n.Edges.Skills = append(n.Edges.Skills, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withReleases; query != nil {
+		if err := _q.loadReleases(ctx, query, nodes,
+			func(n *Repository) { n.Edges.Releases = []*RepositoryRelease{} },
+			func(n *Repository, e *RepositoryRelease) { n.Edges.Releases = append(n.Edges.Releases, e) }); err != nil {
+			return nil, err
+		}
+	}
+	if query := _q.withCurrentRelease; query != nil {
+		if err := _q.loadCurrentRelease(ctx, query, nodes, nil,
+			func(n *Repository, e *RepositoryRelease) { n.Edges.CurrentRelease = e }); err != nil {
 			return nil, err
 		}
 	}
@@ -433,6 +519,68 @@ func (_q *RepositoryQuery) loadSkills(ctx context.Context, query *SkillQuery, no
 	}
 	return nil
 }
+func (_q *RepositoryQuery) loadReleases(ctx context.Context, query *RepositoryReleaseQuery, nodes []*Repository, init func(*Repository), assign func(*Repository, *RepositoryRelease)) error {
+	fks := make([]driver.Value, 0, len(nodes))
+	nodeids := make(map[int64]*Repository)
+	for i := range nodes {
+		fks = append(fks, nodes[i].ID)
+		nodeids[nodes[i].ID] = nodes[i]
+		if init != nil {
+			init(nodes[i])
+		}
+	}
+	if len(query.ctx.Fields) > 0 {
+		query.ctx.AppendFieldOnce(repositoryrelease.FieldRepositoryID)
+	}
+	query.Where(predicate.RepositoryRelease(func(s *sql.Selector) {
+		s.Where(sql.InValues(s.C(repository.ReleasesColumn), fks...))
+	}))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		fk := n.RepositoryID
+		node, ok := nodeids[fk]
+		if !ok {
+			return fmt.Errorf(`unexpected referenced foreign-key "repository_id" returned %v for node %v`, fk, n.ID)
+		}
+		assign(node, n)
+	}
+	return nil
+}
+func (_q *RepositoryQuery) loadCurrentRelease(ctx context.Context, query *RepositoryReleaseQuery, nodes []*Repository, init func(*Repository), assign func(*Repository, *RepositoryRelease)) error {
+	ids := make([]int64, 0, len(nodes))
+	nodeids := make(map[int64][]*Repository)
+	for i := range nodes {
+		if nodes[i].CurrentReleaseID == nil {
+			continue
+		}
+		fk := *nodes[i].CurrentReleaseID
+		if _, ok := nodeids[fk]; !ok {
+			ids = append(ids, fk)
+		}
+		nodeids[fk] = append(nodeids[fk], nodes[i])
+	}
+	if len(ids) == 0 {
+		return nil
+	}
+	query.Where(repositoryrelease.IDIn(ids...))
+	neighbors, err := query.All(ctx)
+	if err != nil {
+		return err
+	}
+	for _, n := range neighbors {
+		nodes, ok := nodeids[n.ID]
+		if !ok {
+			return fmt.Errorf(`unexpected foreign-key "current_release_id" returned %v`, n.ID)
+		}
+		for i := range nodes {
+			assign(nodes[i], n)
+		}
+	}
+	return nil
+}
 
 func (_q *RepositoryQuery) sqlCount(ctx context.Context) (int, error) {
 	_spec := _q.querySpec()
@@ -458,6 +606,9 @@ func (_q *RepositoryQuery) querySpec() *sqlgraph.QuerySpec {
 			if fields[i] != repository.FieldID {
 				_spec.Node.Columns = append(_spec.Node.Columns, fields[i])
 			}
+		}
+		if _q.withCurrentRelease != nil {
+			_spec.Node.AddColumnOnce(repository.FieldCurrentReleaseID)
 		}
 	}
 	if ps := _q.predicates; len(ps) > 0 {
