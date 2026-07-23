@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Repository IDs, immutable versions, explicit Skill paths and Agent IDs, valid Repository h1 Sums, strict YAML nodes, and the shared metadata transaction lock.
- * [OUTPUT]: Provides strict skillsgo.yaml/skillsgo.lock parsing, nearest YAML-root discovery, exact pair validation, deterministic normalization, loading, and crash-recoverable paired atomic publication.
+ * [OUTPUT]: Provides strict skillsgo.yaml/skillsgo.lock parsing, nearest YAML-root discovery, atomic paired loading with crash recovery, exact pair validation, deterministic normalization, and paired publication.
  * [POS]: Serves as the portable Repository dependency intent and integrity boundary for Workspace and User scopes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -129,6 +129,32 @@ func LoadDependencyLock(root string) (DependencyLock, error) {
 		return DependencyLock{}, err
 	}
 	return ParseDependencyLock(path, data)
+}
+
+// LoadWorkspaceState recovers an interrupted paired publication before exposing
+// either file, then returns one atomic YAML/Lock snapshot. found is false only
+// when neither declaration exists after recovery.
+func LoadWorkspaceState(root string) (manifest WorkspaceManifest, lock DependencyLock, found bool, err error) {
+	manifest = WorkspaceManifest{Dependencies: map[string]RepositoryDependency{}}
+	lock = DependencyLock{Dependencies: map[string]LockedRepository{}}
+	err = withWorkspaceMetadataLock(root, func() error {
+		loadedManifest, manifestErr := LoadWorkspaceManifest(root)
+		loadedLock, lockErr := LoadDependencyLock(root)
+		switch {
+		case manifestErr == nil && lockErr == nil:
+			manifest, lock, found = loadedManifest, loadedLock, true
+			return nil
+		case os.IsNotExist(manifestErr) && os.IsNotExist(lockErr):
+			return nil
+		case manifestErr != nil && !os.IsNotExist(manifestErr):
+			return manifestErr
+		case lockErr != nil && !os.IsNotExist(lockErr):
+			return lockErr
+		default:
+			return fmt.Errorf("skillsgo.yaml and skillsgo.lock must either both exist or both be absent")
+		}
+	})
+	return manifest, lock, found, err
 }
 
 func ParseDependencyLock(path string, data []byte) (DependencyLock, error) {

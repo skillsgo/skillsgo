@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses strict YAML documents and temporary Workspace roots at the public Workspace persistence seam.
- * [OUTPUT]: Specifies canonical skillsgo.yaml/skillsgo.lock parsing, validation, nearest YAML-root discovery, deterministic writing, and atomic paired publication.
+ * [OUTPUT]: Specifies canonical skillsgo.yaml/skillsgo.lock parsing, validation, nearest YAML-root discovery, deterministic writing, atomic paired publication, and read-time crash recovery.
  * [POS]: Serves as the executable contract for Repository dependency intent and integrity state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -73,6 +73,24 @@ func TestWriteWorkspaceStatePublishesCanonicalManifestAndLock(t *testing.T) {
 		require.NoError(t, err)
 		require.True(t, info.Mode().IsRegular())
 	}
+}
+
+func TestLoadWorkspaceStateRecoversInterruptedFirstPublicationBeforeRead(t *testing.T) {
+	root := t.TempDir()
+	paths := []string{filepath.Join(root, WorkspaceManifestName), filepath.Join(root, DependencyLockName)}
+	snapshots := []metadataFileSnapshot{{Path: paths[0]}, {Path: paths[1]}}
+	_, err := beginMetadataTransaction(root, snapshots)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(paths[0], []byte("dependencies: {}\n"), 0o600))
+
+	manifest, lock, found, err := LoadWorkspaceState(root)
+	require.NoError(t, err)
+	require.False(t, found)
+	require.Empty(t, manifest.Dependencies)
+	require.Empty(t, lock.Dependencies)
+	require.NoFileExists(t, paths[0])
+	require.NoFileExists(t, paths[1])
+	require.NoFileExists(t, metadataTransactionPath(root))
 }
 
 func TestFindWorkspaceRootUsesSkillsgoYAML(t *testing.T) {
