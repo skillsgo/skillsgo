@@ -20,7 +20,7 @@ func TestJ18HubUnavailable(t *testing.T) {
 	result := execCLI(t, ctx, container,
 		"add", testSkillID+"@"+testSkillVersion,
 		"--agent", "codex",
-		"--copy",
+
 		"--yes",
 		"--hub", "http://127.0.0.1:1",
 		"--output", "json",

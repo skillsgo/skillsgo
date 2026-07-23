@@ -86,7 +86,8 @@ func TestJ12ManifestNameIndependentFromSourceDirectory(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(lock), "sum: h1:")
 
-	require.NoError(t, os.RemoveAll(installed))
+	projection := filepath.Join(sandboxRoot, "project", ".agents", "skills", "fixtures.test", "group", "subgroup", "collection@v1.0.0")
+	require.NoError(t, os.RemoveAll(projection))
 	restore := execCLI(t, ctx, container,
 		"install",
 		"--hub", "http://127.0.0.1:1",
