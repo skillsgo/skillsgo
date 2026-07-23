@@ -153,3 +153,23 @@ func TestRepositoryUsesExactVersionInfoDirectly(t *testing.T) {
 		t.Fatalf("unexpected immutable version: %q", resource.Info.Version)
 	}
 }
+
+func TestRepositoryInfoPreservesDuplicateNamesAtDistinctPaths(t *testing.T) {
+	repositoryID := "github.com/example/skills"
+	info := protocolapi.RepositoryInfo{SchemaVersion: 1, Kind: protocolapi.KindRepository, ID: repositoryID,
+		Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "repository-tree",
+		Sum: "h1:" + strings.Repeat("A", 43) + "=", ArchiveSize: 1,
+		Skills: []protocolapi.SkillInfo{
+			{SchemaVersion: 1, Kind: protocolapi.KindSkill, RepositoryID: repositoryID, SkillPath: "one", Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "tree-one", Name: "shared", Description: "One"},
+			{SchemaVersion: 1, Kind: protocolapi.KindSkill, RepositoryID: repositoryID, SkillPath: "two", Version: "v1.0.0", Ref: "refs/tags/v1.0.0", CommitSHA: "commit", TreeSHA: "tree-two", Name: "shared", Description: "Two"},
+		},
+	}
+	encoded, err := json.Marshal(info)
+	if err != nil {
+		t.Fatal(err)
+	}
+	resource, err := ParseRepositoryInfo(repositoryID, encoded)
+	if err != nil || len(resource.Members) != 2 {
+		t.Fatalf("duplicate-name members = %#v, %v", resource, err)
+	}
+}

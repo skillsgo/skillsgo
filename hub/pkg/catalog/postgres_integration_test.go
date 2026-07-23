@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the shared Catalog contract against an opt-in Testcontainers PostgreSQL service.
- * [OUTPUT]: Specifies shared pgx pooling plus PostgreSQL parity for search and Repository-owned immutable Releases.
+ * [OUTPUT]: Specifies shared pgx pooling plus PostgreSQL parity for search, Repository-owned immutable Releases, and same-name path identity/default selection.
  * [POS]: Serves as real-PostgreSQL integration coverage for the Hub discovery metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
+	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
@@ -63,4 +64,24 @@ func TestPostgresCatalog(t *testing.T) {
 	next, err := c.Search(ctx, "presentation", 2, 2)
 	require.NoError(t, err)
 	require.Len(t, next, 1)
+
+	duplicateRepository := "github.com/acme/duplicate-skills"
+	duplicateCandidates := []PublishedSkill{
+		{Skill: Skill{RepositoryID: duplicateRepository, Name: "shared", SkillPath: "two", Description: "Second"}, Member: RepositoryReleaseMember{Name: "shared", SkillPath: "two", TreeSHA: "tree-two"}},
+		{Skill: Skill{RepositoryID: duplicateRepository, Name: "shared", SkillPath: "one", Description: "First"}, Member: RepositoryReleaseMember{Name: "shared", SkillPath: "one", TreeSHA: "tree-one"}},
+	}
+	publishTestRepository(t, c, duplicateRepository, "v1.0.0", "commit-duplicate", "h1:BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB=", CurrentPublication, duplicateCandidates)
+	members, err := c.RepositoryReleaseMembers(ctx, duplicateRepository, "v1.0.0")
+	require.NoError(t, err)
+	require.Equal(t, []string{"one", "two"}, []string{members[0].SkillPath, members[1].SkillPath})
+	defaultSkill, err := c.SkillByCoordinate(ctx, duplicateRepository, "shared")
+	require.NoError(t, err)
+	require.Equal(t, "one", defaultSkill.SkillPath)
+	coordinates, err := c.SkillsByCoordinates(ctx, []protocolapi.SkillCoordinate{{RepositoryID: duplicateRepository, Name: "shared"}})
+	require.NoError(t, err)
+	require.Len(t, coordinates, 1)
+	require.Equal(t, "one", coordinates[0].SkillPath)
+	versions, err := c.SkillPublishedVersions(ctx, duplicateRepository, "shared")
+	require.NoError(t, err)
+	require.Equal(t, []string{"v1.0.0"}, versions)
 }

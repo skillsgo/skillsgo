@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with isolated User/Agent roots, current skills.sh locks, and exact Repository Proxy fixtures.
- * [OUTPUT]: Specifies state-bound Repository adoption, byte-identity rejection, current lock parsing, provider identity, plan validation, and localized public behavior without Store or Receipt compatibility.
+ * [OUTPUT]: Specifies state-bound exact-path Repository adoption, byte-identity rejection, current lock parsing, provider identity, plan validation, and localized public behavior without Store or Receipt compatibility.
  * [POS]: Serves as the executable contract for the lock-backed Batch Takeover journey on Repository Vendor architecture.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -112,7 +112,7 @@ func TestBatchTakeoverAdoptsExactRepositoryMemberIntoUserVendor(t *testing.T) {
 	manifest, err := project.LoadWorkspaceManifest(userRoot)
 	require.NoError(t, err)
 	require.Equal(t, version, manifest.Dependencies[repositoryID].Version)
-	require.Equal(t, []string{"alpha"}, manifest.Dependencies[repositoryID].Skills)
+	require.Equal(t, []string{"skills/alpha"}, manifest.Dependencies[repositoryID].Skills)
 	require.Equal(t, []string{"test-agent"}, manifest.Dependencies[repositoryID].Agents)
 	require.NoError(t, project.ValidateWorkspaceState(manifest, mustLoadTakeoverLock(t, userRoot)))
 	vendor := scopevendor.CoordinatePath(filepath.Join(userRoot, "vendor"), repositoryID, version)

@@ -9,7 +9,7 @@
 - `migrations/postgres/`: contains the reviewed, checksummed Atlas migration history, including immutable Repository Releases, complete Release membership, Backfill Run state, Repository metadata, localized descriptions, and PostgreSQL search resources.
 - `queries/`: contains the maintained sqlc query source; SQL used by Catalog business operations belongs here except connection-scoped PostgreSQL advisory locks.
 - `catalogsqlc/`: contains reproducible sqlc-generated pgx/v5 query code and must not be edited manually.
-- `catalog_test.go`: specifies the PostgreSQL behavior contract with Testcontainers, including migration history, Repository ID plus Skill Name identity, immutable Release ownership, historical membership, current projection, search fields, and pagination.
+- `catalog_test.go`, `postgres_integration_test.go`: specify the PostgreSQL behavior contract with Testcontainers, including migration history, Repository ID plus Skill Name logical coordinates, path-unique same-name metadata, deterministic coordinate defaults, immutable Release ownership, historical membership, current projection, search fields, and pagination.
 - `postgres_integration_test.go`: verifies Repository Release publication and current-member lookup against real PostgreSQL.
 
 ## Architectural Boundary
