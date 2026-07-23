@@ -597,9 +597,6 @@ class AppLocalizationsId extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => 'Perbaikan';
-
-  @override
   String get confirmRemoveTarget => 'Konfirmasikan penghapusan';
 
   @override

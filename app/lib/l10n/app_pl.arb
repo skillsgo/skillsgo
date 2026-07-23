@@ -342,7 +342,6 @@
       }
     }
   },
-  "repairTarget": "Naprawa",
   "confirmRemoveTarget": "Potwierdź usunięcie",
   "applyTargetActions": "Zastosuj wybrane działania",
   "managementProgressTitle": "Stosowanie działań docelowych",

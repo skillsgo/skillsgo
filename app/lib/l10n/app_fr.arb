@@ -342,7 +342,6 @@
       }
     }
   },
-  "repairTarget": "Réparation",
   "confirmRemoveTarget": "Confirmer la suppression",
   "applyTargetActions": "Appliquer les actions sélectionnées",
   "managementProgressTitle": "Appliquer des actions cibles",

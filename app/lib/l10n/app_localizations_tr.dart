@@ -595,9 +595,6 @@ class AppLocalizationsTr extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => 'Onarım';
-
-  @override
   String get confirmRemoveTarget => 'Kaldırmayı onayla';
 
   @override

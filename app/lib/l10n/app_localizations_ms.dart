@@ -595,9 +595,6 @@ class AppLocalizationsMs extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => 'baiki';
-
-  @override
   String get confirmRemoveTarget => 'Sahkan alih keluar';
 
   @override

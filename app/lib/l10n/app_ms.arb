@@ -342,7 +342,6 @@
       }
     }
   },
-  "repairTarget": "baiki",
   "confirmRemoveTarget": "Sahkan alih keluar",
   "applyTargetActions": "Gunakan tindakan yang dipilih",
   "managementProgressTitle": "Mengaplikasikan tindakan sasaran",

@@ -188,7 +188,7 @@ void main() {
     expect(gateway.libraryEntries!.single.targets.single.agent, 'claude-code');
   });
 
-  testWidgets('unhealthy targets offer Repair without Remove', (tester) async {
+  testWidgets('unhealthy targets offer no automatic mutation', (tester) async {
     await tester.binding.setSurfaceSize(const Size(1400, 900));
     final gateway = FakeSkillsGateway(
       libraryEntries: const [

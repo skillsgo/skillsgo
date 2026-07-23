@@ -98,7 +98,7 @@ void main() {
     runner.result = const ProcessOutput(
       exitCode: 0,
       stdout: r'''
-{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","skillId":"github.com/a/b/-/Test ; $(touch nope)","version":"","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1}}
+{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","skillId":"github.com/a/b/-/Test ; $(touch nope)","version":"","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1}}
 ''',
       stderr: '',
     );
@@ -395,7 +395,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":3,"summary":{"takenOver":2,"skipped":1},"results":[{"name":"demo","skillId":"github.com/acme/skills/-/demo","version":"captured-content","status":"taken-over","target":{"agent":"codex","scope":"user","mode":"copy","path":"/tmp/demo"}},{"name":"project-demo","skillId":"github.com/acme/skills/-/project-demo","version":"captured-project","status":"taken-over","target":{"agent":"claude-code","scope":"project","projectRoot":"/tmp/Workspace With Spaces","mode":"copy","path":"/tmp/Workspace With Spaces/.claude/skills/demo"}},{"name":"missing-demo","status":"skipped","reason":"missing-target","target":{"scope":"project","projectRoot":"/tmp/Workspace With Spaces","mode":"copy","path":""}}]}',
+            '{"schemaVersion":3,"summary":{"takenOver":2,"skipped":1},"results":[{"name":"demo","skillId":"github.com/acme/skills/-/demo","version":"v1.2.3","status":"taken-over","target":{"agent":"codex","scope":"user","path":"/tmp/demo"}},{"name":"project-demo","skillId":"github.com/acme/skills/-/project-demo","version":"v1.2.3","status":"taken-over","target":{"agent":"claude-code","scope":"project","projectRoot":"/tmp/Workspace With Spaces","path":"/tmp/Workspace With Spaces/.claude/skills/demo"}},{"name":"missing-demo","status":"skipped","reason":"missing-target","target":{"scope":"project","projectRoot":"/tmp/Workspace With Spaces","path":""}}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(

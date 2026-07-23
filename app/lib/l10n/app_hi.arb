@@ -342,7 +342,6 @@
       }
     }
   },
-  "repairTarget": "मरम्मत",
   "confirmRemoveTarget": "हटाने की पुष्टि करें",
   "applyTargetActions": "चयनित क्रियाएँ लागू करें",
   "managementProgressTitle": "लक्ष्य क्रियाएँ लागू करना",

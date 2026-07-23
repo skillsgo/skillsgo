@@ -189,7 +189,6 @@
   "manageTargetsDescription": "Choose an exact action for each target. Unselected targets will not change.",
   "targetActionsSelected": "{selected} of {total} targets selected",
   "@targetActionsSelected": {"placeholders": {"selected": {"type": "int"}, "total": {"type": "int"}}},
-  "repairTarget": "Repair",
   "confirmRemoveTarget": "Confirm remove",
   "applyTargetActions": "Apply selected actions",
   "managementProgressTitle": "Applying target actions",

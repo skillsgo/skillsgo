@@ -342,7 +342,6 @@
       }
     }
   },
-  "repairTarget": "Reparera",
   "confirmRemoveTarget": "Bekräfta borttagning",
   "applyTargetActions": "Tillämpa valda åtgärder",
   "managementProgressTitle": "Tillämpa målåtgärder",

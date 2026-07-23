@@ -598,9 +598,6 @@ class AppLocalizationsFr extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => 'Réparation';
-
-  @override
   String get confirmRemoveTarget => 'Confirmer la suppression';
 
   @override

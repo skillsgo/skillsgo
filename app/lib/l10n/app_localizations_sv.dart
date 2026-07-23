@@ -595,9 +595,6 @@ class AppLocalizationsSv extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => 'Reparera';
-
-  @override
   String get confirmRemoveTarget => 'Bekräfta borttagning';
 
   @override

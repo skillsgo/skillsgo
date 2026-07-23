@@ -561,9 +561,6 @@ class AppLocalizationsZh extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => '修复';
-
-  @override
   String get confirmRemoveTarget => '确认移除';
 
   @override
@@ -2317,9 +2314,6 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String targetActionsSelected(int selected, int total) {
     return '已選擇 $selected/$total 個目標';
   }
-
-  @override
-  String get repairTarget => '修復';
 
   @override
   String get confirmRemoveTarget => '確認移除';
@@ -4076,9 +4070,6 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String targetActionsSelected(int selected, int total) {
     return '已選擇 $selected/$total 個目標';
   }
-
-  @override
-  String get repairTarget => '修復';
 
   @override
   String get confirmRemoveTarget => '確認移除';

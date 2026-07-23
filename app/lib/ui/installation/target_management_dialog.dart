@@ -35,6 +35,9 @@ class TargetManagementDialogState
     for (final item in widget.plan.targets) {
       if (!item.allowedActions.contains(action)) continue;
       selectedActions[updateTargetKey(item.target)] = action;
+      for (final binding in item.affectedBindings) {
+        selectedActions[updateTargetKey(binding)] = action;
+      }
     }
   }
 
@@ -66,9 +69,18 @@ class TargetManagementDialogState
       final key = updateTargetKey(item.target);
       if (selectedActions[key] == action) {
         selectedActions.remove(key);
+        for (final binding in item.affectedBindings) {
+          selectedActions.remove(updateTargetKey(binding));
+        }
         return;
       }
-      selectedActions[key] = action;
+      if (item.affectedBindings.isEmpty) {
+        selectedActions[key] = action;
+      } else {
+        for (final binding in item.affectedBindings) {
+          selectedActions[updateTargetKey(binding)] = action;
+        }
+      }
     });
   }
 

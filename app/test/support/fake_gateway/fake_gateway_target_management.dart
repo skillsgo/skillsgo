@@ -12,10 +12,9 @@ mixin FakeGatewayTargetManagement on FakeSkillsGatewayCore {
     InstalledSkill skill,
     List<SkillInstallationTarget> targets,
   ) async {
-    if (skill.provenance != LibraryProvenance.external ||
-        targets.any((target) => target.health != InstallationHealth.healthy)) {
+    if (targets.any((target) => target.health != InstallationHealth.healthy)) {
       throw const SkillsException(
-        'Only healthy External Installations support exact-path removal.',
+        'Modified targets do not support automatic mutation.',
         kind: SkillsFailureKind.validation,
       );
     }

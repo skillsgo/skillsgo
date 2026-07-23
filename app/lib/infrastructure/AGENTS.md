@@ -12,7 +12,7 @@
 - `real_skills_gateway_inventory.dart`: owns Agent inspection, local Library inventory, exact Batch Takeover planning and scope-bound execution, and local Skill detail.
 - `real_skills_gateway_installation.dart`: groups Installation Requests by declaration scope, invokes exact Repository Vendor add through the bundled CLI, and decodes Vendor/Projection results.
 - `real_skills_gateway_execution.dart`: owns shared affected-binding integrity and ordered NDJSON progress/final-payload execution envelopes for target mutations.
-- `real_skills_gateway_target_management.dart`: owns reviewed External Installation removal preflight, execution, and progress translation.
+- `real_skills_gateway_target_management.dart`: owns managed Repository-member and External Installation removal planning, execution, and progress translation.
 - `real_skills_gateway_updates.dart`: owns state-bound Repository-coordinate update preflight, execution, progress projection onto Library targets, and one Catalog-only batch update check across the current Library.
 - `real_skills_gateway_failures.dart`: owns versioned machine-failure and process-exit translation.
 - `project_icon_resolver.dart`: resolves and caches bounded, safe Added Project identity assets with deterministic fallback.

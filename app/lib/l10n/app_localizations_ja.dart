@@ -586,9 +586,6 @@ class AppLocalizationsJa extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => '修理';
-
-  @override
   String get confirmRemoveTarget => '削除の確認';
 
   @override

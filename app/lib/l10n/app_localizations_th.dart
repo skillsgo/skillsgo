@@ -596,9 +596,6 @@ class AppLocalizationsTh extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => 'ซ่อม';
-
-  @override
   String get confirmRemoveTarget => 'ยืนยันการลบ';
 
   @override
