@@ -3,7 +3,7 @@
 
 ## Members
 
-- `catalog.go`: exposes the Catalog API, uses Ent for entity persistence, owns the shared pgx pool in PostgreSQL mode, owns Repository-scoped source-metadata cache state, and provides visibility-aware search, immutable Repository Releases, ordered Skill membership, and pagination.
+- `catalog.go`: exposes the Catalog API, reusable Repository Release aggregate validation, Ent persistence, the shared PostgreSQL pgx pool, Repository-scoped source-metadata cache state, visibility-aware search, immutable Releases, ordered Skill membership, and pagination.
 - `backfill.go`: owns durable Repository Backfill Run business state, active-work deduplication, heartbeat recovery for running work, River-aware orphan reconciliation candidates for queued work, state transitions, bounded diagnostics, exact-publication commit checks, and atomic PostgreSQL Run-plus-River enqueue scopes.
 - `migrations.go`: executes embedded, checksummed, ordered Atlas SQL migrations and serializes PostgreSQL migration runs.
 - `migrations/`: contains reviewed, checksummed migrations per database, including the pre-release baseline, Historical Publication visibility, Backfill Run state, Repository metadata evolution, the destructive legacy-history reset for the h1 Sum cutover, and database-specific full-text search resources.

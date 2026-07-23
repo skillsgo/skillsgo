@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Ent entities, SQLx for dialect-specific discovery queries, pgx stdlib for shared PostgreSQL pooling, versioned Atlas SQL migrations, Hub database configuration, and canonical Skill IDs.
- * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, byte-stable Repository Release Records, native pgx transaction scopes for atomic Ent/River work, immutable versions, current-only search, source cache state, and risk evidence on SQLite/PostgreSQL.
+ * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, reusable Repository Release aggregate validation, byte-stable Release Records, native pgx transaction scopes for atomic Ent/River work, immutable versions, current-only search, source cache state, and risk evidence on SQLite/PostgreSQL.
  * [POS]: Serves as the Hub identity and search data boundary while artifact bytes and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -311,13 +311,16 @@ const (
 // member set and the exact immutable Repository Release Record served by the
 // root Repository Proxy.
 func (c *Catalog) PublishRepositoryReleaseWithVisibility(ctx context.Context, repositoryID string, candidates []PublishedSkill, visibility PublicationVisibility, releaseInfo []byte) error {
-	if len(releaseInfo) == 0 || !json.Valid(releaseInfo) {
-		return fmt.Errorf("Repository publication requires valid immutable release Info")
+	if err := ValidateRepositoryRelease(repositoryID, candidates, visibility, releaseInfo); err != nil {
+		return err
 	}
 	return c.publishRepositoryVersionWithVisibility(ctx, repositoryID, candidates, visibility, append([]byte(nil), releaseInfo...))
 }
 
-func (c *Catalog) publishRepositoryVersionWithVisibility(ctx context.Context, repositoryID string, candidates []PublishedSkill, visibility PublicationVisibility, releaseInfo []byte) error {
+func ValidateRepositoryRelease(repositoryID string, candidates []PublishedSkill, visibility PublicationVisibility, releaseInfo []byte) error {
+	if len(releaseInfo) == 0 || !json.Valid(releaseInfo) {
+		return fmt.Errorf("Repository publication requires valid immutable release Info")
+	}
 	if visibility != CurrentPublication && visibility != HistoricalPublication {
 		return fmt.Errorf("unsupported Repository publication visibility %q", visibility)
 	}
@@ -332,10 +335,13 @@ func (c *Catalog) publishRepositoryVersionWithVisibility(ctx context.Context, re
 	if err := json.Unmarshal(releaseInfo, &release); err != nil || release.ID != repositoryID || release.Sum == "" || release.ArchiveSize <= 0 {
 		return fmt.Errorf("Repository publication requires matching immutable artifact identity")
 	}
+	if len(release.Skills) != len(candidates) {
+		return fmt.Errorf("Repository publication release membership does not match candidates")
+	}
 	version := candidates[0].Version.Version
 	commitSHA := candidates[0].Version.CommitSHA
 	seen := make(map[string]bool, len(candidates))
-	for _, candidate := range candidates {
+	for index, candidate := range candidates {
 		if candidate.Skill.RepositoryID != repositoryID || !protocolskillmanifest.ValidName(candidate.Skill.Name) || candidate.Skill.SkillPath != candidate.Version.RelativePath {
 			return fmt.Errorf("Repository publication contains invalid Skill %q", candidate.Skill.Name)
 		}
@@ -344,7 +350,18 @@ func (c *Catalog) publishRepositoryVersionWithVisibility(ctx context.Context, re
 			return fmt.Errorf("Repository publication contains inconsistent member %q", candidate.Skill.Name)
 		}
 		seen[candidate.Skill.Name] = true
+		member := release.Skills[index]
+		if member.RepositoryID != repositoryID || member.Name != candidate.Skill.Name || member.SkillPath != candidate.Version.RelativePath ||
+			member.Version != candidate.Version.Version || member.CommitSHA != candidate.Version.CommitSHA || member.TreeSHA != candidate.Version.TreeSHA {
+			return fmt.Errorf("Repository publication release member %q does not match candidate", candidate.Skill.Name)
+		}
 	}
+	return nil
+}
+
+func (c *Catalog) publishRepositoryVersionWithVisibility(ctx context.Context, repositoryID string, candidates []PublishedSkill, visibility PublicationVisibility, releaseInfo []byte) error {
+	version := candidates[0].Version.Version
+	commitSHA := candidates[0].Version.CommitSHA
 	tx, err := c.db.BeginTxx(ctx, nil)
 	if err != nil {
 		return err
