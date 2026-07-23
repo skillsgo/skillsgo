@@ -23,7 +23,6 @@ import (
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 	modmodule "golang.org/x/mod/module"
-	modsemver "golang.org/x/mod/semver"
 )
 
 type Info = protocolapi.SkillInfo
@@ -36,13 +35,6 @@ const (
 	RiskHigh     = protocolapi.RiskHigh
 	RiskCritical = protocolapi.RiskCritical
 )
-
-type Artifact struct {
-	SkillID   string
-	Info      Info
-	InfoBytes []byte
-	ZIP       []byte
-}
 
 type RepositoryInfo = protocolapi.RepositoryInfo
 
@@ -123,10 +115,6 @@ func New(baseURL string, client *http.Client) (*Client, error) {
 	return &Client{baseURL: parsed.String(), http: client}, nil
 }
 
-func (c *Client) Fetch(ctx context.Context, skillID, requestedVersion string) (*Artifact, error) {
-	return c.FetchWithProgress(ctx, skillID, requestedVersion, nil)
-}
-
 func (c *Client) Repository(ctx context.Context, repositoryID, query string) (*RepositoryResource, error) {
 	selector, err := protocolversion.ParseSelector(query)
 	if err != nil {
@@ -190,23 +178,6 @@ func (c *Client) FetchRepositoryWithProgress(ctx context.Context, repositoryID, 
 	return resource, nil
 }
 
-func (c *Client) Versions(ctx context.Context, resourceID string) ([]string, error) {
-	body, err := c.get(ctx, c.endpoint(resourceID, "list"))
-	if err != nil {
-		return nil, err
-	}
-	versions := make([]string, 0)
-	seen := map[string]bool{}
-	for _, candidate := range strings.Fields(string(body)) {
-		if !modsemver.IsValid(candidate) || modmodule.IsPseudoVersion(candidate) || seen[candidate] {
-			continue
-		}
-		seen[candidate] = true
-		versions = append(versions, candidate)
-	}
-	return versions, nil
-}
-
 func ParseRepositoryInfo(repositoryID string, infoBytes []byte) (*RepositoryResource, error) {
 	var info RepositoryInfo
 	if err := json.Unmarshal(infoBytes, &info); err != nil {
@@ -244,50 +215,6 @@ func ParseRepositoryInfo(repositoryID string, infoBytes []byte) (*RepositoryReso
 		resource.Members = append(resource.Members, RepositoryMember{Info: member, InfoBytes: memberBytes})
 	}
 	return resource, nil
-}
-
-func (c *Client) FetchRepositoryMember(ctx context.Context, member RepositoryMember, progress func(current, total int64)) (*Artifact, error) {
-	return nil, fmt.Errorf("Skill %s is a Repository member and has no independent ZIP", member.Info.ID)
-}
-
-func (c *Client) FetchWithProgress(ctx context.Context, skillID, requestedVersion string, progress func(current, total int64)) (*Artifact, error) {
-	if requestedVersion == "" {
-		requestedVersion = "head"
-	}
-	resolvedVersion, err := c.resolveSelector(ctx, skillID, requestedVersion)
-	if err != nil {
-		return nil, err
-	}
-	infoBytes, err := c.get(ctx, c.endpoint(skillID, resolvedVersion+".info"))
-	if err != nil {
-		return nil, err
-	}
-	var info Info
-	if err := json.Unmarshal(infoBytes, &info); err != nil {
-		return nil, fmt.Errorf("解析 Hub 响应: %w", err)
-	}
-	if err := validateAssessedInfo(skillID, resolvedVersion, info); err != nil {
-		return nil, err
-	}
-	return nil, fmt.Errorf("Skill %s is a Repository member and has no independent ZIP", skillID)
-}
-
-func (c *Client) Resolve(ctx context.Context, skillID, requestedVersion string) (Info, error) {
-	if requestedVersion == "" {
-		requestedVersion = "head"
-	}
-	resolvedVersion, err := c.resolveSelector(ctx, skillID, requestedVersion)
-	if err != nil {
-		return Info{}, err
-	}
-	var info Info
-	if err := c.getJSON(ctx, c.endpoint(skillID, resolvedVersion+".info"), &info); err != nil {
-		return Info{}, err
-	}
-	if err := validateAssessedInfo(skillID, resolvedVersion, info); err != nil {
-		return Info{}, err
-	}
-	return info, nil
 }
 
 func (c *Client) SkillProduct(ctx context.Context, skillID string) (SkillProductMetadata, error) {
@@ -502,9 +429,6 @@ func (c *Client) endpoint(skillID, file string) string {
 		// this helper total while allowing the Router to reject impossible IDs.
 		escapedID = strings.Trim(skillID, "/")
 	}
-	if file == "list" {
-		return c.baseURL + "/" + escapedID + "/@v/list"
-	}
 	for _, suffix := range []string{".info", ".zip"} {
 		if strings.HasSuffix(file, suffix) {
 			version := strings.TrimSuffix(file, suffix)
@@ -516,31 +440,6 @@ func (c *Client) endpoint(skillID, file string) string {
 		}
 	}
 	return c.baseURL + "/" + escapedID + "/@v/" + file
-}
-
-func (c *Client) selectorEndpoint(skillID, selector string) string {
-	escapedID, err := modmodule.EscapePath(strings.Trim(skillID, "/"))
-	if err != nil {
-		escapedID = strings.Trim(skillID, "/")
-	}
-	return c.baseURL + "/" + escapedID + "/@" + selector
-}
-
-func (c *Client) resolveSelector(ctx context.Context, skillID, requested string) (string, error) {
-	if requested != "head" && requested != "release" {
-		return requested, nil
-	}
-	var resolved struct {
-		Version string    `json:"Version"`
-		Time    time.Time `json:"Time"`
-	}
-	if err := c.getJSON(ctx, c.selectorEndpoint(skillID, requested), &resolved); err != nil {
-		return "", err
-	}
-	if !protocolversion.IsImmutable(resolved.Version) || resolved.Time.IsZero() {
-		return "", &ProtocolError{Err: fmt.Errorf("Hub returned invalid %s Selector result for %s", requested, skillID)}
-	}
-	return resolved.Version, nil
 }
 
 func (c *Client) getJSON(ctx context.Context, endpoint string, target any) error {
