@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on one storage Backend plus bounded immutable Info and ZIP byte streams.
  * [OUTPUT]: Provides backend-native or process-safe fallback PutIfAbsent semantics plus shared bounded byte-comparison primitives for native conditional writers.
- * [POS]: Serves as the immutable write membrane shared by artifact stashing and Repository Publication.
+ * [POS]: Serves as the immutable write membrane for Repository Publication across storage backends.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package storage

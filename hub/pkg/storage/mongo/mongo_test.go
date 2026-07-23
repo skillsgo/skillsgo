@@ -9,13 +9,11 @@ package mongo
 import (
 	"bytes"
 	"context"
-	"io"
 	"os"
 	"testing"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
-	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/compliance"
 	"github.com/stretchr/testify/require"
 	"go.mongodb.org/mongo-driver/v2/bson"
@@ -53,35 +51,29 @@ func getStorage(tb testing.TB) *SkillStore {
 
 func TestQueryModuleVersionExists(t *testing.T) {
 	modname, ver := "getTestModule", "v1.2.3"
-	mock := &storage.Version{
-		Info: []byte("123"),
-		Zip:  io.NopCloser(bytes.NewReader([]byte("789"))),
-	}
+	infoBytes := []byte("123")
+	archive := []byte("789")
 
 	ctx := t.Context()
 	backend := getStorage(t)
 
-	zipBts, _ := io.ReadAll(mock.Zip)
-	backend.Save(ctx, modname, ver, bytes.NewReader(zipBts), mock.ZipMD5, mock.Info)
+	backend.Save(ctx, modname, ver, bytes.NewReader(archive), nil, infoBytes)
 	defer backend.Delete(ctx, modname, ver)
 
-	info, err := query(ctx, backend, modname, ver)
+	record, err := query(ctx, backend, modname, ver)
 	require.NoError(t, err)
-	require.Equal(t, mock.Info, info.Info)
+	require.Equal(t, infoBytes, record.Info)
 }
 
 func TestQueryKindNotFoundErrorCases(t *testing.T) {
 	modname, ver := "getTestModule", "v1.2.3"
-	mock := &storage.Version{
-		Info: []byte("123"),
-		Zip:  io.NopCloser(bytes.NewReader([]byte("789"))),
-	}
+	infoBytes := []byte("123")
+	archive := []byte("789")
 
 	ctx := t.Context()
 	backend := getStorage(t)
 
-	zipBts, _ := io.ReadAll(mock.Zip)
-	backend.Save(ctx, modname, ver, bytes.NewReader(zipBts), nil, mock.Info)
+	backend.Save(ctx, modname, ver, bytes.NewReader(archive), nil, infoBytes)
 	defer backend.Delete(ctx, modname, ver)
 
 	testCases := []struct {

@@ -39,7 +39,7 @@ type tagCatalog struct {
 
 // NewVCSLister creates an UpstreamLister that shares the Fetcher's persistent
 // Git repository cache.
-func NewVCSLister(fetcher Fetcher, timeout time.Duration) (RepositoryVersionLister, error) {
+func NewVCSLister(fetcher RepositoryFetcher, timeout time.Duration) (RepositoryVersionLister, error) {
 	repositories, ok := fetcher.(*gitFetcher)
 	if !ok {
 		return nil, fmt.Errorf("VCS lister requires the Git-backed Skill fetcher")

@@ -3,7 +3,7 @@
 
 ## Members
 
-- `artifact.go`: consumes the shared Protocol one-pass normalized ZIP traversal while converting a complete Repository or one selected Skill member into an inspectable inventory, executable signals, and a deterministic risk assessment carrying the exact Repository Sum returned by that traversal.
+- `artifact.go`: consumes the shared Protocol one-pass Repository ZIP traversal while projecting one selected Skill member into an inspectable inventory, executable signals, and a deterministic risk assessment carrying the exact Repository Sum returned by that traversal.
 - `artifact_test.go`: specifies archive validation, duplicate rejection, golden Sums, assessment-to-artifact binding, real instruction extraction, file classification, truncation, and risk evidence.
 
 ## Architectural Boundary

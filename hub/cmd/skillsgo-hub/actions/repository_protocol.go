@@ -18,11 +18,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 )
 
-func withRepositoryInfo(protocol download.Protocol, metadata *catalog.Catalog, materializers ...repositoryMaterializer) download.Protocol {
-	var materializer repositoryMaterializer
-	if len(materializers) > 0 {
-		materializer = materializers[0]
-	}
+func withRepositoryInfo(protocol download.Protocol, metadata *catalog.Catalog, materializer repositoryMaterializer) download.Protocol {
 	return &repositoryInfoProtocol{Protocol: protocol, metadata: metadata, materializer: materializer}
 }
 

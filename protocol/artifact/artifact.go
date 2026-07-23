@@ -78,10 +78,6 @@ func ValidSum(value string) bool {
 	return err == nil && len(decoded) == sha256.Size
 }
 
-func Sum(data []byte, skillID, version string) (string, error) {
-	return WalkContent(data, skillID, version, nil)
-}
-
 // BuildRepository serializes one complete validated Repository file inventory
 // beneath the canonical <repositoryID>@<version>/ ZIP prefix.
 func BuildRepository(repositoryID, version string, files []Entry) ([]byte, error) {
@@ -162,16 +158,10 @@ func RepositorySum(data []byte, repositoryID, version string) (string, error) {
 // WalkRepository validates and reads one complete Repository Artifact exactly
 // once, visits entries in normalized path order, and returns its Sum.
 func WalkRepository(data []byte, repositoryID, version string, visit VisitFunc) (string, error) {
-	return walkContent(data, repositoryID, version, visit, false)
+	return walkContent(data, repositoryID, version, visit)
 }
 
-// WalkContent validates and reads an artifact exactly once, visits files in
-// normalized path order, and returns the Sum over the same entries.
-func WalkContent(data []byte, skillID, version string, visit VisitFunc) (string, error) {
-	return walkContent(data, skillID, version, visit, true)
-}
-
-func walkContent(data []byte, artifactID, version string, visit VisitFunc, requireRootSkill bool) (string, error) {
+func walkContent(data []byte, artifactID, version string, visit VisitFunc) (string, error) {
 	if len(data) == 0 || len(data) > MaxArchiveBytes {
 		return "", fmt.Errorf("artifact archive size must be between 1 and %d bytes", MaxArchiveBytes)
 	}
@@ -256,28 +246,19 @@ func walkContent(data []byte, artifactID, version string, visit VisitFunc, requi
 			}
 		}
 	}
-	if requireRootSkill {
-		manifestKey, _ := PortablePathKey("SKILL.md")
-		if manifest, exists := seen[manifestKey]; !exists || manifest.path != "SKILL.md" || manifest.directory {
-			return "", fmt.Errorf("artifact does not contain SKILL.md")
-		}
-	} else if !hasSkill {
+	if !hasSkill {
 		return "", fmt.Errorf("Repository Artifact does not contain a SKILL.md member")
 	}
 	return "h1:" + base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
 }
 
-func DirectorySum(root string) (string, error) {
-	return directorySum(root, true)
-}
-
 // RepositoryDirectorySum calculates the Repository Sum for an extracted
 // Repository Artifact whose Skill members may be rooted or nested.
 func RepositoryDirectorySum(root string) (string, error) {
-	return directorySum(root, false)
+	return directorySum(root)
 }
 
-func directorySum(root string, requireRootSkill bool) (string, error) {
+func directorySum(root string) (string, error) {
 	root, err := filepath.Abs(root)
 	if err != nil {
 		return "", err
@@ -344,11 +325,7 @@ func directorySum(root string, requireRootSkill bool) (string, error) {
 			return "", err
 		}
 	}
-	if requireRootSkill {
-		if info, err := os.Stat(filepath.Join(root, "SKILL.md")); err != nil || !info.Mode().IsRegular() {
-			return "", fmt.Errorf("artifact does not contain a regular SKILL.md")
-		}
-	} else if !hasSkill {
+	if !hasSkill {
 		return "", fmt.Errorf("Repository Artifact does not contain a SKILL.md member")
 	}
 	return "h1:" + base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil

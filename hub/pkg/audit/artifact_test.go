@@ -1,175 +1,47 @@
 /*
- * [INPUT]: Uses in-memory ZIP fixtures representing immutable Hub Skill artifacts.
- * [OUTPUT]: Specifies bounded duplicate-safe file inspection, golden Sums, instruction extraction, executable evidence, and deterministic risk levels.
- * [POS]: Serves as the behavior contract for the Hub artifact audit boundary.
+ * [INPUT]: Uses deterministic complete Repository Artifacts with root and nested Skill members.
+ * [OUTPUT]: Specifies selected-member inspection, Repository Sum binding, executable evidence, and strict member-path validation.
+ * [POS]: Serves as focused behavior coverage for Repository Artifact audit projection.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package audit
 
 import (
-	"archive/zip"
-	"bytes"
-	"strings"
 	"testing"
 
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	"github.com/stretchr/testify/require"
 )
 
-func TestAnalyzeArtifactExtractsInspectableFilesAndRiskEvidence(t *testing.T) {
-	skillID, version := "github.com/acme/skills/-/demo", "v0.0.0-test"
-	data := auditZIP(t, skillID+"@"+version+"/", map[string][]byte{
-		"SKILL.md":            []byte("---\nname: demo\ndescription: Demo\n---\n# Real instructions\n"),
-		"references/guide.md": []byte("# Guide\n"),
-		"scripts/run.sh":      []byte("#!/bin/sh\necho demo\n"),
-		"bin/helper.exe":      {0, 1, 2, 3},
+func TestAnalyzeRepositoryMemberProjectsOnlySelectedMember(t *testing.T) {
+	repositoryID, version := "github.com/acme/skills", "v1.0.0"
+	archive, err := protocolartifact.BuildRepository(repositoryID, version, []protocolartifact.Entry{
+		{Path: "SKILL.md", Contents: []byte("---\nname: root\ndescription: Root Skill.\n---\nRoot instructions."), Mode: 0o644},
+		{Path: "skills/demo/SKILL.md", Contents: []byte("---\nname: demo\ndescription: Demo Skill.\n---\nDemo instructions."), Mode: 0o644},
+		{Path: "skills/demo/scripts/run.sh", Contents: []byte("#!/bin/sh\necho demo\n"), Mode: 0o755},
+		{Path: "skills/other/SKILL.md", Contents: []byte("---\nname: other\ndescription: Other Skill.\n---\nOther."), Mode: 0o644},
 	})
-
-	result, err := AnalyzeArtifact(data, skillID, version)
 	require.NoError(t, err)
-	require.Contains(t, result.Instructions, "# Real instructions")
-	require.Equal(t, "high", result.Risk.Level)
-	require.Equal(t, ScannerVersion, result.Risk.ScannerVersion)
-	require.Equal(t, result.Sum, result.Risk.ArtifactSum)
-	require.ElementsMatch(t, []Evidence{
-		{Code: "script_file", Path: "scripts/run.sh"},
-		{Code: "binary_executable", Path: "bin/helper.exe"},
-	}, result.Risk.Evidence)
+
+	result, err := AnalyzeRepositoryMember(archive, repositoryID, version, "skills/demo")
+	require.NoError(t, err)
+	require.Equal(t, "---\nname: demo\ndescription: Demo Skill.\n---\nDemo instructions.", result.Instructions)
+	require.Equal(t, []string{"scripts/run.sh"}, result.ExecutableFiles)
 	require.True(t, result.HasExecutableContent)
-	require.Equal(t, []string{"bin/helper.exe", "scripts/run.sh"}, result.ExecutableFiles)
-
-	files := map[string]File{}
-	for _, file := range result.Files {
-		files[file.Path] = file
-	}
-	require.Equal(t, "instructions", files["SKILL.md"].Kind)
-	require.Equal(t, "# Guide\n", files["references/guide.md"].Content)
-	require.Equal(t, "script", files["scripts/run.sh"].Kind)
-	require.True(t, files["scripts/run.sh"].Executable)
-	require.True(t, files["bin/helper.exe"].Binary)
-	require.Empty(t, files["bin/helper.exe"].Content)
+	require.Len(t, result.Files, 2)
+	wantSum, err := protocolartifact.RepositorySum(archive, repositoryID, version)
+	require.NoError(t, err)
+	require.Equal(t, wantSum, result.Sum)
+	require.Equal(t, wantSum, result.Risk.ArtifactSum)
 }
 
-func TestAnalyzeArtifactUsesUnknownWhenStaticSignalsCannotEstablishSafety(t *testing.T) {
-	skillID, version := "github.com/acme/skills/-/docs", "v1.0.0"
-	data := auditZIP(t, skillID+"@"+version+"/", map[string][]byte{
-		"SKILL.md": []byte("---\nname: docs\ndescription: Docs\n---\n# Instructions\n"),
+func TestAnalyzeRepositoryMemberRejectsMissingMemberManifest(t *testing.T) {
+	repositoryID, version := "github.com/acme/skills", "v1.0.0"
+	archive, err := protocolartifact.BuildRepository(repositoryID, version, []protocolartifact.Entry{
+		{Path: "SKILL.md", Contents: []byte("---\nname: root\ndescription: Root Skill.\n---\nRoot."), Mode: 0o644},
 	})
-
-	result, err := AnalyzeArtifact(data, skillID, version)
 	require.NoError(t, err)
-	require.Equal(t, "unknown", result.Risk.Level)
-	require.Empty(t, result.Risk.Evidence)
-	require.False(t, result.HasExecutableContent)
-}
 
-func TestAnalyzeArtifactRejectsWrongPrefixAndMissingInstructions(t *testing.T) {
-	skillID, version := "github.com/acme/skills/-/demo", "v1.0.0"
-	for name, data := range map[string][]byte{
-		"wrong prefix": auditZIP(t, "github.com/other/skill@v1.0.0/", map[string][]byte{
-			"SKILL.md": []byte("# Wrong"),
-		}),
-		"missing SKILL.md": auditZIP(t, skillID+"@"+version+"/", map[string][]byte{
-			"README.md": []byte("# Missing"),
-		}),
-	} {
-		t.Run(name, func(t *testing.T) {
-			_, err := AnalyzeArtifact(data, skillID, version)
-			require.Error(t, err)
-		})
-	}
-}
-
-func TestAnalyzeArtifactTruncatesLargeSupportingText(t *testing.T) {
-	skillID, version := "github.com/acme/skills/-/demo", "v1.0.0"
-	data := auditZIP(t, skillID+"@"+version+"/", map[string][]byte{
-		"SKILL.md":        []byte("# Instructions"),
-		"references/a.md": []byte(strings.Repeat("a", maxFileContentBytes+1)),
-	})
-
-	result, err := AnalyzeArtifact(data, skillID, version)
-	require.NoError(t, err)
-	require.True(t, result.Files[1].Truncated)
-	require.Len(t, result.Files[1].Content, maxFileContentBytes)
-}
-
-func TestAnalyzeArtifactSumIgnoresArchiveCompressionAndEntryOrder(t *testing.T) {
-	skillID, version := "github.com/acme/skills/-/demo", "v1.0.0"
-	prefix := skillID + "@" + version + "/"
-	files := []struct {
-		name     string
-		contents []byte
-	}{
-		{name: "SKILL.md", contents: []byte("# Instructions")},
-		{name: "references/guide.md", contents: []byte("# Guide")},
-	}
-	stored := auditZIPEntries(t, prefix, zip.Store, files)
-	deflated := auditZIPEntries(t, prefix, zip.Deflate, []struct {
-		name     string
-		contents []byte
-	}{files[1], files[0]})
-
-	storedResult, err := AnalyzeArtifact(stored, skillID, version)
-	require.NoError(t, err)
-	deflatedResult, err := AnalyzeArtifact(deflated, skillID, version)
-	require.NoError(t, err)
-	require.NotEqual(t, stored, deflated)
-	require.Equal(t, storedResult.Sum, deflatedResult.Sum)
-	require.Contains(t, storedResult.Sum, "h1:")
-}
-
-func TestAnalyzeArtifactRejectsDuplicatePaths(t *testing.T) {
-	skillID, version := "github.com/acme/skills/-/demo", "v1.0.0"
-	data := auditZIPEntries(t, skillID+"@"+version+"/", zip.Store, []struct {
-		name     string
-		contents []byte
-	}{
-		{name: "SKILL.md", contents: []byte("first")},
-		{name: "SKILL.md", contents: []byte("second")},
-	})
-
-	_, err := AnalyzeArtifact(data, skillID, version)
-	require.ErrorContains(t, err, "collide")
-}
-
-func TestAnalyzeArtifactSumGoldenVector(t *testing.T) {
-	skillID, version := "github.com/example/skills/-/demo", "v1"
-	data := auditZIP(t, skillID+"@"+version+"/", map[string][]byte{
-		"SKILL.md": []byte("# Demo\n"),
-	})
-
-	result, err := AnalyzeArtifact(data, skillID, version)
-	require.NoError(t, err)
-	require.Equal(t, "h1:ndA9lw9XWrLHtS/j9kdqTow/oXIaG8R7tm7tnAzh3/Y=", result.Sum)
-}
-
-func auditZIP(t *testing.T, prefix string, files map[string][]byte) []byte {
-	t.Helper()
-	var buffer bytes.Buffer
-	writer := zip.NewWriter(&buffer)
-	for name, contents := range files {
-		entry, err := writer.Create(prefix + name)
-		require.NoError(t, err)
-		_, err = entry.Write(contents)
-		require.NoError(t, err)
-	}
-	require.NoError(t, writer.Close())
-	return buffer.Bytes()
-}
-
-func auditZIPEntries(t *testing.T, prefix string, method uint16, files []struct {
-	name     string
-	contents []byte
-}) []byte {
-	t.Helper()
-	var buffer bytes.Buffer
-	writer := zip.NewWriter(&buffer)
-	for _, file := range files {
-		header := &zip.FileHeader{Name: prefix + file.name, Method: method}
-		entry, err := writer.CreateHeader(header)
-		require.NoError(t, err)
-		_, err = entry.Write(file.contents)
-		require.NoError(t, err)
-	}
-	require.NoError(t, writer.Close())
-	return buffer.Bytes()
+	_, err = AnalyzeRepositoryMember(archive, repositoryID, version, "skills/missing")
+	require.ErrorContains(t, err, "artifact does not contain SKILL.md")
 }

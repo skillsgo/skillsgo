@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"runtime"
 	"strconv"
-	"strings"
 	"testing"
 
 	"github.com/BurntSushi/toml"
@@ -38,7 +37,7 @@ func setTestHome(t *testing.T) string {
 
 func compareConfigs(parsedConf *Config, expConf *Config, t *testing.T, ignoreTypes ...any) {
 	t.Helper()
-	opts := cmpopts.IgnoreTypes(append([]any{Index{}, DatabaseConfig{}}, ignoreTypes...)...)
+	opts := cmpopts.IgnoreTypes(append([]any{DatabaseConfig{}}, ignoreTypes...)...)
 	ignoreDatabase := cmpopts.IgnoreFields(Config{}, "Database", "TaskQueue", "LLM")
 	eq := cmp.Equal(parsedConf, expConf, opts, ignoreDatabase)
 	if !eq {
@@ -173,16 +172,24 @@ func TestDeploymentConfiguration(t *testing.T) {
 	require.Error(t, validateDeployment("invalid", "https://cloud.skillsgo.ai"))
 }
 
+func TestArtifactOriginConfiguration(t *testing.T) {
+	require.NoError(t, validateArtifactOrigin(""))
+	require.NoError(t, validateArtifactOrigin("https://artifacts.skillsgo.ai/repositories"))
+	require.NoError(t, validateArtifactOrigin("http://artifact-store.internal"))
+	require.Error(t, validateArtifactOrigin("artifact-store.internal"))
+	require.Error(t, validateArtifactOrigin("ftp://artifact-store.internal"))
+	require.Error(t, validateArtifactOrigin("https://user:pass@artifact-store.internal"))
+	require.Error(t, validateArtifactOrigin("https://artifact-store.internal?token=secret"))
+}
+
 func TestEnvOverrides(t *testing.T) {
 	os.Clearenv()
 	home := setTestHome(t)
 	expConf := &Config{
-		Environment:       "production",
-		Mode:              "selfhost",
-		SkillFetchWorkers: 10,
-		ProtocolWorkers:   10,
-		LogLevel:          "info",
-		CloudRuntime:      "gcp",
+		Environment:  "production",
+		Mode:         "selfhost",
+		LogLevel:     "info",
+		CloudRuntime: "gcp",
 		TimeoutConf: TimeoutConf{
 			Timeout: 30,
 		},
@@ -197,9 +204,7 @@ func TestEnvOverrides(t *testing.T) {
 		ValidatorHook:    "testhook.io",
 		PathPrefix:       "prefix",
 		Storage:          &Storage{},
-		SingleFlight:     &SingleFlight{},
 		RobotsFile:       "robots.txt",
-		Index:            &Index{},
 		SkillCacheDir:    filepath.Join(home, ".skillsgo", "hub", "cache"),
 	}
 
@@ -213,7 +218,7 @@ func TestEnvOverrides(t *testing.T) {
 		t.Fatalf("Env override failed: %v", err)
 	}
 
-	compareConfigs(conf, expConf, t, Storage{}, SingleFlight{})
+	compareConfigs(conf, expConf, t, Storage{})
 }
 
 func TestTaskQueueEnvironmentOverride(t *testing.T) {
@@ -315,22 +320,6 @@ func TestStorageEnvOverrides(t *testing.T) {
 
 // TestParseExampleConfig validates that all the properties in the example configuration file
 // can be parsed and validated without any environment variables
-func TestRedisSentinelDBConfig(t *testing.T) {
-	t.Setenv("SKILLSGO_HUB_SINGLE_FLIGHT_TYPE", "redis-sentinel")
-	t.Setenv("SKILLSGO_HUB_REDIS_SENTINEL_ENDPOINTS", "127.0.0.1:26379")
-	t.Setenv("SKILLSGO_HUB_REDIS_SENTINEL_MASTER_NAME", "mymaster")
-	t.Setenv("SKILLSGO_HUB_REDIS_SENTINEL_DB", "5")
-
-	cfg, err := Load("")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if cfg.SingleFlight.RedisSentinel.DB != 5 {
-		t.Fatalf("expected DB to be 5, got %d", cfg.SingleFlight.RedisSentinel.DB)
-	}
-}
-
 func TestParseExampleConfig(t *testing.T) {
 	os.Clearenv()
 	home := setTestHome(t)
@@ -374,33 +363,14 @@ func TestParseExampleConfig(t *testing.T) {
 		External: &External{URL: ""},
 	}
 
-	expSingleFlight := &SingleFlight{
-		Redis: &Redis{
-			Endpoint:   "127.0.0.1:6379",
-			Password:   "",
-			LockConfig: DefaultRedisLockConfig(),
-		},
-		RedisSentinel: &RedisSentinel{
-			Endpoints:        []string{"127.0.0.1:26379"},
-			MasterName:       "redis-1",
-			SentinelPassword: "sekret",
-			DB:               0,
-			LockConfig:       DefaultRedisLockConfig(),
-		},
-		Etcd: &Etcd{Endpoints: "localhost:2379,localhost:22379,localhost:32379"},
-		GCP:  DefaultGCPConfig(),
-	}
-
 	expConf := &Config{
 		Environment:             "development",
 		Mode:                    "selfhost",
 		GithubTokens:            TokenList{},
 		LogLevel:                "debug",
 		LogFormat:               "plain",
-		SkillFetchWorkers:       10,
 		RepositoryCacheTTL:      604800,
 		RepositoryCacheMaxBytes: 10 << 30,
-		ProtocolWorkers:         30,
 		CloudRuntime:            "none",
 		TimeoutConf: TimeoutConf{
 			Timeout: 300,
@@ -418,14 +388,9 @@ func TestParseExampleConfig(t *testing.T) {
 		TraceExporter:         "",
 		TraceSamplingFraction: 1.0,
 		StatsExporter:         "prometheus",
-		SingleFlightType:      "memory",
-		SingleFlight:          expSingleFlight,
-		DownloadMode:          "sync",
+		ArtifactOrigin:        "",
 		RobotsFile:            "robots.txt",
-		IndexType:             "none",
 		ShutdownTimeout:       60,
-		StashTimeout:          600,
-		Index:                 &Index{},
 		SkillCacheDir:         filepath.Join(home, ".skillsgo", "hub", "cache"),
 	}
 
@@ -445,10 +410,8 @@ func getEnvMap(config *Config) map[string]string {
 	envVars := map[string]string{
 		"SKILLSGO_HUB_ENVIRONMENT":                config.Environment,
 		"SKILLSGO_HUB_MODE":                       config.Mode,
-		"SKILLSGO_HUB_SKILL_FETCH_WORKERS":        strconv.Itoa(config.SkillFetchWorkers),
 		"SKILLSGO_HUB_REPOSITORY_CACHE_TTL":       strconv.Itoa(config.RepositoryCacheTTL),
 		"SKILLSGO_HUB_REPOSITORY_CACHE_MAX_BYTES": strconv.FormatInt(config.RepositoryCacheMaxBytes, 10),
-		"SKILLSGO_HUB_PROTOCOL_WORKERS":           strconv.Itoa(config.ProtocolWorkers),
 		"SKILLSGO_HUB_LOG_LEVEL":                  config.LogLevel,
 		"SKILLSGO_HUB_CLOUD_RUNTIME":              config.CloudRuntime,
 		"SKILLSGO_HUB_TIMEOUT":                    strconv.Itoa(config.Timeout),
@@ -467,6 +430,7 @@ func getEnvMap(config *Config) map[string]string {
 	envVars["SKILLSGO_HUB_PROXY_VALIDATOR"] = config.ValidatorHook
 	envVars["SKILLSGO_HUB_PATH_PREFIX"] = config.PathPrefix
 	envVars["SKILLSGO_HUB_ROBOTS_FILE"] = config.RobotsFile
+	envVars["SKILLSGO_HUB_ARTIFACT_ORIGIN"] = config.ArtifactOrigin
 
 	storage := config.Storage
 	if storage != nil {
@@ -503,37 +467,6 @@ func getEnvMap(config *Config) map[string]string {
 		}
 	}
 
-	singleFlight := config.SingleFlight
-	if singleFlight != nil {
-		if singleFlight.Redis != nil {
-			envVars["SKILLSGO_HUB_SINGLE_FLIGHT_TYPE"] = "redis"
-			envVars["SKILLSGO_HUB_REDIS_ENDPOINT"] = singleFlight.Redis.Endpoint
-			envVars["SKILLSGO_HUB_REDIS_PASSWORD"] = singleFlight.Redis.Password
-			if singleFlight.Redis.LockConfig != nil {
-				envVars["SKILLSGO_HUB_REDIS_LOCK_TTL"] = strconv.Itoa(singleFlight.Redis.LockConfig.TTL)
-				envVars["SKILLSGO_HUB_REDIS_LOCK_TIMEOUT"] = strconv.Itoa(singleFlight.Redis.LockConfig.Timeout)
-				envVars["SKILLSGO_HUB_REDIS_LOCK_MAX_RETRIES"] = strconv.Itoa(singleFlight.Redis.LockConfig.MaxRetries)
-			}
-		} else if singleFlight.RedisSentinel != nil {
-			envVars["SKILLSGO_HUB_SINGLE_FLIGHT_TYPE"] = "redis-sentinel"
-			envVars["SKILLSGO_HUB_REDIS_SENTINEL_ENDPOINTS"] = strings.Join(singleFlight.RedisSentinel.Endpoints, ",")
-			envVars["SKILLSGO_HUB_REDIS_SENTINEL_MASTER_NAME"] = singleFlight.RedisSentinel.MasterName
-			envVars["SKILLSGO_HUB_REDIS_SENTINEL_PASSWORD"] = singleFlight.RedisSentinel.SentinelPassword
-			envVars["SKILLSGO_HUB_REDIS_USERNAME"] = singleFlight.RedisSentinel.RedisUsername
-			envVars["SKILLSGO_HUB_REDIS_PASSWORD"] = singleFlight.RedisSentinel.RedisPassword
-			envVars["SKILLSGO_HUB_REDIS_SENTINEL_DB"] = strconv.Itoa(singleFlight.RedisSentinel.DB)
-			if singleFlight.RedisSentinel.LockConfig != nil {
-				envVars["SKILLSGO_HUB_REDIS_LOCK_TTL"] = strconv.Itoa(singleFlight.RedisSentinel.LockConfig.TTL)
-				envVars["SKILLSGO_HUB_REDIS_LOCK_TIMEOUT"] = strconv.Itoa(singleFlight.RedisSentinel.LockConfig.Timeout)
-				envVars["SKILLSGO_HUB_REDIS_LOCK_MAX_RETRIES"] = strconv.Itoa(singleFlight.RedisSentinel.LockConfig.MaxRetries)
-			}
-		} else if singleFlight.Etcd != nil {
-			envVars["SKILLSGO_HUB_SINGLE_FLIGHT_TYPE"] = "etcd"
-			envVars["SKILLSGO_HUB_ETCD_ENDPOINTS"] = singleFlight.Etcd.Endpoints
-		} else if singleFlight.GCP != nil {
-			envVars["SKILLSGO_HUB_GCP_STALE_THRESHOLD"] = strconv.Itoa(singleFlight.GCP.StaleThreshold)
-		}
-	}
 	return envVars
 }
 
@@ -635,7 +568,7 @@ func TestDefaultConfigMatchesConfigFile(t *testing.T) {
 
 	defConf := defaultConfig()
 
-	ignoreStorageOpts := cmpopts.IgnoreTypes(&Storage{}, &Index{})
+	ignoreStorageOpts := cmpopts.IgnoreTypes(&Storage{})
 	ignoreEnvironmentOpts := cmpopts.IgnoreFields(Config{}, "Environment", "SkillCacheDir", "StorageType", "Database")
 	eq := cmp.Equal(defConf, parsedConf, ignoreStorageOpts, ignoreEnvironmentOpts)
 	if !eq {

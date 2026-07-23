@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on request-scoped structured logging, one resolved Repository snapshot, immutable artifact storage, and enriched per-Skill protocol indexing.
+ * [INPUT]: Depends on request-scoped structured logging, one resolved Repository snapshot, immutable artifact storage, and atomic Catalog publication.
  * [OUTPUT]: Materializes every accepted Repository member, commits its byte-stable Repository Release Record, and emits a correlated bounded publication lifecycle without logging credentials or artifact content.
  * [POS]: Serves as the observable cold-publication coordinator between Git Repository discovery, artifact storage, and Repository Info visibility.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -16,7 +16,6 @@ import (
 	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
-	"github.com/skillsgo/skillsgo/hub/pkg/download"
 	huberrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
@@ -37,7 +36,6 @@ type historicalRepositoryMaterializer interface {
 type repositoryPublisher struct {
 	fetcher     skill.RepositoryFetcher
 	storage     storage.Backend
-	protocol    download.Protocol
 	metadata    *catalog.Catalog
 	work        singleflight.Group
 	commit      singleflight.Group
@@ -53,9 +51,9 @@ type negativePublication struct {
 	err     error
 }
 
-func newRepositoryPublisher(fetcher skill.RepositoryFetcher, backend storage.Backend, protocol download.Protocol, metadata *catalog.Catalog) *repositoryPublisher {
+func newRepositoryPublisher(fetcher skill.RepositoryFetcher, backend storage.Backend, metadata *catalog.Catalog) *repositoryPublisher {
 	backend = storage.WithImmutableWrites(backend)
-	return &repositoryPublisher{fetcher: fetcher, storage: backend, protocol: protocol, metadata: metadata, upstream: make(chan struct{}, 8), negative: make(map[string]negativePublication), now: time.Now, negativeTTL: 10 * time.Second}
+	return &repositoryPublisher{fetcher: fetcher, storage: backend, metadata: metadata, upstream: make(chan struct{}, 8), negative: make(map[string]negativePublication), now: time.Now, negativeTTL: 10 * time.Second}
 }
 
 func (p *repositoryPublisher) Materialize(ctx context.Context, repositoryID, query string) (string, error) {

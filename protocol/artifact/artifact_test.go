@@ -192,12 +192,12 @@ func TestBuildRepositoryRejectsInvalidInputsAndCanonicalizesModes(t *testing.T) 
 	}
 }
 
-func TestSumGoldenAndArchiveEncodingIndependence(t *testing.T) {
+func TestRepositorySumGoldenAndArchiveEncodingIndependence(t *testing.T) {
 	stored := makeZIP(t, zipEntry{"example@v1.0.0/a.txt", "a", false, zip.Store}, zipEntry{"example@v1.0.0/SKILL.md", "instructions", false, zip.Store}, zipEntry{"example@v1.0.0/empty", "", true, zip.Store})
 	deflated := makeZIP(t, zipEntry{"example@v1.0.0/SKILL.md", "instructions", false, zip.Deflate}, zipEntry{"example@v1.0.0/a.txt", "a", false, zip.Deflate})
 	want := "h1:MZJbLD1I7JI4vWGTWBFoQDvd7m98NPrqTxv62sLSzxs="
 	for _, archive := range [][]byte{stored, deflated} {
-		digest, err := Sum(archive, "example", "v1.0.0")
+		digest, err := RepositorySum(archive, "example", "v1.0.0")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -207,13 +207,13 @@ func TestSumGoldenAndArchiveEncodingIndependence(t *testing.T) {
 	}
 }
 
-func TestWalkContentVisitsNormalizedFilesAndReturnsTheSameDigest(t *testing.T) {
+func TestWalkRepositoryVisitsNormalizedFilesAndReturnsTheSameDigest(t *testing.T) {
 	archive := makeZIP(t,
 		zipEntry{"example@v1/z.txt", "z", false, zip.Store},
 		zipEntry{"example@v1/SKILL.md", "instructions", false, zip.Store},
 	)
 	var visited []string
-	digest, err := WalkContent(archive, "example", "v1", func(entry Entry) error {
+	digest, err := WalkRepository(archive, "example", "v1", func(entry Entry) error {
 		visited = append(visited, entry.Path+":"+string(entry.Contents))
 		if entry.Size != int64(len(entry.Contents)) {
 			t.Fatalf("entry size %d != %d", entry.Size, len(entry.Contents))
@@ -223,7 +223,7 @@ func TestWalkContentVisitsNormalizedFilesAndReturnsTheSameDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := Sum(archive, "example", "v1")
+	want, err := RepositorySum(archive, "example", "v1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -235,9 +235,9 @@ func TestWalkContentVisitsNormalizedFilesAndReturnsTheSameDigest(t *testing.T) {
 	}
 }
 
-func TestWalkContentPropagatesVisitorFailure(t *testing.T) {
+func TestWalkRepositoryPropagatesVisitorFailure(t *testing.T) {
 	archive := makeZIP(t, zipEntry{"example@v1/SKILL.md", "instructions", false, zip.Store})
-	_, err := WalkContent(archive, "example", "v1", func(Entry) error {
+	_, err := WalkRepository(archive, "example", "v1", func(Entry) error {
 		return errors.New("inspection failed")
 	})
 	if err == nil || !strings.Contains(err.Error(), `visit artifact file "SKILL.md": inspection failed`) {
@@ -245,13 +245,13 @@ func TestWalkContentPropagatesVisitorFailure(t *testing.T) {
 	}
 }
 
-func TestWalkContentVisitsDirectoriesAndRejectsTreeShapeConflicts(t *testing.T) {
+func TestWalkRepositoryVisitsDirectoriesAndRejectsTreeShapeConflicts(t *testing.T) {
 	archive := makeZIP(t,
 		zipEntry{"example@v1/SKILL.md", "instructions", false, zip.Store},
 		zipEntry{"example@v1/docs", "", true, zip.Store},
 	)
 	visitedDirectory := false
-	_, err := WalkContent(archive, "example", "v1", func(entry Entry) error {
+	_, err := WalkRepository(archive, "example", "v1", func(entry Entry) error {
 		if entry.Directory {
 			visitedDirectory = entry.Path == "docs" && entry.Contents == nil && entry.Size == 0
 			return errors.New("directory inspection failed")
@@ -287,7 +287,7 @@ func TestWalkContentVisitsDirectoriesAndRejectsTreeShapeConflicts(t *testing.T) 
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := Sum(makeZIP(t, test.entries...), "example", "v1")
+			_, err := RepositorySum(makeZIP(t, test.entries...), "example", "v1")
 			if err == nil || !strings.Contains(err.Error(), test.contains) {
 				t.Fatalf("error %v, want %q", err, test.contains)
 			}
@@ -340,7 +340,7 @@ func TestWalkRepositoryAcceptsRootDirectoryAndRejectsInvalidDirectory(t *testing
 	}
 }
 
-func TestSumRejectsMalformedAndUnsafeArchives(t *testing.T) {
+func TestRepositorySumRejectsMalformedAndUnsafeArchives(t *testing.T) {
 	valid := zipEntry{"example@v1/SKILL.md", "ok", false, zip.Store}
 	tests := []struct {
 		name     string
@@ -357,23 +357,23 @@ func TestSumRejectsMalformedAndUnsafeArchives(t *testing.T) {
 		{"Windows trailing space", makeZIP(t, valid, zipEntry{"example@v1/name ", "x", false, zip.Store}), "trailing space"},
 		{"portable case collision", makeZIP(t, valid, zipEntry{"example@v1/Readme.md", "x", false, zip.Store}, zipEntry{"example@v1/README.md", "y", false, zip.Store}), "collide on portable filesystems"},
 		{"Unicode fold collision", makeZIP(t, valid, zipEntry{"example@v1/K.txt", "x", false, zip.Store}, zipEntry{"example@v1/K.txt", "y", false, zip.Store}), "collide on portable filesystems"},
-		{"missing manifest", makeZIP(t, zipEntry{"example@v1/a.txt", "x", false, zip.Store}), "does not contain SKILL.md"},
+		{"missing manifest", makeZIP(t, zipEntry{"example@v1/a.txt", "x", false, zip.Store}), "does not contain a SKILL.md member"},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := Sum(test.archive, "example", "v1")
+			_, err := RepositorySum(test.archive, "example", "v1")
 			if err == nil || !strings.Contains(err.Error(), test.contains) {
 				t.Fatalf("error %v, want %q", err, test.contains)
 			}
 		})
 	}
 	oversized := make([]byte, MaxArchiveBytes+1)
-	if _, err := Sum(oversized, "example", "v1"); err == nil {
+	if _, err := RepositorySum(oversized, "example", "v1"); err == nil {
 		t.Fatal("expected archive-size rejection")
 	}
 }
 
-func TestSumRejectsIrregularModes(t *testing.T) {
+func TestRepositorySumRejectsIrregularModes(t *testing.T) {
 	makeModeZIP := func(mode os.FileMode) []byte {
 		var buffer bytes.Buffer
 		writer := zip.NewWriter(&buffer)
@@ -402,7 +402,7 @@ func TestSumRejectsIrregularModes(t *testing.T) {
 		{"symlink", os.ModeSymlink | 0o777, "not a regular file"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := Sum(makeModeZIP(test.mode), "example", "v1")
+			_, err := RepositorySum(makeModeZIP(test.mode), "example", "v1")
 			if err == nil || !strings.Contains(err.Error(), test.contains) {
 				t.Fatalf("error %v, want %q", err, test.contains)
 			}
@@ -410,17 +410,17 @@ func TestSumRejectsIrregularModes(t *testing.T) {
 	}
 }
 
-func TestSumRejectsFileCountAndExpandedSize(t *testing.T) {
+func TestRepositorySumRejectsFileCountAndExpandedSize(t *testing.T) {
 	entries := make([]zipEntry, 0, MaxFiles+1)
 	entries = append(entries, zipEntry{"example@v1/SKILL.md", "ok", false, zip.Store})
 	for i := 0; i < MaxFiles; i++ {
 		entries = append(entries, zipEntry{filepath.ToSlash(filepath.Join("example@v1", "files", formatIndex(i))), "", false, zip.Store})
 	}
-	if _, err := Sum(makeZIP(t, entries...), "example", "v1"); err == nil || !strings.Contains(err.Error(), "more than") {
+	if _, err := RepositorySum(makeZIP(t, entries...), "example", "v1"); err == nil || !strings.Contains(err.Error(), "more than") {
 		t.Fatalf("file-count error: %v", err)
 	}
 	large := strings.Repeat("x", MaxUncompressedBytes+1)
-	if _, err := Sum(makeZIP(t, zipEntry{"example@v1/SKILL.md", large, false, zip.Deflate}), "example", "v1"); err == nil || !strings.Contains(err.Error(), "expands beyond") {
+	if _, err := RepositorySum(makeZIP(t, zipEntry{"example@v1/SKILL.md", large, false, zip.Deflate}), "example", "v1"); err == nil || !strings.Contains(err.Error(), "expands beyond") {
 		t.Fatalf("expanded-size error: %v", err)
 	}
 }
@@ -440,7 +440,7 @@ func formatIndex(value int) string {
 	return string(result[position:])
 }
 
-func TestDirectorySumMatchesArchiveAndRejectsUnsafeTrees(t *testing.T) {
+func TestRepositoryDirectorySumMatchesArchiveAndRejectsUnsafeTrees(t *testing.T) {
 	root := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(root, "nested"), 0o700); err != nil {
 		t.Fatal(err)
@@ -451,12 +451,12 @@ func TestDirectorySumMatchesArchiveAndRejectsUnsafeTrees(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "nested", "a.txt"), []byte("a"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	directoryDigest, err := DirectorySum(root)
+	directoryDigest, err := RepositoryDirectorySum(root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	archive := makeZIP(t, zipEntry{"example@v1/SKILL.md", "instructions", false, zip.Store}, zipEntry{"example@v1/nested/a.txt", "a", false, zip.Store})
-	archiveDigest, err := Sum(archive, "example", "v1")
+	archiveDigest, err := RepositorySum(archive, "example", "v1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -464,7 +464,7 @@ func TestDirectorySumMatchesArchiveAndRejectsUnsafeTrees(t *testing.T) {
 		t.Fatalf("directory %s != archive %s", directoryDigest, archiveDigest)
 	}
 	missing := t.TempDir()
-	if _, err := DirectorySum(missing); err == nil || !strings.Contains(err.Error(), "regular SKILL.md") {
+	if _, err := RepositoryDirectorySum(missing); err == nil || !strings.Contains(err.Error(), "SKILL.md member") {
 		t.Fatalf("missing manifest error: %v", err)
 	}
 	symlinkRoot := t.TempDir()
@@ -474,7 +474,7 @@ func TestDirectorySumMatchesArchiveAndRejectsUnsafeTrees(t *testing.T) {
 	if err := os.Symlink(filepath.Join(symlinkRoot, "SKILL.md"), filepath.Join(symlinkRoot, "alias")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := DirectorySum(symlinkRoot); err == nil || !strings.Contains(err.Error(), "unsupported file") {
+	if _, err := RepositoryDirectorySum(symlinkRoot); err == nil || !strings.Contains(err.Error(), "unsupported file") {
 		t.Fatalf("symlink error: %v", err)
 	}
 	largeRoot := t.TempDir()
@@ -484,15 +484,15 @@ func TestDirectorySumMatchesArchiveAndRejectsUnsafeTrees(t *testing.T) {
 	if err := os.Truncate(filepath.Join(largeRoot, "SKILL.md"), MaxUncompressedBytes+1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := DirectorySum(largeRoot); err == nil || !strings.Contains(err.Error(), "exceeds") {
+	if _, err := RepositoryDirectorySum(largeRoot); err == nil || !strings.Contains(err.Error(), "exceeds") {
 		t.Fatalf("large directory error: %v", err)
 	}
-	if _, err := DirectorySum(filepath.Join(t.TempDir(), "missing")); err == nil {
+	if _, err := RepositoryDirectorySum(filepath.Join(t.TempDir(), "missing")); err == nil {
 		t.Fatal("expected missing-root traversal failure")
 	}
 }
 
-func TestDirectorySumRejectsFileCountBoundary(t *testing.T) {
+func TestRepositoryDirectorySumRejectsFileCountBoundary(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte("ok"), 0o600); err != nil {
 		t.Fatal(err)
@@ -502,12 +502,12 @@ func TestDirectorySumRejectsFileCountBoundary(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := DirectorySum(root); err == nil || !strings.Contains(err.Error(), "more than") {
+	if _, err := RepositoryDirectorySum(root); err == nil || !strings.Contains(err.Error(), "more than") {
 		t.Fatalf("file-count error: %v", err)
 	}
 }
 
-func TestDirectorySumRejectsNonPortablePath(t *testing.T) {
+func TestRepositoryDirectorySumRejectsNonPortablePath(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte("ok"), 0o600); err != nil {
 		t.Fatal(err)
@@ -515,7 +515,7 @@ func TestDirectorySumRejectsNonPortablePath(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "trailing "), []byte("bad"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := DirectorySum(root); err == nil || !strings.Contains(err.Error(), "invalid path") {
+	if _, err := RepositoryDirectorySum(root); err == nil || !strings.Contains(err.Error(), "invalid path") {
 		t.Fatalf("portable path error: %v", err)
 	}
 }

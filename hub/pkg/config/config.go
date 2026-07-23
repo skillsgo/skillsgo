@@ -19,7 +19,6 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/go-playground/validator/v10"
 	"github.com/kelseyhightower/envconfig"
-	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/presentation"
 )
@@ -33,11 +32,9 @@ type Config struct {
 	Environment             string    `envconfig:"SKILLSGO_HUB_ENVIRONMENT" validate:"required"`
 	Mode                    string    `envconfig:"SKILLSGO_HUB_MODE" validate:"oneof=selfhost cloud"`
 	CloudOrigin             string    `envconfig:"SKILLSGO_HUB_CLOUD_ORIGIN"`
-	SkillFetchWorkers       int       `envconfig:"SKILLSGO_HUB_SKILL_FETCH_WORKERS"           validate:"required"`
 	SkillCacheDir           string    `ignored:"true"`
 	RepositoryCacheTTL      int       `envconfig:"SKILLSGO_HUB_REPOSITORY_CACHE_TTL" validate:"min=0"`
 	RepositoryCacheMaxBytes int64     `envconfig:"SKILLSGO_HUB_REPOSITORY_CACHE_MAX_BYTES" validate:"min=0"`
-	ProtocolWorkers         int       `envconfig:"SKILLSGO_HUB_PROTOCOL_WORKERS"        validate:"required"`
 	LogLevel                string    `envconfig:"SKILLSGO_HUB_LOG_LEVEL"               validate:"required"`
 	LogFormat               string    `envconfig:"SKILLSGO_HUB_LOG_FORMAT"              validate:"oneof='' 'json' 'plain'"`
 	CloudRuntime            string    `envconfig:"SKILLSGO_HUB_CLOUD_RUNTIME"           validate:"required_without=LogFormat"`
@@ -62,17 +59,11 @@ type Config struct {
 	GithubTokens            TokenList `envconfig:"SKILLSGO_HUB_GITHUB_TOKENS"`
 	TLSCertFile             string    `envconfig:"SKILLSGO_HUB_TLSCERT_FILE"`
 	TLSKeyFile              string    `envconfig:"SKILLSGO_HUB_TLSKEY_FILE"`
-	DownloadMode            mode.Mode `envconfig:"SKILLSGO_HUB_DOWNLOAD_MODE"`
-	DownloadURL             string    `envconfig:"SKILLSGO_HUB_DOWNLOAD_URL"`
+	ArtifactOrigin          string    `envconfig:"SKILLSGO_HUB_ARTIFACT_ORIGIN"`
 	NetworkMode             string    `envconfig:"SKILLSGO_HUB_NETWORK_MODE"            validate:"oneof=strict offline fallback"`
-	SingleFlightType        string    `envconfig:"SKILLSGO_HUB_SINGLE_FLIGHT_TYPE"`
 	RobotsFile              string    `envconfig:"SKILLSGO_HUB_ROBOTS_FILE"`
-	IndexType               string    `envconfig:"SKILLSGO_HUB_INDEX_TYPE"`
 	ShutdownTimeout         int       `envconfig:"SKILLSGO_HUB_SHUTDOWN_TIMEOUT"        validate:"min=0"`
-	StashTimeout            int       `envconfig:"SKILLSGO_HUB_STASH_TIMEOUT"`
-	SingleFlight            *SingleFlight
 	Storage                 *Storage
-	Index                   *Index
 	Database                *DatabaseConfig
 	TaskQueue               *TaskQueueConfig
 	LLM                     *LLMConfig
@@ -179,10 +170,8 @@ func defaultConfig() *Config {
 		Environment:             "development",
 		Mode:                    "selfhost",
 		GithubTokens:            TokenList{},
-		SkillFetchWorkers:       10,
 		RepositoryCacheTTL:      604800,
 		RepositoryCacheMaxBytes: 10 << 30,
-		ProtocolWorkers:         30,
 		LogLevel:                "debug",
 		LogFormat:               "plain",
 		CloudRuntime:            "none",
@@ -193,57 +182,14 @@ func defaultConfig() *Config {
 		HomeTemplatePath:        "/var/lib/skillsgo/home.html",
 		StorageType:             "disk",
 		Port:                    ":3000",
-		SingleFlightType:        "memory",
 		TraceExporterURL:        "http://localhost:4317",
 		TraceSamplingFraction:   1.0,
-		DownloadMode:            "sync",
-		DownloadURL:             "",
+		ArtifactOrigin:          "",
 		NetworkMode:             "strict",
 		RobotsFile:              "robots.txt",
-		IndexType:               "none",
 		ShutdownTimeout:         60,
-		StashTimeout:            600,
 		Storage: &Storage{
 			Disk: &DiskConfig{},
-		},
-		SingleFlight: &SingleFlight{
-			Etcd:  &Etcd{"localhost:2379,localhost:22379,localhost:32379"},
-			Redis: &Redis{Endpoint: "127.0.0.1:6379", LockConfig: DefaultRedisLockConfig()},
-			RedisSentinel: &RedisSentinel{
-				Endpoints:        []string{"127.0.0.1:26379"},
-				MasterName:       "redis-1",
-				SentinelPassword: "sekret",
-				RedisUsername:    "",
-				RedisPassword:    "",
-				DB:               0,
-				LockConfig:       DefaultRedisLockConfig(),
-			},
-			GCP: DefaultGCPConfig(),
-		},
-		Index: &Index{
-			MySQL: &MySQL{
-				Protocol: "tcp",
-				Host:     "localhost",
-				Port:     3306,
-				User:     "root",
-				Password: "",
-				Database: "athens",
-				Params: map[string]string{
-					"parseTime": "true",
-					"timeout":   "30s",
-				},
-			},
-			Postgres: &Postgres{
-				Host:     "localhost",
-				Port:     5432,
-				User:     "postgres",
-				Password: "",
-				Database: "athens",
-				Params: map[string]string{
-					"connect_timeout": "30",
-					"sslmode":         "disable",
-				},
-			},
 		},
 		Database: &DatabaseConfig{
 			Type:            "sqlite",
@@ -385,7 +331,10 @@ func envOverride(config *Config) error {
 		config.Port = defaultPort
 	}
 	config.Port = ensurePortFormat(config.Port)
-	return validateDeployment(config.Mode, config.CloudOrigin)
+	if err := validateDeployment(config.Mode, config.CloudOrigin); err != nil {
+		return err
+	}
+	return validateArtifactOrigin(config.ArtifactOrigin)
 }
 
 func ensurePortFormat(s string) string {
@@ -397,15 +346,11 @@ func ensurePortFormat(s string) string {
 
 func validateConfig(config Config) error {
 	validate := validator.New()
-	err := validate.StructExcept(config, "Storage", "Index", "Database", "TaskQueue")
+	err := validate.StructExcept(config, "Storage", "Database", "TaskQueue")
 	if err != nil {
 		return err
 	}
 	err = validateStorage(validate, config.StorageType, config.Storage)
-	if err != nil {
-		return err
-	}
-	err = validateIndex(validate, config.IndexType, config.Index)
 	if err != nil {
 		return err
 	}
@@ -421,6 +366,9 @@ func validateConfig(config Config) error {
 	if err := validateDeployment(config.Mode, config.CloudOrigin); err != nil {
 		return err
 	}
+	if err := validateArtifactOrigin(config.ArtifactOrigin); err != nil {
+		return err
+	}
 	if config.TaskQueue == nil {
 		return fmt.Errorf("task queue configuration is required")
 	}
@@ -428,6 +376,18 @@ func validateConfig(config Config) error {
 		return err
 	}
 	return validate.Struct(config.LLM)
+}
+
+func validateArtifactOrigin(origin string) error {
+	if strings.TrimSpace(origin) == "" {
+		return nil
+	}
+	parsed, err := url.Parse(origin)
+	if err != nil || parsed.Host == "" || parsed.User != nil || parsed.RawQuery != "" || parsed.Fragment != "" ||
+		(parsed.Scheme != "http" && parsed.Scheme != "https") {
+		return fmt.Errorf("SKILLSGO_HUB_ARTIFACT_ORIGIN must be an absolute HTTP(S) URL without credentials, query, or fragment")
+	}
+	return nil
 }
 
 func validateDeployment(mode, cloudOrigin string) error {
@@ -490,19 +450,6 @@ func validateStorage(validate *validator.Validate, storageType string, config *S
 		return validate.Struct(config.External)
 	default:
 		return fmt.Errorf("storage type %q is unknown", storageType)
-	}
-}
-
-func validateIndex(validate *validator.Validate, indexType string, config *Index) error {
-	switch indexType {
-	case "", "none", "memory":
-		return nil
-	case "mysql":
-		return validate.Struct(config.MySQL)
-	case "postgres":
-		return validate.Struct(config.Postgres)
-	default:
-		return fmt.Errorf("index type %q is unknown", indexType)
 	}
 }
 

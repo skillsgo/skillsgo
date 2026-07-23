@@ -13,7 +13,6 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
-	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
@@ -24,7 +23,7 @@ import (
 const PathVersionZip = "/{repository:.+}/@v/{version}.zip"
 
 // ZipHandler implements GET baseURL/repository/@v/version.zip.
-func ZipHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handler {
+func ZipHandler(dp Protocol, lggr log.Entry, artifactOrigin string) fiber.Handler {
 	const op errors.Op = "download.ZipHandler"
 	return func(c fiber.Ctx) error {
 		mod, ver, err := getSkillParams(c, op)
@@ -44,20 +43,12 @@ func ZipHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handle
 			severityLevel := errors.Expect(err, errors.KindNotFound, errors.KindRedirect)
 			err = errors.E(op, err, severityLevel)
 			lggr.SystemErr(err)
-			if errors.Kind(err) == errors.KindRedirect {
-				url, err := getRedirectURL(df.URL(mod), c.Path())
-				if err != nil {
-					lggr.SystemErr(err)
-					return c.SendStatus(errors.Kind(err))
-				}
-				return c.Redirect().Status(errors.KindRedirect).To(url)
-			}
 			return c.SendStatus(errors.Kind(err))
 		}
-		if semver.IsValid(ver) && df.URL(mod) != "" {
+		if semver.IsValid(ver) && artifactOrigin != "" {
 			_ = zip.Close()
 			artifactURL, redirectErr := getRedirectURL(
-				df.URL(mod),
+				artifactOrigin,
 				config.PackageVersionedName(mod, ver, "zip"),
 			)
 			if redirectErr != nil {

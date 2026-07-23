@@ -26,91 +26,9 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	protocolmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
-	"github.com/spf13/afero"
 	modmodule "golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
 )
-
-func (g *gitFetcher) downloadWithGit(ctx context.Context, _ string, artifactDir, skillPath, revision string, resolution *Resolution) (artifactFiles, error) {
-	const op errors.Op = "skill.downloadWithGit"
-	skillID, err := ParseSkillID(skillPath)
-	if err != nil {
-		return artifactFiles{}, errors.E(op, err, errors.KindNotFound)
-	}
-	subdir := skillID.RepositorySubdir()
-	repoDir, err := g.repositoryDir(skillID.Repository)
-	if err != nil {
-		return artifactFiles{}, errors.E(op, err)
-	}
-	if resolution == nil {
-		if err := g.syncRepository(ctx, skillID); err != nil {
-			return artifactFiles{}, err
-		}
-	} else if !isGitRepository(repoDir) {
-		// FetchResolved normally follows Resolve. Recover gracefully when the
-		// local mirror was removed between those operations.
-		if err := g.syncRepository(ctx, skillID); err != nil {
-			return artifactFiles{}, err
-		}
-	}
-
-	if resolution == nil {
-		resolution, err = resolveGitRevision(ctx, repoDir, skillID, revision)
-		if err != nil {
-			return artifactFiles{}, err
-		}
-	}
-	hash := resolution.CommitSHA
-	version := resolution.Version
-	ref := resolution.Ref
-	commitTime := resolution.CommitTime
-
-	manifestFile := filepath.ToSlash(filepath.Join(subdir, "SKILL.md"))
-	manifestSource, err := gitFileContent(ctx, repoDir, hash, manifestFile)
-	if err != nil {
-		return artifactFiles{}, errors.E(op,
-			fmt.Sprintf("SKILL.md not found for Skill %q at revision %q", skillPath, revision),
-			errors.S(skillPath), errors.V(revision), errors.KindNotFound)
-	}
-	manifest, body, err := extractManifest(manifestSource)
-	if err == nil {
-		err = validateManifest(manifest, body)
-	}
-	if err != nil {
-		return artifactFiles{}, errors.E(op, err,
-			errors.S(skillPath), errors.V(revision), errors.KindBadRequest)
-	}
-
-	if err := g.fs.MkdirAll(artifactDir, 0o755); err != nil {
-		return artifactFiles{}, errors.E(op, err)
-	}
-	zipPath := filepath.Join(artifactDir, version+".zip")
-	if err := createSkillZipFromVCS(ctx, g.fs, zipPath, skillPath, version, repoDir, hash, subdir); err != nil {
-		return artifactFiles{}, errors.E(op, err)
-	}
-
-	infoBytes, err := json.Marshal(struct {
-		Version   string    `json:"Version"`
-		Time      time.Time `json:"Time"`
-		Ref       string    `json:"Ref"`
-		CommitSHA string    `json:"CommitSHA"`
-		TreeSHA   string    `json:"TreeSHA"`
-	}{version, commitTime, ref, hash, resolution.TreeSHA})
-	if err != nil {
-		return artifactFiles{}, errors.E(op, err)
-	}
-	infoPath := filepath.Join(artifactDir, version+".info")
-	if err := afero.WriteFile(g.fs, infoPath, infoBytes, 0o644); err != nil {
-		return artifactFiles{}, errors.E(op, err)
-	}
-
-	return artifactFiles{
-		Path:    skillPath,
-		Version: version,
-		Info:    infoPath,
-		Zip:     zipPath,
-	}, nil
-}
 
 // Resolve resolves a mutable or descriptive revision without downloading and
 // packaging the Skill contents.
