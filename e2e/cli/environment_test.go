@@ -42,12 +42,28 @@ var testRepositorySkillIDs = []string{
 }
 
 type addResponse struct {
-	SchemaVersion int    `json:"schemaVersion"`
-	SkillID       string `json:"skillId"`
-	Version       string `json:"version"`
-	Store         string `json:"store"`
-	Scope         string `json:"scope"`
-	Targets       []struct {
+	SchemaVersion int      `json:"schemaVersion"`
+	Phase         string   `json:"phase"`
+	Repository    string   `json:"repository"`
+	Version       string   `json:"version"`
+	Sum           string   `json:"sum"`
+	Skills        []string `json:"skills"`
+	Agents        []string `json:"agents"`
+	Vendor        string   `json:"vendor"`
+	Projections   []struct {
+		Agents []string `json:"agents"`
+		Path   string   `json:"path"`
+	} `json:"projections"`
+	Workspace struct {
+		Manifest string `json:"manifest"`
+		Lock     string `json:"lock"`
+	} `json:"workspace"`
+	// Legacy-shaped fields remain only while each numbered journey is migrated
+	// to Repository Vendor assertions; the released CLI no longer emits them.
+	SkillID string `json:"skillId"`
+	Store   string `json:"store"`
+	Scope   string `json:"scope"`
+	Targets []struct {
 		Agent string `json:"agent"`
 		Mode  string `json:"mode"`
 		Path  string `json:"path"`
@@ -233,8 +249,8 @@ func requireNoLocalInstallation(t *testing.T, sandboxRoot string) {
 	t.Helper()
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "store"))
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
+	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
 }
 
 func mapsClone(source map[string]any) map[string]any {

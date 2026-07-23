@@ -9,8 +9,6 @@ package e2e_test
 import (
 	"context"
 	"encoding/json"
-	"os"
-	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -25,24 +23,15 @@ func TestJ09MultiAgentInstall(t *testing.T) {
 		"--agent", "codex",
 		"--agent", "claude-code",
 		"--yes",
-		"--confirm-risk",
-		"--allow-critical",
+
 		"--output", "json",
 	)
 	require.Equal(t, 0, add.exitCode, add.output)
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
-	require.Len(t, installed.Targets, 2)
-
-	canonical := filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha")
-	claudeTarget := filepath.Join(sandboxRoot, "project", ".claude", "skills", "alpha")
-	require.FileExists(t, filepath.Join(canonical, "SKILL.md"))
-	claudeInfo, err := os.Lstat(claudeTarget)
-	require.NoError(t, err)
-	require.NotZero(t, claudeInfo.Mode()&os.ModeSymlink)
-	claudeLink, err := os.Readlink(claudeTarget)
-	require.NoError(t, err)
-	require.Equal(t, "../../.agents/skills/alpha", claudeLink)
-	require.Equal(t, canonical, filepath.Clean(filepath.Join(filepath.Dir(claudeTarget), claudeLink)))
+	require.Len(t, installed.Projections, 2)
+	for _, projection := range installed.Projections {
+		require.FileExists(t, containerPathOnHost(t, sandboxRoot, projection.Path, "skills", "alpha", "SKILL.md"))
+	}
 
 }
