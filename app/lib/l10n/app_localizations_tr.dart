@@ -551,12 +551,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get healthUnexpectedPath => 'Beklenmeyen hedef yolu';
 
   @override
-  String get modeSymlink => 'Sembolik bağlantı';
-
-  @override
-  String get modeCopy => 'Kopyala';
-
-  @override
   String get modeExternal => 'Harici';
 
   @override
@@ -984,9 +978,6 @@ class AppLocalizationsTr extends AppLocalizations {
       'Kritik risk yapıları varsayılan olarak engellenmiş durumda kalır. Bunu yalnızca ayrı bir manuel geçersiz kılmayı ortaya çıkarmak için etkinleştirin.';
 
   @override
-  String get storageSettingsTitle => 'İçerik adresli Store';
-
-  @override
   String get storageHealthy => 'Okunabilir';
 
   @override
@@ -994,22 +985,6 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get storageUnavailable => 'Kullanılamıyor';
-
-  @override
-  String get storagePathUnavailable =>
-      'CLI tanılamaları hazır olana kadar Store yolu kullanılamaz.';
-
-  @override
-  String get storageHealthyDescription =>
-      'CLI, içeriğini değiştirmeden Store\'yi okuyabilir.';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'Store henüz mevcut değil ve bu kontrolle oluşturulmadı.';
-
-  @override
-  String get storageUnavailableDescription =>
-      'CLI, Store\'yi okuyamıyor. İzinlerini ve ana dizinini kontrol edin.';
 
   @override
   String get storageInvalidResponse =>

@@ -553,12 +553,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get healthUnexpectedPath => 'Jalur target yang tidak terduga';
 
   @override
-  String get modeSymlink => 'tautan simbolik';
-
-  @override
-  String get modeCopy => 'Salin';
-
-  @override
   String get modeExternal => 'Eksternal';
 
   @override
@@ -989,9 +983,6 @@ class AppLocalizationsId extends AppLocalizations {
       'Artefak berisiko kritis tetap diblokir secara default. Aktifkan ini hanya untuk mengekspos penggantian manual yang terpisah.';
 
   @override
-  String get storageSettingsTitle => 'Penyimpanan beralamat konten';
-
-  @override
   String get storageHealthy => 'Dapat dibaca';
 
   @override
@@ -999,22 +990,6 @@ class AppLocalizationsId extends AppLocalizations {
 
   @override
   String get storageUnavailable => 'Tidak tersedia';
-
-  @override
-  String get storagePathUnavailable =>
-      'Jalur penyimpanan tidak tersedia hingga diagnostik CLI siap.';
-
-  @override
-  String get storageHealthyDescription =>
-      'CLI dapat membaca Store tanpa mengubah isinya.';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'Toko belum ada dan tidak dibuat oleh pemeriksaan ini.';
-
-  @override
-  String get storageUnavailableDescription =>
-      'CLI tidak dapat membaca Store. Periksa izin dan direktori induknya.';
 
   @override
   String get storageInvalidResponse =>

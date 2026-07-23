@@ -518,12 +518,6 @@ class AppLocalizationsZh extends AppLocalizations {
   String get healthUnexpectedPath => '目标路径异常';
 
   @override
-  String get modeSymlink => '软链接';
-
-  @override
-  String get modeCopy => '复制';
-
-  @override
   String get modeExternal => '外部';
 
   @override
@@ -915,9 +909,6 @@ class AppLocalizationsZh extends AppLocalizations {
       '严重风险制品默认保持阻止。启用后仅提供单独的手动覆盖入口。';
 
   @override
-  String get storageSettingsTitle => '内容寻址 Store';
-
-  @override
   String get storageHealthy => '可读取';
 
   @override
@@ -925,18 +916,6 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get storageUnavailable => '不可用';
-
-  @override
-  String get storagePathUnavailable => 'CLI 诊断就绪后才能显示 Store 路径。';
-
-  @override
-  String get storageHealthyDescription => 'CLI 可以读取 Store，且本次检查不会修改其中内容。';
-
-  @override
-  String get storageNotInitializedDescription => 'Store 尚不存在，本次检查没有创建它。';
-
-  @override
-  String get storageUnavailableDescription => 'CLI 无法读取 Store，请检查目录权限及其父目录。';
 
   @override
   String get storageInvalidResponse => '内置 CLI 返回了不支持的诊断响应。';
@@ -2303,12 +2282,6 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get healthUnexpectedPath => '目標路徑異常';
 
   @override
-  String get modeSymlink => '軟鏈接';
-
-  @override
-  String get modeCopy => '複製';
-
-  @override
   String get modeExternal => '外部';
 
   @override
@@ -2700,9 +2673,6 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
       '嚴重風險製品默認保持阻止。啓用後僅提供單獨的手動覆蓋入口。';
 
   @override
-  String get storageSettingsTitle => '內容尋址 Store';
-
-  @override
   String get storageHealthy => '可讀取';
 
   @override
@@ -2710,18 +2680,6 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get storageUnavailable => '不可用';
-
-  @override
-  String get storagePathUnavailable => 'CLI 診斷就緒後才能顯示 Store 路徑。';
-
-  @override
-  String get storageHealthyDescription => 'CLI 可以讀取 Store，且本次檢查不會修改其中內容。';
-
-  @override
-  String get storageNotInitializedDescription => 'Store 尚不存在，本次檢查沒有創建它。';
-
-  @override
-  String get storageUnavailableDescription => 'CLI 無法讀取 Store，請檢查目錄權限及其父目錄。';
 
   @override
   String get storageInvalidResponse => '內置 CLI 傳回不支援的診斷回應。';
@@ -4089,12 +4047,6 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get healthUnexpectedPath => '目標路徑異常';
 
   @override
-  String get modeSymlink => '軟連結';
-
-  @override
-  String get modeCopy => '複製';
-
-  @override
   String get modeExternal => '外部';
 
   @override
@@ -4486,9 +4438,6 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
       '嚴重風險製品預設保持阻止。啟用後僅提供單獨的手動覆蓋入口。';
 
   @override
-  String get storageSettingsTitle => '內容定址 Store';
-
-  @override
   String get storageHealthy => '可讀取';
 
   @override
@@ -4496,18 +4445,6 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get storageUnavailable => '不可用';
-
-  @override
-  String get storagePathUnavailable => 'CLI 診斷就緒後才能顯示 Store 路徑。';
-
-  @override
-  String get storageHealthyDescription => 'CLI 可以讀取 Store，且本次檢查不會修改其中內容。';
-
-  @override
-  String get storageNotInitializedDescription => 'Store 尚不存在，本次檢查沒有建立它。';
-
-  @override
-  String get storageUnavailableDescription => 'CLI 無法讀取 Store。請檢查目錄權限及其上層目錄。';
 
   @override
   String get storageInvalidResponse => '內建 CLI 傳回不支援的診斷回應。';

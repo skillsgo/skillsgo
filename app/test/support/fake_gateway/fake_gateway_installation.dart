@@ -48,7 +48,6 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
               scope: selection.scope,
               projectRoot: selection.projectRoot,
               agent: selection.agent,
-              mode: selection.mode,
               path: selection.scope == InstallationScope.user
                   ? '/Users/test/.${selection.agent}/skills/${skill.installName}'
                   : '${selection.projectRoot}/.agents/skills/${skill.installName}',
@@ -100,7 +99,6 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
               projectRoot: result.target.projectRoot,
               path: result.target.path,
               version: immutableVersion,
-              mode: result.target.mode,
             ),
           );
         }

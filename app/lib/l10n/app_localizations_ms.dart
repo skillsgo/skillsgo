@@ -551,12 +551,6 @@ class AppLocalizationsMs extends AppLocalizations {
   String get healthUnexpectedPath => 'Laluan sasaran yang tidak dijangka';
 
   @override
-  String get modeSymlink => 'Symlink';
-
-  @override
-  String get modeCopy => 'salin';
-
-  @override
   String get modeExternal => 'Luaran';
 
   @override
@@ -986,9 +980,6 @@ class AppLocalizationsMs extends AppLocalizations {
       'Artifak berisiko kritikal kekal disekat secara lalai. Dayakan ini hanya untuk mendedahkan penggantian manual yang berasingan.';
 
   @override
-  String get storageSettingsTitle => 'Storan beralamat kandungan';
-
-  @override
   String get storageHealthy => 'Boleh dibaca';
 
   @override
@@ -996,22 +987,6 @@ class AppLocalizationsMs extends AppLocalizations {
 
   @override
   String get storageUnavailable => 'Tidak tersedia';
-
-  @override
-  String get storagePathUnavailable =>
-      'Laluan storan belum tersedia sehingga diagnostik CLI selesai.';
-
-  @override
-  String get storageHealthyDescription =>
-      'CLI boleh membaca storan tanpa mengubah kandungannya.';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'Storan belum wujud lagi dan tidak dicipta oleh semakan ini.';
-
-  @override
-  String get storageUnavailableDescription =>
-      'CLI tidak boleh membaca storan. Semak kebenaran dan direktori induknya.';
 
   @override
   String get storageInvalidResponse =>

@@ -551,12 +551,6 @@ class AppLocalizationsSv extends AppLocalizations {
   String get healthUnexpectedPath => 'Oväntad målväg';
 
   @override
-  String get modeSymlink => 'Symbollänk';
-
-  @override
-  String get modeCopy => 'Kopiera';
-
-  @override
   String get modeExternal => 'Extern';
 
   @override
@@ -984,9 +978,6 @@ class AppLocalizationsSv extends AppLocalizations {
       'Artefakter med kritiska risker förblir blockerade som standard. Aktivera detta endast för att avslöja en separat manuell åsidosättning.';
 
   @override
-  String get storageSettingsTitle => 'Innehållsadresserad butik';
-
-  @override
   String get storageHealthy => 'Läsbar';
 
   @override
@@ -994,22 +985,6 @@ class AppLocalizationsSv extends AppLocalizations {
 
   @override
   String get storageUnavailable => 'Inte tillgänglig';
-
-  @override
-  String get storagePathUnavailable =>
-      'Lagringssökväg otillgänglig tills CLI-diagnostiken är klar.';
-
-  @override
-  String get storageHealthyDescription =>
-      'CLI kan läsa butiken utan att ändra dess innehåll.';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'Butiken finns inte ännu och skapades inte av den här kontrollen.';
-
-  @override
-  String get storageUnavailableDescription =>
-      'CLI kan inte läsa butiken. Kontrollera dess behörigheter och överordnade katalog.';
 
   @override
   String get storageInvalidResponse =>

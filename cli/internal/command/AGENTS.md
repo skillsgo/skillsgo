@@ -21,7 +21,7 @@
 - `catalog_update_check.go`, `catalog_update_check_test.go`: expose and specify one bounded read-only App machine command that compares installed Library-entry versions with Repository-fresh head/release candidates resolved once per Repository.
 - `cloud_reporting.go`: publishes best-effort post-commit installation facts directly to the Cloud origin declared by a Cloud-mode Hub without changing local installation outcomes.
 - `export.go`: exports one private Local Skill artifact with machine confirmation or adaptive Human progress, without Hub access.
-- `inventory.go`: adapts the managed/external inventory domain report into stable JSON and grouped adaptive Human output.
+- `inventory.go`: adapts mode-free Repository-managed/external inventory v6 into stable JSON and grouped adaptive Human output.
 - `inventory_test.go`: specifies Skill ID aggregation, External inventory-key separation, read-only inspection, target health, Workspace reconciliation, and the explicit-project privacy boundary.
 - `verification.go`, `verification_test.go`: expose and specify read-only reconciled installation verification plus direct declaration/target explanations through `verify` and `why`.
 - `takeover.go`: preflights explicitly selected skills.sh user/Workspace lock-backed External copies into a bounded, expiring, lock-identity- and filesystem-state-bound plan with exact per-location counts, then registers authorized unchanged candidates as captured Store baselines plus exact target Receipt and declaration state, returning named per-item outcomes without Hub access or target materialization.

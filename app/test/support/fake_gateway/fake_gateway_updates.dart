@@ -20,7 +20,6 @@ mixin FakeGatewayUpdates on FakeSkillsGatewayCore {
             scope: target.scope,
             projectRoot: target.projectRoot,
             agent: target.agent,
-            mode: target.mode,
             path: target.path,
           ),
           name: skill.name,
@@ -127,7 +126,6 @@ mixin FakeGatewayUpdates on FakeSkillsGatewayCore {
                     scope: target.scope,
                     projectRoot: target.projectRoot,
                     agent: target.agent,
-                    mode: target.mode,
                     path: target.path,
                   ),
                 ),
@@ -138,7 +136,6 @@ mixin FakeGatewayUpdates on FakeSkillsGatewayCore {
                   path: target.path,
                   version: 'v2',
                   projectRoot: target.projectRoot,
-                  mode: target.mode,
                   health: target.health,
                 )
               else

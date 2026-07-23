@@ -19,7 +19,6 @@ mixin FakeGatewayTargetManagement on FakeSkillsGatewayCore {
             scope: target.scope,
             projectRoot: target.projectRoot,
             agent: target.agent,
-            mode: target.mode,
             path: target.path,
           ),
           name: skill.name,
@@ -118,7 +117,6 @@ mixin FakeGatewayTargetManagement on FakeSkillsGatewayCore {
                   path: target.path,
                   version: target.version,
                   projectRoot: target.projectRoot,
-                  mode: target.mode,
                   health: InstallationHealth.healthy,
                 ),
               );

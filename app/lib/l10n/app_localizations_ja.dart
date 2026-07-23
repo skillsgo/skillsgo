@@ -542,12 +542,6 @@ class AppLocalizationsJa extends AppLocalizations {
   String get healthUnexpectedPath => '予期しないターゲット パス';
 
   @override
-  String get modeSymlink => 'シンボリックリンク';
-
-  @override
-  String get modeCopy => 'コピー';
-
-  @override
   String get modeExternal => '外部';
 
   @override
@@ -946,9 +940,6 @@ class AppLocalizationsJa extends AppLocalizations {
       'クリティカルリスクのアーティファクトはデフォルトでブロックされたままになります。これを有効にするのは、個別の手動オーバーライドを公開する場合のみです。';
 
   @override
-  String get storageSettingsTitle => 'コンテンツアドレス型ストア';
-
-  @override
   String get storageHealthy => '読みやすい';
 
   @override
@@ -956,20 +947,6 @@ class AppLocalizationsJa extends AppLocalizations {
 
   @override
   String get storageUnavailable => '利用不可';
-
-  @override
-  String get storagePathUnavailable => 'CLI 診断が準備できるまで、ストア パスは使用できません。';
-
-  @override
-  String get storageHealthyDescription => 'CLI は、内容を変更せずにストアを読み取ることができます。';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'ストアはまだ存在せず、このチェックによって作成されていません。';
-
-  @override
-  String get storageUnavailableDescription =>
-      'CLI はストアを読み取ることができません。権限と親ディレクトリを確認してください。';
 
   @override
   String get storageInvalidResponse => 'バンドルされた CLI がサポートされていない診断応答を返しました。';

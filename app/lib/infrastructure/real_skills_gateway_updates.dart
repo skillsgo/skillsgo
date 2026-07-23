@@ -33,7 +33,6 @@ mixin _RealSkillsGatewayUpdates
         toVersion.isEmpty ||
         targets.any(
           (target) =>
-              target.mode == InstallationMode.external ||
               target.version.isEmpty ||
               (target.scope == InstallationScope.project &&
                   target.projectRoot.isEmpty),
@@ -94,7 +93,6 @@ mixin _RealSkillsGatewayUpdates
                 scope: installed.scope,
                 projectRoot: installed.projectRoot,
                 agent: installed.agent,
-                mode: installed.mode,
                 path: installed.path,
               ),
               name: skill.name,

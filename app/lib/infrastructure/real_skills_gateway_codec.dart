@@ -37,13 +37,6 @@ InstallationScope _installationScope(Object? value) => switch (value) {
   _ => throw const FormatException('Unknown installation scope.'),
 };
 
-InstallationMode _installationMode(Object? value) => switch (value) {
-  'symlink' => InstallationMode.symlink,
-  'copy' => InstallationMode.copy,
-  'external' => InstallationMode.external,
-  _ => throw const FormatException('Unknown installation mode.'),
-};
-
 InstallationHealth _installationHealth(Object? value) => switch (value) {
   'healthy' => InstallationHealth.healthy,
   'missing' => InstallationHealth.missing,
@@ -76,7 +69,7 @@ int _localTargetReadRank(SkillInstallationTarget target) {
 }
 
 const _localFilePreviewLimit = 256 * 1024;
-const _inventorySchemaVersion = 5;
+const _inventorySchemaVersion = 6;
 
 bool _looksExecutablePath(String path) {
   final lower = path.toLowerCase();
@@ -161,10 +154,7 @@ int _strictNonNegativeInt(Object? value) {
   return value;
 }
 
-InstallationPlanTarget _installationPlanTarget(
-  Object? raw, {
-  bool allowExternal = false,
-}) {
+InstallationPlanTarget _installationPlanTarget(Object? raw) {
   if (raw is! Map<String, dynamic> ||
       raw['agent'] is! String ||
       (raw['agent'] as String).isEmpty ||
@@ -174,10 +164,8 @@ InstallationPlanTarget _installationPlanTarget(
     throw const FormatException();
   }
   final scope = _installationScope(raw['scope']);
-  final mode = _installationMode(raw['mode']);
   final projectRoot = raw['projectRoot'] as String? ?? '';
-  if ((!allowExternal && mode == InstallationMode.external) ||
-      (scope == InstallationScope.user && projectRoot.isNotEmpty) ||
+  if ((scope == InstallationScope.user && projectRoot.isNotEmpty) ||
       (scope == InstallationScope.project && projectRoot.isEmpty)) {
     throw const FormatException();
   }
@@ -185,7 +173,6 @@ InstallationPlanTarget _installationPlanTarget(
     scope: scope,
     projectRoot: projectRoot,
     agent: raw['agent'] as String,
-    mode: mode,
     path: raw['path'] as String,
   );
 }
@@ -197,7 +184,6 @@ bool _samePlanTarget(
     left.scope == right.scope &&
     left.projectRoot == right.projectRoot &&
     left.agent == right.agent &&
-    left.mode == right.mode &&
     left.path == right.path;
 
 List<InstallationTargetResult> _repositoryInstallationResults(
@@ -259,7 +245,6 @@ List<InstallationTargetResult> _repositoryInstallationResults(
             scope: selection.scope,
             projectRoot: selection.projectRoot,
             agent: selection.agent,
-            mode: selection.mode,
             path: path,
           ),
           action: InstallationPlanAction.create,
@@ -324,10 +309,7 @@ TargetManagementResult _targetManagementResult(
       raw.containsKey('diagnostic')) {
     throw const FormatException();
   }
-  final target = _installationPlanTarget(
-    raw['target'],
-    allowExternal: expected.target.mode == InstallationMode.external,
-  );
+  final target = _installationPlanTarget(raw['target']);
   if (!_samePlanTarget(target, expected.target)) throw const FormatException();
   final outcome = _targetManagementOutcome(raw['outcome']);
   final error = _targetFailure(raw['error']);

@@ -34,7 +34,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/command/` | CLI command graph, argument handling, and orchestration. |
 | `internal/i18n/` | Locale detection and user-facing CLI messages. |
 | `internal/install/` | Add, update, remove, copy-digest, explicit replacement, and materialization behavior. |
-| `internal/inventory/` | Read-only managed and External Library reconciliation across Workspace Manifests, exact target receipts, known Agent Discovery Roots, Store artifacts, Local Modifications, and derived Agent visibility. |
+| `internal/inventory/` | Read-only Repository-managed and External Library reconciliation across YAML/Lock state, Scope Vendors, Repository Projections, known Agent Discovery Roots, Local Modifications, and derived Agent visibility. |
 | `internal/managementplan/` | Exact-target managed Remove/Repair and External Remove preflight, reviewed-state binding, and target-specific execution. |
 | `internal/plan/` | Process-local installation preparation, conflict/risk validation, Workspace Manifest mutation, and target-specific execution. |
 | `internal/project/` | Strict Repository dependencies in `skillsgo.yaml`, integrity-only `skillsgo.lock`, their paired transaction, and migration-era local receipt readers. |

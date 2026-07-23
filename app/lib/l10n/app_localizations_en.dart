@@ -549,12 +549,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get healthUnexpectedPath => 'Unexpected target path';
 
   @override
-  String get modeSymlink => 'Symlink';
-
-  @override
-  String get modeCopy => 'Copy';
-
-  @override
   String get modeExternal => 'External';
 
   @override
@@ -982,9 +976,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Critical-risk artifacts remain blocked by default. Enable this only to expose a separate manual override.';
 
   @override
-  String get storageSettingsTitle => 'Content-addressed Store';
-
-  @override
   String get storageHealthy => 'Readable';
 
   @override
@@ -992,22 +983,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get storageUnavailable => 'Unavailable';
-
-  @override
-  String get storagePathUnavailable =>
-      'Store path unavailable until CLI diagnostics are ready.';
-
-  @override
-  String get storageHealthyDescription =>
-      'The CLI can read the Store without changing its contents.';
-
-  @override
-  String get storageNotInitializedDescription =>
-      'The Store does not exist yet and was not created by this check.';
-
-  @override
-  String get storageUnavailableDescription =>
-      'The CLI cannot read the Store. Check its permissions and parent directory.';
 
   @override
   String get storageInvalidResponse =>

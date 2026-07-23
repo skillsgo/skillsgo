@@ -61,7 +61,6 @@ void main() {
             scope: InstallationScope.user,
             path: '/Users/test/.codex/skills/private-local',
             version: 'local-abc',
-            mode: InstallationMode.copy,
           ),
         ],
       );

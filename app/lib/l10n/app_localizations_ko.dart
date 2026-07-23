@@ -541,12 +541,6 @@ class AppLocalizationsKo extends AppLocalizations {
   String get healthUnexpectedPath => '예상치 못한 대상 경로';
 
   @override
-  String get modeSymlink => '심링크';
-
-  @override
-  String get modeCopy => '복사';
-
-  @override
   String get modeExternal => '외부';
 
   @override
@@ -943,9 +937,6 @@ class AppLocalizationsKo extends AppLocalizations {
       '심각한 위험 아티팩트는 기본적으로 차단된 상태로 유지됩니다. 별도의 수동 재정의를 노출하려는 경우에만 이 옵션을 활성화하세요.';
 
   @override
-  String get storageSettingsTitle => '콘텐츠 주소 지정 저장소';
-
-  @override
   String get storageHealthy => '읽을 수 있음';
 
   @override
@@ -953,20 +944,6 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get storageUnavailable => '이용 불가';
-
-  @override
-  String get storagePathUnavailable => 'CLI 진단이 준비될 때까지 저장 경로를 사용할 수 없습니다.';
-
-  @override
-  String get storageHealthyDescription => 'CLI는 내용을 변경하지 않고도 Store를 읽을 수 있습니다.';
-
-  @override
-  String get storageNotInitializedDescription =>
-      '스토어가 아직 존재하지 않으며 이 확인으로 생성되지 않았습니다.';
-
-  @override
-  String get storageUnavailableDescription =>
-      'CLI가 저장소를 읽을 수 없습니다. 권한과 상위 디렉터리를 확인하세요.';
 
   @override
   String get storageInvalidResponse => '번들 CLI가 지원되지 않는 진단 응답을 반환했습니다.';

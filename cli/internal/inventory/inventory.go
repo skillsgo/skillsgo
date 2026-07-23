@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Workspace Manifests, exact immutable metadata, the Agent Catalog, Store receipts, and read-only target filesystem metadata.
- * [OUTPUT]: Provides inventory v5 Hub/Local managed-Library reconciliation with local manifest descriptions, explicit projects, alias-aware Agent paths, target health, copy-mode Local Modifications, and Discovery-Root-derived visibility.
+ * [OUTPUT]: Provides inventory v6 Repository-managed and External Library reconciliation with explicit projects, mode-free Projection targets, target health, and Discovery-Root-derived visibility.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -19,7 +19,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
 
-const SchemaVersion = 5
+const SchemaVersion = 6
 
 var ErrEmptyProjectRoot = errors.New("project root must not be empty")
 
@@ -84,7 +84,7 @@ type Target struct {
 	Agent         string        `json:"agent"`
 	Path          string        `json:"path"`
 	CanonicalPath string        `json:"canonicalPath,omitempty"`
-	Mode          TargetMode    `json:"mode"`
+	Mode          TargetMode    `json:"-"`
 	Version       string        `json:"version"`
 	Health        Health        `json:"health"`
 }
