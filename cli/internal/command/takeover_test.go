@@ -122,11 +122,7 @@ func TestBatchTakeoverAdoptsExactRepositoryMemberIntoUserVendor(t *testing.T) {
 	require.NoFileExists(t, filepath.Join(projection, "skills", "beta", "SKILL.md"))
 	require.Equal(t, skill, mustReadTakeoverFile(t, filepath.Join(projection, "skills", "alpha", "SKILL.md")))
 	require.NoDirExists(t, filepath.Join(userRoot, "store"))
-	receipts, err := os.ReadDir(filepath.Join(userRoot, "receipts"))
-	require.NoError(t, err)
-	for _, receipt := range receipts {
-		require.NotEqual(t, ".yaml", filepath.Ext(receipt.Name()))
-	}
+	require.NoDirExists(t, filepath.Join(userRoot, "receipts"))
 }
 
 func TestBatchTakeoverRejectsDifferentBytesWithoutWritingState(t *testing.T) {
