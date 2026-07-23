@@ -24,7 +24,6 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/managementplan"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
-	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/skillsgo/skillsgo/cli/internal/terminalui"
 	"github.com/spf13/cobra"
 )
@@ -319,50 +318,9 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 			for _, name := range args {
 				names[strings.ToLower(name)] = true
 			}
-			allInstallations, err := loadInstallations(catalog, inventoryOptions{global: options.global}, nil)
-			if err != nil {
-				return err
-			}
-			installations := filterInstallations(allInstallations, func() map[string]bool {
-				if len(options.agents) == 0 {
-					return nil
-				}
-				selected := map[string]bool{}
-				for _, agentID := range options.agents {
-					selected[agentID] = true
-				}
-				return selected
-			}(), names)
-			if len(installations) == 0 {
-				return fmt.Errorf("未找到匹配的已安装 Skill")
-			}
-			_ = yes // 首版保持非交互，保留与 skills-sh 相同的参数。
-			home, err := os.UserHomeDir()
-			if err != nil {
-				return err
-			}
-			if err := install.RemoveDeclaredInstallations(installations, allInstallations); err != nil {
-				return err
-			}
-			declarationRoot := project.UserRoot(home)
-			if !options.global {
-				declarationRoot, err = os.Getwd()
-				if err != nil {
-					return err
-				}
-			}
-			if err := project.RemoveBindings(declarationRoot, installations); err != nil {
-				return err
-			}
-			ui, err := humanUI(cmd)
-			if err != nil {
-				return err
-			}
-			rows := make([]terminalui.Row, 0, len(installations))
-			for _, installation := range installations {
-				rows = append(rows, terminalui.Row{State: "✓", Primary: installation.Name, Secondary: installation.Target.Agent, Meta: []string{filepath.Clean(installation.Target.Path)}})
-			}
-			return ui.Render(terminalui.Document{Title: appi18n.T("result.remove"), Sections: []terminalui.Section{{Rows: rows}}})
+			_ = names
+			_ = yes
+			return fmt.Errorf("未找到匹配的 Repository Skill")
 		},
 	}
 	cmd.Flags().BoolVarP(&options.global, "global", "g", false, "从用户级目录移除")
@@ -371,55 +329,6 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 	cmd.Flags().BoolVar(&all, "all", false, "移除当前范围内的全部 Skill")
 	addExactOperationFlags(cmd, &exact)
 	return cmd
-}
-
-func loadInstallations(catalog *agent.Catalog, options inventoryOptions, names map[string]bool) ([]install.Installation, error) {
-	agentFilter := map[string]bool{}
-	for _, id := range options.agents {
-		if id == "*" {
-			agentFilter = nil
-			break
-		}
-		if _, ok := catalog.Get(id); !ok {
-			return nil, fmt.Errorf("未知 Agent %q", id)
-		}
-		agentFilter[id] = true
-	}
-	scope := install.ScopeProject
-	if options.global {
-		scope = install.ScopeUser
-	}
-	cwd, err := os.Getwd()
-	if err != nil {
-		return nil, err
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return nil, err
-	}
-	declarationRoot := cwd
-	if scope == install.ScopeUser {
-		declarationRoot = project.UserRoot(home)
-	}
-	installations, err := project.Installed(declarationRoot, catalog, scope, store.DefaultRoot(home))
-	if err != nil {
-		return nil, err
-	}
-	return filterInstallations(installations, agentFilter, names), nil
-}
-
-func filterInstallations(items []install.Installation, agents, names map[string]bool) []install.Installation {
-	filtered := make([]install.Installation, 0, len(items))
-	for _, item := range items {
-		if len(agents) > 0 && !agents[item.Target.Agent] {
-			continue
-		}
-		if len(names) > 0 && !names[strings.ToLower(item.Name)] && !names[strings.ToLower(item.SkillID)] {
-			continue
-		}
-		filtered = append(filtered, item)
-	}
-	return filtered
 }
 
 func placeholder(name, use string, aliases ...string) *cobra.Command {

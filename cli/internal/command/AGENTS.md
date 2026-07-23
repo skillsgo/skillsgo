@@ -3,7 +3,7 @@
 
 ## Members
 
-- `root.go`: constructs the public Cobra command graph, exposes the `Execute` behavior seam, emits recognized machine-mode failures, adapts unified inventory into `list`, wires safe cache lifecycle commands, and reports legacy Human operations through terminal UI documents/events.
+- `root.go`: constructs the public Cobra command graph, exposes the `Execute` behavior seam, emits recognized machine-mode failures, adapts unified inventory into `list`, and routes Repository add/update/remove/install operations.
 - `machine_failure.go`: translates wrapped command failures into the minimal versioned JSON or NDJSON machine document without making stderr a parsing contract.
 - `machine_failure_test.go`: specifies early JSON and NDJSON failure documents through the public `Execute` seam.
 - `terminal_ui.go`: resolves inherited Human UI/color policy into the shared terminal presentation Adapter.
@@ -25,7 +25,7 @@
 - `takeover_test.go`: specifies exact Repository-member adoption, mismatch refusal without managed state, malformed lock retention, provider identity, localized help, and required execution arguments through `Execute`.
 - `list_test.go`: specifies that global listing uses unified inventory and includes externally installed Agent Skills.
 - `management_plan.go`: adapts repeatable flat exact-target flags into top-level Remove/Repair preflight JSON and adaptive Human, JSON, or NDJSON execution progress/results.
-- `management_plan_test.go`: specifies exact managed and External removal, unsafe-remove blocking, Repair, Workspace ownership cleanup, Store retention, and complete JSON/NDJSON failure documents before non-zero `Execute` results.
+- `management_plan_test.go`: specifies state-bound exact External removal and absence of the obsolete `manage` command.
 - `version.go`: serves the human version output and versioned App startup handshake.
 - `args_test.go`: covers public argument normalization and environment-gated test Agent behavior.
 - `i18n_test.go`: covers localized root and Local export command help.

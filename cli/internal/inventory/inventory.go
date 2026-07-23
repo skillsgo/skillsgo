@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Workspace Manifests, exact immutable metadata, the Agent Catalog, Store receipts, and read-only target filesystem metadata.
+ * [INPUT]: Depends on strict Repository YAML/Lock state, Scope Vendors, coordinate Projections, the Agent Catalog, and read-only target filesystem metadata.
  * [OUTPUT]: Provides inventory v6 Repository-managed and External Library reconciliation with explicit projects, mode-free Projection targets, target health, and Discovery-Root-derived visibility.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -16,7 +16,6 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/store"
 )
 
 const SchemaVersion = 6
@@ -124,43 +123,6 @@ func Build(options Options) (Report, error) {
 	}
 	if err := addRepositoryInstallations(entries, accountedTargets, roots, options.Catalog); err != nil {
 		return Report{}, err
-	}
-	for _, declaration := range roots {
-		installations, installedErr := project.Installed(declaration.root, options.Catalog, declaration.scope, store.DefaultRoot(home))
-		if installedErr != nil {
-			return Report{}, installedErr
-		}
-		for _, installation := range installations {
-			projectRoot := ""
-			if declaration.scope == install.ScopeProject {
-				projectRoot = declaration.root
-			}
-			provenance := ProvenanceHub
-			if installation.Provenance == store.ProvenanceLocal {
-				provenance = ProvenanceLocal
-			}
-			entry := ensureEntry(entries, installation.Name, installation.SkillID, provenance)
-			setEntryDescription(entry, installation.Target.Path)
-			health := managedTargetHealth(
-				installation,
-				managedTargetPathExpected(options.Catalog, installation, projectRoot),
-			)
-			entry.Targets = append(entry.Targets, Target{
-				Scope: installation.Target.Scope, ProjectRoot: projectRoot,
-				Agent: installation.Target.Agent, Path: filepath.Clean(installation.Target.Path),
-				CanonicalPath: installation.Target.CanonicalPath,
-				Mode:          TargetMode(installation.Target.Mode), Version: installation.Version, Health: health,
-			})
-			accountedTargets[targetKey(installation.Target.Agent, installation.Target.Scope, installation.Target.Path)] = true
-			if health != HealthHealthy && entry.Health == HealthHealthy {
-				entry.Health = health
-			}
-			entry.Agents = appendUnique(entry.Agents, installation.Target.Agent)
-			entry.Versions = appendUnique(entry.Versions, installation.Version)
-			if projectRoot != "" {
-				entry.Projects = appendUnique(entry.Projects, projectRoot)
-			}
-		}
 	}
 	addExternalInstallations(
 		entries,
