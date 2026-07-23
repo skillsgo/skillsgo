@@ -40,7 +40,7 @@ func TestJ05CorruptedDownload(t *testing.T) {
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 
-	hubZIP := findArtifactFile(t, filepath.Join(sandboxRoot, "hub", "storage"), installed.Repository, ".zip")
+	hubZIP := findStoredRepositoryArtifact(t, filepath.Join(sandboxRoot, "hub", "storage"), installed.Repository, ".zip")
 	require.NoError(t, os.WriteFile(hubZIP, []byte("corrupted e2e artifact"), 0o600))
 	require.NoError(t, os.RemoveAll(containerPathOnHost(t, sandboxRoot, installed.Vendor)))
 	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "project", ".agents")))
