@@ -83,3 +83,18 @@ func TestCatalogUpdateJSONContract(t *testing.T) {
 		t.Fatalf("empty update candidates were not omitted: %s", updateJSON)
 	}
 }
+
+func TestSkillCoordinateOwnsCanonicalValidationAndStableKey(t *testing.T) {
+	coordinate := SkillCoordinate{RepositoryID: "github.com/o/r", Name: "demo"}
+	if !coordinate.Valid() || coordinate.Key() != "github.com/o/r\x00demo" {
+		t.Fatalf("canonical coordinate mismatch: valid=%v key=%q", coordinate.Valid(), coordinate.Key())
+	}
+	for _, invalid := range []SkillCoordinate{
+		{RepositoryID: "GitHub.com/o/r", Name: "demo"},
+		{RepositoryID: "github.com/o/r", Name: "Demo Skill"},
+	} {
+		if invalid.Valid() {
+			t.Fatalf("invalid coordinate accepted: %#v", invalid)
+		}
+	}
+}
