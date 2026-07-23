@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra and the Agent, Hub, project, Repository installation, target-operation, source, i18n, and terminal UI modules.
- * [OUTPUT]: Provides command.Execute and the Repository-oriented CLI graph, including recognized machine-mode failures, conflict-safe Workspace/User install ensure, Repository add/update/remove, grouped Hub reads, Catalog update checks, inventory/inspection, and Repository-backed takeover for terminal and App callers.
+ * [OUTPUT]: Provides command.Execute and the Repository-oriented CLI graph, including distinct name and exact-path add selectors, recognized machine-mode failures, conflict-safe Workspace/User install ensure, Repository add/update/remove, grouped Hub reads, Catalog update checks, inventory/inspection, and Repository-backed takeover for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -347,7 +347,7 @@ func placeholder(name, use string, aliases ...string) *cobra.Command {
 
 type addOptions struct {
 	global, yes, list           bool
-	agents, skills              []string
+	agents, skills, skillPaths  []string
 	output, hubURL, projectRoot string
 }
 
@@ -360,6 +360,9 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.global && options.projectRoot != "" {
 				return fmt.Errorf("--global and --project are mutually exclusive")
+			}
+			if len(options.skills) > 0 && len(options.skillPaths) > 0 {
+				return fmt.Errorf("--skill and --skill-path are mutually exclusive")
 			}
 			agentIDs := options.agents
 			if len(agentIDs) == 0 {
@@ -400,7 +403,7 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if len(options.skills) > 0 {
+			if len(options.skills) > 0 || len(options.skillPaths) > 0 {
 				return addSelectedRepositorySkills(cmd, catalog, reference, agentIDs, scope, cwd, options)
 			}
 			return addWholeRepository(cmd, catalog, reference, agentIDs, scope, cwd, options)
@@ -411,6 +414,7 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 	flags.StringVar(&options.projectRoot, "project", "", "install into an explicit project root")
 	flags.StringArrayVarP(&options.agents, "agent", "a", nil, appi18n.T("flag.agent.add"))
 	flags.StringArrayVarP(&options.skills, "skill", "s", nil, appi18n.T("flag.skill"))
+	flags.StringArrayVar(&options.skillPaths, "skill-path", nil, "exact Repository-relative Skill paths to install")
 	flags.BoolVarP(&options.list, "list", "l", false, appi18n.T("flag.list"))
 	flags.BoolVarP(&options.yes, "yes", "y", false, appi18n.T("flag.yes"))
 	flags.StringVar(&options.output, "output", "human", appi18n.T("flag.output"))

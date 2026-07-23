@@ -142,6 +142,9 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
               installName: installName,
               name: name,
               source: source,
+              skillPath: raw['skillPath'] is String
+                  ? raw['skillPath'] as String
+                  : '',
               imageUrl: imageUrl as String?,
               description: description,
               installs: metric is Map<String, dynamic>
@@ -313,10 +316,13 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
             final name = raw['Name'];
             final description = raw['Description'];
             final version = raw['Version'];
+            final skillPath = raw['SkillPath'];
             if (repositoryId is! String ||
                 name is! String ||
                 description is! String ||
-                version is! String) {
+                version is! String ||
+                skillPath is! String ||
+                skillPath.isEmpty) {
               throw const FormatException('Incomplete Skill Info member.');
             }
             final imageURL = raw['ImageURL'];
@@ -328,6 +334,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
               installName: name,
               name: name,
               source: repositoryId,
+              skillPath: skillPath,
               imageUrl: imageURL as String?,
               description: description,
               latestVersion: version,

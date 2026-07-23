@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on one declared Repository dependency, its verified current Scope Vendor and immutable Info, an exact target Repository Info/ZIP, Agent Adapter roots, prepared Scope Vendor transactions, and the Repository mutation coordinator.
- * [OUTPUT]: Provides state-bound Repository update preflight and coordinated atomic coordinate replacement while preserving selected Skills and Agents and refusing Local Modifications.
+ * [OUTPUT]: Provides state-bound Repository update preflight and coordinated atomic coordinate replacement while preserving exact persisted Skill selectors and Agents and refusing Local Modifications.
  * [POS]: Serves as the Repository-level update orchestration behind the public `skillsgo update` command and App machine contract.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -141,14 +141,12 @@ func prepareRepositoryUpdate(ctx context.Context, root string, userScope bool, c
 	if resource.Info.Version == dependency.Version {
 		return repositoryUpdateReport{}, nil, fmt.Errorf("Repository %s is already at %s", repositoryID, dependency.Version)
 	}
-	available := make(map[string]string, len(resource.Members))
 	newMembers := make([]string, 0, len(resource.Members))
 	for _, member := range resource.Members {
-		available[member.Info.Name] = member.Info.SkillPath
 		newMembers = append(newMembers, member.Info.SkillPath)
 	}
 	for _, selected := range dependency.Skills {
-		if _, ok := available[selected]; !ok {
+		if _, ok := hub.SelectRepositoryMember(selected, resource.Members); !ok {
 			return repositoryUpdateReport{}, nil, fmt.Errorf("Repository %s@%s no longer contains selected Skill %q", repositoryID, resource.Info.Version, selected)
 		}
 	}
@@ -171,17 +169,20 @@ func prepareRepositoryUpdate(ctx context.Context, root string, userScope bool, c
 		return repositoryUpdateReport{}, nil, err
 	}
 	oldMembers := make([]string, 0, len(oldResource.Members))
-	oldPathsByName := make(map[string]string, len(oldResource.Members))
 	for _, member := range oldResource.Members {
 		oldMembers = append(oldMembers, member.Info.SkillPath)
-		oldPathsByName[member.Info.Name] = member.Info.SkillPath
 	}
 	sort.Strings(oldMembers)
 	oldSelected := make([]string, 0, len(dependency.Skills))
 	newSelected := make([]string, 0, len(dependency.Skills))
-	for _, name := range dependency.Skills {
-		oldSelected = append(oldSelected, oldPathsByName[name])
-		newSelected = append(newSelected, available[name])
+	for _, selector := range dependency.Skills {
+		oldMember, oldOK := hub.SelectRepositoryMember(selector, oldResource.Members)
+		newMember, newOK := hub.SelectRepositoryMember(selector, resource.Members)
+		if !oldOK || !newOK {
+			return repositoryUpdateReport{}, nil, fmt.Errorf("Repository update cannot resolve selected Skill %q", selector)
+		}
+		oldSelected = append(oldSelected, oldMember.Info.SkillPath)
+		newSelected = append(newSelected, newMember.Info.SkillPath)
 	}
 	oldProjections, err := repositoryProjections(catalog, dependency.Agents, dependency.Agents, oldSelected, oldSelected, agentScope, root)
 	if err != nil {

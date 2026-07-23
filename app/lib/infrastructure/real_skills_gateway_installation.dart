@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, Installation Request codecs, file save picker, and discovery/Library models.
- * [OUTPUT]: Provides Repository Vendor installation grouped by declaration scope.
+ * [OUTPUT]: Provides exact-path Repository Vendor installation grouped by declaration scope.
  * [POS]: Serves as the Installation Request capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -34,8 +34,8 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
       final arguments = <String>[
         'add',
         '$repositoryID@$immutableVersion',
-        '--skill',
-        skill.name,
+        '--skill-path',
+        skill.installationSelector,
         for (final selection in group) ...['--agent', selection.agent],
         if (first.scope == InstallationScope.user) '--global',
         if (first.scope == InstallationScope.project) ...[

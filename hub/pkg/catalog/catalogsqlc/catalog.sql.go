@@ -85,7 +85,7 @@ func (q *Queries) CompleteBackfillRun(ctx context.Context, arg CompleteBackfillR
 const currentRepositoryReleaseMember = `-- name: CurrentRepositoryReleaseMember :one
 SELECT rrm.release_id, rrm.name, rr.version, rr.commit_sha, rrm.tree_sha, rrm.skill_path, rr.commit_time
 FROM repositories r JOIN repository_releases rr ON rr.id=r.current_release_id JOIN repository_release_members rrm ON rrm.release_id=rr.id
-WHERE r.repository_id=$1 AND rrm.name=$2
+WHERE r.repository_id=$1 AND rrm.name=$2 ORDER BY rrm.skill_path LIMIT 1
 `
 
 type CurrentRepositoryReleaseMemberParams struct {
@@ -451,7 +451,7 @@ func (q *Queries) RepositoryReleaseInfo(ctx context.Context, arg RepositoryRelea
 const repositoryReleaseMembers = `-- name: RepositoryReleaseMembers :many
 SELECT rrm.release_id, rrm.name, rr.version, rr.commit_sha, rrm.tree_sha, rrm.skill_path, rr.commit_time
 FROM repositories r JOIN repository_releases rr ON rr.repository_id=r.id JOIN repository_release_members rrm ON rrm.release_id=rr.id
-WHERE r.repository_id=$1 AND rr.version=$2 ORDER BY CASE WHEN rrm.skill_path='.' THEN 0 ELSE 1 END, rrm.name
+WHERE r.repository_id=$1 AND rr.version=$2 ORDER BY rrm.skill_path
 `
 
 type RepositoryReleaseMembersParams struct {
@@ -671,7 +671,7 @@ const skillByCoordinate = `-- name: SkillByCoordinate :one
 SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.description,s.source_host,s.repository,s.skill_path,
 COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
 FROM skills s JOIN repositories r ON r.id=s.repository_id LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-WHERE r.repository_id=$1 AND s.name=$2
+WHERE r.repository_id=$1 AND s.name=$2 ORDER BY s.skill_path LIMIT 1
 `
 
 type SkillByCoordinateParams struct {
@@ -717,7 +717,7 @@ func (q *Queries) SkillByCoordinate(ctx context.Context, arg SkillByCoordinatePa
 }
 
 const skillPublishedVersions = `-- name: SkillPublishedVersions :many
-SELECT rr.version FROM repositories r JOIN repository_releases rr ON rr.repository_id=r.id
+SELECT DISTINCT rr.version FROM repositories r JOIN repository_releases rr ON rr.repository_id=r.id
 JOIN repository_release_members rrm ON rrm.release_id=rr.id WHERE r.repository_id=$1 AND rrm.name=$2 ORDER BY rr.version
 `
 
@@ -756,7 +756,11 @@ SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.desc
 COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
 FROM requested input
 JOIN repositories r ON r.repository_id=input.repository_identity
-JOIN skills s ON s.repository_id=r.id AND s.name=input.name
+JOIN LATERAL (
+    SELECT candidate.id, candidate.repository_id, candidate.name, candidate.description, candidate.source_host, candidate.repository, candidate.skill_path, candidate.verified, candidate.created_at, candidate.updated_at FROM skills candidate
+    WHERE candidate.repository_id=r.id AND candidate.name=input.name
+    ORDER BY candidate.skill_path LIMIT 1
+) s ON true
 LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
 ORDER BY input.ordinal
 `
@@ -901,7 +905,10 @@ SELECT 'skill'::text, r.repository_id || ':' || s.name, s.description,
 COALESCE(ld.source_digest, ''), COALESCE(ld.prompt_version, '')
 FROM skills s JOIN repositories r ON r.id=s.repository_id LEFT JOIN localized_descriptions ld
 ON ld.resource_kind='skill' AND ld.resource_id=r.repository_id || ':' || s.name AND ld.locale=$1
-WHERE trim(s.description)<>'' ORDER BY resource_kind, resource_id
+WHERE trim(s.description)<>'' AND s.skill_path=(
+    SELECT min(candidate.skill_path) FROM skills candidate
+    WHERE candidate.repository_id=s.repository_id AND candidate.name=s.name
+) ORDER BY resource_kind, resource_id
 `
 
 type TranslationCandidatesRow struct {
@@ -1044,8 +1051,8 @@ func (q *Queries) UpsertRepository(ctx context.Context, arg UpsertRepositoryPara
 const upsertSkill = `-- name: UpsertSkill :one
 INSERT INTO skills (repository_id, name, description, source_host, repository, skill_path, verified, created_at, updated_at)
 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-ON CONFLICT (repository_id, name) DO UPDATE SET description=excluded.description, source_host=excluded.source_host,
-repository=excluded.repository, skill_path=excluded.skill_path, verified=excluded.verified, updated_at=excluded.updated_at
+ON CONFLICT (repository_id, skill_path) DO UPDATE SET name=excluded.name, description=excluded.description, source_host=excluded.source_host,
+repository=excluded.repository, verified=excluded.verified, updated_at=excluded.updated_at
 RETURNING id
 `
 

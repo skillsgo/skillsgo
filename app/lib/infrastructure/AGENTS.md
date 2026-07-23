@@ -10,7 +10,7 @@
 - `real_skills_gateway_preferences.dart`: owns App preferences, Mandatory Onboarding state, one-time Batch Takeover introduction state, Added Project references, Hub origin and `hub info` runtime discovery, risk policy, and App-version lookup.
 - `real_skills_gateway_discovery.dart`: owns locale-aware `find` search, direct Cloud-composed ranking reads, explicit-source classification for equivalent GitHub aliases and Git coordinates, and remote Skill detail decoding.
 - `real_skills_gateway_inventory.dart`: owns Agent inspection, local Library inventory, exact Batch Takeover planning and scope-bound execution, and local Skill detail.
-- `real_skills_gateway_installation.dart`: groups Installation Requests by declaration scope, invokes exact Repository Vendor add through the bundled CLI, and decodes Vendor/Projection results.
+- `real_skills_gateway_installation.dart`: groups Installation Requests by declaration scope, invokes exact Skill-Path Repository Vendor add through the bundled CLI, and decodes Vendor/Projection results.
 - `real_skills_gateway_execution.dart`: owns shared affected-binding integrity and ordered NDJSON progress/final-payload execution envelopes for target mutations.
 - `real_skills_gateway_target_management.dart`: owns managed Repository-member and External Installation removal planning, execution, and progress translation.
 - `real_skills_gateway_updates.dart`: owns state-bound Repository-coordinate update preflight, execution, progress projection onto Library targets, and one Catalog-only batch update check across the current Library.

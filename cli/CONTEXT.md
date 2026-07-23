@@ -61,8 +61,12 @@ The installation scope rooted at a user-selected local directory. A Workspace do
 _Avoid_: repository-only scope, independent project Store
 
 **Workspace Manifest**:
-The editable strict-YAML `skillsgo.yaml` declaration. Its `dependencies` mapping is keyed by Repository ID and requires one immutable version, a non-empty explicit canonical Skill-Name list, and a non-empty explicit Agent list. A root member is selected by its declared name rather than `"."`. Add may resolve a Tag, branch, or commit, but persists only the immutable result. There is no schema version or installation mode.
+The editable strict-YAML `skillsgo.yaml` declaration. Its `dependencies` mapping is keyed by Repository ID and requires one immutable version, a non-empty explicit Skill-selector list, and a non-empty explicit Agent list. A selector may be a canonical Skill Name, which resolves to the lexicographically first matching Skill Path, or an exact Repository-relative Skill Path. Product surfaces that selected a concrete member persist its exact path. Add may resolve a Tag, branch, or commit, but persists only the immutable result. There is no schema version or installation mode.
 _Avoid_: `skillsgo.mod`, lock file, installation receipt
+
+**Exact Skill Path Selection**:
+The `add --skill-path` input used by product surfaces after discovery has identified a concrete Repository member. Unlike the human-friendly `--skill` name selector, it requires one exact Repository-relative Skill Path and persists that path unchanged so install, restore, update, and removal continue targeting the same member.
+_Avoid_: name fallback, inferred path, generated member ID
 
 **Dependency Lock**:
 The generated strict-YAML `skillsgo-lock.yaml` record whose `dependencies` mapping binds each declared Repository ID to its immutable version and Go-compatible Repository `h1:`. It does not repeat selected Skills or Agents and never persists movable revision input.
@@ -97,7 +101,7 @@ A difference between a Repository Projection and the deterministic view derived 
 _Avoid_: fork, automatically merged change, silent repair
 
 **Update Plan**:
-A state-bound operation that replaces one declared Repository coordinate within one Scope. It preserves the dependency's selected Skill Names and Agents, resolves those names against the candidate Repository Publication, previews the YAML version change, verifies the existing Vendor and every Projection against the old immutable baseline, and refuses missing names or Local Modifications. Because version belongs to the Repository, selecting one Library member updates the complete declared Repository dependency and all of its selected-member Projections atomically.
+A state-bound operation that replaces one declared Repository coordinate within one Scope. It preserves the dependency's selected Skill selectors and Agents, resolves those selectors against the candidate Repository Publication, previews the YAML version change, verifies the existing Vendor and every Projection against the old immutable baseline, and refuses missing selectors or Local Modifications. Because version belongs to the Repository, selecting one Library member updates the complete declared Repository dependency and all of its selected-member Projections atomically.
 _Avoid_: per-Skill artifact update, target-by-target partial Repository versions, implicit overwrite, localized-output parsing
 
 **Repository Member Removal**:

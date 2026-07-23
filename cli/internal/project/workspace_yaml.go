@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on canonical Repository IDs, immutable versions, canonical Skill names and Agent IDs, valid Repository h1 Sums, strict YAML nodes, and the shared metadata transaction lock.
+ * [INPUT]: Depends on canonical Repository IDs, immutable versions, canonical Skill name-or-path selectors and Agent IDs, valid Repository h1 Sums, strict YAML nodes, and the shared metadata transaction lock.
  * [OUTPUT]: Provides strict skillsgo.yaml/skillsgo-lock.yaml parsing, nearest YAML-root discovery, atomic paired loading with crash recovery, exact pair validation, deterministic normalization, and paired publication.
  * [POS]: Serves as the portable Repository dependency intent and integrity boundary for Workspace and User scopes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -360,11 +360,11 @@ func validateRepositoryDependency(repositoryID string, dependency RepositoryDepe
 	}
 	seenSkills := map[string]bool{}
 	for _, name := range dependency.Skills {
-		if !protocolmanifest.ValidName(name) {
-			return fmt.Errorf("dependency %q contains invalid Skill name %q", repositoryID, name)
+		if !protocolmanifest.ValidName(name) && name != "." && !protocolartifact.ValidRelativePath(name) {
+			return fmt.Errorf("dependency %q contains invalid Skill selector %q", repositoryID, name)
 		}
 		if seenSkills[name] {
-			return fmt.Errorf("dependency %q contains duplicate Skill name %q", repositoryID, name)
+			return fmt.Errorf("dependency %q contains duplicate Skill selector %q", repositoryID, name)
 		}
 		seenSkills[name] = true
 	}

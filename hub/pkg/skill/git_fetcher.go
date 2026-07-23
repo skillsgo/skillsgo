@@ -94,7 +94,6 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revis
 		Ref: resolution.Ref, CommitSHA: resolution.CommitSHA, TreeSHA: resolution.TreeSHA, CommitTime: resolution.CommitTime,
 		Members: make([]RepositoryMember, 0, len(candidates)),
 	}
-	memberNames := make(map[string]string, len(candidates))
 	archive, archiveMD5, sum, err := createRepositoryArtifact(ctx, repositoryID, resolution.Version, repoDir, resolution.CommitSHA)
 	if err != nil {
 		return nil, errors.E(op, err)
@@ -132,10 +131,6 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revis
 		if manifestErr != nil {
 			continue
 		}
-		if previousPath, duplicate := memberNames[manifest.Name]; duplicate {
-			return nil, errors.E(op, fmt.Errorf("duplicate Skill name %q at %q and %q", manifest.Name, previousPath, directory), errors.KindBadRequest)
-		}
-		memberNames[manifest.Name] = directory
 		snapshot.Members = append(snapshot.Members, RepositoryMember{Name: manifest.Name, Path: directory, TreeSHA: memberResolution.TreeSHA, Manifest: manifest})
 	}
 	if len(snapshot.Members) == 0 {

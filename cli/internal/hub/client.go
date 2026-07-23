@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a configured Hub origin, canonical Repository/Skill IDs, typed add-time Selector resolution through the product API, exact root Proxy resources, typed Repository Info, bounded Repository ZIP responses, and optional progress reporting.
- * [OUTPUT]: Provides two-phase movable-to-immutable Repository resolution/download with identity, membership, size, and h1 validation; direct exact reads; bounded product reads; discovery/update reads; and typed HTTP or malformed-protocol failures.
+ * [OUTPUT]: Provides two-phase movable-to-immutable Repository resolution/download with path-unique membership validation and deterministic name-or-path member selection; direct exact reads; bounded product reads; discovery/update reads; and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,6 +14,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -44,6 +45,27 @@ type RepositoryResource struct {
 	InfoBytes []byte
 	Members   []RepositoryMember
 	ZIP       []byte
+}
+
+// SelectRepositoryMember restores a persisted exact source path when present,
+// then falls back to the lexicographically first path among name matches.
+func SelectRepositoryMember(selector string, members []RepositoryMember) (RepositoryMember, bool) {
+	for _, member := range members {
+		if selector == member.Info.SkillPath {
+			return member, true
+		}
+	}
+	matches := make([]RepositoryMember, 0, 1)
+	for _, member := range members {
+		if selector == member.Info.Name {
+			matches = append(matches, member)
+		}
+	}
+	if len(matches) > 0 {
+		sort.Slice(matches, func(i, j int) bool { return matches[i].Info.SkillPath < matches[j].Info.SkillPath })
+		return matches[0], true
+	}
+	return RepositoryMember{}, false
 }
 
 type RepositoryMember struct {
@@ -198,17 +220,15 @@ func ParseRepositoryInfo(repositoryID string, infoBytes []byte) (*RepositoryReso
 		return nil, fmt.Errorf("Hub returned invalid Repository version for %s: %w", repositoryID, err)
 	}
 	resource := &RepositoryResource{Info: info, InfoBytes: append([]byte(nil), infoBytes...), Members: make([]RepositoryMember, 0, len(info.Skills))}
-	seenNames := map[string]bool{}
 	seenPaths := map[string]bool{}
 	for _, member := range info.Skills {
 		validPath := member.SkillPath == "." || protocolartifact.ValidRelativePath(member.SkillPath)
-		if !protocolskillmanifest.ValidName(member.Name) || !validPath || seenNames[member.Name] || seenPaths[member.SkillPath] || member.RepositoryID != repositoryID || member.Version != info.Version || member.CommitSHA != info.CommitSHA || member.Ref != info.Ref {
+		if !protocolskillmanifest.ValidName(member.Name) || !validPath || seenPaths[member.SkillPath] || member.RepositoryID != repositoryID || member.Version != info.Version || member.CommitSHA != info.CommitSHA || member.Ref != info.Ref {
 			return nil, fmt.Errorf("Repository Info contains inconsistent Skill %q", member.Name)
 		}
 		if err := validateAssessedInfo(repositoryID, member.Name, info.Version, member); err != nil {
 			return nil, err
 		}
-		seenNames[member.Name] = true
 		seenPaths[member.SkillPath] = true
 		memberBytes, err := json.Marshal(member)
 		if err != nil {

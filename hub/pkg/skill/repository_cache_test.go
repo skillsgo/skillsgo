@@ -307,15 +307,23 @@ func TestRepositoryDiscoverySkipsInvalidCandidatesWithoutBlockingValidSiblings(t
 	require.NotContains(t, names, "invalid")
 }
 
-func TestRepositoryDiscoveryRejectsDuplicateSkillNames(t *testing.T) {
+func TestRepositoryDiscoveryPreservesDuplicateSkillNamesAtDistinctPaths(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	f.writeSkill(t, "skills/duplicate", "child", "duplicate canonical name")
 	f.commit(t, "add duplicate Skill name")
 	runGit(t, f.work, "tag", "v1.1.0")
 	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
 
-	_, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
-	require.ErrorContains(t, err, `duplicate Skill name "child"`)
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, snapshot.Archive.Close()) })
+	paths := make([]string, 0, 2)
+	for _, member := range snapshot.Members {
+		if member.Name == "child" {
+			paths = append(paths, member.Path)
+		}
+	}
+	require.Equal(t, []string{"skills/child", "skills/duplicate"}, paths)
 }
 
 func TestRepositoryDiscoveryExcludesSkillsInstalledUnderHiddenDirectories(t *testing.T) {
