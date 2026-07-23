@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on strict YAML/Lock state, Scope Vendor, immutable scoped Repository Info, Agent Adapter roots, and deterministic Repository Projection verification.
+ * [INPUT]: Depends on atomically recovered strict YAML/Lock state, Scope Vendor, immutable scoped Repository Info, Agent Adapter roots, and deterministic Repository Projection verification.
  * [OUTPUT]: Adds Repository-managed Skill inventory entries without receipts, Store artifacts, materialization modes, or Hub access.
  * [POS]: Serves as the authoritative Repository Vendor half of local Library inventory during the legacy inventory removal.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -27,23 +27,12 @@ type declarationRoot struct {
 
 func addRepositoryInstallations(entries map[string]*Entry, accounted map[string]bool, roots []declarationRoot, catalog *agent.Catalog) error {
 	for _, declaration := range roots {
-		manifestPath := filepath.Join(declaration.root, project.WorkspaceManifestName)
-		lockPath := filepath.Join(declaration.root, project.DependencyLockName)
-		_, manifestErr := os.Stat(manifestPath)
-		_, lockErr := os.Stat(lockPath)
-		if os.IsNotExist(manifestErr) && os.IsNotExist(lockErr) {
+		manifest, lock, found, err := project.LoadWorkspaceState(declaration.root)
+		if err != nil {
+			return err
+		}
+		if !found {
 			continue
-		}
-		if manifestErr != nil || lockErr != nil {
-			return fmt.Errorf("skillsgo.yaml and skillsgo.lock must both be readable in %s", declaration.root)
-		}
-		manifest, err := project.LoadWorkspaceManifest(declaration.root)
-		if err != nil {
-			return err
-		}
-		lock, err := project.LoadDependencyLock(declaration.root)
-		if err != nil {
-			return err
 		}
 		for repositoryID, dependency := range manifest.Dependencies {
 			locked, ok := lock.Dependencies[repositoryID]
