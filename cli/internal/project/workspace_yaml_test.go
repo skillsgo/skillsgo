@@ -19,14 +19,14 @@ func TestWorkspaceYAMLStrictRepositoryDependencyContract(t *testing.T) {
 	document := []byte(`dependencies:
   github.com/example/skills:
     version: v1.2.3
-    skills: [".", skills/design]
+    skills: [design, root-skill]
     agents: [codex, zed]
 `)
 	manifest, err := ParseWorkspaceManifest("skillsgo.yaml", document)
 	require.NoError(t, err)
 	dependency := manifest.Dependencies["github.com/example/skills"]
 	require.Equal(t, "v1.2.3", dependency.Version)
-	require.Equal(t, []string{".", "skills/design"}, dependency.Skills)
+	require.Equal(t, []string{"design", "root-skill"}, dependency.Skills)
 	require.Equal(t, []string{"codex", "zed"}, dependency.Agents)
 }
 
@@ -55,7 +55,7 @@ func TestWorkspaceYAMLRejectsAmbiguousOrIncompleteState(t *testing.T) {
 func TestWriteWorkspaceStatePublishesCanonicalManifestAndLock(t *testing.T) {
 	root := t.TempDir()
 	manifest := WorkspaceManifest{Dependencies: map[string]RepositoryDependency{
-		"github.com/example/skills": {Version: "v1.2.3", Skills: []string{"skills/design", "."}, Agents: []string{"zed", "codex"}},
+		"github.com/example/skills": {Version: "v1.2.3", Skills: []string{"root-skill", "design"}, Agents: []string{"zed", "codex"}},
 	}}
 	lock := DependencyLock{Dependencies: map[string]LockedRepository{
 		"github.com/example/skills": {Version: "v1.2.3", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},
@@ -64,7 +64,7 @@ func TestWriteWorkspaceStatePublishesCanonicalManifestAndLock(t *testing.T) {
 
 	loadedManifest, err := LoadWorkspaceManifest(root)
 	require.NoError(t, err)
-	require.Equal(t, []string{".", "skills/design"}, loadedManifest.Dependencies["github.com/example/skills"].Skills)
+	require.Equal(t, []string{"design", "root-skill"}, loadedManifest.Dependencies["github.com/example/skills"].Skills)
 	require.Equal(t, []string{"codex", "zed"}, loadedManifest.Dependencies["github.com/example/skills"].Agents)
 	loadedLock, err := LoadDependencyLock(root)
 	require.NoError(t, err)
@@ -106,7 +106,7 @@ func TestFindWorkspaceRootUsesSkillsgoYAML(t *testing.T) {
 
 func TestValidateWorkspaceStateRequiresExactRepositorySet(t *testing.T) {
 	manifest := WorkspaceManifest{Dependencies: map[string]RepositoryDependency{
-		"github.com/example/skills": {Version: "v1.2.3", Skills: []string{"."}, Agents: []string{"codex"}},
+		"github.com/example/skills": {Version: "v1.2.3", Skills: []string{"root-skill"}, Agents: []string{"codex"}},
 	}}
 	lock := DependencyLock{Dependencies: map[string]LockedRepository{
 		"github.com/example/skills": {Version: "v1.2.3", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},

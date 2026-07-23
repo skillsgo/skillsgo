@@ -326,6 +326,19 @@ func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, pla
 			report.Summary.Skipped++
 			continue
 		}
+		memberName := ""
+		for _, member := range resource.Members {
+			if member.Info.Path == memberPath {
+				memberName = member.Info.Name
+				break
+			}
+		}
+		if memberName == "" {
+			result.Reason = "member-not-found"
+			report.Results = append(report.Results, result)
+			report.Summary.Skipped++
+			continue
+		}
 		agentIDs := make([]string, 0, len(candidate.Targets))
 		for _, target := range candidate.Targets {
 			if !containsString(agentIDs, target.Agent) {
@@ -339,8 +352,8 @@ func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, pla
 		discard.SetErr(io.Discard)
 		scope := candidate.Targets[0].Scope
 		workspaceRoot := candidate.Targets[0].ProjectRoot
-		options := addOptions{hubURL: hubURL, output: "json", skills: []string{memberPath}}
-		if addErr := addRepository(discard, catalog, source.Reference{SkillID: repositoryID, Version: resource.Info.Version}, agentIDs, scope, workspaceRoot, options, []string{memberPath}); addErr != nil {
+		options := addOptions{hubURL: hubURL, output: "json", skills: []string{memberName}}
+		if addErr := addRepository(discard, catalog, source.Reference{SkillID: repositoryID, Version: resource.Info.Version}, agentIDs, scope, workspaceRoot, options, []string{memberName}); addErr != nil {
 			result.Reason = "state-write-failure"
 			report.Results = append(report.Results, result)
 			report.Summary.Skipped++
