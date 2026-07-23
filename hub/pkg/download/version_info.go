@@ -15,9 +15,9 @@ import (
 )
 
 // PathVersionInfo URL.
-const PathVersionInfo = "/mod/{skill:.+}/@v/{version}.info"
+const PathVersionInfo = "/{repository:.+}/@v/{version}.info"
 
-// InfoHandler implements GET baseURL/module/@v/version.info.
+// InfoHandler implements GET baseURL/repository/@v/version.info.
 func InfoHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handler {
 	const op errors.Op = "download.InfoHandler"
 	return func(c fiber.Ctx) error {
@@ -28,7 +28,7 @@ func InfoHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handl
 			return c.SendStatus(errors.Kind(err))
 		}
 		if !protocolversion.IsImmutable(ver) {
-			return c.Status(fiber.StatusBadRequest).SendString("exact immutable version required; use @head or @release")
+			return c.Status(fiber.StatusBadRequest).SendString("exact immutable version required; resolve movable selectors through the Repository Resolution API")
 		}
 		protectMovableVersionResponse(c, ver)
 		if immutableNotModified(c, mod, ver, "info") {
