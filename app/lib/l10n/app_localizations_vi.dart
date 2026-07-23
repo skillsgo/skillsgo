@@ -1799,13 +1799,6 @@ class AppLocalizationsVi extends AppLocalizations {
   String get installMoreTargets => 'Cài đặt ở nhiều vị trí hơn';
 
   @override
-  String get exportLocalSkill => 'Xuất khẩu';
-
-  @override
-  String get exportLocalSkillDescription =>
-      'Xuất Kỹ năng cục bộ này dưới dạng kho lưu trữ ZIP di động.';
-
-  @override
   String get detailRepository => 'Kho lưu trữ';
 
   @override

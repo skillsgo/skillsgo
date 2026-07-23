@@ -96,7 +96,7 @@ func addRepositoryInstallations(entries map[string]*Entry, accounted map[string]
 					}
 					health := repositoryTargetHealth(vendorErr, archive, adapterRoots.ManagedRoot, repositoryID, dependency.Version, members, dependency.Skills)
 					entry.Targets = append(entry.Targets, Target{Scope: declaration.scope, ProjectRoot: projectRoot, Agent: agentID,
-						Path: projectionPath, CanonicalPath: vendorPath, Mode: TargetModeCopy, Version: dependency.Version, Health: health})
+						Path: projectionPath, CanonicalPath: vendorPath, Version: dependency.Version, Health: health})
 					entry.Agents = appendUnique(entry.Agents, agentID)
 					accounted[targetKey(agentID, declaration.scope, projectionRoot)] = true
 					if health != HealthHealthy && entry.Health == HealthHealthy {

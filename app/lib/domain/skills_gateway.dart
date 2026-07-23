@@ -89,7 +89,6 @@ abstract interface class SkillsGateway {
     TargetManagementPlan plan, {
     void Function(TargetManagementProgress progress)? onProgress,
   });
-  Future<CommandResult?> exportLocalSkill(InstalledSkill skill);
   Future<UpdatePlan> preflightUpdate(
     InstalledSkill skill,
     List<SkillInstallationTarget> targets, {

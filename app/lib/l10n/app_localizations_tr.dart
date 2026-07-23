@@ -1795,13 +1795,6 @@ class AppLocalizationsTr extends AppLocalizations {
   String get installMoreTargets => 'Daha fazla konuma yükleyin';
 
   @override
-  String get exportLocalSkill => 'İhracat';
-
-  @override
-  String get exportLocalSkillDescription =>
-      'Bu Yerel Skill\'yi taşınabilir bir ZIP arşivi olarak dışa aktarın.';
-
-  @override
   String get detailRepository => 'Depo';
 
   @override

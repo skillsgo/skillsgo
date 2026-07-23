@@ -133,7 +133,7 @@ func scanExternalDirectory(
 		entry := ensureExternalEntry(entries, name, metadata.description, path)
 		entry.Targets = append(entry.Targets, Target{
 			Scope: scope, ProjectRoot: projectRoot, Agent: agentID,
-			Path: filepath.Clean(path), Mode: TargetModeExternal, Version: "", Health: HealthHealthy,
+			Path: filepath.Clean(path), Version: "", Health: HealthHealthy,
 		})
 		entry.Agents = appendUnique(entry.Agents, agentID)
 		if projectRoot != "" {

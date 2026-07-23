@@ -113,7 +113,7 @@ func newWhyCommand(catalog *agent.Catalog) *cobra.Command {
 						if target.ProjectRoot != "" {
 							scope += ":" + target.ProjectRoot
 						}
-						rows = append(rows, terminalui.Row{State: "•", Primary: entry.SkillID, Secondary: target.Version, Meta: []string{scope, target.Agent, string(target.Mode), target.Path}})
+						rows = append(rows, terminalui.Row{State: "•", Primary: entry.SkillID, Secondary: target.Version, Meta: []string{scope, target.Agent, target.Path}})
 					}
 				}
 				ui, err := humanUI(cmd)
@@ -144,7 +144,7 @@ func resolveInspectionLocations(includeUser bool, projects []string) (bool, []st
 	if err != nil {
 		return false, nil, err
 	}
-	if root, findErr := project.FindRoot(cwd); findErr == nil {
+	if root, findErr := project.FindWorkspaceRoot(cwd); findErr == nil {
 		return false, []string{root}, nil
 	}
 	return true, nil, nil

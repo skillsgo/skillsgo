@@ -1806,13 +1806,6 @@ class AppLocalizationsAr extends AppLocalizations {
   String get installMoreTargets => 'تثبيت في المزيد من المواقع';
 
   @override
-  String get exportLocalSkill => 'تصدير';
-
-  @override
-  String get exportLocalSkillDescription =>
-      'قم بتصدير Skill المحلي كأرشيف ZIP محمول.';
-
-  @override
   String get detailRepository => 'المستودع';
 
   @override

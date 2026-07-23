@@ -1804,13 +1804,6 @@ class AppLocalizationsId extends AppLocalizations {
   String get installMoreTargets => 'Instal di lebih banyak lokasi';
 
   @override
-  String get exportLocalSkill => 'Ekspor';
-
-  @override
-  String get exportLocalSkillDescription =>
-      'Ekspor Keterampilan Lokal ini sebagai arsip ZIP portabel.';
-
-  @override
   String get detailRepository => 'Gudang';
 
   @override

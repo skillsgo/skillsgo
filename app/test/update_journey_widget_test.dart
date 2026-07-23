@@ -97,7 +97,7 @@ void main() {
 
     expect(find.text('Select targets to update'), findsOneWidget);
     expect(find.text('2 of 2 updateable targets selected'), findsOneWidget);
-    expect(find.textContaining('/tmp/project/skillsgo.mod'), findsOneWidget);
+    expect(find.textContaining('/tmp/project/skillsgo.yaml'), findsOneWidget);
     await tester.tap(
       find
           .descendant(
@@ -108,7 +108,7 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(find.text('1 of 2 updateable targets selected'), findsOneWidget);
-    expect(find.textContaining('/tmp/project/skillsgo.mod'), findsNothing);
+    expect(find.textContaining('/tmp/project/skillsgo.yaml'), findsNothing);
     await tester.tap(find.text('Update selected targets'));
     await tester.pumpAndSettle();
 

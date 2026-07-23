@@ -1041,8 +1041,6 @@
   },
   "batchTakeoverClose": "Tutup",
   "installMoreTargets": "Instal di lebih banyak lokasi",
-  "exportLocalSkill": "Ekspor",
-  "exportLocalSkillDescription": "Ekspor Keterampilan Lokal ini sebagai arsip ZIP portabel.",
   "detailRepository": "Gudang",
   "detailStars": "Bintang",
   "detailUpdated": "Diperbarui",

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Library journey library, local/remote Skill identity, gateway operations, update state, and detail navigation.
- * [OUTPUT]: Provides the public LocalDetailScreen plus loading, refresh, update, target-management, install-more, export, and root rendering behavior.
+ * [OUTPUT]: Provides the public LocalDetailScreen plus loading, refresh, update, target-management, install-more, and root rendering behavior.
  * [POS]: Serves as the state-owning core of the local Skill detail journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -36,7 +36,6 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
   bool managing = false;
   bool updating = false;
   bool installingMore = false;
-  bool exporting = false;
   CommandResult? result;
   @override
   void initState() {
@@ -277,21 +276,6 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
       result = exceptionResult(caught);
     }
     if (mounted) setState(() {});
-  }
-
-  Future<void> exportLocal() async {
-    if (exporting || skill.provenance != LibraryProvenance.local) return;
-    setState(() {
-      exporting = true;
-      result = null;
-    });
-    try {
-      final exported = await widget.gateway.exportLocalSkill(skill);
-      if (exported != null) result = exported;
-    } catch (caught) {
-      result = exceptionResult(caught);
-    }
-    if (mounted) setState(() => exporting = false);
   }
 
   Future<bool> _refreshManagedSkill({

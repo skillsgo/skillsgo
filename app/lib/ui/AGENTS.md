@@ -14,7 +14,7 @@
 - `install_operation_controller.dart`: owns the compact Installation Request interface, per-Skill and Repository-member sequencing, aggregate execution success, and error state through a Riverpod family.
 - `installation_flows.dart` and `installation/`: expose remote detail, installation selection, Update, Target Management, progress, result, and retry surfaces as one independent journey library.
 - `library_controller.dart`: owns immutable Library content, stable Entry queries, targeted post-mutation reconciliation, initial-load, stale-refresh, independent Batch Takeover planning, and load-error transitions through Riverpod.
-- `library_screen.dart` and `library/`: expose the unified Library journey while hiding inventory rendering, filters, selection state, local detail, exact External removal, Batch Takeover, export, and target actions behind one screen library.
+- `library_screen.dart` and `library/`: expose the unified Library journey while hiding inventory rendering, filters, selection state, local detail, exact External removal, Batch Takeover, and Repository target actions behind one screen library.
 - `language_identity_icon.dart`: centralizes presentation-language identity, locally vendored Circle Flags asset mapping, and the system-language fallback shared by language selectors.
 - `agent_logo.dart`: centralizes Agent ID-to-SVG identity mapping and the themed initial fallback shared by installation and Library navigation.
 - `bloom_color_picker/`: vendors and extends Portal Labs' MIT-licensed Bloom interaction with explicit named brand presets and desktop hover labels.
@@ -41,7 +41,7 @@
 
 ## Architectural Boundary
 
-This module owns rendered product behavior, navigation state, accessibility semantics, localization selection, and Burrow-inspired presentation. It consumes `SkillsGateway` domain contracts and must not implement Hub HTTP, process execution, Store behavior, or local filesystem mutation.
+This module owns rendered product behavior, navigation state, accessibility semantics, localization selection, and Burrow-inspired presentation. It consumes `SkillsGateway` domain contracts and must not implement Hub HTTP, process execution, Repository persistence, or local filesystem mutation.
 
 Theme preference persistence crosses this boundary only through `SkillsGateway`. Ordinary UI widgets consume `ThemeData.colorScheme` or `SkillsColorTokens`; they must not derive independent palettes, access persistence directly, or replace semantic roles with fixed light/dark colors.
 

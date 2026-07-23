@@ -25,11 +25,9 @@ var ErrEmptyProjectRoot = errors.New("project root must not be empty")
 type Provenance string
 type Risk string
 type Health string
-type TargetMode string
 
 const (
 	ProvenanceHub      Provenance = "hub"
-	ProvenanceLocal    Provenance = "local"
 	ProvenanceExternal Provenance = "external"
 	RiskUnknown        Risk       = "unknown"
 
@@ -42,10 +40,6 @@ const (
 	HealthWorkspaceUnreadable Health = "workspace-unreadable"
 	HealthLockMismatch        Health = "lock-mismatch"
 	HealthUnexpectedPath      Health = "unexpected-path"
-
-	TargetModeSymlink  TargetMode = "symlink"
-	TargetModeCopy     TargetMode = "copy"
-	TargetModeExternal TargetMode = "external"
 )
 
 type Report struct {
@@ -83,7 +77,6 @@ type Target struct {
 	Agent         string        `json:"agent"`
 	Path          string        `json:"path"`
 	CanonicalPath string        `json:"canonicalPath,omitempty"`
-	Mode          TargetMode    `json:"-"`
 	Version       string        `json:"version"`
 	Health        Health        `json:"health"`
 }
@@ -92,12 +85,6 @@ type Options struct {
 	IncludeUser bool
 	Projects    []string
 	Catalog     *agent.Catalog
-}
-
-type workspaceInventoryState struct {
-	manifest project.Manifest
-	present  bool
-	valid    bool
 }
 
 func Build(options Options) (Report, error) {
@@ -256,21 +243,6 @@ func normalizeProjectRoots(values []string) ([]string, error) {
 	return result, nil
 }
 
-func inventoryLocation(target install.Target, includeUser bool, projectRoots []string) (string, bool) {
-	if target.Scope == install.ScopeUser {
-		return "", includeUser
-	}
-	if target.Scope != install.ScopeProject {
-		return "", false
-	}
-	for _, root := range projectRoots {
-		if pathWithin(root, target.Path) {
-			return root, true
-		}
-	}
-	return "", false
-}
-
 func pathWithin(root, candidate string) bool {
 	relative, err := filepath.Rel(resolveInventoryPath(root), resolveInventoryPath(candidate))
 	return err == nil && relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
@@ -298,144 +270,6 @@ func resolveInventoryPath(path string) string {
 	}
 }
 
-func loadWorkspaceInventoryState(root string) workspaceInventoryState {
-	manifestExists, manifestReadable := workspaceFileState(filepath.Join(root, "skillsgo.mod"))
-	if !manifestExists {
-		return workspaceInventoryState{}
-	}
-	if !manifestReadable {
-		return workspaceInventoryState{present: true}
-	}
-	manifest, err := project.LoadManifest(root)
-	return workspaceInventoryState{manifest: manifest, present: true, valid: err == nil}
-}
-
-func workspaceFileState(path string) (present bool, readable bool) {
-	info, err := os.Stat(path)
-	if err == nil {
-		return true, info.Mode().IsRegular()
-	}
-	if os.IsNotExist(err) {
-		return false, true
-	}
-	return true, false
-}
-
-func reconciledProjectHealth(installation install.Installation, workspace workspaceInventoryState) Health {
-	if !workspace.present {
-		return HealthUndeclared
-	}
-	if !workspace.valid {
-		return HealthWorkspaceUnreadable
-	}
-	dependency := installation.DependencyID
-	if dependency == "" {
-		dependency = installation.SkillID
-	}
-	_, requirement, declared := workspace.manifest.Dependency(dependency)
-	if !declared {
-		return HealthUndeclared
-	}
-	agentDeclared := false
-	for _, agentID := range requirement.Agents {
-		if agentID == installation.Target.Agent {
-			agentDeclared = true
-			break
-		}
-	}
-	if requirement.Source != installation.SkillID ||
-		requirement.Ref != installation.Version ||
-		!agentDeclared {
-		return HealthLockMismatch
-	}
-	return HealthHealthy
-}
-
-func managedTargetPathExpected(catalog *agent.Catalog, installation install.Installation, projectRoot string) bool {
-	agentID := installation.Target.Agent
-	if strings.HasPrefix(agentID, "eve:") {
-		agentID = "eve"
-	}
-	scope := agent.ScopeUser
-	if installation.Target.Scope == install.ScopeProject {
-		scope = agent.ScopeProject
-	}
-	roots, ok := catalog.SkillRoots(agentID, scope, projectRoot)
-	if !ok {
-		return false
-	}
-	for _, root := range roots.DiscoveryRoots {
-		expected := filepath.Join(root, installation.Name)
-		if resolveInventoryPath(expected) == resolveInventoryPath(installation.Target.Path) || filepath.Clean(expected) == filepath.Clean(installation.Target.Path) {
-			return true
-		}
-	}
-	return false
-}
-
-func managedTargetHealth(installation install.Installation, pathExpected bool) Health {
-	if !pathExpected {
-		return HealthUnexpectedPath
-	}
-	info, err := os.Lstat(installation.Target.Path)
-	if os.IsNotExist(err) {
-		return HealthMissing
-	}
-	if err != nil {
-		return HealthUnreadable
-	}
-	if installation.Target.Mode == install.ModeSymlink {
-		canonicalAlias := info.Mode()&os.ModeSymlink == 0 && installation.Target.CanonicalPath != "" &&
-			resolveInventoryPath(installation.Target.Path) == resolveInventoryPath(installation.Target.CanonicalPath)
-		if installation.Target.CanonicalPath != "" && (filepath.Clean(installation.Target.Path) == filepath.Clean(installation.Target.CanonicalPath) || canonicalAlias) {
-			if !info.IsDir() || info.Mode()&os.ModeSymlink != 0 {
-				return HealthReplaced
-			}
-			matches, digestErr := install.CopyMatchesArtifact(installation.Target.Path, installation.Artifact)
-			if digestErr != nil {
-				return HealthUnreadable
-			}
-			if !matches {
-				return HealthLocalModification
-			}
-			return HealthHealthy
-		}
-		if info.Mode()&os.ModeSymlink == 0 {
-			return HealthReplaced
-		}
-		link, err := filepath.EvalSymlinks(installation.Target.Path)
-		expected := installation.Artifact
-		if installation.Target.CanonicalPath != "" {
-			expected = installation.Target.CanonicalPath
-		}
-		if err != nil || resolveInventoryPath(link) != resolveInventoryPath(expected) {
-			return HealthReplaced
-		}
-		return HealthHealthy
-	}
-	if installation.Target.Mode == install.ModeCopy && info.IsDir() {
-		matches := false
-		if installation.TargetState != "" {
-			actual, digestErr := install.DirectoryDigest(installation.Target.Path)
-			if digestErr != nil {
-				return HealthUnreadable
-			}
-			matches = actual == installation.TargetState
-		} else {
-			var digestErr error
-			matches, digestErr = install.CopyMatchesArtifact(installation.Target.Path, installation.Artifact)
-			if digestErr != nil {
-				return HealthUnreadable
-			}
-		}
-		if !matches {
-			return HealthLocalModification
-		}
-		return HealthHealthy
-	}
-	return HealthReplaced
-}
-
 func ensureEntry(entries map[string]*Entry, name, skillID string, provenance Provenance) *Entry {
 	inventoryKey := string(provenance) + ":" + skillID
 	if entry := entries[inventoryKey]; entry != nil {
@@ -448,31 +282,6 @@ func ensureEntry(entries map[string]*Entry, name, skillID string, provenance Pro
 	}
 	entries[inventoryKey] = entry
 	return entry
-}
-
-func expectedTargetPath(catalog *agent.Catalog, agentID string, scope install.Scope, projectRoot, name string) (string, bool) {
-	agentIDs := []string{agentID}
-	var eveSubagents []string
-	if strings.HasPrefix(agentID, "eve:") {
-		if scope != install.ScopeProject {
-			return "", false
-		}
-		agentIDs = []string{"eve"}
-		eveSubagents = []string{strings.TrimPrefix(agentID, "eve:")}
-	}
-	targets, err := install.ResolveTargetsWithSubagents(
-		catalog,
-		agentIDs,
-		eveSubagents,
-		scope,
-		install.ModeSymlink,
-		projectRoot,
-		name,
-	)
-	if err != nil || len(targets) != 1 {
-		return "", false
-	}
-	return targets[0].Path, true
 }
 
 func targetKey(agentID string, scope install.Scope, path string) string {

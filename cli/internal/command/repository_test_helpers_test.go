@@ -7,42 +7,12 @@
 package command
 
 import (
-	"archive/zip"
-	"bytes"
 	"encoding/json"
 	"testing"
 	"time"
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 )
-
-func commandTestZIP(t *testing.T, prefix string, files map[string]string) []byte {
-	t.Helper()
-	var buffer bytes.Buffer
-	writer := zip.NewWriter(&buffer)
-	for name, content := range files {
-		entry, err := writer.Create(prefix + name)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err := entry.Write([]byte(content)); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if err := writer.Close(); err != nil {
-		t.Fatal(err)
-	}
-	return buffer.Bytes()
-}
-
-func commandTestSum(t *testing.T, data []byte, skillID, version string) string {
-	t.Helper()
-	digest, err := hub.Sum(data, skillID, version)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return digest
-}
 
 func commandTestRepositoryInfo(t *testing.T, repositoryID, version, commit string, members ...hub.Info) []byte {
 	t.Helper()

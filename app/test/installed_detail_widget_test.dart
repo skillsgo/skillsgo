@@ -10,7 +10,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:skillsgo/app.dart';
 import 'package:skillsgo/domain/skills_gateway.dart';
-import 'package:skillsgo/ui/native_components.dart';
 
 import 'support/fake_skills_gateway.dart';
 
@@ -84,23 +83,6 @@ void main() {
     await open(hub, updateState: UpdateState.upToDate);
     expect(find.text('UP TO DATE'), findsNothing);
     expect(find.text('Update'), findsNothing);
-
-    await open(
-      const InstalledSkill(
-        inventoryKey: 'local:action-demo',
-        name: 'local-action-demo',
-        path: '/Users/test/.codex/skills/local-action-demo',
-        agents: ['codex'],
-        targetCount: 1,
-        skillId: 'local.skillsgo/action-demo',
-        provenance: LibraryProvenance.local,
-        versions: ['v1'],
-        targets: [target],
-      ),
-    );
-    expect(find.text('Manage scope'), findsNothing);
-    expect(find.byKey(const Key('installation-scope-panel')), findsOneWidget);
-    expect(find.text('Export'), findsOneWidget);
 
     await open(
       const InstalledSkill(
@@ -194,91 +176,5 @@ void main() {
         .getTopLeft(find.byKey(const Key('installation-scope-panel')))
         .dy;
     expect(scopeAfter, scopeBefore);
-  });
-
-  testWidgets('Local Skill installs to one more exact Agent target', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 800));
-    const skillId = 'local.skillsgo/abc/private-demo';
-    const path = '/Users/test/.codex/skills/private-demo';
-    final gateway = FakeSkillsGateway(
-      installed: false,
-      libraryEntries: const [
-        InstalledSkill(
-          inventoryKey: 'local:$skillId',
-          name: 'private-demo',
-          path: path,
-          agents: ['codex'],
-          targetCount: 1,
-          skillId: skillId,
-          provenance: LibraryProvenance.local,
-          versions: ['local-abc'],
-          targets: [
-            SkillInstallationTarget(
-              agent: 'codex',
-              scope: InstallationScope.user,
-              path: path,
-              version: 'local-abc',
-            ),
-          ],
-        ),
-      ],
-      localDetail: const SkillDetail(
-        name: 'private-demo',
-        source: 'Local',
-        markdown: '# Private',
-        immutableVersion: 'local-abc',
-        files: [SkillFile(path: 'SKILL.md', contents: '# Private')],
-        installationTargets: [
-          SkillInstallationTarget(
-            agent: 'codex',
-            scope: InstallationScope.user,
-            path: path,
-            version: 'local-abc',
-          ),
-        ],
-      ),
-      agentStatuses: const [
-        AgentStatus(
-          id: 'codex',
-          displayName: 'Codex',
-          installed: true,
-          supportedScopes: [InstallationScope.user],
-        ),
-        AgentStatus(
-          id: 'cursor',
-          displayName: 'Cursor',
-          installed: true,
-          supportedScopes: [InstallationScope.user],
-        ),
-      ],
-    );
-    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key('primary-destination-library')));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('private-demo').first);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Install in more locations'));
-    await tester.pumpAndSettle();
-
-    expect(find.text('Installed'), findsOneWidget);
-    await tester.tap(
-      find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
-    );
-    await tester.pumpAndSettle();
-
-    expect(gateway.executionSelectionHistory.single.single.agent, 'cursor');
-    expect(gateway.libraryEntries!.single.agents, ['codex', 'cursor']);
-    final scope = find.byKey(const Key('installation-scope-panel'));
-    expect(
-      find.descendant(of: scope, matching: find.text('Global')),
-      findsOneWidget,
-    );
-    expect(
-      find.descendant(of: scope, matching: find.text('local-abc')),
-      findsOneWidget,
-    );
   });
 }

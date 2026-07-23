@@ -611,8 +611,6 @@
   },
   "batchTakeoverClose": "关闭",
   "installMoreTargets": "安装到更多位置",
-  "exportLocalSkill": "导出",
-  "exportLocalSkillDescription": "将这个本地技能导出为可移植的 ZIP 归档。",
   "detailRepository": "仓库",
   "detailStars": "星标",
   "detailUpdated": "最近更新",

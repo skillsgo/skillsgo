@@ -26,6 +26,8 @@ const (
 	DependencyLockName    = "skillsgo.lock"
 )
 
+func UserRoot(home string) string { return filepath.Join(home, ".skillsgo") }
+
 type WorkspaceManifest struct {
 	Dependencies map[string]RepositoryDependency `yaml:"dependencies"`
 }
@@ -187,7 +189,7 @@ func WriteWorkspaceState(root string, manifest WorkspaceManifest, lock Dependenc
 	if _, err := ParseDependencyLock(DependencyLockName, lockBytes); err != nil {
 		return err
 	}
-	return withInstallationMetadataLock(root, func() error {
+	return withWorkspaceMetadataLock(root, func() error {
 		if err := os.MkdirAll(root, 0o700); err != nil {
 			return err
 		}

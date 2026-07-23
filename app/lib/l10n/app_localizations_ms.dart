@@ -1797,13 +1797,6 @@ class AppLocalizationsMs extends AppLocalizations {
   String get installMoreTargets => 'Pasang di lebih banyak lokasi';
 
   @override
-  String get exportLocalSkill => 'Eksport';
-
-  @override
-  String get exportLocalSkillDescription =>
-      'Eksport Kemahiran Tempatan ini sebagai arkib ZIP mudah alih.';
-
-  @override
   String get detailRepository => 'Repositori';
 
   @override

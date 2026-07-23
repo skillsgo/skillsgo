@@ -13,7 +13,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/stretchr/testify/require"
 )
 
@@ -23,9 +22,9 @@ type managementPreflightItem struct {
 	StateToken     string   `json:"stateToken"`
 }
 
-func managementPreflight(t *testing.T, command string, target install.Target, projectRoot string) managementPreflightItem {
+func managementPreflight(t *testing.T, command, targetPath, agentID, projectRoot string) managementPreflightItem {
 	t.Helper()
-	args := []string{command, "--path", target.Path, "--agent", target.Agent, "--preflight", "--output", "json"}
+	args := []string{command, "--path", targetPath, "--agent", agentID, "--preflight", "--output", "json"}
 	if projectRoot != "" {
 		args = append(args, "--project", projectRoot)
 	}

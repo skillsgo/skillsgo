@@ -1799,13 +1799,6 @@ class AppLocalizationsNl extends AppLocalizations {
   String get installMoreTargets => 'Installeer op meer locaties';
 
   @override
-  String get exportLocalSkill => 'Exporteren';
-
-  @override
-  String get exportLocalSkillDescription =>
-      'Exporteer deze lokale Skill als een draagbaar ZIP-archief.';
-
-  @override
   String get detailRepository => 'Opslagplaats';
 
   @override

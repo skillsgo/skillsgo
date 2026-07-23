@@ -151,10 +151,4 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
     if (takeoverCompleter != null) return takeoverCompleter!.future;
     return takeoverResult;
   }
-
-  @override
-  Future<CommandResult?> exportLocalSkill(InstalledSkill skill) async {
-    exportCalls++;
-    return successCommand(['skillsgo', 'export']);
-  }
 }

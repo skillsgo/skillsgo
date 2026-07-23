@@ -43,14 +43,6 @@ extension _LocalDetailRendering on _LocalDetailScreenState {
             ),
           ),
         ],
-        if (skill.provenance == LibraryProvenance.local) ...[
-          const SizedBox(width: 8),
-          SecondaryCapsuleButton(
-            label: context.l10n.exportLocalSkill,
-            icon: HugeIcons.strokeRoundedShare08,
-            onPressed: exporting ? null : exportLocal,
-          ),
-        ],
       ],
     ],
   );

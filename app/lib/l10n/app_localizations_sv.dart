@@ -1797,13 +1797,6 @@ class AppLocalizationsSv extends AppLocalizations {
   String get installMoreTargets => 'Installera på fler platser';
 
   @override
-  String get exportLocalSkill => 'Exportera';
-
-  @override
-  String get exportLocalSkillDescription =>
-      'Exportera denna lokala Skill som ett bärbart ZIP-arkiv.';
-
-  @override
   String get detailRepository => 'Förvar';
 
   @override

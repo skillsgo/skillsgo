@@ -523,24 +523,19 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 				locked = workspaceLocks[declarationRoot]
 				lockSupported = workspaceLockSupported[declarationRoot]
 			}
-			groupTargets := make([]install.Target, 0, len(group))
 			machineTargets := make([]takeoverTarget, 0, len(group))
 			for _, target := range group {
 				canonicalPath := ""
 				if info, statErr := os.Lstat(target.Path); statErr == nil && info.Mode()&os.ModeSymlink != 0 {
 					canonicalPath, _ = filepath.EvalSymlinks(target.Path)
 				}
-				groupTargets = append(groupTargets, install.Target{
-					Agent: target.Agent, Scope: target.Scope, Mode: install.ModeCopy,
-					Path: target.Path, CanonicalPath: canonicalPath,
-				})
 				machineTargets = append(machineTargets, takeoverTarget{Agent: target.Agent, Scope: target.Scope, ProjectRoot: target.ProjectRoot, Path: target.Path, CanonicalPath: canonicalPath})
 			}
 			result := takeoverResult{Name: skill.Name, Status: "skipped", Target: machineTargets[0], Targets: machineTargets}
 			lockKey := skill.Name
 			record, ok := locked[lockKey]
 			if !ok {
-				lockKey = filepath.Base(groupTargets[0].Path)
+				lockKey = filepath.Base(machineTargets[0].Path)
 				record, ok = locked[lockKey]
 			}
 			if !ok {
@@ -561,7 +556,7 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 				skipped = append(skipped, result)
 				continue
 			}
-			physicalPath, resolveErr := filepath.EvalSymlinks(groupTargets[0].Path)
+			physicalPath, resolveErr := filepath.EvalSymlinks(machineTargets[0].Path)
 			if resolveErr != nil {
 				result.Reason = "unreadable-target"
 				skipped = append(skipped, result)
@@ -574,7 +569,7 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 				continue
 			}
 			groupChanged := false
-			for _, target := range groupTargets {
+			for _, target := range machineTargets {
 				resolved, resolveTargetErr := filepath.EvalSymlinks(target.Path)
 				if resolveTargetErr != nil || filepath.Clean(resolved) != filepath.Clean(physicalPath) {
 					groupChanged = true

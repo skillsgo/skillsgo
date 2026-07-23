@@ -52,7 +52,6 @@ InstallationHealth _installationHealth(Object? value) => switch (value) {
 
 LibraryProvenance _libraryProvenance(Object? value) => switch (value) {
   'hub' => LibraryProvenance.hub,
-  'local' => LibraryProvenance.local,
   'external' => LibraryProvenance.external,
   _ => throw const FormatException('Unknown Library provenance.'),
 };

@@ -39,7 +39,7 @@ mixin FakeGatewayUpdates on FakeSkillsGatewayCore {
           if (item.workspaceManifestChange)
             WorkspaceManifestChange(
               projectRoot: item.target.projectRoot,
-              path: '${item.target.projectRoot}/skillsgo.mod',
+              path: '${item.target.projectRoot}/skillsgo.yaml',
               skill: item.name,
               fromVersion: item.fromVersion,
               toVersion: item.toVersion,

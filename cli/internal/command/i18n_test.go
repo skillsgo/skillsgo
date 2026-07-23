@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with explicit locale overrides and public help requests.
- * [OUTPUT]: Specifies localized root and Local export help at the executable boundary.
+ * [OUTPUT]: Specifies localized root help at the executable boundary.
  * [POS]: Serves as public CLI localization coverage independent of machine-readable contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -24,10 +24,4 @@ func TestHelpLanguageOverride(t *testing.T) {
 			require.Contains(t, stdout.String(), test.want)
 		})
 	}
-}
-
-func TestExportHelpLanguageOverride(t *testing.T) {
-	var stdout, stderr bytes.Buffer
-	require.NoError(t, Execute([]string{"--lang", "zh-CN", "export", "--help"}, &stdout, &stderr))
-	require.Contains(t, stdout.String(), "导出一个私有本地 Skill")
 }
