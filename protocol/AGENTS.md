@@ -20,6 +20,7 @@ This map governs the dependency-light Go protocol workspace shared by SkillsGo p
 | `cloudtest/` | Test-only Cloud HTTP mock and executable conformance verifier; never imported by production packages. |
 | `locale/` | Canonical presentation-locale normalization. |
 | `repositoryid/` | Canonical public Repository ID parsing and formatting. |
+| `skillname/` | Dependency-light canonical public Skill Name grammar shared by manifests and Cloud coordinates. |
 | `skillmanifest/` | Shared `SKILL.md` frontmatter parsing and validation. |
 | `version/` | Canonical immutable versions, stable-first semantic-version selection, and the closed typed add-time Repository Selector grammar. |
 
