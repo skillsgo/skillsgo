@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses controlled CLI plan, progress, and result streams plus the production SkillsGateway adapter.
- * [OUTPUT]: Specifies reviewed Target Operation Plan and Update Plan parsing, execution, progress, retry, and Catalog-only batch update-state contracts.
+ * [INPUT]: Uses controlled CLI target-operation streams, Repository update documents, and the production SkillsGateway adapter.
+ * [OUTPUT]: Specifies reviewed Target Operation Plans, Repository-level update preflight/execution projected onto Library targets, progress, and Catalog-only batch update-state contracts.
  * [POS]: Serves as the target-management and update contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -194,43 +194,46 @@ void main() {
     expect(runner.lastArguments, isNot(contains('--target')));
   });
 
-  test('update execution parses only versioned target NDJSON', () async {
+  test('update uses one state-bound Repository coordinate transaction', () async {
     final runner = FakeProcessRunner()
-      ..result = const ProcessOutput(
-        exitCode: 0,
-        stdout: '''
-{"schemaVersion":1,"phase":"update-progress","sequence":1,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","state":"started"}
-{"schemaVersion":1,"phase":"update-progress","sequence":2,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","state":"finished","result":{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","outcome":"succeeded"}}
-{"schemaVersion":1,"phase":"update-execution","results":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","outcome":"succeeded"}],"summary":{"succeeded":1,"skipped":0,"failed":0}}
-''',
-        stderr: '',
-      );
+      ..responses.addAll(const [
+        ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":1,"phase":"repository-update-preflight","repository":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"user","vendor":"/tmp/vendor","stateToken":"state"}\n',
+          stderr: '',
+        ),
+        ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":1,"phase":"repository-update","repository":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"user","vendor":"/tmp/vendor","stateToken":"state"}\n',
+          stderr: '',
+        ),
+      ]);
     final gateway = RealSkillsGateway(
       processRunner: runner,
       initialCliPath: '/bin/skillsgo',
     );
-    const target = InstallationPlanTarget(
-      scope: InstallationScope.user,
-      agent: 'codex',
-      mode: InstallationMode.symlink,
+    const installed = InstalledSkill(
+      inventoryKey: 'hub:github.com/example/skills/-/test',
+      name: 'Test',
       path: '/tmp/Test',
-    );
-    const plan = UpdatePlan(
+      agents: ['codex'],
+      targetCount: 1,
+      skillId: 'github.com/example/skills/-/test',
       targets: [
-        UpdatePlanItem(
-          target: target,
-          name: 'Test',
-          skillId: 'github.com/example/skills/-/test',
-          sourceRef: 'main',
-          fromVersion: 'v1',
-          toVersion: 'v2',
-          action: UpdatePlanAction.update,
-          stateToken: 'sha256:state',
-          workspaceManifestChange: false,
+        SkillInstallationTarget(
+          scope: InstallationScope.user,
+          agent: 'codex',
+          path: '/tmp/Test',
+          version: 'v1',
         ),
       ],
-      workspaceManifestChanges: [],
-      summary: UpdatePlanSummary(update: 1, current: 0, pinned: 0, failed: 0),
+    );
+    final plan = await gateway.preflightUpdate(
+      installed,
+      installed.targets,
+      toVersion: 'v2',
     );
     final progress = <UpdateTargetProgress>[];
 
@@ -242,25 +245,33 @@ void main() {
     expect(progress, hasLength(2));
     expect(execution.summary.succeeded, 1);
     expect(execution.results.single.toVersion, 'v2');
-    expect(runner.lastArguments, containsAll(['--output', 'ndjson']));
+    expect(plan.targets.single.stateToken, 'state');
+    expect(runner.calls, hasLength(2));
+    expect(runner.calls.first.arguments, [
+      'update',
+      'github.com/example/skills@v2',
+      '--global',
+      '--preflight',
+      '--output',
+      'json',
+      '--hub',
+      'https://hub.skillsgo.ai',
+    ]);
+    expect(
+      runner.lastArguments,
+      containsAllInOrder(['--state-token', 'state', '--output', 'json']),
+    );
+    expect(runner.lastArguments, isNot(contains('--target')));
+    expect(runner.lastArguments, isNot(contains('mode')));
 
     runner.result = const ProcessOutput(
       exitCode: 1,
-      stdout: '''
-{"schemaVersion":1,"phase":"update-progress","sequence":1,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","state":"started"}
-{"schemaVersion":1,"phase":"update-progress","sequence":2,"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","state":"finished","result":{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","outcome":"failed","error":{"code":"update.target_failed","retryable":true,"requestId":"req-42","diagnostic":"developer detail","future":"ignored"}}}
-{"schemaVersion":1,"phase":"update-execution","results":[{"target":{"scope":"user","agent":"codex","mode":"symlink","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","fromVersion":"v1","toVersion":"v2","outcome":"failed","error":{"code":"update.target_failed","retryable":true,"requestId":"req-42","diagnostic":"developer detail","future":"ignored"}}],"summary":{"succeeded":0,"skipped":0,"failed":1}}
-''',
-      stderr: '任意本地化诊断',
+      stdout: '{"schemaVersion":1,"phase":"failure","code":"command_failed"}\n',
+      stderr: 'Repository Projection Local Modification',
     );
-    final failedExecution = await gateway.executeUpdate(plan);
-    expect(failedExecution.summary.failed, 1);
-    expect(failedExecution.results.single.error?.code, 'update.target_failed');
-    expect(failedExecution.results.single.error?.retryable, isTrue);
-    expect(failedExecution.results.single.error?.requestId, 'req-42');
-    expect(
-      failedExecution.results.single.error?.diagnostic,
-      'developer detail',
+    await expectLater(
+      gateway.executeUpdate(plan),
+      throwsA(isA<SkillsException>()),
     );
 
     runner.result = const ProcessOutput(
