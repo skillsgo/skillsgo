@@ -40,7 +40,7 @@ func TestJ33LazyResolutionControls(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, expected, code)
 	}
-	collectionList := base + "/mod/fixtures.test/group/subgroup/collection/@v/list"
+	collectionList := base + "/fixtures.test/group/subgroup/collection/@v/list"
 	firstList, err := client.Get(collectionList)
 	require.NoError(t, err)
 	firstListBody, err := io.ReadAll(firstList.Body)
@@ -61,8 +61,8 @@ func TestJ33LazyResolutionControls(t *testing.T) {
 	require.NoError(t, err)
 	require.NoError(t, thirdList.Body.Close())
 	require.Equal(t, firstListBody, thirdListBody, "fresh mutable catalog may remain unchanged inside its TTL")
-	requireStatus(http.StatusOK, base+"/mod/fixtures.test/group/subgroup/collection/@v/v1.2.0.info")
-	sharedURL := base + "/mod/fixtures.test/group/subgroup/capacity-1/@v/v1.0.0.info"
+	requireStatus(http.StatusOK, base+"/fixtures.test/group/subgroup/collection/@v/v1.2.0.info")
+	sharedURL := base + "/fixtures.test/group/subgroup/capacity-1/@v/v1.0.0.info"
 	start := make(chan struct{})
 	type statusResult struct {
 		code int
@@ -98,7 +98,7 @@ func TestJ33LazyResolutionControls(t *testing.T) {
 		go func(index int) {
 			defer wait.Done()
 			<-capacityStart
-			url := fmt.Sprintf("%s/mod/fixtures.test/group/subgroup/capacity-%d/@v/v1.0.0.info", base, index)
+			url := fmt.Sprintf("%s/fixtures.test/group/subgroup/capacity-%d/@v/v1.0.0.info", base, index)
 			code, err := status(url)
 			capacityStatuses <- struct {
 				index int
@@ -124,8 +124,8 @@ func TestJ33LazyResolutionControls(t *testing.T) {
 		}
 	}
 	require.GreaterOrEqual(t, overloaded, 1)
-	requireStatus(http.StatusOK, fmt.Sprintf("%s/mod/fixtures.test/group/subgroup/capacity-%d/@v/v1.0.0.info", base, overloadedIndex))
+	requireStatus(http.StatusOK, fmt.Sprintf("%s/fixtures.test/group/subgroup/capacity-%d/@v/v1.0.0.info", base, overloadedIndex))
 
-	missing := base + "/mod/fixtures.test/group/subgroup/does-not-exist/@v/v1.0.0.info"
+	missing := base + "/fixtures.test/group/subgroup/does-not-exist/@v/v1.0.0.info"
 	requireStatus(http.StatusNotFound, missing)
 }
