@@ -27,14 +27,14 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 - Show every Installed Agent, including Agents with zero Skills.
 - Include both SkillsGo-managed targets and External Installations discovered on disk.
 - Aggregate all targets for one logical Skill while allowing different targets to retain different versions.
-- Check for updates and update, remove, repair, or retry selected targets.
-- Batch-take over supported-lock-backed External Installations without changing their files, and remove one exact External target after confirmation.
+- Check for Repository updates, update selected dependencies, remove healthy External Installations, or retry failures.
+- Batch-take over supported-lock-backed External Installations through verified Repository installation, and remove one healthy exact External target after confirmation.
 
 ### Projects
 
 - Add a project through explicit directory selection.
 - Do not require the directory to be a Git repository or to contain existing SkillsGo files.
-- Read `skillsgo.mod`, `skillsgo.sum`, and project Agent Skill directories.
+- Read `skillsgo.yaml`, `skillsgo.lock`, and project Agent Skill directories through the bundled CLI.
 - Removing a project from the rail only stops tracking it; it never deletes project content.
 
 ### Installation
@@ -43,7 +43,7 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 - Select explicit user or Added Project locations and Installed Agents in one Installation Request.
 - Let the CLI prepare concrete actions internally without introducing a second user-facing review ceremony.
 - Commit each target independently, retain successful results after partial failure, and retry failed targets.
-- Return stable per-target JSON for installation, update, removal, and repair.
+- Return stable Repository transaction and exact-path removal JSON for installation, update, and removal.
 
 ### Settings
 

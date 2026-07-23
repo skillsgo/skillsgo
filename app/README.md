@@ -8,7 +8,7 @@ SkillsGo is a desktop manager for Agent Skills. It discovers public Skills throu
 - Skill version, source, `SKILL.md`, file, and risk inspection
 - A multi-location, multi-Agent installation matrix
 - Aggregated management of user-level, project-level, managed, and external installations
-- Per-target update checks, updates, removal, repair, and retry
+- Repository-level update checks plus exact External Installation removal
 - Read-only discovery and exact-path removal for external installations
 - Official or self-hosted Hub configuration
 

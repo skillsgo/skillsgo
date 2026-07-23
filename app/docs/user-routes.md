@@ -153,8 +153,8 @@ The user can Retry Failed Targets, View in Library, or remain on the current det
 
 The Library merges facts from:
 
-- the Content-addressed Store and Installation Receipts;
-- `skillsgo.mod` and `skillsgo.sum` in Added Projects;
+- user and project `skillsgo.yaml` declarations plus `skillsgo.lock` integrity state;
+- authoritative Scope Vendor trees and derived Repository Projections;
 - user-level Skill directories for Installed Agents;
 - Agent Skill directories inside Added Projects;
 - Hub source, version, trust, and risk metadata.
@@ -204,7 +204,7 @@ Primary actions include:
 - check for updates;
 - update selected targets;
 - remove selected targets;
-- repair missing or redirected targets;
+- report missing, redirected, or locally modified Repository Projections without overwriting them;
 - inspect files, risk, source, and Local Modifications;
 - export a Local Skill.
 
@@ -294,10 +294,10 @@ Suggested logical routes:
 | No Added Project | Keep Add Project visible without fake placeholder projects |
 | Empty project | Prompt installation of the project's first Skill |
 | Agent with zero Skills | Keep the Agent entry and prompt discovery |
-| External Installation | Allow inspection, exact-path removal, and explicit scoped Batch Takeover; disable update and repair until managed |
+| External Installation | Allow inspection, healthy exact-path removal, and explicit scoped Batch Takeover; disable update until managed |
 | Version Divergence | Display versions and targets without treating it as an error |
 | Partial failure | Retain successes, show per-target causes, and retry failures |
-| Manually replaced target | Mark unhealthy; do not delete automatically; offer repair or stop managing |
+| Manually replaced target | Mark unhealthy; do not delete or overwrite automatically; require user resolution |
 | Inaccessible project | Keep the entry and offer Relocate or Remove from List |
 
 ## Implemented Contract Posture
