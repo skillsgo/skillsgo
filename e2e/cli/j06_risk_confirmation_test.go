@@ -8,7 +8,7 @@ package e2e_test
 
 import (
 	"context"
-	"path/filepath"
+	"encoding/json"
 	"strings"
 	"testing"
 
@@ -21,17 +21,19 @@ func TestJ06AuditIsOutsideImmutableInstall(t *testing.T) {
 
 	immutableSource := "github.com/skillsgo/e2e-risk-skills/-/skills/high-risk@v1.0.0"
 
-	info := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/mod/github.com/skillsgo/e2e-risk-skills/@v/v1.0.0.info")
+	info := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/github.com/skillsgo/e2e-risk-skills/@v/v1.0.0.info")
 	require.Equal(t, 0, info.exitCode, info.output)
 	require.NotContains(t, strings.ToLower(info.output), `"risk"`)
 
 	installed := execCLI(t, ctx, container,
 		"add", immutableSource,
 		"--agent", "codex",
-		"--copy",
+
 		"--yes",
 		"--output", "json",
 	)
 	require.Equal(t, 0, installed.exitCode, installed.output)
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "high-risk", "SKILL.md"))
+	var result addResponse
+	require.NoError(t, json.Unmarshal([]byte(installed.output), &result), installed.output)
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, result.Projections[0].Path, "skills", "high-risk", "SKILL.md"))
 }

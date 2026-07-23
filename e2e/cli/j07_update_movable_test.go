@@ -25,25 +25,24 @@ func TestJ07UpdateMovable(t *testing.T) {
 		"add", "https://"+repository+"@head",
 		"--skill", "skills/head",
 		"--agent", "codex",
-		"--copy",
+
 		"--yes",
-		"--confirm-risk",
-		"--allow-critical",
+
 		"--output", "json",
 	)
 	require.Equal(t, 0, oldAdd.exitCode, oldAdd.output)
 	var oldInstalled addResponse
 	require.NoError(t, json.Unmarshal([]byte(oldAdd.output), &oldInstalled), oldAdd.output)
 
-	manifestPath := filepath.Join(sandboxRoot, "project", "skillsgo.mod")
+	manifestPath := filepath.Join(sandboxRoot, "project", "skillsgo.yaml")
 	manifestBefore, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
 	require.NotContains(t, string(manifestBefore), "@head", "movable selector must not be persisted")
 
-	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo.sum")
+	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo.lock")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	targetPath := filepath.Join(sandboxRoot, "project", ".agents", "skills", "movable-head-skill", "SKILL.md")
+	targetPath := containerPathOnHost(t, sandboxRoot, oldInstalled.Projections[0].Path, "skills", "head", "SKILL.md")
 	require.FileExists(t, targetPath)
 	beforeContent, err := os.ReadFile(targetPath)
 	require.NoError(t, err)
@@ -60,33 +59,34 @@ func TestJ07UpdateMovable(t *testing.T) {
 		require.Equal(t, 0, result.exitCode, result.output)
 	}
 
-	update := execCLI(t, ctx, container,
-		"add", "https://"+repository+"@head",
-		"--skill", "skills/head",
-		"--agent", "codex",
-		"--copy",
-		"--replace",
-		"--yes",
-		"--confirm-risk",
-		"--allow-critical",
-		"--output", "json",
-	)
+	preflight := execCLI(t, ctx, container, "update", repository+"@head", "--preflight", "--output", "json")
+	require.Equal(t, 0, preflight.exitCode, preflight.output)
+	var preview struct {
+		ToVersion  string `json:"toVersion"`
+		StateToken string `json:"stateToken"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(preflight.output), &preview), preflight.output)
+	update := execCLI(t, ctx, container, "update", repository+"@"+preview.ToVersion, "--state-token", preview.StateToken, "--output", "json")
 	require.Equal(t, 0, update.exitCode, update.output)
-	var refreshed addResponse
+	var refreshed struct {
+		ToVersion string `json:"toVersion"`
+		Vendor    string `json:"vendor"`
+	}
 	require.NoError(t, json.Unmarshal([]byte(update.output), &refreshed), update.output)
-	require.NotEqual(t, oldInstalled.Version, refreshed.Version)
+	require.NotEqual(t, oldInstalled.Version, refreshed.ToVersion)
 
-	require.FileExists(t, targetPath)
-	afterContent, err := os.ReadFile(targetPath)
+	newTargetPath := filepath.Join(sandboxRoot, "project", ".agents", "skills", filepath.FromSlash(repository)+"@"+refreshed.ToVersion, "skills", "head", "SKILL.md")
+	require.FileExists(t, newTargetPath)
+	afterContent, err := os.ReadFile(newTargetPath)
 	require.NoError(t, err)
 	require.Contains(t, string(afterContent), "Movable C2.")
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 	require.NotEqual(t, sumBefore, sumAfter)
-	require.Contains(t, string(sumAfter), refreshed.Version)
-	require.Contains(t, string(sumAfter), oldInstalled.Version, "Workspace Sum keeps historical integrity evidence")
+	require.Contains(t, string(sumAfter), refreshed.ToVersion)
+	require.NotContains(t, string(sumAfter), oldInstalled.Version, "Dependency Lock authenticates only the selected Repository version")
 	manifestAfter, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
-	require.Contains(t, string(manifestAfter), refreshed.Version)
+	require.Contains(t, string(manifestAfter), refreshed.ToVersion)
 	require.NotContains(t, string(manifestAfter), "@head")
 }
