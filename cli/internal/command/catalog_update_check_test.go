@@ -23,22 +23,22 @@ func TestCatalogUpdateCheckUsesOneProductRequest(t *testing.T) {
 			t.Fatalf("unexpected request %s %s", request.Method, request.URL.Path)
 		}
 		var body struct {
-			SchemaVersion int      `json:"schemaVersion"`
-			SkillIDs      []string `json:"skillIds"`
+			SchemaVersion int                 `json:"schemaVersion"`
+			Skills        []map[string]string `json:"skills"`
 		}
-		if json.NewDecoder(request.Body).Decode(&body) != nil || body.SchemaVersion != 1 || len(body.SkillIDs) != 3 {
+		if json.NewDecoder(request.Body).Decode(&body) != nil || body.SchemaVersion != 1 || len(body.Skills) != 3 {
 			t.Fatalf("unexpected request body %+v", body)
 		}
-		_, _ = w.Write([]byte(`{"schemaVersion":1,"items":[{"skillId":"github.com/acme/skills/-/current","headVersion":"v1.0.0","releaseVersion":"v1.0.0","status":"available"},{"skillId":"github.com/acme/skills/-/review","headVersion":"v3.0.0","releaseVersion":"v2.0.0","status":"available"},{"skillId":"github.com/acme/skills/-/local","status":"unsupported"}]}`))
+		_, _ = w.Write([]byte(`{"schemaVersion":1,"items":[{"repositoryId":"github.com/acme/skills","name":"current","headVersion":"v1.0.0","releaseVersion":"v1.0.0","status":"available"},{"repositoryId":"github.com/acme/skills","name":"review","headVersion":"v3.0.0","releaseVersion":"v2.0.0","status":"available"},{"repositoryId":"github.com/acme/skills","name":"local","status":"unsupported"}]}`))
 	}))
 	defer server.Close()
 
 	var stdout bytes.Buffer
 	err := Execute([]string{
 		"updates", "check", "--hub", server.URL,
-		"--installed", `{"key":"current","skillId":"github.com/acme/skills/-/current","versions":["v1.0.0"]}`,
-		"--installed", `{"key":"review","skillId":"github.com/acme/skills/-/review","versions":["v1.0.0","v2.0.0"]}`,
-		"--installed", `{"key":"local","skillId":"github.com/acme/skills/-/local","versions":["captured-1"]}`,
+		"--installed", `{"key":"current","repositoryId":"github.com/acme/skills","name":"current","versions":["v1.0.0"]}`,
+		"--installed", `{"key":"review","repositoryId":"github.com/acme/skills","name":"review","versions":["v1.0.0","v2.0.0"]}`,
+		"--installed", `{"key":"local","repositoryId":"github.com/acme/skills","name":"local","versions":["captured-1"]}`,
 	}, &stdout, &bytes.Buffer{})
 	if err != nil {
 		t.Fatal(err)
@@ -55,7 +55,8 @@ func TestCatalogUpdateCheckUsesOneProductRequest(t *testing.T) {
 
 func TestCatalogUpdateCheckBatchesEightyInstalledSkills(t *testing.T) {
 	type responseItem struct {
-		SkillID        string `json:"skillId"`
+		RepositoryID   string `json:"repositoryId"`
+		Name           string `json:"name"`
 		HeadVersion    string `json:"headVersion"`
 		ReleaseVersion string `json:"releaseVersion"`
 		Status         string `json:"status"`
@@ -67,15 +68,15 @@ func TestCatalogUpdateCheckBatchesEightyInstalledSkills(t *testing.T) {
 			t.Fatalf("unexpected request %s %s", request.Method, request.URL.Path)
 		}
 		var body struct {
-			SchemaVersion int      `json:"schemaVersion"`
-			SkillIDs      []string `json:"skillIds"`
+			SchemaVersion int                 `json:"schemaVersion"`
+			Skills        []map[string]string `json:"skills"`
 		}
-		if err := json.NewDecoder(request.Body).Decode(&body); err != nil || body.SchemaVersion != 1 || len(body.SkillIDs) != 80 {
+		if err := json.NewDecoder(request.Body).Decode(&body); err != nil || body.SchemaVersion != 1 || len(body.Skills) != 80 {
 			t.Fatalf("unexpected request body %+v: %v", body, err)
 		}
-		items := make([]responseItem, 0, len(body.SkillIDs))
-		for _, skillID := range body.SkillIDs {
-			items = append(items, responseItem{SkillID: skillID, HeadVersion: "v2.0.0", ReleaseVersion: "v2.0.0", Status: "available"})
+		items := make([]responseItem, 0, len(body.Skills))
+		for _, coordinate := range body.Skills {
+			items = append(items, responseItem{RepositoryID: coordinate["repositoryId"], Name: coordinate["name"], HeadVersion: "v2.0.0", ReleaseVersion: "v2.0.0", Status: "available"})
 		}
 		_ = json.NewEncoder(w).Encode(struct {
 			SchemaVersion int         `json:"schemaVersion"`
@@ -86,7 +87,7 @@ func TestCatalogUpdateCheckBatchesEightyInstalledSkills(t *testing.T) {
 
 	arguments := []string{"updates", "check", "--hub", server.URL}
 	for index := range 80 {
-		arguments = append(arguments, "--installed", fmt.Sprintf(`{"key":"skill-%d","skillId":"github.com/acme/skills/-/skill-%d","versions":["v1.0.0"]}`, index, index))
+		arguments = append(arguments, "--installed", fmt.Sprintf(`{"key":"skill-%d","repositoryId":"github.com/acme/skills","name":"skill-%d","versions":["v1.0.0"]}`, index, index))
 	}
 	var stdout bytes.Buffer
 	if err := Execute(arguments, &stdout, &bytes.Buffer{}); err != nil {

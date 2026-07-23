@@ -40,9 +40,9 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 		SchemaVersion: 1, Kind: protocolapi.KindRepository, ID: repositoryID, Version: version,
 		Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "repository-tree", Sum: sum, ArchiveSize: int64(len(archive)),
 		Skills: []protocolapi.SkillInfo{
-			{SchemaVersion: 1, Kind: protocolapi.KindSkill, ID: repositoryID, RepositoryID: repositoryID, Path: ".", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "tree-root", Name: "root", Description: "Root."},
-			{SchemaVersion: 1, Kind: protocolapi.KindSkill, ID: repositoryID + "/-/skills/design", RepositoryID: repositoryID, Path: "skills/design", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "tree-design", Name: "design", Description: "Design."},
-			{SchemaVersion: 1, Kind: protocolapi.KindSkill, ID: repositoryID + "/-/skills/review", RepositoryID: repositoryID, Path: "skills/review", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "tree-review", Name: "review", Description: "Review."},
+			{SchemaVersion: 1, Kind: protocolapi.KindSkill, RepositoryID: repositoryID, SkillPath: ".", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "tree-root", Name: "root", Description: "Root."},
+			{SchemaVersion: 1, Kind: protocolapi.KindSkill, RepositoryID: repositoryID, SkillPath: "skills/design", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "tree-design", Name: "design", Description: "Design."},
+			{SchemaVersion: 1, Kind: protocolapi.KindSkill, RepositoryID: repositoryID, SkillPath: "skills/review", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "tree-review", Name: "review", Description: "Review."},
 		},
 	}
 	infoBytes, err := json.Marshal(info)
@@ -129,7 +129,7 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	var inventory inventoryReport
 	require.NoError(t, json.Unmarshal(output.Bytes(), &inventory))
 	require.Len(t, inventory.Entries, 1)
-	require.Equal(t, repositoryID+"/-/skills/design", inventory.Entries[0].SkillID)
+	require.Equal(t, repositoryID, inventory.Entries[0].RepositoryID)
 	require.Equal(t, []string{version}, inventory.Entries[0].Versions)
 	require.Equal(t, filepath.Join(projection, "skills", "design"), inventory.Entries[0].Targets[0].Path)
 	require.Equal(t, "healthy", string(inventory.Entries[0].Health))
@@ -248,7 +248,7 @@ func TestAddRepositorySumMismatchLeavesNoWorkspaceState(t *testing.T) {
 		Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "repository-tree",
 		Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: int64(len(archive)),
 		Skills: []protocolapi.SkillInfo{
-			{SchemaVersion: 1, Kind: protocolapi.KindSkill, ID: repositoryID + "/-/skills/design", RepositoryID: repositoryID, Path: "skills/design", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "tree-design", Name: "design", Description: "Design."},
+			{SchemaVersion: 1, Kind: protocolapi.KindSkill, RepositoryID: repositoryID, SkillPath: "skills/design", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "tree-design", Name: "design", Description: "Design."},
 		},
 	}
 	infoBytes, err := json.Marshal(info)
@@ -307,8 +307,8 @@ func TestUpdateRepositoryReplacesCoordinateAndPreservesSelections(t *testing.T) 
 		info, err := json.Marshal(protocolapi.RepositoryInfo{SchemaVersion: 1, Kind: protocolapi.KindRepository, ID: repositoryID, Version: version,
 			Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit-" + version, TreeSHA: "tree-" + version, Sum: sum, ArchiveSize: int64(len(archive)),
 			Skills: []protocolapi.SkillInfo{
-				{SchemaVersion: 1, Kind: protocolapi.KindSkill, ID: repositoryID + "/-/skills/alpha", RepositoryID: repositoryID, Path: "skills/alpha", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit-" + version, TreeSHA: "alpha-" + version, Name: "alpha", Description: "Alpha."},
-				{SchemaVersion: 1, Kind: protocolapi.KindSkill, ID: repositoryID + "/-/skills/beta", RepositoryID: repositoryID, Path: "skills/beta", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit-" + version, TreeSHA: "beta-" + version, Name: "beta", Description: "Beta."},
+				{SchemaVersion: 1, Kind: protocolapi.KindSkill, RepositoryID: repositoryID, SkillPath: "skills/alpha", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit-" + version, TreeSHA: "alpha-" + version, Name: "alpha", Description: "Alpha."},
+				{SchemaVersion: 1, Kind: protocolapi.KindSkill, RepositoryID: repositoryID, SkillPath: "skills/beta", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit-" + version, TreeSHA: "beta-" + version, Name: "beta", Description: "Beta."},
 			}})
 		require.NoError(t, err)
 		releases[version] = release{archive: archive, info: info, sum: sum}

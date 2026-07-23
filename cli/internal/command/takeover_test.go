@@ -58,8 +58,8 @@ func takeoverRepositoryFixture(t *testing.T) (string, string, []byte, []byte, *h
 	info, err := json.Marshal(protocolapi.RepositoryInfo{SchemaVersion: 1, Kind: protocolapi.KindRepository, ID: repositoryID, Version: version,
 		Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "tree", Sum: sum, ArchiveSize: int64(len(archive)),
 		Skills: []protocolapi.SkillInfo{
-			{SchemaVersion: 1, Kind: protocolapi.KindSkill, ID: repositoryID + "/-/skills/alpha", RepositoryID: repositoryID, Path: "skills/alpha", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "alpha", Name: "alpha", Description: "Existing Alpha."},
-			{SchemaVersion: 1, Kind: protocolapi.KindSkill, ID: repositoryID + "/-/skills/beta", RepositoryID: repositoryID, Path: "skills/beta", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "beta", Name: "beta", Description: "Beta."},
+			{SchemaVersion: 1, Kind: protocolapi.KindSkill, RepositoryID: repositoryID, SkillPath: "skills/alpha", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "alpha", Name: "alpha", Description: "Existing Alpha."},
+			{SchemaVersion: 1, Kind: protocolapi.KindSkill, RepositoryID: repositoryID, SkillPath: "skills/beta", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "beta", Name: "beta", Description: "Beta."},
 		}})
 	require.NoError(t, err)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {

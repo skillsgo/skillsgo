@@ -10,7 +10,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
@@ -40,7 +39,7 @@ type repositoryInfoView struct {
 }
 
 func productSkillInfo(ctx context.Context, client *hub.Client, info hub.Info) (skillInfoView, string, error) {
-	metadata, err := client.SkillProduct(ctx, info.ID)
+	metadata, err := client.SkillProduct(ctx, info.RepositoryID, info.Name)
 	if err != nil {
 		return skillInfoView{}, "", err
 	}
@@ -55,7 +54,7 @@ func productSkillInfo(ctx context.Context, client *hub.Client, info hub.Info) (s
 }
 
 func newInfoCommand() *cobra.Command {
-	var hubURL, output string
+	var hubURL, output, skillName string
 	cmd := &cobra.Command{
 		Use:   "info <source>",
 		Short: appi18n.T("info.short"),
@@ -68,28 +67,25 @@ func newInfoCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if source.IsLocalSkillID(reference.SkillID) {
-				return fmt.Errorf("%s", appi18n.T("info.error.public_source"))
-			}
-			repositoryID, _, nested := strings.Cut(reference.SkillID, "/-/")
+			repositoryID := reference.RepositoryID
 			client, err := hub.New(hubURL, nil)
 			if err != nil {
 				return err
 			}
-			if nested {
+			if skillName != "" {
 				resource, resolveErr := client.Repository(cmd.Context(), repositoryID, reference.Version)
 				if resolveErr != nil {
 					return resolveErr
 				}
 				var info hub.Info
 				for _, member := range resource.Members {
-					if member.Info.ID == reference.SkillID {
+					if member.Info.Name == skillName {
 						info = member.Info
 						break
 					}
 				}
-				if info.ID == "" {
-					return fmt.Errorf("Repository %s@%s does not contain Skill %s", repositoryID, resource.Info.Version, reference.SkillID)
+				if info.Name == "" {
+					return fmt.Errorf("Repository %s@%s does not contain Skill named %s", repositoryID, resource.Info.Version, skillName)
 				}
 				view, _, productErr := productSkillInfo(cmd.Context(), client, info)
 				if productErr != nil {
@@ -100,7 +96,7 @@ func newInfoCommand() *cobra.Command {
 					encoder.SetIndent("", "  ")
 					return encoder.Encode(view)
 				}
-				_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s@%s\n%s\n", info.ID, info.Version, info.Description)
+				_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s:%s@%s\n%s\n", info.RepositoryID, info.Name, info.Version, info.Description)
 				return err
 			}
 			resource, err := client.Repository(cmd.Context(), repositoryID, reference.Version)
@@ -131,7 +127,7 @@ func newInfoCommand() *cobra.Command {
 				return err
 			}
 			for _, member := range resource.Members {
-				if _, err = fmt.Fprintf(cmd.OutOrStdout(), "- %s\t%s\n", member.Info.ID, member.Info.Name); err != nil {
+				if _, err = fmt.Fprintf(cmd.OutOrStdout(), "- %s\t%s\n", member.Info.Name, member.Info.SkillPath); err != nil {
 					return err
 				}
 			}
@@ -141,5 +137,6 @@ func newInfoCommand() *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringVar(&output, "output", "human", appi18n.T("flag.output"))
 	flags.StringVar(&hubURL, "hub", defaultHubURL(), appi18n.T("flag.hub"))
+	flags.StringVar(&skillName, "skill", "", "canonical Skill name within the Repository")
 	return cmd
 }

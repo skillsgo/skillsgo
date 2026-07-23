@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Cobra, canonical Skill IDs, and the CLI-owned Hub client.
+ * [INPUT]: Depends on Cobra, separate Repository ID and canonical Skill name coordinates, and the CLI-owned Hub client.
  * [OUTPUT]: Provides App-facing `find`, `detail`, `hub info`, and `hub check` domain commands with JSON-only machine results.
  * [POS]: Serves as the deep read-only product boundary that hides Hub routes and query parameters from App callers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -66,13 +66,14 @@ func newFindCommand() *cobra.Command {
 
 func newDetailCommand() *cobra.Command {
 	var hubURL, contentLocale string
-	var skillIDs []string
+	var repositories, skillNames []string
 	cmd := &cobra.Command{
-		Use:  "detail [skill-id]",
-		Args: cobra.MaximumNArgs(1),
+		Use:  "detail [repository-id skill-name]",
+		Args: cobra.MaximumNArgs(2),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if (len(args) == 0) == (len(skillIDs) == 0) {
-				return fmt.Errorf("provide one Skill ID or one or more --skill values")
+			batch := len(repositories) > 0 || len(skillNames) > 0
+			if (len(args) == 0) == !batch || (len(args) > 0 && len(args) != 2) || len(repositories) != len(skillNames) {
+				return fmt.Errorf("provide one Repository ID and Skill name, or paired --repository and --skill values")
 			}
 			canonicalLocale, localeErr := canonicalContentLocale(contentLocale)
 			if localeErr != nil {
@@ -83,10 +84,14 @@ func newDetailCommand() *cobra.Command {
 				return err
 			}
 			var document []byte
-			if len(skillIDs) > 0 {
-				document, err = client.BatchSkills(cmd.Context(), skillIDs)
+			if batch {
+				coordinates := make([]hub.SkillCoordinate, 0, len(skillNames))
+				for index := range skillNames {
+					coordinates = append(coordinates, hub.SkillCoordinate{RepositoryID: repositories[index], Name: skillNames[index]})
+				}
+				document, err = client.BatchSkills(cmd.Context(), coordinates)
 			} else {
-				document, err = client.DetailLocalized(cmd.Context(), args[0], canonicalLocale)
+				document, err = client.DetailLocalized(cmd.Context(), args[0], args[1], canonicalLocale)
 			}
 			if err != nil {
 				return err
@@ -96,7 +101,8 @@ func newDetailCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), "Hub origin")
 	cmd.Flags().StringVar(&contentLocale, "content-locale", "", "preferred locale for descriptions")
-	cmd.Flags().StringSliceVar(&skillIDs, "skill", nil, "ordered canonical Skill IDs to hydrate")
+	cmd.Flags().StringSliceVar(&repositories, "repository", nil, "ordered Repository IDs to hydrate")
+	cmd.Flags().StringSliceVar(&skillNames, "skill", nil, "ordered canonical Skill names to hydrate")
 	return cmd
 }
 

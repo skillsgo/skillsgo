@@ -67,7 +67,6 @@ var messages = map[string][2]string{
 	"inventory.row":                         {"%s  %d targets  %s\n", "%s  %d 个目标  %s\n"},
 	"info.short":                            {"Inspect one Repository or Skill source", "查看一个仓库或 Skill 来源"},
 	"info.error.output":                     {"--output must be human or json", "--output 必须是 human 或 json"},
-	"info.error.public_source":              {"info requires a public Repository or Skill source", "info 需要公开的仓库或 Skill 来源"},
 	"info.error.missing_skill":              {"Repository %s has no Skill %s", "仓库 %s 中没有 Skill %s"},
 	"inventory.health.healthy":              {"healthy", "状态正常"},
 	"inventory.health.missing":              {"target missing", "目标已缺失"},

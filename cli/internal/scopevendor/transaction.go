@@ -17,7 +17,7 @@ import (
 	"strings"
 
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
-	protocolskillid "github.com/skillsgo/skillsgo/protocol/skillid"
+	protocolrepositoryid "github.com/skillsgo/skillsgo/protocol/repositoryid"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 )
 
@@ -71,8 +71,8 @@ func Prepare(options Options) (*Transaction, error) {
 	if options.VendorRoot == "" || (len(options.Projections)+len(options.RemovedProjections) == 0 && !options.RemoveVendor) {
 		return nil, fmt.Errorf("Vendor root and at least one desired or removed Repository Projection are required")
 	}
-	parsed, err := protocolskillid.Parse(options.RepositoryID)
-	if err != nil || parsed.String() != options.RepositoryID || parsed.SkillPath != "." || !protocolversion.IsImmutable(options.Version) {
+	parsed, err := protocolrepositoryid.Parse(options.RepositoryID)
+	if err != nil || parsed.String() != options.RepositoryID || !protocolversion.IsImmutable(options.Version) {
 		return nil, fmt.Errorf("invalid immutable Repository coordinate %s@%s", options.RepositoryID, options.Version)
 	}
 	actual, err := protocolartifact.RepositorySum(options.Archive, options.RepositoryID, options.Version)

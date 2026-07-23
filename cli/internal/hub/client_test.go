@@ -93,7 +93,7 @@ func TestRepositoryMovableSelectorUsesProductResolutionThenCanonicalInfo(t *test
 			}
 			fmt.Fprintf(w, `{"schemaVersion":1,"repositoryId":%q,"version":%q,"time":"2026-07-18T12:00:00Z","ref":"refs/heads/feature/deep","commitSHA":"abcdef1234567890"}`, repository, version)
 		case "/" + repository + "/@v/" + version + ".info":
-			fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-18T12:00:00Z","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","TreeSHA":"repository-tree","Sum":"h1:%s","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"RepositoryID":%q,"Path":".","Version":%q,"Time":"2026-07-18T12:00:00Z","Ref":"refs/heads/main","Name":"root","Description":"root","CommitSHA":"abcdef1234567890","TreeSHA":"tree"}]}`, repository, version, strings.Repeat("A", 43)+"=", repository, repository, version)
+			fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-18T12:00:00Z","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","TreeSHA":"repository-tree","Sum":"h1:%s","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","RepositoryID":%q,"SkillPath":".","Version":%q,"Time":"2026-07-18T12:00:00Z","Ref":"refs/heads/main","Name":"root","Description":"root","CommitSHA":"abcdef1234567890","TreeSHA":"tree"}]}`, repository, version, strings.Repeat("A", 43)+"=", repository, version)
 		default:
 			http.NotFound(w, request)
 		}
@@ -113,12 +113,12 @@ func TestRepositoryMovableSelectorUsesProductResolutionThenCanonicalInfo(t *test
 }
 
 func TestProxyEndpointEscapesRepositoryPathCase(t *testing.T) {
-	repositoryID := "github.com/Example/Skills"
+	repositoryID := "git.example.com/Example/Skills"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		if request.URL.EscapedPath() != "/github.com/!example/!skills/@v/v1.2.3.info" {
+		if request.URL.EscapedPath() != "/git.example.com/!example/!skills/@v/v1.2.3.info" {
 			t.Fatalf("unexpected escaped path %q", request.URL.EscapedPath())
 		}
-		fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"repository-tree","Sum":"h1:%s","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":%q,"RepositoryID":%q,"Path":".","Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"tree","Name":"demo","Description":"test"}]}`, repositoryID, strings.Repeat("A", 43)+"=", repositoryID, repositoryID)
+		fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"repository-tree","Sum":"h1:%s","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","RepositoryID":%q,"SkillPath":".","Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"tree","Name":"demo","Description":"test"}]}`, repositoryID, strings.Repeat("A", 43)+"=", repositoryID)
 	}))
 	defer server.Close()
 	client, err := New(server.URL, server.Client())
@@ -135,7 +135,7 @@ func TestRepositoryUsesExactVersionInfoDirectly(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
 		case "/github.com/example/skills/@v/v1.5.19.info":
-			_, _ = w.Write([]byte(`{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/example/skills","Version":"v1.5.19","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"repository-tree","Sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","ID":"github.com/example/skills/-/demo","RepositoryID":"github.com/example/skills","Path":"demo","Name":"demo","Description":"test","Version":"v1.5.19","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"tree"}]}`))
+			_, _ = w.Write([]byte(`{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/example/skills","Version":"v1.5.19","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"repository-tree","Sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","RepositoryID":"github.com/example/skills","SkillPath":"demo","Name":"demo","Description":"test","Version":"v1.5.19","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"tree"}]}`))
 		default:
 			http.NotFound(w, request)
 		}
