@@ -6,7 +6,7 @@ This workspace owns macOS desktop journeys that drive the rendered Flutter App a
 ## Runtime Contract
 
 - Run only on macOS with Flutter desktop support.
-- Build the current Darwin CLI only through the App's normal Xcode bundling phase and launch a current native Darwin Hub by default; the optional Docker runtime remains available for local container-boundary verification.
+- Build the current Darwin CLI only through the App's normal Xcode bundling phase and launch disposable native PostgreSQL plus a current native Darwin Hub by default; the optional Docker runtime remains available for local container-boundary verification.
 - Give each journey a temporary HOME, SkillsGo state root, project root, and Agent root.
 - Drive visible App controls and assert both rendered outcomes and final filesystem/Hub contracts.
 - Never use a fake `SkillsGateway`, `SKILLSGO_CLI_PATH`, the developer's real HOME, or installed Agent directories.
