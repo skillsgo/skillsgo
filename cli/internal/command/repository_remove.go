@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on strict YAML/Lock state, an h1-verified authoritative Scope Vendor, Agent Adapter roots, and baseline-aware Repository Projection transactions.
  * [OUTPUT]: Removes selected root/nested Repository members from every declared Agent projection atomically and emits a typed machine result without Hub access or Local Modification overwrite.
- * [POS]: Serves as the Repository Vendor architecture path behind `skillsgo remove` while legacy installation removal awaits deletion.
+ * [POS]: Serves as the authoritative managed Repository-member path behind `skillsgo remove`, alongside exact External removal.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command

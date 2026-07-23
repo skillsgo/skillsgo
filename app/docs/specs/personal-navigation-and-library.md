@@ -27,7 +27,7 @@ Discover provides Hub-backed Search plus Cloud-backed Ranking, Trending, and Hot
 
 Installing a Skill opens an Installation Plan represented as a multi-location by multi-Agent matrix. Users may select any set of cells. The bundled SkillsGo CLI validates and executes the explicit targets, returns structured per-target outcomes, retains successful targets after partial failure, and supports retrying failed targets.
 
-Clean installations first complete the two-step Mandatory Onboarding defined in `mandatory-onboarding.md`. Projects are added through explicit directory selection. External Installations remain inspectable but read-only until the user associates them with an immutable Hub artifact or imports them as a Local Skill. Production App releases bundle a compatible SkillsGo CLI, so terminal setup is never a prerequisite for the GUI.
+Clean installations first complete the two-step Mandatory Onboarding defined in `mandatory-onboarding.md`. Projects are added through explicit directory selection. External Installations remain inspectable until exact-path removal or verified Repository-backed Batch Takeover. Production App releases bundle a compatible SkillsGo CLI, so terminal setup is never a prerequisite for the GUI.
 
 ## User Stories
 
@@ -94,7 +94,7 @@ Clean installations first complete the two-step Mandatory Onboarding defined in 
 61. As a project user, I want an updated target to update its Workspace Manifest after confirmation, so that the project remains reproducible.
 62. As a user with a fixed commit target, I want it excluded from misleading update prompts when it has no movable reference, so that pinning remains meaningful.
 63. As a user removing a Skill, I want to choose exact targets, so that other Agents and projects remain unchanged.
-64. As a user removing the last active target, I want Store cleanup to honor remaining Workspace Manifest references, so that restore remains possible.
+64. As a user removing the last selected member, I want the Repository dependency, Vendor, and Projections updated atomically, so that no partial managed state remains.
 65. As a user with an unhealthy target, I want SkillsGo to report the conflict without repair or destructive removal, so that it never overwrites or deletes an unexpected filesystem object automatically.
 66. As a user with an existing Skill installed by another tool, I want it shown as an External Installation, so that the Library reflects the machine rather than only SkillsGo receipts.
 67. As a user inspecting an External Installation, I want to read its instructions, files, and risk, so that unmanaged does not mean invisible.
@@ -171,7 +171,7 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 - Gateway contract tests use controlled process runners to verify CLI schemas, non-success exit handling, malformed responses, timeout behavior, and error translation; Hub HTTP behavior is tested behind the CLI Hub adapter rather than through an App HTTP client.
 - The CLI uses its root `Execute` entry point as the primary seam. Tests provide arguments, stdout, stderr, temporary home and project directories, and controlled Hub HTTP servers.
 - Extend CLI command-flow tests to cover Installed Agent discovery, inventory reconciliation, explicit multi-target plans, row and column expansion results, collisions, Local Modifications, per-target partial failure, retry, project Manifest changes, External Installation import, and stable structured output.
-- Lower-level Store, Agent Adapter, target, and project tests remain appropriate only for deterministic algorithms or safety invariants that are difficult to isolate through the command boundary.
+- Lower-level Agent Adapter, Repository artifact, Vendor, Projection, and project tests remain appropriate only for deterministic algorithms or safety invariants that are difficult to isolate through the command boundary.
 - The Hub HTTP Router tests Search, detail, immutable metadata, pagination, empty arrays, and validation. The independent Cloud service tests Ranking, Trending, Hot, pagination, and idempotent install events through the shared public Protocol conformance suite.
 - Hub HTTP tests verify catalog behavior across SQLite and PostgreSQL. Private Cloud tests verify its independent SQLite statistics database and ranking projections.
 - Add contract fixtures shared conceptually across App, CLI, and Hub so field names, enum values, and versioned protocol behavior cannot drift. Fixtures test public JSON rather than language-specific internal types.

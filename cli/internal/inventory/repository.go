@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on atomically recovered strict YAML/Lock state, Scope Vendor, immutable scoped Repository Info, Agent Adapter roots, and deterministic Repository Projection verification.
  * [OUTPUT]: Adds Repository-managed Skill inventory entries without receipts, Store artifacts, materialization modes, or Hub access.
- * [POS]: Serves as the authoritative Repository Vendor half of local Library inventory during the legacy inventory removal.
+ * [POS]: Serves as the authoritative managed half of local Library inventory alongside External discovery.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package inventory

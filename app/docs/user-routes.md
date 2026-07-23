@@ -1,6 +1,6 @@
 # SkillsGo User Journeys and Information Architecture
 
-This document defines navigation, core journeys, page states, and interaction boundaries for the Personal desktop App. Users should be able to discover, inspect, and manage every local Agent Skill without understanding CLI arguments, Store layout, or Agent directories.
+This document defines navigation, core journeys, page states, and interaction boundaries for the Personal desktop App. Users should be able to discover, inspect, and manage every local Agent Skill without understanding CLI arguments, Vendor layout, or Agent directories.
 
 ## Product Principles
 
@@ -223,7 +223,7 @@ Primary actions include:
 - Show only targets belonging to the current Skill.
 - Require explicit target selection instead of an ambiguous Delete Skill action.
 - Removing one target never affects other targets for the same Skill.
-- Removing the final target does not immediately prune Store content still referenced by a recoverable Workspace Manifest.
+- Removing the final selected member atomically removes the Repository dependency, Lock entry, Vendor, and affected Projections in that declaration scope.
 - Allow exact-path External Installation removal after reviewed confirmation; do not require or perform adoption.
 
 ## Journey 4: Take Over External Installations
@@ -237,7 +237,7 @@ Batch Takeover performs the following journey within the currently selected Libr
 1. Preflight External copies reported by the CLI across User Scope and every accessible Added Project without changing Agent targets or authoritative SkillsGo metadata.
 2. Accept only copies backed by a supported external lock with trusted source identity, then expose exact All, Global, and per-Project eligible counts from one state-bound plan through the selected-location action and Project rail entries.
 3. Confirm only the currently selected location and execute that subset of the same plan.
-4. Revalidate each authorized copy, capture its complete current sum as its Store baseline, and register it as a normal managed Installation Target without modifying its files.
+4. Revalidate each authorized candidate against the immutable Repository Artifact, install through the ordinary Dependency/Lock/Vendor/Projection transaction, and move the superseded External directory to recoverable trash.
 5. Skip unmatched, invalid, unsupported-lock, missing, or post-preflight-changed copies independently and report their target-specific reasons; never include newly appeared copies without another preflight.
 
 Local import remains a separate explicit journey and never happens as an implicit Batch Takeover fallback.
