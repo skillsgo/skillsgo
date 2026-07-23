@@ -18,7 +18,7 @@ import (
 func TestJ45RepositoryFreshBatchUpdateCheck(t *testing.T) {
 	ctx := context.Background()
 	container, _ := startEnvironment(t, ctx)
-	const skillID = "github.com/skillsgo/e2e-versioned-skills/-/skills/alpha"
+	const repositoryID = "github.com/skillsgo/e2e-versioned-skills"
 
 	seed := execCLI(t, ctx, container,
 		"info", "https://github.com/skillsgo/e2e-versioned-skills@v1.3.0", "--output", "json",
@@ -28,9 +28,10 @@ func TestJ45RepositoryFreshBatchUpdateCheck(t *testing.T) {
 	arguments := []string{"updates", "check", "--output", "json"}
 	for index := range 80 {
 		candidate, err := json.Marshal(map[string]any{
-			"key":      fmt.Sprintf("installed-%02d", index),
-			"skillId":  skillID,
-			"versions": []string{"v1.2.0"},
+			"key":          fmt.Sprintf("installed-%02d", index),
+			"repositoryId": repositoryID,
+			"name":         "alpha",
+			"versions":     []string{"v1.2.0"},
 		})
 		require.NoError(t, err)
 		arguments = append(arguments, "--installed", string(candidate))

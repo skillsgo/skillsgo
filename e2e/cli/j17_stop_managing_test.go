@@ -19,7 +19,7 @@ import (
 func TestJ17UnhealthyTargetCannotBeRemoved(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
-	add := execCLI(t, ctx, container, "add", testSkillID+"@"+testSkillVersion, "--agent", "codex", "--yes", "--output", "json")
+	add := execCLI(t, ctx, container, "add", testRepositoryID+"@"+testSkillVersion, "--skill", testSkillName, "--agent", "codex", "--yes", "--output", "json")
 	require.Equal(t, 0, add.exitCode, add.output)
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)

@@ -19,14 +19,14 @@ func TestJ06AuditIsOutsideImmutableInstall(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
 
-	immutableSource := "github.com/skillsgo/e2e-risk-skills/-/skills/high-risk@v1.0.0"
+	immutableSource := "github.com/skillsgo/e2e-risk-skills@v1.0.0"
 
 	info := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/github.com/skillsgo/e2e-risk-skills/@v/v1.0.0.info")
 	require.Equal(t, 0, info.exitCode, info.output)
 	require.NotContains(t, strings.ToLower(info.output), `"risk"`)
 
 	installed := execCLI(t, ctx, container,
-		"add", immutableSource,
+		"add", immutableSource, "--skill", "high-risk",
 		"--agent", "codex",
 
 		"--yes",

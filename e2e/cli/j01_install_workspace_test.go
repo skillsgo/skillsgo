@@ -20,7 +20,7 @@ func TestJ01InstallWorkspace(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testSkillID+"@"+testSkillVersion,
+		"add", testRepositoryID+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 
 		"--yes",
@@ -35,7 +35,7 @@ func TestJ01InstallWorkspace(t *testing.T) {
 	require.Equal(t, "repository-install", installed.Phase)
 	require.Equal(t, "github.com/skillsgo/e2e-versioned-skills", installed.Repository)
 	require.NotEmpty(t, installed.Version)
-	require.Equal(t, []string{"skills/alpha"}, installed.Skills)
+	require.Equal(t, []string{"alpha"}, installed.Skills)
 	require.Equal(t, []string{"codex"}, installed.Agents)
 	require.NotEmpty(t, installed.Sum)
 	require.Equal(t, "/e2e/project/skillsgo.yaml", installed.Workspace.Manifest)
