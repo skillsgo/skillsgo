@@ -1,5 +1,5 @@
 # [INPUT]: Depends on a successful main-branch Continuous Integration run, the Protocol-aware Hub Dockerfile, GHCR, and GitHub-native package credentials.
-# [OUTPUT]: Publishes public multi-architecture Hub snapshot images for validated main commits with OCI provenance and SBOM metadata.
+# [OUTPUT]: Publishes public linux/amd64 Hub snapshot images for validated main commits with OCI provenance and SBOM metadata.
 # [POS]: Serves as the gated open-source continuous container delivery workflow consumed by Railway.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Hub Container Snapshot
@@ -41,9 +41,6 @@ jobs:
         with:
           ref: ${{ steps.source.outputs.sha }}
 
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
-
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
 
@@ -74,7 +71,7 @@ jobs:
         with:
           context: .
           file: hub/cmd/skillsgo-hub/Dockerfile
-          platforms: linux/amd64,linux/arm64
+          platforms: linux/amd64
           push: true
           build-args: |
             VERSION=sha-${{ steps.source.outputs.short_sha }}

@@ -61,7 +61,7 @@ CI receives read-only repository permissions, cancels only superseded pull-reque
 
 ## Hub Snapshots
 
-A successful complete CI run on `main`, or an explicit manual dispatch, publishes temporary multi-architecture images from the exact validated commit:
+A successful complete CI run on `main`, or an explicit manual dispatch, publishes a temporary `linux/amd64` image from the exact validated commit. The snapshot architecture matches the Railway production runtime; release tags retain the complete architecture matrix:
 
 ```text
 ghcr.io/skillsgo/hub:main
