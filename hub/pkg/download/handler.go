@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber routing, download Protocol handlers, request-scoped logging, semantic-version validation, and cache-control middleware.
- * [OUTPUT]: Registers the native Fiber routes and provides movable-query HTTP cache protection for the artifact download protocol.
+ * [INPUT]: Depends on Fiber routing, download Protocol handlers, request-scoped logging, and cache-control middleware.
+ * [OUTPUT]: Registers the Repository Proxy list and immutable artifact routes while explicitly rejecting the removed /mod namespace.
  * [POS]: Serves as the HTTP routing boundary for the Hub download package.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -57,8 +57,6 @@ func RegisterHandlers(r fiber.Router, opts *HandlerOpts) {
 	})
 	noCache := middleware.FiberCacheControl(movableVersionCacheControl)
 	registerMethods(r, "/+/@v/list", http.MethodGet, noCache, LogEntryHandler(ListHandler, opts))
-	registerMethods(r, "/+/@head", http.MethodGet, noCache, LogEntryHandler(SelectorHandler("head"), opts))
-	registerMethods(r, "/+/@release", http.MethodGet, noCache, LogEntryHandler(SelectorHandler("release"), opts))
 	registerMethods(r, "/+/@v/:version.info", http.MethodGet, LogEntryHandler(InfoHandler, opts))
 	zipHandler := LogEntryHandler(ZipHandler, opts)
 	r.Get("/+/@v/:version.zip", zipHandler)

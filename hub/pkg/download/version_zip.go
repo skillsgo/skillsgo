@@ -21,9 +21,9 @@ import (
 )
 
 // PathVersionZip URL.
-const PathVersionZip = "/mod/{skill:.+}/@v/{version}.zip"
+const PathVersionZip = "/{repository:.+}/@v/{version}.zip"
 
-// ZipHandler implements GET baseURL/module/@v/version.zip.
+// ZipHandler implements GET baseURL/repository/@v/version.zip.
 func ZipHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handler {
 	const op errors.Op = "download.ZipHandler"
 	return func(c fiber.Ctx) error {
@@ -33,7 +33,7 @@ func ZipHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handle
 			return c.SendStatus(errors.Kind(err))
 		}
 		if !protocolversion.IsImmutable(ver) {
-			return c.Status(fiber.StatusBadRequest).SendString("exact immutable version required; use @head or @release")
+			return c.Status(fiber.StatusBadRequest).SendString("exact immutable version required; resolve movable selectors through the Repository Resolution API")
 		}
 		protectMovableVersionResponse(c, ver)
 		if immutableNotModified(c, mod, ver, "zip") {

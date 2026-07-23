@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the download package imports and contracts declared in this file.
- * [OUTPUT]: Provides the download package behavior implemented by list.go.
- * [POS]: Serves as maintained source in the download package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on Repository coordinate parsing, the download Protocol version list, and request-scoped logging.
+ * [OUTPUT]: Serves the newline-delimited immutable release list for a Repository.
+ * [POS]: Serves as the Repository version-list HTTP boundary in the Hub artifact protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package download
@@ -18,9 +18,9 @@ import (
 )
 
 // PathList URL.
-const PathList = "/mod/{skill:.+}/@v/list"
+const PathList = "/{repository:.+}/@v/list"
 
-// ListHandler implements GET baseURL/module/@v/list.
+// ListHandler implements GET baseURL/repository/@v/list.
 func ListHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handler {
 	const op errors.Op = "download.ListHandler"
 	return func(c fiber.Ctx) error {

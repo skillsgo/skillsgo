@@ -22,16 +22,15 @@ import (
 	"golang.org/x/mod/module"
 )
 
-// Protocol is the download protocol which mirrors
-// the http requests that cmd/go makes to the proxy.
+// Protocol is the Repository artifact protocol exposed by the Hub proxy.
 type Protocol interface {
-	// List implements GET /{skill}/@v/list
+	// List implements GET /{repository}/@v/list.
 	List(ctx context.Context, mod string) ([]string, error)
 
-	// Info implements GET /{skill}/@v/{version}.info
+	// Info implements GET /{repository}/@v/{version}.info.
 	Info(ctx context.Context, mod, ver string) ([]byte, error)
 
-	// Zip implements GET /{skill}/@v/{version}.zip
+	// Zip implements GET /{repository}/@v/{version}.zip.
 	Zip(ctx context.Context, mod, ver string) (storage.SizeReadCloser, error)
 }
 
@@ -154,7 +153,7 @@ func (p *protocol) List(ctx context.Context, mod string) ([]string, error) {
 		return strList, nil
 	}
 	// Public lists contain release Tags only. Pseudo-versions remain addressable
-	// by exact coordinate and through @head resolution.
+	// by exact coordinate and through the Repository Resolution API.
 	return union(goList, strListSemVers), nil
 }
 

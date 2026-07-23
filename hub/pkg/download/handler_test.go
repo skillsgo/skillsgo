@@ -175,33 +175,24 @@ func TestCanonicalVersionZipSupportsConditionalGetAndHead(t *testing.T) {
 	}
 }
 
-func TestExplicitSelectorsAndMethodContracts(t *testing.T) {
+func TestProxyRejectsMovableSelectorsAndEnforcesExactRouteMethods(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
-	for _, selector := range []string{"head", "release"} {
+	for _, selector := range []string{"head", "release", "latest"} {
 		request, _ := http.NewRequest(http.MethodGet, "/github.com/skillsgo/skillsgo/@"+selector, nil)
 		response, err := r.Test(request)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if response.StatusCode != http.StatusOK || response.Header.Get("Cache-Control") != movableVersionCacheControl {
-			t.Fatalf("@%s returned status=%d cache=%q", selector, response.StatusCode, response.Header.Get("Cache-Control"))
+		if response.StatusCode != http.StatusNotFound {
+			t.Fatalf("removed Proxy selector @%s returned status=%d", selector, response.StatusCode)
 		}
-	}
-	legacy, _ := http.NewRequest(http.MethodGet, "/github.com/skillsgo/skillsgo/@latest", nil)
-	legacyResponse, err := r.Test(legacy)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if legacyResponse.StatusCode != http.StatusNotFound {
-		t.Fatalf("legacy @latest returned %d", legacyResponse.StatusCode)
 	}
 	for _, item := range []struct {
 		path  string
 		allow string
 	}{
 		{"/github.com/skillsgo/skillsgo/@v/list", http.MethodGet},
-		{"/github.com/skillsgo/skillsgo/@head", http.MethodGet},
 		{"/github.com/skillsgo/skillsgo/@v/v1.2.3.info", http.MethodGet},
 		{"/github.com/skillsgo/skillsgo/@v/v1.2.3.zip", http.MethodGet + ", " + http.MethodHead},
 	} {
