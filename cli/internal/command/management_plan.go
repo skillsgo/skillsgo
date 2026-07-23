@@ -129,6 +129,19 @@ func managementExecutionError(execution managementplan.Execution) error {
 	return nil
 }
 
+func writePlanOutput(cmd *cobra.Command, output string, value any, human string) error {
+	if output == "json" {
+		encoder := json.NewEncoder(cmd.OutOrStdout())
+		encoder.SetIndent("", "  ")
+		return encoder.Encode(value)
+	}
+	if output != "human" {
+		return fmt.Errorf("unsupported output format %q", output)
+	}
+	_, err := fmt.Fprint(cmd.OutOrStdout(), human)
+	return err
+}
+
 func newRepairCommand(catalog *agent.Catalog) *cobra.Command {
 	var options exactOperationOptions
 	cmd := &cobra.Command{

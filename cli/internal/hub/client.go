@@ -210,9 +210,12 @@ func (c *Client) Versions(ctx context.Context, resourceID string) ([]string, err
 func ParseRepositoryInfo(repositoryID string, infoBytes []byte) (*RepositoryResource, error) {
 	var info RepositoryInfo
 	if err := json.Unmarshal(infoBytes, &info); err != nil {
-		return nil, fmt.Errorf("解析 Repository Info: %w", err)
+		return nil, &ProtocolError{Err: fmt.Errorf("decode Repository Info: %w", err)}
 	}
-	if info.SchemaVersion != 1 || info.Kind != "Repository" || info.ID != repositoryID ||
+	if info.SchemaVersion != 1 {
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned unsupported Repository Info schema %d for %s", info.SchemaVersion, repositoryID), Incompatible: true}
+	}
+	if info.Kind != "Repository" || info.ID != repositoryID ||
 		info.Version == "" || info.Ref == "" || info.CommitSHA == "" || info.TreeSHA == "" ||
 		!protocolartifact.ValidSum(info.Sum) || info.ArchiveSize <= 0 || len(info.Skills) == 0 {
 		return nil, fmt.Errorf("Hub returned incomplete Repository Info for %s", repositoryID)

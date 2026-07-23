@@ -154,7 +154,7 @@ func validateRequest(request TargetRequest) error {
 	if request.Agent == "" || request.Path == "" {
 		return fmt.Errorf("agent and path are required")
 	}
-	if request.Mode != install.ModeCopy && request.Mode != install.ModeSymlink && request.Mode != install.Mode("external") {
+	if request.Mode != "" && request.Mode != install.ModeCopy && request.Mode != install.ModeSymlink && request.Mode != install.Mode("external") {
 		return fmt.Errorf("unsupported mode %q", request.Mode)
 	}
 	if request.Mode == install.Mode("external") {

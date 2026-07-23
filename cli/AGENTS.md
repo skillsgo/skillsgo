@@ -36,7 +36,6 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/install/` | Add, update, remove, copy-digest, explicit replacement, and materialization behavior. |
 | `internal/inventory/` | Read-only Repository-managed and External Library reconciliation across YAML/Lock state, Scope Vendors, Repository Projections, known Agent Discovery Roots, Local Modifications, and derived Agent visibility. |
 | `internal/managementplan/` | Exact-target managed Remove/Repair and External Remove preflight, reviewed-state binding, and target-specific execution. |
-| `internal/plan/` | Process-local installation preparation, conflict/risk validation, Workspace Manifest mutation, and target-specific execution. |
 | `internal/project/` | Strict Repository dependencies in `skillsgo.yaml`, integrity-only `skillsgo.lock`, their paired transaction, and migration-era local receipt readers. |
 | `internal/infocache/` | Exact immutable Repository and Skill Info bytes used for checksum-verified offline restore. |
 | `internal/hub/` | Client for add-time product-API Repository resolution followed by exact root Proxy Info/ZIP, typed membership, bounded download, and Repository h1 verification. |
@@ -46,7 +45,6 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/strictjson/` | Shared strict decoding for repeated machine-input JSON object lists at CLI Plan boundaries. |
 | `internal/terminalui/` | Human terminal documents, automatic Interactive/Plain selection, responsive styling, and live operation progress. |
 | `internal/trash/` | Cross-platform recoverable disposal of user-owned installation content through the desktop Trash or Recycle Bin. |
-| `internal/updateplan/` | Exact-target update checks, immutable-reference classification, Workspace Manifest previews, and partial update execution. |
 
 ## Boundaries
 
