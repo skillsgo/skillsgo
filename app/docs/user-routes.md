@@ -79,7 +79,7 @@ flowchart LR
     D -->|No| F["Open Discover / Search"]
 ```
 
-Clean installations must complete the two-step Mandatory Onboarding before entering Discover, Library, or Settings. Existing users upgrading from an earlier version are treated as complete when existing App state proves prior use.
+Every installation must complete the two-step Mandatory Onboarding before entering Discover, Library, or Settings.
 
 - Welcome uses one bundled-CLI read to render the complete Installed Agent set without per-Agent progress or Skill counts.
 - Welcome performs no Skill scan and starts no background migration.

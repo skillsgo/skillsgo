@@ -90,7 +90,7 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
     this.localDetailError,
     this.localDetail,
     this.hubOrigin = 'https://hub.skillsgo.ai',
-    this.folderTheme = 'manila',
+    this.folderTheme = '#514532',
     this.themeMode = AppThemeMode.system,
     this.language = AppLanguage.english,
     this.wallpaper = AppWallpaper.sun,

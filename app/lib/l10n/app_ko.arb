@@ -357,7 +357,7 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "선택한 프로젝트 작업은 Skillgo.mod 및 Skillgo.sum을 업데이트합니다.",
+  "workspaceOwnershipChanges": "선택한 프로젝트 작업은 skillsgo.yaml 및 skillsgo.lock을 업데이트합니다.",
   "targetContentPreserved": "현재 대상 콘텐츠는 보존됩니다.",
   "localReadFailed": "이 스킬을 읽을 수 없습니다",
   "localReadFailedMessage": "SkillsGo가 설치된 이 스킬을 읽을 수 없습니다. 해당 폴더가 사용 가능하고 액세스 가능한지 확인한 후 다시 시도하세요.",

@@ -1,19 +1,14 @@
 /*
- * [INPUT]: Depends on exact installation targets, reviewed target operations, localized status copy, and confirmation controls.
- * [OUTPUT]: Provides inline Remove/Repair execution plus expandable exact-target detail and confirmation UI.
+ * [INPUT]: Depends on exact installation targets, reviewed removal operations, localized status copy, and confirmation controls.
+ * [OUTPUT]: Provides inline removal execution plus expandable exact-target detail and confirmation UI.
  * [POS]: Serves as the exact-target action segment of detail journeys.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../installation_flows.dart';
 
 class _InstallationTargetDetail extends StatefulWidget {
-  const _InstallationTargetDetail({
-    required this.target,
-    this.onRepair,
-    this.onRemove,
-  });
+  const _InstallationTargetDetail({required this.target, this.onRemove});
   final SkillInstallationTarget target;
-  final Future<void> Function()? onRepair;
   final Future<void> Function()? onRemove;
 
   @override

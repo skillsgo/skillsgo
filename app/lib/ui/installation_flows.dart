@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the app_shell library for gateway contracts, HugeIcons, Riverpod installation operations, localized UI components, and shared navigation callbacks.
- * [OUTPUT]: Provides remote Skill detail plus direct confirmed Installation, Update, Remove/Repair, risk, progress, result, and retry flows without a second target matrix.
+ * [OUTPUT]: Provides remote Skill detail plus direct confirmed Installation, Update, managed member removal, risk, progress, result, and retry flows without a second target matrix.
  * [POS]: Serves as the complete mutation-flow view module split from the desktop shell while sharing its private library contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

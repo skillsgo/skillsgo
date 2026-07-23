@@ -357,7 +357,7 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "Các hành động dự án được chọn sẽ cập nhật SkillsGo.mod và SkillsGo.sum.",
+  "workspaceOwnershipChanges": "Các hành động dự án được chọn sẽ cập nhật skillsgo.yaml và skillsgo.lock.",
   "targetContentPreserved": "Nội dung mục tiêu hiện tại sẽ được giữ nguyên.",
   "localReadFailed": "Không thể đọc kỹ năng này",
   "localReadFailedMessage": "SkillsGo không thể đọc được kỹ năng đã cài đặt này. Kiểm tra xem thư mục của nó có sẵn và có thể truy cập được không, sau đó thử lại.",

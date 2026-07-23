@@ -615,7 +615,7 @@ class AppLocalizationsVi extends AppLocalizations {
 
   @override
   String get workspaceOwnershipChanges =>
-      'Các hành động dự án được chọn sẽ cập nhật SkillsGo.mod và SkillsGo.sum.';
+      'Các hành động dự án được chọn sẽ cập nhật skillsgo.yaml và skillsgo.lock.';
 
   @override
   String get targetContentPreserved =>

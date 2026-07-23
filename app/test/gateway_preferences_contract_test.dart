@@ -274,17 +274,6 @@ void main() {
     );
   });
 
-  test(
-    'existing App state bypasses Mandatory Onboarding after upgrade',
-    () async {
-      SharedPreferences.setMockInitialValues({'folder_theme': '#294556'});
-
-      final state = await RealSkillsGateway().loadOnboardingState();
-
-      expect(state.completed, isTrue);
-    },
-  );
-
   test('Onboarding reset preserves App data and returns to Welcome', () async {
     SharedPreferences.setMockInitialValues({
       'onboarding_completed_v1': true,

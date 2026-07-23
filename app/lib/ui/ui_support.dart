@@ -16,20 +16,11 @@ extension LocalizedBuildContext on BuildContext {
   AppLocalizations get l10n => AppLocalizations.of(this);
 }
 
-const _legacyFolderThemes = <String, Color>{
-  'manila': Color(0xFF514532),
-  'blue': Color(0xFF294556),
-  'sage': Color(0xFF3D5141),
-  'charcoal': Color(0xFF292A2B),
-};
-
 Color folderThemeColor(String value) {
-  final legacy = _legacyFolderThemes[value];
-  if (legacy != null) return legacy;
   final normalized = value.replaceFirst('#', '');
   final parsed = int.tryParse(normalized, radix: 16);
   if (parsed == null || normalized.length != 6) {
-    return _legacyFolderThemes['manila']!;
+    return Colors.white;
   }
   return Color(0xFF000000 | parsed);
 }
