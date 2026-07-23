@@ -95,10 +95,10 @@ Clean installations first complete the two-step Mandatory Onboarding defined in 
 62. As a user with a fixed commit target, I want it excluded from misleading update prompts when it has no movable reference, so that pinning remains meaningful.
 63. As a user removing a Skill, I want to choose exact targets, so that other Agents and projects remain unchanged.
 64. As a user removing the last active target, I want Store cleanup to honor remaining Workspace Manifest references, so that restore remains possible.
-65. As a user with an unhealthy target, I want an explicit repair action and no destructive remove action, so that SkillsGo never deletes an unexpected filesystem object automatically.
+65. As a user with an unhealthy target, I want SkillsGo to report the conflict without repair or destructive removal, so that it never overwrites or deletes an unexpected filesystem object automatically.
 66. As a user with an existing Skill installed by another tool, I want it shown as an External Installation, so that the Library reflects the machine rather than only SkillsGo receipts.
 67. As a user inspecting an External Installation, I want to read its instructions, files, and risk, so that unmanaged does not mean invisible.
-68. As a user with an External Installation, I want update and repair disabled while exact-path removal remains available, so that SkillsGo never claims ownership silently.
+68. As a user with a healthy External Installation, I want update disabled while exact-path removal and explicit Batch Takeover remain available, so that SkillsGo never claims ownership silently.
 69. External Adoption is deferred beyond the first release; reinstalling from an explicit source is the only way to create managed ownership.
 70. As a user reviewing a Hub match, I want source and version confirmed before association, so that content is not replaced by assumption.
 71. As a user pasting an explicit Git source, I want the App to resolve it through the bundled CLI and render the returned Repository members or single Skill with the existing discovery cards, so that uncataloged public sources remain installable without direct App-to-Hub protocol coupling.
@@ -140,22 +140,22 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 - Production App packages a platform-compatible SkillsGo CLI and verifies its availability and compatibility at startup. The bundled executable is not installed into the user's system `PATH`.
 - Keep the App's highest test and orchestration seam as `SkillsGateway`. UI code receives domain objects and operations rather than directly invoking HTTP, processes, or the filesystem.
 - Expand the Gateway domain around Installed Agents, Added Projects, Library Entries, Installation Targets, Installation Plans, Target Results, External Installations, Local Skills, Version Divergence, and Hub collection pages.
-- Treat the SkillsGo CLI as the only owner of local Skill mutations, Content-addressed Store state, Agent Adapter behavior, Installation Receipts, Workspace Manifests, and Workspace Manifests.
+- Treat the SkillsGo CLI as the only owner of local Skill mutations, Agent Adapter behavior, Repository Dependencies, Workspace Locks, Scope Vendor, and Repository Projections.
 - Add a stable CLI machine contract for Installed Agent discovery. Each result includes canonical Agent ID, display name, installed state, supported scopes, and resolved user-level target information. Human CLI output is not part of the App contract.
-- Add a stable CLI inventory contract that accepts User Scope plus an explicit list of Added Project roots. It returns the public Skill ID when known, an inventory key, provenance, versions, and every Installation Target with scope, project, Agent, path, mode, receipt state, and health.
+- Add a stable CLI inventory contract that accepts User Scope plus an explicit list of Added Project roots. It returns the public Skill ID when known, an inventory key, provenance, versions, and every target with scope, project, Agent, path, and health.
 - Inventory scans known Agent directories only. Project scanning is restricted to Added Projects passed by the App and never expands into general disk discovery.
 - Aggregate Hub Skills by stable Skill ID, Local Skills by inventory key, and leave External Installations without a managed Skill ID distinct even when names match.
 - The Add Project journey uses the operating system's multi-directory picker. Files are not selectable; canonical duplicate directories are retained only once, and one batch persists all newly selected project references together.
 - Persist the Added Project list as App state using stable directory references appropriate to the desktop platform. Removing an Added Project deletes only the reference.
-- Model an Installation Plan as one Skill artifact plus an explicit list of location-and-Agent targets. Row and column selection are UI shortcuts that produce exact cells before execution.
+- Model installation as one immutable Repository transaction plus selected member paths and explicit Agents within one declaration scope.
 - The CLI preflights every target before mutation and returns target-specific actions such as create, replace, skip, conflict, or blocked-by-risk.
-- Multi-target execution commits each Installation Target independently. A failure does not roll back unrelated successful targets. The final structured response includes every Target Result and enough identity to retry only failed targets.
+- A Repository transaction atomically commits its Dependency, Lock, Vendor, and Projections. Independent declaration scopes remain independent retry units.
 - Structured operation progress must remain machine-readable. The final result is stable JSON; if streaming progress is introduced, it uses a versioned structured event protocol rather than localized text parsing.
 - Existing identical targets are skipped. Same-name different-Skill-ID collisions, Version Divergence, and Local Modifications require explicit resolutions.
 - Updating targets resolves each target's own reference and current immutable version. Project updates modify the corresponding Workspace Manifest only after confirmation. Fixed commits without a movable reference do not report an available update.
-- Removing a target never removes other targets for the same Library Entry. Store pruning remains a separate reference-aware operation.
-- Detect External Installations by reconciling known Agent directories with Installation Receipts. Inspection is read-only until adoption.
-- External removal uses the exact discovered target and reviewed filesystem state. It creates no receipt, Workspace declaration, or inferred source metadata.
+- Removing a managed member updates the owning Repository dependency and every affected Agent Projection in that declaration scope. Modified Projections are never overwritten.
+- Detect External Installations by reconciling known Agent directories with declared Repository Projections. Inspection is read-only until takeover.
+- External removal uses the exact discovered target and reviewed filesystem state. It creates no Workspace declaration or inferred source metadata.
 - Hub collection contracts remain Search plus ranked Skills using `all_time`, `trending`, and `hot` semantics. Pagination and empty collections must return stable machine-readable shapes.
 - Hub detail must provide the immutable metadata needed by the App to display source, Manifest, files, Trust Level, and Risk Assessment without relying on human web pages.
 - Keep Hub Origin configurable. Official and self-hosted Origins use the same protocol and content verification rules.
@@ -196,7 +196,7 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 - Automatically making versions uniform across projects.
 - Background auto-update of Skill content.
 - Treating multi-location filesystem operations as one global transaction.
-- Updating, repairing, or adopting an External Installation in the first release.
+- Updating or automatically repairing an External Installation in the first release.
 - Automatic merge of Local Modifications.
 - Redesigning the Hub artifact protocol beyond metadata required by the agreed user journeys.
 - Team-specific private distribution and policy controls.
@@ -204,7 +204,7 @@ GitHub `owner/repository`, `github/owner/repository`, `github.com/owner/reposito
 ## Further Notes
 
 - The Hub exposes Search and Skill hydration. In Cloud mode the App reads ordered ranking IDs and metrics directly from Cloud, then hydrates their authoritative Skill cards through the CLI-mediated Hub boundary.
-- The existing CLI already models many Agent Adapters, User Scope, Workspace Scope, the Content-addressed Store, Installation Receipts, Workspace Manifests, and Workspace Manifests. The missing work is primarily stable high-level discovery, reconciliation, and multi-target operation contracts.
+- The CLI owns Agent Adapters, User Scope, Workspace Scope, Repository Dependencies, Workspace Locks, Scope Vendor, and Repository Projections; the App integrates only through stable machine contracts.
 - The current App Gateway is intentionally narrow and Codex-oriented. Expanding that seam should precede the nested navigation implementation so UI code is not built on temporary parsing logic.
 - The original external `skills` CLI and `skills.sh` MVP specification is superseded. System ADR-0001 establishes the bundled SkillsGo CLI as the production architecture.
 - The Burrow reference supplies visual language and motion quality, not its exact icon-only navigation. SkillsGo requires text because Added Projects and Installed Agents are dynamic user-owned entities.

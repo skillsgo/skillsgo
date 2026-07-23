@@ -184,40 +184,35 @@ A new code is justified only when App or automation callers require a different 
 
 ### Scenario
 
-A user installs `github.com/acme/skills/-/review` at immutable version `v1.2.3` into two independent Installation Target Groups:
-
-- the Codex User Scope target succeeds;
-- the Claude Code Workspace target is materialized in `/work/project`, but writing `/work/project/skillsgo.mod` fails, so that target group is compensated and reported as failed.
+A user installs member `review` from Repository `github.com/acme/skills` at immutable version `v1.2.3` into Workspace Scope for Codex and Claude Code. Writing `/work/project/skillsgo.lock` fails, so the single Repository transaction is compensated and reported as failed.
 
 ### Input
 
 The caller starts the CLI without shell interpolation. The following display is line-wrapped only for documentation; the executable and every argument are separate process arguments.
 
 ```text
-skillsgo add github.com/acme/skills/-/review
+skillsgo add github.com/acme/skills@v1.2.3
   --skill review
-  --target {"scope":"user","agent":"codex","mode":"symlink"}
-  --target {"scope":"project","projectRoot":"/work/project","agent":"claude-code","mode":"symlink"}
-  --version v1.2.3
+  --project /work/project
+  --agent codex
+  --agent claude-code
   --yes
   --output json
   --hub https://hub.skillsgo.ai
 ```
 
-Each `--target` value is one strict JSON object. Unknown fields and trailing JSON values are invalid.
+The movable selector, when one is supplied, is resolved before this transaction and never persisted in the Dependency or Lock.
 
 ### Data Flow
 
 ```text
 App or CI caller
-  -> CLI command boundary validates source, version, and exact targets
-  -> CLI Hub adapter reads immutable Info and ZIP resources
-  -> CLI verifies artifact identity, archive size, and Sum
-  -> Installation Plan builds two independent target groups
-  -> Codex User Scope group commits
-  -> Claude Code Workspace group materializes
-  -> skillsgo.mod persistence fails
-  -> CLI compensates only the failed Workspace group
+  -> CLI command boundary validates Repository coordinate, selected members, scope, and Agents
+  -> CLI Hub adapter reads immutable Repository Info and ZIP resources
+  -> CLI verifies Repository identity, archive size, and h1 Sum
+  -> CLI stages Scope Vendor and deterministic Repository Projections
+  -> skillsgo.lock persistence fails
+  -> CLI compensates the Repository transaction
   -> CLI writes one complete execution document to stdout
   -> CLI may write unstable diagnostics to stderr
   -> CLI exits non-zero
@@ -227,8 +222,8 @@ App or CI caller
 The CLI Hub adapter performs the required immutable protocol requests, such as:
 
 ```text
-GET /mod/github.com/acme/skills/-/review/@v/v1.2.3.info
-GET /mod/github.com/acme/skills/-/review/@v/v1.2.3.zip
+GET /github.com/acme/skills/@v/v1.2.3.info
+GET /github.com/acme/skills/@v/v1.2.3.zip
 ```
 
 The App never performs these requests.
@@ -237,71 +232,33 @@ The App never performs these requests.
 
 ```json
 {
-  "schemaVersion": 3,
-  "phase": "execution",
-  "artifact": {
-    "source": "github.com/acme/skills/-/review",
-    "skillId": "github.com/acme/skills/-/review",
-    "version": "v1.2.3",
-    "name": "review",
-    "risk": "low"
-  },
-  "results": [
-    {
-      "target": {
-        "scope": "user",
-        "agent": "codex",
-        "mode": "symlink",
-        "path": "/Users/example/.codex/skills/review",
-        "canonicalPath": "/Users/example/.agents/skills/review"
-      },
-      "action": "create",
-      "outcome": "succeeded"
+  "schemaVersion": 1,
+  "phase": "error",
+  "error": {
+    "code": "workspace.persistence_failed",
+    "retryable": true,
+    "details": {
+      "path": "/work/project/skillsgo.lock",
+      "repository": "github.com/acme/skills"
     },
-    {
-      "target": {
-        "scope": "project",
-        "projectRoot": "/work/project",
-        "agent": "claude-code",
-        "mode": "symlink",
-        "path": "/work/project/.claude/skills/review",
-        "canonicalPath": "/work/project/.agents/skills/review"
-      },
-      "action": "create",
-      "outcome": "failed",
-      "error": {
-        "code": "workspace.persistence_failed",
-        "retryable": true,
-        "details": {
-          "path": "/work/project/skillsgo.mod"
-        },
-        "diagnostic": "open /work/project/skillsgo.mod: permission denied"
-      }
-    }
-  ],
-  "summary": {
-    "succeeded": 1,
-    "skipped": 0,
-    "conflict": 0,
-    "failed": 1
+    "diagnostic": "open /work/project/skillsgo.lock: permission denied"
   }
 }
 ```
 
 ### Observable Result
 
-- stdout contains exactly the execution document above;
+- stdout contains one schema-versioned failure document;
 - stderr may contain the permission diagnostic but is not parsed;
 - the process exits non-zero;
-- the Codex User Scope target remains installed;
-- the Claude Code Workspace target is absent after compensation;
+- no partial Vendor, Projection, Dependency, or Lock becomes authoritative;
 - the App maps `workspace.persistence_failed` to ARB copy and offers retry because `retryable` is true.
 
 ## Acceptance Criteria
 
-1. The worked example produces one schema-versioned stdout document with one succeeded target, one failed target, and matching summary counts.
-2. The failed Workspace group is compensated while the successful unrelated User Scope group remains committed.
-3. `add`, `update`, and `manage` write complete results before returning non-zero for any failed target.
+1. The worked example produces one schema-versioned stdout failure document with the stable Repository coordinate and failed metadata path.
+2. The failed Repository transaction is compensated without exposing partial Vendor, Projection, Dependency, or Lock state.
+3. `add`, `update`, and `remove` write complete results before returning non-zero.
 4. Failed targets use one nested error object; succeeded and skipped targets omit it.
 5. A recognized JSON or NDJSON failure before a normal result uses a final `phase: "error"` document.
 6. CLI and App contract tests prove that changing localized stderr text does not change failure classification.

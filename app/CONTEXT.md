@@ -65,8 +65,8 @@ The App's direct request to install one immutable Skill into explicit location-a
 _Avoid_: second installation selector, user-facing review ceremony
 
 **Batch Takeover**:
-The user's one confirmation to execute a state-bound Batch Takeover Plan for supported-lock-backed External Installations as already-completed SkillsGo copy installations without changing their files. The selected Library location is the complete scope: All Skills includes User Scope plus every accessible Added Project, Global includes only User Scope, and one Project includes only that Workspace Scope. Library planning is independent of the primary inventory and supplies the exact eligible count for every location before confirmation; one eligible item is one physical Skill group within one declaration scope, so the All count and execution result use the same additive unit. Skills recorded by a supported skills.sh lock trust that source identity and use their complete current Sum to create a captured Store baseline. Each distinct unchanged copy becomes a normal managed Installation Target, lock-external, invalid, missing, or post-plan-changed Skills are skipped independently, newly appeared copies require another plan, and takeover never synchronizes one copy over another.
-_Avoid_: special adopted state, per-Skill adoption, implicit takeover, content normalization, unmatched Local import
+The user's one confirmation to execute a state-bound Batch Takeover Plan for supported-lock-backed External Installations. The selected Library location is the complete scope: All Skills includes User Scope plus every accessible Added Project, Global includes only User Scope, and one Project includes only that Workspace Scope. The CLI verifies each candidate against its immutable Repository Artifact, installs that Repository through the ordinary Dependency, Lock, Scope Vendor, and Repository Projection transaction, and then moves the superseded External directory to recoverable trash. Invalid, mismatched, missing, or post-plan-changed candidates are skipped independently.
+_Avoid_: special adopted state, captured per-Skill artifact, implicit takeover, unmatched Local import
 
 **Target Result**:
 The success, skipped, conflict, or failure outcome for one target in a multi-target operation. Successful targets remain installed when another target fails, and failed targets can be retried independently.
@@ -77,15 +77,11 @@ A reviewed set of exact managed Installation Targets, each resolved from its can
 _Avoid_: update every copy, latest-version overwrite, Skill-name-only update
 
 **Target Operation Plan**:
-A reviewed set of exact managed Installation Targets with an explicit top-level Remove or Repair action per selected target. Unselected targets do not change, and every selected action has target-specific progress and results.
-_Avoid_: delete Skill, remove every target, name-only mutation
-
-**Repair**:
-An explicit action offered for recoverable unhealthy managed targets. It restores the reviewed target from its immutable Store artifact and may require every Agent binding that shares the physical path.
-_Avoid_: automatic repair, silent overwrite
+A reviewed, state-bound exact-path removal of healthy External Installations. Unselected targets do not change, and modified managed Repository Projections are never overwritten automatically.
+_Avoid_: repair, delete by Skill name, silent overwrite
 
 **External Installation**:
-A Skill found in an Installed Agent's directory without a SkillsGo installation receipt. The Library can inspect it and explicitly move its exact target to the system Trash, but cannot update it until a supported-lock-backed copy is registered through Batch Takeover or the user completes a separate explicit managed installation or Local import.
+A Skill found in an Installed Agent's directory that is not derived from a declared Repository Projection. The Library can inspect it and explicitly move a healthy exact target to system trash, but cannot update or repair it. A supported-lock-backed candidate can enter ordinary Repository management through Batch Takeover.
 _Avoid_: broken Skill, unknown Skill, managed installation
 
 **External Removal Plan**:
