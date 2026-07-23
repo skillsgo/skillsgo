@@ -41,7 +41,7 @@ func TestJ36WorkspaceProtocolAndRestore(t *testing.T) {
 	require.Contains(t, string(manifestBefore), "- skills/alpha")
 	require.Contains(t, string(manifestBefore), "- claude-code")
 	require.Contains(t, string(manifestBefore), "- codex")
-	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo.lock")
+	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 

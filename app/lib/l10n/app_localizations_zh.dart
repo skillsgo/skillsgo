@@ -579,7 +579,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String get workspaceOwnershipChanges =>
-      '所选项目操作将更新 skillsgo.yaml 和 skillsgo.lock。';
+      '所选项目操作将更新 skillsgo.yaml 和 skillsgo-lock.yaml。';
 
   @override
   String get targetContentPreserved => '目标当前内容会被保留。';
@@ -2334,7 +2334,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String get workspaceOwnershipChanges =>
-      '所選項目操作將更新 skillsgo.yaml 和 skillsgo.lock。';
+      '所選項目操作將更新 skillsgo.yaml 和 skillsgo-lock.yaml。';
 
   @override
   String get targetContentPreserved => '目標當前內容會被保留。';
@@ -4090,7 +4090,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String get workspaceOwnershipChanges =>
-      '所選專案操作將更新 skillsgo.yaml 和 skillsgo.lock。';
+      '所選專案操作將更新 skillsgo.yaml 和 skillsgo-lock.yaml。';
 
   @override
   String get targetContentPreserved => '目標當前內容會被保留。';

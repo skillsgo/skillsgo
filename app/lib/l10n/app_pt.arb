@@ -357,7 +357,7 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "As ações do projeto selecionadas atualizarão skillsgo.yaml e skillsgo.lock.",
+  "workspaceOwnershipChanges": "As ações do projeto selecionadas atualizarão skillsgo.yaml e skillsgo-lock.yaml.",
   "targetContentPreserved": "O conteúdo de destino atual será preservado.",
   "localReadFailed": "Não consigo ler este Skill",
   "localReadFailedMessage": "SkillsGo não conseguiu ler esta habilidade instalada. Verifique se a pasta está disponível e acessível e tente novamente.",

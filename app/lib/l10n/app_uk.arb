@@ -357,7 +357,7 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "Вибрані дії проекту оновлять skillsgo.yaml і skillsgo.lock.",
+  "workspaceOwnershipChanges": "Вибрані дії проекту оновлять skillsgo.yaml і skillsgo-lock.yaml.",
   "targetContentPreserved": "Поточний цільовий вміст буде збережено.",
   "localReadFailed": "Не можу прочитати цей Skill",
   "localReadFailedMessage": "SkillsGo не зміг прочитати цей встановлений навик. Переконайтеся, що його папка доступна та доступна, а потім повторіть спробу.",

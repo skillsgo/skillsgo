@@ -184,7 +184,7 @@ A new code is justified only when App or automation callers require a different 
 
 ### Scenario
 
-A user installs member `review` from Repository `github.com/acme/skills` at immutable version `v1.2.3` into Workspace Scope for Codex and Claude Code. Writing `/work/project/skillsgo.lock` fails, so the single Repository transaction is compensated and reported as failed.
+A user installs member `review` from Repository `github.com/acme/skills` at immutable version `v1.2.3` into Workspace Scope for Codex and Claude Code. Writing `/work/project/skillsgo-lock.yaml` fails, so the single Repository transaction is compensated and reported as failed.
 
 ### Input
 
@@ -211,7 +211,7 @@ App or CI caller
   -> CLI Hub adapter reads immutable Repository Info and ZIP resources
   -> CLI verifies Repository identity, archive size, and h1 Sum
   -> CLI stages Scope Vendor and deterministic Repository Projections
-  -> skillsgo.lock persistence fails
+  -> skillsgo-lock.yaml persistence fails
   -> CLI compensates the Repository transaction
   -> CLI writes one complete execution document to stdout
   -> CLI may write unstable diagnostics to stderr
@@ -238,10 +238,10 @@ The App never performs these requests.
     "code": "workspace.persistence_failed",
     "retryable": true,
     "details": {
-      "path": "/work/project/skillsgo.lock",
+      "path": "/work/project/skillsgo-lock.yaml",
       "repository": "github.com/acme/skills"
     },
-    "diagnostic": "open /work/project/skillsgo.lock: permission denied"
+    "diagnostic": "open /work/project/skillsgo-lock.yaml: permission denied"
   }
 }
 ```

@@ -39,7 +39,7 @@ func TestJ08ExplicitFixedVersionUpdate(t *testing.T) {
 	)
 	require.Equal(t, 0, seedLatest.exitCode, seedLatest.output)
 
-	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo.lock")
+	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 	install := execCLI(t, ctx, container, "install", "--output", "json")

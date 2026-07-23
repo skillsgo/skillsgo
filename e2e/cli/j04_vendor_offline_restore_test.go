@@ -34,7 +34,7 @@ func TestJ04RestoreStoreOffline(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 	require.NotEmpty(t, installed.Version)
 
-	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo.lock")
+	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 	vendorSkill := containerPathOnHost(t, sandboxRoot, installed.Vendor, "skills", "alpha", "SKILL.md")
@@ -65,5 +65,5 @@ func TestJ04RestoreStoreOffline(t *testing.T) {
 	require.FileExists(t, vendorSkill)
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	require.Equal(t, sumBefore, sumAfter, "offline Vendor recovery must not rewrite skillsgo.lock")
+	require.Equal(t, sumBefore, sumAfter, "offline Vendor recovery must not rewrite skillsgo-lock.yaml")
 }

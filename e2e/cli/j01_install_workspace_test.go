@@ -39,12 +39,12 @@ func TestJ01InstallWorkspace(t *testing.T) {
 	require.Equal(t, []string{"codex"}, installed.Agents)
 	require.NotEmpty(t, installed.Sum)
 	require.Equal(t, "/e2e/project/skillsgo.yaml", installed.Workspace.Manifest)
-	require.Equal(t, "/e2e/project/skillsgo.lock", installed.Workspace.Lock)
+	require.Equal(t, "/e2e/project/skillsgo-lock.yaml", installed.Workspace.Lock)
 	require.Len(t, installed.Projections, 1)
 
 	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
-	require.FileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"))
 	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Vendor, "skills", "alpha", "SKILL.md"))
 
 }

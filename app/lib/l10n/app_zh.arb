@@ -189,7 +189,7 @@
   "managementResultsTitle": "目标操作结果",
   "managementResultSummary": "{succeeded} 个成功，{failed} 个失败",
   "@managementResultSummary": {"placeholders": {"succeeded": {"type": "int"}, "failed": {"type": "int"}}},
-  "workspaceOwnershipChanges": "所选项目操作将更新 skillsgo.yaml 和 skillsgo.lock。",
+  "workspaceOwnershipChanges": "所选项目操作将更新 skillsgo.yaml 和 skillsgo-lock.yaml。",
   "targetContentPreserved": "目标当前内容会被保留。",
   "localReadFailed": "无法读取此技能",
   "localReadFailedMessage": "SkillsGo 无法读取这个已安装的技能。请确认其文件夹存在且可以访问，然后重试。",

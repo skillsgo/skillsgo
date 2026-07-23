@@ -613,7 +613,7 @@ class AppLocalizationsTr extends AppLocalizations {
 
   @override
   String get workspaceOwnershipChanges =>
-      'Seçilen proje eylemleri skillsgo.yaml ve skillsgo.lock\'yi güncelleyecektir.';
+      'Seçilen proje eylemleri skillsgo.yaml ve skillsgo-lock.yaml\'yi güncelleyecektir.';
 
   @override
   String get targetContentPreserved => 'Mevcut hedef içerik korunacaktır.';

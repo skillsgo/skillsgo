@@ -357,7 +357,7 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "Seçilen proje eylemleri skillsgo.yaml ve skillsgo.lock'yi güncelleyecektir.",
+  "workspaceOwnershipChanges": "Seçilen proje eylemleri skillsgo.yaml ve skillsgo-lock.yaml'yi güncelleyecektir.",
   "targetContentPreserved": "Mevcut hedef içerik korunacaktır.",
   "localReadFailed": "Bu Skill okunamıyor",
   "localReadFailedMessage": "SkillsGo bu yüklü beceriyi okuyamadı. Klasörünün kullanılabilir ve erişilebilir olduğundan emin olun ve tekrar deneyin.",

@@ -312,7 +312,7 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "所選專案操作將更新 skillsgo.yaml 和 skillsgo.lock。",
+  "workspaceOwnershipChanges": "所選專案操作將更新 skillsgo.yaml 和 skillsgo-lock.yaml。",
   "targetContentPreserved": "目標當前內容會被保留。",
   "localReadFailed": "無法讀取此技能",
   "localReadFailedMessage": "SkillsGo 無法讀取這個已安裝的技能。請確認其資料夾存在且可以訪問，然後重試。",
