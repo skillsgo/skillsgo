@@ -305,6 +305,17 @@ func TestRepositoryDiscoverySkipsInvalidCandidatesWithoutBlockingValidSiblings(t
 	require.NotContains(t, ids, f.skillID+"/-/skills/invalid")
 }
 
+func TestRepositoryDiscoveryRejectsDuplicateSkillNames(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	f.writeSkill(t, "skills/duplicate", "child", "duplicate canonical name")
+	f.commit(t, "add duplicate Skill name")
+	runGit(t, f.work, "tag", "v1.1.0")
+	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
+
+	_, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
+	require.ErrorContains(t, err, `duplicate Skill name "child"`)
+}
+
 func TestRepositoryDiscoveryExcludesSkillsInstalledUnderHiddenDirectories(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	f.writeSkill(t, ".claude/skills/release-skills", "release-skills", "installed dependency")
@@ -324,6 +335,14 @@ func TestRepositoryDiscoveryExcludesSkillsInstalledUnderHiddenDirectories(t *tes
 		f.skillID,
 		f.skillID + "/-/skills/child",
 	}, ids)
+	archive, err := io.ReadAll(snapshot.Archive)
+	require.NoError(t, err)
+	reader, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	require.NoError(t, err)
+	names := fileNames(reader.File)
+	prefix := f.skillID + "@" + snapshot.Version + "/"
+	require.NotContains(t, names, prefix+".claude/skills/release-skills/SKILL.md")
+	require.NotContains(t, names, prefix+".agents/skills/shared-skill/SKILL.md")
 }
 
 func TestRepositoryDiscoveryUsesTagAsSharedBatchVersionAndTreeAsMemberIdentity(t *testing.T) {
