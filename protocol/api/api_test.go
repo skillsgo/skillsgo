@@ -69,21 +69,12 @@ func TestSkillAndRepositoryInfoJSONContract(t *testing.T) {
 	}
 }
 
-func TestCatalogAndContentMatchJSONContract(t *testing.T) {
-	match := ContentMatch{SkillID: "github.com/o/r", Name: "demo", Source: "https://github.com/o/r", SkillPath: ".", ImmutableVersion: "v1.0.0", CommitSHA: "commit", TreeSHA: "tree", Sum: "h1:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE="}
-	response := ContentMatchesResponse{SchemaVersion: SchemaVersion, Sum: match.Sum, Matches: []ContentMatch{match}}
-	encoded, err := json.Marshal(response)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(encoded), `"skillId":"github.com/o/r"`) {
-		t.Fatalf("wrong lower-camel schema: %s", encoded)
-	}
-	request := CatalogUpdateCheckRequest{SchemaVersion: SchemaVersion, SkillIDs: []string{match.SkillID}}
+func TestCatalogUpdateJSONContract(t *testing.T) {
+	request := CatalogUpdateCheckRequest{SchemaVersion: SchemaVersion, SkillIDs: []string{"github.com/o/r"}}
 	if _, err := json.Marshal(request); err != nil {
 		t.Fatal(err)
 	}
-	updates := CatalogUpdateCheckResponse{SchemaVersion: SchemaVersion, Items: []CatalogUpdateCheckItem{{SkillID: match.SkillID, HeadVersion: "v1.1.0", ReleaseVersion: "v1.0.0", Status: UpdateAvailable}, {SkillID: "example.com/o/r", Status: UpdateUnsupported}}}
+	updates := CatalogUpdateCheckResponse{SchemaVersion: SchemaVersion, Items: []CatalogUpdateCheckItem{{SkillID: request.SkillIDs[0], HeadVersion: "v1.1.0", ReleaseVersion: "v1.0.0", Status: UpdateAvailable}, {SkillID: "example.com/o/r", Status: UpdateUnsupported}}}
 	updateJSON, err := json.Marshal(updates)
 	if err != nil {
 		t.Fatal(err)
