@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on explicitly selected skills.sh user and Workspace locks, unified External inventory, bounded ephemeral preflight plans, captured Store baselines, and canonical declarations.
- * [OUTPUT]: Exposes versioned read-only Batch Takeover preflight with safe Skill identity previews plus lock-identity- and filesystem-state-bound execution with exact per-location counts and named target-preserving partial results.
- * [POS]: Serves as the public CLI orchestration boundary for authorizing and registering existing copies without Hub access or target materialization.
+ * [INPUT]: Depends on explicitly selected skills.sh user and Workspace locks, unified External inventory, bounded ephemeral preflight plans, exact Repository releases, Agent adapters, and Repository Vendor installation.
+ * [OUTPUT]: Exposes versioned read-only Batch Takeover preflight plus state-bound Repository adoption that verifies existing member bytes, creates YAML/Lock and Vendor/Projections, and then recoverably removes the superseded External copy.
+ * [POS]: Serves as the public CLI orchestration boundary for migrating supported external copies into Repository-managed scopes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -10,8 +10,8 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/json"
-	"errors"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"path/filepath"
@@ -20,12 +20,14 @@ import (
 	"time"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
+	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/inventory"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
-	"github.com/skillsgo/skillsgo/cli/internal/store"
+	"github.com/skillsgo/skillsgo/cli/internal/trash"
+	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	"github.com/spf13/cobra"
 )
 
@@ -57,7 +59,6 @@ type takeoverTarget struct {
 	Agent         string        `json:"agent"`
 	Scope         install.Scope `json:"scope"`
 	ProjectRoot   string        `json:"projectRoot,omitempty"`
-	Mode          install.Mode  `json:"mode"`
 	Path          string        `json:"path"`
 	CanonicalPath string        `json:"canonicalPath,omitempty"`
 }
@@ -134,7 +135,7 @@ type takeoverReport struct {
 }
 
 func newTakeoverCommand(catalog *agent.Catalog) *cobra.Command {
-	var output string
+	var output, hubURL string
 	var includeUser, yes, preflight bool
 	var planID string
 	var projects []string
@@ -167,7 +168,7 @@ func newTakeoverCommand(catalog *agent.Catalog) *cobra.Command {
 			if strings.TrimSpace(planID) == "" {
 				return fmt.Errorf("%s", appi18n.T("takeover.error.plan"))
 			}
-			report, err := executeLockTakeover(catalog, planID, includeUser, projects)
+			report, err := executeLockTakeover(cmd, catalog, hubURL, planID, includeUser, projects)
 			if err != nil {
 				return err
 			}
@@ -182,6 +183,7 @@ func newTakeoverCommand(catalog *agent.Catalog) *cobra.Command {
 	cmd.Flags().BoolVar(&includeUser, "user", false, appi18n.T("takeover.flag.user"))
 	cmd.Flags().StringArrayVar(&projects, "project", nil, appi18n.T("takeover.flag.project"))
 	cmd.Flags().StringVar(&output, "output", "human", appi18n.T("takeover.flag.output"))
+	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), "Hub origin")
 	return cmd
 }
 
@@ -251,7 +253,7 @@ func preflightLockTakeover(catalog *agent.Catalog, includeUser bool, projectRoot
 	return report, nil
 }
 
-func executeLockTakeover(catalog *agent.Catalog, planID string, includeUser bool, projectRoots []string) (takeoverReport, error) {
+func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, planID string, includeUser bool, projectRoots []string) (takeoverReport, error) {
 	report := takeoverReport{SchemaVersion: takeoverSchemaVersion, Results: []takeoverResult{}}
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -276,7 +278,10 @@ func executeLockTakeover(catalog *agent.Catalog, planID string, includeUser bool
 	for _, candidate := range current {
 		currentByKey[takeoverCandidateKey(candidate)] = candidate
 	}
-	storage := store.Store{Root: store.DefaultRoot(home)}
+	client, err := hub.New(hubURL, nil)
+	if err != nil {
+		return report, err
+	}
 	for _, skipped := range plan.Skipped {
 		if takeoverTargetSelected(skipped.Target, includeUser, roots) {
 			report.Results = append(report.Results, skipped)
@@ -302,58 +307,145 @@ func executeLockTakeover(catalog *agent.Catalog, planID string, includeUser bool
 			report.Summary.Skipped++
 			continue
 		}
-		entry, captureErr := storage.CaptureExisting(candidate.PhysicalPath, candidate.Name, candidate.SkillID, candidate.SourceRef)
-		if captureErr != nil {
-			result.Reason = "store-failure"
-			if errors.Is(captureErr, store.ErrCaptureChanged) {
-				result.Reason = "target-changed"
-			}
+		repositoryID, memberPath, identityErr := takeoverRepositoryMember(candidate.SkillID)
+		if identityErr != nil {
+			result.Reason = "invalid-lock-entry"
 			report.Results = append(report.Results, result)
 			report.Summary.Skipped++
 			continue
 		}
-		after, stateErr := install.TargetStateDigest(candidate.PhysicalPath)
-		if stateErr != nil || before != after {
-			result.Reason = "target-changed"
+		resource, fetchErr := client.FetchRepositoryWithProgress(cmd.Context(), repositoryID, candidate.SourceRef, nil)
+		if fetchErr != nil {
+			result.Reason = "repository-unavailable"
 			report.Results = append(report.Results, result)
 			report.Summary.Skipped++
 			continue
 		}
-		installTargets := make([]install.Target, 0, len(candidate.Targets))
-		changed := false
+		if compareErr := verifyTakeoverMember(candidate.PhysicalPath, resource, memberPath); compareErr != nil {
+			result.Reason = "content-mismatch"
+			report.Results = append(report.Results, result)
+			report.Summary.Skipped++
+			continue
+		}
+		agentIDs := make([]string, 0, len(candidate.Targets))
 		for _, target := range candidate.Targets {
-			resolved, resolveErr := filepath.EvalSymlinks(target.Path)
-			if resolveErr != nil || filepath.Clean(resolved) != filepath.Clean(candidate.PhysicalPath) {
-				changed = true
-				break
+			if !containsString(agentIDs, target.Agent) {
+				agentIDs = append(agentIDs, target.Agent)
 			}
-			installTargets = append(installTargets, install.Target{
-				Agent: target.Agent, Scope: target.Scope, Mode: target.Mode,
-				Path: target.Path, CanonicalPath: target.CanonicalPath,
-			})
 		}
-		if changed {
-			result.Reason = "target-changed"
+		sort.Strings(agentIDs)
+		discard := &cobra.Command{}
+		discard.SetContext(cmd.Context())
+		discard.SetOut(io.Discard)
+		discard.SetErr(io.Discard)
+		scope := candidate.Targets[0].Scope
+		workspaceRoot := candidate.Targets[0].ProjectRoot
+		options := addOptions{hubURL: hubURL, output: "json", skills: []string{memberPath}}
+		if addErr := addRepository(discard, catalog, source.Reference{SkillID: repositoryID, Version: resource.Info.Version}, agentIDs, scope, workspaceRoot, options, []string{memberPath}); addErr != nil {
+			result.Reason = "state-write-failure"
 			report.Results = append(report.Results, result)
 			report.Summary.Skipped++
 			continue
 		}
-		requirement := project.SkillRequirement{Source: candidate.SkillID, Ref: entry.Receipt.Version, Mode: install.ModeCopy}
-		if _, persistErr := project.CommitInstallations(candidate.DeclarationRoot, candidate.Name, candidate.SourceRef, requirement, entry.Receipt, installTargets); persistErr != nil {
-			result.Reason = "state-write-failure"
+		if removeErr := trash.Move(candidate.PhysicalPath); removeErr != nil {
+			result.Reason = "external-remove-failure"
 			report.Results = append(report.Results, result)
 			report.Summary.Skipped++
 			continue
 		}
 		result.Status = "taken-over"
 		result.SkillID = candidate.SkillID
-		result.ArtifactSkillID = entry.Receipt.SkillID
-		result.Version = entry.Receipt.Version
+		result.ArtifactSkillID = candidate.SkillID
+		result.Version = resource.Info.Version
 		report.Results = append(report.Results, result)
 		report.Summary.TakenOver++
 	}
 	_ = os.Remove(takeoverPlanPath(home, planID))
 	return report, nil
+}
+
+func takeoverRepositoryMember(skillID string) (string, string, error) {
+	separator := strings.Index(skillID, "/-/")
+	if separator < 0 {
+		return skillID, ".", nil
+	}
+	repositoryID, memberPath := skillID[:separator], skillID[separator+len("/-/"):]
+	if repositoryID == "" || memberPath == "" {
+		return "", "", fmt.Errorf("invalid Repository member identity")
+	}
+	return repositoryID, memberPath, nil
+}
+
+type takeoverFile struct {
+	digest     [sha256.Size]byte
+	executable bool
+}
+
+func verifyTakeoverMember(root string, resource *hub.RepositoryResource, memberPath string) error {
+	expected := map[string]takeoverFile{}
+	prefix := ""
+	if memberPath != "." {
+		prefix = strings.TrimSuffix(memberPath, "/") + "/"
+	}
+	_, err := protocolartifact.WalkRepository(resource.ZIP, resource.Info.ID, resource.Info.Version, func(entry protocolartifact.Entry) error {
+		if entry.Directory || !strings.HasPrefix(entry.Path, prefix) {
+			return nil
+		}
+		relative := strings.TrimPrefix(entry.Path, prefix)
+		if relative == "" {
+			return nil
+		}
+		expected[relative] = takeoverFile{digest: sha256.Sum256(entry.Contents), executable: entry.Mode.Perm()&0o111 != 0}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if len(expected) == 0 || expected["SKILL.md"].digest == ([sha256.Size]byte{}) {
+		return fmt.Errorf("Repository release does not contain the selected Skill")
+	}
+	actual := map[string]takeoverFile{}
+	err = filepath.WalkDir(root, func(current string, entry os.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if current == root || entry.IsDir() {
+			return nil
+		}
+		info, infoErr := entry.Info()
+		if infoErr != nil {
+			return infoErr
+		}
+		if !info.Mode().IsRegular() {
+			return fmt.Errorf("external Skill contains unsupported file %s", current)
+		}
+		relative, relativeErr := filepath.Rel(root, current)
+		if relativeErr != nil {
+			return relativeErr
+		}
+		relative = filepath.ToSlash(relative)
+		if _, pathErr := protocolartifact.PortablePathKey(relative); pathErr != nil {
+			return pathErr
+		}
+		contents, readErr := os.ReadFile(current)
+		if readErr != nil {
+			return readErr
+		}
+		actual[relative] = takeoverFile{digest: sha256.Sum256(contents), executable: info.Mode().Perm()&0o111 != 0}
+		return nil
+	})
+	if err != nil {
+		return err
+	}
+	if len(actual) != len(expected) {
+		return fmt.Errorf("external Skill file set differs from Repository member")
+	}
+	for path, expectedFile := range expected {
+		if actual[path] != expectedFile {
+			return fmt.Errorf("external Skill file %s differs from Repository member", path)
+		}
+	}
+	return nil
 }
 
 func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, includeUser bool, projectRoots []string) ([]takeoverCandidate, []takeoverResult, error) {
@@ -434,17 +526,15 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 			groupTargets := make([]install.Target, 0, len(group))
 			machineTargets := make([]takeoverTarget, 0, len(group))
 			for _, target := range group {
-				mode := install.ModeCopy
 				canonicalPath := ""
 				if info, statErr := os.Lstat(target.Path); statErr == nil && info.Mode()&os.ModeSymlink != 0 {
-					mode = install.ModeSymlink
 					canonicalPath, _ = filepath.EvalSymlinks(target.Path)
 				}
 				groupTargets = append(groupTargets, install.Target{
-					Agent: target.Agent, Scope: target.Scope, Mode: mode,
+					Agent: target.Agent, Scope: target.Scope, Mode: install.ModeCopy,
 					Path: target.Path, CanonicalPath: canonicalPath,
 				})
-				machineTargets = append(machineTargets, takeoverTarget{Agent: target.Agent, Scope: target.Scope, ProjectRoot: target.ProjectRoot, Mode: mode, Path: target.Path, CanonicalPath: canonicalPath})
+				machineTargets = append(machineTargets, takeoverTarget{Agent: target.Agent, Scope: target.Scope, ProjectRoot: target.ProjectRoot, Path: target.Path, CanonicalPath: canonicalPath})
 			}
 			result := takeoverResult{Name: skill.Name, Status: "skipped", Target: machineTargets[0], Targets: machineTargets}
 			lockKey := skill.Name
@@ -524,7 +614,7 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 			}
 			skipped = append(skipped, takeoverResult{
 				Name: name, Status: "skipped", Reason: "missing-target",
-				Target: takeoverTarget{Scope: scope, ProjectRoot: projectRoot, Mode: install.ModeCopy, Path: ""},
+				Target: takeoverTarget{Scope: scope, ProjectRoot: projectRoot, Path: ""},
 			})
 		}
 	}
@@ -675,7 +765,6 @@ func validTakeoverPlan(plan takeoverPlan, planID string, now time.Time) bool {
 		}
 		for _, target := range candidate.Targets {
 			if target.Agent == "" || !filepath.IsAbs(target.Path) ||
-				(target.Mode != install.ModeCopy && target.Mode != install.ModeSymlink) ||
 				(target.Scope != install.ScopeUser && target.Scope != install.ScopeProject) ||
 				(target.Scope == install.ScopeProject && !filepath.IsAbs(target.ProjectRoot)) {
 				return false
@@ -737,7 +826,7 @@ func takeoverCandidateKey(candidate takeoverCandidate) string {
 	hash := sha256.New()
 	_, _ = fmt.Fprintf(hash, "%s\x00%s\x00%s\x00%s\x00%s\x00%s\x00", candidate.Name, candidate.SkillID, candidate.SourceRef, candidate.LockDigest, candidate.DeclarationRoot, candidate.PhysicalPath)
 	for _, target := range candidate.Targets {
-		_, _ = fmt.Fprintf(hash, "%s\x00%s\x00%s\x00%s\x00%s\x00%s\x00", target.Agent, target.Scope, target.ProjectRoot, target.Mode, target.Path, target.CanonicalPath)
+		_, _ = fmt.Fprintf(hash, "%s\x00%s\x00%s\x00%s\x00%s\x00", target.Agent, target.Scope, target.ProjectRoot, target.Path, target.CanonicalPath)
 	}
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }

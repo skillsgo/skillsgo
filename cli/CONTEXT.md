@@ -81,8 +81,8 @@ The local record that connects one Scope Vendor to one Repository Projection and
 _Avoid_: Workspace Manifest, Dependency Lock, Hub metadata
 
 **Batch Takeover**:
-A previously designed adoption operation for supported skills.sh installations. It is outside the Repository-Vendor first release and must be redesigned around Repository identity, Dependency Lock, Scope Vendor, and Repository Projection before it can be enabled; legacy per-Skill Store capture is not retained as a compatibility path.
-_Avoid_: first-release install path, legacy Store compatibility, implicit local import
+The explicit adoption of a supported skills.sh External Installation whose lock identifies an exact immutable Repository version and member. Execution verifies the External bytes against that Repository member, installs the complete Repository through the ordinary Dependency/Lock, Scope Vendor, and Repository Projection transaction, and only then moves the superseded External directory to recoverable trash. It never captures a per-Skill Store object or writes a receipt.
+_Avoid_: legacy Store compatibility, implicit local import, mutable selector adoption
 
 **External Removal**:
 The explicit, state-bound deletion of one exact External Installation discovered under a known Agent Skill directory. It never creates a receipt, changes a Workspace declaration, or infers source ownership.
