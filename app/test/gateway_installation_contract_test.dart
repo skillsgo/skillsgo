@@ -29,6 +29,7 @@ void main() {
       installName: r"test name';$(touch nope)",
       name: r'test;$(touch nope)',
       source: r'github.com/a/b',
+      skillPath: r'nested/test;$(touch nope)',
       installs: 0,
     );
     const installed = InstalledSkill(
@@ -67,8 +68,8 @@ void main() {
     expect(runner.lastArguments, [
       'add',
       r'github.com/a/b@v1',
-      '--skill',
-      r'test;$(touch nope)',
+      '--skill-path',
+      r'nested/test;$(touch nope)',
       '--agent',
       'codex',
       '--global',
@@ -188,6 +189,7 @@ void main() {
         installName: 'demo',
         name: 'demo',
         source: 'github.com/example/skills',
+        skillPath: 'nested/demo',
         installs: 0,
         latestVersion: 'v1',
       );
@@ -208,8 +210,8 @@ void main() {
         containsAllInOrder([
           'add',
           'github.com/example/skills@v1',
-          '--skill',
-          'demo',
+          '--skill-path',
+          'nested/demo',
         ]),
       );
       expect(runner.lastArguments, contains('--global'));

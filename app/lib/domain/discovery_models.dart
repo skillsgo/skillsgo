@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on shared system vocabulary for trust, risk, metrics, discovery collections, and canonical Skill coordinates.
- * [OUTPUT]: Provides discovery summaries with canonical coordinate identity, repository metadata, pages, auditable files, and risk evidence.
+ * [OUTPUT]: Provides discovery summaries with canonical coordinate identity and exact Repository member paths, repository metadata, pages, auditable files, and risk evidence.
  * [POS]: Serves as the focused public discovery model module consumed by Discover, detail, and CLI decoding.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,6 +13,7 @@ class SkillSummary {
     required this.installName,
     required this.name,
     required this.source,
+    this.skillPath = '',
     this.installs = 0,
     this.imageUrl,
     this.latestVersion = 'main',
@@ -28,6 +29,7 @@ class SkillSummary {
   final String installName;
   final String name;
   final String source;
+  final String skillPath;
   final String? imageUrl;
   final int installs;
   final String latestVersion;
@@ -44,6 +46,8 @@ class SkillSummary {
       SkillCoordinate(repositoryId: repositoryId, name: name);
 
   String get coordinateKey => coordinate.key;
+
+  String get installationSelector => skillPath.isEmpty ? name : skillPath;
 }
 
 class RepositorySummary {

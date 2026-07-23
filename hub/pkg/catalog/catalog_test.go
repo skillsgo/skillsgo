@@ -49,6 +49,21 @@ func publishTestRepository(t *testing.T, c *Catalog, repositoryID, version, comm
 	require.NoError(t, c.PublishRepositoryReleaseWithVisibility(t.Context(), repositoryID, candidates, visibility, encoded))
 }
 
+func TestValidateRepositoryReleaseAllowsDuplicateNamesAtDistinctPaths(t *testing.T) {
+	repositoryID := "github.com/acme/skills"
+	candidates := []PublishedSkill{
+		{Skill: Skill{RepositoryID: repositoryID, Name: "shared", SkillPath: "one", Description: "One"}, Member: RepositoryReleaseMember{Name: "shared", SkillPath: "one", TreeSHA: "tree-one"}},
+		{Skill: Skill{RepositoryID: repositoryID, Name: "shared", SkillPath: "two", Description: "Two"}, Member: RepositoryReleaseMember{Name: "shared", SkillPath: "two", TreeSHA: "tree-two"}},
+	}
+	members := []protocolapi.SkillInfo{
+		{RepositoryID: repositoryID, Name: "shared", SkillPath: "one", Version: "v1.0.0", CommitSHA: "commit", TreeSHA: "tree-one"},
+		{RepositoryID: repositoryID, Name: "shared", SkillPath: "two", Version: "v1.0.0", CommitSHA: "commit", TreeSHA: "tree-two"},
+	}
+	encoded, err := json.Marshal(protocolapi.RepositoryInfo{ID: repositoryID, Version: "v1.0.0", CommitSHA: "commit", TreeSHA: "repository-tree", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 1, Skills: members})
+	require.NoError(t, err)
+	require.NoError(t, ValidateRepositoryRelease(repositoryID, candidates, CurrentPublication, encoded))
+}
+
 func TestPostgresCatalogUpsertAndSearch(t *testing.T) {
 	ctx := context.Background()
 	c := openTestCatalog(t)

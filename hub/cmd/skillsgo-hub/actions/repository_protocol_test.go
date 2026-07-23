@@ -142,7 +142,7 @@ func TestRepositoryPublicationFailureExposesNoPartialMemberSet(t *testing.T) {
 	require.Len(t, members, 2)
 }
 
-func TestInvalidPublicationAggregateIsRejectedBeforeImmutableStorage(t *testing.T) {
+func TestDuplicateNamePublicationPreservesDistinctPathMembers(t *testing.T) {
 	repository, version := "github.com/example/orphan", "v1.0.0"
 	fetcher := &countedRepositoryFetcher{snapshot: func() *skill.RepositorySnapshot {
 		manifest, err := parseRepositoryTestManifest(repositoryTestManifest(t, repository, version, "duplicate", "Duplicate fixture.", ""))
@@ -161,12 +161,13 @@ func TestInvalidPublicationAggregateIsRejectedBeforeImmutableStorage(t *testing.
 	publisher := newRepositoryPublisher(fetcher, backend, metadata)
 
 	_, err = publisher.Materialize(t.Context(), repository, version)
-	require.Error(t, err)
+	require.NoError(t, err)
 	members, membersErr := metadata.RepositoryReleaseMembers(t.Context(), repository, version)
 	require.NoError(t, membersErr)
-	require.Empty(t, members, "failed Catalog publication must remain invisible")
+	require.Len(t, members, 2)
+	require.Equal(t, []string{"skills/one", "skills/two"}, []string{members[0].SkillPath, members[1].SkillPath})
 	_, storageErr := backend.Info(t.Context(), repository, version)
-	require.Error(t, storageErr, "deterministically invalid aggregate must not occupy the immutable coordinate")
+	require.NoError(t, storageErr)
 }
 
 func TestMovedTagConflictsBeforeStoredArtifactsChange(t *testing.T) {

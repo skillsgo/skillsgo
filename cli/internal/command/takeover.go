@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on explicitly selected skills.sh user and Workspace locks, unified External inventory, bounded ephemeral preflight plans, exact Repository releases, Agent adapters, and Repository Vendor installation.
- * [OUTPUT]: Exposes versioned read-only Batch Takeover preflight plus state-bound Repository adoption that verifies existing member bytes, creates YAML/Lock and Vendor/Projections, and then recoverably removes the superseded External copy.
+ * [OUTPUT]: Exposes versioned read-only Batch Takeover preflight plus state-bound exact-path Repository adoption that verifies existing member bytes, creates YAML/Lock and Vendor/Projections, and then recoverably removes the superseded External copy.
  * [POS]: Serves as the public CLI orchestration boundary for migrating supported external copies into Repository-managed scopes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -352,8 +352,8 @@ func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, pla
 		discard.SetErr(io.Discard)
 		scope := candidate.Targets[0].Scope
 		workspaceRoot := candidate.Targets[0].ProjectRoot
-		options := addOptions{hubURL: hubURL, output: "json", skills: []string{memberName}}
-		if addErr := addRepository(discard, catalog, source.Reference{RepositoryID: repositoryID, Version: resource.Info.Version}, agentIDs, scope, workspaceRoot, options, []string{memberName}); addErr != nil {
+		options := addOptions{hubURL: hubURL, output: "json", skillPaths: []string{memberPath}}
+		if addErr := addRepository(discard, catalog, source.Reference{RepositoryID: repositoryID, Version: resource.Info.Version}, agentIDs, scope, workspaceRoot, options, []string{memberPath}, true); addErr != nil {
 			result.Reason = "state-write-failure"
 			report.Results = append(report.Results, result)
 			report.Summary.Skipped++

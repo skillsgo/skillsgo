@@ -111,13 +111,13 @@ One Repository artifact and Vendor contain the complete source snapshot; each se
 
 Status: implemented with deterministic root, nested, mixed-case, deep, invalid, and shared-runtime fixtures plus Cartesian multi-Agent Projections by `j12_repository_install_test.go`.
 
-### J13 — Reject duplicate canonical Skill Names atomically
+### J13 — Select same-name Repository members deterministically
 
-As a user selecting a Repository whose members declare the same canonical Skill Name, I want publication to fail before local mutation so that SkillsGo never chooses a member by path or silently replaces one.
+As a user selecting a Repository whose members declare the same canonical Skill Name, I want name selection to choose the first path deterministically and exact-path selection to choose the requested member.
 
-The complete Repository Publication is rejected for every requested member name, and neither `skillsgo.yaml` nor `skillsgo-lock.yaml` is created.
+The complete Repository Publication preserves both members. A name-only selector resolves by lexicographic Skill Path, while an exact path remains persisted through later lifecycle operations.
 
-Status: implemented across two nested Skills with one shared source-authored name in a deterministic Repository by `j13_same_name_members_test.go`.
+Status: implemented across two nested Skills with one shared source-authored name in a deterministic Repository by `j13_same_name_members_test.go` and the complete lifecycle journey in `j31_repository_identity_and_selection_test.go`.
 
 ### J14 — Protect Local Modifications in a coordinate Projection
 
@@ -251,9 +251,9 @@ Status: implemented through public Repository Info, CLI installation, and unchan
 
 ### J31 — Preserve Repository identity and selection boundaries
 
-As a CLI user, I want arbitrary host namespace depth, Repository ID plus Skill Name selection, duplicate-name errors, and root-member selection by declared name to remain unambiguous.
+As a CLI user, I want arbitrary host namespace depth, Repository ID plus Skill Name default selection, exact-path selection for same-name members, and root-member selection by declared name to remain unambiguous.
 
-Status: implemented with multi-level fixture namespaces, canonical Skill Name selectors, root-member selection, duplicate-name rejection, and complete Repository ZIPs by `j31_repository_identity_and_selection_test.go`.
+Status: implemented with multi-level fixture namespaces, canonical Skill Name selectors, exact-path same-name selection, root-member selection, and complete Repository ZIPs by `j31_repository_identity_and_selection_test.go`.
 
 ### J32 — Keep Repository protocol resources immutable
 

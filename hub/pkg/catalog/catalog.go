@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on sqlc-generated PostgreSQL queries, pgx pooling, versioned Atlas SQL migrations, Hub database configuration, and canonical Skill IDs.
- * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, immutable Release Records, native pgx transaction scopes shared with River, current-release search projections, and source cache state.
+ * [INPUT]: Depends on sqlc-generated PostgreSQL queries, pgx pooling, versioned Atlas SQL migrations, Hub database configuration, canonical Repository ID plus Skill Name coordinates, and path-unique Repository members.
+ * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, same-name path-preserving immutable Release Records, deterministic coordinate defaults, native pgx transaction scopes shared with River, current-release search projections, and source cache state.
  * [POS]: Serves as the Hub identity and search data boundary while artifact bytes and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -254,16 +254,16 @@ func ValidateRepositoryRelease(repositoryID string, candidates []PublishedSkill,
 	if len(release.Skills) != len(candidates) {
 		return fmt.Errorf("Repository publication release membership does not match candidates")
 	}
-	seen := make(map[string]bool, len(candidates))
+	seenPaths := make(map[string]bool, len(candidates))
 	for index, candidate := range candidates {
 		if candidate.Skill.RepositoryID != repositoryID || !protocolskillmanifest.ValidName(candidate.Skill.Name) ||
 			candidate.Skill.Name != candidate.Member.Name || candidate.Skill.SkillPath != candidate.Member.SkillPath {
 			return fmt.Errorf("Repository publication contains invalid Skill %q", candidate.Skill.Name)
 		}
-		if seen[candidate.Skill.Name] || candidate.Member.TreeSHA == "" || candidate.Member.SkillPath == "" {
+		if seenPaths[candidate.Member.SkillPath] || candidate.Member.TreeSHA == "" || candidate.Member.SkillPath == "" {
 			return fmt.Errorf("Repository publication contains inconsistent member %q", candidate.Skill.Name)
 		}
-		seen[candidate.Skill.Name] = true
+		seenPaths[candidate.Member.SkillPath] = true
 		member := release.Skills[index]
 		if member.RepositoryID != repositoryID || member.Name != candidate.Skill.Name || member.SkillPath != candidate.Member.SkillPath ||
 			member.Version != release.Version || member.CommitSHA != release.CommitSHA || member.TreeSHA != candidate.Member.TreeSHA {
@@ -304,12 +304,12 @@ func (c *Catalog) publishRepositoryVersionWithVisibility(ctx context.Context, re
 		return err
 	}
 	existing := mapReleaseMembers(storedMembers)
-	byCandidateName := make(map[string]PublishedSkill, len(candidates))
+	byCandidatePath := make(map[string]PublishedSkill, len(candidates))
 	for _, candidate := range candidates {
-		byCandidateName[candidate.Skill.Name] = candidate
+		byCandidatePath[candidate.Member.SkillPath] = candidate
 	}
 	for _, member := range existing {
-		candidate, relevant := byCandidateName[member.Name]
+		candidate, relevant := byCandidatePath[member.SkillPath]
 		if !relevant && publicationCount == 0 {
 			continue
 		}

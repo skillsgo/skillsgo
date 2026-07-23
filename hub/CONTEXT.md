@@ -9,8 +9,12 @@ A set of Agent instructions and supporting resources rooted at a valid `SKILL.md
 _Avoid_: plugin, application, extension
 
 **Skill Name**:
-The canonical, normalized name declared by `SKILL.md` and unique within one complete Repository Publication. Together with Repository ID it identifies a selectable logical member across Repository Versions; duplicate names reject publication.
+The canonical, normalized name declared by `SKILL.md`. Together with Repository ID it identifies a logical ranking and default-selection group across Repository Versions, but it is not unique inside a Repository Publication. A name-only selection resolves deterministically to the lexicographically first Skill Path.
 _Avoid_: display title, source directory name, global name, Skill ID
+
+**Skill Path**:
+The normalized Repository-relative directory containing one member's `SKILL.md`. It uniquely identifies membership within a Repository Publication and is the exact selector persisted when a product surface installs a specific result. Same-name members at distinct paths retain independent metadata.
+_Avoid_: Skill Name, display path, generated suffix
 
 **Skill Source**:
 A GitHub, GitLab, well-known endpoint, or other supported public source containing a `SKILL.md` and its resources.

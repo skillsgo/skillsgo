@@ -56,6 +56,7 @@ void main() {
     expect(results.single.source, 'github.com/flutter/skills');
     expect(results.single.imageUrl, 'https://images.example/flutter.png');
     expect(results.single.installName, 'responsive-layout');
+    expect(results.single.skillPath, 'responsive-layout');
     expect(results.single.metricKind, isNull);
     expect(results.single.description, 'Build adaptive Flutter layouts.');
     expect(results.single.trustLevel, SkillTrustLevel.communityVerified);

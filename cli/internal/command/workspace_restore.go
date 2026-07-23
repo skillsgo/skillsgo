@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a strict matching skillsgo.yaml/skillsgo-lock.yaml pair, exact immutable root Proxy resources only when Vendor is absent, verified Scope Vendor, Agent Adapter roots, deterministic projection transactions, and the Repository mutation coordinator.
- * [OUTPUT]: Provides conflict-safe idempotent Workspace/User install ensure results, restoring missing Vendor/projections while never resolving selectors, updating versions, pruning extras, or overwriting Local Modifications.
+ * [OUTPUT]: Provides conflict-safe idempotent Workspace/User install ensure results, restoring missing Vendor/projections from persisted name-or-path selectors while never performing movable version resolution, pruning extras, or overwriting Local Modifications.
  * [POS]: Serves as the declaration-to-Vendor/Projection orchestration behind `skillsgo install`.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -119,18 +119,16 @@ func ensureOneRepository(ctx context.Context, root string, userScope bool, catal
 		}
 	}
 	members := make([]string, 0, len(resource.Members))
-	available := make(map[string]string, len(resource.Members))
 	for _, member := range resource.Members {
 		members = append(members, member.Info.SkillPath)
-		available[member.Info.Name] = member.Info.SkillPath
 	}
 	selectedPaths := make([]string, 0, len(dependency.Skills))
 	for _, selected := range dependency.Skills {
-		path, ok := available[selected]
+		member, ok := hub.SelectRepositoryMember(selected, resource.Members)
 		if !ok {
 			return "", vendor, fmt.Errorf("Repository release does not contain selected Skill %q", selected)
 		}
-		selectedPaths = append(selectedPaths, path)
+		selectedPaths = append(selectedPaths, member.Info.SkillPath)
 	}
 	projections, err := repositoryProjections(catalog, dependency.Agents, nil, nil, selectedPaths, agentScope, root)
 	if err != nil {

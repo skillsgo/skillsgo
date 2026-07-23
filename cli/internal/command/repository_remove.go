@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on strict YAML/Lock state, an h1-verified authoritative Scope Vendor, Agent Adapter roots, baseline-aware Repository Projection transactions, and the Repository mutation coordinator.
- * [OUTPUT]: Removes selected Repository members by canonical Skill name through one coordinated mutation and emits a typed machine result without Hub access or Local Modification overwrite.
- * [POS]: Serves as the authoritative managed Repository-member name path behind `skillsgo remove`, alongside exact External removal.
+ * [OUTPUT]: Removes selected Repository members by persisted name-or-path selector through one coordinated mutation and emits a typed machine result without Hub access or Local Modification overwrite.
+ * [POS]: Serves as the authoritative managed Repository-member selector path behind `skillsgo remove`, alongside exact External removal.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -116,16 +116,16 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 			rollback()
 			return true, err
 		}
-		pathsByName := make(map[string]string, len(resource.Members))
 		members := make([]string, 0, len(resource.Members))
 		for _, member := range resource.Members {
-			pathsByName[member.Info.Name] = member.Info.SkillPath
 			members = append(members, member.Info.SkillPath)
 		}
-		toPaths := func(names []string) []string {
-			paths := make([]string, 0, len(names))
-			for _, name := range names {
-				paths = append(paths, pathsByName[name])
+		toPaths := func(selectors []string) []string {
+			paths := make([]string, 0, len(selectors))
+			for _, selector := range selectors {
+				if member, ok := hub.SelectRepositoryMember(selector, resource.Members); ok {
+					paths = append(paths, member.Info.SkillPath)
+				}
 			}
 			return paths
 		}

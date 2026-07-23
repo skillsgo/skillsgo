@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses self-contained Repository member metadata and canonical Skill-name selector syntax.
- * [OUTPUT]: Specifies name-only Repository member selection, including a root Skill whose name is independent of its path.
+ * [OUTPUT]: Specifies deterministic name-default and exact-path Repository member selection, including duplicate names and a root Skill.
  * [POS]: Serves as the focused selection matrix beneath CLI-root Repository installation acceptance tests.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -17,22 +17,26 @@ func TestSelectRepositoryMemberMatrix(t *testing.T) {
 	members := []hub.RepositoryMember{
 		{Info: hub.Info{RepositoryID: repository, SkillPath: ".", Name: "root"}},
 		{Info: hub.Info{RepositoryID: repository, SkillPath: "skills/alpha", Name: "alpha"}},
+		{Info: hub.Info{RepositoryID: repository, SkillPath: "other/alpha", Name: "alpha"}},
 		{Info: hub.Info{RepositoryID: repository, SkillPath: "other/beta", Name: "beta"}},
 		{Info: hub.Info{RepositoryID: repository, SkillPath: "tools/gamma", Name: "gamma"}},
 	}
-	for _, selector := range []string{"gamma"} {
-		member, err := selectRepositoryMember(selector, members)
-		if err != nil || member.Info.Name != "gamma" {
-			t.Fatalf("selector %q = %#v, %v", selector, member.Info, err)
-		}
+	member, err := selectRepositoryMember("alpha", members)
+	if err != nil || member.Info.SkillPath != "other/alpha" {
+		t.Fatalf("name default = %#v, %v", member.Info, err)
 	}
-	if _, err := selectRepositoryMember("tools/gamma", members); err == nil {
-		t.Fatal("path selector succeeded")
+	member, err = selectRepositoryMember("skills/alpha", members)
+	if err != nil || member.Info.SkillPath != "skills/alpha" {
+		t.Fatalf("path selector = %#v, %v", member.Info, err)
 	}
 	if _, err := selectRepositoryMember("missing", members); err == nil {
 		t.Fatal("missing selector succeeded")
 	}
-	member, err := selectRepositoryMember("root", members)
+	selected, err := selectRepositoryNames([]string{"skills/alpha"}, members, true)
+	if err != nil || len(selected) != 1 || selected[0] != "skills/alpha" {
+		t.Fatalf("exact path selection = %#v, %v", selected, err)
+	}
+	member, err = selectRepositoryMember("root", members)
 	if err != nil || member.Info.Name != "root" {
 		t.Fatalf("root selector = %#v, %v", member.Info, err)
 	}
