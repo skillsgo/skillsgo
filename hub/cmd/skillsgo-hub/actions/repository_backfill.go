@@ -8,7 +8,6 @@ package actions
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 	"sort"
@@ -85,7 +84,7 @@ func (s *repositoryBackfillService) Register() error {
 				return err
 			}
 			if !active {
-				if err := s.metadata.ExpireQueuedBackfillRun(ctx, run.ID); err != nil && !errors.Is(err, sql.ErrNoRows) {
+				if err := s.metadata.ExpireQueuedBackfillRun(ctx, run.ID); err != nil && !errors.Is(err, pgx.ErrNoRows) {
 					return err
 				}
 			}
@@ -134,7 +133,7 @@ func (s *repositoryBackfillService) run(ctx context.Context, args repositoryBack
 				return err
 			}
 			commitSHA, publicationErr := s.metadata.RepositoryPublicationCommit(ctx, args.RepositoryID, version)
-			if publicationErr != nil && !errors.Is(publicationErr, sql.ErrNoRows) {
+			if publicationErr != nil && !errors.Is(publicationErr, pgx.ErrNoRows) {
 				errorCount++
 				diagnostic := backfillDiagnostic(version, "publication_check_failed")
 				diagnostics = appendBoundedBackfillDiagnostic(diagnostics, diagnostic)
@@ -261,7 +260,7 @@ func registerRepositoryBackfillRoutes(router fiber.Router, service repositoryBac
 		results := make([]backfillResult, 0, len(ids))
 		for _, repositoryID := range ids {
 			run, statusErr := service.Latest(c.Context(), repositoryID)
-			if errors.Is(statusErr, sql.ErrNoRows) {
+			if errors.Is(statusErr, pgx.ErrNoRows) {
 				results = append(results, backfillResult{RepositoryID: repositoryID, ErrorCode: "not_found"})
 				continue
 			}

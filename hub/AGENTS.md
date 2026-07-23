@@ -19,6 +19,7 @@ Run from `hub/`:
 
 ```bash
 go fmt ./...
+go tool sqlc diff
 go test ./...
 make build
 go run ./cmd/skillsgo-hub -config_file=./config.dev.toml
@@ -37,7 +38,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/` | Hub-private integration helpers that are not public packages. |
 | `pkg/` | Hub domain modules, source resolution, storage, search, protocol, and telemetry behavior. |
 | `pkg/translation/` | Optional OpenAI-compatible presentation-description translation worker. |
-| `pkg/taskqueue/` | River-backed PostgreSQL task execution for translation, Repository metadata refresh/prewarm, and Repository History Backfill, with a synchronous SQLite/test substitute. |
+| `pkg/taskqueue/` | River-backed PostgreSQL task execution for translation, Repository metadata refresh/prewarm, and Repository History Backfill, sharing Catalog's pgx pool and transactions. |
 | `pkg/config/`, `config.dev.toml`, and `.air.toml` | Configuration model, environment-variable binding, local development defaults, and Hub hot reload. |
 | `e2etests/` and `test/` | End-to-end and cross-package behavior verification. |
 | `scripts/` | Operational and CI utilities; nested manifests define independent F2 workspaces. |
@@ -58,10 +59,11 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 - Name stable domain keys `{entity}_id`; add a generic surrogate `id` only when no stable domain identity or natural composite key exists. Foreign-key columns must use the referenced key name.
 - Name instants and lifecycle timestamps with `_at`; use `_started_at` and `_ended_at` for explicit intervals. Name quantities with `_count`, ordinals with `_number`, and booleans with `is_`, `has_`, or `can_`.
 - Use `status` for a lifecycle state. Prefer text plus an explicit constraint when the state set is small and locally owned; do not introduce a database enum without a demonstrated cross-table need.
-- Use backend-native types: timezone-aware timestamps for global instants, JSON only for replayable or genuinely variable payloads, and ordinary typed columns for data that is filtered, joined, ordered, or constrained. Preserve equivalent semantics across PostgreSQL and SQLite where Hub supports both.
+- Use PostgreSQL-native types: timezone-aware timestamps for global instants, JSON only for replayable or genuinely variable payloads, and ordinary typed columns for data that is filtered, joined, ordered, or constrained.
 - Every maintained table must have a primary key. Express row-local invariants with named nullability, check, and uniqueness constraints, and preserve referential integrity with explicit foreign keys and deliberate delete behavior.
 - Create indexes from concrete query, uniqueness, and foreign-key access paths. Do not add speculative per-column indexes, partitioning, soft deletion, universal audit columns, or surrogate keys by default.
 - Applied migration files are immutable. Evolve deployed names and constraints through a new migration rather than rewriting history.
+- Author schema evolution as reviewed Atlas PostgreSQL migrations, generate typed access with sqlc, and execute through pgx. Do not introduce another ORM, `database/sql`, or a second database backend.
 
 ## Nested Workspace Routing
 

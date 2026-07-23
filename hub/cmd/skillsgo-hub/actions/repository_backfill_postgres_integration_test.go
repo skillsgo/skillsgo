@@ -9,7 +9,6 @@ package actions
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -127,7 +126,7 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	})
 	require.ErrorContains(t, err, "injected enqueue rollback")
 	_, err = metadata.LatestBackfillRun(ctx, "github.com/acme/rollback")
-	require.ErrorIs(t, err, sql.ErrNoRows)
+	require.ErrorIs(t, err, pgx.ErrNoRows)
 
 	// The accepted job was never processed by the first runtime. A fresh pair
 	// of Hub runtimes claim the same durable queue after restart.

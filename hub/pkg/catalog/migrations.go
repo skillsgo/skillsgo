@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on embedded dialect-specific Atlas SQL files, Atlas statement parsing, and the Catalog SQL connection.
+ * [INPUT]: Depends on embedded PostgreSQL Atlas SQL files, Atlas statement parsing, and the Catalog pgx pool.
  * [OUTPUT]: Provides ordered, checksummed, transactional schema migration with persistent revision history and PostgreSQL serialization.
  * [POS]: Serves as the production schema-evolution boundary for the Hub Catalog module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -9,7 +9,6 @@ package catalog
 import (
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"embed"
 	"encoding/hex"
 	"errors"
@@ -19,16 +18,18 @@ import (
 	"strings"
 
 	atlasmigrate "ariga.io/atlas/sql/migrate"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-// migrationFiles are reviewed deployment artifacts. Ent/Atlas generates future
-// structural diffs; database-specific search features remain explicit SQL.
+// migrationFiles are reviewed PostgreSQL deployment artifacts generated and
+// linted through Atlas's declarative migration workflow.
 //
-//go:embed migrations/sqlite/*.sql migrations/sqlite/atlas.sum migrations/postgres/*.sql migrations/postgres/atlas.sum
+//go:embed migrations/postgres/*.sql migrations/postgres/atlas.sum
 var migrationFiles embed.FS
 
 func (c *Catalog) Migrate(ctx context.Context) error {
-	dir := "migrations/" + string(c.dialect)
+	dir := "migrations/postgres"
 	sub, err := fs.Sub(migrationFiles, dir)
 	if err != nil {
 		return fmt.Errorf("open catalog migration directory: %w", err)
@@ -42,25 +43,23 @@ func (c *Catalog) Migrate(ctx context.Context) error {
 	}
 	sort.Strings(names)
 	if len(names) == 0 {
-		return fmt.Errorf("no catalog migrations for %s", c.dialect)
+		return fmt.Errorf("no catalog PostgreSQL migrations")
 	}
-	if _, err := c.db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS atlas_schema_revisions (
+	conn, err := c.pool.Acquire(ctx)
+	if err != nil {
+		return fmt.Errorf("reserve catalog migration connection: %w", err)
+	}
+	defer conn.Release()
+	if _, err := conn.Exec(ctx, `CREATE TABLE IF NOT EXISTS atlas_schema_revisions (
 version TEXT PRIMARY KEY, description TEXT NOT NULL, checksum TEXT NOT NULL, applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`); err != nil {
 		return fmt.Errorf("initialize catalog migration history: %w", err)
 	}
-	if c.dialect == Postgres {
-		conn, err := c.db.Connx(ctx)
-		if err != nil {
-			return fmt.Errorf("reserve catalog migration connection: %w", err)
-		}
-		defer func() { _ = conn.Close() }()
-		if _, err := conn.ExecContext(ctx, `SELECT pg_advisory_lock(721946031)`); err != nil {
-			return fmt.Errorf("lock catalog migrations: %w", err)
-		}
-		defer func() { _, _ = conn.ExecContext(context.Background(), `SELECT pg_advisory_unlock(721946031)`) }()
+	if _, err := conn.Exec(ctx, `SELECT pg_advisory_lock(721946031)`); err != nil {
+		return fmt.Errorf("lock catalog migrations: %w", err)
 	}
+	defer func() { _, _ = conn.Exec(context.Background(), `SELECT pg_advisory_unlock(721946031)`) }()
 	for _, name := range names {
-		if err := c.applyMigration(ctx, name); err != nil {
+		if err := c.applyMigration(ctx, conn, name); err != nil {
 			return err
 		}
 	}
@@ -98,7 +97,7 @@ func (d readOnlyMigrationDir) Checksum() (atlasmigrate.HashFile, error) {
 	return atlasmigrate.NewHashFile(files)
 }
 
-func (c *Catalog) applyMigration(ctx context.Context, name string) error {
+func (c *Catalog) applyMigration(ctx context.Context, conn *pgxpool.Conn, name string) error {
 	data, err := migrationFiles.ReadFile(name)
 	if err != nil {
 		return fmt.Errorf("read catalog migration %s: %w", name, err)
@@ -111,35 +110,35 @@ func (c *Catalog) applyMigration(ctx context.Context, name string) error {
 	digest := sha256.Sum256(data)
 	checksum := hex.EncodeToString(digest[:])
 	var recorded string
-	err = c.db.GetContext(ctx, &recorded, c.db.Rebind(`SELECT checksum FROM atlas_schema_revisions WHERE version = ?`), version)
+	err = conn.QueryRow(ctx, `SELECT checksum FROM atlas_schema_revisions WHERE version = $1`, version).Scan(&recorded)
 	if err == nil {
 		if recorded != checksum {
 			return fmt.Errorf("catalog migration %s checksum changed after application", version)
 		}
 		return nil
 	}
-	if !errors.Is(err, sql.ErrNoRows) {
+	if !errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("read catalog migration %s revision: %w", version, err)
 	}
-	tx, err := c.db.BeginTxx(ctx, nil)
+	tx, err := conn.Begin(ctx)
 	if err != nil {
 		return fmt.Errorf("begin catalog migration %s: %w", version, err)
 	}
-	defer func() { _ = tx.Rollback() }()
+	defer func() { _ = tx.Rollback(context.Background()) }()
 	statements, err := atlasmigrate.NewLocalFile(base, data).Stmts()
 	if err != nil {
 		return fmt.Errorf("parse catalog migration %s: %w", version, err)
 	}
 	for _, statement := range statements {
-		if _, err := tx.ExecContext(ctx, statement); err != nil {
+		if _, err := tx.Exec(ctx, statement); err != nil {
 			return fmt.Errorf("apply catalog migration %s: %w", version, err)
 		}
 	}
-	_, err = tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO atlas_schema_revisions (version, description, checksum) VALUES (?, ?, ?)`), version, description, checksum)
+	_, err = tx.Exec(ctx, `INSERT INTO atlas_schema_revisions (version, description, checksum) VALUES ($1, $2, $3)`, version, description, checksum)
 	if err != nil {
 		return fmt.Errorf("record catalog migration %s: %w", version, err)
 	}
-	if err := tx.Commit(); err != nil {
+	if err := tx.Commit(ctx); err != nil {
 		return fmt.Errorf("commit catalog migration %s: %w", version, err)
 	}
 	return nil

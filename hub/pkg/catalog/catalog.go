@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Ent entities, SQLx for dialect-specific discovery queries, pgx stdlib for shared PostgreSQL pooling, versioned Atlas SQL migrations, Hub database configuration, and canonical Skill IDs.
- * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, reusable Repository Release aggregate validation, byte-stable Release Records, complete ordered membership, native pgx transaction scopes for atomic Ent/River work, current-release search projections, and source cache state on SQLite/PostgreSQL.
+ * [INPUT]: Depends on sqlc-generated PostgreSQL queries, pgx pooling, versioned Atlas SQL migrations, Hub database configuration, and canonical Skill IDs.
+ * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, immutable Release Records, native pgx transaction scopes shared with River, current-release search projections, and source cache state.
  * [POS]: Serves as the Hub identity and search data boundary while artifact bytes and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,26 +12,17 @@ import (
 	"bytes"
 	"context"
 	"crypto/sha256"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"time"
 
-	"entgo.io/ent/dialect"
-	entsql "entgo.io/ent/dialect/sql"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jackc/pgx/v5/stdlib"
-	"github.com/jmoiron/sqlx"
-	catalogent "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent"
-	entrepository "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
-	entskill "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/pgxent"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/catalogsqlc"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	skillpkg "github.com/skillsgo/skillsgo/hub/pkg/skill"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
@@ -39,120 +30,70 @@ import (
 	protocolskillmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	"golang.org/x/mod/module"
 	"golang.org/x/mod/semver"
-	_ "modernc.org/sqlite"
-)
-
-type Dialect string
-
-const (
-	SQLite   Dialect = "sqlite"
-	Postgres Dialect = "postgres"
 )
 
 func skillResourceID(repositoryID, name string) string { return repositoryID + ":" + name }
 
 type Catalog struct {
-	db      *sqlx.DB
-	orm     *catalogent.Client
-	dialect Dialect
-	pgxPool *pgxpool.Pool
+	pool    *pgxpool.Pool
+	queries *catalogsqlc.Queries
 }
 
 func Open(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
-	var sqlDB *sql.DB
-	var pgxPool *pgxpool.Pool
-	var driverName, entDialect string
-	switch Dialect(cfg.Type) {
-	case SQLite:
-		if err := os.MkdirAll(filepath.Dir(cfg.DSN), 0o755); err != nil {
-			return nil, fmt.Errorf("create metadata directory: %w", err)
-		}
-		dsn := "file:" + filepath.ToSlash(cfg.DSN) + "?_pragma=foreign_keys(1)&_pragma=journal_mode(WAL)&_pragma=busy_timeout(5000)"
-		driverName, entDialect = "sqlite", dialect.SQLite
-		sqlDB, _ = sql.Open(driverName, dsn)
-	case Postgres:
-		driverName, entDialect = "pgx", dialect.Postgres
-		poolConfig, err := pgxpool.ParseConfig(cfg.DSN)
-		if err != nil {
-			return nil, fmt.Errorf("parse metadata database DSN: %w", err)
-		}
-		poolConfig.MaxConns = int32(cfg.MaxOpenConns)
-		if cfg.ConnMaxLifetime > 0 {
-			poolConfig.MaxConnLifetime = time.Duration(cfg.ConnMaxLifetime) * time.Second
-		}
-		pgxPool, err = pgxpool.NewWithConfig(ctx, poolConfig)
-		if err != nil {
-			return nil, fmt.Errorf("create metadata database pool: %w", err)
-		}
-		if err := pgxPool.Ping(ctx); err != nil {
-			pgxPool.Close()
-			return nil, fmt.Errorf("connect metadata database pool: %w", err)
-		}
-		sqlDB = stdlib.OpenDBFromPool(pgxPool)
-	default:
+	if cfg.Type != "postgres" {
 		return nil, fmt.Errorf("unsupported database type %q", cfg.Type)
 	}
-	sqlDB.SetMaxOpenConns(cfg.MaxOpenConns)
-	sqlDB.SetMaxIdleConns(cfg.MaxIdleConns)
-	sqlDB.SetConnMaxLifetime(time.Duration(cfg.ConnMaxLifetime) * time.Second)
-	if err := sqlDB.PingContext(ctx); err != nil {
-		_ = sqlDB.Close()
-		if pgxPool != nil {
-			pgxPool.Close()
-		}
-		return nil, fmt.Errorf("connect metadata database: %w", err)
+	poolConfig, err := pgxpool.ParseConfig(cfg.DSN)
+	if err != nil {
+		return nil, fmt.Errorf("parse metadata database DSN: %w", err)
 	}
-	driver := entsql.OpenDB(entDialect, sqlDB)
-	c := &Catalog{db: sqlx.NewDb(sqlDB, driverName), orm: catalogent.NewClient(catalogent.Driver(driver)), dialect: Dialect(cfg.Type), pgxPool: pgxPool}
+	poolConfig.MaxConns = int32(cfg.MaxOpenConns)
+	if cfg.ConnMaxLifetime > 0 {
+		poolConfig.MaxConnLifetime = time.Duration(cfg.ConnMaxLifetime) * time.Second
+	}
+	pool, err := pgxpool.NewWithConfig(ctx, poolConfig)
+	if err != nil {
+		return nil, fmt.Errorf("create metadata database pool: %w", err)
+	}
+	if err := pool.Ping(ctx); err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("connect metadata database pool: %w", err)
+	}
+	c := &Catalog{pool: pool, queries: catalogsqlc.New(pool)}
 	if err := c.Migrate(ctx); err != nil {
-		_ = c.orm.Close()
-		if c.pgxPool != nil {
-			c.pgxPool.Close()
-		}
+		pool.Close()
 		return nil, err
 	}
 	return c, nil
 }
 
 func (c *Catalog) Close() error {
-	err := c.orm.Close()
-	if c.pgxPool != nil {
-		c.pgxPool.Close()
-	}
-	return err
+	c.pool.Close()
+	return nil
 }
 
-// PostgresPool returns the shared native PostgreSQL pool used by Catalog.
-// It is nil for SQLite catalogs and remains owned by Catalog.
-func (c *Catalog) PostgresPool() *pgxpool.Pool { return c.pgxPool }
+// PostgresPool returns the shared native PostgreSQL pool owned by Catalog.
+func (c *Catalog) PostgresPool() *pgxpool.Pool { return c.pool }
 
-// WithPostgresTx runs fn with a generated Ent client and the exact native pgx
-// transaction that can also be passed to River InsertTx. The callback must not
-// commit, roll back, or close either argument.
-func (c *Catalog) WithPostgresTx(ctx context.Context, fn func(*catalogent.Client, pgx.Tx) error) error {
+// WithPostgresTx runs fn with the exact native pgx transaction that can also be
+// passed to River InsertTx. The callback must not commit or roll it back.
+func (c *Catalog) WithPostgresTx(ctx context.Context, fn func(pgx.Tx) error) error {
 	return c.WithPostgresTxOptions(ctx, pgx.TxOptions{}, fn)
 }
 
 // WithPostgresTxOptions is WithPostgresTx with explicit pgx transaction options.
-func (c *Catalog) WithPostgresTxOptions(ctx context.Context, opts pgx.TxOptions, fn func(*catalogent.Client, pgx.Tx) error) error {
-	if c.pgxPool == nil {
-		return errors.New("native PostgreSQL transactions are unavailable for this Catalog dialect")
-	}
+func (c *Catalog) WithPostgresTxOptions(ctx context.Context, opts pgx.TxOptions, fn func(pgx.Tx) error) error {
 	if fn == nil {
 		return errors.New("PostgreSQL transaction callback is required")
 	}
-	tx, err := c.pgxPool.BeginTx(ctx, opts)
+	tx, err := c.pool.BeginTx(ctx, opts)
 	if err != nil {
 		return fmt.Errorf("begin PostgreSQL transaction: %w", err)
 	}
 	// pgx documents Rollback as safe after Commit. Keeping it unconditional
 	// also releases the transaction on panic and testing/runtime Goexit paths.
 	defer func() { _ = tx.Rollback(context.Background()) }()
-	txClient, err := pgxent.NewClient(tx)
-	if err != nil {
-		return errors.Join(err, tx.Rollback(context.Background()))
-	}
-	if err := fn(txClient, tx); err != nil {
+	if err := fn(tx); err != nil {
 		return errors.Join(err, tx.Rollback(context.Background()))
 	}
 	if err := tx.Commit(ctx); err != nil {
@@ -223,23 +164,13 @@ func (c *Catalog) TranslationCandidates(ctx context.Context, locale, promptVersi
 	if limit <= 0 || limit > 500 {
 		limit = 100
 	}
-	var rows []TranslationCandidate
-	query := `SELECT 'repository' AS resource_kind, r.repository_id AS resource_id, r.description,
-		COALESCE(ld.source_digest, '') AS source_digest, COALESCE(ld.prompt_version, '') AS prompt_version
-		FROM repositories r LEFT JOIN localized_descriptions ld
-		ON ld.resource_kind = 'repository' AND ld.resource_id = r.repository_id AND ld.locale = ?
-		WHERE trim(r.description) <> ''
-		UNION ALL
-		SELECT 'skill', r.repository_id || ':' || s.name, s.description, COALESCE(ld.source_digest, ''), COALESCE(ld.prompt_version, '')
-		FROM skills s JOIN repositories r ON r.id = s.repository_id LEFT JOIN localized_descriptions ld
-		ON ld.resource_kind = 'skill' AND ld.resource_id = r.repository_id || ':' || s.name AND ld.locale = ?
-		WHERE trim(s.description) <> ''
-		ORDER BY resource_kind, resource_id`
-	if err := c.db.SelectContext(ctx, &rows, c.db.Rebind(query), locale, locale); err != nil {
+	stored, err := c.queries.TranslationCandidates(ctx, locale)
+	if err != nil {
 		return nil, err
 	}
 	candidates := make([]TranslationCandidate, 0, limit)
-	for _, row := range rows {
+	for _, item := range stored {
+		row := TranslationCandidate{ResourceKind: item.ResourceKind, ResourceID: item.ResourceID, Description: item.Description, SourceDigest: item.SourceDigest, PromptVersion: item.PromptVersion}
 		if row.SourceDigest == DescriptionDigest(row.Description) && row.PromptVersion == promptVersion {
 			continue
 		}
@@ -252,21 +183,15 @@ func (c *Catalog) TranslationCandidates(ctx context.Context, locale, promptVersi
 }
 
 func (c *Catalog) UpsertLocalizedDescription(ctx context.Context, item LocalizedDescription) error {
-	_, err := c.db.ExecContext(ctx, c.db.Rebind(`INSERT INTO localized_descriptions
-		(resource_kind, resource_id, locale, description, source_digest, prompt_version, created_at, updated_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-		ON CONFLICT(resource_kind, resource_id, locale) DO UPDATE SET
-		description = excluded.description, source_digest = excluded.source_digest,
-		prompt_version = excluded.prompt_version, updated_at = excluded.updated_at`),
-		item.ResourceKind, item.ResourceID, item.Locale, item.Description, item.SourceDigest, item.PromptVersion, time.Now().UTC(), time.Now().UTC())
-	return err
+	return c.queries.UpsertLocalizedDescription(ctx, catalogsqlc.UpsertLocalizedDescriptionParams{
+		ResourceKind: item.ResourceKind, ResourceID: item.ResourceID, Locale: item.Locale, Description: item.Description,
+		SourceDigest: item.SourceDigest, PromptVersion: item.PromptVersion, CreatedAt: time.Now().UTC(),
+	})
 }
 
 func (c *Catalog) LocalizedDescription(ctx context.Context, resourceKind, resourceID, locale string) (string, bool, error) {
-	var description string
-	err := c.db.GetContext(ctx, &description, c.db.Rebind(`SELECT description FROM localized_descriptions
-		WHERE resource_kind = ? AND resource_id = ? AND locale = ?`), resourceKind, resourceID, locale)
-	if errors.Is(err, sql.ErrNoRows) {
+	description, err := c.queries.LocalizedDescription(ctx, catalogsqlc.LocalizedDescriptionParams{ResourceKind: resourceKind, ResourceID: resourceID, Locale: locale})
+	if errors.Is(err, pgx.ErrNoRows) {
 		return "", false, nil
 	}
 	return description, err == nil, err
@@ -354,34 +279,31 @@ func (c *Catalog) publishRepositoryVersionWithVisibility(ctx context.Context, re
 		return fmt.Errorf("decode Repository Release Record: %w", err)
 	}
 	version, commitSHA := release.Version, release.CommitSHA
-	tx, err := c.db.BeginTxx(ctx, nil)
+	tx, err := c.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = tx.Rollback() }()
-	existing := make([]RepositoryReleaseMember, 0)
-	var publicationCount int
-	if err := tx.GetContext(ctx, &publicationCount, c.db.Rebind(`SELECT COUNT(*) FROM repository_releases rp
-		JOIN repositories r ON r.id = rp.repository_id WHERE r.repository_id = ? AND rp.version = ?`), repositoryID, version); err != nil {
+	defer func() { _ = tx.Rollback(context.Background()) }()
+	q := c.queries.WithTx(tx)
+	params := catalogsqlc.RepositoryReleaseCountParams{RepositoryID: repositoryID, Version: version}
+	publicationCount, err := q.RepositoryReleaseCount(ctx, params)
+	if err != nil {
 		return err
 	}
 	if publicationCount > 0 && len(releaseInfo) > 0 {
-		var existingReleaseInfo []byte
-		if err := tx.GetContext(ctx, &existingReleaseInfo, c.db.Rebind(`SELECT rp.release_info FROM repository_releases rp
-			JOIN repositories r ON r.id = rp.repository_id WHERE r.repository_id = ? AND rp.version = ?`), repositoryID, version); err != nil {
+		existingReleaseInfo, err := q.RepositoryReleaseInfo(ctx, catalogsqlc.RepositoryReleaseInfoParams{RepositoryID: repositoryID, Version: version})
+		if err != nil {
 			return err
 		}
 		if len(existingReleaseInfo) > 0 && !bytes.Equal(existingReleaseInfo, releaseInfo) {
 			return fmt.Errorf("immutable Repository Release Record conflict for %s@%s", repositoryID, version)
 		}
 	}
-	query := `SELECT rpm.name, rp.version, rp.commit_sha, rpm.tree_sha, rpm.skill_path, rp.commit_time
-FROM repositories AS r JOIN repository_releases AS rp ON rp.repository_id = r.id
-JOIN repository_release_members AS rpm ON rpm.release_id = rp.id
-WHERE r.repository_id = ? AND rp.version = ? ORDER BY rpm.name ASC`
-	if err := tx.SelectContext(ctx, &existing, c.db.Rebind(query), repositoryID, version); err != nil {
+	storedMembers, err := q.RepositoryReleaseMembers(ctx, catalogsqlc.RepositoryReleaseMembersParams{RepositoryID: repositoryID, Version: version})
+	if err != nil {
 		return err
 	}
+	existing := mapReleaseMembers(storedMembers)
 	byCandidateName := make(map[string]PublishedSkill, len(candidates))
 	for _, candidate := range candidates {
 		byCandidateName[candidate.Skill.Name] = candidate
@@ -402,82 +324,66 @@ WHERE r.repository_id = ? AND rp.version = ? ORDER BY rpm.name ASC`
 		}
 		if visibility == CurrentPublication {
 			now := time.Now().UTC()
-			var repositoryRowID int64
-			if err := tx.GetContext(ctx, &repositoryRowID, c.db.Rebind("SELECT id FROM repositories WHERE repository_id = ?"), repositoryID); err != nil {
+			repository, err := q.RepositoryByIdentity(ctx, repositoryID)
+			if err != nil {
 				return err
 			}
-			if err := replaceCurrentSkillProjection(ctx, c, tx, repositoryRowID, repositoryID, candidates, now); err != nil {
+			if err := replaceCurrentSkillProjection(ctx, q, repository.ID, repositoryID, candidates, now); err != nil {
 				return err
 			}
-			if _, err := tx.ExecContext(ctx, c.db.Rebind(`UPDATE repositories SET current_release_id =
-				(SELECT id FROM repository_releases WHERE repository_id = repositories.id AND version = ?), updated_at = ?
-				WHERE repository_id = ?`), version, now, repositoryID); err != nil {
+			if err := q.SetCurrentReleaseByVersion(ctx, catalogsqlc.SetCurrentReleaseByVersionParams{RepositoryID: repositoryID, Version: version, UpdatedAt: now}); err != nil {
 				return err
 			}
 		}
-		return tx.Commit()
+		return tx.Commit(ctx)
 	}
 	now := time.Now().UTC()
 	parts := strings.SplitN(repositoryID, "/", 2)
-	if _, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO repositories
-(source_host, repository_path, repository_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?)
-ON CONFLICT (repository_id) DO UPDATE SET updated_at = excluded.updated_at`), parts[0], parts[1], repositoryID, now, now); err != nil {
-		return err
-	}
-	var repositoryRowID int64
-	if err := tx.GetContext(ctx, &repositoryRowID, c.db.Rebind("SELECT id FROM repositories WHERE repository_id = ?"), repositoryID); err != nil {
+	repository, err := q.UpsertRepository(ctx, catalogsqlc.UpsertRepositoryParams{SourceHost: parts[0], RepositoryPath: parts[1], RepositoryID: repositoryID, CreatedAt: now})
+	if err != nil {
 		return err
 	}
 	if visibility == CurrentPublication {
-		if err := replaceCurrentSkillProjection(ctx, c, tx, repositoryRowID, repositoryID, candidates, now); err != nil {
+		if err := replaceCurrentSkillProjection(ctx, q, repository.ID, repositoryID, candidates, now); err != nil {
 			return err
 		}
 	}
-	if err := recordRepositoryRelease(ctx, c, tx, repositoryRowID, version, commitSHA, visibility == CurrentPublication, release, candidates, releaseInfo, now); err != nil {
+	if err := recordRepositoryRelease(ctx, q, repository.ID, version, commitSHA, visibility == CurrentPublication, release, candidates, releaseInfo, now); err != nil {
 		return err
 	}
-	return tx.Commit()
+	return tx.Commit(ctx)
 }
 
-func replaceCurrentSkillProjection(ctx context.Context, c *Catalog, tx *sqlx.Tx, repositoryRowID int64, repositoryID string, candidates []PublishedSkill, now time.Time) error {
-	if _, err := tx.ExecContext(ctx, c.db.Rebind("DELETE FROM skills WHERE repository_id = ?"), repositoryRowID); err != nil {
+func replaceCurrentSkillProjection(ctx context.Context, q *catalogsqlc.Queries, repositoryRowID int64, repositoryID string, candidates []PublishedSkill, now time.Time) error {
+	if err := q.DeleteRepositorySkills(ctx, repositoryRowID); err != nil {
 		return err
 	}
 	parts := strings.SplitN(repositoryID, "/", 2)
 	for _, candidate := range candidates {
-		if _, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO skills
-(repository_id, name, description, source_host, repository, skill_path, verified, created_at, updated_at)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`), repositoryRowID, candidate.Skill.Name, candidate.Skill.Description,
-			parts[0], parts[1], candidate.Member.SkillPath, candidate.Skill.Verified, now, now); err != nil {
+		if err := q.InsertSkill(ctx, catalogsqlc.InsertSkillParams{RepositoryID: repositoryRowID, Name: candidate.Skill.Name,
+			Description: candidate.Skill.Description, SourceHost: parts[0], Repository: parts[1], SkillPath: candidate.Member.SkillPath,
+			Verified: candidate.Skill.Verified, CreatedAt: now, UpdatedAt: now}); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func recordRepositoryRelease(ctx context.Context, c *Catalog, tx *sqlx.Tx, repositoryRowID int64, version, commitSHA string, makeCurrent bool, release protocolapi.RepositoryInfo, candidates []PublishedSkill, releaseInfo []byte, createdAt time.Time) error {
-	result, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO repository_releases
-		(repository_id, version, commit_sha, tree_sha, sum, archive_size, release_info, commit_time, created_at)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`), repositoryRowID, version, commitSHA, release.TreeSHA,
-		release.Sum, release.ArchiveSize, releaseInfo, release.Time, createdAt)
+func recordRepositoryRelease(ctx context.Context, q *catalogsqlc.Queries, repositoryRowID int64, version, commitSHA string, makeCurrent bool, release protocolapi.RepositoryInfo, candidates []PublishedSkill, releaseInfo []byte, createdAt time.Time) error {
+	releaseRowID, err := q.InsertRepositoryRelease(ctx, catalogsqlc.InsertRepositoryReleaseParams{RepositoryID: repositoryRowID,
+		Version: version, CommitSha: commitSHA, TreeSha: release.TreeSHA, Sum: release.Sum, ArchiveSize: release.ArchiveSize,
+		ReleaseInfo: releaseInfo, CommitTime: release.Time, CreatedAt: createdAt})
 	if err != nil {
 		return err
 	}
-	releaseRowID, err := result.LastInsertId()
-	if err != nil || c.dialect == Postgres {
-		if err := tx.GetContext(ctx, &releaseRowID, c.db.Rebind(`SELECT id FROM repository_releases WHERE repository_id = ? AND version = ?`), repositoryRowID, version); err != nil {
-			return err
-		}
-	}
 	for _, candidate := range candidates {
-		if _, err := tx.ExecContext(ctx, c.db.Rebind(`INSERT INTO repository_release_members
-			(release_id, name, skill_path, tree_sha) VALUES (?, ?, ?, ?)`),
-			releaseRowID, candidate.Skill.Name, candidate.Member.SkillPath, candidate.Member.TreeSHA); err != nil {
+		if err := q.InsertRepositoryReleaseMember(ctx, catalogsqlc.InsertRepositoryReleaseMemberParams{ReleaseID: releaseRowID,
+			Name: candidate.Skill.Name, SkillPath: candidate.Member.SkillPath, TreeSha: candidate.Member.TreeSHA}); err != nil {
 			return err
 		}
 	}
 	if makeCurrent {
-		_, err = tx.ExecContext(ctx, c.db.Rebind(`UPDATE repositories SET current_release_id = ?, updated_at = ? WHERE id = ?`), releaseRowID, createdAt, repositoryRowID)
+		err = q.SetCurrentRelease(ctx, catalogsqlc.SetCurrentReleaseParams{ID: repositoryRowID, CurrentReleaseID: pgtype.Int8{Int64: releaseRowID, Valid: true}, UpdatedAt: createdAt})
 	}
 	return nil
 }
@@ -489,10 +395,8 @@ func (c *Catalog) RepositoryReleaseInfo(ctx context.Context, repositoryID, versi
 	if err != nil || parsed.String() != repositoryID {
 		return nil, false, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
 	}
-	var encoded []byte
-	err = c.db.GetContext(ctx, &encoded, c.db.Rebind(`SELECT rp.release_info FROM repository_releases rp
-		JOIN repositories r ON r.id = rp.repository_id WHERE r.repository_id = ? AND rp.version = ?`), repositoryID, version)
-	if errors.Is(err, sql.ErrNoRows) || (err == nil && len(encoded) == 0) {
+	encoded, err := c.queries.RepositoryReleaseInfo(ctx, catalogsqlc.RepositoryReleaseInfoParams{RepositoryID: repositoryID, Version: version})
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && len(encoded) == 0) {
 		return nil, false, nil
 	}
 	if err != nil {
@@ -525,13 +429,9 @@ func (c *Catalog) UpsertSkill(ctx context.Context, skill *Skill) error {
 		skill.CreatedAt = now
 	}
 	skill.UpdatedAt = now
-	stored, err := c.orm.Skill.Create().
-		SetRepositoryID(repository.RowID).SetSourceRepositoryID(repository.RowID).
-		SetName(skill.Name).SetDescription(skill.Description).
-		SetSourceHost(skill.SourceHost).SetRepository(skill.Repository).SetSkillPath(skill.SkillPath).
-		SetVerified(skill.Verified).
-		SetCreatedAt(skill.CreatedAt).SetUpdatedAt(skill.UpdatedAt).
-		OnConflictColumns(entskill.FieldRepositoryID, entskill.FieldName).UpdateNewValues().ID(ctx)
+	stored, err := c.queries.UpsertSkill(ctx, catalogsqlc.UpsertSkillParams{RepositoryID: repository.RowID, Name: skill.Name,
+		Description: skill.Description, SourceHost: skill.SourceHost, Repository: skill.Repository, SkillPath: skill.SkillPath,
+		Verified: skill.Verified, CreatedAt: skill.CreatedAt, UpdatedAt: skill.UpdatedAt})
 	if err == nil {
 		skill.RowID = stored
 	}
@@ -551,18 +451,11 @@ func (c *Catalog) RegisterRepository(ctx context.Context, repositoryID string) (
 		return nil, fmt.Errorf("invalid Repository ID %q", repositoryID)
 	}
 	now := time.Now().UTC()
-	rowID, err := c.orm.Repository.Create().
-		SetSourceHost(parts[0]).SetRepositoryPath(parts[1]).SetRepositoryID(parsed.Repository).
-		SetCreatedAt(now).SetUpdatedAt(now).
-		OnConflictColumns(entrepository.FieldRepositoryID).SetUpdatedAt(now).ID(ctx)
+	stored, err := c.queries.UpsertRepository(ctx, catalogsqlc.UpsertRepositoryParams{SourceHost: parts[0], RepositoryPath: parts[1], RepositoryID: parsed.Repository, CreatedAt: now})
 	if err != nil {
 		return nil, err
 	}
-	stored, err := c.orm.Repository.Get(ctx, rowID)
-	if err != nil {
-		return nil, err
-	}
-	return repositoryFromEnt(stored), nil
+	return repositoryFromSQLC(stored), nil
 }
 
 func (c *Catalog) Repository(ctx context.Context, repositoryID string) (*Repository, error) {
@@ -570,14 +463,11 @@ func (c *Catalog) Repository(ctx context.Context, repositoryID string) (*Reposit
 	if err != nil || parsed.String() != repositoryID {
 		return nil, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
 	}
-	stored, err := c.orm.Repository.Query().Where(entrepository.RepositoryIDEQ(repositoryID)).Only(ctx)
+	stored, err := c.queries.RepositoryByIdentity(ctx, repositoryID)
 	if err != nil {
-		if catalogent.IsNotFound(err) {
-			return nil, sql.ErrNoRows
-		}
 		return nil, err
 	}
-	return repositoryFromEnt(stored), nil
+	return repositoryFromSQLC(stored), nil
 }
 
 func (c *Catalog) RepositoryReleaseMembers(ctx context.Context, repositoryID, version string) ([]RepositoryReleaseMember, error) {
@@ -585,36 +475,22 @@ func (c *Catalog) RepositoryReleaseMembers(ctx context.Context, repositoryID, ve
 	if err != nil || parsed.String() != repositoryID {
 		return nil, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
 	}
-	statement := `SELECT rpm.release_id, rpm.name, rp.version, rp.commit_sha,
-		rpm.tree_sha, rpm.skill_path, rp.commit_time
-		FROM repositories AS r JOIN repository_releases AS rp ON rp.repository_id = r.id
-		JOIN repository_release_members AS rpm ON rpm.release_id = rp.id
-		WHERE r.repository_id = ? AND rp.version = ?
-		ORDER BY CASE WHEN rpm.skill_path = '.' THEN 0 ELSE 1 END, rpm.name ASC`
-	members := make([]RepositoryReleaseMember, 0)
-	if err := c.db.SelectContext(ctx, &members, c.db.Rebind(statement), repositoryID, version); err != nil {
+	rows, err := c.queries.RepositoryReleaseMembers(ctx, catalogsqlc.RepositoryReleaseMembersParams{RepositoryID: repositoryID, Version: version})
+	if err != nil {
 		return nil, err
 	}
-	return members, nil
+	return mapReleaseMembers(rows), nil
 }
 
 func (c *Catalog) UpdateRepositorySourceMetadata(ctx context.Context, repositoryID, description string, stars int64, etag string, checkedAt *time.Time, retryAt *time.Time) error {
 	if stars < 0 {
 		return fmt.Errorf("repository stars cannot be negative")
 	}
-	update := c.orm.Repository.Update().Where(entrepository.RepositoryIDEQ(repositoryID)).
-		SetDescription(description).SetStars(stars).SetSourceMetadataEtag(etag)
-	if checkedAt != nil {
-		update.SetSourceMetadataCheckedAt(*checkedAt)
-	}
-	if retryAt == nil {
-		update.ClearSourceMetadataRetryAt()
-	} else {
-		update.SetSourceMetadataRetryAt(*retryAt)
-	}
-	updated, err := update.Save(ctx)
+	updated, err := c.queries.UpdateRepositorySourceMetadata(ctx, catalogsqlc.UpdateRepositorySourceMetadataParams{
+		RepositoryID: repositoryID, Description: description, Stars: stars, SourceMetadataEtag: pgtype.Text{String: etag, Valid: etag != ""},
+		SourceMetadataCheckedAt: checkedAt, SourceMetadataRetryAt: retryAt})
 	if err == nil && updated == 0 {
-		return sql.ErrNoRows
+		return pgx.ErrNoRows
 	}
 	return err
 }
@@ -622,23 +498,17 @@ func (c *Catalog) UpdateRepositorySourceMetadata(ctx context.Context, repository
 // SkillByCoordinate resolves one public Repository ID plus canonical Skill
 // name without exposing the Catalog's internal persistence key.
 func (c *Catalog) SkillByCoordinate(ctx context.Context, repositoryID, name string) (*Skill, error) {
-	var stored Skill
-	err := c.db.GetContext(ctx, &stored, c.db.Rebind(`SELECT s.*, r.repository_id AS repository_identity, r.stars AS stars,
-		COALESCE(cr.version, '') AS latest_version
-FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
-LEFT JOIN repository_releases cr ON cr.id = r.current_release_id
-WHERE r.repository_id = ? AND s.name = ?`), repositoryID, name)
-	return &stored, err
+	stored, err := c.queries.SkillByCoordinate(ctx, catalogsqlc.SkillByCoordinateParams{RepositoryID: repositoryID, Name: name})
+	if err != nil {
+		return nil, err
+	}
+	return skillFromSQLC(stored.ID, stored.RepositoryID, stored.RepositoryIdentity, stored.Name, stored.Description, stored.SourceHost, stored.Repository, stored.SkillPath, stored.LatestVersion, stored.Stars, stored.Verified, stored.CreatedAt, stored.UpdatedAt), nil
 }
 
 // SkillPublishedVersions returns Repository Release versions containing one Skill.
 func (c *Catalog) SkillPublishedVersions(ctx context.Context, repositoryID, name string) ([]string, error) {
-	statement := `SELECT rr.version FROM repositories r
-		JOIN repository_releases rr ON rr.repository_id = r.id
-		JOIN repository_release_members rrm ON rrm.release_id = rr.id
-		WHERE r.repository_id = ? AND rrm.name = ? ORDER BY rr.version ASC`
-	versions := make([]string, 0)
-	if err := c.db.SelectContext(ctx, &versions, c.db.Rebind(statement), repositoryID, name); err != nil {
+	versions, err := c.queries.SkillPublishedVersions(ctx, catalogsqlc.SkillPublishedVersionsParams{RepositoryID: repositoryID, Name: name})
+	if err != nil {
 		return nil, err
 	}
 	filtered := versions[:0]
@@ -654,15 +524,11 @@ func (c *Catalog) SkillPublishedVersions(ctx context.Context, repositoryID, name
 // CurrentRepositoryReleaseMember returns the immutable member snapshot selected
 // by the Repository's current Catalog Release pointer.
 func (c *Catalog) CurrentRepositoryReleaseMember(ctx context.Context, repositoryID, name string) (*RepositoryReleaseMember, error) {
-	statement := `SELECT rrm.release_id, rrm.name, rr.version, rr.commit_sha,
-		rrm.tree_sha, rrm.skill_path, rr.commit_time
-		FROM repositories r JOIN repository_releases rr ON rr.id = r.current_release_id
-		JOIN repository_release_members rrm ON rrm.release_id = rr.id
-		WHERE r.repository_id = ? AND rrm.name = ?`
-	var member RepositoryReleaseMember
-	if err := c.db.GetContext(ctx, &member, c.db.Rebind(statement), repositoryID, name); err != nil {
+	row, err := c.queries.CurrentRepositoryReleaseMember(ctx, catalogsqlc.CurrentRepositoryReleaseMemberParams{RepositoryID: repositoryID, Name: name})
+	if err != nil {
 		return nil, err
 	}
+	member := RepositoryReleaseMember{ReleaseRowID: row.ReleaseID, Name: row.Name, Version: row.Version, CommitSHA: row.CommitSha, TreeSHA: row.TreeSha, SkillPath: row.SkillPath, CommitTime: row.CommitTime.UTC()}
 	return &member, nil
 }
 
@@ -673,13 +539,15 @@ func (c *Catalog) Skills(ctx context.Context, limit, offset int) ([]Skill, error
 	if offset < 0 {
 		offset = 0
 	}
-	var skills []Skill
-	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(`SELECT s.*, r.repository_id AS repository_identity, r.stars AS stars,
-	COALESCE(cr.version, '') AS latest_version
-FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
-LEFT JOIN repository_releases cr ON cr.id = r.current_release_id
-ORDER BY s.verified DESC, s.name ASC LIMIT ? OFFSET ?`), limit, offset)
-	return skills, err
+	rows, err := c.queries.ListSkills(ctx, catalogsqlc.ListSkillsParams{Limit: int32(limit), Offset: int32(offset)})
+	if err != nil {
+		return nil, err
+	}
+	skills := make([]Skill, 0, len(rows))
+	for _, row := range rows {
+		skills = append(skills, *skillFromSQLC(row.ID, row.RepositoryID, row.RepositoryIdentity, row.Name, row.Description, row.SourceHost, row.Repository, row.SkillPath, row.LatestVersion, row.Stars, row.Verified, row.CreatedAt, row.UpdatedAt))
+	}
+	return skills, nil
 }
 
 func (c *Catalog) Search(ctx context.Context, query string, limit, offset int) ([]SearchSkill, error) {
@@ -687,35 +555,27 @@ func (c *Catalog) Search(ctx context.Context, query string, limit, offset int) (
 	if offset < 0 {
 		offset = 0
 	}
-	query = strings.TrimSpace(query)
-	var skills []SearchSkill
-	statement := `SELECT s.*, r.repository_id AS repository_identity, r.stars AS stars,
-COALESCE(cr.version, '') AS latest_version
-FROM skills AS s JOIN repositories AS r ON r.id = s.repository_id
-LEFT JOIN repository_releases cr ON cr.id = r.current_release_id`
-	args := make([]any, 0, 5)
-	order := "s.verified DESC, s.name ASC"
-	predicates := make([]string, 0, 1)
-	if query != "" {
-		if c.dialect == Postgres {
-			text := "s.name || ' ' || s.description || ' ' || r.repository_id"
-			predicates = append(predicates, "("+text+") ILIKE ?")
-			args = append(args, "%"+query+"%")
-			order = "similarity(" + text + ", ?) DESC, s.verified DESC, s.name ASC"
-			args = append(args, query)
-		} else {
-			like := "%" + strings.ToLower(query) + "%"
-			predicates = append(predicates, "(lower(s.name) LIKE ? OR lower(s.description) LIKE ? OR lower(r.repository_id) LIKE ?)")
-			args = append(args, like, like, like)
+	trimmed := strings.TrimSpace(query)
+	if trimmed == "" {
+		rows, err := c.Skills(ctx, limit, offset)
+		if err != nil {
+			return nil, err
 		}
+		results := make([]SearchSkill, 0, len(rows))
+		for _, row := range rows {
+			results = append(results, SearchSkill{Skill: row})
+		}
+		return results, nil
 	}
-	if len(predicates) > 0 {
-		statement += " WHERE " + strings.Join(predicates, " AND ")
+	rows, err := c.queries.SearchSkills(ctx, catalogsqlc.SearchSkillsParams{Query: pgtype.Text{String: trimmed, Valid: trimmed != ""}, PageLimit: int32(limit), PageOffset: int32(offset)})
+	if err != nil {
+		return nil, err
 	}
-	statement += " ORDER BY " + order + " LIMIT ? OFFSET ?"
-	args = append(args, limit, offset)
-	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(statement), args...)
-	return skills, err
+	skills := make([]SearchSkill, 0, len(rows))
+	for _, row := range rows {
+		skills = append(skills, SearchSkill{Skill: *skillFromSQLC(row.ID, row.RepositoryID, row.RepositoryIdentity, row.Name, row.Description, row.SourceHost, row.Repository, row.SkillPath, row.LatestVersion, row.Stars, row.Verified, row.CreatedAt, row.UpdatedAt)})
+	}
+	return skills, nil
 }
 
 // SearchLocalized searches original and Hub-owned localized descriptions while preserving canonical identities.
@@ -728,37 +588,44 @@ func (c *Catalog) SearchLocalized(ctx context.Context, query, locale string, lim
 	if offset < 0 {
 		offset = 0
 	}
-	like := "%" + strings.ToLower(strings.TrimSpace(query)) + "%"
-	statement := `SELECT s.id, s.repository_id, r.repository_id AS repository_identity, s.name,
-		COALESCE(ls.description, s.description) AS description,
-			s.source_host, s.repository, s.skill_path, COALESCE(cr.version, '') AS latest_version, r.stars AS stars,
-			s.verified, s.created_at, s.updated_at
-		FROM skills s JOIN repositories r ON r.id = s.repository_id
-		LEFT JOIN repository_releases cr ON cr.id = r.current_release_id
-		LEFT JOIN localized_descriptions ls ON ls.resource_kind = 'skill' AND ls.resource_id = r.repository_id || ':' || s.name AND ls.locale = ?
-		LEFT JOIN localized_descriptions lr ON lr.resource_kind = 'repository' AND lr.resource_id = r.repository_id AND lr.locale = ?
-			WHERE (lower(s.name) LIKE ? OR lower(s.description) LIKE ? OR lower(r.repository_id) LIKE ?
-			OR lower(COALESCE(ls.description, '')) LIKE ? OR lower(COALESCE(lr.description, '')) LIKE ?)
-		ORDER BY s.verified DESC, s.name ASC LIMIT ? OFFSET ?`
-	var skills []SearchSkill
-	err := c.db.SelectContext(ctx, &skills, c.db.Rebind(statement), locale, locale, like, like, like, like, like, limit, offset)
-	return skills, err
-}
-
-func skillFromEnt(entity *catalogent.Skill) *Skill {
-	return &Skill{RowID: entity.ID, RepositoryRowID: entity.RepositoryID, Name: entity.Name, Description: entity.Description,
-		SourceHost: entity.SourceHost, Repository: entity.Repository, SkillPath: entity.SkillPath,
-		Verified:  entity.Verified,
-		CreatedAt: entity.CreatedAt, UpdatedAt: entity.UpdatedAt}
-}
-
-func repositoryFromEnt(entity *catalogent.Repository) *Repository {
-	return &Repository{
-		RowID: entity.ID, SourceHost: entity.SourceHost, RepositoryPath: entity.RepositoryPath,
-		RepositoryID: entity.RepositoryID, Description: entity.Description, Stars: entity.Stars, SourceMetadataETag: entity.SourceMetadataEtag,
-		SourceMetadataCheckedAt: entity.SourceMetadataCheckedAt, SourceMetadataRetryAt: entity.SourceMetadataRetryAt,
-		CreatedAt: entity.CreatedAt, UpdatedAt: entity.UpdatedAt,
+	rows, err := c.queries.SearchLocalizedSkills(ctx, catalogsqlc.SearchLocalizedSkillsParams{Query: strings.TrimSpace(query), Locale: locale, PageLimit: int32(limit), PageOffset: int32(offset)})
+	if err != nil {
+		return nil, err
 	}
+	skills := make([]SearchSkill, 0, len(rows))
+	for _, row := range rows {
+		skills = append(skills, SearchSkill{Skill: *skillFromSQLC(row.ID, row.RepositoryID, row.RepositoryIdentity, row.Name, row.Description, row.SourceHost, row.Repository, row.SkillPath, row.LatestVersion, row.Stars, row.Verified, row.CreatedAt, row.UpdatedAt)})
+	}
+	return skills, nil
+}
+
+func skillFromSQLC(id, repositoryRowID int64, repositoryID, name, description, sourceHost, repository, skillPath, latestVersion string, stars int64, verified bool, createdAt, updatedAt time.Time) *Skill {
+	return &Skill{RowID: id, RepositoryRowID: repositoryRowID, RepositoryID: repositoryID, Name: name, Description: description, SourceHost: sourceHost, Repository: repository, SkillPath: skillPath, LatestVersion: latestVersion, Stars: stars, Verified: verified, CreatedAt: createdAt.UTC(), UpdatedAt: updatedAt.UTC()}
+}
+
+func repositoryFromSQLC(entity catalogsqlc.Repository) *Repository {
+	return &Repository{
+		RowID: entity.ID, SourceHost: entity.SourceHost, RepositoryPath: entity.RepositoryPath, RepositoryID: entity.RepositoryID,
+		Description: entity.Description, Stars: entity.Stars, SourceMetadataETag: entity.SourceMetadataEtag.String,
+		SourceMetadataCheckedAt: utcTimePointer(entity.SourceMetadataCheckedAt), SourceMetadataRetryAt: utcTimePointer(entity.SourceMetadataRetryAt),
+		CreatedAt: entity.CreatedAt.UTC(), UpdatedAt: entity.UpdatedAt.UTC(),
+	}
+}
+
+func mapReleaseMembers(rows []catalogsqlc.RepositoryReleaseMembersRow) []RepositoryReleaseMember {
+	members := make([]RepositoryReleaseMember, 0, len(rows))
+	for _, row := range rows {
+		members = append(members, RepositoryReleaseMember{ReleaseRowID: row.ReleaseID, Name: row.Name, Version: row.Version, CommitSHA: row.CommitSha, TreeSHA: row.TreeSha, SkillPath: row.SkillPath, CommitTime: row.CommitTime.UTC()})
+	}
+	return members
+}
+
+func utcTimePointer(value *time.Time) *time.Time {
+	if value == nil {
+		return nil
+	}
+	utc := value.UTC()
+	return &utc
 }
 
 func normalizeQueryLimit(limit int) int {

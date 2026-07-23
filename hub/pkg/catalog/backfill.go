@@ -8,7 +8,6 @@ package catalog
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -16,7 +15,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
-	catalogent "github.com/skillsgo/skillsgo/hub/pkg/catalog/ent"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/catalogsqlc"
 )
 
 type BackfillStatus string
@@ -42,42 +41,21 @@ type BackfillRun struct {
 	UpdatedAt    time.Time      `json:"updatedAt"`
 }
 
-type backfillRunRow struct {
-	ID           string         `db:"id"`
-	RepositoryID string         `db:"repository_id"`
-	Status       BackfillStatus `db:"status"`
-	StartedAt    *time.Time     `db:"started_at"`
-	CompletedAt  *time.Time     `db:"completed_at"`
-	ErrorCount   int            `db:"error_count"`
-	Diagnostics  []byte         `db:"diagnostics"`
-	CreatedAt    time.Time      `db:"created_at"`
-	UpdatedAt    time.Time      `db:"updated_at"`
-}
-
 // SubmitBackfillRun atomically creates a queued run and invokes enqueue with
 // the same PostgreSQL transaction. An existing active run is returned without
 // invoking enqueue.
 func (c *Catalog) SubmitBackfillRun(ctx context.Context, repositoryID string, enqueue func(context.Context, pgx.Tx, BackfillRun) error) (BackfillRun, bool, error) {
-	if c.pgxPool == nil {
-		return BackfillRun{}, false, errors.New("Repository Backfill requires PostgreSQL")
-	}
 	if enqueue == nil {
 		return BackfillRun{}, false, errors.New("Backfill enqueue callback is required")
 	}
 	var result BackfillRun
 	created := false
-	err := c.WithPostgresTx(ctx, func(_ *catalogent.Client, tx pgx.Tx) error {
+	err := c.WithPostgresTx(ctx, func(tx pgx.Tx) error {
 		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, repositoryID); err != nil {
 			return fmt.Errorf("lock Repository Backfill submission: %w", err)
 		}
-		var row backfillRunRow
-		err := tx.QueryRow(ctx, `SELECT id, repository_id, status, started_at, completed_at,
-			error_count, diagnostics, created_at, updated_at
-			FROM repository_backfill_runs WHERE repository_id = $1 AND status IN ('queued', 'running')
-			ORDER BY created_at DESC LIMIT 1`, repositoryID).Scan(
-			&row.ID, &row.RepositoryID, &row.Status, &row.StartedAt, &row.CompletedAt,
-			&row.ErrorCount, &row.Diagnostics, &row.CreatedAt, &row.UpdatedAt,
-		)
+		q := c.queries.WithTx(tx)
+		row, err := q.ActiveBackfillRun(ctx, repositoryID)
 		if err == nil {
 			result, err = decodeBackfillRun(row)
 			return err
@@ -90,10 +68,7 @@ func (c *Catalog) SubmitBackfillRun(ctx context.Context, repositoryID string, en
 		if err != nil {
 			return err
 		}
-		if _, err := tx.Exec(ctx, `INSERT INTO repository_backfill_runs
-			(id, repository_id, status, error_count, diagnostics, created_at, updated_at)
-			VALUES ($1, $2, $3, 0, $4, $5, $6)`, result.ID, result.RepositoryID,
-			result.Status, encoded, result.CreatedAt, result.UpdatedAt); err != nil {
+		if err := q.InsertBackfillRun(ctx, catalogsqlc.InsertBackfillRunParams{ID: result.ID, RepositoryID: result.RepositoryID, Status: string(result.Status), Diagnostics: encoded, CreatedAt: result.CreatedAt}); err != nil {
 			return err
 		}
 		if err := enqueue(ctx, tx, result); err != nil {
@@ -106,10 +81,7 @@ func (c *Catalog) SubmitBackfillRun(ctx context.Context, repositoryID string, en
 }
 
 func (c *Catalog) LatestBackfillRun(ctx context.Context, repositoryID string) (BackfillRun, error) {
-	var row backfillRunRow
-	err := c.db.GetContext(ctx, &row, c.db.Rebind(`SELECT id, repository_id, status, started_at, completed_at,
-		error_count, diagnostics, created_at, updated_at
-		FROM repository_backfill_runs WHERE repository_id = ? ORDER BY created_at DESC LIMIT 1`), repositoryID)
+	row, err := c.queries.LatestBackfillRun(ctx, repositoryID)
 	if err != nil {
 		return BackfillRun{}, err
 	}
@@ -118,13 +90,7 @@ func (c *Catalog) LatestBackfillRun(ctx context.Context, repositoryID string) (B
 
 func (c *Catalog) StartBackfillRun(ctx context.Context, runID string) (BackfillRun, bool, error) {
 	now := time.Now().UTC()
-	result, err := c.db.ExecContext(ctx, c.db.Rebind(`UPDATE repository_backfill_runs
-		SET status = ?, started_at = COALESCE(started_at, ?), updated_at = ?
-		WHERE id = ? AND status = ?`), BackfillRunning, now, now, runID, BackfillQueued)
-	if err != nil {
-		return BackfillRun{}, false, err
-	}
-	changed, err := result.RowsAffected()
+	changed, err := c.queries.StartBackfillRun(ctx, catalogsqlc.StartBackfillRunParams{ID: runID, Now: now})
 	if err != nil {
 		return BackfillRun{}, false, err
 	}
@@ -142,34 +108,23 @@ func (c *Catalog) CompleteBackfillRun(ctx context.Context, runID string, errorCo
 		return err
 	}
 	now := time.Now().UTC()
-	result, err := c.db.ExecContext(ctx, c.db.Rebind(`UPDATE repository_backfill_runs
-		SET status = ?, completed_at = ?, error_count = ?, diagnostics = ?, updated_at = ?
-		WHERE id = ? AND status IN (?, ?)`), status, now, errorCount, encoded, now, runID, BackfillQueued, BackfillRunning)
-	if err != nil {
-		return err
-	}
-	changed, err := result.RowsAffected()
+	changed, err := c.queries.CompleteBackfillRun(ctx, catalogsqlc.CompleteBackfillRunParams{ID: runID, Status: string(status), CompletedAt: &now, ErrorCount: int32(errorCount), Diagnostics: encoded})
 	if err != nil {
 		return err
 	}
 	if changed == 0 {
-		return sql.ErrNoRows
+		return pgx.ErrNoRows
 	}
 	return nil
 }
 
 func (c *Catalog) TouchBackfillRun(ctx context.Context, runID string) error {
-	result, err := c.db.ExecContext(ctx, c.db.Rebind(`UPDATE repository_backfill_runs SET updated_at = ?
-		WHERE id = ? AND status = ?`), time.Now().UTC(), runID, BackfillRunning)
-	if err != nil {
-		return err
-	}
-	changed, err := result.RowsAffected()
+	changed, err := c.queries.TouchBackfillRun(ctx, catalogsqlc.TouchBackfillRunParams{ID: runID, UpdatedAt: time.Now().UTC()})
 	if err != nil {
 		return err
 	}
 	if changed == 0 {
-		return sql.ErrNoRows
+		return pgx.ErrNoRows
 	}
 	return nil
 }
@@ -183,24 +138,14 @@ func (c *Catalog) ExpireStaleBackfillRuns(ctx context.Context, before time.Time)
 		return 0, err
 	}
 	now := time.Now().UTC()
-	result, err := c.db.ExecContext(ctx, c.db.Rebind(`UPDATE repository_backfill_runs
-		SET status = ?, completed_at = ?, error_count = error_count + 1, diagnostics = ?, updated_at = ?
-		WHERE status = ? AND updated_at < ?`), BackfillCompleteWithErrors, now, diagnostics, now,
-		BackfillRunning, before.UTC())
-	if err != nil {
-		return 0, err
-	}
-	return result.RowsAffected()
+	return c.queries.ExpireStaleBackfillRuns(ctx, catalogsqlc.ExpireStaleBackfillRunsParams{UpdatedAt: before.UTC(), CompletedAt: &now, Diagnostics: diagnostics})
 }
 
 func (c *Catalog) StaleQueuedBackfillRuns(ctx context.Context, before time.Time, limit int) ([]BackfillRun, error) {
 	if limit <= 0 || limit > 1000 {
 		limit = 100
 	}
-	rows := make([]backfillRunRow, 0)
-	err := c.db.SelectContext(ctx, &rows, c.db.Rebind(`SELECT id, repository_id, status, started_at, completed_at,
-		error_count, diagnostics, created_at, updated_at FROM repository_backfill_runs
-		WHERE status = ? AND updated_at < ? ORDER BY updated_at ASC LIMIT ?`), BackfillQueued, before.UTC(), limit)
+	rows, err := c.queries.StaleQueuedBackfillRuns(ctx, catalogsqlc.StaleQueuedBackfillRunsParams{UpdatedAt: before.UTC(), Limit: int32(limit)})
 	if err != nil {
 		return nil, err
 	}
@@ -221,58 +166,46 @@ func (c *Catalog) ExpireQueuedBackfillRun(ctx context.Context, runID string) err
 		return err
 	}
 	now := time.Now().UTC()
-	result, err := c.db.ExecContext(ctx, c.db.Rebind(`UPDATE repository_backfill_runs
-		SET status = ?, completed_at = ?, error_count = error_count + 1, diagnostics = ?, updated_at = ?
-		WHERE id = ? AND status = ?`), BackfillCompleteWithErrors, now, diagnostics, now, runID, BackfillQueued)
-	if err != nil {
-		return err
-	}
-	changed, err := result.RowsAffected()
+	changed, err := c.queries.ExpireQueuedBackfillRun(ctx, catalogsqlc.ExpireQueuedBackfillRunParams{ID: runID, CompletedAt: &now, Diagnostics: diagnostics})
 	if err != nil {
 		return err
 	}
 	if changed == 0 {
-		return sql.ErrNoRows
+		return pgx.ErrNoRows
 	}
 	return nil
 }
 
 func (c *Catalog) RepositoryPublicationExists(ctx context.Context, repositoryID, version string) (bool, error) {
 	_, err := c.RepositoryPublicationCommit(ctx, repositoryID, version)
-	if errors.Is(err, sql.ErrNoRows) {
+	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
 	return err == nil, err
 }
 
 func (c *Catalog) RepositoryPublicationCommit(ctx context.Context, repositoryID, version string) (string, error) {
-	var commitSHA string
-	err := c.db.GetContext(ctx, &commitSHA, c.db.Rebind(`SELECT rp.commit_sha
-		FROM repository_releases rp JOIN repositories r ON r.id = rp.repository_id
-		WHERE r.repository_id = ? AND rp.version = ?`), repositoryID, version)
-	return commitSHA, err
+	return c.queries.RepositoryPublicationCommit(ctx, catalogsqlc.RepositoryPublicationCommitParams{RepositoryID: repositoryID, Version: version})
 }
 
 func (c *Catalog) backfillRunByID(ctx context.Context, runID string) (BackfillRun, error) {
-	var row backfillRunRow
-	err := c.db.GetContext(ctx, &row, c.db.Rebind(`SELECT id, repository_id, status, started_at, completed_at,
-		error_count, diagnostics, created_at, updated_at FROM repository_backfill_runs WHERE id = ?`), runID)
+	row, err := c.queries.BackfillRunByID(ctx, runID)
 	if err != nil {
 		return BackfillRun{}, err
 	}
 	return decodeBackfillRun(row)
 }
 
-func decodeBackfillRun(row backfillRunRow) (BackfillRun, error) {
+func decodeBackfillRun(row catalogsqlc.RepositoryBackfillRun) (BackfillRun, error) {
 	diagnostics := make([]string, 0)
 	if len(row.Diagnostics) > 0 {
 		if err := json.Unmarshal(row.Diagnostics, &diagnostics); err != nil {
 			return BackfillRun{}, fmt.Errorf("decode Backfill diagnostics: %w", err)
 		}
 	}
-	return BackfillRun{ID: row.ID, RepositoryID: row.RepositoryID, Status: row.Status,
-		StartedAt: row.StartedAt, CompletedAt: row.CompletedAt, ErrorCount: row.ErrorCount,
-		Diagnostics: diagnostics, CreatedAt: row.CreatedAt, UpdatedAt: row.UpdatedAt}, nil
+	return BackfillRun{ID: row.ID, RepositoryID: row.RepositoryID, Status: BackfillStatus(row.Status),
+		StartedAt: utcTimePointer(row.StartedAt), CompletedAt: utcTimePointer(row.CompletedAt), ErrorCount: int(row.ErrorCount),
+		Diagnostics: diagnostics, CreatedAt: row.CreatedAt.UTC(), UpdatedAt: row.UpdatedAt.UTC()}, nil
 }
 
 func newBackfillRun(repositoryID string) BackfillRun {

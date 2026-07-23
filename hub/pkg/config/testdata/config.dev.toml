@@ -197,16 +197,16 @@ NetworkMode = "strict"
 ArtifactOrigin = ""
 
 # Database stores searchable Skill metadata. Artifact archives remain in Storage.
-# SQLite uses ~/.skillsgo/hub/metadata/hub.db when DSN is empty.
+# PostgreSQL is the only supported Catalog database.
 [Database]
-    Type = "sqlite"
-    DSN = ""
-    MaxOpenConns = 1
-    MaxIdleConns = 1
-    ConnMaxLifetime = 0
+    Type = "postgres"
+    DSN = "postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable"
+    MaxOpenConns = 10
+    MaxIdleConns = 5
+    ConnMaxLifetime = 1800
 
 # River partitions this total worker budget across source (60%), default (20%),
-# and maintenance (20%) queues when Database.Type is postgres. The minimum is 3.
+# and maintenance (20%) queues. The minimum is 3.
 # Env override: SKILLSGO_HUB_TASK_QUEUE_MAX_WORKERS
 [TaskQueue]
     MaxWorkers = 10
