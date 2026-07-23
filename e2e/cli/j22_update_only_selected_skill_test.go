@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the disposable E2E environment, direct Skill declarations, and explicit canonical add replacement.
- * [OUTPUT]: Provides black-box coverage that re-adding one direct Skill at a new version leaves its sibling declaration and target unchanged.
+ * [INPUT]: Depends on the disposable E2E environment, one multi-Skill Repository dependency, and state-bound Repository update.
+ * [OUTPUT]: Provides black-box coverage that all selected siblings move atomically to one Repository version.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,6 +8,7 @@ package e2e_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,33 +16,38 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestJ22UpdateOnlySelectedSkill(t *testing.T) {
+func TestJ22SelectedSkillsUpdateAtRepositoryGranularity(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
 	repository := "fixtures.test/group/subgroup/mixed"
 	seed := execCLI(t, ctx, container,
 		"add", "https://"+repository+"@v1.0.0", "--skill", "alpha", "--skill", "beta",
-		"--agent", "codex", "--copy", "--yes", "--output", "json",
+		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, seed.exitCode, seed.output)
-	sibling := filepath.Join(sandboxRoot, "project", ".agents", "skills", "beta", "SKILL.md")
+	var installed addResponse
+	require.NoError(t, json.Unmarshal([]byte(seed.output), &installed), seed.output)
+	sibling := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "beta", "SKILL.md")
 	beforeTarget, err := os.ReadFile(sibling)
 	require.NoError(t, err)
-	beforeSum, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
+	beforeSum, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
 	require.NoError(t, err)
 
-	result := execCLI(t, ctx, container,
-		"add", "https://"+repository+"@v1.1.0", "--skill", "alpha",
-		"--agent", "codex", "--copy", "--yes", "--replace", "--output", "json",
-	)
+	preflight := execCLI(t, ctx, container, "update", repository+"@v1.1.0", "--preflight", "--output", "json")
+	require.Equal(t, 0, preflight.exitCode, preflight.output)
+	var preview struct {
+		StateToken string `json:"stateToken"`
+	}
+	require.NoError(t, json.Unmarshal([]byte(preflight.output), &preview), preflight.output)
+	result := execCLI(t, ctx, container, "update", repository+"@v1.1.0", "--state-token", preview.StateToken, "--output", "json")
 	require.Equal(t, 0, result.exitCode, result.output)
-	afterTarget, err := os.ReadFile(sibling)
+	newProjection := filepath.Join(sandboxRoot, "project", ".agents", "skills", filepath.FromSlash(repository)+"@v1.1.0")
+	afterTarget, err := os.ReadFile(filepath.Join(newProjection, "skills", "beta", "SKILL.md"))
 	require.NoError(t, err)
-	afterSum, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
+	afterSum, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
 	require.NoError(t, err)
-	require.Equal(t, beforeTarget, afterTarget)
-	require.Contains(t, string(afterSum), repository+"/-/skills/beta v1.0.0 ")
-	require.Contains(t, string(afterSum), repository+"/-/skills/alpha v1.1.0 ")
-	require.Contains(t, string(afterSum), repository+"/-/skills/alpha v1.0.0 ")
-	require.Greater(t, len(afterSum), len(beforeSum))
+	require.NotEqual(t, beforeTarget, afterTarget)
+	require.Contains(t, string(afterSum), "version: v1.1.0")
+	require.NotContains(t, string(afterSum), "v1.0.0")
+	require.NotEqual(t, beforeSum, afterSum)
 }
