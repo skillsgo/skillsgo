@@ -149,8 +149,8 @@ func canonicalRegularMode(mode os.FileMode) (os.FileMode, error) {
 	return 0o644, nil
 }
 
-// RepositorySum validates an immutable Repository ZIP and returns the Sum over
-// all prefix-free regular files in the Repository Artifact.
+// RepositorySum validates an immutable Repository ZIP and returns the Go
+// HashZip-compatible Sum over every full ZIP file name and its contents.
 func RepositorySum(data []byte, repositoryID, version string) (string, error) {
 	return WalkRepository(data, repositoryID, version, nil)
 }
@@ -237,7 +237,7 @@ func walkContent(data []byte, artifactID, version string, visit VisitFunc) (stri
 		if err != nil {
 			return "", fmt.Errorf("read artifact file %q: %w", relative, err)
 		}
-		if err := writeHash1Content(hash, relative, contents); err != nil {
+		if err := writeHash1Content(hash, entry.Name, contents); err != nil {
 			return "", err
 		}
 		if visit != nil {
@@ -252,13 +252,16 @@ func walkContent(data []byte, artifactID, version string, visit VisitFunc) (stri
 	return "h1:" + base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
 }
 
-// RepositoryDirectorySum calculates the Repository Sum for an extracted
-// Repository Artifact whose Skill members may be rooted or nested.
-func RepositoryDirectorySum(root string) (string, error) {
-	return directorySum(root)
+// RepositoryDirectorySum calculates the coordinate-bound Repository Sum for
+// an extracted Repository Artifact whose Skill members may be rooted or nested.
+func RepositoryDirectorySum(root, repositoryID, version string) (string, error) {
+	if repositoryID == "" || version == "" {
+		return "", errors.New("Repository Artifact identity and version are required")
+	}
+	return directorySum(root, repositoryID+"@"+version+"/")
 }
 
-func directorySum(root string) (string, error) {
+func directorySum(root, prefix string) (string, error) {
 	root, err := filepath.Abs(root)
 	if err != nil {
 		return "", err
@@ -321,7 +324,7 @@ func directorySum(root string) (string, error) {
 		if len(contents) > MaxUncompressedBytes {
 			return "", fmt.Errorf("file exceeds %d bytes", MaxUncompressedBytes)
 		}
-		if err := writeHash1Content(hash, relative, contents); err != nil {
+		if err := writeHash1Content(hash, prefix+relative, contents); err != nil {
 			return "", err
 		}
 	}
