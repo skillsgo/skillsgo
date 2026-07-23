@@ -11,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/paths"
@@ -21,7 +20,7 @@ import (
 const PathList = "/{repository:.+}/@v/list"
 
 // ListHandler implements GET baseURL/repository/@v/list.
-func ListHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handler {
+func ListHandler(dp Protocol, lggr log.Entry, _ string) fiber.Handler {
 	const op errors.Op = "download.ListHandler"
 	return func(c fiber.Ctx) error {
 		c.Set(fiber.HeaderContentType, fiber.MIMETextPlainCharsetUTF8)

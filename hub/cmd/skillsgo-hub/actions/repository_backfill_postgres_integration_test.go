@@ -25,11 +25,11 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/skillsgo/skillsgo/hub/pkg/download"
-	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage/mem"
 	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
+	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	"github.com/stretchr/testify/require"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
@@ -61,7 +61,7 @@ func (f *backfillIntegrationFetcher) DiscoverRepository(_ context.Context, repos
 	}
 	archive := append([]byte(nil), f.archives[version]...)
 	f.mu.Unlock()
-	manifest, _, err := metadataFromArchive(archive, repositoryID, version)
+	manifest, err := parseRepositoryTestManifest(archive)
 	if err != nil {
 		return nil, err
 	}
@@ -90,14 +90,14 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	lister := &backfillIntegrationLister{versions: []string{"main", "v2.0.0", "v1.0.0", "v1.0.0"}}
 	repositoryID := "github.com/acme/backfill"
 	fetcher := &backfillIntegrationFetcher{failOnce: map[string]bool{"v1.0.0": true}, archives: map[string][]byte{
-		"v1.0.0": catalogProtocolTestZIPNamed(t, repositoryID, "v1.0.0", "backfilled", "Historical fixture", ""),
-		"v2.0.0": catalogProtocolTestZIPNamed(t, repositoryID, "v2.0.0", "backfilled", "Historical fixture", ""),
+		"v1.0.0": repositoryTestManifest(t, repositoryID, "v1.0.0", "backfilled", "Historical fixture", ""),
+		"v2.0.0": repositoryTestManifest(t, repositoryID, "v2.0.0", "backfilled", "Historical fixture", ""),
 	}}
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
-	rawProtocol := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
-	artifactProtocol := withCatalog(rawProtocol, metadata)
-	publisher := newRepositoryPublisher(fetcher, backend, artifactProtocol, metadata)
+	rawProtocol := download.New(&download.Opts{Storage: backend, NetworkMode: download.Offline})
+	artifactProtocol := rawProtocol
+	publisher := newRepositoryPublisher(fetcher, backend, metadata)
 	firstRuntime, err := taskqueue.NewRiver(ctx, metadata.PostgresPool(), 1)
 	require.NoError(t, err)
 	firstService := newRepositoryBackfillService(metadata, firstRuntime, lister, publisher, log.NoOpLogger())
@@ -105,7 +105,7 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	app := fiber.New()
 	registerRepositoryBackfillRoutes(app.Group("/api/v1/admin", basicAuth("admin", "secret")), firstService)
 	registerCatalogAPIRoutes(app, metadata, artifactProtocol)
-	download.RegisterHandlers(app, &download.HandlerOpts{Protocol: artifactProtocol, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	download.RegisterHandlers(app, &download.HandlerOpts{Protocol: artifactProtocol, Logger: log.NoOpLogger()})
 	request := httptest.NewRequest(http.MethodPost, "/api/v1/admin/repository-backfills", bytes.NewBufferString(`{"repositoryIds":["github.com/acme/backfill"]}`))
 	request.Header.Set("Content-Type", "application/json")
 	request.SetBasicAuth("admin", "secret")
@@ -170,7 +170,7 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	infoResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/"+repositoryID+"/@v/v1.0.0.info", nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, infoResponse.StatusCode)
-	var info catalogArtifactInfo
+	var info protocolapi.RepositoryInfo
 	require.NoError(t, json.NewDecoder(infoResponse.Body).Decode(&info))
 	require.NotEmpty(t, info.Sum)
 	zipResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/"+repositoryID+"/@v/v1.0.0.zip", nil))

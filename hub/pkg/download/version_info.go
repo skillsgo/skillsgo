@@ -8,7 +8,6 @@ package download
 
 import (
 	"github.com/gofiber/fiber/v3"
-	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
@@ -18,7 +17,7 @@ import (
 const PathVersionInfo = "/{repository:.+}/@v/{version}.info"
 
 // InfoHandler implements GET baseURL/repository/@v/version.info.
-func InfoHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handler {
+func InfoHandler(dp Protocol, lggr log.Entry, _ string) fiber.Handler {
 	const op errors.Op = "download.InfoHandler"
 	return func(c fiber.Ctx) error {
 		c.Set(fiber.HeaderContentType, fiber.MIMEApplicationJSONCharsetUTF8)
@@ -38,14 +37,6 @@ func InfoHandler(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handl
 		if err != nil {
 			severityLevel := errors.Expect(err, errors.KindNotFound, errors.KindRedirect)
 			lggr.SystemErr(errors.E(op, err, errors.S(mod), errors.V(ver), severityLevel))
-			if errors.Kind(err) == errors.KindRedirect {
-				url, err := getRedirectURL(df.URL(mod), c.Path())
-				if err != nil {
-					lggr.SystemErr(err)
-					return c.SendStatus(errors.Kind(err))
-				}
-				return c.Redirect().Status(errors.KindRedirect).To(url)
-			}
 			return c.SendStatus(errors.Kind(err))
 		}
 		return c.Send(info)

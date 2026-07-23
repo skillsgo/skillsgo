@@ -10,16 +10,8 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/skillsgo/skillsgo/hub/pkg/stash"
 	"github.com/skillsgo/skillsgo/hub/pkg/taskqueue"
 )
-
-type artifactStashArgs struct {
-	SkillID string `json:"skill_id" river:"unique"`
-	Version string `json:"version" river:"unique"`
-}
-
-func (artifactStashArgs) Kind() string { return "artifact_stash" }
 
 type repositorySourceMetadataRefreshArgs struct {
 	RepositoryID string `json:"repository_id" river:"unique"`
@@ -41,22 +33,6 @@ type descriptionTranslationBatchArgs struct {
 }
 
 func (descriptionTranslationBatchArgs) Kind() string { return "description_translation_batch" }
-
-func registerArtifactStashJob(runtime *taskqueue.Runtime, stasher stash.Stasher) error {
-	return taskqueue.Register(runtime, func(ctx context.Context, args artifactStashArgs) error {
-		if args.SkillID == "" || args.Version == "" {
-			return fmt.Errorf("artifact stash job requires skill_id and version")
-		}
-		_, err := stasher.Stash(ctx, args.SkillID, args.Version)
-		return err
-	})
-}
-
-func enqueueArtifactStash(runtime *taskqueue.Runtime) func(context.Context, string, string) error {
-	return func(ctx context.Context, skillID, version string) error {
-		return runtime.Enqueue(ctx, artifactStashArgs{SkillID: skillID, Version: version}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource})
-	}
-}
 
 func registerRepositoryPrewarmJob(runtime *taskqueue.Runtime, materializer repositoryMaterializer) error {
 	return taskqueue.Register(runtime, func(ctx context.Context, args repositoryPublicationPrewarmArgs) error {

@@ -12,7 +12,6 @@ import (
 	"path"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/middleware"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
@@ -23,13 +22,13 @@ const immutableVersionCacheControl = "public, max-age=31536000, immutable"
 
 // ProtocolHandler is a function that takes all that it needs to return
 // a ready-to-go http handler that serves up cmd/go's download protocol.
-type ProtocolHandler func(dp Protocol, lggr log.Entry, df *mode.DownloadFile) fiber.Handler
+type ProtocolHandler func(dp Protocol, lggr log.Entry, artifactOrigin string) fiber.Handler
 
 // HandlerOpts are the generic options for a ProtocolHandler.
 type HandlerOpts struct {
-	Protocol     Protocol
-	Logger       *log.Logger
-	DownloadFile *mode.DownloadFile
+	Protocol       Protocol
+	Logger         *log.Logger
+	ArtifactOrigin string
 }
 
 // LogEntryHandler pulls a log entry from the request context. Thanks to the
@@ -39,7 +38,7 @@ type HandlerOpts struct {
 func LogEntryHandler(ph ProtocolHandler, opts *HandlerOpts) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		ent := log.EntryFromContext(c.Context())
-		return ph(opts.Protocol, ent, opts.DownloadFile)(c)
+		return ph(opts.Protocol, ent, opts.ArtifactOrigin)(c)
 	}
 }
 

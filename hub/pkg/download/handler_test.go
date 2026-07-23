@@ -14,47 +14,13 @@ import (
 	"testing"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
-	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 )
 
-func TestRedirect(t *testing.T) {
-	for _, url := range []string{"https://gomods.io", "https://internal.domain/repository/gonexus"} {
-		r := fiber.New()
-		RegisterHandlers(r, &HandlerOpts{
-			Protocol: &mockProtocol{},
-			Logger:   log.NoOpLogger(),
-			DownloadFile: &mode.DownloadFile{
-				Mode:        mode.Redirect,
-				DownloadURL: url,
-			},
-		})
-		for _, path := range [...]string{
-			"/github.com/skillsgo/skillsgo/hub/@v/v0.4.0.info",
-			"/github.com/skillsgo/skillsgo/hub/@v/v0.4.0.zip",
-		} {
-			req, _ := http.NewRequest("GET", path, nil)
-			response, err := r.Test(req)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if response.StatusCode != http.StatusMovedPermanently {
-				t.Fatalf("expected a redirect status (301) but got %v", response.StatusCode)
-			}
-			expectedRedirect := url + path
-			givenRedirect := response.Header.Get("location")
-			if expectedRedirect != givenRedirect {
-				t.Fatalf("expected the handler to redirect to %q but got %q", expectedRedirect, givenRedirect)
-			}
-		}
-	}
-}
-
 func TestArtifactProtocolIsServedAtRoot(t *testing.T) {
 	r := fiber.New()
-	RegisterHandlers(r, &HandlerOpts{Protocol: &mockProtocol{}, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Redirect, DownloadURL: "https://example.test"}})
+	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger(), ArtifactOrigin: "https://example.test"})
 	request, err := http.NewRequest(http.MethodGet, "/github.com/skillsgo/skillsgo/@v/v1.0.0.info", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -63,14 +29,14 @@ func TestArtifactProtocolIsServedAtRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if response.StatusCode != http.StatusMovedPermanently {
-		t.Fatalf("root Repository Proxy route returned %d, want 301", response.StatusCode)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("root Repository Proxy route returned %d, want 200", response.StatusCode)
 	}
 }
 
 func TestRemovedModNamespaceIsNotInterpretedAsRepositoryID(t *testing.T) {
 	r := fiber.New()
-	RegisterHandlers(r, &HandlerOpts{Protocol: &mockProtocol{}, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
 	request, err := http.NewRequest(http.MethodGet, "/mod/github.com/skillsgo/skillsgo/@v/v1.0.0.info", nil)
 	if err != nil {
 		t.Fatal(err)
@@ -87,12 +53,9 @@ func TestRemovedModNamespaceIsNotInterpretedAsRepositoryID(t *testing.T) {
 func TestExactResourceRoutesRejectMovableOrRawRevisionQueries(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{
-		Protocol: &successfulProtocol{},
-		Logger:   log.NoOpLogger(),
-		DownloadFile: &mode.DownloadFile{
-			Mode:        mode.Sync,
-			DownloadURL: "https://files.skillsgo.ai",
-		},
+		Protocol:       &successfulProtocol{},
+		Logger:         log.NoOpLogger(),
+		ArtifactOrigin: "https://files.skillsgo.ai",
 	})
 	for _, requestCase := range []struct {
 		method string
@@ -119,7 +82,7 @@ func TestExactResourceRoutesRejectMovableOrRawRevisionQueries(t *testing.T) {
 
 func TestCanonicalVersionInfoIsPubliclyImmutable(t *testing.T) {
 	r := fiber.New()
-	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
 	for _, path := range []string{
 		"/github.com/skillsgo/skillsgo/@v/v1.2.3.info",
 		"/github.com/skillsgo/skillsgo/@v/v1.2.4-0.20260720120000-abcdef123456.info",
@@ -153,7 +116,7 @@ func TestCanonicalVersionInfoIsPubliclyImmutable(t *testing.T) {
 
 func TestCanonicalVersionZipSupportsConditionalGetAndHead(t *testing.T) {
 	r := fiber.New()
-	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
 	path := "/github.com/skillsgo/skillsgo/@v/v1.2.3.zip"
 	request, _ := http.NewRequest(http.MethodHead, path, nil)
 	response, err := r.Test(request)
@@ -177,7 +140,7 @@ func TestCanonicalVersionZipSupportsConditionalGetAndHead(t *testing.T) {
 
 func TestProxyRejectsMovableSelectorsAndEnforcesExactRouteMethods(t *testing.T) {
 	r := fiber.New()
-	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
 	for _, selector := range []string{"head", "release", "latest"} {
 		request, _ := http.NewRequest(http.MethodGet, "/github.com/skillsgo/skillsgo/@"+selector, nil)
 		response, err := r.Test(request)
@@ -210,16 +173,13 @@ func TestProxyRejectsMovableSelectorsAndEnforcesExactRouteMethods(t *testing.T) 
 func TestCanonicalVersionZipRedirectsToArtifactOrigin(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{
-		Protocol: &successfulProtocol{},
-		Logger:   log.NoOpLogger(),
-		DownloadFile: &mode.DownloadFile{
-			Mode:        mode.Sync,
-			DownloadURL: "https://files.skillsgo.ai",
-		},
+		Protocol:       &successfulProtocol{},
+		Logger:         log.NoOpLogger(),
+		ArtifactOrigin: "https://files.skillsgo.ai",
 	})
 
 	for _, method := range []string{http.MethodGet, http.MethodHead} {
-		request, err := http.NewRequest(method, "/github.com/skillsgo/skillsgo/-/skills/example/@v/v1.2.3.zip", nil)
+		request, err := http.NewRequest(method, "/github.com/skillsgo/skillsgo/@v/v1.2.3.zip", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -230,15 +190,11 @@ func TestCanonicalVersionZipRedirectsToArtifactOrigin(t *testing.T) {
 		if response.StatusCode != http.StatusMovedPermanently {
 			t.Fatalf("%s returned %d, want 301", method, response.StatusCode)
 		}
-		const expected = "https://files.skillsgo.ai/github.com/skillsgo/skillsgo/-/skills/example/@v/v1.2.3.zip"
+		const expected = "https://files.skillsgo.ai/github.com/skillsgo/skillsgo/@v/v1.2.3.zip"
 		if got := response.Header.Get("Location"); got != expected {
 			t.Fatalf("%s Location = %q, want %q", method, got, expected)
 		}
 	}
-}
-
-type mockProtocol struct {
-	Protocol
 }
 
 type successfulProtocol struct {
@@ -256,14 +212,4 @@ func (p *successfulProtocol) List(context.Context, string) ([]string, error) {
 func (p *successfulProtocol) Zip(context.Context, string, string) (storage.SizeReadCloser, error) {
 	const archive = "zip"
 	return storage.NewSizer(io.NopCloser(strings.NewReader(archive)), int64(len(archive))), nil
-}
-
-func (mp *mockProtocol) Info(ctx context.Context, mod, ver string) ([]byte, error) {
-	const op errors.Op = "mockProtocol.Info"
-	return nil, errors.E(op, "not found", errors.KindRedirect)
-}
-
-func (mp *mockProtocol) Zip(ctx context.Context, mod, ver string) (storage.SizeReadCloser, error) {
-	const op errors.Op = "mockProtocol.Zip"
-	return nil, errors.E(op, "not found", errors.KindRedirect)
 }

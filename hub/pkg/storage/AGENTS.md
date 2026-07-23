@@ -11,7 +11,7 @@
 - `external/`: makes one external storage server authoritative for cross-client `PutIfAbsent` decisions and exposes the corresponding HTTP client adapter.
 - `mem/`: provides disposable in-memory storage for tests and development.
 - `minio/`: retains the legacy backend implementation for source history only; Hub v1 runtime configuration rejects it because its pinned client cannot guarantee conditional creation.
-- `artifact/` and `compliance/`: provide storage artifact adapters and reusable backend behavior tests.
+- `artifact/` and `compliance/`: provide Repository artifact adapters and reusable backend behavior tests.
 
 ## Architectural Boundary
 

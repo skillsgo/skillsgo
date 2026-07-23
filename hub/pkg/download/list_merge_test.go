@@ -136,7 +136,7 @@ func TestListMerge(t *testing.T) {
 				s.Save(ctx, testModName, v, io.NopCloser(bytes.NewReader(bts)), nil, bts)
 			}
 			defer clearStorage(s, testModName, tc.strVersions)
-			dp := New(&Opts{s, nil, &listerMock{versions: tc.goVersions, err: tc.goErr}, nil, Strict, nil})
+			dp := New(&Opts{Storage: s, Lister: &listerMock{versions: tc.goVersions, err: tc.goErr}, NetworkMode: Strict})
 			list, err := dp.List(ctx, testModName)
 
 			if ok := testErrEq(tc.expectedErr, err); !ok {

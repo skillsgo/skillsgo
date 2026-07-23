@@ -19,11 +19,7 @@ Environment = "development"
 Mode = "selfhost"
 CloudOrigin = ""
 
-# SkillFetchWorkers controls how many Skill repositories may be fetched concurrently.
-# Env override: SKILLSGO_HUB_SKILL_FETCH_WORKERS
-SkillFetchWorkers = 10
-
-# SkillCacheDir stores persistent Git repository mirrors and temporary Skill artifacts.
+# SkillCacheDir stores persistent Git Repository mirrors and temporary publication snapshots.
 # If empty, Hub uses ~/.skillsgo/hub/cache.
 # Override priority:
 # 1. SKILLSGO_HUB_CACHE_DIR
@@ -43,14 +39,6 @@ RepositoryCacheTTL = 604800
 # Set to 0 to disable quota-based cleanup.
 # Env override: SKILLSGO_HUB_REPOSITORY_CACHE_MAX_BYTES
 RepositoryCacheMaxBytes = 10737418240
-
-# ProtocolWorkers specifies how many concurrent
-# requests can you handle at a time for all
-# download protocol paths. This is different from SkillFetchWorkers:
-# 30 requests to the Download Protocol but only 5
-# at a time can stash a module from Upstream to Storage.
-# Env override: SKILLSGO_HUB_PROTOCOL_WORKERS
-ProtocolWorkers = 30
 
 # LogLevel returns the system's exposure to internal logs. Defaults to debug.
 # Supports all logrus log levels (https://github.com/Sirupsen/logrus#level-logging)
@@ -92,13 +80,6 @@ RobotsFile = "robots.txt"
 # Defaults to 300
 # Env override: SKILLSGO_HUB_TIMEOUT
 Timeout = 300
-
-# StashTimeout is the timeout for the Stash operation in seconds.
-# The Stash operation fetches a module from upstream (e.g. VCS) and stores it
-# into the storage backend. Large modules may require a higher timeout.
-# Defaults to 600 (10 minutes)
-# Env override: SKILLSGO_HUB_STASH_TIMEOUT
-StashTimeout = 600
 
 # StorageType sets the type of storage backend the proxy will use.
 # Possible values are memory, disk, mongo, gcp, s3, azureblob, external
@@ -197,26 +178,6 @@ TraceSamplingFraction = 1.0
 # Env override: SKILLSGO_HUB_STATS_EXPORTER
 StatsExporter = "prometheus"
 
-# DownloadMode defines how Athens behaves when a module@version
-# is not found in storage. There are 4 options:
-# 1. "sync" (default): download the module synchronously and
-# return the results to the client.
-# 2. "async": return 404, but asynchronously store the module
-# in the storage backend.
-# 3. "redirect": return a 301 redirect status to the client
-# with the base URL as the DownloadRedirectURL from below.
-# 4. "async_redirect": same as option number 3 but it will
-# asynchronously store the module to the backend.
-# 5. "none": return 404 if a module is not found and do nothing.
-# 6. "file:<path>": will point to an HCL file that specifies
-# any of the 5 options above based on different import paths.
-# 7. "custom:<base64-encoded-hcl>" is the same as option 6
-# but the file is fully encoded in the option. This is
-# useful for using an environment variable in serverless
-# deployments.
-# Env override: SKILLSGO_HUB_DOWNLOAD_MODE
-DownloadMode = "sync"
-
 # NetworkMode configures how Athens will return the results
 # of the /list endpoint as it can be assembled from both its own
 # storage and the upstream VCS.
@@ -232,43 +193,10 @@ DownloadMode = "sync"
 # available at the time of requesting versions.
 NetworkMode = "strict"
 
-# DownloadURL is the URL that will be used if
-# DownloadMode is set to "redirect"
-# Env override: SKILLSGO_HUB_DOWNLOAD_URL
-DownloadURL = ""
-
-# SingleFlightType determines what mechanism Athens uses
-# to manage concurrency flowing into the Athens Backend.
-# This is important for the following scenario: if two concurrent requests
-# were made to Athens that wanted to store the same module at the same time,
-# we want to make sure only the first request gets to store the module,
-# and the second request will wait for the first one to finish so that
-# it doesn't override the storage.
-
-# Options are ["memory", "etcd", "redis", "redis-sentinel", "gcp", "azureblob"]
-
-# The default option is "memory" which means that only one instance of Athens
-# should be used.
-# The "gcp" single flight will assume that you have a "gcp" StorageType
-# and therefore it will use its strong-consistency features to ensure
-# that only one module is ever written even when concurrent saves happen
-# at the same time.
-# The "azureblob" single flight will assume that you have a "azureblob" StorageType
-# and therefore it will use its strong-consistency features to ensure
-# that only one module is ever written even when concurrent saves happen
-# at the same time.
-# The "redis" single flight will use a single redis instance as a locking mechanism
-# for updating the underlying storage
-# The "redis-sentinel" single flight works similarly to "redis" but obtains a redis connection
-# via a redis-sentinel
-# Env override: SKILLSGO_HUB_SINGLE_FLIGHT_TYPE
-SingleFlightType = "memory"
-
-# IndexType sets the type of an index backend Athens will use.
-# Possible values are none, memory, mysql, postgres
-# Defaults to none
-# Env override: SKILLSGO_HUB_INDEX_TYPE
-IndexType = "none"
+# ArtifactOrigin optionally redirects immutable Repository ZIP responses after publication.
+# Info and list responses always remain on the Hub origin.
+# Env override: SKILLSGO_HUB_ARTIFACT_ORIGIN
+ArtifactOrigin = ""
 
 # Database stores searchable Skill metadata. Artifact archives remain in Storage.
 # SQLite uses ~/.skillsgo/hub/metadata/hub.db when DSN is empty.
@@ -304,79 +232,6 @@ IndexType = "none"
 # Env override: SKILLSGO_HUB_SHUTDOWN_TIMEOUT
 ShutdownTimeout = 60
 
-[SingleFlight]
-    [SingleFlight.Etcd]
-        # Endpoints are comma separated URLs that determine all distributed etcd servers.
-        # It defaults to what we have in our docker-compose file. It is by default ignored
-        # as the SingleFlightType field above determines whether Etcd is used or not.
-        # Env override: SKILLSGO_HUB_ETCD_ENDPOINTS
-        Endpoints = "localhost:2379,localhost:22379,localhost:32379"
-    [SingleFlight.Redis]
-        # Endpoint is the redis endpoint for a SingleFlight lock. Should be either a host:port
-        # pair or redis url such as:
-        #    redis[s]://user:password@127.0.0.1:6379/0?protocol=3
-        # When Cluster = true below, Endpoint may also be a comma-separated list of
-        # host:port (or redis[s]://) seeds
-        # Env override: SKILLSGO_HUB_REDIS_ENDPOINT
-        Endpoint = "127.0.0.1:6379"
-        # Password is the password for a redis SingleFlight lock.
-        # Env override: SKILLSGO_HUB_REDIS_PASSWORD
-        Password = ""
-        # Cluster selects a Redis Cluster Mode client (redis.NewClusterClient)
-        # instead of the default single-node client. Set this to true when Endpoint
-        # points at a Cluster Mode Enabled Redis 
-        # Env override: SKILLSGO_HUB_REDIS_CLUSTER
-        Cluster = false
-
-        [SingleFlight.Redis.LockConfig]
-            # TTL for the lock in seconds. Defaults to 900 seconds (15 minutes).
-            # Env override: SKILLSGO_HUB_REDIS_LOCK_TTL
-            TTL = 900
-            # Timeout for acquiring the lock in seconds. Defaults to 15 seconds.
-            # Env override: SKILLSGO_HUB_REDIS_LOCK_TIMEOUT
-            Timeout = 15
-            # Max retries while acquiring the lock. Defaults to 10.
-            # Env override: SKILLSGO_HUB_REDIS_LOCK_MAX_RETRIES
-            MaxRetries = 10
-
-    [SingleFlight.RedisSentinel]
-        # Endpoints is the redis sentinel endpoints to discover a redis 
-        # master for a SingleFlight lock.
-        # Env override: SKILLSGO_HUB_REDIS_SENTINEL_ENDPOINTS
-        Endpoints = ["127.0.0.1:26379"]
-        # MasterName is the redis sentinel master name to use to discover
-        # the master for a SingleFlight lock
-        # Env override: SKILLSGO_HUB_REDIS_SENTINEL_MASTER_NAME
-        MasterName = "redis-1"
-        # SentinelPassword is an optional password for authenticating with
-        # redis sentinel
-        # Env override: SKILLSGO_HUB_REDIS_SENTINEL_PASSWORD
-        SentinelPassword = "sekret"
-
-        # DB is the redis database number to connect to
-        # Env override: SKILLSGO_HUB_REDIS_SENTINEL_DB
-        DB = 0
-
-        # The Redis master authorization parameters
-        # Env override: SKILLSGO_HUB_REDIS_USERNAME
-        RedisUsername = ""
-        # Env override: SKILLSGO_HUB_REDIS_PASSWORD
-        RedisPassword = ""
-
-        [SingleFlight.RedisSentinel.LockConfig]
-            # TTL for the lock in seconds. Defaults to 900 seconds (15 minutes).
-            # Env override: SKILLSGO_HUB_REDIS_LOCK_TTL
-            TTL = 900
-            # Timeout for acquiring the lock in seconds. Defaults to 15 seconds.
-            # Env override: SKILLSGO_HUB_REDIS_LOCK_TIMEOUT
-            Timeout = 15
-            # Max retries while acquiring the lock. Defaults to 10.
-            # Env override: SKILLSGO_HUB_REDIS_LOCK_MAX_RETRIES
-            MaxRetries = 10
-    [SingleFlight.GCP]
-        # Threshold for how long to wait in seconds for an in-progress GCP upload to
-        # be considered to have failed to unlock.
-        StaleThreshold = 120
 [Storage]
     # Only storage backends that are specified in Proxy.StorageType are required here
     [Storage.CDN]
