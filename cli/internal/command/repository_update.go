@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on one declared Repository dependency, its verified current Scope Vendor and immutable Info, an exact target Repository Info/ZIP, Agent Adapter roots, and Scope Vendor transactions.
- * [OUTPUT]: Provides state-bound Repository update preflight and atomic coordinate replacement while preserving selected Skills and Agents and refusing Local Modifications.
+ * [INPUT]: Depends on one declared Repository dependency, its verified current Scope Vendor and immutable Info, an exact target Repository Info/ZIP, Agent Adapter roots, prepared Scope Vendor transactions, and the Repository mutation coordinator.
+ * [OUTPUT]: Provides state-bound Repository update preflight and coordinated atomic coordinate replacement while preserving selected Skills and Agents and refusing Local Modifications.
  * [POS]: Serves as the Repository-level update orchestration behind the public `skillsgo update` command and App machine contract.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -20,6 +20,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
+	"github.com/skillsgo/skillsgo/cli/internal/repositorymutation"
 	"github.com/skillsgo/skillsgo/cli/internal/scopevendor"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/spf13/cobra"
@@ -220,34 +221,16 @@ func prepareRepositoryUpdate(ctx context.Context, root string, userScope bool, c
 			_ = newTransaction.Rollback()
 			return prepareErr
 		}
-		if commitErr := newTransaction.Commit(); commitErr != nil {
-			_ = oldTransaction.Rollback()
-			return commitErr
-		}
-		if commitErr := oldTransaction.Commit(); commitErr != nil {
-			_ = newTransaction.Rollback()
-			return commitErr
-		}
-		if cacheErr := (infocache.Cache{Root: infoRoot}).Put(repositoryID, resource.Info.Version, "repository.info", resource.InfoBytes); cacheErr != nil {
-			_ = oldTransaction.Rollback()
-			_ = newTransaction.Rollback()
-			return cacheErr
-		}
 		currentDependency.Version = resource.Info.Version
 		currentManifest.Dependencies[repositoryID] = currentDependency
 		currentLock.Dependencies[repositoryID] = project.LockedRepository{Version: resource.Info.Version, Sum: resource.Info.Sum}
-		if persistErr := project.WriteWorkspaceState(root, currentManifest, currentLock); persistErr != nil {
-			_ = oldTransaction.Rollback()
-			_ = newTransaction.Rollback()
-			return persistErr
-		}
-		if finalizeErr := oldTransaction.Finalize(); finalizeErr != nil {
-			return fmt.Errorf("Repository update committed but old coordinate cleanup failed: %w", finalizeErr)
-		}
-		if finalizeErr := newTransaction.Finalize(); finalizeErr != nil {
-			return fmt.Errorf("Repository update committed but transaction cleanup failed: %w", finalizeErr)
-		}
-		return nil
+		return (repositorymutation.Plan{
+			Transactions: []repositorymutation.Transaction{newTransaction, oldTransaction},
+			ImmutableInfo: []repositorymutation.ImmutableInfo{{Cache: infocache.Cache{Root: infoRoot}, RepositoryID: repositoryID,
+				Version: resource.Info.Version, Kind: "repository.info", Bytes: resource.InfoBytes}},
+			Workspace: &repositorymutation.WorkspaceState{Root: root, Manifest: currentManifest, Lock: currentLock},
+			Operation: "Repository update",
+		}).Commit()
 	}
 	return report, apply, nil
 }
