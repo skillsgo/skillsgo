@@ -63,8 +63,7 @@ type Item struct {
 }
 
 type Summary struct {
-	Removable  int `json:"removable"`
-	Repairable int `json:"repairable"`
+	Removable int `json:"removable"`
 }
 
 type Preflight struct {
