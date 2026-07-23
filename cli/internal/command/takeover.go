@@ -115,14 +115,13 @@ type takeoverPreflightReport struct {
 }
 
 type takeoverResult struct {
-	Name            string           `json:"name"`
-	SkillID         string           `json:"skillId,omitempty"`
-	ArtifactSkillID string           `json:"artifactSkillId,omitempty"`
-	Version         string           `json:"version,omitempty"`
-	Status          string           `json:"status"`
-	Reason          string           `json:"reason,omitempty"`
-	Target          takeoverTarget   `json:"target"`
-	Targets         []takeoverTarget `json:"targets,omitempty"`
+	Name    string           `json:"name"`
+	SkillID string           `json:"skillId,omitempty"`
+	Version string           `json:"version,omitempty"`
+	Status  string           `json:"status"`
+	Reason  string           `json:"reason,omitempty"`
+	Target  takeoverTarget   `json:"target"`
+	Targets []takeoverTarget `json:"targets,omitempty"`
 }
 
 type takeoverReport struct {
@@ -355,7 +354,6 @@ func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, pla
 		}
 		result.Status = "taken-over"
 		result.SkillID = candidate.SkillID
-		result.ArtifactSkillID = candidate.SkillID
 		result.Version = resource.Info.Version
 		report.Results = append(report.Results, result)
 		report.Summary.TakenOver++

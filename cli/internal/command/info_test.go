@@ -276,15 +276,15 @@ func infoTestMembers(repositoryID, version, commit string) []hub.Info {
 			SchemaVersion: 1, Kind: "Skill", ID: repositoryID, Version: version,
 			RepositoryID: repositoryID, Path: ".",
 			Time: time.Unix(1, 0).UTC(), Name: "root", Description: "Root Skill",
-			Risk: hub.RiskLow, Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=", ArchiveSize: 1,
-			Ref: "refs/tags/" + version, CommitSHA: commit, TreeSHA: "root-tree",
+			Risk: hub.RiskLow,
+			Ref:  "refs/tags/" + version, CommitSHA: commit, TreeSHA: "root-tree",
 		},
 		{
 			SchemaVersion: 1, Kind: "Skill", ID: repositoryID + "/-/tools/demo", Version: version,
 			RepositoryID: repositoryID, Path: "tools/demo",
 			Time: time.Unix(1, 0).UTC(), Name: "demo", Description: "Nested Skill",
-			Risk: hub.RiskLow, Sum: "h1:AQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQEBAQE=", ArchiveSize: 1,
-			Ref: "refs/tags/" + version, CommitSHA: commit, TreeSHA: "nested-tree",
+			Risk: hub.RiskLow,
+			Ref:  "refs/tags/" + version, CommitSHA: commit, TreeSHA: "nested-tree",
 		},
 	}
 }

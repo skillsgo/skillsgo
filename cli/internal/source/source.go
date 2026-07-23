@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on public Git HTTP(S) URLs, equivalent GitHub aliases, source@Selector syntax including slash-separated branches, private Local Skill IDs, the explicit `/-/` boundary, and the shared typed Selector grammar.
  * [OUTPUT]: Provides canonical provider-aware Repository/Skill identity, unambiguous selector splitting outside URL authority, and reusable path-safe Skill ID plus add-time Selector validation.
- * [POS]: Serves as the CLI Skill ID normalization boundary used before Hub and Store access.
+ * [POS]: Serves as the CLI Skill ID normalization boundary used before Hub and Repository Vendor access.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package source

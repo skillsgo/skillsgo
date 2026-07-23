@@ -35,7 +35,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/i18n/` | Locale detection and user-facing CLI messages. |
 | `internal/install/` | Minimal installation-scope vocabulary and External filesystem state tokens. |
 | `internal/inventory/` | Read-only Repository-managed and External Library reconciliation across YAML/Lock state, Scope Vendors, Repository Projections, known Agent Discovery Roots, Local Modifications, and derived Agent visibility. |
-| `internal/managementplan/` | Exact-target managed Remove/Repair and External Remove preflight, reviewed-state binding, and target-specific execution. |
+| `internal/managementplan/` | Exact-path External Remove preflight, reviewed-state binding, and target-specific execution. |
 | `internal/project/` | Strict Repository dependencies in `skillsgo.yaml`, integrity-only `skillsgo.lock`, and their paired crash-recoverable transaction. |
 | `internal/infocache/` | Exact immutable Repository and Skill Info bytes used for checksum-verified offline restore. |
 | `internal/hub/` | Client for add-time product-API Repository resolution followed by exact root Proxy Info/ZIP, typed membership, bounded download, and Repository h1 verification. |
