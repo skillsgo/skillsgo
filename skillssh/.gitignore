@@ -1,6 +1,0 @@
-# [INPUT]: Depends on Vercel CLI linkage and local environment credential filenames.
-# [OUTPUT]: Prevents deployment metadata and secrets from entering source control.
-# [POS]: Serves as the source-control safety boundary for the skills.sh bridge deployment.
-# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
-.vercel
-.env*
