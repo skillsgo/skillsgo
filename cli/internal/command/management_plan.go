@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on flat repeatable target flags, the Agent catalog, Store state, target-operation domain events, and terminal reporting.
- * [OUTPUT]: Adapts exact remove/repair preflight and execution to Human, JSON, or NDJSON output without accepting JSON target arguments.
- * [POS]: Serves as the executable adapter shared by the top-level remove and repair commands.
+ * [INPUT]: Depends on flat repeatable target flags, the Agent catalog, External target-operation events, and terminal reporting.
+ * [OUTPUT]: Adapts state-bound exact External removal to Human, JSON, or NDJSON output.
+ * [POS]: Serves as the executable adapter behind top-level `remove --path`.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -9,12 +9,10 @@ package command
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/managementplan"
-	"github.com/skillsgo/skillsgo/cli/internal/store"
 	"github.com/spf13/cobra"
 )
 
@@ -46,12 +44,7 @@ func runExactOperation(cmd *cobra.Command, catalog *agent.Catalog, action manage
 	if err != nil {
 		return err
 	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-	storage := store.Store{Root: store.DefaultRoot(home)}
-	preflight, err := managementplan.Build(catalog, storage, requests)
+	preflight, err := managementplan.Build(requests)
 	if err != nil {
 		return err
 	}
@@ -74,7 +67,7 @@ func runExactOperation(cmd *cobra.Command, catalog *agent.Catalog, action manage
 			requests[index].Action = action
 			requests[index].StateToken = preflight.Targets[index].StateToken
 		}
-		preflight, err = managementplan.Build(catalog, storage, requests)
+		preflight, err = managementplan.Build(requests)
 		if err != nil {
 			return err
 		}
@@ -82,7 +75,7 @@ func runExactOperation(cmd *cobra.Command, catalog *agent.Catalog, action manage
 	if options.output == "ndjson" {
 		encoder := json.NewEncoder(cmd.OutOrStdout())
 		var streamErr error
-		execution := managementplan.Execute(storage, preflight, func(event managementplan.Progress) {
+		execution := managementplan.Execute(preflight, func(event managementplan.Progress) {
 			if streamErr == nil {
 				streamErr = encoder.Encode(event)
 			}
@@ -102,7 +95,7 @@ func runExactOperation(cmd *cobra.Command, catalog *agent.Catalog, action manage
 		}
 		var execution managementplan.Execution
 		err = ui.Run(cmd.Context(), terminalOperation(appi18n.T("operation.manage"), func(emit func(terminalEvent)) error {
-			execution = managementplan.Execute(storage, preflight, func(progress managementplan.Progress) { emit(managementProgressEvent(progress)) })
+			execution = managementplan.Execute(preflight, func(progress managementplan.Progress) { emit(managementProgressEvent(progress)) })
 			return nil
 		}))
 		if err != nil {
@@ -113,7 +106,7 @@ func runExactOperation(cmd *cobra.Command, catalog *agent.Catalog, action manage
 		}
 		return managementExecutionError(execution)
 	}
-	execution := managementplan.Execute(storage, preflight, nil)
+	execution := managementplan.Execute(preflight, nil)
 	encoder := json.NewEncoder(cmd.OutOrStdout())
 	encoder.SetIndent("", "  ")
 	if err := encoder.Encode(execution); err != nil {
@@ -140,19 +133,4 @@ func writePlanOutput(cmd *cobra.Command, output string, value any, human string)
 	}
 	_, err := fmt.Fprint(cmd.OutOrStdout(), human)
 	return err
-}
-
-func newRepairCommand(catalog *agent.Catalog) *cobra.Command {
-	var options exactOperationOptions
-	cmd := &cobra.Command{
-		Use:   "repair",
-		Short: "Restore exact unhealthy Installation Targets",
-		Args:  cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			return runExactOperation(cmd, catalog, managementplan.ActionRepair, options)
-		},
-	}
-	addExactOperationFlags(cmd, &options)
-	cmd.Flags().StringArrayVarP(&options.agents, "agent", "a", nil, "Agent paired with --path; repeatable")
-	return cmd
 }

@@ -24,7 +24,7 @@
 - `takeover.go`: preflights explicitly selected skills.sh User/Workspace lock-backed External copies into a bounded, expiring, lock-identity- and filesystem-state-bound plan with exact per-location counts, then verifies each unchanged copy against its exact immutable Repository member and adopts the complete Repository through the ordinary add transaction before recoverably removing the External directory.
 - `takeover_test.go`: specifies exact Repository-member adoption, mismatch refusal without managed state, malformed lock retention, provider identity, localized help, and required execution arguments through `Execute`.
 - `list_test.go`: specifies that global listing uses unified inventory and includes externally installed Agent Skills.
-- `management_plan.go`: adapts repeatable flat exact-target flags into top-level Remove/Repair preflight JSON and adaptive Human, JSON, or NDJSON execution progress/results.
+- `management_plan.go`: adapts repeatable flat exact-target flags into top-level External Remove preflight JSON and adaptive Human, JSON, or NDJSON execution progress/results.
 - `management_plan_test.go`: specifies state-bound exact External removal and absence of the obsolete `manage` command.
 - `version.go`: serves the human version output and versioned App startup handshake.
 - `args_test.go`: covers public argument normalization and environment-gated test Agent behavior.
