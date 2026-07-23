@@ -746,6 +746,76 @@ func (q *Queries) SkillPublishedVersions(ctx context.Context, arg SkillPublished
 	return items, nil
 }
 
+const skillsByCoordinates = `-- name: SkillsByCoordinates :many
+WITH requested AS (
+    SELECT repositories.repository_identity, skill_names.name, repositories.ordinal
+    FROM unnest($1::text[]) WITH ORDINALITY AS repositories(repository_identity, ordinal)
+    JOIN unnest($2::text[]) WITH ORDINALITY AS skill_names(name, ordinal) USING (ordinal)
+)
+SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.description,s.source_host,s.repository,s.skill_path,
+COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
+FROM requested input
+JOIN repositories r ON r.repository_id=input.repository_identity
+JOIN skills s ON s.repository_id=r.id AND s.name=input.name
+LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
+ORDER BY input.ordinal
+`
+
+type SkillsByCoordinatesParams struct {
+	RepositoryIdentities []string `json:"repository_identities"`
+	Names                []string `json:"names"`
+}
+
+type SkillsByCoordinatesRow struct {
+	ID                 int64     `json:"id"`
+	RepositoryID       int64     `json:"repository_id"`
+	RepositoryIdentity string    `json:"repository_identity"`
+	Name               string    `json:"name"`
+	Description        string    `json:"description"`
+	SourceHost         string    `json:"source_host"`
+	Repository         string    `json:"repository"`
+	SkillPath          string    `json:"skill_path"`
+	LatestVersion      string    `json:"latest_version"`
+	Stars              int64     `json:"stars"`
+	Verified           bool      `json:"verified"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+}
+
+func (q *Queries) SkillsByCoordinates(ctx context.Context, arg SkillsByCoordinatesParams) ([]SkillsByCoordinatesRow, error) {
+	rows, err := q.db.Query(ctx, skillsByCoordinates, arg.RepositoryIdentities, arg.Names)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SkillsByCoordinatesRow{}
+	for rows.Next() {
+		var i SkillsByCoordinatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.RepositoryID,
+			&i.RepositoryIdentity,
+			&i.Name,
+			&i.Description,
+			&i.SourceHost,
+			&i.Repository,
+			&i.SkillPath,
+			&i.LatestVersion,
+			&i.Stars,
+			&i.Verified,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const staleQueuedBackfillRuns = `-- name: StaleQueuedBackfillRuns :many
 SELECT id, repository_id, status, started_at, completed_at, error_count, diagnostics, created_at, updated_at FROM repository_backfill_runs WHERE status='queued' AND updated_at<$1 ORDER BY updated_at LIMIT $2
 `
