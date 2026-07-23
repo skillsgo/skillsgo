@@ -8,8 +8,6 @@ package actions
 
 import (
 	"context"
-	"errors"
-	"github.com/jackc/pgx/v5"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
@@ -20,16 +18,13 @@ type skillCardProjection struct {
 }
 
 func (projection skillCardProjection) Hydrate(ctx context.Context, coordinates []protocolapi.SkillCoordinate) ([]discoverySkill, error) {
-	cards := make([]discoverySkill, 0, len(coordinates))
-	for _, coordinate := range coordinates {
-		item, err := projection.catalog.SkillByCoordinate(ctx, coordinate.RepositoryID, coordinate.Name)
-		if errors.Is(err, pgx.ErrNoRows) {
-			continue
-		}
-		if err != nil {
-			return nil, err
-		}
-		cards = append(cards, storedSkillCard(*item))
+	items, err := projection.catalog.SkillsByCoordinates(ctx, coordinates)
+	if err != nil {
+		return nil, err
+	}
+	cards := make([]discoverySkill, 0, len(items))
+	for _, item := range items {
+		cards = append(cards, storedSkillCard(item))
 	}
 	return cards, nil
 }

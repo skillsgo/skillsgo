@@ -34,6 +34,7 @@ type Querier interface {
 	SetCurrentReleaseByVersion(ctx context.Context, arg SetCurrentReleaseByVersionParams) error
 	SkillByCoordinate(ctx context.Context, arg SkillByCoordinateParams) (SkillByCoordinateRow, error)
 	SkillPublishedVersions(ctx context.Context, arg SkillPublishedVersionsParams) ([]string, error)
+	SkillsByCoordinates(ctx context.Context, arg SkillsByCoordinatesParams) ([]SkillsByCoordinatesRow, error)
 	StaleQueuedBackfillRuns(ctx context.Context, arg StaleQueuedBackfillRunsParams) ([]RepositoryBackfillRun, error)
 	StartBackfillRun(ctx context.Context, arg StartBackfillRunParams) (int64, error)
 	TouchBackfillRun(ctx context.Context, arg TouchBackfillRunParams) (int64, error)

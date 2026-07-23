@@ -8,7 +8,7 @@
 - `real_skills_gateway_codec.dart`: owns centralized versioned/machine-document envelope validation, strict payload decoding, argument encoding, and bounded local Skill inspection.
 - `real_skills_gateway_cli.dart`: owns bundled CLI detection, startup handshake validation, developer override persistence, and command execution.
 - `real_skills_gateway_preferences.dart`: owns App preferences, Mandatory Onboarding state, one-time Batch Takeover introduction state, Added Project references, Hub origin and `hub info` runtime discovery, risk policy, and App-version lookup.
-- `real_skills_gateway_discovery.dart`: owns locale-aware `find` search, direct Cloud ranking reads with ordered Hub batch hydration, explicit-source classification for equivalent GitHub aliases and Git coordinates, and remote Skill detail decoding.
+- `real_skills_gateway_discovery.dart`: owns locale-aware `find` search, direct Cloud-composed ranking reads, explicit-source classification for equivalent GitHub aliases and Git coordinates, and remote Skill detail decoding.
 - `real_skills_gateway_inventory.dart`: owns Agent inspection, local Library inventory, exact Batch Takeover planning and scope-bound execution, and local Skill detail.
 - `real_skills_gateway_installation.dart`: groups Installation Requests by declaration scope, invokes exact Repository Vendor add through the bundled CLI, and decodes Vendor/Projection results.
 - `real_skills_gateway_execution.dart`: owns shared affected-binding integrity and ordered NDJSON progress/final-payload execution envelopes for target mutations.
@@ -19,7 +19,7 @@
 
 ## Architectural Boundary
 
-This module adapts operating-system processes, preferences, directory pickers, direct Cloud ranking reads, and bounded filesystem inspection to the App domain. Hub and local business operations cross the bundled CLI machine protocol; Cloud-only product reads may use the Cloud origin declared by `hub info`. No capability may call Hub HTTP directly or parse human-oriented CLI output.
+This module adapts operating-system processes, preferences, directory pickers, direct Cloud-composed ranking reads, and bounded filesystem inspection to the App domain. Hub and local business operations cross the bundled CLI machine protocol; Cloud ranking reads may use the Cloud origin declared by `hub info`. No capability may call Hub HTTP directly or parse human-oriented CLI output.
 
 `RealSkillsGateway` is the external seam. Its private capability mixins are internal implementation partitions and may share adapter state, but each owns one coherent change axis and remains below the workspace file-size limit.
 

@@ -81,6 +81,20 @@ COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.upda
 FROM skills s JOIN repositories r ON r.id=s.repository_id LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
 WHERE r.repository_id=$1 AND s.name=$2;
 
+-- name: SkillsByCoordinates :many
+WITH requested AS (
+    SELECT repositories.repository_identity, skill_names.name, repositories.ordinal
+    FROM unnest(sqlc.arg(repository_identities)::text[]) WITH ORDINALITY AS repositories(repository_identity, ordinal)
+    JOIN unnest(sqlc.arg(names)::text[]) WITH ORDINALITY AS skill_names(name, ordinal) USING (ordinal)
+)
+SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.description,s.source_host,s.repository,s.skill_path,
+COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
+FROM requested input
+JOIN repositories r ON r.repository_id=input.repository_identity
+JOIN skills s ON s.repository_id=r.id AND s.name=input.name
+LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
+ORDER BY input.ordinal;
+
 -- name: ListSkills :many
 SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.description,s.source_host,s.repository,s.skill_path,
 COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at

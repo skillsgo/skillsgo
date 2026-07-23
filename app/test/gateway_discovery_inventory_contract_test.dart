@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses controlled CLI Hub/Skill reads, an HTTP Cloud ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
- * [OUTPUT]: Specifies public Find and Cloud-ID/Hub-card collection discovery including the four-row empty-input matrix, direct explicit-source routing, unified inventory, Agent catalog, visibility, and schema validation contracts.
+ * [INPUT]: Uses controlled CLI Hub/Skill reads, an HTTP Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
+ * [OUTPUT]: Specifies public Find and Cloud-composed collection discovery including the four-row empty-input matrix, direct explicit-source routing, unified inventory, Agent catalog, visibility, and schema validation contracts.
  * [POS]: Serves as the discovery and local inventory contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -80,12 +80,12 @@ void main() {
     expect(installed.single.targetCount, 2);
   });
 
-  test('Cloud ranking IDs are hydrated by one ordered Hub batch read', () async {
+  test('Cloud ranking returns authoritative composed Skill cards', () async {
     final cloud = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     cloud.listen((request) async {
       request.response.headers.contentType = ContentType.json;
       request.response.write(
-        '{"collection":"hot","items":[{"repositoryId":"github.com/acme/skills","skillName":"demo","metric":{"kind":"hot_velocity","value":8,"change":5}}],"page":{"limit":20,"offset":0,"nextOffset":null}}',
+        '{"collection":"hot","items":[{"repositoryId":"github.com/acme/skills","skillName":"demo","name":"demo","description":"Demo Skill","source":"github.com/acme/skills","repository":"github.com/acme/skills","imageUrl":null,"skillPath":"demo","latestVersion":"v1.0.0","trustLevel":"unverified","riskAssessment":"unknown","metric":{"kind":"hot_velocity","value":8,"change":5}}],"page":{"limit":20,"offset":0,"nextOffset":null}}',
       );
       await request.response.close();
     });
@@ -94,12 +94,6 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout: '{"mode":"cloud","cloud":"http://127.0.0.1:${cloud.port}"}',
-          stderr: '',
-        ),
-        const ProcessOutput(
-          exitCode: 0,
-          stdout:
-              '{"skills":[{"repositoryId":"github.com/acme/skills","source":"github.com/acme/skills","skillPath":"demo","name":"demo","description":"Demo Skill","latestVersion":"v1.0.0","trustLevel":"unverified","riskAssessment":"unknown"}]}',
           stderr: '',
         ),
         const ProcessOutput(
@@ -119,15 +113,7 @@ void main() {
     expect(page.skills.single.repositoryId, 'github.com/acme/skills');
     expect(page.skills.single.installs, 8);
     expect(page.skills.single.metricChange, 5);
-    expect(runner.calls[1].arguments, [
-      'detail',
-      '--repository',
-      'github.com/acme/skills',
-      '--skill',
-      'demo',
-      '--hub',
-      'https://hub.example.test',
-    ]);
+    expect(runner.calls, hasLength(2));
     await cloud.close(force: true);
   });
 
