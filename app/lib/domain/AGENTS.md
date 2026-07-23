@@ -11,6 +11,7 @@
 - `target_management_models.dart`: owns reviewed managed Repository-member and External Installation removal plans, execution results, and progress.
 - `library_models.dart`: owns Agent catalogs, Added Projects, onboarding state, Skill detail, unified Library entries, and Batch Takeover scope/plan/result values.
 - `presentation_language.dart`: owns the persisted Presentation Locale value and BCP 47 content tag resolution.
+- `skill_coordinate.dart`: owns Repository ID plus Skill Name value equality and collision-safe internal keys shared across App journeys.
 
 ## Architectural Boundary
 

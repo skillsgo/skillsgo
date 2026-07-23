@@ -1,10 +1,11 @@
 /*
- * [INPUT]: Depends on shared system vocabulary for trust, risk, metrics, and discovery collections.
- * [OUTPUT]: Provides discovery summaries, repository metadata, pages, auditable files, and risk evidence.
+ * [INPUT]: Depends on shared system vocabulary for trust, risk, metrics, discovery collections, and canonical Skill coordinates.
+ * [OUTPUT]: Provides discovery summaries with canonical coordinate identity, repository metadata, pages, auditable files, and risk evidence.
  * [POS]: Serves as the focused public discovery model module consumed by Discover, detail, and CLI decoding.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'system_models.dart';
+import 'skill_coordinate.dart';
 
 class SkillSummary {
   const SkillSummary({
@@ -39,7 +40,10 @@ class SkillSummary {
 
   bool get isInstalled => localTargetCount > 0;
 
-  String get coordinateKey => '$repositoryId:$name';
+  SkillCoordinate get coordinate =>
+      SkillCoordinate(repositoryId: repositoryId, name: name);
+
+  String get coordinateKey => coordinate.key;
 }
 
 class RepositorySummary {
