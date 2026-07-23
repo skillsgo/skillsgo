@@ -366,10 +366,11 @@ void main() {
       '/tmp/Workspace With Spaces',
       '--project',
       '/tmp/Second Workspace',
+      '--hub',
+      'https://must-not-be-used.example',
       '--output',
       'json',
     ]);
-    expect(runner.lastArguments, isNot(contains('--hub')));
   });
 
   test('Batch Takeover executes one Plan for an explicit scope', () async {
@@ -415,11 +416,12 @@ void main() {
       '/tmp/Workspace With Spaces',
       '--project',
       '/tmp/Second Workspace',
+      '--hub',
+      'https://must-not-be-used.example',
       '--yes',
       '--output',
       'json',
     ]);
-    expect(runner.lastArguments, isNot(contains('--hub')));
   });
 
   test(

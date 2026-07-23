@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the rendered App, its bundled CLI, isolated user/project Agent roots, supported skills.sh locks, and SharedPreferences-backed Added Projects.
- * [OUTPUT]: Verifies exact All/User/Project takeover counts, the takeover story and localized completion state, scoped execution, complete metadata persistence, preserved Skill bytes, and post-success rescans.
+ * [INPUT]: Depends on the rendered App, bundled CLI, disposable Hub, isolated user/project Agent roots, supported skills.sh locks, the public versioned Repository fixture, and SharedPreferences-backed Added Projects.
+ * [OUTPUT]: Verifies exact All/User/Project takeover counts, Repository adoption, YAML/Lock, Scope Vendors, coordinate Projections, preserved Skill bytes, and post-success rescans.
  * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -28,11 +28,9 @@ void main() {
         '${projectRoot.path}/.test-agent/skills/project-existing',
       );
       final userSkillBytes = utf8.encode(
-        '---\nname: user-existing\ndescription: existing user skill\n---\n# User\n',
+        '---\nname: alpha\ndescription: Stable updated version of the versioned Alpha E2E fixture.\n---\n# Alpha\n\nVersion 1.1.0 fixture content.\n',
       );
-      final projectSkillBytes = utf8.encode(
-        '---\nname: project-existing\ndescription: existing project skill\n---\n# Project\n',
-      );
+      final projectSkillBytes = List<int>.from(userSkillBytes);
       userTarget.createSync(recursive: true);
       projectTarget.createSync(recursive: true);
       File('${userTarget.path}/SKILL.md').writeAsBytesSync(userSkillBytes);
@@ -41,15 +39,11 @@ void main() {
       ).writeAsBytesSync(projectSkillBytes);
       _writeJson(File('$sandbox/home/.agents/.skill-lock.json'), {
         'version': 3,
-        'skills': {
-          'user-existing': _lockRecord('skills/user-existing/SKILL.md'),
-        },
+        'skills': {'user-existing': _lockRecord('skills/alpha/SKILL.md')},
       });
       _writeJson(File('${projectRoot.path}/skills-lock.json'), {
         'version': 1,
-        'skills': {
-          'project-existing': _lockRecord('skills/project-existing/SKILL.md'),
-        },
+        'skills': {'project-existing': _lockRecord('skills/alpha/SKILL.md')},
       });
 
       final preferences = await SharedPreferences.getInstance();
@@ -83,19 +77,21 @@ void main() {
       await tester.tap(_railButton(find.text('takeover-project')));
       await _pumpUntilTakeoverCount(tester, 1);
       await _executeTakeover(tester, takenOver: 1, skipped: 0);
-      expect(File('${projectRoot.path}/skillsgo.mod').existsSync(), isTrue);
-      expect(File('${projectRoot.path}/skillsgo.sum').existsSync(), isTrue);
+      expect(File('${projectRoot.path}/skillsgo.yaml').existsSync(), isTrue);
+      expect(File('${projectRoot.path}/skillsgo.lock').existsSync(), isTrue);
       expect(
-        Directory('${projectRoot.path}/.skillsgo/receipts')
-            .listSync()
-            .whereType<File>()
-            .where((file) => file.path.endsWith('.yaml')),
-        hasLength(1),
-      );
-      expect(
-        File('${projectTarget.path}/SKILL.md').readAsBytesSync(),
+        File(
+          '${projectRoot.path}/.skillsgo/vendor/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
+        ).readAsBytesSync(),
         projectSkillBytes,
       );
+      expect(
+        File(
+          '${projectRoot.path}/.test-agent/skills/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
+        ).readAsBytesSync(),
+        projectSkillBytes,
+      );
+      expect(projectTarget.existsSync(), isFalse);
       await _pumpUntil(tester, _projectRailCount('takeover-project', 0));
       expect(_projectRailCount('takeover-project', 0), findsOneWidget);
 
@@ -103,12 +99,21 @@ void main() {
       await _pumpUntilTakeoverCount(tester, 1);
       await _executeTakeover(tester, takenOver: 1, skipped: 0);
       await _pumpUntilTakeoverCount(tester, 0);
-      expect(File('$sandbox/home/.skillsgo/skillsgo.mod').existsSync(), isTrue);
-      expect(File('$sandbox/home/.skillsgo/skillsgo.sum').existsSync(), isTrue);
       expect(
-        File('${userTarget.path}/SKILL.md').readAsBytesSync(),
+        File('$sandbox/home/.skillsgo/skillsgo.yaml').existsSync(),
+        isTrue,
+      );
+      expect(
+        File('$sandbox/home/.skillsgo/skillsgo.lock').existsSync(),
+        isTrue,
+      );
+      expect(
+        File(
+          '$sandbox/test-agent/skills/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
+        ).readAsBytesSync(),
         userSkillBytes,
       );
+      expect(userTarget.existsSync(), isFalse);
 
       await tester.tap(_railButton(_allSkillsRailLabel()));
       await _pumpUntilTakeoverCount(tester, 0);
@@ -120,10 +125,10 @@ void main() {
 }
 
 Map<String, Object> _lockRecord(String skillPath) => {
-  'source': 'acme/skills',
+  'source': 'skillsgo/e2e-versioned-skills',
   'sourceType': 'github',
-  'sourceUrl': 'https://github.com/acme/skills.git',
-  'ref': 'main',
+  'sourceUrl': 'https://github.com/skillsgo/e2e-versioned-skills.git',
+  'ref': 'v1.2.0',
   'skillPath': skillPath,
   'installedAt': '2026-01-01T00:00:00Z',
   'updatedAt': '2026-01-01T00:00:00Z',

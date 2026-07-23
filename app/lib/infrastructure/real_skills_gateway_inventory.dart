@@ -283,6 +283,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
   Future<BatchTakeoverPlan> planBatchTakeover({
     List<String> projectRoots = const [],
   }) async {
+    await _ensureHubOrigin();
     final normalizedProjects = _normalizeTakeoverProjectRoots(projectRoots);
     final arguments = <String>[
       'takeover',
@@ -292,6 +293,8 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
         '--project',
         projectRoot,
       ],
+      '--hub',
+      _hubOrigin,
       '--output',
       'json',
     ];
@@ -385,6 +388,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
     BatchTakeoverPlan plan,
     BatchTakeoverScope scope,
   ) async {
+    await _ensureHubOrigin();
     if (plan.id.trim().isEmpty) {
       throw const SkillsException(
         'Batch Takeover requires a preflight plan.',
@@ -418,6 +422,8 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
         '--project',
         projectRoot,
       ],
+      '--hub',
+      _hubOrigin,
       '--yes',
       '--output',
       'json',
@@ -455,7 +461,6 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
         }
         final target = item['target'] as Map<String, dynamic>;
         if (target['scope'] != 'user' && target['scope'] != 'project' ||
-            target['mode'] != 'copy' && target['mode'] != 'symlink' ||
             target['path'] is! String ||
             (target['projectRoot'] != null &&
                 target['projectRoot'] is! String)) {
