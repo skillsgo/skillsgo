@@ -25,14 +25,14 @@ func TestJ35LazyCatalogAndProtocolSurface(t *testing.T) {
 
 	add := execCLI(t, ctx, container,
 		"add", "https://"+repository+"@v1.0.0", "--skill", "alpha",
-		"--agent", "codex", "--copy", "--yes", "--output", "json",
+		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, add.exitCode, add.output)
 	after := execInContainer(t, ctx, container, "wget", "-qO-", detailURL)
 	require.Equal(t, 0, after.exitCode, after.output)
 	require.Contains(t, after.output, `"id":"`+skillID+`"`)
 
-	canonical := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/mod/"+repository+"/@v/v1.0.0.info")
+	canonical := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/"+repository+"/@v/v1.0.0.info")
 	require.Equal(t, 0, canonical.exitCode, canonical.output)
 	for _, path := range []string{
 		"/" + repository + "/@resolve?selector=latest",

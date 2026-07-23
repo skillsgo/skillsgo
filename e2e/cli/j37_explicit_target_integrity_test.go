@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on a disposable E2E environment, the App-facing explicit-target CLI contract, deterministic Repository fixtures, and offline Workspace restoration.
- * [OUTPUT]: Provides black-box coverage that explicit target installation persists complete Skill and Repository integrity before offline recovery.
+ * [INPUT]: Depends on a disposable E2E environment, the App-facing project/Agent CLI contract, deterministic Repository fixtures, and offline Workspace restoration.
+ * [OUTPUT]: Provides black-box coverage that App-shaped installation persists Repository integrity before offline Projection recovery.
  * [POS]: Serves as the App-driven installation integrity user journey in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -8,6 +8,7 @@ package e2e_test
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -19,30 +20,33 @@ func TestJ37ExplicitTargetIntegrity(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
 	repositoryID := "fixtures.test/group/subgroup/collection"
-	skillID := repositoryID + "/-/skills/alpha"
 	version := "v1.0.0"
-	target := `{"scope":"project","projectRoot":"/e2e/project","agent":"codex","mode":"copy"}`
-
 	add := execCLI(t, ctx, container,
-		"add", skillID,
+		"add", repositoryID+"@"+version,
 		"--skill", "alpha",
-		"--target", target,
-		"--version", version,
+		"--project", "/e2e/project",
+		"--agent", "codex",
 		"--yes",
 		"--output", "json",
 	)
 	require.Equal(t, 0, add.exitCode, add.output)
+	var installed addResponse
+	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 
-	manifestBytes, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.mod"))
+	manifestBytes, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
 	require.NoError(t, err)
-	require.Contains(t, string(manifestBytes), skillID+" "+version+" [codex]")
-	sumBytes, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.sum"))
+	require.Contains(t, string(manifestBytes), repositoryID+":")
+	require.Contains(t, string(manifestBytes), "version: "+version)
+	require.Contains(t, string(manifestBytes), "- skills/alpha")
+	require.Contains(t, string(manifestBytes), "- codex")
+	sumBytes, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
 	require.NoError(t, err)
-	require.Contains(t, string(sumBytes), repositoryID+" "+version+"/repository.info h1:")
-	require.Contains(t, string(sumBytes), skillID+" "+version+" h1:")
+	require.Contains(t, string(sumBytes), repositoryID+":")
+	require.Contains(t, string(sumBytes), "version: "+version)
+	require.Contains(t, string(sumBytes), "sum: h1:")
 
-	targetRoot := filepath.Join(sandboxRoot, "project", ".agents", "skills", "alpha")
-	require.FileExists(t, filepath.Join(targetRoot, "SKILL.md"))
+	targetRoot := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path)
+	require.FileExists(t, filepath.Join(targetRoot, "skills", "alpha", "SKILL.md"))
 	require.NoError(t, os.RemoveAll(targetRoot))
 	restore := execCLI(t, ctx, container,
 		"install",
@@ -50,5 +54,5 @@ func TestJ37ExplicitTargetIntegrity(t *testing.T) {
 		"--output", "json",
 	)
 	require.Equal(t, 0, restore.exitCode, restore.output)
-	require.FileExists(t, filepath.Join(targetRoot, "SKILL.md"))
+	require.FileExists(t, filepath.Join(targetRoot, "skills", "alpha", "SKILL.md"))
 }
