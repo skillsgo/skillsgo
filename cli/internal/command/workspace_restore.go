@@ -118,17 +118,20 @@ func ensureOneRepository(ctx context.Context, root string, userScope bool, catal
 		}
 	}
 	members := make([]string, 0, len(resource.Members))
-	available := make(map[string]bool, len(resource.Members))
+	available := make(map[string]string, len(resource.Members))
 	for _, member := range resource.Members {
 		members = append(members, member.Info.Path)
-		available[member.Info.Path] = true
+		available[member.Info.Name] = member.Info.Path
 	}
+	selectedPaths := make([]string, 0, len(dependency.Skills))
 	for _, selected := range dependency.Skills {
-		if !available[selected] {
+		path, ok := available[selected]
+		if !ok {
 			return "", vendor, fmt.Errorf("Repository release does not contain selected Skill %q", selected)
 		}
+		selectedPaths = append(selectedPaths, path)
 	}
-	projections, err := repositoryProjections(catalog, dependency.Agents, nil, nil, dependency.Skills, agentScope, root)
+	projections, err := repositoryProjections(catalog, dependency.Agents, nil, nil, selectedPaths, agentScope, root)
 	if err != nil {
 		return "", vendor, err
 	}

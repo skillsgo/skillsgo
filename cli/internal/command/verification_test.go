@@ -24,7 +24,7 @@ func TestWhyAndVerifyReconciledUserInstallation(t *testing.T) {
 	defer server.Close()
 	skillID := repositoryID + "/-/skills/alpha"
 
-	require.NoError(t, Execute([]string{"add", skillID + "@" + version, "--agent", "codex", "--global", "--yes", "--hub", server.URL, "--output", "json"}, &bytes.Buffer{}, &bytes.Buffer{}))
+	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--skill", "alpha", "--agent", "codex", "--global", "--yes", "--hub", server.URL, "--output", "json"}, &bytes.Buffer{}, &bytes.Buffer{}))
 
 	var whyOutput bytes.Buffer
 	require.NoError(t, Execute([]string{"why", skillID, "--user", "--output", "json"}, &whyOutput, &bytes.Buffer{}))

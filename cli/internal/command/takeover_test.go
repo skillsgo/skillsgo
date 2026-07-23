@@ -112,7 +112,7 @@ func TestBatchTakeoverAdoptsExactRepositoryMemberIntoUserVendor(t *testing.T) {
 	manifest, err := project.LoadWorkspaceManifest(userRoot)
 	require.NoError(t, err)
 	require.Equal(t, version, manifest.Dependencies[repositoryID].Version)
-	require.Equal(t, []string{"skills/alpha"}, manifest.Dependencies[repositoryID].Skills)
+	require.Equal(t, []string{"alpha"}, manifest.Dependencies[repositoryID].Skills)
 	require.Equal(t, []string{"test-agent"}, manifest.Dependencies[repositoryID].Agents)
 	require.NoError(t, project.ValidateWorkspaceState(manifest, mustLoadTakeoverLock(t, userRoot)))
 	vendor := scopevendor.CoordinatePath(filepath.Join(userRoot, "vendor"), repositoryID, version)
