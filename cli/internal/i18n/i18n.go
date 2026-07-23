@@ -91,7 +91,6 @@ var messages = map[string][2]string{
 	"flag.skill":                            {"Skill name (repeatable; '*' means all)", "Skill 名称（可指定多个，'*' 表示全部）"},
 	"flag.list":                             {"List available Skills only", "只列出可用 Skill"},
 	"flag.yes":                              {"Skip confirmation", "跳过确认"},
-	"flag.copy":                             {"Copy files instead of creating symlinks", "复制文件而不是创建符号链接"},
 	"flag.replace":                          {"Explicitly replace the source and all Agent bindings of a same-name Skill", "显式替换同名 Skill 的来源和全部 Agent 绑定"},
 	"flag.target":                           {"Exact Installation Target as JSON (repeatable)", "精确安装目标 JSON（可重复指定）"},
 	"flag.preflight":                        {"Preview exact target actions without installing", "预览精确目标操作但不执行安装"},

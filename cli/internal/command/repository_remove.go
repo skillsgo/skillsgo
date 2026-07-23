@@ -1,12 +1,13 @@
 /*
  * [INPUT]: Depends on strict YAML/Lock state, an h1-verified authoritative Scope Vendor, Agent Adapter roots, and baseline-aware Repository Projection transactions.
- * [OUTPUT]: Removes selected root/nested Repository members from every declared Agent projection atomically without Hub access or Local Modification overwrite.
+ * [OUTPUT]: Removes selected root/nested Repository members from every declared Agent projection atomically and emits a typed machine result without Hub access or Local Modification overwrite.
  * [POS]: Serves as the Repository Vendor architecture path behind `skillsgo remove` while legacy installation removal awaits deletion.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path"
@@ -20,7 +21,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, selectors, selectedAgents []string, userScope, all bool) (bool, error) {
+func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, selectors, selectedAgents []string, userScope bool, projectRoot string, all bool) (bool, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return true, err
@@ -28,6 +29,8 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 	declarationRoot, agentScope := "", agent.ScopeProject
 	if userScope {
 		declarationRoot, agentScope = project.UserRoot(home), agent.ScopeUser
+	} else if projectRoot != "" {
+		declarationRoot = filepath.Clean(projectRoot)
 	} else {
 		declarationRoot, err = os.Getwd()
 		if err != nil {
@@ -151,6 +154,19 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 		if err := transaction.Finalize(); err != nil {
 			return true, fmt.Errorf("Repository member removal committed but transaction cleanup failed: %w", err)
 		}
+	}
+	if output, _ := cmd.Flags().GetString("output"); output == "json" {
+		scope := "project"
+		if userScope {
+			scope = "user"
+		}
+		err := json.NewEncoder(cmd.OutOrStdout()).Encode(struct {
+			SchemaVersion int      `json:"schemaVersion"`
+			Phase         string   `json:"phase"`
+			Skills        []string `json:"skills"`
+			Scope         string   `json:"scope"`
+		}{SchemaVersion: 1, Phase: "repository-remove", Skills: selectors, Scope: scope})
+		return true, err
 	}
 	fmt.Fprintf(cmd.OutOrStdout(), "✓ removed %d Repository Skill selection(s)\n", len(selectors))
 	return true, nil
