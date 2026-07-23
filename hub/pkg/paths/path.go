@@ -20,10 +20,6 @@ func GetSkill(requestPath string) (string, error) {
 	skill = strings.TrimPrefix(skill, "mod/")
 	if i := strings.Index(skill, "/@v/"); i >= 0 {
 		skill = skill[:i]
-	} else if i := strings.Index(skill, "/@head"); i >= 0 {
-		skill = skill[:i]
-	} else if i := strings.Index(skill, "/@release"); i >= 0 {
-		skill = skill[:i]
 	} else {
 		return "", errors.E(op, "missing skill parameter")
 	}

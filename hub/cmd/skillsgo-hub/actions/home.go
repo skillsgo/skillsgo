@@ -50,24 +50,23 @@ const homepage = `<!DOCTYPE html>
 	
 	<h1>SkillsGo Hub</h1>
 
-	<h2>Artifact protocol</h2>
-	<p>Use <code>/mod</code> for immutable Skill and Repository resources.</p>
+	<h2>Repository artifact protocol</h2>
+	<p>Immutable artifacts are published at the canonical Repository path.</p>
 
 	<h3>List of versions</h3>
 	<p>This endpoint returns published canonical semantic versions:</p>
-	<pre>GET {{ .Host }}/mod/github.com/owner/repository/@v/list</pre>
+	<pre>GET {{ .Host }}/github.com/owner/repository/@v/list</pre>
 
 	<h3>Version info</h3>
-	<p>This endpoint returns information about a specific version of a module:</p>
-	<pre>GET {{ .Host }}/mod/github.com/owner/repository/@v/v1.0.0.info</pre>
+	<p>This endpoint returns information about a specific immutable Repository version:</p>
+	<pre>GET {{ .Host }}/github.com/owner/repository/@v/v1.0.0.info</pre>
 
-	<h3>Immutable Skill archive</h3>
-	<pre>GET {{ .Host }}/mod/github.com/owner/repository/-/skills/example/@v/v1.0.0.zip</pre>
+	<h3>Immutable Repository archive</h3>
+	<pre>GET {{ .Host }}/github.com/owner/repository/@v/v1.0.0.zip</pre>
 
-	<h3>Movable selectors</h3>
-	<pre>GET {{ .Host }}/mod/github.com/owner/repository/@head
-GET {{ .Host }}/mod/github.com/owner/repository/@release</pre>
-	<p><code>head</code> resolves the default branch. <code>release</code> resolves the highest stable canonical tag, falling back to a pre-release. The ambiguous <code>latest</code> selector is not supported.</p>
+	<h3>Movable selector resolution</h3>
+	<pre>POST {{ .Host }}/api/v1/repository-resolutions</pre>
+	<p>Resolve a branch, tag, commit, <code>head</code>, or <code>release</code> through the product API before fetching an immutable artifact. The ambiguous <code>latest</code> selector is rejected.</p>
 
 </body>
 </html>
