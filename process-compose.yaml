@@ -1,5 +1,5 @@
-# [INPUT]: Depends on Process Compose, the Hub Air configuration, CLI build target, Flutter macOS runtime, and port 3000 readiness.
-# [OUTPUT]: Declares the ordered, observable local development topology for Hub, CLI, and App processes.
+# [INPUT]: Depends on Process Compose, Docker Compose PostgreSQL, the Hub Air configuration, CLI build target, Flutter macOS runtime, and port 3000 readiness.
+# [OUTPUT]: Declares the ordered, observable local development topology for PostgreSQL, Hub, CLI, and App processes.
 # [POS]: Serves as the repository-owned process orchestration contract consumed by scripts/dev.sh.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -7,14 +7,24 @@ version: "0.5"
 ordered_shutdown: true
 
 processes:
+  postgres:
+    command: "docker compose -f hub/docker-compose.yml up postgres"
+    ready_log_line: "database system is ready to accept connections"
+    availability:
+      restart: exit_on_failure
+
   hub:
     command: "${SKILLSGO_AIR_BIN} -c .air.toml"
     working_dir: "./hub"
     environment:
       - "SKILLSGO_HUB_LOG_LEVEL=debug"
+      - "SKILLSGO_HUB_DATABASE_DSN=postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable"
     availability:
       restart: exit_on_failure
     ready_log_line: "Server started on:"
+    depends_on:
+      postgres:
+        condition: process_log_ready
 
   cli:
     command: "make build"

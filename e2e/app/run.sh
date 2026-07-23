@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on macOS Flutter desktop support, Go, curl, Ruby, the App workspace with its CLI bundling phase, isolated Hub database/cache/storage paths, and optionally Docker for the alternate Hub runtime.
+# [INPUT]: Depends on macOS Flutter desktop support, Go, curl, Ruby, Docker-hosted PostgreSQL, the App workspace with its CLI bundling phase, isolated Hub cache/storage paths, and optionally Docker for the alternate Hub runtime.
 # [OUTPUT]: Launches a fully disposable real Hub process and runs each selected App journey with its bundled Darwin CLI inside an independent redirected temporary macOS home.
 # [POS]: Serves as the isolated lifecycle and execution adapter behind make test-e2e-app.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -39,6 +39,9 @@ cleanup() {
   if [[ -n "${hub_container:-}" ]]; then
     docker rm --force "${hub_container}" >/dev/null 2>&1 || true
   fi
+  if [[ -n "${postgres_container:-}" ]]; then
+    docker rm --force "${postgres_container}" >/dev/null 2>&1 || true
+  fi
   chmod -R u+w "${run_dir}" 2>/dev/null || true
   rm -rf "${run_dir}"
 }
@@ -52,6 +55,17 @@ readonly hub_port="$(ruby -rsocket -e 'server = TCPServer.new("127.0.0.1", 0); p
 readonly hub_origin="http://127.0.0.1:${hub_port}"
 readonly hub_log="${run_dir}/hub.log"
 readonly hub_runtime="${SKILLSGO_E2E_HUB_RUNTIME:-native}"
+readonly postgres_container="skillsgo-app-e2e-postgres-${hub_port}"
+docker run --detach --name "${postgres_container}" --publish 127.0.0.1::5432 \
+  --env POSTGRES_DB=skillsgo --env POSTGRES_USER=skillsgo --env POSTGRES_PASSWORD=skillsgo \
+  postgres:18-alpine >/dev/null
+readonly postgres_port="$(docker port "${postgres_container}" 5432/tcp | sed 's/.*://')"
+for _ in {1..60}; do
+  if docker exec "${postgres_container}" pg_isready -U skillsgo -d skillsgo >/dev/null 2>&1; then break; fi
+  sleep 0.25
+done
+readonly native_database_dsn="postgres://skillsgo:skillsgo@127.0.0.1:${postgres_port}/skillsgo?sslmode=disable"
+readonly docker_database_dsn="postgres://skillsgo:skillsgo@host.docker.internal:${postgres_port}/skillsgo?sslmode=disable"
 
 case "${hub_runtime}" in
   native)
@@ -62,7 +76,8 @@ case "${hub_runtime}" in
     )
     SKILLSGO_HUB_PORT="127.0.0.1:${hub_port}" \
     SKILLSGO_HUB_CACHE_DIR="${run_dir}/hub/cache" \
-    SKILLSGO_HUB_DATABASE_DSN="${run_dir}/hub/catalog.db" \
+    SKILLSGO_HUB_DATABASE_TYPE=postgres \
+    SKILLSGO_HUB_DATABASE_DSN="${native_database_dsn}" \
     SKILLSGO_HUB_STORAGE_TYPE=disk \
     SKILLSGO_HUB_DISK_STORAGE_ROOT="${run_dir}/hub/storage" \
     SKILLSGO_HUB_LOG_LEVEL=info \
@@ -81,9 +96,11 @@ case "${hub_runtime}" in
       --name "${hub_container}" \
       --publish "127.0.0.1:${hub_port}:3000" \
       --mount "type=bind,source=${run_dir}/hub,target=/e2e/hub" \
+      --add-host host.docker.internal:host-gateway \
       --env SKILLSGO_HUB_PORT=:3000 \
       --env SKILLSGO_HUB_CACHE_DIR=/e2e/hub/cache \
-      --env SKILLSGO_HUB_DATABASE_DSN=/e2e/hub/catalog.db \
+      --env SKILLSGO_HUB_DATABASE_TYPE=postgres \
+      --env SKILLSGO_HUB_DATABASE_DSN="${docker_database_dsn}" \
       --env SKILLSGO_HUB_STORAGE_TYPE=disk \
       --env SKILLSGO_HUB_DISK_STORAGE_ROOT=/e2e/hub/storage \
       --env SKILLSGO_HUB_LOG_LEVEL=info \
