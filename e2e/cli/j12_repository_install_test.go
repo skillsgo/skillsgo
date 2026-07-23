@@ -50,7 +50,7 @@ func TestJ12RepositoryInstall(t *testing.T) {
 	}
 	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
 	require.NoError(t, err)
-	lock, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
+	lock, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"))
 	require.NoError(t, err)
 	require.Contains(t, string(manifest), repositoryID+":")
 	require.Contains(t, string(manifest), "version: "+version)
@@ -82,7 +82,7 @@ func TestJ12SkillNameIndependentFromSourceDirectory(t *testing.T) {
 	installed := filepath.Join(sandboxRoot, "project", ".agents", "skills", "fixtures.test", "group", "subgroup", "collection@v1.0.0", "skills", "CamelCase")
 	require.FileExists(t, filepath.Join(installed, "SKILL.md"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", ".agents", "skills", "camel-case", "SKILL.md"))
-	lock, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
+	lock, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"))
 	require.NoError(t, err)
 	require.Contains(t, string(lock), "sum: h1:")
 

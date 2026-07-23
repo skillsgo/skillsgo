@@ -51,7 +51,7 @@ void main() {
     runner.result = const ProcessOutput(
       exitCode: 0,
       stdout:
-          r'{"schemaVersion":1,"phase":"repository-install","repository":"github.com/a/b","version":"v1","sum":"h1:test","skills":["test;$(touch nope)"],"agents":["codex"],"vendor":"/tmp/vendor","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skillsgo.yaml","lock":"/tmp/skillsgo.lock"}}',
+          r'{"schemaVersion":1,"phase":"repository-install","repository":"github.com/a/b","version":"v1","sum":"h1:test","skills":["test;$(touch nope)"],"agents":["codex"],"vendor":"/tmp/vendor","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skillsgo.yaml","lock":"/tmp/skillsgo-lock.yaml"}}',
       stderr: '',
     );
     await gateway.installTargets(summary, 'v1', const [
@@ -175,7 +175,7 @@ void main() {
             ],
             'workspace': {
               'manifest': '/Users/test/.skillsgo/skillsgo.yaml',
-              'lock': '/Users/test/.skillsgo/skillsgo.lock',
+              'lock': '/Users/test/.skillsgo/skillsgo-lock.yaml',
             },
           }),
           stderr: '',

@@ -618,7 +618,7 @@ class AppLocalizationsUk extends AppLocalizations {
 
   @override
   String get workspaceOwnershipChanges =>
-      'Вибрані дії проекту оновлять skillsgo.yaml і skillsgo.lock.';
+      'Вибрані дії проекту оновлять skillsgo.yaml і skillsgo-lock.yaml.';
 
   @override
   String get targetContentPreserved =>

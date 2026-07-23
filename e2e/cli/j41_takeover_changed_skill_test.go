@@ -81,7 +81,7 @@ func TestJ41SkipChangedSkillWithoutLosingData(t *testing.T) {
 	stateRoot := filepath.Join(sandboxRoot, "home", ".skillsgo")
 	require.DirExists(t, filepath.Join(stateRoot, "vendor"))
 	require.FileExists(t, filepath.Join(stateRoot, "skillsgo.yaml"))
-	require.FileExists(t, filepath.Join(stateRoot, "skillsgo.lock"))
+	require.FileExists(t, filepath.Join(stateRoot, "skillsgo-lock.yaml"))
 
 	rescan := execCLI(t, ctx, container, "takeover", "--preflight", "--user", "--output", "json")
 	require.Equal(t, 0, rescan.exitCode, rescan.output)

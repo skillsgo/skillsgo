@@ -357,7 +357,7 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "การดำเนินการของโปรเจ็กต์ที่เลือกจะอัปเดต skillsgo.yaml และ skillsgo.lock",
+  "workspaceOwnershipChanges": "การดำเนินการของโปรเจ็กต์ที่เลือกจะอัปเดต skillsgo.yaml และ skillsgo-lock.yaml",
   "targetContentPreserved": "เนื้อหาเป้าหมายปัจจุบันจะถูกเก็บรักษาไว้",
   "localReadFailed": "ไม่สามารถอ่านทักษะนี้ได้",
   "localReadFailedMessage": "SkillsGo ไม่สามารถอ่านทักษะที่ติดตั้งนี้ได้ ตรวจสอบว่าโฟลเดอร์พร้อมใช้งานและเข้าถึงได้ จากนั้นลองอีกครั้ง",

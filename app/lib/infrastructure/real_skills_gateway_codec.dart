@@ -220,7 +220,7 @@ List<InstallationTargetResult> _repositoryInstallationResults(
   if (workspace['manifest'] is! String ||
       !(workspace['manifest'] as String).endsWith('skillsgo.yaml') ||
       workspace['lock'] is! String ||
-      !(workspace['lock'] as String).endsWith('skillsgo.lock')) {
+      !(workspace['lock'] as String).endsWith('skillsgo-lock.yaml')) {
     throw const FormatException();
   }
   final pathsByAgent = <String, String>{};

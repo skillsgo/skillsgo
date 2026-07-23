@@ -39,7 +39,7 @@ func TestJ07UpdateMovable(t *testing.T) {
 	require.NoError(t, err)
 	require.NotContains(t, string(manifestBefore), "@head", "movable selector must not be persisted")
 
-	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo.lock")
+	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 	targetPath := containerPathOnHost(t, sandboxRoot, oldInstalled.Projections[0].Path, "skills", "head", "SKILL.md")

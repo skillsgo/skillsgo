@@ -153,7 +153,7 @@ The user can Retry Failed Targets, View in Library, or remain on the current det
 
 The Library merges facts from:
 
-- user and project `skillsgo.yaml` declarations plus `skillsgo.lock` integrity state;
+- user and project `skillsgo.yaml` declarations plus `skillsgo-lock.yaml` integrity state;
 - authoritative Scope Vendor trees and derived Repository Projections;
 - user-level Skill directories for Installed Agents;
 - Agent Skill directories inside Added Projects;

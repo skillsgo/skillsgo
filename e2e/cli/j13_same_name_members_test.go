@@ -40,7 +40,7 @@ func TestJ13SameNameMembersCoexistByPath(t *testing.T) {
 	require.FileExists(t, filepath.Join(coordinate, "two", "SKILL.md"))
 	manifestAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
 	require.NoError(t, err)
-	lockAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
+	lockAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"))
 	require.NoError(t, err)
 	require.Contains(t, string(manifestAfter), "- one")
 	require.Contains(t, string(manifestAfter), "- two")

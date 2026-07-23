@@ -78,7 +78,7 @@ void main() {
       await _pumpUntilTakeoverCount(tester, 1);
       await _executeTakeover(tester, takenOver: 1, skipped: 0);
       expect(File('${projectRoot.path}/skillsgo.yaml').existsSync(), isTrue);
-      expect(File('${projectRoot.path}/skillsgo.lock').existsSync(), isTrue);
+      expect(File('${projectRoot.path}/skillsgo-lock.yaml').existsSync(), isTrue);
       expect(
         File(
           '${projectRoot.path}/.skillsgo/vendor/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
@@ -104,7 +104,7 @@ void main() {
         isTrue,
       );
       expect(
-        File('$sandbox/home/.skillsgo/skillsgo.lock').existsSync(),
+        File('$sandbox/home/.skillsgo/skillsgo-lock.yaml').existsSync(),
         isTrue,
       );
       expect(

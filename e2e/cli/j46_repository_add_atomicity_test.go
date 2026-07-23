@@ -33,5 +33,5 @@ func TestJ46RepositoryAddIsAtomic(t *testing.T) {
 	require.NoFileExists(t, filepath.Join(externalTarget, "SKILL.md"))
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".skillsgo", "vendor", coordinate))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
+	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"))
 }

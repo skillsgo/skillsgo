@@ -80,7 +80,7 @@ exit 91
 	require.Zero(t, completed.Summary.Skipped, retry.output)
 	require.NoFileExists(t, journal)
 	require.FileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo.yaml"))
-	require.FileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo.lock"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo-lock.yaml"))
 	require.DirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "vendor"))
 
 	finalRescan := execCLI(t, ctx, container, "takeover", "--preflight", "--user", "--output", "json")

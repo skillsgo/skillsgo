@@ -357,7 +357,7 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "سيتم تحديث إجراءات المشروع المحددة skillsgo.yaml وskillsgo.lock.",
+  "workspaceOwnershipChanges": "سيتم تحديث إجراءات المشروع المحددة skillsgo.yaml وskillsgo-lock.yaml.",
   "targetContentPreserved": "سيتم الحفاظ على المحتوى المستهدف الحالي.",
   "localReadFailed": "تعذرت قراءة هذه Skill",
   "localReadFailedMessage": "تعذر على SkillsGo قراءة Skill المثبتة. تأكد من وجود مجلدها وإمكانية الوصول إليه، ثم حاول مجددًا.",

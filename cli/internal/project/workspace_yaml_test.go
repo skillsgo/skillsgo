@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses strict YAML documents and temporary Workspace roots at the public Workspace persistence seam.
- * [OUTPUT]: Specifies canonical skillsgo.yaml/skillsgo.lock parsing, validation, nearest YAML-root discovery, deterministic writing, atomic paired publication, and read-time crash recovery.
+ * [OUTPUT]: Specifies canonical skillsgo.yaml/skillsgo-lock.yaml parsing, validation, nearest YAML-root discovery, deterministic writing, atomic paired publication, and read-time crash recovery.
  * [POS]: Serves as the executable contract for Repository dependency intent and integrity state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,6 +15,7 @@ import (
 )
 
 func TestWorkspaceYAMLStrictRepositoryDependencyContract(t *testing.T) {
+	require.Equal(t, "skillsgo-lock.yaml", DependencyLockName)
 	document := []byte(`dependencies:
   github.com/example/skills:
     version: v1.2.3

@@ -160,7 +160,7 @@ void main() {
         reason: resultText,
       );
       expect(
-        File('$sandbox/home/.skillsgo/skillsgo.lock').existsSync(),
+        File('$sandbox/home/.skillsgo/skillsgo-lock.yaml').existsSync(),
         isTrue,
       );
       expect(

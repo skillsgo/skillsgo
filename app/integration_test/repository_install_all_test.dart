@@ -87,7 +87,7 @@ void main() {
       const coordinate = 'github.com/skillsgo/e2e-versioned-skills@v1.2.0';
       final manifest = File('${home.path}/.skillsgo/skillsgo.yaml');
       expect(manifest.existsSync(), isTrue);
-      expect(File('${home.path}/.skillsgo/skillsgo.lock').existsSync(), isTrue);
+      expect(File('${home.path}/.skillsgo/skillsgo-lock.yaml').existsSync(), isTrue);
       expect(
         manifest.readAsStringSync(),
         allOf(

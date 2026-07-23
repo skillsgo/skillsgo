@@ -603,7 +603,7 @@ class AppLocalizationsKo extends AppLocalizations {
 
   @override
   String get workspaceOwnershipChanges =>
-      '선택한 프로젝트 작업은 skillsgo.yaml 및 skillsgo.lock을 업데이트합니다.';
+      '선택한 프로젝트 작업은 skillsgo.yaml 및 skillsgo-lock.yaml을 업데이트합니다.';
 
   @override
   String get targetContentPreserved => '현재 대상 콘텐츠는 보존됩니다.';

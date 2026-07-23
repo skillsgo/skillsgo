@@ -26,7 +26,7 @@ func TestJ23UpdateFailureIsNonZeroAndAtomic(t *testing.T) {
 	paths := []string{
 		containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"),
 		filepath.Join(sandboxRoot, "project", "skillsgo.yaml"),
-		filepath.Join(sandboxRoot, "project", "skillsgo.lock"),
+		filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"),
 	}
 	before := make([][]byte, len(paths))
 	for index, path := range paths {

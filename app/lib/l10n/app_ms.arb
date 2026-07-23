@@ -357,7 +357,7 @@
       }
     }
   },
-  "workspaceOwnershipChanges": "Tindakan projek yang dipilih akan mengemas kini skillsgo.yaml dan skillsgo.lock.",
+  "workspaceOwnershipChanges": "Tindakan projek yang dipilih akan mengemas kini skillsgo.yaml dan skillsgo-lock.yaml.",
   "targetContentPreserved": "Kandungan sasaran semasa akan dikekalkan.",
   "localReadFailed": "Tidak boleh membaca Kemahiran ini",
   "localReadFailedMessage": "SkillsGo tidak dapat membaca kemahiran yang dipasang ini. Semak sama ada foldernya tersedia dan boleh diakses, kemudian cuba lagi.",

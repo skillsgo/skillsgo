@@ -195,7 +195,7 @@
   "managementResultsTitle": "Target action results",
   "managementResultSummary": "{succeeded} succeeded, {failed} failed",
   "@managementResultSummary": {"placeholders": {"succeeded": {"type": "int"}, "failed": {"type": "int"}}},
-  "workspaceOwnershipChanges": "Selected project actions will update skillsgo.yaml and skillsgo.lock.",
+  "workspaceOwnershipChanges": "Selected project actions will update skillsgo.yaml and skillsgo-lock.yaml.",
   "targetContentPreserved": "Current target content will be preserved.",
   "localReadFailed": "Can’t read this Skill",
   "localReadFailedMessage": "SkillsGo could not read this installed skill. Check that its folder is available and accessible, then try again.",

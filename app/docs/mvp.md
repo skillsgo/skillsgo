@@ -34,7 +34,7 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 
 - Add a project through explicit directory selection.
 - Do not require the directory to be a Git repository or to contain existing SkillsGo files.
-- Read `skillsgo.yaml`, `skillsgo.lock`, and project Agent Skill directories through the bundled CLI.
+- Read `skillsgo.yaml`, `skillsgo-lock.yaml`, and project Agent Skill directories through the bundled CLI.
 - Removing a project from the rail only stops tracking it; it never deletes project content.
 
 ### Installation

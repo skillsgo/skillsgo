@@ -30,7 +30,7 @@ func TestJ22SelectedSkillsUpdateAtRepositoryGranularity(t *testing.T) {
 	sibling := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "beta", "SKILL.md")
 	beforeTarget, err := os.ReadFile(sibling)
 	require.NoError(t, err)
-	beforeSum, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
+	beforeSum, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"))
 	require.NoError(t, err)
 
 	preflight := execCLI(t, ctx, container, "update", repository+"@v1.1.0", "--preflight", "--output", "json")
@@ -44,7 +44,7 @@ func TestJ22SelectedSkillsUpdateAtRepositoryGranularity(t *testing.T) {
 	newProjection := filepath.Join(sandboxRoot, "project", ".agents", "skills", filepath.FromSlash(repository)+"@v1.1.0")
 	afterTarget, err := os.ReadFile(filepath.Join(newProjection, "skills", "beta", "SKILL.md"))
 	require.NoError(t, err)
-	afterSum, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
+	afterSum, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"))
 	require.NoError(t, err)
 	require.NotEqual(t, beforeTarget, afterTarget)
 	require.Contains(t, string(afterSum), "version: v1.1.0")

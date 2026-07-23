@@ -77,7 +77,7 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 		locked, ok := lock.Dependencies[repositoryID]
 		if !ok || locked.Version != dependency.Version {
 			rollback()
-			return true, fmt.Errorf("skillsgo.lock does not match Repository dependency %s", repositoryID)
+			return true, fmt.Errorf("skillsgo-lock.yaml does not match Repository dependency %s", repositoryID)
 		}
 		desiredSkills, desiredAgents := subtractStrings(dependency.Skills, removed), dependency.Agents
 		if len(selectedAgents) > 0 {

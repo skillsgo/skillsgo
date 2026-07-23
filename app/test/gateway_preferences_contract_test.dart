@@ -131,7 +131,7 @@ void main() {
         '${original.path}/skillsgo.yaml',
       ).writeAsString('dependencies: {}\n');
       await File(
-        '${original.path}/skillsgo.lock',
+        '${original.path}/skillsgo-lock.yaml',
       ).writeAsString('dependencies: {}\n');
       await Directory(
         '${original.path}/.agents/skills',
@@ -199,7 +199,7 @@ void main() {
         'dependencies: {}\n',
       );
       expect(
-        await File('${original.path}/skillsgo.lock').readAsString(),
+        await File('${original.path}/skillsgo-lock.yaml').readAsString(),
         'dependencies: {}\n',
       );
       expect(
