@@ -66,7 +66,7 @@ func TestJ12RepositoryInstall(t *testing.T) {
 	require.Contains(t, string(lock), "sum: h1:")
 }
 
-func TestJ12ManifestNameIndependentFromSourceDirectory(t *testing.T) {
+func TestJ12SkillNameIndependentFromSourceDirectory(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
 	repositoryID := "fixtures.test/group/subgroup/collection"

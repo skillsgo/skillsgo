@@ -58,16 +58,6 @@ type addResponse struct {
 		Manifest string `json:"manifest"`
 		Lock     string `json:"lock"`
 	} `json:"workspace"`
-	// Legacy-shaped fields remain only while each numbered journey is migrated
-	// to Repository Vendor assertions; the released CLI no longer emits them.
-	SkillID string `json:"skillId"`
-	Store   string `json:"store"`
-	Scope   string `json:"scope"`
-	Targets []struct {
-		Agent string `json:"agent"`
-		Mode  string `json:"mode"`
-		Path  string `json:"path"`
-	} `json:"targets"`
 }
 
 func startEnvironment(t *testing.T, ctx context.Context) (testcontainers.Container, string) {
@@ -200,20 +190,6 @@ func containerPathOnHost(t *testing.T, sandboxRoot, containerPath string, suffix
 	require.NotEqual(t, "..", relative)
 	require.False(t, filepath.IsAbs(relative))
 	return filepath.Join(append([]string{sandboxRoot, relative}, suffix...)...)
-}
-
-func storeArtifactPath(t *testing.T, sandboxRoot, coordinateRoot string, suffix ...string) string {
-	t.Helper()
-	coordinate := containerPathOnHost(t, sandboxRoot, coordinateRoot)
-	referenceBytes, err := os.ReadFile(filepath.Join(coordinate, "object"))
-	require.NoError(t, err)
-	reference := strings.TrimSpace(string(referenceBytes))
-	require.False(t, filepath.IsAbs(reference))
-	require.NotContains(t, reference, "..")
-	parts := strings.Split(reference, "/")
-	require.Len(t, parts, 3)
-	objectRoot := filepath.Join(sandboxRoot, "home", ".skillsgo", "store", ".objects", filepath.FromSlash(reference))
-	return filepath.Join(append([]string{objectRoot}, suffix...)...)
 }
 
 func findSingleFile(t *testing.T, root, suffix string) string {

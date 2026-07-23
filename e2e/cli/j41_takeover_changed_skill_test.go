@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the released CLI, two isolated Codex user Skills, a supported skills.sh lock, and an external edit after preflight.
- * [OUTPUT]: Verifies per-Skill stale-plan isolation, partial takeover, preservation of changed bytes, complete successful metadata, and an exact one-item rescan.
+ * [OUTPUT]: Verifies per-candidate stale-plan isolation, partial takeover, preservation of changed bytes, complete successful metadata, and an exact one-item rescan.
  * [POS]: Serves as the changed-during-takeover failure user journey in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

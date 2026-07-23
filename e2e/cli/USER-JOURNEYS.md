@@ -6,7 +6,7 @@ This catalog defines black-box user stories that cross the SkillsGo CLI and Hub 
 
 - Use real supported Agent Adapters rather than test-only adapters.
 - Exercise the released CLI and Hub binaries in a fresh container for every journey.
-- Assert stable JSON, exit codes, Hub responses, Workspace declarations, Store state, and Agent-visible files.
+- Assert stable JSON, exit codes, Hub responses, portable YAML/Lock state, Scope Vendors, and Agent-visible coordinate Projections.
 - Do not assert localized terminal copy or internal Go types.
 - Keep destructive and failure scenarios inside the disposable container filesystem.
 - Prefer deterministic local source fixtures for required CI journeys; reserve live public sources for smoke journeys.
@@ -17,39 +17,39 @@ This catalog defines black-box user stories that cross the SkillsGo CLI and Hub 
 
 As a terminal user, I want to install a public Skill for a real Agent in my current Workspace so that the Agent can use it immediately.
 
-The CLI resolves the requested reference through the Hub, verifies the immutable artifact, stores it, creates the Agent-visible target, and writes matching Workspace Manifest and Workspace Sum entries. Re-running the same request must not corrupt or duplicate state.
+The CLI resolves the requested reference through the Hub, verifies one immutable Repository artifact, creates a Workspace Vendor and Agent-visible coordinate Projection, and atomically writes matching `skillsgo.yaml` and `skillsgo.lock` entries. Re-running the same request must not corrupt or duplicate state.
 
-Status: implemented for Codex in copy mode by `j01_install_workspace_test.go`.
+Status: implemented for Codex with one selected nested member by `j01_install_workspace_test.go`.
 
-### J02 — Remove a Workspace installation without deleting the Store artifact
+### J02 — Remove the last selected member and its Workspace Vendor
 
-As a terminal user, I want to remove a Skill from one Agent in my Workspace so that the Agent no longer sees it while the verified artifact remains available for recovery or another target.
+As a terminal user, I want to remove the last selected Skill from my Workspace so that the Agent no longer sees it and no undeclared Repository Vendor remains behind.
 
-The selected Installation Target and its declaration binding disappear, unrelated targets remain intact, and the immutable Store entry remains readable.
+The coordinate Projection, Vendor, YAML dependency, and Lock entry disappear together. Unrelated Repository dependencies remain intact.
 
 Status: implemented for Codex by `j02_remove_workspace_test.go`.
 
-### J03 — Restore a declared Workspace from its Manifest and Sum
+### J03 — Restore a declared Workspace from YAML and Lock
 
-As a user opening an existing Workspace, I want `skillsgo install` to recreate every declared Agent target from canonical requirements and verified immutable caches so that the Workspace is reproducible on a clean machine.
+As a user opening an existing Workspace, I want `skillsgo install` to recreate every declared Vendor and Agent Projection from canonical requirements and verified immutable artifacts so that the Workspace is reproducible on a clean machine.
 
-The restored files match the Workspace Sum, all declared targets exist, and restoration uses only canonical versions from `skillsgo.mod` rather than re-resolving movable input.
+The restored files match the Repository Sum in `skillsgo.lock`, all declared coordinate Projections exist, and restoration uses only the immutable version in `skillsgo.yaml` rather than re-resolving movable input.
 
-Status: implemented for a clean Codex copy-mode restore, including invocation from a nested Workspace directory, by `j03_restore_sum_test.go`.
+Status: implemented for a clean Codex Vendor/Projection restore, including invocation from a nested Workspace directory, by `j03_clean_machine_restore_test.go`.
 
 ### J04 — Recover an Agent target while the Hub is unavailable
 
-As a user with a previously cached artifact, I want to restore a missing target without reaching the Hub so that temporary network or Hub outages do not block local recovery.
+As a user with an intact Scope Vendor, I want to restore a missing Agent Projection without reaching the Hub so that temporary network or Hub outages do not block local recovery.
 
-The CLI restores from the Content-addressed Store, leaves the Workspace Sum unchanged, and performs no successful Hub request.
+The CLI verifies the Vendor against `skillsgo.lock`, recreates the coordinate Projection, leaves YAML/Lock bytes unchanged, and performs no successful Hub request.
 
-Status: implemented for Codex with an explicitly unreachable Hub by `j04_restore_store_offline_test.go`.
+Status: implemented for Codex with an explicitly unreachable Hub by `j04_vendor_offline_restore_test.go`.
 
 ### J05 — Reject a corrupted download atomically
 
-As a user, I want a corrupted, truncated, or digest-mismatched Hub artifact to be rejected so that unverified content never reaches my Store or Agent directories.
+As a user, I want a corrupted, truncated, or digest-mismatched Hub artifact to be rejected so that unverified content never reaches my Vendor or Agent directories.
 
-The command fails with a stable machine result; no valid receipt, Installation Target, Manifest change, or Sum change is committed.
+The command fails with a stable machine result; no Vendor, Projection, YAML change, or Lock change is committed.
 
 Status: implemented by corrupting the real Hub disk-cached ZIP in `j05_corrupted_download_test.go`.
 
@@ -65,15 +65,15 @@ Status: implemented against the SkillsGo-owned historical `e2e-risk-skills` fixt
 
 As a user who previously selected Repository head, I want an explicit `add ...@head` to resolve it again while ordinary restore remains immutable.
 
-The target, Store receipt, canonical resolved version, digest, commit identity, and Sum are updated together. The movable selector is never persisted, and historical Sum entries remain valid evidence.
+Preflight resolves the movable selector through the product Resolution API, execution atomically replaces the old Vendor and coordinate Projections, and YAML/Lock persist only the new immutable Repository version and Sum. The movable selector and historical versions are never persisted.
 
 Status: implemented against a deterministic local Repository advanced from C1 to C2 and explicitly re-resolved through `head` by `j07_update_movable_test.go`.
 
 ### J08 — Keep an exact installation pinned
 
-As a user who selected an exact immutable version, I want update preflight to preserve that pin even when a newer release exists.
+As a user who selected an exact immutable version, I want ordinary installation restore to preserve that pin even when a newer release exists.
 
-Preflight reports `pinned`, repeats the installed immutable version as its target, and leaves the Agent target, Manifest, and Sum unchanged. Moving to head, release, or another exact version requires an explicit add decision.
+`skillsgo install` leaves the Vendor, Projection, YAML, and Lock unchanged. Moving to head, release, or another exact version requires an explicit state-bound Repository update.
 
 Status: implemented with deterministic v1.0.0 installed while v1.1.0 exists by `j08_explicit_fixed_version_update_test.go`.
 
@@ -83,7 +83,7 @@ Status: implemented with deterministic v1.0.0 installed while v1.1.0 exists by `
 
 As a user working with multiple Agents, I want one Skill installed for each selected Agent so that all of them see the same reviewed content.
 
-One scope-local canonical artifact backs every requested Installation Target, shared physical paths are not duplicated, and each Agent binding is represented accurately in the declaration.
+One scope-local Vendor backs every requested Agent coordinate Projection, and each Agent is represented accurately in the YAML dependency.
 
 Status: implemented for Codex plus Claude Code by `j09_multi_agent_install_test.go`.
 
@@ -101,31 +101,31 @@ As a user, I want to make a Skill available to an Agent across Workspaces and la
 
 The CLI mutates only the Agent's user-level Managed Skill Root and the User Declaration Root under `~/.skillsgo` inside the isolated environment.
 
-Status: implemented for Codex copy mode plus a Hermes Agent-specific home override by `j11_user_scope_test.go`.
+Status: implemented for Codex plus a Hermes Agent-specific home override with User Vendor state by `j11_user_scope_test.go`.
 
 ### J12 — Install every Skill from a multi-Skill repository
 
 As a user selecting a repository source, I want SkillsGo to discover and install all contained Skills so that I do not have to enumerate nested Skill IDs manually.
 
-Every discovered Skill resolves to its own immutable artifact and target, while the editable declaration retains the repository dependency needed for future restoration.
+One Repository artifact and Vendor contain the complete source snapshot; each selected valid member appears in every requested coordinate Projection while invalid candidates stay out of the selected membership.
 
-Status: implemented with two real nested Skills from `vercel-labs/agent-skills`, including direct installation and offline restoration of a source-directory/Manifest-name mismatch, by `j12_repository_install_test.go`.
+Status: implemented with deterministic root, nested, mixed-case, deep, invalid, and shared-runtime fixtures plus Cartesian multi-Agent Projections by `j12_repository_install_test.go`.
 
-### J13 — Replace a same-name Skill only after explicit review
+### J13 — Keep same-name members distinct by Repository path
 
-As a user changing a target from one Skill ID to another with the same local name, I want SkillsGo to surface the conflict and require explicit replacement so that source identity is never changed silently.
+As a user selecting two Repository members with the same source-authored name, I want both to remain addressable by their stable relative paths so that a flat installation name never destroys identity.
 
-Rejection preserves the old target and declarations. Approved replacement changes the target, Manifest, and Sum together and removes obsolete bindings.
+Both members coexist in one coordinate Projection, YAML records both relative paths, and one Repository Lock entry authenticates their shared artifact.
 
-Status: implemented across two exact nested Skill IDs with one shared source-authored name in a deterministic Repository by `j13_explicit_replacement_test.go`.
+Status: implemented across two exact nested Skill IDs with one shared source-authored name in a deterministic Repository by `j13_same_name_members_test.go`.
 
-### J14 — Protect Local Modifications in copy mode
+### J14 — Protect Local Modifications in a coordinate Projection
 
 As a user who edited an installed copy, I want update and removal to detect my Local Modifications so that my work is not overwritten or deleted without review.
 
-The unreviewed operation fails without mutation. A reviewed, state-bound decision expires if the target changes again before execution.
+Removal fails without mutating the modified Projection, Vendor, YAML, or Lock. SkillsGo never infers overwrite authority from a non-interactive flag.
 
-Status: implemented through Management Plan rejection by `j14_local_modification_test.go`.
+Status: implemented through Repository transaction baseline comparison by `j14_local_modification_test.go`.
 
 ## P2 — Inventory and Operational Journeys
 
@@ -137,19 +137,19 @@ The result distinguishes Installation Targets from read-only Agent Visibility an
 
 Status: implemented with one managed Hub Skill and one preserved External Skill by `j15_inventory_test.go`.
 
-### J16 — Repair an unhealthy managed target
+### J16 — Refuse implicit repair of a Local Modification
 
-As a user whose managed target is missing or damaged, I want to repair it from the immutable Store artifact so that the exact reviewed version becomes usable again.
+As a user who modified an Agent Projection, I want ordinary `skillsgo install` to refuse overwriting my files so that recovery remains an explicit user decision.
 
-Repair restores every binding sharing the physical target, preserves declarations, and requires review before replacing Local Modifications.
+Installation returns a failing Repository result containing Local Modification evidence and leaves the edited bytes unchanged. The first release exposes no destructive repair command.
 
-Status: implemented for a modified Codex canonical target by `j16_repair_test.go`.
+Status: implemented for a modified Codex canonical target by `j16_local_modification_install_test.go`.
 
-### J17 — Reject removal of unhealthy content
+### J17 — Reject removal of locally modified content
 
-As a user, I want SkillsGo to stop managing a target without deleting its files so that I can keep a manual copy outside SkillsGo lifecycle control.
+As a user, I want removal to refuse deleting modified managed content so that my edits remain recoverable.
 
-Declarations and management metadata are removed while the filesystem content remains present and is subsequently reported as external when discoverable.
+The Projection, Vendor, YAML, and Lock remain unchanged, and the obsolete `manage` command is absent.
 
 Status: implemented for a locally modified Codex target by `j17_stop_managing_test.go`.
 
@@ -159,13 +159,13 @@ As a user installing an uncached Skill during an outage, I want a stable availab
 
 The CLI returns the documented Availability Exit Code, emits no misleading success JSON, and leaves local state unchanged.
 
-Status: implemented with an empty Store and unreachable Hub by `j18_hub_unavailable_test.go`.
+Status: implemented with no local Vendor and an unreachable Hub by `j18_hub_unavailable_test.go`.
 
 ### J19 — Reuse one immutable Hub artifact deterministically
 
 As a user repeating a download or installing the same version for another target, I want the Hub and CLI to reuse byte-identical immutable content so that cache behavior cannot change the installed Skill.
 
-Repeated Hub responses preserve Info identity, Content Digest, and archive bytes; the CLI reuses the compatible Store entry instead of creating conflicting content.
+Repeated Hub responses preserve Repository Info identity and ZIP bytes; adding another Agent reuses the same immutable Repository coordinate and creates another deterministic Projection without symlinks.
 
 Status: implemented with repeated immutable ZIP downloads and a second real Agent target by `j19_immutable_reuse_test.go`.
 
@@ -179,25 +179,25 @@ Status: enforced for every scenario by the mount inspection in `startEnvironment
 
 ### J21 — Preserve the complete Skill resource tree
 
-As a user installing a multi-file Skill, I want every nested resource to survive Hub packaging, Store verification, and Agent installation so that progressive-disclosure references and scripts remain usable.
+As a user installing a multi-file Skill, I want every nested resource to survive Hub packaging, Vendor verification, and Agent Projection so that progressive-disclosure references and scripts remain usable.
 
-The installed copy contains the same non-empty nested resource bytes as the immutable Store artifact. Copy-mode compatibility for dotfiles and executable bits remains covered at the CLI installer boundary.
+The Projection contains the same non-empty nested resource bytes as the authoritative Vendor.
 
 Status: implemented with the real nested `rules/async-parallel.md` resource from `vercel-labs/agent-skills` by `j21_preserve_skill_resources_test.go`.
 
-### J22 — Update only the selected direct Skill
+### J22 — Update selected members at Repository granularity
 
-As a user updating one direct Skill dependency, I want sibling Skills from the same repository to remain unchanged so that direct Skill and whole-repository declarations retain distinct meanings.
+As a user updating a Repository dependency with multiple selected Skills, I want every selected sibling to move atomically to one immutable Repository version so that mixed-version snapshots cannot be synthesized.
 
-The sibling target bytes and complete Workspace Sum remain unchanged when the selected Skill is already current; repository-wide expansion remains exclusive to an explicit repository dependency.
+Preflight binds the target version and state token; execution replaces the Vendor and Projection coordinate, and Lock contains only the new Repository version and Sum.
 
-Status: implemented by explicitly re-adding one direct Skill at a newer immutable version while retaining its sibling's v1 target and historical Sum evidence by `j22_update_only_selected_skill_test.go`.
+Status: implemented by updating two selected members from v1.0.0 to v1.1.0 through the Repository update command by `j22_repository_update_selected_test.go`.
 
 ### J23 — Signal update failure and preserve state atomically
 
 As an automation user, I want any failed requested update to return a non-zero process status so that scripts cannot mistake a reported failure for success.
 
-The previous Target, Manifest, and Sum bytes remain unchanged after failure. Explicit multi-target Update Plans also return failure when their structured result contains one or more failed targets.
+The previous Projection, YAML, and Lock bytes remain unchanged after failure.
 
 Status: implemented for an unavailable Hub by `j23_update_failure_atomic_test.go`, with partial Update Plan behavior at the CLI command seam.
 
@@ -205,7 +205,7 @@ Status: implemented for an unavailable Hub by `j23_update_failure_atomic_test.go
 
 As a user installing or updating a deeply nested Skill, I want its complete canonical path to remain resolvable so that bounded discovery depth cannot turn a live Skill into an apparent deletion.
 
-Direct resolution and explicit immutable re-add succeed for a four-level Skill path and preserve the installed target.
+Direct selection and a state-bound Repository update succeed for a four-level Skill path and preserve its selected membership.
 
 Status: implemented with a deterministic four-level Repository path by `j24_deep_skill_discovery_test.go`.
 
@@ -221,15 +221,15 @@ Status: implemented through the public Hub detail endpoint by `j25_catalog_audit
 
 ### J26 — Restore a whole Repository while offline
 
-As a Workspace user, I want one bare Repository requirement to restore its exact accepted member set from immutable local caches so that reproducibility does not require a lockfile or a reachable Hub.
+As a Workspace user, I want one Repository requirement to restore its exact accepted member set from its verified Vendor so that Projection recovery does not require a reachable Hub.
 
-Status: implemented for a root Skill, two nested Skills, one omitted invalid candidate, unchanged Manifest/Sum bytes, and an unreachable Hub by `j26_repository_restore_offline_test.go`.
+Status: implemented for a root Skill, two nested Skills, one omitted invalid candidate, unchanged YAML/Lock bytes, and an unreachable Hub by `j26_repository_restore_offline_test.go`.
 
-### J27 — Select multiple Repository members at mixed versions
+### J27 — Enforce one version across selected Repository members
 
-As a CLI user, I want repeated human-readable `--skill` selectors to inherit or override the Repository query so that one operation can intentionally install exact members from different versions.
+As a CLI user, I want repeated human-readable `--skill` selectors to inherit the Repository query and reject per-Skill version suffixes so that one installed Repository coordinate always describes one source snapshot.
 
-Status: implemented through a human HTTPS source, one inherited selector, one relative-path override, exact content, and canonical nested Manifest requirements by `j27_selected_skills_mixed_versions_test.go`.
+Status: implemented through atomic mixed-version rejection followed by a two-member `@head` installation pinned to one immutable version by `j27_selected_version_consistency_test.go`.
 
 ### J28 — Select stable, prerelease, or pseudo versions lazily
 
@@ -247,19 +247,19 @@ Status: implemented across v1-present and v1.1-absent Repository snapshots by `j
 
 As a CLI user, I want malformed `SKILL.md` candidates omitted without blocking valid siblings or mutating Workspace state when selected.
 
-Status: implemented through public Repository Info, CLI installation, and unchanged Manifest/Sum evidence by `j30_repository_candidate_isolation_test.go`.
+Status: implemented through public Repository Info, CLI installation, and unchanged YAML/Lock evidence by `j30_repository_candidate_isolation_test.go`.
 
 ### J31 — Preserve Repository identity and selection boundaries
 
 As a CLI user, I want arbitrary host namespace depth, canonical `/-/` identities, path selectors, duplicate-name errors, and root-only guidance to remain unambiguous.
 
-Status: implemented with multi-level fixture namespaces, canonical/path/name selectors, root rejection, and absence of a bare ZIP for a Repository without a root Skill by `j31_repository_identity_and_selection_test.go`.
+Status: implemented with multi-level fixture namespaces, canonical/path/name selectors, root-member selection, ambiguity rejection, and complete root Repository ZIPs by `j31_repository_identity_and_selection_test.go`.
 
 ### J32 — Keep Repository protocol resources immutable
 
-As a protocol consumer, I want list, head, release, exact Info, exact ZIP, and HTTP HEAD routes to expose canonical resources whose published bytes do not change after a source tag moves.
+As a protocol consumer, I want mutable selectors resolved only through the product API and root Proxy list/exact Info/exact ZIP/HTTP HEAD routes to expose canonical resources whose published bytes do not change after a source tag moves.
 
-Status: implemented through public Hub Repository/branch/commit and nested-Skill list/Info/ZIP/HEAD routes, root ZIP presence/absence, repeated byte digests, and a moved source tag by `j32_repository_protocol_immutability_test.go`. Conflict detection for a moved Tag is verified at the Hub Router/publisher boundary, where a forced rematerialization can be injected without relying on private E2E controls.
+Status: implemented through `POST /api/v1/repository-resolutions`, exact root Proxy resources, rejection of Proxy selectors and per-Skill Proxy resources, repeated ZIP digests, and a moved source tag by `j32_repository_protocol_immutability_test.go`.
 
 ### J33 — Bound anonymous lazy resolution
 
@@ -267,31 +267,31 @@ As a Hub operator, I want fresh tag catalogs, exact-version bypass, singleflight
 
 Status: implemented at the public seam with concurrent Hub HTTP requests, deterministic slow source fixtures, fresh tag-catalog stability, exact-version bypass, and observable capacity/retry behavior by `j33_lazy_resolution_controls_test.go`. TTL expiry, exact singleflight call counts, immutable-cache call counts, and negative-cache lifetime/call counts are verified with injected clocks at the Hub Router/publisher boundary rather than through sleeps or private Git traces.
 
-### J34 — Separate display identity from escaped transport paths
+### J34 — Preserve canonical case across source and product identity
 
-As a protocol consumer, I want a lower-case host, host-specific Repository-path casing, and case-preserving nested Skill paths to survive Go-style HTTP escaping.
+As a product consumer, I want a lower-case host and case-preserving nested Skill paths to survive source normalization, installation, and Catalog reads.
 
-Status: implemented with an upper-case input host, a mixed-case Git tree path, canonical Manifest identity, and a directly requested escaped Info route by `j34_coordinate_case_and_escape_test.go`.
+Status: implemented with an upper-case input host, a mixed-case Git tree path, canonical YAML identity, coordinate Projection, and product detail route by `j34_coordinate_case_and_escape_test.go`.
 
 ### J35 — Populate Catalog lazily without legacy protocol resources
 
-As a Catalog and protocol consumer, I want ordinary demand discovery to publish newly observed Skills while the maintained protocol remains limited to list, head, release, exact Info, and exact ZIP resources.
+As a Catalog and protocol consumer, I want ordinary demand discovery to publish newly observed Skills while the Proxy remains limited to Repository list, exact Info, and exact ZIP resources.
 
 Status: implemented from an initially absent Skill detail through ordinary add and subsequent Catalog visibility, with explicit absence checks for `@resolve`, `.manifest`, and the future `.skillsgo` resource, by `j35_lazy_catalog_and_protocol_surface_test.go`.
 
-### J36 — Restore portable Agent targets through separated module and API surfaces
+### J36 — Restore portable Agent Projections through separated Proxy and API surfaces
 
-As a user moving a Workspace between machines, I want `skillsgo.mod` to preserve exact requirements and Agent targets while the Hub keeps artifact transport separate from product APIs.
+As a user moving a Workspace between machines, I want `skillsgo.yaml` to preserve exact requirements and Agent targets while the Hub keeps artifact transport separate from product APIs.
 
-Status: implemented with canonical `require` formatting, Codex and Claude Code target restoration, unchanged `skillsgo.mod` and `skillsgo.sum` bytes, successful `/mod` and `/api/v1` requests, and explicit 404 responses from the removed root artifact and `/v1` routes by `j36_mod_namespace_and_restore_test.go`.
+Status: implemented with canonical YAML, Codex and Claude Code coordinate Projection restoration, unchanged YAML/Lock bytes, successful root Proxy and `/api/v1` requests, and rejected `/mod`, per-Skill Proxy, and `/v1` routes by `j36_workspace_protocol_restore_test.go`.
 
-### J37 — Preserve integrity for App-driven explicit targets
+### J37 — Preserve integrity for App-driven project installation
 
 As an App user selecting exact project and Agent targets, I want installation to persist the same complete integrity evidence as terminal installation so that the Workspace remains reproducible rather than depending on the machine that performed the install.
 
-The App-facing `add --target --version` contract writes both the selected Skill content checksum and its immutable Repository Info checksum, caches exact Repository Info, and restores the deleted target while the Hub is unavailable.
+The App-facing `add <repository>@<version> --skill ... --project ... --agent ...` contract writes one Repository Sum, caches exact Repository Info, and restores a deleted coordinate Projection from the verified Vendor while the Hub is unavailable.
 
-Status: implemented with a deterministic nested Skill and offline copy-mode recovery by `j37_explicit_target_integrity_test.go`.
+Status: implemented with a deterministic nested Skill and offline Vendor-backed Projection recovery by `j37_app_install_integrity_test.go`.
 
 ### J38 — Diagnose a machine-mode Hub failure without parsing prose
 
@@ -311,7 +311,7 @@ Status: implemented with schema 3, one committed Codex Project target, one faile
 
 As a user who installed a Skill through a compatible lockfile, I want SkillsGo to adopt the exact local content in place so that management metadata becomes complete without replacing or normalizing my files.
 
-Preflight reports one eligible Skill without writing Store, Manifest, Sum, or Receipt state. Confirmation preserves file bytes and modes, persists the complete content-addressed Store and Workspace metadata, exposes the Skill as managed inventory, and makes the next scan report zero eligible Skills.
+Preflight reports one eligible Skill without writing Vendor, YAML, or Lock state. Confirmation verifies exact bytes against a published Repository member, writes the User Vendor and coordinate Projection, moves the superseded external copy to recoverable trash, exposes the Skill as managed inventory, and makes the next scan report zero eligible Skills.
 
 Status: implemented through the released CLI and observable filesystem state by `j40_takeover_existing_skill_test.go`.
 
@@ -327,7 +327,7 @@ Status: implemented through the released CLI and observable filesystem state by 
 
 As a user whose App or machine stops during takeover, I want the next operation to recover the interrupted metadata transaction so that no partial management state hides or corrupts my existing Skill.
 
-The journey sends `SIGKILL` after the transaction journal appears, then verifies that inventory still exposes the Skill as external, the next scan still reports one eligible Skill, and a retry recovers and commits complete Store, Manifest, Sum, and Receipt state. The journal is removed and the final scan reports zero eligible Skills.
+The journey sends `SIGKILL` after the paired YAML/Lock transaction journal appears, then verifies that the next inventory read recovers before exposing state, the next scan still reports one eligible Skill, and a retry commits complete Vendor, Projection, YAML, and Lock state. The journal is removed and the final scan reports zero eligible Skills.
 
 Status: implemented with a real released-CLI process interruption by `j42_takeover_interrupted_commit_test.go`.
 
@@ -335,7 +335,7 @@ Status: implemented with a real released-CLI process interruption by `j42_takeov
 
 As a user who installed a Repository from `head` at C1, I want a later explicit `head` query to observe C2 without silently changing my installed version.
 
-The repeated movable Info request bypasses HTTP caches, resolves the refreshed remote-tracking branch to a new pseudo-version, returns C2 content, and leaves the Workspace Manifest pinned to C1 until a separate confirmed installation occurs.
+The repeated movable resolution bypasses stale selector state, resolves the refreshed remote-tracking branch to a new pseudo-version, returns C2 content, and leaves Workspace YAML pinned to C1 until a separate confirmed installation occurs.
 
 Status: implemented with a deterministic local Repository advanced from C1 to C2 during the running scenario by `j43_movable_query_refresh_test.go`.
 
@@ -359,17 +359,17 @@ Status: implemented against the released CLI and Hub by `j45_catalog_only_batch_
 
 As a user adding every Skill from one Repository, I want one conflicting member target to abort the complete installation so that the Workspace never records or exposes a partial Repository publication.
 
-The journey passes `--yes`, preserves the pre-existing external target, and verifies that non-interactive confirmation never grants replacement authority: every newly created Agent target, Manifest requirement, Sum entry, and Installation Receipt is absent after failure. Downloaded immutable cache entries may remain because they are not Workspace installation state.
+The journey passes `--yes`, preserves a pre-existing conflicting coordinate path, and verifies that non-interactive confirmation never grants replacement authority: the Vendor, Projection content, YAML dependency, and Lock entry are all absent after failure.
 
-Status: implemented with the deterministic multi-Skill collection Repository and default symlink mode by `j46_repository_add_atomicity_test.go`.
+Status: implemented with the deterministic multi-Skill collection Repository and a coordinate Projection conflict by `j46_repository_add_atomicity_test.go`.
 
-### J47 — Warm and inspect immutable local cache state
+### J47 — Explain and verify a Repository installation
 
-As a user preparing an offline or repeatable environment, I want to download and verify one exact immutable Skill without installing it, then understand and verify the installation after I explicitly add it.
+As a user maintaining a Workspace, I want to understand why a Skill is present and verify its Vendor and Projection integrity without mutating either.
 
-The journey warms the exact artifact into the Store without creating a target or Workspace declaration, installs the cached coordinate, observes direct declaration/target evidence through `why`, verifies healthy state, modifies the copy-mode target, and receives a failing `verify` result without any repair or mutation.
+The journey installs one selected member, observes declaration and Projection evidence through `why`, verifies healthy state, modifies the coordinate Projection, and receives a failing `verify` result without repair or mutation.
 
-Status: implemented through the released CLI and Hub plus observable Store and Workspace state by `j47_cache_and_inspection_test.go`.
+Status: implemented through the released CLI and Hub plus observable Vendor, Projection, and Workspace state by `j47_why_verify_test.go`.
 
 ### J48 — Report a committed installation through a Cloud deployment
 
@@ -386,9 +386,9 @@ The numbered user stories in #27 are release-reviewed through these black-box jo
 | #27 stories | E2E evidence |
 | --- | --- |
 | 1–3: whole Repository, one member, repeated members | J12, J26, J27 |
-| 4–5: default head and selector-attached versions | J27, J28 |
+| 4–5: default head and Repository selector versions | J27, J28 |
 | 6–8: explicit head/release, rejected ambiguous selectors, and Repository Version Queries | J27, J28, J32 |
-| 9–10: selector override and inherited query | J27 |
+| 9–10: inherited Repository query and rejected per-Skill override | J27 |
 | 11–12: release stable-first and prerelease fallback | J28 |
 | 13–14: untagged default branch and canonical movable resolution | J07, J08, J28, J32 |
 | 15–17: uncatalogued discovery, invalid isolation, revision-faithful Info | J12, J26, J29, J30 |
@@ -402,9 +402,9 @@ The numbered user stories in #27 are release-reviewed through these black-box jo
 | 40: demand-discovered Catalog visibility | J35 |
 | 41: display identity versus escaped HTTP path | J34 |
 | 42: explicit SkillsGo protocol divergence and future-resource isolation | J32, J35 |
-| 43: `skillsgo.mod`, Agent target restoration, and `/mod` versus `/api/v1` separation | J36 |
+| 43: `skillsgo.yaml`, coordinate Projection restoration, and root Proxy versus `/api/v1` separation | J36 |
 | Movable head refresh and installed-version separation | J43 |
 | Untagged F1 preservation after V1 publication and C2 advance | J44 |
 | Repository-fresh batched head/release update checking | J45 |
 | Whole-Repository installation atomicity | J46 |
-| Exact cache warming and local integrity inspection | J47 |
+| Dependency explanation and local integrity inspection | J47 |

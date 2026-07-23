@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the disposable E2E environment, a managed movable Skill, and stable failure exit/filesystem contracts.
- * [OUTPUT]: Provides black-box coverage that failed updates exit non-zero and preserve Target, Manifest, and Sum atomically.
+ * [OUTPUT]: Provides black-box coverage that failed updates exit non-zero and preserve Projection, YAML, and Lock bytes atomically.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
