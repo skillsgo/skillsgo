@@ -243,7 +243,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Equal(t, "github.com/mattpocock/skills", response.Skills[0].Repository)
 
 	batch := httptest.NewRecorder()
-	batchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/batch", strings.NewReader(`{"skills":[{"repositoryId":"github.com/mattpocock/skills","name":"ask-matt"}]}`))
+	batchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/batch", strings.NewReader(`{"skills":[{"repositoryId":"github.com/mattpocock/skills","name":"missing"},{"repositoryId":"github.com/mattpocock/skills","name":"ask-matt"}]}`))
 	serveFiber(t, r, batch, batchRequest)
 	require.Equal(t, http.StatusOK, batch.Code)
 	var batchBody skillBatchResponse

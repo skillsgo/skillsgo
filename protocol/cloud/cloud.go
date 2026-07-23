@@ -102,9 +102,18 @@ type Metric struct {
 }
 
 type RankingItem struct {
-	RepositoryID string `json:"repositoryId"`
-	SkillName    string `json:"skillName"`
-	Metric       Metric `json:"metric"`
+	RepositoryID   string  `json:"repositoryId"`
+	SkillName      string  `json:"skillName"`
+	Name           string  `json:"name"`
+	Description    string  `json:"description"`
+	Source         string  `json:"source"`
+	Repository     string  `json:"repository"`
+	ImageURL       *string `json:"imageUrl"`
+	SkillPath      string  `json:"skillPath"`
+	LatestVersion  string  `json:"latestVersion"`
+	TrustLevel     string  `json:"trustLevel"`
+	RiskAssessment string  `json:"riskAssessment"`
+	Metric         Metric  `json:"metric"`
 }
 
 type Page struct {

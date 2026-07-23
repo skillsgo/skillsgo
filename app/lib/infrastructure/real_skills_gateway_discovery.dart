@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the shared gateway state, Hub runtime discovery, direct Cloud HTTP ranking reads, content locale, CLI Skill reads, strict machine codecs, and discovery domain models.
- * [OUTPUT]: Provides locale-aware Hub Find search plus Cloud Ranking/Trending/Hot hydration through ordered Hub batch Skill cards, direct explicit-source routing, and remote Skill detail loading.
+ * [INPUT]: Depends on the shared gateway state, Hub runtime discovery, direct Cloud-composed ranking reads, content locale, CLI Skill reads, strict machine codecs, and discovery domain models.
+ * [OUTPUT]: Provides locale-aware Hub Find search plus Cloud-composed Ranking/Trending/Hot cards, direct explicit-source routing, and remote Skill detail loading.
  * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -215,62 +215,25 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         throw const FormatException('Invalid Cloud ranking response.');
       }
       final items = cloudDocument['items'] as List;
-      final coordinates = <({String repositoryId, String name})>[];
-      final metrics = <String, Map<String, dynamic>>{};
+      final skills = <Map<String, dynamic>>[];
       for (final raw in items) {
         if (raw is! Map<String, dynamic> ||
             raw['repositoryId'] is! String ||
             raw['skillName'] is! String ||
+            raw['name'] is! String ||
+            raw['description'] is! String ||
+            raw['source'] is! String ||
+            raw['skillPath'] is! String ||
+            raw['latestVersion'] is! String ||
+            raw['trustLevel'] is! String ||
+            raw['riskAssessment'] is! String ||
             raw['metric'] is! Map<String, dynamic>) {
           throw const FormatException('Invalid Cloud ranking item.');
         }
-        final repositoryId = raw['repositoryId'] as String;
-        final name = raw['skillName'] as String;
-        final key = '$repositoryId\u0000$name';
-        if (metrics.containsKey(key)) {
-          throw const FormatException('Duplicate Cloud ranking Skill.');
+        if (raw['skillName'] != raw['name']) {
+          throw const FormatException('Cloud ranking identity mismatch.');
         }
-        coordinates.add((repositoryId: repositoryId, name: name));
-        metrics[key] = raw['metric'] as Map<String, dynamic>;
-      }
-      if (coordinates.isEmpty) {
-        return {
-          'collection': collection,
-          'skills': <Object>[],
-          'page': cloudDocument['page'],
-        };
-      }
-      final detailResult = await _runCli([
-        'detail',
-        for (final coordinate in coordinates) ...[
-          '--repository',
-          coordinate.repositoryId,
-          '--skill',
-          coordinate.name,
-        ],
-        '--hub',
-        _hubOrigin,
-      ]);
-      if (!detailResult.succeeded) throw _commandFailure(detailResult);
-      final hydrated = jsonDecode(detailResult.output.stdout);
-      if (hydrated is! Map<String, dynamic> || hydrated['skills'] is! List) {
-        throw const FormatException('Invalid Hub Skill batch response.');
-      }
-      final byCoordinate = <String, Map<String, dynamic>>{};
-      for (final raw in hydrated['skills'] as List) {
-        if (raw is! Map<String, dynamic> ||
-            raw['repositoryId'] is! String ||
-            raw['name'] is! String) {
-          throw const FormatException('Invalid Hub Skill card.');
-        }
-        byCoordinate['${raw['repositoryId']}\u0000${raw['name']}'] = raw;
-      }
-      final skills = <Map<String, dynamic>>[];
-      for (final coordinate in coordinates) {
-        final key = '${coordinate.repositoryId}\u0000${coordinate.name}';
-        final skill = byCoordinate[key];
-        if (skill == null) continue;
-        skills.add({...skill, 'metric': metrics[key]});
+        skills.add(raw);
       }
       return {
         'collection': collection,

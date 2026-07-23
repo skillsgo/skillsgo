@@ -64,15 +64,15 @@ func TestInstallEventValidationAndJSON(t *testing.T) {
 	}
 }
 
-func TestRankingResponseContainsOnlyAssociationAndMetric(t *testing.T) {
-	response := RankingResponse{Collection: RankingAllTime, Items: []RankingItem{{RepositoryID: "github.com/acme/skills", SkillName: "demo", Metric: Metric{Kind: MetricAllTimeInstalls, Value: 3}}}, Page: Page{Limit: 20}}
+func TestRankingResponseCombinesHubCardWithCloudMetric(t *testing.T) {
+	response := RankingResponse{Collection: RankingAllTime, Items: []RankingItem{{RepositoryID: "github.com/acme/skills", SkillName: "demo", Name: "demo", Description: "Demo", Source: "github.com/acme/skills", Repository: "github.com/acme/skills", SkillPath: "skills/demo", LatestVersion: "v1.0.0", TrustLevel: "unverified", RiskAssessment: "unknown", Metric: Metric{Kind: MetricAllTimeInstalls, Value: 3}}}, Page: Page{Limit: 20}}
 	encoded, err := json.Marshal(response)
 	if err != nil {
 		t.Fatal(err)
 	}
 	text := string(encoded)
-	if strings.Contains(text, "description") || !strings.Contains(text, `"repositoryId"`) || !strings.Contains(text, `"skillName"`) {
-		t.Fatalf("ranking leaked metadata or lost association: %s", text)
+	if !strings.Contains(text, `"description":"Demo"`) || !strings.Contains(text, `"repositoryId"`) || !strings.Contains(text, `"skillName"`) {
+		t.Fatalf("ranking lost Hub metadata, association, or metric: %s", text)
 	}
 }
 

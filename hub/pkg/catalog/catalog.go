@@ -505,6 +505,28 @@ func (c *Catalog) SkillByCoordinate(ctx context.Context, repositoryID, name stri
 	return skillFromSQLC(stored.ID, stored.RepositoryID, stored.RepositoryIdentity, stored.Name, stored.Description, stored.SourceHost, stored.Repository, stored.SkillPath, stored.LatestVersion, stored.Stars, stored.Verified, stored.CreatedAt, stored.UpdatedAt), nil
 }
 
+// SkillsByCoordinates resolves public Repository ID plus canonical Skill Name
+// coordinates in one ordered database query, omitting coordinates not present
+// in the current Catalog.
+func (c *Catalog) SkillsByCoordinates(ctx context.Context, coordinates []protocolapi.SkillCoordinate) ([]Skill, error) {
+	repositories := make([]string, 0, len(coordinates))
+	names := make([]string, 0, len(coordinates))
+	for _, coordinate := range coordinates {
+		repositories = append(repositories, coordinate.RepositoryID)
+		names = append(names, coordinate.Name)
+	}
+	rows, err := c.queries.SkillsByCoordinates(ctx, catalogsqlc.SkillsByCoordinatesParams{RepositoryIdentities: repositories, Names: names})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]Skill, 0, len(rows))
+	for _, row := range rows {
+		item := skillFromSQLC(row.ID, row.RepositoryID, row.RepositoryIdentity, row.Name, row.Description, row.SourceHost, row.Repository, row.SkillPath, row.LatestVersion, row.Stars, row.Verified, row.CreatedAt, row.UpdatedAt)
+		items = append(items, *item)
+	}
+	return items, nil
+}
+
 // SkillPublishedVersions returns Repository Release versions containing one Skill.
 func (c *Catalog) SkillPublishedVersions(ctx context.Context, repositoryID, name string) ([]string, error) {
 	versions, err := c.queries.SkillPublishedVersions(ctx, catalogsqlc.SkillPublishedVersionsParams{RepositoryID: repositoryID, Name: name})

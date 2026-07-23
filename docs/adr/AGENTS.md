@@ -14,6 +14,7 @@
 - `0009-freeze-hub-v1-distribution-contract.md`: records the superseded per-Skill artifact and installation-mode design that was replaced before public launch.
 - `0010-distribute-repository-versions-and-project-selected-skills.md`: makes Repository Version the artifact, Sum, download, lock, and Vendor unit while preserving Skill-level Agent visibility through deterministic Repository Projections.
 - `0011-identify-repository-members-by-skill-name.md`: identifies selectable members by Repository ID plus canonical Skill Name, keeps Skill Path internal to a Publication, and removes public Skill IDs and `/-/`.
+- `0012-compose-cloud-rankings-with-hub-cards.md`: makes Cloud the ranking composition boundary through uncached singleflight Hub batch reads and requires one-query ordered Hub hydration.
 
 ## Architectural Boundary
 
