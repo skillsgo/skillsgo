@@ -20,15 +20,15 @@ import (
 func TestDecodeTargetsIsStrictAndPreservesHostilePaths(t *testing.T) {
 	path := `/tmp/project ;$(touch never)/skill`
 	targets, err := DecodeTargets([]string{
-		`{"scope":"project","projectRoot":"/tmp/project ;$(touch never)","agent":"codex","mode":"copy","path":"` + path + `","skillId":"github.com/example/skills/-/demo","version":"v1.0.0"}`,
+		`{"scope":"project","projectRoot":"/tmp/project ;$(touch never)","agent":"codex","path":"` + path + `","skillId":"github.com/example/skills/-/demo","version":"v1.0.0"}`,
 	})
 	require.NoError(t, err)
 	require.Equal(t, path, targets[0].Path)
 	require.Equal(t, install.ScopeProject, targets[0].Scope)
 
-	_, err = DecodeTargets([]string{`{"scope":"user","agent":"codex","mode":"copy","path":"/tmp/demo","skillId":"github.com/example/skills/-/demo","version":"v1.0.0","extra":true}`})
+	_, err = DecodeTargets([]string{`{"scope":"user","agent":"codex","path":"/tmp/demo","skillId":"github.com/example/skills/-/demo","version":"v1.0.0","extra":true}`})
 	require.Error(t, err)
-	_, err = DecodeTargets([]string{`{"scope":"user","agent":"codex","mode":"copy","path":"/tmp/demo","skillId":"github.com/example/skills/-/demo","version":"v1.0.0","action":"remove"}`})
+	_, err = DecodeTargets([]string{`{"scope":"user","agent":"codex","path":"/tmp/demo","skillId":"github.com/example/skills/-/demo","version":"v1.0.0","action":"remove"}`})
 	require.ErrorContains(t, err, "stateToken")
 }
 

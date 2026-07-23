@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Cobra and the Agent, Hub, Store, project, installation, Installation Plan, Update Plan, target-operation, source, i18n, and terminal UI modules.
- * [OUTPUT]: Provides command.Execute and the complete CLI graph, including recognized machine-mode failures, conflict-safe Workspace/User Repository install ensure, Vendor member/Agent/dependency removal, grouped Hub reads, Skill reads, Catalog update checks, explicit-source Info, Human UI policy, inventory/inspection, legacy takeover/cache/repair seams pending removal, and Local export, for terminal and App callers.
+ * [INPUT]: Depends on Cobra and the Agent, Hub, project, Repository installation, target-operation, source, i18n, and terminal UI modules.
+ * [OUTPUT]: Provides command.Execute and the Repository-oriented CLI graph, including recognized machine-mode failures, conflict-safe Workspace/User install ensure, Repository add/update/remove, grouped Hub reads, Catalog update checks, inventory/inspection, and Repository-backed takeover for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -83,7 +83,7 @@ func newRootCommand(stdout, stderr io.Writer) (*cobra.Command, error) {
 	root.PersistentFlags().StringVar(&languageOverride, "lang", strings.TrimSpace(os.Getenv("SKILLSGO_LANG")), appi18n.T("flag.lang"))
 	root.PersistentFlags().String("ui", string(terminalui.ModeAuto), appi18n.T("flag.ui"))
 	root.PersistentFlags().String("color", string(terminalui.ColorAuto), appi18n.T("flag.color"))
-	root.AddCommand(newVersionCommand(), newDiagnosticsCommand(), newCacheCommand(), newAgentsCommand(catalog), newInventoryCommand(catalog), newVerifyCommand(catalog), newWhyCommand(catalog), newTakeoverCommand(catalog), newInfoCommand(), newFindCommand(), newDetailCommand(), newHubCommand(), newUpdatesCommand(), newAddCommand(catalog), newInstallCommand(catalog), placeholder("use", "use <package>@<skill>"), newRemoveCommand(catalog), newRepairCommand(catalog), newExportCommand(), newListCommand(catalog), newRepositoryUpdateCommand(catalog), placeholder("init", "init [name]"))
+	root.AddCommand(newVersionCommand(), newAgentsCommand(catalog), newInventoryCommand(catalog), newVerifyCommand(catalog), newWhyCommand(catalog), newTakeoverCommand(catalog), newInfoCommand(), newFindCommand(), newDetailCommand(), newHubCommand(), newUpdatesCommand(), newAddCommand(catalog), newInstallCommand(catalog), placeholder("use", "use <package>@<skill>"), newRemoveCommand(catalog), newRepairCommand(catalog), newExportCommand(), newListCommand(catalog), newRepositoryUpdateCommand(catalog), placeholder("init", "init [name]"))
 	return root, nil
 }
 
@@ -161,184 +161,6 @@ func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
 	cmd.Flags().StringVar(&output, "output", "human", appi18n.T("flag.output"))
 	cmd.Flags().BoolVarP(&global, "global", "g", false, appi18n.T("flag.global.add"))
 	return cmd
-}
-
-func newUpdateCommand(catalog *agent.Catalog) *cobra.Command {
-	var hubURL, output string
-	var global, check, yes bool
-	var preflight bool
-	var explicitTargets []string
-	cmd := &cobra.Command{
-		Use:     "update [skills...]",
-		Aliases: []string{"upgrade"},
-		Short:   appi18n.T("update.short"),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if len(explicitTargets) > 0 {
-				if len(args) > 0 || global || check {
-					return fmt.Errorf("explicit Update Plans cannot be combined with names, --global, or --check")
-				}
-				return runExplicitUpdatePlan(cmd, hubURL, output, preflight, explicitTargets)
-			}
-			if preflight {
-				return fmt.Errorf("--preflight requires at least one --target")
-			}
-			if global {
-				return runGlobalUpdate(cmd, catalog, args, hubURL, output, check)
-			}
-			cwd, err := os.Getwd()
-			if err != nil {
-				return err
-			}
-			if discovered, discoverErr := project.FindRoot(cwd); discoverErr == nil {
-				cwd = discovered
-			}
-			manifest, err := project.LoadManifest(cwd)
-			if err != nil {
-				return err
-			}
-			selected := map[string]bool{}
-			for _, name := range args {
-				selected[strings.ToLower(name)] = true
-			}
-			skillIDs := make([]string, 0, len(manifest.Skills))
-			for skillID := range manifest.Skills {
-				if len(selected) == 0 || selected[strings.ToLower(skillID)] {
-					skillIDs = append(skillIDs, skillID)
-				}
-			}
-			sort.Strings(skillIDs)
-			if len(skillIDs) == 0 {
-				return fmt.Errorf("未找到要更新的 Skill")
-			}
-			type updateResult struct {
-				Name    string `json:"name"`
-				From    string `json:"from"`
-				To      string `json:"to"`
-				Updated bool   `json:"updated"`
-			}
-			results := make([]updateResult, 0, len(skillIDs))
-			for _, skillID := range skillIDs {
-				requirement := manifest.Skills[skillID]
-				results = append(results, updateResult{Name: skillID, From: requirement.Ref, To: requirement.Ref, Updated: false})
-			}
-			if output == "json" {
-				encoder := json.NewEncoder(cmd.OutOrStdout())
-				encoder.SetIndent("", "  ")
-				return encoder.Encode(results)
-			}
-			ui, err := humanUI(cmd)
-			if err != nil {
-				return err
-			}
-			rows := make([]terminalui.Row, 0, len(results))
-			for _, result := range results {
-				state, version := "•", result.From
-				if result.Updated {
-					state, version = "✓", result.From+" → "+result.To
-				}
-				rows = append(rows, terminalui.Row{State: state, Primary: result.Name, Secondary: version})
-			}
-			return ui.Render(terminalui.Document{Title: appi18n.T("result.update"), Sections: []terminalui.Section{{Rows: rows}}})
-		},
-	}
-	defaultHub := defaultHubURL()
-	cmd.Flags().StringVar(&hubURL, "hub", defaultHub, "Hub 服务地址")
-	cmd.Flags().StringVar(&output, "output", "human", "输出格式：human 或 json")
-	cmd.Flags().BoolVarP(&global, "global", "g", false, "更新用户级 Skill")
-	cmd.Flags().BoolVar(&check, "check", false, "只检查更新，不修改安装")
-	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "跳过确认")
-	cmd.Flags().BoolVar(&preflight, "preflight", false, "只生成显式 Update Plan，不修改目标")
-	cmd.Flags().StringArrayVar(&explicitTargets, "target", nil, "显式 Update Target JSON；可重复")
-	_ = yes
-	return cmd
-}
-
-func runGlobalUpdate(cmd *cobra.Command, catalog *agent.Catalog, names []string, hubURL, output string, check bool) error {
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return err
-	}
-	storage := store.Store{Root: store.DefaultRoot(home)}
-	scope := install.ScopeUser
-	namesFilter := map[string]bool{}
-	if len(names) > 0 {
-		for _, name := range names {
-			namesFilter[strings.ToLower(name)] = true
-		}
-	}
-	installed, err := project.Installed(project.UserRoot(home), catalog, scope, storage.Root)
-	if err != nil {
-		return err
-	}
-	installed = filterInstallations(installed, nil, namesFilter)
-	type result struct {
-		Name      string `json:"name"`
-		SkillID   string `json:"skillId"`
-		From      string `json:"from"`
-		To        string `json:"to"`
-		Available bool   `json:"available"`
-		Updated   bool   `json:"updated"`
-	}
-	groups := map[string][]install.Installation{}
-	for _, item := range installed {
-		groups[item.SkillID+"\x00"+item.Name] = append(groups[item.SkillID+"\x00"+item.Name], item)
-	}
-	keys := make([]string, 0, len(groups))
-	for key := range groups {
-		keys = append(keys, key)
-	}
-	sort.Strings(keys)
-	client, err := hub.New(hubURL, nil)
-	if err != nil {
-		return err
-	}
-	results := make([]result, 0, len(keys))
-	for _, key := range keys {
-		previous := groups[key]
-		first := previous[0]
-		info, err := client.Resolve(cmd.Context(), first.SkillID, "main")
-		if err != nil {
-			return fmt.Errorf("检查 %s 更新: %w", first.Name, err)
-		}
-		item := result{Name: first.Name, SkillID: first.SkillID, From: first.Version, To: info.Version, Available: info.Version != first.Version}
-		if item.Available && !check {
-			artifact, err := client.Fetch(cmd.Context(), first.SkillID, info.Version)
-			if err != nil {
-				return err
-			}
-			entry, err := storage.Put(artifact)
-			if err != nil {
-				return err
-			}
-			targets := make([]install.Target, 0, len(previous))
-			for _, old := range previous {
-				targets = append(targets, old.Target)
-			}
-			if err := install.Replace(entry, previous, targets); err != nil {
-				return err
-			}
-			item.Updated = true
-		}
-		results = append(results, item)
-	}
-	if output == "json" {
-		encoder := json.NewEncoder(cmd.OutOrStdout())
-		encoder.SetIndent("", "  ")
-		return encoder.Encode(results)
-	}
-	ui, err := humanUI(cmd)
-	if err != nil {
-		return err
-	}
-	rows := make([]terminalui.Row, 0, len(results))
-	for _, item := range results {
-		state, version := "•", item.From
-		if item.Available {
-			state, version = "✓", item.From+" → "+item.To
-		}
-		rows = append(rows, terminalui.Row{State: state, Primary: item.Name, Secondary: version})
-	}
-	return ui.Render(terminalui.Document{Title: appi18n.T("result.update"), Sections: []terminalui.Section{{Rows: rows}}})
 }
 
 type inventoryOptions struct {
@@ -605,10 +427,9 @@ func placeholder(name, use string, aliases ...string) *cobra.Command {
 }
 
 type addOptions struct {
-	global, copy, yes, list, fullDepth, replace            bool
-	riskConfirmed, allowCritical                           bool
-	agents, skills, subagents, targets                     []string
-	metadata, output, hubURL, artifactVersion, projectRoot string
+	global, yes, list           bool
+	agents, skills              []string
+	output, hubURL, projectRoot string
 }
 
 func newAddCommand(catalog *agent.Catalog) *cobra.Command {
@@ -620,12 +441,6 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			if options.global && options.projectRoot != "" {
 				return fmt.Errorf("--global and --project are mutually exclusive")
-			}
-			if len(options.targets) > 0 {
-				return runExplicitInstallationPlan(cmd, catalog, args[0], options)
-			}
-			if options.artifactVersion != "" {
-				return fmt.Errorf("--version requires at least one --target")
 			}
 			agentIDs := options.agents
 			if len(agentIDs) == 0 {
@@ -648,16 +463,9 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 					agentIDs = append(agentIDs, definition.ID)
 				}
 			}
-			if len(options.subagents) > 0 && !slices.Contains(agentIDs, "eve") {
-				agentIDs = append(agentIDs, "eve")
-			}
 			scope := install.ScopeProject
 			if options.global {
 				scope = install.ScopeUser
-			}
-			mode := install.ModeSymlink
-			if options.copy {
-				mode = install.ModeCopy
 			}
 			cwd, err := os.Getwd()
 			if err != nil {
@@ -681,9 +489,9 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 				}
 			}
 			if len(options.skills) > 0 {
-				return addSelectedRepositorySkills(cmd, catalog, reference, agentIDs, scope, mode, cwd, options)
+				return addSelectedRepositorySkills(cmd, catalog, reference, agentIDs, scope, cwd, options)
 			}
-			return addWholeRepository(cmd, catalog, reference, agentIDs, scope, mode, cwd, options)
+			return addWholeRepository(cmd, catalog, reference, agentIDs, scope, cwd, options)
 		},
 	}
 	flags := cmd.Flags()
@@ -693,15 +501,6 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 	flags.StringArrayVarP(&options.skills, "skill", "s", nil, appi18n.T("flag.skill"))
 	flags.BoolVarP(&options.list, "list", "l", false, appi18n.T("flag.list"))
 	flags.BoolVarP(&options.yes, "yes", "y", false, appi18n.T("flag.yes"))
-	flags.BoolVar(&options.copy, "copy", false, appi18n.T("flag.copy"))
-	flags.BoolVar(&options.replace, "replace", false, appi18n.T("flag.replace"))
-	flags.StringArrayVar(&options.targets, "target", nil, appi18n.T("flag.target"))
-	flags.StringVar(&options.artifactVersion, "version", "", appi18n.T("flag.artifact_version"))
-	flags.BoolVar(&options.riskConfirmed, "confirm-risk", false, appi18n.T("flag.confirm_risk"))
-	flags.BoolVar(&options.allowCritical, "allow-critical", false, appi18n.T("flag.allow_critical"))
-	flags.StringVar(&options.metadata, "metadata", "", appi18n.T("flag.metadata"))
-	flags.StringArrayVar(&options.subagents, "subagent", nil, appi18n.T("flag.subagent"))
-	flags.BoolVar(&options.fullDepth, "full-depth", false, appi18n.T("flag.full_depth"))
 	flags.StringVar(&options.output, "output", "human", appi18n.T("flag.output"))
 	defaultHub := defaultHubURL()
 	flags.StringVar(&options.hubURL, "hub", defaultHub, appi18n.T("flag.hub"))

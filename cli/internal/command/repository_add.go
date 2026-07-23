@@ -24,18 +24,15 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func addWholeRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.Reference, agentIDs []string, scope install.Scope, _ install.Mode, workspaceRoot string, options addOptions) error {
+func addWholeRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.Reference, agentIDs []string, scope install.Scope, workspaceRoot string, options addOptions) error {
 	return addRepository(cmd, catalog, reference, agentIDs, scope, workspaceRoot, options, nil)
 }
 
-func addSelectedRepositorySkills(cmd *cobra.Command, catalog *agent.Catalog, reference source.Reference, agentIDs []string, scope install.Scope, _ install.Mode, workspaceRoot string, options addOptions) error {
+func addSelectedRepositorySkills(cmd *cobra.Command, catalog *agent.Catalog, reference source.Reference, agentIDs []string, scope install.Scope, workspaceRoot string, options addOptions) error {
 	return addRepository(cmd, catalog, reference, agentIDs, scope, workspaceRoot, options, options.skills)
 }
 
 func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.Reference, agentIDs []string, scope install.Scope, workspaceRoot string, options addOptions, selectors []string) error {
-	if options.copy || options.replace || len(options.subagents) > 0 {
-		return fmt.Errorf("Repository Vendor installation does not support copy, replace, or subagent modes")
-	}
 	client, err := hub.New(options.hubURL, nil)
 	if err != nil {
 		return err

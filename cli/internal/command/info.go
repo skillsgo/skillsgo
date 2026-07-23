@@ -77,9 +77,19 @@ func newInfoCommand() *cobra.Command {
 				return err
 			}
 			if nested {
-				info, resolveErr := client.Resolve(cmd.Context(), reference.SkillID, reference.Version)
+				resource, resolveErr := client.Repository(cmd.Context(), repositoryID, reference.Version)
 				if resolveErr != nil {
 					return resolveErr
+				}
+				var info hub.Info
+				for _, member := range resource.Members {
+					if member.Info.ID == reference.SkillID {
+						info = member.Info
+						break
+					}
+				}
+				if info.ID == "" {
+					return fmt.Errorf("Repository %s@%s does not contain Skill %s", repositoryID, resource.Info.Version, reference.SkillID)
 				}
 				view, _, productErr := productSkillInfo(cmd.Context(), client, info)
 				if productErr != nil {
