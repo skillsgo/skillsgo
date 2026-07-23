@@ -71,15 +71,15 @@ func Test_FilterMiddleware(t *testing.T) {
 		r.NoError(testErr)
 		return resp
 	}
-	res := request("/mod/github.com/skillsgo/skillsgo/hub/@v/list")
+	res := request("/github.com/skillsgo/skillsgo/hub/@v/list")
 	r.Equal(http.StatusBadGateway, res.StatusCode)
 
 	// Excluded, expects a 403
-	res = request("/mod/github.com/athens-artifacts/no-tags/@v/list")
+	res = request("/github.com/athens-artifacts/no-tags/@v/list")
 	r.Equal(http.StatusForbidden, res.StatusCode)
 
 	// Private, the proxy is working and returns a 200
-	res = request("/mod/github.com/athens-artifacts/happy-path/@v/list")
+	res = request("/github.com/athens-artifacts/happy-path/@v/list")
 	r.Equal(http.StatusOK, res.StatusCode)
 }
 
@@ -140,7 +140,7 @@ func TestHookTestSuite(t *testing.T) {
 func (suite *HookTestsSuite) TestHookOnList() {
 	r := suite.Require()
 	// list path, hook should not be hit
-	_, _ = suite.w.Test(mustRequest(suite.T(), "/mod/github.com/skillsgo/skillsgo/hub/@v/list"))
+	_, _ = suite.w.Test(mustRequest(suite.T(), "/github.com/skillsgo/skillsgo/hub/@v/list"))
 	r.False(suite.mock.invoked)
 }
 
@@ -148,7 +148,7 @@ func (suite *HookTestsSuite) TestHookPass() {
 	r := suite.Require()
 	// hit and pass
 	suite.mock.resCode = http.StatusOK
-	res, _ := suite.w.Test(mustRequest(suite.T(), "/mod/github.com/athens-artifacts/happy-path/@v/v1.0.0.info"))
+	res, _ := suite.w.Test(mustRequest(suite.T(), "/github.com/athens-artifacts/happy-path/@v/v1.0.0.info"))
 	r.True(suite.mock.invoked)
 	r.Equal(http.StatusOK, res.StatusCode)
 	r.Equal("github.com/athens-artifacts/happy-path", suite.mock.params.Skill)
@@ -160,7 +160,7 @@ func (suite *HookTestsSuite) TestHookBlocks() {
 
 	// hit but hook blocks
 	suite.mock.resCode = http.StatusForbidden
-	res, _ := suite.w.Test(mustRequest(suite.T(), "/mod/github.com/athens-artifacts/happy-path/@v/v1.0.0.info"))
+	res, _ := suite.w.Test(mustRequest(suite.T(), "/github.com/athens-artifacts/happy-path/@v/v1.0.0.info"))
 	r.True(suite.mock.invoked)
 	r.Equal(http.StatusForbidden, res.StatusCode)
 }
@@ -170,7 +170,7 @@ func (suite *HookTestsSuite) TestHookUnexpectedError() {
 
 	// hit but unexpected error
 	suite.mock.resCode = http.StatusGone
-	res, _ := suite.w.Test(mustRequest(suite.T(), "/mod/github.com/athens-artifacts/happy-path/@v/v1.0.0.info"))
+	res, _ := suite.w.Test(mustRequest(suite.T(), "/github.com/athens-artifacts/happy-path/@v/v1.0.0.info"))
 	r.True(suite.mock.invoked)
 	r.Equal(http.StatusInternalServerError, res.StatusCode)
 }

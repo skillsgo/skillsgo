@@ -2,9 +2,9 @@
 // +build e2etests
 
 /*
- * [INPUT]: Depends on a running Hub, SkillsGo-owned public nested Skill fixtures, enriched Info, and deterministic ZIP delivery.
- * [OUTPUT]: Specifies end-to-end exact Info metadata, immutable cache replay, and complete single-file/resourceful Skill ZIP contents.
- * [POS]: Serves as the external protocol acceptance test after independent Manifest resource contraction.
+ * [INPUT]: Depends on a running Hub, a SkillsGo-owned multi-Skill Repository fixture, Repository Info, and deterministic ZIP delivery.
+ * [OUTPUT]: Specifies end-to-end Repository Info metadata, immutable cache replay, and complete Repository ZIP contents for root and nested members.
+ * [POS]: Serves as the external Repository artifact protocol acceptance test.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package e2etests
@@ -19,46 +19,46 @@ import (
 )
 
 const (
-	testSkillModule            = "github.com/skillsgo/e2e-versioned-skills/-/skills/resourceful"
+	testRepository             = "github.com/skillsgo/e2e-versioned-skills"
 	testSkillVersion           = "v1.3.0"
-	testSkillTreeSHA           = "68351e08c3cb9105a93e80fc539f0df97f954fb8"
 	testSkillMonorepoCommitSHA = "2a54d098bed5be7f5d095a7f99bf16c894275f6e"
-	testNestedSkillModule      = "github.com/skillsgo/e2e-versioned-skills/-/skills/alpha"
-	testNestedSkillVersion     = "v1.3.0"
-	testNestedSkillTreeSHA     = "92f6e13b356461714cf86e17bf5e30454affe663"
 )
 
-type skillModuleInfo struct {
+type repositoryInfo struct {
 	Version   string `json:"Version"`
-	Name      string `json:"Name"`
 	CommitSHA string `json:"CommitSHA"`
-	TreeSHA   string `json:"TreeSHA"`
 	Ref       string `json:"Ref"`
+	Sum       string `json:"Sum"`
+	Skills    []struct {
+		Path string `json:"Path"`
+		Name string `json:"Name"`
+	} `json:"Skills"`
 }
 
-// TestSkillArtifact verifies a tagged multi-file Skill from a SkillsGo-owned fixture.
-func (m *E2eSuite) TestSkillArtifact() {
-	infoBody := m.getProxyArtifact(testSkillModule + "/@v/" + testSkillVersion + ".info")
-	var info skillModuleInfo
+// TestRepositoryArtifact verifies one tagged multi-Skill Repository fixture.
+func (m *E2eSuite) TestRepositoryArtifact() {
+	infoBody := m.getProxyArtifact(testRepository + "/@v/" + testSkillVersion + ".info")
+	var info repositoryInfo
 	m.Require().NoError(json.Unmarshal(infoBody, &info))
 	m.Equal(testSkillVersion, info.Version)
 	m.Equal(testSkillMonorepoCommitSHA, info.CommitSHA)
-	m.Equal(testSkillTreeSHA, info.TreeSHA)
 	m.Equal("refs/tags/"+testSkillVersion, info.Ref)
+	m.NotEmpty(info.Sum)
+	m.Contains(memberPaths(info), "skills/resourceful")
+	m.Contains(memberPaths(info), "skills/alpha")
 
-	m.Equal("resourceful", info.Name)
-
-	zipBody := m.getProxyArtifact(testSkillModule + "/@v/" + testSkillVersion + ".zip")
-	zipBodyFromCache := m.getProxyArtifact(testSkillModule + "/@v/" + testSkillVersion + ".zip")
-	m.Equal(zipBody, zipBodyFromCache, "cached Skill zip must be byte-identical")
+	zipBody := m.getProxyArtifact(testRepository + "/@v/" + testSkillVersion + ".zip")
+	zipBodyFromCache := m.getProxyArtifact(testRepository + "/@v/" + testSkillVersion + ".zip")
+	m.Equal(zipBody, zipBodyFromCache, "cached Repository zip must be byte-identical")
 
 	reader, err := zip.NewReader(bytes.NewReader(zipBody), int64(len(zipBody)))
 	m.Require().NoError(err)
 
-	prefix := testSkillModule + "@" + testSkillVersion + "/"
+	prefix := testRepository + "@" + testSkillVersion + "/"
 	wantFiles := map[string]bool{
-		prefix + "SKILL.md":            false,
-		prefix + "references/guide.md": false,
+		prefix + "skills/resourceful/SKILL.md":            false,
+		prefix + "skills/resourceful/references/guide.md": false,
+		prefix + "skills/alpha/SKILL.md":                  false,
 	}
 	for _, file := range reader.File {
 		if _, ok := wantFiles[file.Name]; ok {
@@ -66,40 +66,20 @@ func (m *E2eSuite) TestSkillArtifact() {
 		}
 	}
 	for name, found := range wantFiles {
-		m.True(found, "Skill zip is missing %s", name)
+		m.True(found, "Repository zip is missing %s", name)
 	}
 }
 
-func (m *E2eSuite) TestNestedSkillArtifact() {
-	infoBody := m.getProxyArtifact(testNestedSkillModule + "/@v/" + testNestedSkillVersion + ".info")
-	var info skillModuleInfo
-	m.Require().NoError(json.Unmarshal(infoBody, &info))
-	m.Equal(testNestedSkillVersion, info.Version)
-	m.Equal(testSkillMonorepoCommitSHA, info.CommitSHA)
-	m.Equal(testNestedSkillTreeSHA, info.TreeSHA)
-
-	m.Equal("alpha", info.Name)
-
-	zipBody := m.getProxyArtifact(testNestedSkillModule + "/@v/" + testNestedSkillVersion + ".zip")
-	reader, err := zip.NewReader(bytes.NewReader(zipBody), int64(len(zipBody)))
-	m.Require().NoError(err)
-
-	prefix := testNestedSkillModule + "@" + testNestedSkillVersion + "/"
-	wantFiles := map[string]bool{
-		prefix + "SKILL.md": false,
+func memberPaths(info repositoryInfo) []string {
+	paths := make([]string, 0, len(info.Skills))
+	for _, skill := range info.Skills {
+		paths = append(paths, skill.Path)
 	}
-	for _, file := range reader.File {
-		if _, ok := wantFiles[file.Name]; ok {
-			wantFiles[file.Name] = true
-		}
-	}
-	for name, found := range wantFiles {
-		m.True(found, "Skill zip is missing %s", name)
-	}
+	return paths
 }
 
 func (m *E2eSuite) getProxyArtifact(path string) []byte {
-	response, err := http.Get(m.hubOrigin + "/mod/" + path)
+	response, err := http.Get(m.hubOrigin + "/" + path)
 	m.Require().NoError(err)
 	defer response.Body.Close()
 

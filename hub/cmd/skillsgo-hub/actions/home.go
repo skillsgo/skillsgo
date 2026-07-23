@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on Hub configuration, request origin data, and an optional operator-provided HTML template.
  * [OUTPUT]: Serves the SkillsGo Hub landing page with exact-version, head, and release artifact protocol examples.
- * [POS]: Serves as the human protocol-orientation surface beside machine `/mod` and `/api/v1` routes.
+ * [POS]: Serves as the human protocol-orientation surface beside root Repository artifact and `/api/v1` routes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
