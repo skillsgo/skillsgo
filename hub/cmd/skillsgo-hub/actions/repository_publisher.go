@@ -7,7 +7,6 @@
 package actions
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -35,8 +34,7 @@ type historicalRepositoryMaterializer interface {
 
 type repositoryPublisher struct {
 	fetcher     skill.RepositoryFetcher
-	storage     storage.Backend
-	metadata    *catalog.Catalog
+	publication *repositoryPublicationCommit
 	work        singleflight.Group
 	commit      singleflight.Group
 	upstream    chan struct{}
@@ -52,8 +50,7 @@ type negativePublication struct {
 }
 
 func newRepositoryPublisher(fetcher skill.RepositoryFetcher, backend storage.Backend, metadata *catalog.Catalog) *repositoryPublisher {
-	backend = storage.WithImmutableWrites(backend)
-	return &repositoryPublisher{fetcher: fetcher, storage: backend, metadata: metadata, upstream: make(chan struct{}, 8), negative: make(map[string]negativePublication), now: time.Now, negativeTTL: 10 * time.Second}
+	return &repositoryPublisher{fetcher: fetcher, publication: newRepositoryPublicationCommit(backend, metadata), upstream: make(chan struct{}, 8), negative: make(map[string]negativePublication), now: time.Now, negativeTTL: 10 * time.Second}
 }
 
 func (p *repositoryPublisher) Materialize(ctx context.Context, repositoryID, query string) (string, error) {
@@ -235,29 +232,10 @@ func (p *repositoryPublisher) publishSnapshot(ctx context.Context, repositoryID,
 		return "", fmt.Errorf("encode Repository Info: %w", err)
 	}
 
-	created := false
-	publicationCommitted := false
-	defer func() {
-		if publicationCommitted || !created {
-			return
-		}
-		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 30*time.Second)
-		defer cancel()
-		if err := p.storage.Delete(cleanupCtx, repositoryID, snapshot.Version); err != nil {
-			log.EntryFromContext(ctx).WithFields(map[string]any{
-				"repository_id": repositoryID, "version": snapshot.Version,
-			}).Warnf("repository publication rollback failed: %v", err)
-		}
-	}()
-	created, err = p.storage.(storage.ImmutableSaver).PutIfAbsent(ctx, repositoryID, snapshot.Version,
-		bytes.NewReader(archive), snapshot.ArchiveMD5, releaseInfo)
+	created, err := p.publication.Publish(ctx, repositoryID, snapshot.Version, archive, snapshot.ArchiveMD5, releaseInfo, published, visibility)
 	if err != nil {
 		return "", err
 	}
-	if err := p.metadata.PublishRepositoryReleaseWithVisibility(ctx, repositoryID, published, visibility, releaseInfo); err != nil {
-		return "", err
-	}
-	publicationCommitted = true
 	log.EntryFromContext(ctx).WithFields(map[string]any{
 		"member_count":       len(snapshot.Members),
 		"new_artifact_count": map[bool]int{true: 1, false: 0}[created],
