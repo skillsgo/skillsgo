@@ -342,7 +342,6 @@
       }
     }
   },
-  "repairTarget": "수리",
   "confirmRemoveTarget": "제거 확인",
   "applyTargetActions": "선택한 작업 적용",
   "managementProgressTitle": "타겟 액션 적용",

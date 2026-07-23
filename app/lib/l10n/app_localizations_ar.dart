@@ -598,9 +598,6 @@ class AppLocalizationsAr extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => 'إصلاح';
-
-  @override
   String get confirmRemoveTarget => 'تأكيد الإزالة';
 
   @override

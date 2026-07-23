@@ -597,9 +597,6 @@ class AppLocalizationsVi extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => 'sửa chữa';
-
-  @override
   String get confirmRemoveTarget => 'Xác nhận xóa';
 
   @override

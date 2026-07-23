@@ -183,7 +183,6 @@
   "manageTargetsDescription": "为每个目标选择精确操作；未选择的目标不会改变。",
   "targetActionsSelected": "已选择 {selected}/{total} 个目标",
   "@targetActionsSelected": {"placeholders": {"selected": {"type": "int"}, "total": {"type": "int"}}},
-  "repairTarget": "修复",
   "confirmRemoveTarget": "确认移除",
   "applyTargetActions": "执行所选操作",
   "managementProgressTitle": "正在执行目标操作",

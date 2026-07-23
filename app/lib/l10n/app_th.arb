@@ -342,7 +342,6 @@
       }
     }
   },
-  "repairTarget": "ซ่อม",
   "confirmRemoveTarget": "ยืนยันการลบ",
   "applyTargetActions": "ใช้การกระทำที่เลือก",
   "managementProgressTitle": "การใช้การดำเนินการตามเป้าหมาย",

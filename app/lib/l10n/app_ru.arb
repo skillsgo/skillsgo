@@ -342,7 +342,6 @@
       }
     }
   },
-  "repairTarget": "Ремонт",
   "confirmRemoveTarget": "Подтвердить удаление",
   "applyTargetActions": "Применить выбранные действия",
   "managementProgressTitle": "Применение целевых действий",

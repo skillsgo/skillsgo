@@ -1143,12 +1143,6 @@ abstract class AppLocalizations {
   /// **'{selected} of {total} targets selected'**
   String targetActionsSelected(int selected, int total);
 
-  /// No description provided for @repairTarget.
-  ///
-  /// In en, this message translates to:
-  /// **'Repair'**
-  String get repairTarget;
-
   /// No description provided for @confirmRemoveTarget.
   ///
   /// In en, this message translates to:

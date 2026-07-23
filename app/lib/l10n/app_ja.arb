@@ -342,7 +342,6 @@
       }
     }
   },
-  "repairTarget": "修理",
   "confirmRemoveTarget": "削除の確認",
   "applyTargetActions": "選択したアクションを適用する",
   "managementProgressTitle": "ターゲットアクションの適用",

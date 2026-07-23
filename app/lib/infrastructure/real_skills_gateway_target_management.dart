@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, target codecs, reviewed Target Operation Plans, and progress callbacks.
- * [OUTPUT]: Provides External Installation removal preflight, state-bound execution, target results, and progress translation.
+ * [OUTPUT]: Provides managed Repository-member and External Installation removal planning, execution, target results, and progress translation.
  * [POS]: Serves as the Target Operation Plan capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,8 +14,8 @@ mixin _RealSkillsGatewayTargetManagement
     List<SkillInstallationTarget> targets,
   ) async {
     final external = skill.provenance == LibraryProvenance.external;
-    if (!external ||
-        targets.isEmpty ||
+    if (!external) return _managedRemovalPlan(skill, targets);
+    if (targets.isEmpty ||
         targets.any(
           (target) =>
               target.version.isNotEmpty ||
@@ -127,6 +127,69 @@ mixin _RealSkillsGatewayTargetManagement
     }
   }
 
+  TargetManagementPlan _managedRemovalPlan(
+    InstalledSkill skill,
+    List<SkillInstallationTarget> requested,
+  ) {
+    if (skill.skillId.isEmpty ||
+        requested.isEmpty ||
+        requested.any((target) => target.version.isEmpty)) {
+      throw const SkillsException(
+        'Managed removal requires exact Repository-backed targets.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    String scopeKey(SkillInstallationTarget target) =>
+        '${target.scope.name}\u0000${target.projectRoot}';
+    final requestedScopes = requested.map(scopeKey).toSet();
+    final bindings = skill.targets
+        .where((target) => requestedScopes.contains(scopeKey(target)))
+        .toList(growable: false);
+    if (bindings.isEmpty ||
+        bindings.any((target) => target.health != InstallationHealth.healthy)) {
+      throw const SkillsException(
+        'Locally modified Repository Projections must be resolved by the user.',
+        kind: SkillsFailureKind.invalidLocalData,
+      );
+    }
+    final planTargets = [
+      for (final target in bindings)
+        InstallationPlanTarget(
+          scope: target.scope,
+          projectRoot: target.projectRoot,
+          agent: target.agent,
+          path: target.path,
+        ),
+    ];
+    return TargetManagementPlan(
+      targets: List.unmodifiable([
+        for (var index = 0; index < bindings.length; index++)
+          TargetManagementPlanItem(
+            target: planTargets[index],
+            name: skill.name,
+            skillId: skill.skillId,
+            version: bindings[index].version,
+            health: bindings[index].health,
+            allowedActions: const [TargetManagementAction.remove],
+            stateToken:
+                'repository:${skill.skillId}:${bindings[index].version}',
+            workspaceMetadataChange: true,
+            affectedBindings: List.unmodifiable([
+              for (
+                var bindingIndex = 0;
+                bindingIndex < bindings.length;
+                bindingIndex++
+              )
+                if (scopeKey(bindings[bindingIndex]) ==
+                    scopeKey(bindings[index]))
+                  planTargets[bindingIndex],
+            ]),
+          ),
+      ]),
+      summary: TargetManagementPlanSummary(removable: bindings.length),
+    );
+  }
+
   @override
   Future<TargetManagementExecution> executeTargetManagement(
     TargetManagementPlan plan, {
@@ -144,10 +207,9 @@ mixin _RealSkillsGatewayTargetManagement
         throw const FormatException();
       }
     }
-    final execution = await _executeTargetManagementBatch(
-      plan,
-      onProgress: onProgress,
-    );
+    final execution = plan.targets.every((item) => item.version.isNotEmpty)
+        ? await _executeManagedRemoval(plan, onProgress: onProgress)
+        : await _executeTargetManagementBatch(plan, onProgress: onProgress);
     final results = execution.results;
     final ordered = <TargetManagementResult>[
       for (final item in plan.targets)
@@ -167,6 +229,85 @@ mixin _RealSkillsGatewayTargetManagement
         failed: ordered
             .where((result) => result.outcome == TargetManagementOutcome.failed)
             .length,
+      ),
+    );
+  }
+
+  Future<TargetManagementExecution> _executeManagedRemoval(
+    TargetManagementPlan plan, {
+    void Function(TargetManagementProgress progress)? onProgress,
+  }) async {
+    final groups = <String, List<TargetManagementPlanItem>>{};
+    for (final item in plan.targets) {
+      final key = '${item.target.scope.name}\u0000${item.target.projectRoot}';
+      groups.putIfAbsent(key, () => []).add(item);
+    }
+    final results = <TargetManagementResult>[];
+    var sequence = 0;
+    for (final items in groups.values) {
+      final first = items.first;
+      for (final item in items) {
+        onProgress?.call(
+          TargetManagementProgress(
+            sequence: ++sequence,
+            target: item.target,
+            name: item.name,
+            skillId: item.skillId,
+            version: item.version,
+            action: TargetManagementAction.remove,
+            state: InstallationProgressState.started,
+          ),
+        );
+      }
+      final arguments = <String>['remove', first.skillId];
+      if (first.target.scope == InstallationScope.user) {
+        arguments.add('--global');
+      } else {
+        arguments.addAll(['--project', first.target.projectRoot]);
+      }
+      arguments.addAll(['--yes', '--output', 'json']);
+      final command = await _runCli(arguments);
+      if (!command.succeeded) throw _commandFailure(command);
+      final raw = jsonDecode(command.output.stdout);
+      if (raw is! Map<String, dynamic> ||
+          raw['schemaVersion'] != 1 ||
+          raw['phase'] != 'repository-remove' ||
+          raw['skills'] is! List ||
+          !(raw['skills'] as List).contains(first.skillId)) {
+        throw const SkillsException(
+          'The SkillsGo CLI returned invalid Repository removal JSON.',
+          kind: SkillsFailureKind.invalidResponse,
+        );
+      }
+      for (final item in items) {
+        final result = TargetManagementResult(
+          target: item.target,
+          name: item.name,
+          skillId: item.skillId,
+          version: item.version,
+          action: TargetManagementAction.remove,
+          outcome: TargetManagementOutcome.succeeded,
+        );
+        results.add(result);
+        onProgress?.call(
+          TargetManagementProgress(
+            sequence: ++sequence,
+            target: item.target,
+            name: item.name,
+            skillId: item.skillId,
+            version: item.version,
+            action: TargetManagementAction.remove,
+            state: InstallationProgressState.finished,
+            result: result,
+          ),
+        );
+      }
+    }
+    return TargetManagementExecution(
+      results: List.unmodifiable(results),
+      summary: TargetManagementExecutionSummary(
+        succeeded: results.length,
+        failed: 0,
       ),
     );
   }

@@ -594,9 +594,6 @@ class AppLocalizationsHi extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => 'मरम्मत';
-
-  @override
   String get confirmRemoveTarget => 'हटाने की पुष्टि करें';
 
   @override

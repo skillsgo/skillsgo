@@ -599,9 +599,6 @@ class AppLocalizationsPt extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => 'Reparar';
-
-  @override
   String get confirmRemoveTarget => 'Confirmar remoção';
 
   @override

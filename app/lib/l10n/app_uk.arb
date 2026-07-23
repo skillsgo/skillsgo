@@ -342,7 +342,6 @@
       }
     }
   },
-  "repairTarget": "Ремонт",
   "confirmRemoveTarget": "Підтвердити видалення",
   "applyTargetActions": "Застосувати вибрані дії",
   "managementProgressTitle": "Застосування цільових дій",

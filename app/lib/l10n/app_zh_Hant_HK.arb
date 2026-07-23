@@ -297,7 +297,6 @@
       }
     }
   },
-  "repairTarget": "修復",
   "confirmRemoveTarget": "確認移除",
   "applyTargetActions": "執行所選操作",
   "managementProgressTitle": "正在執行目標操作",

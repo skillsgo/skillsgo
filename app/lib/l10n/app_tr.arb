@@ -342,7 +342,6 @@
       }
     }
   },
-  "repairTarget": "Onarım",
   "confirmRemoveTarget": "Kaldırmayı onayla",
   "applyTargetActions": "Seçili eylemleri uygula",
   "managementProgressTitle": "Hedef eylemleri uygulama",

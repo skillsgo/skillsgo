@@ -342,7 +342,6 @@
       }
     }
   },
-  "repairTarget": "Reparatie",
   "confirmRemoveTarget": "Bevestig verwijderen",
   "applyTargetActions": "Pas geselecteerde acties toe",
   "managementProgressTitle": "Doelacties toepassen",

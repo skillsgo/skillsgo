@@ -16,6 +16,58 @@ void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
   setUp(() => SharedPreferences.setMockInitialValues({}));
 
+  test('managed removal uses the Repository member machine protocol', () async {
+    const installed = InstalledSkill(
+      inventoryKey: 'hub:github.com/example/skills/-/demo',
+      name: 'demo',
+      path: '/work/.codex/skills/demo',
+      agents: ['codex'],
+      targetCount: 1,
+      skillId: 'github.com/example/skills/-/demo',
+      targets: [
+        SkillInstallationTarget(
+          agent: 'codex',
+          scope: InstallationScope.project,
+          projectRoot: '/work',
+          path: '/work/.codex/skills/demo',
+          version: 'v1.2.3',
+        ),
+      ],
+    );
+    final runner = FakeProcessRunner()
+      ..result = const ProcessOutput(
+        exitCode: 0,
+        stdout:
+            '{"schemaVersion":1,"phase":"repository-remove","skills":["github.com/example/skills/-/demo"],"scope":"project"}\n',
+        stderr: '',
+      );
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/bin/skillsgo',
+    );
+
+    final preflight = await gateway.preflightTargetManagement(
+      installed,
+      installed.targets,
+    );
+    final plan = preflight.selectActions({
+      updateTargetKey(preflight.targets.single.target):
+          TargetManagementAction.remove,
+    });
+    final execution = await gateway.executeTargetManagement(plan);
+
+    expect(execution.summary.succeeded, 1);
+    expect(runner.lastArguments, [
+      'remove',
+      'github.com/example/skills/-/demo',
+      '--project',
+      '/work',
+      '--yes',
+      '--output',
+      'json',
+    ]);
+  });
+
   test(
     'Target Management Plans preserve exact targets and parse versioned NDJSON',
     () async {

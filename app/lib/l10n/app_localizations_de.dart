@@ -601,9 +601,6 @@ class AppLocalizationsDe extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => 'Reparieren';
-
-  @override
   String get confirmRemoveTarget => 'Bestätigen Sie das Entfernen';
 
   @override

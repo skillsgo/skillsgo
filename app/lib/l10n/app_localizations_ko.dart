@@ -585,9 +585,6 @@ class AppLocalizationsKo extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => '수리';
-
-  @override
   String get confirmRemoveTarget => '제거 확인';
 
   @override

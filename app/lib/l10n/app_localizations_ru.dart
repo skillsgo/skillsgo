@@ -600,9 +600,6 @@ class AppLocalizationsRu extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => 'Ремонт';
-
-  @override
   String get confirmRemoveTarget => 'Подтвердить удаление';
 
   @override

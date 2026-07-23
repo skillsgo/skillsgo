@@ -342,7 +342,6 @@
       }
     }
   },
-  "repairTarget": "إصلاح",
   "confirmRemoveTarget": "تأكيد الإزالة",
   "applyTargetActions": "تطبيق الإجراءات المحددة",
   "managementProgressTitle": "تطبيق الإجراءات المستهدفة",

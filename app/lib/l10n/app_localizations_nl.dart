@@ -596,9 +596,6 @@ class AppLocalizationsNl extends AppLocalizations {
   }
 
   @override
-  String get repairTarget => 'Reparatie';
-
-  @override
   String get confirmRemoveTarget => 'Bevestig verwijderen';
 
   @override
