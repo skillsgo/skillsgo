@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on one canonical Repository input, root Repository Proxy Info/ZIP, explicit Skill/Agent selection, strict Workspace state, Agent Adapter roots, and Scope Vendor transactions.
- * [OUTPUT]: Provides exact Repository add for Workspace or User scope with one verified download, ordinary-file Vendor/Projections, paired YAML/Lock persistence, idempotency, failure rollback, and a stable Repository-install machine result.
+ * [INPUT]: Depends on one canonical Repository input, root Repository Proxy Info/ZIP, explicit Skill/Agent selection, strict Workspace state, Agent Adapter roots, prepared Scope Vendor transactions, and the Repository mutation coordinator.
+ * [OUTPUT]: Provides exact Repository add for Workspace or User scope with one verified download, ordinary-file Vendor/Projections, coordinated YAML/Lock persistence and rollback, idempotency, and a stable Repository-install machine result.
  * [POS]: Serves as the Repository installation orchestration slice behind the public `skillsgo add` command.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -19,6 +19,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
+	"github.com/skillsgo/skillsgo/cli/internal/repositorymutation"
 	"github.com/skillsgo/skillsgo/cli/internal/scopevendor"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/spf13/cobra"
@@ -103,25 +104,20 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	if err != nil {
 		return err
 	}
-	if err := transaction.Commit(); err != nil {
-		return err
-	}
 	infoRoot := filepath.Join(declarationRoot, ".skillsgo", "info")
 	if scope == install.ScopeUser {
 		infoRoot = filepath.Join(declarationRoot, "info")
 	}
-	if err := (infocache.Cache{Root: infoRoot}).Put(reference.RepositoryID, resource.Info.Version, "repository.info", resource.InfoBytes); err != nil {
-		_ = transaction.Rollback()
-		return fmt.Errorf("persist immutable Repository Info: %w", err)
-	}
 	manifest.Dependencies[reference.RepositoryID] = dependency
 	lock.Dependencies[reference.RepositoryID] = project.LockedRepository{Version: resource.Info.Version, Sum: resource.Info.Sum}
-	if err := project.WriteWorkspaceState(declarationRoot, manifest, lock); err != nil {
-		_ = transaction.Rollback()
-		return fmt.Errorf("persist Workspace Repository state: %w", err)
-	}
-	if err := transaction.Finalize(); err != nil {
-		return fmt.Errorf("Repository installation committed but transaction cleanup failed: %w", err)
+	if err := (repositorymutation.Plan{
+		Transactions: []repositorymutation.Transaction{transaction},
+		ImmutableInfo: []repositorymutation.ImmutableInfo{{Cache: infocache.Cache{Root: infoRoot}, RepositoryID: reference.RepositoryID,
+			Version: resource.Info.Version, Kind: "repository.info", Bytes: resource.InfoBytes}},
+		Workspace: &repositorymutation.WorkspaceState{Root: declarationRoot, Manifest: manifest, Lock: lock},
+		Operation: "Repository installation",
+	}).Commit(); err != nil {
+		return err
 	}
 
 	for _, member := range resource.Members {

@@ -37,6 +37,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/inventory/` | Read-only Repository-managed and External Library reconciliation across YAML/Lock state, Scope Vendors, Repository Projections, known Agent Discovery Roots, Local Modifications, and derived Agent visibility. |
 | `internal/managementplan/` | Exact-path External Remove preflight, reviewed-state binding, and target-specific execution. |
 | `internal/project/` | Strict Repository dependencies in `skillsgo.yaml`, integrity-only `skillsgo-lock.yaml`, and their paired crash-recoverable transaction. |
+| `internal/repositorymutation/` | Ordered local Repository mutation commits spanning prepared Vendor/Projection transactions, immutable cache writes, Workspace state publication, rollback, and cleanup. |
 | `internal/infocache/` | Exact immutable Repository and Skill Info bytes used for checksum-verified offline restore. |
 | `internal/hub/` | Client for add-time product-API Repository resolution followed by exact root Proxy Info/ZIP, typed membership, bounded download, and Repository h1 verification. |
 | `internal/source/` | Repository ID parsing, source reference normalization, and explicitly isolated third-party skills.sh identity validation. |

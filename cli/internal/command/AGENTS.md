@@ -28,7 +28,7 @@
 - `version.go`: serves the human version output and versioned App startup handshake.
 - `args_test.go`: covers public argument normalization and environment-gated test Agent behavior.
 - `i18n_test.go`: covers localized root command help.
-- `repository_add.go`: orchestrates one root Repository Info/ZIP download, explicit member/Agent/project selection, Scope Vendor/Projection preparation, paired YAML/Lock persistence, idempotency, rollback, and the App-facing Repository-install machine result.
+- `repository_add.go`: orchestrates one root Repository Info/ZIP download, explicit member/Agent/project selection, Scope Vendor/Projection preparation, and the App-facing Repository-install result through the shared Repository mutation commit state machine.
 - `repository_update.go`: preflights one declared Repository coordinate change, binds it to current YAML/Lock state, verifies the existing Vendor/Projections, and atomically replaces the complete coordinate while preserving selected members and Agents.
 - `repository_remove.go`: verifies the authoritative local Vendor and atomically removes selected root/nested members from every declared Agent projection without Hub access or Local Modification overwrite.
 - `repository_add_test.go`, `repository_vendor_test.go`: specify Repository selector matching plus the public exact-version Workspace Vendor journey.
@@ -39,6 +39,6 @@
 
 ## Architectural Boundary
 
-This module owns CLI command composition, argument handling, stable machine output, stable availability exit codes, and orchestration at the executable boundary. It delegates Agent, Hub, project, Scope Vendor, and installation mechanics to their owning packages and must not expose localized human output as an App integration contract.
+This module owns CLI command composition, argument handling, stable machine output, stable availability exit codes, and orchestration at the executable boundary. It delegates Agent, Hub, project, Repository mutation, Scope Vendor, and installation mechanics to their owning packages and must not expose localized human output as an App integration contract.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
