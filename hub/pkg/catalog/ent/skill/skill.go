@@ -26,10 +26,6 @@ const (
 	FieldRepository = "repository"
 	// FieldSkillPath holds the string denoting the skill_path field in the database.
 	FieldSkillPath = "skill_path"
-	// FieldLatestVersion holds the string denoting the latest_version field in the database.
-	FieldLatestVersion = "latest_version"
-	// FieldDiscoverable holds the string denoting the discoverable field in the database.
-	FieldDiscoverable = "discoverable"
 	// FieldVerified holds the string denoting the verified field in the database.
 	FieldVerified = "verified"
 	// FieldCreatedAt holds the string denoting the created_at field in the database.
@@ -38,8 +34,6 @@ const (
 	FieldUpdatedAt = "updated_at"
 	// EdgeSourceRepository holds the string denoting the source_repository edge name in mutations.
 	EdgeSourceRepository = "source_repository"
-	// EdgeVersions holds the string denoting the versions edge name in mutations.
-	EdgeVersions = "versions"
 	// Table holds the table name of the skill in the database.
 	Table = "skills"
 	// SourceRepositoryTable is the table that holds the source_repository relation/edge.
@@ -49,13 +43,6 @@ const (
 	SourceRepositoryInverseTable = "repositories"
 	// SourceRepositoryColumn is the table column denoting the source_repository relation/edge.
 	SourceRepositoryColumn = "repository_id"
-	// VersionsTable is the table that holds the versions relation/edge.
-	VersionsTable = "skill_versions"
-	// VersionsInverseTable is the table name for the SkillVersion entity.
-	// It exists in this package in order to avoid circular dependency with the "skillversion" package.
-	VersionsInverseTable = "skill_versions"
-	// VersionsColumn is the table column denoting the versions relation/edge.
-	VersionsColumn = "skill_id"
 )
 
 // Columns holds all SQL columns for skill fields.
@@ -67,8 +54,6 @@ var Columns = []string{
 	FieldSourceHost,
 	FieldRepository,
 	FieldSkillPath,
-	FieldLatestVersion,
-	FieldDiscoverable,
 	FieldVerified,
 	FieldCreatedAt,
 	FieldUpdatedAt,
@@ -87,8 +72,6 @@ func ValidColumn(column string) bool {
 var (
 	// NameValidator is a validator for the "name" field. It is called by the builders before save.
 	NameValidator func(string) error
-	// DefaultDiscoverable holds the default value on creation for the "discoverable" field.
-	DefaultDiscoverable bool
 	// DefaultVerified holds the default value on creation for the "verified" field.
 	DefaultVerified bool
 	// DefaultCreatedAt holds the default value on creation for the "created_at" field.
@@ -137,16 +120,6 @@ func BySkillPath(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldSkillPath, opts...).ToFunc()
 }
 
-// ByLatestVersion orders the results by the latest_version field.
-func ByLatestVersion(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldLatestVersion, opts...).ToFunc()
-}
-
-// ByDiscoverable orders the results by the discoverable field.
-func ByDiscoverable(opts ...sql.OrderTermOption) OrderOption {
-	return sql.OrderByField(FieldDiscoverable, opts...).ToFunc()
-}
-
 // ByVerified orders the results by the verified field.
 func ByVerified(opts ...sql.OrderTermOption) OrderOption {
 	return sql.OrderByField(FieldVerified, opts...).ToFunc()
@@ -168,31 +141,10 @@ func BySourceRepositoryField(field string, opts ...sql.OrderTermOption) OrderOpt
 		sqlgraph.OrderByNeighborTerms(s, newSourceRepositoryStep(), sql.OrderByField(field, opts...))
 	}
 }
-
-// ByVersionsCount orders the results by versions count.
-func ByVersionsCount(opts ...sql.OrderTermOption) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborsCount(s, newVersionsStep(), opts...)
-	}
-}
-
-// ByVersions orders the results by versions terms.
-func ByVersions(term sql.OrderTerm, terms ...sql.OrderTerm) OrderOption {
-	return func(s *sql.Selector) {
-		sqlgraph.OrderByNeighborTerms(s, newVersionsStep(), append([]sql.OrderTerm{term}, terms...)...)
-	}
-}
 func newSourceRepositoryStep() *sqlgraph.Step {
 	return sqlgraph.NewStep(
 		sqlgraph.From(Table, FieldID),
 		sqlgraph.To(SourceRepositoryInverseTable, FieldID),
 		sqlgraph.Edge(sqlgraph.M2O, true, SourceRepositoryTable, SourceRepositoryColumn),
-	)
-}
-func newVersionsStep() *sqlgraph.Step {
-	return sqlgraph.NewStep(
-		sqlgraph.From(Table, FieldID),
-		sqlgraph.To(VersionsInverseTable, FieldID),
-		sqlgraph.Edge(sqlgraph.O2M, false, VersionsTable, VersionsColumn),
 	)
 }

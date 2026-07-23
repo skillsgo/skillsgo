@@ -14,9 +14,9 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/localizeddescription"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/predicate"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/riskassessment"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repositoryrelease"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repositoryreleasemember"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
 )
 
 const (
@@ -28,11 +28,11 @@ const (
 	OpUpdateOne = ent.OpUpdateOne
 
 	// Node types.
-	TypeLocalizedDescription = "LocalizedDescription"
-	TypeRepository           = "Repository"
-	TypeRiskAssessment       = "RiskAssessment"
-	TypeSkill                = "Skill"
-	TypeSkillVersion         = "SkillVersion"
+	TypeLocalizedDescription    = "LocalizedDescription"
+	TypeRepository              = "Repository"
+	TypeRepositoryRelease       = "RepositoryRelease"
+	TypeRepositoryReleaseMember = "RepositoryReleaseMember"
+	TypeSkill                   = "Skill"
 )
 
 // LocalizedDescriptionMutation represents an operation that mutates the LocalizedDescription nodes in the graph.
@@ -766,6 +766,11 @@ type RepositoryMutation struct {
 	skills                     map[int64]struct{}
 	removedskills              map[int64]struct{}
 	clearedskills              bool
+	releases                   map[int64]struct{}
+	removedreleases            map[int64]struct{}
+	clearedreleases            bool
+	current_release            *int64
+	clearedcurrent_release     bool
 	done                       bool
 	oldValue                   func(context.Context) (*Repository, error)
 	predicates                 []predicate.Repository
@@ -981,6 +986,55 @@ func (m *RepositoryMutation) OldRepositoryID(ctx context.Context) (v string, err
 // ResetRepositoryID resets all changes to the "repository_id" field.
 func (m *RepositoryMutation) ResetRepositoryID() {
 	m.repository_id = nil
+}
+
+// SetCurrentReleaseID sets the "current_release_id" field.
+func (m *RepositoryMutation) SetCurrentReleaseID(i int64) {
+	m.current_release = &i
+}
+
+// CurrentReleaseID returns the value of the "current_release_id" field in the mutation.
+func (m *RepositoryMutation) CurrentReleaseID() (r int64, exists bool) {
+	v := m.current_release
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCurrentReleaseID returns the old "current_release_id" field's value of the Repository entity.
+// If the Repository object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryMutation) OldCurrentReleaseID(ctx context.Context) (v *int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCurrentReleaseID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCurrentReleaseID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCurrentReleaseID: %w", err)
+	}
+	return oldValue.CurrentReleaseID, nil
+}
+
+// ClearCurrentReleaseID clears the value of the "current_release_id" field.
+func (m *RepositoryMutation) ClearCurrentReleaseID() {
+	m.current_release = nil
+	m.clearedFields[repository.FieldCurrentReleaseID] = struct{}{}
+}
+
+// CurrentReleaseIDCleared returns if the "current_release_id" field was cleared in this mutation.
+func (m *RepositoryMutation) CurrentReleaseIDCleared() bool {
+	_, ok := m.clearedFields[repository.FieldCurrentReleaseID]
+	return ok
+}
+
+// ResetCurrentReleaseID resets all changes to the "current_release_id" field.
+func (m *RepositoryMutation) ResetCurrentReleaseID() {
+	m.current_release = nil
+	delete(m.clearedFields, repository.FieldCurrentReleaseID)
 }
 
 // SetDescription sets the "description" field.
@@ -1348,6 +1402,87 @@ func (m *RepositoryMutation) ResetSkills() {
 	m.removedskills = nil
 }
 
+// AddReleaseIDs adds the "releases" edge to the RepositoryRelease entity by ids.
+func (m *RepositoryMutation) AddReleaseIDs(ids ...int64) {
+	if m.releases == nil {
+		m.releases = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.releases[ids[i]] = struct{}{}
+	}
+}
+
+// ClearReleases clears the "releases" edge to the RepositoryRelease entity.
+func (m *RepositoryMutation) ClearReleases() {
+	m.clearedreleases = true
+}
+
+// ReleasesCleared reports if the "releases" edge to the RepositoryRelease entity was cleared.
+func (m *RepositoryMutation) ReleasesCleared() bool {
+	return m.clearedreleases
+}
+
+// RemoveReleaseIDs removes the "releases" edge to the RepositoryRelease entity by IDs.
+func (m *RepositoryMutation) RemoveReleaseIDs(ids ...int64) {
+	if m.removedreleases == nil {
+		m.removedreleases = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.releases, ids[i])
+		m.removedreleases[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedReleases returns the removed IDs of the "releases" edge to the RepositoryRelease entity.
+func (m *RepositoryMutation) RemovedReleasesIDs() (ids []int64) {
+	for id := range m.removedreleases {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ReleasesIDs returns the "releases" edge IDs in the mutation.
+func (m *RepositoryMutation) ReleasesIDs() (ids []int64) {
+	for id := range m.releases {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetReleases resets all changes to the "releases" edge.
+func (m *RepositoryMutation) ResetReleases() {
+	m.releases = nil
+	m.clearedreleases = false
+	m.removedreleases = nil
+}
+
+// ClearCurrentRelease clears the "current_release" edge to the RepositoryRelease entity.
+func (m *RepositoryMutation) ClearCurrentRelease() {
+	m.clearedcurrent_release = true
+	m.clearedFields[repository.FieldCurrentReleaseID] = struct{}{}
+}
+
+// CurrentReleaseCleared reports if the "current_release" edge to the RepositoryRelease entity was cleared.
+func (m *RepositoryMutation) CurrentReleaseCleared() bool {
+	return m.CurrentReleaseIDCleared() || m.clearedcurrent_release
+}
+
+// CurrentReleaseIDs returns the "current_release" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// CurrentReleaseID instead. It exists only for internal usage by the builders.
+func (m *RepositoryMutation) CurrentReleaseIDs() (ids []int64) {
+	if id := m.current_release; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetCurrentRelease resets all changes to the "current_release" edge.
+func (m *RepositoryMutation) ResetCurrentRelease() {
+	m.current_release = nil
+	m.clearedcurrent_release = false
+}
+
 // Where appends a list predicates to the RepositoryMutation builder.
 func (m *RepositoryMutation) Where(ps ...predicate.Repository) {
 	m.predicates = append(m.predicates, ps...)
@@ -1382,7 +1517,7 @@ func (m *RepositoryMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *RepositoryMutation) Fields() []string {
-	fields := make([]string, 0, 10)
+	fields := make([]string, 0, 11)
 	if m.source_host != nil {
 		fields = append(fields, repository.FieldSourceHost)
 	}
@@ -1391,6 +1526,9 @@ func (m *RepositoryMutation) Fields() []string {
 	}
 	if m.repository_id != nil {
 		fields = append(fields, repository.FieldRepositoryID)
+	}
+	if m.current_release != nil {
+		fields = append(fields, repository.FieldCurrentReleaseID)
 	}
 	if m.description != nil {
 		fields = append(fields, repository.FieldDescription)
@@ -1427,6 +1565,8 @@ func (m *RepositoryMutation) Field(name string) (ent.Value, bool) {
 		return m.RepositoryPath()
 	case repository.FieldRepositoryID:
 		return m.RepositoryID()
+	case repository.FieldCurrentReleaseID:
+		return m.CurrentReleaseID()
 	case repository.FieldDescription:
 		return m.Description()
 	case repository.FieldStars:
@@ -1456,6 +1596,8 @@ func (m *RepositoryMutation) OldField(ctx context.Context, name string) (ent.Val
 		return m.OldRepositoryPath(ctx)
 	case repository.FieldRepositoryID:
 		return m.OldRepositoryID(ctx)
+	case repository.FieldCurrentReleaseID:
+		return m.OldCurrentReleaseID(ctx)
 	case repository.FieldDescription:
 		return m.OldDescription(ctx)
 	case repository.FieldStars:
@@ -1499,6 +1641,13 @@ func (m *RepositoryMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetRepositoryID(v)
+		return nil
+	case repository.FieldCurrentReleaseID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCurrentReleaseID(v)
 		return nil
 	case repository.FieldDescription:
 		v, ok := value.(string)
@@ -1594,6 +1743,9 @@ func (m *RepositoryMutation) AddField(name string, value ent.Value) error {
 // mutation.
 func (m *RepositoryMutation) ClearedFields() []string {
 	var fields []string
+	if m.FieldCleared(repository.FieldCurrentReleaseID) {
+		fields = append(fields, repository.FieldCurrentReleaseID)
+	}
 	if m.FieldCleared(repository.FieldSourceMetadataEtag) {
 		fields = append(fields, repository.FieldSourceMetadataEtag)
 	}
@@ -1617,6 +1769,9 @@ func (m *RepositoryMutation) FieldCleared(name string) bool {
 // error if the field is not defined in the schema.
 func (m *RepositoryMutation) ClearField(name string) error {
 	switch name {
+	case repository.FieldCurrentReleaseID:
+		m.ClearCurrentReleaseID()
+		return nil
 	case repository.FieldSourceMetadataEtag:
 		m.ClearSourceMetadataEtag()
 		return nil
@@ -1642,6 +1797,9 @@ func (m *RepositoryMutation) ResetField(name string) error {
 		return nil
 	case repository.FieldRepositoryID:
 		m.ResetRepositoryID()
+		return nil
+	case repository.FieldCurrentReleaseID:
+		m.ResetCurrentReleaseID()
 		return nil
 	case repository.FieldDescription:
 		m.ResetDescription()
@@ -1670,9 +1828,15 @@ func (m *RepositoryMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *RepositoryMutation) AddedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 3)
 	if m.skills != nil {
 		edges = append(edges, repository.EdgeSkills)
+	}
+	if m.releases != nil {
+		edges = append(edges, repository.EdgeReleases)
+	}
+	if m.current_release != nil {
+		edges = append(edges, repository.EdgeCurrentRelease)
 	}
 	return edges
 }
@@ -1687,15 +1851,28 @@ func (m *RepositoryMutation) AddedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case repository.EdgeReleases:
+		ids := make([]ent.Value, 0, len(m.releases))
+		for id := range m.releases {
+			ids = append(ids, id)
+		}
+		return ids
+	case repository.EdgeCurrentRelease:
+		if id := m.current_release; id != nil {
+			return []ent.Value{*id}
+		}
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *RepositoryMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 3)
 	if m.removedskills != nil {
 		edges = append(edges, repository.EdgeSkills)
+	}
+	if m.removedreleases != nil {
+		edges = append(edges, repository.EdgeReleases)
 	}
 	return edges
 }
@@ -1710,15 +1887,27 @@ func (m *RepositoryMutation) RemovedIDs(name string) []ent.Value {
 			ids = append(ids, id)
 		}
 		return ids
+	case repository.EdgeReleases:
+		ids := make([]ent.Value, 0, len(m.removedreleases))
+		for id := range m.removedreleases {
+			ids = append(ids, id)
+		}
+		return ids
 	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *RepositoryMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 1)
+	edges := make([]string, 0, 3)
 	if m.clearedskills {
 		edges = append(edges, repository.EdgeSkills)
+	}
+	if m.clearedreleases {
+		edges = append(edges, repository.EdgeReleases)
+	}
+	if m.clearedcurrent_release {
+		edges = append(edges, repository.EdgeCurrentRelease)
 	}
 	return edges
 }
@@ -1729,6 +1918,10 @@ func (m *RepositoryMutation) EdgeCleared(name string) bool {
 	switch name {
 	case repository.EdgeSkills:
 		return m.clearedskills
+	case repository.EdgeReleases:
+		return m.clearedreleases
+	case repository.EdgeCurrentRelease:
+		return m.clearedcurrent_release
 	}
 	return false
 }
@@ -1737,6 +1930,9 @@ func (m *RepositoryMutation) EdgeCleared(name string) bool {
 // if that edge is not defined in the schema.
 func (m *RepositoryMutation) ClearEdge(name string) error {
 	switch name {
+	case repository.EdgeCurrentRelease:
+		m.ClearCurrentRelease()
+		return nil
 	}
 	return fmt.Errorf("unknown Repository unique edge %s", name)
 }
@@ -1748,40 +1944,56 @@ func (m *RepositoryMutation) ResetEdge(name string) error {
 	case repository.EdgeSkills:
 		m.ResetSkills()
 		return nil
+	case repository.EdgeReleases:
+		m.ResetReleases()
+		return nil
+	case repository.EdgeCurrentRelease:
+		m.ResetCurrentRelease()
+		return nil
 	}
 	return fmt.Errorf("unknown Repository edge %s", name)
 }
 
-// RiskAssessmentMutation represents an operation that mutates the RiskAssessment nodes in the graph.
-type RiskAssessmentMutation struct {
+// RepositoryReleaseMutation represents an operation that mutates the RepositoryRelease nodes in the graph.
+type RepositoryReleaseMutation struct {
 	config
-	op                   Op
-	typ                  string
-	id                   *int64
-	level                *string
-	scanner_version      *string
-	evidence             *string
-	fingerprint          *string
-	created_at           *time.Time
-	clearedFields        map[string]struct{}
-	skill_version        *int64
-	clearedskill_version bool
-	done                 bool
-	oldValue             func(context.Context) (*RiskAssessment, error)
-	predicates           []predicate.RiskAssessment
+	op                            Op
+	typ                           string
+	id                            *int64
+	version                       *string
+	commit_sha                    *string
+	tree_sha                      *string
+	sum                           *string
+	archive_size                  *int64
+	addarchive_size               *int64
+	release_info                  *[]byte
+	commit_time                   *time.Time
+	created_at                    *time.Time
+	clearedFields                 map[string]struct{}
+	repository                    *int64
+	clearedrepository             bool
+	current_for_repository        map[int64]struct{}
+	removedcurrent_for_repository map[int64]struct{}
+	clearedcurrent_for_repository bool
+	members                       map[int64]struct{}
+	removedmembers                map[int64]struct{}
+	clearedmembers                bool
+	done                          bool
+	oldValue                      func(context.Context) (*RepositoryRelease, error)
+	predicates                    []predicate.RepositoryRelease
 }
 
-var _ ent.Mutation = (*RiskAssessmentMutation)(nil)
+var _ ent.Mutation = (*RepositoryReleaseMutation)(nil)
 
-// riskassessmentOption allows management of the mutation configuration using functional options.
-type riskassessmentOption func(*RiskAssessmentMutation)
+// repositoryreleaseOption allows management of the mutation configuration using functional options.
+type repositoryreleaseOption func(*RepositoryReleaseMutation)
 
-// newRiskAssessmentMutation creates new mutation for the RiskAssessment entity.
-func newRiskAssessmentMutation(c config, op Op, opts ...riskassessmentOption) *RiskAssessmentMutation {
-	m := &RiskAssessmentMutation{
+// newRepositoryReleaseMutation creates new mutation for the RepositoryRelease entity.
+func newRepositoryReleaseMutation(c config, op Op, opts ...repositoryreleaseOption) *RepositoryReleaseMutation {
+	m := &RepositoryReleaseMutation{
 		config:        c,
 		op:            op,
-		typ:           TypeRiskAssessment,
+		typ:           TypeRepositoryRelease,
 		clearedFields: make(map[string]struct{}),
 	}
 	for _, opt := range opts {
@@ -1790,20 +2002,20 @@ func newRiskAssessmentMutation(c config, op Op, opts ...riskassessmentOption) *R
 	return m
 }
 
-// withRiskAssessmentID sets the ID field of the mutation.
-func withRiskAssessmentID(id int64) riskassessmentOption {
-	return func(m *RiskAssessmentMutation) {
+// withRepositoryReleaseID sets the ID field of the mutation.
+func withRepositoryReleaseID(id int64) repositoryreleaseOption {
+	return func(m *RepositoryReleaseMutation) {
 		var (
 			err   error
 			once  sync.Once
-			value *RiskAssessment
+			value *RepositoryRelease
 		)
-		m.oldValue = func(ctx context.Context) (*RiskAssessment, error) {
+		m.oldValue = func(ctx context.Context) (*RepositoryRelease, error) {
 			once.Do(func() {
 				if m.done {
 					err = errors.New("querying old values post mutation is not allowed")
 				} else {
-					value, err = m.Client().RiskAssessment.Get(ctx, id)
+					value, err = m.Client().RepositoryRelease.Get(ctx, id)
 				}
 			})
 			return value, err
@@ -1812,10 +2024,10 @@ func withRiskAssessmentID(id int64) riskassessmentOption {
 	}
 }
 
-// withRiskAssessment sets the old RiskAssessment of the mutation.
-func withRiskAssessment(node *RiskAssessment) riskassessmentOption {
-	return func(m *RiskAssessmentMutation) {
-		m.oldValue = func(context.Context) (*RiskAssessment, error) {
+// withRepositoryRelease sets the old RepositoryRelease of the mutation.
+func withRepositoryRelease(node *RepositoryRelease) repositoryreleaseOption {
+	return func(m *RepositoryReleaseMutation) {
+		m.oldValue = func(context.Context) (*RepositoryRelease, error) {
 			return node, nil
 		}
 		m.id = &node.ID
@@ -1824,7 +2036,7 @@ func withRiskAssessment(node *RiskAssessment) riskassessmentOption {
 
 // Client returns a new `ent.Client` from the mutation. If the mutation was
 // executed in a transaction (ent.Tx), a transactional client is returned.
-func (m RiskAssessmentMutation) Client() *Client {
+func (m RepositoryReleaseMutation) Client() *Client {
 	client := &Client{config: m.config}
 	client.init()
 	return client
@@ -1832,7 +2044,7 @@ func (m RiskAssessmentMutation) Client() *Client {
 
 // Tx returns an `ent.Tx` for mutations that were executed in transactions;
 // it returns an error otherwise.
-func (m RiskAssessmentMutation) Tx() (*Tx, error) {
+func (m RepositoryReleaseMutation) Tx() (*Tx, error) {
 	if _, ok := m.driver.(*txDriver); !ok {
 		return nil, errors.New("ent: mutation is not running in a transaction")
 	}
@@ -1842,14 +2054,14 @@ func (m RiskAssessmentMutation) Tx() (*Tx, error) {
 }
 
 // SetID sets the value of the id field. Note that this
-// operation is only accepted on creation of RiskAssessment entities.
-func (m *RiskAssessmentMutation) SetID(id int64) {
+// operation is only accepted on creation of RepositoryRelease entities.
+func (m *RepositoryReleaseMutation) SetID(id int64) {
 	m.id = &id
 }
 
 // ID returns the ID value in the mutation. Note that the ID is only available
 // if it was provided to the builder or after it was returned from the database.
-func (m *RiskAssessmentMutation) ID() (id int64, exists bool) {
+func (m *RepositoryReleaseMutation) ID() (id int64, exists bool) {
 	if m.id == nil {
 		return
 	}
@@ -1860,7 +2072,7 @@ func (m *RiskAssessmentMutation) ID() (id int64, exists bool) {
 // That means, if the mutation is applied within a transaction with an isolation level such
 // as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
 // or updated by the mutation.
-func (m *RiskAssessmentMutation) IDs(ctx context.Context) ([]int64, error) {
+func (m *RepositoryReleaseMutation) IDs(ctx context.Context) ([]int64, error) {
 	switch {
 	case m.op.Is(OpUpdateOne | OpDeleteOne):
 		id, exists := m.ID()
@@ -1869,199 +2081,327 @@ func (m *RiskAssessmentMutation) IDs(ctx context.Context) ([]int64, error) {
 		}
 		fallthrough
 	case m.op.Is(OpUpdate | OpDelete):
-		return m.Client().RiskAssessment.Query().Where(m.predicates...).IDs(ctx)
+		return m.Client().RepositoryRelease.Query().Where(m.predicates...).IDs(ctx)
 	default:
 		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
 	}
 }
 
-// SetSkillVersionID sets the "skill_version_id" field.
-func (m *RiskAssessmentMutation) SetSkillVersionID(i int64) {
-	m.skill_version = &i
+// SetRepositoryID sets the "repository_id" field.
+func (m *RepositoryReleaseMutation) SetRepositoryID(i int64) {
+	m.repository = &i
 }
 
-// SkillVersionID returns the value of the "skill_version_id" field in the mutation.
-func (m *RiskAssessmentMutation) SkillVersionID() (r int64, exists bool) {
-	v := m.skill_version
+// RepositoryID returns the value of the "repository_id" field in the mutation.
+func (m *RepositoryReleaseMutation) RepositoryID() (r int64, exists bool) {
+	v := m.repository
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldSkillVersionID returns the old "skill_version_id" field's value of the RiskAssessment entity.
-// If the RiskAssessment object wasn't provided to the builder, the object is fetched from the database.
+// OldRepositoryID returns the old "repository_id" field's value of the RepositoryRelease entity.
+// If the RepositoryRelease object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RiskAssessmentMutation) OldSkillVersionID(ctx context.Context) (v int64, err error) {
+func (m *RepositoryReleaseMutation) OldRepositoryID(ctx context.Context) (v int64, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSkillVersionID is only allowed on UpdateOne operations")
+		return v, errors.New("OldRepositoryID is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSkillVersionID requires an ID field in the mutation")
+		return v, errors.New("OldRepositoryID requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSkillVersionID: %w", err)
+		return v, fmt.Errorf("querying old value for OldRepositoryID: %w", err)
 	}
-	return oldValue.SkillVersionID, nil
+	return oldValue.RepositoryID, nil
 }
 
-// ResetSkillVersionID resets all changes to the "skill_version_id" field.
-func (m *RiskAssessmentMutation) ResetSkillVersionID() {
-	m.skill_version = nil
+// ResetRepositoryID resets all changes to the "repository_id" field.
+func (m *RepositoryReleaseMutation) ResetRepositoryID() {
+	m.repository = nil
 }
 
-// SetLevel sets the "level" field.
-func (m *RiskAssessmentMutation) SetLevel(s string) {
-	m.level = &s
+// SetVersion sets the "version" field.
+func (m *RepositoryReleaseMutation) SetVersion(s string) {
+	m.version = &s
 }
 
-// Level returns the value of the "level" field in the mutation.
-func (m *RiskAssessmentMutation) Level() (r string, exists bool) {
-	v := m.level
+// Version returns the value of the "version" field in the mutation.
+func (m *RepositoryReleaseMutation) Version() (r string, exists bool) {
+	v := m.version
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldLevel returns the old "level" field's value of the RiskAssessment entity.
-// If the RiskAssessment object wasn't provided to the builder, the object is fetched from the database.
+// OldVersion returns the old "version" field's value of the RepositoryRelease entity.
+// If the RepositoryRelease object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RiskAssessmentMutation) OldLevel(ctx context.Context) (v string, err error) {
+func (m *RepositoryReleaseMutation) OldVersion(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldLevel is only allowed on UpdateOne operations")
+		return v, errors.New("OldVersion is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldLevel requires an ID field in the mutation")
+		return v, errors.New("OldVersion requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldLevel: %w", err)
+		return v, fmt.Errorf("querying old value for OldVersion: %w", err)
 	}
-	return oldValue.Level, nil
+	return oldValue.Version, nil
 }
 
-// ResetLevel resets all changes to the "level" field.
-func (m *RiskAssessmentMutation) ResetLevel() {
-	m.level = nil
+// ResetVersion resets all changes to the "version" field.
+func (m *RepositoryReleaseMutation) ResetVersion() {
+	m.version = nil
 }
 
-// SetScannerVersion sets the "scanner_version" field.
-func (m *RiskAssessmentMutation) SetScannerVersion(s string) {
-	m.scanner_version = &s
+// SetCommitSha sets the "commit_sha" field.
+func (m *RepositoryReleaseMutation) SetCommitSha(s string) {
+	m.commit_sha = &s
 }
 
-// ScannerVersion returns the value of the "scanner_version" field in the mutation.
-func (m *RiskAssessmentMutation) ScannerVersion() (r string, exists bool) {
-	v := m.scanner_version
+// CommitSha returns the value of the "commit_sha" field in the mutation.
+func (m *RepositoryReleaseMutation) CommitSha() (r string, exists bool) {
+	v := m.commit_sha
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldScannerVersion returns the old "scanner_version" field's value of the RiskAssessment entity.
-// If the RiskAssessment object wasn't provided to the builder, the object is fetched from the database.
+// OldCommitSha returns the old "commit_sha" field's value of the RepositoryRelease entity.
+// If the RepositoryRelease object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RiskAssessmentMutation) OldScannerVersion(ctx context.Context) (v string, err error) {
+func (m *RepositoryReleaseMutation) OldCommitSha(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldScannerVersion is only allowed on UpdateOne operations")
+		return v, errors.New("OldCommitSha is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldScannerVersion requires an ID field in the mutation")
+		return v, errors.New("OldCommitSha requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldScannerVersion: %w", err)
+		return v, fmt.Errorf("querying old value for OldCommitSha: %w", err)
 	}
-	return oldValue.ScannerVersion, nil
+	return oldValue.CommitSha, nil
 }
 
-// ResetScannerVersion resets all changes to the "scanner_version" field.
-func (m *RiskAssessmentMutation) ResetScannerVersion() {
-	m.scanner_version = nil
+// ResetCommitSha resets all changes to the "commit_sha" field.
+func (m *RepositoryReleaseMutation) ResetCommitSha() {
+	m.commit_sha = nil
 }
 
-// SetEvidence sets the "evidence" field.
-func (m *RiskAssessmentMutation) SetEvidence(s string) {
-	m.evidence = &s
+// SetTreeSha sets the "tree_sha" field.
+func (m *RepositoryReleaseMutation) SetTreeSha(s string) {
+	m.tree_sha = &s
 }
 
-// Evidence returns the value of the "evidence" field in the mutation.
-func (m *RiskAssessmentMutation) Evidence() (r string, exists bool) {
-	v := m.evidence
+// TreeSha returns the value of the "tree_sha" field in the mutation.
+func (m *RepositoryReleaseMutation) TreeSha() (r string, exists bool) {
+	v := m.tree_sha
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldEvidence returns the old "evidence" field's value of the RiskAssessment entity.
-// If the RiskAssessment object wasn't provided to the builder, the object is fetched from the database.
+// OldTreeSha returns the old "tree_sha" field's value of the RepositoryRelease entity.
+// If the RepositoryRelease object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RiskAssessmentMutation) OldEvidence(ctx context.Context) (v string, err error) {
+func (m *RepositoryReleaseMutation) OldTreeSha(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldEvidence is only allowed on UpdateOne operations")
+		return v, errors.New("OldTreeSha is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldEvidence requires an ID field in the mutation")
+		return v, errors.New("OldTreeSha requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldEvidence: %w", err)
+		return v, fmt.Errorf("querying old value for OldTreeSha: %w", err)
 	}
-	return oldValue.Evidence, nil
+	return oldValue.TreeSha, nil
 }
 
-// ResetEvidence resets all changes to the "evidence" field.
-func (m *RiskAssessmentMutation) ResetEvidence() {
-	m.evidence = nil
+// ResetTreeSha resets all changes to the "tree_sha" field.
+func (m *RepositoryReleaseMutation) ResetTreeSha() {
+	m.tree_sha = nil
 }
 
-// SetFingerprint sets the "fingerprint" field.
-func (m *RiskAssessmentMutation) SetFingerprint(s string) {
-	m.fingerprint = &s
+// SetSum sets the "sum" field.
+func (m *RepositoryReleaseMutation) SetSum(s string) {
+	m.sum = &s
 }
 
-// Fingerprint returns the value of the "fingerprint" field in the mutation.
-func (m *RiskAssessmentMutation) Fingerprint() (r string, exists bool) {
-	v := m.fingerprint
+// Sum returns the value of the "sum" field in the mutation.
+func (m *RepositoryReleaseMutation) Sum() (r string, exists bool) {
+	v := m.sum
 	if v == nil {
 		return
 	}
 	return *v, true
 }
 
-// OldFingerprint returns the old "fingerprint" field's value of the RiskAssessment entity.
-// If the RiskAssessment object wasn't provided to the builder, the object is fetched from the database.
+// OldSum returns the old "sum" field's value of the RepositoryRelease entity.
+// If the RepositoryRelease object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RiskAssessmentMutation) OldFingerprint(ctx context.Context) (v string, err error) {
+func (m *RepositoryReleaseMutation) OldSum(ctx context.Context) (v string, err error) {
 	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldFingerprint is only allowed on UpdateOne operations")
+		return v, errors.New("OldSum is only allowed on UpdateOne operations")
 	}
 	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldFingerprint requires an ID field in the mutation")
+		return v, errors.New("OldSum requires an ID field in the mutation")
 	}
 	oldValue, err := m.oldValue(ctx)
 	if err != nil {
-		return v, fmt.Errorf("querying old value for OldFingerprint: %w", err)
+		return v, fmt.Errorf("querying old value for OldSum: %w", err)
 	}
-	return oldValue.Fingerprint, nil
+	return oldValue.Sum, nil
 }
 
-// ResetFingerprint resets all changes to the "fingerprint" field.
-func (m *RiskAssessmentMutation) ResetFingerprint() {
-	m.fingerprint = nil
+// ResetSum resets all changes to the "sum" field.
+func (m *RepositoryReleaseMutation) ResetSum() {
+	m.sum = nil
+}
+
+// SetArchiveSize sets the "archive_size" field.
+func (m *RepositoryReleaseMutation) SetArchiveSize(i int64) {
+	m.archive_size = &i
+	m.addarchive_size = nil
+}
+
+// ArchiveSize returns the value of the "archive_size" field in the mutation.
+func (m *RepositoryReleaseMutation) ArchiveSize() (r int64, exists bool) {
+	v := m.archive_size
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldArchiveSize returns the old "archive_size" field's value of the RepositoryRelease entity.
+// If the RepositoryRelease object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryReleaseMutation) OldArchiveSize(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldArchiveSize is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldArchiveSize requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldArchiveSize: %w", err)
+	}
+	return oldValue.ArchiveSize, nil
+}
+
+// AddArchiveSize adds i to the "archive_size" field.
+func (m *RepositoryReleaseMutation) AddArchiveSize(i int64) {
+	if m.addarchive_size != nil {
+		*m.addarchive_size += i
+	} else {
+		m.addarchive_size = &i
+	}
+}
+
+// AddedArchiveSize returns the value that was added to the "archive_size" field in this mutation.
+func (m *RepositoryReleaseMutation) AddedArchiveSize() (r int64, exists bool) {
+	v := m.addarchive_size
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// ResetArchiveSize resets all changes to the "archive_size" field.
+func (m *RepositoryReleaseMutation) ResetArchiveSize() {
+	m.archive_size = nil
+	m.addarchive_size = nil
+}
+
+// SetReleaseInfo sets the "release_info" field.
+func (m *RepositoryReleaseMutation) SetReleaseInfo(b []byte) {
+	m.release_info = &b
+}
+
+// ReleaseInfo returns the value of the "release_info" field in the mutation.
+func (m *RepositoryReleaseMutation) ReleaseInfo() (r []byte, exists bool) {
+	v := m.release_info
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReleaseInfo returns the old "release_info" field's value of the RepositoryRelease entity.
+// If the RepositoryRelease object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryReleaseMutation) OldReleaseInfo(ctx context.Context) (v []byte, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReleaseInfo is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReleaseInfo requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReleaseInfo: %w", err)
+	}
+	return oldValue.ReleaseInfo, nil
+}
+
+// ResetReleaseInfo resets all changes to the "release_info" field.
+func (m *RepositoryReleaseMutation) ResetReleaseInfo() {
+	m.release_info = nil
+}
+
+// SetCommitTime sets the "commit_time" field.
+func (m *RepositoryReleaseMutation) SetCommitTime(t time.Time) {
+	m.commit_time = &t
+}
+
+// CommitTime returns the value of the "commit_time" field in the mutation.
+func (m *RepositoryReleaseMutation) CommitTime() (r time.Time, exists bool) {
+	v := m.commit_time
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldCommitTime returns the old "commit_time" field's value of the RepositoryRelease entity.
+// If the RepositoryRelease object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryReleaseMutation) OldCommitTime(ctx context.Context) (v time.Time, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldCommitTime is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldCommitTime requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldCommitTime: %w", err)
+	}
+	return oldValue.CommitTime, nil
+}
+
+// ResetCommitTime resets all changes to the "commit_time" field.
+func (m *RepositoryReleaseMutation) ResetCommitTime() {
+	m.commit_time = nil
 }
 
 // SetCreatedAt sets the "created_at" field.
-func (m *RiskAssessmentMutation) SetCreatedAt(t time.Time) {
+func (m *RepositoryReleaseMutation) SetCreatedAt(t time.Time) {
 	m.created_at = &t
 }
 
 // CreatedAt returns the value of the "created_at" field in the mutation.
-func (m *RiskAssessmentMutation) CreatedAt() (r time.Time, exists bool) {
+func (m *RepositoryReleaseMutation) CreatedAt() (r time.Time, exists bool) {
 	v := m.created_at
 	if v == nil {
 		return
@@ -2069,10 +2409,10 @@ func (m *RiskAssessmentMutation) CreatedAt() (r time.Time, exists bool) {
 	return *v, true
 }
 
-// OldCreatedAt returns the old "created_at" field's value of the RiskAssessment entity.
-// If the RiskAssessment object wasn't provided to the builder, the object is fetched from the database.
+// OldCreatedAt returns the old "created_at" field's value of the RepositoryRelease entity.
+// If the RepositoryRelease object wasn't provided to the builder, the object is fetched from the database.
 // An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *RiskAssessmentMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
+func (m *RepositoryReleaseMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
 	if !m.op.Is(OpUpdateOne) {
 		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
 	}
@@ -2087,46 +2427,154 @@ func (m *RiskAssessmentMutation) OldCreatedAt(ctx context.Context) (v time.Time,
 }
 
 // ResetCreatedAt resets all changes to the "created_at" field.
-func (m *RiskAssessmentMutation) ResetCreatedAt() {
+func (m *RepositoryReleaseMutation) ResetCreatedAt() {
 	m.created_at = nil
 }
 
-// ClearSkillVersion clears the "skill_version" edge to the SkillVersion entity.
-func (m *RiskAssessmentMutation) ClearSkillVersion() {
-	m.clearedskill_version = true
-	m.clearedFields[riskassessment.FieldSkillVersionID] = struct{}{}
+// ClearRepository clears the "repository" edge to the Repository entity.
+func (m *RepositoryReleaseMutation) ClearRepository() {
+	m.clearedrepository = true
+	m.clearedFields[repositoryrelease.FieldRepositoryID] = struct{}{}
 }
 
-// SkillVersionCleared reports if the "skill_version" edge to the SkillVersion entity was cleared.
-func (m *RiskAssessmentMutation) SkillVersionCleared() bool {
-	return m.clearedskill_version
+// RepositoryCleared reports if the "repository" edge to the Repository entity was cleared.
+func (m *RepositoryReleaseMutation) RepositoryCleared() bool {
+	return m.clearedrepository
 }
 
-// SkillVersionIDs returns the "skill_version" edge IDs in the mutation.
+// RepositoryIDs returns the "repository" edge IDs in the mutation.
 // Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// SkillVersionID instead. It exists only for internal usage by the builders.
-func (m *RiskAssessmentMutation) SkillVersionIDs() (ids []int64) {
-	if id := m.skill_version; id != nil {
+// RepositoryID instead. It exists only for internal usage by the builders.
+func (m *RepositoryReleaseMutation) RepositoryIDs() (ids []int64) {
+	if id := m.repository; id != nil {
 		ids = append(ids, *id)
 	}
 	return
 }
 
-// ResetSkillVersion resets all changes to the "skill_version" edge.
-func (m *RiskAssessmentMutation) ResetSkillVersion() {
-	m.skill_version = nil
-	m.clearedskill_version = false
+// ResetRepository resets all changes to the "repository" edge.
+func (m *RepositoryReleaseMutation) ResetRepository() {
+	m.repository = nil
+	m.clearedrepository = false
 }
 
-// Where appends a list predicates to the RiskAssessmentMutation builder.
-func (m *RiskAssessmentMutation) Where(ps ...predicate.RiskAssessment) {
+// AddCurrentForRepositoryIDs adds the "current_for_repository" edge to the Repository entity by ids.
+func (m *RepositoryReleaseMutation) AddCurrentForRepositoryIDs(ids ...int64) {
+	if m.current_for_repository == nil {
+		m.current_for_repository = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.current_for_repository[ids[i]] = struct{}{}
+	}
+}
+
+// ClearCurrentForRepository clears the "current_for_repository" edge to the Repository entity.
+func (m *RepositoryReleaseMutation) ClearCurrentForRepository() {
+	m.clearedcurrent_for_repository = true
+}
+
+// CurrentForRepositoryCleared reports if the "current_for_repository" edge to the Repository entity was cleared.
+func (m *RepositoryReleaseMutation) CurrentForRepositoryCleared() bool {
+	return m.clearedcurrent_for_repository
+}
+
+// RemoveCurrentForRepositoryIDs removes the "current_for_repository" edge to the Repository entity by IDs.
+func (m *RepositoryReleaseMutation) RemoveCurrentForRepositoryIDs(ids ...int64) {
+	if m.removedcurrent_for_repository == nil {
+		m.removedcurrent_for_repository = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.current_for_repository, ids[i])
+		m.removedcurrent_for_repository[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedCurrentForRepository returns the removed IDs of the "current_for_repository" edge to the Repository entity.
+func (m *RepositoryReleaseMutation) RemovedCurrentForRepositoryIDs() (ids []int64) {
+	for id := range m.removedcurrent_for_repository {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// CurrentForRepositoryIDs returns the "current_for_repository" edge IDs in the mutation.
+func (m *RepositoryReleaseMutation) CurrentForRepositoryIDs() (ids []int64) {
+	for id := range m.current_for_repository {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetCurrentForRepository resets all changes to the "current_for_repository" edge.
+func (m *RepositoryReleaseMutation) ResetCurrentForRepository() {
+	m.current_for_repository = nil
+	m.clearedcurrent_for_repository = false
+	m.removedcurrent_for_repository = nil
+}
+
+// AddMemberIDs adds the "members" edge to the RepositoryReleaseMember entity by ids.
+func (m *RepositoryReleaseMutation) AddMemberIDs(ids ...int64) {
+	if m.members == nil {
+		m.members = make(map[int64]struct{})
+	}
+	for i := range ids {
+		m.members[ids[i]] = struct{}{}
+	}
+}
+
+// ClearMembers clears the "members" edge to the RepositoryReleaseMember entity.
+func (m *RepositoryReleaseMutation) ClearMembers() {
+	m.clearedmembers = true
+}
+
+// MembersCleared reports if the "members" edge to the RepositoryReleaseMember entity was cleared.
+func (m *RepositoryReleaseMutation) MembersCleared() bool {
+	return m.clearedmembers
+}
+
+// RemoveMemberIDs removes the "members" edge to the RepositoryReleaseMember entity by IDs.
+func (m *RepositoryReleaseMutation) RemoveMemberIDs(ids ...int64) {
+	if m.removedmembers == nil {
+		m.removedmembers = make(map[int64]struct{})
+	}
+	for i := range ids {
+		delete(m.members, ids[i])
+		m.removedmembers[ids[i]] = struct{}{}
+	}
+}
+
+// RemovedMembers returns the removed IDs of the "members" edge to the RepositoryReleaseMember entity.
+func (m *RepositoryReleaseMutation) RemovedMembersIDs() (ids []int64) {
+	for id := range m.removedmembers {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// MembersIDs returns the "members" edge IDs in the mutation.
+func (m *RepositoryReleaseMutation) MembersIDs() (ids []int64) {
+	for id := range m.members {
+		ids = append(ids, id)
+	}
+	return
+}
+
+// ResetMembers resets all changes to the "members" edge.
+func (m *RepositoryReleaseMutation) ResetMembers() {
+	m.members = nil
+	m.clearedmembers = false
+	m.removedmembers = nil
+}
+
+// Where appends a list predicates to the RepositoryReleaseMutation builder.
+func (m *RepositoryReleaseMutation) Where(ps ...predicate.RepositoryRelease) {
 	m.predicates = append(m.predicates, ps...)
 }
 
-// WhereP appends storage-level predicates to the RiskAssessmentMutation builder. Using this method,
+// WhereP appends storage-level predicates to the RepositoryReleaseMutation builder. Using this method,
 // users can use type-assertion to append predicates that do not depend on any generated package.
-func (m *RiskAssessmentMutation) WhereP(ps ...func(*sql.Selector)) {
-	p := make([]predicate.RiskAssessment, len(ps))
+func (m *RepositoryReleaseMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.RepositoryRelease, len(ps))
 	for i := range ps {
 		p[i] = ps[i]
 	}
@@ -2134,42 +2582,51 @@ func (m *RiskAssessmentMutation) WhereP(ps ...func(*sql.Selector)) {
 }
 
 // Op returns the operation name.
-func (m *RiskAssessmentMutation) Op() Op {
+func (m *RepositoryReleaseMutation) Op() Op {
 	return m.op
 }
 
 // SetOp allows setting the mutation operation.
-func (m *RiskAssessmentMutation) SetOp(op Op) {
+func (m *RepositoryReleaseMutation) SetOp(op Op) {
 	m.op = op
 }
 
-// Type returns the node type of this mutation (RiskAssessment).
-func (m *RiskAssessmentMutation) Type() string {
+// Type returns the node type of this mutation (RepositoryRelease).
+func (m *RepositoryReleaseMutation) Type() string {
 	return m.typ
 }
 
 // Fields returns all fields that were changed during this mutation. Note that in
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
-func (m *RiskAssessmentMutation) Fields() []string {
-	fields := make([]string, 0, 6)
-	if m.skill_version != nil {
-		fields = append(fields, riskassessment.FieldSkillVersionID)
+func (m *RepositoryReleaseMutation) Fields() []string {
+	fields := make([]string, 0, 9)
+	if m.repository != nil {
+		fields = append(fields, repositoryrelease.FieldRepositoryID)
 	}
-	if m.level != nil {
-		fields = append(fields, riskassessment.FieldLevel)
+	if m.version != nil {
+		fields = append(fields, repositoryrelease.FieldVersion)
 	}
-	if m.scanner_version != nil {
-		fields = append(fields, riskassessment.FieldScannerVersion)
+	if m.commit_sha != nil {
+		fields = append(fields, repositoryrelease.FieldCommitSha)
 	}
-	if m.evidence != nil {
-		fields = append(fields, riskassessment.FieldEvidence)
+	if m.tree_sha != nil {
+		fields = append(fields, repositoryrelease.FieldTreeSha)
 	}
-	if m.fingerprint != nil {
-		fields = append(fields, riskassessment.FieldFingerprint)
+	if m.sum != nil {
+		fields = append(fields, repositoryrelease.FieldSum)
+	}
+	if m.archive_size != nil {
+		fields = append(fields, repositoryrelease.FieldArchiveSize)
+	}
+	if m.release_info != nil {
+		fields = append(fields, repositoryrelease.FieldReleaseInfo)
+	}
+	if m.commit_time != nil {
+		fields = append(fields, repositoryrelease.FieldCommitTime)
 	}
 	if m.created_at != nil {
-		fields = append(fields, riskassessment.FieldCreatedAt)
+		fields = append(fields, repositoryrelease.FieldCreatedAt)
 	}
 	return fields
 }
@@ -2177,19 +2634,25 @@ func (m *RiskAssessmentMutation) Fields() []string {
 // Field returns the value of a field with the given name. The second boolean
 // return value indicates that this field was not set, or was not defined in the
 // schema.
-func (m *RiskAssessmentMutation) Field(name string) (ent.Value, bool) {
+func (m *RepositoryReleaseMutation) Field(name string) (ent.Value, bool) {
 	switch name {
-	case riskassessment.FieldSkillVersionID:
-		return m.SkillVersionID()
-	case riskassessment.FieldLevel:
-		return m.Level()
-	case riskassessment.FieldScannerVersion:
-		return m.ScannerVersion()
-	case riskassessment.FieldEvidence:
-		return m.Evidence()
-	case riskassessment.FieldFingerprint:
-		return m.Fingerprint()
-	case riskassessment.FieldCreatedAt:
+	case repositoryrelease.FieldRepositoryID:
+		return m.RepositoryID()
+	case repositoryrelease.FieldVersion:
+		return m.Version()
+	case repositoryrelease.FieldCommitSha:
+		return m.CommitSha()
+	case repositoryrelease.FieldTreeSha:
+		return m.TreeSha()
+	case repositoryrelease.FieldSum:
+		return m.Sum()
+	case repositoryrelease.FieldArchiveSize:
+		return m.ArchiveSize()
+	case repositoryrelease.FieldReleaseInfo:
+		return m.ReleaseInfo()
+	case repositoryrelease.FieldCommitTime:
+		return m.CommitTime()
+	case repositoryrelease.FieldCreatedAt:
 		return m.CreatedAt()
 	}
 	return nil, false
@@ -2198,65 +2661,92 @@ func (m *RiskAssessmentMutation) Field(name string) (ent.Value, bool) {
 // OldField returns the old value of the field from the database. An error is
 // returned if the mutation operation is not UpdateOne, or the query to the
 // database failed.
-func (m *RiskAssessmentMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+func (m *RepositoryReleaseMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
 	switch name {
-	case riskassessment.FieldSkillVersionID:
-		return m.OldSkillVersionID(ctx)
-	case riskassessment.FieldLevel:
-		return m.OldLevel(ctx)
-	case riskassessment.FieldScannerVersion:
-		return m.OldScannerVersion(ctx)
-	case riskassessment.FieldEvidence:
-		return m.OldEvidence(ctx)
-	case riskassessment.FieldFingerprint:
-		return m.OldFingerprint(ctx)
-	case riskassessment.FieldCreatedAt:
+	case repositoryrelease.FieldRepositoryID:
+		return m.OldRepositoryID(ctx)
+	case repositoryrelease.FieldVersion:
+		return m.OldVersion(ctx)
+	case repositoryrelease.FieldCommitSha:
+		return m.OldCommitSha(ctx)
+	case repositoryrelease.FieldTreeSha:
+		return m.OldTreeSha(ctx)
+	case repositoryrelease.FieldSum:
+		return m.OldSum(ctx)
+	case repositoryrelease.FieldArchiveSize:
+		return m.OldArchiveSize(ctx)
+	case repositoryrelease.FieldReleaseInfo:
+		return m.OldReleaseInfo(ctx)
+	case repositoryrelease.FieldCommitTime:
+		return m.OldCommitTime(ctx)
+	case repositoryrelease.FieldCreatedAt:
 		return m.OldCreatedAt(ctx)
 	}
-	return nil, fmt.Errorf("unknown RiskAssessment field %s", name)
+	return nil, fmt.Errorf("unknown RepositoryRelease field %s", name)
 }
 
 // SetField sets the value of a field with the given name. It returns an error if
 // the field is not defined in the schema, or if the type mismatched the field
 // type.
-func (m *RiskAssessmentMutation) SetField(name string, value ent.Value) error {
+func (m *RepositoryReleaseMutation) SetField(name string, value ent.Value) error {
 	switch name {
-	case riskassessment.FieldSkillVersionID:
+	case repositoryrelease.FieldRepositoryID:
 		v, ok := value.(int64)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetSkillVersionID(v)
+		m.SetRepositoryID(v)
 		return nil
-	case riskassessment.FieldLevel:
+	case repositoryrelease.FieldVersion:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetLevel(v)
+		m.SetVersion(v)
 		return nil
-	case riskassessment.FieldScannerVersion:
+	case repositoryrelease.FieldCommitSha:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetScannerVersion(v)
+		m.SetCommitSha(v)
 		return nil
-	case riskassessment.FieldEvidence:
+	case repositoryrelease.FieldTreeSha:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetEvidence(v)
+		m.SetTreeSha(v)
 		return nil
-	case riskassessment.FieldFingerprint:
+	case repositoryrelease.FieldSum:
 		v, ok := value.(string)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
-		m.SetFingerprint(v)
+		m.SetSum(v)
 		return nil
-	case riskassessment.FieldCreatedAt:
+	case repositoryrelease.FieldArchiveSize:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetArchiveSize(v)
+		return nil
+	case repositoryrelease.FieldReleaseInfo:
+		v, ok := value.([]byte)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReleaseInfo(v)
+		return nil
+	case repositoryrelease.FieldCommitTime:
+		v, ok := value.(time.Time)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetCommitTime(v)
+		return nil
+	case repositoryrelease.FieldCreatedAt:
 		v, ok := value.(time.Time)
 		if !ok {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
@@ -2264,12 +2754,644 @@ func (m *RiskAssessmentMutation) SetField(name string, value ent.Value) error {
 		m.SetCreatedAt(v)
 		return nil
 	}
-	return fmt.Errorf("unknown RiskAssessment field %s", name)
+	return fmt.Errorf("unknown RepositoryRelease field %s", name)
 }
 
 // AddedFields returns all numeric fields that were incremented/decremented during
 // this mutation.
-func (m *RiskAssessmentMutation) AddedFields() []string {
+func (m *RepositoryReleaseMutation) AddedFields() []string {
+	var fields []string
+	if m.addarchive_size != nil {
+		fields = append(fields, repositoryrelease.FieldArchiveSize)
+	}
+	return fields
+}
+
+// AddedField returns the numeric value that was incremented/decremented on a field
+// with the given name. The second boolean return value indicates that this field
+// was not set, or was not defined in the schema.
+func (m *RepositoryReleaseMutation) AddedField(name string) (ent.Value, bool) {
+	switch name {
+	case repositoryrelease.FieldArchiveSize:
+		return m.AddedArchiveSize()
+	}
+	return nil, false
+}
+
+// AddField adds the value to the field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *RepositoryReleaseMutation) AddField(name string, value ent.Value) error {
+	switch name {
+	case repositoryrelease.FieldArchiveSize:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.AddArchiveSize(v)
+		return nil
+	}
+	return fmt.Errorf("unknown RepositoryRelease numeric field %s", name)
+}
+
+// ClearedFields returns all nullable fields that were cleared during this
+// mutation.
+func (m *RepositoryReleaseMutation) ClearedFields() []string {
+	return nil
+}
+
+// FieldCleared returns a boolean indicating if a field with the given name was
+// cleared in this mutation.
+func (m *RepositoryReleaseMutation) FieldCleared(name string) bool {
+	_, ok := m.clearedFields[name]
+	return ok
+}
+
+// ClearField clears the value of the field with the given name. It returns an
+// error if the field is not defined in the schema.
+func (m *RepositoryReleaseMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown RepositoryRelease nullable field %s", name)
+}
+
+// ResetField resets all changes in the mutation for the field with the given name.
+// It returns an error if the field is not defined in the schema.
+func (m *RepositoryReleaseMutation) ResetField(name string) error {
+	switch name {
+	case repositoryrelease.FieldRepositoryID:
+		m.ResetRepositoryID()
+		return nil
+	case repositoryrelease.FieldVersion:
+		m.ResetVersion()
+		return nil
+	case repositoryrelease.FieldCommitSha:
+		m.ResetCommitSha()
+		return nil
+	case repositoryrelease.FieldTreeSha:
+		m.ResetTreeSha()
+		return nil
+	case repositoryrelease.FieldSum:
+		m.ResetSum()
+		return nil
+	case repositoryrelease.FieldArchiveSize:
+		m.ResetArchiveSize()
+		return nil
+	case repositoryrelease.FieldReleaseInfo:
+		m.ResetReleaseInfo()
+		return nil
+	case repositoryrelease.FieldCommitTime:
+		m.ResetCommitTime()
+		return nil
+	case repositoryrelease.FieldCreatedAt:
+		m.ResetCreatedAt()
+		return nil
+	}
+	return fmt.Errorf("unknown RepositoryRelease field %s", name)
+}
+
+// AddedEdges returns all edge names that were set/added in this mutation.
+func (m *RepositoryReleaseMutation) AddedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.repository != nil {
+		edges = append(edges, repositoryrelease.EdgeRepository)
+	}
+	if m.current_for_repository != nil {
+		edges = append(edges, repositoryrelease.EdgeCurrentForRepository)
+	}
+	if m.members != nil {
+		edges = append(edges, repositoryrelease.EdgeMembers)
+	}
+	return edges
+}
+
+// AddedIDs returns all IDs (to other nodes) that were added for the given edge
+// name in this mutation.
+func (m *RepositoryReleaseMutation) AddedIDs(name string) []ent.Value {
+	switch name {
+	case repositoryrelease.EdgeRepository:
+		if id := m.repository; id != nil {
+			return []ent.Value{*id}
+		}
+	case repositoryrelease.EdgeCurrentForRepository:
+		ids := make([]ent.Value, 0, len(m.current_for_repository))
+		for id := range m.current_for_repository {
+			ids = append(ids, id)
+		}
+		return ids
+	case repositoryrelease.EdgeMembers:
+		ids := make([]ent.Value, 0, len(m.members))
+		for id := range m.members {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// RemovedEdges returns all edge names that were removed in this mutation.
+func (m *RepositoryReleaseMutation) RemovedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.removedcurrent_for_repository != nil {
+		edges = append(edges, repositoryrelease.EdgeCurrentForRepository)
+	}
+	if m.removedmembers != nil {
+		edges = append(edges, repositoryrelease.EdgeMembers)
+	}
+	return edges
+}
+
+// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
+// the given name in this mutation.
+func (m *RepositoryReleaseMutation) RemovedIDs(name string) []ent.Value {
+	switch name {
+	case repositoryrelease.EdgeCurrentForRepository:
+		ids := make([]ent.Value, 0, len(m.removedcurrent_for_repository))
+		for id := range m.removedcurrent_for_repository {
+			ids = append(ids, id)
+		}
+		return ids
+	case repositoryrelease.EdgeMembers:
+		ids := make([]ent.Value, 0, len(m.removedmembers))
+		for id := range m.removedmembers {
+			ids = append(ids, id)
+		}
+		return ids
+	}
+	return nil
+}
+
+// ClearedEdges returns all edge names that were cleared in this mutation.
+func (m *RepositoryReleaseMutation) ClearedEdges() []string {
+	edges := make([]string, 0, 3)
+	if m.clearedrepository {
+		edges = append(edges, repositoryrelease.EdgeRepository)
+	}
+	if m.clearedcurrent_for_repository {
+		edges = append(edges, repositoryrelease.EdgeCurrentForRepository)
+	}
+	if m.clearedmembers {
+		edges = append(edges, repositoryrelease.EdgeMembers)
+	}
+	return edges
+}
+
+// EdgeCleared returns a boolean which indicates if the edge with the given name
+// was cleared in this mutation.
+func (m *RepositoryReleaseMutation) EdgeCleared(name string) bool {
+	switch name {
+	case repositoryrelease.EdgeRepository:
+		return m.clearedrepository
+	case repositoryrelease.EdgeCurrentForRepository:
+		return m.clearedcurrent_for_repository
+	case repositoryrelease.EdgeMembers:
+		return m.clearedmembers
+	}
+	return false
+}
+
+// ClearEdge clears the value of the edge with the given name. It returns an error
+// if that edge is not defined in the schema.
+func (m *RepositoryReleaseMutation) ClearEdge(name string) error {
+	switch name {
+	case repositoryrelease.EdgeRepository:
+		m.ClearRepository()
+		return nil
+	}
+	return fmt.Errorf("unknown RepositoryRelease unique edge %s", name)
+}
+
+// ResetEdge resets all changes to the edge with the given name in this mutation.
+// It returns an error if the edge is not defined in the schema.
+func (m *RepositoryReleaseMutation) ResetEdge(name string) error {
+	switch name {
+	case repositoryrelease.EdgeRepository:
+		m.ResetRepository()
+		return nil
+	case repositoryrelease.EdgeCurrentForRepository:
+		m.ResetCurrentForRepository()
+		return nil
+	case repositoryrelease.EdgeMembers:
+		m.ResetMembers()
+		return nil
+	}
+	return fmt.Errorf("unknown RepositoryRelease edge %s", name)
+}
+
+// RepositoryReleaseMemberMutation represents an operation that mutates the RepositoryReleaseMember nodes in the graph.
+type RepositoryReleaseMemberMutation struct {
+	config
+	op             Op
+	typ            string
+	id             *int64
+	name           *string
+	skill_path     *string
+	tree_sha       *string
+	clearedFields  map[string]struct{}
+	release        *int64
+	clearedrelease bool
+	done           bool
+	oldValue       func(context.Context) (*RepositoryReleaseMember, error)
+	predicates     []predicate.RepositoryReleaseMember
+}
+
+var _ ent.Mutation = (*RepositoryReleaseMemberMutation)(nil)
+
+// repositoryreleasememberOption allows management of the mutation configuration using functional options.
+type repositoryreleasememberOption func(*RepositoryReleaseMemberMutation)
+
+// newRepositoryReleaseMemberMutation creates new mutation for the RepositoryReleaseMember entity.
+func newRepositoryReleaseMemberMutation(c config, op Op, opts ...repositoryreleasememberOption) *RepositoryReleaseMemberMutation {
+	m := &RepositoryReleaseMemberMutation{
+		config:        c,
+		op:            op,
+		typ:           TypeRepositoryReleaseMember,
+		clearedFields: make(map[string]struct{}),
+	}
+	for _, opt := range opts {
+		opt(m)
+	}
+	return m
+}
+
+// withRepositoryReleaseMemberID sets the ID field of the mutation.
+func withRepositoryReleaseMemberID(id int64) repositoryreleasememberOption {
+	return func(m *RepositoryReleaseMemberMutation) {
+		var (
+			err   error
+			once  sync.Once
+			value *RepositoryReleaseMember
+		)
+		m.oldValue = func(ctx context.Context) (*RepositoryReleaseMember, error) {
+			once.Do(func() {
+				if m.done {
+					err = errors.New("querying old values post mutation is not allowed")
+				} else {
+					value, err = m.Client().RepositoryReleaseMember.Get(ctx, id)
+				}
+			})
+			return value, err
+		}
+		m.id = &id
+	}
+}
+
+// withRepositoryReleaseMember sets the old RepositoryReleaseMember of the mutation.
+func withRepositoryReleaseMember(node *RepositoryReleaseMember) repositoryreleasememberOption {
+	return func(m *RepositoryReleaseMemberMutation) {
+		m.oldValue = func(context.Context) (*RepositoryReleaseMember, error) {
+			return node, nil
+		}
+		m.id = &node.ID
+	}
+}
+
+// Client returns a new `ent.Client` from the mutation. If the mutation was
+// executed in a transaction (ent.Tx), a transactional client is returned.
+func (m RepositoryReleaseMemberMutation) Client() *Client {
+	client := &Client{config: m.config}
+	client.init()
+	return client
+}
+
+// Tx returns an `ent.Tx` for mutations that were executed in transactions;
+// it returns an error otherwise.
+func (m RepositoryReleaseMemberMutation) Tx() (*Tx, error) {
+	if _, ok := m.driver.(*txDriver); !ok {
+		return nil, errors.New("ent: mutation is not running in a transaction")
+	}
+	tx := &Tx{config: m.config}
+	tx.init()
+	return tx, nil
+}
+
+// SetID sets the value of the id field. Note that this
+// operation is only accepted on creation of RepositoryReleaseMember entities.
+func (m *RepositoryReleaseMemberMutation) SetID(id int64) {
+	m.id = &id
+}
+
+// ID returns the ID value in the mutation. Note that the ID is only available
+// if it was provided to the builder or after it was returned from the database.
+func (m *RepositoryReleaseMemberMutation) ID() (id int64, exists bool) {
+	if m.id == nil {
+		return
+	}
+	return *m.id, true
+}
+
+// IDs queries the database and returns the entity ids that match the mutation's predicate.
+// That means, if the mutation is applied within a transaction with an isolation level such
+// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
+// or updated by the mutation.
+func (m *RepositoryReleaseMemberMutation) IDs(ctx context.Context) ([]int64, error) {
+	switch {
+	case m.op.Is(OpUpdateOne | OpDeleteOne):
+		id, exists := m.ID()
+		if exists {
+			return []int64{id}, nil
+		}
+		fallthrough
+	case m.op.Is(OpUpdate | OpDelete):
+		return m.Client().RepositoryReleaseMember.Query().Where(m.predicates...).IDs(ctx)
+	default:
+		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
+	}
+}
+
+// SetReleaseID sets the "release_id" field.
+func (m *RepositoryReleaseMemberMutation) SetReleaseID(i int64) {
+	m.release = &i
+}
+
+// ReleaseID returns the value of the "release_id" field in the mutation.
+func (m *RepositoryReleaseMemberMutation) ReleaseID() (r int64, exists bool) {
+	v := m.release
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldReleaseID returns the old "release_id" field's value of the RepositoryReleaseMember entity.
+// If the RepositoryReleaseMember object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryReleaseMemberMutation) OldReleaseID(ctx context.Context) (v int64, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldReleaseID is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldReleaseID requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldReleaseID: %w", err)
+	}
+	return oldValue.ReleaseID, nil
+}
+
+// ResetReleaseID resets all changes to the "release_id" field.
+func (m *RepositoryReleaseMemberMutation) ResetReleaseID() {
+	m.release = nil
+}
+
+// SetName sets the "name" field.
+func (m *RepositoryReleaseMemberMutation) SetName(s string) {
+	m.name = &s
+}
+
+// Name returns the value of the "name" field in the mutation.
+func (m *RepositoryReleaseMemberMutation) Name() (r string, exists bool) {
+	v := m.name
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldName returns the old "name" field's value of the RepositoryReleaseMember entity.
+// If the RepositoryReleaseMember object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryReleaseMemberMutation) OldName(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldName is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldName requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldName: %w", err)
+	}
+	return oldValue.Name, nil
+}
+
+// ResetName resets all changes to the "name" field.
+func (m *RepositoryReleaseMemberMutation) ResetName() {
+	m.name = nil
+}
+
+// SetSkillPath sets the "skill_path" field.
+func (m *RepositoryReleaseMemberMutation) SetSkillPath(s string) {
+	m.skill_path = &s
+}
+
+// SkillPath returns the value of the "skill_path" field in the mutation.
+func (m *RepositoryReleaseMemberMutation) SkillPath() (r string, exists bool) {
+	v := m.skill_path
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldSkillPath returns the old "skill_path" field's value of the RepositoryReleaseMember entity.
+// If the RepositoryReleaseMember object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryReleaseMemberMutation) OldSkillPath(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldSkillPath is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldSkillPath requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldSkillPath: %w", err)
+	}
+	return oldValue.SkillPath, nil
+}
+
+// ResetSkillPath resets all changes to the "skill_path" field.
+func (m *RepositoryReleaseMemberMutation) ResetSkillPath() {
+	m.skill_path = nil
+}
+
+// SetTreeSha sets the "tree_sha" field.
+func (m *RepositoryReleaseMemberMutation) SetTreeSha(s string) {
+	m.tree_sha = &s
+}
+
+// TreeSha returns the value of the "tree_sha" field in the mutation.
+func (m *RepositoryReleaseMemberMutation) TreeSha() (r string, exists bool) {
+	v := m.tree_sha
+	if v == nil {
+		return
+	}
+	return *v, true
+}
+
+// OldTreeSha returns the old "tree_sha" field's value of the RepositoryReleaseMember entity.
+// If the RepositoryReleaseMember object wasn't provided to the builder, the object is fetched from the database.
+// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
+func (m *RepositoryReleaseMemberMutation) OldTreeSha(ctx context.Context) (v string, err error) {
+	if !m.op.Is(OpUpdateOne) {
+		return v, errors.New("OldTreeSha is only allowed on UpdateOne operations")
+	}
+	if m.id == nil || m.oldValue == nil {
+		return v, errors.New("OldTreeSha requires an ID field in the mutation")
+	}
+	oldValue, err := m.oldValue(ctx)
+	if err != nil {
+		return v, fmt.Errorf("querying old value for OldTreeSha: %w", err)
+	}
+	return oldValue.TreeSha, nil
+}
+
+// ResetTreeSha resets all changes to the "tree_sha" field.
+func (m *RepositoryReleaseMemberMutation) ResetTreeSha() {
+	m.tree_sha = nil
+}
+
+// ClearRelease clears the "release" edge to the RepositoryRelease entity.
+func (m *RepositoryReleaseMemberMutation) ClearRelease() {
+	m.clearedrelease = true
+	m.clearedFields[repositoryreleasemember.FieldReleaseID] = struct{}{}
+}
+
+// ReleaseCleared reports if the "release" edge to the RepositoryRelease entity was cleared.
+func (m *RepositoryReleaseMemberMutation) ReleaseCleared() bool {
+	return m.clearedrelease
+}
+
+// ReleaseIDs returns the "release" edge IDs in the mutation.
+// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
+// ReleaseID instead. It exists only for internal usage by the builders.
+func (m *RepositoryReleaseMemberMutation) ReleaseIDs() (ids []int64) {
+	if id := m.release; id != nil {
+		ids = append(ids, *id)
+	}
+	return
+}
+
+// ResetRelease resets all changes to the "release" edge.
+func (m *RepositoryReleaseMemberMutation) ResetRelease() {
+	m.release = nil
+	m.clearedrelease = false
+}
+
+// Where appends a list predicates to the RepositoryReleaseMemberMutation builder.
+func (m *RepositoryReleaseMemberMutation) Where(ps ...predicate.RepositoryReleaseMember) {
+	m.predicates = append(m.predicates, ps...)
+}
+
+// WhereP appends storage-level predicates to the RepositoryReleaseMemberMutation builder. Using this method,
+// users can use type-assertion to append predicates that do not depend on any generated package.
+func (m *RepositoryReleaseMemberMutation) WhereP(ps ...func(*sql.Selector)) {
+	p := make([]predicate.RepositoryReleaseMember, len(ps))
+	for i := range ps {
+		p[i] = ps[i]
+	}
+	m.Where(p...)
+}
+
+// Op returns the operation name.
+func (m *RepositoryReleaseMemberMutation) Op() Op {
+	return m.op
+}
+
+// SetOp allows setting the mutation operation.
+func (m *RepositoryReleaseMemberMutation) SetOp(op Op) {
+	m.op = op
+}
+
+// Type returns the node type of this mutation (RepositoryReleaseMember).
+func (m *RepositoryReleaseMemberMutation) Type() string {
+	return m.typ
+}
+
+// Fields returns all fields that were changed during this mutation. Note that in
+// order to get all numeric fields that were incremented/decremented, call
+// AddedFields().
+func (m *RepositoryReleaseMemberMutation) Fields() []string {
+	fields := make([]string, 0, 4)
+	if m.release != nil {
+		fields = append(fields, repositoryreleasemember.FieldReleaseID)
+	}
+	if m.name != nil {
+		fields = append(fields, repositoryreleasemember.FieldName)
+	}
+	if m.skill_path != nil {
+		fields = append(fields, repositoryreleasemember.FieldSkillPath)
+	}
+	if m.tree_sha != nil {
+		fields = append(fields, repositoryreleasemember.FieldTreeSha)
+	}
+	return fields
+}
+
+// Field returns the value of a field with the given name. The second boolean
+// return value indicates that this field was not set, or was not defined in the
+// schema.
+func (m *RepositoryReleaseMemberMutation) Field(name string) (ent.Value, bool) {
+	switch name {
+	case repositoryreleasemember.FieldReleaseID:
+		return m.ReleaseID()
+	case repositoryreleasemember.FieldName:
+		return m.Name()
+	case repositoryreleasemember.FieldSkillPath:
+		return m.SkillPath()
+	case repositoryreleasemember.FieldTreeSha:
+		return m.TreeSha()
+	}
+	return nil, false
+}
+
+// OldField returns the old value of the field from the database. An error is
+// returned if the mutation operation is not UpdateOne, or the query to the
+// database failed.
+func (m *RepositoryReleaseMemberMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
+	switch name {
+	case repositoryreleasemember.FieldReleaseID:
+		return m.OldReleaseID(ctx)
+	case repositoryreleasemember.FieldName:
+		return m.OldName(ctx)
+	case repositoryreleasemember.FieldSkillPath:
+		return m.OldSkillPath(ctx)
+	case repositoryreleasemember.FieldTreeSha:
+		return m.OldTreeSha(ctx)
+	}
+	return nil, fmt.Errorf("unknown RepositoryReleaseMember field %s", name)
+}
+
+// SetField sets the value of a field with the given name. It returns an error if
+// the field is not defined in the schema, or if the type mismatched the field
+// type.
+func (m *RepositoryReleaseMemberMutation) SetField(name string, value ent.Value) error {
+	switch name {
+	case repositoryreleasemember.FieldReleaseID:
+		v, ok := value.(int64)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetReleaseID(v)
+		return nil
+	case repositoryreleasemember.FieldName:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetName(v)
+		return nil
+	case repositoryreleasemember.FieldSkillPath:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetSkillPath(v)
+		return nil
+	case repositoryreleasemember.FieldTreeSha:
+		v, ok := value.(string)
+		if !ok {
+			return fmt.Errorf("unexpected type %T for field %s", value, name)
+		}
+		m.SetTreeSha(v)
+		return nil
+	}
+	return fmt.Errorf("unknown RepositoryReleaseMember field %s", name)
+}
+
+// AddedFields returns all numeric fields that were incremented/decremented during
+// this mutation.
+func (m *RepositoryReleaseMemberMutation) AddedFields() []string {
 	var fields []string
 	return fields
 }
@@ -2277,7 +3399,7 @@ func (m *RiskAssessmentMutation) AddedFields() []string {
 // AddedField returns the numeric value that was incremented/decremented on a field
 // with the given name. The second boolean return value indicates that this field
 // was not set, or was not defined in the schema.
-func (m *RiskAssessmentMutation) AddedField(name string) (ent.Value, bool) {
+func (m *RepositoryReleaseMemberMutation) AddedField(name string) (ent.Value, bool) {
 	switch name {
 	}
 	return nil, false
@@ -2286,72 +3408,66 @@ func (m *RiskAssessmentMutation) AddedField(name string) (ent.Value, bool) {
 // AddField adds the value to the field with the given name. It returns an error if
 // the field is not defined in the schema, or if the type mismatched the field
 // type.
-func (m *RiskAssessmentMutation) AddField(name string, value ent.Value) error {
+func (m *RepositoryReleaseMemberMutation) AddField(name string, value ent.Value) error {
 	switch name {
 	}
-	return fmt.Errorf("unknown RiskAssessment numeric field %s", name)
+	return fmt.Errorf("unknown RepositoryReleaseMember numeric field %s", name)
 }
 
 // ClearedFields returns all nullable fields that were cleared during this
 // mutation.
-func (m *RiskAssessmentMutation) ClearedFields() []string {
+func (m *RepositoryReleaseMemberMutation) ClearedFields() []string {
 	return nil
 }
 
 // FieldCleared returns a boolean indicating if a field with the given name was
 // cleared in this mutation.
-func (m *RiskAssessmentMutation) FieldCleared(name string) bool {
+func (m *RepositoryReleaseMemberMutation) FieldCleared(name string) bool {
 	_, ok := m.clearedFields[name]
 	return ok
 }
 
 // ClearField clears the value of the field with the given name. It returns an
 // error if the field is not defined in the schema.
-func (m *RiskAssessmentMutation) ClearField(name string) error {
-	return fmt.Errorf("unknown RiskAssessment nullable field %s", name)
+func (m *RepositoryReleaseMemberMutation) ClearField(name string) error {
+	return fmt.Errorf("unknown RepositoryReleaseMember nullable field %s", name)
 }
 
 // ResetField resets all changes in the mutation for the field with the given name.
 // It returns an error if the field is not defined in the schema.
-func (m *RiskAssessmentMutation) ResetField(name string) error {
+func (m *RepositoryReleaseMemberMutation) ResetField(name string) error {
 	switch name {
-	case riskassessment.FieldSkillVersionID:
-		m.ResetSkillVersionID()
+	case repositoryreleasemember.FieldReleaseID:
+		m.ResetReleaseID()
 		return nil
-	case riskassessment.FieldLevel:
-		m.ResetLevel()
+	case repositoryreleasemember.FieldName:
+		m.ResetName()
 		return nil
-	case riskassessment.FieldScannerVersion:
-		m.ResetScannerVersion()
+	case repositoryreleasemember.FieldSkillPath:
+		m.ResetSkillPath()
 		return nil
-	case riskassessment.FieldEvidence:
-		m.ResetEvidence()
-		return nil
-	case riskassessment.FieldFingerprint:
-		m.ResetFingerprint()
-		return nil
-	case riskassessment.FieldCreatedAt:
-		m.ResetCreatedAt()
+	case repositoryreleasemember.FieldTreeSha:
+		m.ResetTreeSha()
 		return nil
 	}
-	return fmt.Errorf("unknown RiskAssessment field %s", name)
+	return fmt.Errorf("unknown RepositoryReleaseMember field %s", name)
 }
 
 // AddedEdges returns all edge names that were set/added in this mutation.
-func (m *RiskAssessmentMutation) AddedEdges() []string {
+func (m *RepositoryReleaseMemberMutation) AddedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.skill_version != nil {
-		edges = append(edges, riskassessment.EdgeSkillVersion)
+	if m.release != nil {
+		edges = append(edges, repositoryreleasemember.EdgeRelease)
 	}
 	return edges
 }
 
 // AddedIDs returns all IDs (to other nodes) that were added for the given edge
 // name in this mutation.
-func (m *RiskAssessmentMutation) AddedIDs(name string) []ent.Value {
+func (m *RepositoryReleaseMemberMutation) AddedIDs(name string) []ent.Value {
 	switch name {
-	case riskassessment.EdgeSkillVersion:
-		if id := m.skill_version; id != nil {
+	case repositoryreleasemember.EdgeRelease:
+		if id := m.release; id != nil {
 			return []ent.Value{*id}
 		}
 	}
@@ -2359,56 +3475,56 @@ func (m *RiskAssessmentMutation) AddedIDs(name string) []ent.Value {
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
-func (m *RiskAssessmentMutation) RemovedEdges() []string {
+func (m *RepositoryReleaseMemberMutation) RemovedEdges() []string {
 	edges := make([]string, 0, 1)
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
-func (m *RiskAssessmentMutation) RemovedIDs(name string) []ent.Value {
+func (m *RepositoryReleaseMemberMutation) RemovedIDs(name string) []ent.Value {
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
-func (m *RiskAssessmentMutation) ClearedEdges() []string {
+func (m *RepositoryReleaseMemberMutation) ClearedEdges() []string {
 	edges := make([]string, 0, 1)
-	if m.clearedskill_version {
-		edges = append(edges, riskassessment.EdgeSkillVersion)
+	if m.clearedrelease {
+		edges = append(edges, repositoryreleasemember.EdgeRelease)
 	}
 	return edges
 }
 
 // EdgeCleared returns a boolean which indicates if the edge with the given name
 // was cleared in this mutation.
-func (m *RiskAssessmentMutation) EdgeCleared(name string) bool {
+func (m *RepositoryReleaseMemberMutation) EdgeCleared(name string) bool {
 	switch name {
-	case riskassessment.EdgeSkillVersion:
-		return m.clearedskill_version
+	case repositoryreleasemember.EdgeRelease:
+		return m.clearedrelease
 	}
 	return false
 }
 
 // ClearEdge clears the value of the edge with the given name. It returns an error
 // if that edge is not defined in the schema.
-func (m *RiskAssessmentMutation) ClearEdge(name string) error {
+func (m *RepositoryReleaseMemberMutation) ClearEdge(name string) error {
 	switch name {
-	case riskassessment.EdgeSkillVersion:
-		m.ClearSkillVersion()
+	case repositoryreleasemember.EdgeRelease:
+		m.ClearRelease()
 		return nil
 	}
-	return fmt.Errorf("unknown RiskAssessment unique edge %s", name)
+	return fmt.Errorf("unknown RepositoryReleaseMember unique edge %s", name)
 }
 
 // ResetEdge resets all changes to the edge with the given name in this mutation.
 // It returns an error if the edge is not defined in the schema.
-func (m *RiskAssessmentMutation) ResetEdge(name string) error {
+func (m *RepositoryReleaseMemberMutation) ResetEdge(name string) error {
 	switch name {
-	case riskassessment.EdgeSkillVersion:
-		m.ResetSkillVersion()
+	case repositoryreleasemember.EdgeRelease:
+		m.ResetRelease()
 		return nil
 	}
-	return fmt.Errorf("unknown RiskAssessment edge %s", name)
+	return fmt.Errorf("unknown RepositoryReleaseMember edge %s", name)
 }
 
 // SkillMutation represents an operation that mutates the Skill nodes in the graph.
@@ -2422,17 +3538,12 @@ type SkillMutation struct {
 	source_host              *string
 	repository               *string
 	skill_path               *string
-	latest_version           *string
-	discoverable             *bool
 	verified                 *bool
 	created_at               *time.Time
 	updated_at               *time.Time
 	clearedFields            map[string]struct{}
 	source_repository        *int64
 	clearedsource_repository bool
-	versions                 map[int64]struct{}
-	removedversions          map[int64]struct{}
-	clearedversions          bool
 	done                     bool
 	oldValue                 func(context.Context) (*Skill, error)
 	predicates               []predicate.Skill
@@ -2758,78 +3869,6 @@ func (m *SkillMutation) ResetSkillPath() {
 	m.skill_path = nil
 }
 
-// SetLatestVersion sets the "latest_version" field.
-func (m *SkillMutation) SetLatestVersion(s string) {
-	m.latest_version = &s
-}
-
-// LatestVersion returns the value of the "latest_version" field in the mutation.
-func (m *SkillMutation) LatestVersion() (r string, exists bool) {
-	v := m.latest_version
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldLatestVersion returns the old "latest_version" field's value of the Skill entity.
-// If the Skill object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillMutation) OldLatestVersion(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldLatestVersion is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldLatestVersion requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldLatestVersion: %w", err)
-	}
-	return oldValue.LatestVersion, nil
-}
-
-// ResetLatestVersion resets all changes to the "latest_version" field.
-func (m *SkillMutation) ResetLatestVersion() {
-	m.latest_version = nil
-}
-
-// SetDiscoverable sets the "discoverable" field.
-func (m *SkillMutation) SetDiscoverable(b bool) {
-	m.discoverable = &b
-}
-
-// Discoverable returns the value of the "discoverable" field in the mutation.
-func (m *SkillMutation) Discoverable() (r bool, exists bool) {
-	v := m.discoverable
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldDiscoverable returns the old "discoverable" field's value of the Skill entity.
-// If the Skill object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillMutation) OldDiscoverable(ctx context.Context) (v bool, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldDiscoverable is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldDiscoverable requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldDiscoverable: %w", err)
-	}
-	return oldValue.Discoverable, nil
-}
-
-// ResetDiscoverable resets all changes to the "discoverable" field.
-func (m *SkillMutation) ResetDiscoverable() {
-	m.discoverable = nil
-}
-
 // SetVerified sets the "verified" field.
 func (m *SkillMutation) SetVerified(b bool) {
 	m.verified = &b
@@ -2978,60 +4017,6 @@ func (m *SkillMutation) ResetSourceRepository() {
 	m.clearedsource_repository = false
 }
 
-// AddVersionIDs adds the "versions" edge to the SkillVersion entity by ids.
-func (m *SkillMutation) AddVersionIDs(ids ...int64) {
-	if m.versions == nil {
-		m.versions = make(map[int64]struct{})
-	}
-	for i := range ids {
-		m.versions[ids[i]] = struct{}{}
-	}
-}
-
-// ClearVersions clears the "versions" edge to the SkillVersion entity.
-func (m *SkillMutation) ClearVersions() {
-	m.clearedversions = true
-}
-
-// VersionsCleared reports if the "versions" edge to the SkillVersion entity was cleared.
-func (m *SkillMutation) VersionsCleared() bool {
-	return m.clearedversions
-}
-
-// RemoveVersionIDs removes the "versions" edge to the SkillVersion entity by IDs.
-func (m *SkillMutation) RemoveVersionIDs(ids ...int64) {
-	if m.removedversions == nil {
-		m.removedversions = make(map[int64]struct{})
-	}
-	for i := range ids {
-		delete(m.versions, ids[i])
-		m.removedversions[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedVersions returns the removed IDs of the "versions" edge to the SkillVersion entity.
-func (m *SkillMutation) RemovedVersionsIDs() (ids []int64) {
-	for id := range m.removedversions {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// VersionsIDs returns the "versions" edge IDs in the mutation.
-func (m *SkillMutation) VersionsIDs() (ids []int64) {
-	for id := range m.versions {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetVersions resets all changes to the "versions" edge.
-func (m *SkillMutation) ResetVersions() {
-	m.versions = nil
-	m.clearedversions = false
-	m.removedversions = nil
-}
-
 // Where appends a list predicates to the SkillMutation builder.
 func (m *SkillMutation) Where(ps ...predicate.Skill) {
 	m.predicates = append(m.predicates, ps...)
@@ -3066,7 +4051,7 @@ func (m *SkillMutation) Type() string {
 // order to get all numeric fields that were incremented/decremented, call
 // AddedFields().
 func (m *SkillMutation) Fields() []string {
-	fields := make([]string, 0, 11)
+	fields := make([]string, 0, 9)
 	if m.source_repository != nil {
 		fields = append(fields, skill.FieldRepositoryID)
 	}
@@ -3084,12 +4069,6 @@ func (m *SkillMutation) Fields() []string {
 	}
 	if m.skill_path != nil {
 		fields = append(fields, skill.FieldSkillPath)
-	}
-	if m.latest_version != nil {
-		fields = append(fields, skill.FieldLatestVersion)
-	}
-	if m.discoverable != nil {
-		fields = append(fields, skill.FieldDiscoverable)
 	}
 	if m.verified != nil {
 		fields = append(fields, skill.FieldVerified)
@@ -3120,10 +4099,6 @@ func (m *SkillMutation) Field(name string) (ent.Value, bool) {
 		return m.Repository()
 	case skill.FieldSkillPath:
 		return m.SkillPath()
-	case skill.FieldLatestVersion:
-		return m.LatestVersion()
-	case skill.FieldDiscoverable:
-		return m.Discoverable()
 	case skill.FieldVerified:
 		return m.Verified()
 	case skill.FieldCreatedAt:
@@ -3151,10 +4126,6 @@ func (m *SkillMutation) OldField(ctx context.Context, name string) (ent.Value, e
 		return m.OldRepository(ctx)
 	case skill.FieldSkillPath:
 		return m.OldSkillPath(ctx)
-	case skill.FieldLatestVersion:
-		return m.OldLatestVersion(ctx)
-	case skill.FieldDiscoverable:
-		return m.OldDiscoverable(ctx)
 	case skill.FieldVerified:
 		return m.OldVerified(ctx)
 	case skill.FieldCreatedAt:
@@ -3211,20 +4182,6 @@ func (m *SkillMutation) SetField(name string, value ent.Value) error {
 			return fmt.Errorf("unexpected type %T for field %s", value, name)
 		}
 		m.SetSkillPath(v)
-		return nil
-	case skill.FieldLatestVersion:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetLatestVersion(v)
-		return nil
-	case skill.FieldDiscoverable:
-		v, ok := value.(bool)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetDiscoverable(v)
 		return nil
 	case skill.FieldVerified:
 		v, ok := value.(bool)
@@ -3317,12 +4274,6 @@ func (m *SkillMutation) ResetField(name string) error {
 	case skill.FieldSkillPath:
 		m.ResetSkillPath()
 		return nil
-	case skill.FieldLatestVersion:
-		m.ResetLatestVersion()
-		return nil
-	case skill.FieldDiscoverable:
-		m.ResetDiscoverable()
-		return nil
 	case skill.FieldVerified:
 		m.ResetVerified()
 		return nil
@@ -3338,12 +4289,9 @@ func (m *SkillMutation) ResetField(name string) error {
 
 // AddedEdges returns all edge names that were set/added in this mutation.
 func (m *SkillMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 1)
 	if m.source_repository != nil {
 		edges = append(edges, skill.EdgeSourceRepository)
-	}
-	if m.versions != nil {
-		edges = append(edges, skill.EdgeVersions)
 	}
 	return edges
 }
@@ -3356,47 +4304,27 @@ func (m *SkillMutation) AddedIDs(name string) []ent.Value {
 		if id := m.source_repository; id != nil {
 			return []ent.Value{*id}
 		}
-	case skill.EdgeVersions:
-		ids := make([]ent.Value, 0, len(m.versions))
-		for id := range m.versions {
-			ids = append(ids, id)
-		}
-		return ids
 	}
 	return nil
 }
 
 // RemovedEdges returns all edge names that were removed in this mutation.
 func (m *SkillMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
-	if m.removedversions != nil {
-		edges = append(edges, skill.EdgeVersions)
-	}
+	edges := make([]string, 0, 1)
 	return edges
 }
 
 // RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
 // the given name in this mutation.
 func (m *SkillMutation) RemovedIDs(name string) []ent.Value {
-	switch name {
-	case skill.EdgeVersions:
-		ids := make([]ent.Value, 0, len(m.removedversions))
-		for id := range m.removedversions {
-			ids = append(ids, id)
-		}
-		return ids
-	}
 	return nil
 }
 
 // ClearedEdges returns all edge names that were cleared in this mutation.
 func (m *SkillMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
+	edges := make([]string, 0, 1)
 	if m.clearedsource_repository {
 		edges = append(edges, skill.EdgeSourceRepository)
-	}
-	if m.clearedversions {
-		edges = append(edges, skill.EdgeVersions)
 	}
 	return edges
 }
@@ -3407,8 +4335,6 @@ func (m *SkillMutation) EdgeCleared(name string) bool {
 	switch name {
 	case skill.EdgeSourceRepository:
 		return m.clearedsource_repository
-	case skill.EdgeVersions:
-		return m.clearedversions
 	}
 	return false
 }
@@ -3431,807 +4357,6 @@ func (m *SkillMutation) ResetEdge(name string) error {
 	case skill.EdgeSourceRepository:
 		m.ResetSourceRepository()
 		return nil
-	case skill.EdgeVersions:
-		m.ResetVersions()
-		return nil
 	}
 	return fmt.Errorf("unknown Skill edge %s", name)
-}
-
-// SkillVersionMutation represents an operation that mutates the SkillVersion nodes in the graph.
-type SkillVersionMutation struct {
-	config
-	op                      Op
-	typ                     string
-	id                      *int64
-	version                 *string
-	commit_sha              *string
-	tree_sha                *string
-	relative_path           *string
-	commit_time             *time.Time
-	created_at              *time.Time
-	clearedFields           map[string]struct{}
-	skill                   *int64
-	clearedskill            bool
-	risk_assessments        map[int64]struct{}
-	removedrisk_assessments map[int64]struct{}
-	clearedrisk_assessments bool
-	done                    bool
-	oldValue                func(context.Context) (*SkillVersion, error)
-	predicates              []predicate.SkillVersion
-}
-
-var _ ent.Mutation = (*SkillVersionMutation)(nil)
-
-// skillversionOption allows management of the mutation configuration using functional options.
-type skillversionOption func(*SkillVersionMutation)
-
-// newSkillVersionMutation creates new mutation for the SkillVersion entity.
-func newSkillVersionMutation(c config, op Op, opts ...skillversionOption) *SkillVersionMutation {
-	m := &SkillVersionMutation{
-		config:        c,
-		op:            op,
-		typ:           TypeSkillVersion,
-		clearedFields: make(map[string]struct{}),
-	}
-	for _, opt := range opts {
-		opt(m)
-	}
-	return m
-}
-
-// withSkillVersionID sets the ID field of the mutation.
-func withSkillVersionID(id int64) skillversionOption {
-	return func(m *SkillVersionMutation) {
-		var (
-			err   error
-			once  sync.Once
-			value *SkillVersion
-		)
-		m.oldValue = func(ctx context.Context) (*SkillVersion, error) {
-			once.Do(func() {
-				if m.done {
-					err = errors.New("querying old values post mutation is not allowed")
-				} else {
-					value, err = m.Client().SkillVersion.Get(ctx, id)
-				}
-			})
-			return value, err
-		}
-		m.id = &id
-	}
-}
-
-// withSkillVersion sets the old SkillVersion of the mutation.
-func withSkillVersion(node *SkillVersion) skillversionOption {
-	return func(m *SkillVersionMutation) {
-		m.oldValue = func(context.Context) (*SkillVersion, error) {
-			return node, nil
-		}
-		m.id = &node.ID
-	}
-}
-
-// Client returns a new `ent.Client` from the mutation. If the mutation was
-// executed in a transaction (ent.Tx), a transactional client is returned.
-func (m SkillVersionMutation) Client() *Client {
-	client := &Client{config: m.config}
-	client.init()
-	return client
-}
-
-// Tx returns an `ent.Tx` for mutations that were executed in transactions;
-// it returns an error otherwise.
-func (m SkillVersionMutation) Tx() (*Tx, error) {
-	if _, ok := m.driver.(*txDriver); !ok {
-		return nil, errors.New("ent: mutation is not running in a transaction")
-	}
-	tx := &Tx{config: m.config}
-	tx.init()
-	return tx, nil
-}
-
-// SetID sets the value of the id field. Note that this
-// operation is only accepted on creation of SkillVersion entities.
-func (m *SkillVersionMutation) SetID(id int64) {
-	m.id = &id
-}
-
-// ID returns the ID value in the mutation. Note that the ID is only available
-// if it was provided to the builder or after it was returned from the database.
-func (m *SkillVersionMutation) ID() (id int64, exists bool) {
-	if m.id == nil {
-		return
-	}
-	return *m.id, true
-}
-
-// IDs queries the database and returns the entity ids that match the mutation's predicate.
-// That means, if the mutation is applied within a transaction with an isolation level such
-// as sql.LevelSerializable, the returned ids match the ids of the rows that will be updated
-// or updated by the mutation.
-func (m *SkillVersionMutation) IDs(ctx context.Context) ([]int64, error) {
-	switch {
-	case m.op.Is(OpUpdateOne | OpDeleteOne):
-		id, exists := m.ID()
-		if exists {
-			return []int64{id}, nil
-		}
-		fallthrough
-	case m.op.Is(OpUpdate | OpDelete):
-		return m.Client().SkillVersion.Query().Where(m.predicates...).IDs(ctx)
-	default:
-		return nil, fmt.Errorf("IDs is not allowed on %s operations", m.op)
-	}
-}
-
-// SetSkillID sets the "skill_id" field.
-func (m *SkillVersionMutation) SetSkillID(i int64) {
-	m.skill = &i
-}
-
-// SkillID returns the value of the "skill_id" field in the mutation.
-func (m *SkillVersionMutation) SkillID() (r int64, exists bool) {
-	v := m.skill
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldSkillID returns the old "skill_id" field's value of the SkillVersion entity.
-// If the SkillVersion object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillVersionMutation) OldSkillID(ctx context.Context) (v int64, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldSkillID is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldSkillID requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldSkillID: %w", err)
-	}
-	return oldValue.SkillID, nil
-}
-
-// ResetSkillID resets all changes to the "skill_id" field.
-func (m *SkillVersionMutation) ResetSkillID() {
-	m.skill = nil
-}
-
-// SetVersion sets the "version" field.
-func (m *SkillVersionMutation) SetVersion(s string) {
-	m.version = &s
-}
-
-// Version returns the value of the "version" field in the mutation.
-func (m *SkillVersionMutation) Version() (r string, exists bool) {
-	v := m.version
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldVersion returns the old "version" field's value of the SkillVersion entity.
-// If the SkillVersion object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillVersionMutation) OldVersion(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldVersion is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldVersion requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldVersion: %w", err)
-	}
-	return oldValue.Version, nil
-}
-
-// ResetVersion resets all changes to the "version" field.
-func (m *SkillVersionMutation) ResetVersion() {
-	m.version = nil
-}
-
-// SetCommitSha sets the "commit_sha" field.
-func (m *SkillVersionMutation) SetCommitSha(s string) {
-	m.commit_sha = &s
-}
-
-// CommitSha returns the value of the "commit_sha" field in the mutation.
-func (m *SkillVersionMutation) CommitSha() (r string, exists bool) {
-	v := m.commit_sha
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldCommitSha returns the old "commit_sha" field's value of the SkillVersion entity.
-// If the SkillVersion object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillVersionMutation) OldCommitSha(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldCommitSha is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldCommitSha requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldCommitSha: %w", err)
-	}
-	return oldValue.CommitSha, nil
-}
-
-// ResetCommitSha resets all changes to the "commit_sha" field.
-func (m *SkillVersionMutation) ResetCommitSha() {
-	m.commit_sha = nil
-}
-
-// SetTreeSha sets the "tree_sha" field.
-func (m *SkillVersionMutation) SetTreeSha(s string) {
-	m.tree_sha = &s
-}
-
-// TreeSha returns the value of the "tree_sha" field in the mutation.
-func (m *SkillVersionMutation) TreeSha() (r string, exists bool) {
-	v := m.tree_sha
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldTreeSha returns the old "tree_sha" field's value of the SkillVersion entity.
-// If the SkillVersion object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillVersionMutation) OldTreeSha(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldTreeSha is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldTreeSha requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldTreeSha: %w", err)
-	}
-	return oldValue.TreeSha, nil
-}
-
-// ResetTreeSha resets all changes to the "tree_sha" field.
-func (m *SkillVersionMutation) ResetTreeSha() {
-	m.tree_sha = nil
-}
-
-// SetRelativePath sets the "relative_path" field.
-func (m *SkillVersionMutation) SetRelativePath(s string) {
-	m.relative_path = &s
-}
-
-// RelativePath returns the value of the "relative_path" field in the mutation.
-func (m *SkillVersionMutation) RelativePath() (r string, exists bool) {
-	v := m.relative_path
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldRelativePath returns the old "relative_path" field's value of the SkillVersion entity.
-// If the SkillVersion object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillVersionMutation) OldRelativePath(ctx context.Context) (v string, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldRelativePath is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldRelativePath requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldRelativePath: %w", err)
-	}
-	return oldValue.RelativePath, nil
-}
-
-// ResetRelativePath resets all changes to the "relative_path" field.
-func (m *SkillVersionMutation) ResetRelativePath() {
-	m.relative_path = nil
-}
-
-// SetCommitTime sets the "commit_time" field.
-func (m *SkillVersionMutation) SetCommitTime(t time.Time) {
-	m.commit_time = &t
-}
-
-// CommitTime returns the value of the "commit_time" field in the mutation.
-func (m *SkillVersionMutation) CommitTime() (r time.Time, exists bool) {
-	v := m.commit_time
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldCommitTime returns the old "commit_time" field's value of the SkillVersion entity.
-// If the SkillVersion object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillVersionMutation) OldCommitTime(ctx context.Context) (v time.Time, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldCommitTime is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldCommitTime requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldCommitTime: %w", err)
-	}
-	return oldValue.CommitTime, nil
-}
-
-// ResetCommitTime resets all changes to the "commit_time" field.
-func (m *SkillVersionMutation) ResetCommitTime() {
-	m.commit_time = nil
-}
-
-// SetCreatedAt sets the "created_at" field.
-func (m *SkillVersionMutation) SetCreatedAt(t time.Time) {
-	m.created_at = &t
-}
-
-// CreatedAt returns the value of the "created_at" field in the mutation.
-func (m *SkillVersionMutation) CreatedAt() (r time.Time, exists bool) {
-	v := m.created_at
-	if v == nil {
-		return
-	}
-	return *v, true
-}
-
-// OldCreatedAt returns the old "created_at" field's value of the SkillVersion entity.
-// If the SkillVersion object wasn't provided to the builder, the object is fetched from the database.
-// An error is returned if the mutation operation is not UpdateOne, or the database query fails.
-func (m *SkillVersionMutation) OldCreatedAt(ctx context.Context) (v time.Time, err error) {
-	if !m.op.Is(OpUpdateOne) {
-		return v, errors.New("OldCreatedAt is only allowed on UpdateOne operations")
-	}
-	if m.id == nil || m.oldValue == nil {
-		return v, errors.New("OldCreatedAt requires an ID field in the mutation")
-	}
-	oldValue, err := m.oldValue(ctx)
-	if err != nil {
-		return v, fmt.Errorf("querying old value for OldCreatedAt: %w", err)
-	}
-	return oldValue.CreatedAt, nil
-}
-
-// ResetCreatedAt resets all changes to the "created_at" field.
-func (m *SkillVersionMutation) ResetCreatedAt() {
-	m.created_at = nil
-}
-
-// ClearSkill clears the "skill" edge to the Skill entity.
-func (m *SkillVersionMutation) ClearSkill() {
-	m.clearedskill = true
-	m.clearedFields[skillversion.FieldSkillID] = struct{}{}
-}
-
-// SkillCleared reports if the "skill" edge to the Skill entity was cleared.
-func (m *SkillVersionMutation) SkillCleared() bool {
-	return m.clearedskill
-}
-
-// SkillIDs returns the "skill" edge IDs in the mutation.
-// Note that IDs always returns len(IDs) <= 1 for unique edges, and you should use
-// SkillID instead. It exists only for internal usage by the builders.
-func (m *SkillVersionMutation) SkillIDs() (ids []int64) {
-	if id := m.skill; id != nil {
-		ids = append(ids, *id)
-	}
-	return
-}
-
-// ResetSkill resets all changes to the "skill" edge.
-func (m *SkillVersionMutation) ResetSkill() {
-	m.skill = nil
-	m.clearedskill = false
-}
-
-// AddRiskAssessmentIDs adds the "risk_assessments" edge to the RiskAssessment entity by ids.
-func (m *SkillVersionMutation) AddRiskAssessmentIDs(ids ...int64) {
-	if m.risk_assessments == nil {
-		m.risk_assessments = make(map[int64]struct{})
-	}
-	for i := range ids {
-		m.risk_assessments[ids[i]] = struct{}{}
-	}
-}
-
-// ClearRiskAssessments clears the "risk_assessments" edge to the RiskAssessment entity.
-func (m *SkillVersionMutation) ClearRiskAssessments() {
-	m.clearedrisk_assessments = true
-}
-
-// RiskAssessmentsCleared reports if the "risk_assessments" edge to the RiskAssessment entity was cleared.
-func (m *SkillVersionMutation) RiskAssessmentsCleared() bool {
-	return m.clearedrisk_assessments
-}
-
-// RemoveRiskAssessmentIDs removes the "risk_assessments" edge to the RiskAssessment entity by IDs.
-func (m *SkillVersionMutation) RemoveRiskAssessmentIDs(ids ...int64) {
-	if m.removedrisk_assessments == nil {
-		m.removedrisk_assessments = make(map[int64]struct{})
-	}
-	for i := range ids {
-		delete(m.risk_assessments, ids[i])
-		m.removedrisk_assessments[ids[i]] = struct{}{}
-	}
-}
-
-// RemovedRiskAssessments returns the removed IDs of the "risk_assessments" edge to the RiskAssessment entity.
-func (m *SkillVersionMutation) RemovedRiskAssessmentsIDs() (ids []int64) {
-	for id := range m.removedrisk_assessments {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// RiskAssessmentsIDs returns the "risk_assessments" edge IDs in the mutation.
-func (m *SkillVersionMutation) RiskAssessmentsIDs() (ids []int64) {
-	for id := range m.risk_assessments {
-		ids = append(ids, id)
-	}
-	return
-}
-
-// ResetRiskAssessments resets all changes to the "risk_assessments" edge.
-func (m *SkillVersionMutation) ResetRiskAssessments() {
-	m.risk_assessments = nil
-	m.clearedrisk_assessments = false
-	m.removedrisk_assessments = nil
-}
-
-// Where appends a list predicates to the SkillVersionMutation builder.
-func (m *SkillVersionMutation) Where(ps ...predicate.SkillVersion) {
-	m.predicates = append(m.predicates, ps...)
-}
-
-// WhereP appends storage-level predicates to the SkillVersionMutation builder. Using this method,
-// users can use type-assertion to append predicates that do not depend on any generated package.
-func (m *SkillVersionMutation) WhereP(ps ...func(*sql.Selector)) {
-	p := make([]predicate.SkillVersion, len(ps))
-	for i := range ps {
-		p[i] = ps[i]
-	}
-	m.Where(p...)
-}
-
-// Op returns the operation name.
-func (m *SkillVersionMutation) Op() Op {
-	return m.op
-}
-
-// SetOp allows setting the mutation operation.
-func (m *SkillVersionMutation) SetOp(op Op) {
-	m.op = op
-}
-
-// Type returns the node type of this mutation (SkillVersion).
-func (m *SkillVersionMutation) Type() string {
-	return m.typ
-}
-
-// Fields returns all fields that were changed during this mutation. Note that in
-// order to get all numeric fields that were incremented/decremented, call
-// AddedFields().
-func (m *SkillVersionMutation) Fields() []string {
-	fields := make([]string, 0, 7)
-	if m.skill != nil {
-		fields = append(fields, skillversion.FieldSkillID)
-	}
-	if m.version != nil {
-		fields = append(fields, skillversion.FieldVersion)
-	}
-	if m.commit_sha != nil {
-		fields = append(fields, skillversion.FieldCommitSha)
-	}
-	if m.tree_sha != nil {
-		fields = append(fields, skillversion.FieldTreeSha)
-	}
-	if m.relative_path != nil {
-		fields = append(fields, skillversion.FieldRelativePath)
-	}
-	if m.commit_time != nil {
-		fields = append(fields, skillversion.FieldCommitTime)
-	}
-	if m.created_at != nil {
-		fields = append(fields, skillversion.FieldCreatedAt)
-	}
-	return fields
-}
-
-// Field returns the value of a field with the given name. The second boolean
-// return value indicates that this field was not set, or was not defined in the
-// schema.
-func (m *SkillVersionMutation) Field(name string) (ent.Value, bool) {
-	switch name {
-	case skillversion.FieldSkillID:
-		return m.SkillID()
-	case skillversion.FieldVersion:
-		return m.Version()
-	case skillversion.FieldCommitSha:
-		return m.CommitSha()
-	case skillversion.FieldTreeSha:
-		return m.TreeSha()
-	case skillversion.FieldRelativePath:
-		return m.RelativePath()
-	case skillversion.FieldCommitTime:
-		return m.CommitTime()
-	case skillversion.FieldCreatedAt:
-		return m.CreatedAt()
-	}
-	return nil, false
-}
-
-// OldField returns the old value of the field from the database. An error is
-// returned if the mutation operation is not UpdateOne, or the query to the
-// database failed.
-func (m *SkillVersionMutation) OldField(ctx context.Context, name string) (ent.Value, error) {
-	switch name {
-	case skillversion.FieldSkillID:
-		return m.OldSkillID(ctx)
-	case skillversion.FieldVersion:
-		return m.OldVersion(ctx)
-	case skillversion.FieldCommitSha:
-		return m.OldCommitSha(ctx)
-	case skillversion.FieldTreeSha:
-		return m.OldTreeSha(ctx)
-	case skillversion.FieldRelativePath:
-		return m.OldRelativePath(ctx)
-	case skillversion.FieldCommitTime:
-		return m.OldCommitTime(ctx)
-	case skillversion.FieldCreatedAt:
-		return m.OldCreatedAt(ctx)
-	}
-	return nil, fmt.Errorf("unknown SkillVersion field %s", name)
-}
-
-// SetField sets the value of a field with the given name. It returns an error if
-// the field is not defined in the schema, or if the type mismatched the field
-// type.
-func (m *SkillVersionMutation) SetField(name string, value ent.Value) error {
-	switch name {
-	case skillversion.FieldSkillID:
-		v, ok := value.(int64)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetSkillID(v)
-		return nil
-	case skillversion.FieldVersion:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetVersion(v)
-		return nil
-	case skillversion.FieldCommitSha:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetCommitSha(v)
-		return nil
-	case skillversion.FieldTreeSha:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetTreeSha(v)
-		return nil
-	case skillversion.FieldRelativePath:
-		v, ok := value.(string)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetRelativePath(v)
-		return nil
-	case skillversion.FieldCommitTime:
-		v, ok := value.(time.Time)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetCommitTime(v)
-		return nil
-	case skillversion.FieldCreatedAt:
-		v, ok := value.(time.Time)
-		if !ok {
-			return fmt.Errorf("unexpected type %T for field %s", value, name)
-		}
-		m.SetCreatedAt(v)
-		return nil
-	}
-	return fmt.Errorf("unknown SkillVersion field %s", name)
-}
-
-// AddedFields returns all numeric fields that were incremented/decremented during
-// this mutation.
-func (m *SkillVersionMutation) AddedFields() []string {
-	var fields []string
-	return fields
-}
-
-// AddedField returns the numeric value that was incremented/decremented on a field
-// with the given name. The second boolean return value indicates that this field
-// was not set, or was not defined in the schema.
-func (m *SkillVersionMutation) AddedField(name string) (ent.Value, bool) {
-	switch name {
-	}
-	return nil, false
-}
-
-// AddField adds the value to the field with the given name. It returns an error if
-// the field is not defined in the schema, or if the type mismatched the field
-// type.
-func (m *SkillVersionMutation) AddField(name string, value ent.Value) error {
-	switch name {
-	}
-	return fmt.Errorf("unknown SkillVersion numeric field %s", name)
-}
-
-// ClearedFields returns all nullable fields that were cleared during this
-// mutation.
-func (m *SkillVersionMutation) ClearedFields() []string {
-	return nil
-}
-
-// FieldCleared returns a boolean indicating if a field with the given name was
-// cleared in this mutation.
-func (m *SkillVersionMutation) FieldCleared(name string) bool {
-	_, ok := m.clearedFields[name]
-	return ok
-}
-
-// ClearField clears the value of the field with the given name. It returns an
-// error if the field is not defined in the schema.
-func (m *SkillVersionMutation) ClearField(name string) error {
-	return fmt.Errorf("unknown SkillVersion nullable field %s", name)
-}
-
-// ResetField resets all changes in the mutation for the field with the given name.
-// It returns an error if the field is not defined in the schema.
-func (m *SkillVersionMutation) ResetField(name string) error {
-	switch name {
-	case skillversion.FieldSkillID:
-		m.ResetSkillID()
-		return nil
-	case skillversion.FieldVersion:
-		m.ResetVersion()
-		return nil
-	case skillversion.FieldCommitSha:
-		m.ResetCommitSha()
-		return nil
-	case skillversion.FieldTreeSha:
-		m.ResetTreeSha()
-		return nil
-	case skillversion.FieldRelativePath:
-		m.ResetRelativePath()
-		return nil
-	case skillversion.FieldCommitTime:
-		m.ResetCommitTime()
-		return nil
-	case skillversion.FieldCreatedAt:
-		m.ResetCreatedAt()
-		return nil
-	}
-	return fmt.Errorf("unknown SkillVersion field %s", name)
-}
-
-// AddedEdges returns all edge names that were set/added in this mutation.
-func (m *SkillVersionMutation) AddedEdges() []string {
-	edges := make([]string, 0, 2)
-	if m.skill != nil {
-		edges = append(edges, skillversion.EdgeSkill)
-	}
-	if m.risk_assessments != nil {
-		edges = append(edges, skillversion.EdgeRiskAssessments)
-	}
-	return edges
-}
-
-// AddedIDs returns all IDs (to other nodes) that were added for the given edge
-// name in this mutation.
-func (m *SkillVersionMutation) AddedIDs(name string) []ent.Value {
-	switch name {
-	case skillversion.EdgeSkill:
-		if id := m.skill; id != nil {
-			return []ent.Value{*id}
-		}
-	case skillversion.EdgeRiskAssessments:
-		ids := make([]ent.Value, 0, len(m.risk_assessments))
-		for id := range m.risk_assessments {
-			ids = append(ids, id)
-		}
-		return ids
-	}
-	return nil
-}
-
-// RemovedEdges returns all edge names that were removed in this mutation.
-func (m *SkillVersionMutation) RemovedEdges() []string {
-	edges := make([]string, 0, 2)
-	if m.removedrisk_assessments != nil {
-		edges = append(edges, skillversion.EdgeRiskAssessments)
-	}
-	return edges
-}
-
-// RemovedIDs returns all IDs (to other nodes) that were removed for the edge with
-// the given name in this mutation.
-func (m *SkillVersionMutation) RemovedIDs(name string) []ent.Value {
-	switch name {
-	case skillversion.EdgeRiskAssessments:
-		ids := make([]ent.Value, 0, len(m.removedrisk_assessments))
-		for id := range m.removedrisk_assessments {
-			ids = append(ids, id)
-		}
-		return ids
-	}
-	return nil
-}
-
-// ClearedEdges returns all edge names that were cleared in this mutation.
-func (m *SkillVersionMutation) ClearedEdges() []string {
-	edges := make([]string, 0, 2)
-	if m.clearedskill {
-		edges = append(edges, skillversion.EdgeSkill)
-	}
-	if m.clearedrisk_assessments {
-		edges = append(edges, skillversion.EdgeRiskAssessments)
-	}
-	return edges
-}
-
-// EdgeCleared returns a boolean which indicates if the edge with the given name
-// was cleared in this mutation.
-func (m *SkillVersionMutation) EdgeCleared(name string) bool {
-	switch name {
-	case skillversion.EdgeSkill:
-		return m.clearedskill
-	case skillversion.EdgeRiskAssessments:
-		return m.clearedrisk_assessments
-	}
-	return false
-}
-
-// ClearEdge clears the value of the edge with the given name. It returns an error
-// if that edge is not defined in the schema.
-func (m *SkillVersionMutation) ClearEdge(name string) error {
-	switch name {
-	case skillversion.EdgeSkill:
-		m.ClearSkill()
-		return nil
-	}
-	return fmt.Errorf("unknown SkillVersion unique edge %s", name)
-}
-
-// ResetEdge resets all changes to the edge with the given name in this mutation.
-// It returns an error if the edge is not defined in the schema.
-func (m *SkillVersionMutation) ResetEdge(name string) error {
-	switch name {
-	case skillversion.EdgeSkill:
-		m.ResetSkill()
-		return nil
-	case skillversion.EdgeRiskAssessments:
-		m.ResetRiskAssessments()
-		return nil
-	}
-	return fmt.Errorf("unknown SkillVersion edge %s", name)
 }

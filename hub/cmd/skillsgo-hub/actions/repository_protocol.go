@@ -63,7 +63,7 @@ func (p *repositoryInfoProtocol) Zip(ctx context.Context, repositoryID, version 
 }
 
 func (p *repositoryInfoProtocol) ensurePublished(ctx context.Context, repositoryID, version string) (string, error) {
-	members, err := p.metadata.RepositoryVersionMembers(ctx, repositoryID, version)
+	members, err := p.metadata.RepositoryReleaseMembers(ctx, repositoryID, version)
 	if err != nil {
 		return "", err
 	}
@@ -79,7 +79,7 @@ func (p *repositoryInfoProtocol) ensurePublished(ctx context.Context, repository
 	if err != nil {
 		return "", err
 	}
-	members, err = p.metadata.RepositoryVersionMembers(ctx, repositoryID, canonicalVersion)
+	members, err = p.metadata.RepositoryReleaseMembers(ctx, repositoryID, canonicalVersion)
 	if err != nil {
 		return "", err
 	}

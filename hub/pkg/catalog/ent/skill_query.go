@@ -4,7 +4,6 @@ package ent
 
 import (
 	"context"
-	"database/sql/driver"
 	"fmt"
 	"math"
 
@@ -15,7 +14,6 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/predicate"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
 )
 
 // SkillQuery is the builder for querying Skill entities.
@@ -26,7 +24,6 @@ type SkillQuery struct {
 	inters               []Interceptor
 	predicates           []predicate.Skill
 	withSourceRepository *RepositoryQuery
-	withVersions         *SkillVersionQuery
 	// intermediate query (i.e. traversal path).
 	sql  *sql.Selector
 	path func(context.Context) (*sql.Selector, error)
@@ -78,28 +75,6 @@ func (_q *SkillQuery) QuerySourceRepository() *RepositoryQuery {
 			sqlgraph.From(skill.Table, skill.FieldID, selector),
 			sqlgraph.To(repository.Table, repository.FieldID),
 			sqlgraph.Edge(sqlgraph.M2O, true, skill.SourceRepositoryTable, skill.SourceRepositoryColumn),
-		)
-		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
-		return fromU, nil
-	}
-	return query
-}
-
-// QueryVersions chains the current query on the "versions" edge.
-func (_q *SkillQuery) QueryVersions() *SkillVersionQuery {
-	query := (&SkillVersionClient{config: _q.config}).Query()
-	query.path = func(ctx context.Context) (fromU *sql.Selector, err error) {
-		if err := _q.prepareQuery(ctx); err != nil {
-			return nil, err
-		}
-		selector := _q.sqlQuery(ctx)
-		if err := selector.Err(); err != nil {
-			return nil, err
-		}
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skill.Table, skill.FieldID, selector),
-			sqlgraph.To(skillversion.Table, skillversion.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, skill.VersionsTable, skill.VersionsColumn),
 		)
 		fromU = sqlgraph.SetNeighbors(_q.driver.Dialect(), step)
 		return fromU, nil
@@ -300,7 +275,6 @@ func (_q *SkillQuery) Clone() *SkillQuery {
 		inters:               append([]Interceptor{}, _q.inters...),
 		predicates:           append([]predicate.Skill{}, _q.predicates...),
 		withSourceRepository: _q.withSourceRepository.Clone(),
-		withVersions:         _q.withVersions.Clone(),
 		// clone intermediate query.
 		sql:  _q.sql.Clone(),
 		path: _q.path,
@@ -315,17 +289,6 @@ func (_q *SkillQuery) WithSourceRepository(opts ...func(*RepositoryQuery)) *Skil
 		opt(query)
 	}
 	_q.withSourceRepository = query
-	return _q
-}
-
-// WithVersions tells the query-builder to eager-load the nodes that are connected to
-// the "versions" edge. The optional arguments are used to configure the query builder of the edge.
-func (_q *SkillQuery) WithVersions(opts ...func(*SkillVersionQuery)) *SkillQuery {
-	query := (&SkillVersionClient{config: _q.config}).Query()
-	for _, opt := range opts {
-		opt(query)
-	}
-	_q.withVersions = query
 	return _q
 }
 
@@ -407,9 +370,8 @@ func (_q *SkillQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Skill,
 	var (
 		nodes       = []*Skill{}
 		_spec       = _q.querySpec()
-		loadedTypes = [2]bool{
+		loadedTypes = [1]bool{
 			_q.withSourceRepository != nil,
-			_q.withVersions != nil,
 		}
 	)
 	_spec.ScanValues = func(columns []string) ([]any, error) {
@@ -433,13 +395,6 @@ func (_q *SkillQuery) sqlAll(ctx context.Context, hooks ...queryHook) ([]*Skill,
 	if query := _q.withSourceRepository; query != nil {
 		if err := _q.loadSourceRepository(ctx, query, nodes, nil,
 			func(n *Skill, e *Repository) { n.Edges.SourceRepository = e }); err != nil {
-			return nil, err
-		}
-	}
-	if query := _q.withVersions; query != nil {
-		if err := _q.loadVersions(ctx, query, nodes,
-			func(n *Skill) { n.Edges.Versions = []*SkillVersion{} },
-			func(n *Skill, e *SkillVersion) { n.Edges.Versions = append(n.Edges.Versions, e) }); err != nil {
 			return nil, err
 		}
 	}
@@ -472,36 +427,6 @@ func (_q *SkillQuery) loadSourceRepository(ctx context.Context, query *Repositor
 		for i := range nodes {
 			assign(nodes[i], n)
 		}
-	}
-	return nil
-}
-func (_q *SkillQuery) loadVersions(ctx context.Context, query *SkillVersionQuery, nodes []*Skill, init func(*Skill), assign func(*Skill, *SkillVersion)) error {
-	fks := make([]driver.Value, 0, len(nodes))
-	nodeids := make(map[int64]*Skill)
-	for i := range nodes {
-		fks = append(fks, nodes[i].ID)
-		nodeids[nodes[i].ID] = nodes[i]
-		if init != nil {
-			init(nodes[i])
-		}
-	}
-	if len(query.ctx.Fields) > 0 {
-		query.ctx.AppendFieldOnce(skillversion.FieldSkillID)
-	}
-	query.Where(predicate.SkillVersion(func(s *sql.Selector) {
-		s.Where(sql.InValues(s.C(skill.VersionsColumn), fks...))
-	}))
-	neighbors, err := query.All(ctx)
-	if err != nil {
-		return err
-	}
-	for _, n := range neighbors {
-		fk := n.SkillID
-		node, ok := nodeids[fk]
-		if !ok {
-			return fmt.Errorf(`unexpected referenced foreign-key "skill_id" returned %v for node %v`, fk, n.ID)
-		}
-		assign(node, n)
 	}
 	return nil
 }

@@ -7,10 +7,10 @@ import (
 
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/localizeddescription"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/riskassessment"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repositoryrelease"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repositoryreleasemember"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/schema"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
 )
 
 // The init function reads all schema descriptors with runtime code
@@ -64,89 +64,81 @@ func init() {
 	// repository.RepositoryIDValidator is a validator for the "repository_id" field. It is called by the builders before save.
 	repository.RepositoryIDValidator = repositoryDescRepositoryID.Validators[0].(func(string) error)
 	// repositoryDescDescription is the schema descriptor for description field.
-	repositoryDescDescription := repositoryFields[4].Descriptor()
+	repositoryDescDescription := repositoryFields[5].Descriptor()
 	// repository.DefaultDescription holds the default value on creation for the description field.
 	repository.DefaultDescription = repositoryDescDescription.Default.(string)
 	// repositoryDescStars is the schema descriptor for stars field.
-	repositoryDescStars := repositoryFields[5].Descriptor()
+	repositoryDescStars := repositoryFields[6].Descriptor()
 	// repository.DefaultStars holds the default value on creation for the stars field.
 	repository.DefaultStars = repositoryDescStars.Default.(int64)
 	// repositoryDescCreatedAt is the schema descriptor for created_at field.
-	repositoryDescCreatedAt := repositoryFields[9].Descriptor()
+	repositoryDescCreatedAt := repositoryFields[10].Descriptor()
 	// repository.DefaultCreatedAt holds the default value on creation for the created_at field.
 	repository.DefaultCreatedAt = repositoryDescCreatedAt.Default.(func() time.Time)
 	// repositoryDescUpdatedAt is the schema descriptor for updated_at field.
-	repositoryDescUpdatedAt := repositoryFields[10].Descriptor()
+	repositoryDescUpdatedAt := repositoryFields[11].Descriptor()
 	// repository.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	repository.DefaultUpdatedAt = repositoryDescUpdatedAt.Default.(func() time.Time)
 	// repository.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	repository.UpdateDefaultUpdatedAt = repositoryDescUpdatedAt.UpdateDefault.(func() time.Time)
-	riskassessmentFields := schema.RiskAssessment{}.Fields()
-	_ = riskassessmentFields
-	// riskassessmentDescLevel is the schema descriptor for level field.
-	riskassessmentDescLevel := riskassessmentFields[2].Descriptor()
-	// riskassessment.LevelValidator is a validator for the "level" field. It is called by the builders before save.
-	riskassessment.LevelValidator = riskassessmentDescLevel.Validators[0].(func(string) error)
-	// riskassessmentDescScannerVersion is the schema descriptor for scanner_version field.
-	riskassessmentDescScannerVersion := riskassessmentFields[3].Descriptor()
-	// riskassessment.ScannerVersionValidator is a validator for the "scanner_version" field. It is called by the builders before save.
-	riskassessment.ScannerVersionValidator = riskassessmentDescScannerVersion.Validators[0].(func(string) error)
-	// riskassessmentDescEvidence is the schema descriptor for evidence field.
-	riskassessmentDescEvidence := riskassessmentFields[4].Descriptor()
-	// riskassessment.EvidenceValidator is a validator for the "evidence" field. It is called by the builders before save.
-	riskassessment.EvidenceValidator = riskassessmentDescEvidence.Validators[0].(func(string) error)
-	// riskassessmentDescFingerprint is the schema descriptor for fingerprint field.
-	riskassessmentDescFingerprint := riskassessmentFields[5].Descriptor()
-	// riskassessment.FingerprintValidator is a validator for the "fingerprint" field. It is called by the builders before save.
-	riskassessment.FingerprintValidator = riskassessmentDescFingerprint.Validators[0].(func(string) error)
-	// riskassessmentDescCreatedAt is the schema descriptor for created_at field.
-	riskassessmentDescCreatedAt := riskassessmentFields[6].Descriptor()
-	// riskassessment.DefaultCreatedAt holds the default value on creation for the created_at field.
-	riskassessment.DefaultCreatedAt = riskassessmentDescCreatedAt.Default.(func() time.Time)
+	repositoryreleaseFields := schema.RepositoryRelease{}.Fields()
+	_ = repositoryreleaseFields
+	// repositoryreleaseDescVersion is the schema descriptor for version field.
+	repositoryreleaseDescVersion := repositoryreleaseFields[2].Descriptor()
+	// repositoryrelease.VersionValidator is a validator for the "version" field. It is called by the builders before save.
+	repositoryrelease.VersionValidator = repositoryreleaseDescVersion.Validators[0].(func(string) error)
+	// repositoryreleaseDescCommitSha is the schema descriptor for commit_sha field.
+	repositoryreleaseDescCommitSha := repositoryreleaseFields[3].Descriptor()
+	// repositoryrelease.CommitShaValidator is a validator for the "commit_sha" field. It is called by the builders before save.
+	repositoryrelease.CommitShaValidator = repositoryreleaseDescCommitSha.Validators[0].(func(string) error)
+	// repositoryreleaseDescTreeSha is the schema descriptor for tree_sha field.
+	repositoryreleaseDescTreeSha := repositoryreleaseFields[4].Descriptor()
+	// repositoryrelease.TreeShaValidator is a validator for the "tree_sha" field. It is called by the builders before save.
+	repositoryrelease.TreeShaValidator = repositoryreleaseDescTreeSha.Validators[0].(func(string) error)
+	// repositoryreleaseDescSum is the schema descriptor for sum field.
+	repositoryreleaseDescSum := repositoryreleaseFields[5].Descriptor()
+	// repositoryrelease.SumValidator is a validator for the "sum" field. It is called by the builders before save.
+	repositoryrelease.SumValidator = repositoryreleaseDescSum.Validators[0].(func(string) error)
+	// repositoryreleaseDescArchiveSize is the schema descriptor for archive_size field.
+	repositoryreleaseDescArchiveSize := repositoryreleaseFields[6].Descriptor()
+	// repositoryrelease.ArchiveSizeValidator is a validator for the "archive_size" field. It is called by the builders before save.
+	repositoryrelease.ArchiveSizeValidator = repositoryreleaseDescArchiveSize.Validators[0].(func(int64) error)
+	// repositoryreleaseDescCreatedAt is the schema descriptor for created_at field.
+	repositoryreleaseDescCreatedAt := repositoryreleaseFields[9].Descriptor()
+	// repositoryrelease.DefaultCreatedAt holds the default value on creation for the created_at field.
+	repositoryrelease.DefaultCreatedAt = repositoryreleaseDescCreatedAt.Default.(func() time.Time)
+	repositoryreleasememberFields := schema.RepositoryReleaseMember{}.Fields()
+	_ = repositoryreleasememberFields
+	// repositoryreleasememberDescName is the schema descriptor for name field.
+	repositoryreleasememberDescName := repositoryreleasememberFields[2].Descriptor()
+	// repositoryreleasemember.NameValidator is a validator for the "name" field. It is called by the builders before save.
+	repositoryreleasemember.NameValidator = repositoryreleasememberDescName.Validators[0].(func(string) error)
+	// repositoryreleasememberDescSkillPath is the schema descriptor for skill_path field.
+	repositoryreleasememberDescSkillPath := repositoryreleasememberFields[3].Descriptor()
+	// repositoryreleasemember.SkillPathValidator is a validator for the "skill_path" field. It is called by the builders before save.
+	repositoryreleasemember.SkillPathValidator = repositoryreleasememberDescSkillPath.Validators[0].(func(string) error)
+	// repositoryreleasememberDescTreeSha is the schema descriptor for tree_sha field.
+	repositoryreleasememberDescTreeSha := repositoryreleasememberFields[4].Descriptor()
+	// repositoryreleasemember.TreeShaValidator is a validator for the "tree_sha" field. It is called by the builders before save.
+	repositoryreleasemember.TreeShaValidator = repositoryreleasememberDescTreeSha.Validators[0].(func(string) error)
 	skillFields := schema.Skill{}.Fields()
 	_ = skillFields
 	// skillDescName is the schema descriptor for name field.
 	skillDescName := skillFields[2].Descriptor()
 	// skill.NameValidator is a validator for the "name" field. It is called by the builders before save.
 	skill.NameValidator = skillDescName.Validators[0].(func(string) error)
-	// skillDescDiscoverable is the schema descriptor for discoverable field.
-	skillDescDiscoverable := skillFields[8].Descriptor()
-	// skill.DefaultDiscoverable holds the default value on creation for the discoverable field.
-	skill.DefaultDiscoverable = skillDescDiscoverable.Default.(bool)
 	// skillDescVerified is the schema descriptor for verified field.
-	skillDescVerified := skillFields[9].Descriptor()
+	skillDescVerified := skillFields[7].Descriptor()
 	// skill.DefaultVerified holds the default value on creation for the verified field.
 	skill.DefaultVerified = skillDescVerified.Default.(bool)
 	// skillDescCreatedAt is the schema descriptor for created_at field.
-	skillDescCreatedAt := skillFields[10].Descriptor()
+	skillDescCreatedAt := skillFields[8].Descriptor()
 	// skill.DefaultCreatedAt holds the default value on creation for the created_at field.
 	skill.DefaultCreatedAt = skillDescCreatedAt.Default.(func() time.Time)
 	// skillDescUpdatedAt is the schema descriptor for updated_at field.
-	skillDescUpdatedAt := skillFields[11].Descriptor()
+	skillDescUpdatedAt := skillFields[9].Descriptor()
 	// skill.DefaultUpdatedAt holds the default value on creation for the updated_at field.
 	skill.DefaultUpdatedAt = skillDescUpdatedAt.Default.(func() time.Time)
 	// skill.UpdateDefaultUpdatedAt holds the default value on update for the updated_at field.
 	skill.UpdateDefaultUpdatedAt = skillDescUpdatedAt.UpdateDefault.(func() time.Time)
-	skillversionFields := schema.SkillVersion{}.Fields()
-	_ = skillversionFields
-	// skillversionDescVersion is the schema descriptor for version field.
-	skillversionDescVersion := skillversionFields[2].Descriptor()
-	// skillversion.VersionValidator is a validator for the "version" field. It is called by the builders before save.
-	skillversion.VersionValidator = skillversionDescVersion.Validators[0].(func(string) error)
-	// skillversionDescCommitSha is the schema descriptor for commit_sha field.
-	skillversionDescCommitSha := skillversionFields[3].Descriptor()
-	// skillversion.CommitShaValidator is a validator for the "commit_sha" field. It is called by the builders before save.
-	skillversion.CommitShaValidator = skillversionDescCommitSha.Validators[0].(func(string) error)
-	// skillversionDescTreeSha is the schema descriptor for tree_sha field.
-	skillversionDescTreeSha := skillversionFields[4].Descriptor()
-	// skillversion.TreeShaValidator is a validator for the "tree_sha" field. It is called by the builders before save.
-	skillversion.TreeShaValidator = skillversionDescTreeSha.Validators[0].(func(string) error)
-	// skillversionDescRelativePath is the schema descriptor for relative_path field.
-	skillversionDescRelativePath := skillversionFields[5].Descriptor()
-	// skillversion.RelativePathValidator is a validator for the "relative_path" field. It is called by the builders before save.
-	skillversion.RelativePathValidator = skillversionDescRelativePath.Validators[0].(func(string) error)
-	// skillversionDescCreatedAt is the schema descriptor for created_at field.
-	skillversionDescCreatedAt := skillversionFields[7].Descriptor()
-	// skillversion.DefaultCreatedAt holds the default value on creation for the created_at field.
-	skillversion.DefaultCreatedAt = skillversionDescCreatedAt.Default.(func() time.Time)
 }

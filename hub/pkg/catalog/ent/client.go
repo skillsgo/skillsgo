@@ -17,9 +17,9 @@ import (
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/localizeddescription"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/riskassessment"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repositoryrelease"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repositoryreleasemember"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
-	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skillversion"
 )
 
 // Client is the client that holds all ent builders.
@@ -31,12 +31,12 @@ type Client struct {
 	LocalizedDescription *LocalizedDescriptionClient
 	// Repository is the client for interacting with the Repository builders.
 	Repository *RepositoryClient
-	// RiskAssessment is the client for interacting with the RiskAssessment builders.
-	RiskAssessment *RiskAssessmentClient
+	// RepositoryRelease is the client for interacting with the RepositoryRelease builders.
+	RepositoryRelease *RepositoryReleaseClient
+	// RepositoryReleaseMember is the client for interacting with the RepositoryReleaseMember builders.
+	RepositoryReleaseMember *RepositoryReleaseMemberClient
 	// Skill is the client for interacting with the Skill builders.
 	Skill *SkillClient
-	// SkillVersion is the client for interacting with the SkillVersion builders.
-	SkillVersion *SkillVersionClient
 }
 
 // NewClient creates a new client configured with the given options.
@@ -50,9 +50,9 @@ func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.LocalizedDescription = NewLocalizedDescriptionClient(c.config)
 	c.Repository = NewRepositoryClient(c.config)
-	c.RiskAssessment = NewRiskAssessmentClient(c.config)
+	c.RepositoryRelease = NewRepositoryReleaseClient(c.config)
+	c.RepositoryReleaseMember = NewRepositoryReleaseMemberClient(c.config)
 	c.Skill = NewSkillClient(c.config)
-	c.SkillVersion = NewSkillVersionClient(c.config)
 }
 
 type (
@@ -143,13 +143,13 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 	cfg := c.config
 	cfg.driver = tx
 	return &Tx{
-		ctx:                  ctx,
-		config:               cfg,
-		LocalizedDescription: NewLocalizedDescriptionClient(cfg),
-		Repository:           NewRepositoryClient(cfg),
-		RiskAssessment:       NewRiskAssessmentClient(cfg),
-		Skill:                NewSkillClient(cfg),
-		SkillVersion:         NewSkillVersionClient(cfg),
+		ctx:                     ctx,
+		config:                  cfg,
+		LocalizedDescription:    NewLocalizedDescriptionClient(cfg),
+		Repository:              NewRepositoryClient(cfg),
+		RepositoryRelease:       NewRepositoryReleaseClient(cfg),
+		RepositoryReleaseMember: NewRepositoryReleaseMemberClient(cfg),
+		Skill:                   NewSkillClient(cfg),
 	}, nil
 }
 
@@ -167,13 +167,13 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 	cfg := c.config
 	cfg.driver = &txDriver{tx: tx, drv: c.driver}
 	return &Tx{
-		ctx:                  ctx,
-		config:               cfg,
-		LocalizedDescription: NewLocalizedDescriptionClient(cfg),
-		Repository:           NewRepositoryClient(cfg),
-		RiskAssessment:       NewRiskAssessmentClient(cfg),
-		Skill:                NewSkillClient(cfg),
-		SkillVersion:         NewSkillVersionClient(cfg),
+		ctx:                     ctx,
+		config:                  cfg,
+		LocalizedDescription:    NewLocalizedDescriptionClient(cfg),
+		Repository:              NewRepositoryClient(cfg),
+		RepositoryRelease:       NewRepositoryReleaseClient(cfg),
+		RepositoryReleaseMember: NewRepositoryReleaseMemberClient(cfg),
+		Skill:                   NewSkillClient(cfg),
 	}, nil
 }
 
@@ -204,9 +204,9 @@ func (c *Client) Close() error {
 func (c *Client) Use(hooks ...Hook) {
 	c.LocalizedDescription.Use(hooks...)
 	c.Repository.Use(hooks...)
-	c.RiskAssessment.Use(hooks...)
+	c.RepositoryRelease.Use(hooks...)
+	c.RepositoryReleaseMember.Use(hooks...)
 	c.Skill.Use(hooks...)
-	c.SkillVersion.Use(hooks...)
 }
 
 // Intercept adds the query interceptors to all the entity clients.
@@ -214,9 +214,9 @@ func (c *Client) Use(hooks ...Hook) {
 func (c *Client) Intercept(interceptors ...Interceptor) {
 	c.LocalizedDescription.Intercept(interceptors...)
 	c.Repository.Intercept(interceptors...)
-	c.RiskAssessment.Intercept(interceptors...)
+	c.RepositoryRelease.Intercept(interceptors...)
+	c.RepositoryReleaseMember.Intercept(interceptors...)
 	c.Skill.Intercept(interceptors...)
-	c.SkillVersion.Intercept(interceptors...)
 }
 
 // Mutate implements the ent.Mutator interface.
@@ -226,12 +226,12 @@ func (c *Client) Mutate(ctx context.Context, m Mutation) (Value, error) {
 		return c.LocalizedDescription.mutate(ctx, m)
 	case *RepositoryMutation:
 		return c.Repository.mutate(ctx, m)
-	case *RiskAssessmentMutation:
-		return c.RiskAssessment.mutate(ctx, m)
+	case *RepositoryReleaseMutation:
+		return c.RepositoryRelease.mutate(ctx, m)
+	case *RepositoryReleaseMemberMutation:
+		return c.RepositoryReleaseMember.mutate(ctx, m)
 	case *SkillMutation:
 		return c.Skill.mutate(ctx, m)
-	case *SkillVersionMutation:
-		return c.SkillVersion.mutate(ctx, m)
 	default:
 		return nil, fmt.Errorf("ent: unknown mutation type %T", m)
 	}
@@ -494,6 +494,38 @@ func (c *RepositoryClient) QuerySkills(_m *Repository) *SkillQuery {
 	return query
 }
 
+// QueryReleases queries the releases edge of a Repository.
+func (c *RepositoryClient) QueryReleases(_m *Repository) *RepositoryReleaseQuery {
+	query := (&RepositoryReleaseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(repository.Table, repository.FieldID, id),
+			sqlgraph.To(repositoryrelease.Table, repositoryrelease.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, repository.ReleasesTable, repository.ReleasesColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryCurrentRelease queries the current_release edge of a Repository.
+func (c *RepositoryClient) QueryCurrentRelease(_m *Repository) *RepositoryReleaseQuery {
+	query := (&RepositoryReleaseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(repository.Table, repository.FieldID, id),
+			sqlgraph.To(repositoryrelease.Table, repositoryrelease.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, false, repository.CurrentReleaseTable, repository.CurrentReleaseColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
 // Hooks returns the client hooks.
 func (c *RepositoryClient) Hooks() []Hook {
 	return c.hooks.Repository
@@ -519,107 +551,107 @@ func (c *RepositoryClient) mutate(ctx context.Context, m *RepositoryMutation) (V
 	}
 }
 
-// RiskAssessmentClient is a client for the RiskAssessment schema.
-type RiskAssessmentClient struct {
+// RepositoryReleaseClient is a client for the RepositoryRelease schema.
+type RepositoryReleaseClient struct {
 	config
 }
 
-// NewRiskAssessmentClient returns a client for the RiskAssessment from the given config.
-func NewRiskAssessmentClient(c config) *RiskAssessmentClient {
-	return &RiskAssessmentClient{config: c}
+// NewRepositoryReleaseClient returns a client for the RepositoryRelease from the given config.
+func NewRepositoryReleaseClient(c config) *RepositoryReleaseClient {
+	return &RepositoryReleaseClient{config: c}
 }
 
 // Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `riskassessment.Hooks(f(g(h())))`.
-func (c *RiskAssessmentClient) Use(hooks ...Hook) {
-	c.hooks.RiskAssessment = append(c.hooks.RiskAssessment, hooks...)
+// A call to `Use(f, g, h)` equals to `repositoryrelease.Hooks(f(g(h())))`.
+func (c *RepositoryReleaseClient) Use(hooks ...Hook) {
+	c.hooks.RepositoryRelease = append(c.hooks.RepositoryRelease, hooks...)
 }
 
 // Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `riskassessment.Intercept(f(g(h())))`.
-func (c *RiskAssessmentClient) Intercept(interceptors ...Interceptor) {
-	c.inters.RiskAssessment = append(c.inters.RiskAssessment, interceptors...)
+// A call to `Intercept(f, g, h)` equals to `repositoryrelease.Intercept(f(g(h())))`.
+func (c *RepositoryReleaseClient) Intercept(interceptors ...Interceptor) {
+	c.inters.RepositoryRelease = append(c.inters.RepositoryRelease, interceptors...)
 }
 
-// Create returns a builder for creating a RiskAssessment entity.
-func (c *RiskAssessmentClient) Create() *RiskAssessmentCreate {
-	mutation := newRiskAssessmentMutation(c.config, OpCreate)
-	return &RiskAssessmentCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// Create returns a builder for creating a RepositoryRelease entity.
+func (c *RepositoryReleaseClient) Create() *RepositoryReleaseCreate {
+	mutation := newRepositoryReleaseMutation(c.config, OpCreate)
+	return &RepositoryReleaseCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// CreateBulk returns a builder for creating a bulk of RiskAssessment entities.
-func (c *RiskAssessmentClient) CreateBulk(builders ...*RiskAssessmentCreate) *RiskAssessmentCreateBulk {
-	return &RiskAssessmentCreateBulk{config: c.config, builders: builders}
+// CreateBulk returns a builder for creating a bulk of RepositoryRelease entities.
+func (c *RepositoryReleaseClient) CreateBulk(builders ...*RepositoryReleaseCreate) *RepositoryReleaseCreateBulk {
+	return &RepositoryReleaseCreateBulk{config: c.config, builders: builders}
 }
 
 // MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
 // a builder and applies setFunc on it.
-func (c *RiskAssessmentClient) MapCreateBulk(slice any, setFunc func(*RiskAssessmentCreate, int)) *RiskAssessmentCreateBulk {
+func (c *RepositoryReleaseClient) MapCreateBulk(slice any, setFunc func(*RepositoryReleaseCreate, int)) *RepositoryReleaseCreateBulk {
 	rv := reflect.ValueOf(slice)
 	if rv.Kind() != reflect.Slice {
-		return &RiskAssessmentCreateBulk{err: fmt.Errorf("calling to RiskAssessmentClient.MapCreateBulk with wrong type %T, need slice", slice)}
+		return &RepositoryReleaseCreateBulk{err: fmt.Errorf("calling to RepositoryReleaseClient.MapCreateBulk with wrong type %T, need slice", slice)}
 	}
-	builders := make([]*RiskAssessmentCreate, rv.Len())
+	builders := make([]*RepositoryReleaseCreate, rv.Len())
 	for i := 0; i < rv.Len(); i++ {
 		builders[i] = c.Create()
 		setFunc(builders[i], i)
 	}
-	return &RiskAssessmentCreateBulk{config: c.config, builders: builders}
+	return &RepositoryReleaseCreateBulk{config: c.config, builders: builders}
 }
 
-// Update returns an update builder for RiskAssessment.
-func (c *RiskAssessmentClient) Update() *RiskAssessmentUpdate {
-	mutation := newRiskAssessmentMutation(c.config, OpUpdate)
-	return &RiskAssessmentUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// Update returns an update builder for RepositoryRelease.
+func (c *RepositoryReleaseClient) Update() *RepositoryReleaseUpdate {
+	mutation := newRepositoryReleaseMutation(c.config, OpUpdate)
+	return &RepositoryReleaseUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // UpdateOne returns an update builder for the given entity.
-func (c *RiskAssessmentClient) UpdateOne(_m *RiskAssessment) *RiskAssessmentUpdateOne {
-	mutation := newRiskAssessmentMutation(c.config, OpUpdateOne, withRiskAssessment(_m))
-	return &RiskAssessmentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+func (c *RepositoryReleaseClient) UpdateOne(_m *RepositoryRelease) *RepositoryReleaseUpdateOne {
+	mutation := newRepositoryReleaseMutation(c.config, OpUpdateOne, withRepositoryRelease(_m))
+	return &RepositoryReleaseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // UpdateOneID returns an update builder for the given id.
-func (c *RiskAssessmentClient) UpdateOneID(id int64) *RiskAssessmentUpdateOne {
-	mutation := newRiskAssessmentMutation(c.config, OpUpdateOne, withRiskAssessmentID(id))
-	return &RiskAssessmentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+func (c *RepositoryReleaseClient) UpdateOneID(id int64) *RepositoryReleaseUpdateOne {
+	mutation := newRepositoryReleaseMutation(c.config, OpUpdateOne, withRepositoryReleaseID(id))
+	return &RepositoryReleaseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
-// Delete returns a delete builder for RiskAssessment.
-func (c *RiskAssessmentClient) Delete() *RiskAssessmentDelete {
-	mutation := newRiskAssessmentMutation(c.config, OpDelete)
-	return &RiskAssessmentDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+// Delete returns a delete builder for RepositoryRelease.
+func (c *RepositoryReleaseClient) Delete() *RepositoryReleaseDelete {
+	mutation := newRepositoryReleaseMutation(c.config, OpDelete)
+	return &RepositoryReleaseDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
 }
 
 // DeleteOne returns a builder for deleting the given entity.
-func (c *RiskAssessmentClient) DeleteOne(_m *RiskAssessment) *RiskAssessmentDeleteOne {
+func (c *RepositoryReleaseClient) DeleteOne(_m *RepositoryRelease) *RepositoryReleaseDeleteOne {
 	return c.DeleteOneID(_m.ID)
 }
 
 // DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *RiskAssessmentClient) DeleteOneID(id int64) *RiskAssessmentDeleteOne {
-	builder := c.Delete().Where(riskassessment.ID(id))
+func (c *RepositoryReleaseClient) DeleteOneID(id int64) *RepositoryReleaseDeleteOne {
+	builder := c.Delete().Where(repositoryrelease.ID(id))
 	builder.mutation.id = &id
 	builder.mutation.op = OpDeleteOne
-	return &RiskAssessmentDeleteOne{builder}
+	return &RepositoryReleaseDeleteOne{builder}
 }
 
-// Query returns a query builder for RiskAssessment.
-func (c *RiskAssessmentClient) Query() *RiskAssessmentQuery {
-	return &RiskAssessmentQuery{
+// Query returns a query builder for RepositoryRelease.
+func (c *RepositoryReleaseClient) Query() *RepositoryReleaseQuery {
+	return &RepositoryReleaseQuery{
 		config: c.config,
-		ctx:    &QueryContext{Type: TypeRiskAssessment},
+		ctx:    &QueryContext{Type: TypeRepositoryRelease},
 		inters: c.Interceptors(),
 	}
 }
 
-// Get returns a RiskAssessment entity by its id.
-func (c *RiskAssessmentClient) Get(ctx context.Context, id int64) (*RiskAssessment, error) {
-	return c.Query().Where(riskassessment.ID(id)).Only(ctx)
+// Get returns a RepositoryRelease entity by its id.
+func (c *RepositoryReleaseClient) Get(ctx context.Context, id int64) (*RepositoryRelease, error) {
+	return c.Query().Where(repositoryrelease.ID(id)).Only(ctx)
 }
 
 // GetX is like Get, but panics if an error occurs.
-func (c *RiskAssessmentClient) GetX(ctx context.Context, id int64) *RiskAssessment {
+func (c *RepositoryReleaseClient) GetX(ctx context.Context, id int64) *RepositoryRelease {
 	obj, err := c.Get(ctx, id)
 	if err != nil {
 		panic(err)
@@ -627,15 +659,47 @@ func (c *RiskAssessmentClient) GetX(ctx context.Context, id int64) *RiskAssessme
 	return obj
 }
 
-// QuerySkillVersion queries the skill_version edge of a RiskAssessment.
-func (c *RiskAssessmentClient) QuerySkillVersion(_m *RiskAssessment) *SkillVersionQuery {
-	query := (&SkillVersionClient{config: c.config}).Query()
+// QueryRepository queries the repository edge of a RepositoryRelease.
+func (c *RepositoryReleaseClient) QueryRepository(_m *RepositoryRelease) *RepositoryQuery {
+	query := (&RepositoryClient{config: c.config}).Query()
 	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
 		id := _m.ID
 		step := sqlgraph.NewStep(
-			sqlgraph.From(riskassessment.Table, riskassessment.FieldID, id),
-			sqlgraph.To(skillversion.Table, skillversion.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, riskassessment.SkillVersionTable, riskassessment.SkillVersionColumn),
+			sqlgraph.From(repositoryrelease.Table, repositoryrelease.FieldID, id),
+			sqlgraph.To(repository.Table, repository.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, repositoryrelease.RepositoryTable, repositoryrelease.RepositoryColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryCurrentForRepository queries the current_for_repository edge of a RepositoryRelease.
+func (c *RepositoryReleaseClient) QueryCurrentForRepository(_m *RepositoryRelease) *RepositoryQuery {
+	query := (&RepositoryClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(repositoryrelease.Table, repositoryrelease.FieldID, id),
+			sqlgraph.To(repository.Table, repository.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, true, repositoryrelease.CurrentForRepositoryTable, repositoryrelease.CurrentForRepositoryColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// QueryMembers queries the members edge of a RepositoryRelease.
+func (c *RepositoryReleaseClient) QueryMembers(_m *RepositoryRelease) *RepositoryReleaseMemberQuery {
+	query := (&RepositoryReleaseMemberClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(repositoryrelease.Table, repositoryrelease.FieldID, id),
+			sqlgraph.To(repositoryreleasemember.Table, repositoryreleasemember.FieldID),
+			sqlgraph.Edge(sqlgraph.O2M, false, repositoryrelease.MembersTable, repositoryrelease.MembersColumn),
 		)
 		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
 		return fromV, nil
@@ -644,27 +708,176 @@ func (c *RiskAssessmentClient) QuerySkillVersion(_m *RiskAssessment) *SkillVersi
 }
 
 // Hooks returns the client hooks.
-func (c *RiskAssessmentClient) Hooks() []Hook {
-	return c.hooks.RiskAssessment
+func (c *RepositoryReleaseClient) Hooks() []Hook {
+	return c.hooks.RepositoryRelease
 }
 
 // Interceptors returns the client interceptors.
-func (c *RiskAssessmentClient) Interceptors() []Interceptor {
-	return c.inters.RiskAssessment
+func (c *RepositoryReleaseClient) Interceptors() []Interceptor {
+	return c.inters.RepositoryRelease
 }
 
-func (c *RiskAssessmentClient) mutate(ctx context.Context, m *RiskAssessmentMutation) (Value, error) {
+func (c *RepositoryReleaseClient) mutate(ctx context.Context, m *RepositoryReleaseMutation) (Value, error) {
 	switch m.Op() {
 	case OpCreate:
-		return (&RiskAssessmentCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&RepositoryReleaseCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpUpdate:
-		return (&RiskAssessmentUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&RepositoryReleaseUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpUpdateOne:
-		return (&RiskAssessmentUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+		return (&RepositoryReleaseUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
 	case OpDelete, OpDeleteOne:
-		return (&RiskAssessmentDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+		return (&RepositoryReleaseDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
 	default:
-		return nil, fmt.Errorf("ent: unknown RiskAssessment mutation op: %q", m.Op())
+		return nil, fmt.Errorf("ent: unknown RepositoryRelease mutation op: %q", m.Op())
+	}
+}
+
+// RepositoryReleaseMemberClient is a client for the RepositoryReleaseMember schema.
+type RepositoryReleaseMemberClient struct {
+	config
+}
+
+// NewRepositoryReleaseMemberClient returns a client for the RepositoryReleaseMember from the given config.
+func NewRepositoryReleaseMemberClient(c config) *RepositoryReleaseMemberClient {
+	return &RepositoryReleaseMemberClient{config: c}
+}
+
+// Use adds a list of mutation hooks to the hooks stack.
+// A call to `Use(f, g, h)` equals to `repositoryreleasemember.Hooks(f(g(h())))`.
+func (c *RepositoryReleaseMemberClient) Use(hooks ...Hook) {
+	c.hooks.RepositoryReleaseMember = append(c.hooks.RepositoryReleaseMember, hooks...)
+}
+
+// Intercept adds a list of query interceptors to the interceptors stack.
+// A call to `Intercept(f, g, h)` equals to `repositoryreleasemember.Intercept(f(g(h())))`.
+func (c *RepositoryReleaseMemberClient) Intercept(interceptors ...Interceptor) {
+	c.inters.RepositoryReleaseMember = append(c.inters.RepositoryReleaseMember, interceptors...)
+}
+
+// Create returns a builder for creating a RepositoryReleaseMember entity.
+func (c *RepositoryReleaseMemberClient) Create() *RepositoryReleaseMemberCreate {
+	mutation := newRepositoryReleaseMemberMutation(c.config, OpCreate)
+	return &RepositoryReleaseMemberCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// CreateBulk returns a builder for creating a bulk of RepositoryReleaseMember entities.
+func (c *RepositoryReleaseMemberClient) CreateBulk(builders ...*RepositoryReleaseMemberCreate) *RepositoryReleaseMemberCreateBulk {
+	return &RepositoryReleaseMemberCreateBulk{config: c.config, builders: builders}
+}
+
+// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
+// a builder and applies setFunc on it.
+func (c *RepositoryReleaseMemberClient) MapCreateBulk(slice any, setFunc func(*RepositoryReleaseMemberCreate, int)) *RepositoryReleaseMemberCreateBulk {
+	rv := reflect.ValueOf(slice)
+	if rv.Kind() != reflect.Slice {
+		return &RepositoryReleaseMemberCreateBulk{err: fmt.Errorf("calling to RepositoryReleaseMemberClient.MapCreateBulk with wrong type %T, need slice", slice)}
+	}
+	builders := make([]*RepositoryReleaseMemberCreate, rv.Len())
+	for i := 0; i < rv.Len(); i++ {
+		builders[i] = c.Create()
+		setFunc(builders[i], i)
+	}
+	return &RepositoryReleaseMemberCreateBulk{config: c.config, builders: builders}
+}
+
+// Update returns an update builder for RepositoryReleaseMember.
+func (c *RepositoryReleaseMemberClient) Update() *RepositoryReleaseMemberUpdate {
+	mutation := newRepositoryReleaseMemberMutation(c.config, OpUpdate)
+	return &RepositoryReleaseMemberUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOne returns an update builder for the given entity.
+func (c *RepositoryReleaseMemberClient) UpdateOne(_m *RepositoryReleaseMember) *RepositoryReleaseMemberUpdateOne {
+	mutation := newRepositoryReleaseMemberMutation(c.config, OpUpdateOne, withRepositoryReleaseMember(_m))
+	return &RepositoryReleaseMemberUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// UpdateOneID returns an update builder for the given id.
+func (c *RepositoryReleaseMemberClient) UpdateOneID(id int64) *RepositoryReleaseMemberUpdateOne {
+	mutation := newRepositoryReleaseMemberMutation(c.config, OpUpdateOne, withRepositoryReleaseMemberID(id))
+	return &RepositoryReleaseMemberUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// Delete returns a delete builder for RepositoryReleaseMember.
+func (c *RepositoryReleaseMemberClient) Delete() *RepositoryReleaseMemberDelete {
+	mutation := newRepositoryReleaseMemberMutation(c.config, OpDelete)
+	return &RepositoryReleaseMemberDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
+}
+
+// DeleteOne returns a builder for deleting the given entity.
+func (c *RepositoryReleaseMemberClient) DeleteOne(_m *RepositoryReleaseMember) *RepositoryReleaseMemberDeleteOne {
+	return c.DeleteOneID(_m.ID)
+}
+
+// DeleteOneID returns a builder for deleting the given entity by its id.
+func (c *RepositoryReleaseMemberClient) DeleteOneID(id int64) *RepositoryReleaseMemberDeleteOne {
+	builder := c.Delete().Where(repositoryreleasemember.ID(id))
+	builder.mutation.id = &id
+	builder.mutation.op = OpDeleteOne
+	return &RepositoryReleaseMemberDeleteOne{builder}
+}
+
+// Query returns a query builder for RepositoryReleaseMember.
+func (c *RepositoryReleaseMemberClient) Query() *RepositoryReleaseMemberQuery {
+	return &RepositoryReleaseMemberQuery{
+		config: c.config,
+		ctx:    &QueryContext{Type: TypeRepositoryReleaseMember},
+		inters: c.Interceptors(),
+	}
+}
+
+// Get returns a RepositoryReleaseMember entity by its id.
+func (c *RepositoryReleaseMemberClient) Get(ctx context.Context, id int64) (*RepositoryReleaseMember, error) {
+	return c.Query().Where(repositoryreleasemember.ID(id)).Only(ctx)
+}
+
+// GetX is like Get, but panics if an error occurs.
+func (c *RepositoryReleaseMemberClient) GetX(ctx context.Context, id int64) *RepositoryReleaseMember {
+	obj, err := c.Get(ctx, id)
+	if err != nil {
+		panic(err)
+	}
+	return obj
+}
+
+// QueryRelease queries the release edge of a RepositoryReleaseMember.
+func (c *RepositoryReleaseMemberClient) QueryRelease(_m *RepositoryReleaseMember) *RepositoryReleaseQuery {
+	query := (&RepositoryReleaseClient{config: c.config}).Query()
+	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
+		id := _m.ID
+		step := sqlgraph.NewStep(
+			sqlgraph.From(repositoryreleasemember.Table, repositoryreleasemember.FieldID, id),
+			sqlgraph.To(repositoryrelease.Table, repositoryrelease.FieldID),
+			sqlgraph.Edge(sqlgraph.M2O, true, repositoryreleasemember.ReleaseTable, repositoryreleasemember.ReleaseColumn),
+		)
+		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
+		return fromV, nil
+	}
+	return query
+}
+
+// Hooks returns the client hooks.
+func (c *RepositoryReleaseMemberClient) Hooks() []Hook {
+	return c.hooks.RepositoryReleaseMember
+}
+
+// Interceptors returns the client interceptors.
+func (c *RepositoryReleaseMemberClient) Interceptors() []Interceptor {
+	return c.inters.RepositoryReleaseMember
+}
+
+func (c *RepositoryReleaseMemberClient) mutate(ctx context.Context, m *RepositoryReleaseMemberMutation) (Value, error) {
+	switch m.Op() {
+	case OpCreate:
+		return (&RepositoryReleaseMemberCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdate:
+		return (&RepositoryReleaseMemberUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpUpdateOne:
+		return (&RepositoryReleaseMemberUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
+	case OpDelete, OpDeleteOne:
+		return (&RepositoryReleaseMemberDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
+	default:
+		return nil, fmt.Errorf("ent: unknown RepositoryReleaseMember mutation op: %q", m.Op())
 	}
 }
 
@@ -792,22 +1005,6 @@ func (c *SkillClient) QuerySourceRepository(_m *Skill) *RepositoryQuery {
 	return query
 }
 
-// QueryVersions queries the versions edge of a Skill.
-func (c *SkillClient) QueryVersions(_m *Skill) *SkillVersionQuery {
-	query := (&SkillVersionClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skill.Table, skill.FieldID, id),
-			sqlgraph.To(skillversion.Table, skillversion.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, skill.VersionsTable, skill.VersionsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
 // Hooks returns the client hooks.
 func (c *SkillClient) Hooks() []Hook {
 	return c.hooks.Skill
@@ -833,178 +1030,14 @@ func (c *SkillClient) mutate(ctx context.Context, m *SkillMutation) (Value, erro
 	}
 }
 
-// SkillVersionClient is a client for the SkillVersion schema.
-type SkillVersionClient struct {
-	config
-}
-
-// NewSkillVersionClient returns a client for the SkillVersion from the given config.
-func NewSkillVersionClient(c config) *SkillVersionClient {
-	return &SkillVersionClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `skillversion.Hooks(f(g(h())))`.
-func (c *SkillVersionClient) Use(hooks ...Hook) {
-	c.hooks.SkillVersion = append(c.hooks.SkillVersion, hooks...)
-}
-
-// Intercept adds a list of query interceptors to the interceptors stack.
-// A call to `Intercept(f, g, h)` equals to `skillversion.Intercept(f(g(h())))`.
-func (c *SkillVersionClient) Intercept(interceptors ...Interceptor) {
-	c.inters.SkillVersion = append(c.inters.SkillVersion, interceptors...)
-}
-
-// Create returns a builder for creating a SkillVersion entity.
-func (c *SkillVersionClient) Create() *SkillVersionCreate {
-	mutation := newSkillVersionMutation(c.config, OpCreate)
-	return &SkillVersionCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of SkillVersion entities.
-func (c *SkillVersionClient) CreateBulk(builders ...*SkillVersionCreate) *SkillVersionCreateBulk {
-	return &SkillVersionCreateBulk{config: c.config, builders: builders}
-}
-
-// MapCreateBulk creates a bulk creation builder from the given slice. For each item in the slice, the function creates
-// a builder and applies setFunc on it.
-func (c *SkillVersionClient) MapCreateBulk(slice any, setFunc func(*SkillVersionCreate, int)) *SkillVersionCreateBulk {
-	rv := reflect.ValueOf(slice)
-	if rv.Kind() != reflect.Slice {
-		return &SkillVersionCreateBulk{err: fmt.Errorf("calling to SkillVersionClient.MapCreateBulk with wrong type %T, need slice", slice)}
-	}
-	builders := make([]*SkillVersionCreate, rv.Len())
-	for i := 0; i < rv.Len(); i++ {
-		builders[i] = c.Create()
-		setFunc(builders[i], i)
-	}
-	return &SkillVersionCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for SkillVersion.
-func (c *SkillVersionClient) Update() *SkillVersionUpdate {
-	mutation := newSkillVersionMutation(c.config, OpUpdate)
-	return &SkillVersionUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *SkillVersionClient) UpdateOne(_m *SkillVersion) *SkillVersionUpdateOne {
-	mutation := newSkillVersionMutation(c.config, OpUpdateOne, withSkillVersion(_m))
-	return &SkillVersionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *SkillVersionClient) UpdateOneID(id int64) *SkillVersionUpdateOne {
-	mutation := newSkillVersionMutation(c.config, OpUpdateOne, withSkillVersionID(id))
-	return &SkillVersionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for SkillVersion.
-func (c *SkillVersionClient) Delete() *SkillVersionDelete {
-	mutation := newSkillVersionMutation(c.config, OpDelete)
-	return &SkillVersionDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *SkillVersionClient) DeleteOne(_m *SkillVersion) *SkillVersionDeleteOne {
-	return c.DeleteOneID(_m.ID)
-}
-
-// DeleteOneID returns a builder for deleting the given entity by its id.
-func (c *SkillVersionClient) DeleteOneID(id int64) *SkillVersionDeleteOne {
-	builder := c.Delete().Where(skillversion.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &SkillVersionDeleteOne{builder}
-}
-
-// Query returns a query builder for SkillVersion.
-func (c *SkillVersionClient) Query() *SkillVersionQuery {
-	return &SkillVersionQuery{
-		config: c.config,
-		ctx:    &QueryContext{Type: TypeSkillVersion},
-		inters: c.Interceptors(),
-	}
-}
-
-// Get returns a SkillVersion entity by its id.
-func (c *SkillVersionClient) Get(ctx context.Context, id int64) (*SkillVersion, error) {
-	return c.Query().Where(skillversion.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *SkillVersionClient) GetX(ctx context.Context, id int64) *SkillVersion {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// QuerySkill queries the skill edge of a SkillVersion.
-func (c *SkillVersionClient) QuerySkill(_m *SkillVersion) *SkillQuery {
-	query := (&SkillClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skillversion.Table, skillversion.FieldID, id),
-			sqlgraph.To(skill.Table, skill.FieldID),
-			sqlgraph.Edge(sqlgraph.M2O, true, skillversion.SkillTable, skillversion.SkillColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// QueryRiskAssessments queries the risk_assessments edge of a SkillVersion.
-func (c *SkillVersionClient) QueryRiskAssessments(_m *SkillVersion) *RiskAssessmentQuery {
-	query := (&RiskAssessmentClient{config: c.config}).Query()
-	query.path = func(context.Context) (fromV *sql.Selector, _ error) {
-		id := _m.ID
-		step := sqlgraph.NewStep(
-			sqlgraph.From(skillversion.Table, skillversion.FieldID, id),
-			sqlgraph.To(riskassessment.Table, riskassessment.FieldID),
-			sqlgraph.Edge(sqlgraph.O2M, false, skillversion.RiskAssessmentsTable, skillversion.RiskAssessmentsColumn),
-		)
-		fromV = sqlgraph.Neighbors(_m.driver.Dialect(), step)
-		return fromV, nil
-	}
-	return query
-}
-
-// Hooks returns the client hooks.
-func (c *SkillVersionClient) Hooks() []Hook {
-	return c.hooks.SkillVersion
-}
-
-// Interceptors returns the client interceptors.
-func (c *SkillVersionClient) Interceptors() []Interceptor {
-	return c.inters.SkillVersion
-}
-
-func (c *SkillVersionClient) mutate(ctx context.Context, m *SkillVersionMutation) (Value, error) {
-	switch m.Op() {
-	case OpCreate:
-		return (&SkillVersionCreate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdate:
-		return (&SkillVersionUpdate{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpUpdateOne:
-		return (&SkillVersionUpdateOne{config: c.config, hooks: c.Hooks(), mutation: m}).Save(ctx)
-	case OpDelete, OpDeleteOne:
-		return (&SkillVersionDelete{config: c.config, hooks: c.Hooks(), mutation: m}).Exec(ctx)
-	default:
-		return nil, fmt.Errorf("ent: unknown SkillVersion mutation op: %q", m.Op())
-	}
-}
-
 // hooks and interceptors per client, for fast access.
 type (
 	hooks struct {
-		LocalizedDescription, Repository, RiskAssessment, Skill, SkillVersion []ent.Hook
+		LocalizedDescription, Repository, RepositoryRelease, RepositoryReleaseMember,
+		Skill []ent.Hook
 	}
 	inters struct {
-		LocalizedDescription, Repository, RiskAssessment, Skill,
-		SkillVersion []ent.Interceptor
+		LocalizedDescription, Repository, RepositoryRelease, RepositoryReleaseMember,
+		Skill []ent.Interceptor
 	}
 )

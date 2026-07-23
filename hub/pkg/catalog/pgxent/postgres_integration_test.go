@@ -81,7 +81,6 @@ func TestNativePgxTransactionEntClient(t *testing.T) {
 			SetSourceHost("github.com").
 			SetRepository("skillsgo/pgxent").
 			SetSkillPath("example").
-			SetLatestVersion("v1.0.0").
 			SetVerified(true).
 			Save(ctx)
 		if err != nil {

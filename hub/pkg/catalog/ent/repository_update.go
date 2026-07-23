@@ -13,6 +13,7 @@ import (
 	"entgo.io/ent/schema/field"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/predicate"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repository"
+	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/repositoryrelease"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog/ent/skill"
 )
 
@@ -68,6 +69,26 @@ func (_u *RepositoryUpdate) SetNillableRepositoryID(v *string) *RepositoryUpdate
 	if v != nil {
 		_u.SetRepositoryID(*v)
 	}
+	return _u
+}
+
+// SetCurrentReleaseID sets the "current_release_id" field.
+func (_u *RepositoryUpdate) SetCurrentReleaseID(v int64) *RepositoryUpdate {
+	_u.mutation.SetCurrentReleaseID(v)
+	return _u
+}
+
+// SetNillableCurrentReleaseID sets the "current_release_id" field if the given value is not nil.
+func (_u *RepositoryUpdate) SetNillableCurrentReleaseID(v *int64) *RepositoryUpdate {
+	if v != nil {
+		_u.SetCurrentReleaseID(*v)
+	}
+	return _u
+}
+
+// ClearCurrentReleaseID clears the value of the "current_release_id" field.
+func (_u *RepositoryUpdate) ClearCurrentReleaseID() *RepositoryUpdate {
+	_u.mutation.ClearCurrentReleaseID()
 	return _u
 }
 
@@ -201,6 +222,26 @@ func (_u *RepositoryUpdate) AddSkills(v ...*Skill) *RepositoryUpdate {
 	return _u.AddSkillIDs(ids...)
 }
 
+// AddReleaseIDs adds the "releases" edge to the RepositoryRelease entity by IDs.
+func (_u *RepositoryUpdate) AddReleaseIDs(ids ...int64) *RepositoryUpdate {
+	_u.mutation.AddReleaseIDs(ids...)
+	return _u
+}
+
+// AddReleases adds the "releases" edges to the RepositoryRelease entity.
+func (_u *RepositoryUpdate) AddReleases(v ...*RepositoryRelease) *RepositoryUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddReleaseIDs(ids...)
+}
+
+// SetCurrentRelease sets the "current_release" edge to the RepositoryRelease entity.
+func (_u *RepositoryUpdate) SetCurrentRelease(v *RepositoryRelease) *RepositoryUpdate {
+	return _u.SetCurrentReleaseID(v.ID)
+}
+
 // Mutation returns the RepositoryMutation object of the builder.
 func (_u *RepositoryUpdate) Mutation() *RepositoryMutation {
 	return _u.mutation
@@ -225,6 +266,33 @@ func (_u *RepositoryUpdate) RemoveSkills(v ...*Skill) *RepositoryUpdate {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveSkillIDs(ids...)
+}
+
+// ClearReleases clears all "releases" edges to the RepositoryRelease entity.
+func (_u *RepositoryUpdate) ClearReleases() *RepositoryUpdate {
+	_u.mutation.ClearReleases()
+	return _u
+}
+
+// RemoveReleaseIDs removes the "releases" edge to RepositoryRelease entities by IDs.
+func (_u *RepositoryUpdate) RemoveReleaseIDs(ids ...int64) *RepositoryUpdate {
+	_u.mutation.RemoveReleaseIDs(ids...)
+	return _u
+}
+
+// RemoveReleases removes "releases" edges to RepositoryRelease entities.
+func (_u *RepositoryUpdate) RemoveReleases(v ...*RepositoryRelease) *RepositoryUpdate {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveReleaseIDs(ids...)
+}
+
+// ClearCurrentRelease clears the "current_release" edge to the RepositoryRelease entity.
+func (_u *RepositoryUpdate) ClearCurrentRelease() *RepositoryUpdate {
+	_u.mutation.ClearCurrentRelease()
+	return _u
 }
 
 // Save executes the query and returns the number of nodes affected by the update operation.
@@ -382,6 +450,80 @@ func (_u *RepositoryUpdate) sqlSave(ctx context.Context) (_node int, err error) 
 		}
 		_spec.Edges.Add = append(_spec.Edges.Add, edge)
 	}
+	if _u.mutation.ReleasesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   repository.ReleasesTable,
+			Columns: []string{repository.ReleasesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repositoryrelease.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedReleasesIDs(); len(nodes) > 0 && !_u.mutation.ReleasesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   repository.ReleasesTable,
+			Columns: []string{repository.ReleasesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repositoryrelease.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ReleasesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   repository.ReleasesTable,
+			Columns: []string{repository.ReleasesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repositoryrelease.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.CurrentReleaseCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   repository.CurrentReleaseTable,
+			Columns: []string{repository.CurrentReleaseColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repositoryrelease.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.CurrentReleaseIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   repository.CurrentReleaseTable,
+			Columns: []string{repository.CurrentReleaseColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repositoryrelease.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
 	if _node, err = sqlgraph.UpdateNodes(ctx, _u.driver, _spec); err != nil {
 		if _, ok := err.(*sqlgraph.NotFoundError); ok {
 			err = &NotFoundError{repository.Label}
@@ -441,6 +583,26 @@ func (_u *RepositoryUpdateOne) SetNillableRepositoryID(v *string) *RepositoryUpd
 	if v != nil {
 		_u.SetRepositoryID(*v)
 	}
+	return _u
+}
+
+// SetCurrentReleaseID sets the "current_release_id" field.
+func (_u *RepositoryUpdateOne) SetCurrentReleaseID(v int64) *RepositoryUpdateOne {
+	_u.mutation.SetCurrentReleaseID(v)
+	return _u
+}
+
+// SetNillableCurrentReleaseID sets the "current_release_id" field if the given value is not nil.
+func (_u *RepositoryUpdateOne) SetNillableCurrentReleaseID(v *int64) *RepositoryUpdateOne {
+	if v != nil {
+		_u.SetCurrentReleaseID(*v)
+	}
+	return _u
+}
+
+// ClearCurrentReleaseID clears the value of the "current_release_id" field.
+func (_u *RepositoryUpdateOne) ClearCurrentReleaseID() *RepositoryUpdateOne {
+	_u.mutation.ClearCurrentReleaseID()
 	return _u
 }
 
@@ -574,6 +736,26 @@ func (_u *RepositoryUpdateOne) AddSkills(v ...*Skill) *RepositoryUpdateOne {
 	return _u.AddSkillIDs(ids...)
 }
 
+// AddReleaseIDs adds the "releases" edge to the RepositoryRelease entity by IDs.
+func (_u *RepositoryUpdateOne) AddReleaseIDs(ids ...int64) *RepositoryUpdateOne {
+	_u.mutation.AddReleaseIDs(ids...)
+	return _u
+}
+
+// AddReleases adds the "releases" edges to the RepositoryRelease entity.
+func (_u *RepositoryUpdateOne) AddReleases(v ...*RepositoryRelease) *RepositoryUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.AddReleaseIDs(ids...)
+}
+
+// SetCurrentRelease sets the "current_release" edge to the RepositoryRelease entity.
+func (_u *RepositoryUpdateOne) SetCurrentRelease(v *RepositoryRelease) *RepositoryUpdateOne {
+	return _u.SetCurrentReleaseID(v.ID)
+}
+
 // Mutation returns the RepositoryMutation object of the builder.
 func (_u *RepositoryUpdateOne) Mutation() *RepositoryMutation {
 	return _u.mutation
@@ -598,6 +780,33 @@ func (_u *RepositoryUpdateOne) RemoveSkills(v ...*Skill) *RepositoryUpdateOne {
 		ids[i] = v[i].ID
 	}
 	return _u.RemoveSkillIDs(ids...)
+}
+
+// ClearReleases clears all "releases" edges to the RepositoryRelease entity.
+func (_u *RepositoryUpdateOne) ClearReleases() *RepositoryUpdateOne {
+	_u.mutation.ClearReleases()
+	return _u
+}
+
+// RemoveReleaseIDs removes the "releases" edge to RepositoryRelease entities by IDs.
+func (_u *RepositoryUpdateOne) RemoveReleaseIDs(ids ...int64) *RepositoryUpdateOne {
+	_u.mutation.RemoveReleaseIDs(ids...)
+	return _u
+}
+
+// RemoveReleases removes "releases" edges to RepositoryRelease entities.
+func (_u *RepositoryUpdateOne) RemoveReleases(v ...*RepositoryRelease) *RepositoryUpdateOne {
+	ids := make([]int64, len(v))
+	for i := range v {
+		ids[i] = v[i].ID
+	}
+	return _u.RemoveReleaseIDs(ids...)
+}
+
+// ClearCurrentRelease clears the "current_release" edge to the RepositoryRelease entity.
+func (_u *RepositoryUpdateOne) ClearCurrentRelease() *RepositoryUpdateOne {
+	_u.mutation.ClearCurrentRelease()
+	return _u
 }
 
 // Where appends a list predicates to the RepositoryUpdate builder.
@@ -778,6 +987,80 @@ func (_u *RepositoryUpdateOne) sqlSave(ctx context.Context) (_node *Repository, 
 			Bidi:    false,
 			Target: &sqlgraph.EdgeTarget{
 				IDSpec: sqlgraph.NewFieldSpec(skill.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.ReleasesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   repository.ReleasesTable,
+			Columns: []string{repository.ReleasesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repositoryrelease.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.RemovedReleasesIDs(); len(nodes) > 0 && !_u.mutation.ReleasesCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   repository.ReleasesTable,
+			Columns: []string{repository.ReleasesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repositoryrelease.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.ReleasesIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.O2M,
+			Inverse: false,
+			Table:   repository.ReleasesTable,
+			Columns: []string{repository.ReleasesColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repositoryrelease.FieldID, field.TypeInt64),
+			},
+		}
+		for _, k := range nodes {
+			edge.Target.Nodes = append(edge.Target.Nodes, k)
+		}
+		_spec.Edges.Add = append(_spec.Edges.Add, edge)
+	}
+	if _u.mutation.CurrentReleaseCleared() {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   repository.CurrentReleaseTable,
+			Columns: []string{repository.CurrentReleaseColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repositoryrelease.FieldID, field.TypeInt64),
+			},
+		}
+		_spec.Edges.Clear = append(_spec.Edges.Clear, edge)
+	}
+	if nodes := _u.mutation.CurrentReleaseIDs(); len(nodes) > 0 {
+		edge := &sqlgraph.EdgeSpec{
+			Rel:     sqlgraph.M2O,
+			Inverse: false,
+			Table:   repository.CurrentReleaseTable,
+			Columns: []string{repository.CurrentReleaseColumn},
+			Bidi:    false,
+			Target: &sqlgraph.EdgeTarget{
+				IDSpec: sqlgraph.NewFieldSpec(repositoryrelease.FieldID, field.TypeInt64),
 			},
 		}
 		for _, k := range nodes {

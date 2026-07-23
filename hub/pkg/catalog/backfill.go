@@ -248,7 +248,7 @@ func (c *Catalog) RepositoryPublicationExists(ctx context.Context, repositoryID,
 func (c *Catalog) RepositoryPublicationCommit(ctx context.Context, repositoryID, version string) (string, error) {
 	var commitSHA string
 	err := c.db.GetContext(ctx, &commitSHA, c.db.Rebind(`SELECT rp.commit_sha
-		FROM repository_publications rp JOIN repositories r ON r.id = rp.repository_id
+		FROM repository_releases rp JOIN repositories r ON r.id = rp.repository_id
 		WHERE r.repository_id = ? AND rp.version = ?`), repositoryID, version)
 	return commitSHA, err
 }
