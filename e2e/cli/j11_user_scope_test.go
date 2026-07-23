@@ -19,7 +19,7 @@ func TestJ11UserScope(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
 	repositoryID, version := "fixtures.test/group/subgroup/collection", "v1.0.0"
-	add := execCLI(t, ctx, container, "add", "https://"+repositoryID+"@"+version, "--skill", "skills/alpha", "--agent", "codex", "--global", "--output", "json")
+	add := execCLI(t, ctx, container, "add", "https://"+repositoryID+"@"+version, "--skill", "alpha", "--agent", "codex", "--global", "--output", "json")
 	require.Equal(t, 0, add.exitCode, add.output)
 
 	coordinate := filepath.Join("fixtures.test", "group", "subgroup", "collection@v1.0.0")
@@ -50,7 +50,7 @@ func TestJ11UserScope(t *testing.T) {
 func TestJ11AgentSpecificHomeOverride(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
-	result := execInContainer(t, ctx, container, "sh", "-c", "cd /e2e/project && HERMES_HOME=/e2e/custom-hermes exec /usr/local/bin/skillsgo add 'https://fixtures.test/group/subgroup/collection@v1.0.0' --skill skills/alpha --agent hermes-agent --global --output json")
+	result := execInContainer(t, ctx, container, "sh", "-c", "cd /e2e/project && HERMES_HOME=/e2e/custom-hermes exec /usr/local/bin/skillsgo add 'https://fixtures.test/group/subgroup/collection@v1.0.0' --skill alpha --agent hermes-agent --global --output json")
 	require.Equal(t, 0, result.exitCode, result.output)
 	coordinate := filepath.Join("fixtures.test", "group", "subgroup", "collection@v1.0.0")
 	require.FileExists(t, filepath.Join(sandboxRoot, "custom-hermes", "skills", coordinate, "skills", "alpha", "SKILL.md"))

@@ -21,7 +21,7 @@ func TestJ16InstallDoesNotOverwriteLocalModification(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testSkillID+"@"+testSkillVersion,
+		"add", testRepositoryID+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 
 		"--yes",

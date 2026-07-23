@@ -18,8 +18,7 @@ func TestJ35LazyCatalogAndProtocolSurface(t *testing.T) {
 	ctx := context.Background()
 	container, _ := startEnvironment(t, ctx)
 	repository := "fixtures.test/group/subgroup/collection"
-	skillID := repository + "/-/skills/alpha"
-	detailURL := "http://127.0.0.1:3000/api/v1/skills/" + skillID
+	detailURL := "http://127.0.0.1:3000/api/v1/skills/detail?repositoryId=" + repository + "&name=alpha"
 	before := execInContainer(t, ctx, container, "wget", "-S", "-qO-", detailURL)
 	require.NotEqual(t, 0, before.exitCode, before.output)
 
@@ -30,7 +29,8 @@ func TestJ35LazyCatalogAndProtocolSurface(t *testing.T) {
 	require.Equal(t, 0, add.exitCode, add.output)
 	after := execInContainer(t, ctx, container, "wget", "-qO-", detailURL)
 	require.Equal(t, 0, after.exitCode, after.output)
-	require.Contains(t, after.output, `"id":"`+skillID+`"`)
+	require.Contains(t, after.output, `"repositoryId":"`+repository+`"`)
+	require.Contains(t, after.output, `"name":"alpha"`)
 
 	canonical := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/"+repository+"/@v/v1.0.0.info")
 	require.Equal(t, 0, canonical.exitCode, canonical.output)

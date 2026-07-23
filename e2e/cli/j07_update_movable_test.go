@@ -23,7 +23,7 @@ func TestJ07UpdateMovable(t *testing.T) {
 
 	oldAdd := execCLI(t, ctx, container,
 		"add", "https://"+repository+"@head",
-		"--skill", "skills/head",
+		"--skill", "movable-head-skill",
 		"--agent", "codex",
 
 		"--yes",

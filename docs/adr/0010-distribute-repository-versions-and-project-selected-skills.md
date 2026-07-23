@@ -8,9 +8,9 @@ SkillsGo distributes one immutable artifact per Repository Version instead of on
 
 ## Decision
 
-A Repository Publication resolves one source revision, discovers its complete ordered Skill membership, archives the complete safe Git-tracked regular-file tree under `<repositoryId>@<version>/`, and computes `h1:` with the same full-name `dirhash.Hash1` semantics as Go Module `HashZip`. The ZIP prefix participates in the Sum, so identical bytes published under another Repository ID or immutable version have a different authenticated coordinate. ZIP and Sum use exactly the same file set. Skills have `repositoryId`, immutable Repository Version, and source-relative path, but no independent ZIP, archive size, or artifact Sum. SumDB can therefore authenticate Repository Versions in the same way that Go authenticates Module Versions; Skills correspond to packages within that versioned tree.
+A Repository Publication resolves one source revision, discovers its complete ordered Skill membership, archives the complete safe Git-tracked regular-file tree under `<repositoryId>@<version>/`, and computes `h1:` with the same full-name `dirhash.Hash1` semantics as Go Module `HashZip`. The ZIP prefix participates in the Sum, so identical bytes published under another Repository ID or immutable version have a different authenticated coordinate. ZIP and Sum use exactly the same file set. Skills have a canonical Repository-unique name and an immutable-version-relative source path, but no concatenated public Skill ID, independent ZIP, archive size, or artifact Sum. SumDB can therefore authenticate Repository Versions in the same way that Go authenticates Module Versions; Skills correspond to packages within that versioned tree.
 
-`add` may accept a canonical semantic Tag, an arbitrary branch such as `main` or `feature/x`, or a full or abbreviated commit hash. A movable revision is resolved once to its immutable commit and canonical semantic or Go-compatible pseudo-version. Only that immutable version is persisted, published, downloaded, and served by the Repository Proxy; `install` never resolves the original revision again. The ambiguous `latest` remains unsupported. The Artifact Origin is the Repository Proxy Base, so public Repository-coordinate resources are `GET /<escaped-repository-id>/@v/list`, `GET /<escaped-repository-id>/@v/<version>.info`, and `GET /<escaped-repository-id>/@v/<version>.zip`; exact ZIP also supports `HEAD`. Product APIs remain under `/api/v1`, take routing precedence over proxy coordinates, and resolve movable add-time revisions separately from the immutable proxy. Skill search and detail APIs point to a Repository Release by Repository ID, version, and member path.
+`add` may accept a canonical semantic Tag, an arbitrary branch such as `main` or `feature/x`, or a full or abbreviated commit hash. A movable revision is resolved once to its immutable commit and canonical semantic or Go-compatible pseudo-version. Only that immutable version is persisted, published, downloaded, and served by the Repository Proxy; `install` never resolves the original revision again. The ambiguous `latest` remains unsupported. The Artifact Origin is the Repository Proxy Base, so public Repository-coordinate resources are `GET /<escaped-repository-id>/@v/list`, `GET /<escaped-repository-id>/@v/<version>.info`, and `GET /<escaped-repository-id>/@v/<version>.zip`; exact ZIP also supports `HEAD`. Product APIs remain under `/api/v1`, take routing precedence over proxy coordinates, and resolve movable add-time revisions separately from the immutable proxy. Skill search and detail APIs identify a member with separate Repository ID and canonical Skill Name fields; Skill Path is source-location metadata within the immutable release.
 
 Editable dependency intent lives in `skillsgo.yaml`:
 
@@ -19,7 +19,7 @@ dependencies:
   github.com/garrytan/gstack:
     version: v1.2.0
     skills:
-      - "."
+      - gstack
       - review
       - ship
     agents:
@@ -27,9 +27,9 @@ dependencies:
       - zed
 ```
 
-The top-level `dependencies` mapping is keyed by canonical Repository ID, so one scope can declare a Repository only once. `version`, `skills`, and `agents` are required; both lists are explicit and non-empty, `"."` denotes the root Skill, and every selected Skill is projected to every selected Agent. CLI wildcards may be accepted as input convenience but are expanded before persistence. YAML decoding rejects unknown fields, duplicate keys, and duplicate normalized members. There is no schema version or installation mode.
+The top-level `dependencies` mapping is keyed by canonical Repository ID, so one scope can declare a Repository only once. `version`, `skills`, and `agents` are required; both lists are explicit and non-empty, `skills` contains canonical Repository-unique Skill Names, and every selected Skill is projected to every selected Agent. A root member is selected by its declared name rather than `"."`. CLI wildcards may be accepted as input convenience but are expanded to names before persistence. YAML decoding rejects unknown fields, duplicate keys, and duplicate normalized members. There is no schema version or installation mode.
 
-Machine-generated integrity state lives in `skillsgo.lock` and contains only the locked Repository Version and Repository Sum for each dependency:
+Machine-generated integrity state lives in `skillsgo-lock.yaml` and contains only the locked Repository Version and Repository Sum for each dependency:
 
 ```yaml
 dependencies:
@@ -38,7 +38,7 @@ dependencies:
     sum: h1:example
 ```
 
-Project Scope vendors the verified Repository under `<workspace>/.skillsgo/vendor`; User Scope vendors it under `~/.skillsgo/vendor`. SkillsGo does not read, modify, or prescribe `.gitignore`, does not stage files, and does not model whether a Workspace commits Vendor or generated Agent files. Teams may commit both for clone-and-use behavior or ignore both and run `skillsgo install`. Version-one `install` is an idempotent ensure operation over `skillsgo.yaml` and `skillsgo.lock`: it fills missing verified Vendor and projections, but does not update versions, reconcile remote selectors, delete extras, or provide a general `sync` operation.
+Project Scope vendors the verified Repository under `<workspace>/.skillsgo/vendor`; User Scope vendors it under `~/.skillsgo/vendor`. SkillsGo does not read, modify, or prescribe `.gitignore`, does not stage files, and does not model whether a Workspace commits Vendor or generated Agent files. Teams may commit both for clone-and-use behavior or ignore both and run `skillsgo install`. Version-one `install` is an idempotent ensure operation over `skillsgo.yaml` and `skillsgo-lock.yaml`: it fills missing verified Vendor and projections, but does not update versions, reconcile remote selectors, delete extras, or provide a general `sync` operation.
 
 For each Scope, Agent, and Repository Version, the Agent Adapter generates at most one ordinary-file Repository Projection. The projection preserves the complete Repository layout so Repository-level runtime files remain available, but retains `SKILL.md` only for members selected for that Agent; unselected members cannot become visible merely because they share a Repository. Adding or removing a selected member atomically regenerates that Repository Projection. Vendor is authoritative and immutable. A projection that differs from its deterministic expected state is a Local Modification: `install` reports a conflict and never overwrites or absorbs it, leaving recovery to the user. Version one provides neither symlinks nor a public copy/vendor mode, and fork semantics are deferred.
 

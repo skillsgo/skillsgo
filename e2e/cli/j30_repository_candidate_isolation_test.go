@@ -35,12 +35,12 @@ func TestJ30RepositoryCandidateIsolation(t *testing.T) {
 
 	info := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/"+repository+"/@v/v1.0.0.info")
 	require.Equal(t, 0, info.exitCode, info.output)
-	require.Contains(t, info.output, repository+"/-/skills/alpha")
-	require.Contains(t, info.output, repository+"/-/skills/beta")
-	require.NotContains(t, info.output, repository+"/-/skills/invalid")
+	require.Contains(t, info.output, `"Name":"alpha"`)
+	require.Contains(t, info.output, `"Name":"beta"`)
+	require.NotContains(t, info.output, `"Name":"invalid"`)
 
 	invalid := execCLI(t, ctx, container,
-		"add", "https://"+repository+"@v1.0.0", "--skill", "skills/invalid",
+		"add", "https://"+repository+"@v1.0.0", "--skill", "invalid",
 		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.NotEqual(t, 0, invalid.exitCode, invalid.output)

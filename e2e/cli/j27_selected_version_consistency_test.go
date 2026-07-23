@@ -22,7 +22,7 @@ func TestJ27SelectedSkillsShareRepositoryVersion(t *testing.T) {
 	result := execCLI(t, ctx, container,
 		"add", "https://fixtures.test/group/subgroup/mixed@v1.0.0",
 		"--skill", "alpha",
-		"--skill", "skills/beta@v1.1.0",
+		"--skill", "beta@v1.1.0",
 		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.NotEqual(t, 0, result.exitCode, result.output)
@@ -45,6 +45,6 @@ func TestJ27SelectedSkillsShareRepositoryVersion(t *testing.T) {
 	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
 	require.NoError(t, err)
 	require.Contains(t, string(manifest), "version: "+installed.Version)
-	require.Contains(t, string(manifest), "- skills/alpha")
-	require.Contains(t, string(manifest), "- skills/beta")
+	require.Contains(t, string(manifest), "- alpha")
+	require.Contains(t, string(manifest), "- beta")
 }

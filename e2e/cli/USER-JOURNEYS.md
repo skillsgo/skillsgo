@@ -17,7 +17,7 @@ This catalog defines black-box user stories that cross the SkillsGo CLI and Hub 
 
 As a terminal user, I want to install a public Skill for a real Agent in my current Workspace so that the Agent can use it immediately.
 
-The CLI resolves the requested reference through the Hub, verifies one immutable Repository artifact, creates a Workspace Vendor and Agent-visible coordinate Projection, and atomically writes matching `skillsgo.yaml` and `skillsgo.lock` entries. Re-running the same request must not corrupt or duplicate state.
+The CLI resolves the requested reference through the Hub, verifies one immutable Repository artifact, creates a Workspace Vendor and Agent-visible coordinate Projection, and atomically writes matching `skillsgo.yaml` and `skillsgo-lock.yaml` entries. Re-running the same request must not corrupt or duplicate state.
 
 Status: implemented for Codex with one selected nested member by `j01_install_workspace_test.go`.
 
@@ -33,7 +33,7 @@ Status: implemented for Codex by `j02_remove_workspace_test.go`.
 
 As a user opening an existing Workspace, I want `skillsgo install` to recreate every declared Vendor and Agent Projection from canonical requirements and verified immutable artifacts so that the Workspace is reproducible on a clean machine.
 
-The restored files match the Repository Sum in `skillsgo.lock`, all declared coordinate Projections exist, and restoration uses only the immutable version in `skillsgo.yaml` rather than re-resolving movable input.
+The restored files match the Repository Sum in `skillsgo-lock.yaml`, all declared coordinate Projections exist, and restoration uses only the immutable version in `skillsgo.yaml` rather than re-resolving movable input.
 
 Status: implemented for a clean Codex Vendor/Projection restore, including invocation from a nested Workspace directory, by `j03_clean_machine_restore_test.go`.
 
@@ -41,7 +41,7 @@ Status: implemented for a clean Codex Vendor/Projection restore, including invoc
 
 As a user with an intact Scope Vendor, I want to restore a missing Agent Projection without reaching the Hub so that temporary network or Hub outages do not block local recovery.
 
-The CLI verifies the Vendor against `skillsgo.lock`, recreates the coordinate Projection, leaves YAML/Lock bytes unchanged, and performs no successful Hub request.
+The CLI verifies the Vendor against `skillsgo-lock.yaml`, recreates the coordinate Projection, leaves YAML/Lock bytes unchanged, and performs no successful Hub request.
 
 Status: implemented for Codex with an explicitly unreachable Hub by `j04_vendor_offline_restore_test.go`.
 
@@ -105,19 +105,19 @@ Status: implemented for Codex plus a Hermes Agent-specific home override with Us
 
 ### J12 — Install every Skill from a multi-Skill repository
 
-As a user selecting a repository source, I want SkillsGo to discover and install all contained Skills so that I do not have to enumerate nested Skill IDs manually.
+As a user selecting a repository source, I want SkillsGo to discover and install all contained Skills so that I do not have to enumerate every Skill Name manually.
 
 One Repository artifact and Vendor contain the complete source snapshot; each selected valid member appears in every requested coordinate Projection while invalid candidates stay out of the selected membership.
 
 Status: implemented with deterministic root, nested, mixed-case, deep, invalid, and shared-runtime fixtures plus Cartesian multi-Agent Projections by `j12_repository_install_test.go`.
 
-### J13 — Keep same-name members distinct by Repository path
+### J13 — Reject duplicate canonical Skill Names atomically
 
-As a user selecting two Repository members with the same source-authored name, I want both to remain addressable by their stable relative paths so that a flat installation name never destroys identity.
+As a user selecting a Repository whose members declare the same canonical Skill Name, I want publication to fail before local mutation so that SkillsGo never chooses a member by path or silently replaces one.
 
-Both members coexist in one coordinate Projection, YAML records both relative paths, and one Repository Lock entry authenticates their shared artifact.
+The complete Repository Publication is rejected for every requested member name, and neither `skillsgo.yaml` nor `skillsgo-lock.yaml` is created.
 
-Status: implemented across two exact nested Skill IDs with one shared source-authored name in a deterministic Repository by `j13_same_name_members_test.go`.
+Status: implemented across two nested Skills with one shared source-authored name in a deterministic Repository by `j13_same_name_members_test.go`.
 
 ### J14 — Protect Local Modifications in a coordinate Projection
 
@@ -251,9 +251,9 @@ Status: implemented through public Repository Info, CLI installation, and unchan
 
 ### J31 — Preserve Repository identity and selection boundaries
 
-As a CLI user, I want arbitrary host namespace depth, canonical `/-/` identities, path selectors, duplicate-name errors, and root-only guidance to remain unambiguous.
+As a CLI user, I want arbitrary host namespace depth, Repository ID plus Skill Name selection, duplicate-name errors, and root-member selection by declared name to remain unambiguous.
 
-Status: implemented with multi-level fixture namespaces, canonical/path/name selectors, root-member selection, ambiguity rejection, and complete root Repository ZIPs by `j31_repository_identity_and_selection_test.go`.
+Status: implemented with multi-level fixture namespaces, canonical Skill Name selectors, root-member selection, duplicate-name rejection, and complete Repository ZIPs by `j31_repository_identity_and_selection_test.go`.
 
 ### J32 — Keep Repository protocol resources immutable
 
@@ -395,7 +395,7 @@ The numbered user stories in #27 are release-reviewed through these black-box jo
 | 18: disappeared Skill history | J29 |
 | 19–20: ambiguity and selector disambiguation | J27, J31 |
 | 21–23: canonical persistence, one Repository requirement, integrity/offline recovery | J07, J26, J27 |
-| 24–25: explicit `/-/` boundary and root-as-whole-Repository semantics | J26, J31 |
+| 24–25: Repository ID plus Skill Name identity and root-member semantics | J26, J31 |
 | 26–29: shared Go-shaped routes and immutable Info/ZIP/HEAD | J19, J31, J32 |
 | 30–32: Git tags as releases, exact discovery, moved-tag immutability | J26, J32 |
 | 33–39: demand discovery, TTL, singleflight, snapshot reuse, immutable cache, negative cache, global bounds | J12, J19, J26, J33 |

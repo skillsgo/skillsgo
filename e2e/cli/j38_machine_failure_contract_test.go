@@ -20,7 +20,7 @@ func TestJ38MachineFailureContract(t *testing.T) {
 	container, _ := startEnvironment(t, ctx)
 
 	result := execCLI(t, ctx, container,
-		"info", testSkillID,
+		"info", testRepositoryID, "--skill", testSkillName,
 		"--hub", "http://127.0.0.1:1",
 		"--output", "json",
 	)

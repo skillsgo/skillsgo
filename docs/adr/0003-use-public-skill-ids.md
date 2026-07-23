@@ -1,3 +1,8 @@
+---
+status: superseded
+superseded-by: ADR-0011
+---
+
 # Use public Skill IDs
 
-SkillsGo uses one public, canonical Skill ID, previously called the Skill Coordinate, and removes the separate Skill Identity concept because it adds no independently verifiable continuity: source and path moves create new IDs and may be connected only by explicit migration relationships. A Skill resource serializes its own identity as `id`, while another resource references it as `skillId`; internal database row IDs are implementation details, must be named distinctly in maintained code, and must not appear in public protocols. This is an intentionally breaking terminology and protocol change with no legacy-field compatibility.
+This decision was superseded by ADR-0011 before public launch. The former concatenated Skill ID and its path-based identity are not part of the public contract.

@@ -19,7 +19,7 @@ func TestJ24DeepSkillDiscovery(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
 	repository := "fixtures.test/group/subgroup/collection"
-	add := execCLI(t, ctx, container, "add", "https://"+repository+"@v1.0.0", "--skill", "skills/general/ideation/naming", "--agent", "codex", "--yes", "--output", "json")
+	add := execCLI(t, ctx, container, "add", "https://"+repository+"@v1.0.0", "--skill", "naming", "--agent", "codex", "--yes", "--output", "json")
 	require.Equal(t, 0, add.exitCode, add.output)
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)

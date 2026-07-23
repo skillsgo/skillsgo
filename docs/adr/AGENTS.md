@@ -5,7 +5,7 @@
 
 - `0001-bundle-skillsgo-cli.md`: establishes the bundled CLI as the shared local execution engine for the App and terminal users.
 - `0002-name-public-distribution-context-hub.md`: establishes SkillsGo Hub as the shared product and domain name for public Skill discovery and distribution.
-- `0003-use-public-skill-ids.md`: establishes one canonical public Skill ID, removes the separate Skill Identity concept, and distinguishes public IDs from internal database row IDs.
+- `0003-use-public-skill-ids.md`: records the superseded concatenated public Skill ID design that was replaced before public launch.
 - `0004-separate-module-and-api-surfaces.md`: records the superseded `/mod`, `skillsgo.mod`, and `skillsgo.sum` separation design that was replaced before public launch.
 - `0005-route-app-through-cli-and-stabilize-machine-failures.md`: makes the CLI the App's only business-integration boundary and establishes the minimal public machine-failure contract for App and automation callers.
 - `0006-trust-skills-sh-locks-for-batch-takeover.md`: defines exact location-count preflight, state-bound scope authorization, immutable Repository byte verification, ordinary Vendor/Projection takeover, recoverable External cleanup, and independent skipping.
@@ -13,6 +13,7 @@
 - `0008-backfill-repository-history.md`: establishes authenticated Hub-admin Repository Backfill, independent asynchronous runs, and historical publication visibility.
 - `0009-freeze-hub-v1-distribution-contract.md`: records the superseded per-Skill artifact and installation-mode design that was replaced before public launch.
 - `0010-distribute-repository-versions-and-project-selected-skills.md`: makes Repository Version the artifact, Sum, download, lock, and Vendor unit while preserving Skill-level Agent visibility through deterministic Repository Projections.
+- `0011-identify-repository-members-by-skill-name.md`: identifies selectable members by Repository ID plus canonical Skill Name, keeps Skill Path internal to a Publication, and removes public Skill IDs and `/-/`.
 
 ## Architectural Boundary
 

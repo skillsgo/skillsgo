@@ -54,11 +54,11 @@ func TestJ12RepositoryInstall(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(manifest), repositoryID+":")
 	require.Contains(t, string(manifest), "version: "+version)
-	require.Contains(t, string(manifest), "- .")
-	require.Contains(t, string(manifest), "skills/alpha")
-	require.Contains(t, string(manifest), "skills/beta")
-	require.Contains(t, string(manifest), "skills/CamelCase")
-	require.Contains(t, string(manifest), "skills/general/ideation/naming")
+	require.Contains(t, string(manifest), "- root-suite")
+	require.Contains(t, string(manifest), "- alpha")
+	require.Contains(t, string(manifest), "- beta")
+	require.Contains(t, string(manifest), "- camel-case")
+	require.Contains(t, string(manifest), "- naming")
 	require.Contains(t, string(manifest), "- codex")
 	require.Contains(t, string(manifest), "- goose")
 	require.Contains(t, string(lock), repositoryID+":")
@@ -73,7 +73,7 @@ func TestJ12SkillNameIndependentFromSourceDirectory(t *testing.T) {
 	version := "v1.0.0"
 
 	add := execCLI(t, ctx, container,
-		"add", "https://"+repositoryID+"/-/skills/CamelCase@"+version,
+		"add", "https://"+repositoryID+"@"+version, "--skill", "camel-case",
 		"--agent", "codex",
 		"--output", "json",
 	)
@@ -104,14 +104,14 @@ func TestJ12SelectedRepositoryProjectionLifecycle(t *testing.T) {
 
 	rootAdd := execCLI(t, ctx, container,
 		"add", "https://"+repositoryID+"@"+version,
-		"--skill", ".",
+		"--skill", "root-suite",
 		"--agent", "codex",
 		"--output", "json",
 	)
 	require.Equal(t, 0, rootAdd.exitCode, rootAdd.output)
 	nestedAdd := execCLI(t, ctx, container,
 		"add", "https://"+repositoryID+"@"+version,
-		"--skill", "skills/general/ideation/naming",
+		"--skill", "naming",
 		"--agent", "goose",
 		"--output", "json",
 	)
@@ -132,14 +132,14 @@ func TestJ12SelectedRepositoryProjectionLifecycle(t *testing.T) {
 		require.FileExists(t, filepath.Join(projection, "runtime", "shared.sh"))
 	}
 
-	removeNested := execCLI(t, ctx, container, "remove", "skills/general/ideation/naming", "--yes", "--ui", "plain", "--color", "never")
+	removeNested := execCLI(t, ctx, container, "remove", "naming", "--yes", "--ui", "plain", "--color", "never")
 	require.Equal(t, 0, removeNested.exitCode, removeNested.output)
 	for _, projection := range projections {
 		require.FileExists(t, filepath.Join(projection, "SKILL.md"))
 		require.NoFileExists(t, filepath.Join(projection, "skills", "general", "ideation", "naming", "SKILL.md"))
 	}
 
-	removeGoose := execCLI(t, ctx, container, "remove", ".", "--agent", "goose", "--yes", "--ui", "plain", "--color", "never")
+	removeGoose := execCLI(t, ctx, container, "remove", "root-suite", "--agent", "goose", "--yes", "--ui", "plain", "--color", "never")
 	require.Equal(t, 0, removeGoose.exitCode, removeGoose.output)
 	require.FileExists(t, filepath.Join(projections[0], "SKILL.md"))
 	require.NoDirExists(t, projections[1])

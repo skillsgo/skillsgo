@@ -37,7 +37,7 @@ func TestJ37ExplicitTargetIntegrity(t *testing.T) {
 	require.NoError(t, err)
 	require.Contains(t, string(manifestBytes), repositoryID+":")
 	require.Contains(t, string(manifestBytes), "version: "+version)
-	require.Contains(t, string(manifestBytes), "- skills/alpha")
+	require.Contains(t, string(manifestBytes), "- alpha")
 	require.Contains(t, string(manifestBytes), "- codex")
 	sumBytes, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"))
 	require.NoError(t, err)

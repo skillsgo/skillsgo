@@ -21,7 +21,7 @@ func TestJ19ImmutableReuse(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testSkillID+"@"+testSkillVersion,
+		"add", testRepositoryID+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 		"--yes",
 
@@ -48,7 +48,7 @@ func TestJ19ImmutableReuse(t *testing.T) {
 	require.Equal(t, firstBytes, secondBytes)
 
 	secondTarget := execCLI(t, ctx, container,
-		"add", testSkillID+"@"+installed.Version,
+		"add", testRepositoryID+"@"+installed.Version, "--skill", testSkillName,
 		"--agent", "claude-code",
 		"--yes",
 
