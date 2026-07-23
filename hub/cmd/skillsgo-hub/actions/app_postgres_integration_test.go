@@ -57,7 +57,7 @@ func TestPostgresAppStartsServesAndRecoversQueuedJobAfterRestart(t *testing.T) {
 	metadata, err := catalog.Open(ctx, *conf.Database)
 	require.NoError(t, err)
 	require.NoError(t, metadata.UpsertSkill(ctx, &catalog.Skill{
-		SkillID: "gitlab.com/acme/skills/-/demo", Name: "demo", LatestVersion: "v1.0.0",
+		RepositoryID: "gitlab.com/acme/skills", SkillPath: "demo", Name: "demo", LatestVersion: "v1.0.0",
 	}))
 	require.NoError(t, metadata.Close())
 

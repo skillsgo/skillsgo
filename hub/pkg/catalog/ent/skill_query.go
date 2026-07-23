@@ -335,12 +335,12 @@ func (_q *SkillQuery) WithVersions(opts ...func(*SkillVersionQuery)) *SkillQuery
 // Example:
 //
 //	var v []struct {
-//		SkillID string `json:"skill_id,omitempty"`
+//		RepositoryID int64 `json:"repository_id,omitempty"`
 //		Count int `json:"count,omitempty"`
 //	}
 //
 //	client.Skill.Query().
-//		GroupBy(skill.FieldSkillID).
+//		GroupBy(skill.FieldRepositoryID).
 //		Aggregate(ent.Count()).
 //		Scan(ctx, &v)
 func (_q *SkillQuery) GroupBy(field string, fields ...string) *SkillGroupBy {
@@ -358,11 +358,11 @@ func (_q *SkillQuery) GroupBy(field string, fields ...string) *SkillGroupBy {
 // Example:
 //
 //	var v []struct {
-//		SkillID string `json:"skill_id,omitempty"`
+//		RepositoryID int64 `json:"repository_id,omitempty"`
 //	}
 //
 //	client.Skill.Query().
-//		Select(skill.FieldSkillID).
+//		Select(skill.FieldRepositoryID).
 //		Scan(ctx, &v)
 func (_q *SkillQuery) Select(fields ...string) *SkillSelect {
 	_q.ctx.Fields = append(_q.ctx.Fields, fields...)

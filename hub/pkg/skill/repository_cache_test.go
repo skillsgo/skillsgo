@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on temporary Git repositories, the Skill ID parser, repository cache leases and lifecycle policy, Git resolution, and SkillsGo-owned artifact ZIP assembly.
- * [OUTPUT]: Specifies shared repository caching, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, batch-version identity including v2+ tags without Go Module suffixes, complete Repository Artifacts, member tree identity, refresh, tag listing, and concurrent access behavior.
+ * [INPUT]: Depends on temporary Git repositories, the Repository ID parser, repository cache leases and lifecycle policy, Git resolution, and SkillsGo-owned artifact ZIP assembly.
+ * [OUTPUT]: Specifies shared repository caching, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, batch-version identity including v2+ tags without Go Module suffixes, complete Git-tracked Repository Artifacts, export exclusions, member tree identity, refresh, tag listing, and concurrent access behavior.
  * [POS]: Serves as the repository integration contract for the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -55,7 +55,7 @@ func newLocalRepositoryFixture(t *testing.T) *localRepositoryFixture {
 	fetcher, err := NewRepositoryFetcher(f.cache, afero.NewOsFs())
 	require.NoError(t, err)
 	f.fetcher = fetcher.(*gitFetcher)
-	f.fetcher.cloneURL = func(SkillID) string { return f.origin }
+	f.fetcher.cloneURL = func(RepositoryID) string { return f.origin }
 	return f
 }
 
@@ -222,12 +222,14 @@ func TestRepositoryTagCatalogUsesInjectedClockForFreshAndStaleTTL(t *testing.T) 
 	require.Equal(t, []string{"v1.0.0", "v2.0.0"}, versions)
 }
 
-func TestRepositoryCacheIsSharedBySkillsInOneRepository(t *testing.T) {
+func TestRepositoryCacheUsesOnlyCanonicalRepositoryIdentity(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	_, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
 	require.NoError(t, err)
-	_, err = f.fetcher.Resolve(t.Context(), f.skillID+"/-/skills/child", "main")
+	_, err = f.fetcher.Resolve(t.Context(), f.skillID, "main")
 	require.NoError(t, err)
+	_, err = f.fetcher.Resolve(t.Context(), f.skillID+"/-/skills/child", "main")
+	require.Error(t, err, "member-shaped coordinates must not alias the Repository cache")
 
 	repositoryDir, err := f.fetcher.repositoryDir(f.skillID)
 	require.NoError(t, err)
@@ -296,13 +298,13 @@ func TestRepositoryDiscoverySkipsInvalidCandidatesWithoutBlockingValidSiblings(t
 	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, snapshot.Archive.Close()) })
-	ids := make([]string, 0, len(snapshot.Members))
+	names := make([]string, 0, len(snapshot.Members))
 	for _, member := range snapshot.Members {
-		ids = append(ids, member.SkillID)
+		names = append(names, member.Name)
 	}
-	require.Contains(t, ids, f.skillID)
-	require.Contains(t, ids, f.skillID+"/-/skills/child")
-	require.NotContains(t, ids, f.skillID+"/-/skills/invalid")
+	require.Contains(t, names, "repo")
+	require.Contains(t, names, "child")
+	require.NotContains(t, names, "invalid")
 }
 
 func TestRepositoryDiscoveryRejectsDuplicateSkillNames(t *testing.T) {
@@ -320,6 +322,7 @@ func TestRepositoryDiscoveryExcludesSkillsInstalledUnderHiddenDirectories(t *tes
 	f := newLocalRepositoryFixture(t)
 	f.writeSkill(t, ".claude/skills/release-skills", "release-skills", "installed dependency")
 	f.writeSkill(t, ".agents/skills/shared-skill", "shared-skill", "installed dependency")
+	f.writeSkill(t, ".codex/skills/local-skill", "local-skill", "installed dependency")
 	f.commit(t, "add installed hidden skills")
 	runGit(t, f.work, "tag", "v1.1.0")
 	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
@@ -327,22 +330,47 @@ func TestRepositoryDiscoveryExcludesSkillsInstalledUnderHiddenDirectories(t *tes
 	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, snapshot.Archive.Close()) })
-	ids := make([]string, 0, len(snapshot.Members))
+	names := make([]string, 0, len(snapshot.Members))
 	for _, member := range snapshot.Members {
-		ids = append(ids, member.SkillID)
+		names = append(names, member.Name)
 	}
-	require.ElementsMatch(t, []string{
-		f.skillID,
-		f.skillID + "/-/skills/child",
-	}, ids)
+	require.ElementsMatch(t, []string{"repo", "child"}, names)
+	archive, err := io.ReadAll(snapshot.Archive)
+	require.NoError(t, err)
+	reader, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	require.NoError(t, err)
+	archiveNames := fileNames(reader.File)
+	prefix := f.skillID + "@" + snapshot.Version + "/"
+	require.NotContains(t, archiveNames, prefix+".claude/skills/release-skills/SKILL.md")
+	require.NotContains(t, archiveNames, prefix+".agents/skills/shared-skill/SKILL.md")
+	require.NotContains(t, archiveNames, prefix+".codex/skills/local-skill/SKILL.md")
+}
+
+func TestRepositoryArtifactUsesTrackedTreeAndExportIgnore(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, ".gitignore"), []byte("untracked.txt\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, ".gitattributes"), []byte("excluded.txt export-ignore\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, "included.txt"), []byte("included\n"), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, "excluded.txt"), []byte("excluded\n"), 0o644))
+	f.commit(t, "add export rules")
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, "untracked.txt"), []byte("worktree only\n"), 0o644))
+	runGit(t, f.work, "tag", "v1.1.0")
+	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
+
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, snapshot.Archive.Close()) })
 	archive, err := io.ReadAll(snapshot.Archive)
 	require.NoError(t, err)
 	reader, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
 	require.NoError(t, err)
 	names := fileNames(reader.File)
 	prefix := f.skillID + "@" + snapshot.Version + "/"
-	require.NotContains(t, names, prefix+".claude/skills/release-skills/SKILL.md")
-	require.NotContains(t, names, prefix+".agents/skills/shared-skill/SKILL.md")
+	require.Contains(t, names, prefix+".gitignore")
+	require.Contains(t, names, prefix+".gitattributes")
+	require.Contains(t, names, prefix+"included.txt")
+	require.NotContains(t, names, prefix+"excluded.txt")
+	require.NotContains(t, names, prefix+"untracked.txt")
 }
 
 func TestRepositoryDiscoveryUsesTagAsSharedBatchVersionAndTreeAsMemberIdentity(t *testing.T) {
@@ -412,10 +440,9 @@ func TestUnrelatedSkillChangeAdvancesBatchWithoutChangingSiblingTree(t *testing.
 	f := newLocalRepositoryFixture(t)
 	first, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "head")
 	require.NoError(t, err)
-	childID := f.skillID + "/-/skills/child"
 	childTree := ""
 	for _, member := range first.Members {
-		if member.SkillID == childID {
+		if member.Name == "child" {
 			childTree = member.TreeSHA
 		}
 	}
@@ -432,7 +459,7 @@ func TestUnrelatedSkillChangeAdvancesBatchWithoutChangingSiblingTree(t *testing.
 	require.NotEqual(t, first.Version, second.Version)
 	require.NotEqual(t, first.CommitSHA, second.CommitSHA)
 	for _, member := range second.Members {
-		if member.SkillID == childID {
+		if member.Name == "child" {
 			require.Equal(t, childTree, member.TreeSHA)
 		}
 	}

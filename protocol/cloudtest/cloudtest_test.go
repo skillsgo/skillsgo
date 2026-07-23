@@ -23,8 +23,8 @@ func TestMockConformance(t *testing.T) {
 	mock := NewMock()
 	for _, kind := range []cloud.RankingKind{cloud.RankingAllTime, cloud.RankingTrending, cloud.RankingHot} {
 		mock.SetRanking(kind, []cloud.RankingItem{
-			{SkillID: "github.com/acme/skills/-/demo", Metric: cloud.Metric{Kind: cloud.MetricForRanking(kind), Value: 2}},
-			{SkillID: "github.com/acme/skills/-/second", Metric: cloud.Metric{Kind: cloud.MetricForRanking(kind), Value: 1}},
+			{RepositoryID: "github.com/acme/skills", SkillName: "demo", Metric: cloud.Metric{Kind: cloud.MetricForRanking(kind), Value: 2}},
+			{RepositoryID: "github.com/acme/skills", SkillName: "second", Metric: cloud.Metric{Kind: cloud.MetricForRanking(kind), Value: 1}},
 		})
 	}
 	VerifyHandler(t, mock.Handler())
@@ -72,8 +72,8 @@ func TestMockRejectsMalformedAndInvalidRequests(t *testing.T) {
 func TestMockRankingPagination(t *testing.T) {
 	mock := NewMock()
 	mock.SetRanking(cloud.RankingAllTime, []cloud.RankingItem{
-		{SkillID: "first", Metric: cloud.Metric{Kind: cloud.MetricAllTimeInstalls, Value: 2}},
-		{SkillID: "second", Metric: cloud.Metric{Kind: cloud.MetricAllTimeInstalls, Value: 1}},
+		{RepositoryID: "github.com/acme/skills", SkillName: "first", Metric: cloud.Metric{Kind: cloud.MetricAllTimeInstalls, Value: 2}},
+		{RepositoryID: "github.com/acme/skills", SkillName: "second", Metric: cloud.Metric{Kind: cloud.MetricAllTimeInstalls, Value: 1}},
 	})
 	server := httptest.NewServer(mock.Handler())
 	defer server.Close()
@@ -105,7 +105,7 @@ func TestMockRecordsValidEvent(t *testing.T) {
 	mock := NewMock()
 	server := httptest.NewServer(mock.Handler())
 	defer server.Close()
-	event := cloud.InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", SkillID: "skill", Version: "v1", Agents: []string{"codex"}, Scope: cloud.ScopeProject, OccurredAt: time.Now().UTC()}
+	event := cloud.InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", RepositoryID: "github.com/acme/skills", SkillName: "skill", Version: "v1", Agents: []string{"codex"}, Scope: cloud.ScopeProject, OccurredAt: time.Now().UTC()}
 	body, _ := json.Marshal(event)
 	response, err := http.Post(server.URL+cloud.InstallEventsPath, "application/json", bytes.NewReader(body))
 	if err != nil {

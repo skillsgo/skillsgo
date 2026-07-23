@@ -5,8 +5,12 @@ The Hub context turns public Skill sources into stable identities and immutable 
 ## Language
 
 **Skill**:
-A set of Agent instructions and supporting resources rooted at a valid `SKILL.md`. A Skill's name and description are mutable metadata, not its identity.
+A set of Agent instructions and supporting resources rooted at a valid `SKILL.md`. Its canonical Skill Name identifies the member within a Repository; its display title and description are presentation metadata.
 _Avoid_: plugin, application, extension
+
+**Skill Name**:
+The canonical, normalized name declared by `SKILL.md` and unique within one complete Repository Publication. Together with Repository ID it identifies a selectable logical member across Repository Versions; duplicate names reject publication.
+_Avoid_: display title, source directory name, global name, Skill ID
 
 **Skill Source**:
 A GitHub, GitLab, well-known endpoint, or other supported public source containing a `SKILL.md` and its resources.
@@ -56,13 +60,13 @@ _Avoid_: GitHub Release, mutable branch head, npm-style publish event
 An explicit add-time resolution of a semantic Tag, branch, commit hash, or exact canonical semantic/pseudo-version to one immutable commit and canonical version. Branches may advance between requests, but each result names an immutable version that never advances; install and exact artifact reads never resolve the movable input again.
 _Avoid_: branch subscription, persisted branch, mutable artifact
 
-**Skill ID**:
-The public canonical identity of a logical Skill, such as `github.com/owner/repository/-/skills/example`. A source or path move creates a new Skill ID; verified migration is an explicit relationship between the old and new IDs rather than hidden identity continuity.
-_Avoid_: Skill Identity, Skill Coordinate, opaque database ID, name-only lookup
-
 **Skill Info**:
-The immutable member metadata for one Skill observed in a Repository Release. It contains canonical Skill identity, Repository ID and version, source-relative path, normalized `SKILL.md` frontmatter, and source tree identity, but no independent ZIP, archive size, or artifact Sum. Mutable Risk/audit evidence is excluded and belongs to a downstream assessment resource.
+The immutable member metadata for one Skill observed in a Repository Release. It contains canonical Skill Name, Repository ID and version, source-relative Skill Path, normalized `SKILL.md` frontmatter, and source tree identity, but no concatenated public Skill ID, independent ZIP, archive size, or artifact Sum. Mutable Risk/audit evidence is excluded and belongs to a downstream assessment resource.
 _Avoid_: Skill artifact, Skill ZIP, Skill Sum, mutable branch response
+
+**Skill Path**:
+The source-relative directory containing one member's `SKILL.md` in an exact Repository Publication. It locates bytes for materialization and verification but is not normal user input and does not define member continuity across versions.
+_Avoid_: Skill identity, Manifest selector, display name
 
 **Repository Info**:
 The immutable metadata resource for one Repository version and commit, including Repository Sum, archive size, and the complete ordered Skill Info membership observed in that source snapshot.

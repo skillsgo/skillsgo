@@ -75,7 +75,6 @@ func TestNativePgxTransactionEntClient(t *testing.T) {
 		}
 		require.Equal(t, "after", description)
 		skill, err := client.Skill.Create().
-			SetSkillID("github.com/skillsgo/pgxent/-/example").
 			SetRepositoryID(repo.ID).
 			SetName("example").
 			SetDescription("adapter test").
