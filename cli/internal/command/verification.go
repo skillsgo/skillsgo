@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on explicit or locally inferred Library scopes, the Agent Catalog, and the unified read-only inventory reconciliation domain.
  * [OUTPUT]: Provides `skillsgo verify` health verification and `skillsgo why` direct declaration/target explanations in human or JSON form.
- * [POS]: Serves as the CLI inspection adapter over inventory truth without mutating Store, declarations, or installation targets.
+ * [POS]: Serves as the CLI inspection adapter over inventory truth without mutating Vendors, declarations, or Projections.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command

@@ -11,7 +11,6 @@ import "testing"
 func TestValidateAssessedInfoRejectsHostileResolvedVersion(t *testing.T) {
 	info := Info{
 		Version: "v1?download=1", Risk: RiskLow,
-		Sum: "h1:ndA9lw9XWrLHtS/j9kdqTow/oXIaG8R7tm7tnAzh3/Y=",
 	}
 	if err := validateAssessedInfo("github.com/example/skills/-/demo", "main", info); err == nil {
 		t.Fatal("expected hostile Hub version rejection")

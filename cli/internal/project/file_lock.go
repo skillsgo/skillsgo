@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on an exact Workspace-owned lock path, context deadlines, and gofrs/flock operating-system locks.
  * [OUTPUT]: Provides bounded cross-process exclusion whose ownership is released automatically when a process exits.
- * [POS]: Serves as the shared lock primitive beneath Manifest, Workspace Sum, Installation Receipt, and metadata-transaction readers and writers.
+ * [POS]: Serves as the shared lock primitive beneath YAML/Lock metadata transaction readers and writers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package project
