@@ -52,6 +52,17 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 - Treat Athens-derived names and documents as legacy seams. When maintained code is touched, use SkillsGo terminology without erasing useful provenance.
 - Vendored dependencies, generated files, fixtures, and imported upstream assets are not maintained semantic modules.
 
+## Relational Schema Conventions
+
+- Use unquoted lowercase `snake_case` identifiers and plural table names. Consistency takes precedence over debates about singular versus plural naming.
+- Name stable domain keys `{entity}_id`; add a generic surrogate `id` only when no stable domain identity or natural composite key exists. Foreign-key columns must use the referenced key name.
+- Name instants and lifecycle timestamps with `_at`; use `_started_at` and `_ended_at` for explicit intervals. Name quantities with `_count`, ordinals with `_number`, and booleans with `is_`, `has_`, or `can_`.
+- Use `status` for a lifecycle state. Prefer text plus an explicit constraint when the state set is small and locally owned; do not introduce a database enum without a demonstrated cross-table need.
+- Use backend-native types: timezone-aware timestamps for global instants, JSON only for replayable or genuinely variable payloads, and ordinary typed columns for data that is filtered, joined, ordered, or constrained. Preserve equivalent semantics across PostgreSQL and SQLite where Hub supports both.
+- Every maintained table must have a primary key. Express row-local invariants with named nullability, check, and uniqueness constraints, and preserve referential integrity with explicit foreign keys and deliberate delete behavior.
+- Create indexes from concrete query, uniqueness, and foreign-key access paths. Do not add speculative per-column indexes, partitioning, soft deletion, universal audit columns, or surrogate keys by default.
+- Applied migration files are immutable. Evolve deployed names and constraints through a new migration rather than rewriting history.
+
 ## Nested Workspace Routing
 
 - Before changing `scripts/liveness_probe/**`, read `scripts/liveness_probe/AGENTS.md`.
