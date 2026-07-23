@@ -152,7 +152,18 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	}
 
 	output.Reset()
-	require.NoError(t, Execute([]string{"remove", "skills/design"}, &output, &output))
+	require.NoError(t, Execute([]string{"remove", "skills/design", "--project", workspace, "--output", "json"}, &output, &output))
+	var removal struct {
+		SchemaVersion int      `json:"schemaVersion"`
+		Phase         string   `json:"phase"`
+		Skills        []string `json:"skills"`
+		Scope         string   `json:"scope"`
+	}
+	require.NoError(t, json.Unmarshal(output.Bytes(), &removal))
+	require.Equal(t, 1, removal.SchemaVersion)
+	require.Equal(t, "repository-remove", removal.Phase)
+	require.Equal(t, []string{"skills/design"}, removal.Skills)
+	require.Equal(t, "project", removal.Scope)
 	manifest, err = project.LoadWorkspaceManifest(workspace)
 	require.NoError(t, err)
 	require.Equal(t, []string{"."}, manifest.Dependencies[repositoryID].Skills)

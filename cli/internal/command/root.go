@@ -308,10 +308,20 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 			if all {
 				args = nil
 			}
+			if options.global && len(exact.projects) > 0 {
+				return fmt.Errorf("--global cannot be combined with --project")
+			}
+			if len(exact.projects) > 1 {
+				return fmt.Errorf("Repository removal accepts one --project")
+			}
+			projectRoot := ""
+			if len(exact.projects) == 1 {
+				projectRoot = exact.projects[0]
+			}
 			if len(args) == 0 && !all {
 				return fmt.Errorf("请指定要移除的 Skill，或使用 --all")
 			}
-			if handled, err := tryRemoveRepositoryMembers(cmd, catalog, args, options.agents, options.global, all); handled {
+			if handled, err := tryRemoveRepositoryMembers(cmd, catalog, args, options.agents, options.global, projectRoot, all); handled {
 				return err
 			}
 			names := map[string]bool{}
