@@ -120,18 +120,6 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
   }
 
   @override
-  Future<CommandResult> install(SkillSummary skill) async {
-    installCalls++;
-    if (installCompleter != null) {
-      final result = await installCompleter!.future;
-      installed = result.succeeded;
-      return result;
-    }
-    installed = true;
-    return successCommand(['skills', 'add']);
-  }
-
-  @override
   Future<BatchTakeoverPlan> planBatchTakeover({
     List<String> projectRoots = const [],
   }) async {
