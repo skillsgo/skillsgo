@@ -16,7 +16,7 @@ This workspace owns black-box user-journey tests spanning the released CLI and H
 - `cloud-mock/main.go`: exposes the public Cloud Mock in a separate process plus an E2E-only event-observation endpoint.
 - `git-fixtures.sh`: creates deterministic local Git remotes reached through the public Repository source path.
 - `git-wrapper.sh`: delegates to system Git while explicitly routing the fixture host to local bare repositories and adding deterministic latency for capacity-only source fixtures.
-- `environment_test.go`: owns disposable container startup, the isolated bind mount, command execution, shared fixtures, coordinate-to-CAS resolution, and assertion helpers.
+- `environment_test.go`: owns disposable container startup, the isolated bind mount, command execution, shared fixtures, Repository artifact lookup, and assertion helpers.
 - `j01_*_test.go` through `j48_*_test.go`: each file owns exactly one numbered user-journey contract from `USER-JOURNEYS.md`; support code must remain outside these files.
 - `USER-JOURNEYS.md`: prioritizes real cross-product user stories and their observable acceptance boundaries.
 

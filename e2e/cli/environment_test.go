@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Testcontainers, the host runner identity, disposable bind mounts, and public CLI, Hub, Cloud, JSON, and filesystem contracts.
- * [OUTPUT]: Provides host-owned selfhost/Cloud container sandboxes plus shared command execution, fixture, coordinate-to-CAS resolution, and assertion helpers for black-box journeys.
+ * [OUTPUT]: Provides host-owned selfhost/Cloud container sandboxes plus shared command execution, fixture, Repository artifact lookup, and assertion helpers for black-box journeys.
  * [POS]: Serves as the Linux/macOS container lifecycle and isolation harness for the cross-product CLI E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -209,21 +209,20 @@ func findSingleFile(t *testing.T, root, suffix string) string {
 	return matches[0]
 }
 
-func findArtifactFile(t *testing.T, root, skillID, suffix string) string {
+func findStoredRepositoryArtifact(t *testing.T, root, repositoryID, suffix string) string {
 	t.Helper()
-	artifactRoot := filepath.Join(root, filepath.FromSlash(skillID))
+	artifactRoot := filepath.Join(root, filepath.FromSlash(repositoryID))
 	return findSingleFile(t, artifactRoot, suffix)
 }
 
 func resetLocalInstallation(t *testing.T, ctx context.Context, container testcontainers.Container) {
 	t.Helper()
-	result := execInContainer(t, ctx, container, "sh", "-c", "rm -rf /e2e/home/.skillsgo/store /e2e/home/.skillsgo/info /e2e/project && mkdir -p /e2e/project")
+	result := execInContainer(t, ctx, container, "sh", "-c", "rm -rf /e2e/project && mkdir -p /e2e/project")
 	require.Equal(t, 0, result.exitCode, result.output)
 }
 
 func requireNoLocalInstallation(t *testing.T, sandboxRoot string) {
 	t.Helper()
-	require.NoDirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "store"))
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skillsgo.lock"))
