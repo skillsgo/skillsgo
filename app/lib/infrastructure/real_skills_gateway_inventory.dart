@@ -27,10 +27,11 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
   }) {
     if (!result.succeeded) throw _commandFailure(result);
     try {
-      final decoded = jsonDecode(result.output.stdout);
-      if (decoded is! Map<String, dynamic> ||
-          decoded['schemaVersion'] != 1 ||
-          decoded['agents'] is! List) {
+      final decoded = _decodeVersionedDocument(
+        result.output.stdout,
+        schemaVersion: 1,
+      );
+      if (decoded['agents'] is! List) {
         throw const FormatException();
       }
       if (requireHandshake &&
@@ -123,10 +124,11 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
     final result = await _runCli(arguments);
     if (!result.succeeded) throw _commandFailure(result);
     try {
-      final decoded = jsonDecode(result.output.stdout);
-      if (decoded is! Map<String, dynamic> ||
-          decoded['schemaVersion'] != _inventorySchemaVersion ||
-          decoded['entries'] is! List) {
+      final decoded = _decodeVersionedDocument(
+        result.output.stdout,
+        schemaVersion: _inventorySchemaVersion,
+      );
+      if (decoded['entries'] is! List) {
         throw const FormatException();
       }
       return (decoded['entries'] as List)
@@ -303,10 +305,11 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
     final command = await _runCli(arguments);
     if (!command.succeeded) throw _commandFailure(command);
     try {
-      final raw = jsonDecode(command.output.stdout);
-      if (raw is! Map<String, dynamic> ||
-          raw['schemaVersion'] != 3 ||
-          raw['planId'] is! String ||
+      final raw = _decodeVersionedDocument(
+        command.output.stdout,
+        schemaVersion: 3,
+      );
+      if (raw['planId'] is! String ||
           (raw['planId'] as String).isEmpty ||
           raw['summary'] is! Map<String, dynamic> ||
           raw['scopes'] is! Map<String, dynamic>) {
@@ -433,11 +436,11 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
     final command = await _runCli(arguments);
     if (!command.succeeded) throw _commandFailure(command);
     try {
-      final raw = jsonDecode(command.output.stdout);
-      if (raw is! Map<String, dynamic> ||
-          raw['schemaVersion'] != 3 ||
-          raw['summary'] is! Map<String, dynamic> ||
-          raw['results'] is! List) {
+      final raw = _decodeVersionedDocument(
+        command.output.stdout,
+        schemaVersion: 3,
+      );
+      if (raw['summary'] is! Map<String, dynamic> || raw['results'] is! List) {
         throw const FormatException();
       }
       final summary = raw['summary'] as Map<String, dynamic>;

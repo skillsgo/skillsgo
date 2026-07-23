@@ -1,10 +1,47 @@
 /*
  * [INPUT]: Depends on the shared RealSkillsGateway library, Dart JSON/filesystem primitives, and App domain models.
- * [OUTPUT]: Provides private strict CLI decoders, argument encoders, local Skill inspection, and schema invariants.
+ * [OUTPUT]: Provides centralized machine-document envelope validation, private strict CLI decoders, argument encoders, local Skill inspection, and schema invariants.
  * [POS]: Serves as the machine-protocol codec implementation inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of 'real_skills_gateway.dart';
+
+Map<String, dynamic> _versionedDocument(
+  Object? raw, {
+  required int schemaVersion,
+}) {
+  if (raw is! Map<String, dynamic> || raw['schemaVersion'] != schemaVersion) {
+    throw const FormatException('Invalid SkillsGo versioned document.');
+  }
+  return raw;
+}
+
+Map<String, dynamic> _decodeVersionedDocument(
+  String encoded, {
+  required int schemaVersion,
+}) => _versionedDocument(jsonDecode(encoded), schemaVersion: schemaVersion);
+
+Map<String, dynamic> _machineDocument(
+  Object? raw, {
+  required Iterable<String> phases,
+  int schemaVersion = 1,
+}) {
+  final document = _versionedDocument(raw, schemaVersion: schemaVersion);
+  if (document['phase'] is! String || !phases.contains(document['phase'])) {
+    throw const FormatException('Invalid SkillsGo machine document.');
+  }
+  return document;
+}
+
+Map<String, dynamic> _decodeMachineDocument(
+  String encoded, {
+  required String phase,
+  int schemaVersion = 1,
+}) => _machineDocument(
+  jsonDecode(encoded),
+  phases: [phase],
+  schemaVersion: schemaVersion,
+);
 
 SkillTrustLevel _trustLevel(Object? value) => switch (value) {
   'unverified' => SkillTrustLevel.unverified,
@@ -186,15 +223,13 @@ bool _samePlanTarget(
     left.path == right.path;
 
 List<InstallationTargetResult> _repositoryInstallationResults(
-  Object? raw,
+  Object? value,
   SkillSummary skill,
   String immutableVersion,
   List<InstallationTargetSelection> selections,
 ) {
-  if (raw is! Map<String, dynamic> ||
-      raw['schemaVersion'] != 1 ||
-      raw['phase'] != 'repository-install' ||
-      raw['repository'] != skill.repositoryId ||
+  final raw = _machineDocument(value, phases: const ['repository-install']);
+  if (raw['repository'] != skill.repositoryId ||
       raw['version'] != immutableVersion ||
       raw['sum'] is! String ||
       (raw['sum'] as String).isEmpty ||

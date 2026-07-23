@@ -38,11 +38,11 @@ mixin _RealSkillsGatewayTargetManagement
     final command = await _runCli(arguments);
     if (!command.succeeded) throw _commandFailure(command);
     try {
-      final decoded = jsonDecode(command.output.stdout);
-      if (decoded is! Map<String, dynamic> ||
-          decoded['schemaVersion'] != 1 ||
-          decoded['phase'] != 'management-preflight' ||
-          decoded['targets'] is! List ||
+      final decoded = _decodeMachineDocument(
+        command.output.stdout,
+        phase: 'management-preflight',
+      );
+      if (decoded['targets'] is! List ||
           decoded['summary'] is! Map<String, dynamic>) {
         throw const FormatException();
       }
@@ -270,11 +270,11 @@ mixin _RealSkillsGatewayTargetManagement
       arguments.addAll(['--yes', '--output', 'json']);
       final command = await _runCli(arguments);
       if (!command.succeeded) throw _commandFailure(command);
-      final raw = jsonDecode(command.output.stdout);
-      if (raw is! Map<String, dynamic> ||
-          raw['schemaVersion'] != 1 ||
-          raw['phase'] != 'repository-remove' ||
-          raw['skills'] is! List ||
+      final raw = _decodeMachineDocument(
+        command.output.stdout,
+        phase: 'repository-remove',
+      );
+      if (raw['skills'] is! List ||
           !(raw['skills'] as List).contains(first.name)) {
         throw const SkillsException(
           'The SkillsGo CLI returned invalid Repository removal JSON.',

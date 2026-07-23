@@ -45,10 +45,10 @@ mixin _RealSkillsGatewayExecutionSupport on _RealSkillsGatewayCore {
       sawLine = true;
       if (streamFailure != null) return;
       try {
-        final raw = jsonDecode(line);
-        if (raw is! Map<String, dynamic> || raw['schemaVersion'] != 1) {
-          throw const FormatException();
-        }
+        final raw = _machineDocument(
+          jsonDecode(line),
+          phases: [progressPhase, executionPhase],
+        );
         final phase = raw['phase'];
         if (phase == progressPhase) {
           consumeProgress(raw);

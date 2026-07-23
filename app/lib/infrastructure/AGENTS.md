@@ -5,7 +5,7 @@
 
 - `real_skills_gateway.dart`: defines the production `SkillsGateway` adapter, shared state, platform pickers, and internal capability composition.
 - `io_process_runner.dart`: executes the bundled CLI with structured arguments, bounded runtime, optional stdout events, and typed output.
-- `real_skills_gateway_codec.dart`: owns strict machine-protocol decoding, argument encoding, schema validation, and bounded local Skill inspection.
+- `real_skills_gateway_codec.dart`: owns centralized versioned/machine-document envelope validation, strict payload decoding, argument encoding, and bounded local Skill inspection.
 - `real_skills_gateway_cli.dart`: owns bundled CLI detection, startup handshake validation, developer override persistence, and command execution.
 - `real_skills_gateway_preferences.dart`: owns App preferences, Mandatory Onboarding state, one-time Batch Takeover introduction state, Added Project references, Hub origin and `hub info` runtime discovery, risk policy, and App-version lookup.
 - `real_skills_gateway_discovery.dart`: owns locale-aware `find` search, direct Cloud ranking reads with ordered Hub batch hydration, explicit-source classification for equivalent GitHub aliases and Git coordinates, and remote Skill detail decoding.

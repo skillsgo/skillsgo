@@ -66,11 +66,11 @@ mixin _RealSkillsGatewayUpdates
           _hubOrigin,
         ]);
         if (!command.succeeded) throw _commandFailure(command);
-        final raw = jsonDecode(command.output.stdout);
-        if (raw is! Map<String, dynamic> ||
-            raw['schemaVersion'] != 1 ||
-            raw['phase'] != 'repository-update-preflight' ||
-            raw['repository'] != repository ||
+        final raw = _decodeMachineDocument(
+          command.output.stdout,
+          phase: 'repository-update-preflight',
+        );
+        if (raw['repository'] != repository ||
             raw['fromVersion'] != representative.version ||
             raw['toVersion'] != toVersion ||
             raw['stateToken'] is! String ||
@@ -195,11 +195,11 @@ mixin _RealSkillsGatewayUpdates
           _hubOrigin,
         ]);
         if (!command.succeeded) throw _commandFailure(command);
-        final raw = jsonDecode(command.output.stdout);
-        if (raw is! Map<String, dynamic> ||
-            raw['schemaVersion'] != 1 ||
-            raw['phase'] != 'repository-update' ||
-            raw['repository'] != repository ||
+        final raw = _decodeMachineDocument(
+          command.output.stdout,
+          phase: 'repository-update',
+        );
+        if (raw['repository'] != repository ||
             raw['fromVersion'] != representative.fromVersion ||
             raw['toVersion'] != representative.toVersion) {
           throw const FormatException();
@@ -306,11 +306,11 @@ mixin _RealSkillsGatewayUpdates
     final command = await _runCli(arguments);
     if (!command.succeeded) throw _commandFailure(command);
     try {
-      final decoded = jsonDecode(command.output.stdout);
-      if (decoded is! Map<String, dynamic> ||
-          decoded['schemaVersion'] != 1 ||
-          decoded['phase'] != 'update-check' ||
-          decoded['items'] is! List ||
+      final decoded = _decodeMachineDocument(
+        command.output.stdout,
+        phase: 'update-check',
+      );
+      if (decoded['items'] is! List ||
           (decoded['items'] as List).length != candidates.length) {
         throw const FormatException();
       }
