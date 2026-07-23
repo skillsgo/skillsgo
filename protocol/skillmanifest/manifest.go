@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on source-authored `SKILL.md` bytes and the Agent Skills YAML frontmatter schema.
+ * [INPUT]: Depends on source-authored `SKILL.md` bytes, the Agent Skills YAML frontmatter schema, and the canonical Skill Name grammar.
  * [OUTPUT]: Provides shared frontmatter parsing, typed metadata, and strict publication validation.
  * [POS]: Serves as the executable Skill manifest-format contract for Hub publication and CLI local reads.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -9,14 +9,12 @@ package skillmanifest
 import (
 	"bytes"
 	"fmt"
-	"regexp"
 	"strings"
 	"unicode/utf8"
 
+	"github.com/skillsgo/skillsgo/protocol/skillname"
 	"gopkg.in/yaml.v3"
 )
-
-var namePattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 type Manifest struct {
 	Name          string            `yaml:"name"`
@@ -83,7 +81,7 @@ func Validate(frontmatter, body []byte) (Manifest, error) {
 	if err != nil {
 		return Manifest{}, err
 	}
-	if utf8.RuneCountInString(name) > 64 || !namePattern.MatchString(name) {
+	if !skillname.Valid(name) {
 		return Manifest{}, fmt.Errorf(`field "name" must be 1-64 characters of lowercase letters, numbers, and single hyphens`)
 	}
 	description, err := required(fields, "description")
@@ -119,7 +117,7 @@ func Validate(frontmatter, body []byte) (Manifest, error) {
 }
 
 func ValidName(name string) bool {
-	return utf8.RuneCountInString(name) <= 64 && namePattern.MatchString(name)
+	return skillname.Valid(name)
 }
 func required(fields map[string]*yaml.Node, name string) (string, error) {
 	value, ok := fields[name]
