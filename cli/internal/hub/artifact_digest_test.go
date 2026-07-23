@@ -12,7 +12,7 @@ func TestValidateAssessedInfoRejectsHostileResolvedVersion(t *testing.T) {
 	info := Info{
 		Version: "v1?download=1", Risk: RiskLow,
 	}
-	if err := validateAssessedInfo("github.com/example/skills/-/demo", "main", info); err == nil {
+	if err := validateAssessedInfo("github.com/example/skills", "demo", "main", info); err == nil {
 		t.Fatal("expected hostile Hub version rejection")
 	}
 }

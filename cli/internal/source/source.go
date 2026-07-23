@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on public Git HTTP(S) URLs, equivalent GitHub aliases, source@Selector syntax including slash-separated branches, private Local Skill IDs, the explicit `/-/` boundary, and the shared typed Selector grammar.
- * [OUTPUT]: Provides canonical provider-aware Repository/Skill identity, unambiguous selector splitting outside URL authority, and reusable path-safe Skill ID plus add-time Selector validation.
- * [POS]: Serves as the CLI Skill ID normalization boundary used before Hub and Repository Vendor access.
+ * [INPUT]: Depends on public Git HTTP(S) Repository URLs, equivalent GitHub aliases, source@Selector syntax, and the shared typed Selector grammar.
+ * [OUTPUT]: Provides canonical provider-aware Repository identity, unambiguous selector splitting outside URL authority, and reusable Repository ID plus add-time Selector validation.
+ * [POS]: Serves as the CLI Repository ID normalization boundary used before Hub and Repository Vendor access.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package source
@@ -11,13 +11,13 @@ import (
 	"net/url"
 	"strings"
 
-	protocolskillid "github.com/skillsgo/skillsgo/protocol/skillid"
+	protocolrepositoryid "github.com/skillsgo/skillsgo/protocol/repositoryid"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 )
 
 type Reference struct {
-	SkillID string
-	Version string
+	RepositoryID string
+	Version      string
 }
 
 func Parse(raw string) (Reference, error) {
@@ -26,9 +26,6 @@ func Parse(raw string) (Reference, error) {
 	if separator := selectorSeparator(raw); separator >= 0 {
 		requestedVersion = strings.TrimSpace(raw[separator+1:])
 		raw = strings.TrimSpace(raw[:separator])
-	}
-	if strings.HasPrefix(raw, "local.skillsgo/") {
-		return checkedReference(raw, requestedVersion)
 	}
 	if strings.Contains(raw, "://") {
 		parsed, err := url.Parse(raw)
@@ -47,17 +44,14 @@ func Parse(raw string) (Reference, error) {
 		host := strings.ToLower(parsed.Host)
 		version := requestedVersion
 		if host == "github.com" && len(parts) > 2 {
-			if len(parts) < 4 || parts[2] != "tree" {
+			if len(parts) != 4 || parts[2] != "tree" {
 				return Reference{}, fmt.Errorf("暂不支持 GitHub URL 路径 %q", parsed.Path)
 			}
 			if requestedVersion == "head" {
 				version = parts[3]
 			}
-			skillID := host + "/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
-			if len(parts) > 4 {
-				skillID += "/-/" + strings.Join(parts[4:], "/")
-			}
-			return checkedReference(skillID, version)
+			repositoryID := host + "/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
+			return checkedReference(repositoryID, version)
 		}
 		parts[len(parts)-1] = strings.TrimSuffix(parts[len(parts)-1], ".git")
 		return checkedReference(host+"/"+strings.Join(parts, "/"), version)
@@ -92,77 +86,54 @@ func selectorSeparator(raw string) int {
 }
 
 func checkedGitHubReference(parts []string, version string) (Reference, error) {
-	skillID := "github.com/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
-	if len(parts) > 2 {
-		skillID += "/-/" + strings.Join(parts[2:], "/")
+	if len(parts) != 2 {
+		return Reference{}, fmt.Errorf("GitHub source must identify exactly one owner/repository")
 	}
-	return checkedReference(skillID, version)
+	repositoryID := "github.com/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
+	return checkedReference(repositoryID, version)
 }
 
-func ValidateSkillID(skillID string) error {
-	if !strings.HasPrefix(skillID, "local.skillsgo/") {
-		parsed, err := protocolskillid.Parse(skillID)
-		if err != nil {
-			return err
-		}
-		if parsed.String() != skillID {
-			return fmt.Errorf("non-canonical Skill ID %q", skillID)
-		}
+func ValidateRepositoryID(repositoryID string) error {
+	parsed, err := protocolrepositoryid.Parse(repositoryID)
+	if err != nil || parsed.String() != repositoryID {
+		return fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
+	}
+	return nil
+}
+
+// ValidateExternalSkillID validates path-shaped identities imported from
+// third-party lock formats. It is not accepted by SkillsGo commands or Hub APIs.
+func ValidateExternalSkillID(skillID string) error {
+	repositoryID, memberPath, found := strings.Cut(skillID, "/-/")
+	parsed, err := protocolrepositoryid.Parse(repositoryID)
+	if err != nil || parsed.String() != repositoryID {
+		return fmt.Errorf("invalid external Skill identity %q", skillID)
+	}
+	if !found {
 		return nil
 	}
-	if skillID == "" || strings.ContainsAny(skillID, "\\\x00") {
-		return fmt.Errorf("invalid Skill ID %q", skillID)
+	if memberPath == "" ||
+		strings.HasPrefix(memberPath, "/") || strings.HasSuffix(memberPath, "/") || strings.Contains(memberPath, "//") ||
+		strings.ContainsAny(memberPath, "\\\x00%?#") || containsControl(memberPath) {
+		return fmt.Errorf("invalid external Skill identity %q", skillID)
 	}
-	if strings.Count(skillID, "/-/") > 1 || strings.HasSuffix(skillID, "/-/") {
-		return fmt.Errorf("invalid Skill ID %q", skillID)
-	}
-	repository, skillPath, nested := strings.Cut(skillID, "/-/")
-	parts := strings.Split(repository, "/")
-	if len(parts) < 2 {
-		return fmt.Errorf("invalid Skill ID %q", skillID)
-	}
-	host := parts[0]
-	if host != "local.skillsgo" && host != "localhost" && !strings.Contains(host, ".") {
-		return fmt.Errorf("invalid Skill ID host %q", host)
-	}
-	if host == "github.com" && len(parts) != 3 {
-		return fmt.Errorf("invalid GitHub repository ID %q", repository)
-	}
-	for _, part := range parts {
-		if part == "" || part == "." || part == ".." || unsafeSkillIDSegment(part) {
-			return fmt.Errorf("invalid Skill ID segment %q", part)
-		}
-	}
-	if nested {
-		if host == "local.skillsgo" || skillPath == "" {
-			return fmt.Errorf("invalid nested Skill ID %q", skillID)
-		}
-		for _, part := range strings.Split(skillPath, "/") {
-			if part == "" || part == "." || part == ".." || unsafeSkillIDSegment(part) {
-				return fmt.Errorf("invalid Skill ID segment %q", part)
-			}
+	for _, segment := range strings.Split(memberPath, "/") {
+		if segment == "" || segment == "." || segment == ".." || segment == "SKILL.md" {
+			return fmt.Errorf("invalid external Skill identity %q", skillID)
 		}
 	}
 	return nil
 }
 
-func IsLocalSkillID(skillID string) bool {
-	return strings.HasPrefix(skillID, "local.skillsgo/") && ValidateSkillID(skillID) == nil
-}
-
-func checkedReference(skillID, version string) (Reference, error) {
-	skillID = normalizeSkillID(skillID)
-	if err := ValidateSkillID(skillID); err != nil {
+func checkedReference(repositoryID, version string) (Reference, error) {
+	repositoryID = normalizeRepositoryID(repositoryID)
+	if err := ValidateRepositoryID(repositoryID); err != nil {
 		return Reference{}, err
 	}
-	if IsLocalSkillID(skillID) {
-		if err := ValidateVersion(version); err != nil {
-			return Reference{}, err
-		}
-	} else if err := ValidatePublicVersion(version); err != nil {
+	if err := ValidatePublicVersion(version); err != nil {
 		return Reference{}, err
 	}
-	return Reference{SkillID: skillID, Version: version}, nil
+	return Reference{RepositoryID: repositoryID, Version: version}, nil
 }
 
 // ValidatePublicVersion accepts only the two explicit movable intents or one
@@ -172,11 +143,11 @@ func ValidatePublicVersion(version string) error {
 	return err
 }
 
-func normalizeSkillID(skillID string) string {
-	if parsed, err := protocolskillid.Parse(skillID); err == nil {
+func normalizeRepositoryID(repositoryID string) string {
+	if parsed, err := protocolrepositoryid.Parse(repositoryID); err == nil {
 		return parsed.String()
 	}
-	return skillID
+	return repositoryID
 }
 
 // ValidateVersion confines a source or resolved version to one URL path segment.
@@ -189,10 +160,6 @@ func ValidateVersion(version string) error {
 		return fmt.Errorf("invalid source reference %q", version)
 	}
 	return nil
-}
-
-func unsafeSkillIDSegment(segment string) bool {
-	return strings.ContainsAny(segment, "%?#") || containsControl(segment)
 }
 
 func containsControl(value string) bool {

@@ -39,7 +39,7 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/project/` | Strict Repository dependencies in `skillsgo.yaml`, integrity-only `skillsgo-lock.yaml`, and their paired crash-recoverable transaction. |
 | `internal/infocache/` | Exact immutable Repository and Skill Info bytes used for checksum-verified offline restore. |
 | `internal/hub/` | Client for add-time product-API Repository resolution followed by exact root Proxy Info/ZIP, typed membership, bounded download, and Repository h1 verification. |
-| `internal/source/` | Skill ID parsing and source reference normalization. |
+| `internal/source/` | Repository ID parsing, source reference normalization, and explicitly isolated third-party skills.sh identity validation. |
 | `internal/scopevendor/` | Complete ordinary-file Repository Vendor extraction and deterministic per-Agent Repository Projection transactions. |
 | `internal/strictjson/` | Shared strict decoding for repeated machine-input JSON object lists at CLI Plan boundaries. |
 | `internal/terminalui/` | Human terminal documents, automatic Interactive/Plain selection, responsive styling, and live operation progress. |

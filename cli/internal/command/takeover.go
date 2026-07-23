@@ -328,7 +328,7 @@ func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, pla
 		}
 		memberName := ""
 		for _, member := range resource.Members {
-			if member.Info.Path == memberPath {
+			if member.Info.SkillPath == memberPath {
 				memberName = member.Info.Name
 				break
 			}
@@ -353,7 +353,7 @@ func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, pla
 		scope := candidate.Targets[0].Scope
 		workspaceRoot := candidate.Targets[0].ProjectRoot
 		options := addOptions{hubURL: hubURL, output: "json", skills: []string{memberName}}
-		if addErr := addRepository(discard, catalog, source.Reference{SkillID: repositoryID, Version: resource.Info.Version}, agentIDs, scope, workspaceRoot, options, []string{memberName}); addErr != nil {
+		if addErr := addRepository(discard, catalog, source.Reference{RepositoryID: repositoryID, Version: resource.Info.Version}, agentIDs, scope, workspaceRoot, options, []string{memberName}); addErr != nil {
 			result.Reason = "state-write-failure"
 			report.Results = append(report.Results, result)
 			report.Summary.Skipped++
@@ -764,7 +764,7 @@ func validTakeoverPlan(plan takeoverPlan, planID string, now time.Time) bool {
 	}
 	for _, candidate := range plan.Candidates {
 		if candidate.Name == "" || install.ValidateSkillName(candidate.Name) != nil ||
-			source.ValidateSkillID(candidate.SkillID) != nil || candidate.SourceRef == "" ||
+			source.ValidateExternalSkillID(candidate.SkillID) != nil || candidate.SourceRef == "" ||
 			!validTakeoverHex(candidate.LockDigest) || !filepath.IsAbs(candidate.DeclarationRoot) ||
 			!filepath.IsAbs(candidate.PhysicalPath) || candidate.StateDigest == "" || len(candidate.Targets) == 0 {
 			return false
@@ -892,7 +892,7 @@ func lockRecordSkillID(record skillsShUserLockRecord) (string, error) {
 		if err != nil && record.SourceURL != "" {
 			reference, err = source.Parse(record.SourceURL)
 		}
-		if err == nil && !strings.HasPrefix(reference.SkillID, "github.com/") {
+		if err == nil && !strings.HasPrefix(reference.RepositoryID, "github.com/") {
 			err = fmt.Errorf("github lock source does not identify github.com")
 		}
 	case "git", "gitlab":
@@ -907,7 +907,7 @@ func lockRecordSkillID(record skillsShUserLockRecord) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	skillID := reference.SkillID
+	skillID := reference.RepositoryID
 	if record.SkillPath != "" {
 		clean := path.Clean(strings.TrimPrefix(filepath.ToSlash(record.SkillPath), "/"))
 		if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {
@@ -923,7 +923,7 @@ func lockRecordSkillID(record skillsShUserLockRecord) (string, error) {
 			skillID += "/-/" + clean
 		}
 	}
-	if err := source.ValidateSkillID(skillID); err != nil {
+	if err := source.ValidateExternalSkillID(skillID); err != nil {
 		return "", err
 	}
 	return skillID, nil

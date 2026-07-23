@@ -16,7 +16,7 @@ import (
 	"unicode/utf8"
 
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
-	protocolskillid "github.com/skillsgo/skillsgo/protocol/skillid"
+	protocolrepositoryid "github.com/skillsgo/skillsgo/protocol/repositoryid"
 	protocolmanifest "github.com/skillsgo/skillsgo/protocol/skillmanifest"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 	"gopkg.in/yaml.v3"
@@ -344,8 +344,8 @@ func mappingValue(node *yaml.Node, field string) *yaml.Node {
 }
 
 func validateRepositoryID(repositoryID string) error {
-	parsed, err := protocolskillid.Parse(repositoryID)
-	if err != nil || parsed.String() != repositoryID || parsed.SkillPath != "." {
+	parsed, err := protocolrepositoryid.Parse(repositoryID)
+	if err != nil || parsed.String() != repositoryID {
 		return fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
 	}
 	return nil

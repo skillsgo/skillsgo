@@ -37,7 +37,7 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	if err != nil {
 		return err
 	}
-	resource, err := client.FetchRepositoryWithProgress(cmd.Context(), reference.SkillID, reference.Version, nil)
+	resource, err := client.FetchRepositoryWithProgress(cmd.Context(), reference.RepositoryID, reference.Version, nil)
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	}
 	allMembers := make([]string, 0, len(resource.Members))
 	for _, member := range resource.Members {
-		allMembers = append(allMembers, member.Info.Path)
+		allMembers = append(allMembers, member.Info.SkillPath)
 	}
 	sort.Strings(allMembers)
 
@@ -67,12 +67,12 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	if err != nil {
 		return err
 	}
-	existing, exists := manifest.Dependencies[reference.SkillID]
+	existing, exists := manifest.Dependencies[reference.RepositoryID]
 	if exists && existing.Version != resource.Info.Version {
-		return fmt.Errorf("Repository %s is already locked at %s; use update instead of add", reference.SkillID, existing.Version)
+		return fmt.Errorf("Repository %s is already locked at %s; use update instead of add", reference.RepositoryID, existing.Version)
 	}
-	if locked, ok := lock.Dependencies[reference.SkillID]; ok && (locked.Version != resource.Info.Version || locked.Sum != resource.Info.Sum) {
-		return fmt.Errorf("Dependency Lock conflicts with verified Repository %s@%s", reference.SkillID, resource.Info.Version)
+	if locked, ok := lock.Dependencies[reference.RepositoryID]; ok && (locked.Version != resource.Info.Version || locked.Sum != resource.Info.Sum) {
+		return fmt.Errorf("Dependency Lock conflicts with verified Repository %s@%s", reference.RepositoryID, resource.Info.Version)
 	}
 	dependency := project.RepositoryDependency{Version: resource.Info.Version, Skills: selected, Agents: agentIDs}
 	if exists {
@@ -97,7 +97,7 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 		return err
 	}
 	transaction, err := scopevendor.Prepare(scopevendor.Options{
-		VendorRoot: vendorRoot, RepositoryID: reference.SkillID, Version: resource.Info.Version,
+		VendorRoot: vendorRoot, RepositoryID: reference.RepositoryID, Version: resource.Info.Version,
 		Archive: resource.ZIP, Sum: resource.Info.Sum, Members: allMembers, Projections: projections,
 	})
 	if err != nil {
@@ -110,12 +110,12 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	if scope == install.ScopeUser {
 		infoRoot = filepath.Join(declarationRoot, "info")
 	}
-	if err := (infocache.Cache{Root: infoRoot}).Put(reference.SkillID, resource.Info.Version, "repository.info", resource.InfoBytes); err != nil {
+	if err := (infocache.Cache{Root: infoRoot}).Put(reference.RepositoryID, resource.Info.Version, "repository.info", resource.InfoBytes); err != nil {
 		_ = transaction.Rollback()
 		return fmt.Errorf("persist immutable Repository Info: %w", err)
 	}
-	manifest.Dependencies[reference.SkillID] = dependency
-	lock.Dependencies[reference.SkillID] = project.LockedRepository{Version: resource.Info.Version, Sum: resource.Info.Sum}
+	manifest.Dependencies[reference.RepositoryID] = dependency
+	lock.Dependencies[reference.RepositoryID] = project.LockedRepository{Version: resource.Info.Version, Sum: resource.Info.Sum}
 	if err := project.WriteWorkspaceState(declarationRoot, manifest, lock); err != nil {
 		_ = transaction.Rollback()
 		return fmt.Errorf("persist Workspace Repository state: %w", err)
@@ -126,7 +126,7 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 
 	for _, member := range resource.Members {
 		if containsString(dependency.Skills, member.Info.Name) {
-			reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{SkillID: member.Info.ID, Version: resource.Info.Version, Agents: dependency.Agents, Scope: scope})
+			reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{RepositoryID: reference.RepositoryID, SkillName: member.Info.Name, Version: resource.Info.Version, Agents: dependency.Agents, Scope: scope})
 		}
 	}
 	type projectionResult struct {
@@ -151,10 +151,10 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	}
 	projectionResults := make([]projectionResult, 0, len(projections))
 	for _, projection := range projections {
-		projectionResults = append(projectionResults, projectionResult{Agents: strings.Split(projection.Agent, ","), Path: scopevendor.CoordinatePath(projection.Root, reference.SkillID, resource.Info.Version)})
+		projectionResults = append(projectionResults, projectionResult{Agents: strings.Split(projection.Agent, ","), Path: scopevendor.CoordinatePath(projection.Root, reference.RepositoryID, resource.Info.Version)})
 	}
-	response := result{SchemaVersion: 1, Phase: "repository-install", Repository: reference.SkillID, Version: resource.Info.Version, Sum: resource.Info.Sum,
-		Skills: dependency.Skills, Agents: dependency.Agents, Vendor: scopevendor.CoordinatePath(vendorRoot, reference.SkillID, resource.Info.Version), Projections: projectionResults,
+	response := result{SchemaVersion: 1, Phase: "repository-install", Repository: reference.RepositoryID, Version: resource.Info.Version, Sum: resource.Info.Sum,
+		Skills: dependency.Skills, Agents: dependency.Agents, Vendor: scopevendor.CoordinatePath(vendorRoot, reference.RepositoryID, resource.Info.Version), Projections: projectionResults,
 		Workspace: workspaceResult{Manifest: filepath.Join(declarationRoot, project.WorkspaceManifestName), Lock: filepath.Join(declarationRoot, project.DependencyLockName)}}
 	if options.output == "json" {
 		return json.NewEncoder(cmd.OutOrStdout()).Encode(response)
@@ -286,7 +286,7 @@ func selectRepositoryMember(selector string, members []hub.RepositoryMember) (hu
 func repositoryPathsForNames(names []string, members []hub.RepositoryMember) ([]string, error) {
 	byName := make(map[string]string, len(members))
 	for _, member := range members {
-		byName[member.Info.Name] = member.Info.Path
+		byName[member.Info.Name] = member.Info.SkillPath
 	}
 	paths := make([]string, 0, len(names))
 	for _, name := range names {

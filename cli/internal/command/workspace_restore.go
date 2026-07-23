@@ -120,8 +120,8 @@ func ensureOneRepository(ctx context.Context, root string, userScope bool, catal
 	members := make([]string, 0, len(resource.Members))
 	available := make(map[string]string, len(resource.Members))
 	for _, member := range resource.Members {
-		members = append(members, member.Info.Path)
-		available[member.Info.Name] = member.Info.Path
+		members = append(members, member.Info.SkillPath)
+		available[member.Info.Name] = member.Info.SkillPath
 	}
 	selectedPaths := make([]string, 0, len(dependency.Skills))
 	for _, selected := range dependency.Skills {

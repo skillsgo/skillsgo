@@ -27,10 +27,10 @@ type verificationReport struct {
 }
 
 type verificationRow struct {
-	SkillID string           `json:"skillId"`
-	Name    string           `json:"name"`
-	Health  inventory.Health `json:"health"`
-	Targets int              `json:"targets"`
+	RepositoryID string           `json:"repositoryId,omitempty"`
+	Name         string           `json:"name"`
+	Health       inventory.Health `json:"health"`
+	Targets      int              `json:"targets"`
 }
 
 type whyReport struct {
@@ -57,7 +57,7 @@ func newVerifyCommand(catalog *agent.Catalog) *cobra.Command {
 			}
 			report := verificationReport{Healthy: true, Entries: make([]verificationRow, 0, len(reconciled.Entries))}
 			for _, entry := range reconciled.Entries {
-				report.Entries = append(report.Entries, verificationRow{SkillID: entry.SkillID, Name: entry.Name, Health: entry.Health, Targets: len(entry.Targets)})
+				report.Entries = append(report.Entries, verificationRow{RepositoryID: entry.RepositoryID, Name: entry.Name, Health: entry.Health, Targets: len(entry.Targets)})
 				if entry.Health != inventory.HealthHealthy {
 					report.Healthy = false
 				}
@@ -80,7 +80,7 @@ func newWhyCommand(catalog *agent.Catalog) *cobra.Command {
 	var projects []string
 	var output string
 	cmd := &cobra.Command{
-		Use:   "why <skill-id-or-name>",
+		Use:   "why <skill-name>",
 		Short: appi18n.T("why.short"),
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -95,7 +95,7 @@ func newWhyCommand(catalog *agent.Catalog) *cobra.Command {
 			query := strings.TrimSpace(args[0])
 			report := whyReport{Query: query, Entries: make([]inventory.Entry, 0)}
 			for _, entry := range reconciled.Entries {
-				if entry.SkillID == query || strings.EqualFold(entry.Name, query) {
+				if entry.Name == query {
 					report.Entries = append(report.Entries, entry)
 				}
 			}
@@ -113,7 +113,7 @@ func newWhyCommand(catalog *agent.Catalog) *cobra.Command {
 						if target.ProjectRoot != "" {
 							scope += ":" + target.ProjectRoot
 						}
-						rows = append(rows, terminalui.Row{State: "•", Primary: entry.SkillID, Secondary: target.Version, Meta: []string{scope, target.Agent, target.Path}})
+						rows = append(rows, terminalui.Row{State: "•", Primary: entry.Name, Secondary: target.Version, Meta: []string{entry.RepositoryID, scope, target.Agent, target.Path}})
 					}
 				}
 				ui, err := humanUI(cmd)
@@ -161,7 +161,7 @@ func writeVerificationReport(cmd *cobra.Command, output string, report verificat
 			if entry.Health != inventory.HealthHealthy {
 				state = "!"
 			}
-			rows = append(rows, terminalui.Row{State: state, Primary: entry.Name, Secondary: string(entry.Health), Meta: []string{entry.SkillID, fmt.Sprintf("%d", entry.Targets)}})
+			rows = append(rows, terminalui.Row{State: state, Primary: entry.Name, Secondary: string(entry.Health), Meta: []string{entry.RepositoryID, fmt.Sprintf("%d", entry.Targets)}})
 		}
 		ui, err := humanUI(cmd)
 		if err != nil {

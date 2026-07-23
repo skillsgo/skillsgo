@@ -164,7 +164,7 @@ func ensureExternalEntry(entries map[string]*Entry, name, description, path stri
 		return entry
 	}
 	entry := &Entry{
-		InventoryKey: inventoryKey, Name: name, Description: description, SkillID: "",
+		InventoryKey: inventoryKey, Name: name, Description: description,
 		Provenance: ProvenanceExternal, Risk: RiskUnknown, Health: HealthHealthy,
 		Agents: []string{}, Projects: []string{}, Versions: []string{}, Targets: []Target{},
 	}

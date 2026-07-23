@@ -22,16 +22,14 @@ func TestWhyAndVerifyReconciledUserInstallation(t *testing.T) {
 	t.Setenv("HOME", home)
 	repositoryID, version, _, _, server := takeoverRepositoryFixture(t)
 	defer server.Close()
-	skillID := repositoryID + "/-/skills/alpha"
-
 	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--skill", "alpha", "--agent", "codex", "--global", "--yes", "--hub", server.URL, "--output", "json"}, &bytes.Buffer{}, &bytes.Buffer{}))
 
 	var whyOutput bytes.Buffer
-	require.NoError(t, Execute([]string{"why", skillID, "--user", "--output", "json"}, &whyOutput, &bytes.Buffer{}))
+	require.NoError(t, Execute([]string{"why", "alpha", "--user", "--output", "json"}, &whyOutput, &bytes.Buffer{}))
 	var why whyReport
 	require.NoError(t, json.Unmarshal(whyOutput.Bytes(), &why))
 	require.Len(t, why.Entries, 1)
-	require.Equal(t, skillID, why.Entries[0].SkillID)
+	require.Equal(t, repositoryID, why.Entries[0].RepositoryID)
 	require.Len(t, why.Entries[0].Targets, 1)
 
 	var healthyOutput bytes.Buffer

@@ -118,8 +118,8 @@ func tryRemoveRepositoryMembers(cmd *cobra.Command, catalog *agent.Catalog, sele
 		pathsByName := make(map[string]string, len(resource.Members))
 		members := make([]string, 0, len(resource.Members))
 		for _, member := range resource.Members {
-			pathsByName[member.Info.Name] = member.Info.Path
-			members = append(members, member.Info.Path)
+			pathsByName[member.Info.Name] = member.Info.SkillPath
+			members = append(members, member.Info.SkillPath)
 		}
 		toPaths := func(names []string) []string {
 			paths := make([]string, 0, len(names))
