@@ -100,10 +100,6 @@ _Avoid_: fork, automatically merged change, silent repair
 A state-bound operation that replaces one declared Repository coordinate within one Scope. It preserves the dependency's selected Skill paths and Agents, previews the YAML version change, verifies the existing Vendor and every Projection against the old immutable baseline, and refuses Local Modifications. Because version belongs to the Repository, selecting one Library member updates the complete declared Repository dependency and all of its selected-member Projections atomically.
 _Avoid_: per-Skill artifact update, target-by-target partial Repository versions, implicit overwrite, localized-output parsing
 
-**Target Operation**:
-A state-bound top-level Remove or Repair operation over exact managed Installation Targets. Unselected targets remain unchanged, unsafe destructive removal is rejected, and every selected target produces its own result.
-_Avoid_: name-only removal, whole-Skill deletion, implicit cleanup
-
-**Repair**:
-An explicit future recovery action for an unhealthy Repository Projection. Version-one install does not act as Repair: any Local Modification is reported without overwrite, and the user must first resolve or remove the conflicting projection.
-_Avoid_: automatic healing, background overwrite, install overwrite
+**Repository Member Removal**:
+A state-bound Repository transaction that removes one selected member from a declared dependency, updates the Workspace Manifest, regenerates the Dependency Lock, Scope Vendor, and every affected Repository Projection, and leaves unrelated Repository members selected. Local Modifications reject the transaction without overwrite.
+_Avoid_: exact-target managed removal, name-only deletion, partial Repository mutation, automatic healing

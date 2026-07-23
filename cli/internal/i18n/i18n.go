@@ -78,7 +78,6 @@ var messages = map[string][2]string{
 	"inventory.health.workspace_unreadable": {"Workspace state unreadable", "项目声明不可读取"},
 	"inventory.health.lock_mismatch":        {"Lock mismatch", "锁文件不匹配"},
 	"inventory.health.unexpected_path":      {"unexpected target path", "目标路径异常"},
-	"inventory.health.receipt_missing":      {"receipt missing", "回执缺失"},
 	"install.short":                         {"Restore Repository dependencies from skillsgo.yaml", "按照 skillsgo.yaml 恢复 Repository 依赖"},
 	"update.short":                          {"Update project Skills and atomically switch targets", "更新项目 Skill 并原子切换安装目标"},
 	"flag.hub":                              {"Hub service URL", "Hub 服务地址"},

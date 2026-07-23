@@ -36,7 +36,7 @@ skillsgo/
 ```
 
 - The App invokes the bundled CLI for every Hub and local operation. In Cloud mode it may call the independently deployed SkillsGo Cloud origin declared by `skillsgo hub info` for Cloud-owned ranking reads; it never calls Hub HTTP directly.
-- The CLI owns local filesystem mutations, Agent Adapters, the Content-addressed Store, Installation Targets, Workspace Manifests, and Workspace Locks.
+- The CLI owns local filesystem mutations, Agent Adapters, Scope Vendors, Repository Projections, Installation Targets, Workspace Manifests, and Workspace Locks.
 - The Hub owns public Skill identity, immutable artifacts, metadata, search, and minimal deployment discovery. The separate `skillsgo-cloud` service owns install-event aggregation and rankings in an independent database.
 - The Protocol workspace owns dependency-light executable contracts that the CLI and Hub must interpret identically; it owns no transport or product orchestration.
 - `CONTEXT-MAP.md` and the context glossaries define domain language. GEB maps define structural ownership. Neither substitutes for the other.

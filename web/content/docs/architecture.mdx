@@ -11,7 +11,7 @@ SkillsGo is a monorepo with three product contexts and one public documentation 
 | --- | --- |
 | Desktop App | User experience, navigation, discovery, and installation journeys |
 | CLI | Local filesystem mutations, installation plans, manifests, locks, and Agent adapters |
-| Hub | Public Skill identity, immutable artifacts, metadata, search, ranking, and install events |
+| Hub | Public Skill identity, immutable Repository artifacts, metadata, search, and deployment discovery |
 | Docs site | Public product and developer documentation |
 
 ## Integration direction
@@ -21,7 +21,7 @@ The App never calls the Hub directly. It invokes the bundled CLI through stable 
 ```text
 App --JSON/NDJSON--> CLI --HTTP--> Hub
                        |
-                       +---------> Store and Agent targets
+                       +---------> Scope Vendors and Repository Projections
 ```
 
 This boundary keeps local mutation policy in one engine and prevents the graphical and terminal experiences from developing incompatible installation behavior.
