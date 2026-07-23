@@ -55,16 +55,12 @@ func main() {
 	}
 	logger.WithFields(map[string]any{
 		"database_type":        databaseType,
-		"download_mode":        conf.DownloadMode,
+		"artifact_origin":      conf.ArtifactOrigin,
 		"environment":          conf.Environment,
 		"github_metadata_auth": len(conf.GitHubTokens()) > 0,
-		"index_type":           conf.IndexType,
 		"log_format":           conf.LogFormat,
 		"log_level":            conf.LogLevel,
 		"network_mode":         conf.NetworkMode,
-		"protocol_workers":     conf.ProtocolWorkers,
-		"singleflight_type":    conf.SingleFlightType,
-		"skill_fetch_workers":  conf.SkillFetchWorkers,
 		"stats_exporter":       conf.StatsExporter,
 		"storage_type":         conf.StorageType,
 		"task_queue_backend":   map[bool]string{true: "river", false: "synchronous"}[databaseType == "postgres"],

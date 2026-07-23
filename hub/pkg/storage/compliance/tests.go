@@ -205,8 +205,14 @@ func testDelete(t *testing.T, b storage.Backend) {
 	require.Equal(t, false, exists)
 }
 
-func getMockModule() *storage.Version {
-	return &storage.Version{
+type artifactFixture struct {
+	Zip    io.ReadCloser
+	ZipMD5 []byte
+	Info   []byte
+}
+
+func getMockModule() *artifactFixture {
+	return &artifactFixture{
 		Info:   []byte("123"),
 		Zip:    io.NopCloser(bytes.NewReader([]byte("789"))),
 		ZipMD5: md5.New().Sum([]byte("789")),

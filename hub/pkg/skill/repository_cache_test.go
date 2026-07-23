@@ -52,7 +52,7 @@ func newLocalRepositoryFixture(t *testing.T) *localRepositoryFixture {
 	runGit(t, f.work, "tag", "v1.0.0")
 	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
 
-	fetcher, err := NewFetcher(f.cache, afero.NewOsFs())
+	fetcher, err := NewRepositoryFetcher(f.cache, afero.NewOsFs())
 	require.NoError(t, err)
 	f.fetcher = fetcher.(*gitFetcher)
 	f.fetcher.cloneURL = func(SkillID) string { return f.origin }
@@ -92,21 +92,6 @@ func artifactIdentity(t *testing.T, infoBytes []byte) (string, string, string) {
 	}
 	require.NoError(t, json.Unmarshal(infoBytes, &info))
 	return info.Version, info.CommitSHA, info.TreeSHA
-}
-
-func TestRepositoryCacheResolveAndFetchResolved(t *testing.T) {
-	f := newLocalRepositoryFixture(t)
-	resolution, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
-	require.NoError(t, err)
-	require.NotEmpty(t, resolution.CommitSHA)
-	require.NotEmpty(t, resolution.TreeSHA)
-
-	version, err := f.fetcher.FetchResolved(t.Context(), f.skillID, resolution)
-	require.NoError(t, err)
-	defer version.Zip.Close()
-	zipBytes, err := io.ReadAll(version.Zip)
-	require.NoError(t, err)
-	require.NotEmpty(t, zipBytes)
 }
 
 func TestRepositoryCacheRefreshesMutableBranch(t *testing.T) {
@@ -254,7 +239,7 @@ func TestRepositoryCacheIsSharedBySkillsInOneRepository(t *testing.T) {
 
 func TestRepositoryCacheCleanupRemovesExpiredInactiveRepository(t *testing.T) {
 	root := t.TempDir()
-	fetcher, err := NewFetcher(root, afero.NewOsFs(), WithRepositoryCachePolicy(time.Hour, 0))
+	fetcher, err := NewRepositoryFetcher(root, afero.NewOsFs(), WithRepositoryCachePolicy(time.Hour, 0))
 	require.NoError(t, err)
 	g := fetcher.(*gitFetcher)
 	now := time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)
@@ -268,7 +253,7 @@ func TestRepositoryCacheCleanupRemovesExpiredInactiveRepository(t *testing.T) {
 
 func TestRepositoryCacheCleanupUsesLRUQuotaAndProtectsActiveRepository(t *testing.T) {
 	root := t.TempDir()
-	fetcher, err := NewFetcher(root, afero.NewOsFs(), WithRepositoryCachePolicy(0, 80))
+	fetcher, err := NewRepositoryFetcher(root, afero.NewOsFs(), WithRepositoryCachePolicy(0, 80))
 	require.NoError(t, err)
 	g := fetcher.(*gitFetcher)
 	now := time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)

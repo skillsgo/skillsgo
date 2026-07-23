@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on immutable ZIP bytes, canonical Skill IDs, and resolved artifact versions.
- * [OUTPUT]: Provides bounded duplicate-safe Repository and legacy root-member inspection with compression-independent content identity, member instructions, file metadata/content, executable signals, and deterministic risk evidence.
+ * [INPUT]: Depends on immutable Repository ZIP bytes, canonical Repository IDs, member paths, and resolved versions.
+ * [OUTPUT]: Provides bounded duplicate-safe Repository-member inspection with Repository content identity, member instructions, file metadata/content, executable signals, and deterministic risk evidence.
  * [POS]: Serves as the artifact-analysis boundary between Hub storage bytes and public audit metadata.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -66,12 +66,6 @@ var scriptExtensions = map[string]bool{
 var binaryExtensions = map[string]bool{
 	".exe": true, ".dll": true, ".dylib": true, ".so": true,
 	".bin": true, ".app": true, ".jar": true,
-}
-
-func AnalyzeArtifact(data []byte, skillID, version string) (*Result, error) {
-	return analyze(data, func(visit protocolartifact.VisitFunc) (string, error) {
-		return protocolartifact.WalkContent(data, skillID, version, visit)
-	}, "")
 }
 
 // AnalyzeRepositoryMember validates the complete Repository Artifact while

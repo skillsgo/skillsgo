@@ -24,7 +24,6 @@ import (
 	"time"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/download"
-	"github.com/skillsgo/skillsgo/hub/pkg/download/mode"
 	huberrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/middleware"
@@ -115,7 +114,7 @@ func TestRepositoryPublicationFailureExposesNoPartialMemberSet(t *testing.T) {
 		members := make([]skill.RepositoryMember, 0, 2)
 		for index, id := range []string{repository, repository + "/-/skills/nested"} {
 			name := fmt.Sprintf("member-%d", index)
-			archive := catalogProtocolTestZIPNamed(t, id, version, name, "Atomic fixture.", "")
+			archive := repositoryTestManifest(t, id, version, name, "Atomic fixture.", "")
 			info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
 				"VCS": "git", "URL": "https://github.com/example/atomic", "Subdir": "", "Ref": "refs/tags/v1.0.0", "CommitSHA": "commit-atomic", "TreeSHA": fmt.Sprintf("tree-%d", index),
 			})
@@ -128,9 +127,7 @@ func TestRepositoryPublicationFailureExposesNoPartialMemberSet(t *testing.T) {
 	require.NoError(t, err)
 	backend := &failSecondSaveStorage{Backend: memory}
 	_, metadata := testCatalogAPI(t)
-	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
-	skills := withCatalog(raw, metadata)
-	publisher := newRepositoryPublisher(fetcher, backend, skills, metadata)
+	publisher := newRepositoryPublisher(fetcher, backend, metadata)
 	_, err = publisher.Materialize(t.Context(), repository, version)
 	require.ErrorContains(t, err, "injected Repository Artifact save failure")
 	members, err := metadata.RepositoryVersionMembers(t.Context(), repository, version)
@@ -152,7 +149,7 @@ func TestMovedTagConflictsBeforeStoredArtifactsChange(t *testing.T) {
 	repository, version := "github.com/example/immutable", "v1.0.0"
 	var commit = "commit-one"
 	fetcher := &countedRepositoryFetcher{snapshot: func() *skill.RepositorySnapshot {
-		archive := catalogProtocolTestZIPNamed(t, repository, version, "immutable", commit, "")
+		archive := repositoryTestManifest(t, repository, version, "immutable", commit, "")
 		info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
 			"VCS": "git", "URL": "https://github.com/example/immutable", "Ref": "refs/tags/v1.0.0", "CommitSHA": commit, "TreeSHA": "tree-" + commit,
 		})
@@ -164,9 +161,7 @@ func TestMovedTagConflictsBeforeStoredArtifactsChange(t *testing.T) {
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
 	_, metadata := testCatalogAPI(t)
-	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
-	skills := withCatalog(raw, metadata)
-	publisher := newRepositoryPublisher(fetcher, backend, skills, metadata)
+	publisher := newRepositoryPublisher(fetcher, backend, metadata)
 	_, err = publisher.Materialize(t.Context(), repository, version)
 	require.NoError(t, err)
 	original, err := backend.Info(t.Context(), repository, version)
@@ -197,7 +192,7 @@ func repositoryTestMember(t *testing.T, skillID string, archive, info []byte) sk
 		TreeSHA string `json:"TreeSHA"`
 	}
 	require.NoError(t, json.Unmarshal(info, &identity))
-	manifest, _, err := metadataFromArchive(archive, skillID, identity.Version)
+	manifest, err := parseRepositoryTestManifest(archive)
 	require.NoError(t, err)
 	parsed, err := skill.ParseSkillID(skillID)
 	require.NoError(t, err)
@@ -241,7 +236,7 @@ func completeRepositoryTestSnapshot(snapshot *skill.RepositorySnapshot) *skill.R
 
 func TestHistoricalPublisherRetainsExactZIPWithoutDiscovery(t *testing.T) {
 	repository, version := "github.com/example/history-zip", "v1.0.0"
-	archive := catalogProtocolTestZIPNamed(t, repository, version, "history-zip", "Retained history.", "")
+	archive := repositoryTestManifest(t, repository, version, "history-zip", "Retained history.", "")
 	fetcher := &countedRepositoryFetcher{snapshot: func() *skill.RepositorySnapshot {
 		info, err := json.Marshal(map[string]any{
 			"Version": version, "Time": "2026-07-15T00:00:00Z", "VCS": "git",
@@ -257,9 +252,9 @@ func TestHistoricalPublisherRetainsExactZIPWithoutDiscovery(t *testing.T) {
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
 	_, metadata := testCatalogAPI(t)
-	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
-	protocol := withCatalog(raw, metadata)
-	publisher := newRepositoryPublisher(fetcher, backend, protocol, metadata)
+	raw := download.New(&download.Opts{Storage: backend, NetworkMode: download.Offline})
+	protocol := raw
+	publisher := newRepositoryPublisher(fetcher, backend, metadata)
 	_, err = publisher.MaterializeHistorical(t.Context(), repository, version)
 	require.NoError(t, err)
 
@@ -293,7 +288,7 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 			{id: repository, name: "root-skill", tree: "tree-root"},
 			{id: repository + "/-/skills/find-skills", name: "find-skills", subdir: "skills/find-skills", tree: "tree-find"},
 		} {
-			archive := catalogProtocolTestZIPNamed(t, item.id, version, item.name, "Repository member.", "")
+			archive := repositoryTestManifest(t, item.id, version, item.name, "Repository member.", "")
 			info, err := json.Marshal(map[string]any{
 				"Version": version, "Time": "2026-07-15T00:00:00Z",
 				"VCS": "git", "URL": "https://github.com/example/skills", "Subdir": item.subdir, "Ref": "refs/tags/v1.2.3", "CommitSHA": "abc123", "TreeSHA": item.tree,
@@ -311,16 +306,15 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 	require.NoError(t, err)
 	_, metadata := testCatalogAPI(t)
 	raw := download.New(&download.Opts{
-		Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline,
+		Storage: backend, NetworkMode: download.Offline,
 	})
-	skills := withCatalog(raw, metadata)
-	protocol := withRepositoryInfo(skills, metadata, newRepositoryPublisher(fetcher, backend, skills, metadata))
+	protocol := withRepositoryInfo(raw, metadata, newRepositoryPublisher(fetcher, backend, metadata))
 	var logs bytes.Buffer
 	logger := log.NewWithOutput(&logs, "", slog.LevelDebug, "json")
 	router := newFiberApp()
 	router.Use(middleware.WithRequestID, middleware.LogEntryMiddleware(logger), middleware.RequestLogger)
 	download.RegisterHandlers(router, &download.HandlerOpts{
-		Protocol: protocol, Logger: logger, DownloadFile: &mode.DownloadFile{Mode: mode.Sync},
+		Protocol: protocol, Logger: logger,
 	})
 	directMemberID := repository + "/-/skills/find-skills"
 	directRecorder := httptest.NewRecorder()
@@ -357,7 +351,7 @@ func TestUnknownRepositoryExactInfoPublishesOneSnapshotAndThenUsesCache(t *testi
 func TestRepositoryWithoutRootSkillPublishesCompleteRepositoryArtifact(t *testing.T) {
 	repository, version := "github.com/example/nested-only", "v1.0.0"
 	nestedID := repository + "/-/skills/design"
-	memberArchive := catalogProtocolTestZIPNamed(t, nestedID, version, "design", "Design guidance.", "")
+	memberArchive := repositoryTestManifest(t, nestedID, version, "design", "Design guidance.", "")
 	memberInfo, err := json.Marshal(map[string]any{
 		"Version": version, "TreeSHA": "tree-design",
 	})
@@ -372,10 +366,10 @@ func TestRepositoryWithoutRootSkillPublishesCompleteRepositoryArtifact(t *testin
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
 	_, metadata := testCatalogAPI(t)
-	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
-	protocol := withRepositoryInfo(raw, metadata, newRepositoryPublisher(fetcher, backend, raw, metadata))
+	raw := download.New(&download.Opts{Storage: backend, NetworkMode: download.Offline})
+	protocol := withRepositoryInfo(raw, metadata, newRepositoryPublisher(fetcher, backend, metadata))
 	router := newFiberApp()
-	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger()})
 
 	infoRecorder := httptest.NewRecorder()
 	serveFiber(t, router, infoRecorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/"+version+".info", nil))
@@ -405,7 +399,7 @@ func TestRepositoryWithoutRootSkillPublishesCompleteRepositoryArtifact(t *testin
 func TestConcurrentUnknownRepositoryInfoSharesOnePublication(t *testing.T) {
 	repository, version := "github.com/example/concurrent", "v1.0.0"
 	fetcher := &countedRepositoryFetcher{delay: 25 * time.Millisecond, snapshot: func() *skill.RepositorySnapshot {
-		archive := catalogProtocolTestZIPNamed(t, repository, version, "concurrent", "Concurrent fixture.", "")
+		archive := repositoryTestManifest(t, repository, version, "concurrent", "Concurrent fixture.", "")
 		info, err := json.Marshal(map[string]any{
 			"Version": version, "Time": "2026-07-15T00:00:00Z",
 			"VCS": "git", "URL": "https://github.com/example/concurrent", "Ref": "refs/tags/v1.0.0", "CommitSHA": "commit-one", "TreeSHA": "tree-one",
@@ -418,11 +412,10 @@ func TestConcurrentUnknownRepositoryInfoSharesOnePublication(t *testing.T) {
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
 	_, metadata := testCatalogAPI(t)
-	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
-	skills := withCatalog(raw, metadata)
-	protocol := withRepositoryInfo(skills, metadata, newRepositoryPublisher(fetcher, backend, skills, metadata))
+	raw := download.New(&download.Opts{Storage: backend, NetworkMode: download.Offline})
+	protocol := withRepositoryInfo(raw, metadata, newRepositoryPublisher(fetcher, backend, metadata))
 	router := newFiberApp()
-	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger()})
 	var wait sync.WaitGroup
 	for range 12 {
 		wait.Add(1)
@@ -440,7 +433,7 @@ func TestConcurrentUnknownRepositoryInfoSharesOnePublication(t *testing.T) {
 func TestDifferentQueriesResolvingToOneCanonicalVersionShareCommit(t *testing.T) {
 	repository, version := "github.com/example/aliases", "v1.0.0"
 	fetcher := &countedRepositoryFetcher{delay: 25 * time.Millisecond, snapshot: func() *skill.RepositorySnapshot {
-		archive := catalogProtocolTestZIPNamed(t, repository, version, "aliases", "Alias fixture.", "")
+		archive := repositoryTestManifest(t, repository, version, "aliases", "Alias fixture.", "")
 		info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
 			"VCS": "git", "URL": "https://" + repository, "Ref": "refs/tags/" + version, "CommitSHA": "commit-aliases", "TreeSHA": "tree-aliases",
 		})
@@ -453,9 +446,7 @@ func TestDifferentQueriesResolvingToOneCanonicalVersionShareCommit(t *testing.T)
 	require.NoError(t, err)
 	backend := &countingSaveStorage{Backend: memory}
 	_, metadata := testCatalogAPI(t)
-	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
-	skills := withCatalog(raw, metadata)
-	publisher := newRepositoryPublisher(fetcher, backend, skills, metadata)
+	publisher := newRepositoryPublisher(fetcher, backend, metadata)
 	start := make(chan struct{})
 	errs := make(chan error, 2)
 	for _, query := range []string{"main", version} {
@@ -481,7 +472,7 @@ func TestAnonymousRepositoryPublicationReturnsStableOverloadAndReleasesCapacity(
 	for index := range repositories {
 		repository := fmt.Sprintf("github.com/example/capacity-%d", index)
 		repositories[index] = repository
-		archive := catalogProtocolTestZIPNamed(t, repository, version, fmt.Sprintf("capacity-%d", index), "Capacity fixture.", "")
+		archive := repositoryTestManifest(t, repository, version, fmt.Sprintf("capacity-%d", index), "Capacity fixture.", "")
 		info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
 			"VCS": "git", "URL": "https://" + repository, "Ref": "refs/tags/" + version,
 			"CommitSHA": fmt.Sprintf("commit-%d", index), "TreeSHA": "tree-root",
@@ -499,11 +490,10 @@ func TestAnonymousRepositoryPublicationReturnsStableOverloadAndReleasesCapacity(
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
 	_, metadata := testCatalogAPI(t)
-	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
-	skills := withCatalog(raw, metadata)
-	protocol := withRepositoryInfo(skills, metadata, newRepositoryPublisher(fetcher, backend, skills, metadata))
+	raw := download.New(&download.Opts{Storage: backend, NetworkMode: download.Offline})
+	protocol := withRepositoryInfo(raw, metadata, newRepositoryPublisher(fetcher, backend, metadata))
 	router := newFiberApp()
-	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger()})
 
 	type response struct{ code int }
 	responses := make(chan response, 8)
@@ -536,7 +526,7 @@ func TestAnonymousRepositoryPublicationReturnsStableOverloadAndReleasesCapacity(
 
 func TestCanceledRepositoryWaiterDoesNotPoisonSharedPublication(t *testing.T) {
 	repository, version := "github.com/example/cancel", "v1.0.0"
-	archive := catalogProtocolTestZIPNamed(t, repository, version, "cancel", "Cancellation fixture.", "")
+	archive := repositoryTestManifest(t, repository, version, "cancel", "Cancellation fixture.", "")
 	info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
 		"VCS": "git", "URL": "https://" + repository, "Ref": "refs/tags/" + version, "CommitSHA": "commit-cancel", "TreeSHA": "tree-cancel",
 	})
@@ -549,9 +539,7 @@ func TestCanceledRepositoryWaiterDoesNotPoisonSharedPublication(t *testing.T) {
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
 	_, metadata := testCatalogAPI(t)
-	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
-	skills := withCatalog(raw, metadata)
-	publisher := newRepositoryPublisher(fetcher, backend, skills, metadata)
+	publisher := newRepositoryPublisher(fetcher, backend, metadata)
 
 	firstCtx, cancelFirst := context.WithCancel(t.Context())
 	firstResult := make(chan error, 1)
@@ -586,14 +574,13 @@ func TestMissingRepositoryRevisionUsesShortBoundedNegativeCache(t *testing.T) {
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
 	_, metadata := testCatalogAPI(t)
-	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
-	skills := withCatalog(raw, metadata)
-	publisher := newRepositoryPublisher(fetcher, backend, skills, metadata)
+	raw := download.New(&download.Opts{Storage: backend, NetworkMode: download.Offline})
+	publisher := newRepositoryPublisher(fetcher, backend, metadata)
 	now := time.Date(2026, 7, 18, 12, 0, 0, 0, time.UTC)
 	publisher.now = func() time.Time { return now }
-	protocol := withRepositoryInfo(skills, metadata, publisher)
+	protocol := withRepositoryInfo(raw, metadata, publisher)
 	router := newFiberApp()
-	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger()})
 	request := func(version string) int {
 		recorder := httptest.NewRecorder()
 		serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/"+version+".info", nil))
@@ -625,7 +612,7 @@ func TestRepositoryHistoryPreservesExactMemberSetsWithoutSkillArtifactRoutes(t *
 			if id == nested {
 				name = "nested"
 			}
-			archive := catalogProtocolTestZIPNamed(t, id, version, name, "History fixture.", "")
+			archive := repositoryTestManifest(t, id, version, name, "History fixture.", "")
 			info, err := json.Marshal(map[string]any{"Version": version, "Time": "2026-07-15T00:00:00Z",
 				"VCS": "git", "URL": "https://github.com/example/history", "Ref": "refs/tags/" + version,
 				"CommitSHA": "commit-" + version, "TreeSHA": fmt.Sprintf("tree-%s-%d", version, index),
@@ -639,13 +626,12 @@ func TestRepositoryHistoryPreservesExactMemberSetsWithoutSkillArtifactRoutes(t *
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
 	_, metadata := testCatalogAPI(t)
-	raw := download.New(&download.Opts{Storage: backend, DownloadFile: &mode.DownloadFile{Mode: mode.Sync}, NetworkMode: download.Offline})
-	skills := withCatalog(raw, metadata)
-	publisher := newRepositoryPublisher(fetcher, backend, skills, metadata)
-	discovery := &repositoryDiscoveryProtocol{Protocol: skills, versions: []string{"v1.0.0", "v2.0.0"}, latest: storage.RevInfo{Version: "v2.0.0"}}
+	raw := download.New(&download.Opts{Storage: backend, NetworkMode: download.Offline})
+	publisher := newRepositoryPublisher(fetcher, backend, metadata)
+	discovery := &repositoryDiscoveryProtocol{Protocol: raw, versions: []string{"v1.0.0", "v2.0.0"}, latest: storage.RevInfo{Version: "v2.0.0"}}
 	protocol := withRepositoryInfo(discovery, metadata, publisher)
 	router := newFiberApp()
-	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger(), DownloadFile: &mode.DownloadFile{Mode: mode.Sync}})
+	download.RegisterHandlers(router, &download.HandlerOpts{Protocol: protocol, Logger: log.NoOpLogger()})
 
 	recorder := httptest.NewRecorder()
 	serveFiber(t, router, recorder, httptest.NewRequest(http.MethodGet, "/"+repository+"/@v/v1.0.0.info", nil))
