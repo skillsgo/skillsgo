@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on strict shared machine-input decoding, explicit target identities, declaration-derived inventory health, exact Installation Receipts, immutable Store entries, Agent adapters, and Workspace metadata.
- * [OUTPUT]: Provides strict target-operation preflight, physical-alias-safe managed Remove, logical-versus-artifact-aware Repair, exact External Installation removal, and structured per-target progress/results.
+ * [OUTPUT]: Provides strict target-operation preflight, physical-alias-safe managed Remove, logical-versus-artifact-aware Repair, exact External Installation removal, and mode-free structured per-target progress/results.
  * [POS]: Serves as the cleanup and recovery orchestration domain between top-level remove/repair commands and install/project boundaries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -45,7 +45,7 @@ type TargetRequest struct {
 	Scope       install.Scope `json:"scope"`
 	ProjectRoot string        `json:"projectRoot,omitempty"`
 	Agent       string        `json:"agent"`
-	Mode        install.Mode  `json:"mode"`
+	Mode        install.Mode  `json:"-"`
 	Path        string        `json:"path"`
 	SkillID     string        `json:"skillId"`
 	Version     string        `json:"version"`
@@ -57,7 +57,7 @@ type Target struct {
 	Scope       install.Scope `json:"scope"`
 	ProjectRoot string        `json:"projectRoot,omitempty"`
 	Agent       string        `json:"agent"`
-	Mode        install.Mode  `json:"mode"`
+	Mode        install.Mode  `json:"-"`
 	Path        string        `json:"path"`
 }
 
