@@ -1,5 +1,5 @@
 -- [INPUT]: Depends on the reviewed PostgreSQL Catalog schema and sqlc's pgx/v5 generator.
--- [OUTPUT]: Defines typed Repository, Release, Skill, localization, name-first/exact Find, and Backfill persistence operations.
+-- [OUTPUT]: Defines typed Repository, Release, Skill, localization, name-first/exact single and set-based batch Find, and Backfill persistence operations.
 -- [POS]: Serves as the single maintained query source for the Hub Catalog module.
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -162,6 +162,83 @@ ORDER BY CASE
 END,
 similarity(s.name,sqlc.arg(query)) DESC,s.verified DESC,r.repository_id,s.skill_path
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
+
+-- name: FindLocalizedSkillsBatch :many
+WITH requested AS (
+    SELECT ids.id AS query_id, queries.query, sources.source, exact_names.exact_name, ids.ordinal
+    FROM unnest(sqlc.arg(query_ids)::text[]) WITH ORDINALITY AS ids(id, ordinal)
+    JOIN unnest(sqlc.arg(queries)::text[]) WITH ORDINALITY AS queries(query, ordinal) USING (ordinal)
+    JOIN unnest(sqlc.arg(sources)::text[]) WITH ORDINALITY AS sources(source, ordinal) USING (ordinal)
+    JOIN unnest(sqlc.arg(exact_names)::boolean[]) WITH ORDINALITY AS exact_names(exact_name, ordinal) USING (ordinal)
+)
+SELECT input.query_id::text AS query_id,input.query::text AS query,input.source::text AS source,
+result.id,result.repository_id,result.repository_identity,result.name,result.description,result.source_host,result.repository,result.skill_path,
+result.latest_version,result.stars,result.verified,result.created_at,result.updated_at
+FROM requested input
+JOIN LATERAL (
+    SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,
+    COALESCE(ls.description,s.description) AS description,s.source_host,s.repository,s.skill_path,
+    COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at,
+    CASE
+        WHEN lower(s.name)=lower(input.query) THEN 0
+        WHEN lower(s.name) LIKE lower(input.query) || '%' THEN 1
+        WHEN lower(s.name) LIKE '%' || lower(input.query) || '%' THEN 2
+        WHEN lower(r.repository_id)=lower(input.query) THEN 3
+        WHEN lower(r.repository_id) LIKE '%' || lower(input.query) || '%' THEN 4
+        ELSE 5
+    END AS sort_tier,
+    similarity(s.name,input.query) AS name_similarity
+    FROM skills s JOIN repositories r ON r.id=s.repository_id
+    LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
+    LEFT JOIN localized_descriptions ls ON ls.resource_kind='skill' AND ls.resource_id=r.repository_id || ':' || s.name AND ls.locale=sqlc.arg(locale)
+    LEFT JOIN localized_descriptions lr ON lr.resource_kind='repository' AND lr.resource_id=r.repository_id AND lr.locale=sqlc.arg(locale)
+    WHERE (
+        input.source<>'' AND r.repository_id=input.source AND s.name=input.query
+    ) OR (
+        input.source='' AND (
+            (input.exact_name AND lower(s.name)=lower(input.query))
+            OR (NOT input.exact_name AND (
+                lower(s.name) LIKE '%' || lower(input.query) || '%' OR lower(s.description) LIKE '%' || lower(input.query) || '%'
+                OR lower(r.repository_id) LIKE '%' || lower(input.query) || '%' OR lower(COALESCE(ls.description,'')) LIKE '%' || lower(input.query) || '%'
+                OR lower(COALESCE(lr.description,'')) LIKE '%' || lower(input.query) || '%'
+            ))
+        )
+    )
+    ORDER BY sort_tier,name_similarity DESC,s.verified DESC,r.repository_id,s.skill_path
+    LIMIT CASE WHEN input.source<>'' THEN 1 ELSE sqlc.arg(page_limit)::int END
+) result ON true
+ORDER BY input.ordinal,result.sort_tier,result.name_similarity DESC,result.verified DESC,result.repository_identity,result.skill_path;
+
+-- name: FindExactLocalizedSkillsBatch :many
+WITH requested AS (
+    SELECT ids.id AS query_id, queries.query, sources.source, ids.ordinal
+    FROM unnest(sqlc.arg(query_ids)::text[]) WITH ORDINALITY AS ids(id, ordinal)
+    JOIN unnest(sqlc.arg(queries)::text[]) WITH ORDINALITY AS queries(query, ordinal) USING (ordinal)
+    JOIN unnest(sqlc.arg(sources)::text[]) WITH ORDINALITY AS sources(source, ordinal) USING (ordinal)
+),
+ranked AS (
+    SELECT input.query_id::text AS query_id,input.query::text AS query,input.source::text AS source,input.ordinal,
+    s.id,s.repository_id,r.repository_id AS repository_identity,s.name,
+    COALESCE(ls.description,s.description) AS description,s.source_host,s.repository,s.skill_path,
+    COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at,
+    row_number() OVER (
+        PARTITION BY input.ordinal
+        ORDER BY
+            CASE WHEN input.source<>'' THEN s.skill_path ELSE '' END,
+            s.verified DESC,r.repository_id,s.skill_path
+    ) AS result_ordinal
+    FROM requested input
+    JOIN skills s ON lower(s.name)=lower(input.query)
+    JOIN repositories r ON r.id=s.repository_id AND (input.source='' OR r.repository_id=input.source)
+    LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
+    LEFT JOIN localized_descriptions ls ON ls.resource_kind='skill' AND ls.resource_id=r.repository_id || ':' || s.name AND ls.locale=sqlc.arg(locale)
+)
+SELECT query_id,query,source,
+id,repository_id,repository_identity,name,description,source_host,repository,skill_path,
+latest_version,stars,verified,created_at,updated_at
+FROM ranked
+WHERE result_ordinal<=CASE WHEN source<>'' THEN 1 ELSE sqlc.arg(page_limit)::bigint END
+ORDER BY ordinal,result_ordinal;
 
 -- name: ActiveBackfillRun :one
 SELECT * FROM repository_backfill_runs WHERE repository_id=$1 AND status IN ('queued','running') ORDER BY created_at DESC LIMIT 1;
