@@ -8,6 +8,26 @@ part of '../fake_skills_gateway.dart';
 
 mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
   @override
+  Future<List<InstallationExecution>> installRepositoryTargets(
+    List<SkillSummary> skills,
+    List<InstallationTargetSelection> selections, {
+    bool confirmRisk = false,
+    bool allowCritical = false,
+  }) async {
+    repositoryInstallCalls++;
+    return Future.wait([
+      for (final skill in skills)
+        installTargets(
+          skill,
+          skill.latestVersion,
+          selections,
+          confirmRisk: confirmRisk,
+          allowCritical: allowCritical,
+        ),
+    ]);
+  }
+
+  @override
   Future<InstallationExecution> installTargets(
     SkillSummary skill,
     String immutableVersion,
