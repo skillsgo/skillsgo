@@ -1,10 +1,14 @@
 /*
  * [INPUT]: Depends on the shared gateway state, Hub runtime discovery, direct Cloud-composed ranking reads, content locale, CLI Skill reads, strict machine codecs, and discovery domain models.
- * [OUTPUT]: Provides locale-aware single and batch Hub Find plus Cloud-composed Ranking/Trending/Hot cards, direct explicit-source routing, and remote Skill detail loading.
+ * [OUTPUT]: Provides locale-aware single and bounded-chunk batch Hub Find plus Cloud-composed Ranking/Trending/Hot cards, direct explicit-source routing, and remote Skill detail loading.
  * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of 'real_skills_gateway.dart';
+
+const _sourceFindChunkSize = 80;
+const _sourceFindConcurrentChunks = 2;
+const _sourceFindRequestLimit = 5000;
 
 mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
   @override
@@ -183,13 +187,50 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     List<SourceFindQuery> queries, {
     int limit = 10,
   }) async {
-    if (queries.isEmpty || queries.length > 100 || limit < 1 || limit > 10) {
+    if (queries.isEmpty ||
+        queries.length > _sourceFindRequestLimit ||
+        limit < 1 ||
+        limit > 10) {
       throw const SkillsException(
         'Invalid Source Find request.',
         kind: SkillsFailureKind.validation,
       );
     }
     await _ensureHubOrigin();
+    final locale = await _contentLocale();
+    final chunks = <List<SourceFindQuery>>[
+      for (var start = 0; start < queries.length; start += _sourceFindChunkSize)
+        queries.sublist(
+          start,
+          (start + _sourceFindChunkSize).clamp(0, queries.length),
+        ),
+    ];
+    final results = <SourceFindResult>[];
+    for (
+      var start = 0;
+      start < chunks.length;
+      start += _sourceFindConcurrentChunks
+    ) {
+      final wave = chunks.sublist(
+        start,
+        (start + _sourceFindConcurrentChunks).clamp(0, chunks.length),
+      );
+      final waveResults = await Future.wait([
+        for (final chunk in wave)
+          _findSourceChunk(chunk, limit: limit, locale: locale),
+      ]);
+      for (final chunkResults in waveResults) {
+        results.addAll(chunkResults);
+      }
+    }
+    return results;
+  }
+
+  Future<List<SourceFindResult>> _findSourceChunk(
+    List<SourceFindQuery> queries, {
+    required int limit,
+    required String locale,
+  }) async {
     final request = jsonEncode({
       'schemaVersion': 1,
       'queries': [
@@ -210,7 +251,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       '--hub',
       _hubOrigin,
       '--content-locale',
-      await _contentLocale(),
+      locale,
     ], stdin: request);
     if (!result.succeeded) throw _commandFailure(result);
     try {

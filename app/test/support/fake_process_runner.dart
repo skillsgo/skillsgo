@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Dart line decoding and the App process contract.
- * [OUTPUT]: Specifies a deterministic queued ProcessRunner adapter with recorded executable, structured arguments, and stdin documents.
+ * [OUTPUT]: Specifies a deterministic queued ProcessRunner adapter with recorded executable, structured arguments, and per-call stdin documents.
  * [POS]: Serves as the shared process test adapter for SkillsGateway contract suites.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,6 +18,7 @@ class FakeProcessRunner implements ProcessRunner {
   String? lastExecutable;
   String? lastStdin;
   final calls = <({String executable, List<String> arguments})>[];
+  final stdins = <String?>[];
   final responses = <ProcessOutput>[];
 
   @override
@@ -31,6 +32,7 @@ class FakeProcessRunner implements ProcessRunner {
     lastArguments = arguments;
     lastStdin = stdin;
     calls.add((executable: executable, arguments: List.of(arguments)));
+    stdins.add(stdin);
     final response = responses.isNotEmpty ? responses.removeAt(0) : result;
     if (onStdoutLine != null) {
       for (final line in const LineSplitter().convert(response.stdout)) {
