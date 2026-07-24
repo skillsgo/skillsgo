@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses controlled CLI Hub/Skill reads, an HTTP Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
- * [OUTPUT]: Specifies public single/batch Find and Cloud-composed collection discovery including the four-row empty-input matrix, direct explicit-source routing, unified inventory, Agent catalog, visibility, and schema validation contracts.
+ * [OUTPUT]: Specifies public single/bounded-chunk batch Find and Cloud-composed collection discovery including the four-row empty-input matrix, direct explicit-source routing, unified inventory, Agent catalog, visibility, and schema validation contracts.
  * [POS]: Serves as the discovery and local inventory contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -116,6 +116,50 @@ void main() {
       expect(results.single.skills.single.latestVersion, 'v1.2.3');
     },
   );
+
+  test('batch Find keeps ordinary large libraries below wire limits', () async {
+    final runner = FakeProcessRunner();
+    for (final range in [(0, 80), (80, 160), (160, 205)]) {
+      runner.responses.add(
+        ProcessOutput(
+          exitCode: 0,
+          stdout: jsonEncode({
+            'schemaVersion': 1,
+            'collection': 'find',
+            'results': [
+              for (var index = range.$1; index < range.$2; index++)
+                {
+                  'id': 'external:$index',
+                  'q': 'skill-$index',
+                  'skills': <Object>[],
+                },
+            ],
+          }),
+          stderr: '',
+        ),
+      );
+    }
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/usr/local/bin/skillsgo',
+    );
+
+    final results = await gateway.findSources([
+      for (var index = 0; index < 205; index++)
+        SourceFindQuery(id: 'external:$index', name: 'skill-$index'),
+    ]);
+
+    expect(runner.calls, hasLength(3));
+    expect(
+      runner.stdins.map(
+        (stdin) => (jsonDecode(stdin!)['queries'] as List).length,
+      ),
+      [80, 80, 45],
+    );
+    expect(results.map((result) => result.id), [
+      for (var index = 0; index < 205; index++) 'external:$index',
+    ]);
+  });
 
   test('Cloud ranking returns authoritative composed Skill cards', () async {
     final cloud = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
