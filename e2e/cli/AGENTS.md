@@ -6,7 +6,7 @@ This workspace owns black-box user-journey tests spanning the released CLI and H
 ## Workspace Identity
 
 - Module: `github.com/skillsgo/skillsgo/e2e`
-- Runtime: Go test controller plus disposable Hub/CLI and PostgreSQL containers on one private network per scenario
+- Runtime: Go test controller plus a reusable prebuilt Hub/CLI image and disposable PostgreSQL containers on one private network per scenario; local runs build the image on demand while CI restores BuildKit layers before the test process
 - Public seams: CLI process arguments and JSON output, Hub HTTP protocol, and user-visible filesystem state
 
 ## Members

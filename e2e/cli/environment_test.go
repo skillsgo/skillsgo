@@ -99,16 +99,8 @@ func startEnvironmentWithEnv(t *testing.T, ctx context.Context, overrides map[st
 	require.NoError(t, err)
 	testcontainers.CleanupContainer(t, database)
 
-	container, err := testcontainers.Run(
-		ctx,
-		"",
-		testcontainers.WithDockerfile(testcontainers.FromDockerfile{
-			Context:    repositoryRoot,
-			Dockerfile: "e2e/cli/Dockerfile",
-			Repo:       "skillsgo-e2e",
-			Tag:        "local",
-			KeepImage:  true,
-		}),
+	image := strings.TrimSpace(os.Getenv("SKILLSGO_E2E_IMAGE"))
+	options := []testcontainers.ContainerCustomizer{
 		testcontainers.WithExposedPorts("3000/tcp"),
 		testcontainers.WithMounts(
 			testcontainers.BindMount(sandboxRoot, "/e2e"),
@@ -122,9 +114,19 @@ func startEnvironmentWithEnv(t *testing.T, ctx context.Context, overrides map[st
 		testcontainers.WithWaitStrategy(
 			wait.ForHTTP("/readyz").
 				WithPort("3000/tcp").
-				WithStartupTimeout(45*time.Second),
+				WithStartupTimeout(45 * time.Second),
 		),
-	)
+	}
+	if image == "" {
+		options = append(options, testcontainers.WithDockerfile(testcontainers.FromDockerfile{
+			Context:    repositoryRoot,
+			Dockerfile: "e2e/cli/Dockerfile",
+			Repo:       "skillsgo-e2e",
+			Tag:        "local",
+			KeepImage:  true,
+		}))
+	}
+	container, err := testcontainers.Run(ctx, image, options...)
 	require.NoError(t, err)
 	testcontainers.CleanupContainer(t, container)
 	inspection, err := container.Inspect(ctx)

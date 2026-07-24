@@ -54,24 +54,20 @@ func addRepositoryInstallations(entries map[string]*Entry, accounted map[string]
 				return err
 			}
 			members := make([]string, 0, len(resource.Members))
-			memberByName := make(map[string]hub.RepositoryMember, len(resource.Members))
 			for _, member := range resource.Members {
 				members = append(members, member.Info.SkillPath)
-				memberByName[member.Info.Name] = member
 			}
 			selectedPaths := make([]string, 0, len(dependency.Skills))
+			selectedMembers := make([]hub.RepositoryMember, 0, len(dependency.Skills))
 			for _, selected := range dependency.Skills {
-				member, exists := memberByName[selected]
+				member, exists := hub.SelectRepositoryMember(selected, resource.Members)
 				if !exists {
 					return fmt.Errorf("Repository Info does not contain selected Skill %q", selected)
 				}
 				selectedPaths = append(selectedPaths, member.Info.SkillPath)
+				selectedMembers = append(selectedMembers, member)
 			}
-			for _, selected := range dependency.Skills {
-				member, exists := memberByName[selected]
-				if !exists {
-					return fmt.Errorf("Repository Info does not contain selected Skill %q", selected)
-				}
+			for _, member := range selectedMembers {
 				entry := ensureEntry(entries, member.Info.Name, repositoryID, ProvenanceHub)
 				entry.Description = member.Info.Description
 				entry.Versions = appendUnique(entry.Versions, dependency.Version)

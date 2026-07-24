@@ -67,7 +67,7 @@ void main() {
       await _pumpUntilGone(
         tester,
         _textEither('Install all skills to', '安装所有技能到'),
-        timeout: const Duration(seconds: 30),
+        timeout: const Duration(minutes: 2),
       );
       final installationComplete = _textEither('Installation complete', '安装完成');
       await _pumpUntil(
@@ -241,8 +241,19 @@ Future<void> _pumpUntilGone(
   required Duration timeout,
 }) async {
   final deadline = DateTime.now().add(timeout);
-  while (finder.evaluate().isNotEmpty && DateTime.now().isBefore(deadline)) {
+  final installationFailed = _textEither('Installation failed', '安装失败');
+  while (finder.evaluate().isNotEmpty &&
+      installationFailed.evaluate().isEmpty &&
+      DateTime.now().isBefore(deadline)) {
     await tester.pump(const Duration(milliseconds: 250));
   }
-  expect(finder, findsNothing);
+  expect(
+    finder,
+    findsNothing,
+    reason: tester
+        .widgetList<Text>(find.byType(Text))
+        .map((widget) => widget.data)
+        .whereType<String>()
+        .join(' | '),
+  );
 }

@@ -52,7 +52,7 @@ void main() {
     runner.result = const ProcessOutput(
       exitCode: 0,
       stdout:
-          r'{"schemaVersion":1,"phase":"repository-install","repository":"github.com/a/b","version":"v1","sum":"h1:test","skills":["test;$(touch nope)"],"agents":["codex"],"vendor":"/tmp/vendor","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skillsgo.yaml","lock":"/tmp/skillsgo-lock.yaml"}}',
+          r'{"schemaVersion":1,"phase":"repository-install","repository":"github.com/a/b","version":"v1","sum":"h1:test","skills":["nested/test;$(touch nope)"],"agents":["codex"],"vendor":"/tmp/vendor","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skillsgo.yaml","lock":"/tmp/skillsgo-lock.yaml"}}',
       stderr: '',
     );
     await gateway.installTargets(summary, 'v1', const [
@@ -164,7 +164,7 @@ void main() {
             'repository': 'github.com/example/skills',
             'version': 'v1',
             'sum': 'h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
-            'skills': ['demo'],
+            'skills': ['nested/demo'],
             'agents': ['codex'],
             'vendor': '/Users/test/.skillsgo/vendor/example/v1',
             'projections': [
@@ -218,6 +218,67 @@ void main() {
       expect(runner.lastArguments, isNot(contains('--target')));
       expect(runner.lastArguments, isNot(contains('--version')));
       expect(runner.lastArguments, isNot(contains('--copy')));
+    },
+  );
+
+  test(
+    'Repository installation submits all exact paths in one CLI call',
+    () async {
+      final runner = FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":1,"phase":"repository-install","repository":"github.com/example/skills","version":"v1","sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","skills":["skills/alpha","nested/beta"],"agents":["codex"],"vendor":"/tmp/vendor","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skillsgo.yaml","lock":"/tmp/skillsgo-lock.yaml"}}',
+          stderr: '',
+        );
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/Applications/SkillsGo.app/skillsgo',
+      );
+      const skills = [
+        SkillSummary(
+          repositoryId: 'github.com/example/skills',
+          installName: 'alpha',
+          name: 'alpha',
+          source: 'github.com/example/skills',
+          skillPath: 'skills/alpha',
+          latestVersion: 'v1',
+        ),
+        SkillSummary(
+          repositoryId: 'github.com/example/skills',
+          installName: 'beta',
+          name: 'beta',
+          source: 'github.com/example/skills',
+          skillPath: 'nested/beta',
+          latestVersion: 'v1',
+        ),
+      ];
+
+      final executions = await gateway.installRepositoryTargets(skills, const [
+        InstallationTargetSelection(
+          scope: InstallationScope.user,
+          agent: 'codex',
+        ),
+      ], confirmRisk: true);
+
+      expect(executions, hasLength(2));
+      expect(runner.calls, hasLength(1));
+      expect(runner.lastArguments, [
+        'add',
+        'github.com/example/skills@v1',
+        '--skill-path',
+        'skills/alpha',
+        '--skill-path',
+        'nested/beta',
+        '--agent',
+        'codex',
+        '--global',
+        '--yes',
+        '--output',
+        'json',
+        '--hub',
+        'https://hub.skillsgo.ai',
+      ]);
     },
   );
 

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute, an exact root Repository Proxy fixture, a complete Repository Artifact, and temporary Workspace/Agent roots.
- * [OUTPUT]: Specifies exact add, Repository-level update, selective multi-Agent projection, member/Agent removal, healthy zero-rewrite install, offline projection restoration, Local Modification preservation, User Vendor restoration, and checksum-failure atomicity.
+ * [OUTPUT]: Specifies exact-path add and inventory, Repository-level update, selective multi-Agent projection, member/Agent removal, healthy zero-rewrite install, offline projection restoration, Local Modification preservation, User Vendor restoration, and checksum-failure atomicity.
  * [POS]: Serves as the CLI command-seam acceptance test for Repository Vendor installation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -70,11 +70,11 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	require.NoError(t, os.Chdir(workspace))
 	t.Cleanup(func() { _ = os.Chdir(previous) })
 	var output bytes.Buffer
-	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--project", workspace, "--skill", "design", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output))
+	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--project", workspace, "--skill-path", "skills/design", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output))
 
 	manifest, err := project.LoadWorkspaceManifest(workspace)
 	require.NoError(t, err)
-	require.Equal(t, []string{"design"}, manifest.Dependencies[repositoryID].Skills)
+	require.Equal(t, []string{"skills/design"}, manifest.Dependencies[repositoryID].Skills)
 	require.Equal(t, []string{"codex"}, manifest.Dependencies[repositoryID].Agents)
 	lock, err := project.LoadDependencyLock(workspace)
 	require.NoError(t, err)
@@ -138,7 +138,7 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--skill", "root", "--agent", "goose", "--hub", server.URL, "--output", "json"}, &output, &output))
 	manifest, err = project.LoadWorkspaceManifest(workspace)
 	require.NoError(t, err)
-	require.Equal(t, []string{"design", "root"}, manifest.Dependencies[repositoryID].Skills)
+	require.Equal(t, []string{"root", "skills/design"}, manifest.Dependencies[repositoryID].Skills)
 	require.Equal(t, []string{"codex", "goose"}, manifest.Dependencies[repositoryID].Agents)
 	for _, agentID := range []string{"codex", "goose"} {
 		projectionRoot := scopevendor.CoordinatePath(filepath.Join(workspace, ".agents", "skills"), repositoryID, version)
@@ -152,7 +152,7 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	}
 
 	output.Reset()
-	require.NoError(t, Execute([]string{"remove", "design", "--project", workspace, "--output", "json"}, &output, &output))
+	require.NoError(t, Execute([]string{"remove", "skills/design", "--project", workspace, "--output", "json"}, &output, &output))
 	var removal struct {
 		SchemaVersion int      `json:"schemaVersion"`
 		Phase         string   `json:"phase"`
@@ -162,7 +162,7 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	require.NoError(t, json.Unmarshal(output.Bytes(), &removal))
 	require.Equal(t, 1, removal.SchemaVersion)
 	require.Equal(t, "repository-remove", removal.Phase)
-	require.Equal(t, []string{"design"}, removal.Skills)
+	require.Equal(t, []string{"skills/design"}, removal.Skills)
 	require.Equal(t, "project", removal.Scope)
 	manifest, err = project.LoadWorkspaceManifest(workspace)
 	require.NoError(t, err)
