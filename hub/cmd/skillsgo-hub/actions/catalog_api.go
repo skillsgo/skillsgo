@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, freshness-cached Repository artifact resolution, ZIP audit boundary, and request validation.
- * [OUTPUT]: Provides stable public search, ordered batch Skill-card hydration, Repository-fresh head/release batch update, and detail APIs plus correlated private diagnostics for internal and best-effort dependency failures.
+ * [OUTPUT]: Provides stable single and batch Find with optional exact-name/Source restriction, ordered batch Skill-card hydration, Repository-fresh head/release batch update, and detail APIs plus correlated private diagnostics for internal and best-effort dependency failures.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -51,18 +51,7 @@ type collectionPage struct {
 	NextOffset *int `json:"nextOffset"`
 }
 
-type discoverySkill struct {
-	RepositoryID   string  `json:"repositoryId"`
-	Name           string  `json:"name"`
-	Description    string  `json:"description"`
-	Source         string  `json:"source"`
-	Repository     string  `json:"repository"`
-	ImageURL       *string `json:"imageUrl"`
-	SkillPath      string  `json:"skillPath"`
-	LatestVersion  string  `json:"latestVersion"`
-	TrustLevel     string  `json:"trustLevel"`
-	RiskAssessment string  `json:"riskAssessment"`
-}
+type discoverySkill = protocolapi.FindSkill
 
 type skillDetailResponse struct {
 	RepositoryID          string               `json:"repositoryId"`
@@ -123,7 +112,8 @@ func registerCatalogAPIRoutes(
 	if len(repositoryReaders) > 0 {
 		repositories = repositoryReaders[0]
 	}
-	r.Get("/api/v1/search", searchSkillsHandler(metadata))
+	r.Get("/api/v1/find", findSkillsHandler(metadata))
+	r.Post("/api/v1/find", findSkillsBatchHandler(metadata))
 	r.Post("/api/v1/skills/batch", skillBatchHandler(metadata))
 	r.Post("/api/v1/updates/check", catalogUpdateCheckHandler(metadata, artifacts))
 	r.Get("/api/v1/skills/detail", skillDetailHandler(metadata, artifacts, repositories))
@@ -257,7 +247,7 @@ func collectRepositoryMemberVersions(encoded []byte, target map[string]string) e
 	return nil
 }
 
-func searchSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
+func findSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		limit, offset, ok := apiPagination(c)
 		if !ok {
@@ -267,11 +257,81 @@ func searchSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 		if query == "" || len([]rune(query)) > 200 {
 			return writeAPIError(c, fiber.StatusBadRequest, "q must contain 1 to 200 characters")
 		}
-		skills, err := metadata.SearchLocalized(c.Context(), query, presentationLocale(c), limit+1, offset)
-		if err != nil {
-			return writeInternalAPIError(c, "catalog.search", fiber.StatusInternalServerError, "internal_error", "search failed", err)
+		source := strings.TrimSpace(c.Query("source"))
+		exactName := false
+		if raw := c.Query("exactName"); raw != "" {
+			var err error
+			exactName, err = strconv.ParseBool(raw)
+			if err != nil {
+				return writeAPIError(c, fiber.StatusBadRequest, "exactName must be a boolean")
+			}
 		}
-		return writeJSON(c, fiber.StatusOK, discoveryResponse(c.Context(), "search", metadata, presentationLocale(c), skills, limit, offset))
+		if source != "" {
+			coordinate := protocolapi.SkillCoordinate{RepositoryID: source, Name: query}
+			if !coordinate.Valid() {
+				return writeAPIError(c, fiber.StatusBadRequest, "source and q must form a canonical Skill coordinate")
+			}
+			cards, err := (skillCardProjection{catalog: metadata}).Hydrate(c.Context(), []protocolapi.SkillCoordinate{coordinate})
+			if err != nil {
+				return writeInternalAPIError(c, "catalog.find", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
+			}
+			if offset > 0 {
+				cards = cards[:0]
+			} else {
+				(skillCardProjection{catalog: metadata}).Localize(c.Context(), presentationLocale(c), cards)
+			}
+			return writeJSON(c, fiber.StatusOK, skillsResponse{Collection: "find", Skills: cards, Page: collectionPage{Limit: limit, Offset: offset}})
+		}
+		skills, err := metadata.FindLocalized(c.Context(), query, presentationLocale(c), exactName, limit+1, offset)
+		if err != nil {
+			return writeInternalAPIError(c, "catalog.find", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
+		}
+		return writeJSON(c, fiber.StatusOK, discoveryResponse(c.Context(), "find", metadata, presentationLocale(c), skills, limit, offset))
+	}
+}
+
+func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
+	projection := skillCardProjection{catalog: metadata}
+	return func(c fiber.Ctx) error {
+		var request protocolapi.FindRequest
+		decoder := json.NewDecoder(strings.NewReader(string(c.Body())))
+		decoder.DisallowUnknownFields()
+		if err := decoder.Decode(&request); err != nil || decoder.Decode(&struct{}{}) != io.EOF || request.SchemaVersion != protocolapi.SchemaVersion || len(request.Queries) == 0 || len(request.Queries) > 100 || request.Limit < 1 || request.Limit > 10 {
+			return writeAPIError(c, fiber.StatusBadRequest, "invalid Find request")
+		}
+		locale, err := presentation.CanonicalLocale(request.Locale)
+		if err != nil || len(locale) > 35 {
+			return writeAPIError(c, fiber.StatusBadRequest, "invalid Find locale")
+		}
+		seen := make(map[string]bool, len(request.Queries))
+		response := protocolapi.FindResponse{SchemaVersion: protocolapi.SchemaVersion, Collection: "find", Results: make([]protocolapi.FindResult, 0, len(request.Queries))}
+		for _, item := range request.Queries {
+			item.ID = strings.TrimSpace(item.ID)
+			item.Query = strings.TrimSpace(item.Query)
+			item.Source = strings.TrimSpace(item.Source)
+			if item.ID == "" || seen[item.ID] || item.Query == "" || len([]rune(item.Query)) > 200 {
+				return writeAPIError(c, fiber.StatusBadRequest, "Find queries require unique IDs and q containing 1 to 200 characters")
+			}
+			seen[item.ID] = true
+			var cards []discoverySkill
+			if item.Source != "" {
+				coordinate := protocolapi.SkillCoordinate{RepositoryID: item.Source, Name: item.Query}
+				if !coordinate.Valid() {
+					return writeAPIError(c, fiber.StatusBadRequest, "Find source and q must form a canonical Skill coordinate")
+				}
+				cards, err = projection.Hydrate(c.Context(), []protocolapi.SkillCoordinate{coordinate})
+				projection.Localize(c.Context(), locale, cards)
+			} else {
+				var skills []catalog.SearchSkill
+				skills, err = metadata.FindLocalized(c.Context(), item.Query, locale, item.ExactName, request.Limit, 0)
+				cards = projection.Search(c.Context(), locale, skills)
+			}
+			if err != nil {
+				return writeInternalAPIError(c, "catalog.find_batch", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
+			}
+			response.Results = append(response.Results, protocolapi.FindResult{ID: item.ID, Query: item.Query, Source: item.Source, Skills: cards})
+		}
+		return writeJSON(c, fiber.StatusOK, response)
 	}
 }
 

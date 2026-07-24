@@ -65,7 +65,7 @@ func TestPostgresAppStartsServesAndRecoversQueuedJobAfterRestart(t *testing.T) {
 	require.NoError(t, err)
 	assertAppEndpoint(t, firstApp, "/healthz", http.StatusOK)
 	assertAppEndpoint(t, firstApp, "/readyz", http.StatusOK)
-	assertAppEndpoint(t, firstApp, "/api/v1/search?q=demo", http.StatusOK)
+	assertAppEndpoint(t, firstApp, "/api/v1/find?q=demo", http.StatusOK)
 	firstCleanup()
 
 	pool, err := pgxpool.New(ctx, dsn)
