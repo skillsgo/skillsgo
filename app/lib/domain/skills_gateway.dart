@@ -85,6 +85,12 @@ abstract interface class SkillsGateway {
     bool confirmRisk = false,
     bool allowCritical = false,
   });
+  Future<List<InstallationExecution>> installRepositoryTargets(
+    List<SkillSummary> skills,
+    List<InstallationTargetSelection> selections, {
+    bool confirmRisk = false,
+    bool allowCritical = false,
+  });
   Future<TargetManagementExecution> executeTargetManagement(
     TargetManagementPlan plan, {
     void Function(TargetManagementProgress progress)? onProgress,

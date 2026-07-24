@@ -11,7 +11,7 @@
 - `appearance_controller.dart`: owns immutable App appearance and language settings plus their optimistic persistence through Riverpod.
 - `discover_controller.dart`: owns immutable, race-safe Discover route and Repository-summary caches, search, locale reload, loading, errors, and pagination through Riverpod.
 - `discover_screen.dart` and `discover/`: expose the Discover destination while hiding leaderboard search, collection rendering, navigation recovery, desktop refresh, and Repository identity behind one screen library.
-- `install_operation_controller.dart`: owns the compact Installation Request interface, per-Skill and Repository-member sequencing, aggregate execution success, and error state through a Riverpod family.
+- `install_operation_controller.dart`: owns the compact Installation Request interface, atomic Repository submission, aggregate execution success, and error state through a Riverpod family.
 - `installation_flows.dart` and `installation/`: expose remote detail, installation selection, Update, Target Management, progress, result, and retry surfaces as one independent journey library.
 - `library_controller.dart`: owns immutable Library content, stable Entry queries, targeted post-mutation reconciliation, initial-load, stale-refresh, independent Batch Takeover planning, and load-error transitions through Riverpod.
 - `library_screen.dart` and `library/`: expose the unified Library journey while hiding inventory rendering, filters, selection state, local detail, exact External removal, Batch Takeover, and Repository target actions behind one screen library.

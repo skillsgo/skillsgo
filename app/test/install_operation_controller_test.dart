@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the deep Installation Request controller with a controllable SkillsGateway test double.
- * [OUTPUT]: Specifies single-Skill success, all-target failure classification, Repository snapshot-version sequencing without detail re-resolution, and exception capture.
+ * [OUTPUT]: Specifies single-Skill success, all-target failure classification, atomic Repository snapshot submission without detail re-resolution, and exception capture.
  * [POS]: Serves as the controller-level regression suite for installation orchestration independently of rendered selectors.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -61,15 +61,15 @@ void main() {
   });
 
   test(
-    'Repository request resolves and installs every member in order',
+    'Repository request submits every member through one atomic gateway call',
     () async {
       const second = SkillSummary(
-        repositoryId: 'example/skills/dart-pro',
-        installName: 'dart-pro',
-        name: 'Dart Pro',
-        source: 'example/skills',
+        repositoryId: 'example/skills/flutter-pro',
+        installName: 'second',
+        name: 'Second',
+        source: 'example/skills/flutter-pro',
         installs: 42,
-        latestVersion: 'v1.2.0',
+        latestVersion: 'main',
       );
       final gateway = FakeSkillsGateway();
       final controller = InstallOperationController(gateway);
@@ -89,8 +89,9 @@ void main() {
         defaultSearchResults.first.repositoryId,
         second.repositoryId,
       ]);
-      expect(state.executions.map((item) => item.version), ['main', 'v1.2.0']);
+      expect(state.executions.map((item) => item.version), ['main', 'main']);
       expect(gateway.detailLoads, 0);
+      expect(gateway.repositoryInstallCalls, 1);
       expect(gateway.installCalls, 2);
     },
   );

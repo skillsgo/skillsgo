@@ -13,6 +13,8 @@ import '../domain/skills_gateway.dart';
 class IoProcessRunner implements ProcessRunner {
   const IoProcessRunner();
 
+  static const commandTimeout = Duration(minutes: 2);
+
   @override
   Future<ProcessOutput> run(
     String executable,
@@ -41,7 +43,7 @@ class IoProcessRunner implements ProcessRunner {
         var timedOut = false;
         late int exitCode;
         try {
-          exitCode = await process.exitCode.timeout(const Duration(minutes: 2));
+          exitCode = await process.exitCode.timeout(commandTimeout);
         } on TimeoutException {
           timedOut = true;
           process.kill();
@@ -61,7 +63,7 @@ class IoProcessRunner implements ProcessRunner {
       var timedOut = false;
       late int exitCode;
       try {
-        exitCode = await process.exitCode.timeout(const Duration(minutes: 2));
+        exitCode = await process.exitCode.timeout(commandTimeout);
       } on TimeoutException {
         timedOut = true;
         process.kill();
