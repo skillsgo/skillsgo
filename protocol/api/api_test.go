@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses every public risk value and representative complete/optional Hub JSON resources.
- * [OUTPUT]: Specifies risk validation, Repository-level Sum/archive identity, Skill RepositoryID/path membership, field casing, omission behavior, and lossless JSON round trips.
+ * [OUTPUT]: Specifies risk validation, Find wire documents, Repository-level Sum/archive identity, Skill RepositoryID/path membership, field casing, omission behavior, and lossless JSON round trips.
  * [POS]: Serves as wire-schema compatibility coverage shared by Hub handlers and the CLI client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -23,6 +23,25 @@ func TestRiskVocabulary(t *testing.T) {
 		if risk.Valid() {
 			t.Fatalf("invalid risk accepted: %q", risk)
 		}
+	}
+}
+
+func TestFindJSONContract(t *testing.T) {
+	request := FindRequest{SchemaVersion: SchemaVersion, Queries: []FindQuery{{ID: "external:1", Query: "ask-matt", ExactName: true}, {ID: "external:2", Query: "demo", Source: "github.com/o/r"}}, Limit: 10, Locale: "zh-CN"}
+	document, err := json.Marshal(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(document) != `{"schemaVersion":1,"queries":[{"id":"external:1","q":"ask-matt","exactName":true},{"id":"external:2","q":"demo","source":"github.com/o/r"}],"limit":10,"locale":"zh-CN"}` {
+		t.Fatalf("unexpected Find request %s", document)
+	}
+	response := FindResponse{SchemaVersion: SchemaVersion, Collection: "find", Results: []FindResult{{ID: "external:1", Query: "ask-matt", Skills: []FindSkill{}}}}
+	document, err = json.Marshal(response)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(document) != `{"schemaVersion":1,"collection":"find","results":[{"id":"external:1","q":"ask-matt","skills":[]}]}` {
+		t.Fatalf("unexpected Find response %s", document)
 	}
 }
 

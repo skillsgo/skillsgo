@@ -13,8 +13,8 @@
 - `agents_test.go`: specifies the stable App-facing Agent discovery machine contract.
 - `info.go`: exposes direct, read-only Repository or Skill JSON with immutable source identity plus provider-neutral Hub product metadata, including Repository descriptions required by App cards.
 - `info_test.go`: specifies explicit head/release resolution, Repository description preservation, exact Repository-batch member selection, stable JSON, missing-member failure, and the no-local-write boundary.
-- `product_reads.go`: exposes top-level Skill `find`/`detail` reads plus grouped `hub info`/`hub check` service inspection, including optional description locale forwarding, while hiding Hub routes and query parameters behind CLI domain language.
-- `product_reads_test.go`: specifies top-level Skill reads, ordered batch hydration, and grouped Hub service inspection through Execute.
+- `product_reads.go`: exposes top-level single-query or strict file/stdin batch Skill `find` plus `detail`, `hub info`, and `hub check` reads, including optional exact-name/Source restriction and description locale forwarding, while hiding Hub routes and query parameters behind CLI domain language.
+- `product_reads_test.go`: specifies single and batch Find, top-level Skill reads, ordered batch hydration, and grouped Hub service inspection through Execute.
 - `catalog_update_check.go`, `catalog_update_check_test.go`: expose and specify one bounded read-only App machine command that compares installed Library-entry versions with Repository-fresh head/release candidates resolved once per Repository.
 - `cloud_reporting.go`: publishes best-effort post-commit installation facts directly to the Cloud origin declared by a Cloud-mode Hub without changing local installation outcomes.
 - `inventory.go`: adapts mode-free Repository-managed/external inventory v6 into stable JSON and grouped adaptive Human output.

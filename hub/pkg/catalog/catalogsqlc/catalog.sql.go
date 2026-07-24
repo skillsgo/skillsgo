@@ -505,14 +505,27 @@ FROM skills s JOIN repositories r ON r.id=s.repository_id
 LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
 LEFT JOIN localized_descriptions ls ON ls.resource_kind='skill' AND ls.resource_id=r.repository_id || ':' || s.name AND ls.locale=$1
 LEFT JOIN localized_descriptions lr ON lr.resource_kind='repository' AND lr.resource_id=r.repository_id AND lr.locale=$1
-WHERE lower(s.name) LIKE '%' || lower($2) || '%' OR lower(s.description) LIKE '%' || lower($2) || '%'
-OR lower(r.repository_id) LIKE '%' || lower($2) || '%' OR lower(COALESCE(ls.description,'')) LIKE '%' || lower($2) || '%'
-OR lower(COALESCE(lr.description,'')) LIKE '%' || lower($2) || '%'
-ORDER BY s.verified DESC,s.name LIMIT $4 OFFSET $3
+WHERE ($2::boolean AND lower(s.name)=lower($3))
+OR (NOT $2::boolean AND (
+    lower(s.name) LIKE '%' || lower($3) || '%' OR lower(s.description) LIKE '%' || lower($3) || '%'
+    OR lower(r.repository_id) LIKE '%' || lower($3) || '%' OR lower(COALESCE(ls.description,'')) LIKE '%' || lower($3) || '%'
+    OR lower(COALESCE(lr.description,'')) LIKE '%' || lower($3) || '%'
+))
+ORDER BY CASE
+    WHEN lower(s.name)=lower($3) THEN 0
+    WHEN lower(s.name) LIKE lower($3) || '%' THEN 1
+    WHEN lower(s.name) LIKE '%' || lower($3) || '%' THEN 2
+    WHEN lower(r.repository_id)=lower($3) THEN 3
+    WHEN lower(r.repository_id) LIKE '%' || lower($3) || '%' THEN 4
+    ELSE 5
+END,
+similarity(s.name,$3) DESC,s.verified DESC,r.repository_id,s.skill_path
+LIMIT $5 OFFSET $4
 `
 
 type SearchLocalizedSkillsParams struct {
 	Locale     string `json:"locale"`
+	ExactName  bool   `json:"exact_name"`
 	Query      string `json:"query"`
 	PageOffset int32  `json:"page_offset"`
 	PageLimit  int32  `json:"page_limit"`
@@ -537,6 +550,7 @@ type SearchLocalizedSkillsRow struct {
 func (q *Queries) SearchLocalizedSkills(ctx context.Context, arg SearchLocalizedSkillsParams) ([]SearchLocalizedSkillsRow, error) {
 	rows, err := q.db.Query(ctx, searchLocalizedSkills,
 		arg.Locale,
+		arg.ExactName,
 		arg.Query,
 		arg.PageOffset,
 		arg.PageLimit,
@@ -577,14 +591,25 @@ const searchSkills = `-- name: SearchSkills :many
 SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.description,s.source_host,s.repository,s.skill_path,
 COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
 FROM skills s JOIN repositories r ON r.id=s.repository_id LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-WHERE (s.name || ' ' || s.description || ' ' || r.repository_id) ILIKE '%' || $1 || '%'
-ORDER BY similarity(s.name || ' ' || s.description || ' ' || r.repository_id,$1) DESC,s.verified DESC,s.name LIMIT $3 OFFSET $2
+WHERE ($1::boolean AND lower(s.name)=lower($2))
+OR (NOT $1::boolean AND (s.name || ' ' || s.description || ' ' || r.repository_id) ILIKE '%' || $2 || '%')
+ORDER BY CASE
+    WHEN lower(s.name)=lower($2) THEN 0
+    WHEN lower(s.name) LIKE lower($2) || '%' THEN 1
+    WHEN lower(s.name) LIKE '%' || lower($2) || '%' THEN 2
+    WHEN lower(r.repository_id)=lower($2) THEN 3
+    WHEN lower(r.repository_id) LIKE '%' || lower($2) || '%' THEN 4
+    ELSE 5
+END,
+similarity(s.name,$2) DESC,s.verified DESC,r.repository_id,s.skill_path
+LIMIT $4 OFFSET $3
 `
 
 type SearchSkillsParams struct {
-	Query      pgtype.Text `json:"query"`
-	PageOffset int32       `json:"page_offset"`
-	PageLimit  int32       `json:"page_limit"`
+	ExactName  bool   `json:"exact_name"`
+	Query      string `json:"query"`
+	PageOffset int32  `json:"page_offset"`
+	PageLimit  int32  `json:"page_limit"`
 }
 
 type SearchSkillsRow struct {
@@ -604,7 +629,12 @@ type SearchSkillsRow struct {
 }
 
 func (q *Queries) SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]SearchSkillsRow, error) {
-	rows, err := q.db.Query(ctx, searchSkills, arg.Query, arg.PageOffset, arg.PageLimit)
+	rows, err := q.db.Query(ctx, searchSkills,
+		arg.ExactName,
+		arg.Query,
+		arg.PageOffset,
+		arg.PageLimit,
+	)
 	if err != nil {
 		return nil, err
 	}
@@ -1020,7 +1050,7 @@ type UpsertRepositoryParams struct {
 }
 
 // [INPUT]: Depends on the reviewed PostgreSQL Catalog schema and sqlc's pgx/v5 generator.
-// [OUTPUT]: Defines typed Repository, Release, Skill, localization, search, and Backfill persistence operations.
+// [OUTPUT]: Defines typed Repository, Release, Skill, localization, name-first/exact Find, and Backfill persistence operations.
 // [POS]: Serves as the single maintained query source for the Hub Catalog module.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 func (q *Queries) UpsertRepository(ctx context.Context, arg UpsertRepositoryParams) (Repository, error) {

@@ -280,12 +280,54 @@ func (c *Client) DiscoverLocalized(ctx context.Context, collection, search, loca
 	}
 	path := "/api/v1/skills"
 	if collection == "search" {
-		path = "/api/v1/search"
+		path = "/api/v1/find"
 		query.Set("q", search)
 	} else {
 		query.Set("sort", collection)
 	}
 	return c.readProductJSON(ctx, path, query)
+}
+
+func (c *Client) FindLocalized(ctx context.Context, search, source, locale string, exactName bool, offset, limit int) (json.RawMessage, error) {
+	query := url.Values{"q": {search}, "offset": {fmt.Sprint(offset)}, "limit": {fmt.Sprint(limit)}}
+	if strings.TrimSpace(source) != "" {
+		query.Set("source", strings.TrimSpace(source))
+	}
+	if strings.TrimSpace(locale) != "" {
+		query.Set("locale", strings.TrimSpace(locale))
+	}
+	if exactName {
+		query.Set("exactName", "true")
+	}
+	return c.readProductJSON(ctx, "/api/v1/find", query)
+}
+
+func (c *Client) FindBatch(ctx context.Context, request protocolapi.FindRequest) (json.RawMessage, error) {
+	body, err := json.Marshal(request)
+	if err != nil {
+		return nil, err
+	}
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/find", bytes.NewReader(body))
+	if err != nil {
+		return nil, err
+	}
+	httpRequest.Header.Set("Content-Type", "application/json")
+	response, err := c.http.Do(httpRequest)
+	if err != nil {
+		return nil, fmt.Errorf("请求 Hub: %w", err)
+	}
+	defer response.Body.Close()
+	encoded, err := io.ReadAll(io.LimitReader(response.Body, 4<<20))
+	if err != nil {
+		return nil, err
+	}
+	if response.StatusCode != http.StatusOK {
+		return nil, &HTTPError{StatusCode: response.StatusCode, Body: strings.TrimSpace(string(encoded)), RequestID: response.Header.Get("Athens-Request-ID")}
+	}
+	if !json.Valid(encoded) {
+		return nil, &ProtocolError{Err: fmt.Errorf("Hub returned an invalid Find response")}
+	}
+	return json.RawMessage(encoded), nil
 }
 
 func (c *Client) Detail(ctx context.Context, repositoryID, name string) (json.RawMessage, error) {
