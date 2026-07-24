@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on sqlc-generated PostgreSQL queries, pgx pooling, versioned Atlas SQL migrations, Hub database configuration, canonical Repository ID plus Skill Name coordinates, and path-unique Repository members.
- * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, same-name path-preserving immutable Release Records, deterministic coordinate defaults, native pgx transaction scopes shared with River, current-release search projections, and source cache state.
+ * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, same-name path-preserving immutable Release Records, deterministic coordinate defaults, native pgx transaction scopes shared with River, name-first/exact current-release Find projections, and source cache state.
  * [POS]: Serves as the Hub identity and search data boundary while artifact bytes and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -573,6 +573,11 @@ func (c *Catalog) Skills(ctx context.Context, limit, offset int) ([]Skill, error
 }
 
 func (c *Catalog) Search(ctx context.Context, query string, limit, offset int) ([]SearchSkill, error) {
+	return c.Find(ctx, query, false, limit, offset)
+}
+
+// Find searches the public Catalog and optionally restricts results to an exact Skill name.
+func (c *Catalog) Find(ctx context.Context, query string, exactName bool, limit, offset int) ([]SearchSkill, error) {
 	limit = normalizeQueryLimit(limit)
 	if offset < 0 {
 		offset = 0
@@ -589,7 +594,7 @@ func (c *Catalog) Search(ctx context.Context, query string, limit, offset int) (
 		}
 		return results, nil
 	}
-	rows, err := c.queries.SearchSkills(ctx, catalogsqlc.SearchSkillsParams{Query: pgtype.Text{String: trimmed, Valid: trimmed != ""}, PageLimit: int32(limit), PageOffset: int32(offset)})
+	rows, err := c.queries.SearchSkills(ctx, catalogsqlc.SearchSkillsParams{Query: trimmed, ExactName: exactName, PageLimit: int32(limit), PageOffset: int32(offset)})
 	if err != nil {
 		return nil, err
 	}
@@ -602,15 +607,20 @@ func (c *Catalog) Search(ctx context.Context, query string, limit, offset int) (
 
 // SearchLocalized searches original and Hub-owned localized descriptions while preserving canonical identities.
 func (c *Catalog) SearchLocalized(ctx context.Context, query, locale string, limit, offset int) ([]SearchSkill, error) {
+	return c.FindLocalized(ctx, query, locale, false, limit, offset)
+}
+
+// FindLocalized applies the same name-first ordering while selecting localized presentation text.
+func (c *Catalog) FindLocalized(ctx context.Context, query, locale string, exactName bool, limit, offset int) ([]SearchSkill, error) {
 	locale = strings.TrimSpace(locale)
 	if locale == "" {
-		return c.Search(ctx, query, limit, offset)
+		return c.Find(ctx, query, exactName, limit, offset)
 	}
 	limit = normalizeQueryLimit(limit)
 	if offset < 0 {
 		offset = 0
 	}
-	rows, err := c.queries.SearchLocalizedSkills(ctx, catalogsqlc.SearchLocalizedSkillsParams{Query: strings.TrimSpace(query), Locale: locale, PageLimit: int32(limit), PageOffset: int32(offset)})
+	rows, err := c.queries.SearchLocalizedSkills(ctx, catalogsqlc.SearchLocalizedSkillsParams{Query: strings.TrimSpace(query), Locale: locale, ExactName: exactName, PageLimit: int32(limit), PageOffset: int32(offset)})
 	if err != nil {
 		return nil, err
 	}

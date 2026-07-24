@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Repository ID plus Skill Name validation.
- * [OUTPUT]: Provides shared schema constants, add-time Repository resolution DTOs, Repository-level artifact Info, Skill member Info, canonical Skill coordinate behavior, separate risk vocabulary, and update DTOs.
+ * [OUTPUT]: Provides shared schema constants, Find request/result DTOs, add-time Repository resolution DTOs, Repository-level artifact Info, Skill member Info, canonical Skill coordinate behavior, separate risk vocabulary, and update DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -84,6 +84,46 @@ type RepositoryResolutionResponse struct {
 type SkillCoordinate struct {
 	RepositoryID string `json:"repositoryId"`
 	Name         string `json:"name"`
+}
+
+type FindQuery struct {
+	ID        string `json:"id"`
+	Query     string `json:"q"`
+	Source    string `json:"source,omitempty"`
+	ExactName bool   `json:"exactName,omitempty"`
+}
+
+type FindRequest struct {
+	SchemaVersion int         `json:"schemaVersion"`
+	Queries       []FindQuery `json:"queries"`
+	Limit         int         `json:"limit"`
+	Locale        string      `json:"locale,omitempty"`
+}
+
+type FindSkill struct {
+	RepositoryID   string  `json:"repositoryId"`
+	Name           string  `json:"name"`
+	Description    string  `json:"description"`
+	Source         string  `json:"source"`
+	Repository     string  `json:"repository"`
+	ImageURL       *string `json:"imageUrl"`
+	SkillPath      string  `json:"skillPath"`
+	LatestVersion  string  `json:"latestVersion"`
+	TrustLevel     string  `json:"trustLevel"`
+	RiskAssessment string  `json:"riskAssessment"`
+}
+
+type FindResult struct {
+	ID     string      `json:"id"`
+	Query  string      `json:"q"`
+	Source string      `json:"source,omitempty"`
+	Skills []FindSkill `json:"skills"`
+}
+
+type FindResponse struct {
+	SchemaVersion int          `json:"schemaVersion"`
+	Collection    string       `json:"collection"`
+	Results       []FindResult `json:"results"`
 }
 
 func (coordinate SkillCoordinate) Valid() bool {

@@ -1,5 +1,5 @@
 -- [INPUT]: Depends on the reviewed PostgreSQL Catalog schema and sqlc's pgx/v5 generator.
--- [OUTPUT]: Defines typed Repository, Release, Skill, localization, search, and Backfill persistence operations.
+-- [OUTPUT]: Defines typed Repository, Release, Skill, localization, name-first/exact Find, and Backfill persistence operations.
 -- [POS]: Serves as the single maintained query source for the Hub Catalog module.
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -109,8 +109,18 @@ ORDER BY s.verified DESC,s.name LIMIT $1 OFFSET $2;
 SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.description,s.source_host,s.repository,s.skill_path,
 COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
 FROM skills s JOIN repositories r ON r.id=s.repository_id LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-WHERE (s.name || ' ' || s.description || ' ' || r.repository_id) ILIKE '%' || sqlc.arg(query) || '%'
-ORDER BY similarity(s.name || ' ' || s.description || ' ' || r.repository_id,sqlc.arg(query)) DESC,s.verified DESC,s.name LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
+WHERE (sqlc.arg(exact_name)::boolean AND lower(s.name)=lower(sqlc.arg(query)))
+OR (NOT sqlc.arg(exact_name)::boolean AND (s.name || ' ' || s.description || ' ' || r.repository_id) ILIKE '%' || sqlc.arg(query) || '%')
+ORDER BY CASE
+    WHEN lower(s.name)=lower(sqlc.arg(query)) THEN 0
+    WHEN lower(s.name) LIKE lower(sqlc.arg(query)) || '%' THEN 1
+    WHEN lower(s.name) LIKE '%' || lower(sqlc.arg(query)) || '%' THEN 2
+    WHEN lower(r.repository_id)=lower(sqlc.arg(query)) THEN 3
+    WHEN lower(r.repository_id) LIKE '%' || lower(sqlc.arg(query)) || '%' THEN 4
+    ELSE 5
+END,
+similarity(s.name,sqlc.arg(query)) DESC,s.verified DESC,r.repository_id,s.skill_path
+LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: TranslationCandidates :many
 SELECT 'repository'::text AS resource_kind, r.repository_id AS resource_id, r.description,
@@ -136,10 +146,22 @@ FROM skills s JOIN repositories r ON r.id=s.repository_id
 LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
 LEFT JOIN localized_descriptions ls ON ls.resource_kind='skill' AND ls.resource_id=r.repository_id || ':' || s.name AND ls.locale=sqlc.arg(locale)
 LEFT JOIN localized_descriptions lr ON lr.resource_kind='repository' AND lr.resource_id=r.repository_id AND lr.locale=sqlc.arg(locale)
-WHERE lower(s.name) LIKE '%' || lower(sqlc.arg(query)) || '%' OR lower(s.description) LIKE '%' || lower(sqlc.arg(query)) || '%'
-OR lower(r.repository_id) LIKE '%' || lower(sqlc.arg(query)) || '%' OR lower(COALESCE(ls.description,'')) LIKE '%' || lower(sqlc.arg(query)) || '%'
-OR lower(COALESCE(lr.description,'')) LIKE '%' || lower(sqlc.arg(query)) || '%'
-ORDER BY s.verified DESC,s.name LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
+WHERE (sqlc.arg(exact_name)::boolean AND lower(s.name)=lower(sqlc.arg(query)))
+OR (NOT sqlc.arg(exact_name)::boolean AND (
+    lower(s.name) LIKE '%' || lower(sqlc.arg(query)) || '%' OR lower(s.description) LIKE '%' || lower(sqlc.arg(query)) || '%'
+    OR lower(r.repository_id) LIKE '%' || lower(sqlc.arg(query)) || '%' OR lower(COALESCE(ls.description,'')) LIKE '%' || lower(sqlc.arg(query)) || '%'
+    OR lower(COALESCE(lr.description,'')) LIKE '%' || lower(sqlc.arg(query)) || '%'
+))
+ORDER BY CASE
+    WHEN lower(s.name)=lower(sqlc.arg(query)) THEN 0
+    WHEN lower(s.name) LIKE lower(sqlc.arg(query)) || '%' THEN 1
+    WHEN lower(s.name) LIKE '%' || lower(sqlc.arg(query)) || '%' THEN 2
+    WHEN lower(r.repository_id)=lower(sqlc.arg(query)) THEN 3
+    WHEN lower(r.repository_id) LIKE '%' || lower(sqlc.arg(query)) || '%' THEN 4
+    ELSE 5
+END,
+similarity(s.name,sqlc.arg(query)) DESC,s.verified DESC,r.repository_id,s.skill_path
+LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: ActiveBackfillRun :one
 SELECT * FROM repository_backfill_runs WHERE repository_id=$1 AND status IN ('queued','running') ORDER BY created_at DESC LIMIT 1;
