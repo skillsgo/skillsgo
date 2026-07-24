@@ -1,5 +1,5 @@
-# [INPUT]: Depends on Process Compose, Docker Compose PostgreSQL, the Hub Air configuration, CLI build target, Flutter macOS runtime, and port 3000 readiness.
-# [OUTPUT]: Declares the ordered, observable local development topology for PostgreSQL, Hub, CLI, and App processes.
+# [INPUT]: Depends on Process Compose, Docker Compose PostgreSQL exposed on host port 55432, the Hub Air configuration, CLI build target, Flutter macOS runtime, and port 3000 readiness.
+# [OUTPUT]: Declares the ordered, observable local development topology for PostgreSQL, Hub, CLI, and the App with the in-progress Adoption Review UI enabled.
 # [POS]: Serves as the repository-owned process orchestration contract consumed by scripts/dev.sh.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
@@ -18,7 +18,7 @@ processes:
     working_dir: "./hub"
     environment:
       - "SKILLSGO_HUB_LOG_LEVEL=debug"
-      - "SKILLSGO_HUB_DATABASE_DSN=postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable"
+      - "SKILLSGO_HUB_DATABASE_DSN=postgres://skillsgo:skillsgo-dev@localhost:55432/skillsgo_hub?sslmode=disable"
     availability:
       restart: exit_on_failure
     ready_log_line: "Server started on:"
@@ -33,7 +33,7 @@ processes:
       restart: exit_on_failure
 
   app:
-    command: "flutter run -d macos --pid-file=/tmp/skillsgo-flutter.pid"
+    command: "flutter run -d macos --pid-file=/tmp/skillsgo-flutter.pid --dart-define=SKILLSGO_ADOPTION_REVIEW_UI=true"
     working_dir: "./app"
     environment:
       - "SKILLSGO_CLI_PATH=${PWD}/cli/bin/skillsgo"
