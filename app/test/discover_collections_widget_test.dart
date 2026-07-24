@@ -142,7 +142,7 @@ void main() {
       findsOneWidget,
     );
     expect(find.byKey(const ValueKey('discover-skeleton')), findsNothing);
-    expect(find.text('Parsing Repository…'), findsOneWidget);
+    expect(find.text('Parsing source…'), findsOneWidget);
     final loading = tester.widget<portal.LoadingShapes>(
       find.byKey(const Key('portal-repository-loading-shape')),
     );
