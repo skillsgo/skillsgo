@@ -24,6 +24,14 @@ GitHub shares one number space across issues and pull requests. Resolve an ambig
 - When a skill says "publish to the issue tracker," create a GitHub Issue.
 - When a skill says "fetch the relevant ticket," run `gh issue view <number> --comments`.
 
+## Community Intake
+
+- Public defect, feature, and documentation reports use the forms under `/.github/ISSUE_TEMPLATE/` and begin with `needs-triage` plus one type label.
+- Usage questions, troubleshooting, integration advice, and early ideas belong in GitHub Discussions rather than Issues. Discussions may use any language; automation adds a labeled English summary to a non-English opening post, and maintainers correct material translation errors.
+- Potential vulnerabilities must use GitHub private vulnerability reporting and must never be copied into a public issue or discussion before coordinated disclosure.
+- Blank issues are disabled. Maintainers may move support requests to Discussions, close duplicates, or apply `needs-info` while awaiting evidence.
+- Only maintainers advance a triaged issue to `ready-for-agent`, `ready-for-human`, or `wontfix`.
+
 ## Wayfinding Operations
 
 - A map is one GitHub Issue labeled `wayfinder:map`.

@@ -16,6 +16,7 @@
 - `0011-identify-repository-members-by-skill-name.md`: identifies selectable members by Repository ID plus canonical Skill Name, keeps Skill Path internal to a Publication, and removes public Skill IDs and `/-/`.
 - `0012-compose-cloud-rankings-with-hub-cards.md`: makes Cloud the ranking composition boundary through uncached singleflight Hub batch reads and requires one-query ordered Hub hydration.
 - `0013-require-user-reviewed-external-skill-adoption.md`: makes External Skill adoption a user-reviewed Hub candidate and immutable-version selection, permits multiple versions of one Repository per scope, and requires 30-day per-Skill recovery.
+- `0014-distribute-source-independent-packages.md`: replaces Git Repository-first distribution with source-independent Package Publications, typed Source Adapters, exact Package-member identity, multi-Publication local state, and a no-compatibility cross-context implementation plan.
 
 ## Architectural Boundary
 

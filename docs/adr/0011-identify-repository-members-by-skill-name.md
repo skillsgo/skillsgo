@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0014 before public launch
 ---
 
 # Identify Repository members by Skill name
