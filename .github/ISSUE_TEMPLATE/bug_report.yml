@@ -1,0 +1,148 @@
+# [INPUT]: Depends on GitHub Issue Forms and SkillsGo's App, CLI, Hub, Cloud, Web, and Agent integration surfaces.
+# [OUTPUT]: Collects reproducible, privacy-safe bug reports and applies the repository's bug classification.
+# [POS]: Serves as the primary community defect intake form in .github/ISSUE_TEMPLATE.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+
+name: Bug report
+description: Report reproducible behavior that is broken or different from what you expected.
+title: "[Bug]: "
+labels:
+  - bug
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve SkillsGo. Search existing issues before reporting a new one.
+
+        If this may expose credentials, private source code, unauthorized filesystem access, or another security vulnerability, do not disclose it in a public issue. Use the private security-reporting link in the issue chooser.
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Affected surface
+      description: Choose the surface where you observed the problem, even if the root cause may be elsewhere.
+      options:
+        - Desktop App
+        - CLI
+        - Local installation, Vendor, or Agent Projection
+        - Hub publishing, search, or artifact download
+        - SkillsGo Cloud rankings
+        - Public website or documentation
+        - Shared protocol or interoperability
+        - Not sure
+    validations:
+      required: true
+
+  - type: dropdown
+    id: journey
+    attributes:
+      label: User journey
+      description: Select the operation that most closely matches the failure.
+      options:
+        - Discover or inspect a Skill
+        - Add a Repository or Skill
+        - Install or restore dependencies
+        - Update dependency intent
+        - Publish or download a Repository Release
+        - Manage Workspace Scope
+        - Manage User Scope
+        - Start or use the desktop App
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: SkillsGo version
+      description: Paste the released version or commit SHA. For the CLI, include the output of `skillsgo version` when available.
+      placeholder: v0.1.0 or 0123456789abcdef
+    validations:
+      required: true
+
+  - type: dropdown
+    id: operating-system
+    attributes:
+      label: Operating system
+      options:
+        - macOS
+        - Windows
+        - Linux
+        - Other
+        - Not applicable
+    validations:
+      required: true
+
+  - type: input
+    id: environment
+    attributes:
+      label: Environment details
+      description: Include OS version, CPU architecture, installation method, and target Agent when relevant.
+      placeholder: macOS 15.5, arm64, Homebrew, Codex
+
+  - type: input
+    id: repository-coordinate
+    attributes:
+      label: Repository or Skill coordinate
+      description: If relevant, provide the public Repository ID, Skill ID, and immutable version. Do not share private repository addresses.
+      placeholder: github.com/owner/repository at v1.2.3, member path skills/example
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      description: Provide the smallest sequence that reliably demonstrates the problem. Use placeholder values for secrets.
+      placeholder: |
+        1. Run ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect SkillsGo to do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: What happened instead? Include the exact error message when possible.
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Logs and additional context
+      description: Add sanitized logs, screenshots, or links to a minimal public reproduction. Remove credentials, tokens, private paths, and private source content.
+      render: shell
+
+  - type: dropdown
+    id: regression
+    attributes:
+      label: Regression
+      description: Did this workflow work in an earlier SkillsGo version?
+      options:
+        - Yes
+        - No
+        - Not sure
+    validations:
+      required: true
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checklist
+      options:
+        - label: I searched open and closed issues for an existing report.
+          required: true
+        - label: I removed credentials, tokens, private source code, and other sensitive information.
+          required: true
+        - label: This is not a security vulnerability.
+          required: true

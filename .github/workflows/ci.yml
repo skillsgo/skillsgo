@@ -1,5 +1,5 @@
-# [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, and cross-product E2E workspace validation commands.
-# [OUTPUT]: Provides the stable pull-request, merge-queue, and main-branch validation gate for every maintained product boundary.
+# [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, cross-product E2E validation commands, and OSV's supported dependency lockfiles.
+# [OUTPUT]: Provides the stable validation and known-vulnerability gate for every maintained product boundary.
 # [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration
@@ -20,6 +20,16 @@ permissions:
   contents: read
 
 jobs:
+  dependency-vulnerabilities:
+    name: Dependencies (OSV)
+    permissions:
+      actions: read
+      contents: read
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
+    with:
+      fail-on-vuln: true
+      upload-sarif: false
+
   protocol:
     name: Protocol (Go ${{ matrix.go }})
     runs-on: ubuntu-24.04
@@ -263,7 +273,7 @@ jobs:
   required:
     name: Required
     if: ${{ always() }}
-    needs: [protocol, cli, hub, app, web, e2e-cli, e2e-app]
+    needs: [dependency-vulnerabilities, protocol, cli, hub, app, web, e2e-cli, e2e-app]
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     env:
