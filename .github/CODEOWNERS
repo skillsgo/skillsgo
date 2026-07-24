@@ -1,0 +1,15 @@
+# [INPUT]: Depends on the SkillsGo repository layout and current maintainer ownership.
+# [OUTPUT]: Assigns default and domain-level review ownership for pull requests.
+# [POS]: Serves as the repository-wide GitHub review-routing policy.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+
+* @magic-chengdu
+
+/app/ @magic-chengdu
+/cli/ @magic-chengdu
+/docs/ @magic-chengdu
+/e2e/ @magic-chengdu
+/hub/ @magic-chengdu
+/protocol/ @magic-chengdu
+/web/ @magic-chengdu
+/.github/ @magic-chengdu

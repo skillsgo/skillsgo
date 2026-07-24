@@ -1,0 +1,104 @@
+# [INPUT]: Depends on GitHub Issue Forms and SkillsGo's problem-led product and domain-design workflow.
+# [OUTPUT]: Collects outcome-oriented feature proposals and applies the repository's enhancement classification.
+# [POS]: Serves as the community product-request intake form in .github/ISSUE_TEMPLATE.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+
+name: Feature request
+description: Propose an improvement grounded in a concrete user problem or workflow.
+title: "[Feature]: "
+labels:
+  - enhancement
+  - needs-triage
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the problem and desired outcome before prescribing an implementation. Maintainers will evaluate domain boundaries, compatibility, security, and release scope during triage.
+
+  - type: dropdown
+    id: audience
+    attributes:
+      label: Primary user
+      options:
+        - Skill consumer
+        - Skill or Repository author
+        - Workspace maintainer
+        - Hub operator
+        - Agent or tool integrator
+        - Contributor to SkillsGo
+        - Other
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: Product surface
+      options:
+        - Desktop App
+        - CLI
+        - Local dependency management or Agent Projection
+        - Hub publishing, identity, artifacts, or search
+        - SkillsGo Cloud rankings
+        - Public website or documentation
+        - Shared protocol or interoperability
+        - Cross-product or not sure
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What are you trying to accomplish, and what prevents or slows you down today?
+      placeholder: When I ..., I cannot ..., which matters because ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: current-workaround
+    attributes:
+      label: Current workaround
+      description: Explain how you handle the problem today, including why that workaround is insufficient. Write "None" if no workaround exists.
+    validations:
+      required: true
+
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Describe the observable user result. An implementation design is welcome but not required.
+    validations:
+      required: true
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Examples and prior art
+      description: Link to relevant public workflows, tools, specifications, or repositories. Explain which behavior is useful rather than asking for a wholesale copy.
+
+  - type: textarea
+    id: constraints
+    attributes:
+      label: Constraints and tradeoffs
+      description: Note compatibility, offline use, privacy, security, reproducibility, or migration constraints that matter to you.
+
+  - type: checkboxes
+    id: participation
+    attributes:
+      label: Participation
+      description: Optional ways you could help if the proposal is accepted.
+      options:
+        - label: I can provide more product context or examples.
+        - label: I can test an early implementation.
+        - label: I may be able to contribute an implementation after maintainers agree on the design.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checklist
+      options:
+        - label: I searched open and closed issues for an existing request.
+          required: true
+        - label: This request describes one coherent user problem rather than a collection of unrelated changes.
+          required: true
