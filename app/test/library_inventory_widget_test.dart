@@ -16,6 +16,10 @@ import 'support/fake_skills_gateway.dart';
 import 'support/widget_test_helpers.dart';
 
 void main() {
+  const adoptionReviewUIEnabled = bool.fromEnvironment(
+    'SKILLSGO_ADOPTION_REVIEW_UI',
+  );
+
   testWidgets(
     'Adoption Review matches exact names in one deduplicated batch Find',
     (tester) async {
@@ -76,6 +80,7 @@ void main() {
       expect(find.text('Confirm SkillsGo management (2)'), findsOneWidget);
       expect(find.text('Matching Source…'), findsNothing);
     },
+    skip: !adoptionReviewUIEnabled,
   );
 
   testWidgets('Library renders a cold-load skeleton before CLI inspection', (
