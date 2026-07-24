@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Catalog with Testcontainers PostgreSQL and deterministic Skill metadata.
- * [OUTPUT]: Specifies migrations, shared native transactions, immutable Repository Release persistence, complete member history, current-release search projections, searchable fields, and pagination.
+ * [OUTPUT]: Specifies migrations, shared native transactions, immutable Repository Release persistence, complete member history, name-first/exact current-release Find projections, searchable fields, and pagination.
  * [POS]: Serves as PostgreSQL contract coverage for the Hub identity and search metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -78,12 +78,134 @@ func TestPostgresCatalogUpsertAndSearch(t *testing.T) {
 
 	got.Description = "Updated router"
 	require.NoError(t, c.UpsertSkill(ctx, got))
+	require.NoError(t, c.UpsertSkill(ctx, &Skill{RepositoryID: "github.com/acme/skills", SkillPath: "ask-matt-plus", Name: "ask-matt-plus", Description: "Prefix match", Verified: true}))
+	require.NoError(t, c.UpsertSkill(ctx, &Skill{RepositoryID: "github.com/acme/other", SkillPath: "router", Name: "router", Description: "Mentions ask-matt", Verified: true}))
 	for _, query := range []string{"ask-matt", "updated", "mattpocock"} {
 		results, searchErr := c.Search(ctx, query, 10, 0)
 		require.NoError(t, searchErr)
-		require.Len(t, results, 1, query)
+		require.NotEmpty(t, results, query)
 		require.Equal(t, got.RepositoryID, results[0].RepositoryID)
 		require.Equal(t, got.Name, results[0].Name)
+	}
+	exact, err := c.Find(ctx, "ASK-MATT", true, 10, 0)
+	require.NoError(t, err)
+	require.Len(t, exact, 1)
+	require.Equal(t, "ask-matt", exact[0].Name)
+	localized, err := c.FindLocalized(ctx, "ask-matt", "zh-CN", false, 10, 0)
+	require.NoError(t, err)
+	require.GreaterOrEqual(t, len(localized), 2)
+	require.Equal(t, "ask-matt", localized[0].Name)
+}
+
+func TestPostgresCatalogFindPriorityMatrix(t *testing.T) {
+	ctx := context.Background()
+	c := openTestCatalog(t)
+	fixtures := []*Skill{
+		{RepositoryID: "github.com/zeta/exact", SkillPath: "needle", Name: "needle", Description: "Exact unverified"},
+		{RepositoryID: "github.com/yankee/exact", SkillPath: "needle", Name: "needle", Description: "Exact verified", Verified: true},
+		{RepositoryID: "github.com/acme/prefix-close", SkillPath: "needle-kit", Name: "needle-kit", Description: "Close prefix"},
+		{RepositoryID: "github.com/acme/prefix-far", SkillPath: "needle-toolkit-extra", Name: "needle-toolkit-extra", Description: "Far prefix"},
+		{RepositoryID: "github.com/acme/contains", SkillPath: "super-needle", Name: "super-needle", Description: "Contains name"},
+		{RepositoryID: "github.com/acme/needle-source", SkillPath: "repository-hit", Name: "repository-hit", Description: "Repository match"},
+		{RepositoryID: "github.com/acme/description", SkillPath: "description-hit", Name: "description-hit", Description: "Mentions needle only here"},
+		{RepositoryID: "github.com/acme/repository-target", SkillPath: "repository-exact", Name: "repository-exact", Description: "Exact Repository"},
+		{RepositoryID: "github.com/acme/repository-target-extra", SkillPath: "repository-contains", Name: "repository-contains", Description: "Contains Repository"},
+		{RepositoryID: "github.com/acme/repository-description", SkillPath: "repository-description", Name: "repository-description", Description: "Mentions github.com/acme/repository-target only here"},
+		{RepositoryID: "github.com/acme/stable-a", SkillPath: "z-path", Name: "stable", Description: "Stable Z", Verified: true},
+		{RepositoryID: "github.com/acme/stable-a", SkillPath: "a-path", Name: "stable", Description: "Stable A", Verified: true},
+		{RepositoryID: "github.com/acme/stable-b", SkillPath: "a-path", Name: "stable", Description: "Stable B", Verified: true},
+	}
+	for _, fixture := range fixtures {
+		require.NoError(t, c.UpsertSkill(ctx, fixture), fixture.RepositoryID+":"+fixture.SkillPath)
+	}
+
+	coordinate := func(skill SearchSkill) string {
+		return skill.RepositoryID + ":" + skill.SkillPath
+	}
+	find := func(query, locale string, exactName bool) []string {
+		var (
+			results []SearchSkill
+			err     error
+		)
+		if locale == "" {
+			results, err = c.Find(ctx, query, exactName, 20, 0)
+		} else {
+			results, err = c.FindLocalized(ctx, query, locale, exactName, 20, 0)
+		}
+		require.NoError(t, err)
+		coordinates := make([]string, 0, len(results))
+		for _, result := range results {
+			coordinates = append(coordinates, coordinate(result))
+		}
+		return coordinates
+	}
+
+	tests := []struct {
+		name      string
+		query     string
+		locale    string
+		exactName bool
+		expected  []string
+	}{
+		{
+			name:  "name tiers similarity verified and description fallback",
+			query: "needle",
+			expected: []string{
+				"github.com/yankee/exact:needle",
+				"github.com/zeta/exact:needle",
+				"github.com/acme/prefix-close:needle-kit",
+				"github.com/acme/prefix-far:needle-toolkit-extra",
+				"github.com/acme/contains:super-needle",
+				"github.com/acme/needle-source:repository-hit",
+				"github.com/acme/description:description-hit",
+			},
+		},
+		{
+			name:  "Repository exact contains and description tiers",
+			query: "github.com/acme/repository-target",
+			expected: []string{
+				"github.com/acme/repository-target:repository-exact",
+				"github.com/acme/repository-target-extra:repository-contains",
+				"github.com/acme/repository-description:repository-description",
+			},
+		},
+		{
+			name:      "exact name excludes every lower tier",
+			query:     "NEEDLE",
+			exactName: true,
+			expected: []string{
+				"github.com/yankee/exact:needle",
+				"github.com/zeta/exact:needle",
+			},
+		},
+		{
+			name:  "Repository and path provide deterministic final order",
+			query: "stable",
+			expected: []string{
+				"github.com/acme/stable-a:a-path",
+				"github.com/acme/stable-a:z-path",
+				"github.com/acme/stable-b:a-path",
+			},
+		},
+		{
+			name:   "localized Find preserves the ordinary priority matrix",
+			query:  "needle",
+			locale: "zh-CN",
+			expected: []string{
+				"github.com/yankee/exact:needle",
+				"github.com/zeta/exact:needle",
+				"github.com/acme/prefix-close:needle-kit",
+				"github.com/acme/prefix-far:needle-toolkit-extra",
+				"github.com/acme/contains:super-needle",
+				"github.com/acme/needle-source:repository-hit",
+				"github.com/acme/description:description-hit",
+			},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			require.Equal(t, tc.expected, find(tc.query, tc.locale, tc.exactName))
+		})
 	}
 }
 
