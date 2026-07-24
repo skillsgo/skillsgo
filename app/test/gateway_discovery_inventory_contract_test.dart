@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses controlled CLI Hub/Skill reads, an HTTP Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
- * [OUTPUT]: Specifies public Find and Cloud-composed collection discovery including the four-row empty-input matrix, direct explicit-source routing, unified inventory, Agent catalog, visibility, and schema validation contracts.
+ * [OUTPUT]: Specifies public single/batch Find and Cloud-composed collection discovery including the four-row empty-input matrix, direct explicit-source routing, unified inventory, Agent catalog, visibility, and schema validation contracts.
  * [POS]: Serves as the discovery and local inventory contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -25,7 +25,7 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"collection":"search","skills":[{"repositoryId":"github.com/flutter/skills","source":"github.com/flutter/skills","imageUrl":"https://images.example/flutter.png","skillPath":"responsive-layout","name":"responsive-layout","description":"Build adaptive Flutter layouts.","latestVersion":"v1.2.3","trustLevel":"community_verified","riskAssessment":"low"}],"page":{"limit":20,"offset":0,"nextOffset":20}}',
+              '{"collection":"find","skills":[{"repositoryId":"github.com/flutter/skills","source":"github.com/flutter/skills","imageUrl":"https://images.example/flutter.png","skillPath":"responsive-layout","name":"responsive-layout","description":"Build adaptive Flutter layouts.","latestVersion":"v1.2.3","trustLevel":"community_verified","riskAssessment":"low"}],"page":{"limit":20,"offset":0,"nextOffset":20}}',
           stderr: '',
         ),
         ProcessOutput(
@@ -80,6 +80,42 @@ void main() {
     expect(installed.single.agents, ['codex']);
     expect(installed.single.targetCount, 2);
   });
+
+  test(
+    'batch Find uses one CLI process with stdin and no inventory read',
+    () async {
+      final runner = FakeProcessRunner()
+        ..result = const ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"schemaVersion":1,"collection":"find","results":[{"id":"external:1","q":"ask-matt","skills":[{"repositoryId":"github.com/example/skills","source":"github.com/example/skills","repository":"github.com/example/skills","imageUrl":null,"skillPath":"skills/ask-matt","name":"ask-matt","description":"Route requests.","latestVersion":"v1.2.3","trustLevel":"unverified","riskAssessment":"unknown"}]}]}',
+          stderr: '',
+        );
+      final gateway = RealSkillsGateway(
+        processRunner: runner,
+        initialCliPath: '/usr/local/bin/skillsgo',
+      );
+
+      final results = await gateway.findSources(const [
+        SourceFindQuery(id: 'external:1', name: 'ask-matt'),
+      ]);
+
+      expect(runner.calls, hasLength(1));
+      expect(runner.lastArguments, [
+        'find',
+        '--input',
+        '-',
+        '--hub',
+        'https://hub.skillsgo.ai',
+        '--content-locale',
+        'en',
+      ]);
+      expect(jsonDecode(runner.lastStdin!)['queries'], [
+        {'id': 'external:1', 'q': 'ask-matt', 'exactName': true},
+      ]);
+      expect(results.single.skills.single.latestVersion, 'v1.2.3');
+    },
+  );
 
   test('Cloud ranking returns authoritative composed Skill cards', () async {
     final cloud = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);

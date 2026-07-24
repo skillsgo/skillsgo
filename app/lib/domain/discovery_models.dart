@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on shared system vocabulary for trust, risk, metrics, discovery collections, and canonical Skill coordinates.
- * [OUTPUT]: Provides discovery summaries with canonical coordinate identity and exact Repository member paths, repository metadata, pages, auditable files, and risk evidence.
+ * [OUTPUT]: Provides discovery summaries, batch Source Find queries/results, canonical coordinate identity and exact Repository member paths, repository metadata, pages, auditable files, and risk evidence.
  * [POS]: Serves as the focused public discovery model module consumed by Discover, detail, and CLI decoding.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -76,6 +76,25 @@ class DiscoveryPage {
   final List<SkillSummary> skills;
   final int? nextOffset;
   final RepositorySummary? repository;
+}
+
+class SourceFindQuery {
+  const SourceFindQuery({
+    required this.id,
+    required this.name,
+    this.source = '',
+  });
+
+  final String id;
+  final String name;
+  final String source;
+}
+
+class SourceFindResult {
+  const SourceFindResult({required this.id, required this.skills});
+
+  final String id;
+  final List<SkillSummary> skills;
 }
 
 class SkillFile {

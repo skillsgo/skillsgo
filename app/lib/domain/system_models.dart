@@ -182,6 +182,7 @@ abstract interface class ProcessRunner {
   Future<ProcessOutput> run(
     String executable,
     List<String> arguments, {
+    String? stdin,
     void Function(String line)? onStdoutLine,
   });
 }

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Dart process, stream, UTF-8, and timeout primitives plus the App process contract.
- * [OUTPUT]: Provides the production ProcessRunner adapter with structured arguments, streamed stdout, bounded execution, and typed output.
+ * [OUTPUT]: Provides the production ProcessRunner adapter with structured arguments, optional stdin, streamed stdout, bounded execution, and typed output.
  * [POS]: Serves as the local operating-system process adapter used by the CLI machine-protocol module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -19,11 +19,14 @@ class IoProcessRunner implements ProcessRunner {
   Future<ProcessOutput> run(
     String executable,
     List<String> arguments, {
+    String? stdin,
     void Function(String line)? onStdoutLine,
   }) async {
     try {
       if (onStdoutLine != null) {
         final process = await Process.start(executable, arguments);
+        if (stdin != null) process.stdin.write(stdin);
+        await process.stdin.close();
         final stdout = StringBuffer();
         final stdoutDone = Completer<void>();
         process.stdout
@@ -58,6 +61,8 @@ class IoProcessRunner implements ProcessRunner {
         );
       }
       final process = await Process.start(executable, arguments);
+      if (stdin != null) process.stdin.write(stdin);
+      await process.stdin.close();
       final stdoutFuture = process.stdout.transform(utf8.decoder).join();
       final stderrFuture = process.stderr.transform(utf8.decoder).join();
       var timedOut = false;

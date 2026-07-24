@@ -599,7 +599,7 @@
   "projectLevel": "項目級別",
   "projects": "項目",
   "loading": "正在載入…",
-  "repositoryParsing": "正在解析 Repository…",
+  "repositoryParsing": "正在解析來源…",
   "userInstallSummary": "將在用户級別供 {agents} 個智能體使用",
   "@userInstallSummary": {
     "placeholders": {
@@ -627,7 +627,7 @@
   "installedCell": "已安裝",
   "unsupportedCell": "不可用",
   "confirmInstall": "確認安裝",
-  "installAllRepositorySkills": "安裝倉庫所有技能（{count}）",
+  "installAllRepositorySkills": "安裝此來源的全部技能（{count}）",
   "installAllSkillsTo": "安裝所有技能到",
   "@installAllRepositorySkills": {
     "placeholders": {
@@ -636,7 +636,7 @@
       }
     }
   },
-  "installRepositorySkills": "安裝 {repository} 全部技能（{count}）",
+  "installRepositorySkills": "安裝來自 {repository} 的全部技能（{count}）",
   "@installRepositorySkills": {
     "placeholders": {
       "repository": {
@@ -861,6 +861,23 @@
     }
   },
   "batchTakeoverAction": "納入 SkillsGo 管理",
+  "handExternalSkillsToSkillsGoManagementCount": "將 {count} 個外部技能交給 SkillsGo 管理",
+  "@handExternalSkillsToSkillsGoManagementCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "confirmSkillsGoManagementCount": "確認由 SkillsGo 管理（{count}）",
+  "@confirmSkillsGoManagementCount": {"placeholders": {"count": {"type": "int"}}},
+  "skillColumnLabel": "技能",
+  "repositorySourceColumnLabel": "來源",
+  "versionColumnLabel": "版本",
+  "repositoryMatching": "正在配對來源…",
+  "sourceMatchUnavailable": "來源配對暫時無法使用",
+  "noSourceMatches": "沒有相符的來源",
+  "sourceMatchPercent": "相符度 {percent}%",
+  "@sourceMatchPercent": {"placeholders": {"percent": {"type": "int"}}},
+  "versionPendingSelection": "等待選擇 Source",
   "batchTakeoverActionCount": "納入管理（{count}）",
   "@batchTakeoverActionCount": {
     "placeholders": {
@@ -988,7 +1005,7 @@
   },
   "batchTakeoverClose": "關閉",
   "installMoreTargets": "安裝到更多位置",
-  "detailRepository": "倉庫",
+  "detailRepository": "來源",
   "detailStars": "星標",
   "detailUpdated": "最近更新",
   "detailArchiveSize": "ZIP 大小",

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on unified InstalledSkill entries, repository identity, selection callbacks, and update state.
- * [OUTPUT]: Provides grouping data, deterministic repository grouping, compact source identity, and installed Skill group cards.
+ * [INPUT]: Depends on unified InstalledSkill entries, repository identity, the SkillsGo logo asset, selection visibility and callbacks, update state, and an optional External Adoption Review entry action.
+ * [OUTPUT]: Provides grouping data, deterministic repository grouping, compact source identity, and installed Skill group cards with conditionally hidden selection controls plus an optional left-aligned External Skills management action and reduced-motion-aware idle guidance.
  * [POS]: Serves as the repository grouping segment of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -77,6 +77,8 @@ class _InstalledSkillGroup extends StatelessWidget {
     required this.onOpen,
     required this.selectedSkillKeys,
     required this.onSelectionChanged,
+    this.selectionVisible = true,
+    this.onAdoptionReview,
   });
 
   final _InstalledSkillGroupData group;
@@ -85,44 +87,118 @@ class _InstalledSkillGroup extends StatelessWidget {
   final ValueChanged<InstalledSkill> onOpen;
   final Set<String> selectedSkillKeys;
   final void Function(InstalledSkill, bool) onSelectionChanged;
+  final bool selectionVisible;
+  final VoidCallback? onAdoptionReview;
 
   @override
   Widget build(BuildContext context) {
+    final buttonForeground = context.skillsComponents.primaryForeground;
+    final scheme = Theme.of(context).colorScheme;
+    final surfaceDelta =
+        (scheme.surface.computeLuminance() -
+                buttonForeground.computeLuminance())
+            .abs();
+    final inverseSurfaceDelta =
+        (scheme.inverseSurface.computeLuminance() -
+                buttonForeground.computeLuminance())
+            .abs();
+    final contrastCandidate = surfaceDelta > inverseSurfaceDelta
+        ? scheme.surface
+        : scheme.inverseSurface;
+    final shimmerHighlight =
+        Color.lerp(buttonForeground, contrastCandidate, .32) ??
+        buttonForeground;
+    final header = Row(
+      children: [
+        SizedBox(
+          width: 44,
+          child: Center(
+            child: RepositoryAvatar(
+              source: group.source,
+              imageUrl: _repositoryAvatarUrl(group.source),
+              size: 42,
+              borderRadius: 13,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            group.label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: context.skillsTypography.display.copyWith(
+              fontSize: 28,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        StatusChip(label: '${group.skills.length}'),
+        const Spacer(),
+      ],
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
           padding: const EdgeInsetsDirectional.only(start: 11, bottom: 9),
-          child: Row(
-            children: [
-              SizedBox(
-                width: 44,
-                child: Center(
-                  child: RepositoryAvatar(
-                    source: group.source,
-                    imageUrl: _repositoryAvatarUrl(group.source),
-                    size: 42,
-                    borderRadius: 13,
+          child: onAdoptionReview == null
+              ? header
+              : Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 44,
+                        child: Center(
+                          child: ClipRRect(
+                            borderRadius: BorderRadius.circular(13),
+                            child: Image.asset(
+                              'assets/branding/skillsgo-logo.png',
+                              key: const Key('library-external-skills-logo'),
+                              width: 42,
+                              height: 42,
+                              fit: BoxFit.cover,
+                              filterQuality: FilterQuality.high,
+                              excludeFromSemantics: true,
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      SizedBox(
+                        height: 48,
+                        child: PrimaryCapsuleButton(
+                          key: const Key('library-adoption-review-enter'),
+                          label: context.l10n
+                              .handExternalSkillsToSkillsGoManagementCount(
+                                group.skills.length,
+                              ),
+                          height: 48,
+                          horizontalPadding: 18,
+                          labelWidget: ShimmerText(
+                            text: context.l10n
+                                .handExternalSkillsToSkillsGoManagementCount(
+                                  group.skills.length,
+                                ),
+                            style: context.skillsTypography.label.copyWith(
+                              color: buttonForeground,
+                              fontWeight: FontWeight.w600,
+                            ),
+                            baseColor: buttonForeground,
+                            highlightColor: shimmerHighlight,
+                            duration: const Duration(milliseconds: 2600),
+                            repeat: true,
+                          ),
+                          trailingWidget: const _IdleMagicSelectionIcon(),
+                          onPressed: onAdoptionReview,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Flexible(
-                child: Text(
-                  group.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: context.skillsTypography.display.copyWith(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 8),
-              StatusChip(label: '${group.skills.length}'),
-              const Spacer(),
-            ],
-          ),
         ),
         Column(
           children: [
@@ -130,6 +206,7 @@ class _InstalledSkillGroup extends StatelessWidget {
               if (index > 0) const SkillsSeparator.horizontal(),
               _InstalledSkillRow(
                 skill: group.skills[index],
+                selectionVisible: selectionVisible,
                 projects: projects,
                 selected: selectedSkillKeys.contains(
                   _librarySelectionKey(group.skills[index]),
@@ -145,6 +222,85 @@ class _InstalledSkillGroup extends StatelessWidget {
       ],
     );
   }
+}
+
+class _IdleMagicSelectionIcon extends StatefulWidget {
+  const _IdleMagicSelectionIcon();
+
+  @override
+  State<_IdleMagicSelectionIcon> createState() =>
+      _IdleMagicSelectionIconState();
+}
+
+class _IdleMagicSelectionIconState extends State<_IdleMagicSelectionIcon>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController controller;
+  late final Animation<double> emphasis;
+
+  @override
+  void initState() {
+    super.initState();
+    controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 3600),
+    );
+    emphasis = TweenSequence<double>([
+      TweenSequenceItem(tween: ConstantTween<double>(0), weight: 72),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 0,
+          end: 1,
+        ).chain(CurveTween(curve: Curves.easeOutCubic)),
+        weight: 10,
+      ),
+      TweenSequenceItem(
+        tween: Tween<double>(
+          begin: 1,
+          end: 0,
+        ).chain(CurveTween(curve: Curves.easeInOutCubic)),
+        weight: 12,
+      ),
+      TweenSequenceItem(tween: ConstantTween<double>(0), weight: 6),
+    ]).animate(controller);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      controller
+        ..stop()
+        ..value = 0;
+    } else if (!controller.isAnimating) {
+      controller.repeat();
+    }
+  }
+
+  @override
+  void dispose() {
+    controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: emphasis,
+    child: const HugeIcon(
+      icon: HugeIcons.strokeRoundedCursorMagicSelection04,
+      size: 17,
+      strokeWidth: 1.8,
+    ),
+    builder: (context, child) {
+      final value = emphasis.value;
+      return Transform.translate(
+        offset: Offset(0, -1.2 * value),
+        child: Transform.rotate(
+          angle: .045 * value,
+          child: Transform.scale(scale: 1 + .04 * value, child: child),
+        ),
+      );
+    },
+  );
 }
 
 String? _repositoryAvatarUrl(String source) {

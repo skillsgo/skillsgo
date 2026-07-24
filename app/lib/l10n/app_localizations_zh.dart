@@ -1157,7 +1157,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get loading => '正在加载…';
 
   @override
-  String get repositoryParsing => '正在解析 Repository…';
+  String get repositoryParsing => '正在解析来源…';
 
   @override
   String userInstallSummary(int agents) {
@@ -1195,7 +1195,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String installAllRepositorySkills(int count) {
-    return '安装仓库所有技能（$count）';
+    return '安装此来源的全部技能（$count）';
   }
 
   @override
@@ -1203,7 +1203,7 @@ class AppLocalizationsZh extends AppLocalizations {
 
   @override
   String installRepositorySkills(String repository, int count) {
-    return '安装 $repository 全部技能（$count）';
+    return '安装来自 $repository 的全部技能（$count）';
   }
 
   @override
@@ -1473,6 +1473,42 @@ class AppLocalizationsZh extends AppLocalizations {
   String get batchTakeoverAction => '纳入 SkillsGo 管理';
 
   @override
+  String handExternalSkillsToSkillsGoManagementCount(int count) {
+    return '将 $count 个外部技能交给 SkillsGo 管理';
+  }
+
+  @override
+  String confirmSkillsGoManagementCount(int count) {
+    return '确认由 SkillsGo 管理（$count）';
+  }
+
+  @override
+  String get skillColumnLabel => '技能';
+
+  @override
+  String get repositorySourceColumnLabel => '来源';
+
+  @override
+  String get versionColumnLabel => '版本';
+
+  @override
+  String get repositoryMatching => '正在匹配来源…';
+
+  @override
+  String get sourceMatchUnavailable => '来源匹配暂不可用';
+
+  @override
+  String get noSourceMatches => '没有匹配的来源';
+
+  @override
+  String sourceMatchPercent(int percent) {
+    return '匹配度 $percent%';
+  }
+
+  @override
+  String get versionPendingSelection => '等待选择 Source';
+
+  @override
   String batchTakeoverActionCount(int count) {
     return '纳入管理（$count）';
   }
@@ -1659,7 +1695,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get installMoreTargets => '安装到更多位置';
 
   @override
-  String get detailRepository => '仓库';
+  String get detailRepository => '来源';
 
   @override
   String get detailStars => '星标';
@@ -2912,7 +2948,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get loading => '正在載入…';
 
   @override
-  String get repositoryParsing => '正在解析 Repository…';
+  String get repositoryParsing => '正在解析來源…';
 
   @override
   String userInstallSummary(int agents) {
@@ -2950,7 +2986,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String installAllRepositorySkills(int count) {
-    return '安裝倉庫所有技能（$count）';
+    return '安裝此來源的全部技能（$count）';
   }
 
   @override
@@ -2958,7 +2994,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
 
   @override
   String installRepositorySkills(String repository, int count) {
-    return '安裝 $repository 全部技能（$count）';
+    return '安裝來自 $repository 的全部技能（$count）';
   }
 
   @override
@@ -3228,6 +3264,42 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get batchTakeoverAction => '納入 SkillsGo 管理';
 
   @override
+  String handExternalSkillsToSkillsGoManagementCount(int count) {
+    return '將 $count 個外部技能交給 SkillsGo 管理';
+  }
+
+  @override
+  String confirmSkillsGoManagementCount(int count) {
+    return '確認由 SkillsGo 管理（$count）';
+  }
+
+  @override
+  String get skillColumnLabel => '技能';
+
+  @override
+  String get repositorySourceColumnLabel => '來源';
+
+  @override
+  String get versionColumnLabel => '版本';
+
+  @override
+  String get repositoryMatching => '正在配對來源…';
+
+  @override
+  String get sourceMatchUnavailable => '來源配對暫時無法使用';
+
+  @override
+  String get noSourceMatches => '沒有相符的來源';
+
+  @override
+  String sourceMatchPercent(int percent) {
+    return '相符度 $percent%';
+  }
+
+  @override
+  String get versionPendingSelection => '等待選擇 Source';
+
+  @override
   String batchTakeoverActionCount(int count) {
     return '納入管理（$count）';
   }
@@ -3414,7 +3486,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get installMoreTargets => '安裝到更多位置';
 
   @override
-  String get detailRepository => '倉庫';
+  String get detailRepository => '來源';
 
   @override
   String get detailStars => '星標';
@@ -4668,7 +4740,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get loading => '正在載入…';
 
   @override
-  String get repositoryParsing => '正在解析 Repository…';
+  String get repositoryParsing => '正在解析來源…';
 
   @override
   String userInstallSummary(int agents) {
@@ -4706,7 +4778,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String installAllRepositorySkills(int count) {
-    return '安裝倉庫所有技能（$count）';
+    return '安裝此來源的全部技能（$count）';
   }
 
   @override
@@ -4714,7 +4786,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
 
   @override
   String installRepositorySkills(String repository, int count) {
-    return '安裝 $repository 全部技能（$count）';
+    return '安裝來自 $repository 的全部技能（$count）';
   }
 
   @override
@@ -4984,6 +5056,42 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get batchTakeoverAction => '納入 SkillsGo 管理';
 
   @override
+  String handExternalSkillsToSkillsGoManagementCount(int count) {
+    return '將 $count 個外部技能交給 SkillsGo 管理';
+  }
+
+  @override
+  String confirmSkillsGoManagementCount(int count) {
+    return '確認由 SkillsGo 管理（$count）';
+  }
+
+  @override
+  String get skillColumnLabel => '技能';
+
+  @override
+  String get repositorySourceColumnLabel => '來源';
+
+  @override
+  String get versionColumnLabel => '版本';
+
+  @override
+  String get repositoryMatching => '正在比對來源…';
+
+  @override
+  String get sourceMatchUnavailable => '來源比對暫時無法使用';
+
+  @override
+  String get noSourceMatches => '沒有相符的來源';
+
+  @override
+  String sourceMatchPercent(int percent) {
+    return '相符度 $percent%';
+  }
+
+  @override
+  String get versionPendingSelection => '等待選擇 Source';
+
+  @override
   String batchTakeoverActionCount(int count) {
     return '納入管理（$count）';
   }
@@ -5170,7 +5278,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get installMoreTargets => '安裝到更多位置';
 
   @override
-  String get detailRepository => '倉庫';
+  String get detailRepository => '來源';
 
   @override
   String get detailStars => '星標';
