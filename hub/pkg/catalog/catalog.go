@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on sqlc-generated PostgreSQL queries, pgx pooling, versioned Atlas SQL migrations, Hub database configuration, canonical Repository ID plus Skill Name coordinates, and path-unique Repository members.
- * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, same-name path-preserving immutable Release Records, deterministic coordinate defaults, native pgx transaction scopes shared with River, name-first/exact current-release Find projections, and source cache state.
+ * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, same-name path-preserving immutable Release Records, deterministic coordinate defaults, native pgx transaction scopes shared with River, name-first/exact single and set-based batch Find projections, and source cache state.
  * [POS]: Serves as the Hub identity and search data boundary while artifact bytes and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -409,6 +409,20 @@ type SearchSkill struct {
 	Skill
 }
 
+type FindBatchQuery struct {
+	ID        string
+	Query     string
+	Source    string
+	ExactName bool
+}
+
+type FindBatchResult struct {
+	ID     string
+	Query  string
+	Source string
+	Skills []SearchSkill
+}
+
 func (c *Catalog) UpsertSkill(ctx context.Context, skill *Skill) error {
 	repositoryID, err := skillpkg.ParseRepositoryID(skill.RepositoryID)
 	if err != nil {
@@ -629,6 +643,79 @@ func (c *Catalog) FindLocalized(ctx context.Context, query, locale string, exact
 		skills = append(skills, SearchSkill{Skill: *skillFromSQLC(row.ID, row.RepositoryID, row.RepositoryIdentity, row.Name, row.Description, row.SourceHost, row.Repository, row.SkillPath, row.LatestVersion, row.Stars, row.Verified, row.CreatedAt, row.UpdatedAt)})
 	}
 	return skills, nil
+}
+
+// FindBatchLocalized resolves an ordered set of independent Find queries in one
+// PostgreSQL round trip while retaining an empty result for every missing query.
+func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQuery, locale string, limit int) ([]FindBatchResult, error) {
+	if len(queries) == 0 {
+		return []FindBatchResult{}, nil
+	}
+	limit = normalizeQueryLimit(limit)
+	locale = strings.TrimSpace(locale)
+	params := catalogsqlc.FindLocalizedSkillsBatchParams{
+		Locale:     locale,
+		PageLimit:  int32(limit),
+		QueryIds:   make([]string, 0, len(queries)),
+		Queries:    make([]string, 0, len(queries)),
+		Sources:    make([]string, 0, len(queries)),
+		ExactNames: make([]bool, 0, len(queries)),
+	}
+	results := make([]FindBatchResult, len(queries))
+	indexByID := make(map[string]int, len(queries))
+	allExact := true
+	for index, query := range queries {
+		if _, exists := indexByID[query.ID]; exists {
+			return nil, fmt.Errorf("duplicate Find batch query ID %q", query.ID)
+		}
+		indexByID[query.ID] = index
+		params.QueryIds = append(params.QueryIds, query.ID)
+		params.Queries = append(params.Queries, query.Query)
+		params.Sources = append(params.Sources, query.Source)
+		params.ExactNames = append(params.ExactNames, query.ExactName)
+		allExact = allExact && (query.ExactName || query.Source != "")
+		results[index] = FindBatchResult{ID: query.ID, Query: query.Query, Source: query.Source, Skills: []SearchSkill{}}
+	}
+	appendSkill := func(queryID string, skill Skill) error {
+		index, ok := indexByID[queryID]
+		if !ok {
+			return fmt.Errorf("unexpected Find batch query ID %q", queryID)
+		}
+		results[index].Skills = append(results[index].Skills, SearchSkill{Skill: skill})
+		return nil
+	}
+	if allExact {
+		rows, err := c.queries.FindExactLocalizedSkillsBatch(ctx, catalogsqlc.FindExactLocalizedSkillsBatchParams{
+			Locale: locale, PageLimit: int64(limit), QueryIds: params.QueryIds, Queries: params.Queries, Sources: params.Sources,
+		})
+		if err != nil {
+			return nil, err
+		}
+		for _, row := range rows {
+			if err := appendSkill(row.QueryID, *skillFromSQLC(
+				row.ID, row.RepositoryID, row.RepositoryIdentity, row.Name, row.Description,
+				row.SourceHost, row.Repository, row.SkillPath, row.LatestVersion,
+				row.Stars, row.Verified, row.CreatedAt, row.UpdatedAt,
+			)); err != nil {
+				return nil, err
+			}
+		}
+		return results, nil
+	}
+	rows, err := c.queries.FindLocalizedSkillsBatch(ctx, params)
+	if err != nil {
+		return nil, err
+	}
+	for _, row := range rows {
+		if err := appendSkill(row.QueryID, *skillFromSQLC(
+			row.ID, row.RepositoryID, row.RepositoryIdentity, row.Name, row.Description,
+			row.SourceHost, row.Repository, row.SkillPath, row.LatestVersion,
+			row.Stars, row.Verified, row.CreatedAt, row.UpdatedAt,
+		)); err != nil {
+			return nil, err
+		}
+	}
+	return results, nil
 }
 
 func skillFromSQLC(id, repositoryRowID int64, repositoryID, name, description, sourceHost, repository, skillPath, latestVersion string, stars int64, verified bool, createdAt, updatedAt time.Time) *Skill {

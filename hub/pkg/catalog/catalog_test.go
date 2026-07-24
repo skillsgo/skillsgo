@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses Catalog with Testcontainers PostgreSQL and deterministic Skill metadata.
- * [OUTPUT]: Specifies migrations, shared native transactions, immutable Repository Release persistence, complete member history, name-first/exact current-release Find projections, searchable fields, and pagination.
+ * [OUTPUT]: Specifies migrations, shared native transactions, immutable Repository Release persistence, complete member history, name-first/exact single and set-based batch Find projections, searchable fields, and pagination.
  * [POS]: Serves as PostgreSQL contract coverage for the Hub identity and search metadata boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -207,6 +207,44 @@ func TestPostgresCatalogFindPriorityMatrix(t *testing.T) {
 			require.Equal(t, tc.expected, find(tc.query, tc.locale, tc.exactName))
 		})
 	}
+}
+
+func TestPostgresCatalogFindBatchLocalizedPreservesQueriesAndEmptyResults(t *testing.T) {
+	c := openTestCatalog(t)
+	for _, skill := range []*Skill{
+		{RepositoryID: "github.com/acme/one", SkillPath: "skills/shared", Name: "shared", Description: "Canonical one", Verified: true},
+		{RepositoryID: "github.com/acme/two", SkillPath: "skills/shared", Name: "shared", Description: "Canonical two"},
+		{RepositoryID: "github.com/acme/two", SkillPath: "skills/other", Name: "other", Description: "Other"},
+	} {
+		require.NoError(t, c.UpsertSkill(t.Context(), skill))
+	}
+	require.NoError(t, c.UpsertLocalizedDescription(t.Context(), LocalizedDescription{
+		ResourceKind:  LocalizedSkill,
+		ResourceID:    "github.com/acme/one:shared",
+		Locale:        "zh-Hans",
+		Description:   "本地化一",
+		SourceDigest:  "digest",
+		PromptVersion: "prompt",
+	}))
+
+	results, err := c.FindBatchLocalized(t.Context(), []FindBatchQuery{
+		{ID: "all", Query: "shared", ExactName: true},
+		{ID: "source", Query: "shared", Source: "github.com/acme/two", ExactName: true},
+		{ID: "missing", Query: "missing", ExactName: true},
+	}, "zh-Hans", 10)
+	require.NoError(t, err)
+	require.Len(t, results, 3)
+	require.Equal(t, "all", results[0].ID)
+	require.Equal(t, []string{"github.com/acme/one", "github.com/acme/two"}, []string{
+		results[0].Skills[0].RepositoryID,
+		results[0].Skills[1].RepositoryID,
+	})
+	require.Equal(t, "本地化一", results[0].Skills[0].Description)
+	require.Equal(t, "source", results[1].ID)
+	require.Len(t, results[1].Skills, 1)
+	require.Equal(t, "github.com/acme/two", results[1].Skills[0].RepositoryID)
+	require.Equal(t, "missing", results[2].ID)
+	require.Empty(t, results[2].Skills)
 }
 
 func TestPostgresCatalogRejectsNilTransactionCallback(t *testing.T) {

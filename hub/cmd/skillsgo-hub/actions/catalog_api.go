@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, freshness-cached Repository artifact resolution, ZIP audit boundary, and request validation.
- * [OUTPUT]: Provides stable single and bounded-concurrent batch Find with optional exact-name/Source restriction, ordered batch Skill-card hydration, Repository-fresh head/release batch update, and detail APIs plus correlated private diagnostics for internal and best-effort dependency failures.
+ * [OUTPUT]: Provides stable single and set-based batch Find with optional exact-name/Source restriction, ordered batch Skill-card hydration, Repository-fresh head/release batch update, and detail APIs plus correlated private diagnostics for internal and best-effort dependency failures.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -27,10 +27,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
-	"golang.org/x/sync/errgroup"
 )
-
-const findBatchConcurrency = 8
 
 type skillsResponse struct {
 	Collection string           `json:"collection"`
@@ -294,7 +291,6 @@ func findSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 }
 
 func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
-	projection := skillCardProjection{catalog: metadata}
 	return func(c fiber.Ctx) error {
 		var request protocolapi.FindRequest
 		decoder := json.NewDecoder(strings.NewReader(string(c.Body())))
@@ -321,51 +317,29 @@ func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 			request.Queries[index] = item
 		}
 
-		results, err := runOrderedBounded(c.Context(), len(request.Queries), findBatchConcurrency, func(ctx context.Context, index int) (protocolapi.FindResult, error) {
-			item := request.Queries[index]
-			var cards []discoverySkill
-			if item.Source != "" {
-				coordinate := protocolapi.SkillCoordinate{RepositoryID: item.Source, Name: item.Query}
-				var findErr error
-				cards, findErr = projection.Hydrate(ctx, []protocolapi.SkillCoordinate{coordinate})
-				projection.Localize(ctx, locale, cards)
-				if findErr != nil {
-					return protocolapi.FindResult{}, findErr
-				}
-			} else {
-				skills, findErr := metadata.FindLocalized(ctx, item.Query, locale, item.ExactName, request.Limit, 0)
-				if findErr != nil {
-					return protocolapi.FindResult{}, findErr
-				}
-				cards = projection.Search(ctx, locale, skills)
-			}
-			return protocolapi.FindResult{ID: item.ID, Query: item.Query, Source: item.Source, Skills: cards}, nil
-		})
+		batchQueries := make([]catalog.FindBatchQuery, 0, len(request.Queries))
+		for _, item := range request.Queries {
+			batchQueries = append(batchQueries, catalog.FindBatchQuery{
+				ID: item.ID, Query: item.Query, Source: item.Source, ExactName: item.ExactName,
+			})
+		}
+		found, err := metadata.FindBatchLocalized(c.Context(), batchQueries, locale, request.Limit)
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.find_batch", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
+		}
+		results := make([]protocolapi.FindResult, 0, len(found))
+		for _, item := range found {
+			cards := make([]discoverySkill, 0, len(item.Skills))
+			for _, skill := range item.Skills {
+				cards = append(cards, searchedSkillCard(skill))
+			}
+			results = append(results, protocolapi.FindResult{
+				ID: item.ID, Query: item.Query, Source: item.Source, Skills: cards,
+			})
 		}
 		response := protocolapi.FindResponse{SchemaVersion: protocolapi.SchemaVersion, Collection: "find", Results: results}
 		return writeJSON(c, fiber.StatusOK, response)
 	}
-}
-
-func runOrderedBounded[T any](ctx context.Context, count, concurrency int, task func(context.Context, int) (T, error)) ([]T, error) {
-	results := make([]T, count)
-	group, groupContext := errgroup.WithContext(ctx)
-	group.SetLimit(concurrency)
-	for index := range count {
-		group.Go(func() error {
-			result, err := task(groupContext, index)
-			if err == nil {
-				results[index] = result
-			}
-			return err
-		})
-	}
-	if err := group.Wait(); err != nil {
-		return nil, err
-	}
-	return results, nil
 }
 
 func discoveryResponse(ctx context.Context, collection string, metadata *catalog.Catalog, locale string, ranked []catalog.SearchSkill, limit, offset int) skillsResponse {
