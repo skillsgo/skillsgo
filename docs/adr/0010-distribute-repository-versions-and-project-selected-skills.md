@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0014 before public launch
 ---
 
 # Distribute Repository Versions and project selected Skills
