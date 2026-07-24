@@ -1,12 +1,14 @@
 /*
- * [INPUT]: Depends on locale validation, TanStack Router links, and the shared site header.
- * [OUTPUT]: Provides the bilingual editorial landing page at each supported language prefix.
- * [POS]: Serves as the public product overview before readers enter the localized documentation tree.
+ * [INPUT]: Depends on locale resolution, shared design-system shells and content patterns, the authorized Mole content snapshot, and local Mole assets.
+ * [OUTPUT]: Provides the localized route with shared SkillsGo chrome and a faithful React implementation of the Mole landing body.
+ * [POS]: Serves as the public landing adapter while keeping copied presentation isolated from design-system ownership.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-import { resolveLocale, type Locale } from '@/lib/i18n';
-import { SiteHeader } from '@/components/site-header';
-import { createFileRoute, Link } from '@tanstack/react-router';
+import { ArticleList, EditorialSectionHeader, SiteShell } from '@/design-system';
+import { resolveLocale } from '@/lib/i18n';
+import '@/styles/mole-landing.css';
+import { createFileRoute } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
 
 export const Route = createFileRoute('/$lang/')({
   component: Home,
@@ -16,12 +18,7 @@ export const Route = createFileRoute('/$lang/')({
     return {
       meta: [
         { title: isChinese ? 'SkillsGo · 发现与管理 Agent Skills' : 'SkillsGo · Discover and manage Agent Skills' },
-        {
-          name: 'description',
-          content: isChinese
-            ? '发现、安装和管理 Agent Skills，同时保留本地文件所有权。'
-            : 'Discover, install, and manage Agent Skills while keeping ownership of local files.',
-        },
+        { name: 'description', content: isChinese ? '发现、安装和管理 Agent Skills，同时保留本地文件所有权。' : 'Discover, install, and manage Agent Skills while keeping ownership of local files.' },
       ],
       links: [
         { rel: 'canonical', href: `/${locale}` },
@@ -32,323 +29,155 @@ export const Route = createFileRoute('/$lang/')({
   },
 });
 
-const copy = {
-  en: {
-    docs: 'Documentation',
-    title: 'SkillsGo',
-    intro: 'Discovery, installation, updates, and reproducible Agent Skills in one open ecosystem.',
-    primary: 'Get started',
-    secondary: 'View on GitHub',
-    facts: ['Desktop app', 'Local-first CLI', 'Public Hub', 'Open source'],
-    eyebrow: 'Your Skills already work. They should not become harder to manage.',
-    heroTitle: ['Skills are spreading.', 'Bring them back under control.'],
-    heroBody: 'SkillsGo finds the Skills already living across your agents, projects, and machines—then makes their location, version, updates, and recovery visible without taking ownership of your files.',
-    painTitle: 'Does your Skill setup look like this?',
-    pains: [
-      ['Skills are hard to find', 'Folders · Projects · Agents', 'The same Skill may live globally, inside one project, or under a different Agent directory. Over time, no one knows how many copies remain.'],
-      ['Agents cannot see them', 'Install · Load · Invoke', 'A file exists on disk, but it is unclear whether Claude, Codex, or Cursor actually discovers and can invoke it.'],
-      ['Project copies drift', 'Projects · Machines · Versions', 'After copying a Skill across projects and computers, each copy quietly changes and stops matching the others.'],
-      ['Upstream updates disappear', 'Source · Version · Changes', 'The author ships a fix, but local installations give no reliable signal about which copies are now behind.'],
-      ['Local edits block updates', 'Edits · Overwrites · Conflicts', 'A customized Skill becomes difficult to update because reinstalling may overwrite work or conflict with upstream changes.'],
-      ['Failures are hard to recover', 'Interruptions · Rollback · Data', 'If installation or update stops halfway through, it is difficult to prove the files are complete or return to the last working state.'],
-      ['Every environment starts over', 'Projects · Devices · Teams', 'A new project, computer, or teammate still means copying everything again—and each setup ends up slightly different.'],
-      ['Provenance and risk are unclear', 'Authors · Scripts · Permissions', 'It is hard to confirm where a Skill came from, what it can execute, and whether local content still matches its source.'],
-    ],
-    transformation: {
-      label: 'One safe handoff',
-      title: 'Keep the files. Add the missing certainty.',
-      body: 'SkillsGo scans first and writes only after you confirm. Existing files stay in place while management metadata is completed around them.',
-      before: 'Before',
-      after: 'Managed with SkillsGo',
-      scattered: ['Claude · user', 'Codex · project A', 'Cursor · project B', 'Laptop copy'],
-      outcomes: ['Location clear', 'Updates visible', 'Recoverable', 'Version clear'],
-      action: 'Bring under management',
-    },
-    simpleSteps: [
-      ['01', 'Find what is already there', 'Scan personal and authorized project locations across supported Agents.'],
-      ['02', 'Review one clear plan', 'See exactly which Skills can be managed before SkillsGo writes anything.'],
-      ['03', 'Manage without losing work', 'Verify the source, lock the Repository version, and build explicit local projections without overwriting local content.'],
-    ],
-    trustTitle: 'Local files remain the source of truth.',
-    trustBody: 'The App never mutates your filesystem directly. The bundled CLI applies explicit, transactional plans; the Hub never sees or controls your private local files.',
-    sections: {
-      overview: ['00 · See it', 'One home for every Skill', 'Search the public catalog, inspect stable identity and metadata, then choose exactly where a Skill belongs. SkillsGo keeps the path from discovery to local files visible.'],
-      system: ['01 · The System', 'Three parts, one clear boundary', 'The desktop App handles the journey. The CLI owns every local change. The Hub publishes identity, search, ranking, and immutable artifacts.'],
-      workflow: ['02 · Workflow', 'From discovery to a locked workspace', 'A short path for individuals, with the contracts teams need to reproduce the same setup across machines.'],
-      ownership: ['03 · Ownership', 'Open source, local by design', 'The public catalog can travel everywhere. Installation authority and local files remain on your machine.'],
-      questions: ['04 · Questions', 'Honest answers'],
-      reading: ['05 · Documentation', 'From the docs', 'Continue with the product and architecture guides.'],
-    },
-    preview: {
-      label: 'Discover',
-      title: 'Skills worth keeping',
-      search: 'Search Agent Skills',
-      chips: ['Featured', 'Development', 'Design', 'Writing'],
-      cards: [
-        ['frontend-design', 'Build polished product interfaces', 'Design'],
-        ['code-review', 'Review changes against standards and spec', 'Engineering'],
-        ['research', 'Investigate with primary sources', 'Knowledge'],
-      ],
-    },
-    nodes: [
-      ['Desktop App', 'Explore, compare, and plan installations through a visual desktop workflow.'],
-      ['SkillsGo CLI', 'Resolve artifacts, mutate local files, and maintain manifests and locks.'],
-      ['Scope Vendor', 'Keep one verified ordinary-file Repository copy inside each installation scope.'],
-      ['Agent Targets', 'Project each Skill into explicit user-level or workspace-level destinations.'],
-      ['Public Hub', 'Publish canonical identity, metadata, search, ranking, and verified downloads.'],
-    ],
-    steps: [
-      ['Discover', 'Search the Hub and inspect the source, version, and public identity.'],
-      ['Choose', 'Select user-level or workspace-level targets before anything changes.'],
-      ['Install', 'Let the local CLI execute one auditable plan against your filesystem.'],
-      ['Reproduce', 'Commit the workspace manifest and lock so teammates stay aligned.'],
-      ['Inspect', 'Review source metadata, version identity, and the resolved artifact before installation.'],
-      ['Verify', 'Use verified immutable artifacts rather than mutable copies with unclear provenance.'],
-      ['Vendor', 'Keep one verified Repository artifact in the selected user or workspace scope.'],
-      ['Project', 'Build deterministic Repository views for each explicitly selected Agent target.'],
-      ['Manifest', 'Record workspace intent in a manifest that belongs with the project.'],
-      ['Lock', 'Pin the exact resolved artifacts needed to reproduce the workspace.'],
-      ['Update', 'Plan and apply managed updates through the same local engine.'],
-      ['Remove', 'Remove managed projections without hiding which local paths will change.'],
-    ],
-    faqs: [
-      ['Does the desktop App call the Hub directly?', 'No. The App invokes the bundled CLI through stable machine contracts; the CLI is its only business-integration boundary.'],
-      ['Who owns changes to my local files?', 'The CLI does. It plans and executes installations, maintains Scope Vendors, and builds Repository Projections for supported Agent targets.'],
-      ['Can a team reproduce the same setup?', 'Yes. Workspace manifests capture intent and locks pin resolved artifacts so the setup can travel across machines.'],
-      ['Is SkillsGo open source?', 'Yes. The App, CLI, Hub, and documentation live together in the public SkillsGo repository.'],
-      ['Does the Hub modify my filesystem?', 'No. The Hub owns public identity, metadata, search, ranking, and artifacts; local mutation belongs exclusively to the CLI.'],
-      ['Can I choose installation scope?', 'Yes. SkillsGo distinguishes user-level and workspace-level Agent targets before executing a plan.'],
-      ['Does the App parse terminal output?', 'No. The App consumes stable machine contracts from the bundled CLI rather than parsing human-oriented output.'],
-      ['Can I update or remove an installation?', 'Yes. Managed installations can be updated or removed through SkillsGo using the same explicit local planning boundary.'],
-    ],
-    ownership: ['Your files stay yours.', 'Explore the public repository', 'No hidden filesystem changes · Stable machine contracts · Reproducible workspaces'],
-    reading: [
-      ['Getting started', 'The shortest path from discovery to an installed Agent Skill.', 'getting-started'],
-      ['CLI', 'The local execution engine and terminal interface.', 'cli'],
-      ['Architecture', 'How the App, CLI, Hub, Store, and Agent targets fit together.', 'architecture'],
-    ],
-    closing: ['Skills should travel.', 'Ownership should stay local.', 'Read the docs'],
-    footer: ['App', 'CLI', 'Hub', 'Architecture'],
-  },
-  'zh-CN': {
-    docs: '文档',
-    title: 'SkillsGo',
-    intro: '在一个开放生态中完成 Agent Skills 的发现、安装、更新与可复现管理。',
-    primary: '开始使用',
-    secondary: '在 GitHub 查看',
-    facts: ['桌面应用', '本地优先 CLI', '公共 Hub', '开源'],
-    eyebrow: '你的 Skills 已经能用，不该因此越来越难管理。',
-    heroTitle: ['Skills 正在散落。', '把它们重新纳入秩序。'],
-    heroBody: 'SkillsGo 找到散落在不同 Agent、项目与电脑中的现有 Skills，在不夺走本地文件所有权的前提下，让位置、版本、更新与恢复都清晰可见。',
-    painTitle: '你的 Skills，也开始出现这些问题了吗？',
-    pains: [
-      ['Skills 散落难找', '目录 · 项目 · Agent', '同一个 Skill 可能出现在用户目录、某个项目或不同 Agent 的专属目录里，时间久了已经不知道还留下多少副本。'],
-      ['Agent 发现不了', '安装 · 加载 · 调用', '文件明明存在，却不知道 Claude、Codex 或 Cursor 是否真的发现并能够调用它。'],
-      ['不同项目版本分叉', '项目 · 电脑 · 版本', '复制到不同项目和电脑后，各份内容悄悄发生变化，已经无法确认它们是不是同一版。'],
-      ['上游更新不可见', '来源 · 版本 · 变更', '作者已经修复问题，但本地没有提示，也不知道哪些安装仍然停留在旧版本。'],
-      ['本地修改不敢更新', '修改 · 覆盖 · 冲突', '自己调整过的 Skill 无法直接更新，担心重新安装覆盖修改，或与上游版本发生冲突。'],
-      ['出问题难以恢复', '中断 · 回滚 · 数据', '安装或更新过程中意外退出，无法确认文件是否完整，也不知道怎样回到之前可用的状态。'],
-      ['换环境还要重来', '项目 · 设备 · 团队', '新项目、新电脑或新成员加入时，仍然需要重新复制，最终每个人使用的配置都不一样。'],
-      ['来源和风险不清', '作者 · 脚本 · 权限', '不确定 Skill 来自哪里、包含哪些脚本、会执行什么操作，也无法判断当前内容是否仍与原始来源一致。'],
-    ],
-    transformation: {
-      label: '一次安全的纳入',
-      title: '文件不用搬，缺失的确定性补回来。',
-      body: 'SkillsGo 先扫描、后确认，只有你同意之后才写入。现有文件保留在原位，管理所需的完整元数据围绕它们建立。',
-      before: '纳入前',
-      after: 'SkillsGo 管理中',
-      scattered: ['Claude · 全局', 'Codex · 项目 A', 'Cursor · 项目 B', '笔记本副本'],
-      outcomes: ['位置清晰', '更新可见', '可以恢复', '版本清晰'],
-      action: '纳入管理',
-    },
-    simpleSteps: [
-      ['01', '找到已经存在的 Skills', '扫描用户目录和已授权项目中受支持 Agent 的真实安装位置。'],
-      ['02', '确认一份清晰的计划', '写入之前，准确看到哪些 Skills 可以纳入、哪些会被跳过。'],
-      ['03', '保留数据，补齐管理信息', '在不覆盖本地内容的前提下，验证来源、锁定仓库版本，并构建明确的本地投射。'],
-    ],
-    trustTitle: '本地文件，始终是你的。',
-    trustBody: 'App 不直接修改文件系统；内置 CLI 通过明确、事务性的计划执行变更；Hub 不读取也不控制你的私有本地文件。',
-    sections: {
-      overview: ['00 · 先睹为快', '每个 Skill，都有一个归处', '搜索公共目录，查看稳定身份与元数据，再精确选择 Skill 应该安装到哪里。SkillsGo 让从发现到本地文件的每一步都清晰可见。'],
-      system: ['01 · 系统', '三部分，一条清晰边界', '桌面应用承载用户旅程，CLI 负责所有本地变更，Hub 提供公共身份、搜索、排序与不可变制品。'],
-      workflow: ['02 · 流程', '从发现，到锁定整个工作区', '个人使用足够简洁，团队协作又拥有在不同机器上复现同一套配置所需的契约。'],
-      ownership: ['03 · 所有权', '开源，也坚持本地优先', '公共目录可以自由流动，安装权限与本地文件始终留在你的机器上。'],
-      questions: ['04 · 常见问题', '坦诚回答'],
-      reading: ['05 · 文档', '继续阅读', '从产品与架构指南继续了解 SkillsGo。'],
-    },
-    preview: {
-      label: '发现',
-      title: '值得留下的 Skills',
-      search: '搜索 Agent Skills',
-      chips: ['精选', '开发', '设计', '写作'],
-      cards: [
-        ['frontend-design', '构建精致的产品界面', '设计'],
-        ['code-review', '依据规范与需求审查变更', '工程'],
-        ['research', '基于一手资料开展研究', '知识'],
-      ],
-    },
-    nodes: [
-      ['桌面应用', '通过可视化桌面流程探索、比较并规划安装。'],
-      ['SkillsGo CLI', '解析制品、变更本地文件，并维护清单与锁文件。'],
-      ['范围 Vendor', '在每个安装范围内保留一份经过验证的普通文件仓库副本。'],
-      ['Agent 目标', '将每个 Skill 投射到明确的用户级或工作区级目标。'],
-      ['公共 Hub', '发布规范身份、元数据、搜索、排序与已验证下载。'],
-    ],
-    steps: [
-      ['发现', '搜索 Hub，查看来源、版本与公共身份。'],
-      ['选择', '在任何变更前，选择用户级或工作区级目标。'],
-      ['安装', '由本地 CLI 对文件系统执行一份可审计计划。'],
-      ['复现', '提交工作区清单与锁文件，让团队保持一致。'],
-      ['检查', '安装前查看来源元数据、版本身份与解析后的制品。'],
-      ['验证', '使用经过验证的不可变制品，避免来源不明的可变副本。'],
-      ['Vendor', '在选定的用户或工作区范围内保留一份经过验证的仓库制品。'],
-      ['投射', '为每个明确选择的 Agent 目标构建确定性的仓库视图。'],
-      ['清单', '在随项目维护的清单中记录工作区意图。'],
-      ['锁定', '固定复现工作区所需的精确制品。'],
-      ['更新', '通过同一个本地引擎规划并应用托管更新。'],
-      ['移除', '移除托管投射，同时清晰展示将发生变化的本地路径。'],
-    ],
-    faqs: [
-      ['桌面应用会直接调用 Hub 吗？', '不会。应用通过稳定的机器契约调用内置 CLI；CLI 是它唯一的业务集成边界。'],
-      ['谁负责修改我的本地文件？', 'CLI。它规划并执行安装、维护范围 Vendor，并为受支持的 Agent 目标构建仓库投射。'],
-      ['团队能复现同一套配置吗？', '可以。工作区清单记录意图，锁文件固定解析后的制品，让配置可以跨机器复现。'],
-      ['SkillsGo 是开源的吗？', '是。App、CLI、Hub 与文档共同维护在公开的 SkillsGo 仓库中。'],
-      ['Hub 会修改我的文件系统吗？', '不会。Hub 负责公共身份、元数据、搜索、排序与制品；本地变更只属于 CLI。'],
-      ['可以选择安装范围吗？', '可以。执行计划前，SkillsGo 会明确区分用户级和工作区级 Agent 目标。'],
-      ['桌面应用会解析终端文本吗？', '不会。应用消费内置 CLI 的稳定机器契约，而不是解析面向人的终端输出。'],
-      ['可以更新或移除安装吗？', '可以。托管安装可以通过同一个明确的本地规划边界完成更新或移除。'],
-    ],
-    ownership: ['你的文件，始终属于你。', '查看公开仓库', '无隐藏文件变更 · 稳定机器契约 · 可复现工作区'],
-    reading: [
-      ['快速开始', '从发现到安装 Agent Skill 的最短路径。', 'getting-started'],
-      ['CLI', '本地执行引擎与终端界面。', 'cli'],
-      ['架构', '了解 App、CLI、范围 Vendor、仓库投射与 Hub 如何协作。', 'architecture'],
-    ],
-    closing: ['让 Skill 自由流动。', '让所有权留在本地。', '阅读文档'],
-    footer: ['桌面应用', 'CLI', 'Hub', '架构'],
-  },
-} as const satisfies Record<Locale, unknown>;
+const asset = (path: string) => `/mole/img/${path}`;
+const purchaseUrl = 'https://checkout.dodopayments.com/buy/pdt_0NeAQjL4YEqzkukadjRUT';
+
+const galleryItems = [
+  ['clean', '清理', '雨洗旧土，尘随潮去。', 'ch/clean.webp', 'Clean 页面，显示地球和扫描按钮'],
+  ['uninstall', '软件', '红尘覆旧，轻装再行。', 'ch/uninstall.webp', '软件页面，显示应用更新、启动项管理和卸载控制'],
+  ['optimize', '优化', '近轨疾行，小修有声。', 'ch/optimize.webp', 'Optimize 页面，显示水星'],
+  ['analyze', '分析', '远目成图，微处可见。', 'ch/analyze.webp', 'Analyze 页面，显示磁盘 treemap'],
+  ['status', '状态', '光华不寐，心跳长明。', 'ch/status.webp', 'Status 页面，显示系统实时状态面板'],
+  ['menubar', '菜单栏 HUD', '实时指标常驻菜单栏，一眼可见。', 'ch/menubar.webp', '菜单栏 HUD，显示小动物动画、实时指标、隐私占用、保持唤醒、硬件卡片和高负载进程'],
+  ['worlds', '五个世界', '小爪无声，长径入尘。', 'ch/lore.webp', 'About 页面，列出五个星球和工具'],
+] as const;
+
+const features = [
+  ['清理', '山雨涤尘垢，潮退万象新', 'planet/clean.webp', ['十类缓存分类扫描，按删除安全度排序。', '先看后删，每一项都能勾选或跳过。', '缓存可选择永久清理或移到废纸篓。', '全程本地运行，数据不离开电脑。']],
+  ['软件', '红沙湮旧迹，长风启远征', 'planet/software.webp', ['Sparkle、App Store、Homebrew 等来源统一更新。', '卸载连残留一起清干净。', '启动项也在同一页统一管理。', '移除前先看清每个应用能腾出多少空间。']],
+  ['优化', '近日疾如电，纤毫定乾坤', 'planet/optimize.webp', ['一键维护 Quick Look、缓存和元数据。', '管理员任务合并成一次授权。', '拿不准的项自动跳过，绝不硬来。', '几秒完成，并告诉你清理了多少。']],
+  ['分析', '极目收万象，秋毫尽分明', 'planet/analyze.webp', ['treemap 一眼看清空间去向。', '逐层下钻，快速定位大文件。', '右键直达 Finder 和废纸篓。', '系统目录默认排除，操作更安心。']],
+  ['状态', '光华贯昼夜，脉动照山河', 'planet/status.webp', ['实时 CPU、内存、GPU、磁盘、网络与风扇，电量覆盖 Mac、iPhone 和蓝牙配件。', '进程按真实占用排序，还能看懂它在干嘛。', '菜单栏 HUD 常驻，随时瞄一眼。', '点开任意进程，看它为何忙碌。']],
+] as const;
+
+type Quote = { text?: string; name?: string; handle?: string; href: string; image?: string; short?: boolean; video?: boolean; github?: boolean };
+const quoteColumns: Quote[][] = [
+  [
+    { text: 'Asked the Mole author how it actually works, then dug into why macOS junk piles up.', name: 'Paul Graham', handle: '@paulg', href: 'https://x.com/paulg/status/2009279786158272820', image: 'avatars/paulg.jpg' },
+    { text: 'Si usas macOS necesitas esta herramienta. Se llama Mole y limpia/optimiza tu sistema. Es una alternativa gratuita y de código abierto a CleanMyMac y AppCleaner.', name: 'Miguel Ángel Durán', handle: '@midudev', href: 'https://x.com/midudev/status/2004581862329471120', image: 'avatars/midudev.jpg' },
+    { text: 'คนที่ใช้ macbook ปีเก่าๆ แล้วรู้สึกมันช้า ลอง clean เครื่องดูครับ พวก cach file , app data เก่าๆ ที่ไม่ใช้แล้ว\nผมใช้ opensource ตัวนึงชื่อ mole\n- ฟรี ไม่ต้องไปเสียตังซื้อพวก app 3rd party\n- มันทำได้เหมือนๆกันอะแหละแค่สะดวกกว่า\n- ใช้ง่าย ไม่วุ่นวายดี\nวิธีลงอาจจะยากนิดนึง', name: 'sapiens', handle: '@sapiensp_', href: 'https://x.com/sapiensp_/status/2054260600067559795', image: 'avatars/sapiensp_.jpg' },
+    { text: 'Для каго тэрмінал нешта страшнае і незразумелае', name: 'Ivan Klimčuk', handle: '@klmivn', href: 'https://x.com/klmivn/status/2053871201169100902', image: 'avatars/klmivn.jpg' },
+    { text: 'I came across this very cool tool to clean up your macOS environment. It consolidates features from CleanMyMac, AppCleaner, DaisyDisk, and iStat. Open source and gratis!', name: 'Pedro Piñera', handle: '@pepicrft', href: 'https://x.com/pepicrft/status/2003772976718581923', image: 'avatars/pepicrft.jpg' },
+  ],
+  [
+    { text: 'Mole is brilliant.', name: 'Peter Steinberger', handle: '@steipete', href: 'https://x.com/steipete/status/2003922592001036760', image: 'avatars/steipete.png', short: true },
+    { text: "My Mac was slow. I found an amazing free solution that cleaned it up, and now it's fast. Very good, runs in terminal.", name: 'Sheel Mohnot', handle: '@pitdesi', href: 'https://x.com/pitdesi/status/2009268352422957248', image: 'avatars/pitdesi.jpg' },
+    { text: 'Nouvelle version de Mole, l’utilitaire gratuit pour nettoyer votre Mac', name: 'Gonzague 👨🏼‍💻', handle: '@gonzague', href: 'https://x.com/gonzague/status/2022926541114740832', image: 'avatars/gonzague.jpg' },
+    { text: 'How to Clean your Mac for FREE with MOLE (Open Source Terminal App)', name: 'Arthur Brassart', handle: 'YouTube', href: 'https://www.youtube.com/watch?v=6qM0wwfI3bo', video: true },
+    { text: 'Если что, как установить правильно, а не как в статье\nbrew install tw93/tap/mole', name: 'neolol', handle: '@neolol', href: 'https://x.com/neolol/status/2004857712254091490', image: 'avatars/neolol.jpg' },
+    { text: 'Cleanmymac要完了。', name: '猫总', handle: '@catmangox', href: 'https://x.com/catmangox/status/2054019229805060421', image: 'avatars/catmangox.jpg' },
+  ],
+  [
+    { href: 'https://github.com/tw93/Mole', github: true },
+    { text: 'Mole 直接清理了 39 GB 的空间\n拯救我的 512 小硬盘于水火之中\n付费了', name: 'Orange AI', handle: '@oran_ge', href: 'https://x.com/oran_ge/status/2058678690624791013', image: 'avatars/oran_ge.png' },
+    { text: 'システムのクリーンアップや高速化を設定できるmacOS向けCLIツール。moというコマンド名は他と被ってしまいそうではあるが。 / “GitHub - tw93/Mole: 🐹 Deep clean and optimize your Mac.”', name: 'matsuu', handle: '@matsuu', href: 'https://x.com/matsuu/status/2005164921953439936', image: 'avatars/matsuu.jpg' },
+    { text: '9GB Free up!!\nHasil cleaning dari MOLE\nAplikasi gratis, kalo mau yang berbayar beli CleanMyMac\nHasilnya? Sama aja :))\nYang mau clean MacOS bisa coba,\nInstall via homebrew di terminal\nRun\nBrew install mole', name: 'if someday', handle: '@Agungrizki7', href: 'https://x.com/Agungrizki7/status/2069250988213723405', image: 'avatars/agungrizki7.jpg' },
+    { text: 'Terminal tool for deep Mac cleanup and app uninstall.', name: 'Tom Dörr', handle: '@tom_doerr', href: 'https://x.com/tom_doerr/status/1975169790516895966', image: 'avatars/tom_doerr.jpg' },
+  ],
+];
+
+const githubAvatars = ['tw93.jpg', 'sebastianbreguel.jpg', 'jackphallen.jpg', 'bhadraagada.jpg', 'yuzeguitarist.jpg', 'm-hassan-raza.jpg', 'iamxorum.jpg', 'dwjoss.jpg', 'alexandear.jpg', 'noah-qin.jpg', 'xronocode.jpg', 'amanthanvi.jpg', 'hhh2210.jpg'];
+const verifiedHandles = new Set(['@paulg', '@midudev', '@sapiensp_', '@pepicrft', '@steipete', '@pitdesi', '@gonzague', '@catmangox', '@oran_ge', '@matsuu', '@tom_doerr']);
+
+const faqItems = [
+  ['Mac App 和命令行版有什么区别？', <>Mac 版把完整的 Mole 做成原生应用：清理缓存、卸载应用和残留、修复 Quick Look、缓存与系统元数据、查看整盘空间，并实时显示 CPU、内存、GPU、磁盘、电池和风扇。菜单栏面板、风扇控制、启动项管理、应用内更新和隐私提醒也都包含在内。<a href="https://github.com/tw93/Mole" target="_blank" rel="noreferrer">命令行版</a>继续面向终端用户免费开源。</>],
+  ['和 CleanMyMac 相比有什么不同？', <>一次买断，没有订阅，也不用续费。Mole 每次都先列出文件，确认后才清理，可恢复的删除会进入废纸篓。除了开发和 AI 工具缓存、设计软件、云盘、浏览器残留与大日志，还提供整盘空间图、实时状态、菜单栏面板、风扇控制和隐私提醒。一个原生应用，一个价格，没有功能分级。</>],
+  ['Mole 会不会误删我的文件？', <>每次操作都先显示文件清单和大小，确认后才会动手。应用卸载走系统废纸篓；缓存按所选清理方式执行，清空废纸篓本身不可恢复。系统路径和已知缓存位置之外的一切直接拒绝，拿不准安全性的文件宁可跳过，并告诉你原因。</>],
+  ['为什么 Mole 需要完全磁盘访问权限和管理员密码？', <>完全磁盘访问权限让扫描器能读到用户资料库里的缓存和残留，macOS 14 起系统对这些目录有强制要求。管理员密码只在清理系统级缓存时出现，并且始终通过同一个经过审计的助手执行，所有操作都在本机完成。两者都不给也能用，只是能清理的范围会小一些。</>],
+  ['Mole 会上传文件名或扫描结果吗？', <>不会。Mac App 不含统计或遥测，也不会上传文件内容、文件名、路径或扫描结果。只有验证授权、检查 Mole 签名更新、检查选定的应用更新源，以及打开网络详情时查询公网 IP 会联网。</>],
+  ['购买时 Mole 会看到什么？', <>只有许可证邮箱和用于收据的姓名会到 Mole 这边。付款、税务和发票都由 Dodo Payments 处理，Mole 不会接触银行卡信息，也不接触清理数据。</>],
+  ['收不到许可证邮件或找回密钥？', <>打开 <a href="https://customer.dodopayments.com/" target="_blank" rel="noreferrer">Dodo Payments 客户门户</a>，输入购买时填写的邮箱，Dodo 会发送一次性登录链接。登录后可以查看订单、下载发票，并找到这笔 Mole 购买对应的许可证密钥。仍然找不到的话，把购买邮箱或 Payment ID 发到 <a href="mailto:hi@mole.fit">hi@mole.fit</a>。</>],
+  ['激活失败？', <>先重新复制 Dodo Payments 邮件里的完整密钥，Mole 会自动清掉空格、换行和被邮件应用改写的连字符。提示网络连接失败时，先关闭 VPN 或代理，或切换手机热点后重试。一份授权可用于 2 台 Mac：设备数已满时，激活窗口会列出已激活的设备，点一下即可释放旧机器。仍然失败的话，可以看看<a href="https://mole.fit/zh/help">帮助页面</a>，或把报错信息发到 <a href="mailto:hi@mole.fit">hi@mole.fit</a>。</>],
+] as const;
 
 function Home() {
   const { lang } = Route.useParams();
   const locale = resolveLocale(lang);
-  const text = copy[locale];
   return (
-    <div className="sg-home">
-      <a className="sg-skip" href="#main">Skip to main content</a>
-      <SiteHeader locale={locale} />
-
-      <main id="main" className="sg-main sg-landing-main">
-        <header className="sg-landing-hero">
-          <p className="sg-hero-eyebrow">{text.eyebrow}</p>
-          <h1><span>{text.heroTitle[0]}</span><span>{text.heroTitle[1]}</span></h1>
-          <p className="sg-hero-body">{text.heroBody}</p>
-          <div className="sg-actions">
-            <Link to="/$lang/docs/$" params={{ lang: locale, _splat: 'getting-started' }} className="sg-button sg-button-primary">{text.primary}</Link>
-            <a href="https://github.com/skillsgo/skillsgo" className="sg-text-link">{text.secondary} <span>↗</span></a>
-          </div>
-          <div className="sg-facts">{text.facts.map((fact) => <span key={fact}>{fact}</span>)}</div>
-        </header>
-
-        <section id="problems" className="sg-landing-section sg-pain-section">
-          <header className="sg-landing-section-title"><span>{locale === 'zh-CN' ? '01 · 这些问题' : '01 · These problems'}</span><h2>{text.painTitle}</h2></header>
-          <ol className="sg-pain-list">
-            {text.pains.map((pain) => (
-              <li key={pain[0]}><h3>{pain[0]}<small>{pain[1]}</small></h3><p>{pain[2]}</p></li>
-            ))}
-          </ol>
-        </section>
-
-        <section id="overview" className="sg-landing-section sg-transform-section">
-          <div className="sg-transform-copy">
-            <p>{text.transformation.label}</p>
-            <h2>{text.transformation.title}</h2>
-            <div>{text.transformation.body}</div>
-          </div>
-          <TransformationBoard transformation={text.transformation} />
-        </section>
-
-        <section id="workflow" className="sg-landing-section sg-simple-workflow">
-          <header className="sg-landing-section-title"><span>02</span><h2>{locale === 'zh-CN' ? '只有三个核心步骤' : 'Only three steps matter'}</h2></header>
-          <div className="sg-simple-steps">
-            {text.simpleSteps.map((step) => <article key={step[0]}><span>{step[0]}</span><div><h3>{step[1]}</h3><p>{step[2]}</p></div></article>)}
-          </div>
-        </section>
-
-        <section id="ownership" className="sg-landing-section sg-trust-section">
-          <div><p>03 · {locale === 'zh-CN' ? '为什么可以放心' : 'Why it is safe'}</p><h2>{text.trustTitle}</h2></div>
-          <div><p>{text.trustBody}</p><Link to="/$lang/docs/$" params={{ lang: locale, _splat: 'architecture' }}>{locale === 'zh-CN' ? '查看工作原理' : 'See how it works'} →</Link></div>
-        </section>
-
-        <section id="questions" className="sg-landing-section sg-questions">
-          <SectionHead values={text.sections.questions} compact />
-          <div className="sg-faqs">
-            {text.faqs.map((faq) => <details key={faq[0]}><summary>{faq[0]}<span>+</span></summary><p>{faq[1]}</p></details>)}
-          </div>
-          <div className="sg-doc-contact">
-            <p>{locale === 'zh-CN' ? '还有问题？从文档继续' : 'More questions? Continue in the docs'}</p>
-            <Link to="/$lang/docs/$" params={{ lang: locale, _splat: '' }}>{locale === 'zh-CN' ? '打开完整文档' : 'Open the complete documentation'} →</Link>
-          </div>
-        </section>
-
-        <section className="sg-landing-section sg-reading">
-          <SectionHead values={text.sections.reading} />
-          <div className="sg-reading-list">
-            {text.reading.map((item) => <Link key={item[0]} to="/$lang/docs/$" params={{ lang: locale, _splat: item[2] }}><strong>{item[0]}</strong><span>{item[1]}</span><i>→</i></Link>)}
-          </div>
-        </section>
-      </main>
-
-      <footer className="sg-footer">
-        <div><strong>SkillsGo</strong><p>{text.intro}</p></div>
-        <div>{text.footer.map((item, index) => <Link key={item} to="/$lang/docs/$" params={{ lang: locale, _splat: ['', 'cli', 'hub', 'architecture'][index] }}>{item}</Link>)}</div>
-        <p>Open source · Local ownership · Built for Agent Skills</p>
-      </footer>
-    </div>
+    <SiteShell locale={locale} mainClassName="sg-mole-page page">
+        <MoleHero />
+        <GallerySection />
+        <FeaturesSection />
+        <VoicesSection />
+        <PricingSection />
+        <FaqSection />
+        <BlogSection />
+    </SiteShell>
   );
 }
 
-function SectionHead({ values, compact = false }: { values: readonly string[]; compact?: boolean }) {
-  return <header className={compact ? 'sg-section-head sg-section-head-compact' : 'sg-section-head'}><p>{values[0]}</p><h2>{values[1]}</h2>{values[2] && <div>{values[2]}</div>}</header>;
-}
-
-function TransformationBoard({ transformation }: { transformation: (typeof copy.en)['transformation'] | (typeof copy)['zh-CN']['transformation'] }) {
+function MoleHero() {
   return (
-    <div className="sg-transform-board">
-      <div className="sg-before-state">
-        <strong>{transformation.before}</strong>
-        <div>{transformation.scattered.map((item, index) => <span key={item} className={`sg-scattered sg-scattered-${index + 1}`}>{item}</span>)}</div>
-      </div>
-      <div className="sg-handoff" aria-hidden="true"><span>→</span><small>{transformation.action}</small></div>
-      <div className="sg-after-state">
-        <strong>{transformation.after}</strong>
-        <div className="sg-managed-stack">
-          <span className="sg-managed-skill">SKILL.md</span>
-          <span className="sg-managed-line" />
-          <span className="sg-managed-line" />
-          <span className="sg-managed-line" />
-        </div>
-        <ul>{transformation.outcomes.map((outcome) => <li key={outcome}><span>✓</span>{outcome}</li>)}</ul>
-      </div>
-    </div>
+    <header id="problems" className="hero">
+      <h1>Mole<span className="cn-orbit"><span className="cn" lang="zh">鼴</span></span></h1>
+      <p className="tagline">{['清理缓存、', '管理 App、', '运行维护、', '分析磁盘、', '查看实时状态，', '一个原生 Mac App 就够了。'].map(text => <span className="tagline-cluster" key={text}>{text}</span>)}</p>
+      <div className="hero-offer"><span className="hero-trust">{['$19 一次购买', '免费试用', '永久更新', '2 台 Mac', '14 天退款', 'macOS 14+', '无障碍'].map(text => <span key={text}>{text}</span>)}<a className="hero-version" href="https://mole.fit/zh/releases">v1.11.0</a></span></div>
+      <div className="hero-cta"><a className="btn-primary" href={purchaseUrl} target="_blank" rel="noreferrer">购买</a><a className="btn-ghost" href="https://mole.fit/download">Mac 下载</a></div>
+    </header>
   );
 }
 
-function ProductPreview({ preview }: { preview: (typeof copy.en)['preview'] | (typeof copy)['zh-CN']['preview'] }) {
+function GallerySection() {
+  const [activeId, setActiveId] = useState('analyze');
+  useEffect(() => {
+    if (window.matchMedia('(max-width: 600px)').matches) setActiveId('clean');
+  }, []);
+  const active = galleryItems.find(item => item[0] === activeId) ?? galleryItems[3];
   return (
-    <div className="sg-product-frame">
-      <div className="sg-window">
-        <div className="sg-window-bar"><span /><span /><span /><b>SkillsGo</b></div>
-        <div className="sg-product-body">
-          <aside><strong>SG</strong><i /><i /><i /><i /></aside>
-          <div className="sg-product-content">
-            <span className="sg-kicker">{preview.label}</span><h3>{preview.title}</h3>
-            <div className="sg-search">⌕ <span>{preview.search}</span><kbd>⌘ K</kbd></div>
-            <div className="sg-chips">{preview.chips.map((chip) => <span key={chip}>{chip}</span>)}</div>
-            <div className="sg-skill-cards">{preview.cards.map((card) => <article key={card[0]}><i>{card[0].slice(0, 1).toUpperCase()}</i><div><h4>{card[0]}</h4><p>{card[1]}</p><span>{card[2]}</span></div></article>)}</div>
-          </div>
-        </div>
+    <section id="overview">
+      <EditorialSectionHeader eyebrow="00 · 先看看" title="五个工具，一个入口" description="清理、软件、优化、分析、状态，加上菜单栏 HUD、隐私提醒、电池充电限制、风扇控制、屏幕常亮和擦屏幕，全都在这一个 App 里。" />
+      <div className="gallery">
+        <div className="gallery-frame">{galleryItems.map(item => <figure key={item[0]} id={`gallery-panel-${item[0]}`} className={`gallery-panel${item[0] === activeId ? ' is-active' : ''}`} role="tabpanel" aria-hidden={item[0] !== activeId}><img src={asset(item[3])} alt={item[4]} width="2584" height="1741" loading={item[0] === 'clean' ? 'eager' : 'lazy'} decoding="async" /></figure>)}</div>
+        <div className="gallery-tabs" role="tablist" aria-label="选择 Mole 工具截图">{galleryItems.map(item => <button key={item[0]} type="button" role="tab" className={item[0] === activeId ? 'is-active' : undefined} aria-selected={item[0] === activeId} aria-controls={`gallery-panel-${item[0]}`} tabIndex={item[0] === activeId ? 0 : -1} onClick={() => setActiveId(item[0])}>{item[0] === 'menubar' ? '菜单栏' : item[0] === 'worlds' ? '星球' : item[1]}</button>)}</div>
+        <div className="gallery-caption"><p className="title">{active[1]}</p><p className="line">{active[2]}</p></div>
       </div>
-    </div>
+    </section>
   );
+}
+
+function FeaturesSection() {
+  return <section id="workflow" className="feature-summary"><EditorialSectionHeader eyebrow="01 · 五个星球" title="五颗星球，五件小事" description="每颗星球对应一项任务，让你在运行前看清 Mole 会检查什么、可能改动什么，以及何时需要确认。" /><div className="feature-cards">{features.map(([name, poem, image, points]) => <article className="fcard" key={name}><figure className="fcard-media"><img src={asset(image)} alt={name} width="1000" height="640" loading="lazy" decoding="async" /><figcaption className="fcard-poem">{poem}</figcaption><p className="fcard-name">{name}</p></figure><div className="fcard-body"><ul className="fcard-points">{points.map(point => <li key={point}>{point}</li>)}</ul></div></article>)}</div></section>;
+}
+
+function QuoteCard({ quote }: { quote: Quote }) {
+  if (quote.github) return <a className="quote-card gh-card" href={quote.href} target="_blank" rel="noreferrer"><div className="gh-head"><span className="gh-logo" aria-hidden="true"><svg viewBox="0 0 16 16" width="18" height="18"><path fill="currentColor" d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82A7.6 7.6 0 018 3.55c.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0016 8c0-4.42-3.58-8-8-8z" /></svg></span><b>tw93 / Mole</b></div><span className="gh-avatars">{githubAvatars.map(name => <img className="gh-av" key={name} src={asset(`github/${name}`)} width="24" height="24" alt="" loading="lazy" />)}</span><p className="gh-people"><b>111</b> 贡献者</p><div className="gh-stats"><span><b>58.5k</b> Stars</span><span><b>2.1k</b> Forks</span><span><b>761</b> 已解决 Issue</span></div></a>;
+  return <a className={`quote-card${quote.short ? ' is-short' : ''}${quote.video ? ' video-card' : ''}`} href={quote.href} target="_blank" rel="noreferrer">{quote.video && <span className="video-thumb"><img className="video-img" src={asset('youtube/6qM0wwfI3bo.jpg')} width="480" height="360" alt="" loading="lazy" /><span className="video-play" aria-hidden="true" /></span>}<p className={`quote-text${quote.video ? ' video-title' : ''}`}>{quote.text}</p><span className="quote-author">{quote.image ? <img className="quote-avatar" src={asset(quote.image)} width="40" height="40" alt="" loading="lazy" /> : <span className="quote-avatar quote-avatar-yt" aria-hidden="true" />}<span className="quote-meta"><b className="quote-name">{quote.name}{quote.handle && verifiedHandles.has(quote.handle) && <span className="quote-verified" aria-hidden="true" />}</b><span className="quote-handle">{quote.handle}</span></span></span></a>;
+}
+
+function VoicesSection() {
+  const [expanded, setExpanded] = useState(false);
+  const [mobile, setMobile] = useState(false);
+  useEffect(() => {
+    const media = window.matchMedia('(max-width: 560px)');
+    const sync = () => setMobile(media.matches);
+    sync();
+    media.addEventListener('change', sync);
+    return () => media.removeEventListener('change', sync);
+  }, []);
+  const mobileFeatured = [quoteColumns[0][0], quoteColumns[1][0], quoteColumns[2][0], quoteColumns[1][1]];
+  const columns = mobile ? [expanded ? quoteColumns.flat() : mobileFeatured] : quoteColumns;
+  return <section id="voices"><EditorialSectionHeader eyebrow="02 · 口碑" title="大家怎么说" description="折腾党、独立开发者和重度用户，桌面应用与命令行都有人在用。" /><div id="voices-wall" className={`quotes is-masonry${expanded ? '' : ' is-collapsed'}`} style={!mobile && !expanded ? { maxHeight: 951 } : undefined}>{columns.map((column, index) => <div className="quotes-col" key={index}>{column.map(quote => <QuoteCard quote={quote} key={quote.href} />)}</div>)}</div><button type="button" className={`quotes-more${expanded ? ' is-expanded' : ''}`} aria-controls="voices-wall" aria-expanded={expanded} onClick={() => setExpanded(value => !value)}>{expanded ? '收起' : '展开全部'}</button><p className="voices-search"><span className="voices-search-lead">来自全球开发者的真实声音，更多见于</span> <span className="voices-search-links"><a href="https://x.com/search?q=mole%20mac&f=top">X</a> · <a href="https://www.google.com/search?q=tw93%20Mole%20mac%20cleaner">Google</a> · <a href="https://www.youtube.com/results?search_query=tw93%20mole%20mac%20cleaner">YouTube</a></span></p></section>;
+}
+
+function CheckIcon() {
+  return <svg className="pb-check" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="8" /><path d="M4.7 8.4l2.2 2.2 4.5-4.9" fill="none" stroke="#faf9f5" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" /></svg>;
+}
+
+function PricingSection() {
+  const benefits = ['五个工具，一个原生应用', '终身免费更新，无需订阅', '一份授权可用于 2 台 Mac', '14 天全额退款，不问原因', '每个付费工具免费试用两次', 'Swift 原生打造，快而轻量'];
+  return <section id="pricing"><EditorialSectionHeader eyebrow="03 · 定价" title="一次购买，永久更新" description="买一个 Mole，相当于同时购买了 CleanMyMac、App Cleaner & Uninstaller、DaisyDisk、iStat Menus 和 Sensei。" /><div className="price-card"><div className="price-lead"><p className="price-amount"><span className="price-currency">$</span><span className="price-number">19</span></p><p className="price-vs">永久使用，无需订阅</p></div><a className="btn-primary" href={purchaseUrl} target="_blank" rel="noreferrer">立即购买</a><ul className="price-benefits">{benefits.map(item => <li key={item}><CheckIcon /><span className="pb-line">{item}</span></li>)}</ul></div></section>;
+}
+
+function FaqSection() {
+  return <section id="questions"><EditorialSectionHeader eyebrow="04 · 问题" title="你会关心的事" /><div className="faq">{faqItems.map(([question, answer]) => <details className="faq-item" key={question}><summary><h3>{question}</h3><span className="faq-chevron" aria-hidden="true" /></summary><div className="faq-answer">{answer}</div></details>)}</div><div className="contact"><p className="contact-title">有问题？直接找我</p><p className="contact-sub">开源打造，上百人参与，发票、退款、换 Mac 激活请看<a href="https://mole.fit/zh/help">帮助页</a></p><div className="contact-cards"><ContactCard href="https://x.com/HiTw93" image="tw93.png" name="Tw93" handle="@HiTw93" stat="151.4K 粉丝">我是 Kaku、Pake、MiaoYan、Waza、Kami 和 Mole 的作者，私信一直开放，产品进展和日常都由我自己更新。</ContactCard><ContactCard href="https://github.com/tw93/Mole" image="mole-cli.png" name="tw93 / Mole" handle="GitHub" stat="58.5K 星标" github>Mole 的免费开源命令行版本，在终端里完成清理和监控，每一行实现都公开可读。</ContactCard></div></div></section>;
+}
+
+function ContactCard({ href, image, name, handle, stat, github = false, children }: { href: string; image: string; name: string; handle: string; stat: string; github?: boolean; children: React.ReactNode }) {
+  return <a className={`contact-card${github ? ' contact-card-gh' : ''}`} href={href} target="_blank" rel="noreferrer"><span className="contact-head"><img className="contact-avatar" src={asset(image)} width="34" height="34" alt="" loading="lazy" /><span className="contact-meta"><b>{name}</b><span className="contact-handle">{handle}</span></span><span className="contact-stat">{stat}</span></span><p className="contact-desc">{children}</p></a>;
+}
+
+function BlogSection() {
+  const posts = [['Fix Google Chrome Helper High CPU on Mac', '2026-07-19', 'google-chrome-helper-high-cpu-mac'], ['How to Check Mac Temperature and Fan Speed', '2026-07-19', 'how-to-check-mac-temperature'], ['Clean Up Ollama and LM Studio Models on Mac', '2026-07-18', 'how-to-remove-ai-tool-leftovers-mac']] as const;
+  const items = posts.map(([title, date, slug]) => ({ href: `https://mole.fit/blog/${slug}`, title, date, language: 'en' }));
+  return <section id="blog" className="blog-latest"><EditorialSectionHeader eyebrow="05 · 博客" title="近期文章" titleHref="https://mole.fit/blog" /><ArticleList items={items} /></section>;
 }

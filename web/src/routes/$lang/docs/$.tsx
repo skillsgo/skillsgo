@@ -1,11 +1,11 @@
 /*
- * [INPUT]: Depends on localized browser collections, static server functions, the content source, shared site header, and Fumadocs layouts.
+ * [INPUT]: Depends on localized browser collections, static server functions, the content source, the shared DocsShell, and Fumadocs layouts.
  * [OUTPUT]: Provides prerenderable, editorially themed documentation pages for every locale and content slug.
  * [POS]: Serves as the primary localized content loading and MDX rendering boundary for Web documentation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import { useMDXComponents } from '@/components/mdx';
-import { SiteHeader } from '@/components/site-header';
+import { DocsShell } from '@/design-system';
 import { isLocale } from '@/lib/i18n';
 import { baseOptions } from '@/lib/layout.shared';
 import { gitConfig } from '@/lib/shared';
@@ -111,12 +111,11 @@ function Page() {
   );
 
   return (
-    <div className="sg-docs-theme">
-      <SiteHeader locale={locale} />
+    <DocsShell>
       <DocsLayout {...baseOptions(locale)} tree={pageTree}>
         <Link to={markdownUrl} hidden />
         <Suspense>{clientLoader.useContent(path, { markdownUrl, path })}</Suspense>
       </DocsLayout>
-    </div>
+    </DocsShell>
   );
 }
