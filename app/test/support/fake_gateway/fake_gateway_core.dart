@@ -195,6 +195,7 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
   final collections = <DiscoveryCollection>[];
   final requestedOffsets = <int>[];
   int installCalls = 0;
+  int repositoryInstallCalls = 0;
 
   @override
   Future<OnboardingState> loadOnboardingState() async {

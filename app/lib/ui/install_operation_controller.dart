@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter foundation, Riverpod legacy migration support, the App-scoped Gateway provider, and direct SkillsGateway installation contracts.
- * [OUTPUT]: Provides a compact InstallationRequest interface plus discovery-snapshot version preservation, immutable per-Skill sequencing, execution aggregation, success classification, and error state.
+ * [OUTPUT]: Provides a compact InstallationRequest interface plus discovery-snapshot version preservation, atomic Repository installation, execution aggregation, success classification, and error state.
  * [POS]: Serves as the deep Installation Request module while selectors retain only ephemeral location choices and presentation feedback.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -91,9 +91,14 @@ class InstallOperationController extends ChangeNotifier {
       }
       final resolved = <({SkillSummary skill, String immutableVersion})>[];
       if (request.isRepository) {
-        for (final skill in request._repositorySkills) {
-          resolved.add((skill: skill, immutableVersion: skill.latestVersion));
-        }
+        executions.addAll(
+          await _gateway.installRepositoryTargets(
+            request._repositorySkills,
+            request.selections,
+            confirmRisk: true,
+            allowCritical: request.riskPolicy.allowCriticalOverride,
+          ),
+        );
       } else {
         final skill = request._skill;
         final immutableVersion = request._immutableVersion;
@@ -107,7 +112,7 @@ class InstallOperationController extends ChangeNotifier {
         }
         resolved.add((skill: skill, immutableVersion: immutableVersion));
       }
-      if (resolved.isEmpty) {
+      if (!request.isRepository && resolved.isEmpty) {
         throw const SkillsException(
           'Installation requires at least one Skill.',
           kind: SkillsFailureKind.validation,

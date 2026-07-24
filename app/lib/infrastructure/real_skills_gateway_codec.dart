@@ -241,7 +241,7 @@ List<InstallationTargetResult> _repositoryInstallationResults(
       raw['workspace'] is! Map<String, dynamic>) {
     throw const FormatException();
   }
-  final expectedMember = skill.name;
+  final expectedMember = skill.installationSelector;
   if (!_strictStringList(raw['skills']).contains(expectedMember) ||
       !_sameStringSet(
         _strictStringList(raw['agents']),

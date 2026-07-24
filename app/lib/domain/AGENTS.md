@@ -3,7 +3,7 @@
 
 ## Members
 
-- `skills_gateway.dart`: defines the stable application-facing Gateway interface and re-exports the complete domain vocabulary for compatibility.
+- `skills_gateway.dart`: defines the stable application-facing Gateway interface, including atomic Repository installation, and re-exports the complete domain vocabulary for compatibility.
 - `system_models.dart`: owns cross-journey status enums, exact update availability candidates, appearance settings, process contracts, command results, and typed failures.
 - `discovery_models.dart`: owns public Skill summaries with logical coordinates and exact installation paths, repository metadata, discovery pages, auditable files, and risk evidence.
 - `installation_models.dart`: owns Installation Request target selection, execution results, failures, and stable target identity.
