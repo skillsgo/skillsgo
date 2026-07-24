@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the Hub HTTP router with Testcontainers PostgreSQL Catalogs and deterministic public requests.
- * [OUTPUT]: Specifies public API contracts including ordered bounded-concurrent batch Find with Source restriction, Repository-fresh head/release batch update checks, and correlated redacted private diagnostics for internal failures.
+ * [OUTPUT]: Specifies public API contracts including ordered set-based batch Find with Source restriction, Repository-fresh head/release batch update checks, and correlated redacted private diagnostics for internal failures.
  * [POS]: Serves as executable public HTTP contract coverage for Hub discovery clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -376,30 +376,6 @@ func TestCatalogAPIFindReturnsEmptyArray(t *testing.T) {
 	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=missing", nil))
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.JSONEq(t, `{"collection":"find","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}`, recorder.Body.String())
-}
-
-func TestRunOrderedBoundedStartsWorkConcurrentlyAndPreservesOrder(t *testing.T) {
-	started := make(chan int, 4)
-	release := make(chan struct{})
-	done := make(chan struct{})
-	var results []int
-	var runErr error
-	go func() {
-		defer close(done)
-		results, runErr = runOrderedBounded(t.Context(), 4, 2, func(_ context.Context, index int) (int, error) {
-			started <- index
-			<-release
-			return index * 10, nil
-		})
-	}()
-
-	first := <-started
-	second := <-started
-	require.NotEqual(t, first, second)
-	close(release)
-	<-done
-	require.NoError(t, runErr)
-	require.Equal(t, []int{0, 10, 20, 30}, results)
 }
 
 func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
