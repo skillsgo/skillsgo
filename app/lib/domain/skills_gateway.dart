@@ -73,6 +73,10 @@ abstract interface class SkillsGateway {
     BatchTakeoverPlan plan,
     BatchTakeoverScope scope,
   );
+  Future<List<SourceFindResult>> findSources(
+    List<SourceFindQuery> queries, {
+    int limit = 10,
+  });
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill);
   Future<TargetManagementPlan> preflightTargetManagement(
     InstalledSkill skill,

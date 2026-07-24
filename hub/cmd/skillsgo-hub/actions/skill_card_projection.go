@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Skill coordinates, Catalog rows, presentation locale, and optional localized descriptions.
- * [OUTPUT]: Provides ordered batch hydration and search projection into stable public Skill cards.
+ * [OUTPUT]: Provides ordered batch hydration and Find projection into stable public Skill cards.
  * [POS]: Serves as the deep read projection module between Catalog persistence and thin HTTP discovery handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -17,12 +17,12 @@ type skillCardProjection struct {
 	catalog *catalog.Catalog
 }
 
-func (projection skillCardProjection) Hydrate(ctx context.Context, coordinates []protocolapi.SkillCoordinate) ([]discoverySkill, error) {
+func (projection skillCardProjection) Hydrate(ctx context.Context, coordinates []protocolapi.SkillCoordinate) ([]protocolapi.FindSkill, error) {
 	items, err := projection.catalog.SkillsByCoordinates(ctx, coordinates)
 	if err != nil {
 		return nil, err
 	}
-	cards := make([]discoverySkill, 0, len(items))
+	cards := make([]protocolapi.FindSkill, 0, len(items))
 	for _, item := range items {
 		cards = append(cards, storedSkillCard(item))
 	}
@@ -36,6 +36,18 @@ func (projection skillCardProjection) Search(ctx context.Context, locale string,
 		cards = append(cards, searchedSkillCard(item))
 	}
 	return cards
+}
+
+func (projection skillCardProjection) Localize(ctx context.Context, locale string, cards []discoverySkill) {
+	if locale == "" {
+		return
+	}
+	for index := range cards {
+		description, ok, err := projection.catalog.LocalizedDescription(ctx, catalog.LocalizedSkill, cards[index].RepositoryID+":"+cards[index].Name, locale)
+		if err == nil && ok {
+			cards[index].Description = description
+		}
+	}
 }
 
 func storedSkillCard(item catalog.Skill) discoverySkill {

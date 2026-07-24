@@ -81,8 +81,12 @@ The `~/.skillsgo` directory that owns user-scope `skillsgo.yaml`, `skillsgo-lock
 _Avoid_: `~/.agents` ownership database, per-Agent manifest
 
 **Batch Takeover**:
-The explicit adoption of a supported skills.sh External Installation whose lock identifies an exact immutable Repository version and member. Execution verifies the External bytes against that Repository member, installs the complete Repository through the ordinary Dependency/Lock, Scope Vendor, and Repository Projection transaction, and only then moves the superseded External directory to recoverable trash. It never captures a per-Skill Store object or writes a receipt.
-_Avoid_: legacy Store compatibility, implicit local import, mutable selector adoption
+The state-bound execution of user-reviewed External Skill mappings. A skills.sh record supplies only a canonical Repository ID, a manual installation uses a user-selected Hub Skill candidate, and neither path treats local content hashes or byte equality as execution authority; the selected immutable Repository Artifact is installed through the ordinary managed transaction.
+_Avoid_: Tree-SHA matching, automatic candidate choice, legacy Store compatibility, implicit local import
+
+**Recovery Area**:
+The CLI-owned temporary location that retains one superseded External Skill directory for 30 days after successful adoption. Recovery is per Skill, refuses to overwrite an occupied original path, and is not a Vendor, cache, or installation source.
+_Avoid_: permanent backup, system Trash guarantee, mutable Skill Store
 
 **External Removal**:
 The explicit, state-bound deletion of one exact External Installation discovered under a known Agent Skill directory. It never creates a receipt, changes a Workspace declaration, or infers source ownership.

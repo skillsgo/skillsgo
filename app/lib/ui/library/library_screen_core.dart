@@ -1,10 +1,14 @@
 /*
  * [INPUT]: Depends on the Library journey library, Riverpod Library state, navigation routes, selection state, and shared layout widgets.
- * [OUTPUT]: Provides the public LibraryScreen, route-local state ownership, lifecycle, one-time takeover-introduction and inline-console state, filtering getters, selected-scope and project takeover counts, and root desktop rendering.
+ * [OUTPUT]: Provides the public LibraryScreen, route-local state ownership, lifecycle, feature-gated in-place Adoption Review state, one-time takeover-introduction and inline-console state, filtering getters, selected-scope and project takeover counts, and root desktop rendering.
  * [POS]: Serves as the state-owning core of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../library_screen.dart';
+
+const _adoptionReviewUIEnabled = bool.fromEnvironment(
+  'SKILLSGO_ADOPTION_REVIEW_UI',
+);
 
 enum _LibraryLocationKind { all, global, project }
 
@@ -60,6 +64,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   _LibraryLocationRoute selectedLocation = _LibraryLocationRoute.all;
   bool addingProject = false;
   bool takingOver = false;
+  bool adoptionReviewVisible = false;
   bool takeoverConsoleVisible = false;
   bool takeoverConsoleAutomatic = false;
   BatchTakeoverPlan? activeTakeoverPlan;
@@ -173,7 +178,19 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
     _scheduleAutomaticTakeoverPrompt(takeoverEligible);
     final String takeoverActionLabel;
     final VoidCallback? takeoverAction;
-    if (takingOver) {
+    final visibleExternalCount = visibleSkills
+        .where((skill) => skill.provenance == LibraryProvenance.external)
+        .length;
+    if (_adoptionReviewUIEnabled) {
+      takeoverActionLabel = adoptionReviewVisible
+          ? context.l10n.cancel
+          : context.l10n.batchTakeoverActionCount(visibleExternalCount);
+      takeoverAction = adoptionReviewVisible
+          ? _exitAdoptionReview
+          : visibleExternalCount == 0
+          ? null
+          : _enterAdoptionReview;
+    } else if (takingOver) {
       takeoverActionLabel = context.l10n.batchTakeoverPending;
       takeoverAction = null;
     } else if (planning || plan == null && planError == null) {
@@ -205,7 +222,10 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
         key: const Key('library-location-rail'),
         semanticLabel: context.l10n.libraryNavigation,
         selected: selectedLocation,
-        onSelected: (location) => setState(() => selectedLocation = location),
+        onSelected: (location) => setState(() {
+          adoptionReviewVisible = false;
+          selectedLocation = location;
+        }),
         sectionDividers: true,
         fixedItems: [
           SkillsRailItem(
@@ -341,17 +361,21 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                                   message: allVisibleSelected
                                       ? context.l10n.clearCurrentResultSelection
                                       : context.l10n.selectCurrentResults,
-                                  child: SkillsCheckbox(
-                                    key: const Key('library-select-visible'),
-                                    value: allVisibleSelected,
-                                    indeterminate: someVisibleSelected,
-                                    enabled: visibleSkills.isNotEmpty,
-                                    onChanged: (value) =>
-                                        _toggleVisibleSelection(
-                                          visibleSkills,
-                                          value,
+                                  child: adoptionReviewVisible
+                                      ? const SizedBox.shrink()
+                                      : SkillsCheckbox(
+                                          key: const Key(
+                                            'library-select-visible',
+                                          ),
+                                          value: allVisibleSelected,
+                                          indeterminate: someVisibleSelected,
+                                          enabled: visibleSkills.isNotEmpty,
+                                          onChanged: (value) =>
+                                              _toggleVisibleSelection(
+                                                visibleSkills,
+                                                value,
+                                              ),
                                         ),
-                                  ),
                                 ),
                               ),
                             ),
@@ -372,13 +396,15 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
                             hintText: context.l10n.searchLibrary,
                           ),
                         ),
-                        const SizedBox(width: 4),
-                        SecondaryCapsuleButton(
-                          key: const Key('library-batch-takeover'),
-                          label: takeoverActionLabel,
-                          icon: HugeIcons.strokeRoundedFolderTransfer,
-                          onPressed: takeoverAction,
-                        ),
+                        if (!_adoptionReviewUIEnabled) ...[
+                          const SizedBox(width: 4),
+                          SecondaryCapsuleButton(
+                            key: const Key('library-batch-takeover'),
+                            label: takeoverActionLabel,
+                            icon: HugeIcons.strokeRoundedFolderTransfer,
+                            onPressed: takeoverAction,
+                          ),
+                        ],
                         const SizedBox(width: 4),
                         _LibraryScopeToggle(
                           updatesOnly: updatesOnly,
@@ -417,7 +443,7 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
               child: _LibrarySelectionBarTransition(
                 key: const Key('library-selection-bar-switcher'),
                 disableAnimations: disableAnimations,
-                child: selected.isEmpty
+                child: selected.isEmpty || adoptionReviewVisible
                     ? null
                     : _LibrarySelectionBar(
                         key: const ValueKey('selection-bar-visible'),

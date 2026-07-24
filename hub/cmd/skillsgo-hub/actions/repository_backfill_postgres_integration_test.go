@@ -178,7 +178,7 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	retainedZIP, err := io.ReadAll(zipResponse.Body)
 	require.NoError(t, err)
 	require.Equal(t, fetcher.archives["v1.0.0"], retainedZIP)
-	searchResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/search?q=backfilled", nil))
+	searchResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/find?q=backfilled", nil))
 	require.NoError(t, err)
 	var searchBody skillsResponse
 	require.NoError(t, json.NewDecoder(searchResponse.Body).Decode(&searchBody))

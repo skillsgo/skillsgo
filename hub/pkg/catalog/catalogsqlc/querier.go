@@ -42,7 +42,7 @@ type Querier interface {
 	UpdateRepositorySourceMetadata(ctx context.Context, arg UpdateRepositorySourceMetadataParams) (int64, error)
 	UpsertLocalizedDescription(ctx context.Context, arg UpsertLocalizedDescriptionParams) error
 	// [INPUT]: Depends on the reviewed PostgreSQL Catalog schema and sqlc's pgx/v5 generator.
-	// [OUTPUT]: Defines typed Repository, Release, Skill, localization, search, and Backfill persistence operations.
+	// [OUTPUT]: Defines typed Repository, Release, Skill, localization, name-first/exact Find, and Backfill persistence operations.
 	// [POS]: Serves as the single maintained query source for the Hub Catalog module.
 	// [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 	UpsertRepository(ctx context.Context, arg UpsertRepositoryParams) (Repository, error)

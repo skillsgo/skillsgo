@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the app_shell library for Flutter UI primitives and top-level navigation, collection natural ordering, HugeIcons, multi_dropdown, the shared destination rail, ProjectIdentityIcon, Riverpod Library state, gateway mutations, localization, and shared operation dialogs.
- * [OUTPUT]: Provides the unified Library destination with fixed All and Global navigation, fixed header/footer section dividers, an independently scrollable compact Added Project rail, a pinned multi-directory Add Project action, a concise project-empty path to Discover, location-scoped one-confirmation Batch Takeover with a floating hardware-style Tetris console, next-frame progress and aggregate results, reminder-aware update and safety summaries, cold/stale loading UI, composable update, multi-Agent filtering, compact target-derived installation scope with hover details, animated detail with a sticky compact toolbar, exact External removal, and Repository installation-target views.
+ * [INPUT]: Depends on the app_shell library for Flutter UI primitives and top-level navigation, collection natural ordering, HugeIcons, multi_dropdown, ShimmerText, the shared destination rail, ProjectIdentityIcon, Riverpod Library state, gateway mutations, localization, and shared operation dialogs.
+ * [OUTPUT]: Provides the unified Library destination with fixed All and Global navigation, fixed header/footer section dividers, an independently scrollable compact Added Project rail, a pinned multi-directory Add Project action, a concise project-empty path to Discover, a feature-gated in-place External Adoption Review shell, location-scoped legacy Batch Takeover, reminder-aware update and safety summaries, cold/stale loading UI, composable update, multi-Agent filtering, compact target-derived installation scope with hover details, animated detail with a sticky compact toolbar, exact External removal, and Repository installation-target views.
  * [POS]: Serves as the complete Library feature view module split from the desktop shell while sharing its private library contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -24,6 +24,7 @@ import 'agent_catalog_controller.dart';
 import 'agent_logo.dart';
 import 'bidirectional_content.dart';
 import 'brand.dart';
+import 'discrete_tabs/shimmer_text.dart';
 import 'install_location_popover.dart';
 import 'install_operation_controller.dart';
 import 'installation_flows.dart';
@@ -38,6 +39,8 @@ import 'ui_support.dart';
 part 'library/library_screen_core.dart';
 part 'library/library_actions.dart';
 part 'library/batch_takeover_presentation.dart';
+part 'library/adoption_review.dart';
+part 'library/portal_split_button.dart';
 part 'library/library_body.dart';
 part 'library/installed_skill_groups.dart';
 part 'library/installed_skill_rows.dart';

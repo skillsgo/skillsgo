@@ -54,11 +54,11 @@ func TestCatalogAPIPostgresProtocol(t *testing.T) {
 	}
 
 	first := httptest.NewRecorder()
-	serveFiber(t, router, first, httptest.NewRequest(http.MethodGet, "/api/v1/search?q=capability&limit=2", nil))
+	serveFiber(t, router, first, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=capability&limit=2", nil))
 	require.Equal(t, http.StatusOK, first.Code)
 	var page skillsResponse
 	require.NoError(t, json.NewDecoder(first.Body).Decode(&page))
-	require.Equal(t, "search", page.Collection)
+	require.Equal(t, "find", page.Collection)
 	require.Len(t, page.Skills, 2)
 	require.Equal(t, 2, page.Page.Limit)
 	require.Equal(t, 0, page.Page.Offset)
@@ -66,7 +66,7 @@ func TestCatalogAPIPostgresProtocol(t *testing.T) {
 	require.Equal(t, 2, *page.Page.NextOffset)
 
 	empty := httptest.NewRecorder()
-	serveFiber(t, router, empty, httptest.NewRequest(http.MethodGet, "/api/v1/search?q=missing", nil))
+	serveFiber(t, router, empty, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=missing", nil))
 	require.Equal(t, http.StatusOK, empty.Code)
-	require.JSONEq(t, `{"collection":"search","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}`, empty.Body.String())
+	require.JSONEq(t, `{"collection":"find","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}`, empty.Body.String())
 }

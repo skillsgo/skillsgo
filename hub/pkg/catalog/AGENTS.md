@@ -3,13 +3,13 @@
 
 ## Members
 
-- `catalog.go`: exposes the Catalog API, reusable Repository Release aggregate validation, the shared PostgreSQL pgx pool, Repository-scoped source-metadata cache state, visibility-aware search, immutable Releases, ordered Skill membership, and pagination.
+- `catalog.go`: exposes the Catalog API, reusable Repository Release aggregate validation, the shared PostgreSQL pgx pool, Repository-scoped source-metadata cache state, name-first locale-consistent Find with optional exact-name restriction, immutable Releases, ordered Skill membership, and pagination.
 - `backfill.go`: owns durable Repository Backfill Run business state, active-work deduplication, heartbeat recovery for running work, River-aware orphan reconciliation candidates for queued work, state transitions, bounded diagnostics, exact-publication commit checks, and atomic PostgreSQL Run-plus-River enqueue scopes.
 - `migrations.go`: executes embedded, checksummed, ordered Atlas SQL migrations and serializes PostgreSQL migration runs.
 - `migrations/postgres/`: contains the reviewed, checksummed Atlas migration history, including immutable Repository Releases, complete Release membership, Backfill Run state, Repository metadata, localized descriptions, and PostgreSQL search resources.
 - `queries/`: contains the maintained sqlc query source; SQL used by Catalog business operations belongs here except connection-scoped PostgreSQL advisory locks.
 - `catalogsqlc/`: contains reproducible sqlc-generated pgx/v5 query code and must not be edited manually.
-- `catalog_test.go`, `postgres_integration_test.go`: specify the PostgreSQL behavior contract with Testcontainers, including migration history, Repository ID plus Skill Name logical coordinates, path-unique same-name metadata, deterministic coordinate defaults, immutable Release ownership, historical membership, current projection, search fields, and pagination.
+- `catalog_test.go`, `postgres_integration_test.go`: specify the PostgreSQL behavior contract with Testcontainers, including migration history, Repository ID plus Skill Name logical coordinates, path-unique same-name metadata, deterministic coordinate defaults, immutable Release ownership, historical membership, current projection, Find ordering/fields, and pagination.
 - `postgres_integration_test.go`: verifies Repository Release publication and current-member lookup against real PostgreSQL.
 
 ## Architectural Boundary

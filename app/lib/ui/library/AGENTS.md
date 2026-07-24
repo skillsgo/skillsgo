@@ -9,6 +9,8 @@
 - `library_selection.dart`: owns filtered selection, select-all, batch actions, and toolbar motion.
 - `library_actions.dart`: coordinates refresh, project, plan-authorized takeover, exact-candidate update, and target actions.
 - `batch_takeover_presentation.dart`: renders the localized modal hardware-console Batch Takeover surface with input isolation, symmetric dismissal motion, a deterministic Tetris story that places confirmed skills before four distinct LED pain-point pieces, complete planned-row clearing, in-board settlement, retry, and reduced-motion behavior.
+- `adoption_review.dart`: keeps the feature-gated External group alive across normal and Adoption Review modes, runs one exact-name bounded CLI-mediated batch Source Find with App-owned description ranking, and presents user-selected Source plus the latest eligible version without invoking mutation contracts.
+- `portal_split_button.dart`: contains the narrowly adapted Portal Labs 0.34.0 motion that morphs the persistent management action into Confirm while revealing and retracting Cancel.
 - `installed_skill_groups.dart`: groups logical Skills and their location-aware targets.
 - `installed_skill_rows.dart`: renders installed entries, provenance, diagnostics, and row actions.
 - `local_detail_core.dart`: owns local-detail loading, retry, target operations, and enrichment lifecycle.
