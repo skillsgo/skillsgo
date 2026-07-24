@@ -53,6 +53,7 @@ App       → flutter analyze + flutter test
 CLI       → gofmt + go vet + go test -race + CLI build
 Hub       → gofmt + go vet + go test -race + Hub build
 Web       → frozen install + typecheck + production build
+Dependencies → OSV scan of every supported lockfile, including Dart `pubspec.lock`
 CLI E2E   → isolated Linux container journeys across CLI and Hub
 App E2E   → rendered macOS journeys across App, bundled CLI, and native Hub
 ```

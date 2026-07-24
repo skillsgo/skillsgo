@@ -1,0 +1,67 @@
+# [INPUT]: Depends on GitHub Issue Forms and SkillsGo's public product, reference, and contributor documentation surfaces.
+# [OUTPUT]: Collects actionable documentation corrections and applies the repository's documentation classification.
+# [POS]: Serves as the focused documentation-feedback intake form in .github/ISSUE_TEMPLATE.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+
+name: Documentation issue
+description: Report documentation that is incorrect, missing, outdated, or difficult to follow.
+title: "[Docs]: "
+labels:
+  - documentation
+  - needs-triage
+body:
+  - type: dropdown
+    id: kind
+    attributes:
+      label: Issue type
+      options:
+        - Incorrect or outdated information
+        - Missing documentation
+        - Unclear instructions or terminology
+        - Broken link, example, or command
+        - Translation or localization problem
+        - Contributor or architecture documentation
+        - Other
+    validations:
+      required: true
+
+  - type: input
+    id: location
+    attributes:
+      label: Documentation location
+      description: Link to the public page or provide the repository file path and section heading.
+      placeholder: https://... or docs/example.md — Installation
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: Quote only the minimum text needed to identify the problem, then explain what is wrong or unclear.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Suggested improvement
+      description: Describe the information or result a reader needs. Exact replacement wording is optional.
+    validations:
+      required: true
+
+  - type: textarea
+    id: context
+    attributes:
+      label: Additional context
+      description: Include the SkillsGo version, operating system, target Agent, screenshots, or related links when relevant.
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Submission checklist
+      options:
+        - label: I searched open and closed issues for an existing report.
+          required: true
+        - label: I verified that the problem still exists in the latest available documentation.
+          required: true
