@@ -2250,7 +2250,7 @@ abstract class AppLocalizations {
   /// No description provided for @repositoryParsing.
   ///
   /// In en, this message translates to:
-  /// **'Parsing Repository…'**
+  /// **'Parsing source…'**
   String get repositoryParsing;
 
   /// No description provided for @userInstallSummary.
@@ -2316,7 +2316,7 @@ abstract class AppLocalizations {
   /// No description provided for @installAllRepositorySkills.
   ///
   /// In en, this message translates to:
-  /// **'Install all repository skills ({count})'**
+  /// **'Install all skills from this source ({count})'**
   String installAllRepositorySkills(int count);
 
   /// No description provided for @installAllSkillsTo.
@@ -2328,7 +2328,7 @@ abstract class AppLocalizations {
   /// No description provided for @installRepositorySkills.
   ///
   /// In en, this message translates to:
-  /// **'Install all {repository} skills ({count})'**
+  /// **'Install all skills from {repository} ({count})'**
   String installRepositorySkills(String repository, int count);
 
   /// No description provided for @installSkillTo.
@@ -2793,6 +2793,66 @@ abstract class AppLocalizations {
   /// **'Manage existing skills'**
   String get batchTakeoverAction;
 
+  /// No description provided for @handExternalSkillsToSkillsGoManagementCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Let SkillsGo manage {count} external skills'**
+  String handExternalSkillsToSkillsGoManagementCount(int count);
+
+  /// No description provided for @confirmSkillsGoManagementCount.
+  ///
+  /// In en, this message translates to:
+  /// **'Confirm SkillsGo management ({count})'**
+  String confirmSkillsGoManagementCount(int count);
+
+  /// No description provided for @skillColumnLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Skill'**
+  String get skillColumnLabel;
+
+  /// No description provided for @repositorySourceColumnLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Source'**
+  String get repositorySourceColumnLabel;
+
+  /// No description provided for @versionColumnLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get versionColumnLabel;
+
+  /// No description provided for @repositoryMatching.
+  ///
+  /// In en, this message translates to:
+  /// **'Matching sources…'**
+  String get repositoryMatching;
+
+  /// No description provided for @sourceMatchUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Source matching unavailable'**
+  String get sourceMatchUnavailable;
+
+  /// No description provided for @noSourceMatches.
+  ///
+  /// In en, this message translates to:
+  /// **'No matching source'**
+  String get noSourceMatches;
+
+  /// No description provided for @sourceMatchPercent.
+  ///
+  /// In en, this message translates to:
+  /// **'{percent}% match'**
+  String sourceMatchPercent(int percent);
+
+  /// No description provided for @versionPendingSelection.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending Source'**
+  String get versionPendingSelection;
+
   /// No description provided for @batchTakeoverActionCount.
   ///
   /// In en, this message translates to:
@@ -3120,7 +3180,7 @@ abstract class AppLocalizations {
   /// No description provided for @detailRepository.
   ///
   /// In en, this message translates to:
-  /// **'Repository'**
+  /// **'Source'**
   String get detailRepository;
 
   /// No description provided for @detailStars.

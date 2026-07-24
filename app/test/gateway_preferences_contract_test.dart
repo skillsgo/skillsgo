@@ -67,7 +67,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"collection":"search","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}',
+              '{"collection":"find","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on LibraryScreen state, SkillsGateway operations, reviewed update/management dialogs, the localized Batch Takeover story, reminders, and navigation animation.
- * [OUTPUT]: Provides Library loading, shared-refresh state reconciliation, selection, Added Project, one-time automatic takeover introduction, representative illustration data, inline-console plan-authorized Batch Takeover execution, update, target-management, and detail-transition actions.
+ * [OUTPUT]: Provides Library loading, shared-refresh state reconciliation, selection, Added Project, feature-gated Adoption Review entry and exit, one-time automatic takeover introduction, representative illustration data, inline-console plan-authorized legacy Batch Takeover execution, update, target-management, and detail-transition actions.
  * [POS]: Serves as the mutation and orchestration implementation of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -154,7 +154,8 @@ extension _LibraryActions on _LibraryScreenState {
   }
 
   void _scheduleAutomaticTakeoverPrompt(int? eligible) {
-    if (!TickerMode.valuesOf(context).enabled ||
+    if (_adoptionReviewUIEnabled ||
+        !TickerMode.valuesOf(context).enabled ||
         !takeoverPromptPreferenceLoaded ||
         takeoverPromptSeen ||
         takeoverPromptScheduled ||
@@ -169,6 +170,19 @@ extension _LibraryActions on _LibraryScreenState {
       if (!mounted) return;
       unawaited(_executeBatchTakeover(automatic: true));
     });
+  }
+
+  void _enterAdoptionReview() {
+    if (adoptionReviewVisible) return;
+    updateState(() {
+      selectedSkillKeys.clear();
+      adoptionReviewVisible = true;
+    });
+  }
+
+  void _exitAdoptionReview() {
+    if (!adoptionReviewVisible) return;
+    updateState(() => adoptionReviewVisible = false);
   }
 
   Future<void> _markTakeoverPromptSeen() async {

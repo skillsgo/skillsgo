@@ -114,6 +114,7 @@ mixin _RealSkillsGatewayCli on _RealSkillsGatewayCore {
   @override
   Future<CommandResult> _runCli(
     List<String> arguments, {
+    String? stdin,
     void Function(String line)? onStdoutLine,
   }) async {
     if (_cliPath == null) {
@@ -131,6 +132,7 @@ mixin _RealSkillsGatewayCli on _RealSkillsGatewayCore {
     final output = await _runner.run(
       executable,
       arguments,
+      stdin: stdin,
       onStdoutLine: onStdoutLine,
     );
     return CommandResult(command: [executable, ...arguments], output: output);

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on LibraryScreen state, explicit async states, project access state, localized empty/error copy, and installed Skill groups.
- * [OUTPUT]: Provides the Library content body for loading, stale/error, inaccessible project, filter-empty, and inventory states.
+ * [OUTPUT]: Provides the Library content body for loading, stale/error, inaccessible project, filter-empty, inventory, and feature-gated in-place External Adoption Review states.
  * [POS]: Serves as the async content rendering implementation of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -86,13 +86,32 @@ extension _LibraryBody on _LibraryScreenState {
       separatorBuilder: (_, _) => const SizedBox(height: 22),
       itemBuilder: (context, groupIndex) {
         final group = groups[groupIndex];
+        if (_adoptionReviewUIEnabled &&
+            group.skills.every(
+              (skill) => skill.provenance == LibraryProvenance.external,
+            )) {
+          return _AdoptionReviewShell(
+            skills: group.skills,
+            gateway: widget.gateway,
+            expanded: adoptionReviewVisible,
+            projects: projects,
+            agentLabel: _agentLabel,
+            onOpen: _openDetail,
+            selectedSkillKeys: selectedSkillKeys,
+            onSelectionChanged: _toggleSkillSelection,
+            onEnter: _enterAdoptionReview,
+            onExit: _exitAdoptionReview,
+          );
+        }
         return _InstalledSkillGroup(
           group: group,
+          selectionVisible: !adoptionReviewVisible,
           projects: projects,
           agentLabel: _agentLabel,
           onOpen: _openDetail,
           selectedSkillKeys: selectedSkillKeys,
           onSelectionChanged: _toggleSkillSelection,
+          onAdoptionReview: null,
         );
       },
     );

@@ -398,7 +398,7 @@
   "projectLevel": "Project Level",
   "projects": "Projects",
   "loading": "Loading…",
-  "repositoryParsing": "Parsing Repository…",
+  "repositoryParsing": "Parsing source…",
   "userInstallSummary": "Available to {agents} Agents at user level",
   "@userInstallSummary": {"placeholders": {"agents": {"type": "int"}}},
   "projectInstallSummary": "{projects} projects · {agents} Agents",
@@ -416,10 +416,10 @@
   "installedCell": "Installed",
   "unsupportedCell": "Unavailable",
   "confirmInstall": "Confirm Installation",
-  "installAllRepositorySkills": "Install all repository skills ({count})",
+  "installAllRepositorySkills": "Install all skills from this source ({count})",
   "installAllSkillsTo": "Install all skills to",
   "@installAllRepositorySkills": {"placeholders": {"count": {"type": "int"}}},
-  "installRepositorySkills": "Install all {repository} skills ({count})",
+  "installRepositorySkills": "Install all skills from {repository} ({count})",
   "@installRepositorySkills": {
     "placeholders": {
       "repository": {"type": "String"},
@@ -524,6 +524,23 @@
   "moreCoverage": "+{count} more locations",
   "@moreCoverage": {"placeholders": {"count": {"type": "int"}}},
   "batchTakeoverAction": "Manage existing skills",
+  "handExternalSkillsToSkillsGoManagementCount": "Let SkillsGo manage {count} external skills",
+  "@handExternalSkillsToSkillsGoManagementCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "confirmSkillsGoManagementCount": "Confirm SkillsGo management ({count})",
+  "@confirmSkillsGoManagementCount": {"placeholders": {"count": {"type": "int"}}},
+  "skillColumnLabel": "Skill",
+  "repositorySourceColumnLabel": "Source",
+  "versionColumnLabel": "Version",
+  "repositoryMatching": "Matching sources…",
+  "sourceMatchUnavailable": "Source matching unavailable",
+  "noSourceMatches": "No matching source",
+  "sourceMatchPercent": "{percent}% match",
+  "@sourceMatchPercent": {"placeholders": {"percent": {"type": "int"}}},
+  "versionPendingSelection": "Pending Source",
   "batchTakeoverActionCount": "Manage ({count})",
   "@batchTakeoverActionCount": {
     "placeholders": {
@@ -617,7 +634,7 @@
   },
   "batchTakeoverClose": "Close",
   "installMoreTargets": "Install in more locations",
-  "detailRepository": "Repository",
+  "detailRepository": "Source",
   "detailStars": "Stars",
   "detailUpdated": "Updated",
   "detailArchiveSize": "ZIP Size",

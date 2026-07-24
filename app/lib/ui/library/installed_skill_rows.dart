@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on InstalledSkill targets, project/Agent identity, update state, selection callbacks, clipboard feedback, and scope popovers.
- * [OUTPUT]: Provides installed Skill rows plus user/project scope summaries, Agent rows, popovers, and copyable project paths.
+ * [INPUT]: Depends on InstalledSkill targets, project/Agent identity, update state, selection visibility and callbacks, clipboard feedback, and scope popovers.
+ * [OUTPUT]: Provides installed Skill rows with geometry-preserving optional selection controls plus user/project scope summaries, Agent rows, popovers, and copyable project paths.
  * [POS]: Serves as the installed target presentation segment of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,6 +14,7 @@ class _InstalledSkillRow extends StatelessWidget {
     required this.agentLabel,
     required this.onOpen,
     required this.onSelectionChanged,
+    this.selectionVisible = true,
   });
 
   final InstalledSkill skill;
@@ -22,6 +23,7 @@ class _InstalledSkillRow extends StatelessWidget {
   final String Function(String) agentLabel;
   final VoidCallback onOpen;
   final ValueChanged<bool> onSelectionChanged;
+  final bool selectionVisible;
 
   @override
   Widget build(BuildContext context) {
@@ -49,11 +51,13 @@ class _InstalledSkillRow extends StatelessWidget {
               children: [
                 SizedBox(
                   width: 44,
-                  child: SkillsCheckbox(
-                    key: ValueKey('library-select-${skill.inventoryKey}'),
-                    value: selected,
-                    onChanged: onSelectionChanged,
-                  ),
+                  child: selectionVisible
+                      ? SkillsCheckbox(
+                          key: ValueKey('library-select-${skill.inventoryKey}'),
+                          value: selected,
+                          onChanged: onSelectionChanged,
+                        )
+                      : const SizedBox.shrink(),
                 ),
                 const SizedBox(width: 8),
                 Expanded(

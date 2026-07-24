@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, Hub runtime discovery, direct Cloud-composed ranking reads, content locale, CLI Skill reads, strict machine codecs, and discovery domain models.
- * [OUTPUT]: Provides locale-aware Hub Find search plus Cloud-composed Ranking/Trending/Hot cards, direct explicit-source routing, and remote Skill detail loading.
+ * [OUTPUT]: Provides locale-aware single and batch Hub Find plus Cloud-composed Ranking/Trending/Hot cards, direct explicit-source routing, and remote Skill detail loading.
  * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -27,7 +27,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       return _discoverExplicitSource(trimmedQuery);
     }
     final expectedCollection = switch (collection) {
-      DiscoveryCollection.search => 'search',
+      DiscoveryCollection.search => 'find',
       DiscoveryCollection.ranking => 'all_time',
       DiscoveryCollection.trending => 'trending',
       DiscoveryCollection.hot => 'hot',
@@ -176,6 +176,104 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         kind: SkillsFailureKind.invalidResponse,
       );
     }
+  }
+
+  @override
+  Future<List<SourceFindResult>> findSources(
+    List<SourceFindQuery> queries, {
+    int limit = 10,
+  }) async {
+    if (queries.isEmpty || queries.length > 100 || limit < 1 || limit > 10) {
+      throw const SkillsException(
+        'Invalid Source Find request.',
+        kind: SkillsFailureKind.validation,
+      );
+    }
+    await _ensureHubOrigin();
+    final request = jsonEncode({
+      'schemaVersion': 1,
+      'queries': [
+        for (final query in queries)
+          {
+            'id': query.id,
+            'q': query.name,
+            'exactName': true,
+            if (query.source.trim().isNotEmpty) 'source': query.source.trim(),
+          },
+      ],
+      'limit': limit,
+    });
+    final result = await _runCli([
+      'find',
+      '--input',
+      '-',
+      '--hub',
+      _hubOrigin,
+      '--content-locale',
+      await _contentLocale(),
+    ], stdin: request);
+    if (!result.succeeded) throw _commandFailure(result);
+    try {
+      final decoded = jsonDecode(result.output.stdout);
+      if (decoded is! Map<String, dynamic> ||
+          decoded['schemaVersion'] != 1 ||
+          decoded['collection'] != 'find' ||
+          decoded['results'] is! List) {
+        throw const FormatException();
+      }
+      return (decoded['results'] as List)
+          .map((rawResult) {
+            if (rawResult is! Map<String, dynamic> ||
+                rawResult['id'] is! String ||
+                rawResult['skills'] is! List) {
+              throw const FormatException();
+            }
+            return SourceFindResult(
+              id: rawResult['id'] as String,
+              skills: (rawResult['skills'] as List)
+                  .map(_decodeFindSkill)
+                  .toList(growable: false),
+            );
+          })
+          .toList(growable: false);
+    } on FormatException {
+      throw const SkillsException(
+        'Find service returned invalid JSON.',
+        kind: SkillsFailureKind.invalidResponse,
+      );
+    }
+  }
+
+  SkillSummary _decodeFindSkill(Object? raw) {
+    if (raw is! Map<String, dynamic>) throw const FormatException();
+    final repositoryId = raw['repositoryId'];
+    final name = raw['name'];
+    final description = raw['description'];
+    final source = raw['source'];
+    final latestVersion = raw['latestVersion'];
+    final skillPath = raw['skillPath'];
+    if (repositoryId is! String ||
+        name is! String ||
+        description is! String ||
+        source is! String ||
+        latestVersion is! String ||
+        skillPath is! String) {
+      throw const FormatException();
+    }
+    final imageUrl = raw['imageUrl'];
+    if (imageUrl != null && imageUrl is! String) throw const FormatException();
+    return SkillSummary(
+      repositoryId: repositoryId,
+      installName: skillPath.isNotEmpty ? p.basename(skillPath) : name,
+      name: name,
+      source: source,
+      skillPath: skillPath,
+      imageUrl: imageUrl as String?,
+      description: description,
+      latestVersion: latestVersion,
+      trustLevel: _trustLevel(raw['trustLevel']),
+      riskAssessment: _riskAssessment(raw['riskAssessment']),
+    );
   }
 
   Future<Map<String, dynamic>> _loadCloudRanking(

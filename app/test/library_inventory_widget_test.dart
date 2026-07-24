@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses SkillsGoApp, rendered Flutter widgets, and the controllable SkillsGateway test double.
- * [OUTPUT]: Specifies Library loading, inventory resilience, location navigation, filtering, and project recovery.
+ * [OUTPUT]: Specifies Library loading, inventory resilience, location navigation, filtering, project recovery, and reviewed external-Skill Source matching.
  * [POS]: Serves as one focused rendered desktop behavior suite within the App test workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,6 +16,68 @@ import 'support/fake_skills_gateway.dart';
 import 'support/widget_test_helpers.dart';
 
 void main() {
+  testWidgets(
+    'Adoption Review matches exact names in one deduplicated batch Find',
+    (tester) async {
+      await tester.binding.setSurfaceSize(const Size(1400, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      const externalSkills = [
+        InstalledSkill(
+          inventoryKey: 'external:first',
+          name: 'ask-matt',
+          description: 'Route a request to the best matching skill.',
+          path: '/tmp/first/ask-matt',
+          agents: ['codex'],
+          targetCount: 1,
+          provenance: LibraryProvenance.external,
+        ),
+        InstalledSkill(
+          inventoryKey: 'external:second',
+          name: 'ask-matt',
+          description: 'Route a request to the best matching skill.',
+          path: '/tmp/second/ask-matt',
+          agents: ['claude'],
+          targetCount: 1,
+          provenance: LibraryProvenance.external,
+        ),
+      ];
+      final gateway = FakeSkillsGateway(
+        libraryEntries: externalSkills,
+        searchResults: const [
+          SkillSummary(
+            repositoryId: 'github.com/example/skills',
+            installName: 'ask-matt',
+            name: 'ask-matt',
+            source: 'example/skills',
+            latestVersion: 'v3.2.1',
+            description: 'Route a request to the best matching skill.',
+          ),
+          SkillSummary(
+            repositoryId: 'github.com/example/other',
+            installName: 'another-skill',
+            name: 'another-skill',
+            source: 'example/other',
+            latestVersion: 'v9',
+            description: 'Unrelated candidate.',
+          ),
+        ],
+      );
+
+      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key('primary-destination-library')));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.tap(find.byKey(const Key('library-adoption-review-enter')));
+      await tester.pumpAndSettle();
+
+      expect(gateway.queries, ['ask-matt']);
+      expect(find.text('example/skills'), findsNWidgets(2));
+      expect(find.text('v3.2.1'), findsNWidgets(2));
+      expect(find.text('Confirm SkillsGo management (2)'), findsOneWidget);
+      expect(find.text('Matching Source…'), findsNothing);
+    },
+  );
+
   testWidgets('Library renders a cold-load skeleton before CLI inspection', (
     tester,
   ) async {
