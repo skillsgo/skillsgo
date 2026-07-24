@@ -203,8 +203,23 @@ jobs:
           go-version: '1.26.5'
           cache-dependency-path: e2e/cli/go.sum
 
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4
+
+      - name: Build reusable E2E runtime
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7
+        with:
+          context: .
+          file: e2e/cli/Dockerfile
+          load: true
+          tags: skillsgo-e2e:ci
+          cache-from: type=gha,scope=e2e-cli
+          cache-to: type=gha,mode=max,scope=e2e-cli,ignore-error=true
+
       - name: Run cross-product journeys
-        run: GOWORK=off go test -v -count=1 ./...
+        env:
+          SKILLSGO_E2E_IMAGE: skillsgo-e2e:ci
+        run: GOWORK=off go test -v -count=1 -timeout=15m ./...
 
   e2e-app:
     name: App E2E
