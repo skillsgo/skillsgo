@@ -165,6 +165,227 @@ func (q *Queries) ExpireStaleBackfillRuns(ctx context.Context, arg ExpireStaleBa
 	return result.RowsAffected(), nil
 }
 
+const findExactLocalizedSkillsBatch = `-- name: FindExactLocalizedSkillsBatch :many
+WITH requested AS (
+    SELECT ids.id AS query_id, queries.query, sources.source, ids.ordinal
+    FROM unnest($2::text[]) WITH ORDINALITY AS ids(id, ordinal)
+    JOIN unnest($3::text[]) WITH ORDINALITY AS queries(query, ordinal) USING (ordinal)
+    JOIN unnest($4::text[]) WITH ORDINALITY AS sources(source, ordinal) USING (ordinal)
+),
+ranked AS (
+    SELECT input.query_id::text AS query_id,input.query::text AS query,input.source::text AS source,input.ordinal,
+    s.id,s.repository_id,r.repository_id AS repository_identity,s.name,
+    COALESCE(ls.description,s.description) AS description,s.source_host,s.repository,s.skill_path,
+    COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at,
+    row_number() OVER (
+        PARTITION BY input.ordinal
+        ORDER BY
+            CASE WHEN input.source<>'' THEN s.skill_path ELSE '' END,
+            s.verified DESC,r.repository_id,s.skill_path
+    ) AS result_ordinal
+    FROM requested input
+    JOIN skills s ON lower(s.name)=lower(input.query)
+    JOIN repositories r ON r.id=s.repository_id AND (input.source='' OR r.repository_id=input.source)
+    LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
+    LEFT JOIN localized_descriptions ls ON ls.resource_kind='skill' AND ls.resource_id=r.repository_id || ':' || s.name AND ls.locale=$5
+)
+SELECT query_id,query,source,
+id,repository_id,repository_identity,name,description,source_host,repository,skill_path,
+latest_version,stars,verified,created_at,updated_at
+FROM ranked
+WHERE result_ordinal<=CASE WHEN source<>'' THEN 1 ELSE $1::bigint END
+ORDER BY ordinal,result_ordinal
+`
+
+type FindExactLocalizedSkillsBatchParams struct {
+	PageLimit int64    `json:"page_limit"`
+	QueryIds  []string `json:"query_ids"`
+	Queries   []string `json:"queries"`
+	Sources   []string `json:"sources"`
+	Locale    string   `json:"locale"`
+}
+
+type FindExactLocalizedSkillsBatchRow struct {
+	QueryID            string    `json:"query_id"`
+	Query              string    `json:"query"`
+	Source             string    `json:"source"`
+	ID                 int64     `json:"id"`
+	RepositoryID       int64     `json:"repository_id"`
+	RepositoryIdentity string    `json:"repository_identity"`
+	Name               string    `json:"name"`
+	Description        string    `json:"description"`
+	SourceHost         string    `json:"source_host"`
+	Repository         string    `json:"repository"`
+	SkillPath          string    `json:"skill_path"`
+	LatestVersion      string    `json:"latest_version"`
+	Stars              int64     `json:"stars"`
+	Verified           bool      `json:"verified"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+}
+
+func (q *Queries) FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExactLocalizedSkillsBatchParams) ([]FindExactLocalizedSkillsBatchRow, error) {
+	rows, err := q.db.Query(ctx, findExactLocalizedSkillsBatch,
+		arg.PageLimit,
+		arg.QueryIds,
+		arg.Queries,
+		arg.Sources,
+		arg.Locale,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FindExactLocalizedSkillsBatchRow{}
+	for rows.Next() {
+		var i FindExactLocalizedSkillsBatchRow
+		if err := rows.Scan(
+			&i.QueryID,
+			&i.Query,
+			&i.Source,
+			&i.ID,
+			&i.RepositoryID,
+			&i.RepositoryIdentity,
+			&i.Name,
+			&i.Description,
+			&i.SourceHost,
+			&i.Repository,
+			&i.SkillPath,
+			&i.LatestVersion,
+			&i.Stars,
+			&i.Verified,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const findLocalizedSkillsBatch = `-- name: FindLocalizedSkillsBatch :many
+WITH requested AS (
+    SELECT ids.id AS query_id, queries.query, sources.source, exact_names.exact_name, ids.ordinal
+    FROM unnest($3::text[]) WITH ORDINALITY AS ids(id, ordinal)
+    JOIN unnest($4::text[]) WITH ORDINALITY AS queries(query, ordinal) USING (ordinal)
+    JOIN unnest($5::text[]) WITH ORDINALITY AS sources(source, ordinal) USING (ordinal)
+    JOIN unnest($6::boolean[]) WITH ORDINALITY AS exact_names(exact_name, ordinal) USING (ordinal)
+)
+SELECT input.query_id::text AS query_id,input.query::text AS query,input.source::text AS source,
+result.id,result.repository_id,result.repository_identity,result.name,result.description,result.source_host,result.repository,result.skill_path,
+result.latest_version,result.stars,result.verified,result.created_at,result.updated_at
+FROM requested input
+JOIN LATERAL (
+    SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,
+    COALESCE(ls.description,s.description) AS description,s.source_host,s.repository,s.skill_path,
+    COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at,
+    CASE
+        WHEN lower(s.name)=lower(input.query) THEN 0
+        WHEN lower(s.name) LIKE lower(input.query) || '%' THEN 1
+        WHEN lower(s.name) LIKE '%' || lower(input.query) || '%' THEN 2
+        WHEN lower(r.repository_id)=lower(input.query) THEN 3
+        WHEN lower(r.repository_id) LIKE '%' || lower(input.query) || '%' THEN 4
+        ELSE 5
+    END AS sort_tier,
+    similarity(s.name,input.query) AS name_similarity
+    FROM skills s JOIN repositories r ON r.id=s.repository_id
+    LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
+    LEFT JOIN localized_descriptions ls ON ls.resource_kind='skill' AND ls.resource_id=r.repository_id || ':' || s.name AND ls.locale=$1
+    LEFT JOIN localized_descriptions lr ON lr.resource_kind='repository' AND lr.resource_id=r.repository_id AND lr.locale=$1
+    WHERE (
+        input.source<>'' AND r.repository_id=input.source AND s.name=input.query
+    ) OR (
+        input.source='' AND (
+            (input.exact_name AND lower(s.name)=lower(input.query))
+            OR (NOT input.exact_name AND (
+                lower(s.name) LIKE '%' || lower(input.query) || '%' OR lower(s.description) LIKE '%' || lower(input.query) || '%'
+                OR lower(r.repository_id) LIKE '%' || lower(input.query) || '%' OR lower(COALESCE(ls.description,'')) LIKE '%' || lower(input.query) || '%'
+                OR lower(COALESCE(lr.description,'')) LIKE '%' || lower(input.query) || '%'
+            ))
+        )
+    )
+    ORDER BY sort_tier,name_similarity DESC,s.verified DESC,r.repository_id,s.skill_path
+    LIMIT CASE WHEN input.source<>'' THEN 1 ELSE $2::int END
+) result ON true
+ORDER BY input.ordinal,result.sort_tier,result.name_similarity DESC,result.verified DESC,result.repository_identity,result.skill_path
+`
+
+type FindLocalizedSkillsBatchParams struct {
+	Locale     string   `json:"locale"`
+	PageLimit  int32    `json:"page_limit"`
+	QueryIds   []string `json:"query_ids"`
+	Queries    []string `json:"queries"`
+	Sources    []string `json:"sources"`
+	ExactNames []bool   `json:"exact_names"`
+}
+
+type FindLocalizedSkillsBatchRow struct {
+	QueryID            string    `json:"query_id"`
+	Query              string    `json:"query"`
+	Source             string    `json:"source"`
+	ID                 int64     `json:"id"`
+	RepositoryID       int64     `json:"repository_id"`
+	RepositoryIdentity string    `json:"repository_identity"`
+	Name               string    `json:"name"`
+	Description        string    `json:"description"`
+	SourceHost         string    `json:"source_host"`
+	Repository         string    `json:"repository"`
+	SkillPath          string    `json:"skill_path"`
+	LatestVersion      string    `json:"latest_version"`
+	Stars              int64     `json:"stars"`
+	Verified           bool      `json:"verified"`
+	CreatedAt          time.Time `json:"created_at"`
+	UpdatedAt          time.Time `json:"updated_at"`
+}
+
+func (q *Queries) FindLocalizedSkillsBatch(ctx context.Context, arg FindLocalizedSkillsBatchParams) ([]FindLocalizedSkillsBatchRow, error) {
+	rows, err := q.db.Query(ctx, findLocalizedSkillsBatch,
+		arg.Locale,
+		arg.PageLimit,
+		arg.QueryIds,
+		arg.Queries,
+		arg.Sources,
+		arg.ExactNames,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []FindLocalizedSkillsBatchRow{}
+	for rows.Next() {
+		var i FindLocalizedSkillsBatchRow
+		if err := rows.Scan(
+			&i.QueryID,
+			&i.Query,
+			&i.Source,
+			&i.ID,
+			&i.RepositoryID,
+			&i.RepositoryIdentity,
+			&i.Name,
+			&i.Description,
+			&i.SourceHost,
+			&i.Repository,
+			&i.SkillPath,
+			&i.LatestVersion,
+			&i.Stars,
+			&i.Verified,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertBackfillRun = `-- name: InsertBackfillRun :exec
 INSERT INTO repository_backfill_runs (id,repository_id,status,error_count,diagnostics,created_at,updated_at)
 VALUES ($1,$2,$3,0,$4,$5,$5)
@@ -1050,7 +1271,7 @@ type UpsertRepositoryParams struct {
 }
 
 // [INPUT]: Depends on the reviewed PostgreSQL Catalog schema and sqlc's pgx/v5 generator.
-// [OUTPUT]: Defines typed Repository, Release, Skill, localization, name-first/exact Find, and Backfill persistence operations.
+// [OUTPUT]: Defines typed Repository, Release, Skill, localization, name-first/exact single and set-based batch Find, and Backfill persistence operations.
 // [POS]: Serves as the single maintained query source for the Hub Catalog module.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 func (q *Queries) UpsertRepository(ctx context.Context, arg UpsertRepositoryParams) (Repository, error) {
