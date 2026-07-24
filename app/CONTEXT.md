@@ -65,8 +65,12 @@ The App's direct request to install one immutable Skill into explicit location-a
 _Avoid_: second installation selector, user-facing review ceremony
 
 **Batch Takeover**:
-The user's one confirmation to execute a state-bound Batch Takeover Plan for supported-lock-backed External Installations. The selected Library location is the complete scope: All Skills includes User Scope plus every accessible Added Project, Global includes only User Scope, and one Project includes only that Workspace Scope. The CLI verifies each candidate against its immutable Repository Artifact, installs that Repository through the ordinary Dependency, Lock, Scope Vendor, and Repository Projection transaction, and then moves the superseded External directory to recoverable trash. Invalid, mismatched, missing, or post-plan-changed candidates are skipped independently.
-_Avoid_: special adopted state, captured per-Skill artifact, implicit takeover, unmatched Local import
+The user's reviewed conversion of selected External Installations into ordinary managed Repository dependencies. skills.sh fixes only the Repository source; manual installations receive Hub Skill candidates ordered by App-owned description similarity, and the user retains final Repository and immutable-version choice before one confirmation.
+_Avoid_: automatic identity inference, content-authenticated takeover, implicit import, unmatched Local import
+
+**Adoption Review**:
+The temporary Library mode in which complete Repository and immutable-version selections are included by default, individual rows may be opted out, and incomplete rows remain External Installations. Entering the review starts candidate discovery; ordinary Library inventory never waits for Hub matching.
+_Avoid_: permanent installation table, background takeover, second Library
 
 **Target Result**:
 The success, skipped, conflict, or failure outcome for one target in a multi-target operation. Successful targets remain installed when another target fails, and failed targets can be retried independently.
@@ -81,7 +85,7 @@ A reviewed, state-bound exact-path removal of healthy External Installations. Un
 _Avoid_: repair, delete by Skill name, silent overwrite
 
 **External Installation**:
-A Skill found in an Installed Agent's directory that is not derived from a declared Repository Projection. The Library can inspect it and explicitly move a healthy exact target to system trash, but cannot update or repair it. A supported-lock-backed candidate can enter ordinary Repository management through Batch Takeover.
+A Skill found in an Installed Agent's directory that is not derived from a declared Repository Projection. The Library can inspect or explicitly remove it but cannot update or repair it; a user-reviewed Hub mapping can convert it into an ordinary managed Repository dependency.
 _Avoid_: broken Skill, unknown Skill, managed installation
 
 **External Removal Plan**:
