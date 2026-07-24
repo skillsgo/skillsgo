@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the Hub HTTP router with Testcontainers PostgreSQL Catalogs and deterministic public requests.
- * [OUTPUT]: Specifies public API contracts including Repository-fresh head/release batch update checks plus correlated, redacted private diagnostics for internal failures.
+ * [OUTPUT]: Specifies public API contracts including single/batch Find with Source restriction, Repository-fresh head/release batch update checks, and correlated redacted private diagnostics for internal failures.
  * [POS]: Serves as executable public HTTP contract coverage for Hub discovery clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -183,7 +183,7 @@ func catalogArtifactZIP(prefix string, files map[string][]byte) []byte {
 	return buffer.Bytes()
 }
 
-func TestCatalogAPIListSearchAndDetail(t *testing.T) {
+func TestCatalogAPIListFindAndDetail(t *testing.T) {
 	r, c := testCatalogAPI(t)
 	skill := &catalog.Skill{RepositoryID: "github.com/mattpocock/skills", SkillPath: "skills/engineering/ask-matt", Name: "ask-matt", Description: "Engineering skill router", SourceHost: "github.com", Repository: "mattpocock/skills", LatestVersion: "main"}
 	require.NoError(t, c.UpsertSkill(context.Background(), skill))
@@ -194,7 +194,7 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	}}, catalog.CurrentPublication, releaseInfo))
 
 	for _, path := range []string{
-		"/api/v1/search?q=engineering",
+		"/api/v1/find?q=engineering",
 	} {
 		recorder := httptest.NewRecorder()
 		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, path, nil))
@@ -228,13 +228,35 @@ func TestCatalogAPIListSearchAndDetail(t *testing.T) {
 	require.Len(t, detailBody.Files, 2)
 
 	recorder := httptest.NewRecorder()
-	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/search?q=engineering", nil))
+	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=engineering", nil))
 	var response skillsResponse
 	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&response))
-	require.Equal(t, "search", response.Collection)
+	require.Equal(t, "find", response.Collection)
 	require.Equal(t, 20, response.Page.Limit)
 	require.Equal(t, 0, response.Page.Offset)
 	require.Nil(t, response.Page.NextOffset)
+
+	sourced := httptest.NewRecorder()
+	serveFiber(t, r, sourced, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=ask-matt&source=github.com%2Fmattpocock%2Fskills&limit=10", nil))
+	require.Equal(t, http.StatusOK, sourced.Code)
+	var sourcedResponse skillsResponse
+	require.NoError(t, json.NewDecoder(sourced.Body).Decode(&sourcedResponse))
+	require.Len(t, sourcedResponse.Skills, 1)
+	require.Equal(t, "github.com/mattpocock/skills", sourcedResponse.Skills[0].RepositoryID)
+
+	findBatch := httptest.NewRecorder()
+	findBatchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/find", strings.NewReader(`{"schemaVersion":1,"queries":[{"id":"manual","q":"ask-matt","exactName":true},{"id":"known","q":"ask-matt","source":"github.com/mattpocock/skills","exactName":true}],"limit":10,"locale":"en"}`))
+	findBatchRequest.Header.Set("Content-Type", "application/json")
+	serveFiber(t, r, findBatch, findBatchRequest)
+	require.Equal(t, http.StatusOK, findBatch.Code)
+	var batchResponse protocolapi.FindResponse
+	require.NoError(t, json.NewDecoder(findBatch.Body).Decode(&batchResponse))
+	require.Equal(t, "find", batchResponse.Collection)
+	require.Len(t, batchResponse.Results, 2)
+	require.Equal(t, "manual", batchResponse.Results[0].ID)
+	require.Len(t, batchResponse.Results[0].Skills, 1)
+	require.Equal(t, "known", batchResponse.Results[1].ID)
+	require.Len(t, batchResponse.Results[1].Skills, 1)
 	require.Len(t, response.Skills, 1)
 	require.NotNil(t, response.Skills[0].ImageURL)
 	require.Equal(t, "https://github.com/mattpocock.png?size=256", *response.Skills[0].ImageURL)
@@ -267,7 +289,7 @@ func TestHistoricalPublicationDoesNotEnterDiscovery(t *testing.T) {
 	require.NoError(t, metadata.PublishRepositoryReleaseWithVisibility(t.Context(), repositoryID, candidates, catalog.HistoricalPublication, releaseInfo))
 
 	search := httptest.NewRecorder()
-	serveFiber(t, router, search, httptest.NewRequest(http.MethodGet, "/api/v1/search?q=retired", nil))
+	serveFiber(t, router, search, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=retired", nil))
 	require.Equal(t, http.StatusOK, search.Code)
 	var searchBody skillsResponse
 	require.NoError(t, json.NewDecoder(search.Body).Decode(&searchBody))
@@ -348,12 +370,12 @@ func TestCatalogAPIDetailReturnsStableArtifactFailures(t *testing.T) {
 	}
 }
 
-func TestCatalogAPISearchReturnsEmptyArray(t *testing.T) {
+func TestCatalogAPIFindReturnsEmptyArray(t *testing.T) {
 	r, _ := testCatalogAPI(t)
 	recorder := httptest.NewRecorder()
-	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/search?q=missing", nil))
+	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=missing", nil))
 	require.Equal(t, http.StatusOK, recorder.Code)
-	require.JSONEq(t, `{"collection":"search","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}`, recorder.Body.String())
+	require.JSONEq(t, `{"collection":"find","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}`, recorder.Body.String())
 }
 
 func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
@@ -366,7 +388,7 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 	}
 
 	first := httptest.NewRecorder()
-	serveFiber(t, r, first, httptest.NewRequest(http.MethodGet, "/api/v1/search?q=capability&limit=2", nil))
+	serveFiber(t, r, first, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=capability&limit=2", nil))
 	require.Equal(t, http.StatusOK, first.Code)
 	var firstPage skillsResponse
 	require.NoError(t, json.NewDecoder(first.Body).Decode(&firstPage))
@@ -375,7 +397,7 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 	require.Equal(t, 2, *firstPage.Page.NextOffset)
 
 	second := httptest.NewRecorder()
-	serveFiber(t, r, second, httptest.NewRequest(http.MethodGet, "/api/v1/search?q=capability&limit=2&offset=2", nil))
+	serveFiber(t, r, second, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=capability&limit=2&offset=2", nil))
 	var secondPage skillsResponse
 	require.NoError(t, json.NewDecoder(second.Body).Decode(&secondPage))
 	require.Len(t, secondPage.Skills, 1)
@@ -386,9 +408,9 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 func TestCatalogAPIValidationAndNotFound(t *testing.T) {
 	r, _ := testCatalogAPI(t)
 	for path, status := range map[string]int{
-		"/api/v1/search":                        http.StatusBadRequest,
-		"/api/v1/search?limit=101":              http.StatusBadRequest,
-		"/api/v1/search?q=valid&offset=invalid": http.StatusBadRequest,
+		"/api/v1/find":                        http.StatusBadRequest,
+		"/api/v1/find?limit=101":              http.StatusBadRequest,
+		"/api/v1/find?q=valid&offset=invalid": http.StatusBadRequest,
 		"/api/v1/skills/detail?repositoryId=github.com%2Funknown%2Frepo&name=missing": http.StatusNotFound,
 	} {
 		recorder := httptest.NewRecorder()
@@ -402,7 +424,7 @@ func TestCatalogAPIValidationAndNotFound(t *testing.T) {
 
 func TestCatalogAPIIsNamespacedUnderAPI(t *testing.T) {
 	r, _ := testCatalogAPI(t)
-	for _, path := range []string{"/v1/search?q=skill", "/v1/skills"} {
+	for _, path := range []string{"/v1/find?q=skill", "/v1/skills"} {
 		recorder := httptest.NewRecorder()
 		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, path, nil))
 		require.Equal(t, http.StatusNotFound, recorder.Code, path)

@@ -1,5 +1,5 @@
 ---
-status: accepted
+status: superseded by ADR-0013
 ---
 
 # Trust skills.sh locks for batch takeover

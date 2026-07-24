@@ -1599,6 +1599,42 @@ class AppLocalizationsDe extends AppLocalizations {
   String get batchTakeoverAction => 'Vorhandenes skills verwalten';
 
   @override
+  String handExternalSkillsToSkillsGoManagementCount(int count) {
+    return 'Let SkillsGo manage $count external skills';
+  }
+
+  @override
+  String confirmSkillsGoManagementCount(int count) {
+    return 'Confirm SkillsGo management ($count)';
+  }
+
+  @override
+  String get skillColumnLabel => 'Skill';
+
+  @override
+  String get repositorySourceColumnLabel => 'Source';
+
+  @override
+  String get versionColumnLabel => 'Version';
+
+  @override
+  String get repositoryMatching => 'Matching sources…';
+
+  @override
+  String get sourceMatchUnavailable => 'Source matching unavailable';
+
+  @override
+  String get noSourceMatches => 'No matching source';
+
+  @override
+  String sourceMatchPercent(int percent) {
+    return '$percent% match';
+  }
+
+  @override
+  String get versionPendingSelection => 'Pending Source';
+
+  @override
   String batchTakeoverActionCount(int count) {
     return 'Verwalten ($count)';
   }

@@ -391,7 +391,7 @@
   "projectLevel": "项目级别",
   "projects": "项目",
   "loading": "正在加载…",
-  "repositoryParsing": "正在解析 Repository…",
+  "repositoryParsing": "正在解析来源…",
   "userInstallSummary": "将在用户级别供 {agents} 个智能体使用",
   "@userInstallSummary": {"placeholders": {"agents": {"type": "int"}}},
   "projectInstallSummary": "{projects} 个项目 · {agents} 个智能体",
@@ -409,10 +409,10 @@
   "installedCell": "已安装",
   "unsupportedCell": "不可用",
   "confirmInstall": "确认安装",
-  "installAllRepositorySkills": "安装仓库所有技能（{count}）",
+  "installAllRepositorySkills": "安装此来源的全部技能（{count}）",
   "installAllSkillsTo": "安装所有技能到",
   "@installAllRepositorySkills": {"placeholders": {"count": {"type": "int"}}},
-  "installRepositorySkills": "安装 {repository} 全部技能（{count}）",
+  "installRepositorySkills": "安装来自 {repository} 的全部技能（{count}）",
   "@installRepositorySkills": {
     "placeholders": {
       "repository": {"type": "String"},
@@ -517,6 +517,23 @@
   "moreCoverage": "另外 {count} 个安装位置",
   "@moreCoverage": {"placeholders": {"count": {"type": "int"}}},
   "batchTakeoverAction": "纳入 SkillsGo 管理",
+  "handExternalSkillsToSkillsGoManagementCount": "将 {count} 个外部技能交给 SkillsGo 管理",
+  "@handExternalSkillsToSkillsGoManagementCount": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "confirmSkillsGoManagementCount": "确认由 SkillsGo 管理（{count}）",
+  "@confirmSkillsGoManagementCount": {"placeholders": {"count": {"type": "int"}}},
+  "skillColumnLabel": "技能",
+  "repositorySourceColumnLabel": "来源",
+  "versionColumnLabel": "版本",
+  "repositoryMatching": "正在匹配来源…",
+  "sourceMatchUnavailable": "来源匹配暂不可用",
+  "noSourceMatches": "没有匹配的来源",
+  "sourceMatchPercent": "匹配度 {percent}%",
+  "@sourceMatchPercent": {"placeholders": {"percent": {"type": "int"}}},
+  "versionPendingSelection": "等待选择 Source",
   "batchTakeoverActionCount": "纳入管理（{count}）",
   "@batchTakeoverActionCount": {
     "placeholders": {
@@ -610,7 +627,7 @@
   },
   "batchTakeoverClose": "关闭",
   "installMoreTargets": "安装到更多位置",
-  "detailRepository": "仓库",
+  "detailRepository": "来源",
   "detailStars": "星标",
   "detailUpdated": "最近更新",
   "detailArchiveSize": "ZIP 大小",

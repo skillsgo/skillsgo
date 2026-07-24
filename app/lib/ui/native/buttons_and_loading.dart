@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Flutter Material buttons, progress, shape/state properties, SkillsGo component tokens, and reduced-motion semantics.
- * [OUTPUT]: Provides skeleton boxes plus primary, outline, ghost, and destructive button primitives with consistent size and busy behavior.
+ * [INPUT]: Depends on Flutter Material buttons, HugeIcons, progress, shape/state properties, SkillsGo component tokens, and reduced-motion semantics.
+ * [OUTPUT]: Provides skeleton boxes plus capsule buttons with optional custom labels, trailing content, contextual semantic colors, and disabled colors, and outline, ghost, and destructive button primitives with consistent size and busy behavior.
  * [POS]: Serves as the action and cold-loading segment of the native component library.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -43,6 +43,14 @@ class PrimaryCapsuleButton extends StatelessWidget {
     this.height = 44,
     this.horizontalPadding = 20,
     this.labelStyle,
+    this.labelWidget,
+    this.trailingIcon,
+    this.trailingWidget,
+    this.disabledBackgroundColor,
+    this.disabledForegroundColor,
+    this.backgroundColor,
+    this.foregroundColor,
+    this.hoverBackgroundColor,
   });
 
   final String label;
@@ -51,6 +59,14 @@ class PrimaryCapsuleButton extends StatelessWidget {
   final double height;
   final double horizontalPadding;
   final TextStyle? labelStyle;
+  final Widget? labelWidget;
+  final List<List<dynamic>>? trailingIcon;
+  final Widget? trailingWidget;
+  final Color? disabledBackgroundColor;
+  final Color? disabledForegroundColor;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final Color? hoverBackgroundColor;
 
   @override
   Widget build(BuildContext context) {
@@ -65,18 +81,18 @@ class PrimaryCapsuleButton extends StatelessWidget {
         ),
         backgroundColor: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.disabled)) {
-            return components.controlDisabled;
+            return disabledBackgroundColor ?? components.controlDisabled;
           }
           if (states.contains(WidgetState.hovered) ||
               states.contains(WidgetState.pressed)) {
-            return components.primaryHover;
+            return hoverBackgroundColor ?? components.primaryHover;
           }
-          return components.primaryRest;
+          return backgroundColor ?? components.primaryRest;
         }),
         foregroundColor: WidgetStateProperty.resolveWith(
           (states) => states.contains(WidgetState.disabled)
-              ? components.controlForegroundDisabled
-              : components.primaryForeground,
+              ? disabledForegroundColor ?? components.controlForegroundDisabled
+              : foregroundColor ?? components.primaryForeground,
         ),
         shape: const WidgetStatePropertyAll(StadiumBorder()),
         tapTargetSize: MaterialTapTargetSize.shrinkWrap,
@@ -94,7 +110,17 @@ class PrimaryCapsuleButton extends StatelessWidget {
               dimension: 16,
               child: CircularProgressIndicator(strokeWidth: 2),
             )
-          : Text(label),
+          : Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                labelWidget ?? Text(label),
+                if (trailingWidget != null || trailingIcon != null) ...[
+                  const SizedBox(width: 8),
+                  trailingWidget ??
+                      HugeIcon(icon: trailingIcon!, size: 17, strokeWidth: 1.8),
+                ],
+              ],
+            ),
     );
   }
 }

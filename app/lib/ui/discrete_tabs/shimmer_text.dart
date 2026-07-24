@@ -2,8 +2,8 @@
  * Derived from Portal Labs Discrete Tabs, Copyright (c) 2026 Luis Portal, MIT License.
  * See /app/THIRD_PARTY_NOTICES.md for the complete attribution and license text.
  * [INPUT]: Depends on Flutter shader, animation, and text rendering APIs.
- * [OUTPUT]: Provides the single-pass highlight animation used by selected Discrete Tab labels.
- * [POS]: Serves as the animated label primitive for the vendored Discrete Tabs component.
+ * [OUTPUT]: Provides single-pass or repeating highlight animation for selected Discrete Tab labels and opt-in action emphasis.
+ * [POS]: Serves as the animated text-label primitive shared by Discrete Tabs and explicitly emphasized actions.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import 'package:flutter/material.dart';
@@ -16,6 +16,7 @@ class ShimmerText extends StatefulWidget {
     required this.baseColor,
     required this.highlightColor,
     this.duration = const Duration(milliseconds: 1500),
+    this.repeat = false,
   });
 
   final String text;
@@ -23,6 +24,7 @@ class ShimmerText extends StatefulWidget {
   final Color baseColor;
   final Color highlightColor;
   final Duration duration;
+  final bool repeat;
 
   @override
   State<ShimmerText> createState() => _ShimmerTextState();
@@ -35,8 +37,21 @@ class _ShimmerTextState extends State<ShimmerText>
   @override
   void initState() {
     super.initState();
-    controller = AnimationController(vsync: this, duration: widget.duration)
-      ..forward();
+    controller = AnimationController(vsync: this, duration: widget.duration);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      controller
+        ..stop()
+        ..value = 1;
+    } else if (widget.repeat) {
+      if (!controller.isAnimating) controller.repeat();
+    } else if (controller.value == 0) {
+      controller.forward();
+    }
   }
 
   @override

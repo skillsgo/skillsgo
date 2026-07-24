@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the bundled CLI process boundary for Hub and local business access, the Hub-declared Cloud origin for ranking reads, the local filesystem, bounded ProjectIconResolver, platform pickers, and SharedPreferences-backed product preferences.
- * [OUTPUT]: Provides typed CLI-backed Mandatory Onboarding, Hub search/detail, Cloud ranking composition, installation, scope-explicit Batch Takeover, inspection, atomic multi-project reference persistence with cached asynchronous identity enrichment, diagnostics, and persisted appearance/language/wallpaper/reminder/takeover-introduction operations with versioned machine-failure parsing.
+ * [OUTPUT]: Provides typed stdin-capable CLI-backed Mandatory Onboarding, Hub Find/detail, Cloud ranking composition, installation, scope-explicit Batch Takeover, inspection, atomic multi-project reference persistence with cached asynchronous identity enrichment, diagnostics, and persisted appearance/language/wallpaper/reminder/takeover-introduction operations with versioned machine-failure parsing.
  * [POS]: Serves as the App infrastructure adapter that keeps every Hub and local business operation behind the CLI machine boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -172,6 +172,7 @@ abstract class _RealSkillsGatewayCore implements SkillsGateway {
 
   Future<CommandResult> _runCli(
     List<String> arguments, {
+    String? stdin,
     void Function(String line)? onStdoutLine,
   });
 
