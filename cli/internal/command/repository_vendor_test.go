@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses command.Execute, an exact root Repository Proxy fixture, a complete Repository Artifact, and temporary Workspace/Agent roots.
+ * [INPUT]: Uses command.Execute, exact Repository version metadata/ZIP fixtures, a complete Repository Artifact, and temporary Workspace/Agent roots.
  * [OUTPUT]: Specifies exact-path add and inventory, Repository-level update, selective multi-Agent projection, member/Agent removal, healthy zero-rewrite install, offline projection restoration, Local Modification preservation, User Vendor restoration, and checksum-failure atomicity.
  * [POS]: Serves as the CLI command-seam acceptance test for Repository Vendor installation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -49,9 +49,9 @@ func TestAddExactRepositoryVersionCreatesWorkspaceVendorAndSelectedProjection(t 
 	require.NoError(t, err)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
-		case "/" + repositoryID + "/@v/" + version + ".info":
+		case "/" + repositoryID + "/versions/" + version:
 			_, _ = writer.Write(infoBytes)
-		case "/" + repositoryID + "/@v/" + version + ".zip":
+		case "/" + repositoryID + "/versions/" + version + ".zip":
 			writer.Header().Set("Content-Length", fmt.Sprint(len(archive)))
 			_, _ = writer.Write(archive)
 		default:
@@ -255,9 +255,9 @@ func TestAddRepositorySumMismatchLeavesNoWorkspaceState(t *testing.T) {
 	require.NoError(t, err)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
-		case "/" + repositoryID + "/@v/" + version + ".info":
+		case "/" + repositoryID + "/versions/" + version:
 			_, _ = writer.Write(infoBytes)
-		case "/" + repositoryID + "/@v/" + version + ".zip":
+		case "/" + repositoryID + "/versions/" + version + ".zip":
 			writer.Header().Set("Content-Length", fmt.Sprint(len(archive)))
 			_, _ = writer.Write(archive)
 		default:
@@ -316,10 +316,10 @@ func TestUpdateRepositoryReplacesCoordinateAndPreservesSelections(t *testing.T) 
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		for version, item := range releases {
 			switch request.URL.Path {
-			case "/" + repositoryID + "/@v/" + version + ".info":
+			case "/" + repositoryID + "/versions/" + version:
 				_, _ = writer.Write(item.info)
 				return
-			case "/" + repositoryID + "/@v/" + version + ".zip":
+			case "/" + repositoryID + "/versions/" + version + ".zip":
 				writer.Header().Set("Content-Length", fmt.Sprint(len(item.archive)))
 				_, _ = writer.Write(item.archive)
 				return

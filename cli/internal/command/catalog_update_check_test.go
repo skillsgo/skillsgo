@@ -19,7 +19,7 @@ func TestCatalogUpdateCheckUsesOneProductRequest(t *testing.T) {
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requests++
-		if request.Method != http.MethodPost || request.URL.Path != "/api/v1/updates/check" {
+		if request.Method != http.MethodPost || request.URL.Path != "/api/v1/skills/check-update" {
 			t.Fatalf("unexpected request %s %s", request.Method, request.URL.Path)
 		}
 		var body struct {
@@ -64,7 +64,7 @@ func TestCatalogUpdateCheckBatchesEightyInstalledSkills(t *testing.T) {
 	requests := 0
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requests++
-		if request.Method != http.MethodPost || request.URL.Path != "/api/v1/updates/check" {
+		if request.Method != http.MethodPost || request.URL.Path != "/api/v1/skills/check-update" {
 			t.Fatalf("unexpected request %s %s", request.Method, request.URL.Path)
 		}
 		var body struct {

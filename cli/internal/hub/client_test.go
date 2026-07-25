@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses an HTTP test Hub with hostile contract variants, transient GET responses, and deterministic artifact byte streams.
- * [OUTPUT]: Specifies product-API movable resolution followed by exact root Proxy reads, direct immutable reads, typed member validation, bounded status retries, and monotonic download progress.
+ * [OUTPUT]: Specifies product-API movable resolution followed by exact Repository version metadata/ZIP reads, direct immutable reads, typed member validation, bounded status retries, and monotonic download progress.
  * [POS]: Serves as public Hub transport client contract coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -92,7 +92,7 @@ func TestRepositoryMovableSelectorUsesProductResolutionThenCanonicalInfo(t *test
 				t.Fatalf("unexpected resolution request: %#v", body)
 			}
 			fmt.Fprintf(w, `{"schemaVersion":1,"repositoryId":%q,"version":%q,"time":"2026-07-18T12:00:00Z","ref":"refs/heads/feature/deep","commitSHA":"abcdef1234567890"}`, repository, version)
-		case "/" + repository + "/@v/" + version + ".info":
+		case "/" + repository + "/versions/" + version:
 			fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":%q,"Time":"2026-07-18T12:00:00Z","Ref":"refs/heads/main","CommitSHA":"abcdef1234567890","TreeSHA":"repository-tree","Sum":"h1:%s","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","RepositoryID":%q,"SkillPath":".","Version":%q,"Time":"2026-07-18T12:00:00Z","Ref":"refs/heads/main","Name":"root","Description":"root","CommitSHA":"abcdef1234567890","TreeSHA":"tree"}]}`, repository, version, strings.Repeat("A", 43)+"=", repository, version)
 		default:
 			http.NotFound(w, request)
@@ -107,7 +107,7 @@ func TestRepositoryMovableSelectorUsesProductResolutionThenCanonicalInfo(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	if resource.Info.Version != version || len(requests) != 2 || requests[0] != "POST /api/v1/repository-resolutions" || !strings.HasSuffix(requests[1], version+".info") {
+	if resource.Info.Version != version || len(requests) != 2 || requests[0] != "POST /api/v1/repository-resolutions" || !strings.HasSuffix(requests[1], "/versions/"+version) {
 		t.Fatalf("unexpected resolution flow: version=%q requests=%v", resource.Info.Version, requests)
 	}
 }
@@ -115,7 +115,7 @@ func TestRepositoryMovableSelectorUsesProductResolutionThenCanonicalInfo(t *test
 func TestProxyEndpointEscapesRepositoryPathCase(t *testing.T) {
 	repositoryID := "git.example.com/Example/Skills"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
-		if request.URL.EscapedPath() != "/git.example.com/!example/!skills/@v/v1.2.3.info" {
+		if request.URL.EscapedPath() != "/git.example.com/!example/!skills/versions/v1.2.3" {
 			t.Fatalf("unexpected escaped path %q", request.URL.EscapedPath())
 		}
 		fmt.Fprintf(w, `{"SchemaVersion":1,"Kind":"Repository","ID":%q,"Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"repository-tree","Sum":"h1:%s","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","RepositoryID":%q,"SkillPath":".","Version":"v1.2.3","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.2.3","CommitSHA":"commit","TreeSHA":"tree","Name":"demo","Description":"test"}]}`, repositoryID, strings.Repeat("A", 43)+"=", repositoryID)
@@ -134,7 +134,7 @@ func TestRepositoryUsesExactVersionInfoDirectly(t *testing.T) {
 	repositoryID := "github.com/example/skills"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
-		case "/github.com/example/skills/@v/v1.5.19.info":
+		case "/github.com/example/skills/versions/v1.5.19":
 			_, _ = w.Write([]byte(`{"SchemaVersion":1,"Kind":"Repository","ID":"github.com/example/skills","Version":"v1.5.19","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"repository-tree","Sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","ArchiveSize":1,"Skills":[{"SchemaVersion":1,"Kind":"Skill","RepositoryID":"github.com/example/skills","SkillPath":"demo","Name":"demo","Description":"test","Version":"v1.5.19","Time":"2026-07-18T12:00:00Z","Ref":"refs/tags/v1.5.19","CommitSHA":"commit","TreeSHA":"tree"}]}`))
 		default:
 			http.NotFound(w, request)

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on one canonical Repository input, root Repository Proxy Info/ZIP, deterministic name-or-path Skill selection, explicit Agent selection, strict Workspace state, Agent Adapter roots, prepared Scope Vendor transactions, and the Repository mutation coordinator.
+ * [INPUT]: Depends on one canonical Repository input, Repository version metadata/ZIP resources, deterministic name-or-path Skill selection, explicit Agent selection, strict Workspace state, Agent Adapter roots, prepared Scope Vendor transactions, and the Repository mutation coordinator.
  * [OUTPUT]: Provides exact Repository add for Workspace or User scope with one verified download, ordinary-file Vendor/Projections, coordinated YAML/Lock persistence and rollback, idempotency, and a stable Repository-install machine result.
  * [POS]: Serves as the Repository installation orchestration slice behind the public `skillsgo add` command.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

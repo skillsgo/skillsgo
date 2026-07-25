@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses command.Execute with isolated User/Agent roots, current skills.sh locks, and exact Repository Proxy fixtures.
+ * [INPUT]: Uses command.Execute with isolated User/Agent roots, current skills.sh locks, and exact Repository version metadata/ZIP fixtures.
  * [OUTPUT]: Specifies state-bound exact-path Repository adoption, byte-identity rejection, current lock parsing, provider identity, plan validation, and localized public behavior without Store or Receipt compatibility.
  * [POS]: Serves as the executable contract for the lock-backed Batch Takeover journey on Repository Vendor architecture.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -64,9 +64,9 @@ func takeoverRepositoryFixture(t *testing.T) (string, string, []byte, []byte, *h
 	require.NoError(t, err)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
-		case "/" + repositoryID + "/@v/" + version + ".info":
+		case "/" + repositoryID + "/versions/" + version:
 			_, _ = writer.Write(info)
-		case "/" + repositoryID + "/@v/" + version + ".zip":
+		case "/" + repositoryID + "/versions/" + version + ".zip":
 			writer.Header().Set("Content-Length", fmt.Sprint(len(archive)))
 			_, _ = writer.Write(archive)
 		default:

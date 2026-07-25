@@ -86,7 +86,7 @@ void main() {
       final client = HttpClient();
       try {
         final request = await client.getUrl(
-          Uri.parse('$hubOrigin/$repository/@v/v1.3.0.info'),
+          Uri.parse('$hubOrigin/$repository/versions/v1.3.0'),
         );
         final response = await request.close();
         await response.drain<void>();

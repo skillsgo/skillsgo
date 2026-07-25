@@ -32,7 +32,7 @@ func TestInfoRepositoryUsesHeadSelectorAndDoesNotWriteLocalState(t *testing.T) {
 		switch request.URL.Path {
 		case "/api/v1/repository-resolutions":
 			_, _ = fmt.Fprintf(writer, `{"schemaVersion":1,"repositoryId":%q,"selector":"head","version":%q,"time":"2026-07-18T12:00:00Z","ref":"refs/heads/main","commitSha":%q}`, repositoryID, version, commit)
-		case "/" + repositoryID + "/@v/" + version + ".info":
+		case "/" + repositoryID + "/versions/" + version:
 			_, _ = writer.Write(repositoryInfo)
 		case "/api/v1/skills/detail":
 			_, _ = fmt.Fprintf(writer, `{"repositoryId":%q,"name":%q,"imageUrl":"https://github.com/example.png?size=72","repositoryDescription":"A collection of Agent Skills.","stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, request.URL.Query().Get("repositoryId"), request.URL.Query().Get("name"))
@@ -74,7 +74,7 @@ func TestInfoRepositoryUsesHeadSelectorAndDoesNotWriteLocalState(t *testing.T) {
 	}
 	if strings.Join(requests, "\n") != strings.Join([]string{
 		"/api/v1/repository-resolutions",
-		"/" + repositoryID + "/@v/" + version + ".info",
+		"/" + repositoryID + "/versions/" + version,
 		"/api/v1/skills/detail",
 		"/api/v1/skills/detail",
 	}, "\n") {
@@ -94,7 +94,7 @@ func TestInfoSelectsNestedSkillFromExactRepositoryBatch(t *testing.T) {
 	members := infoTestMembers(repositoryID, version, commit)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
-		case "/" + repositoryID + "/@v/" + version + ".info":
+		case "/" + repositoryID + "/versions/" + version:
 			_, _ = writer.Write(commandTestRepositoryInfo(t, repositoryID, version, commit, members...))
 		case "/api/v1/skills/detail":
 			_, _ = fmt.Fprintf(writer, `{"repositoryId":%q,"name":"demo","stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, repositoryID)
@@ -222,7 +222,7 @@ func TestInfoClassifiesMalformedHubJSONAsInvalidResponse(t *testing.T) {
 	repositoryID, version := "github.com/example/skills", "v1.2.3"
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
-		case "/" + repositoryID + "/@v/" + version + ".info":
+		case "/" + repositoryID + "/versions/" + version:
 			_, _ = writer.Write([]byte("{"))
 		default:
 			http.NotFound(writer, request)
@@ -247,7 +247,7 @@ func TestInfoClassifiesMalformedHubJSONAsInvalidResponse(t *testing.T) {
 func TestInfoClassifiesUnsupportedHubSchemaAsIncompatible(t *testing.T) {
 	repositoryID, version := "github.com/example/skills", "v1.2.3"
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/"+repositoryID+"/@v/"+version+".info" {
+		if request.URL.Path != "/"+repositoryID+"/versions/"+version {
 			http.NotFound(writer, request)
 			return
 		}

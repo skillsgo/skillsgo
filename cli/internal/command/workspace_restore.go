@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on a strict matching skillsgo.yaml/skillsgo-lock.yaml pair, exact immutable root Proxy resources only when Vendor is absent, verified Scope Vendor, Agent Adapter roots, deterministic projection transactions, and the Repository mutation coordinator.
+ * [INPUT]: Depends on a strict matching skillsgo.yaml/skillsgo-lock.yaml pair, exact immutable Repository version resources only when Vendor is absent, verified Scope Vendor, Agent Adapter roots, deterministic projection transactions, and the Repository mutation coordinator.
  * [OUTPUT]: Provides conflict-safe idempotent Workspace/User install ensure results, restoring missing Vendor/projections from persisted name-or-path selectors while never performing movable version resolution, pruning extras, or overwriting Local Modifications.
  * [POS]: Serves as the declaration-to-Vendor/Projection orchestration behind `skillsgo install`.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

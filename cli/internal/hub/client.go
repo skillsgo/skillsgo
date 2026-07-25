@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on a configured Hub origin, canonical Repository/Skill IDs, typed add-time Selector resolution through the product API, exact root Proxy resources, typed Repository Info, bounded Repository ZIP responses, and optional progress reporting.
+ * [INPUT]: Depends on a configured Hub origin, canonical Repository/Skill IDs, typed add-time Selector resolution through the product API, exact Repository versions resources, typed Repository Info, bounded Repository ZIP responses, and optional progress reporting.
  * [OUTPUT]: Provides two-phase movable-to-immutable Repository resolution/download with path-unique membership validation and deterministic name-or-path member selection; direct exact reads; bounded product reads; discovery/update reads; and typed HTTP or malformed-protocol failures.
  * [POS]: Serves as the CLI HTTP boundary to the public SkillsGo Hub protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -150,7 +150,7 @@ func (c *Client) Repository(ctx context.Context, repositoryID, query string) (*R
 		}
 		resolved = resolution.Version
 	}
-	infoBytes, err := c.get(ctx, c.endpoint(repositoryID, resolved+".info"))
+	infoBytes, err := c.get(ctx, c.versionEndpoint(repositoryID, resolved, false))
 	if err != nil {
 		return nil, err
 	}
@@ -186,7 +186,7 @@ func (c *Client) FetchRepositoryWithProgress(ctx context.Context, repositoryID, 
 	if err != nil {
 		return nil, err
 	}
-	archive, err := c.getWithProgress(ctx, c.endpoint(repositoryID, resource.Info.Version+".zip"), progress)
+	archive, err := c.getWithProgress(ctx, c.versionEndpoint(repositoryID, resource.Info.Version, true), progress)
 	if err != nil {
 		return nil, err
 	}
@@ -280,7 +280,7 @@ func (c *Client) DiscoverLocalized(ctx context.Context, collection, search, loca
 	}
 	path := "/api/v1/skills"
 	if collection == "search" {
-		path = "/api/v1/find"
+		path = "/api/v1/skills/find"
 		query.Set("q", search)
 	} else {
 		query.Set("sort", collection)
@@ -299,7 +299,7 @@ func (c *Client) FindLocalized(ctx context.Context, search, source, locale strin
 	if exactName {
 		query.Set("exactName", "true")
 	}
-	return c.readProductJSON(ctx, "/api/v1/find", query)
+	return c.readProductJSON(ctx, "/api/v1/skills/find", query)
 }
 
 func (c *Client) FindBatch(ctx context.Context, request protocolapi.FindRequest) (json.RawMessage, error) {
@@ -307,7 +307,7 @@ func (c *Client) FindBatch(ctx context.Context, request protocolapi.FindRequest)
 	if err != nil {
 		return nil, err
 	}
-	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/find", bytes.NewReader(body))
+	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/skills/find-candidates", bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
@@ -404,7 +404,7 @@ func (c *Client) CatalogUpdates(ctx context.Context, skills []SkillCoordinate) (
 	if err != nil {
 		return nil, err
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/updates/check", bytes.NewReader(requestBody))
+	request, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/api/v1/skills/check-update", bytes.NewReader(requestBody))
 	if err != nil {
 		return nil, err
 	}
@@ -458,24 +458,22 @@ func validateAssessedInfo(repositoryID, skillName, requestedVersion string, info
 	return nil
 }
 
-func (c *Client) endpoint(skillID, file string) string {
-	escapedID, err := modmodule.EscapePath(strings.Trim(skillID, "/"))
+func (c *Client) versionEndpoint(repositoryID, version string, archive bool) string {
+	escapedID, err := modmodule.EscapePath(strings.Trim(repositoryID, "/"))
 	if err != nil {
 		// Canonical IDs have already crossed the source parser boundary. Keep
 		// this helper total while allowing the Router to reject impossible IDs.
-		escapedID = strings.Trim(skillID, "/")
+		escapedID = strings.Trim(repositoryID, "/")
 	}
-	for _, suffix := range []string{".info", ".zip"} {
-		if strings.HasSuffix(file, suffix) {
-			version := strings.TrimSuffix(file, suffix)
-			escapedVersion, escapeErr := modmodule.EscapeVersion(version)
-			if escapeErr == nil {
-				file = escapedVersion + suffix
-			}
-			break
-		}
+	escapedVersion, escapeErr := modmodule.EscapeVersion(version)
+	if escapeErr == nil {
+		version = escapedVersion
 	}
-	return c.baseURL + "/" + escapedID + "/@v/" + file
+	suffix := ""
+	if archive {
+		suffix = ".zip"
+	}
+	return c.baseURL + "/" + escapedID + "/versions/" + version + suffix
 }
 
 func (c *Client) getJSON(ctx context.Context, endpoint string, target any) error {

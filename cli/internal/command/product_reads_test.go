@@ -45,7 +45,7 @@ func TestFindForwardsExactNameAndSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if requestURI != "/api/v1/find?exactName=true&limit=10&offset=0&q=ask-matt&source=github.com%2Fexample%2Fskills" {
+	if requestURI != "/api/v1/skills/find?exactName=true&limit=10&offset=0&q=ask-matt&source=github.com%2Fexample%2Fskills" {
 		t.Fatalf("unexpected Find request %q", requestURI)
 	}
 }
@@ -87,12 +87,12 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 		}
 	}
 	if len(requests) != 6 ||
-		requests[0] != "GET /api/v1/find?limit=4&offset=1&q=responsive+layout" ||
-		requests[1] != `POST /api/v1/find {"schemaVersion":1,"queries":[{"id":"one","q":"ask-matt"}],"limit":10,"locale":"zh-CN"}` ||
+		requests[0] != "GET /api/v1/skills/find?limit=4&offset=1&q=responsive+layout" ||
+		requests[1] != `POST /api/v1/skills/find-candidates {"schemaVersion":1,"queries":[{"id":"one","q":"ask-matt"}],"limit":10,"locale":"zh-CN"}` ||
 		requests[2] != "GET /api/v1/skills/detail?name=demo&repositoryId=github.com%2Fexample%2Fskills" ||
 		requests[3] != `POST /api/v1/skills/batch {"skills":[{"repositoryId":"github.com/example/skills","name":"one"},{"repositoryId":"github.com/example/skills","name":"two"}]}` ||
 		requests[4] != "GET /info" ||
-		!strings.HasPrefix(requests[5], "GET /api/v1/find?") {
+		!strings.HasPrefix(requests[5], "GET /api/v1/skills/find?") {
 		t.Fatalf("unexpected requests %v", requests)
 	}
 }
