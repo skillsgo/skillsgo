@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, freshness-cached Repository artifact resolution, ZIP audit boundary, and request validation.
- * [OUTPUT]: Provides stable single and set-based batch Find with optional exact-name/Source restriction, ordered batch Skill-card hydration, Repository-fresh head/release batch update, and detail APIs plus correlated private diagnostics for internal and best-effort dependency failures.
+ * [OUTPUT]: Provides stable Skill Find and candidate lookup with optional exact-name/Source restriction, ordered batch Skill-card hydration, Repository-fresh head/release update checks, and detail APIs plus correlated private diagnostics for internal and best-effort dependency failures.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -112,10 +112,10 @@ func registerCatalogAPIRoutes(
 	if len(repositoryReaders) > 0 {
 		repositories = repositoryReaders[0]
 	}
-	r.Get("/api/v1/find", findSkillsHandler(metadata))
-	r.Post("/api/v1/find", findSkillsBatchHandler(metadata))
+	r.Get("/api/v1/skills/find", findSkillsHandler(metadata))
+	r.Post("/api/v1/skills/find-candidates", findSkillsBatchHandler(metadata))
 	r.Post("/api/v1/skills/batch", skillBatchHandler(metadata))
-	r.Post("/api/v1/updates/check", catalogUpdateCheckHandler(metadata, artifacts))
+	r.Post("/api/v1/skills/check-update", catalogUpdateCheckHandler(metadata, artifacts))
 	r.Get("/api/v1/skills/detail", skillDetailHandler(metadata, artifacts, repositories))
 }
 

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the Hub HTTP router with Testcontainers PostgreSQL Catalogs and deterministic public requests.
- * [OUTPUT]: Specifies public API contracts including ordered set-based batch Find with Source restriction, Repository-fresh head/release batch update checks, and correlated redacted private diagnostics for internal failures.
+ * [OUTPUT]: Specifies public Skill Find, candidate lookup, ordered batch hydration, Repository-fresh update checks, removed legacy routes, and correlated redacted private diagnostics for internal failures.
  * [POS]: Serves as executable public HTTP contract coverage for Hub discovery clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -194,7 +194,7 @@ func TestCatalogAPIListFindAndDetail(t *testing.T) {
 	}}, catalog.CurrentPublication, releaseInfo))
 
 	for _, path := range []string{
-		"/api/v1/find?q=engineering",
+		"/api/v1/skills/find?q=engineering",
 	} {
 		recorder := httptest.NewRecorder()
 		serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, path, nil))
@@ -228,7 +228,7 @@ func TestCatalogAPIListFindAndDetail(t *testing.T) {
 	require.Len(t, detailBody.Files, 2)
 
 	recorder := httptest.NewRecorder()
-	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=engineering", nil))
+	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=engineering", nil))
 	var response skillsResponse
 	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&response))
 	require.Equal(t, "find", response.Collection)
@@ -237,7 +237,7 @@ func TestCatalogAPIListFindAndDetail(t *testing.T) {
 	require.Nil(t, response.Page.NextOffset)
 
 	sourced := httptest.NewRecorder()
-	serveFiber(t, r, sourced, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=ask-matt&source=github.com%2Fmattpocock%2Fskills&limit=10", nil))
+	serveFiber(t, r, sourced, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=ask-matt&source=github.com%2Fmattpocock%2Fskills&limit=10", nil))
 	require.Equal(t, http.StatusOK, sourced.Code)
 	var sourcedResponse skillsResponse
 	require.NoError(t, json.NewDecoder(sourced.Body).Decode(&sourcedResponse))
@@ -245,7 +245,7 @@ func TestCatalogAPIListFindAndDetail(t *testing.T) {
 	require.Equal(t, "github.com/mattpocock/skills", sourcedResponse.Skills[0].RepositoryID)
 
 	findBatch := httptest.NewRecorder()
-	findBatchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/find", strings.NewReader(`{"schemaVersion":1,"queries":[{"id":"manual","q":"ask-matt","exactName":true},{"id":"known","q":"ask-matt","source":"github.com/mattpocock/skills","exactName":true}],"limit":10,"locale":"en"}`))
+	findBatchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/find-candidates", strings.NewReader(`{"schemaVersion":1,"queries":[{"id":"manual","q":"ask-matt","exactName":true},{"id":"known","q":"ask-matt","source":"github.com/mattpocock/skills","exactName":true}],"limit":10,"locale":"en"}`))
 	findBatchRequest.Header.Set("Content-Type", "application/json")
 	serveFiber(t, r, findBatch, findBatchRequest)
 	require.Equal(t, http.StatusOK, findBatch.Code)
@@ -263,6 +263,16 @@ func TestCatalogAPIListFindAndDetail(t *testing.T) {
 	require.Equal(t, "unverified", response.Skills[0].TrustLevel)
 	require.Equal(t, "unknown", response.Skills[0].RiskAssessment)
 	require.Equal(t, "github.com/mattpocock/skills", response.Skills[0].Repository)
+
+	for _, legacyRequest := range []*http.Request{
+		httptest.NewRequest(http.MethodGet, "/api/v1/find?q=ask-matt", nil),
+		httptest.NewRequest(http.MethodPost, "/api/v1/find", strings.NewReader(`{"queries":[]}`)),
+		httptest.NewRequest(http.MethodPost, "/api/v1/updates/check", strings.NewReader(`{"skills":[]}`)),
+	} {
+		legacy := httptest.NewRecorder()
+		serveFiber(t, r, legacy, legacyRequest)
+		require.Equal(t, http.StatusNotFound, legacy.Code, legacyRequest.Method+" "+legacyRequest.URL.Path)
+	}
 
 	batch := httptest.NewRecorder()
 	batchRequest := httptest.NewRequest(http.MethodPost, "/api/v1/skills/batch", strings.NewReader(`{"skills":[{"repositoryId":"github.com/mattpocock/skills","name":"missing"},{"repositoryId":"github.com/mattpocock/skills","name":"ask-matt"}]}`))
@@ -289,7 +299,7 @@ func TestHistoricalPublicationDoesNotEnterDiscovery(t *testing.T) {
 	require.NoError(t, metadata.PublishRepositoryReleaseWithVisibility(t.Context(), repositoryID, candidates, catalog.HistoricalPublication, releaseInfo))
 
 	search := httptest.NewRecorder()
-	serveFiber(t, router, search, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=retired", nil))
+	serveFiber(t, router, search, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=retired", nil))
 	require.Equal(t, http.StatusOK, search.Code)
 	var searchBody skillsResponse
 	require.NoError(t, json.NewDecoder(search.Body).Decode(&searchBody))
@@ -319,7 +329,7 @@ func TestCatalogUpdateCheckResolvesEachRepositoryOnceAndPreservesRequestOrder(t 
 	registerCatalogAPIRoutes(r, c, artifacts)
 	body := `{"schemaVersion":1,"skills":[{"repositoryId":"github.com/example/skills","name":"missing"},{"repositoryId":"github.com/example/skills","name":"review"}]}`
 	recorder := httptest.NewRecorder()
-	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodPost, "/api/v1/updates/check", strings.NewReader(body)))
+	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodPost, "/api/v1/skills/check-update", strings.NewReader(body)))
 	require.Equal(t, http.StatusOK, recorder.Code)
 	var response catalogUpdateCheckResponse
 	require.NoError(t, json.NewDecoder(recorder.Body).Decode(&response))
@@ -373,7 +383,7 @@ func TestCatalogAPIDetailReturnsStableArtifactFailures(t *testing.T) {
 func TestCatalogAPIFindReturnsEmptyArray(t *testing.T) {
 	r, _ := testCatalogAPI(t)
 	recorder := httptest.NewRecorder()
-	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=missing", nil))
+	serveFiber(t, r, recorder, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=missing", nil))
 	require.Equal(t, http.StatusOK, recorder.Code)
 	require.JSONEq(t, `{"collection":"find","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}`, recorder.Body.String())
 }
@@ -388,7 +398,7 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 	}
 
 	first := httptest.NewRecorder()
-	serveFiber(t, r, first, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=capability&limit=2", nil))
+	serveFiber(t, r, first, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=capability&limit=2", nil))
 	require.Equal(t, http.StatusOK, first.Code)
 	var firstPage skillsResponse
 	require.NoError(t, json.NewDecoder(first.Body).Decode(&firstPage))
@@ -397,7 +407,7 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 	require.Equal(t, 2, *firstPage.Page.NextOffset)
 
 	second := httptest.NewRecorder()
-	serveFiber(t, r, second, httptest.NewRequest(http.MethodGet, "/api/v1/find?q=capability&limit=2&offset=2", nil))
+	serveFiber(t, r, second, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=capability&limit=2&offset=2", nil))
 	var secondPage skillsResponse
 	require.NoError(t, json.NewDecoder(second.Body).Decode(&secondPage))
 	require.Len(t, secondPage.Skills, 1)
@@ -408,9 +418,9 @@ func TestCatalogAPIPaginationHasStableShape(t *testing.T) {
 func TestCatalogAPIValidationAndNotFound(t *testing.T) {
 	r, _ := testCatalogAPI(t)
 	for path, status := range map[string]int{
-		"/api/v1/find":                        http.StatusBadRequest,
-		"/api/v1/find?limit=101":              http.StatusBadRequest,
-		"/api/v1/find?q=valid&offset=invalid": http.StatusBadRequest,
+		"/api/v1/skills/find":                        http.StatusBadRequest,
+		"/api/v1/skills/find?limit=101":              http.StatusBadRequest,
+		"/api/v1/skills/find?q=valid&offset=invalid": http.StatusBadRequest,
 		"/api/v1/skills/detail?repositoryId=github.com%2Funknown%2Frepo&name=missing": http.StatusNotFound,
 	} {
 		recorder := httptest.NewRecorder()
