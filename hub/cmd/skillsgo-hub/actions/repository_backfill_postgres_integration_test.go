@@ -166,19 +166,19 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	var statuses backfillResponse
 	require.NoError(t, json.NewDecoder(statusResponse.Body).Decode(&statuses))
 	require.Equal(t, next.ID, statuses.Results[0].Run.ID)
-	infoResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/"+repositoryID+"/@v/v1.0.0.info", nil))
+	infoResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/"+repositoryID+"/versions/v1.0.0", nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, infoResponse.StatusCode)
 	var info protocolapi.RepositoryInfo
 	require.NoError(t, json.NewDecoder(infoResponse.Body).Decode(&info))
 	require.NotEmpty(t, info.Sum)
-	zipResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/"+repositoryID+"/@v/v1.0.0.zip", nil))
+	zipResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/"+repositoryID+"/versions/v1.0.0.zip", nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, zipResponse.StatusCode)
 	retainedZIP, err := io.ReadAll(zipResponse.Body)
 	require.NoError(t, err)
 	require.Equal(t, fetcher.archives["v1.0.0"], retainedZIP)
-	searchResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/find?q=backfilled", nil))
+	searchResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=backfilled", nil))
 	require.NoError(t, err)
 	var searchBody skillsResponse
 	require.NoError(t, json.NewDecoder(searchResponse.Body).Decode(&searchBody))

@@ -55,14 +55,14 @@ const homepage = `<!DOCTYPE html>
 
 	<h3>List of versions</h3>
 	<p>This endpoint returns published canonical semantic versions:</p>
-	<pre>GET {{ .Host }}/github.com/owner/repository/@v/list</pre>
+	<pre>GET {{ .Host }}/github.com/owner/repository/versions</pre>
 
 	<h3>Version info</h3>
 	<p>This endpoint returns information about a specific immutable Repository version:</p>
-	<pre>GET {{ .Host }}/github.com/owner/repository/@v/v1.0.0.info</pre>
+	<pre>GET {{ .Host }}/github.com/owner/repository/versions/v1.0.0</pre>
 
 	<h3>Immutable Repository archive</h3>
-	<pre>GET {{ .Host }}/github.com/owner/repository/@v/v1.0.0.zip</pre>
+	<pre>GET {{ .Host }}/github.com/owner/repository/versions/v1.0.0.zip</pre>
 
 	<h3>Movable selector resolution</h3>
 	<pre>POST {{ .Host }}/api/v1/repository-resolutions</pre>

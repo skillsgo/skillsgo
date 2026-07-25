@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber routing, download Protocol handlers, request-scoped logging, and cache-control middleware.
- * [OUTPUT]: Registers the Repository Proxy list and immutable artifact routes while explicitly rejecting the removed /mod namespace.
+ * [OUTPUT]: Registers the Repository versions collection, immutable metadata and ZIP routes while explicitly rejecting removed legacy namespaces.
  * [POS]: Serves as the HTTP routing boundary for the Hub download package.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -55,12 +55,12 @@ func RegisterHandlers(r fiber.Router, opts *HandlerOpts) {
 		return c.SendStatus(fiber.StatusNotFound)
 	})
 	noCache := middleware.FiberCacheControl(movableVersionCacheControl)
-	registerMethods(r, "/+/@v/list", http.MethodGet, noCache, LogEntryHandler(ListHandler, opts))
-	registerMethods(r, "/+/@v/:version.info", http.MethodGet, LogEntryHandler(InfoHandler, opts))
+	registerMethods(r, "/+/versions", http.MethodGet, noCache, LogEntryHandler(ListHandler, opts))
 	zipHandler := LogEntryHandler(ZipHandler, opts)
-	r.Get("/+/@v/:version.zip", zipHandler)
-	r.Head("/+/@v/:version.zip", zipHandler)
-	r.All("/+/@v/:version.zip", methodNotAllowed(http.MethodGet+", "+http.MethodHead))
+	r.Get("/+/versions/:version.zip", zipHandler)
+	r.Head("/+/versions/:version.zip", zipHandler)
+	r.All("/+/versions/:version.zip", methodNotAllowed(http.MethodGet+", "+http.MethodHead))
+	registerMethods(r, "/+/versions/:version", http.MethodGet, LogEntryHandler(InfoHandler, opts))
 }
 
 func protectMovableVersionResponse(c fiber.Ctx, version string) {

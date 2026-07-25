@@ -3,7 +3,7 @@
 
 ## Members
 
-- `protocol.go`, `handler.go`, `immutable_etag.go`, and version-specific handlers: expose the root Repository Proxy List plus exact immutable Repository Info and ZIP routes over composable storage and source protocols, explicitly reject the removed `/mod` namespace and movable Proxy Selectors, enforce method and conditional-request contracts, stream files with EOF-bound resource closure, redirect canonical immutable ZIPs to a configured artifact origin after materialization, and retain structured observability.
+- `protocol.go`, `handler.go`, `immutable_etag.go`, and version-specific handlers: expose `/{repositoryId}/versions`, exact immutable `/{repositoryId}/versions/{version}`, and GET/HEAD `/{repositoryId}/versions/{version}.zip` resources over composable storage and source protocols; explicitly reject removed legacy namespaces and movable selectors, enforce method and conditional-request contracts, stream files with EOF-bound resource closure, redirect canonical immutable ZIPs to a configured artifact origin after materialization, and retain structured observability.
 - `*_test.go`: specify the public HTTP and Protocol contracts, including version listing, caching, fallback, and artifact delivery.
 
 ## Architectural Boundary

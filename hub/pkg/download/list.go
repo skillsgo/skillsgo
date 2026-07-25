@@ -16,10 +16,10 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/paths"
 )
 
-// PathList URL.
-const PathList = "/{repository:.+}/@v/list"
+// PathList is the public Repository versions collection URL.
+const PathList = "/{repository:.+}/versions"
 
-// ListHandler implements GET baseURL/repository/@v/list.
+// ListHandler implements GET baseURL/{repositoryId}/versions.
 func ListHandler(dp Protocol, lggr log.Entry, _ string) fiber.Handler {
 	const op errors.Op = "download.ListHandler"
 	return func(c fiber.Ctx) error {

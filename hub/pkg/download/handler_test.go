@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Fiber routing, successful and redirected artifact protocols, canonical versions, and explicit movable Selectors.
- * [OUTPUT]: Specifies the root Repository Proxy, explicit Head/Release Selectors, exact-version enforcement, HTTP method boundaries, external immutable ZIP delivery, redirect behavior, and cache policy.
+ * [OUTPUT]: Specifies the public Repository versions resources, removal of legacy Proxy paths, exact-version enforcement, HTTP method boundaries, external immutable ZIP delivery, redirect behavior, and cache policy.
  * [POS]: Serves as the public artifact HTTP routing contract for the download package.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,7 +21,7 @@ import (
 func TestArtifactProtocolIsServedAtRoot(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger(), ArtifactOrigin: "https://example.test"})
-	request, err := http.NewRequest(http.MethodGet, "/github.com/skillsgo/skillsgo/@v/v1.0.0.info", nil)
+	request, err := http.NewRequest(http.MethodGet, "/github.com/skillsgo/skillsgo/versions/v1.0.0", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -37,7 +37,7 @@ func TestArtifactProtocolIsServedAtRoot(t *testing.T) {
 func TestRemovedModNamespaceIsNotInterpretedAsRepositoryID(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
-	request, err := http.NewRequest(http.MethodGet, "/mod/github.com/skillsgo/skillsgo/@v/v1.0.0.info", nil)
+	request, err := http.NewRequest(http.MethodGet, "/mod/github.com/skillsgo/skillsgo/versions/v1.0.0", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,6 +47,28 @@ func TestRemovedModNamespaceIsNotInterpretedAsRepositoryID(t *testing.T) {
 	}
 	if response.StatusCode != http.StatusNotFound {
 		t.Fatalf("removed /mod route returned %d, want 404", response.StatusCode)
+	}
+}
+
+func TestLegacyProxyVersionPathsAreRemoved(t *testing.T) {
+	r := fiber.New()
+	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
+	for _, legacyPath := range []string{
+		"/github.com/skillsgo/skillsgo/@v/list",
+		"/github.com/skillsgo/skillsgo/@v/v1.0.0.info",
+		"/github.com/skillsgo/skillsgo/@v/v1.0.0.zip",
+	} {
+		request, err := http.NewRequest(http.MethodGet, legacyPath, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+		response, err := r.Test(request)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if response.StatusCode != http.StatusNotFound {
+			t.Fatalf("legacy path %s returned %d, want 404", legacyPath, response.StatusCode)
+		}
 	}
 }
 
@@ -61,10 +83,10 @@ func TestExactResourceRoutesRejectMovableOrRawRevisionQueries(t *testing.T) {
 		method string
 		path   string
 	}{
-		{http.MethodGet, "/github.com/skillsgo/skillsgo/@v/main.info"},
-		{http.MethodGet, "/github.com/skillsgo/skillsgo/@v/main.zip"},
-		{http.MethodHead, "/github.com/skillsgo/skillsgo/@v/main.zip"},
-		{http.MethodGet, "/github.com/skillsgo/skillsgo/@v/abcdef123456.info"},
+		{http.MethodGet, "/github.com/skillsgo/skillsgo/versions/main"},
+		{http.MethodGet, "/github.com/skillsgo/skillsgo/versions/main.zip"},
+		{http.MethodHead, "/github.com/skillsgo/skillsgo/versions/main.zip"},
+		{http.MethodGet, "/github.com/skillsgo/skillsgo/versions/abcdef123456"},
 	} {
 		request, err := http.NewRequest(requestCase.method, requestCase.path, nil)
 		if err != nil {
@@ -84,8 +106,8 @@ func TestCanonicalVersionInfoIsPubliclyImmutable(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
 	for _, path := range []string{
-		"/github.com/skillsgo/skillsgo/@v/v1.2.3.info",
-		"/github.com/skillsgo/skillsgo/@v/v1.2.4-0.20260720120000-abcdef123456.info",
+		"/github.com/skillsgo/skillsgo/versions/v1.2.3",
+		"/github.com/skillsgo/skillsgo/versions/v1.2.4-0.20260720120000-abcdef123456",
 	} {
 		request, err := http.NewRequest(http.MethodGet, path, nil)
 		if err != nil {
@@ -117,7 +139,7 @@ func TestCanonicalVersionInfoIsPubliclyImmutable(t *testing.T) {
 func TestCanonicalVersionZipSupportsConditionalGetAndHead(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
-	path := "/github.com/skillsgo/skillsgo/@v/v1.2.3.zip"
+	path := "/github.com/skillsgo/skillsgo/versions/v1.2.3.zip"
 	request, _ := http.NewRequest(http.MethodHead, path, nil)
 	response, err := r.Test(request)
 	if err != nil {
@@ -155,9 +177,9 @@ func TestProxyRejectsMovableSelectorsAndEnforcesExactRouteMethods(t *testing.T) 
 		path  string
 		allow string
 	}{
-		{"/github.com/skillsgo/skillsgo/@v/list", http.MethodGet},
-		{"/github.com/skillsgo/skillsgo/@v/v1.2.3.info", http.MethodGet},
-		{"/github.com/skillsgo/skillsgo/@v/v1.2.3.zip", http.MethodGet + ", " + http.MethodHead},
+		{"/github.com/skillsgo/skillsgo/versions", http.MethodGet},
+		{"/github.com/skillsgo/skillsgo/versions/v1.2.3", http.MethodGet},
+		{"/github.com/skillsgo/skillsgo/versions/v1.2.3.zip", http.MethodGet + ", " + http.MethodHead},
 	} {
 		request, _ := http.NewRequest(http.MethodPost, item.path, nil)
 		response, err := r.Test(request)
@@ -179,7 +201,7 @@ func TestCanonicalVersionZipRedirectsToArtifactOrigin(t *testing.T) {
 	})
 
 	for _, method := range []string{http.MethodGet, http.MethodHead} {
-		request, err := http.NewRequest(method, "/github.com/skillsgo/skillsgo/@v/v1.2.3.zip", nil)
+		request, err := http.NewRequest(method, "/github.com/skillsgo/skillsgo/versions/v1.2.3.zip", nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -190,7 +212,7 @@ func TestCanonicalVersionZipRedirectsToArtifactOrigin(t *testing.T) {
 		if response.StatusCode != http.StatusMovedPermanently {
 			t.Fatalf("%s returned %d, want 301", method, response.StatusCode)
 		}
-		const expected = "https://files.skillsgo.ai/github.com/skillsgo/skillsgo/@v/v1.2.3.zip"
+		const expected = "https://files.skillsgo.ai/github.com/skillsgo/skillsgo/versions/v1.2.3.zip"
 		if got := response.Header.Get("Location"); got != expected {
 			t.Fatalf("%s Location = %q, want %q", method, got, expected)
 		}

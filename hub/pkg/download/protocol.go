@@ -20,13 +20,13 @@ import (
 
 // Protocol is the Repository artifact protocol exposed by the Hub proxy.
 type Protocol interface {
-	// List implements GET /{repository}/@v/list.
+	// List implements GET /{repositoryId}/versions.
 	List(ctx context.Context, mod string) ([]string, error)
 
-	// Info implements GET /{repository}/@v/{version}.info.
+	// Info implements GET /{repositoryId}/versions/{version}.
 	Info(ctx context.Context, mod, ver string) ([]byte, error)
 
-	// Zip implements GET /{repository}/@v/{version}.zip.
+	// Zip implements GET and HEAD /{repositoryId}/versions/{version}.zip.
 	Zip(ctx context.Context, mod, ver string) (storage.SizeReadCloser, error)
 }
 

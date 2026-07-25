@@ -14,9 +14,9 @@ import (
 )
 
 // PathVersionInfo URL.
-const PathVersionInfo = "/{repository:.+}/@v/{version}.info"
+const PathVersionInfo = "/{repository:.+}/versions/{version}"
 
-// InfoHandler implements GET baseURL/repository/@v/version.info.
+// InfoHandler implements GET baseURL/{repositoryId}/versions/{version}.
 func InfoHandler(dp Protocol, lggr log.Entry, _ string) fiber.Handler {
 	const op errors.Op = "download.InfoHandler"
 	return func(c fiber.Ctx) error {
