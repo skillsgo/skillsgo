@@ -25,12 +25,12 @@ A public version-control repository registered with the Hub under a canonical, c
 _Avoid_: Skill ID, repository URL spelling, refresh schedule
 
 **Version Query**:
-An add-time Git revision such as a canonical semantic Tag, branch name, or commit hash, or an exact canonical immutable semantic/pseudo-version. A movable revision resolves once to a commit and immutable version; only that immutable version is persisted and accepted by exact Repository Proxy resources. The ambiguous `latest` and version ranges are rejected.
+An add-time Git revision such as a canonical semantic Tag, branch name, or commit hash, or an exact canonical immutable semantic/pseudo-version. A movable revision resolves once to a commit and immutable version; only that immutable version is persisted and accepted by exact Repository Version resources. The ambiguous `latest` and version ranges are rejected.
 _Avoid_: persisted branch, `latest`, version range, refresh subscription, raw transport URL
 
-**Repository Proxy**:
-The Go-proxy-shaped immutable distribution surface rooted directly at the Artifact Origin. A Repository resource uses `/<escaped-repository-id>/@v/...` without a product namespace prefix; `/api/v1` remains reserved for product APIs and takes routing precedence.
-_Avoid_: `/mod`, product API, Skill ZIP endpoint
+**Repository Version API**:
+The immutable distribution surface rooted directly at the Artifact Origin. It exposes `/<repository-id>/versions`, `/<repository-id>/versions/<version>`, and `/<repository-id>/versions/<version>.zip`; exact ZIP also supports `HEAD`. Product operations remain under `/api/v1` and take routing precedence.
+_Avoid_: Go Proxy, `/mod`, `@v`, product API, Skill ZIP endpoint
 
 **Repository Publication**:
 The atomic visibility change that publishes one immutable Repository Release, its complete accepted Skill membership, one Repository ZIP, and one Repository Sum for a resolved source commit. A `SKILL.md` beneath a hidden directory is treated as installed consumer state rather than a publication candidate; no partial accepted membership becomes visible.

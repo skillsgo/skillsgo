@@ -222,8 +222,8 @@ App or CI caller
 The CLI Hub adapter performs the required immutable protocol requests, such as:
 
 ```text
-GET /github.com/acme/skills/@v/v1.2.3.info
-GET /github.com/acme/skills/@v/v1.2.3.zip
+GET /github.com/acme/skills/versions/v1.2.3
+GET /github.com/acme/skills/versions/v1.2.3.zip
 ```
 
 The App never performs these requests.
