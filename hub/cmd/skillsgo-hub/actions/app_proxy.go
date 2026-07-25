@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Hub configuration, immutable storage, Catalog, Repository source fetchers, and HTTP routing.
- * [OUTPUT]: Assembles health, Repository-enriched discovery/detail, add-time Repository resolution, immutable root Proxy routes, and authenticated Backfill administration with shared task infrastructure.
+ * [OUTPUT]: Assembles health, Repository-enriched discovery/detail, add-time Repository resolution, OpenAPI documentation, immutable Repository version routes, and authenticated Backfill administration with shared task infrastructure.
  * [POS]: Serves as the Hub service-composition boundary joining source resolution, storage, metadata, and public HTTP handlers.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -101,6 +101,7 @@ func addProxyRoutesWithCatalog(
 	}
 
 	handlerOpts := &download.HandlerOpts{Protocol: dp, Logger: l, ArtifactOrigin: c.ArtifactOrigin}
+	registerHubOpenAPI(r)
 	download.RegisterHandlers(r, handlerOpts)
 
 	return nil
