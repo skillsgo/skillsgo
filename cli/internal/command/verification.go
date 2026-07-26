@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on explicit or locally inferred Library scopes, the Agent Catalog, and the unified read-only inventory reconciliation domain.
  * [OUTPUT]: Provides `skillsgo verify` health verification and `skillsgo why` direct declaration/target explanations in human or JSON form.
- * [POS]: Serves as the CLI inspection adapter over inventory truth without mutating Module Stores, declarations, or Projections.
+ * [POS]: Serves as the CLI inspection adapter over inventory truth without mutating Package Stores, declarations, or Projections.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -27,10 +27,10 @@ type verificationReport struct {
 }
 
 type verificationRow struct {
-	ModulePath string           `json:"modulePath,omitempty"`
-	Name       string           `json:"name"`
-	Health     inventory.Health `json:"health"`
-	Targets    int              `json:"targets"`
+	PackagePath string           `json:"packagePath,omitempty"`
+	Name        string           `json:"name"`
+	Health      inventory.Health `json:"health"`
+	Targets     int              `json:"targets"`
 }
 
 type whyReport struct {
@@ -43,9 +43,10 @@ func newVerifyCommand(catalog *agent.Catalog) *cobra.Command {
 	var projects []string
 	var output string
 	cmd := &cobra.Command{
-		Use:   "verify",
-		Short: appi18n.T("verify.short"),
-		Args:  cobra.NoArgs,
+		Use:     "verify",
+		Short:   appi18n.T("verify.short"),
+		Args:    cobra.NoArgs,
+		Example: "  skillsgo verify\n  skillsgo verify --global\n  skillsgo verify --project ./my-project --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			user, roots, err := resolveInspectionLocations(includeGlobal, projects)
 			if err != nil {
@@ -57,7 +58,7 @@ func newVerifyCommand(catalog *agent.Catalog) *cobra.Command {
 			}
 			report := verificationReport{Healthy: true, Entries: make([]verificationRow, 0, len(reconciled.Entries))}
 			for _, entry := range reconciled.Entries {
-				report.Entries = append(report.Entries, verificationRow{ModulePath: entry.ModulePath, Name: entry.Name, Health: entry.Health, Targets: len(entry.Targets)})
+				report.Entries = append(report.Entries, verificationRow{PackagePath: entry.PackagePath, Name: entry.Name, Health: entry.Health, Targets: len(entry.Targets)})
 				if entry.Health != inventory.HealthHealthy {
 					report.Healthy = false
 				}
@@ -80,9 +81,10 @@ func newWhyCommand(catalog *agent.Catalog) *cobra.Command {
 	var projects []string
 	var output string
 	cmd := &cobra.Command{
-		Use:   "why <skill-name>",
-		Short: appi18n.T("why.short"),
-		Args:  cobra.ExactArgs(1),
+		Use:     "why <skill-name>",
+		Short:   appi18n.T("why.short"),
+		Args:    cobra.ExactArgs(1),
+		Example: "  skillsgo why setup-matt-pocock-skills\n  skillsgo why setup-matt-pocock-skills --global\n  skillsgo why setup-matt-pocock-skills --project ./my-project --output json",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			user, roots, err := resolveInspectionLocations(includeGlobal, projects)
 			if err != nil {
@@ -113,7 +115,7 @@ func newWhyCommand(catalog *agent.Catalog) *cobra.Command {
 						if target.ProjectRoot != "" {
 							scope += ":" + target.ProjectRoot
 						}
-						rows = append(rows, terminalui.Row{State: "•", Primary: entry.Name, Secondary: target.Version, Meta: []string{entry.ModulePath, scope, target.Agent, target.Path}})
+						rows = append(rows, terminalui.Row{State: "•", Primary: entry.Name, Secondary: target.Version, Meta: []string{entry.PackagePath, scope, target.Agent, target.Path}})
 					}
 				}
 				ui, err := humanUI(cmd)
@@ -161,7 +163,7 @@ func writeVerificationReport(cmd *cobra.Command, output string, report verificat
 			if entry.Health != inventory.HealthHealthy {
 				state = "!"
 			}
-			rows = append(rows, terminalui.Row{State: state, Primary: entry.Name, Secondary: string(entry.Health), Meta: []string{entry.ModulePath, fmt.Sprintf("%d", entry.Targets)}})
+			rows = append(rows, terminalui.Row{State: state, Primary: entry.Name, Secondary: string(entry.Health), Meta: []string{entry.PackagePath, fmt.Sprintf("%d", entry.Targets)}})
 		}
 		ui, err := humanUI(cmd)
 		if err != nil {

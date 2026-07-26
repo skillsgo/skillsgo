@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on strict Repository YAML/Lock state, Scope Module Stores, coordinate Projections, the Agent Catalog, and read-only target filesystem metadata.
+ * [INPUT]: Depends on strict Repository YAML/Lock state, Scope Package Stores, coordinate Projections, the Agent Catalog, and read-only target filesystem metadata.
  * [OUTPUT]: Provides inventory v7 Repository-managed and External Library reconciliation with explicit projects, mode-free Projection targets, target health, and Discovery-Root-derived visibility.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -48,7 +48,7 @@ type Entry struct {
 	InventoryKey      string       `json:"inventoryKey"`
 	Name              string       `json:"name"`
 	Description       string       `json:"description"`
-	ModulePath        string       `json:"modulePath,omitempty"`
+	PackagePath       string       `json:"packagePath,omitempty"`
 	Provenance        Provenance   `json:"provenance"`
 	Health            Health       `json:"health"`
 	Agents            []string     `json:"agents"`
@@ -270,13 +270,13 @@ func resolveInventoryPath(path string) string {
 	}
 }
 
-func ensureEntry(entries map[string]*Entry, name, modulePath string, provenance Provenance) *Entry {
-	inventoryKey := string(provenance) + ":" + modulePath + ":" + name
+func ensureEntry(entries map[string]*Entry, name, packagePath string, provenance Provenance) *Entry {
+	inventoryKey := string(provenance) + ":" + packagePath + ":" + name
 	if entry := entries[inventoryKey]; entry != nil {
 		return entry
 	}
 	entry := &Entry{
-		InventoryKey: inventoryKey, Name: name, ModulePath: modulePath,
+		InventoryKey: inventoryKey, Name: name, PackagePath: packagePath,
 		Provenance: provenance, Health: HealthHealthy,
 		Agents: []string{}, Projects: []string{}, Versions: []string{}, Targets: []Target{}, Visibility: []Visibility{},
 	}

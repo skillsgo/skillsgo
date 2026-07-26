@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on normalized SKILL.md frontmatter used by Module publication tests.
- * [OUTPUT]: Provides compact validated member-manifest fixtures for complete Module publication tests.
- * [POS]: Serves as the shared Module Skill fixture helper for actions tests.
+ * [INPUT]: Depends on normalized SKILL.md frontmatter used by Package publication tests.
+ * [OUTPUT]: Provides compact validated member-manifest fixtures for complete Package publication tests.
+ * [POS]: Serves as the shared Package Skill fixture helper for actions tests.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions

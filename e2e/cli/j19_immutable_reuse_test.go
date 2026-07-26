@@ -21,7 +21,7 @@ func TestJ19ImmutableReuse(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName,
+		"add", testPackagePath+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 		"--yes",
 
@@ -31,7 +31,7 @@ func TestJ19ImmutableReuse(t *testing.T) {
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 
-	artifactURL := "http://127.0.0.1:3000/api/v1/" + installed.ModulePath + "/versions/" + installed.Version + ".zip"
+	artifactURL := "http://127.0.0.1:3000/api/v1/" + installed.PackagePath + "/versions/" + installed.Version + ".zip"
 	firstDownload := execInContainer(t, ctx, container,
 		"wget", "-qO", scenarioContainerPath(t, "artifacts", "first.zip"), artifactURL,
 	)
@@ -48,7 +48,7 @@ func TestJ19ImmutableReuse(t *testing.T) {
 	require.Equal(t, firstBytes, secondBytes)
 
 	secondTarget := execCLI(t, ctx, container,
-		"add", testModulePath+"@"+installed.Version, "--skill", testSkillName,
+		"add", testPackagePath+"@"+installed.Version, "--skill", testSkillName,
 		"--agent", "claude-code",
 		"--yes",
 
@@ -61,5 +61,5 @@ func TestJ19ImmutableReuse(t *testing.T) {
 	for _, projection := range expanded.Projections {
 		require.FileExists(t, containerPathOnHost(t, sandboxRoot, projection.Path, "skills", "alpha", "SKILL.md"))
 	}
-	require.DirExists(t, containerPathOnHost(t, sandboxRoot, installed.ModuleDir))
+	require.DirExists(t, containerPathOnHost(t, sandboxRoot, installed.PackageDir))
 }

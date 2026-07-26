@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on Module Path parsing, the download Protocol version list, and request-scoped logging.
- * [OUTPUT]: Serves the JSON immutable Version collection for a Module.
- * [POS]: Serves as the Module version-list HTTP boundary in the Hub artifact protocol.
+ * [INPUT]: Depends on Package Path parsing, the download Protocol version list, and request-scoped logging.
+ * [OUTPUT]: Serves the JSON immutable Version collection for a Package.
+ * [POS]: Serves as the Package version-list HTTP boundary in the Hub artifact protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package download
@@ -17,10 +17,10 @@ import (
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 )
 
-// PathList is the public Module versions collection URL.
-const PathList = "/api/v1/{modulePath:.+}/versions"
+// PathList is the public Package versions collection URL.
+const PathList = "/api/v1/{packagePath:.+}/versions"
 
-// ListHandler implements GET baseURL/api/v1/{modulePath}/versions.
+// ListHandler implements GET baseURL/api/v1/{packagePath}/versions.
 func ListHandler(dp Protocol, lggr log.Entry, _ string) fiber.Handler {
 	const op errors.Op = "download.ListHandler"
 	return func(c fiber.Ctx) error {
@@ -38,6 +38,6 @@ func ListHandler(dp Protocol, lggr log.Entry, _ string) fiber.Handler {
 			return c.Status(errors.Kind(err)).SendString(fmt.Sprintf("not found: %s", strings.Replace(err.Error(), "exit status 1: go: ", "", 1)))
 		}
 
-		return c.JSON(protocolapi.ModuleVersionsResponse{Versions: versions})
+		return c.JSON(protocolapi.PackageVersionsResponse{Versions: versions})
 	}
 }

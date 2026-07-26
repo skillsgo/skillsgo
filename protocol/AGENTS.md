@@ -14,15 +14,15 @@ This map governs the dependency-light Go protocol workspace shared by SkillsGo p
 
 | Path | Responsibility |
 | --- | --- |
-| `artifact/` | Module Artifact construction, immutable limits, safe paths and internal symlinks, normalized ZIP traversal, and coordinate-bound Sums shared by producers and consumers. |
-| `api/` | Public CLI-to-Hub JSON DTOs, including canonical zero-based pagination, Module Version collections, single/batch Find documents, Module-level Sum/archive identity, canonical Module-member coordinates, Skill path metadata, schema constants, and statuses. |
+| `artifact/` | Package Artifact construction, immutable limits, safe paths and internal symlinks, normalized ZIP traversal, and coordinate-bound Sums shared by producers and consumers. |
+| `api/` | Public CLI-to-Hub JSON DTOs, including canonical zero-based pagination, Package Version collections, single/batch Find documents, Package-level Sum/archive identity, canonical Package-member coordinates, Skill path metadata, schema constants, and statuses. |
 | `cloud/` | Public Cloud JSON DTOs, endpoint paths, Hub-card-plus-metric ranking vocabulary, and install-event semantics. |
 | `cloudtest/` | Test-only Cloud HTTP mock and executable conformance verifier; never imported by production packages. |
 | `locale/` | Canonical presentation-locale normalization. |
-| `module/` | Canonical public Module identity primitives, including Path parsing, formatting, and initial Source Repository URL derivation. |
+| `packageidentity/` | Canonical public Package identity primitives, including Path parsing, formatting, and initial Source Repository URL derivation. |
 | `skillname/` | Dependency-light canonical public Skill Name grammar shared by manifests and Cloud coordinates. |
 | `skillmanifest/` | Shared `SKILL.md` frontmatter parsing and validation. |
-| `version/` | Canonical immutable versions, stable-first semantic-version selection, and the closed typed add-time Module Version Query grammar. |
+| `version/` | Canonical immutable versions, stable-first semantic-version selection, and the closed typed add-time Package Version Query grammar. |
 
 ## Architectural Boundary
 

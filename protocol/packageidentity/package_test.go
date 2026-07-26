@@ -1,10 +1,10 @@
 /*
- * [INPUT]: Uses canonical and hostile Module Path strings.
+ * [INPUT]: Uses canonical and hostile Package Path strings.
  * [OUTPUT]: Specifies provider-aware normalization and rejection without Skill-path compatibility.
  * [POS]: Serves as executable coverage for the shared module.Path value object.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-package module
+package packageidentity
 
 import (
 	"testing"
@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParseModulePath(t *testing.T) {
+func TestParsePackagePath(t *testing.T) {
 	for input, expected := range map[string]string{
 		"GitHub.com/Owner/Repo.git":          "github.com/owner/repo",
 		"Git.Example.COM/Team/Platform/Repo": "git.example.com/Team/Platform/Repo",
@@ -25,7 +25,7 @@ func TestParseModulePath(t *testing.T) {
 	}
 }
 
-func TestParseModulePathRejectsSkillAndURLSyntax(t *testing.T) {
+func TestParsePackagePathRejectsSkillAndURLSyntax(t *testing.T) {
 	for _, input := range []string{
 		"", "/github.com/o/r", "github.com/o/r/", "repo",
 		"https://github.com/o/r", "github.com/o/r\\child", "github.com/o/r?x=1", "github.com/o/r%20x", "github.com/o/r#fragment",

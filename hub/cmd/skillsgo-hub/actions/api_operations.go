@@ -18,11 +18,11 @@ import (
 func documentHubOperations(api huma.API, adminEnabled bool) {
 	api.OpenAPI().Tags = []*huma.Tag{
 		{Name: "skills", Description: "Find, hydrate, inspect, and check updates for Skills."},
-		{Name: "modules", Description: "Resolve Module revisions to metadata and read immutable Module Version resources."},
+		{Name: "packages", Description: "Resolve Package revisions to metadata and read immutable Package Version resources."},
 		{Name: "service", Description: "Deployment discovery, liveness, readiness, and build identity."},
 	}
 	documentSkillOperations(api)
-	documentModuleOperations(api)
+	documentPackageOperations(api)
 	documentServiceOperations(api)
 	if adminEnabled {
 		documentAdminOperations(api)
@@ -32,8 +32,8 @@ func documentHubOperations(api huma.API, adminEnabled bool) {
 func documentSkillOperations(api huma.API) {
 	find := addJSONOperation(api, http.MethodGet, "/api/v1/skills/find", "findSkills", "Find Skills", "skills", nil, nil, schemaFor[skillsResponse](api), exampleFindResponse)
 	find.Parameters = []*huma.Param{
-		queryParameter("q", "Skill name or discovery text. Use with modulePath for an exact coordinate.", true, "grill-me", stringSchema()),
-		queryParameter("modulePath", "Canonical Module Path. When set, q must be a canonical Skill name.", false, exampleModulePath, stringSchema()),
+		queryParameter("q", "Skill name or discovery text. Use with packagePath for an exact coordinate.", true, "grill-me", stringSchema()),
+		queryParameter("packagePath", "Canonical Package Path. When set, q must be a canonical Skill name.", false, examplePackagePath, stringSchema()),
 		queryParameter("exactName", "Match the canonical Skill name exactly.", false, true, &huma.Schema{Type: "boolean", Default: false}),
 		queryParameter("page", "Zero-based result page.", false, 0, integerSchema(0, 0, 0)),
 		queryParameter("perPage", "Number of Skills per page.", false, 10, integerSchema(1, 100, 20)),
@@ -50,30 +50,30 @@ func documentSkillOperations(api huma.API) {
 
 }
 
-func documentModuleOperations(api huma.API) {
-	modulePath := pathParameter("modulePath", "Canonical Module Path.", exampleModulePath)
+func documentPackageOperations(api huma.API) {
+	packagePath := pathParameter("packagePath", "Canonical Package Path.", examplePackagePath)
 	version := pathParameter("version", "Version or Go-compatible Version Query: canonical version, prefix, comparison, latest, branch, tag, or commit. Movable queries are resolved without caching.", "latest")
 	immutableVersion := pathParameter("version", "Exact immutable semantic or pseudo-version.", exampleVersion)
 	api.OpenAPI().AddOperation(&huma.Operation{
-		Method: http.MethodGet, Path: "/api/v1/{modulePath}/versions", OperationID: "listModuleVersions",
-		Summary: "List Module Versions", Tags: []string{"modules"}, Parameters: []*huma.Param{modulePath},
-		Responses: standardJSONResponses(schemaFor[protocolapi.ModuleVersionsResponse](api), "Immutable Module Versions.", exampleModuleVersions),
+		Method: http.MethodGet, Path: "/api/v1/{packagePath}/versions", OperationID: "listPackageVersions",
+		Summary: "List Package Versions", Tags: []string{"packages"}, Parameters: []*huma.Param{packagePath},
+		Responses: standardJSONResponses(schemaFor[protocolapi.PackageVersionsResponse](api), "Immutable Package Versions.", examplePackageVersions),
 	})
-	skill := addJSONOperation(api, http.MethodGet, "/api/v1/{modulePath}/versions/{version}/skills", "getModuleVersionSkill", "Get Module Version Skill", "modules", nil, nil,
-		schemaFor[protocolapi.ModuleVersionSkill](api), exampleModuleVersionSkill)
+	skill := addJSONOperation(api, http.MethodGet, "/api/v1/{packagePath}/versions/{version}/skills", "getPackageVersionSkill", "Get Package Version Skill", "packages", nil, nil,
+		schemaFor[protocolapi.PackageVersionSkill](api), examplePackageVersionSkill)
 	skill.Parameters = []*huma.Param{
-		modulePath,
+		packagePath,
 		version,
-		queryParameter("path", "Exact Skill path within the resolved Module Version.", true, "skills/productivity/grill-me", stringSchema()),
+		queryParameter("path", "Exact Skill path within the resolved Package Version.", true, "skills/productivity/grill-me", stringSchema()),
 	}
 	api.OpenAPI().AddOperation(&huma.Operation{
-		Method: http.MethodGet, Path: "/api/v1/{modulePath}/versions/{version}", OperationID: "getModuleVersion",
-		Summary: "Get Module Version metadata", Tags: []string{"modules"}, Parameters: []*huma.Param{modulePath, version},
-		Responses: standardJSONResponses(schemaFor[protocolapi.ModuleInfo](api), "Canonical immutable Module Info for the requested Version Query.", exampleModuleInfo),
+		Method: http.MethodGet, Path: "/api/v1/{packagePath}/versions/{version}", OperationID: "getPackageVersion",
+		Summary: "Get Package Version metadata", Tags: []string{"packages"}, Parameters: []*huma.Param{packagePath, version},
+		Responses: standardJSONResponses(schemaFor[protocolapi.PackageInfo](api), "Canonical immutable Package Info for the requested Version Query.", examplePackageInfo),
 	})
 	archiveResponses := map[string]*huma.Response{
 		"200": {
-			Description: "Immutable Module ZIP.",
+			Description: "Immutable Package ZIP.",
 			Content:     map[string]*huma.MediaType{"application/zip": {Schema: &huma.Schema{Type: "string", Format: "binary"}}},
 			Headers: map[string]*huma.Param{
 				"Content-Length": {Description: "Archive size in bytes.", Schema: &huma.Schema{Type: "integer"}, Example: 207631},
@@ -83,11 +83,11 @@ func documentModuleOperations(api huma.API) {
 		},
 		"301": {Description: "Permanent artifact-origin redirect."},
 		"304": {Description: "Cached representation remains current."},
-		"404": textResponse("Module Version not found."),
+		"404": textResponse("Package Version not found."),
 	}
 	api.OpenAPI().AddOperation(&huma.Operation{
-		Method: http.MethodGet, Path: "/api/v1/{modulePath}/versions/{version}.zip", OperationID: "downloadModuleVersion",
-		Summary: "Download Module Version ZIP", Tags: []string{"modules"}, Parameters: []*huma.Param{modulePath, immutableVersion}, Responses: archiveResponses,
+		Method: http.MethodGet, Path: "/api/v1/{packagePath}/versions/{version}.zip", OperationID: "downloadPackageVersion",
+		Summary: "Download Package Version ZIP", Tags: []string{"packages"}, Parameters: []*huma.Param{packagePath, immutableVersion}, Responses: archiveResponses,
 	})
 }
 
@@ -107,9 +107,9 @@ func documentServiceOperations(api huma.API) {
 }
 
 func documentAdminOperations(api huma.API) {
-	addJSONOperation(api, http.MethodPost, "/api/v1/admin/module-backfills", "submitModuleBackfills", "Submit Module history backfills", "admin",
-		schemaFor[backfillRequest](api), map[string]any{"modulePaths": []string{exampleModulePath}}, schemaFor[backfillResponse](api), nil)
-	addJSONOperation(api, http.MethodGet, "/api/v1/admin/module-backfills", "getModuleBackfills", "Get Module backfill status", "admin", nil, nil,
+	addJSONOperation(api, http.MethodPost, "/api/v1/admin/package-backfills", "submitPackageBackfills", "Submit Package history backfills", "admin",
+		schemaFor[backfillRequest](api), map[string]any{"packagePaths": []string{examplePackagePath}}, schemaFor[backfillResponse](api), nil)
+	addJSONOperation(api, http.MethodGet, "/api/v1/admin/package-backfills", "getPackageBackfills", "Get Package backfill status", "admin", nil, nil,
 		schemaFor[backfillResponse](api), nil)
 }
 

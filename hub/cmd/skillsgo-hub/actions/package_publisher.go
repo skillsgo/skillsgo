@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on request-scoped structured logging, one resolved Repository snapshot, and the ordered immutable publication commit boundary.
- * [OUTPUT]: Materializes every accepted Module Skill, prepares byte-stable Module Version Info plus direct Skill content objects, and emits a correlated bounded publication lifecycle without logging credentials or artifact content.
- * [POS]: Serves as the observable cold-publication coordinator between Git Repository discovery, artifact storage, and Module Info visibility.
+ * [OUTPUT]: Materializes every accepted Package Skill, prepares byte-stable Package Version Info plus direct Skill content objects, and emits a correlated bounded publication lifecycle without logging credentials or artifact content.
+ * [POS]: Serves as the observable cold-publication coordinator between Git Repository discovery, artifact storage, and Package Info visibility.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -25,11 +25,11 @@ import (
 )
 
 type repositoryMaterializer interface {
-	Materialize(ctx context.Context, modulePath, query string) (string, error)
+	Materialize(ctx context.Context, packagePath, query string) (string, error)
 }
 
 type historicalRepositoryMaterializer interface {
-	MaterializeHistorical(ctx context.Context, modulePath, query string) (string, error)
+	MaterializeHistorical(ctx context.Context, packagePath, query string) (string, error)
 }
 
 type modulePublisher struct {
@@ -49,39 +49,39 @@ type negativePublication struct {
 	err     error
 }
 
-func newModulePublisher(fetcher skill.RepositoryFetcher, backend storage.Backend, metadata *catalog.Catalog) *modulePublisher {
-	return &modulePublisher{fetcher: fetcher, publication: newModulePublicationCommit(backend, metadata), upstream: make(chan struct{}, 8), negative: make(map[string]negativePublication), now: time.Now, negativeTTL: 10 * time.Second}
+func newPackagePublisher(fetcher skill.RepositoryFetcher, backend storage.Backend, metadata *catalog.Catalog) *modulePublisher {
+	return &modulePublisher{fetcher: fetcher, publication: newPackagePublicationCommit(backend, metadata), upstream: make(chan struct{}, 8), negative: make(map[string]negativePublication), now: time.Now, negativeTTL: 10 * time.Second}
 }
 
-func (p *modulePublisher) Materialize(ctx context.Context, modulePath, query string) (string, error) {
-	return p.materializePublication(ctx, modulePath, query, catalog.CurrentPublication)
+func (p *modulePublisher) Materialize(ctx context.Context, packagePath, query string) (string, error) {
+	return p.materializePublication(ctx, packagePath, query, catalog.CurrentPublication)
 }
 
-func (p *modulePublisher) MaterializeHistorical(ctx context.Context, modulePath, query string) (string, error) {
-	return p.materializePublication(ctx, modulePath, query, catalog.HistoricalPublication)
+func (p *modulePublisher) MaterializeHistorical(ctx context.Context, packagePath, query string) (string, error) {
+	return p.materializePublication(ctx, packagePath, query, catalog.HistoricalPublication)
 }
 
-func (p *modulePublisher) VerifyHistorical(ctx context.Context, modulePath, query, expectedCommitSHA string) error {
-	snapshot, err := p.fetcher.DiscoverRepository(ctx, modulePath, query)
+func (p *modulePublisher) VerifyHistorical(ctx context.Context, packagePath, query, expectedCommitSHA string) error {
+	snapshot, err := p.fetcher.DiscoverRepository(ctx, packagePath, query)
 	if err != nil {
 		return err
 	}
 	defer closeRepositorySnapshot(snapshot)
-	if snapshot.ModulePath != modulePath || snapshot.Version != query || snapshot.CommitSHA == "" {
-		return fmt.Errorf("Repository source returned an invalid snapshot for %s@%s", modulePath, query)
+	if snapshot.PackagePath != packagePath || snapshot.Version != query || snapshot.CommitSHA == "" {
+		return fmt.Errorf("Repository source returned an invalid snapshot for %s@%s", packagePath, query)
 	}
 	if snapshot.CommitSHA != expectedCommitSHA {
-		return fmt.Errorf("immutable Module Version conflict for %s@%s", modulePath, query)
+		return fmt.Errorf("immutable Package Version conflict for %s@%s", packagePath, query)
 	}
 	return nil
 }
 
-func (p *modulePublisher) materializePublication(ctx context.Context, modulePath, query string, visibility catalog.PublicationVisibility) (string, error) {
+func (p *modulePublisher) materializePublication(ctx context.Context, packagePath, query string, visibility catalog.PublicationVisibility) (string, error) {
 	started := time.Now()
-	key := "publish:" + string(visibility) + ":" + modulePath + "@" + query
+	key := "publish:" + string(visibility) + ":" + packagePath + "@" + query
 	entry := log.EntryFromContext(ctx).WithFields(map[string]any{
-		"component":     "module_publisher",
-		"module_path":   modulePath,
+		"component":     "package_publisher",
+		"package_path":  packagePath,
 		"requested_ref": query,
 	})
 	entry.Debugf("repository publication requested")
@@ -110,7 +110,7 @@ func (p *modulePublisher) materializePublication(ctx context.Context, modulePath
 			entry.Warnf("repository publication upstream capacity exhausted")
 			return "", huberrors.E("modulePublisher.Materialize", "upstream Repository resolution is at capacity", huberrors.KindRateLimit)
 		}
-		version, materializeErr := p.materialize(workCtx, modulePath, query, visibility)
+		version, materializeErr := p.materialize(workCtx, packagePath, query, visibility)
 		if materializeErr != nil && huberrors.IsNotFoundErr(materializeErr) {
 			p.mu.Lock()
 			p.negative[key] = negativePublication{expires: p.now().Add(p.negativeTTL), err: materializeErr}
@@ -147,27 +147,27 @@ func (p *modulePublisher) materializePublication(ctx context.Context, modulePath
 	}
 }
 
-func (p *modulePublisher) materialize(ctx context.Context, modulePath, query string, visibility catalog.PublicationVisibility) (string, error) {
+func (p *modulePublisher) materialize(ctx context.Context, packagePath, query string, visibility catalog.PublicationVisibility) (string, error) {
 	started := time.Now()
-	snapshot, err := p.fetcher.DiscoverRepository(ctx, modulePath, query)
+	snapshot, err := p.fetcher.DiscoverRepository(ctx, packagePath, query)
 	if err != nil {
 		return "", err
 	}
-	if snapshot.ModulePath != modulePath || snapshot.Version == "" || snapshot.CommitSHA == "" || len(snapshot.Members) == 0 {
+	if snapshot.PackagePath != packagePath || snapshot.Version == "" || snapshot.CommitSHA == "" || len(snapshot.Members) == 0 {
 		closeRepositorySnapshot(snapshot)
-		return "", fmt.Errorf("Repository source returned an invalid snapshot for %s@%s", modulePath, query)
+		return "", fmt.Errorf("Repository source returned an invalid snapshot for %s@%s", packagePath, query)
 	}
 	log.EntryFromContext(ctx).WithFields(map[string]any{
 		"commit_sha":   snapshot.CommitSHA,
 		"duration_ms":  time.Since(started).Milliseconds(),
 		"member_count": len(snapshot.Members),
-		"module_path":  modulePath,
+		"package_path": packagePath,
 		"version":      snapshot.Version,
 	}).Debugf("repository snapshot discovered")
 	invoked := false
-	result, err, _ := p.commit.Do("commit:"+string(visibility)+":"+modulePath+"@"+snapshot.Version, func() (any, error) {
+	result, err, _ := p.commit.Do("commit:"+string(visibility)+":"+packagePath+"@"+snapshot.Version, func() (any, error) {
 		invoked = true
-		return p.publishSnapshot(ctx, modulePath, query, snapshot, visibility)
+		return p.publishSnapshot(ctx, packagePath, query, snapshot, visibility)
 	})
 	if !invoked {
 		closeRepositorySnapshot(snapshot)
@@ -178,60 +178,60 @@ func (p *modulePublisher) materialize(ctx context.Context, modulePath, query str
 	return result.(string), nil
 }
 
-func (p *modulePublisher) publishSnapshot(ctx context.Context, modulePath, query string, snapshot *skill.RepositorySnapshot, visibility catalog.PublicationVisibility) (string, error) {
+func (p *modulePublisher) publishSnapshot(ctx context.Context, packagePath, query string, snapshot *skill.RepositorySnapshot, visibility catalog.PublicationVisibility) (string, error) {
 	if snapshot.Archive == nil || snapshot.ArchiveSize <= 0 || snapshot.Sum == "" || snapshot.Ref == "" || snapshot.TreeSHA == "" {
-		return "", fmt.Errorf("Repository source returned an incomplete Artifact for %s@%s", modulePath, query)
+		return "", fmt.Errorf("Repository source returned an incomplete Artifact for %s@%s", packagePath, query)
 	}
 	archive, err := io.ReadAll(io.LimitReader(snapshot.Archive, protocolartifact.MaxArchiveBytes+1))
 	if err != nil {
-		return "", fmt.Errorf("read Module Artifact: %w", err)
+		return "", fmt.Errorf("read Package Artifact: %w", err)
 	}
 	if int64(len(archive)) != snapshot.ArchiveSize || len(archive) > protocolartifact.MaxArchiveBytes {
-		return "", fmt.Errorf("Module Artifact size mismatch for %s@%s", modulePath, snapshot.Version)
+		return "", fmt.Errorf("Package Artifact size mismatch for %s@%s", packagePath, snapshot.Version)
 	}
-	if sum, sumErr := protocolartifact.ModuleSum(archive, modulePath, snapshot.Version); sumErr != nil || sum != snapshot.Sum {
-		return "", fmt.Errorf("Module Artifact Sum mismatch for %s@%s", modulePath, snapshot.Version)
+	if sum, sumErr := protocolartifact.PackageSum(archive, packagePath, snapshot.Version); sumErr != nil || sum != snapshot.Sum {
+		return "", fmt.Errorf("Package Artifact Sum mismatch for %s@%s", packagePath, snapshot.Version)
 	}
 
 	published := make([]catalog.Skill, 0, len(snapshot.Members))
 	skillContents := make([]moduleSkillContent, 0, len(snapshot.Members))
-	release := protocolapi.ModuleInfo{
+	release := protocolapi.PackageInfo{
 		SchemaVersion: protocolapi.SchemaVersion,
-		Kind:          protocolapi.KindModule,
-		ModulePath:    modulePath,
+		Kind:          protocolapi.KindPackage,
+		PackagePath:   packagePath,
 		Version:       snapshot.Version,
 		Time:          snapshot.CommitTime,
 		Sum:           snapshot.Sum,
 		ArchiveSize:   snapshot.ArchiveSize,
-		Skills:        make([]protocolapi.ModuleSkill, 0, len(snapshot.Members)),
+		Skills:        make([]protocolapi.PackageSkill, 0, len(snapshot.Members)),
 	}
 	for _, member := range snapshot.Members {
 		if member.Path == "" || member.TreeSHA == "" || member.Manifest.Name == "" || member.Manifest.Description == "" || len(member.Content) == 0 {
-			return "", fmt.Errorf("Repository source returned an invalid member for %s@%s", modulePath, query)
+			return "", fmt.Errorf("Repository source returned an invalid member for %s@%s", packagePath, query)
 		}
-		release.Skills = append(release.Skills, protocolapi.ModuleSkill{Name: member.Manifest.Name, Path: member.Path})
+		release.Skills = append(release.Skills, protocolapi.PackageSkill{Name: member.Manifest.Name, Path: member.Path})
 		published = append(published, catalog.Skill{
-			ModulePath: modulePath, Path: member.Path, Name: member.Manifest.Name, Description: member.Manifest.Description,
+			PackagePath: packagePath, Path: member.Path, Name: member.Manifest.Name, Description: member.Manifest.Description,
 		})
 		skillContents = append(skillContents, moduleSkillContent{path: member.Path, content: member.Content})
 	}
 	releaseInfo, err := json.Marshal(release)
 	if err != nil {
-		return "", fmt.Errorf("encode Module Info: %w", err)
+		return "", fmt.Errorf("encode Package Info: %w", err)
 	}
 
-	version := catalog.ModuleVersion{
+	version := catalog.PackageVersion{
 		Version: snapshot.Version, Ref: snapshot.Ref, CommitSHA: snapshot.CommitSHA, TreeSHA: snapshot.TreeSHA,
 		Sum: snapshot.Sum, ArchiveSize: snapshot.ArchiveSize, CommitTime: snapshot.CommitTime,
 	}
-	created, err := p.publication.Publish(ctx, modulePath, version, archive, snapshot.ArchiveMD5, releaseInfo, published, skillContents, visibility)
+	created, err := p.publication.Publish(ctx, packagePath, version, archive, snapshot.ArchiveMD5, releaseInfo, published, skillContents, visibility)
 	if err != nil {
 		return "", err
 	}
 	log.EntryFromContext(ctx).WithFields(map[string]any{
 		"member_count":       len(snapshot.Members),
 		"new_artifact_count": map[bool]int{true: 1, false: 0}[created],
-		"module_path":        modulePath,
+		"package_path":       packagePath,
 		"version":            snapshot.Version,
 	}).Debugf("repository publication committed")
 	return snapshot.Version, nil

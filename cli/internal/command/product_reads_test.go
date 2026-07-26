@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses an HTTP test Hub and the public Execute seam for find, version-scoped detail, and grouped Hub service reads.
- * [OUTPUT]: Specifies that App-facing single/file-input Find, canonical Module Version Skill detail, and `hub info`/`hub check` translate domain arguments into CLI-owned Hub requests.
+ * [OUTPUT]: Specifies that App-facing single/file-input Find, canonical Package Version Skill detail, and `hub info`/`hub check` translate domain arguments into CLI-owned Hub requests.
  * [POS]: Serves as the acceptance contract for the deep read-only CLI boundary replacing raw Hub route passthrough.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -32,7 +32,7 @@ func TestCanonicalContentLocale(t *testing.T) {
 	}
 }
 
-func TestFindForwardsExactNameAndModulePath(t *testing.T) {
+func TestFindForwardsExactNameAndPackagePath(t *testing.T) {
 	var requestURI string
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requestURI = r.URL.RequestURI()
@@ -45,7 +45,7 @@ func TestFindForwardsExactNameAndModulePath(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if requestURI != "/api/v1/skills/find?exactName=true&modulePath=github.com%2Fexample%2Fskills&page=0&perPage=10&q=ask-matt" {
+	if requestURI != "/api/v1/skills/find?exactName=true&packagePath=github.com%2Fexample%2Fskills&page=0&perPage=10&q=ask-matt" {
 		t.Fatalf("unexpected Find request %q", requestURI)
 	}
 }
@@ -61,10 +61,6 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 		}
 		requests = append(requests, request)
 		w.Header().Set("Content-Type", "application/json")
-		if strings.Contains(r.URL.Path, "/versions/v1.2.3/skills") {
-			fmt.Fprint(w, `{"modulePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-18T12:00:00Z","archiveSize":128,"name":"demo","path":"skills/demo","description":"Demo skill.","content":"---\nname: demo\n---\n"}`)
-			return
-		}
 		fmt.Fprint(w, `{"ok":true}`)
 	}))
 	defer server.Close()
@@ -77,7 +73,6 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 	for _, args := range [][]string{
 		{"find", "responsive layout", "--page", "1", "--per-page", "4", "--output", "json"},
 		{"find", "--input", inputPath, "--output", "json"},
-		{"detail", "github.com/example/skills", "v1.2.3", "skills/demo", "--output", "json"},
 		{"hub", "info", "--output", "json"},
 		{"hub", "check", "--output", "json"},
 	} {
@@ -86,19 +81,15 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 			t.Fatalf("Execute(%v): %v", args, err)
 		}
 		expectedOutput := `{"ok":true}`
-		if args[0] == "detail" {
-			expectedOutput = `{"modulePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-18T12:00:00Z","archiveSize":128,"name":"demo","path":"skills/demo","description":"Demo skill.","content":"---\nname: demo\n---\n"}`
-		}
 		if strings.TrimSpace(stdout.String()) != expectedOutput {
 			t.Fatalf("unexpected output %q", stdout.String())
 		}
 	}
-	if len(requests) != 5 ||
+	if len(requests) != 4 ||
 		requests[0] != "GET /api/v1/skills/find?page=1&perPage=4&q=responsive+layout" ||
 		requests[1] != `POST /api/v1/skills/find-candidates {"queries":[{"name":"ask-matt"}],"limit":10,"locale":"zh-CN"}` ||
-		requests[2] != "GET /api/v1/github.com/example/skills/versions/v1.2.3/skills?path=skills%2Fdemo" ||
-		requests[3] != "GET /info" ||
-		!strings.HasPrefix(requests[4], "GET /api/v1/skills/find?") {
+		requests[2] != "GET /info" ||
+		!strings.HasPrefix(requests[3], "GET /api/v1/skills/find?") {
 		t.Fatalf("unexpected requests %v", requests)
 	}
 }
@@ -106,7 +97,7 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 func TestProductReadsDefaultToHumanOutput(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"skills":[{"modulePath":"github.com/example/skills","name":"demo","description":"Demo skill.","path":"skills/demo","latestVersion":"v1.2.3"}],"pagination":{"page":0,"perPage":20,"hasMore":false}}`)
+		fmt.Fprint(w, `{"skills":[{"packagePath":"github.com/example/skills","name":"demo","description":"Demo skill.","path":"skills/demo","latestVersion":"v1.2.3"}],"pagination":{"page":0,"perPage":20,"hasMore":false}}`)
 	}))
 	defer server.Close()
 	var stdout bytes.Buffer

@@ -27,7 +27,7 @@ func TestJ42RecoverTakeoverInterruptedDuringMetadataCommit(t *testing.T) {
 		"interrupted": skillsShLockRecord("skills/alpha/SKILL.md"),
 	})
 
-	preview := execCLI(t, ctx, container, "takeover", "--preflight", "--global", "--output", "json")
+	preview := execCLI(t, ctx, container, "adopt", "--global", "--output", "json")
 	require.Equal(t, 0, preview.exitCode, preview.output)
 	var plan takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(preview.output), &plan), preview.output)
@@ -35,9 +35,9 @@ func TestJ42RecoverTakeoverInterruptedDuringMetadataCommit(t *testing.T) {
 
 	interrupted := execInContainer(t, ctx, container, "sh", "-c", `
 set -u
-root=$2
+root=$1
 cd "$root/project"
-HOME="$root/home" TMPDIR="$root/tmp" XDG_CONFIG_HOME="$root/home/.config" XDG_CACHE_HOME="$root/home/.cache" XDG_DATA_HOME="$root/home/.local/share" SKILLSGO_HOME="$root/home/.skillsgo" /usr/local/bin/skillsgo takeover --plan "$1" --global --yes --output json >"$root/interrupted.out" 2>&1 &
+HOME="$root/home" TMPDIR="$root/tmp" XDG_CONFIG_HOME="$root/home/.config" XDG_CACHE_HOME="$root/home/.cache" XDG_DATA_HOME="$root/home/.local/share" SKILLSGO_HOME="$root/home/.skillsgo" /usr/local/bin/skillsgo adopt --global --yes --output json >"$root/interrupted.out" 2>&1 &
 child=$!
 journal="$root/home/.agents/.skillsgo.metadata-transaction.yaml"
 while kill -0 "$child" 2>/dev/null; do
@@ -49,7 +49,7 @@ while kill -0 "$child" 2>/dev/null; do
 done
 wait "$child"
 exit 91
-`, "takeover-interrupt", plan.PlanID, scenarioContainerRoot(t))
+`, "takeover-interrupt", scenarioContainerRoot(t))
 	require.Equal(t, 0, interrupted.exitCode, "the watcher did not interrupt an active metadata transaction: %s", interrupted.output)
 	journal := filepath.Join(sandboxRoot, "home", ".agents", ".skillsgo.metadata-transaction.yaml")
 	require.FileExists(t, journal)
@@ -65,14 +65,14 @@ exit 91
 	require.Equal(t, 0, inventory.exitCode, inventory.output)
 	require.Contains(t, inventory.output, `"provenance":"external"`)
 
-	rescan := execCLI(t, ctx, container, "takeover", "--preflight", "--global", "--output", "json")
+	rescan := execCLI(t, ctx, container, "adopt", "--global", "--output", "json")
 	require.Equal(t, 0, rescan.exitCode, rescan.output)
 	var retryPlan takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(rescan.output), &retryPlan), rescan.output)
 	require.Equal(t, 1, retryPlan.Summary.Eligible)
 
 	retry := execCLI(t, ctx, container,
-		"takeover", "--plan", retryPlan.PlanID, "--global", "--yes", "--output", "json",
+		"adopt", "--global", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, retry.exitCode, retry.output)
 	var completed takeoverExecutionJSON
@@ -82,9 +82,9 @@ exit 91
 	require.NoFileExists(t, journal)
 	require.FileExists(t, filepath.Join(sandboxRoot, "home", ".agents", "skills.yaml"))
 	require.FileExists(t, filepath.Join(sandboxRoot, "home", ".agents", "skills-lock.yaml"))
-	require.DirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "modules"))
+	require.DirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "packages"))
 
-	finalRescan := execCLI(t, ctx, container, "takeover", "--preflight", "--global", "--output", "json")
+	finalRescan := execCLI(t, ctx, container, "adopt", "--global", "--output", "json")
 	require.Equal(t, 0, finalRescan.exitCode, finalRescan.output)
 	var finalPlan takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(finalRescan.output), &finalPlan), finalRescan.output)

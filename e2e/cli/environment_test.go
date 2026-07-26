@@ -56,7 +56,7 @@ func TestMain(m *testing.M) {
 }
 
 const (
-	testModulePath           = "github.com/skillsgo/e2e-versioned-skills"
+	testPackagePath           = "github.com/skillsgo/e2e-versioned-skills"
 	testSkillName            = "alpha"
 	testSkillVersion         = "v1.3.0"
 	testResourcefulSkillName = "resourceful"
@@ -65,12 +65,12 @@ const (
 type addResponse struct {
 	SchemaVersion int      `json:"schemaVersion"`
 	Phase         string   `json:"phase"`
-	ModulePath    string   `json:"modulePath"`
+	PackagePath    string   `json:"packagePath"`
 	Version       string   `json:"version"`
 	Sum           string   `json:"sum"`
 	Skills        []string `json:"skills"`
 	Agents        []string `json:"agents"`
-	ModuleDir     string   `json:"moduleDir"`
+	PackageDir     string   `json:"packageDir"`
 	Projections   []struct {
 		Agents []string `json:"agents"`
 		Path   string   `json:"path"`
@@ -322,9 +322,9 @@ func findSingleFile(t *testing.T, root, suffix string) string {
 	return matches[0]
 }
 
-func findStoredRepositoryArtifact(t *testing.T, root, modulePath, suffix string) string {
+func findStoredRepositoryArtifact(t *testing.T, root, packagePath, suffix string) string {
 	t.Helper()
-	artifactRoot := filepath.Join(root, filepath.FromSlash(modulePath))
+	artifactRoot := filepath.Join(root, filepath.FromSlash(packagePath))
 	return findSingleFile(t, artifactRoot, suffix)
 }
 

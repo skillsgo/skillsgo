@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Huma's Fiber adapter, deployment configuration, native Fiber route inventory, contextual HTML templating, and an embedded pinned Scalar asset whose path-variable encoder is adapted for hierarchical Module Paths.
- * [OUTPUT]: Provides non-cacheable Huma-generated OpenAPI 3.1, context-safe self-hosted Scalar HTML with literal Module Path slashes, immutable compressed assets, and product-route coverage validation.
+ * [INPUT]: Depends on Huma's Fiber adapter, deployment configuration, native Fiber route inventory, contextual HTML templating, and an embedded pinned Scalar asset whose path-variable encoder is adapted for hierarchical Package Paths.
+ * [OUTPUT]: Provides non-cacheable Huma-generated OpenAPI 3.1, context-safe self-hosted Scalar HTML with literal Package Path slashes, immutable compressed assets, and product-route coverage validation.
  * [POS]: Serves as the typed documentation sidecar for native Fiber handlers without owning their execution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -70,7 +70,7 @@ func init() {
 
 func registerHubAPIDocs(app *fiber.App, router fiber.Router, conf *config.Config, adminEnabled bool) huma.API {
 	humaConfig := huma.DefaultConfig("SkillsGo Hub API", "1.0.0")
-	humaConfig.Info.Description = "Public Skill discovery, Module Version Queries, and immutable Module Version distribution."
+	humaConfig.Info.Description = "Public Skill discovery, Package Version Queries, and immutable Package Version distribution."
 	humaConfig.DocsPath = ""
 	humaConfig.OpenAPIPath = "/openapi"
 	humaConfig.SchemasPath = ""
@@ -176,7 +176,7 @@ func validateDocumentedProductRoutes(app *fiber.App, api huma.API, pathPrefix st
 }
 
 func fiberPathToOpenAPI(routePath string) string {
-	routePath = strings.ReplaceAll(routePath, "/+/", "/{modulePath}/")
+	routePath = strings.ReplaceAll(routePath, "/+/", "/{packagePath}/")
 	routePath = strings.ReplaceAll(routePath, ":version", "{version}")
 	return routePath
 }

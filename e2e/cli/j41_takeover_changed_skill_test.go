@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the released CLI, two isolated Codex user Skills, a supported skills.sh lock, and an external edit after preflight.
+ * [INPUT]: Depends on the released CLI, two isolated Codex Global Skills, a supported skills.sh lock, and an external edit after planning.
  * [OUTPUT]: Verifies per-candidate stale-plan isolation, partial takeover, preservation of changed bytes, complete successful metadata, and an exact one-item rescan.
  * [POS]: Serves as the changed-during-takeover failure user journey in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -30,7 +30,7 @@ func TestJ41SkipChangedSkillWithoutLosingData(t *testing.T) {
 		"stable":  skillsShLockRecord("skills/beta/SKILL.md"),
 	})
 
-	preview := execCLI(t, ctx, container, "takeover", "--preflight", "--global", "--output", "json")
+	preview := execCLI(t, ctx, container, "adopt", "--global", "--output", "json")
 	require.Equal(t, 0, preview.exitCode, preview.output)
 	var plan takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(preview.output), &plan), preview.output)
@@ -42,7 +42,7 @@ func TestJ41SkipChangedSkillWithoutLosingData(t *testing.T) {
 	require.NoError(t, os.WriteFile(changedPath, changedBytes, 0o644))
 
 	execution := execCLI(t, ctx, container,
-		"takeover", "--plan", plan.PlanID, "--global", "--yes", "--output", "json",
+		"adopt", "--global", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, execution.exitCode, execution.output)
 	var report takeoverExecutionJSON
@@ -70,7 +70,7 @@ func TestJ41SkipChangedSkillWithoutLosingData(t *testing.T) {
 	}
 	require.NotNil(t, changedResult)
 	require.Equal(t, "skipped", changedResult.Status)
-	require.Equal(t, "target-changed", changedResult.Reason)
+	require.Equal(t, "content-mismatch", changedResult.Reason)
 	require.NotNil(t, stableResult)
 	require.Equal(t, "taken-over", stableResult.Status)
 	require.Equal(t, "fixtures.test/group/subgroup/collection/-/skills/beta", stableResult.SkillID)
@@ -80,11 +80,11 @@ func TestJ41SkipChangedSkillWithoutLosingData(t *testing.T) {
 	require.Equal(t, changedBytes, afterChanged, "a stale plan must never overwrite user edits")
 	stateRoot := filepath.Join(sandboxRoot, "home", ".skillsgo")
 	declarationRoot := filepath.Join(sandboxRoot, "home", ".agents")
-	require.DirExists(t, filepath.Join(stateRoot, "modules"))
+	require.DirExists(t, filepath.Join(stateRoot, "packages"))
 	require.FileExists(t, filepath.Join(declarationRoot, "skills.yaml"))
 	require.FileExists(t, filepath.Join(declarationRoot, "skills-lock.yaml"))
 
-	rescan := execCLI(t, ctx, container, "takeover", "--preflight", "--global", "--output", "json")
+	rescan := execCLI(t, ctx, container, "adopt", "--global", "--output", "json")
 	require.Equal(t, 0, rescan.exitCode, rescan.output)
 	var rescanned takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(rescan.output), &rescanned), rescan.output)

@@ -1,24 +1,24 @@
--- [INPUT]: Depends on the reviewed PostgreSQL Module Catalog schema and sqlc's pgx/v5 generator.
--- [OUTPUT]: Defines typed Module, immutable Module Version Skill, localization, search, and Backfill persistence operations.
+-- [INPUT]: Depends on the reviewed PostgreSQL Package Catalog schema and sqlc's pgx/v5 generator.
+-- [OUTPUT]: Defines typed Package, immutable Package Version Skill, localization, search, and Backfill persistence operations.
 -- [POS]: Serves as the single maintained query source for the Hub Catalog module.
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
--- name: UpsertModule :one
-INSERT INTO modules (source_host, source_path, path, created_at, updated_at)
+-- name: UpsertPackage :one
+INSERT INTO packages (source_host, source_path, path, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $4)
 ON CONFLICT (path) DO UPDATE SET updated_at = excluded.updated_at
 RETURNING *;
 
--- name: ModuleByPath :one
-SELECT * FROM modules WHERE path = sqlc.arg(module_path);
+-- name: PackageByPath :one
+SELECT * FROM packages WHERE path = sqlc.arg(package_path);
 
--- name: UpdateModuleSourceMetadata :execrows
-UPDATE modules SET description = sqlc.arg(description), stars = sqlc.arg(stars), source_etag = sqlc.arg(source_etag),
+-- name: UpdatePackageSourceMetadata :execrows
+UPDATE packages SET description = sqlc.arg(description), stars = sqlc.arg(stars), source_etag = sqlc.arg(source_etag),
 source_checked_at = COALESCE(sqlc.narg(source_checked_at), source_checked_at), source_retry_at = sqlc.narg(source_retry_at),
-updated_at = CURRENT_TIMESTAMP WHERE path = sqlc.arg(module_path);
+updated_at = CURRENT_TIMESTAMP WHERE path = sqlc.arg(package_path);
 
--- name: InsertModuleVersion :one
-INSERT INTO versions (module_id, version, ref, commit_sha, tree_sha, sum, archive_size, commit_time, created_at)
+-- name: InsertPackageVersion :one
+INSERT INTO versions (package_id, version, ref, commit_sha, tree_sha, sum, archive_size, commit_time, created_at)
 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id;
 
 -- name: InsertSkill :exec
@@ -27,61 +27,61 @@ INSERT INTO skills (
 ) VALUES ($1,$2,$3,$4);
 
 -- name: SetCurrentVersion :exec
-UPDATE modules SET current_version_id=$2, updated_at=$3 WHERE id=$1;
+UPDATE packages SET current_version_id=$2, updated_at=$3 WHERE id=$1;
 
 -- name: SetCurrentVersionByCoordinate :exec
-UPDATE modules AS target
+UPDATE packages AS target
 SET current_version_id=(
     SELECT id FROM versions
-    WHERE versions.module_id=target.id AND version=sqlc.arg(version)
+    WHERE versions.package_id=target.id AND version=sqlc.arg(version)
 ), updated_at=sqlc.arg(updated_at)
-WHERE target.path=sqlc.arg(module_path);
+WHERE target.path=sqlc.arg(package_path);
 
--- name: ModuleVersionCount :one
+-- name: PackageVersionCount :one
 SELECT COUNT(*)
 FROM versions mv
-JOIN modules m ON m.id=mv.module_id
-WHERE m.path=sqlc.arg(module_path) AND mv.version=sqlc.arg(version);
+JOIN packages m ON m.id=mv.package_id
+WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version);
 
--- name: ModuleVersion :one
-SELECT mv.id, mv.module_id, mv.version, mv.ref, mv.commit_sha, mv.tree_sha,
+-- name: PackageVersion :one
+SELECT mv.id, mv.package_id, mv.version, mv.ref, mv.commit_sha, mv.tree_sha,
        mv.sum, mv.archive_size, mv.commit_time, mv.created_at
 FROM versions mv
-JOIN modules m ON m.id=mv.module_id
-WHERE m.path=sqlc.arg(module_path) AND mv.version=sqlc.arg(version);
+JOIN packages m ON m.id=mv.package_id
+WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version);
 
 -- name: Skills :many
 SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
        mvs.path, mv.commit_time, mvs.description
-FROM modules m
-JOIN versions mv ON mv.module_id=m.id
+FROM packages m
+JOIN versions mv ON mv.package_id=m.id
 JOIN skills mvs ON mvs.version_id=mv.id
-WHERE m.path=sqlc.arg(module_path) AND mv.version=sqlc.arg(version)
+WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version)
 ORDER BY mvs.path;
 
 -- name: CurrentSkill :one
 SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
        mvs.path, mv.commit_time, mvs.description
-FROM modules m
+FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id
-WHERE m.path=sqlc.arg(module_path) AND mvs.name=sqlc.arg(name)
+WHERE m.path=sqlc.arg(package_path) AND mvs.name=sqlc.arg(name)
 ORDER BY mvs.path
 LIMIT 1;
 
 -- name: SkillPublishedVersions :many
 SELECT DISTINCT mv.version
-FROM modules m
-JOIN versions mv ON mv.module_id=m.id
+FROM packages m
+JOIN versions mv ON mv.package_id=m.id
 JOIN skills mvs ON mvs.version_id=mv.id
-WHERE m.path=sqlc.arg(module_path) AND mvs.name=sqlc.arg(name)
+WHERE m.path=sqlc.arg(package_path) AND mvs.name=sqlc.arg(name)
 ORDER BY mv.version;
 
--- name: ModulePublicationCommit :one
+-- name: PackagePublicationCommit :one
 SELECT mv.commit_sha
 FROM versions mv
-JOIN modules m ON m.id=mv.module_id
-WHERE m.path=sqlc.arg(module_path) AND mv.version=sqlc.arg(version);
+JOIN packages m ON m.id=mv.package_id
+WHERE m.path=sqlc.arg(package_path) AND mv.version=sqlc.arg(version);
 
 -- name: UpsertLocalizedDescription :exec
 INSERT INTO localized_descriptions (resource_kind,resource_id,locale,description,source_digest,prompt_version,created_at,updated_at)
@@ -95,31 +95,31 @@ SELECT description FROM localized_descriptions
 WHERE resource_kind=$1 AND resource_id=$2 AND locale=$3;
 
 -- name: SkillByCoordinate :one
-SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+SELECT mvs.version_id AS id, mv.package_id, m.path AS package_path,
        mvs.name, mvs.description, m.source_host,
        m.source_path AS source_repository, mvs.path,
        mv.version AS latest_version, m.stars,
        mv.created_at, m.updated_at
-FROM modules m
+FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id
-WHERE m.path=sqlc.arg(module_path) AND mvs.name=sqlc.arg(name)
+WHERE m.path=sqlc.arg(package_path) AND mvs.name=sqlc.arg(name)
 ORDER BY mvs.path
 LIMIT 1;
 
 -- name: SkillsByCoordinates :many
 WITH requested AS (
-    SELECT module_paths.module_path, skill_names.name, module_paths.ordinal
-    FROM unnest(sqlc.arg(module_paths)::text[]) WITH ORDINALITY AS module_paths(module_path, ordinal)
+    SELECT package_paths.package_path, skill_names.name, package_paths.ordinal
+    FROM unnest(sqlc.arg(package_paths)::text[]) WITH ORDINALITY AS package_paths(package_path, ordinal)
     JOIN unnest(sqlc.arg(names)::text[]) WITH ORDINALITY AS skill_names(name, ordinal) USING (ordinal)
 )
-SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+SELECT mvs.version_id AS id, mv.package_id, m.path AS package_path,
        mvs.name, mvs.description, m.source_host,
        m.source_path AS source_repository, mvs.path,
        mv.version AS latest_version, m.stars,
        mv.created_at, m.updated_at
 FROM requested input
-JOIN modules m ON m.path=input.module_path
+JOIN packages m ON m.path=input.package_path
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN LATERAL (
     SELECT candidate.*
@@ -132,40 +132,40 @@ ORDER BY input.ordinal;
 
 -- name: SkillsByPathCoordinates :many
 WITH requested AS (
-    SELECT module_paths.module_path, skill_paths.path, module_paths.ordinal
-    FROM unnest(sqlc.arg(module_paths)::text[]) WITH ORDINALITY AS module_paths(module_path, ordinal)
+    SELECT package_paths.package_path, skill_paths.path, package_paths.ordinal
+    FROM unnest(sqlc.arg(package_paths)::text[]) WITH ORDINALITY AS package_paths(package_path, ordinal)
     JOIN unnest(sqlc.arg(paths)::text[]) WITH ORDINALITY AS skill_paths(path, ordinal) USING (ordinal)
 )
-SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+SELECT mvs.version_id AS id, mv.package_id, m.path AS package_path,
        mvs.name, mvs.description, m.source_host,
        m.source_path AS source_repository, mvs.path,
        mv.version AS latest_version, m.stars,
        mv.created_at, m.updated_at
 FROM requested input
-JOIN modules m ON m.path=input.module_path
+JOIN packages m ON m.path=input.package_path
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id AND mvs.path=input.path
 ORDER BY input.ordinal;
 
 -- name: ListSkills :many
-SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+SELECT mvs.version_id AS id, mv.package_id, m.path AS package_path,
        mvs.name, mvs.description, m.source_host,
        m.source_path AS source_repository, mvs.path,
        mv.version AS latest_version, m.stars,
        mv.created_at, m.updated_at
-FROM modules m
+FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id
 ORDER BY mvs.name,m.path,mvs.path
 LIMIT $1 OFFSET $2;
 
 -- name: SearchSkills :many
-SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+SELECT mvs.version_id AS id, mv.package_id, m.path AS package_path,
        mvs.name, mvs.description, m.source_host,
        m.source_path AS source_repository, mvs.path,
        mv.version AS latest_version, m.stars,
        mv.created_at, m.updated_at
-FROM modules m
+FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id
 WHERE (sqlc.arg(exact_name)::boolean AND lower(mvs.name)=lower(sqlc.arg(query)))
@@ -186,14 +186,14 @@ LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 SELECT 'module'::text AS resource_kind, m.path AS resource_id, m.description,
        COALESCE(ld.source_digest, '') AS source_digest,
        COALESCE(ld.prompt_version, '') AS prompt_version
-FROM modules m
+FROM packages m
 LEFT JOIN localized_descriptions ld
   ON ld.resource_kind='module' AND ld.resource_id=m.path AND ld.locale=$1
 WHERE trim(m.description)<>''
 UNION ALL
 SELECT 'skill'::text, m.path || ':' || mvs.name, mvs.description,
        COALESCE(ld.source_digest, ''), COALESCE(ld.prompt_version, '')
-FROM modules m
+FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id
 LEFT JOIN localized_descriptions ld
@@ -207,12 +207,12 @@ WHERE trim(mvs.description)<>''
 ORDER BY resource_kind, resource_id;
 
 -- name: SearchLocalizedSkills :many
-SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+SELECT mvs.version_id AS id, mv.package_id, m.path AS package_path,
        mvs.name, COALESCE(ls.description,mvs.description) AS description,
        m.source_host, m.source_path AS source_repository, mvs.path,
        mv.version AS latest_version, m.stars,
        mv.created_at, m.updated_at
-FROM modules m
+FROM packages m
 JOIN versions mv ON mv.id=m.current_version_id
 JOIN skills mvs ON mvs.version_id=mv.id
 LEFT JOIN localized_descriptions ls
@@ -240,19 +240,19 @@ LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: FindLocalizedSkillsBatch :many
 WITH requested AS (
-    SELECT ids.id AS query_id, queries.query, module_paths.module_path, exact_names.exact_name, ids.ordinal
+    SELECT ids.id AS query_id, queries.query, package_paths.package_path, exact_names.exact_name, ids.ordinal
     FROM unnest(sqlc.arg(query_ids)::text[]) WITH ORDINALITY AS ids(id, ordinal)
     JOIN unnest(sqlc.arg(queries)::text[]) WITH ORDINALITY AS queries(query, ordinal) USING (ordinal)
-    JOIN unnest(sqlc.arg(module_paths)::text[]) WITH ORDINALITY AS module_paths(module_path, ordinal) USING (ordinal)
+    JOIN unnest(sqlc.arg(package_paths)::text[]) WITH ORDINALITY AS package_paths(package_path, ordinal) USING (ordinal)
     JOIN unnest(sqlc.arg(exact_names)::boolean[]) WITH ORDINALITY AS exact_names(exact_name, ordinal) USING (ordinal)
 )
-SELECT input.query_id::text AS query_id,input.query::text AS query,input.module_path::text AS requested_module_path,
-       result.id,result.module_id,result.module_path,result.name,result.description,
+SELECT input.query_id::text AS query_id,input.query::text AS query,input.package_path::text AS requested_package_path,
+       result.id,result.package_id,result.package_path,result.name,result.description,
        result.source_host,result.source_repository,result.path,result.latest_version,result.stars,
        result.created_at,result.updated_at
 FROM requested input
 JOIN LATERAL (
-    SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+    SELECT mvs.version_id AS id, mv.package_id, m.path AS package_path,
            mvs.name, COALESCE(ls.description,mvs.description) AS description,
            m.source_host, m.source_path AS source_repository, mvs.path,
            mv.version AS latest_version, m.stars,
@@ -266,7 +266,7 @@ JOIN LATERAL (
                ELSE 5
            END AS sort_tier,
            similarity(mvs.name,input.query) AS name_similarity
-    FROM modules m
+    FROM packages m
     JOIN versions mv ON mv.id=m.current_version_id
     JOIN skills mvs ON mvs.version_id=mv.id
     LEFT JOIN localized_descriptions ls
@@ -274,9 +274,9 @@ JOIN LATERAL (
     LEFT JOIN localized_descriptions lm
       ON lm.resource_kind='module' AND lm.resource_id=m.path AND lm.locale=sqlc.arg(locale)
     WHERE (
-        input.module_path<>'' AND m.path=input.module_path AND mvs.name=input.query
+        input.package_path<>'' AND m.path=input.package_path AND mvs.name=input.query
     ) OR (
-        input.module_path='' AND (
+        input.package_path='' AND (
             (input.exact_name AND lower(mvs.name)=lower(input.query))
             OR (NOT input.exact_name AND (
                 lower(mvs.name) LIKE '%' || lower(input.query) || '%'
@@ -288,76 +288,76 @@ JOIN LATERAL (
         )
     )
     ORDER BY sort_tier,name_similarity DESC,m.path,mvs.path
-    LIMIT CASE WHEN input.module_path<>'' THEN 1 ELSE sqlc.arg(page_limit)::int END
+    LIMIT CASE WHEN input.package_path<>'' THEN 1 ELSE sqlc.arg(page_limit)::int END
 ) result ON true
 ORDER BY input.ordinal,result.sort_tier,result.name_similarity DESC,
-         result.module_path,result.path;
+         result.package_path,result.path;
 
 -- name: FindExactLocalizedSkillsBatch :many
 WITH requested AS (
-    SELECT ids.id AS query_id, queries.query, module_paths.module_path, ids.ordinal
+    SELECT ids.id AS query_id, queries.query, package_paths.package_path, ids.ordinal
     FROM unnest(sqlc.arg(query_ids)::text[]) WITH ORDINALITY AS ids(id, ordinal)
     JOIN unnest(sqlc.arg(queries)::text[]) WITH ORDINALITY AS queries(query, ordinal) USING (ordinal)
-    JOIN unnest(sqlc.arg(module_paths)::text[]) WITH ORDINALITY AS module_paths(module_path, ordinal) USING (ordinal)
+    JOIN unnest(sqlc.arg(package_paths)::text[]) WITH ORDINALITY AS package_paths(package_path, ordinal) USING (ordinal)
 ),
 ranked AS (
-    SELECT input.query_id::text AS query_id,input.query::text AS query,input.module_path::text AS requested_module_path,input.ordinal,
-           mvs.version_id AS id,mv.module_id,m.path AS module_path,mvs.name,
+    SELECT input.query_id::text AS query_id,input.query::text AS query,input.package_path::text AS requested_package_path,input.ordinal,
+           mvs.version_id AS id,mv.package_id,m.path AS package_path,mvs.name,
            COALESCE(ls.description,mvs.description) AS description,
            m.source_host,m.source_path AS source_repository,mvs.path,
            mv.version AS latest_version,m.stars,mv.created_at,m.updated_at,
            row_number() OVER (
                PARTITION BY input.ordinal
-               ORDER BY CASE WHEN input.module_path<>'' THEN mvs.path ELSE '' END,
+               ORDER BY CASE WHEN input.package_path<>'' THEN mvs.path ELSE '' END,
                         m.path,mvs.path
            ) AS result_ordinal
     FROM requested input
-    JOIN modules m ON input.module_path='' OR m.path=input.module_path
+    JOIN packages m ON input.package_path='' OR m.path=input.package_path
     JOIN versions mv ON mv.id=m.current_version_id
     JOIN skills mvs
       ON mvs.version_id=mv.id AND lower(mvs.name)=lower(input.query)
     LEFT JOIN localized_descriptions ls
       ON ls.resource_kind='skill' AND ls.resource_id=m.path || ':' || mvs.name AND ls.locale=sqlc.arg(locale)
 )
-SELECT query_id,query,requested_module_path,id,module_id,module_path,name,description,
+SELECT query_id,query,requested_package_path,id,package_id,package_path,name,description,
        source_host,source_repository,path,latest_version,stars,created_at,updated_at
 FROM ranked
-WHERE result_ordinal<=CASE WHEN requested_module_path<>'' THEN 1 ELSE sqlc.arg(page_limit)::bigint END
+WHERE result_ordinal<=CASE WHEN requested_package_path<>'' THEN 1 ELSE sqlc.arg(page_limit)::bigint END
 ORDER BY ordinal,result_ordinal;
 
 -- name: ActiveBackfillRun :one
-SELECT * FROM module_backfill_runs
-WHERE module_path=$1 AND status IN ('queued','running')
+SELECT * FROM package_backfill_runs
+WHERE package_path=$1 AND status IN ('queued','running')
 ORDER BY created_at DESC LIMIT 1;
 
 -- name: InsertBackfillRun :exec
-INSERT INTO module_backfill_runs (id,module_path,status,error_count,diagnostics,created_at,updated_at)
+INSERT INTO package_backfill_runs (id,package_path,status,error_count,diagnostics,created_at,updated_at)
 VALUES ($1,$2,$3,0,$4,$5,$5);
 
 -- name: LatestBackfillRun :one
-SELECT * FROM module_backfill_runs WHERE module_path=$1 ORDER BY created_at DESC LIMIT 1;
+SELECT * FROM package_backfill_runs WHERE package_path=$1 ORDER BY created_at DESC LIMIT 1;
 
 -- name: BackfillRunByID :one
-SELECT * FROM module_backfill_runs WHERE id=$1;
+SELECT * FROM package_backfill_runs WHERE id=$1;
 
 -- name: StartBackfillRun :execrows
-UPDATE module_backfill_runs SET status='running',started_at=COALESCE(started_at,sqlc.arg(now)),updated_at=sqlc.arg(now)
+UPDATE package_backfill_runs SET status='running',started_at=COALESCE(started_at,sqlc.arg(now)),updated_at=sqlc.arg(now)
 WHERE id=sqlc.arg(id) AND status='queued';
 
 -- name: CompleteBackfillRun :execrows
-UPDATE module_backfill_runs SET status=$2,completed_at=$3,error_count=$4,diagnostics=$5,updated_at=$3
+UPDATE package_backfill_runs SET status=$2,completed_at=$3,error_count=$4,diagnostics=$5,updated_at=$3
 WHERE id=$1 AND status IN ('queued','running');
 
 -- name: TouchBackfillRun :execrows
-UPDATE module_backfill_runs SET updated_at=$2 WHERE id=$1 AND status='running';
+UPDATE package_backfill_runs SET updated_at=$2 WHERE id=$1 AND status='running';
 
 -- name: ExpireStaleBackfillRuns :execrows
-UPDATE module_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
+UPDATE package_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
 WHERE status='running' AND updated_at<$1;
 
 -- name: StaleQueuedBackfillRuns :many
-SELECT * FROM module_backfill_runs WHERE status='queued' AND updated_at<$1 ORDER BY updated_at LIMIT $2;
+SELECT * FROM package_backfill_runs WHERE status='queued' AND updated_at<$1 ORDER BY updated_at LIMIT $2;
 
 -- name: ExpireQueuedBackfillRun :execrows
-UPDATE module_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
+UPDATE package_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
 WHERE id=$1 AND status='queued';

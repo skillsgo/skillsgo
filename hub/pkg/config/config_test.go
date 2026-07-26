@@ -308,7 +308,7 @@ func TestStorageEnvOverrides(t *testing.T) {
 			URL:                   "mongoURL",
 			CertPath:              "/test/path",
 			DefaultDBName:         "test",
-			DefaultCollectionName: "testModules",
+			DefaultCollectionName: "testPackages",
 		},
 		S3: &S3Config{
 			Region: "s3Region",

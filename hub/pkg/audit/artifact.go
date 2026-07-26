@@ -56,13 +56,13 @@ var binaryExtensions = map[string]bool{
 
 // AnalyzeRepositoryMember validates the complete Repository Artifact while
 // projecting one immutable Skill member for detail and enrichment reads.
-func AnalyzeRepositoryMember(data []byte, modulePath, version, relativePath string) (*Result, error) {
+func AnalyzeRepositoryMember(data []byte, packagePath, version, relativePath string) (*Result, error) {
 	memberPrefix := ""
 	if relativePath != "." {
 		memberPrefix = strings.TrimSuffix(relativePath, "/") + "/"
 	}
 	return analyze(data, func(visit protocolartifact.VisitFunc) (string, error) {
-		return protocolartifact.WalkModule(data, modulePath, version, func(entry protocolartifact.Entry) error {
+		return protocolartifact.WalkPackage(data, packagePath, version, func(entry protocolartifact.Entry) error {
 			if entry.Directory || !strings.HasPrefix(entry.Path, memberPrefix) {
 				return nil
 			}

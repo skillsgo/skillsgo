@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Exercises Go-compatible immutable, prefix, comparison, latest, revision, and hostile Module Version Query spellings.
+ * [INPUT]: Exercises Go-compatible immutable, prefix, comparison, latest, revision, and hostile Package Version Query spellings.
  * [OUTPUT]: Specifies the shared Go-aligned add-time Version Query grammar and movable classification.
  * [POS]: Serves as the executable Selector contract shared by CLI parsing and Hub resolution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
