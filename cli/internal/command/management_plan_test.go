@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with an isolated External Agent Skill and flat exact-path arguments.
- * [OUTPUT]: Specifies state-bound recoverable External removal and confirms obsolete or unimplemented commands are absent.
+ * [OUTPUT]: Specifies confirmed recoverable External removal and confirms obsolete flags and commands are absent.
  * [POS]: Serves as the public CLI contract coverage for App-driven External target removal.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -24,7 +24,7 @@ type managementPreflightItem struct {
 
 func managementPreflight(t *testing.T, command, targetPath, agentID, projectRoot string) managementPreflightItem {
 	t.Helper()
-	args := []string{command, "--path", targetPath, "--agent", agentID, "--preflight", "--output", "json"}
+	args := []string{command, "--path", targetPath, "--agent", agentID, "--output", "json"}
 	if projectRoot != "" {
 		args = append(args, "--project", projectRoot)
 	}
@@ -38,7 +38,7 @@ func managementPreflight(t *testing.T, command, targetPath, agentID, projectRoot
 	return response.Targets[0]
 }
 
-func TestTopLevelRemoveDeletesExactExternalTargetAfterPreflight(t *testing.T) {
+func TestTopLevelRemoveDeletesExactExternalTargetAfterConfirmation(t *testing.T) {
 	root := t.TempDir()
 	home, agentHome := filepath.Join(root, "home"), filepath.Join(root, "agent")
 	t.Setenv("HOME", home)
@@ -48,7 +48,7 @@ func TestTopLevelRemoveDeletesExactExternalTargetAfterPreflight(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("---\nname: external-demo\ndescription: External.\n---\n"), 0o644))
 
 	var output bytes.Buffer
-	require.NoError(t, Execute([]string{"remove", "--path", target, "--agent", "test-agent", "--preflight", "--output", "json"}, &output, &output), output.String())
+	require.NoError(t, Execute([]string{"remove", "--path", target, "--agent", "test-agent", "--output", "json"}, &output, &output), output.String())
 	var preview struct {
 		Targets []struct {
 			StateToken string   `json:"stateToken"`
@@ -59,8 +59,15 @@ func TestTopLevelRemoveDeletesExactExternalTargetAfterPreflight(t *testing.T) {
 	require.Equal(t, []string{"remove"}, preview.Targets[0].Actions)
 
 	output.Reset()
-	require.NoError(t, Execute([]string{"remove", "--path", target, "--agent", "test-agent", "--expected-state", preview.Targets[0].StateToken, "--output", "json"}, &output, &output), output.String())
+	require.NoError(t, Execute([]string{"remove", "--path", target, "--agent", "test-agent", "--yes", "--output", "json"}, &output, &output), output.String())
 	require.NoDirExists(t, target)
+
+	output.Reset()
+	err := Execute([]string{"remove", "--path", target, "--agent", "test-agent", "--preflight"}, &output, &output)
+	require.ErrorContains(t, err, "unknown flag: --preflight")
+	output.Reset()
+	err = Execute([]string{"remove", "--path", target, "--agent", "test-agent", "--expected-state", "state"}, &output, &output)
+	require.ErrorContains(t, err, "unknown flag: --expected-state")
 }
 
 func TestManageCommandIsRemoved(t *testing.T) {
@@ -70,7 +77,7 @@ func TestManageCommandIsRemoved(t *testing.T) {
 }
 
 func TestRemovedCommandsStayAbsent(t *testing.T) {
-	for _, name := range []string{"use", "init", "inventory"} {
+	for _, name := range []string{"use", "init", "inventory", "takeover", "info", "detail"} {
 		t.Run(name, func(t *testing.T) {
 			var output bytes.Buffer
 			err := Execute([]string{name}, &output, &output)

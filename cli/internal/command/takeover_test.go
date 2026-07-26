@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Uses command.Execute with isolated User/Agent roots, current skills.sh locks, and exact Repository version metadata/ZIP fixtures.
  * [OUTPUT]: Specifies state-bound exact-path Repository adoption, byte-identity rejection, current lock parsing, provider identity, plan validation, and localized public behavior without Store or Receipt compatibility.
- * [POS]: Serves as the executable contract for the lock-backed Batch Takeover journey on Repository Module Store architecture.
+ * [POS]: Serves as the executable contract for the lock-backed Batch Takeover journey on Repository Package Store architecture.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -17,7 +17,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/skillsgo/skillsgo/cli/internal/modulestore"
+	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
@@ -26,57 +26,47 @@ import (
 
 func executeTakeover(t *testing.T, stdout, stderr *bytes.Buffer, hubURL string, scopeArgs ...string) error {
 	t.Helper()
-	preflightArgs := append([]string{"takeover", "--preflight"}, scopeArgs...)
-	preflightArgs = append(preflightArgs, "--hub", hubURL, "--output", "json")
-	if err := Execute(preflightArgs, stdout, stderr); err != nil {
-		return err
-	}
-	var preview takeoverPreflightReport
-	if err := json.Unmarshal(stdout.Bytes(), &preview); err != nil {
-		return err
-	}
-	stdout.Reset()
-	executionArgs := append([]string{"takeover", "--plan", preview.PlanID}, scopeArgs...)
+	executionArgs := append([]string{"adopt"}, scopeArgs...)
 	executionArgs = append(executionArgs, "--hub", hubURL, "--yes", "--output", "json")
 	return Execute(executionArgs, stdout, stderr)
 }
 
 func takeoverRepositoryFixture(t *testing.T) (string, string, []byte, []byte, *httptest.Server) {
 	t.Helper()
-	modulePath, version := "github.com/example/skills", "v1.2.3"
+	packagePath, version := "github.com/example/skills", "v1.2.3"
 	skill := []byte("---\nname: alpha\ndescription: Existing Alpha.\n---\n# Alpha\n")
-	archive, err := protocolartifact.BuildModule(modulePath, version, []protocolartifact.Entry{
+	archive, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{
 		{Path: "README.md", Contents: []byte("shared"), Mode: 0o644},
 		{Path: "skills/alpha/SKILL.md", Contents: skill, Mode: 0o644},
 		{Path: "skills/alpha/references/guide.md", Contents: []byte("guide"), Mode: 0o644},
 		{Path: "skills/beta/SKILL.md", Contents: []byte("---\nname: beta\ndescription: Beta.\n---\n"), Mode: 0o644},
 	})
 	require.NoError(t, err)
-	sum, err := protocolartifact.ModuleSum(archive, modulePath, version)
+	sum, err := protocolartifact.PackageSum(archive, packagePath, version)
 	require.NoError(t, err)
 	now := time.Date(2026, 7, 23, 0, 0, 0, 0, time.UTC)
-	info, err := json.Marshal(protocolapi.ModuleInfo{SchemaVersion: 1, Kind: protocolapi.KindModule, ModulePath: modulePath, Version: version,
+	info, err := json.Marshal(protocolapi.PackageInfo{SchemaVersion: 1, Kind: protocolapi.KindPackage, PackagePath: packagePath, Version: version,
 		Time: now, Sum: sum, ArchiveSize: int64(len(archive)),
-		Skills: []protocolapi.ModuleSkill{
+		Skills: []protocolapi.PackageSkill{
 			{Name: "alpha", Path: "skills/alpha"},
 			{Name: "beta", Path: "skills/beta"},
 		}})
 	require.NoError(t, err)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
-		case "/api/v1/" + modulePath + "/versions/" + version:
+		case "/api/v1/" + packagePath + "/versions/" + version:
 			_, _ = writer.Write(info)
-		case "/api/v1/" + modulePath + "/versions/" + version + ".zip":
+		case "/api/v1/" + packagePath + "/versions/" + version + ".zip":
 			writer.Header().Set("Content-Length", fmt.Sprint(len(archive)))
 			_, _ = writer.Write(archive)
 		default:
 			http.NotFound(writer, request)
 		}
 	}))
-	return modulePath, version, skill, []byte("guide"), server
+	return packagePath, version, skill, []byte("guide"), server
 }
 
-func writeTakeoverGlobalFixture(t *testing.T, home, agentHome, modulePath, version string, skill, guide []byte) string {
+func writeTakeoverGlobalFixture(t *testing.T, home, agentHome, packagePath, version string, skill, guide []byte) string {
 	t.Helper()
 	target := filepath.Join(agentHome, "skills", "alpha")
 	require.NoError(t, os.MkdirAll(filepath.Join(target, "references"), 0o755))
@@ -92,14 +82,14 @@ func writeTakeoverGlobalFixture(t *testing.T, home, agentHome, modulePath, versi
 	return target
 }
 
-func TestBatchTakeoverAdoptsExactVersionSkillIntoUserModuleStore(t *testing.T) {
-	modulePath, version, skill, guide, server := takeoverRepositoryFixture(t)
+func TestBatchTakeoverAdoptsExactVersionSkillIntoUserPackageStore(t *testing.T) {
+	packagePath, version, skill, guide, server := takeoverRepositoryFixture(t)
 	defer server.Close()
 	root := t.TempDir()
 	home, agentHome := filepath.Join(root, "home"), filepath.Join(root, "test-agent")
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-	target := writeTakeoverGlobalFixture(t, home, agentHome, modulePath, version, skill, guide)
+	target := writeTakeoverGlobalFixture(t, home, agentHome, packagePath, version, skill, guide)
 
 	var stdout, stderr bytes.Buffer
 	require.NoError(t, executeTakeover(t, &stdout, &stderr, server.URL, "--global"))
@@ -111,13 +101,13 @@ func TestBatchTakeoverAdoptsExactVersionSkillIntoUserModuleStore(t *testing.T) {
 	userRoot := project.GlobalDeclarationRoot(home)
 	manifest, err := project.LoadWorkspaceManifest(userRoot)
 	require.NoError(t, err)
-	require.Equal(t, version, manifest.Dependencies[modulePath].Version)
-	require.Equal(t, []string{"skills/alpha"}, manifest.Dependencies[modulePath].Skills)
-	require.Equal(t, []string{"test-agent"}, manifest.Dependencies[modulePath].Agents)
+	require.Equal(t, version, manifest.Dependencies[packagePath].Version)
+	require.Equal(t, []string{"skills/alpha"}, manifest.Dependencies[packagePath].Skills)
+	require.Equal(t, []string{"test-agent"}, manifest.Dependencies[packagePath].Agents)
 	require.NoError(t, project.ValidateWorkspaceState(manifest, mustLoadTakeoverLock(t, userRoot)))
-	moduleDir := modulestore.CoordinatePath(filepath.Join(project.GlobalStateRoot(home), "modules"), modulePath, version)
-	projection := modulestore.CoordinatePath(filepath.Join(agentHome, "skills"), modulePath, version)
-	require.FileExists(t, filepath.Join(moduleDir, "skills", "beta", "SKILL.md"))
+	packageDir := packagestore.CoordinatePath(filepath.Join(project.GlobalStateRoot(home), "packages"), packagePath, version)
+	projection := packagestore.CoordinatePath(filepath.Join(agentHome, "skills"), packagePath, version)
+	require.FileExists(t, filepath.Join(packageDir, "skills", "beta", "SKILL.md"))
 	require.FileExists(t, filepath.Join(projection, "skills", "alpha", "SKILL.md"))
 	require.NoFileExists(t, filepath.Join(projection, "skills", "beta", "SKILL.md"))
 	require.Equal(t, skill, mustReadTakeoverFile(t, filepath.Join(projection, "skills", "alpha", "SKILL.md")))
@@ -126,13 +116,13 @@ func TestBatchTakeoverAdoptsExactVersionSkillIntoUserModuleStore(t *testing.T) {
 }
 
 func TestBatchTakeoverRejectsDifferentBytesWithoutWritingState(t *testing.T) {
-	modulePath, version, skill, guide, server := takeoverRepositoryFixture(t)
+	packagePath, version, skill, guide, server := takeoverRepositoryFixture(t)
 	defer server.Close()
 	root := t.TempDir()
 	home, agentHome := filepath.Join(root, "home"), filepath.Join(root, "test-agent")
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-	target := writeTakeoverGlobalFixture(t, home, agentHome, modulePath, version, skill, guide)
+	target := writeTakeoverGlobalFixture(t, home, agentHome, packagePath, version, skill, guide)
 	require.NoError(t, os.WriteFile(filepath.Join(target, "SKILL.md"), append(skill, []byte("local edit\n")...), 0o644))
 
 	var stdout, stderr bytes.Buffer
@@ -144,7 +134,7 @@ func TestBatchTakeoverRejectsDifferentBytesWithoutWritingState(t *testing.T) {
 	require.Equal(t, "content-mismatch", result.Results[0].Reason)
 	require.DirExists(t, target)
 	require.NoFileExists(t, filepath.Join(project.GlobalDeclarationRoot(home), project.WorkspaceManifestName))
-	require.NoDirExists(t, filepath.Join(project.GlobalStateRoot(home), "modules"))
+	require.NoDirExists(t, filepath.Join(project.GlobalStateRoot(home), "packages"))
 }
 
 func mustLoadTakeoverLock(t *testing.T, root string) project.DependencyLock {
@@ -181,8 +171,10 @@ func TestLockRecordSkillIDUsesProviderSemantics(t *testing.T) {
 
 func TestBatchTakeoverHelpAndValidationAreLocalized(t *testing.T) {
 	var stdout, stderr bytes.Buffer
-	require.NoError(t, Execute([]string{"--lang", "zh-CN", "takeover", "--help"}, &stdout, &stderr))
-	require.Contains(t, stdout.String(), "登记受支持的现有 skills.sh 安装")
-	err := Execute([]string{"--lang", "zh-CN", "takeover", "--output", "json"}, &stdout, &stderr)
-	require.EqualError(t, err, "批量接管需要使用 --yes 明确确认")
+	require.NoError(t, Execute([]string{"--lang", "zh-CN", "adopt", "--help"}, &stdout, &stderr))
+	require.Contains(t, stdout.String(), "纳管受支持的现有 skills.sh 安装")
+	require.NotContains(t, stdout.String(), "--preflight")
+	require.NotContains(t, stdout.String(), "--plan")
+	err := Execute([]string{"--lang", "zh-CN", "adopt", "--output", "json"}, &stdout, &stderr)
+	require.EqualError(t, err, "批量纳管需要使用 --global 或至少一个 --project 指定范围")
 }

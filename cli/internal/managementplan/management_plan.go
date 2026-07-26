@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on explicit External target paths, read-only inventory, filesystem state digests, and recoverable trash.
- * [OUTPUT]: Provides state-bound External removal preflight and structured progress/results without Store, Receipt, mode, or Repair semantics.
+ * [OUTPUT]: Provides state-bound External removal planning and structured progress/results without Store, Receipt, mode, or Repair semantics.
  * [POS]: Serves as the narrow first-release target-operation domain beneath the App-facing `remove --path` command.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

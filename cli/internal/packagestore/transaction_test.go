@@ -1,10 +1,10 @@
 /*
- * [INPUT]: Uses deterministic Module Artifacts, explicit member selections, and temporary Module Store/Agent roots.
- * [OUTPUT]: Specifies complete Module Store retention including safe internal symlinks, root/nested selective visibility, multi-Agent projection, baseline-guarded replacement, Local Modification refusal, finalization, and rollback.
- * [POS]: Serves as the filesystem transaction contract for Scope Module Store and Module Projections.
+ * [INPUT]: Uses deterministic Package Artifacts, explicit member selections, and temporary Package Store/Agent roots.
+ * [OUTPUT]: Specifies complete Package Store retention including safe internal symlinks, root/nested selective visibility, multi-Agent projection, baseline-guarded replacement, Local Modification refusal, finalization, and rollback.
+ * [POS]: Serves as the filesystem transaction contract for Scope Package Store and Package Projections.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-package modulestore
+package packagestore
 
 import (
 	"os"
@@ -15,9 +15,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestRepositoryTransactionStoresFullModuleTreeAndProjectsSelectedSkills(t *testing.T) {
-	modulePath, version := "github.com/example/skills", "v1.2.3"
-	archive, err := protocolartifact.BuildModule(modulePath, version, []protocolartifact.Entry{
+func TestRepositoryTransactionStoresFullPackageTreeAndProjectsSelectedSkills(t *testing.T) {
+	packagePath, version := "github.com/example/skills", "v1.2.3"
+	archive, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{
 		{Path: "SKILL.md", Contents: []byte("root"), Mode: 0o644},
 		{Path: "skills/design/SKILL.md", Contents: []byte("design"), Mode: 0o644},
 		{Path: "skills/review/SKILL.md", Contents: []byte("review"), Mode: 0o644},
@@ -25,22 +25,22 @@ func TestRepositoryTransactionStoresFullModuleTreeAndProjectsSelectedSkills(t *t
 		{Path: "scripts/shared.sh", Contents: []byte("#!/bin/sh\n"), Mode: 0o755},
 	})
 	require.NoError(t, err)
-	sum, err := protocolartifact.ModuleSum(archive, modulePath, version)
+	sum, err := protocolartifact.PackageSum(archive, packagePath, version)
 	require.NoError(t, err)
-	modulesRoot, agentRoot := filepath.Join(t.TempDir(), "modules"), filepath.Join(t.TempDir(), "agent-skills")
+	packagesRoot, agentRoot := filepath.Join(t.TempDir(), "packages"), filepath.Join(t.TempDir(), "agent-skills")
 
 	transaction, err := Prepare(Options{
-		ModulesRoot: modulesRoot, ModulePath: modulePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
 		Members:     []string{".", "skills/design", "skills/review"},
 		Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"skills/design"}}},
 	})
 	require.NoError(t, err)
 	require.NoError(t, transaction.Commit())
 
-	moduleStore := CoordinatePath(modulesRoot, modulePath, version)
-	projection := CoordinatePath(agentRoot, modulePath, version)
+	packageStore := CoordinatePath(packagesRoot, packagePath, version)
+	projection := CoordinatePath(agentRoot, packagePath, version)
 	for _, relative := range []string{"SKILL.md", "skills/design/SKILL.md", "skills/review/SKILL.md", "scripts/shared.sh"} {
-		info, err := os.Lstat(filepath.Join(moduleStore, filepath.FromSlash(relative)))
+		info, err := os.Lstat(filepath.Join(packageStore, filepath.FromSlash(relative)))
 		require.NoError(t, err)
 		require.True(t, info.Mode().IsRegular())
 	}
@@ -48,16 +48,16 @@ func TestRepositoryTransactionStoresFullModuleTreeAndProjectsSelectedSkills(t *t
 	require.FileExists(t, filepath.Join(projection, "skills", "design", "SKILL.md"))
 	require.NoFileExists(t, filepath.Join(projection, "skills", "review", "SKILL.md"))
 	require.NoFileExists(t, filepath.Join(projection, ".hidden", "SKILL.md"))
-	require.FileExists(t, filepath.Join(moduleStore, ".hidden", "SKILL.md"))
+	require.FileExists(t, filepath.Join(packageStore, ".hidden", "SKILL.md"))
 	require.FileExists(t, filepath.Join(projection, "scripts", "shared.sh"))
-	require.NoError(t, VerifyProjection(agentRoot, modulePath, version, archive, []string{".", "skills/design", "skills/review"}, []string{"skills/design"}))
+	require.NoError(t, VerifyProjection(agentRoot, packagePath, version, archive, []string{".", "skills/design", "skills/review"}, []string{"skills/design"}))
 	info, err := os.Lstat(filepath.Join(projection, "scripts", "shared.sh"))
 	require.NoError(t, err)
 	require.True(t, info.Mode().IsRegular())
 	require.NotZero(t, info.Mode().Perm()&0o111)
 
 	retry, err := Prepare(Options{
-		ModulesRoot: modulesRoot, ModulePath: modulePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
 		Members:     []string{".", "skills/design", "skills/review"},
 		Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"skills/design"}}},
 	})
@@ -65,9 +65,9 @@ func TestRepositoryTransactionStoresFullModuleTreeAndProjectsSelectedSkills(t *t
 	require.NoError(t, retry.Commit())
 
 	require.NoError(t, os.WriteFile(filepath.Join(projection, "scripts", "shared.sh"), []byte("modified"), 0o755))
-	require.ErrorContains(t, VerifyProjection(agentRoot, modulePath, version, archive, []string{".", "skills/design", "skills/review"}, []string{"skills/design"}), "Local Modification")
+	require.ErrorContains(t, VerifyProjection(agentRoot, packagePath, version, archive, []string{".", "skills/design", "skills/review"}, []string{"skills/design"}), "Local Modification")
 	_, err = Prepare(Options{
-		ModulesRoot: modulesRoot, ModulePath: modulePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
 		Members:     []string{".", "skills/design", "skills/review"},
 		Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"skills/design"}}},
 	})
@@ -75,25 +75,25 @@ func TestRepositoryTransactionStoresFullModuleTreeAndProjectsSelectedSkills(t *t
 }
 
 func TestRepositoryTransactionRestoresAndVerifiesInternalSymlinks(t *testing.T) {
-	modulePath, version := "github.com/example/skills", "v1.2.3"
-	archive, err := protocolartifact.BuildModule(modulePath, version, []protocolartifact.Entry{
+	packagePath, version := "github.com/example/skills", "v1.2.3"
+	archive, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{
 		{Path: "SKILL.md", Contents: []byte("root")},
 		{Path: "CLAUDE.md", Contents: []byte("shared instructions")},
 		{Path: "AGENTS.md", Contents: []byte("CLAUDE.md"), Mode: os.ModeSymlink | 0o777},
 	})
 	require.NoError(t, err)
-	sum, err := protocolartifact.ModuleSum(archive, modulePath, version)
+	sum, err := protocolartifact.PackageSum(archive, packagePath, version)
 	require.NoError(t, err)
-	modulesRoot, agentRoot := filepath.Join(t.TempDir(), "modules"), filepath.Join(t.TempDir(), "agent")
+	packagesRoot, agentRoot := filepath.Join(t.TempDir(), "packages"), filepath.Join(t.TempDir(), "agent")
 	transaction, err := Prepare(Options{
-		ModulesRoot: modulesRoot, ModulePath: modulePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
 		Members: []string{"."}, Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"."}}},
 	})
 	require.NoError(t, err)
 	require.NoError(t, transaction.Commit())
 	require.NoError(t, transaction.Finalize())
 
-	for _, root := range []string{CoordinatePath(modulesRoot, modulePath, version), CoordinatePath(agentRoot, modulePath, version)} {
+	for _, root := range []string{CoordinatePath(packagesRoot, packagePath, version), CoordinatePath(agentRoot, packagePath, version)} {
 		info, err := os.Lstat(filepath.Join(root, "AGENTS.md"))
 		require.NoError(t, err)
 		require.NotZero(t, info.Mode()&os.ModeSymlink)
@@ -101,44 +101,44 @@ func TestRepositoryTransactionRestoresAndVerifiesInternalSymlinks(t *testing.T) 
 		require.NoError(t, err)
 		require.Equal(t, "CLAUDE.md", target)
 	}
-	rebuilt, err := ReadVerifiedModule(modulesRoot, modulePath, version, sum)
+	rebuilt, err := ReadVerifiedPackage(packagesRoot, packagePath, version, sum)
 	require.NoError(t, err)
-	rebuiltSum, err := protocolartifact.ModuleSum(rebuilt, modulePath, version)
+	rebuiltSum, err := protocolartifact.PackageSum(rebuilt, packagePath, version)
 	require.NoError(t, err)
 	require.Equal(t, sum, rebuiltSum)
 }
 
 func TestRepositoryTransactionRollbackRemovesOnlyNewPaths(t *testing.T) {
-	modulePath, version := "github.com/example/skills", "v1.0.0"
-	archive, err := protocolartifact.BuildModule(modulePath, version, []protocolartifact.Entry{{Path: "SKILL.md", Contents: []byte("root"), Mode: 0o644}})
+	packagePath, version := "github.com/example/skills", "v1.0.0"
+	archive, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{{Path: "SKILL.md", Contents: []byte("root"), Mode: 0o644}})
 	require.NoError(t, err)
-	sum, err := protocolartifact.ModuleSum(archive, modulePath, version)
+	sum, err := protocolartifact.PackageSum(archive, packagePath, version)
 	require.NoError(t, err)
-	modulesRoot, agentRoot := filepath.Join(t.TempDir(), "modules"), filepath.Join(t.TempDir(), "agent")
-	transaction, err := Prepare(Options{ModulesRoot: modulesRoot, ModulePath: modulePath, Version: version, Archive: archive, Sum: sum,
+	packagesRoot, agentRoot := filepath.Join(t.TempDir(), "packages"), filepath.Join(t.TempDir(), "agent")
+	transaction, err := Prepare(Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
 		Members: []string{"."}, Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"."}}}})
 	require.NoError(t, err)
 	require.NoError(t, transaction.Commit())
 	require.NoError(t, transaction.Rollback())
-	require.NoDirExists(t, CoordinatePath(modulesRoot, modulePath, version))
-	require.NoDirExists(t, CoordinatePath(agentRoot, modulePath, version))
+	require.NoDirExists(t, CoordinatePath(packagesRoot, packagePath, version))
+	require.NoDirExists(t, CoordinatePath(agentRoot, packagePath, version))
 }
 
 func TestRepositoryTransactionReplacesHealthyProjectionAndRollsBackOrFinalizes(t *testing.T) {
-	modulePath, version := "github.com/example/skills", "v1.0.0"
-	archive, err := protocolartifact.BuildModule(modulePath, version, []protocolartifact.Entry{
+	packagePath, version := "github.com/example/skills", "v1.0.0"
+	archive, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{
 		{Path: "SKILL.md", Contents: []byte("root"), Mode: 0o644},
 		{Path: "skills/design/SKILL.md", Contents: []byte("design"), Mode: 0o644},
 		{Path: "skills/review/SKILL.md", Contents: []byte("review"), Mode: 0o644},
 		{Path: "runtime/shared.txt", Contents: []byte("shared"), Mode: 0o644},
 	})
 	require.NoError(t, err)
-	sum, err := protocolartifact.ModuleSum(archive, modulePath, version)
+	sum, err := protocolartifact.PackageSum(archive, packagePath, version)
 	require.NoError(t, err)
-	modulesRoot, codexRoot, zedRoot := filepath.Join(t.TempDir(), "modules"), filepath.Join(t.TempDir(), "codex"), filepath.Join(t.TempDir(), "zed")
+	packagesRoot, codexRoot, zedRoot := filepath.Join(t.TempDir(), "packages"), filepath.Join(t.TempDir(), "codex"), filepath.Join(t.TempDir(), "zed")
 
 	initial, err := Prepare(Options{
-		ModulesRoot: modulesRoot, ModulePath: modulePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
 		Members:     []string{".", "skills/design", "skills/review"},
 		Projections: []Projection{{Agent: "codex", Root: codexRoot, Selected: []string{"skills/design"}}},
 	})
@@ -147,7 +147,7 @@ func TestRepositoryTransactionReplacesHealthyProjectionAndRollsBackOrFinalizes(t
 	require.NoError(t, initial.Finalize())
 
 	expandedOptions := Options{
-		ModulesRoot: modulesRoot, ModulePath: modulePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
 		Members: []string{".", "skills/design", "skills/review"},
 		Projections: []Projection{
 			{Agent: "codex", Root: codexRoot, PreviousSelected: []string{"skills/design"}, Selected: []string{".", "skills/design"}},
@@ -157,8 +157,8 @@ func TestRepositoryTransactionReplacesHealthyProjectionAndRollsBackOrFinalizes(t
 	expanded, err := Prepare(expandedOptions)
 	require.NoError(t, err)
 	require.NoError(t, expanded.Commit())
-	codexProjection := CoordinatePath(codexRoot, modulePath, version)
-	zedProjection := CoordinatePath(zedRoot, modulePath, version)
+	codexProjection := CoordinatePath(codexRoot, packagePath, version)
+	zedProjection := CoordinatePath(zedRoot, packagePath, version)
 	require.FileExists(t, filepath.Join(codexProjection, "SKILL.md"))
 	require.FileExists(t, filepath.Join(zedProjection, "SKILL.md"))
 	require.FileExists(t, filepath.Join(codexProjection, "runtime", "shared.txt"))
@@ -177,7 +177,7 @@ func TestRepositoryTransactionReplacesHealthyProjectionAndRollsBackOrFinalizes(t
 
 	require.NoError(t, os.WriteFile(filepath.Join(codexProjection, "runtime", "shared.txt"), []byte("user change"), 0o644))
 	_, err = Prepare(Options{
-		ModulesRoot: modulesRoot, ModulePath: modulePath, Version: version, Archive: archive, Sum: sum,
+		PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
 		Members:     []string{".", "skills/design", "skills/review"},
 		Projections: []Projection{{Agent: "codex", Root: codexRoot, PreviousSelected: []string{".", "skills/design"}, Selected: []string{".", "skills/design", "skills/review"}}},
 	})
@@ -187,65 +187,65 @@ func TestRepositoryTransactionReplacesHealthyProjectionAndRollsBackOrFinalizes(t
 	require.Equal(t, "user change", string(contents))
 }
 
-func TestReadVerifiedModuleRebuildsArtifactAndRejectsModification(t *testing.T) {
-	modulePath, version := "github.com/example/skills", "v1.0.0"
-	archive, err := protocolartifact.BuildModule(modulePath, version, []protocolartifact.Entry{
+func TestReadVerifiedPackageRebuildsArtifactAndRejectsModification(t *testing.T) {
+	packagePath, version := "github.com/example/skills", "v1.0.0"
+	archive, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{
 		{Path: "SKILL.md", Contents: []byte("root"), Mode: 0o644},
 		{Path: "skills/design/SKILL.md", Contents: []byte("design"), Mode: 0o644},
 		{Path: "runtime/tool.sh", Contents: []byte("#!/bin/sh\n"), Mode: 0o755},
 	})
 	require.NoError(t, err)
-	sum, err := protocolartifact.ModuleSum(archive, modulePath, version)
+	sum, err := protocolartifact.PackageSum(archive, packagePath, version)
 	require.NoError(t, err)
-	modulesRoot, agentRoot := filepath.Join(t.TempDir(), "modules"), filepath.Join(t.TempDir(), "agent")
-	transaction, err := Prepare(Options{ModulesRoot: modulesRoot, ModulePath: modulePath, Version: version, Archive: archive, Sum: sum,
+	packagesRoot, agentRoot := filepath.Join(t.TempDir(), "packages"), filepath.Join(t.TempDir(), "agent")
+	transaction, err := Prepare(Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
 		Members: []string{".", "skills/design"}, Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"."}}}})
 	require.NoError(t, err)
 	require.NoError(t, transaction.Commit())
 	require.NoError(t, transaction.Finalize())
 
-	rebuilt, err := ReadVerifiedModule(modulesRoot, modulePath, version, sum)
+	rebuilt, err := ReadVerifiedPackage(packagesRoot, packagePath, version, sum)
 	require.NoError(t, err)
-	rebuiltSum, err := protocolartifact.ModuleSum(rebuilt, modulePath, version)
+	rebuiltSum, err := protocolartifact.PackageSum(rebuilt, packagePath, version)
 	require.NoError(t, err)
 	require.Equal(t, sum, rebuiltSum)
 
-	moduleStore := CoordinatePath(modulesRoot, modulePath, version)
-	require.NoError(t, os.WriteFile(filepath.Join(moduleStore, "runtime", "tool.sh"), []byte("modified"), 0o755))
-	_, err = ReadVerifiedModule(modulesRoot, modulePath, version, sum)
+	packageStore := CoordinatePath(packagesRoot, packagePath, version)
+	require.NoError(t, os.WriteFile(filepath.Join(packageStore, "runtime", "tool.sh"), []byte("modified"), 0o755))
+	_, err = ReadVerifiedPackage(packagesRoot, packagePath, version, sum)
 	require.ErrorContains(t, err, "Local Modification")
 }
 
 func TestRepositoryTransactionRemovesHealthyProjectionWithRollbackAndFinalization(t *testing.T) {
-	modulePath, version := "github.com/example/skills", "v1.0.0"
-	archive, err := protocolartifact.BuildModule(modulePath, version, []protocolartifact.Entry{{Path: "SKILL.md", Contents: []byte("root"), Mode: 0o644}})
+	packagePath, version := "github.com/example/skills", "v1.0.0"
+	archive, err := protocolartifact.BuildPackage(packagePath, version, []protocolartifact.Entry{{Path: "SKILL.md", Contents: []byte("root"), Mode: 0o644}})
 	require.NoError(t, err)
-	sum, err := protocolartifact.ModuleSum(archive, modulePath, version)
+	sum, err := protocolartifact.PackageSum(archive, packagePath, version)
 	require.NoError(t, err)
-	modulesRoot, agentRoot := filepath.Join(t.TempDir(), "modules"), filepath.Join(t.TempDir(), "agent")
-	initial, err := Prepare(Options{ModulesRoot: modulesRoot, ModulePath: modulePath, Version: version, Archive: archive, Sum: sum,
+	packagesRoot, agentRoot := filepath.Join(t.TempDir(), "packages"), filepath.Join(t.TempDir(), "agent")
+	initial, err := Prepare(Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
 		Members: []string{"."}, Projections: []Projection{{Agent: "codex", Root: agentRoot, Selected: []string{"."}}}})
 	require.NoError(t, err)
 	require.NoError(t, initial.Commit())
 	require.NoError(t, initial.Finalize())
-	target := CoordinatePath(agentRoot, modulePath, version)
+	target := CoordinatePath(agentRoot, packagePath, version)
 
-	removalOptions := Options{ModulesRoot: modulesRoot, ModulePath: modulePath, Version: version, Archive: archive, Sum: sum,
-		Members: []string{"."}, RemovedProjections: []Projection{{Agent: "codex", Root: agentRoot, PreviousSelected: []string{"."}}}, RemoveModule: true}
-	moduleStore := CoordinatePath(modulesRoot, modulePath, version)
+	removalOptions := Options{PackagesRoot: packagesRoot, PackagePath: packagePath, Version: version, Archive: archive, Sum: sum,
+		Members: []string{"."}, RemovedProjections: []Projection{{Agent: "codex", Root: agentRoot, PreviousSelected: []string{"."}}}, RemovePackage: true}
+	packageStore := CoordinatePath(packagesRoot, packagePath, version)
 	removal, err := Prepare(removalOptions)
 	require.NoError(t, err)
 	require.NoError(t, removal.Commit())
 	require.NoDirExists(t, target)
-	require.NoDirExists(t, moduleStore)
+	require.NoDirExists(t, packageStore)
 	require.NoError(t, removal.Rollback())
 	require.FileExists(t, filepath.Join(target, "SKILL.md"))
-	require.FileExists(t, filepath.Join(moduleStore, "SKILL.md"))
+	require.FileExists(t, filepath.Join(packageStore, "SKILL.md"))
 
 	removal, err = Prepare(removalOptions)
 	require.NoError(t, err)
 	require.NoError(t, removal.Commit())
 	require.NoError(t, removal.Finalize())
 	require.NoDirExists(t, target)
-	require.NoDirExists(t, moduleStore)
+	require.NoDirExists(t, packageStore)
 }

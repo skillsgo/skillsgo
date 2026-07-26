@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on one canonical Repository input, Repository version metadata/ZIP resources, deterministic name-or-path Skill selection, explicit Agent selection, strict Workspace state, Agent Adapter roots, prepared Scope Module Store transactions, and the Repository mutation coordinator.
- * [OUTPUT]: Provides exact Repository add for Workspace or User scope with one verified download, ordinary-file Module Store/Projections, coordinated YAML/Lock persistence and rollback, idempotency, and a stable Repository-install machine result.
+ * [INPUT]: Depends on one canonical Repository input, Repository version metadata/ZIP resources, deterministic name-or-path Skill selection, explicit Agent selection, strict Workspace state, Agent Adapter roots, prepared Scope Package Store transactions, and the Repository mutation coordinator.
+ * [OUTPUT]: Provides exact Repository add for Workspace or User scope with one verified download, ordinary-file Package Store/Projections, coordinated YAML/Lock persistence and rollback, idempotency, and a stable Repository-install machine result.
  * [POS]: Serves as the Repository installation orchestration slice behind the public `skillsgo add` command.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,7 +18,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
-	"github.com/skillsgo/skillsgo/cli/internal/modulestore"
+	"github.com/skillsgo/skillsgo/cli/internal/packagestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/repositorymutation"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
@@ -41,7 +41,7 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	if err != nil {
 		return err
 	}
-	resource, err := client.FetchModuleWithProgress(cmd.Context(), reference.ModulePath, reference.Version, nil)
+	resource, err := client.FetchPackageWithProgress(cmd.Context(), reference.PackagePath, reference.Version, nil)
 	if err != nil {
 		return err
 	}
@@ -60,13 +60,13 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 		return err
 	}
 	declarationRoot := workspaceRoot
-	modulesRoot := filepath.Join(workspaceRoot, ".skillsgo", "modules")
+	packagesRoot := filepath.Join(workspaceRoot, ".skillsgo", "packages")
 	infoRoot := filepath.Join(workspaceRoot, ".skillsgo", "info")
 	agentScope := agent.ScopeProject
 	if scope == install.ScopeGlobal {
 		declarationRoot = project.GlobalDeclarationRoot(home)
 		stateRoot := project.GlobalStateRoot(home)
-		modulesRoot = filepath.Join(stateRoot, "modules")
+		packagesRoot = filepath.Join(stateRoot, "packages")
 		infoRoot = filepath.Join(stateRoot, "info")
 		agentScope = agent.ScopeGlobal
 	}
@@ -74,14 +74,14 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	if err != nil {
 		return err
 	}
-	existing, exists := manifest.Dependencies[reference.ModulePath]
+	existing, exists := manifest.Dependencies[reference.PackagePath]
 	if exists && existing.Version != resource.Info.Version {
-		return fmt.Errorf("Repository %s is already locked at %s; use update instead of add", reference.ModulePath, existing.Version)
+		return fmt.Errorf("Repository %s is already locked at %s; use update instead of add", reference.PackagePath, existing.Version)
 	}
-	if locked, ok := lock.Dependencies[reference.ModulePath]; ok && (locked.Version != resource.Info.Version || locked.Sum != resource.Info.Sum) {
-		return fmt.Errorf("Dependency Lock conflicts with verified Repository %s@%s", reference.ModulePath, resource.Info.Version)
+	if locked, ok := lock.Dependencies[reference.PackagePath]; ok && (locked.Version != resource.Info.Version || locked.Sum != resource.Info.Sum) {
+		return fmt.Errorf("Dependency Lock conflicts with verified Repository %s@%s", reference.PackagePath, resource.Info.Version)
 	}
-	dependency := project.ModuleDependency{Version: resource.Info.Version, Skills: selected, Agents: agentIDs}
+	dependency := project.PackageDependency{Version: resource.Info.Version, Skills: selected, Agents: agentIDs}
 	if exists {
 		dependency.Skills = mergeStrings(existing.Skills, dependency.Skills)
 		dependency.Agents = mergeStrings(existing.Agents, dependency.Agents)
@@ -103,21 +103,21 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	if err != nil {
 		return err
 	}
-	transaction, err := modulestore.Prepare(modulestore.Options{
-		ModulesRoot: modulesRoot, ModulePath: reference.ModulePath, Version: resource.Info.Version,
+	transaction, err := packagestore.Prepare(packagestore.Options{
+		PackagesRoot: packagesRoot, PackagePath: reference.PackagePath, Version: resource.Info.Version,
 		Archive: resource.ZIP, Sum: resource.Info.Sum, Members: allMembers, Projections: projections,
 	})
 	if err != nil {
 		return err
 	}
-	manifest.Dependencies[reference.ModulePath] = dependency
-	lock.Dependencies[reference.ModulePath] = project.LockedModule{Version: resource.Info.Version, Sum: resource.Info.Sum}
+	manifest.Dependencies[reference.PackagePath] = dependency
+	lock.Dependencies[reference.PackagePath] = project.LockedPackage{Version: resource.Info.Version, Sum: resource.Info.Sum}
 	if err := (repositorymutation.Plan{
 		Transactions: []repositorymutation.Transaction{transaction},
-		ImmutableInfo: []repositorymutation.ImmutableInfo{{Cache: infocache.Cache{Root: infoRoot}, ModulePath: reference.ModulePath,
-			Version: resource.Info.Version, Kind: "module.info", Bytes: resource.InfoBytes}},
+		ImmutableInfo: []repositorymutation.ImmutableInfo{{Cache: infocache.Cache{Root: infoRoot}, PackagePath: reference.PackagePath,
+			Version: resource.Info.Version, Kind: "package.info", Bytes: resource.InfoBytes}},
 		Workspace: &repositorymutation.WorkspaceState{Root: declarationRoot, Manifest: manifest, Lock: lock},
-		Operation: "Module installation",
+		Operation: "Package installation",
 	}).Commit(); err != nil {
 		return err
 	}
@@ -127,7 +127,7 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 		member, ok := hub.SelectVersionSkill(selector, resource.Members)
 		if ok && !reportedPaths[member.Info.Path] {
 			reportedPaths[member.Info.Path] = true
-			reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{ModulePath: reference.ModulePath, SkillName: member.Info.Name, SkillPath: member.Info.Path, Version: resource.Info.Version, Agents: dependency.Agents, Scope: scope})
+			reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{PackagePath: reference.PackagePath, SkillName: member.Info.Name, SkillPath: member.Info.Path, Version: resource.Info.Version, Agents: dependency.Agents, Scope: scope})
 		}
 	}
 	type projectionResult struct {
@@ -141,31 +141,31 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	type result struct {
 		SchemaVersion int                `json:"schemaVersion"`
 		Phase         string             `json:"phase"`
-		ModulePath    string             `json:"modulePath"`
+		PackagePath   string             `json:"packagePath"`
 		Version       string             `json:"version"`
 		Sum           string             `json:"sum"`
 		Skills        []string           `json:"skills"`
 		Agents        []string           `json:"agents"`
-		ModuleDir     string             `json:"moduleDir"`
+		PackageDir    string             `json:"packageDir"`
 		Projections   []projectionResult `json:"projections"`
 		Workspace     workspaceResult    `json:"workspace"`
 	}
 	projectionResults := make([]projectionResult, 0, len(projections))
 	for _, projection := range projections {
-		projectionResults = append(projectionResults, projectionResult{Agents: strings.Split(projection.Agent, ","), Path: modulestore.CoordinatePath(projection.Root, reference.ModulePath, resource.Info.Version)})
+		projectionResults = append(projectionResults, projectionResult{Agents: strings.Split(projection.Agent, ","), Path: packagestore.CoordinatePath(projection.Root, reference.PackagePath, resource.Info.Version)})
 	}
-	response := result{SchemaVersion: 1, Phase: "module-install", ModulePath: reference.ModulePath, Version: resource.Info.Version, Sum: resource.Info.Sum,
-		Skills: dependency.Skills, Agents: dependency.Agents, ModuleDir: modulestore.CoordinatePath(modulesRoot, reference.ModulePath, resource.Info.Version), Projections: projectionResults,
+	response := result{SchemaVersion: 1, Phase: "package-install", PackagePath: reference.PackagePath, Version: resource.Info.Version, Sum: resource.Info.Sum,
+		Skills: dependency.Skills, Agents: dependency.Agents, PackageDir: packagestore.CoordinatePath(packagesRoot, reference.PackagePath, resource.Info.Version), Projections: projectionResults,
 		Workspace: workspaceResult{Manifest: filepath.Join(declarationRoot, project.WorkspaceManifestName), Lock: filepath.Join(declarationRoot, project.DependencyLockName)}}
 	if options.output == "json" {
 		return json.NewEncoder(cmd.OutOrStdout()).Encode(response)
 	}
-	fmt.Fprintf(cmd.OutOrStdout(), "✓ %s %s (%d Skills, %d Agents)\n", response.ModulePath, response.Version, len(response.Skills), len(response.Agents))
+	fmt.Fprintf(cmd.OutOrStdout(), "✓ %s %s (%d Skills, %d Agents)\n", response.PackagePath, response.Version, len(response.Skills), len(response.Agents))
 	return nil
 }
 
-func repositoryProjections(catalog *agent.Catalog, agentIDs, previousAgents, previousSkills, selected []string, scope agent.Scope, workspaceRoot string) ([]modulestore.Projection, error) {
-	projections := make([]modulestore.Projection, 0, len(agentIDs))
+func repositoryProjections(catalog *agent.Catalog, agentIDs, previousAgents, previousSkills, selected []string, scope agent.Scope, workspaceRoot string) ([]packagestore.Projection, error) {
+	projections := make([]packagestore.Projection, 0, len(agentIDs))
 	projectionByRoot := make(map[string]int, len(agentIDs))
 	for _, agentID := range agentIDs {
 		roots, ok := catalog.SkillRoots(agentID, scope, workspaceRoot)
@@ -180,7 +180,7 @@ func repositoryProjections(catalog *agent.Catalog, agentIDs, previousAgents, pre
 			}
 			continue
 		}
-		projection := modulestore.Projection{Agent: agentID, Root: rootKey, Selected: selected}
+		projection := packagestore.Projection{Agent: agentID, Root: rootKey, Selected: selected}
 		if containsString(previousAgents, agentID) {
 			projection.PreviousSelected = append([]string(nil), previousSkills...)
 		}

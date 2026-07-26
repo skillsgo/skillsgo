@@ -30,9 +30,10 @@ func newListCommand(catalog *agent.Catalog) *cobra.Command {
 	var projects []string
 	var output string
 	cmd := &cobra.Command{
-		Use:   "list",
-		Short: appi18n.T("list.short"),
-		Args:  cobra.NoArgs,
+		Use:     "list",
+		Short:   appi18n.T("list.short"),
+		Args:    cobra.NoArgs,
+		Example: "  skillsgo list\n  skillsgo list --global\n  skillsgo list --project ./my-project\n  skillsgo list --global --project ./my-project --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			if !includeGlobal && len(projects) == 0 {
 				cwd, err := os.Getwd()

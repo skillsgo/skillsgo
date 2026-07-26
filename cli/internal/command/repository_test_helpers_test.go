@@ -14,12 +14,12 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 )
 
-func commandTestModuleInfo(t *testing.T, modulePath, version, commit string, members ...hub.Info) []byte {
+func commandTestPackageInfo(t *testing.T, packagePath, version, commit string, members ...hub.Info) []byte {
 	t.Helper()
-	encoded, err := json.Marshal(hub.ModuleInfo{
+	encoded, err := json.Marshal(hub.PackageInfo{
 		SchemaVersion: 1,
-		Kind:          "Module",
-		ModulePath:    modulePath,
+		Kind:          "Package",
+		PackagePath:   packagePath,
 		Version:       version,
 		Time:          time.Unix(1, 0).UTC(),
 		Sum:           "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",

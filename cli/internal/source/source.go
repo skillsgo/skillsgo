@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on public Git HTTP(S) Repository URLs, equivalent GitHub aliases, source@Selector syntax, and the shared typed Version Query grammar.
  * [OUTPUT]: Provides canonical provider-aware Repository identity, unambiguous selector splitting outside URL authority, and reusable Repository ID plus add-time Selector validation.
- * [POS]: Serves as the CLI Repository ID normalization boundary used before Hub and Repository Module Store access.
+ * [POS]: Serves as the CLI Repository ID normalization boundary used before Hub and Repository Package Store access.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package source
@@ -11,13 +11,13 @@ import (
 	"net/url"
 	"strings"
 
-	protocolmodule "github.com/skillsgo/skillsgo/protocol/module"
+	protocolpackage "github.com/skillsgo/skillsgo/protocol/packageidentity"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 )
 
 type Reference struct {
-	ModulePath string
-	Version    string
+	PackagePath string
+	Version     string
 }
 
 func Parse(raw string) (Reference, error) {
@@ -50,8 +50,8 @@ func Parse(raw string) (Reference, error) {
 			if requestedVersion == "latest" {
 				version = parts[3]
 			}
-			modulePath := host + "/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
-			return checkedReference(modulePath, version)
+			packagePath := host + "/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
+			return checkedReference(packagePath, version)
 		}
 		parts[len(parts)-1] = strings.TrimSuffix(parts[len(parts)-1], ".git")
 		return checkedReference(host+"/"+strings.Join(parts, "/"), version)
@@ -65,7 +65,7 @@ func Parse(raw string) (Reference, error) {
 		return checkedGitHubReference(parts, requestedVersion)
 	}
 	if len(parts) < 2 {
-		return Reference{}, fmt.Errorf("source must be a full Git host coordinate or GitHub owner/repo shorthand")
+		return Reference{}, fmt.Errorf("module must be a full Git host coordinate or GitHub owner/repo shorthand")
 	}
 	parts[len(parts)-1] = strings.TrimSuffix(parts[len(parts)-1], ".git")
 	return checkedReference(strings.Join(parts, "/"), requestedVersion)
@@ -89,14 +89,14 @@ func checkedGitHubReference(parts []string, version string) (Reference, error) {
 	if len(parts) != 2 {
 		return Reference{}, fmt.Errorf("GitHub source must identify exactly one owner/repository")
 	}
-	modulePath := "github.com/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
-	return checkedReference(modulePath, version)
+	packagePath := "github.com/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
+	return checkedReference(packagePath, version)
 }
 
-func ValidateModulePath(modulePath string) error {
-	parsed, err := protocolmodule.ParsePath(modulePath)
-	if err != nil || parsed.String() != modulePath {
-		return fmt.Errorf("invalid canonical Repository ID %q", modulePath)
+func ValidatePackagePath(packagePath string) error {
+	parsed, err := protocolpackage.ParsePath(packagePath)
+	if err != nil || parsed.String() != packagePath {
+		return fmt.Errorf("invalid canonical Repository ID %q", packagePath)
 	}
 	return nil
 }
@@ -104,9 +104,9 @@ func ValidateModulePath(modulePath string) error {
 // ValidateExternalSkillID validates path-shaped identities imported from
 // third-party lock formats. It is not accepted by SkillsGo commands or Hub APIs.
 func ValidateExternalSkillID(skillID string) error {
-	modulePath, memberPath, found := strings.Cut(skillID, "/-/")
-	parsed, err := protocolmodule.ParsePath(modulePath)
-	if err != nil || parsed.String() != modulePath {
+	packagePath, memberPath, found := strings.Cut(skillID, "/-/")
+	parsed, err := protocolpackage.ParsePath(packagePath)
+	if err != nil || parsed.String() != packagePath {
 		return fmt.Errorf("invalid external Skill identity %q", skillID)
 	}
 	if !found {
@@ -125,28 +125,28 @@ func ValidateExternalSkillID(skillID string) error {
 	return nil
 }
 
-func checkedReference(modulePath, version string) (Reference, error) {
-	modulePath = normalizeModulePath(modulePath)
-	if err := ValidateModulePath(modulePath); err != nil {
+func checkedReference(packagePath, version string) (Reference, error) {
+	packagePath = normalizePackagePath(packagePath)
+	if err := ValidatePackagePath(packagePath); err != nil {
 		return Reference{}, err
 	}
 	if err := ValidatePublicVersion(version); err != nil {
 		return Reference{}, err
 	}
-	return Reference{ModulePath: modulePath, Version: version}, nil
+	return Reference{PackagePath: packagePath, Version: version}, nil
 }
 
-// ValidatePublicVersion accepts the Go Module Version Query grammar plus head.
+// ValidatePublicVersion accepts the Go Package Version Query grammar plus head.
 func ValidatePublicVersion(version string) error {
 	_, err := protocolversion.ParseQuery(version)
 	return err
 }
 
-func normalizeModulePath(modulePath string) string {
-	if parsed, err := protocolmodule.ParsePath(modulePath); err == nil {
+func normalizePackagePath(packagePath string) string {
+	if parsed, err := protocolpackage.ParsePath(packagePath); err == nil {
 		return parsed.String()
 	}
-	return modulePath
+	return packagePath
 }
 
 // ValidateVersion confines a source or resolved version to one URL path segment.
