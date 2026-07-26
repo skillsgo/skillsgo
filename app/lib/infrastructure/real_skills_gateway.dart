@@ -53,7 +53,7 @@ const _addedProjectsKey = 'added_projects_v1';
 const _onboardingCompletedKey = 'onboarding_completed_v1';
 const _onboardingStepKey = 'onboarding_step_v1';
 const _startupHandshakeSchemaVersion = 1;
-const _appProtocolVersion = 11;
+const _appProtocolVersion = 15;
 
 Uri _originUri(String origin) {
   final value = origin.trim();

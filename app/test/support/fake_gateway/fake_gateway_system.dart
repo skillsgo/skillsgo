@@ -115,7 +115,7 @@ mixin FakeGatewaySystem on FakeSkillsGatewayCore {
 
   @override
   Future<List<List<SkillSummary>>> findSources(
-    List<ModuleFindQuery> requests, {
+    List<PackageFindQuery> requests, {
     int limit = 10,
   }) async {
     queries.addAll(requests.map((request) => request.name));
@@ -125,8 +125,8 @@ mixin FakeGatewaySystem on FakeSkillsGatewayCore {
           (request) => searchResults
               .where(
                 (skill) =>
-                    request.modulePath.isEmpty ||
-                    skill.modulePath == request.modulePath,
+                    request.packagePath.isEmpty ||
+                    skill.packagePath == request.packagePath,
               )
               .take(limit)
               .toList(growable: false),

@@ -36,7 +36,7 @@ skillsgo/
 ```
 
 - The App invokes the bundled CLI for every Hub and local operation. In Cloud mode it may call the independently deployed SkillsGo Cloud origin declared by `skillsgo hub info` for Cloud-owned ranking reads; it never calls Hub HTTP directly.
-- The CLI owns local filesystem mutations, Agent Adapters, Scope Module Stores, Module Projections, Installation Targets, Workspace Manifests, and Workspace Locks.
+- The CLI owns local filesystem mutations, Agent Adapters, Scope Package Stores, Package Projections, Installation Targets, Workspace Manifests, and Workspace Locks.
 - The Hub owns public Skill identity, immutable artifacts, metadata, search, ordered batch card hydration, and minimal deployment discovery. The separate `skillsgo-cloud` service owns install-event aggregation and rankings in an independent database and composes ranking responses through uncached Hub batch reads.
 - The Protocol workspace owns dependency-light executable contracts that the CLI and Hub must interpret identically; it owns no transport or product orchestration.
 - `CONTEXT-MAP.md` and the context glossaries define domain language. GEB maps define structural ownership. Neither substitutes for the other.
@@ -183,7 +183,7 @@ Do not mechanically add F3 maps or F4 headers across the repository. Migrate on 
 
 - **FATAL-001 — Isolated code change**: code changed without checking the documentation loop.
 - **FATAL-002 — Missing on-touch F4**: a touched semantic file lacks a File Contract and is not exempt.
-- **FATAL-003 — Stale F3 inventory**: a listed file was moved, deleted, or repurposed without updating its Module Map.
+- **FATAL-003 — Stale F3 inventory**: a listed file was moved, deleted, or repurposed without updating its Package Map.
 - **FATAL-004 — Unmapped workspace**: a maintained `pubspec.yaml` or `go.mod` was added without an F2 map and owning F1 update.
 - **SEVERE-001 — Stale contract**: F4 no longer describes imports, exports, role, or consumers.
 - **SEVERE-002 — Broken parent chain**: an F2/F3 map cannot reach its parent `AGENTS.md`.

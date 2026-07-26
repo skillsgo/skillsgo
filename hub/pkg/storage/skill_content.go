@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on canonical immutable Module coordinates, validated relative Skill paths, and bounded UTF-8 SKILL.md bytes.
- * [OUTPUT]: Defines backend-neutral create-only Skill content persistence and direct reads without opening Module ZIP artifacts.
- * [POS]: Serves as the immutable SKILL.md sidecar boundary beside Module Info and ZIP storage.
+ * [INPUT]: Depends on canonical immutable Package coordinates, validated relative Skill paths, and bounded UTF-8 SKILL.md bytes.
+ * [OUTPUT]: Defines backend-neutral create-only Skill content persistence and direct reads without opening Package ZIP artifacts.
+ * [POS]: Serves as the immutable SKILL.md sidecar boundary beside Package Info and ZIP storage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package storage

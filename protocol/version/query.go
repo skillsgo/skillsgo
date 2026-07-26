@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on user-supplied add-time Module Version Queries and canonical immutable version recognition.
- * [OUTPUT]: Provides the Go Module Version Query grammar for immutable versions, semantic prefixes/comparisons, latest, and Git revisions.
+ * [INPUT]: Depends on user-supplied add-time Package Version Queries and canonical immutable version recognition.
+ * [OUTPUT]: Provides the Go Package Version Query grammar for immutable versions, semantic prefixes/comparisons, latest, and Git revisions.
  * [POS]: Serves as the shared movable-versus-immutable validation boundary for CLI and Hub without performing VCS resolution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -50,7 +50,7 @@ func ParseQuery(value string) (Query, error) {
 	case "latest":
 		return Query{Kind: QueryLatest, Value: value}, nil
 	case "release", "head", "upgrade", "patch", "none":
-		return Query{}, fmt.Errorf("Version Query %q is unsupported; use latest, a branch name, or another Go Module Query", value)
+		return Query{}, fmt.Errorf("Version Query %q is unsupported; use latest, a branch name, or another Go Package Query", value)
 	}
 	if isSemanticComparison(value) {
 		return Query{Kind: QueryCompare, Value: value}, nil
@@ -62,7 +62,7 @@ func ParseQuery(value string) (Query, error) {
 		return Query{}, fmt.Errorf("commit Version Query %q must contain 7 to 40 hexadecimal characters", value)
 	}
 	if err := validateGitBranch(value); err != nil {
-		return Query{}, fmt.Errorf("invalid Module Version Query %q: %w", value, err)
+		return Query{}, fmt.Errorf("invalid Package Version Query %q: %w", value, err)
 	}
 	return Query{Kind: QueryBranch, Value: value}, nil
 }

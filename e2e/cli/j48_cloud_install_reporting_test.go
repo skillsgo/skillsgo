@@ -30,7 +30,7 @@ func TestJ48CloudInstallReporting(t *testing.T) {
 	require.Equal(t, "http://127.0.0.1:3100", deployment.Cloud)
 
 	add := execCLI(t, ctx, container,
-		"add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName,
+		"add", testPackagePath+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 
 		"--yes",
@@ -44,7 +44,7 @@ func TestJ48CloudInstallReporting(t *testing.T) {
 	var events []cloud.InstallEvent
 	require.NoError(t, json.Unmarshal([]byte(eventsResult.output), &events), eventsResult.output)
 	require.Len(t, events, 1)
-	require.Equal(t, testModulePath, events[0].ModulePath)
+	require.Equal(t, testPackagePath, events[0].PackagePath)
 	require.Equal(t, testSkillName, events[0].SkillName)
 	require.Equal(t, "skills/alpha", events[0].SkillPath)
 	require.Equal(t, testSkillVersion, events[0].Version)

@@ -28,7 +28,7 @@ func (s *storageImpl) Catalog(ctx context.Context, token string, pageSize int) (
 	_, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
 
-	fromModule, fromVersion, err := modVerFromToken(token)
+	fromPackage, fromVersion, err := modVerFromToken(token)
 	if err != nil {
 		return nil, "", errors.E(op, err, errors.KindBadRequest)
 	}
@@ -49,7 +49,7 @@ func (s *storageImpl) Catalog(ctx context.Context, token string, pageSize int) (
 			module := filepath.Clean(m)
 			module = strings.ReplaceAll(module, string(os.PathSeparator), "/")
 
-			if fromModule != "" && module < fromModule { // it is ok to land on the same module
+			if fromPackage != "" && module < fromPackage { // it is ok to land on the same module
 				return nil
 			}
 

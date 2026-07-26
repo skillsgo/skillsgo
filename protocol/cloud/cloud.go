@@ -43,19 +43,19 @@ func (kind RankingKind) Valid() bool {
 func (kind RankingKind) Path() string { return RankingsPath + string(kind) }
 
 type InstallEvent struct {
-	EventID    string    `json:"eventId"`
-	ModulePath string    `json:"modulePath"`
-	SkillName  string    `json:"skillName"`
-	SkillPath  string    `json:"skillPath"`
-	Version    string    `json:"version"`
-	Agents     []string  `json:"agents"`
-	Scope      Scope     `json:"scope"`
-	CLIVersion string    `json:"cliVersion"`
-	OccurredAt time.Time `json:"occurredAt"`
+	EventID     string    `json:"eventId"`
+	PackagePath string    `json:"packagePath"`
+	SkillName   string    `json:"skillName"`
+	SkillPath   string    `json:"skillPath"`
+	Version     string    `json:"version"`
+	Agents      []string  `json:"agents"`
+	Scope       Scope     `json:"scope"`
+	CLIVersion  string    `json:"cliVersion"`
+	OccurredAt  time.Time `json:"occurredAt"`
 }
 
 func (event InstallEvent) Validate(now time.Time) string {
-	if len(event.EventID) < 16 || len(event.EventID) > 128 || !skillname.Valid(event.SkillName) || !(api.SkillPathCoordinate{ModulePath: event.ModulePath, Path: event.SkillPath}).Valid() || strings.TrimSpace(event.Version) == "" {
+	if len(event.EventID) < 16 || len(event.EventID) > 128 || !skillname.Valid(event.SkillName) || !(api.SkillPathCoordinate{PackagePath: event.PackagePath, Path: event.SkillPath}).Valid() || strings.TrimSpace(event.Version) == "" {
 		return "invalid install event identity"
 	}
 	if !event.Scope.Valid() {
@@ -80,7 +80,7 @@ type Metric struct {
 }
 
 type RankingSkill struct {
-	ModulePath    string  `json:"modulePath"`
+	PackagePath   string  `json:"packagePath"`
 	Name          string  `json:"name"`
 	Description   string  `json:"description"`
 	ImageURL      *string `json:"imageUrl"`

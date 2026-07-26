@@ -74,7 +74,7 @@ abstract interface class SkillsGateway {
     BatchTakeoverScope scope,
   );
   Future<List<List<SkillSummary>>> findSources(
-    List<ModuleFindQuery> queries, {
+    List<PackageFindQuery> queries, {
     int limit = 10,
   });
   Future<SkillDetail> loadLocalDetail(InstalledSkill skill);
@@ -89,7 +89,7 @@ abstract interface class SkillsGateway {
     bool confirmRisk = false,
     bool allowCritical = false,
   });
-  Future<List<InstallationExecution>> installModuleTargets(
+  Future<List<InstallationExecution>> installPackageTargets(
     List<SkillSummary> skills,
     List<InstallationTargetSelection> selections, {
     bool confirmRisk = false,

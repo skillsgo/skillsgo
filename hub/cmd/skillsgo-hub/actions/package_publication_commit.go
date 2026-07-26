@@ -21,7 +21,7 @@ type modulePublicationCommit struct {
 	catalog   *catalog.Catalog
 }
 
-func newModulePublicationCommit(backend storage.Backend, metadata *catalog.Catalog) *modulePublicationCommit {
+func newPackagePublicationCommit(backend storage.Backend, metadata *catalog.Catalog) *modulePublicationCommit {
 	immutable := storage.WithImmutableWrites(backend)
 	contents, _ := immutable.(storage.SkillContentStore)
 	return &modulePublicationCommit{artifacts: immutable.(storage.ImmutableSaver), contents: contents, catalog: metadata}
@@ -34,17 +34,17 @@ type moduleSkillContent struct {
 
 func (commit *modulePublicationCommit) Publish(
 	ctx context.Context,
-	modulePath string,
-	version catalog.ModuleVersion,
+	packagePath string,
+	version catalog.PackageVersion,
 	archive, archiveMD5, releaseInfo []byte,
 	members []catalog.Skill,
 	skillContents []moduleSkillContent,
 	visibility catalog.PublicationVisibility,
 ) (bool, error) {
-	if err := catalog.ValidateModuleVersion(modulePath, version, members, visibility); err != nil {
+	if err := catalog.ValidatePackageVersion(packagePath, version, members, visibility); err != nil {
 		return false, err
 	}
-	created, err := commit.artifacts.PutIfAbsent(ctx, modulePath, version.Version, bytes.NewReader(archive), archiveMD5, releaseInfo)
+	created, err := commit.artifacts.PutIfAbsent(ctx, packagePath, version.Version, bytes.NewReader(archive), archiveMD5, releaseInfo)
 	if err != nil {
 		return false, err
 	}
@@ -52,11 +52,11 @@ func (commit *modulePublicationCommit) Publish(
 		return created, errors.New("Artifact storage does not support immutable Skill content")
 	}
 	for _, skillContent := range skillContents {
-		if _, err := commit.contents.PutSkillContentIfAbsent(ctx, modulePath, version.Version, skillContent.path, skillContent.content); err != nil {
+		if _, err := commit.contents.PutSkillContentIfAbsent(ctx, packagePath, version.Version, skillContent.path, skillContent.content); err != nil {
 			return created, err
 		}
 	}
-	if err := commit.catalog.PublishModuleVersionWithVisibility(ctx, modulePath, version, members, visibility); err != nil {
+	if err := commit.catalog.PublishPackageVersionWithVisibility(ctx, packagePath, version, members, visibility); err != nil {
 		// The immutable orphan is deliberately retained. Deleting here can race a
 		// concurrent publisher that has already made the same artifact visible.
 		return created, err

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on deterministic local Git histories and selected Go cmd/go pseudo-version, odd-Tag, and semantic-revision regression rules.
- * [OUTPUT]: Specifies a five-row pseudo-version generation matrix and four-row Tag/revision ambiguity matrix without importing Go Module path semantics.
+ * [OUTPUT]: Specifies a five-row pseudo-version generation matrix and four-row Tag/revision ambiguity matrix without importing Go Package path semantics.
  * [POS]: Serves as the focused Go-derived compatibility suite for SkillsGo Repository version resolution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -25,7 +25,7 @@ func TestGoDerivedPseudoVersionGenerationMatrix(t *testing.T) {
 		{name: "stable ancestor increments patch", tags: []string{"v1.0.0"}, wantBase: "v1.0.0"},
 		{name: "prerelease ancestor appends dot zero", tags: []string{"v1.1.0-pre"}, wantBase: "v1.1.0-pre"},
 		{name: "highest SemVer ancestor wins regardless of stability", tags: []string{"v1.9.0", "v2.0.0-beta.1"}, wantBase: "v2.0.0-beta.1"},
-		{name: "v2 ancestor does not require Module path suffix", tags: []string{"v2.2.10"}, wantBase: "v2.2.10"},
+		{name: "v2 ancestor does not require Package path suffix", tags: []string{"v2.2.10"}, wantBase: "v2.2.10"},
 	}
 
 	require.Len(t, tests, 5, "Go-derived pseudo-version generation row count")

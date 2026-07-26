@@ -50,7 +50,7 @@ void main() {
       path: '/Users/test/.codex/skills/action-demo',
       agents: ['codex'],
       targetCount: 1,
-      modulePath: 'github.com/test/skills',
+      packagePath: 'github.com/test/skills',
       versions: ['v1'],
       targets: [target],
     );

@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWorkspaceYAMLStrictModuleDependencyContract(t *testing.T) {
+func TestWorkspaceYAMLStrictPackageDependencyContract(t *testing.T) {
 	require.Equal(t, "skills-lock.yaml", DependencyLockName)
 	document := []byte(`dependencies:
   github.com/example/skills:
@@ -60,10 +60,10 @@ func TestWorkspaceYAMLRejectsAmbiguousOrIncompleteState(t *testing.T) {
 
 func TestWriteWorkspaceStatePublishesCanonicalManifestAndLock(t *testing.T) {
 	root := t.TempDir()
-	manifest := WorkspaceManifest{Dependencies: map[string]ModuleDependency{
+	manifest := WorkspaceManifest{Dependencies: map[string]PackageDependency{
 		"github.com/example/skills": {Version: "v1.2.3", Skills: []string{"root-skill", "design"}, Agents: []string{"zed", "codex"}},
 	}}
-	lock := DependencyLock{Dependencies: map[string]LockedModule{
+	lock := DependencyLock{Dependencies: map[string]LockedPackage{
 		"github.com/example/skills": {Version: "v1.2.3", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},
 	}}
 	require.NoError(t, WriteWorkspaceState(root, manifest, lock))
@@ -111,10 +111,10 @@ func TestFindWorkspaceRootUsesSkillsgoYAML(t *testing.T) {
 }
 
 func TestValidateWorkspaceStateRequiresExactRepositorySet(t *testing.T) {
-	manifest := WorkspaceManifest{Dependencies: map[string]ModuleDependency{
+	manifest := WorkspaceManifest{Dependencies: map[string]PackageDependency{
 		"github.com/example/skills": {Version: "v1.2.3", Skills: []string{"root-skill"}, Agents: []string{"codex"}},
 	}}
-	lock := DependencyLock{Dependencies: map[string]LockedModule{
+	lock := DependencyLock{Dependencies: map[string]LockedPackage{
 		"github.com/example/skills": {Version: "v1.2.3", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},
 		"github.com/example/extra":  {Version: "v1.0.0", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},
 	}}

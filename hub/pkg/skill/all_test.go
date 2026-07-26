@@ -23,6 +23,6 @@ func (m *SkillSuite) SetupTest() {
 	m.fs = afero.NewMemMapFs()
 }
 
-func TestModules(t *testing.T) {
+func TestPackages(t *testing.T) {
 	suite.Run(t, &SkillSuite{})
 }

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses an HTTP test Hub with hostile contract variants, transient GET responses, and deterministic artifact byte streams.
- * [OUTPUT]: Specifies product-API movable resolution followed by exact Module Version metadata/ZIP reads, direct immutable reads, typed member validation, bounded status retries, and monotonic download progress.
+ * [OUTPUT]: Specifies product-API movable resolution followed by exact Package Version metadata/ZIP reads, direct immutable reads, typed member validation, bounded status retries, and monotonic download progress.
  * [POS]: Serves as public Hub transport client contract coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -75,13 +75,13 @@ func TestProgressReaderReportsMonotonicBytes(t *testing.T) {
 	}
 }
 
-func TestModuleMovableRevisionUsesUnifiedCanonicalInfo(t *testing.T) {
+func TestPackageMovableRevisionUsesUnifiedCanonicalInfo(t *testing.T) {
 	repository, version := "github.com/example/untagged", "v0.0.0-20260718120000-abcdef123456"
 	requests := make([]string, 0, 1)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		requests = append(requests, request.Method+" "+request.URL.RequestURI())
 		if request.URL.EscapedPath() == "/api/v1/"+repository+"/versions/feature%2Fdeep" {
-			fmt.Fprintf(w, `{"schemaVersion":1,"kind":"Module","modulePath":%q,"version":%q,"time":"2026-07-18T12:00:00Z","sum":"h1:%s","archiveSize":1,"skills":[{"name":"root","path":"."}]}`, repository, version, strings.Repeat("A", 43)+"=")
+			fmt.Fprintf(w, `{"schemaVersion":1,"kind":"Package","packagePath":%q,"version":%q,"time":"2026-07-18T12:00:00Z","sum":"h1:%s","archiveSize":1,"skills":[{"name":"root","path":"."}]}`, repository, version, strings.Repeat("A", 43)+"=")
 		} else {
 			http.NotFound(w, request)
 		}
@@ -91,7 +91,7 @@ func TestModuleMovableRevisionUsesUnifiedCanonicalInfo(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resource, err := client.Module(t.Context(), repository, "feature/deep")
+	resource, err := client.Package(t.Context(), repository, "feature/deep")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,29 +101,29 @@ func TestModuleMovableRevisionUsesUnifiedCanonicalInfo(t *testing.T) {
 }
 
 func TestProxyEndpointEscapesRepositoryPathCase(t *testing.T) {
-	modulePath := "git.example.com/Example/Skills"
+	packagePath := "git.example.com/Example/Skills"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		if request.URL.EscapedPath() != "/api/v1/git.example.com/!example/!skills/versions/v1.2.3" {
 			t.Fatalf("unexpected escaped path %q", request.URL.EscapedPath())
 		}
-		fmt.Fprintf(w, `{"schemaVersion":1,"kind":"Module","modulePath":%q,"version":"v1.2.3","time":"2026-07-18T12:00:00Z","sum":"h1:%s","archiveSize":1,"skills":[{"name":"demo","path":"."}]}`, modulePath, strings.Repeat("A", 43)+"=")
+		fmt.Fprintf(w, `{"schemaVersion":1,"kind":"Package","packagePath":%q,"version":"v1.2.3","time":"2026-07-18T12:00:00Z","sum":"h1:%s","archiveSize":1,"skills":[{"name":"demo","path":"."}]}`, packagePath, strings.Repeat("A", 43)+"=")
 	}))
 	defer server.Close()
 	client, err := New(server.URL, server.Client())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := client.Module(t.Context(), modulePath, "v1.2.3"); err != nil {
+	if _, err := client.Package(t.Context(), packagePath, "v1.2.3"); err != nil {
 		t.Fatal(err)
 	}
 }
 
 func TestRepositoryUsesExactVersionInfoDirectly(t *testing.T) {
-	modulePath := "github.com/example/skills"
+	packagePath := "github.com/example/skills"
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
 		case "/api/v1/github.com/example/skills/versions/v1.5.19":
-			_, _ = w.Write([]byte(`{"schemaVersion":1,"kind":"Module","modulePath":"github.com/example/skills","version":"v1.5.19","time":"2026-07-18T12:00:00Z","sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","archiveSize":1,"skills":[{"name":"demo","path":"demo"}]}`))
+			_, _ = w.Write([]byte(`{"schemaVersion":1,"kind":"Package","packagePath":"github.com/example/skills","version":"v1.5.19","time":"2026-07-18T12:00:00Z","sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","archiveSize":1,"skills":[{"name":"demo","path":"demo"}]}`))
 		default:
 			http.NotFound(w, request)
 		}
@@ -133,7 +133,7 @@ func TestRepositoryUsesExactVersionInfoDirectly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resource, err := client.Module(t.Context(), modulePath, "v1.5.19")
+	resource, err := client.Package(t.Context(), packagePath, "v1.5.19")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,12 +142,12 @@ func TestRepositoryUsesExactVersionInfoDirectly(t *testing.T) {
 	}
 }
 
-func TestModuleInfoPreservesDuplicateNamesAtDistinctPaths(t *testing.T) {
-	modulePath := "github.com/example/skills"
-	info := protocolapi.ModuleInfo{SchemaVersion: 1, Kind: protocolapi.KindModule, ModulePath: modulePath,
+func TestPackageInfoPreservesDuplicateNamesAtDistinctPaths(t *testing.T) {
+	packagePath := "github.com/example/skills"
+	info := protocolapi.PackageInfo{SchemaVersion: 1, Kind: protocolapi.KindPackage, PackagePath: packagePath,
 		Version: "v1.0.0", Time: time.Unix(1, 0).UTC(),
 		Sum: "h1:" + strings.Repeat("A", 43) + "=", ArchiveSize: 1,
-		Skills: []protocolapi.ModuleSkill{
+		Skills: []protocolapi.PackageSkill{
 			{Name: "shared", Path: "one"},
 			{Name: "shared", Path: "two"},
 		},
@@ -156,7 +156,7 @@ func TestModuleInfoPreservesDuplicateNamesAtDistinctPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	resource, err := ParseModuleInfo(modulePath, encoded)
+	resource, err := ParsePackageInfo(packagePath, encoded)
 	if err != nil || len(resource.Members) != 2 {
 		t.Fatalf("duplicate-name members = %#v, %v", resource, err)
 	}

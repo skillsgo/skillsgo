@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Cobra, bounded single/file/stdin Find input, exact Module Path/Version/Skill Path coordinates, and the CLI-owned Hub client.
- * [OUTPUT]: Provides single and batch `find`, version-scoped `detail`, `hub info`, and `hub check` domain commands with Human-default and explicit JSON results.
+ * [INPUT]: Depends on Cobra, bounded single/file/stdin Find input, exact Package Path/Version/Skill Path coordinates, and the CLI-owned Hub client.
+ * [OUTPUT]: Provides single and batch `find`, `hub info`, `hub check`, and `hub check-update` domain commands with Human-default and explicit JSON results.
  * [POS]: Serves as the deep read-only product boundary that hides Hub routes and query parameters behind CLI domain language.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,6 +14,7 @@ import (
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
+	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	protocollocale "github.com/skillsgo/skillsgo/protocol/locale"
@@ -56,7 +57,7 @@ func writeFindHuman(cmd *cobra.Command, document []byte, batch bool) error {
 				continue
 			}
 			for _, skill := range candidates {
-				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "  %s  %s@%s  %s\n", skill.Name, skill.ModulePath, skill.Version, skill.Path); err != nil {
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "  %s  %s@%s  %s\n", skill.Name, skill.PackagePath, skill.Version, skill.Path); err != nil {
 					return err
 				}
 			}
@@ -75,7 +76,7 @@ func writeFindHuman(cmd *cobra.Command, document []byte, batch bool) error {
 		return err
 	}
 	for _, skill := range response.Skills {
-		if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s  %s@%s  %s\n", skill.Name, skill.ModulePath, skill.LatestVersion, skill.Path); err != nil {
+		if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s  %s@%s  %s\n", skill.Name, skill.PackagePath, skill.LatestVersion, skill.Path); err != nil {
 			return err
 		}
 		if skill.Description != "" {
@@ -88,12 +89,23 @@ func writeFindHuman(cmd *cobra.Command, document []byte, batch bool) error {
 }
 
 func newFindCommand() *cobra.Command {
-	var hubURL, contentLocale, modulePath, input, output string
+	var hubURL, contentLocale, packagePath, input, output string
 	var exactName bool
 	var page, perPage int
 	cmd := &cobra.Command{
 		Use:   "find <query>",
-		Short: "Find public Skills",
+		Short: appi18n.Pick("Find public Skills", "查找公开 Skill"),
+		Example: `  # Search across public Skills
+  skillsgo find typescript
+
+  # Find an exact Skill within one Package
+  skillsgo find setup-matt-pocock-skills --module github.com/mattpocock/skills --exact-name
+
+  # Read another result page
+  skillsgo find typescript --page 1 --per-page 50
+
+  # Run a batch machine query from stdin
+  skillsgo find --input - --output json < find-queries.json`,
 		Args: func(_ *cobra.Command, args []string) error {
 			if input == "" && len(args) != 1 {
 				return fmt.Errorf("find requires one query or --input")
@@ -119,7 +131,7 @@ func newFindCommand() *cobra.Command {
 				return err
 			}
 			if input != "" {
-				if modulePath != "" || exactName || page != 0 {
+				if packagePath != "" || exactName || page != 0 {
 					return fmt.Errorf("--module, --exact-name, and --page are unavailable with --input")
 				}
 				batchLimit := 10
@@ -143,13 +155,13 @@ func newFindCommand() *cobra.Command {
 			if query == "" {
 				return fmt.Errorf("find query is required")
 			}
-			if modulePath != "" {
-				modulePath = strings.TrimSpace(modulePath)
-				if err := source.ValidateModulePath(modulePath); err != nil {
+			if packagePath != "" {
+				packagePath = strings.TrimSpace(packagePath)
+				if err := source.ValidatePackagePath(packagePath); err != nil {
 					return err
 				}
 			}
-			document, err := client.FindLocalized(cmd.Context(), query, modulePath, canonicalLocale, exactName, page, perPage)
+			document, err := client.FindLocalized(cmd.Context(), query, packagePath, canonicalLocale, exactName, page, perPage)
 			if err != nil {
 				return err
 			}
@@ -163,7 +175,7 @@ func newFindCommand() *cobra.Command {
 	cmd.Flags().IntVar(&page, "page", 0, "zero-based result page")
 	cmd.Flags().IntVar(&perPage, "per-page", 20, "results per page")
 	cmd.Flags().StringVar(&contentLocale, "content-locale", "", "preferred locale for descriptions")
-	cmd.Flags().StringVar(&modulePath, "module", "", "canonical Module Path")
+	cmd.Flags().StringVar(&packagePath, "module", "", "canonical Package Path")
 	cmd.Flags().StringVar(&input, "input", "", "batch Find JSON file or - for stdin")
 	cmd.Flags().BoolVar(&exactName, "exact-name", false, "return only exact Skill names")
 	cmd.Flags().StringVar(&output, "output", "human", "output format: human or json")
@@ -216,44 +228,13 @@ func readFindInput(cmd *cobra.Command, path string, flagLimit int, flagLocale st
 	return protocolapi.FindCandidatesRequest{Queries: input.Queries, Limit: input.Limit, Locale: locale}, nil
 }
 
-func newDetailCommand() *cobra.Command {
-	var hubURL, output string
-	cmd := &cobra.Command{
-		Use:  "detail <module-path> <version> <skill-path>",
-		Args: cobra.ExactArgs(3),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateProductOutput(output); err != nil {
-				return err
-			}
-			client, err := hub.New(hubURL, nil)
-			if err != nil {
-				return err
-			}
-			document, err := client.Detail(cmd.Context(), args[0], args[1], args[2])
-			if err != nil {
-				return err
-			}
-			if output == "json" {
-				return writeProductDocument(cmd, document)
-			}
-			var detail protocolapi.ModuleVersionSkill
-			if err := json.Unmarshal(document, &detail); err != nil {
-				return fmt.Errorf("decode Skill detail: %w", err)
-			}
-			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s  %s@%s  %s\n%s\n", detail.Name, detail.ModulePath, detail.Version, detail.Path, detail.Description)
-			return err
-		},
-	}
-	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), "Hub origin")
-	cmd.Flags().StringVar(&output, "output", "human", "output format: human or json")
-	return cmd
-}
-
 func newHubCommand() *cobra.Command {
-	root := &cobra.Command{Use: "hub"}
+	root := &cobra.Command{Use: "hub", Short: appi18n.Pick("Inspect the configured Hub", "检查已配置的 Hub"), Example: "  skillsgo hub info\n  skillsgo hub check\n  skillsgo hub check-update --installed '{...}'"}
 	info := &cobra.Command{
-		Use:  "info",
-		Args: cobra.NoArgs,
+		Use:     "info",
+		Short:   appi18n.Pick("Show Hub deployment information", "显示 Hub 部署信息"),
+		Args:    cobra.NoArgs,
+		Example: "  skillsgo hub info\n  skillsgo hub info --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			output, _ := cmd.Flags().GetString("output")
 			if err := validateProductOutput(output); err != nil {
@@ -289,8 +270,10 @@ func newHubCommand() *cobra.Command {
 	info.Flags().String("hub", defaultHubURL(), "Hub origin")
 	info.Flags().String("output", "human", "output format: human or json")
 	check := &cobra.Command{
-		Use:  "check",
-		Args: cobra.NoArgs,
+		Use:     "check",
+		Short:   appi18n.Pick("Check Hub connectivity", "检查 Hub 连通性"),
+		Args:    cobra.NoArgs,
+		Example: "  skillsgo hub check\n  skillsgo hub check --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			output, _ := cmd.Flags().GetString("output")
 			if err := validateProductOutput(output); err != nil {
@@ -314,6 +297,6 @@ func newHubCommand() *cobra.Command {
 	}
 	check.Flags().String("hub", defaultHubURL(), "Hub origin")
 	check.Flags().String("output", "human", "output format: human or json")
-	root.AddCommand(info, check)
+	root.AddCommand(info, check, newCatalogUpdateCheckCommand())
 	return root
 }

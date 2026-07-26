@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on explicitly selected skills.sh user and Workspace locks, unified External inventory, bounded ephemeral preflight plans, exact Repository releases, Agent adapters, and Repository Module Store installation.
- * [OUTPUT]: Exposes versioned read-only Batch Takeover preflight plus state-bound exact-path Repository adoption that verifies existing member bytes, creates YAML/Lock and Module Store/Projections, and then recoverably removes the superseded External copy.
+ * [INPUT]: Depends on explicitly selected skills.sh Global and Workspace locks, unified External inventory, bounded ephemeral internal plans, exact Repository releases, Agent adapters, and Repository Package Store installation.
+ * [OUTPUT]: Exposes the public `adopt` command with JSON planning when unconfirmed and direct `--yes` state-bound Repository adoption that verifies existing member bytes, creates YAML/Lock and Package Store/Projections, and then recoverably removes the superseded External copy.
  * [POS]: Serves as the public CLI orchestration boundary for migrating supported external copies into Repository-managed scopes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -133,51 +133,64 @@ type takeoverReport struct {
 	Results []takeoverResult `json:"results"`
 }
 
-func newTakeoverCommand(catalog *agent.Catalog) *cobra.Command {
+func newAdoptCommand(catalog *agent.Catalog) *cobra.Command {
 	var output, hubURL string
-	var includeGlobal, yes, preflight bool
-	var planID string
+	var includeGlobal, yes bool
 	var projects []string
 	cmd := &cobra.Command{
-		Use:   "takeover",
+		Use:   "adopt",
 		Short: appi18n.T("takeover.short"),
 		Args:  cobra.NoArgs,
+		Example: appi18n.Pick(`  # Inspect adoptable Global installations
+  skillsgo adopt --global --output json
+
+  # Inspect one explicit Workspace
+  skillsgo adopt --project ./my-project --output json
+
+  # Adopt eligible Global installations without prompting
+  skillsgo adopt --global --yes --output json`, `  # 查看可纳管的全局安装
+  skillsgo adopt --global --output json
+
+  # 查看指定工作区中可纳管的安装
+  skillsgo adopt --project ./my-project --output json
+
+  # 无需提示，纳管符合条件的全局安装
+  skillsgo adopt --global --yes --output json`),
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if output != "json" {
+			if output != "human" && output != "json" {
 				return fmt.Errorf("%s", appi18n.T("takeover.error.output"))
-			}
-			if !preflight && !yes {
-				return fmt.Errorf("%s", appi18n.T("takeover.error.confirm"))
 			}
 			if !includeGlobal && len(projects) == 0 {
 				return fmt.Errorf("%s", appi18n.T("takeover.error.scope"))
 			}
-			if preflight {
-				if yes || strings.TrimSpace(planID) != "" {
-					return fmt.Errorf("%s", appi18n.T("takeover.error.mode"))
-				}
-				report, err := preflightLockTakeover(catalog, includeGlobal, projects)
-				if err != nil {
-					return err
+			report, err := preflightLockTakeover(catalog, includeGlobal, projects)
+			if err != nil {
+				return err
+			}
+			if !yes {
+				if output == "human" {
+					if _, writeErr := fmt.Fprintf(cmd.OutOrStdout(), "Eligible: %d\nSkipped: %d\n", report.Summary.Eligible, report.Summary.Skipped); writeErr != nil {
+						return writeErr
+					}
+					return fmt.Errorf("%s", appi18n.T("takeover.error.confirm"))
 				}
 				encoder := json.NewEncoder(cmd.OutOrStdout())
 				encoder.SetIndent("", "  ")
 				return encoder.Encode(report)
 			}
-			if strings.TrimSpace(planID) == "" {
-				return fmt.Errorf("%s", appi18n.T("takeover.error.plan"))
-			}
-			report, err := executeLockTakeover(cmd, catalog, hubURL, planID, includeGlobal, projects)
+			execution, err := executeLockTakeover(cmd, catalog, hubURL, report.PlanID, includeGlobal, projects)
 			if err != nil {
 				return err
 			}
+			if output == "human" {
+				_, writeErr := fmt.Fprintf(cmd.OutOrStdout(), "Adopted: %d\nSkipped: %d\n", execution.Summary.TakenOver, execution.Summary.Skipped)
+				return writeErr
+			}
 			encoder := json.NewEncoder(cmd.OutOrStdout())
 			encoder.SetIndent("", "  ")
-			return encoder.Encode(report)
+			return encoder.Encode(execution)
 		},
 	}
-	cmd.Flags().BoolVar(&preflight, "preflight", false, appi18n.T("takeover.flag.preflight"))
-	cmd.Flags().StringVar(&planID, "plan", "", appi18n.T("takeover.flag.plan"))
 	cmd.Flags().BoolVar(&yes, "yes", false, appi18n.T("takeover.flag.confirm"))
 	cmd.Flags().BoolVarP(&includeGlobal, "global", "g", false, appi18n.T("takeover.flag.global"))
 	cmd.Flags().StringArrayVar(&projects, "project", nil, appi18n.T("takeover.flag.project"))
@@ -306,14 +319,14 @@ func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, pla
 			report.Summary.Skipped++
 			continue
 		}
-		modulePath, memberPath, identityErr := takeoverVersionSkill(candidate.SkillID)
+		packagePath, memberPath, identityErr := takeoverVersionSkill(candidate.SkillID)
 		if identityErr != nil {
 			result.Reason = "invalid-lock-entry"
 			report.Results = append(report.Results, result)
 			report.Summary.Skipped++
 			continue
 		}
-		resource, fetchErr := client.FetchModuleWithProgress(cmd.Context(), modulePath, candidate.SourceRef, nil)
+		resource, fetchErr := client.FetchPackageWithProgress(cmd.Context(), packagePath, candidate.SourceRef, nil)
 		if fetchErr != nil {
 			result.Reason = "repository-unavailable"
 			report.Results = append(report.Results, result)
@@ -353,7 +366,7 @@ func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, pla
 		scope := candidate.Targets[0].Scope
 		workspaceRoot := candidate.Targets[0].ProjectRoot
 		options := addOptions{hubURL: hubURL, output: "json", skillPaths: []string{memberPath}}
-		if addErr := addRepository(discard, catalog, source.Reference{ModulePath: modulePath, Version: resource.Info.Version}, agentIDs, scope, workspaceRoot, options, []string{memberPath}, true); addErr != nil {
+		if addErr := addRepository(discard, catalog, source.Reference{PackagePath: packagePath, Version: resource.Info.Version}, agentIDs, scope, workspaceRoot, options, []string{memberPath}, true); addErr != nil {
 			result.Reason = "state-write-failure"
 			report.Results = append(report.Results, result)
 			report.Summary.Skipped++
@@ -380,11 +393,11 @@ func takeoverVersionSkill(skillID string) (string, string, error) {
 	if separator < 0 {
 		return skillID, ".", nil
 	}
-	modulePath, memberPath := skillID[:separator], skillID[separator+len("/-/"):]
-	if modulePath == "" || memberPath == "" {
+	packagePath, memberPath := skillID[:separator], skillID[separator+len("/-/"):]
+	if packagePath == "" || memberPath == "" {
 		return "", "", fmt.Errorf("invalid Repository member identity")
 	}
-	return modulePath, memberPath, nil
+	return packagePath, memberPath, nil
 }
 
 type takeoverFile struct {
@@ -392,13 +405,13 @@ type takeoverFile struct {
 	executable bool
 }
 
-func verifyTakeoverMember(root string, resource *hub.ModuleResource, memberPath string) error {
+func verifyTakeoverMember(root string, resource *hub.PackageResource, memberPath string) error {
 	expected := map[string]takeoverFile{}
 	prefix := ""
 	if memberPath != "." {
 		prefix = strings.TrimSuffix(memberPath, "/") + "/"
 	}
-	_, err := protocolartifact.WalkModule(resource.ZIP, resource.Info.ModulePath, resource.Info.Version, func(entry protocolartifact.Entry) error {
+	_, err := protocolartifact.WalkPackage(resource.ZIP, resource.Info.PackagePath, resource.Info.Version, func(entry protocolartifact.Entry) error {
 		if entry.Directory || !strings.HasPrefix(entry.Path, prefix) {
 			return nil
 		}
@@ -892,7 +905,7 @@ func lockRecordSkillID(record skillsShGlobalLockRecord) (string, error) {
 		if err != nil && record.SourceURL != "" {
 			reference, err = source.Parse(record.SourceURL)
 		}
-		if err == nil && !strings.HasPrefix(reference.ModulePath, "github.com/") {
+		if err == nil && !strings.HasPrefix(reference.PackagePath, "github.com/") {
 			err = fmt.Errorf("github lock source does not identify github.com")
 		}
 	case "git", "gitlab":
@@ -907,7 +920,7 @@ func lockRecordSkillID(record skillsShGlobalLockRecord) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	skillID := reference.ModulePath
+	skillID := reference.PackagePath
 	if record.SkillPath != "" {
 		clean := path.Clean(strings.TrimPrefix(filepath.ToSlash(record.SkillPath), "/"))
 		if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {

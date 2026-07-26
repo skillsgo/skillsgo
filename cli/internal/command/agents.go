@@ -32,9 +32,10 @@ type agentsReport struct {
 func newAgentsCommand(catalog *agent.Catalog) *cobra.Command {
 	var output string
 	cmd := &cobra.Command{
-		Use:   "agents",
-		Short: appi18n.T("agents.short"),
-		Args:  cobra.NoArgs,
+		Use:     "agents",
+		Short:   appi18n.T("agents.short"),
+		Args:    cobra.NoArgs,
+		Example: "  skillsgo agents\n  skillsgo agents --output json",
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			report := agentsReport{
 				SchemaVersion:      agentsSchemaVersion,

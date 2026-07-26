@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, Hub runtime discovery, direct Cloud-composed ranking reads, content locale, CLI Skill reads, strict machine codecs, and discovery domain models.
- * [OUTPUT]: Provides locale-aware single and bounded-chunk batch Hub Find plus Cloud-composed Ranking/Trending/Hot cards, direct explicit-source routing, and strict eight-field Module Version Skill detail loading.
+ * [OUTPUT]: Provides locale-aware single and bounded-chunk batch Hub Find plus Cloud-composed Ranking/Trending/Hot cards, direct `show` explicit-source routing, and strict `show --path` Package Version Skill detail loading.
  * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -86,8 +86,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
           projects: await loadAddedProjects(),
         );
         for (final skill in installed) {
-          if (skill.modulePath.isNotEmpty) {
-            installedCounts['${skill.modulePath}\u0000${skill.name}'] =
+          if (skill.packagePath.isNotEmpty) {
+            installedCounts['${skill.packagePath}\u0000${skill.name}'] =
                 skill.targetCount;
           }
         }
@@ -106,12 +106,12 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
                 raw['path'] is String && (raw['path'] as String).isNotEmpty
                 ? p.basename(raw['path'] as String)
                 : raw['name'];
-            final modulePath = raw['modulePath'];
+            final packagePath = raw['packagePath'];
             final name = raw['name'];
             final description = raw['description'];
             final version = raw['latestVersion'];
             if (installName is! String ||
-                modulePath is! String ||
+                packagePath is! String ||
                 name is! String ||
                 description is! String ||
                 version is! String) {
@@ -139,7 +139,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
               );
             }
             return SkillSummary(
-              modulePath: modulePath,
+              packagePath: packagePath,
               installName: installName,
               name: name,
               path: raw['path'] is String ? raw['path'] as String : '',
@@ -155,7 +155,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
               metricChange: metric is Map<String, dynamic>
                   ? (metric['change'] as num).toInt()
                   : 0,
-              localTargetCount: installedCounts['$modulePath\u0000$name'] ?? 0,
+              localTargetCount: installedCounts['$packagePath\u0000$name'] ?? 0,
             );
           })
           .toList(growable: false);
@@ -179,7 +179,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
 
   @override
   Future<List<List<SkillSummary>>> findSources(
-    List<ModuleFindQuery> queries, {
+    List<PackageFindQuery> queries, {
     int limit = 10,
   }) async {
     if (queries.isEmpty ||
@@ -193,7 +193,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     }
     await _ensureHubOrigin();
     final locale = await _contentLocale();
-    final chunks = <List<ModuleFindQuery>>[
+    final chunks = <List<PackageFindQuery>>[
       for (var start = 0; start < queries.length; start += _sourceFindChunkSize)
         queries.sublist(
           start,
@@ -222,7 +222,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
   }
 
   Future<List<List<SkillSummary>>> _findSourceChunk(
-    List<ModuleFindQuery> queries, {
+    List<PackageFindQuery> queries, {
     required int limit,
     required String locale,
   }) async {
@@ -231,8 +231,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         for (final query in queries)
           {
             'name': query.name,
-            if (query.modulePath.trim().isNotEmpty)
-              'modulePath': query.modulePath.trim(),
+            if (query.packagePath.trim().isNotEmpty)
+              'packagePath': query.packagePath.trim(),
           },
       ],
       'limit': limit,
@@ -274,12 +274,12 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
 
   SkillSummary _decodeSkillCandidate(Object? raw) {
     if (raw is! Map<String, dynamic>) throw const FormatException();
-    final modulePath = raw['modulePath'];
+    final packagePath = raw['packagePath'];
     final name = raw['name'];
     final description = raw['description'];
     final version = raw['version'];
     final path = raw['path'];
-    if (modulePath is! String ||
+    if (packagePath is! String ||
         name is! String ||
         description is! String ||
         version is! String ||
@@ -287,7 +287,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       throw const FormatException();
     }
     return SkillSummary(
-      modulePath: modulePath,
+      packagePath: packagePath,
       installName: path.isNotEmpty ? p.basename(path) : name,
       name: name,
       path: path,
@@ -338,7 +338,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       final skills = <Map<String, dynamic>>[];
       for (final raw in items) {
         if (raw is! Map<String, dynamic> ||
-            raw['modulePath'] is! String ||
+            raw['packagePath'] is! String ||
             raw['name'] is! String ||
             raw['description'] is! String ||
             raw['path'] is! String ||
@@ -400,7 +400,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
 
   Future<DiscoveryPage> _discoverExplicitSource(String source) async {
     final result = await _runCli([
-      'info',
+      'show',
       source,
       '--hub',
       _hubOrigin,
@@ -417,7 +417,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       }
       final rawSkills = switch (decoded['kind']) {
         'Skill' => <Object?>[decoded],
-        'Module' when decoded['skills'] is List => decoded['skills'] as List,
+        'Package' when decoded['skills'] is List => decoded['skills'] as List,
         _ => throw const FormatException('Unknown SkillsGo Info kind.'),
       };
       final installedCounts = <String, int>{};
@@ -426,8 +426,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
           projects: await loadAddedProjects(),
         );
         for (final skill in installed) {
-          if (skill.modulePath.isNotEmpty) {
-            installedCounts['${skill.modulePath}\u0000${skill.name}'] =
+          if (skill.packagePath.isNotEmpty) {
+            installedCounts['${skill.packagePath}\u0000${skill.name}'] =
                 skill.targetCount;
           }
         }
@@ -439,12 +439,12 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
             if (raw is! Map<String, dynamic>) {
               throw const FormatException('Invalid Skill Info member.');
             }
-            final modulePath = raw['modulePath'];
+            final packagePath = raw['packagePath'];
             final name = raw['name'];
             final description = raw['description'];
             final version = raw['version'];
             final path = raw['path'];
-            if (modulePath is! String ||
+            if (packagePath is! String ||
                 name is! String ||
                 description is! String ||
                 version is! String ||
@@ -457,14 +457,14 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
               throw const FormatException('Invalid Skill Info image URL.');
             }
             return SkillSummary(
-              modulePath: modulePath,
+              packagePath: packagePath,
               installName: name,
               name: name,
               path: path,
               imageUrl: imageURL as String?,
               description: description,
               latestVersion: version,
-              localTargetCount: installedCounts['$modulePath\u0000$name'] ?? 0,
+              localTargetCount: installedCounts['$packagePath\u0000$name'] ?? 0,
             );
           })
           .toList(growable: false);
@@ -472,17 +472,17 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       final firstSkillMap = firstSkill is Map<String, dynamic>
           ? firstSkill
           : null;
-      final modulePath = decoded['kind'] == 'Module'
-          ? decoded['modulePath']
+      final packagePath = decoded['kind'] == 'Package'
+          ? decoded['packagePath']
           : skills.isEmpty
           ? null
-          : skills.first.modulePath;
+          : skills.first.packagePath;
       final repositoryTime = decoded['time'];
       return DiscoveryPage(
         skills: skills,
-        module: modulePath is String
-            ? ModuleSummary(
-                id: modulePath,
+        module: packagePath is String
+            ? PackageSummary(
+                id: packagePath,
                 imageUrl: firstSkillMap?['imageUrl'] as String?,
                 description: decoded['description'] is String
                     ? decoded['description'] as String
@@ -514,9 +514,9 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     await _ensureHubOrigin();
     try {
       final result = await _runCli([
-        'detail',
-        skill.modulePath,
-        skill.latestVersion,
+        'show',
+        '${skill.packagePath}@${skill.latestVersion}',
+        '--path',
         skill.path,
         '--hub',
         _hubOrigin,
@@ -532,7 +532,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         );
       }
       const requiredStrings = [
-        'modulePath',
+        'packagePath',
         'version',
         'name',
         'path',
@@ -542,7 +542,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       if (requiredStrings.any((field) => decoded[field] is! String) ||
           decoded['time'] is! String ||
           decoded['archiveSize'] is! num ||
-          decoded['modulePath'] != skill.modulePath ||
+          decoded['packagePath'] != skill.packagePath ||
           decoded['name'] != skill.name ||
           decoded['path'] != skill.path) {
         throw const SkillsException(
@@ -558,7 +558,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         installationTargets = installed
             .where(
               (entry) =>
-                  entry.modulePath == skill.modulePath &&
+                  entry.packagePath == skill.packagePath &&
                   entry.name == skill.name,
             )
             .expand((entry) => entry.targets)
@@ -570,7 +570,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         name: decoded['name'] as String,
         path: decoded['path'] as String,
         content: decoded['content'] as String,
-        modulePath: decoded['modulePath'] as String,
+        packagePath: decoded['packagePath'] as String,
         version: decoded['version'] as String,
         time: DateTime.parse(decoded['time'] as String).toLocal(),
         archiveSize: (decoded['archiveSize'] as num).toInt(),

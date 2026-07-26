@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the disposable E2E environment and public CLI, Hub, JSON, and filesystem contracts.
- * [OUTPUT]: Provides black-box coverage for J04 Module Store-backed offline Projection restoration.
+ * [OUTPUT]: Provides black-box coverage for J04 Package Store-backed offline Projection restoration.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,7 +21,7 @@ func TestJ04RestoreStoreOffline(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName,
+		"add", testPackagePath+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 
 		"--yes",
@@ -37,7 +37,7 @@ func TestJ04RestoreStoreOffline(t *testing.T) {
 	sumPath := filepath.Join(sandboxRoot, "project", "skills-lock.yaml")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	moduleSkill := containerPathOnHost(t, sandboxRoot, installed.ModuleDir, "skills", "alpha", "SKILL.md")
+	moduleSkill := containerPathOnHost(t, sandboxRoot, installed.PackageDir, "skills", "alpha", "SKILL.md")
 	require.FileExists(t, moduleSkill)
 
 	removed := execInContainer(t, ctx, container, "rm", "-rf", scenarioContainerPath(t, "project", ".agents"))
@@ -52,13 +52,13 @@ func TestJ04RestoreStoreOffline(t *testing.T) {
 	require.Equal(t, 0, restore.exitCode, restore.output)
 
 	var restored []struct {
-		ModulePath string `json:"modulePath"`
+		PackagePath string `json:"packagePath"`
 		Version    string `json:"version"`
 		Status     string `json:"status"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(restore.output), &restored), restore.output)
 	require.Len(t, restored, 1)
-	require.Equal(t, installed.ModulePath, restored[0].ModulePath)
+	require.Equal(t, installed.PackagePath, restored[0].PackagePath)
 	require.Equal(t, installed.Version, restored[0].Version)
 	require.Equal(t, "restored", restored[0].Status)
 
@@ -66,5 +66,5 @@ func TestJ04RestoreStoreOffline(t *testing.T) {
 	require.FileExists(t, moduleSkill)
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	require.Equal(t, sumBefore, sumAfter, "offline Module Store recovery must not rewrite skills-lock.yaml")
+	require.Equal(t, sumBefore, sumAfter, "offline Package Store recovery must not rewrite skills-lock.yaml")
 }

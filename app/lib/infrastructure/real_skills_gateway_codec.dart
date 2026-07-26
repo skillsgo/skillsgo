@@ -140,13 +140,13 @@ List<InstallationTargetResult> _moduleInstallationResults(
   String immutableVersion,
   List<InstallationTargetSelection> selections,
 ) {
-  final raw = _machineDocument(value, phases: const ['module-install']);
-  if (raw['modulePath'] != skill.modulePath ||
+  final raw = _machineDocument(value, phases: const ['package-install']);
+  if (raw['packagePath'] != skill.packagePath ||
       raw['version'] != immutableVersion ||
       raw['sum'] is! String ||
       (raw['sum'] as String).isEmpty ||
-      raw['moduleDir'] is! String ||
-      (raw['moduleDir'] as String).isEmpty ||
+      raw['packageDir'] is! String ||
+      (raw['packageDir'] as String).isEmpty ||
       raw['skills'] is! List ||
       raw['agents'] is! List ||
       raw['projections'] is! List ||

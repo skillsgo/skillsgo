@@ -219,7 +219,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
             detail = await widget.gateway.loadRemoteDetail(skill);
             moduleSkills = [skill];
             final moduleSkillsFuture =
-                loadModuleSkills(widget.gateway, skill, detail).then((skills) {
+                loadPackageSkills(widget.gateway, skill, detail).then((skills) {
                   moduleSkills = skills;
                   return skills;
                 });

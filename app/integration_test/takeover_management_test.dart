@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation, supported skills.sh locks, the public versioned Repository fixture, and SharedPreferences-backed Added Projects.
- * [OUTPUT]: Verifies exact All/User/Project takeover counts, Repository adoption, YAML/Lock, Scope Module Stores, coordinate Projections, preserved Skill bytes, and post-success rescans.
+ * [OUTPUT]: Verifies exact All/User/Project takeover counts, Repository adoption, YAML/Lock, Scope Package Stores, coordinate Projections, preserved Skill bytes, and post-success rescans.
  * [POS]: Serves as the black-box macOS App-to-CLI existing-Skill management journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -93,7 +93,7 @@ void registerTakeoverManagementJourney() {
       expect(File('${projectRoot.path}/skills-lock.yaml').existsSync(), isTrue);
       expect(
         File(
-          '${projectRoot.path}/.skillsgo/modules/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
+          '${projectRoot.path}/.skillsgo/packages/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
         ).readAsBytesSync(),
         projectSkillBytes,
       );

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter foundation, Riverpod legacy migration support, the App-scoped Gateway provider, and direct SkillsGateway installation contracts.
- * [OUTPUT]: Provides a compact InstallationRequest interface plus discovery-snapshot version preservation, atomic Module installation, execution aggregation, success classification, and error state.
+ * [OUTPUT]: Provides a compact InstallationRequest interface plus discovery-snapshot version preservation, atomic Package installation, execution aggregation, success classification, and error state.
  * [POS]: Serves as the deep Installation Request module while selectors retain only ephemeral location choices and presentation feedback.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -31,7 +31,7 @@ class InstallationRequest {
   final List<InstallationTargetSelection> selections;
   final PersonalRiskPolicy riskPolicy;
 
-  bool get isModule => _moduleSkills.isNotEmpty;
+  bool get isPackage => _moduleSkills.isNotEmpty;
 }
 
 class InstallOperationState {
@@ -90,9 +90,9 @@ class InstallOperationController extends ChangeNotifier {
         );
       }
       final resolved = <({SkillSummary skill, String immutableVersion})>[];
-      if (request.isModule) {
+      if (request.isPackage) {
         executions.addAll(
-          await _gateway.installModuleTargets(
+          await _gateway.installPackageTargets(
             request._moduleSkills,
             request.selections,
             confirmRisk: true,
@@ -112,7 +112,7 @@ class InstallOperationController extends ChangeNotifier {
         }
         resolved.add((skill: skill, immutableVersion: immutableVersion));
       }
-      if (!request.isModule && resolved.isEmpty) {
+      if (!request.isPackage && resolved.isEmpty) {
         throw const SkillsException(
           'Installation requires at least one Skill.',
           kind: SkillsFailureKind.validation,

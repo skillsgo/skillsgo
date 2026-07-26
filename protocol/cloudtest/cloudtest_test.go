@@ -25,8 +25,8 @@ func TestMockConformance(t *testing.T) {
 	mock := NewMock()
 	for _, kind := range []cloud.RankingKind{cloud.RankingAllTime, cloud.RankingTrending, cloud.RankingHot} {
 		mock.SetRanking(kind, []cloud.RankingSkill{
-			{ModulePath: "github.com/acme/skills", Name: "demo", Metric: cloud.Metric{Value: 2}},
-			{ModulePath: "github.com/acme/skills", Name: "second", Metric: cloud.Metric{Value: 1}},
+			{PackagePath: "github.com/acme/skills", Name: "demo", Metric: cloud.Metric{Value: 2}},
+			{PackagePath: "github.com/acme/skills", Name: "second", Metric: cloud.Metric{Value: 1}},
 		})
 	}
 	VerifyHandler(t, mock.Handler())
@@ -83,8 +83,8 @@ func TestMockRejectsMalformedAndInvalidRequests(t *testing.T) {
 func TestMockRankingPagination(t *testing.T) {
 	mock := NewMock()
 	mock.SetRanking(cloud.RankingAllTime, []cloud.RankingSkill{
-		{ModulePath: "github.com/acme/skills", Name: "first", Metric: cloud.Metric{Value: 2}},
-		{ModulePath: "github.com/acme/skills", Name: "second", Metric: cloud.Metric{Value: 1}},
+		{PackagePath: "github.com/acme/skills", Name: "first", Metric: cloud.Metric{Value: 2}},
+		{PackagePath: "github.com/acme/skills", Name: "second", Metric: cloud.Metric{Value: 1}},
 	})
 	server := httptest.NewServer(mock.Handler())
 	defer server.Close()
@@ -116,7 +116,7 @@ func TestMockRecordsValidEvent(t *testing.T) {
 	mock := NewMock()
 	server := httptest.NewServer(mock.Handler())
 	defer server.Close()
-	event := cloud.InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", ModulePath: "github.com/acme/skills", SkillName: "skill", SkillPath: "skills/skill", Version: "v1", Agents: []string{"codex"}, Scope: cloud.ScopeProject, OccurredAt: time.Now().UTC()}
+	event := cloud.InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", PackagePath: "github.com/acme/skills", SkillName: "skill", SkillPath: "skills/skill", Version: "v1", Agents: []string{"codex"}, Scope: cloud.ScopeProject, OccurredAt: time.Now().UTC()}
 	body, _ := json.Marshal(event)
 	response, err := http.Post(server.URL+cloud.InstallEventsPath, "application/json", bytes.NewReader(body))
 	if err != nil {
@@ -133,7 +133,7 @@ func TestMockResetEventsClearsRecordedEvents(t *testing.T) {
 	mock := NewMock()
 	server := httptest.NewServer(mock.Handler())
 	defer server.Close()
-	event := cloud.InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", ModulePath: "github.com/acme/skills", SkillName: "skill", SkillPath: "skills/skill", Version: "v1", Agents: []string{"codex"}, Scope: cloud.ScopeProject, OccurredAt: time.Now().UTC()}
+	event := cloud.InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", PackagePath: "github.com/acme/skills", SkillName: "skill", SkillPath: "skills/skill", Version: "v1", Agents: []string{"codex"}, Scope: cloud.ScopeProject, OccurredAt: time.Now().UTC()}
 	body, err := json.Marshal(event)
 	if err != nil {
 		t.Fatal(err)

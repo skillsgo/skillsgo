@@ -55,11 +55,11 @@ func TestOpenAPIDocumentsCurrentPublicRoutes(t *testing.T) {
 	require.Equal(t, "3.1.0", document.OpenAPI)
 	require.Equal(t, "no-store", response.Header.Get("Cache-Control"))
 	require.NotContains(t, document.Components.Schemas["skillsResponse"].Properties, "collection")
-	require.Contains(t, document.Components.Schemas["CandidateQuery"].Properties, "modulePath")
+	require.Contains(t, document.Components.Schemas["CandidateQuery"].Properties, "packagePath")
 	require.NotContains(t, document.Components.Schemas["CandidateQuery"].Properties, "id")
 	require.NotContains(t, document.Components.Schemas["CandidateQuery"].Properties, "exactName")
 	require.NotContains(t, document.Components.Schemas["FindCandidatesRequest"].Properties, "schemaVersion")
-	for _, schema := range []string{"FindSkill", "ModuleVersionSkill"} {
+	for _, schema := range []string{"FindSkill", "PackageVersionSkill"} {
 		require.NotContains(t, document.Components.Schemas[schema].Properties, "source")
 		require.NotContains(t, document.Components.Schemas[schema].Properties, "sourceRepository")
 	}
@@ -71,10 +71,10 @@ func TestOpenAPIDocumentsCurrentPublicRoutes(t *testing.T) {
 		{http.MethodPost, "/api/v1/skills/find-candidates"},
 		{http.MethodPost, "/api/v1/skills/batch"},
 		{http.MethodPost, "/api/v1/skills/check-update"},
-		{http.MethodGet, "/api/v1/{modulePath}/versions"},
-		{http.MethodGet, "/api/v1/{modulePath}/versions/{version}"},
-		{http.MethodGet, "/api/v1/{modulePath}/versions/{version}/skills"},
-		{http.MethodGet, "/api/v1/{modulePath}/versions/{version}.zip"},
+		{http.MethodGet, "/api/v1/{packagePath}/versions"},
+		{http.MethodGet, "/api/v1/{packagePath}/versions/{version}"},
+		{http.MethodGet, "/api/v1/{packagePath}/versions/{version}/skills"},
+		{http.MethodGet, "/api/v1/{packagePath}/versions/{version}.zip"},
 	} {
 		_, found := document.Paths[expected.path][strings.ToLower(expected.method)]
 		require.True(t, found, "%s %s", expected.method, expected.path)
@@ -82,7 +82,7 @@ func TestOpenAPIDocumentsCurrentPublicRoutes(t *testing.T) {
 	require.NotContains(t, document.Paths, "/api/v1/find")
 	require.NotContains(t, document.Paths, "/api/v1/updates/check")
 	require.NotContains(t, document.Paths, "/api/v1/module-resolutions")
-	require.NotContains(t, document.Paths, "/{modulePath}/@v/list")
+	require.NotContains(t, document.Paths, "/{packagePath}/@v/list")
 }
 
 func TestOpenAPIProvidesRunnableMattPocockExamples(t *testing.T) {
@@ -100,22 +100,22 @@ func TestOpenAPIProvidesRunnableMattPocockExamples(t *testing.T) {
 
 	find := operationDocument(t, paths, "/api/v1/skills/find", "get")
 	parameters := find["parameters"].([]any)
-	require.Equal(t, []string{"q", "modulePath", "exactName", "page", "perPage", "locale"}, parameterNames(parameters))
+	require.Equal(t, []string{"q", "packagePath", "exactName", "page", "perPage", "locale"}, parameterNames(parameters))
 	require.Equal(t, "grill-me", parameterDocument(t, parameters, "q")["example"])
-	require.Equal(t, exampleModulePath, parameterDocument(t, parameters, "modulePath")["example"])
+	require.Equal(t, examplePackagePath, parameterDocument(t, parameters, "packagePath")["example"])
 	require.Equal(t, true, parameterDocument(t, parameters, "q")["required"])
 	findExample := responseExample(t, find, "200")
-	require.Equal(t, exampleModulePath, findExample["skills"].([]any)[0].(map[string]any)["modulePath"])
+	require.Equal(t, examplePackagePath, findExample["skills"].([]any)[0].(map[string]any)["packagePath"])
 
-	versions := operationDocument(t, paths, "/api/v1/{modulePath}/versions", "get")
+	versions := operationDocument(t, paths, "/api/v1/{packagePath}/versions", "get")
 	versionsExample := responseExample(t, versions, "200")
 	require.Equal(t, []any{"v1.0.0", exampleVersion}, versionsExample["versions"])
 	require.Equal(t, "grill-me", findExample["skills"].([]any)[0].(map[string]any)["name"])
 
-	detail := operationDocument(t, paths, "/api/v1/{modulePath}/versions/{version}/skills", "get")
-	require.Equal(t, []string{"modulePath", "version", "path"}, parameterNames(detail["parameters"].([]any)))
+	detail := operationDocument(t, paths, "/api/v1/{packagePath}/versions/{version}/skills", "get")
+	require.Equal(t, []string{"packagePath", "version", "path"}, parameterNames(detail["parameters"].([]any)))
 	detailExample := responseExample(t, detail, "200")
-	require.Equal(t, exampleModulePath, detailExample["modulePath"])
+	require.Equal(t, examplePackagePath, detailExample["packagePath"])
 	require.Equal(t, exampleVersion, detailExample["version"])
 	require.Equal(t, "skills/productivity/grill-me", detailExample["path"])
 	require.Contains(t, detailExample["content"], "name: grill-me")
@@ -125,15 +125,15 @@ func TestOpenAPIProvidesRunnableMattPocockExamples(t *testing.T) {
 		request := operation["requestBody"].(map[string]any)["content"].(map[string]any)["application/json"].(map[string]any)["example"]
 		encoded, err := json.Marshal(request)
 		require.NoError(t, err)
-		require.Contains(t, string(encoded), exampleModulePath)
+		require.Contains(t, string(encoded), examplePackagePath)
 	}
 	updateFailure := responseExample(t, operationDocument(t, paths, "/api/v1/skills/check-update", "post"), "500")
 	require.Equal(t, "resolution_failed", updateFailure["code"])
 
-	version := operationDocument(t, paths, "/api/v1/{modulePath}/versions/{version}", "get")
+	version := operationDocument(t, paths, "/api/v1/{packagePath}/versions/{version}", "get")
 	require.Equal(t, "latest", parameterDocument(t, version["parameters"].([]any), "version")["example"])
 	versionExample := responseExample(t, version, "200")
-	require.Equal(t, exampleModuleSum, versionExample["sum"])
+	require.Equal(t, examplePackageSum, versionExample["sum"])
 	require.Len(t, versionExample["skills"], 38)
 }
 

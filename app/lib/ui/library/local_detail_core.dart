@@ -93,13 +93,14 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
   }
 
   Future<void> _loadRemoteIdentity() async {
-    if (skill.provenance != LibraryProvenance.hub || skill.modulePath.isEmpty) {
+    if (skill.provenance != LibraryProvenance.hub ||
+        skill.packagePath.isEmpty) {
       return;
     }
     try {
       final value = await widget.gateway.loadRemoteDetail(
         SkillSummary(
-          modulePath: skill.modulePath,
+          packagePath: skill.packagePath,
           installName: skill.name,
           name: skill.name,
           installs: 0,
@@ -226,7 +227,7 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
     try {
       var projects = values[1] as List<AddedProject>;
       final summary = SkillSummary(
-        modulePath: skill.modulePath,
+        packagePath: skill.packagePath,
         installName: skill.name,
         name: skill.name,
         installs: 0,
@@ -301,8 +302,8 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
             controller: detailScrollController,
             hero: SkillDetailHero(
               name: skill.name,
-              source: skill.modulePath.isNotEmpty
-                  ? skill.modulePath
+              source: skill.packagePath.isNotEmpty
+                  ? skill.packagePath
                   : skill.name,
               description: remoteIdentity?.description ?? skill.description,
               avatarKey: const Key('installed-detail-skill-avatar'),

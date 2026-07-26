@@ -27,7 +27,7 @@ void main() {
       searchResults: List.generate(
         30,
         (index) => SkillSummary(
-          modulePath: 'example/skills/skill-$index',
+          packagePath: 'example/skills/skill-$index',
           installName: 'skill-$index',
           name: 'Skill $index',
           installs: index,
@@ -70,7 +70,7 @@ void main() {
     expect(find.text('Skill 20'), findsOneWidget);
     expect(
       FocusManager.instance.primaryFocus?.debugLabel,
-      'skill-card-${const SkillCoordinate(modulePath: 'example/skills/skill-20', name: 'Skill 20').key}',
+      'skill-card-${const SkillCoordinate(packagePath: 'example/skills/skill-20', name: 'Skill 20').key}',
     );
   });
 
@@ -266,7 +266,7 @@ void main() {
       searchResults: List.generate(
         30,
         (index) => SkillSummary(
-          modulePath: 'example/skills/skill-$index',
+          packagePath: 'example/skills/skill-$index',
           installName: 'skill-$index',
           name: 'Skill $index',
           installs: index,

@@ -48,7 +48,7 @@ func TestCatalogAPIPostgresProtocol(t *testing.T) {
 
 	for _, name := range []string{"alpha", "bravo", "charlie"} {
 		require.NoError(t, upsertActionTestSkill(ctx, metadata, &catalog.Skill{
-			ModulePath: "github.com/acme/skills", Path: name,
+			PackagePath: "github.com/acme/skills", Path: name,
 			Name: name, Description: "Agent capability", LatestVersion: "main",
 		}))
 	}

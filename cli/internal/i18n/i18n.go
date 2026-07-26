@@ -9,6 +9,8 @@ package i18n
 import (
 	"fmt"
 	"os"
+	"os/exec"
+	"runtime"
 	"strings"
 	"sync"
 
@@ -20,6 +22,7 @@ import (
 var (
 	mu        sync.RWMutex
 	localizer *goi18n.Localizer
+	chinese   bool
 )
 
 var messages = map[string][2]string{
@@ -44,20 +47,16 @@ var messages = map[string][2]string{
 	"agents.state.installed":            {"installed", "已安装"},
 	"agents.state.supported":            {"supported", "支持"},
 	"list.short":                        {"List installed Skills across Global and Workspace locations", "列出全局和工作区位置中已安装的 Skill"},
-	"takeover.short":                    {"Register supported existing skills.sh installations", "登记受支持的现有 skills.sh 安装"},
-	"takeover.error.confirm":            {"Batch Takeover requires explicit --yes confirmation", "批量接管需要使用 --yes 明确确认"},
-	"takeover.error.output":             {"Batch Takeover requires --output json", "批量接管需要使用 --output json"},
-	"takeover.error.scope":              {"Batch Takeover requires --global or at least one --project", "批量接管需要使用 --global 或至少一个 --project 指定范围"},
-	"takeover.error.mode":               {"Batch Takeover preflight cannot be combined with execution flags", "批量接管预检不能与执行参数同时使用"},
-	"takeover.error.plan":               {"Batch Takeover execution requires a preflight --plan", "批量接管执行需要预检生成的 --plan"},
-	"takeover.error.invalid_plan":       {"Batch Takeover plan is missing or invalid", "批量接管计划不存在或无效"},
-	"takeover.error.plan_scope":         {"Batch Takeover scope is not authorized by the plan", "批量接管范围未被当前计划授权"},
-	"takeover.flag.confirm":             {"Confirm Batch Takeover", "确认批量接管"},
-	"takeover.flag.preflight":           {"Validate candidates and return exact location counts", "验证候选项并返回各位置的精确数量"},
-	"takeover.flag.plan":                {"Execute one preflight-authorized plan", "执行一个预检授权的计划"},
+	"takeover.short":                    {"Adopt supported existing skills.sh installations", "纳管受支持的现有 skills.sh 安装"},
+	"takeover.error.confirm":            {"Batch Adoption requires explicit --yes confirmation", "批量纳管需要使用 --yes 明确确认"},
+	"takeover.error.output":             {"Batch Adoption output must be human or json", "批量纳管输出必须为 human 或 json"},
+	"takeover.error.scope":              {"Batch Adoption requires --global or at least one --project", "批量纳管需要使用 --global 或至少一个 --project 指定范围"},
+	"takeover.error.invalid_plan":       {"Batch Adoption plan is missing or invalid", "批量纳管计划不存在或无效"},
+	"takeover.error.plan_scope":         {"Batch Adoption scope is not authorized by the plan", "批量纳管范围未被当前计划授权"},
+	"takeover.flag.confirm":             {"Confirm Batch Adoption", "确认批量纳管"},
 	"takeover.flag.global":              {"Include Global Scope", "包含全局安装范围"},
 	"takeover.flag.project":             {"Include one Workspace root (repeatable)", "包含一个工作区根目录（可重复）"},
-	"takeover.flag.output":              {"Machine output format (json required)", "机器输出格式（必须为 json）"},
+	"takeover.flag.output":              {"output format: human or json", "输出格式：human 或 json"},
 	"list.title":                        {"Installed Skills", "已安装的 Skill"},
 	"list.empty":                        {"No installed Skills found", "未找到已安装的 Skill"},
 	"list.flag.global":                  {"Include Global Scope", "包含全局安装范围"},
@@ -66,8 +65,8 @@ var messages = map[string][2]string{
 	"list.error.output":                 {"unsupported output format %q", "不支持的输出格式 %q"},
 	"list.error.empty_project":          {"Workspace root must not be empty", "工作区根目录不能为空"},
 	"list.row":                          {"%s  %d targets  %s\n", "%s  %d 个目标  %s\n"},
-	"info.short":                        {"Inspect one Repository or Skill source", "查看一个仓库或 Skill 来源"},
-	"info.error.output":                 {"--output must be human or json", "--output 必须是 human 或 json"},
+	"show.short":                        {"Show one Package or Skill", "显示一个 Package 或 Skill"},
+	"show.error.output":                 {"--output must be human or json", "--output 必须是 human 或 json"},
 	"info.error.missing_skill":          {"Repository %s has no Skill %s", "仓库 %s 中没有 Skill %s"},
 	"list.health.healthy":               {"healthy", "状态正常"},
 	"list.health.missing":               {"target missing", "目标已缺失"},
@@ -90,11 +89,9 @@ var messages = map[string][2]string{
 	"flag.global.add":                   {"Install in Global Scope", "安装到全局范围"},
 	"flag.agent.add":                    {"Target Agent (repeatable; '*' means all)", "目标 Agent（可指定多个，'*' 表示全部）"},
 	"flag.skill":                        {"Skill name (repeatable; '*' means all)", "Skill 名称（可指定多个，'*' 表示全部）"},
-	"flag.list":                         {"List available Skills only", "只列出可用 Skill"},
-	"flag.yes":                          {"Skip confirmation", "跳过确认"},
+	"flag.yes":                          {"Confirm without prompting", "无需提示并确认执行"},
 	"flag.replace":                      {"Explicitly replace the source and all Agent bindings of a same-name Skill", "显式替换同名 Skill 的来源和全部 Agent 绑定"},
 	"flag.target":                       {"Exact Installation Target as JSON (repeatable)", "精确安装目标 JSON（可重复指定）"},
-	"flag.preflight":                    {"Preview exact target actions without installing", "预览精确目标操作但不执行安装"},
 	"flag.artifact_version":             {"Exact immutable artifact version for an Installation Plan", "安装计划使用的精确不可变制品版本"},
 	"flag.confirm_risk":                 {"Explicitly confirm this artifact risk for the plan", "显式确认当前计划的制品风险"},
 	"flag.allow_critical":               {"Apply the configured Critical-risk override", "应用已配置的严重风险覆盖策略"},
@@ -132,6 +129,10 @@ func Configure(tag string) {
 	}
 	mu.Lock()
 	localizer = goi18n.NewLocalizer(bundle, tag)
+	matched, _, _ := language.NewMatcher([]language.Tag{language.English, language.Chinese}).Match(language.Make(tag))
+	base, _ := matched.Base()
+	chineseBase, _ := language.Chinese.Base()
+	chinese = base == chineseBase
 	mu.Unlock()
 }
 
@@ -139,15 +140,78 @@ func detect() string {
 	if value := strings.TrimSpace(os.Getenv("SKILLSGO_LANG")); value != "" {
 		return value
 	}
-	for _, key := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
-		if value := strings.TrimSpace(os.Getenv(key)); value != "" {
-			return strings.Split(value, ".")[0]
+	// On macOS, AppleLanguages is the authoritative interface-language
+	// preference. Terminal LANG/LC_* often describe region or encoding and may
+	// remain English even when the user's interface language is Chinese.
+	if runtime.GOOS == "darwin" {
+		if tag, err := detectAppleLanguage(); err == nil {
+			return tag.String()
 		}
 	}
-	if tag, err := systemlocale.Detect(); err == nil {
+	for _, key := range []string{"LC_ALL", "LC_MESSAGES", "LANG"} {
+		if value := strings.TrimSpace(os.Getenv(key)); value != "" {
+			if !neutralLocale(value) {
+				return strings.Split(value, ".")[0]
+			}
+		}
+	}
+	if tag, err := detectSystemLanguage(); err == nil {
 		return tag.String()
 	}
 	return language.English.String()
+}
+
+func detectSystemLanguage() (language.Tag, error) {
+	if runtime.GOOS == "darwin" {
+		return detectAppleLanguage()
+	}
+	return systemlocale.Detect()
+}
+
+func detectAppleLanguage() (language.Tag, error) {
+	output, err := exec.Command("defaults", "read", "-g", "AppleLanguages").Output()
+	if err != nil {
+		return language.Und, err
+	}
+	value := firstAppleLanguage(string(output))
+	if value == "" {
+		return language.Und, fmt.Errorf("AppleLanguages is empty")
+	}
+	return language.Make(value), nil
+}
+
+func firstAppleLanguage(output string) string {
+	for _, line := range strings.Split(output, "\n") {
+		value := strings.Trim(strings.TrimSpace(line), "\",(); ")
+		value = strings.TrimSuffix(value, ",")
+		value = strings.Trim(value, "\"")
+		if value != "" {
+			return value
+		}
+	}
+	return ""
+}
+
+func neutralLocale(value string) bool {
+	normalized := strings.ToUpper(strings.TrimSpace(value))
+	normalized = strings.Split(normalized, ".")[0]
+	return normalized == "C" || normalized == "POSIX"
+}
+
+func Pick(english, chineseText string) string {
+	mu.RLock()
+	useChinese := chinese
+	mu.RUnlock()
+	if useChinese {
+		return chineseText
+	}
+	return english
+}
+
+func IsChinese() bool {
+	mu.RLock()
+	defer mu.RUnlock()
+	return chinese
 }
 
 func T(id string) string {

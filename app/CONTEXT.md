@@ -65,7 +65,7 @@ The App's direct request to install one immutable Skill into explicit location-a
 _Avoid_: second installation selector, user-facing review ceremony
 
 **Batch Takeover**:
-The user's reviewed conversion of selected External Installations into ordinary managed Module dependencies. skills.sh fixes only the Source Repository; manual installations receive Hub Skill candidates ordered by App-owned description similarity, and the user retains final Module and immutable-version choice before one confirmation.
+The user's reviewed conversion of selected External Installations into ordinary managed Package dependencies. skills.sh fixes only the Source Repository; manual installations receive Hub Skill candidates ordered by App-owned description similarity, and the user retains final Package and immutable-version choice before one confirmation.
 _Avoid_: automatic identity inference, content-authenticated takeover, implicit import, unmatched Local import
 
 **Adoption Review**:
@@ -85,7 +85,7 @@ A reviewed, state-bound exact-path removal of healthy External Installations. Un
 _Avoid_: repair, delete by Skill name, silent overwrite
 
 **External Installation**:
-A Skill found in an Installed Agent's directory that is not derived from a declared Module Projection. The Library can inspect or explicitly remove it but cannot update or repair it; a user-reviewed Hub mapping can convert it into an ordinary managed Module dependency.
+A Skill found in an Installed Agent's directory that is not derived from a declared Package Projection. The Library can inspect or explicitly remove it but cannot update or repair it; a user-reviewed Hub mapping can convert it into an ordinary managed Package dependency.
 _Avoid_: broken Skill, unknown Skill, managed installation
 
 **External Removal Plan**:

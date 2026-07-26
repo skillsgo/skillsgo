@@ -32,41 +32,41 @@ func (l *countedRepositoryLister) List(context.Context, string) (*storage.RevInf
 func TestRepositoryProtocolReadsOnlyPersistedExactArtifacts(t *testing.T) {
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
-	modulePath, version := "github.com/acme/skills", "v1.0.0"
-	require.NoError(t, backend.Save(t.Context(), modulePath, version, bytes.NewReader([]byte("zip")), nil, []byte("info")))
+	packagePath, version := "github.com/acme/skills", "v1.0.0"
+	require.NoError(t, backend.Save(t.Context(), packagePath, version, bytes.NewReader([]byte("zip")), nil, []byte("info")))
 	protocol := New(&Opts{Storage: backend, Lister: &countedRepositoryLister{}, NetworkMode: Strict})
 
-	info, err := protocol.Info(t.Context(), modulePath, version)
+	info, err := protocol.Info(t.Context(), packagePath, version)
 	require.NoError(t, err)
 	require.Equal(t, []byte("info"), info)
-	archive, err := protocol.Zip(t.Context(), modulePath, version)
+	archive, err := protocol.Zip(t.Context(), packagePath, version)
 	require.NoError(t, err)
 	defer archive.Close()
 	contents, err := io.ReadAll(archive)
 	require.NoError(t, err)
 	require.Equal(t, []byte("zip"), contents)
 
-	_, err = protocol.Info(t.Context(), modulePath, "v2.0.0")
+	_, err = protocol.Info(t.Context(), packagePath, "v2.0.0")
 	require.True(t, huberrors.IsNotFoundErr(err), err)
 }
 
 func TestRepositoryProtocolListUnionsReleaseTagsAndRetainedStorage(t *testing.T) {
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
-	modulePath := "github.com/acme/skills"
-	require.NoError(t, backend.Save(t.Context(), modulePath, "v1.0.0", bytes.NewReader([]byte("zip")), nil, []byte("info")))
-	require.NoError(t, backend.Save(t.Context(), modulePath, "v0.0.0-20260720120000-abcdef123456", bytes.NewReader([]byte("zip")), nil, []byte("info")))
+	packagePath := "github.com/acme/skills"
+	require.NoError(t, backend.Save(t.Context(), packagePath, "v1.0.0", bytes.NewReader([]byte("zip")), nil, []byte("info")))
+	require.NoError(t, backend.Save(t.Context(), packagePath, "v0.0.0-20260720120000-abcdef123456", bytes.NewReader([]byte("zip")), nil, []byte("info")))
 	lister := &countedRepositoryLister{versions: []string{"v2.0.0"}}
 	protocol := New(&Opts{Storage: backend, Lister: lister, NetworkMode: Strict})
 
-	versions, err := protocol.List(t.Context(), modulePath)
+	versions, err := protocol.List(t.Context(), packagePath)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{"v1.0.0", "v2.0.0"}, versions)
 	require.Equal(t, 1, lister.calls)
 
 	offlineLister := &countedRepositoryLister{}
 	offline := New(&Opts{Storage: backend, Lister: offlineLister, NetworkMode: Offline})
-	versions, err = offline.List(t.Context(), modulePath)
+	versions, err = offline.List(t.Context(), packagePath)
 	require.NoError(t, err)
 	require.ElementsMatch(t, []string{"v1.0.0", "v0.0.0-20260720120000-abcdef123456"}, versions)
 	require.Zero(t, offlineLister.calls)

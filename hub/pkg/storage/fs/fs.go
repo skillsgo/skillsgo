@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the configured artifact root and untrusted Module/version/path coordinate segments.
+ * [INPUT]: Depends on the configured artifact root and untrusted Package/version/path coordinate segments.
  * [OUTPUT]: Provides the filesystem backend plus containment-checked artifact and Skill-content locations.
  * [POS]: Serves as the filesystem storage root and path-security boundary shared by every fs backend operation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

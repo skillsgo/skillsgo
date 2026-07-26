@@ -309,8 +309,8 @@ String _installationCoverageLabel(
 }
 
 String _installedSourceLabel(BuildContext context, InstalledSkill skill) {
-  if (skill.modulePath.isEmpty) return context.l10n.localSource;
-  return skill.modulePath;
+  if (skill.packagePath.isEmpty) return context.l10n.localSource;
+  return skill.packagePath;
 }
 
 class _LibraryScopeToggle extends StatelessWidget {
