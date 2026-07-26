@@ -79,6 +79,50 @@ void main() {
     expect(installed.single.targetCount, 2);
   });
 
+  test('remote detail requests the CLI JSON contract explicitly', () async {
+    final runner = FakeProcessRunner()
+      ..responses.addAll(const [
+        ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"modulePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-26T00:00:00Z","archiveSize":42,"name":"demo","path":"skills/demo","description":"Demo skill.","content":"# Demo"}',
+          stderr: '',
+        ),
+        ProcessOutput(
+          exitCode: 0,
+          stdout: '{"schemaVersion":7,"entries":[]}',
+          stderr: '',
+        ),
+      ]);
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/usr/local/bin/skillsgo',
+    );
+
+    final detail = await gateway.loadRemoteDetail(
+      const SkillSummary(
+        modulePath: 'github.com/example/skills',
+        installName: 'demo',
+        name: 'demo',
+        path: 'skills/demo',
+        description: 'Demo skill.',
+        latestVersion: 'v1.2.3',
+      ),
+    );
+
+    expect(detail.content, '# Demo');
+    expect(runner.calls.first.arguments, [
+      'detail',
+      'github.com/example/skills',
+      'v1.2.3',
+      'skills/demo',
+      '--hub',
+      'https://hub.skillsgo.ai',
+      '--output',
+      'json',
+    ]);
+  });
+
   test(
     'batch Find uses one CLI process with stdin and no inventory read',
     () async {

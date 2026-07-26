@@ -520,6 +520,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         skill.path,
         '--hub',
         _hubOrigin,
+        '--output',
+        'json',
       ]);
       if (!result.succeeded) throw _commandFailure(result);
       final decoded = jsonDecode(result.output.stdout);
