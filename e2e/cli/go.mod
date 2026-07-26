@@ -79,3 +79,5 @@ require (
 )
 
 tool gotest.tools/gotestsum
+
+replace github.com/skillsgo/skillsgo/protocol => ../../protocol
