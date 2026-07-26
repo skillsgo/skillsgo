@@ -56,7 +56,7 @@ void main() {
           path: '/tmp/user/local-skill',
           agents: ['codex', 'claude-code'],
           targetCount: 2,
-          modulePath: 'github.com/test/skills',
+          packagePath: 'github.com/test/skills',
           versions: ['v1'],
           targets: [
             SkillInstallationTarget(
@@ -131,7 +131,7 @@ void main() {
           path: '/tmp/user/local-skill',
           agents: ['codex', 'claude-code'],
           targetCount: 2,
-          modulePath: 'github.com/test/skills',
+          packagePath: 'github.com/test/skills',
           versions: ['v1'],
           targets: [
             SkillInstallationTarget(
@@ -204,7 +204,7 @@ void main() {
           path: '/tmp/local-skill',
           agents: ['codex'],
           targetCount: 1,
-          modulePath: 'github.com/test/skills',
+          packagePath: 'github.com/test/skills',
           versions: ['v1'],
           targets: [
             SkillInstallationTarget(

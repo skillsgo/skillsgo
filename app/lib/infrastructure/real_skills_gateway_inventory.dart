@@ -139,7 +139,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
                 raw['name'] is! String ||
                 (raw['name'] as String).isEmpty ||
                 (raw['description'] != null && raw['description'] is! String) ||
-                (raw['modulePath'] != null && raw['modulePath'] is! String) ||
+                (raw['packagePath'] != null && raw['packagePath'] is! String) ||
                 raw['versionDivergence'] is! bool ||
                 raw['targets'] is! List ||
                 raw['visibility'] is! List) {
@@ -244,13 +244,13 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
               throw const FormatException();
             }
             if (provenance == LibraryProvenance.hub &&
-                ((raw['modulePath'] as String? ?? '').isEmpty ||
+                ((raw['packagePath'] as String? ?? '').isEmpty ||
                     raw['inventoryKey'] !=
-                        'hub:${raw['modulePath']}:${raw['name']}')) {
+                        'hub:${raw['packagePath']}:${raw['name']}')) {
               throw const FormatException();
             }
             if (provenance == LibraryProvenance.external &&
-                ((raw['modulePath'] as String? ?? '').isNotEmpty ||
+                ((raw['packagePath'] as String? ?? '').isNotEmpty ||
                     versions.isNotEmpty ||
                     !(raw['inventoryKey'] as String).startsWith('external:'))) {
               throw const FormatException();
@@ -262,7 +262,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
               path: targets.first.path,
               agents: agents,
               targetCount: targets.length,
-              modulePath: raw['modulePath'] as String? ?? '',
+              packagePath: raw['packagePath'] as String? ?? '',
               targets: targets,
               visibility: visibility,
               provenance: provenance,
@@ -288,8 +288,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
     await _ensureHubOrigin();
     final normalizedProjects = _normalizeTakeoverProjectRoots(projectRoots);
     final arguments = <String>[
-      'takeover',
-      '--preflight',
+      'adopt',
       '--global',
       for (final projectRoot in normalizedProjects) ...[
         '--project',
@@ -417,9 +416,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
       );
     }
     final arguments = <String>[
-      'takeover',
-      '--plan',
-      plan.id,
+      'adopt',
       if (includeGlobal) '--global',
       for (final projectRoot in normalizedProjects) ...[
         '--project',
@@ -564,7 +561,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
           name: skill.name,
           path: targetPath,
           content: markdown,
-          modulePath: skill.modulePath,
+          packagePath: skill.packagePath,
           version: immutableVersions.length == 1
               ? immutableVersions.single
               : '',

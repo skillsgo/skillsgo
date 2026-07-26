@@ -8,7 +8,7 @@ part of '../fake_skills_gateway.dart';
 
 const defaultSearchResults = [
   SkillSummary(
-    modulePath: 'example/skills',
+    packagePath: 'example/skills',
     installName: 'flutter-pro',
     name: 'Flutter Pro',
     installs: 1200,
@@ -19,7 +19,7 @@ const defaultSearchResults = [
 final defaultRemoteDetail = SkillDetail(
   name: 'Flutter Pro',
   path: 'skills/flutter-pro',
-  modulePath: 'example/skills',
+  packagePath: 'example/skills',
   version: 'v1.2.3',
   time: DateTime.utc(2026, 7, 15),
   archiveSize: 24576,

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on SkillsGateway discovery models, localized copy, the SkillsGo design-system interface, Flutter Material and text-input services, HugeIcons, Loading Animation Widget indicators, Portal Labs Loading Shapes, the bundled solar-starfield background asset, native components, and the shared installation MenuAnchor.
- * [OUTPUT]: Exports SkillsGo theme and semantic color interfaces and provides the full-window photographic background behind Folder, typography/status tokens, bounded context-aware search controls, theme-aware refresh, pagination, and Module-parsing loading adapters, placeholder-safe Hub-image-backed discovery cards, anchored installation actions, status elements, and viewport-safe empty states with optional supporting copy.
+ * [OUTPUT]: Exports SkillsGo theme and semantic color interfaces and provides the full-window photographic background behind Folder, typography/status tokens, bounded context-aware search controls, theme-aware refresh, pagination, and Package-parsing loading adapters, placeholder-safe Hub-image-backed discovery cards, anchored installation actions, status elements, and viewport-safe empty states with optional supporting copy.
  * [POS]: Serves as the thin branded presentation layer over the SkillsGo design system and native Flutter Material behavior.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

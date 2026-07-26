@@ -1,23 +1,23 @@
 /*
- * [INPUT]: Depends on Module metadata, localized copy, SkillsGo typography, and installation callbacks.
- * [OUTPUT]: Provides the Module source header, metadata formatting, and install-all action.
- * [POS]: Serves as the Module-context presentation segment of the Discover journey.
+ * [INPUT]: Depends on Package metadata, localized copy, SkillsGo typography, and installation callbacks.
+ * [OUTPUT]: Provides the Package source header, metadata formatting, and install-all action.
+ * [POS]: Serves as the Package-context presentation segment of the Discover journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../discover_screen.dart';
 
-class _ModuleSourceHeader extends StatelessWidget {
-  const _ModuleSourceHeader({
-    required this.modulePath,
+class _PackageSourceHeader extends StatelessWidget {
+  const _PackageSourceHeader({
+    required this.packagePath,
     required this.skills,
     required this.onInstallAll,
     this.module,
   });
 
-  final String modulePath;
+  final String packagePath;
   final List<SkillSummary> skills;
   final ValueChanged<InstallLocationMenuPresenter> onInstallAll;
-  final ModuleSummary? module;
+  final PackageSummary? module;
 
   @override
   Widget build(BuildContext context) {
@@ -38,7 +38,7 @@ class _ModuleSourceHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         RepositoryAvatar(
-          source: modulePath,
+          source: packagePath,
           imageUrl: summary?.imageUrl ?? firstSkill.imageUrl,
           size: 88,
           borderRadius: 16,
@@ -49,8 +49,8 @@ class _ModuleSourceHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _modulePathLabel(modulePath),
-                textDirection: contentTextDirection(modulePath),
+                _packagePathLabel(packagePath),
+                textDirection: contentTextDirection(packagePath),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -122,7 +122,7 @@ class _ModuleSourceHeader extends StatelessWidget {
             const SizedBox(height: 28),
             InstallLocationMenuAnchor(
               builder: (context, present) => PrimaryCapsuleButton(
-                key: const Key('module-install-all'),
+                key: const Key('package-install-all'),
                 label: context.l10n.installAll,
                 height: 40,
                 horizontalPadding: 18,
@@ -147,11 +147,11 @@ String _moduleDate(DateTime value) {
   return '${local.year}-$month-$day';
 }
 
-String _modulePathLabel(String modulePath) {
-  final segments = modulePath.split('/');
+String _packagePathLabel(String packagePath) {
+  final segments = packagePath.split('/');
   return segments.length > 1 && segments.first.contains('.')
       ? segments.skip(1).join(' / ')
-      : modulePath;
+      : packagePath;
 }
 
 String _moduleCompactCount(int value) {

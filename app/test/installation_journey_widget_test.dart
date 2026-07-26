@@ -294,7 +294,7 @@ void main() {
     expect(find.text('Flutter Pro'), findsOneWidget);
     expect(
       FocusManager.instance.primaryFocus?.debugLabel,
-      'skill-card-${const SkillCoordinate(modulePath: 'example/skills', name: 'Flutter Pro').key}',
+      'skill-card-${const SkillCoordinate(packagePath: 'example/skills', name: 'Flutter Pro').key}',
     );
   });
 

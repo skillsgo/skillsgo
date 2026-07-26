@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses controlled CLI target-operation streams, Repository update documents, and the production SkillsGateway adapter.
- * [OUTPUT]: Specifies reviewed Target Operation Plans, Repository-level update preflight/execution projected onto Library targets, progress, and Catalog-only batch update-state contracts.
+ * [OUTPUT]: Specifies reviewed Target Operation Plans, local Repository update planning, confirmed execution projected onto Library targets, progress, and Catalog-only batch update-state contracts.
  * [POS]: Serves as the target-management and update contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -23,7 +23,7 @@ void main() {
       path: '/work/.codex/skills/demo',
       agents: ['codex'],
       targetCount: 1,
-      modulePath: 'github.com/example/skills',
+      packagePath: 'github.com/example/skills',
       targets: [
         SkillInstallationTarget(
           agent: 'codex',
@@ -38,7 +38,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":1,"phase":"module-remove","skills":["demo"],"scope":"project"}\n',
+            '{"schemaVersion":1,"phase":"package-remove","skills":["demo"],"scope":"project"}\n',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -139,11 +139,13 @@ void main() {
           '/tmp/Test',
           '--agent',
           'codex',
-          '--expected-state',
-          'sha256:state',
+          '--yes',
         ]),
       );
-      expect(runner.lastArguments, containsAll(['--output', 'ndjson']));
+      expect(
+        runner.lastArguments,
+        containsAll(['--yes', '--output', 'ndjson']),
+      );
 
       runner.result = const ProcessOutput(
         exitCode: 1,
@@ -193,7 +195,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout: '''
-{"schemaVersion":1,"phase":"update-check","items":[{"key":"hub:github.com/example/skills:test","modulePath":"github.com/example/skills","name":"test","versions":["v1"],"latestVersion":"v2","latestStatus":"update_available","status":"update_available"}]}
+{"schemaVersion":1,"phase":"update-check","items":[{"key":"hub:github.com/example/skills:test","packagePath":"github.com/example/skills","name":"test","versions":["v1"],"latestVersion":"v2","latestStatus":"update_available","status":"update_available"}]}
 ''',
         stderr: '',
       );
@@ -209,7 +211,7 @@ void main() {
         path: '/tmp/Test',
         agents: ['codex'],
         targetCount: 1,
-        modulePath: 'github.com/example/skills',
+        packagePath: 'github.com/example/skills',
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
@@ -227,7 +229,7 @@ void main() {
     );
     expect(states['hub:github.com/example/skills:test']?.toVersion, 'v2');
     expect(runner.calls, hasLength(1));
-    expect(runner.lastArguments!.take(2), ['updates', 'check']);
+    expect(runner.lastArguments!.take(2), ['hub', 'check-update']);
     expect(
       runner.lastArguments,
       containsAllInOrder(['--installed', isA<String>()]),
@@ -238,7 +240,7 @@ void main() {
             as Map<String, dynamic>;
     expect(installed, {
       'key': 'hub:github.com/example/skills:test',
-      'modulePath': 'github.com/example/skills',
+      'packagePath': 'github.com/example/skills',
       'name': 'test',
       'versions': ['v1'],
     });
@@ -246,19 +248,13 @@ void main() {
     expect(runner.lastArguments, isNot(contains('--target')));
   });
 
-  test('update uses one state-bound Repository coordinate transaction', () async {
+  test('update uses one confirmed Repository coordinate transaction', () async {
     final runner = FakeProcessRunner()
       ..responses.addAll(const [
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":1,"phase":"module-update-preflight","modulePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"global","moduleDir":"/tmp/modules","stateToken":"state"}\n',
-          stderr: '',
-        ),
-        ProcessOutput(
-          exitCode: 0,
-          stdout:
-              '{"schemaVersion":1,"phase":"module-update","modulePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"global","moduleDir":"/tmp/modules","stateToken":"state"}\n',
+              '{"schemaVersion":1,"phase":"package-update","packagePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"global","packageDir":"/tmp/packages"}\n',
           stderr: '',
         ),
       ]);
@@ -272,7 +268,7 @@ void main() {
       path: '/tmp/Test',
       agents: ['codex'],
       targetCount: 1,
-      modulePath: 'github.com/example/skills',
+      packagePath: 'github.com/example/skills',
       targets: [
         SkillInstallationTarget(
           scope: InstallationScope.global,
@@ -289,6 +285,8 @@ void main() {
     );
     final progress = <UpdateTargetProgress>[];
 
+    expect(runner.calls, isEmpty);
+
     final execution = await gateway.executeUpdate(
       plan,
       onProgress: progress.add,
@@ -297,22 +295,17 @@ void main() {
     expect(progress, hasLength(2));
     expect(execution.summary.succeeded, 1);
     expect(execution.results.single.toVersion, 'v2');
-    expect(plan.targets.single.stateToken, 'state');
-    expect(runner.calls, hasLength(2));
-    expect(runner.calls.first.arguments, [
+    expect(runner.calls, hasLength(1));
+    expect(runner.calls.single.arguments, [
       'update',
       'github.com/example/skills@v2',
       '--global',
-      '--preflight',
+      '--yes',
       '--output',
       'json',
       '--hub',
       'https://hub.skillsgo.ai',
     ]);
-    expect(
-      runner.lastArguments,
-      containsAllInOrder(['--state-token', 'state', '--output', 'json']),
-    );
     expect(runner.lastArguments, isNot(contains('--target')));
     expect(runner.lastArguments, isNot(contains('mode')));
 

@@ -64,7 +64,7 @@ void main() {
     'Repository request submits every member through one atomic gateway call',
     () async {
       const second = SkillSummary(
-        modulePath: 'example/skills',
+        packagePath: 'example/skills',
         installName: 'second',
         name: 'Second',
         installs: 42,
@@ -84,9 +84,9 @@ void main() {
 
       expect(state.succeeded, isTrue);
       expect(state.executions, hasLength(2));
-      expect(state.executions.map((item) => item.modulePath), [
-        defaultSearchResults.first.modulePath,
-        second.modulePath,
+      expect(state.executions.map((item) => item.packagePath), [
+        defaultSearchResults.first.packagePath,
+        second.packagePath,
       ]);
       expect(state.executions.map((item) => item.version), ['main', 'main']);
       expect(gateway.detailLoads, 0);

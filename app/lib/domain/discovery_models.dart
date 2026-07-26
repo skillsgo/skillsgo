@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on shared system vocabulary for metrics, discovery collections, and canonical Skill coordinates.
- * [OUTPUT]: Provides discovery summaries, canonical pagination, ordered Module-scoped candidate queries, canonical coordinate identity and exact Module member paths, Module metadata, pages, and auditable files.
+ * [OUTPUT]: Provides discovery summaries, canonical pagination, ordered Package-scoped candidate queries, canonical coordinate identity and exact Package member paths, Package metadata, pages, and auditable files.
  * [POS]: Serves as the focused public discovery model module consumed by Discover, detail, and CLI decoding.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,7 +9,7 @@ import 'skill_coordinate.dart';
 
 class SkillSummary {
   const SkillSummary({
-    required this.modulePath,
+    required this.packagePath,
     required this.installName,
     required this.name,
     this.path = '',
@@ -22,7 +22,7 @@ class SkillSummary {
     this.localTargetCount = 0,
   });
 
-  final String modulePath;
+  final String packagePath;
   final String installName;
   final String name;
   final String path;
@@ -37,15 +37,15 @@ class SkillSummary {
   bool get isInstalled => localTargetCount > 0;
 
   SkillCoordinate get coordinate =>
-      SkillCoordinate(modulePath: modulePath, name: name);
+      SkillCoordinate(packagePath: packagePath, name: name);
 
   String get coordinateKey => coordinate.key;
 
   String get installationSelector => path.isEmpty ? name : path;
 }
 
-class ModuleSummary {
-  const ModuleSummary({
+class PackageSummary {
+  const PackageSummary({
     required this.id,
     this.imageUrl,
     this.description = '',
@@ -71,7 +71,7 @@ class DiscoveryPage {
 
   final List<SkillSummary> skills;
   final Pagination pagination;
-  final ModuleSummary? module;
+  final PackageSummary? module;
 }
 
 class Pagination {
@@ -84,11 +84,11 @@ class Pagination {
   int? get nextPage => hasMore ? page + 1 : null;
 }
 
-class ModuleFindQuery {
-  const ModuleFindQuery({required this.name, this.modulePath = ''});
+class PackageFindQuery {
+  const PackageFindQuery({required this.name, this.packagePath = ''});
 
   final String name;
-  final String modulePath;
+  final String packagePath;
 }
 
 class SkillFile {

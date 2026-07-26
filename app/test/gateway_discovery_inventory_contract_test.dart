@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses controlled CLI Hub/Skill reads, an HTTP Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
+ * [INPUT]: Uses controlled CLI Find/Show reads, an HTTP Cloud-composed ranking server, inventory responses, the production SkillsGateway adapter, and equivalent GitHub source aliases.
  * [OUTPUT]: Specifies public single/bounded-chunk batch Find and Cloud-composed collection discovery including the four-row empty-input matrix, direct explicit-source routing, unified inventory, Agent catalog, visibility, and schema validation contracts.
  * [POS]: Serves as the discovery and local inventory contract suite at the SkillsGateway seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -25,19 +25,19 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"skills":[{"modulePath":"github.com/flutter/skills","imageUrl":"https://images.example/flutter.png","path":"responsive-layout","name":"responsive-layout","description":"Build adaptive Flutter layouts.","latestVersion":"v1.2.3"}],"pagination":{"page":0,"perPage":20,"hasMore":true}}',
+              '{"skills":[{"packagePath":"github.com/flutter/skills","imageUrl":"https://images.example/flutter.png","path":"responsive-layout","name":"responsive-layout","description":"Build adaptive Flutter layouts.","latestVersion":"v1.2.3"}],"pagination":{"page":0,"perPage":20,"hasMore":true}}',
           stderr: '',
         ),
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/flutter/skills:responsive-layout","name":"responsive-layout","modulePath":"github.com/flutter/skills","provenance":"hub","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
+              '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/flutter/skills:responsive-layout","name":"responsive-layout","packagePath":"github.com/flutter/skills","provenance":"hub","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
           stderr: '',
         ),
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/flutter/skills:responsive-layout","name":"responsive-layout","modulePath":"github.com/flutter/skills","provenance":"hub","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
+              '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/flutter/skills:responsive-layout","name":"responsive-layout","packagePath":"github.com/flutter/skills","provenance":"hub","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
           stderr: '',
         ),
       ]);
@@ -53,7 +53,7 @@ void main() {
     final results = page.skills;
 
     expect(results, hasLength(1));
-    expect(results.single.modulePath, 'github.com/flutter/skills');
+    expect(results.single.packagePath, 'github.com/flutter/skills');
     expect(results.single.imageUrl, 'https://images.example/flutter.png');
     expect(results.single.installName, 'responsive-layout');
     expect(results.single.path, 'responsive-layout');
@@ -85,7 +85,7 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"modulePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-26T00:00:00Z","archiveSize":42,"name":"demo","path":"skills/demo","description":"Demo skill.","content":"# Demo"}',
+              '{"packagePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-26T00:00:00Z","archiveSize":42,"name":"demo","path":"skills/demo","description":"Demo skill.","content":"# Demo"}',
           stderr: '',
         ),
         ProcessOutput(
@@ -101,7 +101,7 @@ void main() {
 
     final detail = await gateway.loadRemoteDetail(
       const SkillSummary(
-        modulePath: 'github.com/example/skills',
+        packagePath: 'github.com/example/skills',
         installName: 'demo',
         name: 'demo',
         path: 'skills/demo',
@@ -112,9 +112,9 @@ void main() {
 
     expect(detail.content, '# Demo');
     expect(runner.calls.first.arguments, [
-      'detail',
-      'github.com/example/skills',
-      'v1.2.3',
+      'show',
+      'github.com/example/skills@v1.2.3',
+      '--path',
       'skills/demo',
       '--hub',
       'https://hub.skillsgo.ai',
@@ -130,7 +130,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"candidates":[[{"modulePath":"github.com/example/skills","version":"v1.2.3","path":"skills/ask-matt","name":"ask-matt","description":"Route requests."}]]}',
+              '{"candidates":[[{"packagePath":"github.com/example/skills","version":"v1.2.3","path":"skills/ask-matt","name":"ask-matt","description":"Route requests."}]]}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -139,7 +139,7 @@ void main() {
       );
 
       final results = await gateway.findSources(const [
-        ModuleFindQuery(name: 'ask-matt'),
+        PackageFindQuery(name: 'ask-matt'),
       ]);
 
       expect(runner.calls, hasLength(1));
@@ -181,7 +181,7 @@ void main() {
 
     final results = await gateway.findSources([
       for (var index = 0; index < 205; index++)
-        ModuleFindQuery(name: 'skill-$index'),
+        PackageFindQuery(name: 'skill-$index'),
     ]);
 
     expect(runner.calls, hasLength(3));
@@ -199,7 +199,7 @@ void main() {
     cloud.listen((request) async {
       request.response.headers.contentType = ContentType.json;
       request.response.write(
-        '{"skills":[{"modulePath":"github.com/acme/skills","name":"demo","description":"Demo Skill","imageUrl":null,"path":"demo","latestVersion":"v1.0.0","metric":{"value":8,"change":5}}],"pagination":{"page":0,"perPage":20,"hasMore":false}}',
+        '{"skills":[{"packagePath":"github.com/acme/skills","name":"demo","description":"Demo Skill","imageUrl":null,"path":"demo","latestVersion":"v1.0.0","metric":{"value":8,"change":5}}],"pagination":{"page":0,"perPage":20,"hasMore":false}}',
       );
       await request.response.close();
     });
@@ -224,7 +224,7 @@ void main() {
 
     final page = await gateway.discover(DiscoveryCollection.hot);
 
-    expect(page.skills.single.modulePath, 'github.com/acme/skills');
+    expect(page.skills.single.packagePath, 'github.com/acme/skills');
     expect(page.skills.single.installs, 8);
     expect(page.skills.single.metricChange, 5);
     expect(runner.calls, hasLength(2));
@@ -329,13 +329,13 @@ void main() {
     },
   );
 
-  test('explicit Git source discovery goes through CLI info', () async {
+  test('explicit Git source discovery goes through CLI show', () async {
     final runner = FakeProcessRunner()
       ..responses.addAll([
         const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":1,"kind":"Module","modulePath":"github.com/acme/skills","version":"v1.2.3","time":"2026-07-18T12:00:00Z","description":"Skills for product teams.","skills":[{"modulePath":"github.com/acme/skills","path":"skills/demo","version":"v1.2.3","name":"demo","description":"Demo Skill","imageUrl":"https://github.com/acme.png?size=72","stars":7}]}',
+              '{"schemaVersion":1,"kind":"Package","packagePath":"github.com/acme/skills","version":"v1.2.3","time":"2026-07-18T12:00:00Z","description":"Skills for product teams.","skills":[{"packagePath":"github.com/acme/skills","path":"skills/demo","version":"v1.2.3","name":"demo","description":"Demo Skill","imageUrl":"https://github.com/acme.png?size=72","stars":7}]}',
           stderr: '',
         ),
         const ProcessOutput(
@@ -356,7 +356,7 @@ void main() {
     );
 
     expect(page.skills, hasLength(1));
-    expect(page.skills.single.modulePath, 'github.com/acme/skills');
+    expect(page.skills.single.packagePath, 'github.com/acme/skills');
     expect(page.skills.single.imageUrl, 'https://github.com/acme.png?size=72');
     expect(page.skills.single.metricKind, isNull);
     expect(page.module?.id, 'github.com/acme/skills');
@@ -365,7 +365,7 @@ void main() {
     expect(page.module?.latestVersion, 'v1.2.3');
     expect(page.module?.updatedAt, DateTime.utc(2026, 7, 18, 12));
     expect(runner.calls.first.arguments, [
-      'info',
+      'show',
       'https://github.com/acme/skills',
       '--hub',
       'https://hub.example.test',
@@ -374,9 +374,9 @@ void main() {
     ]);
   });
 
-  test('GitHub aliases all bypass keyword search and use CLI info', () async {
+  test('GitHub aliases all bypass keyword search and use CLI show', () async {
     const repositoryInfo =
-        '{"schemaVersion":1,"kind":"Module","modulePath":"github.com/owner/repo","version":"v0.0.0-20260720120000-abcdef123456","time":"2026-07-20T12:00:00Z","skills":[{"modulePath":"github.com/owner/repo","path":"skills/demo","version":"v0.0.0-20260720120000-abcdef123456","name":"demo","description":"Demo Skill","stars":0}]}';
+        '{"schemaVersion":1,"kind":"Package","packagePath":"github.com/owner/repo","version":"v0.0.0-20260720120000-abcdef123456","time":"2026-07-20T12:00:00Z","skills":[{"packagePath":"github.com/owner/repo","path":"skills/demo","version":"v0.0.0-20260720120000-abcdef123456","name":"demo","description":"Demo Skill","stars":0}]}';
     for (final source in const [
       'owner/repo@main',
       'github/owner/repo@main',
@@ -404,9 +404,9 @@ void main() {
       );
 
       expect(page.module?.id, 'github.com/owner/repo', reason: source);
-      expect(page.skills.single.modulePath, 'github.com/owner/repo');
+      expect(page.skills.single.packagePath, 'github.com/owner/repo');
       expect(runner.calls.first.arguments, [
-        'info',
+        'show',
         source,
         '--hub',
         'https://hub.example.test',
@@ -431,7 +431,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            r'{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","modulePath":"github.com/a/b","provenance":"hub","health":"missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"visibility":[{"agent":"codex","scope":"global","paths":["/tmp/testing","/tmp/shared/testing"],"verification":"verified"},{"agent":"opencode","scope":"project","projectRoot":"/work/project;$(touch nope)","paths":["/work/project;$(touch nope)/.agents/skills/testing"],"verification":"unverified"}],"targets":[{"scope":"global","projectRoot":"","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","version":"v2.0.0","health":"missing"}]}]}',
+            r'{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"visibility":[{"agent":"codex","scope":"global","paths":["/tmp/testing","/tmp/shared/testing"],"verification":"verified"},{"agent":"opencode","scope":"project","projectRoot":"/work/project;$(touch nope)","paths":["/work/project;$(touch nope)/.agents/skills/testing"],"verification":"unverified"}],"targets":[{"scope":"global","projectRoot":"","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","version":"v2.0.0","health":"missing"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -458,7 +458,7 @@ void main() {
 
     expect(skills.single.name, 'testing');
     expect(skills.single.inventoryKey, 'hub:github.com/a/b:testing');
-    expect(skills.single.modulePath, 'github.com/a/b');
+    expect(skills.single.packagePath, 'github.com/a/b');
     expect(skills.single.isLinkedToCodex, isTrue);
     expect(skills.single.targetCount, 2);
     expect(skills.single.versionDivergence, isTrue);
@@ -500,7 +500,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","modulePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"healthy"}]}]}',
+            '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -539,7 +539,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":7,"entries":[{"inventoryKey":"external:abc","name":"testing","provenance":"external","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/external/testing","version":"","health":"healthy"}]},{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","modulePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/managed/testing","version":"v1","health":"healthy"}]}]}',
+            '{"schemaVersion":7,"entries":[{"inventoryKey":"external:abc","name":"testing","provenance":"external","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/external/testing","version":"","health":"healthy"}]},{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","packagePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/managed/testing","version":"v1","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -555,7 +555,7 @@ void main() {
       (skill) => skill.provenance == LibraryProvenance.external,
     );
     expect(external.inventoryKey, 'external:abc');
-    expect(external.modulePath, isEmpty);
+    expect(external.packagePath, isEmpty);
     expect(external.versions, isEmpty);
     expect(external.targets.single.version, isEmpty);
   });

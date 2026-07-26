@@ -103,7 +103,7 @@ void main() {
         'search:0': DiscoveryPage(
           skills: const [
             SkillSummary(
-              modulePath: 'github.com/example/skills',
+              packagePath: 'github.com/example/skills',
               installName: 'flutter-pro',
               name: 'Flutter Pro',
               latestVersion: 'v1.2.3',
@@ -111,7 +111,7 @@ void main() {
                   'Build Flutter products with reliable engineering flows.',
             ),
           ],
-          module: ModuleSummary(
+          module: PackageSummary(
             id: 'github.com/example/skills',
             description: 'A focused collection of Flutter engineering skills.',
             stars: 12800,
@@ -139,7 +139,7 @@ void main() {
     expect(find.text('1 skill'), findsOneWidget);
     expect(find.text('Install all skills'), findsOneWidget);
     final installAll = tester.widget<PrimaryCapsuleButton>(
-      find.byKey(const Key('module-install-all')),
+      find.byKey(const Key('package-install-all')),
     );
     expect(installAll.height, 40);
     expect(installAll.horizontalPadding, 18);
@@ -313,7 +313,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     const base = SkillSummary(
-      modulePath: 'github.com/acme/skills',
+      packagePath: 'github.com/acme/skills',
       installName: 'planner',
       name: 'Planner',
       description: 'Turn product goals into a concrete execution plan.',
@@ -328,7 +328,7 @@ void main() {
         'trending:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              modulePath: 'github.com/acme/skills',
+              packagePath: 'github.com/acme/skills',
               installName: 'planner',
               name: 'Planner',
               description: 'Turn product goals into a concrete execution plan.',
@@ -341,7 +341,7 @@ void main() {
         'hot:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              modulePath: 'github.com/acme/skills',
+              packagePath: 'github.com/acme/skills',
               installName: 'planner',
               name: 'Planner',
               description: 'Turn product goals into a concrete execution plan.',
@@ -393,7 +393,7 @@ void main() {
           skills: List.generate(
             24,
             (index) => SkillSummary(
-              modulePath: 'example/skills/ranked-$index',
+              packagePath: 'example/skills/ranked-$index',
               installName: 'ranked-$index',
               name: 'Ranked $index',
               installs: 24 - index,
@@ -448,7 +448,7 @@ void main() {
         'ranking:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              modulePath: 'github.com/acme/a',
+              packagePath: 'github.com/acme/a',
               installName: 'a',
               name: 'Alpha',
               installs: 2,
@@ -459,7 +459,7 @@ void main() {
         'ranking:1': DiscoveryPage(
           skills: [
             SkillSummary(
-              modulePath: 'github.com/acme/b',
+              packagePath: 'github.com/acme/b',
               installName: 'b',
               name: 'Bravo',
               installs: 1,
@@ -488,7 +488,7 @@ void main() {
         'ranking:0': DiscoveryPage(
           skills: [
             SkillSummary(
-              modulePath: 'github.com/acme/a',
+              packagePath: 'github.com/acme/a',
               installName: 'a',
               name: 'Alpha',
               installs: 2,

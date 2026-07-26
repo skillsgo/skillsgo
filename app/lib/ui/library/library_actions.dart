@@ -458,7 +458,7 @@ extension _LibraryActions on _LibraryScreenState {
         final searchable = [
           skill.name,
           skill.description,
-          skill.modulePath,
+          skill.packagePath,
           ...skill.agents,
           ...skill.projects,
           ...skill.versions,

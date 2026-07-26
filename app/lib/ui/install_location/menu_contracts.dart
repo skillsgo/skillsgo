@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Installation target selections, Agent catalogs, Added Projects, Module members, and async submission outcomes.
+ * [INPUT]: Depends on Installation target selections, Agent catalogs, Added Projects, Package members, and async submission outcomes.
  * [OUTPUT]: Provides the public menu request with exact existing-target exclusions, action, choice, presenter, and submission contracts.
  * [POS]: Serves as the small external interface of the anchored Installation Request selector.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

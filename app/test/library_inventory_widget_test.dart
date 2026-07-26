@@ -49,14 +49,14 @@ void main() {
         libraryEntries: externalSkills,
         searchResults: const [
           SkillSummary(
-            modulePath: 'github.com/example/skills',
+            packagePath: 'github.com/example/skills',
             installName: 'ask-matt',
             name: 'ask-matt',
             latestVersion: 'v3.2.1',
             description: 'Route a request to the best matching skill.',
           ),
           SkillSummary(
-            modulePath: 'github.com/example/other',
+            packagePath: 'github.com/example/other',
             installName: 'another-skill',
             name: 'another-skill',
             latestVersion: 'v9',

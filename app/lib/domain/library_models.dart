@@ -185,7 +185,7 @@ class SkillDetail {
     required this.name,
     this.path = '',
     this.content = '',
-    this.modulePath = '',
+    this.packagePath = '',
     this.version = '',
     this.time,
     this.archiveSize = 0,
@@ -196,7 +196,7 @@ class SkillDetail {
   final String name;
   final String path;
   final String content;
-  final String modulePath;
+  final String packagePath;
   final String version;
   final DateTime? time;
   final int archiveSize;
@@ -212,7 +212,7 @@ class InstalledSkill {
     required this.agents,
     required this.targetCount,
     this.inventoryKey = '',
-    this.modulePath = '',
+    this.packagePath = '',
     this.targets = const [],
     this.visibility = const [],
     this.provenance = LibraryProvenance.hub,
@@ -228,7 +228,7 @@ class InstalledSkill {
   final List<String> agents;
   final int targetCount;
   final String inventoryKey;
-  final String modulePath;
+  final String packagePath;
   final List<SkillInstallationTarget> targets;
   final List<SkillVisibility> visibility;
   final LibraryProvenance provenance;
@@ -273,7 +273,7 @@ class InstalledSkill {
       path: selectedTargets.first.path,
       agents: (selectedAgents.toList()..sort()),
       targetCount: selectedTargets.length,
-      modulePath: modulePath,
+      packagePath: packagePath,
       targets: List.unmodifiable(selectedTargets),
       visibility: visibility,
       provenance: provenance,
