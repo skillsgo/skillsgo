@@ -7,6 +7,7 @@
 package s3
 
 import (
+	"bytes"
 	"context"
 	"os"
 	"testing"
@@ -25,6 +26,47 @@ import (
 func TestBackend(t *testing.T) {
 	backend := getStorage(t)
 	compliance.RunTests(t, backend, backend.clear)
+}
+
+func TestSkillContentStore(t *testing.T) {
+	backend := getStorage(t)
+	t.Cleanup(func() { _ = backend.clear() })
+	content := []byte("---\nname: demo\ndescription: Demo Skill.\n---\n# Demo\n")
+
+	created, err := backend.PutSkillContentIfAbsent(t.Context(), "github.com/acme/skills", "v1.0.0", "skills/demo", content)
+	if err != nil || !created {
+		t.Fatalf("first write created=%v err=%v", created, err)
+	}
+	created, err = backend.PutSkillContentIfAbsent(t.Context(), "github.com/acme/skills", "v1.0.0", "skills/demo", content)
+	if err != nil || created {
+		t.Fatalf("identical retry created=%v err=%v", created, err)
+	}
+	got, err := backend.SkillContent(t.Context(), "github.com/acme/skills", "v1.0.0", "skills/demo")
+	if err != nil || !bytes.Equal(got, content) {
+		t.Fatalf("read content=%q err=%v", got, err)
+	}
+	_, err = backend.PutSkillContentIfAbsent(t.Context(), "github.com/acme/skills", "v1.0.0", "skills/demo", []byte("different"))
+	if !errors.Is(err, errors.KindAlreadyExists) {
+		t.Fatalf("conflict err=%v", err)
+	}
+	_, err = backend.SkillContent(t.Context(), "github.com/acme/skills", "v1.0.0", "skills/missing")
+	if !errors.Is(err, errors.KindNotFound) {
+		t.Fatalf("missing err=%v", err)
+	}
+}
+
+func TestSkillContentObjectName(t *testing.T) {
+	got, err := skillContentObjectName("github.com/acme/skills", "v1.2.3", "skills/demo")
+	if err != nil || got != "github.com/acme/skills/@v/v1.2.3.skills/skills/demo/SKILL.md" {
+		t.Fatalf("object name=%q err=%v", got, err)
+	}
+	root, err := skillContentObjectName("github.com/acme/skills", "v1.2.3", ".")
+	if err != nil || root != "github.com/acme/skills/@v/v1.2.3.skills/SKILL.md" {
+		t.Fatalf("root object name=%q err=%v", root, err)
+	}
+	if _, err := skillContentObjectName("github.com/acme/skills", "v1.2.3", "../escape"); err == nil {
+		t.Fatal("expected traversal path rejection")
+	}
 }
 
 func BenchmarkBackend(b *testing.B) {

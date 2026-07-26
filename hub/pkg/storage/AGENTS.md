@@ -7,7 +7,7 @@
 - `immutable.go`, `immutable_test.go`: define bounded `PutIfAbsent`, identical-content idempotency, immutable conflict detection, Skill-content delegation, and the process-local fallback used only when a backend has no stronger native implementation.
 - `skill_content.go`: defines bounded create-only SKILL.md sidecars keyed by immutable Package Version plus exact Skill path.
 - `fs/`: persists Info and ZIP pairs through filesystem-native create-only publication and verifies existing bytes under cross-process races.
-- `gcp/`, `s3/`, and `azureblob/`: adapt provider-native conditional object creation to the immutable coordinate contract.
+- `gcp/`, `s3/`, and `azureblob/`: adapt provider-native conditional object creation to the immutable coordinate contract; S3 also persists immutable per-Skill `SKILL.md` sidecars for demand-driven Package publication.
 - `mongo/`: reserves a unique coordinate and archive digest before GridFS upload so identical retries can complete interrupted publication.
 - `external/`: makes one external storage server authoritative for cross-client `PutIfAbsent` decisions and exposes the corresponding HTTP client adapter.
 - `mem/`: provides disposable in-memory storage for tests and development.
