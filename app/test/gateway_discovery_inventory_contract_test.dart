@@ -72,6 +72,8 @@ void main() {
       '0',
       '--per-page',
       '20',
+      '--output',
+      'json',
     ]);
 
     final installed = await gateway.listInstalled();
@@ -151,6 +153,8 @@ void main() {
         'https://hub.skillsgo.ai',
         '--content-locale',
         'en',
+        '--output',
+        'json',
       ]);
       expect(jsonDecode(runner.lastStdin!)['queries'], [
         {'name': 'ask-matt'},
@@ -320,6 +324,8 @@ void main() {
           'info',
           '--hub',
           'https://hub.example.test',
+          '--output',
+          'json',
         ]);
         expect(requestedCloudPaths, [
           '/api/v1/rankings/${tc.wireCollection}?page=0&perPage=20',

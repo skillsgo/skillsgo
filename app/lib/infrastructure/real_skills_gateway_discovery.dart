@@ -50,6 +50,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
           '$page',
           '--per-page',
           '$perPage',
+          '--output',
+          'json',
         ]);
         if (!result.succeeded) throw _commandFailure(result);
         decoded = jsonDecode(result.output.stdout);
@@ -245,6 +247,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       _hubOrigin,
       '--content-locale',
       locale,
+      '--output',
+      'json',
     ], stdin: request);
     if (!result.succeeded) throw _commandFailure(result);
     try {

@@ -12,7 +12,14 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
     await _ensureHubOrigin();
     final cached = _hubRuntime;
     if (cached != null) return cached;
-    final result = await _runCli(['hub', 'info', '--hub', _hubOrigin]);
+    final result = await _runCli([
+      'hub',
+      'info',
+      '--hub',
+      _hubOrigin,
+      '--output',
+      'json',
+    ]);
     if (!result.succeeded) throw _commandFailure(result);
     try {
       final decoded = jsonDecode(result.output.stdout);
@@ -436,7 +443,14 @@ mixin _RealSkillsGatewayPreferences on _RealSkillsGatewayCore {
     }
     final normalized = base.toString().replaceFirst(RegExp(r'/$'), '');
     try {
-      final result = await _runCli(['hub', 'check', '--hub', normalized]);
+      final result = await _runCli([
+        'hub',
+        'check',
+        '--hub',
+        normalized,
+        '--output',
+        'json',
+      ]);
       if (!result.succeeded) throw _commandFailure(result);
       final decoded = jsonDecode(result.output.stdout);
       if (decoded is! Map<String, dynamic> || decoded['skills'] is! List) {
