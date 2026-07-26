@@ -28,7 +28,7 @@ final defaultRemoteDetail = SkillDetail(
   installationTargets: [
     SkillInstallationTarget(
       agent: 'codex',
-      scope: InstallationScope.global,
+      scope: InstallationScope.user,
       path: '/tmp/flutter-pro',
       version: 'v1.2.3',
     ),
@@ -87,7 +87,7 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
     this.takeoverPlan = const BatchTakeoverPlan(
       id: 'fake-takeover-plan',
       allEligibleCount: 1,
-      globalEligibleCount: 1,
+      userEligibleCount: 1,
     ),
     this.takeoverPlanCompleter,
     this.takeoverCompleter,

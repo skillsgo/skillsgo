@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses command.Execute with an environment-gated Test Agent and temporary Global target paths.
+ * [INPUT]: Uses command.Execute with an environment-gated Test Agent and temporary user target paths.
  * [OUTPUT]: Specifies the complete, versioned, locale-independent Agent discovery JSON contract.
  * [POS]: Serves as executable contract coverage for App-facing Agent discovery.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -42,7 +42,7 @@ func TestAgentsJSONExposesCompleteSupportedCatalogAndInstalledTestAgent(t *testi
 		testAgentFound = true
 		require.Equal(t, "Test Agent", status.DisplayName)
 		require.True(t, status.Installed)
-		require.Equal(t, home+string(filepath.Separator)+"skills", status.GlobalTarget.Path)
+		require.Equal(t, home+string(filepath.Separator)+"skills", status.UserTarget.Path)
 	}
 	require.True(t, testAgentFound)
 }

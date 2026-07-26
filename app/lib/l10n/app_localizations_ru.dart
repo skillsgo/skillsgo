@@ -410,7 +410,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get specificProject => 'Проект';
 
   @override
-  String get globalScope => 'Глобальный';
+  String get userScope => 'Глобальный';
 
   @override
   String get addProject => 'Добавить проект';
@@ -1229,7 +1229,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get installLocationTitle => 'Установить место установки';
 
   @override
-  String get globalLevel => 'Global';
+  String get userLevel => 'Уровень пользователя';
 
   @override
   String get projectLevel => 'Уровень проекта';
@@ -1244,8 +1244,8 @@ class AppLocalizationsRu extends AppLocalizations {
   String get repositoryParsing => 'Разбор репозитория…';
 
   @override
-  String globalInstallSummary(int agents) {
-    return 'Available globally to $agents Agents';
+  String userInstallSummary(int agents) {
+    return 'Доступно для $agents Agents на уровне пользователя.';
   }
 
   @override

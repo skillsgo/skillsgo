@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute with an isolated External Agent Skill and flat exact-path arguments.
- * [OUTPUT]: Specifies state-bound recoverable External removal and confirms obsolete or unimplemented commands are absent.
+ * [OUTPUT]: Specifies state-bound recoverable External removal and confirms the obsolete manage command is absent.
  * [POS]: Serves as the public CLI contract coverage for App-driven External target removal.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -67,14 +67,4 @@ func TestManageCommandIsRemoved(t *testing.T) {
 	var output bytes.Buffer
 	err := Execute([]string{"manage"}, &output, &output)
 	require.ErrorContains(t, err, "unknown command")
-}
-
-func TestRemovedCommandsStayAbsent(t *testing.T) {
-	for _, name := range []string{"use", "init", "inventory"} {
-		t.Run(name, func(t *testing.T) {
-			var output bytes.Buffer
-			err := Execute([]string{name}, &output, &output)
-			require.ErrorContains(t, err, "unknown command")
-		})
-	}
 }

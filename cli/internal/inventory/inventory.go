@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on strict Repository YAML/Lock state, Scope Module Stores, coordinate Projections, the Agent Catalog, and read-only target filesystem metadata.
- * [OUTPUT]: Provides inventory v7 Repository-managed and External Library reconciliation with explicit projects, mode-free Projection targets, target health, and Discovery-Root-derived visibility.
+ * [OUTPUT]: Provides inventory v6 Repository-managed and External Library reconciliation with explicit projects, mode-free Projection targets, target health, and Discovery-Root-derived visibility.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,7 +18,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 )
 
-const SchemaVersion = 7
+const SchemaVersion = 6
 
 var ErrEmptyProjectRoot = errors.New("project root must not be empty")
 
@@ -78,9 +78,9 @@ type Target struct {
 }
 
 type Options struct {
-	IncludeGlobal bool
-	Projects      []string
-	Catalog       *agent.Catalog
+	IncludeUser bool
+	Projects    []string
+	Catalog     *agent.Catalog
 }
 
 func Build(options Options) (Report, error) {
@@ -98,11 +98,11 @@ func Build(options Options) (Report, error) {
 	entries := map[string]*Entry{}
 	accountedTargets := map[string]bool{}
 	roots := make([]declarationRoot, 0, len(projectRoots)+1)
-	if options.IncludeGlobal {
+	if options.IncludeUser {
 		roots = append(roots, declarationRoot{
-			root:      project.GlobalDeclarationRoot(home),
-			stateRoot: project.GlobalStateRoot(home),
-			scope:     install.ScopeGlobal,
+			root:      project.UserDeclarationRoot(home),
+			stateRoot: project.UserStateRoot(home),
+			scope:     install.ScopeUser,
 		})
 	}
 	for _, root := range projectRoots {
@@ -115,10 +115,10 @@ func Build(options Options) (Report, error) {
 		entries,
 		accountedTargets,
 		projectRoots,
-		options.IncludeGlobal,
+		options.IncludeUser,
 		options.Catalog,
 	)
-	addVisibility(entries, options.Catalog, options.IncludeGlobal, projectRoots)
+	addVisibility(entries, options.Catalog, options.IncludeUser, projectRoots)
 
 	report := Report{SchemaVersion: SchemaVersion, Entries: make([]Entry, 0, len(entries))}
 	for _, entry := range entries {
@@ -129,7 +129,7 @@ func Build(options Options) (Report, error) {
 		sort.Slice(entry.Targets, func(i, j int) bool {
 			left, right := entry.Targets[i], entry.Targets[j]
 			if left.Scope != right.Scope {
-				return left.Scope == install.ScopeGlobal
+				return left.Scope == install.ScopeUser
 			}
 			if left.ProjectRoot != right.ProjectRoot {
 				return left.ProjectRoot < right.ProjectRoot
@@ -142,7 +142,7 @@ func Build(options Options) (Report, error) {
 		sort.Slice(entry.Visibility, func(i, j int) bool {
 			left, right := entry.Visibility[i], entry.Visibility[j]
 			if left.Scope != right.Scope {
-				return left.Scope == install.ScopeGlobal
+				return left.Scope == install.ScopeUser
 			}
 			if left.ProjectRoot != right.ProjectRoot {
 				return left.ProjectRoot < right.ProjectRoot
@@ -160,14 +160,14 @@ func Build(options Options) (Report, error) {
 	return report, nil
 }
 
-func addVisibility(entries map[string]*Entry, catalog *agent.Catalog, includeGlobal bool, projectRoots []string) {
+func addVisibility(entries map[string]*Entry, catalog *agent.Catalog, includeUser bool, projectRoots []string) {
 	definitions := catalog.Installed()
 	for _, entry := range entries {
 		entry.Visibility = []Visibility{}
 		for _, definition := range definitions {
-			if includeGlobal {
-				if roots, ok := catalog.SkillRoots(definition.ID, agent.ScopeGlobal, ""); ok {
-					appendVisibility(entry, definition.ID, install.ScopeGlobal, "", roots)
+			if includeUser {
+				if roots, ok := catalog.SkillRoots(definition.ID, agent.ScopeUser, ""); ok {
+					appendVisibility(entry, definition.ID, install.ScopeUser, "", roots)
 				}
 			}
 			for _, projectRoot := range projectRoots {

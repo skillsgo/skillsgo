@@ -42,8 +42,8 @@ func addRepositoryInstallations(entries map[string]*Entry, accounted map[string]
 			}
 			modulesRoot, infoRoot, agentScope := filepath.Join(declaration.root, ".skillsgo", "modules"), filepath.Join(declaration.root, ".skillsgo", "info"), agent.ScopeProject
 			projectRoot := declaration.root
-			if declaration.scope == install.ScopeGlobal {
-				modulesRoot, infoRoot, agentScope, projectRoot = filepath.Join(declaration.stateRoot, "modules"), filepath.Join(declaration.stateRoot, "info"), agent.ScopeGlobal, ""
+			if declaration.scope == install.ScopeUser {
+				modulesRoot, infoRoot, agentScope, projectRoot = filepath.Join(declaration.stateRoot, "modules"), filepath.Join(declaration.stateRoot, "info"), agent.ScopeUser, ""
 			}
 			archive, moduleErr := modulestore.ReadVerifiedModule(modulesRoot, modulePath, dependency.Version, locked.Sum)
 			infoBytes, infoErr := (infocache.Cache{Root: infoRoot}).Get(modulePath, dependency.Version, "module.info")

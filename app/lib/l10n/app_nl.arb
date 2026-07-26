@@ -234,7 +234,7 @@
   "allAgents": "Alle Agents",
   "allProjects": "Alle projecten",
   "specificProject": "Project",
-  "globalScope": "Globaal",
+  "userScope": "Globaal",
   "addProject": "Project toevoegen",
   "relocateProject": "Verhuizen",
   "removeFromList": "Verwijderen uit lijst",
@@ -647,13 +647,13 @@
   "updateCheckFailed": "CONTROLE MISLUKT",
   "installSkill": "Installeer Skill",
   "installLocationTitle": "Installatielocatie instellen",
-  "globalLevel": "Global",
+  "userLevel": "Gebruikersniveau",
   "projectLevel": "Projectniveau",
   "projects": "Projecten",
   "loading": "Laden…",
   "repositoryParsing": "Repository parseren…",
-  "globalInstallSummary": "Available globally to {agents} Agents",
-  "@globalInstallSummary": {
+  "userInstallSummary": "Beschikbaar voor {agents} Agents op gebruikersniveau",
+  "@userInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

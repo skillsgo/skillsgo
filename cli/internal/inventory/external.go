@@ -26,14 +26,14 @@ func addExternalInstallations(
 	entries map[string]*Entry,
 	accountedTargets map[string]bool,
 	projectRoots []string,
-	includeGlobal bool,
+	includeUser bool,
 	catalog *agent.Catalog,
 ) {
 	definitions := catalog.Installed()
 	userDiscoveryRoots := make([]string, 0)
-	if includeGlobal {
+	if includeUser {
 		for _, definition := range definitions {
-			if roots, ok := catalog.SkillRoots(definition.ID, agent.ScopeGlobal, ""); ok {
+			if roots, ok := catalog.SkillRoots(definition.ID, agent.ScopeUser, ""); ok {
 				for _, root := range roots.DiscoveryRoots {
 					userDiscoveryRoots = appendPathIfMissing(userDiscoveryRoots, root)
 				}
@@ -41,10 +41,10 @@ func addExternalInstallations(
 		}
 	}
 	for _, definition := range definitions {
-		if includeGlobal {
-			if roots, ok := catalog.SkillRoots(definition.ID, agent.ScopeGlobal, ""); ok {
+		if includeUser {
+			if roots, ok := catalog.SkillRoots(definition.ID, agent.ScopeUser, ""); ok {
 				for _, root := range roots.DiscoveryRoots {
-					scanExternalDirectory(entries, accountedTargets, definition.ID, install.ScopeGlobal, "", root, userDiscoveryRoots)
+					scanExternalDirectory(entries, accountedTargets, definition.ID, install.ScopeUser, "", root, userDiscoveryRoots)
 				}
 			}
 		}

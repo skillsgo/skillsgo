@@ -22,13 +22,13 @@ confirmed, not evidence that the requested behavior exists.
 
 ## Recommended catalog
 
-| Agent | SkillsGo managed Global root | SkillsGo managed project root | Built-in Global discovery roots | Built-in project discovery roots | Configurable discovery | Confidence |
+| Agent | SkillsGo managed user root | SkillsGo managed project root | Built-in user discovery roots | Built-in project discovery roots | Configurable discovery | Confidence |
 | --- | --- | --- | --- | --- | --- | --- |
 | Codex | `$CODEX_HOME/skills` | `.agents/skills` | `~/.agents/skills`; `/etc/codex/skills`; `$CODEX_HOME/skills` (deprecated compatibility) | Every `.agents/skills` from CWD through repository root | None confirmed for ordinary skill roots | Documented and source-verified |
 | Claude Code | `~/.claude/skills` | `.claude/skills` | `~/.claude/skills` | Every ancestor `.claude/skills` through repository root; nested `.claude/skills` when working in a subdirectory | `.claude/skills` under directories passed with `--add-dir`; plugin skill roots | Documented |
 | Cursor | `~/.cursor/skills` | `.agents/skills` | `~/.cursor/skills`; `~/.agents/skills`; `~/.claude/skills`; `~/.codex/skills` | `.cursor/skills`; `.agents/skills`; `.claude/skills`; `.codex/skills` | None confirmed in the reviewed source | Documented |
 | OpenCode | `${XDG_CONFIG_HOME:-~/.config}/opencode/skills` | `.agents/skills` | `${XDG_CONFIG_HOME:-~/.config}/opencode/skills`; `~/.claude/skills`; `~/.agents/skills` | Every ancestor `.opencode/skills`, `.claude/skills`, and `.agents/skills` through the Git worktree | None confirmed in the reviewed source | Documented |
-| Hermes Agent | `~/.hermes/skills` | `.hermes/skills` (skills.sh-compatible but unverified for discovery) | `~/.hermes/skills` | **None confirmed** | `skills.external_dirs` from `~/.hermes/config.yaml`, including a project directory when explicitly configured | Source-verified for Global Scope only |
+| Hermes Agent | `~/.hermes/skills` | `.hermes/skills` (skills.sh-compatible but unverified for discovery) | `~/.hermes/skills` | **None confirmed** | `skills.external_dirs` from `~/.hermes/config.yaml`, including a project directory when explicitly configured | Source-verified for user scope only |
 | OpenClaw | `~/.openclaw/skills` | `<workspace>/skills` | `~/.openclaw/skills`; `~/.agents/skills` | `<workspace>/skills`; `<workspace>/.agents/skills` | `skills.load.extraDirs`; plugin skill roots | Documented and source-verified |
 
 The managed columns are the current skills.sh-compatible SkillsGo write
@@ -73,7 +73,7 @@ skill discovery, and is excluded from the catalog.
 The current [Cursor skills documentation](https://cursor.com/docs/skills)
 lists native `.cursor/skills` roots, shared `.agents/skills` roots, and
 compatibility roots for `.claude/skills` and `.codex/skills` at both project and
-Global Scope. Cursor Skills first shipped in
+user scope. Cursor Skills first shipped in
 [Cursor 2.4 on 2026-01-22](https://cursor.com/changelog/2-4). A first-party team
 reply confirms that `/create-skill` uses the native `.cursor/skills` location in
 [this official forum thread](https://forum.cursor.com/t/cursor-doesnt-know-new-skills-arens-saved/158507/5).
@@ -136,7 +136,7 @@ runtime configuration rather than assuming `~/.openclaw` in every profile.
 2. For all Agents not listed here, set `DiscoveryRoots = [ManagedRoot]` and mark
    the result `unknown` or `unverified`.
 3. For these six Agents, store root kind (`native`, `compat`, `legacy`,
-   `admin`, or `configurable`) and scope (`global` or `project`) rather than a flat
+   `admin`, or `configurable`) and scope (`user` or `project`) rather than a flat
    path list.
 4. Model ancestor traversal and workspace-relative roots as rules, not as paths
    resolved only once at process startup.

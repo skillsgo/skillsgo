@@ -17,7 +17,7 @@ type Definition struct {
 	ID                    string `json:"id"`
 	Display               string `json:"displayName"`
 	ProjectDir            string `json:"projectDir"`
-	GlobalDir             string `json:"globalDir,omitempty"`
+	UserDir               string `json:"userDir,omitempty"`
 	ShowInUniversalList   bool   `json:"showInUniversalList"`
 	ShowInUniversalPrompt bool   `json:"showInUniversalPrompt"`
 }
@@ -47,7 +47,7 @@ type Paths struct {
 }
 
 type rawDefinition struct {
-	ID, Display, ProjectDir, UserBase, GlobalDir string
+	ID, Display, ProjectDir, UserBase, UserDir string
 }
 
 type Catalog struct {
@@ -107,14 +107,14 @@ func NewCatalog(paths Paths, options ...CatalogOption) *Catalog {
 		case "none":
 			base = ""
 		}
-		globalDir := ""
+		userDir := ""
 		if base != "" {
-			globalDir = filepath.Join(base, filepath.FromSlash(raw.GlobalDir))
+			userDir = filepath.Join(base, filepath.FromSlash(raw.UserDir))
 		}
 		if raw.ID == "openclaw" {
-			globalDir = openClawSkillsDir(paths.Home)
+			userDir = openClawSkillsDir(paths.Home)
 		}
-		items[raw.ID] = Definition{ID: raw.ID, Display: raw.Display, ProjectDir: raw.ProjectDir, GlobalDir: globalDir, ShowInUniversalList: raw.ID != "replit" && raw.ID != "universal", ShowInUniversalPrompt: raw.ID != "dexto" && raw.ID != "firebender" && raw.ID != "loaf" && raw.ID != "promptscript"}
+		items[raw.ID] = Definition{ID: raw.ID, Display: raw.Display, ProjectDir: raw.ProjectDir, UserDir: userDir, ShowInUniversalList: raw.ID != "replit" && raw.ID != "universal", ShowInUniversalPrompt: raw.ID != "dexto" && raw.ID != "firebender" && raw.ID != "loaf" && raw.ID != "promptscript"}
 	}
 	for _, option := range options {
 		option(items)
@@ -140,7 +140,7 @@ func workBuddyHome(home string) string {
 
 func (c *Catalog) Get(id string) (Definition, bool) { value, ok := c.definitions[id]; return value, ok }
 
-// Home returns the operating-system Global root used to resolve shared Global
+// Home returns the operating-system user root used to resolve shared user-level
 // Skill storage. Agent-specific overrides do not change this shared root.
 func (c *Catalog) Home() string { return c.paths.Home }
 
@@ -152,7 +152,7 @@ func (c *Catalog) SkillRoots(id string, scope Scope, projectRoot string) (SkillR
 		return SkillRoots{}, false
 	}
 
-	managedRoot := definition.GlobalDir
+	managedRoot := definition.UserDir
 	if scope == ScopeProject {
 		if definition.ProjectDir == "" || projectRoot == "" {
 			return SkillRoots{}, false
@@ -178,7 +178,7 @@ func discoveryVerification(id string, scope Scope) DiscoveryVerification {
 	case "codex", "claude-code", "cursor", "opencode", "openclaw", "qclaw", "workbuddy":
 		return DiscoveryVerified
 	case "hermes-agent":
-		if scope == ScopeGlobal {
+		if scope == ScopeUser {
 			return DiscoveryVerified
 		}
 	}

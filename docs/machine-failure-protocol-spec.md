@@ -136,7 +136,7 @@ Define the first stable machine-failure contract for the bundled App, CI/CD, and
 
 9.1. The bundled App and CLI must continue to use the existing exact `appProtocolVersion` startup handshake.
 
-9.2. `appProtocolVersion` is `11`; version 11 establishes `global` as the only non-Workspace installation scope value, exposes Agent `globalTarget`, and makes `list --global` the sole installed-Skill machine surface.
+9.2. `appProtocolVersion` is `9`, incremented from `8` when the App began depending on this contract.
 
 9.3. Human terminal output is not a versioned parsing interface and may evolve independently.
 

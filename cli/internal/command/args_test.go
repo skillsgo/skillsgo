@@ -32,6 +32,6 @@ func TestTestAgentOptionIsEnvironmentGated(t *testing.T) {
 	testCatalog := agent.NewCatalog(agent.Paths{}, testAgentOption())
 	definition, exists := testCatalog.Get("test-agent")
 	require.True(t, exists)
-	require.Equal(t, filepath.Join(home, "skills"), definition.GlobalDir)
+	require.Equal(t, filepath.Join(home, "skills"), definition.UserDir)
 	require.Len(t, testCatalog.All(), 76)
 }

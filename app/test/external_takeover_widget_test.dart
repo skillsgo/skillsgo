@@ -38,7 +38,7 @@ void main() {
       targets: [
         SkillInstallationTarget(
           agent: 'codex',
-          scope: InstallationScope.global,
+          scope: InstallationScope.user,
           path: path,
           version: '',
         ),
@@ -135,7 +135,7 @@ void main() {
             targets: [
               SkillInstallationTarget(
                 agent: 'codex',
-                scope: InstallationScope.global,
+                scope: InstallationScope.user,
                 path: path,
                 version: '',
               ),
@@ -145,7 +145,7 @@ void main() {
         takeoverPlan: const BatchTakeoverPlan(
           id: 'scope-plan',
           allEligibleCount: 6,
-          globalEligibleCount: 2,
+          userEligibleCount: 2,
           eligibleCountByProjectRoot: {'/work/alpha': 3, '/work/beta': 1},
         ),
         takeoverResult: const BatchTakeoverResult(takenOver: 2, skipped: 1),
@@ -285,7 +285,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         gateway.takeoverRequests.last.scope.kind,
-        BatchTakeoverScopeKind.global,
+        BatchTakeoverScopeKind.user,
       );
       await tester.tap(find.text('Close'));
       await tester.pumpAndSettle();
@@ -366,7 +366,7 @@ void main() {
         takeoverPlan: const BatchTakeoverPlan(
           id: 'complete-plan',
           allEligibleCount: 0,
-          globalEligibleCount: 0,
+          userEligibleCount: 0,
         ),
       );
       await tester.pumpWidget(SkillsGoApp(gateway: gateway));
@@ -408,22 +408,22 @@ void main() {
         takeoverPlan: const BatchTakeoverPlan(
           id: 'result-plan',
           allEligibleCount: 3,
-          globalEligibleCount: 3,
+          userEligibleCount: 3,
           previews: [
             BatchTakeoverPreview(
               name: 'alpha-skill',
               skillId: 'github.com/acme/skills/-/alpha',
-              scope: InstallationScope.global,
+              scope: InstallationScope.user,
             ),
             BatchTakeoverPreview(
               name: 'beta-skill',
               skillId: 'github.com/acme/skills/-/beta',
-              scope: InstallationScope.global,
+              scope: InstallationScope.user,
             ),
             BatchTakeoverPreview(
               name: 'changed-skill',
               skillId: 'github.com/acme/skills/-/changed',
-              scope: InstallationScope.global,
+              scope: InstallationScope.user,
             ),
           ],
         ),
@@ -572,7 +572,7 @@ void main() {
                 targets: [
                   SkillInstallationTarget(
                     agent: 'codex',
-                    scope: InstallationScope.global,
+                    scope: InstallationScope.user,
                     path: path,
                     version: '',
                   ),
@@ -582,28 +582,28 @@ void main() {
             takeoverPlan: BatchTakeoverPlan(
               id: 'reduced-motion-plan',
               allEligibleCount: 15,
-              globalEligibleCount: 15,
+              userEligibleCount: 15,
               previews: [
                 BatchTakeoverPreview(
                   name: 'acme-first',
                   skillId: 'github.com/acme/skills/-/first',
-                  scope: InstallationScope.global,
+                  scope: InstallationScope.user,
                 ),
                 BatchTakeoverPreview(
                   name: 'acme-second',
                   skillId: 'github.com/acme/skills/-/second',
-                  scope: InstallationScope.global,
+                  scope: InstallationScope.user,
                 ),
                 BatchTakeoverPreview(
                   name: 'other-first',
                   skillId: 'github.com/other/toolbox/-/first',
-                  scope: InstallationScope.global,
+                  scope: InstallationScope.user,
                 ),
                 for (var index = 3; index <= 14; index++)
                   BatchTakeoverPreview(
                     name: 'acme-$index',
                     skillId: 'github.com/acme/skills/-/$index',
-                    scope: InstallationScope.global,
+                    scope: InstallationScope.user,
                   ),
               ],
             ),
@@ -708,7 +708,7 @@ void main() {
         takeoverPlan: const BatchTakeoverPlan(
           id: 'automatic-plan',
           allEligibleCount: 2,
-          globalEligibleCount: 2,
+          userEligibleCount: 2,
         ),
       );
       await tester.pumpWidget(SkillsGoApp(gateway: gateway));

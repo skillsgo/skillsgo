@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on InstalledSkill targets, project/Agent identity, update state, selection visibility and callbacks, clipboard feedback, and scope popovers.
- * [OUTPUT]: Provides installed Skill rows with geometry-preserving optional selection controls plus Global/Project scope summaries, Agent rows, popovers, and copyable project paths.
+ * [OUTPUT]: Provides installed Skill rows with geometry-preserving optional selection controls plus user/project scope summaries, Agent rows, popovers, and copyable project paths.
  * [POS]: Serves as the installed target presentation segment of the unified Library journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

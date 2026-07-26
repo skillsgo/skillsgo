@@ -76,7 +76,7 @@ func takeoverRepositoryFixture(t *testing.T) (string, string, []byte, []byte, *h
 	return modulePath, version, skill, []byte("guide"), server
 }
 
-func writeTakeoverGlobalFixture(t *testing.T, home, agentHome, modulePath, version string, skill, guide []byte) string {
+func writeTakeoverUserFixture(t *testing.T, home, agentHome, modulePath, version string, skill, guide []byte) string {
 	t.Helper()
 	target := filepath.Join(agentHome, "skills", "alpha")
 	require.NoError(t, os.MkdirAll(filepath.Join(target, "references"), 0o755))
@@ -99,23 +99,23 @@ func TestBatchTakeoverAdoptsExactVersionSkillIntoUserModuleStore(t *testing.T) {
 	home, agentHome := filepath.Join(root, "home"), filepath.Join(root, "test-agent")
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-	target := writeTakeoverGlobalFixture(t, home, agentHome, modulePath, version, skill, guide)
+	target := writeTakeoverUserFixture(t, home, agentHome, modulePath, version, skill, guide)
 
 	var stdout, stderr bytes.Buffer
-	require.NoError(t, executeTakeover(t, &stdout, &stderr, server.URL, "--global"))
+	require.NoError(t, executeTakeover(t, &stdout, &stderr, server.URL, "--user"))
 	var result takeoverReport
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
 	require.Equal(t, 1, result.Summary.TakenOver)
 	require.Zero(t, result.Summary.Skipped)
 	require.NoDirExists(t, target)
-	userRoot := project.GlobalDeclarationRoot(home)
+	userRoot := project.UserDeclarationRoot(home)
 	manifest, err := project.LoadWorkspaceManifest(userRoot)
 	require.NoError(t, err)
 	require.Equal(t, version, manifest.Dependencies[modulePath].Version)
 	require.Equal(t, []string{"skills/alpha"}, manifest.Dependencies[modulePath].Skills)
 	require.Equal(t, []string{"test-agent"}, manifest.Dependencies[modulePath].Agents)
 	require.NoError(t, project.ValidateWorkspaceState(manifest, mustLoadTakeoverLock(t, userRoot)))
-	moduleDir := modulestore.CoordinatePath(filepath.Join(project.GlobalStateRoot(home), "modules"), modulePath, version)
+	moduleDir := modulestore.CoordinatePath(filepath.Join(project.UserStateRoot(home), "modules"), modulePath, version)
 	projection := modulestore.CoordinatePath(filepath.Join(agentHome, "skills"), modulePath, version)
 	require.FileExists(t, filepath.Join(moduleDir, "skills", "beta", "SKILL.md"))
 	require.FileExists(t, filepath.Join(projection, "skills", "alpha", "SKILL.md"))
@@ -132,19 +132,19 @@ func TestBatchTakeoverRejectsDifferentBytesWithoutWritingState(t *testing.T) {
 	home, agentHome := filepath.Join(root, "home"), filepath.Join(root, "test-agent")
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-	target := writeTakeoverGlobalFixture(t, home, agentHome, modulePath, version, skill, guide)
+	target := writeTakeoverUserFixture(t, home, agentHome, modulePath, version, skill, guide)
 	require.NoError(t, os.WriteFile(filepath.Join(target, "SKILL.md"), append(skill, []byte("local edit\n")...), 0o644))
 
 	var stdout, stderr bytes.Buffer
-	require.NoError(t, executeTakeover(t, &stdout, &stderr, server.URL, "--global"))
+	require.NoError(t, executeTakeover(t, &stdout, &stderr, server.URL, "--user"))
 	var result takeoverReport
 	require.NoError(t, json.Unmarshal(stdout.Bytes(), &result))
 	require.Zero(t, result.Summary.TakenOver)
 	require.Equal(t, 1, result.Summary.Skipped)
 	require.Equal(t, "content-mismatch", result.Results[0].Reason)
 	require.DirExists(t, target)
-	require.NoFileExists(t, filepath.Join(project.GlobalDeclarationRoot(home), project.WorkspaceManifestName))
-	require.NoDirExists(t, filepath.Join(project.GlobalStateRoot(home), "modules"))
+	require.NoFileExists(t, filepath.Join(project.UserDeclarationRoot(home), project.WorkspaceManifestName))
+	require.NoDirExists(t, filepath.Join(project.UserStateRoot(home), "modules"))
 }
 
 func mustLoadTakeoverLock(t *testing.T, root string) project.DependencyLock {
@@ -172,10 +172,10 @@ func TestReadSkillsShLockKeepsValidRecordsWhenOneRecordIsMalformed(t *testing.T)
 }
 
 func TestLockRecordSkillIDUsesProviderSemantics(t *testing.T) {
-	gitID, err := lockRecordSkillID(skillsShGlobalLockRecord{Source: "display-label", SourceType: "git", SourceURL: "https://git.example.com/team/repo.git"})
+	gitID, err := lockRecordSkillID(skillsShUserLockRecord{Source: "display-label", SourceType: "git", SourceURL: "https://git.example.com/team/repo.git"})
 	require.NoError(t, err)
 	require.Equal(t, "git.example.com/team/repo", gitID)
-	_, err = lockRecordSkillID(skillsShGlobalLockRecord{Source: "acme/local", SourceType: "local", SourceURL: "/tmp/local"})
+	_, err = lockRecordSkillID(skillsShUserLockRecord{Source: "acme/local", SourceType: "local", SourceURL: "/tmp/local"})
 	require.Error(t, err)
 }
 

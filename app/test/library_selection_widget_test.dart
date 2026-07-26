@@ -56,7 +56,7 @@ void main() {
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
-            scope: InstallationScope.global,
+            scope: InstallationScope.user,
             path: '/Users/test/.codex/skills/private-local',
             version: '',
           ),
@@ -129,7 +129,7 @@ void main() {
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
-            scope: InstallationScope.global,
+            scope: InstallationScope.user,
             path: '/Users/test/.codex/skills/demo',
             version: 'v1',
           ),
@@ -159,7 +159,7 @@ void main() {
             displayName: 'Codex',
             installed: true,
             supportedScopes: [
-              InstallationScope.global,
+              InstallationScope.user,
               InstallationScope.project,
             ],
           ),
@@ -168,7 +168,7 @@ void main() {
             displayName: 'Claude Code',
             installed: true,
             supportedScopes: [
-              InstallationScope.global,
+              InstallationScope.user,
               InstallationScope.project,
             ],
           ),
@@ -256,9 +256,7 @@ void main() {
       await tester.tap(
         find.byKey(const Key('installation-scope-toggle-project:/work/alpha')),
       );
-      await tester.tap(
-        find.byKey(const Key('installation-scope-toggle-global')),
-      );
+      await tester.tap(find.byKey(const Key('installation-scope-toggle-user')));
       await tester.pumpAndSettle();
       expect(find.text('/work/alpha/.claude/skills/demo'), findsWidgets);
       expect(find.text('/Users/test/.codex/skills/demo'), findsWidgets);
@@ -317,7 +315,7 @@ void main() {
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
-            scope: InstallationScope.global,
+            scope: InstallationScope.user,
             path: path,
             version: 'v1',
             health: InstallationHealth.missing,
@@ -341,9 +339,7 @@ void main() {
 
       expect(find.text(path), findsNothing);
       expect(find.text('Target missing'), findsNothing);
-      await tester.tap(
-        find.byKey(const Key('installation-scope-toggle-global')),
-      );
+      await tester.tap(find.byKey(const Key('installation-scope-toggle-user')));
       await tester.pumpAndSettle();
       expect(find.text(path), findsOneWidget);
       expect(find.text('Target missing'), findsOneWidget);
@@ -370,7 +366,7 @@ void main() {
                 targets: [
                   SkillInstallationTarget(
                     agent: 'codex',
-                    scope: InstallationScope.global,
+                    scope: InstallationScope.user,
                     path: '/Users/test/.codex/skills/demo',
                     version: 'v1',
                   ),
@@ -456,7 +452,7 @@ void main() {
                 targets: [
                   SkillInstallationTarget(
                     agent: 'codex',
-                    scope: InstallationScope.global,
+                    scope: InstallationScope.user,
                     path: '/Users/test/.codex/skills/demo',
                     version: 'v1',
                   ),

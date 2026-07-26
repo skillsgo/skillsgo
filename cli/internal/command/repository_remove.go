@@ -23,14 +23,14 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selectors, selectedAgents []string, globalScope bool, projectRoot string, all bool) (bool, error) {
+func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selectors, selectedAgents []string, userScope bool, projectRoot string, all bool) (bool, error) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return true, err
 	}
 	declarationRoot, agentScope := "", agent.ScopeProject
-	if globalScope {
-		declarationRoot, agentScope = project.GlobalDeclarationRoot(home), agent.ScopeGlobal
+	if userScope {
+		declarationRoot, agentScope = project.UserDeclarationRoot(home), agent.ScopeUser
 	} else if projectRoot != "" {
 		declarationRoot = filepath.Clean(projectRoot)
 	} else {
@@ -72,8 +72,8 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 	}
 	modulesRoot := filepath.Join(declarationRoot, ".skillsgo", "modules")
 	infoRoot := filepath.Join(declarationRoot, ".skillsgo", "info")
-	if globalScope {
-		stateRoot := project.GlobalStateRoot(home)
+	if userScope {
+		stateRoot := project.UserStateRoot(home)
 		modulesRoot = filepath.Join(stateRoot, "modules")
 		infoRoot = filepath.Join(stateRoot, "info")
 	}
@@ -179,8 +179,8 @@ func tryRemoveVersionSkills(cmd *cobra.Command, catalog *agent.Catalog, selector
 	}
 	if output, _ := cmd.Flags().GetString("output"); output == "json" {
 		scope := "project"
-		if globalScope {
-			scope = "global"
+		if userScope {
+			scope = "user"
 		}
 		err := json.NewEncoder(cmd.OutOrStdout()).Encode(struct {
 			SchemaVersion int      `json:"schemaVersion"`

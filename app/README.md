@@ -1,13 +1,13 @@
 # SkillsGo
 
-SkillsGo is a desktop manager for Agent Skills. It discovers public Skills through a SkillsGo Hub and uses the bundled SkillsGo CLI to manage Global and project-level installations.
+SkillsGo is a desktop manager for Agent Skills. It discovers public Skills through a SkillsGo Hub and uses the bundled SkillsGo CLI to manage user-level and project-level installations.
 
 ## Personal MVP
 
 - Search, all-time ranking, 24-hour trending, and Hot discovery views
 - Skill version, source, `SKILL.md`, file, and risk inspection
 - A multi-location, multi-Agent installation matrix
-- Aggregated management of Global, project-level, managed, and external installations
+- Aggregated management of user-level, project-level, managed, and external installations
 - Repository-level update checks plus exact External Installation removal
 - Read-only discovery and exact-path removal for external installations
 - Official or self-hosted Hub configuration

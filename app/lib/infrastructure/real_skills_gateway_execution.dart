@@ -34,7 +34,6 @@ mixin _RealSkillsGatewayExecutionSupport on _RealSkillsGatewayCore {
     List<String> arguments, {
     required String progressPhase,
     required String executionPhase,
-    int schemaVersion = 1,
     required void Function(Map<String, dynamic> payload) consumeProgress,
     required bool Function() canFinalize,
   }) async {
@@ -49,7 +48,6 @@ mixin _RealSkillsGatewayExecutionSupport on _RealSkillsGatewayCore {
         final raw = _machineDocument(
           jsonDecode(line),
           phases: [progressPhase, executionPhase],
-          schemaVersion: schemaVersion,
         );
         final phase = raw['phase'];
         if (phase == progressPhase) {

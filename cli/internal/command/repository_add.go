@@ -63,12 +63,12 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 	modulesRoot := filepath.Join(workspaceRoot, ".skillsgo", "modules")
 	infoRoot := filepath.Join(workspaceRoot, ".skillsgo", "info")
 	agentScope := agent.ScopeProject
-	if scope == install.ScopeGlobal {
-		declarationRoot = project.GlobalDeclarationRoot(home)
-		stateRoot := project.GlobalStateRoot(home)
+	if scope == install.ScopeUser {
+		declarationRoot = project.UserDeclarationRoot(home)
+		stateRoot := project.UserStateRoot(home)
 		modulesRoot = filepath.Join(stateRoot, "modules")
 		infoRoot = filepath.Join(stateRoot, "info")
-		agentScope = agent.ScopeGlobal
+		agentScope = agent.ScopeUser
 	}
 	manifest, lock, err := loadWorkspaceState(declarationRoot)
 	if err != nil {
@@ -122,12 +122,12 @@ func addRepository(cmd *cobra.Command, catalog *agent.Catalog, reference source.
 		return err
 	}
 
-	reportedPaths := make(map[string]bool, len(dependency.Skills))
+	reportedNames := make(map[string]bool, len(dependency.Skills))
 	for _, selector := range dependency.Skills {
 		member, ok := hub.SelectVersionSkill(selector, resource.Members)
-		if ok && !reportedPaths[member.Info.Path] {
-			reportedPaths[member.Info.Path] = true
-			reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{ModulePath: reference.ModulePath, SkillName: member.Info.Name, SkillPath: member.Info.Path, Version: resource.Info.Version, Agents: dependency.Agents, Scope: scope})
+		if ok && !reportedNames[member.Info.Name] {
+			reportedNames[member.Info.Name] = true
+			reportCloudInstall(cmd.Context(), options.hubURL, cloudInstallFact{ModulePath: reference.ModulePath, SkillName: member.Info.Name, Version: resource.Info.Version, Agents: dependency.Agents, Scope: scope})
 		}
 	}
 	type projectionResult struct {

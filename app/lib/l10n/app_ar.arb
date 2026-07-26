@@ -234,7 +234,7 @@
   "allAgents": "جميع Agents",
   "allProjects": "جميع المشاريع",
   "specificProject": "مشروع",
-  "globalScope": "عام",
+  "userScope": "عام",
   "addProject": "أضف المشروع",
   "relocateProject": "تغيير الموقع",
   "removeFromList": "إزالة من القائمة",
@@ -647,13 +647,13 @@
   "updateCheckFailed": "تعذر التحقق",
   "installSkill": "تثبيت Skill",
   "installLocationTitle": "اختيار موقع التثبيت",
-  "globalLevel": "Global",
+  "userLevel": "نطاق المستخدم",
   "projectLevel": "نطاق المشروع",
   "projects": "المشاريع",
   "loading": "جارٍ التحميل…",
   "repositoryParsing": "جارٍ تحليل المستودع...",
-  "globalInstallSummary": "Available globally to {agents} Agents",
-  "@globalInstallSummary": {
+  "userInstallSummary": "متاح لـ ⁨{agents}⁩ Agents في نطاق المستخدم",
+  "@userInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

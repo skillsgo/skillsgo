@@ -29,18 +29,6 @@ func (projection skillCardProjection) Hydrate(ctx context.Context, coordinates [
 	return cards, nil
 }
 
-func (projection skillCardProjection) HydratePaths(ctx context.Context, coordinates []protocolapi.SkillPathCoordinate) ([]protocolapi.FindSkill, error) {
-	items, err := projection.catalog.SkillsByPathCoordinates(ctx, coordinates)
-	if err != nil {
-		return nil, err
-	}
-	cards := make([]protocolapi.FindSkill, 0, len(items))
-	for _, item := range items {
-		cards = append(cards, storedSkillCard(item))
-	}
-	return cards, nil
-}
-
 func (projection skillCardProjection) Search(ctx context.Context, locale string, ranked []catalog.SearchSkill) []discoverySkill {
 	localizeSearchSkills(ctx, projection.catalog, locale, ranked)
 	cards := make([]discoverySkill, 0, len(ranked))

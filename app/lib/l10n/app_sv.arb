@@ -234,7 +234,7 @@
   "allAgents": "Alla Agents",
   "allProjects": "Alla projekt",
   "specificProject": "Projekt",
-  "globalScope": "Global",
+  "userScope": "Global",
   "addProject": "Lägg till projekt",
   "relocateProject": "Förflytta",
   "removeFromList": "Ta bort från listan",
@@ -647,13 +647,13 @@
   "updateCheckFailed": "KONTROLL MISSLYCKADES",
   "installSkill": "Installera Skill",
   "installLocationTitle": "Ställ in installationsplats",
-  "globalLevel": "Global",
+  "userLevel": "Användarnivå",
   "projectLevel": "Projektnivå",
   "projects": "Projekt",
   "loading": "Belastning…",
   "repositoryParsing": "Parsar arkivet...",
-  "globalInstallSummary": "Available globally to {agents} Agents",
-  "@globalInstallSummary": {
+  "userInstallSummary": "Tillgänglig för {agents} Agents på användarnivå",
+  "@userInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

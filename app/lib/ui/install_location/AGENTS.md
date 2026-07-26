@@ -6,8 +6,8 @@
 - `menu_contracts.dart`: defines selector callbacks, exact existing-target exclusions, labels, and option contracts.
 - `menu_anchor.dart`: owns anchored overlay placement, dismissal, focus, and trigger behavior.
 - `async_location_card.dart`: renders loading, retry, and resolved selector states.
-- `location_card.dart`: renders Global and Project locations plus Agent choices while excluding exact targets already installed by the initiating surface.
-- `scope_selector.dart`: renders explicit Global or Project scope selection.
+- `location_card.dart`: renders user and project locations plus Agent choices while excluding exact targets already installed by the initiating surface.
+- `scope_selector.dart`: renders explicit user or project scope selection.
 
 ## Architectural Boundary
 

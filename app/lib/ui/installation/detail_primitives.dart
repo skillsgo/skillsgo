@@ -222,8 +222,8 @@ class _InstallationCompletionBanner extends StatelessWidget {
 }
 
 String _targetLabel(BuildContext context, InstallationPlanTarget target) {
-  final location = target.scope == InstallationScope.global
-      ? context.l10n.globalScope
+  final location = target.scope == InstallationScope.user
+      ? context.l10n.userScope
       : p.basename(target.projectRoot);
   return '$location / ${target.agent}';
 }

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the Discover journey library, Riverpod controller state, focus/scroll primitives, and installation entry points.
- * [OUTPUT]: Provides the public DiscoverScreen plus collection lifecycle, guarded search intent, detail transitions, and root rendering.
+ * [OUTPUT]: Provides the public DiscoverScreen plus route-local lifecycle, search intent, detail transitions, and root rendering.
  * [POS]: Serves as the state-owning core of the Discover journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -23,8 +23,6 @@ class DiscoverScreen extends ConsumerStatefulWidget {
 
 class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
     with SingleTickerProviderStateMixin {
-  static const _maximumFindQueryRunes = 200;
-
   void updateState(VoidCallback change) => setState(change);
 
   final controller = TextEditingController();
@@ -101,18 +99,6 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
       ref.read(discoverProvider.notifier).clearSearch();
       return;
     }
-    if (query.runes.length > _maximumFindQueryRunes ||
-        query.contains(RegExp(r'[\u0000-\u001F\u007F]'))) {
-      return;
-    }
-    final current = ref.read(discoverProvider).routes[DiscoverRoute.search]!;
-    if (selectedRoute == DiscoverRoute.search &&
-        submittedQuery == query &&
-        current.query == query &&
-        current.error == null &&
-        (current.loading || current.results != null)) {
-      return;
-    }
     setState(() {
       selectedSkill = null;
       selectedSkillFocus = null;
@@ -135,6 +121,10 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
       selectedRoute = DiscoverRoute.search;
       submittedQuery = query;
     });
+    if (query.length < 2) {
+      ref.read(discoverProvider.notifier).clearSearch();
+      return;
+    }
     final debounceMilliseconds = (350 - 50 * query.length).clamp(150, 250);
     searchDebounce = Timer(
       Duration(milliseconds: debounceMilliseconds),

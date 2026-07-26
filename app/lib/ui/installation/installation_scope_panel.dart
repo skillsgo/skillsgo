@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on installation targets, Added Projects, localized Agent labels, target health chips, and expandable Material presentation.
- * [OUTPUT]: Provides the public InstallationScopePanel and grouped Global/Project target summaries.
+ * [OUTPUT]: Provides the public InstallationScopePanel and grouped user/project target summaries.
  * [POS]: Serves as the installed-target scope summary segment of detail journeys.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -32,8 +32,8 @@ class _InstallationScopePanelState extends State<InstallationScopePanel> {
   List<_InstalledTargetGroup> get groups {
     final values = <String, List<SkillInstallationTarget>>{};
     for (final target in widget.targets) {
-      final key = target.scope == InstallationScope.global
-          ? 'global'
+      final key = target.scope == InstallationScope.user
+          ? 'user'
           : 'project:${target.projectRoot}';
       values.putIfAbsent(key, () => []).add(target);
     }
@@ -91,8 +91,8 @@ class _InstallationScopePanelState extends State<InstallationScopePanel> {
             .toList()
           ..sort();
     final first = group.targets.first;
-    final label = first.scope == InstallationScope.global
-        ? context.l10n.globalScope
+    final label = first.scope == InstallationScope.user
+        ? context.l10n.userScope
         : p.basename(first.projectRoot);
     AddedProject? project;
     if (first.scope == InstallationScope.project) {

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on DiscoverScreen state, localized failure copy, Module helpers, and shared card/installation widgets.
- * [OUTPUT]: Provides search and collection loading, empty, refresh, pagination, Module context, and detail-opening render methods.
+ * [INPUT]: Depends on DiscoverScreen state, localized failure copy, repository helpers, and shared card/installation widgets.
+ * [OUTPUT]: Provides the Discover route, loading, empty, refresh, pagination, repository context, and detail-opening render methods.
  * [POS]: Serves as the private rendering implementation of the Discover journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -27,7 +27,6 @@ extension _DiscoverRendering on _DiscoverScreenState {
             height: 45,
             appearance: SkillSearchAppearance.leaderboard,
             showShortcutHint: constraints.maxWidth >= 640,
-            maxLength: 200,
           ),
           const SizedBox(height: 24),
           _DiscoverHeaderReveal(

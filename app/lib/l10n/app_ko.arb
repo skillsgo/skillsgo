@@ -234,7 +234,7 @@
   "allAgents": "모든 에이전트",
   "allProjects": "모든 프로젝트",
   "specificProject": "프로젝트",
-  "globalScope": "글로벌",
+  "userScope": "글로벌",
   "addProject": "프로젝트 추가",
   "relocateProject": "재배치",
   "removeFromList": "목록에서 제거",
@@ -647,13 +647,13 @@
   "updateCheckFailed": "확인 실패",
   "installSkill": "스킬 설치",
   "installLocationTitle": "설치 위치 설정",
-  "globalLevel": "Global",
+  "userLevel": "사용자 수준",
   "projectLevel": "프로젝트 수준",
   "projects": "프로젝트",
   "loading": "로드 중…",
   "repositoryParsing": "파싱 저장소…",
-  "globalInstallSummary": "Available globally to {agents} Agents",
-  "@globalInstallSummary": {
+  "userInstallSummary": "사용자 수준의 {agents} 에이전트가 사용할 수 있습니다.",
+  "@userInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

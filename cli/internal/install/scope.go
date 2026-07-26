@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on portable path rules for user-visible Skill names.
- * [OUTPUT]: Provides Global/Project installation Scope values and path-safe Skill-name validation shared by Repository and External workflows.
+ * [OUTPUT]: Provides installation Scope values and path-safe Skill-name validation shared by Repository and External workflows.
  * [POS]: Serves as the minimal local-installation vocabulary after removal of modes and per-Skill materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,7 +16,7 @@ type Scope string
 
 const (
 	ScopeProject Scope = "project"
-	ScopeGlobal  Scope = "global"
+	ScopeUser    Scope = "user"
 )
 
 func ValidateSkillName(name string) error {

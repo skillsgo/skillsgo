@@ -13,7 +13,7 @@ class _InstallationScopeGroup {
   final List<String> agents;
 
   String semanticLabel(String Function(String) agentLabel) =>
-      '${project?.name ?? 'Global'}: ${agents.map(agentLabel).join(', ')}';
+      '${project?.name ?? 'User scope'}: ${agents.map(agentLabel).join(', ')}';
 }
 
 List<_InstallationScopeGroup> _installationScopeGroups(
@@ -23,7 +23,7 @@ List<_InstallationScopeGroup> _installationScopeGroups(
   final userAgents = <String>{};
   final projectAgents = <String, Set<String>>{};
   for (final target in skill.targets) {
-    if (target.scope == InstallationScope.global) {
+    if (target.scope == InstallationScope.user) {
       userAgents.add(target.agent);
     } else {
       projectAgents
@@ -295,7 +295,7 @@ String _installationCoverageLabel(
   InstalledSkill skill,
   List<AddedProject> projects,
 ) {
-  if (skill.targets.any((target) => target.scope == InstallationScope.global)) {
+  if (skill.targets.any((target) => target.scope == InstallationScope.user)) {
     return context.l10n.allProjects;
   }
   if (skill.projects.length == 1) {

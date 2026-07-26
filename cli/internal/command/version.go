@@ -17,7 +17,7 @@ import (
 
 const (
 	startupHandshakeSchemaVersion = 1
-	appProtocolVersion            = 11
+	appProtocolVersion            = 10
 )
 
 type startupHandshake struct {

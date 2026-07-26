@@ -11,7 +11,7 @@ import 'package:skillsgo/ui/install_operation_controller.dart';
 import 'support/fake_skills_gateway.dart';
 
 const _selection = InstallationTargetSelection(
-  scope: InstallationScope.global,
+  scope: InstallationScope.user,
   agent: 'codex',
 );
 

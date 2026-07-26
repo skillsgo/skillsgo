@@ -234,7 +234,7 @@
   "allAgents": "Semua Agen",
   "allProjects": "Semua Projek",
   "specificProject": "Projek",
-  "globalScope": "Global",
+  "userScope": "Global",
   "addProject": "Tambah Projek",
   "relocateProject": "Berpindah",
   "removeFromList": "Alih keluar daripada Senarai",
@@ -647,13 +647,13 @@
   "updateCheckFailed": "SEMAK GAGAL",
   "installSkill": "Pasang Kemahiran",
   "installLocationTitle": "Tetapkan lokasi pemasangan",
-  "globalLevel": "Global",
+  "userLevel": "Tahap Pengguna",
   "projectLevel": "Tahap Projek",
   "projects": "Projek",
   "loading": "Memuatkan…",
   "repositoryParsing": "Menghuraikan Repositori…",
-  "globalInstallSummary": "Available globally to {agents} Agents",
-  "@globalInstallSummary": {
+  "userInstallSummary": "Tersedia kepada Ejen {agents} di peringkat pengguna",
+  "@userInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

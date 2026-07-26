@@ -19,45 +19,6 @@ import 'support/widget_test_helpers.dart';
 
 void main() {
   testWidgets(
-    'Find ignores blank and duplicate normalized intent but accepts one CJK character',
-    (tester) async {
-      await tester.binding.setSurfaceSize(const Size(1200, 800));
-      final gateway = FakeSkillsGateway();
-      await tester.pumpWidget(SkillsGoApp(gateway: gateway));
-      await tester.pumpAndSettle();
-      gateway.collections.clear();
-      gateway.queries.clear();
-
-      await tester.enterText(searchInput(), '   ');
-      await tester.testTextInput.receiveAction(TextInputAction.search);
-      await tester.pumpAndSettle();
-      expect(gateway.collections, isEmpty);
-      expect(gateway.queries, isEmpty);
-
-      await tester.enterText(searchInput(), '  flutter  ');
-      await tester.testTextInput.receiveAction(TextInputAction.search);
-      await tester.pumpAndSettle();
-      expect(gateway.collections, [DiscoveryCollection.search]);
-      expect(gateway.queries, ['flutter']);
-
-      await tester.enterText(searchInput(), 'flutter');
-      await tester.testTextInput.receiveAction(TextInputAction.search);
-      await tester.pumpAndSettle();
-      expect(gateway.collections, [DiscoveryCollection.search]);
-      expect(gateway.queries, ['flutter']);
-
-      await tester.enterText(searchInput(), '图');
-      await tester.testTextInput.receiveAction(TextInputAction.search);
-      await tester.pumpAndSettle();
-      expect(gateway.collections, [
-        DiscoveryCollection.search,
-        DiscoveryCollection.search,
-      ]);
-      expect(gateway.queries, ['flutter', '图']);
-    },
-  );
-
-  testWidgets(
     'a completed request never writes through a disposed Discover provider',
     (tester) async {
       final pending = Completer<DiscoveryPage>();
@@ -146,6 +107,7 @@ void main() {
     expect(installAll.labelStyle?.fontSize, 15);
     expect(find.text('Flutter Pro'), findsOneWidget);
     expect(find.byType(SkillCard), findsWidgets);
+
   });
 
   testWidgets('a Git Repository cold load uses themed Portal Loading Shapes', (

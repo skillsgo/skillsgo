@@ -46,9 +46,9 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 
 ## Boundaries
 
-- The Hub owns public Module Path plus Skill Name ranking/search identity, Source Repository resolution and metadata, immutable Module Artifacts, exact Module Path plus Skill Path batch-card hydration, and minimal deployment discovery. It does not ingest usage events or calculate rankings.
+- The Hub owns public Module Path plus Skill Name identity, Source Repository resolution and metadata, immutable Module Artifacts, search, batch Skill-card hydration, and minimal deployment discovery. It does not ingest usage events or calculate rankings.
 - The Hub does not install skills into local Agent directories and does not own App navigation or local library state.
-- Public ranking/search coordinates carry Module Path and canonical Skill Name; exact member resources and batch-card hydration carry Module Path plus Skill Path.
+- Public endpoints must carry Module Path and canonical Skill Name as separate fields with stable response contracts.
 - Preserve immutable version semantics, commit identity, tree identity, and deterministic archive output.
 - Treat Athens-derived names and documents as legacy seams. When maintained code is touched, use SkillsGo terminology without erasing useful provenance.
 - Vendored dependencies, generated files, fixtures, and imported upstream assets are not maintained semantic modules.

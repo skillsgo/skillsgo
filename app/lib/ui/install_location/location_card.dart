@@ -36,10 +36,10 @@ class _InstallLocationCard extends StatefulWidget {
 }
 
 class _InstallLocationCardState extends State<_InstallLocationCard> {
-  InstallationScope scope = InstallationScope.global;
+  InstallationScope scope = InstallationScope.user;
   late List<AddedProject> projects;
   final selectedProjects = <String>{};
-  final selectedGlobalAgents = <String>{};
+  final selectedUserAgents = <String>{};
   final selectedProjectAgents = <String>{};
   bool addingProject = false;
   late List<SkillSummary> moduleSkills;
@@ -55,7 +55,7 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
     (target) =>
         target.scope == targetScope &&
         target.agent == agent &&
-        (targetScope == InstallationScope.global ||
+        (targetScope == InstallationScope.user ||
             target.projectRoot == projectRoot),
   );
 
@@ -75,13 +75,13 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
         });
       });
     }
-    selectedGlobalAgents.addAll(
+    selectedUserAgents.addAll(
       agents
           .where(
             (agent) =>
                 agent.installed &&
-                agent.supportedScopes.contains(InstallationScope.global) &&
-                !_alreadyInstalled(InstallationScope.global, agent.id),
+                agent.supportedScopes.contains(InstallationScope.user) &&
+                !_alreadyInstalled(InstallationScope.user, agent.id),
           )
           .map((agent) => agent.id),
     );
@@ -96,19 +96,19 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
     );
   }
 
-  Set<String> get selectedAgents => scope == InstallationScope.global
-      ? selectedGlobalAgents
+  Set<String> get selectedAgents => scope == InstallationScope.user
+      ? selectedUserAgents
       : selectedProjectAgents;
 
   bool get canInstall => selections.isNotEmpty;
 
   List<InstallationTargetSelection> get selections {
-    if (scope == InstallationScope.global) {
+    if (scope == InstallationScope.user) {
       return [
         for (final agent in agents)
-          if (selectedGlobalAgents.contains(agent.id))
+          if (selectedUserAgents.contains(agent.id))
             InstallationTargetSelection(
-              scope: InstallationScope.global,
+              scope: InstallationScope.user,
               projectRoot: '',
               agent: agent.id,
             ),
@@ -187,8 +187,8 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
                 unawaited(_addProject());
               },
       ),
-      groups: scope == InstallationScope.global
-          ? [_agentGroup(InstallationScope.global, l10n.usedBy)]
+      groups: scope == InstallationScope.user
+          ? [_agentGroup(InstallationScope.user, l10n.usedBy)]
           : [
               _projectGroup(),
               _agentGroup(InstallationScope.project, l10n.usedBy),
@@ -214,8 +214,8 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            scope == InstallationScope.global
-                ? l10n.globalInstallSummary(selections.length)
+            scope == InstallationScope.user
+                ? l10n.userInstallSummary(selections.length)
                 : l10n.projectInstallSummary(
                     selectedProjects.length,
                     selectedAgents.length,
@@ -413,16 +413,16 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
             label: agent.displayName,
             leading: _AgentAvatar(agent: agent),
             selected:
-                (targetScope == InstallationScope.global
-                        ? selectedGlobalAgents
+                (targetScope == InstallationScope.user
+                        ? selectedUserAgents
                         : selectedProjectAgents)
                     .contains(agent.id),
             enabled:
                 agent.supportedScopes.contains(targetScope) &&
-                !(targetScope == InstallationScope.global &&
+                !(targetScope == InstallationScope.user &&
                     _alreadyInstalled(targetScope, agent.id)),
             supportingText:
-                targetScope == InstallationScope.global &&
+                targetScope == InstallationScope.user &&
                     _alreadyInstalled(targetScope, agent.id)
                 ? l10n.agentInstalled
                 : !agent.supportedScopes.contains(targetScope)
@@ -437,7 +437,7 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
     setState(() {
       final target = switch (groupId) {
         'projects' => selectedProjects,
-        'agents' when scope == InstallationScope.global => selectedGlobalAgents,
+        'agents' when scope == InstallationScope.user => selectedUserAgents,
         _ => selectedProjectAgents,
       };
       selected ? target.add(itemId) : target.remove(itemId);

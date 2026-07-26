@@ -40,7 +40,7 @@ void main() {
 
     const target = SkillInstallationTarget(
       agent: 'codex',
-      scope: InstallationScope.global,
+      scope: InstallationScope.user,
       path: '/Users/test/.codex/skills/action-demo',
       version: 'v1',
     );
@@ -95,7 +95,7 @@ void main() {
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
-            scope: InstallationScope.global,
+            scope: InstallationScope.user,
             path: '/Users/test/.codex/skills/external-action-demo',
             version: '',
           ),
@@ -126,7 +126,7 @@ void main() {
         installationTargets: [
           SkillInstallationTarget(
             agent: 'codex',
-            scope: InstallationScope.global,
+            scope: InstallationScope.user,
             path: '/tmp/local-skill',
             version: 'v1',
           ),

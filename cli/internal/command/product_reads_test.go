@@ -41,7 +41,7 @@ func TestFindForwardsExactNameAndModulePath(t *testing.T) {
 	}))
 	defer server.Close()
 	var stdout bytes.Buffer
-	err := Execute([]string{"find", "ask-matt", "--hub", server.URL, "--module", "github.com/example/skills", "--exact-name", "--per-page", "10", "--output", "json"}, &stdout, &bytes.Buffer{})
+	err := Execute([]string{"find", "ask-matt", "--hub", server.URL, "--module", "github.com/example/skills", "--exact-name", "--per-page", "10"}, &stdout, &bytes.Buffer{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,11 +75,11 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 	}
 
 	for _, args := range [][]string{
-		{"find", "responsive layout", "--page", "1", "--per-page", "4", "--output", "json"},
-		{"find", "--input", inputPath, "--output", "json"},
-		{"detail", "github.com/example/skills", "v1.2.3", "skills/demo", "--output", "json"},
-		{"hub", "info", "--output", "json"},
-		{"hub", "check", "--output", "json"},
+		{"find", "responsive layout", "--page", "1", "--per-page", "4"},
+		{"find", "--input", inputPath},
+		{"detail", "github.com/example/skills", "v1.2.3", "skills/demo"},
+		{"hub", "info"},
+		{"hub", "check"},
 	} {
 		var stdout bytes.Buffer
 		if err := Execute(args, &stdout, &bytes.Buffer{}); err != nil {
@@ -100,18 +100,5 @@ func TestProductReadCommandsOwnHubRoutes(t *testing.T) {
 		requests[3] != "GET /info" ||
 		!strings.HasPrefix(requests[4], "GET /api/v1/skills/find?") {
 		t.Fatalf("unexpected requests %v", requests)
-	}
-}
-
-func TestProductReadsDefaultToHumanOutput(t *testing.T) {
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		fmt.Fprint(w, `{"skills":[{"modulePath":"github.com/example/skills","name":"demo","description":"Demo skill.","path":"skills/demo","latestVersion":"v1.2.3"}],"pagination":{"page":0,"perPage":20,"hasMore":false}}`)
-	}))
-	defer server.Close()
-	var stdout bytes.Buffer
-	if err := Execute([]string{"find", "demo", "--hub", server.URL}, &stdout, &bytes.Buffer{}); err != nil { t.Fatal(err) }
-	if strings.HasPrefix(strings.TrimSpace(stdout.String()), "{") || !strings.Contains(stdout.String(), "demo  github.com/example/skills@v1.2.3") {
-		t.Fatalf("expected Human output, got %q", stdout.String())
 	}
 }

@@ -234,7 +234,7 @@
   "allAgents": "Tất cả Agent",
   "allProjects": "Tất cả dự án",
   "specificProject": "dự án",
-  "globalScope": "Toàn cầu",
+  "userScope": "Toàn cầu",
   "addProject": "Thêm dự án",
   "relocateProject": "di dời",
   "removeFromList": "Xóa khỏi danh sách",
@@ -647,13 +647,13 @@
   "updateCheckFailed": "KIỂM TRA THẤT BẠI",
   "installSkill": "Cài đặt kỹ năng",
   "installLocationTitle": "Đặt vị trí cài đặt",
-  "globalLevel": "Global",
+  "userLevel": "Cấp độ người dùng",
   "projectLevel": "Cấp độ dự án",
   "projects": "Dự án",
   "loading": "Đang tải…",
   "repositoryParsing": "Đang phân tích kho lưu trữ…",
-  "globalInstallSummary": "Available globally to {agents} Agents",
-  "@globalInstallSummary": {
+  "userInstallSummary": "Có sẵn cho Agent {agents} ở cấp độ người dùng",
+  "@userInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

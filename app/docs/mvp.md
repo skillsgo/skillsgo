@@ -1,6 +1,6 @@
 # SkillsGo Personal MVP
 
-SkillsGo Personal MVP is a desktop manager for Agent Skills. It discovers public Skills through an open SkillsGo Hub and uses the App-bundled SkillsGo CLI to manage Global and project-level installations.
+SkillsGo Personal MVP is a desktop manager for Agent Skills. It discovers public Skills through an open SkillsGo Hub and uses the App-bundled SkillsGo CLI to manage user-level and project-level installations.
 
 See [User Journeys and Information Architecture](user-routes.md) for the complete experience and [`CONTEXT.md`](../CONTEXT.md) for domain language.
 
@@ -22,7 +22,7 @@ See [User Journeys and Information Architecture](user-routes.md) for the complet
 
 ### Library
 
-- Aggregate Skills across Global Scope, Added Projects, and Installed Agents.
+- Aggregate Skills across User Scope, Added Projects, and Installed Agents.
 - Provide All Skills, Global, and Added Project routes in the Library left rail, with a combinable Agent multi-select in the toolbar.
 - Show every Installed Agent, including Agents with zero Skills.
 - Include both SkillsGo-managed targets and External Installations discovered on disk.

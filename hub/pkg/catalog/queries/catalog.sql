@@ -130,23 +130,6 @@ JOIN LATERAL (
 ) mvs ON true
 ORDER BY input.ordinal;
 
--- name: SkillsByPathCoordinates :many
-WITH requested AS (
-    SELECT module_paths.module_path, skill_paths.path, module_paths.ordinal
-    FROM unnest(sqlc.arg(module_paths)::text[]) WITH ORDINALITY AS module_paths(module_path, ordinal)
-    JOIN unnest(sqlc.arg(paths)::text[]) WITH ORDINALITY AS skill_paths(path, ordinal) USING (ordinal)
-)
-SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
-       mvs.name, mvs.description, m.source_host,
-       m.source_path AS source_repository, mvs.path,
-       mv.version AS latest_version, m.stars,
-       mv.created_at, m.updated_at
-FROM requested input
-JOIN modules m ON m.path=input.module_path
-JOIN versions mv ON mv.id=m.current_version_id
-JOIN skills mvs ON mvs.version_id=mv.id AND mvs.path=input.path
-ORDER BY input.ordinal;
-
 -- name: ListSkills :many
 SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
        mvs.name, mvs.description, m.source_host,

@@ -35,7 +35,6 @@ type Querier interface {
 	SkillPublishedVersions(ctx context.Context, arg SkillPublishedVersionsParams) ([]string, error)
 	Skills(ctx context.Context, arg SkillsParams) ([]SkillsRow, error)
 	SkillsByCoordinates(ctx context.Context, arg SkillsByCoordinatesParams) ([]SkillsByCoordinatesRow, error)
-	SkillsByPathCoordinates(ctx context.Context, arg SkillsByPathCoordinatesParams) ([]SkillsByPathCoordinatesRow, error)
 	StaleQueuedBackfillRuns(ctx context.Context, arg StaleQueuedBackfillRunsParams) ([]ModuleBackfillRun, error)
 	StartBackfillRun(ctx context.Context, arg StartBackfillRunParams) (int64, error)
 	TouchBackfillRun(ctx context.Context, arg TouchBackfillRunParams) (int64, error)

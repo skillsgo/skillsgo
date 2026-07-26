@@ -29,7 +29,7 @@ void main() {
       targets: [
         SkillInstallationTarget(
           agent: 'codex',
-          scope: InstallationScope.global,
+          scope: InstallationScope.user,
           path: '/Users/test/.codex/skills/$name',
           version: 'v1',
         ),
@@ -130,7 +130,7 @@ void main() {
           targets: [
             SkillInstallationTarget(
               agent: 'codex',
-              scope: InstallationScope.global,
+              scope: InstallationScope.user,
               path: '/Users/test/.codex/skills/demo',
               version: '',
             ),
@@ -204,7 +204,7 @@ void main() {
           targets: [
             SkillInstallationTarget(
               agent: 'codex',
-              scope: InstallationScope.global,
+              scope: InstallationScope.user,
               path: '/Users/test/.codex/skills/demo',
               version: 'v1',
             ),
@@ -255,7 +255,7 @@ void main() {
           targets: [
             SkillInstallationTarget(
               agent: 'codex',
-              scope: InstallationScope.global,
+              scope: InstallationScope.user,
               path: '/Users/test/.codex/skills/demo',
               version: 'v1',
               health: InstallationHealth.localModification,

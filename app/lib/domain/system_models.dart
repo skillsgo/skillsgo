@@ -33,7 +33,7 @@ enum SkillsFailureKind {
 
 enum DiscoveryCollection { search, ranking, trending, hot }
 
-enum InstallationScope { global, project }
+enum InstallationScope { user, project }
 
 enum DiscoveryVerification { verified, unverified }
 

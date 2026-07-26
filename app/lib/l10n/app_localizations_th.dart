@@ -407,7 +407,7 @@ class AppLocalizationsTh extends AppLocalizations {
   String get specificProject => 'โครงการ';
 
   @override
-  String get globalScope => 'ทั่วโลก';
+  String get userScope => 'ทั่วโลก';
 
   @override
   String get addProject => 'เพิ่มโครงการ';
@@ -1217,7 +1217,7 @@ class AppLocalizationsTh extends AppLocalizations {
   String get installLocationTitle => 'กำหนดตำแหน่งการติดตั้ง';
 
   @override
-  String get globalLevel => 'Global';
+  String get userLevel => 'ระดับผู้ใช้';
 
   @override
   String get projectLevel => 'ระดับโครงการ';
@@ -1232,8 +1232,8 @@ class AppLocalizationsTh extends AppLocalizations {
   String get repositoryParsing => 'กำลังแยกวิเคราะห์ที่เก็บ...';
 
   @override
-  String globalInstallSummary(int agents) {
-    return 'Available globally to $agents Agents';
+  String userInstallSummary(int agents) {
+    return 'ใช้ได้กับAgent $agents ในระดับผู้ใช้';
   }
 
   @override

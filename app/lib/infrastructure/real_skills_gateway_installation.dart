@@ -80,7 +80,7 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
           skill.installationSelector,
         ],
         for (final selection in group) ...['--agent', selection.agent],
-        if (first.scope == InstallationScope.global) '--global',
+        if (first.scope == InstallationScope.user) '--global',
         if (first.scope == InstallationScope.project) ...[
           '--project',
           first.projectRoot,

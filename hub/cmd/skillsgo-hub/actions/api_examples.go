@@ -53,7 +53,7 @@ var exampleFindCandidatesResponse = protocolapi.FindCandidatesResponse{
 }
 
 var exampleBatchRequest = map[string]any{
-	"skills": []any{map[string]any{"modulePath": exampleModulePath, "path": "skills/productivity/grill-me"}},
+	"skills": []any{map[string]any{"modulePath": exampleModulePath, "name": "grill-me"}},
 }
 
 var exampleBatchResponse = map[string]any{"skills": []any{exampleSkill}}

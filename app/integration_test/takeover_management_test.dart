@@ -29,9 +29,7 @@ void registerTakeoverManagementJourney() {
       final runtime = await JourneyRuntime.start('takeover_management');
       addTearDown(runtime.close);
       final sandbox = runtime.sandbox.path;
-      final globalTarget = Directory(
-        '$sandbox/test-agent/skills/user-existing',
-      );
+      final userTarget = Directory('$sandbox/test-agent/skills/user-existing');
       final projectRoot = Directory('$sandbox/takeover-project');
       final projectTarget = Directory(
         '${projectRoot.path}/.test-agent/skills/project-existing',
@@ -40,9 +38,9 @@ void registerTakeoverManagementJourney() {
         '---\nname: alpha\ndescription: Stable updated version of the versioned Alpha E2E fixture.\n---\n# Alpha\n\nVersion 1.1.0 fixture content.\n',
       );
       final projectSkillBytes = List<int>.from(userSkillBytes);
-      globalTarget.createSync(recursive: true);
+      userTarget.createSync(recursive: true);
       projectTarget.createSync(recursive: true);
-      File('${globalTarget.path}/SKILL.md').writeAsBytesSync(userSkillBytes);
+      File('${userTarget.path}/SKILL.md').writeAsBytesSync(userSkillBytes);
       File(
         '${projectTarget.path}/SKILL.md',
       ).writeAsBytesSync(projectSkillBytes);
@@ -122,7 +120,7 @@ void registerTakeoverManagementJourney() {
         ).readAsBytesSync(),
         userSkillBytes,
       );
-      expect(globalTarget.existsSync(), isFalse);
+      expect(userTarget.existsSync(), isFalse);
 
       await tester.tap(_railButton(_allSkillsRailLabel()));
       await _pumpUntilTakeoverCount(tester, 0);

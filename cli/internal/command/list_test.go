@@ -1,72 +1,45 @@
 /*
- * [INPUT]: Uses command.Execute with isolated Agent roots plus default and explicit Global/Workspace listing scopes.
- * [OUTPUT]: Specifies the sole installed-Skill listing command's default-Workspace behavior, path-rich Human output, mode-free External inventory, explicit-project privacy, and read-only filesystem behavior.
- * [POS]: Serves as command-level coverage for Library discovery outside Repository-managed coordinates.
+ * [INPUT]: Uses command.Execute with an isolated HOME and an externally installed Skill under a detected Agent Discovery Root.
+ * [OUTPUT]: Specifies that `list --global` reads the unified inventory and includes installations not declared by SkillsGo.
+ * [POS]: Serves as the regression contract for skills-sh-compatible global listing at the public command seam.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
 
 import (
 	"bytes"
-	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/skillsgo/skillsgo/cli/internal/inventory"
-	"github.com/stretchr/testify/require"
 )
 
-func TestInventoryReportsExternalUserSkillWithoutClaimingIt(t *testing.T) {
-	root := t.TempDir()
-	home, agentHome := filepath.Join(root, "home"), filepath.Join(root, "agent")
+func TestGlobalListIncludesExternalAgentSkills(t *testing.T) {
+	home := filepath.Join(t.TempDir(), "home")
 	t.Setenv("HOME", home)
-	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-	target := filepath.Join(agentHome, "skills", "external-demo")
-	require.NoError(t, os.MkdirAll(target, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("---\nname: external-demo\ndescription: External.\n---\n"), 0o644))
+	t.Setenv("SKILLSGO_TEST_AGENT_HOME", home)
+	skillRoot := filepath.Join(home, "skills", "external-demo")
+	if err := os.MkdirAll(skillRoot, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(
+		filepath.Join(skillRoot, "SKILL.md"),
+		[]byte("---\nname: external-demo\ndescription: installed outside SkillsGo\n---\n"),
+		0o644,
+	); err != nil {
+		t.Fatal(err)
+	}
 
 	var output bytes.Buffer
-	require.NoError(t, Execute([]string{"list", "--global", "--output", "json"}, &output, &output), output.String())
-	var report inventory.Report
-	require.NoError(t, json.Unmarshal(output.Bytes(), &report))
-	require.Len(t, report.Entries, 1)
-	require.Equal(t, inventory.ProvenanceExternal, report.Entries[0].Provenance)
-	require.Equal(t, target, report.Entries[0].Targets[0].Path)
-	require.NotContains(t, output.String(), `"mode"`)
-	require.FileExists(t, filepath.Join(target, "SKILL.md"))
-}
-
-func TestInventoryDefaultsToCurrentWorkspaceAndRendersPaths(t *testing.T) {
-	workspace := t.TempDir()
-	t.Setenv("HOME", filepath.Join(workspace, "home"))
-	agentHome := filepath.Join(workspace, "agent")
-	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-	require.NoError(t, os.MkdirAll(filepath.Join(agentHome, "skills"), 0o755))
-	require.NoError(t, os.Chdir(workspace))
-	t.Cleanup(func() { _ = os.Chdir("/") })
-	target := filepath.Join(workspace, ".test-agent", "skills", "external-demo")
-	require.NoError(t, os.MkdirAll(target, 0o755))
-	require.NoError(t, os.WriteFile(filepath.Join(target, "SKILL.md"), []byte("---\nname: external-demo\ndescription: External.\n---\n"), 0o644))
-
-	var output bytes.Buffer
-	require.NoError(t, Execute([]string{"list", "--ui", "plain"}, &output, &output), output.String())
-	require.Contains(t, output.String(), "external-demo")
-	require.Contains(t, output.String(), target)
-	require.False(t, strings.Contains(output.String(), "\x1b["))
-}
-
-func TestInventoryDoesNotScanUnselectedWorkspace(t *testing.T) {
-	root := t.TempDir()
-	selected, hidden := filepath.Join(root, "selected"), filepath.Join(root, "hidden")
-	agentHome := filepath.Join(root, "agent")
-	t.Setenv("HOME", filepath.Join(root, "home"))
-	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-	require.NoError(t, os.MkdirAll(filepath.Join(hidden, ".test-agent", "skills", "private", "SKILL.md"), 0o755))
-	require.NoError(t, os.MkdirAll(selected, 0o755))
-
-	var output bytes.Buffer
-	require.NoError(t, Execute([]string{"list", "--project", selected, "--output", "json"}, &output, &output))
-	require.NotContains(t, output.String(), hidden)
+	if err := Execute([]string{"list", "--global", "--ui", "plain"}, &output, &output); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(output.String(), "external-demo") ||
+		!strings.Contains(output.String(), "test-agent") ||
+		!strings.Contains(output.String(), skillRoot) {
+		t.Fatalf("expected external Agent Skill in global list, got %q", output.String())
+	}
+	if strings.Contains(output.String(), "\x1b[") || strings.Contains(output.String(), "\r") {
+		t.Fatalf("plain global list contains terminal control characters: %q", output.String())
+	}
 }

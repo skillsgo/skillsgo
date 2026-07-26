@@ -11,7 +11,7 @@ mixin _RealSkillsGatewayUpdates
   List<String> _repositoryUpdateScopeArguments(
     InstallationScope scope,
     String projectRoot,
-  ) => scope == InstallationScope.global
+  ) => scope == InstallationScope.user
       ? const ['--global']
       : ['--project', projectRoot];
 
