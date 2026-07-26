@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the filesystem artifact root, immutable Module Version directories, exact relative Skill paths, and bounded SKILL.md bytes.
+ * [INPUT]: Depends on the filesystem artifact root, immutable Package Version directories, exact relative Skill paths, and bounded SKILL.md bytes.
  * [OUTPUT]: Provides direct create-only filesystem SKILL.md sidecar writes and reads with identical-content idempotency.
  * [POS]: Serves as the disk and in-memory implementation of storage.SkillContentStore.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

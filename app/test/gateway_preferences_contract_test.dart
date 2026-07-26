@@ -241,7 +241,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":2,"product":"skillsgo","version":"test","appProtocolVersion":11,"os":"darwin","architecture":"arm64","agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
+            '{"schemaVersion":2,"product":"skillsgo","version":"test","appProtocolVersion":15,"os":"darwin","architecture":"arm64","agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(

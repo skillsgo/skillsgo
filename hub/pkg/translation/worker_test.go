@@ -55,7 +55,7 @@ func TestWorkerReturnsFailuresSoRiverCanRetryOnlyRemainingCandidates(t *testing.
 func TestWorkerReturnsPersistenceFailureForRiverRetry(t *testing.T) {
 	saveErr := errors.New("catalog write failed")
 	store := &workerStore{saveErr: saveErr, candidates: []catalog.TranslationCandidate{{
-		ResourceKind: catalog.LocalizedModule, ResourceID: "github.com/acme/skills", Description: "Acme Skills",
+		ResourceKind: catalog.LocalizedPackage, ResourceID: "github.com/acme/skills", Description: "Acme Skills",
 	}}}
 	worker := NewWorker(store, translatorFunc(func(context.Context, string, string) (string, error) {
 		return "Acme 技能", nil

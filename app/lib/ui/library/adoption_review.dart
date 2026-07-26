@@ -76,14 +76,14 @@ class _AdoptionReviewShellState extends State<_AdoptionReviewShell> {
         );
     });
     final queryIndices = <String, int>{};
-    final queries = <ModuleFindQuery>[];
+    final queries = <PackageFindQuery>[];
     for (final skill in widget.skills) {
       final signature =
-          '${skill.name.trim().toLowerCase()}\u0000${skill.modulePath}';
+          '${skill.name.trim().toLowerCase()}\u0000${skill.packagePath}';
       queryIndices.putIfAbsent(signature, () {
         final index = queries.length;
         queries.add(
-          ModuleFindQuery(name: skill.name, modulePath: skill.modulePath),
+          PackageFindQuery(name: skill.name, packagePath: skill.packagePath),
         );
         return index;
       });
@@ -94,7 +94,7 @@ class _AdoptionReviewShellState extends State<_AdoptionReviewShell> {
       setState(() {
         for (final skill in widget.skills) {
           final signature =
-              '${skill.name.trim().toLowerCase()}\u0000${skill.modulePath}';
+              '${skill.name.trim().toLowerCase()}\u0000${skill.packagePath}';
           final index = queryIndices[signature];
           _applyCandidates(skill, index == null ? const [] : results[index]);
         }
@@ -145,7 +145,7 @@ class _AdoptionReviewShellState extends State<_AdoptionReviewShell> {
     setState(() => matches[key] = const _AdoptionMatch.loading());
     try {
       final results = await widget.gateway.findSources([
-        ModuleFindQuery(name: skill.name, modulePath: skill.modulePath),
+        PackageFindQuery(name: skill.name, packagePath: skill.packagePath),
       ]);
       if (!mounted) return;
       setState(() => _applyCandidates(skill, results.firstOrNull ?? []));
@@ -526,7 +526,7 @@ class _AdoptionSourceSelector extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          _compactRepositorySource(candidate.skill.modulePath),
+                          _compactRepositorySource(candidate.skill.packagePath),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontWeight: FontWeight.w700),
@@ -569,7 +569,7 @@ class _AdoptionSourceSelector extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  _compactRepositorySource(match!.selected!.skill.modulePath),
+                  _compactRepositorySource(match!.selected!.skill.packagePath),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

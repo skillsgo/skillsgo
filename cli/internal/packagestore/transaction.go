@@ -1,10 +1,10 @@
 /*
- * [INPUT]: Depends on one verified immutable Module Artifact, canonical member paths, explicit per-Agent selections, and destination roots supplied by Agent Adapters.
- * [OUTPUT]: Prepares, commits, finalizes, compares, and rolls back complete Scope Module Stores plus deterministic Module Projections, safely restoring Module-contained symlinks and replacing only content proven equal to the prior declared baseline.
+ * [INPUT]: Depends on one verified immutable Package Artifact, canonical member paths, explicit per-Agent selections, and destination roots supplied by Agent Adapters.
+ * [OUTPUT]: Prepares, commits, finalizes, compares, and rolls back complete Scope Package Stores plus deterministic Package Projections, safely restoring Package-contained symlinks and replacing only content proven equal to the prior declared baseline.
  * [POS]: Serves as the filesystem transaction membrane between Repository downloads and portable dependency-state persistence.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-package modulestore
+package packagestore
 
 import (
 	"crypto/sha256"
@@ -17,7 +17,7 @@ import (
 	"strings"
 
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
-	protocolmodule "github.com/skillsgo/skillsgo/protocol/module"
+	protocolpackage "github.com/skillsgo/skillsgo/protocol/packageidentity"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 )
 
@@ -29,15 +29,15 @@ type Projection struct {
 }
 
 type Options struct {
-	ModulesRoot        string
-	ModulePath         string
+	PackagesRoot       string
+	PackagePath        string
 	Version            string
 	Archive            []byte
 	Sum                string
 	Members            []string
 	Projections        []Projection
 	RemovedProjections []Projection
-	RemoveModule       bool
+	RemovePackage      bool
 }
 
 type preparedPath struct {
@@ -63,24 +63,24 @@ type Transaction struct {
 	finalized bool
 }
 
-func CoordinatePath(root, modulePath, version string) string {
-	return filepath.Join(root, filepath.FromSlash(modulePath)+"@"+version)
+func CoordinatePath(root, packagePath, version string) string {
+	return filepath.Join(root, filepath.FromSlash(packagePath)+"@"+version)
 }
 
 func Prepare(options Options) (*Transaction, error) {
-	if options.ModulesRoot == "" || (len(options.Projections)+len(options.RemovedProjections) == 0 && !options.RemoveModule) {
-		return nil, fmt.Errorf("Module Store root and at least one desired or removed Repository Projection are required")
+	if options.PackagesRoot == "" || (len(options.Projections)+len(options.RemovedProjections) == 0 && !options.RemovePackage) {
+		return nil, fmt.Errorf("Package Store root and at least one desired or removed Repository Projection are required")
 	}
-	parsed, err := protocolmodule.ParsePath(options.ModulePath)
-	if err != nil || parsed.String() != options.ModulePath || !protocolversion.IsImmutable(options.Version) {
-		return nil, fmt.Errorf("invalid immutable Repository coordinate %s@%s", options.ModulePath, options.Version)
+	parsed, err := protocolpackage.ParsePath(options.PackagePath)
+	if err != nil || parsed.String() != options.PackagePath || !protocolversion.IsImmutable(options.Version) {
+		return nil, fmt.Errorf("invalid immutable Repository coordinate %s@%s", options.PackagePath, options.Version)
 	}
-	actual, err := protocolartifact.ModuleSum(options.Archive, options.ModulePath, options.Version)
+	actual, err := protocolartifact.PackageSum(options.Archive, options.PackagePath, options.Version)
 	if err != nil {
 		return nil, err
 	}
 	if actual != options.Sum {
-		return nil, fmt.Errorf("Repository Sum mismatch for %s@%s", options.ModulePath, options.Version)
+		return nil, fmt.Errorf("Repository Sum mismatch for %s@%s", options.PackagePath, options.Version)
 	}
 	members, err := validateMembers(options.Members)
 	if err != nil {
@@ -91,22 +91,22 @@ func Prepare(options Options) (*Transaction, error) {
 		_ = transaction.Rollback()
 		return nil, cause
 	}
-	moduleTarget := CoordinatePath(options.ModulesRoot, options.ModulePath, options.Version)
-	moduleTemporary, err := materialize(options.Archive, options.ModulePath, options.Version, moduleTarget, nil)
+	moduleTarget := CoordinatePath(options.PackagesRoot, options.PackagePath, options.Version)
+	moduleTemporary, err := materialize(options.Archive, options.PackagePath, options.Version, moduleTarget, nil)
 	if err != nil {
 		return fail(err)
 	}
-	var moduleStorePath preparedPath
-	if options.RemoveModule {
-		moduleStorePath, err = reconcileRemoval(moduleTemporary, moduleTarget)
+	var packageStorePath preparedPath
+	if options.RemovePackage {
+		packageStorePath, err = reconcileRemoval(moduleTemporary, moduleTarget)
 	} else {
-		moduleStorePath, err = reconcilePreparedPath(moduleTemporary, moduleTarget)
+		packageStorePath, err = reconcilePreparedPath(moduleTemporary, moduleTarget)
 	}
 	if err != nil {
 		_ = os.RemoveAll(moduleTemporary)
-		return fail(fmt.Errorf("Scope Module Store Local Modification: %w", err))
+		return fail(fmt.Errorf("Scope Package Store Local Modification: %w", err))
 	}
-	transaction.paths = append(transaction.paths, moduleStorePath)
+	transaction.paths = append(transaction.paths, packageStorePath)
 
 	seenAgents, seenTargets := map[string]bool{}, map[string]bool{}
 	for _, projection := range options.Projections {
@@ -118,13 +118,13 @@ func Prepare(options Options) (*Transaction, error) {
 		if err != nil {
 			return fail(fmt.Errorf("Agent %s: %w", projection.Agent, err))
 		}
-		target := CoordinatePath(projection.Root, options.ModulePath, options.Version)
+		target := CoordinatePath(projection.Root, options.PackagePath, options.Version)
 		targetKey := filepath.Clean(target)
 		if seenTargets[targetKey] {
 			return fail(fmt.Errorf("duplicate Repository Projection target %s", target))
 		}
 		seenTargets[targetKey] = true
-		temporary, err := materialize(options.Archive, options.ModulePath, options.Version, target, func(path string) bool {
+		temporary, err := materialize(options.Archive, options.PackagePath, options.Version, target, func(path string) bool {
 			member, isManifest := memberForManifest(path, members)
 			return !isManifest || (member != "" && selected[member])
 		})
@@ -137,7 +137,7 @@ func Prepare(options Options) (*Transaction, error) {
 			if validationErr != nil {
 				return fail(fmt.Errorf("Agent %s previous selection: %w", projection.Agent, validationErr))
 			}
-			baseline, err = materialize(options.Archive, options.ModulePath, options.Version, target, func(path string) bool {
+			baseline, err = materialize(options.Archive, options.PackagePath, options.Version, target, func(path string) bool {
 				member, isManifest := memberForManifest(path, members)
 				return !isManifest || (member != "" && previous[member])
 			})
@@ -164,13 +164,13 @@ func Prepare(options Options) (*Transaction, error) {
 		if err != nil {
 			return fail(fmt.Errorf("Agent %s previous selection: %w", projection.Agent, err))
 		}
-		target := CoordinatePath(projection.Root, options.ModulePath, options.Version)
+		target := CoordinatePath(projection.Root, options.PackagePath, options.Version)
 		targetKey := filepath.Clean(target)
 		if seenTargets[targetKey] {
 			return fail(fmt.Errorf("duplicate Repository Projection target %s", target))
 		}
 		seenTargets[targetKey] = true
-		baseline, err := materialize(options.Archive, options.ModulePath, options.Version, target, func(path string) bool {
+		baseline, err := materialize(options.Archive, options.PackagePath, options.Version, target, func(path string) bool {
 			member, isManifest := memberForManifest(path, members)
 			return !isManifest || (member != "" && previous[member])
 		})
@@ -346,7 +346,7 @@ func reconcileRemoval(baseline, target string) (preparedPath, error) {
 	return preparedPath{target: target, backup: placeholder, action: pathDelete}, nil
 }
 
-func materialize(archive []byte, modulePath, version, target string, keep func(string) bool) (string, error) {
+func materialize(archive []byte, packagePath, version, target string, keep func(string) bool) (string, error) {
 	parent := filepath.Dir(target)
 	if err := os.MkdirAll(parent, 0o755); err != nil {
 		return "", err
@@ -362,7 +362,7 @@ func materialize(archive []byte, modulePath, version, target string, keep func(s
 		}
 	}()
 	entries := make([]protocolartifact.Entry, 0)
-	_, err = protocolartifact.WalkModule(archive, modulePath, version, func(entry protocolartifact.Entry) error {
+	_, err = protocolartifact.WalkPackage(archive, packagePath, version, func(entry protocolartifact.Entry) error {
 		if entry.Directory || (keep != nil && !keep(entry.Path)) {
 			return nil
 		}

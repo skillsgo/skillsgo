@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on an initially empty Catalog, public Module Version Skill demand publication, ordinary CLI add, canonical Module routes, and legacy route absence.
+ * [INPUT]: Depends on an initially empty Catalog, public Package Version Skill demand publication, ordinary CLI add, canonical Package routes, and legacy route absence.
  * [OUTPUT]: Provides black-box coverage that a version-scoped Skill read populates Catalog while the maintained protocol excludes resolve, manifest, and skillsgo resources.
  * [POS]: Serves as lazy Catalog visibility and protocol-contraction coverage in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

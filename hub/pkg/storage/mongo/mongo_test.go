@@ -49,8 +49,8 @@ func getStorage(tb testing.TB) *SkillStore {
 	return backend
 }
 
-func TestQueryModuleVersionExists(t *testing.T) {
-	modname, ver := "getTestModule", "v1.2.3"
+func TestQueryPackageVersionExists(t *testing.T) {
+	modname, ver := "getTestPackage", "v1.2.3"
 	infoBytes := []byte("123")
 	archive := []byte("789")
 
@@ -66,7 +66,7 @@ func TestQueryModuleVersionExists(t *testing.T) {
 }
 
 func TestQueryKindNotFoundErrorCases(t *testing.T) {
-	modname, ver := "getTestModule", "v1.2.3"
+	modname, ver := "getTestPackage", "v1.2.3"
 	infoBytes := []byte("123")
 	archive := []byte("789")
 
@@ -80,12 +80,12 @@ func TestQueryKindNotFoundErrorCases(t *testing.T) {
 		modname string
 		ver     string
 	}{
-		{"getTestModule", "yyy"}, // test NotFound non-existent version
-		{"getTestModule", ""},    // test NotFound empty str version
-		{"xxx", "v1.2.3"},        // test NotFound non-existent module
-		{"", "v1.2.3"},           // test NotFound empty str module
-		{"", ""},                 // test NotFound empty str module and version
-		{"xxx", "yyy"},           // test NotFound non-existent module and version
+		{"getTestPackage", "yyy"}, // test NotFound non-existent version
+		{"getTestPackage", ""},    // test NotFound empty str version
+		{"xxx", "v1.2.3"},         // test NotFound non-existent module
+		{"", "v1.2.3"},            // test NotFound empty str module
+		{"", ""},                  // test NotFound empty str module and version
+		{"xxx", "yyy"},            // test NotFound non-existent module and version
 	}
 
 	for _, test := range testCases {
@@ -156,7 +156,7 @@ func TestNewStorageWithDefaultOverrides(t *testing.T) {
 		{"Test Custom DB Name", "testAthens", "testAthens", "skills", "skills"},
 		{"Test Blank DB Name", "", "athens", "skills", "skills"},
 		{"Test Default 'Skills' Collection Name", "athens", "athens", "skills", "skills"},
-		{"Test Custom Collection Name", "athens", "athens", "testModules", "testModules"}, // Tests the non-default collection name
+		{"Test Custom Collection Name", "athens", "athens", "testPackages", "testPackages"}, // Tests the non-default collection name
 		{"Test Blank Collection Name", "athens", "athens", "", "skills"},
 	}
 

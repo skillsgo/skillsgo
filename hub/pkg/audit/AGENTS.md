@@ -3,7 +3,7 @@
 
 ## Members
 
-- `artifact.go`: consumes the shared Protocol one-pass Repository ZIP traversal while projecting one selected Skill member into an inspectable file inventory, executable signals, and the exact Module Sum returned by that traversal.
+- `artifact.go`: consumes the shared Protocol one-pass Repository ZIP traversal while projecting one selected Skill member into an inspectable file inventory, executable signals, and the exact Package Sum returned by that traversal.
 - `artifact_test.go`: specifies archive validation, duplicate rejection, golden Sums, real instruction extraction, file classification, truncation, and executable-file detection.
 
 ## Architectural Boundary

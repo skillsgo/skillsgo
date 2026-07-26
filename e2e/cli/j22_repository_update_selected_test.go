@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the disposable E2E environment, one multi-Skill Repository dependency, and state-bound Repository update.
+ * [INPUT]: Depends on the disposable E2E environment, one multi-Skill Repository dependency, and confirmed Repository update.
  * [OUTPUT]: Provides black-box coverage that all selected siblings move atomically to one Repository version.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -33,13 +33,7 @@ func TestJ22SelectedSkillsUpdateAtRepositoryGranularity(t *testing.T) {
 	beforeSum, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills-lock.yaml"))
 	require.NoError(t, err)
 
-	preflight := execCLI(t, ctx, container, "update", repository+"@v1.1.0", "--preflight", "--output", "json")
-	require.Equal(t, 0, preflight.exitCode, preflight.output)
-	var preview struct {
-		StateToken string `json:"stateToken"`
-	}
-	require.NoError(t, json.Unmarshal([]byte(preflight.output), &preview), preflight.output)
-	result := execCLI(t, ctx, container, "update", repository+"@v1.1.0", "--state-token", preview.StateToken, "--output", "json")
+	result := execCLI(t, ctx, container, "update", repository+"@v1.1.0", "--yes", "--output", "json")
 	require.Equal(t, 0, result.exitCode, result.output)
 	newProjection := filepath.Join(sandboxRoot, "project", ".agents", "skills", filepath.FromSlash(repository)+"@v1.1.0")
 	afterTarget, err := os.ReadFile(filepath.Join(newProjection, "skills", "beta", "SKILL.md"))

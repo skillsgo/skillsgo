@@ -22,7 +22,7 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
                       path: '/tmp/local-skill',
                       agents: agentNames,
                       targetCount: agentNames.length,
-                      modulePath: 'github.com/test/skills',
+                      packagePath: 'github.com/test/skills',
                       versions: const ['v1'],
                       targets: [
                         for (final agent in agentNames)
@@ -117,7 +117,7 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
           name: 'local-skill',
           path: skill.path,
           content: '# Local',
-          modulePath: skill.modulePath,
+          packagePath: skill.packagePath,
           version: skill.versions.length == 1 ? skill.versions.single : '',
           installationTargets: skill.targets,
         );

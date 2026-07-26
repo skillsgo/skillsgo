@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the released CLI, an isolated Codex user Skill, and a supported skills.sh user lock.
- * [OUTPUT]: Verifies preflight counts, content-preserving takeover, complete SkillsGo metadata, managed inventory, and a zero-count rescan.
+ * [OUTPUT]: Verifies planning counts, `--yes`-confirmed content-preserving adoption, complete SkillsGo metadata, managed inventory, and a zero-count rescan.
  * [POS]: Serves as the successful existing-Skill takeover user journey in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -27,19 +27,19 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 		"demo": skillsShLockRecord("skills/alpha/SKILL.md"),
 	})
 
-	preview := execCLI(t, ctx, container, "takeover", "--preflight", "--global", "--output", "json")
+	preview := execCLI(t, ctx, container, "adopt", "--global", "--output", "json")
 	require.Equal(t, 0, preview.exitCode, preview.output)
 	var plan takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(preview.output), &plan), preview.output)
 	require.Len(t, plan.PlanID, 64)
 	require.Equal(t, 1, plan.Summary.Eligible, preview.output)
 	require.Equal(t, 1, plan.Scopes.Global.Eligible)
-	require.NoDirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "modules"))
+	require.NoDirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "packages"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "home", ".agents", "skills.yaml"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "home", ".agents", "skills-lock.yaml"))
 
 	execution := execCLI(t, ctx, container,
-		"takeover", "--plan", plan.PlanID, "--global", "--yes", "--output", "json",
+		"adopt", "--global", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, execution.exitCode, execution.output)
 	var report takeoverExecutionJSON
@@ -58,7 +58,7 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 
 	stateRoot := filepath.Join(sandboxRoot, "home", ".skillsgo")
 	declarationRoot := filepath.Join(sandboxRoot, "home", ".agents")
-	require.DirExists(t, filepath.Join(stateRoot, "modules"))
+	require.DirExists(t, filepath.Join(stateRoot, "packages"))
 	require.FileExists(t, filepath.Join(declarationRoot, "skills.yaml"))
 	require.FileExists(t, filepath.Join(declarationRoot, "skills-lock.yaml"))
 
@@ -77,7 +77,7 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 	require.Equal(t, "hub", inventoryReport.Entries[0].Provenance)
 	require.Equal(t, "healthy", inventoryReport.Entries[0].Health)
 
-	rescan := execCLI(t, ctx, container, "takeover", "--preflight", "--global", "--output", "json")
+	rescan := execCLI(t, ctx, container, "adopt", "--global", "--output", "json")
 	require.Equal(t, 0, rescan.exitCode, rescan.output)
 	var rescanned takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(rescan.output), &rescanned), rescan.output)

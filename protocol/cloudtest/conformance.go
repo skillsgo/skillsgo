@@ -40,7 +40,7 @@ func VerifyHandler(t testingT, handler http.Handler) {
 func VerifyExecutor(t testingT, execute func(*http.Request) (*http.Response, error)) {
 	t.Helper()
 	now := time.Now().UTC().Truncate(time.Second)
-	event := cloud.InstallEvent{EventID: fmt.Sprintf("conformance-%d", now.UnixNano()), ModulePath: "github.com/skillsgo/conformance", SkillName: "fixture", SkillPath: "skills/fixture", Version: "v1.0.0", Agents: []string{"codex"}, Scope: cloud.ScopeGlobal, CLIVersion: "conformance", OccurredAt: now}
+	event := cloud.InstallEvent{EventID: fmt.Sprintf("conformance-%d", now.UnixNano()), PackagePath: "github.com/skillsgo/conformance", SkillName: "fixture", SkillPath: "skills/fixture", Version: "v1.0.0", Agents: []string{"codex"}, Scope: cloud.ScopeGlobal, CLIVersion: "conformance", OccurredAt: now}
 	body, err := json.Marshal(event)
 	if err != nil {
 		t.Fatalf("marshal event: %v", err)
@@ -76,7 +76,7 @@ func VerifyExecutor(t testingT, execute func(*http.Request) (*http.Response, err
 			t.Fatalf("ranking %s returned inconsistent envelope: %#v", kind, ranking)
 		}
 		for _, item := range ranking.Skills {
-			if strings.TrimSpace(item.ModulePath) == "" || strings.TrimSpace(item.Name) == "" {
+			if strings.TrimSpace(item.PackagePath) == "" || strings.TrimSpace(item.Name) == "" {
 				t.Fatalf("ranking %s returned invalid item: %#v", kind, item)
 			}
 		}

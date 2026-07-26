@@ -21,7 +21,7 @@ import (
 // PathVersionZip URL.
 const PathVersionZip = "/{repository:.+}/versions/{version}.zip"
 
-// ZipHandler implements GET baseURL/api/v1/{modulePath}/versions/{version}.zip.
+// ZipHandler implements GET baseURL/api/v1/{packagePath}/versions/{version}.zip.
 func ZipHandler(dp Protocol, lggr log.Entry, artifactOrigin string) fiber.Handler {
 	const op errors.Op = "download.ZipHandler"
 	return func(c fiber.Ctx) error {
@@ -31,7 +31,7 @@ func ZipHandler(dp Protocol, lggr log.Entry, artifactOrigin string) fiber.Handle
 			return c.SendStatus(errors.Kind(err))
 		}
 		if !protocolversion.IsImmutable(ver) {
-			return c.Status(fiber.StatusBadRequest).SendString("exact immutable version required; resolve the revision through Module Version metadata first")
+			return c.Status(fiber.StatusBadRequest).SendString("exact immutable version required; resolve the revision through Package Version metadata first")
 		}
 		protectMovableVersionResponse(c, ver)
 		if immutableNotModified(c, mod, ver, "zip") {

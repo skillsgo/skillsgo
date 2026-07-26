@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Agent catalogs, Added Projects, exact existing targets, project icon resolution, install actions, target selections, and submission feedback.
- * [OUTPUT]: Provides the stateful location, project, Agent, Module-action loading gate, duplicate-target exclusion, validation, and submission card.
+ * [OUTPUT]: Provides the stateful location, project, Agent, Package-action loading gate, duplicate-target exclusion, validation, and submission card.
  * [POS]: Serves as the selection and submission owner of the anchored Installation Request selector.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -169,7 +169,7 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
     final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final components = context.skillsComponents;
-    final moduleName = _moduleName(widget.detail.modulePath);
+    final moduleName = _moduleName(widget.detail.packagePath);
     final island = InstallLocationIsland(
       header: _InstallScopeSelector(
         title: widget.preferredAction == InstallLocationAction.moduleSkills

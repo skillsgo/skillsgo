@@ -21,24 +21,24 @@ func TestBusinessJobKindsAreStableAndDescriptive(t *testing.T) {
 		kind string
 	}{
 		{"Repository source metadata refresh", repositorySourceMetadataRefreshArgs{}.Kind()},
-		{"Module publication prewarm", modulePublicationPrewarmArgs{}.Kind()},
+		{"Package publication prewarm", modulePublicationPrewarmArgs{}.Kind()},
 		{"description translation batch", descriptionTranslationBatchArgs{}.Kind()},
 	}
 	require.Equal(t, []string{
 		"repository_source_metadata_refresh",
-		"module_publication_prewarm",
+		"package_publication_prewarm",
 		"description_translation_batch",
 	}, []string{tests[0].kind, tests[1].kind, tests[2].kind})
 }
 
 type recordingMaterializer struct {
-	modulePath string
-	query      string
-	err        error
+	packagePath string
+	query       string
+	err         error
 }
 
-func (m *recordingMaterializer) Materialize(_ context.Context, modulePath, query string) (string, error) {
-	m.modulePath, m.query = modulePath, query
+func (m *recordingMaterializer) Materialize(_ context.Context, packagePath, query string) (string, error) {
+	m.packagePath, m.query = packagePath, query
 	return "v1.0.0", m.err
 }
 
@@ -50,7 +50,7 @@ func TestRepositoryPrewarmTaskDefaultsToLatestAndPropagatesFailure(t *testing.T)
 
 	err := enqueueRepositoryPrewarm(t.Context(), runtime, "github.com/acme/skills", "")
 	require.ErrorIs(t, err, wantErr)
-	require.Equal(t, "github.com/acme/skills", materializer.modulePath)
+	require.Equal(t, "github.com/acme/skills", materializer.packagePath)
 	require.Equal(t, "latest", materializer.query)
-	require.ErrorContains(t, runtime.Enqueue(t.Context(), modulePublicationPrewarmArgs{}, taskqueue.InsertOptions{}), "requires module_path")
+	require.ErrorContains(t, runtime.Enqueue(t.Context(), modulePublicationPrewarmArgs{}, taskqueue.InsertOptions{}), "requires package_path")
 }

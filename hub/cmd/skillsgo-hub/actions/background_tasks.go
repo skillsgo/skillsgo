@@ -14,7 +14,7 @@ import (
 )
 
 type repositorySourceMetadataRefreshArgs struct {
-	ModulePath string `json:"module_path" river:"unique"`
+	PackagePath string `json:"package_path" river:"unique"`
 }
 
 func (repositorySourceMetadataRefreshArgs) Kind() string {
@@ -22,11 +22,11 @@ func (repositorySourceMetadataRefreshArgs) Kind() string {
 }
 
 type modulePublicationPrewarmArgs struct {
-	ModulePath string `json:"module_path" river:"unique"`
-	Query      string `json:"query" river:"unique"`
+	PackagePath string `json:"package_path" river:"unique"`
+	Query       string `json:"query" river:"unique"`
 }
 
-func (modulePublicationPrewarmArgs) Kind() string { return "module_publication_prewarm" }
+func (modulePublicationPrewarmArgs) Kind() string { return "package_publication_prewarm" }
 
 type descriptionTranslationBatchArgs struct {
 	Locale string `json:"locale" river:"unique"`
@@ -36,21 +36,21 @@ func (descriptionTranslationBatchArgs) Kind() string { return "description_trans
 
 func registerRepositoryPrewarmJob(runtime *taskqueue.Runtime, materializer repositoryMaterializer) error {
 	return taskqueue.Register(runtime, func(ctx context.Context, args modulePublicationPrewarmArgs) error {
-		if args.ModulePath == "" {
-			return fmt.Errorf("module prewarm job requires module_path")
+		if args.PackagePath == "" {
+			return fmt.Errorf("module prewarm job requires package_path")
 		}
 		query := args.Query
 		if query == "" {
 			query = "latest"
 		}
-		_, err := materializer.Materialize(ctx, args.ModulePath, query)
+		_, err := materializer.Materialize(ctx, args.PackagePath, query)
 		return err
 	})
 }
 
-func enqueueRepositoryPrewarm(ctx context.Context, runtime *taskqueue.Runtime, modulePath, query string) error {
+func enqueueRepositoryPrewarm(ctx context.Context, runtime *taskqueue.Runtime, packagePath, query string) error {
 	if query == "" {
 		query = "latest"
 	}
-	return runtime.Enqueue(ctx, modulePublicationPrewarmArgs{ModulePath: modulePath, Query: query}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource})
+	return runtime.Enqueue(ctx, modulePublicationPrewarmArgs{PackagePath: packagePath, Query: query}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource})
 }
