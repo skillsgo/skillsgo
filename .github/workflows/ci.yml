@@ -1,5 +1,5 @@
 # [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, cross-product E2E validation commands, and OSV's supported dependency lockfiles.
-# [OUTPUT]: Provides the stable validation and known-vulnerability gate for every maintained product boundary.
+# [OUTPUT]: Provides stable validation plus blocking known-vulnerability enforcement for every maintained product boundary.
 # [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration

@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the fs package imports and contracts declared in this file.
- * [OUTPUT]: Provides the fs package behavior implemented by lister.go.
- * [POS]: Serves as maintained source in the fs package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on a containment-checked Module storage location and semantic-version directory names.
+ * [OUTPUT]: Provides safe listing of immutable versions stored for one Module.
+ * [POS]: Serves as the filesystem backend's Module-version enumeration operation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package fs
@@ -21,7 +21,10 @@ func (s *storageImpl) List(ctx context.Context, module string) ([]string, error)
 	const op errors.Op = "fs.List"
 	_, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
-	loc := s.moduleLocation(module)
+	loc, locationErr := s.containedLocation(module)
+	if locationErr != nil {
+		return nil, errors.E(op, locationErr, errors.S(module), errors.KindBadRequest)
+	}
 	fileInfos, err := afero.ReadDir(s.filesystem, loc)
 	if err != nil {
 		if os.IsNotExist(err) {
