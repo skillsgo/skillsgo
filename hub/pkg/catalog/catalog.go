@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on sqlc-generated PostgreSQL queries, schema-fixed pgx pooling with public PostgreSQL extension fallback, versioned Atlas SQL migrations, Hub database configuration, canonical Module Path plus Skill Name coordinates, and path-unique Module members.
- * [OUTPUT]: Provides the Modules/Versions/Skills persistence model, structured immutable Version publication, deterministic standalone Module Info, native pgx transaction scopes shared with River, discovery projections, and source cache state.
+ * [INPUT]: Depends on sqlc-generated PostgreSQL queries, schema-fixed pgx pooling with public PostgreSQL extension fallback, versioned Atlas SQL migrations, Hub database configuration, canonical Package Path plus Skill Name coordinates, and path-unique Package members.
+ * [OUTPUT]: Provides the Packages/Versions/Skills persistence model, structured immutable Version publication, deterministic standalone Package Info, native pgx transaction scopes shared with River, discovery projections, and source cache state.
  * [POS]: Serves as the Hub identity and search data boundary while artifact bytes and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -31,7 +31,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-func skillResourceID(modulePath, name string) string { return modulePath + ":" + name }
+func skillResourceID(packagePath, name string) string { return packagePath + ":" + name }
 
 type Catalog struct {
 	pool    *pgxpool.Pool
@@ -114,8 +114,8 @@ func (c *Catalog) WithPostgresTxOptions(ctx context.Context, opts pgx.TxOptions,
 
 type Skill struct {
 	RowID            int64     `db:"id" json:"-"`
-	ModuleRowID      int64     `db:"module_id" json:"-"`
-	ModulePath       string    `db:"module_path" json:"modulePath"`
+	PackageRowID     int64     `db:"package_id" json:"-"`
+	PackagePath      string    `db:"package_path" json:"packagePath"`
 	Name             string    `db:"name" json:"name"`
 	Description      string    `db:"description" json:"description"`
 	SourceHost       string    `db:"source_host" json:"sourceHost"`
@@ -127,7 +127,7 @@ type Skill struct {
 	UpdatedAt        time.Time `db:"updated_at" json:"updatedAt"`
 }
 
-type Module struct {
+type Package struct {
 	RowID           int64      `db:"id" json:"-"`
 	SourceHost      string     `db:"source_host" json:"sourceHost"`
 	SourcePath      string     `db:"source_path" json:"sourcePath"`
@@ -142,8 +142,8 @@ type Module struct {
 }
 
 const (
-	LocalizedModule = "module"
-	LocalizedSkill  = "skill"
+	LocalizedPackage = "module"
+	LocalizedSkill   = "skill"
 )
 
 // TranslationCandidate is one source description whose persisted translation is absent or stale.
@@ -206,7 +206,7 @@ func (c *Catalog) LocalizedDescription(ctx context.Context, resourceKind, resour
 	return description, err == nil, err
 }
 
-// VersionSkill is one immutable Skill snapshot contained by a Module Version.
+// VersionSkill is one immutable Skill snapshot contained by a Package Version.
 type VersionSkill struct {
 	VersionRowID int64     `db:"version_id" json:"-"`
 	Name         string    `db:"name" json:"name"`
@@ -217,8 +217,8 @@ type VersionSkill struct {
 	Description  string    `db:"description" json:"description"`
 }
 
-// ModuleVersion is one immutable source and Artifact identity owned by a Module.
-type ModuleVersion struct {
+// PackageVersion is one immutable source and Artifact identity owned by a Package.
+type PackageVersion struct {
 	Version     string
 	Ref         string
 	CommitSHA   string
@@ -235,67 +235,67 @@ const (
 	HistoricalPublication PublicationVisibility = "historical"
 )
 
-// PublishModuleVersionWithVisibility atomically publishes the complete
-// member set and its structured immutable Module Version identity.
-func (c *Catalog) PublishModuleVersionWithVisibility(ctx context.Context, modulePath string, version ModuleVersion, skills []Skill, visibility PublicationVisibility) error {
-	if err := ValidateModuleVersion(modulePath, version, skills, visibility); err != nil {
+// PublishPackageVersionWithVisibility atomically publishes the complete
+// member set and its structured immutable Package Version identity.
+func (c *Catalog) PublishPackageVersionWithVisibility(ctx context.Context, packagePath string, version PackageVersion, skills []Skill, visibility PublicationVisibility) error {
+	if err := ValidatePackageVersion(packagePath, version, skills, visibility); err != nil {
 		return err
 	}
-	return c.publishModuleVersionWithVisibility(ctx, modulePath, version, skills, visibility)
+	return c.publishPackageVersionWithVisibility(ctx, packagePath, version, skills, visibility)
 }
 
-func ValidateModuleVersion(modulePath string, version ModuleVersion, skills []Skill, visibility PublicationVisibility) error {
+func ValidatePackageVersion(packagePath string, version PackageVersion, skills []Skill, visibility PublicationVisibility) error {
 	if visibility != CurrentPublication && visibility != HistoricalPublication {
-		return fmt.Errorf("unsupported Module publication visibility %q", visibility)
+		return fmt.Errorf("unsupported Package publication visibility %q", visibility)
 	}
-	parsedModule, err := skillpkg.ParseModulePath(modulePath)
-	if err != nil || parsedModule.String() != modulePath {
-		return fmt.Errorf("invalid canonical Module ID %q", modulePath)
+	parsedPackage, err := skillpkg.ParsePackagePath(packagePath)
+	if err != nil || parsedPackage.String() != packagePath {
+		return fmt.Errorf("invalid canonical Package ID %q", packagePath)
 	}
 	if len(skills) == 0 {
-		return fmt.Errorf("Module publication requires at least one Skill")
+		return fmt.Errorf("Package publication requires at least one Skill")
 	}
 	if !semver.IsValid(version.Version) || version.Ref == "" || version.CommitSHA == "" || version.TreeSHA == "" ||
 		!protocolartifact.ValidSum(version.Sum) || version.ArchiveSize <= 0 || version.CommitTime.IsZero() {
-		return fmt.Errorf("Module publication requires matching immutable artifact identity")
+		return fmt.Errorf("Package publication requires matching immutable artifact identity")
 	}
 	seenPaths := make(map[string]bool, len(skills))
 	for _, candidate := range skills {
-		if candidate.ModulePath != modulePath || !protocolskillmanifest.ValidName(candidate.Name) || candidate.Path == "" {
-			return fmt.Errorf("Module publication contains invalid Skill %q", candidate.Name)
+		if candidate.PackagePath != packagePath || !protocolskillmanifest.ValidName(candidate.Name) || candidate.Path == "" {
+			return fmt.Errorf("Package publication contains invalid Skill %q", candidate.Name)
 		}
 		if seenPaths[candidate.Path] {
-			return fmt.Errorf("Module publication contains inconsistent member %q", candidate.Name)
+			return fmt.Errorf("Package publication contains inconsistent member %q", candidate.Name)
 		}
 		seenPaths[candidate.Path] = true
 	}
 	return nil
 }
 
-func (c *Catalog) publishModuleVersionWithVisibility(ctx context.Context, modulePath string, version ModuleVersion, skills []Skill, visibility PublicationVisibility) error {
+func (c *Catalog) publishPackageVersionWithVisibility(ctx context.Context, packagePath string, version PackageVersion, skills []Skill, visibility PublicationVisibility) error {
 	tx, err := c.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
 	q := c.queries.WithTx(tx)
-	params := catalogsqlc.ModuleVersionCountParams{ModulePath: modulePath, Version: version.Version}
-	publicationCount, err := q.ModuleVersionCount(ctx, params)
+	params := catalogsqlc.PackageVersionCountParams{PackagePath: packagePath, Version: version.Version}
+	publicationCount, err := q.PackageVersionCount(ctx, params)
 	if err != nil {
 		return err
 	}
 	if publicationCount > 0 {
-		existingVersion, err := q.ModuleVersion(ctx, catalogsqlc.ModuleVersionParams{ModulePath: modulePath, Version: version.Version})
+		existingVersion, err := q.PackageVersion(ctx, catalogsqlc.PackageVersionParams{PackagePath: packagePath, Version: version.Version})
 		if err != nil {
 			return err
 		}
 		if existingVersion.Ref != version.Ref || existingVersion.CommitSha != version.CommitSHA ||
 			existingVersion.TreeSha != version.TreeSHA || existingVersion.Sum != version.Sum ||
 			existingVersion.ArchiveSize != version.ArchiveSize || !existingVersion.CommitTime.Equal(version.CommitTime) {
-			return fmt.Errorf("immutable Module Version conflict for %s@%s", modulePath, version.Version)
+			return fmt.Errorf("immutable Package Version conflict for %s@%s", packagePath, version.Version)
 		}
 	}
-	storedMembers, err := q.Skills(ctx, catalogsqlc.SkillsParams{ModulePath: modulePath, Version: version.Version})
+	storedMembers, err := q.Skills(ctx, catalogsqlc.SkillsParams{PackagePath: packagePath, Version: version.Version})
 	if err != nil {
 		return err
 	}
@@ -310,37 +310,37 @@ func (c *Catalog) publishModuleVersionWithVisibility(ctx context.Context, module
 			continue
 		}
 		if !relevant || member.Name != candidate.Name || member.Description != candidate.Description {
-			return fmt.Errorf("immutable Module version conflict for %s@%s", modulePath, version.Version)
+			return fmt.Errorf("immutable Package version conflict for %s@%s", packagePath, version.Version)
 		}
 	}
 	if publicationCount > 0 {
 		if len(existing) != len(skills) {
-			return fmt.Errorf("immutable Module version conflict for %s@%s", modulePath, version.Version)
+			return fmt.Errorf("immutable Package version conflict for %s@%s", packagePath, version.Version)
 		}
 		if visibility == CurrentPublication {
 			now := time.Now().UTC()
-			if err := q.SetCurrentVersionByCoordinate(ctx, catalogsqlc.SetCurrentVersionByCoordinateParams{ModulePath: modulePath, Version: version.Version, UpdatedAt: now}); err != nil {
+			if err := q.SetCurrentVersionByCoordinate(ctx, catalogsqlc.SetCurrentVersionByCoordinateParams{PackagePath: packagePath, Version: version.Version, UpdatedAt: now}); err != nil {
 				return err
 			}
 		}
 		return tx.Commit(ctx)
 	}
 	now := time.Now().UTC()
-	parts := strings.SplitN(modulePath, "/", 2)
-	module, err := q.UpsertModule(ctx, catalogsqlc.UpsertModuleParams{
-		SourceHost: parts[0], SourcePath: parts[1], Path: modulePath, CreatedAt: now,
+	parts := strings.SplitN(packagePath, "/", 2)
+	module, err := q.UpsertPackage(ctx, catalogsqlc.UpsertPackageParams{
+		SourceHost: parts[0], SourcePath: parts[1], Path: packagePath, CreatedAt: now,
 	})
 	if err != nil {
 		return err
 	}
-	if err := recordModuleVersion(ctx, q, module.ID, version, visibility == CurrentPublication, skills, now); err != nil {
+	if err := recordPackageVersion(ctx, q, module.ID, version, visibility == CurrentPublication, skills, now); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
 }
 
-func recordModuleVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRowID int64, version ModuleVersion, makeCurrent bool, skills []Skill, createdAt time.Time) error {
-	versionRowID, err := q.InsertModuleVersion(ctx, catalogsqlc.InsertModuleVersionParams{ModuleID: moduleRowID,
+func recordPackageVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRowID int64, version PackageVersion, makeCurrent bool, skills []Skill, createdAt time.Time) error {
+	versionRowID, err := q.InsertPackageVersion(ctx, catalogsqlc.InsertPackageVersionParams{PackageID: moduleRowID,
 		Version: version.Version, Ref: version.Ref, CommitSha: version.CommitSHA, TreeSha: version.TreeSHA,
 		Sum: version.Sum, ArchiveSize: version.ArchiveSize, CommitTime: version.CommitTime, CreatedAt: createdAt})
 	if err != nil {
@@ -361,49 +361,49 @@ func recordModuleVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRowI
 	return nil
 }
 
-// ModuleVersionInfo deterministically builds one standalone Module Info document.
-func (c *Catalog) ModuleVersionInfo(ctx context.Context, modulePath, version string) ([]byte, bool, error) {
-	parsed, err := skillpkg.ParseModulePath(modulePath)
-	if err != nil || parsed.String() != modulePath {
-		return nil, false, fmt.Errorf("invalid canonical Module ID %q", modulePath)
+// PackageVersionInfo deterministically builds one standalone Package Info document.
+func (c *Catalog) PackageVersionInfo(ctx context.Context, packagePath, version string) ([]byte, bool, error) {
+	parsed, err := skillpkg.ParsePackagePath(packagePath)
+	if err != nil || parsed.String() != packagePath {
+		return nil, false, fmt.Errorf("invalid canonical Package ID %q", packagePath)
 	}
-	stored, err := c.queries.ModuleVersion(ctx, catalogsqlc.ModuleVersionParams{ModulePath: modulePath, Version: version})
+	stored, err := c.queries.PackageVersion(ctx, catalogsqlc.PackageVersionParams{PackagePath: packagePath, Version: version})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, false, nil
 	}
 	if err != nil {
 		return nil, false, err
 	}
-	members, err := c.VersionSkills(ctx, modulePath, version)
+	members, err := c.VersionSkills(ctx, packagePath, version)
 	if err != nil {
 		return nil, false, err
 	}
-	info := protocolapi.ModuleInfo{
-		SchemaVersion: protocolapi.SchemaVersion, Kind: protocolapi.KindModule, ModulePath: modulePath,
+	info := protocolapi.PackageInfo{
+		SchemaVersion: protocolapi.SchemaVersion, Kind: protocolapi.KindPackage, PackagePath: packagePath,
 		Version: stored.Version, Time: stored.CommitTime, Sum: stored.Sum, ArchiveSize: stored.ArchiveSize,
-		Skills: make([]protocolapi.ModuleSkill, 0, len(members)),
+		Skills: make([]protocolapi.PackageSkill, 0, len(members)),
 	}
 	for _, member := range members {
-		info.Skills = append(info.Skills, protocolapi.ModuleSkill{Name: member.Name, Path: member.Path})
+		info.Skills = append(info.Skills, protocolapi.PackageSkill{Name: member.Name, Path: member.Path})
 	}
 	encoded, err := json.Marshal(info)
 	return encoded, err == nil, err
 }
 
-// ModuleVersionByCoordinate returns the structured immutable version identity.
-func (c *Catalog) ModuleVersionByCoordinate(ctx context.Context, modulePath, version string) (ModuleVersion, bool, error) {
-	parsed, err := skillpkg.ParseModulePath(modulePath)
-	if err != nil || parsed.String() != modulePath {
-		return ModuleVersion{}, false, fmt.Errorf("invalid canonical Module ID %q", modulePath)
+// PackageVersionByCoordinate returns the structured immutable version identity.
+func (c *Catalog) PackageVersionByCoordinate(ctx context.Context, packagePath, version string) (PackageVersion, bool, error) {
+	parsed, err := skillpkg.ParsePackagePath(packagePath)
+	if err != nil || parsed.String() != packagePath {
+		return PackageVersion{}, false, fmt.Errorf("invalid canonical Package ID %q", packagePath)
 	}
-	stored, err := c.queries.ModuleVersion(ctx, catalogsqlc.ModuleVersionParams{ModulePath: modulePath, Version: version})
+	stored, err := c.queries.PackageVersion(ctx, catalogsqlc.PackageVersionParams{PackagePath: packagePath, Version: version})
 	if errors.Is(err, pgx.ErrNoRows) {
-		return ModuleVersion{}, false, nil
+		return PackageVersion{}, false, nil
 	}
 	if err != nil {
-		return ModuleVersion{}, false, err
+		return PackageVersion{}, false, err
 	}
-	return ModuleVersion{
+	return PackageVersion{
 		Version: stored.Version, Ref: stored.Ref, CommitSHA: stored.CommitSha, TreeSHA: stored.TreeSha,
 		Sum: stored.Sum, ArchiveSize: stored.ArchiveSize, CommitTime: stored.CommitTime,
 	}, true, nil
@@ -414,33 +414,33 @@ type SearchSkill struct {
 }
 
 type FindBatchQuery struct {
-	ID         string
-	Query      string
-	ModulePath string
-	ExactName  bool
+	ID          string
+	Query       string
+	PackagePath string
+	ExactName   bool
 }
 
 type FindBatchResult struct {
-	ID         string
-	Query      string
-	ModulePath string
-	Skills     []SearchSkill
+	ID          string
+	Query       string
+	PackagePath string
+	Skills      []SearchSkill
 }
 
-func (c *Catalog) RegisterModule(ctx context.Context, modulePath string) (*Module, error) {
-	parsed, err := skillpkg.ParseModulePath(modulePath)
+func (c *Catalog) RegisterPackage(ctx context.Context, packagePath string) (*Package, error) {
+	parsed, err := skillpkg.ParsePackagePath(packagePath)
 	if err != nil {
-		return nil, fmt.Errorf("invalid Module Path: %w", err)
+		return nil, fmt.Errorf("invalid Package Path: %w", err)
 	}
-	if parsed.String() != modulePath {
-		return nil, fmt.Errorf("Module Path must be canonical %q", parsed.String())
+	if parsed.String() != packagePath {
+		return nil, fmt.Errorf("Package Path must be canonical %q", parsed.String())
 	}
 	parts := strings.SplitN(parsed.String(), "/", 2)
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid Module Path %q", modulePath)
+		return nil, fmt.Errorf("invalid Package Path %q", packagePath)
 	}
 	now := time.Now().UTC()
-	stored, err := c.queries.UpsertModule(ctx, catalogsqlc.UpsertModuleParams{
+	stored, err := c.queries.UpsertPackage(ctx, catalogsqlc.UpsertPackageParams{
 		SourceHost: parts[0], SourcePath: parts[1], Path: parsed.String(), CreatedAt: now,
 	})
 	if err != nil {
@@ -449,36 +449,36 @@ func (c *Catalog) RegisterModule(ctx context.Context, modulePath string) (*Modul
 	return moduleFromSQLC(stored), nil
 }
 
-func (c *Catalog) Module(ctx context.Context, modulePath string) (*Module, error) {
-	parsed, err := skillpkg.ParseModulePath(modulePath)
-	if err != nil || parsed.String() != modulePath {
-		return nil, fmt.Errorf("invalid canonical Module Path %q", modulePath)
+func (c *Catalog) Package(ctx context.Context, packagePath string) (*Package, error) {
+	parsed, err := skillpkg.ParsePackagePath(packagePath)
+	if err != nil || parsed.String() != packagePath {
+		return nil, fmt.Errorf("invalid canonical Package Path %q", packagePath)
 	}
-	stored, err := c.queries.ModuleByPath(ctx, modulePath)
+	stored, err := c.queries.PackageByPath(ctx, packagePath)
 	if err != nil {
 		return nil, err
 	}
 	return moduleFromSQLC(stored), nil
 }
 
-func (c *Catalog) VersionSkills(ctx context.Context, modulePath, version string) ([]VersionSkill, error) {
-	parsed, err := skillpkg.ParseModulePath(modulePath)
-	if err != nil || parsed.String() != modulePath {
-		return nil, fmt.Errorf("invalid canonical Module Path %q", modulePath)
+func (c *Catalog) VersionSkills(ctx context.Context, packagePath, version string) ([]VersionSkill, error) {
+	parsed, err := skillpkg.ParsePackagePath(packagePath)
+	if err != nil || parsed.String() != packagePath {
+		return nil, fmt.Errorf("invalid canonical Package Path %q", packagePath)
 	}
-	rows, err := c.queries.Skills(ctx, catalogsqlc.SkillsParams{ModulePath: modulePath, Version: version})
+	rows, err := c.queries.Skills(ctx, catalogsqlc.SkillsParams{PackagePath: packagePath, Version: version})
 	if err != nil {
 		return nil, err
 	}
 	return mapVersionSkills(rows), nil
 }
 
-func (c *Catalog) UpdateModuleSourceMetadata(ctx context.Context, modulePath, description string, stars int64, etag string, checkedAt *time.Time, retryAt *time.Time) error {
+func (c *Catalog) UpdatePackageSourceMetadata(ctx context.Context, packagePath, description string, stars int64, etag string, checkedAt *time.Time, retryAt *time.Time) error {
 	if stars < 0 {
 		return fmt.Errorf("module stars cannot be negative")
 	}
-	updated, err := c.queries.UpdateModuleSourceMetadata(ctx, catalogsqlc.UpdateModuleSourceMetadataParams{
-		ModulePath: modulePath, Description: description, Stars: stars, SourceEtag: pgtype.Text{String: etag, Valid: etag != ""},
+	updated, err := c.queries.UpdatePackageSourceMetadata(ctx, catalogsqlc.UpdatePackageSourceMetadataParams{
+		PackagePath: packagePath, Description: description, Stars: stars, SourceEtag: pgtype.Text{String: etag, Valid: etag != ""},
 		SourceCheckedAt: checkedAt, SourceRetryAt: retryAt})
 	if err == nil && updated == 0 {
 		return pgx.ErrNoRows
@@ -486,57 +486,57 @@ func (c *Catalog) UpdateModuleSourceMetadata(ctx context.Context, modulePath, de
 	return err
 }
 
-// SkillByCoordinate resolves one public Module ID plus canonical Skill
+// SkillByCoordinate resolves one public Package ID plus canonical Skill
 // name without exposing the Catalog's internal persistence key.
-func (c *Catalog) SkillByCoordinate(ctx context.Context, modulePath, name string) (*Skill, error) {
-	stored, err := c.queries.SkillByCoordinate(ctx, catalogsqlc.SkillByCoordinateParams{ModulePath: modulePath, Name: name})
+func (c *Catalog) SkillByCoordinate(ctx context.Context, packagePath, name string) (*Skill, error) {
+	stored, err := c.queries.SkillByCoordinate(ctx, catalogsqlc.SkillByCoordinateParams{PackagePath: packagePath, Name: name})
 	if err != nil {
 		return nil, err
 	}
-	return skillFromSQLC(stored.ID, stored.ModuleID, stored.ModulePath, stored.Name, stored.Description, stored.SourceHost, stored.SourceRepository, stored.Path, stored.LatestVersion, stored.Stars, stored.CreatedAt, stored.UpdatedAt), nil
+	return skillFromSQLC(stored.ID, stored.PackageID, stored.PackagePath, stored.Name, stored.Description, stored.SourceHost, stored.SourceRepository, stored.Path, stored.LatestVersion, stored.Stars, stored.CreatedAt, stored.UpdatedAt), nil
 }
 
 func (c *Catalog) SkillsByCoordinates(ctx context.Context, coordinates []protocolapi.SkillCoordinate) ([]Skill, error) {
-	modulePaths := make([]string, 0, len(coordinates))
+	packagePaths := make([]string, 0, len(coordinates))
 	names := make([]string, 0, len(coordinates))
 	for _, coordinate := range coordinates {
-		modulePaths = append(modulePaths, coordinate.ModulePath)
+		packagePaths = append(packagePaths, coordinate.PackagePath)
 		names = append(names, coordinate.Name)
 	}
-	rows, err := c.queries.SkillsByCoordinates(ctx, catalogsqlc.SkillsByCoordinatesParams{ModulePaths: modulePaths, Names: names})
+	rows, err := c.queries.SkillsByCoordinates(ctx, catalogsqlc.SkillsByCoordinatesParams{PackagePaths: packagePaths, Names: names})
 	if err != nil {
 		return nil, err
 	}
 	items := make([]Skill, 0, len(rows))
 	for _, row := range rows {
-		item := skillFromSQLC(row.ID, row.ModuleID, row.ModulePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt)
+		item := skillFromSQLC(row.ID, row.PackageID, row.PackagePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt)
 		items = append(items, *item)
 	}
 	return items, nil
 }
 
 func (c *Catalog) SkillsByPathCoordinates(ctx context.Context, coordinates []protocolapi.SkillPathCoordinate) ([]Skill, error) {
-	modulePaths := make([]string, 0, len(coordinates))
+	packagePaths := make([]string, 0, len(coordinates))
 	paths := make([]string, 0, len(coordinates))
 	for _, coordinate := range coordinates {
-		modulePaths = append(modulePaths, coordinate.ModulePath)
+		packagePaths = append(packagePaths, coordinate.PackagePath)
 		paths = append(paths, coordinate.Path)
 	}
-	rows, err := c.queries.SkillsByPathCoordinates(ctx, catalogsqlc.SkillsByPathCoordinatesParams{ModulePaths: modulePaths, Paths: paths})
+	rows, err := c.queries.SkillsByPathCoordinates(ctx, catalogsqlc.SkillsByPathCoordinatesParams{PackagePaths: packagePaths, Paths: paths})
 	if err != nil {
 		return nil, err
 	}
 	items := make([]Skill, 0, len(rows))
 	for _, row := range rows {
-		item := skillFromSQLC(row.ID, row.ModuleID, row.ModulePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt)
+		item := skillFromSQLC(row.ID, row.PackageID, row.PackagePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt)
 		items = append(items, *item)
 	}
 	return items, nil
 }
 
-// SkillPublishedVersions returns Module Release versions containing one Skill.
-func (c *Catalog) SkillPublishedVersions(ctx context.Context, modulePath, name string) ([]string, error) {
-	versions, err := c.queries.SkillPublishedVersions(ctx, catalogsqlc.SkillPublishedVersionsParams{ModulePath: modulePath, Name: name})
+// SkillPublishedVersions returns Package Release versions containing one Skill.
+func (c *Catalog) SkillPublishedVersions(ctx context.Context, packagePath, name string) ([]string, error) {
+	versions, err := c.queries.SkillPublishedVersions(ctx, catalogsqlc.SkillPublishedVersionsParams{PackagePath: packagePath, Name: name})
 	if err != nil {
 		return nil, err
 	}
@@ -550,10 +550,10 @@ func (c *Catalog) SkillPublishedVersions(ctx context.Context, modulePath, name s
 	return filtered, nil
 }
 
-// CurrentSkill returns the immutable Skill snapshot selected by the Module's
+// CurrentSkill returns the immutable Skill snapshot selected by the Package's
 // current Version pointer.
-func (c *Catalog) CurrentSkill(ctx context.Context, modulePath, name string) (*VersionSkill, error) {
-	row, err := c.queries.CurrentSkill(ctx, catalogsqlc.CurrentSkillParams{ModulePath: modulePath, Name: name})
+func (c *Catalog) CurrentSkill(ctx context.Context, packagePath, name string) (*VersionSkill, error) {
+	row, err := c.queries.CurrentSkill(ctx, catalogsqlc.CurrentSkillParams{PackagePath: packagePath, Name: name})
 	if err != nil {
 		return nil, err
 	}
@@ -573,7 +573,7 @@ func (c *Catalog) Skills(ctx context.Context, limit, offset int) ([]Skill, error
 	}
 	skills := make([]Skill, 0, len(rows))
 	for _, row := range rows {
-		skills = append(skills, *skillFromSQLC(row.ID, row.ModuleID, row.ModulePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt))
+		skills = append(skills, *skillFromSQLC(row.ID, row.PackageID, row.PackagePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt))
 	}
 	return skills, nil
 }
@@ -606,7 +606,7 @@ func (c *Catalog) Find(ctx context.Context, query string, exactName bool, limit,
 	}
 	skills := make([]SearchSkill, 0, len(rows))
 	for _, row := range rows {
-		skills = append(skills, SearchSkill{Skill: *skillFromSQLC(row.ID, row.ModuleID, row.ModulePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt)})
+		skills = append(skills, SearchSkill{Skill: *skillFromSQLC(row.ID, row.PackageID, row.PackagePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt)})
 	}
 	return skills, nil
 }
@@ -632,7 +632,7 @@ func (c *Catalog) FindLocalized(ctx context.Context, query, locale string, exact
 	}
 	skills := make([]SearchSkill, 0, len(rows))
 	for _, row := range rows {
-		skills = append(skills, SearchSkill{Skill: *skillFromSQLC(row.ID, row.ModuleID, row.ModulePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt)})
+		skills = append(skills, SearchSkill{Skill: *skillFromSQLC(row.ID, row.PackageID, row.PackagePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt)})
 	}
 	return skills, nil
 }
@@ -646,12 +646,12 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 	limit = normalizeQueryLimit(limit)
 	locale = strings.TrimSpace(locale)
 	params := catalogsqlc.FindLocalizedSkillsBatchParams{
-		Locale:      locale,
-		PageLimit:   int32(limit),
-		QueryIds:    make([]string, 0, len(queries)),
-		Queries:     make([]string, 0, len(queries)),
-		ModulePaths: make([]string, 0, len(queries)),
-		ExactNames:  make([]bool, 0, len(queries)),
+		Locale:       locale,
+		PageLimit:    int32(limit),
+		QueryIds:     make([]string, 0, len(queries)),
+		Queries:      make([]string, 0, len(queries)),
+		PackagePaths: make([]string, 0, len(queries)),
+		ExactNames:   make([]bool, 0, len(queries)),
 	}
 	results := make([]FindBatchResult, len(queries))
 	indexByID := make(map[string]int, len(queries))
@@ -663,10 +663,10 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 		indexByID[query.ID] = index
 		params.QueryIds = append(params.QueryIds, query.ID)
 		params.Queries = append(params.Queries, query.Query)
-		params.ModulePaths = append(params.ModulePaths, query.ModulePath)
+		params.PackagePaths = append(params.PackagePaths, query.PackagePath)
 		params.ExactNames = append(params.ExactNames, query.ExactName)
-		allExact = allExact && (query.ExactName || query.ModulePath != "")
-		results[index] = FindBatchResult{ID: query.ID, Query: query.Query, ModulePath: query.ModulePath, Skills: []SearchSkill{}}
+		allExact = allExact && (query.ExactName || query.PackagePath != "")
+		results[index] = FindBatchResult{ID: query.ID, Query: query.Query, PackagePath: query.PackagePath, Skills: []SearchSkill{}}
 	}
 	appendSkill := func(queryID string, skill Skill) error {
 		index, ok := indexByID[queryID]
@@ -678,14 +678,14 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 	}
 	if allExact {
 		rows, err := c.queries.FindExactLocalizedSkillsBatch(ctx, catalogsqlc.FindExactLocalizedSkillsBatchParams{
-			Locale: locale, PageLimit: int64(limit), QueryIds: params.QueryIds, Queries: params.Queries, ModulePaths: params.ModulePaths,
+			Locale: locale, PageLimit: int64(limit), QueryIds: params.QueryIds, Queries: params.Queries, PackagePaths: params.PackagePaths,
 		})
 		if err != nil {
 			return nil, err
 		}
 		for _, row := range rows {
 			if err := appendSkill(row.QueryID, *skillFromSQLC(
-				row.ID, row.ModuleID, row.ModulePath, row.Name, row.Description,
+				row.ID, row.PackageID, row.PackagePath, row.Name, row.Description,
 				row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion,
 				row.Stars, row.CreatedAt, row.UpdatedAt,
 			)); err != nil {
@@ -700,7 +700,7 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 	}
 	for _, row := range rows {
 		if err := appendSkill(row.QueryID, *skillFromSQLC(
-			row.ID, row.ModuleID, row.ModulePath, row.Name, row.Description,
+			row.ID, row.PackageID, row.PackagePath, row.Name, row.Description,
 			row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion,
 			row.Stars, row.CreatedAt, row.UpdatedAt,
 		)); err != nil {
@@ -710,17 +710,17 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 	return results, nil
 }
 
-func skillFromSQLC(id, moduleRowID int64, modulePath, name, description, sourceHost, sourceRepository, path, latestVersion string, stars int64, createdAt, updatedAt time.Time) *Skill {
+func skillFromSQLC(id, moduleRowID int64, packagePath, name, description, sourceHost, sourceRepository, path, latestVersion string, stars int64, createdAt, updatedAt time.Time) *Skill {
 	return &Skill{
-		RowID: id, ModuleRowID: moduleRowID, ModulePath: modulePath, Name: name,
+		RowID: id, PackageRowID: moduleRowID, PackagePath: packagePath, Name: name,
 		Description: description, SourceHost: sourceHost, SourceRepository: sourceRepository,
 		Path: path, LatestVersion: latestVersion, Stars: stars,
 		CreatedAt: createdAt.UTC(), UpdatedAt: updatedAt.UTC(),
 	}
 }
 
-func moduleFromSQLC(entity catalogsqlc.Module) *Module {
-	return &Module{
+func moduleFromSQLC(entity catalogsqlc.Package) *Package {
+	return &Package{
 		RowID: entity.ID, SourceHost: entity.SourceHost, SourcePath: entity.SourcePath, Path: entity.Path,
 		Description: entity.Description, Stars: entity.Stars, SourceETag: entity.SourceEtag.String,
 		SourceCheckedAt: utcTimePointer(entity.SourceCheckedAt), SourceRetryAt: utcTimePointer(entity.SourceRetryAt),

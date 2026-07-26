@@ -1,7 +1,7 @@
 {
   "skills": [
     {
-      "modulePath": "github.com/acme/skills",
+      "packagePath": "github.com/acme/skills",
       "name": "demo",
       "description": "Demo",
       "imageUrl": null,

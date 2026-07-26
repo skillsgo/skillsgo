@@ -55,7 +55,7 @@ func (projection skillCardProjection) Localize(ctx context.Context, locale strin
 		return
 	}
 	for index := range cards {
-		description, ok, err := projection.catalog.LocalizedDescription(ctx, catalog.LocalizedSkill, cards[index].ModulePath+":"+cards[index].Name, locale)
+		description, ok, err := projection.catalog.LocalizedDescription(ctx, catalog.LocalizedSkill, cards[index].PackagePath+":"+cards[index].Name, locale)
 		if err == nil && ok {
 			cards[index].Description = description
 		}
@@ -63,13 +63,13 @@ func (projection skillCardProjection) Localize(ctx context.Context, locale strin
 }
 
 func storedSkillCard(item catalog.Skill) discoverySkill {
-	return discoverySkill{ModulePath: item.ModulePath, Name: item.Name, Description: item.Description,
+	return discoverySkill{PackagePath: item.PackagePath, Name: item.Name, Description: item.Description,
 		ImageURL: skillImageURL(item.SourceHost, item.SourceRepository), Path: item.Path,
 		LatestVersion: item.LatestVersion}
 }
 
 func searchedSkillCard(item catalog.SearchSkill) discoverySkill {
-	return discoverySkill{ModulePath: item.ModulePath, Name: item.Name, Description: item.Description,
+	return discoverySkill{PackagePath: item.PackagePath, Name: item.Name, Description: item.Description,
 		ImageURL: skillImageURL(item.SourceHost, item.SourceRepository), Path: item.Path,
 		LatestVersion: item.LatestVersion}
 }

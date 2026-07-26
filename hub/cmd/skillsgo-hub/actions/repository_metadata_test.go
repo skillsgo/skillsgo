@@ -127,7 +127,7 @@ func (s *recordingMetadataSource) Read(_ context.Context, _, _, etag string) (re
 func TestRepositoryMetadataCacheSingleflightCoalescesConcurrentRefresh(t *testing.T) {
 	_, metadata := testCatalogAPI(t)
 	require.NoError(t, upsertActionTestSkill(t.Context(), metadata, &catalog.Skill{
-		ModulePath: "github.com/acme/skills", Path: "demo", Name: "demo", LatestVersion: "v1.0.0",
+		PackagePath: "github.com/acme/skills", Path: "demo", Name: "demo", LatestVersion: "v1.0.0",
 	}))
 	source := &recordingMetadataSource{
 		results: []metadataSourceResult{{metadata: repositoryMetadata{Stars: 7, ETag: `"v1"`}}},
@@ -158,7 +158,7 @@ func TestRepositoryMetadataCacheSingleflightCoalescesConcurrentRefresh(t *testin
 func TestRepositoryMetadataCacheQueuesRefreshAndPrewarm(t *testing.T) {
 	_, metadata := testCatalogAPI(t)
 	require.NoError(t, upsertActionTestSkill(t.Context(), metadata, &catalog.Skill{
-		ModulePath: "github.com/acme/skills", Path: "demo", Name: "demo", LatestVersion: "v1.0.0",
+		PackagePath: "github.com/acme/skills", Path: "demo", Name: "demo", LatestVersion: "v1.0.0",
 	}))
 	runtime := taskqueue.NewSynchronous()
 	prewarmed := make(chan struct{}, 1)
@@ -175,7 +175,7 @@ func TestRepositoryMetadataCacheQueuesRefreshAndPrewarm(t *testing.T) {
 	stale, err := cache.Read(t.Context(), "github.com", "acme/skills")
 	require.NoError(t, err)
 	require.Zero(t, stale.Stars)
-	stored, err := metadata.Module(t.Context(), "github.com/acme/skills")
+	stored, err := metadata.Package(t.Context(), "github.com/acme/skills")
 	require.NoError(t, err)
 	require.Equal(t, int64(42), stored.Stars)
 	select {
@@ -188,8 +188,8 @@ func TestRepositoryMetadataCacheQueuesRefreshAndPrewarm(t *testing.T) {
 func TestRepositoryMetadataCacheSharesStarsAndRevalidatesWithETag(t *testing.T) {
 	_, metadata := testCatalogAPI(t)
 	require.NoError(t, publishActionTestSkills(t.Context(), metadata,
-		&catalog.Skill{ModulePath: "github.com/acme/skills", Path: "skills/a", Name: "a", LatestVersion: "v1.0.0"},
-		&catalog.Skill{ModulePath: "github.com/acme/skills", Path: "skills/b", Name: "b", LatestVersion: "v1.0.0"},
+		&catalog.Skill{PackagePath: "github.com/acme/skills", Path: "skills/a", Name: "a", LatestVersion: "v1.0.0"},
+		&catalog.Skill{PackagePath: "github.com/acme/skills", Path: "skills/b", Name: "b", LatestVersion: "v1.0.0"},
 	))
 	source := &recordingMetadataSource{results: []metadataSourceResult{
 		{metadata: repositoryMetadata{Description: "Agent Skills from Acme.", Stars: 42, ETag: `"repo-v1"`}},
@@ -226,7 +226,7 @@ func TestRepositoryMetadataCacheSharesStarsAndRevalidatesWithETag(t *testing.T) 
 func TestRepositoryMetadataCacheBlocksRequestsUntilRateLimitReset(t *testing.T) {
 	_, metadata := testCatalogAPI(t)
 	require.NoError(t, upsertActionTestSkill(t.Context(), metadata, &catalog.Skill{
-		ModulePath: "github.com/acme/skills", Path: "demo", Name: "demo", LatestVersion: "v1.0.0",
+		PackagePath: "github.com/acme/skills", Path: "demo", Name: "demo", LatestVersion: "v1.0.0",
 	}))
 	now := time.Date(2026, time.July, 18, 10, 0, 0, 0, time.UTC)
 	reset := now.Add(time.Hour)
@@ -243,7 +243,7 @@ func TestRepositoryMetadataCacheBlocksRequestsUntilRateLimitReset(t *testing.T) 
 	require.NoError(t, err)
 	require.Zero(t, cached.Stars)
 	require.Equal(t, 1, source.calls)
-	repository, err := metadata.Module(t.Context(), "github.com/acme/skills")
+	repository, err := metadata.Package(t.Context(), "github.com/acme/skills")
 	require.NoError(t, err)
 	require.NotNil(t, repository.SourceRetryAt)
 	require.Equal(t, reset, *repository.SourceRetryAt)

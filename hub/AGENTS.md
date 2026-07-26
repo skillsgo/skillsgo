@@ -11,7 +11,7 @@ This map governs the public Hub service. Read it with the root constitution and 
 - Entry point: `cmd/skillsgo-hub/main.go`
 - Service assembly: `cmd/skillsgo-hub/actions/`
 - Public seam: the Fiber HTTP router and documented HTTP protocol
-- Product responsibility: resolve add-time Module Version Queries through Source Repositories, validate Skill manifests, publish immutable Module artifacts/releases, serve search and ordered Skill-card hydration, and declare selfhost or Cloud deployment mode.
+- Product responsibility: resolve add-time Package Version Queries through Source Repositories, validate Skill manifests, publish immutable Package artifacts/releases, serve search and ordered Skill-card hydration, and declare selfhost or Cloud deployment mode.
 
 ## Commands
 
@@ -46,9 +46,9 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 
 ## Boundaries
 
-- The Hub owns public Module Path plus Skill Name ranking/search identity, Source Repository resolution and metadata, immutable Module Artifacts, exact Module Path plus Skill Path batch-card hydration, and minimal deployment discovery. It does not ingest usage events or calculate rankings.
+- The Hub owns public Package Path plus Skill Name ranking/search identity, Source Repository resolution and metadata, immutable Package Artifacts, exact Package Path plus Skill Path batch-card hydration, and minimal deployment discovery. It does not ingest usage events or calculate rankings.
 - The Hub does not install skills into local Agent directories and does not own App navigation or local library state.
-- Public ranking/search coordinates carry Module Path and canonical Skill Name; exact member resources and batch-card hydration carry Module Path plus Skill Path.
+- Public ranking/search coordinates carry Package Path and canonical Skill Name; exact member resources and batch-card hydration carry Package Path plus Skill Path.
 - Preserve immutable version semantics, commit identity, tree identity, and deterministic archive output.
 - Treat Athens-derived names and documents as legacy seams. When maintained code is touched, use SkillsGo terminology without erasing useful provenance.
 - Vendored dependencies, generated files, fixtures, and imported upstream assets are not maintained semantic modules.

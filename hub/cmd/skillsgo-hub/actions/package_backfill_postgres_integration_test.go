@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Uses Catalog, two River runtimes, real Module Publisher/storage/HTTP routes, and an opt-in Testcontainers PostgreSQL service with deterministic source doubles.
+ * [INPUT]: Uses Catalog, two River runtimes, real Package Publisher/storage/HTTP routes, and an opt-in Testcontainers PostgreSQL service with deterministic source doubles.
  * [OUTPUT]: Verifies atomic persistence, restart/multi-instance execution, incremental retry, retained ZIP download, and discovery exclusion end to end.
- * [POS]: Serves as the durable PostgreSQL plus River acceptance seam for Module History Backfill.
+ * [POS]: Serves as the durable PostgreSQL plus River acceptance seam for Package History Backfill.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -50,7 +50,7 @@ type backfillIntegrationFetcher struct {
 	archives map[string][]byte
 }
 
-func (f *backfillIntegrationFetcher) DiscoverRepository(_ context.Context, modulePath, version string) (*skill.RepositorySnapshot, error) {
+func (f *backfillIntegrationFetcher) DiscoverRepository(_ context.Context, packagePath, version string) (*skill.RepositorySnapshot, error) {
 	f.mu.Lock()
 	f.calls = append(f.calls, version)
 	if f.failOnce[version] {
@@ -64,7 +64,7 @@ func (f *backfillIntegrationFetcher) DiscoverRepository(_ context.Context, modul
 	if err != nil {
 		return nil, err
 	}
-	snapshot := &skill.RepositorySnapshot{ModulePath: modulePath, Version: version, CommitSHA: "commit-" + version,
+	snapshot := &skill.RepositorySnapshot{PackagePath: packagePath, Version: version, CommitSHA: "commit-" + version,
 		CommitTime: time.Date(2026, 7, 15, 0, 0, 0, 0, time.UTC), Members: []skill.RepositoryMember{{
 			Name: manifest.Name, Path: ".", TreeSHA: "tree-" + version, Manifest: manifest,
 		}}}
@@ -87,25 +87,25 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	t.Cleanup(func() { require.NoError(t, metadata.Close()) })
 
 	lister := &backfillIntegrationLister{versions: []string{"main", "v2.0.0", "v1.0.0", "v1.0.0"}}
-	modulePath := "github.com/acme/backfill"
+	packagePath := "github.com/acme/backfill"
 	fetcher := &backfillIntegrationFetcher{failOnce: map[string]bool{"v1.0.0": true}, archives: map[string][]byte{
-		"v1.0.0": repositoryTestManifest(t, modulePath, "v1.0.0", "backfilled", "Historical fixture", ""),
-		"v2.0.0": repositoryTestManifest(t, modulePath, "v2.0.0", "backfilled", "Historical fixture", ""),
+		"v1.0.0": repositoryTestManifest(t, packagePath, "v1.0.0", "backfilled", "Historical fixture", ""),
+		"v2.0.0": repositoryTestManifest(t, packagePath, "v2.0.0", "backfilled", "Historical fixture", ""),
 	}}
 	backend, err := mem.NewStorage()
 	require.NoError(t, err)
 	rawProtocol := download.New(&download.Opts{Storage: backend, NetworkMode: download.Offline})
 	artifactProtocol := rawProtocol
-	publisher := newModulePublisher(fetcher, backend, metadata)
+	publisher := newPackagePublisher(fetcher, backend, metadata)
 	firstRuntime, err := taskqueue.NewRiver(ctx, metadata.PostgresPool(), 1)
 	require.NoError(t, err)
 	firstService := newRepositoryBackfillService(metadata, firstRuntime, lister, publisher, log.NoOpLogger())
 	require.NoError(t, firstService.Register())
 	app := fiber.New()
-	registerModuleBackfillRoutes(app.Group("/api/v1/admin", basicAuth("admin", "secret")), firstService)
+	registerPackageBackfillRoutes(app.Group("/api/v1/admin", basicAuth("admin", "secret")), firstService)
 	registerCatalogAPIRoutes(app, metadata, artifactProtocol)
 	download.RegisterHandlers(app, &download.HandlerOpts{Protocol: artifactProtocol, Logger: log.NoOpLogger()})
-	request := httptest.NewRequest(http.MethodPost, "/api/v1/admin/module-backfills", bytes.NewBufferString(`{"modulePaths":["github.com/acme/backfill"]}`))
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/admin/package-backfills", bytes.NewBufferString(`{"packagePaths":["github.com/acme/backfill"]}`))
 	request.Header.Set("Content-Type", "application/json")
 	request.SetBasicAuth("admin", "secret")
 	response, err := app.Test(request)
@@ -116,7 +116,7 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	require.Len(t, submitted.Results, 1)
 	require.NotNil(t, submitted.Results[0].Run)
 	first := *submitted.Results[0].Run
-	repeated, created, err := firstService.Submit(ctx, modulePath)
+	repeated, created, err := firstService.Submit(ctx, packagePath)
 	require.NoError(t, err)
 	require.False(t, created)
 	require.Equal(t, first.ID, repeated.ID)
@@ -145,7 +145,7 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 		require.NoError(t, thirdRuntime.Stop(stopCtx))
 		require.NoError(t, secondRuntime.Stop(stopCtx))
 	})
-	failed := waitForBackfillStatus(t, metadata, modulePath, catalog.BackfillCompleteWithErrors, 15*time.Second)
+	failed := waitForBackfillStatus(t, metadata, packagePath, catalog.BackfillCompleteWithErrors, 15*time.Second)
 	require.Equal(t, 1, failed.ErrorCount)
 	require.Len(t, failed.Diagnostics, 1)
 	fetcher.mu.Lock()
@@ -153,12 +153,12 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	fetcher.mu.Unlock()
 
 	secondService := newRepositoryBackfillService(metadata, secondRuntime, lister, publisher, log.NoOpLogger())
-	next, created, err := secondService.Submit(ctx, modulePath)
+	next, created, err := secondService.Submit(ctx, packagePath)
 	require.NoError(t, err)
 	require.True(t, created)
 	require.NotEqual(t, first.ID, next.ID)
-	waitForBackfillStatus(t, metadata, modulePath, catalog.BackfillComplete, 15*time.Second)
-	statusRequest := httptest.NewRequest(http.MethodGet, "/api/v1/admin/module-backfills?modulePaths="+modulePath, nil)
+	waitForBackfillStatus(t, metadata, packagePath, catalog.BackfillComplete, 15*time.Second)
+	statusRequest := httptest.NewRequest(http.MethodGet, "/api/v1/admin/package-backfills?packagePaths="+packagePath, nil)
 	statusRequest.SetBasicAuth("admin", "secret")
 	statusResponse, err := app.Test(statusRequest)
 	require.NoError(t, err)
@@ -166,13 +166,13 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	var statuses backfillResponse
 	require.NoError(t, json.NewDecoder(statusResponse.Body).Decode(&statuses))
 	require.Equal(t, next.ID, statuses.Results[0].Run.ID)
-	infoResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/"+modulePath+"/versions/v1.0.0", nil))
+	infoResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/"+packagePath+"/versions/v1.0.0", nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, infoResponse.StatusCode)
-	var info protocolapi.ModuleInfo
+	var info protocolapi.PackageInfo
 	require.NoError(t, json.NewDecoder(infoResponse.Body).Decode(&info))
 	require.NotEmpty(t, info.Sum)
-	zipResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/"+modulePath+"/versions/v1.0.0.zip", nil))
+	zipResponse, err := app.Test(httptest.NewRequest(http.MethodGet, "/"+packagePath+"/versions/v1.0.0.zip", nil))
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, zipResponse.StatusCode)
 	retainedZIP, err := io.ReadAll(zipResponse.Body)
@@ -188,16 +188,16 @@ func TestRepositoryBackfillSurvivesRuntimeRestartAndRetriggersIncrementally(t *t
 	fetcher.mu.Unlock()
 }
 
-func waitForBackfillStatus(t *testing.T, metadata *catalog.Catalog, modulePath string, status catalog.BackfillStatus, timeout time.Duration) catalog.BackfillRun {
+func waitForBackfillStatus(t *testing.T, metadata *catalog.Catalog, packagePath string, status catalog.BackfillStatus, timeout time.Duration) catalog.BackfillRun {
 	t.Helper()
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
-		run, err := metadata.LatestBackfillRun(t.Context(), modulePath)
+		run, err := metadata.LatestBackfillRun(t.Context(), packagePath)
 		if err == nil && run.Status == status {
 			return run
 		}
 		time.Sleep(50 * time.Millisecond)
 	}
-	t.Fatalf("Module Backfill for %s did not reach %s", modulePath, status)
+	t.Fatalf("Package Backfill for %s did not reach %s", packagePath, status)
 	return catalog.BackfillRun{}
 }

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses deterministic, malformed, adversarial, and resource-boundary Module ZIP/directory fixtures plus the upstream Go dirhash implementation.
- * [OUTPUT]: Specifies Module build/verification, Go Hash1 parity, ZIP/directory parity, safe paths, bounded resource use, Skill membership, and framing failures.
+ * [INPUT]: Uses deterministic, malformed, adversarial, and resource-boundary Package ZIP/directory fixtures plus the upstream Go dirhash implementation.
+ * [OUTPUT]: Specifies Package build/verification, Go Hash1 parity, ZIP/directory parity, safe paths, bounded resource use, Skill membership, and framing failures.
  * [POS]: Serves as exhaustive compatibility and hostile-input coverage shared transitively by Hub and CLI.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -57,11 +57,11 @@ func TestRepositoryArtifactBuildAndSumMatchGoHashZipSemanticsWithoutRootSkill(t 
 		{Path: "bin/tool", Contents: []byte("#!/bin/sh\n"), Mode: 0o755},
 		{Path: "skills/review/SKILL.md", Contents: []byte("review instructions")},
 	}
-	archive, err := BuildModule("github.com/example/suite", "v1.2.3", files)
+	archive, err := BuildPackage("github.com/example/suite", "v1.2.3", files)
 	if err != nil {
 		t.Fatal(err)
 	}
-	got, err := ModuleSum(archive, "github.com/example/suite", "v1.2.3")
+	got, err := PackageSum(archive, "github.com/example/suite", "v1.2.3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -81,11 +81,11 @@ func TestRepositoryArtifactBuildAndSumMatchGoHashZipSemanticsWithoutRootSkill(t 
 		t.Fatal(err)
 	}
 	if got != want {
-		t.Fatalf("ModuleSum() = %q, Go dirhash.Hash1() = %q", got, want)
+		t.Fatalf("PackageSum() = %q, Go dirhash.Hash1() = %q", got, want)
 	}
 
 	var visited []string
-	walked, err := WalkModule(archive, "github.com/example/suite", "v1.2.3", func(entry Entry) error {
+	walked, err := WalkPackage(archive, "github.com/example/suite", "v1.2.3", func(entry Entry) error {
 		if !entry.Directory {
 			visited = append(visited, entry.Path)
 		}
@@ -95,7 +95,7 @@ func TestRepositoryArtifactBuildAndSumMatchGoHashZipSemanticsWithoutRootSkill(t 
 		t.Fatal(err)
 	}
 	if walked != got {
-		t.Fatalf("WalkModule() = %q, ModuleSum() = %q", walked, got)
+		t.Fatalf("WalkPackage() = %q, PackageSum() = %q", walked, got)
 	}
 	if got, want := strings.Join(visited, ","), "README.md,bin/tool,skills/review/SKILL.md"; got != want {
 		t.Fatalf("visited %q, want %q", got, want)
@@ -113,7 +113,7 @@ func TestRepositoryArtifactDirectoryParityAndDeterministicEnvelope(t *testing.T)
 	if err := os.WriteFile(filepath.Join(root, "skills", "review", "SKILL.md"), []byte("review"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	want, err := ModuleDirectorySum(root, "github.com/example/suite", "v1.2.3")
+	want, err := PackageDirectorySum(root, "github.com/example/suite", "v1.2.3")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,27 +121,27 @@ func TestRepositoryArtifactDirectoryParityAndDeterministicEnvelope(t *testing.T)
 		{Path: "skills/review/SKILL.md", Contents: []byte("review")},
 		{Path: "README.md", Contents: []byte("repository")},
 	}
-	first, err := BuildModule("github.com/example/suite", "v1.2.3", files)
+	first, err := BuildPackage("github.com/example/suite", "v1.2.3", files)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := BuildModule("github.com/example/suite", "v1.2.3", files)
+	second, err := BuildPackage("github.com/example/suite", "v1.2.3", files)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if !bytes.Equal(first, second) {
-		t.Fatal("BuildModule produced different bytes for the same inventory")
+		t.Fatal("BuildPackage produced different bytes for the same inventory")
 	}
-	got, err := ModuleSum(first, "github.com/example/suite", "v1.2.3")
+	got, err := PackageSum(first, "github.com/example/suite", "v1.2.3")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if got != want {
-		t.Fatalf("ModuleSum() = %q, ModuleDirectorySum() = %q", got, want)
+		t.Fatalf("PackageSum() = %q, PackageDirectorySum() = %q", got, want)
 	}
 }
 
-func TestBuildModuleRejectsInvalidInputsAndCanonicalizesModes(t *testing.T) {
+func TestBuildPackageRejectsInvalidInputsAndCanonicalizesModes(t *testing.T) {
 	for _, test := range []struct {
 		name       string
 		repository string
@@ -157,22 +157,22 @@ func TestBuildModuleRejectsInvalidInputsAndCanonicalizesModes(t *testing.T) {
 		{name: "mixed symlink mode", repository: "example.com/repo", version: "v1", files: []Entry{{Path: "SKILL.md"}, {Path: "link", Mode: os.ModeSymlink | os.ModeDevice}}, contains: "mode is not a supported symlink"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := BuildModule(test.repository, test.version, test.files)
+			_, err := BuildPackage(test.repository, test.version, test.files)
 			if err == nil || !strings.Contains(err.Error(), test.contains) {
 				t.Fatalf("error %v, want %q", err, test.contains)
 			}
 		})
 	}
 	tooMany := make([]Entry, MaxFiles+1)
-	if _, err := BuildModule("example.com/repo", "v1", tooMany); err == nil || !strings.Contains(err.Error(), "file count") {
+	if _, err := BuildPackage("example.com/repo", "v1", tooMany); err == nil || !strings.Contains(err.Error(), "file count") {
 		t.Fatalf("file-count error: %v", err)
 	}
 	tooLarge := make([]byte, MaxUncompressedBytes+1)
-	if _, err := BuildModule("example.com/repo", "v1", []Entry{{Path: "SKILL.md", Contents: tooLarge}}); err == nil || !strings.Contains(err.Error(), "exceeds") {
+	if _, err := BuildPackage("example.com/repo", "v1", []Entry{{Path: "SKILL.md", Contents: tooLarge}}); err == nil || !strings.Contains(err.Error(), "exceeds") {
 		t.Fatalf("size error: %v", err)
 	}
 
-	archive, err := BuildModule("example.com/repo", "v1", []Entry{
+	archive, err := BuildPackage("example.com/repo", "v1", []Entry{
 		{Path: "SKILL.md", Contents: []byte("skill")},
 		{Path: "default", Contents: []byte("default")},
 		{Path: "executable", Mode: 0o700, Contents: []byte("executable")},
@@ -194,12 +194,12 @@ func TestBuildModuleRejectsInvalidInputsAndCanonicalizesModes(t *testing.T) {
 	}
 }
 
-func TestModuleSumGoldenAndArchiveEncodingIndependence(t *testing.T) {
+func TestPackageSumGoldenAndArchiveEncodingIndependence(t *testing.T) {
 	stored := makeZIP(t, zipEntry{"example@v1.0.0/a.txt", "a", false, zip.Store}, zipEntry{"example@v1.0.0/SKILL.md", "instructions", false, zip.Store}, zipEntry{"example@v1.0.0/empty", "", true, zip.Store})
 	deflated := makeZIP(t, zipEntry{"example@v1.0.0/SKILL.md", "instructions", false, zip.Deflate}, zipEntry{"example@v1.0.0/a.txt", "a", false, zip.Deflate})
 	want := "h1:0HVLdhpldY6MLdmnE7dwKylbSQM8lPO8QXTwL88otOM="
 	for _, archive := range [][]byte{stored, deflated} {
-		digest, err := ModuleSum(archive, "example", "v1.0.0")
+		digest, err := PackageSum(archive, "example", "v1.0.0")
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -209,36 +209,36 @@ func TestModuleSumGoldenAndArchiveEncodingIndependence(t *testing.T) {
 	}
 }
 
-func TestModuleSumBindsRepositoryCoordinate(t *testing.T) {
+func TestPackageSumBindsRepositoryCoordinate(t *testing.T) {
 	files := []Entry{{Path: "SKILL.md", Contents: []byte("instructions")}}
-	first, err := BuildModule("example.com/owner/one", "v1.0.0", files)
+	first, err := BuildPackage("example.com/owner/one", "v1.0.0", files)
 	if err != nil {
 		t.Fatal(err)
 	}
-	second, err := BuildModule("example.com/owner/two", "v1.0.0", files)
+	second, err := BuildPackage("example.com/owner/two", "v1.0.0", files)
 	if err != nil {
 		t.Fatal(err)
 	}
-	firstSum, err := ModuleSum(first, "example.com/owner/one", "v1.0.0")
+	firstSum, err := PackageSum(first, "example.com/owner/one", "v1.0.0")
 	if err != nil {
 		t.Fatal(err)
 	}
-	secondSum, err := ModuleSum(second, "example.com/owner/two", "v1.0.0")
+	secondSum, err := PackageSum(second, "example.com/owner/two", "v1.0.0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if firstSum == secondSum {
-		t.Fatal("Module Sum must bind identical contents to their Module coordinate")
+		t.Fatal("Package Sum must bind identical contents to their Package coordinate")
 	}
 }
 
-func TestWalkModuleVisitsNormalizedFilesAndReturnsTheSameDigest(t *testing.T) {
+func TestWalkPackageVisitsNormalizedFilesAndReturnsTheSameDigest(t *testing.T) {
 	archive := makeZIP(t,
 		zipEntry{"example@v1/z.txt", "z", false, zip.Store},
 		zipEntry{"example@v1/SKILL.md", "instructions", false, zip.Store},
 	)
 	var visited []string
-	digest, err := WalkModule(archive, "example", "v1", func(entry Entry) error {
+	digest, err := WalkPackage(archive, "example", "v1", func(entry Entry) error {
 		visited = append(visited, entry.Path+":"+string(entry.Contents))
 		if entry.Size != int64(len(entry.Contents)) {
 			t.Fatalf("entry size %d != %d", entry.Size, len(entry.Contents))
@@ -248,7 +248,7 @@ func TestWalkModuleVisitsNormalizedFilesAndReturnsTheSameDigest(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want, err := ModuleSum(archive, "example", "v1")
+	want, err := PackageSum(archive, "example", "v1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,9 +260,9 @@ func TestWalkModuleVisitsNormalizedFilesAndReturnsTheSameDigest(t *testing.T) {
 	}
 }
 
-func TestWalkModulePropagatesVisitorFailure(t *testing.T) {
+func TestWalkPackagePropagatesVisitorFailure(t *testing.T) {
 	archive := makeZIP(t, zipEntry{"example@v1/SKILL.md", "instructions", false, zip.Store})
-	_, err := WalkModule(archive, "example", "v1", func(Entry) error {
+	_, err := WalkPackage(archive, "example", "v1", func(Entry) error {
 		return errors.New("inspection failed")
 	})
 	if err == nil || !strings.Contains(err.Error(), `visit artifact file "SKILL.md": inspection failed`) {
@@ -270,13 +270,13 @@ func TestWalkModulePropagatesVisitorFailure(t *testing.T) {
 	}
 }
 
-func TestWalkModuleVisitsDirectoriesAndRejectsTreeShapeConflicts(t *testing.T) {
+func TestWalkPackageVisitsDirectoriesAndRejectsTreeShapeConflicts(t *testing.T) {
 	archive := makeZIP(t,
 		zipEntry{"example@v1/SKILL.md", "instructions", false, zip.Store},
 		zipEntry{"example@v1/docs", "", true, zip.Store},
 	)
 	visitedDirectory := false
-	_, err := WalkModule(archive, "example", "v1", func(entry Entry) error {
+	_, err := WalkPackage(archive, "example", "v1", func(entry Entry) error {
 		if entry.Directory {
 			visitedDirectory = entry.Path == "docs" && entry.Contents == nil && entry.Size == 0
 			return errors.New("directory inspection failed")
@@ -312,7 +312,7 @@ func TestWalkModuleVisitsDirectoriesAndRejectsTreeShapeConflicts(t *testing.T) {
 		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := ModuleSum(makeZIP(t, test.entries...), "example", "v1")
+			_, err := PackageSum(makeZIP(t, test.entries...), "example", "v1")
 			if err == nil || !strings.Contains(err.Error(), test.contains) {
 				t.Fatalf("error %v, want %q", err, test.contains)
 			}
@@ -320,30 +320,30 @@ func TestWalkModuleVisitsDirectoriesAndRejectsTreeShapeConflicts(t *testing.T) {
 	}
 }
 
-func TestWalkModuleAcceptsRootDirectoryAndRejectsInvalidDirectory(t *testing.T) {
+func TestWalkPackageAcceptsRootDirectoryAndRejectsInvalidDirectory(t *testing.T) {
 	archive := makeZIP(t,
 		zipEntry{"example@v1/", "", true, zip.Store},
 		zipEntry{"example@v1/skills/demo/SKILL.md", "demo", false, zip.Store},
 	)
-	if _, err := ModuleSum(archive, "example", "v1"); err != nil {
+	if _, err := PackageSum(archive, "example", "v1"); err != nil {
 		t.Fatalf("root directory entry: %v", err)
 	}
 	invalidDirectory := makeZIP(t,
 		zipEntry{"example@v1/bad ", "", true, zip.Store},
 		zipEntry{"example@v1/SKILL.md", "root", false, zip.Store},
 	)
-	if _, err := ModuleSum(invalidDirectory, "example", "v1"); err == nil {
+	if _, err := PackageSum(invalidDirectory, "example", "v1"); err == nil {
 		t.Fatal("expected invalid directory path rejection")
 	}
 	noSkill := t.TempDir()
 	if err := os.WriteFile(filepath.Join(noSkill, "README.md"), []byte("readme"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ModuleDirectorySum(noSkill, "example", "v1"); err == nil || !strings.Contains(err.Error(), "SKILL.md member") {
+	if _, err := PackageDirectorySum(noSkill, "example", "v1"); err == nil || !strings.Contains(err.Error(), "SKILL.md member") {
 		t.Fatalf("missing member error: %v", err)
 	}
 	noSkillArchive := makeZIP(t, zipEntry{"example@v1/README.md", "readme", false, zip.Store})
-	if _, err := ModuleSum(noSkillArchive, "example", "v1"); err == nil || !strings.Contains(err.Error(), "SKILL.md member") {
+	if _, err := PackageSum(noSkillArchive, "example", "v1"); err == nil || !strings.Contains(err.Error(), "SKILL.md member") {
 		t.Fatalf("missing archive member error: %v", err)
 	}
 	corrupt := append([]byte(nil), makeZIP(t, zipEntry{"example@v1/SKILL.md", "root", false, zip.Store})...)
@@ -352,7 +352,7 @@ func TestWalkModuleAcceptsRootDirectoryAndRejectsInvalidDirectory(t *testing.T) 
 		t.Fatal("missing ZIP central directory")
 	}
 	corrupt[central+16]++
-	if _, err := ModuleSum(corrupt, "example", "v1"); err == nil || !strings.Contains(err.Error(), "read artifact file") {
+	if _, err := PackageSum(corrupt, "example", "v1"); err == nil || !strings.Contains(err.Error(), "read artifact file") {
 		t.Fatalf("corrupt archive error: %v", err)
 	}
 	unsupported := append([]byte(nil), makeZIP(t, zipEntry{"example@v1/SKILL.md", "root", false, zip.Store})...)
@@ -360,12 +360,12 @@ func TestWalkModuleAcceptsRootDirectoryAndRejectsInvalidDirectory(t *testing.T) 
 	local := bytes.Index(unsupported, []byte{'P', 'K', 3, 4})
 	unsupported[local+8], unsupported[local+9] = 99, 0
 	unsupported[central+10], unsupported[central+11] = 99, 0
-	if _, err := ModuleSum(unsupported, "example", "v1"); err == nil || !strings.Contains(err.Error(), "unsupported compression") {
+	if _, err := PackageSum(unsupported, "example", "v1"); err == nil || !strings.Contains(err.Error(), "unsupported compression") {
 		t.Fatalf("unsupported compression error: %v", err)
 	}
 }
 
-func TestModuleSumRejectsMalformedAndUnsafeArchives(t *testing.T) {
+func TestPackageSumRejectsMalformedAndUnsafeArchives(t *testing.T) {
 	valid := zipEntry{"example@v1/SKILL.md", "ok", false, zip.Store}
 	tests := []struct {
 		name     string
@@ -386,19 +386,19 @@ func TestModuleSumRejectsMalformedAndUnsafeArchives(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := ModuleSum(test.archive, "example", "v1")
+			_, err := PackageSum(test.archive, "example", "v1")
 			if err == nil || !strings.Contains(err.Error(), test.contains) {
 				t.Fatalf("error %v, want %q", err, test.contains)
 			}
 		})
 	}
 	oversized := make([]byte, MaxArchiveBytes+1)
-	if _, err := ModuleSum(oversized, "example", "v1"); err == nil {
+	if _, err := PackageSum(oversized, "example", "v1"); err == nil {
 		t.Fatal("expected archive-size rejection")
 	}
 }
 
-func TestModuleSumRejectsIrregularModes(t *testing.T) {
+func TestPackageSumRejectsIrregularModes(t *testing.T) {
 	makeModeZIP := func(mode os.FileMode) []byte {
 		var buffer bytes.Buffer
 		writer := zip.NewWriter(&buffer)
@@ -427,7 +427,7 @@ func TestModuleSumRejectsIrregularModes(t *testing.T) {
 		{"unsafe symlink", os.ModeSymlink | 0o777, "unsafe"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := ModuleSum(makeModeZIP(test.mode), "example", "v1")
+			_, err := PackageSum(makeModeZIP(test.mode), "example", "v1")
 			if err == nil || !strings.Contains(err.Error(), test.contains) {
 				t.Fatalf("error %v, want %q", err, test.contains)
 			}
@@ -435,18 +435,18 @@ func TestModuleSumRejectsIrregularModes(t *testing.T) {
 	}
 }
 
-func TestModuleArtifactPreservesInternalSymlinksAndRejectsUnsafeTargets(t *testing.T) {
+func TestPackageArtifactPreservesInternalSymlinksAndRejectsUnsafeTargets(t *testing.T) {
 	files := []Entry{
 		{Path: "SKILL.md", Contents: []byte("instructions")},
 		{Path: "CLAUDE.md", Contents: []byte("shared instructions")},
 		{Path: "AGENTS.md", Contents: []byte("CLAUDE.md"), Mode: os.ModeSymlink | 0o777},
 	}
-	archive, err := BuildModule("example", "v1", files)
+	archive, err := BuildPackage("example", "v1", files)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var link Entry
-	_, err = WalkModule(archive, "example", "v1", func(entry Entry) error {
+	_, err = WalkPackage(archive, "example", "v1", func(entry Entry) error {
 		if entry.Path == "AGENTS.md" {
 			link = entry
 		}
@@ -462,23 +462,23 @@ func TestModuleArtifactPreservesInternalSymlinksAndRejectsUnsafeTargets(t *testi
 	for _, target := range []string{"../../outside", "/etc/passwd", "missing.md", "AGENTS.md"} {
 		unsafe := append([]Entry(nil), files[:2]...)
 		unsafe = append(unsafe, Entry{Path: "AGENTS.md", Contents: []byte(target), Mode: os.ModeSymlink | 0o777})
-		if _, err := BuildModule("example", "v1", unsafe); err == nil || !strings.Contains(err.Error(), "unsafe") {
+		if _, err := BuildPackage("example", "v1", unsafe); err == nil || !strings.Contains(err.Error(), "unsafe") {
 			t.Fatalf("target %q error = %v", target, err)
 		}
 	}
 }
 
-func TestModuleSumRejectsFileCountAndExpandedSize(t *testing.T) {
+func TestPackageSumRejectsFileCountAndExpandedSize(t *testing.T) {
 	entries := make([]zipEntry, 0, MaxFiles+1)
 	entries = append(entries, zipEntry{"example@v1/SKILL.md", "ok", false, zip.Store})
 	for i := 0; i < MaxFiles; i++ {
 		entries = append(entries, zipEntry{filepath.ToSlash(filepath.Join("example@v1", "files", formatIndex(i))), "", false, zip.Store})
 	}
-	if _, err := ModuleSum(makeZIP(t, entries...), "example", "v1"); err == nil || !strings.Contains(err.Error(), "more than") {
+	if _, err := PackageSum(makeZIP(t, entries...), "example", "v1"); err == nil || !strings.Contains(err.Error(), "more than") {
 		t.Fatalf("file-count error: %v", err)
 	}
 	large := strings.Repeat("x", MaxUncompressedBytes+1)
-	if _, err := ModuleSum(makeZIP(t, zipEntry{"example@v1/SKILL.md", large, false, zip.Deflate}), "example", "v1"); err == nil || !strings.Contains(err.Error(), "expands beyond") {
+	if _, err := PackageSum(makeZIP(t, zipEntry{"example@v1/SKILL.md", large, false, zip.Deflate}), "example", "v1"); err == nil || !strings.Contains(err.Error(), "expands beyond") {
 		t.Fatalf("expanded-size error: %v", err)
 	}
 }
@@ -498,9 +498,9 @@ func formatIndex(value int) string {
 	return string(result[position:])
 }
 
-func TestModuleDirectorySumMatchesArchiveAndRejectsUnsafeTrees(t *testing.T) {
+func TestPackageDirectorySumMatchesArchiveAndRejectsUnsafeTrees(t *testing.T) {
 	root := t.TempDir()
-	if _, err := ModuleDirectorySum(root, "", "v1"); err == nil || !strings.Contains(err.Error(), "identity and version") {
+	if _, err := PackageDirectorySum(root, "", "v1"); err == nil || !strings.Contains(err.Error(), "identity and version") {
 		t.Fatalf("missing coordinate error: %v", err)
 	}
 	if err := os.MkdirAll(filepath.Join(root, "nested"), 0o700); err != nil {
@@ -512,12 +512,12 @@ func TestModuleDirectorySumMatchesArchiveAndRejectsUnsafeTrees(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "nested", "a.txt"), []byte("a"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	directoryDigest, err := ModuleDirectorySum(root, "example", "v1")
+	directoryDigest, err := PackageDirectorySum(root, "example", "v1")
 	if err != nil {
 		t.Fatal(err)
 	}
 	archive := makeZIP(t, zipEntry{"example@v1/SKILL.md", "instructions", false, zip.Store}, zipEntry{"example@v1/nested/a.txt", "a", false, zip.Store})
-	archiveDigest, err := ModuleSum(archive, "example", "v1")
+	archiveDigest, err := PackageSum(archive, "example", "v1")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -525,7 +525,7 @@ func TestModuleDirectorySumMatchesArchiveAndRejectsUnsafeTrees(t *testing.T) {
 		t.Fatalf("directory %s != archive %s", directoryDigest, archiveDigest)
 	}
 	missing := t.TempDir()
-	if _, err := ModuleDirectorySum(missing, "example", "v1"); err == nil || !strings.Contains(err.Error(), "SKILL.md member") {
+	if _, err := PackageDirectorySum(missing, "example", "v1"); err == nil || !strings.Contains(err.Error(), "SKILL.md member") {
 		t.Fatalf("missing manifest error: %v", err)
 	}
 	symlinkRoot := t.TempDir()
@@ -535,7 +535,7 @@ func TestModuleDirectorySumMatchesArchiveAndRejectsUnsafeTrees(t *testing.T) {
 	if err := os.Symlink("SKILL.md", filepath.Join(symlinkRoot, "alias")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ModuleDirectorySum(symlinkRoot, "example", "v1"); err != nil {
+	if _, err := PackageDirectorySum(symlinkRoot, "example", "v1"); err != nil {
 		t.Fatalf("safe symlink error: %v", err)
 	}
 	if err := os.Remove(filepath.Join(symlinkRoot, "alias")); err != nil {
@@ -544,7 +544,7 @@ func TestModuleDirectorySumMatchesArchiveAndRejectsUnsafeTrees(t *testing.T) {
 	if err := os.Symlink("../outside", filepath.Join(symlinkRoot, "alias")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ModuleDirectorySum(symlinkRoot, "example", "v1"); err == nil || !strings.Contains(err.Error(), "unsafe") {
+	if _, err := PackageDirectorySum(symlinkRoot, "example", "v1"); err == nil || !strings.Contains(err.Error(), "unsafe") {
 		t.Fatalf("unsafe symlink error: %v", err)
 	}
 	largeRoot := t.TempDir()
@@ -554,15 +554,15 @@ func TestModuleDirectorySumMatchesArchiveAndRejectsUnsafeTrees(t *testing.T) {
 	if err := os.Truncate(filepath.Join(largeRoot, "SKILL.md"), MaxUncompressedBytes+1); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ModuleDirectorySum(largeRoot, "example", "v1"); err == nil || !strings.Contains(err.Error(), "exceeds") {
+	if _, err := PackageDirectorySum(largeRoot, "example", "v1"); err == nil || !strings.Contains(err.Error(), "exceeds") {
 		t.Fatalf("large directory error: %v", err)
 	}
-	if _, err := ModuleDirectorySum(filepath.Join(t.TempDir(), "missing"), "example", "v1"); err == nil {
+	if _, err := PackageDirectorySum(filepath.Join(t.TempDir(), "missing"), "example", "v1"); err == nil {
 		t.Fatal("expected missing-root traversal failure")
 	}
 }
 
-func TestModuleDirectorySumRejectsFileCountBoundary(t *testing.T) {
+func TestPackageDirectorySumRejectsFileCountBoundary(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte("ok"), 0o600); err != nil {
 		t.Fatal(err)
@@ -572,12 +572,12 @@ func TestModuleDirectorySumRejectsFileCountBoundary(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	if _, err := ModuleDirectorySum(root, "example", "v1"); err == nil || !strings.Contains(err.Error(), "more than") {
+	if _, err := PackageDirectorySum(root, "example", "v1"); err == nil || !strings.Contains(err.Error(), "more than") {
 		t.Fatalf("file-count error: %v", err)
 	}
 }
 
-func TestModuleDirectorySumRejectsNonPortablePath(t *testing.T) {
+func TestPackageDirectorySumRejectsNonPortablePath(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, "SKILL.md"), []byte("ok"), 0o600); err != nil {
 		t.Fatal(err)
@@ -585,7 +585,7 @@ func TestModuleDirectorySumRejectsNonPortablePath(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "trailing "), []byte("bad"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := ModuleDirectorySum(root, "example", "v1"); err == nil || !strings.Contains(err.Error(), "invalid path") {
+	if _, err := PackageDirectorySum(root, "example", "v1"); err == nil || !strings.Contains(err.Error(), "invalid path") {
 		t.Fatalf("portable path error: %v", err)
 	}
 }

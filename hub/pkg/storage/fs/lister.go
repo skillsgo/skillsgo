@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on a containment-checked Module storage location and semantic-version directory names.
- * [OUTPUT]: Provides safe listing of immutable versions stored for one Module.
- * [POS]: Serves as the filesystem backend's Module-version enumeration operation.
+ * [INPUT]: Depends on a containment-checked Package storage location and semantic-version directory names.
+ * [OUTPUT]: Provides safe listing of immutable versions stored for one Package.
+ * [POS]: Serves as the filesystem backend's Package-version enumeration operation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package fs

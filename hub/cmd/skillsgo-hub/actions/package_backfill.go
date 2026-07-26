@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Catalog Backfill Run state, typed River enqueueing/finalization, the ordinary Module Publisher, upstream Tag commit catalogs, and Fiber administration routing.
- * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Module River worker with heartbeat and stale-Run reconciliation.
+ * [INPUT]: Depends on Catalog Backfill Run state, typed River enqueueing/finalization, the ordinary Package Publisher, upstream Tag commit catalogs, and Fiber administration routing.
+ * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Package River worker with heartbeat and stale-Run reconciliation.
  * [POS]: Serves as the administration workflow joining durable business state, River transport, and Historical Publication materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -32,18 +32,18 @@ const (
 	backfillStaleAfter      = 2 * time.Hour
 )
 
-type moduleBackfillArgs struct {
-	RunID      string `json:"run_id" river:"unique"`
-	ModulePath string `json:"module_path" river:"unique"`
+type packageBackfillArgs struct {
+	RunID       string `json:"run_id" river:"unique"`
+	PackagePath string `json:"package_path" river:"unique"`
 }
 
-func (moduleBackfillArgs) Kind() string { return "module_history_backfill" }
+func (packageBackfillArgs) Kind() string { return "module_history_backfill" }
 
-type moduleBackfillReconcileArgs struct{}
+type packageBackfillReconcileArgs struct{}
 
-func (moduleBackfillReconcileArgs) Kind() string { return "module_history_backfill_reconcile" }
+func (packageBackfillReconcileArgs) Kind() string { return "module_history_backfill_reconcile" }
 
-type moduleBackfillService struct {
+type packageBackfillService struct {
 	metadata     *catalog.Catalog
 	tasks        *taskqueue.Runtime
 	lister       repositoryVersionLister
@@ -55,21 +55,21 @@ type repositoryVersionLister interface {
 	ListRepositoryTags(context.Context, string) ([]skill.RepositoryTag, error)
 }
 
-func newRepositoryBackfillService(metadata *catalog.Catalog, tasks *taskqueue.Runtime, lister repositoryVersionLister, materializer historicalRepositoryMaterializer, logger *log.Logger) *moduleBackfillService {
-	return &moduleBackfillService{metadata: metadata, tasks: tasks, lister: lister, materializer: materializer, logger: logger}
+func newRepositoryBackfillService(metadata *catalog.Catalog, tasks *taskqueue.Runtime, lister repositoryVersionLister, materializer historicalRepositoryMaterializer, logger *log.Logger) *packageBackfillService {
+	return &packageBackfillService{metadata: metadata, tasks: tasks, lister: lister, materializer: materializer, logger: logger}
 }
 
-func (s *moduleBackfillService) Register() error {
+func (s *packageBackfillService) Register() error {
 	if err := taskqueue.Register(s.tasks, s.run); err != nil {
 		return err
 	}
-	if err := taskqueue.RegisterFailureHandler(s.tasks, func(ctx context.Context, args moduleBackfillArgs, _ error) error {
+	if err := taskqueue.RegisterFailureHandler(s.tasks, func(ctx context.Context, args packageBackfillArgs, _ error) error {
 		diagnostic := backfillDiagnostic("repository", "execution_failed")
 		return s.metadata.CompleteBackfillRun(ctx, args.RunID, 1, []string{diagnostic})
 	}); err != nil {
 		return err
 	}
-	if err := taskqueue.Register(s.tasks, func(ctx context.Context, _ moduleBackfillReconcileArgs) error {
+	if err := taskqueue.Register(s.tasks, func(ctx context.Context, _ packageBackfillReconcileArgs) error {
 		cutoff := time.Now().UTC().Add(-backfillStaleAfter)
 		if _, err := s.metadata.ExpireStaleBackfillRuns(ctx, cutoff); err != nil {
 			return err
@@ -79,7 +79,7 @@ func (s *moduleBackfillService) Register() error {
 			return err
 		}
 		for _, run := range queued {
-			active, err := taskqueue.HasActiveJob(ctx, s.tasks, moduleBackfillArgs{RunID: run.ID, ModulePath: run.ModulePath})
+			active, err := taskqueue.HasActiveJob(ctx, s.tasks, packageBackfillArgs{RunID: run.ID, PackagePath: run.PackagePath})
 			if err != nil {
 				return err
 			}
@@ -93,22 +93,22 @@ func (s *moduleBackfillService) Register() error {
 	}); err != nil {
 		return err
 	}
-	return s.tasks.Every(moduleBackfillReconcileArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, backfillReconcileEvery, true)
+	return s.tasks.Every(packageBackfillReconcileArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, backfillReconcileEvery, true)
 }
 
-func (s *moduleBackfillService) Submit(ctx context.Context, modulePath string) (catalog.BackfillRun, bool, error) {
-	return s.metadata.SubmitBackfillRun(ctx, modulePath, func(ctx context.Context, tx pgx.Tx, run catalog.BackfillRun) error {
-		return s.tasks.EnqueueTx(ctx, tx, moduleBackfillArgs{RunID: run.ID, ModulePath: modulePath}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource})
+func (s *packageBackfillService) Submit(ctx context.Context, packagePath string) (catalog.BackfillRun, bool, error) {
+	return s.metadata.SubmitBackfillRun(ctx, packagePath, func(ctx context.Context, tx pgx.Tx, run catalog.BackfillRun) error {
+		return s.tasks.EnqueueTx(ctx, tx, packageBackfillArgs{RunID: run.ID, PackagePath: packagePath}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource})
 	})
 }
 
-func (s *moduleBackfillService) Latest(ctx context.Context, modulePath string) (catalog.BackfillRun, error) {
-	return s.metadata.LatestBackfillRun(ctx, modulePath)
+func (s *packageBackfillService) Latest(ctx context.Context, packagePath string) (catalog.BackfillRun, error) {
+	return s.metadata.LatestBackfillRun(ctx, packagePath)
 }
 
-func (s *moduleBackfillService) run(ctx context.Context, args moduleBackfillArgs) error {
-	if args.RunID == "" || args.ModulePath == "" {
-		return fmt.Errorf("Module Backfill job requires run_id and module_path")
+func (s *packageBackfillService) run(ctx context.Context, args packageBackfillArgs) error {
+	if args.RunID == "" || args.PackagePath == "" {
+		return fmt.Errorf("Package Backfill job requires run_id and package_path")
 	}
 	run, active, err := s.metadata.StartBackfillRun(ctx, args.RunID)
 	if err != nil {
@@ -117,7 +117,7 @@ func (s *moduleBackfillService) run(ctx context.Context, args moduleBackfillArgs
 	if !active || run.Status == catalog.BackfillComplete || run.Status == catalog.BackfillCompleteWithErrors {
 		return nil
 	}
-	tags, err := s.lister.ListRepositoryTags(ctx, args.ModulePath)
+	tags, err := s.lister.ListRepositoryTags(ctx, args.PackagePath)
 	diagnostics := make([]string, 0)
 	errorCount := 0
 	if err != nil {
@@ -132,7 +132,7 @@ func (s *moduleBackfillService) run(ctx context.Context, args moduleBackfillArgs
 			if err := s.metadata.TouchBackfillRun(ctx, args.RunID); err != nil {
 				return err
 			}
-			commitSHA, publicationErr := s.metadata.ModulePublicationCommit(ctx, args.ModulePath, version)
+			commitSHA, publicationErr := s.metadata.PackagePublicationCommit(ctx, args.PackagePath, version)
 			if publicationErr != nil && !errors.Is(publicationErr, pgx.ErrNoRows) {
 				errorCount++
 				diagnostic := backfillDiagnostic(version, "publication_check_failed")
@@ -149,7 +149,7 @@ func (s *moduleBackfillService) run(ctx context.Context, args moduleBackfillArgs
 				}
 				continue
 			}
-			if _, materializeErr := s.materializer.MaterializeHistorical(ctx, args.ModulePath, version); materializeErr != nil {
+			if _, materializeErr := s.materializer.MaterializeHistorical(ctx, args.PackagePath, version); materializeErr != nil {
 				errorCount++
 				diagnostic := backfillDiagnostic(version, classifyBackfillFailure(materializeErr))
 				diagnostics = appendBoundedBackfillDiagnostic(diagnostics, diagnostic)
@@ -160,13 +160,13 @@ func (s *moduleBackfillService) run(ctx context.Context, args moduleBackfillArgs
 	return s.metadata.CompleteBackfillRun(ctx, args.RunID, errorCount, diagnostics)
 }
 
-func (s *moduleBackfillService) logFailure(_ context.Context, args moduleBackfillArgs, version, diagnostic string) {
+func (s *packageBackfillService) logFailure(_ context.Context, args packageBackfillArgs, version, diagnostic string) {
 	s.logger.WithFields(map[string]any{
-		"component":   "repository_backfill",
-		"module_path": args.ModulePath,
-		"run_id":      args.RunID,
-		"version":     version,
-	}).Warnf("Module Backfill version failed: %s", diagnostic)
+		"component":    "repository_backfill",
+		"package_path": args.PackagePath,
+		"run_id":       args.RunID,
+		"version":      version,
+	}).Warnf("Package Backfill version failed: %s", diagnostic)
 }
 
 func canonicalSemanticTags(tags []skill.RepositoryTag) []skill.RepositoryTag {
@@ -207,7 +207,7 @@ func classifyBackfillFailure(err error) string {
 }
 
 type backfillRequest struct {
-	ModulePaths []string `json:"modulePaths"`
+	PackagePaths []string `json:"packagePaths"`
 }
 
 type backfillResponse struct {
@@ -215,36 +215,36 @@ type backfillResponse struct {
 }
 
 type backfillResult struct {
-	ModulePath string               `json:"modulePath"`
-	Run        *catalog.BackfillRun `json:"run,omitempty"`
-	ErrorCode  string               `json:"errorCode,omitempty"`
+	PackagePath string               `json:"packagePath"`
+	Run         *catalog.BackfillRun `json:"run,omitempty"`
+	ErrorCode   string               `json:"errorCode,omitempty"`
 }
 
-type moduleBackfillAdministration interface {
+type packageBackfillAdministration interface {
 	Submit(context.Context, string) (catalog.BackfillRun, bool, error)
 	Latest(context.Context, string) (catalog.BackfillRun, error)
 }
 
-func registerModuleBackfillRoutes(router fiber.Router, service moduleBackfillAdministration) {
-	router.Post("/module-backfills", func(c fiber.Ctx) error {
+func registerPackageBackfillRoutes(router fiber.Router, service packageBackfillAdministration) {
+	router.Post("/package-backfills", func(c fiber.Ctx) error {
 		var request backfillRequest
 		if err := c.Bind().JSON(&request); err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid JSON request")
 		}
-		ids, err := validateBackfillModulePaths(request.ModulePaths)
+		ids, err := validateBackfillPackagePaths(request.PackagePaths)
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, err.Error())
 		}
 		results := make([]backfillResult, 0, len(ids))
 		accepted := 0
-		for _, modulePath := range ids {
-			run, _, submitErr := service.Submit(c.Context(), modulePath)
+		for _, packagePath := range ids {
+			run, _, submitErr := service.Submit(c.Context(), packagePath)
 			if submitErr != nil {
-				results = append(results, backfillResult{ModulePath: modulePath, ErrorCode: "submission_unavailable"})
+				results = append(results, backfillResult{PackagePath: packagePath, ErrorCode: "submission_unavailable"})
 				continue
 			}
 			runCopy := run
-			results = append(results, backfillResult{ModulePath: modulePath, Run: &runCopy})
+			results = append(results, backfillResult{PackagePath: packagePath, Run: &runCopy})
 			accepted++
 		}
 		if accepted == 0 {
@@ -252,48 +252,48 @@ func registerModuleBackfillRoutes(router fiber.Router, service moduleBackfillAdm
 		}
 		return c.Status(fiber.StatusAccepted).JSON(backfillResponse{Results: results})
 	})
-	router.Get("/module-backfills", func(c fiber.Ctx) error {
-		ids, err := validateBackfillModulePaths(strings.Split(c.Query("modulePaths"), ","))
+	router.Get("/package-backfills", func(c fiber.Ctx) error {
+		ids, err := validateBackfillPackagePaths(strings.Split(c.Query("packagePaths"), ","))
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, err.Error())
 		}
 		results := make([]backfillResult, 0, len(ids))
-		for _, modulePath := range ids {
-			run, statusErr := service.Latest(c.Context(), modulePath)
+		for _, packagePath := range ids {
+			run, statusErr := service.Latest(c.Context(), packagePath)
 			if errors.Is(statusErr, pgx.ErrNoRows) {
-				results = append(results, backfillResult{ModulePath: modulePath, ErrorCode: "not_found"})
+				results = append(results, backfillResult{PackagePath: packagePath, ErrorCode: "not_found"})
 				continue
 			}
 			if statusErr != nil {
-				results = append(results, backfillResult{ModulePath: modulePath, ErrorCode: "status_unavailable"})
+				results = append(results, backfillResult{PackagePath: packagePath, ErrorCode: "status_unavailable"})
 				continue
 			}
 			runCopy := run
-			results = append(results, backfillResult{ModulePath: modulePath, Run: &runCopy})
+			results = append(results, backfillResult{PackagePath: packagePath, Run: &runCopy})
 		}
 		return c.JSON(backfillResponse{Results: results})
 	})
 }
 
-func validateBackfillModulePaths(ids []string) ([]string, error) {
+func validateBackfillPackagePaths(ids []string) ([]string, error) {
 	if len(ids) == 0 || (len(ids) == 1 && strings.TrimSpace(ids[0]) == "") {
-		return nil, fmt.Errorf("modulePaths must not be empty")
+		return nil, fmt.Errorf("packagePaths must not be empty")
 	}
 	if len(ids) > maxBackfillRepositories {
-		return nil, fmt.Errorf("modulePaths exceeds the maximum of %d", maxBackfillRepositories)
+		return nil, fmt.Errorf("packagePaths exceeds the maximum of %d", maxBackfillRepositories)
 	}
 	seen := make(map[string]struct{}, len(ids))
 	result := make([]string, len(ids))
-	for index, modulePath := range ids {
-		parsed, err := skill.ParseModulePath(modulePath)
-		if err != nil || parsed.String() != modulePath {
-			return nil, fmt.Errorf("modulePaths contains invalid canonical Module Path %q", modulePath)
+	for index, packagePath := range ids {
+		parsed, err := skill.ParsePackagePath(packagePath)
+		if err != nil || parsed.String() != packagePath {
+			return nil, fmt.Errorf("packagePaths contains invalid canonical Package Path %q", packagePath)
 		}
-		if _, duplicate := seen[modulePath]; duplicate {
-			return nil, fmt.Errorf("modulePaths contains duplicate %q", modulePath)
+		if _, duplicate := seen[packagePath]; duplicate {
+			return nil, fmt.Errorf("packagePaths contains duplicate %q", packagePath)
 		}
-		seen[modulePath] = struct{}{}
-		result[index] = modulePath
+		seen[packagePath] = struct{}{}
+		result[index] = packagePath
 	}
 	return result, nil
 }
