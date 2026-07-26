@@ -21,6 +21,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
+	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -103,6 +104,19 @@ func (p *modulePublisher) materializePublication(ctx context.Context, modulePath
 		entry.Debugf("repository publication started")
 		workCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 15*time.Minute)
 		defer cancel()
+		// A caller can reach this flight after an earlier identical flight has
+		// completed but before its initial catalog miss is refreshed. Recheck
+		// immutable coordinates inside the flight so staggered callers reuse the
+		// visible publication instead of fetching and conflicting with it.
+		if protocolversion.IsImmutable(query) {
+			members, err := p.publication.catalog.VersionSkills(workCtx, modulePath, query)
+			if err != nil {
+				return "", err
+			}
+			if len(members) > 0 {
+				return query, nil
+			}
+		}
 		select {
 		case p.upstream <- struct{}{}:
 			defer func() { <-p.upstream }()
