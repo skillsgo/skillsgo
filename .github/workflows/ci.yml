@@ -1,5 +1,5 @@
 # [INPUT]: Depends on the Protocol, CLI, Hub, App, Web, cross-product E2E validation commands, and OSV's supported dependency lockfiles.
-# [OUTPUT]: Provides stable validation plus non-blocking known-vulnerability visibility for every maintained product boundary.
+# [OUTPUT]: Provides stable validation plus blocking known-vulnerability enforcement for every maintained product boundary.
 # [POS]: Serves as the repository-wide continuous integration workflow and exposes one stable Required job for repository rulesets.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 name: Continuous Integration
@@ -28,7 +28,7 @@ jobs:
       security-events: write
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@9a498708959aeaef5ef730655706c5a1df1edbc2 # v2.3.8
     with:
-      fail-on-vuln: false
+      fail-on-vuln: true
       upload-sarif: false
 
   protocol:
