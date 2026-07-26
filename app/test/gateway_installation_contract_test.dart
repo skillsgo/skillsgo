@@ -109,7 +109,7 @@ void main() {
     runner.result = const ProcessOutput(
       exitCode: 0,
       stdout: r'''
-{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"global","agent":"codex","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","skillId":"github.com/a/b/-/Test ; $(touch nope)","version":"","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1}}
+{"schemaVersion":2,"phase":"management-preflight","targets":[{"target":{"scope":"global","agent":"codex","path":"/tmp/Test ; $(touch nope)"},"name":"Test ; $(touch nope)","skillId":"github.com/a/b/-/Test ; $(touch nope)","version":"","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1}}
 ''',
       stderr: '',
     );
@@ -406,7 +406,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":3,"planId":"plan-123","summary":{"eligible":4,"skipped":1},"scopes":{"global":{"eligible":1},"projects":[{"projectRoot":"/tmp/Workspace With Spaces","eligible":2},{"projectRoot":"/tmp/Second Workspace","eligible":1}]},"previews":[{"name":"demo","skillId":"github.com/acme/skills/-/demo","scope":"global"}]}',
+            '{"schemaVersion":4,"planId":"plan-123","summary":{"eligible":4,"skipped":1},"scopes":{"global":{"eligible":1},"projects":[{"projectRoot":"/tmp/Workspace With Spaces","eligible":2},{"projectRoot":"/tmp/Second Workspace","eligible":1}]},"previews":[{"name":"demo","skillId":"github.com/acme/skills/-/demo","scope":"global"}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -424,7 +424,7 @@ void main() {
 
     expect(result.id, 'plan-123');
     expect(result.allEligibleCount, 4);
-    expect(result.userEligibleCount, 1);
+    expect(result.globalEligibleCount, 1);
     expect(result.previews.single.skillId, 'github.com/acme/skills/-/demo');
     expect(result.eligibleForProject('/tmp/Workspace With Spaces'), 2);
     expect(result.eligibleForProject('/tmp/Second Workspace'), 1);
@@ -448,7 +448,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":3,"summary":{"takenOver":2,"skipped":1},"results":[{"name":"demo","skillId":"github.com/acme/skills/-/demo","version":"v1.2.3","status":"taken-over","target":{"agent":"codex","scope":"global","path":"/tmp/demo"}},{"name":"project-demo","skillId":"github.com/acme/skills/-/project-demo","version":"v1.2.3","status":"taken-over","target":{"agent":"claude-code","scope":"project","projectRoot":"/tmp/Workspace With Spaces","path":"/tmp/Workspace With Spaces/.claude/skills/demo"}},{"name":"missing-demo","status":"skipped","reason":"missing-target","target":{"scope":"project","projectRoot":"/tmp/Workspace With Spaces","path":""}}]}',
+            '{"schemaVersion":4,"summary":{"takenOver":2,"skipped":1},"results":[{"name":"demo","skillId":"github.com/acme/skills/-/demo","version":"v1.2.3","status":"taken-over","target":{"agent":"codex","scope":"global","path":"/tmp/demo"}},{"name":"project-demo","skillId":"github.com/acme/skills/-/project-demo","version":"v1.2.3","status":"taken-over","target":{"agent":"claude-code","scope":"project","projectRoot":"/tmp/Workspace With Spaces","path":"/tmp/Workspace With Spaces/.claude/skills/demo"}},{"name":"missing-demo","status":"skipped","reason":"missing-target","target":{"scope":"project","projectRoot":"/tmp/Workspace With Spaces","path":""}}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -461,7 +461,7 @@ void main() {
       const BatchTakeoverPlan(
         id: 'plan-123',
         allEligibleCount: 4,
-        userEligibleCount: 1,
+        globalEligibleCount: 1,
         eligibleCountByProjectRoot: {
           '/tmp/Workspace With Spaces': 2,
           '/tmp/Second Workspace': 1,

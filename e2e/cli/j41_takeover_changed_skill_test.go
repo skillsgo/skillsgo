@@ -35,7 +35,7 @@ func TestJ41SkipChangedSkillWithoutLosingData(t *testing.T) {
 	var plan takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(preview.output), &plan), preview.output)
 	require.Equal(t, 2, plan.Summary.Eligible, preview.output)
-	require.Equal(t, 2, plan.Scopes.User.Eligible)
+	require.Equal(t, 2, plan.Scopes.Global.Eligible)
 
 	changedBytes := []byte("---\nname: changed\ndescription: edited after review\n---\n# Keep my edits\n")
 	changedPath := filepath.Join(skillsRoot, "changed", "SKILL.md")
@@ -89,5 +89,5 @@ func TestJ41SkipChangedSkillWithoutLosingData(t *testing.T) {
 	var rescanned takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(rescan.output), &rescanned), rescan.output)
 	require.Equal(t, 1, rescanned.Summary.Eligible)
-	require.Equal(t, 1, rescanned.Scopes.User.Eligible)
+	require.Equal(t, 1, rescanned.Scopes.Global.Eligible)
 }

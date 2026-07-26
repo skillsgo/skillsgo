@@ -23,9 +23,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const inventorySchemaVersion = inventory.SchemaVersion
-
-type inventoryReport = inventory.Report
+type listReport = inventory.Report
 
 func newListCommand(catalog *agent.Catalog) *cobra.Command {
 	var includeGlobal bool

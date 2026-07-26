@@ -647,13 +647,13 @@
   "updateCheckFailed": "KIỂM TRA THẤT BẠI",
   "installSkill": "Cài đặt kỹ năng",
   "installLocationTitle": "Đặt vị trí cài đặt",
-  "userLevel": "Cấp độ người dùng",
+  "globalLevel": "Global",
   "projectLevel": "Cấp độ dự án",
   "projects": "Dự án",
   "loading": "Đang tải…",
   "repositoryParsing": "Đang phân tích kho lưu trữ…",
-  "userInstallSummary": "Có sẵn cho Agent {agents} ở cấp độ người dùng",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

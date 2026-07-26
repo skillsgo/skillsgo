@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on strict Repository YAML/Lock state, Scope Module Stores, coordinate Projections, the Agent Catalog, and read-only target filesystem metadata.
- * [OUTPUT]: Provides inventory v6 Repository-managed and External Library reconciliation with explicit projects, mode-free Projection targets, target health, and Discovery-Root-derived visibility.
+ * [OUTPUT]: Provides inventory v7 Repository-managed and External Library reconciliation with explicit projects, mode-free Projection targets, target health, and Discovery-Root-derived visibility.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,7 +18,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 )
 
-const SchemaVersion = 6
+const SchemaVersion = 7
 
 var ErrEmptyProjectRoot = errors.New("project root must not be empty")
 

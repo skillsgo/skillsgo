@@ -17,13 +17,13 @@
 - `product_reads_test.go`: specifies single and batch Find, top-level Skill reads, ordered batch hydration, and grouped Hub service inspection through Execute.
 - `catalog_update_check.go`, `catalog_update_check_test.go`: expose and specify one bounded read-only App machine command that compares installed Library-entry versions with one Module-fresh latest candidate resolved once per Module.
 - `cloud_reporting.go`: publishes best-effort post-commit installation facts directly to the Cloud origin declared by a Cloud-mode Hub without changing local installation outcomes.
-- `inventory.go`: owns the sole installed-Skill listing command and adapts mode-free Repository-managed/external inventory v6 into stable JSON plus path-rich adaptive Human output, defaulting to the current Workspace.
-- `inventory_test.go`: specifies Repository ID plus Skill Name aggregation, External inventory-key separation, default-Workspace and explicit-scope read-only inspection, target health, Workspace reconciliation, and the explicit-project privacy boundary.
+- `list.go`: owns the sole installed-Skill listing command and adapts mode-free Repository-managed/external inventory v7 into stable JSON plus path-rich adaptive Human output, defaulting to the current Workspace.
+- `list_test.go`: specifies Repository ID plus Skill Name aggregation, External inventory-key separation, default-Workspace and explicit-scope read-only inspection, target health, Workspace reconciliation, and the explicit-project privacy boundary.
 - `verification.go`, `verification_test.go`: expose and specify read-only reconciled installation verification plus direct declaration/target explanations through `verify` and `why`.
-- `takeover.go`: preflights explicitly selected skills.sh User/Workspace lock-backed External copies into a bounded, expiring, lock-identity- and filesystem-state-bound plan with exact per-location counts, then verifies each unchanged copy against its exact immutable Repository member and adopts the complete Repository through the ordinary add transaction before recoverably removing the External directory.
+- `takeover.go`: preflights explicitly selected skills.sh Global/Workspace lock-backed External copies into a bounded, expiring, lock-identity- and filesystem-state-bound plan with exact per-location counts, then verifies each unchanged copy against its exact immutable Repository member and adopts the complete Repository through the ordinary add transaction before recoverably removing the External directory.
 - `takeover_test.go`: specifies exact Repository-member adoption, mismatch refusal without managed state, malformed lock retention, provider identity, localized help, and required execution arguments through `Execute`.
 - `management_plan.go`: adapts repeatable flat exact-target flags into top-level External Remove preflight JSON and adaptive Human, JSON, or NDJSON execution progress/results.
-- `management_plan_test.go`: specifies state-bound exact External removal and absence of removed `manage`, `use`, `init`, and `list` commands.
+- `management_plan_test.go`: specifies state-bound exact External removal and absence of removed `manage`, `use`, `init`, and `inventory` commands.
 - `version.go`: serves the human version output and versioned App startup handshake.
 - `args_test.go`: covers public argument normalization and environment-gated test Agent behavior.
 - `i18n_test.go`: covers localized root command help.
@@ -33,7 +33,7 @@
 - `repository_add_test.go`, `module_store_test.go`: specify Repository selector matching plus the public exact-version Workspace Module Store journey, including the Repository removal confirmation gate.
 - `repository_test_helpers_test.go`: provides shared Repository protocol fixtures for command-level tests.
 - `workspace_integrity.go`: validates complete immutable resource evidence before atomically extending every destination Workspace Sum and publishing exact Info Cache entries for all installation entry points.
-- `workspace_restore.go`: performs conflict-safe idempotent Workspace/User ensure from strict YAML/Lock, restoring absent Module Store from exact Proxy resources and absent projections from verified Module Store without selector resolution, update, pruning, or overwrite.
+- `workspace_restore.go`: performs conflict-safe idempotent Workspace/Global ensure from strict YAML/Lock, restoring absent Module Store from exact Proxy resources and absent projections from verified Module Store without selector resolution, update, pruning, or overwrite.
 - `version_test.go`: specifies CLI identity and App protocol compatibility through `Execute`.
 
 ## Architectural Boundary

@@ -394,13 +394,13 @@
   "updateCheckFailed": "CHECK FAILED",
   "installSkill": "Install Skill",
   "installLocationTitle": "Set installation location",
-  "userLevel": "User Level",
+  "globalLevel": "Global",
   "projectLevel": "Project Level",
   "projects": "Projects",
   "loading": "Loading…",
   "repositoryParsing": "Parsing source…",
-  "userInstallSummary": "Available to {agents} Agents at user level",
-  "@userInstallSummary": {"placeholders": {"agents": {"type": "int"}}},
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {"placeholders": {"agents": {"type": "int"}}},
   "projectInstallSummary": "{projects} projects · {agents} Agents",
   "@projectInstallSummary": {
     "placeholders": {

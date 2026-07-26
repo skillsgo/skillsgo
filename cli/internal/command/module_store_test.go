@@ -126,7 +126,7 @@ func TestAddExactRepositoryVersionCreatesWorkspaceModuleStoreAndSelectedProjecti
 	require.True(t, os.SameFile(expectedInfo, responseInfo))
 	output.Reset()
 	require.NoError(t, Execute([]string{"list", "--project", workspace, "--output", "json"}, &output, &output))
-	var inventory inventoryReport
+	var inventory listReport
 	require.NoError(t, json.Unmarshal(output.Bytes(), &inventory))
 	require.Len(t, inventory.Entries, 1)
 	require.Equal(t, modulePath, inventory.Entries[0].ModulePath)

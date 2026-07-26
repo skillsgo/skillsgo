@@ -17,7 +17,7 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/trash"
 )
 
-const SchemaVersion = 1
+const SchemaVersion = 2
 
 type Action string
 type Outcome string

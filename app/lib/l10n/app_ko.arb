@@ -647,13 +647,13 @@
   "updateCheckFailed": "확인 실패",
   "installSkill": "스킬 설치",
   "installLocationTitle": "설치 위치 설정",
-  "userLevel": "사용자 수준",
+  "globalLevel": "Global",
   "projectLevel": "프로젝트 수준",
   "projects": "프로젝트",
   "loading": "로드 중…",
   "repositoryParsing": "파싱 저장소…",
-  "userInstallSummary": "사용자 수준의 {agents} 에이전트가 사용할 수 있습니다.",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

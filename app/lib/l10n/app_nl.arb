@@ -647,13 +647,13 @@
   "updateCheckFailed": "CONTROLE MISLUKT",
   "installSkill": "Installeer Skill",
   "installLocationTitle": "Installatielocatie instellen",
-  "userLevel": "Gebruikersniveau",
+  "globalLevel": "Global",
   "projectLevel": "Projectniveau",
   "projects": "Projecten",
   "loading": "Laden…",
   "repositoryParsing": "Repository parseren…",
-  "userInstallSummary": "Beschikbaar voor {agents} Agents op gebruikersniveau",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

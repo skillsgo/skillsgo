@@ -1227,7 +1227,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get installLocationTitle => 'Tetapkan lokasi pemasangan';
 
   @override
-  String get userLevel => 'Tingkat Pengguna';
+  String get globalLevel => 'Global';
 
   @override
   String get projectLevel => 'Tingkat Proyek';
@@ -1242,8 +1242,8 @@ class AppLocalizationsId extends AppLocalizations {
   String get repositoryParsing => 'Mengurai Repositori…';
 
   @override
-  String userInstallSummary(int agents) {
-    return 'Tersedia untuk Agen $agents di tingkat pengguna';
+  String globalInstallSummary(int agents) {
+    return 'Available globally to $agents Agents';
   }
 
   @override

@@ -1221,7 +1221,7 @@ class AppLocalizationsSv extends AppLocalizations {
   String get installLocationTitle => 'Ställ in installationsplats';
 
   @override
-  String get userLevel => 'Användarnivå';
+  String get globalLevel => 'Global';
 
   @override
   String get projectLevel => 'Projektnivå';
@@ -1236,8 +1236,8 @@ class AppLocalizationsSv extends AppLocalizations {
   String get repositoryParsing => 'Parsar arkivet...';
 
   @override
-  String userInstallSummary(int agents) {
-    return 'Tillgänglig för $agents Agents på användarnivå';
+  String globalInstallSummary(int agents) {
+    return 'Available globally to $agents Agents';
   }
 
   @override

@@ -136,7 +136,7 @@ runtime configuration rather than assuming `~/.openclaw` in every profile.
 2. For all Agents not listed here, set `DiscoveryRoots = [ManagedRoot]` and mark
    the result `unknown` or `unverified`.
 3. For these six Agents, store root kind (`native`, `compat`, `legacy`,
-   `admin`, or `configurable`) and scope (`user` or `project`) rather than a flat
+   `admin`, or `configurable`) and scope (`global` or `project`) rather than a flat
    path list.
 4. Model ancestor traversal and workspace-relative roots as rules, not as paths
    resolved only once at process startup.

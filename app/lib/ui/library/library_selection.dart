@@ -13,7 +13,7 @@ class _InstallationScopeGroup {
   final List<String> agents;
 
   String semanticLabel(String Function(String) agentLabel) =>
-      '${project?.name ?? 'User scope'}: ${agents.map(agentLabel).join(', ')}';
+      '${project?.name ?? 'Global'}: ${agents.map(agentLabel).join(', ')}';
 }
 
 List<_InstallationScopeGroup> _installationScopeGroups(

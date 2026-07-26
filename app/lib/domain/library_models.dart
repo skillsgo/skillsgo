@@ -54,20 +54,20 @@ class BatchTakeoverPlan {
   const BatchTakeoverPlan({
     required this.id,
     required this.allEligibleCount,
-    required this.userEligibleCount,
+    required this.globalEligibleCount,
     this.eligibleCountByProjectRoot = const {},
     this.previews = const [],
   });
 
   final String id;
   final int allEligibleCount;
-  final int userEligibleCount;
+  final int globalEligibleCount;
   final Map<String, int> eligibleCountByProjectRoot;
   final List<BatchTakeoverPreview> previews;
 
   int eligibleCount(BatchTakeoverScope scope) => switch (scope.kind) {
     BatchTakeoverScopeKind.all => allEligibleCount,
-    BatchTakeoverScopeKind.global => userEligibleCount,
+    BatchTakeoverScopeKind.global => globalEligibleCount,
     BatchTakeoverScopeKind.project => eligibleForProject(scope.projectRoot),
   };
 

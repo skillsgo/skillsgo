@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on canonical Module Paths, immutable versions, canonical Skill name-or-path selectors and Agent IDs, valid Module h1 Sums, strict YAML nodes, and the shared metadata transaction lock.
  * [OUTPUT]: Provides strict skills.yaml/skills-lock.yaml parsing, nearest YAML-root discovery, atomic paired loading with crash recovery, exact pair validation, deterministic normalization, and paired publication.
- * [POS]: Serves as the portable Module dependency intent and integrity boundary for Workspace and User scopes.
+ * [POS]: Serves as the portable Module dependency intent and integrity boundary for Workspace and Global scopes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package project

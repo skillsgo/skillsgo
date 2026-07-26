@@ -647,13 +647,13 @@
   "updateCheckFailed": "COMPROBACIÓN FALLIDA",
   "installSkill": "Instalar Skill",
   "installLocationTitle": "Establecer ubicación de instalación",
-  "userLevel": "Nivel de usuario",
+  "globalLevel": "Global",
   "projectLevel": "Nivel de proyecto",
   "projects": "Proyectos",
   "loading": "Cargando…",
   "repositoryParsing": "Analizando el repositorio…",
-  "userInstallSummary": "Disponible para {agents} Agents a nivel de usuario",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

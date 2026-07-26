@@ -647,13 +647,13 @@
   "updateCheckFailed": "KONTROL BAŞARISIZ",
   "installSkill": "Skill'yi yükleyin",
   "installLocationTitle": "Kurulum konumunu ayarlayın",
-  "userLevel": "Kullanıcı Seviyesi",
+  "globalLevel": "Global",
   "projectLevel": "Proje Düzeyi",
   "projects": "Projeler",
   "loading": "Yükleniyor…",
   "repositoryParsing": "Depo ayrıştırılıyor…",
-  "userInstallSummary": "Kullanıcı düzeyinde {agents} Agents için kullanılabilir",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

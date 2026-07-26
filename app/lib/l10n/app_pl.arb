@@ -647,13 +647,13 @@
   "updateCheckFailed": "SPRAWDZENIE NIEUDANE",
   "installSkill": "Zainstaluj Skill",
   "installLocationTitle": "Ustaw miejsce instalacji",
-  "userLevel": "Poziom użytkownika",
+  "globalLevel": "Global",
   "projectLevel": "Poziom projektu",
   "projects": "Projektowanie",
   "loading": "Załadunek…",
   "repositoryParsing": "Analizuję repozytorium…",
-  "userInstallSummary": "Dostępne dla {agents} Agents na poziomie użytkownika",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

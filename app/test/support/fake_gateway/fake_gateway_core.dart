@@ -87,7 +87,7 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
     this.takeoverPlan = const BatchTakeoverPlan(
       id: 'fake-takeover-plan',
       allEligibleCount: 1,
-      userEligibleCount: 1,
+      globalEligibleCount: 1,
     ),
     this.takeoverPlanCompleter,
     this.takeoverCompleter,

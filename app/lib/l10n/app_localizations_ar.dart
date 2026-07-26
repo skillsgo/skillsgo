@@ -1220,7 +1220,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get installLocationTitle => 'اختيار موقع التثبيت';
 
   @override
-  String get userLevel => 'نطاق المستخدم';
+  String get globalLevel => 'Global';
 
   @override
   String get projectLevel => 'نطاق المشروع';
@@ -1235,8 +1235,8 @@ class AppLocalizationsAr extends AppLocalizations {
   String get repositoryParsing => 'جارٍ تحليل المستودع...';
 
   @override
-  String userInstallSummary(int agents) {
-    return 'متاح لـ ⁨$agents⁩ Agents في نطاق المستخدم';
+  String globalInstallSummary(int agents) {
+    return 'Available globally to $agents Agents';
   }
 
   @override

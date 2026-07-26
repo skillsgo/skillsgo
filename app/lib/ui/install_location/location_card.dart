@@ -215,7 +215,7 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
         children: [
           Text(
             scope == InstallationScope.global
-                ? l10n.userInstallSummary(selections.length)
+                ? l10n.globalInstallSummary(selections.length)
                 : l10n.projectInstallSummary(
                     selectedProjects.length,
                     selectedAgents.length,

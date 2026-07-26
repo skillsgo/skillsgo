@@ -647,13 +647,13 @@
   "updateCheckFailed": "PERIKSA GAGAL",
   "installSkill": "Instal Keterampilan",
   "installLocationTitle": "Tetapkan lokasi pemasangan",
-  "userLevel": "Tingkat Pengguna",
+  "globalLevel": "Global",
   "projectLevel": "Tingkat Proyek",
   "projects": "Proyek",
   "loading": "Memuat…",
   "repositoryParsing": "Mengurai Repositori…",
-  "userInstallSummary": "Tersedia untuk Agen {agents} di tingkat pengguna",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

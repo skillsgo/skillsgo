@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on installation targets, Added Projects, localized Agent labels, target health chips, and expandable Material presentation.
- * [OUTPUT]: Provides the public InstallationScopePanel and grouped user/project target summaries.
+ * [OUTPUT]: Provides the public InstallationScopePanel and grouped Global/Project target summaries.
  * [POS]: Serves as the installed-target scope summary segment of detail journeys.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

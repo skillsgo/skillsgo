@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Uses command.Execute with isolated Agent roots plus default and explicit User/Workspace inventory scopes.
+ * [INPUT]: Uses command.Execute with isolated Agent roots plus default and explicit Global/Workspace listing scopes.
  * [OUTPUT]: Specifies the sole installed-Skill listing command's default-Workspace behavior, path-rich Human output, mode-free External inventory, explicit-project privacy, and read-only filesystem behavior.
  * [POS]: Serves as command-level coverage for Library discovery outside Repository-managed coordinates.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

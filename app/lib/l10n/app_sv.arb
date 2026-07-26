@@ -647,13 +647,13 @@
   "updateCheckFailed": "KONTROLL MISSLYCKADES",
   "installSkill": "Installera Skill",
   "installLocationTitle": "Ställ in installationsplats",
-  "userLevel": "Användarnivå",
+  "globalLevel": "Global",
   "projectLevel": "Projektnivå",
   "projects": "Projekt",
   "loading": "Belastning…",
   "repositoryParsing": "Parsar arkivet...",
-  "userInstallSummary": "Tillgänglig för {agents} Agents på användarnivå",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

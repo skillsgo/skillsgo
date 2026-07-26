@@ -33,7 +33,7 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(preview.output), &plan), preview.output)
 	require.Len(t, plan.PlanID, 64)
 	require.Equal(t, 1, plan.Summary.Eligible, preview.output)
-	require.Equal(t, 1, plan.Scopes.User.Eligible)
+	require.Equal(t, 1, plan.Scopes.Global.Eligible)
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "modules"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "home", ".agents", "skills.yaml"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "home", ".agents", "skills-lock.yaml"))
@@ -82,7 +82,7 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 	var rescanned takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(rescan.output), &rescanned), rescan.output)
 	require.Zero(t, rescanned.Summary.Eligible)
-	require.Zero(t, rescanned.Scopes.User.Eligible)
+	require.Zero(t, rescanned.Scopes.Global.Eligible)
 }
 
 type takeoverPreflightJSON struct {
@@ -92,9 +92,9 @@ type takeoverPreflightJSON struct {
 		Skipped  int `json:"skipped"`
 	} `json:"summary"`
 	Scopes struct {
-		User struct {
+		Global struct {
 			Eligible int `json:"eligible"`
-		} `json:"user"`
+		} `json:"global"`
 	} `json:"scopes"`
 }
 

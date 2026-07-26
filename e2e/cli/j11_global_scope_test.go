@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the shared E2E suite's isolated CLI environment, real Repository add/install/remove commands, User YAML/Lock/Module Store, ordinary Agent Projections, and Agent-specific home overrides.
+ * [INPUT]: Depends on the shared E2E suite's isolated CLI environment, real Repository add/install/remove commands, Global YAML/Lock/Module Store, ordinary Agent Projections, and Agent-specific home overrides.
  * [OUTPUT]: Provides black-box coverage for Global Scope add, offline install restoration, complete dependency removal, and Agent-specific user-root projection.
  * [POS]: Serves as the Global Scope lifecycle journey in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

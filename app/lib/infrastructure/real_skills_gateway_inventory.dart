@@ -29,7 +29,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
     try {
       final decoded = _decodeVersionedDocument(
         result.output.stdout,
-        schemaVersion: 1,
+        schemaVersion: 2,
       );
       if (decoded['agents'] is! List) {
         throw const FormatException();
@@ -101,7 +101,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
             );
           })
           .toList(growable: false);
-      return AgentCatalog(schemaVersion: 1, agents: agents);
+      return AgentCatalog(schemaVersion: 2, agents: agents);
     } on FormatException {
       throw const SkillsException(
         'The SkillsGo CLI returned invalid Agent JSON.',
@@ -305,7 +305,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
     try {
       final raw = _decodeVersionedDocument(
         command.output.stdout,
-        schemaVersion: 3,
+        schemaVersion: 4,
       );
       if (raw['planId'] is! String ||
           (raw['planId'] as String).isEmpty ||
@@ -318,15 +318,15 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
       final skipped = summary['skipped'];
       final scopes = raw['scopes'] as Map<String, dynamic>;
       final previewItems = raw['previews'];
-      final user = scopes['global'];
+      final global = scopes['global'];
       final projects = scopes['projects'];
       if (eligible is! int ||
           eligible < 0 ||
           skipped is! int ||
           skipped < 0 ||
-          user is! Map<String, dynamic> ||
-          user['eligible'] is! int ||
-          (user['eligible'] as int) < 0 ||
+          global is! Map<String, dynamic> ||
+          global['eligible'] is! int ||
+          (global['eligible'] as int) < 0 ||
           projects is! List ||
           previewItems is! List) {
         throw const FormatException();
@@ -372,7 +372,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
       return BatchTakeoverPlan(
         id: raw['planId'] as String,
         allEligibleCount: eligible,
-        userEligibleCount: user['eligible'] as int,
+        globalEligibleCount: global['eligible'] as int,
         eligibleCountByProjectRoot: Map.unmodifiable(
           eligibleCountByProjectRoot,
         ),
@@ -436,7 +436,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
     try {
       final raw = _decodeVersionedDocument(
         command.output.stdout,
-        schemaVersion: 3,
+        schemaVersion: 4,
       );
       if (raw['summary'] is! Map<String, dynamic> || raw['results'] is! List) {
         throw const FormatException();

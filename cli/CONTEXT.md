@@ -77,12 +77,12 @@ The user-local cache of exact Module Info response bytes. Cache entries are iden
 _Avoid_: mutable resolution cache, membership database, Workspace state
 
 **Global Declaration Root**:
-The `~/.agents` directory that owns Global-scope `skills.yaml` and `skills-lock.yaml`. It contains portable user intent, while SkillsGo-private materialized state remains outside it.
+The `~/.agents` directory that owns Global Scope `skills.yaml` and `skills-lock.yaml`. It contains portable user intent, while SkillsGo-private materialized state remains outside it.
 _Avoid_: `~/.skillsgo` declaration root, per-Agent manifest
 
 **Global State Root**:
-The `~/.skillsgo` directory that owns Global-scope Module Stores, immutable Info, ephemeral plans, and other SkillsGo-private state.
-_Avoid_: user declaration root, Agent configuration root
+The `~/.skillsgo` directory that owns Global Scope Module Stores, immutable Info, ephemeral plans, and other SkillsGo-private state.
+_Avoid_: Global Declaration Root, Agent configuration root
 
 **Batch Takeover**:
 The state-bound execution of user-reviewed External Skill mappings. A skills.sh record supplies only a canonical Module Path, a manual installation uses a user-selected Hub Skill candidate, and neither path treats local content hashes or byte equality as execution authority; the selected immutable Module Artifact is installed through the ordinary managed transaction.

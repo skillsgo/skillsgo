@@ -95,7 +95,7 @@ Only the selected target or binding disappears; shared canonical content and oth
 
 Status: implemented by removing only the Claude Code projection in `j10_remove_one_binding_test.go`.
 
-### J11 — Install and remove a Global-scope Skill
+### J11 — Install and remove a Global Scope Skill
 
 As a user, I want to make a Skill available to an Agent across Workspaces and later remove that Global installation without touching project declarations.
 

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on a strict matching skills.yaml/skills-lock.yaml pair, exact immutable Repository version resources only when Module Store is absent, verified Scope Module Store, Agent Adapter roots, deterministic projection transactions, and the Repository mutation coordinator.
- * [OUTPUT]: Provides conflict-safe idempotent Workspace/User install ensure results, restoring missing Module Store/projections from persisted name-or-path selectors while never performing movable version resolution, pruning extras, or overwriting Local Modifications.
+ * [OUTPUT]: Provides conflict-safe idempotent Workspace/Global install ensure results, restoring missing Module Store/projections from persisted name-or-path selectors while never performing movable version resolution, pruning extras, or overwriting Local Modifications.
  * [POS]: Serves as the declaration-to-Module Store/Projection orchestration behind `skillsgo install`.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */

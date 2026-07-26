@@ -256,7 +256,9 @@ void main() {
       await tester.tap(
         find.byKey(const Key('installation-scope-toggle-project:/work/alpha')),
       );
-      await tester.tap(find.byKey(const Key('installation-scope-toggle-user')));
+      await tester.tap(
+        find.byKey(const Key('installation-scope-toggle-global')),
+      );
       await tester.pumpAndSettle();
       expect(find.text('/work/alpha/.claude/skills/demo'), findsWidgets);
       expect(find.text('/Users/test/.codex/skills/demo'), findsWidgets);
@@ -339,7 +341,9 @@ void main() {
 
       expect(find.text(path), findsNothing);
       expect(find.text('Target missing'), findsNothing);
-      await tester.tap(find.byKey(const Key('installation-scope-toggle-user')));
+      await tester.tap(
+        find.byKey(const Key('installation-scope-toggle-global')),
+      );
       await tester.pumpAndSettle();
       expect(find.text(path), findsOneWidget);
       expect(find.text('Target missing'), findsOneWidget);

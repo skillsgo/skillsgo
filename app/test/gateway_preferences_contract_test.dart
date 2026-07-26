@@ -241,7 +241,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":1,"product":"skillsgo","version":"test","appProtocolVersion":10,"os":"darwin","architecture":"arm64","agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
+            '{"schemaVersion":2,"product":"skillsgo","version":"test","appProtocolVersion":11,"os":"darwin","architecture":"arm64","agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -259,7 +259,7 @@ void main() {
     runner.result = const ProcessOutput(
       exitCode: 0,
       stdout:
-          '{"schemaVersion":1,"product":"skillsgo","version":"old","appProtocolVersion":9,"os":"darwin","architecture":"arm64","agents":[]}',
+          '{"schemaVersion":2,"product":"skillsgo","version":"old","appProtocolVersion":10,"os":"darwin","architecture":"arm64","agents":[]}',
       stderr: '',
     );
     await expectLater(
@@ -362,7 +362,7 @@ void main() {
           ProcessOutput(
             exitCode: 0,
             stdout: jsonEncode({
-              'schemaVersion': 6,
+              'schemaVersion': 7,
               'entries': [
                 {
                   'inventoryKey': 'external:offline',
@@ -393,7 +393,7 @@ void main() {
           const ProcessOutput(
             exitCode: 0,
             stdout:
-                '{"schemaVersion":1,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
+                '{"schemaVersion":2,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
             stderr: '',
           ),
         ]);

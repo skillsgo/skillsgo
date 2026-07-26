@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra and the Agent, Hub, project, Repository installation, target-operation, source, i18n, and terminal UI modules.
- * [OUTPUT]: Provides command.Execute and the Repository-oriented CLI graph, including distinct name and exact-path add selectors, recognized machine-mode failures, conflict-safe Workspace/User install ensure, explicitly confirmed Repository add/update/remove, grouped Hub reads, Catalog update checks, inventory/inspection, and Repository-backed takeover for terminal and App callers.
+ * [OUTPUT]: Provides command.Execute and the Repository-oriented CLI graph, including distinct name and exact-path add selectors, recognized machine-mode failures, conflict-safe Workspace/Global install ensure, explicitly confirmed Repository add/update/remove, grouped Hub reads, Catalog update checks, installed-Skill listing/inspection, and Repository-backed takeover for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -209,7 +209,7 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 			return fmt.Errorf("未找到匹配的 Repository Skill")
 		},
 	}
-	cmd.Flags().BoolVarP(&options.global, "global", "g", false, "从用户级目录移除")
+	cmd.Flags().BoolVarP(&options.global, "global", "g", false, "从全局安装目录移除")
 	cmd.Flags().StringArrayVarP(&options.agents, "agent", "a", nil, "从指定 Agent 移除")
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, appi18n.T("remove.flag.confirm"))
 	cmd.Flags().BoolVar(&all, "all", false, "移除当前范围内的全部 Skill")

@@ -647,13 +647,13 @@
   "updateCheckFailed": "VERIFICA FALLITA",
   "installSkill": "Installa Skill",
   "installLocationTitle": "Imposta il percorso di installazione",
-  "userLevel": "Livello utente",
+  "globalLevel": "Global",
   "projectLevel": "Livello di progetto",
   "projects": "Progetti",
   "loading": "Caricamento…",
   "repositoryParsing": "Analisi del repository…",
-  "userInstallSummary": "Disponibile per {agents} Agents a livello utente",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

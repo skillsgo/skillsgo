@@ -79,7 +79,7 @@ int _localTargetReadRank(SkillInstallationTarget target) {
   return 1;
 }
 
-const _inventorySchemaVersion = 6;
+const _inventorySchemaVersion = 7;
 
 List<String> _strictStringList(Object? value) {
   if (value is! List || value.any((item) => item is! String || item.isEmpty)) {

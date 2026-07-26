@@ -47,7 +47,7 @@ Project B
 ```
 
 - All Skills aggregates every known location and Agent.
-- Global is the user-facing label for Global Scope and shows only Global targets.
+- Global shows only Global Scope targets.
 - Projects include only directories explicitly added by the user.
 - The content toolbar keeps search, update status, and an Agent multi-select separate from location navigation. Every Installed Agent remains available even when it has zero Skills.
 - One location route and any Agent subset may be combined. The project dropdown is removed so the rail is the only location-navigation control.

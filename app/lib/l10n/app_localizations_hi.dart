@@ -1221,7 +1221,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get installLocationTitle => 'स्थापना स्थान निर्धारित करें';
 
   @override
-  String get userLevel => 'उपयोगकर्ता स्तर';
+  String get globalLevel => 'Global';
 
   @override
   String get projectLevel => 'परियोजना स्तर';
@@ -1236,8 +1236,8 @@ class AppLocalizationsHi extends AppLocalizations {
   String get repositoryParsing => 'पार्सिंग रिपॉजिटरी…';
 
   @override
-  String userInstallSummary(int agents) {
-    return 'उपयोगकर्ता स्तर पर $agents Agents के लिए उपलब्ध है';
+  String globalInstallSummary(int agents) {
+    return 'Available globally to $agents Agents';
   }
 
   @override

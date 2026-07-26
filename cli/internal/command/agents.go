@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const agentsSchemaVersion = 1
+const agentsSchemaVersion = 2
 
 type agentsReport struct {
 	SchemaVersion      int            `json:"schemaVersion"`

@@ -145,7 +145,7 @@ void main() {
         takeoverPlan: const BatchTakeoverPlan(
           id: 'scope-plan',
           allEligibleCount: 6,
-          userEligibleCount: 2,
+          globalEligibleCount: 2,
           eligibleCountByProjectRoot: {'/work/alpha': 3, '/work/beta': 1},
         ),
         takeoverResult: const BatchTakeoverResult(takenOver: 2, skipped: 1),
@@ -366,7 +366,7 @@ void main() {
         takeoverPlan: const BatchTakeoverPlan(
           id: 'complete-plan',
           allEligibleCount: 0,
-          userEligibleCount: 0,
+          globalEligibleCount: 0,
         ),
       );
       await tester.pumpWidget(SkillsGoApp(gateway: gateway));
@@ -408,7 +408,7 @@ void main() {
         takeoverPlan: const BatchTakeoverPlan(
           id: 'result-plan',
           allEligibleCount: 3,
-          userEligibleCount: 3,
+          globalEligibleCount: 3,
           previews: [
             BatchTakeoverPreview(
               name: 'alpha-skill',
@@ -582,7 +582,7 @@ void main() {
             takeoverPlan: BatchTakeoverPlan(
               id: 'reduced-motion-plan',
               allEligibleCount: 15,
-              userEligibleCount: 15,
+              globalEligibleCount: 15,
               previews: [
                 BatchTakeoverPreview(
                   name: 'acme-first',
@@ -708,7 +708,7 @@ void main() {
         takeoverPlan: const BatchTakeoverPlan(
           id: 'automatic-plan',
           allEligibleCount: 2,
-          userEligibleCount: 2,
+          globalEligibleCount: 2,
         ),
       );
       await tester.pumpWidget(SkillsGoApp(gateway: gateway));

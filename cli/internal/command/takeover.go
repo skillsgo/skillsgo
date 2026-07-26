@@ -32,8 +32,8 @@ import (
 )
 
 const (
-	takeoverSchemaVersion     = 3
-	takeoverPlanSchemaVersion = 3
+	takeoverSchemaVersion     = 4
+	takeoverPlanSchemaVersion = 4
 )
 
 const (
