@@ -24,7 +24,10 @@ func (s *storageImpl) PutSkillContentIfAbsent(ctx context.Context, module, versi
 	if len(content) == 0 || len(content) > storage.MaxSkillContentBytes || !utf8.Valid(content) || !validSkillContentPath(skillPath) {
 		return false, errors.E(op, "invalid Skill content coordinate or bytes", errors.S(module), errors.V(version), errors.KindBadRequest)
 	}
-	location := s.skillContentLocation(module, version, skillPath)
+	location, locationErr := s.skillContentLocation(module, version, skillPath)
+	if locationErr != nil {
+		return false, errors.E(op, locationErr, errors.S(module), errors.V(version), errors.KindBadRequest)
+	}
 	if err := s.filesystem.MkdirAll(filepath.Dir(location), 0o777); err != nil {
 		return false, errors.E(op, err)
 	}
@@ -51,7 +54,11 @@ func (s *storageImpl) SkillContent(_ context.Context, module, version, skillPath
 	if !validSkillContentPath(skillPath) {
 		return nil, errors.E(op, "invalid Skill path", errors.KindBadRequest)
 	}
-	content, err := afero.ReadFile(s.filesystem, s.skillContentLocation(module, version, skillPath))
+	location, locationErr := s.skillContentLocation(module, version, skillPath)
+	if locationErr != nil {
+		return nil, errors.E(op, locationErr, errors.S(module), errors.V(version), errors.KindBadRequest)
+	}
+	content, err := afero.ReadFile(s.filesystem, location)
 	if err != nil {
 		return nil, errors.E(op, errors.S(module), errors.V(version), errors.KindNotFound)
 	}

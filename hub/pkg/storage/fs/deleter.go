@@ -18,7 +18,10 @@ func (s *storageImpl) Delete(ctx context.Context, module, version string) error 
 	const op errors.Op = "fs.Delete"
 	ctx, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
-	versionedPath := s.versionLocation(module, version)
+	versionedPath, locationErr := s.versionLocation(module, version)
+	if locationErr != nil {
+		return errors.E(op, locationErr, errors.S(module), errors.V(version), errors.KindBadRequest)
+	}
 	exists, err := s.Exists(ctx, module, version)
 	if err != nil {
 		return errors.E(op, err, errors.S(module), errors.V(version))
