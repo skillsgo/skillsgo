@@ -127,6 +127,10 @@ func TestMockRecordsValidEvent(t *testing.T) {
 	if response.StatusCode != http.StatusAccepted || len(mock.Events()) != 1 {
 		t.Fatalf("event was not recorded: status=%d events=%d", response.StatusCode, len(mock.Events()))
 	}
+	mock.ResetEvents()
+	if len(mock.Events()) != 0 {
+		t.Fatalf("events were not reset: %d", len(mock.Events()))
+	}
 }
 
 type panicTestingT struct{}
