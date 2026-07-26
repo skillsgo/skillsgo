@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on strict Repository YAML/Lock state, Scope Vendors, coordinate Projections, the Agent Catalog, and read-only target filesystem metadata.
+ * [INPUT]: Depends on strict Repository YAML/Lock state, Scope Module Stores, coordinate Projections, the Agent Catalog, and read-only target filesystem metadata.
  * [OUTPUT]: Provides inventory v6 Repository-managed and External Library reconciliation with explicit projects, mode-free Projection targets, target health, and Discovery-Root-derived visibility.
  * [POS]: Serves as the read-only inventory domain module consumed by CLI serialization and App-facing machine contracts.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -23,23 +23,20 @@ const SchemaVersion = 6
 var ErrEmptyProjectRoot = errors.New("project root must not be empty")
 
 type Provenance string
-type Risk string
 type Health string
 
 const (
-	ProvenanceHub      Provenance = "hub"
-	ProvenanceExternal Provenance = "external"
-	RiskUnknown        Risk       = "unknown"
-
-	HealthHealthy             Health = "healthy"
-	HealthMissing             Health = "missing"
-	HealthReplaced            Health = "replaced"
-	HealthLocalModification   Health = "local-modification"
-	HealthUnreadable          Health = "unreadable"
-	HealthUndeclared          Health = "undeclared"
-	HealthWorkspaceUnreadable Health = "workspace-unreadable"
-	HealthLockMismatch        Health = "lock-mismatch"
-	HealthUnexpectedPath      Health = "unexpected-path"
+	ProvenanceHub             Provenance = "hub"
+	ProvenanceExternal        Provenance = "external"
+	HealthHealthy             Health     = "healthy"
+	HealthMissing             Health     = "missing"
+	HealthReplaced            Health     = "replaced"
+	HealthLocalModification   Health     = "local-modification"
+	HealthUnreadable          Health     = "unreadable"
+	HealthUndeclared          Health     = "undeclared"
+	HealthWorkspaceUnreadable Health     = "workspace-unreadable"
+	HealthLockMismatch        Health     = "lock-mismatch"
+	HealthUnexpectedPath      Health     = "unexpected-path"
 )
 
 type Report struct {
@@ -51,9 +48,8 @@ type Entry struct {
 	InventoryKey      string       `json:"inventoryKey"`
 	Name              string       `json:"name"`
 	Description       string       `json:"description"`
-	RepositoryID      string       `json:"repositoryId,omitempty"`
+	ModulePath        string       `json:"modulePath,omitempty"`
 	Provenance        Provenance   `json:"provenance"`
-	Risk              Risk         `json:"risk"`
 	Health            Health       `json:"health"`
 	Agents            []string     `json:"agents"`
 	Projects          []string     `json:"projects"`
@@ -103,7 +99,11 @@ func Build(options Options) (Report, error) {
 	accountedTargets := map[string]bool{}
 	roots := make([]declarationRoot, 0, len(projectRoots)+1)
 	if options.IncludeUser {
-		roots = append(roots, declarationRoot{root: project.UserRoot(home), scope: install.ScopeUser})
+		roots = append(roots, declarationRoot{
+			root:      project.UserDeclarationRoot(home),
+			stateRoot: project.UserStateRoot(home),
+			scope:     install.ScopeUser,
+		})
 	}
 	for _, root := range projectRoots {
 		roots = append(roots, declarationRoot{root: root, scope: install.ScopeProject})
@@ -270,14 +270,14 @@ func resolveInventoryPath(path string) string {
 	}
 }
 
-func ensureEntry(entries map[string]*Entry, name, repositoryID string, provenance Provenance) *Entry {
-	inventoryKey := string(provenance) + ":" + repositoryID + ":" + name
+func ensureEntry(entries map[string]*Entry, name, modulePath string, provenance Provenance) *Entry {
+	inventoryKey := string(provenance) + ":" + modulePath + ":" + name
 	if entry := entries[inventoryKey]; entry != nil {
 		return entry
 	}
 	entry := &Entry{
-		InventoryKey: inventoryKey, Name: name, RepositoryID: repositoryID,
-		Provenance: provenance, Risk: RiskUnknown, Health: HealthHealthy,
+		InventoryKey: inventoryKey, Name: name, ModulePath: modulePath,
+		Provenance: provenance, Health: HealthHealthy,
 		Agents: []string{}, Projects: []string{}, Versions: []string{}, Targets: []Target{}, Visibility: []Visibility{},
 	}
 	entries[inventoryKey] = entry

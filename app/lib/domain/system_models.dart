@@ -33,17 +33,6 @@ enum SkillsFailureKind {
 
 enum DiscoveryCollection { search, ranking, trending, hot }
 
-enum SkillTrustLevel {
-  unverified,
-  communityVerified,
-  publisherVerified,
-  official,
-  warned,
-  delisted,
-}
-
-enum SkillRiskAssessment { unknown, low, medium, high, critical }
-
 enum InstallationScope { user, project }
 
 enum DiscoveryVerification { verified, unverified }

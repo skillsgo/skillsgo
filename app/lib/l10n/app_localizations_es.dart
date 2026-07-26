@@ -616,7 +616,7 @@ class AppLocalizationsEs extends AppLocalizations {
 
   @override
   String get workspaceOwnershipChanges =>
-      'Las acciones del proyecto seleccionadas actualizarán skillsgo.yaml y skillsgo-lock.yaml.';
+      'Las acciones del proyecto seleccionadas actualizarán skills.yaml y skills-lock.yaml.';
 
   @override
   String get targetContentPreserved =>

@@ -3,7 +3,7 @@
 
 ## Members
 
-- `client.go`: delegates version selectors to Repository Resolution, consumes typed metadata from `/{repositoryId}/versions/{version}`, downloads `/{repositoryId}/versions/{version}.zip`, resolves member names deterministically while preserving exact path selectors, forwards dedicated Skill Find/candidate and update-check product APIs, validates strict provider-neutral `/api/v1` reads, verifies Repository identity/size/Sum, and exposes typed HTTP failures.
+- `client.go`: resolves exact versions or movable Version Queries through `/{modulePath}/versions/{version}`, downloads only canonical `/{modulePath}/versions/{version}.zip`, resolves member names deterministically while preserving exact Skill path selectors, forwards dedicated Skill Find/candidate and update-check product APIs, validates strict provider-neutral `/api/v1` reads, verifies Module identity/size/Sum, and exposes typed HTTP failures.
 - `artifact_digest.go`: binds declared Repository Info to Repository ZIP bytes through the shared Go-compatible h1 implementation.
 - `artifact_digest_test.go`: specifies golden deterministic Sum acceptance and mismatch rejection.
 - `client_test.go`: specifies strict Repository transport contracts, hostile response rejection, retries, and download progress.

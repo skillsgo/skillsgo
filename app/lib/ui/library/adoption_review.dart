@@ -75,28 +75,28 @@ class _AdoptionReviewShellState extends State<_AdoptionReviewShell> {
           ),
         );
     });
-    final queryIDs = <String, String>{};
-    final queries = <SourceFindQuery>[];
+    final queryIndices = <String, int>{};
+    final queries = <ModuleFindQuery>[];
     for (final skill in widget.skills) {
       final signature =
-          '${skill.name.trim().toLowerCase()}\u0000${skill.repositoryId}';
-      queryIDs.putIfAbsent(signature, () {
-        final id = 'find:${queryIDs.length}';
+          '${skill.name.trim().toLowerCase()}\u0000${skill.modulePath}';
+      queryIndices.putIfAbsent(signature, () {
+        final index = queries.length;
         queries.add(
-          SourceFindQuery(id: id, name: skill.name, source: skill.repositoryId),
+          ModuleFindQuery(name: skill.name, modulePath: skill.modulePath),
         );
-        return id;
+        return index;
       });
     }
     try {
       final results = await widget.gateway.findSources(queries, limit: 10);
       if (!mounted || generation != matchGeneration) return;
-      final byID = {for (final result in results) result.id: result.skills};
       setState(() {
         for (final skill in widget.skills) {
           final signature =
-              '${skill.name.trim().toLowerCase()}\u0000${skill.repositoryId}';
-          _applyCandidates(skill, byID[queryIDs[signature]] ?? const []);
+              '${skill.name.trim().toLowerCase()}\u0000${skill.modulePath}';
+          final index = queryIndices[signature];
+          _applyCandidates(skill, index == null ? const [] : results[index]);
         }
       });
     } on Object catch (error) {
@@ -145,12 +145,10 @@ class _AdoptionReviewShellState extends State<_AdoptionReviewShell> {
     setState(() => matches[key] = const _AdoptionMatch.loading());
     try {
       final results = await widget.gateway.findSources([
-        SourceFindQuery(id: key, name: skill.name, source: skill.repositoryId),
+        ModuleFindQuery(name: skill.name, modulePath: skill.modulePath),
       ]);
       if (!mounted) return;
-      setState(
-        () => _applyCandidates(skill, results.firstOrNull?.skills ?? []),
-      );
+      setState(() => _applyCandidates(skill, results.firstOrNull ?? []));
     } on Object catch (error) {
       if (!mounted) return;
       setState(() => matches[key] = _AdoptionMatch.error(error));
@@ -528,9 +526,7 @@ class _AdoptionSourceSelector extends StatelessWidget {
                     children: [
                       Expanded(
                         child: Text(
-                          _compactRepositorySource(
-                            candidate.skill.repositoryId,
-                          ),
+                          _compactRepositorySource(candidate.skill.modulePath),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: const TextStyle(fontWeight: FontWeight.w700),
@@ -573,7 +569,7 @@ class _AdoptionSourceSelector extends StatelessWidget {
             children: [
               Expanded(
                 child: Text(
-                  _compactRepositorySource(match!.selected!.skill.repositoryId),
+                  _compactRepositorySource(match!.selected!.skill.modulePath),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: const TextStyle(

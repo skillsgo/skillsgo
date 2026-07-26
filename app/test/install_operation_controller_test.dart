@@ -64,10 +64,9 @@ void main() {
     'Repository request submits every member through one atomic gateway call',
     () async {
       const second = SkillSummary(
-        repositoryId: 'example/skills/flutter-pro',
+        modulePath: 'example/skills',
         installName: 'second',
         name: 'Second',
-        source: 'example/skills/flutter-pro',
         installs: 42,
         latestVersion: 'main',
       );
@@ -76,7 +75,7 @@ void main() {
       addTearDown(controller.dispose);
 
       final state = await controller.submit(
-        InstallationRequest.repository(
+        InstallationRequest.module(
           [defaultSearchResults.first, second],
           selections: [_selection],
           riskPolicy: PersonalRiskPolicy(),
@@ -85,9 +84,9 @@ void main() {
 
       expect(state.succeeded, isTrue);
       expect(state.executions, hasLength(2));
-      expect(state.executions.map((item) => item.repositoryId), [
-        defaultSearchResults.first.repositoryId,
-        second.repositoryId,
+      expect(state.executions.map((item) => item.modulePath), [
+        defaultSearchResults.first.modulePath,
+        second.modulePath,
       ]);
       expect(state.executions.map((item) => item.version), ['main', 'main']);
       expect(gateway.detailLoads, 0);

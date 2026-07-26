@@ -56,8 +56,8 @@ func TestPostgresAppStartsServesAndRecoversQueuedJobAfterRestart(t *testing.T) {
 
 	metadata, err := catalog.Open(ctx, *conf.Database)
 	require.NoError(t, err)
-	require.NoError(t, metadata.UpsertSkill(ctx, &catalog.Skill{
-		RepositoryID: "gitlab.com/acme/skills", SkillPath: "demo", Name: "demo", LatestVersion: "v1.0.0",
+	require.NoError(t, upsertActionTestSkill(ctx, metadata, &catalog.Skill{
+		ModulePath: "gitlab.com/acme/skills", Path: "demo", Name: "demo", LatestVersion: "v1.0.0",
 	}))
 	require.NoError(t, metadata.Close())
 
@@ -73,7 +73,7 @@ func TestPostgresAppStartsServesAndRecoversQueuedJobAfterRestart(t *testing.T) {
 	t.Cleanup(pool.Close)
 	riverClient, err := river.NewClient(riverpgxv5.New(pool), &river.Config{})
 	require.NoError(t, err)
-	_, err = riverClient.Insert(ctx, repositorySourceMetadataRefreshArgs{RepositoryID: "gitlab.com/acme/skills"}, &river.InsertOpts{MaxAttempts: 3})
+	_, err = riverClient.Insert(ctx, repositorySourceMetadataRefreshArgs{ModulePath: "gitlab.com/acme/skills"}, &river.InsertOpts{MaxAttempts: 3})
 	require.NoError(t, err)
 
 	secondApp, secondCleanup, err := App(log.NoOpLogger(), conf)

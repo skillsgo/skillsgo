@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Repository ID plus Skill Name validation.
- * [OUTPUT]: Provides shared schema constants, Find request/result DTOs, add-time Repository resolution DTOs, Repository-level artifact Info, Skill member Info, canonical Skill coordinate behavior, separate risk vocabulary, and update DTOs.
+ * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Module Path plus Skill Name validation.
+ * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, ordered candidate matching DTOs, standalone Module Info, immutable Module Version Skill content, canonical Skill coordinates, and update DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,130 +9,95 @@ package api
 import (
 	"time"
 
-	"github.com/skillsgo/skillsgo/protocol/repositoryid"
+	"github.com/skillsgo/skillsgo/protocol/module"
 	"github.com/skillsgo/skillsgo/protocol/skillmanifest"
 )
 
 const SchemaVersion = 1
 const (
-	KindSkill         = "Skill"
-	KindRepository    = "Repository"
+	KindModule        = "Module"
 	UpdateAvailable   = "available"
 	UpdateUnsupported = "unsupported"
 )
 
-type Risk string
-
-const (
-	RiskUnknown  Risk = "unknown"
-	RiskLow      Risk = "low"
-	RiskMedium   Risk = "medium"
-	RiskHigh     Risk = "high"
-	RiskCritical Risk = "critical"
-)
-
-func (risk Risk) Valid() bool {
-	return risk == RiskUnknown || risk == RiskLow || risk == RiskMedium || risk == RiskHigh || risk == RiskCritical
+type ModuleSkill struct {
+	Name string `json:"name" yaml:"name"`
+	Path string `json:"path" yaml:"path"`
 }
-
-type SkillInfo struct {
-	SchemaVersion int               `json:"SchemaVersion" yaml:"schemaVersion"`
-	Kind          string            `json:"Kind" yaml:"kind"`
-	RepositoryID  string            `json:"RepositoryID" yaml:"repositoryID"`
-	SkillPath     string            `json:"SkillPath" yaml:"skillPath"`
-	Version       string            `json:"Version" yaml:"version"`
-	Time          time.Time         `json:"Time" yaml:"time"`
-	Ref           string            `json:"Ref" yaml:"ref"`
-	CommitSHA     string            `json:"CommitSHA" yaml:"commitSHA"`
-	TreeSHA       string            `json:"TreeSHA" yaml:"treeSHA"`
-	Name          string            `json:"Name" yaml:"name"`
-	Description   string            `json:"Description" yaml:"description"`
-	License       string            `json:"License,omitempty" yaml:"license,omitempty"`
-	Compatibility string            `json:"Compatibility,omitempty" yaml:"compatibility,omitempty"`
-	AllowedTools  string            `json:"AllowedTools,omitempty" yaml:"allowedTools,omitempty"`
-	Metadata      map[string]string `json:"Metadata,omitempty" yaml:"metadata,omitempty"`
-	// Risk is local mutable projection state and is intentionally excluded
-	// from immutable Skill Info serialization.
-	Risk Risk `json:"-" yaml:"-"`
+type ModuleInfo struct {
+	SchemaVersion int           `json:"schemaVersion"`
+	Kind          string        `json:"kind"`
+	ModulePath    string        `json:"modulePath"`
+	Version       string        `json:"version"`
+	Time          time.Time     `json:"time"`
+	Sum           string        `json:"sum"`
+	ArchiveSize   int64         `json:"archiveSize"`
+	Skills        []ModuleSkill `json:"skills"`
 }
-type RepositoryInfo struct {
-	SchemaVersion int         `json:"SchemaVersion"`
-	Kind          string      `json:"Kind"`
-	ID            string      `json:"ID"`
-	Version       string      `json:"Version"`
-	Time          time.Time   `json:"Time"`
-	Ref           string      `json:"Ref"`
-	CommitSHA     string      `json:"CommitSHA"`
-	TreeSHA       string      `json:"TreeSHA"`
-	Sum           string      `json:"Sum"`
-	ArchiveSize   int64       `json:"ArchiveSize"`
-	Skills        []SkillInfo `json:"Skills"`
+type ModuleVersionsResponse struct {
+	Versions []string `json:"versions"`
 }
-type RepositoryResolutionRequest struct {
-	SchemaVersion int    `json:"schemaVersion"`
-	RepositoryID  string `json:"repositoryId"`
-	Selector      string `json:"selector"`
-}
-type RepositoryResolutionResponse struct {
-	SchemaVersion int       `json:"schemaVersion"`
-	RepositoryID  string    `json:"repositoryId"`
-	Version       string    `json:"version"`
-	Time          time.Time `json:"time"`
-	Ref           string    `json:"ref"`
-	CommitSHA     string    `json:"commitSHA"`
+type ModuleVersionSkill struct {
+	ModulePath  string    `json:"modulePath"`
+	Version     string    `json:"version"`
+	Time        time.Time `json:"time"`
+	ArchiveSize int64     `json:"archiveSize"`
+	Name        string    `json:"name"`
+	Path        string    `json:"path"`
+	Description string    `json:"description"`
+	Content     string    `json:"content"`
 }
 type SkillCoordinate struct {
-	RepositoryID string `json:"repositoryId"`
-	Name         string `json:"name"`
+	ModulePath string `json:"modulePath"`
+	Name       string `json:"name"`
 }
 
-type FindQuery struct {
-	ID        string `json:"id"`
-	Query     string `json:"q"`
-	Source    string `json:"source,omitempty"`
-	ExactName bool   `json:"exactName,omitempty"`
+type CandidateQuery struct {
+	Name       string `json:"name"`
+	ModulePath string `json:"modulePath,omitempty"`
 }
 
-type FindRequest struct {
-	SchemaVersion int         `json:"schemaVersion"`
-	Queries       []FindQuery `json:"queries"`
-	Limit         int         `json:"limit"`
-	Locale        string      `json:"locale,omitempty"`
+type FindCandidatesRequest struct {
+	Queries []CandidateQuery `json:"queries"`
+	Limit   int              `json:"limit"`
+	Locale  string           `json:"locale,omitempty"`
 }
 
 type FindSkill struct {
-	RepositoryID   string  `json:"repositoryId"`
-	Name           string  `json:"name"`
-	Description    string  `json:"description"`
-	Source         string  `json:"source"`
-	Repository     string  `json:"repository"`
-	ImageURL       *string `json:"imageUrl"`
-	SkillPath      string  `json:"skillPath"`
-	LatestVersion  string  `json:"latestVersion"`
-	TrustLevel     string  `json:"trustLevel"`
-	RiskAssessment string  `json:"riskAssessment"`
+	ModulePath    string  `json:"modulePath"`
+	Name          string  `json:"name"`
+	Description   string  `json:"description"`
+	ImageURL      *string `json:"imageUrl"`
+	Path          string  `json:"path"`
+	LatestVersion string  `json:"latestVersion"`
 }
 
-type FindResult struct {
-	ID     string      `json:"id"`
-	Query  string      `json:"q"`
-	Source string      `json:"source,omitempty"`
-	Skills []FindSkill `json:"skills"`
+type SkillCandidate struct {
+	ModulePath  string `json:"modulePath"`
+	Version     string `json:"version"`
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	Description string `json:"description"`
 }
 
-type FindResponse struct {
-	SchemaVersion int          `json:"schemaVersion"`
-	Collection    string       `json:"collection"`
-	Results       []FindResult `json:"results"`
+type FindCandidatesResponse struct {
+	Candidates [][]SkillCandidate `json:"candidates"`
+}
+
+// Pagination describes one zero-based page of a complete result set.
+type Pagination struct {
+	Page    int  `json:"page"`
+	PerPage int  `json:"perPage"`
+	HasMore bool `json:"hasMore"`
 }
 
 func (coordinate SkillCoordinate) Valid() bool {
-	parsed, err := repositoryid.Parse(coordinate.RepositoryID)
-	return err == nil && parsed.String() == coordinate.RepositoryID && skillmanifest.ValidName(coordinate.Name)
+	parsed, err := module.ParsePath(coordinate.ModulePath)
+	return err == nil && parsed.String() == coordinate.ModulePath && skillmanifest.ValidName(coordinate.Name)
 }
 
 func (coordinate SkillCoordinate) Key() string {
-	return coordinate.RepositoryID + "\x00" + coordinate.Name
+	return coordinate.ModulePath + "\x00" + coordinate.Name
 }
 
 type CatalogUpdateCheckRequest struct {
@@ -140,13 +105,11 @@ type CatalogUpdateCheckRequest struct {
 	Skills        []SkillCoordinate `json:"skills"`
 }
 type CatalogUpdateCheckItem struct {
-	RepositoryID   string `json:"repositoryId"`
-	Name           string `json:"name"`
-	HeadVersion    string `json:"headVersion,omitempty"`
-	ReleaseVersion string `json:"releaseVersion,omitempty"`
-	Status         string `json:"status"`
+	ModulePath    string `json:"modulePath"`
+	Name          string `json:"name"`
+	LatestVersion string `json:"latestVersion,omitempty"`
+	Status        string `json:"status"`
 }
 type CatalogUpdateCheckResponse struct {
-	SchemaVersion int                      `json:"schemaVersion"`
-	Items         []CatalogUpdateCheckItem `json:"items"`
+	Items []CatalogUpdateCheckItem `json:"items"`
 }

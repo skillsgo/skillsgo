@@ -229,7 +229,7 @@ jobs:
       - name: Run cross-product journeys
         env:
           SKILLSGO_E2E_IMAGE: skillsgo-e2e:ci
-        run: GOWORK=off go test -v -count=1 -timeout=15m ./...
+        run: GOWORK=off go tool gotestsum --format github-actions -- -count=1 -timeout=15m ./...
 
   e2e-app:
     name: App E2E

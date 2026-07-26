@@ -50,7 +50,7 @@ void main() {
       path: '/Users/test/.codex/skills/action-demo',
       agents: ['codex'],
       targetCount: 1,
-      repositoryId: 'github.com/test/skills',
+      modulePath: 'github.com/test/skills',
       versions: ['v1'],
       targets: [target],
     );
@@ -120,10 +120,9 @@ void main() {
       ],
       localDetail: const SkillDetail(
         name: 'local-skill',
-        source: 'Local cache',
-        markdown: '# Available offline',
-        immutableVersion: 'v1',
-        files: [SkillFile(path: 'SKILL.md', contents: '# Available offline')],
+        path: '/tmp/local-skill',
+        content: '# Available offline',
+        version: 'v1',
         installationTargets: [
           SkillInstallationTarget(
             agent: 'codex',

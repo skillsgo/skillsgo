@@ -12,7 +12,6 @@ import 'package:portal_labs/portal_labs.dart' as portal;
 import '../domain/skills_gateway.dart';
 import '../l10n/app_localizations.dart';
 import 'bidirectional_content.dart';
-import 'design_system/skills_color_tokens.dart';
 import 'design_system/skills_component_tokens.dart';
 import 'design_system/skills_typography.dart';
 import 'install_location_popover.dart';

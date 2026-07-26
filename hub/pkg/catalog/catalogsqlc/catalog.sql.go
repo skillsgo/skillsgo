@@ -14,15 +14,17 @@ import (
 )
 
 const activeBackfillRun = `-- name: ActiveBackfillRun :one
-SELECT id, repository_id, status, started_at, completed_at, error_count, diagnostics, created_at, updated_at FROM repository_backfill_runs WHERE repository_id=$1 AND status IN ('queued','running') ORDER BY created_at DESC LIMIT 1
+SELECT id, module_path, status, started_at, completed_at, error_count, diagnostics, created_at, updated_at FROM module_backfill_runs
+WHERE module_path=$1 AND status IN ('queued','running')
+ORDER BY created_at DESC LIMIT 1
 `
 
-func (q *Queries) ActiveBackfillRun(ctx context.Context, repositoryID string) (RepositoryBackfillRun, error) {
-	row := q.db.QueryRow(ctx, activeBackfillRun, repositoryID)
-	var i RepositoryBackfillRun
+func (q *Queries) ActiveBackfillRun(ctx context.Context, modulePath string) (ModuleBackfillRun, error) {
+	row := q.db.QueryRow(ctx, activeBackfillRun, modulePath)
+	var i ModuleBackfillRun
 	err := row.Scan(
 		&i.ID,
-		&i.RepositoryID,
+		&i.ModulePath,
 		&i.Status,
 		&i.StartedAt,
 		&i.CompletedAt,
@@ -35,15 +37,15 @@ func (q *Queries) ActiveBackfillRun(ctx context.Context, repositoryID string) (R
 }
 
 const backfillRunByID = `-- name: BackfillRunByID :one
-SELECT id, repository_id, status, started_at, completed_at, error_count, diagnostics, created_at, updated_at FROM repository_backfill_runs WHERE id=$1
+SELECT id, module_path, status, started_at, completed_at, error_count, diagnostics, created_at, updated_at FROM module_backfill_runs WHERE id=$1
 `
 
-func (q *Queries) BackfillRunByID(ctx context.Context, id string) (RepositoryBackfillRun, error) {
+func (q *Queries) BackfillRunByID(ctx context.Context, id string) (ModuleBackfillRun, error) {
 	row := q.db.QueryRow(ctx, backfillRunByID, id)
-	var i RepositoryBackfillRun
+	var i ModuleBackfillRun
 	err := row.Scan(
 		&i.ID,
-		&i.RepositoryID,
+		&i.ModulePath,
 		&i.Status,
 		&i.StartedAt,
 		&i.CompletedAt,
@@ -56,7 +58,7 @@ func (q *Queries) BackfillRunByID(ctx context.Context, id string) (RepositoryBac
 }
 
 const completeBackfillRun = `-- name: CompleteBackfillRun :execrows
-UPDATE repository_backfill_runs SET status=$2,completed_at=$3,error_count=$4,diagnostics=$5,updated_at=$3
+UPDATE module_backfill_runs SET status=$2,completed_at=$3,error_count=$4,diagnostics=$5,updated_at=$3
 WHERE id=$1 AND status IN ('queued','running')
 `
 
@@ -82,53 +84,49 @@ func (q *Queries) CompleteBackfillRun(ctx context.Context, arg CompleteBackfillR
 	return result.RowsAffected(), nil
 }
 
-const currentRepositoryReleaseMember = `-- name: CurrentRepositoryReleaseMember :one
-SELECT rrm.release_id, rrm.name, rr.version, rr.commit_sha, rrm.tree_sha, rrm.skill_path, rr.commit_time
-FROM repositories r JOIN repository_releases rr ON rr.id=r.current_release_id JOIN repository_release_members rrm ON rrm.release_id=rr.id
-WHERE r.repository_id=$1 AND rrm.name=$2 ORDER BY rrm.skill_path LIMIT 1
+const currentSkill = `-- name: CurrentSkill :one
+SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
+       mvs.path, mv.commit_time, mvs.description
+FROM modules m
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id
+WHERE m.path=$1 AND mvs.name=$2
+ORDER BY mvs.path
+LIMIT 1
 `
 
-type CurrentRepositoryReleaseMemberParams struct {
-	RepositoryID string `json:"repository_id"`
-	Name         string `json:"name"`
+type CurrentSkillParams struct {
+	ModulePath string `json:"module_path"`
+	Name       string `json:"name"`
 }
 
-type CurrentRepositoryReleaseMemberRow struct {
-	ReleaseID  int64     `json:"release_id"`
-	Name       string    `json:"name"`
-	Version    string    `json:"version"`
-	CommitSha  string    `json:"commit_sha"`
-	TreeSha    string    `json:"tree_sha"`
-	SkillPath  string    `json:"skill_path"`
-	CommitTime time.Time `json:"commit_time"`
+type CurrentSkillRow struct {
+	VersionID   int64     `json:"version_id"`
+	Name        string    `json:"name"`
+	Version     string    `json:"version"`
+	CommitSha   string    `json:"commit_sha"`
+	Path        string    `json:"path"`
+	CommitTime  time.Time `json:"commit_time"`
+	Description string    `json:"description"`
 }
 
-func (q *Queries) CurrentRepositoryReleaseMember(ctx context.Context, arg CurrentRepositoryReleaseMemberParams) (CurrentRepositoryReleaseMemberRow, error) {
-	row := q.db.QueryRow(ctx, currentRepositoryReleaseMember, arg.RepositoryID, arg.Name)
-	var i CurrentRepositoryReleaseMemberRow
+func (q *Queries) CurrentSkill(ctx context.Context, arg CurrentSkillParams) (CurrentSkillRow, error) {
+	row := q.db.QueryRow(ctx, currentSkill, arg.ModulePath, arg.Name)
+	var i CurrentSkillRow
 	err := row.Scan(
-		&i.ReleaseID,
+		&i.VersionID,
 		&i.Name,
 		&i.Version,
 		&i.CommitSha,
-		&i.TreeSha,
-		&i.SkillPath,
+		&i.Path,
 		&i.CommitTime,
+		&i.Description,
 	)
 	return i, err
 }
 
-const deleteRepositorySkills = `-- name: DeleteRepositorySkills :exec
-DELETE FROM skills WHERE repository_id = $1
-`
-
-func (q *Queries) DeleteRepositorySkills(ctx context.Context, repositoryID int64) error {
-	_, err := q.db.Exec(ctx, deleteRepositorySkills, repositoryID)
-	return err
-}
-
 const expireQueuedBackfillRun = `-- name: ExpireQueuedBackfillRun :execrows
-UPDATE repository_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
+UPDATE module_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
 WHERE id=$1 AND status='queued'
 `
 
@@ -147,7 +145,7 @@ func (q *Queries) ExpireQueuedBackfillRun(ctx context.Context, arg ExpireQueuedB
 }
 
 const expireStaleBackfillRuns = `-- name: ExpireStaleBackfillRuns :execrows
-UPDATE repository_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
+UPDATE module_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
 WHERE status='running' AND updated_at<$1
 `
 
@@ -167,61 +165,61 @@ func (q *Queries) ExpireStaleBackfillRuns(ctx context.Context, arg ExpireStaleBa
 
 const findExactLocalizedSkillsBatch = `-- name: FindExactLocalizedSkillsBatch :many
 WITH requested AS (
-    SELECT ids.id AS query_id, queries.query, sources.source, ids.ordinal
+    SELECT ids.id AS query_id, queries.query, module_paths.module_path, ids.ordinal
     FROM unnest($2::text[]) WITH ORDINALITY AS ids(id, ordinal)
     JOIN unnest($3::text[]) WITH ORDINALITY AS queries(query, ordinal) USING (ordinal)
-    JOIN unnest($4::text[]) WITH ORDINALITY AS sources(source, ordinal) USING (ordinal)
+    JOIN unnest($4::text[]) WITH ORDINALITY AS module_paths(module_path, ordinal) USING (ordinal)
 ),
 ranked AS (
-    SELECT input.query_id::text AS query_id,input.query::text AS query,input.source::text AS source,input.ordinal,
-    s.id,s.repository_id,r.repository_id AS repository_identity,s.name,
-    COALESCE(ls.description,s.description) AS description,s.source_host,s.repository,s.skill_path,
-    COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at,
-    row_number() OVER (
-        PARTITION BY input.ordinal
-        ORDER BY
-            CASE WHEN input.source<>'' THEN s.skill_path ELSE '' END,
-            s.verified DESC,r.repository_id,s.skill_path
-    ) AS result_ordinal
+    SELECT input.query_id::text AS query_id,input.query::text AS query,input.module_path::text AS requested_module_path,input.ordinal,
+           mvs.version_id AS id,mv.module_id,m.path AS module_path,mvs.name,
+           COALESCE(ls.description,mvs.description) AS description,
+           m.source_host,m.source_path AS source_repository,mvs.path,
+           mv.version AS latest_version,m.stars,mv.created_at,m.updated_at,
+           row_number() OVER (
+               PARTITION BY input.ordinal
+               ORDER BY CASE WHEN input.module_path<>'' THEN mvs.path ELSE '' END,
+                        m.path,mvs.path
+           ) AS result_ordinal
     FROM requested input
-    JOIN skills s ON lower(s.name)=lower(input.query)
-    JOIN repositories r ON r.id=s.repository_id AND (input.source='' OR r.repository_id=input.source)
-    LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-    LEFT JOIN localized_descriptions ls ON ls.resource_kind='skill' AND ls.resource_id=r.repository_id || ':' || s.name AND ls.locale=$5
+    JOIN modules m ON input.module_path='' OR m.path=input.module_path
+    JOIN versions mv ON mv.id=m.current_version_id
+    JOIN skills mvs
+      ON mvs.version_id=mv.id AND lower(mvs.name)=lower(input.query)
+    LEFT JOIN localized_descriptions ls
+      ON ls.resource_kind='skill' AND ls.resource_id=m.path || ':' || mvs.name AND ls.locale=$5
 )
-SELECT query_id,query,source,
-id,repository_id,repository_identity,name,description,source_host,repository,skill_path,
-latest_version,stars,verified,created_at,updated_at
+SELECT query_id,query,requested_module_path,id,module_id,module_path,name,description,
+       source_host,source_repository,path,latest_version,stars,created_at,updated_at
 FROM ranked
-WHERE result_ordinal<=CASE WHEN source<>'' THEN 1 ELSE $1::bigint END
+WHERE result_ordinal<=CASE WHEN requested_module_path<>'' THEN 1 ELSE $1::bigint END
 ORDER BY ordinal,result_ordinal
 `
 
 type FindExactLocalizedSkillsBatchParams struct {
-	PageLimit int64    `json:"page_limit"`
-	QueryIds  []string `json:"query_ids"`
-	Queries   []string `json:"queries"`
-	Sources   []string `json:"sources"`
-	Locale    string   `json:"locale"`
+	PageLimit   int64    `json:"page_limit"`
+	QueryIds    []string `json:"query_ids"`
+	Queries     []string `json:"queries"`
+	ModulePaths []string `json:"module_paths"`
+	Locale      string   `json:"locale"`
 }
 
 type FindExactLocalizedSkillsBatchRow struct {
-	QueryID            string    `json:"query_id"`
-	Query              string    `json:"query"`
-	Source             string    `json:"source"`
-	ID                 int64     `json:"id"`
-	RepositoryID       int64     `json:"repository_id"`
-	RepositoryIdentity string    `json:"repository_identity"`
-	Name               string    `json:"name"`
-	Description        string    `json:"description"`
-	SourceHost         string    `json:"source_host"`
-	Repository         string    `json:"repository"`
-	SkillPath          string    `json:"skill_path"`
-	LatestVersion      string    `json:"latest_version"`
-	Stars              int64     `json:"stars"`
-	Verified           bool      `json:"verified"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	QueryID             string    `json:"query_id"`
+	Query               string    `json:"query"`
+	RequestedModulePath string    `json:"requested_module_path"`
+	ID                  int64     `json:"id"`
+	ModuleID            int64     `json:"module_id"`
+	ModulePath          string    `json:"module_path"`
+	Name                string    `json:"name"`
+	Description         string    `json:"description"`
+	SourceHost          string    `json:"source_host"`
+	SourceRepository    string    `json:"source_repository"`
+	Path                string    `json:"path"`
+	LatestVersion       string    `json:"latest_version"`
+	Stars               int64     `json:"stars"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 func (q *Queries) FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExactLocalizedSkillsBatchParams) ([]FindExactLocalizedSkillsBatchRow, error) {
@@ -229,7 +227,7 @@ func (q *Queries) FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExa
 		arg.PageLimit,
 		arg.QueryIds,
 		arg.Queries,
-		arg.Sources,
+		arg.ModulePaths,
 		arg.Locale,
 	)
 	if err != nil {
@@ -242,18 +240,17 @@ func (q *Queries) FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExa
 		if err := rows.Scan(
 			&i.QueryID,
 			&i.Query,
-			&i.Source,
+			&i.RequestedModulePath,
 			&i.ID,
-			&i.RepositoryID,
-			&i.RepositoryIdentity,
+			&i.ModuleID,
+			&i.ModulePath,
 			&i.Name,
 			&i.Description,
 			&i.SourceHost,
-			&i.Repository,
-			&i.SkillPath,
+			&i.SourceRepository,
+			&i.Path,
 			&i.LatestVersion,
 			&i.Stars,
-			&i.Verified,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -269,77 +266,85 @@ func (q *Queries) FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExa
 
 const findLocalizedSkillsBatch = `-- name: FindLocalizedSkillsBatch :many
 WITH requested AS (
-    SELECT ids.id AS query_id, queries.query, sources.source, exact_names.exact_name, ids.ordinal
+    SELECT ids.id AS query_id, queries.query, module_paths.module_path, exact_names.exact_name, ids.ordinal
     FROM unnest($3::text[]) WITH ORDINALITY AS ids(id, ordinal)
     JOIN unnest($4::text[]) WITH ORDINALITY AS queries(query, ordinal) USING (ordinal)
-    JOIN unnest($5::text[]) WITH ORDINALITY AS sources(source, ordinal) USING (ordinal)
+    JOIN unnest($5::text[]) WITH ORDINALITY AS module_paths(module_path, ordinal) USING (ordinal)
     JOIN unnest($6::boolean[]) WITH ORDINALITY AS exact_names(exact_name, ordinal) USING (ordinal)
 )
-SELECT input.query_id::text AS query_id,input.query::text AS query,input.source::text AS source,
-result.id,result.repository_id,result.repository_identity,result.name,result.description,result.source_host,result.repository,result.skill_path,
-result.latest_version,result.stars,result.verified,result.created_at,result.updated_at
+SELECT input.query_id::text AS query_id,input.query::text AS query,input.module_path::text AS requested_module_path,
+       result.id,result.module_id,result.module_path,result.name,result.description,
+       result.source_host,result.source_repository,result.path,result.latest_version,result.stars,
+       result.created_at,result.updated_at
 FROM requested input
 JOIN LATERAL (
-    SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,
-    COALESCE(ls.description,s.description) AS description,s.source_host,s.repository,s.skill_path,
-    COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at,
-    CASE
-        WHEN lower(s.name)=lower(input.query) THEN 0
-        WHEN lower(s.name) LIKE lower(input.query) || '%' THEN 1
-        WHEN lower(s.name) LIKE '%' || lower(input.query) || '%' THEN 2
-        WHEN lower(r.repository_id)=lower(input.query) THEN 3
-        WHEN lower(r.repository_id) LIKE '%' || lower(input.query) || '%' THEN 4
-        ELSE 5
-    END AS sort_tier,
-    similarity(s.name,input.query) AS name_similarity
-    FROM skills s JOIN repositories r ON r.id=s.repository_id
-    LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-    LEFT JOIN localized_descriptions ls ON ls.resource_kind='skill' AND ls.resource_id=r.repository_id || ':' || s.name AND ls.locale=$1
-    LEFT JOIN localized_descriptions lr ON lr.resource_kind='repository' AND lr.resource_id=r.repository_id AND lr.locale=$1
+    SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+           mvs.name, COALESCE(ls.description,mvs.description) AS description,
+           m.source_host, m.source_path AS source_repository, mvs.path,
+           mv.version AS latest_version, m.stars,
+           mv.created_at, m.updated_at,
+           CASE
+               WHEN lower(mvs.name)=lower(input.query) THEN 0
+               WHEN lower(mvs.name) LIKE lower(input.query) || '%' THEN 1
+               WHEN lower(mvs.name) LIKE '%' || lower(input.query) || '%' THEN 2
+               WHEN lower(m.path)=lower(input.query) THEN 3
+               WHEN lower(m.path) LIKE '%' || lower(input.query) || '%' THEN 4
+               ELSE 5
+           END AS sort_tier,
+           similarity(mvs.name,input.query) AS name_similarity
+    FROM modules m
+    JOIN versions mv ON mv.id=m.current_version_id
+    JOIN skills mvs ON mvs.version_id=mv.id
+    LEFT JOIN localized_descriptions ls
+      ON ls.resource_kind='skill' AND ls.resource_id=m.path || ':' || mvs.name AND ls.locale=$1
+    LEFT JOIN localized_descriptions lm
+      ON lm.resource_kind='module' AND lm.resource_id=m.path AND lm.locale=$1
     WHERE (
-        input.source<>'' AND r.repository_id=input.source AND s.name=input.query
+        input.module_path<>'' AND m.path=input.module_path AND mvs.name=input.query
     ) OR (
-        input.source='' AND (
-            (input.exact_name AND lower(s.name)=lower(input.query))
+        input.module_path='' AND (
+            (input.exact_name AND lower(mvs.name)=lower(input.query))
             OR (NOT input.exact_name AND (
-                lower(s.name) LIKE '%' || lower(input.query) || '%' OR lower(s.description) LIKE '%' || lower(input.query) || '%'
-                OR lower(r.repository_id) LIKE '%' || lower(input.query) || '%' OR lower(COALESCE(ls.description,'')) LIKE '%' || lower(input.query) || '%'
-                OR lower(COALESCE(lr.description,'')) LIKE '%' || lower(input.query) || '%'
+                lower(mvs.name) LIKE '%' || lower(input.query) || '%'
+                OR lower(mvs.description) LIKE '%' || lower(input.query) || '%'
+                OR lower(m.path) LIKE '%' || lower(input.query) || '%'
+                OR lower(COALESCE(ls.description,'')) LIKE '%' || lower(input.query) || '%'
+                OR lower(COALESCE(lm.description,'')) LIKE '%' || lower(input.query) || '%'
             ))
         )
     )
-    ORDER BY sort_tier,name_similarity DESC,s.verified DESC,r.repository_id,s.skill_path
-    LIMIT CASE WHEN input.source<>'' THEN 1 ELSE $2::int END
+    ORDER BY sort_tier,name_similarity DESC,m.path,mvs.path
+    LIMIT CASE WHEN input.module_path<>'' THEN 1 ELSE $2::int END
 ) result ON true
-ORDER BY input.ordinal,result.sort_tier,result.name_similarity DESC,result.verified DESC,result.repository_identity,result.skill_path
+ORDER BY input.ordinal,result.sort_tier,result.name_similarity DESC,
+         result.module_path,result.path
 `
 
 type FindLocalizedSkillsBatchParams struct {
-	Locale     string   `json:"locale"`
-	PageLimit  int32    `json:"page_limit"`
-	QueryIds   []string `json:"query_ids"`
-	Queries    []string `json:"queries"`
-	Sources    []string `json:"sources"`
-	ExactNames []bool   `json:"exact_names"`
+	Locale      string   `json:"locale"`
+	PageLimit   int32    `json:"page_limit"`
+	QueryIds    []string `json:"query_ids"`
+	Queries     []string `json:"queries"`
+	ModulePaths []string `json:"module_paths"`
+	ExactNames  []bool   `json:"exact_names"`
 }
 
 type FindLocalizedSkillsBatchRow struct {
-	QueryID            string    `json:"query_id"`
-	Query              string    `json:"query"`
-	Source             string    `json:"source"`
-	ID                 int64     `json:"id"`
-	RepositoryID       int64     `json:"repository_id"`
-	RepositoryIdentity string    `json:"repository_identity"`
-	Name               string    `json:"name"`
-	Description        string    `json:"description"`
-	SourceHost         string    `json:"source_host"`
-	Repository         string    `json:"repository"`
-	SkillPath          string    `json:"skill_path"`
-	LatestVersion      string    `json:"latest_version"`
-	Stars              int64     `json:"stars"`
-	Verified           bool      `json:"verified"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	QueryID             string    `json:"query_id"`
+	Query               string    `json:"query"`
+	RequestedModulePath string    `json:"requested_module_path"`
+	ID                  int64     `json:"id"`
+	ModuleID            int64     `json:"module_id"`
+	ModulePath          string    `json:"module_path"`
+	Name                string    `json:"name"`
+	Description         string    `json:"description"`
+	SourceHost          string    `json:"source_host"`
+	SourceRepository    string    `json:"source_repository"`
+	Path                string    `json:"path"`
+	LatestVersion       string    `json:"latest_version"`
+	Stars               int64     `json:"stars"`
+	CreatedAt           time.Time `json:"created_at"`
+	UpdatedAt           time.Time `json:"updated_at"`
 }
 
 func (q *Queries) FindLocalizedSkillsBatch(ctx context.Context, arg FindLocalizedSkillsBatchParams) ([]FindLocalizedSkillsBatchRow, error) {
@@ -348,7 +353,7 @@ func (q *Queries) FindLocalizedSkillsBatch(ctx context.Context, arg FindLocalize
 		arg.PageLimit,
 		arg.QueryIds,
 		arg.Queries,
-		arg.Sources,
+		arg.ModulePaths,
 		arg.ExactNames,
 	)
 	if err != nil {
@@ -361,18 +366,17 @@ func (q *Queries) FindLocalizedSkillsBatch(ctx context.Context, arg FindLocalize
 		if err := rows.Scan(
 			&i.QueryID,
 			&i.Query,
-			&i.Source,
+			&i.RequestedModulePath,
 			&i.ID,
-			&i.RepositoryID,
-			&i.RepositoryIdentity,
+			&i.ModuleID,
+			&i.ModulePath,
 			&i.Name,
 			&i.Description,
 			&i.SourceHost,
-			&i.Repository,
-			&i.SkillPath,
+			&i.SourceRepository,
+			&i.Path,
 			&i.LatestVersion,
 			&i.Stars,
-			&i.Verified,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -387,22 +391,22 @@ func (q *Queries) FindLocalizedSkillsBatch(ctx context.Context, arg FindLocalize
 }
 
 const insertBackfillRun = `-- name: InsertBackfillRun :exec
-INSERT INTO repository_backfill_runs (id,repository_id,status,error_count,diagnostics,created_at,updated_at)
+INSERT INTO module_backfill_runs (id,module_path,status,error_count,diagnostics,created_at,updated_at)
 VALUES ($1,$2,$3,0,$4,$5,$5)
 `
 
 type InsertBackfillRunParams struct {
-	ID           string          `json:"id"`
-	RepositoryID string          `json:"repository_id"`
-	Status       string          `json:"status"`
-	Diagnostics  json.RawMessage `json:"diagnostics"`
-	CreatedAt    time.Time       `json:"created_at"`
+	ID          string          `json:"id"`
+	ModulePath  string          `json:"module_path"`
+	Status      string          `json:"status"`
+	Diagnostics json.RawMessage `json:"diagnostics"`
+	CreatedAt   time.Time       `json:"created_at"`
 }
 
 func (q *Queries) InsertBackfillRun(ctx context.Context, arg InsertBackfillRunParams) error {
 	_, err := q.db.Exec(ctx, insertBackfillRun,
 		arg.ID,
-		arg.RepositoryID,
+		arg.ModulePath,
 		arg.Status,
 		arg.Diagnostics,
 		arg.CreatedAt,
@@ -410,32 +414,32 @@ func (q *Queries) InsertBackfillRun(ctx context.Context, arg InsertBackfillRunPa
 	return err
 }
 
-const insertRepositoryRelease = `-- name: InsertRepositoryRelease :one
-INSERT INTO repository_releases (repository_id, version, commit_sha, tree_sha, sum, archive_size, release_info, commit_time, created_at)
+const insertModuleVersion = `-- name: InsertModuleVersion :one
+INSERT INTO versions (module_id, version, ref, commit_sha, tree_sha, sum, archive_size, commit_time, created_at)
 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id
 `
 
-type InsertRepositoryReleaseParams struct {
-	RepositoryID int64     `json:"repository_id"`
-	Version      string    `json:"version"`
-	CommitSha    string    `json:"commit_sha"`
-	TreeSha      string    `json:"tree_sha"`
-	Sum          string    `json:"sum"`
-	ArchiveSize  int64     `json:"archive_size"`
-	ReleaseInfo  []byte    `json:"release_info"`
-	CommitTime   time.Time `json:"commit_time"`
-	CreatedAt    time.Time `json:"created_at"`
+type InsertModuleVersionParams struct {
+	ModuleID    int64     `json:"module_id"`
+	Version     string    `json:"version"`
+	Ref         string    `json:"ref"`
+	CommitSha   string    `json:"commit_sha"`
+	TreeSha     string    `json:"tree_sha"`
+	Sum         string    `json:"sum"`
+	ArchiveSize int64     `json:"archive_size"`
+	CommitTime  time.Time `json:"commit_time"`
+	CreatedAt   time.Time `json:"created_at"`
 }
 
-func (q *Queries) InsertRepositoryRelease(ctx context.Context, arg InsertRepositoryReleaseParams) (int64, error) {
-	row := q.db.QueryRow(ctx, insertRepositoryRelease,
-		arg.RepositoryID,
+func (q *Queries) InsertModuleVersion(ctx context.Context, arg InsertModuleVersionParams) (int64, error) {
+	row := q.db.QueryRow(ctx, insertModuleVersion,
+		arg.ModuleID,
 		arg.Version,
+		arg.Ref,
 		arg.CommitSha,
 		arg.TreeSha,
 		arg.Sum,
 		arg.ArchiveSize,
-		arg.ReleaseInfo,
 		arg.CommitTime,
 		arg.CreatedAt,
 	)
@@ -444,69 +448,39 @@ func (q *Queries) InsertRepositoryRelease(ctx context.Context, arg InsertReposit
 	return id, err
 }
 
-const insertRepositoryReleaseMember = `-- name: InsertRepositoryReleaseMember :exec
-INSERT INTO repository_release_members (release_id, name, skill_path, tree_sha) VALUES ($1,$2,$3,$4)
-`
-
-type InsertRepositoryReleaseMemberParams struct {
-	ReleaseID int64  `json:"release_id"`
-	Name      string `json:"name"`
-	SkillPath string `json:"skill_path"`
-	TreeSha   string `json:"tree_sha"`
-}
-
-func (q *Queries) InsertRepositoryReleaseMember(ctx context.Context, arg InsertRepositoryReleaseMemberParams) error {
-	_, err := q.db.Exec(ctx, insertRepositoryReleaseMember,
-		arg.ReleaseID,
-		arg.Name,
-		arg.SkillPath,
-		arg.TreeSha,
-	)
-	return err
-}
-
 const insertSkill = `-- name: InsertSkill :exec
-INSERT INTO skills (repository_id, name, description, source_host, repository, skill_path, verified, created_at, updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+INSERT INTO skills (
+    version_id, name, path, description
+) VALUES ($1,$2,$3,$4)
 `
 
 type InsertSkillParams struct {
-	RepositoryID int64     `json:"repository_id"`
-	Name         string    `json:"name"`
-	Description  string    `json:"description"`
-	SourceHost   string    `json:"source_host"`
-	Repository   string    `json:"repository"`
-	SkillPath    string    `json:"skill_path"`
-	Verified     bool      `json:"verified"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	VersionID   int64  `json:"version_id"`
+	Name        string `json:"name"`
+	Path        string `json:"path"`
+	Description string `json:"description"`
 }
 
 func (q *Queries) InsertSkill(ctx context.Context, arg InsertSkillParams) error {
 	_, err := q.db.Exec(ctx, insertSkill,
-		arg.RepositoryID,
+		arg.VersionID,
 		arg.Name,
+		arg.Path,
 		arg.Description,
-		arg.SourceHost,
-		arg.Repository,
-		arg.SkillPath,
-		arg.Verified,
-		arg.CreatedAt,
-		arg.UpdatedAt,
 	)
 	return err
 }
 
 const latestBackfillRun = `-- name: LatestBackfillRun :one
-SELECT id, repository_id, status, started_at, completed_at, error_count, diagnostics, created_at, updated_at FROM repository_backfill_runs WHERE repository_id=$1 ORDER BY created_at DESC LIMIT 1
+SELECT id, module_path, status, started_at, completed_at, error_count, diagnostics, created_at, updated_at FROM module_backfill_runs WHERE module_path=$1 ORDER BY created_at DESC LIMIT 1
 `
 
-func (q *Queries) LatestBackfillRun(ctx context.Context, repositoryID string) (RepositoryBackfillRun, error) {
-	row := q.db.QueryRow(ctx, latestBackfillRun, repositoryID)
-	var i RepositoryBackfillRun
+func (q *Queries) LatestBackfillRun(ctx context.Context, modulePath string) (ModuleBackfillRun, error) {
+	row := q.db.QueryRow(ctx, latestBackfillRun, modulePath)
+	var i ModuleBackfillRun
 	err := row.Scan(
 		&i.ID,
-		&i.RepositoryID,
+		&i.ModulePath,
 		&i.Status,
 		&i.StartedAt,
 		&i.CompletedAt,
@@ -519,10 +493,16 @@ func (q *Queries) LatestBackfillRun(ctx context.Context, repositoryID string) (R
 }
 
 const listSkills = `-- name: ListSkills :many
-SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.description,s.source_host,s.repository,s.skill_path,
-COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
-FROM skills s JOIN repositories r ON r.id=s.repository_id LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-ORDER BY s.verified DESC,s.name LIMIT $1 OFFSET $2
+SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+       mvs.name, mvs.description, m.source_host,
+       m.source_path AS source_repository, mvs.path,
+       mv.version AS latest_version, m.stars,
+       mv.created_at, m.updated_at
+FROM modules m
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id
+ORDER BY mvs.name,m.path,mvs.path
+LIMIT $1 OFFSET $2
 `
 
 type ListSkillsParams struct {
@@ -531,19 +511,18 @@ type ListSkillsParams struct {
 }
 
 type ListSkillsRow struct {
-	ID                 int64     `json:"id"`
-	RepositoryID       int64     `json:"repository_id"`
-	RepositoryIdentity string    `json:"repository_identity"`
-	Name               string    `json:"name"`
-	Description        string    `json:"description"`
-	SourceHost         string    `json:"source_host"`
-	Repository         string    `json:"repository"`
-	SkillPath          string    `json:"skill_path"`
-	LatestVersion      string    `json:"latest_version"`
-	Stars              int64     `json:"stars"`
-	Verified           bool      `json:"verified"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID               int64     `json:"id"`
+	ModuleID         int64     `json:"module_id"`
+	ModulePath       string    `json:"module_path"`
+	Name             string    `json:"name"`
+	Description      string    `json:"description"`
+	SourceHost       string    `json:"source_host"`
+	SourceRepository string    `json:"source_repository"`
+	Path             string    `json:"path"`
+	LatestVersion    string    `json:"latest_version"`
+	Stars            int64     `json:"stars"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListSkillsRow, error) {
@@ -557,16 +536,15 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListS
 		var i ListSkillsRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.RepositoryID,
-			&i.RepositoryIdentity,
+			&i.ModuleID,
+			&i.ModulePath,
 			&i.Name,
 			&i.Description,
 			&i.SourceHost,
-			&i.Repository,
-			&i.SkillPath,
+			&i.SourceRepository,
+			&i.Path,
 			&i.LatestVersion,
 			&i.Stars,
-			&i.Verified,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -581,7 +559,8 @@ func (q *Queries) ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListS
 }
 
 const localizedDescription = `-- name: LocalizedDescription :one
-SELECT description FROM localized_descriptions WHERE resource_kind=$1 AND resource_id=$2 AND locale=$3
+SELECT description FROM localized_descriptions
+WHERE resource_kind=$1 AND resource_id=$2 AND locale=$3
 `
 
 type LocalizedDescriptionParams struct {
@@ -597,150 +576,129 @@ func (q *Queries) LocalizedDescription(ctx context.Context, arg LocalizedDescrip
 	return description, err
 }
 
-const repositoryByIdentity = `-- name: RepositoryByIdentity :one
-SELECT id, source_host, repository_path, repository_id, current_release_id, description, stars, source_metadata_etag, source_metadata_checked_at, source_metadata_retry_at, created_at, updated_at FROM repositories WHERE repository_id = $1
+const moduleByPath = `-- name: ModuleByPath :one
+SELECT id, source_host, source_path, path, current_version_id, description, stars, source_etag, source_checked_at, source_retry_at, created_at, updated_at FROM modules WHERE path = $1
 `
 
-func (q *Queries) RepositoryByIdentity(ctx context.Context, repositoryID string) (Repository, error) {
-	row := q.db.QueryRow(ctx, repositoryByIdentity, repositoryID)
-	var i Repository
+func (q *Queries) ModuleByPath(ctx context.Context, modulePath string) (Module, error) {
+	row := q.db.QueryRow(ctx, moduleByPath, modulePath)
+	var i Module
 	err := row.Scan(
 		&i.ID,
 		&i.SourceHost,
-		&i.RepositoryPath,
-		&i.RepositoryID,
-		&i.CurrentReleaseID,
+		&i.SourcePath,
+		&i.Path,
+		&i.CurrentVersionID,
 		&i.Description,
 		&i.Stars,
-		&i.SourceMetadataEtag,
-		&i.SourceMetadataCheckedAt,
-		&i.SourceMetadataRetryAt,
+		&i.SourceEtag,
+		&i.SourceCheckedAt,
+		&i.SourceRetryAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
 }
 
-const repositoryPublicationCommit = `-- name: RepositoryPublicationCommit :one
-SELECT rr.commit_sha FROM repository_releases rr JOIN repositories r ON r.id=rr.repository_id WHERE r.repository_id=$1 AND rr.version=$2
+const modulePublicationCommit = `-- name: ModulePublicationCommit :one
+SELECT mv.commit_sha
+FROM versions mv
+JOIN modules m ON m.id=mv.module_id
+WHERE m.path=$1 AND mv.version=$2
 `
 
-type RepositoryPublicationCommitParams struct {
-	RepositoryID string `json:"repository_id"`
-	Version      string `json:"version"`
+type ModulePublicationCommitParams struct {
+	ModulePath string `json:"module_path"`
+	Version    string `json:"version"`
 }
 
-func (q *Queries) RepositoryPublicationCommit(ctx context.Context, arg RepositoryPublicationCommitParams) (string, error) {
-	row := q.db.QueryRow(ctx, repositoryPublicationCommit, arg.RepositoryID, arg.Version)
+func (q *Queries) ModulePublicationCommit(ctx context.Context, arg ModulePublicationCommitParams) (string, error) {
+	row := q.db.QueryRow(ctx, modulePublicationCommit, arg.ModulePath, arg.Version)
 	var commit_sha string
 	err := row.Scan(&commit_sha)
 	return commit_sha, err
 }
 
-const repositoryReleaseCount = `-- name: RepositoryReleaseCount :one
-SELECT COUNT(*) FROM repository_releases rr JOIN repositories r ON r.id=rr.repository_id WHERE r.repository_id=$1 AND rr.version=$2
+const moduleVersion = `-- name: ModuleVersion :one
+SELECT mv.id, mv.module_id, mv.version, mv.ref, mv.commit_sha, mv.tree_sha,
+       mv.sum, mv.archive_size, mv.commit_time, mv.created_at
+FROM versions mv
+JOIN modules m ON m.id=mv.module_id
+WHERE m.path=$1 AND mv.version=$2
 `
 
-type RepositoryReleaseCountParams struct {
-	RepositoryID string `json:"repository_id"`
-	Version      string `json:"version"`
+type ModuleVersionParams struct {
+	ModulePath string `json:"module_path"`
+	Version    string `json:"version"`
 }
 
-func (q *Queries) RepositoryReleaseCount(ctx context.Context, arg RepositoryReleaseCountParams) (int64, error) {
-	row := q.db.QueryRow(ctx, repositoryReleaseCount, arg.RepositoryID, arg.Version)
+func (q *Queries) ModuleVersion(ctx context.Context, arg ModuleVersionParams) (Version, error) {
+	row := q.db.QueryRow(ctx, moduleVersion, arg.ModulePath, arg.Version)
+	var i Version
+	err := row.Scan(
+		&i.ID,
+		&i.ModuleID,
+		&i.Version,
+		&i.Ref,
+		&i.CommitSha,
+		&i.TreeSha,
+		&i.Sum,
+		&i.ArchiveSize,
+		&i.CommitTime,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const moduleVersionCount = `-- name: ModuleVersionCount :one
+SELECT COUNT(*)
+FROM versions mv
+JOIN modules m ON m.id=mv.module_id
+WHERE m.path=$1 AND mv.version=$2
+`
+
+type ModuleVersionCountParams struct {
+	ModulePath string `json:"module_path"`
+	Version    string `json:"version"`
+}
+
+func (q *Queries) ModuleVersionCount(ctx context.Context, arg ModuleVersionCountParams) (int64, error) {
+	row := q.db.QueryRow(ctx, moduleVersionCount, arg.ModulePath, arg.Version)
 	var count int64
 	err := row.Scan(&count)
 	return count, err
 }
 
-const repositoryReleaseInfo = `-- name: RepositoryReleaseInfo :one
-SELECT rr.release_info FROM repository_releases rr JOIN repositories r ON r.id=rr.repository_id WHERE r.repository_id=$1 AND rr.version=$2
-`
-
-type RepositoryReleaseInfoParams struct {
-	RepositoryID string `json:"repository_id"`
-	Version      string `json:"version"`
-}
-
-func (q *Queries) RepositoryReleaseInfo(ctx context.Context, arg RepositoryReleaseInfoParams) ([]byte, error) {
-	row := q.db.QueryRow(ctx, repositoryReleaseInfo, arg.RepositoryID, arg.Version)
-	var release_info []byte
-	err := row.Scan(&release_info)
-	return release_info, err
-}
-
-const repositoryReleaseMembers = `-- name: RepositoryReleaseMembers :many
-SELECT rrm.release_id, rrm.name, rr.version, rr.commit_sha, rrm.tree_sha, rrm.skill_path, rr.commit_time
-FROM repositories r JOIN repository_releases rr ON rr.repository_id=r.id JOIN repository_release_members rrm ON rrm.release_id=rr.id
-WHERE r.repository_id=$1 AND rr.version=$2 ORDER BY rrm.skill_path
-`
-
-type RepositoryReleaseMembersParams struct {
-	RepositoryID string `json:"repository_id"`
-	Version      string `json:"version"`
-}
-
-type RepositoryReleaseMembersRow struct {
-	ReleaseID  int64     `json:"release_id"`
-	Name       string    `json:"name"`
-	Version    string    `json:"version"`
-	CommitSha  string    `json:"commit_sha"`
-	TreeSha    string    `json:"tree_sha"`
-	SkillPath  string    `json:"skill_path"`
-	CommitTime time.Time `json:"commit_time"`
-}
-
-func (q *Queries) RepositoryReleaseMembers(ctx context.Context, arg RepositoryReleaseMembersParams) ([]RepositoryReleaseMembersRow, error) {
-	rows, err := q.db.Query(ctx, repositoryReleaseMembers, arg.RepositoryID, arg.Version)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []RepositoryReleaseMembersRow{}
-	for rows.Next() {
-		var i RepositoryReleaseMembersRow
-		if err := rows.Scan(
-			&i.ReleaseID,
-			&i.Name,
-			&i.Version,
-			&i.CommitSha,
-			&i.TreeSha,
-			&i.SkillPath,
-			&i.CommitTime,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const searchLocalizedSkills = `-- name: SearchLocalizedSkills :many
-SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,
-COALESCE(ls.description,s.description) AS description,s.source_host,s.repository,s.skill_path,
-COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
-FROM skills s JOIN repositories r ON r.id=s.repository_id
-LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-LEFT JOIN localized_descriptions ls ON ls.resource_kind='skill' AND ls.resource_id=r.repository_id || ':' || s.name AND ls.locale=$1
-LEFT JOIN localized_descriptions lr ON lr.resource_kind='repository' AND lr.resource_id=r.repository_id AND lr.locale=$1
-WHERE ($2::boolean AND lower(s.name)=lower($3))
+SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+       mvs.name, COALESCE(ls.description,mvs.description) AS description,
+       m.source_host, m.source_path AS source_repository, mvs.path,
+       mv.version AS latest_version, m.stars,
+       mv.created_at, m.updated_at
+FROM modules m
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id
+LEFT JOIN localized_descriptions ls
+  ON ls.resource_kind='skill' AND ls.resource_id=m.path || ':' || mvs.name AND ls.locale=$1
+LEFT JOIN localized_descriptions lm
+  ON lm.resource_kind='module' AND lm.resource_id=m.path AND lm.locale=$1
+WHERE ($2::boolean AND lower(mvs.name)=lower($3))
 OR (NOT $2::boolean AND (
-    lower(s.name) LIKE '%' || lower($3) || '%' OR lower(s.description) LIKE '%' || lower($3) || '%'
-    OR lower(r.repository_id) LIKE '%' || lower($3) || '%' OR lower(COALESCE(ls.description,'')) LIKE '%' || lower($3) || '%'
-    OR lower(COALESCE(lr.description,'')) LIKE '%' || lower($3) || '%'
+    lower(mvs.name) LIKE '%' || lower($3) || '%'
+    OR lower(mvs.description) LIKE '%' || lower($3) || '%'
+    OR lower(m.path) LIKE '%' || lower($3) || '%'
+    OR lower(COALESCE(ls.description,'')) LIKE '%' || lower($3) || '%'
+    OR lower(COALESCE(lm.description,'')) LIKE '%' || lower($3) || '%'
 ))
 ORDER BY CASE
-    WHEN lower(s.name)=lower($3) THEN 0
-    WHEN lower(s.name) LIKE lower($3) || '%' THEN 1
-    WHEN lower(s.name) LIKE '%' || lower($3) || '%' THEN 2
-    WHEN lower(r.repository_id)=lower($3) THEN 3
-    WHEN lower(r.repository_id) LIKE '%' || lower($3) || '%' THEN 4
+    WHEN lower(mvs.name)=lower($3) THEN 0
+    WHEN lower(mvs.name) LIKE lower($3) || '%' THEN 1
+    WHEN lower(mvs.name) LIKE '%' || lower($3) || '%' THEN 2
+    WHEN lower(m.path)=lower($3) THEN 3
+    WHEN lower(m.path) LIKE '%' || lower($3) || '%' THEN 4
     ELSE 5
 END,
-similarity(s.name,$3) DESC,s.verified DESC,r.repository_id,s.skill_path
+similarity(mvs.name,$3) DESC,m.path,mvs.path
 LIMIT $5 OFFSET $4
 `
 
@@ -753,19 +711,18 @@ type SearchLocalizedSkillsParams struct {
 }
 
 type SearchLocalizedSkillsRow struct {
-	ID                 int64     `json:"id"`
-	RepositoryID       int64     `json:"repository_id"`
-	RepositoryIdentity string    `json:"repository_identity"`
-	Name               string    `json:"name"`
-	Description        string    `json:"description"`
-	SourceHost         string    `json:"source_host"`
-	Repository         string    `json:"repository"`
-	SkillPath          string    `json:"skill_path"`
-	LatestVersion      string    `json:"latest_version"`
-	Stars              int64     `json:"stars"`
-	Verified           bool      `json:"verified"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID               int64     `json:"id"`
+	ModuleID         int64     `json:"module_id"`
+	ModulePath       string    `json:"module_path"`
+	Name             string    `json:"name"`
+	Description      string    `json:"description"`
+	SourceHost       string    `json:"source_host"`
+	SourceRepository string    `json:"source_repository"`
+	Path             string    `json:"path"`
+	LatestVersion    string    `json:"latest_version"`
+	Stars            int64     `json:"stars"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 func (q *Queries) SearchLocalizedSkills(ctx context.Context, arg SearchLocalizedSkillsParams) ([]SearchLocalizedSkillsRow, error) {
@@ -785,16 +742,15 @@ func (q *Queries) SearchLocalizedSkills(ctx context.Context, arg SearchLocalized
 		var i SearchLocalizedSkillsRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.RepositoryID,
-			&i.RepositoryIdentity,
+			&i.ModuleID,
+			&i.ModulePath,
 			&i.Name,
 			&i.Description,
 			&i.SourceHost,
-			&i.Repository,
-			&i.SkillPath,
+			&i.SourceRepository,
+			&i.Path,
 			&i.LatestVersion,
 			&i.Stars,
-			&i.Verified,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -809,20 +765,26 @@ func (q *Queries) SearchLocalizedSkills(ctx context.Context, arg SearchLocalized
 }
 
 const searchSkills = `-- name: SearchSkills :many
-SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.description,s.source_host,s.repository,s.skill_path,
-COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
-FROM skills s JOIN repositories r ON r.id=s.repository_id LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-WHERE ($1::boolean AND lower(s.name)=lower($2))
-OR (NOT $1::boolean AND (s.name || ' ' || s.description || ' ' || r.repository_id) ILIKE '%' || $2 || '%')
+SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+       mvs.name, mvs.description, m.source_host,
+       m.source_path AS source_repository, mvs.path,
+       mv.version AS latest_version, m.stars,
+       mv.created_at, m.updated_at
+FROM modules m
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id
+WHERE ($1::boolean AND lower(mvs.name)=lower($2))
+OR (NOT $1::boolean AND
+    (mvs.name || ' ' || mvs.description || ' ' || m.path) ILIKE '%' || $2 || '%')
 ORDER BY CASE
-    WHEN lower(s.name)=lower($2) THEN 0
-    WHEN lower(s.name) LIKE lower($2) || '%' THEN 1
-    WHEN lower(s.name) LIKE '%' || lower($2) || '%' THEN 2
-    WHEN lower(r.repository_id)=lower($2) THEN 3
-    WHEN lower(r.repository_id) LIKE '%' || lower($2) || '%' THEN 4
+    WHEN lower(mvs.name)=lower($2) THEN 0
+    WHEN lower(mvs.name) LIKE lower($2) || '%' THEN 1
+    WHEN lower(mvs.name) LIKE '%' || lower($2) || '%' THEN 2
+    WHEN lower(m.path)=lower($2) THEN 3
+    WHEN lower(m.path) LIKE '%' || lower($2) || '%' THEN 4
     ELSE 5
 END,
-similarity(s.name,$2) DESC,s.verified DESC,r.repository_id,s.skill_path
+similarity(mvs.name,$2) DESC,m.path,mvs.path
 LIMIT $4 OFFSET $3
 `
 
@@ -834,19 +796,18 @@ type SearchSkillsParams struct {
 }
 
 type SearchSkillsRow struct {
-	ID                 int64     `json:"id"`
-	RepositoryID       int64     `json:"repository_id"`
-	RepositoryIdentity string    `json:"repository_identity"`
-	Name               string    `json:"name"`
-	Description        string    `json:"description"`
-	SourceHost         string    `json:"source_host"`
-	Repository         string    `json:"repository"`
-	SkillPath          string    `json:"skill_path"`
-	LatestVersion      string    `json:"latest_version"`
-	Stars              int64     `json:"stars"`
-	Verified           bool      `json:"verified"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID               int64     `json:"id"`
+	ModuleID         int64     `json:"module_id"`
+	ModulePath       string    `json:"module_path"`
+	Name             string    `json:"name"`
+	Description      string    `json:"description"`
+	SourceHost       string    `json:"source_host"`
+	SourceRepository string    `json:"source_repository"`
+	Path             string    `json:"path"`
+	LatestVersion    string    `json:"latest_version"`
+	Stars            int64     `json:"stars"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 func (q *Queries) SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]SearchSkillsRow, error) {
@@ -865,16 +826,15 @@ func (q *Queries) SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]S
 		var i SearchSkillsRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.RepositoryID,
-			&i.RepositoryIdentity,
+			&i.ModuleID,
+			&i.ModulePath,
 			&i.Name,
 			&i.Description,
 			&i.SourceHost,
-			&i.Repository,
-			&i.SkillPath,
+			&i.SourceRepository,
+			&i.Path,
 			&i.LatestVersion,
 			&i.Stars,
-			&i.Verified,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -888,79 +848,89 @@ func (q *Queries) SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]S
 	return items, nil
 }
 
-const setCurrentRelease = `-- name: SetCurrentRelease :exec
-UPDATE repositories SET current_release_id=$2, updated_at=$3 WHERE id=$1
+const setCurrentVersion = `-- name: SetCurrentVersion :exec
+UPDATE modules SET current_version_id=$2, updated_at=$3 WHERE id=$1
 `
 
-type SetCurrentReleaseParams struct {
+type SetCurrentVersionParams struct {
 	ID               int64       `json:"id"`
-	CurrentReleaseID pgtype.Int8 `json:"current_release_id"`
+	CurrentVersionID pgtype.Int8 `json:"current_version_id"`
 	UpdatedAt        time.Time   `json:"updated_at"`
 }
 
-func (q *Queries) SetCurrentRelease(ctx context.Context, arg SetCurrentReleaseParams) error {
-	_, err := q.db.Exec(ctx, setCurrentRelease, arg.ID, arg.CurrentReleaseID, arg.UpdatedAt)
+func (q *Queries) SetCurrentVersion(ctx context.Context, arg SetCurrentVersionParams) error {
+	_, err := q.db.Exec(ctx, setCurrentVersion, arg.ID, arg.CurrentVersionID, arg.UpdatedAt)
 	return err
 }
 
-const setCurrentReleaseByVersion = `-- name: SetCurrentReleaseByVersion :exec
-UPDATE repositories AS target SET current_release_id=(SELECT id FROM repository_releases WHERE repository_releases.repository_id=target.id AND version=$2), updated_at=$3 WHERE target.repository_id=$1
+const setCurrentVersionByCoordinate = `-- name: SetCurrentVersionByCoordinate :exec
+UPDATE modules AS target
+SET current_version_id=(
+    SELECT id FROM versions
+    WHERE versions.module_id=target.id AND version=$1
+), updated_at=$2
+WHERE target.path=$3
 `
 
-type SetCurrentReleaseByVersionParams struct {
-	RepositoryID string    `json:"repository_id"`
-	Version      string    `json:"version"`
-	UpdatedAt    time.Time `json:"updated_at"`
+type SetCurrentVersionByCoordinateParams struct {
+	Version    string    `json:"version"`
+	UpdatedAt  time.Time `json:"updated_at"`
+	ModulePath string    `json:"module_path"`
 }
 
-func (q *Queries) SetCurrentReleaseByVersion(ctx context.Context, arg SetCurrentReleaseByVersionParams) error {
-	_, err := q.db.Exec(ctx, setCurrentReleaseByVersion, arg.RepositoryID, arg.Version, arg.UpdatedAt)
+func (q *Queries) SetCurrentVersionByCoordinate(ctx context.Context, arg SetCurrentVersionByCoordinateParams) error {
+	_, err := q.db.Exec(ctx, setCurrentVersionByCoordinate, arg.Version, arg.UpdatedAt, arg.ModulePath)
 	return err
 }
 
 const skillByCoordinate = `-- name: SkillByCoordinate :one
-SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.description,s.source_host,s.repository,s.skill_path,
-COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
-FROM skills s JOIN repositories r ON r.id=s.repository_id LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-WHERE r.repository_id=$1 AND s.name=$2 ORDER BY s.skill_path LIMIT 1
+SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+       mvs.name, mvs.description, m.source_host,
+       m.source_path AS source_repository, mvs.path,
+       mv.version AS latest_version, m.stars,
+       mv.created_at, m.updated_at
+FROM modules m
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id
+WHERE m.path=$1 AND mvs.name=$2
+ORDER BY mvs.path
+LIMIT 1
 `
 
 type SkillByCoordinateParams struct {
-	RepositoryID string `json:"repository_id"`
-	Name         string `json:"name"`
+	ModulePath string `json:"module_path"`
+	Name       string `json:"name"`
 }
 
 type SkillByCoordinateRow struct {
-	ID                 int64     `json:"id"`
-	RepositoryID       int64     `json:"repository_id"`
-	RepositoryIdentity string    `json:"repository_identity"`
-	Name               string    `json:"name"`
-	Description        string    `json:"description"`
-	SourceHost         string    `json:"source_host"`
-	Repository         string    `json:"repository"`
-	SkillPath          string    `json:"skill_path"`
-	LatestVersion      string    `json:"latest_version"`
-	Stars              int64     `json:"stars"`
-	Verified           bool      `json:"verified"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID               int64     `json:"id"`
+	ModuleID         int64     `json:"module_id"`
+	ModulePath       string    `json:"module_path"`
+	Name             string    `json:"name"`
+	Description      string    `json:"description"`
+	SourceHost       string    `json:"source_host"`
+	SourceRepository string    `json:"source_repository"`
+	Path             string    `json:"path"`
+	LatestVersion    string    `json:"latest_version"`
+	Stars            int64     `json:"stars"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 func (q *Queries) SkillByCoordinate(ctx context.Context, arg SkillByCoordinateParams) (SkillByCoordinateRow, error) {
-	row := q.db.QueryRow(ctx, skillByCoordinate, arg.RepositoryID, arg.Name)
+	row := q.db.QueryRow(ctx, skillByCoordinate, arg.ModulePath, arg.Name)
 	var i SkillByCoordinateRow
 	err := row.Scan(
 		&i.ID,
-		&i.RepositoryID,
-		&i.RepositoryIdentity,
+		&i.ModuleID,
+		&i.ModulePath,
 		&i.Name,
 		&i.Description,
 		&i.SourceHost,
-		&i.Repository,
-		&i.SkillPath,
+		&i.SourceRepository,
+		&i.Path,
 		&i.LatestVersion,
 		&i.Stars,
-		&i.Verified,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -968,17 +938,21 @@ func (q *Queries) SkillByCoordinate(ctx context.Context, arg SkillByCoordinatePa
 }
 
 const skillPublishedVersions = `-- name: SkillPublishedVersions :many
-SELECT DISTINCT rr.version FROM repositories r JOIN repository_releases rr ON rr.repository_id=r.id
-JOIN repository_release_members rrm ON rrm.release_id=rr.id WHERE r.repository_id=$1 AND rrm.name=$2 ORDER BY rr.version
+SELECT DISTINCT mv.version
+FROM modules m
+JOIN versions mv ON mv.module_id=m.id
+JOIN skills mvs ON mvs.version_id=mv.id
+WHERE m.path=$1 AND mvs.name=$2
+ORDER BY mv.version
 `
 
 type SkillPublishedVersionsParams struct {
-	RepositoryID string `json:"repository_id"`
-	Name         string `json:"name"`
+	ModulePath string `json:"module_path"`
+	Name       string `json:"name"`
 }
 
 func (q *Queries) SkillPublishedVersions(ctx context.Context, arg SkillPublishedVersionsParams) ([]string, error) {
-	rows, err := q.db.Query(ctx, skillPublishedVersions, arg.RepositoryID, arg.Name)
+	rows, err := q.db.Query(ctx, skillPublishedVersions, arg.ModulePath, arg.Name)
 	if err != nil {
 		return nil, err
 	}
@@ -997,48 +971,105 @@ func (q *Queries) SkillPublishedVersions(ctx context.Context, arg SkillPublished
 	return items, nil
 }
 
+const skills = `-- name: Skills :many
+SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
+       mvs.path, mv.commit_time, mvs.description
+FROM modules m
+JOIN versions mv ON mv.module_id=m.id
+JOIN skills mvs ON mvs.version_id=mv.id
+WHERE m.path=$1 AND mv.version=$2
+ORDER BY mvs.path
+`
+
+type SkillsParams struct {
+	ModulePath string `json:"module_path"`
+	Version    string `json:"version"`
+}
+
+type SkillsRow struct {
+	VersionID   int64     `json:"version_id"`
+	Name        string    `json:"name"`
+	Version     string    `json:"version"`
+	CommitSha   string    `json:"commit_sha"`
+	Path        string    `json:"path"`
+	CommitTime  time.Time `json:"commit_time"`
+	Description string    `json:"description"`
+}
+
+func (q *Queries) Skills(ctx context.Context, arg SkillsParams) ([]SkillsRow, error) {
+	rows, err := q.db.Query(ctx, skills, arg.ModulePath, arg.Version)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SkillsRow{}
+	for rows.Next() {
+		var i SkillsRow
+		if err := rows.Scan(
+			&i.VersionID,
+			&i.Name,
+			&i.Version,
+			&i.CommitSha,
+			&i.Path,
+			&i.CommitTime,
+			&i.Description,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const skillsByCoordinates = `-- name: SkillsByCoordinates :many
 WITH requested AS (
-    SELECT repositories.repository_identity, skill_names.name, repositories.ordinal
-    FROM unnest($1::text[]) WITH ORDINALITY AS repositories(repository_identity, ordinal)
+    SELECT module_paths.module_path, skill_names.name, module_paths.ordinal
+    FROM unnest($1::text[]) WITH ORDINALITY AS module_paths(module_path, ordinal)
     JOIN unnest($2::text[]) WITH ORDINALITY AS skill_names(name, ordinal) USING (ordinal)
 )
-SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.description,s.source_host,s.repository,s.skill_path,
-COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
+SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+       mvs.name, mvs.description, m.source_host,
+       m.source_path AS source_repository, mvs.path,
+       mv.version AS latest_version, m.stars,
+       mv.created_at, m.updated_at
 FROM requested input
-JOIN repositories r ON r.repository_id=input.repository_identity
+JOIN modules m ON m.path=input.module_path
+JOIN versions mv ON mv.id=m.current_version_id
 JOIN LATERAL (
-    SELECT candidate.id, candidate.repository_id, candidate.name, candidate.description, candidate.source_host, candidate.repository, candidate.skill_path, candidate.verified, candidate.created_at, candidate.updated_at FROM skills candidate
-    WHERE candidate.repository_id=r.id AND candidate.name=input.name
-    ORDER BY candidate.skill_path LIMIT 1
-) s ON true
-LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
+    SELECT candidate.id, candidate.version_id, candidate.name, candidate.path, candidate.description
+    FROM skills candidate
+    WHERE candidate.version_id=mv.id AND candidate.name=input.name
+    ORDER BY candidate.path
+    LIMIT 1
+) mvs ON true
 ORDER BY input.ordinal
 `
 
 type SkillsByCoordinatesParams struct {
-	RepositoryIdentities []string `json:"repository_identities"`
-	Names                []string `json:"names"`
+	ModulePaths []string `json:"module_paths"`
+	Names       []string `json:"names"`
 }
 
 type SkillsByCoordinatesRow struct {
-	ID                 int64     `json:"id"`
-	RepositoryID       int64     `json:"repository_id"`
-	RepositoryIdentity string    `json:"repository_identity"`
-	Name               string    `json:"name"`
-	Description        string    `json:"description"`
-	SourceHost         string    `json:"source_host"`
-	Repository         string    `json:"repository"`
-	SkillPath          string    `json:"skill_path"`
-	LatestVersion      string    `json:"latest_version"`
-	Stars              int64     `json:"stars"`
-	Verified           bool      `json:"verified"`
-	CreatedAt          time.Time `json:"created_at"`
-	UpdatedAt          time.Time `json:"updated_at"`
+	ID               int64     `json:"id"`
+	ModuleID         int64     `json:"module_id"`
+	ModulePath       string    `json:"module_path"`
+	Name             string    `json:"name"`
+	Description      string    `json:"description"`
+	SourceHost       string    `json:"source_host"`
+	SourceRepository string    `json:"source_repository"`
+	Path             string    `json:"path"`
+	LatestVersion    string    `json:"latest_version"`
+	Stars            int64     `json:"stars"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 func (q *Queries) SkillsByCoordinates(ctx context.Context, arg SkillsByCoordinatesParams) ([]SkillsByCoordinatesRow, error) {
-	rows, err := q.db.Query(ctx, skillsByCoordinates, arg.RepositoryIdentities, arg.Names)
+	rows, err := q.db.Query(ctx, skillsByCoordinates, arg.ModulePaths, arg.Names)
 	if err != nil {
 		return nil, err
 	}
@@ -1048,16 +1079,15 @@ func (q *Queries) SkillsByCoordinates(ctx context.Context, arg SkillsByCoordinat
 		var i SkillsByCoordinatesRow
 		if err := rows.Scan(
 			&i.ID,
-			&i.RepositoryID,
-			&i.RepositoryIdentity,
+			&i.ModuleID,
+			&i.ModulePath,
 			&i.Name,
 			&i.Description,
 			&i.SourceHost,
-			&i.Repository,
-			&i.SkillPath,
+			&i.SourceRepository,
+			&i.Path,
 			&i.LatestVersion,
 			&i.Stars,
-			&i.Verified,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 		); err != nil {
@@ -1072,7 +1102,7 @@ func (q *Queries) SkillsByCoordinates(ctx context.Context, arg SkillsByCoordinat
 }
 
 const staleQueuedBackfillRuns = `-- name: StaleQueuedBackfillRuns :many
-SELECT id, repository_id, status, started_at, completed_at, error_count, diagnostics, created_at, updated_at FROM repository_backfill_runs WHERE status='queued' AND updated_at<$1 ORDER BY updated_at LIMIT $2
+SELECT id, module_path, status, started_at, completed_at, error_count, diagnostics, created_at, updated_at FROM module_backfill_runs WHERE status='queued' AND updated_at<$1 ORDER BY updated_at LIMIT $2
 `
 
 type StaleQueuedBackfillRunsParams struct {
@@ -1080,18 +1110,18 @@ type StaleQueuedBackfillRunsParams struct {
 	Limit     int32     `json:"limit"`
 }
 
-func (q *Queries) StaleQueuedBackfillRuns(ctx context.Context, arg StaleQueuedBackfillRunsParams) ([]RepositoryBackfillRun, error) {
+func (q *Queries) StaleQueuedBackfillRuns(ctx context.Context, arg StaleQueuedBackfillRunsParams) ([]ModuleBackfillRun, error) {
 	rows, err := q.db.Query(ctx, staleQueuedBackfillRuns, arg.UpdatedAt, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []RepositoryBackfillRun{}
+	items := []ModuleBackfillRun{}
 	for rows.Next() {
-		var i RepositoryBackfillRun
+		var i ModuleBackfillRun
 		if err := rows.Scan(
 			&i.ID,
-			&i.RepositoryID,
+			&i.ModulePath,
 			&i.Status,
 			&i.StartedAt,
 			&i.CompletedAt,
@@ -1111,7 +1141,7 @@ func (q *Queries) StaleQueuedBackfillRuns(ctx context.Context, arg StaleQueuedBa
 }
 
 const startBackfillRun = `-- name: StartBackfillRun :execrows
-UPDATE repository_backfill_runs SET status='running',started_at=COALESCE(started_at,$1),updated_at=$1
+UPDATE module_backfill_runs SET status='running',started_at=COALESCE(started_at,$1),updated_at=$1
 WHERE id=$2 AND status='queued'
 `
 
@@ -1129,7 +1159,7 @@ func (q *Queries) StartBackfillRun(ctx context.Context, arg StartBackfillRunPara
 }
 
 const touchBackfillRun = `-- name: TouchBackfillRun :execrows
-UPDATE repository_backfill_runs SET updated_at=$2 WHERE id=$1 AND status='running'
+UPDATE module_backfill_runs SET updated_at=$2 WHERE id=$1 AND status='running'
 `
 
 type TouchBackfillRunParams struct {
@@ -1146,20 +1176,28 @@ func (q *Queries) TouchBackfillRun(ctx context.Context, arg TouchBackfillRunPara
 }
 
 const translationCandidates = `-- name: TranslationCandidates :many
-SELECT 'repository'::text AS resource_kind, r.repository_id AS resource_id, r.description,
-COALESCE(ld.source_digest, '') AS source_digest, COALESCE(ld.prompt_version, '') AS prompt_version
-FROM repositories r LEFT JOIN localized_descriptions ld
-ON ld.resource_kind='repository' AND ld.resource_id=r.repository_id AND ld.locale=$1
-WHERE trim(r.description)<>''
+SELECT 'module'::text AS resource_kind, m.path AS resource_id, m.description,
+       COALESCE(ld.source_digest, '') AS source_digest,
+       COALESCE(ld.prompt_version, '') AS prompt_version
+FROM modules m
+LEFT JOIN localized_descriptions ld
+  ON ld.resource_kind='module' AND ld.resource_id=m.path AND ld.locale=$1
+WHERE trim(m.description)<>''
 UNION ALL
-SELECT 'skill'::text, r.repository_id || ':' || s.name, s.description,
-COALESCE(ld.source_digest, ''), COALESCE(ld.prompt_version, '')
-FROM skills s JOIN repositories r ON r.id=s.repository_id LEFT JOIN localized_descriptions ld
-ON ld.resource_kind='skill' AND ld.resource_id=r.repository_id || ':' || s.name AND ld.locale=$1
-WHERE trim(s.description)<>'' AND s.skill_path=(
-    SELECT min(candidate.skill_path) FROM skills candidate
-    WHERE candidate.repository_id=s.repository_id AND candidate.name=s.name
-) ORDER BY resource_kind, resource_id
+SELECT 'skill'::text, m.path || ':' || mvs.name, mvs.description,
+       COALESCE(ld.source_digest, ''), COALESCE(ld.prompt_version, '')
+FROM modules m
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id
+LEFT JOIN localized_descriptions ld
+  ON ld.resource_kind='skill' AND ld.resource_id=m.path || ':' || mvs.name AND ld.locale=$1
+WHERE trim(mvs.description)<>''
+  AND mvs.path=(
+      SELECT min(candidate.path)
+      FROM skills candidate
+      WHERE candidate.version_id=mv.id AND candidate.name=mvs.name
+  )
+ORDER BY resource_kind, resource_id
 `
 
 type TranslationCandidatesRow struct {
@@ -1196,29 +1234,29 @@ func (q *Queries) TranslationCandidates(ctx context.Context, locale string) ([]T
 	return items, nil
 }
 
-const updateRepositorySourceMetadata = `-- name: UpdateRepositorySourceMetadata :execrows
-UPDATE repositories SET description = $2, stars = $3, source_metadata_etag = $4,
-source_metadata_checked_at = COALESCE($5, source_metadata_checked_at), source_metadata_retry_at = $6,
-updated_at = CURRENT_TIMESTAMP WHERE repository_id = $1
+const updateModuleSourceMetadata = `-- name: UpdateModuleSourceMetadata :execrows
+UPDATE modules SET description = $1, stars = $2, source_etag = $3,
+source_checked_at = COALESCE($4, source_checked_at), source_retry_at = $5,
+updated_at = CURRENT_TIMESTAMP WHERE path = $6
 `
 
-type UpdateRepositorySourceMetadataParams struct {
-	RepositoryID            string      `json:"repository_id"`
-	Description             string      `json:"description"`
-	Stars                   int64       `json:"stars"`
-	SourceMetadataEtag      pgtype.Text `json:"source_metadata_etag"`
-	SourceMetadataCheckedAt *time.Time  `json:"source_metadata_checked_at"`
-	SourceMetadataRetryAt   *time.Time  `json:"source_metadata_retry_at"`
+type UpdateModuleSourceMetadataParams struct {
+	Description     string      `json:"description"`
+	Stars           int64       `json:"stars"`
+	SourceEtag      pgtype.Text `json:"source_etag"`
+	SourceCheckedAt *time.Time  `json:"source_checked_at"`
+	SourceRetryAt   *time.Time  `json:"source_retry_at"`
+	ModulePath      string      `json:"module_path"`
 }
 
-func (q *Queries) UpdateRepositorySourceMetadata(ctx context.Context, arg UpdateRepositorySourceMetadataParams) (int64, error) {
-	result, err := q.db.Exec(ctx, updateRepositorySourceMetadata,
-		arg.RepositoryID,
+func (q *Queries) UpdateModuleSourceMetadata(ctx context.Context, arg UpdateModuleSourceMetadataParams) (int64, error) {
+	result, err := q.db.Exec(ctx, updateModuleSourceMetadata,
 		arg.Description,
 		arg.Stars,
-		arg.SourceMetadataEtag,
-		arg.SourceMetadataCheckedAt,
-		arg.SourceMetadataRetryAt,
+		arg.SourceEtag,
+		arg.SourceCheckedAt,
+		arg.SourceRetryAt,
+		arg.ModulePath,
 	)
 	if err != nil {
 		return 0, err
@@ -1228,8 +1266,10 @@ func (q *Queries) UpdateRepositorySourceMetadata(ctx context.Context, arg Update
 
 const upsertLocalizedDescription = `-- name: UpsertLocalizedDescription :exec
 INSERT INTO localized_descriptions (resource_kind,resource_id,locale,description,source_digest,prompt_version,created_at,updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$7) ON CONFLICT(resource_kind,resource_id,locale) DO UPDATE SET
-description=excluded.description,source_digest=excluded.source_digest,prompt_version=excluded.prompt_version,updated_at=excluded.updated_at
+VALUES ($1,$2,$3,$4,$5,$6,$7,$7)
+ON CONFLICT(resource_kind,resource_id,locale) DO UPDATE SET
+description=excluded.description,source_digest=excluded.source_digest,
+prompt_version=excluded.prompt_version,updated_at=excluded.updated_at
 `
 
 type UpsertLocalizedDescriptionParams struct {
@@ -1255,83 +1295,46 @@ func (q *Queries) UpsertLocalizedDescription(ctx context.Context, arg UpsertLoca
 	return err
 }
 
-const upsertRepository = `-- name: UpsertRepository :one
+const upsertModule = `-- name: UpsertModule :one
 
-INSERT INTO repositories (source_host, repository_path, repository_id, created_at, updated_at)
+INSERT INTO modules (source_host, source_path, path, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $4)
-ON CONFLICT (repository_id) DO UPDATE SET updated_at = excluded.updated_at
-RETURNING id, source_host, repository_path, repository_id, current_release_id, description, stars, source_metadata_etag, source_metadata_checked_at, source_metadata_retry_at, created_at, updated_at
+ON CONFLICT (path) DO UPDATE SET updated_at = excluded.updated_at
+RETURNING id, source_host, source_path, path, current_version_id, description, stars, source_etag, source_checked_at, source_retry_at, created_at, updated_at
 `
 
-type UpsertRepositoryParams struct {
-	SourceHost     string    `json:"source_host"`
-	RepositoryPath string    `json:"repository_path"`
-	RepositoryID   string    `json:"repository_id"`
-	CreatedAt      time.Time `json:"created_at"`
+type UpsertModuleParams struct {
+	SourceHost string    `json:"source_host"`
+	SourcePath string    `json:"source_path"`
+	Path       string    `json:"path"`
+	CreatedAt  time.Time `json:"created_at"`
 }
 
-// [INPUT]: Depends on the reviewed PostgreSQL Catalog schema and sqlc's pgx/v5 generator.
-// [OUTPUT]: Defines typed Repository, Release, Skill, localization, name-first/exact single and set-based batch Find, and Backfill persistence operations.
+// [INPUT]: Depends on the reviewed PostgreSQL Module Catalog schema and sqlc's pgx/v5 generator.
+// [OUTPUT]: Defines typed Module, immutable Module Version Skill, localization, search, and Backfill persistence operations.
 // [POS]: Serves as the single maintained query source for the Hub Catalog module.
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
-func (q *Queries) UpsertRepository(ctx context.Context, arg UpsertRepositoryParams) (Repository, error) {
-	row := q.db.QueryRow(ctx, upsertRepository,
+func (q *Queries) UpsertModule(ctx context.Context, arg UpsertModuleParams) (Module, error) {
+	row := q.db.QueryRow(ctx, upsertModule,
 		arg.SourceHost,
-		arg.RepositoryPath,
-		arg.RepositoryID,
+		arg.SourcePath,
+		arg.Path,
 		arg.CreatedAt,
 	)
-	var i Repository
+	var i Module
 	err := row.Scan(
 		&i.ID,
 		&i.SourceHost,
-		&i.RepositoryPath,
-		&i.RepositoryID,
-		&i.CurrentReleaseID,
+		&i.SourcePath,
+		&i.Path,
+		&i.CurrentVersionID,
 		&i.Description,
 		&i.Stars,
-		&i.SourceMetadataEtag,
-		&i.SourceMetadataCheckedAt,
-		&i.SourceMetadataRetryAt,
+		&i.SourceEtag,
+		&i.SourceCheckedAt,
+		&i.SourceRetryAt,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
 	return i, err
-}
-
-const upsertSkill = `-- name: UpsertSkill :one
-INSERT INTO skills (repository_id, name, description, source_host, repository, skill_path, verified, created_at, updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-ON CONFLICT (repository_id, skill_path) DO UPDATE SET name=excluded.name, description=excluded.description, source_host=excluded.source_host,
-repository=excluded.repository, verified=excluded.verified, updated_at=excluded.updated_at
-RETURNING id
-`
-
-type UpsertSkillParams struct {
-	RepositoryID int64     `json:"repository_id"`
-	Name         string    `json:"name"`
-	Description  string    `json:"description"`
-	SourceHost   string    `json:"source_host"`
-	Repository   string    `json:"repository"`
-	SkillPath    string    `json:"skill_path"`
-	Verified     bool      `json:"verified"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
-}
-
-func (q *Queries) UpsertSkill(ctx context.Context, arg UpsertSkillParams) (int64, error) {
-	row := q.db.QueryRow(ctx, upsertSkill,
-		arg.RepositoryID,
-		arg.Name,
-		arg.Description,
-		arg.SourceHost,
-		arg.Repository,
-		arg.SkillPath,
-		arg.Verified,
-		arg.CreatedAt,
-		arg.UpdatedAt,
-	)
-	var id int64
-	err := row.Scan(&id)
-	return id, err
 }

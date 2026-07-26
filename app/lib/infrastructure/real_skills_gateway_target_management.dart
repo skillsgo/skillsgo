@@ -131,7 +131,7 @@ mixin _RealSkillsGatewayTargetManagement
     InstalledSkill skill,
     List<SkillInstallationTarget> requested,
   ) {
-    if (skill.repositoryId.isEmpty ||
+    if (skill.modulePath.isEmpty ||
         requested.isEmpty ||
         requested.any((target) => target.version.isEmpty)) {
       throw const SkillsException(
@@ -168,12 +168,12 @@ mixin _RealSkillsGatewayTargetManagement
             target: planTargets[index],
             name: skill.name,
             skillId: '',
-            repositoryId: skill.repositoryId,
+            modulePath: skill.modulePath,
             version: bindings[index].version,
             health: bindings[index].health,
             allowedActions: const [TargetManagementAction.remove],
             stateToken:
-                'repository:${skill.repositoryId}:${skill.name}:${bindings[index].version}',
+                'module:${skill.modulePath}:${skill.name}:${bindings[index].version}',
             workspaceMetadataChange: true,
             affectedBindings: List.unmodifiable([
               for (
@@ -254,7 +254,7 @@ mixin _RealSkillsGatewayTargetManagement
             target: item.target,
             name: item.name,
             skillId: item.skillId,
-            repositoryId: item.repositoryId,
+            modulePath: item.modulePath,
             version: item.version,
             action: TargetManagementAction.remove,
             state: InstallationProgressState.started,
@@ -272,7 +272,7 @@ mixin _RealSkillsGatewayTargetManagement
       if (!command.succeeded) throw _commandFailure(command);
       final raw = _decodeMachineDocument(
         command.output.stdout,
-        phase: 'repository-remove',
+        phase: 'module-remove',
       );
       if (raw['skills'] is! List ||
           !(raw['skills'] as List).contains(first.name)) {
@@ -286,7 +286,7 @@ mixin _RealSkillsGatewayTargetManagement
           target: item.target,
           name: item.name,
           skillId: item.skillId,
-          repositoryId: item.repositoryId,
+          modulePath: item.modulePath,
           version: item.version,
           action: TargetManagementAction.remove,
           outcome: TargetManagementOutcome.succeeded,
@@ -399,7 +399,7 @@ mixin _RealSkillsGatewayTargetManagement
               target: target,
               name: item.name,
               skillId: item.skillId,
-              repositoryId: item.repositoryId,
+              modulePath: item.modulePath,
               version: item.version,
               action: item.action!,
               state: state,

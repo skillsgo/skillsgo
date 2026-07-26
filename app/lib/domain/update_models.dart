@@ -11,7 +11,7 @@ class UpdatePlanItem {
   const UpdatePlanItem({
     required this.target,
     required this.name,
-    required this.repositoryId,
+    required this.modulePath,
     required this.sourceRef,
     required this.fromVersion,
     required this.toVersion,
@@ -25,7 +25,7 @@ class UpdatePlanItem {
 
   final InstallationPlanTarget target;
   final String name;
-  final String repositoryId;
+  final String modulePath;
   final String sourceRef;
   final String fromVersion;
   final String toVersion;
@@ -105,7 +105,7 @@ class UpdateTargetResult {
   const UpdateTargetResult({
     required this.target,
     required this.name,
-    required this.repositoryId,
+    required this.modulePath,
     required this.fromVersion,
     required this.toVersion,
     required this.outcome,
@@ -114,7 +114,7 @@ class UpdateTargetResult {
 
   final InstallationPlanTarget target;
   final String name;
-  final String repositoryId;
+  final String modulePath;
   final String fromVersion;
   final String toVersion;
   final UpdateTargetOutcome outcome;
@@ -145,7 +145,7 @@ class UpdateTargetProgress {
     required this.sequence,
     required this.target,
     required this.name,
-    required this.repositoryId,
+    required this.modulePath,
     required this.fromVersion,
     required this.toVersion,
     required this.state,
@@ -155,7 +155,7 @@ class UpdateTargetProgress {
   final int sequence;
   final InstallationPlanTarget target;
   final String name;
-  final String repositoryId;
+  final String modulePath;
   final String fromVersion;
   final String toVersion;
   final InstallationProgressState state;

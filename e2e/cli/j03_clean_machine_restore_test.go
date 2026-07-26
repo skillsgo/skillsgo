@@ -21,7 +21,7 @@ func TestJ03RestoreSum(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testRepositoryID+"@"+testSkillVersion, "--skill", testSkillName,
+		"add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 
 		"--yes",
@@ -34,41 +34,42 @@ func TestJ03RestoreSum(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 	require.NotEmpty(t, installed.Version)
 
-	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml")
+	sumPath := filepath.Join(sandboxRoot, "project", "skills-lock.yaml")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 
-	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "project", ".skillsgo", "vendor")))
-	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "project", ".agents")))
-	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.Vendor))
+	removed := execInContainer(t, ctx, container, "rm", "-rf", scenarioContainerPath(t, "project", ".skillsgo", "modules"), scenarioContainerPath(t, "project", ".agents"))
+	require.Equal(t, 0, removed.exitCode, removed.output)
+	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.ModuleDir))
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents"))
 
 	restore := execCLI(t, ctx, container, "install", "--output", "json")
 	require.Equal(t, 0, restore.exitCode, restore.output)
 
 	var restored []struct {
-		Repository string `json:"repository"`
+		ModulePath string `json:"modulePath"`
 		Version    string `json:"version"`
 		Status     string `json:"status"`
-		Vendor     string `json:"vendor"`
+		ModuleDir  string `json:"moduleDir"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(restore.output), &restored), restore.output)
 	require.Len(t, restored, 1)
-	require.Equal(t, installed.Repository, restored[0].Repository)
+	require.Equal(t, installed.ModulePath, restored[0].ModulePath)
 	require.Equal(t, installed.Version, restored[0].Version)
 	require.Equal(t, "restored", restored[0].Status)
 
 	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Vendor, "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.ModuleDir, "skills", "alpha", "SKILL.md"))
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	require.Equal(t, sumBefore, sumAfter, "checksum-backed restoration must not rewrite skillsgo-lock.yaml")
+	require.Equal(t, sumBefore, sumAfter, "checksum-backed restoration must not rewrite skills-lock.yaml")
 
-	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "project", ".agents")))
+	removed = execInContainer(t, ctx, container, "rm", "-rf", scenarioContainerPath(t, "project", ".agents"))
+	require.Equal(t, 0, removed.exitCode, removed.output)
 	nested := filepath.Join(sandboxRoot, "project", "packages", "demo")
 	require.NoError(t, os.MkdirAll(nested, 0o755))
-	nestedRestore := execCLIFrom(t, ctx, container, "/e2e/project/packages/demo", "install", "--output", "json")
+	nestedRestore := execCLIFrom(t, ctx, container, scenarioContainerPath(t, "project", "packages", "demo"), "install", "--output", "json")
 	require.Equal(t, 0, nestedRestore.exitCode, nestedRestore.output)
 	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
-	require.NoFileExists(t, filepath.Join(nested, "skillsgo.yaml"))
+	require.NoFileExists(t, filepath.Join(nested, "skills.yaml"))
 }

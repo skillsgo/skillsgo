@@ -24,7 +24,7 @@ type gitFetcher struct {
 	fs            afero.Fs
 	cacheDir      string
 	syncs         singleflight.Group
-	cloneURL      func(RepositoryID) string
+	cloneURL      func(ModulePath) string
 	runGitCommand func(context.Context, string, []string, []string) ([]byte, error)
 	cacheTTL      time.Duration
 	cacheMaxBytes int64
@@ -63,7 +63,7 @@ func NewRepositoryFetcher(cacheDir string, fs afero.Fs, options ...FetcherOption
 	fetcher := &gitFetcher{
 		fs:            fs,
 		cacheDir:      cacheDir,
-		cloneURL:      func(skillID RepositoryID) string { return skillID.RepositoryURL() },
+		cloneURL:      func(skillID ModulePath) string { return skillID.SourceURL() },
 		runGitCommand: runGitCommand,
 		cacheTTL:      7 * 24 * time.Hour,
 		cacheMaxBytes: 10 << 30,
@@ -78,11 +78,11 @@ func NewRepositoryFetcher(cacheDir string, fs afero.Fs, options ...FetcherOption
 }
 
 func (g *gitFetcher) repositoryDir(repository string) (string, error) {
-	parsed, err := ParseRepositoryID(repository)
+	parsed, err := ParseModulePath(repository)
 	if err != nil {
 		return "", fmt.Errorf("invalid repository cache path %q: %w", repository, err)
 	}
-	repository = parsed.Repository
+	repository = parsed.String()
 
 	root := filepath.Join(g.cacheDir, "repositories")
 	host, _, _ := strings.Cut(repository, "/")

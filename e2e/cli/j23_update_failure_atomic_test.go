@@ -19,14 +19,14 @@ import (
 func TestJ23UpdateFailureIsNonZeroAndAtomic(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
-	add := execCLI(t, ctx, container, "add", testRepositoryID+"@"+testSkillVersion, "--skill", testSkillName, "--agent", "codex", "--yes", "--output", "json")
+	add := execCLI(t, ctx, container, "add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName, "--agent", "codex", "--yes", "--output", "json")
 	require.Equal(t, 0, add.exitCode, add.output)
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 	paths := []string{
 		containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"),
-		filepath.Join(sandboxRoot, "project", "skillsgo.yaml"),
-		filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"),
+		filepath.Join(sandboxRoot, "project", "skills.yaml"),
+		filepath.Join(sandboxRoot, "project", "skills-lock.yaml"),
 	}
 	before := make([][]byte, len(paths))
 	for index, path := range paths {
@@ -35,7 +35,7 @@ func TestJ23UpdateFailureIsNonZeroAndAtomic(t *testing.T) {
 		require.NoError(t, err)
 	}
 
-	result := execCLI(t, ctx, container, "update", installed.Repository+"@v1.4.0", "--hub", "http://127.0.0.1:1", "--preflight", "--output", "json")
+	result := execCLI(t, ctx, container, "update", installed.ModulePath+"@v1.4.0", "--hub", "http://127.0.0.1:1", "--preflight", "--output", "json")
 	require.NotEqual(t, 0, result.exitCode, result.output)
 	for index, path := range paths {
 		after, err := os.ReadFile(path)

@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Uses representative valid, malformed, and boundary-length Skill Names.
  * [OUTPUT]: Specifies the canonical lowercase, single-hyphen, 64-rune Skill Name grammar.
- * [POS]: Serves as executable compatibility coverage for Repository-member identity.
+ * [POS]: Serves as executable compatibility coverage for Module-member identity.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package skillname

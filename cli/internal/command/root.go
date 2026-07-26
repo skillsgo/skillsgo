@@ -113,7 +113,7 @@ func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			root := project.UserRoot(home)
+			root := project.UserDeclarationRoot(home)
 			if !global {
 				root, err = os.Getwd()
 				if err != nil {
@@ -148,7 +148,7 @@ func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
 				if result.Error != "" {
 					state = "!"
 				}
-				rows = append(rows, terminalui.Row{State: state, Primary: result.Repository, Secondary: result.Version, Meta: []string{result.Status}})
+				rows = append(rows, terminalui.Row{State: state, Primary: result.ModulePath, Secondary: result.Version, Meta: []string{result.Status}})
 			}
 			if err := ui.Render(terminalui.Document{Title: strings.TrimSpace(appi18n.F("install.success", len(results))), Sections: []terminalui.Section{{Rows: rows}}}); err != nil {
 				return err
@@ -321,7 +321,7 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 			if len(args) == 0 && !all {
 				return fmt.Errorf("请指定要移除的 Skill，或使用 --all")
 			}
-			if handled, err := tryRemoveRepositoryMembers(cmd, catalog, args, options.agents, options.global, projectRoot, all); handled {
+			if handled, err := tryRemoveVersionSkills(cmd, catalog, args, options.agents, options.global, projectRoot, all); handled {
 				return err
 			}
 			names := map[string]bool{}

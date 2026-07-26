@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber routing, successful and redirected artifact protocols, canonical versions, and explicit movable Selectors.
- * [OUTPUT]: Specifies the public Repository versions resources, removal of legacy Proxy paths, exact-version enforcement, HTTP method boundaries, external immutable ZIP delivery, redirect behavior, and cache policy.
+ * [INPUT]: Depends on Fiber routing, successful and redirected artifact protocols, canonical versions, and explicit movable revisions.
+ * [OUTPUT]: Specifies public Module Version metadata resolution, immutable ZIP enforcement, removal of legacy Proxy paths, HTTP method boundaries, external delivery, redirect behavior, and conditional cache policy.
  * [POS]: Serves as the public artifact HTTP routing contract for the download package.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,10 +18,10 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
 )
 
-func TestArtifactProtocolIsServedAtRoot(t *testing.T) {
+func TestArtifactProtocolIsServedUnderV1API(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger(), ArtifactOrigin: "https://example.test"})
-	request, err := http.NewRequest(http.MethodGet, "/github.com/skillsgo/skillsgo/versions/v1.0.0", nil)
+	request, err := http.NewRequest(http.MethodGet, "/api/v1/github.com/skillsgo/skillsgo/versions/v1.0.0", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,11 +30,31 @@ func TestArtifactProtocolIsServedAtRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	if response.StatusCode != http.StatusOK {
-		t.Fatalf("root Repository Proxy route returned %d, want 200", response.StatusCode)
+		t.Fatalf("v1 Module distribution route returned %d, want 200", response.StatusCode)
 	}
 }
 
-func TestRemovedModNamespaceIsNotInterpretedAsRepositoryID(t *testing.T) {
+func TestModuleVersionsAreServedAsJSON(t *testing.T) {
+	r := fiber.New()
+	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
+	request, err := http.NewRequest(http.MethodGet, "/api/v1/github.com/skillsgo/skillsgo/versions", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := r.Test(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != http.StatusOK || response.Header.Get("Content-Type") != "application/json; charset=utf-8" || string(body) != `{"versions":["v1.0.0","v2.0.0-rc.1"]}` {
+		t.Fatalf("versions response status=%d content-type=%q body=%s", response.StatusCode, response.Header.Get("Content-Type"), body)
+	}
+}
+
+func TestRemovedModNamespaceIsNotInterpretedAsModulePath(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
 	request, err := http.NewRequest(http.MethodGet, "/mod/github.com/skillsgo/skillsgo/versions/v1.0.0", nil)
@@ -54,9 +74,9 @@ func TestLegacyProxyVersionPathsAreRemoved(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
 	for _, legacyPath := range []string{
-		"/github.com/skillsgo/skillsgo/@v/list",
-		"/github.com/skillsgo/skillsgo/@v/v1.0.0.info",
-		"/github.com/skillsgo/skillsgo/@v/v1.0.0.zip",
+		"/api/v1/github.com/skillsgo/skillsgo/@v/list",
+		"/api/v1/github.com/skillsgo/skillsgo/@v/v1.0.0.info",
+		"/api/v1/github.com/skillsgo/skillsgo/@v/v1.0.0.zip",
 	} {
 		request, err := http.NewRequest(http.MethodGet, legacyPath, nil)
 		if err != nil {
@@ -72,22 +92,20 @@ func TestLegacyProxyVersionPathsAreRemoved(t *testing.T) {
 	}
 }
 
-func TestExactResourceRoutesRejectMovableOrRawRevisionQueries(t *testing.T) {
+func TestMetadataAcceptsMovableRevisionsWhileZipRejectsThem(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{
 		Protocol:       &successfulProtocol{},
 		Logger:         log.NoOpLogger(),
 		ArtifactOrigin: "https://files.skillsgo.ai",
 	})
-	for _, requestCase := range []struct {
-		method string
-		path   string
-	}{
-		{http.MethodGet, "/github.com/skillsgo/skillsgo/versions/main"},
-		{http.MethodGet, "/github.com/skillsgo/skillsgo/versions/main.zip"},
-		{http.MethodHead, "/github.com/skillsgo/skillsgo/versions/main.zip"},
-		{http.MethodGet, "/github.com/skillsgo/skillsgo/versions/abcdef123456"},
+	for _, path := range []string{
+		"/api/v1/github.com/skillsgo/skillsgo/versions/main",
+		"/api/v1/github.com/skillsgo/skillsgo/versions/latest",
+		"/api/v1/github.com/skillsgo/skillsgo/versions/abcdef123456",
+		"/api/v1/github.com/skillsgo/skillsgo/versions/feature%2Fdeep",
 	} {
+		requestCase := struct{ method, path string }{http.MethodGet, path}
 		request, err := http.NewRequest(requestCase.method, requestCase.path, nil)
 		if err != nil {
 			t.Fatal(err)
@@ -96,9 +114,17 @@ func TestExactResourceRoutesRejectMovableOrRawRevisionQueries(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if response.StatusCode != http.StatusBadRequest {
-			t.Fatalf("%s %s returned %d, want 400", requestCase.method, requestCase.path, response.StatusCode)
+		if response.StatusCode != http.StatusOK || response.Header.Get("Cache-Control") != movableVersionCacheControl {
+			t.Fatalf("%s %s returned %d cache=%q, want 200 no-store", requestCase.method, requestCase.path, response.StatusCode, response.Header.Get("Cache-Control"))
 		}
+	}
+	request, _ := http.NewRequest(http.MethodGet, "/api/v1/github.com/skillsgo/skillsgo/versions/main.zip", nil)
+	response, err := r.Test(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != http.StatusBadRequest {
+		t.Fatalf("movable ZIP returned %d, want 400", response.StatusCode)
 	}
 }
 
@@ -106,8 +132,8 @@ func TestCanonicalVersionInfoIsPubliclyImmutable(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
 	for _, path := range []string{
-		"/github.com/skillsgo/skillsgo/versions/v1.2.3",
-		"/github.com/skillsgo/skillsgo/versions/v1.2.4-0.20260720120000-abcdef123456",
+		"/api/v1/github.com/skillsgo/skillsgo/versions/v1.2.3",
+		"/api/v1/github.com/skillsgo/skillsgo/versions/v1.2.4-0.20260720120000-abcdef123456",
 	} {
 		request, err := http.NewRequest(http.MethodGet, path, nil)
 		if err != nil {
@@ -136,18 +162,18 @@ func TestCanonicalVersionInfoIsPubliclyImmutable(t *testing.T) {
 	}
 }
 
-func TestCanonicalVersionZipSupportsConditionalGetAndHead(t *testing.T) {
+func TestCanonicalVersionZipSupportsConditionalGet(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
-	path := "/github.com/skillsgo/skillsgo/versions/v1.2.3.zip"
-	request, _ := http.NewRequest(http.MethodHead, path, nil)
+	path := "/api/v1/github.com/skillsgo/skillsgo/versions/v1.2.3.zip"
+	request, _ := http.NewRequest(http.MethodGet, path, nil)
 	response, err := r.Test(request)
 	if err != nil {
 		t.Fatal(err)
 	}
 	etag := response.Header.Get("ETag")
 	if response.StatusCode != http.StatusOK || etag == "" {
-		t.Fatalf("HEAD status=%d etag=%q", response.StatusCode, etag)
+		t.Fatalf("GET status=%d etag=%q", response.StatusCode, etag)
 	}
 	conditional, _ := http.NewRequest(http.MethodGet, path, nil)
 	conditional.Header.Set("If-None-Match", etag)
@@ -164,7 +190,7 @@ func TestProxyRejectsMovableSelectorsAndEnforcesExactRouteMethods(t *testing.T) 
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
 	for _, selector := range []string{"head", "release", "latest"} {
-		request, _ := http.NewRequest(http.MethodGet, "/github.com/skillsgo/skillsgo/@"+selector, nil)
+		request, _ := http.NewRequest(http.MethodGet, "/api/v1/github.com/skillsgo/skillsgo/@"+selector, nil)
 		response, err := r.Test(request)
 		if err != nil {
 			t.Fatal(err)
@@ -177,9 +203,9 @@ func TestProxyRejectsMovableSelectorsAndEnforcesExactRouteMethods(t *testing.T) 
 		path  string
 		allow string
 	}{
-		{"/github.com/skillsgo/skillsgo/versions", http.MethodGet},
-		{"/github.com/skillsgo/skillsgo/versions/v1.2.3", http.MethodGet},
-		{"/github.com/skillsgo/skillsgo/versions/v1.2.3.zip", http.MethodGet + ", " + http.MethodHead},
+		{"/api/v1/github.com/skillsgo/skillsgo/versions", http.MethodGet},
+		{"/api/v1/github.com/skillsgo/skillsgo/versions/v1.2.3", http.MethodGet},
+		{"/api/v1/github.com/skillsgo/skillsgo/versions/v1.2.3.zip", http.MethodGet},
 	} {
 		request, _ := http.NewRequest(http.MethodPost, item.path, nil)
 		response, err := r.Test(request)
@@ -192,6 +218,19 @@ func TestProxyRejectsMovableSelectorsAndEnforcesExactRouteMethods(t *testing.T) 
 	}
 }
 
+func TestCanonicalVersionZipRejectsHead(t *testing.T) {
+	r := fiber.New()
+	RegisterHandlers(r, &HandlerOpts{Protocol: &successfulProtocol{}, Logger: log.NoOpLogger()})
+	request, _ := http.NewRequest(http.MethodHead, "/api/v1/github.com/skillsgo/skillsgo/versions/v1.2.3.zip", nil)
+	response, err := r.Test(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != http.StatusMethodNotAllowed || response.Header.Get("Allow") != http.MethodGet {
+		t.Fatalf("HEAD returned status=%d Allow=%q", response.StatusCode, response.Header.Get("Allow"))
+	}
+}
+
 func TestCanonicalVersionZipRedirectsToArtifactOrigin(t *testing.T) {
 	r := fiber.New()
 	RegisterHandlers(r, &HandlerOpts{
@@ -200,22 +239,20 @@ func TestCanonicalVersionZipRedirectsToArtifactOrigin(t *testing.T) {
 		ArtifactOrigin: "https://files.skillsgo.ai",
 	})
 
-	for _, method := range []string{http.MethodGet, http.MethodHead} {
-		request, err := http.NewRequest(method, "/github.com/skillsgo/skillsgo/versions/v1.2.3.zip", nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		response, err := r.Test(request)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if response.StatusCode != http.StatusMovedPermanently {
-			t.Fatalf("%s returned %d, want 301", method, response.StatusCode)
-		}
-		const expected = "https://files.skillsgo.ai/github.com/skillsgo/skillsgo/versions/v1.2.3.zip"
-		if got := response.Header.Get("Location"); got != expected {
-			t.Fatalf("%s Location = %q, want %q", method, got, expected)
-		}
+	request, err := http.NewRequest(http.MethodGet, "/api/v1/github.com/skillsgo/skillsgo/versions/v1.2.3.zip", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := r.Test(request)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if response.StatusCode != http.StatusMovedPermanently {
+		t.Fatalf("GET returned %d, want 301", response.StatusCode)
+	}
+	const expected = "https://files.skillsgo.ai/github.com/skillsgo/skillsgo/versions/v1.2.3.zip"
+	if got := response.Header.Get("Location"); got != expected {
+		t.Fatalf("GET Location = %q, want %q", got, expected)
 	}
 }
 

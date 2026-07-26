@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on a strict matching skillsgo.yaml/skillsgo-lock.yaml pair, exact immutable Repository version resources only when Vendor is absent, verified Scope Vendor, Agent Adapter roots, deterministic projection transactions, and the Repository mutation coordinator.
- * [OUTPUT]: Provides conflict-safe idempotent Workspace/User install ensure results, restoring missing Vendor/projections from persisted name-or-path selectors while never performing movable version resolution, pruning extras, or overwriting Local Modifications.
- * [POS]: Serves as the declaration-to-Vendor/Projection orchestration behind `skillsgo install`.
+ * [INPUT]: Depends on a strict matching skills.yaml/skills-lock.yaml pair, exact immutable Repository version resources only when Module Store is absent, verified Scope Module Store, Agent Adapter roots, deterministic projection transactions, and the Repository mutation coordinator.
+ * [OUTPUT]: Provides conflict-safe idempotent Workspace/User install ensure results, restoring missing Module Store/projections from persisted name-or-path selectors while never performing movable version resolution, pruning extras, or overwriting Local Modifications.
+ * [POS]: Serves as the declaration-to-Module Store/Projection orchestration behind `skillsgo install`.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -16,22 +16,22 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
+	"github.com/skillsgo/skillsgo/cli/internal/modulestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/repositorymutation"
-	"github.com/skillsgo/skillsgo/cli/internal/scopevendor"
 )
 
-type repositoryInstallResult struct {
-	Repository string   `json:"repository"`
+type moduleInstallResult struct {
+	ModulePath string   `json:"modulePath"`
 	Version    string   `json:"version"`
 	Status     string   `json:"status"`
-	Vendor     string   `json:"vendor"`
+	ModuleDir  string   `json:"moduleDir"`
 	Skills     []string `json:"skills"`
 	Agents     []string `json:"agents"`
 	Error      string   `json:"error,omitempty"`
 }
 
-func ensureRepositoryScope(ctx context.Context, root string, userScope bool, catalog *agent.Catalog, client *hub.Client) ([]repositoryInstallResult, error) {
+func ensureRepositoryScope(ctx context.Context, root string, userScope bool, catalog *agent.Catalog, client *hub.Client) ([]moduleInstallResult, error) {
 	manifest, lock, err := loadWorkspaceState(root)
 	if err != nil {
 		return nil, err
@@ -40,27 +40,27 @@ func ensureRepositoryScope(ctx context.Context, root string, userScope bool, cat
 		return nil, err
 	}
 	if len(manifest.Dependencies) == 0 {
-		return nil, fmt.Errorf("skillsgo.yaml dependencies must not be empty")
+		return nil, fmt.Errorf("skills.yaml dependencies must not be empty")
 	}
-	repositoryIDs := make([]string, 0, len(manifest.Dependencies))
-	for repositoryID := range manifest.Dependencies {
-		repositoryIDs = append(repositoryIDs, repositoryID)
+	modulePaths := make([]string, 0, len(manifest.Dependencies))
+	for modulePath := range manifest.Dependencies {
+		modulePaths = append(modulePaths, modulePath)
 	}
-	sort.Strings(repositoryIDs)
-	results := make([]repositoryInstallResult, 0, len(repositoryIDs))
+	sort.Strings(modulePaths)
+	results := make([]moduleInstallResult, 0, len(modulePaths))
 	failures := 0
-	for _, repositoryID := range repositoryIDs {
-		dependency := manifest.Dependencies[repositoryID]
-		locked, ok := lock.Dependencies[repositoryID]
-		result := repositoryInstallResult{Repository: repositoryID, Version: dependency.Version,
+	for _, modulePath := range modulePaths {
+		dependency := manifest.Dependencies[modulePath]
+		locked, ok := lock.Dependencies[modulePath]
+		result := moduleInstallResult{ModulePath: modulePath, Version: dependency.Version,
 			Skills: append([]string(nil), dependency.Skills...), Agents: append([]string(nil), dependency.Agents...)}
 		if !ok || locked.Version != dependency.Version {
-			result.Status, result.Error = "failed", "skillsgo-lock.yaml does not match the Repository dependency"
+			result.Status, result.Error = "failed", "skills-lock.yaml does not match the Repository dependency"
 			results, failures = append(results, result), failures+1
 			continue
 		}
-		status, vendor, ensureErr := ensureOneRepository(ctx, root, userScope, catalog, client, repositoryID, dependency, locked)
-		result.Status, result.Vendor = status, vendor
+		status, moduleDir, ensureErr := ensureOneRepository(ctx, root, userScope, catalog, client, modulePath, dependency, locked)
+		result.Status, result.ModuleDir = status, moduleDir
 		if ensureErr != nil {
 			result.Status, result.Error = "failed", ensureErr.Error()
 			failures++
@@ -73,84 +73,85 @@ func ensureRepositoryScope(ctx context.Context, root string, userScope bool, cat
 	return results, nil
 }
 
-func ensureOneRepository(ctx context.Context, root string, userScope bool, catalog *agent.Catalog, client *hub.Client, repositoryID string, dependency project.RepositoryDependency, locked project.LockedRepository) (string, string, error) {
-	vendorRoot, agentScope := filepath.Join(root, ".skillsgo", "vendor"), agent.ScopeProject
+func ensureOneRepository(ctx context.Context, root string, userScope bool, catalog *agent.Catalog, client *hub.Client, modulePath string, dependency project.ModuleDependency, locked project.LockedModule) (string, string, error) {
+	modulesRoot, infoRoot, agentScope := filepath.Join(root, ".skillsgo", "modules"), filepath.Join(root, ".skillsgo", "info"), agent.ScopeProject
 	if userScope {
-		vendorRoot, agentScope = filepath.Join(root, "vendor"), agent.ScopeUser
+		home, err := os.UserHomeDir()
+		if err != nil {
+			return "", "", err
+		}
+		stateRoot := project.UserStateRoot(home)
+		modulesRoot, infoRoot, agentScope = filepath.Join(stateRoot, "modules"), filepath.Join(stateRoot, "info"), agent.ScopeUser
 	}
-	vendor := scopevendor.CoordinatePath(vendorRoot, repositoryID, dependency.Version)
-	infoRoot := filepath.Join(root, ".skillsgo", "info")
-	if userScope {
-		infoRoot = filepath.Join(root, "info")
-	}
+	moduleDir := modulestore.CoordinatePath(modulesRoot, modulePath, dependency.Version)
 	cache := infocache.Cache{Root: infoRoot}
-	infoBytes, infoErr := cache.Get(repositoryID, dependency.Version, "repository.info")
-	var resource *hub.RepositoryResource
+	infoBytes, infoErr := cache.Get(modulePath, dependency.Version, "module.info")
+	var resource *hub.ModuleResource
 	if infoErr == nil {
-		resource, infoErr = hub.ParseRepositoryInfo(repositoryID, infoBytes)
+		resource, infoErr = hub.ParseModuleInfo(modulePath, infoBytes)
 	}
 	archive, restored := []byte(nil), false
-	if _, err := os.Lstat(vendor); os.IsNotExist(err) {
-		fetched, fetchErr := client.FetchRepositoryWithProgress(ctx, repositoryID, dependency.Version, nil)
+	if _, err := os.Lstat(moduleDir); os.IsNotExist(err) {
+		fetched, fetchErr := client.FetchModuleWithProgress(ctx, modulePath, dependency.Version, nil)
 		if fetchErr != nil {
-			return "", vendor, fmt.Errorf("restore exact Repository %s@%s: %w", repositoryID, dependency.Version, fetchErr)
+			return "", moduleDir, fmt.Errorf("restore exact Repository %s@%s: %w", modulePath, dependency.Version, fetchErr)
 		}
 		resource = fetched
 		if resource.Info.Version != dependency.Version || resource.Info.Sum != locked.Sum {
-			return "", vendor, fmt.Errorf("exact Repository %s@%s conflicts with skillsgo-lock.yaml", repositoryID, dependency.Version)
+			return "", moduleDir, fmt.Errorf("exact Repository %s@%s conflicts with skills-lock.yaml", modulePath, dependency.Version)
 		}
 		archive = resource.ZIP
-		if err := cache.Put(repositoryID, dependency.Version, "repository.info", resource.InfoBytes); err != nil {
-			return "", vendor, err
+		if err := cache.Put(modulePath, dependency.Version, "module.info", resource.InfoBytes); err != nil {
+			return "", moduleDir, err
 		}
 		restored = true
 	} else if err != nil {
-		return "", vendor, err
+		return "", moduleDir, err
 	} else {
 		var readErr error
-		archive, readErr = scopevendor.ReadVerifiedVendor(vendorRoot, repositoryID, dependency.Version, locked.Sum)
+		archive, readErr = modulestore.ReadVerifiedModule(modulesRoot, modulePath, dependency.Version, locked.Sum)
 		if readErr != nil {
-			return "", vendor, readErr
+			return "", moduleDir, readErr
 		}
 	}
 	if resource == nil {
 		if infoErr != nil {
-			return "", vendor, fmt.Errorf("read immutable Repository Info for offline projection: %w", infoErr)
+			return "", moduleDir, fmt.Errorf("read immutable Repository Info for offline projection: %w", infoErr)
 		}
 	}
 	members := make([]string, 0, len(resource.Members))
 	for _, member := range resource.Members {
-		members = append(members, member.Info.SkillPath)
+		members = append(members, member.Info.Path)
 	}
 	selectedPaths := make([]string, 0, len(dependency.Skills))
 	for _, selected := range dependency.Skills {
-		member, ok := hub.SelectRepositoryMember(selected, resource.Members)
+		member, ok := hub.SelectVersionSkill(selected, resource.Members)
 		if !ok {
-			return "", vendor, fmt.Errorf("Repository release does not contain selected Skill %q", selected)
+			return "", moduleDir, fmt.Errorf("Repository release does not contain selected Skill %q", selected)
 		}
-		selectedPaths = append(selectedPaths, member.Info.SkillPath)
+		selectedPaths = append(selectedPaths, member.Info.Path)
 	}
 	projections, err := repositoryProjections(catalog, dependency.Agents, nil, nil, selectedPaths, agentScope, root)
 	if err != nil {
-		return "", vendor, err
+		return "", moduleDir, err
 	}
 	for _, projection := range projections {
-		if _, statErr := os.Lstat(scopevendor.CoordinatePath(projection.Root, repositoryID, dependency.Version)); os.IsNotExist(statErr) {
+		if _, statErr := os.Lstat(modulestore.CoordinatePath(projection.Root, modulePath, dependency.Version)); os.IsNotExist(statErr) {
 			restored = true
 		} else if statErr != nil {
-			return "", vendor, statErr
+			return "", moduleDir, statErr
 		}
 	}
-	transaction, err := scopevendor.Prepare(scopevendor.Options{VendorRoot: vendorRoot, RepositoryID: repositoryID, Version: dependency.Version,
+	transaction, err := modulestore.Prepare(modulestore.Options{ModulesRoot: modulesRoot, ModulePath: modulePath, Version: dependency.Version,
 		Archive: archive, Sum: locked.Sum, Members: members, Projections: projections})
 	if err != nil {
-		return "", vendor, err
+		return "", moduleDir, err
 	}
 	if err := (repositorymutation.Plan{Transactions: []repositorymutation.Transaction{transaction}, Operation: "Repository install"}).Commit(); err != nil {
-		return "", vendor, err
+		return "", moduleDir, err
 	}
 	if restored {
-		return "restored", vendor, nil
+		return "restored", moduleDir, nil
 	}
-	return "healthy", vendor, nil
+	return "healthy", moduleDir, nil
 }

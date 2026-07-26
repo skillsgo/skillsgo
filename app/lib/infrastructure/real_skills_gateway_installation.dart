@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, CLI execution, Installation Request codecs, file save picker, and discovery/Library models.
- * [OUTPUT]: Provides single-Skill and atomic multi-Skill exact-path Repository Vendor installation grouped by declaration scope.
+ * [OUTPUT]: Provides single-Skill and atomic multi-Skill exact-path Repository Module Store installation grouped by declaration scope.
  * [POS]: Serves as the Installation Request capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,7 +15,7 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
     bool confirmRisk = false,
     bool allowCritical = false,
   }) async {
-    final executions = await _installRepositoryMembers(
+    final executions = await _installModuleMembers(
       [skill],
       immutableVersion,
       selections,
@@ -24,7 +24,7 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
   }
 
   @override
-  Future<List<InstallationExecution>> installRepositoryTargets(
+  Future<List<InstallationExecution>> installModuleTargets(
     List<SkillSummary> skills,
     List<InstallationTargetSelection> selections, {
     bool confirmRisk = false,
@@ -36,11 +36,11 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
         kind: SkillsFailureKind.validation,
       );
     }
-    final repositoryID = skills.first.repositoryId;
+    final modulePath = skills.first.modulePath;
     final immutableVersion = skills.first.latestVersion;
     if (skills.any(
       (skill) =>
-          skill.repositoryId != repositoryID ||
+          skill.modulePath != modulePath ||
           skill.latestVersion != immutableVersion,
     )) {
       throw const SkillsException(
@@ -48,10 +48,10 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
         kind: SkillsFailureKind.validation,
       );
     }
-    return _installRepositoryMembers(skills, immutableVersion, selections);
+    return _installModuleMembers(skills, immutableVersion, selections);
   }
 
-  Future<List<InstallationExecution>> _installRepositoryMembers(
+  Future<List<InstallationExecution>> _installModuleMembers(
     List<SkillSummary> skills,
     String immutableVersion,
     List<InstallationTargetSelection> selections,
@@ -63,7 +63,7 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
       );
     }
     await _ensureHubOrigin();
-    final repositoryID = skills.first.repositoryId;
+    final modulePath = skills.first.modulePath;
     final groups = <String, List<InstallationTargetSelection>>{};
     for (final selection in selections) {
       final key = '${selection.scope.name}\u0000${selection.projectRoot}';
@@ -74,7 +74,7 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
       final first = group.first;
       final arguments = <String>[
         'add',
-        '$repositoryID@$immutableVersion',
+        '$modulePath@$immutableVersion',
         for (final skill in skills) ...[
           '--skill-path',
           skill.installationSelector,
@@ -97,7 +97,7 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
         final payload = jsonDecode(command.output.stdout);
         for (var index = 0; index < skills.length; index++) {
           results[index].addAll(
-            _repositoryInstallationResults(
+            _moduleInstallationResults(
               payload,
               skills[index],
               immutableVersion,
@@ -115,7 +115,7 @@ mixin _RealSkillsGatewayInstallation on _RealSkillsGatewayCore {
     return List.unmodifiable([
       for (var index = 0; index < skills.length; index++)
         InstallationExecution(
-          repositoryId: skills[index].repositoryId,
+          modulePath: skills[index].modulePath,
           skillName: skills[index].name,
           version: immutableVersion,
           name: skills[index].installName,

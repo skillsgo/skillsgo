@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on Repository Backfill validation, semantic-version filtering, and bounded diagnostics.
+ * [INPUT]: Depends on Module Backfill validation, semantic-version filtering, and bounded diagnostics.
  * [OUTPUT]: Verifies canonical batch input, deterministic Tag traversal, pseudo-version exclusion, and safe diagnostic bounds.
- * [POS]: Serves as the fast behavior contract for Repository History Backfill before PostgreSQL/River integration coverage.
+ * [POS]: Serves as the fast behavior contract for Module History Backfill before PostgreSQL/River integration coverage.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -24,23 +24,23 @@ import (
 
 type backfillAdministrationStub struct{}
 
-func (backfillAdministrationStub) Submit(_ context.Context, repositoryID string) (catalog.BackfillRun, bool, error) {
-	if repositoryID == "github.com/acme/failing" {
+func (backfillAdministrationStub) Submit(_ context.Context, modulePath string) (catalog.BackfillRun, bool, error) {
+	if modulePath == "github.com/acme/failing" {
 		return catalog.BackfillRun{}, false, fmt.Errorf("unavailable")
 	}
-	return catalog.BackfillRun{ID: "run-1", RepositoryID: repositoryID, Status: catalog.BackfillQueued}, true, nil
+	return catalog.BackfillRun{ID: "run-1", ModulePath: modulePath, Status: catalog.BackfillQueued}, true, nil
 }
 
-func (backfillAdministrationStub) Latest(_ context.Context, repositoryID string) (catalog.BackfillRun, error) {
-	if repositoryID == "github.com/acme/missing" {
+func (backfillAdministrationStub) Latest(_ context.Context, modulePath string) (catalog.BackfillRun, error) {
+	if modulePath == "github.com/acme/missing" {
 		return catalog.BackfillRun{}, pgx.ErrNoRows
 	}
-	return catalog.BackfillRun{ID: "run-1", RepositoryID: repositoryID, Status: catalog.BackfillComplete}, nil
+	return catalog.BackfillRun{ID: "run-1", ModulePath: modulePath, Status: catalog.BackfillComplete}, nil
 }
 
-func TestValidateBackfillRepositoryIDs(t *testing.T) {
+func TestValidateBackfillModulePaths(t *testing.T) {
 	valid := []string{"github.com/acme/one", "gitlab.com/acme/two"}
-	actual, err := validateBackfillRepositoryIDs(valid)
+	actual, err := validateBackfillModulePaths(valid)
 	require.NoError(t, err)
 	require.Equal(t, valid, actual)
 
@@ -51,7 +51,7 @@ func TestValidateBackfillRepositoryIDs(t *testing.T) {
 		"noncanonical": {"github.com/acme/one/"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			_, err := validateBackfillRepositoryIDs(ids)
+			_, err := validateBackfillModulePaths(ids)
 			require.Error(t, err)
 		})
 	}
@@ -59,14 +59,14 @@ func TestValidateBackfillRepositoryIDs(t *testing.T) {
 
 func TestBackfillRouterRejectsWholeInvalidBatchBeforeServiceUse(t *testing.T) {
 	app := fiber.New()
-	registerRepositoryBackfillRoutes(app.Group("/api/v1/admin"), &repositoryBackfillService{})
+	registerModuleBackfillRoutes(app.Group("/api/v1/admin"), &moduleBackfillService{})
 	for name, body := range map[string]string{
-		"empty":     `{"repositoryIds":[]}`,
-		"duplicate": `{"repositoryIds":["github.com/acme/one","github.com/acme/one"]}`,
-		"mixed":     `{"repositoryIds":["github.com/acme/one","github.com/acme/one/skills/demo"]}`,
+		"empty":     `{"modulePaths":[]}`,
+		"duplicate": `{"modulePaths":["github.com/acme/one","github.com/acme/one"]}`,
+		"mixed":     `{"modulePaths":["github.com/acme/one","github.com/acme/one/skills/demo"]}`,
 	} {
 		t.Run(name, func(t *testing.T) {
-			request := httptest.NewRequest(http.MethodPost, "/api/v1/admin/repository-backfills", bytes.NewBufferString(body))
+			request := httptest.NewRequest(http.MethodPost, "/api/v1/admin/module-backfills", bytes.NewBufferString(body))
 			request.Header.Set("Content-Type", "application/json")
 			response, err := app.Test(request)
 			require.NoError(t, err)
@@ -77,9 +77,9 @@ func TestBackfillRouterRejectsWholeInvalidBatchBeforeServiceUse(t *testing.T) {
 
 func TestBackfillRouterPreservesMixedRepositoryOutcomes(t *testing.T) {
 	app := fiber.New()
-	registerRepositoryBackfillRoutes(app.Group("/api/v1/admin"), backfillAdministrationStub{})
-	request := httptest.NewRequest(http.MethodPost, "/api/v1/admin/repository-backfills", bytes.NewBufferString(
-		`{"repositoryIds":["github.com/acme/accepted","github.com/acme/failing"]}`))
+	registerModuleBackfillRoutes(app.Group("/api/v1/admin"), backfillAdministrationStub{})
+	request := httptest.NewRequest(http.MethodPost, "/api/v1/admin/module-backfills", bytes.NewBufferString(
+		`{"modulePaths":["github.com/acme/accepted","github.com/acme/failing"]}`))
 	request.Header.Set("Content-Type", "application/json")
 	response, err := app.Test(request)
 	require.NoError(t, err)
@@ -88,14 +88,14 @@ func TestBackfillRouterPreservesMixedRepositoryOutcomes(t *testing.T) {
 	require.NoError(t, json.NewDecoder(response.Body).Decode(&body))
 	require.Equal(t, "run-1", body.Results[0].Run.ID)
 	require.Equal(t, "submission_unavailable", body.Results[1].ErrorCode)
-	failedRequest := httptest.NewRequest(http.MethodPost, "/api/v1/admin/repository-backfills", bytes.NewBufferString(
-		`{"repositoryIds":["github.com/acme/failing"]}`))
+	failedRequest := httptest.NewRequest(http.MethodPost, "/api/v1/admin/module-backfills", bytes.NewBufferString(
+		`{"modulePaths":["github.com/acme/failing"]}`))
 	failedRequest.Header.Set("Content-Type", "application/json")
 	failedResponse, err := app.Test(failedRequest)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusServiceUnavailable, failedResponse.StatusCode)
 
-	statusRequest := httptest.NewRequest(http.MethodGet, "/api/v1/admin/repository-backfills?repositoryIds=github.com/acme/accepted,github.com/acme/missing", nil)
+	statusRequest := httptest.NewRequest(http.MethodGet, "/api/v1/admin/module-backfills?modulePaths=github.com/acme/accepted,github.com/acme/missing", nil)
 	statusResponse, err := app.Test(statusRequest)
 	require.NoError(t, err)
 	require.Equal(t, http.StatusOK, statusResponse.StatusCode)

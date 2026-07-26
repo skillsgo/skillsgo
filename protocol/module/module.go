@@ -1,40 +1,40 @@
 /*
- * [INPUT]: Depends on public host-qualified Git Repository coordinates.
- * [OUTPUT]: Provides canonical Repository ID parsing, formatting, and HTTPS source URLs without any Skill-member syntax.
- * [POS]: Serves as the shared public Repository identity contract beneath CLI source aliases and Hub source resolution.
+ * [INPUT]: Depends on public host-qualified Module paths.
+ * [OUTPUT]: Provides the canonical Module Path value object, parsing, formatting, and default HTTPS source URLs without Skill-member syntax.
+ * [POS]: Serves as the shared public Module identity module beneath Hub source resolution and client coordinates.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-package repositoryid
+package module
 
 import (
 	"fmt"
 	"strings"
 )
 
-type ID struct{ Repository string }
+type Path struct{ value string }
 
-func Parse(value string) (ID, error) {
+func ParsePath(value string) (Path, error) {
 	if value == "" || value != strings.Trim(value, "/") || strings.ContainsAny(value, "\\?%#\x00") || strings.Contains(value, "://") || containsControl(value) {
-		return ID{}, fmt.Errorf("invalid Repository ID %q", value)
+		return Path{}, fmt.Errorf("invalid Module Path %q", value)
 	}
 	value = canonical(strings.TrimSuffix(value, ".git"))
 	parts := strings.Split(value, "/")
 	if len(parts) < 2 {
-		return ID{}, fmt.Errorf("invalid Repository ID %q: expected host and repository path", value)
+		return Path{}, fmt.Errorf("invalid Module Path %q: expected host and path", value)
 	}
 	host := parts[0]
 	if (!strings.Contains(host, ".") && host != "localhost") || strings.Contains(host, "@") {
-		return ID{}, fmt.Errorf("invalid Repository ID %q: expected a full host name", value)
+		return Path{}, fmt.Errorf("invalid Module Path %q: expected a full host name", value)
 	}
 	if host == "github.com" && len(parts) != 3 {
-		return ID{}, fmt.Errorf("invalid GitHub Repository %q: expected github.com/owner/repo", value)
+		return Path{}, fmt.Errorf("invalid GitHub-backed Module Path %q: expected github.com/owner/repo", value)
 	}
 	for _, segment := range parts {
 		if segment == "" || segment == "." || segment == ".." {
-			return ID{}, fmt.Errorf("invalid Repository ID %q: non-canonical segment %q", value, segment)
+			return Path{}, fmt.Errorf("invalid Module Path %q: non-canonical segment %q", value, segment)
 		}
 	}
-	return ID{Repository: value}, nil
+	return Path{value: value}, nil
 }
 
 func canonical(value string) string {
@@ -58,5 +58,5 @@ func containsControl(value string) bool {
 	return false
 }
 
-func (id ID) String() string        { return id.Repository }
-func (id ID) RepositoryURL() string { return "https://" + id.Repository }
+func (modulePath Path) String() string    { return modulePath.value }
+func (modulePath Path) SourceURL() string { return "https://" + modulePath.value }

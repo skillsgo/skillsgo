@@ -19,7 +19,7 @@ func TestJ02RemoveWorkspace(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testRepositoryID+"@"+testSkillVersion, "--skill", testSkillName,
+		"add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 
 		"--yes",
@@ -31,13 +31,13 @@ func TestJ02RemoveWorkspace(t *testing.T) {
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 	require.Equal(t, 1, installed.SchemaVersion)
-	require.Equal(t, "github.com/skillsgo/e2e-versioned-skills", installed.Repository)
+	require.Equal(t, "github.com/skillsgo/e2e-versioned-skills", installed.ModulePath)
 	require.NotEmpty(t, installed.Version)
 	require.Len(t, installed.Projections, 1)
 	projection := containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path)
-	vendor := containerPathOnHost(t, sandboxRoot, installed.Vendor)
+	moduleDir := containerPathOnHost(t, sandboxRoot, installed.ModuleDir)
 	require.FileExists(t, projection+"/skills/alpha/SKILL.md")
-	require.FileExists(t, vendor+"/skills/alpha/SKILL.md")
+	require.FileExists(t, moduleDir+"/skills/alpha/SKILL.md")
 
 	remove := execCLI(t, ctx, container,
 		"remove", "alpha",
@@ -48,5 +48,5 @@ func TestJ02RemoveWorkspace(t *testing.T) {
 	)
 	require.Equal(t, 0, remove.exitCode, remove.output)
 	require.NoDirExists(t, projection)
-	require.NoDirExists(t, vendor, "removing the last selected Skill must remove its Repository Vendor")
+	require.NoDirExists(t, moduleDir, "removing the last selected Skill must remove its Repository Module Store")
 }

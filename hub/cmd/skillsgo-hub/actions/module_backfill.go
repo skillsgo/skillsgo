@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Catalog Backfill Run state, typed River enqueueing/finalization, the ordinary Repository Publisher, upstream Tag commit catalogs, and Fiber administration routing.
- * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Repository River worker with heartbeat and stale-Run reconciliation.
+ * [INPUT]: Depends on Catalog Backfill Run state, typed River enqueueing/finalization, the ordinary Module Publisher, upstream Tag commit catalogs, and Fiber administration routing.
+ * [OUTPUT]: Provides validated per-result batch APIs plus an idempotent per-Module River worker with heartbeat and stale-Run reconciliation.
  * [POS]: Serves as the administration workflow joining durable business state, River transport, and Historical Publication materialization.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -32,18 +32,18 @@ const (
 	backfillStaleAfter      = 2 * time.Hour
 )
 
-type repositoryBackfillArgs struct {
-	RunID        string `json:"run_id" river:"unique"`
-	RepositoryID string `json:"repository_id" river:"unique"`
+type moduleBackfillArgs struct {
+	RunID      string `json:"run_id" river:"unique"`
+	ModulePath string `json:"module_path" river:"unique"`
 }
 
-func (repositoryBackfillArgs) Kind() string { return "repository_history_backfill" }
+func (moduleBackfillArgs) Kind() string { return "module_history_backfill" }
 
-type repositoryBackfillReconcileArgs struct{}
+type moduleBackfillReconcileArgs struct{}
 
-func (repositoryBackfillReconcileArgs) Kind() string { return "repository_history_backfill_reconcile" }
+func (moduleBackfillReconcileArgs) Kind() string { return "module_history_backfill_reconcile" }
 
-type repositoryBackfillService struct {
+type moduleBackfillService struct {
 	metadata     *catalog.Catalog
 	tasks        *taskqueue.Runtime
 	lister       repositoryVersionLister
@@ -55,21 +55,21 @@ type repositoryVersionLister interface {
 	ListRepositoryTags(context.Context, string) ([]skill.RepositoryTag, error)
 }
 
-func newRepositoryBackfillService(metadata *catalog.Catalog, tasks *taskqueue.Runtime, lister repositoryVersionLister, materializer historicalRepositoryMaterializer, logger *log.Logger) *repositoryBackfillService {
-	return &repositoryBackfillService{metadata: metadata, tasks: tasks, lister: lister, materializer: materializer, logger: logger}
+func newRepositoryBackfillService(metadata *catalog.Catalog, tasks *taskqueue.Runtime, lister repositoryVersionLister, materializer historicalRepositoryMaterializer, logger *log.Logger) *moduleBackfillService {
+	return &moduleBackfillService{metadata: metadata, tasks: tasks, lister: lister, materializer: materializer, logger: logger}
 }
 
-func (s *repositoryBackfillService) Register() error {
+func (s *moduleBackfillService) Register() error {
 	if err := taskqueue.Register(s.tasks, s.run); err != nil {
 		return err
 	}
-	if err := taskqueue.RegisterFailureHandler(s.tasks, func(ctx context.Context, args repositoryBackfillArgs, _ error) error {
+	if err := taskqueue.RegisterFailureHandler(s.tasks, func(ctx context.Context, args moduleBackfillArgs, _ error) error {
 		diagnostic := backfillDiagnostic("repository", "execution_failed")
 		return s.metadata.CompleteBackfillRun(ctx, args.RunID, 1, []string{diagnostic})
 	}); err != nil {
 		return err
 	}
-	if err := taskqueue.Register(s.tasks, func(ctx context.Context, _ repositoryBackfillReconcileArgs) error {
+	if err := taskqueue.Register(s.tasks, func(ctx context.Context, _ moduleBackfillReconcileArgs) error {
 		cutoff := time.Now().UTC().Add(-backfillStaleAfter)
 		if _, err := s.metadata.ExpireStaleBackfillRuns(ctx, cutoff); err != nil {
 			return err
@@ -79,7 +79,7 @@ func (s *repositoryBackfillService) Register() error {
 			return err
 		}
 		for _, run := range queued {
-			active, err := taskqueue.HasActiveJob(ctx, s.tasks, repositoryBackfillArgs{RunID: run.ID, RepositoryID: run.RepositoryID})
+			active, err := taskqueue.HasActiveJob(ctx, s.tasks, moduleBackfillArgs{RunID: run.ID, ModulePath: run.ModulePath})
 			if err != nil {
 				return err
 			}
@@ -93,22 +93,22 @@ func (s *repositoryBackfillService) Register() error {
 	}); err != nil {
 		return err
 	}
-	return s.tasks.Every(repositoryBackfillReconcileArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, backfillReconcileEvery, true)
+	return s.tasks.Every(moduleBackfillReconcileArgs{}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}, backfillReconcileEvery, true)
 }
 
-func (s *repositoryBackfillService) Submit(ctx context.Context, repositoryID string) (catalog.BackfillRun, bool, error) {
-	return s.metadata.SubmitBackfillRun(ctx, repositoryID, func(ctx context.Context, tx pgx.Tx, run catalog.BackfillRun) error {
-		return s.tasks.EnqueueTx(ctx, tx, repositoryBackfillArgs{RunID: run.ID, RepositoryID: repositoryID}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource})
+func (s *moduleBackfillService) Submit(ctx context.Context, modulePath string) (catalog.BackfillRun, bool, error) {
+	return s.metadata.SubmitBackfillRun(ctx, modulePath, func(ctx context.Context, tx pgx.Tx, run catalog.BackfillRun) error {
+		return s.tasks.EnqueueTx(ctx, tx, moduleBackfillArgs{RunID: run.ID, ModulePath: modulePath}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource})
 	})
 }
 
-func (s *repositoryBackfillService) Latest(ctx context.Context, repositoryID string) (catalog.BackfillRun, error) {
-	return s.metadata.LatestBackfillRun(ctx, repositoryID)
+func (s *moduleBackfillService) Latest(ctx context.Context, modulePath string) (catalog.BackfillRun, error) {
+	return s.metadata.LatestBackfillRun(ctx, modulePath)
 }
 
-func (s *repositoryBackfillService) run(ctx context.Context, args repositoryBackfillArgs) error {
-	if args.RunID == "" || args.RepositoryID == "" {
-		return fmt.Errorf("Repository Backfill job requires run_id and repository_id")
+func (s *moduleBackfillService) run(ctx context.Context, args moduleBackfillArgs) error {
+	if args.RunID == "" || args.ModulePath == "" {
+		return fmt.Errorf("Module Backfill job requires run_id and module_path")
 	}
 	run, active, err := s.metadata.StartBackfillRun(ctx, args.RunID)
 	if err != nil {
@@ -117,7 +117,7 @@ func (s *repositoryBackfillService) run(ctx context.Context, args repositoryBack
 	if !active || run.Status == catalog.BackfillComplete || run.Status == catalog.BackfillCompleteWithErrors {
 		return nil
 	}
-	tags, err := s.lister.ListRepositoryTags(ctx, args.RepositoryID)
+	tags, err := s.lister.ListRepositoryTags(ctx, args.ModulePath)
 	diagnostics := make([]string, 0)
 	errorCount := 0
 	if err != nil {
@@ -132,7 +132,7 @@ func (s *repositoryBackfillService) run(ctx context.Context, args repositoryBack
 			if err := s.metadata.TouchBackfillRun(ctx, args.RunID); err != nil {
 				return err
 			}
-			commitSHA, publicationErr := s.metadata.RepositoryPublicationCommit(ctx, args.RepositoryID, version)
+			commitSHA, publicationErr := s.metadata.ModulePublicationCommit(ctx, args.ModulePath, version)
 			if publicationErr != nil && !errors.Is(publicationErr, pgx.ErrNoRows) {
 				errorCount++
 				diagnostic := backfillDiagnostic(version, "publication_check_failed")
@@ -149,7 +149,7 @@ func (s *repositoryBackfillService) run(ctx context.Context, args repositoryBack
 				}
 				continue
 			}
-			if _, materializeErr := s.materializer.MaterializeHistorical(ctx, args.RepositoryID, version); materializeErr != nil {
+			if _, materializeErr := s.materializer.MaterializeHistorical(ctx, args.ModulePath, version); materializeErr != nil {
 				errorCount++
 				diagnostic := backfillDiagnostic(version, classifyBackfillFailure(materializeErr))
 				diagnostics = appendBoundedBackfillDiagnostic(diagnostics, diagnostic)
@@ -160,13 +160,13 @@ func (s *repositoryBackfillService) run(ctx context.Context, args repositoryBack
 	return s.metadata.CompleteBackfillRun(ctx, args.RunID, errorCount, diagnostics)
 }
 
-func (s *repositoryBackfillService) logFailure(_ context.Context, args repositoryBackfillArgs, version, diagnostic string) {
+func (s *moduleBackfillService) logFailure(_ context.Context, args moduleBackfillArgs, version, diagnostic string) {
 	s.logger.WithFields(map[string]any{
-		"component":     "repository_backfill",
-		"repository_id": args.RepositoryID,
-		"run_id":        args.RunID,
-		"version":       version,
-	}).Warnf("Repository Backfill version failed: %s", diagnostic)
+		"component":   "repository_backfill",
+		"module_path": args.ModulePath,
+		"run_id":      args.RunID,
+		"version":     version,
+	}).Warnf("Module Backfill version failed: %s", diagnostic)
 }
 
 func canonicalSemanticTags(tags []skill.RepositoryTag) []skill.RepositoryTag {
@@ -207,7 +207,7 @@ func classifyBackfillFailure(err error) string {
 }
 
 type backfillRequest struct {
-	RepositoryIDs []string `json:"repositoryIds"`
+	ModulePaths []string `json:"modulePaths"`
 }
 
 type backfillResponse struct {
@@ -215,36 +215,36 @@ type backfillResponse struct {
 }
 
 type backfillResult struct {
-	RepositoryID string               `json:"repositoryId"`
-	Run          *catalog.BackfillRun `json:"run,omitempty"`
-	ErrorCode    string               `json:"errorCode,omitempty"`
+	ModulePath string               `json:"modulePath"`
+	Run        *catalog.BackfillRun `json:"run,omitempty"`
+	ErrorCode  string               `json:"errorCode,omitempty"`
 }
 
-type repositoryBackfillAdministration interface {
+type moduleBackfillAdministration interface {
 	Submit(context.Context, string) (catalog.BackfillRun, bool, error)
 	Latest(context.Context, string) (catalog.BackfillRun, error)
 }
 
-func registerRepositoryBackfillRoutes(router fiber.Router, service repositoryBackfillAdministration) {
-	router.Post("/repository-backfills", func(c fiber.Ctx) error {
+func registerModuleBackfillRoutes(router fiber.Router, service moduleBackfillAdministration) {
+	router.Post("/module-backfills", func(c fiber.Ctx) error {
 		var request backfillRequest
 		if err := c.Bind().JSON(&request); err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, "invalid JSON request")
 		}
-		ids, err := validateBackfillRepositoryIDs(request.RepositoryIDs)
+		ids, err := validateBackfillModulePaths(request.ModulePaths)
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, err.Error())
 		}
 		results := make([]backfillResult, 0, len(ids))
 		accepted := 0
-		for _, repositoryID := range ids {
-			run, _, submitErr := service.Submit(c.Context(), repositoryID)
+		for _, modulePath := range ids {
+			run, _, submitErr := service.Submit(c.Context(), modulePath)
 			if submitErr != nil {
-				results = append(results, backfillResult{RepositoryID: repositoryID, ErrorCode: "submission_unavailable"})
+				results = append(results, backfillResult{ModulePath: modulePath, ErrorCode: "submission_unavailable"})
 				continue
 			}
 			runCopy := run
-			results = append(results, backfillResult{RepositoryID: repositoryID, Run: &runCopy})
+			results = append(results, backfillResult{ModulePath: modulePath, Run: &runCopy})
 			accepted++
 		}
 		if accepted == 0 {
@@ -252,48 +252,48 @@ func registerRepositoryBackfillRoutes(router fiber.Router, service repositoryBac
 		}
 		return c.Status(fiber.StatusAccepted).JSON(backfillResponse{Results: results})
 	})
-	router.Get("/repository-backfills", func(c fiber.Ctx) error {
-		ids, err := validateBackfillRepositoryIDs(strings.Split(c.Query("repositoryIds"), ","))
+	router.Get("/module-backfills", func(c fiber.Ctx) error {
+		ids, err := validateBackfillModulePaths(strings.Split(c.Query("modulePaths"), ","))
 		if err != nil {
 			return fiber.NewError(fiber.StatusBadRequest, err.Error())
 		}
 		results := make([]backfillResult, 0, len(ids))
-		for _, repositoryID := range ids {
-			run, statusErr := service.Latest(c.Context(), repositoryID)
+		for _, modulePath := range ids {
+			run, statusErr := service.Latest(c.Context(), modulePath)
 			if errors.Is(statusErr, pgx.ErrNoRows) {
-				results = append(results, backfillResult{RepositoryID: repositoryID, ErrorCode: "not_found"})
+				results = append(results, backfillResult{ModulePath: modulePath, ErrorCode: "not_found"})
 				continue
 			}
 			if statusErr != nil {
-				results = append(results, backfillResult{RepositoryID: repositoryID, ErrorCode: "status_unavailable"})
+				results = append(results, backfillResult{ModulePath: modulePath, ErrorCode: "status_unavailable"})
 				continue
 			}
 			runCopy := run
-			results = append(results, backfillResult{RepositoryID: repositoryID, Run: &runCopy})
+			results = append(results, backfillResult{ModulePath: modulePath, Run: &runCopy})
 		}
 		return c.JSON(backfillResponse{Results: results})
 	})
 }
 
-func validateBackfillRepositoryIDs(ids []string) ([]string, error) {
+func validateBackfillModulePaths(ids []string) ([]string, error) {
 	if len(ids) == 0 || (len(ids) == 1 && strings.TrimSpace(ids[0]) == "") {
-		return nil, fmt.Errorf("repositoryIds must not be empty")
+		return nil, fmt.Errorf("modulePaths must not be empty")
 	}
 	if len(ids) > maxBackfillRepositories {
-		return nil, fmt.Errorf("repositoryIds exceeds the maximum of %d", maxBackfillRepositories)
+		return nil, fmt.Errorf("modulePaths exceeds the maximum of %d", maxBackfillRepositories)
 	}
 	seen := make(map[string]struct{}, len(ids))
 	result := make([]string, len(ids))
-	for index, repositoryID := range ids {
-		parsed, err := skill.ParseRepositoryID(repositoryID)
-		if err != nil || parsed.String() != repositoryID {
-			return nil, fmt.Errorf("repositoryIds contains invalid canonical Repository ID %q", repositoryID)
+	for index, modulePath := range ids {
+		parsed, err := skill.ParseModulePath(modulePath)
+		if err != nil || parsed.String() != modulePath {
+			return nil, fmt.Errorf("modulePaths contains invalid canonical Module Path %q", modulePath)
 		}
-		if _, duplicate := seen[repositoryID]; duplicate {
-			return nil, fmt.Errorf("repositoryIds contains duplicate %q", repositoryID)
+		if _, duplicate := seen[modulePath]; duplicate {
+			return nil, fmt.Errorf("modulePaths contains duplicate %q", modulePath)
 		}
-		seen[repositoryID] = struct{}{}
-		result[index] = repositoryID
+		seen[modulePath] = struct{}{}
+		result[index] = modulePath
 	}
 	return result, nil
 }

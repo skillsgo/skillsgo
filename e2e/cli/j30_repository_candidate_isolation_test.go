@@ -28,16 +28,16 @@ func TestJ30RepositoryCandidateIsolation(t *testing.T) {
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(valid.output), &installed), valid.output)
 	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
-	manifestBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	manifestBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills.yaml"))
 	require.NoError(t, err)
-	sumBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"))
+	sumBefore, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills-lock.yaml"))
 	require.NoError(t, err)
 
-	info := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/"+repository+"/@v/v1.0.0.info")
+	info := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/"+repository+"/versions/v1.0.0")
 	require.Equal(t, 0, info.exitCode, info.output)
-	require.Contains(t, info.output, `"Name":"alpha"`)
-	require.Contains(t, info.output, `"Name":"beta"`)
-	require.NotContains(t, info.output, `"Name":"invalid"`)
+	require.Contains(t, info.output, `"name":"alpha"`)
+	require.Contains(t, info.output, `"name":"beta"`)
+	require.NotContains(t, info.output, `"name":"invalid"`)
 
 	invalid := execCLI(t, ctx, container,
 		"add", "https://"+repository+"@v1.0.0", "--skill", "invalid",
@@ -45,9 +45,9 @@ func TestJ30RepositoryCandidateIsolation(t *testing.T) {
 	)
 	require.NotEqual(t, 0, invalid.exitCode, invalid.output)
 	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "invalid"))
-	manifestAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	manifestAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills.yaml"))
 	require.NoError(t, err)
-	sumAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml"))
+	sumAfter, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills-lock.yaml"))
 	require.NoError(t, err)
 	require.Equal(t, manifestBefore, manifestAfter)
 	require.Equal(t, sumBefore, sumAfter)

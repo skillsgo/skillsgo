@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on net/http and the public Cloud DTOs for deterministic test behavior.
- * [OUTPUT]: Provides an in-memory Cloud HTTP mock with observable idempotent install events and configurable rankings.
+ * [OUTPUT]: Provides an in-memory Cloud HTTP mock with observable/resettable idempotent install events and configurable rankings.
  * [POS]: Serves as the public client-test double; it deliberately contains no private Cloud persistence or ranking logic.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,6 +14,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/skillsgo/skillsgo/protocol/api"
 	"github.com/skillsgo/skillsgo/protocol/cloud"
 )
 
@@ -43,6 +44,12 @@ func (mock *Mock) Events() []cloud.InstallEvent {
 		events = append(events, event)
 	}
 	return events
+}
+
+func (mock *Mock) ResetEvents() {
+	mock.mu.Lock()
+	defer mock.mu.Unlock()
+	mock.events = map[string]cloud.InstallEvent{}
 }
 
 func (mock *Mock) SetRanking(kind cloud.RankingKind, items []cloud.RankingItem) {
@@ -78,7 +85,7 @@ func (mock *Mock) install(w http.ResponseWriter, request *http.Request) {
 
 func (mock *Mock) ranking(w http.ResponseWriter, request *http.Request) {
 	kind := cloud.RankingKind(request.PathValue("kind"))
-	limit, offset, ok := pagination(request)
+	page, perPage, ok := pagination(request)
 	if !kind.Valid() || !ok {
 		writeJSON(w, http.StatusBadRequest, cloud.ErrorResponse{Error: "invalid ranking request"})
 		return
@@ -86,32 +93,29 @@ func (mock *Mock) ranking(w http.ResponseWriter, request *http.Request) {
 	mock.mu.Lock()
 	items := append([]cloud.RankingItem(nil), mock.rankings[kind]...)
 	mock.mu.Unlock()
+	offset := page * perPage
 	if offset > len(items) {
 		offset = len(items)
 	}
-	end := offset + limit
-	var next *int
-	if end < len(items) {
-		value := end
-		next = &value
-	} else {
+	end := offset + perPage
+	if end > len(items) {
 		end = len(items)
 	}
-	writeJSON(w, http.StatusOK, cloud.RankingResponse{Collection: kind, Items: items[offset:end], Page: cloud.Page{Limit: limit, Offset: offset, NextOffset: next}})
+	writeJSON(w, http.StatusOK, cloud.RankingResponse{Collection: kind, Items: items[offset:end], Pagination: api.Pagination{Page: page, PerPage: perPage, HasMore: end < len(items)}})
 }
 
 func pagination(request *http.Request) (int, int, bool) {
-	limit, offset := 20, 0
+	page, perPage := 0, 20
 	var err error
-	if raw := request.URL.Query().Get("limit"); raw != "" {
-		limit, err = strconv.Atoi(raw)
+	if raw := request.URL.Query().Get("perPage"); raw != "" {
+		perPage, err = strconv.Atoi(raw)
 	}
 	if err == nil {
-		if raw := request.URL.Query().Get("offset"); raw != "" {
-			offset, err = strconv.Atoi(raw)
+		if raw := request.URL.Query().Get("page"); raw != "" {
+			page, err = strconv.Atoi(raw)
 		}
 	}
-	return limit, offset, err == nil && limit >= 1 && limit <= 100 && offset >= 0
+	return page, perPage, err == nil && perPage >= 1 && perPage <= 100 && page >= 0
 }
 
 func writeJSON(w http.ResponseWriter, status int, value any) {

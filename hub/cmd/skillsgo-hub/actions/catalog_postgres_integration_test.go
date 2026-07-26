@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses the public Hub router with an opt-in Testcontainers PostgreSQL Catalog.
- * [OUTPUT]: Specifies PostgreSQL-backed pagination and empty collection response parity at the HTTP boundary.
+ * [OUTPUT]: Specifies PostgreSQL-backed pagination and empty Find response parity at the HTTP boundary.
  * [POS]: Serves as database-portability coverage for the stable Hub discovery wire contract.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -47,26 +47,24 @@ func TestCatalogAPIPostgresProtocol(t *testing.T) {
 	registerCatalogAPIRoutes(router, metadata, nil)
 
 	for _, name := range []string{"alpha", "bravo", "charlie"} {
-		require.NoError(t, metadata.UpsertSkill(ctx, &catalog.Skill{
-			RepositoryID: "github.com/acme/skills", SkillPath: name,
+		require.NoError(t, upsertActionTestSkill(ctx, metadata, &catalog.Skill{
+			ModulePath: "github.com/acme/skills", Path: name,
 			Name: name, Description: "Agent capability", LatestVersion: "main",
 		}))
 	}
 
 	first := httptest.NewRecorder()
-	serveFiber(t, router, first, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=capability&limit=2", nil))
+	serveFiber(t, router, first, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=capability&perPage=2", nil))
 	require.Equal(t, http.StatusOK, first.Code)
 	var page skillsResponse
 	require.NoError(t, json.NewDecoder(first.Body).Decode(&page))
-	require.Equal(t, "find", page.Collection)
 	require.Len(t, page.Skills, 2)
-	require.Equal(t, 2, page.Page.Limit)
-	require.Equal(t, 0, page.Page.Offset)
-	require.NotNil(t, page.Page.NextOffset)
-	require.Equal(t, 2, *page.Page.NextOffset)
+	require.Equal(t, 2, page.Pagination.PerPage)
+	require.Equal(t, 0, page.Pagination.Page)
+	require.True(t, page.Pagination.HasMore)
 
 	empty := httptest.NewRecorder()
 	serveFiber(t, router, empty, httptest.NewRequest(http.MethodGet, "/api/v1/skills/find?q=missing", nil))
 	require.Equal(t, http.StatusOK, empty.Code)
-	require.JSONEq(t, `{"collection":"find","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}`, empty.Body.String())
+	require.JSONEq(t, `{"skills":[],"pagination":{"page":0,"perPage":20,"hasMore":false}}`, empty.Body.String())
 }

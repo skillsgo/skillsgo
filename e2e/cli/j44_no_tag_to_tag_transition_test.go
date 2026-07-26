@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the mutable no-tag Repository fixture, public CLI Info resolution, Git tag publication, and a later default-branch commit.
- * [OUTPUT]: Provides black-box coverage that F1 remains immutable after V1 tags C1, release selects V1, and head at C2 selects an ancestor-based F2.
+ * [OUTPUT]: Provides black-box coverage that F1 remains immutable after V1 tags C1, latest selects V1, and main at C2 selects an ancestor-based F2 without relying on private commit metadata.
  * [POS]: Serves as the no-tag-to-tag Repository lifecycle journey across Git, Hub, and CLI version queries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,8 +21,7 @@ func TestJ44NoTagToTagTransition(t *testing.T) {
 	repository := "fixtures.test/group/subgroup/movable"
 	source := "https://" + repository
 	type repositoryInfoIdentity struct {
-		Version   string `json:"Version"`
-		CommitSHA string `json:"CommitSHA"`
+		Version string `json:"version"`
 	}
 	infoFor := func(t *testing.T, source string) repositoryInfoIdentity {
 		t.Helper()
@@ -31,13 +30,15 @@ func TestJ44NoTagToTagTransition(t *testing.T) {
 		var info repositoryInfoIdentity
 		require.NoError(t, json.Unmarshal([]byte(result.output), &info), result.output)
 		require.NotEmpty(t, info.Version)
-		require.GreaterOrEqual(t, len(info.CommitSHA), 12)
 		return info
 	}
 
-	f1 := infoFor(t, source+"@head")
+	initialCommitResult := execInContainer(t, ctx, container, "git", "--git-dir=/e2e/git/group/subgroup/movable", "rev-parse", "main")
+	require.Equal(t, 0, initialCommitResult.exitCode, initialCommitResult.output)
+	initialCommit := strings.TrimSpace(initialCommitResult.output)
+	f1 := infoFor(t, source+"@main")
 	require.True(t, strings.HasPrefix(f1.Version, "v0.0.0-"), f1.Version)
-	require.Contains(t, f1.Version, f1.CommitSHA[:12])
+	require.Contains(t, f1.Version, initialCommit[:12])
 
 	work := "/e2e/git-work/movable"
 	for _, command := range [][]string{
@@ -53,27 +54,27 @@ func TestJ44NoTagToTagTransition(t *testing.T) {
 	}
 
 	tests := []struct {
-		name       string
-		query      string
-		want       string
-		wantCommit string
+		name  string
+		query string
+		want  string
 	}{
-		{name: "old F1 remains C1", query: f1.Version, want: f1.Version, wantCommit: f1.CommitSHA},
-		{name: "release selects V1 at C1", query: "release", want: "v1.0.0", wantCommit: f1.CommitSHA},
-		{name: "head selects F2 at C2", query: "head", want: "F2"},
+		{name: "old F1 remains C1", query: f1.Version, want: f1.Version},
+		{name: "latest selects V1 at C1", query: "latest", want: "v1.0.0"},
+		{name: "main selects F2 at C2", query: "main", want: "F2"},
 	}
+	currentCommitResult := execInContainer(t, ctx, container, "git", "--git-dir=/e2e/git/group/subgroup/movable", "rev-parse", "main")
+	require.Equal(t, 0, currentCommitResult.exitCode, currentCommitResult.output)
+	currentCommit := strings.TrimSpace(currentCommitResult.output)
 	require.Len(t, tests, 3, "transition lifecycle query row count")
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
 			info := infoFor(t, source+"@"+tc.query)
 			if tc.want == "F2" {
-				require.NotEqual(t, f1.CommitSHA, info.CommitSHA)
 				require.True(t, strings.HasPrefix(info.Version, "v1.0.1-0."), info.Version)
-				require.Contains(t, info.Version, info.CommitSHA[:12])
+				require.Contains(t, info.Version, currentCommit[:12])
 				return
 			}
 			require.Equal(t, tc.want, info.Version)
-			require.Equal(t, tc.wantCommit, info.CommitSHA)
 		})
 	}
 }

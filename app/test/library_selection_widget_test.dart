@@ -33,7 +33,7 @@ void main() {
         path: '/work/alpha/.agents/skills/hub-demo',
         agents: ['codex'],
         targetCount: 1,
-        repositoryId: 'github.com/acme/skills',
+        modulePath: 'github.com/acme/skills',
         projects: ['/work/alpha'],
         versions: ['v1'],
         targets: [
@@ -119,7 +119,7 @@ void main() {
         inventoryKey: 'hub:github.com/example/skills:demo',
         name: 'demo',
         description: 'Coordinates reliable multi-Agent skill workflows.',
-        repositoryId: 'github.com/example/skills',
+        modulePath: 'github.com/example/skills',
         path: '/Users/test/.codex/skills/demo',
         agents: ['claude-code', 'codex'],
         targetCount: 3,
@@ -306,7 +306,7 @@ void main() {
       const entry = InstalledSkill(
         inventoryKey: 'hub:github.com/example/skills:demo',
         name: 'demo',
-        repositoryId: 'github.com/example/skills',
+        modulePath: 'github.com/example/skills',
         path: path,
         agents: ['codex'],
         targetCount: 1,
@@ -358,7 +358,7 @@ void main() {
               InstalledSkill(
                 inventoryKey: 'hub:github.com/example/skills:demo',
                 name: 'demo',
-                repositoryId: 'github.com/example/skills',
+                modulePath: 'github.com/example/skills',
                 path: '/Users/test/.codex/skills/demo',
                 agents: ['codex'],
                 targetCount: 1,
@@ -444,7 +444,7 @@ void main() {
               InstalledSkill(
                 inventoryKey: 'hub:github.com/example/skills:demo',
                 name: 'demo',
-                repositoryId: 'github.com/example/skills',
+                modulePath: 'github.com/example/skills',
                 path: '/Users/test/.codex/skills/demo',
                 agents: ['codex'],
                 targetCount: 1,

@@ -1,276 +1,346 @@
--- [INPUT]: Depends on the reviewed PostgreSQL Catalog schema and sqlc's pgx/v5 generator.
--- [OUTPUT]: Defines typed Repository, Release, Skill, localization, name-first/exact single and set-based batch Find, and Backfill persistence operations.
+-- [INPUT]: Depends on the reviewed PostgreSQL Module Catalog schema and sqlc's pgx/v5 generator.
+-- [OUTPUT]: Defines typed Module, immutable Module Version Skill, localization, search, and Backfill persistence operations.
 -- [POS]: Serves as the single maintained query source for the Hub Catalog module.
 -- [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
--- name: UpsertRepository :one
-INSERT INTO repositories (source_host, repository_path, repository_id, created_at, updated_at)
+-- name: UpsertModule :one
+INSERT INTO modules (source_host, source_path, path, created_at, updated_at)
 VALUES ($1, $2, $3, $4, $4)
-ON CONFLICT (repository_id) DO UPDATE SET updated_at = excluded.updated_at
+ON CONFLICT (path) DO UPDATE SET updated_at = excluded.updated_at
 RETURNING *;
 
--- name: RepositoryByIdentity :one
-SELECT * FROM repositories WHERE repository_id = $1;
+-- name: ModuleByPath :one
+SELECT * FROM modules WHERE path = sqlc.arg(module_path);
 
--- name: UpdateRepositorySourceMetadata :execrows
-UPDATE repositories SET description = $2, stars = $3, source_metadata_etag = $4,
-source_metadata_checked_at = COALESCE($5, source_metadata_checked_at), source_metadata_retry_at = $6,
-updated_at = CURRENT_TIMESTAMP WHERE repository_id = $1;
+-- name: UpdateModuleSourceMetadata :execrows
+UPDATE modules SET description = sqlc.arg(description), stars = sqlc.arg(stars), source_etag = sqlc.arg(source_etag),
+source_checked_at = COALESCE(sqlc.narg(source_checked_at), source_checked_at), source_retry_at = sqlc.narg(source_retry_at),
+updated_at = CURRENT_TIMESTAMP WHERE path = sqlc.arg(module_path);
 
--- name: UpsertSkill :one
-INSERT INTO skills (repository_id, name, description, source_host, repository, skill_path, verified, created_at, updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
-ON CONFLICT (repository_id, skill_path) DO UPDATE SET name=excluded.name, description=excluded.description, source_host=excluded.source_host,
-repository=excluded.repository, verified=excluded.verified, updated_at=excluded.updated_at
-RETURNING id;
-
--- name: DeleteRepositorySkills :exec
-DELETE FROM skills WHERE repository_id = $1;
-
--- name: InsertSkill :exec
-INSERT INTO skills (repository_id, name, description, source_host, repository, skill_path, verified, created_at, updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9);
-
--- name: InsertRepositoryRelease :one
-INSERT INTO repository_releases (repository_id, version, commit_sha, tree_sha, sum, archive_size, release_info, commit_time, created_at)
+-- name: InsertModuleVersion :one
+INSERT INTO versions (module_id, version, ref, commit_sha, tree_sha, sum, archive_size, commit_time, created_at)
 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id;
 
--- name: InsertRepositoryReleaseMember :exec
-INSERT INTO repository_release_members (release_id, name, skill_path, tree_sha) VALUES ($1,$2,$3,$4);
+-- name: InsertSkill :exec
+INSERT INTO skills (
+    version_id, name, path, description
+) VALUES ($1,$2,$3,$4);
 
--- name: SetCurrentRelease :exec
-UPDATE repositories SET current_release_id=$2, updated_at=$3 WHERE id=$1;
+-- name: SetCurrentVersion :exec
+UPDATE modules SET current_version_id=$2, updated_at=$3 WHERE id=$1;
 
--- name: SetCurrentReleaseByVersion :exec
-UPDATE repositories AS target SET current_release_id=(SELECT id FROM repository_releases WHERE repository_releases.repository_id=target.id AND version=$2), updated_at=$3 WHERE target.repository_id=$1;
+-- name: SetCurrentVersionByCoordinate :exec
+UPDATE modules AS target
+SET current_version_id=(
+    SELECT id FROM versions
+    WHERE versions.module_id=target.id AND version=sqlc.arg(version)
+), updated_at=sqlc.arg(updated_at)
+WHERE target.path=sqlc.arg(module_path);
 
--- name: RepositoryReleaseCount :one
-SELECT COUNT(*) FROM repository_releases rr JOIN repositories r ON r.id=rr.repository_id WHERE r.repository_id=$1 AND rr.version=$2;
+-- name: ModuleVersionCount :one
+SELECT COUNT(*)
+FROM versions mv
+JOIN modules m ON m.id=mv.module_id
+WHERE m.path=sqlc.arg(module_path) AND mv.version=sqlc.arg(version);
 
--- name: RepositoryReleaseInfo :one
-SELECT rr.release_info FROM repository_releases rr JOIN repositories r ON r.id=rr.repository_id WHERE r.repository_id=$1 AND rr.version=$2;
+-- name: ModuleVersion :one
+SELECT mv.id, mv.module_id, mv.version, mv.ref, mv.commit_sha, mv.tree_sha,
+       mv.sum, mv.archive_size, mv.commit_time, mv.created_at
+FROM versions mv
+JOIN modules m ON m.id=mv.module_id
+WHERE m.path=sqlc.arg(module_path) AND mv.version=sqlc.arg(version);
 
--- name: RepositoryReleaseMembers :many
-SELECT rrm.release_id, rrm.name, rr.version, rr.commit_sha, rrm.tree_sha, rrm.skill_path, rr.commit_time
-FROM repositories r JOIN repository_releases rr ON rr.repository_id=r.id JOIN repository_release_members rrm ON rrm.release_id=rr.id
-WHERE r.repository_id=$1 AND rr.version=$2 ORDER BY rrm.skill_path;
+-- name: Skills :many
+SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
+       mvs.path, mv.commit_time, mvs.description
+FROM modules m
+JOIN versions mv ON mv.module_id=m.id
+JOIN skills mvs ON mvs.version_id=mv.id
+WHERE m.path=sqlc.arg(module_path) AND mv.version=sqlc.arg(version)
+ORDER BY mvs.path;
 
--- name: CurrentRepositoryReleaseMember :one
-SELECT rrm.release_id, rrm.name, rr.version, rr.commit_sha, rrm.tree_sha, rrm.skill_path, rr.commit_time
-FROM repositories r JOIN repository_releases rr ON rr.id=r.current_release_id JOIN repository_release_members rrm ON rrm.release_id=rr.id
-WHERE r.repository_id=$1 AND rrm.name=$2 ORDER BY rrm.skill_path LIMIT 1;
+-- name: CurrentSkill :one
+SELECT mvs.version_id, mvs.name, mv.version, mv.commit_sha,
+       mvs.path, mv.commit_time, mvs.description
+FROM modules m
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id
+WHERE m.path=sqlc.arg(module_path) AND mvs.name=sqlc.arg(name)
+ORDER BY mvs.path
+LIMIT 1;
 
 -- name: SkillPublishedVersions :many
-SELECT DISTINCT rr.version FROM repositories r JOIN repository_releases rr ON rr.repository_id=r.id
-JOIN repository_release_members rrm ON rrm.release_id=rr.id WHERE r.repository_id=$1 AND rrm.name=$2 ORDER BY rr.version;
+SELECT DISTINCT mv.version
+FROM modules m
+JOIN versions mv ON mv.module_id=m.id
+JOIN skills mvs ON mvs.version_id=mv.id
+WHERE m.path=sqlc.arg(module_path) AND mvs.name=sqlc.arg(name)
+ORDER BY mv.version;
 
--- name: RepositoryPublicationCommit :one
-SELECT rr.commit_sha FROM repository_releases rr JOIN repositories r ON r.id=rr.repository_id WHERE r.repository_id=$1 AND rr.version=$2;
+-- name: ModulePublicationCommit :one
+SELECT mv.commit_sha
+FROM versions mv
+JOIN modules m ON m.id=mv.module_id
+WHERE m.path=sqlc.arg(module_path) AND mv.version=sqlc.arg(version);
 
 -- name: UpsertLocalizedDescription :exec
 INSERT INTO localized_descriptions (resource_kind,resource_id,locale,description,source_digest,prompt_version,created_at,updated_at)
-VALUES ($1,$2,$3,$4,$5,$6,$7,$7) ON CONFLICT(resource_kind,resource_id,locale) DO UPDATE SET
-description=excluded.description,source_digest=excluded.source_digest,prompt_version=excluded.prompt_version,updated_at=excluded.updated_at;
+VALUES ($1,$2,$3,$4,$5,$6,$7,$7)
+ON CONFLICT(resource_kind,resource_id,locale) DO UPDATE SET
+description=excluded.description,source_digest=excluded.source_digest,
+prompt_version=excluded.prompt_version,updated_at=excluded.updated_at;
 
 -- name: LocalizedDescription :one
-SELECT description FROM localized_descriptions WHERE resource_kind=$1 AND resource_id=$2 AND locale=$3;
+SELECT description FROM localized_descriptions
+WHERE resource_kind=$1 AND resource_id=$2 AND locale=$3;
 
 -- name: SkillByCoordinate :one
-SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.description,s.source_host,s.repository,s.skill_path,
-COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
-FROM skills s JOIN repositories r ON r.id=s.repository_id LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-WHERE r.repository_id=$1 AND s.name=$2 ORDER BY s.skill_path LIMIT 1;
+SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+       mvs.name, mvs.description, m.source_host,
+       m.source_path AS source_repository, mvs.path,
+       mv.version AS latest_version, m.stars,
+       mv.created_at, m.updated_at
+FROM modules m
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id
+WHERE m.path=sqlc.arg(module_path) AND mvs.name=sqlc.arg(name)
+ORDER BY mvs.path
+LIMIT 1;
 
 -- name: SkillsByCoordinates :many
 WITH requested AS (
-    SELECT repositories.repository_identity, skill_names.name, repositories.ordinal
-    FROM unnest(sqlc.arg(repository_identities)::text[]) WITH ORDINALITY AS repositories(repository_identity, ordinal)
+    SELECT module_paths.module_path, skill_names.name, module_paths.ordinal
+    FROM unnest(sqlc.arg(module_paths)::text[]) WITH ORDINALITY AS module_paths(module_path, ordinal)
     JOIN unnest(sqlc.arg(names)::text[]) WITH ORDINALITY AS skill_names(name, ordinal) USING (ordinal)
 )
-SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.description,s.source_host,s.repository,s.skill_path,
-COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
+SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+       mvs.name, mvs.description, m.source_host,
+       m.source_path AS source_repository, mvs.path,
+       mv.version AS latest_version, m.stars,
+       mv.created_at, m.updated_at
 FROM requested input
-JOIN repositories r ON r.repository_id=input.repository_identity
+JOIN modules m ON m.path=input.module_path
+JOIN versions mv ON mv.id=m.current_version_id
 JOIN LATERAL (
-    SELECT candidate.* FROM skills candidate
-    WHERE candidate.repository_id=r.id AND candidate.name=input.name
-    ORDER BY candidate.skill_path LIMIT 1
-) s ON true
-LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
+    SELECT candidate.*
+    FROM skills candidate
+    WHERE candidate.version_id=mv.id AND candidate.name=input.name
+    ORDER BY candidate.path
+    LIMIT 1
+) mvs ON true
 ORDER BY input.ordinal;
 
 -- name: ListSkills :many
-SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.description,s.source_host,s.repository,s.skill_path,
-COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
-FROM skills s JOIN repositories r ON r.id=s.repository_id LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-ORDER BY s.verified DESC,s.name LIMIT $1 OFFSET $2;
+SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+       mvs.name, mvs.description, m.source_host,
+       m.source_path AS source_repository, mvs.path,
+       mv.version AS latest_version, m.stars,
+       mv.created_at, m.updated_at
+FROM modules m
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id
+ORDER BY mvs.name,m.path,mvs.path
+LIMIT $1 OFFSET $2;
 
 -- name: SearchSkills :many
-SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,s.description,s.source_host,s.repository,s.skill_path,
-COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
-FROM skills s JOIN repositories r ON r.id=s.repository_id LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-WHERE (sqlc.arg(exact_name)::boolean AND lower(s.name)=lower(sqlc.arg(query)))
-OR (NOT sqlc.arg(exact_name)::boolean AND (s.name || ' ' || s.description || ' ' || r.repository_id) ILIKE '%' || sqlc.arg(query) || '%')
+SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+       mvs.name, mvs.description, m.source_host,
+       m.source_path AS source_repository, mvs.path,
+       mv.version AS latest_version, m.stars,
+       mv.created_at, m.updated_at
+FROM modules m
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id
+WHERE (sqlc.arg(exact_name)::boolean AND lower(mvs.name)=lower(sqlc.arg(query)))
+OR (NOT sqlc.arg(exact_name)::boolean AND
+    (mvs.name || ' ' || mvs.description || ' ' || m.path) ILIKE '%' || sqlc.arg(query) || '%')
 ORDER BY CASE
-    WHEN lower(s.name)=lower(sqlc.arg(query)) THEN 0
-    WHEN lower(s.name) LIKE lower(sqlc.arg(query)) || '%' THEN 1
-    WHEN lower(s.name) LIKE '%' || lower(sqlc.arg(query)) || '%' THEN 2
-    WHEN lower(r.repository_id)=lower(sqlc.arg(query)) THEN 3
-    WHEN lower(r.repository_id) LIKE '%' || lower(sqlc.arg(query)) || '%' THEN 4
+    WHEN lower(mvs.name)=lower(sqlc.arg(query)) THEN 0
+    WHEN lower(mvs.name) LIKE lower(sqlc.arg(query)) || '%' THEN 1
+    WHEN lower(mvs.name) LIKE '%' || lower(sqlc.arg(query)) || '%' THEN 2
+    WHEN lower(m.path)=lower(sqlc.arg(query)) THEN 3
+    WHEN lower(m.path) LIKE '%' || lower(sqlc.arg(query)) || '%' THEN 4
     ELSE 5
 END,
-similarity(s.name,sqlc.arg(query)) DESC,s.verified DESC,r.repository_id,s.skill_path
+similarity(mvs.name,sqlc.arg(query)) DESC,m.path,mvs.path
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: TranslationCandidates :many
-SELECT 'repository'::text AS resource_kind, r.repository_id AS resource_id, r.description,
-COALESCE(ld.source_digest, '') AS source_digest, COALESCE(ld.prompt_version, '') AS prompt_version
-FROM repositories r LEFT JOIN localized_descriptions ld
-ON ld.resource_kind='repository' AND ld.resource_id=r.repository_id AND ld.locale=$1
-WHERE trim(r.description)<>''
+SELECT 'module'::text AS resource_kind, m.path AS resource_id, m.description,
+       COALESCE(ld.source_digest, '') AS source_digest,
+       COALESCE(ld.prompt_version, '') AS prompt_version
+FROM modules m
+LEFT JOIN localized_descriptions ld
+  ON ld.resource_kind='module' AND ld.resource_id=m.path AND ld.locale=$1
+WHERE trim(m.description)<>''
 UNION ALL
-SELECT 'skill'::text, r.repository_id || ':' || s.name, s.description,
-COALESCE(ld.source_digest, ''), COALESCE(ld.prompt_version, '')
-FROM skills s JOIN repositories r ON r.id=s.repository_id LEFT JOIN localized_descriptions ld
-ON ld.resource_kind='skill' AND ld.resource_id=r.repository_id || ':' || s.name AND ld.locale=$1
-WHERE trim(s.description)<>'' AND s.skill_path=(
-    SELECT min(candidate.skill_path) FROM skills candidate
-    WHERE candidate.repository_id=s.repository_id AND candidate.name=s.name
-) ORDER BY resource_kind, resource_id;
+SELECT 'skill'::text, m.path || ':' || mvs.name, mvs.description,
+       COALESCE(ld.source_digest, ''), COALESCE(ld.prompt_version, '')
+FROM modules m
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id
+LEFT JOIN localized_descriptions ld
+  ON ld.resource_kind='skill' AND ld.resource_id=m.path || ':' || mvs.name AND ld.locale=$1
+WHERE trim(mvs.description)<>''
+  AND mvs.path=(
+      SELECT min(candidate.path)
+      FROM skills candidate
+      WHERE candidate.version_id=mv.id AND candidate.name=mvs.name
+  )
+ORDER BY resource_kind, resource_id;
 
 -- name: SearchLocalizedSkills :many
-SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,
-COALESCE(ls.description,s.description) AS description,s.source_host,s.repository,s.skill_path,
-COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at
-FROM skills s JOIN repositories r ON r.id=s.repository_id
-LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-LEFT JOIN localized_descriptions ls ON ls.resource_kind='skill' AND ls.resource_id=r.repository_id || ':' || s.name AND ls.locale=sqlc.arg(locale)
-LEFT JOIN localized_descriptions lr ON lr.resource_kind='repository' AND lr.resource_id=r.repository_id AND lr.locale=sqlc.arg(locale)
-WHERE (sqlc.arg(exact_name)::boolean AND lower(s.name)=lower(sqlc.arg(query)))
+SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+       mvs.name, COALESCE(ls.description,mvs.description) AS description,
+       m.source_host, m.source_path AS source_repository, mvs.path,
+       mv.version AS latest_version, m.stars,
+       mv.created_at, m.updated_at
+FROM modules m
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id
+LEFT JOIN localized_descriptions ls
+  ON ls.resource_kind='skill' AND ls.resource_id=m.path || ':' || mvs.name AND ls.locale=sqlc.arg(locale)
+LEFT JOIN localized_descriptions lm
+  ON lm.resource_kind='module' AND lm.resource_id=m.path AND lm.locale=sqlc.arg(locale)
+WHERE (sqlc.arg(exact_name)::boolean AND lower(mvs.name)=lower(sqlc.arg(query)))
 OR (NOT sqlc.arg(exact_name)::boolean AND (
-    lower(s.name) LIKE '%' || lower(sqlc.arg(query)) || '%' OR lower(s.description) LIKE '%' || lower(sqlc.arg(query)) || '%'
-    OR lower(r.repository_id) LIKE '%' || lower(sqlc.arg(query)) || '%' OR lower(COALESCE(ls.description,'')) LIKE '%' || lower(sqlc.arg(query)) || '%'
-    OR lower(COALESCE(lr.description,'')) LIKE '%' || lower(sqlc.arg(query)) || '%'
+    lower(mvs.name) LIKE '%' || lower(sqlc.arg(query)) || '%'
+    OR lower(mvs.description) LIKE '%' || lower(sqlc.arg(query)) || '%'
+    OR lower(m.path) LIKE '%' || lower(sqlc.arg(query)) || '%'
+    OR lower(COALESCE(ls.description,'')) LIKE '%' || lower(sqlc.arg(query)) || '%'
+    OR lower(COALESCE(lm.description,'')) LIKE '%' || lower(sqlc.arg(query)) || '%'
 ))
 ORDER BY CASE
-    WHEN lower(s.name)=lower(sqlc.arg(query)) THEN 0
-    WHEN lower(s.name) LIKE lower(sqlc.arg(query)) || '%' THEN 1
-    WHEN lower(s.name) LIKE '%' || lower(sqlc.arg(query)) || '%' THEN 2
-    WHEN lower(r.repository_id)=lower(sqlc.arg(query)) THEN 3
-    WHEN lower(r.repository_id) LIKE '%' || lower(sqlc.arg(query)) || '%' THEN 4
+    WHEN lower(mvs.name)=lower(sqlc.arg(query)) THEN 0
+    WHEN lower(mvs.name) LIKE lower(sqlc.arg(query)) || '%' THEN 1
+    WHEN lower(mvs.name) LIKE '%' || lower(sqlc.arg(query)) || '%' THEN 2
+    WHEN lower(m.path)=lower(sqlc.arg(query)) THEN 3
+    WHEN lower(m.path) LIKE '%' || lower(sqlc.arg(query)) || '%' THEN 4
     ELSE 5
 END,
-similarity(s.name,sqlc.arg(query)) DESC,s.verified DESC,r.repository_id,s.skill_path
+similarity(mvs.name,sqlc.arg(query)) DESC,m.path,mvs.path
 LIMIT sqlc.arg(page_limit) OFFSET sqlc.arg(page_offset);
 
 -- name: FindLocalizedSkillsBatch :many
 WITH requested AS (
-    SELECT ids.id AS query_id, queries.query, sources.source, exact_names.exact_name, ids.ordinal
+    SELECT ids.id AS query_id, queries.query, module_paths.module_path, exact_names.exact_name, ids.ordinal
     FROM unnest(sqlc.arg(query_ids)::text[]) WITH ORDINALITY AS ids(id, ordinal)
     JOIN unnest(sqlc.arg(queries)::text[]) WITH ORDINALITY AS queries(query, ordinal) USING (ordinal)
-    JOIN unnest(sqlc.arg(sources)::text[]) WITH ORDINALITY AS sources(source, ordinal) USING (ordinal)
+    JOIN unnest(sqlc.arg(module_paths)::text[]) WITH ORDINALITY AS module_paths(module_path, ordinal) USING (ordinal)
     JOIN unnest(sqlc.arg(exact_names)::boolean[]) WITH ORDINALITY AS exact_names(exact_name, ordinal) USING (ordinal)
 )
-SELECT input.query_id::text AS query_id,input.query::text AS query,input.source::text AS source,
-result.id,result.repository_id,result.repository_identity,result.name,result.description,result.source_host,result.repository,result.skill_path,
-result.latest_version,result.stars,result.verified,result.created_at,result.updated_at
+SELECT input.query_id::text AS query_id,input.query::text AS query,input.module_path::text AS requested_module_path,
+       result.id,result.module_id,result.module_path,result.name,result.description,
+       result.source_host,result.source_repository,result.path,result.latest_version,result.stars,
+       result.created_at,result.updated_at
 FROM requested input
 JOIN LATERAL (
-    SELECT s.id,s.repository_id,r.repository_id AS repository_identity,s.name,
-    COALESCE(ls.description,s.description) AS description,s.source_host,s.repository,s.skill_path,
-    COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at,
-    CASE
-        WHEN lower(s.name)=lower(input.query) THEN 0
-        WHEN lower(s.name) LIKE lower(input.query) || '%' THEN 1
-        WHEN lower(s.name) LIKE '%' || lower(input.query) || '%' THEN 2
-        WHEN lower(r.repository_id)=lower(input.query) THEN 3
-        WHEN lower(r.repository_id) LIKE '%' || lower(input.query) || '%' THEN 4
-        ELSE 5
-    END AS sort_tier,
-    similarity(s.name,input.query) AS name_similarity
-    FROM skills s JOIN repositories r ON r.id=s.repository_id
-    LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-    LEFT JOIN localized_descriptions ls ON ls.resource_kind='skill' AND ls.resource_id=r.repository_id || ':' || s.name AND ls.locale=sqlc.arg(locale)
-    LEFT JOIN localized_descriptions lr ON lr.resource_kind='repository' AND lr.resource_id=r.repository_id AND lr.locale=sqlc.arg(locale)
+    SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+           mvs.name, COALESCE(ls.description,mvs.description) AS description,
+           m.source_host, m.source_path AS source_repository, mvs.path,
+           mv.version AS latest_version, m.stars,
+           mv.created_at, m.updated_at,
+           CASE
+               WHEN lower(mvs.name)=lower(input.query) THEN 0
+               WHEN lower(mvs.name) LIKE lower(input.query) || '%' THEN 1
+               WHEN lower(mvs.name) LIKE '%' || lower(input.query) || '%' THEN 2
+               WHEN lower(m.path)=lower(input.query) THEN 3
+               WHEN lower(m.path) LIKE '%' || lower(input.query) || '%' THEN 4
+               ELSE 5
+           END AS sort_tier,
+           similarity(mvs.name,input.query) AS name_similarity
+    FROM modules m
+    JOIN versions mv ON mv.id=m.current_version_id
+    JOIN skills mvs ON mvs.version_id=mv.id
+    LEFT JOIN localized_descriptions ls
+      ON ls.resource_kind='skill' AND ls.resource_id=m.path || ':' || mvs.name AND ls.locale=sqlc.arg(locale)
+    LEFT JOIN localized_descriptions lm
+      ON lm.resource_kind='module' AND lm.resource_id=m.path AND lm.locale=sqlc.arg(locale)
     WHERE (
-        input.source<>'' AND r.repository_id=input.source AND s.name=input.query
+        input.module_path<>'' AND m.path=input.module_path AND mvs.name=input.query
     ) OR (
-        input.source='' AND (
-            (input.exact_name AND lower(s.name)=lower(input.query))
+        input.module_path='' AND (
+            (input.exact_name AND lower(mvs.name)=lower(input.query))
             OR (NOT input.exact_name AND (
-                lower(s.name) LIKE '%' || lower(input.query) || '%' OR lower(s.description) LIKE '%' || lower(input.query) || '%'
-                OR lower(r.repository_id) LIKE '%' || lower(input.query) || '%' OR lower(COALESCE(ls.description,'')) LIKE '%' || lower(input.query) || '%'
-                OR lower(COALESCE(lr.description,'')) LIKE '%' || lower(input.query) || '%'
+                lower(mvs.name) LIKE '%' || lower(input.query) || '%'
+                OR lower(mvs.description) LIKE '%' || lower(input.query) || '%'
+                OR lower(m.path) LIKE '%' || lower(input.query) || '%'
+                OR lower(COALESCE(ls.description,'')) LIKE '%' || lower(input.query) || '%'
+                OR lower(COALESCE(lm.description,'')) LIKE '%' || lower(input.query) || '%'
             ))
         )
     )
-    ORDER BY sort_tier,name_similarity DESC,s.verified DESC,r.repository_id,s.skill_path
-    LIMIT CASE WHEN input.source<>'' THEN 1 ELSE sqlc.arg(page_limit)::int END
+    ORDER BY sort_tier,name_similarity DESC,m.path,mvs.path
+    LIMIT CASE WHEN input.module_path<>'' THEN 1 ELSE sqlc.arg(page_limit)::int END
 ) result ON true
-ORDER BY input.ordinal,result.sort_tier,result.name_similarity DESC,result.verified DESC,result.repository_identity,result.skill_path;
+ORDER BY input.ordinal,result.sort_tier,result.name_similarity DESC,
+         result.module_path,result.path;
 
 -- name: FindExactLocalizedSkillsBatch :many
 WITH requested AS (
-    SELECT ids.id AS query_id, queries.query, sources.source, ids.ordinal
+    SELECT ids.id AS query_id, queries.query, module_paths.module_path, ids.ordinal
     FROM unnest(sqlc.arg(query_ids)::text[]) WITH ORDINALITY AS ids(id, ordinal)
     JOIN unnest(sqlc.arg(queries)::text[]) WITH ORDINALITY AS queries(query, ordinal) USING (ordinal)
-    JOIN unnest(sqlc.arg(sources)::text[]) WITH ORDINALITY AS sources(source, ordinal) USING (ordinal)
+    JOIN unnest(sqlc.arg(module_paths)::text[]) WITH ORDINALITY AS module_paths(module_path, ordinal) USING (ordinal)
 ),
 ranked AS (
-    SELECT input.query_id::text AS query_id,input.query::text AS query,input.source::text AS source,input.ordinal,
-    s.id,s.repository_id,r.repository_id AS repository_identity,s.name,
-    COALESCE(ls.description,s.description) AS description,s.source_host,s.repository,s.skill_path,
-    COALESCE(cr.version,'') AS latest_version,r.stars,s.verified,s.created_at,s.updated_at,
-    row_number() OVER (
-        PARTITION BY input.ordinal
-        ORDER BY
-            CASE WHEN input.source<>'' THEN s.skill_path ELSE '' END,
-            s.verified DESC,r.repository_id,s.skill_path
-    ) AS result_ordinal
+    SELECT input.query_id::text AS query_id,input.query::text AS query,input.module_path::text AS requested_module_path,input.ordinal,
+           mvs.version_id AS id,mv.module_id,m.path AS module_path,mvs.name,
+           COALESCE(ls.description,mvs.description) AS description,
+           m.source_host,m.source_path AS source_repository,mvs.path,
+           mv.version AS latest_version,m.stars,mv.created_at,m.updated_at,
+           row_number() OVER (
+               PARTITION BY input.ordinal
+               ORDER BY CASE WHEN input.module_path<>'' THEN mvs.path ELSE '' END,
+                        m.path,mvs.path
+           ) AS result_ordinal
     FROM requested input
-    JOIN skills s ON lower(s.name)=lower(input.query)
-    JOIN repositories r ON r.id=s.repository_id AND (input.source='' OR r.repository_id=input.source)
-    LEFT JOIN repository_releases cr ON cr.id=r.current_release_id
-    LEFT JOIN localized_descriptions ls ON ls.resource_kind='skill' AND ls.resource_id=r.repository_id || ':' || s.name AND ls.locale=sqlc.arg(locale)
+    JOIN modules m ON input.module_path='' OR m.path=input.module_path
+    JOIN versions mv ON mv.id=m.current_version_id
+    JOIN skills mvs
+      ON mvs.version_id=mv.id AND lower(mvs.name)=lower(input.query)
+    LEFT JOIN localized_descriptions ls
+      ON ls.resource_kind='skill' AND ls.resource_id=m.path || ':' || mvs.name AND ls.locale=sqlc.arg(locale)
 )
-SELECT query_id,query,source,
-id,repository_id,repository_identity,name,description,source_host,repository,skill_path,
-latest_version,stars,verified,created_at,updated_at
+SELECT query_id,query,requested_module_path,id,module_id,module_path,name,description,
+       source_host,source_repository,path,latest_version,stars,created_at,updated_at
 FROM ranked
-WHERE result_ordinal<=CASE WHEN source<>'' THEN 1 ELSE sqlc.arg(page_limit)::bigint END
+WHERE result_ordinal<=CASE WHEN requested_module_path<>'' THEN 1 ELSE sqlc.arg(page_limit)::bigint END
 ORDER BY ordinal,result_ordinal;
 
 -- name: ActiveBackfillRun :one
-SELECT * FROM repository_backfill_runs WHERE repository_id=$1 AND status IN ('queued','running') ORDER BY created_at DESC LIMIT 1;
+SELECT * FROM module_backfill_runs
+WHERE module_path=$1 AND status IN ('queued','running')
+ORDER BY created_at DESC LIMIT 1;
 
 -- name: InsertBackfillRun :exec
-INSERT INTO repository_backfill_runs (id,repository_id,status,error_count,diagnostics,created_at,updated_at)
+INSERT INTO module_backfill_runs (id,module_path,status,error_count,diagnostics,created_at,updated_at)
 VALUES ($1,$2,$3,0,$4,$5,$5);
 
 -- name: LatestBackfillRun :one
-SELECT * FROM repository_backfill_runs WHERE repository_id=$1 ORDER BY created_at DESC LIMIT 1;
+SELECT * FROM module_backfill_runs WHERE module_path=$1 ORDER BY created_at DESC LIMIT 1;
 
 -- name: BackfillRunByID :one
-SELECT * FROM repository_backfill_runs WHERE id=$1;
+SELECT * FROM module_backfill_runs WHERE id=$1;
 
 -- name: StartBackfillRun :execrows
-UPDATE repository_backfill_runs SET status='running',started_at=COALESCE(started_at,sqlc.arg(now)),updated_at=sqlc.arg(now)
+UPDATE module_backfill_runs SET status='running',started_at=COALESCE(started_at,sqlc.arg(now)),updated_at=sqlc.arg(now)
 WHERE id=sqlc.arg(id) AND status='queued';
 
 -- name: CompleteBackfillRun :execrows
-UPDATE repository_backfill_runs SET status=$2,completed_at=$3,error_count=$4,diagnostics=$5,updated_at=$3
+UPDATE module_backfill_runs SET status=$2,completed_at=$3,error_count=$4,diagnostics=$5,updated_at=$3
 WHERE id=$1 AND status IN ('queued','running');
 
 -- name: TouchBackfillRun :execrows
-UPDATE repository_backfill_runs SET updated_at=$2 WHERE id=$1 AND status='running';
+UPDATE module_backfill_runs SET updated_at=$2 WHERE id=$1 AND status='running';
 
 -- name: ExpireStaleBackfillRuns :execrows
-UPDATE repository_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
+UPDATE module_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
 WHERE status='running' AND updated_at<$1;
 
 -- name: StaleQueuedBackfillRuns :many
-SELECT * FROM repository_backfill_runs WHERE status='queued' AND updated_at<$1 ORDER BY updated_at LIMIT $2;
+SELECT * FROM module_backfill_runs WHERE status='queued' AND updated_at<$1 ORDER BY updated_at LIMIT $2;
 
 -- name: ExpireQueuedBackfillRun :execrows
-UPDATE repository_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
+UPDATE module_backfill_runs SET status='complete_with_errors',completed_at=$2,error_count=error_count+1,diagnostics=$3,updated_at=$2
 WHERE id=$1 AND status='queued';

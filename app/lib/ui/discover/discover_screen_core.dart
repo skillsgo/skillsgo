@@ -195,7 +195,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
       late SkillDetail detail;
       late AgentCatalog catalog;
       late PersonalRiskPolicy riskPolicy;
-      late List<SkillSummary> repositorySkills;
+      late List<SkillSummary> moduleSkills;
       var projects = const <AddedProject>[];
       await present(
         InstallLocationMenuRequest.loading(
@@ -207,12 +207,10 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
             final projectsFuture = widget.gateway.loadAddedProjects();
             final riskPolicyFuture = widget.gateway.loadRiskPolicy();
             detail = await widget.gateway.loadRemoteDetail(skill);
-            repositorySkills = [skill];
-            final repositorySkillsFuture =
-                loadRepositorySkills(widget.gateway, skill, detail).then((
-                  skills,
-                ) {
-                  repositorySkills = skills;
+            moduleSkills = [skill];
+            final moduleSkillsFuture =
+                loadModuleSkills(widget.gateway, skill, detail).then((skills) {
+                  moduleSkills = skills;
                   return skills;
                 });
             final values = await Future.wait([
@@ -228,8 +226,8 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
               catalog: catalog,
               detail: detail,
               projects: projects,
-              repositorySkills: repositorySkills,
-              repositorySkillsFuture: repositorySkillsFuture,
+              moduleSkills: moduleSkills,
+              moduleSkillsFuture: moduleSkillsFuture,
               preferredAction: preferredAction,
               onProjectAdded: (project) {
                 final index = projects.indexWhere(
@@ -250,7 +248,7 @@ class _DiscoverScreenState extends ConsumerState<DiscoverScreen>
               choice: choice,
               skill: skill,
               immutableVersion: skill.latestVersion,
-              repositorySkills: repositorySkills,
+              moduleSkills: moduleSkills,
               riskPolicy: riskPolicy,
             ),
           );

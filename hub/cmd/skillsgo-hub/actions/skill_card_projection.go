@@ -43,7 +43,7 @@ func (projection skillCardProjection) Localize(ctx context.Context, locale strin
 		return
 	}
 	for index := range cards {
-		description, ok, err := projection.catalog.LocalizedDescription(ctx, catalog.LocalizedSkill, cards[index].RepositoryID+":"+cards[index].Name, locale)
+		description, ok, err := projection.catalog.LocalizedDescription(ctx, catalog.LocalizedSkill, cards[index].ModulePath+":"+cards[index].Name, locale)
 		if err == nil && ok {
 			cards[index].Description = description
 		}
@@ -51,22 +51,13 @@ func (projection skillCardProjection) Localize(ctx context.Context, locale strin
 }
 
 func storedSkillCard(item catalog.Skill) discoverySkill {
-	repositoryID := item.SourceHost + "/" + item.Repository
-	return discoverySkill{RepositoryID: repositoryID, Name: item.Name, Description: item.Description,
-		Source: repositoryID, Repository: repositoryID, ImageURL: skillImageURL(item.SourceHost, item.Repository), SkillPath: item.SkillPath,
-		LatestVersion: item.LatestVersion, TrustLevel: trustLevel(item.Verified), RiskAssessment: "unknown"}
+	return discoverySkill{ModulePath: item.ModulePath, Name: item.Name, Description: item.Description,
+		ImageURL: skillImageURL(item.SourceHost, item.SourceRepository), Path: item.Path,
+		LatestVersion: item.LatestVersion}
 }
 
 func searchedSkillCard(item catalog.SearchSkill) discoverySkill {
-	repositoryID := item.SourceHost + "/" + item.Repository
-	return discoverySkill{RepositoryID: repositoryID, Name: item.Name, Description: item.Description,
-		Source: repositoryID, Repository: repositoryID, ImageURL: skillImageURL(item.SourceHost, item.Repository), SkillPath: item.SkillPath,
-		LatestVersion: item.LatestVersion, TrustLevel: trustLevel(item.Verified), RiskAssessment: "unknown"}
-}
-
-func trustLevel(verified bool) string {
-	if verified {
-		return "community_verified"
-	}
-	return "unverified"
+	return discoverySkill{ModulePath: item.ModulePath, Name: item.Name, Description: item.Description,
+		ImageURL: skillImageURL(item.SourceHost, item.SourceRepository), Path: item.Path,
+		LatestVersion: item.LatestVersion}
 }

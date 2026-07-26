@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on parsed artifact coordinates, immutable-version validation, Protocol ZIP resolution, public versions-path redirect policy, and streaming metadata.
- * [OUTPUT]: Streams Repository ZIP artifacts only for exact canonical semantic or pseudo-versions and closes underlying resources at EOF, error, HEAD completion, or redirect.
+ * [OUTPUT]: Streams Repository ZIP artifacts only for exact canonical semantic or pseudo-versions and closes underlying resources at EOF, error, or redirect.
  * [POS]: Serves as the ZIP HTTP boundary in the artifact download protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,7 +21,7 @@ import (
 // PathVersionZip URL.
 const PathVersionZip = "/{repository:.+}/versions/{version}.zip"
 
-// ZipHandler implements GET and HEAD baseURL/{repositoryId}/versions/{version}.zip.
+// ZipHandler implements GET baseURL/api/v1/{modulePath}/versions/{version}.zip.
 func ZipHandler(dp Protocol, lggr log.Entry, artifactOrigin string) fiber.Handler {
 	const op errors.Op = "download.ZipHandler"
 	return func(c fiber.Ctx) error {
@@ -31,7 +31,7 @@ func ZipHandler(dp Protocol, lggr log.Entry, artifactOrigin string) fiber.Handle
 			return c.SendStatus(errors.Kind(err))
 		}
 		if !protocolversion.IsImmutable(ver) {
-			return c.Status(fiber.StatusBadRequest).SendString("exact immutable version required; resolve movable selectors through the Repository Resolution API")
+			return c.Status(fiber.StatusBadRequest).SendString("exact immutable version required; resolve the revision through Module Version metadata first")
 		}
 		protectMovableVersionResponse(c, ver)
 		if immutableNotModified(c, mod, ver, "zip") {
@@ -61,10 +61,6 @@ func ZipHandler(dp Protocol, lggr log.Entry, artifactOrigin string) fiber.Handle
 		size := zip.Size()
 		if size > 0 {
 			c.Set(fiber.HeaderContentLength, strconv.FormatInt(size, 10))
-		}
-		if c.Method() == fiber.MethodHead {
-			_ = zip.Close()
-			return nil
 		}
 		return c.SendStream(&closeAtEndReader{reader: zip, closer: zip})
 	}

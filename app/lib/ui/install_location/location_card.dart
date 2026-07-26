@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Agent catalogs, Added Projects, exact existing targets, project icon resolution, install actions, target selections, and submission feedback.
- * [OUTPUT]: Provides the stateful location, project, Agent, repository-action loading gate, duplicate-target exclusion, validation, and submission card.
+ * [OUTPUT]: Provides the stateful location, project, Agent, Module-action loading gate, duplicate-target exclusion, validation, and submission card.
  * [POS]: Serves as the selection and submission owner of the anchored Installation Request selector.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,8 +11,8 @@ class _InstallLocationCard extends StatefulWidget {
     required this.gateway,
     required this.catalog,
     required this.detail,
-    required this.repositorySkills,
-    this.repositorySkillsFuture,
+    required this.moduleSkills,
+    this.moduleSkillsFuture,
     required this.preferredAction,
     required this.initialProjects,
     required this.onProjectAdded,
@@ -23,8 +23,8 @@ class _InstallLocationCard extends StatefulWidget {
   final SkillsGateway gateway;
   final AgentCatalog catalog;
   final SkillDetail detail;
-  final List<SkillSummary> repositorySkills;
-  final Future<List<SkillSummary>>? repositorySkillsFuture;
+  final List<SkillSummary> moduleSkills;
+  final Future<List<SkillSummary>>? moduleSkillsFuture;
   final InstallLocationAction preferredAction;
   final List<AddedProject> initialProjects;
   final ValueChanged<AddedProject> onProjectAdded;
@@ -42,8 +42,8 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
   final selectedUserAgents = <String>{};
   final selectedProjectAgents = <String>{};
   bool addingProject = false;
-  late List<SkillSummary> repositorySkills;
-  bool repositorySkillsLoading = false;
+  late List<SkillSummary> moduleSkills;
+  bool moduleSkillsLoading = false;
 
   List<AgentStatus> get agents => widget.catalog.installed;
 
@@ -63,15 +63,15 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
   void initState() {
     super.initState();
     projects = List.of(widget.initialProjects);
-    repositorySkills = widget.repositorySkills;
-    final repositoryFuture = widget.repositorySkillsFuture;
-    if (repositoryFuture != null) {
-      repositorySkillsLoading = true;
-      repositoryFuture.then((skills) {
+    moduleSkills = widget.moduleSkills;
+    final moduleFuture = widget.moduleSkillsFuture;
+    if (moduleFuture != null) {
+      moduleSkillsLoading = true;
+      moduleFuture.then((skills) {
         if (!mounted) return;
         setState(() {
-          repositorySkills = skills;
-          repositorySkillsLoading = false;
+          moduleSkills = skills;
+          moduleSkillsLoading = false;
         });
       });
     }
@@ -169,10 +169,10 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
     final l10n = AppLocalizations.of(context);
     final scheme = Theme.of(context).colorScheme;
     final components = context.skillsComponents;
-    final repositoryName = _repositoryName(widget.detail.repository);
+    final moduleName = _moduleName(widget.detail.modulePath);
     final island = InstallLocationIsland(
       header: _InstallScopeSelector(
-        title: widget.preferredAction == InstallLocationAction.repositorySkills
+        title: widget.preferredAction == InstallLocationAction.moduleSkills
             ? l10n.installAllSkillsTo
             : l10n.installSkillTo(widget.detail.name),
         scope: scope,
@@ -227,12 +227,12 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
           const SizedBox(height: 7),
           Row(
             children: [
-              if (repositorySkillsLoading) ...[
+              if (moduleSkillsLoading) ...[
                 const Expanded(
                   child: SkillsSkeletonBox(height: 36, borderRadius: 999),
                 ),
                 const SizedBox(width: 10),
-              ] else if (repositorySkills.length > 1 &&
+              ] else if (moduleSkills.length > 1 &&
                   widget.preferredAction ==
                       InstallLocationAction.currentSkill) ...[
                 Expanded(
@@ -241,7 +241,7 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
                         ? () => widget.onSubmit(
                             InstallLocationChoice(
                               selections: selections,
-                              action: InstallLocationAction.repositorySkills,
+                              action: InstallLocationAction.moduleSkills,
                             ),
                           )
                         : null,
@@ -264,15 +264,15 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     ),
                     child: Tooltip(
-                      message: repositoryName ?? '',
+                      message: moduleName ?? '',
                       child: LayoutBuilder(
                         builder: (context, constraints) {
                           const style = TextStyle(fontWeight: FontWeight.w400);
                           return Text(
-                            _repositoryButtonLabel(
+                            _moduleButtonLabel(
                               l10n: l10n,
-                              repositoryName: repositoryName,
-                              count: repositorySkills.length,
+                              moduleName: moduleName,
+                              count: moduleSkills.length,
                               maxWidth: constraints.maxWidth,
                               style: style,
                             ),
@@ -289,14 +289,13 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
                 const Spacer(),
               PrimaryCapsuleButton(
                 label:
-                    widget.preferredAction ==
-                        InstallLocationAction.repositorySkills
+                    widget.preferredAction == InstallLocationAction.moduleSkills
                     ? l10n.installAll
                     : l10n.confirmInstall,
                 height: 36,
                 horizontalPadding: 18,
                 labelStyle: const TextStyle(fontWeight: FontWeight.w400),
-                onPressed: canInstall && !repositorySkillsLoading
+                onPressed: canInstall && !moduleSkillsLoading
                     ? () => widget.onSubmit(
                         InstallLocationChoice(
                           selections: selections,
@@ -313,51 +312,51 @@ class _InstallLocationCardState extends State<_InstallLocationCard> {
     return SizedBox(height: 460, child: island);
   }
 
-  String? _repositoryName(String value) {
-    var repository = value.trim();
-    if (repository.isEmpty) return null;
+  String? _moduleName(String value) {
+    var module = value.trim();
+    if (module.isEmpty) return null;
 
-    repository = repository.split(RegExp(r'[?#]')).first;
-    final scpLike = RegExp(r'^[^/@]+@[^/:]+:(.+)$').firstMatch(repository);
+    module = module.split(RegExp(r'[?#]')).first;
+    final scpLike = RegExp(r'^[^/@]+@[^/:]+:(.+)$').firstMatch(module);
     if (scpLike != null) {
-      repository = scpLike.group(1)!;
+      module = scpLike.group(1)!;
     } else {
-      final uri = Uri.tryParse(repository);
+      final uri = Uri.tryParse(module);
       if (uri != null && uri.host.isNotEmpty) {
-        repository = uri.path;
+        module = uri.path;
       } else {
-        repository = repository.replaceFirst(RegExp(r'^[^/]+\.[^/]+/'), '');
+        module = module.replaceFirst(RegExp(r'^[^/]+\.[^/]+/'), '');
       }
     }
 
-    repository = repository
+    module = module
         .replaceAll(RegExp(r'^/+|/+$'), '')
         .replaceFirst(RegExp(r'\.git$', caseSensitive: false), '');
-    return repository.isEmpty ? null : repository;
+    return module.isEmpty ? null : module;
   }
 
-  String _repositoryButtonLabel({
+  String _moduleButtonLabel({
     required AppLocalizations l10n,
-    required String? repositoryName,
+    required String? moduleName,
     required int count,
     required double maxWidth,
     required TextStyle style,
   }) {
-    if (repositoryName == null) {
+    if (moduleName == null) {
       return l10n.installAllRepositorySkills(count);
     }
 
     String labelFor(String name) => l10n.installRepositorySkills(name, count);
-    if (_textWidth(labelFor(repositoryName), style) <= maxWidth) {
-      return labelFor(repositoryName);
+    if (_textWidth(labelFor(moduleName), style) <= maxWidth) {
+      return labelFor(moduleName);
     }
 
-    for (var visible = repositoryName.length - 1; visible >= 3; visible--) {
+    for (var visible = moduleName.length - 1; visible >= 3; visible--) {
       final leading = (visible / 2).ceil();
       final trailing = visible - leading;
       final compact =
-          '${repositoryName.substring(0, leading)}…'
-          '${repositoryName.substring(repositoryName.length - trailing)}';
+          '${moduleName.substring(0, leading)}…'
+          '${moduleName.substring(moduleName.length - trailing)}';
       final label = labelFor(compact);
       if (_textWidth(label, style) <= maxWidth) return label;
     }

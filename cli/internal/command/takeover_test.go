@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Uses command.Execute with isolated User/Agent roots, current skills.sh locks, and exact Repository version metadata/ZIP fixtures.
  * [OUTPUT]: Specifies state-bound exact-path Repository adoption, byte-identity rejection, current lock parsing, provider identity, plan validation, and localized public behavior without Store or Receipt compatibility.
- * [POS]: Serves as the executable contract for the lock-backed Batch Takeover journey on Repository Vendor architecture.
+ * [POS]: Serves as the executable contract for the lock-backed Batch Takeover journey on Repository Module Store architecture.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -17,8 +17,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/skillsgo/skillsgo/cli/internal/modulestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/scopevendor"
 	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 	"github.com/stretchr/testify/require"
@@ -43,40 +43,40 @@ func executeTakeover(t *testing.T, stdout, stderr *bytes.Buffer, hubURL string, 
 
 func takeoverRepositoryFixture(t *testing.T) (string, string, []byte, []byte, *httptest.Server) {
 	t.Helper()
-	repositoryID, version := "github.com/example/skills", "v1.2.3"
+	modulePath, version := "github.com/example/skills", "v1.2.3"
 	skill := []byte("---\nname: alpha\ndescription: Existing Alpha.\n---\n# Alpha\n")
-	archive, err := protocolartifact.BuildRepository(repositoryID, version, []protocolartifact.Entry{
+	archive, err := protocolartifact.BuildModule(modulePath, version, []protocolartifact.Entry{
 		{Path: "README.md", Contents: []byte("shared"), Mode: 0o644},
 		{Path: "skills/alpha/SKILL.md", Contents: skill, Mode: 0o644},
 		{Path: "skills/alpha/references/guide.md", Contents: []byte("guide"), Mode: 0o644},
 		{Path: "skills/beta/SKILL.md", Contents: []byte("---\nname: beta\ndescription: Beta.\n---\n"), Mode: 0o644},
 	})
 	require.NoError(t, err)
-	sum, err := protocolartifact.RepositorySum(archive, repositoryID, version)
+	sum, err := protocolartifact.ModuleSum(archive, modulePath, version)
 	require.NoError(t, err)
 	now := time.Date(2026, 7, 23, 0, 0, 0, 0, time.UTC)
-	info, err := json.Marshal(protocolapi.RepositoryInfo{SchemaVersion: 1, Kind: protocolapi.KindRepository, ID: repositoryID, Version: version,
-		Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "tree", Sum: sum, ArchiveSize: int64(len(archive)),
-		Skills: []protocolapi.SkillInfo{
-			{SchemaVersion: 1, Kind: protocolapi.KindSkill, RepositoryID: repositoryID, SkillPath: "skills/alpha", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "alpha", Name: "alpha", Description: "Existing Alpha."},
-			{SchemaVersion: 1, Kind: protocolapi.KindSkill, RepositoryID: repositoryID, SkillPath: "skills/beta", Version: version, Time: now, Ref: "refs/tags/" + version, CommitSHA: "commit", TreeSHA: "beta", Name: "beta", Description: "Beta."},
+	info, err := json.Marshal(protocolapi.ModuleInfo{SchemaVersion: 1, Kind: protocolapi.KindModule, ModulePath: modulePath, Version: version,
+		Time: now, Sum: sum, ArchiveSize: int64(len(archive)),
+		Skills: []protocolapi.ModuleSkill{
+			{Name: "alpha", Path: "skills/alpha"},
+			{Name: "beta", Path: "skills/beta"},
 		}})
 	require.NoError(t, err)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
-		case "/" + repositoryID + "/versions/" + version:
+		case "/api/v1/" + modulePath + "/versions/" + version:
 			_, _ = writer.Write(info)
-		case "/" + repositoryID + "/versions/" + version + ".zip":
+		case "/api/v1/" + modulePath + "/versions/" + version + ".zip":
 			writer.Header().Set("Content-Length", fmt.Sprint(len(archive)))
 			_, _ = writer.Write(archive)
 		default:
 			http.NotFound(writer, request)
 		}
 	}))
-	return repositoryID, version, skill, []byte("guide"), server
+	return modulePath, version, skill, []byte("guide"), server
 }
 
-func writeTakeoverUserFixture(t *testing.T, home, agentHome, repositoryID, version string, skill, guide []byte) string {
+func writeTakeoverUserFixture(t *testing.T, home, agentHome, modulePath, version string, skill, guide []byte) string {
 	t.Helper()
 	target := filepath.Join(agentHome, "skills", "alpha")
 	require.NoError(t, os.MkdirAll(filepath.Join(target, "references"), 0o755))
@@ -92,14 +92,14 @@ func writeTakeoverUserFixture(t *testing.T, home, agentHome, repositoryID, versi
 	return target
 }
 
-func TestBatchTakeoverAdoptsExactRepositoryMemberIntoUserVendor(t *testing.T) {
-	repositoryID, version, skill, guide, server := takeoverRepositoryFixture(t)
+func TestBatchTakeoverAdoptsExactVersionSkillIntoUserModuleStore(t *testing.T) {
+	modulePath, version, skill, guide, server := takeoverRepositoryFixture(t)
 	defer server.Close()
 	root := t.TempDir()
 	home, agentHome := filepath.Join(root, "home"), filepath.Join(root, "test-agent")
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-	target := writeTakeoverUserFixture(t, home, agentHome, repositoryID, version, skill, guide)
+	target := writeTakeoverUserFixture(t, home, agentHome, modulePath, version, skill, guide)
 
 	var stdout, stderr bytes.Buffer
 	require.NoError(t, executeTakeover(t, &stdout, &stderr, server.URL, "--user"))
@@ -108,16 +108,16 @@ func TestBatchTakeoverAdoptsExactRepositoryMemberIntoUserVendor(t *testing.T) {
 	require.Equal(t, 1, result.Summary.TakenOver)
 	require.Zero(t, result.Summary.Skipped)
 	require.NoDirExists(t, target)
-	userRoot := project.UserRoot(home)
+	userRoot := project.UserDeclarationRoot(home)
 	manifest, err := project.LoadWorkspaceManifest(userRoot)
 	require.NoError(t, err)
-	require.Equal(t, version, manifest.Dependencies[repositoryID].Version)
-	require.Equal(t, []string{"skills/alpha"}, manifest.Dependencies[repositoryID].Skills)
-	require.Equal(t, []string{"test-agent"}, manifest.Dependencies[repositoryID].Agents)
+	require.Equal(t, version, manifest.Dependencies[modulePath].Version)
+	require.Equal(t, []string{"skills/alpha"}, manifest.Dependencies[modulePath].Skills)
+	require.Equal(t, []string{"test-agent"}, manifest.Dependencies[modulePath].Agents)
 	require.NoError(t, project.ValidateWorkspaceState(manifest, mustLoadTakeoverLock(t, userRoot)))
-	vendor := scopevendor.CoordinatePath(filepath.Join(userRoot, "vendor"), repositoryID, version)
-	projection := scopevendor.CoordinatePath(filepath.Join(agentHome, "skills"), repositoryID, version)
-	require.FileExists(t, filepath.Join(vendor, "skills", "beta", "SKILL.md"))
+	moduleDir := modulestore.CoordinatePath(filepath.Join(project.UserStateRoot(home), "modules"), modulePath, version)
+	projection := modulestore.CoordinatePath(filepath.Join(agentHome, "skills"), modulePath, version)
+	require.FileExists(t, filepath.Join(moduleDir, "skills", "beta", "SKILL.md"))
 	require.FileExists(t, filepath.Join(projection, "skills", "alpha", "SKILL.md"))
 	require.NoFileExists(t, filepath.Join(projection, "skills", "beta", "SKILL.md"))
 	require.Equal(t, skill, mustReadTakeoverFile(t, filepath.Join(projection, "skills", "alpha", "SKILL.md")))
@@ -126,13 +126,13 @@ func TestBatchTakeoverAdoptsExactRepositoryMemberIntoUserVendor(t *testing.T) {
 }
 
 func TestBatchTakeoverRejectsDifferentBytesWithoutWritingState(t *testing.T) {
-	repositoryID, version, skill, guide, server := takeoverRepositoryFixture(t)
+	modulePath, version, skill, guide, server := takeoverRepositoryFixture(t)
 	defer server.Close()
 	root := t.TempDir()
 	home, agentHome := filepath.Join(root, "home"), filepath.Join(root, "test-agent")
 	t.Setenv("HOME", home)
 	t.Setenv("SKILLSGO_TEST_AGENT_HOME", agentHome)
-	target := writeTakeoverUserFixture(t, home, agentHome, repositoryID, version, skill, guide)
+	target := writeTakeoverUserFixture(t, home, agentHome, modulePath, version, skill, guide)
 	require.NoError(t, os.WriteFile(filepath.Join(target, "SKILL.md"), append(skill, []byte("local edit\n")...), 0o644))
 
 	var stdout, stderr bytes.Buffer
@@ -143,8 +143,8 @@ func TestBatchTakeoverRejectsDifferentBytesWithoutWritingState(t *testing.T) {
 	require.Equal(t, 1, result.Summary.Skipped)
 	require.Equal(t, "content-mismatch", result.Results[0].Reason)
 	require.DirExists(t, target)
-	require.NoFileExists(t, filepath.Join(project.UserRoot(home), project.WorkspaceManifestName))
-	require.NoDirExists(t, filepath.Join(project.UserRoot(home), "vendor"))
+	require.NoFileExists(t, filepath.Join(project.UserDeclarationRoot(home), project.WorkspaceManifestName))
+	require.NoDirExists(t, filepath.Join(project.UserStateRoot(home), "modules"))
 }
 
 func mustLoadTakeoverLock(t *testing.T, root string) project.DependencyLock {

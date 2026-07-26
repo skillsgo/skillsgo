@@ -27,6 +27,6 @@ import 'ui_support.dart';
 
 part 'discover/discover_screen_core.dart';
 part 'discover/discover_rendering.dart';
-part 'discover/repository_source_header.dart';
+part 'discover/module_source_header.dart';
 part 'discover/discover_navigation.dart';
 part 'discover/desktop_discover_scroller.dart';

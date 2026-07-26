@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared RealSkillsGateway library, Dart JSON/filesystem primitives, and App domain models.
- * [OUTPUT]: Provides centralized machine-document envelope validation, private strict CLI decoders, argument encoders, local Skill inspection, and schema invariants.
+ * [OUTPUT]: Provides centralized machine-document envelope validation, private strict CLI decoders, argument encoders, and schema invariants.
  * [POS]: Serves as the machine-protocol codec implementation inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -43,31 +43,6 @@ Map<String, dynamic> _decodeMachineDocument(
   schemaVersion: schemaVersion,
 );
 
-SkillTrustLevel _trustLevel(Object? value) => switch (value) {
-  'unverified' => SkillTrustLevel.unverified,
-  'community_verified' => SkillTrustLevel.communityVerified,
-  'publisher_verified' => SkillTrustLevel.publisherVerified,
-  'official' => SkillTrustLevel.official,
-  'warned' => SkillTrustLevel.warned,
-  'delisted' => SkillTrustLevel.delisted,
-  _ => throw const SkillsException(
-    'Discovery Trust Level is invalid.',
-    kind: SkillsFailureKind.invalidResponse,
-  ),
-};
-
-SkillRiskAssessment _riskAssessment(Object? value) => switch (value) {
-  'unknown' => SkillRiskAssessment.unknown,
-  'low' => SkillRiskAssessment.low,
-  'medium' => SkillRiskAssessment.medium,
-  'high' => SkillRiskAssessment.high,
-  'critical' => SkillRiskAssessment.critical,
-  _ => throw const SkillsException(
-    'Discovery Risk Assessment is invalid.',
-    kind: SkillsFailureKind.invalidResponse,
-  ),
-};
-
 InstallationScope _installationScope(Object? value) => switch (value) {
   'user' => InstallationScope.user,
   'project' => InstallationScope.project,
@@ -104,70 +79,7 @@ int _localTargetReadRank(SkillInstallationTarget target) {
   return 1;
 }
 
-const _localFilePreviewLimit = 256 * 1024;
 const _inventorySchemaVersion = 6;
-
-bool _looksExecutablePath(String path) {
-  final lower = path.toLowerCase();
-  const extensions = [
-    '.sh',
-    '.bash',
-    '.zsh',
-    '.fish',
-    '.ps1',
-    '.bat',
-    '.cmd',
-    '.exe',
-    '.js',
-    '.mjs',
-    '.py',
-    '.rb',
-  ];
-  return lower.contains('/scripts/') || extensions.any(lower.endsWith);
-}
-
-Future<List<SkillFile>> _inspectLocalFiles(String root) async {
-  final files = await Directory(root)
-      .list(recursive: true, followLinks: false)
-      .where((entity) => entity is File)
-      .cast<File>()
-      .toList();
-  files.sort((left, right) => left.path.compareTo(right.path));
-  final result = <SkillFile>[];
-  for (final file in files) {
-    final relative = p.relative(file.path, from: root);
-    final stat = await file.stat();
-    var contents = '';
-    var binary = false;
-    final truncated = stat.size > _localFilePreviewLimit;
-    final bytes = await file
-        .openRead(0, min(stat.size, _localFilePreviewLimit))
-        .fold<List<int>>(<int>[], (buffer, chunk) => buffer..addAll(chunk));
-    if (bytes.contains(0)) {
-      binary = true;
-    } else {
-      try {
-        contents = utf8.decode(bytes, allowMalformed: truncated);
-      } on FormatException {
-        binary = true;
-      }
-    }
-    result.add(
-      SkillFile(
-        path: relative,
-        contents: contents,
-        size: stat.size,
-        kind: relative == 'SKILL.md' ? 'instructions' : 'supporting',
-        executable:
-            _looksExecutablePath(relative) ||
-            (!Platform.isWindows && stat.mode & 0x49 != 0),
-        binary: binary,
-        truncated: truncated,
-      ),
-    );
-  }
-  return List.unmodifiable(result);
-}
 
 List<String> _strictStringList(Object? value) {
   if (value is! List || value.any((item) => item is! String || item.isEmpty)) {
@@ -222,19 +134,19 @@ bool _samePlanTarget(
     left.agent == right.agent &&
     left.path == right.path;
 
-List<InstallationTargetResult> _repositoryInstallationResults(
+List<InstallationTargetResult> _moduleInstallationResults(
   Object? value,
   SkillSummary skill,
   String immutableVersion,
   List<InstallationTargetSelection> selections,
 ) {
-  final raw = _machineDocument(value, phases: const ['repository-install']);
-  if (raw['repository'] != skill.repositoryId ||
+  final raw = _machineDocument(value, phases: const ['module-install']);
+  if (raw['modulePath'] != skill.modulePath ||
       raw['version'] != immutableVersion ||
       raw['sum'] is! String ||
       (raw['sum'] as String).isEmpty ||
-      raw['vendor'] is! String ||
-      (raw['vendor'] as String).isEmpty ||
+      raw['moduleDir'] is! String ||
+      (raw['moduleDir'] as String).isEmpty ||
       raw['skills'] is! List ||
       raw['agents'] is! List ||
       raw['projections'] is! List ||
@@ -251,9 +163,9 @@ List<InstallationTargetResult> _repositoryInstallationResults(
   }
   final workspace = raw['workspace'] as Map<String, dynamic>;
   if (workspace['manifest'] is! String ||
-      !(workspace['manifest'] as String).endsWith('skillsgo.yaml') ||
+      !(workspace['manifest'] as String).endsWith('skills.yaml') ||
       workspace['lock'] is! String ||
-      !(workspace['lock'] as String).endsWith('skillsgo-lock.yaml')) {
+      !(workspace['lock'] as String).endsWith('skills-lock.yaml')) {
     throw const FormatException();
   }
   final pathsByAgent = <String, String>{};

@@ -29,10 +29,9 @@ void main() {
           const DiscoveryPage(
             skills: [
               SkillSummary(
-                repositoryId: 'github.com/acme/original',
+                modulePath: 'github.com/acme/original',
                 installName: 'original',
                 name: 'Original',
-                source: 'github.com/acme/original',
                 installs: 2,
               ),
             ],
@@ -62,16 +61,15 @@ void main() {
         find.byKey(const Key('skills-loading-progressive-dots')),
         findsNothing,
       );
-      expect(gateway.requestedOffsets, [0, 0]);
+      expect(gateway.requestedPages, [0, 0]);
 
       refresh.complete(
         const DiscoveryPage(
           skills: [
             SkillSummary(
-              repositoryId: 'github.com/acme/refreshed',
+              modulePath: 'github.com/acme/refreshed',
               installName: 'refreshed',
               name: 'Refreshed',
-              source: 'github.com/acme/refreshed',
               installs: 3,
             ),
           ],
@@ -114,10 +112,9 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 800));
     const installedSkill = SkillSummary(
-      repositoryId: 'github.com/acme/skills',
+      modulePath: 'github.com/acme/skills',
       installName: 'planner',
       name: 'Planner',
-      source: 'github.com/acme/skills',
       installs: 10,
       localTargetCount: 1,
     );
@@ -289,7 +286,7 @@ void main() {
     },
   );
 
-  testWidgets('auditable detail exposes immutable evidence and files', (
+  testWidgets('detail exposes canonical Module Version Skill metadata', (
     tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
@@ -337,7 +334,6 @@ void main() {
     expect(gateway.agentInspections, 1);
     expect(find.text('example/skills'), findsOneWidget);
     expect(find.text('github.com/example/skills'), findsNothing);
-    expect(find.text('12.8K'), findsOneWidget);
     expect(find.text('2026-07-15'), findsOneWidget);
     expect(find.text('24 KB'), findsOneWidget);
     expect(

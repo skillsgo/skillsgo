@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on Repository coordinate parsing, the download Protocol version list, and request-scoped logging.
- * [OUTPUT]: Serves the newline-delimited immutable release list for a Repository.
- * [POS]: Serves as the Repository version-list HTTP boundary in the Hub artifact protocol.
+ * [INPUT]: Depends on Module Path parsing, the download Protocol version list, and request-scoped logging.
+ * [OUTPUT]: Serves the JSON immutable Version collection for a Module.
+ * [POS]: Serves as the Module version-list HTTP boundary in the Hub artifact protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package download
@@ -14,16 +14,16 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/paths"
+	protocolapi "github.com/skillsgo/skillsgo/protocol/api"
 )
 
-// PathList is the public Repository versions collection URL.
-const PathList = "/{repository:.+}/versions"
+// PathList is the public Module versions collection URL.
+const PathList = "/api/v1/{modulePath:.+}/versions"
 
-// ListHandler implements GET baseURL/{repositoryId}/versions.
+// ListHandler implements GET baseURL/api/v1/{modulePath}/versions.
 func ListHandler(dp Protocol, lggr log.Entry, _ string) fiber.Handler {
 	const op errors.Op = "download.ListHandler"
 	return func(c fiber.Ctx) error {
-		c.Set(fiber.HeaderContentType, fiber.MIMETextPlainCharsetUTF8)
 		mod, err := paths.GetSkill(c.Path())
 		if err != nil {
 			lggr.SystemErr(errors.E(op, err))
@@ -38,6 +38,6 @@ func ListHandler(dp Protocol, lggr log.Entry, _ string) fiber.Handler {
 			return c.Status(errors.Kind(err)).SendString(fmt.Sprintf("not found: %s", strings.Replace(err.Error(), "exit status 1: go: ", "", 1)))
 		}
 
-		return c.SendString(strings.Join(versions, "\n"))
+		return c.JSON(protocolapi.ModuleVersionsResponse{Versions: versions})
 	}
 }

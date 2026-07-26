@@ -93,21 +93,18 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
   }
 
   Future<void> _loadRemoteIdentity() async {
-    if (skill.provenance != LibraryProvenance.hub ||
-        skill.repositoryId.isEmpty) {
+    if (skill.provenance != LibraryProvenance.hub || skill.modulePath.isEmpty) {
       return;
     }
     try {
       final value = await widget.gateway.loadRemoteDetail(
         SkillSummary(
-          repositoryId: skill.repositoryId,
+          modulePath: skill.modulePath,
           installName: skill.name,
           name: skill.name,
-          source: skill.repositoryId,
           installs: 0,
           latestVersion: skill.versions.firstOrNull ?? '',
           description: skill.description,
-          riskAssessment: skill.riskAssessment,
           localTargetCount: skill.targetCount,
         ),
       );
@@ -229,15 +226,12 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
     try {
       var projects = values[1] as List<AddedProject>;
       final summary = SkillSummary(
-        repositoryId: skill.repositoryId,
+        modulePath: skill.modulePath,
         installName: skill.name,
         name: skill.name,
-        source: currentDetail.source,
-        imageUrl: currentDetail.imageUrl,
         installs: 0,
-        latestVersion: currentDetail.immutableVersion,
+        latestVersion: currentDetail.version,
         description: currentDetail.description,
-        riskAssessment: skill.riskAssessment,
         localTargetCount: skill.targetCount,
       );
       await present(
@@ -259,7 +253,7 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
               choice: choice,
               skill: summary,
               immutableVersion: summary.latestVersion,
-              repositorySkills: [summary],
+              moduleSkills: [summary],
               riskPolicy: values[2] as PersonalRiskPolicy,
             ),
           );
@@ -307,13 +301,10 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
             controller: detailScrollController,
             hero: SkillDetailHero(
               name: skill.name,
-              source:
-                  remoteIdentity?.source ??
-                  (skill.repositoryId.isNotEmpty
-                      ? skill.repositoryId
-                      : skill.name),
+              source: skill.modulePath.isNotEmpty
+                  ? skill.modulePath
+                  : skill.name,
               description: remoteIdentity?.description ?? skill.description,
-              imageUrl: remoteIdentity?.imageUrl,
               avatarKey: const Key('installed-detail-skill-avatar'),
               actions: _actions(),
             ),
@@ -344,7 +335,7 @@ class _LocalDetailScreenState extends ConsumerState<LocalDetailScreen> {
                 ? const SkillsSkeletonBox(height: 280, borderRadius: 14)
                 : SkillMarkdownView(
                     key: const Key('installed-detail-instructions'),
-                    data: detail!.markdown,
+                    data: detail!.content,
                     scrollable: false,
                     stripFrontMatter: true,
                   ),

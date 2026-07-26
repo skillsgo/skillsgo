@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the rendered App, its bundled CLI, isolated preferences, and an intentionally unreachable Hub origin.
+ * [INPUT]: Depends on the rendered App, its bundled CLI, JourneyRuntime process/filesystem isolation, isolated preferences, and an intentionally unreachable Hub origin.
  * [OUTPUT]: Verifies that a real CLI machine failure becomes App-owned localized recovery without exposing developer diagnostics as product copy.
  * [POS]: Serves as the black-box App-to-CLI failure-contract journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -11,17 +11,32 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skillsgo/main.dart' as skillsgo;
 import 'package:window_manager/window_manager.dart';
 
+import 'support/journey_runtime.dart';
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
+  registerMachineFailureRecoveryJourney();
+}
+
+void registerMachineFailureRecoveryJourney() {
   testWidgets(
     'bundled CLI failure renders App-owned recovery',
     (tester) async {
+      final runtime = await JourneyRuntime.start(
+        'machine_failure_recovery',
+        startHub: false,
+      );
+      addTearDown(runtime.close);
       final preferences = await SharedPreferences.getInstance();
+      await preferences.setBool('onboarding_completed_v1', true);
       await preferences.setString('hub_origin', 'http://127.0.0.1:1');
       addTearDown(() => preferences.remove('hub_origin'));
 
-      await skillsgo.runSkillsGoApp(initializeBinding: false);
+      await skillsgo.runSkillsGoApp(
+        initializeBinding: false,
+        gateway: runtime.gateway,
+      );
       await windowManager.setSize(const Size(1400, 960));
       await windowManager.center();
 

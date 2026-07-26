@@ -1,38 +1,35 @@
 /*
- * [INPUT]: Depends on repository metadata, localized copy, SkillsGo typography, and installation callbacks.
- * [OUTPUT]: Provides the repository source header, metadata formatting, and install-all action.
- * [POS]: Serves as the repository-context presentation segment of the Discover journey.
+ * [INPUT]: Depends on Module metadata, localized copy, SkillsGo typography, and installation callbacks.
+ * [OUTPUT]: Provides the Module source header, metadata formatting, and install-all action.
+ * [POS]: Serves as the Module-context presentation segment of the Discover journey.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of '../discover_screen.dart';
 
-class _RepositorySourceHeader extends StatelessWidget {
-  const _RepositorySourceHeader({
-    required this.source,
+class _ModuleSourceHeader extends StatelessWidget {
+  const _ModuleSourceHeader({
+    required this.modulePath,
     required this.skills,
     required this.onInstallAll,
-    this.repository,
+    this.module,
   });
 
-  final String source;
+  final String modulePath;
   final List<SkillSummary> skills;
   final ValueChanged<InstallLocationMenuPresenter> onInstallAll;
-  final RepositorySummary? repository;
+  final ModuleSummary? module;
 
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
     final firstSkill = skills.first;
-    final summary = repository;
+    final summary = module;
     final description = summary?.description.trim() ?? '';
     final metadata = <String>[
-      if ((summary?.stars ?? 0) > 0)
-        '★ ${_repositoryCompactCount(summary!.stars)}',
+      if ((summary?.stars ?? 0) > 0) '★ ${_moduleCompactCount(summary!.stars)}',
       context.l10n.skillCount(skills.length),
-      if (summary?.license?.trim().isNotEmpty ?? false)
-        summary!.license!.trim(),
       if (summary?.updatedAt != null)
-        '${context.l10n.detailUpdated} ${_repositoryDate(summary!.updatedAt!)}',
+        '${context.l10n.detailUpdated} ${_moduleDate(summary!.updatedAt!)}',
     ];
     final version = summary?.latestVersion.isNotEmpty == true
         ? summary!.latestVersion
@@ -41,7 +38,7 @@ class _RepositorySourceHeader extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         RepositoryAvatar(
-          source: source,
+          source: modulePath,
           imageUrl: summary?.imageUrl ?? firstSkill.imageUrl,
           size: 88,
           borderRadius: 16,
@@ -52,8 +49,8 @@ class _RepositorySourceHeader extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                _repositorySourceLabel(source),
-                textDirection: contentTextDirection(source),
+                _modulePathLabel(modulePath),
+                textDirection: contentTextDirection(modulePath),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
                 style: const TextStyle(
@@ -113,7 +110,7 @@ class _RepositorySourceHeader extends StatelessWidget {
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(
-                  _repositoryVersionLabel(context, version),
+                  _moduleVersionLabel(context, version),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: context.skillsTypography.caption.copyWith(
@@ -125,7 +122,7 @@ class _RepositorySourceHeader extends StatelessWidget {
             const SizedBox(height: 28),
             InstallLocationMenuAnchor(
               builder: (context, present) => PrimaryCapsuleButton(
-                key: const Key('repository-install-all'),
+                key: const Key('module-install-all'),
                 label: context.l10n.installAll,
                 height: 40,
                 horizontalPadding: 18,
@@ -143,21 +140,21 @@ class _RepositorySourceHeader extends StatelessWidget {
   }
 }
 
-String _repositoryDate(DateTime value) {
+String _moduleDate(DateTime value) {
   final local = value.toLocal();
   final month = local.month.toString().padLeft(2, '0');
   final day = local.day.toString().padLeft(2, '0');
   return '${local.year}-$month-$day';
 }
 
-String _repositorySourceLabel(String source) {
-  final segments = source.split('/');
+String _modulePathLabel(String modulePath) {
+  final segments = modulePath.split('/');
   return segments.length > 1 && segments.first.contains('.')
       ? segments.skip(1).join(' / ')
-      : source;
+      : modulePath;
 }
 
-String _repositoryCompactCount(int value) {
+String _moduleCompactCount(int value) {
   if (value >= 1000000) {
     return '${(value / 1000000).toStringAsFixed(value >= 10000000 ? 0 : 1)}M';
   }
@@ -167,7 +164,7 @@ String _repositoryCompactCount(int value) {
   return '$value';
 }
 
-String _repositoryVersionLabel(BuildContext context, String version) {
+String _moduleVersionLabel(BuildContext context, String version) {
   if (RegExp(r'^v\d+\.\d+\.\d+').hasMatch(version)) return version;
   return context.l10n.latestCommit;
 }

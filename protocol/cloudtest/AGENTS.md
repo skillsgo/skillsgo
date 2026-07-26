@@ -4,7 +4,7 @@
 
 ## Members
 
-- `mock.go`: test-only in-memory Cloud HTTP implementation with observable install events and configurable rankings.
+- `mock.go`: test-only in-memory Cloud HTTP implementation with observable/resettable install events and configurable rankings.
 - `conformance.go`: reusable black-box verifier for the public Cloud HTTP contract.
 - `cloudtest_test.go`: proves the mock itself satisfies the same conformance suite used by private implementations.
 

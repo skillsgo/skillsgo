@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on parsed artifact coordinates, immutable-version validation, Protocol Info resolution, and redirect policy.
- * [OUTPUT]: Serves immutable JSON Info only for exact canonical semantic or pseudo-versions.
- * [POS]: Serves as the Info HTTP boundary in the artifact download protocol.
+ * [INPUT]: Depends on parsed artifact coordinates, shared Version Query validation, Protocol Info resolution, and conditional cache policy.
+ * [OUTPUT]: Resolves exact or movable revisions and serves their canonical immutable Module Info JSON.
+ * [POS]: Serves as the unified revision-to-Module-Info HTTP boundary in the Module distribution protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package download
@@ -16,7 +16,7 @@ import (
 // PathVersionInfo URL.
 const PathVersionInfo = "/{repository:.+}/versions/{version}"
 
-// InfoHandler implements GET baseURL/{repositoryId}/versions/{version}.
+// InfoHandler implements GET baseURL/api/v1/{modulePath}/versions/{version}.
 func InfoHandler(dp Protocol, lggr log.Entry, _ string) fiber.Handler {
 	const op errors.Op = "download.InfoHandler"
 	return func(c fiber.Ctx) error {
@@ -26,14 +26,15 @@ func InfoHandler(dp Protocol, lggr log.Entry, _ string) fiber.Handler {
 			lggr.SystemErr(err)
 			return c.SendStatus(errors.Kind(err))
 		}
-		if !protocolversion.IsImmutable(ver) {
-			return c.Status(fiber.StatusBadRequest).SendString("exact immutable version required; resolve movable selectors through the Repository Resolution API")
+		query, err := protocolversion.ParseQuery(ver)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).SendString(err.Error())
 		}
-		protectMovableVersionResponse(c, ver)
-		if immutableNotModified(c, mod, ver, "info") {
+		protectMovableVersionResponse(c, query.Value)
+		if !query.Movable() && immutableNotModified(c, mod, query.Value, "info") {
 			return c.SendStatus(fiber.StatusNotModified)
 		}
-		info, err := dp.Info(c.Context(), mod, ver)
+		info, err := dp.Info(c.Context(), mod, query.Value)
 		if err != nil {
 			severityLevel := errors.Expect(err, errors.KindNotFound, errors.KindRedirect)
 			lggr.SystemErr(errors.E(op, err, errors.S(mod), errors.V(ver), severityLevel))

@@ -8,7 +8,7 @@ part of '../fake_skills_gateway.dart';
 
 mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
   @override
-  Future<List<InstallationExecution>> installRepositoryTargets(
+  Future<List<InstallationExecution>> installModuleTargets(
     List<SkillSummary> skills,
     List<InstallationTargetSelection> selections, {
     bool confirmRisk = false,
@@ -35,15 +35,6 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
     bool confirmRisk = false,
     bool allowCritical = false,
   }) async {
-    final risk = remoteDetail.riskAssessment;
-    if ((risk == SkillRiskAssessment.high && !confirmRisk) ||
-        (risk == SkillRiskAssessment.critical &&
-            (!confirmRisk || !allowCritical))) {
-      throw const SkillsException(
-        'Risk confirmation is required.',
-        kind: SkillsFailureKind.validation,
-      );
-    }
     if (installPlanErrors.isNotEmpty) throw installPlanErrors.removeAt(0);
     installCalls++;
     lastPlanSelections = List.unmodifiable(selections);
@@ -99,8 +90,7 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
     if (entries != null && succeeded > 0) {
       final index = entries.indexWhere(
         (entry) =>
-            entry.repositoryId == skill.repositoryId &&
-            entry.name == skill.name,
+            entry.modulePath == skill.modulePath && entry.name == skill.name,
       );
       if (index >= 0) {
         final existing = entries[index];
@@ -130,7 +120,7 @@ mixin FakeGatewayInstallation on FakeSkillsGatewayCore {
       }
     }
     return InstallationExecution(
-      repositoryId: skill.repositoryId,
+      modulePath: skill.modulePath,
       skillName: skill.name,
       version: immutableVersion,
       name: skill.installName,

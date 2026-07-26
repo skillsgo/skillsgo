@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on raw Hub request paths and module path escaping rules.
- * [OUTPUT]: Extracts decoded Repository and version parameters from the public versions resource paths and provides private-pattern matching.
+ * [OUTPUT]: Extracts decoded Module Path and revision parameters from public v1 distribution paths and provides private-pattern matching.
  * [POS]: Serves as the router-independent request-path parser shared by Fiber and external storage boundaries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -17,6 +17,7 @@ import (
 func GetSkill(requestPath string) (string, error) {
 	const op errors.Op = "paths.GetSkill"
 	skill := strings.TrimPrefix(requestPath, "/")
+	skill = strings.TrimPrefix(skill, "api/v1/")
 	skill = strings.TrimPrefix(skill, "mod/")
 	if i := strings.Index(skill, "/versions/"); i >= 0 {
 		skill = skill[:i]

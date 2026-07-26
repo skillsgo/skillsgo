@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on Installation target selections, Agent catalogs, Added Projects, repository members, and async submission outcomes.
+ * [INPUT]: Depends on Installation target selections, Agent catalogs, Added Projects, Module members, and async submission outcomes.
  * [OUTPUT]: Provides the public menu request with exact existing-target exclusions, action, choice, presenter, and submission contracts.
  * [POS]: Serves as the small external interface of the anchored Installation Request selector.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -13,8 +13,8 @@ class InstallLocationMenuRequest {
     required this.detail,
     required this.projects,
     required this.onProjectAdded,
-    this.repositorySkills = const [],
-    this.repositorySkillsFuture,
+    this.moduleSkills = const [],
+    this.moduleSkillsFuture,
     this.preferredAction = InstallLocationAction.currentSkill,
     this.existingTargets = const [],
   }) : summary = null,
@@ -28,8 +28,8 @@ class InstallLocationMenuRequest {
        detail = null,
        projects = null,
        onProjectAdded = null,
-       repositorySkills = null,
-       repositorySkillsFuture = null,
+       moduleSkills = null,
+       moduleSkillsFuture = null,
        preferredAction = InstallLocationAction.currentSkill,
        existingTargets = null;
 
@@ -38,8 +38,8 @@ class InstallLocationMenuRequest {
   final SkillDetail? detail;
   final List<AddedProject>? projects;
   final ValueChanged<AddedProject>? onProjectAdded;
-  final List<SkillSummary>? repositorySkills;
-  final Future<List<SkillSummary>>? repositorySkillsFuture;
+  final List<SkillSummary>? moduleSkills;
+  final Future<List<SkillSummary>>? moduleSkillsFuture;
   final InstallLocationAction preferredAction;
   final List<SkillInstallationTarget>? existingTargets;
   final SkillSummary? summary;
@@ -48,7 +48,7 @@ class InstallLocationMenuRequest {
   bool get isLoading => loader != null;
 }
 
-enum InstallLocationAction { currentSkill, repositorySkills }
+enum InstallLocationAction { currentSkill, moduleSkills }
 
 class InstallLocationChoice {
   const InstallLocationChoice({required this.selections, required this.action});

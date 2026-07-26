@@ -21,7 +21,7 @@ func TestJ19ImmutableReuse(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testRepositoryID+"@"+testSkillVersion, "--skill", testSkillName,
+		"add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 		"--yes",
 
@@ -31,13 +31,13 @@ func TestJ19ImmutableReuse(t *testing.T) {
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 
-	artifactURL := "http://127.0.0.1:3000/" + installed.Repository + "/@v/" + installed.Version + ".zip"
+	artifactURL := "http://127.0.0.1:3000/api/v1/" + installed.ModulePath + "/versions/" + installed.Version + ".zip"
 	firstDownload := execInContainer(t, ctx, container,
-		"wget", "-qO", "/e2e/artifacts/first.zip", artifactURL,
+		"wget", "-qO", scenarioContainerPath(t, "artifacts", "first.zip"), artifactURL,
 	)
 	require.Equal(t, 0, firstDownload.exitCode, firstDownload.output)
 	secondDownload := execInContainer(t, ctx, container,
-		"wget", "-qO", "/e2e/artifacts/second.zip", artifactURL,
+		"wget", "-qO", scenarioContainerPath(t, "artifacts", "second.zip"), artifactURL,
 	)
 	require.Equal(t, 0, secondDownload.exitCode, secondDownload.output)
 	firstBytes, err := os.ReadFile(filepath.Join(sandboxRoot, "artifacts", "first.zip"))
@@ -48,7 +48,7 @@ func TestJ19ImmutableReuse(t *testing.T) {
 	require.Equal(t, firstBytes, secondBytes)
 
 	secondTarget := execCLI(t, ctx, container,
-		"add", testRepositoryID+"@"+installed.Version, "--skill", testSkillName,
+		"add", testModulePath+"@"+installed.Version, "--skill", testSkillName,
 		"--agent", "claude-code",
 		"--yes",
 
@@ -61,5 +61,5 @@ func TestJ19ImmutableReuse(t *testing.T) {
 	for _, projection := range expanded.Projections {
 		require.FileExists(t, containerPathOnHost(t, sandboxRoot, projection.Path, "skills", "alpha", "SKILL.md"))
 	}
-	require.DirExists(t, containerPathOnHost(t, sandboxRoot, installed.Vendor))
+	require.DirExists(t, containerPathOnHost(t, sandboxRoot, installed.ModuleDir))
 }

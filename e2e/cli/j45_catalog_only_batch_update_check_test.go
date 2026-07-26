@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the public SkillsGo versioned fixture Repository, its immutable v1.2.0/v1.3.0 releases, Repository-fresh head/release resolution, and the released `updates check` CLI command.
- * [OUTPUT]: Provides black-box coverage that 80 installed entries receive independent head and release candidates plus the stable aggregate status through one batch.
+ * [INPUT]: Depends on the public SkillsGo-owned versioned Module, its immutable v1.2.0/v1.3.0 releases, Module-fresh latest resolution, and the released `updates check` CLI command.
+ * [OUTPUT]: Provides black-box coverage that 80 installed entries receive one latest candidate plus the stable aggregate status through one batch.
  * [POS]: Serves as the Repository-fresh update-availability journey across the released CLI and Hub.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,7 +18,7 @@ import (
 func TestJ45RepositoryFreshBatchUpdateCheck(t *testing.T) {
 	ctx := context.Background()
 	container, _ := startEnvironment(t, ctx)
-	const repositoryID = "github.com/skillsgo/e2e-versioned-skills"
+	const modulePath = "github.com/skillsgo/e2e-versioned-skills"
 
 	seed := execCLI(t, ctx, container,
 		"info", "https://github.com/skillsgo/e2e-versioned-skills@v1.3.0", "--output", "json",
@@ -28,10 +28,10 @@ func TestJ45RepositoryFreshBatchUpdateCheck(t *testing.T) {
 	arguments := []string{"updates", "check", "--output", "json"}
 	for index := range 80 {
 		candidate, err := json.Marshal(map[string]any{
-			"key":          fmt.Sprintf("installed-%02d", index),
-			"repositoryId": repositoryID,
-			"name":         "alpha",
-			"versions":     []string{"v1.2.0"},
+			"key":        fmt.Sprintf("installed-%02d", index),
+			"modulePath": modulePath,
+			"name":       "alpha",
+			"versions":   []string{"v1.2.0"},
 		})
 		require.NoError(t, err)
 		arguments = append(arguments, "--installed", string(candidate))
@@ -43,11 +43,9 @@ func TestJ45RepositoryFreshBatchUpdateCheck(t *testing.T) {
 		SchemaVersion int    `json:"schemaVersion"`
 		Phase         string `json:"phase"`
 		Items         []struct {
-			HeadVersion    string `json:"headVersion"`
-			ReleaseVersion string `json:"releaseVersion"`
-			HeadStatus     string `json:"headStatus"`
-			ReleaseStatus  string `json:"releaseStatus"`
-			Status         string `json:"status"`
+			LatestVersion string `json:"latestVersion"`
+			LatestStatus  string `json:"latestStatus"`
+			Status        string `json:"status"`
 		} `json:"items"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(checked.output), &report), checked.output)
@@ -55,10 +53,8 @@ func TestJ45RepositoryFreshBatchUpdateCheck(t *testing.T) {
 	require.Equal(t, "update-check", report.Phase)
 	require.Len(t, report.Items, 80)
 	for _, item := range report.Items {
-		require.NotEmpty(t, item.HeadVersion)
-		require.Equal(t, "v1.3.0", item.ReleaseVersion)
-		require.Equal(t, "update_available", item.HeadStatus)
-		require.Equal(t, "update_available", item.ReleaseStatus)
+		require.Equal(t, "v1.3.0", item.LatestVersion)
+		require.Equal(t, "update_available", item.LatestStatus)
 		require.Equal(t, "update_available", item.Status)
 	}
 }

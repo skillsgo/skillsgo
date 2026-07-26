@@ -23,63 +23,72 @@ type LocalizedDescription struct {
 	UpdatedAt     time.Time `json:"updated_at"`
 }
 
-type Repository struct {
-	ID                      int64       `json:"id"`
-	SourceHost              string      `json:"source_host"`
-	RepositoryPath          string      `json:"repository_path"`
-	RepositoryID            string      `json:"repository_id"`
-	CurrentReleaseID        pgtype.Int8 `json:"current_release_id"`
-	Description             string      `json:"description"`
-	Stars                   int64       `json:"stars"`
-	SourceMetadataEtag      pgtype.Text `json:"source_metadata_etag"`
-	SourceMetadataCheckedAt *time.Time  `json:"source_metadata_checked_at"`
-	SourceMetadataRetryAt   *time.Time  `json:"source_metadata_retry_at"`
-	CreatedAt               time.Time   `json:"created_at"`
-	UpdatedAt               time.Time   `json:"updated_at"`
+// Canonical Skill Modules and mutable source/discovery state.
+type Module struct {
+	ID int64 `json:"id"`
+	// Source host derived from Module Path, for example github.com.
+	SourceHost string `json:"source_host"`
+	// Host-relative source path derived from Module Path, for example acme/skills.
+	SourcePath string `json:"source_path"`
+	// Canonical globally unique Module Path.
+	Path string `json:"path"`
+	// Current discovery-visible Version; constrained to belong to this Module.
+	CurrentVersionID pgtype.Int8 `json:"current_version_id"`
+	// Mutable source description used by discovery.
+	Description string `json:"description"`
+	// Mutable source popularity count used by discovery.
+	Stars int64 `json:"stars"`
+	// Conditional-request token for source enrichment.
+	SourceEtag pgtype.Text `json:"source_etag"`
+	// Last successful source enrichment check.
+	SourceCheckedAt *time.Time `json:"source_checked_at"`
+	// Earliest source enrichment retry after upstream throttling.
+	SourceRetryAt *time.Time `json:"source_retry_at"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
 }
 
-type RepositoryBackfillRun struct {
-	ID           string          `json:"id"`
-	RepositoryID string          `json:"repository_id"`
-	Status       string          `json:"status"`
-	StartedAt    *time.Time      `json:"started_at"`
-	CompletedAt  *time.Time      `json:"completed_at"`
-	ErrorCount   int32           `json:"error_count"`
-	Diagnostics  json.RawMessage `json:"diagnostics"`
-	CreatedAt    time.Time       `json:"created_at"`
-	UpdatedAt    time.Time       `json:"updated_at"`
+type ModuleBackfillRun struct {
+	ID          string          `json:"id"`
+	ModulePath  string          `json:"module_path"`
+	Status      string          `json:"status"`
+	StartedAt   *time.Time      `json:"started_at"`
+	CompletedAt *time.Time      `json:"completed_at"`
+	ErrorCount  int32           `json:"error_count"`
+	Diagnostics json.RawMessage `json:"diagnostics"`
+	CreatedAt   time.Time       `json:"created_at"`
+	UpdatedAt   time.Time       `json:"updated_at"`
 }
 
-type RepositoryRelease struct {
-	ID           int64     `json:"id"`
-	RepositoryID int64     `json:"repository_id"`
-	Version      string    `json:"version"`
-	CommitSha    string    `json:"commit_sha"`
-	TreeSha      string    `json:"tree_sha"`
-	Sum          string    `json:"sum"`
-	ArchiveSize  int64     `json:"archive_size"`
-	ReleaseInfo  []byte    `json:"release_info"`
-	CommitTime   time.Time `json:"commit_time"`
-	CreatedAt    time.Time `json:"created_at"`
-}
-
-type RepositoryReleaseMember struct {
-	ID        int64  `json:"id"`
-	ReleaseID int64  `json:"release_id"`
-	Name      string `json:"name"`
-	SkillPath string `json:"skill_path"`
-	TreeSha   string `json:"tree_sha"`
-}
-
+// Skill members contained by one immutable Module Version.
 type Skill struct {
-	ID           int64     `json:"id"`
-	RepositoryID int64     `json:"repository_id"`
-	Name         string    `json:"name"`
-	Description  string    `json:"description"`
-	SourceHost   string    `json:"source_host"`
-	Repository   string    `json:"repository"`
-	SkillPath    string    `json:"skill_path"`
-	Verified     bool      `json:"verified"`
-	CreatedAt    time.Time `json:"created_at"`
-	UpdatedAt    time.Time `json:"updated_at"`
+	ID        int64 `json:"id"`
+	VersionID int64 `json:"version_id"`
+	// Canonical Skill name read from SKILL.md.
+	Name string `json:"name"`
+	// Module-relative directory containing SKILL.md; unique within the Version.
+	Path string `json:"path"`
+	// Searchable Skill description read from SKILL.md.
+	Description string `json:"description"`
+}
+
+// Immutable published versions owned by Modules.
+type Version struct {
+	ID       int64 `json:"id"`
+	ModuleID int64 `json:"module_id"`
+	// Canonical immutable Module Version.
+	Version string `json:"version"`
+	// Source ref resolved when the Version was published.
+	Ref string `json:"ref"`
+	// Source commit captured by this Version.
+	CommitSha string `json:"commit_sha"`
+	// Module root tree captured by this Version.
+	TreeSha string `json:"tree_sha"`
+	// Canonical h1 checksum of the Module ZIP.
+	Sum string `json:"sum"`
+	// Exact Module ZIP size in bytes.
+	ArchiveSize int64 `json:"archive_size"`
+	// Source commit time exposed as Module Info time.
+	CommitTime time.Time `json:"commit_time"`
+	CreatedAt  time.Time `json:"created_at"`
 }

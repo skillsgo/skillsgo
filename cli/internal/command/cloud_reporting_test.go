@@ -32,11 +32,11 @@ func TestReportCloudInstallUsesDeclaredCloudOrigin(t *testing.T) {
 	defer hub.Close()
 
 	reportCloudInstall(t.Context(), hub.URL, cloudInstallFact{
-		RepositoryID: "github.com/acme/skills", SkillName: "demo", Version: "v1.0.0",
+		ModulePath: "github.com/acme/skills", SkillName: "demo", Version: "v1.0.0",
 		Agents: []string{"codex"}, Scope: install.ScopeUser,
 	})
 	event := <-events
-	if event["repositoryId"] != "github.com/acme/skills" || event["skillName"] != "demo" || event["scope"] != "user" {
+	if event["modulePath"] != "github.com/acme/skills" || event["skillName"] != "demo" || event["scope"] != "user" {
 		t.Fatalf("unexpected event %#v", event)
 	}
 }
@@ -49,7 +49,7 @@ func TestReportCloudInstallDoesNothingForSelfhost(t *testing.T) {
 	}))
 	defer hub.Close()
 	reportCloudInstall(t.Context(), hub.URL, cloudInstallFact{
-		RepositoryID: "github.com/acme/skills", SkillName: "demo", Version: "v1.0.0",
+		ModulePath: "github.com/acme/skills", SkillName: "demo", Version: "v1.0.0",
 		Agents: []string{"codex"}, Scope: install.ScopeUser,
 	})
 	if !called {

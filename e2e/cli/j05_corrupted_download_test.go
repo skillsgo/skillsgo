@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the disposable E2E environment and public CLI, Hub, JSON, and filesystem contracts.
- * [OUTPUT]: Provides black-box coverage for J05 atomic corrupted-download rejection.
+ * [OUTPUT]: Provides black-box coverage for J05 atomic corrupted-download rejection while restoring the shared suite artifact afterward.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,7 +21,7 @@ func TestJ05CorruptedDownload(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testRepositoryID+"@"+testSkillVersion, "--skill", testSkillName,
+		"add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 
 		"--yes",
@@ -33,27 +33,32 @@ func TestJ05CorruptedDownload(t *testing.T) {
 	var installed addResponse
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 
-	manifestPath := filepath.Join(sandboxRoot, "project", "skillsgo.yaml")
-	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml")
+	manifestPath := filepath.Join(sandboxRoot, "project", "skills.yaml")
+	sumPath := filepath.Join(sandboxRoot, "project", "skills-lock.yaml")
 	manifestBefore, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 
-	hubZIP := findStoredRepositoryArtifact(t, filepath.Join(sandboxRoot, "hub", "storage"), installed.Repository, ".zip")
+	hubZIP := findStoredRepositoryArtifact(t, filepath.Join(suite.sandboxRoot, "hub", "storage"), installed.ModulePath, ".zip")
+	originalZIP, err := os.ReadFile(hubZIP)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, os.WriteFile(hubZIP, originalZIP, 0o600))
+	})
 	require.NoError(t, os.WriteFile(hubZIP, []byte("corrupted e2e artifact"), 0o600))
-	require.NoError(t, os.RemoveAll(containerPathOnHost(t, sandboxRoot, installed.Vendor)))
+	require.NoError(t, os.RemoveAll(containerPathOnHost(t, sandboxRoot, installed.ModuleDir)))
 	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "project", ".agents")))
 
 	restore := execCLI(t, ctx, container, "install", "--output", "json")
 	require.NotEqual(t, 0, restore.exitCode, "corrupted Hub artifact unexpectedly restored: %s", restore.output)
 
 	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path))
-	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.Vendor))
+	require.NoDirExists(t, containerPathOnHost(t, sandboxRoot, installed.ModuleDir))
 	manifestAfter, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	require.Equal(t, manifestBefore, manifestAfter, "failed restoration must not rewrite skillsgo.yaml")
-	require.Equal(t, sumBefore, sumAfter, "failed restoration must not rewrite skillsgo-lock.yaml")
+	require.Equal(t, manifestBefore, manifestAfter, "failed restoration must not rewrite skills.yaml")
+	require.Equal(t, sumBefore, sumAfter, "failed restoration must not rewrite skills-lock.yaml")
 }

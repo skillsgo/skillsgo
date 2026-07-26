@@ -39,7 +39,7 @@ func TestProxyRoutes(t *testing.T) {
 	require.NoError(t, err)
 	c.PathPrefix = "/prefix"
 	subRouter := r.Group(c.PathPrefix)
-	err = addProxyRoutes(subRouter, s, l, c)
+	err = addProxyRoutes(r, subRouter, s, l, c)
 	require.NoError(t, err)
 
 	baseURL := "https://athens.azurefd.net" + c.PathPrefix

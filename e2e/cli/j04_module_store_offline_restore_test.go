@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the disposable E2E environment and public CLI, Hub, JSON, and filesystem contracts.
- * [OUTPUT]: Provides black-box coverage for J04 Vendor-backed offline Projection restoration.
+ * [OUTPUT]: Provides black-box coverage for J04 Module Store-backed offline Projection restoration.
  * [POS]: Serves as one executable user-journey contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -21,7 +21,7 @@ func TestJ04RestoreStoreOffline(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testRepositoryID+"@"+testSkillVersion, "--skill", testSkillName,
+		"add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 
 		"--yes",
@@ -34,13 +34,14 @@ func TestJ04RestoreStoreOffline(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 	require.NotEmpty(t, installed.Version)
 
-	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml")
+	sumPath := filepath.Join(sandboxRoot, "project", "skills-lock.yaml")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	vendorSkill := containerPathOnHost(t, sandboxRoot, installed.Vendor, "skills", "alpha", "SKILL.md")
-	require.FileExists(t, vendorSkill)
+	moduleSkill := containerPathOnHost(t, sandboxRoot, installed.ModuleDir, "skills", "alpha", "SKILL.md")
+	require.FileExists(t, moduleSkill)
 
-	require.NoError(t, os.RemoveAll(filepath.Join(sandboxRoot, "project", ".agents")))
+	removed := execInContainer(t, ctx, container, "rm", "-rf", scenarioContainerPath(t, "project", ".agents"))
+	require.Equal(t, 0, removed.exitCode, removed.output)
 	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".agents"))
 
 	restore := execCLI(t, ctx, container,
@@ -51,19 +52,19 @@ func TestJ04RestoreStoreOffline(t *testing.T) {
 	require.Equal(t, 0, restore.exitCode, restore.output)
 
 	var restored []struct {
-		Repository string `json:"repository"`
+		ModulePath string `json:"modulePath"`
 		Version    string `json:"version"`
 		Status     string `json:"status"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(restore.output), &restored), restore.output)
 	require.Len(t, restored, 1)
-	require.Equal(t, installed.Repository, restored[0].Repository)
+	require.Equal(t, installed.ModulePath, restored[0].ModulePath)
 	require.Equal(t, installed.Version, restored[0].Version)
 	require.Equal(t, "restored", restored[0].Status)
 
 	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Projections[0].Path, "skills", "alpha", "SKILL.md"))
-	require.FileExists(t, vendorSkill)
+	require.FileExists(t, moduleSkill)
 	sumAfter, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
-	require.Equal(t, sumBefore, sumAfter, "offline Vendor recovery must not rewrite skillsgo-lock.yaml")
+	require.Equal(t, sumBefore, sumAfter, "offline Module Store recovery must not rewrite skills-lock.yaml")
 }

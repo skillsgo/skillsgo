@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Uses command.Execute with a fixture Hub serving Repository Head Selector and exact Info resources plus canonical source coordinates.
- * [OUTPUT]: Specifies direct read-only Repository and nested Skill Info JSON including provider Repository descriptions, explicit Head resolution, exact Skill lookup, and structured Hub failure output in machine mode.
+ * [INPUT]: Uses command.Execute with a fixture Hub serving unified latest Module Info plus canonical source coordinates.
+ * [OUTPUT]: Specifies direct read-only Module and nested Skill Info JSON including latest metadata resolution, version-scoped exact Skill lookup, and structured Hub failure output in machine mode.
  * [POS]: Serves as the public CLI behavior contract for explicit-source discovery consumed by the App.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,27 +15,24 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 )
 
-func TestInfoRepositoryUsesHeadSelectorAndDoesNotWriteLocalState(t *testing.T) {
-	repositoryID := "github.com/example/skills"
+func TestInfoModuleUsesLatestQueryAndDoesNotWriteLocalState(t *testing.T) {
+	modulePath := "github.com/example/skills"
 	version := "v0.0.0-20260718120000-abcdef123456"
 	commit := "abcdef1234567890"
-	members := infoTestMembers(repositoryID, version, commit)
-	repositoryInfo := commandTestRepositoryInfo(t, repositoryID, version, commit, members...)
+	members := infoTestMembers(modulePath, version, commit)
+	repositoryInfo := commandTestModuleInfo(t, modulePath, version, commit, members...)
 	requests := make([]string, 0, 3)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		requests = append(requests, request.URL.Path)
 		switch request.URL.Path {
-		case "/api/v1/repository-resolutions":
-			_, _ = fmt.Fprintf(writer, `{"schemaVersion":1,"repositoryId":%q,"selector":"head","version":%q,"time":"2026-07-18T12:00:00Z","ref":"refs/heads/main","commitSha":%q}`, repositoryID, version, commit)
-		case "/" + repositoryID + "/versions/" + version:
+		case "/api/v1/" + modulePath + "/versions/latest":
 			_, _ = writer.Write(repositoryInfo)
-		case "/api/v1/skills/detail":
-			_, _ = fmt.Fprintf(writer, `{"repositoryId":%q,"name":%q,"imageUrl":"https://github.com/example.png?size=72","repositoryDescription":"A collection of Agent Skills.","stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, request.URL.Query().Get("repositoryId"), request.URL.Query().Get("name"))
+		case "/api/v1/" + modulePath + "/versions/" + version + "/skills":
+			_, _ = fmt.Fprintf(writer, `{"modulePath":%q,"version":%q,"time":"2026-07-18T12:00:00Z","archiveSize":128,"name":"demo","path":%q,"description":"Demo skill.","content":"---\\nname: demo\\n---\\n"}`, modulePath, version, request.URL.Query().Get("path"))
 		default:
 			http.NotFound(writer, request)
 		}
@@ -56,27 +53,23 @@ func TestInfoRepositoryUsesHeadSelectorAndDoesNotWriteLocalState(t *testing.T) {
 	if err := Execute([]string{"info", "https://github.com/example/skills", "--hub", server.URL, "--output", "json"}, &output, &output); err != nil {
 		t.Fatalf("info failed: %v\n%s", err, output.String())
 	}
-	var result repositoryInfoView
+	var result moduleInfoView
 	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if result.SchemaVersion != 1 || result.Kind != "Repository" {
+	if result.SchemaVersion != 1 || result.Kind != "Module" {
 		t.Fatalf("unexpected result: %#v", result)
 	}
-	if result.ID != repositoryID || result.Version != version || len(result.Skills) != len(members) {
+	if result.ModulePath != modulePath || result.Version != version || len(result.Skills) != len(members) {
 		t.Fatalf("unexpected Repository Info: %#v", result)
 	}
-	if result.Description != "A collection of Agent Skills." {
-		t.Fatalf("Repository About description was not preserved: %#v", result)
-	}
-	if result.Skills[0].ImageURL == nil || result.Skills[0].Stars != 34 || result.Skills[0].RiskAssessment != hub.RiskLow {
-		t.Fatalf("Repository Skill is not card-ready: %#v", result.Skills[0])
+	if result.Skills[0].Description != "Demo skill." {
+		t.Fatalf("Module Skill description was not preserved: %#v", result.Skills[0])
 	}
 	if strings.Join(requests, "\n") != strings.Join([]string{
-		"/api/v1/repository-resolutions",
-		"/" + repositoryID + "/versions/" + version,
-		"/api/v1/skills/detail",
-		"/api/v1/skills/detail",
+		"/api/v1/" + modulePath + "/versions/latest",
+		"/api/v1/" + modulePath + "/versions/" + version + "/skills",
+		"/api/v1/" + modulePath + "/versions/" + version + "/skills",
 	}, "\n") {
 		t.Fatalf("unexpected requests: %v", requests)
 	}
@@ -90,14 +83,14 @@ func TestInfoRepositoryUsesHeadSelectorAndDoesNotWriteLocalState(t *testing.T) {
 }
 
 func TestInfoSelectsNestedSkillFromExactRepositoryBatch(t *testing.T) {
-	repositoryID, version, commit := "github.com/example/skills", "v1.2.3", "commit-123"
-	members := infoTestMembers(repositoryID, version, commit)
+	modulePath, version, commit := "github.com/example/skills", "v1.2.3", "commit-123"
+	members := infoTestMembers(modulePath, version, commit)
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
-		case "/" + repositoryID + "/versions/" + version:
-			_, _ = writer.Write(commandTestRepositoryInfo(t, repositoryID, version, commit, members...))
-		case "/api/v1/skills/detail":
-			_, _ = fmt.Fprintf(writer, `{"repositoryId":%q,"name":"demo","stars":34,"trustLevel":"unverified","riskAssessment":{"level":"low"}}`, repositoryID)
+		case "/api/v1/" + modulePath + "/versions/" + version:
+			_, _ = writer.Write(commandTestModuleInfo(t, modulePath, version, commit, members...))
+		case "/api/v1/" + modulePath + "/versions/" + version + "/skills":
+			_, _ = fmt.Fprintf(writer, `{"modulePath":%q,"version":%q,"time":"2026-07-18T12:00:00Z","archiveSize":128,"name":"demo","path":%q,"description":"Demo skill.","content":"---\\nname: demo\\n---\\n"}`, modulePath, version, request.URL.Query().Get("path"))
 		default:
 			http.NotFound(writer, request)
 		}
@@ -105,22 +98,22 @@ func TestInfoSelectsNestedSkillFromExactRepositoryBatch(t *testing.T) {
 	defer server.Close()
 
 	var output bytes.Buffer
-	if err := Execute([]string{"info", repositoryID + "@" + version, "--skill", "demo", "--hub", server.URL, "--output=json"}, &output, &output); err != nil {
+	if err := Execute([]string{"info", modulePath + "@" + version, "--skill", "demo", "--hub", server.URL, "--output=json"}, &output, &output); err != nil {
 		t.Fatalf("info failed: %v\n%s", err, output.String())
 	}
 	var result skillInfoView
 	if err := json.Unmarshal(output.Bytes(), &result); err != nil {
 		t.Fatal(err)
 	}
-	if result.Kind != "Skill" || result.RepositoryID != repositoryID || result.Name != "demo" || result.Version != version {
+	if result.ModulePath != modulePath || result.Name != "demo" || result.Version != version {
 		t.Fatalf("unexpected nested Skill result: %#v", result)
 	}
-	if result.Stars != 34 || result.RiskAssessment != hub.RiskLow {
-		t.Fatalf("nested Skill is not card-ready: %#v", result)
+	if result.Description != "Demo skill." {
+		t.Fatalf("nested Skill description is missing: %#v", result)
 	}
 
 	output.Reset()
-	err := Execute([]string{"info", repositoryID + "@" + version, "--skill", "missing", "--hub", server.URL, "--output=json"}, &output, &output)
+	err := Execute([]string{"info", modulePath + "@" + version, "--skill", "missing", "--hub", server.URL, "--output=json"}, &output, &output)
 	if err == nil {
 		t.Fatalf("expected missing Skill error, got %v", err)
 	}
@@ -190,7 +183,7 @@ func TestInfoClassifiesStableMachineHubFailures(t *testing.T) {
 		t.Run(testCase.name, func(t *testing.T) {
 			server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, _ *http.Request) {
 				if testCase.requestID != "" {
-					writer.Header().Set("X-Request-ID", testCase.requestID)
+					writer.Header().Set("Athens-Request-ID", testCase.requestID)
 				}
 				writer.WriteHeader(testCase.status)
 			}))
@@ -219,10 +212,10 @@ func TestInfoClassifiesStableMachineHubFailures(t *testing.T) {
 }
 
 func TestInfoClassifiesMalformedHubJSONAsInvalidResponse(t *testing.T) {
-	repositoryID, version := "github.com/example/skills", "v1.2.3"
+	modulePath, version := "github.com/example/skills", "v1.2.3"
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
 		switch request.URL.Path {
-		case "/" + repositoryID + "/versions/" + version:
+		case "/api/v1/" + modulePath + "/versions/" + version:
 			_, _ = writer.Write([]byte("{"))
 		default:
 			http.NotFound(writer, request)
@@ -231,7 +224,7 @@ func TestInfoClassifiesMalformedHubJSONAsInvalidResponse(t *testing.T) {
 	defer server.Close()
 
 	var stdout, stderr bytes.Buffer
-	err := Execute([]string{"info", repositoryID + "@" + version, "--hub", server.URL, "--output=json"}, &stdout, &stderr)
+	err := Execute([]string{"info", modulePath + "@" + version, "--hub", server.URL, "--output=json"}, &stdout, &stderr)
 	if err == nil {
 		t.Fatal("expected malformed Hub response failure")
 	}
@@ -245,18 +238,18 @@ func TestInfoClassifiesMalformedHubJSONAsInvalidResponse(t *testing.T) {
 }
 
 func TestInfoClassifiesUnsupportedHubSchemaAsIncompatible(t *testing.T) {
-	repositoryID, version := "github.com/example/skills", "v1.2.3"
+	modulePath, version := "github.com/example/skills", "v1.2.3"
 	server := httptest.NewServer(http.HandlerFunc(func(writer http.ResponseWriter, request *http.Request) {
-		if request.URL.Path != "/"+repositoryID+"/versions/"+version {
+		if request.URL.Path != "/api/v1/"+modulePath+"/versions/"+version {
 			http.NotFound(writer, request)
 			return
 		}
-		_, _ = writer.Write([]byte(`{"SchemaVersion":2,"Kind":"Repository","ID":"github.com/example/skills","Version":"v1.2.3"}`))
+		_, _ = writer.Write([]byte(`{"schemaVersion":2,"kind":"Module","modulePath":"github.com/example/skills","version":"v1.2.3"}`))
 	}))
 	defer server.Close()
 
 	var stdout, stderr bytes.Buffer
-	err := Execute([]string{"info", repositoryID + "@" + version, "--hub", server.URL, "--output=json"}, &stdout, &stderr)
+	err := Execute([]string{"info", modulePath + "@" + version, "--hub", server.URL, "--output=json"}, &stdout, &stderr)
 	if err == nil {
 		t.Fatal("expected incompatible Hub schema failure")
 	}
@@ -269,21 +262,9 @@ func TestInfoClassifiesUnsupportedHubSchemaAsIncompatible(t *testing.T) {
 	}
 }
 
-func infoTestMembers(repositoryID, version, commit string) []hub.Info {
+func infoTestMembers(modulePath, version, commit string) []hub.Info {
 	return []hub.Info{
-		{
-			SchemaVersion: 1, Kind: "Skill", Version: version,
-			RepositoryID: repositoryID, SkillPath: ".",
-			Time: time.Unix(1, 0).UTC(), Name: "root", Description: "Root Skill",
-			Risk: hub.RiskLow,
-			Ref:  "refs/tags/" + version, CommitSHA: commit, TreeSHA: "root-tree",
-		},
-		{
-			SchemaVersion: 1, Kind: "Skill", Version: version,
-			RepositoryID: repositoryID, SkillPath: "tools/demo",
-			Time: time.Unix(1, 0).UTC(), Name: "demo", Description: "Nested Skill",
-			Risk: hub.RiskLow,
-			Ref:  "refs/tags/" + version, CommitSHA: commit, TreeSHA: "nested-tree",
-		},
+		{Name: "root", Path: "."},
+		{Name: "demo", Path: "tools/demo"},
 	}
 }

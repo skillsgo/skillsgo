@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on one declared Repository dependency, its verified current Scope Vendor and immutable Info, an exact target Repository Info/ZIP, Agent Adapter roots, prepared Scope Vendor transactions, and the Repository mutation coordinator.
+ * [INPUT]: Depends on one declared Repository dependency, its verified current Scope Module Store and immutable Info, an exact target Repository Info/ZIP, Agent Adapter roots, prepared Scope Module Store transactions, and the Repository mutation coordinator.
  * [OUTPUT]: Provides state-bound Repository update preflight and coordinated atomic coordinate replacement while preserving exact persisted Skill selectors and Agents and refusing Local Modifications.
  * [POS]: Serves as the Repository-level update orchestration behind the public `skillsgo update` command and App machine contract.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -19,17 +19,17 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
+	"github.com/skillsgo/skillsgo/cli/internal/modulestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/repositorymutation"
-	"github.com/skillsgo/skillsgo/cli/internal/scopevendor"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
 	"github.com/spf13/cobra"
 )
 
-type repositoryUpdateReport struct {
+type moduleUpdateReport struct {
 	SchemaVersion int      `json:"schemaVersion"`
 	Phase         string   `json:"phase"`
-	Repository    string   `json:"repository"`
+	ModulePath    string   `json:"modulePath"`
 	FromVersion   string   `json:"fromVersion"`
 	ToVersion     string   `json:"toVersion"`
 	Sum           string   `json:"sum"`
@@ -37,7 +37,7 @@ type repositoryUpdateReport struct {
 	Agents        []string `json:"agents"`
 	Scope         string   `json:"scope"`
 	ProjectRoot   string   `json:"projectRoot,omitempty"`
-	Vendor        string   `json:"vendor"`
+	ModuleDir     string   `json:"moduleDir"`
 	StateToken    string   `json:"stateToken"`
 }
 
@@ -70,12 +70,12 @@ func newRepositoryUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			report, apply, err := prepareRepositoryUpdate(cmd.Context(), root, userScope, catalog, client, reference.RepositoryID, reference.Version)
+			report, apply, err := prepareRepositoryUpdate(cmd.Context(), root, userScope, catalog, client, reference.ModulePath, reference.Version)
 			if err != nil {
 				return err
 			}
 			if preflight {
-				report.Phase = "repository-update-preflight"
+				report.Phase = "module-update-preflight"
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(report)
 			}
 			if stateToken == "" || stateToken != report.StateToken {
@@ -84,7 +84,7 @@ func newRepositoryUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 			if err := apply(); err != nil {
 				return err
 			}
-			report.Phase = "repository-update"
+			report.Phase = "module-update"
 			return json.NewEncoder(cmd.OutOrStdout()).Encode(report)
 		},
 	}
@@ -103,7 +103,7 @@ func repositoryUpdateRoot(global bool, explicit string) (string, bool, error) {
 		if err != nil {
 			return "", false, err
 		}
-		return project.UserRoot(home), true, nil
+		return project.UserDeclarationRoot(home), true, nil
 	}
 	root := explicit
 	if root == "" {
@@ -121,114 +121,119 @@ func repositoryUpdateRoot(global bool, explicit string) (string, bool, error) {
 	return absolute, false, err
 }
 
-func prepareRepositoryUpdate(ctx context.Context, root string, userScope bool, catalog *agent.Catalog, client *hub.Client, repositoryID, query string) (repositoryUpdateReport, func() error, error) {
+func prepareRepositoryUpdate(ctx context.Context, root string, userScope bool, catalog *agent.Catalog, client *hub.Client, modulePath, query string) (moduleUpdateReport, func() error, error) {
 	manifest, lock, err := loadWorkspaceState(root)
 	if err != nil {
-		return repositoryUpdateReport{}, nil, err
+		return moduleUpdateReport{}, nil, err
 	}
 	if err := project.ValidateWorkspaceState(manifest, lock); err != nil {
-		return repositoryUpdateReport{}, nil, err
+		return moduleUpdateReport{}, nil, err
 	}
-	dependency, exists := manifest.Dependencies[repositoryID]
-	locked, lockedExists := lock.Dependencies[repositoryID]
+	dependency, exists := manifest.Dependencies[modulePath]
+	locked, lockedExists := lock.Dependencies[modulePath]
 	if !exists || !lockedExists || locked.Version != dependency.Version {
-		return repositoryUpdateReport{}, nil, fmt.Errorf("Repository %s is not a locked dependency in this scope", repositoryID)
+		return moduleUpdateReport{}, nil, fmt.Errorf("Repository %s is not a locked dependency in this scope", modulePath)
 	}
-	resource, err := client.FetchRepositoryWithProgress(ctx, repositoryID, query, nil)
+	resource, err := client.FetchModuleWithProgress(ctx, modulePath, query, nil)
 	if err != nil {
-		return repositoryUpdateReport{}, nil, err
+		return moduleUpdateReport{}, nil, err
 	}
 	if resource.Info.Version == dependency.Version {
-		return repositoryUpdateReport{}, nil, fmt.Errorf("Repository %s is already at %s", repositoryID, dependency.Version)
+		return moduleUpdateReport{}, nil, fmt.Errorf("Repository %s is already at %s", modulePath, dependency.Version)
 	}
 	newMembers := make([]string, 0, len(resource.Members))
 	for _, member := range resource.Members {
-		newMembers = append(newMembers, member.Info.SkillPath)
+		newMembers = append(newMembers, member.Info.Path)
 	}
 	for _, selected := range dependency.Skills {
-		if _, ok := hub.SelectRepositoryMember(selected, resource.Members); !ok {
-			return repositoryUpdateReport{}, nil, fmt.Errorf("Repository %s@%s no longer contains selected Skill %q", repositoryID, resource.Info.Version, selected)
+		if _, ok := hub.SelectVersionSkill(selected, resource.Members); !ok {
+			return moduleUpdateReport{}, nil, fmt.Errorf("Repository %s@%s no longer contains selected Skill %q", modulePath, resource.Info.Version, selected)
 		}
 	}
 	sort.Strings(newMembers)
 
-	vendorRoot, infoRoot, agentScope, scopeName, projectRoot := filepath.Join(root, ".skillsgo", "vendor"), filepath.Join(root, ".skillsgo", "info"), agent.ScopeProject, "project", root
+	modulesRoot, infoRoot, agentScope, scopeName, projectRoot := filepath.Join(root, ".skillsgo", "modules"), filepath.Join(root, ".skillsgo", "info"), agent.ScopeProject, "project", root
 	if userScope {
-		vendorRoot, infoRoot, agentScope, scopeName, projectRoot = filepath.Join(root, "vendor"), filepath.Join(root, "info"), agent.ScopeUser, "user", ""
+		home, homeErr := os.UserHomeDir()
+		if homeErr != nil {
+			return moduleUpdateReport{}, nil, homeErr
+		}
+		stateRoot := project.UserStateRoot(home)
+		modulesRoot, infoRoot, agentScope, scopeName, projectRoot = filepath.Join(stateRoot, "modules"), filepath.Join(stateRoot, "info"), agent.ScopeUser, "user", ""
 	}
-	oldArchive, err := scopevendor.ReadVerifiedVendor(vendorRoot, repositoryID, dependency.Version, locked.Sum)
+	oldArchive, err := modulestore.ReadVerifiedModule(modulesRoot, modulePath, dependency.Version, locked.Sum)
 	if err != nil {
-		return repositoryUpdateReport{}, nil, fmt.Errorf("verify current Repository Vendor before update: %w", err)
+		return moduleUpdateReport{}, nil, fmt.Errorf("verify current Repository Module Store before update: %w", err)
 	}
-	oldInfoBytes, err := (infocache.Cache{Root: infoRoot}).Get(repositoryID, dependency.Version, "repository.info")
+	oldInfoBytes, err := (infocache.Cache{Root: infoRoot}).Get(modulePath, dependency.Version, "module.info")
 	if err != nil {
-		return repositoryUpdateReport{}, nil, fmt.Errorf("read current immutable Repository Info: %w", err)
+		return moduleUpdateReport{}, nil, fmt.Errorf("read current immutable Repository Info: %w", err)
 	}
-	oldResource, err := hub.ParseRepositoryInfo(repositoryID, oldInfoBytes)
+	oldResource, err := hub.ParseModuleInfo(modulePath, oldInfoBytes)
 	if err != nil {
-		return repositoryUpdateReport{}, nil, err
+		return moduleUpdateReport{}, nil, err
 	}
 	oldMembers := make([]string, 0, len(oldResource.Members))
 	for _, member := range oldResource.Members {
-		oldMembers = append(oldMembers, member.Info.SkillPath)
+		oldMembers = append(oldMembers, member.Info.Path)
 	}
 	sort.Strings(oldMembers)
 	oldSelected := make([]string, 0, len(dependency.Skills))
 	newSelected := make([]string, 0, len(dependency.Skills))
 	for _, selector := range dependency.Skills {
-		oldMember, oldOK := hub.SelectRepositoryMember(selector, oldResource.Members)
-		newMember, newOK := hub.SelectRepositoryMember(selector, resource.Members)
+		oldMember, oldOK := hub.SelectVersionSkill(selector, oldResource.Members)
+		newMember, newOK := hub.SelectVersionSkill(selector, resource.Members)
 		if !oldOK || !newOK {
-			return repositoryUpdateReport{}, nil, fmt.Errorf("Repository update cannot resolve selected Skill %q", selector)
+			return moduleUpdateReport{}, nil, fmt.Errorf("Repository update cannot resolve selected Skill %q", selector)
 		}
-		oldSelected = append(oldSelected, oldMember.Info.SkillPath)
-		newSelected = append(newSelected, newMember.Info.SkillPath)
+		oldSelected = append(oldSelected, oldMember.Info.Path)
+		newSelected = append(newSelected, newMember.Info.Path)
 	}
 	oldProjections, err := repositoryProjections(catalog, dependency.Agents, dependency.Agents, oldSelected, oldSelected, agentScope, root)
 	if err != nil {
-		return repositoryUpdateReport{}, nil, err
+		return moduleUpdateReport{}, nil, err
 	}
 	newProjections, err := repositoryProjections(catalog, dependency.Agents, nil, nil, newSelected, agentScope, root)
 	if err != nil {
-		return repositoryUpdateReport{}, nil, err
+		return moduleUpdateReport{}, nil, err
 	}
-	removed := make([]scopevendor.Projection, 0, len(oldProjections))
+	removed := make([]modulestore.Projection, 0, len(oldProjections))
 	for _, projection := range oldProjections {
-		removed = append(removed, scopevendor.Projection{Agent: projection.Agent, Root: projection.Root, PreviousSelected: append([]string(nil), oldSelected...)})
+		removed = append(removed, modulestore.Projection{Agent: projection.Agent, Root: projection.Root, PreviousSelected: append([]string(nil), oldSelected...)})
 	}
-	stateToken := repositoryUpdateStateToken(root, repositoryID, dependency, locked, resource.Info.Version, resource.Info.Sum)
-	report := repositoryUpdateReport{SchemaVersion: 1, Repository: repositoryID, FromVersion: dependency.Version, ToVersion: resource.Info.Version,
+	stateToken := repositoryUpdateStateToken(root, modulePath, dependency, locked, resource.Info.Version, resource.Info.Sum)
+	report := moduleUpdateReport{SchemaVersion: 1, ModulePath: modulePath, FromVersion: dependency.Version, ToVersion: resource.Info.Version,
 		Sum: resource.Info.Sum, Skills: append([]string(nil), dependency.Skills...), Agents: append([]string(nil), dependency.Agents...), Scope: scopeName,
-		ProjectRoot: projectRoot, Vendor: scopevendor.CoordinatePath(vendorRoot, repositoryID, resource.Info.Version), StateToken: stateToken}
+		ProjectRoot: projectRoot, ModuleDir: modulestore.CoordinatePath(modulesRoot, modulePath, resource.Info.Version), StateToken: stateToken}
 
 	apply := func() error {
 		currentManifest, currentLock, loadErr := loadWorkspaceState(root)
 		if loadErr != nil {
 			return loadErr
 		}
-		currentDependency, ok := currentManifest.Dependencies[repositoryID]
-		currentLocked, lockOK := currentLock.Dependencies[repositoryID]
-		if !ok || !lockOK || repositoryUpdateStateToken(root, repositoryID, currentDependency, currentLocked, resource.Info.Version, resource.Info.Sum) != stateToken {
+		currentDependency, ok := currentManifest.Dependencies[modulePath]
+		currentLocked, lockOK := currentLock.Dependencies[modulePath]
+		if !ok || !lockOK || repositoryUpdateStateToken(root, modulePath, currentDependency, currentLocked, resource.Info.Version, resource.Info.Sum) != stateToken {
 			return fmt.Errorf("Repository update state changed; run preflight again")
 		}
-		newTransaction, prepareErr := scopevendor.Prepare(scopevendor.Options{VendorRoot: vendorRoot, RepositoryID: repositoryID, Version: resource.Info.Version,
+		newTransaction, prepareErr := modulestore.Prepare(modulestore.Options{ModulesRoot: modulesRoot, ModulePath: modulePath, Version: resource.Info.Version,
 			Archive: resource.ZIP, Sum: resource.Info.Sum, Members: newMembers, Projections: newProjections})
 		if prepareErr != nil {
 			return prepareErr
 		}
-		oldTransaction, prepareErr := scopevendor.Prepare(scopevendor.Options{VendorRoot: vendorRoot, RepositoryID: repositoryID, Version: dependency.Version,
-			Archive: oldArchive, Sum: locked.Sum, Members: oldMembers, RemovedProjections: removed, RemoveVendor: true})
+		oldTransaction, prepareErr := modulestore.Prepare(modulestore.Options{ModulesRoot: modulesRoot, ModulePath: modulePath, Version: dependency.Version,
+			Archive: oldArchive, Sum: locked.Sum, Members: oldMembers, RemovedProjections: removed, RemoveModule: true})
 		if prepareErr != nil {
 			_ = newTransaction.Rollback()
 			return prepareErr
 		}
 		currentDependency.Version = resource.Info.Version
-		currentManifest.Dependencies[repositoryID] = currentDependency
-		currentLock.Dependencies[repositoryID] = project.LockedRepository{Version: resource.Info.Version, Sum: resource.Info.Sum}
+		currentManifest.Dependencies[modulePath] = currentDependency
+		currentLock.Dependencies[modulePath] = project.LockedModule{Version: resource.Info.Version, Sum: resource.Info.Sum}
 		return (repositorymutation.Plan{
 			Transactions: []repositorymutation.Transaction{newTransaction, oldTransaction},
-			ImmutableInfo: []repositorymutation.ImmutableInfo{{Cache: infocache.Cache{Root: infoRoot}, RepositoryID: repositoryID,
-				Version: resource.Info.Version, Kind: "repository.info", Bytes: resource.InfoBytes}},
+			ImmutableInfo: []repositorymutation.ImmutableInfo{{Cache: infocache.Cache{Root: infoRoot}, ModulePath: modulePath,
+				Version: resource.Info.Version, Kind: "module.info", Bytes: resource.InfoBytes}},
 			Workspace: &repositorymutation.WorkspaceState{Root: root, Manifest: currentManifest, Lock: currentLock},
 			Operation: "Repository update",
 		}).Commit()
@@ -236,11 +241,11 @@ func prepareRepositoryUpdate(ctx context.Context, root string, userScope bool, c
 	return report, apply, nil
 }
 
-func repositoryUpdateStateToken(root, repositoryID string, dependency project.RepositoryDependency, locked project.LockedRepository, toVersion, toSum string) string {
+func repositoryUpdateStateToken(root, modulePath string, dependency project.ModuleDependency, locked project.LockedModule, toVersion, toSum string) string {
 	encoded, _ := json.Marshal(struct {
 		Root, Repository, Version, Sum, ToVersion, ToSum string
 		Skills, Agents                                   []string
-	}{filepath.Clean(root), repositoryID, dependency.Version, locked.Sum, toVersion, toSum, dependency.Skills, dependency.Agents})
+	}{filepath.Clean(root), modulePath, dependency.Version, locked.Sum, toVersion, toSum, dependency.Skills, dependency.Agents})
 	digest := sha256.Sum256(encoded)
 	return hex.EncodeToString(digest[:])
 }

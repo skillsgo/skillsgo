@@ -164,7 +164,7 @@ func App(logger *log.Logger, conf *config.Config) (*fiber.App, func(), error) {
 			return nil, cleanup, fmt.Errorf("creating task runtime: %w", err)
 		}
 	}
-	if err := addProxyRoutesWithCatalog(proxyRouter, store, logger, conf, metadata, taskRuntime, adminRouter, adminEnabled); err != nil {
+	if err := addProxyRoutesWithCatalog(r, proxyRouter, store, logger, conf, metadata, taskRuntime, adminRouter, adminEnabled); err != nil {
 		cancelWorkers()
 		return nil, cleanup, fmt.Errorf("adding proxy routes: %w", err)
 	}

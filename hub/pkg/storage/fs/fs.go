@@ -29,6 +29,10 @@ func (s *storageImpl) versionLocation(module, version string) string {
 	return filepath.Join(s.moduleLocation(module), version)
 }
 
+func (s *storageImpl) skillContentLocation(module, version, skillPath string) string {
+	return filepath.Join(s.versionLocation(module, version), "skills", filepath.FromSlash(skillPath), "SKILL.md")
+}
+
 // NewStorage returns a new ListerSaver implementation that stores
 // everything under rootDir.
 // If the root directory does not exist an error is returned.

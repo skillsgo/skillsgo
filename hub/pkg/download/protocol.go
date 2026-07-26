@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on immutable Repository storage, canonical Repository Tag listing, and configured offline/strict/fallback network policy.
- * [OUTPUT]: Provides Repository Tag union listing plus direct immutable Info and ZIP reads; publication misses are handled only by the Repository materializer decorator.
- * [POS]: Serves as the storage-first base of the Repository artifact protocol.
+ * [INPUT]: Depends on immutable Repository storage, canonical Source Repository Tag listing, and configured offline/strict/fallback network policy.
+ * [OUTPUT]: Provides Source Repository Tag union listing plus direct immutable Info and ZIP reads; publication misses are handled only by the Repository materializer decorator.
+ * [POS]: Serves as the storage-first base of the Module distribution protocol.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package download
@@ -18,15 +18,15 @@ import (
 	"golang.org/x/mod/module"
 )
 
-// Protocol is the Repository artifact protocol exposed by the Hub proxy.
+// Protocol is the Module distribution protocol exposed by the Hub proxy.
 type Protocol interface {
-	// List implements GET /{repositoryId}/versions.
+	// List implements GET /api/v1/{modulePath}/versions.
 	List(ctx context.Context, mod string) ([]string, error)
 
-	// Info implements GET /{repositoryId}/versions/{version}.
+	// Info implements GET /api/v1/{modulePath}/versions/{version} and returns canonical Module Info.
 	Info(ctx context.Context, mod, ver string) ([]byte, error)
 
-	// Zip implements GET and HEAD /{repositoryId}/versions/{version}.zip.
+	// Zip implements GET /api/v1/{modulePath}/versions/{version}.zip.
 	Zip(ctx context.Context, mod, ver string) (storage.SizeReadCloser, error)
 }
 
@@ -44,7 +44,7 @@ const (
 	Fallback = "fallback"
 )
 
-// New returns the storage-backed Repository artifact protocol.
+// New returns the storage-backed Module distribution protocol.
 func New(opts *Opts) Protocol {
 	return &protocol{storage: opts.Storage, lister: opts.Lister, networkMode: opts.NetworkMode}
 }
@@ -120,7 +120,7 @@ func (p *protocol) List(ctx context.Context, mod string) ([]string, error) {
 	}
 
 	strListSemVers := removePseudoVersions(strList)
-	// If the Repository no longer exists but the Hub already saved versions,
+	// If the Source Repository no longer exists but the Hub already saved versions,
 	// return those so that running go get github.com/my/mod gives us the newest saved version
 	// we should only do that if exclusively pseudo-versions have been saved
 	// retain immutable published history.
@@ -128,7 +128,7 @@ func (p *protocol) List(ctx context.Context, mod string) ([]string, error) {
 		return strList, nil
 	}
 	// Public lists contain release Tags only. Pseudo-versions remain addressable
-	// by exact coordinate and through the Repository Resolution API.
+	// by exact coordinate and through revision-resolving Module metadata.
 	return union(goList, strListSemVers), nil
 }
 
@@ -178,11 +178,11 @@ func (p *protocol) Zip(ctx context.Context, mod, ver string) (storage.SizeReadCl
 	return zip, nil
 }
 
-func logCacheLookup(ctx context.Context, repositoryID, version, resource, result string) {
+func logCacheLookup(ctx context.Context, modulePath, version, resource, result string) {
 	log.EntryFromContext(ctx).WithFields(map[string]any{
 		"cache_resource": resource,
 		"cache_result":   result,
-		"repository_id":  repositoryID,
+		"module_path":    modulePath,
 		"version":        version,
 	}).Debugf("artifact cache lookup")
 }

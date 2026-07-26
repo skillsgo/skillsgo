@@ -62,7 +62,7 @@ class LibraryContentState {
 class LibraryEntryQuery {
   const LibraryEntryQuery._(
     this._inventoryKey,
-    this._repositoryId,
+    this._modulePath,
     this._skillName,
     this._targetPath,
     this._agent,
@@ -72,14 +72,14 @@ class LibraryEntryQuery {
       LibraryEntryQuery._(inventoryKey, '', '', null, null);
 
   factory LibraryEntryQuery.byCoordinate({
-    required String repositoryId,
+    required String modulePath,
     required String skillName,
     String? targetPath,
     String? agent,
-  }) => LibraryEntryQuery._('', repositoryId, skillName, targetPath, agent);
+  }) => LibraryEntryQuery._('', modulePath, skillName, targetPath, agent);
 
   final String _inventoryKey;
-  final String _repositoryId;
+  final String _modulePath;
   final String _skillName;
   final String? _targetPath;
   final String? _agent;
@@ -87,9 +87,9 @@ class LibraryEntryQuery {
   bool matches(InstalledSkill entry) {
     if (_inventoryKey.isNotEmpty) return entry.inventoryKey == _inventoryKey;
     final skillMatches =
-        _repositoryId.isNotEmpty &&
+        _modulePath.isNotEmpty &&
         _skillName.isNotEmpty &&
-        entry.repositoryId == _repositoryId &&
+        entry.modulePath == _modulePath &&
         entry.name == _skillName;
     final path = _targetPath;
     if (path == null) return skillMatches;

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the public SkillsGo Cloud HTTP schema and canonical JSON/time primitives.
+ * [INPUT]: Depends on the public SkillsGo Cloud HTTP schema, shared API pagination, and canonical JSON/time primitives.
  * [OUTPUT]: Provides endpoint paths, install-event DTOs, ranking DTOs, enum vocabulary, and deterministic wire validation.
  * [POS]: Serves as the dependency-light public Cloud contract shared by clients, the private server, mocks, and conformance tests.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -9,6 +9,8 @@ package cloud
 import (
 	"strings"
 	"time"
+
+	"github.com/skillsgo/skillsgo/protocol/api"
 )
 
 const (
@@ -65,18 +67,18 @@ func MetricForRanking(kind RankingKind) MetricKind {
 }
 
 type InstallEvent struct {
-	EventID      string    `json:"eventId"`
-	RepositoryID string    `json:"repositoryId"`
-	SkillName    string    `json:"skillName"`
-	Version      string    `json:"version"`
-	Agents       []string  `json:"agents"`
-	Scope        Scope     `json:"scope"`
-	CLIVersion   string    `json:"cliVersion"`
-	OccurredAt   time.Time `json:"occurredAt"`
+	EventID    string    `json:"eventId"`
+	ModulePath string    `json:"modulePath"`
+	SkillName  string    `json:"skillName"`
+	Version    string    `json:"version"`
+	Agents     []string  `json:"agents"`
+	Scope      Scope     `json:"scope"`
+	CLIVersion string    `json:"cliVersion"`
+	OccurredAt time.Time `json:"occurredAt"`
 }
 
 func (event InstallEvent) Validate(now time.Time) string {
-	if len(event.EventID) < 16 || len(event.EventID) > 128 || strings.TrimSpace(event.RepositoryID) == "" || strings.TrimSpace(event.SkillName) == "" || strings.TrimSpace(event.Version) == "" {
+	if len(event.EventID) < 16 || len(event.EventID) > 128 || strings.TrimSpace(event.ModulePath) == "" || strings.TrimSpace(event.SkillName) == "" || strings.TrimSpace(event.Version) == "" {
 		return "invalid install event identity"
 	}
 	if !event.Scope.Valid() {
@@ -102,30 +104,20 @@ type Metric struct {
 }
 
 type RankingItem struct {
-	RepositoryID   string  `json:"repositoryId"`
-	SkillName      string  `json:"skillName"`
-	Name           string  `json:"name"`
-	Description    string  `json:"description"`
-	Source         string  `json:"source"`
-	Repository     string  `json:"repository"`
-	ImageURL       *string `json:"imageUrl"`
-	SkillPath      string  `json:"skillPath"`
-	LatestVersion  string  `json:"latestVersion"`
-	TrustLevel     string  `json:"trustLevel"`
-	RiskAssessment string  `json:"riskAssessment"`
-	Metric         Metric  `json:"metric"`
-}
-
-type Page struct {
-	Limit      int  `json:"limit"`
-	Offset     int  `json:"offset"`
-	NextOffset *int `json:"nextOffset"`
+	ModulePath    string  `json:"modulePath"`
+	SkillName     string  `json:"skillName"`
+	Name          string  `json:"name"`
+	Description   string  `json:"description"`
+	ImageURL      *string `json:"imageUrl"`
+	Path          string  `json:"path"`
+	LatestVersion string  `json:"latestVersion"`
+	Metric        Metric  `json:"metric"`
 }
 
 type RankingResponse struct {
-	Collection RankingKind   `json:"collection"`
-	Items      []RankingItem `json:"items"`
-	Page       Page          `json:"page"`
+	Collection RankingKind    `json:"collection"`
+	Items      []RankingItem  `json:"items"`
+	Pagination api.Pagination `json:"pagination"`
 }
 
 type ErrorResponse struct {

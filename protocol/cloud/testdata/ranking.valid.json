@@ -2,7 +2,7 @@
   "collection": "all_time",
   "items": [
     {
-      "repositoryId": "github.com/acme/skills",
+      "modulePath": "github.com/acme/skills",
       "skillName": "demo",
       "metric": {
         "kind": "all_time_installs",
@@ -11,9 +11,9 @@
       }
     }
   ],
-  "page": {
-    "limit": 20,
-    "offset": 0,
-    "nextOffset": null
+  "pagination": {
+    "page": 0,
+    "perPage": 20,
+    "hasMore": false
   }
 }

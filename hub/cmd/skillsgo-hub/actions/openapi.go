@@ -1,474 +1,173 @@
 /*
- * [INPUT]: Depends on the native Fiber router and the stable Hub product and Repository artifact contracts.
- * [OUTPUT]: Serves an OpenAPI 3.1 JSON document whose paths and schemas describe the public Hub API consumed by CLI and App journeys.
- * [POS]: Serves as the executable API-reference source beside the actions Router composition root.
+ * [INPUT]: Depends on Huma's Fiber adapter, deployment configuration, native Fiber route inventory, and an embedded pinned Scalar asset whose path-variable encoder is adapted for hierarchical Module Paths.
+ * [OUTPUT]: Provides non-cacheable Huma-generated OpenAPI 3.1, self-hosted Scalar with literal Module Path slashes, immutable compressed assets, and product-route coverage validation.
+ * [POS]: Serves as the typed documentation sidecar for native Fiber handlers without owning their execution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
 
 import (
+	"bytes"
+	"compress/gzip"
+	"crypto/sha512"
+	_ "embed"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"html"
+	"path"
+	"sort"
+	"strings"
+
+	"github.com/danielgtaylor/huma/v2"
+	"github.com/danielgtaylor/huma/v2/adapters/humafiber"
 	"github.com/gofiber/fiber/v3"
+	"github.com/skillsgo/skillsgo/hub/pkg/config"
 )
 
-func registerHubOpenAPI(router fiber.Router) {
-	document := hubOpenAPIDocument()
-	router.Get("/openapi.json", func(c fiber.Ctx) error {
-		c.Set(fiber.HeaderCacheControl, "no-cache")
-		c.Set(fiber.HeaderContentType, "application/openapi+json; charset=utf-8")
-		return c.JSON(document)
+//go:embed assets/scalar-1.63.0.js
+var scalarStandalone []byte
+
+//go:embed assets/scalar-1.63.0.js.gz
+var scalarStandaloneGzip []byte
+
+var scalarAssetETag string
+
+func init() {
+	const encodedPathVariable = "encodeURIComponent(lx(t,n))"
+	const hierarchicalPathVariable = "encodeURIComponent(lx(t,n)).replace(/%2F/gi,`/`)"
+	if bytes.Count(scalarStandalone, []byte(encodedPathVariable)) != 1 {
+		panic("adapt Scalar hierarchical path variables: pinned encoder signature changed")
+	}
+	scalarStandalone = bytes.Replace(scalarStandalone, []byte(encodedPathVariable), []byte(hierarchicalPathVariable), 1)
+
+	var compressed bytes.Buffer
+	writer := gzip.NewWriter(&compressed)
+	if _, err := writer.Write(scalarStandalone); err != nil {
+		panic("compress adapted Scalar asset: " + err.Error())
+	}
+	if err := writer.Close(); err != nil {
+		panic("finish adapted Scalar asset compression: " + err.Error())
+	}
+	scalarStandaloneGzip = compressed.Bytes()
+	digest := sha512.Sum512(scalarStandalone)
+	scalarAssetETag = `"sha512-` + base64.RawURLEncoding.EncodeToString(digest[:]) + `"`
+}
+
+func registerHubAPIDocs(app *fiber.App, router fiber.Router, conf *config.Config, adminEnabled bool) huma.API {
+	humaConfig := huma.DefaultConfig("SkillsGo Hub API", "1.0.0")
+	humaConfig.Info.Description = "Public Skill discovery, Module Version Queries, and immutable Module Version distribution."
+	humaConfig.DocsPath = ""
+	humaConfig.OpenAPIPath = "/openapi"
+	humaConfig.SchemasPath = ""
+	humaConfig.CreateHooks = nil
+	if conf.PathPrefix != "" {
+		humaConfig.Servers = []*huma.Server{{
+			URL: conf.PathPrefix, Description: "Current " + conf.Environment + " Hub deployment",
+		}}
+	}
+	openAPIPath := path.Join("/", conf.PathPrefix, "openapi")
+	router.Use(func(c fiber.Ctx) error {
+		if strings.HasPrefix(c.Path(), openAPIPath) {
+			c.Set(fiber.HeaderCacheControl, "no-store")
+		}
+		return c.Next()
+	})
+	api := humafiber.NewWithGroup(app, router, humaConfig)
+	documentHubOperations(api, adminEnabled)
+	registerSelfHostedScalar(router, conf.PathPrefix, conf.Environment == "development")
+	return api
+}
+
+func registerSelfHostedScalar(router fiber.Router, pathPrefix string, development bool) {
+	specURL := path.Join("/", pathPrefix, "openapi.json")
+	scriptURL := path.Join("/", pathPrefix, "docs/assets/scalar-1.63.0-skillsgo.1.js")
+	rendererConfig, err := json.Marshal(map[string]any{
+		"agent":                 map[string]bool{"disabled": true},
+		"defaultHttpClient":     map[string]string{"targetKey": "shell", "clientKey": "curl"},
+		"hideClientButton":      false,
+		"hideTestRequestButton": !development,
+		"mcp":                   map[string]bool{"disabled": true},
+		"operationTitleSource":  "summary",
+		"persistAuth":           false,
+		"showSidebar":           true,
+		"withDefaultFonts":      false,
+	})
+	if err != nil {
+		panic("marshal Scalar API reference configuration: " + err.Error())
+	}
+	body := `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="referrer" content="no-referrer">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SkillsGo Hub API Reference</title>
+  </head>
+  <body>
+    <script id="api-reference" data-url="` + html.EscapeString(specURL) + `" data-configuration="` +
+		html.EscapeString(string(rendererConfig)) + `"></script>
+    <script src="` + html.EscapeString(scriptURL) + `"></script>
+  </body>
+</html>`
+
+	router.Get("/docs", func(c fiber.Ctx) error {
+		c.Set(fiber.HeaderContentSecurityPolicy, "default-src 'none'; base-uri 'none'; connect-src 'self'; "+
+			"form-action 'none'; frame-ancestors 'none'; "+
+			"script-src 'self' 'unsafe-eval'; style-src 'unsafe-inline'")
+		c.Set(fiber.HeaderContentType, fiber.MIMETextHTMLCharsetUTF8)
+		return c.SendString(body)
+	})
+	router.Get("/docs/assets/scalar-1.63.0-skillsgo.1.js", func(c fiber.Ctx) error {
+		c.Set(fiber.HeaderETag, scalarAssetETag)
+		c.Set(fiber.HeaderVary, fiber.HeaderAcceptEncoding)
+		c.Set(fiber.HeaderContentType, fiber.MIMETextJavaScriptCharsetUTF8)
+		c.Set(fiber.HeaderCacheControl, "public, max-age=31536000, immutable")
+		if c.Get(fiber.HeaderIfNoneMatch) == scalarAssetETag {
+			return c.SendStatus(fiber.StatusNotModified)
+		}
+		if strings.Contains(c.Get(fiber.HeaderAcceptEncoding), "gzip") {
+			c.Set(fiber.HeaderContentEncoding, "gzip")
+			return c.Send(scalarStandaloneGzip)
+		}
+		return c.Send(scalarStandalone)
 	})
 }
 
-func hubOpenAPIDocument() map[string]any {
-	repositoryID := pathParameter(
-		"repositoryId",
-		"Canonical Repository ID. Slash-separated IDs such as github.com/skillsgo/skillsgo must be preserved as one logical coordinate.",
-		"github.com/skillsgo/skillsgo",
-	)
-	version := pathParameter("version", "Exact immutable semantic or pseudo-version.", "v1.2.3")
-	jsonResponse := func(description, schema string) map[string]any {
-		return map[string]any{
-			"description": description,
-			"content": map[string]any{
-				"application/json": map[string]any{"schema": schemaRef(schema)},
-			},
+func validateDocumentedProductRoutes(app *fiber.App, api huma.API, pathPrefix string) error {
+	documented := make(map[string]struct{})
+	for routePath := range api.OpenAPI().Paths {
+		if strings.HasPrefix(routePath, "/api/v1/") {
+			documented[routePath] = struct{}{}
 		}
 	}
-	requestBody := func(schema string) map[string]any {
-		return map[string]any{
-			"required": true,
-			"content": map[string]any{
-				"application/json": map[string]any{"schema": schemaRef(schema)},
-			},
+	prefix := strings.TrimSuffix(pathPrefix, "/")
+	missing := make(map[string]struct{})
+	for _, route := range app.GetRoutes(true) {
+		routePath := route.Path
+		if prefix != "" {
+			routePath = strings.TrimPrefix(routePath, prefix)
+		}
+		if !strings.HasPrefix(routePath, "/api/v1/") {
+			continue
+		}
+		if _, ok := documented[fiberPathToOpenAPI(routePath)]; !ok {
+			missing[routePath] = struct{}{}
 		}
 	}
-	errorResponses := map[string]any{
-		"400": jsonResponse("Invalid request.", "Error"),
-		"500": jsonResponse("Internal Hub failure.", "Error"),
+	if len(missing) == 0 {
+		return nil
 	}
-	withErrors := func(success map[string]any) map[string]any {
-		responses := map[string]any{"200": success}
-		for status, response := range errorResponses {
-			responses[status] = response
-		}
-		return responses
+	paths := make([]string, 0, len(missing))
+	for routePath := range missing {
+		paths = append(paths, routePath)
 	}
-
-	paths := map[string]any{
-		"/api/v1/skills/find": map[string]any{
-			"get": map[string]any{
-				"operationId": "findSkills",
-				"summary":     "Find Skills",
-				"tags":        []string{"skills"},
-				"parameters": []any{
-					queryParameter("q", "Search text.", "string", false, "code review"),
-					queryParameter("source", "Optional canonical Repository ID restriction.", "string", false, "github.com/skillsgo/skillsgo"),
-					queryParameter("locale", "Optional presentation locale.", "string", false, "en"),
-					queryParameter("exactName", "Require an exact canonical Skill Name.", "boolean", false, false),
-					queryParameter("offset", "Zero-based result offset.", "integer", false, 0),
-					queryParameter("limit", "Maximum results, from 1 to 100.", "integer", false, 20),
-				},
-				"responses": withErrors(jsonResponse("Matching Skill cards.", "SkillsResponse")),
-			},
-		},
-		"/api/v1/skills/find-candidates": map[string]any{
-			"post": map[string]any{
-				"operationId": "findSkillCandidates",
-				"summary":     "Find Skill candidates for multiple queries",
-				"tags":        []string{"skills"},
-				"requestBody": requestBody("FindCandidatesRequest"),
-				"responses":   withErrors(jsonResponse("Candidate groups in request order.", "FindCandidatesResponse")),
-			},
-		},
-		"/api/v1/skills/batch": map[string]any{
-			"post": map[string]any{
-				"operationId": "getSkillBatch",
-				"summary":     "Hydrate Skill cards",
-				"tags":        []string{"skills"},
-				"requestBody": requestBody("SkillBatchRequest"),
-				"responses":   withErrors(jsonResponse("Existing Skill cards in request order.", "SkillBatchResponse")),
-			},
-		},
-		"/api/v1/skills/check-update": map[string]any{
-			"post": map[string]any{
-				"operationId": "checkSkillUpdates",
-				"summary":     "Check Repository head and release updates",
-				"tags":        []string{"skills"},
-				"requestBody": requestBody("UpdateCheckRequest"),
-				"responses":   withErrors(jsonResponse("Update status for every requested Skill.", "UpdateCheckResponse")),
-			},
-		},
-		"/api/v1/skills/detail": map[string]any{
-			"get": map[string]any{
-				"operationId": "getSkillDetail",
-				"summary":     "Get immutable Skill detail",
-				"tags":        []string{"skills"},
-				"parameters": []any{
-					queryParameter("repositoryId", "Canonical Repository ID.", "string", true, "github.com/skillsgo/skillsgo"),
-					queryParameter("name", "Canonical Skill Name.", "string", true, "code-review"),
-					queryParameter("locale", "Optional presentation locale.", "string", false, "en"),
-				},
-				"responses": withErrors(jsonResponse("Resolved immutable Skill detail.", "SkillDetail")),
-			},
-		},
-		"/api/v1/repository-resolutions": map[string]any{
-			"post": map[string]any{
-				"operationId": "resolveRepository",
-				"summary":     "Resolve a Repository selector",
-				"tags":        []string{"repositories"},
-				"requestBody": requestBody("RepositoryResolutionRequest"),
-				"responses":   withErrors(jsonResponse("Canonical immutable Repository resolution.", "RepositoryResolutionResponse")),
-			},
-		},
-		"/{repositoryId}/versions": map[string]any{
-			"get": map[string]any{
-				"operationId": "listRepositoryVersions",
-				"summary":     "List Repository versions",
-				"tags":        []string{"artifacts"},
-				"parameters":  []any{repositoryID},
-				"responses": map[string]any{
-					"200": map[string]any{
-						"description": "Newline-delimited immutable versions.",
-						"content": map[string]any{
-							"text/plain": map[string]any{"schema": map[string]any{"type": "string"}},
-						},
-					},
-					"404": jsonResponse("Repository not found.", "Error"),
-				},
-			},
-		},
-		"/{repositoryId}/versions/{version}": map[string]any{
-			"get": map[string]any{
-				"operationId": "getRepositoryVersion",
-				"summary":     "Get Repository version metadata",
-				"tags":        []string{"artifacts"},
-				"parameters":  []any{repositoryID, version},
-				"responses":   withErrors(jsonResponse("Immutable Repository Info.", "RepositoryInfo")),
-			},
-		},
-		"/{repositoryId}/versions/{version}.zip": map[string]any{
-			"get":  archiveOperation("downloadRepositoryVersion", "Download Repository version ZIP", repositoryID, version),
-			"head": archiveOperation("inspectRepositoryVersionArchive", "Inspect Repository version ZIP", repositoryID, version),
-		},
-		"/info": map[string]any{
-			"get": simpleGetOperation("getHubInfo", "Get Hub deployment information", "service", "Hub deployment mode and optional Cloud origin.", "HubInfo"),
-		},
-		"/healthz": map[string]any{
-			"get": probeOperation("getHealth", "Check Hub process health"),
-		},
-		"/readyz": map[string]any{
-			"get": probeOperation("getReadiness", "Check Hub storage readiness"),
-		},
-		"/version": map[string]any{
-			"get": simpleGetOperation("getHubVersion", "Get Hub build version", "service", "Hub build metadata.", "HubVersion"),
-		},
-	}
-
-	return map[string]any{
-		"openapi": "3.1.0",
-		"info": map[string]any{
-			"title":       "SkillsGo Hub API",
-			"version":     "1.0.0",
-			"description": "Public Skill discovery, Repository resolution, and immutable Repository version distribution.",
-		},
-		"servers": []any{
-			map[string]any{"url": ".", "description": "The Hub origin and configured path prefix serving this document."},
-		},
-		"tags": []any{
-			map[string]any{"name": "skills"},
-			map[string]any{"name": "repositories"},
-			map[string]any{"name": "artifacts"},
-			map[string]any{"name": "service"},
-		},
-		"paths": paths,
-		"components": map[string]any{
-			"schemas": hubOpenAPISchemas(),
-		},
-	}
+	sort.Strings(paths)
+	return fmt.Errorf("Hub product routes missing OpenAPI documentation: %s", strings.Join(paths, ", "))
 }
 
-func hubOpenAPISchemas() map[string]any {
-	stringProperty := func(description string) map[string]any {
-		return map[string]any{"type": "string", "description": description}
-	}
-	integerProperty := func(description string) map[string]any {
-		return map[string]any{"type": "integer", "description": description}
-	}
-	skillCoordinate := objectSchema(
-		[]string{"repositoryId", "name"},
-		map[string]any{
-			"repositoryId": stringProperty("Canonical Repository ID."),
-			"name":         stringProperty("Canonical Skill Name."),
-		},
-	)
-	findSkill := objectSchema(
-		[]string{"repositoryId", "name", "description", "source", "repository", "skillPath", "latestVersion", "trustLevel", "riskAssessment"},
-		map[string]any{
-			"repositoryId":   stringProperty("Canonical Repository ID."),
-			"name":           stringProperty("Canonical Skill Name."),
-			"description":    stringProperty("Presentation description."),
-			"source":         stringProperty("Source host."),
-			"repository":     stringProperty("Source Repository coordinate."),
-			"imageUrl":       nullableString("Repository owner image URL."),
-			"skillPath":      stringProperty("Repository-relative Skill directory."),
-			"latestVersion":  stringProperty("Latest visible Repository version selector."),
-			"trustLevel":     stringProperty("Current trust projection."),
-			"riskAssessment": stringProperty("Current risk projection."),
-		},
-	)
-	findQuery := objectSchema(
-		[]string{"id", "q"},
-		map[string]any{
-			"id":        stringProperty("Caller correlation ID."),
-			"q":         stringProperty("Search text."),
-			"source":    stringProperty("Optional canonical Repository restriction."),
-			"exactName": map[string]any{"type": "boolean", "description": "Require an exact canonical Skill Name."},
-		},
-	)
-	findResult := objectSchema(
-		[]string{"id", "q", "skills"},
-		map[string]any{
-			"id":     stringProperty("Caller correlation ID."),
-			"q":      stringProperty("Original search text."),
-			"source": stringProperty("Original optional Repository restriction."),
-			"skills": arraySchema(schemaRef("FindSkill"), "Matching candidates."),
-		},
-	)
-	skillInfo := objectSchema(
-		[]string{"SchemaVersion", "Kind", "RepositoryID", "SkillPath", "Version", "Time", "Ref", "CommitSHA", "TreeSHA", "Name", "Description"},
-		map[string]any{
-			"SchemaVersion": integerProperty("Immutable Info schema version."),
-			"Kind":          stringProperty("Resource kind."),
-			"RepositoryID":  stringProperty("Canonical Repository ID."),
-			"SkillPath":     stringProperty("Repository-relative Skill directory."),
-			"Version":       stringProperty("Immutable Repository version."),
-			"Time":          dateTimeProperty("Source commit time."),
-			"Ref":           stringProperty("Resolved source reference."),
-			"CommitSHA":     stringProperty("Resolved commit identity."),
-			"TreeSHA":       stringProperty("Skill tree identity."),
-			"Name":          stringProperty("Canonical Skill Name."),
-			"Description":   stringProperty("Manifest description."),
-			"License":       stringProperty("Optional license declaration."),
-			"Compatibility": stringProperty("Optional compatibility declaration."),
-			"AllowedTools":  stringProperty("Optional allowed-tools declaration."),
-			"Metadata": map[string]any{
-				"type": "object", "description": "Optional manifest metadata.",
-				"additionalProperties": map[string]any{"type": "string"},
-			},
-		},
-	)
-	return map[string]any{
-		"Error": objectSchema([]string{"error", "code"}, map[string]any{
-			"error": stringProperty("Safe public error message."),
-			"code":  stringProperty("Stable machine-readable error code."),
-		}),
-		"SkillCoordinate": skillCoordinate,
-		"FindSkill":       findSkill,
-		"CollectionPage": objectSchema([]string{"limit", "offset"}, map[string]any{
-			"limit":      integerProperty("Applied page size."),
-			"offset":     integerProperty("Applied result offset."),
-			"nextOffset": nullableInteger("Next result offset when another page exists."),
-		}),
-		"SkillsResponse": objectSchema([]string{"collection", "skills", "page"}, map[string]any{
-			"collection": stringProperty("Collection name; currently find."),
-			"skills":     arraySchema(schemaRef("FindSkill"), "Matching Skill cards."),
-			"page":       schemaRef("CollectionPage"),
-		}),
-		"FindCandidatesRequest": objectSchema([]string{"schemaVersion", "queries", "limit"}, map[string]any{
-			"schemaVersion": integerProperty("Request schema version; currently 1."),
-			"queries":       arraySchema(findQuery, "One to many independent candidate queries."),
-			"limit":         integerProperty("Maximum candidates per query."),
-			"locale":        stringProperty("Optional presentation locale."),
-		}),
-		"FindCandidatesResponse": objectSchema([]string{"schemaVersion", "collection", "results"}, map[string]any{
-			"schemaVersion": integerProperty("Response schema version."),
-			"collection":    stringProperty("Collection name; currently find."),
-			"results":       arraySchema(findResult, "Candidate groups in request order."),
-		}),
-		"SkillBatchRequest": objectSchema([]string{"skills"}, map[string]any{
-			"skills": arraySchema(schemaRef("SkillCoordinate"), "Unique Skill coordinates."),
-		}),
-		"SkillBatchResponse": objectSchema([]string{"skills"}, map[string]any{
-			"skills": arraySchema(schemaRef("FindSkill"), "Existing Skill cards in request order."),
-		}),
-		"UpdateCheckRequest": objectSchema([]string{"schemaVersion", "skills"}, map[string]any{
-			"schemaVersion": integerProperty("Request schema version; currently 1."),
-			"skills":        arraySchema(schemaRef("SkillCoordinate"), "Skills to check."),
-		}),
-		"UpdateCheckItem": objectSchema([]string{"repositoryId", "name", "status"}, map[string]any{
-			"repositoryId":   stringProperty("Canonical Repository ID."),
-			"name":           stringProperty("Canonical Skill Name."),
-			"headVersion":    stringProperty("Current default-branch immutable version, when available."),
-			"releaseVersion": stringProperty("Highest release version, when available."),
-			"status":         stringProperty("Update availability status."),
-		}),
-		"UpdateCheckResponse": objectSchema([]string{"schemaVersion", "items"}, map[string]any{
-			"schemaVersion": integerProperty("Response schema version."),
-			"items":         arraySchema(schemaRef("UpdateCheckItem"), "Update results."),
-		}),
-		"RepositoryResolutionRequest": objectSchema([]string{"schemaVersion", "repositoryId", "selector"}, map[string]any{
-			"schemaVersion": integerProperty("Request schema version; currently 1."),
-			"repositoryId":  stringProperty("Canonical Repository ID."),
-			"selector":      stringProperty("Semantic tag, branch, commit, head, release, or exact immutable version."),
-		}),
-		"RepositoryResolutionResponse": objectSchema([]string{"schemaVersion", "repositoryId", "version", "time", "ref", "commitSHA"}, map[string]any{
-			"schemaVersion": integerProperty("Response schema version."),
-			"repositoryId":  stringProperty("Canonical Repository ID."),
-			"version":       stringProperty("Canonical immutable Repository version."),
-			"time":          dateTimeProperty("Resolved commit time."),
-			"ref":           stringProperty("Resolved source reference."),
-			"commitSHA":     stringProperty("Resolved commit identity."),
-		}),
-		"RepositoryInfo": objectSchema(
-			[]string{"SchemaVersion", "Kind", "ID", "Version", "Time", "Ref", "CommitSHA", "TreeSHA", "Sum", "ArchiveSize", "Skills"},
-			map[string]any{
-				"SchemaVersion": integerProperty("Immutable Info schema version."),
-				"Kind":          stringProperty("Resource kind; Repository."),
-				"ID":            stringProperty("Canonical Repository ID."),
-				"Version":       stringProperty("Canonical immutable Repository version."),
-				"Time":          dateTimeProperty("Source commit time."),
-				"Ref":           stringProperty("Resolved source reference."),
-				"CommitSHA":     stringProperty("Resolved commit identity."),
-				"TreeSHA":       stringProperty("Repository tree identity."),
-				"Sum":           stringProperty("Go HashZip-compatible h1 artifact identity."),
-				"ArchiveSize":   integerProperty("ZIP size in bytes."),
-				"Skills":        arraySchema(skillInfo, "Complete ordered Skill membership."),
-			},
-		),
-		"SkillDetail": objectSchema(
-			[]string{"repositoryId", "name", "description", "source", "repository", "stars", "requestedVersion", "immutableVersion", "commitSHA", "treeSHA", "sourceRef", "sum", "instructions", "trustLevel", "riskAssessment", "files", "hasExecutableContent", "executableFiles"},
-			map[string]any{
-				"repositoryId":          stringProperty("Canonical Repository ID."),
-				"name":                  stringProperty("Canonical Skill Name."),
-				"description":           stringProperty("Presentation description."),
-				"source":                stringProperty("Source host."),
-				"repository":            stringProperty("Source Repository coordinate."),
-				"repositoryDescription": stringProperty("Repository presentation description."),
-				"imageUrl":              nullableString("Repository owner image URL."),
-				"stars":                 integerProperty("Repository star count."),
-				"sourceUpdatedAt":       dateTimeProperty("Source metadata update time."),
-				"archiveSize":           integerProperty("Repository ZIP size in bytes."),
-				"requestedVersion":      stringProperty("Requested selector or version."),
-				"immutableVersion":      stringProperty("Resolved immutable Repository version."),
-				"commitSHA":             stringProperty("Resolved commit identity."),
-				"treeSHA":               stringProperty("Skill tree identity."),
-				"sourceRef":             stringProperty("Resolved source reference."),
-				"sum":                   stringProperty("Repository artifact h1 identity."),
-				"instructions":          stringProperty("SKILL.md instructions."),
-				"trustLevel":            stringProperty("Current trust projection."),
-				"riskAssessment":        map[string]any{"type": "object", "description": "Current audit projection.", "additionalProperties": true},
-				"files":                 arraySchema(map[string]any{"type": "object", "additionalProperties": true}, "Audited files."),
-				"hasExecutableContent":  map[string]any{"type": "boolean", "description": "Whether executable content exists."},
-				"executableFiles":       arraySchema(map[string]any{"type": "string"}, "Executable file paths."),
-			},
-		),
-		"HubInfo": objectSchema([]string{"mode"}, map[string]any{
-			"mode":  stringProperty("Deployment mode: selfhost or cloud."),
-			"cloud": stringProperty("Cloud origin in cloud mode."),
-		}),
-		"HubVersion": map[string]any{
-			"type": "object", "description": "Hub build metadata.", "additionalProperties": true,
-		},
-	}
-}
-
-func schemaRef(name string) map[string]any {
-	return map[string]any{"$ref": "#/components/schemas/" + name}
-}
-
-func objectSchema(required []string, properties map[string]any) map[string]any {
-	return map[string]any{
-		"type":                 "object",
-		"required":             required,
-		"properties":           properties,
-		"additionalProperties": false,
-	}
-}
-
-func arraySchema(items any, description string) map[string]any {
-	return map[string]any{"type": "array", "description": description, "items": items}
-}
-
-func nullableString(description string) map[string]any {
-	return map[string]any{"type": []string{"string", "null"}, "description": description}
-}
-
-func nullableInteger(description string) map[string]any {
-	return map[string]any{"type": []string{"integer", "null"}, "description": description}
-}
-
-func dateTimeProperty(description string) map[string]any {
-	return map[string]any{"type": "string", "format": "date-time", "description": description}
-}
-
-func queryParameter(name, description, kind string, required bool, example any) map[string]any {
-	return map[string]any{
-		"name": name, "in": "query", "required": required,
-		"description": description,
-		"schema":      map[string]any{"type": kind},
-		"example":     example,
-	}
-}
-
-func pathParameter(name, description string, example any) map[string]any {
-	return map[string]any{
-		"name": name, "in": "path", "required": true, "allowReserved": true,
-		"description": description,
-		"schema":      map[string]any{"type": "string"},
-		"example":     example,
-	}
-}
-
-func archiveOperation(operationID, summary string, parameters ...any) map[string]any {
-	return map[string]any{
-		"operationId": operationID,
-		"summary":     summary,
-		"tags":        []string{"artifacts"},
-		"parameters":  parameters,
-		"responses": map[string]any{
-			"200": map[string]any{
-				"description": "Immutable Repository ZIP.",
-				"headers": map[string]any{
-					"ETag":           map[string]any{"schema": map[string]any{"type": "string"}},
-					"Content-Length": map[string]any{"schema": map[string]any{"type": "integer"}},
-				},
-				"content": map[string]any{
-					"application/zip": map[string]any{
-						"schema": map[string]any{"type": "string", "format": "binary"},
-					},
-				},
-			},
-			"301": map[string]any{"description": "Redirect to the configured Artifact Origin."},
-			"400": map[string]any{"description": "The version is not exact and immutable."},
-			"404": map[string]any{"description": "Repository version not found."},
-		},
-	}
-}
-
-func simpleGetOperation(operationID, summary, tag, description, schema string) map[string]any {
-	return map[string]any{
-		"operationId": operationID,
-		"summary":     summary,
-		"tags":        []string{tag},
-		"responses": map[string]any{
-			"200": map[string]any{
-				"description": description,
-				"content": map[string]any{
-					"application/json": map[string]any{"schema": schemaRef(schema)},
-				},
-			},
-		},
-	}
-}
-
-func probeOperation(operationID, summary string) map[string]any {
-	return map[string]any{
-		"operationId": operationID,
-		"summary":     summary,
-		"tags":        []string{"service"},
-		"responses": map[string]any{
-			"200": map[string]any{"description": "Probe succeeded."},
-			"503": map[string]any{"description": "Probe failed."},
-		},
-	}
+func fiberPathToOpenAPI(routePath string) string {
+	routePath = strings.ReplaceAll(routePath, "/+/", "/{modulePath}/")
+	routePath = strings.ReplaceAll(routePath, ":version", "{version}")
+	return routePath
 }

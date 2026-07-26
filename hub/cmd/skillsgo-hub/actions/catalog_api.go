@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, freshness-cached Repository artifact resolution, ZIP audit boundary, and request validation.
- * [OUTPUT]: Provides stable Skill Find and candidate lookup with optional exact-name/Source restriction, ordered batch Skill-card hydration, Repository-fresh head/release update checks, and detail APIs plus correlated private diagnostics for internal and best-effort dependency failures.
+ * [INPUT]: Depends on Fiber, request-scoped structured logging, the Catalog, freshness-cached Repository artifact resolution, and request validation.
+ * [OUTPUT]: Provides stable Skill Find, ordered exact-name candidate lookup, ordered batch Skill-card hydration, Module-fresh latest update checks, and correlated private diagnostics for internal and best-effort dependency failures.
  * [POS]: Serves as the Hub HTTP discovery contract consumed by SkillsGo and other protocol clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,15 +11,13 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"io"
 	"net/url"
 	"strconv"
 	"strings"
-	"time"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/skillsgo/skillsgo/hub/pkg/audit"
+	"github.com/jackc/pgx/v5"
 	"github.com/skillsgo/skillsgo/hub/pkg/catalog"
 	skillerrors "github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
@@ -30,9 +28,8 @@ import (
 )
 
 type skillsResponse struct {
-	Collection string           `json:"collection"`
-	Skills     []discoverySkill `json:"skills"`
-	Page       collectionPage   `json:"page"`
+	Skills     []discoverySkill       `json:"skills"`
+	Pagination protocolapi.Pagination `json:"pagination"`
 }
 
 type skillBatchRequest struct {
@@ -45,38 +42,7 @@ type skillBatchResponse struct {
 	Skills []discoverySkill `json:"skills"`
 }
 
-type collectionPage struct {
-	Limit      int  `json:"limit"`
-	Offset     int  `json:"offset"`
-	NextOffset *int `json:"nextOffset"`
-}
-
 type discoverySkill = protocolapi.FindSkill
-
-type skillDetailResponse struct {
-	RepositoryID          string               `json:"repositoryId"`
-	Name                  string               `json:"name"`
-	Description           string               `json:"description"`
-	Source                string               `json:"source"`
-	Repository            string               `json:"repository"`
-	RepositoryDescription string               `json:"repositoryDescription"`
-	ImageURL              *string              `json:"imageUrl"`
-	Stars                 int64                `json:"stars"`
-	SourceUpdatedAt       time.Time            `json:"sourceUpdatedAt"`
-	ArchiveSize           int64                `json:"archiveSize"`
-	RequestedVersion      string               `json:"requestedVersion"`
-	ImmutableVersion      string               `json:"immutableVersion"`
-	CommitSHA             string               `json:"commitSHA"`
-	TreeSHA               string               `json:"treeSHA"`
-	SourceRef             string               `json:"sourceRef"`
-	Sum                   string               `json:"sum"`
-	Instructions          string               `json:"instructions"`
-	TrustLevel            string               `json:"trustLevel"`
-	RiskAssessment        audit.RiskAssessment `json:"riskAssessment"`
-	Files                 []audit.File         `json:"files"`
-	HasExecutableContent  bool                 `json:"hasExecutableContent"`
-	ExecutableFiles       []string             `json:"executableFiles"`
-}
 
 type catalogUpdateCheckRequest = protocolapi.CatalogUpdateCheckRequest
 type catalogUpdateCheckItem = protocolapi.CatalogUpdateCheckItem
@@ -92,9 +58,8 @@ type updateArtifactReader interface {
 	List(context.Context, string) ([]string, error)
 }
 
-type repositoryUpdateCandidates struct {
-	head    map[string]string
-	release map[string]string
+type moduleUpdateCandidates struct {
+	latest map[string]string
 }
 
 type errorResponse struct {
@@ -106,17 +71,11 @@ func registerCatalogAPIRoutes(
 	r fiber.Router,
 	metadata *catalog.Catalog,
 	artifacts artifactReader,
-	repositoryReaders ...repositoryMetadataReader,
 ) {
-	var repositories repositoryMetadataReader
-	if len(repositoryReaders) > 0 {
-		repositories = repositoryReaders[0]
-	}
 	r.Get("/api/v1/skills/find", findSkillsHandler(metadata))
 	r.Post("/api/v1/skills/find-candidates", findSkillsBatchHandler(metadata))
 	r.Post("/api/v1/skills/batch", skillBatchHandler(metadata))
 	r.Post("/api/v1/skills/check-update", catalogUpdateCheckHandler(metadata, artifacts))
-	r.Get("/api/v1/skills/detail", skillDetailHandler(metadata, artifacts, repositories))
 }
 
 func skillBatchHandler(metadata *catalog.Catalog) fiber.Handler {
@@ -126,7 +85,7 @@ func skillBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 		decoder := json.NewDecoder(strings.NewReader(string(c.Body())))
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&request); err != nil || len(request.Skills) == 0 || len(request.Skills) > 100 {
-			return writeAPIError(c, fiber.StatusBadRequest, "skills must contain 1 to 100 Repository ID and Skill name coordinates")
+			return writeAPIError(c, fiber.StatusBadRequest, "skills must contain 1 to 100 Module Path and Skill Name coordinates")
 		}
 		seen := make(map[string]bool, len(request.Skills))
 		for _, coordinate := range request.Skills {
@@ -158,7 +117,7 @@ func catalogUpdateCheckHandler(metadata *catalog.Catalog, artifacts artifactRead
 				return writeAPIError(c, fiber.StatusBadRequest, "invalid or duplicate Skill coordinate")
 			}
 			seen[key] = true
-			_, err := metadata.SkillByCoordinate(c.Context(), coordinate.RepositoryID, coordinate.Name)
+			_, err := metadata.SkillByCoordinate(c.Context(), coordinate.ModulePath, coordinate.Name)
 			if err == nil {
 				available[key] = true
 			} else if err != nil && !errors.Is(err, pgx.ErrNoRows) {
@@ -169,87 +128,79 @@ func catalogUpdateCheckHandler(metadata *catalog.Catalog, artifacts artifactRead
 		if !ok {
 			return writeInternalAPIError(c, "catalog.update_check", fiber.StatusServiceUnavailable, "resolver_unavailable", "update check unavailable", fmt.Errorf("artifact resolver does not support version listing"))
 		}
-		resolvedRepositories := map[string]repositoryUpdateCandidates{}
+		resolvedModules := map[string]moduleUpdateCandidates{}
 		for _, coordinate := range request.Skills {
 			key := coordinate.Key()
 			if !available[key] {
 				continue
 			}
-			if _, done := resolvedRepositories[coordinate.RepositoryID]; done {
+			if _, done := resolvedModules[coordinate.ModulePath]; done {
 				continue
 			}
-			candidates, resolveErr := resolveRepositoryUpdateCandidates(c.Context(), resolver, coordinate.RepositoryID)
+			candidates, resolveErr := resolveModuleUpdateCandidates(c.Context(), resolver, coordinate.ModulePath)
 			if resolveErr != nil {
 				return writeInternalAPIError(c, "catalog.update_check", fiber.StatusBadGateway, "resolution_failed", "update check failed", resolveErr)
 			}
-			resolvedRepositories[coordinate.RepositoryID] = candidates
+			resolvedModules[coordinate.ModulePath] = candidates
 		}
-		response := catalogUpdateCheckResponse{SchemaVersion: 1, Items: make([]catalogUpdateCheckItem, 0, len(request.Skills))}
+		response := catalogUpdateCheckResponse{Items: make([]catalogUpdateCheckItem, 0, len(request.Skills))}
 		for _, coordinate := range request.Skills {
 			key := coordinate.Key()
 			if !available[key] {
-				response.Items = append(response.Items, catalogUpdateCheckItem{RepositoryID: coordinate.RepositoryID, Name: coordinate.Name, Status: "unsupported"})
+				response.Items = append(response.Items, catalogUpdateCheckItem{ModulePath: coordinate.ModulePath, Name: coordinate.Name, Status: "unsupported"})
 				continue
 			}
-			candidates := resolvedRepositories[coordinate.RepositoryID]
-			headVersion, headOK := candidates.head[coordinate.Name]
-			releaseVersion, releaseOK := candidates.release[coordinate.Name]
-			if !headOK && !releaseOK {
-				response.Items = append(response.Items, catalogUpdateCheckItem{RepositoryID: coordinate.RepositoryID, Name: coordinate.Name, Status: "unsupported"})
+			candidates := resolvedModules[coordinate.ModulePath]
+			latestVersion, latestOK := candidates.latest[coordinate.Name]
+			if !latestOK {
+				response.Items = append(response.Items, catalogUpdateCheckItem{ModulePath: coordinate.ModulePath, Name: coordinate.Name, Status: "unsupported"})
 				continue
 			}
 			response.Items = append(response.Items, catalogUpdateCheckItem{
-				RepositoryID: coordinate.RepositoryID, Name: coordinate.Name, HeadVersion: headVersion, ReleaseVersion: releaseVersion, Status: "available",
+				ModulePath: coordinate.ModulePath, Name: coordinate.Name, LatestVersion: latestVersion, Status: "available",
 			})
 		}
 		return writeJSON(c, fiber.StatusOK, response)
 	}
 }
 
-func resolveRepositoryUpdateCandidates(ctx context.Context, artifacts updateArtifactReader, repositoryID string) (repositoryUpdateCandidates, error) {
-	result := repositoryUpdateCandidates{head: map[string]string{}, release: map[string]string{}}
-	headInfo, err := artifacts.Info(ctx, repositoryID, "head")
+func resolveModuleUpdateCandidates(ctx context.Context, artifacts updateArtifactReader, modulePath string) (moduleUpdateCandidates, error) {
+	result := moduleUpdateCandidates{latest: map[string]string{}}
+	versions, err := artifacts.List(ctx, modulePath)
 	if err != nil {
 		return result, err
 	}
-	if err := collectRepositoryMemberVersions(headInfo, result.head); err != nil {
-		return result, err
-	}
-	versions, err := artifacts.List(ctx, repositoryID)
-	if err != nil {
-		return result, err
-	}
-	release := protocolversion.LatestCanonicalPublished(versions)
-	if release == "" {
+	latest := protocolversion.LatestCanonicalPublished(versions)
+	if latest == "" {
 		return result, nil
 	}
-	releaseInfo, err := artifacts.Info(ctx, repositoryID, release)
+	latestInfo, err := artifacts.Info(ctx, modulePath, latest)
 	if err != nil {
 		return result, err
 	}
-	if err := collectRepositoryMemberVersions(releaseInfo, result.release); err != nil {
+	if err := collectModuleMemberVersions(latestInfo, result.latest); err != nil {
 		return result, err
 	}
 	return result, nil
 }
 
-func collectRepositoryMemberVersions(encoded []byte, target map[string]string) error {
-	var repository protocolapi.RepositoryInfo
-	if err := json.Unmarshal(encoded, &repository); err != nil || repository.ID == "" || repository.Version == "" {
-		return fmt.Errorf("invalid Repository Info returned during update resolution")
+func collectModuleMemberVersions(encoded []byte, target map[string]string) error {
+	var module protocolapi.ModuleInfo
+	if err := json.Unmarshal(encoded, &module); err != nil || module.ModulePath == "" || module.Version == "" {
+		return fmt.Errorf("invalid Module Info returned during update resolution")
 	}
-	for _, member := range repository.Skills {
-		if member.Name == "" || member.RepositoryID != repository.ID || member.Version != repository.Version {
-			return fmt.Errorf("invalid Repository member returned during update resolution")
+	for _, member := range module.Skills {
+		if member.Name == "" || member.Path == "" {
+			return fmt.Errorf("invalid Module Skill returned during update resolution")
 		}
-		target[member.Name] = member.Version
+		target[member.Name] = module.Version
 	}
 	return nil
 }
 
 func findSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		limit, offset, ok := apiPagination(c)
+		page, perPage, ok := apiPagination(c)
 		if !ok {
 			return nil
 		}
@@ -257,7 +208,7 @@ func findSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 		if query == "" || len([]rune(query)) > 200 {
 			return writeAPIError(c, fiber.StatusBadRequest, "q must contain 1 to 200 characters")
 		}
-		source := strings.TrimSpace(c.Query("source"))
+		modulePath := strings.TrimSpace(c.Query("modulePath"))
 		exactName := false
 		if raw := c.Query("exactName"); raw != "" {
 			var err error
@@ -266,202 +217,99 @@ func findSkillsHandler(metadata *catalog.Catalog) fiber.Handler {
 				return writeAPIError(c, fiber.StatusBadRequest, "exactName must be a boolean")
 			}
 		}
-		if source != "" {
-			coordinate := protocolapi.SkillCoordinate{RepositoryID: source, Name: query}
+		if modulePath != "" {
+			coordinate := protocolapi.SkillCoordinate{ModulePath: modulePath, Name: query}
 			if !coordinate.Valid() {
-				return writeAPIError(c, fiber.StatusBadRequest, "source and q must form a canonical Skill coordinate")
+				return writeAPIError(c, fiber.StatusBadRequest, "modulePath and q must form a canonical Skill coordinate")
 			}
 			cards, err := (skillCardProjection{catalog: metadata}).Hydrate(c.Context(), []protocolapi.SkillCoordinate{coordinate})
 			if err != nil {
 				return writeInternalAPIError(c, "catalog.find", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
 			}
-			if offset > 0 {
+			if page > 0 {
 				cards = cards[:0]
 			} else {
 				(skillCardProjection{catalog: metadata}).Localize(c.Context(), presentationLocale(c), cards)
 			}
-			return writeJSON(c, fiber.StatusOK, skillsResponse{Collection: "find", Skills: cards, Page: collectionPage{Limit: limit, Offset: offset}})
+			return writeJSON(c, fiber.StatusOK, skillsResponse{Skills: cards, Pagination: pagination(page, perPage, false)})
 		}
-		skills, err := metadata.FindLocalized(c.Context(), query, presentationLocale(c), exactName, limit+1, offset)
+		locale := presentationLocale(c)
+		skills, err := metadata.FindLocalized(c.Context(), query, locale, exactName, perPage+1, page*perPage)
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.find", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
 		}
-		return writeJSON(c, fiber.StatusOK, discoveryResponse(c.Context(), "find", metadata, presentationLocale(c), skills, limit, offset))
+		return writeJSON(c, fiber.StatusOK, discoveryResponse(c.Context(), metadata, locale, skills, page, perPage))
 	}
 }
 
 func findSkillsBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		var request protocolapi.FindRequest
+		var request protocolapi.FindCandidatesRequest
 		decoder := json.NewDecoder(strings.NewReader(string(c.Body())))
 		decoder.DisallowUnknownFields()
-		if err := decoder.Decode(&request); err != nil || decoder.Decode(&struct{}{}) != io.EOF || request.SchemaVersion != protocolapi.SchemaVersion || len(request.Queries) == 0 || len(request.Queries) > 100 || request.Limit < 1 || request.Limit > 10 {
+		if err := decoder.Decode(&request); err != nil || decoder.Decode(&struct{}{}) != io.EOF || len(request.Queries) == 0 || len(request.Queries) > 100 || request.Limit < 1 || request.Limit > 10 {
 			return writeAPIError(c, fiber.StatusBadRequest, "invalid Find request")
 		}
 		locale, err := presentation.CanonicalLocale(request.Locale)
 		if err != nil || len(locale) > 35 {
 			return writeAPIError(c, fiber.StatusBadRequest, "invalid Find locale")
 		}
-		seen := make(map[string]bool, len(request.Queries))
 		for index, item := range request.Queries {
-			item.ID = strings.TrimSpace(item.ID)
-			item.Query = strings.TrimSpace(item.Query)
-			item.Source = strings.TrimSpace(item.Source)
-			if item.ID == "" || seen[item.ID] || item.Query == "" || len([]rune(item.Query)) > 200 {
-				return writeAPIError(c, fiber.StatusBadRequest, "Find queries require unique IDs and q containing 1 to 200 characters")
+			item.Name = strings.TrimSpace(item.Name)
+			item.ModulePath = strings.TrimSpace(item.ModulePath)
+			if item.Name == "" || len([]rune(item.Name)) > 200 {
+				return writeAPIError(c, fiber.StatusBadRequest, "Candidate queries require name containing 1 to 200 characters")
 			}
-			seen[item.ID] = true
-			if item.Source != "" && !(protocolapi.SkillCoordinate{RepositoryID: item.Source, Name: item.Query}).Valid() {
-				return writeAPIError(c, fiber.StatusBadRequest, "Find source and q must form a canonical Skill coordinate")
+			if item.ModulePath != "" && !(protocolapi.SkillCoordinate{ModulePath: item.ModulePath, Name: item.Name}).Valid() {
+				return writeAPIError(c, fiber.StatusBadRequest, "Candidate modulePath and name must form a canonical Skill coordinate")
 			}
 			request.Queries[index] = item
 		}
 
 		batchQueries := make([]catalog.FindBatchQuery, 0, len(request.Queries))
-		for _, item := range request.Queries {
+		for index, item := range request.Queries {
 			batchQueries = append(batchQueries, catalog.FindBatchQuery{
-				ID: item.ID, Query: item.Query, Source: item.Source, ExactName: item.ExactName,
+				ID: strconv.Itoa(index), Query: item.Name, ModulePath: item.ModulePath, ExactName: true,
 			})
 		}
 		found, err := metadata.FindBatchLocalized(c.Context(), batchQueries, locale, request.Limit)
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.find_batch", fiber.StatusInternalServerError, "internal_error", "Find failed", err)
 		}
-		results := make([]protocolapi.FindResult, 0, len(found))
+		candidates := make([][]protocolapi.SkillCandidate, 0, len(found))
 		for _, item := range found {
-			cards := make([]discoverySkill, 0, len(item.Skills))
+			matches := make([]protocolapi.SkillCandidate, 0, len(item.Skills))
 			for _, skill := range item.Skills {
-				cards = append(cards, searchedSkillCard(skill))
+				matches = append(matches, protocolapi.SkillCandidate{
+					ModulePath: skill.ModulePath, Version: skill.LatestVersion, Name: skill.Name,
+					Path: skill.Path, Description: skill.Description,
+				})
 			}
-			results = append(results, protocolapi.FindResult{
-				ID: item.ID, Query: item.Query, Source: item.Source, Skills: cards,
-			})
+			candidates = append(candidates, matches)
 		}
-		response := protocolapi.FindResponse{SchemaVersion: protocolapi.SchemaVersion, Collection: "find", Results: results}
+		response := protocolapi.FindCandidatesResponse{Candidates: candidates}
 		return writeJSON(c, fiber.StatusOK, response)
 	}
 }
 
-func discoveryResponse(ctx context.Context, collection string, metadata *catalog.Catalog, locale string, ranked []catalog.SearchSkill, limit, offset int) skillsResponse {
-	nextOffset := (*int)(nil)
-	if len(ranked) > limit {
-		next := offset + limit
-		nextOffset = &next
-		ranked = ranked[:limit]
+func discoveryResponse(ctx context.Context, metadata *catalog.Catalog, locale string, ranked []catalog.SearchSkill, page, perPage int) skillsResponse {
+	hasMore := len(ranked) > perPage
+	if hasMore {
+		ranked = ranked[:perPage]
 	}
 	skills := (skillCardProjection{catalog: metadata}).Search(ctx, locale, ranked)
 	return skillsResponse{
-		Collection: collection,
 		Skills:     skills,
-		Page:       collectionPage{Limit: limit, Offset: offset, NextOffset: nextOffset},
+		Pagination: pagination(page, perPage, hasMore),
 	}
 }
 
-func skillDetailHandler(
-	metadata *catalog.Catalog,
-	artifacts artifactReader,
-	repositories repositoryMetadataReader,
-) fiber.Handler {
-	return func(c fiber.Ctx) error {
-		repositoryID := strings.TrimSpace(c.Query("repositoryId"))
-		skillName := strings.TrimSpace(c.Query("name"))
-		if !validSkillCoordinate(repositoryID, skillName) {
-			return writeAPIError(c, fiber.StatusBadRequest, "repositoryId and canonical Skill name are required")
-		}
-		skill, err := metadata.SkillByCoordinate(c.Context(), repositoryID, skillName)
-		if errors.Is(err, pgx.ErrNoRows) {
-			return writeAPIError(c, fiber.StatusNotFound, "skill not found")
-		}
-		if err != nil {
-			return writeInternalAPIError(c, "catalog.skill_detail", fiber.StatusInternalServerError, "internal_error", "detail failed", err)
-		}
-		if artifacts == nil {
-			return writeAPIErrorCode(c, fiber.StatusServiceUnavailable, "artifact_unavailable", "artifact service unavailable")
-		}
-		version, err := metadata.CurrentRepositoryReleaseMember(c.Context(), repositoryID, skill.Name)
-		if err != nil {
-			return writeInternalAPIError(c, "catalog.skill_version", fiber.StatusInternalServerError, "internal_error", "detail failed", err)
-		}
-		if skill.SourceHost+"/"+skill.Repository != repositoryID {
-			return writeInternalAPIError(c, "catalog.skill_coordinate", fiber.StatusInternalServerError, "internal_error", "detail failed", errors.New("Catalog Repository coordinate mismatch"))
-		}
-		infoBytes, err := artifacts.Info(c.Context(), repositoryID, version.Version)
-		if err != nil {
-			return writeArtifactReadError(c, "artifact.info", err)
-		}
-		var info protocolapi.RepositoryInfo
-		if json.Unmarshal(infoBytes, &info) != nil || info.ID != repositoryID || info.Version != version.Version || info.CommitSHA == "" || info.TreeSHA == "" {
-			return writeInternalAPIError(c, "artifact.decode_info", fiber.StatusBadGateway, "artifact_invalid", "artifact info is invalid", errors.New("artifact info is missing immutable identity fields"))
-		}
-		var member *protocolapi.SkillInfo
-		for index := range info.Skills {
-			if info.Skills[index].RepositoryID == repositoryID && info.Skills[index].Name == skill.Name && info.Skills[index].SkillPath == version.SkillPath {
-				member = &info.Skills[index]
-				break
-			}
-		}
-		if member == nil {
-			return writeInternalAPIError(c, "artifact.member_info", fiber.StatusBadGateway, "artifact_invalid", "artifact info is invalid", errors.New("Repository Info does not contain the Catalog member"))
-		}
-		archive, err := artifacts.Zip(c.Context(), repositoryID, info.Version)
-		if err != nil {
-			return writeArtifactReadError(c, "artifact.zip", err)
-		}
-		archiveSize := archive.Size()
-		archiveBytes, err := readAuditArchive(archive)
-		if err != nil {
-			return writeInternalAPIError(c, "artifact.read_archive", fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid", err)
-		}
-		analysis, err := audit.AnalyzeRepositoryMember(archiveBytes, repositoryID, info.Version, version.SkillPath)
-		if err != nil {
-			return writeInternalAPIError(c, "artifact.audit", fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid", err)
-		}
-		if analysis.Sum != info.Sum || archiveSize != info.ArchiveSize {
-			return writeInternalAPIError(c, "artifact.identity", fiber.StatusBadGateway, "artifact_invalid", "artifact archive is invalid", errors.New("Repository ZIP does not match immutable Info"))
-		}
-		trustLevel := "unverified"
-		if skill.Verified {
-			trustLevel = "community_verified"
-		}
-		repositoryDescription := ""
-		skillCoordinate := repositoryID + ":" + skill.Name
-		if repositories != nil {
-			if source, sourceErr := repositories.Read(c.Context(), skill.SourceHost, skill.Repository); sourceErr != nil {
-				logBestEffortFailure(c, "repository.read_metadata", skillCoordinate, sourceErr)
-			} else {
-				skill.Stars = source.Stars
-				repositoryDescription = source.Description
-			}
-		}
-		locale := presentationLocale(c)
-		if localized, ok, localizedErr := metadata.LocalizedDescription(c.Context(), catalog.LocalizedSkill, skillCoordinate, locale); localizedErr != nil {
-			logBestEffortFailure(c, "catalog.localize_skill", skillCoordinate, localizedErr)
-		} else if ok {
-			skill.Description = localized
-		}
-		if localized, ok, localizedErr := metadata.LocalizedDescription(c.Context(), catalog.LocalizedRepository, skill.Repository, locale); localizedErr != nil {
-			logBestEffortFailure(c, "catalog.localize_repository", skillCoordinate, localizedErr)
-		} else if ok {
-			repositoryDescription = localized
-		}
-		return writeJSON(c, fiber.StatusOK, skillDetailResponse{
-			RepositoryID: repositoryID, Name: skill.Name, Description: skill.Description,
-			Source: skill.SourceHost + "/" + skill.Repository, Repository: skill.SourceHost + "/" + skill.Repository,
-			RepositoryDescription: repositoryDescription,
-			Stars:                 skill.Stars, SourceUpdatedAt: version.CommitTime,
-			ArchiveSize: archiveSize, RequestedVersion: skill.LatestVersion,
-			ImageURL:         skillImageURL(skill.SourceHost, skill.Repository),
-			ImmutableVersion: info.Version, CommitSHA: info.CommitSHA, TreeSHA: member.TreeSHA,
-			SourceRef: info.Ref, Sum: analysis.Sum,
-			Instructions: analysis.Instructions, TrustLevel: trustLevel, RiskAssessment: analysis.Risk,
-			Files: analysis.Files, HasExecutableContent: analysis.HasExecutableContent,
-			ExecutableFiles: analysis.ExecutableFiles,
-		})
-	}
+func pagination(page, perPage int, hasMore bool) protocolapi.Pagination {
+	return protocolapi.Pagination{Page: page, PerPage: perPage, HasMore: hasMore}
 }
 
-func validSkillCoordinate(repositoryID, skillName string) bool {
-	return (protocolapi.SkillCoordinate{RepositoryID: repositoryID, Name: skillName}).Valid()
+func validSkillCoordinate(modulePath, skillName string) bool {
+	return (protocolapi.SkillCoordinate{ModulePath: modulePath, Name: skillName}).Valid()
 }
 
 func presentationLocale(c fiber.Ctx) string {
@@ -477,7 +325,7 @@ func localizeSearchSkills(ctx context.Context, metadata *catalog.Catalog, locale
 		return
 	}
 	for index := range skills {
-		localized, ok, err := metadata.LocalizedDescription(ctx, catalog.LocalizedSkill, skills[index].RepositoryID+":"+skills[index].Name, locale)
+		localized, ok, err := metadata.LocalizedDescription(ctx, catalog.LocalizedSkill, skills[index].ModulePath+":"+skills[index].Name, locale)
 		if err == nil && ok {
 			skills[index].Description = localized
 		}
@@ -499,21 +347,6 @@ func skillImageURL(sourceHost, repository string) *string {
 		RawQuery: "size=256",
 	}).String()
 	return &image
-}
-
-func readAuditArchive(archive storage.SizeReadCloser) ([]byte, error) {
-	defer archive.Close()
-	if archive.Size() <= 0 || archive.Size() > audit.MaxArchiveBytes {
-		return nil, fmt.Errorf("artifact archive size is invalid")
-	}
-	data, err := io.ReadAll(io.LimitReader(archive, audit.MaxArchiveBytes+1))
-	if err != nil {
-		return nil, fmt.Errorf("read artifact archive: %w", err)
-	}
-	if len(data) == 0 || len(data) > audit.MaxArchiveBytes {
-		return nil, fmt.Errorf("artifact archive body size is invalid")
-	}
-	return data, nil
 }
 
 func writeArtifactReadError(c fiber.Ctx, operation string, err error) error {
@@ -550,25 +383,25 @@ func logBestEffortFailure(c fiber.Ctx, operation, skillID string, err error) {
 }
 
 func apiPagination(c fiber.Ctx) (int, int, bool) {
-	limit := 20
-	if raw := c.Query("limit"); raw != "" {
+	perPage := 20
+	if raw := c.Query("perPage"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil || parsed < 1 || parsed > 100 {
-			_ = writeAPIError(c, fiber.StatusBadRequest, "limit must be between 1 and 100")
+			_ = writeAPIError(c, fiber.StatusBadRequest, "perPage must be between 1 and 100")
 			return 0, 0, false
 		}
-		limit = parsed
+		perPage = parsed
 	}
-	offset := 0
-	if raw := c.Query("offset"); raw != "" {
+	page := 0
+	if raw := c.Query("page"); raw != "" {
 		parsed, err := strconv.Atoi(raw)
 		if err != nil || parsed < 0 {
-			_ = writeAPIError(c, fiber.StatusBadRequest, "offset must be a non-negative integer")
+			_ = writeAPIError(c, fiber.StatusBadRequest, "page must be a non-negative integer")
 			return 0, 0, false
 		}
-		offset = parsed
+		page = parsed
 	}
-	return limit, offset, true
+	return page, perPage, true
 }
 
 func writeAPIError(c fiber.Ctx, status int, message string) error {

@@ -229,66 +229,6 @@ void main() {
     },
   );
 
-  testWidgets('the install confirmation also confirms High risk', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 850));
-    final gateway = FakeSkillsGateway(
-      installed: false,
-      remoteDetail: withoutInstallationTargets(
-        defaultRemoteDetail,
-        riskAssessment: SkillRiskAssessment.high,
-      ),
-    );
-    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
-    await tester.pumpAndSettle();
-    await tester.enterText(searchInput(), 'risky');
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Flutter Pro'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Install'));
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
-    );
-    await tester.pumpAndSettle();
-
-    expect(gateway.installCalls, 1);
-    expect(find.text('Installation results'), findsOneWidget);
-    expect(find.textContaining('risk blocked'), findsNothing);
-  });
-
-  testWidgets('Critical risk still follows the Settings policy', (
-    tester,
-  ) async {
-    await tester.binding.setSurfaceSize(const Size(1200, 850));
-    final gateway = FakeSkillsGateway(
-      installed: false,
-      remoteDetail: withoutInstallationTargets(
-        defaultRemoteDetail,
-        riskAssessment: SkillRiskAssessment.critical,
-      ),
-    );
-    await tester.pumpWidget(SkillsGoApp(gateway: gateway));
-    await tester.pumpAndSettle();
-    await tester.enterText(searchInput(), 'critical');
-    await tester.testTextInput.receiveAction(TextInputAction.search);
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Flutter Pro'));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text('Install'));
-    await tester.pumpAndSettle();
-    await tester.tap(
-      find.widgetWithText(PrimaryCapsuleButton, 'Confirm Installation'),
-    );
-    await tester.pumpAndSettle();
-
-    expect(gateway.installCalls, 0);
-    expect(find.text('Review Installation Plan'), findsNothing);
-    expect(find.byKey(const ValueKey('installation-matrix')), findsNothing);
-  });
-
   testWidgets('artifact detail failure is localized and retryable', (
     tester,
   ) async {
@@ -354,7 +294,7 @@ void main() {
     expect(find.text('Flutter Pro'), findsOneWidget);
     expect(
       FocusManager.instance.primaryFocus?.debugLabel,
-      'skill-card-${const SkillCoordinate(repositoryId: 'example/skills/flutter-pro', name: 'Flutter Pro').key}',
+      'skill-card-${const SkillCoordinate(modulePath: 'example/skills', name: 'Flutter Pro').key}',
     );
   });
 

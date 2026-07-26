@@ -19,38 +19,35 @@ import (
 )
 
 type skillInfoView struct {
-	hub.Info
-	ImageURL       *string  `json:"ImageURL,omitempty"`
-	Stars          int64    `json:"Stars"`
-	TrustLevel     string   `json:"TrustLevel"`
-	RiskAssessment hub.Risk `json:"RiskAssessment"`
+	SchemaVersion int     `json:"schemaVersion"`
+	Kind          string  `json:"kind"`
+	ModulePath    string  `json:"modulePath"`
+	Path          string  `json:"path"`
+	Version       string  `json:"version"`
+	Name          string  `json:"name"`
+	Description   string  `json:"description"`
+	ImageURL      *string `json:"imageUrl,omitempty"`
+	Stars         int64   `json:"stars"`
 }
 
-type repositoryInfoView struct {
-	SchemaVersion int             `json:"SchemaVersion"`
-	Kind          string          `json:"Kind"`
-	ID            string          `json:"ID"`
-	Version       string          `json:"Version"`
-	Time          time.Time       `json:"Time"`
-	Ref           string          `json:"Ref"`
-	CommitSHA     string          `json:"CommitSHA"`
-	Description   string          `json:"Description"`
-	Skills        []skillInfoView `json:"Skills"`
+type moduleInfoView struct {
+	SchemaVersion int             `json:"schemaVersion"`
+	Kind          string          `json:"kind"`
+	ModulePath    string          `json:"modulePath"`
+	Version       string          `json:"version"`
+	Time          time.Time       `json:"time"`
+	Description   string          `json:"description"`
+	Skills        []skillInfoView `json:"skills"`
 }
 
-func productSkillInfo(ctx context.Context, client *hub.Client, info hub.Info) (skillInfoView, string, error) {
-	metadata, err := client.SkillProduct(ctx, info.RepositoryID, info.Name)
+func productSkillInfo(ctx context.Context, client *hub.Client, modulePath, version string, info hub.Info) (skillInfoView, string, error) {
+	metadata, err := client.ModuleVersionSkill(ctx, modulePath, version, info.Path)
 	if err != nil {
 		return skillInfoView{}, "", err
 	}
-	risk := metadata.RiskAssessment.Level
-	if risk == "" {
-		risk = info.Risk
-	}
 	return skillInfoView{
-		Info: info, ImageURL: metadata.ImageURL,
-		Stars: metadata.Stars, TrustLevel: metadata.TrustLevel, RiskAssessment: risk,
-	}, metadata.RepositoryDescription, nil
+		SchemaVersion: 1, Kind: "Skill", ModulePath: modulePath, Path: info.Path, Version: version, Name: info.Name, Description: metadata.Description,
+	}, "", nil
 }
 
 func newInfoCommand() *cobra.Command {
@@ -67,13 +64,13 @@ func newInfoCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			repositoryID := reference.RepositoryID
+			modulePath := reference.ModulePath
 			client, err := hub.New(hubURL, nil)
 			if err != nil {
 				return err
 			}
 			if skillName != "" {
-				resource, resolveErr := client.Repository(cmd.Context(), repositoryID, reference.Version)
+				resource, resolveErr := client.Module(cmd.Context(), modulePath, reference.Version)
 				if resolveErr != nil {
 					return resolveErr
 				}
@@ -85,9 +82,9 @@ func newInfoCommand() *cobra.Command {
 					}
 				}
 				if info.Name == "" {
-					return fmt.Errorf("Repository %s@%s does not contain Skill named %s", repositoryID, resource.Info.Version, skillName)
+					return fmt.Errorf("Repository %s@%s does not contain Skill named %s", modulePath, resource.Info.Version, skillName)
 				}
-				view, _, productErr := productSkillInfo(cmd.Context(), client, info)
+				view, _, productErr := productSkillInfo(cmd.Context(), client, modulePath, resource.Info.Version, info)
 				if productErr != nil {
 					return productErr
 				}
@@ -96,21 +93,20 @@ func newInfoCommand() *cobra.Command {
 					encoder.SetIndent("", "  ")
 					return encoder.Encode(view)
 				}
-				_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s:%s@%s\n%s\n", info.RepositoryID, info.Name, info.Version, info.Description)
+				_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s:%s@%s\n%s\n", modulePath, info.Name, resource.Info.Version, view.Description)
 				return err
 			}
-			resource, err := client.Repository(cmd.Context(), repositoryID, reference.Version)
+			resource, err := client.Module(cmd.Context(), modulePath, reference.Version)
 			if err != nil {
 				return err
 			}
 			if output == "json" {
-				view := repositoryInfoView{
-					SchemaVersion: resource.Info.SchemaVersion, Kind: resource.Info.Kind, ID: resource.Info.ID,
-					Version: resource.Info.Version, Time: resource.Info.Time, Ref: resource.Info.Ref,
-					CommitSHA: resource.Info.CommitSHA, Skills: make([]skillInfoView, 0, len(resource.Members)),
+				view := moduleInfoView{
+					SchemaVersion: resource.Info.SchemaVersion, Kind: resource.Info.Kind, ModulePath: resource.Info.ModulePath,
+					Version: resource.Info.Version, Time: resource.Info.Time, Skills: make([]skillInfoView, 0, len(resource.Members)),
 				}
 				for _, member := range resource.Members {
-					skillView, description, productErr := productSkillInfo(cmd.Context(), client, member.Info)
+					skillView, description, productErr := productSkillInfo(cmd.Context(), client, modulePath, resource.Info.Version, member.Info)
 					if productErr != nil {
 						return productErr
 					}
@@ -123,11 +119,11 @@ func newInfoCommand() *cobra.Command {
 				encoder.SetIndent("", "  ")
 				return encoder.Encode(view)
 			}
-			if _, err = fmt.Fprintf(cmd.OutOrStdout(), "%s@%s (%s)\n", resource.Info.ID, resource.Info.Version, resource.Info.CommitSHA); err != nil {
+			if _, err = fmt.Fprintf(cmd.OutOrStdout(), "%s@%s\n", resource.Info.ModulePath, resource.Info.Version); err != nil {
 				return err
 			}
 			for _, member := range resource.Members {
-				if _, err = fmt.Fprintf(cmd.OutOrStdout(), "- %s\t%s\n", member.Info.Name, member.Info.SkillPath); err != nil {
+				if _, err = fmt.Fprintf(cmd.OutOrStdout(), "- %s\t%s\n", member.Info.Name, member.Info.Path); err != nil {
 					return err
 				}
 			}

@@ -3,7 +3,7 @@
 
 ## Members
 
-- `dev.sh`: validates the macOS development toolchain, removes stale repository-owned development processes, and starts Process Compose.
+- `dev.sh`: validates the macOS development toolchain, removes stale repository-owned development processes, and starts either the complete Process Compose topology or a named dependency-closed subset such as Hub plus PostgreSQL.
 - `cleanup-dev.sh`: discovers and terminates stale SkillsGo development process trees without affecting unrelated processes.
 - `watch-flutter.sh`: watches maintained App sources and assets and requests Flutter Hot Reload through its PID file.
 

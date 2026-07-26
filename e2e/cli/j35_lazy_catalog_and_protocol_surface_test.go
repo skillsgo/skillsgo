@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on an initially empty Catalog, ordinary CLI add, public Skill detail, canonical Repository protocol routes, and legacy route absence.
- * [OUTPUT]: Provides black-box coverage that demand discovery populates Catalog while the maintained protocol excludes resolve, manifest, and skillsgo resources.
+ * [INPUT]: Depends on an initially empty Catalog, public Module Version Skill demand publication, ordinary CLI add, canonical Module routes, and legacy route absence.
+ * [OUTPUT]: Provides black-box coverage that a version-scoped Skill read populates Catalog while the maintained protocol excludes resolve, manifest, and skillsgo resources.
  * [POS]: Serves as lazy Catalog visibility and protocol-contraction coverage in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,26 +18,22 @@ func TestJ35LazyCatalogAndProtocolSurface(t *testing.T) {
 	ctx := context.Background()
 	container, _ := startEnvironment(t, ctx)
 	repository := "fixtures.test/group/subgroup/collection"
-	detailURL := "http://127.0.0.1:3000/api/v1/skills/detail?repositoryId=" + repository + "&name=alpha"
-	before := execInContainer(t, ctx, container, "wget", "-S", "-qO-", detailURL)
-	require.NotEqual(t, 0, before.exitCode, before.output)
+	detailURL := "http://127.0.0.1:3000/api/v1/" + repository + "/versions/v1.0.0/skills?path=skills/alpha"
+	cold := execInContainer(t, ctx, container, "wget", "-qO-", detailURL)
+	require.Equal(t, 0, cold.exitCode, cold.output)
+	require.Contains(t, cold.output, `"path":"skills/alpha"`)
 
 	add := execCLI(t, ctx, container,
 		"add", "https://"+repository+"@v1.0.0", "--skill", "alpha",
 		"--agent", "codex", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, add.exitCode, add.output)
-	after := execInContainer(t, ctx, container, "wget", "-qO-", detailURL)
-	require.Equal(t, 0, after.exitCode, after.output)
-	require.Contains(t, after.output, `"repositoryId":"`+repository+`"`)
-	require.Contains(t, after.output, `"name":"alpha"`)
-
-	canonical := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/"+repository+"/@v/v1.0.0.info")
+	canonical := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/"+repository+"/versions/v1.0.0")
 	require.Equal(t, 0, canonical.exitCode, canonical.output)
 	for _, path := range []string{
 		"/" + repository + "/@resolve?selector=latest",
-		"/" + repository + "/@v/v1.0.0.manifest",
-		"/" + repository + "/@v/v1.0.0.skillsgo",
+		"/" + repository + "/versions/v1.0.0.manifest",
+		"/" + repository + "/versions/v1.0.0.skillsgo",
 	} {
 		legacy := execInContainer(t, ctx, container, "wget", "-S", "-qO-", "http://127.0.0.1:3000"+path)
 		require.NotEqual(t, 0, legacy.exitCode, path+" unexpectedly succeeded: "+legacy.output)
