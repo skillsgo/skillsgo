@@ -25,7 +25,7 @@ The set of requested Installation Targets that share one physical mutation and c
 _Avoid_: globally atomic Installation Request, independent shared-path targets
 
 **Agent Adapter**:
-The definition and detection rules that describe how one Agent discovers user-level and Workspace-level Skills.
+The definition and detection rules that describe how one Agent discovers Global and Workspace-level Skills.
 _Avoid_: hard-coded Agent path, generic plugin adapter
 
 **Managed Skill Root**:
@@ -45,15 +45,15 @@ An Agent environment detected on the current machine through its Agent Adapter. 
 _Avoid_: active Agent, Agent with Skills
 
 **Scope Module Store**:
-The authoritative filesystem copy of a verified Module Artifact within one installation scope. It preserves only artifact symlinks that resolve inside the same Module and revalidates them during extraction. Workspace Scope stores Module Store under `.skillsgo/modules`; User Scope stores it under `~/.skillsgo/modules`. Version one does not share a Store across scopes.
+The authoritative filesystem copy of a verified Module Artifact within one installation scope. It preserves only artifact symlinks that resolve inside the same Module and revalidates them during extraction. Workspace Scope stores Module Store under `.skillsgo/modules`; Global Scope stores it under `~/.skillsgo/modules`. Version one does not share a Store across scopes.
 _Avoid_: shared Store, Agent Skill directory, mutable working copy
 
 **Module Projection**:
 The deterministic installation view generated for one Scope, Agent, and Module Version. It preserves the Module layout and safe internal symlinks but retains `SKILL.md` only for selected members, so shared runtime files remain available without exposing unselected Skills.
 _Avoid_: external symlink, independent Skill artifact, editable fork
 
-**User Scope**:
-The installation scope that projects Skills into an Agent's user-level Skill directory for the current operating-system user.
+**Global Scope**:
+The installation scope that projects Skills into an Agent's Global Skill directory for the current operating-system user.
 _Avoid_: system install, machine-wide install
 
 **Workspace Scope**:
@@ -76,12 +76,12 @@ _Avoid_: `skillsgo.sum`, editable manifest, installation receipt
 The user-local cache of exact Module Info response bytes. Cache entries are identity checked and crash-safe; Dependency Lock verifies Module artifact identity, while a checksum without cached content cannot restore anything offline.
 _Avoid_: mutable resolution cache, membership database, Workspace state
 
-**User Declaration Root**:
-The `~/.agents` directory that owns user-scope `skills.yaml` and `skills-lock.yaml`. It contains portable user intent, while SkillsGo-private materialized state remains outside it.
+**Global Declaration Root**:
+The `~/.agents` directory that owns Global-scope `skills.yaml` and `skills-lock.yaml`. It contains portable user intent, while SkillsGo-private materialized state remains outside it.
 _Avoid_: `~/.skillsgo` declaration root, per-Agent manifest
 
-**User State Root**:
-The `~/.skillsgo` directory that owns user-scope Module Stores, immutable Info, ephemeral plans, and other SkillsGo-private state.
+**Global State Root**:
+The `~/.skillsgo` directory that owns Global-scope Module Stores, immutable Info, ephemeral plans, and other SkillsGo-private state.
 _Avoid_: user declaration root, Agent configuration root
 
 **Batch Takeover**:

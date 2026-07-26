@@ -407,7 +407,7 @@ class AppLocalizationsId extends AppLocalizations {
   String get specificProject => 'Proyek';
 
   @override
-  String get userScope => 'Global';
+  String get globalScope => 'Global';
 
   @override
   String get addProject => 'Tambahkan Proyek';

@@ -23,11 +23,11 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 	skillBytes := []byte("---\nname: alpha\ndescription: Alpha at v1.\n---\n# alpha\n")
 	require.NoError(t, os.MkdirAll(targetRoot, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(targetRoot, "SKILL.md"), skillBytes, 0o644))
-	writeSkillsShUserLock(t, sandboxRoot, map[string]any{
+	writeSkillsShGlobalLock(t, sandboxRoot, map[string]any{
 		"demo": skillsShLockRecord("skills/alpha/SKILL.md"),
 	})
 
-	preview := execCLI(t, ctx, container, "takeover", "--preflight", "--user", "--output", "json")
+	preview := execCLI(t, ctx, container, "takeover", "--preflight", "--global", "--output", "json")
 	require.Equal(t, 0, preview.exitCode, preview.output)
 	var plan takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(preview.output), &plan), preview.output)
@@ -39,7 +39,7 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "home", ".agents", "skills-lock.yaml"))
 
 	execution := execCLI(t, ctx, container,
-		"takeover", "--plan", plan.PlanID, "--user", "--yes", "--output", "json",
+		"takeover", "--plan", plan.PlanID, "--global", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, execution.exitCode, execution.output)
 	var report takeoverExecutionJSON
@@ -62,7 +62,7 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 	require.FileExists(t, filepath.Join(declarationRoot, "skills.yaml"))
 	require.FileExists(t, filepath.Join(declarationRoot, "skills-lock.yaml"))
 
-	inventory := execCLI(t, ctx, container, "inventory", "--user", "--output", "json")
+	inventory := execCLI(t, ctx, container, "list", "--global", "--output", "json")
 	require.Equal(t, 0, inventory.exitCode, inventory.output)
 	var inventoryReport struct {
 		Entries []struct {
@@ -77,7 +77,7 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 	require.Equal(t, "hub", inventoryReport.Entries[0].Provenance)
 	require.Equal(t, "healthy", inventoryReport.Entries[0].Health)
 
-	rescan := execCLI(t, ctx, container, "takeover", "--preflight", "--user", "--output", "json")
+	rescan := execCLI(t, ctx, container, "takeover", "--preflight", "--global", "--output", "json")
 	require.Equal(t, 0, rescan.exitCode, rescan.output)
 	var rescanned takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(rescan.output), &rescanned), rescan.output)
@@ -125,7 +125,7 @@ func skillsShLockRecord(skillPath string) map[string]any {
 	}
 }
 
-func writeSkillsShUserLock(t *testing.T, sandboxRoot string, skills map[string]any) {
+func writeSkillsShGlobalLock(t *testing.T, sandboxRoot string, skills map[string]any) {
 	t.Helper()
 	lockRoot := filepath.Join(sandboxRoot, "home", ".agents")
 	require.NoError(t, os.MkdirAll(lockRoot, 0o700))

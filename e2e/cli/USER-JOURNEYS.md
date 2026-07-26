@@ -95,13 +95,13 @@ Only the selected target or binding disappears; shared canonical content and oth
 
 Status: implemented by removing only the Claude Code projection in `j10_remove_one_binding_test.go`.
 
-### J11 — Install and remove a user-scope Skill
+### J11 — Install and remove a Global-scope Skill
 
-As a user, I want to make a Skill available to an Agent across Workspaces and later remove that user-level installation without touching project declarations.
+As a user, I want to make a Skill available to an Agent across Workspaces and later remove that Global installation without touching project declarations.
 
-The CLI mutates only the Agent's user-level Managed Skill Root, the User Declaration Root under `~/.agents`, and the User State Root under `~/.skillsgo` inside the isolated environment.
+The CLI mutates only the Agent's Global Managed Skill Root, the Global Declaration Root under `~/.agents`, and the Global State Root under `~/.skillsgo` inside the isolated environment.
 
-Status: implemented for Codex plus a Hermes Agent-specific home override with User Module Store state by `j11_user_scope_test.go`.
+Status: implemented for Codex plus a Hermes Agent-specific home override with Global Module Store state by `j11_global_scope_test.go`.
 
 ### J12 — Install every Skill from a multi-Skill repository
 
@@ -303,7 +303,7 @@ Status: implemented against an unreachable Hub with released CLI JSON stdout and
 
 As an App or automation user installing to independent targets, I want one target failure to leave another committed Installation Target Group intact and report both outcomes.
 
-Status: implemented with schema 3, one committed Codex Project target, one failed Codex User target, nested `installation.target_failed`, and non-zero process status by `j39_installation_partial_failure_test.go`.
+Status: implemented with schema 3, one committed Codex Project target, one failed Codex Global target, nested `installation.target_failed`, and non-zero process status by `j39_installation_partial_failure_test.go`.
 
 ## Existing Installation Management Journeys
 
@@ -311,7 +311,7 @@ Status: implemented with schema 3, one committed Codex Project target, one faile
 
 As a user who installed a Skill through a compatible lockfile, I want SkillsGo to verify it against an immutable Repository Artifact, install ordinary managed state, and recoverably retire the External copy.
 
-Preflight reports one eligible Skill without writing Module Store, YAML, or Lock state. Confirmation verifies exact bytes against a published Repository member, writes the User Module Store and coordinate Projection, moves the superseded external copy to recoverable trash, exposes the Skill as managed inventory, and makes the next scan report zero eligible Skills.
+Preflight reports one eligible Skill without writing Module Store, YAML, or Lock state. Confirmation verifies exact bytes against a published Repository member, writes the Global Module Store and coordinate Projection, moves the superseded external copy to recoverable trash, exposes the Skill as managed inventory, and makes the next scan report zero eligible Skills.
 
 Status: implemented through the released CLI and observable filesystem state by `j40_takeover_existing_skill_test.go`.
 

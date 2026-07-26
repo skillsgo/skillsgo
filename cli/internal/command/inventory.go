@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra, localized human copy, terminal documents, the Agent Catalog, and the inventory domain report builder.
- * [OUTPUT]: Provides `skillsgo inventory` with stable managed/external JSON serialization and adaptive Human summaries for explicit Library locations.
+ * [OUTPUT]: Provides the sole installed-Skill listing command, `skillsgo list`, with current-Workspace defaults, explicit Global/Project selection, stable managed/external JSON serialization, and path-rich adaptive Human summaries.
  * [POS]: Serves as the thin executable adapter for unified Library inventory without owning reconciliation mechanics.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,6 +10,10 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
+	"path/filepath"
+	"slices"
+	"sort"
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
@@ -23,25 +27,29 @@ const inventorySchemaVersion = inventory.SchemaVersion
 
 type inventoryReport = inventory.Report
 
-func newInventoryCommand(catalog *agent.Catalog) *cobra.Command {
-	var includeUser bool
+func newListCommand(catalog *agent.Catalog) *cobra.Command {
+	var includeGlobal bool
 	var projects []string
 	var output string
 	cmd := &cobra.Command{
-		Use:   "inventory",
-		Short: appi18n.T("inventory.short"),
+		Use:   "list",
+		Short: appi18n.T("list.short"),
 		Args:  cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if !includeUser && len(projects) == 0 {
-				return errors.New(appi18n.T("inventory.error.location"))
+			if !includeGlobal && len(projects) == 0 {
+				cwd, err := os.Getwd()
+				if err != nil {
+					return err
+				}
+				projects = []string{cwd}
 			}
 			report, err := inventory.Build(inventory.Options{
-				IncludeUser: includeUser,
-				Projects:    projects,
-				Catalog:     catalog,
+				IncludeGlobal: includeGlobal,
+				Projects:      projects,
+				Catalog:       catalog,
 			})
 			if errors.Is(err, inventory.ErrEmptyProjectRoot) {
-				return errors.New(appi18n.T("inventory.error.empty_project"))
+				return errors.New(appi18n.T("list.error.empty_project"))
 			}
 			if err != nil {
 				return err
@@ -50,6 +58,10 @@ func newInventoryCommand(catalog *agent.Catalog) *cobra.Command {
 			case "json":
 				return json.NewEncoder(cmd.OutOrStdout()).Encode(report)
 			case "human":
+				if len(report.Entries) == 0 {
+					fmt.Fprintln(cmd.OutOrStdout(), appi18n.T("list.empty"))
+					return nil
+				}
 				rows := make([]terminalui.Row, 0, len(report.Entries))
 				for _, entry := range report.Entries {
 					healthKey := strings.ReplaceAll(string(entry.Health), "-", "_")
@@ -57,22 +69,33 @@ func newInventoryCommand(catalog *agent.Catalog) *cobra.Command {
 					if entry.Health != inventory.HealthHealthy {
 						state = "!"
 					}
-					rows = append(rows, terminalui.Row{State: state, Primary: entry.Name,
-						Secondary: fmt.Sprintf("%d targets", len(entry.Targets)),
-						Meta:      []string{string(entry.Provenance), appi18n.T("inventory.health." + healthKey)}})
+					agents := append([]string(nil), entry.Agents...)
+					for _, visibility := range entry.Visibility {
+						if !slices.Contains(agents, visibility.Agent) {
+							agents = append(agents, visibility.Agent)
+						}
+					}
+					sort.Strings(agents)
+					secondary := fmt.Sprintf("%d targets", len(entry.Targets))
+					if len(entry.Targets) > 0 {
+						secondary = filepath.Clean(entry.Targets[0].Path)
+					}
+					meta := []string{string(entry.Provenance), appi18n.T("list.health." + healthKey)}
+					meta = append(meta, agents...)
+					rows = append(rows, terminalui.Row{State: state, Primary: entry.Name, Secondary: secondary, Meta: meta})
 				}
 				ui, err := humanUI(cmd)
 				if err != nil {
 					return err
 				}
-				return ui.Render(terminalui.Document{Title: appi18n.T("inventory.title"), Sections: []terminalui.Section{{Rows: rows}}})
+				return ui.Render(terminalui.Document{Title: appi18n.T("list.title"), Sections: []terminalui.Section{{Rows: rows}}})
 			default:
-				return fmt.Errorf(appi18n.T("inventory.error.output"), output)
+				return fmt.Errorf(appi18n.T("list.error.output"), output)
 			}
 		},
 	}
-	cmd.Flags().BoolVar(&includeUser, "user", false, appi18n.T("inventory.flag.user"))
-	cmd.Flags().StringArrayVar(&projects, "project", nil, appi18n.T("inventory.flag.project"))
+	cmd.Flags().BoolVarP(&includeGlobal, "global", "g", false, appi18n.T("list.flag.global"))
+	cmd.Flags().StringArrayVar(&projects, "project", nil, appi18n.T("list.flag.project"))
 	cmd.Flags().StringVar(&output, "output", "human", appi18n.T("flag.output"))
 	return cmd
 }

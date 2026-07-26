@@ -23,7 +23,7 @@ List<_InstallationScopeGroup> _installationScopeGroups(
   final userAgents = <String>{};
   final projectAgents = <String, Set<String>>{};
   for (final target in skill.targets) {
-    if (target.scope == InstallationScope.user) {
+    if (target.scope == InstallationScope.global) {
       userAgents.add(target.agent);
     } else {
       projectAgents
@@ -295,7 +295,7 @@ String _installationCoverageLabel(
   InstalledSkill skill,
   List<AddedProject> projects,
 ) {
-  if (skill.targets.any((target) => target.scope == InstallationScope.user)) {
+  if (skill.targets.any((target) => target.scope == InstallationScope.global)) {
     return context.l10n.allProjects;
   }
   if (skill.projects.length == 1) {

@@ -398,7 +398,7 @@ class AppLocalizationsJa extends AppLocalizations {
   String get specificProject => 'プロジェクト';
 
   @override
-  String get userScope => 'グローバル';
+  String get globalScope => 'グローバル';
 
   @override
   String get addProject => 'プロジェクトの追加';

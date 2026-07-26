@@ -407,7 +407,7 @@ class AppLocalizationsPl extends AppLocalizations {
   String get specificProject => 'Projekt';
 
   @override
-  String get userScope => 'Światowy';
+  String get globalScope => 'Światowy';
 
   @override
   String get addProject => 'Dodaj projekt';

@@ -234,7 +234,7 @@
   "allAgents": "Agent ทั้งหมด",
   "allProjects": "โครงการทั้งหมด",
   "specificProject": "โครงการ",
-  "userScope": "ทั่วโลก",
+  "globalScope": "ทั่วโลก",
   "addProject": "เพิ่มโครงการ",
   "relocateProject": "ย้ายที่อยู่",
   "removeFromList": "ลบออกจากรายการ",

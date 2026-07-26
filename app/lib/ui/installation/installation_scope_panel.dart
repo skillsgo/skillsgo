@@ -32,8 +32,8 @@ class _InstallationScopePanelState extends State<InstallationScopePanel> {
   List<_InstalledTargetGroup> get groups {
     final values = <String, List<SkillInstallationTarget>>{};
     for (final target in widget.targets) {
-      final key = target.scope == InstallationScope.user
-          ? 'user'
+      final key = target.scope == InstallationScope.global
+          ? 'global'
           : 'project:${target.projectRoot}';
       values.putIfAbsent(key, () => []).add(target);
     }
@@ -91,8 +91,8 @@ class _InstallationScopePanelState extends State<InstallationScopePanel> {
             .toList()
           ..sort();
     final first = group.targets.first;
-    final label = first.scope == InstallationScope.user
-        ? context.l10n.userScope
+    final label = first.scope == InstallationScope.global
+        ? context.l10n.globalScope
         : p.basename(first.projectRoot);
     AddedProject? project;
     if (first.scope == InstallationScope.project) {

@@ -807,11 +807,11 @@ abstract class AppLocalizations {
   /// **'Project'**
   String get specificProject;
 
-  /// No description provided for @userScope.
+  /// No description provided for @globalScope.
   ///
   /// In en, this message translates to:
   /// **'Global'**
-  String get userScope;
+  String get globalScope;
 
   /// No description provided for @addProject.
   ///

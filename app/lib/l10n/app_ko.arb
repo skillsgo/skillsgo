@@ -234,7 +234,7 @@
   "allAgents": "모든 에이전트",
   "allProjects": "모든 프로젝트",
   "specificProject": "프로젝트",
-  "userScope": "글로벌",
+  "globalScope": "글로벌",
   "addProject": "프로젝트 추가",
   "relocateProject": "재배치",
   "removeFromList": "목록에서 제거",

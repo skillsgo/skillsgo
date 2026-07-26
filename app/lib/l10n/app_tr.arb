@@ -234,7 +234,7 @@
   "allAgents": "Hepsi Agents",
   "allProjects": "Tüm Projeler",
   "specificProject": "Proje",
-  "userScope": "Küresel",
+  "globalScope": "Küresel",
   "addProject": "Proje Ekle",
   "relocateProject": "Yerini değiştir",
   "removeFromList": "Listeden Kaldır",

@@ -404,7 +404,7 @@ class AppLocalizationsHi extends AppLocalizations {
   String get specificProject => 'प्रोजेक्ट';
 
   @override
-  String get userScope => 'वैश्विक';
+  String get globalScope => 'वैश्विक';
 
   @override
   String get addProject => 'प्रोजेक्ट जोड़ें';

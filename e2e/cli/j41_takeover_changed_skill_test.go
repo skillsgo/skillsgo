@@ -25,12 +25,12 @@ func TestJ41SkipChangedSkillWithoutLosingData(t *testing.T) {
 	require.NoError(t, os.MkdirAll(stableTarget, 0o755))
 	require.NoError(t, os.WriteFile(filepath.Join(changedTarget, "SKILL.md"), []byte("---\nname: alpha\ndescription: Alpha at v1.\n---\n# alpha\n"), 0o644))
 	require.NoError(t, os.WriteFile(filepath.Join(stableTarget, "SKILL.md"), []byte("---\nname: beta\ndescription: Beta exists only at v1.\n---\n# beta\n"), 0o644))
-	writeSkillsShUserLock(t, sandboxRoot, map[string]any{
+	writeSkillsShGlobalLock(t, sandboxRoot, map[string]any{
 		"changed": skillsShLockRecord("skills/alpha/SKILL.md"),
 		"stable":  skillsShLockRecord("skills/beta/SKILL.md"),
 	})
 
-	preview := execCLI(t, ctx, container, "takeover", "--preflight", "--user", "--output", "json")
+	preview := execCLI(t, ctx, container, "takeover", "--preflight", "--global", "--output", "json")
 	require.Equal(t, 0, preview.exitCode, preview.output)
 	var plan takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(preview.output), &plan), preview.output)
@@ -42,7 +42,7 @@ func TestJ41SkipChangedSkillWithoutLosingData(t *testing.T) {
 	require.NoError(t, os.WriteFile(changedPath, changedBytes, 0o644))
 
 	execution := execCLI(t, ctx, container,
-		"takeover", "--plan", plan.PlanID, "--user", "--yes", "--output", "json",
+		"takeover", "--plan", plan.PlanID, "--global", "--yes", "--output", "json",
 	)
 	require.Equal(t, 0, execution.exitCode, execution.output)
 	var report takeoverExecutionJSON
@@ -84,7 +84,7 @@ func TestJ41SkipChangedSkillWithoutLosingData(t *testing.T) {
 	require.FileExists(t, filepath.Join(declarationRoot, "skills.yaml"))
 	require.FileExists(t, filepath.Join(declarationRoot, "skills-lock.yaml"))
 
-	rescan := execCLI(t, ctx, container, "takeover", "--preflight", "--user", "--output", "json")
+	rescan := execCLI(t, ctx, container, "takeover", "--preflight", "--global", "--output", "json")
 	require.Equal(t, 0, rescan.exitCode, rescan.output)
 	var rescanned takeoverPreflightJSON
 	require.NoError(t, json.Unmarshal([]byte(rescan.output), &rescanned), rescan.output)

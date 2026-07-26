@@ -126,7 +126,7 @@
   "allAgents": "All Agents",
   "allProjects": "All Projects",
   "specificProject": "Project",
-  "userScope": "Global",
+  "globalScope": "Global",
   "addProject": "Add Project",
   "relocateProject": "Relocate",
   "removeFromList": "Remove from List",

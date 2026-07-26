@@ -406,7 +406,7 @@ class AppLocalizationsVi extends AppLocalizations {
   String get specificProject => 'dự án';
 
   @override
-  String get userScope => 'Toàn cầu';
+  String get globalScope => 'Toàn cầu';
 
   @override
   String get addProject => 'Thêm dự án';

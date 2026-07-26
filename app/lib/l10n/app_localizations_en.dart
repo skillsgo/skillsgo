@@ -404,7 +404,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get specificProject => 'Project';
 
   @override
-  String get userScope => 'Global';
+  String get globalScope => 'Global';
 
   @override
   String get addProject => 'Add Project';

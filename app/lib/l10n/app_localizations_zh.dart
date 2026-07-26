@@ -377,7 +377,7 @@ class AppLocalizationsZh extends AppLocalizations {
   String get specificProject => '指定项目';
 
   @override
-  String get userScope => '全局安装';
+  String get globalScope => '全局安装';
 
   @override
   String get addProject => '添加项目';
@@ -2168,7 +2168,7 @@ class AppLocalizationsZhHantHk extends AppLocalizationsZh {
   String get specificProject => '指定項目';
 
   @override
-  String get userScope => '全局安裝';
+  String get globalScope => '全局安裝';
 
   @override
   String get addProject => '添加項目';
@@ -3960,7 +3960,7 @@ class AppLocalizationsZhHantTw extends AppLocalizationsZh {
   String get specificProject => '指定專案';
 
   @override
-  String get userScope => '全域性安裝';
+  String get globalScope => '全域性安裝';
 
   @override
   String get addProject => '新增專案';

@@ -234,7 +234,7 @@
   "allAgents": "Alle Agents",
   "allProjects": "Alle Projekte",
   "specificProject": "Projekt",
-  "userScope": "Global",
+  "globalScope": "Global",
   "addProject": "Projekt hinzufügen",
   "relocateProject": "Umzug",
   "removeFromList": "Aus Liste entfernen",

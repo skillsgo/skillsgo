@@ -78,9 +78,9 @@ type Target struct {
 }
 
 type Options struct {
-	IncludeUser bool
-	Projects    []string
-	Catalog     *agent.Catalog
+	IncludeGlobal bool
+	Projects      []string
+	Catalog       *agent.Catalog
 }
 
 func Build(options Options) (Report, error) {
@@ -98,11 +98,11 @@ func Build(options Options) (Report, error) {
 	entries := map[string]*Entry{}
 	accountedTargets := map[string]bool{}
 	roots := make([]declarationRoot, 0, len(projectRoots)+1)
-	if options.IncludeUser {
+	if options.IncludeGlobal {
 		roots = append(roots, declarationRoot{
-			root:      project.UserDeclarationRoot(home),
-			stateRoot: project.UserStateRoot(home),
-			scope:     install.ScopeUser,
+			root:      project.GlobalDeclarationRoot(home),
+			stateRoot: project.GlobalStateRoot(home),
+			scope:     install.ScopeGlobal,
 		})
 	}
 	for _, root := range projectRoots {
@@ -115,10 +115,10 @@ func Build(options Options) (Report, error) {
 		entries,
 		accountedTargets,
 		projectRoots,
-		options.IncludeUser,
+		options.IncludeGlobal,
 		options.Catalog,
 	)
-	addVisibility(entries, options.Catalog, options.IncludeUser, projectRoots)
+	addVisibility(entries, options.Catalog, options.IncludeGlobal, projectRoots)
 
 	report := Report{SchemaVersion: SchemaVersion, Entries: make([]Entry, 0, len(entries))}
 	for _, entry := range entries {
@@ -129,7 +129,7 @@ func Build(options Options) (Report, error) {
 		sort.Slice(entry.Targets, func(i, j int) bool {
 			left, right := entry.Targets[i], entry.Targets[j]
 			if left.Scope != right.Scope {
-				return left.Scope == install.ScopeUser
+				return left.Scope == install.ScopeGlobal
 			}
 			if left.ProjectRoot != right.ProjectRoot {
 				return left.ProjectRoot < right.ProjectRoot
@@ -142,7 +142,7 @@ func Build(options Options) (Report, error) {
 		sort.Slice(entry.Visibility, func(i, j int) bool {
 			left, right := entry.Visibility[i], entry.Visibility[j]
 			if left.Scope != right.Scope {
-				return left.Scope == install.ScopeUser
+				return left.Scope == install.ScopeGlobal
 			}
 			if left.ProjectRoot != right.ProjectRoot {
 				return left.ProjectRoot < right.ProjectRoot
@@ -160,14 +160,14 @@ func Build(options Options) (Report, error) {
 	return report, nil
 }
 
-func addVisibility(entries map[string]*Entry, catalog *agent.Catalog, includeUser bool, projectRoots []string) {
+func addVisibility(entries map[string]*Entry, catalog *agent.Catalog, includeGlobal bool, projectRoots []string) {
 	definitions := catalog.Installed()
 	for _, entry := range entries {
 		entry.Visibility = []Visibility{}
 		for _, definition := range definitions {
-			if includeUser {
-				if roots, ok := catalog.SkillRoots(definition.ID, agent.ScopeUser, ""); ok {
-					appendVisibility(entry, definition.ID, install.ScopeUser, "", roots)
+			if includeGlobal {
+				if roots, ok := catalog.SkillRoots(definition.ID, agent.ScopeGlobal, ""); ok {
+					appendVisibility(entry, definition.ID, install.ScopeGlobal, "", roots)
 				}
 			}
 			for _, projectRoot := range projectRoots {

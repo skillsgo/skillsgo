@@ -27,9 +27,9 @@ const (
 	DependencyLockName    = "skills-lock.yaml"
 )
 
-func UserDeclarationRoot(home string) string { return filepath.Join(home, ".agents") }
+func GlobalDeclarationRoot(home string) string { return filepath.Join(home, ".agents") }
 
-func UserStateRoot(home string) string { return filepath.Join(home, ".skillsgo") }
+func GlobalStateRoot(home string) string { return filepath.Join(home, ".skillsgo") }
 
 type WorkspaceManifest struct {
 	Dependencies map[string]ModuleDependency `yaml:"dependencies"`

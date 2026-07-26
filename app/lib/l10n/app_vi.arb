@@ -234,7 +234,7 @@
   "allAgents": "Tất cả Agent",
   "allProjects": "Tất cả dự án",
   "specificProject": "dự án",
-  "userScope": "Toàn cầu",
+  "globalScope": "Toàn cầu",
   "addProject": "Thêm dự án",
   "relocateProject": "di dời",
   "removeFromList": "Xóa khỏi danh sách",

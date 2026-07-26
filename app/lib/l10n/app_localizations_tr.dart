@@ -406,7 +406,7 @@ class AppLocalizationsTr extends AppLocalizations {
   String get specificProject => 'Proje';
 
   @override
-  String get userScope => 'Küresel';
+  String get globalScope => 'Küresel';
 
   @override
   String get addProject => 'Proje Ekle';

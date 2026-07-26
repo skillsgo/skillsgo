@@ -47,7 +47,7 @@ Project B
 ```
 
 - All Skills aggregates every known location and Agent.
-- Global is the user-facing label for User Scope and shows only user-level targets.
+- Global is the user-facing label for Global Scope and shows only Global targets.
 - Projects include only directories explicitly added by the user.
 - The content toolbar keeps search, update status, and an Agent multi-select separate from location navigation. Every Installed Agent remains available even when it has zero Skills.
 - One location route and any Agent subset may be combined. The project dropdown is removed so the rail is the only location-navigation control.
@@ -155,7 +155,7 @@ The Library merges facts from:
 
 - user and project `skills.yaml` declarations plus `skills-lock.yaml` integrity state;
 - authoritative Scope Module Store trees and derived Repository Projections;
-- user-level Skill directories for Installed Agents;
+- Global Skill directories for Installed Agents;
 - Agent Skill directories inside Added Projects;
 - Hub source, version, trust, and risk metadata.
 
@@ -179,11 +179,11 @@ row actions.
 ### View Semantics
 
 - **All Skills**: every Library Entry.
-- **Global**: entries with at least one user-level target; detail opens with user-level targets as the current context.
+- **Global**: entries with at least one Global target; detail opens with Global targets as the current context.
 - **Project A**: every Skill used by any Agent in the project; an empty project prompts the user to install its first Skill.
 - **Codex filter**: within the selected location, every Skill with at least one Codex target; an empty result prompts discovery.
 
-Batch Takeover uses the selected location as its complete scope boundary. All Skills scans User Scope and every accessible Added Project, Global scans only User Scope, and a Project route scans only that Project. An independent preflight displays the exact eligible count on the current action and beside accessible Project routes; the fixed All Skills and Global rail labels remain unadorned. It never silently adds another location to the requested batch.
+Batch Takeover uses the selected location as its complete scope boundary. All Skills scans Global Scope and every accessible Added Project, Global scans only Global Scope, and a Project route scans only that Project. An independent preflight displays the exact eligible count on the current action and beside accessible Project routes; the fixed All Skills and Global rail labels remain unadorned. It never silently adds another location to the requested batch.
 
 Changing the rail selection replaces the current location while retaining search, update status, and Agent filters. Search within the list filters only the resulting view by name, description, and source.
 
@@ -234,7 +234,7 @@ The first time an active Library view finishes preflight with at least one eligi
 
 Batch Takeover performs the following journey within the currently selected Library location:
 
-1. Preflight External copies reported by the CLI across User Scope and every accessible Added Project without changing Agent targets or authoritative SkillsGo metadata.
+1. Preflight External copies reported by the CLI across Global Scope and every accessible Added Project without changing Agent targets or authoritative SkillsGo metadata.
 2. Accept only copies backed by a supported external lock with trusted source identity, then expose exact All, Global, and per-Project eligible counts from one state-bound plan through the selected-location action and Project rail entries.
 3. Confirm only the currently selected location and execute that subset of the same plan.
 4. Revalidate each authorized candidate against the immutable Repository Artifact, install through the ordinary Dependency/Lock/Module Store/Projection transaction, and move the superseded External directory to recoverable trash.

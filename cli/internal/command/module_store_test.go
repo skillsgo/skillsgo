@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses command.Execute, exact Repository version metadata/ZIP fixtures, a complete Repository Artifact, and temporary Workspace/Agent roots.
- * [OUTPUT]: Specifies exact-path add and inventory, Repository-level update, selective multi-Agent projection, member/Agent removal, healthy zero-rewrite install, offline projection restoration, Local Modification preservation, User Module Store restoration, and checksum-failure atomicity.
+ * [OUTPUT]: Specifies exact-path add and inventory, Repository-level update, explicitly confirmed selective multi-Agent member/Agent removal, healthy zero-rewrite install, offline projection restoration, Local Modification preservation, Global Module Store restoration, and checksum-failure atomicity.
  * [POS]: Serves as the CLI command-seam acceptance test for Repository Module Store installation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -125,7 +125,7 @@ func TestAddExactRepositoryVersionCreatesWorkspaceModuleStoreAndSelectedProjecti
 	require.NoError(t, err)
 	require.True(t, os.SameFile(expectedInfo, responseInfo))
 	output.Reset()
-	require.NoError(t, Execute([]string{"inventory", "--project", workspace, "--output", "json"}, &output, &output))
+	require.NoError(t, Execute([]string{"list", "--project", workspace, "--output", "json"}, &output, &output))
 	var inventory inventoryReport
 	require.NoError(t, json.Unmarshal(output.Bytes(), &inventory))
 	require.Len(t, inventory.Entries, 1)
@@ -152,7 +152,14 @@ func TestAddExactRepositoryVersionCreatesWorkspaceModuleStoreAndSelectedProjecti
 	}
 
 	output.Reset()
-	require.NoError(t, Execute([]string{"remove", "skills/design", "--project", workspace, "--output", "json"}, &output, &output))
+	err = Execute([]string{"remove", "skills/design", "--project", workspace, "--output", "json"}, &output, &output)
+	require.ErrorContains(t, err, "--yes")
+	manifest, err = project.LoadWorkspaceManifest(workspace)
+	require.NoError(t, err)
+	require.Equal(t, []string{"root", "skills/design"}, manifest.Dependencies[modulePath].Skills)
+
+	output.Reset()
+	require.NoError(t, Execute([]string{"remove", "skills/design", "--project", workspace, "--yes", "--output", "json"}, &output, &output))
 	var removal struct {
 		SchemaVersion int      `json:"schemaVersion"`
 		Phase         string   `json:"phase"`
@@ -178,7 +185,7 @@ func TestAddExactRepositoryVersionCreatesWorkspaceModuleStoreAndSelectedProjecti
 	require.FileExists(t, filepath.Join(moduleDir, "skills", "design", "SKILL.md"))
 
 	output.Reset()
-	require.NoError(t, Execute([]string{"remove", "root", "--agent", "goose"}, &output, &output))
+	require.NoError(t, Execute([]string{"remove", "root", "--agent", "goose", "--yes"}, &output, &output))
 	manifest, err = project.LoadWorkspaceManifest(workspace)
 	require.NoError(t, err)
 	require.Equal(t, []string{"codex"}, manifest.Dependencies[modulePath].Agents)
@@ -223,10 +230,10 @@ func TestAddExactRepositoryVersionCreatesWorkspaceModuleStoreAndSelectedProjecti
 
 	output.Reset()
 	require.NoError(t, Execute([]string{"add", modulePath + "@" + version, "--global", "--skill", "design", "--agent", "codex", "--hub", server.URL, "--output", "json"}, &output, &output))
-	userRoot := project.UserDeclarationRoot(home)
+	userRoot := project.GlobalDeclarationRoot(home)
 	require.FileExists(t, filepath.Join(userRoot, project.WorkspaceManifestName))
 	require.FileExists(t, filepath.Join(userRoot, project.DependencyLockName))
-	userModule := modulestore.CoordinatePath(filepath.Join(project.UserStateRoot(home), "modules"), modulePath, version)
+	userModule := modulestore.CoordinatePath(filepath.Join(project.GlobalStateRoot(home), "modules"), modulePath, version)
 	require.FileExists(t, filepath.Join(userModule, "skills", "review", "SKILL.md"))
 	userProjection := modulestore.CoordinatePath(filepath.Join(home, ".codex", "skills"), modulePath, version)
 	require.NoError(t, os.RemoveAll(userProjection))

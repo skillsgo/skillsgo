@@ -31,7 +31,7 @@ type moduleInstallResult struct {
 	Error      string   `json:"error,omitempty"`
 }
 
-func ensureRepositoryScope(ctx context.Context, root string, userScope bool, catalog *agent.Catalog, client *hub.Client) ([]moduleInstallResult, error) {
+func ensureRepositoryScope(ctx context.Context, root string, globalScope bool, catalog *agent.Catalog, client *hub.Client) ([]moduleInstallResult, error) {
 	manifest, lock, err := loadWorkspaceState(root)
 	if err != nil {
 		return nil, err
@@ -59,7 +59,7 @@ func ensureRepositoryScope(ctx context.Context, root string, userScope bool, cat
 			results, failures = append(results, result), failures+1
 			continue
 		}
-		status, moduleDir, ensureErr := ensureOneRepository(ctx, root, userScope, catalog, client, modulePath, dependency, locked)
+		status, moduleDir, ensureErr := ensureOneRepository(ctx, root, globalScope, catalog, client, modulePath, dependency, locked)
 		result.Status, result.ModuleDir = status, moduleDir
 		if ensureErr != nil {
 			result.Status, result.Error = "failed", ensureErr.Error()
@@ -73,15 +73,15 @@ func ensureRepositoryScope(ctx context.Context, root string, userScope bool, cat
 	return results, nil
 }
 
-func ensureOneRepository(ctx context.Context, root string, userScope bool, catalog *agent.Catalog, client *hub.Client, modulePath string, dependency project.ModuleDependency, locked project.LockedModule) (string, string, error) {
+func ensureOneRepository(ctx context.Context, root string, globalScope bool, catalog *agent.Catalog, client *hub.Client, modulePath string, dependency project.ModuleDependency, locked project.LockedModule) (string, string, error) {
 	modulesRoot, infoRoot, agentScope := filepath.Join(root, ".skillsgo", "modules"), filepath.Join(root, ".skillsgo", "info"), agent.ScopeProject
-	if userScope {
+	if globalScope {
 		home, err := os.UserHomeDir()
 		if err != nil {
 			return "", "", err
 		}
-		stateRoot := project.UserStateRoot(home)
-		modulesRoot, infoRoot, agentScope = filepath.Join(stateRoot, "modules"), filepath.Join(stateRoot, "info"), agent.ScopeUser
+		stateRoot := project.GlobalStateRoot(home)
+		modulesRoot, infoRoot, agentScope = filepath.Join(stateRoot, "modules"), filepath.Join(stateRoot, "info"), agent.ScopeGlobal
 	}
 	moduleDir := modulestore.CoordinatePath(modulesRoot, modulePath, dependency.Version)
 	cache := infocache.Cache{Root: infoRoot}

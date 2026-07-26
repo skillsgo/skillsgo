@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Cobra and the Agent, Hub, project, Repository installation, target-operation, source, i18n, and terminal UI modules.
- * [OUTPUT]: Provides command.Execute and the Repository-oriented CLI graph, including distinct name and exact-path add selectors, recognized machine-mode failures, conflict-safe Workspace/User install ensure, Repository add/update/remove, grouped Hub reads, Catalog update checks, inventory/inspection, and Repository-backed takeover for terminal and App callers.
+ * [OUTPUT]: Provides command.Execute and the Repository-oriented CLI graph, including distinct name and exact-path add selectors, recognized machine-mode failures, conflict-safe Workspace/User install ensure, explicitly confirmed Repository add/update/remove, grouped Hub reads, Catalog update checks, inventory/inspection, and Repository-backed takeover for terminal and App callers.
  * [POS]: Serves as the executable orchestration boundary while delegating domain mechanics to internal packages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,15 +12,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
-	"sort"
 	"strings"
 
 	"github.com/skillsgo/skillsgo/cli/internal/agent"
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	appi18n "github.com/skillsgo/skillsgo/cli/internal/i18n"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
-	"github.com/skillsgo/skillsgo/cli/internal/inventory"
 	"github.com/skillsgo/skillsgo/cli/internal/managementplan"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
 	"github.com/skillsgo/skillsgo/cli/internal/source"
@@ -82,7 +79,7 @@ func newRootCommand(stdout, stderr io.Writer) (*cobra.Command, error) {
 	root.PersistentFlags().StringVar(&languageOverride, "lang", strings.TrimSpace(os.Getenv("SKILLSGO_LANG")), appi18n.T("flag.lang"))
 	root.PersistentFlags().String("ui", string(terminalui.ModeAuto), appi18n.T("flag.ui"))
 	root.PersistentFlags().String("color", string(terminalui.ColorAuto), appi18n.T("flag.color"))
-	root.AddCommand(newVersionCommand(), newAgentsCommand(catalog), newInventoryCommand(catalog), newVerifyCommand(catalog), newWhyCommand(catalog), newTakeoverCommand(catalog), newInfoCommand(), newFindCommand(), newDetailCommand(), newHubCommand(), newUpdatesCommand(), newAddCommand(catalog), newInstallCommand(catalog), placeholder("use", "use <package>@<skill>"), newRemoveCommand(catalog), newListCommand(catalog), newRepositoryUpdateCommand(catalog), placeholder("init", "init [name]"))
+	root.AddCommand(newVersionCommand(), newAgentsCommand(catalog), newListCommand(catalog), newVerifyCommand(catalog), newWhyCommand(catalog), newTakeoverCommand(catalog), newInfoCommand(), newFindCommand(), newDetailCommand(), newHubCommand(), newUpdatesCommand(), newAddCommand(catalog), newInstallCommand(catalog), newRemoveCommand(catalog), newRepositoryUpdateCommand(catalog))
 	return root, nil
 }
 
@@ -95,7 +92,7 @@ func testAgentOption() agent.CatalogOption {
 		ID:                    "test-agent",
 		Display:               "Test Agent",
 		ProjectDir:            ".test-agent/skills",
-		UserDir:               filepath.Join(home, "skills"),
+		GlobalDir:             filepath.Join(home, "skills"),
 		ShowInUniversalList:   true,
 		ShowInUniversalPrompt: true,
 	})
@@ -113,7 +110,7 @@ func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			root := project.UserDeclarationRoot(home)
+			root := project.GlobalDeclarationRoot(home)
 			if !global {
 				root, err = os.Getwd()
 				if err != nil {
@@ -162,136 +159,13 @@ func newInstallCommand(catalog *agent.Catalog) *cobra.Command {
 	return cmd
 }
 
-type inventoryOptions struct {
+type removalOptions struct {
 	global bool
 	agents []string
-	output string
-}
-
-func newListCommand(catalog *agent.Catalog) *cobra.Command {
-	options := inventoryOptions{}
-	cmd := &cobra.Command{
-		Use:     "list",
-		Aliases: []string{"ls"},
-		Args:    cobra.NoArgs,
-		RunE: func(cmd *cobra.Command, _ []string) error {
-			entries, err := listInventory(catalog, options)
-			if err != nil {
-				return err
-			}
-			if options.output == "json" {
-				encoder := json.NewEncoder(cmd.OutOrStdout())
-				encoder.SetIndent("", "  ")
-				return encoder.Encode(entries)
-			}
-			if len(entries) == 0 {
-				fmt.Fprintln(cmd.OutOrStdout(), appi18n.T("list.empty"))
-				return nil
-			}
-			ui, err := humanUI(cmd)
-			if err != nil {
-				return err
-			}
-			return ui.Render(listDocument(entries, options.global))
-		},
-	}
-	cmd.Flags().BoolVarP(&options.global, "global", "g", false, "列出用户级 Skill（默认列出当前项目）")
-	cmd.Flags().StringArrayVarP(&options.agents, "agent", "a", nil, "按 Agent 筛选")
-	cmd.Flags().StringVar(&options.output, "output", "human", "输出格式：human 或 json")
-	cmd.Flags().Bool("json", false, "以 JSON 输出")
-	cmd.PreRunE = func(cmd *cobra.Command, _ []string) error {
-		jsonOutput, err := cmd.Flags().GetBool("json")
-		if jsonOutput {
-			options.output = "json"
-		}
-		return err
-	}
-	return cmd
-}
-
-func listDocument(entries []inventory.Entry, global bool) terminalui.Document {
-	title := appi18n.T("list.title.project")
-	if global {
-		title = appi18n.T("list.title.global")
-	}
-	sections := make([]terminalui.Section, 0, 3)
-	for _, provenance := range []inventory.Provenance{inventory.ProvenanceHub, inventory.ProvenanceExternal} {
-		section := terminalui.Section{Title: appi18n.T("list.section." + string(provenance))}
-		for _, entry := range entries {
-			if entry.Provenance != provenance || len(entry.Targets) == 0 {
-				continue
-			}
-			agents := append([]string(nil), entry.Agents...)
-			for _, visibility := range entry.Visibility {
-				if !slices.Contains(agents, visibility.Agent) {
-					agents = append(agents, visibility.Agent)
-				}
-			}
-			sort.Strings(agents)
-			state := "✓"
-			if entry.Health != inventory.HealthHealthy {
-				state = "!"
-			}
-			section.Rows = append(section.Rows, terminalui.Row{
-				State: state, Primary: entry.Name,
-				Secondary: filepath.Clean(entry.Targets[0].Path), Meta: agents,
-			})
-		}
-		if len(section.Rows) > 0 {
-			sections = append(sections, section)
-		}
-	}
-	return terminalui.Document{Title: title, Sections: sections}
-}
-
-func listInventory(catalog *agent.Catalog, options inventoryOptions) ([]inventory.Entry, error) {
-	selectedAgents := map[string]bool{}
-	for _, id := range options.agents {
-		if id == "*" {
-			selectedAgents = nil
-			break
-		}
-		if _, ok := catalog.Get(id); !ok {
-			return nil, fmt.Errorf("未知 Agent %q", id)
-		}
-		selectedAgents[id] = true
-	}
-	buildOptions := inventory.Options{Catalog: catalog}
-	if options.global {
-		buildOptions.IncludeUser = true
-	} else {
-		cwd, err := os.Getwd()
-		if err != nil {
-			return nil, err
-		}
-		buildOptions.Projects = []string{cwd}
-	}
-	report, err := inventory.Build(buildOptions)
-	if err != nil {
-		return nil, err
-	}
-	if len(selectedAgents) == 0 {
-		return report.Entries, nil
-	}
-	entries := make([]inventory.Entry, 0, len(report.Entries))
-	for _, entry := range report.Entries {
-		targets := make([]inventory.Target, 0, len(entry.Targets))
-		for _, target := range entry.Targets {
-			if selectedAgents[target.Agent] {
-				targets = append(targets, target)
-			}
-		}
-		if len(targets) == 0 {
-			continue
-		}
-		entry.Targets = targets
-		entries = append(entries, entry)
-	}
-	return entries, nil
 }
 
 func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
-	options := inventoryOptions{}
+	options := removalOptions{}
 	var exact exactOperationOptions
 	var yes, all bool
 	cmd := &cobra.Command{
@@ -321,6 +195,9 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 			if len(args) == 0 && !all {
 				return fmt.Errorf("请指定要移除的 Skill，或使用 --all")
 			}
+			if !yes {
+				return fmt.Errorf("%s", appi18n.T("remove.error.confirm"))
+			}
 			if handled, err := tryRemoveVersionSkills(cmd, catalog, args, options.agents, options.global, projectRoot, all); handled {
 				return err
 			}
@@ -329,20 +206,15 @@ func newRemoveCommand(catalog *agent.Catalog) *cobra.Command {
 				names[strings.ToLower(name)] = true
 			}
 			_ = names
-			_ = yes
 			return fmt.Errorf("未找到匹配的 Repository Skill")
 		},
 	}
 	cmd.Flags().BoolVarP(&options.global, "global", "g", false, "从用户级目录移除")
 	cmd.Flags().StringArrayVarP(&options.agents, "agent", "a", nil, "从指定 Agent 移除")
-	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "跳过确认")
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, appi18n.T("remove.flag.confirm"))
 	cmd.Flags().BoolVar(&all, "all", false, "移除当前范围内的全部 Skill")
 	addExactOperationFlags(cmd, &exact)
 	return cmd
-}
-
-func placeholder(name, use string, aliases ...string) *cobra.Command {
-	return &cobra.Command{Use: use, Aliases: aliases, Short: name, RunE: func(*cobra.Command, []string) error { return fmt.Errorf("%s 尚未实现", name) }}
 }
 
 type addOptions struct {
@@ -387,7 +259,7 @@ func newAddCommand(catalog *agent.Catalog) *cobra.Command {
 			}
 			scope := install.ScopeProject
 			if options.global {
-				scope = install.ScopeUser
+				scope = install.ScopeGlobal
 			}
 			cwd, err := os.Getwd()
 			if err != nil {

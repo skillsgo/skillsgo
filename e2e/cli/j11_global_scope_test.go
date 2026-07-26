@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on the shared E2E suite's isolated CLI environment, real Repository add/install/remove commands, User YAML/Lock/Module Store, ordinary Agent Projections, and Agent-specific home overrides.
- * [OUTPUT]: Provides black-box coverage for User Scope add, offline install restoration, complete dependency removal, and Agent-specific user-root projection.
- * [POS]: Serves as the User Scope lifecycle journey in the cross-product E2E workspace.
+ * [OUTPUT]: Provides black-box coverage for Global Scope add, offline install restoration, complete dependency removal, and Agent-specific user-root projection.
+ * [POS]: Serves as the Global Scope lifecycle journey in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package e2e_test
@@ -15,7 +15,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestJ11UserScope(t *testing.T) {
+func TestJ11GlobalScope(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
 	modulePath, version := "fixtures.test/group/subgroup/collection", "v1.0.0"

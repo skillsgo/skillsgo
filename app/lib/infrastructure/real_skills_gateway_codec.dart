@@ -44,7 +44,7 @@ Map<String, dynamic> _decodeMachineDocument(
 );
 
 InstallationScope _installationScope(Object? value) => switch (value) {
-  'user' => InstallationScope.user,
+  'global' => InstallationScope.global,
   'project' => InstallationScope.project,
   _ => throw const FormatException('Unknown installation scope.'),
 };
@@ -113,7 +113,7 @@ InstallationPlanTarget _installationPlanTarget(Object? raw) {
   }
   final scope = _installationScope(raw['scope']);
   final projectRoot = raw['projectRoot'] as String? ?? '';
-  if ((scope == InstallationScope.user && projectRoot.isNotEmpty) ||
+  if ((scope == InstallationScope.global && projectRoot.isNotEmpty) ||
       (scope == InstallationScope.project && projectRoot.isEmpty)) {
     throw const FormatException();
   }

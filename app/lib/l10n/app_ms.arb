@@ -234,7 +234,7 @@
   "allAgents": "Semua Agen",
   "allProjects": "Semua Projek",
   "specificProject": "Projek",
-  "userScope": "Global",
+  "globalScope": "Global",
   "addProject": "Tambah Projek",
   "relocateProject": "Berpindah",
   "removeFromList": "Alih keluar daripada Senarai",

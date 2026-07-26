@@ -407,7 +407,7 @@ class AppLocalizationsTh extends AppLocalizations {
   String get specificProject => 'โครงการ';
 
   @override
-  String get userScope => 'ทั่วโลก';
+  String get globalScope => 'ทั่วโลก';
 
   @override
   String get addProject => 'เพิ่มโครงการ';

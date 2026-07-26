@@ -56,7 +56,7 @@ void main() {
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
-            scope: InstallationScope.user,
+            scope: InstallationScope.global,
             path: '/Users/test/.codex/skills/private-local',
             version: '',
           ),
@@ -129,7 +129,7 @@ void main() {
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
-            scope: InstallationScope.user,
+            scope: InstallationScope.global,
             path: '/Users/test/.codex/skills/demo',
             version: 'v1',
           ),
@@ -159,7 +159,7 @@ void main() {
             displayName: 'Codex',
             installed: true,
             supportedScopes: [
-              InstallationScope.user,
+              InstallationScope.global,
               InstallationScope.project,
             ],
           ),
@@ -168,7 +168,7 @@ void main() {
             displayName: 'Claude Code',
             installed: true,
             supportedScopes: [
-              InstallationScope.user,
+              InstallationScope.global,
               InstallationScope.project,
             ],
           ),
@@ -315,7 +315,7 @@ void main() {
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
-            scope: InstallationScope.user,
+            scope: InstallationScope.global,
             path: path,
             version: 'v1',
             health: InstallationHealth.missing,
@@ -366,7 +366,7 @@ void main() {
                 targets: [
                   SkillInstallationTarget(
                     agent: 'codex',
-                    scope: InstallationScope.user,
+                    scope: InstallationScope.global,
                     path: '/Users/test/.codex/skills/demo',
                     version: 'v1',
                   ),
@@ -452,7 +452,7 @@ void main() {
                 targets: [
                   SkillInstallationTarget(
                     agent: 'codex',
-                    scope: InstallationScope.user,
+                    scope: InstallationScope.global,
                     path: '/Users/test/.codex/skills/demo',
                     version: 'v1',
                   ),

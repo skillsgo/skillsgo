@@ -398,7 +398,7 @@ class AppLocalizationsKo extends AppLocalizations {
   String get specificProject => '프로젝트';
 
   @override
-  String get userScope => '글로벌';
+  String get globalScope => '글로벌';
 
   @override
   String get addProject => '프로젝트 추가';

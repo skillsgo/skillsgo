@@ -262,7 +262,7 @@ mixin _RealSkillsGatewayTargetManagement
         );
       }
       final arguments = <String>['remove', first.name];
-      if (first.target.scope == InstallationScope.user) {
+      if (first.target.scope == InstallationScope.global) {
         arguments.add('--global');
       } else {
         arguments.addAll(['--project', first.target.projectRoot]);

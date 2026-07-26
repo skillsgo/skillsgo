@@ -410,7 +410,7 @@ class AppLocalizationsAr extends AppLocalizations {
   String get specificProject => 'مشروع';
 
   @override
-  String get userScope => 'عام';
+  String get globalScope => 'عام';
 
   @override
   String get addProject => 'أضف المشروع';

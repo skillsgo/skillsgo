@@ -189,7 +189,7 @@
   "allAgents": "所有智慧體",
   "allProjects": "所有專案",
   "specificProject": "指定專案",
-  "userScope": "全域性安裝",
+  "globalScope": "全域性安裝",
   "addProject": "新增專案",
   "relocateProject": "重新定位",
   "removeFromList": "從列表移除",

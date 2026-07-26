@@ -28,7 +28,7 @@ final defaultRemoteDetail = SkillDetail(
   installationTargets: [
     SkillInstallationTarget(
       agent: 'codex',
-      scope: InstallationScope.user,
+      scope: InstallationScope.global,
       path: '/tmp/flutter-pro',
       version: 'v1.2.3',
     ),

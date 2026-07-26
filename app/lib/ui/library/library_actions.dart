@@ -271,7 +271,7 @@ extension _LibraryActions on _LibraryScreenState {
         .where((preview) {
           if (location.kind == _LibraryLocationKind.all) return true;
           if (location.kind == _LibraryLocationKind.global) {
-            return preview.scope == InstallationScope.user;
+            return preview.scope == InstallationScope.global;
           }
           return _selectedProject != null &&
               preview.projectRoot == _selectedProject!.path;
@@ -444,7 +444,7 @@ extension _LibraryActions on _LibraryScreenState {
       }
       if (selectedLocation.kind == _LibraryLocationKind.global &&
           !skill.targets.any(
-            (target) => target.scope == InstallationScope.user,
+            (target) => target.scope == InstallationScope.global,
           )) {
         continue;
       }

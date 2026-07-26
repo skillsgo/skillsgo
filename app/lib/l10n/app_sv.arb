@@ -234,7 +234,7 @@
   "allAgents": "Alla Agents",
   "allProjects": "Alla projekt",
   "specificProject": "Projekt",
-  "userScope": "Global",
+  "globalScope": "Global",
   "addProject": "Lägg till projekt",
   "relocateProject": "Förflytta",
   "removeFromList": "Ta bort från listan",

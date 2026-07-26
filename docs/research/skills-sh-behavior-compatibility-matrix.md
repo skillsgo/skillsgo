@@ -22,7 +22,7 @@ Status meanings:
 | Behavior contract | Status | SkillsGo executable evidence | Notes |
 | --- | --- | --- | --- |
 | Project installation materializes `.agents/skills/<skill>` as a physical directory | Covered | `internal/install/installer_test.go` — `TestInstallSharedPhysicalTargetMaterializesOnce`, `TestInstallMaterializesCanonicalAndLinksAgentSpecificTarget` | Prevents canonical self-links. |
-| User installation materializes `~/.agents/skills/<skill>` as a physical directory | Covered | `internal/install/installer_test.go` — `TestInstallUserScopeMaterializesHomeCanonicalAndAgentProjection`; `internal/install/target_test.go` — `TestResolveProjectAndUserTargets` | User and project roots are independent. |
+| Global installation materializes `~/.agents/skills/<skill>` as a physical directory | Covered | `internal/install/installer_test.go` — `TestInstallGlobalScopeMaterializesHomeCanonicalAndAgentProjection`; `internal/install/target_test.go` — `TestResolveProjectAndGlobalTargets` | User and project roots are independent. |
 | Agent-specific directories link to the scope canonical | Covered | `internal/install/installer_test.go` — project and user projection tests | Link identity is checked against canonical content. |
 | Copy mode writes a physical Agent target and does not materialize canonical content | Covered | `internal/install/installer_test.go` — `TestSkillsSHCompatibilityCopyPreservesDotfilesAndExecutableMode` | Also mirrors skills.sh dotfile and executable-mode contracts. |
 | Multiple Agents share one physical canonical copy | Covered | `internal/install/installer_test.go` — `TestInstallSharedPhysicalTargetMaterializesOnce`; `internal/plan/plan_test.go` — `TestExecuteRecordsEveryAgentWhenTargetsShareOnePhysicalCopy` | Logical bindings remain separate. |
@@ -32,7 +32,7 @@ Status meanings:
 | Legacy Agent links directly to Store are rejected | Covered | `internal/install/installer_test.go` — `TestRemoveRejectsLegacyAgentLinkDirectlyToStore`; `internal/inventory/health_test.go` | No automatic backward-compatible migration is performed. |
 | A new machine restores the same multi-Agent topology from manifest and lock | Covered | `internal/command/install_flow_test.go` — offline, clean-Store, and repository dependency restore tests | Covers offline Store recovery, an initially empty Store refilled from Hub, multiple repository packages, and complete installation-tree comparison. |
 | Inventory classifies broken links, replaced targets, modified canonical content, and legacy Store links | Covered | `internal/inventory/health_test.go` — `TestManagedTargetHealthClassifiesCanonicalAndProjectionDamage` | Includes missing, dangling, modified, directory replacement, and Store-direct link states. |
-| Project and user scopes never resolve into each other's roots | Covered | `internal/install/target_test.go` — `TestResolveProjectAndUserTargets`; user/project materialization tests | Target resolution and filesystem materialization are both covered. |
+| Project and Global Scopes never resolve into each other's roots | Covered | `internal/install/target_test.go` — `TestResolveProjectAndGlobalTargets`; Global/project materialization tests | Target resolution and filesystem materialization are both covered. |
 
 ## Broader skills.sh behavior pool
 

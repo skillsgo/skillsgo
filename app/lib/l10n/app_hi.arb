@@ -234,7 +234,7 @@
   "allAgents": "सभी Agents",
   "allProjects": "सभी परियोजनाएँ",
   "specificProject": "प्रोजेक्ट",
-  "userScope": "वैश्विक",
+  "globalScope": "वैश्विक",
   "addProject": "प्रोजेक्ट जोड़ें",
   "relocateProject": "स्थानांतरित करें",
   "removeFromList": "सूची से हटाएँ",

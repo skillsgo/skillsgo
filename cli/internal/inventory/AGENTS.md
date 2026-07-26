@@ -10,6 +10,6 @@
 
 ## Architectural Boundary
 
-This module owns read-only Library reconciliation and stable inventory domain records. It may inspect only user/project Repository declarations and locks, immutable scoped Repository Info, Module Store/Projection state, and known Agent directories; it must not mutate Skill content, contact a Hub, or serialize localized CLI output.
+This module owns read-only Library reconciliation and stable inventory domain records. It may inspect only Global/project Repository declarations and locks, immutable scoped Repository Info, Module Store/Projection state, and known Agent directories; it must not mutate Skill content, contact a Hub, or serialize localized CLI output.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

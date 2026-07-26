@@ -120,7 +120,7 @@
   "allAgents": "所有智能体",
   "allProjects": "所有项目",
   "specificProject": "指定项目",
-  "userScope": "全局安装",
+  "globalScope": "全局安装",
   "addProject": "添加项目",
   "relocateProject": "重新定位",
   "removeFromList": "从列表移除",

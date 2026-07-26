@@ -38,7 +38,7 @@ void main() {
       targets: [
         SkillInstallationTarget(
           agent: 'codex',
-          scope: InstallationScope.user,
+          scope: InstallationScope.global,
           path: path,
           version: '',
         ),
@@ -135,7 +135,7 @@ void main() {
             targets: [
               SkillInstallationTarget(
                 agent: 'codex',
-                scope: InstallationScope.user,
+                scope: InstallationScope.global,
                 path: path,
                 version: '',
               ),
@@ -285,7 +285,7 @@ void main() {
       await tester.pumpAndSettle();
       expect(
         gateway.takeoverRequests.last.scope.kind,
-        BatchTakeoverScopeKind.user,
+        BatchTakeoverScopeKind.global,
       );
       await tester.tap(find.text('Close'));
       await tester.pumpAndSettle();
@@ -413,17 +413,17 @@ void main() {
             BatchTakeoverPreview(
               name: 'alpha-skill',
               skillId: 'github.com/acme/skills/-/alpha',
-              scope: InstallationScope.user,
+              scope: InstallationScope.global,
             ),
             BatchTakeoverPreview(
               name: 'beta-skill',
               skillId: 'github.com/acme/skills/-/beta',
-              scope: InstallationScope.user,
+              scope: InstallationScope.global,
             ),
             BatchTakeoverPreview(
               name: 'changed-skill',
               skillId: 'github.com/acme/skills/-/changed',
-              scope: InstallationScope.user,
+              scope: InstallationScope.global,
             ),
           ],
         ),
@@ -572,7 +572,7 @@ void main() {
                 targets: [
                   SkillInstallationTarget(
                     agent: 'codex',
-                    scope: InstallationScope.user,
+                    scope: InstallationScope.global,
                     path: path,
                     version: '',
                   ),
@@ -587,23 +587,23 @@ void main() {
                 BatchTakeoverPreview(
                   name: 'acme-first',
                   skillId: 'github.com/acme/skills/-/first',
-                  scope: InstallationScope.user,
+                  scope: InstallationScope.global,
                 ),
                 BatchTakeoverPreview(
                   name: 'acme-second',
                   skillId: 'github.com/acme/skills/-/second',
-                  scope: InstallationScope.user,
+                  scope: InstallationScope.global,
                 ),
                 BatchTakeoverPreview(
                   name: 'other-first',
                   skillId: 'github.com/other/toolbox/-/first',
-                  scope: InstallationScope.user,
+                  scope: InstallationScope.global,
                 ),
                 for (var index = 3; index <= 14; index++)
                   BatchTakeoverPreview(
                     name: 'acme-$index',
                     skillId: 'github.com/acme/skills/-/$index',
-                    scope: InstallationScope.user,
+                    scope: InstallationScope.global,
                   ),
               ],
             ),

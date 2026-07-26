@@ -410,7 +410,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get specificProject => 'Проект';
 
   @override
-  String get userScope => 'Глобальный';
+  String get globalScope => 'Глобальный';
 
   @override
   String get addProject => 'Добавить проект';

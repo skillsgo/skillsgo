@@ -241,7 +241,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":1,"product":"skillsgo","version":"test","appProtocolVersion":10,"os":"darwin","architecture":"arm64","agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["user"],"userTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
+            '{"schemaVersion":1,"product":"skillsgo","version":"test","appProtocolVersion":10,"os":"darwin","architecture":"arm64","agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -377,7 +377,7 @@ void main() {
                   'visibility': <Object>[],
                   'targets': [
                     {
-                      'scope': 'user',
+                      'scope': 'global',
                       'agent': 'codex',
                       'path': skillDirectory.path,
                       'mode': 'external',
@@ -393,7 +393,7 @@ void main() {
           const ProcessOutput(
             exitCode: 0,
             stdout:
-                '{"schemaVersion":1,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["user"],"userTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
+                '{"schemaVersion":1,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":{"path":"/Users/test/.codex/skills","exists":true}}]}',
             stderr: '',
           ),
         ]);

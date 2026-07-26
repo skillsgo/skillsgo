@@ -234,7 +234,7 @@
   "allAgents": "Все Agents",
   "allProjects": "Все проекты",
   "specificProject": "Проект",
-  "userScope": "Глобальный",
+  "globalScope": "Глобальный",
   "addProject": "Добавить проект",
   "relocateProject": "Переместить",
   "removeFromList": "Удалить из списка",
