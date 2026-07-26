@@ -58,7 +58,7 @@ Define the first stable machine-failure contract for the bundled App, CI/CD, and
 4.1. Every machine failure object must contain:
 
 - `code`: a stable, language-neutral domain code;
-- `retryable`: whether retrying the same user intent is a supported recovery path, possibly after obtaining fresh preflight state.
+- `retryable`: whether retrying the same user intent is a supported recovery path, possibly after obtaining fresh local state.
 
 4.2. A machine failure object may contain:
 
@@ -136,7 +136,7 @@ Define the first stable machine-failure contract for the bundled App, CI/CD, and
 
 9.1. The bundled App and CLI must continue to use the existing exact `appProtocolVersion` startup handshake.
 
-9.2. `appProtocolVersion` is `11`; version 11 establishes `global` as the only non-Workspace installation scope value, exposes Agent `globalTarget`, and makes `list --global` the sole installed-Skill machine surface.
+9.2. `appProtocolVersion` is `15`; version 15 removes public preflight/plan-state flags and confirms every mutation with `--yes`, while retaining version 14's `hub check-update`, version 13's local App update planning, version 12's top-level `show` command, and version 11's `global` installation scope, Agent `globalTarget`, and `list --global` machine surface.
 
 9.3. Human terminal output is not a versioned parsing interface and may evolve independently.
 
@@ -173,7 +173,7 @@ A new code is justified only when App or automation callers require a different 
 | `protocol.invalid_response` | true | Retry or diagnose a malformed dependency response. |
 | `protocol.incompatible` | false | Upgrade the incompatible caller, CLI, or dependency. |
 | `local.data_invalid` | false | Inspect untrusted local SkillsGo state and resolve it explicitly. |
-| `installation.state_changed` | true | Obtain fresh preflight state before retrying. |
+| `installation.state_changed` | true | Obtain fresh local state before retrying. |
 | `installation.target_failed` | true | Retry one compensated Installation Target Group. |
 | `workspace.persistence_failed` | true | Fix Workspace access if needed, then retry the compensated group. |
 | `update.target_failed` | true | Retry one independent update group. |
@@ -210,7 +210,7 @@ App or CI caller
   -> CLI command boundary validates Repository coordinate, selected members, scope, and Agents
   -> CLI Hub adapter reads immutable Repository Info and ZIP resources
   -> CLI verifies Repository identity, archive size, and h1 Sum
-  -> CLI stages Scope Module Store and deterministic Repository Projections
+  -> CLI stages Scope Package Store and deterministic Repository Projections
   -> skillsgo-lock.yaml persistence fails
   -> CLI compensates the Repository transaction
   -> CLI writes one complete execution document to stdout
@@ -251,13 +251,13 @@ The App never performs these requests.
 - stdout contains one schema-versioned failure document;
 - stderr may contain the permission diagnostic but is not parsed;
 - the process exits non-zero;
-- no partial Module Store, Projection, Dependency, or Lock becomes authoritative;
+- no partial Package Store, Projection, Dependency, or Lock becomes authoritative;
 - the App maps `workspace.persistence_failed` to ARB copy and offers retry because `retryable` is true.
 
 ## Acceptance Criteria
 
 1. The worked example produces one schema-versioned stdout failure document with the stable Repository coordinate and failed metadata path.
-2. The failed Repository transaction is compensated without exposing partial Module Store, Projection, Dependency, or Lock state.
+2. The failed Repository transaction is compensated without exposing partial Package Store, Projection, Dependency, or Lock state.
 3. `add`, `update`, and `remove` write complete results before returning non-zero.
 4. Failed targets use one nested error object; succeeded and skipped targets omit it.
 5. A recognized JSON or NDJSON failure before a normal result uses a final `phase: "error"` document.

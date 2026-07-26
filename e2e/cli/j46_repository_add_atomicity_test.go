@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the deterministic multi-Skill collection Repository, released whole-Repository add, and a conflicting coordinate Projection target.
- * [OUTPUT]: Provides black-box coverage that a failed whole-Repository add preserves the external path and rolls back Module Store, Projection, YAML, and Lock publication.
+ * [OUTPUT]: Provides black-box coverage that a failed whole-Repository add preserves the external path and rolls back Package Store, Projection, YAML, and Lock publication.
  * [POS]: Serves as the Repository publication installation-atomicity journey across Hub, CLI, and Workspace state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -31,7 +31,7 @@ func TestJ46RepositoryAddIsAtomic(t *testing.T) {
 
 	require.FileExists(t, filepath.Join(externalTarget, "external.txt"))
 	require.NoFileExists(t, filepath.Join(externalTarget, "SKILL.md"))
-	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".skillsgo", "modules", coordinate))
+	require.NoDirExists(t, filepath.Join(sandboxRoot, "project", ".skillsgo", "packages", coordinate))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skills.yaml"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skills-lock.yaml"))
 }

@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the deterministic tagged Module fixture, released CLI Update Plan preflight/execution, Module-fresh latest state, and observable Workspace files.
+ * [INPUT]: Depends on the deterministic tagged Package fixture, released CLI Update Plan preflight/execution, Package-fresh latest state, and observable Workspace files.
  * [OUTPUT]: Provides black-box coverage that a fixed installation remains pinned even when a newer release exists and preflight stays read-only.
  * [POS]: Serves as the exact-selector pinning contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

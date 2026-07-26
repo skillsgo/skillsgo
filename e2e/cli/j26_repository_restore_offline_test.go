@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the disposable E2E environment and public CLI, exact Repository add, YAML/Lock, authoritative Workspace Module Store, and ordinary-file Agent Projection contracts.
+ * [INPUT]: Depends on the disposable E2E environment and public CLI, exact Repository add, YAML/Lock, authoritative Workspace Package Store, and ordinary-file Agent Projection contracts.
  * [OUTPUT]: Proves offline projection restoration, repeated healthy install without rewrites, unpublished-manifest filtering, declaration stability, and Local Modification preservation.
  * [POS]: Serves as the Repository expansion recovery journey in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -18,8 +18,8 @@ import (
 func TestJ26RepositoryRestoreOffline(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
-	modulePath, version := "fixtures.test/group/subgroup/collection", "v1.0.0"
-	add := execCLI(t, ctx, container, "add", "https://"+modulePath+"@"+version, "--agent", "codex", "--output", "json")
+	packagePath, version := "fixtures.test/group/subgroup/collection", "v1.0.0"
+	add := execCLI(t, ctx, container, "add", "https://"+packagePath+"@"+version, "--agent", "codex", "--output", "json")
 	require.Equal(t, 0, add.exitCode, add.output)
 	manifestPath := filepath.Join(sandboxRoot, "project", "skills.yaml")
 	lockPath := filepath.Join(sandboxRoot, "project", "skills-lock.yaml")
@@ -27,12 +27,12 @@ func TestJ26RepositoryRestoreOffline(t *testing.T) {
 	require.NoError(t, err)
 	lockBefore, err := os.ReadFile(lockPath)
 	require.NoError(t, err)
-	require.Contains(t, string(manifestBefore), modulePath+":")
+	require.Contains(t, string(manifestBefore), packagePath+":")
 	require.Contains(t, string(manifestBefore), "version: "+version)
 
 	coordinate := filepath.Join("fixtures.test", "group", "subgroup", "collection@v1.0.0")
 	projection := filepath.Join(sandboxRoot, "project", ".agents", "skills", coordinate)
-	moduleDir := filepath.Join(sandboxRoot, "project", ".skillsgo", "modules", coordinate)
+	packageDir := filepath.Join(sandboxRoot, "project", ".skillsgo", "packages", coordinate)
 	require.NoError(t, os.RemoveAll(projection))
 	restore := execCLI(t, ctx, container, "install", "--hub", "http://127.0.0.1:1", "--output", "json")
 	require.Equal(t, 0, restore.exitCode, restore.output)
@@ -40,7 +40,7 @@ func TestJ26RepositoryRestoreOffline(t *testing.T) {
 		require.FileExists(t, filepath.Join(projection, filepath.FromSlash(relative)))
 	}
 	require.NoFileExists(t, filepath.Join(projection, "skills", "invalid", "SKILL.md"))
-	require.FileExists(t, filepath.Join(moduleDir, "skills", "invalid", "SKILL.md"))
+	require.FileExists(t, filepath.Join(packageDir, "skills", "invalid", "SKILL.md"))
 	shared := filepath.Join(projection, "runtime", "shared.sh")
 	before, err := os.Stat(shared)
 	require.NoError(t, err)

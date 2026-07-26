@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the shared E2E suite's isolated CLI environment, real Repository add/install/remove commands, Global YAML/Lock/Module Store, ordinary Agent Projections, and Agent-specific home overrides.
+ * [INPUT]: Depends on the shared E2E suite's isolated CLI environment, real Repository add/install/remove commands, Global YAML/Lock/Package Store, ordinary Agent Projections, and Agent-specific home overrides.
  * [OUTPUT]: Provides black-box coverage for Global Scope add, offline install restoration, complete dependency removal, and Agent-specific user-root projection.
  * [POS]: Serves as the Global Scope lifecycle journey in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -18,18 +18,18 @@ import (
 func TestJ11GlobalScope(t *testing.T) {
 	ctx := context.Background()
 	container, sandboxRoot := startEnvironment(t, ctx)
-	modulePath, version := "fixtures.test/group/subgroup/collection", "v1.0.0"
-	add := execCLI(t, ctx, container, "add", "https://"+modulePath+"@"+version, "--skill", "alpha", "--agent", "codex", "--global", "--output", "json")
+	packagePath, version := "fixtures.test/group/subgroup/collection", "v1.0.0"
+	add := execCLI(t, ctx, container, "add", "https://"+packagePath+"@"+version, "--skill", "alpha", "--agent", "codex", "--global", "--output", "json")
 	require.Equal(t, 0, add.exitCode, add.output)
 
 	coordinate := filepath.Join("fixtures.test", "group", "subgroup", "collection@v1.0.0")
 	declarationRoot := filepath.Join(sandboxRoot, "home", ".agents")
 	stateRoot := filepath.Join(sandboxRoot, "home", ".skillsgo")
-	moduleDir := filepath.Join(stateRoot, "modules", coordinate)
+	packageDir := filepath.Join(stateRoot, "packages", coordinate)
 	projection := filepath.Join(sandboxRoot, "home", ".codex", "skills", coordinate)
 	require.FileExists(t, filepath.Join(projection, "skills", "alpha", "SKILL.md"))
 	require.NoFileExists(t, filepath.Join(projection, "SKILL.md"))
-	require.FileExists(t, filepath.Join(moduleDir, "SKILL.md"))
+	require.FileExists(t, filepath.Join(packageDir, "SKILL.md"))
 	require.FileExists(t, filepath.Join(declarationRoot, "skills.yaml"))
 	require.FileExists(t, filepath.Join(declarationRoot, "skills-lock.yaml"))
 	require.NoFileExists(t, filepath.Join(sandboxRoot, "project", "skills.yaml"))
@@ -42,7 +42,7 @@ func TestJ11GlobalScope(t *testing.T) {
 	remove := execCLI(t, ctx, container, "remove", "alpha", "--agent", "codex", "--global", "--yes", "--ui", "plain", "--color", "never")
 	require.Equal(t, 0, remove.exitCode, remove.output)
 	require.NoDirExists(t, projection)
-	require.NoDirExists(t, moduleDir)
+	require.NoDirExists(t, packageDir)
 	manifest, err := os.ReadFile(filepath.Join(declarationRoot, "skills.yaml"))
 	require.NoError(t, err)
 	require.Equal(t, "dependencies: {}\n", string(manifest))
