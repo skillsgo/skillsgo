@@ -54,7 +54,7 @@ func TestJ15Inventory(t *testing.T) {
 		} `json:"entries"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(inventory.output), &report), inventory.output)
-	require.Equal(t, 6, report.SchemaVersion)
+	require.Equal(t, 7, report.SchemaVersion)
 	entries := make(map[string]struct {
 		ModulePath string
 		Provenance string
