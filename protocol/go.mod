@@ -4,12 +4,12 @@
 // [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 module github.com/skillsgo/skillsgo/protocol
 
-go 1.25.0
+go 1.25.12
 
 require (
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/mod v0.37.0
-	golang.org/x/text v0.38.0
+	golang.org/x/text v0.39.0
 	gopkg.in/yaml.v3 v3.0.1
 )
 

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Huma's Fiber adapter, deployment configuration, native Fiber route inventory, and an embedded pinned Scalar asset whose path-variable encoder is adapted for hierarchical Module Paths.
- * [OUTPUT]: Provides non-cacheable Huma-generated OpenAPI 3.1, self-hosted Scalar with literal Module Path slashes, immutable compressed assets, and product-route coverage validation.
+ * [INPUT]: Depends on Huma's Fiber adapter, deployment configuration, native Fiber route inventory, contextual HTML templating, and an embedded pinned Scalar asset whose path-variable encoder is adapted for hierarchical Module Paths.
+ * [OUTPUT]: Provides non-cacheable Huma-generated OpenAPI 3.1, context-safe self-hosted Scalar HTML with literal Module Path slashes, immutable compressed assets, and product-route coverage validation.
  * [POS]: Serves as the typed documentation sidecar for native Fiber handlers without owning their execution.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,7 +14,7 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"html"
+	"html/template"
 	"path"
 	"sort"
 	"strings"
@@ -32,6 +32,20 @@ var scalarStandalone []byte
 var scalarStandaloneGzip []byte
 
 var scalarAssetETag string
+
+var scalarPageTemplate = template.Must(template.New("scalar").Parse(`<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="referrer" content="no-referrer">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SkillsGo Hub API Reference</title>
+  </head>
+  <body>
+    <script id="api-reference" data-url="{{.SpecURL}}" data-configuration="{{.RendererConfig}}"></script>
+    <script src="{{.ScriptURL}}"></script>
+  </body>
+</html>`))
 
 func init() {
 	const encodedPathVariable = "encodeURIComponent(lx(t,n))"
@@ -96,20 +110,15 @@ func registerSelfHostedScalar(router fiber.Router, pathPrefix string, developmen
 	if err != nil {
 		panic("marshal Scalar API reference configuration: " + err.Error())
 	}
-	body := `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8">
-    <meta name="referrer" content="no-referrer">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>SkillsGo Hub API Reference</title>
-  </head>
-  <body>
-    <script id="api-reference" data-url="` + html.EscapeString(specURL) + `" data-configuration="` +
-		html.EscapeString(string(rendererConfig)) + `"></script>
-    <script src="` + html.EscapeString(scriptURL) + `"></script>
-  </body>
-</html>`
+	var rendered bytes.Buffer
+	if err := scalarPageTemplate.Execute(&rendered, struct {
+		SpecURL        string
+		ScriptURL      string
+		RendererConfig string
+	}{specURL, scriptURL, string(rendererConfig)}); err != nil {
+		panic("render Scalar API reference: " + err.Error())
+	}
+	body := rendered.String()
 
 	router.Get("/docs", func(c fiber.Ctx) error {
 		c.Set(fiber.HeaderContentSecurityPolicy, "default-src 'none'; base-uri 'none'; connect-src 'self'; "+
