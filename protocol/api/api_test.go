@@ -95,3 +95,21 @@ func TestSkillCoordinateOwnsCanonicalValidationAndStableKey(t *testing.T) {
 		}
 	}
 }
+
+func TestSkillPathCoordinateOwnsExactMemberIdentity(t *testing.T) {
+	coordinate := SkillPathCoordinate{ModulePath: "github.com/o/r", Path: "skills/demo"}
+	if !coordinate.Valid() || coordinate.Key() != "github.com/o/r\x00skills/demo" {
+		t.Fatalf("invalid canonical path coordinate: %#v", coordinate)
+	}
+	for _, invalid := range []SkillPathCoordinate{
+		{ModulePath: "github.com/o/r", Path: ""},
+		{ModulePath: "github.com/o/r", Path: "../demo"},
+		{ModulePath: "github.com/o/r", Path: "/skills/demo"},
+		{ModulePath: "github.com/o/r", Path: `skills\demo`},
+		{ModulePath: "github.com/o/r", Path: " skills/demo"},
+	} {
+		if invalid.Valid() {
+			t.Fatalf("accepted invalid path coordinate: %#v", invalid)
+		}
+	}
+}

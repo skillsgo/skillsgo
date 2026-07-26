@@ -3,13 +3,13 @@
 
 ## Members
 
-- `catalog.go`: exposes the Catalog API, reusable Module Version aggregate validation, the shared schema-fixed PostgreSQL pgx pool with public extension fallback, Module-scoped source-metadata cache state, name-first locale-consistent single and set-based batch Find with optional exact-name restriction, immutable Versions, and ordered Skill membership.
+- `catalog.go`: exposes the Catalog API, reusable Module Version aggregate validation, the shared schema-fixed PostgreSQL pgx pool with public extension fallback, Module-scoped source-metadata cache state, name-first locale-consistent Find, exact-path ordered batch hydration, immutable Versions, and ordered Skill membership.
 - `backfill.go`: owns durable Module Backfill Run business state, active-work deduplication, heartbeat recovery for running work, River-aware orphan reconciliation candidates for queued work, state transitions, bounded diagnostics, exact-publication commit checks, and atomic PostgreSQL Run-plus-River enqueue scopes.
 - `migrations.go`: installs shared PostgreSQL extension prerequisites in `public`, executes embedded checksummed Atlas SQL migrations in the configured application schema, and serializes migration runs.
 - `migrations/postgres/`: contains the reviewed, checksummed Atlas migration history, including immutable Module Versions, complete Version membership, Backfill Run state, Module metadata, localized descriptions, and PostgreSQL search resources.
 - `queries/`: contains the maintained sqlc query source; SQL used by Catalog business operations belongs here except connection-scoped PostgreSQL advisory locks.
 - `catalogsqlc/`: contains reproducible sqlc-generated pgx/v5 query code and must not be edited manually.
-- `catalog_test.go`, `postgres_integration_test.go`: specify the PostgreSQL behavior contract with Testcontainers, including the three-table baseline, Module Path plus Skill Name logical coordinates, path-unique same-name snapshots, deterministic coordinate defaults, immutable Version ownership, historical membership, current projection, Find ordering/fields, and pagination.
+- `catalog_test.go`, `postgres_integration_test.go`: specify the PostgreSQL behavior contract with Testcontainers, including the three-table baseline, Module Path plus Skill Name aggregation coordinates, path-unique same-name snapshots, deterministic name-query defaults, immutable Version ownership, historical membership, current projection, Find ordering/fields, and pagination.
 - `postgres_integration_test.go`: verifies Module Version publication and current-member lookup against real PostgreSQL.
 
 ## Architectural Boundary

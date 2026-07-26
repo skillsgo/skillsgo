@@ -154,6 +154,7 @@ func TestBuildModuleRejectsInvalidInputsAndCanonicalizesModes(t *testing.T) {
 		{name: "empty inventory", repository: "example.com/repo", version: "v1", contains: "file count"},
 		{name: "directory input", repository: "example.com/repo", version: "v1", files: []Entry{{Path: "docs", Directory: true}}, contains: "is a directory"},
 		{name: "irregular mode", repository: "example.com/repo", version: "v1", files: []Entry{{Path: "SKILL.md"}, {Path: "device", Mode: os.ModeDevice}}, contains: "mode is not regular"},
+		{name: "mixed symlink mode", repository: "example.com/repo", version: "v1", files: []Entry{{Path: "SKILL.md"}, {Path: "link", Mode: os.ModeSymlink | os.ModeDevice}}, contains: "mode is not a supported symlink"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			_, err := BuildModule(test.repository, test.version, test.files)

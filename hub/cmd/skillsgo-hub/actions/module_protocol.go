@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on request-scoped logging, canonical Module Paths, persisted Module Info, Catalog publication membership, and one Repository materializer.
- * [OUTPUT]: Serves byte-stable Module Info/ZIP resources and demand-driven exact Module publication at the Module distribution API.
+ * [INPUT]: Depends on request-scoped logging, canonical Module Paths, persisted Module Info, Catalog publication membership, singleflight coordination, and one Repository materializer.
+ * [OUTPUT]: Serves byte-stable Module Info/ZIP resources and deduplicated demand-driven exact Module publication at the Module distribution API.
  * [POS]: Serves as the Module publication protocol decorator; Skills are members and never independent artifact resources.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,6 +16,7 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	"github.com/skillsgo/skillsgo/hub/pkg/skill"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
+	"golang.org/x/sync/singleflight"
 )
 
 func withModuleInfo(protocol download.Protocol, metadata *catalog.Catalog, materializer repositoryMaterializer) download.Protocol {
@@ -26,6 +27,7 @@ type moduleInfoProtocol struct {
 	download.Protocol
 	metadata     *catalog.Catalog
 	materializer repositoryMaterializer
+	publication  singleflight.Group
 }
 
 func (p *moduleInfoProtocol) List(ctx context.Context, modulePath string) ([]string, error) {
@@ -63,6 +65,16 @@ func (p *moduleInfoProtocol) Zip(ctx context.Context, modulePath, version string
 }
 
 func (p *moduleInfoProtocol) ensurePublished(ctx context.Context, modulePath, version string) (string, error) {
+	result, err, _ := p.publication.Do(modulePath+"@"+version, func() (any, error) {
+		return p.ensurePublishedOnce(ctx, modulePath, version)
+	})
+	if err != nil {
+		return "", err
+	}
+	return result.(string), nil
+}
+
+func (p *moduleInfoProtocol) ensurePublishedOnce(ctx context.Context, modulePath, version string) (string, error) {
 	members, err := p.metadata.VersionSkills(ctx, modulePath, version)
 	if err != nil {
 		return "", err

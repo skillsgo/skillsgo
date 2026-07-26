@@ -410,7 +410,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get specificProject => 'Projekt';
 
   @override
-  String get userScope => 'Global';
+  String get globalScope => 'Global';
 
   @override
   String get addProject => 'Projekt hinzufügen';
@@ -1230,7 +1230,7 @@ class AppLocalizationsDe extends AppLocalizations {
   String get installLocationTitle => 'Installationsort festlegen';
 
   @override
-  String get userLevel => 'Benutzerebene';
+  String get globalLevel => 'Global';
 
   @override
   String get projectLevel => 'Projektebene';
@@ -1245,8 +1245,8 @@ class AppLocalizationsDe extends AppLocalizations {
   String get repositoryParsing => 'Parsing-Repository…';
 
   @override
-  String userInstallSummary(int agents) {
-    return 'Verfügbar für $agents Agents auf Benutzerebene';
+  String globalInstallSummary(int agents) {
+    return 'Available globally to $agents Agents';
   }
 
   @override

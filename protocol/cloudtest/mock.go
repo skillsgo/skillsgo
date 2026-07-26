@@ -21,12 +21,12 @@ import (
 type Mock struct {
 	mu       sync.Mutex
 	events   map[string]cloud.InstallEvent
-	rankings map[cloud.RankingKind][]cloud.RankingItem
+	rankings map[cloud.RankingKind][]cloud.RankingSkill
 	handler  http.Handler
 }
 
 func NewMock() *Mock {
-	mock := &Mock{events: map[string]cloud.InstallEvent{}, rankings: map[cloud.RankingKind][]cloud.RankingItem{}}
+	mock := &Mock{events: map[string]cloud.InstallEvent{}, rankings: map[cloud.RankingKind][]cloud.RankingSkill{}}
 	mux := http.NewServeMux()
 	mux.HandleFunc("POST "+cloud.InstallEventsPath, mock.install)
 	mux.HandleFunc("GET "+cloud.RankingsPath+"{kind}", mock.ranking)
@@ -52,10 +52,10 @@ func (mock *Mock) ResetEvents() {
 	mock.events = map[string]cloud.InstallEvent{}
 }
 
-func (mock *Mock) SetRanking(kind cloud.RankingKind, items []cloud.RankingItem) {
+func (mock *Mock) SetRanking(kind cloud.RankingKind, items []cloud.RankingSkill) {
 	mock.mu.Lock()
 	defer mock.mu.Unlock()
-	mock.rankings[kind] = append([]cloud.RankingItem(nil), items...)
+	mock.rankings[kind] = append([]cloud.RankingSkill(nil), items...)
 }
 
 func (mock *Mock) install(w http.ResponseWriter, request *http.Request) {
@@ -91,7 +91,7 @@ func (mock *Mock) ranking(w http.ResponseWriter, request *http.Request) {
 		return
 	}
 	mock.mu.Lock()
-	items := append([]cloud.RankingItem(nil), mock.rankings[kind]...)
+	items := append([]cloud.RankingSkill(nil), mock.rankings[kind]...)
 	mock.mu.Unlock()
 	offset := page * perPage
 	if offset > len(items) {
@@ -101,7 +101,7 @@ func (mock *Mock) ranking(w http.ResponseWriter, request *http.Request) {
 	if end > len(items) {
 		end = len(items)
 	}
-	writeJSON(w, http.StatusOK, cloud.RankingResponse{Collection: kind, Items: items[offset:end], Pagination: api.Pagination{Page: page, PerPage: perPage, HasMore: end < len(items)}})
+	writeJSON(w, http.StatusOK, cloud.RankingResponse{Skills: items[offset:end], Pagination: api.Pagination{Page: page, PerPage: perPage, HasMore: end < len(items)}})
 }
 
 func pagination(request *http.Request) (int, int, bool) {

@@ -35,7 +35,7 @@ func TestCatalogUpdateCheckUsesOneProductRequest(t *testing.T) {
 
 	var stdout bytes.Buffer
 	err := Execute([]string{
-		"updates", "check", "--hub", server.URL,
+		"updates", "check", "--hub", server.URL, "--output", "json",
 		"--installed", `{"key":"current","modulePath":"github.com/acme/skills","name":"current","versions":["v1.0.0"]}`,
 		"--installed", `{"key":"review","modulePath":"github.com/acme/skills","name":"review","versions":["v1.0.0","v2.0.0"]}`,
 		"--installed", `{"key":"local","modulePath":"github.com/acme/skills","name":"local","versions":["captured-1"]}`,
@@ -83,7 +83,7 @@ func TestCatalogUpdateCheckBatchesEightyInstalledSkills(t *testing.T) {
 	}))
 	defer server.Close()
 
-	arguments := []string{"updates", "check", "--hub", server.URL}
+	arguments := []string{"updates", "check", "--hub", server.URL, "--output", "json"}
 	for index := range 80 {
 		arguments = append(arguments, "--installed", fmt.Sprintf(`{"key":"skill-%d","modulePath":"github.com/acme/skills","name":"skill-%d","versions":["v1.0.0"]}`, index, index))
 	}

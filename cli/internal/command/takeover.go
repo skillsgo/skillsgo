@@ -32,8 +32,8 @@ import (
 )
 
 const (
-	takeoverSchemaVersion     = 3
-	takeoverPlanSchemaVersion = 3
+	takeoverSchemaVersion     = 4
+	takeoverPlanSchemaVersion = 4
 )
 
 const (
@@ -41,12 +41,12 @@ const (
 	takeoverPlansBeforeNewPlan = 31
 )
 
-type skillsShUserLock struct {
+type skillsShGlobalLock struct {
 	Version int                        `json:"version"`
 	Skills  map[string]json.RawMessage `json:"skills"`
 }
 
-type skillsShUserLockRecord struct {
+type skillsShGlobalLockRecord struct {
 	Source     string `json:"source"`
 	SourceType string `json:"sourceType"`
 	SourceURL  string `json:"sourceUrl"`
@@ -78,7 +78,7 @@ type takeoverPlan struct {
 	SchemaVersion int                 `json:"schemaVersion"`
 	PlanID        string              `json:"planId"`
 	CreatedAt     time.Time           `json:"createdAt"`
-	IncludeUser   bool                `json:"includeUser"`
+	IncludeGlobal bool                `json:"includeGlobal"`
 	ProjectRoots  []string            `json:"projectRoots"`
 	Candidates    []takeoverCandidate `json:"candidates"`
 	Skipped       []takeoverResult    `json:"skipped"`
@@ -108,7 +108,7 @@ type takeoverPreflightReport struct {
 		Skipped  int `json:"skipped"`
 	} `json:"summary"`
 	Scopes struct {
-		User     takeoverScopeCount     `json:"user"`
+		Global   takeoverScopeCount     `json:"global"`
 		Projects []takeoverProjectCount `json:"projects"`
 	} `json:"scopes"`
 	Previews []takeoverPreview `json:"previews"`
@@ -135,7 +135,7 @@ type takeoverReport struct {
 
 func newTakeoverCommand(catalog *agent.Catalog) *cobra.Command {
 	var output, hubURL string
-	var includeUser, yes, preflight bool
+	var includeGlobal, yes, preflight bool
 	var planID string
 	var projects []string
 	cmd := &cobra.Command{
@@ -149,14 +149,14 @@ func newTakeoverCommand(catalog *agent.Catalog) *cobra.Command {
 			if !preflight && !yes {
 				return fmt.Errorf("%s", appi18n.T("takeover.error.confirm"))
 			}
-			if !includeUser && len(projects) == 0 {
+			if !includeGlobal && len(projects) == 0 {
 				return fmt.Errorf("%s", appi18n.T("takeover.error.scope"))
 			}
 			if preflight {
 				if yes || strings.TrimSpace(planID) != "" {
 					return fmt.Errorf("%s", appi18n.T("takeover.error.mode"))
 				}
-				report, err := preflightLockTakeover(catalog, includeUser, projects)
+				report, err := preflightLockTakeover(catalog, includeGlobal, projects)
 				if err != nil {
 					return err
 				}
@@ -167,7 +167,7 @@ func newTakeoverCommand(catalog *agent.Catalog) *cobra.Command {
 			if strings.TrimSpace(planID) == "" {
 				return fmt.Errorf("%s", appi18n.T("takeover.error.plan"))
 			}
-			report, err := executeLockTakeover(cmd, catalog, hubURL, planID, includeUser, projects)
+			report, err := executeLockTakeover(cmd, catalog, hubURL, planID, includeGlobal, projects)
 			if err != nil {
 				return err
 			}
@@ -179,14 +179,14 @@ func newTakeoverCommand(catalog *agent.Catalog) *cobra.Command {
 	cmd.Flags().BoolVar(&preflight, "preflight", false, appi18n.T("takeover.flag.preflight"))
 	cmd.Flags().StringVar(&planID, "plan", "", appi18n.T("takeover.flag.plan"))
 	cmd.Flags().BoolVar(&yes, "yes", false, appi18n.T("takeover.flag.confirm"))
-	cmd.Flags().BoolVar(&includeUser, "user", false, appi18n.T("takeover.flag.user"))
+	cmd.Flags().BoolVarP(&includeGlobal, "global", "g", false, appi18n.T("takeover.flag.global"))
 	cmd.Flags().StringArrayVar(&projects, "project", nil, appi18n.T("takeover.flag.project"))
 	cmd.Flags().StringVar(&output, "output", "human", appi18n.T("takeover.flag.output"))
 	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), "Hub origin")
 	return cmd
 }
 
-func preflightLockTakeover(catalog *agent.Catalog, includeUser bool, projectRoots []string) (takeoverPreflightReport, error) {
+func preflightLockTakeover(catalog *agent.Catalog, includeGlobal bool, projectRoots []string) (takeoverPreflightReport, error) {
 	report := takeoverPreflightReport{SchemaVersion: takeoverSchemaVersion}
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -196,7 +196,7 @@ func preflightLockTakeover(catalog *agent.Catalog, includeUser bool, projectRoot
 	if err != nil {
 		return report, err
 	}
-	candidates, skipped, err := discoverLockTakeoverCandidates(catalog, home, includeUser, roots)
+	candidates, skipped, err := discoverLockTakeoverCandidates(catalog, home, includeGlobal, roots)
 	if err != nil {
 		return report, err
 	}
@@ -211,7 +211,7 @@ func preflightLockTakeover(catalog *agent.Catalog, includeUser bool, projectRoot
 		SchemaVersion: takeoverPlanSchemaVersion,
 		PlanID:        planID,
 		CreatedAt:     time.Now().UTC(),
-		IncludeUser:   includeUser,
+		IncludeGlobal: includeGlobal,
 		ProjectRoots:  roots,
 		Candidates:    candidates,
 		Skipped:       skipped,
@@ -222,7 +222,7 @@ func preflightLockTakeover(catalog *agent.Catalog, includeUser bool, projectRoot
 	report.PlanID = planID
 	report.Previews = make([]takeoverPreview, 0, len(candidates))
 	report.Summary.Skipped = len(skipped)
-	userEligible := 0
+	globalEligible := 0
 	projectEligible := map[string]int{}
 	for _, root := range roots {
 		projectEligible[root] = 0
@@ -233,15 +233,15 @@ func preflightLockTakeover(catalog *agent.Catalog, includeUser bool, projectRoot
 			Name: candidate.Name, SkillID: candidate.SkillID,
 			Scope: target.Scope, ProjectRoot: target.ProjectRoot,
 		})
-		if target.Scope == install.ScopeUser {
-			userEligible++
+		if target.Scope == install.ScopeGlobal {
+			globalEligible++
 			continue
 		}
 		root := filepath.Clean(candidate.Targets[0].ProjectRoot)
 		projectEligible[root]++
 	}
 	report.Summary.Eligible = len(candidates)
-	report.Scopes.User.Eligible = userEligible
+	report.Scopes.Global.Eligible = globalEligible
 	report.Scopes.Projects = make([]takeoverProjectCount, 0, len(roots))
 	for _, root := range roots {
 		report.Scopes.Projects = append(report.Scopes.Projects, takeoverProjectCount{
@@ -252,7 +252,7 @@ func preflightLockTakeover(catalog *agent.Catalog, includeUser bool, projectRoot
 	return report, nil
 }
 
-func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, planID string, includeUser bool, projectRoots []string) (takeoverReport, error) {
+func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, planID string, includeGlobal bool, projectRoots []string) (takeoverReport, error) {
 	report := takeoverReport{SchemaVersion: takeoverSchemaVersion, Results: []takeoverResult{}}
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -266,10 +266,10 @@ func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, pla
 	if err != nil {
 		return report, err
 	}
-	if !takeoverScopeIsAuthorized(plan, includeUser, roots) {
+	if !takeoverScopeIsAuthorized(plan, includeGlobal, roots) {
 		return report, fmt.Errorf("%s", appi18n.T("takeover.error.plan_scope"))
 	}
-	current, _, err := discoverLockTakeoverCandidates(catalog, home, includeUser, roots)
+	current, _, err := discoverLockTakeoverCandidates(catalog, home, includeGlobal, roots)
 	if err != nil {
 		return report, err
 	}
@@ -282,13 +282,13 @@ func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, pla
 		return report, err
 	}
 	for _, skipped := range plan.Skipped {
-		if takeoverTargetSelected(skipped.Target, includeUser, roots) {
+		if takeoverTargetSelected(skipped.Target, includeGlobal, roots) {
 			report.Results = append(report.Results, skipped)
 			report.Summary.Skipped++
 		}
 	}
 	for _, expected := range plan.Candidates {
-		if !takeoverCandidateSelected(expected, includeUser, roots) {
+		if !takeoverCandidateSelected(expected, includeGlobal, roots) {
 			continue
 		}
 		result := takeoverResult{Name: expected.Name, SkillID: expected.SkillID, Status: "skipped", Target: expected.Targets[0], Targets: expected.Targets}
@@ -459,19 +459,19 @@ func verifyTakeoverMember(root string, resource *hub.ModuleResource, memberPath 
 	return nil
 }
 
-func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, includeUser bool, projectRoots []string) ([]takeoverCandidate, []takeoverResult, error) {
+func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, includeGlobal bool, projectRoots []string) ([]takeoverCandidate, []takeoverResult, error) {
 	candidates := []takeoverCandidate{}
 	skipped := []takeoverResult{}
-	userLock := map[string]skillsShUserLockRecord{}
+	userLock := map[string]skillsShGlobalLockRecord{}
 	userLockSupported := true
-	if includeUser {
+	if includeGlobal {
 		locked, supported, err := readSkillsShUserLock(home)
 		if err != nil {
 			return nil, nil, err
 		}
 		userLock, userLockSupported = locked, supported
 	}
-	workspaceLocks := map[string]map[string]skillsShUserLockRecord{}
+	workspaceLocks := map[string]map[string]skillsShGlobalLockRecord{}
 	workspaceLockSupported := map[string]bool{}
 	for _, rawRoot := range projectRoots {
 		root, absoluteErr := filepath.Abs(rawRoot)
@@ -485,7 +485,7 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 		workspaceLocks[filepath.Clean(root)] = locked
 		workspaceLockSupported[filepath.Clean(root)] = supported
 	}
-	current, err := inventory.Build(inventory.Options{IncludeUser: includeUser, Projects: projectRoots, Catalog: catalog})
+	current, err := inventory.Build(inventory.Options{IncludeGlobal: includeGlobal, Projects: projectRoots, Catalog: catalog})
 	if err != nil {
 		return nil, nil, err
 	}
@@ -493,7 +493,7 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 	for _, skill := range current.Entries {
 		if skill.Provenance != inventory.ProvenanceExternal {
 			for _, target := range skill.Targets {
-				root := project.UserDeclarationRoot(home)
+				root := project.GlobalDeclarationRoot(home)
 				locked := userLock
 				if target.Scope == install.ScopeProject {
 					root = filepath.Clean(target.ProjectRoot)
@@ -528,7 +528,7 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 			}
 			locked := userLock
 			lockSupported := userLockSupported
-			declarationRoot := project.UserDeclarationRoot(home)
+			declarationRoot := project.GlobalDeclarationRoot(home)
 			if group[0].Scope == install.ScopeProject {
 				declarationRoot = filepath.Clean(group[0].ProjectRoot)
 				locked = workspaceLocks[declarationRoot]
@@ -604,7 +604,7 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 			})
 		}
 	}
-	appendMissing := func(root string, scope install.Scope, locked map[string]skillsShUserLockRecord) {
+	appendMissing := func(root string, scope install.Scope, locked map[string]skillsShGlobalLockRecord) {
 		names := make([]string, 0, len(locked))
 		for name := range locked {
 			names = append(names, name)
@@ -624,8 +624,8 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 			})
 		}
 	}
-	if includeUser {
-		appendMissing(project.UserDeclarationRoot(home), install.ScopeUser, userLock)
+	if includeGlobal {
+		appendMissing(project.GlobalDeclarationRoot(home), install.ScopeGlobal, userLock)
 	}
 	for root, locked := range workspaceLocks {
 		appendMissing(root, install.ScopeProject, locked)
@@ -771,7 +771,7 @@ func validTakeoverPlan(plan takeoverPlan, planID string, now time.Time) bool {
 		}
 		for _, target := range candidate.Targets {
 			if target.Agent == "" || !filepath.IsAbs(target.Path) ||
-				(target.Scope != install.ScopeUser && target.Scope != install.ScopeProject) ||
+				(target.Scope != install.ScopeGlobal && target.Scope != install.ScopeProject) ||
 				(target.Scope == install.ScopeProject && !filepath.IsAbs(target.ProjectRoot)) {
 				return false
 			}
@@ -792,8 +792,8 @@ func validTakeoverHex(value string) bool {
 	return true
 }
 
-func takeoverScopeIsAuthorized(plan takeoverPlan, includeUser bool, roots []string) bool {
-	if includeUser && !plan.IncludeUser {
+func takeoverScopeIsAuthorized(plan takeoverPlan, includeGlobal bool, roots []string) bool {
+	if includeGlobal && !plan.IncludeGlobal {
 		return false
 	}
 	authorized := map[string]bool{}
@@ -808,16 +808,16 @@ func takeoverScopeIsAuthorized(plan takeoverPlan, includeUser bool, roots []stri
 	return true
 }
 
-func takeoverCandidateSelected(candidate takeoverCandidate, includeUser bool, roots []string) bool {
+func takeoverCandidateSelected(candidate takeoverCandidate, includeGlobal bool, roots []string) bool {
 	if len(candidate.Targets) == 0 {
 		return false
 	}
-	return takeoverTargetSelected(candidate.Targets[0], includeUser, roots)
+	return takeoverTargetSelected(candidate.Targets[0], includeGlobal, roots)
 }
 
-func takeoverTargetSelected(target takeoverTarget, includeUser bool, roots []string) bool {
-	if target.Scope == install.ScopeUser {
-		return includeUser
+func takeoverTargetSelected(target takeoverTarget, includeGlobal bool, roots []string) bool {
+	if target.Scope == install.ScopeGlobal {
+		return includeGlobal
 	}
 	root := filepath.Clean(target.ProjectRoot)
 	for _, selected := range roots {
@@ -837,17 +837,17 @@ func takeoverCandidateKey(candidate takeoverCandidate) string {
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-func takeoverLockDigest(lockName string, record skillsShUserLockRecord) string {
+func takeoverLockDigest(lockName string, record skillsShGlobalLockRecord) string {
 	hash := sha256.New()
 	_, _ = fmt.Fprintf(hash, "%s\x00%s\x00%s\x00%s\x00%s\x00%s\x00", lockName, record.Source, record.SourceType, record.SourceURL, record.Ref, record.SkillPath)
 	return fmt.Sprintf("%x", hash.Sum(nil))
 }
 
-func readSkillsShWorkspaceLock(root string) (map[string]skillsShUserLockRecord, bool, error) {
+func readSkillsShWorkspaceLock(root string) (map[string]skillsShGlobalLockRecord, bool, error) {
 	return readSkillsShLock(filepath.Join(root, "skills-lock.json"), 1)
 }
 
-func readSkillsShUserLock(home string) (map[string]skillsShUserLockRecord, bool, error) {
+func readSkillsShUserLock(home string) (map[string]skillsShGlobalLockRecord, bool, error) {
 	lockPath := filepath.Join(home, ".agents", ".skill-lock.json")
 	if stateHome := strings.TrimSpace(os.Getenv("XDG_STATE_HOME")); stateHome != "" {
 		lockPath = filepath.Join(stateHome, "skills", ".skill-lock.json")
@@ -855,21 +855,21 @@ func readSkillsShUserLock(home string) (map[string]skillsShUserLockRecord, bool,
 	return readSkillsShLock(lockPath, 3)
 }
 
-func readSkillsShLock(lockPath string, currentVersion int) (map[string]skillsShUserLockRecord, bool, error) {
+func readSkillsShLock(lockPath string, currentVersion int) (map[string]skillsShGlobalLockRecord, bool, error) {
 	data, err := os.ReadFile(lockPath)
 	if os.IsNotExist(err) {
-		return map[string]skillsShUserLockRecord{}, true, nil
+		return map[string]skillsShGlobalLockRecord{}, true, nil
 	}
 	if err != nil {
 		return nil, false, err
 	}
-	var lock skillsShUserLock
+	var lock skillsShGlobalLock
 	if json.Unmarshal(data, &lock) != nil || lock.Version != currentVersion || lock.Skills == nil {
-		return map[string]skillsShUserLockRecord{}, false, nil
+		return map[string]skillsShGlobalLockRecord{}, false, nil
 	}
-	records := make(map[string]skillsShUserLockRecord, len(lock.Skills))
+	records := make(map[string]skillsShGlobalLockRecord, len(lock.Skills))
 	for name, raw := range lock.Skills {
-		var record skillsShUserLockRecord
+		var record skillsShGlobalLockRecord
 		if json.Unmarshal(raw, &record) != nil {
 			record.Invalid = true
 		}
@@ -878,7 +878,7 @@ func readSkillsShLock(lockPath string, currentVersion int) (map[string]skillsShU
 	return records, true, nil
 }
 
-func lockRecordSkillID(record skillsShUserLockRecord) (string, error) {
+func lockRecordSkillID(record skillsShGlobalLockRecord) (string, error) {
 	if record.Invalid || record.Source == "" || record.SourceType == "" {
 		return "", fmt.Errorf("lock source identity is incomplete")
 	}

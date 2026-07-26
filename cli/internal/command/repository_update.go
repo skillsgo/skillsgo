@@ -52,8 +52,8 @@ func newRepositoryUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 			if global && projectRoot != "" {
 				return fmt.Errorf("--global and --project are mutually exclusive")
 			}
-			if output != "json" {
-				return fmt.Errorf("Repository update requires --output json")
+			if err := validateProductOutput(output); err != nil {
+				return err
 			}
 			reference, err := source.Parse(args[0])
 			if err != nil {
@@ -62,7 +62,7 @@ func newRepositoryUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 			if reference.Version == "" {
 				return fmt.Errorf("Repository update requires an explicit target version")
 			}
-			root, userScope, err := repositoryUpdateRoot(global, projectRoot)
+			root, globalScope, err := repositoryUpdateRoot(global, projectRoot)
 			if err != nil {
 				return err
 			}
@@ -70,13 +70,13 @@ func newRepositoryUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			report, apply, err := prepareRepositoryUpdate(cmd.Context(), root, userScope, catalog, client, reference.ModulePath, reference.Version)
+			report, apply, err := prepareRepositoryUpdate(cmd.Context(), root, globalScope, catalog, client, reference.ModulePath, reference.Version)
 			if err != nil {
 				return err
 			}
 			if preflight {
 				report.Phase = "module-update-preflight"
-				return json.NewEncoder(cmd.OutOrStdout()).Encode(report)
+				return writeModuleUpdateReport(cmd, output, report)
 			}
 			if stateToken == "" || stateToken != report.StateToken {
 				return fmt.Errorf("Repository update state changed; run preflight again")
@@ -85,16 +85,31 @@ func newRepositoryUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 				return err
 			}
 			report.Phase = "module-update"
-			return json.NewEncoder(cmd.OutOrStdout()).Encode(report)
+			return writeModuleUpdateReport(cmd, output, report)
 		},
 	}
 	cmd.Flags().StringVar(&hubURL, "hub", defaultHubURL(), "Hub origin")
-	cmd.Flags().StringVar(&output, "output", "json", "machine output format")
-	cmd.Flags().BoolVarP(&global, "global", "g", false, "update the User Scope dependency")
+	cmd.Flags().StringVar(&output, "output", "human", "output format: human or json")
+	cmd.Flags().BoolVarP(&global, "global", "g", false, "update the Global Scope dependency")
 	cmd.Flags().StringVar(&projectRoot, "project", "", "update an explicit Workspace Scope dependency")
 	cmd.Flags().BoolVar(&preflight, "preflight", false, "validate and preview without mutation")
 	cmd.Flags().StringVar(&stateToken, "state-token", "", "reviewed preflight state token")
 	return cmd
+}
+
+func writeModuleUpdateReport(cmd *cobra.Command, output string, report moduleUpdateReport) error {
+	if output == "json" {
+		return json.NewEncoder(cmd.OutOrStdout()).Encode(report)
+	}
+	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s@%s → %s\nScope: %s\nSkills: %d\n", report.ModulePath, report.FromVersion, report.ToVersion, report.Scope, len(report.Skills)); err != nil {
+		return err
+	}
+	if report.Phase == "module-update-preflight" {
+		_, err := fmt.Fprintf(cmd.OutOrStdout(), "State token: %s\n", report.StateToken)
+		return err
+	}
+	_, err := fmt.Fprintln(cmd.OutOrStdout(), "Updated successfully.")
+	return err
 }
 
 func repositoryUpdateRoot(global bool, explicit string) (string, bool, error) {
@@ -103,7 +118,7 @@ func repositoryUpdateRoot(global bool, explicit string) (string, bool, error) {
 		if err != nil {
 			return "", false, err
 		}
-		return project.UserDeclarationRoot(home), true, nil
+		return project.GlobalDeclarationRoot(home), true, nil
 	}
 	root := explicit
 	if root == "" {
@@ -121,7 +136,7 @@ func repositoryUpdateRoot(global bool, explicit string) (string, bool, error) {
 	return absolute, false, err
 }
 
-func prepareRepositoryUpdate(ctx context.Context, root string, userScope bool, catalog *agent.Catalog, client *hub.Client, modulePath, query string) (moduleUpdateReport, func() error, error) {
+func prepareRepositoryUpdate(ctx context.Context, root string, globalScope bool, catalog *agent.Catalog, client *hub.Client, modulePath, query string) (moduleUpdateReport, func() error, error) {
 	manifest, lock, err := loadWorkspaceState(root)
 	if err != nil {
 		return moduleUpdateReport{}, nil, err
@@ -153,13 +168,13 @@ func prepareRepositoryUpdate(ctx context.Context, root string, userScope bool, c
 	sort.Strings(newMembers)
 
 	modulesRoot, infoRoot, agentScope, scopeName, projectRoot := filepath.Join(root, ".skillsgo", "modules"), filepath.Join(root, ".skillsgo", "info"), agent.ScopeProject, "project", root
-	if userScope {
+	if globalScope {
 		home, homeErr := os.UserHomeDir()
 		if homeErr != nil {
 			return moduleUpdateReport{}, nil, homeErr
 		}
-		stateRoot := project.UserStateRoot(home)
-		modulesRoot, infoRoot, agentScope, scopeName, projectRoot = filepath.Join(stateRoot, "modules"), filepath.Join(stateRoot, "info"), agent.ScopeUser, "user", ""
+		stateRoot := project.GlobalStateRoot(home)
+		modulesRoot, infoRoot, agentScope, scopeName, projectRoot = filepath.Join(stateRoot, "modules"), filepath.Join(stateRoot, "info"), agent.ScopeGlobal, "global", ""
 	}
 	oldArchive, err := modulestore.ReadVerifiedModule(modulesRoot, modulePath, dependency.Version, locked.Sum)
 	if err != nil {
