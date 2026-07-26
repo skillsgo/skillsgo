@@ -31,13 +31,13 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":6,"entries":[{"inventoryKey":"hub:github.com/flutter/skills:responsive-layout","name":"responsive-layout","modulePath":"github.com/flutter/skills","provenance":"hub","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
+              '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/flutter/skills:responsive-layout","name":"responsive-layout","modulePath":"github.com/flutter/skills","provenance":"hub","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
           stderr: '',
         ),
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":6,"entries":[{"inventoryKey":"hub:github.com/flutter/skills:responsive-layout","name":"responsive-layout","modulePath":"github.com/flutter/skills","provenance":"hub","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
+              '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/flutter/skills:responsive-layout","name":"responsive-layout","modulePath":"github.com/flutter/skills","provenance":"hub","health":"healthy","agents":["codex"],"projects":["/tmp/project"],"versions":["v1.2.3"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/one","version":"v1.2.3","health":"healthy"},{"scope":"project","projectRoot":"/tmp/project","agent":"codex","path":"/tmp/project/.agents/skills/two","version":"v1.2.3","health":"healthy"}]}]}',
           stderr: '',
         ),
       ]);
@@ -77,6 +77,50 @@ void main() {
     final installed = await gateway.listInstalled();
     expect(installed.single.agents, ['codex']);
     expect(installed.single.targetCount, 2);
+  });
+
+  test('remote detail requests the CLI JSON contract explicitly', () async {
+    final runner = FakeProcessRunner()
+      ..responses.addAll(const [
+        ProcessOutput(
+          exitCode: 0,
+          stdout:
+              '{"modulePath":"github.com/example/skills","version":"v1.2.3","time":"2026-07-26T00:00:00Z","archiveSize":42,"name":"demo","path":"skills/demo","description":"Demo skill.","content":"# Demo"}',
+          stderr: '',
+        ),
+        ProcessOutput(
+          exitCode: 0,
+          stdout: '{"schemaVersion":7,"entries":[]}',
+          stderr: '',
+        ),
+      ]);
+    final gateway = RealSkillsGateway(
+      processRunner: runner,
+      initialCliPath: '/usr/local/bin/skillsgo',
+    );
+
+    final detail = await gateway.loadRemoteDetail(
+      const SkillSummary(
+        modulePath: 'github.com/example/skills',
+        installName: 'demo',
+        name: 'demo',
+        path: 'skills/demo',
+        description: 'Demo skill.',
+        latestVersion: 'v1.2.3',
+      ),
+    );
+
+    expect(detail.content, '# Demo');
+    expect(runner.calls.first.arguments, [
+      'detail',
+      'github.com/example/skills',
+      'v1.2.3',
+      'skills/demo',
+      '--hub',
+      'https://hub.skillsgo.ai',
+      '--output',
+      'json',
+    ]);
   });
 
   test(
@@ -155,7 +199,7 @@ void main() {
     cloud.listen((request) async {
       request.response.headers.contentType = ContentType.json;
       request.response.write(
-        '{"collection":"hot","items":[{"modulePath":"github.com/acme/skills","skillName":"demo","name":"demo","description":"Demo Skill","imageUrl":null,"path":"demo","latestVersion":"v1.0.0","metric":{"kind":"hot_velocity","value":8,"change":5}}],"pagination":{"page":0,"perPage":20,"hasMore":false}}',
+        '{"skills":[{"modulePath":"github.com/acme/skills","name":"demo","description":"Demo Skill","imageUrl":null,"path":"demo","latestVersion":"v1.0.0","metric":{"value":8,"change":5}}],"pagination":{"page":0,"perPage":20,"hasMore":false}}',
       );
       await request.response.close();
     });
@@ -168,7 +212,7 @@ void main() {
         ),
         const ProcessOutput(
           exitCode: 0,
-          stdout: '{"schemaVersion":6,"entries":[]}',
+          stdout: '{"schemaVersion":7,"entries":[]}',
           stderr: '',
         ),
       ]);
@@ -232,8 +276,7 @@ void main() {
             request.response.headers.contentType = ContentType.json;
             request.response.write(
               jsonEncode({
-                'collection': tc.wireCollection,
-                'items': <Object>[],
+                'skills': <Object>[],
                 'pagination': {'page': 0, 'perPage': 20, 'hasMore': false},
               }),
             );
@@ -297,7 +340,7 @@ void main() {
         ),
         const ProcessOutput(
           exitCode: 0,
-          stdout: '{"schemaVersion":6,"entries":[]}',
+          stdout: '{"schemaVersion":7,"entries":[]}',
           stderr: '',
         ),
       ]);
@@ -345,7 +388,7 @@ void main() {
           ProcessOutput(exitCode: 0, stdout: repositoryInfo, stderr: ''),
           ProcessOutput(
             exitCode: 0,
-            stdout: '{"schemaVersion":6,"entries":[]}',
+            stdout: '{"schemaVersion":7,"entries":[]}',
             stderr: '',
           ),
         ]);
@@ -388,7 +431,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            r'{"schemaVersion":6,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","modulePath":"github.com/a/b","provenance":"hub","health":"missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"visibility":[{"agent":"codex","scope":"user","paths":["/tmp/testing","/tmp/shared/testing"],"verification":"verified"},{"agent":"opencode","scope":"project","projectRoot":"/work/project;$(touch nope)","paths":["/work/project;$(touch nope)/.agents/skills/testing"],"verification":"unverified"}],"targets":[{"scope":"user","projectRoot":"","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","version":"v2.0.0","health":"missing"}]}]}',
+            r'{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","modulePath":"github.com/a/b","provenance":"hub","health":"missing","agents":["codex","claude-code"],"projects":["/work/project;$(touch nope)"],"versions":["v1.0.0","v2.0.0"],"versionDivergence":true,"visibility":[{"agent":"codex","scope":"global","paths":["/tmp/testing","/tmp/shared/testing"],"verification":"verified"},{"agent":"opencode","scope":"project","projectRoot":"/work/project;$(touch nope)","paths":["/work/project;$(touch nope)/.agents/skills/testing"],"verification":"unverified"}],"targets":[{"scope":"global","projectRoot":"","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"local-modification"},{"scope":"project","projectRoot":"/work/project;$(touch nope)","agent":"claude-code","path":"/work/project;$(touch nope)/.claude/skills/testing","version":"v2.0.0","health":"missing"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -423,7 +466,7 @@ void main() {
     expect(skills.single.projects, [r'/work/project;$(touch nope)']);
     expect(skills.single.visibility, hasLength(2));
     expect(skills.single.visibility.first.agent, 'codex');
-    expect(skills.single.visibility.first.scope, InstallationScope.user);
+    expect(skills.single.visibility.first.scope, InstallationScope.global);
     expect(skills.single.visibility.first.paths, [
       '/tmp/testing',
       '/tmp/shared/testing',
@@ -443,8 +486,8 @@ void main() {
     );
     expect(skills.single.targets.last.health, InstallationHealth.missing);
     expect(runner.lastArguments, [
-      'inventory',
-      '--user',
+      'list',
+      '--global',
       '--project',
       r'/work/project;$(touch nope)',
       '--output',
@@ -457,7 +500,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":6,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","modulePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"healthy"}]}]}',
+            '{"schemaVersion":7,"entries":[{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","modulePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1.0.0"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"workspace","agent":"codex","path":"/tmp/testing","version":"v1.0.0","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -496,7 +539,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":6,"entries":[{"inventoryKey":"external:abc","name":"testing","provenance":"external","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/external/testing","version":"","health":"healthy"}]},{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","modulePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"user","agent":"codex","path":"/tmp/managed/testing","version":"v1","health":"healthy"}]}]}',
+            '{"schemaVersion":7,"entries":[{"inventoryKey":"external:abc","name":"testing","provenance":"external","health":"healthy","agents":["codex"],"projects":[],"versions":[],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/external/testing","version":"","health":"healthy"}]},{"inventoryKey":"hub:github.com/a/b:testing","name":"testing","modulePath":"github.com/a/b","provenance":"hub","health":"healthy","agents":["codex"],"projects":[],"versions":["v1"],"versionDivergence":false,"visibility":[],"targets":[{"scope":"global","agent":"codex","path":"/tmp/managed/testing","version":"v1","health":"healthy"}]}]}',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -524,7 +567,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              r'{"schemaVersion":1,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["project","user"],"userTarget":{"path":"/Users/test/.codex/skills;$(touch nope)","exists":true}},{"id":"eve","displayName":"Eve","installed":false,"supportedScopes":["project"],"userTarget":null}]}',
+              r'{"schemaVersion":2,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["project","global"],"globalTarget":{"path":"/Users/test/.codex/skills;$(touch nope)","exists":true}},{"id":"eve","displayName":"Eve","installed":false,"supportedScopes":["project"],"globalTarget":null}]}',
           stderr: '',
         );
       const executable = r'/tmp/skillsgo bin;$(touch should-not-run)';
@@ -535,16 +578,16 @@ void main() {
 
       final report = await gateway.inspectAgents();
 
-      expect(report.schemaVersion, 1);
+      expect(report.schemaVersion, 2);
       expect(report.agents, hasLength(2));
       expect(report.installed.single.id, 'codex');
       expect(report.agents.first.displayName, 'Codex');
       expect(report.agents.first.supportedScopes, [
         InstallationScope.project,
-        InstallationScope.user,
+        InstallationScope.global,
       ]);
       expect(
-        report.agents.first.userTarget?.path,
+        report.agents.first.globalTarget?.path,
         r'/Users/test/.codex/skills;$(touch nope)',
       );
       expect(runner.calls.single.executable, executable);
@@ -554,11 +597,11 @@ void main() {
 
   test('inspectAgents rejects malformed machine schemas', () async {
     for (final body in [
-      '{"schemaVersion":2,"agents":[]}',
-      '{"schemaVersion":1,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["machine"],"userTarget":null}]}',
-      '{"schemaVersion":1,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["user"],"userTarget":null}]}',
-      '{"schemaVersion":1,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["project"],"userTarget":{"path":"/tmp","exists":true}}]}',
-      '{"schemaVersion":1,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["project"],"userTarget":null},{"id":"codex","displayName":"Duplicate","installed":false,"supportedScopes":["project"],"userTarget":null}]}',
+      '{"schemaVersion":1,"agents":[]}',
+      '{"schemaVersion":2,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["machine"],"globalTarget":null}]}',
+      '{"schemaVersion":2,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["global"],"globalTarget":null}]}',
+      '{"schemaVersion":2,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["project"],"globalTarget":{"path":"/tmp","exists":true}}]}',
+      '{"schemaVersion":2,"agents":[{"id":"codex","displayName":"Codex","installed":true,"supportedScopes":["project"],"globalTarget":null},{"id":"codex","displayName":"Duplicate","installed":false,"supportedScopes":["project"],"globalTarget":null}]}',
     ]) {
       final gateway = RealSkillsGateway(
         processRunner: FakeProcessRunner()

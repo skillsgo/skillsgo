@@ -44,7 +44,7 @@ func TestVisibilityIsDerivedFromDiscoveryRootsAndPhysicalIdentity(t *testing.T) 
 	entry := &Entry{
 		Name: "demo",
 		Targets: []Target{{
-			Scope: install.ScopeUser, Agent: "codex", Path: canonical, CanonicalPath: canonical,
+			Scope: install.ScopeGlobal, Agent: "codex", Path: canonical, CanonicalPath: canonical,
 		}},
 	}
 	entries := map[string]*Entry{"hub:demo": entry}

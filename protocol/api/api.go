@@ -1,12 +1,14 @@
 /*
- * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Module Path plus Skill Name validation.
- * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, ordered candidate matching DTOs, standalone Module Info, immutable Module Version Skill content, canonical Skill coordinates, and update DTOs.
+ * [INPUT]: Depends on the public SkillsGo Hub JSON schema, immutable artifact metadata, and canonical Module Path plus Skill Name or exact Skill Path validation.
+ * [OUTPUT]: Provides shared schema constants, canonical pagination, search cards, ordered candidate matching DTOs, standalone Module Info, immutable Module Version Skill content, name-query and exact-path Skill coordinates, and update DTOs.
  * [POS]: Serves as the typed wire contract shared by Hub handlers and the CLI Hub client.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package api
 
 import (
+	"path"
+	"strings"
 	"time"
 
 	"github.com/skillsgo/skillsgo/protocol/module"
@@ -50,6 +52,11 @@ type ModuleVersionSkill struct {
 type SkillCoordinate struct {
 	ModulePath string `json:"modulePath"`
 	Name       string `json:"name"`
+}
+
+type SkillPathCoordinate struct {
+	ModulePath string `json:"modulePath"`
+	Path       string `json:"path"`
 }
 
 type CandidateQuery struct {
@@ -98,6 +105,18 @@ func (coordinate SkillCoordinate) Valid() bool {
 
 func (coordinate SkillCoordinate) Key() string {
 	return coordinate.ModulePath + "\x00" + coordinate.Name
+}
+
+func (coordinate SkillPathCoordinate) Valid() bool {
+	parsed, err := module.ParsePath(coordinate.ModulePath)
+	cleaned := path.Clean(coordinate.Path)
+	return err == nil && parsed.String() == coordinate.ModulePath && strings.TrimSpace(coordinate.Path) == coordinate.Path && coordinate.Path != "" &&
+		cleaned == coordinate.Path && cleaned != "." && !strings.HasPrefix(cleaned, "../") &&
+		!strings.HasPrefix(cleaned, "/") && !strings.Contains(cleaned, "\\")
+}
+
+func (coordinate SkillPathCoordinate) Key() string {
+	return coordinate.ModulePath + "\x00" + coordinate.Path
 }
 
 type CatalogUpdateCheckRequest struct {

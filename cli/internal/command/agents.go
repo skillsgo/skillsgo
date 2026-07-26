@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-const agentsSchemaVersion = 1
+const agentsSchemaVersion = 2
 
 type agentsReport struct {
 	SchemaVersion      int            `json:"schemaVersion"`
@@ -64,8 +64,8 @@ func newAgentsCommand(catalog *agent.Catalog) *cobra.Command {
 					}
 					secondary := status.ID
 					meta := []string{state}
-					if status.UserTarget != nil {
-						meta = append(meta, status.UserTarget.Path)
+					if status.GlobalTarget != nil {
+						meta = append(meta, status.GlobalTarget.Path)
 					}
 					sections[section].Rows = append(sections[section].Rows, terminalui.Row{
 						State: marker, Primary: status.DisplayName, Secondary: secondary, Meta: meta,

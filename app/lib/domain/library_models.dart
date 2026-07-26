@@ -35,13 +35,13 @@ class BatchTakeoverItemResult {
   final String reason;
 }
 
-enum BatchTakeoverScopeKind { all, user, project }
+enum BatchTakeoverScopeKind { all, global, project }
 
 class BatchTakeoverScope {
   const BatchTakeoverScope._(this.kind, this.projectRoot);
 
   static const all = BatchTakeoverScope._(BatchTakeoverScopeKind.all, '');
-  static const user = BatchTakeoverScope._(BatchTakeoverScopeKind.user, '');
+  static const global = BatchTakeoverScope._(BatchTakeoverScopeKind.global, '');
 
   factory BatchTakeoverScope.project(String projectRoot) =>
       BatchTakeoverScope._(BatchTakeoverScopeKind.project, projectRoot);
@@ -54,20 +54,20 @@ class BatchTakeoverPlan {
   const BatchTakeoverPlan({
     required this.id,
     required this.allEligibleCount,
-    required this.userEligibleCount,
+    required this.globalEligibleCount,
     this.eligibleCountByProjectRoot = const {},
     this.previews = const [],
   });
 
   final String id;
   final int allEligibleCount;
-  final int userEligibleCount;
+  final int globalEligibleCount;
   final Map<String, int> eligibleCountByProjectRoot;
   final List<BatchTakeoverPreview> previews;
 
   int eligibleCount(BatchTakeoverScope scope) => switch (scope.kind) {
     BatchTakeoverScopeKind.all => allEligibleCount,
-    BatchTakeoverScopeKind.user => userEligibleCount,
+    BatchTakeoverScopeKind.global => globalEligibleCount,
     BatchTakeoverScopeKind.project => eligibleForProject(scope.projectRoot),
   };
 
@@ -89,8 +89,8 @@ class BatchTakeoverPreview {
   final String projectRoot;
 }
 
-class AgentUserTarget {
-  const AgentUserTarget({required this.path, required this.exists});
+class AgentGlobalTarget {
+  const AgentGlobalTarget({required this.path, required this.exists});
 
   final String path;
   final bool exists;
@@ -102,7 +102,7 @@ class AgentStatus {
     required this.displayName,
     required this.installed,
     required this.supportedScopes,
-    this.userTarget,
+    this.globalTarget,
     this.discoveryRoots = const [],
   });
 
@@ -110,7 +110,7 @@ class AgentStatus {
   final String displayName;
   final bool installed;
   final List<InstallationScope> supportedScopes;
-  final AgentUserTarget? userTarget;
+  final AgentGlobalTarget? globalTarget;
   final List<String> discoveryRoots;
 }
 

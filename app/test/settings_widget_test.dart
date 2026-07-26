@@ -296,8 +296,11 @@ void main() {
           id: 'codex',
           displayName: 'Codex',
           installed: true,
-          supportedScopes: [InstallationScope.project, InstallationScope.user],
-          userTarget: AgentUserTarget(
+          supportedScopes: [
+            InstallationScope.project,
+            InstallationScope.global,
+          ],
+          globalTarget: AgentGlobalTarget(
             path: '/Users/test/.codex/skills',
             exists: true,
           ),
@@ -310,8 +313,11 @@ void main() {
           id: 'cursor',
           displayName: 'Cursor',
           installed: false,
-          supportedScopes: [InstallationScope.project, InstallationScope.user],
-          userTarget: AgentUserTarget(
+          supportedScopes: [
+            InstallationScope.project,
+            InstallationScope.global,
+          ],
+          globalTarget: AgentGlobalTarget(
             path: '/Users/test/.cursor/skills',
             exists: false,
           ),

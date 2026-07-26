@@ -234,7 +234,7 @@
   "allAgents": "Всі Agents",
   "allProjects": "Всі проекти",
   "specificProject": "Проект",
-  "userScope": "Глобальний",
+  "globalScope": "Глобальний",
   "addProject": "Додати проект",
   "relocateProject": "Переїзд",
   "removeFromList": "Видалити зі списку",
@@ -647,13 +647,13 @@
   "updateCheckFailed": "ПЕРЕВІРКА ПОМИЛАСЯ",
   "installSkill": "Встановіть Skill",
   "installLocationTitle": "Виберіть місце встановлення",
-  "userLevel": "Рівень користувача",
+  "globalLevel": "Global",
   "projectLevel": "Рівень проекту",
   "projects": "Проекти",
   "loading": "Завантаження…",
   "repositoryParsing": "Розбір сховища…",
-  "userInstallSummary": "Встановити глобально для {agents}",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"
