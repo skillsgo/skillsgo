@@ -1,13 +1,14 @@
 {
-  "collection": "all_time",
-  "items": [
+  "skills": [
     {
       "modulePath": "github.com/acme/skills",
-      "skillName": "demo",
+      "name": "demo",
+      "description": "Demo",
+      "imageUrl": null,
+      "path": "skills/demo",
+      "latestVersion": "v1.0.0",
       "metric": {
-        "kind": "all_time_installs",
-        "value": 3,
-        "change": 0
+        "value": 3
       }
     }
   ],

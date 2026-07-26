@@ -46,6 +46,7 @@ func TestJ48CloudInstallReporting(t *testing.T) {
 	require.Len(t, events, 1)
 	require.Equal(t, testModulePath, events[0].ModulePath)
 	require.Equal(t, testSkillName, events[0].SkillName)
+	require.Equal(t, "skills/alpha", events[0].SkillPath)
 	require.Equal(t, testSkillVersion, events[0].Version)
 	require.Equal(t, cloud.ScopeProject, events[0].Scope)
 	require.Equal(t, []string{"codex"}, events[0].Agents)

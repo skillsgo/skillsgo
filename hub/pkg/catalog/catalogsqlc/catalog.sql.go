@@ -1101,6 +1101,77 @@ func (q *Queries) SkillsByCoordinates(ctx context.Context, arg SkillsByCoordinat
 	return items, nil
 }
 
+const skillsByPathCoordinates = `-- name: SkillsByPathCoordinates :many
+WITH requested AS (
+    SELECT module_paths.module_path, skill_paths.path, module_paths.ordinal
+    FROM unnest($1::text[]) WITH ORDINALITY AS module_paths(module_path, ordinal)
+    JOIN unnest($2::text[]) WITH ORDINALITY AS skill_paths(path, ordinal) USING (ordinal)
+)
+SELECT mvs.version_id AS id, mv.module_id, m.path AS module_path,
+       mvs.name, mvs.description, m.source_host,
+       m.source_path AS source_repository, mvs.path,
+       mv.version AS latest_version, m.stars,
+       mv.created_at, m.updated_at
+FROM requested input
+JOIN modules m ON m.path=input.module_path
+JOIN versions mv ON mv.id=m.current_version_id
+JOIN skills mvs ON mvs.version_id=mv.id AND mvs.path=input.path
+ORDER BY input.ordinal
+`
+
+type SkillsByPathCoordinatesParams struct {
+	ModulePaths []string `json:"module_paths"`
+	Paths       []string `json:"paths"`
+}
+
+type SkillsByPathCoordinatesRow struct {
+	ID               int64     `json:"id"`
+	ModuleID         int64     `json:"module_id"`
+	ModulePath       string    `json:"module_path"`
+	Name             string    `json:"name"`
+	Description      string    `json:"description"`
+	SourceHost       string    `json:"source_host"`
+	SourceRepository string    `json:"source_repository"`
+	Path             string    `json:"path"`
+	LatestVersion    string    `json:"latest_version"`
+	Stars            int64     `json:"stars"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
+}
+
+func (q *Queries) SkillsByPathCoordinates(ctx context.Context, arg SkillsByPathCoordinatesParams) ([]SkillsByPathCoordinatesRow, error) {
+	rows, err := q.db.Query(ctx, skillsByPathCoordinates, arg.ModulePaths, arg.Paths)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []SkillsByPathCoordinatesRow{}
+	for rows.Next() {
+		var i SkillsByPathCoordinatesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ModuleID,
+			&i.ModulePath,
+			&i.Name,
+			&i.Description,
+			&i.SourceHost,
+			&i.SourceRepository,
+			&i.Path,
+			&i.LatestVersion,
+			&i.Stars,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const staleQueuedBackfillRuns = `-- name: StaleQueuedBackfillRuns :many
 SELECT id, module_path, status, started_at, completed_at, error_count, diagnostics, created_at, updated_at FROM module_backfill_runs WHERE status='queued' AND updated_at<$1 ORDER BY updated_at LIMIT $2
 `

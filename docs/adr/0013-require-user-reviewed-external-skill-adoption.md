@@ -8,7 +8,7 @@ SkillsGo adopts an External Installation only after presenting Hub-backed choice
 
 ## Decision
 
-The Library remains local-first. Inventory discovers External Installations and their local name, description, scope, Agent target, physical path, and any supported skills.sh source record without calling the Hub. Candidate discovery begins only when the user enters the adoption review for the currently selected Library location. All Skills covers User Scope and every accessible Added Project, Global covers only User Scope, and a Project location covers only that Workspace Scope.
+The Library remains local-first. Inventory discovers External Installations and their local name, description, scope, Agent target, physical path, and any supported skills.sh source record without calling the Hub. Candidate discovery begins only when the user enters the adoption review for the currently selected Library location. All Skills covers Global Scope and every accessible Added Project, Global covers only Global Scope, and a Project location covers only that Workspace Scope.
 
 A supported skills.sh record contributes only its canonical Repository ID. SkillsGo does not interpret `skillFolderHash`, `computedHash`, a movable ref, or other skills.sh fields as a version decision or content-authentication proof. The External Skill's canonical Skill Name identifies the logical Repository member. The user chooses one Hub-published immutable Repository Version that contains that Skill Name; the latest eligible version is selected by default, and versions that do not contain the member cannot form an executable selection.
 

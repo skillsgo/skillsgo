@@ -3,9 +3,9 @@
 
 ## Members
 
-- `catalog.go`: defines the complete supported Agent catalog, resolves platform-specific managed and read-only discovery roots, and exposes the user root used by shared canonical Skill storage.
+- `catalog.go`: defines the complete supported Agent catalog, resolves platform-specific managed and read-only discovery roots, and exposes the Global root used by shared canonical Skill storage.
 - `catalog_test.go`: specifies catalog parity, managed/discovery root separation, special detection, universal visibility, and stable machine-report fields.
-- `detect.go`: evaluates read-only installation signals and produces canonical Agent status records including user-level Skill loading paths.
+- `detect.go`: evaluates read-only installation signals and produces canonical Agent status records including Global Skill loading paths.
 
 ## Architectural Boundary
 

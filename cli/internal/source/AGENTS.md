@@ -8,6 +8,6 @@
 
 ## Architectural Boundary
 
-This module owns CLI input aliases, source-reference syntax, selectors, and validation at the explicit skills.sh import boundary. Canonical public Repository ID grammar belongs to the Protocol workspace. It must not fetch Hub artifacts, resolve local installation paths, or infer user targets.
+This module owns CLI input aliases, source-reference syntax, selectors, and validation at the explicit skills.sh import boundary. Canonical public Repository ID grammar belongs to the Protocol workspace. It must not fetch Hub artifacts, resolve local installation paths, or infer Global targets.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

@@ -33,7 +33,7 @@ type skillsResponse struct {
 }
 
 type skillBatchRequest struct {
-	Skills []skillCoordinate `json:"skills"`
+	Skills []protocolapi.SkillPathCoordinate `json:"skills"`
 }
 
 type skillCoordinate = protocolapi.SkillCoordinate
@@ -85,7 +85,7 @@ func skillBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 		decoder := json.NewDecoder(strings.NewReader(string(c.Body())))
 		decoder.DisallowUnknownFields()
 		if err := decoder.Decode(&request); err != nil || len(request.Skills) == 0 || len(request.Skills) > 100 {
-			return writeAPIError(c, fiber.StatusBadRequest, "skills must contain 1 to 100 Module Path and Skill Name coordinates")
+			return writeAPIError(c, fiber.StatusBadRequest, "skills must contain 1 to 100 Module Path and Skill Path coordinates")
 		}
 		seen := make(map[string]bool, len(request.Skills))
 		for _, coordinate := range request.Skills {
@@ -95,7 +95,7 @@ func skillBatchHandler(metadata *catalog.Catalog) fiber.Handler {
 			}
 			seen[key] = true
 		}
-		cards, err := projection.Hydrate(c.Context(), request.Skills)
+		cards, err := projection.HydratePaths(c.Context(), request.Skills)
 		if err != nil {
 			return writeInternalAPIError(c, "catalog.skill_batch", fiber.StatusInternalServerError, "internal_error", "Skill batch failed", err)
 		}

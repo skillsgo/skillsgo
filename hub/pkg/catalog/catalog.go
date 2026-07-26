@@ -496,9 +496,6 @@ func (c *Catalog) SkillByCoordinate(ctx context.Context, modulePath, name string
 	return skillFromSQLC(stored.ID, stored.ModuleID, stored.ModulePath, stored.Name, stored.Description, stored.SourceHost, stored.SourceRepository, stored.Path, stored.LatestVersion, stored.Stars, stored.CreatedAt, stored.UpdatedAt), nil
 }
 
-// SkillsByCoordinates resolves public Module ID plus canonical Skill Name
-// coordinates in one ordered database query, omitting coordinates not present
-// in the current Catalog.
 func (c *Catalog) SkillsByCoordinates(ctx context.Context, coordinates []protocolapi.SkillCoordinate) ([]Skill, error) {
 	modulePaths := make([]string, 0, len(coordinates))
 	names := make([]string, 0, len(coordinates))
@@ -507,6 +504,25 @@ func (c *Catalog) SkillsByCoordinates(ctx context.Context, coordinates []protoco
 		names = append(names, coordinate.Name)
 	}
 	rows, err := c.queries.SkillsByCoordinates(ctx, catalogsqlc.SkillsByCoordinatesParams{ModulePaths: modulePaths, Names: names})
+	if err != nil {
+		return nil, err
+	}
+	items := make([]Skill, 0, len(rows))
+	for _, row := range rows {
+		item := skillFromSQLC(row.ID, row.ModuleID, row.ModulePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt)
+		items = append(items, *item)
+	}
+	return items, nil
+}
+
+func (c *Catalog) SkillsByPathCoordinates(ctx context.Context, coordinates []protocolapi.SkillPathCoordinate) ([]Skill, error) {
+	modulePaths := make([]string, 0, len(coordinates))
+	paths := make([]string, 0, len(coordinates))
+	for _, coordinate := range coordinates {
+		modulePaths = append(modulePaths, coordinate.ModulePath)
+		paths = append(paths, coordinate.Path)
+	}
+	rows, err := c.queries.SkillsByPathCoordinates(ctx, catalogsqlc.SkillsByPathCoordinatesParams{ModulePaths: modulePaths, Paths: paths})
 	if err != nil {
 		return nil, err
 	}

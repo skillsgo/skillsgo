@@ -32,8 +32,8 @@ func TestWorkspaceYAMLStrictModuleDependencyContract(t *testing.T) {
 
 func TestUserDeclarationAndStateRootsAreSeparated(t *testing.T) {
 	home := filepath.Join(string(filepath.Separator), "home", "person")
-	require.Equal(t, filepath.Join(home, ".agents"), UserDeclarationRoot(home))
-	require.Equal(t, filepath.Join(home, ".skillsgo"), UserStateRoot(home))
+	require.Equal(t, filepath.Join(home, ".agents"), GlobalDeclarationRoot(home))
+	require.Equal(t, filepath.Join(home, ".skillsgo"), GlobalStateRoot(home))
 }
 
 func TestWorkspaceYAMLRejectsAmbiguousOrIncompleteState(t *testing.T) {

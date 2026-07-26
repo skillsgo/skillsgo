@@ -38,7 +38,7 @@ func TestJ15Inventory(t *testing.T) {
 	require.NoError(t, os.MkdirAll(filepath.Join(sandboxRoot, "home", ".codex"), 0o755))
 
 	inventory := execCLI(t, ctx, container,
-		"inventory", "--project", scenarioContainerPath(t, "project"), "--output", "json",
+		"list", "--project", scenarioContainerPath(t, "project"), "--output", "json",
 	)
 	require.Equal(t, 0, inventory.exitCode, inventory.output)
 	var report struct {
@@ -54,7 +54,7 @@ func TestJ15Inventory(t *testing.T) {
 		} `json:"entries"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(inventory.output), &report), inventory.output)
-	require.Equal(t, 6, report.SchemaVersion)
+	require.Equal(t, 7, report.SchemaVersion)
 	entries := make(map[string]struct {
 		ModulePath string
 		Provenance string
