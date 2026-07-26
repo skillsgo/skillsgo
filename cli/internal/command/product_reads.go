@@ -46,20 +46,26 @@ func writeFindHuman(cmd *cobra.Command, document []byte, batch bool) error {
 			return fmt.Errorf("decode Find response: %w", err)
 		}
 		for index, candidates := range response.Candidates {
-			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Query %d\n", index+1); err != nil { return err }
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "Query %d\n", index+1); err != nil {
+				return err
+			}
 			if len(candidates) == 0 {
-				if _, err := fmt.Fprintln(cmd.OutOrStdout(), "  No Skills found."); err != nil { return err }
+				if _, err := fmt.Fprintln(cmd.OutOrStdout(), "  No Skills found."); err != nil {
+					return err
+				}
 				continue
 			}
 			for _, skill := range candidates {
-				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "  %s  %s@%s  %s\n", skill.Name, skill.ModulePath, skill.Version, skill.Path); err != nil { return err }
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "  %s  %s@%s  %s\n", skill.Name, skill.ModulePath, skill.Version, skill.Path); err != nil {
+					return err
+				}
 			}
 		}
 		return nil
 	}
 	var response struct {
-		Skills []protocolapi.FindSkill `json:"skills"`
-		Pagination protocolapi.Pagination `json:"pagination"`
+		Skills     []protocolapi.FindSkill `json:"skills"`
+		Pagination protocolapi.Pagination  `json:"pagination"`
 	}
 	if err := json.Unmarshal(document, &response); err != nil {
 		return fmt.Errorf("decode Find response: %w", err)
@@ -69,9 +75,13 @@ func writeFindHuman(cmd *cobra.Command, document []byte, batch bool) error {
 		return err
 	}
 	for _, skill := range response.Skills {
-		if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s  %s@%s  %s\n", skill.Name, skill.ModulePath, skill.LatestVersion, skill.Path); err != nil { return err }
+		if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s  %s@%s  %s\n", skill.Name, skill.ModulePath, skill.LatestVersion, skill.Path); err != nil {
+			return err
+		}
 		if skill.Description != "" {
-			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", skill.Description); err != nil { return err }
+			if _, err := fmt.Fprintf(cmd.OutOrStdout(), "  %s\n", skill.Description); err != nil {
+				return err
+			}
 		}
 	}
 	return nil
@@ -94,7 +104,9 @@ func newFindCommand() *cobra.Command {
 			return nil
 		},
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateProductOutput(output); err != nil { return err }
+			if err := validateProductOutput(output); err != nil {
+				return err
+			}
 			canonicalLocale, localeErr := canonicalContentLocale(contentLocale)
 			if localeErr != nil {
 				return localeErr
@@ -122,7 +134,9 @@ func newFindCommand() *cobra.Command {
 				if err != nil {
 					return err
 				}
-				if output == "json" { return writeProductDocument(cmd, document) }
+				if output == "json" {
+					return writeProductDocument(cmd, document)
+				}
 				return writeFindHuman(cmd, document, true)
 			}
 			query := strings.TrimSpace(args[0])
@@ -139,7 +153,9 @@ func newFindCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if output == "json" { return writeProductDocument(cmd, document) }
+			if output == "json" {
+				return writeProductDocument(cmd, document)
+			}
 			return writeFindHuman(cmd, document, false)
 		},
 	}
@@ -206,7 +222,9 @@ func newDetailCommand() *cobra.Command {
 		Use:  "detail <module-path> <version> <skill-path>",
 		Args: cobra.ExactArgs(3),
 		RunE: func(cmd *cobra.Command, args []string) error {
-			if err := validateProductOutput(output); err != nil { return err }
+			if err := validateProductOutput(output); err != nil {
+				return err
+			}
 			client, err := hub.New(hubURL, nil)
 			if err != nil {
 				return err
@@ -215,9 +233,13 @@ func newDetailCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if output == "json" { return writeProductDocument(cmd, document) }
+			if output == "json" {
+				return writeProductDocument(cmd, document)
+			}
 			var detail protocolapi.ModuleVersionSkill
-			if err := json.Unmarshal(document, &detail); err != nil { return fmt.Errorf("decode Skill detail: %w", err) }
+			if err := json.Unmarshal(document, &detail); err != nil {
+				return fmt.Errorf("decode Skill detail: %w", err)
+			}
 			_, err = fmt.Fprintf(cmd.OutOrStdout(), "%s  %s@%s  %s\n%s\n", detail.Name, detail.ModulePath, detail.Version, detail.Path, detail.Description)
 			return err
 		},
@@ -234,7 +256,9 @@ func newHubCommand() *cobra.Command {
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			output, _ := cmd.Flags().GetString("output")
-			if err := validateProductOutput(output); err != nil { return err }
+			if err := validateProductOutput(output); err != nil {
+				return err
+			}
 			hubURL, _ := cmd.Flags().GetString("hub")
 			client, err := hub.New(hubURL, nil)
 			if err != nil {
@@ -244,10 +268,21 @@ func newHubCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if output == "json" { return writeProductDocument(cmd, document) }
-			var info struct { Mode string `json:"mode"`; Cloud string `json:"cloud"` }
-			if err := json.Unmarshal(document, &info); err != nil { return fmt.Errorf("decode Hub info: %w", err) }
-			if info.Cloud != "" { _, err = fmt.Fprintf(cmd.OutOrStdout(), "Mode: %s\nCloud: %s\n", info.Mode, info.Cloud) } else { _, err = fmt.Fprintf(cmd.OutOrStdout(), "Mode: %s\n", info.Mode) }
+			if output == "json" {
+				return writeProductDocument(cmd, document)
+			}
+			var info struct {
+				Mode  string `json:"mode"`
+				Cloud string `json:"cloud"`
+			}
+			if err := json.Unmarshal(document, &info); err != nil {
+				return fmt.Errorf("decode Hub info: %w", err)
+			}
+			if info.Cloud != "" {
+				_, err = fmt.Fprintf(cmd.OutOrStdout(), "Mode: %s\nCloud: %s\n", info.Mode, info.Cloud)
+			} else {
+				_, err = fmt.Fprintf(cmd.OutOrStdout(), "Mode: %s\n", info.Mode)
+			}
 			return err
 		},
 	}
@@ -258,7 +293,9 @@ func newHubCommand() *cobra.Command {
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
 			output, _ := cmd.Flags().GetString("output")
-			if err := validateProductOutput(output); err != nil { return err }
+			if err := validateProductOutput(output); err != nil {
+				return err
+			}
 			hubURL, _ := cmd.Flags().GetString("hub")
 			client, err := hub.New(hubURL, nil)
 			if err != nil {
@@ -268,7 +305,9 @@ func newHubCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if output == "json" { return writeProductDocument(cmd, document) }
+			if output == "json" {
+				return writeProductDocument(cmd, document)
+			}
 			_, err = fmt.Fprintln(cmd.OutOrStdout(), "Hub is reachable.")
 			return err
 		},

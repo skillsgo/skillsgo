@@ -52,7 +52,9 @@ func newRepositoryUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 			if global && projectRoot != "" {
 				return fmt.Errorf("--global and --project are mutually exclusive")
 			}
-			if err := validateProductOutput(output); err != nil { return err }
+			if err := validateProductOutput(output); err != nil {
+				return err
+			}
 			reference, err := source.Parse(args[0])
 			if err != nil {
 				return err
@@ -96,8 +98,12 @@ func newRepositoryUpdateCommand(catalog *agent.Catalog) *cobra.Command {
 }
 
 func writeModuleUpdateReport(cmd *cobra.Command, output string, report moduleUpdateReport) error {
-	if output == "json" { return json.NewEncoder(cmd.OutOrStdout()).Encode(report) }
-	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s@%s → %s\nScope: %s\nSkills: %d\n", report.ModulePath, report.FromVersion, report.ToVersion, report.Scope, len(report.Skills)); err != nil { return err }
+	if output == "json" {
+		return json.NewEncoder(cmd.OutOrStdout()).Encode(report)
+	}
+	if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s@%s → %s\nScope: %s\nSkills: %d\n", report.ModulePath, report.FromVersion, report.ToVersion, report.Scope, len(report.Skills)); err != nil {
+		return err
+	}
 	if report.Phase == "module-update-preflight" {
 		_, err := fmt.Fprintf(cmd.OutOrStdout(), "State token: %s\n", report.StateToken)
 		return err

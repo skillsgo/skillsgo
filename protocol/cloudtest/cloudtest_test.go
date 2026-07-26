@@ -129,6 +129,26 @@ func TestMockRecordsValidEvent(t *testing.T) {
 	}
 }
 
+func TestMockResetEventsClearsRecordedEvents(t *testing.T) {
+	mock := NewMock()
+	server := httptest.NewServer(mock.Handler())
+	defer server.Close()
+	event := cloud.InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", ModulePath: "github.com/acme/skills", SkillName: "skill", SkillPath: "skills/skill", Version: "v1", Agents: []string{"codex"}, Scope: cloud.ScopeProject, OccurredAt: time.Now().UTC()}
+	body, err := json.Marshal(event)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := http.Post(server.URL+cloud.InstallEventsPath, "application/json", bytes.NewReader(body))
+	if err != nil {
+		t.Fatal(err)
+	}
+	response.Body.Close()
+	mock.ResetEvents()
+	if len(mock.Events()) != 0 {
+		t.Fatal("reset retained install events")
+	}
+}
+
 type panicTestingT struct{}
 
 func (panicTestingT) Helper() {}

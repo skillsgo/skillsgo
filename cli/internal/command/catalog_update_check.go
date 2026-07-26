@@ -48,7 +48,9 @@ func newUpdatesCommand() *cobra.Command {
 		Use:  "check",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if err := validateProductOutput(output); err != nil { return err }
+			if err := validateProductOutput(output); err != nil {
+				return err
+			}
 			candidates, err := decodeCatalogUpdateCandidates(rawInstalled)
 			if err != nil {
 				return err
@@ -97,8 +99,12 @@ func newUpdatesCommand() *cobra.Command {
 			}
 			for _, item := range report.Items {
 				latest := item.LatestVersion
-				if latest == "" { latest = "unavailable" }
-				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s  %s  latest: %s\n", item.Name, item.Status, latest); err != nil { return err }
+				if latest == "" {
+					latest = "unavailable"
+				}
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s  %s  latest: %s\n", item.Name, item.Status, latest); err != nil {
+					return err
+				}
 			}
 			return nil
 		},

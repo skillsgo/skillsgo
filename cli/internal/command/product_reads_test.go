@@ -110,7 +110,9 @@ func TestProductReadsDefaultToHumanOutput(t *testing.T) {
 	}))
 	defer server.Close()
 	var stdout bytes.Buffer
-	if err := Execute([]string{"find", "demo", "--hub", server.URL}, &stdout, &bytes.Buffer{}); err != nil { t.Fatal(err) }
+	if err := Execute([]string{"find", "demo", "--hub", server.URL}, &stdout, &bytes.Buffer{}); err != nil {
+		t.Fatal(err)
+	}
 	if strings.HasPrefix(strings.TrimSpace(stdout.String()), "{") || !strings.Contains(stdout.String(), "demo  github.com/example/skills@v1.2.3") {
 		t.Fatalf("expected Human output, got %q", stdout.String())
 	}
