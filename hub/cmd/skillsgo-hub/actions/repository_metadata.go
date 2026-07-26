@@ -150,40 +150,40 @@ func newRepositoryMetadataCacheWithRuntime(metadata *catalog.Catalog, tasks *tas
 
 func (c *repositoryMetadataCache) Read(ctx context.Context, sourceHost, repository string) (repositoryMetadata, error) {
 	normalizedHost := strings.ToLower(strings.Trim(sourceHost, "/"))
-	repositoryID := normalizedHost + "/" + strings.Trim(repository, "/")
-	stored, err := c.catalog.Repository(ctx, repositoryID)
+	modulePath := normalizedHost + "/" + strings.Trim(repository, "/")
+	stored, err := c.catalog.Module(ctx, modulePath)
 	if err != nil {
 		return repositoryMetadata{}, err
 	}
 	now := c.now().UTC()
 	_, supported := c.sources[normalizedHost]
 	if !supported {
-		logSourceMetadataCache(ctx, repositoryID, "unsupported")
-		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
+		logSourceMetadataCache(ctx, modulePath, "unsupported")
+		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceETag}, nil
 	}
 	if repositoryMetadataFresh(stored, now, c.ttl) {
-		logSourceMetadataCache(ctx, repositoryID, "hit")
-		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
+		logSourceMetadataCache(ctx, modulePath, "hit")
+		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceETag}, nil
 	}
 	if repositoryMetadataRetryBlocked(stored, now) {
-		logSourceMetadataCache(ctx, repositoryID, "retry_blocked")
-		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
+		logSourceMetadataCache(ctx, modulePath, "retry_blocked")
+		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceETag}, nil
 	}
 	if c.tasks != nil {
-		if err := c.tasks.Enqueue(ctx, repositorySourceMetadataRefreshArgs{RepositoryID: repositoryID}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}); err != nil {
+		if err := c.tasks.Enqueue(ctx, repositorySourceMetadataRefreshArgs{ModulePath: modulePath}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueMaintenance}); err != nil {
 			log.EntryFromContext(ctx).WithFields(map[string]any{
-				"error": err.Error(), "repository_id": repositoryID,
+				"error": err.Error(), "module_path": modulePath,
 			}).Warnf("repository metadata refresh submission failed")
 		}
-		if err := enqueueRepositoryPrewarm(ctx, c.tasks, repositoryID, "head"); err != nil {
+		if err := enqueueRepositoryPrewarm(ctx, c.tasks, modulePath, "latest"); err != nil {
 			log.EntryFromContext(ctx).WithFields(map[string]any{
-				"error": err.Error(), "repository_id": repositoryID,
-			}).Warnf("repository prewarm submission failed")
+				"error": err.Error(), "module_path": modulePath,
+			}).Warnf("module prewarm submission failed")
 		}
-		logSourceMetadataCache(ctx, repositoryID, "stale_queued")
-		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
+		logSourceMetadataCache(ctx, modulePath, "stale_queued")
+		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceETag}, nil
 	}
-	return c.refreshNow(ctx, normalizedHost, strings.Trim(repository, "/"), repositoryID, stored)
+	return c.refreshNow(ctx, normalizedHost, strings.Trim(repository, "/"), modulePath, stored)
 }
 
 func (c *repositoryMetadataCache) RegisterTask() error {
@@ -191,42 +191,42 @@ func (c *repositoryMetadataCache) RegisterTask() error {
 		return fmt.Errorf("repository metadata task runtime is required")
 	}
 	return taskqueue.Register(c.tasks, func(ctx context.Context, args repositorySourceMetadataRefreshArgs) error {
-		parts := strings.SplitN(args.RepositoryID, "/", 2)
+		parts := strings.SplitN(args.ModulePath, "/", 2)
 		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
-			return fmt.Errorf("invalid repository id %q", args.RepositoryID)
+			return fmt.Errorf("invalid repository id %q", args.ModulePath)
 		}
-		stored, err := c.catalog.Repository(ctx, args.RepositoryID)
+		stored, err := c.catalog.Module(ctx, args.ModulePath)
 		if err != nil {
 			return err
 		}
-		_, err = c.refreshNow(ctx, parts[0], parts[1], args.RepositoryID, stored)
+		_, err = c.refreshNow(ctx, parts[0], parts[1], args.ModulePath, stored)
 		return err
 	})
 }
 
-func (c *repositoryMetadataCache) refreshNow(ctx context.Context, normalizedHost, repository, repositoryID string, stored *catalog.Repository) (repositoryMetadata, error) {
+func (c *repositoryMetadataCache) refreshNow(ctx context.Context, normalizedHost, repository, modulePath string, stored *catalog.Module) (repositoryMetadata, error) {
 	upstream, supported := c.sources[normalizedHost]
 	if !supported {
-		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, nil
+		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceETag}, nil
 	}
-	value, err, _ := c.refresh.Do(repositoryID, func() (any, error) {
-		current, readErr := c.catalog.Repository(ctx, repositoryID)
+	value, err, _ := c.refresh.Do(modulePath, func() (any, error) {
+		current, readErr := c.catalog.Module(ctx, modulePath)
 		if readErr != nil {
 			return nil, readErr
 		}
 		now := c.now().UTC()
 		if repositoryMetadataFresh(current, now, c.ttl) || repositoryMetadataRetryBlocked(current, now) {
-			logSourceMetadataCache(ctx, repositoryID, "singleflight_hit")
-			return repositoryMetadata{Description: current.Description, Stars: current.Stars, ETag: current.SourceMetadataETag}, nil
+			logSourceMetadataCache(ctx, modulePath, "singleflight_hit")
+			return repositoryMetadata{Description: current.Description, Stars: current.Stars, ETag: current.SourceETag}, nil
 		}
-		etag := current.SourceMetadataETag
+		etag := current.SourceETag
 		if current.Description == "" {
 			etag = ""
 		}
 		result, upstreamErr := upstream.Read(ctx, normalizedHost, repository, etag)
 		if upstreamErr != nil {
 			if retryAt := githubMetadataRetryAt(upstreamErr, now); retryAt != nil {
-				if updateErr := c.catalog.UpdateRepositorySourceMetadata(ctx, repositoryID, current.Description, current.Stars, current.SourceMetadataETag, current.SourceMetadataCheckedAt, retryAt); updateErr != nil {
+				if updateErr := c.catalog.UpdateModuleSourceMetadata(ctx, modulePath, current.Description, current.Stars, current.SourceETag, current.SourceCheckedAt, retryAt); updateErr != nil {
 					return nil, fmt.Errorf("persist github metadata retry window: %w", updateErr)
 				}
 			}
@@ -234,38 +234,38 @@ func (c *repositoryMetadataCache) refreshNow(ctx context.Context, normalizedHost
 		}
 		description, stars, etag := result.Description, result.Stars, result.ETag
 		if result.NotModified {
-			description, stars, etag = current.Description, current.Stars, current.SourceMetadataETag
+			description, stars, etag = current.Description, current.Stars, current.SourceETag
 		}
-		if err := c.catalog.UpdateRepositorySourceMetadata(ctx, repositoryID, description, stars, etag, &now, nil); err != nil {
+		if err := c.catalog.UpdateModuleSourceMetadata(ctx, modulePath, description, stars, etag, &now, nil); err != nil {
 			return nil, err
 		}
 		cacheResult := "refreshed"
 		if result.NotModified {
 			cacheResult = "revalidated"
 		}
-		logSourceMetadataCache(ctx, repositoryID, cacheResult)
+		logSourceMetadataCache(ctx, modulePath, cacheResult)
 		return repositoryMetadata{Description: description, Stars: stars, ETag: etag}, nil
 	})
 	if err != nil {
-		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceMetadataETag}, err
+		return repositoryMetadata{Description: stored.Description, Stars: stored.Stars, ETag: stored.SourceETag}, err
 	}
 	return value.(repositoryMetadata), nil
 }
 
-func logSourceMetadataCache(ctx context.Context, repositoryID, result string) {
+func logSourceMetadataCache(ctx context.Context, modulePath, result string) {
 	log.EntryFromContext(ctx).WithFields(map[string]any{
 		"cache_resource": "repository_source_metadata",
 		"cache_result":   result,
-		"repository_id":  repositoryID,
+		"module_path":    modulePath,
 	}).Debugf("repository source metadata cache lookup")
 }
 
-func repositoryMetadataFresh(repository *catalog.Repository, now time.Time, ttl time.Duration) bool {
-	return repository.SourceMetadataCheckedAt != nil && now.Before(repository.SourceMetadataCheckedAt.Add(ttl))
+func repositoryMetadataFresh(repository *catalog.Module, now time.Time, ttl time.Duration) bool {
+	return repository.SourceCheckedAt != nil && now.Before(repository.SourceCheckedAt.Add(ttl))
 }
 
-func repositoryMetadataRetryBlocked(repository *catalog.Repository, now time.Time) bool {
-	return repository.SourceMetadataRetryAt != nil && now.Before(*repository.SourceMetadataRetryAt)
+func repositoryMetadataRetryBlocked(repository *catalog.Module, now time.Time) bool {
+	return repository.SourceRetryAt != nil && now.Before(*repository.SourceRetryAt)
 }
 
 func (r *githubRepositoryMetadataReader) Read(
@@ -330,7 +330,7 @@ func (r *githubRepositoryMetadataReader) readWithToken(
 			"dependency":          "github_api",
 			"duration_ms":         time.Since(started).Milliseconds(),
 			"error":               err.Error(),
-			"repository_id":       strings.TrimSuffix(sourceHost, "/") + "/" + strings.Trim(repository, "/"),
+			"module_path":         strings.TrimSuffix(sourceHost, "/") + "/" + strings.Trim(repository, "/"),
 			"upstream_operation":  "get_repository_metadata",
 		}).Warnf("github api transport failed")
 		return repositoryMetadata{}, err
@@ -343,7 +343,7 @@ func (r *githubRepositoryMetadataReader) readWithToken(
 		"duration_ms":          duration.Milliseconds(),
 		"github_request_id":    response.Header.Get("X-GitHub-Request-Id"),
 		"rate_limit_remaining": response.Header.Get("X-RateLimit-Remaining"),
-		"repository_id":        strings.TrimSuffix(sourceHost, "/") + "/" + strings.Trim(repository, "/"),
+		"module_path":          strings.TrimSuffix(sourceHost, "/") + "/" + strings.Trim(repository, "/"),
 		"upstream_operation":   "get_repository_metadata",
 		"upstream_status":      response.StatusCode,
 	}).Debugf("github api request completed")

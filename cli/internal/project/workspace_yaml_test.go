@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Uses strict YAML documents and temporary Workspace roots at the public Workspace persistence seam.
- * [OUTPUT]: Specifies canonical skillsgo.yaml/skillsgo-lock.yaml parsing, validation, nearest YAML-root discovery, deterministic writing, atomic paired publication, and read-time crash recovery.
+ * [OUTPUT]: Specifies canonical skills.yaml/skills-lock.yaml parsing, validation, nearest YAML-root discovery, deterministic writing, atomic paired publication, and read-time crash recovery.
  * [POS]: Serves as the executable contract for Repository dependency intent and integrity state.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,20 +14,26 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWorkspaceYAMLStrictRepositoryDependencyContract(t *testing.T) {
-	require.Equal(t, "skillsgo-lock.yaml", DependencyLockName)
+func TestWorkspaceYAMLStrictModuleDependencyContract(t *testing.T) {
+	require.Equal(t, "skills-lock.yaml", DependencyLockName)
 	document := []byte(`dependencies:
   github.com/example/skills:
     version: v1.2.3
     skills: [design, root-skill]
     agents: [codex, zed]
 `)
-	manifest, err := ParseWorkspaceManifest("skillsgo.yaml", document)
+	manifest, err := ParseWorkspaceManifest("skills.yaml", document)
 	require.NoError(t, err)
 	dependency := manifest.Dependencies["github.com/example/skills"]
 	require.Equal(t, "v1.2.3", dependency.Version)
 	require.Equal(t, []string{"design", "root-skill"}, dependency.Skills)
 	require.Equal(t, []string{"codex", "zed"}, dependency.Agents)
+}
+
+func TestUserDeclarationAndStateRootsAreSeparated(t *testing.T) {
+	home := filepath.Join(string(filepath.Separator), "home", "person")
+	require.Equal(t, filepath.Join(home, ".agents"), UserDeclarationRoot(home))
+	require.Equal(t, filepath.Join(home, ".skillsgo"), UserStateRoot(home))
 }
 
 func TestWorkspaceYAMLRejectsAmbiguousOrIncompleteState(t *testing.T) {
@@ -46,7 +52,7 @@ func TestWorkspaceYAMLRejectsAmbiguousOrIncompleteState(t *testing.T) {
 	}
 	for name, document := range tests {
 		t.Run(name, func(t *testing.T) {
-			_, err := ParseWorkspaceManifest("skillsgo.yaml", []byte(document))
+			_, err := ParseWorkspaceManifest("skills.yaml", []byte(document))
 			require.Error(t, err)
 		})
 	}
@@ -54,10 +60,10 @@ func TestWorkspaceYAMLRejectsAmbiguousOrIncompleteState(t *testing.T) {
 
 func TestWriteWorkspaceStatePublishesCanonicalManifestAndLock(t *testing.T) {
 	root := t.TempDir()
-	manifest := WorkspaceManifest{Dependencies: map[string]RepositoryDependency{
+	manifest := WorkspaceManifest{Dependencies: map[string]ModuleDependency{
 		"github.com/example/skills": {Version: "v1.2.3", Skills: []string{"root-skill", "design"}, Agents: []string{"zed", "codex"}},
 	}}
-	lock := DependencyLock{Dependencies: map[string]LockedRepository{
+	lock := DependencyLock{Dependencies: map[string]LockedModule{
 		"github.com/example/skills": {Version: "v1.2.3", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},
 	}}
 	require.NoError(t, WriteWorkspaceState(root, manifest, lock))
@@ -105,10 +111,10 @@ func TestFindWorkspaceRootUsesSkillsgoYAML(t *testing.T) {
 }
 
 func TestValidateWorkspaceStateRequiresExactRepositorySet(t *testing.T) {
-	manifest := WorkspaceManifest{Dependencies: map[string]RepositoryDependency{
+	manifest := WorkspaceManifest{Dependencies: map[string]ModuleDependency{
 		"github.com/example/skills": {Version: "v1.2.3", Skills: []string{"root-skill"}, Agents: []string{"codex"}},
 	}}
-	lock := DependencyLock{Dependencies: map[string]LockedRepository{
+	lock := DependencyLock{Dependencies: map[string]LockedModule{
 		"github.com/example/skills": {Version: "v1.2.3", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},
 		"github.com/example/extra":  {Version: "v1.0.0", Sum: "h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="},
 	}}

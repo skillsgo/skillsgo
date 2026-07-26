@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on one storage Backend plus bounded immutable Info and ZIP byte streams.
- * [OUTPUT]: Provides backend-native or process-safe fallback PutIfAbsent semantics plus shared bounded byte-comparison primitives for native conditional writers.
+ * [INPUT]: Depends on one storage Backend plus bounded immutable Info, ZIP, and SKILL.md byte streams.
+ * [OUTPUT]: Provides backend-native or process-safe fallback PutIfAbsent semantics, immutable Skill-content delegation, and shared bounded byte-comparison primitives for native conditional writers.
  * [POS]: Serves as the immutable write membrane for Repository Publication across storage backends.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -37,6 +37,22 @@ func WithImmutableWrites(backend Backend) Backend {
 func (backend *immutableBackend) Save(ctx context.Context, module, version string, zip io.Reader, zipMD5, info []byte) error {
 	_, err := backend.PutIfAbsent(ctx, module, version, zip, zipMD5, info)
 	return err
+}
+
+func (backend *immutableBackend) PutSkillContentIfAbsent(ctx context.Context, module, version, skillPath string, content []byte) (bool, error) {
+	store, ok := backend.Backend.(SkillContentStore)
+	if !ok {
+		return false, errors.E("storage.PutSkillContentIfAbsent", "storage backend does not support Skill content", errors.KindUnexpected)
+	}
+	return store.PutSkillContentIfAbsent(ctx, module, version, skillPath, content)
+}
+
+func (backend *immutableBackend) SkillContent(ctx context.Context, module, version, skillPath string) ([]byte, error) {
+	store, ok := backend.Backend.(SkillContentStore)
+	if !ok {
+		return nil, errors.E("storage.SkillContent", "storage backend does not support Skill content", errors.KindUnexpected)
+	}
+	return store.SkillContent(ctx, module, version, skillPath)
 }
 
 func (backend *immutableBackend) PutIfAbsent(ctx context.Context, module, version string, zip io.Reader, zipMD5, info []byte) (bool, error) {

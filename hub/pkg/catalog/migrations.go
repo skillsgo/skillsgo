@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on embedded PostgreSQL Atlas SQL files, Atlas statement parsing, and the Catalog pgx pool.
- * [OUTPUT]: Provides ordered, checksummed, transactional schema migration with persistent revision history and PostgreSQL serialization.
+ * [INPUT]: Depends on embedded PostgreSQL Atlas SQL files, Atlas statement parsing, the Catalog pgx pool, and a public PostgreSQL extension namespace shared by isolated application schemas.
+ * [OUTPUT]: Provides database prerequisite installation plus ordered, checksummed, transactional schema migration with per-schema revision history and PostgreSQL serialization.
  * [POS]: Serves as the production schema-evolution boundary for the Hub Catalog module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -29,6 +29,9 @@ import (
 var migrationFiles embed.FS
 
 func (c *Catalog) Migrate(ctx context.Context) error {
+	if _, err := c.pool.Exec(ctx, `CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public`); err != nil {
+		return fmt.Errorf("initialize catalog PostgreSQL extensions: %w", err)
+	}
 	dir := "migrations/postgres"
 	sub, err := fs.Sub(migrationFiles, dir)
 	if err != nil {

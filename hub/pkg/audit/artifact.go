@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable Repository ZIP bytes, canonical Repository IDs, member paths, and resolved versions.
- * [OUTPUT]: Provides bounded duplicate-safe Repository-member inspection with Repository content identity, member instructions, file metadata/content, executable signals, and deterministic risk evidence.
+ * [OUTPUT]: Provides bounded duplicate-safe Repository-member inspection with Repository content identity, member instructions, file metadata/content, and executable signals.
  * [POS]: Serves as the artifact-analysis boundary between Hub storage bytes and public audit metadata.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,7 +18,6 @@ import (
 )
 
 const (
-	ScannerVersion      = "file-signals/v1"
 	MaxArchiveBytes     = protocolartifact.MaxArchiveBytes
 	maxFileContentBytes = 256 << 10
 	maxInstructions     = 1 << 20
@@ -35,25 +34,12 @@ type File struct {
 	Truncated  bool   `json:"truncated"`
 }
 
-type Evidence struct {
-	Code string `json:"code"`
-	Path string `json:"path"`
-}
-
-type RiskAssessment struct {
-	Level          string     `json:"level"`
-	ScannerVersion string     `json:"scannerVersion"`
-	ArtifactSum    string     `json:"artifactSum"`
-	Evidence       []Evidence `json:"evidence"`
-}
-
 type Result struct {
-	Instructions         string         `json:"instructions"`
-	Sum                  string         `json:"sum"`
-	Files                []File         `json:"files"`
-	HasExecutableContent bool           `json:"hasExecutableContent"`
-	ExecutableFiles      []string       `json:"executableFiles"`
-	Risk                 RiskAssessment `json:"riskAssessment"`
+	Instructions         string   `json:"instructions"`
+	Sum                  string   `json:"sum"`
+	Files                []File   `json:"files"`
+	HasExecutableContent bool     `json:"hasExecutableContent"`
+	ExecutableFiles      []string `json:"executableFiles"`
 }
 
 var scriptExtensions = map[string]bool{
@@ -70,13 +56,13 @@ var binaryExtensions = map[string]bool{
 
 // AnalyzeRepositoryMember validates the complete Repository Artifact while
 // projecting one immutable Skill member for detail and enrichment reads.
-func AnalyzeRepositoryMember(data []byte, repositoryID, version, relativePath string) (*Result, error) {
+func AnalyzeRepositoryMember(data []byte, modulePath, version, relativePath string) (*Result, error) {
 	memberPrefix := ""
 	if relativePath != "." {
 		memberPrefix = strings.TrimSuffix(relativePath, "/") + "/"
 	}
 	return analyze(data, func(visit protocolartifact.VisitFunc) (string, error) {
-		return protocolartifact.WalkRepository(data, repositoryID, version, func(entry protocolartifact.Entry) error {
+		return protocolartifact.WalkModule(data, modulePath, version, func(entry protocolartifact.Entry) error {
 			if entry.Directory || !strings.HasPrefix(entry.Path, memberPrefix) {
 				return nil
 			}
@@ -90,9 +76,6 @@ func analyze(_ []byte, walk func(protocolartifact.VisitFunc) (string, error), me
 	result := &Result{
 		Files:           make([]File, 0),
 		ExecutableFiles: make([]string, 0),
-		Risk: RiskAssessment{
-			Level: "unknown", ScannerVersion: ScannerVersion, Evidence: make([]Evidence, 0),
-		},
 	}
 	textBudget := maxTotalTextBytes
 	digest, err := walk(func(entry protocolartifact.Entry) error {
@@ -144,14 +127,6 @@ func analyze(_ []byte, walk func(protocolartifact.VisitFunc) (string, error), me
 		if executable {
 			result.HasExecutableContent = true
 			result.ExecutableFiles = append(result.ExecutableFiles, relative)
-			code := "script_file"
-			if binary {
-				code = "binary_executable"
-				result.Risk.Level = "high"
-			} else if result.Risk.Level == "unknown" {
-				result.Risk.Level = "medium"
-			}
-			result.Risk.Evidence = append(result.Risk.Evidence, Evidence{Code: code, Path: relative})
 		}
 		return nil
 	})
@@ -162,7 +137,6 @@ func analyze(_ []byte, walk func(protocolartifact.VisitFunc) (string, error), me
 		return nil, fmt.Errorf("artifact does not contain SKILL.md for member %q", memberPath)
 	}
 	result.Sum = digest
-	result.Risk.ArtifactSum = result.Sum
 	return result, nil
 }
 

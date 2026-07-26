@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on cleanup-dev.sh, process-compose, Air, process-compose.yaml, and the App, CLI, and Hub workspace development commands.
-# [OUTPUT]: Removes stale checkout-owned processes, validates the local development toolchain, and starts the complete Process Compose session.
-# [POS]: Serves as the stable adapter behind make dev; startup cleanup is repository-owned and active-session lifecycle belongs to Process Compose.
+# [INPUT]: Depends on cleanup-dev.sh, process-compose, Air, process-compose.yaml, and optionally selected Process Compose process names.
+# [OUTPUT]: Removes stale checkout-owned processes, validates the local development toolchain, and starts either the complete or a dependency-closed selected development session.
+# [POS]: Serves as the stable adapter behind make dev and make dev-hub; startup cleanup is repository-owned and active-session lifecycle belongs to Process Compose.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
 set -euo pipefail
@@ -37,4 +37,4 @@ if [[ ! -t 1 || "${TERM:-dumb}" == "dumb" ]]; then
   compose_args+=(--tui=false --no-server)
 fi
 
-exec process-compose "${compose_args[@]}"
+exec process-compose "${compose_args[@]}" up "$@"

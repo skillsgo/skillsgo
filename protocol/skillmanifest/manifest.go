@@ -17,12 +17,9 @@ import (
 )
 
 type Manifest struct {
-	Name          string            `yaml:"name"`
-	Description   string            `yaml:"description"`
-	License       string            `yaml:"license"`
-	Compatibility string            `yaml:"compatibility"`
-	AllowedTools  string            `yaml:"allowed-tools"`
-	Metadata      map[string]string `yaml:"metadata"`
+	Name        string            `yaml:"name"`
+	Description string            `yaml:"description"`
+	Metadata    map[string]string `yaml:"metadata"`
 }
 
 func Split(skillFile []byte) (frontmatter, body []byte, err error) {
@@ -91,11 +88,6 @@ func Validate(frontmatter, body []byte) (Manifest, error) {
 	if utf8.RuneCountInString(description) > 1024 {
 		return Manifest{}, fmt.Errorf(`field "description" must not exceed 1024 characters`)
 	}
-	for field, limit := range map[string]int{"license": 0, "compatibility": 500, "allowed-tools": 0} {
-		if err := optional(fields, field, limit); err != nil {
-			return Manifest{}, err
-		}
-	}
 	if metadata, ok := fields["metadata"]; ok {
 		if metadata.Kind != yaml.MappingNode {
 			return Manifest{}, fmt.Errorf(`field "metadata" must be a string-to-string mapping`)
@@ -125,18 +117,5 @@ func required(fields map[string]*yaml.Node, name string) (string, error) {
 		return "", fmt.Errorf(`missing or invalid required string field %q in SKILL.md frontmatter`, name)
 	}
 	return value.Value, nil
-}
-func optional(fields map[string]*yaml.Node, name string, max int) error {
-	value, ok := fields[name]
-	if !ok {
-		return nil
-	}
-	if value.Kind != yaml.ScalarNode || value.Tag != "!!str" || strings.TrimSpace(value.Value) == "" {
-		return fmt.Errorf(`field %q must be a non-empty string`, name)
-	}
-	if max > 0 && utf8.RuneCountInString(value.Value) > max {
-		return fmt.Errorf(`field %q must not exceed %d characters`, name, max)
-	}
-	return nil
 }
 func delimiter(line []byte) bool { return bytes.Equal(bytes.TrimSpace(line), []byte("---")) }

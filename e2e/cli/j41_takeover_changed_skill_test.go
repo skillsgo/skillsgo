@@ -79,9 +79,10 @@ func TestJ41SkipChangedSkillWithoutLosingData(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, changedBytes, afterChanged, "a stale plan must never overwrite user edits")
 	stateRoot := filepath.Join(sandboxRoot, "home", ".skillsgo")
-	require.DirExists(t, filepath.Join(stateRoot, "vendor"))
-	require.FileExists(t, filepath.Join(stateRoot, "skillsgo.yaml"))
-	require.FileExists(t, filepath.Join(stateRoot, "skillsgo-lock.yaml"))
+	declarationRoot := filepath.Join(sandboxRoot, "home", ".agents")
+	require.DirExists(t, filepath.Join(stateRoot, "modules"))
+	require.FileExists(t, filepath.Join(declarationRoot, "skills.yaml"))
+	require.FileExists(t, filepath.Join(declarationRoot, "skills-lock.yaml"))
 
 	rescan := execCLI(t, ctx, container, "takeover", "--preflight", "--user", "--output", "json")
 	require.Equal(t, 0, rescan.exitCode, rescan.output)

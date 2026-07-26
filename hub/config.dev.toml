@@ -203,6 +203,7 @@ ArtifactOrigin = ""
 [Database]
     Type = "postgres"
     DSN = "postgres://skillsgo:skillsgo-dev@localhost:5432/skillsgo_hub?sslmode=disable"
+    Schema = "public"
     MaxOpenConns = 10
     MaxIdleConns = 5
     ConnMaxLifetime = 1800

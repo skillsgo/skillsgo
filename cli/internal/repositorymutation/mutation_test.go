@@ -36,7 +36,7 @@ func (transaction *recordedTransaction) Rollback() error {
 
 func TestRollbackFailureIsReportedWithOriginalFailure(t *testing.T) {
 	log := []string{}
-	transaction := &recordedTransaction{name: "vendor", log: &log, commitErr: fmt.Errorf("commit failed"), rollbackErr: fmt.Errorf("restore failed")}
+	transaction := &recordedTransaction{name: "modules", log: &log, commitErr: fmt.Errorf("commit failed"), rollbackErr: fmt.Errorf("restore failed")}
 	err := (Plan{Transactions: []Transaction{transaction}}).Commit()
 	if err == nil || !containsAll(err.Error(), "commit failed", "rollback Repository transaction 0", "restore failed") {
 		t.Fatalf("rollback diagnostics lost: %v", err)
@@ -72,16 +72,16 @@ func TestCommitFailureRollsBackEveryPreparedTransactionInReverseOrder(t *testing
 
 func TestWorkspacePublicationFailureRollsBackCommittedFilesystem(t *testing.T) {
 	log := []string{}
-	transaction := &recordedTransaction{name: "vendor", log: &log}
+	transaction := &recordedTransaction{name: "modules", log: &log}
 	blockedRoot := filepath.Join(t.TempDir(), "not-a-directory")
 	if err := os.WriteFile(blockedRoot, []byte("blocked"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	state := &WorkspaceState{Root: blockedRoot, Manifest: project.WorkspaceManifest{Dependencies: map[string]project.RepositoryDependency{}}, Lock: project.DependencyLock{Dependencies: map[string]project.LockedRepository{}}}
+	state := &WorkspaceState{Root: blockedRoot, Manifest: project.WorkspaceManifest{Dependencies: map[string]project.ModuleDependency{}}, Lock: project.DependencyLock{Dependencies: map[string]project.LockedModule{}}}
 	if err := (Plan{Transactions: []Transaction{transaction}, Workspace: state}).Commit(); err == nil {
 		t.Fatal("Workspace publication failure accepted")
 	}
-	want := []string{"commit:vendor", "rollback:vendor"}
+	want := []string{"commit:modules", "rollback:modules"}
 	if fmt.Sprint(log) != fmt.Sprint(want) {
 		t.Fatalf("unexpected state order: got %v want %v", log, want)
 	}
@@ -89,12 +89,12 @@ func TestWorkspacePublicationFailureRollsBackCommittedFilesystem(t *testing.T) {
 
 func TestFinalizeFailureDoesNotRollBackPublishedMutation(t *testing.T) {
 	log := []string{}
-	transaction := &recordedTransaction{name: "vendor", log: &log, finalizeErr: fmt.Errorf("cleanup")}
+	transaction := &recordedTransaction{name: "modules", log: &log, finalizeErr: fmt.Errorf("cleanup")}
 	err := (Plan{Transactions: []Transaction{transaction}, Operation: "Repository add"}).Commit()
 	if err == nil || err.Error() != "Repository add committed but transaction cleanup failed: cleanup" {
 		t.Fatalf("unexpected finalize result: %v", err)
 	}
-	want := []string{"commit:vendor", "finalize:vendor"}
+	want := []string{"commit:modules", "finalize:modules"}
 	if fmt.Sprint(log) != fmt.Sprint(want) {
 		t.Fatalf("unexpected state order: got %v want %v", log, want)
 	}

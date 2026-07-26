@@ -13,23 +13,23 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/skillsgo/skillsgo/cli/internal/scopevendor"
+	"github.com/skillsgo/skillsgo/cli/internal/modulestore"
 	"github.com/stretchr/testify/require"
 )
 
 func TestWhyAndVerifyReconciledUserInstallation(t *testing.T) {
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	repositoryID, version, _, _, server := takeoverRepositoryFixture(t)
+	modulePath, version, _, _, server := takeoverRepositoryFixture(t)
 	defer server.Close()
-	require.NoError(t, Execute([]string{"add", repositoryID + "@" + version, "--skill", "alpha", "--agent", "codex", "--global", "--yes", "--hub", server.URL, "--output", "json"}, &bytes.Buffer{}, &bytes.Buffer{}))
+	require.NoError(t, Execute([]string{"add", modulePath + "@" + version, "--skill", "alpha", "--agent", "codex", "--global", "--yes", "--hub", server.URL, "--output", "json"}, &bytes.Buffer{}, &bytes.Buffer{}))
 
 	var whyOutput bytes.Buffer
 	require.NoError(t, Execute([]string{"why", "alpha", "--user", "--output", "json"}, &whyOutput, &bytes.Buffer{}))
 	var why whyReport
 	require.NoError(t, json.Unmarshal(whyOutput.Bytes(), &why))
 	require.Len(t, why.Entries, 1)
-	require.Equal(t, repositoryID, why.Entries[0].RepositoryID)
+	require.Equal(t, modulePath, why.Entries[0].ModulePath)
 	require.Len(t, why.Entries[0].Targets, 1)
 
 	var healthyOutput bytes.Buffer
@@ -38,7 +38,7 @@ func TestWhyAndVerifyReconciledUserInstallation(t *testing.T) {
 	require.NoError(t, json.Unmarshal(healthyOutput.Bytes(), &healthy))
 	require.True(t, healthy.Healthy)
 
-	target := filepath.Join(scopevendor.CoordinatePath(filepath.Join(home, ".codex", "skills"), repositoryID, version), "skills", "alpha", "SKILL.md")
+	target := filepath.Join(modulestore.CoordinatePath(filepath.Join(home, ".codex", "skills"), modulePath, version), "skills", "alpha", "SKILL.md")
 	require.NoError(t, os.WriteFile(target, []byte("modified"), 0o644))
 	var unhealthyOutput bytes.Buffer
 	require.Error(t, Execute([]string{"verify", "--user", "--output", "json"}, &unhealthyOutput, &bytes.Buffer{}))

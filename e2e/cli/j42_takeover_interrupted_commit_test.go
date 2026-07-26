@@ -35,10 +35,11 @@ func TestJ42RecoverTakeoverInterruptedDuringMetadataCommit(t *testing.T) {
 
 	interrupted := execInContainer(t, ctx, container, "sh", "-c", `
 set -u
-cd /e2e/project
-/usr/local/bin/skillsgo takeover --plan "$1" --user --yes --output json >/e2e/interrupted.out 2>&1 &
+root=$2
+cd "$root/project"
+HOME="$root/home" TMPDIR="$root/tmp" XDG_CONFIG_HOME="$root/home/.config" XDG_CACHE_HOME="$root/home/.cache" XDG_DATA_HOME="$root/home/.local/share" SKILLSGO_HOME="$root/home/.skillsgo" /usr/local/bin/skillsgo takeover --plan "$1" --user --yes --output json >"$root/interrupted.out" 2>&1 &
 child=$!
-journal=/e2e/home/.skillsgo/.skillsgo.metadata-transaction.yaml
+journal="$root/home/.agents/.skillsgo.metadata-transaction.yaml"
 while kill -0 "$child" 2>/dev/null; do
   if [ -f "$journal" ]; then
     kill -KILL "$child"
@@ -48,9 +49,9 @@ while kill -0 "$child" 2>/dev/null; do
 done
 wait "$child"
 exit 91
-`, "takeover-interrupt", plan.PlanID)
+`, "takeover-interrupt", plan.PlanID, scenarioContainerRoot(t))
 	require.Equal(t, 0, interrupted.exitCode, "the watcher did not interrupt an active metadata transaction: %s", interrupted.output)
-	journal := filepath.Join(sandboxRoot, "home", ".skillsgo", ".skillsgo.metadata-transaction.yaml")
+	journal := filepath.Join(sandboxRoot, "home", ".agents", ".skillsgo.metadata-transaction.yaml")
 	require.FileExists(t, journal)
 
 	afterSkill, err := os.ReadFile(filepath.Join(targetRoot, "SKILL.md"))
@@ -79,9 +80,9 @@ exit 91
 	require.Equal(t, 1, completed.Summary.TakenOver, retry.output)
 	require.Zero(t, completed.Summary.Skipped, retry.output)
 	require.NoFileExists(t, journal)
-	require.FileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo.yaml"))
-	require.FileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo-lock.yaml"))
-	require.DirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "vendor"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "home", ".agents", "skills.yaml"))
+	require.FileExists(t, filepath.Join(sandboxRoot, "home", ".agents", "skills-lock.yaml"))
+	require.DirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "modules"))
 
 	finalRescan := execCLI(t, ctx, container, "takeover", "--preflight", "--user", "--output", "json")
 	require.Equal(t, 0, finalRescan.exitCode, finalRescan.output)

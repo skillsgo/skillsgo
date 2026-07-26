@@ -38,6 +38,7 @@ pnpm deploy
 | --- | --- |
 | `content/docs/` | Authored public documentation and navigation metadata. |
 | `src/components/` | Fumadocs MDX, search, and not-found adapters. |
+| `src/design-system/` | Shared semantic tokens, content patterns, and page shells consumed by product, docs, and blog routes. |
 | `src/lib/` | Content source, shared branding, and layout options. |
 | `src/routes/` | TanStack Start routes for pages, search, Markdown, and LLM indexes. |
 | `src/styles/` | Tailwind and Fumadocs global style entry. |
@@ -48,7 +49,9 @@ This workspace publishes the public SkillsGo website: the product overview at `/
 
 Hub Web routes are a presentation and discovery boundary. The Go Hub remains authoritative for public Skill identity, metadata, search, rankings, and immutable artifacts. Web must not install Skills, mutate local files, or duplicate Hub domain rules.
 
-Author public content in `content/docs` as Markdown or MDX. English files are the canonical documentation source. Locale-suffixed non-English files are user-facing translations only; they must not introduce repository standards, architecture decisions, or facts absent from the English source. This is the narrow localization exception to the repository-wide English documentation rule. Keep repository-internal standards and decisions under `/docs`. Prefer Fumadocs components and tokens over custom documentation UI primitives.
+Author public content in `content/docs` as Markdown or MDX. English files are the canonical documentation source. Locale-suffixed non-English files are user-facing translations only; they must not introduce repository standards, architecture decisions, or facts absent from the English source. This is the narrow localization exception to the repository-wide English documentation rule. Keep repository-internal standards and decisions under `/docs`.
+
+`src/design-system` owns the visual interface shared by product, documentation, and blog surfaces. Routes compose its shells and content patterns; Fumadocs remains the documentation content and interaction adapter and must consume the same semantic tokens rather than own a parallel theme. Keep product-specific media, copy, and stateful interactions in their route modules until a second real caller proves a reusable seam.
 
 `package.json`, `pnpm-lock.yaml`, `tsconfig.json`, `meta.json`, generated `.source/`, and generated `src/routeTree.gen.ts` are exempt from inline F4 headers because their formats are generated or do not support comments; this map is their contract source of truth. Authored MDX pages are documentation artifacts rather than semantic source files and are also exempt from F4 headers.
 

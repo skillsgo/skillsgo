@@ -34,9 +34,9 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 	require.Len(t, plan.PlanID, 64)
 	require.Equal(t, 1, plan.Summary.Eligible, preview.output)
 	require.Equal(t, 1, plan.Scopes.User.Eligible)
-	require.NoDirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "vendor"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo.yaml"))
-	require.NoFileExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "skillsgo-lock.yaml"))
+	require.NoDirExists(t, filepath.Join(sandboxRoot, "home", ".skillsgo", "modules"))
+	require.NoFileExists(t, filepath.Join(sandboxRoot, "home", ".agents", "skills.yaml"))
+	require.NoFileExists(t, filepath.Join(sandboxRoot, "home", ".agents", "skills-lock.yaml"))
 
 	execution := execCLI(t, ctx, container,
 		"takeover", "--plan", plan.PlanID, "--user", "--yes", "--output", "json",
@@ -57,9 +57,10 @@ func TestJ40TakeOverExistingSkillAndRescan(t *testing.T) {
 	require.Equal(t, skillBytes, afterSkill)
 
 	stateRoot := filepath.Join(sandboxRoot, "home", ".skillsgo")
-	require.DirExists(t, filepath.Join(stateRoot, "vendor"))
-	require.FileExists(t, filepath.Join(stateRoot, "skillsgo.yaml"))
-	require.FileExists(t, filepath.Join(stateRoot, "skillsgo-lock.yaml"))
+	declarationRoot := filepath.Join(sandboxRoot, "home", ".agents")
+	require.DirExists(t, filepath.Join(stateRoot, "modules"))
+	require.FileExists(t, filepath.Join(declarationRoot, "skills.yaml"))
+	require.FileExists(t, filepath.Join(declarationRoot, "skills-lock.yaml"))
 
 	inventory := execCLI(t, ctx, container, "inventory", "--user", "--output", "json")
 	require.Equal(t, 0, inventory.exitCode, inventory.output)

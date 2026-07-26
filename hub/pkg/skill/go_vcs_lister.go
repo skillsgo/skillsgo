@@ -55,20 +55,20 @@ func NewVCSLister(fetcher RepositoryFetcher, timeout time.Duration) (RepositoryV
 	return &vcsLister{repositories: repositories, timeout: timeout, ttl: ttl, now: time.Now, catalogs: map[string]tagCatalog{}}, nil
 }
 
-func (l *vcsLister) ListRepositoryTags(ctx context.Context, repositoryID string) ([]RepositoryTag, error) {
-	parsed, err := ParseRepositoryID(repositoryID)
-	if err != nil || parsed.String() != repositoryID {
-		return nil, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
+func (l *vcsLister) ListRepositoryTags(ctx context.Context, modulePath string) ([]RepositoryTag, error) {
+	parsed, err := ParseModulePath(modulePath)
+	if err != nil || parsed.String() != modulePath {
+		return nil, fmt.Errorf("invalid canonical Repository ID %q", modulePath)
 	}
-	release, err := l.repositories.acquireRepository(parsed.Repository)
+	release, err := l.repositories.acquireRepository(parsed.String())
 	if err != nil {
 		return nil, err
 	}
 	defer release()
-	if _, _, err := l.List(ctx, repositoryID); err != nil {
+	if _, _, err := l.List(ctx, modulePath); err != nil {
 		return nil, err
 	}
-	repoDir, err := l.repositories.repositoryDir(parsed.Repository)
+	repoDir, err := l.repositories.repositoryDir(parsed.String())
 	if err != nil {
 		return nil, err
 	}
@@ -85,17 +85,17 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 	_, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
 
-	skillID, err := ParseRepositoryID(skillPath)
+	skillID, err := ParseModulePath(skillPath)
 	if err != nil {
 		return nil, nil, errors.E(op, err, errors.KindNotFound)
 	}
-	release, err := l.repositories.acquireRepository(skillID.Repository)
+	release, err := l.repositories.acquireRepository(skillID.String())
 	if err != nil {
 		return nil, nil, errors.E(op, err)
 	}
 	defer release()
 	l.mu.Lock()
-	cached, ok := l.catalogs[skillID.Repository]
+	cached, ok := l.catalogs[skillID.String()]
 	if ok && l.now().Before(cached.expires) {
 		l.mu.Unlock()
 		if cached.err != nil {
@@ -105,7 +105,7 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 		return &rev, append([]string(nil), cached.versions...), nil
 	}
 	l.mu.Unlock()
-	value, err, _ := l.repositories.syncs.Do("list:"+skillID.Repository, func() (any, error) {
+	value, err, _ := l.repositories.syncs.Do("list:"+skillID.String(), func() (any, error) {
 
 		timeoutCtx, cancel := context.WithTimeout(ctx, l.timeout)
 		defer cancel()
@@ -115,7 +115,7 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 			}
 			return nil, err
 		}
-		repoDir, err := l.repositories.repositoryDir(skillID.Repository)
+		repoDir, err := l.repositories.repositoryDir(skillID.String())
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
@@ -168,13 +168,13 @@ func (l *vcsLister) List(ctx context.Context, skillPath string) (*storage.RevInf
 			negativeTTL = l.ttl
 		}
 		l.mu.Lock()
-		l.catalogs[skillID.Repository] = tagCatalog{expires: l.now().Add(negativeTTL), err: err}
+		l.catalogs[skillID.String()] = tagCatalog{expires: l.now().Add(negativeTTL), err: err}
 		l.mu.Unlock()
 		return nil, nil, err
 	}
 	result := value.(listSFResp)
 	l.mu.Lock()
-	l.catalogs[skillID.Repository] = tagCatalog{expires: l.now().Add(l.ttl), rev: *result.rev, versions: append([]string(nil), result.versions...)}
+	l.catalogs[skillID.String()] = tagCatalog{expires: l.now().Add(l.ttl), rev: *result.rev, versions: append([]string(nil), result.versions...)}
 	l.mu.Unlock()
 	return result.rev, result.versions, nil
 }

@@ -9,46 +9,43 @@ import (
 )
 
 type Querier interface {
-	ActiveBackfillRun(ctx context.Context, repositoryID string) (RepositoryBackfillRun, error)
-	BackfillRunByID(ctx context.Context, id string) (RepositoryBackfillRun, error)
+	ActiveBackfillRun(ctx context.Context, modulePath string) (ModuleBackfillRun, error)
+	BackfillRunByID(ctx context.Context, id string) (ModuleBackfillRun, error)
 	CompleteBackfillRun(ctx context.Context, arg CompleteBackfillRunParams) (int64, error)
-	CurrentRepositoryReleaseMember(ctx context.Context, arg CurrentRepositoryReleaseMemberParams) (CurrentRepositoryReleaseMemberRow, error)
-	DeleteRepositorySkills(ctx context.Context, repositoryID int64) error
+	CurrentSkill(ctx context.Context, arg CurrentSkillParams) (CurrentSkillRow, error)
 	ExpireQueuedBackfillRun(ctx context.Context, arg ExpireQueuedBackfillRunParams) (int64, error)
 	ExpireStaleBackfillRuns(ctx context.Context, arg ExpireStaleBackfillRunsParams) (int64, error)
 	FindExactLocalizedSkillsBatch(ctx context.Context, arg FindExactLocalizedSkillsBatchParams) ([]FindExactLocalizedSkillsBatchRow, error)
 	FindLocalizedSkillsBatch(ctx context.Context, arg FindLocalizedSkillsBatchParams) ([]FindLocalizedSkillsBatchRow, error)
 	InsertBackfillRun(ctx context.Context, arg InsertBackfillRunParams) error
-	InsertRepositoryRelease(ctx context.Context, arg InsertRepositoryReleaseParams) (int64, error)
-	InsertRepositoryReleaseMember(ctx context.Context, arg InsertRepositoryReleaseMemberParams) error
+	InsertModuleVersion(ctx context.Context, arg InsertModuleVersionParams) (int64, error)
 	InsertSkill(ctx context.Context, arg InsertSkillParams) error
-	LatestBackfillRun(ctx context.Context, repositoryID string) (RepositoryBackfillRun, error)
+	LatestBackfillRun(ctx context.Context, modulePath string) (ModuleBackfillRun, error)
 	ListSkills(ctx context.Context, arg ListSkillsParams) ([]ListSkillsRow, error)
 	LocalizedDescription(ctx context.Context, arg LocalizedDescriptionParams) (string, error)
-	RepositoryByIdentity(ctx context.Context, repositoryID string) (Repository, error)
-	RepositoryPublicationCommit(ctx context.Context, arg RepositoryPublicationCommitParams) (string, error)
-	RepositoryReleaseCount(ctx context.Context, arg RepositoryReleaseCountParams) (int64, error)
-	RepositoryReleaseInfo(ctx context.Context, arg RepositoryReleaseInfoParams) ([]byte, error)
-	RepositoryReleaseMembers(ctx context.Context, arg RepositoryReleaseMembersParams) ([]RepositoryReleaseMembersRow, error)
+	ModuleByPath(ctx context.Context, modulePath string) (Module, error)
+	ModulePublicationCommit(ctx context.Context, arg ModulePublicationCommitParams) (string, error)
+	ModuleVersion(ctx context.Context, arg ModuleVersionParams) (Version, error)
+	ModuleVersionCount(ctx context.Context, arg ModuleVersionCountParams) (int64, error)
 	SearchLocalizedSkills(ctx context.Context, arg SearchLocalizedSkillsParams) ([]SearchLocalizedSkillsRow, error)
 	SearchSkills(ctx context.Context, arg SearchSkillsParams) ([]SearchSkillsRow, error)
-	SetCurrentRelease(ctx context.Context, arg SetCurrentReleaseParams) error
-	SetCurrentReleaseByVersion(ctx context.Context, arg SetCurrentReleaseByVersionParams) error
+	SetCurrentVersion(ctx context.Context, arg SetCurrentVersionParams) error
+	SetCurrentVersionByCoordinate(ctx context.Context, arg SetCurrentVersionByCoordinateParams) error
 	SkillByCoordinate(ctx context.Context, arg SkillByCoordinateParams) (SkillByCoordinateRow, error)
 	SkillPublishedVersions(ctx context.Context, arg SkillPublishedVersionsParams) ([]string, error)
+	Skills(ctx context.Context, arg SkillsParams) ([]SkillsRow, error)
 	SkillsByCoordinates(ctx context.Context, arg SkillsByCoordinatesParams) ([]SkillsByCoordinatesRow, error)
-	StaleQueuedBackfillRuns(ctx context.Context, arg StaleQueuedBackfillRunsParams) ([]RepositoryBackfillRun, error)
+	StaleQueuedBackfillRuns(ctx context.Context, arg StaleQueuedBackfillRunsParams) ([]ModuleBackfillRun, error)
 	StartBackfillRun(ctx context.Context, arg StartBackfillRunParams) (int64, error)
 	TouchBackfillRun(ctx context.Context, arg TouchBackfillRunParams) (int64, error)
 	TranslationCandidates(ctx context.Context, locale string) ([]TranslationCandidatesRow, error)
-	UpdateRepositorySourceMetadata(ctx context.Context, arg UpdateRepositorySourceMetadataParams) (int64, error)
+	UpdateModuleSourceMetadata(ctx context.Context, arg UpdateModuleSourceMetadataParams) (int64, error)
 	UpsertLocalizedDescription(ctx context.Context, arg UpsertLocalizedDescriptionParams) error
-	// [INPUT]: Depends on the reviewed PostgreSQL Catalog schema and sqlc's pgx/v5 generator.
-	// [OUTPUT]: Defines typed Repository, Release, Skill, localization, name-first/exact single and set-based batch Find, and Backfill persistence operations.
+	// [INPUT]: Depends on the reviewed PostgreSQL Module Catalog schema and sqlc's pgx/v5 generator.
+	// [OUTPUT]: Defines typed Module, immutable Module Version Skill, localization, search, and Backfill persistence operations.
 	// [POS]: Serves as the single maintained query source for the Hub Catalog module.
 	// [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
-	UpsertRepository(ctx context.Context, arg UpsertRepositoryParams) (Repository, error)
-	UpsertSkill(ctx context.Context, arg UpsertSkillParams) (int64, error)
+	UpsertModule(ctx context.Context, arg UpsertModuleParams) (Module, error)
 }
 
 var _ Querier = (*Queries)(nil)

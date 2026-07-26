@@ -87,7 +87,7 @@ func (s *service) PutIfAbsent(ctx context.Context, mod, ver string, zip io.Reade
 	if err != nil {
 		return false, errors.E(op, err)
 	}
-	url := s.url + "/" + mod + "/@v/" + ver + ".save"
+	url := s.url + "/" + mod + "/versions/" + ver + ".save"
 	pr, pw := io.Pipe()
 	mw := multipart.NewWriter(pw)
 	go func() {
@@ -153,7 +153,7 @@ func (s *service) doRequest(ctx context.Context, method, mod, ver, ext string) (
 	if err != nil {
 		return nil, 0, errors.E(op, err)
 	}
-	url := s.url + "/" + mod + "/@v/" + ver
+	url := s.url + "/" + mod + "/versions/" + ver
 	if ext != "" {
 		url += "." + ext
 	}

@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the actions package imports and contracts declared in this file.
- * [OUTPUT]: Specifies the actions package behavior covered by app_proxy_test.go.
- * [POS]: Serves as test coverage for the actions package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on the assembled Fiber proxy routes, path-prefix configuration, in-memory storage, and public OpenAPI document.
+ * [OUTPUT]: Specifies prefixed health, version, landing, not-found, and OpenAPI availability.
+ * [POS]: Serves as Router-composition coverage for the Hub actions module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
@@ -39,7 +39,7 @@ func TestProxyRoutes(t *testing.T) {
 	require.NoError(t, err)
 	c.PathPrefix = "/prefix"
 	subRouter := r.Group(c.PathPrefix)
-	err = addProxyRoutes(subRouter, s, l, c)
+	err = addProxyRoutes(r, subRouter, s, l, c)
 	require.NoError(t, err)
 
 	baseURL := "https://athens.azurefd.net" + c.PathPrefix
@@ -85,6 +85,14 @@ func TestProxyRoutes(t *testing.T) {
 			err := json.NewDecoder(resp.Body).Decode(&details)
 			require.NoError(t, err)
 			assert.EqualValues(t, build.Data(), details)
+		}},
+		{"GET", "/openapi.json", "", func(t *testing.T, req *http.Request, resp *http.Response) {
+			assert.Equal(t, http.StatusOK, resp.StatusCode)
+			var document struct {
+				OpenAPI string `json:"openapi"`
+			}
+			require.NoError(t, json.NewDecoder(resp.Body).Decode(&document))
+			assert.Equal(t, "3.1.0", document.OpenAPI)
 		}},
 	}
 

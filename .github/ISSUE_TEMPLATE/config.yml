@@ -1,0 +1,13 @@
+# [INPUT]: Depends on GitHub's issue-template chooser schema, GitHub Discussions, and private vulnerability reporting.
+# [OUTPUT]: Configures focused issue intake and routes support and security requests to dedicated channels.
+# [POS]: Serves as the entry-point policy for community issue reporting in .github/ISSUE_TEMPLATE.
+# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
+
+blank_issues_enabled: false
+contact_links:
+  - name: Ask a question or share an early idea
+    url: https://github.com/skillsgo/skillsgo/discussions
+    about: Use Discussions for support, troubleshooting, integration advice, and proposals that are not ready for an issue.
+  - name: Report a security vulnerability
+    url: https://github.com/skillsgo/skillsgo/security/advisories/new
+    about: Do not disclose vulnerabilities publicly. Report them privately to the maintainers.

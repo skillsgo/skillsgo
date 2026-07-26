@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on shared SkillsGo branding, the active locale, and Fumadocs layout contracts.
- * [OUTPUT]: Provides localized editorial navigation and repository-link options for all layouts.
+ * [INPUT]: Depends on shared SkillsGo branding, the active locale, the public brand asset, and Fumadocs layout contracts.
+ * [OUTPUT]: Provides localized editorial navigation, light-only theme controls, and repository-link options for all layouts.
  * [POS]: Serves as the shared visual shell configuration for home, docs, and error pages.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -12,26 +12,18 @@ export function baseOptions(locale: Locale): BaseLayoutProps {
   const isChinese = locale === 'zh-CN';
 
   return {
+    themeSwitch: {
+      enabled: false,
+    },
     nav: {
       title: (
         <span className="sg-docs-brand">
-          <span aria-hidden="true">◆</span> {appName}
+          <img src="/branding/skillsgo-logo.png" width="28" height="28" alt="" decoding="async" />
+          <span>{appName} {isChinese ? '文档' : 'Docs'}</span>
         </span>
       ),
       url: `/${locale}`,
     },
     githubUrl: `https://github.com/${gitConfig.user}/${gitConfig.repo}`,
-    links: [
-      {
-        text: isChinese ? '首页' : 'Overview',
-        url: `/${locale}`,
-        active: 'url',
-      },
-      {
-        text: isChinese ? '文档' : 'Documentation',
-        url: `/${locale}/docs`,
-        active: 'nested-url',
-      },
-    ],
   };
 }

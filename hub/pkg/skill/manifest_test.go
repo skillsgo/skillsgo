@@ -73,24 +73,9 @@ func TestValidateManifestAgainstAgentSkillsSpecification(t *testing.T) {
 			wantError: `field "description" must not exceed 1024 characters`,
 		},
 		{
-			name:      "compatibility empty",
-			manifest:  "name: ask-matt\ndescription: A router.\ncompatibility: ''\n",
-			wantError: `field "compatibility" must be a non-empty string`,
-		},
-		{
-			name:      "compatibility too long",
-			manifest:  "name: ask-matt\ndescription: A router.\ncompatibility: " + strings.Repeat("a", 501) + "\n",
-			wantError: `field "compatibility" must not exceed 500 characters`,
-		},
-		{
 			name:      "metadata value must be string",
 			manifest:  "name: ask-matt\ndescription: A router.\nmetadata:\n  version: 1\n",
 			wantError: `field "metadata" must be a string-to-string mapping`,
-		},
-		{
-			name:      "allowed tools must be string",
-			manifest:  "name: ask-matt\ndescription: A router.\nallowed-tools:\n  - Read\n",
-			wantError: `field "allowed-tools" must be a non-empty string`,
 		},
 		{
 			name:      "missing body",

@@ -22,7 +22,7 @@ func TestJ07UpdateMovable(t *testing.T) {
 	repository := "fixtures.test/group/subgroup/movable"
 
 	oldAdd := execCLI(t, ctx, container,
-		"add", "https://"+repository+"@head",
+		"add", "https://"+repository+"@main",
 		"--skill", "movable-head-skill",
 		"--agent", "codex",
 
@@ -34,12 +34,12 @@ func TestJ07UpdateMovable(t *testing.T) {
 	var oldInstalled addResponse
 	require.NoError(t, json.Unmarshal([]byte(oldAdd.output), &oldInstalled), oldAdd.output)
 
-	manifestPath := filepath.Join(sandboxRoot, "project", "skillsgo.yaml")
+	manifestPath := filepath.Join(sandboxRoot, "project", "skills.yaml")
 	manifestBefore, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
-	require.NotContains(t, string(manifestBefore), "@head", "movable selector must not be persisted")
+	require.NotContains(t, string(manifestBefore), "@main", "movable selector must not be persisted")
 
-	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml")
+	sumPath := filepath.Join(sandboxRoot, "project", "skills-lock.yaml")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 	targetPath := containerPathOnHost(t, sandboxRoot, oldInstalled.Projections[0].Path, "skills", "head", "SKILL.md")
@@ -50,7 +50,7 @@ func TestJ07UpdateMovable(t *testing.T) {
 
 	fixtureRepository(container, "movable").ReplaceAndPublish(t, ctx, "skills/head/SKILL.md", "Movable C1\\.", "Movable C2.", "movable C2")
 
-	preflight := execCLI(t, ctx, container, "update", repository+"@head", "--preflight", "--output", "json")
+	preflight := execCLI(t, ctx, container, "update", repository+"@main", "--preflight", "--output", "json")
 	require.Equal(t, 0, preflight.exitCode, preflight.output)
 	var preview struct {
 		ToVersion  string `json:"toVersion"`
@@ -61,7 +61,7 @@ func TestJ07UpdateMovable(t *testing.T) {
 	require.Equal(t, 0, update.exitCode, update.output)
 	var refreshed struct {
 		ToVersion string `json:"toVersion"`
-		Vendor    string `json:"vendor"`
+		ModuleDir string `json:"moduleDir"`
 	}
 	require.NoError(t, json.Unmarshal([]byte(update.output), &refreshed), update.output)
 	require.NotEqual(t, oldInstalled.Version, refreshed.ToVersion)
@@ -79,5 +79,5 @@ func TestJ07UpdateMovable(t *testing.T) {
 	manifestAfter, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
 	require.Contains(t, string(manifestAfter), refreshed.ToVersion)
-	require.NotContains(t, string(manifestAfter), "@head")
+	require.NotContains(t, string(manifestAfter), "@main")
 }

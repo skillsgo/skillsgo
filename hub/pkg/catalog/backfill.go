@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on Catalog SQL/pgx persistence, UUID run identities, and caller-supplied transactional River enqueueing.
- * [OUTPUT]: Provides durable Backfill Run creation, active-run deduplication, state transitions, diagnostics, status reads, and exact Repository Publication checks.
- * [POS]: Serves as the Catalog business-state boundary for Repository History Backfill independently of River transport tables.
+ * [OUTPUT]: Provides durable Backfill Run creation, active-run deduplication, state transitions, diagnostics, status reads, and exact Module Publication checks.
+ * [POS]: Serves as the Catalog business-state boundary for Module History Backfill independently of River transport tables.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package catalog
@@ -30,32 +30,32 @@ const (
 // BackfillRun is durable administrator-facing business state. Diagnostics are
 // intentionally bounded and sanitized by the worker before persistence.
 type BackfillRun struct {
-	ID           string         `json:"runId"`
-	RepositoryID string         `json:"repositoryId"`
-	Status       BackfillStatus `json:"status"`
-	StartedAt    *time.Time     `json:"startedAt,omitempty"`
-	CompletedAt  *time.Time     `json:"completedAt,omitempty"`
-	ErrorCount   int            `json:"errorCount"`
-	Diagnostics  []string       `json:"diagnostics"`
-	CreatedAt    time.Time      `json:"createdAt"`
-	UpdatedAt    time.Time      `json:"updatedAt"`
+	ID          string         `json:"runId"`
+	ModulePath  string         `json:"moduleId"`
+	Status      BackfillStatus `json:"status"`
+	StartedAt   *time.Time     `json:"startedAt,omitempty"`
+	CompletedAt *time.Time     `json:"completedAt,omitempty"`
+	ErrorCount  int            `json:"errorCount"`
+	Diagnostics []string       `json:"diagnostics"`
+	CreatedAt   time.Time      `json:"createdAt"`
+	UpdatedAt   time.Time      `json:"updatedAt"`
 }
 
 // SubmitBackfillRun atomically creates a queued run and invokes enqueue with
 // the same PostgreSQL transaction. An existing active run is returned without
 // invoking enqueue.
-func (c *Catalog) SubmitBackfillRun(ctx context.Context, repositoryID string, enqueue func(context.Context, pgx.Tx, BackfillRun) error) (BackfillRun, bool, error) {
+func (c *Catalog) SubmitBackfillRun(ctx context.Context, modulePath string, enqueue func(context.Context, pgx.Tx, BackfillRun) error) (BackfillRun, bool, error) {
 	if enqueue == nil {
 		return BackfillRun{}, false, errors.New("Backfill enqueue callback is required")
 	}
 	var result BackfillRun
 	created := false
 	err := c.WithPostgresTx(ctx, func(tx pgx.Tx) error {
-		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, repositoryID); err != nil {
-			return fmt.Errorf("lock Repository Backfill submission: %w", err)
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtext($1))`, modulePath); err != nil {
+			return fmt.Errorf("lock Module Backfill submission: %w", err)
 		}
 		q := c.queries.WithTx(tx)
-		row, err := q.ActiveBackfillRun(ctx, repositoryID)
+		row, err := q.ActiveBackfillRun(ctx, modulePath)
 		if err == nil {
 			result, err = decodeBackfillRun(row)
 			return err
@@ -63,12 +63,12 @@ func (c *Catalog) SubmitBackfillRun(ctx context.Context, repositoryID string, en
 		if !errors.Is(err, pgx.ErrNoRows) {
 			return err
 		}
-		result = newBackfillRun(repositoryID)
+		result = newBackfillRun(modulePath)
 		encoded, err := json.Marshal(result.Diagnostics)
 		if err != nil {
 			return err
 		}
-		if err := q.InsertBackfillRun(ctx, catalogsqlc.InsertBackfillRunParams{ID: result.ID, RepositoryID: result.RepositoryID, Status: string(result.Status), Diagnostics: encoded, CreatedAt: result.CreatedAt}); err != nil {
+		if err := q.InsertBackfillRun(ctx, catalogsqlc.InsertBackfillRunParams{ID: result.ID, ModulePath: result.ModulePath, Status: string(result.Status), Diagnostics: encoded, CreatedAt: result.CreatedAt}); err != nil {
 			return err
 		}
 		if err := enqueue(ctx, tx, result); err != nil {
@@ -80,8 +80,8 @@ func (c *Catalog) SubmitBackfillRun(ctx context.Context, repositoryID string, en
 	return result, created, err
 }
 
-func (c *Catalog) LatestBackfillRun(ctx context.Context, repositoryID string) (BackfillRun, error) {
-	row, err := c.queries.LatestBackfillRun(ctx, repositoryID)
+func (c *Catalog) LatestBackfillRun(ctx context.Context, modulePath string) (BackfillRun, error) {
+	row, err := c.queries.LatestBackfillRun(ctx, modulePath)
 	if err != nil {
 		return BackfillRun{}, err
 	}
@@ -133,7 +133,7 @@ func (c *Catalog) TouchBackfillRun(ctx context.Context, runID string) error {
 // not persist its terminal failure. Active workers heartbeat updated_at before
 // each bounded version operation, so only abandoned Runs cross the cutoff.
 func (c *Catalog) ExpireStaleBackfillRuns(ctx context.Context, before time.Time) (int64, error) {
-	diagnostics, err := json.Marshal([]string{"repository: execution_expired"})
+	diagnostics, err := json.Marshal([]string{"module: execution_expired"})
 	if err != nil {
 		return 0, err
 	}
@@ -161,7 +161,7 @@ func (c *Catalog) StaleQueuedBackfillRuns(ctx context.Context, before time.Time,
 }
 
 func (c *Catalog) ExpireQueuedBackfillRun(ctx context.Context, runID string) error {
-	diagnostics, err := json.Marshal([]string{"repository: execution_expired"})
+	diagnostics, err := json.Marshal([]string{"module: execution_expired"})
 	if err != nil {
 		return err
 	}
@@ -176,16 +176,16 @@ func (c *Catalog) ExpireQueuedBackfillRun(ctx context.Context, runID string) err
 	return nil
 }
 
-func (c *Catalog) RepositoryPublicationExists(ctx context.Context, repositoryID, version string) (bool, error) {
-	_, err := c.RepositoryPublicationCommit(ctx, repositoryID, version)
+func (c *Catalog) ModulePublicationExists(ctx context.Context, modulePath, version string) (bool, error) {
+	_, err := c.ModulePublicationCommit(ctx, modulePath, version)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, nil
 	}
 	return err == nil, err
 }
 
-func (c *Catalog) RepositoryPublicationCommit(ctx context.Context, repositoryID, version string) (string, error) {
-	return c.queries.RepositoryPublicationCommit(ctx, catalogsqlc.RepositoryPublicationCommitParams{RepositoryID: repositoryID, Version: version})
+func (c *Catalog) ModulePublicationCommit(ctx context.Context, modulePath, version string) (string, error) {
+	return c.queries.ModulePublicationCommit(ctx, catalogsqlc.ModulePublicationCommitParams{ModulePath: modulePath, Version: version})
 }
 
 func (c *Catalog) backfillRunByID(ctx context.Context, runID string) (BackfillRun, error) {
@@ -196,20 +196,20 @@ func (c *Catalog) backfillRunByID(ctx context.Context, runID string) (BackfillRu
 	return decodeBackfillRun(row)
 }
 
-func decodeBackfillRun(row catalogsqlc.RepositoryBackfillRun) (BackfillRun, error) {
+func decodeBackfillRun(row catalogsqlc.ModuleBackfillRun) (BackfillRun, error) {
 	diagnostics := make([]string, 0)
 	if len(row.Diagnostics) > 0 {
 		if err := json.Unmarshal(row.Diagnostics, &diagnostics); err != nil {
 			return BackfillRun{}, fmt.Errorf("decode Backfill diagnostics: %w", err)
 		}
 	}
-	return BackfillRun{ID: row.ID, RepositoryID: row.RepositoryID, Status: BackfillStatus(row.Status),
+	return BackfillRun{ID: row.ID, ModulePath: row.ModulePath, Status: BackfillStatus(row.Status),
 		StartedAt: utcTimePointer(row.StartedAt), CompletedAt: utcTimePointer(row.CompletedAt), ErrorCount: int(row.ErrorCount),
 		Diagnostics: diagnostics, CreatedAt: row.CreatedAt.UTC(), UpdatedAt: row.UpdatedAt.UTC()}, nil
 }
 
-func newBackfillRun(repositoryID string) BackfillRun {
+func newBackfillRun(modulePath string) BackfillRun {
 	now := time.Now().UTC()
-	return BackfillRun{ID: uuid.NewString(), RepositoryID: repositoryID, Status: BackfillQueued,
+	return BackfillRun{ID: uuid.NewString(), ModulePath: modulePath, Status: BackfillQueued,
 		Diagnostics: []string{}, CreatedAt: now, UpdatedAt: now}
 }

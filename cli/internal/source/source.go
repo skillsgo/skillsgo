@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on public Git HTTP(S) Repository URLs, equivalent GitHub aliases, source@Selector syntax, and the shared typed Selector grammar.
+ * [INPUT]: Depends on public Git HTTP(S) Repository URLs, equivalent GitHub aliases, source@Selector syntax, and the shared typed Version Query grammar.
  * [OUTPUT]: Provides canonical provider-aware Repository identity, unambiguous selector splitting outside URL authority, and reusable Repository ID plus add-time Selector validation.
- * [POS]: Serves as the CLI Repository ID normalization boundary used before Hub and Repository Vendor access.
+ * [POS]: Serves as the CLI Repository ID normalization boundary used before Hub and Repository Module Store access.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package source
@@ -11,18 +11,18 @@ import (
 	"net/url"
 	"strings"
 
-	protocolrepositoryid "github.com/skillsgo/skillsgo/protocol/repositoryid"
+	protocolmodule "github.com/skillsgo/skillsgo/protocol/module"
 	protocolversion "github.com/skillsgo/skillsgo/protocol/version"
 )
 
 type Reference struct {
-	RepositoryID string
-	Version      string
+	ModulePath string
+	Version    string
 }
 
 func Parse(raw string) (Reference, error) {
 	raw = strings.TrimSpace(raw)
-	requestedVersion := "head"
+	requestedVersion := "latest"
 	if separator := selectorSeparator(raw); separator >= 0 {
 		requestedVersion = strings.TrimSpace(raw[separator+1:])
 		raw = strings.TrimSpace(raw[:separator])
@@ -47,11 +47,11 @@ func Parse(raw string) (Reference, error) {
 			if len(parts) != 4 || parts[2] != "tree" {
 				return Reference{}, fmt.Errorf("暂不支持 GitHub URL 路径 %q", parsed.Path)
 			}
-			if requestedVersion == "head" {
+			if requestedVersion == "latest" {
 				version = parts[3]
 			}
-			repositoryID := host + "/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
-			return checkedReference(repositoryID, version)
+			modulePath := host + "/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
+			return checkedReference(modulePath, version)
 		}
 		parts[len(parts)-1] = strings.TrimSuffix(parts[len(parts)-1], ".git")
 		return checkedReference(host+"/"+strings.Join(parts, "/"), version)
@@ -89,14 +89,14 @@ func checkedGitHubReference(parts []string, version string) (Reference, error) {
 	if len(parts) != 2 {
 		return Reference{}, fmt.Errorf("GitHub source must identify exactly one owner/repository")
 	}
-	repositoryID := "github.com/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
-	return checkedReference(repositoryID, version)
+	modulePath := "github.com/" + parts[0] + "/" + strings.TrimSuffix(parts[1], ".git")
+	return checkedReference(modulePath, version)
 }
 
-func ValidateRepositoryID(repositoryID string) error {
-	parsed, err := protocolrepositoryid.Parse(repositoryID)
-	if err != nil || parsed.String() != repositoryID {
-		return fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
+func ValidateModulePath(modulePath string) error {
+	parsed, err := protocolmodule.ParsePath(modulePath)
+	if err != nil || parsed.String() != modulePath {
+		return fmt.Errorf("invalid canonical Repository ID %q", modulePath)
 	}
 	return nil
 }
@@ -104,9 +104,9 @@ func ValidateRepositoryID(repositoryID string) error {
 // ValidateExternalSkillID validates path-shaped identities imported from
 // third-party lock formats. It is not accepted by SkillsGo commands or Hub APIs.
 func ValidateExternalSkillID(skillID string) error {
-	repositoryID, memberPath, found := strings.Cut(skillID, "/-/")
-	parsed, err := protocolrepositoryid.Parse(repositoryID)
-	if err != nil || parsed.String() != repositoryID {
+	modulePath, memberPath, found := strings.Cut(skillID, "/-/")
+	parsed, err := protocolmodule.ParsePath(modulePath)
+	if err != nil || parsed.String() != modulePath {
 		return fmt.Errorf("invalid external Skill identity %q", skillID)
 	}
 	if !found {
@@ -125,36 +125,32 @@ func ValidateExternalSkillID(skillID string) error {
 	return nil
 }
 
-func checkedReference(repositoryID, version string) (Reference, error) {
-	repositoryID = normalizeRepositoryID(repositoryID)
-	if err := ValidateRepositoryID(repositoryID); err != nil {
+func checkedReference(modulePath, version string) (Reference, error) {
+	modulePath = normalizeModulePath(modulePath)
+	if err := ValidateModulePath(modulePath); err != nil {
 		return Reference{}, err
 	}
 	if err := ValidatePublicVersion(version); err != nil {
 		return Reference{}, err
 	}
-	return Reference{RepositoryID: repositoryID, Version: version}, nil
+	return Reference{ModulePath: modulePath, Version: version}, nil
 }
 
-// ValidatePublicVersion accepts only the two explicit movable intents or one
-// canonical immutable semantic/pseudo-version.
+// ValidatePublicVersion accepts the Go Module Version Query grammar plus head.
 func ValidatePublicVersion(version string) error {
-	_, err := protocolversion.ParseSelector(version)
+	_, err := protocolversion.ParseQuery(version)
 	return err
 }
 
-func normalizeRepositoryID(repositoryID string) string {
-	if parsed, err := protocolrepositoryid.Parse(repositoryID); err == nil {
+func normalizeModulePath(modulePath string) string {
+	if parsed, err := protocolmodule.ParsePath(modulePath); err == nil {
 		return parsed.String()
 	}
-	return repositoryID
+	return modulePath
 }
 
 // ValidateVersion confines a source or resolved version to one URL path segment.
 func ValidateVersion(version string) error {
-	if version == "latest" {
-		return fmt.Errorf("ambiguous Selector %q is unsupported; use head or release", version)
-	}
 	if version == "" || version == "." || version == ".." ||
 		strings.ContainsAny(version, "/\\\x00%?#") || containsControl(version) {
 		return fmt.Errorf("invalid source reference %q", version)

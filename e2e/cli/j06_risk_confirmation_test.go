@@ -21,7 +21,7 @@ func TestJ06AuditIsOutsideImmutableInstall(t *testing.T) {
 
 	immutableSource := "github.com/skillsgo/e2e-risk-skills@v1.0.0"
 
-	info := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/github.com/skillsgo/e2e-risk-skills/@v/v1.0.0.info")
+	info := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/github.com/skillsgo/e2e-risk-skills/versions/v1.0.0")
 	require.Equal(t, 0, info.exitCode, info.output)
 	require.NotContains(t, strings.ToLower(info.output), `"risk"`)
 

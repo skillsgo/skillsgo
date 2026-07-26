@@ -11,7 +11,7 @@
 - `go_vcs_lister.go`, `upstream_lister.go`: expose upstream version discovery over the repository resolver.
 - `latest_test.go`, `version_matrix_test.go`, `pseudo_version_validation_test.go`, `go_derived_version_test.go`: specify stable-first semantic-version selection, the table-driven C1/C2, F1/F2, V1, and cache-freshness query matrix, plus selected Go-derived pseudo-version authenticity, generation, odd-Tag, and semantic-revision rules shared by lazy resolution.
 - `filter.go`, `filterRule.go`, `filter_rule.go`, `filter_test.go`: preserve inherited source filtering behavior.
-- `zip_compression.go`: adapts full Git archives into the shared bounded deterministic Repository Artifact contract.
+- `zip_compression.go`: adapts full Git archives into the shared bounded deterministic Module Artifact contract, preserving safe Module-contained symlinks and omitting unsafe links.
 - `all_test.go`: provides shared package-level test setup.
 
 ## Architectural Boundary

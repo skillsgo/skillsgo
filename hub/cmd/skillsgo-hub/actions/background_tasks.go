@@ -14,19 +14,19 @@ import (
 )
 
 type repositorySourceMetadataRefreshArgs struct {
-	RepositoryID string `json:"repository_id" river:"unique"`
+	ModulePath string `json:"module_path" river:"unique"`
 }
 
 func (repositorySourceMetadataRefreshArgs) Kind() string {
 	return "repository_source_metadata_refresh"
 }
 
-type repositoryPublicationPrewarmArgs struct {
-	RepositoryID string `json:"repository_id" river:"unique"`
-	Query        string `json:"query" river:"unique"`
+type modulePublicationPrewarmArgs struct {
+	ModulePath string `json:"module_path" river:"unique"`
+	Query      string `json:"query" river:"unique"`
 }
 
-func (repositoryPublicationPrewarmArgs) Kind() string { return "repository_publication_prewarm" }
+func (modulePublicationPrewarmArgs) Kind() string { return "module_publication_prewarm" }
 
 type descriptionTranslationBatchArgs struct {
 	Locale string `json:"locale" river:"unique"`
@@ -35,22 +35,22 @@ type descriptionTranslationBatchArgs struct {
 func (descriptionTranslationBatchArgs) Kind() string { return "description_translation_batch" }
 
 func registerRepositoryPrewarmJob(runtime *taskqueue.Runtime, materializer repositoryMaterializer) error {
-	return taskqueue.Register(runtime, func(ctx context.Context, args repositoryPublicationPrewarmArgs) error {
-		if args.RepositoryID == "" {
-			return fmt.Errorf("repository prewarm job requires repository_id")
+	return taskqueue.Register(runtime, func(ctx context.Context, args modulePublicationPrewarmArgs) error {
+		if args.ModulePath == "" {
+			return fmt.Errorf("module prewarm job requires module_path")
 		}
 		query := args.Query
 		if query == "" {
-			query = "head"
+			query = "latest"
 		}
-		_, err := materializer.Materialize(ctx, args.RepositoryID, query)
+		_, err := materializer.Materialize(ctx, args.ModulePath, query)
 		return err
 	})
 }
 
-func enqueueRepositoryPrewarm(ctx context.Context, runtime *taskqueue.Runtime, repositoryID, query string) error {
+func enqueueRepositoryPrewarm(ctx context.Context, runtime *taskqueue.Runtime, modulePath, query string) error {
 	if query == "" {
-		query = "head"
+		query = "latest"
 	}
-	return runtime.Enqueue(ctx, repositoryPublicationPrewarmArgs{RepositoryID: repositoryID, Query: query}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource})
+	return runtime.Enqueue(ctx, modulePublicationPrewarmArgs{ModulePath: modulePath, Query: query}, taskqueue.InsertOptions{Unique: true, MaxAttempts: 8, Queue: taskqueue.QueueSource})
 }
