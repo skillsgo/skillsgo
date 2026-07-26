@@ -4,7 +4,6 @@
  * [POS]: Serves as the focused local Library and inventory model module shared by onboarding, Library journeys, and CLI decoding.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
-import 'discovery_models.dart';
 import 'installation_models.dart';
 import 'system_models.dart';
 
@@ -184,73 +183,25 @@ class ProjectIcon {
 class SkillDetail {
   const SkillDetail({
     required this.name,
-    required this.source,
-    required this.markdown,
-    required this.files,
-    this.imageUrl,
-    this.repository = '',
-    this.stars = 0,
-    this.sourceUpdatedAt,
+    this.path = '',
+    this.content = '',
+    this.modulePath = '',
+    this.version = '',
+    this.time,
     this.archiveSize = 0,
     this.description = '',
-    this.requestedVersion = '',
-    this.immutableVersion = '',
-    this.commitSHA = '',
-    this.treeSHA = '',
-    this.sourceRef = '',
-    this.sum = '',
-    this.trustLevel = SkillTrustLevel.unverified,
-    this.riskAssessment = SkillRiskAssessment.unknown,
-    this.riskScannerVersion = '',
-    this.riskEvidence = const [],
     this.installationTargets = const [],
-    this.hubExecutableSignal = false,
   });
 
   final String name;
-  final String source;
-  final String markdown;
-  final List<SkillFile> files;
-  final String? imageUrl;
-  final String repository;
-  final int stars;
-  final DateTime? sourceUpdatedAt;
+  final String path;
+  final String content;
+  final String modulePath;
+  final String version;
+  final DateTime? time;
   final int archiveSize;
   final String description;
-  final String requestedVersion;
-  final String immutableVersion;
-  final String commitSHA;
-  final String treeSHA;
-  final String sourceRef;
-  final String sum;
-  final SkillTrustLevel trustLevel;
-  final SkillRiskAssessment riskAssessment;
-  final String riskScannerVersion;
-  final List<SkillRiskEvidence> riskEvidence;
   final List<SkillInstallationTarget> installationTargets;
-  final bool hubExecutableSignal;
-
-  bool get hasExecutableContent =>
-      hubExecutableSignal ||
-      files.any((file) {
-        if (file.executable) return true;
-        final lower = file.path.toLowerCase();
-        const extensions = [
-          '.sh',
-          '.bash',
-          '.zsh',
-          '.fish',
-          '.ps1',
-          '.bat',
-          '.cmd',
-          '.exe',
-          '.js',
-          '.mjs',
-          '.py',
-          '.rb',
-        ];
-        return extensions.any(lower.endsWith) || lower.contains('/scripts/');
-      });
 }
 
 class InstalledSkill {
@@ -261,11 +212,10 @@ class InstalledSkill {
     required this.agents,
     required this.targetCount,
     this.inventoryKey = '',
-    this.repositoryId = '',
+    this.modulePath = '',
     this.targets = const [],
     this.visibility = const [],
     this.provenance = LibraryProvenance.hub,
-    this.riskAssessment = SkillRiskAssessment.unknown,
     this.health = InstallationHealth.healthy,
     this.projects = const [],
     this.versions = const [],
@@ -278,11 +228,10 @@ class InstalledSkill {
   final List<String> agents;
   final int targetCount;
   final String inventoryKey;
-  final String repositoryId;
+  final String modulePath;
   final List<SkillInstallationTarget> targets;
   final List<SkillVisibility> visibility;
   final LibraryProvenance provenance;
-  final SkillRiskAssessment riskAssessment;
   final InstallationHealth health;
   final List<String> projects;
   final List<String> versions;
@@ -324,11 +273,10 @@ class InstalledSkill {
       path: selectedTargets.first.path,
       agents: (selectedAgents.toList()..sort()),
       targetCount: selectedTargets.length,
-      repositoryId: repositoryId,
+      modulePath: modulePath,
       targets: List.unmodifiable(selectedTargets),
       visibility: visibility,
       provenance: provenance,
-      riskAssessment: riskAssessment,
       health: selectedHealth,
       projects: (selectedProjects.toList()..sort()),
       versions: versionList,

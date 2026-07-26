@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/skillsgo/skillsgo/protocol/api"
 )
 
 func TestVocabularyAndPaths(t *testing.T) {
@@ -32,7 +34,7 @@ func TestVocabularyAndPaths(t *testing.T) {
 
 func TestInstallEventValidationAndJSON(t *testing.T) {
 	now := time.Date(2026, 7, 22, 12, 0, 0, 0, time.UTC)
-	event := InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", RepositoryID: "github.com/acme/skills", SkillName: "demo", Version: "v1.0.0", Agents: []string{"codex"}, Scope: ScopeUser, CLIVersion: "0.1.0", OccurredAt: now}
+	event := InstallEvent{EventID: "019f5e99-e1dd-77e3-b259-61e09396d599", ModulePath: "github.com/acme/skills", SkillName: "demo", Version: "v1.0.0", Agents: []string{"codex"}, Scope: ScopeUser, CLIVersion: "0.1.0", OccurredAt: now}
 	if message := event.Validate(now); message != "" {
 		t.Fatal(message)
 	}
@@ -40,14 +42,14 @@ func TestInstallEventValidationAndJSON(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, field := range []string{`"eventId"`, `"repositoryId"`, `"skillName"`, `"cliVersion"`, `"occurredAt"`} {
+	for _, field := range []string{`"eventId"`, `"modulePath"`, `"skillName"`, `"cliVersion"`, `"occurredAt"`} {
 		if !strings.Contains(string(encoded), field) {
 			t.Fatalf("missing field %s in %s", field, encoded)
 		}
 	}
 	cases := map[string]InstallEvent{
 		"short identity":    func() InstallEvent { value := event; value.EventID = "short"; return value }(),
-		"blank repository":  func() InstallEvent { value := event; value.RepositoryID = " "; return value }(),
+		"blank repository":  func() InstallEvent { value := event; value.ModulePath = " "; return value }(),
 		"blank skill":       func() InstallEvent { value := event; value.SkillName = " "; return value }(),
 		"invalid scope":     func() InstallEvent { value := event; value.Scope = "global"; return value }(),
 		"missing agents":    func() InstallEvent { value := event; value.Agents = nil; return value }(),
@@ -65,13 +67,13 @@ func TestInstallEventValidationAndJSON(t *testing.T) {
 }
 
 func TestRankingResponseCombinesHubCardWithCloudMetric(t *testing.T) {
-	response := RankingResponse{Collection: RankingAllTime, Items: []RankingItem{{RepositoryID: "github.com/acme/skills", SkillName: "demo", Name: "demo", Description: "Demo", Source: "github.com/acme/skills", Repository: "github.com/acme/skills", SkillPath: "skills/demo", LatestVersion: "v1.0.0", TrustLevel: "unverified", RiskAssessment: "unknown", Metric: Metric{Kind: MetricAllTimeInstalls, Value: 3}}}, Page: Page{Limit: 20}}
+	response := RankingResponse{Collection: RankingAllTime, Items: []RankingItem{{ModulePath: "github.com/acme/skills", SkillName: "demo", Name: "demo", Description: "Demo", Path: "skills/demo", LatestVersion: "v1.0.0", Metric: Metric{Kind: MetricAllTimeInstalls, Value: 3}}}, Pagination: api.Pagination{PerPage: 20}}
 	encoded, err := json.Marshal(response)
 	if err != nil {
 		t.Fatal(err)
 	}
 	text := string(encoded)
-	if !strings.Contains(text, `"description":"Demo"`) || !strings.Contains(text, `"repositoryId"`) || !strings.Contains(text, `"skillName"`) {
+	if !strings.Contains(text, `"description":"Demo"`) || !strings.Contains(text, `"modulePath"`) || !strings.Contains(text, `"skillName"`) {
 		t.Fatalf("ranking lost Hub metadata, association, or metric: %s", text)
 	}
 }
@@ -82,7 +84,7 @@ func TestPublishedJSONVectors(t *testing.T) {
 		t.Fatal(err)
 	}
 	var event InstallEvent
-	if err := json.Unmarshal(installJSON, &event); err != nil || event.Scope != ScopeUser || event.RepositoryID == "" || event.SkillName == "" {
+	if err := json.Unmarshal(installJSON, &event); err != nil || event.Scope != ScopeUser || event.ModulePath == "" || event.SkillName == "" {
 		t.Fatalf("invalid install vector: %#v, %v", event, err)
 	}
 	rankingJSON, err := os.ReadFile("testdata/ranking.valid.json")

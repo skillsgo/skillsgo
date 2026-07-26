@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the active locale, the optimized public brand asset, React state, and TanStack Router links.
- * [OUTPUT]: Provides the shared Mole-aligned product and documentation header.
- * [POS]: Serves as the single site-header implementation across home and docs routes.
+ * [INPUT]: Depends on the active locale, display mode, the optimized public brand asset, React state, and TanStack Router links.
+ * [OUTPUT]: Provides site and documentation variants of the shared SkillsGo header.
+ * [POS]: Serves as the single header implementation whose mode adapts navigation to the current user task.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 import type { Locale } from '@/lib/i18n';
@@ -29,7 +29,7 @@ const labels = {
   },
 } as const;
 
-export function SiteHeader({ locale }: { locale: Locale }) {
+export function SiteHeader({ locale, mode = 'site' }: { locale: Locale; mode?: 'site' | 'docs' }) {
   const text = labels[locale];
   const [languageOpen, setLanguageOpen] = useState(false);
   const languageSwitch = useRef<HTMLDivElement>(null);
@@ -50,19 +50,22 @@ export function SiteHeader({ locale }: { locale: Locale }) {
   }, []);
 
   return (
-    <header className="sg-site-header">
+    <header className="sg-site-header" data-mode={mode}>
       <nav className="sg-nav" aria-label="Primary navigation">
         <Link to="/$lang" params={{ lang: locale }} className="sg-brand">
           <img src="/branding/skillsgo-logo.png" width="26" height="26" alt="" decoding="async" />
           <span>SkillsGo</span>
+          {mode === 'docs' ? <span className="sg-brand-context">/ {text.docs}</span> : null}
         </Link>
         <div className="sg-nav-links">
-          <Link to="/$lang" params={{ lang: locale }} hash="problems">{text.overview}</Link>
-          <Link to="/$lang" params={{ lang: locale }} hash="overview">{text.system}</Link>
-          <Link to="/$lang" params={{ lang: locale }} hash="workflow">{text.workflow}</Link>
-          <Link to="/$lang" params={{ lang: locale }} hash="questions">{text.questions}</Link>
+          {mode === 'site' ? <>
+            <Link to="/$lang" params={{ lang: locale }} hash="problems">{text.overview}</Link>
+            <Link to="/$lang" params={{ lang: locale }} hash="overview">{text.system}</Link>
+            <Link to="/$lang" params={{ lang: locale }} hash="workflow">{text.workflow}</Link>
+            <Link to="/$lang" params={{ lang: locale }} hash="questions">{text.questions}</Link>
+          </> : null}
           <Link to="/$lang/hub" params={{ lang: locale }}>{text.hub}</Link>
-          <Link to="/$lang/docs/$" params={{ lang: locale, _splat: '' }}>{text.docs}</Link>
+          {mode === 'site' ? <Link to="/$lang/docs/$" params={{ lang: locale, _splat: '' }}>{text.docs}</Link> : <a href="https://github.com/skillsgo/skillsgo" target="_blank" rel="noreferrer">GitHub</a>}
         </div>
         <div className="sg-language-switch" ref={languageSwitch}>
           <button className="sg-language-trigger" type="button" aria-expanded={languageOpen} aria-haspopup="true" aria-controls="sg-language-menu" aria-label={text.languageLabel} onClick={() => setLanguageOpen((open) => !open)}>
@@ -71,8 +74,8 @@ export function SiteHeader({ locale }: { locale: Locale }) {
             <span className="sg-language-name">{locale === 'en' ? 'English' : '简体中文'}</span>
           </button>
           <div id="sg-language-menu" className="sg-language-menu" aria-hidden={!languageOpen}>
-            <Link to="/$lang" params={{ lang: 'en' }} className={locale === 'en' ? 'active' : undefined} aria-current={locale === 'en' ? 'page' : undefined} onClick={() => setLanguageOpen(false)}><span>English</span><span>EN</span></Link>
-            <Link to="/$lang" params={{ lang: 'zh-CN' }} className={locale === 'zh-CN' ? 'active' : undefined} aria-current={locale === 'zh-CN' ? 'page' : undefined} onClick={() => setLanguageOpen(false)}><span>简体中文</span><span>中</span></Link>
+            <Link to={mode === 'docs' ? '/$lang/docs/$' : '/$lang'} params={mode === 'docs' ? { lang: 'en', _splat: '' } : { lang: 'en' }} className={locale === 'en' ? 'active' : undefined} aria-current={locale === 'en' ? 'page' : undefined} onClick={() => setLanguageOpen(false)}><span>English</span><span>EN</span></Link>
+            <Link to={mode === 'docs' ? '/$lang/docs/$' : '/$lang'} params={mode === 'docs' ? { lang: 'zh-CN', _splat: '' } : { lang: 'zh-CN' }} className={locale === 'zh-CN' ? 'active' : undefined} aria-current={locale === 'zh-CN' ? 'page' : undefined} onClick={() => setLanguageOpen(false)}><span>简体中文</span><span>中</span></Link>
           </div>
         </div>
       </nav>

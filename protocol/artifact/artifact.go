@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on immutable Repository file inventories and ZIP bytes, extracted regular-file directories, and canonical Repository identity.
- * [OUTPUT]: Provides deterministic Repository ZIP construction, shared limits, portable collision-safe paths, canonical modes, one-pass traversal, and Go-compatible Sum calculation.
- * [POS]: Serves as the executable Repository Artifact format contract shared by Hub producers and CLI consumers.
+ * [INPUT]: Depends on immutable Module file inventories and ZIP bytes, extracted Module directories, and canonical Module Path identity.
+ * [OUTPUT]: Provides deterministic Module ZIP construction, shared limits, portable collision-safe paths, Module-contained symlink validation, normalized traversal, and coordinate-bound Sum calculation.
+ * [POS]: Serves as the executable Module Artifact format contract shared by Hub producers and clients.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package artifact
@@ -42,6 +42,10 @@ type Entry struct {
 	Directory bool
 }
 
+func (entry Entry) IsSymlink() bool {
+	return entry.Mode&os.ModeSymlink != 0
+}
+
 // VisitFunc observes each validated artifact entry while its Sum is
 // calculated. File contents are owned by the call and must not be retained.
 type VisitFunc func(Entry) error
@@ -78,67 +82,73 @@ func ValidSum(value string) bool {
 	return err == nil && len(decoded) == sha256.Size
 }
 
-// BuildRepository serializes one complete validated Repository file inventory
-// beneath the canonical <repositoryID>@<version>/ ZIP prefix.
-func BuildRepository(repositoryID, version string, files []Entry) ([]byte, error) {
-	if repositoryID == "" || version == "" {
-		return nil, errors.New("Repository Artifact identity and version are required")
+// BuildModule serializes one complete validated Module file inventory
+// beneath the canonical <modulePath>@<version>/ ZIP prefix.
+func BuildModule(modulePath, version string, files []Entry) ([]byte, error) {
+	if modulePath == "" || version == "" {
+		return nil, errors.New("Module Artifact identity and version are required")
 	}
 	if len(files) == 0 || len(files) > MaxFiles {
-		return nil, fmt.Errorf("Repository Artifact file count must be between 1 and %d", MaxFiles)
+		return nil, fmt.Errorf("Module Artifact file count must be between 1 and %d", MaxFiles)
 	}
 	files = append([]Entry(nil), files...)
 	sort.Slice(files, func(i, j int) bool { return files[i].Path < files[j].Path })
 	var total uint64
 	for _, file := range files {
 		if file.Directory {
-			return nil, fmt.Errorf("Repository Artifact input %q is a directory; only regular files are accepted", file.Path)
+			return nil, fmt.Errorf("Module Artifact input %q is a directory; only regular files are accepted", file.Path)
 		}
 		size := uint64(len(file.Contents))
 		if size > MaxUncompressedBytes || total > MaxUncompressedBytes-size {
-			return nil, fmt.Errorf("Repository Artifact exceeds %d bytes", MaxUncompressedBytes)
+			return nil, fmt.Errorf("Module Artifact exceeds %d bytes", MaxUncompressedBytes)
 		}
 		total += size
 	}
 
 	var buffer bytes.Buffer
 	writer := zip.NewWriter(&buffer)
-	prefix := repositoryID + "@" + version + "/"
+	prefix := modulePath + "@" + version + "/"
 	for _, file := range files {
 		header := &zip.FileHeader{Name: prefix + file.Path, Method: zip.Deflate}
 		header.Modified = time.Date(1980, time.January, 1, 0, 0, 0, 0, time.UTC)
-		mode, err := canonicalRegularMode(file.Mode)
+		mode, err := canonicalMode(file.Mode)
 		if err != nil {
 			_ = writer.Close()
-			return nil, fmt.Errorf("Repository Artifact file %q: %w", file.Path, err)
+			return nil, fmt.Errorf("Module Artifact file %q: %w", file.Path, err)
 		}
 		header.SetMode(mode)
 		entry, err := writer.CreateHeader(header)
 		if err != nil {
 			_ = writer.Close()
-			return nil, fmt.Errorf("create Repository Artifact file %q: %w", file.Path, err)
+			return nil, fmt.Errorf("create Module Artifact file %q: %w", file.Path, err)
 		}
 		if _, err := entry.Write(file.Contents); err != nil {
 			_ = writer.Close()
-			return nil, fmt.Errorf("write Repository Artifact file %q: %w", file.Path, err)
+			return nil, fmt.Errorf("write Module Artifact file %q: %w", file.Path, err)
 		}
 	}
 	if err := writer.Close(); err != nil {
-		return nil, fmt.Errorf("close Repository Artifact ZIP: %w", err)
+		return nil, fmt.Errorf("close Module Artifact ZIP: %w", err)
 	}
 	if buffer.Len() > MaxArchiveBytes {
-		return nil, fmt.Errorf("Repository Artifact archive exceeds %d bytes", MaxArchiveBytes)
+		return nil, fmt.Errorf("Module Artifact archive exceeds %d bytes", MaxArchiveBytes)
 	}
 	archive := buffer.Bytes()
-	if _, err := RepositorySum(archive, repositoryID, version); err != nil {
+	if _, err := ModuleSum(archive, modulePath, version); err != nil {
 		return nil, err
 	}
 	return archive, nil
 }
 
-func canonicalRegularMode(mode os.FileMode) (os.FileMode, error) {
+func canonicalMode(mode os.FileMode) (os.FileMode, error) {
 	if mode == 0 {
 		return 0o644, nil
+	}
+	if mode&os.ModeSymlink != 0 {
+		if mode&os.ModeType != os.ModeSymlink {
+			return 0, errors.New("mode is not a supported symlink")
+		}
+		return os.ModeSymlink | 0o777, nil
 	}
 	if mode&os.ModeType != 0 {
 		return 0, errors.New("mode is not regular")
@@ -149,16 +159,16 @@ func canonicalRegularMode(mode os.FileMode) (os.FileMode, error) {
 	return 0o644, nil
 }
 
-// RepositorySum validates an immutable Repository ZIP and returns the Go
+// ModuleSum validates an immutable Module ZIP and returns the Go
 // HashZip-compatible Sum over every full ZIP file name and its contents.
-func RepositorySum(data []byte, repositoryID, version string) (string, error) {
-	return WalkRepository(data, repositoryID, version, nil)
+func ModuleSum(data []byte, modulePath, version string) (string, error) {
+	return WalkModule(data, modulePath, version, nil)
 }
 
-// WalkRepository validates and reads one complete Repository Artifact exactly
+// WalkModule validates and reads one complete Module Artifact exactly
 // once, visits entries in normalized path order, and returns its Sum.
-func WalkRepository(data []byte, repositoryID, version string, visit VisitFunc) (string, error) {
-	return walkContent(data, repositoryID, version, visit)
+func WalkModule(data []byte, modulePath, version string, visit VisitFunc) (string, error) {
+	return walkContent(data, modulePath, version, visit)
 }
 
 func walkContent(data []byte, artifactID, version string, visit VisitFunc) (string, error) {
@@ -181,6 +191,7 @@ func walkContent(data []byte, artifactID, version string, visit VisitFunc) (stri
 	prefix, hash, seen := artifactID+"@"+version+"/", sha256.New(), map[string]seenPath{}
 	var total uint64
 	hasSkill := false
+	validated := make([]Entry, 0, len(entries))
 	for _, entry := range entries {
 		if !strings.HasPrefix(entry.Name, prefix) {
 			return "", fmt.Errorf("artifact file %q is outside expected prefix %q", entry.Name, prefix)
@@ -209,7 +220,7 @@ func walkContent(data []byte, artifactID, version string, visit VisitFunc) (stri
 		if entry.Method != zip.Store && entry.Method != zip.Deflate {
 			return "", fmt.Errorf("artifact file %q uses unsupported compression method %d", relative, entry.Method)
 		}
-		if !entry.Mode().IsRegular() {
+		if !entry.Mode().IsRegular() && entry.Mode()&os.ModeSymlink == 0 {
 			return "", fmt.Errorf("artifact file %q is not a regular file", relative)
 		}
 		collisionKey, pathErr := PortablePathKey(relative)
@@ -226,7 +237,7 @@ func walkContent(data []byte, artifactID, version string, visit VisitFunc) (stri
 			}
 		}
 		seen[collisionKey] = seenPath{path: relative}
-		if path.Base(relative) == "SKILL.md" {
+		if path.Base(relative) == "SKILL.md" && entry.Mode().IsRegular() {
 			hasSkill = true
 		}
 		if entry.UncompressedSize64 > MaxUncompressedBytes || total > MaxUncompressedBytes-entry.UncompressedSize64 {
@@ -240,25 +251,86 @@ func walkContent(data []byte, artifactID, version string, visit VisitFunc) (stri
 		if err := writeHash1Content(hash, entry.Name, contents); err != nil {
 			return "", err
 		}
-		if visit != nil {
-			if err := visit(Entry{Path: relative, Contents: contents, Mode: entry.Mode(), Size: int64(entry.UncompressedSize64)}); err != nil {
-				return "", fmt.Errorf("visit artifact file %q: %w", relative, err)
-			}
-		}
+		validated = append(validated, Entry{Path: relative, Contents: contents, Mode: entry.Mode(), Size: int64(entry.UncompressedSize64)})
 	}
 	if !hasSkill {
-		return "", fmt.Errorf("Repository Artifact does not contain a SKILL.md member")
+		return "", fmt.Errorf("Module Artifact does not contain a SKILL.md member")
+	}
+	if err := ValidateSymlinks(validated); err != nil {
+		return "", err
+	}
+	if visit != nil {
+		for _, entry := range validated {
+			if err := visit(entry); err != nil {
+				return "", fmt.Errorf("visit artifact file %q: %w", entry.Path, err)
+			}
+		}
 	}
 	return "h1:" + base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
 }
 
-// RepositoryDirectorySum calculates the coordinate-bound Repository Sum for
-// an extracted Repository Artifact whose Skill members may be rooted or nested.
-func RepositoryDirectorySum(root, repositoryID, version string) (string, error) {
-	if repositoryID == "" || version == "" {
-		return "", errors.New("Repository Artifact identity and version are required")
+// ValidateSymlinks requires every symlink to use a relative target that
+// resolves, possibly through other symlinks, to an entry inside the Module.
+func ValidateSymlinks(entries []Entry) error {
+	byPath := make(map[string]Entry, len(entries))
+	directories := map[string]bool{".": true}
+	for _, entry := range entries {
+		byPath[entry.Path] = entry
+		for parent := path.Dir(entry.Path); parent != "."; parent = path.Dir(parent) {
+			directories[parent] = true
+		}
 	}
-	return directorySum(root, repositoryID+"@"+version+"/")
+	for _, entry := range entries {
+		if !entry.IsSymlink() {
+			continue
+		}
+		current := entry.Path
+		seen := map[string]bool{}
+		for depth := 0; depth <= len(entries); depth++ {
+			link, exists := byPath[current]
+			if !exists || !link.IsSymlink() {
+				if exists || directories[current] {
+					break
+				}
+				return &UnsafeSymlinkError{Path: entry.Path, Reason: fmt.Sprintf("missing target %q", current)}
+			}
+			if seen[current] {
+				return &UnsafeSymlinkError{Path: entry.Path, Reason: "cycle"}
+			}
+			seen[current] = true
+			target := string(link.Contents)
+			if target == "" || strings.HasPrefix(target, "/") || strings.Contains(target, "\\") {
+				return &UnsafeSymlinkError{Path: entry.Path, Reason: fmt.Sprintf("invalid target %q", target)}
+			}
+			resolved := path.Clean(path.Join(path.Dir(current), target))
+			if resolved == "." || resolved == ".." || strings.HasPrefix(resolved, "../") {
+				return &UnsafeSymlinkError{Path: entry.Path, Reason: "target escapes the Module"}
+			}
+			if _, err := PortablePathKey(resolved); err != nil {
+				return &UnsafeSymlinkError{Path: entry.Path, Reason: fmt.Sprintf("invalid resolved target: %v", err)}
+			}
+			current = resolved
+		}
+	}
+	return nil
+}
+
+type UnsafeSymlinkError struct {
+	Path   string
+	Reason string
+}
+
+func (err *UnsafeSymlinkError) Error() string {
+	return fmt.Sprintf("artifact symlink %q is unsafe: %s", err.Path, err.Reason)
+}
+
+// ModuleDirectorySum calculates the coordinate-bound Module Sum for
+// an extracted Module Artifact whose Skill members may be rooted or nested.
+func ModuleDirectorySum(root, modulePath, version string) (string, error) {
+	if modulePath == "" || version == "" {
+		return "", errors.New("Module Artifact identity and version are required")
+	}
+	return directorySum(root, modulePath+"@"+version+"/")
 }
 
 func directorySum(root, prefix string) (string, error) {
@@ -267,6 +339,7 @@ func directorySum(root, prefix string) (string, error) {
 		return "", err
 	}
 	paths := make([]string, 0)
+	inventory := make([]Entry, 0)
 	seen := make(map[string]string)
 	var total uint64
 	hasSkill := false
@@ -281,7 +354,7 @@ func directorySum(root, prefix string) (string, error) {
 		if err != nil {
 			return err
 		}
-		if !info.Mode().IsRegular() || info.Size() < 0 {
+		if !info.Mode().IsRegular() && info.Mode()&os.ModeSymlink == 0 {
 			return fmt.Errorf("artifact contains unsupported file %q", current)
 		}
 		relative, err := filepath.Rel(root, current)
@@ -301,11 +374,27 @@ func directorySum(root, prefix string) (string, error) {
 			hasSkill = true
 		}
 		size := uint64(info.Size())
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, readErr := os.Readlink(current)
+			if readErr != nil {
+				return readErr
+			}
+			size = uint64(len(target))
+		}
 		if size > MaxUncompressedBytes || total > MaxUncompressedBytes-size {
 			return fmt.Errorf("artifact exceeds %d bytes", MaxUncompressedBytes)
 		}
 		total += size
 		paths = append(paths, relative)
+		artifactEntry := Entry{Path: relative, Mode: info.Mode(), Size: int64(size)}
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, readErr := os.Readlink(current)
+			if readErr != nil {
+				return readErr
+			}
+			artifactEntry.Contents = []byte(filepath.ToSlash(target))
+		}
+		inventory = append(inventory, artifactEntry)
 		if len(paths) > MaxFiles {
 			return fmt.Errorf("artifact contains more than %d files", MaxFiles)
 		}
@@ -314,10 +403,27 @@ func directorySum(root, prefix string) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	if err := ValidateSymlinks(inventory); err != nil {
+		return "", err
+	}
 	sort.Strings(paths)
 	hash := sha256.New()
 	for _, relative := range paths {
-		contents, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(relative)))
+		current := filepath.Join(root, filepath.FromSlash(relative))
+		info, err := os.Lstat(current)
+		if err != nil {
+			return "", err
+		}
+		var contents []byte
+		if info.Mode()&os.ModeSymlink != 0 {
+			target, readErr := os.Readlink(current)
+			if readErr != nil {
+				return "", readErr
+			}
+			contents = []byte(filepath.ToSlash(target))
+		} else {
+			contents, err = os.ReadFile(current)
+		}
 		if err != nil {
 			return "", err
 		}
@@ -329,7 +435,7 @@ func directorySum(root, prefix string) (string, error) {
 		}
 	}
 	if !hasSkill {
-		return "", fmt.Errorf("Repository Artifact does not contain a SKILL.md member")
+		return "", fmt.Errorf("Module Artifact does not contain a SKILL.md member")
 	}
 	return "h1:" + base64.StdEncoding.EncodeToString(hash.Sum(nil)), nil
 }

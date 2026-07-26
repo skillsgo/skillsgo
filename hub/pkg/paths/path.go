@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on raw Hub request paths and module path escaping rules.
- * [OUTPUT]: Extracts decoded Skill and version parameters and provides private-pattern matching.
+ * [OUTPUT]: Extracts decoded Module Path and revision parameters from public v1 distribution paths and provides private-pattern matching.
  * [POS]: Serves as the router-independent request-path parser shared by Fiber and external storage boundaries.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -17,9 +17,12 @@ import (
 func GetSkill(requestPath string) (string, error) {
 	const op errors.Op = "paths.GetSkill"
 	skill := strings.TrimPrefix(requestPath, "/")
+	skill = strings.TrimPrefix(skill, "api/v1/")
 	skill = strings.TrimPrefix(skill, "mod/")
-	if i := strings.Index(skill, "/@v/"); i >= 0 {
+	if i := strings.Index(skill, "/versions/"); i >= 0 {
 		skill = skill[:i]
+	} else if strings.HasSuffix(skill, "/versions") {
+		skill = strings.TrimSuffix(skill, "/versions")
 	} else {
 		return "", errors.E(op, "missing skill parameter")
 	}
@@ -33,16 +36,13 @@ func GetSkill(requestPath string) (string, error) {
 func GetVersion(requestPath string) (string, error) {
 	const op errors.Op = "paths.GetVersion"
 
-	i := strings.Index(requestPath, "/@v/")
+	i := strings.Index(requestPath, "/versions/")
 	if i < 0 {
 		return "", errors.E(op, "missing version parameter")
 	}
-	version := requestPath[i+len("/@v/"):]
+	version := requestPath[i+len("/versions/"):]
 	for _, suffix := range []string{".info", ".zip", ".save", ".delete"} {
 		version = strings.TrimSuffix(version, suffix)
-	}
-	if version == "list" {
-		version = ""
 	}
 	if version == "" {
 		return "", errors.E(op, "missing version parameter")

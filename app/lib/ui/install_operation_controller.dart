@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Flutter foundation, Riverpod legacy migration support, the App-scoped Gateway provider, and direct SkillsGateway installation contracts.
- * [OUTPUT]: Provides a compact InstallationRequest interface plus discovery-snapshot version preservation, atomic Repository installation, execution aggregation, success classification, and error state.
+ * [OUTPUT]: Provides a compact InstallationRequest interface plus discovery-snapshot version preservation, atomic Module installation, execution aggregation, success classification, and error state.
  * [POS]: Serves as the deep Installation Request module while selectors retain only ephemeral location choices and presentation feedback.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -16,10 +16,10 @@ class InstallationRequest {
     this._immutableVersion, {
     required this.selections,
     required this.riskPolicy,
-  }) : _repositorySkills = const [];
+  }) : _moduleSkills = const [];
 
-  const InstallationRequest.repository(
-    this._repositorySkills, {
+  const InstallationRequest.module(
+    this._moduleSkills, {
     required this.selections,
     required this.riskPolicy,
   }) : _skill = null,
@@ -27,11 +27,11 @@ class InstallationRequest {
 
   final SkillSummary? _skill;
   final String? _immutableVersion;
-  final List<SkillSummary> _repositorySkills;
+  final List<SkillSummary> _moduleSkills;
   final List<InstallationTargetSelection> selections;
   final PersonalRiskPolicy riskPolicy;
 
-  bool get isRepository => _repositorySkills.isNotEmpty;
+  bool get isModule => _moduleSkills.isNotEmpty;
 }
 
 class InstallOperationState {
@@ -90,10 +90,10 @@ class InstallOperationController extends ChangeNotifier {
         );
       }
       final resolved = <({SkillSummary skill, String immutableVersion})>[];
-      if (request.isRepository) {
+      if (request.isModule) {
         executions.addAll(
-          await _gateway.installRepositoryTargets(
-            request._repositorySkills,
+          await _gateway.installModuleTargets(
+            request._moduleSkills,
             request.selections,
             confirmRisk: true,
             allowCritical: request.riskPolicy.allowCriticalOverride,
@@ -112,7 +112,7 @@ class InstallOperationController extends ChangeNotifier {
         }
         resolved.add((skill: skill, immutableVersion: immutableVersion));
       }
-      if (!request.isRepository && resolved.isEmpty) {
+      if (!request.isModule && resolved.isEmpty) {
         throw const SkillsException(
           'Installation requires at least one Skill.',
           kind: SkillsFailureKind.validation,

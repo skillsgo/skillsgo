@@ -12,10 +12,10 @@
 - `agents.go`: exposes complete supported and installed Agent discovery through versioned JSON and grouped adaptive Human output.
 - `agents_test.go`: specifies the stable App-facing Agent discovery machine contract.
 - `info.go`: exposes direct, read-only Repository or Skill JSON with immutable source identity plus provider-neutral Hub product metadata, including Repository descriptions required by App cards.
-- `info_test.go`: specifies explicit head/release resolution, Repository description preservation, exact Repository-batch member selection, stable JSON, missing-member failure, and the no-local-write boundary.
+- `info_test.go`: specifies Go-compatible latest resolution, Module description preservation, exact Module-member selection, stable JSON, missing-member failure, and the no-local-write boundary.
 - `product_reads.go`: exposes top-level single-query or strict file/stdin batch Skill `find` plus `detail`, `hub info`, and `hub check` reads, including optional exact-name/Source restriction and description locale forwarding, while hiding Hub routes and query parameters behind CLI domain language.
 - `product_reads_test.go`: specifies single and batch Find, top-level Skill reads, ordered batch hydration, and grouped Hub service inspection through Execute.
-- `catalog_update_check.go`, `catalog_update_check_test.go`: expose and specify one bounded read-only App machine command that compares installed Library-entry versions with Repository-fresh head/release candidates resolved once per Repository.
+- `catalog_update_check.go`, `catalog_update_check_test.go`: expose and specify one bounded read-only App machine command that compares installed Library-entry versions with one Module-fresh latest candidate resolved once per Module.
 - `cloud_reporting.go`: publishes best-effort post-commit installation facts directly to the Cloud origin declared by a Cloud-mode Hub without changing local installation outcomes.
 - `inventory.go`: adapts mode-free Repository-managed/external inventory v6 into stable JSON and grouped adaptive Human output.
 - `inventory_test.go`: specifies Repository ID plus Skill Name aggregation, External inventory-key separation, read-only inspection, target health, Workspace reconciliation, and the explicit-project privacy boundary.
@@ -28,17 +28,17 @@
 - `version.go`: serves the human version output and versioned App startup handshake.
 - `args_test.go`: covers public argument normalization and environment-gated test Agent behavior.
 - `i18n_test.go`: covers localized root command help.
-- `repository_add.go`: orchestrates one root Repository Info/ZIP download, explicit member/Agent/project selection, Scope Vendor/Projection preparation, and the App-facing Repository-install result through the shared Repository mutation commit state machine.
-- `repository_update.go`: preflights one declared Repository coordinate change, binds it to current YAML/Lock state, verifies the existing Vendor/Projections, and atomically replaces the complete coordinate while preserving selected members and Agents.
-- `repository_remove.go`: verifies the authoritative local Vendor and atomically removes selected root/nested members from every declared Agent projection without Hub access or Local Modification overwrite.
-- `repository_add_test.go`, `repository_vendor_test.go`: specify Repository selector matching plus the public exact-version Workspace Vendor journey.
+- `repository_add.go`: orchestrates one root Repository Info/ZIP download, explicit member/Agent/project selection, Scope Module Store/Projection preparation, and the App-facing Repository-install result through the shared Repository mutation commit state machine.
+- `repository_update.go`: preflights one declared Repository coordinate change, binds it to current YAML/Lock state, verifies the existing Module Store/Projections, and atomically replaces the complete coordinate while preserving selected members and Agents.
+- `repository_remove.go`: verifies the authoritative local Module Store and atomically removes selected root/nested members from every declared Agent projection without Hub access or Local Modification overwrite.
+- `repository_add_test.go`, `module_store_test.go`: specify Repository selector matching plus the public exact-version Workspace Module Store journey.
 - `repository_test_helpers_test.go`: provides shared Repository protocol fixtures for command-level tests.
 - `workspace_integrity.go`: validates complete immutable resource evidence before atomically extending every destination Workspace Sum and publishing exact Info Cache entries for all installation entry points.
-- `workspace_restore.go`: performs conflict-safe idempotent Workspace/User ensure from strict YAML/Lock, restoring absent Vendor from exact Proxy resources and absent projections from verified Vendor without selector resolution, update, pruning, or overwrite.
+- `workspace_restore.go`: performs conflict-safe idempotent Workspace/User ensure from strict YAML/Lock, restoring absent Module Store from exact Proxy resources and absent projections from verified Module Store without selector resolution, update, pruning, or overwrite.
 - `version_test.go`: specifies CLI identity and App protocol compatibility through `Execute`.
 
 ## Architectural Boundary
 
-This module owns CLI command composition, argument handling, stable machine output, stable availability exit codes, and orchestration at the executable boundary. It delegates Agent, Hub, project, Repository mutation, Scope Vendor, and installation mechanics to their owning packages and must not expose localized human output as an App integration contract.
+This module owns CLI command composition, argument handling, stable machine output, stable availability exit codes, and orchestration at the executable boundary. It delegates Agent, Hub, project, Repository mutation, Scope Module Store, and installation mechanics to their owning packages and must not expose localized human output as an App integration contract.
 
 [PROTOCOL]: Update this header when this file changes, then review AGENTS.md

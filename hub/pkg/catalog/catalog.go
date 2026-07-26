@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on sqlc-generated PostgreSQL queries, pgx pooling, versioned Atlas SQL migrations, Hub database configuration, canonical Repository ID plus Skill Name coordinates, and path-unique Repository members.
- * [OUTPUT]: Provides persistent visibility-aware Skill and Repository metadata, same-name path-preserving immutable Release Records, deterministic coordinate defaults, native pgx transaction scopes shared with River, name-first/exact single and set-based batch Find projections, and source cache state.
+ * [INPUT]: Depends on sqlc-generated PostgreSQL queries, schema-fixed pgx pooling with public PostgreSQL extension fallback, versioned Atlas SQL migrations, Hub database configuration, canonical Module Path plus Skill Name coordinates, and path-unique Module members.
+ * [OUTPUT]: Provides the Modules/Versions/Skills persistence model, structured immutable Version publication, deterministic standalone Module Info, native pgx transaction scopes shared with River, discovery projections, and source cache state.
  * [POS]: Serves as the Hub identity and search data boundary while artifact bytes and Cloud statistics remain separately owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -9,7 +9,6 @@
 package catalog
 
 import (
-	"bytes"
 	"context"
 	"crypto/sha256"
 	"encoding/json"
@@ -32,7 +31,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-func skillResourceID(repositoryID, name string) string { return repositoryID + ":" + name }
+func skillResourceID(modulePath, name string) string { return modulePath + ":" + name }
 
 type Catalog struct {
 	pool    *pgxpool.Pool
@@ -43,10 +42,21 @@ func Open(ctx context.Context, cfg config.DatabaseConfig) (*Catalog, error) {
 	if cfg.Type != "postgres" {
 		return nil, fmt.Errorf("unsupported database type %q", cfg.Type)
 	}
+	if cfg.Schema == "" {
+		cfg.Schema = config.DefaultDatabaseSchema
+	}
+	if !config.ValidDatabaseSchema(cfg.Schema) {
+		return nil, fmt.Errorf("invalid metadata database schema %q", cfg.Schema)
+	}
 	poolConfig, err := pgxpool.ParseConfig(cfg.DSN)
 	if err != nil {
 		return nil, fmt.Errorf("parse metadata database DSN: %w", err)
 	}
+	searchPath := cfg.Schema
+	if cfg.Schema != config.DefaultDatabaseSchema {
+		searchPath += "," + config.DefaultDatabaseSchema
+	}
+	poolConfig.ConnConfig.RuntimeParams["search_path"] = searchPath
 	poolConfig.MaxConns = int32(cfg.MaxOpenConns)
 	if cfg.ConnMaxLifetime > 0 {
 		poolConfig.MaxConnLifetime = time.Duration(cfg.ConnMaxLifetime) * time.Second
@@ -103,38 +113,37 @@ func (c *Catalog) WithPostgresTxOptions(ctx context.Context, opts pgx.TxOptions,
 }
 
 type Skill struct {
-	RowID           int64     `db:"id" json:"-"`
-	RepositoryRowID int64     `db:"repository_id" json:"-"`
-	RepositoryID    string    `db:"repository_identity" json:"repositoryId"`
-	Name            string    `db:"name" json:"name"`
-	Description     string    `db:"description" json:"description"`
-	SourceHost      string    `db:"source_host" json:"sourceHost"`
-	Repository      string    `db:"repository" json:"repository"`
-	SkillPath       string    `db:"skill_path" json:"skillPath"`
-	LatestVersion   string    `db:"latest_version" json:"latestVersion"`
-	Stars           int64     `db:"stars" json:"stars"`
-	Verified        bool      `db:"verified" json:"verified"`
-	CreatedAt       time.Time `db:"created_at" json:"createdAt"`
-	UpdatedAt       time.Time `db:"updated_at" json:"updatedAt"`
+	RowID            int64     `db:"id" json:"-"`
+	ModuleRowID      int64     `db:"module_id" json:"-"`
+	ModulePath       string    `db:"module_path" json:"modulePath"`
+	Name             string    `db:"name" json:"name"`
+	Description      string    `db:"description" json:"description"`
+	SourceHost       string    `db:"source_host" json:"sourceHost"`
+	SourceRepository string    `db:"source_repository" json:"sourceRepository"`
+	Path             string    `db:"path" json:"path"`
+	LatestVersion    string    `db:"latest_version" json:"latestVersion"`
+	Stars            int64     `db:"stars" json:"stars"`
+	CreatedAt        time.Time `db:"created_at" json:"createdAt"`
+	UpdatedAt        time.Time `db:"updated_at" json:"updatedAt"`
 }
 
-type Repository struct {
-	RowID                   int64      `db:"id" json:"-"`
-	SourceHost              string     `db:"source_host" json:"sourceHost"`
-	RepositoryPath          string     `db:"repository_path" json:"repositoryPath"`
-	RepositoryID            string     `db:"repository_id" json:"id"`
-	Description             string     `db:"description" json:"description"`
-	Stars                   int64      `db:"stars" json:"stars"`
-	SourceMetadataETag      string     `db:"source_metadata_etag" json:"-"`
-	SourceMetadataCheckedAt *time.Time `db:"source_metadata_checked_at" json:"-"`
-	SourceMetadataRetryAt   *time.Time `db:"source_metadata_retry_at" json:"-"`
-	CreatedAt               time.Time  `db:"created_at" json:"createdAt"`
-	UpdatedAt               time.Time  `db:"updated_at" json:"updatedAt"`
+type Module struct {
+	RowID           int64      `db:"id" json:"-"`
+	SourceHost      string     `db:"source_host" json:"sourceHost"`
+	SourcePath      string     `db:"source_path" json:"sourcePath"`
+	Path            string     `db:"path" json:"path"`
+	Description     string     `db:"description" json:"description"`
+	Stars           int64      `db:"stars" json:"stars"`
+	SourceETag      string     `db:"source_etag" json:"-"`
+	SourceCheckedAt *time.Time `db:"source_checked_at" json:"-"`
+	SourceRetryAt   *time.Time `db:"source_retry_at" json:"-"`
+	CreatedAt       time.Time  `db:"created_at" json:"createdAt"`
+	UpdatedAt       time.Time  `db:"updated_at" json:"updatedAt"`
 }
 
 const (
-	LocalizedRepository = "repository"
-	LocalizedSkill      = "skill"
+	LocalizedModule = "module"
+	LocalizedSkill  = "skill"
 )
 
 // TranslationCandidate is one source description whose persisted translation is absent or stale.
@@ -197,22 +206,26 @@ func (c *Catalog) LocalizedDescription(ctx context.Context, resourceKind, resour
 	return description, err == nil, err
 }
 
-// RepositoryReleaseMember is one immutable Skill snapshot contained by a
-// Repository Release. Version and commit identity belong only to the Release.
-type RepositoryReleaseMember struct {
-	ReleaseRowID int64     `db:"release_id" json:"-"`
+// VersionSkill is one immutable Skill snapshot contained by a Module Version.
+type VersionSkill struct {
+	VersionRowID int64     `db:"version_id" json:"-"`
 	Name         string    `db:"name" json:"name"`
 	Version      string    `db:"version" json:"version"`
 	CommitSHA    string    `db:"commit_sha" json:"commitSHA"`
-	TreeSHA      string    `db:"tree_sha" json:"treeSHA"`
-	SkillPath    string    `db:"skill_path" json:"skillPath"`
+	Path         string    `db:"path" json:"path"`
 	CommitTime   time.Time `db:"commit_time" json:"commitTime"`
+	Description  string    `db:"description" json:"description"`
 }
 
-// PublishedSkill is one accepted member of an immutable Repository Release.
-type PublishedSkill struct {
-	Skill  Skill
-	Member RepositoryReleaseMember
+// ModuleVersion is one immutable source and Artifact identity owned by a Module.
+type ModuleVersion struct {
+	Version     string
+	Ref         string
+	CommitSHA   string
+	TreeSHA     string
+	Sum         string
+	ArchiveSize int64
+	CommitTime  time.Time
 }
 
 type PublicationVisibility string
@@ -222,187 +235,178 @@ const (
 	HistoricalPublication PublicationVisibility = "historical"
 )
 
-// PublishRepositoryReleaseWithVisibility atomically publishes the complete
-// member set and the exact immutable Repository Release Record served by the
-// root Repository Proxy.
-func (c *Catalog) PublishRepositoryReleaseWithVisibility(ctx context.Context, repositoryID string, candidates []PublishedSkill, visibility PublicationVisibility, releaseInfo []byte) error {
-	if err := ValidateRepositoryRelease(repositoryID, candidates, visibility, releaseInfo); err != nil {
+// PublishModuleVersionWithVisibility atomically publishes the complete
+// member set and its structured immutable Module Version identity.
+func (c *Catalog) PublishModuleVersionWithVisibility(ctx context.Context, modulePath string, version ModuleVersion, skills []Skill, visibility PublicationVisibility) error {
+	if err := ValidateModuleVersion(modulePath, version, skills, visibility); err != nil {
 		return err
 	}
-	return c.publishRepositoryVersionWithVisibility(ctx, repositoryID, candidates, visibility, append([]byte(nil), releaseInfo...))
+	return c.publishModuleVersionWithVisibility(ctx, modulePath, version, skills, visibility)
 }
 
-func ValidateRepositoryRelease(repositoryID string, candidates []PublishedSkill, visibility PublicationVisibility, releaseInfo []byte) error {
-	if len(releaseInfo) == 0 || !json.Valid(releaseInfo) {
-		return fmt.Errorf("Repository publication requires valid immutable release Info")
-	}
+func ValidateModuleVersion(modulePath string, version ModuleVersion, skills []Skill, visibility PublicationVisibility) error {
 	if visibility != CurrentPublication && visibility != HistoricalPublication {
-		return fmt.Errorf("unsupported Repository publication visibility %q", visibility)
+		return fmt.Errorf("unsupported Module publication visibility %q", visibility)
 	}
-	parsedRepository, err := skillpkg.ParseRepositoryID(repositoryID)
-	if err != nil || parsedRepository.String() != repositoryID {
-		return fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
+	parsedModule, err := skillpkg.ParseModulePath(modulePath)
+	if err != nil || parsedModule.String() != modulePath {
+		return fmt.Errorf("invalid canonical Module ID %q", modulePath)
 	}
-	if len(candidates) == 0 {
-		return fmt.Errorf("Repository publication requires at least one Skill")
+	if len(skills) == 0 {
+		return fmt.Errorf("Module publication requires at least one Skill")
 	}
-	var release protocolapi.RepositoryInfo
-	if err := json.Unmarshal(releaseInfo, &release); err != nil || release.ID != repositoryID || !semver.IsValid(release.Version) ||
-		release.CommitSHA == "" || release.TreeSHA == "" || !protocolartifact.ValidSum(release.Sum) || release.ArchiveSize <= 0 {
-		return fmt.Errorf("Repository publication requires matching immutable artifact identity")
+	if !semver.IsValid(version.Version) || version.Ref == "" || version.CommitSHA == "" || version.TreeSHA == "" ||
+		!protocolartifact.ValidSum(version.Sum) || version.ArchiveSize <= 0 || version.CommitTime.IsZero() {
+		return fmt.Errorf("Module publication requires matching immutable artifact identity")
 	}
-	if len(release.Skills) != len(candidates) {
-		return fmt.Errorf("Repository publication release membership does not match candidates")
-	}
-	seenPaths := make(map[string]bool, len(candidates))
-	for index, candidate := range candidates {
-		if candidate.Skill.RepositoryID != repositoryID || !protocolskillmanifest.ValidName(candidate.Skill.Name) ||
-			candidate.Skill.Name != candidate.Member.Name || candidate.Skill.SkillPath != candidate.Member.SkillPath {
-			return fmt.Errorf("Repository publication contains invalid Skill %q", candidate.Skill.Name)
+	seenPaths := make(map[string]bool, len(skills))
+	for _, candidate := range skills {
+		if candidate.ModulePath != modulePath || !protocolskillmanifest.ValidName(candidate.Name) || candidate.Path == "" {
+			return fmt.Errorf("Module publication contains invalid Skill %q", candidate.Name)
 		}
-		if seenPaths[candidate.Member.SkillPath] || candidate.Member.TreeSHA == "" || candidate.Member.SkillPath == "" {
-			return fmt.Errorf("Repository publication contains inconsistent member %q", candidate.Skill.Name)
+		if seenPaths[candidate.Path] {
+			return fmt.Errorf("Module publication contains inconsistent member %q", candidate.Name)
 		}
-		seenPaths[candidate.Member.SkillPath] = true
-		member := release.Skills[index]
-		if member.RepositoryID != repositoryID || member.Name != candidate.Skill.Name || member.SkillPath != candidate.Member.SkillPath ||
-			member.Version != release.Version || member.CommitSHA != release.CommitSHA || member.TreeSHA != candidate.Member.TreeSHA {
-			return fmt.Errorf("Repository publication release member %q does not match candidate", candidate.Skill.Name)
-		}
+		seenPaths[candidate.Path] = true
 	}
 	return nil
 }
 
-func (c *Catalog) publishRepositoryVersionWithVisibility(ctx context.Context, repositoryID string, candidates []PublishedSkill, visibility PublicationVisibility, releaseInfo []byte) error {
-	var release protocolapi.RepositoryInfo
-	if err := json.Unmarshal(releaseInfo, &release); err != nil {
-		return fmt.Errorf("decode Repository Release Record: %w", err)
-	}
-	version, commitSHA := release.Version, release.CommitSHA
+func (c *Catalog) publishModuleVersionWithVisibility(ctx context.Context, modulePath string, version ModuleVersion, skills []Skill, visibility PublicationVisibility) error {
 	tx, err := c.pool.Begin(ctx)
 	if err != nil {
 		return err
 	}
 	defer func() { _ = tx.Rollback(context.Background()) }()
 	q := c.queries.WithTx(tx)
-	params := catalogsqlc.RepositoryReleaseCountParams{RepositoryID: repositoryID, Version: version}
-	publicationCount, err := q.RepositoryReleaseCount(ctx, params)
+	params := catalogsqlc.ModuleVersionCountParams{ModulePath: modulePath, Version: version.Version}
+	publicationCount, err := q.ModuleVersionCount(ctx, params)
 	if err != nil {
 		return err
 	}
-	if publicationCount > 0 && len(releaseInfo) > 0 {
-		existingReleaseInfo, err := q.RepositoryReleaseInfo(ctx, catalogsqlc.RepositoryReleaseInfoParams{RepositoryID: repositoryID, Version: version})
+	if publicationCount > 0 {
+		existingVersion, err := q.ModuleVersion(ctx, catalogsqlc.ModuleVersionParams{ModulePath: modulePath, Version: version.Version})
 		if err != nil {
 			return err
 		}
-		if len(existingReleaseInfo) > 0 && !bytes.Equal(existingReleaseInfo, releaseInfo) {
-			return fmt.Errorf("immutable Repository Release Record conflict for %s@%s", repositoryID, version)
+		if existingVersion.Ref != version.Ref || existingVersion.CommitSha != version.CommitSHA ||
+			existingVersion.TreeSha != version.TreeSHA || existingVersion.Sum != version.Sum ||
+			existingVersion.ArchiveSize != version.ArchiveSize || !existingVersion.CommitTime.Equal(version.CommitTime) {
+			return fmt.Errorf("immutable Module Version conflict for %s@%s", modulePath, version.Version)
 		}
 	}
-	storedMembers, err := q.RepositoryReleaseMembers(ctx, catalogsqlc.RepositoryReleaseMembersParams{RepositoryID: repositoryID, Version: version})
+	storedMembers, err := q.Skills(ctx, catalogsqlc.SkillsParams{ModulePath: modulePath, Version: version.Version})
 	if err != nil {
 		return err
 	}
-	existing := mapReleaseMembers(storedMembers)
-	byCandidatePath := make(map[string]PublishedSkill, len(candidates))
-	for _, candidate := range candidates {
-		byCandidatePath[candidate.Member.SkillPath] = candidate
+	existing := mapVersionSkills(storedMembers)
+	byCandidatePath := make(map[string]Skill, len(skills))
+	for _, candidate := range skills {
+		byCandidatePath[candidate.Path] = candidate
 	}
 	for _, member := range existing {
-		candidate, relevant := byCandidatePath[member.SkillPath]
+		candidate, relevant := byCandidatePath[member.Path]
 		if !relevant && publicationCount == 0 {
 			continue
 		}
-		if !relevant || member.CommitSHA != release.CommitSHA || member.TreeSHA != candidate.Member.TreeSHA ||
-			member.SkillPath != candidate.Member.SkillPath {
-			return fmt.Errorf("immutable Repository version conflict for %s@%s", repositoryID, version)
+		if !relevant || member.Name != candidate.Name || member.Description != candidate.Description {
+			return fmt.Errorf("immutable Module version conflict for %s@%s", modulePath, version.Version)
 		}
 	}
 	if publicationCount > 0 {
-		if len(existing) != len(candidates) {
-			return fmt.Errorf("immutable Repository version conflict for %s@%s", repositoryID, version)
+		if len(existing) != len(skills) {
+			return fmt.Errorf("immutable Module version conflict for %s@%s", modulePath, version.Version)
 		}
 		if visibility == CurrentPublication {
 			now := time.Now().UTC()
-			repository, err := q.RepositoryByIdentity(ctx, repositoryID)
-			if err != nil {
-				return err
-			}
-			if err := replaceCurrentSkillProjection(ctx, q, repository.ID, repositoryID, candidates, now); err != nil {
-				return err
-			}
-			if err := q.SetCurrentReleaseByVersion(ctx, catalogsqlc.SetCurrentReleaseByVersionParams{RepositoryID: repositoryID, Version: version, UpdatedAt: now}); err != nil {
+			if err := q.SetCurrentVersionByCoordinate(ctx, catalogsqlc.SetCurrentVersionByCoordinateParams{ModulePath: modulePath, Version: version.Version, UpdatedAt: now}); err != nil {
 				return err
 			}
 		}
 		return tx.Commit(ctx)
 	}
 	now := time.Now().UTC()
-	parts := strings.SplitN(repositoryID, "/", 2)
-	repository, err := q.UpsertRepository(ctx, catalogsqlc.UpsertRepositoryParams{SourceHost: parts[0], RepositoryPath: parts[1], RepositoryID: repositoryID, CreatedAt: now})
+	parts := strings.SplitN(modulePath, "/", 2)
+	module, err := q.UpsertModule(ctx, catalogsqlc.UpsertModuleParams{
+		SourceHost: parts[0], SourcePath: parts[1], Path: modulePath, CreatedAt: now,
+	})
 	if err != nil {
 		return err
 	}
-	if visibility == CurrentPublication {
-		if err := replaceCurrentSkillProjection(ctx, q, repository.ID, repositoryID, candidates, now); err != nil {
-			return err
-		}
-	}
-	if err := recordRepositoryRelease(ctx, q, repository.ID, version, commitSHA, visibility == CurrentPublication, release, candidates, releaseInfo, now); err != nil {
+	if err := recordModuleVersion(ctx, q, module.ID, version, visibility == CurrentPublication, skills, now); err != nil {
 		return err
 	}
 	return tx.Commit(ctx)
 }
 
-func replaceCurrentSkillProjection(ctx context.Context, q *catalogsqlc.Queries, repositoryRowID int64, repositoryID string, candidates []PublishedSkill, now time.Time) error {
-	if err := q.DeleteRepositorySkills(ctx, repositoryRowID); err != nil {
-		return err
-	}
-	parts := strings.SplitN(repositoryID, "/", 2)
-	for _, candidate := range candidates {
-		if err := q.InsertSkill(ctx, catalogsqlc.InsertSkillParams{RepositoryID: repositoryRowID, Name: candidate.Skill.Name,
-			Description: candidate.Skill.Description, SourceHost: parts[0], Repository: parts[1], SkillPath: candidate.Member.SkillPath,
-			Verified: candidate.Skill.Verified, CreatedAt: now, UpdatedAt: now}); err != nil {
-			return err
-		}
-	}
-	return nil
-}
-
-func recordRepositoryRelease(ctx context.Context, q *catalogsqlc.Queries, repositoryRowID int64, version, commitSHA string, makeCurrent bool, release protocolapi.RepositoryInfo, candidates []PublishedSkill, releaseInfo []byte, createdAt time.Time) error {
-	releaseRowID, err := q.InsertRepositoryRelease(ctx, catalogsqlc.InsertRepositoryReleaseParams{RepositoryID: repositoryRowID,
-		Version: version, CommitSha: commitSHA, TreeSha: release.TreeSHA, Sum: release.Sum, ArchiveSize: release.ArchiveSize,
-		ReleaseInfo: releaseInfo, CommitTime: release.Time, CreatedAt: createdAt})
+func recordModuleVersion(ctx context.Context, q *catalogsqlc.Queries, moduleRowID int64, version ModuleVersion, makeCurrent bool, skills []Skill, createdAt time.Time) error {
+	versionRowID, err := q.InsertModuleVersion(ctx, catalogsqlc.InsertModuleVersionParams{ModuleID: moduleRowID,
+		Version: version.Version, Ref: version.Ref, CommitSha: version.CommitSHA, TreeSha: version.TreeSHA,
+		Sum: version.Sum, ArchiveSize: version.ArchiveSize, CommitTime: version.CommitTime, CreatedAt: createdAt})
 	if err != nil {
 		return err
 	}
-	for _, candidate := range candidates {
-		if err := q.InsertRepositoryReleaseMember(ctx, catalogsqlc.InsertRepositoryReleaseMemberParams{ReleaseID: releaseRowID,
-			Name: candidate.Skill.Name, SkillPath: candidate.Member.SkillPath, TreeSha: candidate.Member.TreeSHA}); err != nil {
+	for _, candidate := range skills {
+		if err := q.InsertSkill(ctx, catalogsqlc.InsertSkillParams{
+			VersionID: versionRowID, Name: candidate.Name, Path: candidate.Path, Description: candidate.Description,
+		}); err != nil {
 			return err
 		}
 	}
 	if makeCurrent {
-		err = q.SetCurrentRelease(ctx, catalogsqlc.SetCurrentReleaseParams{ID: repositoryRowID, CurrentReleaseID: pgtype.Int8{Int64: releaseRowID, Valid: true}, UpdatedAt: createdAt})
+		err = q.SetCurrentVersion(ctx, catalogsqlc.SetCurrentVersionParams{
+			ID: moduleRowID, CurrentVersionID: pgtype.Int8{Int64: versionRowID, Valid: true}, UpdatedAt: createdAt,
+		})
 	}
 	return nil
 }
 
-// RepositoryReleaseInfo returns the exact bytes committed with one complete
-// Repository Publication. Empty legacy/test records are reported as absent.
-func (c *Catalog) RepositoryReleaseInfo(ctx context.Context, repositoryID, version string) ([]byte, bool, error) {
-	parsed, err := skillpkg.ParseRepositoryID(repositoryID)
-	if err != nil || parsed.String() != repositoryID {
-		return nil, false, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
+// ModuleVersionInfo deterministically builds one standalone Module Info document.
+func (c *Catalog) ModuleVersionInfo(ctx context.Context, modulePath, version string) ([]byte, bool, error) {
+	parsed, err := skillpkg.ParseModulePath(modulePath)
+	if err != nil || parsed.String() != modulePath {
+		return nil, false, fmt.Errorf("invalid canonical Module ID %q", modulePath)
 	}
-	encoded, err := c.queries.RepositoryReleaseInfo(ctx, catalogsqlc.RepositoryReleaseInfoParams{RepositoryID: repositoryID, Version: version})
-	if errors.Is(err, pgx.ErrNoRows) || (err == nil && len(encoded) == 0) {
+	stored, err := c.queries.ModuleVersion(ctx, catalogsqlc.ModuleVersionParams{ModulePath: modulePath, Version: version})
+	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, false, nil
 	}
 	if err != nil {
 		return nil, false, err
 	}
-	return append([]byte(nil), encoded...), true, nil
+	members, err := c.VersionSkills(ctx, modulePath, version)
+	if err != nil {
+		return nil, false, err
+	}
+	info := protocolapi.ModuleInfo{
+		SchemaVersion: protocolapi.SchemaVersion, Kind: protocolapi.KindModule, ModulePath: modulePath,
+		Version: stored.Version, Time: stored.CommitTime, Sum: stored.Sum, ArchiveSize: stored.ArchiveSize,
+		Skills: make([]protocolapi.ModuleSkill, 0, len(members)),
+	}
+	for _, member := range members {
+		info.Skills = append(info.Skills, protocolapi.ModuleSkill{Name: member.Name, Path: member.Path})
+	}
+	encoded, err := json.Marshal(info)
+	return encoded, err == nil, err
+}
+
+// ModuleVersionByCoordinate returns the structured immutable version identity.
+func (c *Catalog) ModuleVersionByCoordinate(ctx context.Context, modulePath, version string) (ModuleVersion, bool, error) {
+	parsed, err := skillpkg.ParseModulePath(modulePath)
+	if err != nil || parsed.String() != modulePath {
+		return ModuleVersion{}, false, fmt.Errorf("invalid canonical Module ID %q", modulePath)
+	}
+	stored, err := c.queries.ModuleVersion(ctx, catalogsqlc.ModuleVersionParams{ModulePath: modulePath, Version: version})
+	if errors.Is(err, pgx.ErrNoRows) {
+		return ModuleVersion{}, false, nil
+	}
+	if err != nil {
+		return ModuleVersion{}, false, err
+	}
+	return ModuleVersion{
+		Version: stored.Version, Ref: stored.Ref, CommitSHA: stored.CommitSha, TreeSHA: stored.TreeSha,
+		Sum: stored.Sum, ArchiveSize: stored.ArchiveSize, CommitTime: stored.CommitTime,
+	}, true, nil
 }
 
 type SearchSkill struct {
@@ -410,140 +414,113 @@ type SearchSkill struct {
 }
 
 type FindBatchQuery struct {
-	ID        string
-	Query     string
-	Source    string
-	ExactName bool
+	ID         string
+	Query      string
+	ModulePath string
+	ExactName  bool
 }
 
 type FindBatchResult struct {
-	ID     string
-	Query  string
-	Source string
-	Skills []SearchSkill
+	ID         string
+	Query      string
+	ModulePath string
+	Skills     []SearchSkill
 }
 
-func (c *Catalog) UpsertSkill(ctx context.Context, skill *Skill) error {
-	repositoryID, err := skillpkg.ParseRepositoryID(skill.RepositoryID)
+func (c *Catalog) RegisterModule(ctx context.Context, modulePath string) (*Module, error) {
+	parsed, err := skillpkg.ParseModulePath(modulePath)
 	if err != nil {
-		return fmt.Errorf("invalid catalog Repository ID: %w", err)
+		return nil, fmt.Errorf("invalid Module Path: %w", err)
 	}
-	if repositoryID.String() != skill.RepositoryID || !protocolskillmanifest.ValidName(skill.Name) {
-		return fmt.Errorf("catalog Skill coordinate must contain a canonical Repository ID and Skill name")
+	if parsed.String() != modulePath {
+		return nil, fmt.Errorf("Module Path must be canonical %q", parsed.String())
 	}
-	repositoryParts := strings.SplitN(repositoryID.Repository, "/", 2)
-	skill.SourceHost = repositoryParts[0]
-	skill.Repository = repositoryParts[1]
-	repository, err := c.RegisterRepository(ctx, repositoryID.Repository)
-	if err != nil {
-		return err
-	}
-	now := time.Now().UTC()
-	if skill.CreatedAt.IsZero() {
-		skill.CreatedAt = now
-	}
-	skill.UpdatedAt = now
-	stored, err := c.queries.UpsertSkill(ctx, catalogsqlc.UpsertSkillParams{RepositoryID: repository.RowID, Name: skill.Name,
-		Description: skill.Description, SourceHost: skill.SourceHost, Repository: skill.Repository, SkillPath: skill.SkillPath,
-		Verified: skill.Verified, CreatedAt: skill.CreatedAt, UpdatedAt: skill.UpdatedAt})
-	if err == nil {
-		skill.RowID = stored
-	}
-	return err
-}
-
-func (c *Catalog) RegisterRepository(ctx context.Context, repositoryID string) (*Repository, error) {
-	parsed, err := skillpkg.ParseRepositoryID(repositoryID)
-	if err != nil {
-		return nil, fmt.Errorf("invalid Repository ID: %w", err)
-	}
-	if parsed.String() != repositoryID {
-		return nil, fmt.Errorf("Repository ID must be the canonical bare source coordinate %q", parsed.Repository)
-	}
-	parts := strings.SplitN(parsed.Repository, "/", 2)
+	parts := strings.SplitN(parsed.String(), "/", 2)
 	if len(parts) != 2 {
-		return nil, fmt.Errorf("invalid Repository ID %q", repositoryID)
+		return nil, fmt.Errorf("invalid Module Path %q", modulePath)
 	}
 	now := time.Now().UTC()
-	stored, err := c.queries.UpsertRepository(ctx, catalogsqlc.UpsertRepositoryParams{SourceHost: parts[0], RepositoryPath: parts[1], RepositoryID: parsed.Repository, CreatedAt: now})
+	stored, err := c.queries.UpsertModule(ctx, catalogsqlc.UpsertModuleParams{
+		SourceHost: parts[0], SourcePath: parts[1], Path: parsed.String(), CreatedAt: now,
+	})
 	if err != nil {
 		return nil, err
 	}
-	return repositoryFromSQLC(stored), nil
+	return moduleFromSQLC(stored), nil
 }
 
-func (c *Catalog) Repository(ctx context.Context, repositoryID string) (*Repository, error) {
-	parsed, err := skillpkg.ParseRepositoryID(repositoryID)
-	if err != nil || parsed.String() != repositoryID {
-		return nil, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
+func (c *Catalog) Module(ctx context.Context, modulePath string) (*Module, error) {
+	parsed, err := skillpkg.ParseModulePath(modulePath)
+	if err != nil || parsed.String() != modulePath {
+		return nil, fmt.Errorf("invalid canonical Module Path %q", modulePath)
 	}
-	stored, err := c.queries.RepositoryByIdentity(ctx, repositoryID)
+	stored, err := c.queries.ModuleByPath(ctx, modulePath)
 	if err != nil {
 		return nil, err
 	}
-	return repositoryFromSQLC(stored), nil
+	return moduleFromSQLC(stored), nil
 }
 
-func (c *Catalog) RepositoryReleaseMembers(ctx context.Context, repositoryID, version string) ([]RepositoryReleaseMember, error) {
-	parsed, err := skillpkg.ParseRepositoryID(repositoryID)
-	if err != nil || parsed.String() != repositoryID {
-		return nil, fmt.Errorf("invalid canonical Repository ID %q", repositoryID)
+func (c *Catalog) VersionSkills(ctx context.Context, modulePath, version string) ([]VersionSkill, error) {
+	parsed, err := skillpkg.ParseModulePath(modulePath)
+	if err != nil || parsed.String() != modulePath {
+		return nil, fmt.Errorf("invalid canonical Module Path %q", modulePath)
 	}
-	rows, err := c.queries.RepositoryReleaseMembers(ctx, catalogsqlc.RepositoryReleaseMembersParams{RepositoryID: repositoryID, Version: version})
+	rows, err := c.queries.Skills(ctx, catalogsqlc.SkillsParams{ModulePath: modulePath, Version: version})
 	if err != nil {
 		return nil, err
 	}
-	return mapReleaseMembers(rows), nil
+	return mapVersionSkills(rows), nil
 }
 
-func (c *Catalog) UpdateRepositorySourceMetadata(ctx context.Context, repositoryID, description string, stars int64, etag string, checkedAt *time.Time, retryAt *time.Time) error {
+func (c *Catalog) UpdateModuleSourceMetadata(ctx context.Context, modulePath, description string, stars int64, etag string, checkedAt *time.Time, retryAt *time.Time) error {
 	if stars < 0 {
-		return fmt.Errorf("repository stars cannot be negative")
+		return fmt.Errorf("module stars cannot be negative")
 	}
-	updated, err := c.queries.UpdateRepositorySourceMetadata(ctx, catalogsqlc.UpdateRepositorySourceMetadataParams{
-		RepositoryID: repositoryID, Description: description, Stars: stars, SourceMetadataEtag: pgtype.Text{String: etag, Valid: etag != ""},
-		SourceMetadataCheckedAt: checkedAt, SourceMetadataRetryAt: retryAt})
+	updated, err := c.queries.UpdateModuleSourceMetadata(ctx, catalogsqlc.UpdateModuleSourceMetadataParams{
+		ModulePath: modulePath, Description: description, Stars: stars, SourceEtag: pgtype.Text{String: etag, Valid: etag != ""},
+		SourceCheckedAt: checkedAt, SourceRetryAt: retryAt})
 	if err == nil && updated == 0 {
 		return pgx.ErrNoRows
 	}
 	return err
 }
 
-// SkillByCoordinate resolves one public Repository ID plus canonical Skill
+// SkillByCoordinate resolves one public Module ID plus canonical Skill
 // name without exposing the Catalog's internal persistence key.
-func (c *Catalog) SkillByCoordinate(ctx context.Context, repositoryID, name string) (*Skill, error) {
-	stored, err := c.queries.SkillByCoordinate(ctx, catalogsqlc.SkillByCoordinateParams{RepositoryID: repositoryID, Name: name})
+func (c *Catalog) SkillByCoordinate(ctx context.Context, modulePath, name string) (*Skill, error) {
+	stored, err := c.queries.SkillByCoordinate(ctx, catalogsqlc.SkillByCoordinateParams{ModulePath: modulePath, Name: name})
 	if err != nil {
 		return nil, err
 	}
-	return skillFromSQLC(stored.ID, stored.RepositoryID, stored.RepositoryIdentity, stored.Name, stored.Description, stored.SourceHost, stored.Repository, stored.SkillPath, stored.LatestVersion, stored.Stars, stored.Verified, stored.CreatedAt, stored.UpdatedAt), nil
+	return skillFromSQLC(stored.ID, stored.ModuleID, stored.ModulePath, stored.Name, stored.Description, stored.SourceHost, stored.SourceRepository, stored.Path, stored.LatestVersion, stored.Stars, stored.CreatedAt, stored.UpdatedAt), nil
 }
 
-// SkillsByCoordinates resolves public Repository ID plus canonical Skill Name
+// SkillsByCoordinates resolves public Module ID plus canonical Skill Name
 // coordinates in one ordered database query, omitting coordinates not present
 // in the current Catalog.
 func (c *Catalog) SkillsByCoordinates(ctx context.Context, coordinates []protocolapi.SkillCoordinate) ([]Skill, error) {
-	repositories := make([]string, 0, len(coordinates))
+	modulePaths := make([]string, 0, len(coordinates))
 	names := make([]string, 0, len(coordinates))
 	for _, coordinate := range coordinates {
-		repositories = append(repositories, coordinate.RepositoryID)
+		modulePaths = append(modulePaths, coordinate.ModulePath)
 		names = append(names, coordinate.Name)
 	}
-	rows, err := c.queries.SkillsByCoordinates(ctx, catalogsqlc.SkillsByCoordinatesParams{RepositoryIdentities: repositories, Names: names})
+	rows, err := c.queries.SkillsByCoordinates(ctx, catalogsqlc.SkillsByCoordinatesParams{ModulePaths: modulePaths, Names: names})
 	if err != nil {
 		return nil, err
 	}
 	items := make([]Skill, 0, len(rows))
 	for _, row := range rows {
-		item := skillFromSQLC(row.ID, row.RepositoryID, row.RepositoryIdentity, row.Name, row.Description, row.SourceHost, row.Repository, row.SkillPath, row.LatestVersion, row.Stars, row.Verified, row.CreatedAt, row.UpdatedAt)
+		item := skillFromSQLC(row.ID, row.ModuleID, row.ModulePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt)
 		items = append(items, *item)
 	}
 	return items, nil
 }
 
-// SkillPublishedVersions returns Repository Release versions containing one Skill.
-func (c *Catalog) SkillPublishedVersions(ctx context.Context, repositoryID, name string) ([]string, error) {
-	versions, err := c.queries.SkillPublishedVersions(ctx, catalogsqlc.SkillPublishedVersionsParams{RepositoryID: repositoryID, Name: name})
+// SkillPublishedVersions returns Module Release versions containing one Skill.
+func (c *Catalog) SkillPublishedVersions(ctx context.Context, modulePath, name string) ([]string, error) {
+	versions, err := c.queries.SkillPublishedVersions(ctx, catalogsqlc.SkillPublishedVersionsParams{ModulePath: modulePath, Name: name})
 	if err != nil {
 		return nil, err
 	}
@@ -557,15 +534,14 @@ func (c *Catalog) SkillPublishedVersions(ctx context.Context, repositoryID, name
 	return filtered, nil
 }
 
-// CurrentRepositoryReleaseMember returns the immutable member snapshot selected
-// by the Repository's current Catalog Release pointer.
-func (c *Catalog) CurrentRepositoryReleaseMember(ctx context.Context, repositoryID, name string) (*RepositoryReleaseMember, error) {
-	row, err := c.queries.CurrentRepositoryReleaseMember(ctx, catalogsqlc.CurrentRepositoryReleaseMemberParams{RepositoryID: repositoryID, Name: name})
+// CurrentSkill returns the immutable Skill snapshot selected by the Module's
+// current Version pointer.
+func (c *Catalog) CurrentSkill(ctx context.Context, modulePath, name string) (*VersionSkill, error) {
+	row, err := c.queries.CurrentSkill(ctx, catalogsqlc.CurrentSkillParams{ModulePath: modulePath, Name: name})
 	if err != nil {
 		return nil, err
 	}
-	member := RepositoryReleaseMember{ReleaseRowID: row.ReleaseID, Name: row.Name, Version: row.Version, CommitSHA: row.CommitSha, TreeSHA: row.TreeSha, SkillPath: row.SkillPath, CommitTime: row.CommitTime.UTC()}
-	return &member, nil
+	return versionSkillFromCurrentRow(row), nil
 }
 
 func (c *Catalog) Skills(ctx context.Context, limit, offset int) ([]Skill, error) {
@@ -581,7 +557,7 @@ func (c *Catalog) Skills(ctx context.Context, limit, offset int) ([]Skill, error
 	}
 	skills := make([]Skill, 0, len(rows))
 	for _, row := range rows {
-		skills = append(skills, *skillFromSQLC(row.ID, row.RepositoryID, row.RepositoryIdentity, row.Name, row.Description, row.SourceHost, row.Repository, row.SkillPath, row.LatestVersion, row.Stars, row.Verified, row.CreatedAt, row.UpdatedAt))
+		skills = append(skills, *skillFromSQLC(row.ID, row.ModuleID, row.ModulePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt))
 	}
 	return skills, nil
 }
@@ -614,7 +590,7 @@ func (c *Catalog) Find(ctx context.Context, query string, exactName bool, limit,
 	}
 	skills := make([]SearchSkill, 0, len(rows))
 	for _, row := range rows {
-		skills = append(skills, SearchSkill{Skill: *skillFromSQLC(row.ID, row.RepositoryID, row.RepositoryIdentity, row.Name, row.Description, row.SourceHost, row.Repository, row.SkillPath, row.LatestVersion, row.Stars, row.Verified, row.CreatedAt, row.UpdatedAt)})
+		skills = append(skills, SearchSkill{Skill: *skillFromSQLC(row.ID, row.ModuleID, row.ModulePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt)})
 	}
 	return skills, nil
 }
@@ -640,7 +616,7 @@ func (c *Catalog) FindLocalized(ctx context.Context, query, locale string, exact
 	}
 	skills := make([]SearchSkill, 0, len(rows))
 	for _, row := range rows {
-		skills = append(skills, SearchSkill{Skill: *skillFromSQLC(row.ID, row.RepositoryID, row.RepositoryIdentity, row.Name, row.Description, row.SourceHost, row.Repository, row.SkillPath, row.LatestVersion, row.Stars, row.Verified, row.CreatedAt, row.UpdatedAt)})
+		skills = append(skills, SearchSkill{Skill: *skillFromSQLC(row.ID, row.ModuleID, row.ModulePath, row.Name, row.Description, row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion, row.Stars, row.CreatedAt, row.UpdatedAt)})
 	}
 	return skills, nil
 }
@@ -654,12 +630,12 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 	limit = normalizeQueryLimit(limit)
 	locale = strings.TrimSpace(locale)
 	params := catalogsqlc.FindLocalizedSkillsBatchParams{
-		Locale:     locale,
-		PageLimit:  int32(limit),
-		QueryIds:   make([]string, 0, len(queries)),
-		Queries:    make([]string, 0, len(queries)),
-		Sources:    make([]string, 0, len(queries)),
-		ExactNames: make([]bool, 0, len(queries)),
+		Locale:      locale,
+		PageLimit:   int32(limit),
+		QueryIds:    make([]string, 0, len(queries)),
+		Queries:     make([]string, 0, len(queries)),
+		ModulePaths: make([]string, 0, len(queries)),
+		ExactNames:  make([]bool, 0, len(queries)),
 	}
 	results := make([]FindBatchResult, len(queries))
 	indexByID := make(map[string]int, len(queries))
@@ -671,10 +647,10 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 		indexByID[query.ID] = index
 		params.QueryIds = append(params.QueryIds, query.ID)
 		params.Queries = append(params.Queries, query.Query)
-		params.Sources = append(params.Sources, query.Source)
+		params.ModulePaths = append(params.ModulePaths, query.ModulePath)
 		params.ExactNames = append(params.ExactNames, query.ExactName)
-		allExact = allExact && (query.ExactName || query.Source != "")
-		results[index] = FindBatchResult{ID: query.ID, Query: query.Query, Source: query.Source, Skills: []SearchSkill{}}
+		allExact = allExact && (query.ExactName || query.ModulePath != "")
+		results[index] = FindBatchResult{ID: query.ID, Query: query.Query, ModulePath: query.ModulePath, Skills: []SearchSkill{}}
 	}
 	appendSkill := func(queryID string, skill Skill) error {
 		index, ok := indexByID[queryID]
@@ -686,16 +662,16 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 	}
 	if allExact {
 		rows, err := c.queries.FindExactLocalizedSkillsBatch(ctx, catalogsqlc.FindExactLocalizedSkillsBatchParams{
-			Locale: locale, PageLimit: int64(limit), QueryIds: params.QueryIds, Queries: params.Queries, Sources: params.Sources,
+			Locale: locale, PageLimit: int64(limit), QueryIds: params.QueryIds, Queries: params.Queries, ModulePaths: params.ModulePaths,
 		})
 		if err != nil {
 			return nil, err
 		}
 		for _, row := range rows {
 			if err := appendSkill(row.QueryID, *skillFromSQLC(
-				row.ID, row.RepositoryID, row.RepositoryIdentity, row.Name, row.Description,
-				row.SourceHost, row.Repository, row.SkillPath, row.LatestVersion,
-				row.Stars, row.Verified, row.CreatedAt, row.UpdatedAt,
+				row.ID, row.ModuleID, row.ModulePath, row.Name, row.Description,
+				row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion,
+				row.Stars, row.CreatedAt, row.UpdatedAt,
 			)); err != nil {
 				return nil, err
 			}
@@ -708,9 +684,9 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 	}
 	for _, row := range rows {
 		if err := appendSkill(row.QueryID, *skillFromSQLC(
-			row.ID, row.RepositoryID, row.RepositoryIdentity, row.Name, row.Description,
-			row.SourceHost, row.Repository, row.SkillPath, row.LatestVersion,
-			row.Stars, row.Verified, row.CreatedAt, row.UpdatedAt,
+			row.ID, row.ModuleID, row.ModulePath, row.Name, row.Description,
+			row.SourceHost, row.SourceRepository, row.Path, row.LatestVersion,
+			row.Stars, row.CreatedAt, row.UpdatedAt,
 		)); err != nil {
 			return nil, err
 		}
@@ -718,25 +694,53 @@ func (c *Catalog) FindBatchLocalized(ctx context.Context, queries []FindBatchQue
 	return results, nil
 }
 
-func skillFromSQLC(id, repositoryRowID int64, repositoryID, name, description, sourceHost, repository, skillPath, latestVersion string, stars int64, verified bool, createdAt, updatedAt time.Time) *Skill {
-	return &Skill{RowID: id, RepositoryRowID: repositoryRowID, RepositoryID: repositoryID, Name: name, Description: description, SourceHost: sourceHost, Repository: repository, SkillPath: skillPath, LatestVersion: latestVersion, Stars: stars, Verified: verified, CreatedAt: createdAt.UTC(), UpdatedAt: updatedAt.UTC()}
+func skillFromSQLC(id, moduleRowID int64, modulePath, name, description, sourceHost, sourceRepository, path, latestVersion string, stars int64, createdAt, updatedAt time.Time) *Skill {
+	return &Skill{
+		RowID: id, ModuleRowID: moduleRowID, ModulePath: modulePath, Name: name,
+		Description: description, SourceHost: sourceHost, SourceRepository: sourceRepository,
+		Path: path, LatestVersion: latestVersion, Stars: stars,
+		CreatedAt: createdAt.UTC(), UpdatedAt: updatedAt.UTC(),
+	}
 }
 
-func repositoryFromSQLC(entity catalogsqlc.Repository) *Repository {
-	return &Repository{
-		RowID: entity.ID, SourceHost: entity.SourceHost, RepositoryPath: entity.RepositoryPath, RepositoryID: entity.RepositoryID,
-		Description: entity.Description, Stars: entity.Stars, SourceMetadataETag: entity.SourceMetadataEtag.String,
-		SourceMetadataCheckedAt: utcTimePointer(entity.SourceMetadataCheckedAt), SourceMetadataRetryAt: utcTimePointer(entity.SourceMetadataRetryAt),
+func moduleFromSQLC(entity catalogsqlc.Module) *Module {
+	return &Module{
+		RowID: entity.ID, SourceHost: entity.SourceHost, SourcePath: entity.SourcePath, Path: entity.Path,
+		Description: entity.Description, Stars: entity.Stars, SourceETag: entity.SourceEtag.String,
+		SourceCheckedAt: utcTimePointer(entity.SourceCheckedAt), SourceRetryAt: utcTimePointer(entity.SourceRetryAt),
 		CreatedAt: entity.CreatedAt.UTC(), UpdatedAt: entity.UpdatedAt.UTC(),
 	}
 }
 
-func mapReleaseMembers(rows []catalogsqlc.RepositoryReleaseMembersRow) []RepositoryReleaseMember {
-	members := make([]RepositoryReleaseMember, 0, len(rows))
+func mapVersionSkills(rows []catalogsqlc.SkillsRow) []VersionSkill {
+	skills := make([]VersionSkill, 0, len(rows))
 	for _, row := range rows {
-		members = append(members, RepositoryReleaseMember{ReleaseRowID: row.ReleaseID, Name: row.Name, Version: row.Version, CommitSHA: row.CommitSha, TreeSHA: row.TreeSha, SkillPath: row.SkillPath, CommitTime: row.CommitTime.UTC()})
+		skills = append(skills, versionSkillFromValues(
+			row.VersionID, row.Name, row.Version, row.CommitSha, row.Path,
+			row.CommitTime, row.Description,
+		))
 	}
-	return members
+	return skills
+}
+
+func versionSkillFromCurrentRow(row catalogsqlc.CurrentSkillRow) *VersionSkill {
+	skill := versionSkillFromValues(
+		row.VersionID, row.Name, row.Version, row.CommitSha, row.Path,
+		row.CommitTime, row.Description,
+	)
+	return &skill
+}
+
+func versionSkillFromValues(
+	versionRowID int64,
+	name, version, commitSHA, path string,
+	commitTime time.Time,
+	description string,
+) VersionSkill {
+	return VersionSkill{
+		VersionRowID: versionRowID, Name: name, Version: version, CommitSHA: commitSHA,
+		Path: path, CommitTime: commitTime.UTC(), Description: description,
+	}
 }
 
 func utcTimePointer(value *time.Time) *time.Time {

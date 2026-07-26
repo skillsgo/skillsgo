@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on the deterministic tagged Repository fixture, released CLI Update Plan preflight/execution, Repository-fresh head/release state, and observable Workspace files.
+ * [INPUT]: Depends on the deterministic tagged Module fixture, released CLI Update Plan preflight/execution, Module-fresh latest state, and observable Workspace files.
  * [OUTPUT]: Provides black-box coverage that a fixed installation remains pinned even when a newer release exists and preflight stays read-only.
  * [POS]: Serves as the exact-selector pinning contract in the cross-product E2E workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -38,7 +38,7 @@ func TestJ08ExplicitFixedVersionUpdate(t *testing.T) {
 	)
 	require.Equal(t, 0, seedLatest.exitCode, seedLatest.output)
 
-	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml")
+	sumPath := filepath.Join(sandboxRoot, "project", "skills-lock.yaml")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 	install := execCLI(t, ctx, container, "install", "--output", "json")

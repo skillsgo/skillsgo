@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the shared gateway state, Repository-level CLI update preflight/execution, reviewed Update Plans, and progress callbacks.
- * [OUTPUT]: Provides Repository-coordinate update preflight and execution projected onto selected Library targets, plus one Catalog-only batch update-availability check.
- * [POS]: Serves as the Repository Update capability inside the RealSkillsGateway adapter.
+ * [INPUT]: Depends on the shared gateway state, Module-level CLI update preflight/execution, reviewed Update Plans, and progress callbacks.
+ * [OUTPUT]: Provides Module-coordinate update preflight and execution projected onto selected Library targets, plus one latest-only Catalog batch update check.
+ * [POS]: Serves as the Module Update capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 part of 'real_skills_gateway.dart';
@@ -22,7 +22,7 @@ mixin _RealSkillsGatewayUpdates
     String? toVersion,
   }) async {
     if (skill.provenance != LibraryProvenance.hub ||
-        skill.repositoryId.isEmpty ||
+        skill.modulePath.isEmpty ||
         targets.isEmpty ||
         toVersion == null ||
         toVersion.isEmpty ||
@@ -38,7 +38,7 @@ mixin _RealSkillsGatewayUpdates
       );
     }
     await _ensureHubOrigin();
-    final repository = skill.repositoryId;
+    final repository = skill.modulePath;
     try {
       final items = <UpdatePlanItem>[];
       final changes = <WorkspaceManifestChange>[];
@@ -68,9 +68,9 @@ mixin _RealSkillsGatewayUpdates
         if (!command.succeeded) throw _commandFailure(command);
         final raw = _decodeMachineDocument(
           command.output.stdout,
-          phase: 'repository-update-preflight',
+          phase: 'module-update-preflight',
         );
-        if (raw['repository'] != repository ||
+        if (raw['modulePath'] != repository ||
             raw['fromVersion'] != representative.version ||
             raw['toVersion'] != toVersion ||
             raw['stateToken'] is! String ||
@@ -91,7 +91,7 @@ mixin _RealSkillsGatewayUpdates
                 path: installed.path,
               ),
               name: skill.name,
-              repositoryId: skill.repositoryId,
+              modulePath: skill.modulePath,
               sourceRef: repository,
               fromVersion: installed.version,
               toVersion: toVersion,
@@ -106,7 +106,7 @@ mixin _RealSkillsGatewayUpdates
           changes.add(
             WorkspaceManifestChange(
               projectRoot: representative.projectRoot,
-              path: p.join(representative.projectRoot, 'skillsgo.yaml'),
+              path: p.join(representative.projectRoot, 'skills.yaml'),
               skill: skill.name,
               fromVersion: representative.version,
               toVersion: toVersion,
@@ -148,7 +148,7 @@ mixin _RealSkillsGatewayUpdates
     final grouped = <String, List<UpdatePlanItem>>{};
     for (final item in plan.targets) {
       final key =
-          '${item.repositoryId}\u0000${item.name}\u0000${item.target.scope.name}\u0000${item.target.projectRoot}';
+          '${item.modulePath}\u0000${item.name}\u0000${item.target.scope.name}\u0000${item.target.projectRoot}';
       grouped.putIfAbsent(key, () => []).add(item);
     }
     final results = <UpdateTargetResult>[];
@@ -162,7 +162,7 @@ mixin _RealSkillsGatewayUpdates
               sequence: sequence++,
               target: item.target,
               name: item.name,
-              repositoryId: item.repositoryId,
+              modulePath: item.modulePath,
               fromVersion: item.fromVersion,
               toVersion: item.toVersion,
               state: InstallationProgressState.started,
@@ -171,7 +171,7 @@ mixin _RealSkillsGatewayUpdates
         }
         if (group.any(
           (item) =>
-              item.repositoryId != representative.repositoryId ||
+              item.modulePath != representative.modulePath ||
               item.name != representative.name ||
               item.fromVersion != representative.fromVersion ||
               item.toVersion != representative.toVersion ||
@@ -179,7 +179,7 @@ mixin _RealSkillsGatewayUpdates
         )) {
           throw const FormatException();
         }
-        final repository = representative.repositoryId;
+        final repository = representative.modulePath;
         final command = await _runCli([
           'update',
           '$repository@${representative.toVersion}',
@@ -197,9 +197,9 @@ mixin _RealSkillsGatewayUpdates
         if (!command.succeeded) throw _commandFailure(command);
         final raw = _decodeMachineDocument(
           command.output.stdout,
-          phase: 'repository-update',
+          phase: 'module-update',
         );
-        if (raw['repository'] != repository ||
+        if (raw['modulePath'] != repository ||
             raw['fromVersion'] != representative.fromVersion ||
             raw['toVersion'] != representative.toVersion) {
           throw const FormatException();
@@ -208,7 +208,7 @@ mixin _RealSkillsGatewayUpdates
           final result = UpdateTargetResult(
             target: item.target,
             name: item.name,
-            repositoryId: item.repositoryId,
+            modulePath: item.modulePath,
             fromVersion: item.fromVersion,
             toVersion: item.toVersion,
             outcome: UpdateTargetOutcome.succeeded,
@@ -219,7 +219,7 @@ mixin _RealSkillsGatewayUpdates
               sequence: sequence++,
               target: item.target,
               name: item.name,
-              repositoryId: item.repositoryId,
+              modulePath: item.modulePath,
               fromVersion: item.fromVersion,
               toVersion: item.toVersion,
               state: InstallationProgressState.finished,
@@ -256,16 +256,11 @@ mixin _RealSkillsGatewayUpdates
     };
     final candidates =
         <
-          ({
-            String key,
-            String repositoryId,
-            String name,
-            List<String> versions,
-          })
+          ({String key, String modulePath, String name, List<String> versions})
         >[];
     for (final skill in skills) {
       if (skill.provenance != LibraryProvenance.hub ||
-          skill.repositoryId.isEmpty) {
+          skill.modulePath.isEmpty) {
         continue;
       }
       final versions =
@@ -278,7 +273,7 @@ mixin _RealSkillsGatewayUpdates
       if (versions.isEmpty) continue;
       candidates.add((
         key: _installedSkillUpdateKey(skill),
-        repositoryId: skill.repositoryId,
+        modulePath: skill.modulePath,
         name: skill.name,
         versions: versions,
       ));
@@ -297,7 +292,7 @@ mixin _RealSkillsGatewayUpdates
         '--installed',
         jsonEncode({
           'key': candidate.key,
-          'repositoryId': candidate.repositoryId,
+          'modulePath': candidate.modulePath,
           'name': candidate.name,
           'versions': candidate.versions,
         }),
@@ -318,27 +313,21 @@ mixin _RealSkillsGatewayUpdates
       for (final raw in decoded['items'] as List) {
         if (raw is! Map<String, dynamic> ||
             raw['key'] is! String ||
-            raw['repositoryId'] is! String ||
+            raw['modulePath'] is! String ||
             raw['name'] is! String ||
             raw['versions'] is! List ||
             raw['status'] is! String ||
             !expected.remove(raw['key'])) {
           throw const FormatException();
         }
-        final releaseVersion = raw['releaseVersion'];
-        final headVersion = raw['headVersion'];
-        final releaseStatus = raw['releaseStatus'];
-        final headStatus = raw['headStatus'];
-        if ((releaseVersion != null && releaseVersion is! String) ||
-            (headVersion != null && headVersion is! String) ||
-            (releaseStatus != null && releaseStatus is! String) ||
-            (headStatus != null && headStatus is! String)) {
+        final latestVersion = raw['latestVersion'];
+        final latestStatus = raw['latestStatus'];
+        if ((latestVersion != null && latestVersion is! String) ||
+            (latestStatus != null && latestStatus is! String)) {
           throw const FormatException();
         }
-        final toVersion = releaseStatus == 'update_available'
-            ? releaseVersion as String? ?? ''
-            : headStatus == 'update_available'
-            ? headVersion as String? ?? ''
+        final toVersion = latestStatus == 'update_available'
+            ? latestVersion as String? ?? ''
             : '';
         states[raw['key'] as String] = UpdateAvailability(
           state: switch (raw['status']) {

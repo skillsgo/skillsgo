@@ -25,11 +25,10 @@ void main() {
       initialCliPath: r'/Applications/Skills Play/$(echo nope)/skillsgo',
     );
     const summary = SkillSummary(
-      repositoryId: r'github.com/a/b',
+      modulePath: r'github.com/a/b',
       installName: r"test name';$(touch nope)",
       name: r'test;$(touch nope)',
-      source: r'github.com/a/b',
-      skillPath: r'nested/test;$(touch nope)',
+      path: r'nested/test;$(touch nope)',
       installs: 0,
     );
     const installed = InstalledSkill(
@@ -38,7 +37,7 @@ void main() {
       path: r'/tmp/Test ; $(touch nope)',
       agents: ['codex'],
       targetCount: 1,
-      repositoryId: r'github.com/a/b',
+      modulePath: r'github.com/a/b',
       targets: [
         SkillInstallationTarget(
           agent: 'codex',
@@ -52,7 +51,7 @@ void main() {
     runner.result = const ProcessOutput(
       exitCode: 0,
       stdout:
-          r'{"schemaVersion":1,"phase":"repository-install","repository":"github.com/a/b","version":"v1","sum":"h1:test","skills":["nested/test;$(touch nope)"],"agents":["codex"],"vendor":"/tmp/vendor","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skillsgo.yaml","lock":"/tmp/skillsgo-lock.yaml"}}',
+          r'{"schemaVersion":1,"phase":"module-install","modulePath":"github.com/a/b","version":"v1","sum":"h1:test","skills":["nested/test;$(touch nope)"],"agents":["codex"],"moduleDir":"/tmp/modules","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skills.yaml","lock":"/tmp/skills-lock.yaml"}}',
       stderr: '',
     );
     await gateway.installTargets(summary, 'v1', const [
@@ -82,7 +81,7 @@ void main() {
     runner.result = const ProcessOutput(
       exitCode: 0,
       stdout:
-          '{"schemaVersion":1,"phase":"repository-update-preflight","repository":"github.com/a/b","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["Test"],"agents":["codex"],"scope":"user","vendor":"/tmp/vendor","stateToken":"state"}\n',
+          '{"schemaVersion":1,"phase":"module-update-preflight","modulePath":"github.com/a/b","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["Test"],"agents":["codex"],"scope":"user","moduleDir":"/tmp/modules","stateToken":"state"}\n',
       stderr: '',
     );
     await gateway.preflightUpdate(
@@ -152,21 +151,21 @@ void main() {
   });
 
   test(
-    'target installation invokes exact Repository Vendor add without a materialization mode',
+    'target installation invokes exact Repository Module Store add without a materialization mode',
     () async {
-      const repositoryId = 'github.com/example/skills';
+      const modulePath = 'github.com/example/skills';
       final runner = FakeProcessRunner()
         ..result = ProcessOutput(
           exitCode: 0,
           stdout: jsonEncode({
             'schemaVersion': 1,
-            'phase': 'repository-install',
-            'repository': 'github.com/example/skills',
+            'phase': 'module-install',
+            'modulePath': 'github.com/example/skills',
             'version': 'v1',
             'sum': 'h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
             'skills': ['nested/demo'],
             'agents': ['codex'],
-            'vendor': '/Users/test/.skillsgo/vendor/example/v1',
+            'moduleDir': '/Users/test/.skillsgo/modules/example/v1',
             'projections': [
               {
                 'agents': ['codex'],
@@ -174,8 +173,8 @@ void main() {
               },
             ],
             'workspace': {
-              'manifest': '/Users/test/.skillsgo/skillsgo.yaml',
-              'lock': '/Users/test/.skillsgo/skillsgo-lock.yaml',
+              'manifest': '/Users/test/.agents/skills.yaml',
+              'lock': '/Users/test/.agents/skills-lock.yaml',
             },
           }),
           stderr: '',
@@ -185,11 +184,10 @@ void main() {
         initialCliPath: '/Applications/SkillsGo.app/skillsgo',
       );
       const skill = SkillSummary(
-        repositoryId: repositoryId,
+        modulePath: modulePath,
         installName: 'demo',
         name: 'demo',
-        source: 'github.com/example/skills',
-        skillPath: 'nested/demo',
+        path: 'nested/demo',
         installs: 0,
         latestVersion: 'v1',
       );
@@ -228,7 +226,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":1,"phase":"repository-install","repository":"github.com/example/skills","version":"v1","sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","skills":["skills/alpha","nested/beta"],"agents":["codex"],"vendor":"/tmp/vendor","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skillsgo.yaml","lock":"/tmp/skillsgo-lock.yaml"}}',
+              '{"schemaVersion":1,"phase":"module-install","modulePath":"github.com/example/skills","version":"v1","sum":"h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=","skills":["skills/alpha","nested/beta"],"agents":["codex"],"moduleDir":"/tmp/modules","projections":[{"agents":["codex"],"path":"/tmp/projection"}],"workspace":{"manifest":"/tmp/skills.yaml","lock":"/tmp/skills-lock.yaml"}}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -237,24 +235,22 @@ void main() {
       );
       const skills = [
         SkillSummary(
-          repositoryId: 'github.com/example/skills',
+          modulePath: 'github.com/example/skills',
           installName: 'alpha',
           name: 'alpha',
-          source: 'github.com/example/skills',
-          skillPath: 'skills/alpha',
+          path: 'skills/alpha',
           latestVersion: 'v1',
         ),
         SkillSummary(
-          repositoryId: 'github.com/example/skills',
+          modulePath: 'github.com/example/skills',
           installName: 'beta',
           name: 'beta',
-          source: 'github.com/example/skills',
-          skillPath: 'nested/beta',
+          path: 'nested/beta',
           latestVersion: 'v1',
         ),
       ];
 
-      final executions = await gateway.installRepositoryTargets(skills, const [
+      final executions = await gateway.installModuleTargets(skills, const [
         InstallationTargetSelection(
           scope: InstallationScope.user,
           agent: 'codex',
@@ -299,7 +295,7 @@ void main() {
       ),
     );
 
-    expect(detail.markdown, '# Local');
+    expect(detail.content, '# Local');
     expect(await file.lastModified(), before);
   });
 
@@ -339,14 +335,14 @@ void main() {
         ),
       );
 
-      expect(detail.markdown, '# Healthy target');
-      expect(detail.immutableVersion, 'v1');
+      expect(detail.content, '# Healthy target');
+      expect(detail.version, 'v1');
       expect(detail.installationTargets, hasLength(2));
     },
   );
 
   test(
-    'External detail inspection is read-only and exposes supporting files',
+    'External detail inspection is read-only and reads canonical SKILL.md',
     () async {
       final directory = await Directory.systemTemp.createTemp(
         'skillsgo-external-',
@@ -392,24 +388,8 @@ void main() {
 
       final detail = await gateway.loadLocalDetail(external);
 
-      expect(detail.source, 'External');
-      expect(detail.markdown, '# External instructions');
-      expect(detail.riskAssessment, SkillRiskAssessment.unknown);
-      expect(
-        detail.files.map((file) => file.path),
-        containsAll(['SKILL.md', 'notes.md', 'scripts/run.sh']),
-      );
-      expect(detail.hasExecutableContent, isTrue);
-      expect(
-        detail.files.singleWhere((file) => file.path == 'notes.md').contents,
-        '# Notes',
-      );
-      final largePreview = detail.files.singleWhere(
-        (file) => file.path == 'large.txt',
-      );
-      expect(largePreview.truncated, isTrue);
-      expect(largePreview.contents, startsWith('preview-'));
-      expect(largePreview.contents, isNotEmpty);
+      expect(detail.path, directory.path);
+      expect(detail.content, '# External instructions');
       await expectLater(
         gateway.preflightUpdate(external, external.targets),
         throwsA(isA<SkillsException>()),

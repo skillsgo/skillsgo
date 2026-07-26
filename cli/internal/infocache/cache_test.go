@@ -16,40 +16,40 @@ import (
 
 func TestCachePublishesImmutableInfoConcurrently(t *testing.T) {
 	cache := Cache{Root: t.TempDir()}
-	info := []byte(`{"Kind":"Repository","Version":"v1.2.3"}`)
+	info := []byte(`{"kind":"Module","version":"v1.2.3"}`)
 	var wait sync.WaitGroup
 	for range 16 {
 		wait.Add(1)
 		go func() {
 			defer wait.Done()
-			if err := cache.Put("github.com/example/repo", "v1.2.3", "repository.info", info); err != nil {
+			if err := cache.Put("github.com/example/repo", "v1.2.3", "module.info", info); err != nil {
 				t.Errorf("Put: %v", err)
 			}
 		}()
 	}
 	wait.Wait()
-	got, err := cache.Get("github.com/example/repo", "v1.2.3", "repository.info")
+	got, err := cache.Get("github.com/example/repo", "v1.2.3", "module.info")
 	if err != nil || string(got) != string(info) {
 		t.Fatalf("Get = %s, %v", got, err)
 	}
-	if err := cache.Put("github.com/example/repo", "v1.2.3", "repository.info", []byte(`{"changed":true}`)); err == nil {
+	if err := cache.Put("github.com/example/repo", "v1.2.3", "module.info", []byte(`{"changed":true}`)); err == nil {
 		t.Fatal("changed immutable Info was accepted")
 	}
 }
 
 func TestCacheRejectsIncompleteOrCorruptEntry(t *testing.T) {
 	cache := Cache{Root: t.TempDir()}
-	if _, err := cache.Get("github.com/example/repo", "v1.2.3", "repository.info"); !errors.Is(err, ErrNotFound) {
+	if _, err := cache.Get("github.com/example/repo", "v1.2.3", "module.info"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("missing Get error = %v", err)
 	}
-	path := cache.path("github.com/example/repo", "v1.2.3", "repository.info")
+	path := cache.path("github.com/example/repo", "v1.2.3", "module.info")
 	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(path, []byte(`{"resource":"wrong"}`), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := cache.Get("github.com/example/repo", "v1.2.3", "repository.info"); err == nil {
+	if _, err := cache.Get("github.com/example/repo", "v1.2.3", "module.info"); err == nil {
 		t.Fatal("corrupt entry was accepted")
 	}
 }

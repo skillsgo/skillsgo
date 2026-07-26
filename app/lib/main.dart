@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Flutter desktop bindings, macOS window integration, Marionette debug instrumentation, build mode, and the real SkillsGateway.
- * [OUTPUT]: Starts the SkillsGo desktop process through main or the integration-test-safe runSkillsGoApp entry, with a build-injectable Hub and debug navigation measurements.
+ * [INPUT]: Depends on Flutter desktop bindings, process-singleton macOS window integration, Marionette debug instrumentation, build mode, and the real SkillsGateway with an optional preconfigured process-isolated instance.
+ * [OUTPUT]: Starts or replaces the SkillsGo widget application through main or the integration-test-safe runSkillsGoApp entry, with one-time desktop initialization, build-time Hub defaults, runtime Gateway injection, and debug navigation measurements.
  * [POS]: Serves as the Flutter workspace process entry point and platform initialization boundary.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -18,9 +18,14 @@ const _debugHubBaseUrl = String.fromEnvironment(
   defaultValue: 'http://127.0.0.1:3000',
 );
 
+Future<void>? _desktopInitialization;
+
 Future<void> main() => runSkillsGoApp();
 
-Future<void> runSkillsGoApp({bool initializeBinding = true}) async {
+Future<void> runSkillsGoApp({
+  bool initializeBinding = true,
+  RealSkillsGateway? gateway,
+}) async {
   if (initializeBinding && kDebugMode) {
     MarionetteBinding.ensureInitialized();
     registerMarionetteExtension(
@@ -33,6 +38,22 @@ Future<void> runSkillsGoApp({bool initializeBinding = true}) async {
     WidgetsFlutterBinding.ensureInitialized();
   }
 
+  await (_desktopInitialization ??= _initializeDesktopWindow());
+
+  runApp(
+    SkillsGoApp(
+      gateway:
+          gateway ??
+          RealSkillsGateway(
+            hubBaseUrl: kDebugMode
+                ? _debugHubBaseUrl
+                : 'https://hub.skillsgo.ai',
+          ),
+    ),
+  );
+}
+
+Future<void> _initializeDesktopWindow() async {
   await WindowManipulator.initialize(enableWindowDelegate: true);
   await WindowManipulator.makeTitlebarTransparent();
   await WindowManipulator.enableFullSizeContentView();
@@ -49,14 +70,6 @@ Future<void> runSkillsGoApp({bool initializeBinding = true}) async {
     await windowManager.show();
     await windowManager.focus();
   });
-
-  runApp(
-    SkillsGoApp(
-      gateway: RealSkillsGateway(
-        hubBaseUrl: kDebugMode ? _debugHubBaseUrl : 'https://hub.skillsgo.ai',
-      ),
-    ),
-  );
 }
 
 List<Map<String, Object>> _measureNavigation() {

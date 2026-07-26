@@ -23,7 +23,7 @@ void main() {
       path: '/work/.codex/skills/demo',
       agents: ['codex'],
       targetCount: 1,
-      repositoryId: 'github.com/example/skills',
+      modulePath: 'github.com/example/skills',
       targets: [
         SkillInstallationTarget(
           agent: 'codex',
@@ -38,7 +38,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout:
-            '{"schemaVersion":1,"phase":"repository-remove","skills":["demo"],"scope":"project"}\n',
+            '{"schemaVersion":1,"phase":"module-remove","skills":["demo"],"scope":"project"}\n',
         stderr: '',
       );
     final gateway = RealSkillsGateway(
@@ -193,7 +193,7 @@ void main() {
       ..result = const ProcessOutput(
         exitCode: 0,
         stdout: '''
-{"schemaVersion":1,"phase":"update-check","items":[{"key":"hub:github.com/example/skills:test","repositoryId":"github.com/example/skills","name":"test","versions":["v1"],"releaseVersion":"v2","releaseStatus":"update_available","status":"update_available"}]}
+{"schemaVersion":1,"phase":"update-check","items":[{"key":"hub:github.com/example/skills:test","modulePath":"github.com/example/skills","name":"test","versions":["v1"],"latestVersion":"v2","latestStatus":"update_available","status":"update_available"}]}
 ''',
         stderr: '',
       );
@@ -209,7 +209,7 @@ void main() {
         path: '/tmp/Test',
         agents: ['codex'],
         targetCount: 1,
-        repositoryId: 'github.com/example/skills',
+        modulePath: 'github.com/example/skills',
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
@@ -238,7 +238,7 @@ void main() {
             as Map<String, dynamic>;
     expect(installed, {
       'key': 'hub:github.com/example/skills:test',
-      'repositoryId': 'github.com/example/skills',
+      'modulePath': 'github.com/example/skills',
       'name': 'test',
       'versions': ['v1'],
     });
@@ -252,13 +252,13 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":1,"phase":"repository-update-preflight","repository":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"user","vendor":"/tmp/vendor","stateToken":"state"}\n',
+              '{"schemaVersion":1,"phase":"module-update-preflight","modulePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"user","moduleDir":"/tmp/modules","stateToken":"state"}\n',
           stderr: '',
         ),
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":1,"phase":"repository-update","repository":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"user","vendor":"/tmp/vendor","stateToken":"state"}\n',
+              '{"schemaVersion":1,"phase":"module-update","modulePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"user","moduleDir":"/tmp/modules","stateToken":"state"}\n',
           stderr: '',
         ),
       ]);
@@ -272,7 +272,7 @@ void main() {
       path: '/tmp/Test',
       agents: ['codex'],
       targetCount: 1,
-      repositoryId: 'github.com/example/skills',
+      modulePath: 'github.com/example/skills',
       targets: [
         SkillInstallationTarget(
           scope: InstallationScope.user,

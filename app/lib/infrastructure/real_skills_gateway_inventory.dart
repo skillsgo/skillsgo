@@ -139,8 +139,7 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
                 raw['name'] is! String ||
                 (raw['name'] as String).isEmpty ||
                 (raw['description'] != null && raw['description'] is! String) ||
-                (raw['repositoryId'] != null &&
-                    raw['repositoryId'] is! String) ||
+                (raw['modulePath'] != null && raw['modulePath'] is! String) ||
                 raw['versionDivergence'] is! bool ||
                 raw['targets'] is! List ||
                 raw['visibility'] is! List) {
@@ -245,13 +244,13 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
               throw const FormatException();
             }
             if (provenance == LibraryProvenance.hub &&
-                ((raw['repositoryId'] as String? ?? '').isEmpty ||
+                ((raw['modulePath'] as String? ?? '').isEmpty ||
                     raw['inventoryKey'] !=
-                        'hub:${raw['repositoryId']}:${raw['name']}')) {
+                        'hub:${raw['modulePath']}:${raw['name']}')) {
               throw const FormatException();
             }
             if (provenance == LibraryProvenance.external &&
-                ((raw['repositoryId'] as String? ?? '').isNotEmpty ||
+                ((raw['modulePath'] as String? ?? '').isNotEmpty ||
                     versions.isNotEmpty ||
                     !(raw['inventoryKey'] as String).startsWith('external:'))) {
               throw const FormatException();
@@ -263,11 +262,10 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
               path: targets.first.path,
               agents: agents,
               targetCount: targets.length,
-              repositoryId: raw['repositoryId'] as String? ?? '',
+              modulePath: raw['modulePath'] as String? ?? '',
               targets: targets,
               visibility: visibility,
               provenance: provenance,
-              riskAssessment: _riskAssessment(raw['risk']),
               health: _installationHealth(raw['health']),
               projects: projectRoots,
               versions: versions,
@@ -562,29 +560,14 @@ mixin _RealSkillsGatewayInventory on _RealSkillsGatewayCore {
           p.join(targetPath, 'SKILL.md'),
         ).readAsString();
         if (markdown.trim().isEmpty) continue;
-        final files = await _inspectLocalFiles(targetPath);
-        final executableFiles = files
-            .where((file) => file.executable)
-            .map(
-              (file) => SkillRiskEvidence(
-                code: 'executable-content',
-                path: file.path,
-              ),
-            )
-            .toList(growable: false);
         return SkillDetail(
           name: skill.name,
-          source: switch (skill.provenance) {
-            LibraryProvenance.hub => 'Hub',
-            LibraryProvenance.external => 'External',
-          },
-          markdown: markdown,
-          files: files,
-          immutableVersion: immutableVersions.length == 1
+          path: targetPath,
+          content: markdown,
+          modulePath: skill.modulePath,
+          version: immutableVersions.length == 1
               ? immutableVersions.single
               : '',
-          riskAssessment: skill.riskAssessment,
-          riskEvidence: executableFiles,
           installationTargets: skill.targets,
         );
       } on FileSystemException catch (error) {

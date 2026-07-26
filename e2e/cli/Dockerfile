@@ -35,7 +35,7 @@ COPY e2e/cli/cloud-mock/ ./e2e/cli/cloud-mock/
 RUN cd e2e/cli && GOWORK=off CGO_ENABLED=0 go build -trimpath -o /out/skillsgo-cloud-mock ./cloud-mock
 
 FROM alpine:3.23
-RUN apk add --no-cache ca-certificates git openssh-client tini
+RUN apk add --no-cache ca-certificates git openssh-client postgresql-client tini
 COPY --from=cli-builder /out/skillsgo /usr/local/bin/skillsgo
 COPY --from=hub-builder /out/skillsgo-hub /usr/local/bin/skillsgo-hub
 COPY --from=cloud-mock-builder /out/skillsgo-cloud-mock /usr/local/bin/skillsgo-cloud-mock

@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on temporary Git repositories, the Repository ID parser, repository cache leases and lifecycle policy, Git resolution, and SkillsGo-owned artifact ZIP assembly.
- * [OUTPUT]: Specifies shared repository caching, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, batch-version identity including v2+ tags without Go Module suffixes, complete Git-tracked Repository Artifacts, export exclusions, member tree identity, refresh, tag listing, and concurrent access behavior.
+ * [OUTPUT]: Specifies shared repository caching, TTL and quota reclamation, active-repository protection, Go-compatible ancestor-based pseudo-versions, batch-version identity including v2+ tags without Go Module suffixes, complete Git-tracked Module Artifacts with safe internal symlinks, export exclusions, member tree identity, refresh, tag listing, and concurrent access behavior.
  * [POS]: Serves as the repository integration contract for the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -55,7 +55,7 @@ func newLocalRepositoryFixture(t *testing.T) *localRepositoryFixture {
 	fetcher, err := NewRepositoryFetcher(f.cache, afero.NewOsFs())
 	require.NoError(t, err)
 	f.fetcher = fetcher.(*gitFetcher)
-	f.fetcher.cloneURL = func(RepositoryID) string { return f.origin }
+	f.fetcher.cloneURL = func(ModulePath) string { return f.origin }
 	return f
 }
 
@@ -124,7 +124,7 @@ func TestRevisionResolutionCanonicalizesTagsAndUntaggedCommits(t *testing.T) {
 	branch, err := f.fetcher.Resolve(t.Context(), f.skillID, "main")
 	require.NoError(t, err)
 	require.True(t, module.IsPseudoVersion(branch.Version), branch.Version)
-	require.Equal(t, "refs/heads/main", branch.Ref)
+	require.Equal(t, commit, branch.Ref)
 	exact, err := f.fetcher.Resolve(t.Context(), f.skillID, commit)
 	require.NoError(t, err)
 	require.Equal(t, branch.Version, exact.Version)
@@ -165,7 +165,7 @@ func TestRevisionResolutionUsesHighestTagAtCommitWhileReleasePrefersStable(t *te
 	require.Equal(t, "v2.0.0-beta.1", branch.Version)
 	require.Equal(t, "refs/tags/v2.0.0-beta.1", branch.Ref)
 
-	release, err := f.fetcher.Resolve(t.Context(), f.skillID, "release")
+	release, err := f.fetcher.Resolve(t.Context(), f.skillID, "latest")
 	require.NoError(t, err)
 	require.Equal(t, "v1.0.0", release.Version)
 	require.Equal(t, "refs/tags/v1.0.0", release.Ref)
@@ -381,9 +381,44 @@ func TestRepositoryArtifactUsesTrackedTreeAndExportIgnore(t *testing.T) {
 	require.NotContains(t, names, prefix+"untracked.txt")
 }
 
+func TestRepositoryArtifactPreservesInternalSymlinksAndSkipsUnsafeOnes(t *testing.T) {
+	f := newLocalRepositoryFixture(t)
+	require.NoError(t, os.WriteFile(filepath.Join(f.work, "CLAUDE.md"), []byte("shared instructions\n"), 0o644))
+	require.NoError(t, os.Symlink("CLAUDE.md", filepath.Join(f.work, "AGENTS.md")))
+	require.NoError(t, os.Symlink("../../outside", filepath.Join(f.work, "outside-link")))
+	require.NoError(t, os.Symlink("missing.md", filepath.Join(f.work, "broken-link")))
+	f.commit(t, "add symlinks")
+	runGit(t, f.work, "tag", "v1.1.0")
+	runGit(t, f.work, "push", "origin", "HEAD", "--tags")
+
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "v1.1.0")
+	require.NoError(t, err)
+	t.Cleanup(func() { require.NoError(t, snapshot.Archive.Close()) })
+	archive, err := io.ReadAll(snapshot.Archive)
+	require.NoError(t, err)
+	reader, err := zip.NewReader(bytes.NewReader(archive), int64(len(archive)))
+	require.NoError(t, err)
+	prefix := f.skillID + "@" + snapshot.Version + "/"
+	entries := make(map[string]*zip.File, len(reader.File))
+	for _, file := range reader.File {
+		entries[file.Name] = file
+	}
+	link := entries[prefix+"AGENTS.md"]
+	require.NotNil(t, link)
+	require.NotZero(t, link.Mode()&os.ModeSymlink)
+	contents, err := link.Open()
+	require.NoError(t, err)
+	target, err := io.ReadAll(contents)
+	require.NoError(t, err)
+	require.NoError(t, contents.Close())
+	require.Equal(t, "CLAUDE.md", string(target))
+	require.NotContains(t, entries, prefix+"outside-link")
+	require.NotContains(t, entries, prefix+"broken-link")
+}
+
 func TestRepositoryDiscoveryUsesTagAsSharedBatchVersionAndTreeAsMemberIdentity(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
-	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "release")
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "latest")
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, snapshot.Archive.Close()) })
 
@@ -428,12 +463,12 @@ func fileNames(files []*zip.File) []string {
 	return names
 }
 
-func TestRepositoryDiscoveryFallsBackToHeadPseudoVersionSharedByAllMembers(t *testing.T) {
+func TestRepositoryDiscoveryLatestFallsBackToDefaultBranchPseudoVersion(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	runGit(t, f.work, "tag", "-d", "v1.0.0")
 	runGit(t, f.work, "push", "origin", ":refs/tags/v1.0.0")
 
-	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "head")
+	snapshot, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "latest")
 	require.NoError(t, err)
 	t.Cleanup(func() { require.NoError(t, snapshot.Archive.Close()) })
 
@@ -446,7 +481,7 @@ func TestRepositoryDiscoveryFallsBackToHeadPseudoVersionSharedByAllMembers(t *te
 
 func TestUnrelatedSkillChangeAdvancesBatchWithoutChangingSiblingTree(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
-	first, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "head")
+	first, err := f.fetcher.DiscoverRepository(t.Context(), f.skillID, "main")
 	require.NoError(t, err)
 	childTree := ""
 	for _, member := range first.Members {
@@ -589,7 +624,7 @@ func TestRepositoryTagListerObservesMovedTagAfterSharedCatalogExpires(t *testing
 	require.NotEqual(t, initial[0].CommitSHA, resolved.CommitSHA)
 }
 
-func TestNoTagHeadObservesRemoteDefaultBranchAndReturnsPseudoVersion(t *testing.T) {
+func TestNoTagLatestObservesRemoteDefaultBranchAndReturnsPseudoVersion(t *testing.T) {
 	f := newLocalRepositoryFixture(t)
 	runGit(t, f.work, "tag", "-d", "v1.0.0")
 	runGit(t, f.work, "push", "origin", ":refs/tags/v1.0.0")
@@ -600,8 +635,8 @@ func TestNoTagHeadObservesRemoteDefaultBranchAndReturnsPseudoVersion(t *testing.
 	require.Empty(t, versions)
 	require.True(t, module.IsPseudoVersion(revision.Version), revision.Version)
 
-	resolved, err := f.fetcher.Resolve(t.Context(), f.skillID, "head")
+	resolved, err := f.fetcher.Resolve(t.Context(), f.skillID, "latest")
 	require.NoError(t, err)
 	require.Equal(t, revision.Version, resolved.Version)
-	require.Equal(t, "refs/heads/main", resolved.Ref)
+	require.Equal(t, resolved.CommitSHA, resolved.Ref)
 }

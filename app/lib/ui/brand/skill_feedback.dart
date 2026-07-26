@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Skill summaries, localized metric/trust/risk copy, SkillsGo status colors, and action-ready empty states.
- * [OUTPUT]: Provides Skill glyphs, empty states, compact metrics, and trust/risk label and color mapping.
+ * [INPUT]: Depends on Skill summaries, localized metric copy, SkillsGo status colors, and action-ready empty states.
+ * [OUTPUT]: Provides Skill glyphs, empty states, and compact metrics.
  * [POS]: Serves as the status and feedback segment of the SkillsGo brand library.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -87,47 +87,3 @@ String _compactCount(int value) {
   if (value >= 1000) return '${(value / 1000).toStringAsFixed(1)}K';
   return '$value';
 }
-
-String _trustLabel(BuildContext context, SkillTrustLevel trust) {
-  final l10n = AppLocalizations.of(context);
-  return switch (trust) {
-    SkillTrustLevel.unverified => l10n.trustUnverified,
-    SkillTrustLevel.communityVerified => l10n.trustCommunityVerified,
-    SkillTrustLevel.publisherVerified => l10n.trustPublisherVerified,
-    SkillTrustLevel.official => l10n.trustOfficial,
-    SkillTrustLevel.warned => l10n.trustWarned,
-    SkillTrustLevel.delisted => l10n.trustDelisted,
-  };
-}
-
-Color _trustColor(
-  BuildContext context,
-  SkillTrustLevel trust,
-) => switch (trust) {
-  SkillTrustLevel.unverified => context.skillsColors.foregroundMuted,
-  SkillTrustLevel.communityVerified => context.skillsComponents.statusAccent,
-  SkillTrustLevel.publisherVerified => context.skillsComponents.statusAccent,
-  SkillTrustLevel.official => context.skillsComponents.statusSuccess,
-  SkillTrustLevel.warned => context.skillsComponents.statusAttention,
-  SkillTrustLevel.delisted => context.skillsComponents.statusDanger,
-};
-
-String _riskLabel(BuildContext context, SkillRiskAssessment risk) {
-  final l10n = AppLocalizations.of(context);
-  return switch (risk) {
-    SkillRiskAssessment.unknown => l10n.riskUnknown,
-    SkillRiskAssessment.low => l10n.riskLow,
-    SkillRiskAssessment.medium => l10n.riskMedium,
-    SkillRiskAssessment.high => l10n.riskHigh,
-    SkillRiskAssessment.critical => l10n.riskCritical,
-  };
-}
-
-Color _riskColor(BuildContext context, SkillRiskAssessment risk) =>
-    switch (risk) {
-      SkillRiskAssessment.unknown => context.skillsColors.foregroundMuted,
-      SkillRiskAssessment.low => context.skillsComponents.statusSuccess,
-      SkillRiskAssessment.medium => context.skillsComponents.statusAttention,
-      SkillRiskAssessment.high => context.skillsComponents.statusSevere,
-      SkillRiskAssessment.critical => context.skillsComponents.statusDanger,
-    };

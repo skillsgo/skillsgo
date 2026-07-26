@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on immutable Git revisions, canonical Repository coordinates, the shared Repository Artifact contract, and Go ZIP primitives.
- * [OUTPUT]: Adapts a full Git-tracked regular-file tree into one deterministic Repository Artifact with bounded source reads.
+ * [OUTPUT]: Adapts a full Git-tracked tree into one deterministic Module Artifact, preserving Module-contained symlinks while skipping unsafe links and bounding source reads.
  * [POS]: Serves as the safe archive boundary between Git source resolution and immutable Repository publication.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -11,16 +11,18 @@ import (
 	"bytes"
 	"context"
 	"crypto/md5" //nolint:gosec -- storage envelope compatibility; h1 is the authenticated content identity.
+	"errors"
 	"fmt"
 	"io"
 	"os"
 	"os/exec"
 	"strings"
 
+	"github.com/skillsgo/skillsgo/hub/pkg/log"
 	protocolartifact "github.com/skillsgo/skillsgo/protocol/artifact"
 )
 
-func createRepositoryArtifact(ctx context.Context, repositoryID, version, repoDir, revision string) ([]byte, []byte, string, error) {
+func createRepositoryArtifact(ctx context.Context, modulePath, version, repoDir, revision string) ([]byte, []byte, string, error) {
 	args := []string{"-c", "core.autocrlf=input", "-c", "core.eol=lf", "archive", "--format=zip", revision}
 	raw := &boundedArchiveBuffer{}
 	stderr := &bytes.Buffer{}
@@ -49,7 +51,7 @@ func createRepositoryArtifact(ctx context.Context, repositoryID, version, repoDi
 		if isExcludedArtifactPath(path) {
 			continue
 		}
-		if !file.Mode().IsRegular() {
+		if !file.Mode().IsRegular() && file.Mode()&os.ModeSymlink == 0 {
 			return nil, nil, "", fmt.Errorf("Git Repository contains non-regular file %q", file.Name)
 		}
 		contents, err := readArchiveFile(file, remainingBytes)
@@ -59,11 +61,34 @@ func createRepositoryArtifact(ctx context.Context, repositoryID, version, repoDi
 		remainingBytes -= int64(len(contents))
 		files = append(files, protocolartifact.Entry{Path: path, Contents: contents, Mode: file.Mode(), Size: int64(len(contents))})
 	}
-	archive, err := protocolartifact.BuildRepository(repositoryID, version, files)
+	for {
+		err := protocolartifact.ValidateSymlinks(files)
+		if err == nil {
+			break
+		}
+		var unsafe *protocolartifact.UnsafeSymlinkError
+		if !errors.As(err, &unsafe) {
+			return nil, nil, "", err
+		}
+		log.EntryFromContext(ctx).WithFields(map[string]any{
+			"module_path": modulePath,
+			"path":        unsafe.Path,
+			"reason":      unsafe.Reason,
+			"revision":    revision,
+		}).Warnf("unsafe Module symlink omitted from artifact")
+		filtered := files[:0]
+		for _, file := range files {
+			if file.Path != unsafe.Path {
+				filtered = append(filtered, file)
+			}
+		}
+		files = filtered
+	}
+	archive, err := protocolartifact.BuildModule(modulePath, version, files)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("build Repository Artifact: %w", err)
 	}
-	sum, err := protocolartifact.RepositorySum(archive, repositoryID, version)
+	sum, err := protocolartifact.ModuleSum(archive, modulePath, version)
 	if err != nil {
 		return nil, nil, "", fmt.Errorf("verify Repository Artifact: %w", err)
 	}

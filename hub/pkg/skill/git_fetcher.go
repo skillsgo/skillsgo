@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on canonical Skill IDs, Git commit and ancestor-tag inspection, semantic and pseudo-version helpers, the leased lifecycle-managed repository cache, credential-free controlled Git transport, manifest validation, and SkillsGo artifact assembly.
- * [OUTPUT]: Provides bounded public-only Git synchronization, throttled cache maintenance, Go-compatible ancestor-based immutable revision resolution, repository-owned Skill discovery, and source-identity metadata.
+ * [OUTPUT]: Provides bounded public-only Git synchronization, throttled cache maintenance, Go-compatible ancestor-based immutable revision resolution with canonical refs, repository-owned Skill discovery with complete SKILL.md bytes, and source-identity metadata.
  * [POS]: Serves as the Git source resolver and Repository snapshot coordinator in the Hub Skill source module.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -34,11 +34,11 @@ import (
 // packaging the Skill contents.
 func (g *gitFetcher) Resolve(ctx context.Context, skillPath, revision string) (*Resolution, error) {
 	const op errors.Op = "gitFetcher.Resolve"
-	skillID, err := ParseRepositoryID(skillPath)
+	skillID, err := ParseModulePath(skillPath)
 	if err != nil {
 		return nil, errors.E(op, err, errors.KindNotFound)
 	}
-	release, err := g.acquireRepository(skillID.Repository)
+	release, err := g.acquireRepository(skillID.String())
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
@@ -46,7 +46,7 @@ func (g *gitFetcher) Resolve(ctx context.Context, skillPath, revision string) (*
 	if err := g.syncRepository(ctx, skillID); err != nil {
 		return nil, err
 	}
-	repoDir, err := g.repositoryDir(skillID.Repository)
+	repoDir, err := g.repositoryDir(skillID.String())
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
@@ -55,13 +55,13 @@ func (g *gitFetcher) Resolve(ctx context.Context, skillPath, revision string) (*
 
 // DiscoverRepository synchronizes and resolves a Repository once, scans the
 // selected commit once, and prepares every valid Skill from that snapshot.
-func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revision string) (*RepositorySnapshot, error) {
+func (g *gitFetcher) DiscoverRepository(ctx context.Context, modulePath, revision string) (*RepositorySnapshot, error) {
 	const op errors.Op = "gitFetcher.DiscoverRepository"
-	repository, err := ParseRepositoryID(repositoryID)
-	if err != nil || repository.String() != repositoryID {
-		return nil, errors.E(op, fmt.Errorf("invalid canonical Repository ID %q", repositoryID), errors.KindBadRequest)
+	repository, err := ParseModulePath(modulePath)
+	if err != nil || repository.String() != modulePath {
+		return nil, errors.E(op, fmt.Errorf("invalid canonical Repository ID %q", modulePath), errors.KindBadRequest)
 	}
-	release, err := g.acquireRepository(repository.Repository)
+	release, err := g.acquireRepository(repository.String())
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
@@ -69,7 +69,7 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revis
 	if err := g.syncRepository(ctx, repository); err != nil {
 		return nil, err
 	}
-	repoDir, err := g.repositoryDir(repository.Repository)
+	repoDir, err := g.repositoryDir(repository.String())
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
@@ -90,11 +90,11 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revis
 	}
 	sort.Strings(candidates)
 	snapshot := &RepositorySnapshot{
-		RepositoryID: repositoryID, Version: resolution.Version,
+		ModulePath: modulePath, Version: resolution.Version,
 		Ref: resolution.Ref, CommitSHA: resolution.CommitSHA, TreeSHA: resolution.TreeSHA, CommitTime: resolution.CommitTime,
 		Members: make([]RepositoryMember, 0, len(candidates)),
 	}
-	archive, archiveMD5, sum, err := createRepositoryArtifact(ctx, repositoryID, resolution.Version, repoDir, resolution.CommitSHA)
+	archive, archiveMD5, sum, err := createRepositoryArtifact(ctx, modulePath, resolution.Version, repoDir, resolution.CommitSHA)
 	if err != nil {
 		return nil, errors.E(op, err)
 	}
@@ -131,10 +131,10 @@ func (g *gitFetcher) DiscoverRepository(ctx context.Context, repositoryID, revis
 		if manifestErr != nil {
 			continue
 		}
-		snapshot.Members = append(snapshot.Members, RepositoryMember{Name: manifest.Name, Path: directory, TreeSHA: memberResolution.TreeSHA, Manifest: manifest})
+		snapshot.Members = append(snapshot.Members, RepositoryMember{Name: manifest.Name, Path: directory, TreeSHA: memberResolution.TreeSHA, Content: append([]byte(nil), manifestSource...), Manifest: manifest})
 	}
 	if len(snapshot.Members) == 0 {
-		return nil, errors.E(op, errors.S(repositoryID), errors.V(revision), "Repository contains no installable Skills", errors.KindNotFound)
+		return nil, errors.E(op, errors.S(modulePath), errors.V(revision), "Repository contains no installable Skills", errors.KindNotFound)
 	}
 	return snapshot, nil
 }
@@ -162,20 +162,20 @@ type repositoryMetadata struct {
 
 // syncRepository creates or refreshes one persistent no-checkout repository.
 // Skills in different subdirectories of the same repository share this cache.
-func (g *gitFetcher) syncRepository(ctx context.Context, skillID RepositoryID) error {
-	_, err, _ := g.syncs.Do(skillID.Repository, func() (any, error) {
+func (g *gitFetcher) syncRepository(ctx context.Context, skillID ModulePath) error {
+	_, err, _ := g.syncs.Do(skillID.String(), func() (any, error) {
 		const op errors.Op = "gitFetcher.syncRepository"
 		started := time.Now()
 		entry := log.EntryFromContext(ctx).WithFields(map[string]any{
 			"dependency":    "git_source",
-			"repository_id": skillID.Repository,
-			"source_host":   strings.SplitN(skillID.Repository, "/", 2)[0],
+			"repository_id": skillID.String(),
+			"source_host":   strings.SplitN(skillID.String(), "/", 2)[0],
 		})
 		entry.Debugf("repository git synchronization started")
 		if err := g.maybeCleanupRepositoryCache(); err != nil {
 			entry.WithFields(map[string]any{"error": err.Error()}).Warnf("repository cache cleanup failed")
 		}
-		repoDir, err := g.repositoryDir(skillID.Repository)
+		repoDir, err := g.repositoryDir(skillID.String())
 		if err != nil {
 			return nil, errors.E(op, err)
 		}
@@ -184,7 +184,7 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID RepositoryID) e
 		}
 
 		cloneURL := g.cloneURL(skillID)
-		if err := validateRepositoryNetworkTarget(ctx, skillID.Repository, cloneURL); err != nil {
+		if err := validateRepositoryNetworkTarget(ctx, skillID.String(), cloneURL); err != nil {
 			entry.WithFields(map[string]any{
 				"duration_ms": time.Since(started).Milliseconds(),
 				"error":       err.Error(),
@@ -263,7 +263,7 @@ func (g *gitFetcher) syncRepository(ctx context.Context, skillID RepositoryID) e
 				"result":      "failure",
 			}).Warnf("repository git transport failed")
 			return nil, errors.E(op,
-				fmt.Sprintf("Skill repository %q not found", skillID.Repository),
+				fmt.Sprintf("Skill repository %q not found", skillID.String()),
 				errors.S(skillID.String()), errors.KindNotFound)
 		}
 		entry.WithFields(map[string]any{
@@ -336,11 +336,11 @@ func gitTransportDiagnostic(output []byte) string {
 	return diagnostic[:maxBytes] + "…"
 }
 
-func validateRepositoryNetworkTarget(ctx context.Context, repositoryID, cloneURL string) error {
+func validateRepositoryNetworkTarget(ctx context.Context, modulePath, cloneURL string) error {
 	if strings.EqualFold(strings.TrimSpace(os.Getenv("SKILLSGO_ALLOW_PRIVATE_GIT_HOSTS")), "true") {
 		return nil
 	}
-	host := strings.SplitN(repositoryID, "/", 2)[0]
+	host := strings.SplitN(modulePath, "/", 2)[0]
 	parsed, err := url.Parse(cloneURL)
 	if err != nil {
 		return fmt.Errorf("invalid Repository clone URL: %w", err)
@@ -398,10 +398,10 @@ func enforceRepositoryDiskLimit(root string) error {
 	})
 }
 
-func (g *gitFetcher) writeRepositoryMetadata(repoDir string, skillID RepositoryID) error {
+func (g *gitFetcher) writeRepositoryMetadata(repoDir string, skillID ModulePath) error {
 	data, err := json.MarshalIndent(repositoryMetadata{
-		Repository: skillID.Repository,
-		URL:        skillID.RepositoryURL(),
+		Repository: skillID.String(),
+		URL:        skillID.SourceURL(),
 		UpdatedAt:  g.now().UTC(),
 	}, "", "  ")
 	if err != nil {
@@ -417,13 +417,15 @@ func isGitRepository(repoDir string) bool {
 	return cmd.Run() == nil
 }
 
-func resolveGitRevision(ctx context.Context, repoDir string, skillID RepositoryID, revision string) (*Resolution, error) {
+func resolveGitRevision(ctx context.Context, repoDir string, skillID ModulePath, revision string) (*Resolution, error) {
 	const op errors.Op = "skill.resolveGitRevision"
 	requestedRevision := revision
-	switch revision {
-	case "latest":
-		return nil, errors.E(op, "unsupported ambiguous Selector latest; use head or release", errors.KindBadRequest)
-	case "release":
+	query, err := protocolversion.ParseQuery(revision)
+	if err != nil {
+		return nil, errors.E(op, err, errors.KindBadRequest)
+	}
+	switch query.Kind {
+	case protocolversion.QueryLatest, protocolversion.QueryPrefix, protocolversion.QueryCompare:
 		tags, err := canonicalRepositoryTags(ctx, repoDir)
 		if err != nil {
 			return nil, errors.E(op, err)
@@ -432,17 +434,17 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID RepositoryI
 		for _, tag := range tags {
 			versions = append(versions, tag.Version)
 		}
-		if selected := latestSemanticVersion(versions); selected != "" {
+		if selected := selectSemanticVersion(versions, query); selected != "" {
 			revision = selected
+		} else if query.Kind == protocolversion.QueryLatest {
+			defaultRef, err := gitOutput(ctx, repoDir, "symbolic-ref", "refs/remotes/origin/HEAD")
+			if err != nil {
+				return nil, errors.E(op, err)
+			}
+			revision = strings.TrimPrefix(defaultRef, "refs/remotes/origin/")
 		} else {
-			return nil, errors.E(op, "Repository has no canonical semantic release", errors.S(skillID.String()), errors.V(requestedRevision), errors.KindNotFound)
+			return nil, errors.E(op, "Module has no version matching Query", errors.S(skillID.String()), errors.V(requestedRevision), errors.KindNotFound)
 		}
-	case "head":
-		defaultRef, err := gitOutput(ctx, repoDir, "symbolic-ref", "refs/remotes/origin/HEAD")
-		if err != nil {
-			return nil, errors.E(op, err)
-		}
-		revision = strings.TrimPrefix(defaultRef, "refs/remotes/origin/")
 	}
 	resolvedRevision := revision
 	if semver.IsValid(revision) && modmodule.IsPseudoVersion(revision) {
@@ -495,11 +497,10 @@ func resolveGitRevision(ctx context.Context, repoDir string, skillID RepositoryI
 			if err != nil {
 				return nil, errors.E(op, err)
 			}
-			if resolvedRevision != "refs/remotes/origin/"+revision {
-				ref = commitSHA
-			} else {
-				ref = "refs/heads/" + revision
-			}
+			// Different movable queries can resolve to the same immutable
+			// pseudo-version. Persist its commit identity instead of the input
+			// branch name so repeated publication is byte-for-byte idempotent.
+			ref = commitSHA
 		}
 	} else if !modmodule.IsPseudoVersion(version) {
 		ref = "refs/tags/" + revision
@@ -576,6 +577,69 @@ func semanticTagRef(ctx context.Context, repoDir, version string) string {
 
 func latestSemanticVersion(versions []string) string {
 	return protocolversion.LatestCanonicalPublished(versions)
+}
+
+func selectSemanticVersion(versions []string, query protocolversion.Query) string {
+	if query.Kind == protocolversion.QueryLatest {
+		return latestSemanticVersion(versions)
+	}
+	matches := make([]string, 0, len(versions))
+	preferLower := false
+	for _, version := range versions {
+		if !isCanonicalSemanticVersion(version) {
+			continue
+		}
+		matched := false
+		switch query.Kind {
+		case protocolversion.QueryPrefix:
+			floor := query.Value + ".0"
+			if strings.Count(query.Value, ".") == 0 {
+				floor += ".0"
+			}
+			matched = strings.HasPrefix(version, query.Value+".") && semver.Compare(version, floor) >= 0
+		case protocolversion.QueryCompare:
+			operator, target := splitVersionComparison(query.Value)
+			comparison := semver.Compare(version, target)
+			switch operator {
+			case "<":
+				matched = comparison < 0
+			case "<=":
+				matched = comparison <= 0
+			case ">":
+				matched, preferLower = comparison > 0, true
+			case ">=":
+				matched, preferLower = comparison >= 0, true
+			}
+		}
+		if matched {
+			matches = append(matches, version)
+		}
+	}
+	stable := matches[:0]
+	for _, version := range matches {
+		if semver.Prerelease(version) == "" {
+			stable = append(stable, version)
+		}
+	}
+	if len(stable) > 0 {
+		matches = stable
+	}
+	selected := ""
+	for _, version := range matches {
+		if selected == "" || (preferLower && semver.Compare(version, selected) < 0) || (!preferLower && semver.Compare(version, selected) > 0) {
+			selected = version
+		}
+	}
+	return selected
+}
+
+func splitVersionComparison(query string) (string, string) {
+	for _, operator := range []string{"<=", ">=", "<", ">"} {
+		if strings.HasPrefix(query, operator) {
+			return operator, strings.TrimPrefix(query, operator)
+		}
+	}
+	return "", query
 }
 
 func highestSemanticVersion(versions []string) string {

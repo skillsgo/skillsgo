@@ -18,8 +18,10 @@ make test-e2e-app
 make test-e2e
 ```
 
+CLI journeys stream individual test events through the workspace-pinned `gotestsum` tool and print a consolidated failure summary after the complete run.
+
 ## Boundary
 
-App journeys must drive the rendered desktop product and use real CLI and Hub boundaries. Widget tests with a fake `SkillsGateway` are App component tests and must not be presented as E2E coverage.
+App journeys must drive the rendered desktop product and use real CLI and Hub boundaries. The suite may compile one aggregate Flutter test executable, but every Journey must retain isolated local paths, a real process-configured Gateway, and an independent Hub database schema. Widget tests with a fake `SkillsGateway` are App component tests and must not be presented as E2E coverage.
 
 [PROTOCOL]: Update this map when E2E workspaces, commands, or cross-product boundaries change.

@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on Flutter integration_test, the real SkillsGo App entry point, isolated onboarding preferences, a disposable Hub, the built CLI, and the SkillsGo-owned public versioned fixture Repository.
- * [OUTPUT]: Verifies repository search, the repository-wide installation surface, bundled-CLI execution, YAML/Lock state, Scope Vendor, and ordinary-file Repository Projections.
+ * [INPUT]: Depends on Flutter integration_test, the real SkillsGo App entry point, JourneyRuntime isolation, onboarding preferences, a disposable Hub/schema, the bundled CLI, and the SkillsGo-owned public versioned fixture Repository.
+ * [OUTPUT]: Verifies repository search, the repository-wide installation surface, bundled-CLI execution, YAML/Lock state, Scope Module Store, and ordinary-file Repository Projections.
  * [POS]: Serves as the first black-box macOS App-plus-CLI-plus-Hub journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,15 +13,26 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skillsgo/main.dart' as skillsgo;
 import 'package:window_manager/window_manager.dart';
 
+import 'support/journey_runtime.dart';
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
+  registerRepositoryInstallAllJourney();
+}
+
+void registerRepositoryInstallAllJourney() {
   testWidgets(
     'repository search opens install-all location selection',
     (tester) async {
+      final runtime = await JourneyRuntime.start('repository_install_all');
+      addTearDown(runtime.close);
       final preferences = await SharedPreferences.getInstance();
       await preferences.setBool('onboarding_completed_v1', true);
-      await skillsgo.runSkillsGoApp(initializeBinding: false);
+      await skillsgo.runSkillsGoApp(
+        initializeBinding: false,
+        gateway: runtime.gateway,
+      );
       await windowManager.setSize(const Size(1400, 960));
       await windowManager.center();
       await tester.pumpAndSettle(const Duration(seconds: 2));
@@ -36,12 +47,12 @@ void main() {
 
       await _pumpUntil(
         tester,
-        find.byKey(const Key('repository-install-all')),
+        find.byKey(const Key('module-install-all')),
         timeout: const Duration(minutes: 2),
       );
       expect(find.text('skillsgo / e2e-versioned-skills'), findsOneWidget);
 
-      await tester.tap(find.byKey(const Key('repository-install-all')));
+      await tester.tap(find.byKey(const Key('module-install-all')));
       await _pumpUntil(
         tester,
         find.byWidgetPredicate(
@@ -70,7 +81,7 @@ void main() {
       expect(installButton.onPressed, isNotNull);
       installButton.onPressed!();
       await tester.pump();
-      await _pumpUntilInstalled(tester);
+      await _pumpUntilInstalled(tester, runtime.sandbox.path);
       await _pumpUntilGone(
         tester,
         find.byWidgetPredicate(
@@ -81,13 +92,15 @@ void main() {
         ),
       );
 
-      final sandbox = Platform.environment['SKILLSGO_E2E_SANDBOX'];
-      expect(sandbox, isNotNull);
-      final home = Directory('$sandbox/home');
+      final sandbox = runtime.sandbox.path;
+      final home = runtime.home;
       const coordinate = 'github.com/skillsgo/e2e-versioned-skills@v1.2.0';
-      final manifest = File('${home.path}/.skillsgo/skillsgo.yaml');
+      final manifest = File('${home.path}/.agents/skills.yaml');
       expect(manifest.existsSync(), isTrue);
-      expect(File('${home.path}/.skillsgo/skillsgo-lock.yaml').existsSync(), isTrue);
+      expect(
+        File('${home.path}/.agents/skills-lock.yaml').existsSync(),
+        isTrue,
+      );
       expect(
         manifest.readAsStringSync(),
         allOf(
@@ -98,7 +111,7 @@ void main() {
       );
       expect(
         File(
-          '${home.path}/.skillsgo/vendor/$coordinate/skills/resourceful/references/guide.md',
+          '${home.path}/.skillsgo/modules/$coordinate/skills/resourceful/references/guide.md',
         ).existsSync(),
         isTrue,
       );
@@ -131,8 +144,7 @@ Future<void> _pumpUntilGone(WidgetTester tester, Finder finder) async {
   expect(finder, findsNothing);
 }
 
-Future<void> _pumpUntilInstalled(WidgetTester tester) async {
-  final sandbox = Platform.environment['SKILLSGO_E2E_SANDBOX']!;
+Future<void> _pumpUntilInstalled(WidgetTester tester, String sandbox) async {
   final installed = File(
     '$sandbox/test-agent/skills/github.com/skillsgo/e2e-versioned-skills@v1.2.0/skills/alpha/SKILL.md',
   );

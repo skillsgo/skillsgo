@@ -67,7 +67,7 @@ void main() {
         ..result = const ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"collection":"find","skills":[],"page":{"limit":20,"offset":0,"nextOffset":null}}',
+              '{"skills":[],"pagination":{"page":0,"perPage":20,"hasMore":false}}',
           stderr: '',
         );
       final gateway = RealSkillsGateway(
@@ -128,10 +128,10 @@ void main() {
       await relocated.create();
       await unselected.create();
       await File(
-        '${original.path}/skillsgo.yaml',
+        '${original.path}/skills.yaml',
       ).writeAsString('dependencies: {}\n');
       await File(
-        '${original.path}/skillsgo-lock.yaml',
+        '${original.path}/skills-lock.yaml',
       ).writeAsString('dependencies: {}\n');
       await Directory(
         '${original.path}/.agents/skills',
@@ -195,11 +195,11 @@ void main() {
         [added[1].path],
       );
       expect(
-        await File('${original.path}/skillsgo.yaml').readAsString(),
+        await File('${original.path}/skills.yaml').readAsString(),
         'dependencies: {}\n',
       );
       expect(
-        await File('${original.path}/skillsgo-lock.yaml').readAsString(),
+        await File('${original.path}/skills-lock.yaml').readAsString(),
         'dependencies: {}\n',
       );
       expect(
@@ -369,7 +369,6 @@ void main() {
                   'name': 'offline-skill',
                   'skillId': '',
                   'provenance': 'external',
-                  'risk': 'unknown',
                   'health': 'healthy',
                   'agents': ['codex'],
                   'projects': <String>[],
@@ -412,7 +411,7 @@ void main() {
       expect(projects.single.name, 'Offline Project');
       expect(inventory.single.provenance, LibraryProvenance.external);
       expect(agents.installed.single.id, 'codex');
-      expect(detail.markdown, '# Offline Skill');
+      expect(detail.content, '# Offline Skill');
       expect(await gateway.loadAddedProjects(), isEmpty);
     },
   );

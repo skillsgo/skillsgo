@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on the rendered App, bundled CLI, disposable Hub, isolated Agent state, and immutable v1.2.0/v1.3.0 releases of the SkillsGo-owned public versioned fixture Repository.
- * [OUTPUT]: Verifies that a user installs the older Repository release, sees Catalog-derived availability, confirms the exact update, persists v1.3.0 YAML/Lock and Vendor state, and observes no update on the next check.
+ * [INPUT]: Depends on the rendered App, bundled CLI, JourneyRuntime filesystem/Hub/schema isolation, and immutable v1.2.0/v1.3.0 releases of the SkillsGo-owned public versioned fixture Repository.
+ * [OUTPUT]: Verifies that a user installs the older Repository release, sees Catalog-derived availability, confirms the exact update, persists v1.3.0 YAML/Lock and Module Store state, and observes no update on the next check.
  * [POS]: Serves as the black-box macOS App update lifecycle journey orchestrated by e2e/app.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -13,20 +13,29 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'package:skillsgo/main.dart' as skillsgo;
 import 'package:window_manager/window_manager.dart';
 
+import 'support/journey_runtime.dart';
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
+  registerCatalogUpdateCheckJourney();
+}
+
+void registerCatalogUpdateCheckJourney() {
   testWidgets(
     'shows Catalog updates for an older installed public fixture release',
     (tester) async {
-      final sandbox = Platform.environment['SKILLSGO_E2E_SANDBOX'];
-      final hubOrigin = Platform.environment['SKILLSGO_HUB_URL'];
-      expect(sandbox, isNotNull);
-      expect(hubOrigin, isNotNull);
+      final runtime = await JourneyRuntime.start('catalog_update_check');
+      addTearDown(runtime.close);
+      final sandbox = runtime.sandbox.path;
+      final hubOrigin = runtime.hubOrigin;
       final preferences = await SharedPreferences.getInstance();
       await preferences.setBool('onboarding_completed_v1', true);
 
-      await skillsgo.runSkillsGoApp(initializeBinding: false);
+      await skillsgo.runSkillsGoApp(
+        initializeBinding: false,
+        gateway: runtime.gateway,
+      );
       await windowManager.setSize(const Size(1400, 960));
       await windowManager.center();
       await tester.pumpAndSettle(const Duration(seconds: 2));
@@ -39,10 +48,10 @@ void main() {
       await tester.testTextInput.receiveAction(TextInputAction.search);
       await _pumpUntil(
         tester,
-        find.byKey(const Key('repository-install-all')),
+        find.byKey(const Key('module-install-all')),
         timeout: const Duration(minutes: 2),
       );
-      await tester.tap(find.byKey(const Key('repository-install-all')));
+      await tester.tap(find.byKey(const Key('module-install-all')));
       await _pumpUntil(
         tester,
         _textEither('Install all skills to', '安装所有技能到'),
@@ -80,13 +89,13 @@ void main() {
         installationComplete,
         timeout: const Duration(seconds: 30),
       );
-      final manifest = File('$sandbox/home/.skillsgo/skillsgo.yaml');
+      final manifest = File('$sandbox/home/.agents/skills.yaml');
       expect(manifest.readAsStringSync(), contains('v1.2.0'));
 
       final client = HttpClient();
       try {
         final request = await client.getUrl(
-          Uri.parse('$hubOrigin/$repository/@v/v1.3.0.info'),
+          Uri.parse('$hubOrigin/api/v1/$repository/versions/v1.3.0'),
         );
         final response = await request.close();
         await response.drain<void>();
@@ -160,12 +169,12 @@ void main() {
         reason: resultText,
       );
       expect(
-        File('$sandbox/home/.skillsgo/skillsgo-lock.yaml').existsSync(),
+        File('$sandbox/home/.agents/skills-lock.yaml').existsSync(),
         isTrue,
       );
       expect(
         File(
-          '$sandbox/home/.skillsgo/vendor/$newCoordinate/skills/alpha/SKILL.md',
+          '$sandbox/home/.skillsgo/modules/$newCoordinate/skills/alpha/SKILL.md',
         ).existsSync(),
         isTrue,
       );

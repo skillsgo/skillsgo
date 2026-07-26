@@ -22,7 +22,7 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
                       path: '/tmp/local-skill',
                       agents: agentNames,
                       targetCount: agentNames.length,
-                      repositoryId: 'github.com/test/skills',
+                      modulePath: 'github.com/test/skills',
                       versions: const ['v1'],
                       targets: [
                         for (final agent in agentNames)
@@ -115,12 +115,10 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
     return localDetail ??
         SkillDetail(
           name: 'local-skill',
-          source: 'Local',
-          markdown: '# Local',
-          immutableVersion: skill.versions.length == 1
-              ? skill.versions.single
-              : '',
-          files: const [SkillFile(path: 'SKILL.md', contents: '# Local')],
+          path: skill.path,
+          content: '# Local',
+          modulePath: skill.modulePath,
+          version: skill.versions.length == 1 ? skill.versions.single : '',
           installationTargets: skill.targets,
         );
   }

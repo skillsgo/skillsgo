@@ -31,7 +31,7 @@ func NewValidationMiddleware(client *http.Client, validatorHook string) Middlewa
 		}
 		ctx := c.Context()
 		// not checking the error. Not all requests include a version
-		// i.e. list requests path is like /{skill:.+}/@v/list with no version parameter
+		// i.e. list requests path is like /{skill:.+}/versions with no version parameter
 		version, _ := paths.GetVersion(requestPath)
 		if version != "" {
 			response, err := validate(ctx, client, validatorHook, skill, version)

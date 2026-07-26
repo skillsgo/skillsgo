@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on locale resolution, TanStack document primitives, global CSS, Fumadocs providers, and static search.
- * [OUTPUT]: Provides the localized HTML document shell and root route for every public Web page.
+ * [OUTPUT]: Provides the localized, light-only HTML document shell and root route for every public Web page.
  * [POS]: Serves as the top-level rendering and provider boundary for the application.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -51,6 +51,7 @@ function RootComponent() {
         <RootProvider
           i18n={i18nProvider(translations, locale)}
           search={{ SearchDialog: SkillsGoSearchDialog }}
+          theme={{ enabled: false }}
         >
           <Outlet />
         </RootProvider>

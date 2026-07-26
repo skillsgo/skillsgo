@@ -4,13 +4,13 @@
 ## Members
 
 - `real_skills_gateway.dart`: defines the production `SkillsGateway` adapter, stdin-capable CLI seam, shared state, platform pickers, and internal capability composition.
-- `io_process_runner.dart`: executes the bundled CLI with structured arguments, optional stdin, bounded runtime, optional stdout events, and typed output.
+- `io_process_runner.dart`: executes the bundled CLI with structured arguments, optional stdin, bounded runtime, optional stdout events, typed output, and optional working-directory/environment isolation used by real-process E2E journeys.
 - `real_skills_gateway_codec.dart`: owns centralized versioned/machine-document envelope validation, strict payload decoding, argument encoding, and bounded local Skill inspection.
 - `real_skills_gateway_cli.dart`: owns bundled CLI detection, startup handshake validation, developer override persistence, and command execution.
 - `real_skills_gateway_preferences.dart`: owns App preferences, Mandatory Onboarding state, one-time Batch Takeover introduction state, Added Project references, Hub origin and `hub info` runtime discovery, risk policy, and App-version lookup.
-- `real_skills_gateway_discovery.dart`: owns locale-aware single and bounded-chunk batch `find`, direct Cloud-composed ranking reads, explicit-source classification for equivalent GitHub aliases and Git coordinates, and remote Skill detail decoding.
+- `real_skills_gateway_discovery.dart`: owns locale-aware single and bounded-chunk batch `find`, canonical pagination decoding, direct Cloud-composed ranking reads, explicit-source classification for equivalent GitHub aliases and Git coordinates, and remote Skill detail decoding.
 - `real_skills_gateway_inventory.dart`: owns Agent inspection, local Library inventory, exact Batch Takeover planning and scope-bound execution, and local Skill detail.
-- `real_skills_gateway_installation.dart`: groups Installation Requests by declaration scope, invokes single-Skill or atomic multi-Skill exact-path Repository Vendor add through the bundled CLI, and decodes Vendor/Projection results.
+- `real_skills_gateway_installation.dart`: groups Installation Requests by declaration scope, invokes single-Skill or atomic multi-Skill exact-path Repository Module Store add through the bundled CLI, and decodes Module Store/Projection results.
 - `real_skills_gateway_execution.dart`: owns shared affected-binding integrity and ordered NDJSON progress/final-payload execution envelopes for target mutations.
 - `real_skills_gateway_target_management.dart`: owns managed Repository-member and External Installation removal planning, execution, and progress translation.
 - `real_skills_gateway_updates.dart`: owns state-bound Repository-coordinate update preflight, execution, progress projection onto Library targets, and one Catalog-only batch update check across the current Library.

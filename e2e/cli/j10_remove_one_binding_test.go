@@ -21,7 +21,7 @@ func TestJ10RemoveOneBinding(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testRepositoryID+"@"+testSkillVersion, "--skill", testSkillName,
+		"add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 		"--agent", "claude-code",
 		"--yes",
@@ -55,9 +55,9 @@ func TestJ10RemoveOneBinding(t *testing.T) {
 	require.ErrorIs(t, err, os.ErrNotExist)
 	require.FileExists(t, filepath.Join(codexTarget, "skills", "alpha", "SKILL.md"))
 
-	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skillsgo.yaml"))
+	manifest, err := os.ReadFile(filepath.Join(sandboxRoot, "project", "skills.yaml"))
 	require.NoError(t, err)
 	require.Contains(t, string(manifest), "codex")
 	require.NotContains(t, string(manifest), "claude-code")
-	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.Vendor, "skills", "alpha", "SKILL.md"))
+	require.FileExists(t, containerPathOnHost(t, sandboxRoot, installed.ModuleDir, "skills", "alpha", "SKILL.md"))
 }

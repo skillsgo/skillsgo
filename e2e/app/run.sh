@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# [INPUT]: Depends on macOS Flutter desktop support, Go, curl, Ruby, native PostgreSQL for the default runtime, the App workspace with its CLI bundling phase, isolated Hub cache/storage paths, and optionally Docker for the alternate runtime.
-# [OUTPUT]: Launches disposable native PostgreSQL and Hub processes by default, then runs each selected App journey with its bundled Darwin CLI inside an independent redirected temporary macOS home.
-# [POS]: Serves as the isolated lifecycle and execution adapter behind make test-e2e-app.
+# [INPUT]: Depends on macOS Flutter desktop support, Go, native or Docker PostgreSQL, the App workspace with its CLI bundling phase, and the aggregate App E2E test entry.
+# [OUTPUT]: Starts one disposable PostgreSQL instance, builds one native Hub binary, and executes all selected App Journeys through one Flutter/Xcode test build with Journey-scoped runtime isolation.
+# [POS]: Serves as the suite-scoped lifecycle and single-build execution adapter behind make test-e2e-app.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
 set -euo pipefail
@@ -16,13 +16,7 @@ fi
 
 journeys=("$@")
 if (( ${#journeys[@]} == 0 )); then
-  while IFS= read -r journey; do
-    journeys+=("${journey}")
-  done < <(find "${repository_root}/app/integration_test" -maxdepth 1 -name '*_test.dart' -type f | sort)
-fi
-if (( ${#journeys[@]} == 0 )); then
-  echo "No App E2E journeys are defined under app/integration_test." >&2
-  exit 1
+  journeys=("${repository_root}/app/integration_test/app_e2e_suite_test.dart")
 fi
 
 temp_root="${TMPDIR:-/tmp}"
@@ -31,14 +25,9 @@ readonly developer_home="${HOME}"
 readonly developer_pub_cache="${PUB_CACHE:-${developer_home}/.pub-cache}"
 readonly developer_go_path="$(go env GOPATH)"
 readonly developer_go_mod_cache="$(go env GOMODCACHE)"
+readonly postgres_runtime="${SKILLSGO_E2E_POSTGRES_RUNTIME:-native}"
+
 cleanup() {
-  if [[ -n "${hub_pid:-}" ]]; then
-    kill "${hub_pid}" >/dev/null 2>&1 || true
-    wait "${hub_pid}" >/dev/null 2>&1 || true
-  fi
-  if [[ -n "${hub_container:-}" ]]; then
-    docker rm --force "${hub_container}" >/dev/null 2>&1 || true
-  fi
   if [[ -n "${postgres_bin_dir:-}" && -d "${run_dir}/postgres" ]]; then
     "${postgres_bin_dir}/pg_ctl" -D "${run_dir}/postgres" stop --mode=immediate >/dev/null 2>&1 || true
   fi
@@ -50,17 +39,7 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
-mkdir -p \
-  "${run_dir}/hub/cache" \
-  "${run_dir}/hub/storage"
-
-readonly hub_port="$(ruby -rsocket -e 'server = TCPServer.new("127.0.0.1", 0); puts server.addr[1]; server.close')"
-readonly hub_origin="http://127.0.0.1:${hub_port}"
-readonly hub_log="${run_dir}/hub.log"
-readonly hub_runtime="${SKILLSGO_E2E_HUB_RUNTIME:-native}"
-readonly postgres_container="skillsgo-app-e2e-postgres-${hub_port}"
-
-case "${hub_runtime}" in
+case "${postgres_runtime}" in
   native)
     if [[ -n "${SKILLSGO_E2E_POSTGRES_BIN_DIR:-}" ]]; then
       postgres_bin_dir="${SKILLSGO_E2E_POSTGRES_BIN_DIR}"
@@ -77,105 +56,50 @@ case "${hub_runtime}" in
     "${postgres_bin_dir}/initdb" -D "${run_dir}/postgres" -U skillsgo --auth=trust >/dev/null
     "${postgres_bin_dir}/pg_ctl" -D "${run_dir}/postgres" -l "${run_dir}/postgres.log" -o "-h 127.0.0.1 -p ${postgres_port}" start >/dev/null
     "${postgres_bin_dir}/createdb" -h 127.0.0.1 -p "${postgres_port}" -U skillsgo skillsgo
-    readonly native_database_dsn="postgres://skillsgo@127.0.0.1:${postgres_port}/skillsgo?sslmode=disable"
-    readonly hub_binary="${run_dir}/skillsgo-hub"
-    (
-      cd "${repository_root}/hub"
-      CGO_ENABLED=0 go build -trimpath -o "${hub_binary}" ./cmd/skillsgo-hub
-    )
-    SKILLSGO_HUB_PORT="127.0.0.1:${hub_port}" \
-    SKILLSGO_HUB_CACHE_DIR="${run_dir}/hub/cache" \
-    SKILLSGO_HUB_DATABASE_TYPE=postgres \
-    SKILLSGO_HUB_DATABASE_DSN="${native_database_dsn}" \
-    SKILLSGO_HUB_STORAGE_TYPE=disk \
-    SKILLSGO_HUB_DISK_STORAGE_ROOT="${run_dir}/hub/storage" \
-    SKILLSGO_HUB_LOG_LEVEL=info \
-    "${hub_binary}" >"${hub_log}" 2>&1 &
-    readonly hub_pid=$!
+    readonly database_dsn="postgres://skillsgo@127.0.0.1:${postgres_port}/skillsgo?sslmode=disable"
+    readonly psql_binary="${postgres_bin_dir}/psql"
     ;;
   docker)
-    docker run --detach --name "${postgres_container}" --publish 127.0.0.1::5432 \
+    readonly postgres_port="$(ruby -rsocket -e 'server = TCPServer.new("127.0.0.1", 0); puts server.addr[1]; server.close')"
+    readonly postgres_container="skillsgo-app-e2e-postgres-${postgres_port}"
+    docker run --detach --name "${postgres_container}" --publish "127.0.0.1:${postgres_port}:5432" \
       --env POSTGRES_DB=skillsgo --env POSTGRES_USER=skillsgo --env POSTGRES_PASSWORD=skillsgo \
       postgres:18-alpine >/dev/null
-    readonly postgres_port="$(docker port "${postgres_container}" 5432/tcp | sed 's/.*://')"
     for _ in {1..60}; do
       if docker exec "${postgres_container}" pg_isready -U skillsgo -d skillsgo >/dev/null 2>&1; then break; fi
       sleep 0.25
     done
-    readonly docker_database_dsn="postgres://skillsgo:skillsgo@host.docker.internal:${postgres_port}/skillsgo?sslmode=disable"
-    readonly hub_image="skillsgo-app-e2e-hub:local"
-    readonly hub_container="skillsgo-app-e2e-${hub_port}"
-    docker build \
-      --file "${workspace_dir}/Dockerfile" \
-      --tag "${hub_image}" \
-      "${repository_root}" >/dev/null
-    docker run \
-      --detach \
-      --name "${hub_container}" \
-      --publish "127.0.0.1:${hub_port}:3000" \
-      --mount "type=bind,source=${run_dir}/hub,target=/e2e/hub" \
-      --add-host host.docker.internal:host-gateway \
-      --env SKILLSGO_HUB_PORT=:3000 \
-      --env SKILLSGO_HUB_CACHE_DIR=/e2e/hub/cache \
-      --env SKILLSGO_HUB_DATABASE_TYPE=postgres \
-      --env SKILLSGO_HUB_DATABASE_DSN="${docker_database_dsn}" \
-      --env SKILLSGO_HUB_STORAGE_TYPE=disk \
-      --env SKILLSGO_HUB_DISK_STORAGE_ROOT=/e2e/hub/storage \
-      --env SKILLSGO_HUB_LOG_LEVEL=info \
-      "${hub_image}" >/dev/null
+    readonly database_dsn="postgres://skillsgo:skillsgo@127.0.0.1:${postgres_port}/skillsgo?sslmode=disable"
+    readonly psql_binary="${run_dir}/psql"
+    printf '#!/usr/bin/env bash\nexec docker exec -i %q psql "$@"\n' "${postgres_container}" >"${psql_binary}"
+    chmod 0755 "${psql_binary}"
     ;;
   *)
-    echo "Unsupported App E2E Hub runtime: ${hub_runtime}" >&2
+    echo "Unsupported App E2E PostgreSQL runtime: ${postgres_runtime}" >&2
     exit 1
     ;;
 esac
 
-for _ in {1..120}; do
-  if curl --fail --silent "${hub_origin}/readyz" >/dev/null; then
-    break
-  fi
-  if [[ "${hub_runtime}" == "native" ]] && ! kill -0 "${hub_pid}" 2>/dev/null; then
-    cat "${hub_log}" >&2 || true
-    exit 1
-  fi
-  if [[ "${hub_runtime}" == "docker" ]] && [[ "$(docker inspect --format '{{.State.Running}}' "${hub_container}" 2>/dev/null || true)" != "true" ]]; then
-    docker logs "${hub_container}" >&2 || true
-    exit 1
-  fi
-  sleep 0.25
-done
-if ! curl --fail --silent "${hub_origin}/readyz" >/dev/null; then
-  if [[ "${hub_runtime}" == "native" ]]; then
-    cat "${hub_log}" >&2 || true
-  else
-    docker logs "${hub_container}" >&2 || true
-  fi
-  echo "Disposable App E2E Hub did not become ready." >&2
-  exit 1
-fi
+readonly hub_binary="${run_dir}/skillsgo-hub"
+(
+  cd "${repository_root}/hub"
+  CGO_ENABLED=0 go build -trimpath -o "${hub_binary}" ./cmd/skillsgo-hub
+)
 
 cd "${repository_root}/app"
-for journey in "${journeys[@]}"; do
-  journey_name="$(basename "${journey}" .dart)"
-  journey_sandbox="${run_dir}/journeys/${journey_name}"
-  mkdir -p \
-    "${journey_sandbox}/home" \
-    "${journey_sandbox}/tmp" \
-    "${journey_sandbox}/test-agent/skills"
-  HOME="${journey_sandbox}/home" \
-  CFFIXED_USER_HOME="${journey_sandbox}/home" \
-  XDG_CONFIG_HOME="${journey_sandbox}/home/.config" \
-  XDG_CACHE_HOME="${journey_sandbox}/home/.cache" \
-  XDG_DATA_HOME="${journey_sandbox}/home/.local/share" \
+env \
+  HOME="${run_dir}/app-home" \
+  CFFIXED_USER_HOME="${run_dir}/app-home" \
+  XDG_CONFIG_HOME="${run_dir}/app-home/.config" \
+  XDG_CACHE_HOME="${run_dir}/app-home/.cache" \
+  XDG_DATA_HOME="${run_dir}/app-home/.local/share" \
   PUB_CACHE="${developer_pub_cache}" \
   GOPATH="${developer_go_path}" \
   GOMODCACHE="${developer_go_mod_cache}" \
-  SKILLSGO_HOME="${journey_sandbox}/home/.skillsgo" \
-  SKILLSGO_TEST_AGENT_HOME="${journey_sandbox}/test-agent" \
-  SKILLSGO_HUB_URL="${hub_origin}" \
-  SKILLSGO_E2E_SANDBOX="${journey_sandbox}" \
+  SKILLSGO_E2E_ROOT="${run_dir}" \
+  SKILLSGO_E2E_DATABASE_DSN="${database_dsn}" \
+  SKILLSGO_E2E_PSQL="${psql_binary}" \
+  SKILLSGO_E2E_HUB_BINARY="${hub_binary}" \
   flutter test \
     -d macos \
-    --dart-define="SKILLSGO_HUB_URL=${hub_origin}" \
-    "${journey}"
-done
+    "${journeys[@]}"

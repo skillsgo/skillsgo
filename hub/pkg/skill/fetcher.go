@@ -27,26 +27,27 @@ type Resolution struct {
 // RepositoryFetcher resolves and scans one immutable Repository snapshot,
 // returning every installable Skill without repeating source synchronization.
 type RepositoryFetcher interface {
-	DiscoverRepository(ctx context.Context, repositoryID, revision string) (*RepositorySnapshot, error)
+	DiscoverRepository(ctx context.Context, modulePath, revision string) (*RepositorySnapshot, error)
 }
 
 type RepositorySnapshot struct {
-	RepositoryID string
-	Version      string
-	Ref          string
-	CommitSHA    string
-	TreeSHA      string
-	CommitTime   time.Time
-	Archive      io.ReadCloser
-	ArchiveMD5   []byte
-	Sum          string
-	ArchiveSize  int64
-	Members      []RepositoryMember
+	ModulePath  string
+	Version     string
+	Ref         string
+	CommitSHA   string
+	TreeSHA     string
+	CommitTime  time.Time
+	Archive     io.ReadCloser
+	ArchiveMD5  []byte
+	Sum         string
+	ArchiveSize int64
+	Members     []RepositoryMember
 }
 
 type RepositoryMember struct {
 	Name     string
 	Path     string
 	TreeSHA  string
+	Content  []byte
 	Manifest protocolmanifest.Manifest
 }

@@ -21,7 +21,7 @@ func TestJ36WorkspaceProtocolAndRestore(t *testing.T) {
 	container, sandboxRoot := startEnvironment(t, ctx)
 
 	add := execCLI(t, ctx, container,
-		"add", testRepositoryID+"@"+testSkillVersion, "--skill", testSkillName,
+		"add", testModulePath+"@"+testSkillVersion, "--skill", testSkillName,
 		"--agent", "codex",
 		"--agent", "claude-code",
 		"--yes",
@@ -33,32 +33,32 @@ func TestJ36WorkspaceProtocolAndRestore(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(add.output), &installed), add.output)
 	require.NotEmpty(t, installed.Version)
 
-	manifestPath := filepath.Join(sandboxRoot, "project", "skillsgo.yaml")
+	manifestPath := filepath.Join(sandboxRoot, "project", "skills.yaml")
 	manifestBefore, err := os.ReadFile(manifestPath)
 	require.NoError(t, err)
-	require.Contains(t, string(manifestBefore), installed.Repository+":")
+	require.Contains(t, string(manifestBefore), installed.ModulePath+":")
 	require.Contains(t, string(manifestBefore), "version: "+installed.Version)
 	require.Contains(t, string(manifestBefore), "- alpha")
 	require.Contains(t, string(manifestBefore), "- claude-code")
 	require.Contains(t, string(manifestBefore), "- codex")
-	sumPath := filepath.Join(sandboxRoot, "project", "skillsgo-lock.yaml")
+	sumPath := filepath.Join(sandboxRoot, "project", "skills-lock.yaml")
 	sumBefore, err := os.ReadFile(sumPath)
 	require.NoError(t, err)
 
-	proxyInfo := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/"+installed.Repository+"/@v/"+installed.Version+".info")
+	proxyInfo := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/"+installed.ModulePath+"/versions/"+installed.Version+"")
 	require.Equal(t, 0, proxyInfo.exitCode, proxyInfo.output)
-	apiDetail := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/skills/detail?repositoryId="+installed.Repository+"&name="+testSkillName)
+	apiDetail := execInContainer(t, ctx, container, "wget", "-qO-", "http://127.0.0.1:3000/api/v1/"+installed.ModulePath+"/versions/"+installed.Version+"/skills?path=skills/alpha")
 	require.Equal(t, 0, apiDetail.exitCode, apiDetail.output)
 	for _, legacyURL := range []string{
-		"http://127.0.0.1:3000/mod/" + installed.Repository + "/@v/" + installed.Version + ".info",
-		"http://127.0.0.1:3000/" + installed.Repository + "/-/skills/alpha/@v/" + installed.Version + ".info",
-		"http://127.0.0.1:3000/v1/skills/" + installed.Repository + "/-/skills/alpha",
+		"http://127.0.0.1:3000/mod/" + installed.ModulePath + "/versions/" + installed.Version + "",
+		"http://127.0.0.1:3000/api/v1/" + installed.ModulePath + "/-/skills/alpha/versions/" + installed.Version + "",
+		"http://127.0.0.1:3000/v1/skills/" + installed.ModulePath + "/-/skills/alpha",
 	} {
 		legacy := execInContainer(t, ctx, container, "wget", "-S", "-qO-", legacyURL)
 		require.NotEqual(t, 0, legacy.exitCode, legacyURL+" unexpectedly succeeded: "+legacy.output)
 	}
 
-	removeTargets := execInContainer(t, ctx, container, "rm", "-rf", "/e2e/project/.agents", "/e2e/project/.claude")
+	removeTargets := execInContainer(t, ctx, container, "rm", "-rf", scenarioContainerPath(t, "project", ".agents"), scenarioContainerPath(t, "project", ".claude"))
 	require.Equal(t, 0, removeTargets.exitCode, removeTargets.output)
 	restore := execCLI(t, ctx, container, "install", "--output", "json")
 	require.Equal(t, 0, restore.exitCode, restore.output)

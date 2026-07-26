@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on explicitly selected skills.sh user and Workspace locks, unified External inventory, bounded ephemeral preflight plans, exact Repository releases, Agent adapters, and Repository Vendor installation.
- * [OUTPUT]: Exposes versioned read-only Batch Takeover preflight plus state-bound exact-path Repository adoption that verifies existing member bytes, creates YAML/Lock and Vendor/Projections, and then recoverably removes the superseded External copy.
+ * [INPUT]: Depends on explicitly selected skills.sh user and Workspace locks, unified External inventory, bounded ephemeral preflight plans, exact Repository releases, Agent adapters, and Repository Module Store installation.
+ * [OUTPUT]: Exposes versioned read-only Batch Takeover preflight plus state-bound exact-path Repository adoption that verifies existing member bytes, creates YAML/Lock and Module Store/Projections, and then recoverably removes the superseded External copy.
  * [POS]: Serves as the public CLI orchestration boundary for migrating supported external copies into Repository-managed scopes.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -306,14 +306,14 @@ func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, pla
 			report.Summary.Skipped++
 			continue
 		}
-		repositoryID, memberPath, identityErr := takeoverRepositoryMember(candidate.SkillID)
+		modulePath, memberPath, identityErr := takeoverVersionSkill(candidate.SkillID)
 		if identityErr != nil {
 			result.Reason = "invalid-lock-entry"
 			report.Results = append(report.Results, result)
 			report.Summary.Skipped++
 			continue
 		}
-		resource, fetchErr := client.FetchRepositoryWithProgress(cmd.Context(), repositoryID, candidate.SourceRef, nil)
+		resource, fetchErr := client.FetchModuleWithProgress(cmd.Context(), modulePath, candidate.SourceRef, nil)
 		if fetchErr != nil {
 			result.Reason = "repository-unavailable"
 			report.Results = append(report.Results, result)
@@ -328,7 +328,7 @@ func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, pla
 		}
 		memberName := ""
 		for _, member := range resource.Members {
-			if member.Info.SkillPath == memberPath {
+			if member.Info.Path == memberPath {
 				memberName = member.Info.Name
 				break
 			}
@@ -353,7 +353,7 @@ func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, pla
 		scope := candidate.Targets[0].Scope
 		workspaceRoot := candidate.Targets[0].ProjectRoot
 		options := addOptions{hubURL: hubURL, output: "json", skillPaths: []string{memberPath}}
-		if addErr := addRepository(discard, catalog, source.Reference{RepositoryID: repositoryID, Version: resource.Info.Version}, agentIDs, scope, workspaceRoot, options, []string{memberPath}, true); addErr != nil {
+		if addErr := addRepository(discard, catalog, source.Reference{ModulePath: modulePath, Version: resource.Info.Version}, agentIDs, scope, workspaceRoot, options, []string{memberPath}, true); addErr != nil {
 			result.Reason = "state-write-failure"
 			report.Results = append(report.Results, result)
 			report.Summary.Skipped++
@@ -375,16 +375,16 @@ func executeLockTakeover(cmd *cobra.Command, catalog *agent.Catalog, hubURL, pla
 	return report, nil
 }
 
-func takeoverRepositoryMember(skillID string) (string, string, error) {
+func takeoverVersionSkill(skillID string) (string, string, error) {
 	separator := strings.Index(skillID, "/-/")
 	if separator < 0 {
 		return skillID, ".", nil
 	}
-	repositoryID, memberPath := skillID[:separator], skillID[separator+len("/-/"):]
-	if repositoryID == "" || memberPath == "" {
+	modulePath, memberPath := skillID[:separator], skillID[separator+len("/-/"):]
+	if modulePath == "" || memberPath == "" {
 		return "", "", fmt.Errorf("invalid Repository member identity")
 	}
-	return repositoryID, memberPath, nil
+	return modulePath, memberPath, nil
 }
 
 type takeoverFile struct {
@@ -392,13 +392,13 @@ type takeoverFile struct {
 	executable bool
 }
 
-func verifyTakeoverMember(root string, resource *hub.RepositoryResource, memberPath string) error {
+func verifyTakeoverMember(root string, resource *hub.ModuleResource, memberPath string) error {
 	expected := map[string]takeoverFile{}
 	prefix := ""
 	if memberPath != "." {
 		prefix = strings.TrimSuffix(memberPath, "/") + "/"
 	}
-	_, err := protocolartifact.WalkRepository(resource.ZIP, resource.Info.ID, resource.Info.Version, func(entry protocolartifact.Entry) error {
+	_, err := protocolartifact.WalkModule(resource.ZIP, resource.Info.ModulePath, resource.Info.Version, func(entry protocolartifact.Entry) error {
 		if entry.Directory || !strings.HasPrefix(entry.Path, prefix) {
 			return nil
 		}
@@ -493,7 +493,7 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 	for _, skill := range current.Entries {
 		if skill.Provenance != inventory.ProvenanceExternal {
 			for _, target := range skill.Targets {
-				root := project.UserRoot(home)
+				root := project.UserDeclarationRoot(home)
 				locked := userLock
 				if target.Scope == install.ScopeProject {
 					root = filepath.Clean(target.ProjectRoot)
@@ -528,7 +528,7 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 			}
 			locked := userLock
 			lockSupported := userLockSupported
-			declarationRoot := project.UserRoot(home)
+			declarationRoot := project.UserDeclarationRoot(home)
 			if group[0].Scope == install.ScopeProject {
 				declarationRoot = filepath.Clean(group[0].ProjectRoot)
 				locked = workspaceLocks[declarationRoot]
@@ -594,7 +594,7 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 			}
 			sourceRef := strings.TrimSpace(record.Ref)
 			if sourceRef == "" {
-				sourceRef = "head"
+				sourceRef = "latest"
 			}
 			candidates = append(candidates, takeoverCandidate{
 				Name: skill.Name, SkillID: skillID, SourceRef: sourceRef,
@@ -625,7 +625,7 @@ func discoverLockTakeoverCandidates(catalog *agent.Catalog, home string, include
 		}
 	}
 	if includeUser {
-		appendMissing(project.UserRoot(home), install.ScopeUser, userLock)
+		appendMissing(project.UserDeclarationRoot(home), install.ScopeUser, userLock)
 	}
 	for root, locked := range workspaceLocks {
 		appendMissing(root, install.ScopeProject, locked)
@@ -892,7 +892,7 @@ func lockRecordSkillID(record skillsShUserLockRecord) (string, error) {
 		if err != nil && record.SourceURL != "" {
 			reference, err = source.Parse(record.SourceURL)
 		}
-		if err == nil && !strings.HasPrefix(reference.RepositoryID, "github.com/") {
+		if err == nil && !strings.HasPrefix(reference.ModulePath, "github.com/") {
 			err = fmt.Errorf("github lock source does not identify github.com")
 		}
 	case "git", "gitlab":
@@ -907,7 +907,7 @@ func lockRecordSkillID(record skillsShUserLockRecord) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	skillID := reference.RepositoryID
+	skillID := reference.ModulePath
 	if record.SkillPath != "" {
 		clean := path.Clean(strings.TrimPrefix(filepath.ToSlash(record.SkillPath), "/"))
 		if clean == "." || clean == ".." || strings.HasPrefix(clean, "../") {

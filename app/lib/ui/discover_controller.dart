@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on Riverpod, SkillsGateway discovery contracts, and the App-scoped Gateway provider.
- * [OUTPUT]: Provides immutable per-route discovery and Repository-summary caches plus query-bound, race-safe, lifecycle-safe initial-load, locale reload, refresh, and pagination actions.
+ * [OUTPUT]: Provides immutable per-route discovery and Module-summary caches plus query-bound, race-safe, lifecycle-safe initial-load, locale reload, refresh, and pagination actions.
  * [POS]: Serves as the Discover journey's business-state boundary; scroll, focus, and transitions remain widget-owned.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -14,11 +14,11 @@ enum DiscoverRoute { search, ranking, trending, hot }
 class DiscoverRouteState {
   const DiscoverRouteState({
     this.results,
-    this.repository,
+    this.module,
     this.error,
     this.refreshError,
     this.paginationError,
-    this.nextOffset,
+    this.nextPage,
     this.query = '',
     this.generation = 0,
     this.loading = false,
@@ -27,11 +27,11 @@ class DiscoverRouteState {
   });
 
   final List<SkillSummary>? results;
-  final RepositorySummary? repository;
+  final ModuleSummary? module;
   final Object? error;
   final Object? refreshError;
   final Object? paginationError;
-  final int? nextOffset;
+  final int? nextPage;
   final String query;
   final int generation;
   final bool loading;
@@ -41,16 +41,16 @@ class DiscoverRouteState {
   DiscoverRouteState copyWith({
     List<SkillSummary>? results,
     bool clearResults = false,
-    RepositorySummary? repository,
-    bool clearRepository = false,
+    ModuleSummary? module,
+    bool clearModule = false,
     Object? error,
     bool clearError = false,
     Object? refreshError,
     bool clearRefreshError = false,
     Object? paginationError,
     bool clearPaginationError = false,
-    int? nextOffset,
-    bool clearNextOffset = false,
+    int? nextPage,
+    bool clearNextPage = false,
     String? query,
     int? generation,
     bool? loading,
@@ -58,13 +58,13 @@ class DiscoverRouteState {
     bool? loadingMore,
   }) => DiscoverRouteState(
     results: clearResults ? null : results ?? this.results,
-    repository: clearRepository ? null : repository ?? this.repository,
+    module: clearModule ? null : module ?? this.module,
     error: clearError ? null : error ?? this.error,
     refreshError: clearRefreshError ? null : refreshError ?? this.refreshError,
     paginationError: clearPaginationError
         ? null
         : paginationError ?? this.paginationError,
-    nextOffset: clearNextOffset ? null : nextOffset ?? this.nextOffset,
+    nextPage: clearNextPage ? null : nextPage ?? this.nextPage,
     query: query ?? this.query,
     generation: generation ?? this.generation,
     loading: loading ?? this.loading,
@@ -136,8 +136,8 @@ class DiscoverController extends Notifier<DiscoverState> {
     if (reset && preserveResults && (current.loading || current.refreshing)) {
       return;
     }
-    final nextOffset = reset ? 0 : current.nextOffset;
-    if (nextOffset == null) return;
+    final nextPage = reset ? 0 : current.nextPage;
+    if (nextPage == null) return;
     final generation = reset ? current.generation + 1 : current.generation;
     final requestQuery = reset ? query : current.query;
     state = state.replace(
@@ -147,8 +147,8 @@ class DiscoverController extends Notifier<DiscoverState> {
         clearRefreshError: true,
         clearPaginationError: true,
         clearResults: reset && !preserveResults,
-        clearRepository: reset && !preserveResults,
-        clearNextOffset: reset,
+        clearModule: reset && !preserveResults,
+        clearNextPage: reset,
         query: requestQuery,
         generation: generation,
         loading: reset && !preserveResults,
@@ -160,7 +160,7 @@ class DiscoverController extends Notifier<DiscoverState> {
       final page = await _gateway.discover(
         _collectionForRoute(route),
         query: requestQuery,
-        offset: nextOffset,
+        page: nextPage,
       );
       if (!ref.mounted) return;
       final latest = state.routes[route]!;
@@ -171,9 +171,9 @@ class DiscoverController extends Notifier<DiscoverState> {
           results: reset
               ? page.skills
               : _appendUnique(latest.results ?? const [], page.skills),
-          repository: reset ? page.repository : latest.repository,
-          nextOffset: page.nextOffset,
-          clearNextOffset: page.nextOffset == null,
+          module: reset ? page.module : latest.module,
+          nextPage: page.pagination.nextPage,
+          clearNextPage: page.pagination.nextPage == null,
           loading: false,
           refreshing: false,
           loadingMore: false,

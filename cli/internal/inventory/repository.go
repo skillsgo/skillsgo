@@ -1,5 +1,5 @@
 /*
- * [INPUT]: Depends on atomically recovered strict YAML/Lock state, Scope Vendor, immutable scoped Repository Info, Agent Adapter roots, and deterministic Repository Projection verification.
+ * [INPUT]: Depends on atomically recovered strict YAML/Lock state, Scope Module Store, immutable scoped Repository Info, Agent Adapter roots, and deterministic Repository Projection verification.
  * [OUTPUT]: Adds Repository-managed Skill inventory entries without receipts, Store artifacts, materialization modes, or Hub access.
  * [POS]: Serves as the authoritative managed half of local Library inventory alongside External discovery.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
@@ -16,13 +16,14 @@ import (
 	"github.com/skillsgo/skillsgo/cli/internal/hub"
 	"github.com/skillsgo/skillsgo/cli/internal/infocache"
 	"github.com/skillsgo/skillsgo/cli/internal/install"
+	"github.com/skillsgo/skillsgo/cli/internal/modulestore"
 	"github.com/skillsgo/skillsgo/cli/internal/project"
-	"github.com/skillsgo/skillsgo/cli/internal/scopevendor"
 )
 
 type declarationRoot struct {
-	root  string
-	scope install.Scope
+	root      string
+	stateRoot string
+	scope     install.Scope
 }
 
 func addRepositoryInstallations(entries map[string]*Entry, accounted map[string]bool, roots []declarationRoot, catalog *agent.Catalog) error {
@@ -34,42 +35,41 @@ func addRepositoryInstallations(entries map[string]*Entry, accounted map[string]
 		if !found {
 			continue
 		}
-		for repositoryID, dependency := range manifest.Dependencies {
-			locked, ok := lock.Dependencies[repositoryID]
+		for modulePath, dependency := range manifest.Dependencies {
+			locked, ok := lock.Dependencies[modulePath]
 			if !ok || locked.Version != dependency.Version {
-				return fmt.Errorf("skillsgo-lock.yaml does not match %s@%s", repositoryID, dependency.Version)
+				return fmt.Errorf("skills-lock.yaml does not match %s@%s", modulePath, dependency.Version)
 			}
-			vendorRoot, infoRoot, agentScope := filepath.Join(declaration.root, ".skillsgo", "vendor"), filepath.Join(declaration.root, ".skillsgo", "info"), agent.ScopeProject
+			modulesRoot, infoRoot, agentScope := filepath.Join(declaration.root, ".skillsgo", "modules"), filepath.Join(declaration.root, ".skillsgo", "info"), agent.ScopeProject
 			projectRoot := declaration.root
 			if declaration.scope == install.ScopeUser {
-				vendorRoot, infoRoot, agentScope, projectRoot = filepath.Join(declaration.root, "vendor"), filepath.Join(declaration.root, "info"), agent.ScopeUser, ""
+				modulesRoot, infoRoot, agentScope, projectRoot = filepath.Join(declaration.stateRoot, "modules"), filepath.Join(declaration.stateRoot, "info"), agent.ScopeUser, ""
 			}
-			archive, vendorErr := scopevendor.ReadVerifiedVendor(vendorRoot, repositoryID, dependency.Version, locked.Sum)
-			infoBytes, infoErr := (infocache.Cache{Root: infoRoot}).Get(repositoryID, dependency.Version, "repository.info")
+			archive, moduleErr := modulestore.ReadVerifiedModule(modulesRoot, modulePath, dependency.Version, locked.Sum)
+			infoBytes, infoErr := (infocache.Cache{Root: infoRoot}).Get(modulePath, dependency.Version, "module.info")
 			if infoErr != nil {
 				return fmt.Errorf("read immutable Repository Info for inventory: %w", infoErr)
 			}
-			resource, err := hub.ParseRepositoryInfo(repositoryID, infoBytes)
+			resource, err := hub.ParseModuleInfo(modulePath, infoBytes)
 			if err != nil {
 				return err
 			}
 			members := make([]string, 0, len(resource.Members))
 			for _, member := range resource.Members {
-				members = append(members, member.Info.SkillPath)
+				members = append(members, member.Info.Path)
 			}
 			selectedPaths := make([]string, 0, len(dependency.Skills))
-			selectedMembers := make([]hub.RepositoryMember, 0, len(dependency.Skills))
+			selectedMembers := make([]hub.VersionSkill, 0, len(dependency.Skills))
 			for _, selected := range dependency.Skills {
-				member, exists := hub.SelectRepositoryMember(selected, resource.Members)
+				member, exists := hub.SelectVersionSkill(selected, resource.Members)
 				if !exists {
 					return fmt.Errorf("Repository Info does not contain selected Skill %q", selected)
 				}
-				selectedPaths = append(selectedPaths, member.Info.SkillPath)
+				selectedPaths = append(selectedPaths, member.Info.Path)
 				selectedMembers = append(selectedMembers, member)
 			}
 			for _, member := range selectedMembers {
-				entry := ensureEntry(entries, member.Info.Name, repositoryID, ProvenanceHub)
-				entry.Description = member.Info.Description
+				entry := ensureEntry(entries, member.Info.Name, modulePath, ProvenanceHub)
 				entry.Versions = appendUnique(entry.Versions, dependency.Version)
 				if projectRoot != "" {
 					entry.Projects = appendUnique(entry.Projects, projectRoot)
@@ -79,16 +79,16 @@ func addRepositoryInstallations(entries map[string]*Entry, accounted map[string]
 					if !ok {
 						return fmt.Errorf("Agent %q does not support declared scope", agentID)
 					}
-					projectionRoot := scopevendor.CoordinatePath(adapterRoots.ManagedRoot, repositoryID, dependency.Version)
+					projectionRoot := modulestore.CoordinatePath(adapterRoots.ManagedRoot, modulePath, dependency.Version)
 					projectionPath := projectionRoot
-					vendorPath := scopevendor.CoordinatePath(vendorRoot, repositoryID, dependency.Version)
-					if member.Info.SkillPath != "." {
-						projectionPath = filepath.Join(projectionRoot, filepath.FromSlash(member.Info.SkillPath))
-						vendorPath = filepath.Join(vendorPath, filepath.FromSlash(member.Info.SkillPath))
+					moduleDir := modulestore.CoordinatePath(modulesRoot, modulePath, dependency.Version)
+					if member.Info.Path != "." {
+						projectionPath = filepath.Join(projectionRoot, filepath.FromSlash(member.Info.Path))
+						moduleDir = filepath.Join(moduleDir, filepath.FromSlash(member.Info.Path))
 					}
-					health := repositoryTargetHealth(vendorErr, archive, adapterRoots.ManagedRoot, repositoryID, dependency.Version, members, selectedPaths)
+					health := repositoryTargetHealth(moduleErr, archive, adapterRoots.ManagedRoot, modulePath, dependency.Version, members, selectedPaths)
 					entry.Targets = append(entry.Targets, Target{Scope: declaration.scope, ProjectRoot: projectRoot, Agent: agentID,
-						Path: projectionPath, CanonicalPath: vendorPath, Version: dependency.Version, Health: health})
+						Path: projectionPath, CanonicalPath: moduleDir, Version: dependency.Version, Health: health})
 					entry.Agents = appendUnique(entry.Agents, agentID)
 					accounted[targetKey(agentID, declaration.scope, projectionRoot)] = true
 					if health != HealthHealthy && entry.Health == HealthHealthy {
@@ -101,20 +101,20 @@ func addRepositoryInstallations(entries map[string]*Entry, accounted map[string]
 	return nil
 }
 
-func repositoryTargetHealth(vendorErr error, archive []byte, projectionRoot, repositoryID, version string, members, selected []string) Health {
-	if vendorErr != nil {
-		if errors.Is(vendorErr, os.ErrNotExist) {
+func repositoryTargetHealth(moduleErr error, archive []byte, projectionRoot, modulePath, version string, members, selected []string) Health {
+	if moduleErr != nil {
+		if errors.Is(moduleErr, os.ErrNotExist) {
 			return HealthMissing
 		}
 		return HealthLocalModification
 	}
-	if _, err := os.Lstat(scopevendor.CoordinatePath(projectionRoot, repositoryID, version)); err != nil {
+	if _, err := os.Lstat(modulestore.CoordinatePath(projectionRoot, modulePath, version)); err != nil {
 		if os.IsNotExist(err) {
 			return HealthMissing
 		}
 		return HealthUnreadable
 	}
-	if err := scopevendor.VerifyProjection(projectionRoot, repositoryID, version, archive, members, selected); err != nil {
+	if err := modulestore.VerifyProjection(projectionRoot, modulePath, version, archive, members, selected); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return HealthMissing
 		}

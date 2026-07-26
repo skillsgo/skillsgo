@@ -140,7 +140,7 @@ class UpdateOperationController extends Notifier<UpdateOperationState> {
             UpdateTargetResult(
               target: item.target,
               name: item.name,
-              repositoryId: item.repositoryId,
+              modulePath: item.modulePath,
               fromVersion: item.fromVersion,
               toVersion: item.toVersion,
               outcome: item.action == UpdatePlanAction.failed

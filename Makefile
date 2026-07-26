@@ -1,12 +1,15 @@
 # [INPUT]: Depends on scripts/dev.sh plus the Protocol, App, CLI, Hub, and Web workspace build and validation entry points.
-# [OUTPUT]: Provides the unified macOS development session plus repository-level local builds, unit tests, docs validation, split CLI/App E2E tests, analysis, and formatting commands.
+# [OUTPUT]: Provides unified or Hub-only macOS development sessions plus repository-level local builds, unit tests, docs validation, split CLI/App E2E tests, analysis, and formatting commands.
 # [POS]: Serves as the monorepo task entry point and delegates product-specific work to each workspace.
 # [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
 
-.PHONY: dev dev-web dev-docs build build-cli build-hub build-web build-docs test test-protocol test-app test-cli test-hub test-web test-docs test-e2e test-e2e-cli test-e2e-app analyze-app format-protocol format-cli format-hub
+.PHONY: dev dev-hub dev-web dev-docs build build-cli build-hub build-web build-docs test test-protocol test-app test-cli test-hub test-web test-docs test-e2e test-e2e-cli test-e2e-app analyze-app format-protocol format-cli format-hub
 
 dev:
 	./scripts/dev.sh
+
+dev-hub:
+	./scripts/dev.sh hub
 
 dev-web:
 	cd web && pnpm dev
@@ -52,7 +55,7 @@ test-docs: test-web
 test-e2e: test-e2e-cli test-e2e-app
 
 test-e2e-cli:
-	cd e2e/cli && GOWORK=off go test -v -count=1 ./...
+	cd e2e/cli && GOWORK=off go tool gotestsum --format standard-verbose -- -count=1 -timeout=15m ./...
 
 test-e2e-app:
 	./e2e/app/run.sh

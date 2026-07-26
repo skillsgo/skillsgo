@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the config package imports and contracts declared in this file.
- * [OUTPUT]: Specifies Hub configuration including deployment discovery, multi-token GitHub authentication, and task execution behavior.
+ * [OUTPUT]: Specifies Hub configuration including deployment discovery, process-fixed database schema, multi-token GitHub authentication, and task execution behavior.
  * [POS]: Serves as test coverage for the config package in its renamed SkillsGo Hub or CLI workspace.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -79,6 +79,18 @@ func TestPortDefaultsCorrectly(t *testing.T) {
 	if conf.Port != expPort {
 		t.Errorf("Port was incorrect. Got: %s, want: %s", conf.Port, expPort)
 	}
+}
+
+func TestDatabaseSchemaDefaultsAndRejectsUnsafeIdentifiers(t *testing.T) {
+	setTestHome(t)
+	t.Setenv("SKILLSGO_HUB_DATABASE_SCHEMA", "")
+	conf := defaultConfig()
+	conf.Database.Schema = ""
+	require.NoError(t, envOverride(conf))
+	require.Equal(t, DefaultDatabaseSchema, conf.Database.Schema)
+
+	conf.Database.Schema = `unsafe;drop schema public`
+	require.ErrorContains(t, validateConfig(*conf), "database schema must be a lower-case PostgreSQL identifier")
 }
 
 func TestLLMEnvironmentOverrides(t *testing.T) {

@@ -8,10 +8,9 @@ part of '../fake_skills_gateway.dart';
 
 const defaultSearchResults = [
   SkillSummary(
-    repositoryId: 'example/skills/flutter-pro',
+    modulePath: 'example/skills',
     installName: 'flutter-pro',
     name: 'Flutter Pro',
-    source: 'example/skills',
     installs: 1200,
     description: 'Build Flutter products with reliable engineering flows.',
   ),
@@ -19,39 +18,13 @@ const defaultSearchResults = [
 
 final defaultRemoteDetail = SkillDetail(
   name: 'Flutter Pro',
-  source: 'example/skills',
-  repository: 'github.com/example/skills',
-  stars: 12800,
-  sourceUpdatedAt: DateTime.utc(2026, 7, 15),
+  path: 'skills/flutter-pro',
+  modulePath: 'example/skills',
+  version: 'v1.2.3',
+  time: DateTime.utc(2026, 7, 15),
   archiveSize: 24576,
   description: 'Build reliable Flutter products.',
-  markdown: '# Real instructions',
-  requestedVersion: 'main',
-  immutableVersion: 'v1.2.3',
-  commitSHA: 'commit-abc',
-  treeSHA: 'tree-def',
-  sum: 'h1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=',
-  trustLevel: SkillTrustLevel.publisherVerified,
-  riskAssessment: SkillRiskAssessment.medium,
-  riskScannerVersion: 'file-signals/v1',
-  riskEvidence: [
-    SkillRiskEvidence(code: 'script_file', path: 'scripts/run.sh'),
-  ],
-  hubExecutableSignal: true,
-  files: [
-    SkillFile(
-      path: 'SKILL.md',
-      contents: '# Real instructions',
-      kind: 'instructions',
-    ),
-    SkillFile(path: 'references/guide.md', contents: '# Supporting guide'),
-    SkillFile(
-      path: 'scripts/run.sh',
-      contents: 'echo test',
-      kind: 'script',
-      executable: true,
-    ),
-  ],
+  content: '# Real instructions',
   installationTargets: [
     SkillInstallationTarget(
       agent: 'codex',
@@ -193,7 +166,7 @@ abstract class FakeSkillsGatewayCore implements SkillsGateway {
   bool installed;
   final queries = <String>[];
   final collections = <DiscoveryCollection>[];
-  final requestedOffsets = <int>[];
+  final requestedPages = <int>[];
   int installCalls = 0;
   int repositoryInstallCalls = 0;
 

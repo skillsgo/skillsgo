@@ -23,7 +23,7 @@ mixin FakeGatewayUpdates on FakeSkillsGatewayCore {
             path: target.path,
           ),
           name: skill.name,
-          repositoryId: skill.repositoryId,
+          modulePath: skill.modulePath,
           sourceRef: 'main',
           fromVersion: target.version,
           toVersion: toVersion ?? 'v2',
@@ -39,7 +39,7 @@ mixin FakeGatewayUpdates on FakeSkillsGatewayCore {
           if (item.workspaceManifestChange)
             WorkspaceManifestChange(
               projectRoot: item.target.projectRoot,
-              path: '${item.target.projectRoot}/skillsgo.yaml',
+              path: '${item.target.projectRoot}/skills.yaml',
               skill: item.name,
               fromVersion: item.fromVersion,
               toVersion: item.toVersion,
@@ -74,7 +74,7 @@ mixin FakeGatewayUpdates on FakeSkillsGatewayCore {
           sequence: ++sequence,
           target: item.target,
           name: item.name,
-          repositoryId: item.repositoryId,
+          modulePath: item.modulePath,
           fromVersion: item.fromVersion,
           toVersion: item.toVersion,
           state: InstallationProgressState.started,
@@ -84,7 +84,7 @@ mixin FakeGatewayUpdates on FakeSkillsGatewayCore {
       final result = UpdateTargetResult(
         target: item.target,
         name: item.name,
-        repositoryId: item.repositoryId,
+        modulePath: item.modulePath,
         fromVersion: item.fromVersion,
         toVersion: item.toVersion,
         outcome: failed
@@ -104,7 +104,7 @@ mixin FakeGatewayUpdates on FakeSkillsGatewayCore {
           sequence: ++sequence,
           target: item.target,
           name: item.name,
-          repositoryId: item.repositoryId,
+          modulePath: item.modulePath,
           fromVersion: item.fromVersion,
           toVersion: item.toVersion,
           state: InstallationProgressState.finished,

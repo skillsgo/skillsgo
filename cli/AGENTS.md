@@ -10,7 +10,7 @@ This map governs the Go command-line workspace. Read it with the root constituti
 - Shared dependency: `github.com/skillsgo/skillsgo/protocol` through the repository `go.work` during development.
 - Entry point: `cmd/skillsgo/main.go`
 - Command seam: `command.Execute`
-- Product responsibility: own local Repository Vendor and Agent Projection mutations, canonical Workspace declarations and locks, immutable Info cache, and installation-state inspection.
+- Product responsibility: own local Module Store and Agent Projection mutations, canonical Workspace declarations and locks, immutable Info cache, and installation-state inspection.
 
 ## Commands
 
@@ -34,14 +34,14 @@ Use a narrower `gofmt` target when unrelated working-tree changes are present.
 | `internal/command/` | CLI command graph, argument handling, and orchestration. |
 | `internal/i18n/` | Locale detection and user-facing CLI messages. |
 | `internal/install/` | Minimal installation-scope vocabulary and External filesystem state tokens. |
-| `internal/inventory/` | Read-only Repository-managed and External Library reconciliation across YAML/Lock state, Scope Vendors, Repository Projections, known Agent Discovery Roots, Local Modifications, and derived Agent visibility. |
+| `internal/inventory/` | Read-only Module-managed and External Library reconciliation across YAML/Lock state, Scope Module Stores, Module Projections, known Agent Discovery Roots, Local Modifications, and derived Agent visibility. |
 | `internal/managementplan/` | Exact-path External Remove preflight, reviewed-state binding, and target-specific execution. |
-| `internal/project/` | Strict Repository dependencies in `skillsgo.yaml`, integrity-only `skillsgo-lock.yaml`, and their paired crash-recoverable transaction. |
-| `internal/repositorymutation/` | Ordered local Repository mutation commits spanning prepared Vendor/Projection transactions, immutable cache writes, Workspace state publication, rollback, and cleanup. |
-| `internal/infocache/` | Exact immutable Repository and Skill Info bytes used for checksum-verified offline restore. |
-| `internal/hub/` | Client for add-time product-API Repository resolution followed by exact root Proxy Info/ZIP, typed membership, bounded download, and Repository h1 verification. |
+| `internal/project/` | Strict Module dependencies in `skills.yaml`, integrity-only `skills-lock.yaml`, and their paired crash-recoverable transaction. |
+| `internal/repositorymutation/` | Ordered local Module mutation commits spanning prepared Module Store/Projection transactions, immutable cache writes, Workspace state publication, rollback, and cleanup. |
+| `internal/infocache/` | Exact immutable Module Info bytes used for checksum-verified offline restore. |
+| `internal/hub/` | Client for add-time Module Version Queries followed by exact Module Version metadata/ZIP resources, typed membership, bounded download, and Module h1 verification. |
 | `internal/source/` | Repository ID parsing, source reference normalization, and explicitly isolated third-party skills.sh identity validation. |
-| `internal/scopevendor/` | Complete ordinary-file Repository Vendor extraction and deterministic per-Agent Repository Projection transactions. |
+| `internal/modulestore/` | Complete ordinary-file Module Store extraction and deterministic per-Agent Module Projection transactions. |
 | `internal/strictjson/` | Shared strict decoding for repeated machine-input JSON object lists at CLI Plan boundaries. |
 | `internal/terminalui/` | Human terminal documents, automatic Interactive/Plain selection, responsive styling, and live operation progress. |
 | `internal/trash/` | Cross-platform recoverable disposal of user-owned installation content through the desktop Trash or Recycle Bin. |

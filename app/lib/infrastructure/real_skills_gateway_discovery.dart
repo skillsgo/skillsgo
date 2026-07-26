@@ -1,6 +1,6 @@
 /*
  * [INPUT]: Depends on the shared gateway state, Hub runtime discovery, direct Cloud-composed ranking reads, content locale, CLI Skill reads, strict machine codecs, and discovery domain models.
- * [OUTPUT]: Provides locale-aware single and bounded-chunk batch Hub Find plus Cloud-composed Ranking/Trending/Hot cards, direct explicit-source routing, and remote Skill detail loading.
+ * [OUTPUT]: Provides locale-aware single and bounded-chunk batch Hub Find plus Cloud-composed Ranking/Trending/Hot cards, direct explicit-source routing, and strict eight-field Module Version Skill detail loading.
  * [POS]: Serves as the public discovery capability inside the RealSkillsGateway adapter.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -15,8 +15,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
   Future<DiscoveryPage> discover(
     DiscoveryCollection collection, {
     String query = '',
-    int offset = 0,
-    int limit = 20,
+    int page = 0,
+    int perPage = 20,
   }) async {
     final trimmedQuery = query.trim();
     if (collection == DiscoveryCollection.search && trimmedQuery.isEmpty) {
@@ -46,34 +46,34 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
           _hubOrigin,
           '--content-locale',
           await _contentLocale(),
-          '--offset',
-          '$offset',
-          '--limit',
-          '$limit',
+          '--page',
+          '$page',
+          '--per-page',
+          '$perPage',
         ]);
         if (!result.succeeded) throw _commandFailure(result);
         decoded = jsonDecode(result.output.stdout);
       } else {
         decoded = await _loadCloudRanking(
           expectedCollection,
-          offset: offset,
-          limit: limit,
+          page: page,
+          perPage: perPage,
         );
       }
       if (decoded is! Map<String, dynamic> ||
-          decoded['collection'] != expectedCollection ||
+          (collection != DiscoveryCollection.search &&
+              decoded['collection'] != expectedCollection) ||
           decoded['skills'] is! List ||
-          decoded['page'] is! Map<String, dynamic>) {
+          decoded['pagination'] is! Map<String, dynamic>) {
         throw const SkillsException(
           'Discovery service returned an invalid response.',
           kind: SkillsFailureKind.invalidResponse,
         );
       }
-      final page = decoded['page'] as Map<String, dynamic>;
-      final nextRaw = page['nextOffset'];
-      if (page['limit'] is! num ||
-          page['offset'] is! num ||
-          (nextRaw != null && nextRaw is! num)) {
+      final pagination = decoded['pagination'] as Map<String, dynamic>;
+      if (pagination['page'] is! num ||
+          pagination['perPage'] is! num ||
+          pagination['hasMore'] is! bool) {
         throw const SkillsException(
           'Discovery pagination is invalid.',
           kind: SkillsFailureKind.invalidResponse,
@@ -86,8 +86,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
           projects: await loadAddedProjects(),
         );
         for (final skill in installed) {
-          if (skill.repositoryId.isNotEmpty) {
-            installedCounts['${skill.repositoryId}\u0000${skill.name}'] =
+          if (skill.modulePath.isNotEmpty) {
+            installedCounts['${skill.modulePath}\u0000${skill.name}'] =
                 skill.targetCount;
           }
         }
@@ -102,19 +102,16 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
                 kind: SkillsFailureKind.invalidResponse,
               );
             }
-            final source = raw['source'];
             final installName =
-                raw['skillPath'] is String &&
-                    (raw['skillPath'] as String).isNotEmpty
-                ? p.basename(raw['skillPath'] as String)
+                raw['path'] is String && (raw['path'] as String).isNotEmpty
+                ? p.basename(raw['path'] as String)
                 : raw['name'];
-            final repositoryId = raw['repositoryId'];
+            final modulePath = raw['modulePath'];
             final name = raw['name'];
             final description = raw['description'];
             final version = raw['latestVersion'];
-            if (source is! String ||
-                installName is! String ||
-                repositoryId is! String ||
+            if (installName is! String ||
+                modulePath is! String ||
                 name is! String ||
                 description is! String ||
                 version is! String) {
@@ -142,35 +139,33 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
               );
             }
             return SkillSummary(
-              repositoryId: repositoryId,
+              modulePath: modulePath,
               installName: installName,
               name: name,
-              source: source,
-              skillPath: raw['skillPath'] is String
-                  ? raw['skillPath'] as String
-                  : '',
+              path: raw['path'] is String ? raw['path'] as String : '',
               imageUrl: imageUrl as String?,
               description: description,
               installs: metric is Map<String, dynamic>
                   ? (metric['value'] as num).toInt()
                   : 0,
               latestVersion: version,
-              trustLevel: _trustLevel(raw['trustLevel']),
-              riskAssessment: _riskAssessment(raw['riskAssessment']),
               metricKind: metric is Map<String, dynamic>
                   ? _metricKind(metric['kind'] as String)
                   : null,
               metricChange: metric is Map<String, dynamic>
                   ? (metric['change'] as num).toInt()
                   : 0,
-              localTargetCount:
-                  installedCounts['$repositoryId\u0000$name'] ?? 0,
+              localTargetCount: installedCounts['$modulePath\u0000$name'] ?? 0,
             );
           })
           .toList(growable: false);
       return DiscoveryPage(
         skills: skills,
-        nextOffset: nextRaw == null ? null : (nextRaw as num).toInt(),
+        pagination: Pagination(
+          page: (pagination['page'] as num).toInt(),
+          perPage: (pagination['perPage'] as num).toInt(),
+          hasMore: pagination['hasMore'] as bool,
+        ),
       );
     } on SkillsException {
       rethrow;
@@ -183,8 +178,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
   }
 
   @override
-  Future<List<SourceFindResult>> findSources(
-    List<SourceFindQuery> queries, {
+  Future<List<List<SkillSummary>>> findSources(
+    List<ModuleFindQuery> queries, {
     int limit = 10,
   }) async {
     if (queries.isEmpty ||
@@ -198,14 +193,14 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     }
     await _ensureHubOrigin();
     final locale = await _contentLocale();
-    final chunks = <List<SourceFindQuery>>[
+    final chunks = <List<ModuleFindQuery>>[
       for (var start = 0; start < queries.length; start += _sourceFindChunkSize)
         queries.sublist(
           start,
           (start + _sourceFindChunkSize).clamp(0, queries.length),
         ),
     ];
-    final results = <SourceFindResult>[];
+    final results = <List<SkillSummary>>[];
     for (
       var start = 0;
       start < chunks.length;
@@ -226,20 +221,18 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     return results;
   }
 
-  Future<List<SourceFindResult>> _findSourceChunk(
-    List<SourceFindQuery> queries, {
+  Future<List<List<SkillSummary>>> _findSourceChunk(
+    List<ModuleFindQuery> queries, {
     required int limit,
     required String locale,
   }) async {
     final request = jsonEncode({
-      'schemaVersion': 1,
       'queries': [
         for (final query in queries)
           {
-            'id': query.id,
-            'q': query.name,
-            'exactName': true,
-            if (query.source.trim().isNotEmpty) 'source': query.source.trim(),
+            'name': query.name,
+            if (query.modulePath.trim().isNotEmpty)
+              'modulePath': query.modulePath.trim(),
           },
       ],
       'limit': limit,
@@ -256,27 +249,21 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     if (!result.succeeded) throw _commandFailure(result);
     try {
       final decoded = jsonDecode(result.output.stdout);
-      if (decoded is! Map<String, dynamic> ||
-          decoded['schemaVersion'] != 1 ||
-          decoded['collection'] != 'find' ||
-          decoded['results'] is! List) {
+      if (decoded is! Map<String, dynamic> || decoded['candidates'] is! List) {
         throw const FormatException();
       }
-      return (decoded['results'] as List)
-          .map((rawResult) {
-            if (rawResult is! Map<String, dynamic> ||
-                rawResult['id'] is! String ||
-                rawResult['skills'] is! List) {
+      final candidates = (decoded['candidates'] as List)
+          .map((rawCandidates) {
+            if (rawCandidates is! List) {
               throw const FormatException();
             }
-            return SourceFindResult(
-              id: rawResult['id'] as String,
-              skills: (rawResult['skills'] as List)
-                  .map(_decodeFindSkill)
-                  .toList(growable: false),
-            );
+            return rawCandidates
+                .map(_decodeSkillCandidate)
+                .toList(growable: false);
           })
           .toList(growable: false);
+      if (candidates.length != queries.length) throw const FormatException();
+      return candidates;
     } on FormatException {
       throw const SkillsException(
         'Find service returned invalid JSON.',
@@ -285,42 +272,34 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     }
   }
 
-  SkillSummary _decodeFindSkill(Object? raw) {
+  SkillSummary _decodeSkillCandidate(Object? raw) {
     if (raw is! Map<String, dynamic>) throw const FormatException();
-    final repositoryId = raw['repositoryId'];
+    final modulePath = raw['modulePath'];
     final name = raw['name'];
     final description = raw['description'];
-    final source = raw['source'];
-    final latestVersion = raw['latestVersion'];
-    final skillPath = raw['skillPath'];
-    if (repositoryId is! String ||
+    final version = raw['version'];
+    final path = raw['path'];
+    if (modulePath is! String ||
         name is! String ||
         description is! String ||
-        source is! String ||
-        latestVersion is! String ||
-        skillPath is! String) {
+        version is! String ||
+        path is! String) {
       throw const FormatException();
     }
-    final imageUrl = raw['imageUrl'];
-    if (imageUrl != null && imageUrl is! String) throw const FormatException();
     return SkillSummary(
-      repositoryId: repositoryId,
-      installName: skillPath.isNotEmpty ? p.basename(skillPath) : name,
+      modulePath: modulePath,
+      installName: path.isNotEmpty ? p.basename(path) : name,
       name: name,
-      source: source,
-      skillPath: skillPath,
-      imageUrl: imageUrl as String?,
+      path: path,
       description: description,
-      latestVersion: latestVersion,
-      trustLevel: _trustLevel(raw['trustLevel']),
-      riskAssessment: _riskAssessment(raw['riskAssessment']),
+      latestVersion: version,
     );
   }
 
   Future<Map<String, dynamic>> _loadCloudRanking(
     String collection, {
-    required int offset,
-    required int limit,
+    required int page,
+    required int perPage,
   }) async {
     final runtime = await loadHubRuntime();
     final cloud = runtime.cloudOrigin;
@@ -331,7 +310,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       );
     }
     final uri = cloud.resolve(
-      'api/v1/rankings/$collection?offset=$offset&limit=$limit',
+      'api/v1/rankings/$collection?page=$page&perPage=$perPage',
     );
     final client = HttpClient();
     try {
@@ -353,22 +332,19 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       if (cloudDocument is! Map<String, dynamic> ||
           cloudDocument['collection'] != collection ||
           cloudDocument['items'] is! List ||
-          cloudDocument['page'] is! Map<String, dynamic>) {
+          cloudDocument['pagination'] is! Map<String, dynamic>) {
         throw const FormatException('Invalid Cloud ranking response.');
       }
       final items = cloudDocument['items'] as List;
       final skills = <Map<String, dynamic>>[];
       for (final raw in items) {
         if (raw is! Map<String, dynamic> ||
-            raw['repositoryId'] is! String ||
+            raw['modulePath'] is! String ||
             raw['skillName'] is! String ||
             raw['name'] is! String ||
             raw['description'] is! String ||
-            raw['source'] is! String ||
-            raw['skillPath'] is! String ||
+            raw['path'] is! String ||
             raw['latestVersion'] is! String ||
-            raw['trustLevel'] is! String ||
-            raw['riskAssessment'] is! String ||
             raw['metric'] is! Map<String, dynamic>) {
           throw const FormatException('Invalid Cloud ranking item.');
         }
@@ -380,7 +356,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       return {
         'collection': collection,
         'skills': skills,
-        'page': cloudDocument['page'],
+        'pagination': cloudDocument['pagination'],
       };
     } on TimeoutException {
       throw const SkillsException(
@@ -422,14 +398,13 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     try {
       final decoded = jsonDecode(result.output.stdout);
       if (decoded is! Map<String, dynamic> ||
-          decoded['SchemaVersion'] != 1 ||
-          decoded['Kind'] is! String) {
+          decoded['schemaVersion'] != 1 ||
+          decoded['kind'] is! String) {
         throw const FormatException('Invalid SkillsGo Info response.');
       }
-      final rawSkills = switch (decoded['Kind']) {
+      final rawSkills = switch (decoded['kind']) {
         'Skill' => <Object?>[decoded],
-        'Repository' when decoded['Skills'] is List =>
-          decoded['Skills'] as List,
+        'Module' when decoded['skills'] is List => decoded['skills'] as List,
         _ => throw const FormatException('Unknown SkillsGo Info kind.'),
       };
       final installedCounts = <String, int>{};
@@ -438,8 +413,8 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
           projects: await loadAddedProjects(),
         );
         for (final skill in installed) {
-          if (skill.repositoryId.isNotEmpty) {
-            installedCounts['${skill.repositoryId}\u0000${skill.name}'] =
+          if (skill.modulePath.isNotEmpty) {
+            installedCounts['${skill.modulePath}\u0000${skill.name}'] =
                 skill.targetCount;
           }
         }
@@ -451,36 +426,32 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
             if (raw is! Map<String, dynamic>) {
               throw const FormatException('Invalid Skill Info member.');
             }
-            final repositoryId = raw['RepositoryID'];
-            final name = raw['Name'];
-            final description = raw['Description'];
-            final version = raw['Version'];
-            final skillPath = raw['SkillPath'];
-            if (repositoryId is! String ||
+            final modulePath = raw['modulePath'];
+            final name = raw['name'];
+            final description = raw['description'];
+            final version = raw['version'];
+            final path = raw['path'];
+            if (modulePath is! String ||
                 name is! String ||
                 description is! String ||
                 version is! String ||
-                skillPath is! String ||
-                skillPath.isEmpty) {
+                path is! String ||
+                path.isEmpty) {
               throw const FormatException('Incomplete Skill Info member.');
             }
-            final imageURL = raw['ImageURL'];
+            final imageURL = raw['imageUrl'];
             if (imageURL != null && imageURL is! String) {
               throw const FormatException('Invalid Skill Info image URL.');
             }
             return SkillSummary(
-              repositoryId: repositoryId,
+              modulePath: modulePath,
               installName: name,
               name: name,
-              source: repositoryId,
-              skillPath: skillPath,
+              path: path,
               imageUrl: imageURL as String?,
               description: description,
               latestVersion: version,
-              trustLevel: _trustLevel(raw['TrustLevel']),
-              riskAssessment: _riskAssessment(raw['RiskAssessment']),
-              localTargetCount:
-                  installedCounts['$repositoryId\u0000$name'] ?? 0,
+              localTargetCount: installedCounts['$modulePath\u0000$name'] ?? 0,
             );
           })
           .toList(growable: false);
@@ -488,34 +459,31 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       final firstSkillMap = firstSkill is Map<String, dynamic>
           ? firstSkill
           : null;
-      final repositoryID = decoded['Kind'] == 'Repository'
-          ? decoded['ID']
+      final modulePath = decoded['kind'] == 'Module'
+          ? decoded['modulePath']
           : skills.isEmpty
           ? null
-          : skills.first.source;
-      final repositoryTime = decoded['Time'];
+          : skills.first.modulePath;
+      final repositoryTime = decoded['time'];
       return DiscoveryPage(
         skills: skills,
-        repository: repositoryID is String
-            ? RepositorySummary(
-                id: repositoryID,
-                imageUrl: firstSkillMap?['ImageURL'] as String?,
-                description: decoded['Description'] is String
-                    ? decoded['Description'] as String
+        module: modulePath is String
+            ? ModuleSummary(
+                id: modulePath,
+                imageUrl: firstSkillMap?['imageUrl'] as String?,
+                description: decoded['description'] is String
+                    ? decoded['description'] as String
                     : '',
-                stars: firstSkillMap?['Stars'] is num
-                    ? (firstSkillMap!['Stars'] as num).toInt()
+                stars: firstSkillMap?['stars'] is num
+                    ? (firstSkillMap!['stars'] as num).toInt()
                     : 0,
-                latestVersion: decoded['Version'] is String
-                    ? decoded['Version'] as String
+                latestVersion: decoded['version'] is String
+                    ? decoded['version'] as String
                     : skills.isEmpty
                     ? ''
                     : skills.first.latestVersion,
                 updatedAt: repositoryTime is String
                     ? DateTime.tryParse(repositoryTime)
-                    : null,
-                license: decoded['License'] is String
-                    ? decoded['License'] as String
                     : null,
               )
             : null,
@@ -534,12 +502,11 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
     try {
       final result = await _runCli([
         'detail',
-        skill.repositoryId,
-        skill.name,
+        skill.modulePath,
+        skill.latestVersion,
+        skill.path,
         '--hub',
         _hubOrigin,
-        '--content-locale',
-        await _contentLocale(),
       ]);
       if (!result.succeeded) throw _commandFailure(result);
       final decoded = jsonDecode(result.output.stdout);
@@ -550,90 +517,21 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         );
       }
       const requiredStrings = [
-        'repositoryId',
+        'modulePath',
+        'version',
         'name',
+        'path',
         'description',
-        'source',
-        'repository',
-        'requestedVersion',
-        'immutableVersion',
-        'commitSHA',
-        'treeSHA',
-        'sourceRef',
-        'sum',
-        'instructions',
-        'trustLevel',
+        'content',
       ];
       if (requiredStrings.any((field) => decoded[field] is! String) ||
-          (decoded['imageUrl'] != null && decoded['imageUrl'] is! String) ||
-          decoded['stars'] is! num ||
-          decoded['sourceUpdatedAt'] is! String ||
+          decoded['time'] is! String ||
           decoded['archiveSize'] is! num ||
-          decoded['repositoryId'] != skill.repositoryId ||
+          decoded['modulePath'] != skill.modulePath ||
           decoded['name'] != skill.name ||
-          decoded['riskAssessment'] is! Map<String, dynamic> ||
-          decoded['files'] is! List ||
-          decoded['hasExecutableContent'] is! bool ||
-          decoded['executableFiles'] is! List) {
+          decoded['path'] != skill.path) {
         throw const SkillsException(
           'Skill detail is missing required fields.',
-          kind: SkillsFailureKind.invalidResponse,
-        );
-      }
-      final risk = decoded['riskAssessment'] as Map<String, dynamic>;
-      if (risk['level'] is! String ||
-          risk['scannerVersion'] is! String ||
-          risk['evidence'] is! List) {
-        throw const SkillsException(
-          'Skill Risk Assessment is invalid.',
-          kind: SkillsFailureKind.invalidResponse,
-        );
-      }
-      final evidence = (risk['evidence'] as List)
-          .map((raw) {
-            if (raw is! Map<String, dynamic> ||
-                raw['code'] is! String ||
-                raw['path'] is! String) {
-              throw const SkillsException(
-                'Skill risk evidence is invalid.',
-                kind: SkillsFailureKind.invalidResponse,
-              );
-            }
-            return SkillRiskEvidence(
-              code: raw['code'] as String,
-              path: raw['path'] as String,
-            );
-          })
-          .toList(growable: false);
-      final files = (decoded['files'] as List)
-          .map((raw) {
-            if (raw is! Map<String, dynamic> ||
-                raw['path'] is! String ||
-                raw['size'] is! num ||
-                raw['kind'] is! String ||
-                raw['executable'] is! bool ||
-                raw['binary'] is! bool ||
-                raw['truncated'] is! bool ||
-                (raw['content'] != null && raw['content'] is! String)) {
-              throw const SkillsException(
-                'Skill file inventory is invalid.',
-                kind: SkillsFailureKind.invalidResponse,
-              );
-            }
-            return SkillFile(
-              path: raw['path'] as String,
-              contents: raw['content'] as String? ?? '',
-              size: (raw['size'] as num).toInt(),
-              kind: raw['kind'] as String,
-              executable: raw['executable'] as bool,
-              binary: raw['binary'] as bool,
-              truncated: raw['truncated'] as bool,
-            );
-          })
-          .toList(growable: false);
-      if ((decoded['executableFiles'] as List).any((path) => path is! String)) {
-        throw const SkillsException(
-          'Executable file signals are invalid.',
           kind: SkillsFailureKind.invalidResponse,
         );
       }
@@ -645,7 +543,7 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
         installationTargets = installed
             .where(
               (entry) =>
-                  entry.repositoryId == skill.repositoryId &&
+                  entry.modulePath == skill.modulePath &&
                   entry.name == skill.name,
             )
             .expand((entry) => entry.targets)
@@ -655,29 +553,14 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       }
       return SkillDetail(
         name: decoded['name'] as String,
-        source: decoded['source'] as String,
-        markdown: decoded['instructions'] as String,
-        files: files,
-        imageUrl: decoded['imageUrl'] as String?,
-        repository: decoded['repository'] as String,
-        stars: (decoded['stars'] as num).toInt(),
-        sourceUpdatedAt: DateTime.parse(
-          decoded['sourceUpdatedAt'] as String,
-        ).toLocal(),
+        path: decoded['path'] as String,
+        content: decoded['content'] as String,
+        modulePath: decoded['modulePath'] as String,
+        version: decoded['version'] as String,
+        time: DateTime.parse(decoded['time'] as String).toLocal(),
         archiveSize: (decoded['archiveSize'] as num).toInt(),
         description: decoded['description'] as String,
-        requestedVersion: decoded['requestedVersion'] as String,
-        immutableVersion: decoded['immutableVersion'] as String,
-        commitSHA: decoded['commitSHA'] as String,
-        treeSHA: decoded['treeSHA'] as String,
-        sourceRef: decoded['sourceRef'] as String,
-        sum: decoded['sum'] as String,
-        trustLevel: _trustLevel(decoded['trustLevel']),
-        riskAssessment: _riskAssessment(risk['level']),
-        riskScannerVersion: risk['scannerVersion'] as String,
-        riskEvidence: evidence,
         installationTargets: installationTargets,
-        hubExecutableSignal: decoded['hasExecutableContent'] as bool,
       );
     } on SkillsException {
       rethrow;

@@ -21,28 +21,28 @@ func TestBusinessJobKindsAreStableAndDescriptive(t *testing.T) {
 		kind string
 	}{
 		{"Repository source metadata refresh", repositorySourceMetadataRefreshArgs{}.Kind()},
-		{"Repository publication prewarm", repositoryPublicationPrewarmArgs{}.Kind()},
+		{"Module publication prewarm", modulePublicationPrewarmArgs{}.Kind()},
 		{"description translation batch", descriptionTranslationBatchArgs{}.Kind()},
 	}
 	require.Equal(t, []string{
 		"repository_source_metadata_refresh",
-		"repository_publication_prewarm",
+		"module_publication_prewarm",
 		"description_translation_batch",
 	}, []string{tests[0].kind, tests[1].kind, tests[2].kind})
 }
 
 type recordingMaterializer struct {
-	repositoryID string
-	query        string
-	err          error
+	modulePath string
+	query      string
+	err        error
 }
 
-func (m *recordingMaterializer) Materialize(_ context.Context, repositoryID, query string) (string, error) {
-	m.repositoryID, m.query = repositoryID, query
+func (m *recordingMaterializer) Materialize(_ context.Context, modulePath, query string) (string, error) {
+	m.modulePath, m.query = modulePath, query
 	return "v1.0.0", m.err
 }
 
-func TestRepositoryPrewarmTaskDefaultsToHeadAndPropagatesFailure(t *testing.T) {
+func TestRepositoryPrewarmTaskDefaultsToLatestAndPropagatesFailure(t *testing.T) {
 	wantErr := errors.New("clone failed")
 	materializer := &recordingMaterializer{err: wantErr}
 	runtime := taskqueue.NewSynchronous()
@@ -50,7 +50,7 @@ func TestRepositoryPrewarmTaskDefaultsToHeadAndPropagatesFailure(t *testing.T) {
 
 	err := enqueueRepositoryPrewarm(t.Context(), runtime, "github.com/acme/skills", "")
 	require.ErrorIs(t, err, wantErr)
-	require.Equal(t, "github.com/acme/skills", materializer.repositoryID)
-	require.Equal(t, "head", materializer.query)
-	require.ErrorContains(t, runtime.Enqueue(t.Context(), repositoryPublicationPrewarmArgs{}, taskqueue.InsertOptions{}), "requires repository_id")
+	require.Equal(t, "github.com/acme/skills", materializer.modulePath)
+	require.Equal(t, "latest", materializer.query)
+	require.ErrorContains(t, runtime.Enqueue(t.Context(), modulePublicationPrewarmArgs{}, taskqueue.InsertOptions{}), "requires module_path")
 }

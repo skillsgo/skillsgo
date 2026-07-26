@@ -26,7 +26,7 @@ extension _LocalDetailRendering on _LocalDetailScreenState {
           ),
           const SizedBox(width: 8),
         ],
-        if (detail?.immutableVersion.isNotEmpty ?? false) ...[
+        if (detail?.version.isNotEmpty ?? false) ...[
           InstallLocationMenuAnchor(
             builder: (context, present) => PrimaryCapsuleButton(
               label: context.l10n.installMoreTargets,
@@ -54,9 +54,7 @@ extension _LocalDetailRendering on _LocalDetailScreenState {
         : 0.0;
     final materialProgress = ((offset - 12) / 52).clamp(0.0, 1.0);
     final compactProgress = ((offset - 72) / 56).clamp(0.0, 1.0);
-    final source =
-        remoteIdentity?.source ??
-        (skill.repositoryId.isNotEmpty ? skill.repositoryId : skill.name);
+    final source = skill.modulePath.isNotEmpty ? skill.modulePath : skill.name;
     return SizedBox(
       key: const Key('installed-detail-sticky-toolbar'),
       height: 72,
@@ -150,7 +148,6 @@ extension _LocalDetailRendering on _LocalDetailScreenState {
                           children: [
                             RepositoryAvatar(
                               source: source,
-                              imageUrl: remoteIdentity?.imageUrl,
                               size: 26,
                               borderRadius: 7,
                             ),

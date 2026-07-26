@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on explicit or locally inferred Library scopes, the Agent Catalog, and the unified read-only inventory reconciliation domain.
  * [OUTPUT]: Provides `skillsgo verify` health verification and `skillsgo why` direct declaration/target explanations in human or JSON form.
- * [POS]: Serves as the CLI inspection adapter over inventory truth without mutating Vendors, declarations, or Projections.
+ * [POS]: Serves as the CLI inspection adapter over inventory truth without mutating Module Stores, declarations, or Projections.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -27,10 +27,10 @@ type verificationReport struct {
 }
 
 type verificationRow struct {
-	RepositoryID string           `json:"repositoryId,omitempty"`
-	Name         string           `json:"name"`
-	Health       inventory.Health `json:"health"`
-	Targets      int              `json:"targets"`
+	ModulePath string           `json:"modulePath,omitempty"`
+	Name       string           `json:"name"`
+	Health     inventory.Health `json:"health"`
+	Targets    int              `json:"targets"`
 }
 
 type whyReport struct {
@@ -57,7 +57,7 @@ func newVerifyCommand(catalog *agent.Catalog) *cobra.Command {
 			}
 			report := verificationReport{Healthy: true, Entries: make([]verificationRow, 0, len(reconciled.Entries))}
 			for _, entry := range reconciled.Entries {
-				report.Entries = append(report.Entries, verificationRow{RepositoryID: entry.RepositoryID, Name: entry.Name, Health: entry.Health, Targets: len(entry.Targets)})
+				report.Entries = append(report.Entries, verificationRow{ModulePath: entry.ModulePath, Name: entry.Name, Health: entry.Health, Targets: len(entry.Targets)})
 				if entry.Health != inventory.HealthHealthy {
 					report.Healthy = false
 				}
@@ -113,7 +113,7 @@ func newWhyCommand(catalog *agent.Catalog) *cobra.Command {
 						if target.ProjectRoot != "" {
 							scope += ":" + target.ProjectRoot
 						}
-						rows = append(rows, terminalui.Row{State: "•", Primary: entry.Name, Secondary: target.Version, Meta: []string{entry.RepositoryID, scope, target.Agent, target.Path}})
+						rows = append(rows, terminalui.Row{State: "•", Primary: entry.Name, Secondary: target.Version, Meta: []string{entry.ModulePath, scope, target.Agent, target.Path}})
 					}
 				}
 				ui, err := humanUI(cmd)
@@ -161,7 +161,7 @@ func writeVerificationReport(cmd *cobra.Command, output string, report verificat
 			if entry.Health != inventory.HealthHealthy {
 				state = "!"
 			}
-			rows = append(rows, terminalui.Row{State: state, Primary: entry.Name, Secondary: string(entry.Health), Meta: []string{entry.RepositoryID, fmt.Sprintf("%d", entry.Targets)}})
+			rows = append(rows, terminalui.Row{State: state, Primary: entry.Name, Secondary: string(entry.Health), Meta: []string{entry.ModulePath, fmt.Sprintf("%d", entry.Targets)}})
 		}
 		ui, err := humanUI(cmd)
 		if err != nil {
