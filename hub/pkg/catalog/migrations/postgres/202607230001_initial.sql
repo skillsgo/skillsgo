@@ -44,9 +44,10 @@ CREATE TABLE skills (
   verified BOOLEAN NOT NULL DEFAULT FALSE,
   created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(repository_id, name)
+  UNIQUE(repository_id, skill_path)
 );
 CREATE INDEX skills_repository_id ON skills(repository_id);
+CREATE INDEX skills_name_lower ON skills(lower(name));
 CREATE INDEX skills_search_trgm ON skills USING gin ((name || ' ' || description) gin_trgm_ops);
 CREATE TABLE repository_release_members (
   id BIGSERIAL PRIMARY KEY,
@@ -54,7 +55,7 @@ CREATE TABLE repository_release_members (
   name TEXT NOT NULL,
   skill_path TEXT NOT NULL,
   tree_sha TEXT NOT NULL,
-  UNIQUE(release_id, name)
+  UNIQUE(release_id, skill_path)
 );
 CREATE TABLE localized_descriptions (
   id BIGSERIAL PRIMARY KEY,
