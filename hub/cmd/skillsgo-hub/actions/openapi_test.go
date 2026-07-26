@@ -1,12 +1,13 @@
 /*
- * [INPUT]: Depends on Huma-generated Hub OpenAPI, Scalar routes, embedded assets, and Fiber's in-memory HTTP tester.
- * [OUTPUT]: Specifies non-cacheable typed current API documentation plus self-hosted, compressed, immutable Scalar delivery.
+ * [INPUT]: Depends on Huma-generated Hub OpenAPI, the contextual Scalar HTML template, embedded assets, and Fiber's in-memory HTTP tester.
+ * [OUTPUT]: Specifies injection-safe non-cacheable API documentation plus self-hosted, compressed, immutable Scalar delivery.
  * [POS]: Serves as the route-drift contract between Hub documentation and the HTTP Router.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package actions
 
 import (
+	"bytes"
 	"encoding/json"
 	"io"
 	"net/http"
@@ -17,6 +18,20 @@ import (
 	"github.com/skillsgo/skillsgo/hub/pkg/config"
 	"github.com/stretchr/testify/require"
 )
+
+func TestScalarPageTemplateContextuallyEscapesAttributes(t *testing.T) {
+	var rendered bytes.Buffer
+	require.NoError(t, scalarPageTemplate.Execute(&rendered, struct {
+		SpecURL        string
+		ScriptURL      string
+		RendererConfig string
+	}{`/openapi.json" onload="alert(1)`, `/asset.js" onload="alert(1)`, `{"value":"\" onload=\"alert(1)"}`}))
+
+	body := rendered.String()
+	require.NotContains(t, body, `" onload="alert(1)`)
+	require.Contains(t, body, `/openapi.json%22%20onload=%22alert%281%29`)
+	require.Contains(t, body, `{&#34;value&#34;:&#34;\&#34; onload=\&#34;alert(1)&#34;}`)
+}
 
 func TestOpenAPIDocumentsCurrentPublicRoutes(t *testing.T) {
 	app := newFiberApp()

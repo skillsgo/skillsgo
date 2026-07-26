@@ -1,7 +1,7 @@
 /*
- * [INPUT]: Depends on the fs package imports and contracts declared in this file.
- * [OUTPUT]: Provides the fs package behavior implemented by fs.go.
- * [POS]: Serves as maintained source in the fs package in its renamed SkillsGo Hub or CLI workspace.
+ * [INPUT]: Depends on the configured artifact root and untrusted Module/version/path coordinate segments.
+ * [OUTPUT]: Provides the filesystem backend plus containment-checked artifact and Skill-content locations.
+ * [POS]: Serves as the filesystem storage root and path-security boundary shared by every fs backend operation.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package fs
@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/skillsgo/skillsgo/hub/pkg/errors"
 	"github.com/skillsgo/skillsgo/hub/pkg/storage"
@@ -21,16 +22,21 @@ type storageImpl struct {
 	filesystem afero.Fs
 }
 
-func (s *storageImpl) moduleLocation(module string) string {
-	return filepath.Join(s.rootDir, module)
+func (s *storageImpl) containedLocation(parts ...string) (string, error) {
+	location := filepath.Join(append([]string{s.rootDir}, parts...)...)
+	relative, err := filepath.Rel(s.rootDir, location)
+	if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) || filepath.IsAbs(relative) {
+		return "", fmt.Errorf("storage coordinate escapes artifact root")
+	}
+	return location, nil
 }
 
-func (s *storageImpl) versionLocation(module, version string) string {
-	return filepath.Join(s.moduleLocation(module), version)
+func (s *storageImpl) versionLocation(module, version string) (string, error) {
+	return s.containedLocation(module, version)
 }
 
-func (s *storageImpl) skillContentLocation(module, version, skillPath string) string {
-	return filepath.Join(s.versionLocation(module, version), "skills", filepath.FromSlash(skillPath), "SKILL.md")
+func (s *storageImpl) skillContentLocation(module, version, skillPath string) (string, error) {
+	return s.containedLocation(module, version, "skills", filepath.FromSlash(skillPath), "SKILL.md")
 }
 
 // NewStorage returns a new ListerSaver implementation that stores

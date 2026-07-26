@@ -34,7 +34,10 @@ func (s *storageImpl) PutIfAbsent(ctx context.Context, module, version string, z
 	const op errors.Op = "fs.Save"
 	_, span := observ.StartSpan(ctx, op.String())
 	defer span.End()
-	dir := s.versionLocation(module, version)
+	dir, locationErr := s.versionLocation(module, version)
+	if locationErr != nil {
+		return false, errors.E(op, locationErr, errors.S(module), errors.V(version), errors.KindBadRequest)
+	}
 	archive, err := io.ReadAll(io.LimitReader(zip, protocolartifact.MaxArchiveBytes+1))
 	if err != nil {
 		return false, errors.E(op, err, errors.S(module), errors.V(version))
