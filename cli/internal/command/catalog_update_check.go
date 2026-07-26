@@ -1,7 +1,7 @@
 /*
  * [INPUT]: Depends on repeated App-supplied Module Path plus Skill name coordinates and the Hub client's Module-fresh latest read.
- * [OUTPUT]: Provides the read-only `updates check` machine command with one Go-compatible latest status per Library entry.
- * [POS]: Serves as the batch update-availability boundary between the App's local inventory and the independently built Hub Catalog.
+ * [OUTPUT]: Provides the read-only `updates check` command with Human-default and explicit JSON status per Library entry.
+ * [POS]: Serves as the batch update-availability boundary for terminal users and the App's local inventory.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
 package command
@@ -48,9 +48,7 @@ func newUpdatesCommand() *cobra.Command {
 		Use:  "check",
 		Args: cobra.NoArgs,
 		RunE: func(cmd *cobra.Command, _ []string) error {
-			if output != "json" {
-				return fmt.Errorf("updates check requires --output json")
-			}
+			if err := validateProductOutput(output); err != nil { return err }
 			candidates, err := decodeCatalogUpdateCandidates(rawInstalled)
 			if err != nil {
 				return err
@@ -92,14 +90,22 @@ func newUpdatesCommand() *cobra.Command {
 				}
 				report.Items = append(report.Items, item)
 			}
-			encoder := json.NewEncoder(cmd.OutOrStdout())
-			encoder.SetIndent("", "  ")
-			return encoder.Encode(report)
+			if output == "json" {
+				encoder := json.NewEncoder(cmd.OutOrStdout())
+				encoder.SetIndent("", "  ")
+				return encoder.Encode(report)
+			}
+			for _, item := range report.Items {
+				latest := item.LatestVersion
+				if latest == "" { latest = "unavailable" }
+				if _, err := fmt.Fprintf(cmd.OutOrStdout(), "%s  %s  latest: %s\n", item.Name, item.Status, latest); err != nil { return err }
+			}
+			return nil
 		},
 	}
 	check.Flags().StringArrayVar(&rawInstalled, "installed", nil, "installed Skill JSON; repeatable")
 	check.Flags().StringVar(&hubURL, "hub", defaultHubURL(), "Hub origin")
-	check.Flags().StringVar(&output, "output", "json", "machine output format")
+	check.Flags().StringVar(&output, "output", "human", "output format: human or json")
 	root.AddCommand(check)
 	return root
 }

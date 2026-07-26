@@ -330,17 +330,15 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
       }
       final cloudDocument = jsonDecode(body);
       if (cloudDocument is! Map<String, dynamic> ||
-          cloudDocument['collection'] != collection ||
-          cloudDocument['items'] is! List ||
+          cloudDocument['skills'] is! List ||
           cloudDocument['pagination'] is! Map<String, dynamic>) {
         throw const FormatException('Invalid Cloud ranking response.');
       }
-      final items = cloudDocument['items'] as List;
+      final items = cloudDocument['skills'] as List;
       final skills = <Map<String, dynamic>>[];
       for (final raw in items) {
         if (raw is! Map<String, dynamic> ||
             raw['modulePath'] is! String ||
-            raw['skillName'] is! String ||
             raw['name'] is! String ||
             raw['description'] is! String ||
             raw['path'] is! String ||
@@ -348,10 +346,25 @@ mixin _RealSkillsGatewayDiscovery on _RealSkillsGatewayCore {
             raw['metric'] is! Map<String, dynamic>) {
           throw const FormatException('Invalid Cloud ranking item.');
         }
-        if (raw['skillName'] != raw['name']) {
-          throw const FormatException('Cloud ranking identity mismatch.');
+        final metric = raw['metric'] as Map<String, dynamic>;
+        if (metric['value'] is! num ||
+            (metric['change'] != null && metric['change'] is! num)) {
+          throw const FormatException('Invalid Cloud ranking metric.');
         }
-        skills.add(raw);
+        final metricKind = switch (collection) {
+          'all_time' => 'all_time_installs',
+          'trending' => 'installs_24h',
+          'hot' => 'hot_velocity',
+          _ => throw const FormatException('Invalid Cloud ranking kind.'),
+        };
+        skills.add({
+          ...raw,
+          'metric': {
+            'kind': metricKind,
+            'value': metric['value'],
+            'change': metric['change'] ?? 0,
+          },
+        });
       }
       return {
         'collection': collection,

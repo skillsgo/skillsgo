@@ -1,8 +1,0 @@
-# [INPUT]: Depends on OSV findings for the E2E aggregate Go module and verified package reachability.
-# [OUTPUT]: Suppresses only the unfixable legacy OpenPGP advisory when no OpenPGP package is in the E2E build graph.
-# [POS]: Serves as the evidence-backed OSV exception policy beside the E2E Go manifest.
-# [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
-
-[[IgnoredVulns]]
-id = "GO-2026-5932"
-reason = "golang.org/x/crypto/openpgp is not present in go list -deps ./...; the advisory has no fixed x/crypto version."

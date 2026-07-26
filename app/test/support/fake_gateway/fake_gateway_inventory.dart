@@ -28,7 +28,7 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
                         for (final agent in agentNames)
                           SkillInstallationTarget(
                             agent: agent,
-                            scope: InstallationScope.user,
+                            scope: InstallationScope.global,
                             path: '/tmp/local-skill',
                             version: 'v1',
                           ),
@@ -64,9 +64,9 @@ mixin FakeGatewayInventory on FakeSkillsGatewayCore {
                   installed: true,
                   supportedScopes: const [
                     InstallationScope.project,
-                    InstallationScope.user,
+                    InstallationScope.global,
                   ],
-                  userTarget: AgentUserTarget(
+                  globalTarget: AgentGlobalTarget(
                     path: '/Users/test/.$agent/skills',
                     exists: true,
                   ),

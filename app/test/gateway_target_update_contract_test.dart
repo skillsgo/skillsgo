@@ -81,7 +81,7 @@ void main() {
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
-            scope: InstallationScope.user,
+            scope: InstallationScope.global,
             path: '/tmp/Test',
             version: '',
           ),
@@ -92,16 +92,16 @@ void main() {
           ProcessOutput(
             exitCode: 0,
             stdout: '''
-{"schemaVersion":1,"phase":"management-preflight","targets":[{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1}}
+{"schemaVersion":2,"phase":"management-preflight","targets":[{"target":{"scope":"global","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","health":"healthy","allowedActions":["remove"],"stateToken":"sha256:state","workspaceMetadataChange":false}],"summary":{"removable":1}}
 ''',
             stderr: '',
           ),
           ProcessOutput(
             exitCode: 0,
             stdout: '''
-{"schemaVersion":1,"phase":"management-progress","sequence":1,"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","state":"started"}
-{"schemaVersion":1,"phase":"management-progress","sequence":2,"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","state":"finished","result":{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","outcome":"succeeded"}}
-{"schemaVersion":1,"phase":"management-execution","results":[{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","outcome":"succeeded"}],"summary":{"succeeded":1,"failed":0}}
+{"schemaVersion":2,"phase":"management-progress","sequence":1,"target":{"scope":"global","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","state":"started"}
+{"schemaVersion":2,"phase":"management-progress","sequence":2,"target":{"scope":"global","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","state":"finished","result":{"target":{"scope":"global","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","outcome":"succeeded"}}
+{"schemaVersion":2,"phase":"management-execution","results":[{"target":{"scope":"global","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","outcome":"succeeded"}],"summary":{"succeeded":1,"failed":0}}
 ''',
             stderr: '',
           ),
@@ -148,9 +148,9 @@ void main() {
       runner.result = const ProcessOutput(
         exitCode: 1,
         stdout: '''
-{"schemaVersion":1,"phase":"management-progress","sequence":1,"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","state":"started"}
-{"schemaVersion":1,"phase":"management-progress","sequence":2,"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","state":"finished","result":{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","outcome":"failed","error":{"code":"management.target_failed","retryable":true,"details":{"path":"/tmp/Test"},"diagnostic":"developer detail"}}}
-{"schemaVersion":1,"phase":"management-execution","results":[{"target":{"scope":"user","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","outcome":"failed","error":{"code":"management.target_failed","retryable":true,"details":{"path":"/tmp/Test"},"diagnostic":"developer detail"}}],"summary":{"succeeded":0,"failed":1}}
+{"schemaVersion":2,"phase":"management-progress","sequence":1,"target":{"scope":"global","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","state":"started"}
+{"schemaVersion":2,"phase":"management-progress","sequence":2,"target":{"scope":"global","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","state":"finished","result":{"target":{"scope":"global","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","outcome":"failed","error":{"code":"management.target_failed","retryable":true,"details":{"path":"/tmp/Test"},"diagnostic":"developer detail"}}}
+{"schemaVersion":2,"phase":"management-execution","results":[{"target":{"scope":"global","agent":"codex","path":"/tmp/Test"},"name":"Test","skillId":"github.com/example/skills/-/test","version":"","action":"remove","outcome":"failed","error":{"code":"management.target_failed","retryable":true,"details":{"path":"/tmp/Test"},"diagnostic":"developer detail"}}],"summary":{"succeeded":0,"failed":1}}
 ''',
         stderr: 'localized stderr must not classify',
       );
@@ -213,7 +213,7 @@ void main() {
         targets: [
           SkillInstallationTarget(
             agent: 'codex',
-            scope: InstallationScope.user,
+            scope: InstallationScope.global,
             path: '/tmp/Test',
             version: 'v1',
           ),
@@ -252,13 +252,13 @@ void main() {
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":1,"phase":"module-update-preflight","modulePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"user","moduleDir":"/tmp/modules","stateToken":"state"}\n',
+              '{"schemaVersion":1,"phase":"module-update-preflight","modulePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"global","moduleDir":"/tmp/modules","stateToken":"state"}\n',
           stderr: '',
         ),
         ProcessOutput(
           exitCode: 0,
           stdout:
-              '{"schemaVersion":1,"phase":"module-update","modulePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"user","moduleDir":"/tmp/modules","stateToken":"state"}\n',
+              '{"schemaVersion":1,"phase":"module-update","modulePath":"github.com/example/skills","fromVersion":"v1","toVersion":"v2","sum":"h1:test","skills":["test"],"agents":["codex"],"scope":"global","moduleDir":"/tmp/modules","stateToken":"state"}\n',
           stderr: '',
         ),
       ]);
@@ -275,7 +275,7 @@ void main() {
       modulePath: 'github.com/example/skills',
       targets: [
         SkillInstallationTarget(
-          scope: InstallationScope.user,
+          scope: InstallationScope.global,
           agent: 'codex',
           path: '/tmp/Test',
           version: 'v1',

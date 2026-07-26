@@ -473,7 +473,7 @@ void main() {
       targets: [
         SkillInstallationTarget(
           agent: 'codex',
-          scope: InstallationScope.user,
+          scope: InstallationScope.global,
           path: '/Users/test/.codex/skills/global-skill',
           version: 'v1',
         ),

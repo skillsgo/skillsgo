@@ -1,3 +1,3 @@
 module liveness_probe
 
-go 1.25.12
+go 1.13

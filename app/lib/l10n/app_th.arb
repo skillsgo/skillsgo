@@ -234,7 +234,7 @@
   "allAgents": "Agent ทั้งหมด",
   "allProjects": "โครงการทั้งหมด",
   "specificProject": "โครงการ",
-  "userScope": "ทั่วโลก",
+  "globalScope": "ทั่วโลก",
   "addProject": "เพิ่มโครงการ",
   "relocateProject": "ย้ายที่อยู่",
   "removeFromList": "ลบออกจากรายการ",
@@ -647,13 +647,13 @@
   "updateCheckFailed": "การตรวจสอบล้มเหลว",
   "installSkill": "ติดตั้งทักษะ",
   "installLocationTitle": "กำหนดตำแหน่งการติดตั้ง",
-  "userLevel": "ระดับผู้ใช้",
+  "globalLevel": "Global",
   "projectLevel": "ระดับโครงการ",
   "projects": "โครงการ",
   "loading": "กำลังโหลด...",
   "repositoryParsing": "กำลังแยกวิเคราะห์ที่เก็บ...",
-  "userInstallSummary": "ใช้ได้กับAgent {agents} ในระดับผู้ใช้",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

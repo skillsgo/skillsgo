@@ -234,7 +234,7 @@
   "allAgents": "Alle Agents",
   "allProjects": "Alle Projekte",
   "specificProject": "Projekt",
-  "userScope": "Global",
+  "globalScope": "Global",
   "addProject": "Projekt hinzufügen",
   "relocateProject": "Umzug",
   "removeFromList": "Aus Liste entfernen",
@@ -647,13 +647,13 @@
   "updateCheckFailed": "ÜBERPRÜFUNG FEHLGESCHLAGEN",
   "installSkill": "Installieren Sie Skill",
   "installLocationTitle": "Installationsort festlegen",
-  "userLevel": "Benutzerebene",
+  "globalLevel": "Global",
   "projectLevel": "Projektebene",
   "projects": "Projekte",
   "loading": "Laden…",
   "repositoryParsing": "Parsing-Repository…",
-  "userInstallSummary": "Verfügbar für {agents} Agents auf Benutzerebene",
-  "@userInstallSummary": {
+  "globalInstallSummary": "Available globally to {agents} Agents",
+  "@globalInstallSummary": {
     "placeholders": {
       "agents": {
         "type": "int"

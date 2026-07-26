@@ -41,6 +41,7 @@ mixin _RealSkillsGatewayTargetManagement
       final decoded = _decodeMachineDocument(
         command.output.stdout,
         phase: 'management-preflight',
+        schemaVersion: 2,
       );
       if (decoded['targets'] is! List ||
           decoded['summary'] is! Map<String, dynamic>) {
@@ -262,7 +263,7 @@ mixin _RealSkillsGatewayTargetManagement
         );
       }
       final arguments = <String>['remove', first.name];
-      if (first.target.scope == InstallationScope.user) {
+      if (first.target.scope == InstallationScope.global) {
         arguments.add('--global');
       } else {
         arguments.addAll(['--project', first.target.projectRoot]);
@@ -356,6 +357,7 @@ mixin _RealSkillsGatewayTargetManagement
         arguments,
         progressPhase: 'management-progress',
         executionPhase: 'management-execution',
+        schemaVersion: 2,
         consumeProgress: (raw) {
           if (raw['sequence'] != sequence++ ||
               raw['name'] is! String ||

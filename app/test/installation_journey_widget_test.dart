@@ -169,7 +169,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(gateway.lastPlanSelections, hasLength(1));
     expect(gateway.lastPlanSelections.single.agent, 'codex');
-    expect(gateway.lastPlanSelections.single.scope, InstallationScope.user);
+    expect(gateway.lastPlanSelections.single.scope, InstallationScope.global);
     expect(gateway.installCalls, 1);
     expect(gateway.collections, hasLength(discoveryRequestsBeforeInstall));
     expect(tester.getTopLeft(card).dy, cardTopBeforeInstall);
@@ -336,8 +336,8 @@ void main() {
           id: 'codex',
           displayName: 'Codex',
           installed: true,
-          supportedScopes: [InstallationScope.user],
-          userTarget: AgentUserTarget(
+          supportedScopes: [InstallationScope.global],
+          globalTarget: AgentGlobalTarget(
             path: '/Users/test/.codex/skills',
             exists: true,
           ),
@@ -350,8 +350,8 @@ void main() {
           id: 'cursor',
           displayName: 'Cursor',
           installed: false,
-          supportedScopes: [InstallationScope.user],
-          userTarget: AgentUserTarget(
+          supportedScopes: [InstallationScope.global],
+          globalTarget: AgentGlobalTarget(
             path: '/Users/test/.cursor/skills',
             exists: false,
           ),

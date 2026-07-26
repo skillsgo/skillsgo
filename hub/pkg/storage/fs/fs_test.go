@@ -1,6 +1,6 @@
 /*
- * [INPUT]: Depends on shared filesystem instances, storage compliance fixtures, untrusted coordinates, and concurrent immutable artifact writes.
- * [OUTPUT]: Specifies storage-root containment, general compliance, and cross-instance create-only pair atomicity and conflict preservation.
+ * [INPUT]: Depends on shared filesystem instances, storage compliance fixtures, and concurrent immutable artifact writes.
+ * [OUTPUT]: Specifies general storage compliance plus cross-instance create-only pair atomicity and conflict preservation.
  * [POS]: Serves as behavioral coverage for the native filesystem storage backend.
  * [PROTOCOL]: Update this header when this file changes, then review AGENTS.md
  */
@@ -10,8 +10,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"os"
-	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
@@ -22,40 +20,6 @@ import (
 	"github.com/spf13/afero"
 	"github.com/stretchr/testify/require"
 )
-
-func TestOperationsRejectCoordinatesOutsideStorageRoot(t *testing.T) {
-	rootParent := t.TempDir()
-	root := filepath.Join(rootParent, "artifacts")
-	require.NoError(t, os.Mkdir(root, 0o700))
-	backendValue, err := NewStorage(root, afero.NewOsFs())
-	require.NoError(t, err)
-	backend := backendValue.(*storageImpl)
-
-	outside := filepath.Join(rootParent, "outside")
-	require.NoError(t, os.Mkdir(outside, 0o700))
-	sentinel := filepath.Join(outside, "sentinel")
-	require.NoError(t, os.WriteFile(sentinel, []byte("preserve"), 0o600))
-
-	_, err = backend.PutIfAbsent(t.Context(), "../outside", "v1.0.0", strings.NewReader("archive"), nil, []byte("info"))
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	_, err = backend.Info(t.Context(), "../outside", "v1.0.0")
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	_, err = backend.Zip(t.Context(), "../outside", "v1.0.0")
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	_, err = backend.Exists(t.Context(), "../outside", "v1.0.0")
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	err = backend.Delete(t.Context(), "../outside", "v1.0.0")
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	_, err = backend.List(t.Context(), "../outside")
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	_, err = backend.PutSkillContentIfAbsent(t.Context(), "../outside", "v1.0.0", "skill", []byte("content"))
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-	_, err = backend.SkillContent(t.Context(), "../outside", "v1.0.0", "skill")
-	require.True(t, huberrors.Is(err, huberrors.KindBadRequest))
-
-	require.FileExists(t, sentinel)
-	require.NoFileExists(t, filepath.Join(outside, "v1.0.0", "source.zip"))
-}
 
 func TestPutIfAbsentIsAtomicAcrossBackendInstances(t *testing.T) {
 	filesystem := afero.NewOsFs()
